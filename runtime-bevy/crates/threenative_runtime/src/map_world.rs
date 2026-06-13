@@ -153,8 +153,8 @@ fn spawn_entity(
 }
 
 fn add_mesh(world: &mut World, asset: &AssetIr) -> Handle<Mesh> {
-    let mesh = match asset.primitive.as_str() {
-        "sphere" => Mesh::from(Sphere {
+    let mesh = match asset.primitive.as_deref() {
+        Some("sphere") => Mesh::from(Sphere {
             radius: asset
                 .size
                 .as_ref()
@@ -162,7 +162,7 @@ fn add_mesh(world: &mut World, asset: &AssetIr) -> Handle<Mesh> {
                 .copied()
                 .unwrap_or(0.5),
         }),
-        "plane" => {
+        Some("plane") => {
             let width = asset
                 .size
                 .as_ref()

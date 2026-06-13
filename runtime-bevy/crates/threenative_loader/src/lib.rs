@@ -154,7 +154,8 @@ pub struct AssetIr {
     pub id: String,
     pub kind: String,
     pub format: String,
-    pub primitive: String,
+    pub primitive: Option<String>,
+    pub path: Option<String>,
     pub size: Option<Vec<f32>>,
 }
 

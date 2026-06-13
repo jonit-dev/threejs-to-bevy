@@ -104,6 +104,9 @@ function mapEntity(
 }
 
 function mapGeometry(asset: IAssetIr): THREE.BufferGeometry {
+  if (asset.kind !== "mesh") {
+    return new THREE.BoxGeometry(1, 1, 1);
+  }
   if (asset.primitive === "box") {
     const [x = 1, y = 1, z = 1] = asset.size ?? [];
     return new THREE.BoxGeometry(x, y, z);

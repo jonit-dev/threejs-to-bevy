@@ -1,9 +1,19 @@
 import { type IWorldIr } from "@threenative/ir";
+import type { IAssetReference } from "@threenative/sdk";
 
 interface IObjectLike {
   children: readonly IObjectLike[];
   id?: string;
-  material?: { color: unknown; metalness?: number; roughness?: number };
+  material?: {
+    baseColorTexture?: string | IAssetReference;
+    color: unknown;
+    emissiveTexture?: string | IAssetReference;
+    metalness?: number;
+    metallicRoughnessTexture?: string | IAssetReference;
+    normalTexture?: string | IAssetReference;
+    occlusionTexture?: string | IAssetReference;
+    roughness?: number;
+  };
   geometry?: { kind: string; size?: readonly number[]; radius?: number };
   position: { toArray(): [number, number, number] };
   rotation: { toArray(): [number, number, number] };
@@ -80,6 +90,7 @@ function visitChildren(
         color: child.material.color,
         metalness: child.material.metalness ?? 0,
         roughness: child.material.roughness ?? 1,
+        ...emitTextureSlots(child.material, output.assets),
       });
     }
 
@@ -112,6 +123,36 @@ function visitChildren(
     output.entities.push({ id, components });
     visitChildren(child, id, output);
   });
+}
+
+function emitTextureSlots(
+  material: NonNullable<IObjectLike["material"]>,
+  assets: ISceneEmitResult["assets"],
+): Record<string, string> {
+  const slots = {
+    baseColorTexture: material.baseColorTexture,
+    normalTexture: material.normalTexture,
+    metallicRoughnessTexture: material.metallicRoughnessTexture,
+    emissiveTexture: material.emissiveTexture,
+    occlusionTexture: material.occlusionTexture,
+  };
+  return Object.fromEntries(
+    Object.entries(slots).flatMap(([slot, value]) => {
+      if (value === undefined) {
+        return [];
+      }
+      if (typeof value === "string") {
+        return [[slot, value]];
+      }
+      assets.push({
+        id: value.id,
+        kind: value.kind,
+        format: value.format,
+        path: value.path,
+      });
+      return [[slot, value.id]];
+    }),
+  );
 }
 
 function eulerToQuaternion([x, y, z]: [number, number, number]): [number, number, number, number] {

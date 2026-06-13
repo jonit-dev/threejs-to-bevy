@@ -23,7 +23,12 @@
             ]
           },
           "metalness": { "type": "number" },
-          "roughness": { "type": "number" }
+          "roughness": { "type": "number" },
+          "baseColorTexture": { "type": "string", "minLength": 1 },
+          "normalTexture": { "type": "string", "minLength": 1 },
+          "metallicRoughnessTexture": { "type": "string", "minLength": 1 },
+          "emissiveTexture": { "type": "string", "minLength": 1 },
+          "occlusionTexture": { "type": "string", "minLength": 1 }
         }
       }
     }

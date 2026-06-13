@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import {
@@ -81,9 +81,11 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
   }
   if (materials !== undefined) {
     validateUniqueIds(materials.materials, `${manifest.files.materials}/materials`, "TN_IR_DUPLICATE_MATERIAL_ID", diagnostics);
+    validateMaterialTextureRefs(materials, assets, manifest.files.materials, diagnostics);
   }
   if (assets !== undefined) {
     validateUniqueIds(assets.assets, `${manifest.files.assets}/assets`, "TN_IR_DUPLICATE_ASSET_ID", diagnostics);
+    await validateAssets(assets, bundlePath, manifest.files.assets, diagnostics);
   }
   if (targetProfile !== undefined && targetProfile.targets.length === 0) {
     diagnostics.push({
@@ -109,6 +111,75 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
   }
 
   return { diagnostics, ok: diagnostics.length === 0 };
+}
+
+async function validateAssets(assets: IAssetsManifest, bundlePath: string, path: string, diagnostics: IIrDiagnostic[]): Promise<void> {
+  await Promise.all(
+    assets.assets.map(async (asset, index) => {
+      if (!("path" in asset)) {
+        return;
+      }
+      const assetPath = `${path}/assets/${index}/path`;
+      if (asset.path.startsWith("/") || asset.path.includes("..")) {
+        diagnostics.push({
+          code: "TN_IR_ASSET_PATH_INVALID",
+          message: `Asset '${asset.id}' must use a bundle-relative path without parent traversal.`,
+          path: assetPath,
+        });
+        return;
+      }
+      const extension = asset.path.split(".").pop()?.toLowerCase();
+      if (!assetFormatMatches(asset.kind, asset.format, extension)) {
+        diagnostics.push({
+          code: "TN_IR_ASSET_FORMAT_UNSUPPORTED",
+          message: `Asset '${asset.id}' uses unsupported ${asset.kind} format '${asset.format}'.`,
+          path: `${path}/assets/${index}/format`,
+        });
+      }
+      try {
+        await access(resolve(bundlePath, asset.path));
+      } catch {
+        diagnostics.push({
+          code: "TN_IR_ASSET_PATH_MISSING",
+          message: `Asset '${asset.id}' path '${asset.path}' does not exist in the bundle.`,
+          path: assetPath,
+        });
+      }
+    }),
+  );
+}
+
+function assetFormatMatches(kind: string, format: string, extension: string | undefined): boolean {
+  if (format !== extension) {
+    return false;
+  }
+  if (kind === "model") {
+    return format === "glb" || format === "gltf";
+  }
+  if (kind === "texture") {
+    return format === "jpeg" || format === "png";
+  }
+  if (kind === "audio") {
+    return format === "mp3" || format === "ogg" || format === "wav";
+  }
+  return true;
+}
+
+function validateMaterialTextureRefs(materials: IMaterialsIr, assets: IAssetsManifest | undefined, path: string, diagnostics: IIrDiagnostic[]): void {
+  const textureAssets = new Set((assets?.assets ?? []).filter((asset) => asset.kind === "texture").map((asset) => asset.id));
+  const slots = ["baseColorTexture", "normalTexture", "metallicRoughnessTexture", "emissiveTexture", "occlusionTexture"] as const;
+  materials.materials.forEach((material, materialIndex) => {
+    slots.forEach((slot) => {
+      const value = material[slot];
+      if (value !== undefined && !textureAssets.has(value)) {
+        diagnostics.push({
+          code: "TN_IR_MATERIAL_TEXTURE_ASSET_MISSING",
+          message: `Material '${material.id}' references unknown texture asset '${value}'.`,
+          path: `${path}/materials/${materialIndex}/${slot}`,
+        });
+      }
+    });
+  });
 }
 
 function validateInput(input: IInputIr, path: string, diagnostics: IIrDiagnostic[]): void {

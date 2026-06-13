@@ -112,10 +112,15 @@ export interface IIrSchemaFile {
 }
 
 export interface IMaterialIr {
+  baseColorTexture?: string;
   color: string | readonly [number, number, number] | readonly [number, number, number, number];
+  emissiveTexture?: string;
   id: string;
   kind: "standard";
   metalness?: number;
+  metallicRoughnessTexture?: string;
+  normalTexture?: string;
+  occlusionTexture?: string;
   roughness?: number;
 }
 
@@ -125,13 +130,32 @@ export interface IMaterialsIr {
   materials: IMaterialIr[];
 }
 
-export interface IAssetIr {
-  format: "generated";
-  id: string;
-  kind: "mesh";
-  primitive: "box" | "sphere" | "plane";
-  size?: readonly number[];
-}
+export type IAssetIr =
+  | {
+      format: "generated";
+      id: string;
+      kind: "mesh";
+      primitive: "box" | "sphere" | "plane";
+      size?: readonly number[];
+    }
+  | {
+      format: "glb" | "gltf";
+      id: string;
+      kind: "model";
+      path: string;
+    }
+  | {
+      format: "jpeg" | "png";
+      id: string;
+      kind: "texture";
+      path: string;
+    }
+  | {
+      format: "mp3" | "ogg" | "wav";
+      id: string;
+      kind: "audio";
+      path: string;
+    };
 
 export interface IAssetsManifest {
   schema: AssetsSchema;

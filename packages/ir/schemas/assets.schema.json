@@ -9,18 +9,36 @@
     "version": { "const": "0.1.0" },
     "assets": {
       "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["id", "kind", "format", "primitive"],
-        "additionalProperties": false,
-        "properties": {
-          "id": { "type": "string", "minLength": 1 },
-          "kind": { "const": "mesh" },
-          "format": { "const": "generated" },
-          "primitive": { "enum": ["box", "sphere", "plane"] },
-          "size": { "type": "array", "items": { "type": "number" } }
+      "items": { "$ref": "#/$defs/asset" }
+    }
+  },
+  "$defs": {
+    "asset": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["id", "kind", "format", "primitive"],
+          "additionalProperties": false,
+          "properties": {
+            "id": { "type": "string", "minLength": 1 },
+            "kind": { "const": "mesh" },
+            "format": { "const": "generated" },
+            "primitive": { "enum": ["box", "sphere", "plane"] },
+            "size": { "type": "array", "items": { "type": "number" } }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["id", "kind", "format", "path"],
+          "additionalProperties": false,
+          "properties": {
+            "id": { "type": "string", "minLength": 1 },
+            "kind": { "enum": ["audio", "model", "texture"] },
+            "format": { "enum": ["glb", "gltf", "jpeg", "mp3", "ogg", "png", "wav"] },
+            "path": { "type": "string", "minLength": 1 }
+          }
         }
-      }
+      ]
     }
   }
 }

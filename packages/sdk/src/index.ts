@@ -1,4 +1,5 @@
 export { SdkError } from "./errors.js";
+export { audioAsset, modelAsset, textureAsset, type AssetFormat, type AssetKind, type IAssetReference } from "./assets.js";
 export {
   World,
   type IWorldCommandDeclaration,
@@ -47,7 +48,7 @@ export {
   type IInputMapDeclaration,
   type InputBinding,
 } from "./input.js";
-export { MeshStandardMaterial, type ColorValue } from "./materials/MeshStandardMaterial.js";
+export { MeshStandardMaterial, type ColorValue, type TextureSlotReference } from "./materials/MeshStandardMaterial.js";
 export { Vector3, type Vector3Tuple } from "./math/Vector3.js";
 export { PerspectiveCamera } from "./scene/Camera.js";
 export { AmbientLight, DirectionalLight } from "./scene/Light.js";

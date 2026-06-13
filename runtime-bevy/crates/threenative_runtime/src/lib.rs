@@ -6,6 +6,7 @@ use threenative_loader::{LoadError, load_bundle};
 
 pub mod map_world;
 pub mod conformance;
+pub mod assets;
 pub mod input;
 pub mod systems_host;
 
