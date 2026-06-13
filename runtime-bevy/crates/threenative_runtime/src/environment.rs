@@ -103,7 +103,7 @@ pub fn map_environment_into_world(world: &mut World, bundle: &LoadedBundle) {
     }
 
     if scene.path.points.len() >= 2 {
-        let material = material(world, Color::srgb(0.90, 0.68, 0.37));
+        let material = material(world, Color::srgb(0.96, 0.73, 0.40));
         spawn_pbr(
             world,
             &format!("path:{}:0", scene.path.id),
