@@ -1,5 +1,5 @@
 import { type IWorldIr } from "@threenative/ir";
-import type { IAssetReference } from "@threenative/sdk";
+import type { IAssetReference, IPhysicsDeclaration } from "@threenative/sdk";
 
 interface IObjectLike {
   activeCamera?: IObjectLike;
@@ -16,6 +16,7 @@ interface IObjectLike {
     roughness?: number;
   };
   geometry?: { height?: number; kind: string; radius?: number; size?: readonly number[] };
+  physics?: IPhysicsDeclaration;
   position: { toArray(): [number, number, number] };
   rotation: { toArray(): [number, number, number] };
   scale: { toArray(): [number, number, number] };
@@ -77,6 +78,7 @@ function visitChildren(
     if (parentId !== undefined) {
       components.Hierarchy = { parent: parentId };
     }
+    emitPhysics(child.physics, components);
 
     if (child.constructor.name === "Mesh" && child.geometry !== undefined && child.material !== undefined) {
       const meshId = `mesh.${id}`;
@@ -154,6 +156,25 @@ function visitChildren(
     output.entities.push({ id, components });
     visitChildren(child, id, output);
   });
+}
+
+function emitPhysics(physics: IPhysicsDeclaration | undefined, components: Record<string, unknown>): void {
+  if (physics?.body !== undefined) {
+    components.RigidBody = {
+      kind: physics.body.kind,
+      ...(physics.body.mass === undefined ? {} : { mass: physics.body.mass }),
+      ...(physics.body.velocity === undefined ? {} : { velocity: physics.body.velocity }),
+    };
+  }
+  if (physics?.collider !== undefined) {
+    components.Collider = {
+      kind: physics.collider.kind,
+      ...(physics.collider.size === undefined ? {} : { size: physics.collider.size }),
+      ...(physics.collider.radius === undefined ? {} : { radius: physics.collider.radius }),
+      ...(physics.collider.height === undefined ? {} : { height: physics.collider.height }),
+      ...(physics.collider.trigger === undefined ? {} : { trigger: physics.collider.trigger }),
+    };
+  }
 }
 
 function geometrySize(geometry: NonNullable<IObjectLike["geometry"]>): readonly number[] | undefined {

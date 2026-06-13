@@ -1,9 +1,11 @@
 import { SdkError } from "../errors.js";
 import { Vector3 } from "../math/Vector3.js";
+import type { IPhysicsDeclaration } from "../physics.js";
 
 export interface IObject3DOptions {
   id?: string;
   name?: string;
+  physics?: IPhysicsDeclaration;
   visible?: boolean;
 }
 
@@ -13,6 +15,7 @@ export class Object3D {
   public readonly id?: string;
   public name: string;
   public parent: Object3D | undefined;
+  public readonly physics?: IPhysicsDeclaration;
   public readonly position = new Vector3();
   public readonly rotation = new Vector3();
   public readonly scale = new Vector3(1, 1, 1);
@@ -21,6 +24,7 @@ export class Object3D {
   public constructor(options: IObject3DOptions = {}) {
     this.id = options.id;
     this.name = options.name ?? options.id ?? "";
+    this.physics = options.physics;
     this.visible = options.visible ?? true;
   }
 

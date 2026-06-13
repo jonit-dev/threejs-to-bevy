@@ -2,6 +2,7 @@ import type { IRuntimeConfigIr, ISystemsIr, IWorldIr } from "@threenative/ir";
 import type { IWebInputState } from "./input.js";
 import type { IThreeWorld } from "./mapWorld.js";
 import { syncTransforms } from "./mapWorld.js";
+import { stepPhysics } from "./physics.js";
 import { runSchedule, type ISystemModule } from "./systems/runner.js";
 
 export interface IGameLoopState {
@@ -40,6 +41,7 @@ export async function runGameFrame(options: {
     state.accumulator += options.delta;
     if (!state.paused) {
       while (state.accumulator >= fixedDelta) {
+        stepPhysics(options.world, fixedDelta);
         await runSchedule({ ...options, delta: fixedDelta, elapsed: state.elapsed, fixedDelta, paused: state.paused, schedule: "fixedUpdate" });
         state.accumulator -= fixedDelta;
       }
@@ -47,6 +49,7 @@ export async function runGameFrame(options: {
       await runSchedule({ ...options, elapsed: state.elapsed, fixedDelta, paused: state.paused, schedule: "postUpdate" });
     }
   } else {
+    stepPhysics(options.world, fixedDelta);
     await runSchedule({ ...options, fixedDelta, schedule: "fixedUpdate" });
     await runSchedule({ ...options, fixedDelta, schedule: "update" });
     await runSchedule({ ...options, fixedDelta, schedule: "postUpdate" });

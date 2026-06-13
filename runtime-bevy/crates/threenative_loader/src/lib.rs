@@ -79,9 +79,11 @@ pub struct WorldEntity {
 #[serde(rename_all = "PascalCase")]
 pub struct EntityComponents {
     pub camera: Option<CameraComponent>,
+    pub collider: Option<ColliderComponent>,
     pub hierarchy: Option<HierarchyComponent>,
     pub light: Option<LightComponent>,
     pub mesh_renderer: Option<MeshRendererComponent>,
+    pub rigid_body: Option<RigidBodyComponent>,
     pub transform: Option<TransformComponent>,
     pub visibility: Option<VisibilityComponent>,
 }
@@ -121,6 +123,22 @@ pub struct LightComponent {
 #[derive(Debug, Deserialize)]
 pub struct HierarchyComponent {
     pub parent: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RigidBodyComponent {
+    pub kind: String,
+    pub mass: Option<f32>,
+    pub velocity: Option<[f32; 3]>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ColliderComponent {
+    pub kind: String,
+    pub height: Option<f32>,
+    pub radius: Option<f32>,
+    pub size: Option<[f32; 3]>,
+    pub trigger: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]

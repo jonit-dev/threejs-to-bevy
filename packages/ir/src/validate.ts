@@ -612,6 +612,7 @@ function validateWorld(world: IWorldIr, path: string, diagnostics: IIrDiagnostic
 
   validateUniqueIds(world.entities, `${path}/entities`, "TN_IR_DUPLICATE_ENTITY_ID", diagnostics);
   world.entities.forEach((entity, index) => validateRenderComponents(entity, `${path}/entities/${index}`, diagnostics));
+  world.entities.forEach((entity, index) => validatePhysicsComponents(entity, `${path}/entities/${index}`, diagnostics));
 }
 
 function validateRenderComponents(entity: IWorldIr["entities"][number], path: string, diagnostics: IIrDiagnostic[]): void {
@@ -648,6 +649,51 @@ function validateRenderComponents(entity: IWorldIr["entities"][number], path: st
       code: "TN_IR_RENDER_VISIBILITY_INVALID",
       message: `Visibility component for '${entity.id}' must be boolean.`,
       path: `${path}/components/Visibility/visible`,
+    });
+  }
+}
+
+function validatePhysicsComponents(entity: IWorldIr["entities"][number], path: string, diagnostics: IIrDiagnostic[]): void {
+  const collider = entity.components.Collider;
+  const body = entity.components.RigidBody;
+  if (collider === undefined && body === undefined) {
+    return;
+  }
+  if (collider !== undefined) {
+    if (!["box", "capsule", "cylinder", "mesh", "sphere"].includes(collider.kind)) {
+      diagnostics.push({
+        code: "TN_IR_PHYSICS_COLLIDER_UNSUPPORTED",
+        message: `Collider '${entity.id}' uses unsupported shape '${String(collider.kind)}'.`,
+        path: `${path}/components/Collider/kind`,
+      });
+    }
+    if (collider.trigger !== undefined && typeof collider.trigger !== "boolean") {
+      diagnostics.push({
+        code: "TN_IR_PHYSICS_TRIGGER_INVALID",
+        message: `Collider trigger flag for '${entity.id}' must be boolean.`,
+        path: `${path}/components/Collider/trigger`,
+      });
+    }
+  }
+  if (body !== undefined && !["dynamic", "kinematic", "static"].includes(body.kind)) {
+    diagnostics.push({
+      code: "TN_IR_PHYSICS_BODY_UNSUPPORTED",
+      message: `RigidBody '${entity.id}' uses unsupported body kind '${String(body.kind)}'.`,
+      path: `${path}/components/RigidBody/kind`,
+    });
+  }
+  if (collider?.kind === "mesh" && body?.kind === "dynamic") {
+    diagnostics.push({
+      code: "TN_IR_PHYSICS_DYNAMIC_MESH_UNSUPPORTED",
+      message: "Dynamic mesh colliders are not supported in V2.",
+      path: `${path}/components/Collider/kind`,
+    });
+  }
+  if (body !== undefined && collider === undefined) {
+    diagnostics.push({
+      code: "TN_IR_PHYSICS_COLLIDER_MISSING",
+      message: `RigidBody '${entity.id}' must have a Collider in V2.`,
+      path: `${path}/components/Collider`,
     });
   }
 }

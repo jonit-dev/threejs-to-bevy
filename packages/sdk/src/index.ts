@@ -50,6 +50,20 @@ export {
 } from "./input.js";
 export { MeshStandardMaterial, type ColorValue, type TextureSlotReference } from "./materials/MeshStandardMaterial.js";
 export { Vector3, type Vector3Tuple } from "./math/Vector3.js";
+export {
+  boxCollider,
+  capsuleCollider,
+  cylinderCollider,
+  meshCollider,
+  physics,
+  rigidBody,
+  sphereCollider,
+  type IColliderDeclaration,
+  type IPhysicsDeclaration,
+  type IRigidBodyDeclaration,
+  type PhysicsBodyKind,
+  type PhysicsColliderKind,
+} from "./physics.js";
 export { OrthographicCamera, PerspectiveCamera } from "./scene/Camera.js";
 export { AmbientLight, DirectionalLight, PointLight, SpotLight } from "./scene/Light.js";
 export { Mesh } from "./scene/Mesh.js";

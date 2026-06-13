@@ -66,11 +66,27 @@ export interface IVisibilityComponent {
   visible: boolean;
 }
 
+export interface IRigidBodyComponent {
+  kind: "dynamic" | "kinematic" | "static";
+  mass?: number;
+  velocity?: Vec3;
+}
+
+export interface IColliderComponent {
+  height?: number;
+  kind: "box" | "capsule" | "cylinder" | "mesh" | "sphere";
+  radius?: number;
+  size?: Vec3;
+  trigger?: boolean;
+}
+
 export interface IWorldEntity {
   components: Record<string, unknown> & {
     Camera?: ICameraComponent;
     Light?: ILightComponent;
     MeshRenderer?: IMeshRendererComponent;
+    Collider?: IColliderComponent;
+    RigidBody?: IRigidBodyComponent;
     Transform?: ITransformComponent;
     Visibility?: IVisibilityComponent;
   };

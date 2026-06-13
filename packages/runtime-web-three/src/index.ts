@@ -4,6 +4,7 @@ export { createGameLoopState, runGameFrame, setPaused, type IGameLoopState } fro
 export { attachInputListeners, createInputState, type IWebInputState } from "./input.js";
 export { resolveWebAssets, type IResolvedWebAsset } from "./assets.js";
 export { mapWorld, syncTransforms, type IRuntimeDiagnostic, type IThreeWorld } from "./mapWorld.js";
+export { stepPhysics, type IPhysicsEventPayload } from "./physics.js";
 export { renderBundle, type IRenderResult } from "./render.js";
 export { createSystemContext, applyCommands, type ISystemContext } from "./systems/context.js";
 export { loadSystemModule, runSchedule, type ISystemModule, type SystemFunction } from "./systems/runner.js";
