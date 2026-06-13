@@ -253,13 +253,15 @@ async function writeBevyMappedPreview(page: Page, path: string, bundle: Awaited<
     }
     ctx.fillStyle = "#9eb6aa";
     ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = "#758044";
+    ctx.fillRect(0, 260, W, H - 260);
     const bounds = preview.terrain?.bounds ?? { min: [-12, 0, -14], max: [12, 0, 10] };
     drawPoly([
       [bounds.min[0], terrainHeightAt(bounds.min[0], bounds.min[2]), bounds.min[2]],
       [bounds.max[0], terrainHeightAt(bounds.max[0], bounds.min[2]), bounds.min[2]],
       [bounds.max[0], terrainHeightAt(bounds.max[0], bounds.max[2]), bounds.max[2]],
       [bounds.min[0], terrainHeightAt(bounds.min[0], bounds.max[2]), bounds.max[2]],
-    ], "#667143", undefined);
+    ], "#697849", undefined);
     for (let i = 0; i < (preview.path?.points?.length ?? 0) - 1; i += 1) {
       drawPoly(pathQuad(preview.path.points[i], preview.path.points[i + 1], preview.path.width), "#d99a44", "#9f7739");
     }
@@ -269,17 +271,34 @@ async function writeBevyMappedPreview(page: Page, path: string, bundle: Awaited<
     }).filter((item) => item.projected).sort((a, b) => b.projected.depth - a.projected.depth);
     for (const { instance, projected, category } of sorted) {
       const scale = (instance.scale?.[1] ?? 1) * projected.scale;
+      ctx.fillStyle = "rgba(22, 35, 20, 0.22)";
+      ctx.beginPath();
+      ctx.ellipse(projected.x + scale * 0.08, projected.y + scale * 0.05, Math.max(8, scale * 0.55), Math.max(3, scale * 0.16), -0.18, 0, Math.PI * 2);
+      ctx.fill();
       if (category === "tree") {
         ctx.fillStyle = "#8c552f";
-        ctx.fillRect(projected.x - scale * 0.08, projected.y - scale * 4.1, scale * 0.16, scale * 4.1);
+        ctx.fillRect(projected.x - scale * 0.11, projected.y - scale * 4.25, scale * 0.22, scale * 4.25);
+        ctx.fillStyle = "#6d3d21";
+        ctx.fillRect(projected.x - scale * 0.03, projected.y - scale * 4.0, scale * 0.035, scale * 3.65);
         ctx.fillStyle = "#5d741e";
         ctx.beginPath();
-        ctx.arc(projected.x, projected.y - scale * 4.15, Math.max(10, scale * 0.72), 0, Math.PI * 2);
+        ctx.arc(projected.x, projected.y - scale * 4.3, Math.max(12, scale * 0.82), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#6f8b25";
+        ctx.beginPath();
+        ctx.arc(projected.x - scale * 0.36, projected.y - scale * 4.05, Math.max(8, scale * 0.46), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(projected.x + scale * 0.35, projected.y - scale * 4.0, Math.max(8, scale * 0.48), 0, Math.PI * 2);
         ctx.fill();
       } else if (category === "rock" || category === "pebble") {
         ctx.fillStyle = category === "rock" ? "#71765d" : "#aaa18a";
         ctx.beginPath();
         ctx.ellipse(projected.x, projected.y - scale * 0.22, Math.max(4, scale * 0.62), Math.max(3, scale * 0.36), -0.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "rgba(255,255,210,0.10)";
+        ctx.beginPath();
+        ctx.ellipse(projected.x - scale * 0.18, projected.y - scale * 0.34, Math.max(2, scale * 0.22), Math.max(1.5, scale * 0.08), -0.2, 0, Math.PI * 2);
         ctx.fill();
       } else if (category === "grass") {
         ctx.strokeStyle = "#8ebc28";
@@ -293,8 +312,14 @@ async function writeBevyMappedPreview(page: Page, path: string, bundle: Awaited<
       } else {
         ctx.fillStyle = category === "flower" ? "#c7192b" : category === "mushroom" ? "#d4bf95" : "#497a35";
         ctx.beginPath();
-        ctx.arc(projected.x, projected.y - scale * 0.35, Math.max(3, scale * 0.28), 0, Math.PI * 2);
+        ctx.arc(projected.x, projected.y - scale * 0.35, Math.max(4, scale * 0.34), 0, Math.PI * 2);
         ctx.fill();
+        if (category === "vegetation") {
+          ctx.fillStyle = "#5f8d3d";
+          ctx.beginPath();
+          ctx.arc(projected.x + scale * 0.24, projected.y - scale * 0.45, Math.max(3, scale * 0.26), 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
     }
   </script></body></html>`);
