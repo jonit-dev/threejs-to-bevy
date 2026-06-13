@@ -60,6 +60,7 @@ environment asset pack
 | 7 | [V3-07 Scene Visual Verification](./V3-07-scene-visual-verification.md) | V3-02 through V3-06 | Automated screenshots and performance measurements verify bookmarked forest views. |
 | 8 | [V3-08 Environment Demo Template](./V3-08-environment-demo-template.md) | V3-01 through V3-07 | A maintained V3 example/template builds the full first-person forest scene. |
 | 9 | [V3-09 Release Gate and Docs Consistency](./V3-09-release-gate-and-docs-consistency.md) | All V3 tickets | `verify:v3`, docs checks, bundle validation, web performance, visual checks, and native smoke gate V3. |
+| 10 | [V3-10 Preview_2 Visual Fidelity and Runtime Parity](./V3-10-preview2-visual-fidelity-and-runtime-parity.md) | V3-09 | Close remaining Preview_2 visual fidelity, path metadata, and Three.js/Bevy rendering parity gaps before calling V3 complete. |
 
 ## V3 Acceptance Criteria
 
