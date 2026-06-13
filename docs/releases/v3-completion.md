@@ -9,6 +9,8 @@ and release-gated by `pnpm verify:v3`.
 - [ ] Bevy loads the same bundle-local glTF scene instances.
 - [ ] Bookmarked web screenshots are nonblank and compositionally valid.
 - [ ] Bookmarked Bevy screenshots are captured.
+- [ ] `Preview_2.jpg` is captured beside bookmarked Three.js and Bevy output.
+- [ ] Manual close-match review against `Preview_2.jpg` is recorded.
 - [ ] Lighting, atmosphere, camera, scale, and rotation differences are
   documented.
 - [ ] Real instancing or batching replaces placeholder-only groups where V3
@@ -41,4 +43,6 @@ and release-gated by `pnpm verify:v3`.
 - `artifacts/v3/v3-atmosphere-report.json`
 - `artifacts/v3/v3-first-person-report.json`
 - `artifacts/v3/v3-walkability-report.json`
+- `artifacts/v3/screenshots/Preview_2.jpg`
+- `artifacts/v3/screenshots/preview2-target-vs-output.png`
 - `artifacts/v3/screenshots/threejs-bevy-side-by-side.png`

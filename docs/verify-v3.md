@@ -21,6 +21,8 @@ pnpm verify:v3 -- --json
 - Bookmarked Three.js screenshots.
 - Bookmarked Bevy screenshots.
 - Three.js/Bevy side-by-side contact sheet generation.
+- Preview_2 target reference capture and target-vs-output contact sheet
+  generation when the bundle declares `environment.scene.json/referenceImage`.
 - Atmosphere profile checks.
 - First-person walkthrough checks.
 - Walkability and blocking probe checks.
@@ -38,8 +40,10 @@ artifacts/v3/
   v3-first-person-report.json
   v3-walkability-report.json
   screenshots/
+    Preview_2.jpg
     <bookmark>.threejs.png
     <bookmark>.bevy-gltf.png
+    preview2-target-vs-output.png
     threejs-bevy-side-by-side.png
   template-smoke/
     v3-environment/
@@ -71,6 +75,12 @@ V3 blocks on:
 V3 does not currently block on pixel-perfect Three.js/Bevy visual equivalence.
 `v3-scene-report.json` marks native visual parity as `not-asserted`.
 
+V3 scene verification records `visualReview` evidence separately from automated
+pass/fail status. The report includes the copied Preview_2 reference artifact,
+its bundle-relative source path and hash, the target-vs-output contact sheet
+path, and `manualReview.status: "not-recorded"` until a human close-match review
+is recorded outside the automated gate.
+
 ## Debugging Order
 
 1. Open `artifacts/v3/verification-report.json`.
@@ -78,5 +88,7 @@ V3 does not currently block on pixel-perfect Three.js/Bevy visual equivalence.
 3. Open that step's linked report.
 4. If screenshots exist, inspect
    `artifacts/v3/screenshots/threejs-bevy-side-by-side.png`.
-5. Use `pnpm tn -- compare-images <threejs.png> <bevy.png> --json` for
+5. Inspect `artifacts/v3/screenshots/preview2-target-vs-output.png` to compare
+   `Preview_2.jpg` against bookmarked Three.js and Bevy output.
+6. Use `pnpm tn -- compare-images <threejs.png> <bevy.png> --json` for
    objective brightness/color/image deltas.

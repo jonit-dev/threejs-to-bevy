@@ -18,7 +18,16 @@ test("v3Scene should report scene authoring artifacts when verification passes",
     assert.equal(report.counts.scatterInstances, 1);
     assert.equal(report.captures[0]?.bookmarkId, "bookmark.start");
     assert.match(report.artifacts.sideBySideContactSheetPath ?? "", /threejs-bevy-side-by-side\.png$/);
+    assert.match(report.artifacts.targetReferencePath ?? "", /Preview_2\.jpg$/);
+    assert.match(report.artifacts.targetVsOutputContactSheetPath ?? "", /preview2-target-vs-output\.png$/);
     assert.equal(report.nativeSmoke.visualParity, "not-asserted");
+    assert.equal(report.visualReview.targetReference.status, "found");
+    assert.equal(report.visualReview.targetReference.assetId, "tex.env.reference.Preview_2");
+    assert.match(report.visualReview.targetReference.bundleRelativePath, /assets\/environment\/reference\/Preview_2\.jpg/);
+    assert.equal(report.visualReview.targetVsOutput.status, "captured");
+    assert.equal(report.visualReview.manualReview.status, "not-recorded");
+    assert.equal(report.visualReview.visualParity.targetReference, "manual-review-required");
+    assert.equal(report.visualReview.visualParity.threeJsVsBevy, "not-asserted");
     assert.match(report.artifacts.bundleHash, /^[a-f0-9]{64}$/);
     assert.equal(JSON.parse(await readFile(join(root, "v3-scene-report.json"), "utf8")).status, "pass");
   } finally {
@@ -54,7 +63,8 @@ test("v3Scene should fail when screenshot is blank", async () => {
 
 async function makeBundle(options: { expectedTags?: string[] } = {}): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), "tn-v3-scene-"));
-  await mkdir(join(root, "assets/environment"), { recursive: true });
+  await mkdir(join(root, "assets/environment/reference"), { recursive: true });
+  await writePng(join(root, "assets/environment/reference/Preview_2.jpg"), 120);
   await writeJson(root, "manifest.json", {
     schema: "threenative.bundle",
     version: "0.1.0",
@@ -67,13 +77,17 @@ async function makeBundle(options: { expectedTags?: string[] } = {}): Promise<st
   await writeJson(root, "assets.manifest.json", {
     schema: "threenative.assets",
     version: "0.1.0",
-    assets: [{ format: "gltf", id: "model.env.Rock", kind: "model", path: "assets/environment/Rock.gltf" }],
+    assets: [
+      { format: "gltf", id: "model.env.Rock", kind: "model", path: "assets/environment/Rock.gltf" },
+      { format: "jpeg", id: "tex.env.reference.Preview_2", kind: "texture", path: "assets/environment/reference/Preview_2.jpg" },
+    ],
   });
   await writeJson(root, "materials.ir.json", { schema: "threenative.materials", version: "0.1.0", materials: [] });
   await writeJson(root, "target.profile.json", { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] });
   await writeJson(root, "environment.scene.json", {
     schema: "threenative.environment-scene",
     version: "0.1.0",
+    referenceImage: "tex.env.reference.Preview_2",
     terrain: { id: "terrain.forest", heightMode: "flat", bounds: { min: [-5, 0, -5], max: [5, 0, 5] } },
     path: { id: "path.main", points: [[0, 0, 3], [0, 0, -3]], width: 2 },
     sourceAssets: [{ id: "env.Rock", asset: "model.env.Rock", category: "rock" }],
@@ -91,18 +105,21 @@ async function writeJson(root: string, file: string, value: unknown): Promise<vo
 }
 
 function mockScreenshotCapturer(value: number) {
-  return async (options: { artifactDir: string; bookmarkIds: readonly string[] }) => {
+  return async (options: { artifactDir: string; bookmarkIds: readonly string[]; targetReferencePath?: string }) => {
     const screenshotDir = join(options.artifactDir, "screenshots");
     await mkdir(screenshotDir, { recursive: true });
     const sideBySidePath = join(screenshotDir, "threejs-bevy-side-by-side.png");
+    const targetVsOutputContactSheetPath = join(screenshotDir, "preview2-target-vs-output.png");
     await writePng(sideBySidePath, 80);
-    return Promise.all(options.bookmarkIds.map(async (bookmarkId) => {
+    await writePng(targetVsOutputContactSheetPath, options.targetReferencePath === undefined ? 20 : 90);
+    const captures = await Promise.all(options.bookmarkIds.map(async (bookmarkId) => {
       const threejsPath = join(screenshotDir, `${bookmarkId}.threejs.png`);
       const bevyGltfPath = join(screenshotDir, `${bookmarkId}.bevy-gltf.png`);
       await writePng(threejsPath, value);
       await writePng(bevyGltfPath, 40);
       return { bookmarkId, bevyGltfPath, sideBySidePath, threejsPath };
     }));
+    return { captures, targetVsOutputContactSheetPath };
   };
 }
 
