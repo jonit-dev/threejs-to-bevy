@@ -54,7 +54,7 @@ function visitChildren(
     const components: Record<string, unknown> = {
       Transform: {
         position: child.position.toArray(),
-        rotation: [...child.rotation.toArray(), 1],
+        rotation: eulerToQuaternion(child.rotation.toArray()),
         scale: child.scale.toArray(),
       },
     };
@@ -112,4 +112,20 @@ function visitChildren(
     output.entities.push({ id, components });
     visitChildren(child, id, output);
   });
+}
+
+function eulerToQuaternion([x, y, z]: [number, number, number]): [number, number, number, number] {
+  const cx = Math.cos(x / 2);
+  const sx = Math.sin(x / 2);
+  const cy = Math.cos(y / 2);
+  const sy = Math.sin(y / 2);
+  const cz = Math.cos(z / 2);
+  const sz = Math.sin(z / 2);
+
+  return [
+    sx * cy * cz + cx * sy * sz,
+    cx * sy * cz - sx * cy * sz,
+    cx * cy * sz + sx * sy * cz,
+    cx * cy * cz - sx * sy * sz,
+  ];
 }

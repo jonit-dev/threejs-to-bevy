@@ -1,0 +1,27 @@
+{
+  "materials": [
+    {
+      "color": "#ffb020",
+      "id": "mat.marker.sphere",
+      "kind": "standard",
+      "metalness": 0,
+      "roughness": 0.7
+    },
+    {
+      "color": "#2f80ed",
+      "id": "mat.player.box",
+      "kind": "standard",
+      "metalness": 0,
+      "roughness": 0.85
+    },
+    {
+      "color": "#2a2f3a",
+      "id": "mat.world.floor",
+      "kind": "standard",
+      "metalness": 0,
+      "roughness": 1
+    }
+  ],
+  "schema": "threenative.materials",
+  "version": "0.1.0"
+}

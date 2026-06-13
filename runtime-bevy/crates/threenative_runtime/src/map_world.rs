@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use bevy::{
-    math::primitives::{Cuboid, Plane3d, Sphere},
+    math::primitives::{Cuboid, Rectangle, Sphere},
     prelude::*,
 };
 use thiserror::Error;
@@ -175,7 +175,7 @@ fn add_mesh(world: &mut World, asset: &AssetIr) -> Handle<Mesh> {
                 .and_then(|size| size.get(1))
                 .copied()
                 .unwrap_or(1.0);
-            Plane3d::default().mesh().size(width, height).into()
+            Mesh::from(Rectangle::new(width, height))
         }
         _ => {
             let size = asset.size.as_deref().unwrap_or(&[1.0, 1.0, 1.0]);

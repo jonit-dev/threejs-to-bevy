@@ -1,0 +1,20 @@
+{
+  "entry": {
+    "world": "world.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "materials": "materials.ir.json",
+    "targetProfile": "target.profile.json"
+  },
+  "name": "threenative-game",
+  "requiredCapabilities": {
+    "rendering": [
+      "mesh.primitive.box",
+      "material.standard",
+      "light.directional"
+    ]
+  },
+  "schema": "threenative.bundle",
+  "version": "0.1.0"
+}
