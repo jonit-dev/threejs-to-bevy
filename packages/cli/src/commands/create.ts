@@ -43,7 +43,7 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
     );
   }
 
-  const cwd = options.cwd ?? process.cwd();
+  const cwd = options.cwd ?? process.env.INIT_CWD ?? process.cwd();
   const projectPath = isAbsolute(destinationArg) ? destinationArg : resolve(cwd, destinationArg);
 
   try {

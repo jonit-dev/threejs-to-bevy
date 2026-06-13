@@ -15,5 +15,8 @@
   },
   "devDependencies": {
     "@types/node": "^20.19.25"
+  },
+  "dependencies": {
+    "@threenative/compiler": "workspace:*"
   }
 }

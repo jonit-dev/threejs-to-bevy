@@ -2,6 +2,7 @@
 
 import { fileURLToPath } from "node:url";
 
+import { buildCommand } from "./commands/build.js";
 import { createProject } from "./commands/create.js";
 import { validateProject } from "./commands/validate.js";
 import { type ICommandResult } from "./diagnostics.js";
@@ -25,7 +26,7 @@ const commands: Record<string, ICommandDefinition> = {
   },
   build: {
     description: "Compile supported TypeScript source into game.bundle.",
-    implemented: false,
+    implemented: true,
     usage: "tn build [--project <path>] [--json]",
   },
   dev: {
@@ -88,6 +89,10 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
 
   if (commandName === "validate") {
     return validateProject(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "build") {
+    return buildCommand(normalizedArgv.slice(1));
   }
 
   const json = normalizedArgv.includes("--json");

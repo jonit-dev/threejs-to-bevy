@@ -3,5 +3,21 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": {}
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "pnpm --filter @threenative/sdk build && pnpm --filter @threenative/ir build && tsc -p tsconfig.json",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "pnpm build && find dist -name '*.test.js' -print0 | xargs -0 node --test",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@threenative/ir": "workspace:*",
+    "@threenative/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.25",
+    "typescript": "^5.9.3"
+  }
 }

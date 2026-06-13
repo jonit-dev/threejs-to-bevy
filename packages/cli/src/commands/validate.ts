@@ -18,8 +18,8 @@ export async function validateProject(argv: readonly string[], options: IValidat
   const normalizedArgv = argv[0] === "--" ? argv.slice(1) : argv;
   const json = normalizedArgv.includes("--json");
   const projectFlagIndex = normalizedArgv.indexOf("--project");
-  const projectPath =
-    projectFlagIndex === -1 ? (options.cwd ?? process.cwd()) : resolve(options.cwd ?? process.cwd(), normalizedArgv[projectFlagIndex + 1] ?? ".");
+  const cwd = options.cwd ?? process.env.INIT_CWD ?? process.cwd();
+  const projectPath = projectFlagIndex === -1 ? cwd : resolve(cwd, normalizedArgv[projectFlagIndex + 1] ?? ".");
   const configPath = resolve(projectPath, "threenative.config.json");
 
   let config: IProjectConfig;

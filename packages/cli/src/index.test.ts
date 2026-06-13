@@ -23,12 +23,12 @@ test("should tolerate a leading package script separator", async () => {
 });
 
 test("should return structured placeholder output for future commands", async () => {
-  const result = await dispatch(["build", "--json"]);
+  const result = await dispatch(["verify", "--json"]);
   const payload = JSON.parse(result.stdout) as { code: string; command: string };
 
   assert.equal(result.exitCode, 2);
   assert.equal(payload.code, "TN_COMMAND_NOT_IMPLEMENTED");
-  assert.equal(payload.command, "build");
+  assert.equal(payload.command, "verify");
 });
 
 test("should keep rendered help stable for the package bin", () => {

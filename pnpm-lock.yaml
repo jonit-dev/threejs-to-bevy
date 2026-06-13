@@ -13,12 +13,30 @@ importers:
         version: 5.9.3
 
   packages/cli:
+    dependencies:
+      '@threenative/compiler':
+        specifier: workspace:*
+        version: link:../compiler
     devDependencies:
       '@types/node':
         specifier: ^20.19.25
         version: 20.19.43
 
-  packages/compiler: {}
+  packages/compiler:
+    dependencies:
+      '@threenative/ir':
+        specifier: workspace:*
+        version: link:../ir
+      '@threenative/sdk':
+        specifier: workspace:*
+        version: link:../sdk
+    devDependencies:
+      '@types/node':
+        specifier: ^20.19.25
+        version: 20.19.43
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
 
   packages/ir:
     devDependencies:

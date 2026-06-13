@@ -8,7 +8,7 @@
     "build": "pnpm -r --if-present build",
     "lint": "pnpm -r --if-present lint",
     "test": "pnpm -r --if-present test",
-    "tn": "pnpm --filter @threenative/cli build && pnpm --filter @threenative/cli tn",
+    "tn": "pnpm --filter @threenative/sdk build && pnpm --filter @threenative/ir build && pnpm --filter @threenative/compiler build && pnpm --filter @threenative/cli build && pnpm --filter @threenative/cli tn",
     "typecheck": "pnpm -r --if-present typecheck",
     "verify": "pnpm build && pnpm typecheck && pnpm lint && pnpm test"
   },
