@@ -11,6 +11,8 @@ that concept into implementation contracts.
 
 - [Architecture](architecture.md): system boundaries, package layout, runtime
   split, and early technical decisions.
+- [Goals](goals.md): product goals, experience goals, performance target,
+  non-goals, and proof criteria.
 - [SDK](sdk.md): public TypeScript authoring surface, supported Three.js-like
   subset, object lifecycle, and scripting model.
 - [ECS](ecs.md): component model, entities, systems, queries, prefabs, and
@@ -59,7 +61,8 @@ otherwise.
 ## Recommended Reading Order
 
 1. Start with [concept.md](concept.md) for the product thesis.
-2. Read [architecture.md](architecture.md) to understand the system shape.
+2. Read [goals.md](goals.md) and [architecture.md](architecture.md) to
+   understand the product target and system shape.
 3. Read [sdk.md](sdk.md), [ecs.md](ecs.md), [scripting.md](scripting.md),
    [ui.md](ui.md), and [ir.md](ir.md) together because they define the authoring
    and compilation contract.

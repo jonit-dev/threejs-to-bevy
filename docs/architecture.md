@@ -13,6 +13,10 @@ intermediate representation.
 
 - Let users author simple 3D games in TypeScript with a familiar Three.js-style
   object model.
+- Prove that an AI agent or TypeScript developer can build a small playable 3D
+  game faster here than with raw Three.js, R3F, Godot, Unity, or Bevy.
+- Provide ECS-compatible abstractions that make it straightforward to develop
+  3D games quickly while preserving a path to native-like runtime performance.
 - Compile authoring code into typed world, systems, UI, material, asset,
   animation, input, and target-profile IR.
 - Run the same IR through multiple runtime adapters:

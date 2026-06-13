@@ -160,8 +160,9 @@ Prefer stable, actionable diagnostics.
 - Keep human-readable output concise, but preserve machine-readable structure for
   CI and future agent workflows.
 
-## Code Style
+## Code Style and Patterns
 
+- Follow these principles: SRP, KISS, YAGNI, DRY
 - Follow existing file and package patterns.
 - Keep source files ASCII unless the file already uses non-ASCII for a reason.
 - Use small helper functions only when they remove real duplication or clarify a

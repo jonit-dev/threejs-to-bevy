@@ -40,6 +40,11 @@ Run it on the web through Three.js.
 Run it natively through Bevy.
 ```
 
+The product should be judged by whether an AI agent or TypeScript developer can
+build a small playable 3D game faster here than with raw Three.js, R3F, Godot,
+Unity, or Bevy. The SDK should expose ECS-compatible abstractions that make 3D
+game development quick without giving up the path to native-like performance.
+
 Bevy is an internal runtime adapter, not a public authoring target. Three.js is
 the familiar authoring and web-runtime reference point, not an unlimited
 compatibility promise.
@@ -71,7 +76,7 @@ focuses on turning the proven pipeline into a real game-making workflow.
 | Version | Goal | Main Proof |
 | --- | --- | --- |
 | V1 | Prove the full flow works end to end. | A scaffolded project can be created, code written with Three.js-like abstractions becomes ECS/game IR, runs on web directly through Three.js, builds a native Rust/Bevy game, and can be visually self-verified. |
-| V2 | Prove the flow can support an actual small game. | A developer or AI can build, validate, preview, and iterate on a playable arena game with R3F/JSX scene authoring, assets, input, UI, audio, physics, and TypeScript gameplay systems. |
+| V2 | Prove the flow can support an actual small game. | A developer or AI can build, validate, preview, and iterate on a playable arena game faster than with raw Three.js, R3F, Godot, Unity, or Bevy, using ECS-compatible abstractions, R3F/JSX scene authoring, assets, input, UI, audio, physics, and TypeScript gameplay systems. |
 | V3 | Prove the platform can become production-grade. | Mobile packaging, stronger tooling, AI repair loops, performance profiles, target capability profiles, and maintained templates make the SDK usable beyond the core team. |
 | V4 | Prove advanced parity and extensibility can fit the model. | Optional editor, networking, advanced rendering, plugin/native extension, and richer content workflows are added only where they preserve SDK-to-IR portability. |
 
