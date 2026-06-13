@@ -1,11 +1,11 @@
 {
-  "name": "@examples/v4-scripting",
+  "name": "threenative-v4-scripting-game",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "tn build",
     "dev:web": "tn dev --target web",
-    "test": "pnpm --dir ../.. tn -- build --project examples/v4-scripting && pnpm --dir ../.. exec tsc -p examples/v4-scripting/tsconfig.test.json && node --test dist/tests/gameplay.test.js",
+    "test": "pnpm build && tsc -p tsconfig.test.json && node --test dist/tests/gameplay.test.js",
     "validate": "tn validate dist/v4-scripting.bundle",
     "verify": "tn verify --frames 3 --expect-motion --json"
   },

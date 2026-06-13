@@ -48,9 +48,13 @@ Current implemented V4 slice:
 - web and Bevy expose deterministic V4 service facades for time, input, events,
   commands, `physics.raycast`, and `animation.play`, including permission
   checks and canonical service-call log entries.
-- `examples/v4-scripting` builds a primitive scripted scene and passes web
-  visual verification with expected motion, a web effect-log artifact, and a
+- `examples/v4-scripting` builds a primitive scripted scene covering rotation,
+  movement, spawn/despawn, event handoff, `physics.raycast`, and
+  `animation.play`; it passes web visual verification with expected motion,
+  writes a web patch/event/command/service effect-log artifact, and captures a
   native Bevy frame artifact at `artifacts/v4/native-bevy-frame-01.png`.
+- `templates/v4-scripting` scaffolds the same primitive demo as a CLI template
+  through `tn create --template v4-scripting`.
 
 ## V4 Does Not Prove
 

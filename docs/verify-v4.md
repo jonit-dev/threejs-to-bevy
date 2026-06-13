@@ -15,9 +15,9 @@ Current artifacts:
 The file uses schema `threenative.web-system-effects` and can contain stable
 `patch`, `event`, `command`, and `service` entries with frame, tick, schedule,
 system ID, entity ID, component/event/service ID, and normalized payloads. The
-current primitive example emits patch and event entries; focused web/native
-tests cover command and service entries until the fixed-trace V4 verifier is
-wired.
+current primitive example emits patch, event, command, and service entries from
+rotation, movement, spawn/despawn, event handoff, `physics.raycast`, and
+`animation.play` proof systems.
 
 Generate the web-side proof with:
 

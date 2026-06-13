@@ -121,6 +121,47 @@ test("should create v3 environment template", async () => {
   }
 });
 
+test("should create v4 scripting template", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-create-v4-scripting-"));
+  try {
+    const result = await createProject(["scripted", "--template", "v4-scripting", "--json"], { cwd: root });
+    const payload = JSON.parse(result.stdout) as { code: string; path: string; template: string };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.code, "TN_CREATE_OK");
+    assert.equal(payload.template, "v4-scripting");
+
+    const files = await readdir(join(payload.path, "src"));
+    assert.equal(files.includes("game.ts"), true);
+    assert.equal(files.includes("gameplay.ts"), true);
+    assert.equal(files.includes("gameplay.test.ts"), true);
+    assert.equal(files.includes("node-test.d.ts"), true);
+
+    const config = JSON.parse(await readFile(join(payload.path, "threenative.config.json"), "utf8")) as {
+      entry: string;
+      outDir: string;
+      template: string;
+    };
+    const packageJson = JSON.parse(await readFile(join(payload.path, "package.json"), "utf8")) as {
+      dependencies: Record<string, string>;
+      scripts: Record<string, string>;
+    };
+    const source = await readFile(join(payload.path, "src/game.ts"), "utf8");
+
+    assert.equal(config.entry, "src/game.ts");
+    assert.equal(config.outDir, "dist/v4-scripting.bundle");
+    assert.equal(config.template, "v4-scripting");
+    assert.equal(packageJson.scripts.build, "tn build");
+    assert.equal(packageJson.scripts.verify, "tn verify --frames 3 --expect-motion --json");
+    assert.equal(packageJson.scripts.test, "pnpm build && tsc -p tsconfig.test.json && node --test dist/tests/gameplay.test.js");
+    assert.match(packageJson.dependencies["@threenative/sdk"] ?? "", /^file:/);
+    assert.match(source, /physics\.raycast/);
+    assert.match(source, /animation\.play/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject non-empty destination", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-create-"));
   try {
