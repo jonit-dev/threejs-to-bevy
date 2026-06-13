@@ -1,0 +1,18 @@
+{
+  "name": "@examples/v3-environment",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tn build",
+    "dev:web": "tn dev --target web",
+    "dev:desktop": "tn dev --target desktop",
+    "validate": "tn validate dist/forest.bundle",
+    "verify": "tn verify --frames 1 --json"
+  },
+  "dependencies": {
+    "@threenative/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@threenative/cli": "workspace:*"
+  }
+}

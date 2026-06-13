@@ -26,17 +26,17 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
     return diagnosticResult(
       {
         code: "TN_CREATE_DESTINATION_REQUIRED",
-        message: "Usage: tn create <name> [--template v1|v2-arena] [--json]",
+        message: "Usage: tn create <name> [--template v1|v2-arena|v3-environment] [--json]",
       },
       { exitCode: 1, json, stderr: true },
     );
   }
 
-  if (template !== "v1" && template !== "v2-arena") {
+  if (!isSupportedTemplate(template)) {
     return diagnosticResult(
       {
         code: "TN_CREATE_TEMPLATE_UNSUPPORTED",
-        message: `Template '${template ?? ""}' is not supported. Use '--template v1' or '--template v2-arena'.`,
+        message: `Template '${template ?? ""}' is not supported. Use '--template v1', '--template v2-arena', or '--template v3-environment'.`,
         template,
       },
       { exitCode: 1, json, stderr: true },
@@ -89,6 +89,10 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
     exitCode: 0,
     stdout: `${payload.message}\nNext: cd ${projectPath} && pnpm install && pnpm run validate\n`,
   };
+}
+
+function isSupportedTemplate(template: string | undefined): template is "v1" | "v2-arena" | "v3-environment" {
+  return template === "v1" || template === "v2-arena" || template === "v3-environment";
 }
 
 async function rewriteLocalWorkspaceDependencies(projectPath: string): Promise<void> {

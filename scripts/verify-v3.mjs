@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -19,6 +19,7 @@ export async function verifyV3(options = {}) {
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
   const projectPath = resolve(root, "examples/v3-environment");
   const bundlePath = resolve(projectPath, "dist/forest.bundle");
+  const templateProjectPath = resolve(artifactDir, "template-smoke/v3-environment");
   const steps = [];
 
   async function step(name, command, args, commandOptions = {}) {
@@ -38,6 +39,13 @@ export async function verifyV3(options = {}) {
   }
   if (!(await step("validate v3 environment bundle", process.execPath, [resolve(root, "packages/cli/dist/index.js"), "validate", "--project", projectPath, "--json"], { timeoutMs: 120000 }))) {
     return writeV3Report({ artifactDir, bundlePath, ok: false, reportPath, steps });
+  }
+  await rm(templateProjectPath, { force: true, recursive: true });
+  if (!(await step("create v3 environment template", process.execPath, [resolve(root, "packages/cli/dist/index.js"), "create", templateProjectPath, "--template", "v3-environment", "--json"], { timeoutMs: 120000 }))) {
+    return writeV3Report({ artifactDir, bundlePath, ok: false, reportPath, steps, templateProjectPath });
+  }
+  if (!(await step("build v3 environment template", process.execPath, [resolve(root, "packages/cli/dist/index.js"), "build", "--project", templateProjectPath, "--json"], { timeoutMs: 120000 }))) {
+    return writeV3Report({ artifactDir, bundlePath, ok: false, reportPath, steps, templateProjectPath });
   }
 
   const verifyEnvironment =
@@ -91,13 +99,14 @@ export async function verifyV3(options = {}) {
     reportPath,
     sceneReportPath: sceneReport.artifacts.reportPath,
     steps,
+    templateProjectPath,
     visualContactSheetPath: sceneReport.artifacts.sideBySideContactSheetPath,
     webReportPath: environmentReport.artifacts.reportPath,
     walkabilityReportPath: walkabilityReport.artifacts.reportPath,
   });
 }
 
-async function writeV3Report({ artifactDir, atmosphereReportPath, bundlePath, firstPersonReportPath, ok, reportPath, sceneReportPath, steps, visualContactSheetPath, walkabilityReportPath, webReportPath }) {
+async function writeV3Report({ artifactDir, atmosphereReportPath, bundlePath, firstPersonReportPath, ok, reportPath, sceneReportPath, steps, templateProjectPath, visualContactSheetPath, walkabilityReportPath, webReportPath }) {
   await mkdir(resolve(reportPath, ".."), { recursive: true });
   const report = {
     artifacts: {
@@ -106,6 +115,7 @@ async function writeV3Report({ artifactDir, atmosphereReportPath, bundlePath, fi
       firstPersonReportPath: firstPersonReportPath ?? resolve(artifactDir, "v3-first-person-report.json"),
       reportPath,
       sceneReportPath: sceneReportPath ?? resolve(artifactDir, "v3-scene-report.json"),
+      templateProjectPath: templateProjectPath ?? resolve(artifactDir, "template-smoke/v3-environment"),
       visualContactSheetPath: visualContactSheetPath ?? resolve(artifactDir, "screenshots/threejs-bevy-side-by-side.png"),
       walkabilityReportPath: walkabilityReportPath ?? resolve(artifactDir, "v3-walkability-report.json"),
       webReportPath: webReportPath ?? resolve(artifactDir, "v3-environment-report.json"),

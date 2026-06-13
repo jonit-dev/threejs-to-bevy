@@ -1,0 +1,35 @@
+# V3 Environment Example
+
+This template is the V3 sandboxed forest game. It reads the curated local source
+pack from `assets-source/environment/glTF` and emits a self-contained bundle at
+`dist/forest.bundle`.
+
+The emitted bundle contains deterministic IR files, selected glTF models,
+required `.bin` sidecars, referenced textures, and the `Preview_2.jpg` reference
+image under bundle-local `assets/environment` paths.
+
+The scene source defines the forest terrain bounds, central walkable path,
+exclusion zones, deterministic scatter specs, authored hero placements, and
+camera bookmarks in `src/game.ts`.
+
+Build and validate:
+
+```bash
+pnpm run build
+```
+
+V3 performance verification writes metrics and raw frame samples under
+`artifacts/v3`, including `v3-performance-summary.json` and
+`v3-performance-samples.json`. Scene authoring verification also writes
+`v3-scene-report.json` with the bundle hash, environment IR path, hero/scatter
+counts, path point count, and bookmark count. Atmosphere verification writes
+`v3-atmosphere-report.json` with the active lighting, fog, sky, shadow, and
+color-management observation. First-person verification writes
+`v3-first-person-report.json` and `v3-first-person-trace.json` for bookmark IDs
+and deterministic camera movement. Walkability verification writes
+`v3-walkability-report.json` with path, boundary, and blocking-prop probes.
+Visual scene verification writes per-bookmark Three.js screenshots under
+`artifacts/v3/screenshots` and a side-by-side
+`threejs-bevy-side-by-side.png` contact sheet. The Bevy column is a native load
+smoke panel for the same bookmark IDs; visual parity is not asserted until the
+native renderer supports V3 environment screenshots.

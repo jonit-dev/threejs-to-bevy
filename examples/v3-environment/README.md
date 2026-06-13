@@ -1,7 +1,7 @@
 # V3 Environment Example
 
-This example is the V3 sandboxed game folder. It reads the canonical source pack
-from `assets-source/environment/glTF` and emits a self-contained bundle at
+This example is the V3 sandboxed game folder. It reads the curated local source
+pack from `assets-source/environment/glTF` and emits a self-contained bundle at
 `dist/forest.bundle`.
 
 The emitted bundle contains deterministic IR files, selected glTF models,

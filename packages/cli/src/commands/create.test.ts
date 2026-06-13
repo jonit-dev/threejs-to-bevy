@@ -81,6 +81,46 @@ test("should create v2 arena template", async () => {
   }
 });
 
+test("should create v3 environment template", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-create-v3-environment-"));
+  try {
+    const result = await createProject(["forest", "--template", "v3-environment", "--json"], { cwd: root });
+    const payload = JSON.parse(result.stdout) as { code: string; path: string; template: string };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.code, "TN_CREATE_OK");
+    assert.equal(payload.template, "v3-environment");
+
+    const files = await readdir(join(payload.path, "src"));
+    assert.equal(files.includes("game.ts"), true);
+
+    const config = JSON.parse(await readFile(join(payload.path, "threenative.config.json"), "utf8")) as {
+      entry: string;
+      outDir: string;
+      template: string;
+    };
+    const packageJson = JSON.parse(await readFile(join(payload.path, "package.json"), "utf8")) as {
+      dependencies: Record<string, string>;
+      scripts: Record<string, string>;
+    };
+    const source = await readFile(join(payload.path, "src/game.ts"), "utf8");
+    const assetFiles = await readdir(join(payload.path, "assets-source/environment/glTF"));
+
+    assert.equal(config.entry, "src/game.ts");
+    assert.equal(config.outDir, "dist/forest.bundle");
+    assert.equal(config.template, "v3-environment");
+    assert.equal(packageJson.scripts.build, "tn build");
+    assert.equal(packageJson.scripts["dev:web"], "tn dev --target web");
+    assert.match(packageJson.dependencies["@threenative/sdk"] ?? "", /^file:/);
+    assert.match(source, /sourceDir: "assets-source\/environment\/glTF"/);
+    assert.doesNotMatch(source, /\.\.\/\.\.\/assets-source/);
+    assert.equal(assetFiles.includes("CommonTree_1.gltf"), true);
+    assert.equal(assetFiles.includes("CommonTree_1.bin"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject non-empty destination", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-create-"));
   try {

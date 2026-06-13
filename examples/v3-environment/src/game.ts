@@ -26,8 +26,8 @@ scene.setActiveCamera(camera);
 export default {
   scene,
   environment: {
-    sourceDir: "../../assets-source/environment/glTF",
-    previewImage: "../../assets-source/environment/Preview_2.jpg",
+    sourceDir: "assets-source/environment/glTF",
+    previewImage: "assets-source/environment/Preview_2.jpg",
     assetNames: [
       "Bush_Common.gltf",
       "CommonTree_1.gltf",

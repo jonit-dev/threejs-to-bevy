@@ -53,7 +53,15 @@ test("should run v3 performance gate", async () => {
 
     assert.equal(report.status, "pass");
     assert.match(report.artifacts.visualContactSheetPath, /threejs-bevy-side-by-side\.png$/);
-    assert.deepEqual(commands.map((command) => command.name), ["check v3 docs", "build cli", "build v3 environment", "validate v3 environment bundle"]);
+    assert.deepEqual(commands.map((command) => command.name), [
+      "check v3 docs",
+      "build cli",
+      "build v3 environment",
+      "validate v3 environment bundle",
+      "create v3 environment template",
+      "build v3 environment template",
+    ]);
+    assert.match(report.artifacts.templateProjectPath, /template-smoke/);
     assert.deepEqual(report.steps.slice(-5).map((step) => step.name), [
       "verify v3 environment performance",
       "verify v3 scene authoring",
