@@ -26,7 +26,7 @@ scripting support until that gate exists.
 | V3 walkability probes | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | V3 scoped support |
 | UI IR | 🧪 | ✅ | ⚠️ | ❌ | ❌ | ❌ | Schema-only/post-V3 |
 | Audio IR | 🧪 | ✅ | ⚠️ | ❌ | ❌ | ❌ | Schema-only/post-V3 |
-| Gameplay systems | 🧪 | ✅ | ⚠️ | ⚠️ | ❌ | ❌ | Post-V3 |
+| Gameplay systems | 🧪 | ✅ | ⚠️ | ⚠️ | ❌ | ❌ | V4 web primitive proof in progress |
 | Native QuickJS scripts | ❌ | ⚠️ | ⚠️ | n/a | ❌ | ❌ | V4 planned; docs scope gated by `check:docs:v4` |
 | Mobile packaging | ❌ | ❌ | ❌ | n/a | ❌ | ❌ | Future |
 | Custom shaders/render graph | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | Future |

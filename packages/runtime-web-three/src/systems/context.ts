@@ -3,15 +3,19 @@ import type { IWebInputState } from "../input.js";
 
 export interface ISystemEntityView {
   components: IWorldEntity["components"];
+  get<T = unknown>(component: unknown): T;
+  has(component: unknown): boolean;
   id: string;
+  patch(component: unknown, value: Record<string, unknown>): void;
+  set(component: unknown, value: unknown): void;
 }
 
 export interface ISystemCommandBuffer {
-  addComponent(entity: string, component: string, value?: unknown): void;
+  addComponent(entity: string, component: unknown, value?: unknown): void;
   despawn(entity: string): void;
-  emitEvent(event: string, payload: unknown): void;
-  removeComponent(entity: string, component: string): void;
-  setComponent(entity: string, component: string, value: unknown): void;
+  emitEvent(event: unknown, payload: unknown): void;
+  removeComponent(entity: string, component: unknown): void;
+  setComponent(entity: string, component: unknown, value: unknown): void;
   spawn(entity: string, components?: Record<string, unknown>): void;
 }
 
@@ -19,7 +23,7 @@ export interface ISystemContext {
   commands: ISystemCommandBuffer;
   events: {
     emit(event: string, payload: unknown): void;
-    read(event: string): unknown[];
+    read(event: unknown): unknown[];
   };
   input: {
     action(name: string): boolean;
@@ -27,15 +31,17 @@ export interface ISystemContext {
     pressed(name: string): boolean;
     released(name: string): boolean;
   };
-  query(query: IIrSystemQuery): ISystemEntityView[];
+  query(query?: IIrSystemQuery): ISystemEntityView[];
   resources: {
     get(name: string): unknown;
     set(name: string, value: unknown): void;
   };
   time: {
     delta: number;
+    dt: number;
     elapsed: number;
     fixedDelta: number;
+    fixedDt: number;
     paused: boolean;
   };
 }
@@ -55,7 +61,10 @@ export interface IQueuedEvent {
   payload: unknown;
 }
 
-export function createSystemContext(world: IWorldIr, options: { delta: number; elapsed?: number; fixedDelta: number; input?: IWebInputState; paused?: boolean }): {
+export function createSystemContext(
+  world: IWorldIr,
+  options: { defaultQuery?: IIrSystemQuery; delta: number; elapsed?: number; fixedDelta: number; input?: IWebInputState; paused?: boolean },
+): {
   commands: IQueuedCommand[];
   context: ISystemContext;
   events: IQueuedEvent[];
@@ -67,19 +76,19 @@ export function createSystemContext(world: IWorldIr, options: { delta: number; e
     context: {
       commands: {
         addComponent(entity, component, value = {}) {
-          commands.push({ component, entity, kind: "addComponent", value });
+          commands.push({ component: normalizeHandleName(component), entity, kind: "addComponent", value });
         },
         despawn(entity) {
           commands.push({ entity, kind: "despawn" });
         },
         emitEvent(event, payload) {
-          commands.push({ entity: "", event, kind: "emitEvent", payload });
+          commands.push({ entity: "", event: normalizeHandleName(event), kind: "emitEvent", payload });
         },
         removeComponent(entity, component) {
-          commands.push({ component, entity, kind: "removeComponent" });
+          commands.push({ component: normalizeHandleName(component), entity, kind: "removeComponent" });
         },
         setComponent(entity, component, value) {
-          commands.push({ component, entity, kind: "setComponent", value });
+          commands.push({ component: normalizeHandleName(component), entity, kind: "setComponent", value });
         },
         spawn(entity, components = {}) {
           commands.push({ components, entity, kind: "spawn" });
@@ -90,7 +99,7 @@ export function createSystemContext(world: IWorldIr, options: { delta: number; e
           events.push({ event, payload });
         },
         read(event) {
-          const queue = world.events?.[event];
+          const queue = world.events?.[normalizeHandleName(event)];
           return Array.isArray(queue) ? queue : [];
         },
       },
@@ -108,13 +117,10 @@ export function createSystemContext(world: IWorldIr, options: { delta: number; e
           return options.input?.released(name) ?? false;
         },
       },
-      query(query) {
+      query(query = options.defaultQuery ?? { with: [], without: [] }) {
         return world.entities
           .filter((entity) => matchesQuery(entity, query))
-          .map((entity) => ({
-            components: entity.components,
-            id: entity.id,
-          }));
+          .map((entity) => createEntityView(entity, commands));
       },
       resources: {
         get(name) {
@@ -129,13 +135,61 @@ export function createSystemContext(world: IWorldIr, options: { delta: number; e
       },
       time: {
         delta: options.delta,
+        dt: options.delta,
         elapsed: options.elapsed ?? 0,
         fixedDelta: options.fixedDelta,
+        fixedDt: options.fixedDelta,
         paused: options.paused ?? false,
       },
     },
     events,
   };
+}
+
+function createEntityView(entity: IWorldEntity, commands: IQueuedCommand[]): ISystemEntityView {
+  return {
+    components: entity.components,
+    get<T = unknown>(component: unknown): T {
+      return entity.components[normalizeHandleName(component)] as T;
+    },
+    has(component: unknown): boolean {
+      return entity.components[normalizeHandleName(component)] !== undefined;
+    },
+    id: entity.id,
+    patch(component: unknown, value: Record<string, unknown>): void {
+      const componentName = normalizeHandleName(component);
+      const existing = entity.components[componentName];
+      commands.push({
+        component: componentName,
+        entity: entity.id,
+        kind: "setComponent",
+        value: {
+          ...(isRecord(existing) ? existing : {}),
+          ...value,
+        },
+      });
+    },
+    set(component: unknown, value: unknown): void {
+      commands.push({ component: normalizeHandleName(component), entity: entity.id, kind: "setComponent", value });
+    },
+  };
+}
+
+function normalizeHandleName(value: unknown): string {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (typeof value === "function" && typeof value.name === "string" && value.name !== "") {
+    return value.name;
+  }
+  if (typeof value === "object" && value !== null && "name" in value && typeof value.name === "string") {
+    return value.name;
+  }
+  return String(value);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 export function applyCommands(world: IWorldIr, commands: ReadonlyArray<IQueuedCommand>): void {

@@ -1,5 +1,5 @@
 import type { IIrSchemaFile, IInputIr, IRuntimeConfigIr, IWorldIr } from "@threenative/ir";
-import type { IrSystemCommand, IrSystemSchedule, ISystemsIr } from "@threenative/ir";
+import type { IrSystemCommand, IrSystemSchedule, IrSystemService, ISystemsIr } from "@threenative/ir";
 
 import { CompilerError } from "../errors.js";
 import { bundleSystemScripts } from "../scripts/bundle.js";
@@ -25,6 +25,7 @@ interface IEcsSystemSnapshot {
   name: string;
   queries: Array<{ with: string[]; without: string[] }>;
   reads: string[];
+  services: IrSystemService[];
   script?: { exportName: string; source: string };
   schedule: IrSystemSchedule;
   writes: string[];

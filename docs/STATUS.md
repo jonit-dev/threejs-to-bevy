@@ -24,6 +24,15 @@ one constrained TypeScript system bundle running as the same
 `scripts.bundle.js` in web JavaScript and embedded QuickJS, with equivalent
 patch, event, command, and service-call logs for a primitive demo.
 
+Current implemented V4 slice:
+
+- `systems.ir.json` carries V4 stage, query, read/write, event, command, and
+  service metadata for portable systems.
+- `scripts.bundle.js` can serialize declared component/event handles used by
+  portable system functions.
+- `examples/v4-scripting` builds a primitive scripted scene and passes web
+  visual verification with expected motion.
+
 ## V4 Does Not Prove
 
 - arbitrary npm dependencies inside portable scripts
@@ -31,6 +40,7 @@ patch, event, command, and service-call logs for a primitive demo.
 - async systems or state-preserving hot reload
 - full physics, animation graphs, UI runtime parity, or editor tooling
 - direct Three.js, Bevy, renderer, DOM, filesystem, network, or platform access
+- native QuickJS execution or cross-runtime patch-log parity yet
 
 ## V3 Proves
 

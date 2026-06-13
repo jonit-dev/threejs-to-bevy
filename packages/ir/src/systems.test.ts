@@ -40,11 +40,72 @@ test("should reject schema ecs system component without schema", async () => {
   }
 });
 
+test("should accept v4 movement system metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-v4-"));
+  try {
+    await writeBundle(root, {
+      commands: [],
+      reads: ["Transform", "Rotator"],
+      services: ["physics.raycast"],
+      writes: ["Transform"],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject undeclared service reference", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-v4-service-"));
+  try {
+    await writeBundle(root, {
+      commands: [],
+      reads: ["Transform"],
+      services: ["physics.overlap"],
+      writes: ["Transform"],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics[0]?.code, "TN_IR_SYSTEM_SERVICE_UNSUPPORTED");
+    assert.equal(result.diagnostics[0]?.path, "systems.ir.json/systems/0/services/0");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject unsupported v4 system stage", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-v4-stage-"));
+  try {
+    await writeBundle(root, {
+      commands: [],
+      reads: ["Transform"],
+      schedule: "render",
+      writes: ["Transform"],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics[0]?.code, "TN_IR_SYSTEM_STAGE_UNSUPPORTED");
+    assert.equal(result.diagnostics[0]?.path, "systems.ir.json/systems/0/schedule");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 async function writeBundle(
   root: string,
   system: {
     commands: unknown[];
     reads: string[];
+    schedule?: unknown;
+    services?: unknown[];
     writes: string[];
   } = {
     commands: [{ component: "Health", entity: "target", kind: "setComponent" }],
@@ -80,15 +141,16 @@ async function writeBundle(
   await writeJson(root, "systems.ir.json", {
     schema: "threenative.systems",
     version: "0.1.0",
-      systems: [
-        {
+    systems: [
+      {
         commands: system.commands,
         eventReads: [],
         eventWrites: [],
         name: "badDamage",
         queries: [],
         reads: system.reads,
-        schedule: "fixedUpdate",
+        services: system.services ?? [],
+        schedule: system.schedule ?? "fixedUpdate",
         writes: system.writes,
       },
     ],
@@ -100,6 +162,17 @@ async function writeBundle(
       Health: {
         fields: {
           current: { kind: "number", required: true },
+        },
+      },
+      Rotator: {
+        fields: {
+          radiansPerSecond: { kind: "number", required: true },
+        },
+      },
+      Transform: {
+        fields: {
+          position: { kind: "vec3", required: false },
+          rotation: { kind: "quat", required: false },
         },
       },
     },

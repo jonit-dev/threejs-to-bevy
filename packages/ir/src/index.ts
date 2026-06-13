@@ -9,6 +9,7 @@ export type {
   IIrSystemQuery,
   IrSystemCommand,
   IrSystemSchedule,
+  IrSystemService,
   ISystemsIr,
 } from "./systems.js";
 export type {

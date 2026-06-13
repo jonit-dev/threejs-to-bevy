@@ -4,7 +4,7 @@ import type { IRuntimeConfigDeclaration } from "../time.js";
 import type { CommandDeclaration } from "./commands.js";
 import type { IQueryDeclaration } from "./query.js";
 import type { EcsFactory, IEcsDeclaration, IEcsSchema } from "./schema.js";
-import type { ISystemDeclaration, SystemSchedule } from "./system.js";
+import type { ISystemDeclaration, SystemSchedule, SystemService } from "./system.js";
 
 export interface IWorldEntityDeclaration {
   components: Record<string, Record<string, unknown>>;
@@ -38,6 +38,7 @@ export interface IWorldSystemDeclaration {
   name: string;
   queries: IWorldQueryDeclaration[];
   reads: string[];
+  services: SystemService[];
   script?: IWorldSystemScriptDeclaration;
   schedule: SystemSchedule;
   writes: string[];
@@ -200,6 +201,7 @@ function serializeSystem(system: ISystemDeclaration): IWorldSystemDeclaration {
     name: system.name,
     queries: system.queries.map(serializeQuery),
     reads: [...system.reads],
+    services: [...system.services],
     script:
       system.run === undefined
         ? undefined

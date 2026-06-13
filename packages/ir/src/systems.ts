@@ -1,6 +1,7 @@
 import type { SchemaVersion } from "./types.js";
 
 export type IrSystemSchedule = "fixedUpdate" | "postUpdate" | "update";
+export type IrSystemService = "animation.play" | "physics.raycast";
 
 export type IrSystemCommand =
   | {
@@ -34,6 +35,7 @@ export interface IIrSystemDeclaration {
   name: string;
   queries: IIrSystemQuery[];
   reads: string[];
+  services: IrSystemService[];
   script?: {
     bundle: "scripts.bundle.js";
     exportName: string;

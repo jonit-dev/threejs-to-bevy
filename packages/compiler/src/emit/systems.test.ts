@@ -42,6 +42,7 @@ test("should emit ecs fixed update system access", () => {
         name: "applyDamage",
         queries: [{ with: ["Health"], without: [] }],
         reads: ["Health"],
+        services: [],
         schedule: "fixedUpdate",
         writes: ["Health"],
       },

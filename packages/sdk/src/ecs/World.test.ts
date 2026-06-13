@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { SdkError } from "../errors.js";
 import { World } from "./World.js";
+import { defineSystem } from "./system.js";
 import { defineComponent, defineEvent, defineResource } from "./schema.js";
 
 test("should declare ecs entity components and resources", () => {
@@ -89,4 +90,55 @@ test("should reject duplicate ecs component schema names", () => {
     },
     (error: unknown) => error instanceof SdkError && error.code === "TN_SDK_ECS_COMPONENT_SCHEMA_DUPLICATE",
   );
+});
+
+test("should capture v4 primitive system declarations", () => {
+  const Transform = defineComponent("Transform", {
+    position: "vec3",
+    rotation: "quat",
+  });
+  const HitEvent = defineEvent("HitEvent", {
+    target: "entity",
+  });
+  const system = defineSystem(
+    {
+      eventWrites: [HitEvent],
+      id: "rotateCubes",
+      reads: [Transform],
+      services: ["physics.raycast"],
+      stage: "fixedUpdate",
+      writes: [Transform],
+    },
+    (ctx) => {
+      for (const entity of ctx.query()) {
+        entity.patch(Transform, { rotation: [0, 0, 0, 1] });
+      }
+      ctx.events.emit(HitEvent, { target: "cube.1" });
+      return ctx.physics.raycast({ direction: [0, -1, 0], maxDistance: 2, origin: [0, 1, 0] });
+    },
+  );
+
+  assert.equal(system.name, "rotateCubes");
+  assert.equal(system.schedule, "fixedUpdate");
+  assert.deepEqual(system.eventWrites, ["HitEvent"]);
+  assert.deepEqual(system.services, ["physics.raycast"]);
+  assert.deepEqual(system.writes, ["Transform"]);
+});
+
+test("should expose stable entity context API", () => {
+  const Transform = defineComponent("Transform", {
+    position: "vec3",
+  });
+  const system = defineSystem({ id: "moveTarget", stage: "update", writes: [Transform] }, (ctx) => {
+    const entity = ctx.query()[0];
+    if (entity?.has(Transform)) {
+      const transform = entity.get<{ position: [number, number, number] }>(Transform);
+      entity.set(Transform, { position: [transform.position[0] + ctx.time.dt, 0, 0] });
+      ctx.commands.despawn(entity.id, { recursive: true });
+      ctx.animation.play(entity, "move");
+    }
+  });
+
+  assert.equal(system.name, "moveTarget");
+  assert.equal(typeof system.run, "function");
 });

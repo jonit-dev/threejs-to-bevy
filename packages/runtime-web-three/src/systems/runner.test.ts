@@ -114,6 +114,32 @@ test("should run systems apply full command buffer semantics", async () => {
   assert.deepEqual(world.events, { Spawned: [{ entity: "enemy" }] });
 });
 
+test("should run systems expose v4 entity patch context", async () => {
+  const world = makeWorld();
+  const systems = makeSystems("fixedUpdate", "patchPlayer");
+
+  await runSchedule({
+    elapsed: 1,
+    fixedDelta: 1 / 30,
+    module: {
+      systems: {
+        patchPlayer(context: any) {
+          for (const entity of context.query()) {
+            assert.equal(entity.has("Transform"), true);
+            const transform = entity.get("Transform");
+            entity.patch("Transform", { position: [transform.position[0] + context.time.fixedDt, 0, 0] });
+          }
+        },
+      },
+    },
+    schedule: "fixedUpdate",
+    systems,
+    world,
+  });
+
+  assert.deepEqual(world.entities[0]?.components.Transform, { position: [1 / 30, 0, 0] });
+});
+
 test("should run systems load scripts bundle module", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-web-systems-"));
   try {
@@ -171,6 +197,7 @@ function makeSystems(schedule: "fixedUpdate" | "update", exportName: string): IS
         name: exportName,
         queries: [{ with: ["Transform"], without: [] }],
         reads: ["Transform"],
+        services: [],
         schedule,
         script: { bundle: "scripts.bundle.js", exportName },
         writes: ["Transform"],

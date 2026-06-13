@@ -20,13 +20,18 @@ export { defineQuery, type IQueryDeclaration, type IQueryOptions } from "./ecs/q
 export * as commands from "./ecs/commands.js";
 export type { CommandDeclaration, EntityRef } from "./ecs/commands.js";
 export {
+  defineSystem,
   fixedUpdate,
   postUpdate,
   update,
+  type ISystemContext,
   type ISystemDeclaration,
+  type ISystemEntity,
   type ISystemOptions,
+  type IV4SystemConfig,
   type PortableSystem,
   type SystemSchedule,
+  type SystemService,
 } from "./ecs/system.js";
 export {
   defineComponent,

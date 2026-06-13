@@ -4,7 +4,8 @@ import type { IQueryDeclaration } from "./query.js";
 import type { EcsFactory, IEcsSchema } from "./schema.js";
 
 export type SystemSchedule = "fixedUpdate" | "postUpdate" | "update";
-export type PortableSystem = (context: unknown) => unknown;
+export type SystemService = "animation.play" | "physics.raycast";
+export type PortableSystem<TContext = ISystemContext> = (context: TContext) => unknown;
 
 export interface ISystemOptions {
   commands?: ReadonlyArray<CommandDeclaration>;
@@ -13,7 +14,13 @@ export interface ISystemOptions {
   queries?: ReadonlyArray<IQueryDeclaration>;
   reads?: ReadonlyArray<EcsFactory | IEcsSchema | string>;
   run?: PortableSystem;
+  services?: ReadonlyArray<SystemService>;
   writes?: ReadonlyArray<EcsFactory | IEcsSchema | string>;
+}
+
+export interface IV4SystemConfig extends ISystemOptions {
+  id: string;
+  stage: SystemSchedule;
 }
 
 export interface ISystemDeclaration {
@@ -26,23 +33,81 @@ export interface ISystemDeclaration {
   reads: string[];
   run?: PortableSystem;
   schedule: SystemSchedule;
+  services: SystemService[];
   schemas: IEcsSchema[];
   writes: string[];
 }
 
+export interface ISystemEntity {
+  readonly id: string;
+  get<T = unknown>(component: EcsFactory | IEcsSchema | string): T;
+  has(component: EcsFactory | IEcsSchema | string): boolean;
+  patch(component: EcsFactory | IEcsSchema | string, value: Record<string, unknown>): void;
+  set(component: EcsFactory | IEcsSchema | string, value: unknown): void;
+}
+
+export interface ISystemContext {
+  animation: {
+    play(entity: ISystemEntity | string, clip: string, options?: Record<string, unknown>): void;
+  };
+  commands: {
+    addComponent(entity: string, component: EcsFactory | IEcsSchema | string, value?: unknown): void;
+    despawn(entity: string, policy?: { recursive?: boolean }): void;
+    removeComponent(entity: string, component: EcsFactory | IEcsSchema | string): void;
+    setComponent(entity: string, component: EcsFactory | IEcsSchema | string, value: unknown): void;
+    spawn(entity: string, components: Record<string, unknown>): void;
+  };
+  events: {
+    emit(event: EcsFactory | IEcsSchema | string, payload: unknown): void;
+    read<T = unknown>(event: EcsFactory | IEcsSchema | string): T[];
+  };
+  input: {
+    action(name: string): boolean;
+    axis(name: string): number;
+  };
+  physics: {
+    raycast(options: {
+      direction: [number, number, number];
+      ignore?: string[];
+      layers?: string[];
+      maxDistance: number;
+      origin: [number, number, number];
+    }):
+      | { hit: false }
+      | {
+          distance: number;
+          entity: string;
+          hit: true;
+          material?: string;
+          normal: [number, number, number];
+          point: [number, number, number];
+        };
+  };
+  query(): ISystemEntity[];
+  time: {
+    dt: number;
+    elapsed: number;
+    fixedDt: number;
+  };
+}
+
+export function defineSystem(config: IV4SystemConfig, run: PortableSystem = config.run ?? (() => undefined)): ISystemDeclaration {
+  return createSystem(config.stage, config.id, { ...config, run });
+}
+
 export function fixedUpdate(name: string, options: ISystemOptions = {}): ISystemDeclaration {
-  return defineSystem("fixedUpdate", name, options);
+  return createSystem("fixedUpdate", name, options);
 }
 
 export function update(name: string, options: ISystemOptions = {}): ISystemDeclaration {
-  return defineSystem("update", name, options);
+  return createSystem("update", name, options);
 }
 
 export function postUpdate(name: string, options: ISystemOptions = {}): ISystemDeclaration {
-  return defineSystem("postUpdate", name, options);
+  return createSystem("postUpdate", name, options);
 }
 
-function defineSystem(schedule: SystemSchedule, name: string, options: ISystemOptions): ISystemDeclaration {
+function createSystem(schedule: SystemSchedule, name: string, options: ISystemOptions): ISystemDeclaration {
   if (name.trim() === "") {
     throw new SdkError("TN_SDK_ECS_SYSTEM_NAME_EMPTY", "System name must not be empty.");
   }
@@ -78,6 +143,7 @@ function defineSystem(schedule: SystemSchedule, name: string, options: ISystemOp
     reads: normalizeNames(options.reads ?? []),
     run: options.run,
     schedule,
+    services: [...(options.services ?? [])].sort(),
     schemas: normalizeSchemas(componentSchemaSources, "component"),
     writes: normalizeNames(options.writes ?? []),
   };

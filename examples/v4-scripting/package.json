@@ -1,0 +1,17 @@
+{
+  "name": "@examples/v4-scripting",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tn build",
+    "dev:web": "tn dev --target web",
+    "validate": "tn validate dist/v4-scripting.bundle",
+    "verify": "tn verify --frames 3 --expect-motion --json"
+  },
+  "dependencies": {
+    "@threenative/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@threenative/cli": "workspace:*"
+  }
+}

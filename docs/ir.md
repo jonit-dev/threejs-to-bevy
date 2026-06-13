@@ -447,7 +447,8 @@ Rules:
 
 ## Systems IR
 
-`systems.ir.json` declares TypeScript system exports and schedule placement.
+`systems.ir.json` declares TypeScript system exports, schedule placement,
+component/event access, command permissions, and V4 service permissions.
 
 ```json
 {
@@ -455,15 +456,27 @@ Rules:
   "version": "0.1.0",
   "systems": [
     {
-      "id": "movePlayer",
-      "export": "movePlayer",
-      "stage": "update",
-      "query": {
-        "with": ["PlayerController", "Transform"],
-        "without": ["Disabled"]
-      },
+      "name": "movePlayer",
+      "schedule": "update",
+      "queries": [
+        {
+          "with": ["PlayerController", "Transform"],
+          "without": ["Disabled"]
+        }
+      ],
+      "reads": ["PlayerController", "Transform"],
       "writes": ["Transform"],
-      "reads": ["PlayerController", "Input"]
+      "eventReads": [],
+      "eventWrites": ["HitEvent"],
+      "commands": [
+        { "kind": "setComponent", "entity": "player", "component": "Transform" },
+        { "kind": "emitEvent", "event": "HitEvent" }
+      ],
+      "services": ["physics.raycast"],
+      "script": {
+        "bundle": "scripts.bundle.js",
+        "exportName": "system_movePlayer"
+      }
     }
   ]
 }
@@ -471,11 +484,16 @@ Rules:
 
 Rules:
 
-- `export` must exist in `scripts.bundle.js`.
-- `stage` must be a known schedule stage.
+- `script.exportName` must exist in `scripts.bundle.js`.
+- `schedule` must be one of `fixedUpdate`, `update`, or `postUpdate`.
 - Read and write sets must be declared for ordering and parallelism.
 - Query component names must be known.
-- System IDs are stable diagnostics and scheduling identifiers.
+- `commands` declares allowed structural mutation kinds and referenced
+  component/event names.
+- `eventReads` and `eventWrites` must reference known event schemas.
+- `services` is limited to V4-approved service IDs such as `physics.raycast`
+  and `animation.play`.
+- System names are stable diagnostics and scheduling identifiers.
 
 The IR references system code by export name. It does not inline arbitrary function bodies into JSON.
 

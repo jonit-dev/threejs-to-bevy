@@ -1,0 +1,7 @@
+{
+  "schema": "threenative.project",
+  "version": "0.1.0",
+  "entry": "src/game.ts",
+  "outDir": "dist/v4-scripting.bundle",
+  "template": "v4-scripting"
+}

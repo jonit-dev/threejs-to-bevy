@@ -144,6 +144,7 @@ test("should reject schema event references without declarations", async () => {
           name: "emitDamage",
           queries: [],
           reads: [],
+          services: [],
           schedule: "update",
           writes: [],
         },

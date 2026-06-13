@@ -548,6 +548,13 @@ function validateSystems(
   systems.systems.forEach((system, systemIndex) => {
     const writes = new Set(system.writes);
     const eventWrites = new Set(system.eventWrites);
+    if (!["fixedUpdate", "postUpdate", "update"].includes(system.schedule)) {
+      diagnostics.push({
+        code: "TN_IR_SYSTEM_STAGE_UNSUPPORTED",
+        message: `System '${system.name}' uses unsupported schedule '${system.schedule}'.`,
+        path: `${path}/systems/${systemIndex}/schedule`,
+      });
+    }
     system.reads.forEach((component, componentIndex) => {
       if (componentSchemas[component] === undefined) {
         diagnostics.push({
@@ -603,6 +610,15 @@ function validateSystems(
           });
         }
       });
+    });
+    (system.services ?? []).forEach((service, serviceIndex) => {
+      if (!["animation.play", "physics.raycast"].includes(service)) {
+        diagnostics.push({
+          code: "TN_IR_SYSTEM_SERVICE_UNSUPPORTED",
+          message: `System '${system.name}' declares unsupported service '${service}'.`,
+          path: `${path}/systems/${systemIndex}/services/${serviceIndex}`,
+        });
+      }
     });
     system.commands.forEach((command, commandIndex) => {
       if (command.kind === "addComponent" || command.kind === "removeComponent" || command.kind === "setComponent") {

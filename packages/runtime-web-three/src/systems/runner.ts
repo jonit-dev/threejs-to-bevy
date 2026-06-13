@@ -65,6 +65,7 @@ async function runSystem(
   }
   const fn = readSystemFunction(options.module, system.script.exportName);
   const { commands, context, events } = createSystemContext(options.world, {
+    defaultQuery: system.queries[0],
     delta: options.delta ?? 0,
     elapsed: options.elapsed ?? 0,
     fixedDelta: options.fixedDelta ?? 1 / 60,

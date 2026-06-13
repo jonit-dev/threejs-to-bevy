@@ -82,6 +82,7 @@ function makeSystems(): ISystemsIr {
         name: "tick",
         queries: [],
         reads: [],
+        services: [],
         schedule: "fixedUpdate",
         script: { bundle: "scripts.bundle.js", exportName: "tick" },
         writes: [],
