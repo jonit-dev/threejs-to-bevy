@@ -1,1 +1,205 @@
-//! Bundle loading shell for future V1 runtime work.
+use std::{collections::HashMap, fs, path::Path};
+
+use serde::Deserialize;
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum LoadError {
+    #[error("failed to read {path}: {source}")]
+    Read {
+        path: String,
+        #[source]
+        source: std::io::Error,
+    },
+    #[error("failed to parse {path}: {source}")]
+    Parse {
+        path: String,
+        #[source]
+        source: serde_json::Error,
+    },
+    #[error("unsupported {schema} version '{version}'")]
+    UnsupportedVersion { schema: String, version: String },
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BundleManifest {
+    pub schema: String,
+    pub version: String,
+    pub name: String,
+    pub entry: BundleEntry,
+    pub files: BundleFiles,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BundleEntry {
+    pub world: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BundleFiles {
+    pub assets: String,
+    pub materials: String,
+    pub target_profile: String,
+}
+
+#[derive(Debug)]
+pub struct LoadedBundle {
+    pub assets: AssetsManifest,
+    pub manifest: BundleManifest,
+    pub materials: MaterialsIr,
+    pub target_profile: TargetProfile,
+    pub world: WorldIr,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct WorldIr {
+    pub schema: String,
+    pub version: String,
+    pub entities: Vec<WorldEntity>,
+    #[serde(default)]
+    pub resources: HashMap<String, serde_json::Value>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct WorldEntity {
+    pub id: String,
+    pub components: EntityComponents,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct EntityComponents {
+    pub camera: Option<CameraComponent>,
+    pub hierarchy: Option<HierarchyComponent>,
+    pub light: Option<LightComponent>,
+    pub mesh_renderer: Option<MeshRendererComponent>,
+    pub transform: Option<TransformComponent>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TransformComponent {
+    pub position: Option<[f32; 3]>,
+    pub rotation: Option<[f32; 4]>,
+    pub scale: Option<[f32; 3]>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MeshRendererComponent {
+    pub mesh: String,
+    pub material: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CameraComponent {
+    pub kind: String,
+    #[serde(rename = "fovY")]
+    pub fov_y: Option<f32>,
+    pub near: f32,
+    pub far: f32,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LightComponent {
+    pub kind: String,
+    pub color: ColorIr,
+    pub intensity: f32,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct HierarchyComponent {
+    pub parent: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(untagged)]
+pub enum ColorIr {
+    Hex(String),
+    Rgb([f32; 3]),
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MaterialsIr {
+    pub schema: String,
+    pub version: String,
+    pub materials: Vec<MaterialIr>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MaterialIr {
+    pub id: String,
+    pub kind: String,
+    pub color: ColorIr,
+    pub metalness: Option<f32>,
+    pub roughness: Option<f32>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AssetsManifest {
+    pub schema: String,
+    pub version: String,
+    pub assets: Vec<AssetIr>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AssetIr {
+    pub id: String,
+    pub kind: String,
+    pub format: String,
+    pub primitive: String,
+    pub size: Option<Vec<f32>>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TargetProfile {
+    pub schema: String,
+    pub version: String,
+    pub targets: Vec<String>,
+}
+
+pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadError> {
+    let bundle_path = bundle_path.as_ref();
+    let manifest: BundleManifest = read_json(bundle_path, "manifest.json")?;
+    ensure_supported(&manifest.schema, &manifest.version)?;
+
+    let world: WorldIr = read_json(bundle_path, &manifest.entry.world)?;
+    ensure_supported(&world.schema, &world.version)?;
+    let materials: MaterialsIr = read_json(bundle_path, &manifest.files.materials)?;
+    ensure_supported(&materials.schema, &materials.version)?;
+    let assets: AssetsManifest = read_json(bundle_path, &manifest.files.assets)?;
+    ensure_supported(&assets.schema, &assets.version)?;
+    let target_profile: TargetProfile = read_json(bundle_path, &manifest.files.target_profile)?;
+    ensure_supported(&target_profile.schema, &target_profile.version)?;
+
+    Ok(LoadedBundle {
+        assets,
+        manifest,
+        materials,
+        target_profile,
+        world,
+    })
+}
+
+fn read_json<T: for<'de> Deserialize<'de>>(bundle_path: &Path, file: &str) -> Result<T, LoadError> {
+    let path = bundle_path.join(file);
+    let contents = fs::read_to_string(&path).map_err(|source| LoadError::Read {
+        path: path.display().to_string(),
+        source,
+    })?;
+    serde_json::from_str(&contents).map_err(|source| LoadError::Parse {
+        path: path.display().to_string(),
+        source,
+    })
+}
+
+fn ensure_supported(schema: &str, version: &str) -> Result<(), LoadError> {
+    if version.split('.').next() == Some("0") {
+        return Ok(());
+    }
+
+    Err(LoadError::UnsupportedVersion {
+        schema: schema.to_owned(),
+        version: version.to_owned(),
+    })
+}
