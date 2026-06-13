@@ -54,6 +54,7 @@ test("should emit machine readable report", async () => {
     const result = await verifyCommand(["--url", "http://127.0.0.1:5173", "--frames", "2", "--json"], root, {
       previewVerifier: async ({ artifactDir, frames, previewUrl }) => ({
         artifacts: {
+          effectLogPath: join(artifactDir, "web-effect-log.json"),
           reportPath: join(artifactDir, "verification-report.json"),
           screenshots: [join(artifactDir, "frame-01.png"), join(artifactDir, "frame-02.png")],
         },
@@ -90,11 +91,13 @@ test("should emit machine readable report", async () => {
     assert.equal(payload.code, "TN_VERIFY_OK");
     assert.equal(payload.previewUrl, "http://127.0.0.1:5173");
     assert.equal(payload.artifacts.screenshots.length, 2);
+    assert.match(payload.artifacts.effectLogPath ?? "", /web-effect-log\.json$/);
     assert.equal(payload.debug.browserLogs[0], "info: ready");
 
     const saved = JSON.parse(await readFile(join(root, "artifacts/verify/verification-report.json"), "utf8")) as IVerificationReport;
     assert.equal(saved.status, "pass");
     assert.equal(saved.checks.canvas?.ok, true);
+    assert.match(saved.artifacts.effectLogPath ?? "", /web-effect-log\.json$/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

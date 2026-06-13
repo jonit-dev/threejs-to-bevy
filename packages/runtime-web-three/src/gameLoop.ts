@@ -4,18 +4,23 @@ import type { IThreeWorld } from "./mapWorld.js";
 import { syncTransforms } from "./mapWorld.js";
 import { stepPhysics } from "./physics.js";
 import { runSchedule, type ISystemModule } from "./systems/runner.js";
+import type { ISystemEffectLog } from "./systems/log.js";
 
 export interface IGameLoopState {
   accumulator: number;
   elapsed: number;
+  frame: number;
   paused: boolean;
+  tick: number;
 }
 
 export function createGameLoopState(config?: IRuntimeConfigIr): IGameLoopState {
   return {
     accumulator: 0,
     elapsed: 0,
+    frame: 0,
     paused: config?.time.paused ?? false,
+    tick: 0,
   };
 }
 
@@ -25,6 +30,7 @@ export function setPaused(state: IGameLoopState, paused: boolean): void {
 
 export async function runGameFrame(options: {
   delta: number;
+  effectLog?: ISystemEffectLog;
   fixedDelta?: number;
   input?: IWebInputState;
   mapped: IThreeWorld;
@@ -42,18 +48,27 @@ export async function runGameFrame(options: {
     if (!state.paused) {
       while (state.accumulator >= fixedDelta) {
         stepPhysics(options.world, fixedDelta);
-        await runSchedule({ ...options, delta: fixedDelta, elapsed: state.elapsed, fixedDelta, paused: state.paused, schedule: "fixedUpdate" });
+        collectDiagnostics(
+          options.mapped,
+          await runSchedule({ ...options, delta: fixedDelta, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, schedule: "fixedUpdate", tick: state.tick }),
+        );
+        state.tick += 1;
         state.accumulator -= fixedDelta;
       }
-      await runSchedule({ ...options, elapsed: state.elapsed, fixedDelta, paused: state.paused, schedule: "update" });
-      await runSchedule({ ...options, elapsed: state.elapsed, fixedDelta, paused: state.paused, schedule: "postUpdate" });
+      collectDiagnostics(options.mapped, await runSchedule({ ...options, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, schedule: "update", tick: state.tick }));
+      collectDiagnostics(options.mapped, await runSchedule({ ...options, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, schedule: "postUpdate", tick: state.tick }));
     }
+    state.frame += 1;
   } else {
     stepPhysics(options.world, fixedDelta);
-    await runSchedule({ ...options, fixedDelta, schedule: "fixedUpdate" });
-    await runSchedule({ ...options, fixedDelta, schedule: "update" });
-    await runSchedule({ ...options, fixedDelta, schedule: "postUpdate" });
+    collectDiagnostics(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, schedule: "fixedUpdate", tick: 0 }));
+    collectDiagnostics(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, schedule: "update", tick: 0 }));
+    collectDiagnostics(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, schedule: "postUpdate", tick: 0 }));
   }
   syncTransforms(options.world, options.mapped.objectsById);
   options.input?.beginFrame();
+}
+
+function collectDiagnostics(mapped: IThreeWorld, result: { diagnostics: IThreeWorld["diagnostics"] }): void {
+  mapped.diagnostics.push(...result.diagnostics);
 }

@@ -1,13 +1,19 @@
-import type { IBundleManifest, IIrSystemDeclaration, IrSystemSchedule, ISystemsIr, IWorldIr } from "@threenative/ir";
+import type { IBundleManifest, IIrSystemDeclaration, IRuntimeDiagnostic, IrSystemSchedule, ISystemsIr, IWorldIr } from "@threenative/ir";
 import type { IWebInputState } from "../input.js";
 
-import { applyCommands, applyEvents, createSystemContext } from "./context.js";
+import { createSystemContext } from "./context.js";
+import { applySystemEffects } from "./effects.js";
+import { appendSystemEffectLog, type ISystemEffectLog } from "./log.js";
 
 export type SystemFunction = (context: unknown) => unknown | Promise<unknown>;
 
 export interface ISystemModule {
   systems?: Record<string, SystemFunction>;
   [name: string]: unknown;
+}
+
+export interface ISystemRunResult {
+  diagnostics: IRuntimeDiagnostic[];
 }
 
 export async function loadSystemModule(source: string, manifest: IBundleManifest): Promise<ISystemModule> {
@@ -32,6 +38,8 @@ export async function loadSystemModule(source: string, manifest: IBundleManifest
 
 export async function runSchedule(options: {
   delta?: number;
+  effectLog?: ISystemEffectLog;
+  frame?: number;
   fixedDelta?: number;
   input?: IWebInputState;
   elapsed?: number;
@@ -39,12 +47,16 @@ export async function runSchedule(options: {
   paused?: boolean;
   schedule: IrSystemSchedule;
   systems: ISystemsIr;
+  tick?: number;
   world: IWorldIr;
-}): Promise<void> {
+}): Promise<ISystemRunResult> {
+  const diagnostics: IRuntimeDiagnostic[] = [];
   const scheduledSystems = options.systems.systems.filter((system) => system.schedule === options.schedule);
   for (const system of scheduledSystems) {
-    await runSystem(system, options);
+    const result = await runSystem(system, options);
+    diagnostics.push(...result.diagnostics);
   }
+  return { diagnostics };
 }
 
 async function runSystem(
@@ -52,19 +64,22 @@ async function runSystem(
   options: {
     delta?: number;
     elapsed?: number;
+    effectLog?: ISystemEffectLog;
+    frame?: number;
     fixedDelta?: number;
     input?: IWebInputState;
     module: ISystemModule;
     paused?: boolean;
     systems: ISystemsIr;
+    tick?: number;
     world: IWorldIr;
   },
-): Promise<void> {
+): Promise<ISystemRunResult> {
   if (system.script === undefined) {
-    return;
+    return { diagnostics: [] };
   }
   const fn = readSystemFunction(options.module, system.script.exportName);
-  const { commands, context, events } = createSystemContext(options.world, {
+  const { commands, context, events, services } = createSystemContext(options.world, {
     defaultQuery: system.queries[0],
     delta: options.delta ?? 0,
     elapsed: options.elapsed ?? 0,
@@ -73,8 +88,11 @@ async function runSystem(
     paused: options.paused ?? false,
   });
   await fn(context);
-  applyEvents(options.world, events);
-  applyCommands(options.world, commands);
+  const result = applySystemEffects(options.world, system, { commands, events, services }, { frame: options.frame ?? 0, tick: options.tick ?? 0 });
+  if (options.effectLog !== undefined) {
+    appendSystemEffectLog(options.effectLog, result.entries);
+  }
+  return { diagnostics: result.diagnostics };
 }
 
 function readSystemFunction(module: ISystemModule, exportName: string): SystemFunction {

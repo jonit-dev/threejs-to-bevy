@@ -7,10 +7,12 @@ import { applyAtmosphereProfile } from "./rendering.js";
 import { createGameLoopState, runGameFrame } from "./gameLoop.js";
 import { attachInputListeners, createInputState } from "./input.js";
 import { loadSystemModule } from "./systems/runner.js";
+import { createSystemEffectLog, type ISystemEffectLog } from "./systems/log.js";
 
 export interface IRenderResult {
   canvas: HTMLCanvasElement;
   diagnostics: IRuntimeDiagnostic[];
+  effectLog: ISystemEffectLog;
   renderer: THREE.WebGLRenderer;
 }
 
@@ -36,6 +38,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
   }
   const input = createInputState(bundle.input);
   const loopState = createGameLoopState(bundle.runtimeConfig);
+  const effectLog = createSystemEffectLog();
   const systemModule = await loadSystemModule(source, bundle.manifest);
   const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
   applyRendererColorManagement(renderer, bundle.environmentScene?.atmosphere?.colorManagement);
@@ -47,6 +50,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
   if (bundle.systems !== undefined) {
     await runGameFrame({
       delta: 1 / 60,
+      effectLog,
       input,
       mapped,
       module: systemModule,
@@ -64,6 +68,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
       lastTime = time;
       void runGameFrame({
         delta,
+        effectLog,
         input,
         mapped,
         module: systemModule,
@@ -82,6 +87,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
   return {
     canvas,
     diagnostics: mapped.diagnostics,
+    effectLog,
     renderer,
   };
 }

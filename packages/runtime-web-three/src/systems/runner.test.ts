@@ -16,7 +16,8 @@ test("should run systems move entity during fixed update", async () => {
       systems: {
         movePlayer(context: any) {
           for (const entity of context.query({ with: ["Transform"], without: [] })) {
-            entity.components.Transform.position[0] += 2;
+            const transform = entity.get("Transform");
+            entity.patch("Transform", { position: [transform.position[0] + 2, 0, 0] });
           }
         },
       },
@@ -29,9 +30,60 @@ test("should run systems move entity during fixed update", async () => {
   assert.deepEqual(world.entities[0]?.components.Transform, { position: [2, 0, 0] });
 });
 
+test("should provide declared query snapshots", async () => {
+  const world = makeWorld();
+  world.entities.push({ id: "hidden", components: { Health: { value: 1 } } });
+  const systems = makeSystems("update", "readPlayers");
+  const seen: string[] = [];
+
+  await runSchedule({
+    module: {
+      systems: {
+        readPlayers(context: any) {
+          for (const entity of context.query()) {
+            seen.push(entity.id);
+            assert.throws(() => {
+              entity.components.Transform.position[0] = 99;
+            });
+          }
+        },
+      },
+    },
+    schedule: "update",
+    systems,
+    world,
+  });
+
+  assert.deepEqual(seen, ["player"]);
+  assert.deepEqual(world.entities[0]?.components.Transform, { position: [0, 0, 0] });
+});
+
+test("should reject undeclared component patch", async () => {
+  const world = makeWorld();
+  const systems = makeSystems("update", "patchHealth");
+  systems.systems[0]!.writes = ["Transform"];
+
+  const result = await runSchedule({
+    module: {
+      systems: {
+        patchHealth(context: any) {
+          context.query()[0].patch("Health", { value: 1 });
+        },
+      },
+    },
+    schedule: "update",
+    systems,
+    world,
+  });
+
+  assert.equal(result.diagnostics[0]?.code, "TN_WEB_SYSTEM_WRITE_UNDECLARED");
+  assert.equal(world.entities[0]?.components.Health, undefined);
+});
+
 test("should run systems apply despawn command after schedule", async () => {
   const world = makeWorld();
   const systems = makeSystems("update", "removePlayer");
+  systems.systems[0]!.commands = [{ entity: "player", kind: "despawn" }];
 
   await runSchedule({
     module: {
@@ -56,6 +108,7 @@ test("should run systems expose resources events and input context", async () =>
   world.resources = { Score: { value: 1 } };
   world.events = { DamageEvent: [{ amount: 2 }] };
   const systems = makeSystems("update", "useContext");
+  systems.systems[0]!.eventWrites = ["DamageEvent"];
 
   await runSchedule({
     module: {
@@ -80,6 +133,12 @@ test("should run systems expose resources events and input context", async () =>
 test("should run systems apply full command buffer semantics", async () => {
   const world = makeWorld();
   const systems = makeSystems("update", "useCommands");
+  systems.systems[0]!.commands = [
+    { components: ["Transform"], entity: "enemy", kind: "spawn" },
+    { component: "Health", entity: "player", kind: "addComponent" },
+    { component: "Transform", entity: "player", kind: "removeComponent" },
+    { event: "Spawned", kind: "emitEvent" },
+  ];
 
   await runSchedule({
     module: {

@@ -36,6 +36,7 @@ export interface IFrameDiffCheck {
 
 export interface IVerificationReport {
   artifacts: {
+    effectLogPath?: string;
     reportPath: string;
     screenshots: string[];
   };

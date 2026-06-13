@@ -20,9 +20,12 @@ export interface ISystemCommandBuffer {
 }
 
 export interface ISystemContext {
+  animation: {
+    play(entity: string, clip: string, options?: Record<string, unknown>): void;
+  };
   commands: ISystemCommandBuffer;
   events: {
-    emit(event: string, payload: unknown): void;
+    emit(event: unknown, payload: unknown): void;
     read(event: unknown): unknown[];
   };
   input: {
@@ -35,6 +38,9 @@ export interface ISystemContext {
   resources: {
     get(name: string): unknown;
     set(name: string, value: unknown): void;
+  };
+  physics: {
+    raycast(options: Record<string, unknown>): null;
   };
   time: {
     delta: number;
@@ -53,12 +59,18 @@ export interface IQueuedCommand {
   event?: string;
   kind: "addComponent" | "despawn" | "emitEvent" | "removeComponent" | "setComponent" | "spawn";
   payload?: unknown;
+  source: "command" | "entity";
   value?: unknown;
 }
 
 export interface IQueuedEvent {
   event: string;
   payload: unknown;
+}
+
+export interface IQueuedServiceCall {
+  payload: unknown;
+  service: "animation.play" | "physics.raycast";
 }
 
 export function createSystemContext(
@@ -68,39 +80,46 @@ export function createSystemContext(
   commands: IQueuedCommand[];
   context: ISystemContext;
   events: IQueuedEvent[];
+  services: IQueuedServiceCall[];
 } {
   const commands: IQueuedCommand[] = [];
   const events: IQueuedEvent[] = [];
+  const services: IQueuedServiceCall[] = [];
   return {
     commands,
     context: {
+      animation: {
+        play(entity, clip, playOptions = {}) {
+          services.push({ payload: { clip, entity, options: playOptions }, service: "animation.play" });
+        },
+      },
       commands: {
         addComponent(entity, component, value = {}) {
-          commands.push({ component: normalizeHandleName(component), entity, kind: "addComponent", value });
+          commands.push({ component: normalizeHandleName(component), entity, kind: "addComponent", source: "command", value: cloneValue(value) });
         },
         despawn(entity) {
-          commands.push({ entity, kind: "despawn" });
+          commands.push({ entity, kind: "despawn", source: "command" });
         },
         emitEvent(event, payload) {
-          commands.push({ entity: "", event: normalizeHandleName(event), kind: "emitEvent", payload });
+          commands.push({ entity: "", event: normalizeHandleName(event), kind: "emitEvent", payload: cloneValue(payload), source: "command" });
         },
         removeComponent(entity, component) {
-          commands.push({ component: normalizeHandleName(component), entity, kind: "removeComponent" });
+          commands.push({ component: normalizeHandleName(component), entity, kind: "removeComponent", source: "command" });
         },
         setComponent(entity, component, value) {
-          commands.push({ component: normalizeHandleName(component), entity, kind: "setComponent", value });
+          commands.push({ component: normalizeHandleName(component), entity, kind: "setComponent", source: "command", value: cloneValue(value) });
         },
         spawn(entity, components = {}) {
-          commands.push({ components, entity, kind: "spawn" });
+          commands.push({ components: cloneValue(components) as Record<string, unknown>, entity, kind: "spawn", source: "command" });
         },
       },
       events: {
         emit(event, payload) {
-          events.push({ event, payload });
+          events.push({ event: normalizeHandleName(event), payload: cloneValue(payload) });
         },
         read(event) {
           const queue = world.events?.[normalizeHandleName(event)];
-          return Array.isArray(queue) ? queue : [];
+          return Array.isArray(queue) ? cloneValue(queue) as unknown[] : [];
         },
       },
       input: {
@@ -124,13 +143,19 @@ export function createSystemContext(
       },
       resources: {
         get(name) {
-          return world.resources?.[name];
+          return cloneValue(world.resources?.[name]);
         },
         set(name, value) {
           world.resources = {
             ...(world.resources ?? {}),
-            [name]: value,
+            [name]: cloneValue(value),
           };
+        },
+      },
+      physics: {
+        raycast(serviceOptions) {
+          services.push({ payload: cloneValue(serviceOptions), service: "physics.raycast" });
+          return null;
         },
       },
       time: {
@@ -143,34 +168,37 @@ export function createSystemContext(
       },
     },
     events,
+    services,
   };
 }
 
 function createEntityView(entity: IWorldEntity, commands: IQueuedCommand[]): ISystemEntityView {
+  const components = deepFreeze(cloneValue(entity.components)) as IWorldEntity["components"];
   return {
-    components: entity.components,
+    components,
     get<T = unknown>(component: unknown): T {
-      return entity.components[normalizeHandleName(component)] as T;
+      return cloneValue(components[normalizeHandleName(component)]) as T;
     },
     has(component: unknown): boolean {
-      return entity.components[normalizeHandleName(component)] !== undefined;
+      return components[normalizeHandleName(component)] !== undefined;
     },
     id: entity.id,
     patch(component: unknown, value: Record<string, unknown>): void {
       const componentName = normalizeHandleName(component);
-      const existing = entity.components[componentName];
+      const existing = components[componentName];
       commands.push({
         component: componentName,
         entity: entity.id,
         kind: "setComponent",
+        source: "entity",
         value: {
           ...(isRecord(existing) ? existing : {}),
-          ...value,
+          ...cloneValue(value),
         },
       });
     },
     set(component: unknown, value: unknown): void {
-      commands.push({ component: normalizeHandleName(component), entity: entity.id, kind: "setComponent", value });
+      commands.push({ component: normalizeHandleName(component), entity: entity.id, kind: "setComponent", source: "entity", value: cloneValue(value) });
     },
   };
 }
@@ -196,7 +224,7 @@ export function applyCommands(world: IWorldIr, commands: ReadonlyArray<IQueuedCo
   for (const command of commands) {
     if (command.kind === "spawn") {
       if (world.entities.every((entity) => entity.id !== command.entity)) {
-        world.entities.push({ components: { ...(command.components ?? {}) }, id: command.entity });
+        world.entities.push({ components: cloneValue(command.components ?? {}) as IWorldEntity["components"], id: command.entity });
       }
       continue;
     }
@@ -219,7 +247,7 @@ export function applyCommands(world: IWorldIr, commands: ReadonlyArray<IQueuedCo
       continue;
     }
     if (command.kind === "addComponent" || command.kind === "setComponent") {
-      entity.components[command.component] = command.value;
+      entity.components[command.component] = cloneValue(command.value);
     }
   }
 }
@@ -238,4 +266,27 @@ export function applyEvents(world: IWorldIr, events: ReadonlyArray<IQueuedEvent>
 
 function matchesQuery(entity: IWorldEntity, query: IIrSystemQuery): boolean {
   return query.with.every((component) => entity.components[component] !== undefined) && query.without.every((component) => entity.components[component] === undefined);
+}
+
+function cloneValue<T>(value: T): T {
+  if (value === undefined || value === null) {
+    return value;
+  }
+  return globalThis.structuredClone !== undefined ? globalThis.structuredClone(value) : JSON.parse(JSON.stringify(value)) as T;
+}
+
+function deepFreeze<T>(value: T): T {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      deepFreeze(item);
+    }
+    return Object.freeze(value);
+  }
+  if (isRecord(value)) {
+    for (const item of Object.values(value)) {
+      deepFreeze(item);
+    }
+    return Object.freeze(value);
+  }
+  return value;
 }

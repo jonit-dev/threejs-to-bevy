@@ -15,4 +15,6 @@ export { resolveWalkableMovement, type IWalkabilityResolution } from "./walkabil
 export { renderUi, type IRenderedUi, type IRenderedUiNode } from "./ui/renderUi.js";
 export { renderBundle, type IRenderResult } from "./render.js";
 export { createSystemContext, applyCommands, type ISystemContext } from "./systems/context.js";
-export { loadSystemModule, runSchedule, type ISystemModule, type SystemFunction } from "./systems/runner.js";
+export { applySystemEffects, validateSystemEffects, type ISystemEffects } from "./systems/effects.js";
+export { createSystemEffectLog, serializeSystemEffectLog, stableSystemEffectLog, type ISystemEffectLog, type ISystemEffectLogEntry } from "./systems/log.js";
+export { loadSystemModule, runSchedule, type ISystemModule, type ISystemRunResult, type SystemFunction } from "./systems/runner.js";

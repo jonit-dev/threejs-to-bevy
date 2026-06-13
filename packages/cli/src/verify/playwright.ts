@@ -1,4 +1,4 @@
-import { mkdir } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { chromium } from "playwright";
 
@@ -123,7 +123,13 @@ export async function verifyWebPreview(options: IPlaywrightVerifyOptions): Promi
       }
     }
 
-    return buildReport(options, diagnostics, screenshots, { browserLogs, pageErrors, requestFailures, runtimeReady }, checks);
+    const effectLogPath = join(options.artifactDir, "web-effect-log.json");
+    const effectLog = await page.evaluate("globalThis.__THREENATIVE_EFFECT_LOG__") as unknown;
+    if (effectLog !== undefined && effectLog !== null) {
+      await writeFile(effectLogPath, `${JSON.stringify(effectLog, null, 2)}\n`);
+    }
+
+    return buildReport(options, diagnostics, screenshots, { browserLogs, pageErrors, requestFailures, runtimeReady }, checks, effectLog === undefined || effectLog === null ? undefined : effectLogPath);
   } finally {
     await browser.close();
   }
@@ -135,10 +141,12 @@ function buildReport(
   screenshots: string[],
   debug: IVerificationReport["debug"],
   checks: IVerificationReport["checks"] = {},
+  effectLogPath?: string,
 ): IVerificationReport {
   const reportPath = join(options.artifactDir, "verification-report.json");
   return {
     artifacts: {
+      ...(effectLogPath === undefined ? {} : { effectLogPath }),
       reportPath,
       screenshots,
     },

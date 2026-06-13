@@ -36,8 +36,11 @@ Current implemented V4 slice:
   usage before runtime.
 - compiler tests run an ESM loadability probe for the emitted script bundle;
   native QuickJS parse/load proof remains owned by the Bevy host work.
+- the web runtime executes portable systems through cloned query snapshots,
+  validates effects before applying them, and writes canonical web effect logs
+  through `tn verify`.
 - `examples/v4-scripting` builds a primitive scripted scene and passes web
-  visual verification with expected motion.
+  visual verification with expected motion and a web effect-log artifact.
 
 ## V4 Does Not Prove
 

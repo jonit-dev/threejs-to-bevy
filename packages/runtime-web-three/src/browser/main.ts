@@ -1,3 +1,4 @@
+import { stableSystemEffectLog, type ISystemEffectLog } from "../systems/log.js";
 import { renderBundle } from "../render.js";
 
 declare global {
@@ -7,6 +8,7 @@ declare global {
       diagnostics: unknown[];
       ok: boolean;
     };
+    __THREENATIVE_EFFECT_LOG__?: ISystemEffectLog;
   }
 }
 
@@ -27,3 +29,8 @@ window.__THREENATIVE_READY__ = {
   diagnostics: result.diagnostics,
   ok: result.diagnostics.every((diagnostic) => diagnostic.severity !== "error"),
 };
+window.__THREENATIVE_EFFECT_LOG__ = stableSystemEffectLog(result.effectLog);
+
+setInterval(() => {
+  window.__THREENATIVE_EFFECT_LOG__ = stableSystemEffectLog(result.effectLog);
+}, 100);
