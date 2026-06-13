@@ -110,7 +110,7 @@ pub fn map_environment_into_world(world: &mut World, bundle: &LoadedBundle) {
         let length = dx.hypot(dz);
         let mid_x = (start[0] + end[0]) / 2.0;
         let mid_z = (start[2] + end[2]) / 2.0;
-        let y = terrain_height_at(bundle, mid_x, mid_z) + 0.03;
+        let y = terrain_height_at(bundle, mid_x, mid_z) + 0.08;
         let mut transform = Transform::from_xyz(mid_x, y, mid_z);
         transform.rotation = Quat::from_rotation_y(dx.atan2(dz));
         let material = material(world, Color::srgb(0.90, 0.68, 0.37));
@@ -421,10 +421,21 @@ fn terrain_height_at(bundle: &LoadedBundle, x: f32, z: f32) -> f32 {
         total_weight += weight;
     }
     if total_weight > 0.0 {
-        weighted_height / total_weight
+        weighted_height / total_weight + terrain_detail_height(terrain, x, z)
     } else {
-        terrain.bounds.min[1]
+        terrain.bounds.min[1] + terrain_detail_height(terrain, x, z)
     }
+}
+
+fn terrain_detail_height(terrain: &threenative_loader::EnvironmentTerrainIr, x: f32, z: f32) -> f32 {
+    let width = (terrain.bounds.max[0] - terrain.bounds.min[0]).max(0.001);
+    let depth = (terrain.bounds.max[2] - terrain.bounds.min[2]).max(0.001);
+    let scale = width.min(depth);
+    let amplitude = 0.24_f32.min(scale * 0.012);
+    let broad = (x.mul_add(0.72, z * 0.38)).sin() * 0.55;
+    let cross = (x.mul_add(0.31, -z * 0.86)).cos() * 0.32;
+    let detail = ((x + z) * 1.18).sin() * 0.13;
+    (broad + cross + detail) * amplitude
 }
 
 fn size_for_category(category: &str) -> [f32; 3] {

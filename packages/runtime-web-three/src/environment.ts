@@ -286,7 +286,19 @@ function terrainHeightAt(terrain: EnvironmentTerrain | undefined, x: number, z: 
     weightedHeight += point[1] * weight;
     totalWeight += weight;
   }
-  return totalWeight > 0 ? weightedHeight / totalWeight : terrain.bounds.min[1];
+  const baseHeight = totalWeight > 0 ? weightedHeight / totalWeight : terrain.bounds.min[1];
+  return baseHeight + terrainDetailHeight(terrain, x, z);
+}
+
+function terrainDetailHeight(terrain: EnvironmentTerrain, x: number, z: number): number {
+  const width = Math.max(0.001, terrain.bounds.max[0] - terrain.bounds.min[0]);
+  const depth = Math.max(0.001, terrain.bounds.max[2] - terrain.bounds.min[2]);
+  const scale = Math.min(width, depth);
+  const amplitude = Math.min(0.24, scale * 0.012);
+  const broad = Math.sin(x * 0.72 + z * 0.38) * 0.55;
+  const cross = Math.cos(x * 0.31 - z * 0.86) * 0.32;
+  const detail = Math.sin((x + z) * 1.18) * 0.13;
+  return (broad + cross + detail) * amplitude;
 }
 
 function normalizeModel(model: THREE.Object3D, category: NonNullable<IWebBundle["environmentScene"]>["sourceAssets"][number]["category"]): THREE.Object3D {
