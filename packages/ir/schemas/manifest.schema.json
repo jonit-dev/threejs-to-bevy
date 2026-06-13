@@ -40,6 +40,7 @@
         "eventSchemas": { "const": "schemas/events.schema.json" },
         "input": { "type": "string" },
         "resourceSchemas": { "const": "schemas/resources.schema.json" },
+        "runtimeConfig": { "const": "runtime.config.json" },
         "scripts": { "const": "scripts.bundle.js" }
       }
     }

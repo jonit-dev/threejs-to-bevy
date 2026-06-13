@@ -1,4 +1,5 @@
 import type { IIrSystemQuery, IWorldEntity, IWorldIr } from "@threenative/ir";
+import type { IWebInputState } from "../input.js";
 
 export interface ISystemEntityView {
   components: IWorldEntity["components"];
@@ -23,6 +24,8 @@ export interface ISystemContext {
   input: {
     action(name: string): boolean;
     axis(name: string): number;
+    pressed(name: string): boolean;
+    released(name: string): boolean;
   };
   query(query: IIrSystemQuery): ISystemEntityView[];
   resources: {
@@ -31,7 +34,9 @@ export interface ISystemContext {
   };
   time: {
     delta: number;
+    elapsed: number;
     fixedDelta: number;
+    paused: boolean;
   };
 }
 
@@ -50,7 +55,7 @@ export interface IQueuedEvent {
   payload: unknown;
 }
 
-export function createSystemContext(world: IWorldIr, options: { delta: number; fixedDelta: number }): {
+export function createSystemContext(world: IWorldIr, options: { delta: number; elapsed?: number; fixedDelta: number; input?: IWebInputState; paused?: boolean }): {
   commands: IQueuedCommand[];
   context: ISystemContext;
   events: IQueuedEvent[];
@@ -90,11 +95,17 @@ export function createSystemContext(world: IWorldIr, options: { delta: number; f
         },
       },
       input: {
-        action() {
-          return false;
+        action(name) {
+          return options.input?.action(name) ?? false;
         },
-        axis() {
-          return 0;
+        axis(name) {
+          return options.input?.axis(name) ?? 0;
+        },
+        pressed(name) {
+          return options.input?.pressed(name) ?? false;
+        },
+        released(name) {
+          return options.input?.released(name) ?? false;
         },
       },
       query(query) {
@@ -118,7 +129,9 @@ export function createSystemContext(world: IWorldIr, options: { delta: number; f
       },
       time: {
         delta: options.delta,
+        elapsed: options.elapsed ?? 0,
         fixedDelta: options.fixedDelta,
+        paused: options.paused ?? false,
       },
     },
     events,

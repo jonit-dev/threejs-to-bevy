@@ -1,7 +1,9 @@
 import type {
   IAssetsManifest,
   IBundleManifest,
+  IInputIr,
   IMaterialsIr,
+  IRuntimeConfigIr,
   ISystemsIr,
   ITargetProfile,
   IWorldIr,
@@ -9,8 +11,10 @@ import type {
 
 export interface IWebBundle {
   assets: IAssetsManifest;
+  input?: IInputIr;
   manifest: IBundleManifest;
   materials: IMaterialsIr;
+  runtimeConfig?: IRuntimeConfigIr;
   systems?: ISystemsIr;
   targetProfile: ITargetProfile;
   world: IWorldIr;
@@ -23,10 +27,18 @@ export async function loadBundle(source: string): Promise<IWebBundle> {
     manifest.entry.systems === undefined
       ? undefined
       : await readBundleJson<ISystemsIr>(source, manifest.entry.systems);
+  const input =
+    manifest.files.input === undefined ? undefined : await readBundleJson<IInputIr>(source, manifest.files.input);
+  const runtimeConfig =
+    manifest.files.runtimeConfig === undefined
+      ? undefined
+      : await readBundleJson<IRuntimeConfigIr>(source, manifest.files.runtimeConfig);
   return {
     assets: await readBundleJson<IAssetsManifest>(source, manifest.files.assets),
+    input,
     manifest,
     materials: await readBundleJson<IMaterialsIr>(source, manifest.files.materials),
+    runtimeConfig,
     systems,
     targetProfile: await readBundleJson<ITargetProfile>(source, manifest.files.targetProfile),
     world: await readBundleJson<IWorldIr>(source, manifest.entry.world),

@@ -10,11 +10,17 @@ import {
   PerspectiveCamera,
   Scene,
   World,
+  action,
+  axis,
   commands,
+  defineInputMap,
+  defineRuntimeConfig,
   defineComponent,
   defineEvent,
   defineQuery,
   fixedUpdate,
+  keyboard,
+  pointerButton,
   update,
 } from "@threenative/sdk";
 import { validateBundle } from "@threenative/ir";
@@ -58,6 +64,13 @@ test("should emit ecs schema files for world root", async () => {
     const world = new World()
       .spawn("player", Health({ current: 100, max: 100 }))
       .addEvent(DamageEvent)
+      .setInputMap(
+        defineInputMap({
+          actions: [action("Attack", [pointerButton(0)]), action("Pause", [keyboard("Escape")])],
+          axes: [axis("MoveX", { negative: [keyboard("KeyA")], positive: [keyboard("KeyD")] })],
+        }),
+      )
+      .setRuntimeConfig(defineRuntimeConfig({ fixedDelta: 1 / 30, window: { height: 720, width: 1280 } }))
       .addSystem(
         fixedUpdate("applyDamage", {
           commands: [commands.setComponent("target", Health), commands.emitEvent(DamageEvent)],
@@ -81,10 +94,14 @@ test("should emit ecs schema files for world root", async () => {
     const components = JSON.parse(await readFile(join(bundlePath, "schemas/components.schema.json"), "utf8"));
     const events = JSON.parse(await readFile(join(bundlePath, "schemas/events.schema.json"), "utf8"));
     const systems = JSON.parse(await readFile(join(bundlePath, "systems.ir.json"), "utf8"));
+    const input = JSON.parse(await readFile(join(bundlePath, "input.ir.json"), "utf8"));
+    const runtimeConfig = JSON.parse(await readFile(join(bundlePath, "runtime.config.json"), "utf8"));
     const scripts = await readFile(join(bundlePath, "scripts.bundle.js"), "utf8");
 
     assert.equal(manifest.files.componentSchemas, "schemas/components.schema.json");
     assert.equal(manifest.files.scripts, "scripts.bundle.js");
+    assert.equal(manifest.files.input, "input.ir.json");
+    assert.equal(manifest.files.runtimeConfig, "runtime.config.json");
     assert.equal(manifest.entry.scripts, "scripts.bundle.js");
     assert.equal(manifest.entry.systems, "systems.ir.json");
     assert.deepEqual(Object.keys(components.schemas), ["Health"]);
@@ -94,6 +111,8 @@ test("should emit ecs schema files for world root", async () => {
       { event: "DamageEvent", kind: "emitEvent" },
     ]);
     assert.deepEqual(systems.systems[0]?.script, { bundle: "scripts.bundle.js", exportName: "system_applyDamage" });
+    assert.deepEqual(input.actions.map((item: { id: string }) => item.id), ["Attack", "Pause"]);
+    assert.equal(runtimeConfig.time.fixedDelta, 1 / 30);
     assert.match(scripts, /system_applyDamage/);
   } finally {
     await rm(root, { force: true, recursive: true });

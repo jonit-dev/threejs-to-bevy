@@ -6,6 +6,7 @@ use threenative_loader::{LoadError, load_bundle};
 
 pub mod map_world;
 pub mod conformance;
+pub mod input;
 pub mod systems_host;
 
 #[derive(Debug, Error)]
@@ -21,6 +22,7 @@ pub enum RuntimeError {
 pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeError> {
     let bundle = load_bundle(bundle_path)?;
     systems_host::ensure_native_system_host_supported(&bundle)?;
+    let window = bundle.runtime_config.as_ref().map(|config| &config.window);
     let mut app = App::new();
     app.insert_resource(ClearColor(Color::srgb(
         17.0 / 255.0,
@@ -29,8 +31,8 @@ pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeErro
     )))
     .add_plugins(DefaultPlugins.set(WindowPlugin {
         primary_window: Some(Window {
-            resolution: (1280.0, 720.0).into(),
-            title: "ThreeNative Bevy Preview".to_owned(),
+            resolution: (window.map_or(1280.0, |value| value.width), window.map_or(720.0, |value| value.height)).into(),
+            title: window.and_then(|value| value.title.clone()).unwrap_or_else(|| "ThreeNative Bevy Preview".to_owned()),
             ..Default::default()
         }),
         ..Default::default()

@@ -4,6 +4,7 @@ export type WorldSchema = "threenative.world";
 export type MaterialsSchema = "threenative.materials";
 export type AssetsSchema = "threenative.assets";
 export type TargetProfileSchema = "threenative.target-profile";
+export type RuntimeConfigSchema = "threenative.runtime-config";
 
 export interface IBundleManifest {
   schema: BundleSchema;
@@ -26,6 +27,7 @@ export interface IBundleManifest {
     eventSchemas?: "schemas/events.schema.json";
     input?: string;
     resourceSchemas?: "schemas/resources.schema.json";
+    runtimeConfig?: "runtime.config.json";
     scripts?: "scripts.bundle.js";
   };
 }

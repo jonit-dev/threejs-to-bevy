@@ -42,15 +42,19 @@ pub struct BundleEntry {
 #[serde(rename_all = "camelCase")]
 pub struct BundleFiles {
     pub assets: String,
+    pub input: Option<String>,
     pub materials: String,
+    pub runtime_config: Option<String>,
     pub target_profile: String,
 }
 
 #[derive(Debug)]
 pub struct LoadedBundle {
     pub assets: AssetsManifest,
+    pub input: Option<InputIr>,
     pub manifest: BundleManifest,
     pub materials: MaterialsIr,
+    pub runtime_config: Option<RuntimeConfigIr>,
     pub systems: Option<SystemsIr>,
     pub target_profile: TargetProfile,
     pub world: WorldIr,
@@ -173,6 +177,64 @@ pub struct SystemIr {
     pub name: String,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct InputIr {
+    pub schema: String,
+    pub version: String,
+    pub actions: Vec<InputActionIr>,
+    pub axes: Vec<InputAxisIr>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct InputActionIr {
+    pub id: String,
+    pub bindings: Vec<InputBindingIr>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct InputAxisIr {
+    pub id: String,
+    #[serde(default)]
+    pub negative: Vec<InputBindingIr>,
+    #[serde(default)]
+    pub positive: Vec<InputBindingIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(tag = "device")]
+pub enum InputBindingIr {
+    #[serde(rename = "keyboard")]
+    Keyboard { code: String },
+    #[serde(rename = "pointer")]
+    Pointer { button: Option<u8>, axis: Option<String> },
+    #[serde(rename = "touch")]
+    Touch { control: String, axis: Option<String> },
+    #[serde(rename = "gamepad")]
+    Gamepad { control: String, required: Option<bool> },
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RuntimeConfigIr {
+    pub schema: String,
+    pub version: String,
+    pub time: RuntimeTimeConfig,
+    pub window: RuntimeWindowConfig,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeTimeConfig {
+    pub fixed_delta: f32,
+    pub paused: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RuntimeWindowConfig {
+    pub width: f32,
+    pub height: f32,
+    pub title: Option<String>,
+}
+
 pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadError> {
     let bundle_path = bundle_path.as_ref();
     let manifest: BundleManifest = read_json(bundle_path, "manifest.json")?;
@@ -186,6 +248,22 @@ pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadEr
     ensure_supported(&assets.schema, &assets.version)?;
     let target_profile: TargetProfile = read_json(bundle_path, &manifest.files.target_profile)?;
     ensure_supported(&target_profile.schema, &target_profile.version)?;
+    let input = match manifest.files.input.as_ref() {
+        Some(file) => {
+            let input: InputIr = read_json(bundle_path, file)?;
+            ensure_supported(&input.schema, &input.version)?;
+            Some(input)
+        }
+        None => None,
+    };
+    let runtime_config = match manifest.files.runtime_config.as_ref() {
+        Some(file) => {
+            let config: RuntimeConfigIr = read_json(bundle_path, file)?;
+            ensure_supported(&config.schema, &config.version)?;
+            Some(config)
+        }
+        None => None,
+    };
     let systems = match manifest.entry.systems.as_ref() {
         Some(file) => {
             let systems: SystemsIr = read_json(bundle_path, file)?;
@@ -197,8 +275,10 @@ pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadEr
 
     Ok(LoadedBundle {
         assets,
+        input,
         manifest,
         materials,
+        runtime_config,
         systems,
         target_profile,
         world,

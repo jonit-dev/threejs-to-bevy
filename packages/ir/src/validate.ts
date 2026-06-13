@@ -12,6 +12,8 @@ import {
   type IWorldIr,
 } from "./types.js";
 import type { ISystemsIr } from "./systems.js";
+import type { IInputIr, InputBinding } from "./input.js";
+import type { IRuntimeConfigIr } from "./runtimeConfig.js";
 
 export interface IIrDiagnostic {
   code: string;
@@ -42,6 +44,12 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
     manifest.entry.systems === undefined
       ? undefined
       : await readJson<ISystemsIr>(resolve(bundlePath, manifest.entry.systems), diagnostics);
+  const input =
+    manifest.files.input === undefined ? undefined : await readJson<IInputIr>(resolve(bundlePath, manifest.files.input), diagnostics);
+  const runtimeConfig =
+    manifest.files.runtimeConfig === undefined
+      ? undefined
+      : await readJson<IRuntimeConfigIr>(resolve(bundlePath, manifest.files.runtimeConfig), diagnostics);
   const componentSchemas =
     manifest.files.componentSchemas === undefined
       ? undefined
@@ -93,8 +101,110 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
       diagnostics,
     );
   }
+  if (input !== undefined) {
+    validateInput(input, manifest.files.input ?? "input.ir.json", diagnostics);
+  }
+  if (runtimeConfig !== undefined) {
+    validateRuntimeConfig(runtimeConfig, manifest.files.runtimeConfig ?? "runtime.config.json", diagnostics);
+  }
 
   return { diagnostics, ok: diagnostics.length === 0 };
+}
+
+function validateInput(input: IInputIr, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (input.schema !== "threenative.input" || input.version !== "0.1.0") {
+    diagnostics.push({
+      code: "TN_IR_INPUT_VERSION_UNSUPPORTED",
+      message: "Input IR must use threenative.input version 0.1.0.",
+      path,
+    });
+  }
+  validateUniqueIds(input.actions, `${path}/actions`, "TN_IR_INPUT_ACTION_DUPLICATE", diagnostics);
+  validateUniqueIds(input.axes, `${path}/axes`, "TN_IR_INPUT_AXIS_DUPLICATE", diagnostics);
+
+  input.actions.forEach((action, actionIndex) => {
+    validateBindings(action.bindings, `${path}/actions/${actionIndex}/bindings`, diagnostics);
+  });
+  input.axes.forEach((axis, axisIndex) => {
+    validateBindings(axis.negative, `${path}/axes/${axisIndex}/negative`, diagnostics);
+    validateBindings(axis.positive, `${path}/axes/${axisIndex}/positive`, diagnostics);
+    if (axis.value !== undefined) {
+      validateBinding(axis.value, `${path}/axes/${axisIndex}/value`, diagnostics);
+    }
+  });
+}
+
+function validateBindings(bindings: InputBinding[], path: string, diagnostics: IIrDiagnostic[]): void {
+  const seen = new Set<string>();
+  bindings.forEach((binding, index) => {
+    const key = bindingKey(binding);
+    if (seen.has(key)) {
+      diagnostics.push({
+        code: "TN_IR_INPUT_BINDING_DUPLICATE",
+        message: `Input binding '${key}' is declared more than once.`,
+        path: `${path}/${index}`,
+      });
+    }
+    seen.add(key);
+    validateBinding(binding, `${path}/${index}`, diagnostics);
+  });
+}
+
+function validateBinding(binding: InputBinding, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (binding.device === "gamepad" && binding.required !== false) {
+    diagnostics.push({
+      code: "TN_IR_INPUT_GAMEPAD_UNSUPPORTED_V2",
+      message: "Gamepad bindings are V3 scope and cannot be required by a V2 bundle.",
+      path,
+    });
+  }
+}
+
+function bindingKey(binding: InputBinding): string {
+  if (binding.device === "keyboard") {
+    return `keyboard:${binding.code}`;
+  }
+  if (binding.device === "pointer" && "button" in binding) {
+    return `pointer:button:${binding.button}`;
+  }
+  if (binding.device === "pointer") {
+    return `pointer:axis:${binding.axis}`;
+  }
+  if (binding.device === "touch") {
+    return `touch:${binding.control}:${binding.axis ?? ""}`;
+  }
+  return `gamepad:${binding.control}`;
+}
+
+function validateRuntimeConfig(config: IRuntimeConfigIr, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (config.schema !== "threenative.runtime-config" || config.version !== "0.1.0") {
+    diagnostics.push({
+      code: "TN_IR_RUNTIME_CONFIG_VERSION_UNSUPPORTED",
+      message: "Runtime config IR must use threenative.runtime-config version 0.1.0.",
+      path,
+    });
+  }
+  if (!Number.isFinite(config.time.fixedDelta) || config.time.fixedDelta <= 0) {
+    diagnostics.push({
+      code: "TN_IR_RUNTIME_FIXED_DELTA_INVALID",
+      message: "Fixed timestep must be a positive finite number.",
+      path: `${path}/time/fixedDelta`,
+    });
+  }
+  if (!Number.isFinite(config.window.width) || config.window.width <= 0) {
+    diagnostics.push({
+      code: "TN_IR_RUNTIME_WINDOW_INVALID",
+      message: "Window width must be a positive finite number.",
+      path: `${path}/window/width`,
+    });
+  }
+  if (!Number.isFinite(config.window.height) || config.window.height <= 0) {
+    diagnostics.push({
+      code: "TN_IR_RUNTIME_WINDOW_INVALID",
+      message: "Window height must be a positive finite number.",
+      path: `${path}/window/height`,
+    });
+  }
 }
 
 function validateSystems(

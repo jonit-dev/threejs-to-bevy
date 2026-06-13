@@ -1,4 +1,4 @@
-import type { IIrSchemaFile, IWorldIr } from "@threenative/ir";
+import type { IIrSchemaFile, IInputIr, IRuntimeConfigIr, IWorldIr } from "@threenative/ir";
 import type { IrSystemCommand, IrSystemSchedule, ISystemsIr } from "@threenative/ir";
 
 import { CompilerError } from "../errors.js";
@@ -12,6 +12,8 @@ interface IEcsWorldLike {
     eventSchemas: Record<string, { fields: Record<string, unknown> }>;
     resources: Record<string, Record<string, unknown>>;
     resourceSchemas: Record<string, { fields: Record<string, unknown> }>;
+    input?: Omit<IInputIr, "schema" | "version">;
+    runtimeConfig?: Omit<IRuntimeConfigIr, "schema" | "version">;
     systems: IEcsSystemSnapshot[];
   };
 }
@@ -31,7 +33,9 @@ interface IEcsSystemSnapshot {
 export interface IEcsEmitResult {
   componentSchemas: IIrSchemaFile;
   eventSchemas: IIrSchemaFile;
+  input?: IInputIr;
   resourceSchemas: IIrSchemaFile;
+  runtimeConfig?: IRuntimeConfigIr;
   scriptBundle?: string;
   systems: ISystemsIr;
   world: IWorldIr;
@@ -51,7 +55,25 @@ export function ecsToIr(world: IEcsWorldLike): IEcsEmitResult {
   return {
     componentSchemas: schemaFile("threenative.component-schemas", snapshot.componentSchemas),
     eventSchemas: schemaFile("threenative.event-schemas", snapshot.eventSchemas),
+    input:
+      snapshot.input === undefined
+        ? undefined
+        : {
+            schema: "threenative.input",
+            version: "0.1.0",
+            actions: snapshot.input.actions,
+            axes: snapshot.input.axes,
+          },
     resourceSchemas: schemaFile("threenative.resource-schemas", snapshot.resourceSchemas),
+    runtimeConfig:
+      snapshot.runtimeConfig === undefined
+        ? undefined
+        : {
+            schema: "threenative.runtime-config",
+            version: "0.1.0",
+            time: snapshot.runtimeConfig.time,
+            window: snapshot.runtimeConfig.window,
+          },
     scriptBundle: scriptBundle.code,
     systems: systemsToIr(snapshot.systems),
     world: {

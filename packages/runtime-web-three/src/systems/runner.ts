@@ -1,4 +1,5 @@
 import type { IBundleManifest, IIrSystemDeclaration, IrSystemSchedule, ISystemsIr, IWorldIr } from "@threenative/ir";
+import type { IWebInputState } from "../input.js";
 
 import { applyCommands, applyEvents, createSystemContext } from "./context.js";
 
@@ -32,7 +33,10 @@ export async function loadSystemModule(source: string, manifest: IBundleManifest
 export async function runSchedule(options: {
   delta?: number;
   fixedDelta?: number;
+  input?: IWebInputState;
+  elapsed?: number;
   module: ISystemModule;
+  paused?: boolean;
   schedule: IrSystemSchedule;
   systems: ISystemsIr;
   world: IWorldIr;
@@ -47,8 +51,11 @@ async function runSystem(
   system: IIrSystemDeclaration,
   options: {
     delta?: number;
+    elapsed?: number;
     fixedDelta?: number;
+    input?: IWebInputState;
     module: ISystemModule;
+    paused?: boolean;
     systems: ISystemsIr;
     world: IWorldIr;
   },
@@ -59,7 +66,10 @@ async function runSystem(
   const fn = readSystemFunction(options.module, system.script.exportName);
   const { commands, context, events } = createSystemContext(options.world, {
     delta: options.delta ?? 0,
+    elapsed: options.elapsed ?? 0,
     fixedDelta: options.fixedDelta ?? 1 / 60,
+    input: options.input,
+    paused: options.paused ?? false,
   });
   await fn(context);
   applyEvents(options.world, events);

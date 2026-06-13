@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.threenative.local/v1/input.schema.json",
+  "type": "object",
+  "required": ["schema", "version", "actions", "axes"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "const": "threenative.input" },
+    "version": { "const": "0.1.0" },
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "bindings"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "bindings": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/binding" }
+          }
+        }
+      }
+    },
+    "axes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "negative", "positive"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "negative": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/binding" }
+          },
+          "positive": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/binding" }
+          },
+          "value": { "$ref": "#/$defs/binding" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "binding": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["device", "code"],
+          "additionalProperties": false,
+          "properties": {
+            "device": { "const": "keyboard" },
+            "code": { "type": "string", "minLength": 1 },
+            "required": { "type": "boolean" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["device", "button"],
+          "additionalProperties": false,
+          "properties": {
+            "device": { "const": "pointer" },
+            "button": { "type": "integer", "minimum": 0 },
+            "required": { "type": "boolean" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["device", "axis"],
+          "additionalProperties": false,
+          "properties": {
+            "device": { "const": "pointer" },
+            "axis": { "enum": ["deltaX", "deltaY", "x", "y"] },
+            "required": { "type": "boolean" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["device", "control"],
+          "additionalProperties": false,
+          "properties": {
+            "device": { "const": "touch" },
+            "control": { "type": "string", "minLength": 1 },
+            "axis": { "type": "string", "minLength": 1 },
+            "required": { "type": "boolean" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["device", "control"],
+          "additionalProperties": false,
+          "properties": {
+            "device": { "const": "gamepad" },
+            "control": { "type": "string", "minLength": 1 },
+            "required": { "type": "boolean" }
+          }
+        }
+      ]
+    }
+  }
+}

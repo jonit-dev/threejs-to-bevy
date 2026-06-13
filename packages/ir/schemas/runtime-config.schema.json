@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.threenative.local/v1/runtime-config.schema.json",
+  "type": "object",
+  "required": ["schema", "version", "time", "window"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "const": "threenative.runtime-config" },
+    "version": { "const": "0.1.0" },
+    "time": {
+      "type": "object",
+      "required": ["fixedDelta", "paused"],
+      "additionalProperties": false,
+      "properties": {
+        "fixedDelta": { "type": "number", "exclusiveMinimum": 0 },
+        "paused": { "type": "boolean" }
+      }
+    },
+    "window": {
+      "type": "object",
+      "required": ["width", "height"],
+      "additionalProperties": false,
+      "properties": {
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 },
+        "title": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

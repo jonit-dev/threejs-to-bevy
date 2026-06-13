@@ -1,4 +1,6 @@
 import { SdkError } from "../errors.js";
+import type { IInputMapDeclaration } from "../input.js";
+import type { IRuntimeConfigDeclaration } from "../time.js";
 import type { CommandDeclaration } from "./commands.js";
 import type { IQueryDeclaration } from "./query.js";
 import type { EcsFactory, IEcsDeclaration, IEcsSchema } from "./schema.js";
@@ -57,6 +59,8 @@ export interface IWorldSnapshot {
   eventSchemas: Record<string, IEcsSchema>;
   resources: Record<string, Record<string, unknown>>;
   resourceSchemas: Record<string, IEcsSchema>;
+  input?: IInputMapDeclaration;
+  runtimeConfig?: IRuntimeConfigDeclaration;
   systems: IWorldSystemDeclaration[];
 }
 
@@ -66,6 +70,8 @@ export class World {
   readonly #eventSchemas = new Map<string, IEcsSchema>();
   readonly #resources = new Map<string, Record<string, unknown>>();
   readonly #resourceSchemas = new Map<string, IEcsSchema>();
+  #input?: IInputMapDeclaration;
+  #runtimeConfig?: IRuntimeConfigDeclaration;
   readonly #systems = new Map<string, ISystemDeclaration>();
 
   public spawn(id: string, ...components: IEcsDeclaration[]): this {
@@ -126,8 +132,18 @@ export class World {
     return this;
   }
 
+  public setInputMap(input: IInputMapDeclaration): this {
+    this.#input = input;
+    return this;
+  }
+
+  public setRuntimeConfig(config: IRuntimeConfigDeclaration): this {
+    this.#runtimeConfig = config;
+    return this;
+  }
+
   public toJSON(): IWorldSnapshot {
-    return {
+    const snapshot: IWorldSnapshot = {
       componentSchemas: sortedRecord(this.#componentSchemas),
       entities: [...this.#entities.values()].sort((left, right) => left.id.localeCompare(right.id)),
       eventSchemas: sortedRecord(this.#eventSchemas),
@@ -135,6 +151,13 @@ export class World {
       resourceSchemas: sortedRecord(this.#resourceSchemas),
       systems: [...this.#systems.values()].sort((left, right) => left.name.localeCompare(right.name)).map(serializeSystem),
     };
+    if (this.#input !== undefined) {
+      snapshot.input = this.#input;
+    }
+    if (this.#runtimeConfig !== undefined) {
+      snapshot.runtimeConfig = this.#runtimeConfig;
+    }
+    return snapshot;
   }
 
   private registerSchema(schemas: Map<string, IEcsSchema>, schema: IEcsSchema, duplicateCode: string): void {

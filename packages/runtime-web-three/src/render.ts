@@ -1,7 +1,8 @@
 import * as THREE from "three";
 import { loadBundle } from "./loadBundle.js";
 import { mapWorld, type IRuntimeDiagnostic } from "./mapWorld.js";
-import { runGameFrame } from "./gameLoop.js";
+import { createGameLoopState, runGameFrame } from "./gameLoop.js";
+import { attachInputListeners, createInputState } from "./input.js";
 import { loadSystemModule } from "./systems/runner.js";
 
 export interface IRenderResult {
@@ -13,17 +14,23 @@ export interface IRenderResult {
 export async function renderBundle(source: string, container: HTMLElement): Promise<IRenderResult> {
   const bundle = await loadBundle(source);
   const mapped = mapWorld(bundle);
+  const input = createInputState(bundle.input);
+  const loopState = createGameLoopState(bundle.runtimeConfig);
   const systemModule = await loadSystemModule(source, bundle.manifest);
   const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
   const canvas = renderer.domElement;
 
   container.replaceChildren(canvas);
+  attachInputListeners(window, input);
   resizeRenderer(renderer, mapped.camera, container);
   if (bundle.systems !== undefined) {
     await runGameFrame({
       delta: 1 / 60,
+      input,
       mapped,
       module: systemModule,
+      runtimeConfig: bundle.runtimeConfig,
+      state: loopState,
       systems: bundle.systems,
       world: bundle.world,
     });
@@ -36,8 +43,11 @@ export async function renderBundle(source: string, container: HTMLElement): Prom
       lastTime = time;
       void runGameFrame({
         delta,
+        input,
         mapped,
         module: systemModule,
+        runtimeConfig: bundle.runtimeConfig,
+        state: loopState,
         systems: bundle.systems!,
         world: bundle.world,
       }).then(() => {

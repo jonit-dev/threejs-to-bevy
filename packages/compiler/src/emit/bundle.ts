@@ -26,6 +26,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
     },
     files: {
       assets: "assets.manifest.json",
+      ...(ecs?.input === undefined ? {} : { input: "input.ir.json" }),
       materials: "materials.ir.json",
       targetProfile: "target.profile.json",
       ...(ecs === undefined
@@ -34,6 +35,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
             componentSchemas: "schemas/components.schema.json" as const,
             eventSchemas: "schemas/events.schema.json" as const,
             resourceSchemas: "schemas/resources.schema.json" as const,
+            ...(ecs.runtimeConfig === undefined ? {} : { runtimeConfig: "runtime.config.json" as const }),
             ...(ecs.scriptBundle === undefined ? {} : { scripts: "scripts.bundle.js" as const }),
           }),
     },
@@ -61,6 +63,12 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
     await writeFile(resolve(outDir, "schemas/resources.schema.json"), stableJson(ecs.resourceSchemas));
     await writeFile(resolve(outDir, "schemas/events.schema.json"), stableJson(ecs.eventSchemas));
     await writeFile(resolve(outDir, "systems.ir.json"), stableJson(ecs.systems));
+    if (ecs.input !== undefined) {
+      await writeFile(resolve(outDir, "input.ir.json"), stableJson(ecs.input));
+    }
+    if (ecs.runtimeConfig !== undefined) {
+      await writeFile(resolve(outDir, "runtime.config.json"), stableJson(ecs.runtimeConfig));
+    }
     if (ecs.scriptBundle !== undefined) {
       await writeFile(resolve(outDir, "scripts.bundle.js"), ecs.scriptBundle);
     }
