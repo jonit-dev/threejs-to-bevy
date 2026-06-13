@@ -7,7 +7,10 @@ use std::{
 use bevy::{gltf::GltfPlugin, prelude::*, scene::ScenePlugin};
 use threenative_components::ThreeNativeId;
 use threenative_loader::load_bundle;
-use threenative_runtime::environment::{map_environment_into_world, observe_environment};
+use threenative_runtime::{
+    environment::{apply_environment_bookmark, map_environment_into_world, observe_environment},
+    map_world::map_bundle_into_world,
+};
 
 #[test]
 fn v3_environment_should_load_bookmarked_bundle() {
@@ -139,6 +142,32 @@ fn app_from_bundle_should_spawn_environment_gltf_scenes_when_asset_server_is_ava
     fs::remove_dir_all(root).expect("temp bundle should be removed");
 }
 
+#[test]
+fn environment_bookmark_should_move_native_camera() {
+    let root = temp_bundle_dir();
+    write_v3_bundle_with_camera_bookmark(&root);
+
+    let bundle = load_bundle(&root).expect("v3 camera bookmark bundle should load");
+    let mut app = App::new();
+    map_bundle_into_world(app.world_mut(), &bundle).expect("world should map");
+
+    assert!(apply_environment_bookmark(
+        app.world_mut(),
+        &bundle,
+        "bookmark.entry"
+    ));
+
+    let transform = app
+        .world_mut()
+        .query::<(&ThreeNativeId, &Transform)>()
+        .iter(app.world())
+        .find_map(|(id, transform)| (id.0 == "camera.firstPerson").then_some(*transform))
+        .expect("camera transform should exist");
+    assert_eq!(transform.translation, Vec3::new(0.0, 1.7, 7.0));
+
+    fs::remove_dir_all(root).expect("temp bundle should be removed");
+}
+
 fn write_v3_bundle_with_model_asset(root: &Path) {
     write_json(
         root,
@@ -191,6 +220,77 @@ fn write_v3_bundle_with_model_asset(root: &Path) {
           "sourceAssets": [{ "id": "env.Tree", "asset": "model.env.Tree", "category": "tree" }],
           "instances": [{ "id": "tree.hero", "sourceAsset": "env.Tree", "position": [2, 0, 0], "scale": [1.2, 1.2, 1.2], "kind": "hero", "tags": ["tree"] }],
           "bookmarks": [{ "id": "bookmark.entry", "position": [0, 1.7, 4], "yaw": 180, "pitch": -5, "expectedTags": [] }]
+        }"#,
+    );
+}
+
+fn write_v3_bundle_with_camera_bookmark(root: &Path) {
+    write_json(
+        root,
+        "manifest.json",
+        r#"{
+          "schema": "threenative.bundle",
+          "version": "0.1.0",
+          "name": "v3-environment",
+          "entry": { "world": "world.ir.json", "environmentScene": "environment.scene.json" },
+          "files": {
+            "assets": "assets.manifest.json",
+            "materials": "materials.ir.json",
+            "targetProfile": "target.profile.json"
+          }
+        }"#,
+    );
+    write_json(
+        root,
+        "world.ir.json",
+        r#"{
+          "schema": "threenative.world",
+          "version": "0.1.0",
+          "entities": [{
+            "id": "camera.firstPerson",
+            "components": {
+              "Camera": { "kind": "perspective", "near": 0.05, "far": 180, "fovY": 62 },
+              "Transform": { "position": [9, 9, 9], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+            }
+          }]
+        }"#,
+    );
+    write_json(
+        root,
+        "assets.manifest.json",
+        r#"{ "schema": "threenative.assets", "version": "0.1.0", "assets": [] }"#,
+    );
+    write_json(
+        root,
+        "materials.ir.json",
+        r#"{ "schema": "threenative.materials", "version": "0.1.0", "materials": [] }"#,
+    );
+    write_json(
+        root,
+        "target.profile.json",
+        r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["desktop"] }"#,
+    );
+    write_json(
+        root,
+        "environment.scene.json",
+        r#"{
+          "schema": "threenative.environment-scene",
+          "version": "0.1.0",
+          "controller": {
+            "camera": "camera.firstPerson",
+            "height": 1.7,
+            "maxSpeed": 4.5,
+            "acceleration": 18,
+            "sensitivity": 0.0025,
+            "pointerLock": "required",
+            "pitch": { "min": -75, "max": 75 },
+            "input": { "forward": "MoveForward", "backward": "MoveBackward", "left": "MoveLeft", "right": "MoveRight", "lookX": "LookX", "lookY": "LookY" }
+          },
+          "terrain": { "id": "terrain.forest", "heightMode": "flat", "bounds": { "min": [-5, 0, -5], "max": [5, 0, 5] } },
+          "path": { "id": "path.main", "points": [[0, 0, 3], [0, 0, -3]], "width": 2 },
+          "sourceAssets": [],
+          "instances": [],
+          "bookmarks": [{ "id": "bookmark.entry", "position": [0, 1.7, 7], "yaw": 180, "pitch": -4, "expectedTags": [] }]
         }"#,
     );
 }

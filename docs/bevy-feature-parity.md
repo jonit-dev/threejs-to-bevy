@@ -30,13 +30,13 @@ Baseline: the repo pins Bevy and `bevy_ecs` to `=0.14.2`.
 | Active camera/resource model | ⚠️ | `ActiveCamera` exists; general resources are still absent. |
 | Standard material scalar fields | ✅ | Color, metalness, and roughness are implemented for the base render slice. |
 | Material texture slots | ⚠️ | IR/compiler validation accepts texture slots; web/Bevy material loading does not yet apply real textures. |
-| glTF/GLB asset bundling | ⚠️ | Compiler copies selected glTF/GLB, `.bin`, and texture dependencies; runtime still renders placeholder environment meshes instead of loaded models. |
+| glTF/GLB asset bundling | ✅ | Compiler copies selected glTF/GLB, `.bin`, and texture dependencies; web-three and Bevy now resolve V3 environment instances to real bundle-local glTF scenes instead of placeholder model primitives. |
 | Asset manifest validation | ⚠️ | Bundle-relative existence, formats, and references are validated; diagnostics are still partly generic compiler errors instead of stable domain diagnostics everywhere. |
 | V3 environment scene IR | ✅ | `environment.scene.json` supports source assets, instances, scatter, terrain/path, hero placements, camera bookmarks, atmosphere, first-person config, and walkability metadata for the V3 proof scene. |
 | Instancing/batching | ⚠️ | Web builds an instancing plan and placeholder `InstancedMesh` groups; missing real geometry/material instancing, Bevy equivalent, and budget evidence tied to real assets. |
 | V3 performance budgets | ✅ | Target profile, performance metrics, and `verify:v3` budget checks are wired for the V3 web proof. |
-| `verify:v3` release gate | ✅ | Script builds and validates the example, scaffolds and builds the V3 template, saves web performance reports, captures bookmarked side-by-side visual artifacts, and runs V3 scene/atmosphere/first-person/walkability gates. |
-| Bevy V3 environment loading | ⚠️ | Native runtime observes `environment.scene.json` and has V3 load-smoke coverage, but it does not render the full environment scene yet. |
+| `verify:v3` release gate | ✅ | Script builds and validates the example, scaffolds and builds the V3 template, saves web performance reports, captures bookmarked Three.js/Bevy side-by-side visual artifacts from real model-loading paths, and runs V3 scene/atmosphere/first-person/walkability gates. |
+| Bevy V3 environment loading | ⚠️ | Native runtime maps `environment.scene.json` into terrain/path placeholders plus real glTF scene instances and can capture bookmarked Bevy screenshots; atmosphere/lighting parity and broader native interaction remain limited. |
 | Forest atmosphere | ⚠️ | Portable atmosphere data is emitted and observed for web/Bevy; native rendering parity for fog/sky/color management remains limited. |
 | First-person controls | ⚠️ | Portable first-person config, pointer-lock expectations, movement update, and walkthrough verification exist; native input capture is still smoke-level. |
 | Walkability and scene collision | ⚠️ | V3 walkable regions and blocking probes exist in IR, web resolver, Bevy helper, and release gate; this is not a general physics collision system. |
@@ -49,9 +49,9 @@ Baseline: the repo pins Bevy and `bevy_ecs` to `=0.14.2`.
 
 ## What Is Drifting
 
-- The V3 bundle contract is ahead of full runtime rendering: environment assets
-  and scene metadata can be emitted, but web still uses placeholder environment
-  meshes and Bevy only load-smokes/observes the V3 environment scene.
+- The V3 bundle contract now drives real model loading in both visual paths, but
+  Bevy still has drift in native atmosphere, lighting, instancing, and first-
+  person interaction depth.
 - Validation is ahead of user-facing diagnostics in places: missing files and
   unsupported assets are caught, but not every failure has stable V3 diagnostic
   codes and suggested fixes.
@@ -60,22 +60,21 @@ Baseline: the repo pins Bevy and `bevy_ecs` to `=0.14.2`.
   equal SDK/compiler/web/Bevy proof.
 - `verify:v3` is now the V3 release gate, but its visual comparison remains a
   practical side-by-side artifact and nonblank/composition proof rather than
-  native renderer parity or pixel-perfect comparison.
+  pixel-perfect renderer equivalence.
 - Old roadmap language still risks implying V3 is a broad production platform.
   Current V3 is only the first-person forest scene proof.
 
 ## What Is Left For V3
 
-1. Load real V3 glTF models and textures in web-three instead of placeholder
-   boxes.
-2. Map `environment.scene.json` into Bevy enough for a native render screenshot,
-   not just load smoke.
-3. Replace placeholder instanced meshes with real geometry/material instancing
+1. Tighten Bevy vs Three.js visual parity for lighting, atmosphere, camera
+   framing, and imported asset scale/rotation using the real side-by-side
+   screenshots.
+2. Replace placeholder instanced meshes with real geometry/material instancing
    tied to draw/instance/triangle budgets.
-4. Strengthen native first-person input capture beyond smoke-level reporting.
-5. Document coordinate, unit, handedness, rotation, imported scale, and color
+3. Strengthen native first-person input capture beyond smoke-level reporting.
+4. Document coordinate, unit, handedness, rotation, imported scale, and color
    conventions.
-6. Keep post-V3 features out of the V3 gate unless a PRD explicitly pulls in a
+5. Keep post-V3 features out of the V3 gate unless a PRD explicitly pulls in a
     narrow slice.
 
 ## Sources

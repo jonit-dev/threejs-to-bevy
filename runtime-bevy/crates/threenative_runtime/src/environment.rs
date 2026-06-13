@@ -172,6 +172,52 @@ pub fn map_environment_into_world(world: &mut World, bundle: &LoadedBundle) {
     }
 }
 
+pub fn apply_environment_bookmark(
+    world: &mut World,
+    bundle: &LoadedBundle,
+    bookmark_id: &str,
+) -> bool {
+    let Some(scene) = bundle.environment_scene.as_ref() else {
+        return false;
+    };
+    let Some(bookmark) = scene
+        .bookmarks
+        .iter()
+        .find(|bookmark| bookmark.id == bookmark_id)
+    else {
+        return false;
+    };
+    let camera_id = scene
+        .controller
+        .as_ref()
+        .map(|controller| controller.camera.as_str());
+
+    let mut cameras = world.query::<(&mut Transform, Option<&ThreeNativeId>, &Camera)>();
+    for (mut transform, stable_id, _camera) in cameras.iter_mut(world) {
+        if camera_id.is_none()
+            || stable_id
+                .map(|id| Some(id.0.as_str()) == camera_id)
+                .unwrap_or(false)
+        {
+            transform.translation = Vec3::new(
+                bookmark.position[0],
+                bookmark.position[1],
+                bookmark.position[2],
+            );
+            let yaw = bookmark.yaw.to_radians();
+            let pitch = bookmark.pitch.to_radians();
+            let forward = Vec3::new(
+                yaw.sin() * pitch.cos(),
+                pitch.sin(),
+                yaw.cos() * pitch.cos(),
+            );
+            transform.look_to(forward, Vec3::Y);
+            return true;
+        }
+    }
+    false
+}
+
 fn ensure_asset_resources(world: &mut World) {
     if !world.contains_resource::<Assets<Mesh>>() {
         world.init_resource::<Assets<Mesh>>();

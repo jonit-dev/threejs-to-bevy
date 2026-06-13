@@ -518,7 +518,13 @@ pub struct AtmosphereShadowsIr {
 }
 
 pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadError> {
-    let bundle_path = bundle_path.as_ref();
+    let requested_bundle_path = bundle_path.as_ref();
+    let canonical_bundle_path =
+        fs::canonicalize(requested_bundle_path).map_err(|source| LoadError::Read {
+            path: requested_bundle_path.display().to_string(),
+            source,
+        })?;
+    let bundle_path = canonical_bundle_path.as_path();
     let manifest: BundleManifest = read_json(bundle_path, "manifest.json")?;
     ensure_supported(&manifest.schema, &manifest.version)?;
 
@@ -580,7 +586,7 @@ pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadEr
     };
 
     Ok(LoadedBundle {
-        bundle_path: bundle_path.to_path_buf(),
+        bundle_path: canonical_bundle_path,
         assets,
         audio,
         environment_scene,

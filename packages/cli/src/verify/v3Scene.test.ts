@@ -98,10 +98,10 @@ function mockScreenshotCapturer(value: number) {
     await writePng(sideBySidePath, 80);
     return Promise.all(options.bookmarkIds.map(async (bookmarkId) => {
       const threejsPath = join(screenshotDir, `${bookmarkId}.threejs.png`);
-      const bevySmokePath = join(screenshotDir, `${bookmarkId}.bevy-smoke.png`);
+      const bevyGltfPath = join(screenshotDir, `${bookmarkId}.bevy-gltf.png`);
       await writePng(threejsPath, value);
-      await writePng(bevySmokePath, 40);
-      return { bookmarkId, bevySmokePath, sideBySidePath, threejsPath };
+      await writePng(bevyGltfPath, 40);
+      return { bookmarkId, bevyGltfPath, sideBySidePath, threejsPath };
     }));
   };
 }

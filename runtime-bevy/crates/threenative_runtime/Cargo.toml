@@ -11,6 +11,10 @@ path = "src/lib.rs"
 name = "threenative_runtime"
 path = "src/main.rs"
 
+[[bin]]
+name = "threenative_capture"
+path = "src/capture.rs"
+
 [dependencies]
 bevy = "=0.14.2"
 serde = { version = "1.0.228", features = ["derive"] }
