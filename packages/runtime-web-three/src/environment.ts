@@ -194,10 +194,11 @@ function createTerrainMesh(terrain: EnvironmentTerrain): THREE.Mesh {
   if (terrain.heightMode === "controlPoints") {
     applyTerrainControlPoints(geometry, terrain);
   }
+  applyTerrainVertexColors(geometry);
   geometry.computeVertexNormals();
   const ground = new THREE.Mesh(
     geometry,
-    new THREE.MeshStandardMaterial({ color: "#4d6244", roughness: 0.98 }),
+    new THREE.MeshStandardMaterial({ roughness: 0.98, vertexColors: true }),
   );
   ground.name = `terrain:${terrain.id}`;
   ground.receiveShadow = true;
@@ -212,6 +213,33 @@ function applyTerrainControlPoints(geometry: THREE.BufferGeometry, terrain: Envi
     position.setY(index, terrainHeightAt(terrain, x, z));
   }
   position.needsUpdate = true;
+}
+
+function applyTerrainVertexColors(geometry: THREE.BufferGeometry): void {
+  const position = geometry.getAttribute("position");
+  const colors: number[] = [];
+  const low = new THREE.Color("#43573d");
+  const mid = new THREE.Color("#64713f");
+  const high = new THREE.Color("#7f8750");
+  let minY = Number.POSITIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  for (let index = 0; index < position.count; index += 1) {
+    const y = position.getY(index);
+    minY = Math.min(minY, y);
+    maxY = Math.max(maxY, y);
+  }
+  const range = Math.max(0.001, maxY - minY);
+  for (let index = 0; index < position.count; index += 1) {
+    const height = (position.getY(index) - minY) / range;
+    const x = position.getX(index);
+    const z = position.getZ(index);
+    const noise = (Math.sin(x * 1.7 + z * 0.9) + 1) * 0.04;
+    const color = height + noise < 0.5
+      ? low.clone().lerp(mid, (height + noise) * 2)
+      : mid.clone().lerp(high, (height + noise - 0.5) * 2);
+    colors.push(color.r, color.g, color.b);
+  }
+  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
 }
 
 function createPathSurface(points: readonly (readonly [number, number, number])[], width: number, terrain: EnvironmentTerrain | undefined): THREE.Group {
