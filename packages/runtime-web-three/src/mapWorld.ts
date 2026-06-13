@@ -24,6 +24,7 @@ export function mapWorld(bundle: IWebBundle): IThreeWorld {
   for (const entity of entities) {
     const object = mapEntity(entity, assetsById, materialsById, diagnostics);
     applyTransform(object, entity);
+    applyVisibility(object, entity);
     objectsById.set(entity.id, object);
   }
 
@@ -91,6 +92,10 @@ function mapEntity(
   if (camera?.kind === "perspective") {
     return new THREE.PerspectiveCamera(camera.fovY ?? 60, 1, camera.near, camera.far);
   }
+  if (camera?.kind === "orthographic") {
+    const halfSize = (camera.size ?? 1) / 2;
+    return new THREE.OrthographicCamera(-halfSize, halfSize, halfSize, -halfSize, camera.near, camera.far);
+  }
 
   const light = entity.components.Light;
   if (light?.kind === "directional") {
@@ -98,6 +103,12 @@ function mapEntity(
   }
   if (light?.kind === "ambient") {
     return new THREE.AmbientLight(colorToThree(light.color), light.intensity);
+  }
+  if (light?.kind === "point") {
+    return new THREE.PointLight(colorToThree(light.color), light.intensity);
+  }
+  if (light?.kind === "spot") {
+    return new THREE.SpotLight(colorToThree(light.color), light.intensity);
   }
 
   return new THREE.Object3D();
@@ -113,6 +124,12 @@ function mapGeometry(asset: IAssetIr): THREE.BufferGeometry {
   }
   if (asset.primitive === "sphere") {
     return new THREE.SphereGeometry(asset.size?.[0] ?? 0.5, 32, 16);
+  }
+  if (asset.primitive === "cylinder") {
+    return new THREE.CylinderGeometry(asset.size?.[0] ?? 0.5, asset.size?.[0] ?? 0.5, asset.size?.[1] ?? 1, 32);
+  }
+  if (asset.primitive === "capsule") {
+    return new THREE.CapsuleGeometry(asset.size?.[0] ?? 0.5, asset.size?.[1] ?? 1, 16, 32);
   }
   const [x = 1, y = 1] = asset.size ?? [];
   return new THREE.PlaneGeometry(x, y);
@@ -139,6 +156,14 @@ function applyTransform(object: THREE.Object3D, entity: IWorldEntity): void {
   }
 }
 
+function applyVisibility(object: THREE.Object3D, entity: IWorldEntity): void {
+  const visibility = entity.components.Visibility;
+  const renderer = entity.components.MeshRenderer;
+  if (visibility?.visible === false || renderer?.visible === false) {
+    object.visible = false;
+  }
+}
+
 export function syncTransforms(world: IWorldIr, objectsById: Map<string, THREE.Object3D>): void {
   const entityIds = new Set(world.entities.map((entity) => entity.id));
   for (const id of objectsById.keys()) {
@@ -151,6 +176,7 @@ export function syncTransforms(world: IWorldIr, objectsById: Map<string, THREE.O
     const object = objectsById.get(entity.id);
     if (object !== undefined) {
       applyTransform(object, entity);
+      applyVisibility(object, entity);
     }
   }
 }

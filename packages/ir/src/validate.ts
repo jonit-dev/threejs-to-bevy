@@ -81,6 +81,7 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
   }
   if (materials !== undefined) {
     validateUniqueIds(materials.materials, `${manifest.files.materials}/materials`, "TN_IR_DUPLICATE_MATERIAL_ID", diagnostics);
+    validateMaterials(materials, manifest.files.materials, diagnostics);
     validateMaterialTextureRefs(materials, assets, manifest.files.materials, diagnostics);
   }
   if (assets !== undefined) {
@@ -179,6 +180,28 @@ function validateMaterialTextureRefs(materials: IMaterialsIr, assets: IAssetsMan
         });
       }
     });
+  });
+}
+
+function validateMaterials(materials: IMaterialsIr, path: string, diagnostics: IIrDiagnostic[]): void {
+  materials.materials.forEach((material, index) => {
+    const raw = material as unknown as Record<string, unknown>;
+    if (raw.kind !== "standard") {
+      diagnostics.push({
+        code: "TN_IR_MATERIAL_UNSUPPORTED",
+        message: `Material '${material.id}' uses unsupported material kind '${String(raw.kind)}'.`,
+        path: `${path}/materials/${index}/kind`,
+      });
+    }
+    for (const key of ["shader", "vertexShader", "fragmentShader", "nodeGraph", "postprocess"]) {
+      if (raw[key] !== undefined) {
+        diagnostics.push({
+          code: "TN_IR_MATERIAL_CAPABILITY_UNSUPPORTED",
+          message: `Material '${material.id}' uses unsupported shader capability '${key}'.`,
+          path: `${path}/materials/${index}/${key}`,
+        });
+      }
+    }
   });
 }
 
@@ -588,6 +611,45 @@ function validateWorld(world: IWorldIr, path: string, diagnostics: IIrDiagnostic
   }
 
   validateUniqueIds(world.entities, `${path}/entities`, "TN_IR_DUPLICATE_ENTITY_ID", diagnostics);
+  world.entities.forEach((entity, index) => validateRenderComponents(entity, `${path}/entities/${index}`, diagnostics));
+}
+
+function validateRenderComponents(entity: IWorldIr["entities"][number], path: string, diagnostics: IIrDiagnostic[]): void {
+  const camera = entity.components.Camera;
+  if (camera !== undefined) {
+    if (camera.kind === "perspective" && camera.fovY === undefined) {
+      diagnostics.push({
+        code: "TN_IR_CAMERA_FIELD_MISSING",
+        message: `Perspective camera '${entity.id}' must define fovY.`,
+        path: `${path}/components/Camera/fovY`,
+      });
+    }
+    if (camera.kind === "orthographic" && camera.size === undefined) {
+      diagnostics.push({
+        code: "TN_IR_CAMERA_FIELD_MISSING",
+        message: `Orthographic camera '${entity.id}' must define size.`,
+        path: `${path}/components/Camera/size`,
+      });
+    }
+  }
+
+  const renderer = entity.components.MeshRenderer;
+  if (renderer?.visible !== undefined && typeof renderer.visible !== "boolean") {
+    diagnostics.push({
+      code: "TN_IR_RENDER_VISIBILITY_INVALID",
+      message: `MeshRenderer visibility for '${entity.id}' must be boolean.`,
+      path: `${path}/components/MeshRenderer/visible`,
+    });
+  }
+
+  const visibility = entity.components.Visibility;
+  if (visibility !== undefined && typeof visibility.visible !== "boolean") {
+    diagnostics.push({
+      code: "TN_IR_RENDER_VISIBILITY_INVALID",
+      message: `Visibility component for '${entity.id}' must be boolean.`,
+      path: `${path}/components/Visibility/visible`,
+    });
+  }
 }
 
 function validateUniqueIds(

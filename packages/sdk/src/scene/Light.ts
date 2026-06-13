@@ -30,3 +30,27 @@ export class AmbientLight extends Object3D {
     assertFiniteNumber(this.intensity, "TN_SDK_LIGHT_INVALID_INTENSITY", "AmbientLight.intensity");
   }
 }
+
+export class PointLight extends Object3D {
+  public readonly color: ColorValue;
+  public readonly intensity: number;
+
+  public constructor(options: ILightOptions = {}) {
+    super(options);
+    this.color = validateColor(options.color ?? "#ffffff");
+    this.intensity = options.intensity ?? 1;
+    assertFiniteNumber(this.intensity, "TN_SDK_LIGHT_INVALID_INTENSITY", "PointLight.intensity");
+  }
+}
+
+export class SpotLight extends Object3D {
+  public readonly color: ColorValue;
+  public readonly intensity: number;
+
+  public constructor(options: ILightOptions = {}) {
+    super(options);
+    this.color = validateColor(options.color ?? "#ffffff");
+    this.intensity = options.intensity ?? 1;
+    assertFiniteNumber(this.intensity, "TN_SDK_LIGHT_INVALID_INTENSITY", "SpotLight.intensity");
+  }
+}

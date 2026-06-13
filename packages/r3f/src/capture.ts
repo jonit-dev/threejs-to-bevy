@@ -1,14 +1,19 @@
 import {
   AmbientLight,
   BoxGeometry,
+  CapsuleGeometry,
+  CylinderGeometry,
   DirectionalLight,
   Mesh,
   MeshStandardMaterial,
   Object3D,
+  OrthographicCamera,
   PerspectiveCamera,
   PlaneGeometry,
+  PointLight,
   Scene,
   SphereGeometry,
+  SpotLight,
   type Vector3Tuple,
 } from "@threenative/sdk";
 
@@ -34,7 +39,7 @@ export function captureScene(root: IR3fElement): Scene {
   for (const child of childrenOf(root)) {
     const object = captureObject(child, [scene.id ?? "scene"]);
     scene.add(object);
-    if (object instanceof PerspectiveCamera && scene.activeCamera === undefined) {
+    if ((object instanceof OrthographicCamera || object instanceof PerspectiveCamera) && scene.activeCamera === undefined) {
       scene.setActiveCamera(object);
     }
   }
@@ -55,17 +60,29 @@ function captureObject(element: IR3fElement, path: readonly string[]): Object3D 
               fovY: element.props.fovY ?? 60,
               near: element.props.near ?? 0.1,
             })
+          : element.type === "orthographicCamera"
+            ? new OrthographicCamera({
+                ...options,
+                far: element.props.far ?? 100,
+                near: element.props.near ?? 0.1,
+                size: typeof element.props.size === "number" ? element.props.size : 1,
+              })
           : element.type === "ambientLight"
             ? new AmbientLight({ ...options, color: element.props.color, intensity: element.props.intensity })
             : element.type === "directionalLight"
               ? new DirectionalLight({ ...options, color: element.props.color, intensity: element.props.intensity })
+              : element.type === "pointLight"
+                ? new PointLight({ ...options, color: element.props.color, intensity: element.props.intensity })
+                : element.type === "spotLight"
+                  ? new SpotLight({ ...options, color: element.props.color, intensity: element.props.intensity })
               : undefined;
 
   if (object === undefined) {
-    throw unsupported(element.type, "Use scene, group, mesh, perspectiveCamera, ambientLight, or directionalLight for portable V2 capture.");
+    throw unsupported(element.type, "Use scene, group, mesh, portable cameras, or portable lights for V2 capture.");
   }
 
   applyTransform(object, element.props);
+  object.visible = element.props.visible ?? true;
   childrenOf(element)
     .filter((child) => !isMeshSlot(child))
     .forEach((child, index) => object.add(captureObject(child, [...path, object.id ?? element.type, String(index)])));
@@ -91,9 +108,15 @@ function captureMesh(element: IR3fElement, options: { id?: string; name?: string
   });
 }
 
-function captureGeometry(element: IR3fElement): BoxGeometry | PlaneGeometry | SphereGeometry {
+function captureGeometry(element: IR3fElement): BoxGeometry | CapsuleGeometry | CylinderGeometry | PlaneGeometry | SphereGeometry {
   if (element.type === "boxGeometry") {
     return new BoxGeometry({ size: normalizeVec3(element.props.size, [1, 1, 1]) });
+  }
+  if (element.type === "capsuleGeometry") {
+    return new CapsuleGeometry({ height: geometryHeight(element.props.size), radius: element.props.radius });
+  }
+  if (element.type === "cylinderGeometry") {
+    return new CylinderGeometry({ height: geometryHeight(element.props.size), radius: element.props.radius });
   }
   if (element.type === "sphereGeometry") {
     return new SphereGeometry({ radius: element.props.radius });
@@ -101,7 +124,7 @@ function captureGeometry(element: IR3fElement): BoxGeometry | PlaneGeometry | Sp
   if (element.type === "planeGeometry") {
     return new PlaneGeometry({ size: normalizeVec2(element.props.size, [1, 1]) });
   }
-  throw unsupported(element.type, "Use boxGeometry, sphereGeometry, or planeGeometry in portable V2 capture.");
+  throw unsupported(element.type, "Use boxGeometry, capsuleGeometry, cylinderGeometry, sphereGeometry, or planeGeometry in portable V2 capture.");
 }
 
 function childrenOf(element: IR3fElement): IR3fElement[] {
@@ -137,7 +160,7 @@ function isMeshSlot(element: IR3fElement): boolean {
 }
 
 function isGeometry(type: R3fElementType): boolean {
-  return type === "boxGeometry" || type === "planeGeometry" || type === "sphereGeometry";
+  return type === "boxGeometry" || type === "capsuleGeometry" || type === "cylinderGeometry" || type === "planeGeometry" || type === "sphereGeometry";
 }
 
 function isMaterial(type: R3fElementType): boolean {
@@ -150,6 +173,10 @@ function normalizeVec3(value: R3fProps["size"], fallback: Vector3Tuple): Vector3
 
 function normalizeVec2(value: R3fProps["size"], fallback: readonly [number, number]): readonly [number, number] {
   return Array.isArray(value) && value.length === 2 ? [value[0] ?? fallback[0], value[1] ?? fallback[1]] : fallback;
+}
+
+function geometryHeight(value: R3fProps["size"]): number | undefined {
+  return Array.isArray(value) ? value[1] : undefined;
 }
 
 function unsupported(component: string, suggestion: string): R3fCaptureError {

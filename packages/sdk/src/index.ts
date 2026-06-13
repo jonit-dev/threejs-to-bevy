@@ -33,7 +33,7 @@ export {
   type SchemaFields,
   type SchemaKind,
 } from "./ecs/schema.js";
-export { BoxGeometry, PlaneGeometry, SphereGeometry, type SupportedGeometry } from "./geometry/primitives.js";
+export { BoxGeometry, CapsuleGeometry, CylinderGeometry, PlaneGeometry, SphereGeometry, type SupportedGeometry } from "./geometry/primitives.js";
 export {
   action,
   axis,
@@ -50,8 +50,8 @@ export {
 } from "./input.js";
 export { MeshStandardMaterial, type ColorValue, type TextureSlotReference } from "./materials/MeshStandardMaterial.js";
 export { Vector3, type Vector3Tuple } from "./math/Vector3.js";
-export { PerspectiveCamera } from "./scene/Camera.js";
-export { AmbientLight, DirectionalLight } from "./scene/Light.js";
+export { OrthographicCamera, PerspectiveCamera } from "./scene/Camera.js";
+export { AmbientLight, DirectionalLight, PointLight, SpotLight } from "./scene/Light.js";
 export { Mesh } from "./scene/Mesh.js";
 export { Object3D } from "./scene/Object3D.js";
 export { Scene } from "./scene/Scene.js";

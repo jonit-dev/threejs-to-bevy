@@ -23,7 +23,7 @@
             "id": { "type": "string", "minLength": 1 },
             "kind": { "const": "mesh" },
             "format": { "const": "generated" },
-            "primitive": { "enum": ["box", "sphere", "plane"] },
+              "primitive": { "enum": ["box", "capsule", "cylinder", "sphere", "plane"] },
             "size": { "type": "array", "items": { "type": "number" } }
           }
         },

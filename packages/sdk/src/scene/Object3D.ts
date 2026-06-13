@@ -4,6 +4,7 @@ import { Vector3 } from "../math/Vector3.js";
 export interface IObject3DOptions {
   id?: string;
   name?: string;
+  visible?: boolean;
 }
 
 export class Object3D {
@@ -15,10 +16,12 @@ export class Object3D {
   public readonly position = new Vector3();
   public readonly rotation = new Vector3();
   public readonly scale = new Vector3(1, 1, 1);
+  public visible: boolean;
 
   public constructor(options: IObject3DOptions = {}) {
     this.id = options.id;
     this.name = options.name ?? options.id ?? "";
+    this.visible = options.visible ?? true;
   }
 
   public get children(): readonly Object3D[] {

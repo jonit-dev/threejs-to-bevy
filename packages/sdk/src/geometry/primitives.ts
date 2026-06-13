@@ -37,4 +37,30 @@ export class PlaneGeometry {
   }
 }
 
-export type SupportedGeometry = BoxGeometry | SphereGeometry | PlaneGeometry;
+export class CylinderGeometry {
+  public readonly kind = "cylinder";
+  public readonly height: number;
+  public readonly radius: number;
+
+  public constructor(options: { height?: number; radius?: number } = {}) {
+    this.radius = options.radius ?? 0.5;
+    this.height = options.height ?? 1;
+    assertPositiveNumber(this.radius, "TN_SDK_GEOMETRY_INVALID_RADIUS", "CylinderGeometry.radius");
+    assertPositiveNumber(this.height, "TN_SDK_GEOMETRY_INVALID_SIZE", "CylinderGeometry.height");
+  }
+}
+
+export class CapsuleGeometry {
+  public readonly kind = "capsule";
+  public readonly height: number;
+  public readonly radius: number;
+
+  public constructor(options: { height?: number; radius?: number } = {}) {
+    this.radius = options.radius ?? 0.5;
+    this.height = options.height ?? 2;
+    assertPositiveNumber(this.radius, "TN_SDK_GEOMETRY_INVALID_RADIUS", "CapsuleGeometry.radius");
+    assertPositiveNumber(this.height, "TN_SDK_GEOMETRY_INVALID_SIZE", "CapsuleGeometry.height");
+  }
+}
+
+export type SupportedGeometry = BoxGeometry | CapsuleGeometry | CylinderGeometry | PlaneGeometry | SphereGeometry;

@@ -83,6 +83,7 @@ pub struct EntityComponents {
     pub light: Option<LightComponent>,
     pub mesh_renderer: Option<MeshRendererComponent>,
     pub transform: Option<TransformComponent>,
+    pub visibility: Option<VisibilityComponent>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -96,6 +97,7 @@ pub struct TransformComponent {
 pub struct MeshRendererComponent {
     pub mesh: String,
     pub material: String,
+    pub visible: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -105,6 +107,8 @@ pub struct CameraComponent {
     pub fov_y: Option<f32>,
     pub near: f32,
     pub far: f32,
+    pub priority: Option<i32>,
+    pub size: Option<f32>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -117,6 +121,11 @@ pub struct LightComponent {
 #[derive(Debug, Deserialize)]
 pub struct HierarchyComponent {
     pub parent: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct VisibilityComponent {
+    pub visible: bool,
 }
 
 #[derive(Clone, Debug, Deserialize)]

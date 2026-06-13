@@ -2,6 +2,7 @@ import { type IWorldIr } from "@threenative/ir";
 import type { IAssetReference } from "@threenative/sdk";
 
 interface IObjectLike {
+  activeCamera?: IObjectLike;
   children: readonly IObjectLike[];
   id?: string;
   material?: {
@@ -14,10 +15,11 @@ interface IObjectLike {
     occlusionTexture?: string | IAssetReference;
     roughness?: number;
   };
-  geometry?: { kind: string; size?: readonly number[]; radius?: number };
+  geometry?: { height?: number; kind: string; radius?: number; size?: readonly number[] };
   position: { toArray(): [number, number, number] };
   rotation: { toArray(): [number, number, number] };
   scale: { toArray(): [number, number, number] };
+  visible?: boolean;
   constructor: { name: string };
 }
 
@@ -38,7 +40,7 @@ export function sceneToWorld(scene: IObjectLike): ISceneEmitResult {
   assets.sort((left, right) => left.id.localeCompare(right.id));
   materials.sort((left, right) => left.id.localeCompare(right.id));
 
-  const camera = entities.find((entity) => entity.components.Camera !== undefined);
+  const camera = scene.activeCamera?.id === undefined ? entities.find((entity) => entity.components.Camera !== undefined) : entities.find((entity) => entity.id === scene.activeCamera?.id);
 
   return {
     assets,
@@ -68,6 +70,9 @@ function visitChildren(
         scale: child.scale.toArray(),
       },
     };
+    if (child.visible === false) {
+      components.Visibility = { visible: false };
+    }
 
     if (parentId !== undefined) {
       components.Hierarchy = { parent: parentId };
@@ -76,13 +81,13 @@ function visitChildren(
     if (child.constructor.name === "Mesh" && child.geometry !== undefined && child.material !== undefined) {
       const meshId = `mesh.${id}`;
       const materialId = `mat.${id}`;
-      components.MeshRenderer = { material: materialId, mesh: meshId };
+      components.MeshRenderer = { material: materialId, mesh: meshId, ...(child.visible === false ? { visible: false } : {}) };
       output.assets.push({
         id: meshId,
         kind: "mesh",
         format: "generated",
         primitive: child.geometry.kind,
-        size: child.geometry.size ?? (child.geometry.radius === undefined ? undefined : [child.geometry.radius]),
+        size: geometrySize(child.geometry),
       });
       output.materials.push({
         id: materialId,
@@ -98,6 +103,16 @@ function visitChildren(
       components.Camera = {
         kind: "perspective",
         fovY: "fovY" in child ? child.fovY : 60,
+        near: "near" in child ? child.near : 0.1,
+        far: "far" in child ? child.far : 100,
+        priority: 0,
+      };
+    }
+
+    if (child.constructor.name === "OrthographicCamera") {
+      components.Camera = {
+        kind: "orthographic",
+        size: "size" in child ? child.size : 1,
         near: "near" in child ? child.near : 0.1,
         far: "far" in child ? child.far : 100,
         priority: 0,
@@ -120,9 +135,35 @@ function visitChildren(
       };
     }
 
+    if (child.constructor.name === "PointLight") {
+      components.Light = {
+        kind: "point",
+        color: "color" in child ? child.color : "#ffffff",
+        intensity: "intensity" in child ? child.intensity : 1,
+      };
+    }
+
+    if (child.constructor.name === "SpotLight") {
+      components.Light = {
+        kind: "spot",
+        color: "color" in child ? child.color : "#ffffff",
+        intensity: "intensity" in child ? child.intensity : 1,
+      };
+    }
+
     output.entities.push({ id, components });
     visitChildren(child, id, output);
   });
+}
+
+function geometrySize(geometry: NonNullable<IObjectLike["geometry"]>): readonly number[] | undefined {
+  if (geometry.size !== undefined) {
+    return geometry.size;
+  }
+  if (geometry.radius === undefined) {
+    return undefined;
+  }
+  return geometry.height === undefined ? [geometry.radius] : [geometry.radius, geometry.height];
 }
 
 function emitTextureSlots(

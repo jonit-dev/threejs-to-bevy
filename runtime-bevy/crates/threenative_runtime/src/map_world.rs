@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 
 use bevy::{
-    math::primitives::{Cuboid, Rectangle, Sphere},
+    math::primitives::{Capsule3d, Cuboid, Cylinder, Rectangle, Sphere},
     prelude::*,
+    render::camera::ScalingMode,
 };
 use thiserror::Error;
 use threenative_components::ThreeNativeId;
@@ -101,6 +102,7 @@ fn spawn_entity(
                 mesh,
                 material,
                 transform,
+                visibility: map_visibility(entity),
                 ..Default::default()
             })
             .insert((stable_id, name))
@@ -108,19 +110,28 @@ fn spawn_entity(
     }
 
     if let Some(camera) = &entity.components.camera {
-        let projection = Projection::Perspective(PerspectiveProjection {
-            fov: camera.fov_y.unwrap_or(60.0).to_radians(),
-            near: camera.near,
-            far: camera.far,
-            ..Default::default()
-        });
+        let projection = if camera.kind == "orthographic" {
+            Projection::Orthographic(OrthographicProjection {
+                far: camera.far,
+                near: camera.near,
+                scaling_mode: ScalingMode::FixedVertical(camera.size.unwrap_or(1.0)),
+                ..Default::default()
+            })
+        } else {
+            Projection::Perspective(PerspectiveProjection {
+                fov: camera.fov_y.unwrap_or(60.0).to_radians(),
+                near: camera.near,
+                far: camera.far,
+                ..Default::default()
+            })
+        };
         return Ok(world
             .spawn(Camera3dBundle {
                 projection,
                 transform,
                 ..Default::default()
             })
-            .insert((stable_id, name))
+            .insert((stable_id, name, map_visibility(entity)))
             .id());
     }
 
@@ -136,6 +147,37 @@ fn spawn_entity(
                         ..Default::default()
                     },
                     transform: light_transform,
+                    visibility: map_visibility(entity),
+                    ..Default::default()
+                })
+                .insert((stable_id, name))
+                .id());
+        }
+        if light.kind == "point" {
+            return Ok(world
+                .spawn(PointLightBundle {
+                    point_light: PointLight {
+                        color: color_to_bevy(&light.color),
+                        intensity: light.intensity * 800.0,
+                        ..Default::default()
+                    },
+                    transform,
+                    visibility: map_visibility(entity),
+                    ..Default::default()
+                })
+                .insert((stable_id, name))
+                .id());
+        }
+        if light.kind == "spot" {
+            return Ok(world
+                .spawn(SpotLightBundle {
+                    spot_light: SpotLight {
+                        color: color_to_bevy(&light.color),
+                        intensity: light.intensity * 800.0,
+                        ..Default::default()
+                    },
+                    transform,
+                    visibility: map_visibility(entity),
                     ..Default::default()
                 })
                 .insert((stable_id, name))
@@ -149,7 +191,9 @@ fn spawn_entity(
         }
     }
 
-    Ok(world.spawn((stable_id, name, transform)).id())
+    Ok(world
+        .spawn((stable_id, name, transform, map_visibility(entity)))
+        .id())
 }
 
 fn add_mesh(world: &mut World, asset: &AssetIr) -> Handle<Mesh> {
@@ -162,6 +206,34 @@ fn add_mesh(world: &mut World, asset: &AssetIr) -> Handle<Mesh> {
                 .copied()
                 .unwrap_or(0.5),
         }),
+        Some("cylinder") => Mesh::from(Cylinder::new(
+            asset
+                .size
+                .as_ref()
+                .and_then(|size| size.first())
+                .copied()
+                .unwrap_or(0.5),
+            asset
+                .size
+                .as_ref()
+                .and_then(|size| size.get(1))
+                .copied()
+                .unwrap_or(1.0),
+        )),
+        Some("capsule") => Mesh::from(Capsule3d::new(
+            asset
+                .size
+                .as_ref()
+                .and_then(|size| size.first())
+                .copied()
+                .unwrap_or(0.5),
+            asset
+                .size
+                .as_ref()
+                .and_then(|size| size.get(1))
+                .copied()
+                .unwrap_or(1.0),
+        )),
         Some("plane") => {
             let width = asset
                 .size
@@ -187,6 +259,25 @@ fn add_mesh(world: &mut World, asset: &AssetIr) -> Handle<Mesh> {
         }
     };
     world.resource_mut::<Assets<Mesh>>().add(mesh)
+}
+
+fn map_visibility(entity: &WorldEntity) -> Visibility {
+    if entity
+        .components
+        .visibility
+        .as_ref()
+        .is_some_and(|visibility| !visibility.visible)
+        || entity
+            .components
+            .mesh_renderer
+            .as_ref()
+            .and_then(|renderer| renderer.visible)
+            .is_some_and(|visible| !visible)
+    {
+        Visibility::Hidden
+    } else {
+        Visibility::Inherited
+    }
 }
 
 fn add_material(world: &mut World, material: &MaterialIr) -> Handle<StandardMaterial> {

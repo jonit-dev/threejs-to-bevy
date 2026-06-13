@@ -74,4 +74,14 @@ function resizeRenderer(renderer: THREE.WebGLRenderer, camera: THREE.Camera, con
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
   }
+  if (camera instanceof THREE.OrthographicCamera) {
+    const size = Math.max(camera.top - camera.bottom, 1);
+    const halfHeight = size / 2;
+    const halfWidth = halfHeight * (width / height);
+    camera.left = -halfWidth;
+    camera.right = halfWidth;
+    camera.top = halfHeight;
+    camera.bottom = -halfHeight;
+    camera.updateProjectionMatrix();
+  }
 }

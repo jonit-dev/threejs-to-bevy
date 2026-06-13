@@ -3,11 +3,14 @@ import type { ColorValue, Vector3Tuple } from "@threenative/sdk";
 export type R3fElementType =
   | "ambientLight"
   | "boxGeometry"
+  | "capsuleGeometry"
+  | "cylinderGeometry"
   | "directionalLight"
   | "group"
   | "mesh"
   | "meshBasicMaterial"
   | "meshStandardMaterial"
+  | "orthographicCamera"
   | "perspectiveCamera"
   | "planeGeometry"
   | "pointLight"
@@ -27,7 +30,7 @@ export interface INodeProps {
 
 export interface IGeometryProps {
   radius?: number;
-  size?: Vector3Tuple | readonly [number, number];
+  size?: number | Vector3Tuple | readonly [number, number];
 }
 
 export interface IMaterialProps {
@@ -40,6 +43,10 @@ export interface ICameraProps extends INodeProps {
   far?: number;
   fovY?: number;
   near?: number;
+}
+
+export interface IOrthographicCameraProps extends ICameraProps {
+  size?: number;
 }
 
 export interface ILightProps extends INodeProps {
@@ -71,11 +78,14 @@ export namespace JSX {
   export interface IntrinsicElements {
     ambientLight: ILightProps;
     boxGeometry: IGeometryProps;
+    capsuleGeometry: IGeometryProps;
+    cylinderGeometry: IGeometryProps;
     directionalLight: ILightProps;
     group: INodeProps;
     mesh: INodeProps;
     meshBasicMaterial: IMaterialProps;
     meshStandardMaterial: IMaterialProps;
+    orthographicCamera: IOrthographicCameraProps;
     perspectiveCamera: ICameraProps;
     planeGeometry: IGeometryProps;
     pointLight: ILightProps;

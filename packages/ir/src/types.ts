@@ -62,12 +62,17 @@ export interface ILightComponent {
   kind: "ambient" | "directional" | "point" | "spot";
 }
 
+export interface IVisibilityComponent {
+  visible: boolean;
+}
+
 export interface IWorldEntity {
   components: Record<string, unknown> & {
     Camera?: ICameraComponent;
     Light?: ILightComponent;
     MeshRenderer?: IMeshRendererComponent;
     Transform?: ITransformComponent;
+    Visibility?: IVisibilityComponent;
   };
   id: string;
   tags?: string[];
@@ -135,7 +140,7 @@ export type IAssetIr =
       format: "generated";
       id: string;
       kind: "mesh";
-      primitive: "box" | "sphere" | "plane";
+      primitive: "box" | "capsule" | "cylinder" | "plane" | "sphere";
       size?: readonly number[];
     }
   | {
