@@ -89,29 +89,51 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
     assert!((clear.blue - 0xaa as f32 / 255.0).abs() < 0.01);
     let ambient = app.world().resource::<AmbientLight>();
     assert!((ambient.brightness - 0.8).abs() < 0.01);
+    let sun_count = app
+        .world_mut()
+        .query::<&DirectionalLight>()
+        .iter(app.world())
+        .count();
+    assert_eq!(sun_count, 1);
 
     fs::remove_dir_all(root).expect("temp bundle should be removed");
 }
 
 #[test]
-fn textured_gltf_materials_should_default_to_cutout_double_sided_rendering() {
+fn textured_gltf_materials_should_preserve_lit_cutout_rendering() {
     let mut material = StandardMaterial {
         base_color_texture: Some(Handle::default()),
-        alpha_mode: AlphaMode::Opaque,
+        normal_map_texture: Some(Handle::default()),
+        alpha_mode: AlphaMode::Mask(0.35),
         double_sided: false,
         cull_mode: Some(Face::Back),
+        unlit: false,
         ..Default::default()
     };
 
     assert!(normalize_textured_material(&mut material));
     assert_eq!(material.alpha_mode, AlphaMode::Mask(0.2));
-    assert!(material.double_sided);
-    assert_eq!(material.cull_mode, None);
-    assert!(material.unlit);
+    assert!(!material.double_sided);
+    assert_eq!(material.cull_mode, Some(Face::Back));
+    assert!(!material.unlit);
+    assert!(material.normal_map_texture.is_some());
 
     let mut untextured = StandardMaterial::default();
     assert!(!normalize_textured_material(&mut untextured));
     assert_eq!(untextured.alpha_mode, AlphaMode::Opaque);
+}
+
+#[test]
+fn textured_gltf_materials_should_cull_dark_cutout_backfaces() {
+    let mut material = StandardMaterial {
+        base_color_texture: Some(Handle::default()),
+        alpha_mode: AlphaMode::Mask(0.2),
+        ..Default::default()
+    };
+
+    assert!(normalize_textured_material(&mut material));
+    assert_eq!(material.alpha_mode, AlphaMode::Mask(0.2));
+    assert_eq!(material.cull_mode, Some(Face::Back));
 }
 
 fn temp_bundle_dir() -> PathBuf {

@@ -1,4 +1,4 @@
-use bevy::{prelude::*, render::alpha::AlphaMode};
+use bevy::{prelude::*, render::alpha::AlphaMode, render::render_resource::Face};
 use threenative_loader::{ColorIr, LoadedBundle};
 
 #[derive(Debug, PartialEq)]
@@ -66,6 +66,25 @@ pub fn apply_atmosphere_to_world(world: &mut World, bundle: &LoadedBundle) {
         color: color_to_bevy(&profile.ambient.color),
         brightness: profile.ambient.intensity,
     });
+    world
+        .spawn(DirectionalLightBundle {
+            directional_light: DirectionalLight {
+                color: color_to_bevy(&profile.sun.color),
+                illuminance: profile.sun.intensity * 800.0,
+                shadows_enabled: false,
+                ..Default::default()
+            },
+            transform: Transform::default().looking_to(
+                Vec3::new(
+                    profile.sun.direction[0],
+                    profile.sun.direction[1],
+                    profile.sun.direction[2],
+                ),
+                Vec3::Y,
+            ),
+            ..Default::default()
+        })
+        .insert(Name::new(profile.sun.id.clone()));
 }
 
 pub fn normalize_loaded_gltf_materials(mut materials: ResMut<Assets<StandardMaterial>>) {
@@ -79,9 +98,8 @@ pub fn normalize_textured_material(material: &mut StandardMaterial) -> bool {
         return false;
     }
     material.alpha_mode = AlphaMode::Mask(0.2);
-    material.double_sided = true;
-    material.cull_mode = None;
-    material.unlit = true;
+    material.double_sided = false;
+    material.cull_mode = Some(Face::Back);
     true
 }
 
