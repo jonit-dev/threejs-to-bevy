@@ -13,6 +13,8 @@ pub mod input;
 pub mod map_world;
 pub mod physics;
 pub mod rendering;
+pub mod systems_context;
+pub mod systems_effects;
 pub mod systems_host;
 pub mod ui;
 pub mod walkability;

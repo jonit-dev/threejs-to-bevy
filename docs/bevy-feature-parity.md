@@ -84,11 +84,11 @@ Baseline: the repo pins Bevy and `bevy_ecs` to `=0.14.2`.
 | Area | Status | What's drifting or missing |
 | --- | --- | --- |
 | V4 PRD scope and docs gate | ✅ | `docs/PRDs/v4` defines the QuickJS scripting proof and `check:docs:v4` rejects obvious scope drift. |
-| `systems.ir.json` scripting contract | ⚠️ | V4 system declarations now include reads/writes, queries, events, commands, services, stage, and script export metadata; native consumers are still pending. |
-| `scripts.bundle.js` compiler output | ⚠️ | The compiler emits deterministic portable script bundles only when systems exist, includes stable system ID metadata, and passes an ESM loadability probe; native QuickJS parse/load proof is still pending. |
-| Web portable system runner | ⚠️ | Web executes the V4 primitive example through cloned portable query snapshots, validates effects before mutation, and emits canonical web patch/event/command/service logs; native comparison is still pending. |
-| Bevy QuickJS host | ❌ | The native adapter does not yet embed QuickJS or run the same JavaScript system bundle. |
-| Patch/event/command/service-call log parity | ❌ | Web effect logs are emitted by `tn verify`, but fixed input trace comparison and native QuickJS logs do not exist yet. |
+| `systems.ir.json` scripting contract | ⚠️ | V4 system declarations now include reads/writes, queries, events, commands, services, stage, and script export metadata; Bevy consumes the primitive host subset, while broader runtime scheduling is still pending. |
+| `scripts.bundle.js` compiler output | ⚠️ | The compiler emits deterministic portable script bundles only when systems exist, includes stable system ID metadata, passes an ESM loadability probe, and is loaded by the Bevy QuickJS host in focused tests. |
+| Web portable system runner | ⚠️ | Web executes the V4 primitive example through cloned portable query snapshots, validates effects before mutation, and emits canonical web patch/event/command/service logs; fixed-trace native comparison is still pending. |
+| Bevy QuickJS host | ⚠️ | The native adapter embeds `quickjs-rusty`/QuickJS-ng, loads `scripts.bundle.js`, calls declared exports, snapshots portable ECS data, validates effects, applies declared patches, and keeps an unsupported-host diagnostic helper for unavailable builds; runtime schedule integration is still pending. |
+| Patch/event/command/service-call log parity | ⚠️ | Web and native now emit the same canonical effect-log shape, but the fixed input trace comparator and native artifact capture are not wired into a V4 release gate yet. |
 | Unsupported portable-script diagnostics | ⚠️ | DOM, Node/runtime imports, timer and worker APIs, arbitrary npm imports, undeclared writes, commands, events, and services fail before runtime for current bundled systems; deeper AST coverage is still pending. |
 
 ## Sources

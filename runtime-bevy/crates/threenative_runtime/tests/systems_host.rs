@@ -4,47 +4,153 @@ use std::{
 };
 
 use threenative_loader::load_bundle;
-use threenative_runtime::systems_host::{
-    diagnose_native_system_host, ensure_native_system_host_supported,
+use threenative_runtime::{
+    systems_context::NativeSystemTimeSnapshot,
+    systems_host::{
+        diagnose_native_system_host, ensure_native_system_host_supported, run_native_systems_once,
+        unsupported_native_system_host_diagnostic,
+    },
 };
 
 #[test]
-fn systems_host_should_report_unsupported_script_host() {
-    let root = write_bundle("with-scripts", true);
-    let bundle = load_bundle(&root).expect("scripted bundle should load");
+fn systems_host_should_call_quickjs_system_export() {
+    let root = write_bundle("call-export", "system_movePlayer");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
 
-    let diagnostics = diagnose_native_system_host(&bundle);
+    let run = run_native_systems_once(&mut bundle, time()).expect("system should run");
+
+    let transform = bundle.world.entities[0]
+        .components
+        .transform
+        .as_ref()
+        .expect("transform should still exist");
+    assert_eq!(transform.position, Some([0.016, 0.0, 0.0]));
+    assert_eq!(run.logs[0].schema, "threenative.web-system-effects");
+    assert_eq!(run.logs[0].entries[0].kind, "patch");
+    assert_eq!(run.logs[0].entries[0].system, "movePlayer");
+}
+
+#[test]
+fn systems_host_should_pass_time_resource_to_quickjs_system() {
+    let root = write_bundle("time-context", "system_movePlayer");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+
+    run_native_systems_once(&mut bundle, time()).expect("system should run");
+
+    let transform = bundle.world.entities[0]
+        .components
+        .transform
+        .as_ref()
+        .expect("transform should still exist");
+    assert_eq!(transform.position, Some([0.016, 0.0, 0.0]));
+}
+
+#[test]
+fn systems_host_should_reject_missing_export() {
+    let root = write_bundle("missing-export", "missing_export");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+
     let error =
-        ensure_native_system_host_supported(&bundle).expect_err("script host should be gated");
+        run_native_systems_once(&mut bundle, time()).expect_err("missing export should fail");
 
-    assert_eq!(diagnostics[0].code, "TN_BEVY_SYSTEM_HOST_UNSUPPORTED");
-    assert_eq!(diagnostics[0].severity, "error");
-    assert_eq!(diagnostics[0].system_id.as_deref(), Some("movePlayer"));
-    assert!(
-        diagnostics[0]
-            .message
-            .contains("Native TypeScript system hosting is gated in V2")
-    );
-    assert_eq!(error.code, "TN_BEVY_SYSTEM_HOST_UNSUPPORTED");
+    assert_eq!(error.code, "TN_BEVY_SYSTEM_EXPORT_MISSING");
+    assert!(error.message.contains("movePlayer"));
+    assert!(error.message.contains("missing_export"));
 }
 
 #[test]
 fn systems_host_should_allow_bundle_without_script_host() {
-    let root = write_bundle("without-scripts", false);
+    let root = write_bundle_without_scripts("without-scripts");
     let bundle = load_bundle(&root).expect("bundle should load");
 
     assert!(diagnose_native_system_host(&bundle).is_empty());
     ensure_native_system_host_supported(&bundle).expect("bundle without scripts should run");
 }
 
-fn write_bundle(name: &str, with_scripts: bool) -> PathBuf {
-    let root = std::env::temp_dir().join(format!("tn-systems-host-{name}-{}", std::process::id()));
-    if root.exists() {
-        fs::remove_dir_all(&root).expect("old temp bundle should be removed");
-    }
-    fs::create_dir_all(&root).expect("temp bundle should be created");
+#[test]
+fn systems_host_should_keep_unsupported_diagnostic_for_unavailable_builds() {
+    let diagnostic = unsupported_native_system_host_diagnostic("movePlayer");
+
+    assert_eq!(diagnostic.code, "TN_BEVY_SYSTEM_HOST_UNSUPPORTED");
+    assert_eq!(diagnostic.severity, "error");
+    assert_eq!(diagnostic.system_id.as_deref(), Some("movePlayer"));
+    assert!(diagnostic.message.contains("QuickJS host"));
+}
+
+fn write_bundle(name: &str, export_name: &str) -> PathBuf {
+    let root = root(name);
+    write_base_bundle(&root, true);
     write_json(
         &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "player",
+      "components": {
+        "Transform": { "position": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+      }
+    }
+  ]
+}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        &format!(
+            r#"{{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {{
+      "name": "movePlayer",
+      "schedule": "update",
+      "reads": ["Transform"],
+      "writes": ["Transform"],
+      "queries": [{{ "with": ["Transform"], "without": [] }}],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "services": [],
+      "script": {{ "bundle": "scripts.bundle.js", "exportName": "{export_name}" }}
+    }}
+  ]
+}}"#,
+        ),
+    );
+    fs::write(
+        root.join("scripts.bundle.js"),
+        r#"const Transform = Object.freeze({ name: "Transform" });
+const system_movePlayer = (ctx) => {
+  const entity = ctx.query()[0];
+  const transform = entity.get(Transform);
+  entity.patch(Transform, { position: [transform.position[0] + ctx.time.fixedDt, 0, 0] });
+};
+export const systemIds = Object.freeze({ "system_movePlayer": "movePlayer" });
+export const systems = Object.freeze({ "system_movePlayer": system_movePlayer });
+"#,
+    )
+    .expect("script bundle should be written");
+    root
+}
+
+fn write_bundle_without_scripts(name: &str) -> PathBuf {
+    let root = root(name);
+    write_base_bundle(&root, false);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{"schema":"threenative.world","version":"0.1.0","entities":[]}"#,
+    );
+    root
+}
+
+fn write_base_bundle(root: &Path, with_scripts: bool) {
+    fs::create_dir_all(root).expect("temp bundle should be created");
+    write_json(
+        root,
         "manifest.json",
         if with_scripts {
             r#"{
@@ -67,40 +173,41 @@ fn write_bundle(name: &str, with_scripts: bool) -> PathBuf {
         },
     );
     write_json(
-        &root,
-        "world.ir.json",
-        r#"{"schema":"threenative.world","version":"0.1.0","entities":[]}"#,
-    );
-    write_json(
-        &root,
+        root,
         "assets.manifest.json",
         r#"{"schema":"threenative.assets","version":"0.1.0","assets":[]}"#,
     );
     write_json(
-        &root,
+        root,
         "materials.ir.json",
         r#"{"schema":"threenative.materials","version":"0.1.0","materials":[]}"#,
     );
     write_json(
-        &root,
+        root,
         "target.profile.json",
         r#"{"schema":"threenative.target-profile","version":"0.1.0","targets":["desktop"]}"#,
     );
-    if with_scripts {
-        write_json(
-            &root,
-            "systems.ir.json",
-            r#"{"schema":"threenative.systems","version":"0.1.0","systems":[{"name":"movePlayer"}]}"#,
-        );
-        fs::write(
-            root.join("scripts.bundle.js"),
-            "export const systems = Object.freeze({});\n",
-        )
-        .expect("script bundle should be written");
+}
+
+fn root(name: &str) -> PathBuf {
+    let root = std::env::temp_dir().join(format!("tn-systems-host-{name}-{}", std::process::id()));
+    if root.exists() {
+        fs::remove_dir_all(&root).expect("old temp bundle should be removed");
     }
     root
 }
 
 fn write_json(root: &Path, file: &str, contents: &str) {
     fs::write(root.join(file), contents).expect("bundle file should be written");
+}
+
+fn time() -> NativeSystemTimeSnapshot {
+    NativeSystemTimeSnapshot {
+        delta: 0.016,
+        dt: 0.016,
+        elapsed: 1.0,
+        fixed_delta: 0.016,
+        fixed_dt: 0.016,
+        paused: false,
+    }
 }

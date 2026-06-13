@@ -14,15 +14,16 @@ pnpm check:docs:v4
 ```
 
 `verify:v4` is not implemented yet. Until the V4 release gate exists, V4 work
-must keep `pnpm check:docs:v4`, `pnpm verify:v3`, and
+must keep `pnpm check:docs:v4`, the focused V4 native/web checks, and
 `pnpm verify:conformance` green as the relevant regression gates.
 
 ## V4 Proves
 
-V4 is in progress and has not proven runtime scripting yet. Its target proof is
-one constrained TypeScript system bundle running as the same
-`scripts.bundle.js` in web JavaScript and embedded QuickJS, with equivalent
-patch, event, command, and service-call logs for a primitive demo.
+V4 is in progress and has proven the first web and native runtime scripting
+slices. Its target proof remains one constrained TypeScript system bundle
+running as the same `scripts.bundle.js` in web JavaScript and embedded QuickJS,
+with equivalent patch, event, command, and service-call logs for a primitive
+demo.
 
 Current implemented V4 slice:
 
@@ -39,6 +40,11 @@ Current implemented V4 slice:
 - the web runtime executes portable systems through cloned query snapshots,
   validates effects before applying them, and writes canonical web effect logs
   through `tn verify`.
+- the Bevy runtime embeds `quickjs-rusty`/QuickJS-ng, loads
+  `scripts.bundle.js`, calls declared system exports with portable context
+  snapshots, validates effects against `systems.ir.json`, applies declared
+  transform/custom-component patches, and emits the same canonical effect-log
+  shape as the web runner.
 - `examples/v4-scripting` builds a primitive scripted scene and passes web
   visual verification with expected motion and a web effect-log artifact.
 
@@ -49,7 +55,8 @@ Current implemented V4 slice:
 - async systems or state-preserving hot reload
 - full physics, animation graphs, UI runtime parity, or editor tooling
 - direct Three.js, Bevy, renderer, DOM, filesystem, network, or platform access
-- native QuickJS execution or cross-runtime patch-log parity yet
+- fixed-trace cross-runtime patch-log comparison and release-gated native V4
+  artifact capture yet
 
 ## V3 Proves
 

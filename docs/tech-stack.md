@@ -218,10 +218,10 @@ runtime-bevy/
     threenative_script_host/  # TS/JS host when selected
 ```
 
-V4 native scripting starts with an embedded QuickJS-ng-style JavaScript host,
-but no TypeScript-side QuickJS binding is selected for compiler tests. The
-compiler runs an ESM loadability probe for `scripts.bundle.js`; the actual
-QuickJS parse/load proof and binding choice are owned by the V4 Bevy host work.
+V4 native scripting uses `quickjs-rusty = "=0.12.0"`, a QuickJS-ng wrapper, in
+`threenative_runtime` to load `scripts.bundle.js` and call declared portable
+system exports. Compiler tests still use an ESM loadability probe for
+`scripts.bundle.js`; the Bevy adapter owns the native QuickJS execution proof.
 
 Runtime rules:
 
@@ -270,7 +270,8 @@ Candidate approaches:
 Recommendation:
 
 1. Phase 0 should not require native TS execution. Load static IR into Bevy.
-2. V4 should spike QuickJS-ng-style embedding for `scripts.bundle.js`.
+2. V4 spikes QuickJS-ng-style embedding for `scripts.bundle.js` through
+   `quickjs-rusty = "=0.12.0"`.
 3. Keep system host APIs narrow: declared queries, command buffers, time, input,
    assets, events, resources, and declared engine services.
 4. Treat script host choice as adapter-private so the IR and SDK do not depend

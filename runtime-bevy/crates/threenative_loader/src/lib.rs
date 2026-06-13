@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -98,6 +98,8 @@ pub struct EntityComponents {
     pub rigid_body: Option<RigidBodyComponent>,
     pub transform: Option<TransformComponent>,
     pub visibility: Option<VisibilityComponent>,
+    #[serde(flatten)]
+    pub extra: HashMap<String, serde_json::Value>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -158,7 +160,7 @@ pub struct VisibilityComponent {
     pub visible: bool,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum ColorIr {
     Hex(String),
@@ -212,16 +214,68 @@ pub struct TargetProfile {
     pub targets: Vec<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct SystemsIr {
     pub schema: String,
     pub version: String,
     pub systems: Vec<SystemIr>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct SystemIr {
     pub name: String,
+    #[serde(default)]
+    pub commands: Vec<SystemCommandIr>,
+    #[serde(default, rename = "eventReads")]
+    pub event_reads: Vec<String>,
+    #[serde(default, rename = "eventWrites")]
+    pub event_writes: Vec<String>,
+    #[serde(default)]
+    pub queries: Vec<SystemQueryIr>,
+    #[serde(default)]
+    pub reads: Vec<String>,
+    #[serde(default)]
+    pub schedule: String,
+    pub script: Option<SystemScriptIr>,
+    #[serde(default)]
+    pub services: Vec<String>,
+    #[serde(default)]
+    pub writes: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(tag = "kind")]
+pub enum SystemCommandIr {
+    #[serde(rename = "addComponent")]
+    AddComponent { component: String, entity: String },
+    #[serde(rename = "despawn")]
+    Despawn { entity: String },
+    #[serde(rename = "emitEvent")]
+    EmitEvent { event: String },
+    #[serde(rename = "removeComponent")]
+    RemoveComponent { component: String, entity: String },
+    #[serde(rename = "setComponent")]
+    SetComponent { component: String, entity: String },
+    #[serde(rename = "spawn")]
+    Spawn {
+        components: Vec<String>,
+        entity: String,
+    },
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct SystemQueryIr {
+    #[serde(default)]
+    pub with: Vec<String>,
+    #[serde(default)]
+    pub without: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct SystemScriptIr {
+    pub bundle: String,
+    #[serde(rename = "exportName")]
+    pub export_name: String,
 }
 
 #[derive(Debug, Deserialize)]
