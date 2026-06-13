@@ -10,12 +10,12 @@ V4: native gameplay scripting proof for a primitive scene.
 Current release command:
 
 ```bash
-pnpm check:docs:v4
+pnpm verify:v4
 ```
 
-`verify:v4` is not implemented yet. Until the V4 release gate exists, V4 work
-must keep `pnpm check:docs:v4`, the focused V4 native/web checks, and
-`pnpm verify:conformance` green as the relevant regression gates.
+`verify:v4` builds the primitive scripting demo, runs the web JavaScript and
+native QuickJS hosts over the same fixed trace, compares canonical effect logs,
+and writes the V4 report under `artifacts/v4`.
 
 ## V4 Proves
 
@@ -48,6 +48,10 @@ Current implemented V4 slice:
 - web and Bevy expose deterministic V4 service facades for time, input, events,
   commands, `physics.raycast`, and `animation.play`, including permission
   checks and canonical service-call log entries.
+- `pnpm verify:v4` compares web and native QuickJS patch/event/command/service
+  effect logs with stable numeric normalization and writes
+  `artifacts/v4/web-effects.json`, `native-effects.json`, and
+  `effects-diff.json`.
 - `examples/v4-scripting` builds a primitive scripted scene covering rotation,
   movement, spawn/despawn, event handoff, `physics.raycast`, and
   `animation.play`; it passes web visual verification with expected motion,
@@ -63,8 +67,8 @@ Current implemented V4 slice:
 - async systems or state-preserving hot reload
 - full physics, animation graphs, UI runtime parity, or editor tooling
 - direct Three.js, Bevy, renderer, DOM, filesystem, network, or platform access
-- fixed-trace cross-runtime patch-log comparison and release-gated native V4
-  artifact capture automation yet
+- multi-frame native scheduling, runtime hot reload, or browser/native visual
+  equivalence beyond the current primitive frame artifact
 
 ## V3 Proves
 

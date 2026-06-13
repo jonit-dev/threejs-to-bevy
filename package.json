@@ -18,7 +18,8 @@
     "verify:conformance": "node scripts/verify-conformance.mjs",
     "verify:v1": "node scripts/verify-v1.mjs",
     "verify:v2": "node scripts/verify-v2.mjs",
-    "verify:v3": "node scripts/verify-v3.mjs"
+    "verify:v3": "node scripts/verify-v3.mjs",
+    "verify:v4": "pnpm --filter @threenative/cli build && node scripts/verify-v4.mjs"
   },
   "devDependencies": {
     "typescript": "^5.9.3"

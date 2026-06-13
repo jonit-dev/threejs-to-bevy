@@ -1,4 +1,4 @@
-use std::fs;
+use std::{collections::BTreeMap, fs};
 
 use quickjs_rusty::Context;
 use serde_json::{Value, json};
@@ -6,7 +6,7 @@ use thiserror::Error;
 use threenative_loader::{LoadedBundle, SystemIr};
 
 use crate::{
-    systems_context::{NativeSystemTimeSnapshot, build_system_context_snapshot},
+    systems_context::{NativeSystemTimeSnapshot, build_system_context_snapshot_with_events},
     systems_effects::{NativeSystemEffectLog, NativeSystemEffects, apply_system_effects},
 };
 
@@ -158,17 +158,23 @@ pub fn run_native_systems_once(
             )
         })?;
 
+    let mut events = BTreeMap::new();
     let mut logs = Vec::new();
-    for system in systems {
-        let effects = call_system_export(&context, bundle, &system, time.clone())?;
-        let log = apply_system_effects(bundle, &system, &effects, 1, 1).map_err(|diagnostics| {
-            let first = diagnostics
-                .into_iter()
-                .next()
-                .expect("invalid effects should include diagnostics");
-            host_error(first.code, first.message)
-        })?;
-        logs.push(log);
+    for schedule in ["fixedUpdate", "update", "postUpdate"] {
+        for system in systems.iter().filter(|system| system.schedule == schedule) {
+            let effects =
+                call_system_export(&context, bundle, system, time.clone(), events.clone())?;
+            queue_events(&mut events, &effects);
+            let log =
+                apply_system_effects(bundle, system, &effects, 1, 1).map_err(|diagnostics| {
+                    let first = diagnostics
+                        .into_iter()
+                        .next()
+                        .expect("invalid effects should include diagnostics");
+                    host_error(first.code, first.message)
+                })?;
+            logs.push(log);
+        }
     }
 
     Ok(NativeSystemsHostRun { logs })
@@ -179,6 +185,7 @@ fn call_system_export(
     bundle: &LoadedBundle,
     system: &SystemIr,
     time: NativeSystemTimeSnapshot,
+    events: BTreeMap<String, Vec<Value>>,
 ) -> Result<NativeSystemEffects, SystemsHostError> {
     let export_name = system
         .script
@@ -190,7 +197,7 @@ fn call_system_export(
                 format!("System '{}' does not declare a script export.", system.name),
             )
         })?;
-    let snapshot = build_system_context_snapshot(bundle, system, time);
+    let snapshot = build_system_context_snapshot_with_events(bundle, system, time, events);
     let snapshot_json = serde_json::to_string(&snapshot).map_err(|source| {
         host_error(
             "TN_BEVY_SYSTEM_CONTEXT_SERIALIZE_FAILED",
@@ -239,6 +246,15 @@ fn call_system_export(
             ),
         )
     })
+}
+
+fn queue_events(events: &mut BTreeMap<String, Vec<Value>>, effects: &NativeSystemEffects) {
+    for event in &effects.events {
+        events
+            .entry(event.event.clone())
+            .or_default()
+            .push(event.payload.clone());
+    }
 }
 
 fn module_source(script_source: &str) -> String {

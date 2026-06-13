@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -15,6 +15,9 @@ test("v4Scripting should include web patch log path", async () => {
 
     const report = await verifyV4Scripting({
       artifactDir,
+      nativeEffectLogRunner: async ({ outputPath, webEffectsPath }) => {
+        await copyFile(webEffectsPath, outputPath);
+      },
       previewVerifier: async ({ artifactDir: verifierArtifactDir, previewUrl }) => ({
         artifacts: {
           effectLogPath: join(verifierArtifactDir, "web-effect-log.json"),
@@ -47,7 +50,11 @@ test("v4Scripting should include web patch log path", async () => {
     assert.equal(report.status, "pass");
     assert.match(report.artifacts.reportPath, /artifacts\/v4\/v4-scripting-report\.json$/);
     assert.match(report.artifacts.effectLogPath ?? "", /artifacts\/v4\/web-effect-log\.json$/);
+    assert.match(report.artifacts.webEffectsPath ?? "", /artifacts\/v4\/web-effects\.json$/);
+    assert.match(report.artifacts.nativeEffectsPath ?? "", /artifacts\/v4\/native-effects\.json$/);
+    assert.match(report.artifacts.diffPath ?? "", /artifacts\/v4\/effects-diff\.json$/);
     assert.equal(saved.artifacts.effectLogPath, report.artifacts.effectLogPath);
+    assert.equal(saved.effectComparison?.status, "pass");
     assert.equal(webReport.status, "pass");
   } finally {
     await rm(root, { force: true, recursive: true });

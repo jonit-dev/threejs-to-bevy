@@ -1,14 +1,19 @@
 # verify:v4
 
-`verify:v4` is not the release gate yet. V4 now has web-side artifacts and a
-native Bevy frame artifact; the later V4 native verifier will compare web and
-QuickJS effect output automatically.
+`verify:v4` is the current V4 scripting gate. It builds the primitive scripting
+demo, runs web JavaScript and native QuickJS over the same fixed trace, compares
+canonical effect logs, and keeps the web and native visual proof artifacts under
+`artifacts/v4`.
 
 Current artifacts:
 
 - `artifacts/v4/v4-scripting-report.json`
 - `artifacts/v4/verification-report.json`
+- `artifacts/v4/web-effects.json`
+- `artifacts/v4/native-effects.json`
+- `artifacts/v4/effects-diff.json`
 - `artifacts/v4/web-effect-log.json`
+- `artifacts/v4/web-visual-report.json`
 - `artifacts/v4/frame-01.png`, `frame-02.png`, and `frame-03.png`
 - `artifacts/v4/native-bevy-frame-01.png`
 
@@ -22,7 +27,7 @@ rotation, movement, spawn/despawn, event handoff, `physics.raycast`, and
 Generate the web-side proof with:
 
 ```bash
-pnpm tn -- verify --project examples/v4-scripting --frames 3 --expect-motion --json
+pnpm verify:v4 -- --json
 ```
 
 Generate the native Bevy frame proof with:
@@ -36,4 +41,7 @@ cargo run --quiet -p threenative_runtime --bin threenative_capture -- \
 ```
 
 The V4-specific verifier helper writes the same web proof under top-level
-`artifacts/v4` for release-gate aggregation.
+`artifacts/v4` for release-gate aggregation. The fixed trace uses
+`elapsed=1`, `dt=fixedDt=1/60`, `MoveForward=true`, `Jump=true`, `MoveX=1`,
+and `MoveY=0`; fields ignored during comparison are listed in
+`effects-diff.json`.

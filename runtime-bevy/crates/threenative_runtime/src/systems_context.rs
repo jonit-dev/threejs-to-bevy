@@ -42,6 +42,15 @@ pub fn build_system_context_snapshot(
     system: &SystemIr,
     time: NativeSystemTimeSnapshot,
 ) -> NativeSystemContextSnapshot {
+    build_system_context_snapshot_with_events(bundle, system, time, BTreeMap::new())
+}
+
+pub fn build_system_context_snapshot_with_events(
+    bundle: &LoadedBundle,
+    system: &SystemIr,
+    time: NativeSystemTimeSnapshot,
+    events: BTreeMap<String, Vec<Value>>,
+) -> NativeSystemContextSnapshot {
     let query = system.queries.first();
     let readable_components = readable_components(system, query);
     let entities = bundle
@@ -63,7 +72,7 @@ pub fn build_system_context_snapshot(
 
     NativeSystemContextSnapshot {
         entities,
-        events: BTreeMap::new(),
+        events,
         input: NativeSystemInputSnapshot::fixed_trace(),
         resources: bundle
             .world
