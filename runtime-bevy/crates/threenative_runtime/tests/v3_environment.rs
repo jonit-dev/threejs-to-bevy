@@ -137,7 +137,7 @@ fn control_point_terrain_should_spawn_non_flat_mesh() {
 }
 
 #[test]
-fn path_should_spawn_flat_surface_mesh() {
+fn path_should_spawn_surface_ribbon_mesh() {
     let root = temp_bundle_dir();
     write_v3_bundle_with_model_asset(&root);
 
@@ -160,12 +160,11 @@ fn path_should_spawn_flat_surface_mesh() {
         other => panic!("expected path position attribute, got {other:?}"),
     };
 
-    assert_eq!(positions.len(), 4, "path should be a flat surface, not a cuboid");
+    assert_eq!(positions.len(), 4, "two-point path should be a surface ribbon, not a cuboid");
     assert!(
-        positions
-            .iter()
-            .all(|position| position[1].abs() < f32::EPSILON),
-        "path surface vertices should all share the same local Y plane"
+        (positions[0][1] - positions[1][1]).abs() < f32::EPSILON
+            && (positions[2][1] - positions[3][1]).abs() < f32::EPSILON,
+        "path ribbon vertices should share height across each path point"
     );
 
     fs::remove_dir_all(root).expect("temp bundle should be removed");

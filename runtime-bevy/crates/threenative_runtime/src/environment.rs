@@ -102,24 +102,14 @@ pub fn map_environment_into_world(world: &mut World, bundle: &LoadedBundle) {
         );
     }
 
-    for (index, segment) in scene.path.points.windows(2).enumerate() {
-        let start = segment[0];
-        let end = segment[1];
-        let dx = end[0] - start[0];
-        let dz = end[2] - start[2];
-        let length = dx.hypot(dz);
-        let mid_x = (start[0] + end[0]) / 2.0;
-        let mid_z = (start[2] + end[2]) / 2.0;
-        let y = terrain_height_at(bundle, mid_x, mid_z) + 0.08;
-        let mut transform = Transform::from_xyz(mid_x, y, mid_z);
-        transform.rotation = Quat::from_rotation_y(dx.atan2(dz));
+    if scene.path.points.len() >= 2 {
         let material = material(world, Color::srgb(0.90, 0.68, 0.37));
         spawn_pbr(
             world,
-            &format!("path:{}:{index}", scene.path.id),
-            path_surface_mesh(scene.path.width, length + scene.path.width * 0.25),
+            &format!("path:{}:0", scene.path.id),
+            path_surface_mesh(bundle, &scene.path.points, scene.path.width),
             material,
-            transform,
+            Transform::default(),
         );
     }
 
@@ -336,32 +326,59 @@ fn terrain_mesh(bundle: &LoadedBundle) -> Mesh {
     mesh
 }
 
-fn path_surface_mesh(width: f32, length: f32) -> Mesh {
+fn path_surface_mesh(bundle: &LoadedBundle, points: &[[f32; 3]], width: f32) -> Mesh {
     let half_width = width / 2.0;
-    let half_length = length / 2.0;
+    let mut positions = Vec::with_capacity(points.len() * 2);
+    let mut normals = Vec::with_capacity(points.len() * 2);
+    let mut uvs = Vec::with_capacity(points.len() * 2);
+    let mut indices = Vec::with_capacity((points.len() - 1) * 6);
+    let mut distance = 0.0;
+
+    for (index, point) in points.iter().enumerate() {
+        if index > 0 {
+            let previous = points[index - 1];
+            distance += (point[0] - previous[0]).hypot(point[2] - previous[2]);
+        }
+        let normal = path_point_normal(points, index);
+        let y = terrain_height_at(bundle, point[0], point[2]) + 0.08;
+        positions.push([
+            point[0] + normal.x * half_width,
+            y,
+            point[2] + normal.z * half_width,
+        ]);
+        positions.push([
+            point[0] - normal.x * half_width,
+            y,
+            point[2] - normal.z * half_width,
+        ]);
+        normals.push([0.0, 1.0, 0.0]);
+        normals.push([0.0, 1.0, 0.0]);
+        uvs.push([0.0, distance]);
+        uvs.push([1.0, distance]);
+        if index < points.len() - 1 {
+            let left = (index * 2) as u32;
+            indices.extend_from_slice(&[left, left + 1, left + 2, left + 1, left + 3, left + 2]);
+        }
+    }
+
     let mut mesh = Mesh::new(
         PrimitiveTopology::TriangleList,
         RenderAssetUsages::RENDER_WORLD | RenderAssetUsages::MAIN_WORLD,
     );
-    mesh.insert_attribute(
-        Mesh::ATTRIBUTE_POSITION,
-        vec![
-            [-half_width, 0.0, -half_length],
-            [-half_width, 0.0, half_length],
-            [half_width, 0.0, -half_length],
-            [half_width, 0.0, half_length],
-        ],
-    );
-    mesh.insert_attribute(
-        Mesh::ATTRIBUTE_NORMAL,
-        vec![[0.0, 1.0, 0.0]; 4],
-    );
-    mesh.insert_attribute(
-        Mesh::ATTRIBUTE_UV_0,
-        vec![[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [1.0, 1.0]],
-    );
-    mesh.insert_indices(Indices::U32(vec![0, 1, 2, 2, 1, 3]));
+    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+    mesh.insert_indices(Indices::U32(indices));
     mesh
+}
+
+fn path_point_normal(points: &[[f32; 3]], index: usize) -> Vec3 {
+    let previous = points[index.saturating_sub(1)];
+    let next = points[(index + 1).min(points.len() - 1)];
+    let dx = next[0] - previous[0];
+    let dz = next[2] - previous[2];
+    let length = dx.hypot(dz).max(0.001);
+    Vec3::new(dz / length, 0.0, -dx / length)
 }
 
 fn max_terrain_height(bundle: &LoadedBundle) -> f32 {

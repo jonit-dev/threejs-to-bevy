@@ -245,25 +245,51 @@ function applyTerrainVertexColors(geometry: THREE.BufferGeometry): void {
 function createPathSurface(points: readonly (readonly [number, number, number])[], width: number, terrain: EnvironmentTerrain | undefined): THREE.Group {
   const group = new THREE.Group();
   group.name = "path-surface";
-  for (let index = 0; index < points.length - 1; index += 1) {
-    const start = points[index]!;
-    const end = points[index + 1]!;
-    const dx = end[0] - start[0];
-    const dz = end[2] - start[2];
-    const length = Math.hypot(dx, dz);
-    const segment = new THREE.Mesh(
-      new THREE.PlaneGeometry(width, length + width * 0.25),
-      new THREE.MeshStandardMaterial({ color: "#8f7a55", roughness: 0.95 }),
-    );
-    segment.name = `path-surface:${index}`;
-    segment.rotation.x = -Math.PI / 2;
-    segment.rotation.z = -Math.atan2(dx, dz);
-    const midX = (start[0] + end[0]) / 2;
-    const midZ = (start[2] + end[2]) / 2;
-    segment.position.set(midX, terrainHeightAt(terrain, midX, midZ) + 0.08, midZ);
-    group.add(segment);
+  if (points.length < 2) {
+    return group;
   }
+  const positions: number[] = [];
+  const uvs: number[] = [];
+  const indices: number[] = [];
+  const halfWidth = width / 2;
+  let distance = 0;
+  for (let index = 0; index < points.length; index += 1) {
+    const point = points[index]!;
+    if (index > 0) {
+      const previous = points[index - 1]!;
+      distance += Math.hypot(point[0] - previous[0], point[2] - previous[2]);
+    }
+    const normal = pathPointNormal(points, index);
+    const y = terrainHeightAt(terrain, point[0], point[2]) + 0.08;
+    positions.push(point[0] + normal.x * halfWidth, y, point[2] + normal.z * halfWidth);
+    positions.push(point[0] - normal.x * halfWidth, y, point[2] - normal.z * halfWidth);
+    uvs.push(0, distance, 1, distance);
+    if (index < points.length - 1) {
+      const left = index * 2;
+      indices.push(left, left + 1, left + 2, left + 1, left + 3, left + 2);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  const path = new THREE.Mesh(
+    geometry,
+    new THREE.MeshStandardMaterial({ color: "#8f7a55", roughness: 0.95 }),
+  );
+  path.name = "path-surface:0";
+  group.add(path);
   return group;
+}
+
+function pathPointNormal(points: readonly (readonly [number, number, number])[], index: number): { x: number; z: number } {
+  const previous = points[Math.max(0, index - 1)]!;
+  const next = points[Math.min(points.length - 1, index + 1)]!;
+  const dx = next[0] - previous[0];
+  const dz = next[2] - previous[2];
+  const length = Math.max(0.001, Math.hypot(dx, dz));
+  return { x: dz / length, z: -dx / length };
 }
 
 function adjustedTerrainPosition(position: readonly [number, number, number], terrain: EnvironmentTerrain | undefined): readonly [number, number, number] {
