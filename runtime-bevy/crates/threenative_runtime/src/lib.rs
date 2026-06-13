@@ -59,6 +59,7 @@ pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeErro
                 ..Default::default()
             }),
     );
+    rendering::apply_atmosphere_to_world(app.world_mut(), &bundle);
     map_world::map_bundle_into_world(app.world_mut(), &bundle)?;
     environment::map_environment_into_world(app.world_mut(), &bundle);
     Ok(app)

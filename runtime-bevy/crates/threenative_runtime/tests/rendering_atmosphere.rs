@@ -4,8 +4,9 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+use bevy::prelude::*;
 use threenative_loader::load_bundle;
-use threenative_runtime::rendering::observe_atmosphere;
+use threenative_runtime::rendering::{apply_atmosphere_to_world, observe_atmosphere};
 
 #[test]
 fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
@@ -25,10 +26,26 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
           }
         }"#,
     );
-    write_json(&root, "world.ir.json", r#"{ "schema": "threenative.world", "version": "0.1.0", "entities": [] }"#);
-    write_json(&root, "assets.manifest.json", r#"{ "schema": "threenative.assets", "version": "0.1.0", "assets": [] }"#);
-    write_json(&root, "materials.ir.json", r#"{ "schema": "threenative.materials", "version": "0.1.0", "materials": [] }"#);
-    write_json(&root, "target.profile.json", r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["desktop"] }"#);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{ "schema": "threenative.world", "version": "0.1.0", "entities": [] }"#,
+    );
+    write_json(
+        &root,
+        "assets.manifest.json",
+        r#"{ "schema": "threenative.assets", "version": "0.1.0", "assets": [] }"#,
+    );
+    write_json(
+        &root,
+        "materials.ir.json",
+        r#"{ "schema": "threenative.materials", "version": "0.1.0", "materials": [] }"#,
+    );
+    write_json(
+        &root,
+        "target.profile.json",
+        r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["desktop"] }"#,
+    );
     write_json(
         &root,
         "environment.scene.json",
@@ -58,6 +75,15 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
     assert_eq!(observation.fog_mode.as_deref(), Some("exponential"));
     assert_eq!(observation.shadow_map_size, Some(1024));
     assert_eq!(observation.diagnostics, Vec::<String>::new());
+
+    let mut app = App::new();
+    apply_atmosphere_to_world(app.world_mut(), &bundle);
+    let clear = app.world().resource::<ClearColor>().0.to_srgba();
+    assert!((clear.red - 0x9e as f32 / 255.0).abs() < 0.01);
+    assert!((clear.green - 0xb6 as f32 / 255.0).abs() < 0.01);
+    assert!((clear.blue - 0xaa as f32 / 255.0).abs() < 0.01);
+    let ambient = app.world().resource::<AmbientLight>();
+    assert!((ambient.brightness - 0.8).abs() < 0.01);
 
     fs::remove_dir_all(root).expect("temp bundle should be removed");
 }
