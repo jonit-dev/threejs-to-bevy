@@ -1,0 +1,22 @@
+{
+  "name": "@threenative/r3f",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.js",
+    "./jsx-runtime": "./dist/jsx-runtime.js"
+  },
+  "scripts": {
+    "build": "pnpm --filter @threenative/sdk build && tsc -p tsconfig.json",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "node scripts/run-tests.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@threenative/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.25"
+  }
+}

@@ -7,13 +7,14 @@
     ".": "./dist/index.js"
   },
   "scripts": {
-    "build": "pnpm --filter @threenative/sdk build && pnpm --filter @threenative/ir build && tsc -p tsconfig.json",
+    "build": "pnpm --filter @threenative/sdk build && pnpm --filter @threenative/ir build && pnpm --filter @threenative/r3f build && tsc -p tsconfig.json",
     "lint": "tsc -p tsconfig.json --noEmit",
     "test": "node scripts/run-tests.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@threenative/ir": "workspace:*",
+    "@threenative/r3f": "workspace:*",
     "@threenative/sdk": "workspace:*"
   },
   "devDependencies": {

@@ -103,6 +103,46 @@ Both styles compile to the same ECS-shaped IR. In V2, supported R3F/JSX scene
 authoring also lowers into this same SDK graph and emitted IR; arbitrary R3F,
 Drei, React app, or browser behavior is outside the portable contract.
 
+### R3F/JSX Scene API
+
+Use this style when a JSX scene tree is clearer than direct SDK object
+construction. The portable package is `@threenative/r3f`, not
+`@react-three/fiber`.
+
+```tsx
+/** @jsxImportSource @threenative/r3f */
+import {
+  BoxGeometry,
+  DirectionalLight,
+  Mesh,
+  MeshStandardMaterial,
+  PerspectiveCamera,
+  Scene,
+} from "@threenative/r3f";
+
+export default (
+  <Scene id="scene">
+    <Mesh id="cube" position={[0, 0, 0]}>
+      <BoxGeometry size={[1, 1, 1]} />
+      <MeshStandardMaterial color="#2f80ed" />
+    </Mesh>
+    <PerspectiveCamera id="camera" position={[0, 1.5, 4]} />
+    <DirectionalLight id="light.key" intensity={2} />
+  </Scene>
+);
+```
+
+Supported V2 JSX elements are `Scene`, `Group`, `Mesh`, `PerspectiveCamera`,
+`AmbientLight`, `DirectionalLight`, `BoxGeometry`, `SphereGeometry`,
+`PlaneGeometry`, `MeshStandardMaterial`, and `MeshBasicMaterial`. The supported
+props are `id`, `name`, `position`, `rotation`, `scale`, `visible`, primitive
+geometry dimensions, camera clip/FOV values, light color/intensity, and material
+color/metalness/roughness.
+
+Unsupported React hooks, refs, effects, Drei helpers, raw Three.js renderer
+access, and browser globals fail during compiler capture with diagnostics. Use
+direct SDK authoring for logic that is not expressible as portable scene data.
+
 ### React-Style UI API
 
 Use this style for HUDs, menus, dialogue, inventory, and touch controls.

@@ -1,11 +1,11 @@
 {
-  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "jsx": "react-jsx",
     "jsxImportSource": "@threenative/r3f",
-    "rootDir": "src",
-    "outDir": "dist",
-    "types": ["node"]
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "target": "ES2023"
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"]
 }

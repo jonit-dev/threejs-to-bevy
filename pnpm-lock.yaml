@@ -39,6 +39,9 @@ importers:
       '@threenative/ir':
         specifier: workspace:*
         version: link:../ir
+      '@threenative/r3f':
+        specifier: workspace:*
+        version: link:../r3f
       '@threenative/sdk':
         specifier: workspace:*
         version: link:../sdk
@@ -51,6 +54,16 @@ importers:
         version: 5.9.3
 
   packages/ir:
+    devDependencies:
+      '@types/node':
+        specifier: ^20.19.25
+        version: 20.19.43
+
+  packages/r3f:
+    dependencies:
+      '@threenative/sdk':
+        specifier: workspace:*
+        version: link:../sdk
     devDependencies:
       '@types/node':
         specifier: ^20.19.25
