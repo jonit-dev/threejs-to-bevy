@@ -116,7 +116,18 @@ export default {
     },
     terrain: {
       id: "terrain.forest.floor",
-      heightMode: "flat",
+      heightMode: "controlPoints",
+      controlPoints: [
+        [-12, 0.35, -14],
+        [-8, 0.18, -4],
+        [-5, 0.42, 7],
+        [0, 0, 8],
+        [0.6, 0, 0],
+        [0.2, 0, -9],
+        [5, 0.28, -6],
+        [8, 0.52, 5],
+        [12, 0.25, -14],
+      ],
       material: "forest.floor.moss",
       bounds: {
         min: [-12, 0, -14],

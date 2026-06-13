@@ -49,3 +49,27 @@ test("environment should apply bookmark camera position and yaw convention", () 
   assert.deepEqual(camera.position.toArray(), [0, 1.7, 4]);
   assert.equal(camera.rotation.y, 0);
 });
+
+test("environment should render terrain control points as a non-flat mesh", () => {
+  const runtime = createEnvironmentRuntime({
+    environmentScene: {
+      schema: "threenative.environment-scene",
+      version: "0.1.0",
+      sourceAssets: [],
+      terrain: {
+        bounds: { min: [-4, 0, -4], max: [4, 0, 4] },
+        controlPoints: [[0, 0.8, 0], [4, -0.2, 4]],
+        heightMode: "controlPoints",
+        id: "terrain.rolling",
+      },
+      instances: [],
+      path: { id: "path", points: [[0, 0, 0], [1, 0, 1]], width: 1 },
+    },
+  } as unknown as IWebBundle);
+  const terrain = runtime?.object.children.find((child) => child.name === "terrain:terrain.rolling");
+
+  assert.equal(terrain instanceof THREE.Mesh, true);
+  const position = (terrain as THREE.Mesh<THREE.BufferGeometry>).geometry.getAttribute("position");
+  const heights = new Set(Array.from({ length: position.count }, (_, index) => position.getY(index).toFixed(3)));
+  assert.equal(heights.size > 1, true);
+});
