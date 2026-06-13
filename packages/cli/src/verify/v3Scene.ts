@@ -340,35 +340,72 @@ async function writeBevyMappedPreview(page: Page, path: string, bundle: Awaited<
         ctx.arc(projected.x + scale * 0.35, projected.y - trunkHeight * 0.95, Math.max(8, scale * 0.48), 0, Math.PI * 2);
         ctx.fill();
       } else if (category === "rock" || category === "pebble") {
-        ctx.fillStyle = category === "rock" ? "#71765d" : "#aaa18a";
+        const rockRadius = category === "rock" ? Math.max(7, scale * 0.7) : Math.max(3, scale * 0.32);
+        ctx.fillStyle = category === "rock" ? "#687055" : "#aaa18a";
         ctx.beginPath();
-        ctx.ellipse(projected.x, projected.y - scale * 0.22, Math.max(4, scale * 0.62), Math.max(3, scale * 0.36), -0.2, 0, Math.PI * 2);
+        ctx.moveTo(projected.x - rockRadius * 0.95, projected.y - rockRadius * 0.25);
+        ctx.lineTo(projected.x - rockRadius * 0.45, projected.y - rockRadius * 0.75);
+        ctx.lineTo(projected.x + rockRadius * 0.18, projected.y - rockRadius * 0.95);
+        ctx.lineTo(projected.x + rockRadius * 0.88, projected.y - rockRadius * 0.42);
+        ctx.lineTo(projected.x + rockRadius * 0.68, projected.y + rockRadius * 0.18);
+        ctx.lineTo(projected.x - rockRadius * 0.55, projected.y + rockRadius * 0.28);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = category === "rock" ? "#80866d" : "#c6baa0";
+        ctx.beginPath();
+        ctx.moveTo(projected.x - rockRadius * 0.42, projected.y - rockRadius * 0.66);
+        ctx.lineTo(projected.x + rockRadius * 0.15, projected.y - rockRadius * 0.88);
+        ctx.lineTo(projected.x + rockRadius * 0.48, projected.y - rockRadius * 0.45);
+        ctx.lineTo(projected.x - rockRadius * 0.12, projected.y - rockRadius * 0.35);
+        ctx.closePath();
         ctx.fill();
         ctx.fillStyle = "rgba(255,255,210,0.10)";
         ctx.beginPath();
         ctx.ellipse(projected.x - scale * 0.18, projected.y - scale * 0.34, Math.max(2, scale * 0.22), Math.max(1.5, scale * 0.08), -0.2, 0, Math.PI * 2);
         ctx.fill();
       } else if (category === "grass") {
-        ctx.strokeStyle = "#9ed12e";
-        ctx.lineWidth = Math.max(1, scale * 0.028);
-        for (let blade = -4; blade <= 4; blade += 1) {
-          ctx.beginPath();
-          ctx.moveTo(projected.x + blade * scale * 0.055, projected.y);
-          ctx.quadraticCurveTo(projected.x + blade * scale * 0.075, projected.y - visualHeight * 0.48, projected.x + blade * scale * 0.14, projected.y - visualHeight);
-          ctx.stroke();
-        }
-        ctx.strokeStyle = "#516921";
-        ctx.lineWidth = Math.max(1, scale * 0.018);
-        for (let blade = -3; blade <= 3; blade += 2) {
+        ctx.strokeStyle = "#d5c51f";
+        ctx.lineWidth = Math.max(1, scale * 0.022);
+        for (let blade = -5; blade <= 5; blade += 1) {
           ctx.beginPath();
           ctx.moveTo(projected.x + blade * scale * 0.05, projected.y);
-          ctx.lineTo(projected.x + blade * scale * 0.09, projected.y - visualHeight * 0.82);
+          ctx.quadraticCurveTo(projected.x + blade * scale * 0.02, projected.y - visualHeight * 0.48, projected.x + blade * scale * 0.14, projected.y - visualHeight * 1.05);
           ctx.stroke();
         }
-      } else {
-        ctx.fillStyle = category === "flower" ? "#c7192b" : category === "mushroom" ? "#d4bf95" : "#497a35";
+        ctx.strokeStyle = "#445a20";
+        ctx.lineWidth = Math.max(1, scale * 0.026);
+        for (let blade = -4; blade <= 4; blade += 2) {
+          ctx.beginPath();
+          ctx.moveTo(projected.x + blade * scale * 0.06, projected.y);
+          ctx.lineTo(projected.x + blade * scale * 0.08, projected.y - visualHeight * 0.9);
+          ctx.stroke();
+        }
+      } else if (category === "flower") {
+        ctx.strokeStyle = "#4d6b2c";
+        ctx.lineWidth = Math.max(1, scale * 0.018);
+        for (let stem = -2; stem <= 2; stem += 1) {
+          const stemX = projected.x + stem * scale * 0.07;
+          const stemTop = projected.y - scale * 0.55 - Math.abs(stem) * scale * 0.04;
+          ctx.beginPath();
+          ctx.moveTo(stemX, projected.y);
+          ctx.lineTo(stemX + stem * scale * 0.025, stemTop);
+          ctx.stroke();
+          ctx.fillStyle = "#d91d3f";
+          ctx.beginPath();
+          ctx.arc(stemX + stem * scale * 0.025, stemTop, Math.max(2, scale * 0.055), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else if (category === "mushroom") {
+        ctx.fillStyle = "#d8c6a0";
+        ctx.fillRect(projected.x - scale * 0.06, projected.y - scale * 0.24, scale * 0.12, scale * 0.24);
+        ctx.fillStyle = "#9f4736";
         ctx.beginPath();
-        ctx.arc(projected.x, projected.y - scale * 0.35, Math.max(4, scale * 0.34), 0, Math.PI * 2);
+        ctx.ellipse(projected.x, projected.y - scale * 0.28, Math.max(3, scale * 0.18), Math.max(2, scale * 0.09), 0, Math.PI, 0);
+        ctx.fill();
+      } else {
+        ctx.fillStyle = "#497a35";
+        ctx.beginPath();
+        ctx.ellipse(projected.x, projected.y - scale * 0.32, Math.max(5, scale * 0.35), Math.max(4, scale * 0.22), -0.25, 0, Math.PI * 2);
         ctx.fill();
         if (category === "vegetation") {
           ctx.fillStyle = "#5f8d3d";
