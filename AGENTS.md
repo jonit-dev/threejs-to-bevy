@@ -13,6 +13,10 @@ Repo-wide guidance for AI coding agents working on ThreeNative.
 - Keep source ASCII unless the file already has a reason not to.
 - The worktree may contain user changes. Do not revert or overwrite them unless
   explicitly asked.
+- When version-scoped work is completed, especially V1/V2/V3 milestone work or
+  release-gate changes, update `docs/bevy-feature-parity.md` in the same change
+  so the drift tracker reflects what is now implemented, inconsistent, or still
+  missing.
 
 ## Product Boundary
 
