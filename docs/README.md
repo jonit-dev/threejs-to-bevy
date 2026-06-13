@@ -29,8 +29,8 @@ that concept into implementation contracts.
   build, test, and packaging expectations.
 - [AI Workflows](ai-workflows.md): how AI agents should generate, validate,
   repair, and profile games through docs, schemas, CLI, and future MCP tools.
-- [Roadmap](roadmap.md): implementation phases, MVP boundaries, risks, and
-  success criteria.
+- [Roadmap](ROADMAP.md): V1/V2/V3 goals, scaffold and verification loops,
+  boundaries, risks, and success criteria.
 - [References](references.md): external Bevy, Three.js, and related AI-tooling
   references used to shape the initial docs.
 
@@ -53,4 +53,4 @@ that concept into implementation contracts.
 4. Read [runtime-adapters.md](runtime-adapters.md) before implementing native or
    web targets.
 5. Use [developer-workflow.md](developer-workflow.md), [ai-workflows.md](ai-workflows.md),
-   and [roadmap.md](roadmap.md) to sequence implementation work.
+   and [ROADMAP.md](ROADMAP.md) to sequence implementation work.
