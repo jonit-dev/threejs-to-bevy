@@ -31,6 +31,9 @@ author scene and gameplay with supported SDK or R3F/JSX
 - UI: HUD, touch controls, pause/menu basics, text, buttons, bars, focusable
   controls, simple layout, and `ui.ir.json` are V2; arbitrary React DOM is not
   portable UI.
+- Bundle file names: V2 uses `ui.ir.json` for portable UI, `input.ir.json` for
+  logical input maps, and `assets.manifest.json` for external and generated
+  asset references.
 - Physics: V2 exposes portable physics IR, not Rapier APIs. Rapier may be the
   runtime backend.
 - Animation: V2 includes transform clips and named glTF clip playback only if

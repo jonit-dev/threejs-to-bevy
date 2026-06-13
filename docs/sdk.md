@@ -99,7 +99,9 @@ export default function createWorld() {
 }
 ```
 
-Both styles compile to the same ECS-shaped IR.
+Both styles compile to the same ECS-shaped IR. In V2, supported R3F/JSX scene
+authoring also lowers into this same SDK graph and emitted IR; arbitrary R3F,
+Drei, React app, or browser behavior is outside the portable contract.
 
 ### React-Style UI API
 
@@ -241,8 +243,15 @@ Supported:
 
 - Keyboard actions.
 - Pointer/touch actions.
-- Gamepad actions.
-- Virtual controls for mobile profiles.
+- Touch-ready virtual controls declared through `input.ir.json` and target
+  profile data.
+
+Deferred:
+
+- Gamepad actions are V3 unless added as an explicitly optional, non-blocking
+  capability.
+- Mobile packaging is V3; V2 can declare touch-ready controls without producing
+  Android or iOS packages.
 
 Input is action-based rather than platform-event based:
 
@@ -274,7 +283,7 @@ scene.add(mesh);
 
 ### 2. Captured
 
-The compiler evaluates the entry point and captures the resulting scene or world. Captured objects must be reachable from the returned root or explicitly registered as prefabs, systems, assets, or resources.
+The compiler evaluates the entry point and captures the resulting scene or world. Captured objects must be reachable from the returned root or explicitly registered as systems, assets, or resources. Prefab registration is post-V2.
 
 ### 3. Serialized
 
@@ -411,8 +420,8 @@ export default new Game({
     ),
   systems: [movePlayer],
   input: new InputMap()
-    .axis("moveX", { keys: ["KeyA", "KeyD"], gamepad: "leftStickX" })
-    .axis("moveY", { keys: ["KeyS", "KeyW"], gamepad: "leftStickY" }),
+    .axis("moveX", { keys: ["KeyA", "KeyD"], touch: "leftStick.x" })
+    .axis("moveY", { keys: ["KeyS", "KeyW"], touch: "leftStick.y" }),
   ui: [HUD],
   targets: {
     web: { renderer: "three-webgpu" },

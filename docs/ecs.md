@@ -58,7 +58,8 @@ Rules:
 - Components are plain data.
 - Components must have JSON-schema-compatible definitions.
 - Components must not contain functions, class instances, cyclic references, promises, DOM objects, native handles, or runtime resources.
-- Components may reference entities, assets, prefabs, animations, or resources by ID.
+- Components may reference entities, assets, animations, or resources by ID.
+  Prefab references are post-V2 and should not be required by V2 gameplay.
 - Component names are globally unique within the bundle.
 - Built-in component names are reserved.
 - Marker components are allowed as zero-field components and should be used for
@@ -358,10 +359,9 @@ Rules:
 - Added or removed components through commands are visible after command application.
 - Query result order is unspecified by default.
 - `one()` must fail validation or throw a controlled runtime error if the result count is not exactly one.
-- Query filters should support `with`, `without`, `added`, and `changed`
-  semantics. `added` and `changed` are important for efficient native ECS
-  systems and should be part of the portable design before performance work
-  depends on them.
+- V2 query filters support `with` and `without`. `added` and `changed`
+  query semantics are V3 performance work and are not required for the V2
+  playable-game proof.
 
 ## Commands
 
@@ -386,10 +386,9 @@ Rules:
 
 ## Schedule
 
-V1 schedule stages:
+V2 gameplay schedule stages:
 
 ```txt
-startup
 fixedUpdate
 update
 postUpdate
@@ -401,8 +400,10 @@ a later milestone needs them in portable IR.
 
 Rules:
 
-- `startup` runs once after world instantiation and asset preload.
 - `fixedUpdate` runs zero or more times per rendered frame based on fixed timestep policy.
+- `update` runs once per rendered frame for normal gameplay systems.
+- `postUpdate` runs after `update` for follow cameras, late commands, cleanup,
+  and derived state.
 - Rendering is not performed by TypeScript systems.
 - Systems in the same stage may run in parallel if their read/write sets do not conflict.
 - Ordering within a stage requires explicit `before` or `after` constraints.
@@ -455,7 +456,9 @@ if (ctx.input.action("jump").justPressed) {
 
 ## Prefabs
 
-A prefab is a reusable entity tree.
+Prefabs are a reusable entity-tree design for a later version. They are not
+required V2 scope; V2 gameplay should use explicit entity declarations,
+component schemas, resources, events, and command-buffer spawning.
 
 Rules:
 

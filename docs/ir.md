@@ -24,7 +24,7 @@ The IR must not:
 
 ## Bundle Layout
 
-V1 emits a directory bundle:
+V2 emits a directory bundle:
 
 ```txt
 game.bundle/
@@ -104,7 +104,7 @@ Rules:
 
 - All referenced files must exist.
 - File references are bundle-relative.
-- V1 declares bundle-level runtime requirements in `manifest.json` under
+- V2 declares bundle-level runtime requirements in `manifest.json` under
   `requiredCapabilities`; individual IR files remain focused on their own data
   domains.
 - Unknown required sections are validation errors.
@@ -188,9 +188,10 @@ Event rules:
 
 Prefab rules:
 
-- Prefabs use scoped IDs internally.
-- Prefab instances reference the prefab ID plus overrides.
-- Overrides must target existing component fields.
+- Prefabs are post-V2. V2 validators should reject prefab requirements unless a
+  later target profile explicitly marks them optional.
+- When prefab support is promoted later, prefab instances should reference the
+  prefab ID plus validated overrides against existing component fields.
 
 ## Component Schemas
 
@@ -367,14 +368,12 @@ Rules:
   "axes": {
     "moveX": {
       "keys": { "negative": "KeyA", "positive": "KeyD" },
-      "gamepad": "leftStickX",
       "touch": "leftStick.x"
     }
   },
   "actions": {
     "jump": {
       "keys": ["Space"],
-      "gamepad": ["South"],
       "touch": ["jumpButton"]
     }
   }
@@ -386,6 +385,9 @@ Rules:
 - Gameplay code reads logical action names.
 - Physical bindings are target-adapted by the runtime.
 - Unknown action reads return neutral values unless strict input validation is enabled.
+- V2 requires keyboard, pointer, and touch-ready logical controls.
+- Gamepad bindings are V3 unless declared as optional, non-blocking capability
+  data.
 
 ## UI IR
 

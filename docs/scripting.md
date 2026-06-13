@@ -1,7 +1,7 @@
 # Scripting Model
 
 TypeScript is the primary gameplay scripting language, but TypeScript scripts do
-not compile into Rust systems in V1. Rust and Bevy own the native engine. TS
+not compile into Rust systems in V2. Rust and Bevy own the native engine. TS
 systems run as hosted scripts against a constrained ECS API and return component
 patches, events, and commands that the native runtime validates and applies.
 
@@ -37,6 +37,11 @@ scripts.bundle.js
 runtime-bevy
   hosts JS, marshals declared ECS data, applies returned patches/commands
 ```
+
+V2 must prove the native strategy with at least one hosted TypeScript gameplay
+system, such as movement or combat. Full native host parity can remain a
+documented follow-up if the first proof establishes the bundle, schedule,
+query, patch, event, and command contracts.
 
 ## Native Execution Loop
 
@@ -230,16 +235,12 @@ Evaluation criteria:
 
 Portable stages:
 
-- `startup`
-- `preUpdate`
-- `input`
 - `fixedUpdate`
 - `update`
-- `physics`
-- `animation`
 - `postUpdate`
 
-Adapter-owned stages such as Bevy render extraction are not user-script stages.
+Adapter-owned input collection, physics, animation, render extraction, render,
+cleanup, and platform lifecycle stages are not V2 user-script stages.
 
 Systems in the same stage may run in parallel only when their declared read/write
 sets do not conflict. Initial implementations can run systems serially while

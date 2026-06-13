@@ -45,7 +45,8 @@ Adapters are responsible for:
   devices, cameras, lights, UI nodes, and physics objects.
 - Running or hosting TypeScript systems through the approved script interface.
 - Reporting diagnostics with stable error codes where possible.
-- Exposing profiling data to the CLI.
+- Exposing profiling data to the CLI after V2; profiling reports are not a V2
+  release gate.
 - Supporting hot reload during development where practical.
 
 Adapters are not responsible for:
@@ -136,9 +137,10 @@ into the SDK.
 - Register runtime components for SDK components.
 - Run scheduled game systems and TypeScript lifecycle hooks.
 - Recreate portable `ui.ir.json` nodes with a native UI renderer.
-- Handle desktop and mobile platform lifecycle events.
-- Provide profiling data for frame time, asset load time, entity counts, draw
-  calls where available, and memory estimates.
+- Handle desktop platform lifecycle events. Mobile packaging and lifecycle
+  coverage are V3, while V2 may still use touch-ready input/profile data.
+- Provide profiling data after V2 for frame time, asset load time, entity counts,
+  draw calls where available, and memory estimates.
 
 ### Bevy Boundary
 
@@ -215,7 +217,7 @@ for fixtures or development tools. The portable format remains the SDK IR.
 Early native scope:
 
 - Desktop development window.
-- Keyboard, pointer, and touch input.
+- Keyboard, pointer, and touch-ready logical input.
 - Resolution scaling and FPS caps.
 
 Out of early scope:
@@ -224,8 +226,8 @@ Out of early scope:
 - Native multiplayer stack.
 - Advanced renderer customization.
 - Full editor integration.
-- Android and iOS packaging for V1; mobile target profiles move to a later
-  milestone after desktop and web runtimes are stable.
+- Android and iOS packaging; mobile target profiles and packaging move to V3
+  after desktop and web runtimes are stable.
 
 ### TypeScript System Execution
 
@@ -274,7 +276,8 @@ behavior controlled by the adapter and target profile.
 - Render portable `ui.ir.json` with React DOM or a small web UI renderer.
 - Provide fast refresh or hot reload during development.
 - Surface validation and runtime errors in a developer overlay and CLI logs.
-- Support web input sources: keyboard, pointer, touch, and gamepad where scoped.
+- Support V2 web input sources: keyboard, pointer, and touch. Gamepad is V3
+  unless declared as optional, non-blocking capability data.
 
 ### Web Boundary
 
@@ -356,7 +359,7 @@ Adapter-owned code should include:
 - Platform lifecycle glue.
 - Script host implementation details.
 - UI tree reconciliation.
-- Profiling collection.
+- Profiling collection after V2.
 - Hot reload mechanics.
 
 Avoid placing backend-specific shortcuts in shared packages. Shared packages
@@ -416,7 +419,9 @@ granular reconciliation can come after the IR stabilizes.
 
 ## Profiling
 
-Runtime adapters should expose metrics to the CLI in a target-neutral shape:
+Profiling reports are V3 production-platform work, not a V2 release gate. When
+promoted, runtime adapters should expose metrics to the CLI in a target-neutral
+shape:
 
 - average, min, max, and p95 frame time
 - update time
@@ -444,8 +449,9 @@ scale, and thermal or power information where available.
 7. Add visual self-verification for the web fixture.
 8. Add glTF and animation.
 9. Add portable UI fixtures for HUD and touch controls.
-10. Add mobile lifecycle and build packaging.
-11. Add profiling and richer hot reload.
+10. Add richer hot reload where it directly supports the V2 demo loop.
+11. Add mobile lifecycle, build packaging, profiling, and production target
+    budgets in V3.
 
 This order keeps the runtime contract honest: every public SDK feature should
 have at least one native path and one web path before it is treated as stable.
