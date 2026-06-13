@@ -1,8 +1,8 @@
 # Portable Scripting APIs
 
-> Status: Future-facing design for V4 native scripting and later gameplay
-> systems. Not part of the V3 release gate unless explicitly referenced by the
-> V3 completion checklist.
+> Status: V4-supported only for the primitive portable scripting MVP verified
+> by `pnpm verify:v4`. Broader gameplay APIs in this document remain design
+> direction until promoted by a later PRD.
 
 This document sketches the TypeScript gameplay APIs that should sit on top of
 the scripting model in [scripting.md](scripting.md). These APIs should feel like
@@ -43,8 +43,10 @@ effects.
 
 ## V4 MVP API Surface
 
-Only the APIs in this section should be considered V4-critical. Everything else
-in this document is design direction until promoted by a PRD.
+Only the APIs in this section are V4-supported, and only for the primitive demo
+trace that compares web JavaScript and native QuickJS patch/event/command and
+service logs through `verify:v4`. Everything else in this document is design
+direction until promoted by a PRD.
 
 | API | V4 Need | Proof In Primitive Scene |
 | --- | --- | --- |

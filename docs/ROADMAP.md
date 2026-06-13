@@ -599,7 +599,7 @@ V4 should make scripting a dedicated product gate. Web remains the reference
 iteration path and executes JavaScript directly. Native Bevy executes the same
 `scripts.bundle.js` through an embedded QuickJS-ng-style JavaScript host. The
 shared contract is equivalent ECS inputs producing equivalent patches, events,
-commands, service calls, and diagnostics.
+commands, service calls, and diagnostics. The release gate is `pnpm verify:v4`.
 
 ```txt
 TypeScript gameplay systems

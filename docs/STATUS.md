@@ -19,11 +19,10 @@ and writes the V4 report under `artifacts/v4`.
 
 ## V4 Proves
 
-V4 is in progress and has proven the first web and native runtime scripting
-slices. Its target proof remains one constrained TypeScript system bundle
-running as the same `scripts.bundle.js` in web JavaScript and embedded QuickJS,
-with equivalent patch, event, command, and service-call logs for a primitive
-demo.
+V4 is complete for the primitive native scripting proof. It proves one
+constrained TypeScript system bundle running as the same `scripts.bundle.js` in
+web JavaScript and embedded QuickJS, with equivalent patch, event, command, and
+service-call logs for a primitive demo under `pnpm verify:v4`.
 
 Current implemented V4 slice:
 
@@ -109,5 +108,6 @@ Current implemented V4 slice:
 - [V3 Completion Checklist](releases/v3-completion.md)
 - [Bevy Feature Parity Drift](bevy-feature-parity.md)
 - [Feature Maturity Matrix](feature-maturity.md)
+- [verify:v4](verify-v4.md)
 - [verify:v3](verify-v3.md)
 - [Coordinate, Units, Rotation, and Color Conventions](conventions.md)

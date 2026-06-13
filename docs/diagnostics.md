@@ -54,6 +54,11 @@ Node/process/filesystem APIs, arbitrary npm dependencies, undeclared component
 writes, undeclared command/event permissions, undeclared service calls, or
 bundle syntax outside the native loadability subset.
 
+V4 runtime and release-gate diagnostics also include adapter and verifier codes
+such as `TN_WEB_SYSTEM_*`, `TN_BEVY_SYSTEM_*`, and
+`TN_V4_EFFECT_LOG_*`. Effect-log mismatch diagnostics should identify the
+stage/system/effect path and point to `artifacts/v4/effects-diff.json`.
+
 ## Guidance
 
 - Do not collapse asset, scene, and runtime failures into generic compiler

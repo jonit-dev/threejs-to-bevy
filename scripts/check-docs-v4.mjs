@@ -19,6 +19,7 @@ const requiredTerms = [
   "event",
   "command",
   "primitive",
+  "verify:v4",
 ];
 
 const excludedAcceptanceTerms = [
@@ -78,6 +79,31 @@ export async function checkDocsV4(root = repoRoot) {
       code: "TN_DOCS_V4_SCRIPT_MISSING",
       file: "package.json",
       message: "package.json must define check:docs:v4.",
+    });
+  }
+  if (!packageJson.includes('"verify:v4"')) {
+    diagnostics.push({
+      code: "TN_DOCS_V4_SCRIPT_MISSING",
+      file: "package.json",
+      message: "package.json must define verify:v4.",
+    });
+  }
+
+  const scriptingApi = await readFile(resolve(root, "docs/scripting-api.md"), "utf8");
+  if (!scriptingApi.includes("## Missing Or Post-V4 API Inventory")) {
+    diagnostics.push({
+      code: "TN_DOCS_V4_MISSING_API_INVENTORY",
+      file: "docs/scripting-api.md",
+      message: "docs/scripting-api.md must include 'Missing Or Post-V4 API Inventory'.",
+    });
+  }
+
+  const maturity = await readFile(resolve(root, "docs/feature-maturity.md"), "utf8");
+  if (!maturity.includes("V4 portable scripting MVP") || !maturity.includes("V4 supported")) {
+    diagnostics.push({
+      code: "TN_DOCS_V4_MATURITY_ROW_MISSING",
+      file: "docs/feature-maturity.md",
+      message: "docs/feature-maturity.md must mark the V4 portable scripting MVP as V4 supported.",
     });
   }
 

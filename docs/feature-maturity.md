@@ -6,8 +6,9 @@ not mean support.
 
 V4 is scoped to a primitive scripting proof: one `scripts.bundle.js` running in
 web JavaScript and native QuickJS with equivalent patch, event, command, and
-service-call logs. The maturity rows below must not imply broader native
-scripting support until that gate exists.
+service-call logs. `pnpm verify:v4` is the release gate for that scope. The
+maturity rows below mark only the V4 portable scripting MVP as V4 supported;
+broader native scripting APIs remain post-V4.
 
 | Feature | SDK | IR | Validator | Web | Bevy | verify gate | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -26,8 +27,9 @@ scripting support until that gate exists.
 | V3 walkability probes | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | V3 scoped support |
 | UI IR | 🧪 | ✅ | ⚠️ | ❌ | ❌ | ❌ | Schema-only/post-V3 |
 | Audio IR | 🧪 | ✅ | ⚠️ | ❌ | ❌ | ❌ | Schema-only/post-V3 |
-| Gameplay systems | 🧪 | ✅ | ⚠️ | ⚠️ | ❌ | ❌ | V4 web primitive proof in progress |
-| Native QuickJS scripts | ❌ | ⚠️ | ⚠️ | n/a | ❌ | ❌ | V4 planned; docs scope gated by `check:docs:v4` |
+| V4 portable scripting MVP | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | V4 supported for primitive patch/event/command/service logs under `verify:v4` |
+| General gameplay systems | 🧪 | ✅ | ⚠️ | ⚠️ | ⚠️ | ❌ | Partial/post-V4 beyond the primitive scripting proof |
+| Native QuickJS scripts | ⚠️ | ✅ | ✅ | n/a | ✅ | ✅ | V4 supported only for the declared portable context and primitive demo trace |
 | Mobile packaging | ❌ | ❌ | ❌ | n/a | ❌ | ❌ | Future |
 | Custom shaders/render graph | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | Future |
 
@@ -42,3 +44,5 @@ scripting support until that gate exists.
 - Adapter-private: runtime-internal behavior that is not public API.
 - V3-critical: required by [V3 Completion Checklist](releases/v3-completion.md).
 - Post-V3: intentionally outside the V3 release gate.
+- V4 supported: implemented and release-gated only for the primitive
+  TypeScript/QuickJS scripting MVP described in [verify:v4](verify-v4.md).

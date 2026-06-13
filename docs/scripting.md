@@ -1,8 +1,8 @@
 # Scripting Model
 
-> Status: Future-facing design. Native QuickJS gameplay execution is V4, not
-> part of the V3 release gate. V3 may gate or smoke-test native scripted
-> behavior, but does not require hosted gameplay systems.
+> Status: V4 supports the primitive TypeScript scripting proof through
+> `scripts.bundle.js`, web JavaScript, embedded QuickJS, and `pnpm verify:v4`.
+> Broader native gameplay scripting remains post-V4.
 
 TypeScript is the primary gameplay scripting language, but TypeScript scripts do
 not compile into Rust systems in V2. Rust and Bevy own the native engine. TS
@@ -60,7 +60,8 @@ fixture, and compare its patches with the web JavaScript path before treating
 native gameplay scripting as shippable.
 
 V4 narrows that proof to a primitive scene so patch, event, command, and
-service-call logs can be inspected without V3 forest rendering complexity.
+service-call logs can be inspected without V3 forest rendering complexity. The
+release proof is `pnpm verify:v4`.
 
 ## Native Execution Loop
 

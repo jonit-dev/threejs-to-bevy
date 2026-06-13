@@ -32,7 +32,21 @@ test("should build v4 scripting example", async () => {
 
   assert.equal(bundlePath, resolve(projectPath, "dist/v4-scripting.bundle"));
   assert.equal(report.ok, true);
-  assert.equal(systems.systems[0]?.name, "rotatePrimitiveCubes");
-  assert.deepEqual(systems.systems[0]?.writes, ["Transform"]);
+  assert.deepEqual(
+    systems.systems.map((system: { name: string }) => system.name).sort(),
+    [
+      "animationServiceProof",
+      "expireProjectile",
+      "hitEventHandoff",
+      "moveTargetPlatform",
+      "raycastHitProbe",
+      "rotatePrimitiveCubes",
+      "spawnProjectileCommand",
+    ],
+  );
+  assert.deepEqual(
+    systems.systems.find((system: { name: string }) => system.name === "rotatePrimitiveCubes")?.writes,
+    ["Transform"],
+  );
   assert.match(scripts, /const Transform = Object\.freeze/);
 });
