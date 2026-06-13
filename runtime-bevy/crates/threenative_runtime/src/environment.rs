@@ -1,6 +1,14 @@
 use std::collections::HashMap;
 
-use bevy::{gltf::GltfAssetLabel, math::primitives::Cuboid, prelude::*};
+use bevy::{
+    gltf::GltfAssetLabel,
+    math::primitives::Cuboid,
+    prelude::*,
+    render::{
+        mesh::{Indices, PrimitiveTopology},
+        render_asset::RenderAssetUsages,
+    },
+};
 use threenative_components::ThreeNativeId;
 use threenative_loader::LoadedBundle;
 
@@ -84,21 +92,13 @@ pub fn map_environment_into_world(world: &mut World, bundle: &LoadedBundle) {
     let asset_server = world.get_resource::<AssetServer>().cloned();
 
     if let Some(terrain) = scene.terrain.as_ref() {
-        let min = terrain.bounds.min;
-        let max = terrain.bounds.max;
-        let width = max[0] - min[0];
-        let depth = max[2] - min[2];
         let material = material(world, Color::srgb(0.31, 0.39, 0.25));
         spawn_pbr(
             world,
             &format!("terrain:{}", terrain.id),
-            Mesh::from(Cuboid::new(width, 0.08, depth)),
+            terrain_mesh(bundle),
             material,
-            Transform::from_xyz(
-                (min[0] + max[0]) / 2.0,
-                min[1] - 0.04,
-                (min[2] + max[2]) / 2.0,
-            ),
+            Transform::default(),
         );
     }
 
@@ -270,6 +270,110 @@ fn material(world: &mut World, color: Color) -> Handle<StandardMaterial> {
             perceptual_roughness: 0.95,
             ..Default::default()
         })
+}
+
+fn terrain_mesh(bundle: &LoadedBundle) -> Mesh {
+    let terrain = bundle
+        .environment_scene
+        .as_ref()
+        .and_then(|scene| scene.terrain.as_ref())
+        .expect("terrain mesh requires environment terrain");
+    let min = terrain.bounds.min;
+    let max = terrain.bounds.max;
+    let subdivisions = if terrain.height_mode == "controlPoints" {
+        48
+    } else {
+        1
+    };
+    let vertex_count = subdivisions + 1;
+    let mut positions = Vec::with_capacity(vertex_count * vertex_count);
+    let mut normals = Vec::with_capacity(vertex_count * vertex_count);
+    let mut uvs = Vec::with_capacity(vertex_count * vertex_count);
+    let mut colors = Vec::with_capacity(vertex_count * vertex_count);
+
+    for z_index in 0..=subdivisions {
+        let z_t = z_index as f32 / subdivisions as f32;
+        let z = min[2] + (max[2] - min[2]) * z_t;
+        for x_index in 0..=subdivisions {
+            let x_t = x_index as f32 / subdivisions as f32;
+            let x = min[0] + (max[0] - min[0]) * x_t;
+            let y = if terrain.height_mode == "controlPoints" {
+                terrain_height_at(bundle, x, z)
+            } else {
+                min[1]
+            };
+            positions.push([x, y, z]);
+            normals.push([0.0, 1.0, 0.0]);
+            uvs.push([x_t, z_t]);
+            colors.push(terrain_vertex_color(x, y, z, min[1], max_terrain_height(bundle)));
+        }
+    }
+
+    let mut indices = Vec::with_capacity(subdivisions * subdivisions * 6);
+    for z_index in 0..subdivisions {
+        for x_index in 0..subdivisions {
+            let top_left = (z_index * vertex_count + x_index) as u32;
+            let top_right = top_left + 1;
+            let bottom_left = top_left + vertex_count as u32;
+            let bottom_right = bottom_left + 1;
+            indices.extend_from_slice(&[
+                top_left,
+                bottom_left,
+                top_right,
+                top_right,
+                bottom_left,
+                bottom_right,
+            ]);
+        }
+    }
+
+    let mut mesh = Mesh::new(
+        PrimitiveTopology::TriangleList,
+        RenderAssetUsages::RENDER_WORLD | RenderAssetUsages::MAIN_WORLD,
+    );
+    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
+    mesh.insert_indices(Indices::U32(indices));
+    mesh
+}
+
+fn max_terrain_height(bundle: &LoadedBundle) -> f32 {
+    let Some(terrain) = bundle
+        .environment_scene
+        .as_ref()
+        .and_then(|scene| scene.terrain.as_ref())
+    else {
+        return 0.0;
+    };
+    terrain
+        .control_points
+        .iter()
+        .map(|point| point[1])
+        .fold(terrain.bounds.min[1], f32::max)
+}
+
+fn terrain_vertex_color(x: f32, y: f32, z: f32, min_y: f32, max_y: f32) -> [f32; 4] {
+    let range = (max_y - min_y).max(0.001);
+    let height = (y - min_y) / range;
+    let noise = (x.mul_add(1.7, z * 0.9).sin() + 1.0) * 0.04;
+    let t = height + noise;
+    if t < 0.5 {
+        lerp_color([0.26, 0.34, 0.24], [0.39, 0.44, 0.25], t * 2.0)
+    } else {
+        lerp_color([0.39, 0.44, 0.25], [0.50, 0.53, 0.31], (t - 0.5) * 2.0)
+    }
+}
+
+fn lerp_color(left: [f32; 3], right: [f32; 3], t: f32) -> [f32; 4] {
+    let t = t.clamp(0.0, 1.0);
+    [
+        left[0] + (right[0] - left[0]) * t,
+        left[1] + (right[1] - left[1]) * t,
+        left[2] + (right[2] - left[2]) * t,
+        1.0,
+    ]
 }
 
 fn terrain_height_at(bundle: &LoadedBundle, x: f32, z: f32) -> f32 {
