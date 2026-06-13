@@ -9,7 +9,7 @@ import { type IProjectConfig } from "./config.js";
 export interface ICapturedScene {
   root: unknown;
   summary: {
-    rootType: "Scene";
+    rootType: "Scene" | "World";
   };
 }
 
@@ -41,18 +41,22 @@ export async function captureEntry(config: IProjectConfig): Promise<ICapturedSce
   const module = (await import(`${pathToFileURL(tempFile).href}?v=${Date.now()}`)) as { default?: unknown };
   const root = module.default;
 
-  if (!isSceneRoot(root)) {
-    throw new CompilerError("TN_COMPILER_UNSUPPORTED_ROOT", "Entry default export must be a supported SDK Scene root.");
+  if (!isSceneRoot(root) && !isWorldRoot(root)) {
+    throw new CompilerError("TN_COMPILER_UNSUPPORTED_ROOT", "Entry default export must be a supported SDK Scene or World root.");
   }
 
   return {
     root,
     summary: {
-      rootType: "Scene",
+      rootType: isWorldRoot(root) ? "World" : "Scene",
     },
   };
 }
 
 export function isSceneRoot(value: unknown): boolean {
   return typeof value === "object" && value !== null && value.constructor.name === "Scene";
+}
+
+export function isWorldRoot(value: unknown): boolean {
+  return typeof value === "object" && value !== null && value.constructor.name === "World";
 }

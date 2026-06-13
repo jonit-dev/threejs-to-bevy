@@ -3,10 +3,21 @@ export { listConformanceFixtures, type IConformanceFixture } from "./conformance
 export type { IConformanceEntityReport, IConformanceReport } from "./conformanceReport.js";
 export type { IRuntimeDiagnostic } from "./runtimeDiagnostics.js";
 export type {
+  IIrSystemDeclaration,
+  IIrSystemQuery,
+  IrSystemCommand,
+  IrSystemSchedule,
+  ISystemsIr,
+} from "./systems.js";
+export type {
   IAssetIr,
   IAssetsManifest,
   IBundleManifest,
   ICameraComponent,
+  IIrNamedSchema,
+  IIrSchemaField,
+  IIrSchemaFile,
+  IrSchemaFieldKind,
   ILightComponent,
   IMaterialIr,
   IMaterialsIr,

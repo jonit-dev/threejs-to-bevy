@@ -1,0 +1,94 @@
+import type { EcsFactory, IEcsSchema } from "./schema.js";
+
+export type EntityRef = string;
+
+export type CommandDeclaration =
+  | {
+      kind: "addComponent" | "removeComponent" | "setComponent";
+      component: string;
+      entity: EntityRef;
+      schema?: IEcsSchema;
+    }
+  | {
+      components: string[];
+      entity: EntityRef;
+      kind: "spawn";
+      schemas: IEcsSchema[];
+    }
+  | {
+      entity: EntityRef;
+      kind: "despawn";
+    }
+  | {
+      event: string;
+      kind: "emitEvent";
+      schema?: IEcsSchema;
+    };
+
+export function spawn(entity: EntityRef, components: ReadonlyArray<EcsFactory | IEcsSchema | string> = []): CommandDeclaration {
+  return {
+    components: normalizeNames(components),
+    entity,
+    kind: "spawn",
+    schemas: normalizeSchemas(components),
+  };
+}
+
+export function despawn(entity: EntityRef): CommandDeclaration {
+  return {
+    entity,
+    kind: "despawn",
+  };
+}
+
+export function addComponent(entity: EntityRef, component: EcsFactory | IEcsSchema | string): CommandDeclaration {
+  return componentCommand("addComponent", entity, component);
+}
+
+export function removeComponent(entity: EntityRef, component: EcsFactory | IEcsSchema | string): CommandDeclaration {
+  return componentCommand("removeComponent", entity, component);
+}
+
+export function setComponent(entity: EntityRef, component: EcsFactory | IEcsSchema | string): CommandDeclaration {
+  return componentCommand("setComponent", entity, component);
+}
+
+export function emitEvent(event: EcsFactory | IEcsSchema | string): CommandDeclaration {
+  return {
+    event: normalizeName(event),
+    kind: "emitEvent",
+    schema: normalizeSchema(event),
+  };
+}
+
+function componentCommand(
+  kind: "addComponent" | "removeComponent" | "setComponent",
+  entity: EntityRef,
+  component: EcsFactory | IEcsSchema | string,
+): CommandDeclaration {
+  return {
+    component: normalizeName(component),
+    entity,
+    kind,
+    schema: normalizeSchema(component),
+  };
+}
+
+function normalizeNames(values: ReadonlyArray<EcsFactory | IEcsSchema | string>): string[] {
+  return [...new Set(values.map(normalizeName))].sort();
+}
+
+function normalizeName(value: EcsFactory | IEcsSchema | string): string {
+  return typeof value === "string" ? value : value.name;
+}
+
+function normalizeSchemas(values: ReadonlyArray<EcsFactory | IEcsSchema | string>): IEcsSchema[] {
+  return values.flatMap((value) => {
+    const schema = normalizeSchema(value);
+    return schema === undefined ? [] : [schema];
+  });
+}
+
+function normalizeSchema(value: EcsFactory | IEcsSchema | string): IEcsSchema | undefined {
+  return typeof value === "string" ? undefined : value;
+}

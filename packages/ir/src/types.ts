@@ -22,7 +22,10 @@ export interface IBundleManifest {
     materials: "materials.ir.json";
     targetProfile: "target.profile.json";
     animations?: string;
+    componentSchemas?: "schemas/components.schema.json";
+    eventSchemas?: "schemas/events.schema.json";
     input?: string;
+    resourceSchemas?: "schemas/resources.schema.json";
   };
 }
 
@@ -74,6 +77,35 @@ export interface IWorldIr {
   events?: Record<string, unknown>;
   prefabs?: unknown[];
   resources?: Record<string, unknown>;
+}
+
+export type IrSchemaFieldKind =
+  | "asset"
+  | "boolean"
+  | "color"
+  | "entity"
+  | "integer"
+  | "number"
+  | "quat"
+  | "string"
+  | "vec2"
+  | "vec3"
+  | "vec4";
+
+export interface IIrSchemaField {
+  default?: unknown;
+  kind: IrSchemaFieldKind;
+  required?: boolean;
+}
+
+export interface IIrNamedSchema {
+  fields: Record<string, IIrSchemaField>;
+}
+
+export interface IIrSchemaFile {
+  schema: "threenative.component-schemas" | "threenative.event-schemas" | "threenative.resource-schemas";
+  version: SchemaVersion;
+  schemas: Record<string, IIrNamedSchema>;
 }
 
 export interface IMaterialIr {

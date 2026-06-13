@@ -36,7 +36,10 @@
         "materials": { "const": "materials.ir.json" },
         "targetProfile": { "const": "target.profile.json" },
         "animations": { "type": "string" },
-        "input": { "type": "string" }
+        "componentSchemas": { "const": "schemas/components.schema.json" },
+        "eventSchemas": { "const": "schemas/events.schema.json" },
+        "input": { "type": "string" },
+        "resourceSchemas": { "const": "schemas/resources.schema.json" }
       }
     }
   }

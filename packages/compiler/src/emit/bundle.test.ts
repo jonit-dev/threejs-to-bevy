@@ -3,7 +3,21 @@ import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { BoxGeometry, Mesh, MeshStandardMaterial, PerspectiveCamera, Scene } from "@threenative/sdk";
+import {
+  BoxGeometry,
+  Mesh,
+  MeshStandardMaterial,
+  PerspectiveCamera,
+  Scene,
+  World,
+  commands,
+  defineComponent,
+  defineEvent,
+  defineQuery,
+  fixedUpdate,
+  update,
+} from "@threenative/sdk";
+import { validateBundle } from "@threenative/ir";
 
 import { emitBundle } from "./bundle.js";
 
@@ -25,6 +39,86 @@ test("should emit deterministic cube bundle", async () => {
     const secondWorld = await readFile(join(second, "world.ir.json"), "utf8");
 
     assert.equal(firstWorld, secondWorld);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should emit ecs schema files for world root", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-ecs-"));
+  try {
+    const Health = defineComponent("Health", {
+      current: "number",
+      max: "number",
+    });
+    const DamageEvent = defineEvent("DamageEvent", {
+      amount: "number",
+      target: "entity",
+    });
+    const world = new World()
+      .spawn("player", Health({ current: 100, max: 100 }))
+      .addEvent(DamageEvent)
+      .addSystem(
+        fixedUpdate("applyDamage", {
+          commands: [commands.setComponent("target", Health), commands.emitEvent(DamageEvent)],
+          eventReads: [DamageEvent],
+          eventWrites: [DamageEvent],
+          reads: [Health],
+          writes: [Health],
+        }),
+      );
+    const config = {
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project" as const,
+      version: "0.1.0" as const,
+    };
+
+    const bundlePath = await emitBundle(config, world);
+    const manifest = JSON.parse(await readFile(join(bundlePath, "manifest.json"), "utf8"));
+    const components = JSON.parse(await readFile(join(bundlePath, "schemas/components.schema.json"), "utf8"));
+    const events = JSON.parse(await readFile(join(bundlePath, "schemas/events.schema.json"), "utf8"));
+    const systems = JSON.parse(await readFile(join(bundlePath, "systems.ir.json"), "utf8"));
+
+    assert.equal(manifest.files.componentSchemas, "schemas/components.schema.json");
+    assert.equal(manifest.entry.systems, "systems.ir.json");
+    assert.deepEqual(Object.keys(components.schemas), ["Health"]);
+    assert.deepEqual(Object.keys(events.schemas), ["DamageEvent"]);
+    assert.deepEqual(systems.systems[0]?.commands, [
+      { component: "Health", entity: "target", kind: "setComponent" },
+      { event: "DamageEvent", kind: "emitEvent" },
+    ]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should emit ecs schemas for query-only system", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-ecs-query-"));
+  try {
+    const Player = defineComponent("Player");
+    const Dead = defineComponent("Dead");
+    const world = new World().addSystem(
+      update("findPlayers", {
+        queries: [defineQuery({ with: [Player], without: [Dead] })],
+      }),
+    );
+    const config = {
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project" as const,
+      version: "0.1.0" as const,
+    };
+
+    const bundlePath = await emitBundle(config, world);
+    const components = JSON.parse(await readFile(join(bundlePath, "schemas/components.schema.json"), "utf8"));
+    const result = await validateBundle(bundlePath);
+
+    assert.deepEqual(Object.keys(components.schemas), ["Dead", "Player"]);
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
