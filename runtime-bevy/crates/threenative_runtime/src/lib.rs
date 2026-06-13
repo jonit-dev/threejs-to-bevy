@@ -10,6 +10,7 @@ pub mod assets;
 pub mod input;
 pub mod physics;
 pub mod systems_host;
+pub mod ui;
 
 #[derive(Debug, Error)]
 pub enum RuntimeError {

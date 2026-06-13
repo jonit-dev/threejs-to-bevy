@@ -24,6 +24,7 @@ import {
   update,
 } from "@threenative/sdk";
 import { validateBundle } from "@threenative/ir";
+import { Bar, Button, Column, Text, Ui } from "@threenative/ui";
 
 import { emitBundle } from "./bundle.js";
 
@@ -144,6 +145,48 @@ test("should emit ecs schemas for query-only system", async () => {
     assert.deepEqual(Object.keys(components.schemas), ["Dead", "Player"]);
     assert.equal(result.ok, true);
     assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should emit ui ir for scene with portable hud", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-ui-"));
+  try {
+    const config = {
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project" as const,
+      version: "0.1.0" as const,
+    };
+
+    const bundlePath = await emitBundle(config, {
+      scene: makeScene(),
+      ui: Ui({
+        children: Column({
+          children: [
+            Text({ id: "hud.health.label", text: "Health" }),
+            Bar({ binding: { field: "current", kind: "resource", name: "Health" }, id: "hud.health", max: 100 }),
+            Button({ action: "Pause", focusable: true, id: "hud.pause", label: "Pause" }),
+          ],
+          id: "hud.stack",
+        }),
+        id: "hud",
+      }),
+    });
+
+    const manifest = JSON.parse(await readFile(join(bundlePath, "manifest.json"), "utf8"));
+    const ui = JSON.parse(await readFile(join(bundlePath, "ui.ir.json"), "utf8"));
+    const result = await validateBundle(bundlePath);
+
+    assert.equal(manifest.entry.ui, "ui.ir.json");
+    assert.deepEqual(
+      ui.root.children[0].children.map((node: { kind: string }) => node.kind),
+      ["text", "bar", "button"],
+    );
+    assert.equal(ui.root.children[0].children[2].action, "Pause");
+    assert.equal(result.ok, true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

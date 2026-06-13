@@ -5,6 +5,7 @@ export type MaterialsSchema = "threenative.materials";
 export type AssetsSchema = "threenative.assets";
 export type TargetProfileSchema = "threenative.target-profile";
 export type RuntimeConfigSchema = "threenative.runtime-config";
+export type UiSchema = "threenative.ui";
 
 export interface IBundleManifest {
   schema: BundleSchema;
@@ -188,4 +189,27 @@ export interface ITargetProfile {
   schema: TargetProfileSchema;
   version: SchemaVersion;
   targets: Array<"web" | "desktop">;
+}
+
+export type IUiBinding =
+  | { kind: "resource"; name: string; field?: string }
+  | { component: string; entity: string; field?: string; kind: "component" };
+
+export interface IUiNodeIr {
+  action?: string;
+  binding?: IUiBinding;
+  children?: IUiNodeIr[];
+  focusable?: boolean;
+  id: string;
+  kind: "bar" | "button" | "column" | "row" | "stack" | "text" | "touchControl";
+  label?: string;
+  max?: number;
+  text?: string;
+  value?: number;
+}
+
+export interface IUiIr {
+  schema: UiSchema;
+  version: SchemaVersion;
+  root: IUiNodeIr;
 }

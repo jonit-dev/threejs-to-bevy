@@ -1,17 +1,22 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { type IBundleManifest } from "@threenative/ir";
+import { type IUiElement } from "@threenative/ui";
 
 import { type IProjectConfig } from "../config.js";
 import { ecsToIr } from "./ecs.js";
 import { sceneToWorld } from "./scene-to-world.js";
 import { stableJson } from "./stable-json.js";
+import { emitUi } from "./ui.js";
 
 export async function emitBundle(config: IProjectConfig, root: unknown): Promise<string> {
   const outDir = resolve(config.projectPath, config.outDir);
-  const isWorld = typeof root === "object" && root !== null && root.constructor.name === "World";
-  const emitted = isWorld ? undefined : sceneToWorld(root as Parameters<typeof sceneToWorld>[0]);
-  const ecs = isWorld ? ecsToIr(root as Parameters<typeof ecsToIr>[0]) : undefined;
+  const bundleRoot = normalizeBundleRoot(root);
+  const isWorld =
+    typeof bundleRoot.scene === "object" && bundleRoot.scene !== null && bundleRoot.scene.constructor.name === "World";
+  const emitted = isWorld ? undefined : sceneToWorld(bundleRoot.scene as Parameters<typeof sceneToWorld>[0]);
+  const ecs = isWorld ? ecsToIr(bundleRoot.scene as Parameters<typeof ecsToIr>[0]) : undefined;
+  const ui = bundleRoot.ui === undefined ? undefined : emitUi(bundleRoot.ui);
   const manifest: IBundleManifest = {
     schema: "threenative.bundle",
     version: "0.1.0",
@@ -22,6 +27,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
     entry: {
       ...(ecs?.scriptBundle === undefined ? {} : { scripts: "scripts.bundle.js" }),
       ...(ecs === undefined ? {} : { systems: "systems.ir.json" }),
+      ...(ui === undefined ? {} : { ui: "ui.ir.json" }),
       world: "world.ir.json",
     },
     files: {
@@ -58,6 +64,9 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
     resolve(outDir, "target.profile.json"),
     stableJson({ schema: "threenative.target-profile", version: "0.1.0", targets: ["web", "desktop"] }),
   );
+  if (ui !== undefined) {
+    await writeFile(resolve(outDir, "ui.ir.json"), stableJson(ui));
+  }
   if (ecs !== undefined) {
     await writeFile(resolve(outDir, "schemas/components.schema.json"), stableJson(ecs.componentSchemas));
     await writeFile(resolve(outDir, "schemas/resources.schema.json"), stableJson(ecs.resourceSchemas));
@@ -75,4 +84,20 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
   }
 
   return outDir;
+}
+
+interface IBundleRoot {
+  scene: unknown;
+  ui?: IUiElement;
+}
+
+function normalizeBundleRoot(root: unknown): IBundleRoot {
+  if (isBundleRoot(root)) {
+    return root;
+  }
+  return { scene: root };
+}
+
+function isBundleRoot(root: unknown): root is IBundleRoot {
+  return typeof root === "object" && root !== null && "scene" in root;
 }

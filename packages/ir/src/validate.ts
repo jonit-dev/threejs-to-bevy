@@ -9,6 +9,8 @@ import {
   type IIrSchemaField,
   type IMaterialsIr,
   type ITargetProfile,
+  type IUiIr,
+  type IUiNodeIr,
   type IWorldIr,
 } from "./types.js";
 import type { ISystemsIr } from "./systems.js";
@@ -50,6 +52,8 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
     manifest.files.runtimeConfig === undefined
       ? undefined
       : await readJson<IRuntimeConfigIr>(resolve(bundlePath, manifest.files.runtimeConfig), diagnostics);
+  const ui =
+    manifest.entry.ui === undefined ? undefined : await readJson<IUiIr>(resolve(bundlePath, manifest.entry.ui), diagnostics);
   const componentSchemas =
     manifest.files.componentSchemas === undefined
       ? undefined
@@ -110,8 +114,50 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
   if (runtimeConfig !== undefined) {
     validateRuntimeConfig(runtimeConfig, manifest.files.runtimeConfig ?? "runtime.config.json", diagnostics);
   }
+  if (ui !== undefined) {
+    validateUi(ui, manifest.entry.ui ?? "ui.ir.json", diagnostics);
+  }
 
   return { diagnostics, ok: diagnostics.length === 0 };
+}
+
+function validateUi(ui: IUiIr, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (ui.schema !== "threenative.ui" || ui.version !== "0.1.0") {
+    diagnostics.push({
+      code: "TN_IR_UI_VERSION_UNSUPPORTED",
+      message: "UI IR must use threenative.ui version 0.1.0.",
+      path,
+    });
+  }
+  validateUiNode(ui.root, `${path}/root`, diagnostics);
+}
+
+function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[]): void {
+  const raw = node as unknown as Record<string, unknown>;
+  for (const key of Object.keys(raw)) {
+    if (!["action", "binding", "children", "focusable", "id", "kind", "label", "max", "text", "value"].includes(key)) {
+      diagnostics.push({
+        code: "TN_IR_UI_FIELD_UNSUPPORTED",
+        message: `UI node '${node.id}' uses unsupported field '${key}'.`,
+        path: `${path}/${key}`,
+      });
+    }
+  }
+  if (!["bar", "button", "column", "row", "stack", "text", "touchControl"].includes(node.kind)) {
+    diagnostics.push({
+      code: "TN_IR_UI_NODE_UNSUPPORTED",
+      message: `Unsupported UI node kind '${String(node.kind)}'.`,
+      path: `${path}/kind`,
+    });
+  }
+  if ((node.kind === "button" || node.kind === "touchControl") && node.action === undefined) {
+    diagnostics.push({
+      code: "TN_IR_UI_ACTION_MISSING",
+      message: `UI ${node.kind} node '${node.id}' must declare an action.`,
+      path: `${path}/action`,
+    });
+  }
+  node.children?.forEach((child, index) => validateUiNode(child, `${path}/children/${index}`, diagnostics));
 }
 
 async function validateAssets(assets: IAssetsManifest, bundlePath: string, path: string, diagnostics: IIrDiagnostic[]): Promise<void> {

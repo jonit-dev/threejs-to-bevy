@@ -6,6 +6,7 @@ import type {
   IRuntimeConfigIr,
   ISystemsIr,
   ITargetProfile,
+  IUiIr,
   IWorldIr,
 } from "@threenative/ir";
 
@@ -17,6 +18,7 @@ export interface IWebBundle {
   runtimeConfig?: IRuntimeConfigIr;
   systems?: ISystemsIr;
   targetProfile: ITargetProfile;
+  ui?: IUiIr;
   world: IWorldIr;
 }
 
@@ -33,6 +35,7 @@ export async function loadBundle(source: string): Promise<IWebBundle> {
     manifest.files.runtimeConfig === undefined
       ? undefined
       : await readBundleJson<IRuntimeConfigIr>(source, manifest.files.runtimeConfig);
+  const ui = manifest.entry.ui === undefined ? undefined : await readBundleJson<IUiIr>(source, manifest.entry.ui);
   return {
     assets: await readBundleJson<IAssetsManifest>(source, manifest.files.assets),
     input,
@@ -41,6 +44,7 @@ export async function loadBundle(source: string): Promise<IWebBundle> {
     runtimeConfig,
     systems,
     targetProfile: await readBundleJson<ITargetProfile>(source, manifest.files.targetProfile),
+    ui,
     world: await readBundleJson<IWorldIr>(source, manifest.entry.world),
   };
 }

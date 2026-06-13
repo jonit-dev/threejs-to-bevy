@@ -35,6 +35,7 @@ pub struct BundleManifest {
 pub struct BundleEntry {
     pub scripts: Option<String>,
     pub systems: Option<String>,
+    pub ui: Option<String>,
     pub world: String,
 }
 
@@ -57,6 +58,7 @@ pub struct LoadedBundle {
     pub runtime_config: Option<RuntimeConfigIr>,
     pub systems: Option<SystemsIr>,
     pub target_profile: TargetProfile,
+    pub ui: Option<UiIr>,
     pub world: WorldIr,
 }
 
@@ -263,6 +265,27 @@ pub struct RuntimeWindowConfig {
     pub title: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct UiIr {
+    pub schema: String,
+    pub version: String,
+    pub root: UiNodeIr,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct UiNodeIr {
+    pub id: String,
+    pub kind: String,
+    pub label: Option<String>,
+    pub text: Option<String>,
+    pub action: Option<String>,
+    pub focusable: Option<bool>,
+    pub value: Option<f32>,
+    pub max: Option<f32>,
+    #[serde(default)]
+    pub children: Vec<UiNodeIr>,
+}
+
 pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadError> {
     let bundle_path = bundle_path.as_ref();
     let manifest: BundleManifest = read_json(bundle_path, "manifest.json")?;
@@ -300,6 +323,14 @@ pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadEr
         }
         None => None,
     };
+    let ui = match manifest.entry.ui.as_ref() {
+        Some(file) => {
+            let ui: UiIr = read_json(bundle_path, file)?;
+            ensure_supported(&ui.schema, &ui.version)?;
+            Some(ui)
+        }
+        None => None,
+    };
 
     Ok(LoadedBundle {
         assets,
@@ -309,6 +340,7 @@ pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadEr
         runtime_config,
         systems,
         target_profile,
+        ui,
         world,
     })
 }

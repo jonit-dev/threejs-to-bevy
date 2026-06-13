@@ -1,0 +1,68 @@
+import type { IUiElement, UiChild } from "./jsx-runtime.js";
+
+export interface IUiIr {
+  schema: "threenative.ui";
+  version: "0.1.0";
+  root: IUiNodeIr;
+}
+
+export interface IUiNodeIr {
+  action?: string;
+  binding?: unknown;
+  children?: IUiNodeIr[];
+  focusable?: boolean;
+  id: string;
+  kind: "bar" | "button" | "column" | "row" | "stack" | "text" | "touchControl";
+  label?: string;
+  max?: number;
+  text?: string;
+  value?: number;
+}
+
+export function captureUi(root: IUiElement): IUiIr {
+  if (root.type !== "ui") {
+    throw new Error(`Portable UI root must be <ui>, got '${root.type}'.`);
+  }
+  return {
+    schema: "threenative.ui",
+    version: "0.1.0",
+    root: captureNode(root, "ui"),
+  };
+}
+
+function captureNode(element: IUiElement, fallback: string): IUiNodeIr {
+  if (element.type === "ui") {
+    return {
+      children: childrenOf(element).map((child, index) => captureNode(child, `${fallback}.${child.type}.${index}`)),
+      id: element.props.id ?? fallback,
+      kind: "stack",
+    };
+  }
+  if (!["bar", "button", "column", "row", "stack", "text", "touchControl"].includes(element.type)) {
+    throw new Error(`Unsupported portable UI node '${element.type}'.`);
+  }
+  return {
+    ...(element.props.action === undefined ? {} : { action: element.props.action }),
+    ...(element.props.binding === undefined ? {} : { binding: element.props.binding }),
+    ...(element.props.focusable === undefined ? {} : { focusable: element.props.focusable }),
+    ...(element.props.label === undefined ? {} : { label: element.props.label }),
+    ...(element.props.max === undefined ? {} : { max: element.props.max }),
+    ...(element.props.text === undefined ? {} : { text: element.props.text }),
+    ...(element.props.value === undefined ? {} : { value: element.props.value }),
+    children: childrenOf(element).map((child, index) => captureNode(child, `${fallback}.${child.type}.${index}`)),
+    id: element.props.id ?? fallback,
+    kind: element.type,
+  };
+}
+
+function childrenOf(element: IUiElement): IUiElement[] {
+  return toArray(element.props.children).filter(isUiElement);
+}
+
+function toArray(children: UiChild | UiChild[]): UiChild[] {
+  return Array.isArray(children) ? children : [children];
+}
+
+function isUiElement(value: unknown): value is IUiElement {
+  return typeof value === "object" && value !== null && "type" in value && "props" in value;
+}

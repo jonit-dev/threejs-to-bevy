@@ -45,6 +45,9 @@ importers:
       '@threenative/sdk':
         specifier: workspace:*
         version: link:../sdk
+      '@threenative/ui':
+        specifier: workspace:*
+        version: link:../ui
     devDependencies:
       '@types/node':
         specifier: ^20.19.25
@@ -96,6 +99,8 @@ importers:
       '@types/node':
         specifier: ^20.19.25
         version: 20.19.43
+
+  packages/ui: {}
 
 packages:
 
