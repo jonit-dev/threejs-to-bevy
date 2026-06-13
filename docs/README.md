@@ -23,6 +23,8 @@ that concept into implementation contracts.
   validators, and runtimes.
 - [Runtime Adapters](runtime-adapters.md): responsibilities for Bevy, Three.js
   web, and future custom Rust/wgpu targets.
+- [Bevy Feature Parity](bevy-feature-parity.md): current Bevy comparison
+  checklist for roadmap prioritization.
 - [Tech Stack](tech-stack.md): planned implementation stack for TypeScript,
   compiler, CLI, native runtime, web runtime, assets, physics, testing, and CI.
 - [Developer Workflow](developer-workflow.md): CLI, local dev loop, validation,

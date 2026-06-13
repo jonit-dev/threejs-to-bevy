@@ -11,6 +11,8 @@ V1 proves this works.
 V1 also gives an AI agent enough scaffold and visual feedback to keep building.
 V2 proves someone can build a real small game with it.
 V3 proves it can become a production platform.
+V4 proves it can support advanced engine and tooling extensions without
+breaking the portable contract.
 ```
 
 ## Product Direction
@@ -21,6 +23,7 @@ adapters:
 
 ```txt
 Three.js-like TypeScript authoring
+  -> optional R3F/JSX authoring capture
   -> SDK capture and validation
   -> ECS/game IR bundle
   -> Three.js web runtime
@@ -31,6 +34,7 @@ The core claim is not "compile arbitrary Three.js to Rust." The core claim is:
 
 ```txt
 Write against a supported Three.js-like SDK.
+Optionally author scenes through supported R3F/JSX components.
 Get portable ECS/game output.
 Run it on the web through Three.js.
 Run it natively through Bevy.
@@ -40,12 +44,17 @@ Bevy is an internal runtime adapter, not a public authoring target. Three.js is
 the familiar authoring and web-runtime reference point, not an unlimited
 compatibility promise.
 
+V1 is treated as the completed foundation. The active roadmap starts at V2 and
+focuses on turning the proven pipeline into a real game-making workflow.
+
 ## Non-Negotiable Boundaries
 
 - Users write TypeScript, not Bevy Rust.
 - Bevy remains an internal native runtime adapter.
 - The SDK supports a useful Three.js-like subset, not arbitrary Three.js
   projects.
+- R3F is an authoring/capture layer, not the portable runtime contract.
+- Supported R3F/JSX lowers to the same IR as the direct SDK API.
 - The compiler emits explicit IR instead of compiling arbitrary JavaScript to
   Rust.
 - Web runs directly on Three.js, not through the native runtime.
@@ -62,8 +71,9 @@ compatibility promise.
 | Version | Goal | Main Proof |
 | --- | --- | --- |
 | V1 | Prove the full flow works end to end. | A scaffolded project can be created, code written with Three.js-like abstractions becomes ECS/game IR, runs on web directly through Three.js, builds a native Rust/Bevy game, and can be visually self-verified. |
-| V2 | Prove the flow can support an actual small game. | A developer or AI can build, validate, preview, and iterate on a playable arena game with assets, input, UI, and simple gameplay systems. |
-| V3 | Prove the platform can become production-grade. | Mobile packaging, stronger tooling, AI repair loops, performance profiles, and maintained templates make the SDK usable beyond the core team. |
+| V2 | Prove the flow can support an actual small game. | A developer or AI can build, validate, preview, and iterate on a playable arena game with R3F/JSX scene authoring, assets, input, UI, audio, physics, and TypeScript gameplay systems. |
+| V3 | Prove the platform can become production-grade. | Mobile packaging, stronger tooling, AI repair loops, performance profiles, target capability profiles, and maintained templates make the SDK usable beyond the core team. |
+| V4 | Prove advanced parity and extensibility can fit the model. | Optional editor, networking, advanced rendering, plugin/native extension, and richer content workflows are added only where they preserve SDK-to-IR portability. |
 
 ## V1: End-To-End Proof
 
@@ -292,7 +302,7 @@ scene.
 V2 should turn the platform into a usable game-making loop:
 
 ```txt
-author gameplay
+author scene and gameplay with supported SDK or R3F/JSX
   -> validate
   -> preview on web
   -> run natively
@@ -301,20 +311,38 @@ author gameplay
 
 ### Required Capabilities
 
+- First-class R3F/JSX authoring:
+  - `@threenative/r3f` package for supported React Three Fiber-style scenes
+  - JSX scene capture that emits the same world/material/asset IR as the SDK API
+  - stable entity IDs from JSX elements or explicit ThreeNative props
+  - supported geometry, material, camera, light, transform, hierarchy, and asset
+    components
+  - validator errors for arbitrary React side effects, unsupported Drei helpers,
+    direct Three.js renderer access, and browser-only APIs
+  - direct SDK API remains available as the lower-level portable contract
 - ECS gameplay API:
   - `World`
   - `Entity`
   - `Component`
   - `System`
+  - custom component schemas
+  - resources
+  - events
+  - game states
   - query API
   - command buffer
-  - update loop
-  - fixed update if needed
+  - update and post-update schedules
+  - deterministic fixed update
+  - declared read/write access for systems
 - Input abstraction:
   - keyboard
   - pointer/mouse
-  - touch-ready logical actions
-  - gamepad later if it stays cheap
+  - touch-ready logical actions and axes
+  - action maps shared by web and native runtimes
+- Time and runtime configuration:
+  - fixed and variable timestep resources
+  - window and resolution settings
+  - pause/play state hooks
 - Basic gameplay primitives:
   - player movement
   - camera follow
@@ -324,15 +352,36 @@ author gameplay
   - spawn/despawn commands
 - Portable scripting model for constrained TypeScript systems.
 - Asset support:
-  - glTF loading
+  - static glTF/GLB model loading
   - texture references
+  - standard material texture slots
+  - audio asset references
   - asset manifest validation
-  - basic animation clips if needed by the demo
+  - import diagnostics for missing or unsupported assets
+- Rendering parity needed by the demo:
+  - capsule and cylinder primitives if used by gameplay placeholders
+  - point and spot lights
+  - orthographic camera support where UI or 2D overlays need it
+  - consistent visibility handling
+- Basic audio:
+  - one-shot sound playback from gameplay events
+  - looping music
 - Portable UI foundation:
   - HUD
   - touch control surface
   - pause/menu basics
+  - text, buttons, bars, focusable controls, and simple layout
   - `ui.ir.json` emitted from React-style TSX or a similarly constrained UI API
+- Basic physics:
+  - colliders
+  - static, kinematic, and dynamic rigid bodies
+  - triggers/sensors
+  - collision events
+  - Rapier is the leading backend candidate for web and native parity, but the
+    SDK exposes portable physics IR rather than Rapier APIs
+- Animation foundation:
+  - transform animation clips
+  - named glTF animation clip playback if needed by the arena demo
 - Better CLI/dev loop:
   - dev server
   - rebuild on change
@@ -343,6 +392,7 @@ author gameplay
 
 The V2 demo should be one mobile-friendly third-person arena game:
 
+- R3F/JSX scene authoring through `@threenative/r3f`
 - player movement
 - camera follow
 - keyboard controls
@@ -363,19 +413,23 @@ are not allowed to block the core playable-game proof.
 ### V2 Success Criteria
 
 - A developer or AI can create or modify the arena demo from the documented SDK
-  surface.
+  surface or the supported R3F/JSX authoring surface.
 - The same game source validates, previews on web, and runs natively.
-- ECS-first and scene-style APIs both map to the same IR model.
+- ECS-first, scene-style, and R3F/JSX APIs all map to the same IR model.
 - Gameplay systems declare enough read/write intent for validation and runtime
   scheduling.
 - Assets fail validation before runtime when paths, formats, or capabilities are
   unsupported.
+- Input, UI, audio, physics, and gameplay events behave consistently enough
+  across web and native runtimes for the demo to be playable on both.
 - UI is portable through UI IR, not arbitrary React DOM.
 
 ### V2 Explicit Exclusions
 
 - polished editor tooling
-- broad physics engine abstraction
+- broad physics engine abstraction beyond the selected V2 subset
+- arbitrary R3F, Drei, or React app compatibility outside the supported capture
+  subset
 - multiplayer
 - advanced material graph
 - arbitrary shader authoring
@@ -402,6 +456,16 @@ performance, and maintainability.
   - resolution scaling
   - FPS caps
   - mobile validation rules
+- Production gameplay/content foundations:
+  - prefab and scene instancing
+  - reflection/type registry for components, resources, and events
+  - change detection or changed-query semantics
+  - save/load for scenes or game state where needed by templates
+  - gamepad input
+  - directional UI navigation
+  - skeletal animation playback
+  - simple animation state machines and blending
+  - spatial audio and basic audio mixing
 - AI control plane:
   - MCP docs resources
   - schema resources
@@ -421,7 +485,9 @@ performance, and maintainability.
 - Runtime maturity:
   - conformance fixtures for web and Bevy
   - target capability negotiation
+  - target feature collections
   - stronger asset preprocessing
+  - asset budgets for generated and imported content
   - mobile performance profiles
 
 ### V3 Success Criteria
@@ -436,31 +502,73 @@ performance, and maintainability.
 - Performance and capability diagnostics explain target-specific failures before
   users hit obscure runtime behavior.
 
+## V4: Advanced Parity and Extensibility
+
+Goal: add higher-end engine and tooling capabilities after the portable product
+contract has proven itself through V1, V2, and V3.
+
+V4 should be selective. A feature belongs here only when it has a clear SDK
+surface, IR representation, validation story, and both web and native runtime
+mapping. Native-only or web-only features can exist as explicitly marked target
+capabilities, not as silent portability breaks.
+
+### Candidate Capabilities
+
+- Advanced rendering:
+  - custom shader/material IR with target restrictions
+  - post-processing chains
+  - render-to-texture
+  - atmosphere, fog, skybox, and environment probes
+  - shadows beyond the V2/V3 minimum
+- Advanced content:
+  - richer physics integration
+  - raycasts and shape casts
+  - character controller helpers
+  - advanced animation blending, masks, IK, and morph targets
+  - particles
+  - LOD support
+  - meshopt and KTX2/Basis texture pipelines
+- Tooling and editor:
+  - visual scene editor
+  - runtime inspector
+  - richer devtools
+  - editor-oriented widgets
+  - broader R3F and Drei compatibility where components have portable IR
+    meaning
+- Runtime extensibility:
+  - native extension or plugin API
+  - sandboxed Luau or Lua mods
+  - custom Rust/wgpu runtime evaluation if Bevy blocks product-critical needs
+- Online/runtime services:
+  - networking experiments
+  - replication model
+  - external service integration points
+- Additional game shapes:
+  - stronger 2D rendering
+  - sprite sheets and atlases
+  - tilemaps
+  - React DOM-only app shell screens
+
+### V4 Success Criteria
+
+- Advanced capabilities fail closed when a target does not support them.
+- Optional extensions do not leak Bevy, Three.js internals, or native-only
+  assumptions into the base SDK contract.
+- At least one maintained example demonstrates each promoted V4 capability.
+- Validation can explain whether a feature is portable, web-only, native-only,
+  or unavailable for the selected target profile.
+
 ## Later Candidates
 
-These should wait until V1 and V2 are reliable:
+These remain outside the committed version gates until they have a clear
+runtime mapping, validation plan, and example:
 
-- particles
-- richer physics integration
-- richer animation state machines
-- material variants
-- postprocessing subset
-- networking experiments
-- sandboxed Luau or Lua mods
-- richer portable UI widgets
-- React DOM-only app shell screens
-- editor/devtools
-- visual inspector
-- custom Rust/wgpu runtime evaluation
-- React Native WebGPU experiments for validation
 - binary bundle format
 - asset cache
-- meshopt
-- KTX2/Basis texture pipeline
-- LOD support
+- React Native WebGPU experiments for validation
 
-Each candidate should enter the roadmap only with a clear runtime mapping,
-validation plan, and example.
+Each candidate should enter a numbered version only when it strengthens the
+source-to-runtime loop rather than adding isolated engine surface area.
 
 ## Cross-Version Release Gates
 
