@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { buildProject } from "@threenative/compiler";
+import { buildProject, CompilerError } from "@threenative/compiler";
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
 
 export async function buildCommand(argv: readonly string[], cwd = process.env.INIT_CWD ?? process.cwd()): Promise<ICommandResult> {
@@ -27,6 +27,7 @@ export async function buildCommand(argv: readonly string[], cwd = process.env.IN
         ? error.code
         : "TN_BUILD_FAILED";
     const message = error instanceof Error ? error.message : String(error);
-    return diagnosticResult({ code, message }, { exitCode: 1, json, stderr: true });
+    const diagnostic = error instanceof CompilerError && error.diagnostic !== undefined ? { ...error.diagnostic } : { code, message };
+    return diagnosticResult(diagnostic, { exitCode: 1, json, stderr: true });
   }
 }

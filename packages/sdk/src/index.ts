@@ -16,6 +16,7 @@ export {
   update,
   type ISystemDeclaration,
   type ISystemOptions,
+  type PortableSystem,
   type SystemSchedule,
 } from "./ecs/system.js";
 export {

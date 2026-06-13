@@ -33,6 +33,8 @@ pub struct BundleManifest {
 
 #[derive(Debug, Deserialize)]
 pub struct BundleEntry {
+    pub scripts: Option<String>,
+    pub systems: Option<String>,
     pub world: String,
 }
 
@@ -49,6 +51,7 @@ pub struct LoadedBundle {
     pub assets: AssetsManifest,
     pub manifest: BundleManifest,
     pub materials: MaterialsIr,
+    pub systems: Option<SystemsIr>,
     pub target_profile: TargetProfile,
     pub world: WorldIr,
 }
@@ -158,6 +161,18 @@ pub struct TargetProfile {
     pub targets: Vec<String>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct SystemsIr {
+    pub schema: String,
+    pub version: String,
+    pub systems: Vec<SystemIr>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SystemIr {
+    pub name: String,
+}
+
 pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadError> {
     let bundle_path = bundle_path.as_ref();
     let manifest: BundleManifest = read_json(bundle_path, "manifest.json")?;
@@ -171,11 +186,20 @@ pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadEr
     ensure_supported(&assets.schema, &assets.version)?;
     let target_profile: TargetProfile = read_json(bundle_path, &manifest.files.target_profile)?;
     ensure_supported(&target_profile.schema, &target_profile.version)?;
+    let systems = match manifest.entry.systems.as_ref() {
+        Some(file) => {
+            let systems: SystemsIr = read_json(bundle_path, file)?;
+            ensure_supported(&systems.schema, &systems.version)?;
+            Some(systems)
+        }
+        None => None,
+    };
 
     Ok(LoadedBundle {
         assets,
         manifest,
         materials,
+        systems,
         target_profile,
         world,
     })

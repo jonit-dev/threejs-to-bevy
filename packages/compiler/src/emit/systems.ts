@@ -7,6 +7,9 @@ interface ISystemLike {
   name: string;
   queries: ISystemsIr["systems"][number]["queries"];
   reads: string[];
+  script?: {
+    exportName: string;
+  };
   schedule: ISystemsIr["systems"][number]["schedule"];
   writes: string[];
 }
@@ -38,6 +41,7 @@ export function systemsToIr(systems: ReadonlyArray<ISystemLike>): ISystemsIr {
           without: [...query.without].sort(),
         })),
         reads: [...system.reads].sort(),
+        ...(system.script === undefined ? {} : { script: { bundle: "scripts.bundle.js" as const, exportName: system.script.exportName } }),
         schedule: system.schedule,
         writes: [...system.writes].sort(),
       })),

@@ -39,7 +39,8 @@
         "componentSchemas": { "const": "schemas/components.schema.json" },
         "eventSchemas": { "const": "schemas/events.schema.json" },
         "input": { "type": "string" },
-        "resourceSchemas": { "const": "schemas/resources.schema.json" }
+        "resourceSchemas": { "const": "schemas/resources.schema.json" },
+        "scripts": { "const": "scripts.bundle.js" }
       }
     }
   }

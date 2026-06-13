@@ -4,6 +4,7 @@ import type { IQueryDeclaration } from "./query.js";
 import type { EcsFactory, IEcsSchema } from "./schema.js";
 
 export type SystemSchedule = "fixedUpdate" | "postUpdate" | "update";
+export type PortableSystem = (context: unknown) => unknown;
 
 export interface ISystemOptions {
   commands?: ReadonlyArray<CommandDeclaration>;
@@ -11,6 +12,7 @@ export interface ISystemOptions {
   eventWrites?: ReadonlyArray<EcsFactory | IEcsSchema | string>;
   queries?: ReadonlyArray<IQueryDeclaration>;
   reads?: ReadonlyArray<EcsFactory | IEcsSchema | string>;
+  run?: PortableSystem;
   writes?: ReadonlyArray<EcsFactory | IEcsSchema | string>;
 }
 
@@ -22,6 +24,7 @@ export interface ISystemDeclaration {
   name: string;
   queries: IQueryDeclaration[];
   reads: string[];
+  run?: PortableSystem;
   schedule: SystemSchedule;
   schemas: IEcsSchema[];
   writes: string[];
@@ -73,6 +76,7 @@ function defineSystem(schedule: SystemSchedule, name: string, options: ISystemOp
     name,
     queries: [...(options.queries ?? [])],
     reads: normalizeNames(options.reads ?? []),
+    run: options.run,
     schedule,
     schemas: normalizeSchemas(componentSchemaSources, "component"),
     writes: normalizeNames(options.writes ?? []),

@@ -26,6 +26,7 @@ export interface IBundleManifest {
     eventSchemas?: "schemas/events.schema.json";
     input?: string;
     resourceSchemas?: "schemas/resources.schema.json";
+    scripts?: "scripts.bundle.js";
   };
 }
 

@@ -20,6 +20,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
       rendering: ["mesh.primitive.box", "material.standard", "light.directional"],
     },
     entry: {
+      ...(ecs?.scriptBundle === undefined ? {} : { scripts: "scripts.bundle.js" }),
       ...(ecs === undefined ? {} : { systems: "systems.ir.json" }),
       world: "world.ir.json",
     },
@@ -33,6 +34,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
             componentSchemas: "schemas/components.schema.json" as const,
             eventSchemas: "schemas/events.schema.json" as const,
             resourceSchemas: "schemas/resources.schema.json" as const,
+            ...(ecs.scriptBundle === undefined ? {} : { scripts: "scripts.bundle.js" as const }),
           }),
     },
   };
@@ -59,6 +61,9 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
     await writeFile(resolve(outDir, "schemas/resources.schema.json"), stableJson(ecs.resourceSchemas));
     await writeFile(resolve(outDir, "schemas/events.schema.json"), stableJson(ecs.eventSchemas));
     await writeFile(resolve(outDir, "systems.ir.json"), stableJson(ecs.systems));
+    if (ecs.scriptBundle !== undefined) {
+      await writeFile(resolve(outDir, "scripts.bundle.js"), ecs.scriptBundle);
+    }
   }
 
   return outDir;

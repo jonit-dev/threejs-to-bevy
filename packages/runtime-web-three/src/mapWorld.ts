@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { IAssetIr, IMaterialIr, IRuntimeDiagnostic, IWorldEntity } from "@threenative/ir";
+import type { IAssetIr, IMaterialIr, IRuntimeDiagnostic, IWorldEntity, IWorldIr } from "@threenative/ir";
 import type { IWebBundle } from "./loadBundle.js";
 
 export type { IRuntimeDiagnostic } from "@threenative/ir";
@@ -133,6 +133,22 @@ function applyTransform(object: THREE.Object3D, entity: IWorldEntity): void {
   }
   if (transform?.scale !== undefined) {
     object.scale.fromArray([...transform.scale]);
+  }
+}
+
+export function syncTransforms(world: IWorldIr, objectsById: Map<string, THREE.Object3D>): void {
+  const entityIds = new Set(world.entities.map((entity) => entity.id));
+  for (const id of objectsById.keys()) {
+    if (!entityIds.has(id)) {
+      objectsById.get(id)?.removeFromParent();
+      objectsById.delete(id);
+    }
+  }
+  for (const entity of world.entities) {
+    const object = objectsById.get(entity.id);
+    if (object !== undefined) {
+      applyTransform(object, entity);
+    }
   }
 }
 

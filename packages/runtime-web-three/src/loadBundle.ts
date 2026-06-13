@@ -2,6 +2,7 @@ import type {
   IAssetsManifest,
   IBundleManifest,
   IMaterialsIr,
+  ISystemsIr,
   ITargetProfile,
   IWorldIr,
 } from "@threenative/ir";
@@ -10,6 +11,7 @@ export interface IWebBundle {
   assets: IAssetsManifest;
   manifest: IBundleManifest;
   materials: IMaterialsIr;
+  systems?: ISystemsIr;
   targetProfile: ITargetProfile;
   world: IWorldIr;
 }
@@ -17,10 +19,15 @@ export interface IWebBundle {
 export async function loadBundle(source: string): Promise<IWebBundle> {
   const manifest = await readBundleJson<IBundleManifest>(source, "manifest.json");
 
+  const systems =
+    manifest.entry.systems === undefined
+      ? undefined
+      : await readBundleJson<ISystemsIr>(source, manifest.entry.systems);
   return {
     assets: await readBundleJson<IAssetsManifest>(source, manifest.files.assets),
     manifest,
     materials: await readBundleJson<IMaterialsIr>(source, manifest.files.materials),
+    systems,
     targetProfile: await readBundleJson<ITargetProfile>(source, manifest.files.targetProfile),
     world: await readBundleJson<IWorldIr>(source, manifest.entry.world),
   };

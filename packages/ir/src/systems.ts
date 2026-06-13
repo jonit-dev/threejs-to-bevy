@@ -34,6 +34,10 @@ export interface IIrSystemDeclaration {
   name: string;
   queries: IIrSystemQuery[];
   reads: string[];
+  script?: {
+    bundle: "scripts.bundle.js";
+    exportName: string;
+  };
   schedule: IrSystemSchedule;
   writes: string[];
 }

@@ -38,10 +38,11 @@ runtime-bevy
   hosts JS, marshals declared ECS data, applies returned patches/commands
 ```
 
-V2 must prove the native strategy with at least one hosted TypeScript gameplay
-system, such as movement or combat. Full native host parity can remain a
-documented follow-up if the first proof establishes the bundle, schedule,
-query, patch, event, and command contracts.
+V2 currently gates native TypeScript hosting behind an explicit runtime
+diagnostic while the bundle, schedule, query, patch, event, and command
+contracts are proven in web preview. Bundles with `scripts.bundle.js` fail on
+the native adapter with `TN_BEVY_SYSTEM_HOST_UNSUPPORTED`; release approval is
+required before treating that path as shippable native gameplay.
 
 ## Native Execution Loop
 

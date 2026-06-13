@@ -6,6 +6,7 @@ use threenative_loader::{LoadError, load_bundle};
 
 pub mod map_world;
 pub mod conformance;
+pub mod systems_host;
 
 #[derive(Debug, Error)]
 pub enum RuntimeError {
@@ -13,10 +14,13 @@ pub enum RuntimeError {
     Load(#[from] LoadError),
     #[error(transparent)]
     Map(#[from] map_world::MapError),
+    #[error(transparent)]
+    SystemsHost(#[from] systems_host::SystemsHostError),
 }
 
 pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeError> {
     let bundle = load_bundle(bundle_path)?;
+    systems_host::ensure_native_system_host_supported(&bundle)?;
     let mut app = App::new();
     app.insert_resource(ClearColor(Color::srgb(
         17.0 / 255.0,

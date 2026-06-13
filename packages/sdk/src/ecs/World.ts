@@ -36,8 +36,14 @@ export interface IWorldSystemDeclaration {
   name: string;
   queries: IWorldQueryDeclaration[];
   reads: string[];
+  script?: IWorldSystemScriptDeclaration;
   schedule: SystemSchedule;
   writes: string[];
+}
+
+export interface IWorldSystemScriptDeclaration {
+  exportName: string;
+  source: string;
 }
 
 export interface IWorldQueryDeclaration {
@@ -171,9 +177,21 @@ function serializeSystem(system: ISystemDeclaration): IWorldSystemDeclaration {
     name: system.name,
     queries: system.queries.map(serializeQuery),
     reads: [...system.reads],
+    script:
+      system.run === undefined
+        ? undefined
+        : {
+            exportName: systemExportName(system.name),
+            source: system.run.toString(),
+          },
     schedule: system.schedule,
     writes: [...system.writes],
   };
+}
+
+function systemExportName(name: string): string {
+  const safeName = name.replace(/[^A-Za-z0-9_$]/g, "_");
+  return `system_${safeName}`;
 }
 
 function serializeQuery(query: IQueryDeclaration): IWorldQueryDeclaration {

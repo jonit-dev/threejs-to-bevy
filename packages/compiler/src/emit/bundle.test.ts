@@ -64,6 +64,7 @@ test("should emit ecs schema files for world root", async () => {
           eventReads: [DamageEvent],
           eventWrites: [DamageEvent],
           reads: [Health],
+          run: (context) => context,
           writes: [Health],
         }),
       );
@@ -80,8 +81,11 @@ test("should emit ecs schema files for world root", async () => {
     const components = JSON.parse(await readFile(join(bundlePath, "schemas/components.schema.json"), "utf8"));
     const events = JSON.parse(await readFile(join(bundlePath, "schemas/events.schema.json"), "utf8"));
     const systems = JSON.parse(await readFile(join(bundlePath, "systems.ir.json"), "utf8"));
+    const scripts = await readFile(join(bundlePath, "scripts.bundle.js"), "utf8");
 
     assert.equal(manifest.files.componentSchemas, "schemas/components.schema.json");
+    assert.equal(manifest.files.scripts, "scripts.bundle.js");
+    assert.equal(manifest.entry.scripts, "scripts.bundle.js");
     assert.equal(manifest.entry.systems, "systems.ir.json");
     assert.deepEqual(Object.keys(components.schemas), ["Health"]);
     assert.deepEqual(Object.keys(events.schemas), ["DamageEvent"]);
@@ -89,6 +93,8 @@ test("should emit ecs schema files for world root", async () => {
       { component: "Health", entity: "target", kind: "setComponent" },
       { event: "DamageEvent", kind: "emitEvent" },
     ]);
+    assert.deepEqual(systems.systems[0]?.script, { bundle: "scripts.bundle.js", exportName: "system_applyDamage" });
+    assert.match(scripts, /system_applyDamage/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
