@@ -1,5 +1,8 @@
 # UI Model
 
+> Status: Future-facing design. Portable UI runtime parity is not part of the
+> V3 release gate unless explicitly pulled into a narrow PRD.
+
 Game UI should be authored with React-style TypeScript/TSX, but React DOM should
 not be the portable runtime contract. The portable contract is a retained UI tree
 and binding metadata emitted as `ui.ir.json`.

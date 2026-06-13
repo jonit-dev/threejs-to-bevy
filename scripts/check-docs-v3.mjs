@@ -6,6 +6,16 @@ const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 export async function checkDocsV3(root = repoRoot) {
   const files = [
+    "docs/STATUS.md",
+    "docs/README.md",
+    "docs/releases/v3-completion.md",
+    "docs/conventions.md",
+    "docs/feature-maturity.md",
+    "docs/verify-v3.md",
+    "docs/diagnostics.md",
+    "docs/v3/environment-scene-ir.md",
+    "docs/v3/asset-pipeline.md",
+    "docs/v3/visual-parity-policy.md",
     "docs/PRDs/v3/README.md",
     "docs/PRDs/v3/V3-02-threejs-performance-and-instancing.md",
     "examples/v3-environment/README.md",
@@ -19,6 +29,25 @@ export async function checkDocsV3(root = repoRoot) {
   }
   const indexPath = "docs/PRDs/v3/README.md";
   const indexText = await readFile(resolve(root, indexPath), "utf8");
+  const docsReadmePath = "docs/README.md";
+  const docsReadme = await readFile(resolve(root, docsReadmePath), "utf8");
+  if (!docsReadme.includes("STATUS.md")) {
+    diagnostics.push({ code: "TN_DOCS_V3_STATUS_LINK_MISSING", file: docsReadmePath, message: "Docs README must link STATUS.md." });
+  }
+  if (/V1 is the current implemented release candidate path/i.test(docsReadme)) {
+    diagnostics.push({ code: "TN_DOCS_V3_STALE_STATUS", file: docsReadmePath, message: "Docs README still claims V1 is the current release candidate path." });
+  }
+  for (const required of ["docs/releases/v3-completion.md", "docs/conventions.md", "docs/feature-maturity.md", "docs/verify-v3.md"]) {
+    if (!docsReadme.includes(required.replace("docs/", "")) && !docsReadme.includes(required)) {
+      diagnostics.push({ code: "TN_DOCS_V3_FRONT_DOOR_LINK_MISSING", file: docsReadmePath, message: `Docs README does not link '${required}'.` });
+    }
+  }
+  const statusText = await readFile(resolve(root, "docs/STATUS.md"), "utf8");
+  for (const required of ["V3", "pnpm verify:v3", "V3 Does Not Prove"]) {
+    if (!statusText.includes(required)) {
+      diagnostics.push({ code: "TN_DOCS_V3_STATUS_TERM_MISSING", file: "docs/STATUS.md", message: `STATUS.md is missing '${required}'.` });
+    }
+  }
   const v3Dir = resolve(root, "docs/PRDs/v3");
   const prdFiles = (await readdir(v3Dir))
     .filter((file) => /^V3-\d+-.+\.md$/.test(file))

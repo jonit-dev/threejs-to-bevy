@@ -14,9 +14,11 @@ Repo-wide guidance for AI coding agents working on ThreeNative.
 - The worktree may contain user changes. Do not revert or overwrite them unless
   explicitly asked.
 - When version-scoped work is completed, especially V1/V2/V3 milestone work or
-  release-gate changes, update `docs/bevy-feature-parity.md` in the same change
-  so the drift tracker reflects what is now implemented, inconsistent, or still
-  missing.
+  release-gate changes, update `docs/STATUS.md` and
+  `docs/bevy-feature-parity.md` in the same change so the current gate and drift
+  tracker reflect what is now implemented, inconsistent, or still missing.
+- When a new version is finished, update `docs/STATUS.md` before or with the
+  release-gate change so agents can treat it as the implementation front door.
 
 ## Product Boundary
 

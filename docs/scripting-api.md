@@ -1,5 +1,9 @@
 # Portable Scripting APIs
 
+> Status: Future-facing design for V4 native scripting and later gameplay
+> systems. Not part of the V3 release gate unless explicitly referenced by the
+> V3 completion checklist.
+
 This document sketches the TypeScript gameplay APIs that should sit on top of
 the scripting model in [scripting.md](scripting.md). These APIs should feel like
 direct engine APIs, but they must lower to portable ECS reads, patches, events,

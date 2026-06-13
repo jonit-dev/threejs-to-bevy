@@ -1,5 +1,9 @@
 # Scripting Model
 
+> Status: Future-facing design. Native QuickJS gameplay execution is V4, not
+> part of the V3 release gate. V3 may gate or smoke-test native scripted
+> behavior, but does not require hosted gameplay systems.
+
 TypeScript is the primary gameplay scripting language, but TypeScript scripts do
 not compile into Rust systems in V2. Rust and Bevy own the native engine. TS
 systems run against a constrained ECS API and return component patches, events,

@@ -40,7 +40,7 @@ Baseline: the repo pins Bevy and `bevy_ecs` to `=0.14.2`.
 | Forest atmosphere | ⚠️ | Portable atmosphere data is emitted and observed for web/Bevy; native rendering parity for fog/sky/color management remains limited. |
 | First-person controls | ⚠️ | Portable first-person config, pointer-lock expectations, movement update, and walkthrough verification exist; native input capture is still smoke-level. |
 | Walkability and scene collision | ⚠️ | V3 walkable regions and blocking probes exist in IR, web resolver, Bevy helper, and release gate; this is not a general physics collision system. |
-| Coordinate/color-space conventions | ❌ | Still needs an explicit doc/contract for axes, units, handedness, rotations, color space, and imported asset scale. |
+| Coordinate/color-space conventions | ⚠️ | `docs/conventions.md` now defines axes, units, handedness, rotations, color space, and imported asset scale; runtime capture/parity work must keep proving adapters follow it. |
 | UI | ❌ | UI IR types exist, but retained UI rendering and input/focus parity are not implemented. Not V3-critical unless verification overlays need it. |
 | Audio | ⚠️ | Audio IR and asset validation exist; runtime playback is not implemented. Not V3-critical unless ambience enters scope. |
 | Gameplay ECS/systems | ❌ | Components/resources/events/system schemas are not a working gameplay host. Keep out of V3 unless a ticket explicitly narrows the slice. |
@@ -72,8 +72,8 @@ Baseline: the repo pins Bevy and `bevy_ecs` to `=0.14.2`.
 2. Replace placeholder instanced meshes with real geometry/material instancing
    tied to draw/instance/triangle budgets.
 3. Strengthen native first-person input capture beyond smoke-level reporting.
-4. Document coordinate, unit, handedness, rotation, imported scale, and color
-   conventions.
+4. Prove runtime adherence to the documented coordinate, unit, handedness,
+   rotation, imported scale, and color conventions.
 5. Keep post-V3 features out of the V3 gate unless a PRD explicitly pulls in a
     narrow slice.
 

@@ -468,6 +468,15 @@ performance target for this version because the reference scene is dense and
 vegetation-heavy. Production-platform work belongs in V3 only when it directly
 helps author, validate, bundle, run, optimize, or verify that scene.
 
+> V3 is not a production game-platform release. V3 is a rich-environment
+> bundle/runtime proof. General gameplay ECS, native TypeScript/QuickJS
+> gameplay scripting, portable UI, mobile packaging, and editor tooling remain
+> post-V3 unless explicitly pulled into a narrow PRD.
+>
+> Native TypeScript gameplay execution is V4. V3 may include native scene
+> loading, native screenshots, and native first-person smoke checks, but it does
+> not require native hosted gameplay systems.
+
 The available source art is enough for the scene composition proof:
 
 - 68 glTF model assets with matching `.bin` files for trees, pines, dead trees,

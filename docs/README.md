@@ -7,8 +7,13 @@ native and web runtime adapters.
 The source concept is [concept.md](concept.md). The rest of the documents turn
 that concept into implementation contracts.
 
+For current implementation status, read [STATUS.md](STATUS.md) before the
+conceptual docs.
+
 ## Core Documents
 
+- [Status](STATUS.md): current active gate, V3 proof scope, non-goals, and
+  implementation truth sources.
 - [Architecture](architecture.md): system boundaries, package layout, runtime
   split, and early technical decisions.
 - [Goals](goals.md): product goals, experience goals, performance target,
@@ -29,6 +34,14 @@ that concept into implementation contracts.
   web, and future custom Rust/wgpu targets.
 - [Bevy Feature Parity](bevy-feature-parity.md): current Bevy comparison
   checklist for roadmap prioritization.
+- [Feature Maturity Matrix](feature-maturity.md): separates supported,
+  partial, schema-only, experimental, and future features.
+- [Conventions](conventions.md): coordinate, unit, rotation, imported scale, and
+  color-space decisions.
+- [verify:v3](verify-v3.md): release-gate command, checks, artifacts, and
+  pass/fail semantics.
+- [Diagnostics](diagnostics.md): diagnostic shape, namespaces, and V3 priority
+  domains.
 - [Tech Stack](tech-stack.md): planned implementation stack for TypeScript,
   compiler, CLI, native runtime, web runtime, assets, physics, testing, and CI.
 - [Developer Workflow](developer-workflow.md): CLI, local dev loop, validation,
@@ -37,19 +50,38 @@ that concept into implementation contracts.
   repair, and profile games through docs, schemas, CLI, and future MCP tools.
 - [Roadmap](ROADMAP.md): V1/V2/V3 goals, scaffold and verification loops,
   boundaries, risks, and success criteria.
+- [V3 Completion Checklist](releases/v3-completion.md): operational release
+  checklist for finishing V3.
+- [V3 Environment Scene IR](v3/environment-scene-ir.md): V3-specific rich scene
+  composition contract.
+- [V3 Asset Pipeline](v3/asset-pipeline.md): supported asset inputs, bundle
+  behavior, texture policy, and budgets.
+- [V3 Visual Parity Policy](v3/visual-parity-policy.md): what V3 does and does
+  not require from Three.js/Bevy screenshots.
 - [V1 PRDs](PRDs/v1/README.md): implementation tickets for the V1 end-to-end
   proof, sliced from the roadmap and aligned with the architecture docs.
 - [References](references.md): external Bevy, Three.js, and related AI-tooling
   references used to shape the initial docs.
 
-## V1 Status
+## Current Status
 
-V1 is the current implemented release candidate path. Use
-`pnpm verify:v1` for the full scaffold-to-runtime gate and
-`pnpm check:docs:v1` for Markdown consistency. Future-facing docs remain in
-this directory, but mobile, MCP, portable UI IR, editor tooling, arbitrary
-script hosting, and broad asset pipelines are post-V1 unless a V1 PRD says
-otherwise.
+The active release gate is V3.
+
+V3 proves that ThreeNative can bundle and run a rich first-person environment
+scene from real assets through the web Three.js runtime and native Bevy adapter.
+
+Use:
+
+```bash
+pnpm verify:v3
+```
+
+V1 and V2 docs remain useful historical and foundation references. The current
+truth for implementation status is:
+
+- [STATUS.md](STATUS.md)
+- [bevy-feature-parity.md](bevy-feature-parity.md)
+- [releases/v3-completion.md](releases/v3-completion.md)
 
 ## Design Principles
 
@@ -62,13 +94,14 @@ otherwise.
 
 ## Recommended Reading Order
 
-1. Start with [concept.md](concept.md) for the product thesis.
-2. Read [goals.md](goals.md) and [architecture.md](architecture.md) to
+1. Start with [STATUS.md](STATUS.md) for current implementation status.
+2. Read [concept.md](concept.md) for the product thesis.
+3. Read [goals.md](goals.md) and [architecture.md](architecture.md) to
    understand the product target and system shape.
-3. Read [sdk.md](sdk.md), [ecs.md](ecs.md), [scripting.md](scripting.md),
+4. Read [sdk.md](sdk.md), [ecs.md](ecs.md), [scripting.md](scripting.md),
    [scripting-api.md](scripting-api.md), [ui.md](ui.md), and [ir.md](ir.md)
    together because they define the authoring and compilation contract.
-4. Read [runtime-adapters.md](runtime-adapters.md) before implementing native or
+5. Read [runtime-adapters.md](runtime-adapters.md) before implementing native or
    web targets.
-5. Use [developer-workflow.md](developer-workflow.md), [ai-workflows.md](ai-workflows.md),
+6. Use [developer-workflow.md](developer-workflow.md), [ai-workflows.md](ai-workflows.md),
    and [ROADMAP.md](ROADMAP.md) to sequence implementation work.
