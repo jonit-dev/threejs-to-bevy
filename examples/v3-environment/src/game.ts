@@ -184,9 +184,9 @@ export default {
       },
       {
         id: "bookmark.bend",
-        position: [1.3, 1.7, -4.5],
-        yaw: 188,
-        pitch: -2,
+        position: [0.6, 1.7, -3.7],
+        yaw: 8,
+        pitch: -4,
         expectedTags: ["tree", "pebble", "rock"],
       },
     ],
