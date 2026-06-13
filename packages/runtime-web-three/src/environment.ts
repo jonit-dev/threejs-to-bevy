@@ -311,13 +311,13 @@ function sizeForCategory(category: NonNullable<IWebBundle["environmentScene"]>["
     case "rock":
       return 0.9;
     case "vegetation":
-      return 1.4;
+      return 1.2;
     case "grass":
-      return 0.75;
+      return 1;
     case "flower":
-      return 0.55;
+      return 0.3;
     case "mushroom":
-      return 0.5;
+      return 0.36;
     case "pebble":
       return 0.35;
   }
