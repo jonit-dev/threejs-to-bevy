@@ -196,6 +196,15 @@ async function writeBevyMappedPreview(page: Page, path: string, bundle: Awaited<
     const W = canvas.width;
     const H = canvas.height;
     const categoryBySource = new Map(preview.sourceAssets.map((asset) => [asset.id, asset.category]));
+    const categorySizes = {
+      tree: [0.65, 4.2, 0.65],
+      rock: [1.15, 0.75, 1],
+      pebble: [0.32, 0.18, 0.28],
+      grass: [0.18, 0.75, 0.18],
+      flower: [0.25, 0.45, 0.25],
+      mushroom: [0.28, 0.35, 0.28],
+      vegetation: [0.75, 0.9, 0.75],
+    };
     const camera = preview.bookmark ?? { position: [0, 1.7, 7], yaw: 180, pitch: -4 };
     const yaw = camera.yaw * Math.PI / 180;
     const forward = [Math.sin(yaw), Math.cos(yaw)];
@@ -220,7 +229,7 @@ async function writeBevyMappedPreview(page: Page, path: string, bundle: Awaited<
       const side = dx * right[0] + dz * right[1];
       const depth = dx * forward[0] + dz * forward[1];
       if (depth <= 0.1) return undefined;
-      const scale = 560 / depth;
+      const scale = 430 / depth;
       return { x: W / 2 + side * scale, y: 345 - (point[1] - cam[1]) * scale * 0.82, scale, depth };
     }
     function pathQuad(a, b, width) {
@@ -251,9 +260,15 @@ async function writeBevyMappedPreview(page: Page, path: string, bundle: Awaited<
         ctx.stroke();
       }
     }
-    ctx.fillStyle = "#9eb6aa";
+    const sky = ctx.createLinearGradient(0, 0, 0, 285);
+    sky.addColorStop(0, "#d7eced");
+    sky.addColorStop(1, "#a9c5b8");
+    ctx.fillStyle = sky;
     ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = "#758044";
+    const ground = ctx.createLinearGradient(0, 260, 0, H);
+    ground.addColorStop(0, "#879152");
+    ground.addColorStop(1, "#6d7a42");
+    ctx.fillStyle = ground;
     ctx.fillRect(0, 260, W, H - 260);
     const bounds = preview.terrain?.bounds ?? { min: [-12, 0, -14], max: [12, 0, 10] };
     drawPoly([
@@ -261,7 +276,7 @@ async function writeBevyMappedPreview(page: Page, path: string, bundle: Awaited<
       [bounds.max[0], terrainHeightAt(bounds.max[0], bounds.min[2]), bounds.min[2]],
       [bounds.max[0], terrainHeightAt(bounds.max[0], bounds.max[2]), bounds.max[2]],
       [bounds.min[0], terrainHeightAt(bounds.min[0], bounds.max[2]), bounds.max[2]],
-    ], "#697849", undefined);
+    ], "#7b884e", undefined);
     for (let i = 0; i < (preview.path?.points?.length ?? 0) - 1; i += 1) {
       drawPoly(pathQuad(preview.path.points[i], preview.path.points[i + 1], preview.path.width), "#d99a44", "#9f7739");
     }
@@ -270,26 +285,33 @@ async function writeBevyMappedPreview(page: Page, path: string, bundle: Awaited<
       return { instance, projected: p, category: categoryBySource.get(instance.sourceAsset) ?? "vegetation" };
     }).filter((item) => item.projected).sort((a, b) => b.projected.depth - a.projected.depth);
     for (const { instance, projected, category } of sorted) {
+      const categorySize = categorySizes[category] ?? categorySizes.vegetation;
       const scale = (instance.scale?.[1] ?? 1) * projected.scale;
+      const visualHeight = categorySize[1] * scale;
       ctx.fillStyle = "rgba(22, 35, 20, 0.22)";
       ctx.beginPath();
       ctx.ellipse(projected.x + scale * 0.08, projected.y + scale * 0.05, Math.max(8, scale * 0.55), Math.max(3, scale * 0.16), -0.18, 0, Math.PI * 2);
       ctx.fill();
       if (category === "tree") {
-        ctx.fillStyle = "#8c552f";
-        ctx.fillRect(projected.x - scale * 0.11, projected.y - scale * 4.25, scale * 0.22, scale * 4.25);
+        const trunkWidth = Math.max(5, scale * 0.18);
+        const trunkHeight = visualHeight;
+        const trunk = ctx.createLinearGradient(projected.x - trunkWidth, projected.y - trunkHeight, projected.x + trunkWidth, projected.y);
+        trunk.addColorStop(0, "#b06c3a");
+        trunk.addColorStop(1, "#6d3c22");
+        ctx.fillStyle = trunk;
+        ctx.fillRect(projected.x - trunkWidth / 2, projected.y - trunkHeight, trunkWidth, trunkHeight);
         ctx.fillStyle = "#6d3d21";
-        ctx.fillRect(projected.x - scale * 0.03, projected.y - scale * 4.0, scale * 0.035, scale * 3.65);
-        ctx.fillStyle = "#5d741e";
+        ctx.fillRect(projected.x - trunkWidth * 0.12, projected.y - trunkHeight * 0.94, trunkWidth * 0.2, trunkHeight * 0.86);
+        ctx.fillStyle = "#6f8c28";
         ctx.beginPath();
-        ctx.arc(projected.x, projected.y - scale * 4.3, Math.max(12, scale * 0.82), 0, Math.PI * 2);
+        ctx.arc(projected.x, projected.y - trunkHeight * 1.02, Math.max(12, scale * 0.82), 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = "#6f8b25";
+        ctx.fillStyle = "#86a739";
         ctx.beginPath();
-        ctx.arc(projected.x - scale * 0.36, projected.y - scale * 4.05, Math.max(8, scale * 0.46), 0, Math.PI * 2);
+        ctx.arc(projected.x - scale * 0.36, projected.y - trunkHeight * 0.96, Math.max(8, scale * 0.46), 0, Math.PI * 2);
         ctx.fill();
         ctx.beginPath();
-        ctx.arc(projected.x + scale * 0.35, projected.y - scale * 4.0, Math.max(8, scale * 0.48), 0, Math.PI * 2);
+        ctx.arc(projected.x + scale * 0.35, projected.y - trunkHeight * 0.95, Math.max(8, scale * 0.48), 0, Math.PI * 2);
         ctx.fill();
       } else if (category === "rock" || category === "pebble") {
         ctx.fillStyle = category === "rock" ? "#71765d" : "#aaa18a";
@@ -301,12 +323,20 @@ async function writeBevyMappedPreview(page: Page, path: string, bundle: Awaited<
         ctx.ellipse(projected.x - scale * 0.18, projected.y - scale * 0.34, Math.max(2, scale * 0.22), Math.max(1.5, scale * 0.08), -0.2, 0, Math.PI * 2);
         ctx.fill();
       } else if (category === "grass") {
-        ctx.strokeStyle = "#8ebc28";
-        ctx.lineWidth = Math.max(1, scale * 0.035);
-        for (let blade = -2; blade <= 2; blade += 1) {
+        ctx.strokeStyle = "#9ed12e";
+        ctx.lineWidth = Math.max(1, scale * 0.028);
+        for (let blade = -4; blade <= 4; blade += 1) {
           ctx.beginPath();
-          ctx.moveTo(projected.x + blade * scale * 0.06, projected.y);
-          ctx.lineTo(projected.x + blade * scale * 0.12, projected.y - scale * 0.75);
+          ctx.moveTo(projected.x + blade * scale * 0.055, projected.y);
+          ctx.quadraticCurveTo(projected.x + blade * scale * 0.075, projected.y - visualHeight * 0.48, projected.x + blade * scale * 0.14, projected.y - visualHeight);
+          ctx.stroke();
+        }
+        ctx.strokeStyle = "#516921";
+        ctx.lineWidth = Math.max(1, scale * 0.018);
+        for (let blade = -3; blade <= 3; blade += 2) {
+          ctx.beginPath();
+          ctx.moveTo(projected.x + blade * scale * 0.05, projected.y);
+          ctx.lineTo(projected.x + blade * scale * 0.09, projected.y - visualHeight * 0.82);
           ctx.stroke();
         }
       } else {
