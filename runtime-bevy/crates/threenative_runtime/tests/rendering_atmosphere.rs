@@ -4,9 +4,14 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use bevy::prelude::*;
+use bevy::{
+    prelude::*,
+    render::{alpha::AlphaMode, render_resource::Face},
+};
 use threenative_loader::load_bundle;
-use threenative_runtime::rendering::{apply_atmosphere_to_world, observe_atmosphere};
+use threenative_runtime::rendering::{
+    apply_atmosphere_to_world, normalize_textured_material, observe_atmosphere,
+};
 
 #[test]
 fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
@@ -86,6 +91,27 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
     assert!((ambient.brightness - 0.8).abs() < 0.01);
 
     fs::remove_dir_all(root).expect("temp bundle should be removed");
+}
+
+#[test]
+fn textured_gltf_materials_should_default_to_cutout_double_sided_rendering() {
+    let mut material = StandardMaterial {
+        base_color_texture: Some(Handle::default()),
+        alpha_mode: AlphaMode::Opaque,
+        double_sided: false,
+        cull_mode: Some(Face::Back),
+        ..Default::default()
+    };
+
+    assert!(normalize_textured_material(&mut material));
+    assert_eq!(material.alpha_mode, AlphaMode::Mask(0.2));
+    assert!(material.double_sided);
+    assert_eq!(material.cull_mode, None);
+    assert!(material.unlit);
+
+    let mut untextured = StandardMaterial::default();
+    assert!(!normalize_textured_material(&mut untextured));
+    assert_eq!(untextured.alpha_mode, AlphaMode::Opaque);
 }
 
 fn temp_bundle_dir() -> PathBuf {

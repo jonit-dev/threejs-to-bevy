@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, render::alpha::AlphaMode};
 use threenative_loader::{ColorIr, LoadedBundle};
 
 #[derive(Debug, PartialEq)]
@@ -66,6 +66,23 @@ pub fn apply_atmosphere_to_world(world: &mut World, bundle: &LoadedBundle) {
         color: color_to_bevy(&profile.ambient.color),
         brightness: profile.ambient.intensity,
     });
+}
+
+pub fn normalize_loaded_gltf_materials(mut materials: ResMut<Assets<StandardMaterial>>) {
+    for (_, material) in materials.iter_mut() {
+        normalize_textured_material(material);
+    }
+}
+
+pub fn normalize_textured_material(material: &mut StandardMaterial) -> bool {
+    if material.base_color_texture.is_none() {
+        return false;
+    }
+    material.alpha_mode = AlphaMode::Mask(0.2);
+    material.double_sided = true;
+    material.cull_mode = None;
+    material.unlit = true;
+    true
 }
 
 fn color_string(color: &ColorIr) -> String {

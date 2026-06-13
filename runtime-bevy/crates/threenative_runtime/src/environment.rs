@@ -268,6 +268,7 @@ fn material(world: &mut World, color: Color) -> Handle<StandardMaterial> {
         .add(StandardMaterial {
             base_color: color,
             perceptual_roughness: 0.95,
+            unlit: true,
             ..Default::default()
         })
 }

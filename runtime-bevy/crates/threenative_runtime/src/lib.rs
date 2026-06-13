@@ -62,5 +62,6 @@ pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeErro
     rendering::apply_atmosphere_to_world(app.world_mut(), &bundle);
     map_world::map_bundle_into_world(app.world_mut(), &bundle)?;
     environment::map_environment_into_world(app.world_mut(), &bundle);
+    app.add_systems(Update, rendering::normalize_loaded_gltf_materials);
     Ok(app)
 }
