@@ -106,7 +106,7 @@ flowchart LR
 
 | Test File | Test Name | Assertion |
 | --- | --- | --- |
-| `scripts/check-docs-v1.test.mjs` | `should catch legacy bundle names in v1 docs` | Fixture with `scene.ir.json` fails. |
+| `scripts/check-docs-v1.test.mjs` | `should catch legacy bundle names in v1 docs` | Fixture with a legacy world-file name fails. |
 
 **User Verification:**
 

@@ -16,8 +16,7 @@ V1-relevant names and boundaries conflict.
 
 - Roadmap V1 is a narrow end-to-end proof.
 - Some docs describe MVP/V1 as a broader arena/mobile/UI/scripting milestone.
-- Bundle names vary between `scene.ir.json`, `ecs.ir.json`, and
-  `world.ir.json`.
+- Bundle names vary between legacy world-file names and `world.ir.json`.
 - Schedule stage lists and capability fields differ across docs.
 - `runtime-bevy` placement differs between docs.
 
@@ -64,7 +63,7 @@ V1-relevant names and boundaries conflict.
 
 **Implementation:**
 
-- [ ] Replace V1 bundle examples that imply `scene.ir.json`/`ecs.ir.json`.
+- [ ] Replace V1 bundle examples that imply legacy world-file names.
 - [ ] Decide where `requiredCapabilities` lives for V1.
 - [ ] Normalize schedule stage list for V1.
 - [ ] Clarify that UI, MCP, and mobile are post-V1 unless promoted.
@@ -106,7 +105,7 @@ V1-relevant names and boundaries conflict.
 ## Verification Strategy
 
 - `find docs/PRDs/v1 -name '*.md' | sort`
-- `rg 'scene.ir.json|ecs.ir.json|world.ir.json|requiredCapabilities|formatVersion' docs`
+- `rg 'world.ir.json|requiredCapabilities|formatVersion' docs`
 - Manual review against `docs/ROADMAP.md`.
 
 ## Acceptance Criteria

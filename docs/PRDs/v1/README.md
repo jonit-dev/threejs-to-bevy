@@ -20,8 +20,7 @@ create scaffolded project
 
 - Repository layout: use `packages/*`, top-level `runtime-bevy/`, `examples/`,
   and `docs/`.
-- Bundle naming: standardize on `world.ir.json`, not `scene.ir.json` or
-  `ecs.ir.json`.
+- Bundle naming: standardize on `world.ir.json`, not legacy world-file names.
 - Package names: use provisional `@threenative/*` package names until a naming
   decision changes docs and code together.
 - CLI: use `tn create`, `tn validate`, `tn build`, `tn dev --target web`,
@@ -30,12 +29,11 @@ create scaffolded project
 - Native runtime: require desktop Bevy loading/rendering static validated IR.
 - Scripting: V1 may include one built-in movement/rotation proof, but native
   JavaScript hosting is not a V1 gate.
-- UI: portable `ui.ir.json` is not required for V1 completion despite some docs
-  labeling UI primitives as V1. UI implementation moves to V2 unless explicitly
-  promoted.
-- Mobile, MCP, broad assets, arbitrary scripts, full Three.js compatibility,
-  raw WebGL/WebGPU access, advanced shaders, multiplayer, and editor tooling are
-  out of V1.
+- UI IR is post-V1 and is not required for V1 completion despite some docs
+  labeling UI primitives as V1.
+- Mobile and MCP are out of V1, as are broad assets, arbitrary scripts, full
+  Three.js compatibility, raw WebGL/WebGPU access, advanced shaders,
+  multiplayer, and editor tooling.
 
 ## Ticket Order
 
@@ -67,3 +65,17 @@ create scaffolded project
 - Screenshot artifacts and machine-readable reports let an AI agent identify
   blank canvas, missing canvas, frozen scene, and camera framing failures.
 - Docs and examples match the actually supported V1 surface.
+
+## Release Gate
+
+Run the V1 candidate gate before treating V1 as complete:
+
+```bash
+pnpm verify:v1
+pnpm check:docs:v1
+```
+
+`pnpm verify:v1` scaffolds a clean V1 project, validates, builds, runs web
+visual verification, checks the canonical example, starts the native desktop
+runtime long enough to prove it accepts the bundle, and runs the docs
+consistency check.

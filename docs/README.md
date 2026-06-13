@@ -36,6 +36,15 @@ that concept into implementation contracts.
 - [References](references.md): external Bevy, Three.js, and related AI-tooling
   references used to shape the initial docs.
 
+## V1 Status
+
+V1 is the current implemented release candidate path. Use
+`pnpm verify:v1` for the full scaffold-to-runtime gate and
+`pnpm check:docs:v1` for Markdown consistency. Future-facing docs remain in
+this directory, but mobile, MCP, portable UI IR, editor tooling, arbitrary
+script hosting, and broad asset pipelines are post-V1 unless a V1 PRD says
+otherwise.
+
 ## Design Principles
 
 1. Keep the public API familiar to Three.js and TypeScript developers.

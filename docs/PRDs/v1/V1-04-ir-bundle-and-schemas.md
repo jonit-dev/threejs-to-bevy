@@ -23,9 +23,8 @@ fixtures before compiler and runtimes depend on them.
 - Add TypeScript IR types and JSON Schema files from one source of truth.
 - Define V1 bundle layout around `manifest.json`, `world.ir.json`,
   `materials.ir.json`, `assets.manifest.json`, and `target.profile.json`.
-- Keep optional `ui.ir.json`, `systems.ir.json`, `animations.ir.json`, and
-  `scripts.bundle.js` manifest entries allowed but not required for V1 static
-  scene proof.
+- Keep optional UI IR, systems IR, animations IR, and script bundle manifest
+  entries allowed but not required for V1 static scene proof.
 - Add fixtures for empty world and cube/camera/light.
 
 **Architecture Diagram:**
@@ -121,7 +120,7 @@ flowchart LR
 
 - `pnpm --filter @threenative/ir test`
 - `pnpm --filter @threenative/ir typecheck`
-- `rg 'scene.ir.json|ecs.ir.json' packages/ir docs/PRDs/v1`
+- `rg 'world.ir.json' packages/ir docs/PRDs/v1`
 
 ## Acceptance Criteria
 
