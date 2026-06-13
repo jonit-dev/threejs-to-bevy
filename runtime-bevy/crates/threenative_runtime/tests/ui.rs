@@ -4,7 +4,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use threenative_loader::{load_bundle, UiIr, UiNodeIr};
+use threenative_loader::{UiIr, UiNodeIr, load_bundle};
 use threenative_runtime::ui::build_native_ui;
 
 #[test]

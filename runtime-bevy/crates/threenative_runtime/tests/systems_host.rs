@@ -14,12 +14,17 @@ fn systems_host_should_report_unsupported_script_host() {
     let bundle = load_bundle(&root).expect("scripted bundle should load");
 
     let diagnostics = diagnose_native_system_host(&bundle);
-    let error = ensure_native_system_host_supported(&bundle).expect_err("script host should be gated");
+    let error =
+        ensure_native_system_host_supported(&bundle).expect_err("script host should be gated");
 
     assert_eq!(diagnostics[0].code, "TN_BEVY_SYSTEM_HOST_UNSUPPORTED");
     assert_eq!(diagnostics[0].severity, "error");
     assert_eq!(diagnostics[0].system_id.as_deref(), Some("movePlayer"));
-    assert!(diagnostics[0].message.contains("Native TypeScript system hosting is gated in V2"));
+    assert!(
+        diagnostics[0]
+            .message
+            .contains("Native TypeScript system hosting is gated in V2")
+    );
     assert_eq!(error.code, "TN_BEVY_SYSTEM_HOST_UNSUPPORTED");
 }
 
@@ -87,8 +92,11 @@ fn write_bundle(name: &str, with_scripts: bool) -> PathBuf {
             "systems.ir.json",
             r#"{"schema":"threenative.systems","version":"0.1.0","systems":[{"name":"movePlayer"}]}"#,
         );
-        fs::write(root.join("scripts.bundle.js"), "export const systems = Object.freeze({});\n")
-            .expect("script bundle should be written");
+        fs::write(
+            root.join("scripts.bundle.js"),
+            "export const systems = Object.freeze({});\n",
+        )
+        .expect("script bundle should be written");
     }
     root
 }

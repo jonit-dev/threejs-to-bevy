@@ -1,10 +1,7 @@
 use std::{env, fs, path::PathBuf, process::ExitCode};
 
 use bevy::{
-    app::AppExit,
-    prelude::*,
-    render::view::screenshot::ScreenshotManager,
-    window::PrimaryWindow,
+    app::AppExit, prelude::*, render::view::screenshot::ScreenshotManager, window::PrimaryWindow,
 };
 use threenative_loader::load_bundle;
 use threenative_runtime::{app_from_bundle, environment::apply_environment_bookmark};
@@ -47,7 +44,10 @@ fn main() -> ExitCode {
     }
     if let Err(error) = fs::remove_file(&output_path) {
         if error.kind() != std::io::ErrorKind::NotFound {
-            eprintln!("failed to remove existing screenshot '{}': {error}", output_path.display());
+            eprintln!(
+                "failed to remove existing screenshot '{}': {error}",
+                output_path.display()
+            );
             return ExitCode::from(1);
         }
     }

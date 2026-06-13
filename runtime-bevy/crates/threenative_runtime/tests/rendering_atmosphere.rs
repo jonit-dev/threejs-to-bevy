@@ -5,13 +5,15 @@ use std::{
 };
 
 use bevy::{
+    core_pipeline::tonemapping::Tonemapping,
     pbr::{CascadeShadowConfig, DirectionalLightShadowMap},
     prelude::*,
-    render::{alpha::AlphaMode, render_resource::Face},
+    render::{alpha::AlphaMode, render_resource::Face, view::ColorGrading},
 };
 use threenative_loader::load_bundle;
-use threenative_runtime::rendering::{
-    apply_atmosphere_to_world, normalize_textured_material, observe_atmosphere,
+use threenative_runtime::{
+    map_world::map_bundle_into_world,
+    rendering::{apply_atmosphere_to_world, normalize_textured_material, observe_atmosphere},
 };
 
 #[test]
@@ -35,7 +37,13 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
     write_json(
         &root,
         "world.ir.json",
-        r#"{ "schema": "threenative.world", "version": "0.1.0", "entities": [] }"#,
+        r#"{
+          "schema": "threenative.world",
+          "version": "0.1.0",
+          "entities": [
+            { "id": "camera.main", "components": { "Camera": { "kind": "perspective", "near": 0.1, "far": 100, "fovY": 60 } } }
+          ]
+        }"#,
     );
     write_json(
         &root,
@@ -120,6 +128,16 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
     assert!((light.4[2] - 0x9a as f32 / 255.0).abs() < 0.01);
     assert!((light.5 - 0.05).abs() < 0.001);
     assert_eq!(light.6, vec![45.0]);
+
+    map_bundle_into_world(app.world_mut(), &bundle).expect("world should map");
+    let camera_color = app
+        .world_mut()
+        .query::<(&Tonemapping, &ColorGrading)>()
+        .iter(app.world())
+        .next()
+        .expect("camera color management should exist");
+    assert_eq!(*camera_color.0, Tonemapping::AcesFitted);
+    assert!((camera_color.1.global.exposure - 1.05_f32.log2()).abs() < 0.001);
 
     fs::remove_dir_all(root).expect("temp bundle should be removed");
 }

@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import type { IAtmosphereProfileIr } from "@threenative/ir";
 import { loadBundle } from "./loadBundle.js";
 import { mapWorld, type IRuntimeDiagnostic } from "./mapWorld.js";
 import { applyEnvironmentBookmark, createEnvironmentRuntime, loadEnvironmentAssetInstances } from "./environment.js";
@@ -37,6 +38,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
   const loopState = createGameLoopState(bundle.runtimeConfig);
   const systemModule = await loadSystemModule(source, bundle.manifest);
   const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  applyRendererColorManagement(renderer, bundle.environmentScene?.atmosphere?.colorManagement);
   const canvas = renderer.domElement;
 
   container.replaceChildren(canvas);
@@ -82,6 +84,18 @@ export async function renderBundle(source: string, container: HTMLElement, optio
     diagnostics: mapped.diagnostics,
     renderer,
   };
+}
+
+function applyRendererColorManagement(
+  renderer: THREE.WebGLRenderer,
+  colorManagement: IAtmosphereProfileIr["colorManagement"] | undefined,
+): void {
+  if (colorManagement === undefined) {
+    return;
+  }
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = colorManagement.toneMapping === "aces" ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
+  renderer.toneMappingExposure = colorManagement.exposure;
 }
 
 function resizeRenderer(renderer: THREE.WebGLRenderer, camera: THREE.Camera, container: HTMLElement): void {

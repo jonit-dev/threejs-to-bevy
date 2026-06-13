@@ -18,9 +18,18 @@ impl NativeInputState {
     }
 }
 
-pub fn map_keyboard_event(input: &InputIr, code: &str, pressed: bool, state: &mut NativeInputState) {
+pub fn map_keyboard_event(
+    input: &InputIr,
+    code: &str,
+    pressed: bool,
+    state: &mut NativeInputState,
+) {
     for action in &input.actions {
-        if action.bindings.iter().any(|binding| matches_keyboard(binding, code)) {
+        if action
+            .bindings
+            .iter()
+            .any(|binding| matches_keyboard(binding, code))
+        {
             if pressed {
                 state.actions.insert(action.id.clone());
             } else {
@@ -30,8 +39,14 @@ pub fn map_keyboard_event(input: &InputIr, code: &str, pressed: bool, state: &mu
     }
 
     for axis in &input.axes {
-        let positive = axis.positive.iter().any(|binding| matches_keyboard(binding, code));
-        let negative = axis.negative.iter().any(|binding| matches_keyboard(binding, code));
+        let positive = axis
+            .positive
+            .iter()
+            .any(|binding| matches_keyboard(binding, code));
+        let negative = axis
+            .negative
+            .iter()
+            .any(|binding| matches_keyboard(binding, code));
         if positive || negative {
             let current = state.axis(&axis.id);
             let delta = match (positive, negative, pressed) {
@@ -41,14 +56,25 @@ pub fn map_keyboard_event(input: &InputIr, code: &str, pressed: bool, state: &mu
                 (false, true, false) => 1.0,
                 _ => 0.0,
             };
-            state.axes.insert(axis.id.clone(), (current + delta).clamp(-1.0, 1.0));
+            state
+                .axes
+                .insert(axis.id.clone(), (current + delta).clamp(-1.0, 1.0));
         }
     }
 }
 
-pub fn map_pointer_button_event(input: &InputIr, button: u8, pressed: bool, state: &mut NativeInputState) {
+pub fn map_pointer_button_event(
+    input: &InputIr,
+    button: u8,
+    pressed: bool,
+    state: &mut NativeInputState,
+) {
     for action in &input.actions {
-        if action.bindings.iter().any(|binding| matches_pointer_button(binding, button)) {
+        if action
+            .bindings
+            .iter()
+            .any(|binding| matches_pointer_button(binding, button))
+        {
             if pressed {
                 state.actions.insert(action.id.clone());
             } else {

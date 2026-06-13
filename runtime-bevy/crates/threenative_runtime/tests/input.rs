@@ -1,5 +1,5 @@
 use threenative_loader::{InputActionIr, InputAxisIr, InputBindingIr, InputIr};
-use threenative_runtime::input::{map_keyboard_event, map_pointer_button_event, NativeInputState};
+use threenative_runtime::input::{NativeInputState, map_keyboard_event, map_pointer_button_event};
 
 #[test]
 fn should_map_keyboard_input_event_to_action() {

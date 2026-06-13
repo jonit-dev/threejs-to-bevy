@@ -4,13 +4,13 @@ use bevy::prelude::*;
 use thiserror::Error;
 use threenative_loader::{LoadError, load_bundle};
 
-pub mod map_world;
-pub mod conformance;
 pub mod assets;
 pub mod audio;
+pub mod conformance;
 pub mod environment;
 pub mod first_person;
 pub mod input;
+pub mod map_world;
 pub mod physics;
 pub mod rendering;
 pub mod systems_host;

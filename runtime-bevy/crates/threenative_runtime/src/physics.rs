@@ -79,10 +79,8 @@ fn half_extents(collider: &ColliderComponent) -> [f32; 3] {
 
 fn overlaps(left: &Bounds<'_>, right: &Bounds<'_>) -> bool {
     (left.center[0] - right.center[0]).abs() <= left.half_extents[0] + right.half_extents[0]
-        && (left.center[1] - right.center[1]).abs()
-            <= left.half_extents[1] + right.half_extents[1]
-        && (left.center[2] - right.center[2]).abs()
-            <= left.half_extents[2] + right.half_extents[2]
+        && (left.center[1] - right.center[1]).abs() <= left.half_extents[1] + right.half_extents[1]
+        && (left.center[2] - right.center[2]).abs() <= left.half_extents[2] + right.half_extents[2]
 }
 
 fn ordered_pair<'a>(left: &'a str, right: &'a str) -> (&'a str, &'a str) {

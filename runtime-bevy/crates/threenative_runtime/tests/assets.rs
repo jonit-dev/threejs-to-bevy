@@ -18,5 +18,10 @@ fn assets_should_load_asset_manifest_entries() {
 
     let resolved = resolve_asset_manifest(&assets);
 
-    assert_eq!(resolved.get("model.player").map(|asset| asset.path.as_str()), Some("assets/player.glb"));
+    assert_eq!(
+        resolved
+            .get("model.player")
+            .map(|asset| asset.path.as_str()),
+        Some("assets/player.glb")
+    );
 }

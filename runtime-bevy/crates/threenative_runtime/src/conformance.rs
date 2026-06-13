@@ -135,12 +135,16 @@ fn report_entity(
     runtime: Option<&RuntimeEntityReport>,
 ) -> ConformanceEntityReport {
     ConformanceEntityReport {
-        camera: entity.components.camera.as_ref().map(|camera| CameraReport {
-            far: camera.far,
-            fov_y: camera.fov_y,
-            kind: camera.kind.clone(),
-            near: camera.near,
-        }),
+        camera: entity
+            .components
+            .camera
+            .as_ref()
+            .map(|camera| CameraReport {
+                far: camera.far,
+                fov_y: camera.fov_y,
+                kind: camera.kind.clone(),
+                near: camera.near,
+            }),
         components: component_names(entity),
         id: entity.id.clone(),
         light: entity.components.light.as_ref().map(|light| LightReport {

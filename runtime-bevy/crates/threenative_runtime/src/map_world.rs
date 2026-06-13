@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 
 use bevy::{
+    core_pipeline::tonemapping::Tonemapping,
     math::primitives::{Capsule3d, Cuboid, Cylinder, Rectangle, Sphere},
     prelude::*,
-    render::camera::ScalingMode,
+    render::{camera::ScalingMode, view::ColorGrading},
 };
 use thiserror::Error;
 use threenative_components::ThreeNativeId;
@@ -22,6 +23,12 @@ pub enum MapError {
 
 pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result<(), MapError> {
     ensure_asset_resources(world);
+    let camera_color_management = bundle
+        .environment_scene
+        .as_ref()
+        .and_then(|scene| scene.atmosphere.as_ref())
+        .filter(|profile| profile.active)
+        .map(|profile| &profile.color_management);
 
     let assets_by_id = bundle
         .assets
@@ -38,7 +45,13 @@ pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result
 
     let mut entities_by_id = HashMap::new();
     for entity in &bundle.world.entities {
-        let bevy_entity = spawn_entity(world, entity, &assets_by_id, &materials_by_id)?;
+        let bevy_entity = spawn_entity(
+            world,
+            entity,
+            &assets_by_id,
+            &materials_by_id,
+            camera_color_management,
+        )?;
         entities_by_id.insert(entity.id.as_str(), bevy_entity);
     }
 
@@ -76,6 +89,7 @@ fn spawn_entity(
     entity: &WorldEntity,
     assets_by_id: &HashMap<&str, &AssetIr>,
     materials_by_id: &HashMap<&str, &MaterialIr>,
+    camera_color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
 ) -> Result<Entity, MapError> {
     let transform = map_transform(entity);
     let name = Name::new(entity.id.clone());
@@ -127,7 +141,9 @@ fn spawn_entity(
         };
         return Ok(world
             .spawn(Camera3dBundle {
+                color_grading: color_grading_for_profile(camera_color_management),
                 projection,
+                tonemapping: tonemapping_for_profile(camera_color_management),
                 transform,
                 ..Default::default()
             })
@@ -194,6 +210,26 @@ fn spawn_entity(
     Ok(world
         .spawn((stable_id, name, transform, map_visibility(entity)))
         .id())
+}
+
+fn color_grading_for_profile(
+    color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
+) -> ColorGrading {
+    let mut color_grading = ColorGrading::default();
+    if let Some(color_management) = color_management {
+        color_grading.global.exposure = color_management.exposure.max(0.001).log2();
+    }
+    color_grading
+}
+
+fn tonemapping_for_profile(
+    color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
+) -> Tonemapping {
+    match color_management.map(|profile| profile.tone_mapping.as_str()) {
+        Some("aces") => Tonemapping::AcesFitted,
+        Some("none") => Tonemapping::None,
+        _ => Tonemapping::default(),
+    }
 }
 
 fn add_mesh(world: &mut World, asset: &AssetIr) -> Handle<Mesh> {

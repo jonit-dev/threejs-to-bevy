@@ -2,9 +2,7 @@ use std::path::PathBuf;
 
 use bevy::prelude::*;
 use threenative_loader::load_bundle;
-use threenative_runtime::{
-    conformance::report_bevy_conformance, map_world::map_bundle_into_world,
-};
+use threenative_runtime::{conformance::report_bevy_conformance, map_world::map_bundle_into_world};
 
 #[test]
 fn should_report_basic_scene_conformance_semantics() {
@@ -26,14 +24,22 @@ fn should_report_basic_scene_conformance_semantics() {
         .expect("cube entity should be reported");
     assert_eq!(
         cube.components,
-        vec!["Hierarchy".to_owned(), "MeshRenderer".to_owned(), "Transform".to_owned()]
+        vec![
+            "Hierarchy".to_owned(),
+            "MeshRenderer".to_owned(),
+            "Transform".to_owned()
+        ]
     );
     assert_eq!(cube.parent.as_deref(), Some("scene.root"));
     assert_eq!(cube.mesh.as_deref(), Some("mesh.cube"));
     assert_eq!(cube.material.as_deref(), Some("mat.cube"));
 
     assert!(report.entities.iter().any(|entity| {
-        entity.id == "camera.main" && entity.components.iter().any(|component| component == "Camera")
+        entity.id == "camera.main"
+            && entity
+                .components
+                .iter()
+                .any(|component| component == "Camera")
     }));
     assert!(report.entities.iter().any(|entity| {
         entity.id == "light.key"

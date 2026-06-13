@@ -32,7 +32,8 @@ pub fn handle_audio_events(audio: &AudioIr, events: &[&str]) -> Vec<NativeAudioC
     events
         .iter()
         .flat_map(|event| {
-            audio.one_shots
+            audio
+                .one_shots
                 .iter()
                 .filter(move |one_shot| one_shot.event == **event)
                 .map(move |one_shot| NativeAudioCommand {

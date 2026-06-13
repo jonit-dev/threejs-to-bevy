@@ -25,14 +25,26 @@ fn environment_should_map_scene_to_terrain_path_and_instances() {
           }
         }"#,
     );
-    write_json(&root, "world.ir.json", r#"{ "schema": "threenative.world", "version": "0.1.0", "entities": [] }"#);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{ "schema": "threenative.world", "version": "0.1.0", "entities": [] }"#,
+    );
     write_json(
         &root,
         "assets.manifest.json",
         r#"{ "schema": "threenative.assets", "version": "0.1.0", "assets": [{ "id": "model.env.Rock", "kind": "model", "format": "gltf", "path": "assets/environment/Rock.gltf" }] }"#,
     );
-    write_json(&root, "materials.ir.json", r#"{ "schema": "threenative.materials", "version": "0.1.0", "materials": [] }"#);
-    write_json(&root, "target.profile.json", r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["desktop"] }"#);
+    write_json(
+        &root,
+        "materials.ir.json",
+        r#"{ "schema": "threenative.materials", "version": "0.1.0", "materials": [] }"#,
+    );
+    write_json(
+        &root,
+        "target.profile.json",
+        r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["desktop"] }"#,
+    );
     write_json(
         &root,
         "environment.scene.json",

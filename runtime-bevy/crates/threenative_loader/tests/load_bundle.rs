@@ -52,10 +52,26 @@ fn should_load_optional_audio_ir() {
           }
         }"#,
     );
-    write_json(&root, "world.ir.json", r#"{ "schema": "threenative.world", "version": "0.1.0", "entities": [] }"#);
-    write_json(&root, "assets.manifest.json", r#"{ "schema": "threenative.assets", "version": "0.1.0", "assets": [] }"#);
-    write_json(&root, "materials.ir.json", r#"{ "schema": "threenative.materials", "version": "0.1.0", "materials": [] }"#);
-    write_json(&root, "target.profile.json", r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["desktop"] }"#);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{ "schema": "threenative.world", "version": "0.1.0", "entities": [] }"#,
+    );
+    write_json(
+        &root,
+        "assets.manifest.json",
+        r#"{ "schema": "threenative.assets", "version": "0.1.0", "assets": [] }"#,
+    );
+    write_json(
+        &root,
+        "materials.ir.json",
+        r#"{ "schema": "threenative.materials", "version": "0.1.0", "materials": [] }"#,
+    );
+    write_json(
+        &root,
+        "target.profile.json",
+        r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["desktop"] }"#,
+    );
     write_json(
         &root,
         "audio.ir.json",
@@ -64,7 +80,10 @@ fn should_load_optional_audio_ir() {
 
     let bundle = load_bundle(&root).expect("audio bundle should load");
 
-    assert_eq!(bundle.audio.expect("audio ir").music[0].asset, "arena.music");
+    assert_eq!(
+        bundle.audio.expect("audio ir").music[0].asset,
+        "arena.music"
+    );
     fs::remove_dir_all(root).expect("temp bundle should be removed");
 }
 
@@ -86,10 +105,26 @@ fn should_load_optional_environment_scene_ir() {
           }
         }"#,
     );
-    write_json(&root, "world.ir.json", r#"{ "schema": "threenative.world", "version": "0.1.0", "entities": [] }"#);
-    write_json(&root, "assets.manifest.json", r#"{ "schema": "threenative.assets", "version": "0.1.0", "assets": [] }"#);
-    write_json(&root, "materials.ir.json", r#"{ "schema": "threenative.materials", "version": "0.1.0", "materials": [] }"#);
-    write_json(&root, "target.profile.json", r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["desktop"] }"#);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{ "schema": "threenative.world", "version": "0.1.0", "entities": [] }"#,
+    );
+    write_json(
+        &root,
+        "assets.manifest.json",
+        r#"{ "schema": "threenative.assets", "version": "0.1.0", "assets": [] }"#,
+    );
+    write_json(
+        &root,
+        "materials.ir.json",
+        r#"{ "schema": "threenative.materials", "version": "0.1.0", "materials": [] }"#,
+    );
+    write_json(
+        &root,
+        "target.profile.json",
+        r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["desktop"] }"#,
+    );
     write_json(
         &root,
         "environment.scene.json",
@@ -98,7 +133,10 @@ fn should_load_optional_environment_scene_ir() {
 
     let bundle = load_bundle(&root).expect("environment bundle should load");
 
-    assert_eq!(bundle.environment_scene.expect("environment ir").path.id, "path.main");
+    assert_eq!(
+        bundle.environment_scene.expect("environment ir").path.id,
+        "path.main"
+    );
     fs::remove_dir_all(root).expect("temp bundle should be removed");
 }
 
