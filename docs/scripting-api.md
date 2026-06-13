@@ -34,6 +34,9 @@ forest. The scene should be deterministic and easy to inspect:
 - identical web JavaScript and native QuickJS patch/event/command logs for a
   fixed input trace
 
+The primitive scene must be driven by the same `scripts.bundle.js` in web
+JavaScript and native QuickJS.
+
 The goal is not visual richness. The goal is to prove that authored TypeScript
 systems can run through both runtimes and produce the same validated ECS
 effects.

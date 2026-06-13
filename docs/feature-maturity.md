@@ -4,6 +4,11 @@ A feature is supported only when the public API, IR, validator, web runtime,
 native runtime if claimed, and release gate agree. Schema existence alone does
 not mean support.
 
+V4 is scoped to a primitive scripting proof: one `scripts.bundle.js` running in
+web JavaScript and native QuickJS with equivalent patch, event, command, and
+service-call logs. The maturity rows below must not imply broader native
+scripting support until that gate exists.
+
 | Feature | SDK | IR | Validator | Web | Bevy | verify gate | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Stable entities and transforms | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Supported |
@@ -22,7 +27,7 @@ not mean support.
 | UI IR | 🧪 | ✅ | ⚠️ | ❌ | ❌ | ❌ | Schema-only/post-V3 |
 | Audio IR | 🧪 | ✅ | ⚠️ | ❌ | ❌ | ❌ | Schema-only/post-V3 |
 | Gameplay systems | 🧪 | ✅ | ⚠️ | ⚠️ | ❌ | ❌ | Post-V3 |
-| Native QuickJS scripts | ❌ | ⚠️ | ⚠️ | n/a | ❌ | ❌ | V4 |
+| Native QuickJS scripts | ❌ | ⚠️ | ⚠️ | n/a | ❌ | ❌ | V4 planned; docs scope gated by `check:docs:v4` |
 | Mobile packaging | ❌ | ❌ | ❌ | n/a | ❌ | ❌ | Future |
 | Custom shaders/render graph | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | Future |
 

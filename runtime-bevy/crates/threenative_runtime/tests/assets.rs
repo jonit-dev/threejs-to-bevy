@@ -10,6 +10,7 @@ fn assets_should_load_asset_manifest_entries() {
             id: "model.player".to_owned(),
             kind: "model".to_owned(),
             format: "glb".to_owned(),
+            bounds: None,
             primitive: None,
             path: Some("assets/player.glb".to_owned()),
             size: None,

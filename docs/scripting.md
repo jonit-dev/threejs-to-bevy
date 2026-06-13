@@ -58,6 +58,9 @@ contracts are proven in web preview. The next native proof should emit
 fixture, and compare its patches with the web JavaScript path before treating
 native gameplay scripting as shippable.
 
+V4 narrows that proof to a primitive scene so patch, event, command, and
+service-call logs can be inspected without V3 forest rendering complexity.
+
 ## Native Execution Loop
 
 The Bevy adapter should execute TS systems like this:

@@ -1,7 +1,8 @@
 # Bevy Feature Parity Drift
 
 Purpose: keep V3 honest. This is not a Bevy API coverage matrix. It only tracks
-the product-contract drift that matters for the current V3 forest scene:
+the product-contract drift that matters for the current V3 forest scene and the
+active V4 native scripting proof:
 
 ```txt
 TypeScript authoring -> validated IR bundle -> web-three + native Bevy behavior
@@ -77,6 +78,18 @@ Baseline: the repo pins Bevy and `bevy_ecs` to `=0.14.2`.
    rotation, imported scale, and color conventions.
 5. Keep post-V3 features out of the V3 gate unless a PRD explicitly pulls in a
     narrow slice.
+
+## V4 Scripting Parity
+
+| Area | Status | What's drifting or missing |
+| --- | --- | --- |
+| V4 PRD scope and docs gate | ✅ | `docs/PRDs/v4` defines the QuickJS scripting proof and `check:docs:v4` rejects obvious scope drift. |
+| `systems.ir.json` scripting contract | ❌ | The V4 system declarations, permissions, services, diagnostics, and schema validation are not implemented yet. |
+| `scripts.bundle.js` compiler output | ❌ | The compiler does not yet emit a deterministic portable script bundle for V4 systems. |
+| Web portable system runner | ❌ | The web runtime does not yet execute V4 systems through the portable context or emit canonical patch logs. |
+| Bevy QuickJS host | ❌ | The native adapter does not yet embed QuickJS or run the same JavaScript system bundle. |
+| Patch/event/command/service-call log parity | ❌ | No V4 primitive demo or fixed input trace comparison exists yet. |
+| Unsupported portable-script diagnostics | ❌ | V4-specific fail-closed diagnostics for unsupported script APIs are still pending. |
 
 ## Sources
 

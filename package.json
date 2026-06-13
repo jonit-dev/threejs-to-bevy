@@ -9,6 +9,7 @@
     "check:docs:v1": "node scripts/check-docs-v1.mjs",
     "check:docs:v2": "node scripts/check-docs-v2.mjs",
     "check:docs:v3": "node scripts/check-docs-v3.mjs",
+    "check:docs:v4": "node scripts/check-docs-v4.mjs",
     "lint": "pnpm -r --if-present lint",
     "test": "pnpm -r --if-present test && node --test scripts/*.test.mjs",
     "tn": "pnpm --filter @threenative/sdk build && pnpm --filter @threenative/ir build && pnpm --filter @threenative/compiler build && pnpm --filter @threenative/runtime-web-three build && pnpm --filter @threenative/cli build && pnpm --filter @threenative/cli tn",

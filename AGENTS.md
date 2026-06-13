@@ -13,7 +13,7 @@ Repo-wide guidance for AI coding agents working on ThreeNative.
 - Keep source ASCII unless the file already has a reason not to.
 - The worktree may contain user changes. Do not revert or overwrite them unless
   explicitly asked.
-- When version-scoped work is completed, especially V1/V2/V3 milestone work or
+- When version-scoped work is completed, especially V1/V2/V3/V4 milestone work or
   release-gate changes, update `docs/STATUS.md` and
   `docs/bevy-feature-parity.md` in the same change so the current gate and drift
   tracker reflect what is now implemented, inconsistent, or still missing.
@@ -87,6 +87,10 @@ pnpm verify:conformance
 Prefer the narrowest relevant verification first, then run broader gates when a
 change affects shared contracts or runtime behavior. If verification is not run,
 say why.
+
+For shared runtime contracts, keep `pnpm verify:conformance` in the
+self-verification loop and treat conformance failures as regressions unless the
+relevant PRD explicitly changes the contract.
 
 ## Testing
 

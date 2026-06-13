@@ -5,13 +5,32 @@ conceptual docs when deciding what is supported, partial, or future-facing.
 
 ## Current Active Gate
 
-V3: first-person forest environment scene.
+V4: native gameplay scripting proof for a primitive scene.
 
 Current release command:
 
 ```bash
-pnpm verify:v3
+pnpm check:docs:v4
 ```
+
+`verify:v4` is not implemented yet. Until the V4 release gate exists, V4 work
+must keep `pnpm check:docs:v4`, `pnpm verify:v3`, and
+`pnpm verify:conformance` green as the relevant regression gates.
+
+## V4 Proves
+
+V4 is in progress and has not proven runtime scripting yet. Its target proof is
+one constrained TypeScript system bundle running as the same
+`scripts.bundle.js` in web JavaScript and embedded QuickJS, with equivalent
+patch, event, command, and service-call logs for a primitive demo.
+
+## V4 Does Not Prove
+
+- arbitrary npm dependencies inside portable scripts
+- public Lua or Luau authoring
+- async systems or state-preserving hot reload
+- full physics, animation graphs, UI runtime parity, or editor tooling
+- direct Three.js, Bevy, renderer, DOM, filesystem, network, or platform access
 
 ## V3 Proves
 
