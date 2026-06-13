@@ -1,4 +1,4 @@
-use bevy::{prelude::*, render::alpha::AlphaMode, render::render_resource::Face};
+use bevy::{prelude::*, render::alpha::AlphaMode};
 use threenative_loader::{ColorIr, LoadedBundle};
 
 #[derive(Debug, PartialEq)]
@@ -99,7 +99,7 @@ pub fn normalize_textured_material(material: &mut StandardMaterial) -> bool {
     }
     material.alpha_mode = AlphaMode::Mask(0.2);
     material.double_sided = false;
-    material.cull_mode = Some(Face::Back);
+    material.cull_mode = None;
     true
 }
 

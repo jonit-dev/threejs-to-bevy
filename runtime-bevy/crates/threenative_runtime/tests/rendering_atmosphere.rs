@@ -114,7 +114,7 @@ fn textured_gltf_materials_should_preserve_lit_cutout_rendering() {
     assert!(normalize_textured_material(&mut material));
     assert_eq!(material.alpha_mode, AlphaMode::Mask(0.2));
     assert!(!material.double_sided);
-    assert_eq!(material.cull_mode, Some(Face::Back));
+    assert_eq!(material.cull_mode, None);
     assert!(!material.unlit);
     assert!(material.normal_map_texture.is_some());
 
@@ -124,7 +124,7 @@ fn textured_gltf_materials_should_preserve_lit_cutout_rendering() {
 }
 
 #[test]
-fn textured_gltf_materials_should_cull_dark_cutout_backfaces() {
+fn textured_gltf_materials_should_render_cutout_backfaces_without_normal_flipping() {
     let mut material = StandardMaterial {
         base_color_texture: Some(Handle::default()),
         alpha_mode: AlphaMode::Mask(0.2),
@@ -133,7 +133,8 @@ fn textured_gltf_materials_should_cull_dark_cutout_backfaces() {
 
     assert!(normalize_textured_material(&mut material));
     assert_eq!(material.alpha_mode, AlphaMode::Mask(0.2));
-    assert_eq!(material.cull_mode, Some(Face::Back));
+    assert!(!material.double_sided);
+    assert_eq!(material.cull_mode, None);
 }
 
 fn temp_bundle_dir() -> PathBuf {
