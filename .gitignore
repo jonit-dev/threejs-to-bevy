@@ -7,3 +7,5 @@ artifacts/
 packages/*/.tn/
 target/
 runtime-bevy/target/
+
+assets-source

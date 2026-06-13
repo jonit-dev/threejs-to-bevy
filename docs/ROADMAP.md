@@ -10,7 +10,7 @@ The short version:
 V1 proves this works.
 V1 also gives an AI agent enough scaffold and visual feedback to keep building.
 V2 proves someone can build a real small game with it.
-V3 proves it can become a production platform.
+V3 proves it can bundle and run a rich first-person environment scene.
 V4 proves it can support advanced engine and tooling extensions without
 breaking the portable contract.
 ```
@@ -77,7 +77,7 @@ focuses on turning the proven pipeline into a real game-making workflow.
 | --- | --- | --- |
 | V1 | Prove the full flow works end to end. | A scaffolded project can be created, code written with Three.js-like abstractions becomes ECS/game IR, runs on web directly through Three.js, builds a native Rust/Bevy game, and can be visually self-verified. |
 | V2 | Prove the flow can support an actual small game. | A developer or AI can build, validate, preview, and iterate on a playable arena game faster than with raw Three.js, R3F, Godot, Unity, or Bevy, using ECS-compatible abstractions, R3F/JSX scene authoring, assets, input, UI, audio, physics, and TypeScript gameplay systems. |
-| V3 | Prove the platform can become production-grade. | Mobile packaging, stronger tooling, AI repair loops, performance profiles, target capability profiles, and maintained templates make the SDK usable beyond the core team. |
+| V3 | Prove the platform can bundle and run a rich first-person environment scene. | The `assets-source/environment` forest pack is composed into a dense stylized path scene with performant Three.js first-person camera controls, validates as one portable bundle, and runs through web and Bevy with documented content budgets and scene verification. |
 | V4 | Prove advanced parity and extensibility can fit the model. | Optional editor, networking, advanced rendering, plugin/native extension, and richer content workflows are added only where they preserve SDK-to-IR portability. |
 
 ## V1: End-To-End Proof
@@ -443,69 +443,131 @@ are not allowed to block the core playable-game proof.
 - custom renderer
 - general plugin marketplace
 
-## V3: Production Platform Direction
+## V3: First-Person Environment Scene
 
-Goal: make the SDK credible for real projects beyond the initial examples.
+Goal: prove that the V2 game foundation can ship a real content-heavy scene,
+not just gameplay primitives or a sparse arena.
 
-V3 should harden the platform around mobile, AI-assisted development, templates,
-performance, and maintainability.
+V3 should focus on the reference forest-path scene in
+`assets-source/environment/Preview_2.jpg`: a stylized woodland path framed by
+trees, rocks, grasses, bushes, mushrooms, flowers, warm sunlight, readable
+depth, and a first-person camera. The web Three.js runtime is the strict
+performance target for this version because the reference scene is dense and
+vegetation-heavy. Production-platform work belongs in V3 only when it directly
+helps author, validate, bundle, run, optimize, or verify that scene.
+
+The available source art is enough for the scene composition proof:
+
+- 68 glTF model assets with matching `.bin` files for trees, pines, dead trees,
+  twisted trees, bushes, grasses, clover, ferns, flowers, mushrooms, path rocks,
+  pebbles, petals, plants, and medium rocks
+- duplicated FBX/OBJ source formats for conversion fallback
+- 20 texture files covering bark, leaves, grass, flowers, mushrooms, and rocks
+- four preview images, including `Preview_2.jpg`, for visual target guidance
+
+The missing pieces are engine and pipeline capabilities, not more source props:
+
+- no authored terrain/path surface, terrain material layering, or ground-shape
+  representation for the winding path
+- no prefab/scene instancing model for placing hundreds of repeated vegetation
+  and rock props without hand-authored entities
+- no deterministic scattering/placement data with validation and stable bundle
+  output
+- no first-person camera controller with pointer lock, keyboard movement, and
+  collision against the scene
+- no target-aware asset preprocessing, copied asset layout, budgets, or runtime
+  load diagnostics for a dense content bundle
+- no Three.js-specific performance gate for draw calls, instance counts,
+  texture memory, load time, or frame pacing
+- no scene lighting/atmosphere profile for sun direction, ambient fill, fog or
+  haze, sky color, shadows, and color management parity
+- no visual verification target that can compare the built scene against the
+  reference composition at useful camera bookmarks
 
 ### Required Capabilities
 
-- Mobile targets:
-  - Android build pipeline
-  - iOS build pipeline where toolchain access allows
-  - touch controls
-  - safe-area-aware UI
-  - pause/resume lifecycle
-  - resolution scaling
-  - FPS caps
-  - mobile validation rules
-- Production gameplay/content foundations:
-  - prefab and scene instancing
-  - reflection/type registry for components, resources, and events
-  - change detection or changed-query semantics
-  - save/load for scenes or game state where needed by templates
-  - gamepad input
-  - directional UI navigation
-  - skeletal animation playback
-  - simple animation state machines and blending
-  - spatial audio and basic audio mixing
-- AI control plane:
-  - MCP docs resources
-  - schema resources
-  - component discovery tools
-  - scene validator tool
-  - snippet converter for supported Three.js-like patterns
-  - build and preview tools backed by the CLI
-  - structured diagnostics for automated repair
-- Product polish:
-  - maintained templates
-  - starter game kits
-  - checked documentation examples
-  - better error messages
-  - inspector/dev overlay
-  - profiling reports
-  - hot reload improvements
-- Runtime maturity:
-  - conformance fixtures for web and Bevy
-  - target capability negotiation
-  - target feature collections
-  - stronger asset preprocessing
-  - asset budgets for generated and imported content
-  - mobile performance profiles
+- Scene asset bundling:
+  - copy and package external glTF, `.bin`, and texture dependencies into a
+    deterministic bundle layout
+  - validate every model, texture, and material reference before runtime
+  - report unsupported material, texture, extension, and missing-file issues
+    with stable diagnostics
+  - track source asset IDs separately from repeated scene instances
+- Environment scene authoring:
+  - terrain or ground-plane surface support sufficient for the forest path
+  - path/clearing composition data for the central walkable route
+  - prefab or scene instancing for repeated trees, rocks, grass, flowers,
+    mushrooms, ferns, bushes, and pebbles
+  - deterministic scattering with seed, bounds, density, scale, rotation, and
+    exclusion zones
+  - author-controlled hero placements for foreground trees, major rocks, and
+    distant focal objects
+- First-person runtime:
+  - first-person camera component or controller helper
+  - pointer-lock mouse look on web and equivalent native mouse capture
+  - keyboard movement with configurable speed, acceleration, and camera height
+  - walkable bounds and collision against terrain and blocking props
+  - camera bookmarks for repeatable visual verification
+- Rendering and atmosphere:
+  - directional sun light, ambient fill, shadow settings, fog or haze, sky
+    color, and color-management fields represented in portable IR
+  - runtime mappings for the same scene profile in Three.js and Bevy
+  - target diagnostics when a rendering field is unsupported or downgraded
+  - enough material parity for the source pack to look stylized rather than
+    untextured or flat
+- Performance and capability budgets:
+  - Three.js-first performance budgets for model count, texture memory,
+    instance count, draw calls, triangle count, bundle size, load time, and
+    frame pacing
+  - runtime instancing or batching for repeated vegetation, rocks, mushrooms,
+    flowers, pebbles, and grass clusters
+  - asset preprocessing rules for texture sizing, unused source formats, and
+    geometry simplification when source assets exceed web budgets
+  - web and Bevy load-time diagnostics for the environment bundle, with web
+    performance treated as the stricter gate
+  - target capability profiles that can reject over-budget content before a
+    confusing runtime failure
+  - automated measurement artifacts for the V3 web preview, including at least
+    draw-call/instance counts, asset load timing, and frame timing over a fixed
+    camera walkthrough
+- Scene verification:
+  - automated build of the V3 environment bundle
+  - web screenshot checks for nonblank output, camera framing, asset presence,
+    and rough composition against `Preview_2.jpg`
+  - native smoke check that loads the same bundle and reaches a first-person
+    camera view
+  - saved artifacts for screenshots, bundle manifests, validator output, and
+    runtime logs
 
 ### V3 Success Criteria
 
-- A developer can start from a template and build a small game without personal
-  explanation from the project author.
-- Examples are maintained as tests, not just demos.
-- AI tools can create, validate, build, and repair a simple game through stable
-  CLI/MCP-backed contracts.
-- The mobile build path works on at least one Android device profile and one
-  iPhone profile if available.
-- Performance and capability diagnostics explain target-specific failures before
-  users hit obscure runtime behavior.
+- The V3 example builds one portable bundle from the environment asset pack and
+  deterministic scene composition data.
+- The scene visibly matches the `Preview_2.jpg` target at the product level:
+  dense stylized woodland, central path, layered foreground and background
+  vegetation, rocks, mushrooms, flowers, warm sunlight, and atmospheric depth.
+- A user can move through the scene with a first-person camera on web, and the
+  same bundle loads in the Bevy runtime.
+- The Three.js web preview remains performant under the V3 budget: repeated
+  foliage and prop classes use instancing or batching where needed, asset sizes
+  are bounded, and frame/load timing is reported by the release gate.
+- The validator catches missing assets, unsupported formats, over-budget
+  content, and unsupported target capabilities before runtime where practical.
+- Visual verification artifacts prove that the scene is nonblank, correctly
+  framed from bookmarked camera positions, and populated with representative
+  asset classes.
+
+### V3 Explicit Exclusions
+
+- mobile app-store packaging
+- MCP control plane
+- general visual editor
+- multiplayer
+- arbitrary terrain editor
+- skeletal animation state machines
+- broad Drei/R3F compatibility beyond the scene features above
+- custom shaders, postprocessing chains, and advanced material graphs
+- general production template catalog
 
 ## V4: Advanced Parity and Extensibility
 
