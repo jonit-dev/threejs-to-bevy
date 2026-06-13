@@ -92,7 +92,7 @@ pub fn map_environment_into_world(world: &mut World, bundle: &LoadedBundle) {
     let asset_server = world.get_resource::<AssetServer>().cloned();
 
     if let Some(terrain) = scene.terrain.as_ref() {
-        let material = material(world, Color::srgb(0.31, 0.39, 0.25));
+        let material = material(world, Color::srgb(1.0, 1.0, 0.70));
         spawn_pbr(
             world,
             &format!("terrain:{}", terrain.id),
@@ -113,7 +113,7 @@ pub fn map_environment_into_world(world: &mut World, bundle: &LoadedBundle) {
         let y = terrain_height_at(bundle, mid_x, mid_z) + 0.03;
         let mut transform = Transform::from_xyz(mid_x, y, mid_z);
         transform.rotation = Quat::from_rotation_y(dx.atan2(dz));
-        let material = material(world, Color::srgb(0.72, 0.49, 0.23));
+        let material = material(world, Color::srgb(0.90, 0.68, 0.37));
         spawn_pbr(
             world,
             &format!("path:{}:{index}", scene.path.id),
