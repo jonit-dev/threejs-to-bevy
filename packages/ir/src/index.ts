@@ -45,3 +45,4 @@ export type {
   Vec3,
 } from "./types.js";
 export { validateBundle, type IBundleValidationResult, type IIrDiagnostic } from "./validate.js";
+export { validatePerformanceProfile, type PerformanceMetricName } from "./performanceProfile.js";

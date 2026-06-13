@@ -78,6 +78,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
       version: "0.1.0",
       targets: ["web", "desktop"],
       ...(environment?.budgets === undefined ? {} : { budgets: environment.budgets }),
+      ...(environment?.performance === undefined ? {} : { performance: environment.performance }),
     } satisfies ITargetProfile),
   );
   if (environment !== undefined) {
@@ -121,6 +122,7 @@ interface IEnvironmentDeclaration {
   budgets?: ITargetProfile["budgets"];
   instances: IEnvironmentSceneIr["instances"];
   path: IEnvironmentSceneIr["path"];
+  performance?: ITargetProfile["performance"];
   previewImage?: string;
   sourceDir: string;
 }
@@ -129,6 +131,7 @@ interface IEmittedEnvironment {
   assets: IInternalAsset[];
   budgets?: ITargetProfile["budgets"];
   extraFiles: IAssetCopy[];
+  performance?: ITargetProfile["performance"];
   scene: IEnvironmentSceneIr;
 }
 
@@ -311,6 +314,7 @@ async function emitEnvironment(projectPath: string, declaration: IEnvironmentDec
     assets,
     budgets: declaration.budgets,
     extraFiles,
+    performance: declaration.performance,
     scene: {
       schema: "threenative.environment-scene",
       version: "0.1.0",

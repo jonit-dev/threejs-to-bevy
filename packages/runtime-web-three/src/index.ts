@@ -1,6 +1,9 @@
 export { startWebPreview, type IWebPreviewServer } from "./devServer.js";
 export { createWebAudioRuntime, type IWebAudioCommand, type IWebAudioRuntime, type IWebAudioSink } from "./audio.js";
 export { loadBundle, type IWebBundle } from "./loadBundle.js";
+export { createEnvironmentRuntime, type IEnvironmentRuntime } from "./environment.js";
+export { buildInstancingPlan, type IInstancingGroup, type IInstancingPlan } from "./instancing.js";
+export { collectPerformanceSummary, summarizeFrameTimings, type IPerformanceMetricSummary } from "./performanceMetrics.js";
 export { createGameLoopState, runGameFrame, setPaused, type IGameLoopState } from "./gameLoop.js";
 export { attachInputListeners, createInputState, type IWebInputState } from "./input.js";
 export { resolveWebAssets, type IResolvedWebAsset } from "./assets.js";

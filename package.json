@@ -8,6 +8,7 @@
     "build": "pnpm -r --if-present build",
     "check:docs:v1": "node scripts/check-docs-v1.mjs",
     "check:docs:v2": "node scripts/check-docs-v2.mjs",
+    "check:docs:v3": "node scripts/check-docs-v3.mjs",
     "lint": "pnpm -r --if-present lint",
     "test": "pnpm -r --if-present test && node --test scripts/*.test.mjs",
     "tn": "pnpm --filter @threenative/sdk build && pnpm --filter @threenative/ir build && pnpm --filter @threenative/compiler build && pnpm --filter @threenative/runtime-web-three build && pnpm --filter @threenative/cli build && pnpm --filter @threenative/cli tn",
@@ -15,7 +16,8 @@
     "verify": "pnpm build && pnpm typecheck && pnpm lint && pnpm test",
     "verify:conformance": "node scripts/verify-conformance.mjs",
     "verify:v1": "node scripts/verify-v1.mjs",
-    "verify:v2": "node scripts/verify-v2.mjs"
+    "verify:v2": "node scripts/verify-v2.mjs",
+    "verify:v3": "node scripts/verify-v3.mjs"
   },
   "devDependencies": {
     "typescript": "^5.9.3"

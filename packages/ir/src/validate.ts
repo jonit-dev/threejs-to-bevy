@@ -20,6 +20,7 @@ import {
 import type { ISystemsIr } from "./systems.js";
 import type { IInputIr, InputBinding } from "./input.js";
 import type { IRuntimeConfigIr } from "./runtimeConfig.js";
+import { validatePerformanceProfile } from "./performanceProfile.js";
 
 export interface IIrDiagnostic {
   code: string;
@@ -119,6 +120,7 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
       });
     }
     await validateTargetBudgets(targetProfile, assets, bundlePath, manifest.files.targetProfile, diagnostics);
+    diagnostics.push(...validatePerformanceProfile(targetProfile.performance, `${manifest.files.targetProfile}/performance`));
   }
   if (systems !== undefined) {
     validateSystems(

@@ -2,6 +2,7 @@ import type {
   IAssetsManifest,
   IAudioIr,
   IBundleManifest,
+  IEnvironmentSceneIr,
   IInputIr,
   IMaterialsIr,
   IRuntimeConfigIr,
@@ -14,6 +15,7 @@ import type {
 export interface IWebBundle {
   assets: IAssetsManifest;
   audio?: IAudioIr;
+  environmentScene?: IEnvironmentSceneIr;
   input?: IInputIr;
   manifest: IBundleManifest;
   materials: IMaterialsIr;
@@ -33,6 +35,10 @@ export async function loadBundle(source: string): Promise<IWebBundle> {
     manifest.entry.systems === undefined
       ? undefined
       : await readBundleJson<ISystemsIr>(source, manifest.entry.systems);
+  const environmentScene =
+    manifest.entry.environmentScene === undefined
+      ? undefined
+      : await readBundleJson<IEnvironmentSceneIr>(source, manifest.entry.environmentScene);
   const input =
     manifest.files.input === undefined ? undefined : await readBundleJson<IInputIr>(source, manifest.files.input);
   const runtimeConfig =
@@ -43,6 +49,7 @@ export async function loadBundle(source: string): Promise<IWebBundle> {
   return {
     assets: await readBundleJson<IAssetsManifest>(source, manifest.files.assets),
     audio,
+    environmentScene,
     input,
     manifest,
     materials: await readBundleJson<IMaterialsIr>(source, manifest.files.materials),

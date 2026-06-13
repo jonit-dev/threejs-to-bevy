@@ -225,6 +225,26 @@ export interface ITargetProfile {
     supportedModelFormats?: Array<"glb" | "gltf">;
     supportedTextureFormats?: Array<"jpeg" | "png">;
   };
+  performance?: IPerformanceProfile;
+}
+
+export interface IPerformanceThreshold {
+  max: number;
+  warn?: number;
+}
+
+export interface IPerformanceProfile {
+  averageFrameMs: IPerformanceThreshold;
+  drawCalls: IPerformanceThreshold;
+  instancedGroups: IPerformanceThreshold;
+  instances: IPerformanceThreshold;
+  loadMs: IPerformanceThreshold;
+  p95FrameMs: IPerformanceThreshold;
+  requiredTarget: "web";
+  textureBytes: IPerformanceThreshold;
+  triangles: IPerformanceThreshold;
+  uninstancedRepeatedProps: IPerformanceThreshold;
+  worstFrameMs: IPerformanceThreshold;
 }
 
 export type IUiBinding =

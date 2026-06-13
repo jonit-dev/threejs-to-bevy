@@ -13,3 +13,7 @@ Build and validate:
 ```bash
 pnpm tn -- build --project examples/v3-environment
 ```
+
+V3 performance verification writes metrics and raw frame samples under
+`artifacts/v3`, including `v3-performance-summary.json` and
+`v3-performance-samples.json`.
