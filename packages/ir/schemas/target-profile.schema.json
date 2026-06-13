@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.threenative.local/v1/target-profile.schema.json",
+  "type": "object",
+  "required": ["schema", "version", "targets"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "const": "threenative.target-profile" },
+    "version": { "const": "0.1.0" },
+    "targets": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "enum": ["web", "desktop"] }
+    }
+  }
+}

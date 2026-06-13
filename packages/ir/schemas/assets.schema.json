@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.threenative.local/v1/assets.schema.json",
+  "type": "object",
+  "required": ["schema", "version", "assets"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "const": "threenative.assets" },
+    "version": { "const": "0.1.0" },
+    "assets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "format", "primitive"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "kind": { "const": "mesh" },
+          "format": { "const": "generated" },
+          "primitive": { "enum": ["box", "sphere", "plane"] },
+          "size": { "type": "array", "items": { "type": "number" } }
+        }
+      }
+    }
+  }
+}

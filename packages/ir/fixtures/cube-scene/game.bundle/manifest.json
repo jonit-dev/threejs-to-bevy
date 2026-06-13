@@ -1,0 +1,17 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "cube-scene",
+  "requiredCapabilities": {
+    "rendering": ["mesh.primitive.box", "material.standard", "light.directional"],
+    "input": ["keyboard"]
+  },
+  "entry": {
+    "world": "world.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "materials": "materials.ir.json",
+    "targetProfile": "target.profile.json"
+  }
+}

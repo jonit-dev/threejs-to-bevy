@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.threenative.local/v1/materials.schema.json",
+  "type": "object",
+  "required": ["schema", "version", "materials"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "const": "threenative.materials" },
+    "version": { "const": "0.1.0" },
+    "materials": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "color"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "kind": { "const": "standard" },
+          "color": {
+            "oneOf": [
+              { "type": "string", "pattern": "^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$" },
+              { "type": "array", "minItems": 3, "maxItems": 4, "items": { "type": "number" } }
+            ]
+          },
+          "metalness": { "type": "number" },
+          "roughness": { "type": "number" }
+        }
+      }
+    }
+  }
+}

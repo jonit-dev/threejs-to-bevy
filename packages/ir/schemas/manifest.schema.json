@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.threenative.local/v1/manifest.schema.json",
+  "type": "object",
+  "required": ["schema", "version", "name", "requiredCapabilities", "entry", "files"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "const": "threenative.bundle" },
+    "version": { "const": "0.1.0" },
+    "name": { "type": "string", "minLength": 1 },
+    "requiredCapabilities": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": { "type": "string", "minLength": 1 }
+      }
+    },
+    "entry": {
+      "type": "object",
+      "required": ["world"],
+      "additionalProperties": false,
+      "properties": {
+        "world": { "const": "world.ir.json" },
+        "ui": { "type": "string" },
+        "systems": { "type": "string" },
+        "animations": { "type": "string" },
+        "scripts": { "type": "string" }
+      }
+    },
+    "files": {
+      "type": "object",
+      "required": ["assets", "materials", "targetProfile"],
+      "additionalProperties": false,
+      "properties": {
+        "assets": { "const": "assets.manifest.json" },
+        "materials": { "const": "materials.ir.json" },
+        "targetProfile": { "const": "target.profile.json" },
+        "animations": { "type": "string" },
+        "input": { "type": "string" }
+      }
+    }
+  }
+}
