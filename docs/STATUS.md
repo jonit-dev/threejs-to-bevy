@@ -21,6 +21,8 @@ pnpm verify:v3
 - Bevy native loading of the same environment bundle for scene load smoke and
   bookmarked screenshot artifacts
 - V3 web performance budget reporting
+- V3 web performance reports distinguish synthetic/placeholder instancing
+  evidence from model-asset-backed instancing plans
 - bookmarked visual verification artifacts
 - atmosphere metadata checks for the V3 scene
 - walkability and blocking probes for the V3 scene

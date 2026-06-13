@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import * as THREE from "three";
 
-import { applyEnvironmentBookmark, createEnvironmentRuntime } from "./environment.js";
+import { applyEnvironmentBookmark, createEnvironmentRuntime, createInstancedModelGroup } from "./environment.js";
 import type { IWebBundle } from "./loadBundle.js";
 
 test("environment should apply the instancing plan during forest load", () => {
@@ -72,4 +72,37 @@ test("environment should render terrain control points as a non-flat mesh", () =
   const position = (terrain as THREE.Mesh<THREE.BufferGeometry>).geometry.getAttribute("position");
   const heights = new Set(Array.from({ length: position.count }, (_, index) => position.getY(index).toFixed(3)));
   assert.equal(heights.size > 1, true);
+});
+
+test("environment should instance loaded model geometry instead of cloning repeated glTF placements", () => {
+  const model = new THREE.Group();
+  const geometry = new THREE.BoxGeometry(1, 2, 3);
+  const material = new THREE.MeshStandardMaterial({ color: "#558866" });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.set(0, 1, 0);
+  model.add(mesh);
+
+  const group = createInstancedModelGroup(
+    model,
+    "env.Tree",
+    [
+      { id: "tree.1", sourceAsset: "env.Tree", position: [0, 0, 0] },
+      { id: "tree.2", sourceAsset: "env.Tree", position: [2, 0, 0], scale: [1.5, 1.5, 1.5] },
+    ],
+    undefined,
+  );
+
+  assert.equal(group?.children.length, 1);
+  const instancedMesh = group?.children[0];
+  assert.equal(instancedMesh instanceof THREE.InstancedMesh, true);
+  assert.equal((instancedMesh as THREE.InstancedMesh).geometry, geometry);
+  assert.equal((instancedMesh as THREE.InstancedMesh).count, 2);
+
+  const first = new THREE.Matrix4();
+  const second = new THREE.Matrix4();
+  (instancedMesh as THREE.InstancedMesh).getMatrixAt(0, first);
+  (instancedMesh as THREE.InstancedMesh).getMatrixAt(1, second);
+
+  assert.deepEqual(new THREE.Vector3().setFromMatrixPosition(first).toArray(), [0, 1, 0]);
+  assert.deepEqual(new THREE.Vector3().setFromMatrixPosition(second).toArray(), [2, 1.5, 0]);
 });

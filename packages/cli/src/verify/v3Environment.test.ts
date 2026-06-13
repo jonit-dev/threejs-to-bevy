@@ -18,6 +18,10 @@ test("v3Environment should save web performance artifacts", async () => {
 
     assert.equal(report.status, "pass");
     assert.equal(saved.instancedGroups, 1);
+    assert.equal(report.rendererEvidence?.instancingSource, "placeholder-runtime-plan");
+    assert.equal(report.rendererEvidence?.placeholderGroups, 1);
+    assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_V3_ENVIRONMENT_PLACEHOLDER_INSTANCING_EVIDENCE"), true);
+    assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_V3_ENVIRONMENT_SYNTHETIC_RENDERER_METRICS"), true);
     assert.match(report.artifacts.rawSamplesPath, /v3-performance-samples\.json$/);
   } finally {
     await rm(root, { force: true, recursive: true });

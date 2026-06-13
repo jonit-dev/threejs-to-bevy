@@ -4,6 +4,14 @@ import { collectPerformanceSummary, createEnvironmentRuntime, loadBundle } from 
 
 import { evaluatePerformanceGate } from "./performanceGate.js";
 
+type V3RendererEvidence = {
+  instancingSource: "model-asset-backed-plan" | "placeholder-runtime-plan";
+  metricsSource: "synthetic-estimate";
+  modelAssetBackedGroups: number;
+  placeholderGroups: number;
+  note: string;
+};
+
 export interface IV3EnvironmentReport {
   artifacts: {
     metricsPath: string;
@@ -17,6 +25,7 @@ export interface IV3EnvironmentReport {
     uninstancedRepeatedProps: number;
   };
   metrics: ReturnType<typeof collectPerformanceSummary>;
+  rendererEvidence?: V3RendererEvidence;
   status: "pass" | "fail";
 }
 
@@ -28,6 +37,7 @@ export async function verifyV3Environment(options: {
   const bundle = await loadBundle(options.bundlePath);
   const environment = createEnvironmentRuntime(bundle);
   const instancingPlan = environment?.instancingPlan ?? { diagnostics: [], groups: [], instanceCount: 0, uninstanced: [], uninstancedRepeatedPropCount: 0 };
+  const rendererEvidence = collectRendererEvidence(bundle, instancingPlan);
   const rawSamples = { frameMs: [11, 12, 13, 14, 16, 18], loadMs: 75 };
   const metrics = collectPerformanceSummary({
     frameSamples: rawSamples.frameMs,
@@ -48,6 +58,22 @@ export async function verifyV3Environment(options: {
   const gate = evaluatePerformanceGate({ artifactPath: metricsPath, metrics, targetProfile: bundle.targetProfile });
   const diagnostics = [
     ...instancingPlan.diagnostics.map((diagnostic) => ({ code: diagnostic.code, likelyArea: "runtime-web", message: diagnostic.message, severity: diagnostic.severity })),
+    {
+      code: "TN_V3_ENVIRONMENT_SYNTHETIC_RENDERER_METRICS",
+      likelyArea: "verify",
+      message: "V3 environment verifier uses synthetic frame/renderer samples; use browser capture artifacts for real renderer timings and draw statistics.",
+      severity: "warning",
+    },
+    ...(rendererEvidence.placeholderGroups > 0
+      ? [
+          {
+            code: "TN_V3_ENVIRONMENT_PLACEHOLDER_INSTANCING_EVIDENCE",
+            likelyArea: "runtime-web",
+            message: `${rendererEvidence.placeholderGroups} instancing group(s) are backed only by the placeholder runtime plan because their source assets do not resolve to model files in assets.manifest.json.`,
+            severity: "warning",
+          },
+        ]
+      : []),
     ...gate.warnings,
     ...gate.diagnostics,
   ];
@@ -60,10 +86,32 @@ export async function verifyV3Environment(options: {
       uninstancedRepeatedProps: instancingPlan.uninstancedRepeatedPropCount,
     },
     metrics,
+    rendererEvidence,
     status: gate.status,
   };
   await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`);
   return report;
+}
+
+function collectRendererEvidence(
+  bundle: Awaited<ReturnType<typeof loadBundle>>,
+  instancingPlan: NonNullable<ReturnType<typeof createEnvironmentRuntime>>["instancingPlan"],
+): V3RendererEvidence {
+  const sourceAssets = new Map((bundle.environmentScene?.sourceAssets ?? []).map((asset) => [asset.id, asset]));
+  const assets = new Map(bundle.assets.assets.map((asset) => [asset.id, asset]));
+  const modelAssetBackedGroups = instancingPlan.groups.filter((group) => {
+    const sourceAsset = sourceAssets.get(group.sourceAsset);
+    const asset = sourceAsset === undefined ? undefined : assets.get(sourceAsset.asset);
+    return asset?.kind === "model" && asset.path !== undefined;
+  }).length;
+  const placeholderGroups = instancingPlan.groups.length - modelAssetBackedGroups;
+  return {
+    instancingSource: placeholderGroups === 0 && instancingPlan.groups.length > 0 ? "model-asset-backed-plan" : "placeholder-runtime-plan",
+    metricsSource: "synthetic-estimate",
+    modelAssetBackedGroups,
+    placeholderGroups,
+    note: "createEnvironmentRuntime uses placeholder geometry for synchronous verification; loadEnvironmentAssetInstances performs real glTF mesh instancing when model assets are present.",
+  };
 }
 
 async function sumTextureBytes(bundlePath: string, assets: readonly { kind: string; path?: string }[]): Promise<number> {

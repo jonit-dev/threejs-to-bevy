@@ -33,7 +33,7 @@ Baseline: the repo pins Bevy and `bevy_ecs` to `=0.14.2`.
 | glTF/GLB asset bundling | ✅ | Compiler copies selected glTF/GLB, `.bin`, and texture dependencies; web-three and Bevy now resolve V3 environment instances to real bundle-local glTF scenes instead of placeholder model primitives. |
 | Asset manifest validation | ⚠️ | Bundle-relative existence, formats, and references are validated; diagnostics are still partly generic compiler errors instead of stable domain diagnostics everywhere. |
 | V3 environment scene IR | ✅ | `environment.scene.json` supports source assets, instances, scatter, terrain/path, hero placements, camera bookmarks, atmosphere, first-person config, and walkability metadata for the V3 proof scene. |
-| Instancing/batching | ⚠️ | Web builds an instancing plan and placeholder `InstancedMesh` groups; missing real geometry/material instancing, Bevy equivalent, and budget evidence tied to real assets. |
+| Instancing/batching | ⚠️ | Web builds an instancing plan and the async glTF loading path can emit real geometry/material `InstancedMesh` groups for repeated compatible assets; synchronous verification still uses placeholder geometry and synthetic renderer estimates, and Bevy equivalent budget evidence remains missing. |
 | V3 performance budgets | ✅ | Target profile, performance metrics, and `verify:v3` budget checks are wired for the V3 web proof. |
 | `verify:v3` release gate | ✅ | Script builds and validates the example, scaffolds and builds the V3 template, saves web performance reports, captures bookmarked Three.js/Bevy side-by-side visual artifacts from real model-loading paths, and runs V3 scene/atmosphere/first-person/walkability gates. |
 | Bevy V3 environment loading | ⚠️ | Native runtime maps `environment.scene.json` into terrain/path placeholders plus real glTF scene instances and can capture bookmarked Bevy screenshots; atmosphere/lighting parity and broader native interaction remain limited. |
@@ -69,8 +69,9 @@ Baseline: the repo pins Bevy and `bevy_ecs` to `=0.14.2`.
 1. Tighten Bevy vs Three.js visual parity for lighting, atmosphere, camera
    framing, and imported asset scale/rotation using the real side-by-side
    screenshots.
-2. Replace placeholder instanced meshes with real geometry/material instancing
-   tied to draw/instance/triangle budgets.
+2. Tie real web glTF instancing and the Bevy equivalent to captured
+   draw/instance/triangle budget evidence instead of synthetic verifier
+   estimates.
 3. Strengthen native first-person input capture beyond smoke-level reporting.
 4. Prove runtime adherence to the documented coordinate, unit, handedness,
    rotation, imported scale, and color conventions.

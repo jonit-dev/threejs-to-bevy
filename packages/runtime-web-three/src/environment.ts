@@ -25,6 +25,9 @@ export interface IEnvironmentObservation {
 }
 
 type EnvironmentTerrain = NonNullable<NonNullable<IWebBundle["environmentScene"]>["terrain"]>;
+type EnvironmentScene = NonNullable<IWebBundle["environmentScene"]>;
+type EnvironmentSourceAsset = EnvironmentScene["sourceAssets"][number];
+type EnvironmentInstance = EnvironmentScene["instances"][number];
 
 export function createEnvironmentRuntime(bundle: IWebBundle, options: { renderPlaceholders?: boolean } = {}): IEnvironmentRuntime | undefined {
   if (bundle.environmentScene === undefined) {
@@ -98,21 +101,55 @@ export async function loadEnvironmentAssetInstances(bundle: IWebBundle, source: 
   const terrain = scene.terrain;
   const loader = new GLTFLoader();
   const models = new Map<string, THREE.Object3D>();
+  const instancingPlan = buildInstancingPlan(scene);
+  const instancesById = new Map(scene.instances.map((instance) => [instance.id, instance]));
+  const instancedInstanceIds = new Set<string>();
   const group = new THREE.Group();
   group.name = "tn-environment-gltf-instances";
 
-  for (const instance of scene.instances) {
-    const sourceAsset = sourceAssets.get(instance.sourceAsset);
-    const asset = sourceAsset === undefined ? undefined : assets.get(sourceAsset.asset);
+  async function loadModel(sourceAsset: EnvironmentSourceAsset | undefined): Promise<THREE.Object3D | undefined> {
+    if (sourceAsset === undefined) {
+      return undefined;
+    }
+    const asset = assets.get(sourceAsset.asset);
     const assetPath = asset?.kind === "model" ? asset.path : undefined;
     if (assetPath === undefined) {
-      continue;
+      return undefined;
     }
-    let model = models.get(assetPath);
+    let model = models.get(sourceAsset.id);
     if (model === undefined) {
       const gltf = await loader.loadAsync(bundleUrl(source, assetPath));
-      model = normalizeModel(gltf.scene, sourceAsset?.category ?? "vegetation");
-      models.set(assetPath, model);
+      model = normalizeModel(gltf.scene, sourceAsset.category);
+      models.set(sourceAsset.id, model);
+    }
+    return model;
+  }
+
+  for (const instancedGroup of instancingPlan.groups) {
+    const sourceAsset = sourceAssets.get(instancedGroup.sourceAsset);
+    const model = await loadModel(sourceAsset);
+    if (model === undefined) {
+      continue;
+    }
+    const instances = instancedGroup.instanceIds.map((id) => instancesById.get(id)).filter((instance): instance is EnvironmentInstance => instance !== undefined);
+    const instancedObject = createInstancedModelGroup(model, instancedGroup.sourceAsset, instances, terrain);
+    if (instancedObject === undefined) {
+      continue;
+    }
+    for (const instance of instances) {
+      instancedInstanceIds.add(instance.id);
+    }
+    group.add(instancedObject);
+  }
+
+  for (const instance of scene.instances) {
+    if (instancedInstanceIds.has(instance.id)) {
+      continue;
+    }
+    const sourceAsset = sourceAssets.get(instance.sourceAsset);
+    const model = await loadModel(sourceAsset);
+    if (model === undefined) {
+      continue;
     }
     const object = model.clone(true);
     object.name = `environment:${instance.id}`;
@@ -127,6 +164,41 @@ export async function loadEnvironmentAssetInstances(bundle: IWebBundle, source: 
     group.add(object);
   }
 
+  return group;
+}
+
+export function createInstancedModelGroup(
+  model: THREE.Object3D,
+  sourceAsset: string,
+  instances: readonly EnvironmentInstance[],
+  terrain: EnvironmentTerrain | undefined,
+): THREE.Group | undefined {
+  const meshes: THREE.Mesh[] = [];
+  model.updateMatrixWorld(true);
+  model.traverse((child) => {
+    if (child instanceof THREE.Mesh) {
+      meshes.push(child);
+    }
+  });
+  if (meshes.length === 0 || instances.length === 0) {
+    return undefined;
+  }
+
+  const group = new THREE.Group();
+  group.name = `instanced-gltf:${sourceAsset}`;
+  for (const [meshIndex, sourceMesh] of meshes.entries()) {
+    const material = Array.isArray(sourceMesh.material) ? sourceMesh.material.map((item) => item.clone()) : sourceMesh.material.clone();
+    const instancedMesh = new THREE.InstancedMesh(sourceMesh.geometry, material, instances.length);
+    instancedMesh.name = `instanced-gltf:${sourceAsset}:${meshIndex}`;
+    instancedMesh.castShadow = sourceMesh.castShadow;
+    instancedMesh.receiveShadow = true;
+    instances.forEach((instance, index) => {
+      const instanceMatrix = matrixForInstance(adjustedTerrainPosition(instance.position, terrain), instance.scale);
+      instancedMesh.setMatrixAt(index, instanceMatrix.multiply(sourceMesh.matrixWorld));
+    });
+    instancedMesh.instanceMatrix.needsUpdate = true;
+    group.add(instancedMesh);
+  }
   return group;
 }
 
