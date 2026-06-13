@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import { buildCommand } from "./commands/build.js";
 import { createProject } from "./commands/create.js";
+import { devCommand } from "./commands/dev.js";
 import { validateProject } from "./commands/validate.js";
 import { type ICommandResult } from "./diagnostics.js";
 
@@ -31,7 +32,7 @@ const commands: Record<string, ICommandDefinition> = {
   },
   dev: {
     description: "Run a V1 runtime preview.",
-    implemented: false,
+    implemented: true,
     usage: "tn dev --target <web|desktop> [--project <path>]",
   },
   verify: {
@@ -93,6 +94,10 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
 
   if (commandName === "build") {
     return buildCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "dev") {
+    return devCommand(normalizedArgv.slice(1));
   }
 
   const json = normalizedArgv.includes("--json");

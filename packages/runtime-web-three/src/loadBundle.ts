@@ -1,0 +1,57 @@
+import type {
+  IAssetsManifest,
+  IBundleManifest,
+  IMaterialsIr,
+  ITargetProfile,
+  IWorldIr,
+} from "@threenative/ir";
+
+export interface IWebBundle {
+  assets: IAssetsManifest;
+  manifest: IBundleManifest;
+  materials: IMaterialsIr;
+  targetProfile: ITargetProfile;
+  world: IWorldIr;
+}
+
+export async function loadBundle(source: string): Promise<IWebBundle> {
+  const manifest = await readBundleJson<IBundleManifest>(source, "manifest.json");
+
+  return {
+    assets: await readBundleJson<IAssetsManifest>(source, manifest.files.assets),
+    manifest,
+    materials: await readBundleJson<IMaterialsIr>(source, manifest.files.materials),
+    targetProfile: await readBundleJson<ITargetProfile>(source, manifest.files.targetProfile),
+    world: await readBundleJson<IWorldIr>(source, manifest.entry.world),
+  };
+}
+
+async function readBundleJson<T>(source: string, file: string): Promise<T> {
+  if (isFetchable(source)) {
+    const response = await fetch(`${source.replace(/\/$/, "")}/${file}`);
+    if (!response.ok) {
+      throw new Error(`Failed to load bundle file '${file}': ${response.status}`);
+    }
+    return (await response.json()) as T;
+  }
+
+  const nodePrefix = "node";
+  const fsModule = `${nodePrefix}:fs/promises`;
+  const pathModule = `${nodePrefix}:path`;
+  const dynamicImport = new Function("moduleName", "return import(moduleName)") as <T>(
+    moduleName: string,
+  ) => Promise<T>;
+  const { readFile } = await dynamicImport<{ readFile(path: string, encoding: "utf8"): Promise<string> }>(
+    fsModule,
+  );
+  const { resolve } = await dynamicImport<{ resolve(...paths: string[]): string }>(pathModule);
+  return JSON.parse(await readFile(resolve(source, file), "utf8")) as T;
+}
+
+function isFetchable(source: string): boolean {
+  return (
+    source.startsWith("http://") ||
+    source.startsWith("https://") ||
+    (typeof window !== "undefined" && source.startsWith("/"))
+  );
+}
