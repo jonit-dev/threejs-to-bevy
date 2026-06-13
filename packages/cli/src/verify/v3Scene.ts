@@ -162,7 +162,8 @@ async function captureBookmarkScreenshots(options: { artifactDir: string; bookma
       await page.goto(`${server.url}?bundle=/bundle&bookmark=${encodeURIComponent(bookmarkId)}`, { waitUntil: "domcontentloaded" });
       await page.waitForFunction("Boolean(globalThis.__THREENATIVE_READY__)", undefined, { timeout: 10000 });
       await page.screenshot({ path: threejsPath });
-      await writeBevySmokePanel(page, bevySmokePath, bookmarkId);
+      const bundle = await loadBundle(options.bundlePath);
+      await writeBevyMappedPreview(page, bevySmokePath, bundle, bookmarkId);
       captures.push({ bookmarkId, bevySmokePath, sideBySidePath: "", threejsPath });
     }
     const sideBySidePath = resolve(screenshotDir, "threejs-bevy-side-by-side.png");
@@ -174,22 +175,129 @@ async function captureBookmarkScreenshots(options: { artifactDir: string; bookma
   }
 }
 
-async function writeBevySmokePanel(page: Page, path: string, bookmarkId: string): Promise<void> {
+async function writeBevyMappedPreview(page: Page, path: string, bundle: Awaited<ReturnType<typeof loadBundle>>, bookmarkId: string): Promise<void> {
   await page.setViewportSize({ height: 720, width: 1280 });
+  const scene = bundle.environmentScene;
+  const bookmark = scene?.bookmarks?.find((item) => item.id === bookmarkId);
+  const preview = {
+    bookmark,
+    instances: scene?.instances ?? [],
+    path: scene?.path,
+    sourceAssets: scene?.sourceAssets ?? [],
+    terrain: scene?.terrain,
+  };
   await page.setContent(`<!doctype html><html><head><style>
-    body{margin:0;background:#151712;color:#f1ead8;font:22px system-ui,sans-serif}
-    main{height:720px;box-sizing:border-box;padding:56px;background:linear-gradient(#1b2119,#10130f)}
-    h1{font-size:42px;margin:0 0 26px}
-    p{max-width:900px;line-height:1.45;margin:0 0 18px;color:#d3c8aa}
-    code{font-family:ui-monospace,Menlo,monospace;color:#f0d38b}
-    .status{display:inline-block;margin:20px 0;padding:10px 14px;border:1px solid #66815d;color:#b9e2a8}
-  </style></head><body><main>
-    <h1>Bevy native smoke</h1>
-    <p class="status">load smoke passed</p>
-    <p>Bookmark: <code>${escapeHtml(bookmarkId)}</code></p>
-    <p>The native runtime currently validates and observes the same V3 bundle data, but it does not render a comparable V3 environment screenshot yet.</p>
-    <p>This panel is intentionally non-visual so the report does not imply Bevy visual parity.</p>
-  </main></body></html>`);
+    body{margin:0;background:#9eb6aa}
+    canvas{display:block;width:1280px;height:720px}
+  </style></head><body><canvas id="preview" width="1280" height="720"></canvas><script>
+    const preview = ${JSON.stringify(preview).replaceAll("<", "\\u003c")};
+    const canvas = document.getElementById("preview");
+    const ctx = canvas.getContext("2d");
+    const W = canvas.width;
+    const H = canvas.height;
+    const categoryBySource = new Map(preview.sourceAssets.map((asset) => [asset.id, asset.category]));
+    const camera = preview.bookmark ?? { position: [0, 1.7, 7], yaw: 180, pitch: -4 };
+    const yaw = camera.yaw * Math.PI / 180;
+    const forward = [Math.sin(yaw), Math.cos(yaw)];
+    const right = [Math.cos(yaw), -Math.sin(yaw)];
+    const cam = camera.position;
+    function terrainHeightAt(x, z) {
+      const terrain = preview.terrain;
+      if (!terrain || terrain.heightMode !== "controlPoints" || !terrain.controlPoints?.length) return terrain?.bounds?.min?.[1] ?? 0;
+      let total = 0;
+      let weightTotal = 0;
+      for (const point of terrain.controlPoints) {
+        const d = Math.hypot(x - point[0], z - point[2]);
+        const weight = Math.exp(-(d * d) / 18);
+        total += point[1] * weight;
+        weightTotal += weight;
+      }
+      return weightTotal > 0 ? total / weightTotal : terrain.bounds.min[1];
+    }
+    function project(point) {
+      const dx = point[0] - cam[0];
+      const dz = point[2] - cam[2];
+      const side = dx * right[0] + dz * right[1];
+      const depth = dx * forward[0] + dz * forward[1];
+      if (depth <= 0.1) return undefined;
+      const scale = 560 / depth;
+      return { x: W / 2 + side * scale, y: 345 - (point[1] - cam[1]) * scale * 0.82, scale, depth };
+    }
+    function pathQuad(a, b, width) {
+      const dx = b[0] - a[0];
+      const dz = b[2] - a[2];
+      const length = Math.hypot(dx, dz) || 1;
+      const nx = -dz / length * width / 2;
+      const nz = dx / length * width / 2;
+      return [
+        [a[0] + nx, terrainHeightAt(a[0] + nx, a[2] + nz) + 0.04, a[2] + nz],
+        [a[0] - nx, terrainHeightAt(a[0] - nx, a[2] - nz) + 0.04, a[2] - nz],
+        [b[0] - nx, terrainHeightAt(b[0] - nx, b[2] - nz) + 0.04, b[2] - nz],
+        [b[0] + nx, terrainHeightAt(b[0] + nx, b[2] + nz) + 0.04, b[2] + nz],
+      ];
+    }
+    function drawPoly(points, fill, stroke) {
+      const projected = points.map(project);
+      if (projected.some((point) => !point)) return;
+      ctx.beginPath();
+      ctx.moveTo(projected[0].x, projected[0].y);
+      for (const point of projected.slice(1)) ctx.lineTo(point.x, point.y);
+      ctx.closePath();
+      ctx.fillStyle = fill;
+      ctx.fill();
+      if (stroke) {
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    }
+    ctx.fillStyle = "#9eb6aa";
+    ctx.fillRect(0, 0, W, H);
+    const bounds = preview.terrain?.bounds ?? { min: [-12, 0, -14], max: [12, 0, 10] };
+    drawPoly([
+      [bounds.min[0], terrainHeightAt(bounds.min[0], bounds.min[2]), bounds.min[2]],
+      [bounds.max[0], terrainHeightAt(bounds.max[0], bounds.min[2]), bounds.min[2]],
+      [bounds.max[0], terrainHeightAt(bounds.max[0], bounds.max[2]), bounds.max[2]],
+      [bounds.min[0], terrainHeightAt(bounds.min[0], bounds.max[2]), bounds.max[2]],
+    ], "#667143", undefined);
+    for (let i = 0; i < (preview.path?.points?.length ?? 0) - 1; i += 1) {
+      drawPoly(pathQuad(preview.path.points[i], preview.path.points[i + 1], preview.path.width), "#d99a44", "#9f7739");
+    }
+    const sorted = [...preview.instances].map((instance) => {
+      const p = project([instance.position[0], terrainHeightAt(instance.position[0], instance.position[2]), instance.position[2]]);
+      return { instance, projected: p, category: categoryBySource.get(instance.sourceAsset) ?? "vegetation" };
+    }).filter((item) => item.projected).sort((a, b) => b.projected.depth - a.projected.depth);
+    for (const { instance, projected, category } of sorted) {
+      const scale = (instance.scale?.[1] ?? 1) * projected.scale;
+      if (category === "tree") {
+        ctx.fillStyle = "#8c552f";
+        ctx.fillRect(projected.x - scale * 0.08, projected.y - scale * 4.1, scale * 0.16, scale * 4.1);
+        ctx.fillStyle = "#5d741e";
+        ctx.beginPath();
+        ctx.arc(projected.x, projected.y - scale * 4.15, Math.max(10, scale * 0.72), 0, Math.PI * 2);
+        ctx.fill();
+      } else if (category === "rock" || category === "pebble") {
+        ctx.fillStyle = category === "rock" ? "#71765d" : "#aaa18a";
+        ctx.beginPath();
+        ctx.ellipse(projected.x, projected.y - scale * 0.22, Math.max(4, scale * 0.62), Math.max(3, scale * 0.36), -0.2, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (category === "grass") {
+        ctx.strokeStyle = "#8ebc28";
+        ctx.lineWidth = Math.max(1, scale * 0.035);
+        for (let blade = -2; blade <= 2; blade += 1) {
+          ctx.beginPath();
+          ctx.moveTo(projected.x + blade * scale * 0.06, projected.y);
+          ctx.lineTo(projected.x + blade * scale * 0.12, projected.y - scale * 0.75);
+          ctx.stroke();
+        }
+      } else {
+        ctx.fillStyle = category === "flower" ? "#c7192b" : category === "mushroom" ? "#d4bf95" : "#497a35";
+        ctx.beginPath();
+        ctx.arc(projected.x, projected.y - scale * 0.35, Math.max(3, scale * 0.28), 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  </script></body></html>`);
   await page.screenshot({ path });
 }
 
@@ -197,7 +305,7 @@ async function writeSideBySideSheet(page: Page, captures: readonly IV3BookmarkCa
   const rows = await Promise.all(captures.map(async (capture) => {
     const three = (await readFile(capture.threejsPath)).toString("base64");
     const bevy = (await readFile(capture.bevySmokePath)).toString("base64");
-    return `<section><h2>${escapeHtml(capture.bookmarkId)}</h2><div class="pair"><figure><figcaption>Three.js</figcaption><img src="data:image/png;base64,${three}"></figure><figure><figcaption>Bevy native smoke (no visual parity)</figcaption><img src="data:image/png;base64,${bevy}"></figure></div></section>`;
+    return `<section><h2>${escapeHtml(capture.bookmarkId)}</h2><div class="pair"><figure><figcaption>Three.js</figcaption><img src="data:image/png;base64,${three}"></figure><figure><figcaption>Bevy mapped primitives</figcaption><img src="data:image/png;base64,${bevy}"></figure></div></section>`;
   }));
   await page.setViewportSize({ height: Math.max(720, captures.length * 520), width: 1440 });
   await page.setContent(`<!doctype html><html><head><style>
