@@ -48,6 +48,16 @@ const conformanceGuidanceRequirements = [
     phrases: ["verify:conformance", "shared fixtures"],
   },
 ];
+const commandDocumentationRequirements = [
+  {
+    file: "docs/developer-workflow.md",
+    phrases: ["tn dev --target web --watch", "pnpm verify:v2", "pnpm verify:conformance", "pnpm check:docs:v2", "--template v2-arena"],
+  },
+  {
+    file: "docs/PRDs/v2/README.md",
+    phrases: ["pnpm verify:v2", "pnpm verify:conformance", "pnpm check:docs:v2"],
+  },
+];
 
 const v3OnlyCapabilities = [
   { name: "gamepad", pattern: /\bgamepads?\b/i },
@@ -102,6 +112,19 @@ export async function checkDocsV2(options = {}) {
           code: "TN_DOCS_V2_CONFORMANCE_GUIDANCE_MISSING",
           file,
           message: `V2 docs must include conformance guidance phrase '${phrase}' in ${file}.`,
+        });
+      }
+    }
+  }
+
+  for (const { file, phrases } of commandDocumentationRequirements) {
+    const text = await readFile(resolve(root, file), "utf8");
+    for (const phrase of phrases) {
+      if (!text.includes(phrase)) {
+        diagnostics.push({
+          code: "TN_DOCS_V2_COMMAND_MISSING",
+          file,
+          message: `V2 docs must document command '${phrase}' in ${file}.`,
         });
       }
     }

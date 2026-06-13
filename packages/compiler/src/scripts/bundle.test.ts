@@ -21,3 +21,18 @@ test("should emit deterministic scripts movement system bundle", () => {
   assert.match(first.code ?? "", /system_movePlayer/);
   assert.deepEqual(first.diagnostics, []);
 });
+
+test("should normalize method shorthand system functions", () => {
+  const result = bundleSystemScripts([
+    {
+      name: "applyDamage",
+      script: {
+        exportName: "system_applyDamage",
+        source: "run(context) { return context; }",
+      },
+    },
+  ]);
+
+  assert.match(result.code ?? "", /const system_applyDamage = function run\(context\) \{ return context; \};/);
+  assert.deepEqual(result.diagnostics, []);
+});

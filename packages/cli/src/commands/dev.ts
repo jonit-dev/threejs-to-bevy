@@ -3,11 +3,13 @@ import { resolve } from "node:path";
 import { buildProject, loadProjectConfig, validateBundle } from "@threenative/compiler";
 import { startWebPreview, type IWebPreviewServer } from "@threenative/runtime-web-three";
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
+import { startDevWatch, type IDevWatchSession } from "../dev/watch.js";
 import { runBevyRuntime, type BevyRuntimeProcess, type BevyRuntimeRunner } from "../native/bevy.js";
 
 export interface IDevResult extends ICommandResult {
   process?: BevyRuntimeProcess;
   server?: IWebPreviewServer;
+  watcher?: IDevWatchSession;
 }
 
 export interface IDevCommandOptions {
@@ -23,6 +25,7 @@ export async function devCommand(
   const json = normalizedArgv.includes("--json");
   const targetFlagIndex = normalizedArgv.indexOf("--target");
   const target = targetFlagIndex === -1 ? undefined : normalizedArgv[targetFlagIndex + 1];
+  const watchMode = normalizedArgv.includes("--watch");
 
   if (target !== "web" && target !== "desktop") {
     return diagnosticResult(
@@ -39,6 +42,29 @@ export async function devCommand(
   const projectPath = projectFlagIndex === -1 ? cwd : resolve(cwd, normalizedArgv[projectFlagIndex + 1] ?? ".");
 
   try {
+    if (watchMode) {
+      const watcher = await startDevWatch(projectPath);
+      const bundlePath = watcher.initialReport.bundlePath;
+      const server = target === "web" && bundlePath !== undefined ? await startWebPreview({ bundlePath }) : undefined;
+      const payload = {
+        code: "TN_DEV_WATCH_READY",
+        initialReport: watcher.initialReport,
+        message:
+          watcher.initialReport.status === "pass"
+            ? "Watch mode ready. Rebuild diagnostics will be reported after source changes."
+            : "Watch mode ready with build diagnostics. Fix the reported issue and save again.",
+        url: server?.url,
+        watchedPaths: watcher.watchedPaths,
+      };
+
+      return {
+        exitCode: 0,
+        server,
+        stdout: json ? `${JSON.stringify(payload, null, 2)}\n` : `${payload.message}\n`,
+        watcher,
+      };
+    }
+
     const bundlePath = await ensureProjectBundle(projectPath);
 
     if (target === "desktop") {

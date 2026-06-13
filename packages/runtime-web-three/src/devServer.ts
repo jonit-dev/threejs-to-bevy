@@ -1,6 +1,6 @@
 import { createReadStream } from "node:fs";
 import type { Socket } from "node:net";
-import { resolve } from "node:path";
+import { extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateBundle } from "@threenative/compiler";
 import { createServer, type Plugin, type ViteDevServer } from "vite";
@@ -83,12 +83,28 @@ function bundlePlugin(bundlePath: string): Plugin {
 
         const filePath = resolve(bundlePath, url.replace(/^\//, ""));
         const stream = createReadStream(filePath);
+        response.setHeader("Content-Type", contentTypeForBundleFile(filePath));
         stream.on("error", () => next());
         stream.pipe(response);
       });
     },
     name: "threenative-bundle",
   };
+}
+
+export function contentTypeForBundleFile(filePath: string): string {
+  switch (extname(filePath)) {
+    case ".js":
+      return "text/javascript; charset=utf-8";
+    case ".json":
+      return "application/json; charset=utf-8";
+    case ".ogg":
+      return "audio/ogg";
+    case ".wav":
+      return "audio/wav";
+    default:
+      return "application/octet-stream";
+  }
 }
 
 function getPort(server: ViteDevServer): number {

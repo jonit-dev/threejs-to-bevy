@@ -330,12 +330,27 @@ scaffolded from the maintained template:
 ```bash
 pnpm tn -- create my-arena --template v2-arena
 pnpm tn -- build --project examples/v2-arena
-pnpm tn -- verify --project examples/v2-arena --profile v2-arena
+pnpm tn -- dev --target web --watch --project examples/v2-arena
+pnpm tn -- verify --project examples/v2-arena
 ```
 
 Keep arena edits within `@threenative/sdk`, `@threenative/r3f`, and
 `@threenative/ui` declarations so the same bundle remains portable across web
 and native runtime paths.
+
+Before treating V2 as releasable, run the candidate gate:
+
+```bash
+pnpm check:docs:v2
+pnpm verify:conformance
+pnpm verify:v2
+```
+
+`pnpm verify:v2` rebuilds `examples/v2-arena`, validates the emitted bundle,
+runs conformance before arena smoke checks, exercises the web and native paths,
+and writes a machine-readable report under `artifacts/v2`.
+
+The equivalent raw CLI watch command is `tn dev --target web --watch`.
 
 ## Versioning And Compatibility
 

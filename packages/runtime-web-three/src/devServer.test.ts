@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { resolve } from "node:path";
 import test from "node:test";
 
-import { startWebPreview } from "./devServer.js";
+import { contentTypeForBundleFile, startWebPreview } from "./devServer.js";
 
 test("should start web dev server for valid bundle", async () => {
   const server = await startWebPreview({
@@ -20,4 +20,10 @@ test("should start web dev server for valid bundle", async () => {
   } finally {
     await server.close();
   }
+});
+
+test("should serve bundle module scripts with JavaScript content type", () => {
+  assert.equal(contentTypeForBundleFile("scripts.bundle.js"), "text/javascript; charset=utf-8");
+  assert.equal(contentTypeForBundleFile("manifest.json"), "application/json; charset=utf-8");
+  assert.equal(contentTypeForBundleFile("assets/hit.wav"), "audio/wav");
 });

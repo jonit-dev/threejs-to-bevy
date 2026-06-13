@@ -6,7 +6,7 @@
     "build": "tn build",
     "dev:web": "tn dev --target web",
     "dev:desktop": "tn dev --target desktop",
-    "test": "pnpm build && node --test dist/**/*.test.js",
+    "test": "pnpm build && tsc -p tsconfig.json --outDir dist/tests && node --test dist/tests/**/*.test.js",
     "validate": "tn validate dist/game.bundle",
     "verify": "tn verify --profile v2-arena"
   },

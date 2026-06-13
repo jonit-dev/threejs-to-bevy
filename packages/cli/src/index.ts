@@ -38,9 +38,9 @@ const commands: Record<string, ICommandDefinition> = {
     usage: "tn compare-images <first.png> <second.png> [--json]",
   },
   dev: {
-    description: "Run a V1 runtime preview.",
+    description: "Run a runtime preview with optional rebuild watch mode.",
     implemented: true,
-    usage: "tn dev --target <web|desktop> [--project <path>]",
+    usage: "tn dev --target <web|desktop> [--project <path>] [--watch]",
   },
   verify: {
     description: "Run visual self-verification for the web preview.",

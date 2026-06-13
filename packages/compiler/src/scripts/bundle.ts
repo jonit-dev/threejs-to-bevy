@@ -29,7 +29,7 @@ export function bundleSystemScripts(systems: ReadonlyArray<ISystemScriptSource>)
     return { diagnostics };
   }
 
-  const declarations = scriptedSystems.map((system) => `const ${system.script.exportName} = ${system.script.source};`);
+  const declarations = scriptedSystems.map((system) => `const ${system.script.exportName} = ${normalizeSystemSource(system.script.source)};`);
   const exports = scriptedSystems.map((system) => `  ${JSON.stringify(system.script.exportName)}: ${system.script.exportName},`);
   return {
     diagnostics: [],
@@ -42,4 +42,14 @@ export function bundleSystemScripts(systems: ReadonlyArray<ISystemScriptSource>)
       "",
     ].join("\n"),
   };
+}
+
+function normalizeSystemSource(source: string): string {
+  if (/^async\s+[A-Za-z_$][\w$]*\s*\(/.test(source)) {
+    return source.replace(/^async\s+/, "async function ");
+  }
+  if (/^[A-Za-z_$][\w$]*\s*\(/.test(source)) {
+    return `function ${source}`;
+  }
+  return source;
 }
