@@ -170,9 +170,10 @@ game.bundle/
 Binary encodings can come later after the schema is stable and profiling shows
 that JSON load time matters.
 
-Every bundle should include:
+Every bundle manifest should include:
 
-- `formatVersion`: bundle schema version.
+- `schema`: bundle schema identifier.
+- `version`: bundle schema version.
 - `sdkVersion`: SDK version that emitted the bundle.
 - `requiredCapabilities`: features a runtime must support.
 - `assets`: stable asset IDs, source paths, content hashes, roles, and

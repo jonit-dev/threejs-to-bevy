@@ -8,9 +8,9 @@ The working product direction:
 
 ```txt
 TypeScript authoring
-  -> Three.js-like scene API, ECS systems, React-style UI
+  -> Three.js-like scene API and ECS systems
   -> validated IR bundle
-  -> Bevy native runtime for desktop/mobile
+  -> Bevy native runtime for desktop
   -> Three.js web runtime for preview/distribution
 ```
 
@@ -20,8 +20,8 @@ Key decisions:
 - Bevy is an internal native runtime adapter.
 - TypeScript systems are hosted and return ECS patches/commands; they do not
   compile to Rust in V1.
-- React-style game UI compiles to `ui.ir.json`; native runtimes recreate it with
-  Bevy UI or another native UI renderer.
+- React-style game UI and mobile packaging are post-V1 goals; V1 proves the
+  world bundle across web and desktop runtimes first.
 - The project supports a useful Three.js/R3F-like subset, not arbitrary Three.js
   applications.
 - The IR is the stable platform contract.

@@ -39,7 +39,7 @@ sequenceDiagram
 Adapters are responsible for:
 
 - Loading a bundle manifest and all referenced IR files.
-- Verifying `formatVersion`, `requiredCapabilities`, and target profile support.
+- Verifying manifest `version`, `requiredCapabilities`, and target profile support.
 - Resolving assets through the asset manifest.
 - Creating runtime entities, components, materials, textures, animations, input
   devices, cameras, lights, UI nodes, and physics objects.
@@ -99,6 +99,8 @@ The compiler and validator should emit explicit capability requirements:
 
 ```json
 {
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
   "requiredCapabilities": {
     "rendering": ["pbr.standard", "shadow.basic"],
     "assets": ["gltf.static", "texture.png"],
@@ -109,9 +111,11 @@ The compiler and validator should emit explicit capability requirements:
 }
 ```
 
-Adapters must fail fast if a required capability is unsupported. They may expose
-optional capabilities, but user code should only rely on capabilities that are
-declared and validated.
+For V1, `requiredCapabilities` lives in `manifest.json` so adapters can reject
+unsupported bundles before loading domain-specific files. Adapters must fail
+fast if a required capability is unsupported. They may expose optional
+capabilities, but user code should only rely on capabilities that are declared
+and validated.
 
 ## Bevy Native Adapter
 
@@ -211,11 +215,7 @@ for fixtures or development tools. The portable format remains the SDK IR.
 Early native scope:
 
 - Desktop development window.
-- Android build path.
-- iOS build path when toolchain access is available.
 - Keyboard, pointer, and touch input.
-- Pause/resume lifecycle.
-- Safe area metadata.
 - Resolution scaling and FPS caps.
 
 Out of early scope:
@@ -224,6 +224,8 @@ Out of early scope:
 - Native multiplayer stack.
 - Advanced renderer customization.
 - Full editor integration.
+- Android and iOS packaging for V1; mobile target profiles move to a later
+  milestone after desktop and web runtimes are stable.
 
 ### TypeScript System Execution
 
@@ -243,7 +245,7 @@ add script hosting in a dedicated phase.
 
 ### Native UI Execution
 
-The Bevy adapter should treat `ui.ir.json` as a retained UI tree:
+Post-V1, the Bevy adapter should treat `ui.ir.json` as a retained UI tree:
 
 - Map portable UI nodes to Bevy UI nodes or another native UI renderer.
 - Resolve bindings from ECS resources/components into UI text, visibility,
@@ -253,8 +255,8 @@ The Bevy adapter should treat `ui.ir.json` as a retained UI tree:
 - Respect safe-area metadata and target profile constraints.
 - Keep React and browser DOM concepts out of the native runtime.
 
-The first native UI implementation should favor simple HUDs, touch controls, and
-pause/menu screens over full CSS parity.
+The first native UI implementation after V1 should favor simple HUDs, touch
+controls, and pause/menu screens over full CSS parity.
 
 ## Three.js/WebGPU Web Adapter
 
@@ -434,15 +436,16 @@ scale, and thermal or power information where available.
 ## Early Implementation Order
 
 1. Define minimal bundle manifest and IR schemas.
-2. Implement Bevy adapter for one cube, one camera, one light.
-3. Implement web adapter for the same fixture.
+2. Implement web adapter for one cube, one camera, one light.
+3. Implement Bevy adapter for the same fixture.
 4. Add shared conformance fixtures.
 5. Add assets and material mapping.
 6. Add input and simple ECS systems.
-7. Add portable UI fixtures for HUD and touch controls.
+7. Add visual self-verification for the web fixture.
 8. Add glTF and animation.
-9. Add mobile lifecycle and build packaging.
-10. Add profiling and richer hot reload.
+9. Add portable UI fixtures for HUD and touch controls.
+10. Add mobile lifecycle and build packaging.
+11. Add profiling and richer hot reload.
 
 This order keeps the runtime contract honest: every public SDK feature should
 have at least one native path and one web path before it is treated as stable.

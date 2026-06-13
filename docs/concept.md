@@ -199,8 +199,7 @@ Example output:
 
 ```txt
 game.bundle/
-  scene.ir.json
-  ecs.ir.json
+  world.ir.json
   materials.ir.json
   assets.manifest.json
   animations.ir.json

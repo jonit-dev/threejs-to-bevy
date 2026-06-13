@@ -14,10 +14,12 @@ TypeScript source
   -> compiler extraction
   -> validated IR bundle
   -> runtime adapter
-  -> web preview, desktop build, or mobile build
+  -> web preview or desktop runtime
 ```
 
-The first implementation should optimize for proving this loop with small examples before broad Three.js compatibility or editor tooling.
+The first implementation should optimize for proving this loop with small
+examples before broad Three.js compatibility, mobile packaging, portable UI, MCP,
+or editor tooling.
 
 ## Expected Repository Layout
 
@@ -34,11 +36,6 @@ packages/
       animation/
       input/
       physics/
-  ui/
-    src/
-      primitives/
-      bindings/
-      styles/
   r3f/
     src/
   compiler/
@@ -49,33 +46,30 @@ packages/
       ir/
   cli/
     src/
-  mcp-server/
-    src/
   runtime-web-three/
     src/
-  runtime-bevy/
-    crates/
-      threenative_runtime/
-      threenative_loader/
-      threenative_components/
+runtime-bevy/
+  crates/
+    threenative_runtime/
+    threenative_loader/
+    threenative_components/
 examples/
   cube-runner/
-  mobile-third-person/
-  ai-generated-arena/
-  physics-playground/
 docs/
 ```
 
 The package boundaries should stay strict:
 
 - `sdk` exposes public authoring APIs and serializable declarations.
-- `ui` exposes React-style portable game UI primitives and bindings.
+- `ui` will expose React-style portable game UI primitives and bindings after
+  the V1 runtime path is proven.
 - `r3f` captures supported React Three Fiber scene authoring into SDK/IR.
 - `compiler` extracts, validates, and emits IR bundles.
 - `cli` owns user-facing commands and orchestration.
 - `runtime-web-three` consumes IR and renders with Three.js.
 - `runtime-bevy` consumes IR and spawns native Bevy ECS state.
-- `mcp-server` exposes documented CLI-backed tools for AI agents.
+- `mcp-server` will expose documented CLI-backed tools for AI agents after the
+  CLI, SDK, compiler, and validator have real behavior.
 
 Runtimes should depend on IR schemas, not on each other's internals.
 
@@ -87,8 +81,8 @@ The initial toolchain should assume:
 - A package manager chosen once for the monorepo, preferably `pnpm` for workspaces.
 - Rust stable for the Bevy runtime.
 - Bevy pinned to an explicit version.
-- Android tooling when mobile builds enter scope.
-- Xcode tooling when iOS builds enter scope.
+- Android tooling after mobile builds enter scope.
+- Xcode tooling after iOS builds enter scope.
 
 Early setup should provide:
 
@@ -117,13 +111,8 @@ tn create my-game
 tn dev --target web
 tn dev --target desktop
 tn validate
-tn build --target web
-tn build --target desktop
-tn build --target android
-tn build --target ios
-tn profile --target android
-tn convert threejs-demo.ts
-tn doctor
+tn build
+tn verify
 ```
 
 Command expectations:
@@ -131,10 +120,11 @@ Command expectations:
 - `tn create` creates a project from a maintained template.
 - `tn dev` starts watch mode, IR generation, validation, and a runtime preview.
 - `tn validate` runs schema, semantic, asset, API, and target-profile checks.
-- `tn build` emits a versioned game bundle and target-specific package output.
-- `tn profile` runs or imports runtime metrics and maps them back to source/IR.
-- `tn convert` accepts small Three.js-like snippets and produces supported SDK code or diagnostics.
-- `tn doctor` verifies local Node, Rust, Bevy, Android, iOS, and graphics prerequisites.
+- `tn build` emits a versioned game bundle.
+- `tn verify` runs visual self-verification for the web preview.
+
+Post-V1 commands can add target-specific packaging, profiling, conversion, and
+environment doctor flows once the core loop is stable.
 
 The CLI should produce structured diagnostics by default. Human-readable output is useful, but every validation and build error should also have a stable code, severity, file reference, and suggested fix when possible.
 
@@ -189,9 +179,10 @@ The first supported source surface should include:
 - `MeshStandardMaterial`
 - basic assets
 - simple systems
-- portable UI primitives
 - input access
 - time/delta access
+
+Portable UI primitives move to a later milestone unless explicitly promoted.
 
 Unsupported APIs should fail with explicit diagnostics instead of being ignored.
 
@@ -208,8 +199,9 @@ The initial validator should check:
 - invalid material parameters.
 - invalid transform values.
 - target-specific feature support.
-- mobile performance warnings.
 - deterministic entity IDs where needed for hot reload.
+
+Mobile performance warnings move to the mobile milestone after V1.
 
 Validation output should be stable enough for humans, CI, and AI agents to use.
 
@@ -221,7 +213,6 @@ The compiler emits a bundle such as:
 game.bundle/
   manifest.json
   world.ir.json
-  ui.ir.json
   materials.ir.json
   assets.manifest.json
   animations.ir.json
@@ -275,9 +266,9 @@ source
 Target expectations:
 
 - `web`: static preview/distribution package using Three.js WebGPURenderer with fallback behavior handled by the web runtime.
-- `desktop`: Bevy native executable plus game bundle, including native UI recreation from `ui.ir.json`.
-- `android`: Bevy Android package plus game bundle, mobile target profile, touch controls, and safe-area UI data.
-- `ios`: Bevy iOS package plus game bundle, mobile target profile, touch controls, and safe-area UI data.
+- `desktop`: Bevy native executable plus game bundle.
+- `android`: post-V1 Bevy Android package plus game bundle, mobile target profile, touch controls, and safe-area UI data.
+- `ios`: post-V1 Bevy iOS package plus game bundle, mobile target profile, touch controls, and safe-area UI data.
 
 Mobile packaging should enter after the desktop and web loop is stable. The first mobile milestone should target one known Android device and one known iPhone profile before broad device support.
 
@@ -294,13 +285,13 @@ Required early tests:
 - Runtime adapter smoke tests with a minimal cube/camera/light scene.
 - CLI tests for command argument behavior and structured output.
 
-Required before MVP:
+Required after V1 before the broader MVP:
 
 - Cross-runtime golden tests for equivalent web and Bevy interpretation of the same IR.
 - Asset manifest tests for glTF and texture references.
 - Gameplay system tests for input and update-loop behavior.
-- UI IR tests for HUD, menu, and touch-control fixtures.
 - Example build tests for the MVP arena demo.
+- UI IR tests for HUD, menu, and touch-control fixtures.
 - Android build smoke test once mobile packaging is in scope.
 - iOS build smoke test when iOS packaging is in scope.
 
@@ -312,8 +303,8 @@ The IR is the internal platform contract and should be explicitly versioned from
 
 ```json
 {
-  "irVersion": "0.1.0",
-  "target": "desktop"
+  "schema": "threenative.bundle",
+  "version": "0.1.0"
 }
 ```
 
@@ -324,26 +315,22 @@ Compatibility rules:
 - Runtime adapter changes must not require user code changes unless the SDK explicitly changes.
 - Bevy upgrades happen behind the runtime adapter and should not leak to game projects.
 
-## MVP Boundaries
+## V1 Boundary
 
-The first MVP is one mobile-friendly third-person arena demo that can be generated or modified by AI, validated, previewed on web, and built to native desktop/mobile.
+V1 is a narrow end-to-end proof: scaffold a project, author a small TypeScript
+scene through supported SDK abstractions, emit and validate `game.bundle/`, run
+the web Three.js preview, run visual self-verification, and load the same bundle
+in a native desktop Bevy runtime.
 
 In scope:
 
-- player movement
-- camera follow
-- touch and keyboard controls
-- React-style HUD and pause menu compiled to portable UI IR
-- one level
-- basic enemies
-- collision
-- health/damage
-- glTF model loading
-- one material model
+- cube/camera/light scene
+- supported SDK scene and ECS authoring subset
+- deterministic `world.ir.json`
+- structured validator diagnostics
 - web preview
 - desktop native build
-- Android build
-- iOS build if feasible
+- Playwright visual self-verification
 
 Out of scope:
 
@@ -354,6 +341,8 @@ Out of scope:
 - editor tooling
 - multiplayer
 - arbitrary user scripting
+- portable UI runtime and `ui.ir.json` as a V1 gate
+- Android or iOS packaging
 - visual node graphs
 - custom Rust/wgpu renderer
 

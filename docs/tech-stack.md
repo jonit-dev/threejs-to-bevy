@@ -38,12 +38,10 @@ Suggested workspace shape:
 ```txt
 packages/
   sdk/
-  ui/
   r3f/
   compiler/
   cli/
   runtime-web-three/
-  mcp-server/
 runtime-bevy/
   crates/
 examples/
@@ -84,7 +82,7 @@ Recommended package split:
 | Package | Responsibility |
 | --- | --- |
 | `@threenative/sdk` | Runtime-neutral scene/ECS authoring contract. |
-| `@threenative/ui` | React-style portable game UI components that compile to `ui.ir.json`. |
+| `@threenative/ui` | Post-V1 React-style portable game UI components that compile to `ui.ir.json`. |
 | `@threenative/three-compat` | Helpers that convert supported Three.js objects/snippets into SDK declarations or IR. |
 | `@threenative/r3f` | R3F host components/hooks that capture a supported React scene into SDK/IR declarations. |
 | `@threenative/runtime-web-three` | Browser runtime that consumes IR and renders with Three.js. |
@@ -118,8 +116,8 @@ Compiler requirements:
 - Map JSX element identity to stable SDK entity IDs.
 - Treat hooks as authoring helpers unless they register explicit systems,
   resources, input maps, or assets.
-- Emit the same `world.ir.json`, `ui.ir.json`, material, asset, input, and
-  systems files as other authoring styles.
+- Emit the same `world.ir.json` and related bundle files as other authoring
+  styles. Portable `ui.ir.json` output is a post-V1 addition.
 
 Why this is worth doing:
 
@@ -156,7 +154,6 @@ The compiler should emit:
 game.bundle/
   manifest.json
   world.ir.json
-  ui.ir.json
   assets.manifest.json
   materials.ir.json
   animations.ir.json
@@ -185,18 +182,18 @@ Required command groups:
 
 ```bash
 tn create
-tn typecheck
 tn validate
-tn dev
 tn build
-tn profile
-tn convert
-tn doctor
+tn dev --target web
+tn dev --target desktop
+tn verify
 ```
 
-The CLI should orchestrate TypeScript, compiler, validator, Rust builds, web
-dev server, and runtime startup. MCP tools should call CLI or compiler APIs
-instead of reimplementing these flows.
+This is the V1 command surface. Later releases can add `tn profile`,
+`tn convert`, `tn doctor`, mobile build targets, and MCP-backed workflows. The
+CLI should orchestrate TypeScript, compiler, validator, Rust builds, web dev
+server, runtime startup, and visual verification instead of scattering that
+logic across packages.
 
 ## Native Runtime
 
@@ -210,7 +207,7 @@ Default choices:
 | Native package layout | Cargo workspace | Keeps loader/components/runtime crates separate. |
 | Bevy version policy | pinned exact version | Bevy changes quickly; upgrades need adapter tests. |
 
-Suggested crates:
+Suggested top-level native workspace and crates:
 
 ```txt
 runtime-bevy/
@@ -231,7 +228,7 @@ Runtime rules:
 
 ## UI Runtime
 
-Default direction:
+Default post-V1 direction:
 
 | Area | Choice | Reason |
 | --- | --- | --- |
@@ -243,7 +240,8 @@ Default direction:
 
 React is an authoring model, not the native runtime dependency. The compiler
 captures supported UI primitives, bindings, styles, and events into `ui.ir.json`.
-The Bevy adapter recreates that tree natively.
+The Bevy adapter recreates that tree natively. V1 does not require portable UI
+runtime support or `ui.ir.json` fixtures.
 
 Do not use WebViews for core native game UI. They may be considered later for
 account/store/community screens, but not for low-latency HUDs, touch controls,

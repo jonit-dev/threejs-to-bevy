@@ -390,15 +390,14 @@ V1 schedule stages:
 
 ```txt
 startup
-preUpdate
-input
 fixedUpdate
 update
-physics
-animation
 postUpdate
-renderExtract
 ```
+
+Adapter-owned input collection, physics stepping, animation sampling, render
+extraction, render, cleanup, and platform lifecycle stages remain internal until
+a later milestone needs them in portable IR.
 
 Rules:
 
@@ -509,7 +508,8 @@ Private adapter details:
 - Bevy plugin setup.
 - Bevy schedule labels.
 - Renderer resource layout.
-- Native window and mobile lifecycle implementation.
+- Native desktop window lifecycle implementation.
+- Mobile lifecycle implementation after V1.
 
 No TypeScript SDK or game code may depend on private adapter details.
 

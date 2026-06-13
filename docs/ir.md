@@ -81,11 +81,14 @@ Rules:
   "schema": "threenative.bundle",
   "version": "0.1.0",
   "name": "arena-demo",
+  "requiredCapabilities": {
+    "rendering": ["mesh.primitive.box", "material.standard", "light.directional"],
+    "input": ["keyboard"],
+    "scripting": ["builtin.rotation"]
+  },
   "entry": {
     "world": "world.ir.json",
-    "ui": "ui.ir.json",
-    "systems": "systems.ir.json",
-    "scripts": "scripts.bundle.js"
+    "systems": "systems.ir.json"
   },
   "files": {
     "assets": "assets.manifest.json",
@@ -101,6 +104,9 @@ Rules:
 
 - All referenced files must exist.
 - File references are bundle-relative.
+- V1 declares bundle-level runtime requirements in `manifest.json` under
+  `requiredCapabilities`; individual IR files remain focused on their own data
+  domains.
 - Unknown required sections are validation errors.
 - Unknown optional sections may be ignored only if marked as optional capabilities.
 

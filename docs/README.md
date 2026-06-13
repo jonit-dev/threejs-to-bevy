@@ -31,6 +31,8 @@ that concept into implementation contracts.
   repair, and profile games through docs, schemas, CLI, and future MCP tools.
 - [Roadmap](ROADMAP.md): V1/V2/V3 goals, scaffold and verification loops,
   boundaries, risks, and success criteria.
+- [V1 PRDs](PRDs/v1/README.md): implementation tickets for the V1 end-to-end
+  proof, sliced from the roadmap and aligned with the architecture docs.
 - [References](references.md): external Bevy, Three.js, and related AI-tooling
   references used to shape the initial docs.
 
