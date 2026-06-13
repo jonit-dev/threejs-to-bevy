@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use bevy::{math::primitives::Cuboid, prelude::*};
+use threenative_components::ThreeNativeId;
 use threenative_loader::LoadedBundle;
 
 #[derive(Debug, PartialEq)]
@@ -54,4 +56,148 @@ pub fn observe_environment(bundle: &LoadedBundle) -> Option<EnvironmentObservati
             .count(),
         bookmark_ids,
     })
+}
+
+pub fn map_environment_into_world(world: &mut World, bundle: &LoadedBundle) {
+    let Some(scene) = bundle.environment_scene.as_ref() else {
+        return;
+    };
+    ensure_asset_resources(world);
+    let source_assets = scene
+        .source_assets
+        .iter()
+        .map(|asset| (asset.id.as_str(), asset.category.as_str()))
+        .collect::<HashMap<_, _>>();
+
+    if let Some(terrain) = scene.terrain.as_ref() {
+        let min = terrain.bounds.min;
+        let max = terrain.bounds.max;
+        let width = max[0] - min[0];
+        let depth = max[2] - min[2];
+        let material = material(world, Color::srgb(0.31, 0.39, 0.25));
+        spawn_pbr(
+            world,
+            &format!("terrain:{}", terrain.id),
+            Mesh::from(Cuboid::new(width, 0.08, depth)),
+            material,
+            Transform::from_xyz((min[0] + max[0]) / 2.0, min[1] - 0.04, (min[2] + max[2]) / 2.0),
+        );
+    }
+
+    for (index, segment) in scene.path.points.windows(2).enumerate() {
+        let start = segment[0];
+        let end = segment[1];
+        let dx = end[0] - start[0];
+        let dz = end[2] - start[2];
+        let length = dx.hypot(dz);
+        let mid_x = (start[0] + end[0]) / 2.0;
+        let mid_z = (start[2] + end[2]) / 2.0;
+        let y = terrain_height_at(bundle, mid_x, mid_z) + 0.03;
+        let mut transform = Transform::from_xyz(mid_x, y, mid_z);
+        transform.rotation = Quat::from_rotation_y(dx.atan2(dz));
+        let material = material(world, Color::srgb(0.72, 0.49, 0.23));
+        spawn_pbr(
+            world,
+            &format!("path:{}:{index}", scene.path.id),
+            Mesh::from(Cuboid::new(scene.path.width, 0.04, length + scene.path.width * 0.25)),
+            material,
+            transform,
+        );
+    }
+
+    for instance in &scene.instances {
+        let category = source_assets
+            .get(instance.source_asset.as_str())
+            .copied()
+            .unwrap_or("vegetation");
+        let position = instance.position;
+        let scale = instance.scale.unwrap_or([1.0, 1.0, 1.0]);
+        let base_size = size_for_category(category);
+        let y = terrain_height_at(bundle, position[0], position[2]);
+        let mut transform = Transform::from_xyz(position[0], y + base_size[1] * scale[1] / 2.0, position[2]);
+        transform.scale = Vec3::new(scale[0], scale[1], scale[2]);
+        let material = material(world, color_for_category(category));
+        spawn_pbr(
+            world,
+            &format!("environment:{}", instance.id),
+            Mesh::from(Cuboid::new(base_size[0], base_size[1], base_size[2])),
+            material,
+            transform,
+        );
+    }
+}
+
+fn ensure_asset_resources(world: &mut World) {
+    if !world.contains_resource::<Assets<Mesh>>() {
+        world.init_resource::<Assets<Mesh>>();
+    }
+    if !world.contains_resource::<Assets<StandardMaterial>>() {
+        world.init_resource::<Assets<StandardMaterial>>();
+    }
+}
+
+fn spawn_pbr(world: &mut World, id: &str, mesh: Mesh, material: Handle<StandardMaterial>, transform: Transform) {
+    let mesh = world.resource_mut::<Assets<Mesh>>().add(mesh);
+    world
+        .spawn(PbrBundle {
+            mesh,
+            material,
+            transform,
+            ..Default::default()
+        })
+        .insert((ThreeNativeId(id.to_owned()), Name::new(id.to_owned())));
+}
+
+fn material(world: &mut World, color: Color) -> Handle<StandardMaterial> {
+    world.resource_mut::<Assets<StandardMaterial>>().add(StandardMaterial {
+        base_color: color,
+        perceptual_roughness: 0.95,
+        ..Default::default()
+    })
+}
+
+fn terrain_height_at(bundle: &LoadedBundle, x: f32, z: f32) -> f32 {
+    let Some(terrain) = bundle.environment_scene.as_ref().and_then(|scene| scene.terrain.as_ref()) else {
+        return 0.0;
+    };
+    if terrain.height_mode != "controlPoints" {
+        return terrain.bounds.min[1];
+    }
+    let mut weighted_height = 0.0;
+    let mut total_weight = 0.0;
+    for point in &terrain.control_points {
+        let distance = (x - point[0]).hypot(z - point[2]);
+        let weight = (-(distance * distance) / 18.0).exp();
+        weighted_height += point[1] * weight;
+        total_weight += weight;
+    }
+    if total_weight > 0.0 {
+        weighted_height / total_weight
+    } else {
+        terrain.bounds.min[1]
+    }
+}
+
+fn size_for_category(category: &str) -> [f32; 3] {
+    match category {
+        "tree" => [0.65, 4.2, 0.65],
+        "rock" => [1.15, 0.75, 1.0],
+        "pebble" => [0.32, 0.18, 0.28],
+        "grass" => [0.18, 0.75, 0.18],
+        "flower" => [0.25, 0.45, 0.25],
+        "mushroom" => [0.28, 0.35, 0.28],
+        _ => [0.75, 0.9, 0.75],
+    }
+}
+
+fn color_for_category(category: &str) -> Color {
+    match category {
+        "tree" => Color::srgb(0.25, 0.45, 0.16),
+        "rock" => Color::srgb(0.42, 0.45, 0.34),
+        "pebble" => Color::srgb(0.62, 0.58, 0.50),
+        "grass" => Color::srgb(0.54, 0.72, 0.18),
+        "flower" => Color::srgb(0.83, 0.10, 0.18),
+        "mushroom" => Color::srgb(0.86, 0.75, 0.58),
+        _ => Color::srgb(0.28, 0.55, 0.25),
+    }
 }

@@ -375,6 +375,8 @@ pub struct EnvironmentTerrainIr {
     pub id: String,
     pub bounds: EnvironmentBoundsIr,
     pub height_mode: String,
+    #[serde(default)]
+    pub control_points: Vec<[f32; 3]>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -405,6 +407,7 @@ pub struct EnvironmentInstanceIr {
     pub id: String,
     pub source_asset: String,
     pub position: [f32; 3],
+    pub scale: Option<[f32; 3]>,
     pub kind: Option<String>,
     #[serde(default)]
     pub tags: Vec<String>,
