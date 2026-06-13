@@ -1,0 +1,4 @@
+interface:
+  display_name: "Contract Mismatch Investigator"
+  short_description: "Find Three.js and Bevy contract drift"
+  default_prompt: "Use $contract-mismatch-investigator to investigate runtime contract drift between Three.js and Bevy."
