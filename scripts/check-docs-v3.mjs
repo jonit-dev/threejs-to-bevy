@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -17,13 +17,44 @@ export async function checkDocsV3(root = repoRoot) {
       diagnostics.push({ code: "TN_DOCS_V3_SCOPE_MISSING", file, message: "Document does not mention V3 scope." });
     }
   }
+  const indexPath = "docs/PRDs/v3/README.md";
+  const indexText = await readFile(resolve(root, indexPath), "utf8");
+  const v3Dir = resolve(root, "docs/PRDs/v3");
+  const prdFiles = (await readdir(v3Dir))
+    .filter((file) => /^V3-\d+-.+\.md$/.test(file))
+    .sort((left, right) => left.localeCompare(right));
+  for (const file of prdFiles) {
+    if (!indexText.includes(`./${file}`)) {
+      diagnostics.push({ code: "TN_DOCS_V3_INDEX_LINK_MISSING", file: indexPath, message: `V3 PRD index does not link '${file}'.` });
+    }
+  }
+  for (const required of ["Preview_2.jpg", "Three.js", "performance", "first-person", "Bevy", "verify:v3"]) {
+    if (!indexText.toLowerCase().includes(required.toLowerCase())) {
+      diagnostics.push({ code: "TN_DOCS_V3_SCOPE_TERM_MISSING", file: indexPath, message: `V3 PRD index is missing required scope term '${required}'.` });
+    }
+  }
+  const acceptance = sectionBetween(indexText, "## V3 Acceptance Criteria", "## Release Gate");
+  for (const excluded of ["mobile", "MCP", "visual editor", "multiplayer", "custom shaders", "production template catalog"]) {
+    if (acceptance.toLowerCase().includes(excluded.toLowerCase())) {
+      diagnostics.push({ code: "TN_DOCS_V3_EXCLUDED_GATE", file: indexPath, message: `V3 acceptance criteria includes excluded capability '${excluded}'.` });
+    }
+  }
   const exampleReadme = await readFile(resolve(root, "examples/v3-environment/README.md"), "utf8");
-  for (const required of ["dist/forest.bundle", "assets/environment", "performance"]) {
+  for (const required of ["dist/forest.bundle", "assets/environment", "performance", "threejs-bevy-side-by-side.png"]) {
     if (!exampleReadme.includes(required)) {
       diagnostics.push({ code: "TN_DOCS_V3_ARTIFACT_MISSING", file: "examples/v3-environment/README.md", message: `Missing V3 artifact documentation for '${required}'.` });
     }
   }
   return { diagnostics, ok: diagnostics.length === 0 };
+}
+
+function sectionBetween(text, startHeading, endHeading) {
+  const start = text.indexOf(startHeading);
+  if (start === -1) {
+    return "";
+  }
+  const end = text.indexOf(endHeading, start + startHeading.length);
+  return end === -1 ? text.slice(start) : text.slice(start, end);
 }
 
 async function main() {
