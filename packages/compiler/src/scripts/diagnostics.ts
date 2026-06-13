@@ -26,8 +26,14 @@ const unsupportedPatterns: Array<{ code: string; label: string; pattern: RegExp;
   {
     code: "TN_SCRIPT_NODE_API_UNSUPPORTED",
     label: "Node.js APIs",
-    pattern: /\b(?:require|process|Buffer|__dirname|__filename)\b|node:/,
+    pattern: /\b(?:Buffer|__dirname|__filename|process|require)\b|node:/,
     suggestion: "Portable systems cannot use filesystem, process, or Node runtime APIs.",
+  },
+  {
+    code: "TN_SCRIPT_TIMER_API_UNSUPPORTED",
+    label: "timer or scheduler APIs",
+    pattern: /\b(?:cancelAnimationFrame|clearInterval|clearTimeout|queueMicrotask|requestAnimationFrame|setInterval|setTimeout)\b/,
+    suggestion: "Use ctx.time and the portable schedule instead of timers or browser schedulers.",
   },
   {
     code: "TN_SCRIPT_RUNTIME_IMPORT_UNSUPPORTED",

@@ -51,6 +51,28 @@ test("should emit deterministic cube bundle", async () => {
   }
 });
 
+test("should omit scripts bundle when no systems exist", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-no-scripts-"));
+  try {
+    const config = {
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project" as const,
+      version: "0.1.0" as const,
+    };
+
+    const bundlePath = await emitBundle(config, makeScene());
+    const manifest = JSON.parse(await readFile(join(bundlePath, "manifest.json"), "utf8"));
+
+    assert.equal(manifest.entry.scripts, undefined);
+    assert.equal(manifest.files.scripts, undefined);
+    await assert.rejects(() => readFile(join(bundlePath, "scripts.bundle.js"), "utf8"));
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should emit ecs schema files for world root", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-emit-ecs-"));
   try {

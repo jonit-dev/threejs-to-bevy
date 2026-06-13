@@ -46,6 +46,14 @@ For V3, prioritize stable diagnostics in:
 - `TN_VERIFY_*`
 - `TN_RUNTIME_*`
 
+## V4 Script Diagnostics
+
+V4 portable scripting diagnostics use `TN_SCRIPT_*` codes. They should fail
+before runtime when a system references DOM/browser globals, workers, timers,
+Node/process/filesystem APIs, arbitrary npm dependencies, undeclared component
+writes, undeclared command/event permissions, undeclared service calls, or
+bundle syntax outside the native loadability subset.
+
 ## Guidance
 
 - Do not collapse asset, scene, and runtime failures into generic compiler

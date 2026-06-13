@@ -85,11 +85,11 @@ Baseline: the repo pins Bevy and `bevy_ecs` to `=0.14.2`.
 | --- | --- | --- |
 | V4 PRD scope and docs gate | ✅ | `docs/PRDs/v4` defines the QuickJS scripting proof and `check:docs:v4` rejects obvious scope drift. |
 | `systems.ir.json` scripting contract | ⚠️ | V4 system declarations now include reads/writes, queries, events, commands, services, stage, and script export metadata; native consumers and canonical log contracts are still pending. |
-| `scripts.bundle.js` compiler output | ⚠️ | The compiler emits deterministic portable script bundles with declared component/event handles for the V4 example; broader bundling and QuickJS load probes are still pending. |
+| `scripts.bundle.js` compiler output | ⚠️ | The compiler emits deterministic portable script bundles only when systems exist, includes stable system ID metadata, and passes an ESM loadability probe; native QuickJS parse/load proof is still pending. |
 | Web portable system runner | ⚠️ | Web executes the V4 primitive example through the portable context and visual motion verification passes; canonical patch/event/command/service logs are still pending. |
 | Bevy QuickJS host | ❌ | The native adapter does not yet embed QuickJS or run the same JavaScript system bundle. |
 | Patch/event/command/service-call log parity | ❌ | The primitive demo exists, but fixed input trace comparison and native QuickJS logs do not exist yet. |
-| Unsupported portable-script diagnostics | ⚠️ | DOM, Node/runtime imports, arbitrary npm imports, undeclared writes, commands, events, and services fail before runtime for current bundled systems; deeper AST coverage is still pending. |
+| Unsupported portable-script diagnostics | ⚠️ | DOM, Node/runtime imports, timer and worker APIs, arbitrary npm imports, undeclared writes, commands, events, and services fail before runtime for current bundled systems; deeper AST coverage is still pending. |
 
 ## Sources
 

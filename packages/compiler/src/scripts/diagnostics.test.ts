@@ -52,3 +52,26 @@ test("should reject undeclared service command and event access", () => {
     ["TN_SCRIPT_COMMAND_UNDECLARED", "TN_SCRIPT_EVENT_WRITE_UNDECLARED", "TN_SCRIPT_SERVICE_UNDECLARED"],
   );
 });
+
+test("should reject node fs import", () => {
+  const diagnostics = diagnosePortableSystem({
+    source: "() => require('fs').readFileSync('save.json')",
+    systemName: "badFs",
+  });
+
+  assert.equal(diagnostics[0]?.code, "TN_SCRIPT_NODE_API_UNSUPPORTED");
+  assert.equal(diagnostics[0]?.severity, "error");
+  assert.match(diagnostics[0]?.suggestion ?? "", /filesystem/);
+});
+
+test("should reject timer and worker APIs", () => {
+  const diagnostics = diagnosePortableSystem({
+    source: "() => { setTimeout(() => undefined, 1); new Worker('worker.js'); }",
+    systemName: "badTimer",
+  });
+
+  assert.deepEqual(
+    diagnostics.map((diagnostic) => diagnostic.code),
+    ["TN_SCRIPT_DOM_API_UNSUPPORTED", "TN_SCRIPT_TIMER_API_UNSUPPORTED"],
+  );
+});

@@ -218,6 +218,11 @@ runtime-bevy/
     threenative_script_host/  # TS/JS host when selected
 ```
 
+V4 native scripting starts with an embedded QuickJS-ng-style JavaScript host,
+but no TypeScript-side QuickJS binding is selected for compiler tests. The
+compiler runs an ESM loadability probe for `scripts.bundle.js`; the actual
+QuickJS parse/load proof and binding choice are owned by the V4 Bevy host work.
+
 Runtime rules:
 
 - Map stable SDK entity IDs to Bevy `Entity` handles at load time.

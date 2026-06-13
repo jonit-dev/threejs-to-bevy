@@ -42,7 +42,8 @@ systems.ir.json
   declares system IDs, schedules, queries, reads, writes, resources, events
 
 scripts.bundle.js
-  contains compiled TypeScript system exports for web preview and native Bevy
+  contains compiled TypeScript system exports plus stable system ID metadata for
+  web preview and native Bevy
 
 runtime-web-three
   runs JS systems against the portable context

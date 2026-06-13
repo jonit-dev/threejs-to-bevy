@@ -25,6 +25,35 @@ test("should emit deterministic scripts movement system bundle", () => {
   assert.deepEqual(first.diagnostics, []);
 });
 
+test("should emit deterministic scripts bundle with stable system ids", () => {
+  const systems = [
+    {
+      name: "zSystem",
+      writes: ["Transform"],
+      script: {
+        exportName: "system_zSystem",
+        source: "(context) => context.query()[0]?.patch(Transform, {})",
+      },
+    },
+    {
+      eventWrites: ["HitEvent"],
+      name: "aSystem",
+      script: {
+        exportName: "system_aSystem",
+        source: "(context) => context.events.emit(HitEvent, {})",
+      },
+    },
+  ];
+
+  const first = bundleSystemScripts(systems).code;
+  const second = bundleSystemScripts([...systems].reverse()).code;
+
+  assert.equal(first, second);
+  assert.match(first ?? "", /export const systemIds = Object\.freeze/);
+  assert.match(first ?? "", /"system_aSystem": "aSystem"/);
+  assert.match(first ?? "", /"system_zSystem": "zSystem"/);
+});
+
 test("should normalize method shorthand system functions", () => {
   const result = bundleSystemScripts([
     {

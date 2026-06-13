@@ -28,8 +28,14 @@ Current implemented V4 slice:
 
 - `systems.ir.json` carries V4 stage, query, read/write, event, command, and
   service metadata for portable systems.
-- `scripts.bundle.js` can serialize declared component/event handles used by
+- `scripts.bundle.js` is emitted only when systems exist, includes stable
+  system ID metadata, and can serialize declared component/event handles used by
   portable system functions.
+- portable script diagnostics reject unsupported DOM, Node, timer, worker,
+  arbitrary runtime import, undeclared write, command, event, and service
+  usage before runtime.
+- compiler tests run an ESM loadability probe for the emitted script bundle;
+  native QuickJS parse/load proof remains owned by the Bevy host work.
 - `examples/v4-scripting` builds a primitive scripted scene and passes web
   visual verification with expected motion.
 
