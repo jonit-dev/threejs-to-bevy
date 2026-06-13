@@ -68,6 +68,40 @@ fn should_load_optional_audio_ir() {
     fs::remove_dir_all(root).expect("temp bundle should be removed");
 }
 
+#[test]
+fn should_load_optional_environment_scene_ir() {
+    let root = temp_bundle_dir();
+    write_json(
+        &root,
+        "manifest.json",
+        r#"{
+          "schema": "threenative.bundle",
+          "version": "0.1.0",
+          "name": "environment",
+          "entry": { "world": "world.ir.json", "environmentScene": "environment.scene.json" },
+          "files": {
+            "assets": "assets.manifest.json",
+            "materials": "materials.ir.json",
+            "targetProfile": "target.profile.json"
+          }
+        }"#,
+    );
+    write_json(&root, "world.ir.json", r#"{ "schema": "threenative.world", "version": "0.1.0", "entities": [] }"#);
+    write_json(&root, "assets.manifest.json", r#"{ "schema": "threenative.assets", "version": "0.1.0", "assets": [] }"#);
+    write_json(&root, "materials.ir.json", r#"{ "schema": "threenative.materials", "version": "0.1.0", "materials": [] }"#);
+    write_json(&root, "target.profile.json", r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["desktop"] }"#);
+    write_json(
+        &root,
+        "environment.scene.json",
+        r#"{ "schema": "threenative.environment-scene", "version": "0.1.0", "path": { "id": "path.main", "points": [[0, 0, 0], [0, 0, 1]], "width": 2 }, "sourceAssets": [], "instances": [] }"#,
+    );
+
+    let bundle = load_bundle(&root).expect("environment bundle should load");
+
+    assert_eq!(bundle.environment_scene.expect("environment ir").path.id, "path.main");
+    fs::remove_dir_all(root).expect("temp bundle should be removed");
+}
+
 fn cube_fixture() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../../packages/ir/fixtures/cube-scene/game.bundle")

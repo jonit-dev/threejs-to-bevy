@@ -271,6 +271,103 @@ test("should emit sandboxed v3 environment bundle assets", async () => {
   }
 });
 
+test("environment should emit deterministic terrain path and scatter instances", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-env-authoring-"));
+  try {
+    await writeEnvironmentAsset(root, "Grass.gltf");
+    const config = {
+      entry: "src/game.ts",
+      outDir: "dist/forest.bundle",
+      projectPath: root,
+      schema: "threenative.project" as const,
+      version: "0.1.0" as const,
+    };
+    const source = {
+      scene: makeScene(),
+      environment: makeEnvironmentDeclaration({
+        scatter: [
+          {
+            assetIds: ["env.Grass"],
+            bounds: { min: [-5, 0, -5], max: [5, 0, 5] },
+            count: 4,
+            exclusionZoneIds: ["camera.start"],
+            id: "scatter.grass",
+            maxScale: 1.2,
+            minScale: 0.8,
+            seed: 42,
+            tags: ["grass"],
+          },
+        ],
+      }),
+    };
+
+    const first = await emitBundle(config, source);
+    const firstEnvironment = await readFile(join(first, "environment.scene.json"), "utf8");
+    const second = await emitBundle({ ...config, outDir: "dist/forest-again.bundle" }, source);
+    const secondEnvironment = await readFile(join(second, "environment.scene.json"), "utf8");
+    const environment = JSON.parse(firstEnvironment);
+
+    assert.equal(firstEnvironment, secondEnvironment);
+    assert.equal(environment.terrain.id, "terrain.forest");
+    assert.equal(environment.instances.filter((instance: { kind: string }) => instance.kind === "scatter").length, 4);
+    assert.deepEqual(
+      environment.instances.map((instance: { id: string }) => instance.id),
+      ["tree.hero", "scatter.grass.env.Grass.000", "scatter.grass.env.Grass.001", "scatter.grass.env.Grass.002", "scatter.grass.env.Grass.003"],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("environment should keep scatter instances outside path clearing", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-env-scatter-"));
+  try {
+    await writeEnvironmentAsset(root, "Grass.gltf");
+    const bundlePath = await emitBundle(
+      {
+        entry: "src/game.ts",
+        outDir: "dist/forest.bundle",
+        projectPath: root,
+        schema: "threenative.project" as const,
+        version: "0.1.0" as const,
+      },
+      {
+        scene: makeScene(),
+        environment: makeEnvironmentDeclaration({
+          path: {
+            clearingRadius: 1.5,
+            id: "forest.path.main",
+            points: [
+              [0, 0, 5],
+              [0, 0, -5],
+            ],
+            width: 2,
+          },
+          scatter: [
+            {
+              assetIds: ["env.Grass"],
+              bounds: { min: [-4, 0, -4], max: [4, 0, 4] },
+              count: 8,
+              id: "scatter.grass",
+              maxScale: 1,
+              minScale: 1,
+              seed: 11,
+            },
+          ],
+        }),
+      },
+    );
+
+    const environment = JSON.parse(await readFile(join(bundlePath, "environment.scene.json"), "utf8"));
+    const scatter = environment.instances.filter((instance: { kind: string }) => instance.kind === "scatter");
+
+    assert.equal(scatter.length, 8);
+    assert.equal(scatter.every((instance: { position: [number, number, number] }) => Math.abs(instance.position[0]) > 1.5), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 function makeScene(): Scene {
   const scene = new Scene({ id: "scene" });
   const mesh = new Mesh({
@@ -283,4 +380,32 @@ function makeScene(): Scene {
   scene.add(camera);
   scene.setActiveCamera(camera);
   return scene;
+}
+
+async function writeEnvironmentAsset(root: string, name: string): Promise<void> {
+  await mkdir(join(root, "assets-source/environment/glTF"), { recursive: true });
+  await writeFile(join(root, `assets-source/environment/glTF/${name}`), JSON.stringify({ asset: { version: "2.0" } }));
+  await writeFile(join(root, `assets-source/environment/glTF/${name.replace(/\.gltf$/, ".bin")}`), "asset");
+}
+
+function makeEnvironmentDeclaration(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    sourceDir: "assets-source/environment/glTF",
+    assetNames: ["Grass.gltf"],
+    terrain: { bounds: { min: [-8, 0, -8], max: [8, 0, 8] }, heightMode: "flat", id: "terrain.forest" },
+    path: {
+      clearingRadius: 1.5,
+      edgeFalloff: 0.4,
+      id: "forest.path.main",
+      points: [
+        [0, 0, 5],
+        [0, 0, -5],
+      ],
+      width: 2,
+    },
+    exclusionZones: [{ bounds: { min: [-1, 0, 3], max: [1, 0, 5] }, id: "camera.start" }],
+    bookmarks: [{ expectedTags: ["grass"], id: "bookmark.start", pitch: -4, position: [0, 1.7, 6], yaw: 180 }],
+    instances: [{ id: "tree.hero", kind: "hero", sourceAsset: "env.Grass", position: [-3, 0, 2], tags: ["tree"] }],
+    ...overrides,
+  };
 }

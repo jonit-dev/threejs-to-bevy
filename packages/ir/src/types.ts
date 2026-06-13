@@ -277,25 +277,89 @@ export interface IEnvironmentSourceAssetIr {
 }
 
 export interface IEnvironmentInstanceIr {
+  collisionMode?: "blocking" | "none" | "walkable";
   id: string;
+  kind?: "hero" | "manual" | "scatter";
+  renderGroup?: string;
   sourceAsset: string;
   position: Vec3;
   rotation?: Quat;
   scale?: Vec3;
+  scatterExclusionRadius?: number;
+  scatterSource?: string;
   tags?: string[];
 }
 
-export interface IEnvironmentPathIr {
+export interface IEnvironmentTerrainIr {
+  bounds: {
+    max: Vec3;
+    min: Vec3;
+  };
+  controlPoints?: Vec3[];
+  heightMode: "controlPoints" | "flat";
   id: string;
+  material?: string;
+}
+
+export interface IEnvironmentPathIr {
+  clearingRadius?: number;
+  edgeFalloff?: number;
+  id: string;
+  material?: string;
   points: Vec3[];
   width: number;
+}
+
+export interface IEnvironmentExclusionZoneIr {
+  bounds?: {
+    max: Vec3;
+    min: Vec3;
+  };
+  id: string;
+  radius?: number;
+  tags?: string[];
+}
+
+export interface IEnvironmentScatterSpecIr {
+  assetIds: string[];
+  bounds: {
+    max: Vec3;
+    min: Vec3;
+  };
+  collisionMode?: "blocking" | "none" | "walkable";
+  count?: number;
+  density?: number;
+  exclusionZoneIds?: string[];
+  id: string;
+  maxScale: number;
+  minScale: number;
+  rotation?: {
+    maxYaw: number;
+    minYaw: number;
+  };
+  seed: number;
+  slopeLimit?: number;
+  tags?: string[];
+}
+
+export interface IEnvironmentCameraBookmarkIr {
+  expectedTags?: string[];
+  id: string;
+  notes?: string;
+  pitch: number;
+  position: Vec3;
+  yaw: number;
 }
 
 export interface IEnvironmentSceneIr {
   schema: EnvironmentSceneSchema;
   version: SchemaVersion;
+  bookmarks?: IEnvironmentCameraBookmarkIr[];
+  exclusionZones?: IEnvironmentExclusionZoneIr[];
   referenceImage?: string;
+  scatter?: IEnvironmentScatterSpecIr[];
   sourceAssets: IEnvironmentSourceAssetIr[];
   instances: IEnvironmentInstanceIr[];
   path: IEnvironmentPathIr;
+  terrain?: IEnvironmentTerrainIr;
 }

@@ -21,9 +21,13 @@ export type {
   ICameraComponent,
   IColliderComponent,
   IEnvironmentInstanceIr,
+  IEnvironmentCameraBookmarkIr,
+  IEnvironmentExclusionZoneIr,
   IEnvironmentPathIr,
   IEnvironmentSceneIr,
+  IEnvironmentScatterSpecIr,
   IEnvironmentSourceAssetIr,
+  IEnvironmentTerrainIr,
   IIrNamedSchema,
   IIrSchemaField,
   IIrSchemaFile,
@@ -45,4 +49,5 @@ export type {
   Vec3,
 } from "./types.js";
 export { validateBundle, type IBundleValidationResult, type IIrDiagnostic } from "./validate.js";
+export { validateEnvironmentSceneIr } from "./environment.js";
 export { validatePerformanceProfile, type PerformanceMetricName } from "./performanceProfile.js";

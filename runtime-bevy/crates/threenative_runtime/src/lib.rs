@@ -8,6 +8,7 @@ pub mod map_world;
 pub mod conformance;
 pub mod assets;
 pub mod audio;
+pub mod environment;
 pub mod input;
 pub mod physics;
 pub mod systems_host;

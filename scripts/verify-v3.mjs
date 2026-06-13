@@ -12,6 +12,7 @@ export async function verifyV3(options = {}) {
   const run = options.run ?? runCommand;
   const artifactDir = options.artifactDir ?? resolve(root, "artifacts/v3");
   const environmentVerifier = options.environmentVerifier;
+  const sceneVerifier = options.sceneVerifier;
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
   const projectPath = resolve(root, "examples/v3-environment");
   const bundlePath = resolve(projectPath, "dist/forest.bundle");
@@ -41,16 +42,34 @@ export async function verifyV3(options = {}) {
     (await import(pathToFileURL(resolve(root, "packages/cli/dist/verify/v3Environment.js")).href)).verifyV3Environment;
   const environmentReport = await verifyEnvironment({ artifactDir, bundlePath });
   steps.push({ durationMs: 0, exitCode: environmentReport.status === "pass" ? 0 : 1, stderr: "", stdout: environmentReport.artifacts.reportPath, name: "verify v3 environment performance" });
+  if (environmentReport.status !== "pass") {
+    return writeV3Report({ artifactDir, bundlePath, ok: false, reportPath, steps, webReportPath: environmentReport.artifacts.reportPath });
+  }
 
-  return writeV3Report({ artifactDir, bundlePath, ok: environmentReport.status === "pass", reportPath, steps, webReportPath: environmentReport.artifacts.reportPath });
+  const verifyScene =
+    sceneVerifier ??
+    (await import(pathToFileURL(resolve(root, "packages/cli/dist/verify/v3Scene.js")).href)).verifyV3Scene;
+  const sceneReport = await verifyScene({ artifactDir, bundlePath });
+  steps.push({ durationMs: 0, exitCode: sceneReport.status === "pass" ? 0 : 1, stderr: "", stdout: sceneReport.artifacts.reportPath, name: "verify v3 scene authoring" });
+
+  return writeV3Report({
+    artifactDir,
+    bundlePath,
+    ok: sceneReport.status === "pass",
+    reportPath,
+    sceneReportPath: sceneReport.artifacts.reportPath,
+    steps,
+    webReportPath: environmentReport.artifacts.reportPath,
+  });
 }
 
-async function writeV3Report({ artifactDir, bundlePath, ok, reportPath, steps, webReportPath }) {
+async function writeV3Report({ artifactDir, bundlePath, ok, reportPath, sceneReportPath, steps, webReportPath }) {
   await mkdir(resolve(reportPath, ".."), { recursive: true });
   const report = {
     artifacts: {
       bundlePath,
       reportPath,
+      sceneReportPath: sceneReportPath ?? resolve(artifactDir, "v3-scene-report.json"),
       webReportPath: webReportPath ?? resolve(artifactDir, "v3-environment-report.json"),
     },
     code: ok ? "TN_VERIFY_V3_OK" : "TN_VERIFY_V3_FAILED",

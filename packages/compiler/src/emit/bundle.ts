@@ -119,12 +119,16 @@ interface IBundleRoot {
 
 interface IEnvironmentDeclaration {
   assetNames: string[];
+  bookmarks?: IEnvironmentSceneIr["bookmarks"];
   budgets?: ITargetProfile["budgets"];
+  exclusionZones?: IEnvironmentSceneIr["exclusionZones"];
   instances: IEnvironmentSceneIr["instances"];
   path: IEnvironmentSceneIr["path"];
   performance?: ITargetProfile["performance"];
   previewImage?: string;
+  scatter?: IEnvironmentSceneIr["scatter"];
   sourceDir: string;
+  terrain?: IEnvironmentSceneIr["terrain"];
 }
 
 interface IEmittedEnvironment {
@@ -318,12 +322,130 @@ async function emitEnvironment(projectPath: string, declaration: IEnvironmentDec
     scene: {
       schema: "threenative.environment-scene",
       version: "0.1.0",
+      ...(declaration.bookmarks === undefined ? {} : { bookmarks: [...declaration.bookmarks].sort((left, right) => left.id.localeCompare(right.id)) }),
+      ...(declaration.exclusionZones === undefined ? {} : { exclusionZones: [...declaration.exclusionZones].sort((left, right) => left.id.localeCompare(right.id)) }),
       ...(previewAsset === undefined ? {} : { referenceImage: previewAsset.id }),
+      ...(declaration.scatter === undefined ? {} : { scatter: [...declaration.scatter].sort((left, right) => left.id.localeCompare(right.id)) }),
       sourceAssets,
-      instances: [...declaration.instances].sort((left, right) => left.id.localeCompare(right.id)),
+      instances: emitEnvironmentInstances(declaration),
       path: declaration.path,
+      ...(declaration.terrain === undefined ? {} : { terrain: declaration.terrain }),
     },
   };
+}
+
+function emitEnvironmentInstances(declaration: IEnvironmentDeclaration): IEnvironmentSceneIr["instances"] {
+  return [...declaration.instances.map((instance) => ({ kind: "hero" as const, ...instance })), ...expandScatterInstances(declaration)].sort(
+    compareEnvironmentInstances,
+  );
+}
+
+function compareEnvironmentInstances(left: IEnvironmentSceneIr["instances"][number], right: IEnvironmentSceneIr["instances"][number]): number {
+  const kindOrder = (value: IEnvironmentSceneIr["instances"][number]): number => (value.kind === "hero" ? 0 : value.kind === "manual" ? 1 : 2);
+  const kindDelta = kindOrder(left) - kindOrder(right);
+  return kindDelta === 0 ? left.id.localeCompare(right.id) : kindDelta;
+}
+
+function expandScatterInstances(declaration: IEnvironmentDeclaration): IEnvironmentSceneIr["instances"] {
+  const instances: IEnvironmentSceneIr["instances"] = [];
+  const exclusionZones = declaration.exclusionZones ?? [];
+  for (const scatter of [...(declaration.scatter ?? [])].sort((left, right) => left.id.localeCompare(right.id))) {
+    const count = scatter.count ?? estimateScatterCount(scatter);
+    const assetIds = [...scatter.assetIds].sort((left, right) => left.localeCompare(right));
+    if (assetIds.length === 0) {
+      continue;
+    }
+    const random = seededRandom(scatter.seed);
+    let emitted = 0;
+    let attempts = 0;
+    while (emitted < count && attempts < count * 20) {
+      attempts += 1;
+      const sourceAsset = assetIds[Math.floor(random() * assetIds.length)] ?? assetIds[0]!;
+      const position = [
+        lerp(scatter.bounds.min[0], scatter.bounds.max[0], random()),
+        0,
+        lerp(scatter.bounds.min[2], scatter.bounds.max[2], random()),
+      ] as const;
+      if (isExcluded(position, declaration.path, exclusionZones, scatter.exclusionZoneIds ?? [])) {
+        continue;
+      }
+      const scale = lerp(scatter.minScale, scatter.maxScale, random());
+      const yaw = lerp(scatter.rotation?.minYaw ?? 0, scatter.rotation?.maxYaw ?? Math.PI * 2, random());
+      instances.push({
+        collisionMode: scatter.collisionMode ?? "none",
+        id: `${scatter.id}.${sourceAsset}.${String(emitted).padStart(3, "0")}`,
+        kind: "scatter",
+        position,
+        rotation: [0, Math.sin(yaw / 2), 0, Math.cos(yaw / 2)],
+        scale: [scale, scale, scale],
+        scatterSource: scatter.id,
+        sourceAsset,
+        tags: [...(scatter.tags ?? [])].sort((left, right) => left.localeCompare(right)),
+      });
+      emitted += 1;
+    }
+  }
+  return instances;
+}
+
+function estimateScatterCount(scatter: NonNullable<IEnvironmentDeclaration["scatter"]>[number]): number {
+  const area = Math.abs((scatter.bounds.max[0] - scatter.bounds.min[0]) * (scatter.bounds.max[2] - scatter.bounds.min[2]));
+  return Math.floor(area * (scatter.density ?? 0));
+}
+
+function seededRandom(seed: number): () => number {
+  let value = seed >>> 0;
+  return () => {
+    value += 0x6d2b79f5;
+    let t = value;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function isExcluded(
+  position: readonly [number, number, number],
+  path: IEnvironmentSceneIr["path"],
+  zones: NonNullable<IEnvironmentDeclaration["exclusionZones"]>,
+  enabledZoneIds: readonly string[],
+): boolean {
+  const pathClearance = path.clearingRadius ?? path.width / 2;
+  for (let index = 1; index < path.points.length; index += 1) {
+    const start = path.points[index - 1];
+    const end = path.points[index];
+    if (start !== undefined && end !== undefined && distanceToSegment2d(position, start, end) <= pathClearance) {
+      return true;
+    }
+  }
+  const enabled = new Set(enabledZoneIds);
+  return zones.some((zone) => {
+    if (enabled.size > 0 && !enabled.has(zone.id)) {
+      return false;
+    }
+    if (zone.bounds !== undefined) {
+      return position[0] >= zone.bounds.min[0] && position[0] <= zone.bounds.max[0] && position[2] >= zone.bounds.min[2] && position[2] <= zone.bounds.max[2];
+    }
+    if (zone.radius !== undefined) {
+      return Math.hypot(position[0], position[2]) <= zone.radius;
+    }
+    return false;
+  });
+}
+
+function distanceToSegment2d(point: readonly [number, number, number], start: readonly [number, number, number], end: readonly [number, number, number]): number {
+  const dx = end[0] - start[0];
+  const dz = end[2] - start[2];
+  const lengthSquared = dx * dx + dz * dz;
+  if (lengthSquared === 0) {
+    return Math.hypot(point[0] - start[0], point[2] - start[2]);
+  }
+  const t = Math.max(0, Math.min(1, ((point[0] - start[0]) * dx + (point[2] - start[2]) * dz) / lengthSquared));
+  return Math.hypot(point[0] - (start[0] + t * dx), point[2] - (start[2] + t * dz));
+}
+
+function lerp(min: number, max: number, amount: number): number {
+  return min + (max - min) * amount;
 }
 
 async function readGltfDependencies(sourceDir: string, assetName: string): Promise<string[]> {

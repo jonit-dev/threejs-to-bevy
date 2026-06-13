@@ -34,6 +34,8 @@ pub struct BundleManifest {
 #[derive(Debug, Deserialize)]
 pub struct BundleEntry {
     pub audio: Option<String>,
+    #[serde(rename = "environmentScene")]
+    pub environment_scene: Option<String>,
     pub scripts: Option<String>,
     pub systems: Option<String>,
     pub ui: Option<String>,
@@ -54,6 +56,7 @@ pub struct BundleFiles {
 pub struct LoadedBundle {
     pub assets: AssetsManifest,
     pub audio: Option<AudioIr>,
+    pub environment_scene: Option<EnvironmentSceneIr>,
     pub input: Option<InputIr>,
     pub manifest: BundleManifest,
     pub materials: MaterialsIr,
@@ -315,6 +318,86 @@ pub struct AudioMusicIr {
     pub looped: Option<bool>,
 }
 
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EnvironmentSceneIr {
+    pub schema: String,
+    pub version: String,
+    pub terrain: Option<EnvironmentTerrainIr>,
+    pub path: EnvironmentPathIr,
+    #[serde(default)]
+    pub source_assets: Vec<EnvironmentSourceAssetIr>,
+    #[serde(default)]
+    pub instances: Vec<EnvironmentInstanceIr>,
+    #[serde(default)]
+    pub scatter: Vec<EnvironmentScatterSpecIr>,
+    #[serde(default)]
+    pub bookmarks: Vec<EnvironmentBookmarkIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EnvironmentTerrainIr {
+    pub id: String,
+    pub bounds: EnvironmentBoundsIr,
+    pub height_mode: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct EnvironmentBoundsIr {
+    pub min: [f32; 3],
+    pub max: [f32; 3],
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EnvironmentPathIr {
+    pub id: String,
+    pub points: Vec<[f32; 3]>,
+    pub width: f32,
+    pub clearing_radius: Option<f32>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct EnvironmentSourceAssetIr {
+    pub id: String,
+    pub asset: String,
+    pub category: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EnvironmentInstanceIr {
+    pub id: String,
+    pub source_asset: String,
+    pub position: [f32; 3],
+    pub kind: Option<String>,
+    #[serde(default)]
+    pub tags: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EnvironmentScatterSpecIr {
+    pub id: String,
+    #[serde(default)]
+    pub asset_ids: Vec<String>,
+    pub seed: i64,
+    pub count: Option<u32>,
+    pub density: Option<f32>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EnvironmentBookmarkIr {
+    pub id: String,
+    pub position: [f32; 3],
+    pub yaw: f32,
+    pub pitch: f32,
+    #[serde(default)]
+    pub expected_tags: Vec<String>,
+}
+
 pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadError> {
     let bundle_path = bundle_path.as_ref();
     let manifest: BundleManifest = read_json(bundle_path, "manifest.json")?;
@@ -368,10 +451,19 @@ pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadEr
         }
         None => None,
     };
+    let environment_scene = match manifest.entry.environment_scene.as_ref() {
+        Some(file) => {
+            let scene: EnvironmentSceneIr = read_json(bundle_path, file)?;
+            ensure_supported(&scene.schema, &scene.version)?;
+            Some(scene)
+        }
+        None => None,
+    };
 
     Ok(LoadedBundle {
         assets,
         audio,
+        environment_scene,
         input,
         manifest,
         materials,
