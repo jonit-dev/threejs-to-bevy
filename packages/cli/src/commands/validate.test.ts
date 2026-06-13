@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import test from "node:test";
 
 import { validateProject } from "./validate.js";
+
+const cubeFixture = resolve(process.cwd(), "../ir/fixtures/cube-scene/game.bundle");
 
 test("should validate a scaffolded project config and entry", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-validate-"));
@@ -49,6 +51,26 @@ test("should reject a missing scaffold entry", async () => {
 
     assert.equal(result.exitCode, 1);
     assert.equal(payload.code, "TN_VALIDATE_ENTRY_MISSING");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("validate should exit nonzero for invalid bundle", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-validate-"));
+  const bundle = join(root, "invalid.bundle");
+  try {
+    await cp(cubeFixture, bundle, { recursive: true });
+    const materialsPath = join(bundle, "materials.ir.json");
+    const materials = JSON.parse(await readFile(materialsPath, "utf8")) as { materials: unknown[] };
+    materials.materials = [];
+    await writeFile(materialsPath, `${JSON.stringify(materials, null, 2)}\n`);
+
+    const result = await validateProject(["--bundle", bundle, "--json"], { cwd: root });
+    const payload = JSON.parse(result.stdout) as { diagnostics: Array<{ code: string }> };
+
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.diagnostics[0]?.code, "TN-IR-2104");
   } finally {
     await rm(root, { force: true, recursive: true });
   }
