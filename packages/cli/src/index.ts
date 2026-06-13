@@ -1,0 +1,118 @@
+#!/usr/bin/env node
+
+import { fileURLToPath } from "node:url";
+
+export interface ICommandResult {
+  exitCode: number;
+  stderr?: string;
+  stdout: string;
+}
+
+interface ICommandDefinition {
+  description: string;
+  implemented: boolean;
+  usage: string;
+}
+
+const commands: Record<string, ICommandDefinition> = {
+  create: {
+    description: "Scaffold a V1 starter project.",
+    implemented: false,
+    usage: "tn create <name>",
+  },
+  validate: {
+    description: "Validate a game bundle or project.",
+    implemented: false,
+    usage: "tn validate [--project <path>] [--bundle <path>] [--json]",
+  },
+  build: {
+    description: "Compile supported TypeScript source into game.bundle.",
+    implemented: false,
+    usage: "tn build [--project <path>] [--json]",
+  },
+  dev: {
+    description: "Run a V1 runtime preview.",
+    implemented: false,
+    usage: "tn dev --target <web|desktop> [--project <path>]",
+  },
+  verify: {
+    description: "Run visual self-verification for the web preview.",
+    implemented: false,
+    usage: "tn verify [--project <path>] [--json]",
+  },
+};
+
+const helpFlags = new Set(["--help", "-h", "help"]);
+
+export function renderHelp(): string {
+  const commandRows = Object.entries(commands)
+    .map(([name, command]) => `  ${name.padEnd(10)} ${command.description}\n              ${command.usage}`)
+    .join("\n");
+
+  return `ThreeNative CLI
+
+Usage:
+  tn <command> [options]
+
+V1 commands:
+${commandRows}
+
+Global options:
+  --help, -h    Print this help.
+  --json        Print machine-readable diagnostics where supported.
+`;
+}
+
+export function dispatch(argv: readonly string[]): ICommandResult {
+  const normalizedArgv = argv[0] === "--" ? argv.slice(1) : argv;
+  const [commandName] = normalizedArgv;
+
+  if (commandName === undefined || helpFlags.has(commandName)) {
+    return {
+      exitCode: 0,
+      stdout: renderHelp(),
+    };
+  }
+
+  const command = commands[commandName];
+
+  if (command === undefined) {
+    return {
+      exitCode: 1,
+      stderr: `Unknown command '${commandName}'. Run 'tn --help' for available V1 commands.\n`,
+      stdout: "",
+    };
+  }
+
+  const json = normalizedArgv.includes("--json");
+  const payload = {
+    code: "TN_COMMAND_NOT_IMPLEMENTED",
+    command: commandName,
+    implemented: command.implemented,
+    message: `Command '${commandName}' is registered for V1 but is not implemented yet.`,
+    usage: command.usage,
+  };
+
+  return {
+    exitCode: 2,
+    stdout: json ? `${JSON.stringify(payload, null, 2)}\n` : `${payload.message}\nUsage: ${command.usage}\n`,
+  };
+}
+
+export function main(argv: readonly string[] = process.argv.slice(2)): void {
+  const result = dispatch(argv);
+
+  if (result.stdout.length > 0) {
+    process.stdout.write(result.stdout);
+  }
+
+  if (result.stderr !== undefined && result.stderr.length > 0) {
+    process.stderr.write(result.stderr);
+  }
+
+  process.exitCode = result.exitCode;
+}
+
+if (process.argv[1] !== undefined && fileURLToPath(import.meta.url) === process.argv[1]) {
+  main();
+}
