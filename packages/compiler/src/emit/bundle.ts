@@ -122,6 +122,7 @@ interface IEnvironmentDeclaration {
   atmosphere?: IEnvironmentSceneIr["atmosphere"];
   bookmarks?: IEnvironmentSceneIr["bookmarks"];
   budgets?: ITargetProfile["budgets"];
+  controller?: IEnvironmentSceneIr["controller"];
   exclusionZones?: IEnvironmentSceneIr["exclusionZones"];
   instances: IEnvironmentSceneIr["instances"];
   path: IEnvironmentSceneIr["path"];
@@ -325,6 +326,7 @@ async function emitEnvironment(projectPath: string, declaration: IEnvironmentDec
       version: "0.1.0",
       ...(declaration.atmosphere === undefined ? {} : { atmosphere: declaration.atmosphere }),
       ...(declaration.bookmarks === undefined ? {} : { bookmarks: [...declaration.bookmarks].sort((left, right) => left.id.localeCompare(right.id)) }),
+      ...(declaration.controller === undefined ? {} : { controller: declaration.controller }),
       ...(declaration.exclusionZones === undefined ? {} : { exclusionZones: [...declaration.exclusionZones].sort((left, right) => left.id.localeCompare(right.id)) }),
       ...(previewAsset === undefined ? {} : { referenceImage: previewAsset.id }),
       ...(declaration.scatter === undefined ? {} : { scatter: [...declaration.scatter].sort((left, right) => left.id.localeCompare(right.id)) }),

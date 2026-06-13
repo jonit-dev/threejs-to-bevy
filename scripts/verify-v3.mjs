@@ -13,6 +13,7 @@ export async function verifyV3(options = {}) {
   const artifactDir = options.artifactDir ?? resolve(root, "artifacts/v3");
   const environmentVerifier = options.environmentVerifier;
   const atmosphereVerifier = options.atmosphereVerifier;
+  const firstPersonVerifier = options.firstPersonVerifier;
   const sceneVerifier = options.sceneVerifier;
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
   const projectPath = resolve(root, "examples/v3-environment");
@@ -61,12 +62,22 @@ export async function verifyV3(options = {}) {
     (await import(pathToFileURL(resolve(root, "packages/cli/dist/verify/v3Atmosphere.js")).href)).verifyV3Atmosphere;
   const atmosphereReport = await verifyAtmosphere({ artifactDir, bundlePath });
   steps.push({ durationMs: 0, exitCode: atmosphereReport.status === "pass" ? 0 : 1, stderr: "", stdout: atmosphereReport.artifacts.reportPath, name: "verify v3 atmosphere" });
+  if (atmosphereReport.status !== "pass") {
+    return writeV3Report({ atmosphereReportPath: atmosphereReport.artifacts.reportPath, artifactDir, bundlePath, ok: false, reportPath, sceneReportPath: sceneReport.artifacts.reportPath, steps, webReportPath: environmentReport.artifacts.reportPath });
+  }
+
+  const verifyFirstPerson =
+    firstPersonVerifier ??
+    (await import(pathToFileURL(resolve(root, "packages/cli/dist/verify/v3FirstPerson.js")).href)).verifyV3FirstPerson;
+  const firstPersonReport = await verifyFirstPerson({ artifactDir, bundlePath });
+  steps.push({ durationMs: 0, exitCode: firstPersonReport.status === "pass" ? 0 : 1, stderr: "", stdout: firstPersonReport.artifacts.reportPath, name: "verify v3 first-person controls" });
 
   return writeV3Report({
     atmosphereReportPath: atmosphereReport.artifacts.reportPath,
     artifactDir,
     bundlePath,
-    ok: atmosphereReport.status === "pass",
+    firstPersonReportPath: firstPersonReport.artifacts.reportPath,
+    ok: firstPersonReport.status === "pass",
     reportPath,
     sceneReportPath: sceneReport.artifacts.reportPath,
     steps,
@@ -74,12 +85,13 @@ export async function verifyV3(options = {}) {
   });
 }
 
-async function writeV3Report({ artifactDir, atmosphereReportPath, bundlePath, ok, reportPath, sceneReportPath, steps, webReportPath }) {
+async function writeV3Report({ artifactDir, atmosphereReportPath, bundlePath, firstPersonReportPath, ok, reportPath, sceneReportPath, steps, webReportPath }) {
   await mkdir(resolve(reportPath, ".."), { recursive: true });
   const report = {
     artifacts: {
       bundlePath,
       atmosphereReportPath: atmosphereReportPath ?? resolve(artifactDir, "v3-atmosphere-report.json"),
+      firstPersonReportPath: firstPersonReportPath ?? resolve(artifactDir, "v3-first-person-report.json"),
       reportPath,
       sceneReportPath: sceneReportPath ?? resolve(artifactDir, "v3-scene-report.json"),
       webReportPath: webReportPath ?? resolve(artifactDir, "v3-environment-report.json"),

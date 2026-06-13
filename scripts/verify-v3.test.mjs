@@ -25,6 +25,12 @@ test("should run v3 performance gate", async () => {
         },
         status: "pass",
       }),
+      firstPersonVerifier: async ({ artifactDir }) => ({
+        artifacts: {
+          reportPath: join(artifactDir, "v3-first-person-report.json"),
+        },
+        status: "pass",
+      }),
       sceneVerifier: async ({ artifactDir }) => ({
         artifacts: {
           reportPath: join(artifactDir, "v3-scene-report.json"),
@@ -40,7 +46,12 @@ test("should run v3 performance gate", async () => {
 
     assert.equal(report.status, "pass");
     assert.deepEqual(commands.map((command) => command.name), ["check v3 docs", "build cli", "build v3 environment", "validate v3 environment bundle"]);
-    assert.deepEqual(report.steps.slice(-3).map((step) => step.name), ["verify v3 environment performance", "verify v3 scene authoring", "verify v3 atmosphere"]);
+    assert.deepEqual(report.steps.slice(-4).map((step) => step.name), [
+      "verify v3 environment performance",
+      "verify v3 scene authoring",
+      "verify v3 atmosphere",
+      "verify v3 first-person controls",
+    ]);
   } finally {
     await rm(artifactDir, { force: true, recursive: true });
   }

@@ -324,6 +324,7 @@ pub struct EnvironmentSceneIr {
     pub schema: String,
     pub version: String,
     pub atmosphere: Option<AtmosphereProfileIr>,
+    pub controller: Option<FirstPersonControllerIr>,
     pub terrain: Option<EnvironmentTerrainIr>,
     pub path: EnvironmentPathIr,
     #[serde(default)]
@@ -334,6 +335,38 @@ pub struct EnvironmentSceneIr {
     pub scatter: Vec<EnvironmentScatterSpecIr>,
     #[serde(default)]
     pub bookmarks: Vec<EnvironmentBookmarkIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FirstPersonControllerIr {
+    pub camera: String,
+    pub height: f32,
+    pub max_speed: f32,
+    pub acceleration: f32,
+    pub sensitivity: f32,
+    pub pointer_lock: String,
+    pub collision_profile: Option<String>,
+    pub pitch: FirstPersonPitchIr,
+    pub input: FirstPersonInputIr,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct FirstPersonPitchIr {
+    pub min: f32,
+    pub max: f32,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FirstPersonInputIr {
+    pub forward: String,
+    pub backward: String,
+    pub left: String,
+    pub right: String,
+    pub sprint: Option<String>,
+    pub look_x: String,
+    pub look_y: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]

@@ -9,6 +9,7 @@ pub mod conformance;
 pub mod assets;
 pub mod audio;
 pub mod environment;
+pub mod first_person;
 pub mod input;
 pub mod physics;
 pub mod rendering;

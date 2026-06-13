@@ -24,4 +24,6 @@ V3 performance verification writes metrics and raw frame samples under
 `v3-scene-report.json` with the bundle hash, environment IR path, hero/scatter
 counts, path point count, and bookmark count. Atmosphere verification writes
 `v3-atmosphere-report.json` with the active lighting, fog, sky, shadow, and
-color-management observation.
+color-management observation. First-person verification writes
+`v3-first-person-report.json` and `v3-first-person-trace.json` for bookmark IDs
+and deterministic camera movement.

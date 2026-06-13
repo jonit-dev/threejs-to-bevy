@@ -29,6 +29,7 @@ export type {
   IEnvironmentScatterSpecIr,
   IEnvironmentSourceAssetIr,
   IEnvironmentTerrainIr,
+  IFirstPersonControllerIr,
   IIrNamedSchema,
   IIrSchemaField,
   IIrSchemaFile,

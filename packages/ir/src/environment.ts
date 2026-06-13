@@ -1,4 +1,5 @@
 import type { IAssetsManifest, IEnvironmentSceneIr, Vec3 } from "./types.js";
+import type { IInputIr } from "./input.js";
 import type { IIrDiagnostic } from "./validate.js";
 import { validateAtmosphereProfile } from "./rendering.js";
 
@@ -6,6 +7,7 @@ export function validateEnvironmentSceneIr(
   scene: IEnvironmentSceneIr,
   assets: IAssetsManifest | undefined,
   path: string,
+  input?: IInputIr,
 ): IIrDiagnostic[] {
   const diagnostics: IIrDiagnostic[] = [];
   if (scene.schema !== "threenative.environment-scene" || scene.version !== "0.1.0") {
@@ -57,6 +59,7 @@ export function validateEnvironmentSceneIr(
 
   validateTerrainAndPath(scene, path, diagnostics);
   diagnostics.push(...validateAtmosphereProfile(scene.atmosphere, `${path}/atmosphere`));
+  validateFirstPersonController(scene, input, path, diagnostics);
   validateScatter(scene, path, sourceAssetIds, diagnostics);
   (scene.bookmarks ?? []).forEach((bookmark, index) => {
     validateVec3(bookmark.position, `${path}/bookmarks/${index}/position`, diagnostics);
@@ -65,6 +68,58 @@ export function validateEnvironmentSceneIr(
   });
 
   return diagnostics;
+}
+
+function validateFirstPersonController(
+  scene: IEnvironmentSceneIr,
+  input: IInputIr | undefined,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  const controller = scene.controller;
+  if (controller === undefined) {
+    return;
+  }
+  validatePositiveFinite(controller.height, `${path}/controller/height`, "TN_IR_FIRST_PERSON_HEIGHT_INVALID", diagnostics);
+  validatePositiveFinite(controller.maxSpeed, `${path}/controller/maxSpeed`, "TN_IR_FIRST_PERSON_SPEED_INVALID", diagnostics);
+  validatePositiveFinite(controller.acceleration, `${path}/controller/acceleration`, "TN_IR_FIRST_PERSON_ACCELERATION_INVALID", diagnostics);
+  validatePositiveFinite(controller.sensitivity, `${path}/controller/sensitivity`, "TN_IR_FIRST_PERSON_SENSITIVITY_INVALID", diagnostics);
+  if (!Number.isFinite(controller.pitch.min) || !Number.isFinite(controller.pitch.max) || controller.pitch.min >= controller.pitch.max) {
+    diagnostics.push({
+      code: "TN_IR_FIRST_PERSON_PITCH_CLAMP_INVALID",
+      message: `First-person controller for camera '${controller.camera}' must use an ordered pitch clamp.`,
+      path: `${path}/controller/pitch`,
+    });
+  }
+  if (input !== undefined) {
+    const actions = new Set(input.actions.map((action) => action.id));
+    const axes = new Set(input.axes.map((axis) => axis.id));
+    const requiredActions = [
+      ["forward", controller.input.forward],
+      ["backward", controller.input.backward],
+      ["left", controller.input.left],
+      ["right", controller.input.right],
+      ...(controller.input.sprint === undefined ? [] : [["sprint", controller.input.sprint] as const]),
+    ] as const;
+    for (const [field, action] of requiredActions) {
+      if (!actions.has(action)) {
+        diagnostics.push({
+          code: "TN_IR_FIRST_PERSON_INPUT_ACTION_MISSING",
+          message: `First-person controller references missing input action '${action}'.`,
+          path: `${path}/controller/input/${field}`,
+        });
+      }
+    }
+    for (const [field, axis] of [["lookX", controller.input.lookX], ["lookY", controller.input.lookY]] as const) {
+      if (!axes.has(axis)) {
+        diagnostics.push({
+          code: "TN_IR_FIRST_PERSON_INPUT_AXIS_MISSING",
+          message: `First-person controller references missing input axis '${axis}'.`,
+          path: `${path}/controller/input/${field}`,
+        });
+      }
+    }
+  }
 }
 
 function validateTerrainAndPath(scene: IEnvironmentSceneIr, path: string, diagnostics: IIrDiagnostic[]): void {

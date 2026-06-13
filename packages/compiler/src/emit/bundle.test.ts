@@ -310,6 +310,7 @@ test("environment should emit deterministic terrain path and scatter instances",
     assert.equal(firstEnvironment, secondEnvironment);
     assert.equal(environment.terrain.id, "terrain.forest");
     assert.equal(environment.atmosphere.id, "atmosphere.forest");
+    assert.equal(environment.controller.camera, "camera.firstPerson");
     assert.equal(environment.instances.filter((instance: { kind: string }) => instance.kind === "scatter").length, 4);
     assert.deepEqual(
       environment.instances.map((instance: { id: string }) => instance.id),
@@ -402,6 +403,23 @@ function makeEnvironmentDeclaration(overrides: Record<string, unknown> = {}): Re
       sky: { color: "#9eb6aa", horizonColor: "#d6c39d" },
       colorManagement: { exposure: 1.05, outputColorSpace: "srgb", textureColorSpace: "srgb", toneMapping: "aces" },
       shadows: { bias: -0.0005, cascadeCount: 1, enabled: true, mapSize: 1024, maxDistance: 45, normalBias: 0.02, receiverPolicy: "terrain-and-path" },
+    },
+    controller: {
+      acceleration: 18,
+      camera: "camera.firstPerson",
+      height: 1.7,
+      input: {
+        backward: "MoveBackward",
+        forward: "MoveForward",
+        left: "MoveLeft",
+        lookX: "LookX",
+        lookY: "LookY",
+        right: "MoveRight",
+      },
+      maxSpeed: 4.5,
+      pitch: { min: -75, max: 75 },
+      pointerLock: "required",
+      sensitivity: 0.0025,
     },
     terrain: { bounds: { min: [-8, 0, -8], max: [8, 0, 8] }, heightMode: "flat", id: "terrain.forest" },
     path: {

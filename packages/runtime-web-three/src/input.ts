@@ -13,6 +13,12 @@ export interface IWebInputState {
   released(name: string): boolean;
 }
 
+export interface IPointerLockState {
+  diagnostics: Array<{ code: string; message: string; severity: "error" | "warning" }>;
+  locked: boolean;
+  status: "denied" | "locked" | "unlocked";
+}
+
 export function createInputState(input?: IInputIr): IWebInputState {
   const currentActions = new Set<string>();
   const previousActions = new Set<string>();
@@ -141,4 +147,23 @@ export function attachInputListeners(target: HTMLElement | Window, input: IWebIn
     target.removeEventListener("pointerup", pointerUp);
     target.removeEventListener("pointermove", pointerMove);
   };
+}
+
+export async function requestPointerLock(target: { requestPointerLock(): Promise<void> | void }): Promise<IPointerLockState> {
+  try {
+    await target.requestPointerLock();
+    return { diagnostics: [], locked: true, status: "locked" };
+  } catch {
+    return {
+      diagnostics: [
+        {
+          code: "TN_WEB_POINTER_LOCK_DENIED",
+          message: "Pointer lock request was denied by the browser.",
+          severity: "warning",
+        },
+      ],
+      locked: false,
+      status: "denied",
+    };
+  }
 }

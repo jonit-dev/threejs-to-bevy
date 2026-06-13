@@ -52,6 +52,29 @@ test("environment should validate camera bookmarks with expected tags", () => {
   assert.deepEqual(diagnostics, []);
 });
 
+test("environment should reject first-person controller with missing input action", () => {
+  const scene = makeScene({
+    controller: makeController({ input: { ...makeController().input, forward: "MoveForward" } }),
+  });
+
+  const diagnostics = validateEnvironmentSceneIr(scene, makeAssets(), "environment.scene.json", {
+    schema: "threenative.input",
+    version: "0.1.0",
+    actions: [],
+    axes: [{ id: "LookX", negative: [], positive: [], value: { axis: "deltaX", device: "pointer" } }],
+  });
+
+  assert.equal(diagnostics[0]?.code, "TN_IR_FIRST_PERSON_INPUT_ACTION_MISSING");
+});
+
+test("environment should reject invalid first-person pitch clamps", () => {
+  const scene = makeScene({ controller: makeController({ pitch: { min: 20, max: -20 } }) });
+
+  const diagnostics = validateEnvironmentSceneIr(scene, makeAssets(), "environment.scene.json");
+
+  assert.equal(diagnostics[0]?.code, "TN_IR_FIRST_PERSON_PITCH_CLAMP_INVALID");
+});
+
 function makeScene(overrides: Partial<IEnvironmentSceneIr> = {}): IEnvironmentSceneIr {
   return {
     schema: "threenative.environment-scene",
@@ -86,5 +109,26 @@ function makeAssets(): IAssetsManifest {
     schema: "threenative.assets",
     version: "0.1.0",
     assets: [{ format: "gltf", id: "model.env.Tree", kind: "model", path: "assets/environment/Tree.gltf" }],
+  };
+}
+
+function makeController(overrides: Partial<IEnvironmentSceneIr["controller"]> = {}): NonNullable<IEnvironmentSceneIr["controller"]> {
+  return {
+    acceleration: 18,
+    camera: "camera.firstPerson",
+    height: 1.7,
+    input: {
+      backward: "MoveBackward",
+      forward: "MoveForward",
+      left: "MoveLeft",
+      lookX: "LookX",
+      lookY: "LookY",
+      right: "MoveRight",
+    },
+    maxSpeed: 4.5,
+    pitch: { min: -75, max: 75 },
+    pointerLock: "required",
+    sensitivity: 0.0025,
+    ...overrides,
   };
 }

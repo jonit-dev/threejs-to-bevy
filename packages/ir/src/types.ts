@@ -351,6 +351,29 @@ export interface IEnvironmentCameraBookmarkIr {
   yaw: number;
 }
 
+export interface IFirstPersonControllerIr {
+  acceleration: number;
+  camera: string;
+  collisionProfile?: string;
+  height: number;
+  input: {
+    backward: string;
+    forward: string;
+    lookX: string;
+    lookY: string;
+    left: string;
+    right: string;
+    sprint?: string;
+  };
+  maxSpeed: number;
+  pitch: {
+    max: number;
+    min: number;
+  };
+  pointerLock: "required" | "optional";
+  sensitivity: number;
+}
+
 export interface IAtmosphereProfileIr {
   active: boolean;
   ambient: {
@@ -400,6 +423,7 @@ export interface IEnvironmentSceneIr {
   version: SchemaVersion;
   atmosphere?: IAtmosphereProfileIr;
   bookmarks?: IEnvironmentCameraBookmarkIr[];
+  controller?: IFirstPersonControllerIr;
   exclusionZones?: IEnvironmentExclusionZoneIr[];
   referenceImage?: string;
   scatter?: IEnvironmentScatterSpecIr[];

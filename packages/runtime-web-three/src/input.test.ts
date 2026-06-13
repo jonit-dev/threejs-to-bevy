@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { IInputIr } from "@threenative/ir";
 
-import { createInputState } from "./input.js";
+import { createInputState, requestPointerLock } from "./input.js";
 
 test("input should map wasd to move axis", () => {
   const input = createInputState(makeInput());
@@ -32,6 +32,17 @@ test("input should track pointer action pressed released and position", () => {
   assert.equal(input.pressed("Attack"), false);
   input.handlePointerUp({ button: 0 });
   assert.equal(input.released("Attack"), true);
+});
+
+test("input should report pointer lock denied when browser rejects request", async () => {
+  const state = await requestPointerLock({
+    requestPointerLock: async () => {
+      throw new Error("denied");
+    },
+  });
+
+  assert.equal(state.status, "denied");
+  assert.equal(state.diagnostics[0]?.code, "TN_WEB_POINTER_LOCK_DENIED");
 });
 
 function makeInput(): IInputIr {

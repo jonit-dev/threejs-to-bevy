@@ -107,7 +107,7 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
     await validateAssets(assets, bundlePath, manifest.files.assets, diagnostics);
   }
   if (environmentScene !== undefined) {
-    diagnostics.push(...validateEnvironmentSceneIr(environmentScene, assets, manifest.entry.environmentScene ?? "environment.scene.json"));
+    diagnostics.push(...validateEnvironmentSceneIr(environmentScene, assets, manifest.entry.environmentScene ?? "environment.scene.json", input));
   }
   if (audio !== undefined) {
     validateAudio(audio, assets, manifest.entry.audio ?? "audio.ir.json", diagnostics);
