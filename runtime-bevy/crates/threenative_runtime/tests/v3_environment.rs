@@ -4,7 +4,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use bevy::{gltf::GltfPlugin, prelude::*, scene::ScenePlugin};
+use bevy::{gltf::GltfPlugin, prelude::*, render::mesh::VertexAttributeValues, scene::ScenePlugin};
 use threenative_components::ThreeNativeId;
 use threenative_loader::load_bundle;
 use threenative_runtime::{
@@ -88,6 +88,50 @@ fn v3_environment_should_load_bookmarked_bundle() {
     assert!(ids.contains(&"terrain:terrain.forest"));
     assert!(ids.contains(&"path:path.main:0"));
     assert!(ids.contains(&"environment:tree.hero"));
+
+    fs::remove_dir_all(root).expect("temp bundle should be removed");
+}
+
+#[test]
+fn control_point_terrain_should_spawn_non_flat_mesh() {
+    let root = temp_bundle_dir();
+    write_v3_bundle_with_model_asset(&root);
+
+    let bundle = load_bundle(&root).expect("v3 environment bundle should load");
+    let mut app = App::new();
+    map_environment_into_world(app.world_mut(), &bundle);
+
+    let terrain_mesh_handle = app
+        .world_mut()
+        .query::<(&ThreeNativeId, &Handle<Mesh>)>()
+        .iter(app.world())
+        .find_map(|(id, handle)| (id.0 == "terrain:terrain.forest").then_some(handle.clone()))
+        .expect("terrain mesh handle should exist");
+    let meshes = app.world().resource::<Assets<Mesh>>();
+    let terrain_mesh = meshes
+        .get(&terrain_mesh_handle)
+        .expect("terrain mesh asset should exist");
+    let positions = match terrain_mesh.attribute(Mesh::ATTRIBUTE_POSITION) {
+        Some(VertexAttributeValues::Float32x3(positions)) => positions,
+        other => panic!("expected terrain position attribute, got {other:?}"),
+    };
+    let min_y = positions
+        .iter()
+        .map(|position| position[1])
+        .fold(f32::INFINITY, f32::min);
+    let max_y = positions
+        .iter()
+        .map(|position| position[1])
+        .fold(f32::NEG_INFINITY, f32::max);
+
+    assert!(
+        positions.len() > 4,
+        "control-point terrain should be subdivided instead of using a cuboid"
+    );
+    assert!(
+        max_y - min_y > 0.01,
+        "control-point terrain should have visible height variation, min={min_y}, max={max_y}"
+    );
 
     fs::remove_dir_all(root).expect("temp bundle should be removed");
 }
