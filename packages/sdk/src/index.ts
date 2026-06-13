@@ -1,4 +1,12 @@
 export { SdkError } from "./errors.js";
+export {
+  defineAudio,
+  loopingMusic,
+  oneShotSound,
+  type IAudioDeclaration,
+  type IAudioMusicDeclaration,
+  type IAudioOneShotDeclaration,
+} from "./audio.js";
 export { audioAsset, modelAsset, textureAsset, type AssetFormat, type AssetKind, type IAssetReference } from "./assets.js";
 export {
   World,

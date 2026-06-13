@@ -3,6 +3,7 @@ export type BundleSchema = "threenative.bundle";
 export type WorldSchema = "threenative.world";
 export type MaterialsSchema = "threenative.materials";
 export type AssetsSchema = "threenative.assets";
+export type AudioSchema = "threenative.audio";
 export type TargetProfileSchema = "threenative.target-profile";
 export type RuntimeConfigSchema = "threenative.runtime-config";
 export type UiSchema = "threenative.ui";
@@ -15,6 +16,7 @@ export interface IBundleManifest {
   entry: {
     world: "world.ir.json";
     animations?: string;
+    audio?: string;
     scripts?: string;
     systems?: string;
     ui?: string;
@@ -183,6 +185,26 @@ export interface IAssetsManifest {
   schema: AssetsSchema;
   version: SchemaVersion;
   assets: IAssetIr[];
+}
+
+export interface IAudioOneShotIr {
+  asset: string;
+  event: string;
+  id: string;
+}
+
+export interface IAudioMusicIr {
+  asset: string;
+  autoplay?: boolean;
+  id: string;
+  loop: boolean;
+}
+
+export interface IAudioIr {
+  schema: AudioSchema;
+  version: SchemaVersion;
+  music: IAudioMusicIr[];
+  oneShots: IAudioOneShotIr[];
 }
 
 export interface ITargetProfile {

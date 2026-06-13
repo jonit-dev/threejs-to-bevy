@@ -14,6 +14,9 @@ export type {
 export type {
   IAssetIr,
   IAssetsManifest,
+  IAudioIr,
+  IAudioMusicIr,
+  IAudioOneShotIr,
   IBundleManifest,
   ICameraComponent,
   IColliderComponent,

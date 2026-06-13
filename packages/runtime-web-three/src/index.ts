@@ -1,4 +1,5 @@
 export { startWebPreview, type IWebPreviewServer } from "./devServer.js";
+export { createWebAudioRuntime, type IWebAudioCommand, type IWebAudioRuntime, type IWebAudioSink } from "./audio.js";
 export { loadBundle, type IWebBundle } from "./loadBundle.js";
 export { createGameLoopState, runGameFrame, setPaused, type IGameLoopState } from "./gameLoop.js";
 export { attachInputListeners, createInputState, type IWebInputState } from "./input.js";

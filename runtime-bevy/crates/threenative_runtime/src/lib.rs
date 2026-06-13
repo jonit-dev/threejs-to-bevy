@@ -7,6 +7,7 @@ use threenative_loader::{LoadError, load_bundle};
 pub mod map_world;
 pub mod conformance;
 pub mod assets;
+pub mod audio;
 pub mod input;
 pub mod physics;
 pub mod systems_host;

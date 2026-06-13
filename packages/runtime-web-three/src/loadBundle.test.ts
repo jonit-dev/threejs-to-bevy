@@ -6,7 +6,7 @@ import test from "node:test";
 
 import { loadBundle } from "./loadBundle.js";
 
-test("loadBundle should load optional ui ir", async () => {
+test("loadBundle should load optional ui and audio ir", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-web-ui-bundle-"));
   try {
     await writeJson(root, "manifest.json", {
@@ -14,7 +14,7 @@ test("loadBundle should load optional ui ir", async () => {
       version: "0.1.0",
       name: "ui",
       requiredCapabilities: {},
-      entry: { world: "world.ir.json", ui: "ui.ir.json" },
+      entry: { world: "world.ir.json", audio: "audio.ir.json", ui: "ui.ir.json" },
       files: {
         assets: "assets.manifest.json",
         materials: "materials.ir.json",
@@ -43,9 +43,16 @@ test("loadBundle should load optional ui ir", async () => {
         children: [{ id: "hud.pause", kind: "button", action: "Pause", label: "Pause" }],
       },
     });
+    await writeJson(root, "audio.ir.json", {
+      schema: "threenative.audio",
+      version: "0.1.0",
+      music: [{ id: "music.arena", asset: "arena.music", autoplay: true, loop: true }],
+      oneShots: [],
+    });
 
     const bundle = await loadBundle(root);
 
+    assert.equal(bundle.audio?.music[0]?.asset, "arena.music");
     assert.equal(bundle.ui?.root.children?.[0]?.kind, "button");
     assert.equal(bundle.ui?.root.children?.[0]?.action, "Pause");
   } finally {

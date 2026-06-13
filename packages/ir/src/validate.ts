@@ -3,6 +3,9 @@ import { resolve } from "node:path";
 
 import {
   type IAssetsManifest,
+  type IAudioIr,
+  type IAudioMusicIr,
+  type IAudioOneShotIr,
   type IBundleManifest,
   type IIrNamedSchema,
   type IIrSchemaFile,
@@ -39,6 +42,10 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
   validateManifest(manifest, "manifest.json", diagnostics);
 
   const world = await readJson<IWorldIr>(resolve(bundlePath, manifest.entry.world), diagnostics);
+  const audio =
+    manifest.entry.audio === undefined
+      ? undefined
+      : await readJson<IAudioIr>(resolve(bundlePath, manifest.entry.audio), diagnostics);
   const materials = await readJson<IMaterialsIr>(resolve(bundlePath, manifest.files.materials), diagnostics);
   const assets = await readJson<IAssetsManifest>(resolve(bundlePath, manifest.files.assets), diagnostics);
   const targetProfile = await readJson<ITargetProfile>(resolve(bundlePath, manifest.files.targetProfile), diagnostics);
@@ -92,6 +99,9 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
     validateUniqueIds(assets.assets, `${manifest.files.assets}/assets`, "TN_IR_DUPLICATE_ASSET_ID", diagnostics);
     await validateAssets(assets, bundlePath, manifest.files.assets, diagnostics);
   }
+  if (audio !== undefined) {
+    validateAudio(audio, assets, manifest.entry.audio ?? "audio.ir.json", diagnostics);
+  }
   if (targetProfile !== undefined && targetProfile.targets.length === 0) {
     diagnostics.push({
       code: "TN_IR_TARGETS_EMPTY",
@@ -119,6 +129,94 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
   }
 
   return { diagnostics, ok: diagnostics.length === 0 };
+}
+
+function validateAudio(
+  audio: IAudioIr,
+  assets: IAssetsManifest | undefined,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  const raw = audio as unknown as Record<string, unknown>;
+  for (const key of Object.keys(raw)) {
+    if (!["music", "oneShots", "schema", "version"].includes(key)) {
+      diagnostics.push({
+        code: "TN_IR_AUDIO_FIELD_UNSUPPORTED",
+        message: `Audio IR uses unsupported field '${key}'.`,
+        path: `${path}/${key}`,
+      });
+    }
+  }
+  if (audio.schema !== "threenative.audio" || audio.version !== "0.1.0") {
+    diagnostics.push({
+      code: "TN_IR_AUDIO_VERSION_UNSUPPORTED",
+      message: "Audio IR must use threenative.audio version 0.1.0.",
+      path,
+    });
+  }
+  const audioAssets = new Set((assets?.assets ?? []).filter((asset) => asset.kind === "audio").map((asset) => asset.id));
+  audio.oneShots.forEach((oneShot, index) => validateAudioOneShot(oneShot, audioAssets, `${path}/oneShots/${index}`, diagnostics));
+  audio.music.forEach((music, index) => validateAudioMusic(music, audioAssets, `${path}/music/${index}`, diagnostics));
+}
+
+function validateAudioOneShot(
+  oneShot: IAudioOneShotIr,
+  audioAssets: Set<string>,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  const raw = oneShot as unknown as Record<string, unknown>;
+  for (const key of Object.keys(raw)) {
+    if (!["asset", "event", "id"].includes(key)) {
+      diagnostics.push({
+        code: "TN_IR_AUDIO_FIELD_UNSUPPORTED",
+        message: `Audio one-shot '${oneShot.id}' uses unsupported field '${key}'.`,
+        path: `${path}/${key}`,
+      });
+    }
+  }
+  validateAudioAssetRef(oneShot.asset, audioAssets, `${path}/asset`, diagnostics);
+}
+
+function validateAudioMusic(
+  music: IAudioMusicIr,
+  audioAssets: Set<string>,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  const raw = music as unknown as Record<string, unknown>;
+  for (const key of Object.keys(raw)) {
+    if (!["asset", "autoplay", "id", "loop"].includes(key)) {
+      diagnostics.push({
+        code: "TN_IR_AUDIO_FIELD_UNSUPPORTED",
+        message: `Audio music '${music.id}' uses unsupported field '${key}'.`,
+        path: `${path}/${key}`,
+      });
+    }
+  }
+  if (music.loop !== true) {
+    diagnostics.push({
+      code: "TN_IR_AUDIO_MUSIC_LOOP_REQUIRED",
+      message: `Audio music '${music.id}' must be looped in V2.`,
+      path: `${path}/loop`,
+    });
+  }
+  validateAudioAssetRef(music.asset, audioAssets, `${path}/asset`, diagnostics);
+}
+
+function validateAudioAssetRef(
+  asset: string,
+  audioAssets: Set<string>,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (!audioAssets.has(asset)) {
+    diagnostics.push({
+      code: "TN_IR_AUDIO_ASSET_MISSING",
+      message: `Audio playback references unknown audio asset '${asset}'.`,
+      path,
+    });
+  }
 }
 
 function validateUi(ui: IUiIr, path: string, diagnostics: IIrDiagnostic[]): void {

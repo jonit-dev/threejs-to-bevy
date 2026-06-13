@@ -33,6 +33,7 @@ pub struct BundleManifest {
 
 #[derive(Debug, Deserialize)]
 pub struct BundleEntry {
+    pub audio: Option<String>,
     pub scripts: Option<String>,
     pub systems: Option<String>,
     pub ui: Option<String>,
@@ -52,6 +53,7 @@ pub struct BundleFiles {
 #[derive(Debug)]
 pub struct LoadedBundle {
     pub assets: AssetsManifest,
+    pub audio: Option<AudioIr>,
     pub input: Option<InputIr>,
     pub manifest: BundleManifest,
     pub materials: MaterialsIr,
@@ -286,6 +288,33 @@ pub struct UiNodeIr {
     pub children: Vec<UiNodeIr>,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AudioIr {
+    pub schema: String,
+    pub version: String,
+    #[serde(default)]
+    pub music: Vec<AudioMusicIr>,
+    #[serde(default)]
+    pub one_shots: Vec<AudioOneShotIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct AudioOneShotIr {
+    pub id: String,
+    pub asset: String,
+    pub event: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct AudioMusicIr {
+    pub id: String,
+    pub asset: String,
+    pub autoplay: Option<bool>,
+    #[serde(rename = "loop")]
+    pub looped: Option<bool>,
+}
+
 pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadError> {
     let bundle_path = bundle_path.as_ref();
     let manifest: BundleManifest = read_json(bundle_path, "manifest.json")?;
@@ -331,9 +360,18 @@ pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadEr
         }
         None => None,
     };
+    let audio = match manifest.entry.audio.as_ref() {
+        Some(file) => {
+            let audio: AudioIr = read_json(bundle_path, file)?;
+            ensure_supported(&audio.schema, &audio.version)?;
+            Some(audio)
+        }
+        None => None,
+    };
 
     Ok(LoadedBundle {
         assets,
+        audio,
         input,
         manifest,
         materials,
