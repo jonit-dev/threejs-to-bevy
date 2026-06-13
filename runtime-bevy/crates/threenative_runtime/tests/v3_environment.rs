@@ -137,6 +137,41 @@ fn control_point_terrain_should_spawn_non_flat_mesh() {
 }
 
 #[test]
+fn path_should_spawn_flat_surface_mesh() {
+    let root = temp_bundle_dir();
+    write_v3_bundle_with_model_asset(&root);
+
+    let bundle = load_bundle(&root).expect("v3 environment bundle should load");
+    let mut app = App::new();
+    map_environment_into_world(app.world_mut(), &bundle);
+
+    let path_mesh_handle = app
+        .world_mut()
+        .query::<(&ThreeNativeId, &Handle<Mesh>)>()
+        .iter(app.world())
+        .find_map(|(id, handle)| (id.0 == "path:path.main:0").then_some(handle.clone()))
+        .expect("path mesh handle should exist");
+    let meshes = app.world().resource::<Assets<Mesh>>();
+    let path_mesh = meshes
+        .get(&path_mesh_handle)
+        .expect("path mesh asset should exist");
+    let positions = match path_mesh.attribute(Mesh::ATTRIBUTE_POSITION) {
+        Some(VertexAttributeValues::Float32x3(positions)) => positions,
+        other => panic!("expected path position attribute, got {other:?}"),
+    };
+
+    assert_eq!(positions.len(), 4, "path should be a flat surface, not a cuboid");
+    assert!(
+        positions
+            .iter()
+            .all(|position| position[1].abs() < f32::EPSILON),
+        "path surface vertices should all share the same local Y plane"
+    );
+
+    fs::remove_dir_all(root).expect("temp bundle should be removed");
+}
+
+#[test]
 fn app_from_bundle_should_spawn_environment_gltf_scenes_when_asset_server_is_available() {
     let root = temp_bundle_dir();
     write_v3_bundle_with_model_asset(&root);

@@ -117,11 +117,7 @@ pub fn map_environment_into_world(world: &mut World, bundle: &LoadedBundle) {
         spawn_pbr(
             world,
             &format!("path:{}:{index}", scene.path.id),
-            Mesh::from(Cuboid::new(
-                scene.path.width,
-                0.04,
-                length + scene.path.width * 0.25,
-            )),
+            path_surface_mesh(scene.path.width, length + scene.path.width * 0.25),
             material,
             transform,
         );
@@ -337,6 +333,34 @@ fn terrain_mesh(bundle: &LoadedBundle) -> Mesh {
     mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
     mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
     mesh.insert_indices(Indices::U32(indices));
+    mesh
+}
+
+fn path_surface_mesh(width: f32, length: f32) -> Mesh {
+    let half_width = width / 2.0;
+    let half_length = length / 2.0;
+    let mut mesh = Mesh::new(
+        PrimitiveTopology::TriangleList,
+        RenderAssetUsages::RENDER_WORLD | RenderAssetUsages::MAIN_WORLD,
+    );
+    mesh.insert_attribute(
+        Mesh::ATTRIBUTE_POSITION,
+        vec![
+            [-half_width, 0.0, -half_length],
+            [-half_width, 0.0, half_length],
+            [half_width, 0.0, -half_length],
+            [half_width, 0.0, half_length],
+        ],
+    );
+    mesh.insert_attribute(
+        Mesh::ATTRIBUTE_NORMAL,
+        vec![[0.0, 1.0, 0.0]; 4],
+    );
+    mesh.insert_attribute(
+        Mesh::ATTRIBUTE_UV_0,
+        vec![[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [1.0, 1.0]],
+    );
+    mesh.insert_indices(Indices::U32(vec![0, 1, 2, 2, 1, 3]));
     mesh
 }
 
