@@ -1,4 +1,6 @@
-# threejs-to-benvy
+# ThreeNative
+
+![ThreeNative SDK mascot riding from Three.js to Bevy](three-native-sdk.png)
 
 Initial design documentation for a Three.js-like TypeScript game SDK that emits
 portable ECS/UI/scene IR and runs through native Bevy plus web Three.js runtime
