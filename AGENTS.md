@@ -55,7 +55,9 @@ Respect these boundaries:
 - `packages/cli`: user-facing `tn` commands and orchestration.
 - `packages/runtime-web-three`: Three.js runtime adapter.
 - `runtime-bevy`: Rust native runtime adapter.
-- `examples`: runnable/canonical sandboxed examples.
+- `examples`: runnable/canonical sandboxed examples. Game examples should keep
+  all required runtime assets inside their example folder or emitted bundle so
+  each example can run independently.
 - `templates`: project templates used by CLI flows.
 - `docs`: architecture, SDK, workflow, roadmap, and PRDs.
 - `scripts`: top-level verification and documentation checks.
