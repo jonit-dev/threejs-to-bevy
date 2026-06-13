@@ -98,6 +98,17 @@ export function contentTypeForBundleFile(filePath: string): string {
       return "text/javascript; charset=utf-8";
     case ".json":
       return "application/json; charset=utf-8";
+    case ".gltf":
+      return "model/gltf+json; charset=utf-8";
+    case ".glb":
+      return "model/gltf-binary";
+    case ".bin":
+      return "application/octet-stream";
+    case ".jpg":
+    case ".jpeg":
+      return "image/jpeg";
+    case ".png":
+      return "image/png";
     case ".ogg":
       return "audio/ogg";
     case ".wav":

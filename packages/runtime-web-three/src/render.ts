@@ -1,7 +1,8 @@
 import * as THREE from "three";
 import { loadBundle } from "./loadBundle.js";
 import { mapWorld, type IRuntimeDiagnostic } from "./mapWorld.js";
-import { applyEnvironmentBookmark, createEnvironmentRuntime } from "./environment.js";
+import { applyEnvironmentBookmark, createEnvironmentRuntime, loadEnvironmentAssetInstances } from "./environment.js";
+import { applyAtmosphereProfile } from "./rendering.js";
 import { createGameLoopState, runGameFrame } from "./gameLoop.js";
 import { attachInputListeners, createInputState } from "./input.js";
 import { loadSystemModule } from "./systems/runner.js";
@@ -19,9 +20,14 @@ export interface IRenderOptions {
 export async function renderBundle(source: string, container: HTMLElement, options: IRenderOptions = {}): Promise<IRenderResult> {
   const bundle = await loadBundle(source);
   const mapped = mapWorld(bundle);
-  const environment = createEnvironmentRuntime(bundle);
+  const environment = createEnvironmentRuntime(bundle, { renderPlaceholders: false });
   if (environment !== undefined) {
+    applyAtmosphereProfile(mapped.scene, bundle.environmentScene?.atmosphere);
     mapped.scene.add(environment.object);
+    const assets = await loadEnvironmentAssetInstances(bundle, source);
+    if (assets !== undefined) {
+      mapped.scene.add(assets);
+    }
     mapped.diagnostics.push(...environment.instancingPlan.diagnostics);
   }
   if (options.bookmarkId !== undefined) {

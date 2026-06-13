@@ -3,7 +3,6 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { loadBundle, observeEnvironmentScene, startWebPreview } from "@threenative/runtime-web-three";
 import { chromium, type Page } from "playwright";
-import { PNG } from "pngjs";
 
 import { readPngFrame } from "./compareImages.js";
 import { analyzeNonblank } from "./imageAnalysis.js";
@@ -163,7 +162,7 @@ async function captureBookmarkScreenshots(options: { artifactDir: string; bookma
       await page.goto(`${server.url}?bundle=/bundle&bookmark=${encodeURIComponent(bookmarkId)}`, { waitUntil: "domcontentloaded" });
       await page.waitForFunction("Boolean(globalThis.__THREENATIVE_READY__)", undefined, { timeout: 10000 });
       await page.screenshot({ path: threejsPath });
-      await writeBevySmokePanel(bevySmokePath, bookmarkId);
+      await writeBevySmokePanel(page, bevySmokePath, bookmarkId);
       captures.push({ bookmarkId, bevySmokePath, sideBySidePath: "", threejsPath });
     }
     const sideBySidePath = resolve(screenshotDir, "threejs-bevy-side-by-side.png");
@@ -175,27 +174,30 @@ async function captureBookmarkScreenshots(options: { artifactDir: string; bookma
   }
 }
 
-async function writeBevySmokePanel(path: string, bookmarkId: string): Promise<void> {
-  const png = new PNG({ height: 720, width: 1280 });
-  const seed = hashBookmark(bookmarkId);
-  for (let y = 0; y < png.height; y += 1) {
-    for (let x = 0; x < png.width; x += 1) {
-      const index = (png.width * y + x) << 2;
-      const pathBand = Math.abs(x - png.width / 2) < 120 + y * 0.18;
-      png.data[index] = pathBand ? 76 : 18 + ((seed + y) % 12);
-      png.data[index + 1] = pathBand ? 68 : 22 + ((seed + x) % 18);
-      png.data[index + 2] = pathBand ? 52 : 28 + ((seed + x + y) % 18);
-      png.data[index + 3] = 255;
-    }
-  }
-  await writeFile(path, PNG.sync.write(png));
+async function writeBevySmokePanel(page: Page, path: string, bookmarkId: string): Promise<void> {
+  await page.setViewportSize({ height: 720, width: 1280 });
+  await page.setContent(`<!doctype html><html><head><style>
+    body{margin:0;background:#151712;color:#f1ead8;font:22px system-ui,sans-serif}
+    main{height:720px;box-sizing:border-box;padding:56px;background:linear-gradient(#1b2119,#10130f)}
+    h1{font-size:42px;margin:0 0 26px}
+    p{max-width:900px;line-height:1.45;margin:0 0 18px;color:#d3c8aa}
+    code{font-family:ui-monospace,Menlo,monospace;color:#f0d38b}
+    .status{display:inline-block;margin:20px 0;padding:10px 14px;border:1px solid #66815d;color:#b9e2a8}
+  </style></head><body><main>
+    <h1>Bevy native smoke</h1>
+    <p class="status">load smoke passed</p>
+    <p>Bookmark: <code>${escapeHtml(bookmarkId)}</code></p>
+    <p>The native runtime currently validates and observes the same V3 bundle data, but it does not render a comparable V3 environment screenshot yet.</p>
+    <p>This panel is intentionally non-visual so the report does not imply Bevy visual parity.</p>
+  </main></body></html>`);
+  await page.screenshot({ path });
 }
 
 async function writeSideBySideSheet(page: Page, captures: readonly IV3BookmarkCapture[], path: string): Promise<void> {
   const rows = await Promise.all(captures.map(async (capture) => {
     const three = (await readFile(capture.threejsPath)).toString("base64");
     const bevy = (await readFile(capture.bevySmokePath)).toString("base64");
-    return `<section><h2>${escapeHtml(capture.bookmarkId)}</h2><div class="pair"><figure><figcaption>Three.js</figcaption><img src="data:image/png;base64,${three}"></figure><figure><figcaption>Bevy load smoke</figcaption><img src="data:image/png;base64,${bevy}"></figure></div></section>`;
+    return `<section><h2>${escapeHtml(capture.bookmarkId)}</h2><div class="pair"><figure><figcaption>Three.js</figcaption><img src="data:image/png;base64,${three}"></figure><figure><figcaption>Bevy native smoke (no visual parity)</figcaption><img src="data:image/png;base64,${bevy}"></figure></div></section>`;
   }));
   await page.setViewportSize({ height: Math.max(720, captures.length * 520), width: 1440 });
   await page.setContent(`<!doctype html><html><head><style>
@@ -212,10 +214,6 @@ async function writeSideBySideSheet(page: Page, captures: readonly IV3BookmarkCa
 
 function slugify(value: string): string {
   return value.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase();
-}
-
-function hashBookmark(value: string): number {
-  return [...value].reduce((total, char) => total + char.charCodeAt(0), 0);
 }
 
 function escapeHtml(value: string): string {
