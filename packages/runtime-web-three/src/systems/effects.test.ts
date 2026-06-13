@@ -56,6 +56,44 @@ test("should reject undeclared command before applying effects", () => {
   assert.equal(world.entities.find((entity) => entity.id === "marker"), undefined);
 });
 
+test("should log declared service and reject undeclared service", () => {
+  const world = makeWorld();
+  const allowed = applySystemEffects(
+    world,
+    makeSystem({ services: ["animation.play"] }),
+    {
+      commands: [],
+      events: [],
+      services: [{ payload: { request: { clip: "run", entity: "player", options: {} }, result: { accepted: true } }, service: "animation.play" }],
+    },
+    { frame: 1, tick: 2 },
+  );
+
+  assert.deepEqual(allowed.diagnostics, []);
+  assert.deepEqual(allowed.entries[0], {
+    frame: 1,
+    kind: "service",
+    payload: { request: { clip: "run", entity: "player", options: {} }, result: { accepted: true } },
+    schedule: "fixedUpdate",
+    service: "animation.play",
+    system: "move",
+    tick: 2,
+  });
+
+  const rejected = applySystemEffects(
+    world,
+    makeSystem(),
+    {
+      commands: [],
+      events: [],
+      services: [{ payload: { request: {}, result: { hit: false } }, service: "physics.raycast" }],
+    },
+    { frame: 1, tick: 2 },
+  );
+
+  assert.equal(rejected.diagnostics[0]?.code, "TN_WEB_SYSTEM_SERVICE_UNDECLARED");
+});
+
 function makeWorld(): IWorldIr {
   return {
     entities: [{ components: { Transform: { position: [0, 0, 0] } }, id: "player" }],

@@ -254,6 +254,72 @@ function __tnInvokeSystem(options) {
   const data = options.snapshot;
   const normalize = (handle) => typeof handle === "string" ? handle : (handle && typeof handle.name === "string" ? handle.name : String(handle));
   const clone = (value) => value === undefined ? undefined : JSON.parse(JSON.stringify(value));
+  const readVec3 = (value, fallback) => Array.isArray(value) ? [Number(value[0] ?? fallback[0]), Number(value[1] ?? fallback[1]), Number(value[2] ?? fallback[2])] : fallback;
+  const normalForAxis = (axis, sign) => axis === 0 ? [sign, 0, 0] : (axis === 1 ? [0, sign, 0] : [0, 0, sign]);
+  const round6 = (value) => Number(value.toFixed(6));
+  const readColliderSize = (collider) => {
+    if (Array.isArray(collider?.size)) return readVec3(collider.size, [1, 1, 1]);
+    if (typeof collider?.radius === "number") {
+      const diameter = collider.radius * 2;
+      return [diameter, typeof collider.height === "number" ? collider.height : diameter, diameter];
+    }
+    return [1, 1, 1];
+  };
+  const intersectAabb = (request, center, size) => {
+    const half = size.map((value) => value / 2);
+    const min = [center[0] - half[0], center[1] - half[1], center[2] - half[2]];
+    const max = [center[0] + half[0], center[1] + half[1], center[2] + half[2]];
+    let tMin = 0;
+    let tMax = request.maxDistance;
+    let normal = [0, 0, 0];
+    for (let axis = 0; axis < 3; axis += 1) {
+      const origin = request.origin[axis] ?? 0;
+      const direction = request.direction[axis] ?? 0;
+      if (Math.abs(direction) < 0.000001) {
+        if (origin < min[axis] || origin > max[axis]) return { hit: false };
+        continue;
+      }
+      const inv = 1 / direction;
+      let near = (min[axis] - origin) * inv;
+      let far = (max[axis] - origin) * inv;
+      let axisNormal = normalForAxis(axis, direction > 0 ? -1 : 1);
+      if (near > far) {
+        [near, far] = [far, near];
+      }
+      if (near > tMin) {
+        tMin = near;
+        normal = axisNormal;
+      }
+      tMax = Math.min(tMax, far);
+      if (tMin > tMax) return { hit: false };
+    }
+    const distance = round6(tMin);
+    return {
+      distance,
+      hit: true,
+      normal,
+      point: [
+        round6(request.origin[0] + request.direction[0] * distance),
+        round6(request.origin[1] + request.direction[1] * distance),
+        round6(request.origin[2] + request.direction[2] * distance)
+      ]
+    };
+  };
+  const raycast = (request) => {
+    const ignored = new Set(request.ignore || []);
+    let best = { hit: false };
+    for (const entity of data.entities) {
+      if (ignored.has(entity.id)) continue;
+      const transform = entity.components.Transform;
+      const collider = entity.components.Collider;
+      if (!transform || !collider) continue;
+      const hit = intersectAabb(request, readVec3(transform.position, [0, 0, 0]), readColliderSize(collider));
+      if (hit.hit && (!best.hit || hit.distance < best.distance)) {
+        best = { ...hit, entity: entity.id };
+      }
+    }
+    return best;
+  };
   const entities = data.entities.map((source) => ({
     id: source.id,
     components: clone(source.components),
@@ -316,13 +382,15 @@ function __tnInvokeSystem(options) {
     },
     physics: {
       raycast(payload) {
-        effects.services.push({ service: "physics.raycast", payload: clone(payload) });
-        return null;
+        const request = clone(payload);
+        const result = raycast(request);
+        effects.services.push({ service: "physics.raycast", payload: { request, result } });
+        return result;
       }
     },
     animation: {
       play(entity, clip, options = {}) {
-        effects.services.push({ service: "animation.play", payload: { entity, clip, options: clone(options) } });
+        effects.services.push({ service: "animation.play", payload: { request: { entity, clip, options: clone(options) }, result: { accepted: true } } });
       }
     }
   };

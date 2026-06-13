@@ -3,31 +3,69 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use serde_json::json;
 use threenative_loader::load_bundle;
-use threenative_runtime::systems_context::{
-    NativeSystemTimeSnapshot, build_system_context_snapshot,
+use threenative_runtime::{
+    systems_context::{NativeSystemTimeSnapshot, build_system_context_snapshot},
+    systems_services::{
+        NativeRaycastHit, NativeRaycastRequest, NativeRaycastResult, animation_play_payload,
+        raycast_primitive,
+    },
 };
 
 #[test]
-fn systems_context_should_build_declared_query_snapshot() {
-    let root = write_bundle("declared-query");
+fn systems_services_should_raycast_primitive_floor() {
+    let root = write_bundle("raycast-floor");
     let bundle = load_bundle(&root).expect("bundle should load");
     let system = &bundle
         .systems
         .as_ref()
         .expect("systems should load")
         .systems[0];
-
     let snapshot = build_system_context_snapshot(&bundle, system, time());
 
-    assert_eq!(snapshot.entities.len(), 1);
-    assert_eq!(snapshot.entities[0].id, "player");
-    assert!(snapshot.entities[0].components.contains_key("Transform"));
-    assert!(snapshot.entities[0].components.contains_key("Rotator"));
-    assert!(!snapshot.entities[0].components.contains_key("Health"));
-    assert_eq!(snapshot.input.actions.get("MoveForward"), Some(&true));
-    assert_eq!(snapshot.input.axes.get("MoveX"), Some(&1.0));
-    assert_eq!(snapshot.time.fixed_dt, 0.016);
+    let result = raycast_primitive(
+        &snapshot,
+        &NativeRaycastRequest {
+            direction: [0.0, -1.0, 0.0],
+            ignore: vec!["player".to_owned()],
+            layers: Vec::new(),
+            max_distance: 2.0,
+            origin: [0.0, 1.0, 0.0],
+        },
+    );
+
+    assert_eq!(
+        result,
+        NativeRaycastResult::Hit(NativeRaycastHit {
+            distance: 0.95,
+            entity: "floor".to_owned(),
+            hit: true,
+            normal: [0.0, 1.0, 0.0],
+            point: [0.0, 0.05, 0.0],
+        })
+    );
+    assert_eq!(
+        serde_json::to_value(result).expect("raycast result should serialize"),
+        json!({
+            "distance": 0.95,
+            "entity": "floor",
+            "hit": true,
+            "normal": [0.0, 1.0, 0.0],
+            "point": [0.0, 0.05, 0.0],
+        })
+    );
+}
+
+#[test]
+fn systems_services_should_log_animation_play_service_call() {
+    assert_eq!(
+        animation_play_payload("player", "run", json!({ "loop": true })),
+        json!({
+            "request": { "clip": "run", "entity": "player", "options": { "loop": true } },
+            "result": { "accepted": true },
+        })
+    );
 }
 
 fn write_bundle(name: &str) -> PathBuf {
@@ -39,7 +77,7 @@ fn write_bundle(name: &str) -> PathBuf {
         r#"{
   "schema": "threenative.bundle",
   "version": "0.1.0",
-  "name": "systems-context",
+  "name": "systems-services",
   "requiredCapabilities": {},
   "entry": { "world": "world.ir.json", "systems": "systems.ir.json", "scripts": "scripts.bundle.js" },
   "files": { "assets": "assets.manifest.json", "materials": "materials.ir.json", "targetProfile": "target.profile.json" }
@@ -55,16 +93,14 @@ fn write_bundle(name: &str) -> PathBuf {
     {
       "id": "player",
       "components": {
-        "Transform": { "position": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
-        "Rotator": { "speed": 2 },
-        "Health": { "value": 100 }
+        "Transform": { "position": [0, 1, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
       }
     },
     {
-      "id": "camera",
+      "id": "floor",
       "components": {
-        "Transform": { "position": [0, 2, 5], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
-        "Camera": { "kind": "perspective", "near": 0.1, "far": 100 }
+        "Transform": { "position": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Collider": { "kind": "box", "size": [8, 0.1, 8] }
       }
     }
   ]
@@ -78,16 +114,16 @@ fn write_bundle(name: &str) -> PathBuf {
   "version": "0.1.0",
   "systems": [
     {
-      "name": "rotate",
-      "schedule": "update",
-      "reads": ["Transform", "Rotator"],
-      "writes": ["Transform"],
-      "queries": [{ "with": ["Transform", "Rotator"], "without": [] }],
+      "name": "raycast",
+      "schedule": "fixedUpdate",
+      "reads": ["Transform", "Collider"],
+      "writes": [],
+      "queries": [{ "with": ["Transform"], "without": [] }],
       "commands": [],
       "eventReads": [],
       "eventWrites": [],
-      "services": [],
-      "script": { "bundle": "scripts.bundle.js", "exportName": "system_rotate" }
+      "services": ["physics.raycast"],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_raycast" }
     }
   ]
 }"#,
@@ -121,7 +157,7 @@ fn write_common(root: &Path) {
 
 fn root(name: &str) -> PathBuf {
     let root =
-        std::env::temp_dir().join(format!("tn-systems-context-{name}-{}", std::process::id()));
+        std::env::temp_dir().join(format!("tn-systems-services-{name}-{}", std::process::id()));
     if root.exists() {
         fs::remove_dir_all(&root).expect("old temp bundle should be removed");
     }

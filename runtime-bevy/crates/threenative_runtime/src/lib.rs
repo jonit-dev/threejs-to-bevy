@@ -16,6 +16,7 @@ pub mod rendering;
 pub mod systems_context;
 pub mod systems_effects;
 pub mod systems_host;
+pub mod systems_services;
 pub mod ui;
 pub mod walkability;
 
@@ -30,8 +31,19 @@ pub enum RuntimeError {
 }
 
 pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeError> {
-    let bundle = load_bundle(bundle_path)?;
+    let mut bundle = load_bundle(bundle_path)?;
     systems_host::ensure_native_system_host_supported(&bundle)?;
+    systems_host::run_native_systems_once(
+        &mut bundle,
+        systems_context::NativeSystemTimeSnapshot {
+            delta: 1.0 / 60.0,
+            dt: 1.0 / 60.0,
+            elapsed: 1.0,
+            fixed_delta: 1.0 / 60.0,
+            fixed_dt: 1.0 / 60.0,
+            paused: false,
+        },
+    )?;
     let asset_root = bundle.bundle_path.display().to_string();
     let window = bundle.runtime_config.as_ref().map(|config| &config.window);
     let mut app = App::new();

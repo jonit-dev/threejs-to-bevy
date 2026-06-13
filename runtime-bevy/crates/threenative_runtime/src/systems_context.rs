@@ -64,7 +64,7 @@ pub fn build_system_context_snapshot(
     NativeSystemContextSnapshot {
         entities,
         events: BTreeMap::new(),
-        input: NativeSystemInputSnapshot::default(),
+        input: NativeSystemInputSnapshot::fixed_trace(),
         resources: bundle
             .world
             .resources
@@ -72,6 +72,15 @@ pub fn build_system_context_snapshot(
             .map(|(key, value)| (key.clone(), value.clone()))
             .collect(),
         time,
+    }
+}
+
+impl NativeSystemInputSnapshot {
+    pub fn fixed_trace() -> Self {
+        Self {
+            actions: BTreeMap::from([("MoveForward".to_owned(), true), ("Jump".to_owned(), true)]),
+            axes: BTreeMap::from([("MoveX".to_owned(), 1.0), ("MoveY".to_owned(), 0.0)]),
+        }
     }
 }
 

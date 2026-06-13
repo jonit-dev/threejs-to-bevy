@@ -1,5 +1,7 @@
 import type { IIrSystemQuery, IWorldEntity, IWorldIr } from "@threenative/ir";
 import type { IWebInputState } from "../input.js";
+import { animationPlayPayload } from "./services/animation.js";
+import { raycastPrimitive, type IRaycastRequest, type IRaycastResult } from "./services/physics.js";
 
 export interface ISystemEntityView {
   components: IWorldEntity["components"];
@@ -40,7 +42,7 @@ export interface ISystemContext {
     set(name: string, value: unknown): void;
   };
   physics: {
-    raycast(options: Record<string, unknown>): null;
+    raycast(options: IRaycastRequest): IRaycastResult;
   };
   time: {
     delta: number;
@@ -90,7 +92,7 @@ export function createSystemContext(
     context: {
       animation: {
         play(entity, clip, playOptions = {}) {
-          services.push({ payload: { clip, entity, options: playOptions }, service: "animation.play" });
+          services.push({ payload: animationPlayPayload({ clip, entity, options: cloneValue(playOptions) as Record<string, unknown> }), service: "animation.play" });
         },
       },
       commands: {
@@ -154,8 +156,10 @@ export function createSystemContext(
       },
       physics: {
         raycast(serviceOptions) {
-          services.push({ payload: cloneValue(serviceOptions), service: "physics.raycast" });
-          return null;
+          const request = cloneValue(serviceOptions);
+          const result = raycastPrimitive(world, request);
+          services.push({ payload: { request, result }, service: "physics.raycast" });
+          return result;
         },
       },
       time: {

@@ -35,8 +35,8 @@ Current implemented V4 slice:
 - portable script diagnostics reject unsupported DOM, Node, timer, worker,
   arbitrary runtime import, undeclared write, command, event, and service
   usage before runtime.
-- compiler tests run an ESM loadability probe for the emitted script bundle;
-  native QuickJS parse/load proof remains owned by the Bevy host work.
+- compiler tests run an ESM loadability probe for the emitted script bundle,
+  and Bevy focused tests load the same bundle through QuickJS.
 - the web runtime executes portable systems through cloned query snapshots,
   validates effects before applying them, and writes canonical web effect logs
   through `tn verify`.
@@ -45,8 +45,12 @@ Current implemented V4 slice:
   snapshots, validates effects against `systems.ir.json`, applies declared
   transform/custom-component patches, and emits the same canonical effect-log
   shape as the web runner.
+- web and Bevy expose deterministic V4 service facades for time, input, events,
+  commands, `physics.raycast`, and `animation.play`, including permission
+  checks and canonical service-call log entries.
 - `examples/v4-scripting` builds a primitive scripted scene and passes web
-  visual verification with expected motion and a web effect-log artifact.
+  visual verification with expected motion, a web effect-log artifact, and a
+  native Bevy frame artifact at `artifacts/v4/native-bevy-frame-01.png`.
 
 ## V4 Does Not Prove
 
@@ -56,7 +60,7 @@ Current implemented V4 slice:
 - full physics, animation graphs, UI runtime parity, or editor tooling
 - direct Three.js, Bevy, renderer, DOM, filesystem, network, or platform access
 - fixed-trace cross-runtime patch-log comparison and release-gated native V4
-  artifact capture yet
+  artifact capture automation yet
 
 ## V3 Proves
 

@@ -38,7 +38,13 @@ fn main() -> ExitCode {
         }
     };
 
-    if !apply_environment_bookmark(app.world_mut(), &bundle, bookmark_id) {
+    if !apply_environment_bookmark(app.world_mut(), &bundle, bookmark_id)
+        && !bundle
+            .world
+            .entities
+            .iter()
+            .any(|entity| entity.id == *bookmark_id && entity.components.camera.is_some())
+    {
         eprintln!("bookmark '{bookmark_id}' was not found or no camera could be updated");
         return ExitCode::from(1);
     }
