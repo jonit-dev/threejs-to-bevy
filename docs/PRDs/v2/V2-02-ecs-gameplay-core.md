@@ -1,4 +1,4 @@
-# V2-01 ECS Gameplay Core
+# V2-02 ECS Gameplay Core
 
 Complexity: 8 -> HIGH mode
 
@@ -161,4 +161,3 @@ event schemas, and `systems.ir.json`.
 - [ ] Component, resource, and event schemas validate initial data.
 - [ ] Systems declare schedule and read/write access.
 - [ ] V2 avoids prefabs, changed queries, and runtime-specific ECS APIs.
-

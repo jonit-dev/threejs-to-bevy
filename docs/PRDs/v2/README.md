@@ -47,17 +47,18 @@ author scene and gameplay with supported SDK or R3F/JSX
 | Order | Ticket | Depends On | Outcome |
 | --- | --- | --- | --- |
 | 0 | [V2-00 Roadmap and Contract Alignment](./V2-00-roadmap-and-contract-alignment.md) | V1 complete | V2 docs, schemas, and exclusions agree on the playable-game proof. |
-| 1 | [V2-01 ECS Gameplay Core](./V2-01-ecs-gameplay-core.md) | V2-00 | ECS gameplay declarations can express one moving/damaging arena entity flow. |
-| 2 | [V2-02 TypeScript Systems and Runtime Host](./V2-02-typescript-systems-and-runtime-host.md) | V2-01 | Constrained TypeScript systems run through declared schedules on web and native strategy is proven. |
-| 3 | [V2-03 Input and Time](./V2-03-input-and-time.md) | V2-01, V2-02 | Logical input maps and timestep resources drive player movement consistently. |
-| 4 | [V2-04 R3F JSX Authoring Capture](./V2-04-r3f-jsx-authoring-capture.md) | V2-00, V2-01 | Supported JSX scene authoring emits the same world/material/asset IR as SDK authoring. |
-| 5 | [V2-05 Asset Pipeline](./V2-05-asset-pipeline.md) | V2-00, V2-04 | Static models, textures, and audio references validate before runtime. |
-| 6 | [V2-06 Rendering Parity Extensions](./V2-06-rendering-parity-extensions.md) | V2-04, V2-05 | Demo-needed lights, cameras, visibility, and primitive placeholders render on web and Bevy. |
-| 7 | [V2-07 Physics Foundation](./V2-07-physics-foundation.md) | V2-01, V2-03 | Portable colliders, rigid bodies, sensors, and collision events drive gameplay. |
-| 8 | [V2-08 Portable UI Foundation](./V2-08-portable-ui-foundation.md) | V2-01, V2-03 | HUD, touch controls, and pause/menu basics emit and render through UI IR. |
-| 9 | [V2-09 Audio Runtime](./V2-09-audio-runtime.md) | V2-01, V2-05 | Gameplay events trigger one-shot sounds and looping music on web and native. |
-| 10 | [V2-10 Arena Demo Template](./V2-10-arena-demo-template.md) | V2-01 through V2-09 | One playable third-person arena demo proves the V2 workflow. |
-| 11 | [V2-11 Dev Loop and Release Gate](./V2-11-dev-loop-and-release-gate.md) | All V2 tickets | Watch/rebuild diagnostics, smoke tests, docs checks, and `verify:v2` gate V2. |
+| 1 | [V2-01 Cross-Runtime Conformance and Regression Harness](./V2-01-cross-runtime-conformance-and-regression-harness.md) | V2-00 | Shared Three.js/Bevy fixtures and regression gates exist before V2 feature work expands. |
+| 2 | [V2-02 ECS Gameplay Core](./V2-02-ecs-gameplay-core.md) | V2-00, V2-01 | ECS gameplay declarations can express one moving/damaging arena entity flow. |
+| 3 | [V2-03 TypeScript Systems and Runtime Host](./V2-03-typescript-systems-and-runtime-host.md) | V2-02 | Constrained TypeScript systems run through declared schedules on web and native strategy is proven. |
+| 4 | [V2-04 Input and Time](./V2-04-input-and-time.md) | V2-02, V2-03 | Logical input maps and timestep resources drive player movement consistently. |
+| 5 | [V2-05 R3F JSX Authoring Capture](./V2-05-r3f-jsx-authoring-capture.md) | V2-00, V2-01, V2-02 | Supported JSX scene authoring emits the same world/material/asset IR as SDK authoring. |
+| 6 | [V2-06 Asset Pipeline](./V2-06-asset-pipeline.md) | V2-01, V2-05 | Static models, textures, and audio references validate before runtime. |
+| 7 | [V2-07 Rendering Parity Extensions](./V2-07-rendering-parity-extensions.md) | V2-01, V2-05, V2-06 | Demo-needed lights, cameras, visibility, and primitive placeholders render on web and Bevy. |
+| 8 | [V2-08 Physics Foundation](./V2-08-physics-foundation.md) | V2-01, V2-02, V2-04 | Portable colliders, rigid bodies, sensors, and collision events drive gameplay. |
+| 9 | [V2-09 Portable UI Foundation](./V2-09-portable-ui-foundation.md) | V2-01, V2-02, V2-04 | HUD, touch controls, and pause/menu basics emit and render through UI IR. |
+| 10 | [V2-10 Audio Runtime](./V2-10-audio-runtime.md) | V2-01, V2-02, V2-06 | Gameplay events trigger one-shot sounds and looping music on web and native. |
+| 11 | [V2-11 Arena Demo Template](./V2-11-arena-demo-template.md) | V2-02 through V2-10 | One playable third-person arena demo proves the V2 workflow. |
+| 12 | [V2-12 Dev Loop and Release Gate](./V2-12-dev-loop-and-release-gate.md) | All V2 tickets | Watch/rebuild diagnostics, smoke tests, docs checks, and `verify:v2` gate V2. |
 
 ## V2 Acceptance Criteria
 
@@ -80,13 +81,14 @@ Run the V2 candidate gate before treating V2 as complete:
 
 ```bash
 pnpm verify:v2
+pnpm verify:conformance
 pnpm check:docs:v2
 ```
 
 `pnpm verify:v2` should build the arena demo, validate every emitted IR file,
-run web visual/gameplay smoke checks, run native desktop smoke checks, verify
-representative input/UI/audio/physics behavior, and save machine-readable
-artifacts for failures.
+run cross-runtime conformance checks, run web visual/gameplay smoke checks, run
+native desktop smoke checks, verify representative input/UI/audio/physics
+behavior, and save machine-readable artifacts for failures.
 
 ## Checkpoint Protocol
 
@@ -100,4 +102,3 @@ prompt: Review checkpoint for phase N of PRD at docs/PRDs/v2/<ticket>.md
 
 Continue only when the reviewer reports PASS, or update the PRD with the
 accepted scope change before proceeding.
-

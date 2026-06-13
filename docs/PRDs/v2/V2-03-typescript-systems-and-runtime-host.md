@@ -1,4 +1,4 @@
-# V2-02 TypeScript Systems and Runtime Host
+# V2-03 TypeScript Systems and Runtime Host
 
 Complexity: 8 -> HIGH mode
 
@@ -168,4 +168,3 @@ metadata to `systems.ir.json`.
 - [ ] Web runtime executes scheduled TypeScript gameplay systems.
 - [ ] Native system-host strategy is implemented or explicitly gated with
   release-risk documentation.
-

@@ -1,4 +1,4 @@
-# V2-03 Input and Time
+# V2-04 Input and Time
 
 Complexity: 7 -> HIGH mode
 
@@ -159,4 +159,3 @@ flowchart LR
 - [ ] Keyboard and pointer mappings work on web and native.
 - [ ] Touch-ready logical controls exist without requiring mobile packaging.
 - [ ] Fixed timestep, variable timestep, and pause state feed systems.
-

@@ -1,4 +1,4 @@
-# V2-08 Portable UI Foundation
+# V2-09 Portable UI Foundation
 
 Complexity: 8 -> HIGH mode
 
@@ -158,4 +158,3 @@ flowchart LR
 - [ ] Web and native render required V2 UI primitives.
 - [ ] HUD bindings and touch/action controls connect to gameplay state.
 - [ ] Arbitrary React DOM/HTML/CSS/browser APIs are rejected as portable UI.
-

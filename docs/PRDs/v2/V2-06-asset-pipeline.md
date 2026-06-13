@@ -1,4 +1,4 @@
-# V2-05 Asset Pipeline
+# V2-06 Asset Pipeline
 
 Complexity: 7 -> HIGH mode
 
@@ -138,7 +138,7 @@ audio asset references.
 
 - [ ] Load GLB/GLTF static meshes.
 - [ ] Load texture assets for standard materials.
-- [ ] Register audio references for V2-09 playback.
+- [ ] Register audio references for V2-10 playback.
 - [ ] Report runtime diagnostics if a validated asset still fails to load.
 
 **Tests Required:**
@@ -165,4 +165,3 @@ audio asset references.
 - [ ] Missing and unsupported assets fail validation before runtime.
 - [ ] Material texture slots validate asset references.
 - [ ] Web and native runtimes load the same manifest IDs.
-

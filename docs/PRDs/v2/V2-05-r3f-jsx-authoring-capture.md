@@ -1,4 +1,4 @@
-# V2-04 R3F JSX Authoring Capture
+# V2-05 R3F JSX Authoring Capture
 
 Complexity: 8 -> HIGH mode
 
@@ -123,7 +123,7 @@ flowchart LR
 - `packages/compiler/src/capture/r3f.ts` - unsupported feature detection.
 - `packages/compiler/src/capture/r3f.diagnostics.test.tsx` - diagnostics tests.
 - `docs/sdk.md` - supported R3F subset.
-- `docs/PRDs/v2/V2-04-r3f-jsx-authoring-capture.md` - scope record.
+- `docs/PRDs/v2/V2-05-r3f-jsx-authoring-capture.md` - scope record.
 
 **Implementation:**
 
@@ -156,4 +156,3 @@ flowchart LR
 - [ ] Supported JSX emits the same IR contract as direct SDK authoring.
 - [ ] Stable entity IDs are deterministic.
 - [ ] Unsupported R3F/Drei/React/browser features fail with diagnostics.
-

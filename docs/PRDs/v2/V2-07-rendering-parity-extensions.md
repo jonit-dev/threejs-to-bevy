@@ -1,4 +1,4 @@
-# V2-06 Rendering Parity Extensions
+# V2-07 Rendering Parity Extensions
 
 Complexity: 6 -> MEDIUM mode
 
@@ -127,4 +127,3 @@ flowchart LR
 - [ ] Web and Bevy mappings consume the same IR.
 - [ ] V2 does not add advanced shaders, material graphs, postprocessing, or
   broad Three.js parity.
-

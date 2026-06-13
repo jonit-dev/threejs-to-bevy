@@ -1,4 +1,4 @@
-# V2-11 Dev Loop and Release Gate
+# V2-12 Dev Loop and Release Gate
 
 Complexity: 7 -> HIGH mode
 
@@ -26,6 +26,8 @@ arena workflow, not just isolated package tests.
 
 - Extend CLI dev loop with watch/rebuild diagnostics for V2 projects.
 - Add V2 smoke verification artifacts for web and native.
+- Require the V2-01 cross-runtime conformance gate before runtime behavior is
+  accepted.
 - Add docs consistency and example rebuild checks.
 - Keep the release gate focused on the arena proof and documented V2 surface.
 
@@ -38,7 +40,7 @@ sequenceDiagram
   participant Gate as verify:v2
   Dev->>Build: watch source
   Build-->>Dev: rebuild diagnostics
-  Gate->>Web: visual/gameplay smoke
+  Gate->>Web: conformance + visual/gameplay smoke
   Gate->>Native: native gameplay smoke
 ```
 
@@ -48,8 +50,8 @@ sequenceDiagram
 
 **How will this feature be reached?**
 
-- Entry point identified: `tn dev`, `tn verify`, `pnpm verify:v2`, and
-  `pnpm check:docs:v2`.
+- Entry point identified: `tn dev`, `tn verify`, `pnpm verify:v2`,
+  `pnpm verify:conformance`, and `pnpm check:docs:v2`.
 - Caller file identified: CLI commands and top-level scripts.
 - Registration/wiring needed: package scripts, verify profile, artifact paths.
 
@@ -60,7 +62,8 @@ sequenceDiagram
 1. Developer edits the arena demo.
 2. `tn dev --target web --watch` rebuilds and reports diagnostics.
 3. Developer runs `pnpm verify:v2`.
-4. Gate verifies docs, bundle, web, native, and gameplay smoke artifacts.
+4. Gate verifies docs, bundle, conformance, web, native, and gameplay smoke
+   artifacts.
 
 ## Execution Phases
 
@@ -101,11 +104,13 @@ sequenceDiagram
 - `packages/cli/src/verify/report.ts` - report extensions.
 - `packages/cli/src/verify/v2.test.ts` - profile tests.
 - `scripts/verify-v2.*` - top-level gate.
-- `package.json` - `verify:v2` script.
+- `scripts/verify-conformance.*` - cross-runtime conformance gate.
+- `package.json` - `verify:v2` and `verify:conformance` scripts.
 
 **Implementation:**
 
 - [ ] Include bundle validation status.
+- [ ] Include cross-runtime conformance status.
 - [ ] Include web visual, input, movement, UI, physics, and audio checks.
 - [ ] Include native load and gameplay smoke status.
 - [ ] Save screenshots, logs, bundle paths, and JSON report predictably.
@@ -127,6 +132,7 @@ sequenceDiagram
 
 - `scripts/check-docs-v2.*` - docs gate.
 - `scripts/verify-v2.*` - verification gate.
+- `scripts/verify-conformance.*` - conformance gate.
 - `docs/PRDs/v2/README.md` - release gate docs.
 - `docs/README.md` - PRD index link.
 - `docs/ROADMAP.md` - completion note if project tracks status there.
@@ -134,6 +140,7 @@ sequenceDiagram
 **Implementation:**
 
 - [ ] Check every V2 PRD is linked and every V2 command is documented.
+- [ ] Run `pnpm verify:conformance` before arena smoke checks.
 - [ ] Rebuild `examples/v2-arena` from source.
 - [ ] Run package tests required by touched V2 features.
 - [ ] Run native Bevy smoke tests for V2 fixtures.
@@ -153,6 +160,7 @@ sequenceDiagram
 ## Verification Strategy
 
 - `pnpm check:docs:v2`
+- `pnpm verify:conformance`
 - `pnpm verify:v2`
 - `pnpm test`
 - `cd runtime-bevy && cargo test`
@@ -161,6 +169,6 @@ sequenceDiagram
 
 - [ ] V2 watch/rebuild loop reports actionable diagnostics.
 - [ ] V2 verification produces machine-readable artifacts.
+- [ ] Cross-runtime conformance passes for supported V2 fixture coverage.
 - [ ] `verify:v2` proves the arena game across web and native smoke paths.
 - [ ] Docs and examples match the supported V2 surface.
-

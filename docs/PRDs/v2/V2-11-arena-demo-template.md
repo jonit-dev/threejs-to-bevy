@@ -1,4 +1,4 @@
-# V2-10 Arena Demo Template
+# V2-11 Arena Demo Template
 
 Complexity: 9 -> HIGH mode
 
@@ -161,4 +161,3 @@ flowchart LR
 - [ ] Demo exercises input, time, assets, rendering, physics, UI, audio, and
   gameplay systems.
 - [ ] Template scaffolds a clean playable V2 project.
-

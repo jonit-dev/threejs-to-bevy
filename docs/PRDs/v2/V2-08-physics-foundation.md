@@ -1,4 +1,4 @@
-# V2-07 Physics Foundation
+# V2-08 Physics Foundation
 
 Complexity: 8 -> HIGH mode
 
@@ -160,4 +160,3 @@ payloads to world/schema IR.
 - [ ] Unsupported physics features fail validation.
 - [ ] Web and native generate equivalent collision/trigger events for fixtures.
 - [ ] Collision events can drive ECS gameplay systems.
-
