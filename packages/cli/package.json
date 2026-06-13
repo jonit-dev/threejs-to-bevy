@@ -14,10 +14,13 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
-    "@types/node": "^20.19.25"
+    "@types/node": "^20.19.25",
+    "@types/pngjs": "^6.0.5"
   },
   "dependencies": {
     "@threenative/compiler": "workspace:*",
-    "@threenative/runtime-web-three": "workspace:*"
+    "@threenative/runtime-web-three": "workspace:*",
+    "playwright": "^1.60.0",
+    "pngjs": "^7.0.0"
   }
 }

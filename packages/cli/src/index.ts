@@ -3,9 +3,11 @@
 import { fileURLToPath } from "node:url";
 
 import { buildCommand } from "./commands/build.js";
+import { compareImagesCommand } from "./commands/compareImages.js";
 import { createProject } from "./commands/create.js";
 import { devCommand } from "./commands/dev.js";
 import { validateProject } from "./commands/validate.js";
+import { verifyCommand } from "./commands/verify.js";
 import { type ICommandResult } from "./diagnostics.js";
 
 interface ICommandDefinition {
@@ -30,6 +32,11 @@ const commands: Record<string, ICommandDefinition> = {
     implemented: true,
     usage: "tn build [--project <path>] [--json]",
   },
+  "compare-images": {
+    description: "Compare two PNG screenshots and report visual deltas.",
+    implemented: true,
+    usage: "tn compare-images <first.png> <second.png> [--json]",
+  },
   dev: {
     description: "Run a V1 runtime preview.",
     implemented: true,
@@ -37,8 +44,8 @@ const commands: Record<string, ICommandDefinition> = {
   },
   verify: {
     description: "Run visual self-verification for the web preview.",
-    implemented: false,
-    usage: "tn verify [--project <path>] [--json]",
+    implemented: true,
+    usage: "tn verify [--project <path>] [--url <preview-url>] [--frames <count>] [--expect-motion] [--json]",
   },
 };
 
@@ -96,8 +103,16 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
     return buildCommand(normalizedArgv.slice(1));
   }
 
+  if (commandName === "compare-images") {
+    return compareImagesCommand(normalizedArgv.slice(1));
+  }
+
   if (commandName === "dev") {
     return devCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "verify") {
+    return verifyCommand(normalizedArgv.slice(1));
   }
 
   const json = normalizedArgv.includes("--json");

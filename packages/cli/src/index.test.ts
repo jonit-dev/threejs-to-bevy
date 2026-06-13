@@ -11,6 +11,7 @@ test("should print help when requested", async () => {
   assert.match(result.stdout, /create/);
   assert.match(result.stdout, /validate/);
   assert.match(result.stdout, /build/);
+  assert.match(result.stdout, /compare-images/);
   assert.match(result.stdout, /dev/);
   assert.match(result.stdout, /verify/);
 });
@@ -22,15 +23,8 @@ test("should tolerate a leading package script separator", async () => {
   assert.match(result.stdout, /V1 commands:/);
 });
 
-test("should return structured placeholder output for future commands", async () => {
-  const result = await dispatch(["verify", "--json"]);
-  const payload = JSON.parse(result.stdout) as { code: string; command: string };
-
-  assert.equal(result.exitCode, 2);
-  assert.equal(payload.code, "TN_COMMAND_NOT_IMPLEMENTED");
-  assert.equal(payload.command, "verify");
-});
-
 test("should keep rendered help stable for the package bin", () => {
   assert.match(renderHelp(), /tn dev --target <web\|desktop>/);
+  assert.match(renderHelp(), /tn compare-images <first\.png> <second\.png>/);
+  assert.match(renderHelp(), /tn verify \[--project <path>\] \[--url <preview-url>\]/);
 });
