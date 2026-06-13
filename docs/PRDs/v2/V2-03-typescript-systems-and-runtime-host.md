@@ -1,12 +1,12 @@
-# V2-03 TypeScript Systems and Runtime Host
+# V2-03 TypeScript Systems and Runtime Contract
 
 Complexity: 8 -> HIGH mode
 
 ## Context
 
-**Problem:** V2 gameplay needs constrained TypeScript systems that run from the
-same source on web preview and native desktop without compiling arbitrary
-JavaScript into runtime internals.
+**Problem:** V2 gameplay needs constrained TypeScript systems that run in web
+preview and emit enough metadata for future native execution without compiling
+arbitrary JavaScript into runtime internals.
 
 **Files Analyzed:** `docs/ROADMAP.md`, `docs/scripting.md`, `docs/ecs.md`,
 `docs/ir.md`, `packages/compiler`, `packages/runtime-web-three`,
@@ -16,17 +16,20 @@ JavaScript into runtime internals.
 
 - V1 may prove simple built-in motion, but V2 needs real gameplay systems.
 - Roadmap requires portable constrained TypeScript systems.
-- Native TypeScript hosting remains an explicit technical risk.
+- Native TypeScript hosting remains an explicit technical risk and is now a
+  dedicated V4 milestone using an embedded QuickJS-ng-style JavaScript backend.
 
 ## Solution
 
 **Approach:**
 
-- Compile registered system functions into a constrained `scripts.bundle.js`.
+- Compile registered system functions into a constrained `scripts.bundle.js`
+  for web preview.
 - Expose only a runtime-neutral system context: queries, resources, events,
   commands, time, and input.
-- Run systems in web preview first, then prove the native strategy through one
-  hosted gameplay fixture or a documented adapter fallback.
+- Run systems in web preview first.
+- Gate native hosted systems with stable diagnostics until V4 implements the
+  embedded QuickJS host.
 - Reject unsupported APIs with compiler diagnostics before runtime.
 
 ```mermaid
@@ -34,25 +37,26 @@ sequenceDiagram
   participant Build as tn build
   participant Compiler
   participant Scripts as scripts.bundle.js
-  participant Runtime as web/native system runner
+  participant Runtime as web system runner
   Build->>Compiler: capture systems
   Compiler->>Scripts: emit constrained exports
   Runtime->>Scripts: run schedule(context)
 ```
 
 **Data Changes:** Adds `scripts.bundle.js` references and executable system
-metadata to `systems.ir.json`.
+metadata to `systems.ir.json`. Native execution of the same `scripts.bundle.js`
+through embedded QuickJS is V4.
 
 ## Integration Points
 
 **How will this feature be reached?**
 
 - Entry point identified: systems registered in `@threenative/sdk` and executed
-  by `tn dev --target web|desktop`.
+  by `tn dev --target web`.
 - Caller file identified: web runtime game loop and Bevy runtime schedule
-  bridge.
-- Registration/wiring needed: compiler script bundling, runtime system runner,
-  validator access checks.
+  gate.
+- Registration/wiring needed: compiler script bundling, web runtime system
+  runner, validator access checks, native unsupported-host diagnostics.
 
 **Is this user-facing?** Yes, gameplay behavior.
 
@@ -61,8 +65,8 @@ metadata to `systems.ir.json`.
 1. User registers a movement system in TypeScript.
 2. `tn build` emits system metadata and script bundle.
 3. `tn dev --target web` runs the system and moves the player.
-4. `tn dev --target desktop` proves the same system path or reports the chosen
-   native-host limitation explicitly.
+4. `tn dev --target desktop` loads static bundle data and reports the native
+   hosted-script limitation explicitly when scripts are present.
 
 ## Execution Phases
 
@@ -125,7 +129,7 @@ metadata to `systems.ir.json`.
 - Action: Run web preview for movement fixture.
 - Expected: Player position changes over time.
 
-#### Phase 3: Native Host Proof - Desktop path runs or explicitly gates systems
+#### Phase 3: Native Gate - Desktop path reports unsupported hosted systems
 
 **Files (max 5):**
 
@@ -133,27 +137,26 @@ metadata to `systems.ir.json`.
 - `runtime-bevy/src/ir/systems.rs` - system metadata load.
 - `runtime-bevy/src/main.rs` - schedule wiring.
 - `runtime-bevy/tests/systems_host.rs` - native host tests.
-- `docs/scripting.md` - V2 native host decision.
+- `docs/scripting.md` - V4 native host decision.
 
 **Implementation:**
 
-- [ ] Choose the V2 native script host strategy.
-- [ ] Run at least one movement or damage system natively, or document a
-  narrow built-in fallback as a V2 risk requiring release approval.
-- [ ] Preserve command buffer and event semantics.
-- [ ] Fail with actionable diagnostics when the native host cannot run a system.
+- [ ] Detect bundles with hosted scripts.
+- [ ] Report `TN_BEVY_SYSTEM_HOST_UNSUPPORTED` with the affected system ID.
+- [ ] Document that embedded QuickJS native hosting is V4 scope.
+- [ ] Keep static bundle loading available when no scripts are present.
 
 **Tests Required:**
 
 | Test File | Test Name | Assertion |
 | --- | --- | --- |
-| `runtime-bevy/tests/systems_host.rs` | `should run hosted movement system` | Loaded fixture updates transform after tick. |
 | `runtime-bevy/tests/systems_host.rs` | `should report unsupported script host` | Diagnostic includes system ID and reason. |
+| `runtime-bevy/tests/systems_host.rs` | `should allow bundle without script host` | Bundle without hosted scripts passes native gate. |
 
 **User Verification:**
 
 - Action: Run native desktop fixture.
-- Expected: The same movement proof runs or emits documented V2 gate diagnostic.
+- Expected: Scripted bundle emits documented V2 gate diagnostic.
 
 ## Verification Strategy
 
@@ -166,5 +169,5 @@ metadata to `systems.ir.json`.
 - [ ] System bundle output is deterministic.
 - [ ] Unsupported portable-system APIs fail before runtime.
 - [ ] Web runtime executes scheduled TypeScript gameplay systems.
-- [ ] Native system-host strategy is implemented or explicitly gated with
-  release-risk documentation.
+- [ ] Native hosted scripting is explicitly gated with stable diagnostics and
+  linked to the V4 QuickJS native-host milestone.

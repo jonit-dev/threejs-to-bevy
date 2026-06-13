@@ -249,27 +249,31 @@ or gameplay overlays.
 
 ## Native Script Host
 
-This is the highest-risk stack decision and should be spiked before becoming a
-hard dependency.
+This is a high-risk stack decision and should be proven in the dedicated V4
+scripting milestone before becoming a hard dependency for native gameplay.
 
 Candidate approaches:
 
 | Approach | Pros | Cons |
 | --- | --- | --- |
 | No native script host in Phase 0 | Fastest cube-to-Bevy proof. | No runtime gameplay scripting yet. |
+| QuickJS-ng-based embedding | Runs the same JavaScript bundle as web preview and keeps JS semantics closest across runtimes. | Need binding layer, performance testing, mobile validation, and sandboxing. |
 | JavaScriptCore | Mature on Apple platforms. | Cross-platform packaging and Android story need care. |
-| QuickJS-based embedding | Small embeddable JS runtime. | Need binding layer, performance testing, and mobile validation. |
 | V8/deno_core | Powerful and familiar JS semantics. | Heavier binary and integration cost. |
 | Compile selected systems to Rust later | Best native performance. | Not a v1 authoring path; high compiler complexity. |
 
 Recommendation:
 
 1. Phase 0 should not require native TS execution. Load static IR into Bevy.
-2. Phase 2 should spike QuickJS-style embedding and one alternative.
+2. V4 should spike QuickJS-ng-style embedding for `scripts.bundle.js`.
 3. Keep system host APIs narrow: declared queries, command buffers, time, input,
-   assets, events, and resources.
+   assets, events, resources, and declared engine services.
 4. Treat script host choice as adapter-private so the IR and SDK do not depend
-   on a specific JS engine.
+   on a specific VM.
+
+Lua or Luau can be revisited later for mods, user-generated content, or a
+separate alternate backend, but it is not part of the initial native scripting
+MVP.
 
 ## Web Runtime
 
@@ -423,10 +427,10 @@ Phase 2:
 - command buffer
 - logical input
 - portable UI primitives and `ui.ir.json`
-- native script-host spike
+- native script-host gate diagnostics
 - simple collision or physics decision
 
-Phase 3 and later:
+Phase 3:
 
 - glTF animation
 - asset preprocessing
@@ -434,9 +438,15 @@ Phase 3 and later:
 - profiling
 - MCP server over CLI/docs/schemas
 
+Phase 4:
+
+- QuickJS-ng native script backend
+- embedded JavaScript host in Bevy
+- cross-runtime script patch-log conformance
+
 ## Open Decisions
 
-- Native JavaScript engine for TypeScript systems.
+- Exact QuickJS-ng Rust binding and build strategy.
 - Exact schema authoring source of truth.
 - Physics backend and minimum portable physics feature set.
 - Whether the web adapter should use only WebGPURenderer in stable examples or

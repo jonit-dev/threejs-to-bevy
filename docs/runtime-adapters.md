@@ -43,7 +43,9 @@ Adapters are responsible for:
 - Resolving assets through the asset manifest.
 - Creating runtime entities, components, materials, textures, animations, input
   devices, cameras, lights, UI nodes, and physics objects.
-- Running or hosting TypeScript systems through the approved script interface.
+- Running TypeScript systems through the approved script interface. Web runs
+  JavaScript output directly; native Bevy runs the same JavaScript bundle in
+  embedded QuickJS once the V4 host is enabled.
 - Reporting diagnostics with stable error codes where possible.
 - Exposing profiling data to the CLI after V2; profiling reports are not a V2
   release gate.
@@ -135,7 +137,8 @@ into the SDK.
 - Load glTF, textures, and animation assets through Bevy's asset system where
   possible.
 - Register runtime components for SDK components.
-- Run scheduled game systems and TypeScript lifecycle hooks.
+- Run scheduled game systems and TypeScript lifecycle hooks through the native
+  script host once V4 enables embedded QuickJS execution.
 - Recreate portable `ui.ir.json` nodes with a native UI renderer.
 - Handle desktop platform lifecycle events. Mobile packaging and lifecycle
   coverage are V3, while V2 may still use touch-ready input/profile data.
@@ -231,8 +234,8 @@ Out of early scope:
 
 ### TypeScript System Execution
 
-The scripting implementation is an early design risk. The adapter should start
-with a narrow host API:
+The scripting implementation is a V4 design gate. The adapter should start with
+a narrow host API:
 
 - `init(ctx)`
 - `update(ctx)`
@@ -240,10 +243,12 @@ with a narrow host API:
 - read/write access only to declared components and resources
 - input, time, asset, and scene commands through explicit context objects
 
-The runtime should avoid giving scripts direct access to Bevy world internals.
-If embedded JavaScript is too heavy for early native builds, the first spike can
-limit native execution to setup-generated IR and simple built-in systems, then
-add script hosting in a dedicated phase.
+The runtime must avoid giving scripts direct access to Bevy world internals. V2
+may limit native execution to setup-generated IR, static bundle loading, simple
+built-in systems, and a stable unsupported-host diagnostic. V4 should add
+native script hosting by loading `scripts.bundle.js` into QuickJS, calling JS
+system exports, validating returned patches/events/commands against
+`systems.ir.json`, and applying mutations at schedule boundaries.
 
 ### Native UI Execution
 

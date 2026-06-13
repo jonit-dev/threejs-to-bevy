@@ -19,6 +19,8 @@ that concept into implementation contracts.
   gameplay runtime expectations.
 - [Scripting](scripting.md): TypeScript gameplay systems, native script hosting,
   command buffers, patch application, and the Rust/Bevy boundary.
+- [Portable Scripting APIs](scripting-api.md): TypeScript context APIs for
+  animation, physics, events, commands, and native QuickJS hosting.
 - [UI](ui.md): React-style game UI authoring, `ui.ir.json`, bindings, events,
   and native UI recreation.
 - [IR](ir.md): intermediate representation contract shared by the compiler,
@@ -64,8 +66,8 @@ otherwise.
 2. Read [goals.md](goals.md) and [architecture.md](architecture.md) to
    understand the product target and system shape.
 3. Read [sdk.md](sdk.md), [ecs.md](ecs.md), [scripting.md](scripting.md),
-   [ui.md](ui.md), and [ir.md](ir.md) together because they define the authoring
-   and compilation contract.
+   [scripting-api.md](scripting-api.md), [ui.md](ui.md), and [ir.md](ir.md)
+   together because they define the authoring and compilation contract.
 4. Read [runtime-adapters.md](runtime-adapters.md) before implementing native or
    web targets.
 5. Use [developer-workflow.md](developer-workflow.md), [ai-workflows.md](ai-workflows.md),

@@ -208,8 +208,9 @@ separate files when they have different loading or preprocessing needs:
   gamepad mappings.
 - Physics IR: colliders, rigid bodies, triggers, layers, and broad runtime
   expectations.
-- Script IR: lifecycle hooks, system entrypoints, permissions, and required host
-  APIs.
+- Script IR: lifecycle hooks, system entrypoints, permissions, required host
+  APIs, and JavaScript bundle references for web preview and native QuickJS
+  hosting once the V4 scripting host is enabled.
 
 Each domain should have an explicit schema, validator, fixture set, and runtime
 conformance tests.

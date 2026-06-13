@@ -11,7 +11,8 @@ V1 proves this works.
 V1 also gives an AI agent enough scaffold and visual feedback to keep building.
 V2 proves someone can build a real small game with it.
 V3 proves it can bundle and run a rich first-person environment scene.
-V4 proves it can support advanced engine and tooling extensions without
+V4 proves native gameplay scripting through an embedded JavaScript backend.
+V5 proves it can support advanced engine and tooling extensions without
 breaking the portable contract.
 ```
 
@@ -64,10 +65,12 @@ focuses on turning the proven pipeline into a real game-making workflow.
   Rust.
 - Web runs directly on Three.js, not through the native runtime.
 - Native runs through Bevy first, not through a WebView.
+- Gameplay authoring stays TypeScript. Native scripting should first run the
+  same JavaScript bundle through an embedded QuickJS-ng-style host. Lua or Luau
+  may be revisited later for mods or as an alternate backend, not the initial
+  native MVP.
 - MCP and AI control-plane work comes after SDK, CLI, compiler, validator, and
   runtime foundations are real.
-- Lua or Luau may be considered later for mods, not as the primary authoring
-  language.
 - A custom Rust/wgpu runtime is a later escape hatch only if Bevy blocks
   product-critical needs.
 
@@ -76,9 +79,10 @@ focuses on turning the proven pipeline into a real game-making workflow.
 | Version | Goal | Main Proof |
 | --- | --- | --- |
 | V1 | Prove the full flow works end to end. | A scaffolded project can be created, code written with Three.js-like abstractions becomes ECS/game IR, runs on web directly through Three.js, builds a native Rust/Bevy game, and can be visually self-verified. |
-| V2 | Prove the flow can support an actual small game. | A developer or AI can build, validate, preview, and iterate on a playable arena game faster than with raw Three.js, R3F, Godot, Unity, or Bevy, using ECS-compatible abstractions, R3F/JSX scene authoring, assets, input, UI, audio, physics, and TypeScript gameplay systems. |
+| V2 | Prove the flow can support an actual small game in web preview with a native data-path smoke. | A developer or AI can build, validate, preview, and iterate on a playable arena game faster than with raw Three.js, R3F, Godot, Unity, or Bevy, using ECS-compatible abstractions, R3F/JSX scene authoring, assets, input, UI, audio, physics, and constrained TypeScript gameplay systems. Native may gate scripted gameplay while still loading the same static bundle data. |
 | V3 | Prove the platform can bundle and run a rich first-person environment scene. | The `assets-source/environment` forest pack is composed into a dense stylized path scene with performant Three.js first-person camera controls, validates as one portable bundle, and runs through web and Bevy with documented content budgets and scene verification. |
-| V4 | Prove advanced parity and extensibility can fit the model. | Optional editor, networking, advanced rendering, plugin/native extension, and richer content workflows are added only where they preserve SDK-to-IR portability. |
+| V4 | Prove portable gameplay scripting can run natively. | The same constrained TypeScript systems emit one `scripts.bundle.js` that runs in web preview and embedded QuickJS-ng in Bevy native, with equivalent ECS patches, events, commands, and diagnostics for a representative gameplay fixture. |
+| V5 | Prove advanced parity and extensibility can fit the model. | Optional editor, networking, advanced rendering, plugin/native extension, and richer content workflows are added only where they preserve SDK-to-IR portability. |
 
 ## V1: End-To-End Proof
 
@@ -310,7 +314,7 @@ V2 should turn the platform into a usable game-making loop:
 author scene and gameplay with supported SDK or R3F/JSX
   -> validate
   -> preview on web
-  -> run natively
+  -> run static bundle data natively
   -> iterate without rewriting for each target
 ```
 
@@ -356,6 +360,9 @@ author scene and gameplay with supported SDK or R3F/JSX
   - health and damage
   - spawn/despawn commands
 - Portable scripting model for constrained TypeScript systems.
+  - web runtime executes the first full gameplay scripting path
+  - native runtime may explicitly gate scripted systems until V4 while still
+    loading static bundle data and reporting actionable diagnostics
 - Asset support:
   - static glTF/GLB model loading
   - texture references
@@ -410,7 +417,7 @@ The V2 demo should be one mobile-friendly third-person arena game:
 - one level
 - basic HUD
 - web preview
-- native desktop build
+- native desktop build for static bundle data and non-scripted runtime smoke
 
 Android and iOS builds can start in V2 if the foundations are ready, but they
 are not allowed to block the core playable-game proof.
@@ -419,14 +426,18 @@ are not allowed to block the core playable-game proof.
 
 - A developer or AI can create or modify the arena demo from the documented SDK
   surface or the supported R3F/JSX authoring surface.
-- The same game source validates, previews on web, and runs natively.
+- The same game source validates and previews on web.
+- The native runtime loads the same bundle data and either runs supported
+  non-scripted behavior or explicitly gates scripted systems with a stable
+  diagnostic until V4.
 - ECS-first, scene-style, and R3F/JSX APIs all map to the same IR model.
 - Gameplay systems declare enough read/write intent for validation and runtime
   scheduling.
 - Assets fail validation before runtime when paths, formats, or capabilities are
   unsupported.
-- Input, UI, audio, physics, and gameplay events behave consistently enough
-  across web and native runtimes for the demo to be playable on both.
+- Input, UI, audio, physics, and gameplay events behave consistently enough in
+  web preview for the demo to be playable, with native parity tracked by
+  targeted conformance and V4 scripting work.
 - UI is portable through UI IR, not arbitrary React DOM.
 
 ### V2 Explicit Exclusions
@@ -439,6 +450,7 @@ are not allowed to block the core playable-game proof.
 - advanced material graph
 - arbitrary shader authoring
 - advanced animation state machines
+- native hosted gameplay scripting parity
 - full mobile app-store packaging
 - custom renderer
 - general plugin marketplace
@@ -569,12 +581,106 @@ The missing pieces are engine and pipeline capabilities, not more source props:
 - custom shaders, postprocessing chains, and advanced material graphs
 - general production template catalog
 
-## V4: Advanced Parity and Extensibility
+## V4: Portable Native Scripting Host
+
+Goal: prove that gameplay systems authored in TypeScript can run natively
+without exposing Bevy or embedding an unrestricted JavaScript runtime.
+
+V4 should make scripting a dedicated product gate. Web remains the reference
+iteration path and executes JavaScript directly. Native Bevy executes the same
+`scripts.bundle.js` through an embedded QuickJS-ng-style JavaScript host. The
+shared contract is equivalent ECS inputs producing equivalent patches, events,
+commands, service calls, and diagnostics.
+
+```txt
+TypeScript gameplay systems
+  -> portable-script validation
+  -> systems.ir.json
+  -> scripts.bundle.js for web
+  -> scripts.bundle.js for Bevy QuickJS
+  -> cross-runtime patch-log conformance
+```
+
+### Required Capabilities
+
+- Embedded JavaScript native backend:
+  - QuickJS-ng-style embedding is the first candidate
+  - deterministic `scripts.bundle.js` output
+  - source mapping or system-ID mapping for diagnostics
+  - stable diagnostics for unsupported TS/JS features
+- Embedded JS native host:
+  - Rust loads the JavaScript bundle into QuickJS
+  - JavaScript receives only the portable system context
+  - no raw Bevy handles, renderer handles, filesystem, network, or platform APIs
+  - host service calls are capability-gated by `systems.ir.json`
+  - Node, DOM, timers, workers, and the QuickJS standard library are not exposed
+- Cross-runtime system conformance:
+  - same fixed ECS snapshot
+  - same input and time trace
+  - same system schedule
+  - comparable patch, event, command, and service-call logs from web JS and
+    native QuickJS
+- Portable engine-service APIs:
+  - animation commands and state queries
+  - physics raycast/shape-cast queries and body commands
+  - input and time resources
+  - event queues
+  - spawn/despawn/add/remove command buffers
+- Native gameplay fixture:
+  - one movement or combat fixture runs through Bevy native QuickJS hosting
+  - fixture proves at least one component patch, one command, one event, and one
+    engine-service call
+- Failure behavior:
+  - unsupported scripts fail before runtime when possible
+  - missing native script host support fails with stable diagnostics
+  - unrestricted async, direct DOM/Three.js/Bevy access, arbitrary npm
+    dependencies, excessive host-call patterns, and hidden module-level mutable
+    state are rejected or documented as unsupported
+
+### V4 Demo
+
+The V4 demo should be a small deterministic gameplay scene, not a larger
+content milestone:
+
+- one controllable entity
+- one enemy or target
+- one physics query or collision-driven event
+- one animation command such as play/stop/blend
+- one spawn or despawn command
+- identical web and native patch-log verification for a fixed input trace
+
+The demo can reuse the V2 arena assets if that keeps scope small.
+
+### V4 Success Criteria
+
+- A constrained TypeScript system emits both `scripts.bundle.js` and
+  `systems.ir.json`.
+- Web runs the JavaScript system bundle through the portable context.
+- Bevy runs the JavaScript system bundle through an embedded QuickJS host.
+- Runtime mutations happen through validated patches, events, commands, and
+  portable engine services.
+- Cross-runtime conformance proves equivalent script effects for the V4 demo.
+- The public scripting API remains TypeScript; QuickJS stays adapter-private.
+- Unsupported scripting features fail closed with actionable diagnostics.
+
+### V4 Explicit Exclusions
+
+- public Lua/Luau authoring
+- arbitrary npm packages in portable systems
+- arbitrary QuickJS standard-library modules in native systems
+- direct Bevy API access
+- direct Three.js object or renderer access from portable systems
+- TS-to-Rust gameplay compilation
+- hot reload with state preservation
+- user-authored native plugins
+- broad performance optimization for large script-heavy games
+
+## V5: Advanced Parity and Extensibility
 
 Goal: add higher-end engine and tooling capabilities after the portable product
-contract has proven itself through V1, V2, and V3.
+contract has proven itself through V1, V2, V3, and V4.
 
-V4 should be selective. A feature belongs here only when it has a clear SDK
+V5 should be selective. A feature belongs here only when it has a clear SDK
 surface, IR representation, validation story, and both web and native runtime
 mapping. Native-only or web-only features can exist as explicitly marked target
 capabilities, not as silent portability breaks.
@@ -616,12 +722,12 @@ capabilities, not as silent portability breaks.
   - tilemaps
   - React DOM-only app shell screens
 
-### V4 Success Criteria
+### V5 Success Criteria
 
 - Advanced capabilities fail closed when a target does not support them.
 - Optional extensions do not leak Bevy, Three.js internals, or native-only
   assumptions into the base SDK contract.
-- At least one maintained example demonstrates each promoted V4 capability.
+- At least one maintained example demonstrates each promoted V5 capability.
 - Validation can explain whether a feature is portable, web-only, native-only,
   or unavailable for the selected target profile.
 

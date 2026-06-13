@@ -24,9 +24,10 @@ author scene and gameplay with supported SDK or R3F/JSX
   adds supported JSX capture that lowers to the same IR.
 - ECS: V2 supports declared components, resources, events, game states, queries,
   command buffers, update/post-update schedules, and deterministic fixed update.
-- Scripting: V2 requires constrained TypeScript systems for the arena gameplay.
-  Native support may start with one hosted-system proof if full host parity is
-  too large, but the release gate must document the chosen native path.
+- Scripting: V2 requires constrained TypeScript systems for the arena gameplay
+  in web preview. Native loads the same bundle data and may explicitly gate
+  hosted scripted systems with a stable diagnostic; full native script hosting
+  is the dedicated V4 milestone.
 - Input: keyboard, pointer/mouse, and touch-ready logical actions/axes are V2;
   gamepad is V3 unless explicitly added as non-blocking.
 - Assets: static glTF/GLB, textures, material texture slots, and audio
@@ -55,7 +56,7 @@ author scene and gameplay with supported SDK or R3F/JSX
 | 0 | [V2-00 Roadmap and Contract Alignment](./V2-00-roadmap-and-contract-alignment.md) | V1 complete | V2 docs, schemas, and exclusions agree on the playable-game proof. |
 | 1 | [V2-01 Cross-Runtime Conformance and Regression Harness](./V2-01-cross-runtime-conformance-and-regression-harness.md) | V2-00 | Shared Three.js/Bevy fixtures and regression gates exist before V2 feature work expands. |
 | 2 | [V2-02 ECS Gameplay Core](./V2-02-ecs-gameplay-core.md) | V2-00, V2-01 | ECS gameplay declarations can express one moving/damaging arena entity flow. |
-| 3 | [V2-03 TypeScript Systems and Runtime Host](./V2-03-typescript-systems-and-runtime-host.md) | V2-02 | Constrained TypeScript systems run through declared schedules on web and native strategy is proven. |
+| 3 | [V2-03 TypeScript Systems and Runtime Contract](./V2-03-typescript-systems-and-runtime-host.md) | V2-02 | Constrained TypeScript systems run through declared schedules on web; native gating and the V4 host contract are documented. |
 | 4 | [V2-04 Input and Time](./V2-04-input-and-time.md) | V2-02, V2-03 | Logical input maps and timestep resources drive player movement consistently. |
 | 5 | [V2-05 R3F JSX Authoring Capture](./V2-05-r3f-jsx-authoring-capture.md) | V2-00, V2-01, V2-02 | Supported JSX scene authoring emits the same world/material/asset IR as SDK authoring. |
 | 6 | [V2-06 Asset Pipeline](./V2-06-asset-pipeline.md) | V2-01, V2-05 | Static models, textures, and audio references validate before runtime. |
@@ -70,14 +71,17 @@ author scene and gameplay with supported SDK or R3F/JSX
 
 - A developer or AI can create or modify the arena demo using documented SDK or
   supported R3F/JSX authoring.
-- The same game source validates, previews on web, and runs natively.
+- The same game source validates and previews on web.
+- Native loads the same bundle data and reports a stable diagnostic for hosted
+  scripted gameplay until V4 enables native script execution.
 - ECS-first, scene-style, and R3F/JSX authoring map to the same IR model.
 - Gameplay systems declare enough read/write intent for validation and
   scheduling.
 - Assets fail validation before runtime when paths, formats, or capabilities are
   unsupported.
 - Input, UI, audio, physics, gameplay events, and time behave consistently
-  enough across web and native runtimes for the demo to be playable.
+  enough in web preview for the demo to be playable, with native parity tracked
+  through conformance fixtures and the V4 scripting milestone.
 - UI is portable through `ui.ir.json`, not arbitrary React DOM.
 - Unsupported V2-adjacent APIs fail with explicit diagnostics.
 
@@ -92,9 +96,10 @@ pnpm check:docs:v2
 ```
 
 `pnpm verify:v2` should build the arena demo, validate every emitted IR file,
-run cross-runtime conformance checks, run web visual/gameplay smoke checks, run
-native desktop smoke checks, verify representative input/UI/audio/physics
-behavior, and save machine-readable artifacts for failures.
+run cross-runtime conformance checks for static bundle data, run web
+visual/gameplay smoke checks, run native desktop load smoke checks, verify
+representative input/UI/audio/physics behavior in the web gameplay path, and
+save machine-readable artifacts for failures.
 
 ## Checkpoint Protocol
 

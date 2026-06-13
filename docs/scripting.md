@@ -2,8 +2,14 @@
 
 TypeScript is the primary gameplay scripting language, but TypeScript scripts do
 not compile into Rust systems in V2. Rust and Bevy own the native engine. TS
-systems run as hosted scripts against a constrained ECS API and return component
-patches, events, and commands that the native runtime validates and applies.
+systems run against a constrained ECS API and return component patches, events,
+and commands that the runtime validates and applies.
+
+Web preview executes the compiled JavaScript system bundle directly. Native
+Bevy should execute the same `scripts.bundle.js` through an embedded
+QuickJS-ng-style JavaScript host for the first native scripting MVP. This keeps
+the web and native paths on the same JavaScript runtime model while Rust/Bevy
+continues to own execution authority.
 
 The core rule:
 
@@ -19,7 +25,7 @@ Use TypeScript ECS systems as the public scripting model.
 
 Do not start with:
 
-- arbitrary JavaScript running inside Bevy
+- arbitrary host APIs exposed to JavaScript inside Bevy
 - JavaScript-to-Rust transpilation
 - user-authored Bevy Rust
 - Lua/Luau as the primary gameplay language
@@ -32,17 +38,21 @@ systems.ir.json
   declares system IDs, schedules, queries, reads, writes, resources, events
 
 scripts.bundle.js
-  contains compiled TypeScript system exports
+  contains compiled TypeScript system exports for web preview and native Bevy
+
+runtime-web-three
+  runs JS systems against the portable context
 
 runtime-bevy
-  hosts JS, marshals declared ECS data, applies returned patches/commands
+  embeds QuickJS-ng, marshals declared ECS data, applies returned patches/commands
 ```
 
 V2 currently gates native TypeScript hosting behind an explicit runtime
 diagnostic while the bundle, schedule, query, patch, event, and command
-contracts are proven in web preview. Bundles with `scripts.bundle.js` fail on
-the native adapter with `TN_BEVY_SYSTEM_HOST_UNSUPPORTED`; release approval is
-required before treating that path as shippable native gameplay.
+contracts are proven in web preview. The next native proof should emit
+`scripts.bundle.js`, embed QuickJS-ng from Rust, run one movement or combat
+fixture, and compare its patches with the web JavaScript path before treating
+native gameplay scripting as shippable.
 
 ## Native Execution Loop
 
@@ -51,7 +61,7 @@ The Bevy adapter should execute TS systems like this:
 ```txt
 Bevy schedule stage starts
   -> collect matching entities/components for declared query
-  -> copy or proxy allowed component/resource data into script host
+  -> copy allowed component/resource data into QuickJS context
   -> call JS system export
   -> collect component patches, events, and command buffer
   -> validate writes against systems.ir.json declarations
@@ -90,7 +100,7 @@ export const movePlayer = defineSystem({
 Equivalent runtime effect:
 
 ```txt
-JS output:
+Script output:
   patch entity "player" Transform.position
 
 Rust/Bevy:
@@ -156,7 +166,7 @@ Validation rules:
 
 Start with a patch model, not live Bevy object proxies.
 
-Allowed data crossing into JS:
+Allowed data crossing into script hosts:
 
 - component snapshots for declared query results
 - declared resources such as `Time`, `Input`, target profile, and game state
@@ -164,7 +174,7 @@ Allowed data crossing into JS:
 - asset IDs and handles represented as stable IDs
 - event queues exposed through typed APIs
 
-Allowed data crossing back to Rust:
+Allowed data crossing back to runtimes:
 
 - component field patches
 - resource field patches for declared writable resources
@@ -213,13 +223,12 @@ JavaScript engine.
 
 Candidate order:
 
-1. Phase 0: no native script host. TS only authors static IR.
-2. Phase 1: scripts run in web runtime; native uses static IR and built-in
+1. V1/V2 foundation: no native script host. TS authors static IR and web
+   gameplay scripts.
+2. V2/V3 gate: scripts run in web runtime; native uses static IR and built-in
    fixture systems only.
-3. Phase 2: spike QuickJS-style embedding for one movement system.
-4. Phase 2: compare one alternative, likely JavaScriptCore or V8/deno_core,
-   against mobile size, startup, bindings, and performance.
-5. Phase 3+: optimize hot paths or allow engine-owned Rust systems.
+3. V4: spike QuickJS-ng-style embedding for one movement or combat system.
+4. V5+: optimize hot paths or allow engine-owned Rust systems.
 
 Evaluation criteria:
 
@@ -231,6 +240,50 @@ Evaluation criteria:
 - source maps and diagnostics
 - memory behavior under mobile constraints
 - ease of binding plain JSON-like data
+- parity between web JavaScript output and native QuickJS output for the same ECS
+  snapshots, resources, events, and input stream
+
+## QuickJS Native Backend
+
+The native backend should preserve the public TypeScript API by running the same
+compiled JavaScript system bundle used by web preview. QuickJS-ng is the first
+native-host spike candidate because it is small, embeddable, cross-platform
+focused, and keeps JavaScript semantics closer to the browser path.
+
+```txt
+User TypeScript system
+  -> TypeScript typecheck
+  -> ThreeNative portable-script diagnostics
+  -> systems.ir.json
+  -> scripts.bundle.js
+  -> browser JavaScript for web
+  -> embedded QuickJS-ng for Bevy native
+```
+
+The QuickJS host should expose only the same portable system context as the web
+runtime. It must not expose Node, DOM, filesystem, networking, timers, workers,
+Bevy entities, Bevy resources, renderer handles, platform APIs, or the QuickJS
+standard library. The native adapter should embed the core engine and register
+only ThreeNative host functions.
+
+The first spike should prove:
+
+- one movement or combat system runs from `scripts.bundle.js` in QuickJS
+- Rust can load the JS bundle and call the exported system
+- component snapshots and returned patches round-trip through the QuickJS host
+- web JS execution and native QuickJS execution produce equivalent patch logs for
+  a fixed input trace
+- diagnostics can point back to TypeScript source or to the declared system ID
+- unsupported TS/JS features fail at build time with stable diagnostics
+
+Rust should call JavaScript once per system with a batch query snapshot, not
+once per entity. Script output should be a serializable patch, event, command,
+and service-call log that Rust validates before mutation.
+
+Lua or Luau may be revisited later for mods, user-generated content, or a
+separate alternate backend if QuickJS creates a hard blocker. That future path
+would require a stricter PortableScript subset and golden patch-log parity tests
+because Lua lowering can diverge from JavaScript semantics.
 
 ## Scheduling
 
