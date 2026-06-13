@@ -1,8 +1,10 @@
 import * as THREE from "three";
 import type { IWebBundle } from "./loadBundle.js";
 import { buildInstancingPlan, type IInstancingPlan } from "./instancing.js";
+import { applyAtmosphereProfile, type IAtmosphereObservation } from "./rendering.js";
 
 export interface IEnvironmentRuntime {
+  atmosphere: IAtmosphereObservation;
   instancingPlan: IInstancingPlan;
   object: THREE.Group;
   observation: IEnvironmentObservation;
@@ -28,6 +30,7 @@ export function createEnvironmentRuntime(bundle: IWebBundle): IEnvironmentRuntim
   const instancingPlan = buildInstancingPlan(bundle.environmentScene);
   const object = new THREE.Group();
   object.name = "tn-environment";
+  const atmosphere = applyAtmosphereProfile(object as unknown as THREE.Scene, bundle.environmentScene.atmosphere);
 
   if (bundle.environmentScene.terrain !== undefined) {
     const min = bundle.environmentScene.terrain.bounds.min;
@@ -60,7 +63,7 @@ export function createEnvironmentRuntime(bundle: IWebBundle): IEnvironmentRuntim
     object.add(mesh);
   }
 
-  return { instancingPlan, object, observation: observeEnvironmentScene(bundle.environmentScene) };
+  return { atmosphere, instancingPlan, object, observation: observeEnvironmentScene(bundle.environmentScene) };
 }
 
 export function observeEnvironmentScene(scene: NonNullable<IWebBundle["environmentScene"]>): IEnvironmentObservation {

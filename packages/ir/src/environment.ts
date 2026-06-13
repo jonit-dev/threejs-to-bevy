@@ -1,5 +1,6 @@
 import type { IAssetsManifest, IEnvironmentSceneIr, Vec3 } from "./types.js";
 import type { IIrDiagnostic } from "./validate.js";
+import { validateAtmosphereProfile } from "./rendering.js";
 
 export function validateEnvironmentSceneIr(
   scene: IEnvironmentSceneIr,
@@ -55,6 +56,7 @@ export function validateEnvironmentSceneIr(
   });
 
   validateTerrainAndPath(scene, path, diagnostics);
+  diagnostics.push(...validateAtmosphereProfile(scene.atmosphere, `${path}/atmosphere`));
   validateScatter(scene, path, sourceAssetIds, diagnostics);
   (scene.bookmarks ?? []).forEach((bookmark, index) => {
     validateVec3(bookmark.position, `${path}/bookmarks/${index}/position`, diagnostics);

@@ -351,9 +351,54 @@ export interface IEnvironmentCameraBookmarkIr {
   yaw: number;
 }
 
+export interface IAtmosphereProfileIr {
+  active: boolean;
+  ambient: {
+    color: string | readonly [number, number, number];
+    intensity: number;
+    mode: "constant" | "hemisphere";
+  };
+  colorManagement: {
+    exposure: number;
+    outputColorSpace: "srgb";
+    textureColorSpace: "srgb";
+    toneMapping: "aces" | "linear" | "none";
+  };
+  fog?: {
+    color: string | readonly [number, number, number];
+    density?: number;
+    enabled: boolean;
+    far?: number;
+    mode: "exponential" | "linear";
+    near?: number;
+  };
+  id: string;
+  shadows: {
+    bias: number;
+    cascadeCount: 1 | 2 | 4;
+    enabled: boolean;
+    mapSize: 512 | 1024 | 2048;
+    maxDistance: number;
+    normalBias: number;
+    receiverPolicy: "terrain-and-path";
+  };
+  sky: {
+    color: string | readonly [number, number, number];
+    horizonColor?: string | readonly [number, number, number];
+  };
+  sun: {
+    castsShadow: boolean;
+    color: string | readonly [number, number, number];
+    direction: Vec3;
+    id: string;
+    intensity: number;
+  };
+}
+
 export interface IEnvironmentSceneIr {
   schema: EnvironmentSceneSchema;
   version: SchemaVersion;
+  atmosphere?: IAtmosphereProfileIr;
   bookmarks?: IEnvironmentCameraBookmarkIr[];
   exclusionZones?: IEnvironmentExclusionZoneIr[];
   referenceImage?: string;

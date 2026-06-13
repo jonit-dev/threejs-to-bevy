@@ -119,6 +119,7 @@ interface IBundleRoot {
 
 interface IEnvironmentDeclaration {
   assetNames: string[];
+  atmosphere?: IEnvironmentSceneIr["atmosphere"];
   bookmarks?: IEnvironmentSceneIr["bookmarks"];
   budgets?: ITargetProfile["budgets"];
   exclusionZones?: IEnvironmentSceneIr["exclusionZones"];
@@ -322,6 +323,7 @@ async function emitEnvironment(projectPath: string, declaration: IEnvironmentDec
     scene: {
       schema: "threenative.environment-scene",
       version: "0.1.0",
+      ...(declaration.atmosphere === undefined ? {} : { atmosphere: declaration.atmosphere }),
       ...(declaration.bookmarks === undefined ? {} : { bookmarks: [...declaration.bookmarks].sort((left, right) => left.id.localeCompare(right.id)) }),
       ...(declaration.exclusionZones === undefined ? {} : { exclusionZones: [...declaration.exclusionZones].sort((left, right) => left.id.localeCompare(right.id)) }),
       ...(previewAsset === undefined ? {} : { referenceImage: previewAsset.id }),

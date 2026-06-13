@@ -22,4 +22,6 @@ V3 performance verification writes metrics and raw frame samples under
 `artifacts/v3`, including `v3-performance-summary.json` and
 `v3-performance-samples.json`. Scene authoring verification also writes
 `v3-scene-report.json` with the bundle hash, environment IR path, hero/scatter
-counts, path point count, and bookmark count.
+counts, path point count, and bookmark count. Atmosphere verification writes
+`v3-atmosphere-report.json` with the active lighting, fog, sky, shadow, and
+color-management observation.

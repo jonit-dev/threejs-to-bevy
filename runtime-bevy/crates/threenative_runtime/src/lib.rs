@@ -11,6 +11,7 @@ pub mod audio;
 pub mod environment;
 pub mod input;
 pub mod physics;
+pub mod rendering;
 pub mod systems_host;
 pub mod ui;
 

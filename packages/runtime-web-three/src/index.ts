@@ -4,6 +4,7 @@ export { loadBundle, type IWebBundle } from "./loadBundle.js";
 export { createEnvironmentRuntime, observeEnvironmentScene, type IEnvironmentObservation, type IEnvironmentRuntime } from "./environment.js";
 export { buildInstancingPlan, type IInstancingGroup, type IInstancingPlan } from "./instancing.js";
 export { collectPerformanceSummary, summarizeFrameTimings, type IPerformanceMetricSummary } from "./performanceMetrics.js";
+export { applyAtmosphereProfile, observeAtmosphereProfile, type IAtmosphereObservation } from "./rendering.js";
 export { createGameLoopState, runGameFrame, setPaused, type IGameLoopState } from "./gameLoop.js";
 export { attachInputListeners, createInputState, type IWebInputState } from "./input.js";
 export { resolveWebAssets, type IResolvedWebAsset } from "./assets.js";

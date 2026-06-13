@@ -59,6 +59,47 @@ export default {
       worstFrameMs: { warn: 28, max: 36 },
       uninstancedRepeatedProps: { max: 0 },
     },
+    atmosphere: {
+      active: true,
+      id: "atmosphere.forest",
+      sun: {
+        id: "sun.forest",
+        direction: [-0.46, -0.82, -0.22],
+        color: "#ffd39a",
+        intensity: 3.2,
+        castsShadow: true,
+      },
+      ambient: {
+        mode: "constant",
+        color: "#8fb2a5",
+        intensity: 0.8,
+      },
+      fog: {
+        enabled: true,
+        mode: "exponential",
+        color: "#9eb6aa",
+        density: 0.028,
+      },
+      sky: {
+        color: "#9eb6aa",
+        horizonColor: "#d6c39d",
+      },
+      colorManagement: {
+        outputColorSpace: "srgb",
+        textureColorSpace: "srgb",
+        toneMapping: "aces",
+        exposure: 1.05,
+      },
+      shadows: {
+        enabled: true,
+        mapSize: 1024,
+        maxDistance: 45,
+        cascadeCount: 1,
+        bias: -0.0005,
+        normalBias: 0.02,
+        receiverPolicy: "terrain-and-path",
+      },
+    },
     path: {
       id: "forest.path.main",
       width: 3.2,

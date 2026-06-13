@@ -323,6 +323,7 @@ pub struct AudioMusicIr {
 pub struct EnvironmentSceneIr {
     pub schema: String,
     pub version: String,
+    pub atmosphere: Option<AtmosphereProfileIr>,
     pub terrain: Option<EnvironmentTerrainIr>,
     pub path: EnvironmentPathIr,
     #[serde(default)]
@@ -396,6 +397,74 @@ pub struct EnvironmentBookmarkIr {
     pub pitch: f32,
     #[serde(default)]
     pub expected_tags: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AtmosphereProfileIr {
+    pub id: String,
+    pub active: bool,
+    pub sun: AtmosphereSunIr,
+    pub ambient: AtmosphereAmbientIr,
+    pub fog: Option<AtmosphereFogIr>,
+    pub sky: AtmosphereSkyIr,
+    pub color_management: AtmosphereColorManagementIr,
+    pub shadows: AtmosphereShadowsIr,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AtmosphereSunIr {
+    pub id: String,
+    pub direction: [f32; 3],
+    pub color: ColorIr,
+    pub intensity: f32,
+    pub casts_shadow: bool,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct AtmosphereAmbientIr {
+    pub color: ColorIr,
+    pub intensity: f32,
+    pub mode: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct AtmosphereFogIr {
+    pub color: ColorIr,
+    pub enabled: bool,
+    pub mode: String,
+    pub density: Option<f32>,
+    pub near: Option<f32>,
+    pub far: Option<f32>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AtmosphereSkyIr {
+    pub color: ColorIr,
+    pub horizon_color: Option<ColorIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AtmosphereColorManagementIr {
+    pub exposure: f32,
+    pub output_color_space: String,
+    pub texture_color_space: String,
+    pub tone_mapping: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AtmosphereShadowsIr {
+    pub enabled: bool,
+    pub map_size: u32,
+    pub max_distance: f32,
+    pub cascade_count: u32,
+    pub bias: f32,
+    pub normal_bias: f32,
+    pub receiver_policy: String,
 }
 
 pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadError> {
