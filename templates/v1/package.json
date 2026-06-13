@@ -1,0 +1,19 @@
+{
+  "name": "threenative-v1-game",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "validate": "tn validate",
+    "build": "tn build",
+    "dev:web": "tn dev --target web",
+    "dev:desktop": "tn dev --target desktop",
+    "verify": "tn verify"
+  },
+  "dependencies": {
+    "@threenative/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@threenative/cli": "workspace:*"
+  }
+}

@@ -2,11 +2,9 @@
 
 import { fileURLToPath } from "node:url";
 
-export interface ICommandResult {
-  exitCode: number;
-  stderr?: string;
-  stdout: string;
-}
+import { createProject } from "./commands/create.js";
+import { validateProject } from "./commands/validate.js";
+import { type ICommandResult } from "./diagnostics.js";
 
 interface ICommandDefinition {
   description: string;
@@ -17,12 +15,12 @@ interface ICommandDefinition {
 const commands: Record<string, ICommandDefinition> = {
   create: {
     description: "Scaffold a V1 starter project.",
-    implemented: false,
+    implemented: true,
     usage: "tn create <name>",
   },
   validate: {
     description: "Validate a game bundle or project.",
-    implemented: false,
+    implemented: true,
     usage: "tn validate [--project <path>] [--bundle <path>] [--json]",
   },
   build: {
@@ -63,7 +61,7 @@ Global options:
 `;
 }
 
-export function dispatch(argv: readonly string[]): ICommandResult {
+export async function dispatch(argv: readonly string[]): Promise<ICommandResult> {
   const normalizedArgv = argv[0] === "--" ? argv.slice(1) : argv;
   const [commandName] = normalizedArgv;
 
@@ -84,6 +82,14 @@ export function dispatch(argv: readonly string[]): ICommandResult {
     };
   }
 
+  if (commandName === "create") {
+    return createProject(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "validate") {
+    return validateProject(normalizedArgv.slice(1));
+  }
+
   const json = normalizedArgv.includes("--json");
   const payload = {
     code: "TN_COMMAND_NOT_IMPLEMENTED",
@@ -99,8 +105,8 @@ export function dispatch(argv: readonly string[]): ICommandResult {
   };
 }
 
-export function main(argv: readonly string[] = process.argv.slice(2)): void {
-  const result = dispatch(argv);
+export async function main(argv: readonly string[] = process.argv.slice(2)): Promise<void> {
+  const result = await dispatch(argv);
 
   if (result.stdout.length > 0) {
     process.stdout.write(result.stdout);
@@ -114,5 +120,9 @@ export function main(argv: readonly string[] = process.argv.slice(2)): void {
 }
 
 if (process.argv[1] !== undefined && fileURLToPath(import.meta.url) === process.argv[1]) {
-  main();
+  void main().catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`${message}\n`);
+    process.exitCode = 1;
+  });
 }
