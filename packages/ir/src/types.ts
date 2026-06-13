@@ -374,6 +374,34 @@ export interface IFirstPersonControllerIr {
   sensitivity: number;
 }
 
+export interface IWalkabilityIr {
+  blockers: Array<{
+    collider: {
+      radius?: number;
+      size?: Vec3;
+      type: "box" | "cylinder";
+    };
+    id: string;
+    instance: string;
+  }>;
+  movementProfile: {
+    boundary: "block";
+    eyeHeight: number;
+    height: number;
+    maxSlope?: number;
+    maxStep: number;
+    radius: number;
+  };
+  regions: Array<{
+    id: string;
+    points: Array<readonly [number, number]>;
+  }>;
+  terrain: {
+    height: number;
+    surface: string;
+  };
+}
+
 export interface IAtmosphereProfileIr {
   active: boolean;
   ambient: {
@@ -431,4 +459,5 @@ export interface IEnvironmentSceneIr {
   instances: IEnvironmentInstanceIr[];
   path: IEnvironmentPathIr;
   terrain?: IEnvironmentTerrainIr;
+  walkability?: IWalkabilityIr;
 }

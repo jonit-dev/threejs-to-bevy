@@ -75,6 +75,26 @@ test("environment should reject invalid first-person pitch clamps", () => {
   assert.equal(diagnostics[0]?.code, "TN_IR_FIRST_PERSON_PITCH_CLAMP_INVALID");
 });
 
+test("walkability should reject blocking prop with missing instance reference", () => {
+  const scene = makeScene({
+    walkability: makeWalkability({ blockers: [{ collider: { radius: 1, type: "cylinder" }, id: "blocker.missing", instance: "missing" }] }),
+  });
+
+  const diagnostics = validateEnvironmentSceneIr(scene, makeAssets(), "environment.scene.json");
+
+  assert.equal(diagnostics[0]?.code, "TN_IR_WALKABILITY_BLOCKER_INSTANCE_MISSING");
+});
+
+test("walkability should reject self-intersecting walkable region", () => {
+  const scene = makeScene({
+    walkability: makeWalkability({ regions: [{ id: "region.invalid", points: [[-1, -1], [1, 1], [-1, 1], [1, -1]] }] }),
+  });
+
+  const diagnostics = validateEnvironmentSceneIr(scene, makeAssets(), "environment.scene.json");
+
+  assert.equal(diagnostics[0]?.code, "TN_IR_WALKABILITY_REGION_SELF_INTERSECTS");
+});
+
 function makeScene(overrides: Partial<IEnvironmentSceneIr> = {}): IEnvironmentSceneIr {
   return {
     schema: "threenative.environment-scene",
@@ -129,6 +149,16 @@ function makeController(overrides: Partial<IEnvironmentSceneIr["controller"]> = 
     pitch: { min: -75, max: 75 },
     pointerLock: "required",
     sensitivity: 0.0025,
+    ...overrides,
+  };
+}
+
+function makeWalkability(overrides: Partial<NonNullable<IEnvironmentSceneIr["walkability"]>> = {}): NonNullable<IEnvironmentSceneIr["walkability"]> {
+  return {
+    blockers: [{ collider: { radius: 1, type: "cylinder" }, id: "blocker.hero", instance: "hero.tree" }],
+    movementProfile: { boundary: "block", eyeHeight: 1.7, height: 1.8, maxStep: 0.35, radius: 0.35 },
+    regions: [{ id: "path.walkable", points: [[-2, -6], [2, -6], [2, 6], [-2, 6]] }],
+    terrain: { height: 0, surface: "terrain.main" },
     ...overrides,
   };
 }

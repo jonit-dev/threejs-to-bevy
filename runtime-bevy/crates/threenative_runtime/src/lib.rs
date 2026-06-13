@@ -15,6 +15,7 @@ pub mod physics;
 pub mod rendering;
 pub mod systems_host;
 pub mod ui;
+pub mod walkability;
 
 #[derive(Debug, Error)]
 pub enum RuntimeError {

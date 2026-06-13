@@ -131,6 +131,7 @@ interface IEnvironmentDeclaration {
   scatter?: IEnvironmentSceneIr["scatter"];
   sourceDir: string;
   terrain?: IEnvironmentSceneIr["terrain"];
+  walkability?: IEnvironmentSceneIr["walkability"];
 }
 
 interface IEmittedEnvironment {
@@ -334,6 +335,7 @@ async function emitEnvironment(projectPath: string, declaration: IEnvironmentDec
       instances: emitEnvironmentInstances(declaration),
       path: declaration.path,
       ...(declaration.terrain === undefined ? {} : { terrain: declaration.terrain }),
+      ...(declaration.walkability === undefined ? {} : { walkability: declaration.walkability }),
     },
   };
 }

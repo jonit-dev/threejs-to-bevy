@@ -209,6 +209,33 @@ export default {
         lookY: "LookY",
       },
     },
+    walkability: {
+      terrain: { surface: "terrain.forest.floor", height: 0 },
+      movementProfile: {
+        radius: 0.35,
+        height: 1.8,
+        eyeHeight: 1.7,
+        maxStep: 0.35,
+        boundary: "block",
+      },
+      regions: [
+        {
+          id: "forest.path.walkable",
+          points: [
+            [-2.4, 8.8],
+            [1.7, 8.4],
+            [1.7, -9.7],
+            [-2.2, -9.6],
+          ],
+        },
+      ],
+      blockers: [
+        { id: "blocker.tree.left.foreground", instance: "tree.left.foreground", collider: { type: "cylinder", radius: 0.7 } },
+        { id: "blocker.tree.right.foreground", instance: "tree.right.foreground", collider: { type: "cylinder", radius: 0.7 } },
+        { id: "blocker.rock.left.foreground", instance: "rock.left.foreground", collider: { type: "cylinder", radius: 0.6 } },
+        { id: "blocker.rock.right.mid", instance: "rock.right.mid", collider: { type: "cylinder", radius: 0.5 } },
+      ],
+    },
     instances: [
       { id: "tree.left.foreground", kind: "hero", sourceAsset: "env.CommonTree_1", position: [-3.8, 0, 3.2], scale: [1.4, 1.4, 1.4], tags: ["tree", "foreground"], collisionMode: "blocking", scatterExclusionRadius: 1.6 },
       { id: "tree.right.foreground", kind: "hero", sourceAsset: "env.CommonTree_3", position: [4.1, 0, 2.4], scale: [1.25, 1.25, 1.25], tags: ["tree", "foreground"], collisionMode: "blocking", scatterExclusionRadius: 1.4 },

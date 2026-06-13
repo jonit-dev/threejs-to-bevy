@@ -311,6 +311,7 @@ test("environment should emit deterministic terrain path and scatter instances",
     assert.equal(environment.terrain.id, "terrain.forest");
     assert.equal(environment.atmosphere.id, "atmosphere.forest");
     assert.equal(environment.controller.camera, "camera.firstPerson");
+    assert.equal(environment.walkability.blockers[0].instance, "tree.hero");
     assert.equal(environment.instances.filter((instance: { kind: string }) => instance.kind === "scatter").length, 4);
     assert.deepEqual(
       environment.instances.map((instance: { id: string }) => instance.id),
@@ -422,6 +423,12 @@ function makeEnvironmentDeclaration(overrides: Record<string, unknown> = {}): Re
       sensitivity: 0.0025,
     },
     terrain: { bounds: { min: [-8, 0, -8], max: [8, 0, 8] }, heightMode: "flat", id: "terrain.forest" },
+    walkability: {
+      blockers: [{ collider: { radius: 1, type: "cylinder" }, id: "blocker.tree", instance: "tree.hero" }],
+      movementProfile: { boundary: "block", eyeHeight: 1.7, height: 1.8, maxStep: 0.35, radius: 0.35 },
+      regions: [{ id: "path.walkable", points: [[-2, -6], [2, -6], [2, 6], [-2, 6]] }],
+      terrain: { height: 0, surface: "terrain.forest" },
+    },
     path: {
       clearingRadius: 1.5,
       edgeFalloff: 0.4,

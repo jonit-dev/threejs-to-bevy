@@ -60,6 +60,7 @@ export function validateEnvironmentSceneIr(
   validateTerrainAndPath(scene, path, diagnostics);
   diagnostics.push(...validateAtmosphereProfile(scene.atmosphere, `${path}/atmosphere`));
   validateFirstPersonController(scene, input, path, diagnostics);
+  validateWalkability(scene, path, diagnostics);
   validateScatter(scene, path, sourceAssetIds, diagnostics);
   (scene.bookmarks ?? []).forEach((bookmark, index) => {
     validateVec3(bookmark.position, `${path}/bookmarks/${index}/position`, diagnostics);
@@ -68,6 +69,42 @@ export function validateEnvironmentSceneIr(
   });
 
   return diagnostics;
+}
+
+function validateWalkability(scene: IEnvironmentSceneIr, path: string, diagnostics: IIrDiagnostic[]): void {
+  const walkability = scene.walkability;
+  if (walkability === undefined) {
+    return;
+  }
+  validatePositiveFinite(walkability.movementProfile.radius, `${path}/walkability/movementProfile/radius`, "TN_IR_WALKABILITY_RADIUS_INVALID", diagnostics);
+  validatePositiveFinite(walkability.movementProfile.height, `${path}/walkability/movementProfile/height`, "TN_IR_WALKABILITY_HEIGHT_INVALID", diagnostics);
+  validatePositiveFinite(walkability.movementProfile.eyeHeight, `${path}/walkability/movementProfile/eyeHeight`, "TN_IR_WALKABILITY_EYE_HEIGHT_INVALID", diagnostics);
+  const instanceIds = new Set(scene.instances.map((instance) => instance.id));
+  walkability.blockers.forEach((blocker, index) => {
+    if (!instanceIds.has(blocker.instance)) {
+      diagnostics.push({
+        code: "TN_IR_WALKABILITY_BLOCKER_INSTANCE_MISSING",
+        message: `Walkability blocker '${blocker.id}' references missing instance '${blocker.instance}'.`,
+        path: `${path}/walkability/blockers/${index}/instance`,
+      });
+    }
+  });
+  walkability.regions.forEach((region, index) => {
+    if (region.points.length < 3) {
+      diagnostics.push({
+        code: "TN_IR_WALKABILITY_REGION_TOO_SMALL",
+        message: `Walkable region '${region.id}' must include at least three points.`,
+        path: `${path}/walkability/regions/${index}/points`,
+      });
+    }
+    if (polygonSelfIntersects(region.points)) {
+      diagnostics.push({
+        code: "TN_IR_WALKABILITY_REGION_SELF_INTERSECTS",
+        message: `Walkable region '${region.id}' must not self-intersect.`,
+        path: `${path}/walkability/regions/${index}/points`,
+      });
+    }
+  });
 }
 
 function validateFirstPersonController(
@@ -268,4 +305,40 @@ function boundsAreOrdered(min: Vec3, max: Vec3): boolean {
 
 function pointInsideBounds(point: Vec3, min: Vec3, max: Vec3): boolean {
   return point[0] >= min[0] && point[0] <= max[0] && point[2] >= min[2] && point[2] <= max[2];
+}
+
+function polygonSelfIntersects(points: ReadonlyArray<readonly [number, number]>): boolean {
+  for (let left = 0; left < points.length; left += 1) {
+    const a = points[left];
+    const b = points[(left + 1) % points.length];
+    if (a === undefined || b === undefined) {
+      continue;
+    }
+    for (let right = left + 1; right < points.length; right += 1) {
+      if (Math.abs(left - right) <= 1 || (left === 0 && right === points.length - 1)) {
+        continue;
+      }
+      const c = points[right];
+      const d = points[(right + 1) % points.length];
+      if (c !== undefined && d !== undefined && segmentsIntersect(a, b, c, d)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function segmentsIntersect(
+  a: readonly [number, number],
+  b: readonly [number, number],
+  c: readonly [number, number],
+  d: readonly [number, number],
+): boolean {
+  const det = (b[0] - a[0]) * (d[1] - c[1]) - (b[1] - a[1]) * (d[0] - c[0]);
+  if (det === 0) {
+    return false;
+  }
+  const lambda = ((d[1] - c[1]) * (d[0] - a[0]) + (c[0] - d[0]) * (d[1] - a[1])) / det;
+  const gamma = ((a[1] - b[1]) * (d[0] - a[0]) + (b[0] - a[0]) * (d[1] - a[1])) / det;
+  return lambda > 0 && lambda < 1 && gamma > 0 && gamma < 1;
 }

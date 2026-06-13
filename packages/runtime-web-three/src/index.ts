@@ -11,6 +11,7 @@ export { createFirstPersonState, updateFirstPersonController, type IFirstPersonC
 export { resolveWebAssets, type IResolvedWebAsset } from "./assets.js";
 export { mapWorld, syncTransforms, type IRuntimeDiagnostic, type IThreeWorld } from "./mapWorld.js";
 export { stepPhysics, type IPhysicsEventPayload } from "./physics.js";
+export { resolveWalkableMovement, type IWalkabilityResolution } from "./walkability.js";
 export { renderUi, type IRenderedUi, type IRenderedUiNode } from "./ui/renderUi.js";
 export { renderBundle, type IRenderResult } from "./render.js";
 export { createSystemContext, applyCommands, type ISystemContext } from "./systems/context.js";

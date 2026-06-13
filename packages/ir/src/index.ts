@@ -30,6 +30,7 @@ export type {
   IEnvironmentSourceAssetIr,
   IEnvironmentTerrainIr,
   IFirstPersonControllerIr,
+  IWalkabilityIr,
   IIrNamedSchema,
   IIrSchemaField,
   IIrSchemaFile,
