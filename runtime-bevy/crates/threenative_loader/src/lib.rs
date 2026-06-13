@@ -193,9 +193,16 @@ pub struct AssetIr {
     pub id: String,
     pub kind: String,
     pub format: String,
+    pub bounds: Option<AssetBoundsIr>,
     pub primitive: Option<String>,
     pub path: Option<String>,
     pub size: Option<Vec<f32>>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AssetBoundsIr {
+    pub min: [f32; 3],
+    pub max: [f32; 3],
 }
 
 #[derive(Debug, Deserialize)]
@@ -421,6 +428,7 @@ pub struct EnvironmentInstanceIr {
     pub id: String,
     pub source_asset: String,
     pub position: [f32; 3],
+    pub rotation: Option<[f32; 4]>,
     pub scale: Option<[f32; 3]>,
     pub kind: Option<String>,
     #[serde(default)]

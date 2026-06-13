@@ -3,6 +3,11 @@ import {
   DirectionalLight,
   PerspectiveCamera,
   Scene,
+  action,
+  axis,
+  defineInputMap,
+  keyboard,
+  pointerAxis,
 } from "@threenative/sdk";
 
 const scene = new Scene({ id: "v3.environment.scene" });
@@ -23,7 +28,22 @@ scene.add(new AmbientLight({ color: "#8fb2a5", id: "light.ambient", intensity: 0
 scene.add(sun);
 scene.setActiveCamera(camera);
 
+const input = defineInputMap({
+  actions: [
+    action("MoveBackward", [keyboard("KeyS")]),
+    action("MoveForward", [keyboard("KeyW")]),
+    action("MoveLeft", [keyboard("KeyA")]),
+    action("MoveRight", [keyboard("KeyD")]),
+    action("Sprint", [keyboard("ShiftLeft")]),
+  ],
+  axes: [
+    axis("LookX", { value: pointerAxis("deltaX") }),
+    axis("LookY", { value: pointerAxis("deltaY") }),
+  ],
+});
+
 export default {
+  input,
   scene,
   environment: {
     sourceDir: "assets-source/environment/glTF",

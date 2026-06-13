@@ -10,7 +10,7 @@ use bevy::{
     },
 };
 use threenative_components::ThreeNativeId;
-use threenative_loader::LoadedBundle;
+use threenative_loader::{AssetIr, LoadedBundle};
 
 #[derive(Debug, PartialEq)]
 pub struct EnvironmentObservation {
@@ -92,7 +92,7 @@ pub fn map_environment_into_world(world: &mut World, bundle: &LoadedBundle) {
     let asset_server = world.get_resource::<AssetServer>().cloned();
 
     if let Some(terrain) = scene.terrain.as_ref() {
-        let material = material(world, Color::srgb(1.0, 1.0, 0.70));
+        let material = material(world, Color::WHITE);
         spawn_pbr(
             world,
             &format!("terrain:{}", terrain.id),
@@ -120,25 +120,30 @@ pub fn map_environment_into_world(world: &mut World, bundle: &LoadedBundle) {
             .unwrap_or("vegetation");
         let position = instance.position;
         let scale = instance.scale.unwrap_or([1.0, 1.0, 1.0]);
-        let y = terrain_height_at(bundle, position[0], position[2]);
+        let y = position[1] + terrain_height_at(bundle, position[0], position[2]);
         let mut transform = Transform::from_xyz(position[0], y, position[2]);
+        if let Some(rotation) = instance.rotation {
+            transform.rotation =
+                Quat::from_xyzw(rotation[0], rotation[1], rotation[2], rotation[3]);
+        }
         transform.scale = Vec3::new(scale[0], scale[1], scale[2]);
 
-        if let (Some(asset_server), Some((asset_id, _category))) =
+        if let (Some(asset_server), Some((asset_id, category))) =
             (asset_server.as_ref(), source_asset)
         {
-            if let Some(model_path) = assets.get(asset_id).and_then(|asset| {
+            if let Some(asset) = assets.get(asset_id).filter(|asset| {
                 if asset.kind == "model" && matches!(asset.format.as_str(), "gltf" | "glb") {
-                    asset.path.as_ref()
+                    asset.path.is_some()
                 } else {
-                    None
+                    false
                 }
             }) {
+                apply_gltf_normalization(&mut transform, category, asset);
                 spawn_gltf_scene(
                     world,
                     asset_server,
                     &format!("environment:{}", instance.id),
-                    model_path,
+                    asset.path.as_deref().unwrap_or_default(),
                     transform,
                 );
                 continue;
@@ -254,7 +259,7 @@ fn material(world: &mut World, color: Color) -> Handle<StandardMaterial> {
         .add(StandardMaterial {
             base_color: color,
             perceptual_roughness: 0.95,
-            unlit: true,
+            unlit: false,
             ..Default::default()
         })
 }
@@ -292,7 +297,13 @@ fn terrain_mesh(bundle: &LoadedBundle) -> Mesh {
             positions.push([x, y, z]);
             normals.push([0.0, 1.0, 0.0]);
             uvs.push([x_t, z_t]);
-            colors.push(terrain_vertex_color(x, y, z, min[1], max_terrain_height(bundle)));
+            colors.push(terrain_vertex_color(
+                x,
+                y,
+                z,
+                min[1],
+                max_terrain_height(bundle),
+            ));
         }
     }
 
@@ -402,9 +413,9 @@ fn terrain_vertex_color(x: f32, y: f32, z: f32, min_y: f32, max_y: f32) -> [f32;
     let noise = (x.mul_add(1.7, z * 0.9).sin() + 1.0) * 0.04;
     let t = height + noise;
     if t < 0.5 {
-        lerp_color([0.26, 0.34, 0.24], [0.39, 0.44, 0.25], t * 2.0)
+        lerp_color([0.20, 0.34, 0.17], [0.34, 0.48, 0.20], t * 2.0)
     } else {
-        lerp_color([0.39, 0.44, 0.25], [0.50, 0.53, 0.31], (t - 0.5) * 2.0)
+        lerp_color([0.34, 0.48, 0.20], [0.42, 0.55, 0.26], (t - 0.5) * 2.0)
     }
 }
 
@@ -444,7 +455,11 @@ fn terrain_height_at(bundle: &LoadedBundle, x: f32, z: f32) -> f32 {
     }
 }
 
-fn terrain_detail_height(terrain: &threenative_loader::EnvironmentTerrainIr, x: f32, z: f32) -> f32 {
+fn terrain_detail_height(
+    terrain: &threenative_loader::EnvironmentTerrainIr,
+    x: f32,
+    z: f32,
+) -> f32 {
     let width = (terrain.bounds.max[0] - terrain.bounds.min[0]).max(0.001);
     let depth = (terrain.bounds.max[2] - terrain.bounds.min[2]).max(0.001);
     let scale = width.min(depth);
@@ -467,12 +482,50 @@ fn size_for_category(category: &str) -> [f32; 3] {
     }
 }
 
+fn apply_gltf_normalization(transform: &mut Transform, category: &str, asset: &AssetIr) {
+    let Some(bounds) = asset.bounds.as_ref() else {
+        return;
+    };
+    let size = Vec3::new(
+        bounds.max[0] - bounds.min[0],
+        bounds.max[1] - bounds.min[1],
+        bounds.max[2] - bounds.min[2],
+    );
+    let raw_max_axis = size.x.max(size.y).max(size.z);
+    if raw_max_axis <= f32::EPSILON {
+        return;
+    }
+    let normalization = gltf_target_size_for_category(category) / raw_max_axis;
+    let offset = Vec3::new(
+        -((bounds.min[0] + bounds.max[0]) * normalization) / 2.0,
+        -(bounds.min[1] * normalization),
+        -((bounds.min[2] + bounds.max[2]) * normalization) / 2.0,
+    );
+    let instance_scale = transform.scale;
+    transform.translation += transform.rotation * (offset * instance_scale);
+    transform.scale = instance_scale * normalization;
+}
+
+fn gltf_target_size_for_category(category: &str) -> f32 {
+    match category {
+        "tree" => 4.2,
+        "terrain" => 1.0,
+        "rock" => 0.9,
+        "vegetation" => 1.2,
+        "grass" => 1.0,
+        "flower" => 0.3,
+        "mushroom" => 0.36,
+        "pebble" => 0.35,
+        _ => 1.0,
+    }
+}
+
 fn color_for_category(category: &str) -> Color {
     match category {
-        "tree" => Color::srgb(0.25, 0.45, 0.16),
+        "tree" => Color::srgb(0.22, 0.43, 0.14),
         "rock" => Color::srgb(0.42, 0.45, 0.34),
         "pebble" => Color::srgb(0.62, 0.58, 0.50),
-        "grass" => Color::srgb(0.54, 0.72, 0.18),
+        "grass" => Color::srgb(0.24, 0.58, 0.14),
         "flower" => Color::srgb(0.83, 0.10, 0.18),
         "mushroom" => Color::srgb(0.86, 0.75, 0.58),
         _ => Color::srgb(0.28, 0.55, 0.25),

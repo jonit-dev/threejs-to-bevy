@@ -132,6 +132,18 @@ fn control_point_terrain_should_spawn_non_flat_mesh() {
         max_y - min_y > 0.01,
         "control-point terrain should have visible height variation, min={min_y}, max={max_y}"
     );
+    let terrain_material_handle = app
+        .world_mut()
+        .query::<(&ThreeNativeId, &Handle<StandardMaterial>)>()
+        .iter(app.world())
+        .find_map(|(id, handle)| (id.0 == "terrain:terrain.forest").then_some(handle.clone()))
+        .expect("terrain material handle should exist");
+    let materials = app.world().resource::<Assets<StandardMaterial>>();
+    let terrain_material = materials
+        .get(&terrain_material_handle)
+        .expect("terrain material asset should exist");
+    assert_eq!(terrain_material.base_color, Color::WHITE);
+    assert!(!terrain_material.unlit);
 
     fs::remove_dir_all(root).expect("temp bundle should be removed");
 }
@@ -160,7 +172,11 @@ fn path_should_spawn_surface_ribbon_mesh() {
         other => panic!("expected path position attribute, got {other:?}"),
     };
 
-    assert_eq!(positions.len(), 4, "two-point path should be a surface ribbon, not a cuboid");
+    assert_eq!(
+        positions.len(),
+        4,
+        "two-point path should be a surface ribbon, not a cuboid"
+    );
     assert!(
         (positions[0][1] - positions[1][1]).abs() < f32::EPSILON
             && (positions[2][1] - positions[3][1]).abs() < f32::EPSILON,
@@ -215,6 +231,72 @@ fn app_from_bundle_should_spawn_environment_gltf_scenes_when_asset_server_is_ava
     assert_eq!(
         placeholder_count, 0,
         "GLTF-backed environment instances should not also spawn cuboid placeholders"
+    );
+
+    fs::remove_dir_all(root).expect("temp bundle should be removed");
+}
+
+#[test]
+fn gltf_environment_instances_should_match_web_category_scale() {
+    let root = temp_bundle_dir();
+    write_v3_bundle_with_rock_and_pebble_assets(&root);
+
+    let bundle = load_bundle(&root).expect("v3 environment bundle should load");
+    let mut app = App::new();
+    app.add_plugins((
+        MinimalPlugins,
+        AssetPlugin {
+            file_path: root.display().to_string(),
+            ..Default::default()
+        },
+        ScenePlugin,
+        GltfPlugin::default(),
+    ));
+    app.finish();
+    app.cleanup();
+    map_environment_into_world(app.world_mut(), &bundle);
+    let scene_roots = app
+        .world_mut()
+        .query::<(&ThreeNativeId, &Handle<Scene>, &Transform)>()
+        .iter(app.world())
+        .map(|(id, _scene, transform)| (id.0.clone(), transform.translation, transform.scale))
+        .collect::<Vec<_>>();
+
+    let rock = scene_roots
+        .iter()
+        .find(|(id, _translation, _scale)| id == "environment:rock.hero")
+        .expect("rock scene should be spawned");
+    let rock_normalization = 0.9 / 3.225_148_4;
+    assert!(
+        (rock.2.x - rock_normalization).abs() < 0.001,
+        "rock scale should be category-normalized, got {rock:?}"
+    );
+    assert!(
+        (rock.1.y - (0.25 + 0.271_131_34 * rock_normalization)).abs() < 0.001,
+        "authored instance y offset and normalized base lift should be preserved, got {rock:?}"
+    );
+
+    let pebble = scene_roots
+        .iter()
+        .find(|(id, _translation, _scale)| id == "environment:pebble.hero")
+        .expect("pebble scene should be spawned");
+    assert!(
+        (pebble.2.x - 0.35 / 0.500_038_74).abs() < 0.001,
+        "pebble scale should be category-normalized, got {pebble:?}"
+    );
+
+    let tree = scene_roots
+        .iter()
+        .find(|(id, _translation, _scale)| id == "environment:tree.hero")
+        .expect("tree scene should be spawned");
+    let tree_normalization = 4.2 / 7.264_785;
+    assert!(
+        (tree.2.x - tree_normalization).abs() < 0.001,
+        "tree scale should use the same category normalization as web, got {tree:?}"
+    );
+    assert!(
+        (tree.1.y - 0.242_772 * tree_normalization).abs() < 0.001,
+        "tree scene should be lifted to the terrain base after normalization, got {tree:?}"
     );
 
     fs::remove_dir_all(root).expect("temp bundle should be removed");
@@ -297,6 +379,91 @@ fn write_v3_bundle_with_model_asset(root: &Path) {
           "path": { "id": "path.main", "points": [[0, 0, 3], [0, 0, -3]], "width": 2 },
           "sourceAssets": [{ "id": "env.Tree", "asset": "model.env.Tree", "category": "tree" }],
           "instances": [{ "id": "tree.hero", "sourceAsset": "env.Tree", "position": [2, 0, 0], "scale": [1.2, 1.2, 1.2], "kind": "hero", "tags": ["tree"] }],
+          "bookmarks": [{ "id": "bookmark.entry", "position": [0, 1.7, 4], "yaw": 180, "pitch": -5, "expectedTags": [] }]
+        }"#,
+    );
+}
+
+fn write_v3_bundle_with_rock_and_pebble_assets(root: &Path) {
+    write_json(
+        root,
+        "manifest.json",
+        r#"{
+          "schema": "threenative.bundle",
+          "version": "0.1.0",
+          "name": "v3-environment",
+          "entry": { "world": "world.ir.json", "environmentScene": "environment.scene.json" },
+          "files": {
+            "assets": "assets.manifest.json",
+            "materials": "materials.ir.json",
+            "targetProfile": "target.profile.json"
+          }
+        }"#,
+    );
+    write_json(
+        root,
+        "world.ir.json",
+        r#"{ "schema": "threenative.world", "version": "0.1.0", "entities": [] }"#,
+    );
+    write_json(
+        root,
+        "assets.manifest.json",
+        r#"{
+          "schema": "threenative.assets",
+          "version": "0.1.0",
+          "assets": [
+            {
+              "id": "model.env.CommonTree_1",
+              "kind": "model",
+              "format": "gltf",
+              "path": "assets/environment/CommonTree_1.gltf",
+              "bounds": { "min": [-2.1944587, -0.242772, -2.224519], "max": [2.116964, 7.022013, 2.353195] }
+            },
+            {
+              "id": "model.env.Rock_Medium_1",
+              "kind": "model",
+              "format": "gltf",
+              "path": "assets/environment/Rock_Medium_1.gltf",
+              "bounds": { "min": [-1.7272873, -0.27113134, -1.1498833], "max": [1.4978611, 1.9886652, 1.8392532] }
+            },
+            {
+              "id": "model.env.Pebble_Round_1",
+              "kind": "model",
+              "format": "gltf",
+              "path": "assets/environment/Pebble_Round_1.gltf",
+              "bounds": { "min": [-0.21980906, -0.0077979714, -0.15961269], "max": [0.2802297, 0.08767858, 0.20741016] }
+            }
+          ]
+        }"#,
+    );
+    write_json(
+        root,
+        "materials.ir.json",
+        r#"{ "schema": "threenative.materials", "version": "0.1.0", "materials": [] }"#,
+    );
+    write_json(
+        root,
+        "target.profile.json",
+        r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["desktop"] }"#,
+    );
+    write_json(
+        root,
+        "environment.scene.json",
+        r#"{
+          "schema": "threenative.environment-scene",
+          "version": "0.1.0",
+          "terrain": { "id": "terrain.forest", "heightMode": "flat", "bounds": { "min": [-5, 0, -5], "max": [5, 0, 5] } },
+          "path": { "id": "path.main", "points": [[0, 0, 3], [0, 0, -3]], "width": 2 },
+          "sourceAssets": [
+            { "id": "env.CommonTree_1", "asset": "model.env.CommonTree_1", "category": "tree" },
+            { "id": "env.Rock_Medium_1", "asset": "model.env.Rock_Medium_1", "category": "rock" },
+            { "id": "env.Pebble_Round_1", "asset": "model.env.Pebble_Round_1", "category": "pebble" }
+          ],
+          "instances": [
+            { "id": "tree.hero", "sourceAsset": "env.CommonTree_1", "position": [0, 0, 0], "scale": [1, 1, 1], "kind": "hero", "tags": ["tree"] },
+            { "id": "rock.hero", "sourceAsset": "env.Rock_Medium_1", "position": [1, 0.25, 0], "scale": [1, 1, 1], "kind": "hero", "tags": ["rock"] },
+            { "id": "pebble.hero", "sourceAsset": "env.Pebble_Round_1", "position": [2, 0, 0], "scale": [1, 1, 1], "kind": "hero", "tags": ["pebble"] }
+          ],
           "bookmarks": [{ "id": "bookmark.entry", "position": [0, 1.7, 4], "yaw": 180, "pitch": -5, "expectedTags": [] }]
         }"#,
     );

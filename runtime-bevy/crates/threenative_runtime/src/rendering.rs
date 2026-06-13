@@ -1,4 +1,8 @@
-use bevy::{prelude::*, render::alpha::AlphaMode};
+use bevy::{
+    pbr::{CascadeShadowConfigBuilder, DirectionalLightShadowMap},
+    prelude::*,
+    render::alpha::AlphaMode,
+};
 use threenative_loader::{ColorIr, LoadedBundle};
 
 #[derive(Debug, PartialEq)]
@@ -66,14 +70,27 @@ pub fn apply_atmosphere_to_world(world: &mut World, bundle: &LoadedBundle) {
         color: color_to_bevy(&profile.ambient.color),
         brightness: profile.ambient.intensity,
     });
+    world.insert_resource(DirectionalLightShadowMap {
+        size: profile.shadows.map_size as usize,
+    });
     world
         .spawn(DirectionalLightBundle {
             directional_light: DirectionalLight {
-                color: color_to_bevy(&profile.sun.color),
-                illuminance: profile.sun.intensity * 800.0,
-                shadows_enabled: false,
+                color: Color::WHITE,
+                illuminance: profile.sun.intensity * 350.0,
+                shadows_enabled: profile.sun.casts_shadow && profile.shadows.enabled,
+                shadow_depth_bias: profile.shadows.bias.abs().max(0.005),
+                shadow_normal_bias: profile.shadows.normal_bias.max(0.02),
                 ..Default::default()
             },
+            cascade_shadow_config: CascadeShadowConfigBuilder {
+                num_cascades: profile.shadows.cascade_count.max(1) as usize,
+                minimum_distance: 0.05,
+                first_cascade_far_bound: profile.shadows.max_distance.min(12.0).max(1.0),
+                maximum_distance: profile.shadows.max_distance,
+                ..Default::default()
+            }
+            .into(),
             transform: Transform::default().looking_to(
                 Vec3::new(
                     profile.sun.direction[0],
@@ -97,6 +114,7 @@ pub fn normalize_textured_material(material: &mut StandardMaterial) -> bool {
     if material.base_color_texture.is_none() {
         return false;
     }
+    material.base_color = Color::WHITE;
     material.alpha_mode = AlphaMode::Mask(0.2);
     material.double_sided = false;
     material.cull_mode = None;

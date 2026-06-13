@@ -120,6 +120,36 @@ test("should emit ecs schema files for world root", async () => {
   }
 });
 
+test("should emit root input map for scene bundle", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-root-input-"));
+  try {
+    const scene = makeScene();
+    const config = {
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project" as const,
+      version: "0.1.0" as const,
+    };
+
+    const bundlePath = await emitBundle(config, {
+      input: defineInputMap({
+        actions: [action("MoveForward", [keyboard("KeyW")])],
+        axes: [axis("LookX", { value: { axis: "deltaX", device: "pointer" } })],
+      }),
+      scene,
+    });
+    const manifest = JSON.parse(await readFile(join(bundlePath, "manifest.json"), "utf8"));
+    const input = JSON.parse(await readFile(join(bundlePath, "input.ir.json"), "utf8"));
+
+    assert.equal(manifest.files.input, "input.ir.json");
+    assert.deepEqual(input.actions, [{ bindings: [{ code: "KeyW", device: "keyboard" }], id: "MoveForward" }]);
+    assert.deepEqual(input.axes, [{ id: "LookX", negative: [], positive: [], value: { axis: "deltaX", device: "pointer" } }]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should emit ecs schemas for query-only system", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-emit-ecs-query-"));
   try {
@@ -199,9 +229,11 @@ test("should emit sandboxed v3 environment bundle assets", async () => {
     await writeFile(
       join(root, "assets-source/environment/glTF/Tree_1.gltf"),
       JSON.stringify({
+        accessors: [{ max: [1, 3, 1], min: [-1, 0, -1] }],
         asset: { version: "2.0" },
         buffers: [{ uri: "Tree_1.bin" }],
         images: [{ uri: "Tree_Bark.png" }],
+        meshes: [{ primitives: [{ attributes: { POSITION: 0 } }] }],
       }),
     );
     await writeFile(join(root, "assets-source/environment/glTF/Tree_1.bin"), "tree-binary");
@@ -223,7 +255,7 @@ test("should emit sandboxed v3 environment bundle assets", async () => {
           previewImage: "assets-source/environment/Preview_2.jpg",
           assetNames: ["Tree_1.gltf"],
           budgets: {
-            maxAssetBytes: 100,
+            maxAssetBytes: 300,
             maxBundleBytes: 1000,
             supportedModelFormats: ["gltf"],
             supportedTextureFormats: ["jpeg", "png"],
@@ -264,6 +296,10 @@ test("should emit sandboxed v3 environment bundle assets", async () => {
     );
     assert.equal(environment.referenceImage, "tex.env.reference.Preview_2");
     assert.equal(environment.sourceAssets[0].asset, "model.env.Tree_1");
+    assert.deepEqual(
+      assets.assets.find((asset: { id: string }) => asset.id === "model.env.Tree_1")?.bounds,
+      { max: [1, 3, 1], min: [-1, 0, -1] },
+    );
     assert.equal(await readFile(join(bundlePath, "assets/environment/Tree_1.bin"), "utf8"), "tree-binary");
     assert.equal(result.ok, true);
   } finally {
@@ -387,7 +423,15 @@ function makeScene(): Scene {
 
 async function writeEnvironmentAsset(root: string, name: string): Promise<void> {
   await mkdir(join(root, "assets-source/environment/glTF"), { recursive: true });
-  await writeFile(join(root, `assets-source/environment/glTF/${name}`), JSON.stringify({ asset: { version: "2.0" } }));
+  await writeFile(
+    join(root, `assets-source/environment/glTF/${name}`),
+    JSON.stringify({
+      accessors: [{ max: [1, 3, 1], min: [-1, 0, -1] }],
+      asset: { version: "2.0" },
+      buffers: [{ uri: name.replace(/\.gltf$/, ".bin") }],
+      meshes: [{ primitives: [{ attributes: { POSITION: 0 } }] }],
+    }),
+  );
   await writeFile(join(root, `assets-source/environment/glTF/${name.replace(/\.gltf$/, ".bin")}`), "asset");
 }
 

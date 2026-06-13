@@ -1,12 +1,13 @@
 import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
 import { type IBundleManifest, type IEnvironmentSceneIr, type ITargetProfile, type IWorldIr } from "@threenative/ir";
-import { type IAssetReference, type IAudioDeclaration, type World } from "@threenative/sdk";
+import { type IAssetReference, type IAudioDeclaration, type IInputMapDeclaration, type World } from "@threenative/sdk";
 import { type IUiElement } from "@threenative/ui";
 
 import { type IProjectConfig } from "../config.js";
 import { emitAudio } from "./audio.js";
 import { ecsToIr } from "./ecs.js";
+import { inputToIr } from "./input.js";
 import { sceneToWorld } from "./scene-to-world.js";
 import { stableJson } from "./stable-json.js";
 import { emitUi } from "./ui.js";
@@ -20,6 +21,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
   const sceneRoot = isWorld ? undefined : bundleRoot.scene;
   const emitted = sceneRoot === undefined ? undefined : sceneToWorld(sceneRoot as Parameters<typeof sceneToWorld>[0]);
   const ecs = worldRoot === undefined ? undefined : ecsToIr(worldRoot as Parameters<typeof ecsToIr>[0]);
+  const input = bundleRoot.input === undefined ? ecs?.input : inputToIr(bundleRoot.input);
   const audio = bundleRoot.audio === undefined ? undefined : emitAudio(bundleRoot.audio);
   const environment = bundleRoot.environment === undefined ? undefined : await emitEnvironment(config.projectPath, bundleRoot.environment);
   const assets = mergeEnvironmentAssets(mergeAudioAssets(emitted?.assets ?? [], bundleRoot.audio), environment?.assets ?? []);
@@ -41,7 +43,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
     },
     files: {
       assets: "assets.manifest.json",
-      ...(ecs?.input === undefined ? {} : { input: "input.ir.json" }),
+      ...(input === undefined ? {} : { input: "input.ir.json" }),
       materials: "materials.ir.json",
       targetProfile: "target.profile.json",
       ...(ecs === undefined
@@ -90,14 +92,14 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
   if (audio !== undefined) {
     await writeFile(resolve(outDir, "audio.ir.json"), stableJson(audio));
   }
+  if (input !== undefined) {
+    await writeFile(resolve(outDir, "input.ir.json"), stableJson(input));
+  }
   if (ecs !== undefined) {
     await writeFile(resolve(outDir, "schemas/components.schema.json"), stableJson(ecs.componentSchemas));
     await writeFile(resolve(outDir, "schemas/resources.schema.json"), stableJson(ecs.resourceSchemas));
     await writeFile(resolve(outDir, "schemas/events.schema.json"), stableJson(ecs.eventSchemas));
     await writeFile(resolve(outDir, "systems.ir.json"), stableJson(ecs.systems));
-    if (ecs.input !== undefined) {
-      await writeFile(resolve(outDir, "input.ir.json"), stableJson(ecs.input));
-    }
     if (ecs.runtimeConfig !== undefined) {
       await writeFile(resolve(outDir, "runtime.config.json"), stableJson(ecs.runtimeConfig));
     }
@@ -112,6 +114,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
 interface IBundleRoot {
   audio?: IAudioDeclaration;
   environment?: IEnvironmentDeclaration;
+  input?: IInputMapDeclaration;
   scene: unknown;
   ui?: IUiElement;
   world?: World;
@@ -267,7 +270,9 @@ async function emitEnvironment(projectPath: string, declaration: IEnvironmentDec
       throw new Error(`Environment asset '${assetName}' must be a glTF or GLB model.`);
     }
     const id = `env.${assetName.slice(0, -(extension.length + 1))}`;
+    const bounds = extension === "gltf" ? await readGltfBounds(sourceDir, assetName) : undefined;
     assets.push({
+      ...(bounds === undefined ? {} : { bounds }),
       format: extension,
       id: `model.${id}`,
       kind: "model",
@@ -471,6 +476,32 @@ async function readGltfDependencies(sourceDir: string, assetName: string): Promi
     dependencies.add(binName);
   }
   return [...dependencies].sort((left, right) => left.localeCompare(right));
+}
+
+async function readGltfBounds(sourceDir: string, assetName: string): Promise<{ max: [number, number, number]; min: [number, number, number] } | undefined> {
+  const gltf = JSON.parse(await readFile(resolve(sourceDir, assetName), "utf8")) as {
+    accessors?: Array<{ max?: number[]; min?: number[] }>;
+    meshes?: Array<{ primitives?: Array<{ attributes?: { POSITION?: number } }> }>;
+  };
+  const mins: number[][] = [];
+  const maxes: number[][] = [];
+  for (const mesh of gltf.meshes ?? []) {
+    for (const primitive of mesh.primitives ?? []) {
+      const position = primitive.attributes?.POSITION;
+      const accessor = position === undefined ? undefined : gltf.accessors?.[position];
+      if (accessor?.min?.length === 3 && accessor.max?.length === 3) {
+        mins.push(accessor.min);
+        maxes.push(accessor.max);
+      }
+    }
+  }
+  if (mins.length === 0 || maxes.length === 0) {
+    return undefined;
+  }
+  return {
+    max: [0, 1, 2].map((index) => Math.max(...maxes.map((item) => item[index] ?? 0))) as [number, number, number],
+    min: [0, 1, 2].map((index) => Math.min(...mins.map((item) => item[index] ?? 0))) as [number, number, number],
+  };
 }
 
 function emitPreviewAsset(previewImage: string, outDir: string): IInternalAsset {

@@ -3,6 +3,11 @@ import {
   DirectionalLight,
   PerspectiveCamera,
   Scene,
+  action,
+  axis,
+  defineInputMap,
+  keyboard,
+  pointerAxis,
 } from "@threenative/sdk";
 
 const scene = new Scene({ id: "v3.environment.scene" });
@@ -23,7 +28,22 @@ scene.add(new AmbientLight({ color: "#8fb2a5", id: "light.ambient", intensity: 0
 scene.add(sun);
 scene.setActiveCamera(camera);
 
+const input = defineInputMap({
+  actions: [
+    action("MoveBackward", [keyboard("KeyS")]),
+    action("MoveForward", [keyboard("KeyW")]),
+    action("MoveLeft", [keyboard("KeyA")]),
+    action("MoveRight", [keyboard("KeyD")]),
+    action("Sprint", [keyboard("ShiftLeft")]),
+  ],
+  axes: [
+    axis("LookX", { value: pointerAxis("deltaX") }),
+    axis("LookY", { value: pointerAxis("deltaY") }),
+  ],
+});
+
 export default {
+  input,
   scene,
   environment: {
     sourceDir: "assets-source/environment/glTF",
@@ -351,9 +371,9 @@ export default {
         },
       ],
       blockers: [
+        { id: "blocker.rock.left.foreground", instance: "rock.left.foreground", collider: { type: "cylinder", radius: 0.6 } },
         { id: "blocker.tree.left.foreground", instance: "tree.left.foreground", collider: { type: "cylinder", radius: 0.7 } },
         { id: "blocker.tree.right.foreground", instance: "tree.right.foreground", collider: { type: "cylinder", radius: 0.7 } },
-        { id: "blocker.rock.left.foreground", instance: "rock.left.foreground", collider: { type: "cylinder", radius: 0.6 } },
         { id: "blocker.rock.right.mid", instance: "rock.right.mid", collider: { type: "cylinder", radius: 0.5 } },
       ],
     },

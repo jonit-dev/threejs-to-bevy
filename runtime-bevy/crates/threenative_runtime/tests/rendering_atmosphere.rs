@@ -5,6 +5,7 @@ use std::{
 };
 
 use bevy::{
+    pbr::{CascadeShadowConfig, DirectionalLightShadowMap},
     prelude::*,
     render::{alpha::AlphaMode, render_resource::Face},
 };
@@ -89,12 +90,36 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
     assert!((clear.blue - 0xaa as f32 / 255.0).abs() < 0.01);
     let ambient = app.world().resource::<AmbientLight>();
     assert!((ambient.brightness - 0.8).abs() < 0.01);
-    let sun_count = app
+    let shadow_map = app.world().resource::<DirectionalLightShadowMap>();
+    assert_eq!(shadow_map.size, 1024);
+    let lights = app
         .world_mut()
-        .query::<&DirectionalLight>()
+        .query::<(&DirectionalLight, &CascadeShadowConfig)>()
         .iter(app.world())
-        .count();
-    assert_eq!(sun_count, 1);
+        .map(|(light, cascade)| {
+            let color = light.color.to_srgba();
+            (
+                light.shadows_enabled,
+                light.illuminance,
+                light.shadow_depth_bias,
+                light.shadow_normal_bias,
+                [color.red, color.green, color.blue],
+                cascade.minimum_distance,
+                cascade.bounds.clone(),
+            )
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(lights.len(), 1);
+    let light = &lights[0];
+    assert!(light.0);
+    assert!((light.1 - 1120.0).abs() < 0.01);
+    assert!((light.2 - 0.005).abs() < 0.001);
+    assert!((light.3 - 0.02).abs() < 0.001);
+    assert!((light.4[0] - 1.0).abs() < 0.01);
+    assert!((light.4[1] - 1.0).abs() < 0.01);
+    assert!((light.4[2] - 1.0).abs() < 0.01);
+    assert!((light.5 - 0.05).abs() < 0.001);
+    assert_eq!(light.6, vec![45.0]);
 
     fs::remove_dir_all(root).expect("temp bundle should be removed");
 }
@@ -112,6 +137,10 @@ fn textured_gltf_materials_should_preserve_lit_cutout_rendering() {
     };
 
     assert!(normalize_textured_material(&mut material));
+    let base_color = material.base_color.to_srgba();
+    assert!((base_color.red - 1.0).abs() < 0.01);
+    assert!((base_color.green - 1.0).abs() < 0.01);
+    assert!((base_color.blue - 1.0).abs() < 0.01);
     assert_eq!(material.alpha_mode, AlphaMode::Mask(0.2));
     assert!(!material.double_sided);
     assert_eq!(material.cull_mode, None);

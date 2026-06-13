@@ -171,6 +171,10 @@ export type IAssetIr =
       path: string;
     }
   | {
+      bounds?: {
+        max: Vec3;
+        min: Vec3;
+      };
       format: "glb" | "gltf";
       id: string;
       kind: "model";

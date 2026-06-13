@@ -66,7 +66,7 @@ export function createEnvironmentRuntime(bundle: IWebBundle, options: { renderPl
         if (instance === undefined) {
           return;
         }
-        mesh.setMatrixAt(index, matrixForInstance(adjustedTerrainPosition(instance.position, terrain), instance.scale));
+        mesh.setMatrixAt(index, matrixForInstance(adjustedTerrainPosition(instance.position, terrain), instance.scale, instance.rotation));
       });
       mesh.instanceMatrix.needsUpdate = true;
       object.add(mesh);
@@ -151,16 +151,25 @@ export async function loadEnvironmentAssetInstances(bundle: IWebBundle, source: 
     if (model === undefined) {
       continue;
     }
-    const object = model.clone(true);
+    const object = new THREE.Group();
     object.name = `environment:${instance.id}`;
     object.position.fromArray([...adjustedTerrainPosition(instance.position, terrain)]);
+    object.quaternion.fromArray([...(instance.rotation ?? [0, 0, 0, 1])]);
     object.scale.fromArray([...(instance.scale ?? [1, 1, 1])]);
+    const normalizedModel = model.clone(true);
     object.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         child.castShadow = true;
         child.receiveShadow = true;
       }
     });
+    normalizedModel.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+    object.add(normalizedModel);
     group.add(object);
   }
 
@@ -193,7 +202,7 @@ export function createInstancedModelGroup(
     instancedMesh.castShadow = sourceMesh.castShadow;
     instancedMesh.receiveShadow = true;
     instances.forEach((instance, index) => {
-      const instanceMatrix = matrixForInstance(adjustedTerrainPosition(instance.position, terrain), instance.scale);
+      const instanceMatrix = matrixForInstance(adjustedTerrainPosition(instance.position, terrain), instance.scale, instance.rotation);
       instancedMesh.setMatrixAt(index, instanceMatrix.multiply(sourceMesh.matrixWorld));
     });
     instancedMesh.instanceMatrix.needsUpdate = true;
@@ -246,10 +255,14 @@ export function observeEnvironmentScene(scene: NonNullable<IWebBundle["environme
   };
 }
 
-function matrixForInstance(position: readonly [number, number, number], scale: readonly [number, number, number] | undefined): THREE.Matrix4 {
+function matrixForInstance(
+  position: readonly [number, number, number],
+  scale: readonly [number, number, number] | undefined,
+  rotation: readonly [number, number, number, number] | undefined,
+): THREE.Matrix4 {
   return new THREE.Matrix4().compose(
     new THREE.Vector3(...position),
-    new THREE.Quaternion(),
+    new THREE.Quaternion(...(rotation ?? [0, 0, 0, 1])),
     new THREE.Vector3(...(scale ?? [1, 1, 1])),
   );
 }
