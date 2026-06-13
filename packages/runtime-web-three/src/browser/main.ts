@@ -17,7 +17,7 @@ if (container === null) {
 
 const params = new URLSearchParams(window.location.search);
 const bundleUrl = params.get("bundle") ?? "/bundle";
-const result = await renderBundle(bundleUrl, container);
+const result = await renderBundle(bundleUrl, container, { bookmarkId: params.get("bookmark") ?? undefined });
 
 window.__THREENATIVE_READY__ = {
   canvas: {

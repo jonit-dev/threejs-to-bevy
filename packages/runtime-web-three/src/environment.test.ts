@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import * as THREE from "three";
 
-import { createEnvironmentRuntime } from "./environment.js";
+import { applyEnvironmentBookmark, createEnvironmentRuntime } from "./environment.js";
 import type { IWebBundle } from "./loadBundle.js";
 
 test("environment should apply the instancing plan during forest load", () => {
@@ -28,4 +28,24 @@ test("environment should apply the instancing plan during forest load", () => {
   assert.deepEqual(runtime?.observation.heroPlacementIds, ["rock.hero"]);
   assert.equal(runtime?.observation.scatterCountsByTag.rock, 2);
   assert.deepEqual(runtime?.observation.bookmarks, ["bookmark.start"]);
+});
+
+test("environment should apply bookmark camera position and yaw convention", () => {
+  const bundle = {
+    environmentScene: {
+      schema: "threenative.environment-scene",
+      version: "0.1.0",
+      sourceAssets: [],
+      terrain: { bounds: { min: [-5, 0, -5], max: [5, 0, 5] }, heightMode: "flat", id: "terrain.forest" },
+      bookmarks: [{ id: "bookmark.start", pitch: -5, position: [0, 1.7, 4], yaw: 180 }],
+      instances: [],
+      path: { id: "path", points: [[0, 0, 0], [1, 0, 1]], width: 1 },
+    },
+  } as unknown as IWebBundle;
+  const camera = new THREE.PerspectiveCamera();
+
+  assert.equal(applyEnvironmentBookmark(bundle, camera, "bookmark.start"), true);
+
+  assert.deepEqual(camera.position.toArray(), [0, 1.7, 4]);
+  assert.equal(camera.rotation.y, 0);
 });

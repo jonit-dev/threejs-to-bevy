@@ -28,3 +28,8 @@ color-management observation. First-person verification writes
 `v3-first-person-report.json` and `v3-first-person-trace.json` for bookmark IDs
 and deterministic camera movement. Walkability verification writes
 `v3-walkability-report.json` with path, boundary, and blocking-prop probes.
+Visual scene verification writes per-bookmark Three.js screenshots under
+`artifacts/v3/screenshots` and a side-by-side
+`threejs-bevy-side-by-side.png` contact sheet. The Bevy column is a native load
+smoke panel for the same bookmark IDs; visual parity is not asserted until the
+native renderer supports V3 environment screenshots.

@@ -55,15 +55,52 @@ export function createEnvironmentRuntime(bundle: IWebBundle): IEnvironmentRuntim
 
   for (const group of instancingPlan.groups) {
     const mesh = new THREE.InstancedMesh(
-      new THREE.BoxGeometry(0.3, 0.3, 0.3),
-      new THREE.MeshBasicMaterial({ color: "#6aa05f" }),
+      new THREE.BoxGeometry(0.35, 0.8, 0.35),
+      new THREE.MeshBasicMaterial({ color: colorForSourceAsset(group.sourceAsset) }),
       group.count,
     );
     mesh.name = `instanced:${group.sourceAsset}`;
+    group.instanceIds.forEach((id, index) => {
+      const instance = bundle.environmentScene?.instances.find((item) => item.id === id);
+      if (instance === undefined) {
+        return;
+      }
+      mesh.setMatrixAt(index, matrixForInstance(instance.position, instance.scale));
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    object.add(mesh);
+  }
+
+  for (const item of instancingPlan.uninstanced) {
+    const instance = bundle.environmentScene.instances.find((candidate) => candidate.id === item.id);
+    if (instance === undefined) {
+      continue;
+    }
+    const mesh = new THREE.Mesh(
+      geometryForInstance(instance.tags ?? [], item.sourceAsset),
+      new THREE.MeshBasicMaterial({ color: colorForSourceAsset(item.sourceAsset) }),
+    );
+    mesh.name = `environment:${instance.id}`;
+    mesh.position.fromArray([...instance.position]);
+    mesh.scale.fromArray([...(instance.scale ?? [1, 1, 1])]);
     object.add(mesh);
   }
 
   return { atmosphere, instancingPlan, object, observation: observeEnvironmentScene(bundle.environmentScene) };
+}
+
+export function applyEnvironmentBookmark(bundle: IWebBundle, camera: THREE.Camera, bookmarkId: string): boolean {
+  const bookmark = bundle.environmentScene?.bookmarks?.find((item) => item.id === bookmarkId);
+  if (bookmark === undefined) {
+    return false;
+  }
+  camera.position.fromArray([...bookmark.position]);
+  camera.rotation.set(THREE.MathUtils.degToRad(bookmark.pitch), THREE.MathUtils.degToRad(bookmark.yaw - 180), 0, "YXZ");
+  if (camera instanceof THREE.PerspectiveCamera) {
+    camera.fov = 62;
+    camera.updateProjectionMatrix();
+  }
+  return true;
 }
 
 export function observeEnvironmentScene(scene: NonNullable<IWebBundle["environmentScene"]>): IEnvironmentObservation {
@@ -94,4 +131,48 @@ export function observeEnvironmentScene(scene: NonNullable<IWebBundle["environme
             min: scene.terrain.bounds.min,
           },
   };
+}
+
+function matrixForInstance(position: readonly [number, number, number], scale: readonly [number, number, number] | undefined): THREE.Matrix4 {
+  return new THREE.Matrix4().compose(
+    new THREE.Vector3(...position),
+    new THREE.Quaternion(),
+    new THREE.Vector3(...(scale ?? [1, 1, 1])),
+  );
+}
+
+function geometryForInstance(tags: readonly string[], sourceAsset: string): THREE.BufferGeometry {
+  if (tags.includes("tree") || sourceAsset.toLowerCase().includes("tree") || sourceAsset.toLowerCase().includes("pine")) {
+    return new THREE.ConeGeometry(0.55, 2.4, 8);
+  }
+  if (tags.includes("rock") || sourceAsset.toLowerCase().includes("rock")) {
+    return new THREE.DodecahedronGeometry(0.45, 0);
+  }
+  if (tags.includes("mushroom")) {
+    return new THREE.SphereGeometry(0.22, 12, 8);
+  }
+  if (tags.includes("flower")) {
+    return new THREE.SphereGeometry(0.14, 8, 6);
+  }
+  return new THREE.BoxGeometry(0.28, 0.45, 0.28);
+}
+
+function colorForSourceAsset(sourceAsset: string): THREE.Color {
+  const normalized = sourceAsset.toLowerCase();
+  if (normalized.includes("tree") || normalized.includes("pine")) {
+    return new THREE.Color("#2f5f3f");
+  }
+  if (normalized.includes("rock")) {
+    return new THREE.Color("#77766d");
+  }
+  if (normalized.includes("mushroom")) {
+    return new THREE.Color("#d9c7a4");
+  }
+  if (normalized.includes("flower")) {
+    return new THREE.Color("#d77b96");
+  }
+  if (normalized.includes("pebble")) {
+    return new THREE.Color("#a0998c");
+  }
+  return new THREE.Color("#6aa05f");
 }

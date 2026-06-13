@@ -55,7 +55,7 @@ export async function verifyV3(options = {}) {
   const sceneReport = await verifyScene({ artifactDir, bundlePath });
   steps.push({ durationMs: 0, exitCode: sceneReport.status === "pass" ? 0 : 1, stderr: "", stdout: sceneReport.artifacts.reportPath, name: "verify v3 scene authoring" });
   if (sceneReport.status !== "pass") {
-    return writeV3Report({ artifactDir, bundlePath, ok: false, reportPath, sceneReportPath: sceneReport.artifacts.reportPath, steps, webReportPath: environmentReport.artifacts.reportPath });
+    return writeV3Report({ artifactDir, bundlePath, ok: false, reportPath, sceneReportPath: sceneReport.artifacts.reportPath, steps, visualContactSheetPath: sceneReport.artifacts.sideBySideContactSheetPath, webReportPath: environmentReport.artifacts.reportPath });
   }
 
   const verifyAtmosphere =
@@ -64,7 +64,7 @@ export async function verifyV3(options = {}) {
   const atmosphereReport = await verifyAtmosphere({ artifactDir, bundlePath });
   steps.push({ durationMs: 0, exitCode: atmosphereReport.status === "pass" ? 0 : 1, stderr: "", stdout: atmosphereReport.artifacts.reportPath, name: "verify v3 atmosphere" });
   if (atmosphereReport.status !== "pass") {
-    return writeV3Report({ atmosphereReportPath: atmosphereReport.artifacts.reportPath, artifactDir, bundlePath, ok: false, reportPath, sceneReportPath: sceneReport.artifacts.reportPath, steps, webReportPath: environmentReport.artifacts.reportPath });
+    return writeV3Report({ atmosphereReportPath: atmosphereReport.artifacts.reportPath, artifactDir, bundlePath, ok: false, reportPath, sceneReportPath: sceneReport.artifacts.reportPath, steps, visualContactSheetPath: sceneReport.artifacts.sideBySideContactSheetPath, webReportPath: environmentReport.artifacts.reportPath });
   }
 
   const verifyFirstPerson =
@@ -73,7 +73,7 @@ export async function verifyV3(options = {}) {
   const firstPersonReport = await verifyFirstPerson({ artifactDir, bundlePath });
   steps.push({ durationMs: 0, exitCode: firstPersonReport.status === "pass" ? 0 : 1, stderr: "", stdout: firstPersonReport.artifacts.reportPath, name: "verify v3 first-person controls" });
   if (firstPersonReport.status !== "pass") {
-    return writeV3Report({ atmosphereReportPath: atmosphereReport.artifacts.reportPath, artifactDir, bundlePath, firstPersonReportPath: firstPersonReport.artifacts.reportPath, ok: false, reportPath, sceneReportPath: sceneReport.artifacts.reportPath, steps, webReportPath: environmentReport.artifacts.reportPath });
+    return writeV3Report({ atmosphereReportPath: atmosphereReport.artifacts.reportPath, artifactDir, bundlePath, firstPersonReportPath: firstPersonReport.artifacts.reportPath, ok: false, reportPath, sceneReportPath: sceneReport.artifacts.reportPath, steps, visualContactSheetPath: sceneReport.artifacts.sideBySideContactSheetPath, webReportPath: environmentReport.artifacts.reportPath });
   }
 
   const verifyWalkability =
@@ -91,12 +91,13 @@ export async function verifyV3(options = {}) {
     reportPath,
     sceneReportPath: sceneReport.artifacts.reportPath,
     steps,
+    visualContactSheetPath: sceneReport.artifacts.sideBySideContactSheetPath,
     webReportPath: environmentReport.artifacts.reportPath,
     walkabilityReportPath: walkabilityReport.artifacts.reportPath,
   });
 }
 
-async function writeV3Report({ artifactDir, atmosphereReportPath, bundlePath, firstPersonReportPath, ok, reportPath, sceneReportPath, steps, walkabilityReportPath, webReportPath }) {
+async function writeV3Report({ artifactDir, atmosphereReportPath, bundlePath, firstPersonReportPath, ok, reportPath, sceneReportPath, steps, visualContactSheetPath, walkabilityReportPath, webReportPath }) {
   await mkdir(resolve(reportPath, ".."), { recursive: true });
   const report = {
     artifacts: {
@@ -105,6 +106,7 @@ async function writeV3Report({ artifactDir, atmosphereReportPath, bundlePath, fi
       firstPersonReportPath: firstPersonReportPath ?? resolve(artifactDir, "v3-first-person-report.json"),
       reportPath,
       sceneReportPath: sceneReportPath ?? resolve(artifactDir, "v3-scene-report.json"),
+      visualContactSheetPath: visualContactSheetPath ?? resolve(artifactDir, "screenshots/threejs-bevy-side-by-side.png"),
       walkabilityReportPath: walkabilityReportPath ?? resolve(artifactDir, "v3-walkability-report.json"),
       webReportPath: webReportPath ?? resolve(artifactDir, "v3-environment-report.json"),
     },

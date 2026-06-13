@@ -3,18 +3,22 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { PNG } from "pngjs";
 
 import { verifyV3Scene } from "./v3Scene.js";
 
 test("v3Scene should report scene authoring artifacts when verification passes", async () => {
   const root = await makeBundle();
   try {
-    const report = await verifyV3Scene({ artifactDir: root, bundlePath: root });
+    const report = await verifyV3Scene({ artifactDir: root, bundlePath: root, screenshotCapturer: mockScreenshotCapturer(80) });
 
     assert.equal(report.status, "pass");
     assert.equal(report.counts.bookmarks, 1);
     assert.equal(report.counts.heroPlacements, 1);
     assert.equal(report.counts.scatterInstances, 1);
+    assert.equal(report.captures[0]?.bookmarkId, "bookmark.start");
+    assert.match(report.artifacts.sideBySideContactSheetPath ?? "", /threejs-bevy-side-by-side\.png$/);
+    assert.equal(report.nativeSmoke.visualParity, "not-asserted");
     assert.match(report.artifacts.bundleHash, /^[a-f0-9]{64}$/);
     assert.equal(JSON.parse(await readFile(join(root, "v3-scene-report.json"), "utf8")).status, "pass");
   } finally {
@@ -25,11 +29,24 @@ test("v3Scene should report scene authoring artifacts when verification passes",
 test("v3Scene should fail when required asset tag is absent", async () => {
   const root = await makeBundle({ expectedTags: ["flower"] });
   try {
-    const report = await verifyV3Scene({ artifactDir: root, bundlePath: root });
+    const report = await verifyV3Scene({ artifactDir: root, bundlePath: root, screenshotCapturer: mockScreenshotCapturer(80) });
 
     assert.equal(report.status, "fail");
     assert.equal(report.diagnostics[0]?.code, "TN_V3_SCENE_BOOKMARK_TAG_MISSING");
     assert.match(report.diagnostics[0]?.message ?? "", /flower/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("v3Scene should fail when screenshot is blank", async () => {
+  const root = await makeBundle();
+  try {
+    const report = await verifyV3Scene({ artifactDir: root, bundlePath: root, screenshotCapturer: mockScreenshotCapturer(0) });
+
+    assert.equal(report.status, "fail");
+    assert.equal(report.diagnostics[0]?.code, "TN_V3_SCENE_SCREENSHOT_BLANK");
+    assert.match(report.diagnostics[0]?.message ?? "", /bookmark.start/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -71,4 +88,31 @@ async function makeBundle(options: { expectedTags?: string[] } = {}): Promise<st
 
 async function writeJson(root: string, file: string, value: unknown): Promise<void> {
   await writeFile(join(root, file), `${JSON.stringify(value, null, 2)}\n`);
+}
+
+function mockScreenshotCapturer(value: number) {
+  return async (options: { artifactDir: string; bookmarkIds: readonly string[] }) => {
+    const screenshotDir = join(options.artifactDir, "screenshots");
+    await mkdir(screenshotDir, { recursive: true });
+    const sideBySidePath = join(screenshotDir, "threejs-bevy-side-by-side.png");
+    await writePng(sideBySidePath, 80);
+    return Promise.all(options.bookmarkIds.map(async (bookmarkId) => {
+      const threejsPath = join(screenshotDir, `${bookmarkId}.threejs.png`);
+      const bevySmokePath = join(screenshotDir, `${bookmarkId}.bevy-smoke.png`);
+      await writePng(threejsPath, value);
+      await writePng(bevySmokePath, 40);
+      return { bookmarkId, bevySmokePath, sideBySidePath, threejsPath };
+    }));
+  };
+}
+
+async function writePng(path: string, value: number): Promise<void> {
+  const png = new PNG({ height: 8, width: 8 });
+  for (let index = 0; index < png.data.length; index += 4) {
+    png.data[index] = value;
+    png.data[index + 1] = value;
+    png.data[index + 2] = value;
+    png.data[index + 3] = 255;
+  }
+  await writeFile(path, PNG.sync.write(png));
 }

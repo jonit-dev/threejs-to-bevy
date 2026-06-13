@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { loadBundle } from "./loadBundle.js";
 import { mapWorld, type IRuntimeDiagnostic } from "./mapWorld.js";
+import { applyEnvironmentBookmark, createEnvironmentRuntime } from "./environment.js";
 import { createGameLoopState, runGameFrame } from "./gameLoop.js";
 import { attachInputListeners, createInputState } from "./input.js";
 import { loadSystemModule } from "./systems/runner.js";
@@ -11,9 +12,21 @@ export interface IRenderResult {
   renderer: THREE.WebGLRenderer;
 }
 
-export async function renderBundle(source: string, container: HTMLElement): Promise<IRenderResult> {
+export interface IRenderOptions {
+  bookmarkId?: string;
+}
+
+export async function renderBundle(source: string, container: HTMLElement, options: IRenderOptions = {}): Promise<IRenderResult> {
   const bundle = await loadBundle(source);
   const mapped = mapWorld(bundle);
+  const environment = createEnvironmentRuntime(bundle);
+  if (environment !== undefined) {
+    mapped.scene.add(environment.object);
+    mapped.diagnostics.push(...environment.instancingPlan.diagnostics);
+  }
+  if (options.bookmarkId !== undefined) {
+    applyEnvironmentBookmark(bundle, mapped.camera, options.bookmarkId);
+  }
   const input = createInputState(bundle.input);
   const loopState = createGameLoopState(bundle.runtimeConfig);
   const systemModule = await loadSystemModule(source, bundle.manifest);
