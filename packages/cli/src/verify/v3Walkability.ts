@@ -5,7 +5,16 @@ import { loadBundle, resolveWalkableMovement } from "@threenative/runtime-web-th
 export interface IV3WalkabilityReport {
   artifacts: { reportPath: string };
   diagnostics: Array<{ code: string; message: string; severity: "error" }>;
-  probes: Array<{ blockedBy?: string; id: string; passed: boolean; position: readonly number[] }>;
+  probes: Array<{
+    blockedBy?: string;
+    desired: readonly number[];
+    expectedBlocked: boolean;
+    expectedBlockedBy?: string;
+    id: string;
+    passed: boolean;
+    position: readonly number[];
+    start: readonly number[];
+  }>;
   status: "fail" | "pass";
 }
 
@@ -22,30 +31,45 @@ export async function verifyV3Walkability(options: { artifactDir: string; bundle
       : [
           {
             id: "path-center",
+            desired: [0, 0, 0] as const,
             expectedBlocked: false,
-            result: resolveWalkableMovement({ desired: [0, 0, 0], instances: bundle.environmentScene?.instances, start: [0, 0, 1], walkability }),
+            expectedBlockedBy: undefined,
+            start: [0, 0, 1] as const,
           },
           {
             id: "path-edge",
+            desired: [99, 0, 0] as const,
             expectedBlocked: true,
-            result: resolveWalkableMovement({ desired: [99, 0, 0], instances: bundle.environmentScene?.instances, start: [0, 0, 1], walkability }),
+            expectedBlockedBy: "walkable-boundary",
+            start: [0, 0, 1] as const,
           },
           {
             id: "blocking-prop",
+            desired: bundle.environmentScene?.instances.find((instance) => instance.id === walkability.blockers[0]?.instance)?.position ?? ([0, 0, 0] as const),
             expectedBlocked: true,
-            result: resolveWalkableMovement({
-              desired: bundle.environmentScene?.instances.find((instance) => instance.id === walkability.blockers[0]?.instance)?.position ?? [0, 0, 0],
-              instances: bundle.environmentScene?.instances,
-              start: [0, 0, 1],
-              walkability,
-            }),
+            expectedBlockedBy: walkability.blockers[0]?.id,
+            start: [0, 0, 1] as const,
           },
-        ].map((probe) => ({
-          blockedBy: probe.result.blockedBy,
-          id: probe.id,
-          passed: probe.expectedBlocked ? probe.result.blockedBy !== undefined : probe.result.blockedBy === undefined,
-          position: probe.result.position,
-        }));
+        ].map((probe) => {
+          const result = resolveWalkableMovement({
+            desired: probe.desired,
+            instances: bundle.environmentScene?.instances,
+            start: probe.start,
+            walkability,
+          });
+          return {
+            blockedBy: result.blockedBy,
+            desired: probe.desired,
+            expectedBlocked: probe.expectedBlocked,
+            expectedBlockedBy: probe.expectedBlockedBy,
+            id: probe.id,
+            passed:
+              result.blockedBy === probe.expectedBlockedBy ||
+              (probe.expectedBlockedBy === undefined && (probe.expectedBlocked ? result.blockedBy !== undefined : result.blockedBy === undefined)),
+            position: result.position,
+            start: probe.start,
+          };
+        });
   for (const probe of probes) {
     if (!probe.passed) {
       diagnostics.push({ code: "TN_V3_WALKABILITY_PROBE_FAILED", message: `Walkability probe '${probe.id}' failed.`, severity: "error" });

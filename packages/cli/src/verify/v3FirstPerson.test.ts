@@ -14,6 +14,17 @@ test("v3FirstPerson should include bookmark checks and walkthrough trace", async
     assert.equal(report.status, "pass");
     assert.equal(report.moved, true);
     assert.deepEqual(report.bookmarks, ["bend", "mid", "start"]);
+    assert.deepEqual(report.controlMapping.find((mapping) => mapping.field === "forward"), {
+      action: "MoveForward",
+      field: "forward",
+      keyboardCodes: ["KeyW"],
+    });
+    assert.deepEqual(report.nativeKeyboardProbe, {
+      finalPosition: [0, 1.7, -4.5],
+      pressedAction: "MoveForward",
+      pressedCode: "KeyW",
+      startPosition: [0, 0, 0],
+    });
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -39,11 +50,25 @@ async function makeBundle(includeController: boolean): Promise<string> {
     version: "0.1.0",
     name: "first-person",
     entry: { world: "world.ir.json", environmentScene: "environment.scene.json" },
-    files: { assets: "assets.manifest.json", materials: "materials.ir.json", targetProfile: "target.profile.json" },
+    files: { assets: "assets.manifest.json", input: "input.ir.json", materials: "materials.ir.json", targetProfile: "target.profile.json" },
     requiredCapabilities: {},
   });
   await writeJson(root, "world.ir.json", { schema: "threenative.world", version: "0.1.0", entities: [] });
   await writeJson(root, "assets.manifest.json", { schema: "threenative.assets", version: "0.1.0", assets: [] });
+  await writeJson(root, "input.ir.json", {
+    schema: "threenative.input",
+    version: "0.1.0",
+    actions: [
+      { id: "MoveForward", bindings: [{ device: "keyboard", code: "KeyW" }] },
+      { id: "MoveBackward", bindings: [{ device: "keyboard", code: "KeyS" }] },
+      { id: "MoveLeft", bindings: [{ device: "keyboard", code: "KeyA" }] },
+      { id: "MoveRight", bindings: [{ device: "keyboard", code: "KeyD" }] },
+    ],
+    axes: [
+      { id: "LookX", value: { device: "pointer", axis: "deltaX" } },
+      { id: "LookY", value: { device: "pointer", axis: "deltaY" } },
+    ],
+  });
   await writeJson(root, "materials.ir.json", { schema: "threenative.materials", version: "0.1.0", materials: [] });
   await writeJson(root, "target.profile.json", { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] });
   await writeJson(root, "environment.scene.json", {

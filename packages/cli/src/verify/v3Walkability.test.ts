@@ -13,6 +13,16 @@ test("v3Walkability should report path and blocker probes", async () => {
 
     assert.equal(report.status, "pass");
     assert.deepEqual(report.probes.map((probe) => probe.id), ["path-center", "path-edge", "blocking-prop"]);
+    assert.deepEqual(report.probes.find((probe) => probe.id === "blocking-prop"), {
+      blockedBy: "blocker.rock",
+      desired: [1, 0, 0],
+      expectedBlocked: true,
+      expectedBlockedBy: "blocker.rock",
+      id: "blocking-prop",
+      passed: true,
+      position: [0, 1.7, 1],
+      start: [0, 0, 1],
+    });
   } finally {
     await rm(root, { force: true, recursive: true });
   }
