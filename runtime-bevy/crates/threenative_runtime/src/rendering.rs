@@ -76,7 +76,7 @@ pub fn apply_atmosphere_to_world(world: &mut World, bundle: &LoadedBundle) {
     world
         .spawn(DirectionalLightBundle {
             directional_light: DirectionalLight {
-                color: Color::WHITE,
+                color: color_to_bevy(&profile.sun.color),
                 illuminance: profile.sun.intensity * 350.0,
                 shadows_enabled: profile.sun.casts_shadow && profile.shadows.enabled,
                 shadow_depth_bias: profile.shadows.bias.abs().max(0.005),

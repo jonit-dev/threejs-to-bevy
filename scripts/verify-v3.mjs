@@ -14,6 +14,7 @@ export async function verifyV3(options = {}) {
   const environmentVerifier = options.environmentVerifier;
   const atmosphereVerifier = options.atmosphereVerifier;
   const firstPersonVerifier = options.firstPersonVerifier;
+  const lightingColorVerifier = options.lightingColorVerifier;
   const sceneVerifier = options.sceneVerifier;
   const walkabilityVerifier = options.walkabilityVerifier;
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
@@ -66,13 +67,22 @@ export async function verifyV3(options = {}) {
     return writeV3Report({ artifactDir, bundlePath, ok: false, reportPath, sceneReportPath: sceneReport.artifacts.reportPath, steps, visualContactSheetPath: sceneReport.artifacts.sideBySideContactSheetPath, webReportPath: environmentReport.artifacts.reportPath });
   }
 
+  const verifyLightingColor =
+    lightingColorVerifier ??
+    (await import(pathToFileURL(resolve(root, "packages/cli/dist/verify/v3LightingColor.js")).href)).verifyV3LightingColor;
+  const lightingColorReport = await verifyLightingColor({ artifactDir, sceneReportPath: sceneReport.artifacts.reportPath });
+  steps.push({ durationMs: 0, exitCode: lightingColorReport.status === "pass" ? 0 : 1, stderr: "", stdout: lightingColorReport.artifacts.reportPath, name: "verify v3 lighting/color metrics" });
+  if (lightingColorReport.status !== "pass") {
+    return writeV3Report({ artifactDir, bundlePath, lightingColorReportPath: lightingColorReport.artifacts.reportPath, ok: false, reportPath, sceneReportPath: sceneReport.artifacts.reportPath, steps, visualContactSheetPath: sceneReport.artifacts.sideBySideContactSheetPath, webReportPath: environmentReport.artifacts.reportPath });
+  }
+
   const verifyAtmosphere =
     atmosphereVerifier ??
     (await import(pathToFileURL(resolve(root, "packages/cli/dist/verify/v3Atmosphere.js")).href)).verifyV3Atmosphere;
   const atmosphereReport = await verifyAtmosphere({ artifactDir, bundlePath });
   steps.push({ durationMs: 0, exitCode: atmosphereReport.status === "pass" ? 0 : 1, stderr: "", stdout: atmosphereReport.artifacts.reportPath, name: "verify v3 atmosphere" });
   if (atmosphereReport.status !== "pass") {
-    return writeV3Report({ atmosphereReportPath: atmosphereReport.artifacts.reportPath, artifactDir, bundlePath, ok: false, reportPath, sceneReportPath: sceneReport.artifacts.reportPath, steps, visualContactSheetPath: sceneReport.artifacts.sideBySideContactSheetPath, webReportPath: environmentReport.artifacts.reportPath });
+    return writeV3Report({ atmosphereReportPath: atmosphereReport.artifacts.reportPath, artifactDir, bundlePath, lightingColorReportPath: lightingColorReport.artifacts.reportPath, ok: false, reportPath, sceneReportPath: sceneReport.artifacts.reportPath, steps, visualContactSheetPath: sceneReport.artifacts.sideBySideContactSheetPath, webReportPath: environmentReport.artifacts.reportPath });
   }
 
   const verifyFirstPerson =
@@ -81,7 +91,7 @@ export async function verifyV3(options = {}) {
   const firstPersonReport = await verifyFirstPerson({ artifactDir, bundlePath });
   steps.push({ durationMs: 0, exitCode: firstPersonReport.status === "pass" ? 0 : 1, stderr: "", stdout: firstPersonReport.artifacts.reportPath, name: "verify v3 first-person controls" });
   if (firstPersonReport.status !== "pass") {
-    return writeV3Report({ atmosphereReportPath: atmosphereReport.artifacts.reportPath, artifactDir, bundlePath, firstPersonReportPath: firstPersonReport.artifacts.reportPath, ok: false, reportPath, sceneReportPath: sceneReport.artifacts.reportPath, steps, visualContactSheetPath: sceneReport.artifacts.sideBySideContactSheetPath, webReportPath: environmentReport.artifacts.reportPath });
+    return writeV3Report({ atmosphereReportPath: atmosphereReport.artifacts.reportPath, artifactDir, bundlePath, firstPersonReportPath: firstPersonReport.artifacts.reportPath, lightingColorReportPath: lightingColorReport.artifacts.reportPath, ok: false, reportPath, sceneReportPath: sceneReport.artifacts.reportPath, steps, visualContactSheetPath: sceneReport.artifacts.sideBySideContactSheetPath, webReportPath: environmentReport.artifacts.reportPath });
   }
 
   const verifyWalkability =
@@ -95,6 +105,7 @@ export async function verifyV3(options = {}) {
     artifactDir,
     bundlePath,
     firstPersonReportPath: firstPersonReport.artifacts.reportPath,
+    lightingColorReportPath: lightingColorReport.artifacts.reportPath,
     ok: walkabilityReport.status === "pass",
     reportPath,
     sceneReportPath: sceneReport.artifacts.reportPath,
@@ -106,13 +117,14 @@ export async function verifyV3(options = {}) {
   });
 }
 
-async function writeV3Report({ artifactDir, atmosphereReportPath, bundlePath, firstPersonReportPath, ok, reportPath, sceneReportPath, steps, templateProjectPath, visualContactSheetPath, walkabilityReportPath, webReportPath }) {
+async function writeV3Report({ artifactDir, atmosphereReportPath, bundlePath, firstPersonReportPath, lightingColorReportPath, ok, reportPath, sceneReportPath, steps, templateProjectPath, visualContactSheetPath, walkabilityReportPath, webReportPath }) {
   await mkdir(resolve(reportPath, ".."), { recursive: true });
   const report = {
     artifacts: {
       bundlePath,
       atmosphereReportPath: atmosphereReportPath ?? resolve(artifactDir, "v3-atmosphere-report.json"),
       firstPersonReportPath: firstPersonReportPath ?? resolve(artifactDir, "v3-first-person-report.json"),
+      lightingColorReportPath: lightingColorReportPath ?? resolve(artifactDir, "v3-lighting-color-report.json"),
       reportPath,
       sceneReportPath: sceneReportPath ?? resolve(artifactDir, "v3-scene-report.json"),
       templateProjectPath: templateProjectPath ?? resolve(artifactDir, "template-smoke/v3-environment"),

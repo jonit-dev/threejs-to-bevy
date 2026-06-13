@@ -31,6 +31,12 @@ test("should run v3 performance gate", async () => {
         },
         status: "pass",
       }),
+      lightingColorVerifier: async ({ artifactDir }) => ({
+        artifacts: {
+          reportPath: join(artifactDir, "v3-lighting-color-report.json"),
+        },
+        status: "pass",
+      }),
       walkabilityVerifier: async ({ artifactDir }) => ({
         artifacts: {
           reportPath: join(artifactDir, "v3-walkability-report.json"),
@@ -52,6 +58,7 @@ test("should run v3 performance gate", async () => {
     const report = JSON.parse(await readFile(result.reportPath, "utf8"));
 
     assert.equal(report.status, "pass");
+    assert.match(report.artifacts.lightingColorReportPath, /v3-lighting-color-report\.json$/);
     assert.match(report.artifacts.visualContactSheetPath, /threejs-bevy-side-by-side\.png$/);
     assert.deepEqual(commands.map((command) => command.name), [
       "check v3 docs",
@@ -62,9 +69,10 @@ test("should run v3 performance gate", async () => {
       "build v3 environment template",
     ]);
     assert.match(report.artifacts.templateProjectPath, /template-smoke/);
-    assert.deepEqual(report.steps.slice(-5).map((step) => step.name), [
+    assert.deepEqual(report.steps.slice(-6).map((step) => step.name), [
       "verify v3 environment performance",
       "verify v3 scene authoring",
+      "verify v3 lighting/color metrics",
       "verify v3 atmosphere",
       "verify v3 first-person controls",
       "verify v3 walkability",

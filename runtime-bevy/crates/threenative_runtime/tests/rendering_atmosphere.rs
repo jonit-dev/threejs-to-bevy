@@ -115,9 +115,9 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
     assert!((light.1 - 1120.0).abs() < 0.01);
     assert!((light.2 - 0.005).abs() < 0.001);
     assert!((light.3 - 0.02).abs() < 0.001);
-    assert!((light.4[0] - 1.0).abs() < 0.01);
-    assert!((light.4[1] - 1.0).abs() < 0.01);
-    assert!((light.4[2] - 1.0).abs() < 0.01);
+    assert!((light.4[0] - 0xff as f32 / 255.0).abs() < 0.01);
+    assert!((light.4[1] - 0xd3 as f32 / 255.0).abs() < 0.01);
+    assert!((light.4[2] - 0x9a as f32 / 255.0).abs() < 0.01);
     assert!((light.5 - 0.05).abs() < 0.001);
     assert_eq!(light.6, vec![45.0]);
 
