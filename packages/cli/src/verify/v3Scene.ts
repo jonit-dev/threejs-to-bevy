@@ -260,6 +260,37 @@ async function writeBevyMappedPreview(page: Page, path: string, bundle: Awaited<
         ctx.stroke();
       }
     }
+    function terrainColor(height) {
+      const t = Math.max(0, Math.min(1, height / 1.35));
+      const low = [109, 122, 66];
+      const high = [149, 158, 86];
+      const color = low.map((channel, index) => Math.round(channel + (high[index] - channel) * t));
+      return "rgb(" + color.join(",") + ")";
+    }
+    function drawTerrainSurface(bounds) {
+      const columns = 10;
+      const rows = 10;
+      const cells = [];
+      for (let row = 0; row < rows; row += 1) {
+        for (let column = 0; column < columns; column += 1) {
+          const x0 = bounds.min[0] + (bounds.max[0] - bounds.min[0]) * column / columns;
+          const x1 = bounds.min[0] + (bounds.max[0] - bounds.min[0]) * (column + 1) / columns;
+          const z0 = bounds.min[2] + (bounds.max[2] - bounds.min[2]) * row / rows;
+          const z1 = bounds.min[2] + (bounds.max[2] - bounds.min[2]) * (row + 1) / rows;
+          const points = [
+            [x0, terrainHeightAt(x0, z0), z0],
+            [x1, terrainHeightAt(x1, z0), z0],
+            [x1, terrainHeightAt(x1, z1), z1],
+            [x0, terrainHeightAt(x0, z1), z1],
+          ];
+          const center = project([(x0 + x1) / 2, terrainHeightAt((x0 + x1) / 2, (z0 + z1) / 2), (z0 + z1) / 2]);
+          if (center) cells.push({ depth: center.depth, height: points.reduce((total, point) => total + point[1], 0) / points.length, points });
+        }
+      }
+      for (const cell of cells.sort((a, b) => b.depth - a.depth)) {
+        drawPoly(cell.points, terrainColor(cell.height), "rgba(91,102,54,0.28)");
+      }
+    }
     const sky = ctx.createLinearGradient(0, 0, 0, 285);
     sky.addColorStop(0, "#d7eced");
     sky.addColorStop(1, "#a9c5b8");
@@ -271,12 +302,7 @@ async function writeBevyMappedPreview(page: Page, path: string, bundle: Awaited<
     ctx.fillStyle = ground;
     ctx.fillRect(0, 260, W, H - 260);
     const bounds = preview.terrain?.bounds ?? { min: [-12, 0, -14], max: [12, 0, 10] };
-    drawPoly([
-      [bounds.min[0], terrainHeightAt(bounds.min[0], bounds.min[2]), bounds.min[2]],
-      [bounds.max[0], terrainHeightAt(bounds.max[0], bounds.min[2]), bounds.min[2]],
-      [bounds.max[0], terrainHeightAt(bounds.max[0], bounds.max[2]), bounds.max[2]],
-      [bounds.min[0], terrainHeightAt(bounds.min[0], bounds.max[2]), bounds.max[2]],
-    ], "#7b884e", undefined);
+    drawTerrainSurface(bounds);
     for (let i = 0; i < (preview.path?.points?.length ?? 0) - 1; i += 1) {
       drawPoly(pathQuad(preview.path.points[i], preview.path.points[i + 1], preview.path.width), "#d99a44", "#9f7739");
     }
