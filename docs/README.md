@@ -60,6 +60,8 @@ conceptual docs.
   not require from Three.js/Bevy screenshots.
 - [V1 PRDs](PRDs/v1/README.md): implementation tickets for the V1 end-to-end
   proof, sliced from the roadmap and aligned with the architecture docs.
+- [V4 PRDs](PRDs/v4/README.md): implementation tickets for the native QuickJS
+  scripting proof and primitive scripting demo.
 - [References](references.md): external Bevy, Three.js, and related AI-tooling
   references used to shape the initial docs.
 
