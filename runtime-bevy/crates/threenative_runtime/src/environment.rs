@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use bevy::{math::primitives::Cuboid, prelude::*};
+use bevy::{gltf::GltfAssetLabel, math::primitives::Cuboid, prelude::*};
 use threenative_components::ThreeNativeId;
 use threenative_loader::LoadedBundle;
 
@@ -23,7 +23,9 @@ pub fn observe_environment(bundle: &LoadedBundle) -> Option<EnvironmentObservati
         .filter(|instance| instance.kind.as_deref() == Some("scatter"))
     {
         if instance.tags.is_empty() {
-            *scatter_counts_by_tag.entry("untagged".to_owned()).or_insert(0) += 1;
+            *scatter_counts_by_tag
+                .entry("untagged".to_owned())
+                .or_insert(0) += 1;
             continue;
         }
         for tag in &instance.tags {
@@ -66,8 +68,20 @@ pub fn map_environment_into_world(world: &mut World, bundle: &LoadedBundle) {
     let source_assets = scene
         .source_assets
         .iter()
-        .map(|asset| (asset.id.as_str(), asset.category.as_str()))
+        .map(|asset| {
+            (
+                asset.id.as_str(),
+                (asset.asset.as_str(), asset.category.as_str()),
+            )
+        })
         .collect::<HashMap<_, _>>();
+    let assets = bundle
+        .assets
+        .assets
+        .iter()
+        .map(|asset| (asset.id.as_str(), asset))
+        .collect::<HashMap<_, _>>();
+    let asset_server = world.get_resource::<AssetServer>().cloned();
 
     if let Some(terrain) = scene.terrain.as_ref() {
         let min = terrain.bounds.min;
@@ -80,7 +94,11 @@ pub fn map_environment_into_world(world: &mut World, bundle: &LoadedBundle) {
             &format!("terrain:{}", terrain.id),
             Mesh::from(Cuboid::new(width, 0.08, depth)),
             material,
-            Transform::from_xyz((min[0] + max[0]) / 2.0, min[1] - 0.04, (min[2] + max[2]) / 2.0),
+            Transform::from_xyz(
+                (min[0] + max[0]) / 2.0,
+                min[1] - 0.04,
+                (min[2] + max[2]) / 2.0,
+            ),
         );
     }
 
@@ -99,23 +117,50 @@ pub fn map_environment_into_world(world: &mut World, bundle: &LoadedBundle) {
         spawn_pbr(
             world,
             &format!("path:{}:{index}", scene.path.id),
-            Mesh::from(Cuboid::new(scene.path.width, 0.04, length + scene.path.width * 0.25)),
+            Mesh::from(Cuboid::new(
+                scene.path.width,
+                0.04,
+                length + scene.path.width * 0.25,
+            )),
             material,
             transform,
         );
     }
 
     for instance in &scene.instances {
-        let category = source_assets
-            .get(instance.source_asset.as_str())
-            .copied()
+        let source_asset = source_assets.get(instance.source_asset.as_str()).copied();
+        let category = source_asset
+            .map(|(_asset_id, category)| category)
             .unwrap_or("vegetation");
         let position = instance.position;
         let scale = instance.scale.unwrap_or([1.0, 1.0, 1.0]);
-        let base_size = size_for_category(category);
         let y = terrain_height_at(bundle, position[0], position[2]);
-        let mut transform = Transform::from_xyz(position[0], y + base_size[1] * scale[1] / 2.0, position[2]);
+        let mut transform = Transform::from_xyz(position[0], y, position[2]);
         transform.scale = Vec3::new(scale[0], scale[1], scale[2]);
+
+        if let (Some(asset_server), Some((asset_id, _category))) =
+            (asset_server.as_ref(), source_asset)
+        {
+            if let Some(model_path) = assets.get(asset_id).and_then(|asset| {
+                if asset.kind == "model" && matches!(asset.format.as_str(), "gltf" | "glb") {
+                    asset.path.as_ref()
+                } else {
+                    None
+                }
+            }) {
+                spawn_gltf_scene(
+                    world,
+                    asset_server,
+                    &format!("environment:{}", instance.id),
+                    model_path,
+                    transform,
+                );
+                continue;
+            }
+        }
+
+        let base_size = size_for_category(category);
+        transform.translation.y = y + base_size[1] * scale[1] / 2.0;
         let material = material(world, color_for_category(category));
         spawn_pbr(
             world,
@@ -136,7 +181,30 @@ fn ensure_asset_resources(world: &mut World) {
     }
 }
 
-fn spawn_pbr(world: &mut World, id: &str, mesh: Mesh, material: Handle<StandardMaterial>, transform: Transform) {
+fn spawn_gltf_scene(
+    world: &mut World,
+    asset_server: &AssetServer,
+    id: &str,
+    model_path: &str,
+    transform: Transform,
+) {
+    let scene = asset_server.load(GltfAssetLabel::Scene(0).from_asset(model_path.to_owned()));
+    world
+        .spawn(SceneBundle {
+            scene,
+            transform,
+            ..Default::default()
+        })
+        .insert((ThreeNativeId(id.to_owned()), Name::new(id.to_owned())));
+}
+
+fn spawn_pbr(
+    world: &mut World,
+    id: &str,
+    mesh: Mesh,
+    material: Handle<StandardMaterial>,
+    transform: Transform,
+) {
     let mesh = world.resource_mut::<Assets<Mesh>>().add(mesh);
     world
         .spawn(PbrBundle {
@@ -149,15 +217,21 @@ fn spawn_pbr(world: &mut World, id: &str, mesh: Mesh, material: Handle<StandardM
 }
 
 fn material(world: &mut World, color: Color) -> Handle<StandardMaterial> {
-    world.resource_mut::<Assets<StandardMaterial>>().add(StandardMaterial {
-        base_color: color,
-        perceptual_roughness: 0.95,
-        ..Default::default()
-    })
+    world
+        .resource_mut::<Assets<StandardMaterial>>()
+        .add(StandardMaterial {
+            base_color: color,
+            perceptual_roughness: 0.95,
+            ..Default::default()
+        })
 }
 
 fn terrain_height_at(bundle: &LoadedBundle, x: f32, z: f32) -> f32 {
-    let Some(terrain) = bundle.environment_scene.as_ref().and_then(|scene| scene.terrain.as_ref()) else {
+    let Some(terrain) = bundle
+        .environment_scene
+        .as_ref()
+        .and_then(|scene| scene.terrain.as_ref())
+    else {
         return 0.0;
     };
     if terrain.height_mode != "controlPoints" {

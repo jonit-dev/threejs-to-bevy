@@ -4,7 +4,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use bevy::prelude::*;
+use bevy::{gltf::GltfPlugin, prelude::*, scene::ScenePlugin};
 use threenative_components::ThreeNativeId;
 use threenative_loader::load_bundle;
 use threenative_runtime::environment::{map_environment_into_world, observe_environment};
@@ -27,10 +27,26 @@ fn v3_environment_should_load_bookmarked_bundle() {
           }
         }"#,
     );
-    write_json(&root, "world.ir.json", r#"{ "schema": "threenative.world", "version": "0.1.0", "entities": [] }"#);
-    write_json(&root, "assets.manifest.json", r#"{ "schema": "threenative.assets", "version": "0.1.0", "assets": [] }"#);
-    write_json(&root, "materials.ir.json", r#"{ "schema": "threenative.materials", "version": "0.1.0", "materials": [] }"#);
-    write_json(&root, "target.profile.json", r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["desktop"] }"#);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{ "schema": "threenative.world", "version": "0.1.0", "entities": [] }"#,
+    );
+    write_json(
+        &root,
+        "assets.manifest.json",
+        r#"{ "schema": "threenative.assets", "version": "0.1.0", "assets": [] }"#,
+    );
+    write_json(
+        &root,
+        "materials.ir.json",
+        r#"{ "schema": "threenative.materials", "version": "0.1.0", "materials": [] }"#,
+    );
+    write_json(
+        &root,
+        "target.profile.json",
+        r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["desktop"] }"#,
+    );
     write_json(
         &root,
         "environment.scene.json",
@@ -51,7 +67,8 @@ fn v3_environment_should_load_bookmarked_bundle() {
     );
 
     let bundle = load_bundle(&root).expect("v3 environment bundle should load");
-    let observation = observe_environment(&bundle).expect("v3 environment observation should exist");
+    let observation =
+        observe_environment(&bundle).expect("v3 environment observation should exist");
 
     assert_eq!(observation.bookmark_ids, vec!["bookmark.entry"]);
     assert_eq!(observation.terrain_id.as_deref(), Some("terrain.forest"));
@@ -70,6 +87,112 @@ fn v3_environment_should_load_bookmarked_bundle() {
     assert!(ids.contains(&"environment:tree.hero"));
 
     fs::remove_dir_all(root).expect("temp bundle should be removed");
+}
+
+#[test]
+fn app_from_bundle_should_spawn_environment_gltf_scenes_when_asset_server_is_available() {
+    let root = temp_bundle_dir();
+    write_v3_bundle_with_model_asset(&root);
+
+    let bundle = load_bundle(&root).expect("v3 environment bundle should load");
+    let mut app = App::new();
+    app.add_plugins((
+        MinimalPlugins,
+        AssetPlugin {
+            file_path: root.display().to_string(),
+            ..Default::default()
+        },
+        ScenePlugin,
+        GltfPlugin::default(),
+    ));
+    app.finish();
+    app.cleanup();
+    map_environment_into_world(app.world_mut(), &bundle);
+    let scene_roots = app
+        .world_mut()
+        .query::<(&ThreeNativeId, &Handle<Scene>, &Transform)>()
+        .iter(app.world())
+        .map(|(id, _scene, transform)| (id.0.clone(), transform.translation, transform.scale))
+        .collect::<Vec<_>>();
+
+    assert!(
+        scene_roots
+            .iter()
+            .any(|(id, translation, scale)| id == "environment:tree.hero"
+                && translation.x == 2.0
+                && translation.z == 0.0
+                && *scale == Vec3::splat(1.2)),
+        "expected tree.hero to be spawned as a Bevy SceneBundle from the GLTF asset, got {scene_roots:?}",
+    );
+
+    let placeholder_count = app
+        .world_mut()
+        .query::<(&ThreeNativeId, &Handle<Mesh>)>()
+        .iter(app.world())
+        .filter(|(id, _mesh)| id.0 == "environment:tree.hero")
+        .count();
+    assert_eq!(
+        placeholder_count, 0,
+        "GLTF-backed environment instances should not also spawn cuboid placeholders"
+    );
+
+    fs::remove_dir_all(root).expect("temp bundle should be removed");
+}
+
+fn write_v3_bundle_with_model_asset(root: &Path) {
+    write_json(
+        root,
+        "manifest.json",
+        r#"{
+          "schema": "threenative.bundle",
+          "version": "0.1.0",
+          "name": "v3-environment",
+          "entry": { "world": "world.ir.json", "environmentScene": "environment.scene.json" },
+          "files": {
+            "assets": "assets.manifest.json",
+            "materials": "materials.ir.json",
+            "targetProfile": "target.profile.json"
+          }
+        }"#,
+    );
+    write_json(
+        root,
+        "world.ir.json",
+        r#"{ "schema": "threenative.world", "version": "0.1.0", "entities": [] }"#,
+    );
+    write_json(
+        root,
+        "assets.manifest.json",
+        r#"{ "schema": "threenative.assets", "version": "0.1.0", "assets": [{ "id": "model.env.Tree", "kind": "model", "format": "gltf", "path": "assets/environment/Tree.gltf" }] }"#,
+    );
+    write_json(
+        root,
+        "materials.ir.json",
+        r#"{ "schema": "threenative.materials", "version": "0.1.0", "materials": [] }"#,
+    );
+    write_json(
+        root,
+        "target.profile.json",
+        r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["desktop"] }"#,
+    );
+    write_json(
+        root,
+        "environment.scene.json",
+        r#"{
+          "schema": "threenative.environment-scene",
+          "version": "0.1.0",
+          "terrain": {
+            "id": "terrain.forest",
+            "heightMode": "controlPoints",
+            "controlPoints": [[0, 0.4, 0], [4, -0.2, 4]],
+            "bounds": { "min": [-5, 0, -5], "max": [5, 0, 5] }
+          },
+          "path": { "id": "path.main", "points": [[0, 0, 3], [0, 0, -3]], "width": 2 },
+          "sourceAssets": [{ "id": "env.Tree", "asset": "model.env.Tree", "category": "tree" }],
+          "instances": [{ "id": "tree.hero", "sourceAsset": "env.Tree", "position": [2, 0, 0], "scale": [1.2, 1.2, 1.2], "kind": "hero", "tags": ["tree"] }],
+          "bookmarks": [{ "id": "bookmark.entry", "position": [0, 1.7, 4], "yaw": 180, "pitch": -5, "expectedTags": [] }]
+        }"#,
+    );
 }
 
 fn temp_bundle_dir() -> PathBuf {

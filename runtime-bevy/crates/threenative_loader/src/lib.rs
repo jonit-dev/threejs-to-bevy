@@ -1,4 +1,8 @@
-use std::{collections::HashMap, fs, path::Path};
+use std::{
+    collections::HashMap,
+    fs,
+    path::{Path, PathBuf},
+};
 
 use serde::Deserialize;
 use thiserror::Error;
@@ -54,6 +58,7 @@ pub struct BundleFiles {
 
 #[derive(Debug)]
 pub struct LoadedBundle {
+    pub bundle_path: PathBuf,
     pub assets: AssetsManifest,
     pub audio: Option<AudioIr>,
     pub environment_scene: Option<EnvironmentSceneIr>,
@@ -241,11 +246,20 @@ pub enum InputBindingIr {
     #[serde(rename = "keyboard")]
     Keyboard { code: String },
     #[serde(rename = "pointer")]
-    Pointer { button: Option<u8>, axis: Option<String> },
+    Pointer {
+        button: Option<u8>,
+        axis: Option<String>,
+    },
     #[serde(rename = "touch")]
-    Touch { control: String, axis: Option<String> },
+    Touch {
+        control: String,
+        axis: Option<String>,
+    },
     #[serde(rename = "gamepad")]
-    Gamepad { control: String, required: Option<bool> },
+    Gamepad {
+        control: String,
+        required: Option<bool>,
+    },
 }
 
 #[derive(Debug, Deserialize)]
@@ -566,6 +580,7 @@ pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadEr
     };
 
     Ok(LoadedBundle {
+        bundle_path: bundle_path.to_path_buf(),
         assets,
         audio,
         environment_scene,

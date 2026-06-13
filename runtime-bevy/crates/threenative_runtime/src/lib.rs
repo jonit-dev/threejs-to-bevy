@@ -30,6 +30,7 @@ pub enum RuntimeError {
 pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeError> {
     let bundle = load_bundle(bundle_path)?;
     systems_host::ensure_native_system_host_supported(&bundle)?;
+    let asset_root = bundle.bundle_path.display().to_string();
     let window = bundle.runtime_config.as_ref().map(|config| &config.window);
     let mut app = App::new();
     app.insert_resource(ClearColor(Color::srgb(
@@ -37,14 +38,27 @@ pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeErro
         19.0 / 255.0,
         24.0 / 255.0,
     )))
-    .add_plugins(DefaultPlugins.set(WindowPlugin {
-        primary_window: Some(Window {
-            resolution: (window.map_or(1280.0, |value| value.width), window.map_or(720.0, |value| value.height)).into(),
-            title: window.and_then(|value| value.title.clone()).unwrap_or_else(|| "ThreeNative Bevy Preview".to_owned()),
-            ..Default::default()
-        }),
-        ..Default::default()
-    }));
+    .add_plugins(
+        DefaultPlugins
+            .set(AssetPlugin {
+                file_path: asset_root,
+                ..Default::default()
+            })
+            .set(WindowPlugin {
+                primary_window: Some(Window {
+                    resolution: (
+                        window.map_or(1280.0, |value| value.width),
+                        window.map_or(720.0, |value| value.height),
+                    )
+                        .into(),
+                    title: window
+                        .and_then(|value| value.title.clone())
+                        .unwrap_or_else(|| "ThreeNative Bevy Preview".to_owned()),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            }),
+    );
     map_world::map_bundle_into_world(app.world_mut(), &bundle)?;
     environment::map_environment_into_world(app.world_mut(), &bundle);
     Ok(app)
