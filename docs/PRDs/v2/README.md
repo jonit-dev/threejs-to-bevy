@@ -17,6 +17,9 @@ author scene and gameplay with supported SDK or R3F/JSX
 ## V2 Scope Decisions
 
 - V2 proof game: one mobile-friendly third-person arena game.
+- Cross-runtime conformance is required before feature breadth expands; new V2
+  IR/runtime capabilities need shared fixtures and `pnpm verify:conformance`
+  coverage before they are considered supported.
 - Authoring: direct SDK remains the lower-level contract; `@threenative/r3f`
   adds supported JSX capture that lowers to the same IR.
 - ECS: V2 supports declared components, resources, events, game states, queries,

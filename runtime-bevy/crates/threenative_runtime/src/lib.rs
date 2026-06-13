@@ -5,6 +5,7 @@ use thiserror::Error;
 use threenative_loader::{LoadError, load_bundle};
 
 pub mod map_world;
+pub mod conformance;
 
 #[derive(Debug, Error)]
 pub enum RuntimeError {

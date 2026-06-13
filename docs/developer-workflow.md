@@ -288,6 +288,8 @@ Required early tests:
 Required after V1 before the broader MVP:
 
 - Cross-runtime golden tests for equivalent web and Bevy interpretation of the same IR.
+- `pnpm verify:conformance` for shared IR fixtures before claiming a new V2
+  runtime capability is supported.
 - Asset manifest tests for glTF and texture references.
 - Gameplay system tests for input and update-loop behavior.
 - Example build tests for the MVP arena demo.
@@ -296,6 +298,29 @@ Required after V1 before the broader MVP:
 - iOS build smoke test when iOS packaging is in scope.
 
 Do not rely on manual visual checks alone. Visual smoke tests are useful, but the project needs schema, compiler, and adapter tests that fail deterministically.
+
+### V2 Conformance Workflow
+
+Every new V2 IR/runtime capability should add at least one shared conformance
+fixture before it is treated as supported. The fixture should live in the shared
+IR fixture catalog, declare its capability tags, and be consumed by both the
+Three.js web runtime and Bevy native runtime.
+
+The workflow is:
+
+```txt
+add or update shared IR fixture
+  -> validate fixture through the IR validator
+  -> run web runtime observation test
+  -> run Bevy runtime observation test
+  -> compare normalized semantic reports
+  -> run pnpm verify:conformance
+```
+
+Conformance reports compare semantic behavior: stable entity IDs, component
+presence, transforms, camera/light/material mappings, events, logical input
+state, UI state, audio triggers, and physics events where applicable. They must
+not compare runtime-private handles or renderer internals.
 
 ## Versioning And Compatibility
 

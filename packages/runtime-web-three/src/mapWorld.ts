@@ -1,13 +1,8 @@
 import * as THREE from "three";
-import type { IAssetIr, IMaterialIr, IWorldEntity } from "@threenative/ir";
+import type { IAssetIr, IMaterialIr, IRuntimeDiagnostic, IWorldEntity } from "@threenative/ir";
 import type { IWebBundle } from "./loadBundle.js";
 
-export interface IRuntimeDiagnostic {
-  code: string;
-  message: string;
-  path: string;
-  severity: "error" | "warning";
-}
+export type { IRuntimeDiagnostic } from "@threenative/ir";
 
 export interface IThreeWorld {
   camera: THREE.Camera;

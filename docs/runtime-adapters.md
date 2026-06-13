@@ -368,7 +368,9 @@ should describe portable intent; adapters should perform concrete mapping.
 ## Conformance Tests
 
 Every adapter should pass the same small scene suite before it is considered
-usable:
+usable. New V2 IR/runtime capabilities need at least one shared conformance
+fixture before they are considered supported, and `pnpm verify:conformance`
+should run those fixtures across both Three.js and Bevy.
 
 - Empty scene loads without error.
 - One cube, one camera, one light renders.
@@ -382,7 +384,11 @@ usable:
 - A simple ECS system mutates a transform.
 - Unsupported capability fails before runtime startup.
 
-Pixel-perfect parity is not the first goal. Semantic parity is.
+Pixel-perfect visual parity is not the V2 goal. Semantic parity is: the same
+bundle should produce matching stable entity IDs, component presence,
+transforms, camera/light/material mappings, events, logical input state, UI
+state, audio triggers, and physics events where those domains apply. Runtime
+reports must exclude backend-private handles and renderer internals.
 
 ## Diagnostics
 

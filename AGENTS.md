@@ -115,7 +115,9 @@ pnpm lint
 pnpm test
 pnpm verify
 pnpm verify:v1
+pnpm verify:conformance
 pnpm check:docs:v1
+pnpm check:docs:v2
 ```
 
 For Rust-only work:
@@ -137,6 +139,12 @@ Turn tasks into verifiable goals.
 - Compiler or IR change: test emitted bundle shape and schema behavior.
 - Runtime mapping change: test the mapping in the affected runtime and keep web
   and Bevy semantics aligned when the IR contract is shared.
+- Shared IR/runtime behavior: add or update a conformance fixture before
+  considering the capability supported, then run `pnpm verify:conformance`.
+- Treat tests as feature validation, self-verification, and regression
+  prevention. A passing implementation without a test that proves the intended
+  behavior is incomplete unless the change is documentation-only or explicitly
+  untestable.
 - CLI change: test command output, exit codes, and generated artifacts.
 - Documentation-only change: run the relevant doc check when available.
 
@@ -171,4 +179,3 @@ Prefer stable, actionable diagnostics.
 - Keep generated or build artifacts out of commits unless the repo explicitly
   tracks them.
 - Do not use destructive git commands for routine work.
-

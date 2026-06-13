@@ -30,6 +30,24 @@ const bundleNameRequirements = [
     names: ["ui.ir.json", "input.ir.json", "assets.manifest.json"],
   },
 ];
+const conformanceGuidanceRequirements = [
+  {
+    file: "AGENTS.md",
+    phrases: ["verify:conformance", "self-verification", "regression"],
+  },
+  {
+    file: "docs/developer-workflow.md",
+    phrases: ["verify:conformance", "shared conformance", "semantic reports"],
+  },
+  {
+    file: "docs/runtime-adapters.md",
+    phrases: ["verify:conformance", "Semantic parity", "Pixel-perfect visual parity is not the V2 goal"],
+  },
+  {
+    file: "docs/PRDs/v2/README.md",
+    phrases: ["verify:conformance", "shared fixtures"],
+  },
+];
 
 const v3OnlyCapabilities = [
   { name: "gamepad", pattern: /\bgamepads?\b/i },
@@ -71,6 +89,19 @@ export async function checkDocsV2(options = {}) {
           code: "TN_DOCS_V2_BUNDLE_NAME_MISSING",
           file,
           message: `V2 docs must name '${bundleName}' consistently in ${file}.`,
+        });
+      }
+    }
+  }
+
+  for (const { file, phrases } of conformanceGuidanceRequirements) {
+    const text = await readFile(resolve(root, file), "utf8");
+    for (const phrase of phrases) {
+      if (!text.includes(phrase)) {
+        diagnostics.push({
+          code: "TN_DOCS_V2_CONFORMANCE_GUIDANCE_MISSING",
+          file,
+          message: `V2 docs must include conformance guidance phrase '${phrase}' in ${file}.`,
         });
       }
     }

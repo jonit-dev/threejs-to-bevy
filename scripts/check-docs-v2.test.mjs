@@ -12,6 +12,7 @@ test("should list every v2 ticket", async () => {
     await writeFixture(root, {
       readme: [
         "# V2 PRDs",
+        "verify:conformance shared fixtures",
         "`ui.ir.json` `input.ir.json` `assets.manifest.json`",
         "[V2-00](./V2-00-roadmap.md)",
       ].join("\n"),
@@ -37,6 +38,7 @@ test("should reject v3-only capabilities as required v2 scope", async () => {
     await writeFixture(root, {
       readme: [
         "# V2 PRDs",
+        "verify:conformance shared fixtures",
         "`ui.ir.json` `input.ir.json` `assets.manifest.json`",
         "[V2-00](./V2-00-roadmap.md)",
       ].join("\n"),
@@ -61,6 +63,7 @@ test("should accept deferred v3-only capabilities", async () => {
     await writeFixture(root, {
       readme: [
         "# V2 PRDs",
+        "verify:conformance shared fixtures",
         "`ui.ir.json` `input.ir.json` `assets.manifest.json`",
         "[V2-00](./V2-00-roadmap.md)",
       ].join("\n"),
@@ -86,6 +89,7 @@ test("should reject required v3-only scope in aligned docs", async () => {
     await writeFixture(root, {
       readme: [
         "# V2 PRDs",
+        "verify:conformance shared fixtures",
         "`ui.ir.json` `input.ir.json` `assets.manifest.json`",
         "[V2-00](./V2-00-roadmap.md)",
       ].join("\n"),
@@ -113,6 +117,7 @@ test("should require consistent bundle names in aligned docs", async () => {
     await writeFixture(root, {
       readme: [
         "# V2 PRDs",
+        "verify:conformance shared fixtures",
         "`ui.ir.json` `input.ir.json` `assets.manifest.json`",
         "[V2-00](./V2-00-roadmap.md)",
       ].join("\n"),
@@ -127,6 +132,34 @@ test("should require consistent bundle names in aligned docs", async () => {
     assert.equal(result.ok, false);
     assert.equal(result.diagnostics[0]?.code, "TN_DOCS_V2_BUNDLE_NAME_MISSING");
     assert.equal(result.diagnostics[0]?.file, "docs/ir.md");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should require conformance guidance", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-docs-v2-"));
+  try {
+    const docs = defaultScopeDocs();
+    docs["AGENTS.md"] = "verify:conformance regression\n";
+    await writeFixture(root, {
+      readme: [
+        "# V2 PRDs",
+        "verify:conformance shared fixtures",
+        "`ui.ir.json` `input.ir.json` `assets.manifest.json`",
+        "[V2-00](./V2-00-roadmap.md)",
+      ].join("\n"),
+      docs,
+      tickets: {
+        "V2-00-roadmap.md": "# V2-00\n",
+      },
+    });
+
+    const result = await checkDocsV2({ repoRoot: root });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics[0]?.code, "TN_DOCS_V2_CONFORMANCE_GUIDANCE_MISSING");
+    assert.equal(result.diagnostics[0]?.file, "AGENTS.md");
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -148,10 +181,12 @@ async function writeFixture(root, { readme, docs = defaultScopeDocs(), tickets }
 function defaultScopeDocs() {
   const bundleNames = "ui.ir.json\ninput.ir.json\nassets.manifest.json\n";
   return {
+    "AGENTS.md": "verify:conformance self-verification regression\n",
     "docs/sdk.md": bundleNames,
     "docs/ecs.md": "V2 uses fixedUpdate, update, and postUpdate.\n",
     "docs/ir.md": bundleNames,
     "docs/scripting.md": "V2 native TypeScript host proof is explicit.\n",
-    "docs/runtime-adapters.md": bundleNames,
+    "docs/developer-workflow.md": "verify:conformance shared conformance semantic reports\n",
+    "docs/runtime-adapters.md": `${bundleNames}\nverify:conformance\nSemantic parity\nPixel-perfect visual parity is not the V2 goal\n`,
   };
 }
