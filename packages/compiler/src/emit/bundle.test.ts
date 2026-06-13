@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -186,6 +186,85 @@ test("should emit ui ir for scene with portable hud", async () => {
       ["text", "bar", "button"],
     );
     assert.equal(ui.root.children[0].children[2].action, "Pause");
+    assert.equal(result.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should emit sandboxed v3 environment bundle assets", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-v3-env-"));
+  try {
+    await mkdir(join(root, "assets-source/environment/glTF"), { recursive: true });
+    await writeFile(
+      join(root, "assets-source/environment/glTF/Tree_1.gltf"),
+      JSON.stringify({
+        asset: { version: "2.0" },
+        buffers: [{ uri: "Tree_1.bin" }],
+        images: [{ uri: "Tree_Bark.png" }],
+      }),
+    );
+    await writeFile(join(root, "assets-source/environment/glTF/Tree_1.bin"), "tree-binary");
+    await writeFile(join(root, "assets-source/environment/glTF/Tree_Bark.png"), "tree-texture");
+    await writeFile(join(root, "assets-source/environment/Preview_2.jpg"), "preview");
+
+    const bundlePath = await emitBundle(
+      {
+        entry: "src/game.ts",
+        outDir: "dist/forest.bundle",
+        projectPath: root,
+        schema: "threenative.project" as const,
+        version: "0.1.0" as const,
+      },
+      {
+        scene: makeScene(),
+        environment: {
+          sourceDir: "assets-source/environment/glTF",
+          previewImage: "assets-source/environment/Preview_2.jpg",
+          assetNames: ["Tree_1.gltf"],
+          budgets: {
+            maxAssetBytes: 100,
+            maxBundleBytes: 1000,
+            supportedModelFormats: ["gltf"],
+            supportedTextureFormats: ["jpeg", "png"],
+          },
+          path: {
+            id: "forest.path.main",
+            width: 2,
+            points: [
+              [0, 0, 1],
+              [0, 0, -1],
+            ],
+          },
+          instances: [{ id: "tree.1", sourceAsset: "env.Tree_1", position: [1, 0, 0] }],
+        },
+      },
+    );
+
+    const manifest = JSON.parse(await readFile(join(bundlePath, "manifest.json"), "utf8"));
+    const assets = JSON.parse(await readFile(join(bundlePath, "assets.manifest.json"), "utf8"));
+    const environment = JSON.parse(await readFile(join(bundlePath, "environment.scene.json"), "utf8"));
+    const result = await validateBundle(bundlePath);
+
+    assert.equal(manifest.entry.environmentScene, "environment.scene.json");
+    assert.deepEqual(
+      assets.assets
+        .map((asset: { path?: string }) => asset.path)
+        .filter(Boolean)
+        .sort(),
+      [
+        "assets/environment/Tree_1.bin",
+        "assets/environment/Tree_1.gltf",
+        "assets/environment/Tree_Bark.png",
+        "assets/environment/reference/Preview_2.jpg",
+        "assets/mesh.cube.main.generated",
+      ]
+        .filter((path) => path !== "assets/mesh.cube.main.generated")
+        .sort(),
+    );
+    assert.equal(environment.referenceImage, "tex.env.reference.Preview_2");
+    assert.equal(environment.sourceAssets[0].asset, "model.env.Tree_1");
+    assert.equal(await readFile(join(bundlePath, "assets/environment/Tree_1.bin"), "utf8"), "tree-binary");
     assert.equal(result.ok, true);
   } finally {
     await rm(root, { force: true, recursive: true });

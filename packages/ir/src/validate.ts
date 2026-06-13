@@ -1,4 +1,4 @@
-import { access, readFile } from "node:fs/promises";
+import { access, readFile, stat } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import {
@@ -7,6 +7,7 @@ import {
   type IAudioMusicIr,
   type IAudioOneShotIr,
   type IBundleManifest,
+  type IEnvironmentSceneIr,
   type IIrNamedSchema,
   type IIrSchemaFile,
   type IIrSchemaField,
@@ -46,6 +47,10 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
     manifest.entry.audio === undefined
       ? undefined
       : await readJson<IAudioIr>(resolve(bundlePath, manifest.entry.audio), diagnostics);
+  const environmentScene =
+    manifest.entry.environmentScene === undefined
+      ? undefined
+      : await readJson<IEnvironmentSceneIr>(resolve(bundlePath, manifest.entry.environmentScene), diagnostics);
   const materials = await readJson<IMaterialsIr>(resolve(bundlePath, manifest.files.materials), diagnostics);
   const assets = await readJson<IAssetsManifest>(resolve(bundlePath, manifest.files.assets), diagnostics);
   const targetProfile = await readJson<ITargetProfile>(resolve(bundlePath, manifest.files.targetProfile), diagnostics);
@@ -99,15 +104,21 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
     validateUniqueIds(assets.assets, `${manifest.files.assets}/assets`, "TN_IR_DUPLICATE_ASSET_ID", diagnostics);
     await validateAssets(assets, bundlePath, manifest.files.assets, diagnostics);
   }
+  if (environmentScene !== undefined) {
+    validateEnvironmentScene(environmentScene, assets, manifest.entry.environmentScene ?? "environment.scene.json", diagnostics);
+  }
   if (audio !== undefined) {
     validateAudio(audio, assets, manifest.entry.audio ?? "audio.ir.json", diagnostics);
   }
-  if (targetProfile !== undefined && targetProfile.targets.length === 0) {
-    diagnostics.push({
-      code: "TN_IR_TARGETS_EMPTY",
-      message: "Target profile must include at least one target.",
-      path: `${manifest.files.targetProfile}/targets`,
-    });
+  if (targetProfile !== undefined) {
+    if (targetProfile.targets.length === 0) {
+      diagnostics.push({
+        code: "TN_IR_TARGETS_EMPTY",
+        message: "Target profile must include at least one target.",
+        path: `${manifest.files.targetProfile}/targets`,
+      });
+    }
+    await validateTargetBudgets(targetProfile, assets, bundlePath, manifest.files.targetProfile, diagnostics);
   }
   if (systems !== undefined) {
     validateSystems(
@@ -129,6 +140,138 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
   }
 
   return { diagnostics, ok: diagnostics.length === 0 };
+}
+
+function validateEnvironmentScene(
+  scene: IEnvironmentSceneIr,
+  assets: IAssetsManifest | undefined,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (scene.schema !== "threenative.environment-scene" || scene.version !== "0.1.0") {
+    diagnostics.push({
+      code: "TN_IR_ENVIRONMENT_SCENE_VERSION_UNSUPPORTED",
+      message: "Environment scene IR must use threenative.environment-scene version 0.1.0.",
+      path,
+    });
+  }
+  validateUniqueIds(scene.sourceAssets, `${path}/sourceAssets`, "TN_IR_ENVIRONMENT_SOURCE_ASSET_DUPLICATE", diagnostics);
+  validateUniqueIds(scene.instances, `${path}/instances`, "TN_IR_ENVIRONMENT_INSTANCE_DUPLICATE", diagnostics);
+
+  const modelAssets = new Set((assets?.assets ?? []).filter((asset) => asset.kind === "model").map((asset) => asset.id));
+  const textureAssets = new Set((assets?.assets ?? []).filter((asset) => asset.kind === "texture").map((asset) => asset.id));
+  if (scene.referenceImage !== undefined && !textureAssets.has(scene.referenceImage)) {
+    diagnostics.push({
+      code: "TN_IR_ENVIRONMENT_REFERENCE_IMAGE_MISSING",
+      message: `Environment scene references unknown texture asset '${scene.referenceImage}'.`,
+      path: `${path}/referenceImage`,
+    });
+  }
+  scene.sourceAssets.forEach((sourceAsset, index) => {
+    if (!modelAssets.has(sourceAsset.asset)) {
+      diagnostics.push({
+        code: "TN_IR_ENVIRONMENT_ASSET_MISSING",
+        message: `Environment source asset '${sourceAsset.id}' references unknown model asset '${sourceAsset.asset}'.`,
+        path: `${path}/sourceAssets/${index}/asset`,
+      });
+    }
+  });
+
+  const sourceAssetIds = new Set(scene.sourceAssets.map((sourceAsset) => sourceAsset.id));
+  scene.instances.forEach((instance, index) => {
+    if (!sourceAssetIds.has(instance.sourceAsset)) {
+      diagnostics.push({
+        code: "TN_IR_ENVIRONMENT_SOURCE_ASSET_MISSING",
+        message: `Environment instance '${instance.id}' references unknown source asset '${instance.sourceAsset}'.`,
+        path: `${path}/instances/${index}/sourceAsset`,
+      });
+    }
+    validateVec3(instance.position, `${path}/instances/${index}/position`, diagnostics);
+    if (instance.scale !== undefined) {
+      validateVec3(instance.scale, `${path}/instances/${index}/scale`, diagnostics);
+    }
+  });
+
+  if (scene.path.points.length < 2) {
+    diagnostics.push({
+      code: "TN_IR_ENVIRONMENT_PATH_TOO_SHORT",
+      message: `Environment path '${scene.path.id}' must include at least two points.`,
+      path: `${path}/path/points`,
+    });
+  }
+  if (!Number.isFinite(scene.path.width) || scene.path.width <= 0) {
+    diagnostics.push({
+      code: "TN_IR_ENVIRONMENT_PATH_WIDTH_INVALID",
+      message: `Environment path '${scene.path.id}' must use a positive finite width.`,
+      path: `${path}/path/width`,
+    });
+  }
+  scene.path.points.forEach((point, index) => validateVec3(point, `${path}/path/points/${index}`, diagnostics));
+}
+
+async function validateTargetBudgets(
+  targetProfile: ITargetProfile,
+  assets: IAssetsManifest | undefined,
+  bundlePath: string,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+): Promise<void> {
+  const budgets = targetProfile.budgets;
+  if (budgets === undefined || assets === undefined) {
+    return;
+  }
+  const files = assets.assets.filter((asset) => "path" in asset);
+  const sizes = await Promise.all(
+    files.map(async (asset) => {
+      try {
+        const stats = await stat(resolve(bundlePath, asset.path));
+        return { asset, bytes: stats.size };
+      } catch {
+        return { asset, bytes: 0 };
+      }
+    }),
+  );
+  const bundleBytes = sizes.reduce((total, item) => total + item.bytes, 0);
+  if (budgets.maxBundleBytes !== undefined && bundleBytes > budgets.maxBundleBytes) {
+    diagnostics.push({
+      code: "TN_IR_BUDGET_BUNDLE_BYTES_EXCEEDED",
+      message: `Bundle assets use ${bundleBytes} bytes, exceeding budget ${budgets.maxBundleBytes}.`,
+      path: `${path}/budgets/maxBundleBytes`,
+    });
+  }
+  sizes.forEach(({ asset, bytes }, index) => {
+    if (budgets.maxAssetBytes !== undefined && bytes > budgets.maxAssetBytes) {
+      diagnostics.push({
+        code: "TN_IR_BUDGET_ASSET_BYTES_EXCEEDED",
+        message: `Asset '${asset.id}' uses ${bytes} bytes, exceeding per-asset budget ${budgets.maxAssetBytes}.`,
+        path: `${path}/budgets/maxAssetBytes/${index}`,
+      });
+    }
+    if (asset.kind === "model" && budgets.supportedModelFormats !== undefined && !budgets.supportedModelFormats.includes(asset.format)) {
+      diagnostics.push({
+        code: "TN_IR_BUDGET_MODEL_FORMAT_UNSUPPORTED",
+        message: `Asset '${asset.id}' uses unsupported model format '${asset.format}' for this target profile.`,
+        path: `${path}/budgets/supportedModelFormats`,
+      });
+    }
+    if (asset.kind === "texture" && budgets.supportedTextureFormats !== undefined && !budgets.supportedTextureFormats.includes(asset.format)) {
+      diagnostics.push({
+        code: "TN_IR_BUDGET_TEXTURE_FORMAT_UNSUPPORTED",
+        message: `Asset '${asset.id}' uses unsupported texture format '${asset.format}' for this target profile.`,
+        path: `${path}/budgets/supportedTextureFormats`,
+      });
+    }
+  });
+}
+
+function validateVec3(value: readonly number[], path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value.length !== 3 || value.some((item) => !Number.isFinite(item))) {
+    diagnostics.push({
+      code: "TN_IR_VEC3_INVALID",
+      message: "Expected a three-component finite numeric vector.",
+      path,
+    });
+  }
 }
 
 function validateAudio(
@@ -295,8 +438,14 @@ async function validateAssets(assets: IAssetsManifest, bundlePath: string, path:
 }
 
 function assetFormatMatches(kind: string, format: string, extension: string | undefined): boolean {
+  if (kind === "texture" && format === "jpeg" && extension === "jpg") {
+    return true;
+  }
   if (format !== extension) {
     return false;
+  }
+  if (kind === "buffer") {
+    return format === "bin";
   }
   if (kind === "model") {
     return format === "glb" || format === "gltf";

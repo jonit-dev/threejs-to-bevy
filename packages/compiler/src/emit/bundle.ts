@@ -1,6 +1,6 @@
-import { cp, mkdir, rm, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
-import { type IBundleManifest, type IWorldIr } from "@threenative/ir";
+import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { basename, dirname, resolve } from "node:path";
+import { type IBundleManifest, type IEnvironmentSceneIr, type ITargetProfile, type IWorldIr } from "@threenative/ir";
 import { type IAssetReference, type IAudioDeclaration, type World } from "@threenative/sdk";
 import { type IUiElement } from "@threenative/ui";
 
@@ -21,7 +21,8 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
   const emitted = sceneRoot === undefined ? undefined : sceneToWorld(sceneRoot as Parameters<typeof sceneToWorld>[0]);
   const ecs = worldRoot === undefined ? undefined : ecsToIr(worldRoot as Parameters<typeof ecsToIr>[0]);
   const audio = bundleRoot.audio === undefined ? undefined : emitAudio(bundleRoot.audio);
-  const assets = mergeAudioAssets(emitted?.assets ?? [], bundleRoot.audio);
+  const environment = bundleRoot.environment === undefined ? undefined : await emitEnvironment(config.projectPath, bundleRoot.environment);
+  const assets = mergeEnvironmentAssets(mergeAudioAssets(emitted?.assets ?? [], bundleRoot.audio), environment?.assets ?? []);
   const ui = bundleRoot.ui === undefined ? undefined : emitUi(bundleRoot.ui);
   const manifest: IBundleManifest = {
     schema: "threenative.bundle",
@@ -32,6 +33,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
     },
     entry: {
       ...(audio === undefined ? {} : { audio: "audio.ir.json" }),
+      ...(environment === undefined ? {} : { environmentScene: "environment.scene.json" }),
       ...(ecs?.scriptBundle === undefined ? {} : { scripts: "scripts.bundle.js" }),
       ...(ecs === undefined ? {} : { systems: "systems.ir.json" }),
       ...(ui === undefined ? {} : { ui: "ui.ir.json" }),
@@ -59,6 +61,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
   await mkdir(resolve(outDir, "schemas"), { recursive: true });
   await writeFile(resolve(outDir, "manifest.json"), stableJson(manifest));
   await copyAssetFiles(config.projectPath, outDir, assets);
+  await copyExtraAssetFiles(config.projectPath, outDir, environment?.extraFiles ?? []);
   await writeFile(resolve(outDir, "world.ir.json"), stableJson(mergeWorlds(emitted?.world, ecs?.world)));
   await writeFile(
     resolve(outDir, "materials.ir.json"),
@@ -66,12 +69,20 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
   );
   await writeFile(
     resolve(outDir, "assets.manifest.json"),
-    stableJson({ schema: "threenative.assets", version: "0.1.0", assets }),
+    stableJson({ schema: "threenative.assets", version: "0.1.0", assets: assets.map(stripInternalAssetFields) }),
   );
   await writeFile(
     resolve(outDir, "target.profile.json"),
-    stableJson({ schema: "threenative.target-profile", version: "0.1.0", targets: ["web", "desktop"] }),
+    stableJson({
+      schema: "threenative.target-profile",
+      version: "0.1.0",
+      targets: ["web", "desktop"],
+      ...(environment?.budgets === undefined ? {} : { budgets: environment.budgets }),
+    } satisfies ITargetProfile),
   );
+  if (environment !== undefined) {
+    await writeFile(resolve(outDir, "environment.scene.json"), stableJson(environment.scene));
+  }
   if (ui !== undefined) {
     await writeFile(resolve(outDir, "ui.ir.json"), stableJson(ui));
   }
@@ -99,9 +110,33 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
 
 interface IBundleRoot {
   audio?: IAudioDeclaration;
+  environment?: IEnvironmentDeclaration;
   scene: unknown;
   ui?: IUiElement;
   world?: World;
+}
+
+interface IEnvironmentDeclaration {
+  assetNames: string[];
+  budgets?: ITargetProfile["budgets"];
+  instances: IEnvironmentSceneIr["instances"];
+  path: IEnvironmentSceneIr["path"];
+  previewImage?: string;
+  sourceDir: string;
+}
+
+interface IEmittedEnvironment {
+  assets: IInternalAsset[];
+  budgets?: ITargetProfile["budgets"];
+  extraFiles: IAssetCopy[];
+  scene: IEnvironmentSceneIr;
+}
+
+type IInternalAsset = Record<string, unknown> & { id: string; sourcePath?: string };
+
+interface IAssetCopy {
+  path: string;
+  sourcePath: string;
 }
 
 function normalizeBundleRoot(root: unknown): IBundleRoot {
@@ -143,7 +178,7 @@ function mergeWorlds(scene: IWorldIr | undefined, ecs: IWorldIr | undefined): IW
 function mergeAudioAssets(
   assets: Array<Record<string, unknown> & { id: string }>,
   audio: IAudioDeclaration | undefined,
-): Array<Record<string, unknown> & { id: string }> {
+): IInternalAsset[] {
   const merged = new Map(assets.map((asset) => [asset.id, asset]));
   for (const asset of audioAssetRefs(audio)) {
     merged.set(asset.id, {
@@ -152,6 +187,17 @@ function mergeAudioAssets(
       kind: asset.kind,
       path: asset.path,
     });
+  }
+  return [...merged.values()].sort((left, right) => left.id.localeCompare(right.id));
+}
+
+function mergeEnvironmentAssets(
+  assets: IInternalAsset[],
+  environmentAssets: IInternalAsset[],
+): IInternalAsset[] {
+  const merged = new Map(assets.map((asset) => [asset.id, asset]));
+  for (const asset of environmentAssets) {
+    merged.set(asset.id, asset);
   }
   return [...merged.values()].sort((left, right) => left.id.localeCompare(right.id));
 }
@@ -166,15 +212,169 @@ function audioAssetRefs(audio: IAudioDeclaration | undefined): IAssetReference[]
 async function copyAssetFiles(
   projectPath: string,
   outDir: string,
-  assets: ReadonlyArray<Record<string, unknown> & { id: string }>,
+  assets: ReadonlyArray<IInternalAsset>,
 ): Promise<void> {
   for (const asset of assets) {
     if (typeof asset.path !== "string") {
       continue;
     }
-    const from = resolve(projectPath, asset.path);
+    const from = resolve(projectPath, asset.sourcePath ?? asset.path);
     const to = resolve(outDir, asset.path);
     await mkdir(dirname(to), { recursive: true });
     await cp(from, to);
   }
+}
+
+async function copyExtraAssetFiles(projectPath: string, outDir: string, files: readonly IAssetCopy[]): Promise<void> {
+  for (const file of files) {
+    const from = resolve(projectPath, file.sourcePath);
+    const to = resolve(outDir, file.path);
+    await mkdir(dirname(to), { recursive: true });
+    await cp(from, to);
+  }
+}
+
+function stripInternalAssetFields(asset: IInternalAsset): Record<string, unknown> & { id: string } {
+  const { sourcePath: _sourcePath, ...publicAsset } = asset;
+  return publicAsset;
+}
+
+async function emitEnvironment(projectPath: string, declaration: IEnvironmentDeclaration): Promise<IEmittedEnvironment> {
+  const sourceDir = resolve(projectPath, declaration.sourceDir);
+  const entries = await readdir(sourceDir, { withFileTypes: true });
+  const available = new Set(entries.filter((entry) => entry.isFile()).map((entry) => entry.name));
+  const assetNames = [...declaration.assetNames].sort((left, right) => left.localeCompare(right));
+  const assets: IEmittedEnvironment["assets"] = [];
+  const extraFiles: IAssetCopy[] = [];
+  const sourceAssets: IEnvironmentSceneIr["sourceAssets"] = [];
+
+  for (const assetName of assetNames) {
+    if (!available.has(assetName)) {
+      throw new Error(`Environment asset '${assetName}' is missing from '${declaration.sourceDir}'.`);
+    }
+    const extension = assetName.split(".").pop()?.toLowerCase();
+    if (extension !== "gltf" && extension !== "glb") {
+      throw new Error(`Environment asset '${assetName}' must be a glTF or GLB model.`);
+    }
+    const id = `env.${assetName.slice(0, -(extension.length + 1))}`;
+    assets.push({
+      format: extension,
+      id: `model.${id}`,
+      kind: "model",
+      path: `assets/environment/${assetName}`,
+      sourcePath: `${declaration.sourceDir}/${assetName}`,
+    });
+    if (extension === "gltf") {
+      for (const dependency of await readGltfDependencies(sourceDir, assetName)) {
+        if (!available.has(dependency)) {
+          throw new Error(`Environment asset '${assetName}' references missing dependency '${dependency}'.`);
+        }
+        const dependencyExtension = dependency.split(".").pop()?.toLowerCase();
+        const copy = { path: `assets/environment/${dependency}`, sourcePath: `${declaration.sourceDir}/${dependency}` };
+        if (dependencyExtension === "bin") {
+          assets.push({
+            format: "bin",
+            id: `buffer.env.${dependency.slice(0, -(dependencyExtension.length + 1))}`,
+            kind: "buffer",
+            path: copy.path,
+            sourcePath: copy.sourcePath,
+          });
+        } else if (dependencyExtension === "png" || dependencyExtension === "jpeg" || dependencyExtension === "jpg") {
+          const textureFormat = dependencyExtension === "jpg" ? "jpeg" : dependencyExtension;
+          assets.push({
+            format: textureFormat,
+            id: `tex.env.${dependency.slice(0, -(dependencyExtension.length + 1))}`,
+            kind: "texture",
+            path: copy.path,
+            sourcePath: copy.sourcePath,
+          });
+        } else {
+          extraFiles.push(copy);
+        }
+      }
+    }
+    sourceAssets.push({
+      asset: `model.${id}`,
+      category: categorizeEnvironmentAsset(assetName),
+      id,
+    });
+  }
+  const previewAsset =
+    declaration.previewImage === undefined
+      ? undefined
+      : emitPreviewAsset(declaration.previewImage, "assets/environment/reference");
+  if (previewAsset !== undefined) {
+    assets.push(previewAsset);
+  }
+
+  return {
+    assets,
+    budgets: declaration.budgets,
+    extraFiles,
+    scene: {
+      schema: "threenative.environment-scene",
+      version: "0.1.0",
+      ...(previewAsset === undefined ? {} : { referenceImage: previewAsset.id }),
+      sourceAssets,
+      instances: [...declaration.instances].sort((left, right) => left.id.localeCompare(right.id)),
+      path: declaration.path,
+    },
+  };
+}
+
+async function readGltfDependencies(sourceDir: string, assetName: string): Promise<string[]> {
+  const gltf = JSON.parse(await readFile(resolve(sourceDir, assetName), "utf8")) as {
+    buffers?: Array<{ uri?: string }>;
+    images?: Array<{ uri?: string }>;
+  };
+  const dependencies = new Set<string>();
+  for (const item of [...(gltf.buffers ?? []), ...(gltf.images ?? [])]) {
+    if (item.uri === undefined || item.uri.startsWith("data:") || item.uri.includes("/") || item.uri.includes("..")) {
+      continue;
+    }
+    dependencies.add(item.uri);
+  }
+  if (dependencies.size === 0) {
+    const binName = `${basename(assetName, ".gltf")}.bin`;
+    dependencies.add(binName);
+  }
+  return [...dependencies].sort((left, right) => left.localeCompare(right));
+}
+
+function emitPreviewAsset(previewImage: string, outDir: string): IInternalAsset {
+  const extension = previewImage.split(".").pop()?.toLowerCase();
+  if (extension !== "jpg" && extension !== "jpeg" && extension !== "png") {
+    throw new Error(`Environment preview '${previewImage}' must be a PNG or JPEG image.`);
+  }
+  const fileName = basename(previewImage);
+  return {
+    format: extension === "jpg" ? "jpeg" : extension,
+    id: `tex.env.reference.${fileName.slice(0, -(extension.length + 1))}`,
+    kind: "texture",
+    path: `${outDir}/${fileName}`,
+    sourcePath: previewImage,
+  };
+}
+
+function categorizeEnvironmentAsset(assetName: string): IEnvironmentSceneIr["sourceAssets"][number]["category"] {
+  const lower = assetName.toLowerCase();
+  if (lower.includes("tree") || lower.includes("pine")) {
+    return "tree";
+  }
+  if (lower.includes("grass") || lower.includes("clover") || lower.includes("fern") || lower.includes("plant")) {
+    return "grass";
+  }
+  if (lower.includes("mushroom")) {
+    return "mushroom";
+  }
+  if (lower.includes("pebble")) {
+    return "pebble";
+  }
+  if (lower.includes("rock")) {
+    return "rock";
+  }
+  if (lower.includes("flower") || lower.includes("petal")) {
+    return "flower";
+  }
+  return "vegetation";
 }

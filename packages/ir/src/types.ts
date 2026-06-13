@@ -7,6 +7,7 @@ export type AudioSchema = "threenative.audio";
 export type TargetProfileSchema = "threenative.target-profile";
 export type RuntimeConfigSchema = "threenative.runtime-config";
 export type UiSchema = "threenative.ui";
+export type EnvironmentSceneSchema = "threenative.environment-scene";
 
 export interface IBundleManifest {
   schema: BundleSchema;
@@ -17,6 +18,7 @@ export interface IBundleManifest {
     world: "world.ir.json";
     animations?: string;
     audio?: string;
+    environmentScene?: string;
     scripts?: string;
     systems?: string;
     ui?: string;
@@ -163,6 +165,12 @@ export type IAssetIr =
       size?: readonly number[];
     }
   | {
+      format: "bin";
+      id: string;
+      kind: "buffer";
+      path: string;
+    }
+  | {
       format: "glb" | "gltf";
       id: string;
       kind: "model";
@@ -211,6 +219,12 @@ export interface ITargetProfile {
   schema: TargetProfileSchema;
   version: SchemaVersion;
   targets: Array<"web" | "desktop">;
+  budgets?: {
+    maxAssetBytes?: number;
+    maxBundleBytes?: number;
+    supportedModelFormats?: Array<"glb" | "gltf">;
+    supportedTextureFormats?: Array<"jpeg" | "png">;
+  };
 }
 
 export type IUiBinding =
@@ -234,4 +248,34 @@ export interface IUiIr {
   schema: UiSchema;
   version: SchemaVersion;
   root: IUiNodeIr;
+}
+
+export interface IEnvironmentSourceAssetIr {
+  asset: string;
+  category: "flower" | "grass" | "mushroom" | "pebble" | "rock" | "terrain" | "tree" | "vegetation";
+  id: string;
+}
+
+export interface IEnvironmentInstanceIr {
+  id: string;
+  sourceAsset: string;
+  position: Vec3;
+  rotation?: Quat;
+  scale?: Vec3;
+  tags?: string[];
+}
+
+export interface IEnvironmentPathIr {
+  id: string;
+  points: Vec3[];
+  width: number;
+}
+
+export interface IEnvironmentSceneIr {
+  schema: EnvironmentSceneSchema;
+  version: SchemaVersion;
+  referenceImage?: string;
+  sourceAssets: IEnvironmentSourceAssetIr[];
+  instances: IEnvironmentInstanceIr[];
+  path: IEnvironmentPathIr;
 }

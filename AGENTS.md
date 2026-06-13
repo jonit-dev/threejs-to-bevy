@@ -92,6 +92,14 @@ Important areas:
 - `docs`: architecture, SDK, workflow, and roadmap documentation.
 - `scripts`: top-level verification and documentation checks.
 
+Game examples should be sandboxed under `examples/<name>` as runnable projects.
+They should contain their own project config, source entry, package metadata,
+and any game-local assets needed to build, run, verify, and understand the
+example. Shared source asset packs such as `assets-source` may be canonical
+inputs, but an example's emitted bundle must copy the required assets into
+deterministic bundle-local paths and must not depend on runtime access to the
+source pack.
+
 Keep package dependencies aligned with this direction. Avoid shortcuts that make
 one package reach through another package's internals.
 

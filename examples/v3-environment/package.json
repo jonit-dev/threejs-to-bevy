@@ -1,0 +1,12 @@
+{
+  "name": "@examples/v3-environment",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "pnpm tn -- build --project examples/v3-environment",
+    "test": "node --test src/*.test.js"
+  },
+  "dependencies": {
+    "@threenative/sdk": "workspace:*"
+  }
+}

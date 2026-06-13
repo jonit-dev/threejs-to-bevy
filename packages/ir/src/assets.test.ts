@@ -45,6 +45,32 @@ test("assets should reject unknown texture asset", async () => {
   }
 });
 
+test("assets should reject v3 environment bundle over budget", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-assets-budget-"));
+  try {
+    await writeBaseBundle(root);
+    await writeFile(join(root, "assets/tree.gltf"), "{}");
+    await writeJson(root, "assets.manifest.json", {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [{ id: "model.env.tree", kind: "model", format: "gltf", path: "assets/tree.gltf" }],
+    });
+    await writeJson(root, "target.profile.json", {
+      schema: "threenative.target-profile",
+      version: "0.1.0",
+      targets: ["web"],
+      budgets: { maxBundleBytes: 1, supportedModelFormats: ["gltf"], supportedTextureFormats: ["png"] },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics[0]?.code, "TN_IR_BUDGET_BUNDLE_BYTES_EXCEEDED");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 async function writeBaseBundle(root: string): Promise<void> {
   await mkdir(join(root, "assets"), { recursive: true });
   await writeJson(root, "manifest.json", {
