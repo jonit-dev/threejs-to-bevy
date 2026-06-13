@@ -136,6 +136,8 @@ export default {
     },
     exclusionZones: [
       { id: "camera.start.clearance", bounds: { min: [-2.4, 0, 5.2], max: [2.4, 0, 9] }, tags: ["camera", "walkable"] },
+      { id: "camera.midPath.clearance", bounds: { min: [-2.2, 0, -0.2], max: [1.4, 0, 2.8] }, tags: ["camera", "walkable"] },
+      { id: "camera.bend.clearance", bounds: { min: [-4.2, 0, -5.4], max: [4.8, 0, -1] }, tags: ["camera", "walkable"] },
       { id: "hero.foreground.clearance", bounds: { min: [-5, 0, 1], max: [5, 0, 4.5] }, tags: ["hero"] },
     ],
     scatter: [
@@ -150,7 +152,7 @@ export default {
         rotation: { minYaw: 0, maxYaw: 6.283185307179586 },
         tags: ["grass", "path-edge"],
         collisionMode: "none",
-        exclusionZoneIds: ["camera.start.clearance", "hero.foreground.clearance"],
+        exclusionZoneIds: ["camera.start.clearance", "camera.midPath.clearance", "camera.bend.clearance", "hero.foreground.clearance"],
       },
       {
         id: "scatter.rocksAndPebbles",
@@ -162,7 +164,7 @@ export default {
         maxScale: 0.95,
         tags: ["rock", "pebble"],
         collisionMode: "blocking",
-        exclusionZoneIds: ["camera.start.clearance"],
+        exclusionZoneIds: ["camera.start.clearance", "camera.midPath.clearance", "camera.bend.clearance"],
       },
       {
         id: "scatter.flowersAndMushrooms",
@@ -174,7 +176,7 @@ export default {
         maxScale: 0.68,
         tags: ["flower", "mushroom"],
         collisionMode: "none",
-        exclusionZoneIds: ["camera.start.clearance"],
+        exclusionZoneIds: ["camera.start.clearance", "camera.midPath.clearance", "camera.bend.clearance"],
       },
     ],
     bookmarks: [
