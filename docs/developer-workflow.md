@@ -322,6 +322,21 @@ presence, transforms, camera/light/material mappings, events, logical input
 state, UI state, audio triggers, and physics events where applicable. They must
 not compare runtime-private handles or renderer internals.
 
+### V2 Arena Workflow
+
+The canonical playable V2 proof lives in `examples/v2-arena` and can also be
+scaffolded from the maintained template:
+
+```bash
+pnpm tn -- create my-arena --template v2-arena
+pnpm tn -- build --project examples/v2-arena
+pnpm tn -- verify --project examples/v2-arena --profile v2-arena
+```
+
+Keep arena edits within `@threenative/sdk`, `@threenative/r3f`, and
+`@threenative/ui` declarations so the same bundle remains portable across web
+and native runtime paths.
+
 ## Versioning And Compatibility
 
 The IR is the internal platform contract and should be explicitly versioned from the start:

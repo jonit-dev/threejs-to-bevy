@@ -37,7 +37,45 @@ test("should create v1 template files", async () => {
     assert.equal(packageJson.scripts["dev:desktop"], "tn dev --target desktop");
     assert.equal(packageJson.scripts.verify, "tn verify");
     assert.match(packageJson.dependencies["@threenative/sdk"] ?? "", /^file:/);
+    assert.equal(packageJson.dependencies["@threenative/r3f"], undefined);
+    assert.equal(packageJson.dependencies["@threenative/ui"], undefined);
     assert.match(packageJson.devDependencies["@threenative/cli"] ?? "", /^file:/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should create v2 arena template", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-create-v2-arena-"));
+  try {
+    const result = await createProject(["arena", "--template", "v2-arena", "--json"], { cwd: root });
+    const payload = JSON.parse(result.stdout) as { code: string; path: string; template: string };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.code, "TN_CREATE_OK");
+    assert.equal(payload.template, "v2-arena");
+
+    const files = await readdir(join(payload.path, "src"));
+    assert.equal(files.includes("game.tsx"), true);
+    assert.equal(files.includes("gameplay.ts"), true);
+    assert.equal(files.includes("input.ts"), true);
+    assert.equal(files.includes("ui.ts"), true);
+
+    const config = JSON.parse(await readFile(join(payload.path, "threenative.config.json"), "utf8")) as {
+      entry: string;
+      template: string;
+    };
+    const packageJson = JSON.parse(await readFile(join(payload.path, "package.json"), "utf8")) as {
+      dependencies: Record<string, string>;
+      scripts: Record<string, string>;
+    };
+
+    assert.equal(config.entry, "src/game.tsx");
+    assert.equal(config.template, "v2-arena");
+    assert.equal(packageJson.scripts.build, "tn build");
+    assert.equal(packageJson.scripts.verify, "tn verify --profile v2-arena");
+    assert.match(packageJson.dependencies["@threenative/r3f"] ?? "", /^file:/);
+    assert.match(packageJson.dependencies["@threenative/ui"] ?? "", /^file:/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

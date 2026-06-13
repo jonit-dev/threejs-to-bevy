@@ -8,8 +8,8 @@ interface ICreateOptions {
   cwd?: string;
 }
 
-const templateRoot = fileURLToPath(new URL("../../../../templates/v1/", import.meta.url));
-const repoRoot = resolve(templateRoot, "../..");
+const templatesRoot = fileURLToPath(new URL("../../../../templates/", import.meta.url));
+const repoRoot = resolve(templatesRoot, "..");
 const cliBin = resolve(repoRoot, "packages/cli/dist/index.js");
 
 export async function createProject(argv: readonly string[], options: ICreateOptions = {}): Promise<ICommandResult> {
@@ -26,17 +26,17 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
     return diagnosticResult(
       {
         code: "TN_CREATE_DESTINATION_REQUIRED",
-        message: "Usage: tn create <name> [--template v1] [--json]",
+        message: "Usage: tn create <name> [--template v1|v2-arena] [--json]",
       },
       { exitCode: 1, json, stderr: true },
     );
   }
 
-  if (template !== "v1") {
+  if (template !== "v1" && template !== "v2-arena") {
     return diagnosticResult(
       {
         code: "TN_CREATE_TEMPLATE_UNSUPPORTED",
-        message: `Template '${template ?? ""}' is not supported. Use '--template v1'.`,
+        message: `Template '${template ?? ""}' is not supported. Use '--template v1' or '--template v2-arena'.`,
         template,
       },
       { exitCode: 1, json, stderr: true },
@@ -66,16 +66,16 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
   }
 
   await mkdir(projectPath, { recursive: true });
-  await cp(templateRoot, projectPath, { recursive: true, force: false, errorOnExist: true });
+  await cp(resolve(templatesRoot, template), projectPath, { recursive: true, force: false, errorOnExist: true });
   await rewriteLocalWorkspaceDependencies(projectPath);
   await writeLocalCliShim(projectPath);
 
   const payload = {
     code: "TN_CREATE_OK",
-    message: `Created V1 project at '${projectPath}'.`,
+    message: `Created ${template} project at '${projectPath}'.`,
     nextCommands: ["pnpm install", "pnpm run validate", "pnpm run build", "pnpm run verify"],
     path: projectPath,
-    template: "v1",
+    template,
   };
 
   if (json) {
@@ -98,16 +98,35 @@ async function rewriteLocalWorkspaceDependencies(projectPath: string): Promise<v
     devDependencies?: Record<string, string>;
   };
 
-  packageJson.dependencies = {
-    ...packageJson.dependencies,
-    "@threenative/sdk": `file:${resolve(repoRoot, "packages/sdk")}`,
-  };
+  packageJson.dependencies = rewriteDependency(packageJson.dependencies ?? {}, "@threenative/sdk", "packages/sdk");
+  packageJson.dependencies = rewriteDependency(packageJson.dependencies, "@threenative/r3f", "packages/r3f", {
+    onlyIfPresent: true,
+  });
+  packageJson.dependencies = rewriteDependency(packageJson.dependencies, "@threenative/ui", "packages/ui", {
+    onlyIfPresent: true,
+  });
   packageJson.devDependencies = {
     ...packageJson.devDependencies,
     "@threenative/cli": `file:${resolve(repoRoot, "packages/cli")}`,
   };
 
   await writeFile(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
+}
+
+function rewriteDependency(
+  dependencies: Record<string, string>,
+  name: string,
+  packagePath: string,
+  options: { onlyIfPresent?: boolean } = {},
+): Record<string, string> {
+  if (options.onlyIfPresent === true && dependencies[name] === undefined) {
+    return dependencies;
+  }
+
+  return {
+    ...dependencies,
+    [name]: `file:${resolve(repoRoot, packagePath)}`,
+  };
 }
 
 async function writeLocalCliShim(projectPath: string): Promise<void> {

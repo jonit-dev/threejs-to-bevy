@@ -1,0 +1,16 @@
+{
+  "extends": "../../templates/v2/tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": "../..",
+    "jsx": "react-jsx",
+    "jsxImportSource": "@threenative/r3f",
+    "outDir": "dist",
+    "paths": {
+      "@threenative/r3f": ["packages/r3f/src/index.ts"],
+      "@threenative/r3f/jsx-runtime": ["packages/r3f/src/jsx-runtime.ts"],
+      "@threenative/sdk": ["packages/sdk/src/index.ts"],
+      "@threenative/ui": ["packages/ui/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
+}

@@ -1,7 +1,7 @@
-import { mkdir, rm, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
-import { type IBundleManifest } from "@threenative/ir";
-import { type IAssetReference, type IAudioDeclaration } from "@threenative/sdk";
+import { cp, mkdir, rm, writeFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
+import { type IBundleManifest, type IWorldIr } from "@threenative/ir";
+import { type IAssetReference, type IAudioDeclaration, type World } from "@threenative/sdk";
 import { type IUiElement } from "@threenative/ui";
 
 import { type IProjectConfig } from "../config.js";
@@ -16,8 +16,10 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
   const bundleRoot = normalizeBundleRoot(root);
   const isWorld =
     typeof bundleRoot.scene === "object" && bundleRoot.scene !== null && bundleRoot.scene.constructor.name === "World";
-  const emitted = isWorld ? undefined : sceneToWorld(bundleRoot.scene as Parameters<typeof sceneToWorld>[0]);
-  const ecs = isWorld ? ecsToIr(bundleRoot.scene as Parameters<typeof ecsToIr>[0]) : undefined;
+  const worldRoot = bundleRoot.world ?? (isWorld ? bundleRoot.scene : undefined);
+  const sceneRoot = isWorld ? undefined : bundleRoot.scene;
+  const emitted = sceneRoot === undefined ? undefined : sceneToWorld(sceneRoot as Parameters<typeof sceneToWorld>[0]);
+  const ecs = worldRoot === undefined ? undefined : ecsToIr(worldRoot as Parameters<typeof ecsToIr>[0]);
   const audio = bundleRoot.audio === undefined ? undefined : emitAudio(bundleRoot.audio);
   const assets = mergeAudioAssets(emitted?.assets ?? [], bundleRoot.audio);
   const ui = bundleRoot.ui === undefined ? undefined : emitUi(bundleRoot.ui);
@@ -56,7 +58,8 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
   await mkdir(outDir, { recursive: true });
   await mkdir(resolve(outDir, "schemas"), { recursive: true });
   await writeFile(resolve(outDir, "manifest.json"), stableJson(manifest));
-  await writeFile(resolve(outDir, "world.ir.json"), stableJson(ecs?.world ?? emitted?.world));
+  await copyAssetFiles(config.projectPath, outDir, assets);
+  await writeFile(resolve(outDir, "world.ir.json"), stableJson(mergeWorlds(emitted?.world, ecs?.world)));
   await writeFile(
     resolve(outDir, "materials.ir.json"),
     stableJson({ schema: "threenative.materials", version: "0.1.0", materials: emitted?.materials ?? [] }),
@@ -98,6 +101,7 @@ interface IBundleRoot {
   audio?: IAudioDeclaration;
   scene: unknown;
   ui?: IUiElement;
+  world?: World;
 }
 
 function normalizeBundleRoot(root: unknown): IBundleRoot {
@@ -109,6 +113,31 @@ function normalizeBundleRoot(root: unknown): IBundleRoot {
 
 function isBundleRoot(root: unknown): root is IBundleRoot {
   return typeof root === "object" && root !== null && "scene" in root;
+}
+
+function mergeWorlds(scene: IWorldIr | undefined, ecs: IWorldIr | undefined): IWorldIr | undefined {
+  if (scene === undefined) {
+    return ecs;
+  }
+  if (ecs === undefined) {
+    return scene;
+  }
+  const entities = new Map(scene.entities.map((entity) => [entity.id, { ...entity, components: { ...entity.components } }]));
+  for (const entity of ecs.entities) {
+    const existing = entities.get(entity.id);
+    entities.set(
+      entity.id,
+      existing === undefined
+        ? { ...entity, components: { ...entity.components } }
+        : { ...existing, components: { ...existing.components, ...entity.components }, tags: entity.tags ?? existing.tags },
+    );
+  }
+  return {
+    ...scene,
+    entities: [...entities.values()].sort((left, right) => left.id.localeCompare(right.id)),
+    events: { ...(scene.events ?? {}), ...(ecs.events ?? {}) },
+    resources: { ...(scene.resources ?? {}), ...(ecs.resources ?? {}) },
+  };
 }
 
 function mergeAudioAssets(
@@ -132,4 +161,20 @@ function audioAssetRefs(audio: IAudioDeclaration | undefined): IAssetReference[]
     return [];
   }
   return [...audio.music, ...audio.oneShots].flatMap((item) => (item.assetRef === undefined ? [] : [item.assetRef]));
+}
+
+async function copyAssetFiles(
+  projectPath: string,
+  outDir: string,
+  assets: ReadonlyArray<Record<string, unknown> & { id: string }>,
+): Promise<void> {
+  for (const asset of assets) {
+    if (typeof asset.path !== "string") {
+      continue;
+    }
+    const from = resolve(projectPath, asset.path);
+    const to = resolve(outDir, asset.path);
+    await mkdir(dirname(to), { recursive: true });
+    await cp(from, to);
+  }
 }

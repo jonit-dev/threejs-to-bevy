@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "@threenative/r3f",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "outDir": "dist",
+    "strict": true,
+    "target": "ES2023"
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
+}

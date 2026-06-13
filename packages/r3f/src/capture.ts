@@ -135,8 +135,8 @@ function toArray(children: R3fChild | R3fChild[]): R3fChild[] {
   return Array.isArray(children) ? children : [children];
 }
 
-function readObjectOptions(props: R3fProps, fallback: string): { id?: string; name?: string } {
-  return { id: props.id ?? fallback, name: props.name };
+function readObjectOptions(props: R3fProps, fallback: string): { id?: string; name?: string; physics?: R3fProps["physics"] } {
+  return { id: props.id ?? fallback, name: props.name, physics: props.physics };
 }
 
 function applyTransform(object: Object3D, props: R3fProps): void {

@@ -597,6 +597,9 @@ function validateWorldComponents(
 ): void {
   world.entities.forEach((entity, entityIndex) => {
     for (const [componentName, value] of Object.entries(entity.components)) {
+      if (isBuiltInComponent(componentName)) {
+        continue;
+      }
       const schema = schemas[componentName];
       if (schema === undefined) {
         diagnostics.push({
@@ -618,6 +621,9 @@ function validateResources(
   diagnostics: IIrDiagnostic[],
 ): void {
   for (const [resourceName, value] of Object.entries(world.resources ?? {})) {
+    if (isBuiltInResource(resourceName)) {
+      continue;
+    }
     const schema = schemas[resourceName];
     if (schema === undefined) {
       diagnostics.push({
@@ -629,6 +635,14 @@ function validateResources(
     }
     validatePayload(value, schema, `world.ir.json/resources/${resourceName}`, entityIds, diagnostics);
   }
+}
+
+function isBuiltInComponent(componentName: string): boolean {
+  return ["Camera", "Collider", "Hierarchy", "Light", "MeshRenderer", "RigidBody", "Transform", "Visibility"].includes(componentName);
+}
+
+function isBuiltInResource(resourceName: string): boolean {
+  return resourceName === "ActiveCamera";
 }
 
 function validateWorldEvents(

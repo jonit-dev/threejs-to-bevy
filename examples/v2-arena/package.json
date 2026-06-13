@@ -1,0 +1,22 @@
+{
+  "name": "@threenative/example-v2-arena",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tn build",
+    "dev:web": "tn dev --target web",
+    "dev:desktop": "tn dev --target desktop",
+    "test": "pnpm build && node --test dist/**/*.test.js",
+    "validate": "tn validate dist/game.bundle",
+    "verify": "tn verify --profile v2-arena"
+  },
+  "dependencies": {
+    "@threenative/r3f": "workspace:*",
+    "@threenative/sdk": "workspace:*",
+    "@threenative/ui": "workspace:*"
+  },
+  "devDependencies": {
+    "@threenative/cli": "workspace:*",
+    "typescript": "^5.9.3"
+  }
+}

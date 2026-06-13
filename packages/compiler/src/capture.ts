@@ -41,18 +41,31 @@ export async function captureEntry(config: IProjectConfig): Promise<ICapturedSce
   await writeFile(tempFile, transpiled.outputText);
 
   const module = (await import(`${pathToFileURL(tempFile).href}?v=${Date.now()}`)) as { default?: unknown };
-  const root = isR3fElement(module.default) ? captureR3fRoot(module.default, entryPath, config.projectPath) : module.default;
+  const root = captureRoot(module.default, entryPath, config.projectPath);
 
-  if (!isSceneRoot(root) && !isWorldRoot(root)) {
+  if (!isSceneRoot(root) && !isWorldRoot(root) && !isBundleRoot(root)) {
     throw new CompilerError("TN_COMPILER_UNSUPPORTED_ROOT", "Entry default export must be a supported SDK Scene or World root.");
   }
 
   return {
     root,
     summary: {
-      rootType: isWorldRoot(root) ? "World" : "Scene",
+      rootType: isWorldRoot(root) || (isBundleRoot(root) && isWorldRoot(root.world)) ? "World" : "Scene",
     },
   };
+}
+
+function captureRoot(root: unknown, entryPath: string, projectPath: string): unknown {
+  if (isR3fElement(root)) {
+    return captureR3fRoot(root, entryPath, projectPath);
+  }
+  if (isBundleRoot(root) && isR3fElement(root.scene)) {
+    return {
+      ...root,
+      scene: captureR3fRoot(root.scene, entryPath, projectPath),
+    };
+  }
+  return root;
 }
 
 async function assertPortableImports(filePath: string, source: string, projectPath: string, visited = new Set<string>()): Promise<void> {
@@ -149,7 +162,11 @@ function readBrowserGlobal(source: string, filePath: string): string | undefined
 
 function isPropertyName(node: ts.Identifier): boolean {
   const parent = node.parent;
-  return ts.isPropertyAccessExpression(parent) && parent.name === node;
+  return (
+    (ts.isPropertyAccessExpression(parent) && parent.name === node) ||
+    (ts.isPropertyAssignment(parent) && parent.name === node) ||
+    (ts.isShorthandPropertyAssignment(parent) && parent.name === node)
+  );
 }
 
 function readLiteralSpecifier(node: ts.Node | undefined): string | undefined {
@@ -250,4 +267,8 @@ export function isSceneRoot(value: unknown): boolean {
 
 export function isWorldRoot(value: unknown): boolean {
   return typeof value === "object" && value !== null && value.constructor.name === "World";
+}
+
+function isBundleRoot(value: unknown): value is { scene?: unknown; world?: unknown } {
+  return typeof value === "object" && value !== null && ("scene" in value || "world" in value);
 }

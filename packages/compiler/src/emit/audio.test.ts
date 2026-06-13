@@ -26,6 +26,10 @@ test("audio should emit hit sound and looping music", () => {
 test("audio should emit bundle assets and validate playback declarations", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-audio-bundle-"));
   try {
+    await mkdir(join(root, "assets"), { recursive: true });
+    await writeFile(join(root, "assets/hit.wav"), "");
+    await writeFile(join(root, "assets/arena.ogg"), "");
+
     const bundlePath = await emitBundle(
       {
         entry: "src/game.ts",
@@ -42,9 +46,6 @@ test("audio should emit bundle assets and validate playback declarations", async
         scene: makeScene(),
       },
     );
-    await mkdir(join(bundlePath, "assets"), { recursive: true });
-    await writeFile(join(bundlePath, "assets/hit.wav"), "");
-    await writeFile(join(bundlePath, "assets/arena.ogg"), "");
 
     const manifest = JSON.parse(await readFile(join(bundlePath, "manifest.json"), "utf8"));
     const assets = JSON.parse(await readFile(join(bundlePath, "assets.manifest.json"), "utf8"));

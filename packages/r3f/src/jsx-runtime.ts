@@ -1,4 +1,4 @@
-import type { ColorValue, Vector3Tuple } from "@threenative/sdk";
+import type { ColorValue, IPhysicsDeclaration, Vector3Tuple } from "@threenative/sdk";
 
 export type R3fElementType =
   | "ambientLight"
@@ -23,6 +23,7 @@ export interface INodeProps {
   id?: string;
   name?: string;
   position?: Vector3Tuple;
+  physics?: IPhysicsDeclaration;
   rotation?: Vector3Tuple;
   scale?: Vector3Tuple;
   visible?: boolean;
