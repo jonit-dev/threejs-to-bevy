@@ -287,6 +287,21 @@ Future parity metrics worth adding:
 Use thresholds per fixture class. A shadow/fog scene needs different tolerances
 than a flat color card.
 
+Suggested starting thresholds until a dedicated parity command owns them:
+
+| Fixture class | `changedPixelRatio` | `averageBrightnessDelta` | `averageColorDelta.*` | Interpretation |
+| --- | ---: | ---: | ---: | --- |
+| Flat unlit color card | <= 0.01 | <= 0.01 | <= 0.01 | Anything larger usually means color-space or clear-color drift. |
+| Simple lit primitive | <= 0.08 | <= 0.03 | <= 0.03 | Allows small rasterization and light falloff differences. |
+| Camera/framing grid | <= 0.05 | <= 0.02 | <= 0.02 | Larger structural diff usually means camera, FOV, transform, or aspect drift. |
+| Shadow receiver/caster | report-only | <= 0.08 | <= 0.06 | Shadow algorithms differ; use masks/regions before hard failing. |
+| Fog/depth ramp | report-only | <= 0.06 | <= 0.05 | Compare depth-profile behavior, not just whole-image averages. |
+| Material swatch grid | <= 0.05 | <= 0.03 | <= 0.03 | Compare per-swatch crops when possible. |
+| Full V3 forest scene | report-only | report-only | report-only | V3 does not assert pixel parity; use deltas as evidence. |
+
+Treat these as initial debugging presets, not product guarantees. Promote them
+to release gates only after fixture-specific tests prove they are stable on CI.
+
 ### 6. Lighting-Specific Validation
 
 Goal: separate lighting bugs from geometry, camera, and asset bugs.
@@ -315,6 +330,27 @@ Lighting checks should cover:
 
 Do not debug forest-scene lighting parity until the simple ambient,
 directional, shadow, and fog fixtures are close.
+
+### Symptom Triage
+
+Use this before changing renderer code:
+
+| Symptom | Inspect first | Likely layer |
+| --- | --- | --- |
+| Three.js bright, Bevy dark | tone mapping, exposure, ambient intensity, sRGB-to-linear conversion | lighting/color management |
+| Bevy bright, Three.js dark | Bevy light intensity scaling, environment/ambient defaults, material base color conversion | lighting/color management |
+| Colors washed out | texture color space, double sRGB conversion, tone mapping | material/texture |
+| Colors oversaturated | missing linearization, wrong authored color space, emissive/base-color mixup | material/color management |
+| Object appears offset | coordinate handedness, root glTF transform, instance transform, parent hierarchy | geometry/transform |
+| Object scale differs | glTF import scale, meter convention, instance scale, unit conversion | asset/transform |
+| Camera view differs | bookmark transform, FOV units, aspect ratio, near/far, rotation order | camera |
+| Bevy screenshot blank | native capture path, active camera, bookmark ID, asset load, clear color, render timing | native runtime/capture |
+| Three.js screenshot blank | web preview logs, canvas size, active camera, scene load, runtime readiness | web runtime/capture |
+| Shadows missing on one side | shadow policy, light kind, caster/receiver flags, shadow map setup | lighting/shadows |
+| Fog only on one side | atmosphere profile, fog mode support, color space, distance/density mapping | atmosphere |
+| Texture visible on one side only | bundle path, asset manifest, material texture slot mapping, loader support | asset/material |
+| Geometry silhouette differs | primitive dimensions, glTF scene root, normals/tangents, culling, clipping | geometry |
+| Diff dominated by background | clear color, sky color, fog, tone mapping | atmosphere/background |
 
 ### 7. Geometry And Camera Validation
 
@@ -396,6 +432,96 @@ If a gate is not implemented, say so explicitly. For example:
 Three.js and Bevy screenshots were captured and compared manually.
 Objective image parity is not currently asserted by verify:v3.
 ```
+
+Copyable report template:
+
+```txt
+Rendering verification:
+- Command:
+- Bundle/report:
+- Three.js screenshot:
+- Bevy screenshot:
+- Contact sheet:
+- Metrics:
+  - changedPixelRatio:
+  - averageBrightnessDelta:
+  - averageColorDelta:
+- Fixture/bookmark:
+- Parity status: asserted | not-asserted | manual-only
+- Interpretation:
+- Known drift:
+- Next action:
+```
+
+## Source Files
+
+When the CLI report is not enough, inspect these files:
+
+- `packages/cli/src/verify/playwright.ts`: V1 web screenshot verifier.
+- `packages/cli/src/verify/compareImages.ts`: PNG loading and image comparison command backend.
+- `packages/cli/src/verify/imageAnalysis.ts`: current nonblank and image-delta metrics.
+- `packages/cli/src/verify/v3Scene.ts`: V3 bookmark capture, Bevy capture invocation, side-by-side sheet, and nonblank checks.
+- `packages/cli/src/verify/v3Atmosphere.ts`: V3 atmosphere metadata gate.
+- `packages/cli/src/verify/v3Environment.ts`: V3 web performance and instancing report.
+- `packages/cli/src/verify/v3FirstPerson.ts`: V3 first-person verification.
+- `packages/cli/src/verify/v3Walkability.ts`: V3 walkability verification.
+- `runtime-bevy/crates/threenative_runtime/src/bin/threenative_capture.rs`: native screenshot capture entrypoint, when present.
+- `packages/runtime-web-three/src`: web runtime scene/material/environment mapping.
+- `runtime-bevy/crates/threenative_runtime/src`: Bevy runtime scene/material/environment mapping.
+
+## Future Runtime Parity Command
+
+A dedicated command would reduce manual work and should look like this:
+
+```bash
+pnpm tn -- verify-render-parity \
+  --bundle examples/v3-environment/dist/forest.bundle \
+  --bookmark <bookmark-id> \
+  --profile lighting-smoke \
+  --json
+```
+
+Minimum output:
+
+```json
+{
+  "code": "TN_VERIFY_RENDER_PARITY_OK",
+  "status": "pass",
+  "bookmarkId": "path.entry",
+  "profile": "lighting-smoke",
+  "artifacts": {
+    "threejsScreenshot": "...",
+    "bevyScreenshot": "...",
+    "diffImage": "...",
+    "reportPath": "..."
+  },
+  "metrics": {
+    "changedPixelRatio": 0,
+    "averageBrightnessDelta": 0,
+    "averageColorDelta": { "red": 0, "green": 0, "blue": 0 }
+  },
+  "thresholds": {
+    "changedPixelRatio": 0.08,
+    "averageBrightnessDelta": 0.03,
+    "averageColorDelta": 0.03
+  },
+  "visualParity": "asserted"
+}
+```
+
+Profiles worth supporting:
+
+- `nonblank-smoke`
+- `camera-framing`
+- `flat-color`
+- `lighting-smoke`
+- `shadow-smoke`
+- `fog-depth`
+- `material-grid`
+- `v3-forest-report-only`
+
+Until this exists, use `verify:v3`, the contact sheet, and `compare-images`
+together.
 
 ## Iteration Rules
 
