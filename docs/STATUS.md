@@ -247,6 +247,13 @@ QuickJS host now execute schedules in `startup`, `fixedUpdate`, `update`,
 resource/event trace artifacts. Broader lifecycle/state coverage remains later
 V6 work.
 
+V6-03 has started with the collider validation contract: IR validation now
+accepts positive finite box, sphere, and capsule primitive collider dimensions,
+checks rigid-body mass and velocity fields, rejects cylinder colliders, dynamic
+mesh colliders, and mesh trigger colliders, and fails closed for V6 collider
+layer/mask fields that are deferred to V7. Runtime contact/trigger event trace
+parity remains later V6-03 work.
+
 V7 is now planned as the deep engine gap-closure milestone. It should continue
 parity work that is too large or risky for V6, such as deeper physics,
 animation graphs, richer UI/audio, renderer/content parity, scripting/runtime

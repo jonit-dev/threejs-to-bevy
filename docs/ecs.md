@@ -249,9 +249,7 @@ Physics body declaration.
 type RigidBody = {
   kind: "static" | "dynamic" | "kinematic";
   mass?: number;
-  gravityScale?: number;
-  linearDamping?: number;
-  angularDamping?: number;
+  velocity?: [number, number, number];
 };
 ```
 
@@ -263,16 +261,23 @@ Collision shape.
 
 ```ts
 type Collider =
-  | { kind: "box"; size: [number, number, number]; sensor?: boolean }
-  | { kind: "sphere"; radius: number; sensor?: boolean }
-  | { kind: "capsule"; radius: number; height: number; sensor?: boolean }
-  | { kind: "mesh"; asset: AssetId; sensor?: boolean };
+  | { kind: "box"; size: [number, number, number]; trigger?: boolean }
+  | { kind: "sphere"; radius: number; trigger?: boolean }
+  | { kind: "capsule"; radius: number; height: number; trigger?: boolean }
+  | { kind: "mesh"; trigger?: false };
 ```
 
 Rules:
 
-- Mesh colliders may be restricted to static bodies.
-- Collider dimensions are local-space dimensions.
+- V6 portable collision supports primitive box, sphere, and capsule colliders
+  for static, dynamic, and kinematic bodies.
+- Mesh colliders are accepted only for static collision. Dynamic mesh colliders
+  and mesh trigger colliders fail validation.
+- Collider dimensions are required local-space dimensions and must be positive
+  finite numbers.
+- Cylinder colliders and deeper contact filtering are deferred to V7.
+- Layer and mask filtering is deferred to the V7 physics contract; V6 bundles
+  that include collider layer or mask fields fail validation.
 - Runtime scale handling must be documented by the physics adapter.
 
 ### AnimationPlayer

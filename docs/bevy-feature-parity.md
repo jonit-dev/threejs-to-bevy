@@ -252,6 +252,13 @@ compiler, and IR schedule value beside `fixedUpdate`, `update`, and
 name, and shared conformance compares a V6 startup-before-update
 resource/event trace. Broader lifecycle/state evidence is not claimed yet.
 
+V6-03 has started for the physics contract layer: IR validation now accepts
+positive finite primitive box, sphere, and capsule collider dimensions, checks
+rigid-body mass and velocity fields, rejects cylinder colliders, dynamic mesh
+colliders, and mesh trigger colliders, and rejects V6 collider layer/mask fields
+because contact filtering is deferred to V7. Web/Bevy contact and trigger event
+trace parity is not claimed yet.
+
 ## V7 Deep Engine Gap-Closure Plan
 
 The planned V7 implementation slice is tracked in

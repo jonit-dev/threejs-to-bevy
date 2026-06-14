@@ -965,46 +965,128 @@ function validateRenderComponents(entity: IWorldIr["entities"][number], path: st
 }
 
 function validatePhysicsComponents(entity: IWorldIr["entities"][number], path: string, diagnostics: IIrDiagnostic[]): void {
-  const collider = entity.components.Collider;
-  const body = entity.components.RigidBody;
+  const collider = entity.components.Collider as unknown;
+  const body = entity.components.RigidBody as unknown;
   if (collider === undefined && body === undefined) {
     return;
   }
-  if (collider !== undefined) {
-    if (!["box", "capsule", "cylinder", "mesh", "sphere"].includes(collider.kind)) {
+  if (collider !== undefined && !isRecord(collider)) {
+    diagnostics.push({
+      code: "TN_IR_PHYSICS_COLLIDER_INVALID",
+      message: `Collider '${entity.id}' must be an object.`,
+      path: `${path}/components/Collider`,
+    });
+  }
+  if (body !== undefined && !isRecord(body)) {
+    diagnostics.push({
+      code: "TN_IR_PHYSICS_BODY_INVALID",
+      message: `RigidBody '${entity.id}' must be an object.`,
+      path: `${path}/components/RigidBody`,
+    });
+  }
+
+  const colliderRecord = isRecord(collider) ? collider : undefined;
+  const bodyRecord = isRecord(body) ? body : undefined;
+
+  if (colliderRecord !== undefined) {
+    if (!["box", "capsule", "mesh", "sphere"].includes(colliderRecord.kind as string)) {
       diagnostics.push({
         code: "TN_IR_PHYSICS_COLLIDER_UNSUPPORTED",
-        message: `Collider '${entity.id}' uses unsupported shape '${String(collider.kind)}'.`,
+        message: `Collider '${entity.id}' uses unsupported shape '${String(colliderRecord.kind)}'.`,
         path: `${path}/components/Collider/kind`,
+        suggestion: "Use a V6 portable collider shape: box, sphere, capsule, or static mesh.",
       });
     }
-    if (collider.trigger !== undefined && typeof collider.trigger !== "boolean") {
+    if ("layer" in colliderRecord || "mask" in colliderRecord) {
+      diagnostics.push({
+        code: "TN_IR_PHYSICS_LAYER_MASK_UNSUPPORTED",
+        message: "Collider layer and mask filtering is deferred until the V7 physics contract.",
+        path: `${path}/components/Collider`,
+        suggestion: "Omit Collider.layer and Collider.mask for V6 bundles.",
+      });
+    }
+    if (colliderRecord.trigger !== undefined && typeof colliderRecord.trigger !== "boolean") {
       diagnostics.push({
         code: "TN_IR_PHYSICS_TRIGGER_INVALID",
         message: `Collider trigger flag for '${entity.id}' must be boolean.`,
         path: `${path}/components/Collider/trigger`,
       });
     }
+    if (colliderRecord.kind === "box") {
+      validatePositiveVec3(colliderRecord.size, `${path}/components/Collider/size`, "TN_IR_PHYSICS_COLLIDER_SIZE_INVALID", diagnostics);
+    }
+    if (colliderRecord.kind === "sphere") {
+      validatePositiveFinite(colliderRecord.radius, `${path}/components/Collider/radius`, "TN_IR_PHYSICS_COLLIDER_RADIUS_INVALID", diagnostics);
+    }
+    if (colliderRecord.kind === "capsule") {
+      validatePositiveFinite(colliderRecord.radius, `${path}/components/Collider/radius`, "TN_IR_PHYSICS_COLLIDER_RADIUS_INVALID", diagnostics);
+      validatePositiveFinite(colliderRecord.height, `${path}/components/Collider/height`, "TN_IR_PHYSICS_COLLIDER_HEIGHT_INVALID", diagnostics);
+    }
+    if (colliderRecord.kind === "mesh" && colliderRecord.trigger === true) {
+      diagnostics.push({
+        code: "TN_IR_PHYSICS_MESH_TRIGGER_UNSUPPORTED",
+        message: "Mesh trigger colliders are not supported in the V6 portable physics contract.",
+        path: `${path}/components/Collider/kind`,
+        suggestion: "Use a primitive trigger collider or a static mesh collider without trigger semantics.",
+      });
+    }
   }
-  if (body !== undefined && !["dynamic", "kinematic", "static"].includes(body.kind)) {
+  if (bodyRecord !== undefined && !["dynamic", "kinematic", "static"].includes(bodyRecord.kind as string)) {
     diagnostics.push({
       code: "TN_IR_PHYSICS_BODY_UNSUPPORTED",
-      message: `RigidBody '${entity.id}' uses unsupported body kind '${String(body.kind)}'.`,
+      message: `RigidBody '${entity.id}' uses unsupported body kind '${String(bodyRecord.kind)}'.`,
       path: `${path}/components/RigidBody/kind`,
     });
   }
-  if (collider?.kind === "mesh" && body?.kind === "dynamic") {
+  if (bodyRecord?.mass !== undefined) {
+    validatePositiveFinite(bodyRecord.mass, `${path}/components/RigidBody/mass`, "TN_IR_PHYSICS_BODY_MASS_INVALID", diagnostics);
+  }
+  if (bodyRecord?.velocity !== undefined) {
+    validateFiniteVec3(bodyRecord.velocity, `${path}/components/RigidBody/velocity`, "TN_IR_PHYSICS_BODY_VELOCITY_INVALID", diagnostics);
+  }
+  if (colliderRecord?.kind === "mesh" && bodyRecord?.kind !== undefined && bodyRecord.kind !== "static") {
     diagnostics.push({
       code: "TN_IR_PHYSICS_DYNAMIC_MESH_UNSUPPORTED",
-      message: "Dynamic mesh colliders are not supported in V2.",
+      message: "Non-static mesh colliders are not supported in the V6 portable physics contract.",
       path: `${path}/components/Collider/kind`,
+      suggestion: "Use a static mesh collider or a primitive collider for dynamic or kinematic bodies.",
     });
   }
-  if (body !== undefined && collider === undefined) {
+  if (bodyRecord !== undefined && collider === undefined) {
     diagnostics.push({
       code: "TN_IR_PHYSICS_COLLIDER_MISSING",
-      message: `RigidBody '${entity.id}' must have a Collider in V2.`,
+      message: `RigidBody '${entity.id}' must have a Collider in the V6 portable physics contract.`,
       path: `${path}/components/Collider`,
+    });
+  }
+}
+
+function validatePositiveVec3(value: unknown, path: string, code: string, diagnostics: IIrDiagnostic[]): void {
+  if (!Array.isArray(value) || value.length !== 3 || value.some((item) => typeof item !== "number" || !Number.isFinite(item) || item <= 0)) {
+    diagnostics.push({
+      code,
+      message: "Expected a three-component positive finite numeric vector.",
+      path,
+    });
+  }
+}
+
+function validateFiniteVec3(value: unknown, path: string, code: string, diagnostics: IIrDiagnostic[]): void {
+  if (!Array.isArray(value) || value.length !== 3 || value.some((item) => typeof item !== "number" || !Number.isFinite(item))) {
+    diagnostics.push({
+      code,
+      message: "Expected a three-component finite numeric vector.",
+      path,
+    });
+  }
+}
+
+function validatePositiveFinite(value: unknown, path: string, code: string, diagnostics: IIrDiagnostic[]): void {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    diagnostics.push({
+      code,
+      message: "Expected a positive finite number.",
+      path,
     });
   }
 }
