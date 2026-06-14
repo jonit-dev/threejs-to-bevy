@@ -4,7 +4,7 @@
 | --- | --- |
 | Contract | Three.js-style TypeScript game engine -> validated IR bundle -> web Three.js + native Bevy |
 | Native baseline | Bevy and `bevy_ecs` pinned to `=0.14.2` |
-| Evidence anchors | native test, visual scene, game-authoring ergonomics, V6 PRDs, verify:v6, V7 PRDs, verify:v7, examples/v7-functional, artifacts/v7 |
+| Evidence anchors | native test, visual scene, game-authoring ergonomics, V6 PRDs, verify:v6, V7 PRDs, verify:v7, V8 PRDs, examples/v7-functional, artifacts/v7 |
 
 ## Status
 
@@ -48,6 +48,12 @@ focused Rust tests, rendered web functional-scene evidence, packaged desktop
 artifacts, template smoke output, packaging diagnostics, and performance budget
 reports. Rows marked deferred or never portable remain outside the V7 support
 surface.
+
+V8 begins the local editor and inspector track through [V8 PRDs](PRDs/v8/README.md).
+That work is scoped to offline structured SDK/ECS/IR project data, local
+save/load, structured diffs, diagnostics, and bundle preview evidence. Online
+services, networking, replication, collaboration, public plugins, raw Three.js
+authoring, and direct Bevy authoring remain outside V8.
 
 ## Sources
 

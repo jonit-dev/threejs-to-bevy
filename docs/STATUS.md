@@ -473,12 +473,14 @@ online, networking, replication, collaboration, public plugin, raw Three.js,
 direct Bevy authoring, mobile packaging, and broad shader graph scope remain
 deferred or never portable as tracked in the parity and maturity docs.
 
-V8 is the first planned local editor and inspector milestone. V9 is the first
-planned online project and publishing milestone. V10 is the first planned
-collaboration and runtime replication milestone. Editor, online, networking,
-replication, collaboration, presence, and conflict resolution should not be
-treated as V5, V6, or V7 support unless a PRD explicitly limits the work to
-internal preparation or harness cleanup.
+V8 is the first planned local editor and inspector milestone, tracked in
+[V8 PRDs](PRDs/v8/README.md). V8 starts with offline structured SDK/ECS/IR
+project data, local save/load, structured diffs, diagnostics, and bundle
+preview evidence. V9 is the first planned online project and publishing
+milestone. V10 is the first planned collaboration and runtime replication
+milestone. Online services, networking, replication, collaboration, presence,
+and conflict resolution should not be treated as V8 support unless a later PRD
+explicitly changes that boundary.
 
 ## V3 Proves
 
