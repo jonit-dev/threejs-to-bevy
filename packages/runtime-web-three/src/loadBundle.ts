@@ -4,6 +4,7 @@ import type {
   IBundleManifest,
   IEnvironmentSceneIr,
   IInputIr,
+  IIrSchemaFile,
   IMaterialsIr,
   IRuntimeConfigIr,
   ISystemsIr,
@@ -15,6 +16,7 @@ import type {
 export interface IWebBundle {
   assets: IAssetsManifest;
   audio?: IAudioIr;
+  componentSchemas?: IIrSchemaFile;
   environmentScene?: IEnvironmentSceneIr;
   input?: IInputIr;
   manifest: IBundleManifest;
@@ -46,10 +48,15 @@ export async function loadBundle(source: string): Promise<IWebBundle> {
     manifest.files.runtimeConfig === undefined
       ? undefined
       : await readBundleJson<IRuntimeConfigIr>(source, manifest.files.runtimeConfig);
+  const componentSchemas =
+    manifest.files.componentSchemas === undefined
+      ? undefined
+      : await readBundleJson<IIrSchemaFile>(source, manifest.files.componentSchemas);
   const ui = manifest.entry.ui === undefined ? undefined : await readBundleJson<IUiIr>(source, manifest.entry.ui);
   return {
     assets: await readBundleJson<IAssetsManifest>(source, manifest.files.assets),
     audio,
+    componentSchemas,
     environmentScene,
     input,
     manifest,

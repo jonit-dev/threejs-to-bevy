@@ -1,4 +1,5 @@
-import type { IIrStateSource, IIrSystemQuery, ISystemsIr, IWorldEntity, IWorldIr } from "@threenative/ir";
+import { buildComponentReflectionRegistry, type IComponentReflectionRegistry, type IComponentReflectionType } from "@threenative/ir";
+import type { IIrSchemaFile, IIrStateSource, IIrSystemQuery, ISystemsIr, IWorldEntity, IWorldIr } from "@threenative/ir";
 import type { IWebInputState } from "../input.js";
 import { animationPlayPayload } from "./services/animation.js";
 import {
@@ -38,6 +39,8 @@ export interface ISystemContext {
   commands: ISystemCommandBuffer;
   components: {
     hooks(component: unknown): IComponentHookObservation[];
+    type(component: unknown): IComponentReflectionType | null;
+    types(): IComponentReflectionRegistry;
   };
   events: {
     emit(event: unknown, payload: unknown): void;
@@ -114,7 +117,7 @@ export interface IQueuedServiceCall {
 
 export function createSystemContext(
   world: IWorldIr,
-  options: { defaultQuery?: IIrSystemQuery; delta: number; elapsed?: number; fixedDelta: number; input?: IWebInputState; paused?: boolean; systems?: ISystemsIr },
+  options: { componentSchemas?: IIrSchemaFile; defaultQuery?: IIrSystemQuery; delta: number; elapsed?: number; fixedDelta: number; input?: IWebInputState; paused?: boolean; systems?: ISystemsIr },
 ): {
   commands: IQueuedCommand[];
   context: ISystemContext;
@@ -127,6 +130,7 @@ export function createSystemContext(
   const resources: IQueuedResourceWrite[] = [];
   const services: IQueuedServiceCall[] = [];
   const states = evaluateStates(world, options.systems);
+  const componentTypes = buildComponentReflectionRegistry(options.componentSchemas);
   return {
     commands,
     context: {
@@ -158,6 +162,12 @@ export function createSystemContext(
       components: {
         hooks(component) {
           return componentHookObservations(world, options.systems, normalizeHandleName(component));
+        },
+        type(component) {
+          return cloneValue(componentTypes.components.find((type) => type.id === normalizeHandleName(component)) ?? null) as IComponentReflectionType | null;
+        },
+        types() {
+          return cloneValue(componentTypes) as IComponentReflectionRegistry;
         },
       },
       events: {

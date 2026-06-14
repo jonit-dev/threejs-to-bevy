@@ -24,6 +24,10 @@
           "kind": "string",
           "required": false
         },
+        "componentType": {
+          "kind": "string",
+          "required": false
+        },
         "game": {
           "kind": "string",
           "required": false

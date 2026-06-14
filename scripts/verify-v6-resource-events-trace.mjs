@@ -54,6 +54,7 @@ async function runWebTrace(root, bundlePath) {
   const effectLog = runtime.createSystemEffectLog();
   for (const schedule of ["startup", "fixedUpdate", "update", "postUpdate"]) {
     const result = await runtime.runSchedule({
+      componentSchemas: bundle.componentSchemas,
       delta: 1 / 60,
       effectLog,
       elapsed: 1,

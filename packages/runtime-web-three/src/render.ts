@@ -64,6 +64,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
   resizeRenderer(renderer, mapped.camera, container);
   if (bundle.systems !== undefined) {
     await runGameFrame({
+      componentSchemas: bundle.componentSchemas,
       delta: 1 / 60,
       effectLog,
       input,
@@ -83,6 +84,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
       const delta = Math.max(0, (time - lastTime) / 1000);
       lastTime = time;
       void runGameFrame({
+        componentSchemas: bundle.componentSchemas,
         delta,
         effectLog,
         input,

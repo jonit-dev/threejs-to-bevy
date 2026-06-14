@@ -10,6 +10,7 @@ use threenative_loader::{
 #[serde(rename_all = "camelCase")]
 pub struct NativeSystemContextSnapshot {
     pub component_hooks: BTreeMap<String, Vec<NativeComponentHookObservation>>,
+    pub component_types: NativeComponentReflectionRegistry,
     pub entities: Vec<NativeSystemEntitySnapshot>,
     pub events: BTreeMap<String, Vec<Value>>,
     pub input: NativeSystemInputSnapshot,
@@ -17,6 +18,28 @@ pub struct NativeSystemContextSnapshot {
     pub resources: BTreeMap<String, Value>,
     pub states: BTreeMap<String, Option<String>>,
     pub time: NativeSystemTimeSnapshot,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct NativeComponentReflectionRegistry {
+    pub components: Vec<NativeComponentReflectionType>,
+    pub schema: String,
+    pub version: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct NativeComponentReflectionType {
+    pub fields: Vec<NativeComponentReflectionField>,
+    pub id: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct NativeComponentReflectionField {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default: Option<Value>,
+    pub kind: String,
+    pub name: String,
+    pub required: bool,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -90,6 +113,7 @@ pub fn build_system_context_snapshot_with_events(
 
     NativeSystemContextSnapshot {
         component_hooks: component_hook_observations(bundle),
+        component_types: component_reflection_registry(bundle),
         entities,
         events: merged_event_queues(bundle, events),
         input: NativeSystemInputSnapshot::fixed_trace(),
@@ -102,6 +126,35 @@ pub fn build_system_context_snapshot_with_events(
             .collect(),
         states: evaluate_states(bundle),
         time,
+    }
+}
+
+pub fn component_reflection_registry(bundle: &LoadedBundle) -> NativeComponentReflectionRegistry {
+    let mut components = Vec::new();
+    if let Some(schema_file) = bundle.component_schemas.as_ref() {
+        let mut component_entries = schema_file.schemas.iter().collect::<Vec<_>>();
+        component_entries.sort_by(|(left, _), (right, _)| left.cmp(right));
+        for (id, schema) in component_entries {
+            let mut fields = schema.fields.iter().collect::<Vec<_>>();
+            fields.sort_by(|(left, _), (right, _)| left.cmp(right));
+            components.push(NativeComponentReflectionType {
+                fields: fields
+                    .into_iter()
+                    .map(|(name, field)| NativeComponentReflectionField {
+                        default: field.default.clone(),
+                        kind: field.kind.clone(),
+                        name: name.clone(),
+                        required: field.required,
+                    })
+                    .collect(),
+                id: id.clone(),
+            });
+        }
+    }
+    NativeComponentReflectionRegistry {
+        components,
+        schema: "threenative.component-reflection".to_owned(),
+        version: "0.1.0".to_owned(),
     }
 }
 

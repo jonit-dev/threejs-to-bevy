@@ -1,4 +1,4 @@
-import type { IBundleManifest, IIrSystemDeclaration, IRuntimeDiagnostic, IrSystemSchedule, ISystemsIr, IWorldIr } from "@threenative/ir";
+import type { IBundleManifest, IIrSchemaFile, IIrSystemDeclaration, IRuntimeDiagnostic, IrSystemSchedule, ISystemsIr, IWorldIr } from "@threenative/ir";
 import type { IWebInputState } from "../input.js";
 
 import { createSystemContext } from "./context.js";
@@ -43,6 +43,7 @@ export async function runSchedule(options: {
   fixedDelta?: number;
   input?: IWebInputState;
   elapsed?: number;
+  componentSchemas?: IIrSchemaFile;
   module: ISystemModule;
   paused?: boolean;
   schedule: IrSystemSchedule;
@@ -66,6 +67,7 @@ async function runSystem(
   options: {
     delta?: number;
     elapsed?: number;
+    componentSchemas?: IIrSchemaFile;
     effectLog?: ISystemEffectLog;
     frame?: number;
     fixedDelta?: number;
@@ -83,6 +85,7 @@ async function runSystem(
   const fn = readSystemFunction(options.module, system.script.exportName);
   const { commands, context, events, resources, services } = createSystemContext(options.world, {
     defaultQuery: system.queries[0],
+    componentSchemas: options.componentSchemas,
     delta: options.delta ?? 0,
     elapsed: options.elapsed ?? 0,
     fixedDelta: options.fixedDelta ?? 1 / 60,

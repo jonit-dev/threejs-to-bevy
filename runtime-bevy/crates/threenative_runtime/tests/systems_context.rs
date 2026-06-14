@@ -138,6 +138,29 @@ fn systems_context_should_include_component_hook_observations() {
     assert_eq!(hooks[1].hook, "onInsert");
 }
 
+#[test]
+fn systems_context_should_include_component_reflection_types() {
+    let root = write_bundle("component-reflection-context");
+    let bundle = load_bundle(&root).expect("bundle should load");
+    let system = &bundle
+        .systems
+        .as_ref()
+        .expect("systems should load")
+        .systems[0];
+
+    let snapshot = build_system_context_snapshot(&bundle, system, time());
+    let types = snapshot.component_types.components;
+
+    assert_eq!(types.len(), 1);
+    assert_eq!(types[0].id, "Health");
+    assert_eq!(types[0].fields.len(), 2);
+    assert_eq!(types[0].fields[0].name, "current");
+    assert_eq!(types[0].fields[0].kind, "number");
+    assert!(types[0].fields[0].required);
+    assert_eq!(types[0].fields[1].name, "max");
+    assert_eq!(types[0].fields[1].default, Some(serde_json::json!(100)));
+}
+
 fn write_bundle(name: &str) -> PathBuf {
     let root = root(name);
     fs::create_dir_all(&root).expect("temp bundle should be created");
@@ -150,7 +173,29 @@ fn write_bundle(name: &str) -> PathBuf {
   "name": "systems-context",
   "requiredCapabilities": {},
   "entry": { "world": "world.ir.json", "systems": "systems.ir.json", "scripts": "scripts.bundle.js" },
-  "files": { "assets": "assets.manifest.json", "materials": "materials.ir.json", "targetProfile": "target.profile.json" }
+  "files": {
+    "assets": "assets.manifest.json",
+    "componentSchemas": "schemas/components.schema.json",
+    "materials": "materials.ir.json",
+    "targetProfile": "target.profile.json"
+  }
+}"#,
+    );
+    fs::create_dir_all(root.join("schemas")).expect("schemas directory should be created");
+    write_json(
+        &root,
+        "schemas/components.schema.json",
+        r#"{
+  "schema": "threenative.component-schemas",
+  "version": "0.1.0",
+  "schemas": {
+    "Health": {
+      "fields": {
+        "current": { "kind": "number", "required": true },
+        "max": { "kind": "number", "required": false, "default": 100 }
+      }
+    }
+  }
 }"#,
     );
     write_json(

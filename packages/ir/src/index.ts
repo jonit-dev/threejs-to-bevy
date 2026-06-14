@@ -16,6 +16,12 @@ export type {
 export type { IRuntimeDiagnostic } from "./runtimeDiagnostics.js";
 export type { IInputActionIr, IInputAxisIr, IInputIr, InputBinding } from "./input.js";
 export type { IRuntimeConfigIr } from "./runtimeConfig.js";
+export {
+  buildComponentReflectionRegistry,
+  type IComponentReflectionField,
+  type IComponentReflectionRegistry,
+  type IComponentReflectionType,
+} from "./reflection.js";
 export type {
   IIrSystemDeclaration,
   IIrSystemQuery,

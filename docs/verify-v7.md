@@ -118,11 +118,13 @@ compares a fixed web/native effect log for startup, fixedUpdate, update, and
 postUpdate resource handoff, queued events, spawn/despawn commands, an
 `animation.play` service call, and resource-derived app/computed/substate reads
 through `ctx.states.get()` plus component-hook reads through
-`ctx.components.hooks()` and target-to-ancestor observer-route reads through
+`ctx.components.hooks()`, portable component-reflection reads through
+`ctx.components.type()`, and target-to-ancestor observer-route reads through
 `ctx.observers.propagate()`. Async systems, timers, arbitrary npm/platform APIs,
-hidden system-local persisted state, state-preserving hot reload, command-time
-or removal component hook callbacks, stoppable observers, and full dynamic scene
-reconciliation remain unsupported or later work.
+hidden system-local persisted state, state-preserving hot reload, raw
+Bevy/renderer type IDs, command-time or removal component hook callbacks,
+stoppable observers, and full dynamic scene reconciliation remain unsupported or
+later work.
 
 The current V7-08 packaging evidence is intentionally narrow: `tn package
 --target desktop --bundle <path>` validates an existing bundle, requires

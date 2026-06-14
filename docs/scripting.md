@@ -342,8 +342,11 @@ computed states, and substates. Scripts read those values with
 substate's parent is inactive. Bundles may also declare deterministic component
 hooks for `onAdd` and `onInsert`; scripts read those observations with
 `ctx.components.hooks(component)`, which returns ordered `{ component, entity,
-hook }` entries for entities currently carrying that component. Bundles may also
-declare deterministic
+hook }` entries for entities currently carrying that component. Component
+schemas also produce a portable reflection registry; scripts read it with
+`ctx.components.types()` or `ctx.components.type(component)`, which returns
+stable component IDs and field `{ name, kind, required, default? }` metadata.
+Bundles may also declare deterministic
 target-to-ancestor observer propagation for typed events; scripts read those
 routes with `ctx.observers.propagate(event, targetEntity)`, which returns
 ordered `{ phase, entity }` entries for the target and ancestor bubble phases.
@@ -351,10 +354,11 @@ The narrow `v7-scripting-lifecycle` conformance fixture runs startup,
 fixedUpdate, update, and postUpdate systems, then compares web/native effect
 logs for deterministic resource handoff, queued event reads/writes,
 spawn/despawn commands, declared service calls, derived state reads, and
-component-hook and observer-route reads. Hidden system-local persisted state,
-async/timer-driven behavior, arbitrary npm packages, platform APIs, `onRemove`
-and command-time hook callbacks, and stoppable/dynamic observers must fail
-validation or host diagnostics instead of being silently replayed.
+component-hook, component-reflection, and observer-route reads. Hidden
+system-local persisted state, async/timer-driven behavior, arbitrary npm
+packages, platform APIs, raw Bevy/renderer type IDs, `onRemove` and command-time
+hook callbacks, and stoppable/dynamic observers must fail validation or host
+diagnostics instead of being silently replayed.
 
 ## Native Rust Escape Hatch
 

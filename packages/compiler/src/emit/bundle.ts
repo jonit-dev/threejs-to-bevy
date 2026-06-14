@@ -248,7 +248,11 @@ function deriveRequiredCapabilities(source: ICapabilitySource): IBundleManifest[
   collectEnvironmentCapabilities(source.environment, add);
 
   if (source.componentSchemas !== undefined && Object.keys(source.componentSchemas.schemas).length > 0) {
+    add("ecs", "component-reflection");
     add("ecs", "component-schemas");
+    if (source.systems !== undefined && source.systems.systems.length > 0) {
+      add("scripting", "component-reflection");
+    }
   }
   if (source.resourceSchemas !== undefined && Object.keys(source.resourceSchemas.schemas).length > 0) {
     add("ecs", "resource-schemas");

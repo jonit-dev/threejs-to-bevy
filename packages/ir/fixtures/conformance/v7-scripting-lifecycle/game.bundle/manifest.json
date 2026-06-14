@@ -5,6 +5,7 @@
   "requiredCapabilities": {
     "ecs": [
       "component-hooks",
+      "component-reflection",
       "component-schemas",
       "event-schemas",
       "events",
@@ -16,6 +17,7 @@
       "command.despawn",
       "command.spawn",
       "component-hooks",
+      "component-reflection",
       "event-reads",
       "event-writes",
       "hot-reload.invalidate",

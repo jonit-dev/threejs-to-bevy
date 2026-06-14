@@ -197,6 +197,36 @@ test("should expose deterministic component hook observations", () => {
   ]);
 });
 
+test("should expose component reflection metadata", () => {
+  const { context } = createSystemContext(makeWorld(), {
+    componentSchemas: {
+      schema: "threenative.component-schemas",
+      schemas: {
+        Transform: {
+          fields: {
+            position: { default: [0, 0, 0], kind: "vec3", required: false },
+          },
+        },
+        Health: {
+          fields: {
+            current: { kind: "number", required: true },
+          },
+        },
+      },
+      version: "0.1.0",
+    },
+    delta: 0.016,
+    fixedDelta: 0.016,
+  });
+
+  assert.deepEqual(context.components.types().components.map((type) => type.id), ["Health", "Transform"]);
+  assert.deepEqual(context.components.type("Health"), {
+    fields: [{ kind: "number", name: "current", required: true }],
+    id: "Health",
+  });
+  assert.equal(context.components.type("Missing"), null);
+});
+
 function makeWorld(): IWorldIr {
   return {
     entities: [

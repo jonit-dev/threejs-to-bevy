@@ -425,6 +425,12 @@ function __tnInvokeSystem(options) {
     components: {
       hooks(component) {
         return clone(data.componentHooks[normalize(component)] || []);
+      },
+      type(component) {
+        return clone(data.componentTypes.components.find((type) => type.id === normalize(component)) || null);
+      },
+      types() {
+        return clone(data.componentTypes);
       }
     },
     resources: {

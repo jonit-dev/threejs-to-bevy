@@ -192,6 +192,8 @@ test("should emit ecs schema files for world root", async () => {
     assert.equal(manifest.files.runtimeConfig, "runtime.config.json");
     assert.equal(manifest.entry.scripts, "scripts.bundle.js");
     assert.equal(manifest.entry.systems, "systems.ir.json");
+    assertCapability(manifest, "ecs", "component-reflection");
+    assertCapability(manifest, "scripting", "component-reflection");
     assert.deepEqual(Object.keys(components.schemas), ["Health"]);
     assert.deepEqual(Object.keys(events.schemas), ["DamageEvent"]);
     assert.deepEqual(systems.systems[0]?.commands, [

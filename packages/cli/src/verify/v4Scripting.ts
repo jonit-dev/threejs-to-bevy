@@ -130,6 +130,7 @@ async function runWebFixedTrace(
   const diagnostics: IVerificationReport["diagnostics"] = [];
   for (const schedule of ["fixedUpdate", "update", "postUpdate"] as const) {
     const result = await runSchedule({
+      componentSchemas: bundle.componentSchemas,
       delta: 1 / 60,
       effectLog,
       elapsed: 1,

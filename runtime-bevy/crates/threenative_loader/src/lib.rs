@@ -50,6 +50,7 @@ pub struct BundleEntry {
 #[serde(rename_all = "camelCase")]
 pub struct BundleFiles {
     pub assets: String,
+    pub component_schemas: Option<String>,
     pub input: Option<String>,
     pub materials: String,
     pub runtime_config: Option<String>,
@@ -61,6 +62,7 @@ pub struct LoadedBundle {
     pub bundle_path: PathBuf,
     pub assets: AssetsManifest,
     pub audio: Option<AudioIr>,
+    pub component_schemas: Option<SchemaFileIr>,
     pub environment_scene: Option<EnvironmentSceneIr>,
     pub input: Option<InputIr>,
     pub manifest: BundleManifest,
@@ -70,6 +72,27 @@ pub struct LoadedBundle {
     pub target_profile: TargetProfile,
     pub ui: Option<UiIr>,
     pub world: WorldIr,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SchemaFileIr {
+    pub schema: String,
+    pub version: String,
+    pub schemas: HashMap<String, SchemaDeclarationIr>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SchemaDeclarationIr {
+    pub fields: HashMap<String, SchemaFieldIr>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SchemaFieldIr {
+    #[serde(default)]
+    pub default: Option<serde_json::Value>,
+    pub kind: String,
+    #[serde(default)]
+    pub required: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -824,6 +847,14 @@ pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadEr
     ensure_supported(&assets.schema, &assets.version)?;
     let target_profile: TargetProfile = read_json(bundle_path, &manifest.files.target_profile)?;
     ensure_supported(&target_profile.schema, &target_profile.version)?;
+    let component_schemas = match manifest.files.component_schemas.as_ref() {
+        Some(file) => {
+            let schemas: SchemaFileIr = read_json(bundle_path, file)?;
+            ensure_supported(&schemas.schema, &schemas.version)?;
+            Some(schemas)
+        }
+        None => None,
+    };
     let input = match manifest.files.input.as_ref() {
         Some(file) => {
             let input: InputIr = read_json(bundle_path, file)?;
@@ -877,6 +908,7 @@ pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadEr
         bundle_path: canonical_bundle_path,
         assets,
         audio,
+        component_schemas,
         environment_scene,
         input,
         manifest,
