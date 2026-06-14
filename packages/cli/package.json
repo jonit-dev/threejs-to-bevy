@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@threenative/compiler": "workspace:*",
+    "@threenative/ir": "workspace:*",
     "@threenative/runtime-web-three": "workspace:*",
     "playwright": "^1.60.0",
     "pngjs": "^7.0.0"

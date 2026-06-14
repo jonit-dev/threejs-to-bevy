@@ -6,6 +6,7 @@ import { buildCommand } from "./commands/build.js";
 import { compareImagesCommand } from "./commands/compareImages.js";
 import { createProject } from "./commands/create.js";
 import { devCommand } from "./commands/dev.js";
+import { editorCommand } from "./commands/editor.js";
 import { packageCommand } from "./commands/package.js";
 import { validateProject } from "./commands/validate.js";
 import { verifyCommand } from "./commands/verify.js";
@@ -42,6 +43,11 @@ const commands: Record<string, ICommandDefinition> = {
     description: "Run a runtime preview with optional rebuild watch mode.",
     implemented: true,
     usage: "tn dev --target <web|desktop> [--project <path>] [--watch]",
+  },
+  editor: {
+    description: "Create and diff local editor snapshots from bundle JSON.",
+    implemented: true,
+    usage: "tn editor snapshot --bundle <path> [--out <path>] [--json]",
   },
   package: {
     description: "Create a local desktop package artifact from a bundle.",
@@ -115,6 +121,10 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
 
   if (commandName === "dev") {
     return devCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "editor") {
+    return editorCommand(normalizedArgv.slice(1));
   }
 
   if (commandName === "package") {

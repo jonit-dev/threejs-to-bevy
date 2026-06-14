@@ -17,6 +17,9 @@ importers:
       '@threenative/compiler':
         specifier: workspace:*
         version: link:../compiler
+      '@threenative/ir':
+        specifier: workspace:*
+        version: link:../ir
       '@threenative/runtime-web-three':
         specifier: workspace:*
         version: link:../runtime-web-three

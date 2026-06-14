@@ -40,7 +40,8 @@
 | Diagnostics | ⚠️ | Stable IR/compiler/CLI/native diagnostic shapes, severity, suggestions, metadata preservation, V5/V6 ranges. | Some asset/runtime failures still need better domain-specific codes and target-specific repair hints. |
 | Packaging/platforms | ⚠️ | Templates and verify gates build local bundles and web evidence; V7 adds `tn package --target desktop`, target-profile diagnostics, a local desktop package manifest, runtime args, `artifacts/v7/packaging`, and packaged `examples/v7-functional` evidence. | Signed installers, mobile app-store packaging, online publishing, hosted services, and broader platform diagnostics are not implemented. |
 | Performance/profiling | ⚠️ | V3/V5 dense-content budget artifacts and release-gate reports; V7 adds target-profile-aware fixed metric reports for frame/load/draw/entity/package-size budgets through `v7-performance-budgets` and `artifacts/v7/performance`. | Live browser profiling, native platform profiler captures, script/UI/audio timing breakdowns, and larger-scene budget tuning remain incomplete. |
-| Editor/online/plugins/raw renderer | ⏭️ | Product boundary keeps Bevy as an internal adapter. | Scene editor, online services, networking, replication, collaboration, public plugins, raw Three.js authoring, direct Bevy authoring, and broad shader graphs are deferred or never portable. |
+| Editor/inspector | ⚠️ | V8 has started the local/offline editor track with structured editor project snapshot validation, deterministic bundle-relative JSON diffs, and CLI entry points for `tn editor snapshot` / `tn editor diff`. | Visual editor UI, inspector panels, save/load round trips, preview evidence, and richer editor diagnostics are not complete. |
+| Online/plugins/raw renderer | ⏭️ | Product boundary keeps Bevy as an internal adapter and V8 local/offline only. | Online services, networking, replication, collaboration, public plugins, raw Three.js authoring, direct Bevy authoring, and broad shader graphs are deferred or never portable. |
 
 V7 is complete for the promoted parity slices only when `pnpm verify:v7`
 passes. That report links docs and diagnostics inputs, conformance output,
@@ -55,9 +56,10 @@ save/load, structured diffs, diagnostics, and bundle preview evidence. Online
 services, networking, replication, collaboration, public plugins, raw Three.js
 authoring, and direct Bevy authoring remain outside V8.
 
-The first V8 slice adds IR-level editor project snapshot validation and
-deterministic structured diffs for bundle-relative JSON documents. It is local
-data plumbing, not a visual editor runtime.
+The first V8 slices add IR-level editor project snapshot validation,
+deterministic structured diffs for bundle-relative JSON documents, and CLI
+entry points for `tn editor snapshot` / `tn editor diff`. This is local data
+plumbing, not a visual editor runtime.
 
 ## Sources
 
