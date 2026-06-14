@@ -386,8 +386,9 @@ defineAudio({
 });
 ```
 
-Script/UI `audio.play`, `audio.stop`, spatial audio, and buses are not portable
-V6 APIs yet.
+Script/UI `audio.play` and `audio.stop` are not portable V6 APIs yet. V7
+promotes bus routing plus listener/emitter metadata as structured audio IR
+evidence, not as arbitrary platform audio handles.
 
 ```ts
 ctx.animation.play(entity, "run", {
@@ -413,8 +414,9 @@ Runtime effects:
   backend animation controllers, and unbounded particle behavior must fail with
   stable diagnostics rather than being ignored.
 - V7 audio promotes portable bus routing plus listener/emitter metadata for
-  deterministic routed command observations. Real spatial attenuation, streaming
-  audio, and platform handles remain adapter-private or unsupported.
+  deterministic routed command observations and fixed loop start/stop lifecycle
+  traces. Real spatial attenuation, mixer effects, streaming/network audio, and
+  platform handles remain adapter-private or unsupported.
 
 ## Resources
 

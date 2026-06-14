@@ -148,7 +148,11 @@ test("audio should reject mixer fields", async () => {
       schema: "threenative.audio",
       version: "0.1.0",
       mixer: { master: 0.8 },
-      music: [],
+      streamingUrl: "https://example.invalid/arena.ogg",
+      buses: [{ id: "bus.sfx", codec: "opus" }],
+      listeners: [{ id: "listener.main", position: [0, 1, 5], platformHandle: "native" }],
+      emitters: [{ id: "emitter.player", position: [1, 2, 3], networkUrl: "wss://example.invalid/audio" }],
+      music: [{ id: "music.arena", asset: "arena.music", loop: true, stream: true }],
       oneShots: [{ id: "sound.hit", asset: "hit.sound", event: "DamageEvent", platformHandle: "native" }],
     });
 
