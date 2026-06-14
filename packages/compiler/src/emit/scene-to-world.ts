@@ -193,6 +193,7 @@ function emitPhysics(physics: IPhysicsDeclaration | undefined, components: Recor
       ...(physics.collider.height === undefined ? {} : { height: physics.collider.height }),
       ...(physics.collider.layer === undefined ? {} : { layer: physics.collider.layer }),
       ...(physics.collider.mask === undefined ? {} : { mask: physics.collider.mask }),
+      ...(physics.collider.slope === undefined ? {} : { slope: physics.collider.slope }),
       ...(physics.collider.trigger === undefined ? {} : { trigger: physics.collider.trigger }),
     };
   }

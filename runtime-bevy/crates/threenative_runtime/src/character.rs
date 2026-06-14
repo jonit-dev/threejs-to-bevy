@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use threenative_loader::{ColliderComponent, LoadedBundle, WorldEntity};
+use threenative_loader::{ColliderComponent, ColliderSlopeComponent, LoadedBundle, WorldEntity};
 
 #[derive(Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -24,12 +24,21 @@ pub struct CharacterTraceAxis<'a> {
 }
 
 const SUPPORT_TOLERANCE: f32 = 0.1;
+const DEFAULT_SLOPE_LIMIT: f32 = 45.0;
 
 struct Bounds {
     center: [f32; 3],
     half_extents: [f32; 3],
     id: String,
+    slope: Option<SlopeBounds>,
     velocity: Option<[f32; 3]>,
+}
+
+struct SlopeBounds {
+    angle: f32,
+    axis: String,
+    direction: i8,
+    rise: f32,
 }
 
 struct GroundResolution {
@@ -50,6 +59,7 @@ struct CharacterControllerComponent {
     grounding: String,
     move_x_axis: String,
     move_z_axis: String,
+    slope_limit: Option<f32>,
     speed: f32,
     step_offset: Option<f32>,
 }
@@ -110,6 +120,7 @@ fn trace_character(
             character_half_extents,
             blockers,
             controller.step_offset.unwrap_or(0.0),
+            controller.slope_limit.unwrap_or(DEFAULT_SLOPE_LIMIT),
         )
     } else {
         HorizontalResolution {
@@ -124,6 +135,7 @@ fn trace_character(
             character_half_extents,
             blockers,
             fixed_delta,
+            controller.slope_limit.unwrap_or(DEFAULT_SLOPE_LIMIT),
         )
     } else {
         GroundResolution {
@@ -169,12 +181,14 @@ fn resolve_horizontal_contact(
     character_half_extents: [f32; 3],
     blockers: &[&WorldEntity],
     step_offset: f32,
+    slope_limit: f32,
 ) -> HorizontalResolution {
     let mut position = desired;
     let mut character_bounds = Bounds {
         center: position,
         half_extents: character_half_extents,
         id: character_id.to_owned(),
+        slope: None,
         velocity: None,
     };
     for blocker in blockers {
@@ -189,8 +203,14 @@ fn resolve_horizontal_contact(
         {
             continue;
         }
+        if bounds.slope.is_some() && can_walk_slope(position, &bounds, slope_limit) {
+            let top = surface_top(position, &bounds);
+            position = [position[0], top + character_half_extents[1], position[2]];
+            character_bounds.center = position;
+            continue;
+        }
         if can_step_onto(position, character_half_extents, &bounds, step_offset) {
-            let top = bounds.center[1] + bounds.half_extents[1];
+            let top = surface_top(position, &bounds);
             position = [position[0], top + character_half_extents[1], position[2]];
             character_bounds.center = position;
             continue;
@@ -212,8 +232,10 @@ fn ground_position(
     character_half_extents: [f32; 3],
     blockers: &[&WorldEntity],
     fixed_delta: f32,
+    slope_limit: f32,
 ) -> GroundResolution {
     let mut ground: Option<Bounds> = None;
+    let mut ground_top: Option<f32> = None;
     for blocker in blockers {
         if blocker.id == character_id {
             continue;
@@ -224,24 +246,28 @@ fn ground_position(
         if !covers_xz(position, &bounds) {
             continue;
         }
-        let top = bounds.center[1] + bounds.half_extents[1];
+        if !can_walk_slope(position, &bounds, slope_limit) {
+            continue;
+        }
+        let top = surface_top(position, &bounds);
         let foot = position[1] - character_half_extents[1];
-        let current_top = ground
-            .as_ref()
-            .map(|current| current.center[1] + current.half_extents[1]);
-        if top <= foot + SUPPORT_TOLERANCE && current_top.is_none_or(|current| top > current) {
+        if top <= foot + SUPPORT_TOLERANCE && ground_top.is_none_or(|current| top > current) {
             ground = Some(bounds);
+            ground_top = Some(top);
         }
     }
-    let Some(ground) = ground else {
+    let (Some(ground), Some(ground_top)) = (ground, ground_top) else {
         return GroundResolution {
             entity: None,
             platform_delta: None,
             position,
         };
     };
-    let top = ground.center[1] + ground.half_extents[1];
-    let grounded = [position[0], top + character_half_extents[1], position[2]];
+    let grounded = [
+        position[0],
+        ground_top + character_half_extents[1],
+        position[2],
+    ];
     match ground.velocity {
         Some(velocity) => {
             let platform_delta = scale(velocity, fixed_delta);
@@ -265,6 +291,7 @@ fn entity_bounds(entity: &WorldEntity) -> Option<Bounds> {
         center: position(entity),
         half_extents: half_extents(collider),
         id: entity.id.clone(),
+        slope: slope(collider),
         velocity: entity
             .components
             .rigid_body
@@ -307,7 +334,7 @@ fn covers_xz(point: [f32; 3], bounds: &Bounds) -> bool {
 
 fn is_side_blocker(position: [f32; 3], character_half_extents: [f32; 3], bounds: &Bounds) -> bool {
     let foot = position[1] - character_half_extents[1];
-    let top = bounds.center[1] + bounds.half_extents[1];
+    let top = surface_top(position, bounds);
     top > foot + SUPPORT_TOLERANCE
 }
 
@@ -318,11 +345,50 @@ fn can_step_onto(
     step_offset: f32,
 ) -> bool {
     let foot = position[1] - character_half_extents[1];
-    let top = bounds.center[1] + bounds.half_extents[1];
+    let top = surface_top(position, bounds);
     step_offset > 0.0
         && top > foot + SUPPORT_TOLERANCE
         && top <= foot + step_offset + SUPPORT_TOLERANCE
         && covers_xz(position, bounds)
+}
+
+fn can_walk_slope(position: [f32; 3], bounds: &Bounds, slope_limit: f32) -> bool {
+    bounds
+        .slope
+        .as_ref()
+        .is_none_or(|slope| covers_xz(position, bounds) && slope.angle <= slope_limit + 0.0001)
+}
+
+fn surface_top(position: [f32; 3], bounds: &Bounds) -> f32 {
+    let Some(slope) = bounds.slope.as_ref() else {
+        return bounds.center[1] + bounds.half_extents[1];
+    };
+    let axis_index = if slope.axis == "x" { 0 } else { 2 };
+    let min = bounds.center[axis_index] - bounds.half_extents[axis_index];
+    let max = bounds.center[axis_index] + bounds.half_extents[axis_index];
+    let span = (max - min).max(0.0001);
+    let distance = if slope.direction == 1 {
+        position[axis_index] - min
+    } else {
+        max - position[axis_index]
+    };
+    let t = (distance / span).clamp(0.0, 1.0);
+    bounds.center[1] - bounds.half_extents[1] + t * slope.rise
+}
+
+fn slope(collider: &ColliderComponent) -> Option<SlopeBounds> {
+    let ColliderSlopeComponent {
+        axis,
+        direction,
+        rise,
+        run,
+    } = collider.slope.as_ref()?;
+    Some(SlopeBounds {
+        angle: rise.atan2(*run) * 180.0 / std::f32::consts::PI,
+        axis: axis.clone(),
+        direction: *direction,
+        rise: *rise,
+    })
 }
 
 fn axis_value(axes: &[CharacterTraceAxis<'_>], id: &str) -> f32 {

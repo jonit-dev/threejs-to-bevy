@@ -212,6 +212,124 @@ fn character_trace_should_report_ledges_and_moving_platforms() {
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
 
+#[test]
+fn character_trace_should_apply_slope_limits() {
+    let root = write_character_bundle();
+    write(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "ramp",
+      "components": {
+        "Collider": { "kind": "box", "size": [4, 1, 2], "slope": { "axis": "x", "direction": 1, "rise": 1, "run": 2 } },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [2, 0.5, 0] }
+      }
+    },
+    {
+      "id": "floor",
+      "components": {
+        "Collider": { "kind": "box", "size": [6, 0.1, 6] },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [0, 0, 0] }
+      }
+    },
+    {
+      "id": "player",
+      "components": {
+        "CharacterController": {
+          "blocking": true,
+          "grounding": "raycast",
+          "moveXAxis": "MoveX",
+          "moveZAxis": "MoveZ",
+          "slopeLimit": 45,
+          "speed": 2
+        },
+        "Collider": { "kind": "box", "size": [1, 2, 1] },
+        "RigidBody": { "kind": "kinematic" },
+        "Transform": { "position": [0, 1, 0] }
+      }
+    }
+  ]
+}"#,
+    );
+    let bundle = load_bundle(&root).expect("character bundle should load");
+    let trace = trace_character_controllers(
+        &bundle,
+        &[CharacterTraceAxis {
+            id: "MoveX",
+            value: 1.0,
+        }],
+        1.0,
+    );
+
+    assert_eq!(trace[0].blocked_by, None);
+    assert_eq!(trace[0].ground_entity, Some("ramp".to_owned()));
+    assert_eq!(trace[0].resolved, [2.0, 1.5, 0.0]);
+
+    write(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "steep-ramp",
+      "components": {
+        "Collider": { "kind": "box", "size": [4, 2, 2], "slope": { "axis": "x", "direction": 1, "rise": 2, "run": 1 } },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [2, 1, 0] }
+      }
+    },
+    {
+      "id": "floor",
+      "components": {
+        "Collider": { "kind": "box", "size": [6, 0.1, 6] },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [0, 0, 0] }
+      }
+    },
+    {
+      "id": "player",
+      "components": {
+        "CharacterController": {
+          "blocking": true,
+          "grounding": "raycast",
+          "moveXAxis": "MoveX",
+          "moveZAxis": "MoveZ",
+          "slopeLimit": 35,
+          "speed": 2
+        },
+        "Collider": { "kind": "box", "size": [1, 2, 1] },
+        "RigidBody": { "kind": "kinematic" },
+        "Transform": { "position": [0, 1, 0] }
+      }
+    }
+  ]
+}"#,
+    );
+    let bundle = load_bundle(&root).expect("character bundle should load");
+    let trace = trace_character_controllers(
+        &bundle,
+        &[CharacterTraceAxis {
+            id: "MoveX",
+            value: 1.0,
+        }],
+        1.0,
+    );
+
+    assert_eq!(trace[0].blocked_by, Some("steep-ramp".to_owned()));
+    assert_eq!(trace[0].ground_entity, Some("floor".to_owned()));
+    assert_eq!(trace[0].resolved, [0.0, 1.05, 0.0]);
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
 fn write_character_bundle() -> PathBuf {
     let root = std::env::temp_dir().join(format!(
         "tn-character-trace-{}",

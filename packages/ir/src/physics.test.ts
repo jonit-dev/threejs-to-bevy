@@ -86,7 +86,7 @@ test("physics should reject invalid primitive collider dimensions", async () => 
   }
 });
 
-test("physics should accept portable v7 collider filters", async () => {
+test("physics should accept portable v7 collider filters and box slopes", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-physics-v7-filters-"));
   try {
     await writeTestBundle(root, { createAssetsDir: true });
@@ -95,7 +95,7 @@ test("physics should accept portable v7 collider filters", async () => {
       "world.ir.json",
       physicsWorld([
         {
-          Collider: { kind: "box", layer: "player", mask: ["world", "sensor"], size: [1, 1, 1] },
+          Collider: { kind: "box", layer: "player", mask: ["world", "sensor"], size: [1, 1, 1], slope: { axis: "x", direction: 1, rise: 1, run: 2 } },
           RigidBody: { kind: "kinematic" },
         },
       ]),
@@ -143,6 +143,37 @@ test("physics should reject invalid body fields and backend-specific collider op
         "TN_IR_PHYSICS_FILTER_INVALID",
         "TN_IR_PHYSICS_ENGINE_HANDLE_UNSUPPORTED",
       ],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("physics should reject invalid collider slope metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-physics-invalid-slope-"));
+  try {
+    await writeTestBundle(root, { createAssetsDir: true });
+    await writeJson(
+      root,
+      "world.ir.json",
+      physicsWorld([
+        {
+          Collider: { kind: "box", size: [1, 1, 1], slope: { axis: "y", direction: 1, rise: 1, run: 1 } },
+          RigidBody: { kind: "static" },
+        },
+        {
+          Collider: { kind: "sphere", radius: 1, slope: { axis: "x", direction: 1, rise: 1, run: 1 } },
+          RigidBody: { kind: "static" },
+        },
+      ]),
+    );
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => diagnostic.code),
+      ["TN_IR_PHYSICS_COLLIDER_SLOPE_INVALID", "TN_IR_PHYSICS_COLLIDER_SLOPE_UNSUPPORTED"],
     );
   } finally {
     await rm(root, { force: true, recursive: true });

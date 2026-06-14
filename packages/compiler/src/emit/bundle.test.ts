@@ -102,11 +102,11 @@ test("should emit character controller capabilities from composed game roots", a
         material: new MeshStandardMaterial({ color: "#2f80ed" }),
         physics: physics({
           body: rigidBody("kinematic"),
-          collider: boxCollider([1, 2, 1]),
+          collider: boxCollider([1, 2, 1], { slope: { axis: "x", direction: 1, rise: 1, run: 2 } }),
         }),
       }),
     );
-    const world = new World().spawn("player", characterController({ interactAction: "Interact", stepOffset: 0.35 }));
+    const world = new World().spawn("player", characterController({ interactAction: "Interact", slopeLimit: 45, stepOffset: 0.35 }));
     const input = defineInputMap({
       actions: [action("Interact", [keyboard("KeyE")])],
       axes: [
@@ -133,7 +133,9 @@ test("should emit character controller capabilities from composed game roots", a
     assertCapability(manifest, "character", "blocking");
     assertCapability(manifest, "character", "grounding");
     assertCapability(manifest, "character", "interaction");
+    assertCapability(manifest, "character", "slope-limit");
     assertCapability(manifest, "character", "step-offset");
+    assertCapability(manifest, "physics", "collider.slope");
   } finally {
     await rm(root, { force: true, recursive: true });
   }

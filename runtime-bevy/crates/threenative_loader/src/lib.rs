@@ -181,7 +181,16 @@ pub struct ColliderComponent {
     pub mask: Option<Vec<String>>,
     pub radius: Option<f32>,
     pub size: Option<[f32; 3]>,
+    pub slope: Option<ColliderSlopeComponent>,
     pub trigger: Option<bool>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ColliderSlopeComponent {
+    pub axis: String,
+    pub direction: i8,
+    pub rise: f32,
+    pub run: f32,
 }
 
 #[derive(Debug, Deserialize)]

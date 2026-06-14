@@ -20,6 +20,13 @@ interface IBounds {
   center: Vec3;
   halfExtents: Vec3;
   id: string;
+  slope?: {
+    angle: number;
+    axis: "x" | "z";
+    direction: -1 | 1;
+    rise: number;
+    run: number;
+  };
   velocity?: Vec3;
 }
 
@@ -63,10 +70,10 @@ function traceCharacter(
   ));
   const characterHalfExtents = halfExtents(collider);
   const horizontal = controller.blocking === true
-    ? resolveHorizontalContact(entity.id, start, desired, characterHalfExtents, blockers, controller.stepOffset ?? 0)
+    ? resolveHorizontalContact(entity.id, start, desired, characterHalfExtents, blockers, controller.stepOffset ?? 0, controller.slopeLimit ?? DEFAULT_SLOPE_LIMIT)
     : { position: desired };
   const ground = controller.grounding === "raycast"
-    ? groundPosition(entity.id, horizontal.position, characterHalfExtents, blockers, fixedDelta)
+    ? groundPosition(entity.id, horizontal.position, characterHalfExtents, blockers, fixedDelta, controller.slopeLimit ?? DEFAULT_SLOPE_LIMIT)
     : { position: horizontal.position };
 
   return {
@@ -97,6 +104,7 @@ function resolveHorizontalContact(
   characterHalfExtents: Vec3,
   blockers: readonly IWorldEntity[],
   stepOffset: number,
+  slopeLimit: number,
 ): { blockedBy?: string; position: Vec3 } {
   let position = desired;
   let characterBounds = { center: position, halfExtents: characterHalfExtents, id: characterId };
@@ -108,8 +116,14 @@ function resolveHorizontalContact(
     if (bounds === undefined || !penetrates(characterBounds, bounds) || !isSideBlocker(position, characterHalfExtents, bounds)) {
       continue;
     }
+    if (bounds.slope !== undefined && canWalkSlope(position, bounds, slopeLimit)) {
+      const top = surfaceTop(position, bounds);
+      position = [position[0], top + characterHalfExtents[1], position[2]];
+      characterBounds = { center: position, halfExtents: characterHalfExtents, id: characterId };
+      continue;
+    }
     if (canStepOnto(position, characterHalfExtents, bounds, stepOffset)) {
-      const top = bounds.center[1] + bounds.halfExtents[1];
+      const top = surfaceTop(position, bounds);
       position = [position[0], top + characterHalfExtents[1], position[2]];
       characterBounds = { center: position, halfExtents: characterHalfExtents, id: characterId };
       continue;
@@ -125,8 +139,10 @@ function groundPosition(
   characterHalfExtents: Vec3,
   blockers: readonly IWorldEntity[],
   fixedDelta: number,
+  slopeLimit: number,
 ): IGroundResolution {
   let ground: IBounds | undefined;
+  let groundTop: number | undefined;
   for (const blocker of blockers) {
     if (blocker.id === characterId) {
       continue;
@@ -135,17 +151,20 @@ function groundPosition(
     if (bounds === undefined || !coversXZ(position, bounds)) {
       continue;
     }
-    const top = bounds.center[1] + bounds.halfExtents[1];
+    if (!canWalkSlope(position, bounds, slopeLimit)) {
+      continue;
+    }
+    const top = surfaceTop(position, bounds);
     const foot = position[1] - characterHalfExtents[1];
-    if (top <= foot + SUPPORT_TOLERANCE && (ground === undefined || top > ground.center[1] + ground.halfExtents[1])) {
+    if (top <= foot + SUPPORT_TOLERANCE && (groundTop === undefined || top > groundTop)) {
       ground = bounds;
+      groundTop = top;
     }
   }
-  if (ground === undefined) {
+  if (ground === undefined || groundTop === undefined) {
     return { position };
   }
-  const top = ground.center[1] + ground.halfExtents[1];
-  const grounded = [position[0], top + characterHalfExtents[1], position[2]] as Vec3;
+  const grounded = [position[0], groundTop + characterHalfExtents[1], position[2]] as Vec3;
   const platformDelta = ground.velocity === undefined ? undefined : scale(ground.velocity, fixedDelta);
   return {
     entity: ground.id,
@@ -163,6 +182,7 @@ function entityBounds(entity: IWorldEntity): IBounds | undefined {
     center: vector(entity.components.Transform?.position),
     halfExtents: halfExtents(collider),
     id: entity.id,
+    slope: slope(collider),
     velocity: entity.components.RigidBody?.velocity,
   };
 }
@@ -200,17 +220,49 @@ function coversXZ(point: Vec3, bounds: IBounds): boolean {
 
 function isSideBlocker(position: Vec3, characterHalfExtents: Vec3, bounds: IBounds): boolean {
   const foot = position[1] - characterHalfExtents[1];
-  const top = bounds.center[1] + bounds.halfExtents[1];
+  const top = surfaceTop(position, bounds);
   return top > foot + SUPPORT_TOLERANCE;
 }
 
 function canStepOnto(position: Vec3, characterHalfExtents: Vec3, bounds: IBounds, stepOffset: number): boolean {
   const foot = position[1] - characterHalfExtents[1];
-  const top = bounds.center[1] + bounds.halfExtents[1];
+  const top = surfaceTop(position, bounds);
   return stepOffset > 0 && top > foot + SUPPORT_TOLERANCE && top <= foot + stepOffset + SUPPORT_TOLERANCE && coversXZ(position, bounds);
 }
 
+function canWalkSlope(position: Vec3, bounds: IBounds, slopeLimit: number): boolean {
+  return bounds.slope === undefined || (coversXZ(position, bounds) && bounds.slope.angle <= slopeLimit + 0.0001);
+}
+
+function surfaceTop(position: Vec3, bounds: IBounds): number {
+  if (bounds.slope === undefined) {
+    return bounds.center[1] + bounds.halfExtents[1];
+  }
+  const axisIndex = bounds.slope.axis === "x" ? 0 : 2;
+  const min = bounds.center[axisIndex] - bounds.halfExtents[axisIndex];
+  const max = bounds.center[axisIndex] + bounds.halfExtents[axisIndex];
+  const span = Math.max(0.0001, max - min);
+  const distance = bounds.slope.direction === 1 ? position[axisIndex] - min : max - position[axisIndex];
+  const t = Math.min(1, Math.max(0, distance / span));
+  return bounds.center[1] - bounds.halfExtents[1] + t * bounds.slope.rise;
+}
+
+function slope(collider: IColliderComponent): IBounds["slope"] {
+  const slope = collider.slope;
+  if (slope === undefined) {
+    return undefined;
+  }
+  return {
+    angle: Math.atan2(slope.rise, slope.run) * 180 / Math.PI,
+    axis: slope.axis,
+    direction: slope.direction,
+    rise: slope.rise,
+    run: slope.run,
+  };
+}
+
 const SUPPORT_TOLERANCE = 0.1;
+const DEFAULT_SLOPE_LIMIT = 45;
 
 function add(left: Vec3, right: Vec3): Vec3 {
   return [left[0] + right[0], left[1] + right[1], left[2] + right[2]];

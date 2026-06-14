@@ -146,6 +146,55 @@ test("character trace should carry grounded controllers on moving platforms", ()
   ]);
 });
 
+test("character trace should walk shallow slopes and reject steep slopes", () => {
+  const shallow = makeCharacterWorld();
+  const wall = shallow.entities.find((entity) => entity.id === "wall");
+  const player = shallow.entities.find((entity) => entity.id === "player");
+  if (wall !== undefined) {
+    wall.id = "ramp";
+    wall.components.Collider = { kind: "box", size: [4, 1, 2], slope: { axis: "x", direction: 1, rise: 1, run: 2 } };
+    wall.components.Transform = { position: [2, 0.5, 0] };
+  }
+  if (player?.components.CharacterController !== undefined) {
+    player.components.CharacterController.slopeLimit = 45;
+  }
+
+  assert.deepEqual(traceCharacterControllers(shallow, { axes: { MoveX: 1 }, fixedDelta: 1 }), [
+    {
+      desired: [2, 1, 0],
+      entity: "player",
+      groundEntity: "ramp",
+      grounded: true,
+      resolved: [2, 1.5, 0],
+      start: [0, 1, 0],
+    },
+  ]);
+
+  const steep = makeCharacterWorld();
+  const steepWall = steep.entities.find((entity) => entity.id === "wall");
+  const steepPlayer = steep.entities.find((entity) => entity.id === "player");
+  if (steepWall !== undefined) {
+    steepWall.id = "steep-ramp";
+    steepWall.components.Collider = { kind: "box", size: [4, 2, 2], slope: { axis: "x", direction: 1, rise: 2, run: 1 } };
+    steepWall.components.Transform = { position: [2, 1, 0] };
+  }
+  if (steepPlayer?.components.CharacterController !== undefined) {
+    steepPlayer.components.CharacterController.slopeLimit = 35;
+  }
+
+  assert.deepEqual(traceCharacterControllers(steep, { axes: { MoveX: 1 }, fixedDelta: 1 }), [
+    {
+      blockedBy: "steep-ramp",
+      desired: [2, 1, 0],
+      entity: "player",
+      groundEntity: "floor",
+      grounded: true,
+      resolved: [0, 1.05, 0],
+      start: [0, 1, 0],
+    },
+  ]);
+});
+
 function makeCharacterWorld(): IWorldIr {
   return {
     schema: "threenative.world",

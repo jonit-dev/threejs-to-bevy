@@ -2375,6 +2375,13 @@ function validatePhysicsComponents(entity: IWorldIr["entities"][number], path: s
     }
     if (colliderRecord.kind === "box") {
       validatePositiveVec3(colliderRecord.size, `${path}/components/Collider/size`, "TN_IR_PHYSICS_COLLIDER_SIZE_INVALID", diagnostics);
+      validateColliderSlope(colliderRecord.slope, `${path}/components/Collider/slope`, diagnostics);
+    } else if (colliderRecord.slope !== undefined) {
+      diagnostics.push({
+        code: "TN_IR_PHYSICS_COLLIDER_SLOPE_UNSUPPORTED",
+        message: "Collider.slope is supported only for box colliders.",
+        path: `${path}/components/Collider/slope`,
+      });
     }
     if (colliderRecord.kind === "sphere") {
       validatePositiveFinite(colliderRecord.radius, `${path}/components/Collider/radius`, "TN_IR_PHYSICS_COLLIDER_RADIUS_INVALID", diagnostics);
@@ -2430,6 +2437,33 @@ function validatePhysicsComponents(entity: IWorldIr["entities"][number], path: s
   }
 }
 
+function validateColliderSlope(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value)) {
+    diagnostics.push({ code: "TN_IR_PHYSICS_COLLIDER_SLOPE_INVALID", message: "Collider.slope must be an object.", path });
+    return;
+  }
+  for (const key of Object.keys(value)) {
+    if (!["axis", "direction", "rise", "run"].includes(key)) {
+      diagnostics.push({ code: "TN_IR_PHYSICS_COLLIDER_SLOPE_FIELD_UNSUPPORTED", message: `Collider.slope uses unsupported field '${key}'.`, path: `${path}/${key}` });
+    }
+  }
+  if (value.axis !== "x" && value.axis !== "z") {
+    diagnostics.push({ code: "TN_IR_PHYSICS_COLLIDER_SLOPE_INVALID", message: "Collider.slope.axis must be x or z.", path: `${path}/axis` });
+  }
+  if (value.direction !== -1 && value.direction !== 1) {
+    diagnostics.push({ code: "TN_IR_PHYSICS_COLLIDER_SLOPE_INVALID", message: "Collider.slope.direction must be -1 or 1.", path: `${path}/direction` });
+  }
+  for (const key of ["rise", "run"]) {
+    const item = value[key];
+    if (typeof item !== "number" || !Number.isFinite(item) || item <= 0) {
+      diagnostics.push({ code: "TN_IR_PHYSICS_COLLIDER_SLOPE_INVALID", message: `Collider.slope.${key} must be a positive finite number.`, path: `${path}/${key}` });
+    }
+  }
+}
+
 function hasEnginePhysicsHandle(value: Record<string, unknown>): boolean {
   return Object.keys(value).some((key) => /(?:rapier|bevy|native|engine).*(?:handle|body|collider)|(?:handle|rawHandle)$/i.test(key));
 }
@@ -2475,12 +2509,12 @@ function validateCharacterComponents(
   }
 
   for (const key of Object.keys(controller)) {
-    if (!["blocking", "grounding", "interactAction", "moveXAxis", "moveZAxis", "speed", "stepOffset"].includes(key)) {
+    if (!["blocking", "grounding", "interactAction", "moveXAxis", "moveZAxis", "slopeLimit", "speed", "stepOffset"].includes(key)) {
       diagnostics.push({
         code: "TN_IR_CHARACTER_FIELD_UNSUPPORTED",
         message: `CharacterController '${entity.id}' uses unsupported field '${key}'.`,
         path: `${path}/components/CharacterController/${key}`,
-        suggestion: "Slope, navmesh, and engine-specific controller fields are deferred.",
+        suggestion: "Navmesh and engine-specific controller fields are deferred.",
       });
     }
   }
@@ -2512,6 +2546,13 @@ function validateCharacterComponents(
       path: `${path}/components/CharacterController/speed`,
     });
   }
+  if (controller.slopeLimit !== undefined && (typeof controller.slopeLimit !== "number" || !Number.isFinite(controller.slopeLimit) || controller.slopeLimit < 0 || controller.slopeLimit > 90)) {
+    diagnostics.push({
+      code: "TN_IR_CHARACTER_SLOPE_INVALID",
+      message: "CharacterController.slopeLimit must be a finite angle from 0 to 90 degrees.",
+      path: `${path}/components/CharacterController/slopeLimit`,
+    });
+  }
   if (typeof controller.blocking !== "boolean") {
     diagnostics.push({
       code: "TN_IR_CHARACTER_BLOCKING_INVALID",
@@ -2531,7 +2572,7 @@ function validateCharacterComponents(
       code: "TN_IR_CHARACTER_GROUNDING_UNSUPPORTED",
       message: `CharacterController '${entity.id}' uses unsupported grounding mode '${String(controller.grounding)}'.`,
       path: `${path}/components/CharacterController/grounding`,
-      suggestion: "Use 'raycast' or 'none'. Slope handling remains deferred.",
+      suggestion: "Use 'raycast' or 'none'.",
     });
   }
 

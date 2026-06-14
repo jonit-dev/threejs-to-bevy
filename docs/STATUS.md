@@ -585,13 +585,16 @@ Bevy `Style`, and compiler bundle capabilities flag `ui:flex-layout` when the
 metadata is present. Anchors, constraints, overflow/clipping/scrolling, z-index,
 richer styling, widgets, and accessibility semantics remain future UI work.
 
-The character-controller P0 has narrowed to slope limits and sloped-surface
-walkability. `CharacterController.stepOffset` is now a promoted SDK/IR field
-with validation and manifest capability emission, and both web and Bevy
-deterministic character traces step onto low blockers, report actual
-ground-entity contact, become ungrounded past ledges, and apply moving-platform
-carry from rigid-body velocity. Full sloped-surface support, navmesh behavior,
-interaction volumes, and object pushing remain later controller work.
+The character-controller P0 is now closed for the promoted deterministic
+movement contract needed by the functional-game target. `CharacterController`
+now promotes both `stepOffset` and `slopeLimit` as SDK/IR fields with validation
+and manifest capability emission, box colliders can declare a portable planar
+`slope` ramp surface, and both web and Bevy deterministic character traces step
+onto low blockers, walk shallow ramp colliders, reject too-steep ramp colliders,
+report actual ground-entity contact, become ungrounded past ledges, and apply
+moving-platform carry from rigid-body velocity. Arbitrary sloped mesh terrain,
+navmesh behavior, interaction volumes, and object pushing remain later
+controller work.
 
 The animation P0 has moved from trace-only metadata toward runtime playback:
 model-backed renderers now receive a derived active animation playback state

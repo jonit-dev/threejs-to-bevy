@@ -128,6 +128,7 @@ export {
   physics,
   rigidBody,
   sphereCollider,
+  type IColliderSlopeDeclaration,
   type IColliderDeclaration,
   type IPhysicsDeclaration,
   type IRigidBodyDeclaration,

@@ -9,6 +9,7 @@ export interface ICharacterControllerDeclaration {
   interactAction?: string;
   moveXAxis: string;
   moveZAxis: string;
+  slopeLimit?: number;
   speed: number;
   stepOffset?: number;
 }
@@ -19,6 +20,7 @@ export interface ICharacterControllerOptions {
   interactAction?: string;
   moveXAxis?: string;
   moveZAxis?: string;
+  slopeLimit?: number;
   speed?: number;
   stepOffset?: number;
   unsupported?: IUnsupportedCharacterControllerOptions;
@@ -26,7 +28,6 @@ export interface ICharacterControllerOptions {
 
 export interface IUnsupportedCharacterControllerOptions {
   navmesh?: boolean;
-  slopeLimit?: number;
 }
 
 export const CharacterController = defineComponent("CharacterController", {
@@ -35,6 +36,7 @@ export const CharacterController = defineComponent("CharacterController", {
   interactAction: { kind: "string", required: false },
   moveXAxis: "string",
   moveZAxis: "string",
+  slopeLimit: { kind: "number", required: false },
   speed: "number",
   stepOffset: { kind: "number", required: false },
 });
@@ -43,6 +45,10 @@ export function characterController(options: ICharacterControllerOptions = {}): 
   assertSupportedCharacterOptions(options.unsupported);
   const speed = options.speed ?? 4;
   assertPositiveNumber(speed, "TN_SDK_CHARACTER_SPEED_INVALID", "CharacterController.speed");
+  const slopeLimit = options.slopeLimit;
+  if (slopeLimit !== undefined && (!Number.isFinite(slopeLimit) || slopeLimit < 0 || slopeLimit > 90)) {
+    throw new SdkError("TN_SDK_CHARACTER_SLOPE_INVALID", "CharacterController.slopeLimit must be a finite angle from 0 to 90 degrees.");
+  }
   const stepOffset = options.stepOffset;
   if (stepOffset !== undefined && (!Number.isFinite(stepOffset) || stepOffset < 0)) {
     throw new SdkError("TN_SDK_CHARACTER_STEP_INVALID", "CharacterController.stepOffset must be a finite non-negative number.");
@@ -53,6 +59,7 @@ export function characterController(options: ICharacterControllerOptions = {}): 
     ...(options.interactAction === undefined ? {} : { interactAction: assertNonEmpty(options.interactAction, "interactAction") }),
     moveXAxis: assertNonEmpty(options.moveXAxis ?? "MoveX", "moveXAxis"),
     moveZAxis: assertNonEmpty(options.moveZAxis ?? "MoveZ", "moveZAxis"),
+    ...(slopeLimit === undefined ? {} : { slopeLimit }),
     speed,
     ...(stepOffset === undefined ? {} : { stepOffset }),
   });
@@ -61,9 +68,6 @@ export function characterController(options: ICharacterControllerOptions = {}): 
 function assertSupportedCharacterOptions(options: IUnsupportedCharacterControllerOptions | undefined): void {
   if (options?.navmesh === true) {
     throw new SdkError("TN_SDK_CHARACTER_NAVMESH_UNSUPPORTED", "Character controllers cannot declare navmesh behavior before V7.");
-  }
-  if (options?.slopeLimit !== undefined) {
-    throw new SdkError("TN_SDK_CHARACTER_SLOPE_UNSUPPORTED", "Character controller slope limits are deferred to V7.");
   }
 }
 

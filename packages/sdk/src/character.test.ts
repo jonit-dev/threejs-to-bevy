@@ -5,7 +5,7 @@ import { characterController } from "./character.js";
 import { SdkError } from "./errors.js";
 
 test("should create deterministic character controller metadata", () => {
-  const controller = characterController({ interactAction: "Interact", speed: 5, stepOffset: 0.35 });
+  const controller = characterController({ interactAction: "Interact", slopeLimit: 42, speed: 5, stepOffset: 0.35 });
 
   assert.equal(controller.schema.name, "CharacterController");
   assert.deepEqual(controller.data, {
@@ -14,6 +14,7 @@ test("should create deterministic character controller metadata", () => {
     interactAction: "Interact",
     moveXAxis: "MoveX",
     moveZAxis: "MoveZ",
+    slopeLimit: 42,
     speed: 5,
     stepOffset: 0.35,
   });
@@ -25,8 +26,8 @@ test("should reject unsupported advanced character options", () => {
     (error: unknown) => error instanceof SdkError && error.code === "TN_SDK_CHARACTER_NAVMESH_UNSUPPORTED",
   );
   assert.throws(
-    () => characterController({ unsupported: { slopeLimit: 45 } }),
-    (error: unknown) => error instanceof SdkError && error.code === "TN_SDK_CHARACTER_SLOPE_UNSUPPORTED",
+    () => characterController({ slopeLimit: 91 }),
+    (error: unknown) => error instanceof SdkError && error.code === "TN_SDK_CHARACTER_SLOPE_INVALID",
   );
   assert.throws(
     () => characterController({ stepOffset: -0.1 }),

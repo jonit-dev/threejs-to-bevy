@@ -86,6 +86,12 @@ export interface IColliderComponent {
   mask?: readonly string[];
   radius?: number;
   size?: Vec3;
+  slope?: {
+    axis: "x" | "z";
+    direction: -1 | 1;
+    rise: number;
+    run: number;
+  };
   trigger?: boolean;
 }
 
@@ -95,6 +101,7 @@ export interface ICharacterControllerComponent {
   interactAction?: string;
   moveXAxis: string;
   moveZAxis: string;
+  slopeLimit?: number;
   speed: number;
   stepOffset?: number;
 }

@@ -9,6 +9,13 @@ export interface IPhysicsFilterOptions {
   mask?: ReadonlyArray<string>;
 }
 
+export interface IColliderSlopeDeclaration {
+  axis: "x" | "z";
+  direction: -1 | 1;
+  rise: number;
+  run: number;
+}
+
 export interface IRigidBodyDeclaration {
   kind: PhysicsBodyKind;
   mass?: number;
@@ -22,6 +29,7 @@ export interface IColliderDeclaration {
   mask?: string[];
   radius?: number;
   size?: Vector3Tuple;
+  slope?: IColliderSlopeDeclaration;
   trigger?: boolean;
 }
 
@@ -43,11 +51,11 @@ export function rigidBody(kind: PhysicsBodyKind, options: { mass?: number; veloc
   return { kind, mass: options.mass, velocity: options.velocity };
 }
 
-export function boxCollider(size: Vector3Tuple, options: { trigger?: boolean } & IPhysicsFilterOptions = {}): IColliderDeclaration {
+export function boxCollider(size: Vector3Tuple, options: { slope?: IColliderSlopeDeclaration; trigger?: boolean } & IPhysicsFilterOptions = {}): IColliderDeclaration {
   size.forEach((value, index) => {
     assertPositiveNumber(value, "TN_SDK_PHYSICS_COLLIDER_INVALID_SIZE", `Collider.size[${index}]`);
   });
-  return { kind: "box", size: [...size] as Vector3Tuple, trigger: options.trigger, ...normalizeFilter(options) };
+  return { kind: "box", size: [...size] as Vector3Tuple, slope: normalizeSlope(options.slope), trigger: options.trigger, ...normalizeFilter(options) };
 }
 
 export function sphereCollider(radius: number, options: { trigger?: boolean } & IPhysicsFilterOptions = {}): IColliderDeclaration {
@@ -86,4 +94,19 @@ function normalizeFilter(options: IPhysicsFilterOptions): Pick<IColliderDeclarat
     ...(options.layer === undefined ? {} : { layer: options.layer }),
     ...(options.mask === undefined ? {} : { mask: [...options.mask] }),
   };
+}
+
+function normalizeSlope(slope: IColliderSlopeDeclaration | undefined): IColliderSlopeDeclaration | undefined {
+  if (slope === undefined) {
+    return undefined;
+  }
+  if (slope.axis !== "x" && slope.axis !== "z") {
+    throw new SdkError("TN_SDK_PHYSICS_COLLIDER_SLOPE_INVALID", "Collider.slope.axis must be x or z.");
+  }
+  if (slope.direction !== -1 && slope.direction !== 1) {
+    throw new SdkError("TN_SDK_PHYSICS_COLLIDER_SLOPE_INVALID", "Collider.slope.direction must be -1 or 1.");
+  }
+  assertPositiveNumber(slope.rise, "TN_SDK_PHYSICS_COLLIDER_SLOPE_INVALID", "Collider.slope.rise");
+  assertPositiveNumber(slope.run, "TN_SDK_PHYSICS_COLLIDER_SLOPE_INVALID", "Collider.slope.run");
+  return { axis: slope.axis, direction: slope.direction, rise: slope.rise, run: slope.run };
 }

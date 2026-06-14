@@ -318,6 +318,9 @@ function collectWorldCapabilities(world: IWorldIr | undefined, add: (domain: str
       if (entity.components.Collider.layer !== undefined || entity.components.Collider.mask !== undefined) {
         add("physics", "contact-filtering");
       }
+      if (entity.components.Collider.slope !== undefined) {
+        add("physics", "collider.slope");
+      }
       if (entity.components.Collider.trigger === true) {
         add("physics", "trigger-collider");
       }
@@ -335,6 +338,9 @@ function collectWorldCapabilities(world: IWorldIr | undefined, add: (domain: str
       }
       if (entity.components.CharacterController.stepOffset !== undefined) {
         add("character", "step-offset");
+      }
+      if (entity.components.CharacterController.slopeLimit !== undefined) {
+        add("character", "slope-limit");
       }
     }
   }
