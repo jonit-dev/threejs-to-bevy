@@ -1,0 +1,194 @@
+{
+  "schema": "threenative.conformance.v7-fixture-catalog",
+  "version": "0.1.0",
+  "categories": [
+    {
+      "id": "v7-advanced-physics-character",
+      "ticket": "V7-02",
+      "baselineBundlePath": "packages/ir/fixtures/conformance/v6-physics-events/game.bundle",
+      "acceptedFixtureId": "v7-advanced-physics-character",
+      "acceptedBundlePath": "packages/ir/fixtures/conformance/v7-advanced-physics-character/game.bundle",
+      "rejectedFixtureId": "v7-rejected-physics-character",
+      "rejectedBundlePath": "packages/ir/fixtures/conformance/v7-rejected-physics-character/game.bundle",
+      "targetCapabilities": [
+        "character:blocking-runtime",
+        "physics:contact-filtering",
+        "physics:deterministic-contact-order",
+        "physics:shape-cast"
+      ],
+      "reportArtifacts": [
+        "artifacts/conformance/v7-advanced-physics-character/web.report.json",
+        "artifacts/conformance/v7-advanced-physics-character/bevy.report.json",
+        "artifacts/conformance/v7-advanced-physics-character/comparison.report.json"
+      ],
+      "rejectedDiagnosticCodes": [
+        "TN_V7_PHYSICS_UNSUPPORTED",
+        "TN_V7_CHARACTER_UNSUPPORTED"
+      ]
+    },
+    {
+      "id": "v7-animation-graphs-particles",
+      "ticket": "V7-03",
+      "baselineBundlePath": "packages/ir/fixtures/conformance/v6-animation-clips/game.bundle",
+      "acceptedFixtureId": "v7-animation-graphs-particles",
+      "acceptedBundlePath": "packages/ir/fixtures/conformance/v7-animation-graphs-particles/game.bundle",
+      "rejectedFixtureId": "v7-rejected-animation-graphs-particles",
+      "rejectedBundlePath": "packages/ir/fixtures/conformance/v7-rejected-animation-graphs-particles/game.bundle",
+      "targetCapabilities": [
+        "animation:events",
+        "animation:graph",
+        "animation:state-machine",
+        "particles:bounded-emitter"
+      ],
+      "reportArtifacts": [
+        "artifacts/conformance/v7-animation-graphs-particles/web.report.json",
+        "artifacts/conformance/v7-animation-graphs-particles/bevy.report.json",
+        "artifacts/conformance/v7-animation-graphs-particles/comparison.report.json"
+      ],
+      "rejectedDiagnosticCodes": [
+        "TN_V7_ANIMATION_UNSUPPORTED",
+        "TN_V7_PARTICLES_UNSUPPORTED"
+      ]
+    },
+    {
+      "id": "v7-rich-ui-navigation",
+      "ticket": "V7-04",
+      "baselineBundlePath": "packages/ir/fixtures/conformance/v6-retained-ui/game.bundle",
+      "acceptedFixtureId": "v7-rich-ui-navigation",
+      "acceptedBundlePath": "packages/ir/fixtures/conformance/v7-rich-ui-navigation/game.bundle",
+      "rejectedFixtureId": "v7-rejected-rich-ui-navigation",
+      "rejectedBundlePath": "packages/ir/fixtures/conformance/v7-rejected-rich-ui-navigation/game.bundle",
+      "targetCapabilities": [
+        "ui:focus-order",
+        "ui:gamepad-navigation",
+        "ui:native-action-events",
+        "ui:safe-area"
+      ],
+      "reportArtifacts": [
+        "artifacts/conformance/v7-rich-ui-navigation/web.report.json",
+        "artifacts/conformance/v7-rich-ui-navigation/bevy.report.json",
+        "artifacts/conformance/v7-rich-ui-navigation/comparison.report.json"
+      ],
+      "rejectedDiagnosticCodes": [
+        "TN_V7_UI_UNSUPPORTED"
+      ]
+    },
+    {
+      "id": "v7-spatial-audio-buses",
+      "ticket": "V7-05",
+      "baselineBundlePath": "packages/ir/fixtures/conformance/v6-audio-playback/game.bundle",
+      "acceptedFixtureId": "v7-spatial-audio-buses",
+      "acceptedBundlePath": "packages/ir/fixtures/conformance/v7-spatial-audio-buses/game.bundle",
+      "rejectedFixtureId": "v7-rejected-spatial-audio-buses",
+      "rejectedBundlePath": "packages/ir/fixtures/conformance/v7-rejected-spatial-audio-buses/game.bundle",
+      "targetCapabilities": [
+        "audio:bus",
+        "audio:listener",
+        "audio:spatial-emitter",
+        "audio:volume-routing"
+      ],
+      "reportArtifacts": [
+        "artifacts/conformance/v7-spatial-audio-buses/web.report.json",
+        "artifacts/conformance/v7-spatial-audio-buses/bevy.report.json",
+        "artifacts/conformance/v7-spatial-audio-buses/comparison.report.json"
+      ],
+      "rejectedDiagnosticCodes": [
+        "TN_V7_AUDIO_UNSUPPORTED"
+      ]
+    },
+    {
+      "id": "v7-renderer-dense-content",
+      "ticket": "V7-06",
+      "baselineBundlePath": "packages/ir/fixtures/conformance/v5-drift-surface/game.bundle",
+      "acceptedFixtureId": "v7-renderer-dense-content",
+      "acceptedBundlePath": "packages/ir/fixtures/conformance/v7-renderer-dense-content/game.bundle",
+      "rejectedFixtureId": "v7-rejected-renderer-dense-content",
+      "rejectedBundlePath": "packages/ir/fixtures/conformance/v7-rejected-renderer-dense-content/game.bundle",
+      "targetCapabilities": [
+        "asset:imported-edge-cases",
+        "rendering:native-instancing",
+        "rendering:postprocess-narrow",
+        "rendering:runtime-lod"
+      ],
+      "reportArtifacts": [
+        "artifacts/conformance/v7-renderer-dense-content/web.report.json",
+        "artifacts/conformance/v7-renderer-dense-content/bevy.report.json",
+        "artifacts/conformance/v7-renderer-dense-content/comparison.report.json"
+      ],
+      "rejectedDiagnosticCodes": [
+        "TN_V7_RENDERER_UNSUPPORTED",
+        "TN_V7_ASSET_UNSUPPORTED"
+      ]
+    },
+    {
+      "id": "v7-scripting-lifecycle",
+      "ticket": "V7-07",
+      "baselineBundlePath": "packages/ir/fixtures/conformance/v6-resources-events/game.bundle",
+      "acceptedFixtureId": "v7-scripting-lifecycle",
+      "acceptedBundlePath": "packages/ir/fixtures/conformance/v7-scripting-lifecycle/game.bundle",
+      "rejectedFixtureId": "v7-rejected-scripting-lifecycle",
+      "rejectedBundlePath": "packages/ir/fixtures/conformance/v7-rejected-scripting-lifecycle/game.bundle",
+      "targetCapabilities": [
+        "scripting:deterministic-state-handoff",
+        "scripting:larger-fixtures",
+        "scripting:lifecycle",
+        "scripting:persisted-state"
+      ],
+      "reportArtifacts": [
+        "artifacts/conformance/v7-scripting-lifecycle/web.report.json",
+        "artifacts/conformance/v7-scripting-lifecycle/bevy.report.json",
+        "artifacts/conformance/v7-scripting-lifecycle/comparison.report.json"
+      ],
+      "rejectedDiagnosticCodes": [
+        "TN_V7_SCRIPTING_UNSUPPORTED"
+      ]
+    },
+    {
+      "id": "v7-packaging-target-profiles",
+      "ticket": "V7-08",
+      "baselineBundlePath": "examples/v6-functional/dist/v6-functional.bundle",
+      "acceptedFixtureId": "v7-packaging-target-profiles",
+      "acceptedBundlePath": "packages/ir/fixtures/conformance/v7-packaging-target-profiles/game.bundle",
+      "rejectedFixtureId": "v7-rejected-packaging-target-profiles",
+      "rejectedBundlePath": "packages/ir/fixtures/conformance/v7-rejected-packaging-target-profiles/game.bundle",
+      "targetCapabilities": [
+        "diagnostics:platform",
+        "packaging:bundle-loading",
+        "packaging:desktop",
+        "packaging:target-profile"
+      ],
+      "reportArtifacts": [
+        "artifacts/conformance/v7-packaging-target-profiles/package.report.json",
+        "artifacts/conformance/v7-packaging-target-profiles/desktop-smoke.report.json",
+        "artifacts/conformance/v7-packaging-target-profiles/comparison.report.json"
+      ],
+      "rejectedDiagnosticCodes": [
+        "TN_V7_PACKAGING_UNSUPPORTED",
+        "TN_V7_TARGET_PROFILE_UNSUPPORTED"
+      ]
+    },
+    {
+      "id": "v7-performance-budgets",
+      "ticket": "V7-09",
+      "baselineBundlePath": "examples/v6-functional/dist/v6-functional.bundle",
+      "acceptedFixtureId": "v7-performance-budgets",
+      "acceptedBundlePath": "packages/ir/fixtures/conformance/v7-performance-budgets/game.bundle",
+      "rejectedFixtureId": "v7-rejected-performance-budgets",
+      "rejectedBundlePath": "packages/ir/fixtures/conformance/v7-rejected-performance-budgets/game.bundle",
+      "targetCapabilities": [
+        "performance:asset-load-budget",
+        "performance:draw-instance-budget",
+        "performance:entity-budget",
+        "performance:frame-budget"
+      ],
+      "reportArtifacts": [
+        "artifacts/conformance/v7-performance-budgets/web.report.json",
+        "artifacts/conformance/v7-performance-budgets/bevy.report.json",
+        "artifacts/conformance/v7-performance-budgets/comparison.report.json"
+      ],
+      "rejectedDiagnosticCodes": [
+        "TN_V7_PERFORMANCE_BUDGET_UNSUPPORTED"
+      ]
+    }
+  ]
+}

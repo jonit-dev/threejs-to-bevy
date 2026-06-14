@@ -34,3 +34,18 @@ only authored IR inputs and catalog documentation.
 | `v6-retained-ui` | `ui:action`, `ui:binding.resource`, `ui:focusable`, `ui:node.bar`, `ui:node.button`, `ui:node.column`, `ui:node.stack`, `ui:node.text`, `ui:runtime` | V6 retained UI fixture for portable HUD text, bar, button, resource binding metadata, and focus/action observations. |
 | `v6-resources-events` | `ecs:event-schemas`, `ecs:events`, `ecs:resource-schemas`, `ecs:resources`, `scripting:event-reads`, `scripting:event-writes`, `scripting:resource-reads`, `scripting:resource-writes`, `scripting:schedule.startup`, `scripting:schedule.update`, `scripting:script-bundle`, `scripting:systems` | V6 resource/event conformance fixture for serialized resource values, queued event values, startup/update schedule ordering, system access declarations, and fixed trace effect-log parity. |
 | `v5-drift-surface` | `asset:model.gltf`, `asset:texture.png`, `environment:atmosphere`, `environment:camera-bookmarks`, `environment:instances`, `environment:path`, `environment:scene`, `environment:source-assets`, `environment:terrain`, `rendering:camera.active`, `rendering:camera.orthographic`, `rendering:fog.exponential`, `rendering:light.ambient`, `rendering:light.angle`, `rendering:light.point`, `rendering:light.range`, `rendering:light.spot`, `rendering:material.texture.base-color`, `rendering:material.texture.emissive`, `rendering:material.texture.metallic-roughness`, `rendering:material.texture.normal`, `rendering:material.texture.occlusion`, `rendering:shadows`, `rendering:visibility`, `scripting:script-bundle`, `transform:hierarchy` | V5 drift catalog fixture for visibility, active orthographic camera, point/spot lights, texture slots, atmosphere metadata, source environment assets, and compact V4 scripting metadata. |
+
+## V7 Fixture Catalog
+
+`v7-fixture-catalog.json` is the pre-runtime V7 evidence catalog. It does not
+claim V7 runtime support. Instead, each category maps a V7 ticket to:
+
+- an existing V5/V6 baseline bundle path,
+- planned accepted and rejected V7 fixture bundle paths,
+- target capability expectations,
+- report artifact paths under `artifacts/conformance/<fixture>/`, and
+- diagnostic codes that rejected fixtures must surface instead of silently
+  dropping backend-specific behavior.
+
+This lets V7 feature tickets point at shared fixture and report paths before
+runtime support is promoted.

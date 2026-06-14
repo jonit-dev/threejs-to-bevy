@@ -30,6 +30,10 @@ V6 common feature parity
 - Every promoted feature needs shared fixtures, target observations, docs,
   diagnostics, TypeScript tests, Rust evidence where native support is claimed,
   and release-gate artifacts.
+- V7-01 owns the fixture catalog. Feature tickets from V7-02 through V7-09 must
+  either use their category in
+  `packages/ir/fixtures/conformance/v7-fixture-catalog.json` or update that
+  catalog in the same change before claiming runtime support.
 - V7 must include a maintained proof example or template under `examples/` and,
   where promoted, `templates/`, following existing folder patterns, and must
   write verification evidence under `artifacts/v7`.

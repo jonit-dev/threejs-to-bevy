@@ -334,6 +334,13 @@ collaboration, public plugin, direct Bevy, raw Three.js, or broad shader graph
 milestone. Those capabilities require separate future PRDs and should not be
 implied by V7 parity work.
 
+V7-01 has started with a pre-runtime fixture catalog:
+`packages/ir/fixtures/conformance/v7-fixture-catalog.json` maps each V7 feature
+ticket from V7-02 through V7-09 to a V5/V6 baseline bundle, planned accepted and
+rejected V7 fixture bundle paths, target capabilities, conformance report
+artifact paths, and rejected diagnostic code families. This creates shared
+fixture/report anchors before any deeper V7 runtime behavior is claimed.
+
 ## V4 Scripting Parity
 
 | Area | Status | What's drifting or missing |

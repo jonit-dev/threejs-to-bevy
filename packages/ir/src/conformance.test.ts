@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import test from "node:test";
 
 import { listConformanceFixtures } from "./conformance.js";
@@ -14,6 +16,35 @@ test("should validate every conformance fixture", async () => {
     assert.deepEqual(result.diagnostics, [], fixture.name);
     assert.equal(result.ok, true, fixture.name);
   }
+});
+
+test("should define V7 conformance fixture categories before runtime claims", async () => {
+  const catalog = JSON.parse(await readFile(resolve(process.cwd(), "fixtures/conformance/v7-fixture-catalog.json"), "utf8"));
+
+  assert.equal(catalog.schema, "threenative.conformance.v7-fixture-catalog");
+  assert.equal(catalog.version, "0.1.0");
+  assert.equal(catalog.categories.length, 8);
+
+  const tickets = new Set<string>();
+  for (const category of catalog.categories) {
+    assert.match(category.id, /^v7-/);
+    assert.match(category.ticket, /^V7-0[2-9]$/);
+    assert.equal(typeof category.baselineBundlePath, "string", category.id);
+    assert.ok(category.baselineBundlePath.endsWith("/game.bundle") || category.baselineBundlePath.includes("/dist/"), category.id);
+    assert.ok(category.acceptedBundlePath.endsWith("/game.bundle"), category.id);
+    assert.ok(category.rejectedBundlePath.endsWith("/game.bundle"), category.id);
+    assert.ok(category.acceptedFixtureId.startsWith("v7-"), category.id);
+    assert.ok(category.rejectedFixtureId.startsWith("v7-rejected-"), category.id);
+    assert.ok(category.targetCapabilities.length > 0, category.id);
+    assert.deepEqual(category.targetCapabilities, [...category.targetCapabilities].sort(), category.id);
+    assert.equal(category.reportArtifacts.length >= 2, true, category.id);
+    assert.ok(category.reportArtifacts.every((path: string) => path.startsWith(`artifacts/conformance/${category.acceptedFixtureId}/`)), category.id);
+    assert.ok(category.rejectedDiagnosticCodes.length > 0, category.id);
+    assert.ok(category.rejectedDiagnosticCodes.every((code: string) => code.startsWith("TN_V7_")), category.id);
+    tickets.add(category.ticket);
+  }
+
+  assert.deepEqual([...tickets].sort(), ["V7-02", "V7-03", "V7-04", "V7-05", "V7-06", "V7-07", "V7-08", "V7-09"]);
 });
 
 test("should include capability tags for each conformance fixture", async () => {
