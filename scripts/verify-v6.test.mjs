@@ -12,6 +12,7 @@ test("should report failing v6 gate step", async () => {
     const reportPath = join(root, "artifacts/v6/verification-report.json");
     const result = await verifyV6({
       artifactDir: join(root, "artifacts/v6"),
+      copyEvidence: false,
       repoRoot: root,
       reportPath,
       run: async () => ({
@@ -43,6 +44,7 @@ test("should include functional scene and conformance artifacts in v6 gate", asy
     const reportPath = join(root, "artifacts/v6/verification-report.json");
     const result = await verifyV6({
       artifactDir: join(root, "artifacts/v6"),
+      copyEvidence: false,
       repoRoot: root,
       reportPath,
       run: async () => ({
@@ -64,16 +66,19 @@ test("should include functional scene and conformance artifacts in v6 gate", asy
         "build cli",
         "build v6 functional scene",
         "validate v6 functional bundle",
+        "verify v6 web visual scene",
         "verify conformance gate",
       ],
     );
     assert.match(saved.artifacts.bundlePath, /examples\/v6-functional\/dist\/v6-functional\.bundle/);
     assert.match(saved.artifacts.conformanceReportPath, /artifacts\/conformance\/verification-report\.json/);
+    assert.match(saved.artifacts.webVisualReportPath, /artifacts\/v6\/web-visual\/verification-report\.json/);
+    assert.deepEqual(saved.artifacts.webVisualScreenshots.map((path) => path.endsWith(".png")), [true, true]);
     assert.equal(saved.code, "TN_VERIFY_V6_OK");
     assert.equal(saved.diagnostics.length, 0);
     assert.equal(saved.schema, "threenative.verify.v6");
     assert.equal(saved.version, "0.1.0");
-    assert.equal(saved.visualEvidenceStatus, "pending");
+    assert.equal(saved.visualEvidenceStatus, "web-captured");
   } finally {
     await rm(root, { force: true, recursive: true });
   }

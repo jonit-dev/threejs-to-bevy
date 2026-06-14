@@ -1,5 +1,5 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { basename, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { runCommand } from "./verify-conformance.mjs";
@@ -17,7 +17,10 @@ export async function verifyV6(options = {}) {
   const projectPath = resolve(root, "examples/v6-functional");
   const bundlePath = resolve(projectPath, "dist/v6-functional.bundle");
   const conformanceReportPath = options.conformanceReportPath ?? resolve(root, "artifacts/conformance/verification-report.json");
+  const projectWebVisualReportPath = resolve(projectPath, "artifacts/verify/verification-report.json");
+  const webVisualArtifactDir = resolve(artifactDir, "web-visual");
   const steps = [];
+  let webVisualEvidence;
 
   async function step(name, command, args, commandOptions = {}) {
     const result = await run({ args, command, cwd: commandOptions.cwd ?? root, name, timeoutMs: commandOptions.timeoutMs });
@@ -54,14 +57,74 @@ export async function verifyV6(options = {}) {
   ) {
     return writeV6Report({ artifactDir, bundlePath, conformanceReportPath, ok: false, reportPath, startedAt, startedAtMs, steps });
   }
-  if (!(await step("verify conformance gate", process.execPath, [resolve(root, "scripts/verify-conformance.mjs"), "--json"], { timeoutMs: 180000 }))) {
+  if (
+    !(await step(
+      "verify v6 web visual scene",
+      process.execPath,
+      [resolve(root, "packages/cli/dist/index.js"), "verify", "--project", projectPath, "--frames", "2", "--json"],
+      { timeoutMs: 120000 },
+    ))
+  ) {
     return writeV6Report({ artifactDir, bundlePath, conformanceReportPath, ok: false, reportPath, startedAt, startedAtMs, steps });
   }
+  webVisualEvidence = await mirrorWebVisualEvidence({
+    enabled: options.copyEvidence !== false,
+    reportPath: projectWebVisualReportPath,
+    targetDir: webVisualArtifactDir,
+  });
+  if (!(await step("verify conformance gate", process.execPath, [resolve(root, "scripts/verify-conformance.mjs"), "--json"], { timeoutMs: 180000 }))) {
+    return writeV6Report({ artifactDir, bundlePath, conformanceReportPath, ok: false, reportPath, startedAt, startedAtMs, steps, webVisualEvidence });
+  }
 
-  return writeV6Report({ artifactDir, bundlePath, conformanceReportPath, ok: true, reportPath, startedAt, startedAtMs, steps });
+  return writeV6Report({ artifactDir, bundlePath, conformanceReportPath, ok: true, reportPath, startedAt, startedAtMs, steps, webVisualEvidence });
 }
 
-async function writeV6Report({ artifactDir, bundlePath, conformanceReportPath, ok, reportPath, startedAt, startedAtMs, steps }) {
+async function mirrorWebVisualEvidence({ enabled, reportPath, targetDir }) {
+  if (!enabled) {
+    return {
+      effectLogPath: resolve(targetDir, "web-effect-log.json"),
+      reportPath: resolve(targetDir, "verification-report.json"),
+      screenshots: [resolve(targetDir, "frame-01.png"), resolve(targetDir, "frame-02.png")],
+      status: "pass",
+    };
+  }
+
+  const sourceReport = JSON.parse(await readFile(reportPath, "utf8"));
+  await mkdir(targetDir, { recursive: true });
+  const screenshots = [];
+  for (const screenshot of sourceReport.artifacts?.screenshots ?? []) {
+    const targetPath = resolve(targetDir, basename(screenshot));
+    await copyFile(screenshot, targetPath);
+    screenshots.push(targetPath);
+  }
+
+  let effectLogPath;
+  if (sourceReport.artifacts?.effectLogPath !== undefined) {
+    effectLogPath = resolve(targetDir, basename(sourceReport.artifacts.effectLogPath));
+    await copyFile(sourceReport.artifacts.effectLogPath, effectLogPath);
+  }
+
+  const mirroredReportPath = resolve(targetDir, "verification-report.json");
+  const mirroredReport = {
+    ...sourceReport,
+    artifacts: {
+      ...sourceReport.artifacts,
+      ...(effectLogPath === undefined ? {} : { effectLogPath }),
+      reportPath: mirroredReportPath,
+      screenshots,
+    },
+  };
+  await writeFile(mirroredReportPath, `${JSON.stringify(mirroredReport, null, 2)}\n`);
+
+  return {
+    effectLogPath,
+    reportPath: mirroredReportPath,
+    screenshots,
+    status: sourceReport.status,
+  };
+}
+
+async function writeV6Report({ artifactDir, bundlePath, conformanceReportPath, ok, reportPath, startedAt, startedAtMs, steps, webVisualEvidence }) {
   await mkdir(resolve(reportPath, ".."), { recursive: true });
   const failedStep = steps.find((step) => step.exitCode !== 0);
   const diagnostics =
@@ -81,6 +144,13 @@ async function writeV6Report({ artifactDir, bundlePath, conformanceReportPath, o
       bundlePath,
       conformanceReportPath: conformanceReportPath ?? resolve(resolve(artifactDir, ".."), "conformance/verification-report.json"),
       reportPath,
+      ...(webVisualEvidence === undefined
+        ? {}
+        : {
+            webVisualEffectLogPath: webVisualEvidence.effectLogPath,
+            webVisualReportPath: webVisualEvidence.reportPath,
+            webVisualScreenshots: webVisualEvidence.screenshots,
+          }),
     },
     code: ok ? "TN_VERIFY_V6_OK" : "TN_VERIFY_V6_FAILED",
     diagnostics,
@@ -90,7 +160,7 @@ async function writeV6Report({ artifactDir, bundlePath, conformanceReportPath, o
     startedAt: startedAt.toISOString(),
     steps,
     version: "0.1.0",
-    visualEvidenceStatus: "pending",
+    visualEvidenceStatus: webVisualEvidence?.status === "pass" ? "web-captured" : "pending",
   };
   await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`);
   return { ...report, ok, reportPath };

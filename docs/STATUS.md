@@ -308,11 +308,13 @@ V6-09 has started with the functional scene and initial aggregate gate:
 events, startup/update systems, primitive physics, a character controller,
 animation clip metadata, retained UI, input, audio, and runtime config.
 `pnpm verify:v6` now runs the V6 docs gate, V6 gate-script tests, CLI build,
-functional scene build/validation, and shared conformance, then writes
-`artifacts/v6/verification-report.json`. The report intentionally marks
-`visualEvidenceStatus` as `pending`; rendered screenshots, playable traces, and
-native frame/observation artifacts remain later V6-09 work before the scene can
-serve as final visual parity evidence.
+functional scene build/validation, web visual smoke verification, and shared
+conformance, then writes `artifacts/v6/verification-report.json`. Web
+screenshots and the web effect log are mirrored under
+`artifacts/v6/web-visual/`, and the aggregate report marks
+`visualEvidenceStatus` as `web-captured` when that smoke passes. Native frame
+capture, richer playable traces, and final visual parity observations remain
+later V6-09 work before the scene can serve as final visual parity evidence.
 
 V7 is now planned as the deep engine gap-closure milestone. It should continue
 parity work that is too large or risky for V6, such as deeper physics,

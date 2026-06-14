@@ -19,13 +19,22 @@ Current V6 aggregate checks:
 - CLI build before consuming the example.
 - `examples/v6-functional` build through `tn build`.
 - `examples/v6-functional` validation through `tn validate`.
+- web visual verification through `tn verify --frames 2 --json`.
 - shared conformance through `scripts/verify-conformance.mjs`.
 
 The aggregate report is written to
 `artifacts/v6/verification-report.json` with schema
-`threenative.verify.v6`. The report currently carries
-`visualEvidenceStatus: "pending"` because V6-09 rendered screenshots,
-playable traces, and native observation artifacts are still the next checkpoint.
+`threenative.verify.v6`. Web visual artifacts from the CLI verifier are mirrored
+under `artifacts/v6/web-visual/`:
+
+- `verification-report.json`
+- `frame-01.png`
+- `frame-02.png`
+- `web-effect-log.json`
+
+The report currently carries `visualEvidenceStatus: "web-captured"` when this
+web visual smoke passes. Native frame capture, richer playable traces, and final
+runtime parity observations are still later V6-09 checkpoints.
 
 Current V6 trace evidence:
 
@@ -53,6 +62,6 @@ This current trace proves startup-before-update ordering, initial event
 visibility, declared resource writes, and event/resource effect-log parity for
 the V6 resource/event fixture. It also proves matching `animation.play`
 service-call logs for the V6 animation fixture. The aggregate gate adds the
-functional scene build/validation proof, but does not yet prove real rendered
-animation playback, screenshot parity, playable input traces, native frame
-captures, or broader schedule/state coverage.
+functional scene build/validation proof and a nonblank web visual smoke, but
+does not yet prove real model animation playback, screenshot parity, native
+frame captures, or broader schedule/state coverage.

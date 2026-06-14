@@ -311,10 +311,11 @@ systems, startup/update schedules, primitive colliders, a character controller,
 model clip metadata, retained UI, input, audio, and runtime config.
 `pnpm verify:v6` now provides the initial V6 aggregate gate by checking V6 docs,
 testing the gate scripts, building the CLI, building and validating the
-functional scene, and running shared conformance. This starts the example and
-release-gate evidence row, but visual animation playback, screenshot/playable
-trace evidence, native frame capture, and final runtime parity observations are
-not claimed yet.
+functional scene, running web visual smoke verification, and running shared
+conformance. Web screenshots and the web effect log are mirrored under
+`artifacts/v6/web-visual/`. This starts the example and release-gate evidence
+row, but visual animation playback, native frame capture, richer playable
+traces, and final runtime parity observations are not claimed yet.
 
 ## V7 Deep Engine Gap-Closure Plan
 
