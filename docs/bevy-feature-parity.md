@@ -87,6 +87,11 @@ When a V5 feature claims native support, it needs native-side evidence in
 `runtime-bevy`, usually through focused `cargo test` coverage plus any relevant
 shared fixture or artifact comparison.
 
+The planned V5 implementation slice is tracked in
+[V5 PRDs](PRDs/v5/README.md). The PRDs define the order for shared fixtures,
+native observations, Rust regression coverage, promoted visual-quality features,
+the functional V5 scene, and the final `verify:v5` release gate.
+
 Every V5 feature that affects visible output, interaction, or runtime state
 should also appear in the V5 functional 3D scene where practical. That scene
 should use `assets-source/environment` assets when they can show the feature,

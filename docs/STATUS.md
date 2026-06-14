@@ -78,6 +78,11 @@ large new product surfaces, while allowing selected advanced 3D
 rendering/content work when the feature has SDK, IR, validation, web runtime,
 Bevy runtime, conformance, and release-gate coverage.
 
+The V5 ticket slice is tracked in [V5 PRDs](PRDs/v5/README.md). Those tickets
+define planned work; they do not mark promoted V5 features as implemented until
+the corresponding contract, runtime, Rust test, conformance, scene, and release
+gate evidence lands.
+
 V5 should add or improve Rust tests for native runtime behavior whenever work
 touches shared IR, native runtime mapping, native scripting behavior, Bevy
 diagnostics, or visual-quality features that claim native support. The expected
@@ -133,6 +138,7 @@ limits the work to internal preparation or harness cleanup.
 
 ## Current Truth Sources
 
+- [V5 PRDs](PRDs/v5/README.md)
 - [V3 Completion Checklist](releases/v3-completion.md)
 - [Bevy Feature Parity Drift](bevy-feature-parity.md)
 - [Feature Maturity Matrix](feature-maturity.md)
