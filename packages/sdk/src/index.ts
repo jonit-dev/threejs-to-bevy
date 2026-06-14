@@ -8,6 +8,7 @@ export {
   type IAudioOneShotDeclaration,
 } from "./audio.js";
 export { audioAsset, modelAsset, textureAsset, type AssetFormat, type AssetKind, type IAssetReference } from "./assets.js";
+export { defineControls, type IControlActionRecipe, type IControlsOptions, type IWasdMovementOptions } from "./controls.js";
 export {
   World,
   type IWorldCommandDeclaration,
@@ -78,6 +79,17 @@ export {
   type PhysicsBodyKind,
   type PhysicsColliderKind,
 } from "./physics.js";
+export {
+  PrefabModelAsset,
+  PrefabTransform,
+  definePrefab,
+  modelActorPrefab,
+  primitiveActorPrefab,
+  type IModelActorPrefabOptions,
+  type IPrefabDeclaration,
+  type IPrimitiveActorPrefabDeclaration,
+  type IPrimitiveActorPrefabOptions,
+} from "./prefab.js";
 export { OrthographicCamera, PerspectiveCamera } from "./scene/Camera.js";
 export { AmbientLight, DirectionalLight, PointLight, SpotLight } from "./scene/Light.js";
 export { Mesh } from "./scene/Mesh.js";

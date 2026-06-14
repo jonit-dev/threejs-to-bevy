@@ -36,8 +36,9 @@ The V5 scene demonstrates promoted V5 visual features that have already landed:
 textured environment assets, lighting and atmosphere metadata, shadow/color
 fields, repeated dense scatter, source-asset LOD metadata, and environment
 budget reports. The starter smoke demonstrates the game-first SDK ergonomics
-path through `defineGame` and `tn create --template v5-game-starter`.
+path through `defineGame`, `defineControls`, prefab helpers, and
+`tn create --template v5-game-starter`.
 
 This gate does not claim editor, online, networking, public plugin, custom
-renderer, runtime mesh LOD swapping, or renderer-level native instancing
-support.
+renderer, runtime mesh LOD swapping, runtime model loading, or renderer-level
+native instancing support.

@@ -203,13 +203,13 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add helpers that expand into existing `World.spawn`, `Mesh`, asset, and
+- [x] Add helpers that expand into existing `World.spawn`, `Mesh`, asset, and
   input declarations.
-- [ ] Start with narrow recipes: primitive actor, model actor, follow-camera
-  metadata only if already supported, WASD movement axes, and action buttons.
-- [ ] Reject helper options that imply unsupported runtime behavior, such as
+- [x] Start with narrow recipes: primitive actor, model actor metadata, WASD
+  movement axes, optional gamepad axis bindings, and action buttons.
+- [x] Reject helper options that imply unsupported runtime behavior, such as
   arbitrary physics controllers, runtime asset loading, or raw renderer hooks.
-- [ ] Keep IDs stable and deterministic for conformance fixtures.
+- [x] Keep IDs stable and deterministic for conformance fixtures.
 
 **Tests Required:**
 
@@ -326,12 +326,18 @@ sequenceDiagram
 - `defineGame` is exported from `@threenative/sdk` and composes existing
   `scene`, `world`, `input`, `audio`, `environment`, and `ui` roots without
   adding IR.
+- `defineControls`, `primitiveActorPrefab`, `modelActorPrefab`, and
+  `definePrefab` are exported from `@threenative/sdk` and expand into existing
+  input maps, scene meshes, ECS component declarations, and model asset
+  metadata.
 - `TN_SDK_GAME_ROOT_EMPTY` and `TN_SDK_GAME_RUNTIME_CONFIG_WORLD_REQUIRED`
   guard unsupported helper usage.
+- `TN_SDK_PREFAB_UNSUPPORTED_*`, `TN_SDK_PREFAB_MODEL_ASSET_KIND_INVALID`, and
+  `TN_SDK_CONTROLS_UNSUPPORTED_*` guard helper options that would require
+  unsupported runtime behavior.
 - `templates/v5-game-starter` provides a camera, lights, player-like entity,
-  visible goal, input, runtime config, and one portable movement system.
+  visible goal, prefab helpers, controls recipe, runtime config, and one
+  portable movement system.
 - `tn create --template v5-game-starter` is wired and covered by CLI tests.
 - `pnpm verify:v5` now creates, builds, and validates the starter under
   `artifacts/v5/starter-smoke`.
-- Phase 2 prefab/control recipes remain deferred; V5-11 is satisfied by the
-  narrower game-root helper and maintained starter template.

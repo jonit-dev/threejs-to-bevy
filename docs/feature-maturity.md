@@ -10,6 +10,11 @@ service-call logs. `pnpm verify:v4` is the release gate for that scope. The
 maturity rows below mark only the V4 portable scripting MVP as V4 supported;
 broader native scripting APIs remain post-V4.
 
+V5 adds required game-authoring ergonomics through `defineGame` and
+`v5-game-starter`. Those features are supported as SDK/template composition over
+existing portable contracts; they do not create a new Bevy runtime surface by
+themselves.
+
 | Feature | SDK | IR | Validator | Web | Bevy | verify gate | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Stable entities and transforms | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Supported |
@@ -28,6 +33,8 @@ broader native scripting APIs remain post-V4.
 | UI IR | 🧪 | ✅ | ⚠️ | ❌ | ❌ | ❌ | Schema-only/post-V3 |
 | Audio IR | 🧪 | ✅ | ⚠️ | ❌ | ❌ | ❌ | Schema-only/post-V3 |
 | V4 portable scripting MVP | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | V4 supported for primitive patch/event/command/service logs under `verify:v4` |
+| V5 game root composition (`defineGame`) | ✅ | ✅ | ✅ | ✅ | n/a | ✅ | V5 supported as authoring sugar over existing scene/world/input/runtime-config contracts |
+| V5 game starter template | ✅ | ✅ | ✅ | ✅ | n/a | ✅ | V5 supported through `tn create --template v5-game-starter` and starter smoke in `verify:v5` |
 | General gameplay systems | 🧪 | ✅ | ⚠️ | ⚠️ | ⚠️ | ❌ | Partial/post-V4 beyond the primitive scripting proof |
 | Native QuickJS scripts | ⚠️ | ✅ | ✅ | n/a | ✅ | ✅ | V4 supported only for the declared portable context and primitive demo trace |
 | Mobile packaging | ❌ | ❌ | ❌ | n/a | ❌ | ❌ | Future |
@@ -46,3 +53,7 @@ broader native scripting APIs remain post-V4.
 - Post-V3: intentionally outside the V3 release gate.
 - V4 supported: implemented and release-gated only for the primitive
   TypeScript/QuickJS scripting MVP described in [verify:v4](verify-v4.md).
+- V5 supported: implemented and release-gated by [verify:v5](verify-v5.md) for
+  the stated scope. For SDK ergonomics rows, `n/a` under Bevy means there is no
+  new native runtime surface; Bevy support follows the emitted existing
+  contracts.

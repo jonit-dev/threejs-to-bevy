@@ -14,8 +14,15 @@ V3 proves it can bundle and run a rich first-person environment scene.
 V4 proves native gameplay scripting through an embedded JavaScript backend.
 V5 proves the project can sustain itself while improving 3D visual quality:
 refactoring, stronger testing, release-harness work, and selected advanced
-rendering/content upgrades reduce drift after V1-V4.
-V6 moves online and editor workflows onto that cleaner foundation.
+rendering/content upgrades plus game-first authoring ergonomics reduce drift
+after V1-V4.
+V6 closes feature-parity and missing gameplay/runtime gaps before larger
+product surfaces.
+V7 closes the deeper engine/runtime parity gaps that do not fit safely in V6.
+V8 proves local editor and inspector workflows without online scope.
+V9 proves online service boundaries without multiplayer or collaboration.
+V10 proves collaboration and replication only after local editor and online
+service foundations are stable.
 ```
 
 ## Product Direction
@@ -32,6 +39,15 @@ Three.js-like TypeScript authoring
   -> Three.js web runtime
   -> Bevy native runtime
 ```
+
+The product goal is to reach practical game-engine feature parity between Bevy
+and the Three.js-based game engine SDK/runtime we are building. Three.js is a
+3D rendering engine and browser runtime substrate, not the feature baseline for
+gameplay. Bevy is the game-engine reference for the common capabilities the SDK
+should expose portably: ECS, schedules, resources, input, physics, animation,
+audio, UI, assets, scenes, diagnostics, and runtime behavior. The web target
+should make those game-engine features work on top of Three.js; the native
+target should map the same portable contracts onto Bevy.
 
 The core claim is not "compile arbitrary Three.js to Rust." The core claim is:
 
@@ -84,8 +100,12 @@ focuses on turning the proven pipeline into a real game-making workflow.
 | V2 | Prove the flow can support an actual small game in web preview with a native data-path smoke. | A developer or AI can build, validate, preview, and iterate on a playable arena game faster than with raw Three.js, R3F, Godot, Unity, or Bevy, using ECS-compatible abstractions, R3F/JSX scene authoring, assets, input, UI, audio, physics, and constrained TypeScript gameplay systems. Native may gate scripted gameplay while still loading the same static bundle data. |
 | V3 | Prove the platform can bundle and run a rich first-person environment scene. | The `assets-source/environment` forest pack is composed into a dense stylized path scene with performant Three.js first-person camera controls, validates as one portable bundle, and runs through web and Bevy with documented content budgets and scene verification. |
 | V4 | Prove portable gameplay scripting can run natively. | The same constrained TypeScript systems emit one `scripts.bundle.js` that runs in web preview and embedded QuickJS-ng in Bevy native, with equivalent ECS patches, events, commands, and diagnostics for a representative gameplay fixture. |
-| V5 | Prove the V1-V4 foundation is maintainable while raising 3D visual quality. | Refactoring, conformance expansion, Rust/Bevy test coverage, fixture cleanup, diagnostic consistency, release-harness improvements, and selected advanced rendering/content upgrades make existing contracts safer and richer without taking on editor or online scope. |
-| V6 | Prove collaborative/editor workflows can fit the model. | Online services, scene editor workflows, inspectors, and richer authoring tools are introduced only after V5 hardens the SDK-to-IR-to-runtime harness. |
+| V5 | Prove the V1-V4 foundation is maintainable while raising 3D visual quality and authoring ergonomics. | Refactoring, conformance expansion, Rust/Bevy test coverage, fixture cleanup, diagnostic consistency, release-harness improvements, selected advanced rendering/content upgrades, and the `defineGame`/`v5-game-starter` path make existing contracts safer, richer, and easier to start with without taking on editor or online scope. |
+| V6 | Prove the engine covers the common game-engine feature set needed by most small 3D games across web Three.js and native Bevy. | The highest-value missing contracts from V2-V5, roughly the "80% most common" feature set for playable 3D games, are promoted only when SDK, IR, validation, web, Bevy, conformance, docs, and examples agree. |
+| V7 | Prove deeper engine/runtime parity gaps can be closed without bloating V6. | Advanced or harder parity work left after V6, such as deeper physics, animation, UI, audio, renderer/content parity, scripting determinism, packaging, and performance gaps, is promoted or explicitly deferred with the same cross-runtime evidence standard. |
+| V8 | Prove local editor and inspector workflows can fit the model. | Scene editor, asset/entity inspectors, local save/load, bundle preview, and structured diffs author the same portable SDK/ECS/IR data without online services or collaboration. |
+| V9 | Prove online service boundaries can support projects without compromising offline builds. | Project/session services, publishing, asset-cache/sync foundations, auth boundaries, and remote validation are introduced behind explicit capability flags with deterministic local fallback. |
+| V10 | Prove collaboration and replication can work on top of stable editor and online foundations. | Multi-user editing, presence, conflict handling, and gameplay/network replication are introduced only after V8 editor data flows and V9 service boundaries are deterministic and testable. |
 
 ## V1: End-To-End Proof
 
@@ -803,61 +823,290 @@ tests. Broad rendering systems and open-ended engine extensibility stay later.
   contract
 - custom Rust/wgpu runtime replacement work
 
-## V6: Online And Scene Editor Foundations
+## V6: Common Game-Engine Feature Parity
 
-Goal: introduce collaborative and editor-oriented workflows after V5 has made
-the underlying contracts easier to verify.
+Goal: make the engine feel like a practical game engine by implementing the
+highest-value common features used by most small 3D games in both web Three.js
+and native Bevy.
 
-V6 should start with thin, portable workflows that still emit the same
-structured bundle consumed by web and native runtimes. The scene editor is a
-structured SDK/ECS/IR authoring surface, not a separate source of truth.
-Online work should begin with explicit service boundaries and deterministic
-local fallback behavior before any broad multiplayer promise.
+V6 should not jump to online, collaboration, or editor workflows. It should make
+the current TypeScript game SDK more capable and more predictable across web
+Three.js and native Bevy by promoting the common feature set only when the full
+contract is real:
 
-Each V6 editor or online feature must still be demonstrated through a
-functional 3D scene. Where the feature affects visible content, interaction, or
-runtime state, the release artifact should show it in-scene rather than only in
-logs or API tests.
+```txt
+SDK authoring
+  -> IR schema and validation
+  -> compiler emission
+  -> web runtime behavior
+  -> Bevy runtime behavior when claimed
+  -> conformance and release-gate evidence
+  -> functional scene proof
+```
 
-### Candidate Capabilities
+The V6 product bar is: a developer or AI agent can build the common shape of a
+small 3D game without repeatedly hitting schema-only features, web-only
+behavior, or silent native drift. Treat V6 as the "80% most common game-engine
+features" milestone, not "finish every engine feature."
 
-- Scene editor foundation:
-  - visual scene editing backed by structured SDK/ECS/IR data
-  - runtime inspector for entities, components, assets, systems, and diagnostics
-  - editor-oriented widgets that save portable scene data instead of runtime
-    adapter state
-  - broader R3F and Drei compatibility only where components have portable IR
-    meaning
-- Online/runtime services:
-  - project/session service boundaries
-  - networking experiments behind explicit target capability flags
-  - replication model research for ECS resources, components, events, and
-    commands
-  - external service integration points that do not leak into offline builds
-- Editor/dev workflow:
-  - local-first save/load flows for scene data
-  - bundle preview and validation directly from editor-authored data
-  - structured diffing for scene and asset changes
-  - collaboration primitives only after deterministic single-user editor flows
-    are stable
+### Required Capabilities
+
+- Feature maturity triage:
+  - classify every high-visibility partial row in `docs/feature-maturity.md` as
+    V6 must-ship, V7 deeper gap, later, or never portable
+  - require each promoted feature to have SDK, IR, validation, web, Bevy if
+    claimed, conformance, docs, and release-gate agreement
+  - mark unsupported or deferred APIs with stable diagnostics rather than
+    leaving them as ambiguous schema-only affordances
+  - update `docs/bevy-feature-parity.md` as the drift tracker for every promoted
+    cross-runtime feature
+- Core gameplay systems:
+  - strengthen general gameplay systems beyond the V4 primitive trace
+  - promote stable query ordering, changed-query filters, system ordering
+    constraints, and deterministic resource access where needed by real examples
+  - add timers/cooldowns and deterministic random resources if they are needed
+    by the V6 playable example
+  - keep arbitrary npm dependencies, async systems, platform APIs, and direct
+    renderer/native access unsupported
+- Physics and character interaction baseline:
+  - promote collision events, overlap queries, and a narrow character controller
+    slice with web and Bevy evidence
+  - keep shape casts or advanced solver behavior for V7 unless required by the
+    V6 game proof
+  - keep backend-specific physics handles private to adapters
+  - use functional scene interactions, not just isolated service-call logs, to
+    prove movement, grounding, triggers, and collision events
+- Animation and particles baseline:
+  - move from V4 `animation.play` service-shape proof to real named clip
+    playback and a minimal blend/fade slice if backed by glTF assets and runtime
+    observations
+  - keep full animation graphs/state machines and complex particles for V7
+- UI and audio baseline:
+  - promote portable UI beyond schema-only status for HUDs, simple menus,
+    retained layout, and basic input/focus when native behavior is release-gated
+  - promote audio playback for one-shots, looping music, and event-driven audio
+    with web/native behavior and offline diagnostics
+  - keep arbitrary React DOM, CSS selectors, browser event handlers, and
+    platform audio APIs outside the portable contract
+- Asset and material parity:
+  - finish texture-slot and material parity gaps that remain after V5
+  - tighten native image loading, sampler/color-space behavior, asset
+    diagnostics, and bundle-local dependency evidence
+  - expand asset lookup from scripts through stable IDs and metadata without
+    allowing arbitrary runtime file loading
+- Environment and rendering parity:
+  - reduce drift in atmosphere, fog, sky, shadows, color management, imported
+    transforms, instancing, LOD, and dense-content budget observations
+  - keep runtime mesh LOD swapping, renderer-level native instancing, and broad
+    post-processing for V7 unless they are required by the V6 game proof
+  - keep custom shader/material graph and custom render-pipeline work outside
+    V6 unless a narrow portable IR contract is defined and gated
+- Templates and examples:
+  - evolve the V5 starter into a richer V6 playable example using promoted
+    parity features
+  - keep examples self-contained with required runtime assets inside the example
+    folder or emitted bundle
+  - include at least one maintained functional V6 scene that proves gameplay,
+    visual, UI/audio, and native-parity claims where applicable
+- Release gate:
+  - add `verify:v6` with TypeScript tests, conformance, Rust tests, docs checks,
+    visual artifacts, gameplay traces, UI/audio evidence where promoted, and
+    first-failure diagnostics
+  - make `verify:v6` fail when a promoted feature lacks a matching maturity row,
+    parity-tracker entry, or docs claim
 
 ### V6 Success Criteria
 
-- Editor-authored scenes validate and emit the same portable bundle shape as
-  code-authored scenes.
-- A V6 functional 3D scene demonstrates the editor-authored data and any online
-  or inspector feature that affects visible runtime behavior.
-- Online features fail closed when disabled or unsupported by a target profile.
-- Offline SDK/CLI workflows keep working without service dependencies.
-- Runtime/editor inspectors report the same entity, component, asset, and
-  diagnostic identifiers used by compiler and runtime artifacts.
-- Any networking or collaboration proof has deterministic test fixtures and a
-  clear non-networked fallback path.
+- High-visibility partial rows in `docs/feature-maturity.md` are triaged into
+  V6, V7, later, or never portable, and V6 rows are promoted with evidence.
+- General gameplay systems are useful beyond the primitive V4 trace and remain
+  deterministic across web JavaScript and native QuickJS where claimed.
+- Common physics, animation, UI, audio, asset, material, and environment
+  features promoted by V6 have SDK/IR/compiler/validation/runtime/conformance/
+  docs agreement.
+- Bevy parity drift is reduced through focused Rust tests, shared fixtures, and
+  runtime observations rather than broad smoke tests.
+- The V6 functional scene demonstrates most promoted features through visible
+  gameplay or inspectable artifacts.
+- Offline SDK/CLI workflows keep working without online, editor, or service
+  dependencies.
+- `verify:v6` is the authoritative release gate and writes machine-readable
+  artifacts that let an AI agent localize failures.
 
-## V7+ Candidates: Advanced Engine Extensibility
+### V6 Explicit Exclusions
 
-These are intentionally pushed beyond V5 and V6 until the maintainability,
-online, and editor foundations are proven.
+- online services, networking, replication, or collaboration
+- visual scene editor, editor-authored scenes, or editor inspectors
+- public plugin/native extension APIs
+- arbitrary Three.js, R3F, Drei, React DOM, browser, filesystem, or platform
+  API compatibility
+- arbitrary npm dependencies or unrestricted async behavior inside portable
+  systems
+- custom Rust/wgpu runtime replacement
+- broad shader/material graph or render-pipeline work without a narrow portable
+  contract
+
+## V7: Deep Engine Gap Closure
+
+Goal: finish the deeper game-engine and runtime parity gaps that are too large
+or too risky for the V6 common-feature milestone.
+
+V7 is still not editor, online, collaboration, networking, or plugins. It is the
+second gap-closure milestone: take the V6 triage table, promote the next
+highest-value engine features, and explicitly defer what remains. V7 should make
+the engine credible for richer 3D games without pretending every Bevy or
+Three.js capability is portable.
+
+### Candidate Capabilities
+
+- Deeper physics:
+  - shape casts, contact filtering, sensors/triggers beyond the V6 baseline,
+    richer character controller behavior, and deterministic event ordering
+- Deeper animation and particles:
+  - animation state machines, blending graphs, animation events, particles, and
+    target capability behavior
+- Deeper UI and audio:
+  - richer layout/focus/navigation, gamepad/touch UI flows, spatial audio, audio
+    buses, and native parity hardening
+- Deeper rendering/content parity:
+  - runtime mesh LOD swapping, renderer-level native instancing where practical,
+    post-processing slices, imported asset edge cases, and performance budgets
+- Deeper scripting/runtime behavior:
+  - resources write API, system-local persisted state if justified, hot-reload
+    boundaries, deterministic scheduling, and larger script-heavy fixtures
+- Packaging and platform polish:
+  - desktop packaging, target profiles, artifact layouts, and platform-specific
+    diagnostics only where they preserve the portable authoring model
+
+### V7 Explicit Exclusions
+
+- online services, auth, hosted projects, publishing, or remote asset sync
+- visual scene editor, editor-authored scenes, or editor inspectors
+- multiplayer, networking, replication, collaboration, presence, or conflict
+  resolution
+- public plugin/native extension APIs
+- custom runtime/editor renderer replacement
+- arbitrary npm dependencies, platform APIs, raw Three.js/Bevy access, or broad
+  custom renderer/shader graph compatibility
+
+### V7 Success Criteria
+
+- The V6 gap triage table is updated so V7-promoted items are backed by
+  SDK/IR/compiler/validation/runtime/conformance/docs evidence.
+- Deep physics, animation, UI, audio, rendering/content, scripting, or packaging
+  features promoted by V7 are demonstrated in a maintained functional scene or
+  explicit runtime artifact.
+- Remaining gaps are explicitly deferred or marked never portable with stable
+  diagnostics.
+- `verify:v7` is the authoritative gate and includes focused web, Bevy, Rust,
+  conformance, docs, and artifact evidence for every V7 claim.
+
+## V8: Local Editor And Inspector Foundations
+
+Goal: introduce editor-oriented workflows after V6 and V7 have closed the core
+game-engine feature gaps, without taking on online services, collaboration,
+networking, or replication.
+
+V8 should prove that editor-authored data can be a first-class input to the same
+SDK/ECS/IR pipeline as code-authored projects. The scene editor is a structured
+authoring surface over portable scene, asset, component, and system data. It is
+not a separate runtime, not a hidden source of truth, and not an excuse to bypass
+compiler validation.
+
+## V9: Online Project And Publishing Foundations
+
+Goal: introduce online service boundaries for project workflows without taking
+on real-time collaboration, gameplay networking, or replication.
+
+V9 should prove hosted workflows can exist while preserving the offline SDK/CLI
+contract. Online features must fail closed when unavailable and must not become
+required for local build, validation, preview, or native runtime behavior.
+
+### Candidate Capabilities
+
+- Project/session services:
+  - auth and project identity boundaries
+  - hosted project metadata
+  - publish/share flows for built bundles or previews
+  - remote validation jobs that produce the same diagnostics as local CLI
+- Asset and artifact services:
+  - optional remote asset cache
+  - artifact upload/download for verification reports, screenshots, bundles,
+    and logs
+  - deterministic cache keys and offline fallbacks
+- Service-aware CLI/editor:
+  - explicit login/logout and target profile handling
+  - service-disabled mode that preserves all offline workflows
+  - diagnostics for unavailable or unsupported services
+
+### V9 Explicit Exclusions
+
+- real-time multi-user editing
+- runtime networking or multiplayer
+- ECS replication
+- conflict resolution for concurrent scene edits
+- online-only builds or service-required validation
+
+### V9 Success Criteria
+
+- Offline build, validate, preview, and native workflows still work with no
+  service credentials.
+- Hosted validation and publishing produce diagnostics and artifacts compatible
+  with local CLI reports.
+- Service failures are explicit, actionable, and do not corrupt local project
+  state.
+- A V9 functional project demonstrates online publishing or hosted validation
+  without claiming collaboration or multiplayer support.
+
+## V10: Collaboration And Runtime Replication
+
+Goal: introduce real-time collaboration and runtime networking only after local
+editor data flows and online service boundaries are deterministic.
+
+V10 should split two related but distinct problems and prove each through narrow
+fixtures before broad claims:
+
+- collaborative authoring over structured scene/project data
+- runtime replication over explicit ECS resources, components, events, and
+  commands
+
+### Candidate Capabilities
+
+- Collaborative editor workflows:
+  - presence and selection sharing
+  - operation logs or structured patches for scene data
+  - conflict detection and deterministic merge rules
+  - replayable collaboration fixtures
+- Runtime networking and replication:
+  - target-gated network capability declarations
+  - replication model for selected ECS components/resources/events
+  - deterministic local simulation fallback
+  - diagnostics for unsupported target profiles
+- Verification:
+  - multi-client fixtures for editor and runtime cases
+  - artifact logs for operations, replicated state, conflicts, and rollbacks
+
+### V10 Explicit Exclusions
+
+- general-purpose backend framework
+- matchmaking, payments, commerce, or social features
+- arbitrary network/file/platform APIs in portable systems
+- broad MMO-scale networking claims
+- public plugin/native extension APIs
+
+### V10 Success Criteria
+
+- Collaborative editing changes serialize back to the same portable project data
+  model as V8 editor saves.
+- Replicated runtime state is constrained to declared portable ECS contracts.
+- Network-disabled builds have deterministic local fallback behavior.
+- Multi-client tests and artifacts can replay collaboration and replication
+  behavior.
+
+## V11+ Candidates: Advanced Engine Extensibility
+
+These are intentionally pushed beyond V6-V10 until feature parity, editor,
+online-service, and collaboration/replication foundations are proven.
 
 - Runtime extensibility:
   - native extension or plugin API

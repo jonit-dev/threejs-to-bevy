@@ -8,15 +8,14 @@ import {
   PlaneGeometry,
   Scene,
   World,
-  action,
-  axis,
+  PrefabTransform as Transform,
   defineComponent,
+  defineControls,
   defineGame,
-  defineInputMap,
   defineQuery,
   defineRuntimeConfig,
   fixedUpdate,
-  keyboard,
+  primitiveActorPrefab,
 } from "@threenative/sdk";
 
 export interface IPlayerStep {
@@ -41,11 +40,6 @@ export function stepPlayer(
   };
 }
 
-const Transform = defineComponent("Transform", {
-  position: { kind: "vec3", required: false },
-  rotation: { kind: "quat", required: false },
-  scale: { kind: "vec3", required: false },
-});
 const Player = defineComponent("Player", { speed: "number" });
 const Goal = defineComponent("Goal", { reached: "boolean" });
 
@@ -63,21 +57,25 @@ floor.position.set(0, -0.05, 0);
 floor.rotation.set(-Math.PI / 2, 0, 0);
 scene.add(floor);
 
-const player = new Mesh({
+const player = primitiveActorPrefab({
+  components: [Player({ speed: 2.4 })],
   geometry: new BoxGeometry({ size: [0.55, 0.55, 0.55] }),
   id: "player",
   material: playerMaterial,
+  position: [0, 0.35, 0],
+  scale: [0.55, 0.55, 0.55],
 });
-player.position.set(0, 0.35, 0);
-scene.add(player);
+scene.add(player.mesh);
 
-const goal = new Mesh({
+const goal = primitiveActorPrefab({
+  components: [Goal({ reached: false })],
   geometry: new BoxGeometry({ size: [0.45, 0.45, 0.45] }),
   id: "goal",
   material: goalMaterial,
+  position: [1.8, 0.3, -1.6],
+  scale: [0.45, 0.45, 0.45],
 });
-goal.position.set(1.8, 0.3, -1.6);
-scene.add(goal);
+scene.add(goal.mesh);
 
 const camera = new PerspectiveCamera({ far: 80, fovY: 52, id: "camera.main", near: 0.1 });
 camera.position.set(0, 3.2, 5.8);
@@ -90,17 +88,14 @@ keyLight.position.set(3, 5, 4);
 scene.add(keyLight);
 scene.add(new AmbientLight({ color: "#dce8ff", id: "light.ambient", intensity: 0.55 }));
 
-const input = defineInputMap({
-  actions: [action("Interact", [keyboard("Space")])],
-  axes: [
-    axis("MoveX", { negative: [keyboard("KeyA")], positive: [keyboard("KeyD")] }),
-    axis("MoveZ", { negative: [keyboard("KeyW")], positive: [keyboard("KeyS")] }),
-  ],
+const input = defineControls({
+  actions: [{ id: "Interact", keys: ["Space"] }],
+  movement: "wasd",
 });
 
 const world = new World()
-  .spawn("player", Player({ speed: 2.4 }), Transform({ position: [0, 0.35, 0], rotation: [0, 0, 0, 1], scale: [0.55, 0.55, 0.55] }))
-  .spawn("goal", Goal({ reached: false }), Transform({ position: [1.8, 0.3, -1.6], rotation: [0, 0, 0, 1], scale: [0.45, 0.45, 0.45] }))
+  .spawn(player.id, ...player.components)
+  .spawn(goal.id, ...goal.components)
   .setInputMap(input)
   .addSystem(
     fixedUpdate("movePlayerToGoal", {

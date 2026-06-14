@@ -195,7 +195,9 @@ test("should create v5 game starter template", async () => {
     assert.equal(packageJson.scripts.verify, "tn verify --frames 2 --json");
     assert.equal(packageJson.scripts.test, "pnpm build && tsc -p tsconfig.test.json && node --test dist/tests/gameplay.test.js");
     assert.match(packageJson.dependencies["@threenative/sdk"] ?? "", /^file:/);
+    assert.match(source, /defineControls/);
     assert.match(source, /defineGame/);
+    assert.match(source, /primitiveActorPrefab/);
     assert.match(source, /movePlayerToGoal/);
   } finally {
     await rm(root, { force: true, recursive: true });

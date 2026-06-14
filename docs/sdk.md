@@ -138,6 +138,46 @@ export default {
 path. Empty roots and unsupported runtime config placement throw stable
 `TN_SDK_GAME_*` errors.
 
+### Prefab And Controls Recipes
+
+Use `primitiveActorPrefab` and `defineControls` for common game pieces that
+should still lower into existing scene, world, and input declarations.
+
+```ts
+import {
+  BoxGeometry,
+  MeshStandardMaterial,
+  World,
+  defineComponent,
+  defineControls,
+  primitiveActorPrefab,
+} from "@threenative/sdk";
+
+const Player = defineComponent("Player", { speed: "number" });
+
+const player = primitiveActorPrefab({
+  components: [Player({ speed: 2.4 })],
+  geometry: new BoxGeometry({ size: [0.5, 0.5, 0.5] }),
+  id: "player",
+  material: new MeshStandardMaterial({ color: "#2f80ed" }),
+  position: [0, 0.35, 0],
+});
+
+scene.add(player.mesh);
+
+const world = new World().spawn(player.id, ...player.components);
+const input = defineControls({
+  actions: [{ id: "Interact", keys: ["Space"] }],
+  movement: { gamepad: true },
+});
+```
+
+`modelActorPrefab` creates deterministic ECS metadata for model-backed actors.
+It does not create a renderable scene object; add renderable model support
+through the promoted asset/runtime paths rather than runtime asset loading.
+Unsupported prefab and control options throw stable `TN_SDK_PREFAB_*` and
+`TN_SDK_CONTROLS_*` errors instead of being ignored.
+
 ### R3F/JSX Scene API
 
 Use this style when a JSX scene tree is clearer than direct SDK object

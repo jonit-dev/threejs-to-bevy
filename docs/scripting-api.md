@@ -1,14 +1,17 @@
 # Portable Scripting APIs
 
-> Status: V4-supported only for the primitive portable scripting MVP verified
-> by `pnpm verify:v4`. Broader gameplay APIs in this document remain design
-> direction until promoted by a later PRD.
+> Status: V4-supported for the primitive portable scripting MVP verified by
+> `pnpm verify:v4`. V5 additionally verifies the `defineGame`/`v5-game-starter`
+> authoring path through `pnpm verify:v5`; that path is SDK composition over
+> existing portable scene, world, input, runtime config, and system contracts,
+> not a new script runtime surface.
 
 This document tracks the TypeScript gameplay APIs that sit on top of the
 scripting model in [scripting.md](scripting.md). V4 is the completed primitive
-portable scripting baseline. V5 and later work should promote missing APIs only
-when they preserve portable ECS reads, patches, events, commands, and service
-calls.
+portable scripting baseline. V5 adds required game-authoring ergonomics through
+`defineGame` and `v5-game-starter`, but broader scripting APIs should still be
+promoted only when they preserve portable ECS reads, patches, events, commands,
+and service calls.
 
 The public rule:
 
@@ -109,6 +112,31 @@ type HitEvent = {
 Use marker components or tags for `Player`, `Target`, `Projectile`,
 `Activated`, and `Disabled`.
 
+## V5 Game Authoring Ergonomics
+
+V5 makes the SDK easier to start with by adding a game-root composition path,
+not by giving scripts direct renderer or native handles.
+
+Supported V5 authoring ergonomics:
+
+| API | V5 Contract | Runtime Meaning |
+| --- | --- | --- |
+| `defineGame({ scene, world, input, runtimeConfig })` | Compose existing portable declarations into one captured root. | Lowers through the existing `Scene`/`World`/input/runtime-config bundle paths. |
+| `defineControls({ movement, actions })` | Build portable input maps from narrow WASD, optional gamepad, and action-button recipes. | Lowers through the existing input map contract. |
+| `primitiveActorPrefab(...)` | Create a renderable primitive actor plus deterministic ECS component declarations. | Lowers through existing `Mesh`, `World.spawn`, and component declaration paths. |
+| `modelActorPrefab(...)` | Create deterministic model actor metadata. | Records model asset metadata only; it does not add runtime model loading. |
+| `tn create --template v5-game-starter` | Scaffold a small playable starter that uses the V5 helper path. | The V5 gate creates, builds, and validates the starter as release evidence. |
+
+Rules:
+
+- V5 helpers are authoring sugar over existing portable contracts.
+- The starter may use V4-supported systems and V5-promoted visual contracts, but
+  it must not imply unrestricted gameplay scripting.
+- Native behavior is claimed only for the emitted existing contracts that have
+  conformance and Rust evidence.
+- Unsupported editor, networking, raw Three.js, runtime plugin, custom renderer,
+  filesystem, DOM, and platform access remains invalid.
+
 ## Missing Or Post-V4 API Inventory
 
 Keep this list close to the scripting API so implementation tickets can promote
@@ -128,11 +156,13 @@ show the feature.
 | Collision events from physics backend | V5 | Missing | Promote only with web and Bevy fixture parity; V4 proved raycast service shape, not full collision events. |
 | Shape casts and overlap queries | V5 | Missing | Advanced 3D content quality candidate; requires target-gated service declarations and Rust tests. |
 | Character controller API | V5 | Missing | Candidate for 3D movement quality; must be visible in a functional scene and backed by native tests if claiming Bevy support. |
+| Game root composition | V5 | Implemented | `defineGame` composes existing portable scene/world/input/runtime config declarations; it is not a new runtime contract. |
+| Game starter template | V5 | Implemented | `v5-game-starter` is release-gated through `verify:v5` as a small playable SDK ergonomics proof. |
 | Full animation blending/state machine | V5 | Missing | Candidate for visual quality; V4 only proved command shape such as `animation.play`. |
 | Particle commands | V5 | Missing | Candidate only when particles are represented by portable scene/runtime data and visual verification artifacts. |
 | Resources write API | V5 or later | Missing | Requires deterministic scheduling and conformance coverage before broad gameplay use. |
 | System-local persisted state | V5 or later | Missing | Prefer resources/components first; state-preserving hot reload remains later. |
-| Prefab instantiation | V5 or V6 | Missing | V5 may add runtime-safe 3D content instantiation; V6 editor workflows may author prefabs. |
+| Runtime prefab instantiation | V6 or later | Missing | V5 authoring-time prefab helpers expand to existing declarations; runtime instantiation remains future scope. |
 | Child hierarchy commands | V5 or V6 | Missing | Needs scene-visible proof and deterministic command application across web and Bevy. |
 | Audio commands | V5 or later | Design only | Promote only with a maintained scene or gameplay fixture that needs audible runtime behavior. |
 | UI commands/focus/input | V6 or later | Design only | Better aligned with editor/inspector and online workflows unless a V5 visual-quality scene requires a narrow HUD. |

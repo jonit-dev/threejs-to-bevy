@@ -3,6 +3,15 @@
 This file is the current implementation front door. Read it before the
 conceptual docs when deciding what is supported, partial, or future-facing.
 
+## Product Goal
+
+ThreeNative aims to reach practical game-engine feature parity between Bevy and
+the Three.js-based game engine SDK/runtime we are building. Bevy is the
+reference for common game-engine capabilities; Three.js is the web rendering
+runtime those capabilities run on. Features should be promoted only when the
+portable SDK/IR contract works across the web Three.js runtime and the native
+Bevy runtime where support is claimed.
+
 ## Current Active Gate
 
 V5: aggregate hardening, visual-quality, native evidence, and game-authoring
@@ -155,13 +164,16 @@ writes dense-content budget evidence under `artifacts/v5`, and records artifact
 links in `artifacts/v5/verification-report.json`. This is the current V5 visual
 scene gate, not the final aggregate release gate planned for V5-10.
 
-V5-11 has landed the first game-authoring ergonomics slice: `defineGame` is
-exported from `@threenative/sdk` as authoring sugar over the existing bundle
-root shape, `tn create --template v5-game-starter` scaffolds a small playable
-scene/world/input/system starter, and `pnpm verify:v5` creates, builds, and
-validates that starter under `artifacts/v5/starter-smoke`. This does not add a
-new runtime contract, prefab framework, editor workflow, networking, raw
-Three.js compatibility, plugin API, or custom renderer support.
+V5-11 has landed the game-authoring ergonomics slice: `defineGame`,
+`defineControls`, `definePrefab`, `primitiveActorPrefab`, and
+`modelActorPrefab` are exported from `@threenative/sdk` as authoring sugar over
+existing bundle root, scene, world, input, mesh, ECS component, and model asset
+metadata shapes. `tn create --template v5-game-starter` scaffolds a small
+playable scene/world/input/system starter that uses those helpers, and
+`pnpm verify:v5` creates, builds, and validates that starter under
+`artifacts/v5/starter-smoke`. This does not add a new runtime contract, editor
+workflow, networking, raw Three.js compatibility, plugin API, custom renderer
+support, or runtime model loading.
 
 V5-10 has landed the aggregate V5 release gate: `pnpm verify:v5` now produces a
 schema/versioned machine-readable report with ordered steps, diagnostics,
@@ -192,10 +204,26 @@ SDK ergonomics, a `v5-game-starter` template, stable diagnostics, and release
 gate evidence. This is authoring sugar over portable contracts unless a V5 PRD
 explicitly promotes a new SDK/IR/runtime contract.
 
-V6 is the first planned online and scene-editor milestone. Online services,
-networking, replication, scene editor workflows, collaboration, and editor
-inspectors should not be treated as V5 support unless a V5 PRD explicitly
-limits the work to internal preparation or harness cleanup.
+V6 is now planned as the common game-engine feature parity milestone. It should
+cover the highest-value missing features needed by most small 3D games across
+web Three.js and native Bevy, including gameplay systems, physics collision
+events, character interaction, animation playback, UI, audio, assets,
+materials, environment parity, and native observations, only when SDK, IR,
+validation, web, Bevy where claimed, conformance, docs, examples, and release
+gates agree.
+
+V7 is now planned as the deep engine gap-closure milestone. It should continue
+parity work that is too large or risky for V6, such as deeper physics,
+animation graphs, richer UI/audio, renderer/content parity, scripting/runtime
+determinism, packaging, and performance gaps. Remaining gaps should be
+explicitly deferred or marked never portable with stable diagnostics.
+
+V8 is the first planned local editor and inspector milestone. V9 is the first
+planned online project and publishing milestone. V10 is the first planned
+collaboration and runtime replication milestone. Editor, online, networking,
+replication, collaboration, presence, and conflict resolution should not be
+treated as V5, V6, or V7 support unless a PRD explicitly limits the work to
+internal preparation or harness cleanup.
 
 ## V3 Proves
 

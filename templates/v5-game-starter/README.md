@@ -1,8 +1,9 @@
 # V5 Game Starter Template
 
 This starter demonstrates the V5 game-first authoring path. It uses
-`defineGame` to compose an existing portable scene, world, input map, runtime
-config, and systems without introducing a new runtime contract.
+`primitiveActorPrefab`, `defineControls`, and `defineGame` to compose an
+existing portable scene, world, input map, runtime config, and systems without
+introducing a new runtime contract.
 
 Run:
 

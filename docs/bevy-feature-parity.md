@@ -1,8 +1,8 @@
 # Bevy Feature Parity Drift
 
-Purpose: keep V3 honest. This is not a Bevy API coverage matrix. It only tracks
-the product-contract drift that matters for the current V3 forest scene and the
-active V4 native scripting proof:
+Purpose: keep cross-runtime claims honest. This is not a Bevy API coverage
+matrix. It only tracks product-contract drift that matters for the V3 forest
+scene, the V4 native scripting proof, and V5 promoted visual/ergonomics work:
 
 ```txt
 TypeScript authoring -> validated IR bundle -> web-three + native Bevy behavior
@@ -46,6 +46,7 @@ Baseline: the repo pins Bevy and `bevy_ecs` to `=0.14.2`.
 | UI | ❌ | UI IR types exist, but retained UI rendering and input/focus parity are not implemented. Not V3-critical unless verification overlays need it. |
 | Audio | ⚠️ | Audio IR and asset validation exist; runtime playback is not implemented. Not V3-critical unless ambience enters scope. |
 | Gameplay ECS/systems | ❌ | Components/resources/events/system schemas are not a working gameplay host. Keep out of V3 unless a ticket explicitly narrows the slice. |
+| Game-first SDK ergonomics | ✅ | V5-11 `defineGame`, prefab/control helpers, and `v5-game-starter` are supported as SDK/template composition over existing portable contracts. There is no new Bevy runtime surface beyond the emitted scene, world, input, runtime config, system, and model asset metadata contracts. |
 | Mobile packaging | ❌ | Out of current V3 scope. Do not let old roadmap language imply this is part of V3. |
 | Custom shaders/render graph/Solari/networking/editor | ❌ | Out of V3 scope and should stay adapter-internal or post-V3. |
 
@@ -80,7 +81,7 @@ Baseline: the repo pins Bevy and `bevy_ecs` to `=0.14.2`.
 5. Keep post-V3 features out of the V3 gate unless a PRD explicitly pulls in a
     narrow slice.
 
-## V5 Native Test And Visual-Quality Focus
+## V5 Native Test, Visual-Quality, And Authoring Focus
 
 V5 should move unresolved Bevy drift into explicit Rust tests and shared
 conformance fixtures instead of relying on broad release-gate smoke checks.
@@ -174,11 +175,12 @@ budget artifacts under `artifacts/v5`. Bevy evidence for scene-visible promoted
 contracts still comes from shared conformance and focused Rust tests until the
 later aggregate V5 gate expands native artifact collection.
 
-V5-11 is implemented for the first game-authoring ergonomics slice:
-`defineGame` and `v5-game-starter` lower into existing portable scene, world,
-input, runtime config, and system contracts. There is no new Bevy runtime
-surface; native evidence remains whatever the emitted existing contracts
-already have through conformance and focused Rust tests.
+V5-11 is implemented for the game-authoring ergonomics slice: `defineGame`,
+prefab/control helpers, and `v5-game-starter` lower into existing portable
+scene, world, input, runtime config, system, mesh, ECS component, and model
+asset metadata contracts. There is no new Bevy runtime surface; native evidence
+remains whatever the emitted existing contracts already have through
+conformance and focused Rust tests.
 
 V5-10 is implemented for the aggregate release gate. `pnpm verify:v5` now links
 the visual scene artifacts, shared conformance report, focused Bevy native test

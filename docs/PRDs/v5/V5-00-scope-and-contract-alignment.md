@@ -21,12 +21,12 @@ and a release gate.
 
 **Key Decisions:**
 
-- [ ] Treat V5 as hardening, visual-quality proof, and additive authoring
+- [x] Treat V5 as hardening, visual-quality proof, and additive authoring
   ergonomics, not a new product surface.
-- [ ] Keep editor, online, networking, replication, public plugins, and custom
+- [x] Keep editor, online, networking, replication, public plugins, and custom
   renderer work as V6 or later.
-- [ ] Require Rust test evidence for any native support claim.
-- [ ] Require `docs/STATUS.md` and `docs/bevy-feature-parity.md` updates as
+- [x] Require Rust test evidence for any native support claim.
+- [x] Require `docs/STATUS.md` and `docs/bevy-feature-parity.md` updates as
   part of version-scoped V5 work.
 
 ## Execution Phases
@@ -42,10 +42,10 @@ and a release gate.
 
 **Implementation:**
 
-- [ ] Add the V5 ticket order and acceptance criteria.
-- [ ] Link the V5 PRD index from current truth sources.
-- [ ] State explicit exclusions in the index and status docs.
-- [ ] Keep unsupported features documented as future scope.
+- [x] Add the V5 ticket order and acceptance criteria.
+- [x] Link the V5 PRD index from current truth sources.
+- [x] State explicit exclusions in the index and status docs.
+- [x] Keep unsupported features documented as future scope.
 
 #### Phase 2: Scope Drift Guardrails
 
@@ -56,9 +56,9 @@ and a release gate.
 
 **Implementation:**
 
-- [ ] Define terms the docs gate must require: `verify:v5`, conformance,
+- [x] Define terms the docs gate must require: `verify:v5`, conformance,
   Rust tests, diagnostics, visual-quality scene, `assets-source/environment`.
-- [ ] Define terms the docs gate must reject as V5 acceptance scope: online,
+- [x] Define terms the docs gate must reject as V5 acceptance scope: online,
   networking, replication, editor, collaboration, public plugin API, custom
   renderer.
 
@@ -70,9 +70,9 @@ and a release gate.
 
 ## Acceptance Criteria
 
-- [ ] V5 PRDs are discoverable from `docs/PRDs/v5/README.md`.
-- [ ] Status and parity docs agree that V5 is hardening plus selected visual
+- [x] V5 PRDs are discoverable from `docs/PRDs/v5/README.md`.
+- [x] Status and parity docs agree that V5 is hardening plus selected visual
   quality and additive game-authoring ergonomics.
-- [ ] V5 exclusions are explicit and machine-checkable.
-- [ ] No V5 doc claims editor, online, networking, replication, public plugin,
+- [x] V5 exclusions are explicit and machine-checkable.
+- [x] No V5 doc claims editor, online, networking, replication, public plugin,
   or custom renderer support.

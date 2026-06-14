@@ -92,8 +92,8 @@ step.
 
 ## Implemented Ergonomics Scope
 
-V5-11 implements `defineGame` and `v5-game-starter` as additive authoring sugar
-over existing scene, world, input, runtime config, and system contracts. It does
-not add a new prefab framework, editor workflow, networking layer, raw Three.js
-compatibility mode, plugin API, custom renderer, or direct Bevy authoring
-surface.
+V5-11 implements `defineGame`, prefab/control helpers, and `v5-game-starter` as
+additive authoring sugar over existing scene, world, input, runtime config,
+system, mesh, ECS component, and model asset metadata contracts. It does not add
+an editor workflow, networking layer, raw Three.js compatibility mode, plugin
+API, custom renderer, runtime model loading, or direct Bevy authoring surface.
