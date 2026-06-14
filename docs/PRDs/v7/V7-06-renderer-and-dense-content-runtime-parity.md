@@ -35,9 +35,9 @@ reject backend-specific features.
 
 **Implementation:**
 
-- [ ] Define runtime LOD selection/swap behavior and instancing observations.
-- [ ] Validate imported transform/material edge cases and unsupported content.
-- [ ] Select one narrow post-processing slice only if it can be portable.
+- [x] Define runtime LOD selection/swap behavior and instancing observations.
+- [x] Validate imported transform/material edge cases and unsupported content.
+- [x] Select one narrow post-processing slice only if it can be portable.
 
 #### Phase 2: Runtime Mapping and Evidence - Dense content behavior is observed.
 
@@ -51,10 +51,10 @@ reject backend-specific features.
 
 **Implementation:**
 
-- [ ] Capture runtime LOD, instancing, imported asset, and post-processing
+- [x] Capture runtime LOD, instancing, imported asset, and post-processing
   observations.
-- [ ] Add performance report links for dense content proof.
-- [ ] Emit diagnostics for never-portable renderer features.
+- [x] Add performance report links for dense content proof.
+- [x] Emit diagnostics for never-portable renderer features.
 
 ## Verification Strategy
 
@@ -65,5 +65,5 @@ reject backend-specific features.
 
 ## Acceptance Criteria
 
-- [ ] Runtime LOD/instancing claims are backed by web and Bevy evidence.
-- [ ] Backend-specific renderer features are deferred or rejected explicitly.
+- [x] Runtime LOD/instancing claims are backed by web and Bevy evidence.
+- [x] Backend-specific renderer features are deferred or rejected explicitly.

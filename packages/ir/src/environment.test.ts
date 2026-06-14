@@ -83,6 +83,51 @@ test("environment should reject invalid LOD metadata", () => {
   assert.equal(diagnostics[0]?.path, "environment.scene.json/sourceAssets/0/lod/1/asset");
 });
 
+test("environment should reject backend-specific renderer and content fields", () => {
+  const scene = {
+    ...makeScene({
+      sourceAssets: [
+        {
+          asset: "model.env.Tree",
+          category: "tree",
+          id: "env.Tree",
+          nativeInstancing: true,
+        } as IEnvironmentSceneIr["sourceAssets"][number],
+      ],
+      instances: [
+        {
+          id: "hero.tree",
+          kind: "hero",
+          position: [-3, 0, 2],
+          sourceAsset: "env.Tree",
+          tags: ["tree"],
+          materialOverride: "mat.platform",
+        } as IEnvironmentSceneIr["instances"][number],
+      ],
+    }),
+    postProcessing: { bloom: true },
+  } as IEnvironmentSceneIr;
+
+  const diagnostics = validateEnvironmentSceneIr(scene, makeAssets(), "environment.scene.json");
+
+  assert.deepEqual(
+    diagnostics.map((diagnostic) => diagnostic.code),
+    [
+      "TN_IR_ENVIRONMENT_FIELD_UNSUPPORTED",
+      "TN_IR_ENVIRONMENT_FIELD_UNSUPPORTED",
+      "TN_IR_ENVIRONMENT_FIELD_UNSUPPORTED",
+    ],
+  );
+  assert.deepEqual(
+    diagnostics.map((diagnostic) => diagnostic.path),
+    [
+      "environment.scene.json/postProcessing",
+      "environment.scene.json/sourceAssets/0/nativeInstancing",
+      "environment.scene.json/instances/0/materialOverride",
+    ],
+  );
+});
+
 test("environment should validate camera bookmarks with expected tags", () => {
   const scene = makeScene({
     bookmarks: [{ expectedTags: ["tree", "path-edge"], id: "bookmark.start", pitch: -5, position: [0, 1.7, 6], yaw: 180 }],

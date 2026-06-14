@@ -1,0 +1,129 @@
+{
+  "schema": "threenative.environment-scene",
+  "version": "0.1.0",
+  "terrain": {
+    "id": "terrain.arena",
+    "heightMode": "flat",
+    "bounds": {
+      "min": [
+        -8,
+        0,
+        -8
+      ],
+      "max": [
+        8,
+        0,
+        8
+      ]
+    }
+  },
+  "path": {
+    "id": "path.main",
+    "points": [
+      [
+        -4,
+        0,
+        0
+      ],
+      [
+        4,
+        0,
+        0
+      ]
+    ],
+    "width": 2
+  },
+  "sourceAssets": [
+    {
+      "id": "env.Rock",
+      "asset": "model.env.Rock",
+      "category": "rock",
+      "lod": [
+        {
+          "asset": "model.env.RockLow",
+          "minDistance": 20,
+          "maxDistance": 80
+        }
+      ]
+    },
+    {
+      "id": "env.Tree",
+      "asset": "model.env.Tree",
+      "category": "tree"
+    }
+  ],
+  "instances": [
+    {
+      "id": "rock.scatter.1",
+      "kind": "scatter",
+      "sourceAsset": "env.Rock",
+      "position": [
+        -2,
+        0,
+        1
+      ],
+      "rotation": [
+        0,
+        0.3826834,
+        0,
+        0.9238795
+      ],
+      "scale": [
+        1,
+        1.2,
+        1
+      ],
+      "tags": [
+        "rock"
+      ]
+    },
+    {
+      "id": "rock.scatter.2",
+      "kind": "scatter",
+      "sourceAsset": "env.Rock",
+      "position": [
+        -1,
+        0,
+        -1
+      ],
+      "scale": [
+        0.8,
+        0.8,
+        0.8
+      ],
+      "tags": [
+        "rock"
+      ]
+    },
+    {
+      "id": "tree.hero",
+      "kind": "hero",
+      "sourceAsset": "env.Tree",
+      "position": [
+        3,
+        0,
+        0
+      ],
+      "tags": [
+        "tree",
+        "foreground"
+      ]
+    }
+  ],
+  "bookmarks": [
+    {
+      "id": "bookmark.content",
+      "position": [
+        0,
+        2,
+        6
+      ],
+      "yaw": 180,
+      "pitch": -8,
+      "expectedTags": [
+        "rock",
+        "tree"
+      ]
+    }
+  ]
+}

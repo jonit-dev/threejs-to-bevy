@@ -9,6 +9,9 @@ use threenative_components::ThreeNativeId;
 use threenative_loader::load_bundle;
 use threenative_runtime::environment::{map_environment_into_world, observe_environment};
 
+mod support;
+use support::load_conformance_fixture;
+
 #[test]
 fn environment_should_map_scene_to_terrain_path_and_instances() {
     let root = temp_bundle_dir();
@@ -80,7 +83,13 @@ fn environment_should_map_scene_to_terrain_path_and_instances() {
     let bundle = load_bundle(&root).expect("environment bundle should load");
     let observation = observe_environment(&bundle).expect("environment observation should exist");
 
-    assert_eq!(observation.terrain_id.as_deref(), Some("terrain.forest"));
+    assert_eq!(
+        observation
+            .terrain
+            .as_ref()
+            .map(|terrain| terrain.id.as_str()),
+        Some("terrain.forest")
+    );
     assert_eq!(observation.path_point_count, 2);
     assert_eq!(observation.hero_placement_ids, vec!["rock.hero"]);
     assert_eq!(observation.scatter_instance_count, 2);
@@ -122,6 +131,41 @@ fn environment_should_map_scene_to_terrain_path_and_instances() {
     );
 
     fs::remove_dir_all(root).expect("temp bundle should be removed");
+}
+
+#[test]
+fn environment_content_trace_should_report_v7_lod_and_instancing_evidence() {
+    let fixture = load_conformance_fixture("v7-renderer-dense-content");
+    let observation = observe_environment(&fixture.bundle)
+        .expect("v7 renderer dense content observation should exist");
+
+    assert_eq!(observation.bookmark_ids, vec!["bookmark.content"]);
+    assert_eq!(observation.hero_placement_ids, vec!["tree.hero"]);
+    assert_eq!(
+        observation
+            .lod_selections
+            .get("env.Rock")
+            .map(String::as_str),
+        Some("model.env.RockLow")
+    );
+    assert_eq!(
+        observation
+            .lod_selections
+            .get("env.Tree")
+            .map(String::as_str),
+        Some("model.env.Tree")
+    );
+    assert_eq!(observation.repeated_asset_groups.len(), 1);
+    assert_eq!(
+        observation.repeated_asset_groups[0].source_asset,
+        "env.Rock"
+    );
+    assert_eq!(observation.repeated_asset_groups[0].count, 2);
+    assert_eq!(
+        observation.repeated_asset_groups[0].evidence,
+        "model-asset-backed"
+    );
+    assert_eq!(observation.total_instance_count, 3);
 }
 
 fn assert_instance_transform(world: &mut World, id: &str, expected_translation: [f32; 3]) {

@@ -10,6 +10,13 @@ export function validateEnvironmentSceneIr(
   input?: IInputIr,
 ): IIrDiagnostic[] {
   const diagnostics: IIrDiagnostic[] = [];
+  validateUnsupportedFields(
+    scene,
+    ["atmosphere", "bookmarks", "controller", "exclusionZones", "instances", "path", "referenceImage", "scatter", "schema", "sourceAssets", "terrain", "version", "walkability"],
+    path,
+    "Environment scene",
+    diagnostics,
+  );
   if (scene.schema !== "threenative.environment-scene" || scene.version !== "0.1.0") {
     diagnostics.push({
       code: "TN_IR_ENVIRONMENT_SCENE_VERSION_UNSUPPORTED",
@@ -33,6 +40,13 @@ export function validateEnvironmentSceneIr(
     });
   }
   scene.sourceAssets.forEach((sourceAsset, index) => {
+    validateUnsupportedFields(
+      sourceAsset,
+      ["asset", "category", "id", "lod"],
+      `${path}/sourceAssets/${index}`,
+      `Environment source asset '${sourceAsset.id}'`,
+      diagnostics,
+    );
     if (!modelAssets.has(sourceAsset.asset)) {
       diagnostics.push({
         code: "TN_IR_ENVIRONMENT_ASSET_MISSING",
@@ -45,6 +59,13 @@ export function validateEnvironmentSceneIr(
 
   const sourceAssetIds = new Set(scene.sourceAssets.map((sourceAsset) => sourceAsset.id));
   scene.instances.forEach((instance, index) => {
+    validateUnsupportedFields(
+      instance,
+      ["collisionMode", "id", "kind", "position", "renderGroup", "rotation", "scale", "scatterExclusionRadius", "scatterSource", "sourceAsset", "tags"],
+      `${path}/instances/${index}`,
+      `Environment instance '${instance.id}'`,
+      diagnostics,
+    );
     if (!sourceAssetIds.has(instance.sourceAsset)) {
       diagnostics.push({
         code: "TN_IR_ENVIRONMENT_SOURCE_ASSET_MISSING",
@@ -70,6 +91,31 @@ export function validateEnvironmentSceneIr(
   });
 
   return diagnostics;
+}
+
+function validateUnsupportedFields(
+  value: unknown,
+  supportedKeys: readonly string[],
+  path: string,
+  label: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return;
+  }
+  const supported = new Set(supportedKeys);
+  for (const key of Object.keys(value as Record<string, unknown>)) {
+    if (supported.has(key)) {
+      continue;
+    }
+    diagnostics.push({
+      code: "TN_IR_ENVIRONMENT_FIELD_UNSUPPORTED",
+      message: `${label} uses unsupported field '${key}'.`,
+      path: `${path}/${key}`,
+      severity: "error",
+      suggestion: "Remove backend-specific renderer/content metadata or model it with promoted portable environment fields.",
+    });
+  }
 }
 
 function validateSourceAssetLod(

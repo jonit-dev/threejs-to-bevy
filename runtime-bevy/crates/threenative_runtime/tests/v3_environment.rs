@@ -74,7 +74,13 @@ fn v3_environment_should_load_bookmarked_bundle() {
         observe_environment(&bundle).expect("v3 environment observation should exist");
 
     assert_eq!(observation.bookmark_ids, vec!["bookmark.entry"]);
-    assert_eq!(observation.terrain_id.as_deref(), Some("terrain.forest"));
+    assert_eq!(
+        observation
+            .terrain
+            .as_ref()
+            .map(|terrain| terrain.id.as_str()),
+        Some("terrain.forest")
+    );
     assert_eq!(observation.hero_placement_ids, vec!["tree.hero"]);
 
     let mut app = App::new();

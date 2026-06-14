@@ -183,6 +183,20 @@ test("should include capability tags for each conformance fixture", async () => 
     "audio:volume-routing",
     "ecs:events",
   ]);
+  assertFixtureCapabilities(byName, "v7-renderer-dense-content", [
+    "asset:imported-transform",
+    "asset:model.gltf",
+    "environment:camera-bookmarks",
+    "environment:instances",
+    "environment:lod",
+    "environment:path",
+    "environment:scatter-instances",
+    "environment:scene",
+    "environment:source-assets",
+    "environment:terrain",
+    "rendering:instancing-observation",
+    "rendering:runtime-lod",
+  ]);
 });
 
 function assertFixtureCapabilities(

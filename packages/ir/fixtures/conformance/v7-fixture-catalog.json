@@ -118,15 +118,18 @@
       "rejectedFixtureId": "v7-rejected-renderer-dense-content",
       "rejectedBundlePath": "packages/ir/fixtures/conformance/v7-rejected-renderer-dense-content/game.bundle",
       "targetCapabilities": [
-        "asset:imported-edge-cases",
-        "rendering:native-instancing",
-        "rendering:postprocess-narrow",
+        "asset:imported-transform",
+        "asset:model.gltf",
+        "rendering:instancing-observation",
         "rendering:runtime-lod"
       ],
       "reportArtifacts": [
         "artifacts/conformance/v7-renderer-dense-content/web.report.json",
         "artifacts/conformance/v7-renderer-dense-content/bevy.report.json",
-        "artifacts/conformance/v7-renderer-dense-content/comparison.report.json"
+        "artifacts/conformance/v7-renderer-dense-content/comparison.report.json",
+        "artifacts/conformance/v7-renderer-dense-content/web-environment-content.json",
+        "artifacts/conformance/v7-renderer-dense-content/native-environment-content.json",
+        "artifacts/conformance/v7-renderer-dense-content/environment-content-diff.json"
       ],
       "rejectedDiagnosticCodes": [
         "TN_V7_RENDERER_UNSUPPORTED",

@@ -132,7 +132,7 @@ test("should pass matching gate commands and save report path", async () => {
     });
 
     assert.equal(result.ok, true);
-    assert.equal(result.steps.length, 16);
+    assert.equal(result.steps.length, 17);
     assert.equal(result.reportPath.endsWith("artifacts/conformance/verification-report.json"), true);
     assert.equal(result.artifacts.nativeBasicSceneReportPath.endsWith("artifacts/conformance/basic-scene/bevy.report.json"), true);
     assert.equal(
@@ -210,9 +210,18 @@ test("should pass matching gate commands and save report path", async () => {
       result.artifacts.v7AudioLifecycleWebTracePath.endsWith("artifacts/conformance/v7-spatial-audio-buses/web-audio-lifecycle.json"),
       true,
     );
+    assert.equal(result.artifacts.v7EnvironmentContentDiffPath.endsWith("artifacts/conformance/v7-renderer-dense-content/environment-content-diff.json"), true);
+    assert.equal(
+      result.artifacts.v7EnvironmentContentNativeTracePath.endsWith("artifacts/conformance/v7-renderer-dense-content/native-environment-content.json"),
+      true,
+    );
+    assert.equal(
+      result.artifacts.v7EnvironmentContentWebTracePath.endsWith("artifacts/conformance/v7-renderer-dense-content/web-environment-content.json"),
+      true,
+    );
     const report = JSON.parse(await readFile(result.reportPath, "utf8"));
     assert.equal(report.status, "pass");
-    assert.equal(report.steps.length, 16);
+    assert.equal(report.steps.length, 17);
     assert.equal(report.artifacts.nativeBasicSceneReportPath.endsWith("artifacts/conformance/basic-scene/bevy.report.json"), true);
     assert.equal(
       report.artifacts.nativeV6AnimationClipsReportPath.endsWith("artifacts/conformance/v6-animation-clips/bevy.report.json"),
@@ -287,6 +296,15 @@ test("should pass matching gate commands and save report path", async () => {
     );
     assert.equal(
       report.artifacts.v7AudioLifecycleWebTracePath.endsWith("artifacts/conformance/v7-spatial-audio-buses/web-audio-lifecycle.json"),
+      true,
+    );
+    assert.equal(report.artifacts.v7EnvironmentContentDiffPath.endsWith("artifacts/conformance/v7-renderer-dense-content/environment-content-diff.json"), true);
+    assert.equal(
+      report.artifacts.v7EnvironmentContentNativeTracePath.endsWith("artifacts/conformance/v7-renderer-dense-content/native-environment-content.json"),
+      true,
+    );
+    assert.equal(
+      report.artifacts.v7EnvironmentContentWebTracePath.endsWith("artifacts/conformance/v7-renderer-dense-content/web-environment-content.json"),
       true,
     );
   } finally {

@@ -14,6 +14,11 @@ export interface IEnvironmentRuntime {
 export interface IEnvironmentObservation {
   bookmarks: string[];
   heroPlacementIds: string[];
+  instancingGroups?: Array<{
+    count: number;
+    evidence: "model-asset-backed" | "placeholder";
+    sourceAsset: string;
+  }>;
   lodSelections: Record<string, string>;
   lodSourceAssetCount: number;
   pathPointCount: number;
@@ -261,6 +266,53 @@ export function observeEnvironmentScene(scene: NonNullable<IWebBundle["environme
             min: scene.terrain.bounds.min,
           },
   };
+}
+
+export function traceEnvironmentContent(bundle: IWebBundle): IEnvironmentObservation {
+  if (bundle.environmentScene === undefined) {
+    throw new Error("bundle does not contain environment.scene.json");
+  }
+  return observeEnvironmentSceneWithAssets(bundle.environmentScene, bundle.assets?.assets ?? []);
+}
+
+function observeEnvironmentSceneWithAssets(
+  scene: NonNullable<IWebBundle["environmentScene"]>,
+  assets: readonly NonNullable<IWebBundle["assets"]>["assets"][number][],
+): IEnvironmentObservation {
+  return {
+    ...observeEnvironmentScene(scene),
+    instancingGroups: repeatedAssetGroups(scene, assets),
+  };
+}
+
+function repeatedAssetGroups(
+  scene: NonNullable<IWebBundle["environmentScene"]>,
+  assets: readonly NonNullable<IWebBundle["assets"]>["assets"][number][],
+): NonNullable<IEnvironmentObservation["instancingGroups"]> {
+  const counts = new Map<string, number>();
+  for (const instance of scene.instances) {
+    if (instance.kind !== "scatter") {
+      continue;
+    }
+    if (instance.tags?.some((tag) => tag === "hero" || tag === "unique" || tag === "foreground") === true) {
+      continue;
+    }
+    counts.set(instance.sourceAsset, (counts.get(instance.sourceAsset) ?? 0) + 1);
+  }
+  const sourceAssetIds = new Map(scene.sourceAssets.map((asset) => [asset.id, asset.asset]));
+  const assetsById = new Map(assets.map((asset) => [asset.id, asset]));
+  return [...counts.entries()]
+    .filter(([, count]) => count >= 2)
+    .map(([sourceAsset, count]) => {
+      const asset = assetsById.get(sourceAssetIds.get(sourceAsset) ?? "");
+      const modelBacked = asset?.kind === "model" && (asset.format === "gltf" || asset.format === "glb") && asset.path !== undefined;
+      return {
+        count,
+        evidence: modelBacked ? "model-asset-backed" as const : "placeholder" as const,
+        sourceAsset,
+      };
+    })
+    .sort((left, right) => left.sourceAsset.localeCompare(right.sourceAsset));
 }
 
 function selectLodsForDistance(scene: NonNullable<IWebBundle["environmentScene"]>, distance: number): Record<string, string> {

@@ -39,6 +39,10 @@ path = "src/ui_navigation_trace.rs"
 name = "threenative_audio_lifecycle_trace"
 path = "src/audio_lifecycle_trace.rs"
 
+[[bin]]
+name = "threenative_environment_content_trace"
+path = "src/environment_content_trace.rs"
+
 [dependencies]
 bevy = "=0.14.2"
 quickjs-rusty = "=0.12.0"

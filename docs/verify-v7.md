@@ -6,6 +6,7 @@ V7-02 now adds the first runtime-specific fixed trace. V7-03 adds the first
 animation/effects contract fixture and fixed web/native graph/particle trace.
 V7-04 adds the first fixed web/native UI navigation trace.
 V7-05 adds the first fixed web/native audio lifecycle trace.
+V7-06 adds the first fixed web/native renderer/dense-content trace.
 
 Current V7 conformance evidence starts with:
 
@@ -13,6 +14,7 @@ Current V7 conformance evidence starts with:
 - `packages/ir/fixtures/conformance/v7-advanced-physics-character/game.bundle`
 - `packages/ir/fixtures/conformance/v7-animation-graphs-particles/game.bundle`
 - `packages/ir/fixtures/conformance/v7-spatial-audio-buses/game.bundle`
+- `packages/ir/fixtures/conformance/v7-renderer-dense-content/game.bundle`
 - `pnpm verify:conformance`
 - `artifacts/conformance/verification-report.json`
 - `artifacts/conformance/v7-advanced-physics-character/web-effects.json`
@@ -30,6 +32,9 @@ Current V7 conformance evidence starts with:
 - `artifacts/conformance/v7-spatial-audio-buses/web-audio-lifecycle.json`
 - `artifacts/conformance/v7-spatial-audio-buses/native-audio-lifecycle.json`
 - `artifacts/conformance/v7-spatial-audio-buses/audio-lifecycle-diff.json`
+- `artifacts/conformance/v7-renderer-dense-content/web-environment-content.json`
+- `artifacts/conformance/v7-renderer-dense-content/native-environment-content.json`
+- `artifacts/conformance/v7-renderer-dense-content/environment-content-diff.json`
 
 The V7 fixture catalog maps V7-02 through V7-09 to baseline bundles, planned
 accepted and rejected fixture bundle paths, expected target capabilities,
@@ -60,6 +65,14 @@ compares a fixed web/native lifecycle trace for loop start/stop cleanup and
 routed command reports. Real spatial attenuation, mixer effects,
 streaming/network audio, platform handles, and richer audio services remain
 unsupported or later work.
+
+The current V7-06 fixture evidence is intentionally narrow: the
+`v7-renderer-dense-content` bundle validates environment source assets,
+bounded LOD metadata, imported transforms, and repeated scatter placements,
+then compares a fixed web/native trace for runtime LOD selection and
+model-backed repeated-instance observations. Actual renderer-level native
+instancing, visual LOD mesh swapping, portable post-processing, and arbitrary
+material overrides remain deferred or rejected.
 
 Conformance mismatch diagnostics must localize drift with:
 

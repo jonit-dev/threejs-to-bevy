@@ -21,6 +21,7 @@ Referenced from `manifest.json` as `entry.environmentScene`.
 ## Concepts
 
 - Source asset: logical model or texture source used by instances.
+- LOD level: bounded replacement model selected by runtime distance evidence.
 - Instance: placed model reference with transform, tags, and optional metadata.
 - Scatter group: deterministic generated placements for repeated props.
 - Hero placement: intentionally authored focal object placement.
@@ -46,6 +47,9 @@ Referenced from `manifest.json` as `entry.environmentScene`.
 - Budgets must be evaluated against the target profile.
 - Runtime-specific behavior must be represented as target capabilities or
   adapter-private mapping, not as public Bevy or Three.js internals.
+- Backend-specific renderer fields such as ad hoc post-processing, native
+  instancing flags, and per-instance material overrides are rejected unless a
+  portable field is explicitly promoted.
 
 ## Verification
 
@@ -61,3 +65,6 @@ Relevant reports:
 - `artifacts/v3/v3-atmosphere-report.json`
 - `artifacts/v3/v3-first-person-report.json`
 - `artifacts/v3/v3-walkability-report.json`
+- `artifacts/conformance/v7-renderer-dense-content/web-environment-content.json`
+- `artifacts/conformance/v7-renderer-dense-content/native-environment-content.json`
+- `artifacts/conformance/v7-renderer-dense-content/environment-content-diff.json`

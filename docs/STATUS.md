@@ -397,6 +397,18 @@ loop start/stop cleanup and writes web/native trace artifacts and a diff under
 effects, streaming/network audio, and platform audio handles remain unsupported
 or later work.
 
+V7-06 has landed the first renderer/dense-content parity evidence slice: the
+`v7-renderer-dense-content` conformance fixture carries bounded environment LOD
+metadata, imported transform edge cases, and repeated model-backed scatter
+instances. The IR validator now rejects backend-specific renderer/content
+fields such as ad hoc post-processing, native instancing flags, and material
+overrides with `TN_IR_ENVIRONMENT_FIELD_UNSUPPORTED`. `pnpm
+verify:conformance` compares a fixed web/native environment content trace for
+runtime LOD selection and instancing observations, writing web/native trace
+artifacts and a diff under `artifacts/conformance/v7-renderer-dense-content`.
+Actual renderer-level native instancing, visual LOD mesh swapping, and portable
+post-processing remain unclaimed.
+
 V8 is the first planned local editor and inspector milestone. V9 is the first
 planned online project and publishing milestone. V10 is the first planned
 collaboration and runtime replication milestone. Editor, online, networking,

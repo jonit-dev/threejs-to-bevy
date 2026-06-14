@@ -1,0 +1,24 @@
+{
+  "schema": "threenative.assets",
+  "version": "0.1.0",
+  "assets": [
+    {
+      "id": "model.env.Rock",
+      "kind": "model",
+      "format": "gltf",
+      "path": "assets/environment/Rock.gltf"
+    },
+    {
+      "id": "model.env.RockLow",
+      "kind": "model",
+      "format": "gltf",
+      "path": "assets/environment/RockLow.gltf"
+    },
+    {
+      "id": "model.env.Tree",
+      "kind": "model",
+      "format": "gltf",
+      "path": "assets/environment/Tree.gltf"
+    }
+  ]
+}

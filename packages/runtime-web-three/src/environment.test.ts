@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
+import { resolve } from "node:path";
 import test from "node:test";
 import * as THREE from "three";
 
-import { applyEnvironmentBookmark, createEnvironmentRuntime, createInstancedModelGroup } from "./environment.js";
+import { applyEnvironmentBookmark, createEnvironmentRuntime, createInstancedModelGroup, traceEnvironmentContent } from "./environment.js";
+import { loadBundle } from "./loadBundle.js";
 import type { IWebBundle } from "./loadBundle.js";
 
 test("environment should apply the instancing plan during forest load", () => {
@@ -116,4 +118,16 @@ test("environment should instance loaded model geometry instead of cloning repea
 
   assert.deepEqual(new THREE.Vector3().setFromMatrixPosition(first).toArray(), [0, 1, 0]);
   assert.deepEqual(new THREE.Vector3().setFromMatrixPosition(second).toArray(), [2, 1.5, 0]);
+});
+
+test("environment content trace should report V7 LOD and instancing evidence", async () => {
+  const bundle = await loadBundle(resolve(process.cwd(), "../../packages/ir/fixtures/conformance/v7-renderer-dense-content/game.bundle"));
+
+  const trace = traceEnvironmentContent(bundle);
+
+  assert.deepEqual(trace.bookmarks, ["bookmark.content"]);
+  assert.deepEqual(trace.heroPlacementIds, ["tree.hero"]);
+  assert.deepEqual(trace.lodSelections, { "env.Rock": "model.env.RockLow", "env.Tree": "model.env.Tree" });
+  assert.deepEqual(trace.instancingGroups, [{ count: 2, evidence: "model-asset-backed", sourceAsset: "env.Rock" }]);
+  assert.equal(trace.totalInstanceCount, 3);
 });

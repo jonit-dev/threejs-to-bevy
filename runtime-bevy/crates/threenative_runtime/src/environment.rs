@@ -9,11 +9,38 @@ use bevy::{
         render_asset::RenderAssetUsages,
     },
 };
+use serde::Serialize;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{AssetIr, LoadedBundle};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct EnvironmentObservation {
+    #[serde(rename = "bookmarks")]
+    pub bookmark_ids: Vec<String>,
+    pub hero_placement_ids: Vec<String>,
+    #[serde(rename = "instancingGroups")]
+    pub repeated_asset_groups: Vec<EnvironmentRepeatedAssetGroup>,
+    pub lod_selections: HashMap<String, String>,
+    pub lod_source_asset_count: usize,
+    pub path_point_count: usize,
+    pub scatter_counts_by_tag: HashMap<String, usize>,
+    pub scatter_instance_count: usize,
+    pub source_asset_count: usize,
+    pub terrain: Option<EnvironmentTerrainObservation>,
+    pub total_instance_count: usize,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EnvironmentTerrainObservation {
+    pub id: String,
+    pub max: [f32; 3],
+    pub min: [f32; 3],
+}
+
+#[derive(Debug, PartialEq)]
+struct NativeEnvironmentObservation {
     pub terrain_id: Option<String>,
     pub path_point_count: usize,
     pub hero_placement_ids: Vec<String>,
@@ -27,7 +54,8 @@ pub struct EnvironmentObservation {
     pub repeated_asset_groups: Vec<EnvironmentRepeatedAssetGroup>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct EnvironmentRepeatedAssetGroup {
     pub source_asset: String,
     pub count: usize,
@@ -35,6 +63,31 @@ pub struct EnvironmentRepeatedAssetGroup {
 }
 
 pub fn observe_environment(bundle: &LoadedBundle) -> Option<EnvironmentObservation> {
+    let scene = bundle.environment_scene.as_ref()?;
+    let native = observe_native_environment(bundle)?;
+    Some(EnvironmentObservation {
+        bookmark_ids: native.bookmark_ids,
+        hero_placement_ids: native.hero_placement_ids,
+        repeated_asset_groups: native.repeated_asset_groups,
+        lod_selections: native.lod_selections,
+        lod_source_asset_count: native.lod_source_asset_count,
+        path_point_count: native.path_point_count,
+        scatter_counts_by_tag: native.scatter_counts_by_tag,
+        scatter_instance_count: native.scatter_instance_count,
+        source_asset_count: native.source_asset_count,
+        terrain: scene
+            .terrain
+            .as_ref()
+            .map(|terrain| EnvironmentTerrainObservation {
+                id: terrain.id.clone(),
+                max: terrain.bounds.max,
+                min: terrain.bounds.min,
+            }),
+        total_instance_count: native.total_instance_count,
+    })
+}
+
+fn observe_native_environment(bundle: &LoadedBundle) -> Option<NativeEnvironmentObservation> {
     let scene = bundle.environment_scene.as_ref()?;
     let mut scatter_counts_by_tag = HashMap::new();
     for instance in scene
@@ -66,7 +119,7 @@ pub fn observe_environment(bundle: &LoadedBundle) -> Option<EnvironmentObservati
         .collect::<Vec<_>>();
     bookmark_ids.sort();
 
-    Some(EnvironmentObservation {
+    Some(NativeEnvironmentObservation {
         terrain_id: scene.terrain.as_ref().map(|terrain| terrain.id.clone()),
         path_point_count: scene.path.points.len(),
         hero_placement_ids,
