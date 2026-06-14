@@ -215,7 +215,7 @@ gates agree.
 The V6 ticket slice is tracked in [V6 PRDs](PRDs/v6/README.md). Those tickets
 define planned work; they do not mark promoted V6 features as implemented until
 the corresponding SDK, IR, validation, web runtime, Bevy evidence,
-conformance, docs, example scene, and release gate evidence lands.
+conformance, docs, example scene, and `verify:v6` release gate evidence lands.
 
 V7 is now planned as the deep engine gap-closure milestone. It should continue
 parity work that is too large or risky for V6, such as deeper physics,
