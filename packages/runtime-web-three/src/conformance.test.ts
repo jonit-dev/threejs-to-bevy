@@ -72,6 +72,27 @@ test("should report physics collision and trigger conformance observations", asy
   ]);
 });
 
+test("should report runtime orthographic camera conformance observations", async () => {
+  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/v5-drift-surface/game.bundle"));
+  const mapped = mapWorld(bundle);
+  const report = reportWebConformance(bundle, mapped, "v5-drift-surface");
+
+  const camera = report.entities.find((entity) => entity.id === "camera.ortho")?.camera;
+  assert.deepEqual(camera, {
+    far: 100,
+    fovY: undefined,
+    kind: "orthographic",
+    near: 0.1,
+    runtime: {
+      far: 100,
+      kind: "orthographic",
+      near: 0.1,
+      size: 6,
+    },
+    size: 6,
+  });
+});
+
 test("should report animation clip conformance observations", async () => {
   const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/v6-animation-clips/game.bundle"));
   const mapped = mapWorld(bundle);

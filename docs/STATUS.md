@@ -104,9 +104,9 @@ parity.
 
 V5-02 has landed the conformance-report and native-observation slice:
 web and Bevy conformance reports now expose stable asset, material, texture
-slot, visibility, mesh-renderer, environment-ID, diagnostic, and entity
-observations, while report mismatches carry JSON-path-like locations plus
-bundle/artifact paths. The Bevy runtime also provides a headless
+slot, visibility, mesh-renderer, runtime camera projection, environment-ID,
+diagnostic, and entity observations, while report mismatches carry
+JSON-path-like locations plus bundle/artifact paths. The Bevy runtime also provides a headless
 `threenative_conformance` command, and `pnpm verify:conformance` writes an
 inspectable native summary at `artifacts/conformance/basic-scene/bevy.report.json`.
 
@@ -146,7 +146,9 @@ range/angle, web and Bevy map those fields with runtime-normalized conformance
 observations, and atmosphere observations expose promoted fog, sky, color
 management, and shadow fields. Native fog/sky/color rendering remains
 target-drift rather than full visual parity, but the promoted fields are now
-validated, observable, and exercised by `examples/v5-functional`.
+validated, observable, and exercised by `examples/v5-functional`. The
+`v5-drift-surface` fixture now also reports web and Bevy runtime orthographic
+camera projection observations for the active camera.
 
 V5-08 has landed the dense content, LOD metadata, and budget-evidence slice:
 environment source assets now carry validated bounded LOD metadata, compiler
@@ -344,8 +346,9 @@ permissions beside `physics.raycast`. The first runtime phase now has a
 `v7-advanced-physics-character` conformance fixture and fixed web/native trace
 for primitive overlap and swept box shape-cast queries with portable collider
 layer filters, writing web/native effect logs and a diff under
-`artifacts/conformance/v7-advanced-physics-character`. Full solver behavior,
-contact ordering, sensors beyond the query fixture, and stronger
+`artifacts/conformance/v7-advanced-physics-character`. Web and native runtime
+tests now also pin deterministic ordering for simultaneous collision/trigger
+contacts. Full solver behavior, sensors beyond the query fixture, and stronger
 character-controller movement/blocking behavior remain V7 work.
 
 V8 is the first planned local editor and inspector milestone. V9 is the first

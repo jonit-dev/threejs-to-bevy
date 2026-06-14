@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use bevy::prelude::*;
+use bevy::{prelude::*, render::camera::ScalingMode};
 use serde::Serialize;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{
@@ -222,6 +222,24 @@ pub struct CameraReport {
     pub fov_y: Option<f32>,
     pub kind: String,
     pub near: f32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub runtime: Option<RuntimeCameraReport>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub size: Option<f32>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct RuntimeCameraReport {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub far: Option<f32>,
+    #[serde(rename = "fovY")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fov_y: Option<f32>,
+    pub kind: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub near: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub size: Option<f32>,
 }
 
 #[derive(Debug, Serialize)]
@@ -436,6 +454,7 @@ fn report_ui_node(node: &crate::ui::NativeUiNode) -> ConformanceUiNodeReport {
 }
 
 struct RuntimeEntityReport {
+    camera: Option<RuntimeCameraReport>,
     light: Option<RuntimeLightReport>,
     parent: Option<String>,
     transform: Option<TransformReport>,
@@ -459,12 +478,15 @@ fn runtime_entities_by_id(world: &mut World) -> HashMap<String, RuntimeEntityRep
         Option<&DirectionalLight>,
         Option<&PointLight>,
         Option<&SpotLight>,
+        Option<&Projection>,
     )>();
-    for (_entity, id, transform, parent, visibility, directional, point, spot) in query.iter(world)
+    for (_entity, id, transform, parent, visibility, directional, point, spot, projection) in
+        query.iter(world)
     {
         reports.insert(
             id.0.clone(),
             RuntimeEntityReport {
+                camera: projection.and_then(runtime_camera),
                 light: runtime_light(directional, point, spot),
                 parent: parent.and_then(|parent| ids_by_entity.get(&parent.get()).cloned()),
                 transform: transform.map(|transform| TransformReport {
@@ -483,6 +505,28 @@ fn runtime_entities_by_id(world: &mut World) -> HashMap<String, RuntimeEntityRep
     }
 
     reports
+}
+
+fn runtime_camera(projection: &Projection) -> Option<RuntimeCameraReport> {
+    match projection {
+        Projection::Perspective(perspective) => Some(RuntimeCameraReport {
+            far: Some(perspective.far),
+            fov_y: Some(perspective.fov.to_degrees()),
+            kind: "perspective".to_owned(),
+            near: Some(perspective.near),
+            size: None,
+        }),
+        Projection::Orthographic(orthographic) => Some(RuntimeCameraReport {
+            far: Some(orthographic.far),
+            fov_y: None,
+            kind: "orthographic".to_owned(),
+            near: Some(orthographic.near),
+            size: match orthographic.scaling_mode {
+                ScalingMode::FixedVertical(size) => Some(size),
+                _ => None,
+            },
+        }),
+    }
 }
 
 fn runtime_light(
@@ -621,6 +665,8 @@ fn report_entity(
                 fov_y: camera.fov_y,
                 kind: camera.kind.clone(),
                 near: camera.near,
+                runtime: runtime.and_then(|runtime| runtime.camera.clone()),
+                size: camera.size,
             }),
         components: component_names(entity),
         id: entity.id.clone(),

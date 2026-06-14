@@ -53,6 +53,31 @@ fn physics_should_apply_portable_contact_filters() {
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
 
+#[test]
+fn physics_should_emit_deterministic_contact_ordering() {
+    let root = write_unordered_contact_bundle();
+    let bundle = load_bundle(&root).expect("physics bundle should load");
+
+    let events = detect_physics_events(&bundle);
+
+    assert_eq!(events.len(), 4);
+    assert_eq!(events[0].event, "CollisionEvent");
+    assert_eq!(events[0].a, "alpha");
+    assert_eq!(events[0].b, "middle");
+    assert_eq!(events[1].event, "CollisionEvent");
+    assert_eq!(events[1].a, "alpha");
+    assert_eq!(events[1].b, "zeta");
+    assert_eq!(events[2].event, "CollisionEvent");
+    assert_eq!(events[2].a, "middle");
+    assert_eq!(events[2].b, "zeta");
+    assert_eq!(events[3].event, "TriggerEvent");
+    assert_eq!(events[3].a, "middle");
+    assert_eq!(events[3].b, "sensor");
+    assert!(events.iter().all(|event| event.phase == "enter"));
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
 fn write_physics_bundle() -> PathBuf {
     let root = std::env::temp_dir().join(format!(
         "tn-physics-{}",
@@ -158,6 +183,86 @@ fn write_filtered_physics_bundle() -> PathBuf {
         "Collider": { "kind": "box", "layer": "player", "mask": ["pickup"], "size": [1, 1, 1] },
         "RigidBody": { "kind": "kinematic" },
         "Transform": { "position": [0.25, 0, 0] }
+      }
+    }
+  ]
+}"#,
+    );
+    write(
+        &root,
+        "assets.manifest.json",
+        r#"{ "schema": "threenative.assets", "version": "0.1.0", "assets": [] }"#,
+    );
+    write(
+        &root,
+        "materials.ir.json",
+        r#"{ "schema": "threenative.materials", "version": "0.1.0", "materials": [] }"#,
+    );
+    write(
+        &root,
+        "target.profile.json",
+        r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["desktop"] }"#,
+    );
+    root
+}
+
+fn write_unordered_contact_bundle() -> PathBuf {
+    let root = std::env::temp_dir().join(format!(
+        "tn-physics-ordering-{}",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system time should be after unix epoch")
+            .as_nanos()
+    ));
+    fs::create_dir_all(&root).expect("temporary bundle directory should be created");
+    write(
+        &root,
+        "manifest.json",
+        r#"{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "physics-ordering",
+  "entry": { "world": "world.ir.json" },
+  "files": { "assets": "assets.manifest.json", "materials": "materials.ir.json", "targetProfile": "target.profile.json" }
+}"#,
+    );
+    write(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "zeta",
+      "components": {
+        "Collider": { "kind": "box", "size": [1, 1, 1] },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [0, 0, 0] }
+      }
+    },
+    {
+      "id": "sensor",
+      "components": {
+        "Collider": { "kind": "sphere", "radius": 0.5, "trigger": true },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [1.05, 0, 0] }
+      }
+    },
+    {
+      "id": "middle",
+      "components": {
+        "Collider": { "kind": "box", "size": [1, 1, 1] },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [0.1, 0, 0] }
+      }
+    },
+    {
+      "id": "alpha",
+      "components": {
+        "Collider": { "kind": "box", "size": [1, 1, 1] },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [-0.1, 0, 0] }
       }
     }
   ]

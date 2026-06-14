@@ -158,6 +158,39 @@ fn should_report_physics_collision_and_trigger_conformance_observations() {
 }
 
 #[test]
+fn should_report_runtime_orthographic_camera_conformance_observations() {
+    let fixture = load_conformance_fixture("v5-drift-surface");
+    let mut app = App::new();
+
+    map_bundle_into_world(app.world_mut(), &fixture.bundle).unwrap_or_else(|error| {
+        panic!(
+            "failed to map conformance fixture '{}' at '{}': {}",
+            fixture.name,
+            fixture.bundle_path.display(),
+            error
+        )
+    });
+    let report = report_bevy_conformance(app.world_mut(), &fixture.bundle, fixture.name);
+    let camera = report
+        .entities
+        .iter()
+        .find(|entity| entity.id == "camera.ortho")
+        .and_then(|entity| entity.camera.as_ref())
+        .expect("orthographic camera should be reported");
+    let runtime = camera
+        .runtime
+        .as_ref()
+        .expect("runtime camera projection should be reported");
+
+    assert_eq!(camera.kind, "orthographic");
+    assert_eq!(camera.size, Some(6.0));
+    assert_eq!(runtime.kind, "orthographic");
+    assert_eq!(runtime.near, Some(0.1));
+    assert_eq!(runtime.far, Some(100.0));
+    assert_eq!(runtime.size, Some(6.0));
+}
+
+#[test]
 fn should_report_animation_clip_conformance_observations() {
     let fixture = load_conformance_fixture("v6-animation-clips");
     let mut app = App::new();

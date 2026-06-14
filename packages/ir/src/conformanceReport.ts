@@ -80,6 +80,14 @@ export interface IConformanceEntityReport {
     fovY?: number;
     kind: string;
     near: number;
+    runtime?: {
+      far?: number;
+      fovY?: number;
+      kind: string;
+      near?: number;
+      size?: number;
+    };
+    size?: number;
   };
   components: string[];
   id: string;

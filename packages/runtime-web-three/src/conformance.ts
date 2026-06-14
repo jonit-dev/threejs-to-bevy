@@ -109,6 +109,8 @@ function reportEntity(
       fovY: entity.components.Camera.fovY,
       kind: entity.components.Camera.kind,
       near: entity.components.Camera.near,
+      runtime: object === undefined ? undefined : reportRuntimeCamera(object),
+      size: entity.components.Camera.size,
     };
   }
   if (entity.components.Light !== undefined) {
@@ -130,6 +132,26 @@ function reportEntity(
   }
 
   return report;
+}
+
+function reportRuntimeCamera(object: THREE.Object3D): NonNullable<NonNullable<IConformanceEntityReport["camera"]>["runtime"]> | undefined {
+  if (object instanceof THREE.PerspectiveCamera) {
+    return {
+      far: object.far,
+      fovY: object.fov,
+      kind: "perspective",
+      near: object.near,
+    };
+  }
+  if (object instanceof THREE.OrthographicCamera) {
+    return {
+      far: object.far,
+      kind: "orthographic",
+      near: object.near,
+      size: object.top - object.bottom,
+    };
+  }
+  return undefined;
 }
 
 function reportRuntimeLight(object: THREE.Object3D): IRuntimeLightReport | undefined {

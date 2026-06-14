@@ -38,6 +38,7 @@ final `pnpm verify:v7` aggregate command remain later V7 tickets.
 The current V7-02 runtime evidence is intentionally narrow: the
 `v7-advanced-physics-character` fixture compares web and native fixed traces for
 portable primitive overlap and swept box shape-cast queries with collider layer
-filters. It does not claim full solver parity, deterministic contact ordering
-for every physics path, dynamic mesh collider behavior, broader sensor coverage,
-or character-controller movement/blocking parity.
+filters. Focused web and native runtime tests also pin deterministic ordering
+for simultaneous collision and trigger contacts. This does not claim full solver
+parity, dynamic mesh collider behavior, broader sensor coverage, or
+character-controller movement/blocking parity.

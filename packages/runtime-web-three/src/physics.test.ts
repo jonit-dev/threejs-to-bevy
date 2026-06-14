@@ -44,6 +44,23 @@ test("physics should apply portable contact filters before emitting events", () 
   assert.deepEqual(world.events?.TriggerEvent, []);
 });
 
+test("physics should emit deterministic contact ordering across simultaneous pairs", () => {
+  const world = makeUnorderedContactWorld();
+
+  assert.deepEqual(stepPhysics(world), [
+    { a: "alpha", b: "middle", phase: "enter" },
+    { a: "alpha", b: "zeta", phase: "enter" },
+    { a: "middle", b: "zeta", phase: "enter" },
+    { a: "middle", b: "sensor", phase: "enter" },
+  ]);
+  assert.deepEqual(world.events?.CollisionEvent, [
+    { a: "alpha", b: "middle", phase: "enter" },
+    { a: "alpha", b: "zeta", phase: "enter" },
+    { a: "middle", b: "zeta", phase: "enter" },
+  ]);
+  assert.deepEqual(world.events?.TriggerEvent, [{ a: "middle", b: "sensor", phase: "enter" }]);
+});
+
 function makePhysicsWorld(): IWorldIr {
   return {
     schema: "threenative.world" as const,
@@ -63,6 +80,47 @@ function makePhysicsWorld(): IWorldIr {
           Collider: { kind: "sphere" as const, radius: 0.5, trigger: true },
           RigidBody: { kind: "static" as const },
           Transform: { position: [0.25, 0, 0] as const },
+        },
+      },
+    ],
+  };
+}
+
+function makeUnorderedContactWorld(): IWorldIr {
+  return {
+    schema: "threenative.world" as const,
+    version: "0.1.0" as const,
+    entities: [
+      {
+        id: "zeta",
+        components: {
+          Collider: { kind: "box" as const, size: [1, 1, 1] as const },
+          RigidBody: { kind: "static" as const },
+          Transform: { position: [0, 0, 0] as const },
+        },
+      },
+      {
+        id: "sensor",
+        components: {
+          Collider: { kind: "sphere" as const, radius: 0.5, trigger: true },
+          RigidBody: { kind: "static" as const },
+          Transform: { position: [1.05, 0, 0] as const },
+        },
+      },
+      {
+        id: "middle",
+        components: {
+          Collider: { kind: "box" as const, size: [1, 1, 1] as const },
+          RigidBody: { kind: "static" as const },
+          Transform: { position: [0.1, 0, 0] as const },
+        },
+      },
+      {
+        id: "alpha",
+        components: {
+          Collider: { kind: "box" as const, size: [1, 1, 1] as const },
+          RigidBody: { kind: "static" as const },
+          Transform: { position: [-0.1, 0, 0] as const },
         },
       },
     ],
