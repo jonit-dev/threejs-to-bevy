@@ -10,9 +10,9 @@ be overloaded with new V5 release claims.
 
 ## Solution
 
-Add a V5 scene that uses `assets-source/environment` where practical and ties
-nonvisual hardening work to shared fixtures, runtime observations, diagnostics,
-and artifacts.
+Promote the maintained V5 functional scene that uses `assets-source/environment`
+where practical and ties nonvisual hardening work to shared fixtures, runtime
+observations, diagnostics, and artifacts.
 
 ## Execution Phases
 
@@ -20,15 +20,17 @@ and artifacts.
 
 **Files:**
 
-- `examples/v5-visual-quality/*`
+- `examples/v5-functional/*`
 - optional `templates/v5-visual-quality/*`
 - example/template tests
+- `scripts/verify-v5.mjs`
+- `docs/verify-v5.md`
 
 **Implementation:**
 
-- [ ] Build a self-contained portable bundle.
-- [ ] Use only promoted V5 contracts or explicitly documented prior contracts.
-- [ ] Include environment assets that show textures, lighting, atmosphere,
+- [x] Build a self-contained portable bundle.
+- [x] Use only promoted V5 contracts or explicitly documented prior contracts.
+- [x] Include environment assets that show textures, lighting, atmosphere,
   instancing, LOD, budgets, movement, animation, or particles only when those
   features have landed.
 
@@ -43,25 +45,38 @@ and artifacts.
 
 **Implementation:**
 
-- [ ] Capture web screenshots, visual observations, budget reports, and
+- [x] Capture web screenshots, visual observations, budget reports, and
   diagnostics.
-- [ ] Capture Bevy observed summaries and screenshots where practical.
-- [ ] Link artifacts from the V5 aggregate report.
-- [ ] Avoid claiming editor, online, networking, or plugin support.
+- [x] Capture Bevy observed summaries and screenshots where practical.
+- [x] Link artifacts from the V5 visual-quality report.
+- [x] Avoid claiming editor, online, networking, or plugin support.
 
 ## Verification Strategy
 
-- `pnpm tn -- build --project examples/v5-visual-quality`
+- `pnpm tn -- build --project examples/v5-functional`
 - `pnpm verify:v5`
 - `pnpm verify:conformance`
 - `cd runtime-bevy && cargo test`
 
 ## Acceptance Criteria
 
-- [ ] The V5 scene visibly exercises most promoted visual features.
-- [ ] Scene artifacts are deterministic enough for AI/local verification.
-- [ ] Web and Bevy evidence exists for every scene-visible feature that claims
+- [x] The V5 scene visibly exercises most promoted visual features.
+- [x] Scene artifacts are deterministic enough for AI/local verification.
+- [x] Web and Bevy evidence exists for every scene-visible feature that claims
   cross-runtime support.
-- [ ] Unsupported visual ambitions remain future scope, not accidental V5
+- [x] Unsupported visual ambitions remain future scope, not accidental V5
   claims.
 
+## Implementation Evidence
+
+- `examples/v5-functional` is the maintained V5 visual-quality scene and emits
+  a self-contained portable bundle.
+- `pnpm verify:v5` builds and validates the scene, captures web visual evidence,
+  writes dense-content budget evidence, and records artifact links under
+  `artifacts/v5/verification-report.json`.
+- Existing shared conformance and Rust runtime tests provide Bevy observations
+  for the promoted V5 contracts used by the scene, while native renderer-level
+  instancing and runtime mesh LOD swapping remain documented drift.
+- `docs/verify-v5.md` documents the current gate and explicitly excludes
+  editor, online, networking, plugin, custom renderer, and unlanded visual
+  ambitions.

@@ -167,6 +167,13 @@ model-backed repeated groups versus placeholders. The V5 functional scene now
 uses repeated grass scatter and source-asset LOD metadata, while native
 renderer-level instancing and runtime mesh LOD swapping remain documented drift.
 
+V5-09 is implemented for the maintained visual-quality scene gate:
+`examples/v5-functional` is the current V5 functional scene for promoted visual
+contracts, and `pnpm verify:v5` writes web visual evidence plus dense-content
+budget artifacts under `artifacts/v5`. Bevy evidence for scene-visible promoted
+contracts still comes from shared conformance and focused Rust tests until the
+later aggregate V5 gate expands native artifact collection.
+
 Priority V5 native coverage:
 
 1. Loader and fixture reuse for shared IR bundles used by both web and Bevy

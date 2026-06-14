@@ -146,6 +146,13 @@ distinguish repeated model-backed groups from placeholders. The
 `examples/v5-functional` scene now exercises repeated grass scatter, source
 asset LOD metadata, and environment-asset budget reports.
 
+V5-09 has landed the maintained visual-quality scene gate:
+`examples/v5-functional` is now the V5 functional scene for promoted visual
+contracts, and `pnpm verify:v5` builds, validates, visually verifies it in web,
+writes dense-content budget evidence under `artifacts/v5`, and records artifact
+links in `artifacts/v5/verification-report.json`. This is the current V5 visual
+scene gate, not the final aggregate release gate planned for V5-10.
+
 V5 should add or improve Rust tests for native runtime behavior whenever work
 touches shared IR, native runtime mapping, native scripting behavior, Bevy
 diagnostics, or visual-quality features that claim native support. The expected
@@ -214,5 +221,6 @@ limits the work to internal preparation or harness cleanup.
 - [Bevy Feature Parity Drift](bevy-feature-parity.md)
 - [Feature Maturity Matrix](feature-maturity.md)
 - [verify:v4](verify-v4.md)
+- [verify:v5](verify-v5.md)
 - [verify:v3](verify-v3.md)
 - [Coordinate, Units, Rotation, and Color Conventions](conventions.md)

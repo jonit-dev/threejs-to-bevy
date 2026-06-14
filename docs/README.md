@@ -40,6 +40,8 @@ conceptual docs.
   color-space decisions.
 - [verify:v3](verify-v3.md): release-gate command, checks, artifacts, and
   pass/fail semantics.
+- [verify:v5](verify-v5.md): current V5 visual-quality scene gate, artifacts,
+  and scope limits.
 - [Diagnostics](diagnostics.md): diagnostic shape, namespaces, and V3 priority
   domains.
 - [Tech Stack](tech-stack.md): planned implementation stack for TypeScript,
