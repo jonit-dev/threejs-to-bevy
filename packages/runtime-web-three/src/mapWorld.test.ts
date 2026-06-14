@@ -4,7 +4,8 @@ import test from "node:test";
 import * as THREE from "three";
 
 import { loadBundle } from "./loadBundle.js";
-import { advanceAnimationPlayback, mapWorld } from "./mapWorld.js";
+import type { IWebBundle } from "./loadBundle.js";
+import { advanceAnimationPlayback, hasAnimationPlayback, loadWorldModelAssets, mapWorld } from "./mapWorld.js";
 
 test("mapWorld should map cube fixture to three scene", async () => {
   const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/cube-scene/game.bundle"));
@@ -263,6 +264,73 @@ test("mapWorld should attach animation playback state to model renderers", () =>
 
   advanceAnimationPlayback(mapped, 0.5);
   assert.equal(mapped.objectsById.get("hero")?.userData.threeNativeAnimation.timeSeconds, 0.5);
+});
+
+test("loadWorldModelAssets should attach loaded glTF scenes and bind animation mixers", async () => {
+  const bundle: IWebBundle = {
+    assets: {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [
+        {
+          id: "model.hero",
+          kind: "model",
+          format: "glb",
+          path: "assets/hero.glb",
+          animations: [{ id: "run", loop: false, sourceClip: "Armature|Run", speed: 2 }],
+        },
+      ],
+    },
+    manifest: {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "animated-model",
+      requiredCapabilities: {},
+      entry: { world: "world.ir.json" },
+      files: { assets: "assets.manifest.json", materials: "materials.ir.json", targetProfile: "target.profile.json" },
+    },
+    materials: { schema: "threenative.materials", version: "0.1.0", materials: [{ id: "mat.main", kind: "standard", color: "#ffffff" }] },
+    targetProfile: { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] },
+    world: {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [
+        {
+          id: "hero",
+          components: { MeshRenderer: { mesh: "model.hero", material: "mat.main" }, Transform: { position: [0, 0, 0] } },
+        },
+      ],
+    },
+  };
+  const mapped = mapWorld(bundle);
+  const loadedModel = new THREE.Group();
+  loadedModel.add(new THREE.SkinnedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial()));
+  const clip = new THREE.AnimationClip("Armature|Run", 1, [
+    new THREE.NumberKeyframeTrack(".position[x]", [0, 1], [0, 2]),
+  ]);
+  let requestedUrl = "";
+
+  await loadWorldModelAssets(mapped, bundle, "/game.bundle/", {
+    loader: {
+      async loadAsync(url: string) {
+        requestedUrl = url;
+        return { animations: [clip], scene: loadedModel };
+      },
+    },
+  });
+
+  const object = mapped.objectsById.get("hero");
+  assert.ok(object instanceof THREE.Mesh);
+  assert.equal(requestedUrl, "/game.bundle/assets/hero.glb");
+  assert.equal(object.children[0], loadedModel);
+  assert.equal(object.geometry.getAttribute("position"), undefined);
+  assert.equal(object.userData.threeNativeAnimationClip, "Armature|Run");
+  assert.equal(object.userData.threeNativeAnimationMixer instanceof THREE.AnimationMixer, true);
+  assert.equal(hasAnimationPlayback(mapped), true);
+
+  advanceAnimationPlayback(mapped, 0.25);
+  assert.equal(object.userData.threeNativeAnimation.timeSeconds, 0.5);
+  assert.equal(loadedModel.position.x, 1);
 });
 
 test("mapWorld should apply supported material texture slots", () => {

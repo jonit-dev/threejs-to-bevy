@@ -599,10 +599,13 @@ controller work.
 The animation P0 has moved from trace-only metadata toward runtime playback:
 model-backed renderers now receive a derived active animation playback state
 from clip and graph metadata in both web and Bevy, including active state, clip,
-source clip, loop flag, speed, and deterministic time advancement. Actual
-skinned-mesh deformation from loaded glTF animation clips remains the remaining
-P0 animation gap, along with richer graph runtime control, stop/state queries,
-IK, retargeting, and rendered particles.
+source clip, loop flag, speed, and deterministic time advancement. The web
+runtime now also resolves model-backed mesh renderers to bundle-local glTF/GLB
+scenes, replaces the placeholder geometry, and drives the selected visual clip
+through a Three.js `AnimationMixer`. Native Bevy visual playback and cross-runtime
+skinned-mesh deformation proof remain the remaining P0 animation gap, along
+with richer graph runtime control, stop/state queries, IK, retargeting, and
+rendered particles.
 
 ## V3 Proves
 

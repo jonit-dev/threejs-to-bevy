@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import type { IAssetIr, IMaterialIr, IRuntimeDiagnostic, IWorldEntity, IWorldIr } from "@threenative/ir";
 import { advanceAnimationPlaybackState, animationPlaybackState, type IAnimationPlaybackState } from "./animation.js";
 import type { IWebBundle } from "./loadBundle.js";
@@ -10,6 +11,19 @@ export interface IThreeWorld {
   diagnostics: IRuntimeDiagnostic[];
   objectsById: Map<string, THREE.Object3D>;
   scene: THREE.Scene;
+}
+
+interface IGltfModel {
+  animations?: THREE.AnimationClip[];
+  scene: THREE.Object3D;
+}
+
+export interface IWorldModelLoader {
+  loadAsync(url: string): Promise<IGltfModel>;
+}
+
+export interface ILoadWorldModelAssetsOptions {
+  loader?: IWorldModelLoader;
 }
 
 export function mapWorld(bundle: IWebBundle): IThreeWorld {
@@ -74,6 +88,48 @@ export function advanceAnimationPlayback(mapped: IThreeWorld, fixedDelta: number
     if (playback !== undefined) {
       object.userData.threeNativeAnimation = advanceAnimationPlaybackState(playback, fixedDelta);
     }
+    const mixer = object.userData.threeNativeAnimationMixer as THREE.AnimationMixer | undefined;
+    if (mixer !== undefined) {
+      mixer.update(fixedDelta);
+    }
+  }
+}
+
+export function hasAnimationPlayback(mapped: IThreeWorld): boolean {
+  return [...mapped.objectsById.values()].some((object) => object.userData.threeNativeAnimation !== undefined);
+}
+
+export async function loadWorldModelAssets(
+  mapped: IThreeWorld,
+  bundle: IWebBundle,
+  source: string,
+  options: ILoadWorldModelAssetsOptions = {},
+): Promise<void> {
+  const loader = options.loader ?? new GLTFLoader();
+  const assetsById = new Map(bundle.assets.assets.map((asset) => [asset.id, asset]));
+  const entities = [...bundle.world.entities].sort((left, right) => left.id.localeCompare(right.id));
+  for (const entity of entities) {
+    const renderer = entity.components.MeshRenderer;
+    const asset = renderer === undefined ? undefined : assetsById.get(renderer.mesh);
+    if (asset?.kind !== "model" || asset.path === undefined || !isLoadableModelFormat(asset)) {
+      continue;
+    }
+    const object = mapped.objectsById.get(entity.id);
+    if (object === undefined) {
+      continue;
+    }
+    try {
+      const gltf = await loader.loadAsync(bundleUrl(source, asset.path));
+      attachLoadedModel(object, asset, gltf);
+    } catch (error) {
+      const reason = error instanceof Error ? ` ${error.message}` : "";
+      mapped.diagnostics.push({
+        code: "TN-WEB-MODEL-LOAD-FAILED",
+        message: `Failed to load model asset '${asset.id}'.${reason}`,
+        path: `assets.manifest.json/assets/${asset.id}/path`,
+        severity: "warning",
+      });
+    }
   }
 }
 
@@ -134,6 +190,63 @@ function mapEntity(
   }
 
   return new THREE.Object3D();
+}
+
+function attachLoadedModel(object: THREE.Object3D, asset: Extract<IAssetIr, { kind: "model" }>, gltf: IGltfModel): void {
+  const model = gltf.scene;
+  model.name = model.name === "" ? `model:${asset.id}` : model.name;
+  prepareLoadedModel(model);
+  clearPlaceholderGeometry(object);
+  object.add(model);
+
+  const playback = object.userData.threeNativeAnimation as IAnimationPlaybackState | undefined;
+  if (playback === undefined) {
+    return;
+  }
+  const clip = selectAnimationClip(gltf.animations ?? [], playback);
+  if (clip === undefined) {
+    return;
+  }
+  const mixer = new THREE.AnimationMixer(model);
+  const action = mixer.clipAction(clip);
+  action.setLoop(playback.loop ? THREE.LoopRepeat : THREE.LoopOnce, playback.loop ? Infinity : 1);
+  action.clampWhenFinished = !playback.loop;
+  action.timeScale = playback.speed;
+  action.play();
+  object.userData.threeNativeAnimationMixer = mixer;
+  object.userData.threeNativeAnimationAction = action;
+  object.userData.threeNativeAnimationClip = clip.name;
+}
+
+function prepareLoadedModel(model: THREE.Object3D): void {
+  model.traverse((child) => {
+    if (child instanceof THREE.Mesh) {
+      child.castShadow = true;
+      child.receiveShadow = true;
+    }
+  });
+}
+
+function clearPlaceholderGeometry(object: THREE.Object3D): void {
+  if (!(object instanceof THREE.Mesh)) {
+    return;
+  }
+  object.geometry.dispose();
+  object.geometry = new THREE.BufferGeometry();
+}
+
+function selectAnimationClip(clips: readonly THREE.AnimationClip[], playback: IAnimationPlaybackState): THREE.AnimationClip | undefined {
+  return clips.find((clip) => clip.name === playback.sourceClip)
+    ?? clips.find((clip) => clip.name === playback.clip)
+    ?? clips[0];
+}
+
+function isLoadableModelFormat(asset: Extract<IAssetIr, { kind: "model" }>): boolean {
+  return asset.format === "gltf" || asset.format === "glb";
+}
+
+function bundleUrl(source: string, file: string): string {
+  return `${source.replace(/\/$/, "")}/${file}`;
 }
 
 function mapGeometry(asset: IAssetIr): THREE.BufferGeometry {

@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import type { IAtmosphereProfileIr } from "@threenative/ir";
 import { loadBundle } from "./loadBundle.js";
-import { mapWorld, type IRuntimeDiagnostic } from "./mapWorld.js";
+import { advanceAnimationPlayback, hasAnimationPlayback, loadWorldModelAssets, mapWorld, type IRuntimeDiagnostic } from "./mapWorld.js";
 import { applyEnvironmentBookmark, createEnvironmentRuntime, loadEnvironmentAssetInstances } from "./environment.js";
 import { applyAtmosphereProfile } from "./rendering.js";
 import { createGameLoopState, runGameFrame } from "./gameLoop.js";
@@ -27,6 +27,7 @@ export interface IRenderOptions {
 export async function renderBundle(source: string, container: HTMLElement, options: IRenderOptions = {}): Promise<IRenderResult> {
   const bundle = await loadBundle(source);
   const mapped = mapWorld(bundle);
+  await loadWorldModelAssets(mapped, bundle, source);
   const environment = createEnvironmentRuntime(bundle, { renderPlaceholders: false });
   if (environment !== undefined) {
     applyAtmosphereProfile(mapped.scene, bundle.environmentScene?.atmosphere);
@@ -77,24 +78,29 @@ export async function renderBundle(source: string, container: HTMLElement, optio
     });
     uiOverlay?.update();
   }
+  advanceAnimationPlayback(mapped, 1 / 60);
   renderer.render(mapped.scene, mapped.camera);
-  if (bundle.systems !== undefined) {
+  if (bundle.systems !== undefined || hasAnimationPlayback(mapped)) {
     let lastTime = performance.now();
     const frame = (time: number) => {
       const delta = Math.max(0, (time - lastTime) / 1000);
       lastTime = time;
-      void runGameFrame({
-        componentSchemas: bundle.componentSchemas,
-        delta,
-        effectLog,
-        input,
-        mapped,
-        module: systemModule,
-        runtimeConfig: bundle.runtimeConfig,
-        state: loopState,
-        systems: bundle.systems!,
-        world: bundle.world,
-      }).then(() => {
+      const gameFrame = bundle.systems === undefined
+        ? Promise.resolve()
+        : runGameFrame({
+            componentSchemas: bundle.componentSchemas,
+            delta,
+            effectLog,
+            input,
+            mapped,
+            module: systemModule,
+            runtimeConfig: bundle.runtimeConfig,
+            state: loopState,
+            systems: bundle.systems,
+            world: bundle.world,
+          });
+      void gameFrame.then(() => {
+        advanceAnimationPlayback(mapped, delta);
         uiOverlay?.update();
         renderer.render(mapped.scene, mapped.camera);
         requestAnimationFrame(frame);
