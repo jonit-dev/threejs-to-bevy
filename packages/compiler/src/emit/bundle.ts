@@ -453,6 +453,15 @@ function collectUiCapabilities(ui: IUiIr | undefined, add: (domain: string, capa
     return;
   }
   add("ui", "runtime");
+  if (ui.focusOrder !== undefined) {
+    add("ui", "focus-order");
+  }
+  if (ui.inputActions !== undefined) {
+    add("ui", "input-actions");
+  }
+  if (ui.safeArea !== undefined) {
+    add("ui", "safe-area");
+  }
   visitUiNode(ui.root, add);
 }
 
@@ -466,6 +475,9 @@ function visitUiNode(node: IUiIr["root"], add: (domain: string, capability: stri
   }
   if (node.focusable === true) {
     add("ui", "focusable");
+  }
+  if (node.navigation !== undefined) {
+    add("ui", "navigation");
   }
   for (const child of node.children ?? []) {
     visitUiNode(child, add);
