@@ -8,6 +8,20 @@
       "format": "generated",
       "primitive": "box",
       "size": [1, 1, 1]
+    },
+    {
+      "id": "mesh.capsule",
+      "kind": "mesh",
+      "format": "generated",
+      "primitive": "capsule",
+      "size": [0.35, 1.1]
+    },
+    {
+      "id": "mesh.cylinder",
+      "kind": "mesh",
+      "format": "generated",
+      "primitive": "cylinder",
+      "size": [0.45, 1.2]
     }
   ]
 }

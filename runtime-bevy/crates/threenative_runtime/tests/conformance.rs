@@ -74,6 +74,38 @@ fn should_report_basic_scene_conformance_semantics() {
         .expect("cube mesh should be reported");
     assert_eq!(cube_mesh.kind, "mesh");
     assert_eq!(cube_mesh.primitive.as_deref(), Some("box"));
+    assert_eq!(
+        report
+            .assets
+            .iter()
+            .find(|asset| asset.id == "mesh.capsule")
+            .and_then(|asset| asset.primitive.as_deref()),
+        Some("capsule")
+    );
+    assert_eq!(
+        report
+            .assets
+            .iter()
+            .find(|asset| asset.id == "mesh.cylinder")
+            .and_then(|asset| asset.primitive.as_deref()),
+        Some("cylinder")
+    );
+    assert_eq!(
+        report
+            .entities
+            .iter()
+            .find(|entity| entity.id == "capsule.actor")
+            .and_then(|entity| entity.mesh.as_deref()),
+        Some("mesh.capsule")
+    );
+    assert_eq!(
+        report
+            .entities
+            .iter()
+            .find(|entity| entity.id == "cylinder.actor")
+            .and_then(|entity| entity.mesh.as_deref()),
+        Some("mesh.cylinder")
+    );
 
     assert!(report.entities.iter().any(|entity| {
         entity.id == "camera.main"

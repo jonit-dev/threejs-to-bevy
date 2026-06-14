@@ -109,6 +109,8 @@ diagnostic, and entity observations, while report mismatches carry
 JSON-path-like locations plus bundle/artifact paths. The Bevy runtime also provides a headless
 `threenative_conformance` command, and `pnpm verify:conformance` writes an
 inspectable native summary at `artifacts/conformance/basic-scene/bevy.report.json`.
+The shared `basic-scene` fixture now also proves capsule and cylinder generated
+mesh assets and mesh-renderer entities across web and Bevy conformance reports.
 
 V5-03 has landed the diagnostic-shape normalization slice: IR diagnostics now
 carry optional severity and concrete suggestions for high-volume bundle

@@ -47,6 +47,40 @@
       }
     },
     {
+      "id": "capsule.actor",
+      "components": {
+        "Transform": {
+          "position": [-1, 0.55, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        },
+        "Hierarchy": {
+          "parent": "scene.root"
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.capsule",
+          "material": "mat.cube"
+        }
+      }
+    },
+    {
+      "id": "cylinder.actor",
+      "components": {
+        "Transform": {
+          "position": [0, 0.6, -1],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        },
+        "Hierarchy": {
+          "parent": "scene.root"
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.cylinder",
+          "material": "mat.cube"
+        }
+      }
+    },
+    {
       "id": "light.key",
       "components": {
         "Transform": {

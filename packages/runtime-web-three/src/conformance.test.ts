@@ -39,6 +39,10 @@ test("should report basic scene conformance semantics", async () => {
   assert.ok(cubeMesh);
   assert.equal(cubeMesh.kind, "mesh");
   assert.equal(cubeMesh.primitive, "box");
+  assert.equal(report.assets.find((asset) => asset.id === "mesh.capsule")?.primitive, "capsule");
+  assert.equal(report.assets.find((asset) => asset.id === "mesh.cylinder")?.primitive, "cylinder");
+  assert.equal(report.entities.find((entity) => entity.id === "capsule.actor")?.mesh, "mesh.capsule");
+  assert.equal(report.entities.find((entity) => entity.id === "cylinder.actor")?.mesh, "mesh.cylinder");
 
   assert.ok(report.entities.find((entity) => entity.id === "camera.main")?.components.includes("Camera"));
   assert.equal(report.entities.find((entity) => entity.id === "light.key")?.light?.kind, "directional");

@@ -58,6 +58,8 @@ test("should include capability tags for each conformance fixture", async () => 
 
   assertFixtureCapabilities(byName, "basic-scene", [
     "rendering:mesh.primitive.box",
+    "rendering:mesh.primitive.capsule",
+    "rendering:mesh.primitive.cylinder",
     "rendering:material.standard",
     "rendering:light.directional",
     "rendering:camera.perspective",

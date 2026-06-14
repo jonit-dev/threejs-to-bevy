@@ -5,6 +5,8 @@
   "requiredCapabilities": {
     "rendering": [
       "mesh.primitive.box",
+      "mesh.primitive.capsule",
+      "mesh.primitive.cylinder",
       "material.standard",
       "light.directional",
       "camera.perspective"

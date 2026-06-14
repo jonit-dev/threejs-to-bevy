@@ -28,7 +28,7 @@ only authored IR inputs and catalog documentation.
 
 | Fixture | Capability tags | Purpose |
 | --- | --- | --- |
-| `basic-scene` | `rendering:mesh.primitive.box`, `rendering:material.standard`, `rendering:light.directional`, `rendering:camera.perspective`, `transform:hierarchy` | Baseline scene for transform hierarchy, generated mesh, standard material, camera, and light mapping. |
+| `basic-scene` | `rendering:mesh.primitive.box`, `rendering:mesh.primitive.capsule`, `rendering:mesh.primitive.cylinder`, `rendering:material.standard`, `rendering:light.directional`, `rendering:camera.perspective`, `transform:hierarchy` | Baseline scene for transform hierarchy, generated meshes, standard material, camera, and light mapping. |
 | `v6-animation-clips` | `animation:clip-metadata`, `animation:playback-service`, `asset:model.glb`, `scripting:schedule.update`, `scripting:script-bundle`, `scripting:systems` | V6 animation clip contract fixture for deterministic model asset clip metadata, `animation.play` service trace evidence, and V7 animation graph deferrals. |
 | `v6-physics-events` | `physics:collider.box`, `physics:collider.sphere`, `physics:collision-events`, `physics:rigid-body.kinematic`, `physics:rigid-body.static`, `physics:trigger-collider` | V6 physics event fixture for deterministic collision and trigger enter observations in web and Bevy conformance reports. |
 | `v6-retained-ui` | `ui:action`, `ui:binding.resource`, `ui:focusable`, `ui:node.bar`, `ui:node.button`, `ui:node.column`, `ui:node.stack`, `ui:node.text`, `ui:runtime` | V6 retained UI fixture for portable HUD text, bar, button, resource binding metadata, and focus/action observations. |
