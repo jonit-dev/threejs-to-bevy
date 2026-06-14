@@ -79,7 +79,7 @@ async function runSystem(
     return { diagnostics: [] };
   }
   const fn = readSystemFunction(options.module, system.script.exportName);
-  const { commands, context, events, services } = createSystemContext(options.world, {
+  const { commands, context, events, resources, services } = createSystemContext(options.world, {
     defaultQuery: system.queries[0],
     delta: options.delta ?? 0,
     elapsed: options.elapsed ?? 0,
@@ -88,7 +88,7 @@ async function runSystem(
     paused: options.paused ?? false,
   });
   await fn(context);
-  const result = applySystemEffects(options.world, system, { commands, events, services }, { frame: options.frame ?? 0, tick: options.tick ?? 0 });
+  const result = applySystemEffects(options.world, system, { commands, events, resources, services }, { frame: options.frame ?? 0, tick: options.tick ?? 0 });
   if (options.effectLog !== undefined) {
     appendSystemEffectLog(options.effectLog, result.entries);
   }

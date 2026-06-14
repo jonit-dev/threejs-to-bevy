@@ -1,6 +1,6 @@
 import type { IrSystemSchedule } from "@threenative/ir";
 
-export type SystemEffectKind = "command" | "event" | "patch" | "service";
+export type SystemEffectKind = "command" | "event" | "patch" | "resource" | "service";
 
 export interface ISystemEffectLogEntry {
   command?: string;
@@ -10,6 +10,7 @@ export interface ISystemEffectLogEntry {
   frame: number;
   kind: SystemEffectKind;
   payload?: unknown;
+  resource?: string;
   schedule: IrSystemSchedule;
   service?: string;
   system: string;
@@ -58,6 +59,7 @@ function entryKey(entry: ISystemEffectLogEntry): string {
     entry.entity ?? "",
     entry.component ?? "",
     entry.event ?? "",
+    entry.resource ?? "",
     entry.service ?? "",
     JSON.stringify(entry.payload ?? entry.value ?? null),
   ].join("\u0000");

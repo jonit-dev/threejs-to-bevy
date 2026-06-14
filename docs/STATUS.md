@@ -220,9 +220,12 @@ conformance, docs, example scene, and `verify:v6` release gate evidence lands.
 V6-01 has started with the SDK/IR declaration slice: portable system metadata
 now carries deterministic `resourceReads` and `resourceWrites`, compiler emit
 preserves those fields in `systems.ir.json`, and IR validation rejects resource
-access declarations that lack matching resource schemas. Runtime permission
-enforcement, resource write effect logs, web/native trace parity, conformance
-observations, and V6 scene evidence remain part of the later V6-01 phases.
+access declarations that lack matching resource schemas. The web runtime now
+queues `ctx.resources.set` calls as validated resource write effects, rejects
+undeclared web resource writes before mutation, and records resource writes in
+the canonical web system effect log. Native Bevy permission enforcement,
+web/native trace parity, conformance observations, and V6 scene evidence remain
+part of later V6-01 phases.
 
 V7 is now planned as the deep engine gap-closure milestone. It should continue
 parity work that is too large or risky for V6, such as deeper physics,

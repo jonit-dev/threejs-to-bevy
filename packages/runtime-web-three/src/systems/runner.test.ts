@@ -109,6 +109,7 @@ test("should run systems expose resources events and input context", async () =>
   world.events = { DamageEvent: [{ amount: 2 }] };
   const systems = makeSystems("update", "useContext");
   systems.systems[0]!.eventWrites = ["DamageEvent"];
+  systems.systems[0]!.resourceWrites = ["Score"];
 
   await runSchedule({
     module: {

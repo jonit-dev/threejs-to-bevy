@@ -12,6 +12,7 @@ test("should apply transform patch after system", () => {
     {
       commands: [{ component: "Transform", entity: "player", kind: "setComponent", source: "entity", value: { position: [1, 0, 0] } }],
       events: [],
+      resources: [],
       services: [],
     },
     { frame: 0, tick: 0 },
@@ -30,6 +31,7 @@ test("should flush spawn command after stage", () => {
     {
       commands: [{ components: { Transform: { position: [0, 1, 0] } }, entity: "marker", kind: "spawn", source: "command" }],
       events: [],
+      resources: [],
       services: [],
     },
     { frame: 0, tick: 0 },
@@ -47,6 +49,7 @@ test("should reject undeclared command before applying effects", () => {
     {
       commands: [{ components: { Transform: { position: [0, 1, 0] } }, entity: "marker", kind: "spawn", source: "command" }],
       events: [],
+      resources: [],
       services: [],
     },
     { frame: 0, tick: 0 },
@@ -64,6 +67,7 @@ test("should log declared service and reject undeclared service", () => {
     {
       commands: [],
       events: [],
+      resources: [],
       services: [{ payload: { request: { clip: "run", entity: "player", options: {} }, result: { accepted: true } }, service: "animation.play" }],
     },
     { frame: 1, tick: 2 },
@@ -86,12 +90,62 @@ test("should log declared service and reject undeclared service", () => {
     {
       commands: [],
       events: [],
+      resources: [],
       services: [{ payload: { request: {}, result: { hit: false } }, service: "physics.raycast" }],
     },
     { frame: 1, tick: 2 },
   );
 
   assert.equal(rejected.diagnostics[0]?.code, "TN_WEB_SYSTEM_SERVICE_UNDECLARED");
+});
+
+test("should apply and log declared resource writes", () => {
+  const world = makeWorld();
+  world.resources = { Score: { value: 1 } };
+
+  const result = applySystemEffects(
+    world,
+    makeSystem({ resourceWrites: ["Score"] }),
+    {
+      commands: [],
+      events: [],
+      resources: [{ resource: "Score", value: { value: 2 } }],
+      services: [],
+    },
+    { frame: 3, tick: 4 },
+  );
+
+  assert.deepEqual(result.diagnostics, []);
+  assert.deepEqual(world.resources.Score, { value: 2 });
+  assert.deepEqual(result.entries[0], {
+    frame: 3,
+    kind: "resource",
+    resource: "Score",
+    schedule: "fixedUpdate",
+    system: "move",
+    tick: 4,
+    value: { value: 2 },
+  });
+});
+
+test("should reject undeclared resource writes before applying effects", () => {
+  const world = makeWorld();
+  world.resources = { Score: { value: 1 } };
+
+  const result = applySystemEffects(
+    world,
+    makeSystem(),
+    {
+      commands: [],
+      events: [],
+      resources: [{ resource: "Score", value: { value: 2 } }],
+      services: [],
+    },
+    { frame: 0, tick: 0 },
+  );
+
+  assert.equal(result.diagnostics[0]?.code, "TN_WEB_SYSTEM_RESOURCE_WRITE_UNDECLARED");
+  assert.deepEqual(world.resources.Score, { value: 1 });
 });
 
 function makeWorld(): IWorldIr {

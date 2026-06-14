@@ -231,6 +231,7 @@ validated against `systems.ir.json`.
 | `ctx.query()` | Iterates matching entities. | Returns stable entity IDs and declared component snapshots only. |
 | `ctx.time` | Fixed and variable timestep data. | Runtime-provided resource; no wall-clock access from scripts. |
 | `ctx.input` | Logical actions and axes. | Reads `input.ir.json` mappings and current input state. |
+| `ctx.resources` | Reads and writes declared singleton world state. | Reads are cloned snapshots; writes are queued effects and apply only after `resourceWrites` validation. |
 | `ctx.events` | Reads and emits typed events. | Event schemas are declared and queues are runtime-owned. |
 | `ctx.commands` | Structural world changes. | Commands flush at schedule boundaries after validation. |
 | `ctx.physics` | Controlled physics queries and body commands. | Runtime service facade; no Rapier or Bevy physics handles. |
@@ -358,6 +359,25 @@ Runtime effects:
 - Native maps commands to Bevy animation state.
 - Scripts see only stable clip IDs, state names, booleans, numbers, and plain
   data.
+
+## Resources
+
+Resources are typed singleton world state:
+
+```ts
+const score = ctx.resources.get("Score");
+ctx.resources.set("Score", { value: score.value + 1 });
+```
+
+Rules:
+
+- Systems may write only resources listed in `resourceWrites`.
+- Web resource writes are queued as runtime effects, validated before mutation,
+  and recorded in the canonical system effect log.
+- Resource reads return cloned snapshots; systems should not rely on mutating a
+  returned object.
+- Native resource write parity is V6 runtime work and must be proven with Bevy
+  QuickJS evidence before release.
 
 ## Events
 

@@ -70,6 +70,11 @@ export interface IQueuedEvent {
   payload: unknown;
 }
 
+export interface IQueuedResourceWrite {
+  resource: string;
+  value: unknown;
+}
+
 export interface IQueuedServiceCall {
   payload: unknown;
   service: "animation.play" | "physics.raycast";
@@ -82,10 +87,12 @@ export function createSystemContext(
   commands: IQueuedCommand[];
   context: ISystemContext;
   events: IQueuedEvent[];
+  resources: IQueuedResourceWrite[];
   services: IQueuedServiceCall[];
 } {
   const commands: IQueuedCommand[] = [];
   const events: IQueuedEvent[] = [];
+  const resources: IQueuedResourceWrite[] = [];
   const services: IQueuedServiceCall[] = [];
   return {
     commands,
@@ -148,10 +155,7 @@ export function createSystemContext(
           return cloneValue(world.resources?.[name]);
         },
         set(name, value) {
-          world.resources = {
-            ...(world.resources ?? {}),
-            [name]: cloneValue(value),
-          };
+          resources.push({ resource: normalizeHandleName(name), value: cloneValue(value) });
         },
       },
       physics: {
@@ -172,6 +176,7 @@ export function createSystemContext(
       },
     },
     events,
+    resources,
     services,
   };
 }
@@ -266,6 +271,16 @@ export function applyEvents(world: IWorldIr, events: ReadonlyArray<IQueuedEvent>
     queues[event.event] = Array.isArray(queue) ? [...queue, event.payload] : [event.payload];
   }
   world.events = queues;
+}
+
+export function applyResourceWrites(world: IWorldIr, resources: ReadonlyArray<IQueuedResourceWrite>): void {
+  if (resources.length === 0) {
+    return;
+  }
+  world.resources = {
+    ...(world.resources ?? {}),
+    ...Object.fromEntries(resources.map((resource) => [resource.resource, cloneValue(resource.value)])),
+  };
 }
 
 function matchesQuery(entity: IWorldEntity, query: IIrSystemQuery): boolean {

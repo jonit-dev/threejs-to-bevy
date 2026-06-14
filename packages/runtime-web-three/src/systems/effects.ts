@@ -1,11 +1,20 @@
 import type { IIrSystemDeclaration, IRuntimeDiagnostic, IWorldIr } from "@threenative/ir";
 
-import { applyCommands, applyEvents, type IQueuedCommand, type IQueuedEvent, type IQueuedServiceCall } from "./context.js";
+import {
+  applyCommands,
+  applyEvents,
+  applyResourceWrites,
+  type IQueuedCommand,
+  type IQueuedEvent,
+  type IQueuedResourceWrite,
+  type IQueuedServiceCall,
+} from "./context.js";
 import type { ISystemEffectLogEntry } from "./log.js";
 
 export interface ISystemEffects {
   commands: ReadonlyArray<IQueuedCommand>;
   events: ReadonlyArray<IQueuedEvent>;
+  resources: ReadonlyArray<IQueuedResourceWrite>;
   services: ReadonlyArray<IQueuedServiceCall>;
 }
 
@@ -21,6 +30,7 @@ export function applySystemEffects(
     return { diagnostics, entries };
   }
   applyEvents(world, effects.events);
+  applyResourceWrites(world, effects.resources);
   applyCommands(world, effects.commands);
   return { diagnostics, entries };
 }
@@ -29,6 +39,7 @@ export function validateSystemEffects(system: IIrSystemDeclaration, effects: ISy
   const diagnostics: IRuntimeDiagnostic[] = [];
   const writableComponents = new Set(system.writes);
   const eventWrites = new Set(system.eventWrites);
+  const resourceWrites = new Set(system.resourceWrites);
   const services = new Set(system.services);
 
   for (const command of effects.commands) {
@@ -46,6 +57,12 @@ export function validateSystemEffects(system: IIrSystemDeclaration, effects: ISy
   for (const event of effects.events) {
     if (!eventWrites.has(event.event)) {
       diagnostics.push(effectDiagnostic("TN_WEB_SYSTEM_EVENT_WRITE_UNDECLARED", system, `eventWrites/${event.event}`, `System '${system.name}' emitted undeclared event '${event.event}'.`));
+    }
+  }
+
+  for (const resource of effects.resources) {
+    if (!resourceWrites.has(resource.resource)) {
+      diagnostics.push(effectDiagnostic("TN_WEB_SYSTEM_RESOURCE_WRITE_UNDECLARED", system, `resourceWrites/${resource.resource}`, `System '${system.name}' wrote undeclared resource '${resource.resource}'.`));
     }
   }
 
@@ -84,6 +101,15 @@ export function systemEffectLogEntries(
       schedule: system.schedule,
       system: system.name,
       tick: options.tick,
+    })),
+    ...effects.resources.map((resource) => ({
+      frame: options.frame,
+      kind: "resource" as const,
+      resource: resource.resource,
+      schedule: system.schedule,
+      system: system.name,
+      tick: options.tick,
+      value: resource.value,
     })),
     ...effects.services.map((service) => ({
       frame: options.frame,
