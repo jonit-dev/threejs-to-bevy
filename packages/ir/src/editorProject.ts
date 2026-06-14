@@ -59,7 +59,7 @@ export function validateEditorProjectSnapshot(snapshot: unknown, path = "editor.
     });
   } else {
     for (const [documentPath, document] of Object.entries(snapshot.documents)) {
-      if (!documentPath.endsWith(".json")) {
+      if (!isBundleRelativeJsonPath(documentPath)) {
         diagnostics.push({
           code: "TN_IR_EDITOR_PROJECT_DOCUMENT_PATH_INVALID",
           message: `Editor document '${documentPath}' must be a bundle-relative JSON path.`,
@@ -163,4 +163,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function escapePointer(value: string): string {
   return value.replace(/~/g, "~0").replace(/\//g, "~1");
+}
+
+function isBundleRelativeJsonPath(value: string): boolean {
+  return (
+    value.endsWith(".json") &&
+    !value.startsWith("/") &&
+    !value.startsWith("\\") &&
+    !value.includes("\\") &&
+    !value.split("/").includes("..") &&
+    !value.split("/").includes("")
+  );
 }

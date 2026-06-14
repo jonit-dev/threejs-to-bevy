@@ -70,6 +70,81 @@ test("editor diff should report deterministic structured operations", async () =
   }
 });
 
+test("editor apply should write validated structured documents back to a bundle", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-editor-apply-"));
+  try {
+    const bundlePath = join(root, "game.bundle");
+    const snapshotPath = join(root, "editor.project.json");
+    await writeBundleFixture(bundlePath);
+    await writeFile(
+      snapshotPath,
+      `${JSON.stringify(
+        {
+          documents: {
+            "world.ir.json": {
+              entities: [{ components: { Transform: { position: [1, 2, 3] } }, id: "player" }],
+              schema: "threenative.world",
+              version: "0.1.0",
+            },
+          },
+          name: "edited",
+          schema: "threenative.editor-project",
+          version: "0.1.0",
+        },
+        null,
+        2,
+      )}\n`,
+    );
+
+    const result = await editorCommand(["apply", "--snapshot", snapshotPath, "--bundle", bundlePath, "--json"], { cwd: root });
+    const payload = JSON.parse(result.stdout) as { code: string; documents: string[]; path: string };
+    const world = JSON.parse(await readFile(join(bundlePath, "world.ir.json"), "utf8")) as {
+      entities: Array<{ components: { Transform: { position: number[] } }; id: string }>;
+    };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.code, "TN_EDITOR_APPLY_OK");
+    assert.equal(payload.path, bundlePath);
+    assert.deepEqual(payload.documents, ["world.ir.json"]);
+    assert.deepEqual(world.entities[0], { components: { Transform: { position: [1, 2, 3] } }, id: "player" });
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("editor apply should reject snapshots with non-bundle-relative document paths", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-editor-apply-invalid-"));
+  try {
+    const bundlePath = join(root, "game.bundle");
+    const snapshotPath = join(root, "editor.project.json");
+    await writeBundleFixture(bundlePath);
+    await writeFile(
+      snapshotPath,
+      `${JSON.stringify(
+        {
+          documents: {
+            "../world.ir.json": { entities: [], schema: "threenative.world", version: "0.1.0" },
+          },
+          name: "edited",
+          schema: "threenative.editor-project",
+          version: "0.1.0",
+        },
+        null,
+        2,
+      )}\n`,
+    );
+
+    const result = await editorCommand(["apply", "--snapshot", snapshotPath, "--bundle", bundlePath, "--json"], { cwd: root });
+    const payload = JSON.parse(result.stdout) as { code: string; diagnostics: Array<{ code: string }> };
+
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.code, "TN_EDITOR_APPLY_INVALID");
+    assert.equal(payload.diagnostics[0]?.code, "TN_IR_EDITOR_PROJECT_DOCUMENT_PATH_INVALID");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 function editorSnapshot(entityName: string): unknown {
   return {
     documents: {

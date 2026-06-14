@@ -1,7 +1,9 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { basename, dirname, resolve } from "node:path";
 import {
   diffEditorProjectSnapshots,
+  validateBundle,
   validateEditorProjectSnapshot,
   type IBundleManifest,
   type IEditorProjectSnapshot,
@@ -18,6 +20,7 @@ type JsonRecord = Record<string, unknown>;
 
 const usage = [
   "tn editor snapshot --bundle <path> [--out <path>] [--json]",
+  "tn editor apply --snapshot <path> --bundle <path> [--json]",
   "tn editor diff --before <path> --after <path> [--json]",
 ].join("\n");
 
@@ -32,6 +35,10 @@ export async function editorCommand(argv: readonly string[], options: IEditorOpt
     return snapshotCommand(commandArgv, cwd, json);
   }
 
+  if (subcommand === "apply") {
+    return applyCommand(commandArgv, cwd, json);
+  }
+
   if (subcommand === "diff") {
     return diffCommand(commandArgv, cwd, json);
   }
@@ -44,6 +51,55 @@ export async function editorCommand(argv: readonly string[], options: IEditorOpt
     },
     { exitCode: 1, json, stderr: !json },
   );
+}
+
+async function applyCommand(argv: readonly string[], cwd: string, json: boolean): Promise<ICommandResult> {
+  const snapshotArg = flagValue(argv, "--snapshot");
+  const bundleArg = flagValue(argv, "--bundle");
+  if (snapshotArg === undefined || bundleArg === undefined) {
+    return diagnosticResult(
+      {
+        code: "TN_EDITOR_APPLY_INPUT_MISSING",
+        message: "Editor apply requires --snapshot <path> and --bundle <path>.",
+        usage,
+      },
+      { exitCode: 1, json, stderr: !json },
+    );
+  }
+
+  const snapshotPath = resolve(cwd, snapshotArg);
+  const bundlePath = resolve(cwd, bundleArg);
+  const snapshot = await readEditorSnapshot(snapshotPath);
+  if (snapshot.ok === false) {
+    return diagnosticsResult("TN_EDITOR_APPLY_INVALID", "Editor snapshot is invalid.", snapshot.diagnostics, json);
+  }
+
+  const tempRoot = await mkdtemp(resolve(tmpdir(), "tn-editor-apply-"));
+  const tempBundle = resolve(tempRoot, "game.bundle");
+  try {
+    await cp(bundlePath, tempBundle, { recursive: true });
+    await writeSnapshotDocuments(snapshot.value, tempBundle);
+    const validation = await validateBundle(tempBundle);
+    if (!validation.ok) {
+      return diagnosticsResult("TN_EDITOR_APPLY_BUNDLE_INVALID", "Applied editor snapshot produced an invalid bundle.", validation.diagnostics, json);
+    }
+    await writeSnapshotDocuments(snapshot.value, bundlePath);
+  } finally {
+    await rm(tempRoot, { force: true, recursive: true });
+  }
+
+  const documentPaths = Object.keys(snapshot.value.documents).sort();
+  const payload = {
+    code: "TN_EDITOR_APPLY_OK",
+    documents: documentPaths,
+    message: `Editor snapshot applied ${documentPaths.length} document(s).`,
+    path: bundlePath,
+  };
+
+  return {
+    exitCode: 0,
+    stdout: json ? `${JSON.stringify(payload, null, 2)}\n` : `${payload.message}\n`,
+  };
 }
 
 async function snapshotCommand(argv: readonly string[], cwd: string, json: boolean): Promise<ICommandResult> {
@@ -105,6 +161,14 @@ async function snapshotCommand(argv: readonly string[], cwd: string, json: boole
     exitCode: 0,
     stdout: json ? `${JSON.stringify(payload, null, 2)}\n` : `${payload.message}\n`,
   };
+}
+
+async function writeSnapshotDocuments(snapshot: IEditorProjectSnapshot, bundlePath: string): Promise<void> {
+  for (const [documentPath, document] of Object.entries(snapshot.documents)) {
+    const outputPath = resolve(bundlePath, documentPath);
+    await mkdir(dirname(outputPath), { recursive: true });
+    await writeFile(outputPath, `${JSON.stringify(document, null, 2)}\n`);
+  }
 }
 
 async function diffCommand(argv: readonly string[], cwd: string, json: boolean): Promise<ICommandResult> {

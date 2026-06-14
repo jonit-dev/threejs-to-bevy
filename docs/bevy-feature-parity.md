@@ -34,7 +34,7 @@ diagnostics. The baseline remains Bevy `=0.14.2`, not latest Bevy.
 - [x] Bevy-style computed states and substates
 - [x] Observer/event propagation model
 - [x] Component hooks and lifecycle hooks
-- [ ] Scene serialization/deserialization as an authoring feature
+- [x] Scene serialization/deserialization as an authoring feature
 - [ ] Reflection/type registration surface for portable components
 - [ ] Async task/channel patterns
 - [ ] Plugin/plugin-group composition as a portable declaration
@@ -241,9 +241,9 @@ diagnostics. The baseline remains Bevy `=0.14.2`, not latest Bevy.
 
 - [x] Local editor project snapshot validation
 - [x] Deterministic structured bundle-relative JSON diffs
-- [x] CLI entry points for `tn editor snapshot` and `tn editor diff`
+- [x] CLI entry points for `tn editor snapshot`, `tn editor apply`, and `tn editor diff`
 - [ ] Visual editor UI and inspector panels
-- [ ] Save/load round trips through structured SDK/ECS/IR data
+- [x] Save/load round trips through structured SDK/ECS/IR data
 - [ ] Scene hierarchy inspector and property editing
 - [ ] Gizmo overlays for transforms, lights, bounds, cameras, and UI nodes
 - [ ] Gamepad, scene viewer, and asset preview tools
@@ -263,7 +263,7 @@ diagnostics. The baseline remains Bevy `=0.14.2`, not latest Bevy.
 
 | Feature | Status | Done | Missing / gap |
 | --- | --- | --- | --- |
-| ECS entities/components | ⚠️ | Stable entity IDs, transforms, hierarchy, component schemas, V4/V6 system declarations; web and native tests now prove command-buffer spawn/despawn reconciliation across later schedules, including querying a spawned component before despawn; V7 validates declared component `onAdd`/`onInsert` hook observations and exposes them through web/native `ctx.components.hooks()` fixed-trace evidence. | Full gameplay host, broad dynamic reconciliation against live rendered Bevy entities, command-time/removal component hook callbacks, system-local persisted state, and richer lifecycle remain incomplete. |
+| ECS entities/components | ⚠️ | Stable entity IDs, transforms, hierarchy, component schemas, V4/V6 system declarations; web and native tests now prove command-buffer spawn/despawn reconciliation across later schedules, including querying a spawned component before despawn; V7 validates declared component `onAdd`/`onInsert` hook observations and exposes them through web/native `ctx.components.hooks()` fixed-trace evidence; editor snapshots can now serialize and apply structured scene/world JSON back to validated bundles. | Full gameplay host, broad dynamic reconciliation against live rendered Bevy entities, command-time/removal component hook callbacks, system-local persisted state, and richer lifecycle remain incomplete. |
 | Resources/events | ⚠️ | V6 resource schemas, resource reads/writes, event schemas, queued event payloads, web/native effect logs, `v6-resources-events` conformance; native direct event writes and command-buffer event writes now persist into the runtime world queue and feed later systems. | Full resource/event runtime parity, event cleanup/windowing semantics, and broader gameplay scene proof are still incomplete. |
 | Schedules/states | ⚠️ | `startup`, `fixedUpdate`, `update`, `postUpdate`; deterministic same-stage system ordering; shared startup-before-update trace; V7 lifecycle metadata requires fixed-trace replay, hot-reload invalidation, and no system-local persisted state; V7 also validates resource-derived app states, computed states, substates, component hook observations, and target-to-ancestor observer propagation exposed through web/native `ctx.states.get()`, `ctx.components.hooks()`, and `ctx.observers.propagate()` fixed-trace evidence; focused web/native tests now prove startup-created entities/events/resources are observable from later schedules. | State-preserving hot reload, broader dynamic lifecycle/state transitions, command-time/removal component hook callbacks, event clearing/windowing rules, stoppable observer propagation, and richer state handoff remain unsupported or incomplete. |
 | 3D transforms/hierarchy | ✅ | V1 contract across IR, web, Bevy, and conformance. | Keep conformance green. |
@@ -284,7 +284,7 @@ diagnostics. The baseline remains Bevy `=0.14.2`, not latest Bevy.
 | Diagnostics | ⚠️ | Stable IR/compiler/CLI/native diagnostic shapes, severity, suggestions, metadata preservation, V5/V6 ranges. | Some asset/runtime failures still need better domain-specific codes and target-specific repair hints. |
 | Packaging/platforms | ⚠️ | Templates and verify gates build local bundles and web evidence; V7 adds `tn package --target desktop`, target-profile diagnostics, a local desktop package manifest, runtime args, `artifacts/v7/packaging`, and packaged `examples/v7-functional` evidence. | Signed installers, mobile app-store packaging, online publishing, hosted services, and broader platform diagnostics are not implemented. |
 | Performance/profiling | ⚠️ | V3/V5 dense-content budget artifacts and release-gate reports; V7 adds target-profile-aware fixed metric reports for frame/load/draw/entity/package-size budgets through `v7-performance-budgets` and `artifacts/v7/performance`. | Live browser profiling, native platform profiler captures, script/UI/audio timing breakdowns, and larger-scene budget tuning remain incomplete. |
-| Editor/inspector | ⚠️ | V8 has started the local/offline editor track with structured editor project snapshot validation, deterministic bundle-relative JSON diffs, and CLI entry points for `tn editor snapshot` / `tn editor diff`. | Visual editor UI, inspector panels, save/load round trips, preview evidence, and richer editor diagnostics are not complete. |
+| Editor/inspector | ⚠️ | V8 has started the local/offline editor track with structured editor project snapshot validation, deterministic bundle-relative JSON diffs, validated save/load round trips through `tn editor snapshot` / `tn editor apply`, and CLI entry points for `tn editor snapshot` / `tn editor apply` / `tn editor diff`. | Visual editor UI, inspector panels, preview evidence, and richer editor diagnostics are not complete. |
 | Online/plugins/raw renderer | ⏭️ | Product boundary keeps Bevy as an internal adapter and V8 local/offline only. | Online services, networking, replication, collaboration, public plugins, raw Three.js authoring, direct Bevy authoring, and broad shader graphs are deferred or never portable. |
 
 V7 is complete for the promoted parity slices only when `pnpm verify:v7`
@@ -301,8 +301,9 @@ services, networking, replication, collaboration, public plugins, raw Three.js
 authoring, and direct Bevy authoring remain outside V8.
 
 The first V8 slices add IR-level editor project snapshot validation,
-deterministic structured diffs for bundle-relative JSON documents, and CLI
-entry points for `tn editor snapshot` / `tn editor diff`. This is local data
+deterministic structured diffs for bundle-relative JSON documents, validated
+save/load through structured snapshot application, and CLI entry points for
+`tn editor snapshot` / `tn editor apply` / `tn editor diff`. This is local data
 plumbing, not a visual editor runtime.
 
 ## Sources

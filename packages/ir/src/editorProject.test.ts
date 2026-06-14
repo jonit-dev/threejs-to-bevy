@@ -22,6 +22,7 @@ test("should validate structured editor project snapshots", () => {
 test("should reject invalid editor snapshot shape", () => {
   const diagnostics = validateEditorProjectSnapshot({
     documents: {
+      "../world.ir.json": { schema: "threenative.world" },
       "world.ir": { schema: "threenative.world" },
       "world.ir.json": () => undefined,
     },
@@ -37,6 +38,7 @@ test("should reject invalid editor snapshot shape", () => {
       "TN_IR_EDITOR_PROJECT_SCHEMA_INVALID",
       "TN_IR_EDITOR_PROJECT_VERSION_UNSUPPORTED",
       "TN_IR_EDITOR_PROJECT_NAME_INVALID",
+      "TN_IR_EDITOR_PROJECT_DOCUMENT_PATH_INVALID",
       "TN_IR_EDITOR_PROJECT_DOCUMENT_PATH_INVALID",
       "TN_IR_EDITOR_PROJECT_DOCUMENT_INVALID",
       "TN_IR_EDITOR_PROJECT_METADATA_INVALID",

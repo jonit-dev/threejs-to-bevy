@@ -29,6 +29,7 @@ test("should keep rendered help stable for the package bin", () => {
   assert.match(renderHelp(), /tn dev --target <web\|desktop>/);
   assert.match(renderHelp(), /tn package --target desktop/);
   assert.match(renderHelp(), /tn editor snapshot --bundle <path>/);
+  assert.match(renderHelp(), /tn editor apply --snapshot <path> --bundle <path>/);
   assert.match(renderHelp(), /tn compare-images <first\.png> <second\.png>/);
   assert.match(renderHelp(), /tn verify \[--project <path>\] \[--url <preview-url>\]/);
 });

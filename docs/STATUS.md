@@ -500,10 +500,12 @@ offline SDK/ECS/IR project data plumbing for future save/load, inspector, and
 bundle preview workflows; it does not add a visual editor UI, online services,
 collaboration, raw Three.js authoring, or direct Bevy authoring.
 
-The next V8 editor plumbing slice exposes those snapshot/diff helpers through
-the CLI as `tn editor snapshot --bundle <path>` and
-`tn editor diff --before <path> --after <path>`, so local bundle JSON can be
-captured and compared without making editor state a source of truth.
+The next V8 editor plumbing slice exposes those helpers through the CLI as
+`tn editor snapshot --bundle <path>`, `tn editor apply --snapshot <path>
+--bundle <path>`, and `tn editor diff --before <path> --after <path>`, so local
+bundle JSON can be captured, edited as structured documents, validated through a
+temporary bundle, saved back to the portable bundle, and compared without making
+editor state a source of truth.
 
 ## V3 Proves
 
