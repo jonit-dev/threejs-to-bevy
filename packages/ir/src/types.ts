@@ -170,10 +170,18 @@ export interface IMaterialsIr {
   materials: IMaterialIr[];
 }
 
+export interface IMeshAttributeIr {
+  itemSize: 1 | 2 | 3 | 4;
+  name: "color" | "normal" | "position" | "uv" | "uv1" | `custom:${string}`;
+  values: readonly number[];
+}
+
 export type IAssetIr =
   | {
+      attributes?: readonly IMeshAttributeIr[];
       format: "generated";
       id: string;
+      indices?: readonly number[];
       kind: "mesh";
       primitive:
         | "annulus"
@@ -182,6 +190,7 @@ export type IAssetIr =
         | "circle"
         | "cone"
         | "conicalFrustum"
+        | "custom"
         | "cylinder"
         | "extrudedRectangle"
         | "plane"

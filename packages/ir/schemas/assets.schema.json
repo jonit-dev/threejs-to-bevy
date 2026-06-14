@@ -31,6 +31,7 @@
                   "circle",
                   "cone",
                   "conicalFrustum",
+                  "custom",
                   "cylinder",
                   "extrudedRectangle",
                   "plane",
@@ -39,6 +40,14 @@
                   "torus"
                 ]
               },
+            "attributes": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/meshAttribute" }
+            },
+            "indices": {
+              "type": "array",
+              "items": { "type": "integer", "minimum": 0 }
+            },
             "size": { "type": "array", "items": { "type": "number" } }
           }
         },
@@ -185,6 +194,19 @@
           }
         }
       ]
+    }
+    "meshAttribute": {
+      "type": "object",
+      "required": ["name", "itemSize", "values"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^(position|normal|uv|uv1|color|custom:[A-Za-z_][A-Za-z0-9_]*)$"
+        },
+        "itemSize": { "enum": [1, 2, 3, 4] },
+        "values": { "type": "array", "items": { "type": "number" } }
+      }
     }
   }
 }

@@ -146,6 +146,72 @@ test("assets should reject invalid generated mesh primitive dimensions", async (
   }
 });
 
+test("assets should accept custom generated mesh attributes and indices", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-assets-custom-mesh-"));
+  try {
+    await writeTestBundle(root, { createAssetsDir: true });
+    await writeJson(root, "assets.manifest.json", {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [
+        {
+          id: "mesh.custom",
+          kind: "mesh",
+          format: "generated",
+          primitive: "custom",
+          attributes: [
+            { itemSize: 3, name: "position", values: [0, 0, 0, 1, 0, 0, 0, 1, 0] },
+            { itemSize: 4, name: "color", values: [1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1] },
+            { itemSize: 1, name: "custom:weight", values: [0, 0.5, 1] },
+          ],
+          indices: [0, 1, 2],
+        },
+      ],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("assets should reject invalid custom generated mesh attributes", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-assets-custom-mesh-invalid-"));
+  try {
+    await writeTestBundle(root, { createAssetsDir: true });
+    await writeJson(root, "assets.manifest.json", {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [
+        {
+          id: "mesh.custom",
+          kind: "mesh",
+          format: "generated",
+          primitive: "custom",
+          attributes: [
+            { itemSize: 3, name: "position", values: [0, 0, 0, 1, 0, 0] },
+            { itemSize: 2, name: "normal", values: [0, 0, 1, 0] },
+          ],
+          indices: [0, 2, 1],
+        },
+      ],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => diagnostic.code),
+      ["TN_IR_MESH_ATTRIBUTE_ITEM_SIZE_INVALID", "TN_IR_MESH_INDICES_INVALID"],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("assets should reject material texture slot referencing non-texture asset", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-assets-texture-kind-"));
   try {

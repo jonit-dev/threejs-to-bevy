@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   AnnulusGeometry,
   ConicalFrustumGeometry,
+  CustomMeshGeometry,
   ExtrudedRectangleGeometry,
   Mesh,
   MeshStandardMaterial,
@@ -48,4 +49,38 @@ test("should emit deterministic size tuples for expanded primitive catalog", () 
       ["mesh.torus", "torus", [0.25, 0.75]],
     ],
   );
+});
+
+test("should emit custom mesh attributes and indices", () => {
+  const scene = new Scene({ id: "scene" });
+  const material = new MeshStandardMaterial({ color: "#ffffff" });
+  scene.add(
+    new Mesh({
+      geometry: new CustomMeshGeometry({
+        attributes: [
+          { itemSize: 3, name: "position", values: [0, 0, 0, 1, 0, 0, 0, 1, 0] },
+          { itemSize: 4, name: "color", values: [1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1] },
+          { itemSize: 1, name: "custom:weight", values: [0, 0.5, 1] },
+        ],
+        indices: [0, 1, 2],
+      }),
+      id: "custom",
+      material,
+    }),
+  );
+
+  const result = sceneToWorld(scene);
+
+  assert.deepEqual(result.assets[0], {
+    attributes: [
+      { itemSize: 4, name: "color", values: [1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1] },
+      { itemSize: 1, name: "custom:weight", values: [0, 0.5, 1] },
+      { itemSize: 3, name: "position", values: [0, 0, 0, 1, 0, 0, 0, 1, 0] },
+    ],
+    id: "mesh.custom",
+    indices: [0, 1, 2],
+    kind: "mesh",
+    format: "generated",
+    primitive: "custom",
+  });
 });

@@ -418,6 +418,13 @@ size tuples, IR validation rejects malformed tuple arity/radii/sides, the web
 runtime maps them to Three.js geometry, and the Bevy runtime maps them to native
 Bevy mesh primitives including `Extrusion<Rectangle>`.
 
+Custom generated mesh parity now covers SDK-authored indexed meshes with
+portable float vertex attributes. `CustomMeshGeometry` emits sorted attributes
+and optional U32 triangle indices, IR validation requires a float3 `position`
+attribute and matching vertex counts, the web runtime builds `BufferGeometry`
+attributes and indices, and the Bevy runtime builds `Mesh` attributes including
+stable `custom:<name>` float attributes.
+
 V7-07 has landed the first scripting determinism and lifecycle evidence slice:
 `systems.ir.json` now accepts explicit lifecycle metadata for `fixed-trace`
 replay, `system-local-disallowed` state, `invalidate` hot reload behavior, and

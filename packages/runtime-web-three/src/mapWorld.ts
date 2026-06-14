@@ -123,6 +123,9 @@ function mapGeometry(asset: IAssetIr): THREE.BufferGeometry {
   if (asset.kind !== "mesh") {
     return new THREE.BoxGeometry(1, 1, 1);
   }
+  if (asset.primitive === "custom") {
+    return mapCustomGeometry(asset);
+  }
   if (asset.primitive === "box") {
     const [x = 1, y = 1, z = 1] = asset.size ?? [];
     return new THREE.BoxGeometry(x, y, z);
@@ -172,6 +175,27 @@ function mapGeometry(asset: IAssetIr): THREE.BufferGeometry {
   }
   const [x = 1, y = 1] = asset.size ?? [];
   return new THREE.PlaneGeometry(x, y);
+}
+
+function mapCustomGeometry(asset: Extract<IAssetIr, { kind: "mesh" }>): THREE.BufferGeometry {
+  const geometry = new THREE.BufferGeometry();
+  for (const attribute of asset.attributes ?? []) {
+    geometry.setAttribute(webAttributeName(attribute.name), new THREE.Float32BufferAttribute([...attribute.values], attribute.itemSize));
+  }
+  if (asset.indices !== undefined) {
+    geometry.setIndex([...asset.indices]);
+  }
+  return geometry;
+}
+
+function webAttributeName(name: string): string {
+  if (name === "position" || name === "normal" || name === "color") {
+    return name;
+  }
+  if (name === "uv" || name === "uv1") {
+    return name;
+  }
+  return name.replace(/^custom:/, "");
 }
 
 function mapMaterial(

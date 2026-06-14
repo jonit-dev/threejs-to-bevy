@@ -1,6 +1,15 @@
 import { SdkError, assertPositiveNumber } from "../errors.js";
 import { type Vector3Tuple } from "../math/Vector3.js";
 
+export type MeshAttributeName = "color" | "normal" | "position" | "uv" | "uv1" | `custom:${string}`;
+export type MeshAttributeItemSize = 1 | 2 | 3 | 4;
+
+export interface ICustomMeshAttribute {
+  itemSize: MeshAttributeItemSize;
+  name: MeshAttributeName;
+  values: readonly number[];
+}
+
 export class BoxGeometry {
   public readonly kind = "box";
   public readonly size: Vector3Tuple;
@@ -163,10 +172,100 @@ export class ExtrudedRectangleGeometry {
   }
 }
 
+export class CustomMeshGeometry {
+  public readonly kind = "custom";
+  public readonly attributes: readonly ICustomMeshAttribute[];
+  public readonly indices?: readonly number[];
+
+  public constructor(options: { attributes: readonly ICustomMeshAttribute[]; indices?: readonly number[] }) {
+    this.attributes = normalizeMeshAttributes(options.attributes);
+    this.indices = normalizeMeshIndices(options.indices);
+  }
+}
+
 function assertIntegerAtLeast(value: number, min: number, code: string, path: string): void {
   if (!Number.isInteger(value) || value < min) {
     throw new SdkError(code, `${path} must be an integer greater than or equal to ${min}.`);
   }
+}
+
+function normalizeMeshAttributes(attributes: readonly ICustomMeshAttribute[]): readonly ICustomMeshAttribute[] {
+  if (attributes.length === 0) {
+    throw new SdkError("TN_SDK_GEOMETRY_MESH_ATTRIBUTES_EMPTY", "CustomMeshGeometry.attributes must include position data.");
+  }
+  const seen = new Set<string>();
+  const normalized = attributes.map((attribute, index) => {
+    validateMeshAttributeName(attribute.name, `CustomMeshGeometry.attributes[${index}].name`);
+    if (seen.has(attribute.name)) {
+      throw new SdkError("TN_SDK_GEOMETRY_MESH_ATTRIBUTE_DUPLICATE", `CustomMeshGeometry attribute '${attribute.name}' is duplicated.`);
+    }
+    seen.add(attribute.name);
+    if (![1, 2, 3, 4].includes(attribute.itemSize)) {
+      throw new SdkError("TN_SDK_GEOMETRY_MESH_ATTRIBUTE_ITEM_SIZE_INVALID", `CustomMeshGeometry attribute '${attribute.name}' itemSize must be 1, 2, 3, or 4.`);
+    }
+    const expectedItemSize = expectedMeshAttributeItemSize(attribute.name);
+    if (expectedItemSize !== undefined && attribute.itemSize !== expectedItemSize) {
+      throw new SdkError("TN_SDK_GEOMETRY_MESH_ATTRIBUTE_ITEM_SIZE_INVALID", `CustomMeshGeometry attribute '${attribute.name}' itemSize must be ${expectedItemSize}.`);
+    }
+    if (attribute.values.length === 0 || attribute.values.length % attribute.itemSize !== 0) {
+      throw new SdkError("TN_SDK_GEOMETRY_MESH_ATTRIBUTE_VALUES_INVALID", `CustomMeshGeometry attribute '${attribute.name}' values must match itemSize.`);
+    }
+    attribute.values.forEach((value, valueIndex) => {
+      if (!Number.isFinite(value)) {
+        throw new SdkError("TN_SDK_GEOMETRY_MESH_ATTRIBUTE_VALUES_INVALID", `CustomMeshGeometry attribute '${attribute.name}' value ${valueIndex} must be finite.`);
+      }
+    });
+    return { itemSize: attribute.itemSize, name: attribute.name, values: [...attribute.values] };
+  });
+  const position = normalized.find((attribute) => attribute.name === "position");
+  if (position === undefined || position.itemSize !== 3) {
+    throw new SdkError("TN_SDK_GEOMETRY_MESH_POSITION_REQUIRED", "CustomMeshGeometry requires a position attribute with itemSize 3.");
+  }
+  const vertexCount = position.values.length / position.itemSize;
+  normalized.forEach((attribute) => {
+    if (attribute.values.length / attribute.itemSize !== vertexCount) {
+      throw new SdkError("TN_SDK_GEOMETRY_MESH_ATTRIBUTE_VERTEX_COUNT_INVALID", `CustomMeshGeometry attribute '${attribute.name}' must have ${vertexCount} vertices.`);
+    }
+  });
+  return normalized.sort((left, right) => left.name.localeCompare(right.name));
+}
+
+function normalizeMeshIndices(indices: readonly number[] | undefined): readonly number[] | undefined {
+  if (indices === undefined) {
+    return undefined;
+  }
+  if (indices.length === 0 || indices.length % 3 !== 0) {
+    throw new SdkError("TN_SDK_GEOMETRY_MESH_INDICES_INVALID", "CustomMeshGeometry.indices must define complete triangles.");
+  }
+  indices.forEach((index) => {
+    if (!Number.isInteger(index) || index < 0 || index > 0xffffffff) {
+      throw new SdkError("TN_SDK_GEOMETRY_MESH_INDICES_INVALID", "CustomMeshGeometry.indices must be non-negative U32 integers.");
+    }
+  });
+  return [...indices];
+}
+
+function validateMeshAttributeName(name: string, path: string): void {
+  if (["position", "normal", "uv", "uv1", "color"].includes(name)) {
+    return;
+  }
+  if (/^custom:[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
+    return;
+  }
+  throw new SdkError("TN_SDK_GEOMETRY_MESH_ATTRIBUTE_NAME_INVALID", `${path} must be position, normal, uv, uv1, color, or custom:<identifier>.`);
+}
+
+function expectedMeshAttributeItemSize(name: string): MeshAttributeItemSize | undefined {
+  if (name === "position" || name === "normal") {
+    return 3;
+  }
+  if (name === "uv" || name === "uv1") {
+    return 2;
+  }
+  if (name === "color") {
+    return 4;
+  }
+  return undefined;
 }
 
 export type SupportedGeometry =
@@ -176,6 +275,7 @@ export type SupportedGeometry =
   | CircleGeometry
   | ConeGeometry
   | ConicalFrustumGeometry
+  | CustomMeshGeometry
   | CylinderGeometry
   | ExtrudedRectangleGeometry
   | PlaneGeometry

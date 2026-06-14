@@ -233,12 +233,22 @@ pub struct AssetIr {
     pub animations: Option<Vec<AnimationClipIr>>,
     #[serde(rename = "animationGraph")]
     pub animation_graph: Option<AnimationGraphIr>,
+    pub attributes: Option<Vec<MeshAttributeIr>>,
     pub bounds: Option<AssetBoundsIr>,
+    pub indices: Option<Vec<u32>>,
     #[serde(rename = "particleEmitters")]
     pub particle_emitters: Option<Vec<ParticleEmitterIr>>,
     pub primitive: Option<String>,
     pub path: Option<String>,
     pub size: Option<Vec<f32>>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MeshAttributeIr {
+    pub name: String,
+    pub item_size: usize,
+    pub values: Vec<f32>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

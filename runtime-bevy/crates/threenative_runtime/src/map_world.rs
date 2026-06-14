@@ -9,6 +9,9 @@ use bevy::{
     prelude::*,
     render::{
         camera::{Exposure, ScalingMode},
+        mesh::{Indices, MeshVertexAttribute, PrimitiveTopology, VertexAttributeValues},
+        render_asset::RenderAssetUsages,
+        render_resource::VertexFormat,
         view::ColorGrading,
     },
 };
@@ -327,6 +330,7 @@ fn point_lumens(
 
 fn add_mesh(world: &mut World, asset: &AssetIr) -> Handle<Mesh> {
     let mesh = match asset.primitive.as_deref() {
+        Some("custom") => custom_mesh(asset),
         Some("sphere") => Mesh::from(Sphere {
             radius: asset
                 .size
@@ -493,6 +497,94 @@ fn add_mesh(world: &mut World, asset: &AssetIr) -> Handle<Mesh> {
         }
     };
     world.resource_mut::<Assets<Mesh>>().add(mesh)
+}
+
+fn custom_mesh(asset: &AssetIr) -> Mesh {
+    let mut mesh = Mesh::new(
+        PrimitiveTopology::TriangleList,
+        RenderAssetUsages::default(),
+    );
+    for attribute in asset.attributes.as_deref().unwrap_or(&[]) {
+        match attribute.name.as_str() {
+            "position" => mesh.insert_attribute(
+                Mesh::ATTRIBUTE_POSITION,
+                attribute_values(attribute.item_size, &attribute.values),
+            ),
+            "normal" => mesh.insert_attribute(
+                Mesh::ATTRIBUTE_NORMAL,
+                attribute_values(attribute.item_size, &attribute.values),
+            ),
+            "uv" => mesh.insert_attribute(
+                Mesh::ATTRIBUTE_UV_0,
+                attribute_values(attribute.item_size, &attribute.values),
+            ),
+            "uv1" => mesh.insert_attribute(
+                Mesh::ATTRIBUTE_UV_1,
+                attribute_values(attribute.item_size, &attribute.values),
+            ),
+            "color" => mesh.insert_attribute(
+                Mesh::ATTRIBUTE_COLOR,
+                attribute_values(attribute.item_size, &attribute.values),
+            ),
+            name => {
+                let item_size = attribute.item_size;
+                let leaked_name = Box::leak(
+                    format!("Vertex_{}", name.replace("custom:", "Custom_")).into_boxed_str(),
+                );
+                mesh.insert_attribute(
+                    MeshVertexAttribute::new(
+                        leaked_name,
+                        custom_attribute_id(name),
+                        vertex_format(item_size),
+                    ),
+                    attribute_values(item_size, &attribute.values),
+                );
+            }
+        }
+    }
+    if let Some(indices) = asset.indices.as_ref() {
+        mesh.insert_indices(Indices::U32(indices.clone()));
+    }
+    mesh
+}
+
+fn attribute_values(item_size: usize, values: &[f32]) -> VertexAttributeValues {
+    match item_size {
+        1 => VertexAttributeValues::Float32(values.to_vec()),
+        2 => VertexAttributeValues::Float32x2(
+            values
+                .chunks_exact(2)
+                .map(|chunk| [chunk[0], chunk[1]])
+                .collect(),
+        ),
+        3 => VertexAttributeValues::Float32x3(
+            values
+                .chunks_exact(3)
+                .map(|chunk| [chunk[0], chunk[1], chunk[2]])
+                .collect(),
+        ),
+        _ => VertexAttributeValues::Float32x4(
+            values
+                .chunks_exact(4)
+                .map(|chunk| [chunk[0], chunk[1], chunk[2], chunk[3]])
+                .collect(),
+        ),
+    }
+}
+
+fn vertex_format(item_size: usize) -> VertexFormat {
+    match item_size {
+        1 => VertexFormat::Float32,
+        2 => VertexFormat::Float32x2,
+        3 => VertexFormat::Float32x3,
+        _ => VertexFormat::Float32x4,
+    }
+}
+
+fn custom_attribute_id(name: &str) -> usize {
+    name.as_bytes().iter().fold(100_000usize, |hash, byte| {
+        hash.wrapping_mul(16_777_619) ^ (*byte as usize)
+    })
 }
 
 fn map_visibility(entity: &WorldEntity) -> Visibility {

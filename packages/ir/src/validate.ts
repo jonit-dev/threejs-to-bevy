@@ -649,7 +649,7 @@ function validateAssetMetadata(asset: IAssetsManifest["assets"][number], path: s
   const raw = asset as unknown as Record<string, unknown>;
   const allowed = new Set(
     asset.kind === "mesh"
-      ? ["format", "id", "kind", "primitive", "size"]
+      ? ["attributes", "format", "id", "indices", "kind", "primitive", "size"]
       : ["animationGraph", "animations", "bounds", "format", "id", "kind", "particleEmitters", "path"],
   );
   for (const key of Object.keys(raw)) {
@@ -694,6 +694,7 @@ const GENERATED_MESH_SIZE_ARITY: Record<string, number> = {
   circle: 1,
   cone: 2,
   conicalFrustum: 3,
+  custom: 0,
   cylinder: 2,
   extrudedRectangle: 3,
   plane: 2,
@@ -713,6 +714,18 @@ function validateGeneratedMeshAsset(asset: Extract<IAssetsManifest["assets"][num
       suggestion: "Use a supported generated primitive or emit a model asset.",
     });
     return;
+  }
+  if (asset.primitive === "custom") {
+    validateCustomMeshAsset(asset as Extract<IAssetsManifest["assets"][number], { kind: "mesh" }> & { attributes?: unknown; indices?: unknown }, path, diagnostics);
+    return;
+  }
+  if ("attributes" in asset || "indices" in asset) {
+    diagnostics.push({
+      code: "TN_IR_MESH_CUSTOM_FIELD_UNSUPPORTED",
+      message: `Generated mesh '${asset.id}' may declare attributes or indices only when primitive is 'custom'.`,
+      path,
+      severity: "error",
+    });
   }
   const size = asset.size;
   if (size === undefined) {
@@ -746,6 +759,124 @@ function validateGeneratedMeshAsset(asset: Extract<IAssetsManifest["assets"][num
       severity: "error",
     });
   }
+}
+
+function validateCustomMeshAsset(
+  asset: Extract<IAssetsManifest["assets"][number], { kind: "mesh" }> & { attributes?: unknown; indices?: unknown },
+  path: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (asset.size !== undefined) {
+    diagnostics.push({
+      code: "TN_IR_MESH_CUSTOM_SIZE_UNSUPPORTED",
+      message: `Custom mesh '${asset.id}' must use attributes and indices instead of size.`,
+      path: `${path}/size`,
+      severity: "error",
+    });
+  }
+  if (!Array.isArray(asset.attributes) || asset.attributes.length === 0) {
+    diagnostics.push({
+      code: "TN_IR_MESH_ATTRIBUTES_INVALID",
+      message: `Custom mesh '${asset.id}' must include mesh attributes.`,
+      path: `${path}/attributes`,
+      severity: "error",
+    });
+    return;
+  }
+  const seen = new Set<string>();
+  let vertexCount: number | undefined;
+  let positionVertexCount: number | undefined;
+  asset.attributes.forEach((attribute, index) => {
+    const attributePath = `${path}/attributes/${index}`;
+    if (!isRecord(attribute)) {
+      diagnostics.push({ code: "TN_IR_MESH_ATTRIBUTES_INVALID", message: "Mesh attribute must be an object.", path: attributePath, severity: "error" });
+      return;
+    }
+    if (typeof attribute.name !== "string" || !isMeshAttributeName(attribute.name)) {
+      diagnostics.push({ code: "TN_IR_MESH_ATTRIBUTE_NAME_INVALID", message: "Mesh attribute name must be position, normal, uv, uv1, color, or custom:<identifier>.", path: `${attributePath}/name`, severity: "error" });
+      return;
+    }
+    if (seen.has(attribute.name)) {
+      diagnostics.push({ code: "TN_IR_MESH_ATTRIBUTE_DUPLICATE", message: `Mesh attribute '${attribute.name}' is duplicated.`, path: `${attributePath}/name`, severity: "error" });
+      return;
+    }
+    seen.add(attribute.name);
+    if (![1, 2, 3, 4].includes(attribute.itemSize as number)) {
+      diagnostics.push({ code: "TN_IR_MESH_ATTRIBUTE_ITEM_SIZE_INVALID", message: "Mesh attribute itemSize must be 1, 2, 3, or 4.", path: `${attributePath}/itemSize`, severity: "error" });
+      return;
+    }
+    const expectedItemSize = expectedMeshAttributeItemSize(attribute.name);
+    if (expectedItemSize !== undefined && attribute.itemSize !== expectedItemSize) {
+      diagnostics.push({ code: "TN_IR_MESH_ATTRIBUTE_ITEM_SIZE_INVALID", message: `Mesh attribute '${attribute.name}' itemSize must be ${expectedItemSize}.`, path: `${attributePath}/itemSize`, severity: "error" });
+      return;
+    }
+    if (!Array.isArray(attribute.values) || attribute.values.length === 0 || attribute.values.some((value) => typeof value !== "number" || !Number.isFinite(value))) {
+      diagnostics.push({ code: "TN_IR_MESH_ATTRIBUTE_VALUES_INVALID", message: "Mesh attribute values must be a non-empty finite number array.", path: `${attributePath}/values`, severity: "error" });
+      return;
+    }
+    const itemSize = attribute.itemSize as number;
+    if (attribute.values.length % itemSize !== 0) {
+      diagnostics.push({ code: "TN_IR_MESH_ATTRIBUTE_VALUES_INVALID", message: "Mesh attribute values length must divide evenly by itemSize.", path: `${attributePath}/values`, severity: "error" });
+      return;
+    }
+    const count = attribute.values.length / itemSize;
+    vertexCount ??= count;
+    if (count !== vertexCount) {
+      diagnostics.push({ code: "TN_IR_MESH_ATTRIBUTE_VERTEX_COUNT_INVALID", message: "All mesh attributes must have the same vertex count.", path: `${attributePath}/values`, severity: "error" });
+    }
+    if (attribute.name === "position") {
+      if (itemSize !== 3) {
+        diagnostics.push({ code: "TN_IR_MESH_POSITION_INVALID", message: "Custom mesh position attribute must use itemSize 3.", path: `${attributePath}/itemSize`, severity: "error" });
+      }
+      positionVertexCount = count;
+    }
+  });
+  if (positionVertexCount === undefined) {
+    diagnostics.push({
+      code: "TN_IR_MESH_POSITION_REQUIRED",
+      message: `Custom mesh '${asset.id}' requires a position attribute.`,
+      path: `${path}/attributes`,
+      severity: "error",
+    });
+  }
+  validateCustomMeshIndices(asset, positionVertexCount, path, diagnostics);
+}
+
+function validateCustomMeshIndices(
+  asset: Extract<IAssetsManifest["assets"][number], { kind: "mesh" }> & { indices?: unknown },
+  vertexCount: number | undefined,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (asset.indices === undefined) {
+    return;
+  }
+  if (!Array.isArray(asset.indices) || asset.indices.length === 0 || asset.indices.length % 3 !== 0) {
+    diagnostics.push({ code: "TN_IR_MESH_INDICES_INVALID", message: "Custom mesh indices must define complete triangles.", path: `${path}/indices`, severity: "error" });
+    return;
+  }
+  asset.indices.forEach((index, itemIndex) => {
+    if (!Number.isInteger(index) || index < 0 || index > 0xffffffff || (vertexCount !== undefined && index >= vertexCount)) {
+      diagnostics.push({ code: "TN_IR_MESH_INDICES_INVALID", message: "Custom mesh indices must be non-negative U32 integers within the position vertex count.", path: `${path}/indices/${itemIndex}`, severity: "error" });
+    }
+  });
+}
+
+function isMeshAttributeName(name: string): boolean {
+  return ["position", "normal", "uv", "uv1", "color"].includes(name) || /^custom:[A-Za-z_][A-Za-z0-9_]*$/.test(name);
+}
+
+function expectedMeshAttributeItemSize(name: string): number | undefined {
+  if (name === "position" || name === "normal") {
+    return 3;
+  }
+  if (name === "uv" || name === "uv1") {
+    return 2;
+  }
+  if (name === "color") {
+    return 4;
+  }
+  return undefined;
 }
 
 function validateAnimationClips(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {

@@ -17,8 +17,10 @@ interface IObjectLike {
     roughness?: number;
   };
   geometry?: {
+    attributes?: readonly { itemSize: number; name: string; values: readonly number[] }[];
     depth?: number;
     height?: number;
+    indices?: readonly number[];
     innerRadius?: number;
     kind: string;
     outerRadius?: number;
@@ -98,11 +100,12 @@ function visitChildren(
       const materialId = `mat.${id}`;
       components.MeshRenderer = { material: materialId, mesh: meshId, ...(child.visible === false ? { visible: false } : {}) };
       output.assets.push({
+        ...(child.geometry.kind === "custom" ? { attributes: child.geometry.attributes ?? [], indices: child.geometry.indices } : {}),
         id: meshId,
         kind: "mesh",
         format: "generated",
         primitive: child.geometry.kind,
-        size: geometrySize(child.geometry),
+        ...(child.geometry.kind === "custom" ? {} : { size: geometrySize(child.geometry) }),
       });
       output.materials.push({
         id: materialId,

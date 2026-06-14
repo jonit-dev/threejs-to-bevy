@@ -153,6 +153,56 @@ test("mapWorld should map expanded generated primitive catalog", () => {
   assert.equal(mapped.diagnostics.filter((diagnostic) => diagnostic.severity === "error").length, 0);
 });
 
+test("mapWorld should map custom generated mesh attributes", () => {
+  const mapped = mapWorld({
+    assets: {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [
+        {
+          id: "mesh.custom",
+          kind: "mesh",
+          format: "generated",
+          primitive: "custom",
+          attributes: [
+            { itemSize: 3, name: "position", values: [0, 0, 0, 1, 0, 0, 0, 1, 0] },
+            { itemSize: 4, name: "color", values: [1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1] },
+            { itemSize: 1, name: "custom:weight", values: [0, 0.5, 1] },
+          ],
+          indices: [0, 1, 2],
+        },
+      ],
+    },
+    manifest: {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "custom-mesh",
+      requiredCapabilities: {},
+      entry: { world: "world.ir.json" },
+      files: { assets: "assets.manifest.json", materials: "materials.ir.json", targetProfile: "target.profile.json" },
+    },
+    materials: { schema: "threenative.materials", version: "0.1.0", materials: [{ id: "mat.main", kind: "standard", color: "#ffffff" }] },
+    targetProfile: { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] },
+    world: {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [
+        {
+          id: "entity.custom",
+          components: { MeshRenderer: { mesh: "mesh.custom", material: "mat.main" }, Transform: { position: [0, 0, 0] } },
+        },
+      ],
+    },
+  });
+
+  const object = mapped.objectsById.get("entity.custom");
+  assert.ok(object instanceof THREE.Mesh);
+  assert.equal(object.geometry.getAttribute("position").itemSize, 3);
+  assert.equal(object.geometry.getAttribute("color").itemSize, 4);
+  assert.equal(object.geometry.getAttribute("weight").itemSize, 1);
+  assert.deepEqual(Array.from(object.geometry.index?.array ?? []), [0, 1, 2]);
+});
+
 test("mapWorld should apply supported material texture slots", () => {
   const mapped = mapWorld({
     assets: {

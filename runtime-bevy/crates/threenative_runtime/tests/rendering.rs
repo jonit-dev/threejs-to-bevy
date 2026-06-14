@@ -5,6 +5,10 @@ use std::{
 };
 
 use bevy::prelude::*;
+use bevy::render::{
+    mesh::{MeshVertexAttribute, VertexAttributeValues},
+    render_resource::VertexFormat,
+};
 use threenative_components::ThreeNativeId;
 use threenative_loader::load_bundle;
 use threenative_runtime::map_world::map_bundle_into_world;
@@ -57,6 +61,19 @@ fn rendering_should_map_expanded_generated_primitive_catalog() {
     ] {
         assert_mesh_handle(app.world_mut(), id);
     }
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn rendering_should_map_custom_generated_mesh_attributes() {
+    let root = write_custom_mesh_bundle();
+    let bundle = load_bundle(&root).expect("custom mesh bundle should load");
+    let mut app = App::new();
+
+    map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map");
+
+    assert_custom_mesh_attributes(app.world_mut(), "entity.custom");
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
@@ -147,6 +164,43 @@ fn assert_mesh_handle(world: &mut World, id: &str) {
         .resource::<Assets<Mesh>>()
         .get(&handle)
         .expect("mesh asset should be registered");
+}
+
+fn assert_custom_mesh_attributes(world: &mut World, id: &str) {
+    let handle = {
+        let mut query = world.query::<(&ThreeNativeId, &Handle<Mesh>)>();
+        query
+            .iter(world)
+            .find_map(|(stable_id, handle)| (stable_id.0 == id).then_some(handle.clone()))
+            .expect("entity mesh handle should be spawned")
+    };
+    let mesh = world
+        .resource::<Assets<Mesh>>()
+        .get(&handle)
+        .expect("mesh asset should be registered");
+    assert!(matches!(
+        mesh.attribute(Mesh::ATTRIBUTE_POSITION),
+        Some(VertexAttributeValues::Float32x3(values)) if values.len() == 3
+    ));
+    assert!(matches!(
+        mesh.attribute(Mesh::ATTRIBUTE_COLOR),
+        Some(VertexAttributeValues::Float32x4(values)) if values.len() == 3
+    ));
+    let custom = MeshVertexAttribute::new(
+        "Vertex_Custom_weight",
+        custom_test_attribute_id("custom:weight"),
+        VertexFormat::Float32,
+    );
+    assert!(matches!(
+        mesh.attribute(custom),
+        Some(VertexAttributeValues::Float32(values)) if values == &[0.0, 0.5, 1.0]
+    ));
+}
+
+fn custom_test_attribute_id(name: &str) -> usize {
+    name.as_bytes().iter().fold(100_000usize, |hash, byte| {
+        hash.wrapping_mul(16_777_619) ^ (*byte as usize)
+    })
 }
 
 fn has_component<T: Component>(world: &mut World, id: &str) -> bool {
@@ -324,6 +378,74 @@ fn write_primitive_catalog_bundle() -> PathBuf {
     { "id": "mesh.polygon", "kind": "mesh", "format": "generated", "primitive": "regularPolygon", "size": [0.5, 6] },
     { "id": "mesh.extruded", "kind": "mesh", "format": "generated", "primitive": "extrudedRectangle", "size": [1, 2, 0.5] }
   ]
+}"#,
+    );
+    write(
+        &root,
+        "materials.ir.json",
+        r##"{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "materials": [{ "id": "mat.main", "kind": "standard", "color": "#ffffff" }]
+}"##,
+    );
+    write(
+        &root,
+        "target.profile.json",
+        r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["desktop"] }"#,
+    );
+    root
+}
+
+fn write_custom_mesh_bundle() -> PathBuf {
+    let root = std::env::temp_dir().join(format!(
+        "tn-rendering-custom-mesh-{}",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system time should be after unix epoch")
+            .as_nanos()
+    ));
+    fs::create_dir_all(&root).expect("temporary bundle directory should be created");
+    write(
+        &root,
+        "manifest.json",
+        r#"{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "custom-mesh",
+  "entry": { "world": "world.ir.json" },
+  "files": { "assets": "assets.manifest.json", "materials": "materials.ir.json", "targetProfile": "target.profile.json" }
+}"#,
+    );
+    write(
+        &root,
+        "world.ir.json",
+        r##"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    { "id": "entity.custom", "components": { "MeshRenderer": { "mesh": "mesh.custom", "material": "mat.main" }, "Transform": { "position": [0, 0, 0] } } }
+  ]
+}"##,
+    );
+    write(
+        &root,
+        "assets.manifest.json",
+        r#"{
+  "schema": "threenative.assets",
+  "version": "0.1.0",
+  "assets": [{
+    "id": "mesh.custom",
+    "kind": "mesh",
+    "format": "generated",
+    "primitive": "custom",
+    "attributes": [
+      { "itemSize": 3, "name": "position", "values": [0, 0, 0, 1, 0, 0, 0, 1, 0] },
+      { "itemSize": 4, "name": "color", "values": [1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1] },
+      { "itemSize": 1, "name": "custom:weight", "values": [0, 0.5, 1] }
+    ],
+    "indices": [0, 1, 2]
+  }]
 }"#,
     );
     write(
