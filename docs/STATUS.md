@@ -441,6 +441,11 @@ runtime utilities. Both runtimes expose deterministic vec3 interpolation,
 shortest-arc quaternion interpolation, full transform interpolation, and
 exponential smoothing helpers for host-side animation/state handoff code.
 
+Gizmo geometry now has matching debug/editor-only runtime helpers in web and
+Bevy. Both runtimes can emit axis, wire-box, and wire-sphere line geometry with
+per-line colors, and focused tests prove the Three.js `BufferGeometry` and Bevy
+`LineList` mesh conversion paths.
+
 V7-07 has landed the first scripting determinism and lifecycle evidence slice:
 `systems.ir.json` now accepts explicit lifecycle metadata for `fixed-trace`
 replay, `system-local-disallowed` state, `invalidate` hot reload behavior, and

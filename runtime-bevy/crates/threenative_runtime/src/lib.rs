@@ -12,6 +12,7 @@ pub mod character;
 pub mod conformance;
 pub mod environment;
 pub mod first_person;
+pub mod gizmo_geometry;
 pub mod input;
 pub mod map_world;
 pub mod mesh_bounds;

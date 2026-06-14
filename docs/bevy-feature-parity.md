@@ -49,7 +49,7 @@ diagnostics. The baseline remains Bevy `=0.14.2`, not latest Bevy.
 - [x] Mesh bounds, AABB/sphere intersection utilities, and sampling
 - [x] Curves, splines, easing functions, and path sampling
 - [x] Transform interpolation/smoothing helpers
-- [ ] Gizmo geometry as debug/editor-only output
+- [x] Gizmo geometry as debug/editor-only output
 
 ### 🎥 Cameras and Views
 
@@ -270,6 +270,7 @@ diagnostics. The baseline remains Bevy `=0.14.2`, not latest Bevy.
 | Mesh primitives | ✅ | Box, sphere, plane, capsule, cylinder, cone, conical frustum, torus, circle, annulus, regular polygon, and extruded rectangle are promoted through SDK constructors, compiler size tuples, IR validation, Three.js geometry mapping, and Bevy mesh primitives including `Extrusion<Rectangle>`; custom generated meshes now carry validated float vertex attributes, optional U32 triangle indices, Three.js `BufferGeometry` mapping, and Bevy `Mesh` attributes including stable `custom:<name>` attributes; web and Bevy expose matching generated-mesh sampling, AABB, bounding-sphere, AABB intersection, and sphere intersection helpers. | Keep conformance green as additional primitive parameters are promoted. |
 | Curves and path sampling | ✅ | Web and Bevy expose matching quadratic easing helpers plus line, quadratic Bezier, cubic Bezier, and Catmull-Rom path sampling utilities with focused parity tests. | Broader authored path components and editor curve handles can build on these helpers. |
 | Transform interpolation | ✅ | Web and Bevy expose matching vec3 interpolation, shortest-arc quaternion interpolation, full transform interpolation, and exponential smoothing helpers with focused parity tests. | Broader animation/state smoothing APIs can build on these helpers. |
+| Gizmo geometry | ✅ | Web and Bevy expose matching debug/editor-only axis, wire-box, and wire-sphere line geometry helpers with per-line colors and focused conversion tests for Three.js `BufferGeometry` and Bevy `LineList` meshes. | Larger editor overlay systems can compose these helpers for cameras, lights, bounds, and UI nodes. |
 | Cameras | ⚠️ | Perspective camera and active camera path are usable; orthographic camera projection maps in web and Bevy and is now exposed as a runtime conformance observation in `v5-drift-surface`. | General camera resource model and full orthographic visual parity are not complete. |
 | Lights | ✅ | Ambient, directional, point range, spot range/angle in SDK/compiler/IR, web, Bevy, and conformance observations. | Advanced lighting parity beyond promoted fields remains renderer-specific. |
 | Materials | ⚠️ | Standard color, metalness, roughness, and validated texture refs; web maps texture slots; Bevy maps refs to `StandardMaterial` image handles. | Full native texture image loading and visual texture parity remain adapter-dependent. |
