@@ -79,6 +79,14 @@ test("should include capability tags for each conformance fixture", async () => 
     "scripting:script-bundle",
     "scripting:systems",
   ]);
+  assertFixtureCapabilities(byName, "v6-audio-playback", [
+    "asset:audio.ogg",
+    "asset:audio.wav",
+    "audio:autoplay",
+    "audio:loop",
+    "audio:one-shot",
+    "ecs:events",
+  ]);
   assertFixtureCapabilities(byName, "v6-retained-ui", [
     "ui:action",
     "ui:binding.resource",

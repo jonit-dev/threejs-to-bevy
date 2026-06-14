@@ -1,7 +1,9 @@
 import * as THREE from "three";
 import type {
   IAssetIr,
+  IAudioIr,
   IConformanceAssetReport,
+  IConformanceAudioReport,
   IConformanceEntityReport,
   IConformanceEnvironmentReport,
   IConformanceEventReport,
@@ -17,6 +19,7 @@ import type {
   Quat,
   Vec3,
 } from "@threenative/ir";
+import { createWebAudioRuntime } from "./audio.js";
 import type { IWebBundle } from "./loadBundle.js";
 import type { IThreeWorld } from "./mapWorld.js";
 import { detectPhysicsEvents } from "./physics.js";
@@ -34,6 +37,7 @@ export function reportWebConformance(
   }
 
   return {
+    audio: bundle.audio === undefined ? undefined : reportAudio(bundle.audio, bundle.world.events ?? {}),
     assets: bundle.assets.assets.map(reportAsset).sort((left, right) => left.id.localeCompare(right.id)),
     diagnostics: mapped.diagnostics,
     entities: bundle.world.entities
@@ -47,6 +51,23 @@ export function reportWebConformance(
     runtime: "web-three",
     ui: bundle.ui === undefined ? undefined : reportUi(bundle.ui),
   };
+}
+
+function reportAudio(audio: IAudioIr, events: Record<string, unknown>): IConformanceAudioReport {
+  const runtime = createWebAudioRuntime(audio);
+  runtime.start();
+  runtime.handleEvents(audioEvents(events));
+  return {
+    commands: runtime.commands.sort((left, right) => left.id.localeCompare(right.id)),
+  };
+}
+
+function audioEvents(events: Record<string, unknown>): Array<{ event: string; payload: unknown }> {
+  return Object.entries(events).flatMap(([event, payloads]) =>
+    Array.isArray(payloads)
+      ? payloads.map((payload) => ({ event, payload }))
+      : [{ event, payload: payloads }],
+  );
 }
 
 function reportEntity(

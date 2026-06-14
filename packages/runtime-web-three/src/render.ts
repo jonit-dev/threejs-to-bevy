@@ -10,6 +10,7 @@ import { loadSystemModule } from "./systems/runner.js";
 import { createSystemEffectLog, type ISystemEffectLog } from "./systems/log.js";
 import { createUiDomOverlay } from "./ui/domOverlay.js";
 import { renderUi, type IRenderedUi } from "./ui/renderUi.js";
+import { createWebAudioElementSink, createWebAudioRuntime } from "./audio.js";
 
 export interface IRenderResult {
   canvas: HTMLCanvasElement;
@@ -48,6 +49,13 @@ export async function renderBundle(source: string, container: HTMLElement, optio
   const canvas = renderer.domElement;
   const ui = bundle.ui === undefined ? undefined : renderUi(bundle.ui, bundle.world);
   const uiOverlay = ui === undefined ? undefined : createUiDomOverlay(ui);
+  if (bundle.audio !== undefined) {
+    const audioSink = createWebAudioElementSink(source, bundle.assets);
+    const audioRuntime = createWebAudioRuntime(bundle.audio, audioSink);
+    audioRuntime.start();
+    audioRuntime.handleEvents(audioEvents(bundle.world.events ?? {}));
+    mapped.diagnostics.push(...audioSink.diagnostics);
+  }
 
   prepareRenderContainer(container);
   canvas.style.display = "block";
@@ -100,6 +108,14 @@ export async function renderBundle(source: string, container: HTMLElement, optio
     renderer,
     ...(ui === undefined ? {} : { ui }),
   };
+}
+
+function audioEvents(events: Record<string, unknown>): Array<{ event: string; payload: unknown }> {
+  return Object.entries(events).flatMap(([event, payloads]) =>
+    Array.isArray(payloads)
+      ? payloads.map((payload) => ({ event, payload }))
+      : [{ event, payload: payloads }],
+  );
 }
 
 function prepareRenderContainer(container: HTMLElement): void {

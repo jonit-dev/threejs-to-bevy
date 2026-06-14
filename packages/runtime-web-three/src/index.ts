@@ -1,5 +1,13 @@
 export { startWebPreview, type IWebPreviewServer } from "./devServer.js";
-export { createWebAudioRuntime, type IWebAudioCommand, type IWebAudioRuntime, type IWebAudioSink } from "./audio.js";
+export {
+  createWebAudioElementSink,
+  createWebAudioRuntime,
+  type IWebAudioCommand,
+  type IWebAudioElement,
+  type IWebAudioElementSink,
+  type IWebAudioRuntime,
+  type IWebAudioSink,
+} from "./audio.js";
 export { loadBundle, type IWebBundle } from "./loadBundle.js";
 export { applyEnvironmentBookmark, createEnvironmentRuntime, loadEnvironmentAssetInstances, observeEnvironmentScene, type IEnvironmentObservation, type IEnvironmentRuntime } from "./environment.js";
 export { buildInstancingPlan, type IInstancingGroup, type IInstancingPlan } from "./instancing.js";

@@ -2,6 +2,8 @@ export { schemaUrls, type SchemaName } from "./schemas.js";
 export { listConformanceFixtures, type IConformanceFixture } from "./conformance.js";
 export type {
   IConformanceAssetReport,
+  IConformanceAudioCommandReport,
+  IConformanceAudioReport,
   IConformanceEntityReport,
   IConformanceEnvironmentReport,
   IConformanceEventReport,

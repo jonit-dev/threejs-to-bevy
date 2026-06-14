@@ -108,3 +108,17 @@ test("should report retained ui conformance observations", async () => {
     },
   });
 });
+
+test("should report audio playback conformance observations", async () => {
+  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/v6-audio-playback/game.bundle"));
+  const mapped = mapWorld(bundle);
+  const report = reportWebConformance(bundle, mapped, "v6-audio-playback");
+
+  assert.equal(report.fixture, "v6-audio-playback");
+  assert.deepEqual(report.audio, {
+    commands: [
+      { asset: "arena.music", id: "music.arena", kind: "loop" },
+      { asset: "hit.sound", event: "DamageEvent", id: "sound.hit", kind: "oneShot" },
+    ],
+  });
+});

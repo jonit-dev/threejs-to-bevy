@@ -3,7 +3,7 @@ use std::path::Path;
 use bevy::prelude::*;
 use thiserror::Error;
 use threenative_components::ThreeNativeId;
-use threenative_loader::{LoadError, LoadedBundle, TransformComponent, load_bundle};
+use threenative_loader::{load_bundle, LoadError, LoadedBundle, TransformComponent};
 
 pub mod assets;
 pub mod audio;
@@ -80,6 +80,9 @@ pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeErro
     rendering::apply_atmosphere_to_world(app.world_mut(), &bundle);
     map_world::map_bundle_into_world(app.world_mut(), &bundle)?;
     environment::map_environment_into_world(app.world_mut(), &bundle);
+    for diagnostic in audio::spawn_startup_audio(app.world_mut(), &bundle) {
+        warn!("{}", diagnostic.message);
+    }
     if let Some(ui) = bundle.ui.as_ref() {
         ui::map_ui_into_world(app.world_mut(), ui)?;
     }

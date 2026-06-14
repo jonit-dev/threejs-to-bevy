@@ -14,6 +14,7 @@ export async function verifyConformance(options = {}) {
   const artifactDir = options.artifactDir ?? resolve(reportPath, "..");
   const basicSceneBundlePath = resolve(root, "packages/ir/fixtures/conformance/basic-scene/game.bundle");
   const v6PhysicsEventsBundlePath = resolve(root, "packages/ir/fixtures/conformance/v6-physics-events/game.bundle");
+  const v6AudioPlaybackBundlePath = resolve(root, "packages/ir/fixtures/conformance/v6-audio-playback/game.bundle");
   const v6AnimationClipsBundlePath = resolve(root, "packages/ir/fixtures/conformance/v6-animation-clips/game.bundle");
   const v6ResourcesEventsBundlePath = resolve(root, "packages/ir/fixtures/conformance/v6-resources-events/game.bundle");
   const v6RetainedUiBundlePath = resolve(root, "packages/ir/fixtures/conformance/v6-retained-ui/game.bundle");
@@ -22,6 +23,8 @@ export async function verifyConformance(options = {}) {
     options.nativeV6PhysicsEventsReportPath ?? resolve(artifactDir, "v6-physics-events/bevy.report.json");
   const nativeV6AnimationClipsReportPath =
     options.nativeV6AnimationClipsReportPath ?? resolve(artifactDir, "v6-animation-clips/bevy.report.json");
+  const nativeV6AudioPlaybackReportPath =
+    options.nativeV6AudioPlaybackReportPath ?? resolve(artifactDir, "v6-audio-playback/bevy.report.json");
   const nativeV6ResourcesEventsReportPath =
     options.nativeV6ResourcesEventsReportPath ?? resolve(artifactDir, "v6-resources-events/bevy.report.json");
   const nativeV6RetainedUiReportPath =
@@ -35,6 +38,7 @@ export async function verifyConformance(options = {}) {
   const artifacts = {
     nativeBasicSceneReportPath,
     nativeV6AnimationClipsReportPath,
+    nativeV6AudioPlaybackReportPath,
     nativeV6PhysicsEventsReportPath,
     nativeV6ResourcesEventsReportPath,
     nativeV6RetainedUiReportPath,
@@ -162,6 +166,22 @@ export async function verifyConformance(options = {}) {
       ],
       { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
     ],
+    [
+      "bevy native V6 audio observation report",
+      "cargo",
+      [
+        "run",
+        "-p",
+        "threenative_runtime",
+        "--bin",
+        "threenative_conformance",
+        "--",
+        v6AudioPlaybackBundlePath,
+        "v6-audio-playback",
+        nativeV6AudioPlaybackReportPath,
+      ],
+      { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
+    ],
   ];
 
   for (const [name, command, args, commandOptions] of commands) {
@@ -189,6 +209,7 @@ export function compareConformanceReports(left, right, options = {}) {
   compareCatalog(diagnostics, fixture, left.runtime, right.runtime, "$.entities", left.entities, right.entities, { artifactPaths, bundlePath });
   compareCatalog(diagnostics, fixture, left.runtime, right.runtime, "$.resources", left.resources, right.resources, { artifactPaths, bundlePath });
   compareCatalog(diagnostics, fixture, left.runtime, right.runtime, "$.events", left.events, right.events, { artifactPaths, bundlePath });
+  compareValue(diagnostics, fixture, left.runtime, right.runtime, "$.audio", left.audio, right.audio, { artifactPaths, bundlePath });
   compareValue(diagnostics, fixture, left.runtime, right.runtime, "$.ui", left.ui, right.ui, { artifactPaths, bundlePath });
   compareValue(diagnostics, fixture, left.runtime, right.runtime, "$.diagnostics", left.diagnostics ?? [], right.diagnostics ?? [], { artifactPaths, bundlePath });
 

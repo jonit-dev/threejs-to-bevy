@@ -1,0 +1,19 @@
+{
+  "schema": "threenative.audio",
+  "version": "0.1.0",
+  "music": [
+    {
+      "id": "music.arena",
+      "asset": "arena.music",
+      "autoplay": true,
+      "loop": true
+    }
+  ],
+  "oneShots": [
+    {
+      "id": "sound.hit",
+      "asset": "hit.sound",
+      "event": "DamageEvent"
+    }
+  ]
+}

@@ -226,3 +226,29 @@ fn should_report_retained_ui_conformance_observations() {
     );
     assert_eq!(ui.root.children[0].children[2].focusable, Some(true));
 }
+
+#[test]
+fn should_report_audio_playback_conformance_observations() {
+    let fixture = load_conformance_fixture("v6-audio-playback");
+    let mut app = App::new();
+
+    map_bundle_into_world(app.world_mut(), &fixture.bundle).unwrap_or_else(|error| {
+        panic!(
+            "failed to map conformance fixture '{}' at '{}': {}",
+            fixture.name,
+            fixture.bundle_path.display(),
+            error
+        )
+    });
+    let report = report_bevy_conformance(app.world_mut(), &fixture.bundle, fixture.name);
+    let audio = report.audio.expect("audio report should be present");
+
+    assert_eq!(audio.commands.len(), 2);
+    assert_eq!(audio.commands[0].id, "music.arena");
+    assert_eq!(audio.commands[0].asset, "arena.music");
+    assert_eq!(audio.commands[0].kind, "loop");
+    assert_eq!(audio.commands[1].id, "sound.hit");
+    assert_eq!(audio.commands[1].asset, "hit.sound");
+    assert_eq!(audio.commands[1].event.as_deref(), Some("DamageEvent"));
+    assert_eq!(audio.commands[1].kind, "oneShot");
+}

@@ -256,7 +256,7 @@ validated against `systems.ir.json`.
 | `ctx.commands` | Structural world changes. | Commands flush at schedule boundaries after validation. |
 | `ctx.physics` | Controlled physics queries and body commands. | Runtime service facade; no Rapier or Bevy physics handles. |
 | `ctx.animation` | Playback commands and simple state queries. | Runtime service facade; animation graph state is runtime-owned. |
-| `ctx.audio` | One-shot and looping audio commands. | Runtime service facade; audio handles stay adapter-private. |
+| `ctx.audio` | One-shot and looping audio commands. | Planned runtime service facade; V6 currently proves bundle-local playback through audio IR and event observations, not a general script API. |
 | `ctx.assets` | Stable asset lookup by ID. | Returns IDs and metadata, not renderer or native handles. |
 
 ## Entity API
@@ -368,6 +368,22 @@ const heroModel = modelAsset("model.hero", "assets/hero.glb", {
   ],
 });
 ```
+
+## Audio API
+
+V6 audio playback currently starts from structured audio IR and bundle-local
+assets. Autoplay looped music and event-matched one-shots are reported in
+shared conformance observations, and adapters keep audio handles private:
+
+```ts
+defineAudio({
+  music: [loopingMusic("music.arena", { asset: audioAsset("arena.music", "assets/arena.ogg") })],
+  oneShots: [oneShotSound("sound.hit", { asset: audioAsset("hit.sound", "assets/hit.wav"), event: "DamageEvent" })],
+});
+```
+
+Script/UI `audio.play`, `audio.stop`, volume, spatial audio, and buses are not
+portable V6 APIs yet.
 
 ```ts
 ctx.animation.play(entity, "run", {

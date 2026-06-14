@@ -285,6 +285,15 @@ spawns retained UI entities with stable `ThreeNativeId` metadata, hierarchy,
 buttons, bars, and text. Focus navigation and native click-to-event delivery
 remain later V6-06 runtime work.
 
+V6-07 has started with bundle-local audio playback evidence: the shared
+`v6-audio-playback` conformance fixture declares local OGG/WAV assets,
+autoplay looping music, and an event-triggered one-shot. The web runtime now has
+a testable HTML audio-element sink for local asset playback and stable missing
+asset/playback diagnostics, while the Bevy runtime can spawn autoplay loop
+audio bundles and both adapters report deterministic audio command observations
+through conformance. Stop, volume, spatial audio, buses, and richer system/UI
+audio services remain later V6-07/V7 contract work.
+
 V7 is now planned as the deep engine gap-closure milestone. It should continue
 parity work that is too large or risky for V6, such as deeper physics,
 animation graphs, richer UI/audio, renderer/content parity, scripting/runtime

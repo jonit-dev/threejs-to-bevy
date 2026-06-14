@@ -60,6 +60,18 @@ test("should localize resource and event observation mismatches", () => {
   assert.equal(result.diagnostics[1]?.path, '$.events["DamageEvent"].values[0].amount');
 });
 
+test("should localize audio observation mismatches", () => {
+  const result = compareConformanceReports(
+    report("web-three", { audioAsset: "hit.sound" }),
+    report("bevy", { audioAsset: "other.sound" }),
+  );
+
+  assert.equal(result.ok, false);
+  assert.equal(result.diagnostics[0]?.path, "$.audio.commands[0].asset");
+  assert.equal(result.diagnostics[0]?.left, "hit.sound");
+  assert.equal(result.diagnostics[0]?.right, "other.sound");
+});
+
 test("should pass matching reports", () => {
   const result = compareConformanceReports(
     report("web-three", { material: "mat.cube" }),
@@ -85,7 +97,7 @@ test("should pass matching gate commands and save report path", async () => {
     });
 
     assert.equal(result.ok, true);
-    assert.equal(result.steps.length, 10);
+    assert.equal(result.steps.length, 11);
     assert.equal(result.reportPath.endsWith("artifacts/conformance/verification-report.json"), true);
     assert.equal(result.artifacts.nativeBasicSceneReportPath.endsWith("artifacts/conformance/basic-scene/bevy.report.json"), true);
     assert.equal(
@@ -104,6 +116,10 @@ test("should pass matching gate commands and save report path", async () => {
       result.artifacts.nativeV6RetainedUiReportPath.endsWith("artifacts/conformance/v6-retained-ui/bevy.report.json"),
       true,
     );
+    assert.equal(
+      result.artifacts.nativeV6AudioPlaybackReportPath.endsWith("artifacts/conformance/v6-audio-playback/bevy.report.json"),
+      true,
+    );
     assert.equal(result.artifacts.v6AnimationDiffPath.endsWith("artifacts/conformance/v6-animation-clips/effects-diff.json"), true);
     assert.equal(result.artifacts.v6AnimationNativeEffectsPath.endsWith("artifacts/conformance/v6-animation-clips/native-effects.json"), true);
     assert.equal(result.artifacts.v6AnimationWebEffectsPath.endsWith("artifacts/conformance/v6-animation-clips/web-effects.json"), true);
@@ -112,7 +128,7 @@ test("should pass matching gate commands and save report path", async () => {
     assert.equal(result.artifacts.v6ResourceEventWebEffectsPath.endsWith("artifacts/conformance/v6-resources-events/web-effects.json"), true);
     const report = JSON.parse(await readFile(result.reportPath, "utf8"));
     assert.equal(report.status, "pass");
-    assert.equal(report.steps.length, 10);
+    assert.equal(report.steps.length, 11);
     assert.equal(report.artifacts.nativeBasicSceneReportPath.endsWith("artifacts/conformance/basic-scene/bevy.report.json"), true);
     assert.equal(
       report.artifacts.nativeV6AnimationClipsReportPath.endsWith("artifacts/conformance/v6-animation-clips/bevy.report.json"),
@@ -128,6 +144,10 @@ test("should pass matching gate commands and save report path", async () => {
     );
     assert.equal(
       report.artifacts.nativeV6RetainedUiReportPath.endsWith("artifacts/conformance/v6-retained-ui/bevy.report.json"),
+      true,
+    );
+    assert.equal(
+      report.artifacts.nativeV6AudioPlaybackReportPath.endsWith("artifacts/conformance/v6-audio-playback/bevy.report.json"),
       true,
     );
     assert.equal(report.artifacts.v6AnimationDiffPath.endsWith("artifacts/conformance/v6-animation-clips/effects-diff.json"), true);
@@ -152,6 +172,9 @@ function report(runtime, overrides = {}) {
         size: [1, 1, 1],
       },
     ],
+    audio: {
+      commands: [{ asset: overrides.audioAsset ?? "hit.sound", event: "DamageEvent", id: "sound.hit", kind: "oneShot" }],
+    },
     diagnostics: [],
     entities: [
       {

@@ -8,12 +8,15 @@ use threenative_loader::{
     WorldEntity,
 };
 
+use crate::audio::{self, NativeAudioCommand, NativeAudioCommandKind};
 use crate::physics::detect_physics_events;
 use crate::ui::build_native_ui;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ConformanceReport {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub audio: Option<ConformanceAudioReport>,
     pub assets: Vec<ConformanceAssetReport>,
     pub diagnostics: Vec<RuntimeDiagnostic>,
     pub entities: Vec<ConformanceEntityReport>,
@@ -26,6 +29,21 @@ pub struct ConformanceReport {
     pub runtime: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ui: Option<ConformanceUiReport>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ConformanceAudioReport {
+    pub commands: Vec<ConformanceAudioCommandReport>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConformanceAudioCommandReport {
+    pub asset: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub event: Option<String>,
+    pub id: String,
+    pub kind: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -261,6 +279,7 @@ pub fn report_bevy_conformance(
     entities.sort_by(|left, right| left.id.cmp(&right.id));
 
     ConformanceReport {
+        audio: report_audio(bundle),
         assets: bundle
             .assets
             .assets
@@ -281,6 +300,29 @@ pub fn report_bevy_conformance(
         resources: report_resources(bundle),
         runtime: "bevy".to_owned(),
         ui: bundle.ui.as_ref().and_then(report_ui),
+    }
+}
+
+fn report_audio(bundle: &LoadedBundle) -> Option<ConformanceAudioReport> {
+    audio::observe_audio(bundle).map(|observation| ConformanceAudioReport {
+        commands: observation
+            .commands
+            .iter()
+            .map(report_audio_command)
+            .collect(),
+    })
+}
+
+fn report_audio_command(command: &NativeAudioCommand) -> ConformanceAudioCommandReport {
+    ConformanceAudioCommandReport {
+        asset: command.asset.clone(),
+        event: command.event.clone(),
+        id: command.id.clone(),
+        kind: match &command.kind {
+            NativeAudioCommandKind::Loop => "loop",
+            NativeAudioCommandKind::OneShot => "oneShot",
+        }
+        .to_owned(),
     }
 }
 

@@ -43,8 +43,8 @@ Baseline: the repo pins Bevy and `bevy_ecs` to `=0.14.2`.
 | First-person controls | ⚠️ | Portable first-person config, pointer-lock expectations, movement update, and walkthrough verification exist; native input capture is still smoke-level. |
 | Walkability and scene collision | ⚠️ | V3 walkable regions and blocking probes exist in IR, web resolver, Bevy helper, and release gate; this is not a general physics collision system. |
 | Coordinate/color-space conventions | ⚠️ | `docs/conventions.md` now defines axes, units, handedness, rotations, color space, and imported asset scale; runtime capture/parity work must keep proving adapters follow it. |
-| UI | ❌ | UI IR types exist, but retained UI rendering and input/focus parity are not implemented. Not V3-critical unless verification overlays need it. |
-| Audio | ⚠️ | Audio IR and asset validation exist; runtime playback is not implemented. Not V3-critical unless ambience enters scope. |
+| UI | ⚠️ | Retained UI IR now has shared validation, web DOM overlay rendering, Bevy entity spawning, and conformance observations. Focus navigation and native interaction events remain incomplete. |
+| Audio | ⚠️ | Audio IR, asset validation, web HTML-audio playback hooks, Bevy autoplay loop spawning, and shared playback observations exist for bundle-local music/one-shots. Stop/volume/spatial/bus service contracts remain incomplete. |
 | Gameplay ECS/systems | ❌ | Components/resources/events/system schemas are not a working gameplay host. Keep out of V3 unless a ticket explicitly narrows the slice. |
 | Game-first SDK ergonomics | ✅ | V5-11 `defineGame`, prefab/control helpers, and `v5-game-starter` are supported as SDK/template composition over existing portable contracts. There is no new Bevy runtime surface beyond the emitted scene, world, input, runtime config, system, and model asset metadata contracts. |
 | Mobile packaging | ❌ | Out of current V3 scope. Do not let old roadmap language imply this is part of V3. |
@@ -287,6 +287,14 @@ the UI tree. Web preview now mounts the retained UI as a DOM overlay with
 resource-binding refresh and button/touch action dispatch into the UI action
 queue, while Bevy spawns UI entities with stable IDs, hierarchy, text, buttons,
 and bars. Focus navigation and native UI interaction events are not claimed yet.
+
+V6-07 has started for audio playback: the `v6-audio-playback` shared fixture
+declares local OGG/WAV assets, autoplay looping music, and a `DamageEvent`
+one-shot. Web has a testable HTML audio-element sink for bundle-local playback
+and stable diagnostics, Bevy spawns autoplay loop `AudioBundle` entities, and
+both adapters expose deterministic audio command observations in conformance.
+Stop, volume, spatial audio, buses, and richer system/UI audio services remain
+deferred.
 
 ## V7 Deep Engine Gap-Closure Plan
 

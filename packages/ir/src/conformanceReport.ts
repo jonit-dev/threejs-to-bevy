@@ -63,6 +63,17 @@ export interface IConformanceUiReport {
   root: IConformanceUiNodeReport;
 }
 
+export interface IConformanceAudioCommandReport {
+  asset: string;
+  event?: string;
+  id: string;
+  kind: "loop" | "oneShot";
+}
+
+export interface IConformanceAudioReport {
+  commands: IConformanceAudioCommandReport[];
+}
+
 export interface IConformanceEntityReport {
   camera?: {
     far: number;
@@ -107,6 +118,7 @@ export interface IConformanceEntityReport {
 }
 
 export interface IConformanceReport {
+  audio?: IConformanceAudioReport;
   assets: IConformanceAssetReport[];
   diagnostics: IRuntimeDiagnostic[];
   entities: IConformanceEntityReport[];
