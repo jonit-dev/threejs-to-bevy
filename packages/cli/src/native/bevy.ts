@@ -10,22 +10,24 @@ export type BevyRuntimeProcess = ChildProcess;
 
 export type BevyRuntimeRunner = (invocation: IBevyRuntimeInvocation) => BevyRuntimeProcess;
 
+export function bevyRuntimeArgs(repoRoot: string, invocation: IBevyRuntimeInvocation): string[] {
+  return [
+    "run",
+    "--manifest-path",
+    resolve(repoRoot, "runtime-bevy/Cargo.toml"),
+    "-p",
+    "threenative_runtime",
+    "--bin",
+    "threenative_runtime",
+    "--",
+    invocation.bundlePath,
+  ];
+}
+
 export function runBevyRuntime(invocation: IBevyRuntimeInvocation): BevyRuntimeProcess {
   const repoRoot = resolve(fileURLToPath(new URL("../../../../", import.meta.url)));
-  return spawn(
-    "cargo",
-    [
-      "run",
-      "--manifest-path",
-      resolve(repoRoot, "runtime-bevy/Cargo.toml"),
-      "-p",
-      "threenative_runtime",
-      "--",
-      invocation.bundlePath,
-    ],
-    {
-      cwd: repoRoot,
-      stdio: "inherit",
-    },
-  );
+  return spawn("cargo", bevyRuntimeArgs(repoRoot, invocation), {
+    cwd: repoRoot,
+    stdio: "inherit",
+  });
 }

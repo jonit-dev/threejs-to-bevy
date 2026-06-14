@@ -2,7 +2,8 @@ use std::path::Path;
 
 use bevy::prelude::*;
 use thiserror::Error;
-use threenative_loader::{LoadError, load_bundle};
+use threenative_components::ThreeNativeId;
+use threenative_loader::{LoadError, LoadedBundle, TransformComponent, load_bundle};
 
 pub mod assets;
 pub mod audio;
@@ -33,6 +34,7 @@ pub enum RuntimeError {
 pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeError> {
     let mut bundle = load_bundle(bundle_path)?;
     systems_host::ensure_native_system_host_supported(&bundle)?;
+    let has_scripts = bundle.manifest.entry.scripts.is_some();
     systems_host::run_native_systems_once(
         &mut bundle,
         systems_context::NativeSystemTimeSnapshot {
@@ -77,5 +79,70 @@ pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeErro
     map_world::map_bundle_into_world(app.world_mut(), &bundle)?;
     environment::map_environment_into_world(app.world_mut(), &bundle);
     app.add_systems(Update, rendering::normalize_loaded_gltf_materials);
+    if has_scripts {
+        app.insert_resource(ScriptedRuntimeBundle { bundle });
+        app.add_systems(Update, run_scripted_runtime_systems);
+    }
     Ok(app)
+}
+
+#[derive(Resource)]
+struct ScriptedRuntimeBundle {
+    bundle: LoadedBundle,
+}
+
+fn run_scripted_runtime_systems(
+    mut runtime: Option<ResMut<ScriptedRuntimeBundle>>,
+    time: Res<Time>,
+    mut transforms: Query<(&ThreeNativeId, &mut Transform)>,
+) {
+    let Some(ref mut runtime) = runtime else {
+        return;
+    };
+    let delta = time.delta_seconds();
+    let snapshot = systems_context::NativeSystemTimeSnapshot {
+        delta,
+        dt: delta,
+        elapsed: time.elapsed_seconds(),
+        fixed_delta: 1.0 / 60.0,
+        fixed_dt: 1.0 / 60.0,
+        paused: false,
+    };
+
+    if let Err(error) = systems_host::run_native_systems_once(&mut runtime.bundle, snapshot) {
+        error!("{error}");
+        return;
+    }
+
+    sync_scripted_transforms(&runtime.bundle, &mut transforms);
+}
+
+fn sync_scripted_transforms(
+    bundle: &LoadedBundle,
+    transforms: &mut Query<(&ThreeNativeId, &mut Transform)>,
+) {
+    for (stable_id, mut target) in transforms.iter_mut() {
+        let Some(source) = bundle
+            .world
+            .entities
+            .iter()
+            .find(|entity| entity.id == stable_id.0)
+            .and_then(|entity| entity.components.transform.as_ref())
+        else {
+            continue;
+        };
+        apply_transform_component(&mut target, source);
+    }
+}
+
+fn apply_transform_component(target: &mut Transform, source: &TransformComponent) {
+    if let Some(position) = source.position {
+        target.translation = Vec3::new(position[0], position[1], position[2]);
+    }
+    if let Some(rotation) = source.rotation {
+        target.rotation = Quat::from_xyzw(rotation[0], rotation[1], rotation[2], rotation[3]);
+    }
+    if let Some(scale) = source.scale {
+        target.scale = Vec3::new(scale[0], scale[1], scale[2]);
+    }
 }

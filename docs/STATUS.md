@@ -42,7 +42,8 @@ Current implemented V4 slice:
 - the Bevy runtime embeds `quickjs-rusty`/QuickJS-ng, loads
   `scripts.bundle.js`, calls declared system exports with portable context
   snapshots, validates effects against `systems.ir.json`, applies declared
-  transform/custom-component patches, and emits the same canonical effect-log
+  transform/custom-component patches, syncs scripted transform updates into
+  the live Bevy preview each frame, and emits the same canonical effect-log
   shape as the web runner.
 - web and Bevy expose deterministic V4 service facades for time, input, events,
   commands, `physics.raycast`, and `animation.play`, including permission
@@ -66,8 +67,8 @@ Current implemented V4 slice:
 - async systems or state-preserving hot reload
 - full physics, animation graphs, UI runtime parity, or editor tooling
 - direct Three.js, Bevy, renderer, DOM, filesystem, network, or platform access
-- multi-frame native scheduling, runtime hot reload, or browser/native visual
-  equivalence beyond the current primitive frame artifact
+- full dynamic native spawn/despawn reconciliation, runtime hot reload, or
+  browser/native visual equivalence beyond the current primitive frame artifact
 
 ## V3 Proves
 
