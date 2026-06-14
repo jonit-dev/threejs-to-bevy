@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
-import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import test from "node:test";
 
 import { validateBundle } from "./index.js";
+import { copyFixtureBundle } from "../testFixtures.js";
 
 const cubeFixture = resolve(process.cwd(), "../ir/fixtures/cube-scene/game.bundle");
 
@@ -54,8 +54,5 @@ test("validate should reject duplicate entity ids", async () => {
 });
 
 async function copyCubeFixture(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), "tn-validate-bundle-"));
-  const bundle = join(root, "game.bundle");
-  await cp(cubeFixture, bundle, { recursive: true });
-  return bundle;
+  return copyFixtureBundle(cubeFixture, "tn-validate-bundle-");
 }

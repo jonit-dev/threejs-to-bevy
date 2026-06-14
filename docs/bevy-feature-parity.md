@@ -126,6 +126,12 @@ Bevy world-mapping failures for missing mesh/material references expose stable
 native code/path/suggestion accessors. This improves failure repairability but
 does not add new rendering parity by itself.
 
+V5-04 is implemented for fixture harness cleanup: Rust conformance tests now
+load shared conformance fixtures by name with fixture/path-aware failure
+messages, and TypeScript fixture builders reduce repeated bundle setup in
+focused validation tests. This makes later Bevy parity coverage cheaper without
+changing supported runtime behavior.
+
 Priority V5 native coverage:
 
 1. Loader and fixture reuse for shared IR bundles used by both web and Bevy

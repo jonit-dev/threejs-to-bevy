@@ -25,10 +25,10 @@ all behavior unchanged.
 
 **Implementation:**
 
-- [ ] Add builders for minimal world bundles, materials, assets, schemas,
+- [x] Add builders for minimal world bundles, materials, assets, schemas,
   systems, environment scenes, and rejected variants.
-- [ ] Refactor duplicated setup in focused tests.
-- [ ] Keep deterministic JSON assertions where those assertions protect the
+- [x] Refactor duplicated setup in focused tests.
+- [x] Keep deterministic JSON assertions where those assertions protect the
   public contract.
 
 #### Phase 2: Native Shared Fixture Loader
@@ -41,9 +41,9 @@ all behavior unchanged.
 
 **Implementation:**
 
-- [ ] Load shared conformance fixtures by name from Rust tests.
-- [ ] Report fixture name and bundle path on failure.
-- [ ] Use the same fixture in at least one TypeScript conformance test and one
+- [x] Load shared conformance fixtures by name from Rust tests.
+- [x] Report fixture name and bundle path on failure.
+- [x] Use the same fixture in at least one TypeScript conformance test and one
   Rust test.
 
 ## Verification Strategy
@@ -55,8 +55,22 @@ all behavior unchanged.
 
 ## Acceptance Criteria
 
-- [ ] Duplicated fixture construction is reduced without changing behavior.
-- [ ] Shared fixture helpers do not hide bundle fields from assertions that need
+- [x] Duplicated fixture construction is reduced without changing behavior.
+- [x] Shared fixture helpers do not hide bundle fields from assertions that need
   exact shape checks.
-- [ ] Rust tests can consume shared conformance fixtures.
+- [x] Rust tests can consume shared conformance fixtures.
 
+## Implementation Evidence
+
+- `packages/ir/src/testFixtures.ts` provides package-local helpers for minimal
+  bundle manifests plus world, assets, materials, and target-profile JSON.
+- Focused IR validation tests now share the minimal bundle builder while still
+  writing rejected audio, UI, physics, input, asset, material, and budget
+  variants explicitly in each test.
+- `packages/compiler/src/testFixtures.ts` provides a compiler-local fixture copy
+  helper for bundle validation tests.
+- `runtime-bevy/crates/threenative_runtime/tests/support/mod.rs` loads shared
+  conformance fixtures by name and includes fixture name plus bundle path in
+  failure messages.
+- The TypeScript conformance test catalog and the Rust conformance test both
+  consume `packages/ir/fixtures/conformance/basic-scene/game.bundle`.

@@ -106,6 +106,12 @@ rewriting them, CLI JSON errors include normalized severity, Bevy map errors
 expose stable native code/path/suggestion accessors, and `check:docs:v5`
 verifies V5 diagnostic-range documentation.
 
+V5-04 has landed the fixture-builder and harness-refactor slice: focused IR
+validation tests share package-local minimal bundle builders, compiler
+validation tests use a package-local fixture copy helper, and Bevy conformance
+tests load shared conformance fixtures by name with fixture/path-aware failure
+messages. This is harness cleanup and does not change runtime behavior.
+
 V5 should add or improve Rust tests for native runtime behavior whenever work
 touches shared IR, native runtime mapping, native scripting behavior, Bevy
 diagnostics, or visual-quality features that claim native support. The expected

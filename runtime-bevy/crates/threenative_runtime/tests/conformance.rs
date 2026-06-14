@@ -1,16 +1,23 @@
-use std::path::PathBuf;
-
 use bevy::prelude::*;
-use threenative_loader::load_bundle;
 use threenative_runtime::{conformance::report_bevy_conformance, map_world::map_bundle_into_world};
+
+mod support;
+use support::load_conformance_fixture;
 
 #[test]
 fn should_report_basic_scene_conformance_semantics() {
-    let bundle = load_bundle(basic_scene_fixture()).expect("basic scene fixture should load");
+    let fixture = load_conformance_fixture("basic-scene");
     let mut app = App::new();
 
-    map_bundle_into_world(app.world_mut(), &bundle).expect("basic scene should map");
-    let report = report_bevy_conformance(app.world_mut(), &bundle, "basic-scene");
+    map_bundle_into_world(app.world_mut(), &fixture.bundle).unwrap_or_else(|error| {
+        panic!(
+            "failed to map conformance fixture '{}' at '{}': {}",
+            fixture.name,
+            fixture.bundle_path.display(),
+            error
+        )
+    });
+    let report = report_bevy_conformance(app.world_mut(), &fixture.bundle, fixture.name);
     let report_json = serde_json::to_value(&report).expect("report should serialize");
 
     assert_eq!(report.fixture, "basic-scene");
@@ -89,9 +96,4 @@ fn should_report_basic_scene_conformance_semantics() {
         .and_then(|entities| entities.iter().find(|entity| entity["id"] == "camera.main"))
         .expect("camera entity should be serialized");
     assert_eq!(camera["camera"]["fovY"], 60.0);
-}
-
-fn basic_scene_fixture() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../../packages/ir/fixtures/conformance/basic-scene/game.bundle")
 }
