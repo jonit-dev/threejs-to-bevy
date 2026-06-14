@@ -399,6 +399,16 @@ function collectSystemCapabilities(systems: ISystemsIr | undefined, add: (domain
     add("ecs", "component-hooks");
     add("scripting", "component-hooks");
   }
+  if ((systems.channels ?? []).length > 0) {
+    add("scripting", "channels");
+  }
+  if ((systems.tasks ?? []).length > 0) {
+    add("scripting", "tasks");
+  }
+  if ((systems.plugins ?? []).length > 0 || (systems.pluginGroups ?? []).length > 0) {
+    add("ecs", "plugin-composition");
+    add("scripting", "plugin-composition");
+  }
   for (const system of systems.systems) {
     add("scripting", `schedule.${system.schedule}`);
     if (system.script !== undefined) {

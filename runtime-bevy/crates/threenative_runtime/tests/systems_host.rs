@@ -128,6 +128,24 @@ fn systems_host_should_expose_fixed_trace_tasks_and_channels() {
 }
 
 #[test]
+fn systems_host_should_expose_plugin_composition_metadata() {
+    let root = write_plugin_bundle("plugin-context");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+
+    run_native_systems_once(&mut bundle, time()).expect("system should run");
+
+    assert_eq!(
+        bundle.world.resources.get("PluginReport"),
+        Some(&serde_json::json!({
+            "group": "gameplay",
+            "hasCore": true,
+            "pluginCount": 1,
+            "systemCount": 1
+        }))
+    );
+}
+
+#[test]
 fn systems_host_should_reject_missing_export() {
     let root = write_bundle("missing-export", "missing_export");
     let mut bundle = load_bundle(&root).expect("scripted bundle should load");
@@ -424,6 +442,71 @@ fn write_task_channel_bundle(name: &str) -> PathBuf {
 };
 export const systemIds = Object.freeze({ "system_channelHandoff": "channelHandoff" });
 export const systems = Object.freeze({ "system_channelHandoff": system_channelHandoff });
+"#,
+    )
+    .expect("script bundle should be written");
+    root
+}
+
+fn write_plugin_bundle(name: &str) -> PathBuf {
+    let root = root(name);
+    write_base_bundle(&root, true);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [],
+  "resources": {
+    "PluginReport": {}
+  }
+}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "plugins": [
+    { "id": "core", "systems": ["reportPlugins"] }
+  ],
+  "pluginGroups": [
+    { "id": "gameplay", "plugins": ["core"] }
+  ],
+  "systems": [
+    {
+      "name": "reportPlugins",
+      "schedule": "startup",
+      "reads": [],
+      "writes": [],
+      "queries": [],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": ["PluginReport"],
+      "resourceWrites": ["PluginReport"],
+      "services": [],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_reportPlugins" }
+    }
+  ]
+}"#,
+    );
+    fs::write(
+        root.join("scripts.bundle.js"),
+        r#"const system_reportPlugins = (ctx) => {
+  const group = ctx.plugins.group("gameplay");
+  const plugin = ctx.plugins.list()[0];
+  ctx.resources.set("PluginReport", {
+    group: group.id,
+    hasCore: ctx.plugins.has("core"),
+    pluginCount: group.plugins.length,
+    systemCount: plugin.systems.length
+  });
+};
+export const systemIds = Object.freeze({ "system_reportPlugins": "reportPlugins" });
+export const systems = Object.freeze({ "system_reportPlugins": system_reportPlugins });
 "#,
     )
     .expect("script bundle should be written");

@@ -466,6 +466,17 @@ function __tnInvokeSystem(options) {
         return clone(data.tasks);
       }
     },
+    plugins: {
+      group(id) {
+        return clone(data.pluginGroups.find((entry) => entry.id === normalize(id)) || null);
+      },
+      has(id) {
+        return data.plugins.some((entry) => entry.id === normalize(id));
+      },
+      list() {
+        return clone(data.plugins);
+      }
+    },
     query(query = { with: [], without: [] }) {
       const withComponents = Array.isArray(query.with) ? query.with.map(normalize) : [];
       const withoutComponents = Array.isArray(query.without) ? query.without.map(normalize) : [];

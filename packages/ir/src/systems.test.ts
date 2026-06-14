@@ -282,6 +282,63 @@ test("should accept observer event propagation metadata", async () => {
   }
 });
 
+test("should accept portable plugin and plugin-group declarations", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-plugins-"));
+  try {
+    await writeBundle(root, {
+      commands: [],
+      pluginGroups: [{ id: "gameplay", plugins: ["core"] }],
+      plugins: [{ id: "core", systems: ["badDamage"] }],
+      reads: ["Transform"],
+      schedule: "fixedUpdate",
+      writes: ["Transform"],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject invalid plugin and plugin-group declarations", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-plugins-invalid-"));
+  try {
+    await writeBundle(root, {
+      commands: [],
+      pluginGroups: [
+        { id: "gameplay", plugins: ["missing", "core", "core"], unsupported: true },
+        { id: "gameplay", plugins: ["core"] },
+      ],
+      plugins: [
+        { id: "core", systems: ["missing", "badDamage", "badDamage"], unsupported: true },
+        { id: "core", systems: ["badDamage"] },
+      ],
+      reads: ["Transform"],
+      schedule: "fixedUpdate",
+      writes: ["Transform"],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.code), [
+      "TN_IR_SYSTEM_PLUGIN_FIELD_UNSUPPORTED",
+      "TN_IR_SYSTEM_PLUGIN_SYSTEM_MISSING",
+      "TN_IR_SYSTEM_PLUGIN_SYSTEM_DUPLICATE",
+      "TN_IR_SYSTEM_PLUGIN_DUPLICATE",
+      "TN_IR_SYSTEM_PLUGIN_GROUP_FIELD_UNSUPPORTED",
+      "TN_IR_SYSTEM_PLUGIN_GROUP_PLUGIN_MISSING",
+      "TN_IR_SYSTEM_PLUGIN_GROUP_PLUGIN_DUPLICATE",
+      "TN_IR_SYSTEM_PLUGIN_GROUP_DUPLICATE",
+    ]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject unsupported scripting lifecycle assumptions", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-lifecycle-invalid-"));
   try {
@@ -496,6 +553,8 @@ async function writeBundle(
     resourceReads?: string[];
     resourceWrites?: string[];
     observers?: unknown;
+    pluginGroups?: unknown;
+    plugins?: unknown;
     schedule?: unknown;
     services?: unknown[];
     timer?: unknown;
@@ -537,6 +596,8 @@ async function writeBundle(
     ...(system.componentHooks === undefined ? {} : { componentHooks: system.componentHooks }),
     ...(system.lifecycle === undefined ? {} : { lifecycle: system.lifecycle }),
     ...(system.observers === undefined ? {} : { observers: system.observers }),
+    ...(system.pluginGroups === undefined ? {} : { pluginGroups: system.pluginGroups }),
+    ...(system.plugins === undefined ? {} : { plugins: system.plugins }),
     schema: "threenative.systems",
     version: "0.1.0",
     systems: [

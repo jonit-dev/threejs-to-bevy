@@ -184,6 +184,26 @@ fn systems_context_should_include_fixed_trace_tasks_and_channels() {
     assert_eq!(snapshot.tasks[0].channel.as_deref(), Some("damage"));
 }
 
+#[test]
+fn systems_context_should_include_plugin_composition_metadata() {
+    let root = write_bundle("plugin-context");
+    let bundle = load_bundle(&root).expect("bundle should load");
+    let system = &bundle
+        .systems
+        .as_ref()
+        .expect("systems should load")
+        .systems[0];
+
+    let snapshot = build_system_context_snapshot(&bundle, system, time());
+
+    assert_eq!(snapshot.plugins.len(), 1);
+    assert_eq!(snapshot.plugins[0].id, "core");
+    assert_eq!(snapshot.plugins[0].systems, vec!["rotate".to_owned()]);
+    assert_eq!(snapshot.plugin_groups.len(), 1);
+    assert_eq!(snapshot.plugin_groups[0].id, "gameplay");
+    assert_eq!(snapshot.plugin_groups[0].plugins, vec!["core".to_owned()]);
+}
+
 fn write_bundle(name: &str) -> PathBuf {
     let root = root(name);
     fs::create_dir_all(&root).expect("temp bundle should be created");
@@ -309,6 +329,18 @@ fn write_bundle(name: &str) -> PathBuf {
       "schedule": "update",
       "mode": "fixed-trace",
       "channel": "damage"
+    }
+  ],
+  "plugins": [
+    {
+      "id": "core",
+      "systems": ["rotate"]
+    }
+  ],
+  "pluginGroups": [
+    {
+      "id": "gameplay",
+      "plugins": ["core"]
     }
   ],
   "systems": [

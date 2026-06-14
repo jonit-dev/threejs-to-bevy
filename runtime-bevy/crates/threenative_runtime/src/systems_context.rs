@@ -16,6 +16,8 @@ pub struct NativeSystemContextSnapshot {
     pub events: BTreeMap<String, Vec<Value>>,
     pub input: NativeSystemInputSnapshot,
     pub observer_routes: BTreeMap<String, BTreeMap<String, Vec<NativeObserverPropagationStep>>>,
+    pub plugin_groups: Vec<NativePluginGroupDeclaration>,
+    pub plugins: Vec<NativePluginDeclaration>,
     pub resources: BTreeMap<String, Value>,
     pub states: BTreeMap<String, Option<String>>,
     pub tasks: Vec<NativeTaskDeclaration>,
@@ -59,6 +61,18 @@ pub struct NativeTaskDeclaration {
     pub id: String,
     pub mode: String,
     pub schedule: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct NativePluginDeclaration {
+    pub id: String,
+    pub systems: Vec<String>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct NativePluginGroupDeclaration {
+    pub id: String,
+    pub plugins: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -131,6 +145,8 @@ pub fn build_system_context_snapshot_with_events(
         events: merged_event_queues(bundle, events),
         input: NativeSystemInputSnapshot::fixed_trace(),
         observer_routes: observer_routes(bundle),
+        plugin_groups: plugin_group_declarations(bundle),
+        plugins: plugin_declarations(bundle),
         resources: bundle
             .world
             .resources
@@ -141,6 +157,40 @@ pub fn build_system_context_snapshot_with_events(
         tasks: task_declarations(bundle),
         time,
     }
+}
+
+pub fn plugin_declarations(bundle: &LoadedBundle) -> Vec<NativePluginDeclaration> {
+    bundle
+        .systems
+        .as_ref()
+        .map(|systems| {
+            systems
+                .plugins
+                .iter()
+                .map(|plugin| NativePluginDeclaration {
+                    id: plugin.id.clone(),
+                    systems: plugin.systems.clone(),
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+pub fn plugin_group_declarations(bundle: &LoadedBundle) -> Vec<NativePluginGroupDeclaration> {
+    bundle
+        .systems
+        .as_ref()
+        .map(|systems| {
+            systems
+                .plugin_groups
+                .iter()
+                .map(|group| NativePluginGroupDeclaration {
+                    id: group.id.clone(),
+                    plugins: group.plugins.clone(),
+                })
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 pub fn channel_events(bundle: &LoadedBundle) -> BTreeMap<String, String> {

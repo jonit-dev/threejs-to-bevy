@@ -1141,7 +1141,7 @@ function validateSystems(
 ): void {
   const rawSystems = systems as unknown as Record<string, unknown>;
   for (const key of Object.keys(rawSystems)) {
-    if (!["channels", "componentHooks", "lifecycle", "observers", "schema", "systems", "tasks", "version"].includes(key)) {
+    if (!["channels", "componentHooks", "lifecycle", "observers", "pluginGroups", "plugins", "schema", "systems", "tasks", "version"].includes(key)) {
       diagnostics.push({
         code: "TN_IR_SYSTEMS_FIELD_UNSUPPORTED",
         message: `Systems IR uses unsupported field '${key}'.`,
@@ -1163,6 +1163,9 @@ function validateSystems(
   validateSystemObservers(systems.observers, `${path}/observers`, eventSchemas, diagnostics);
   const channelIds = validateSystemChannels(systems.channels, `${path}/channels`, eventSchemas, diagnostics);
   validateSystemTasks(systems.tasks, `${path}/tasks`, channelIds, diagnostics);
+  const systemNames = new Set(systems.systems.map((system) => system.name));
+  const pluginIds = validateSystemPlugins(systems.plugins, `${path}/plugins`, systemNames, diagnostics);
+  validateSystemPluginGroups(systems.pluginGroups, `${path}/pluginGroups`, pluginIds, diagnostics);
 
   systems.systems.forEach((system, systemIndex) => {
     const rawSystem = system as unknown as Record<string, unknown>;
@@ -1321,6 +1324,117 @@ function validateSystems(
         }
       }
     });
+  });
+}
+
+function validateSystemPlugins(
+  value: ISystemsIr["plugins"] | undefined,
+  path: string,
+  systemNames: ReadonlySet<string>,
+  diagnostics: IIrDiagnostic[],
+): Set<string> {
+  const pluginIds = new Set<string>();
+  if (value === undefined) {
+    return pluginIds;
+  }
+  if (!Array.isArray(value)) {
+    diagnostics.push({ code: "TN_IR_SYSTEM_PLUGINS_INVALID", message: "Systems plugins must be an array.", path, severity: "error" });
+    return pluginIds;
+  }
+  value.forEach((plugin, index) => {
+    const pluginPath = `${path}/${index}`;
+    if (!isRecord(plugin)) {
+      diagnostics.push({ code: "TN_IR_SYSTEM_PLUGIN_INVALID", message: "Plugin declaration must be an object.", path: pluginPath, severity: "error" });
+      return;
+    }
+    for (const key of Object.keys(plugin)) {
+      if (!["id", "systems"].includes(key)) {
+        diagnostics.push({ code: "TN_IR_SYSTEM_PLUGIN_FIELD_UNSUPPORTED", message: `Plugin declaration uses unsupported field '${key}'.`, path: `${pluginPath}/${key}`, severity: "error" });
+      }
+    }
+    if (typeof plugin.id !== "string" || plugin.id.trim() === "") {
+      diagnostics.push({ code: "TN_IR_SYSTEM_PLUGIN_ID_INVALID", message: "Plugin ID must be a non-empty string.", path: `${pluginPath}/id`, severity: "error" });
+    } else if (pluginIds.has(plugin.id)) {
+      diagnostics.push({ code: "TN_IR_SYSTEM_PLUGIN_DUPLICATE", message: `Plugin '${plugin.id}' is duplicated.`, path: `${pluginPath}/id`, severity: "error" });
+    } else {
+      pluginIds.add(plugin.id);
+    }
+    validatePluginSystems(plugin.systems, `${pluginPath}/systems`, systemNames, diagnostics);
+  });
+  return pluginIds;
+}
+
+function validatePluginSystems(value: unknown, path: string, systemNames: ReadonlySet<string>, diagnostics: IIrDiagnostic[]): void {
+  if (!Array.isArray(value) || value.length === 0) {
+    diagnostics.push({ code: "TN_IR_SYSTEM_PLUGIN_SYSTEMS_INVALID", message: "Plugin systems must be a non-empty array.", path, severity: "error" });
+    return;
+  }
+  const seen = new Set<string>();
+  value.forEach((system, index) => {
+    if (typeof system !== "string" || system.trim() === "" || !systemNames.has(system)) {
+      diagnostics.push({ code: "TN_IR_SYSTEM_PLUGIN_SYSTEM_MISSING", message: "Plugin system must reference a declared system.", path: `${path}/${index}`, severity: "error" });
+      return;
+    }
+    if (seen.has(system)) {
+      diagnostics.push({ code: "TN_IR_SYSTEM_PLUGIN_SYSTEM_DUPLICATE", message: `Plugin system '${system}' is duplicated.`, path: `${path}/${index}`, severity: "error" });
+      return;
+    }
+    seen.add(system);
+  });
+}
+
+function validateSystemPluginGroups(
+  value: ISystemsIr["pluginGroups"] | undefined,
+  path: string,
+  pluginIds: ReadonlySet<string>,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!Array.isArray(value)) {
+    diagnostics.push({ code: "TN_IR_SYSTEM_PLUGIN_GROUPS_INVALID", message: "Systems plugin groups must be an array.", path, severity: "error" });
+    return;
+  }
+  const groupIds = new Set<string>();
+  value.forEach((group, index) => {
+    const groupPath = `${path}/${index}`;
+    if (!isRecord(group)) {
+      diagnostics.push({ code: "TN_IR_SYSTEM_PLUGIN_GROUP_INVALID", message: "Plugin group declaration must be an object.", path: groupPath, severity: "error" });
+      return;
+    }
+    for (const key of Object.keys(group)) {
+      if (!["id", "plugins"].includes(key)) {
+        diagnostics.push({ code: "TN_IR_SYSTEM_PLUGIN_GROUP_FIELD_UNSUPPORTED", message: `Plugin group declaration uses unsupported field '${key}'.`, path: `${groupPath}/${key}`, severity: "error" });
+      }
+    }
+    if (typeof group.id !== "string" || group.id.trim() === "") {
+      diagnostics.push({ code: "TN_IR_SYSTEM_PLUGIN_GROUP_ID_INVALID", message: "Plugin group ID must be a non-empty string.", path: `${groupPath}/id`, severity: "error" });
+    } else if (groupIds.has(group.id)) {
+      diagnostics.push({ code: "TN_IR_SYSTEM_PLUGIN_GROUP_DUPLICATE", message: `Plugin group '${group.id}' is duplicated.`, path: `${groupPath}/id`, severity: "error" });
+    } else {
+      groupIds.add(group.id);
+    }
+    validatePluginGroupPlugins(group.plugins, `${groupPath}/plugins`, pluginIds, diagnostics);
+  });
+}
+
+function validatePluginGroupPlugins(value: unknown, path: string, pluginIds: ReadonlySet<string>, diagnostics: IIrDiagnostic[]): void {
+  if (!Array.isArray(value) || value.length === 0) {
+    diagnostics.push({ code: "TN_IR_SYSTEM_PLUGIN_GROUP_PLUGINS_INVALID", message: "Plugin group plugins must be a non-empty array.", path, severity: "error" });
+    return;
+  }
+  const seen = new Set<string>();
+  value.forEach((plugin, index) => {
+    if (typeof plugin !== "string" || plugin.trim() === "" || !pluginIds.has(plugin)) {
+      diagnostics.push({ code: "TN_IR_SYSTEM_PLUGIN_GROUP_PLUGIN_MISSING", message: "Plugin group plugin must reference a declared plugin.", path: `${path}/${index}`, severity: "error" });
+      return;
+    }
+    if (seen.has(plugin)) {
+      diagnostics.push({ code: "TN_IR_SYSTEM_PLUGIN_GROUP_PLUGIN_DUPLICATE", message: `Plugin group plugin '${plugin}' is duplicated.`, path: `${path}/${index}`, severity: "error" });
+      return;
+    }
+    seen.add(plugin);
   });
 }
 

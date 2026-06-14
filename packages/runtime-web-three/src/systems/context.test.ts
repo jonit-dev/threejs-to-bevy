@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { ISystemsIr, IWorldIr } from "@threenative/ir";
 
-import { channelEvent, componentHookObservations, createSystemContext, evaluateStates, propagateObserverEvent, taskChannel } from "./context.js";
+import { channelEvent, componentHookObservations, createSystemContext, evaluateStates, plugin, pluginGroup, propagateObserverEvent, taskChannel } from "./context.js";
 
 test("should expose fixed input trace", () => {
   const { context } = createSystemContext(makeWorld(), {
@@ -259,6 +259,27 @@ test("should expose fixed-trace task metadata and event-backed channels", () => 
   context.channels.send("missing", { ignored: true });
 
   assert.deepEqual(events, [{ event: "LifecycleEvent", payload: { phase: "updated" } }]);
+});
+
+test("should expose portable plugin composition metadata", () => {
+  const systems: ISystemsIr = {
+    pluginGroups: [{ id: "gameplay", plugins: ["core"] }],
+    plugins: [{ id: "core", systems: ["boot", "update"] }],
+    schema: "threenative.systems",
+    systems: [],
+    version: "0.1.0",
+  };
+
+  assert.deepEqual(plugin(systems, "core"), { id: "core", systems: ["boot", "update"] });
+  assert.deepEqual(pluginGroup(systems, "gameplay"), { id: "gameplay", plugins: ["core"] });
+
+  const { context } = createSystemContext(makeWorld(), { delta: 0.016, fixedDelta: 0.016, systems });
+
+  assert.equal(context.plugins.has("core"), true);
+  assert.equal(context.plugins.has("missing"), false);
+  assert.deepEqual(context.plugins.list(), [{ id: "core", systems: ["boot", "update"] }]);
+  assert.deepEqual(context.plugins.group("gameplay"), { id: "gameplay", plugins: ["core"] });
+  assert.equal(context.plugins.group("missing"), null);
 });
 
 function makeWorld(): IWorldIr {

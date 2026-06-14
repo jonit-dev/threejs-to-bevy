@@ -122,11 +122,12 @@ through `ctx.states.get()` plus component-hook reads through
 `ctx.components.type()`, and target-to-ancestor observer-route reads through
 `ctx.observers.propagate()`. The same trace also validates fixed-trace task
 declarations and typed event-backed channel handoff through `ctx.tasks.*()` and
-`ctx.channels.*()`. Arbitrary async timers, promises, workers, npm/platform APIs,
-hidden system-local persisted state, state-preserving hot reload, raw
-Bevy/renderer type IDs, command-time or removal component hook callbacks,
-stoppable observers, and full dynamic scene reconciliation remain unsupported or
-later work.
+`ctx.channels.*()`, plus read-only portable plugin composition through
+`ctx.plugins.*()`. Arbitrary async timers, promises, workers, npm/platform APIs,
+dynamic runtime plugins, public plugin escape hatches, hidden system-local
+persisted state, state-preserving hot reload, raw Bevy/renderer type IDs,
+command-time or removal component hook callbacks, stoppable observers, and full
+dynamic scene reconciliation remain unsupported or later work.
 
 The current V7-08 packaging evidence is intentionally narrow: `tn package
 --target desktop --bundle <path>` validates an existing bundle, requires

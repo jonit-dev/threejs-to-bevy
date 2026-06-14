@@ -419,14 +419,17 @@ from component schemas, target-to-ancestor observer propagation, plus
 fixed-trace task declarations and typed event-backed channels exposed to
 scripts as `ctx.states.get()`, `ctx.components.hooks()`,
 `ctx.components.type()` / `ctx.components.types()`, and
-`ctx.observers.propagate()`, `ctx.tasks.*()`, and `ctx.channels.*()`, while
-unsupported lifecycle fields and arbitrary async/timer/system-local state
-metadata fail with stable IR diagnostics. The
+`ctx.observers.propagate()`, `ctx.tasks.*()`, `ctx.channels.*()`, and
+read-only plugin composition through `ctx.plugins.*()`, while unsupported
+lifecycle fields, dynamic runtime plugins, and arbitrary async/timer/system-local
+state metadata fail with stable IR diagnostics. The
 `v7-scripting-lifecycle` fixture runs a script-heavy multi-schedule trace
 covering startup, fixedUpdate, update, and postUpdate resource handoff, queued
 events, spawn/despawn commands, `animation.play` service effects, derived
 state/substate reads, component-hook observations, component-reflection reads,
 observer-route reads, and fixed-trace channel handoff.
+It also records portable plugin/plugin-group composition metadata in the shared
+trace without exposing renderer or native runtime extension points.
 `pnpm verify:conformance`
 compares the canonical
 web/native effect logs and writes artifacts under
@@ -434,7 +437,8 @@ web/native effect logs and writes artifacts under
 now prove command-buffer spawn/despawn reconciliation across later web/native
 schedules, native persistence for direct and command-buffer event writes, and
 native query filtering against dynamically spawned components. State-preserving
-hot reload, arbitrary async timers/promises/workers, arbitrary npm/platform APIs, broad live-scene
+hot reload, arbitrary async timers/promises/workers, arbitrary npm/platform APIs,
+dynamic runtime plugins, public plugin escape hatches, broad live-scene
 reconciliation, event clearing/windowing rules, raw Bevy/renderer type IDs,
 command-time/removal component hook callbacks, stoppable observers, and
 system-local persisted state remain unsupported or later work.

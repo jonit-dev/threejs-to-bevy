@@ -204,8 +204,10 @@ test("should include capability tags for each conformance fixture", async () => 
     "ecs:event-schemas",
     "ecs:events",
     "ecs:observer-propagation",
+    "ecs:plugin-composition",
     "ecs:resource-schemas",
     "ecs:resources",
+    "scripting:channels",
     "scripting:command.despawn",
     "scripting:command.spawn",
     "scripting:component-hooks",
@@ -214,6 +216,7 @@ test("should include capability tags for each conformance fixture", async () => 
     "scripting:event-writes",
     "scripting:hot-reload.invalidate",
     "scripting:larger-fixtures",
+    "scripting:plugin-composition",
     "scripting:replay.fixed-trace",
     "scripting:resource-reads",
     "scripting:resource-writes",
@@ -229,6 +232,7 @@ test("should include capability tags for each conformance fixture", async () => 
     "scripting:state.substate",
     "scripting:state.system-local-disallowed",
     "scripting:systems",
+    "scripting:tasks",
   ]);
   assertFixtureCapabilities(byName, "v7-packaging-target-profiles", [
     "diagnostics:platform",

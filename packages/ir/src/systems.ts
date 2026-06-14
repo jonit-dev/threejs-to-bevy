@@ -58,6 +58,8 @@ export interface ISystemsIr {
     substates?: IIrSubstateDeclaration[];
   };
   observers?: IIrObserverDeclaration[];
+  pluginGroups?: IIrSystemPluginGroupDeclaration[];
+  plugins?: IIrSystemPluginDeclaration[];
   schema: "threenative.systems";
   tasks?: IIrSystemTaskDeclaration[];
   version: SchemaVersion;
@@ -90,6 +92,16 @@ export interface IIrSystemTaskDeclaration {
   id: string;
   mode: "fixed-trace";
   schedule: IrSystemSchedule;
+}
+
+export interface IIrSystemPluginDeclaration {
+  id: string;
+  systems: string[];
+}
+
+export interface IIrSystemPluginGroupDeclaration {
+  id: string;
+  plugins: string[];
 }
 
 export interface IIrStateSource {

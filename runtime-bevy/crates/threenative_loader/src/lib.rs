@@ -333,6 +333,10 @@ pub struct SystemsIr {
     pub lifecycle: Option<SystemsLifecycleIr>,
     #[serde(default)]
     pub observers: Vec<SystemObserverIr>,
+    #[serde(default, rename = "pluginGroups")]
+    pub plugin_groups: Vec<SystemPluginGroupIr>,
+    #[serde(default)]
+    pub plugins: Vec<SystemPluginIr>,
     pub schema: String,
     pub version: String,
     #[serde(default)]
@@ -358,6 +362,18 @@ pub struct SystemObserverIr {
     pub event: String,
     pub phases: Vec<String>,
     pub propagation: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct SystemPluginIr {
+    pub id: String,
+    pub systems: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct SystemPluginGroupIr {
+    pub id: String,
+    pub plugins: Vec<String>,
 }
 
 #[derive(Clone, Debug, Deserialize)]

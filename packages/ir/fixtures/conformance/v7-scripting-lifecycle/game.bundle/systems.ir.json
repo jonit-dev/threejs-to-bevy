@@ -86,6 +86,25 @@
       "channel": "lifecycle"
     }
   ],
+  "plugins": [
+    {
+      "id": "lifecycleCore",
+      "systems": [
+        "bootLifecycle",
+        "fixedAccumulator",
+        "updateDamage",
+        "postLifecycle"
+      ]
+    }
+  ],
+  "pluginGroups": [
+    {
+      "id": "gameplay",
+      "plugins": [
+        "lifecycleCore"
+      ]
+    }
+  ],
   "systems": [
     {
       "name": "bootLifecycle",

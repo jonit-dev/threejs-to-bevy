@@ -10,12 +10,14 @@
       "event-schemas",
       "events",
       "observer-propagation",
+      "plugin-composition",
       "resource-schemas",
       "resources"
     ],
     "scripting": [
       "command.despawn",
       "command.spawn",
+      "channels",
       "component-hooks",
       "component-reflection",
       "event-reads",
@@ -23,6 +25,7 @@
       "hot-reload.invalidate",
       "larger-fixtures",
       "replay.fixed-trace",
+      "plugin-composition",
       "resource-reads",
       "resource-writes",
       "schedule.fixedUpdate",
@@ -36,6 +39,7 @@
       "state.computed",
       "state.substate",
       "state.system-local-disallowed",
+      "tasks",
       "systems"
     ]
   },

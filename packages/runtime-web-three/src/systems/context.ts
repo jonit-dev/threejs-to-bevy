@@ -59,6 +59,11 @@ export interface ISystemContext {
   observers: {
     propagate(event: unknown, target: string): IObserverPropagationStep[];
   };
+  plugins: {
+    group(id: unknown): IPluginGroupView | null;
+    has(id: unknown): boolean;
+    list(): IPluginDeclarationView[];
+  };
   query(query?: IIrSystemQuery): ISystemEntityView[];
   resources: {
     get(name: string): unknown;
@@ -103,6 +108,16 @@ export interface ITaskDeclarationView {
   id: string;
   mode: "fixed-trace";
   schedule: "fixedUpdate" | "postUpdate" | "startup" | "update";
+}
+
+export interface IPluginDeclarationView {
+  id: string;
+  systems: string[];
+}
+
+export interface IPluginGroupView {
+  id: string;
+  plugins: string[];
 }
 
 export interface IQueuedCommand {
@@ -230,6 +245,17 @@ export function createSystemContext(
           return propagateObserverEvent(world, options.systems, normalizeHandleName(event), target);
         },
       },
+      plugins: {
+        group(id) {
+          return cloneValue(pluginGroup(options.systems, normalizeHandleName(id))) as IPluginGroupView | null;
+        },
+        has(id) {
+          return plugin(options.systems, normalizeHandleName(id)) !== null;
+        },
+        list() {
+          return cloneValue(options.systems?.plugins ?? []) as IPluginDeclarationView[];
+        },
+      },
       query(query = options.defaultQuery ?? { with: [], without: [] }) {
         return world.entities
           .filter((entity) => matchesQuery(entity, query))
@@ -300,6 +326,14 @@ export function channelEvent(systems: ISystemsIr | undefined, channel: string): 
 
 export function taskChannel(systems: ISystemsIr | undefined, task: string): string | null {
   return systems?.tasks?.find((candidate) => candidate.id === task)?.channel ?? null;
+}
+
+export function plugin(systems: ISystemsIr | undefined, id: string): IPluginDeclarationView | null {
+  return systems?.plugins?.find((candidate) => candidate.id === id) ?? null;
+}
+
+export function pluginGroup(systems: ISystemsIr | undefined, id: string): IPluginGroupView | null {
+  return systems?.pluginGroups?.find((candidate) => candidate.id === id) ?? null;
 }
 
 export function componentHookObservations(world: IWorldIr, systems: ISystemsIr | undefined, component: string): IComponentHookObservation[] {
