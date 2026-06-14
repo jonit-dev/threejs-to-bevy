@@ -50,7 +50,7 @@ async function runWebTrace(root, bundlePath) {
   const bundle = await runtime.loadBundle(bundlePath);
   const module = await runtime.loadSystemModule(bundlePath, bundle.manifest);
   const effectLog = runtime.createSystemEffectLog();
-  for (const schedule of ["fixedUpdate", "update", "postUpdate"]) {
+  for (const schedule of ["startup", "fixedUpdate", "update", "postUpdate"]) {
     const result = await runtime.runSchedule({
       delta: 1 / 60,
       effectLog,
@@ -101,7 +101,7 @@ function compareLogs(web, native) {
         ? []
         : [
             {
-              code: "TN_V6_RESOURCE_EVENT_TRACE_MISMATCH",
+              code: "TN_VERIFY_V6_RESOURCE_EVENT_TRACE_MISMATCH",
               message: firstMismatch.message,
               path: firstMismatch.path,
               severity: "error",

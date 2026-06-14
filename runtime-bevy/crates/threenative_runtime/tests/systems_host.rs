@@ -65,6 +65,24 @@ fn systems_host_should_apply_declared_resource_write() {
 }
 
 #[test]
+fn systems_host_should_run_startup_before_update() {
+    let root = write_startup_bundle("startup-order");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+
+    let run = run_native_systems_once(&mut bundle, time()).expect("systems should run");
+
+    assert_eq!(
+        bundle.world.resources.get("Score"),
+        Some(&serde_json::json!({ "value": 6 }))
+    );
+    assert_eq!(run.logs.len(), 2);
+    assert_eq!(run.logs[0].entries[0].system, "bootScore");
+    assert_eq!(run.logs[0].entries[0].schedule, "startup");
+    assert_eq!(run.logs[1].entries[0].system, "score");
+    assert_eq!(run.logs[1].entries[0].schedule, "update");
+}
+
+#[test]
 fn systems_host_should_reject_missing_export() {
     let root = write_bundle("missing-export", "missing_export");
     let mut bundle = load_bundle(&root).expect("scripted bundle should load");
@@ -94,6 +112,77 @@ fn systems_host_should_keep_unsupported_diagnostic_for_unavailable_builds() {
     assert_eq!(diagnostic.severity, "error");
     assert_eq!(diagnostic.system_id.as_deref(), Some("movePlayer"));
     assert!(diagnostic.message.contains("QuickJS host"));
+}
+
+fn write_startup_bundle(name: &str) -> PathBuf {
+    let root = root(name);
+    write_base_bundle(&root, true);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [],
+  "resources": {
+    "Score": { "value": 3 }
+  }
+}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "score",
+      "schedule": "update",
+      "reads": [],
+      "writes": [],
+      "queries": [],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": ["Score"],
+      "resourceWrites": ["Score"],
+      "services": [],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_score" }
+    },
+    {
+      "name": "bootScore",
+      "schedule": "startup",
+      "reads": [],
+      "writes": [],
+      "queries": [],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": ["Score"],
+      "resourceWrites": ["Score"],
+      "services": [],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_bootScore" }
+    }
+  ]
+}"#,
+    );
+    fs::write(
+        root.join("scripts.bundle.js"),
+        r#"const system_bootScore = (ctx) => {
+  const score = ctx.resources.get("Score");
+  ctx.resources.set("Score", { value: score.value + 1 });
+};
+const system_score = (ctx) => {
+  const score = ctx.resources.get("Score");
+  ctx.resources.set("Score", { value: score.value + 2 });
+};
+export const systemIds = Object.freeze({ "system_bootScore": "bootScore", "system_score": "score" });
+export const systems = Object.freeze({ "system_bootScore": system_bootScore, "system_score": system_score });
+"#,
+    )
+    .expect("script bundle should be written");
+    root
 }
 
 fn write_resource_bundle(name: &str) -> PathBuf {

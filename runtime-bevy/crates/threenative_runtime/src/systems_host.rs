@@ -160,8 +160,13 @@ pub fn run_native_systems_once(
 
     let mut events = BTreeMap::new();
     let mut logs = Vec::new();
-    for schedule in ["fixedUpdate", "update", "postUpdate"] {
-        for system in systems.iter().filter(|system| system.schedule == schedule) {
+    for schedule in ["startup", "fixedUpdate", "update", "postUpdate"] {
+        let mut scheduled_systems = systems
+            .iter()
+            .filter(|system| system.schedule == schedule)
+            .collect::<Vec<_>>();
+        scheduled_systems.sort_by(|left, right| left.name.cmp(&right.name));
+        for system in scheduled_systems {
             let effects =
                 call_system_export(&context, bundle, system, time.clone(), events.clone())?;
             queue_events(&mut events, &effects);

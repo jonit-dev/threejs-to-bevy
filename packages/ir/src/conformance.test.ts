@@ -58,6 +58,8 @@ test("should include capability tags for each conformance fixture", async () => 
     "scripting:event-writes",
     "scripting:resource-reads",
     "scripting:resource-writes",
+    "scripting:schedule.startup",
+    "scripting:schedule.update",
     "scripting:script-bundle",
     "scripting:systems",
   ]);

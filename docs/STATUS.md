@@ -240,8 +240,12 @@ of later V6 phases.
 V6-02 has started with the schedule contract slice: SDK, compiler, and IR now
 accept a declared `startup` schedule alongside `fixedUpdate`, `update`, and
 `postUpdate`, and `docs/scripting-api.md` records the deterministic V6 stage
-ordering and unsupported lifecycle/state behavior. Runtime execution of
-`startup` and broader cross-runtime schedule traces remain later V6-02 work.
+ordering and unsupported lifecycle/state behavior. The web runner and native
+QuickJS host now execute schedules in `startup`, `fixedUpdate`, `update`,
+`postUpdate` order with same-stage systems sorted by name, and
+`pnpm verify:conformance` compares the V6 fixture's startup-before-update
+resource/event trace artifacts. Broader lifecycle/state coverage remains later
+V6 work.
 
 V7 is now planned as the deep engine gap-closure milestone. It should continue
 parity work that is too large or risky for V6, such as deeper physics,
@@ -309,6 +313,7 @@ sheet under `artifacts/v3`.
 - [V3 Completion Checklist](releases/v3-completion.md)
 - [Bevy Feature Parity Drift](bevy-feature-parity.md)
 - [Feature Maturity Matrix](feature-maturity.md)
+- [verify:v6](verify-v6.md)
 - [verify:v4](verify-v4.md)
 - [verify:v5](verify-v5.md)
 - [verify:v3](verify-v3.md)

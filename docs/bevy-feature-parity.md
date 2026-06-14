@@ -247,8 +247,10 @@ out of partial/missing status.
 V6-02 has started for schedule declarations: `startup` is now a valid SDK,
 compiler, and IR schedule value beside `fixedUpdate`, `update`, and
 `postUpdate`, with deterministic ordering documented in
-`docs/scripting-api.md`. Native/web runtime execution for startup and broader
-schedule-trace evidence is not claimed yet.
+`docs/scripting-api.md`. Web and native now execute `startup`, `fixedUpdate`,
+`update`, and `postUpdate` in that order with same-stage systems sorted by
+name, and shared conformance compares a V6 startup-before-update
+resource/event trace. Broader lifecycle/state evidence is not claimed yet.
 
 ## V7 Deep Engine Gap-Closure Plan
 

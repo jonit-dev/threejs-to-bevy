@@ -143,7 +143,7 @@ V6 promotes a small declared schedule vocabulary for portable systems:
 
 | Stage | Intent | Ordering |
 | --- | --- | --- |
-| `startup` | One-shot setup before gameplay frames. | Runs before repeating gameplay stages once runtime execution support is enabled. |
+| `startup` | One-shot setup before gameplay frames. | Runs before repeating gameplay stages. |
 | `fixedUpdate` | Deterministic simulation and physics-facing gameplay. | Runs before `update` for each fixed tick. |
 | `update` | Per-frame gameplay and input-facing behavior. | Runs after fixed ticks for the frame. |
 | `postUpdate` | Cleanup, follow-up events, and presentation-facing state. | Runs after `update` for the frame. |

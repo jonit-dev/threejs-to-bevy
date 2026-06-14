@@ -14,6 +14,8 @@
       "event-writes",
       "resource-reads",
       "resource-writes",
+      "schedule.startup",
+      "schedule.update",
       "script-bundle",
       "systems"
     ]

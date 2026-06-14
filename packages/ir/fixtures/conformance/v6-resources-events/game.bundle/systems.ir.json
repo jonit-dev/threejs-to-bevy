@@ -3,6 +3,27 @@
   "version": "0.1.0",
   "systems": [
     {
+      "name": "bootScore",
+      "schedule": "startup",
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "queries": [],
+      "reads": [],
+      "resourceReads": [
+        "Score"
+      ],
+      "resourceWrites": [
+        "Score"
+      ],
+      "services": [],
+      "script": {
+        "bundle": "scripts.bundle.js",
+        "exportName": "system_bootScore"
+      },
+      "writes": []
+    },
+    {
       "name": "resourceEventProbe",
       "schedule": "update",
       "commands": [],

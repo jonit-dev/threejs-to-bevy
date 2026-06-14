@@ -51,7 +51,9 @@ export async function runSchedule(options: {
   world: IWorldIr;
 }): Promise<ISystemRunResult> {
   const diagnostics: IRuntimeDiagnostic[] = [];
-  const scheduledSystems = options.systems.systems.filter((system) => system.schedule === options.schedule);
+  const scheduledSystems = options.systems.systems
+    .filter((system) => system.schedule === options.schedule)
+    .sort((left, right) => left.name.localeCompare(right.name));
   for (const system of scheduledSystems) {
     const result = await runSystem(system, options);
     diagnostics.push(...result.diagnostics);

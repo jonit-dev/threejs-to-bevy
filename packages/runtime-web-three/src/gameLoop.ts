@@ -11,6 +11,7 @@ export interface IGameLoopState {
   elapsed: number;
   frame: number;
   paused: boolean;
+  startupComplete: boolean;
   tick: number;
 }
 
@@ -20,6 +21,7 @@ export function createGameLoopState(config?: IRuntimeConfigIr): IGameLoopState {
     elapsed: 0,
     frame: 0,
     paused: config?.time.paused ?? false,
+    startupComplete: false,
     tick: 0,
   };
 }
@@ -46,6 +48,10 @@ export async function runGameFrame(options: {
     state.elapsed += options.delta;
     state.accumulator += options.delta;
     if (!state.paused) {
+      if (!state.startupComplete) {
+        collectDiagnostics(options.mapped, await runSchedule({ ...options, delta: 0, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, schedule: "startup", tick: state.tick }));
+        state.startupComplete = true;
+      }
       while (state.accumulator >= fixedDelta) {
         stepPhysics(options.world, fixedDelta);
         collectDiagnostics(
@@ -60,6 +66,7 @@ export async function runGameFrame(options: {
     }
     state.frame += 1;
   } else {
+    collectDiagnostics(options.mapped, await runSchedule({ ...options, delta: 0, fixedDelta, frame: 0, schedule: "startup", tick: 0 }));
     stepPhysics(options.world, fixedDelta);
     collectDiagnostics(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, schedule: "fixedUpdate", tick: 0 }));
     collectDiagnostics(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, schedule: "update", tick: 0 }));
