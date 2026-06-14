@@ -41,6 +41,23 @@ fn should_report_missing_material_with_stable_diagnostic_shape() {
     assert!(error.suggestion().contains("materials.ir.json"));
 }
 
+#[test]
+fn should_report_missing_mesh_with_stable_diagnostic_shape() {
+    let mut bundle = load_bundle(cube_fixture()).expect("cube fixture should load");
+    bundle.assets.assets.clear();
+    let mut app = App::new();
+
+    let error =
+        map_bundle_into_world(app.world_mut(), &bundle).expect_err("missing mesh should fail");
+
+    assert_eq!(error.code(), "TN_BEVY_MESH_REFERENCE_MISSING");
+    assert_eq!(
+        error.path(),
+        "world.ir.json/entities/cube.main/components/MeshRenderer/mesh"
+    );
+    assert!(error.suggestion().contains("assets.manifest.json"));
+}
+
 fn cube_fixture() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../../packages/ir/fixtures/cube-scene/game.bundle")

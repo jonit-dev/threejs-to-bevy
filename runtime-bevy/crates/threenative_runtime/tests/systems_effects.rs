@@ -6,7 +6,8 @@ use std::{
 use serde_json::json;
 use threenative_loader::{SystemCommandIr, load_bundle};
 use threenative_runtime::systems_effects::{
-    NativeSystemCommandEffect, NativeSystemEffects, NativeSystemPatchEffect, apply_system_effects,
+    NativeSystemCommandEffect, NativeSystemEffects, NativeSystemEventEffect,
+    NativeSystemPatchEffect, NativeSystemServiceEffect, apply_system_effects,
 };
 
 #[test]
@@ -67,6 +68,105 @@ fn systems_effects_should_reject_undeclared_write() {
     assert_eq!(diagnostics[0].code, "TN_BEVY_SYSTEM_WRITE_UNDECLARED");
     assert!(diagnostics[0].message.contains("movePlayer"));
     assert!(diagnostics[0].message.contains("Health"));
+}
+
+#[test]
+fn systems_effects_should_apply_declared_custom_component_patch() {
+    let root = write_bundle("apply-custom-component");
+    let mut bundle = load_bundle(&root).expect("bundle should load");
+    let mut system = bundle
+        .systems
+        .as_ref()
+        .expect("systems should load")
+        .systems[0]
+        .clone();
+    system.writes.push("Health".to_owned());
+    let effects = NativeSystemEffects {
+        patches: vec![NativeSystemPatchEffect {
+            entity: "player".to_owned(),
+            component: "Health".to_owned(),
+            value: json!({ "value": 75, "max": 100 }),
+        }],
+        ..Default::default()
+    };
+
+    let log = apply_system_effects(&mut bundle, &system, &effects, 4, 5)
+        .expect("declared custom component effect should apply");
+
+    assert_eq!(
+        bundle.world.entities[0].components.extra.get("Health"),
+        Some(&json!({ "value": 75, "max": 100 }))
+    );
+    assert_eq!(log.entries[0].kind, "patch");
+    assert_eq!(log.entries[0].component.as_deref(), Some("Health"));
+    assert_eq!(log.entries[0].frame, 4);
+    assert_eq!(log.entries[0].tick, 5);
+}
+
+#[test]
+fn systems_effects_should_log_declared_event_write() {
+    let root = write_bundle("apply-event");
+    let mut bundle = load_bundle(&root).expect("bundle should load");
+    let mut system = bundle
+        .systems
+        .as_ref()
+        .expect("systems should load")
+        .systems[0]
+        .clone();
+    system.event_writes.push("PlayerMoved".to_owned());
+    let effects = NativeSystemEffects {
+        events: vec![NativeSystemEventEffect {
+            event: "PlayerMoved".to_owned(),
+            payload: json!({ "entity": "player", "distance": 1.5 }),
+        }],
+        ..Default::default()
+    };
+
+    let log =
+        apply_system_effects(&mut bundle, &system, &effects, 8, 13).expect("event should log");
+
+    assert_eq!(log.schema, "threenative.web-system-effects");
+    assert_eq!(log.entries[0].kind, "event");
+    assert_eq!(log.entries[0].event.as_deref(), Some("PlayerMoved"));
+    assert_eq!(
+        log.entries[0].payload,
+        Some(json!({ "entity": "player", "distance": 1.5 }))
+    );
+    assert_eq!(log.entries[0].frame, 8);
+    assert_eq!(log.entries[0].tick, 13);
+}
+
+#[test]
+fn systems_effects_should_reject_undeclared_service_call() {
+    let root = write_bundle("reject-service");
+    let mut bundle = load_bundle(&root).expect("bundle should load");
+    let system = bundle
+        .systems
+        .as_ref()
+        .expect("systems should load")
+        .systems[0]
+        .clone();
+    let effects = NativeSystemEffects {
+        services: vec![NativeSystemServiceEffect {
+            service: "physics.raycast".to_owned(),
+            payload: json!({
+                "request": { "origin": [0, 1, 0], "direction": [0, -1, 0], "maxDistance": 2 },
+                "result": { "hit": false }
+            }),
+        }],
+        ..Default::default()
+    };
+
+    let diagnostics = apply_system_effects(&mut bundle, &system, &effects, 1, 1)
+        .expect_err("undeclared service should fail");
+
+    assert_eq!(diagnostics[0].code, "TN_BEVY_SYSTEM_SERVICE_UNDECLARED");
+    assert_eq!(
+        diagnostics[0].path,
+        "systems.ir.json/systems/movePlayer/services/physics.raycast"
+    );
+    assert!(diagnostics[0].message.contains("movePlayer"));
+    assert!(diagnostics[0].message.contains("physics.raycast"));
 }
 
 #[test]

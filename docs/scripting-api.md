@@ -109,7 +109,7 @@ type HitEvent = {
 Use marker components or tags for `Player`, `Target`, `Projectile`,
 `Activated`, and `Disabled`.
 
-## V5+ API Gap Inventory
+## Missing Or Post-V4 API Inventory
 
 Keep this list close to the scripting API so implementation tickets can promote
 items deliberately. Starting in V5, promoted APIs must be demonstrated in a

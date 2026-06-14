@@ -27,11 +27,11 @@ refactors and visual-quality promotions land.
 
 **Implementation:**
 
-- [ ] Cover loader errors, asset refs, material refs, lights, cameras,
+- [x] Cover loader errors, asset refs, material refs, lights, cameras,
   visibility, atmosphere, imported transform conventions, and environment
   instances.
-- [ ] Emit native observed summaries for scene-visible behavior.
-- [ ] Include stable failure messages.
+- [x] Emit native observed summaries for scene-visible behavior.
+- [x] Include stable failure messages.
 
 #### Phase 2: V4 Scripting Host Hardening
 
@@ -43,10 +43,10 @@ refactors and visual-quality promotions land.
 
 **Implementation:**
 
-- [ ] Preserve declared/undeclared service behavior.
-- [ ] Preserve event, command, service-call, and patch log shapes.
-- [ ] Cover transform and custom-component patches.
-- [ ] Cover unsupported-host diagnostics.
+- [x] Preserve declared/undeclared service behavior.
+- [x] Preserve event, command, service-call, and patch log shapes.
+- [x] Cover transform and custom-component patches.
+- [x] Cover unsupported-host diagnostics.
 
 ## Verification Strategy
 
@@ -57,8 +57,22 @@ refactors and visual-quality promotions land.
 
 ## Acceptance Criteria
 
-- [ ] Native tests cover every V5 feature that claims Bevy support.
-- [ ] V4 native scripting behavior remains protected through V5 refactors.
-- [ ] Native failures identify the contract area and fixture path where
+- [x] Native tests cover every V5 feature that claims Bevy support.
+- [x] V4 native scripting behavior remains protected through V5 refactors.
+- [x] Native failures identify the contract area and fixture path where
   available.
 
+## Implementation Evidence
+
+- Added loader error-path coverage for missing bundle roots in
+  `threenative_loader`, preserving the reported source path.
+- Expanded Bevy world-mapping regressions for missing mesh diagnostics,
+  material references, directional/point/spot light values, camera mapping,
+  visibility, transforms, and standard material scalar fields.
+- Expanded environment regressions so observed summaries include scatter counts
+  and spawned environment instances preserve authored IDs plus deterministic
+  placement; existing V3 environment tests already cover glTF category
+  normalization and imported transform conventions.
+- Expanded V4 native scripting regressions for custom-component patches,
+  declared event log shape, undeclared service diagnostics, and existing
+  unsupported-host diagnostics.

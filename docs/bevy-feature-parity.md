@@ -132,6 +132,15 @@ messages, and TypeScript fixture builders reduce repeated bundle setup in
 focused validation tests. This makes later Bevy parity coverage cheaper without
 changing supported runtime behavior.
 
+V5-05 is implemented for native regression coverage: Rust tests now pin loader
+error paths, missing mesh/material diagnostics, renderer mapping for lights,
+cameras, visibility, transforms, and standard-material scalar fields,
+environment observation/placement summaries, imported glTF normalization via
+the existing V3 environment suite, and V4 scripting effect behavior for
+patch/event/command/service logs. This strengthens Bevy support evidence for
+already-promoted V3/V4 contracts and keeps future V5 visual work accountable
+to focused native tests.
+
 Priority V5 native coverage:
 
 1. Loader and fixture reuse for shared IR bundles used by both web and Bevy

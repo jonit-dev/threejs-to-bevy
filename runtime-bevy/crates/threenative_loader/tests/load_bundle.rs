@@ -4,7 +4,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use threenative_loader::load_bundle;
+use threenative_loader::{LoadError, load_bundle};
 
 #[test]
 fn should_load_cube_fixture_bundle() {
@@ -32,6 +32,26 @@ fn should_load_cube_fixture_bundle() {
             .iter()
             .any(|entity| entity.id == "light.key" && entity.components.light.is_some())
     );
+}
+
+#[test]
+fn should_report_missing_bundle_path_with_source_path() {
+    let root = std::env::temp_dir().join(format!(
+        "tn-loader-missing-{}",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock should be after epoch")
+            .as_nanos()
+    ));
+
+    let error = load_bundle(&root).expect_err("missing bundle path should fail");
+
+    match error {
+        LoadError::Read { path, .. } => {
+            assert_eq!(path, root.display().to_string());
+        }
+        other => panic!("expected read error for missing bundle path, got {other:?}"),
+    }
 }
 
 #[test]

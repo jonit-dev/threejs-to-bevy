@@ -112,6 +112,14 @@ validation tests use a package-local fixture copy helper, and Bevy conformance
 tests load shared conformance fixtures by name with fixture/path-aware failure
 messages. This is harness cleanup and does not change runtime behavior.
 
+V5-05 has landed the native runtime regression-coverage slice: Rust tests now
+pin loader read-error paths, Bevy mesh/material diagnostic shapes, native
+renderer mapping for lights/cameras/visibility/transforms/material scalar
+fields, environment observation and instance placement summaries, and V4
+scripting effect behavior for transform/custom-component patches plus
+event/command/service log shapes. This is regression evidence for existing
+V3/V4 contracts, not a new rendering feature promotion by itself.
+
 V5 should add or improve Rust tests for native runtime behavior whenever work
 touches shared IR, native runtime mapping, native scripting behavior, Bevy
 diagnostics, or visual-quality features that claim native support. The expected

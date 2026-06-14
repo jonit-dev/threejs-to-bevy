@@ -4,8 +4,10 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+use bevy::prelude::*;
+use threenative_components::ThreeNativeId;
 use threenative_loader::load_bundle;
-use threenative_runtime::environment::observe_environment;
+use threenative_runtime::environment::{map_environment_into_world, observe_environment};
 
 #[test]
 fn environment_should_map_scene_to_terrain_path_and_instances() {
@@ -68,10 +70,34 @@ fn environment_should_map_scene_to_terrain_path_and_instances() {
     assert_eq!(observation.terrain_id.as_deref(), Some("terrain.forest"));
     assert_eq!(observation.path_point_count, 2);
     assert_eq!(observation.hero_placement_ids, vec!["rock.hero"]);
+    assert_eq!(observation.scatter_instance_count, 1);
     assert_eq!(observation.scatter_counts_by_tag.get("rock"), Some(&1));
     assert_eq!(observation.bookmark_ids, vec!["bookmark.start"]);
 
+    let mut app = App::new();
+    map_environment_into_world(app.world_mut(), &bundle);
+    assert_instance_transform(app.world_mut(), "environment:rock.hero", [2.0, 0.375, 0.0]);
+    assert_instance_transform(
+        app.world_mut(),
+        "environment:rock.scatter.1",
+        [-2.0, 0.375, 0.0],
+    );
+
     fs::remove_dir_all(root).expect("temp bundle should be removed");
+}
+
+fn assert_instance_transform(world: &mut World, id: &str, expected_translation: [f32; 3]) {
+    let mut query = world.query::<(&ThreeNativeId, &Transform)>();
+    let transform = query
+        .iter(world)
+        .find_map(|(stable_id, transform)| (stable_id.0 == id).then_some(transform))
+        .expect("environment instance should be spawned");
+
+    assert_eq!(
+        transform.translation,
+        Vec3::from_array(expected_translation),
+        "environment instance transform should preserve authored x/z and category height placement"
+    );
 }
 
 fn temp_bundle_dir() -> PathBuf {
