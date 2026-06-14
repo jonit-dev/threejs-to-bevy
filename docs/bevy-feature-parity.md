@@ -300,6 +300,9 @@ V6-08 has started for diagnostic hardening: compiler validation and CLI JSON
 now preserve IR diagnostic `limit` and `value` metadata, and
 `docs/diagnostics.md` lists the V6 feature-code ranges for promoted systems,
 physics, character, animation, UI, audio, and target-specific runtime drift.
+Bevy conformance reports now include audio/UI bundle-inspection diagnostics for
+missing native audio assets and unsupported retained UI nodes instead of hiding
+those target-specific failures.
 
 ## V7 Deep Engine Gap-Closure Plan
 

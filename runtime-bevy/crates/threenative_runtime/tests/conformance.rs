@@ -252,3 +252,55 @@ fn should_report_audio_playback_conformance_observations() {
     assert_eq!(audio.commands[1].event.as_deref(), Some("DamageEvent"));
     assert_eq!(audio.commands[1].kind, "oneShot");
 }
+
+#[test]
+fn should_report_audio_diagnostics_in_conformance_observations() {
+    let mut fixture = load_conformance_fixture("v6-audio-playback");
+    fixture.bundle.assets.assets.clear();
+    let mut app = App::new();
+
+    map_bundle_into_world(app.world_mut(), &fixture.bundle).unwrap_or_else(|error| {
+        panic!(
+            "failed to map conformance fixture '{}' at '{}': {}",
+            fixture.name,
+            fixture.bundle_path.display(),
+            error
+        )
+    });
+    let report = report_bevy_conformance(app.world_mut(), &fixture.bundle, fixture.name);
+
+    assert_eq!(report.diagnostics.len(), 2);
+    assert_eq!(report.diagnostics[0].code, "TN_AUDIO_ASSET_MISSING");
+    assert_eq!(report.diagnostics[0].severity, "error");
+    assert_eq!(report.diagnostics[0].path, "assets/arena.music");
+    assert_eq!(report.diagnostics[1].path, "assets/hit.sound");
+}
+
+#[test]
+fn should_report_ui_diagnostics_in_conformance_observations() {
+    let mut fixture = load_conformance_fixture("v6-retained-ui");
+    fixture
+        .bundle
+        .ui
+        .as_mut()
+        .expect("ui fixture should include ui")
+        .root
+        .kind = "html".to_owned();
+    let mut app = App::new();
+
+    map_bundle_into_world(app.world_mut(), &fixture.bundle).unwrap_or_else(|error| {
+        panic!(
+            "failed to map conformance fixture '{}' at '{}': {}",
+            fixture.name,
+            fixture.bundle_path.display(),
+            error
+        )
+    });
+    let report = report_bevy_conformance(app.world_mut(), &fixture.bundle, fixture.name);
+
+    assert!(report.ui.is_none());
+    assert_eq!(report.diagnostics.len(), 1);
+    assert_eq!(report.diagnostics[0].code, "TN_BEVY_UI_NODE_UNSUPPORTED");
+    assert_eq!(report.diagnostics[0].severity, "error");
+    assert_eq!(report.diagnostics[0].path, "ui.ir.json/root/kind");
+}

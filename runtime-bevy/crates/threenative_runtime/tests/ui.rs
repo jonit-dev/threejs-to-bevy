@@ -125,6 +125,7 @@ fn ui_should_reject_unsupported_ui_node() {
 
     assert_eq!(diagnostic.code, "TN_BEVY_UI_NODE_UNSUPPORTED");
     assert!(diagnostic.message.contains("html"));
+    assert_eq!(diagnostic.path, "ui.ir.json/root/kind");
 }
 
 fn write_ui_bundle() -> PathBuf {

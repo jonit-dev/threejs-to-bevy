@@ -8,9 +8,9 @@ use threenative_loader::{
     WorldEntity,
 };
 
-use crate::audio::{self, NativeAudioCommand, NativeAudioCommandKind};
+use crate::audio::{self, NativeAudioCommand, NativeAudioCommandKind, NativeAudioDiagnostic};
 use crate::physics::detect_physics_events;
-use crate::ui::build_native_ui;
+use crate::ui::{UiDiagnostic, build_native_ui};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -278,15 +278,18 @@ pub fn report_bevy_conformance(
         .collect::<Vec<_>>();
     entities.sort_by(|left, right| left.id.cmp(&right.id));
 
+    let audio_observation = audio::observe_audio(bundle);
+    let ui_report = report_ui(bundle.ui.as_ref());
+
     ConformanceReport {
-        audio: report_audio(bundle),
+        audio: report_audio(audio_observation.as_ref()),
         assets: bundle
             .assets
             .assets
             .iter()
             .map(report_asset)
             .collect::<Vec<_>>(),
-        diagnostics: Vec::new(),
+        diagnostics: report_diagnostics(audio_observation.as_ref(), ui_report.as_ref()),
         entities,
         environment: bundle.environment_scene.as_ref().map(report_environment),
         events: report_events(bundle),
@@ -299,12 +302,19 @@ pub fn report_bevy_conformance(
             .collect::<Vec<_>>(),
         resources: report_resources(bundle),
         runtime: "bevy".to_owned(),
-        ui: bundle.ui.as_ref().and_then(report_ui),
+        ui: ui_report.and_then(|report| report.report),
     }
 }
 
-fn report_audio(bundle: &LoadedBundle) -> Option<ConformanceAudioReport> {
-    audio::observe_audio(bundle).map(|observation| ConformanceAudioReport {
+struct UiReportResult {
+    report: Option<ConformanceUiReport>,
+    diagnostic: Option<UiDiagnostic>,
+}
+
+fn report_audio(
+    observation: Option<&audio::NativeAudioObservation>,
+) -> Option<ConformanceAudioReport> {
+    observation.map(|observation| ConformanceAudioReport {
         commands: observation
             .commands
             .iter()
@@ -323,6 +333,39 @@ fn report_audio_command(command: &NativeAudioCommand) -> ConformanceAudioCommand
             NativeAudioCommandKind::OneShot => "oneShot",
         }
         .to_owned(),
+    }
+}
+
+fn report_diagnostics(
+    audio_observation: Option<&audio::NativeAudioObservation>,
+    ui_report: Option<&UiReportResult>,
+) -> Vec<RuntimeDiagnostic> {
+    let mut diagnostics = Vec::new();
+    if let Some(observation) = audio_observation {
+        diagnostics.extend(observation.diagnostics.iter().map(runtime_audio_diagnostic));
+    }
+    if let Some(Some(diagnostic)) = ui_report.map(|report| report.diagnostic.as_ref()) {
+        diagnostics.push(runtime_ui_diagnostic(diagnostic));
+    }
+    diagnostics.sort_by(|left, right| left.path.cmp(&right.path).then(left.code.cmp(&right.code)));
+    diagnostics
+}
+
+fn runtime_audio_diagnostic(diagnostic: &NativeAudioDiagnostic) -> RuntimeDiagnostic {
+    RuntimeDiagnostic {
+        code: diagnostic.code.clone(),
+        message: diagnostic.message.clone(),
+        path: diagnostic.path.clone(),
+        severity: diagnostic.severity.clone(),
+    }
+}
+
+fn runtime_ui_diagnostic(diagnostic: &UiDiagnostic) -> RuntimeDiagnostic {
+    RuntimeDiagnostic {
+        code: diagnostic.code.clone(),
+        message: diagnostic.message.clone(),
+        path: diagnostic.path.clone(),
+        severity: "error".to_owned(),
     }
 }
 
@@ -362,10 +405,20 @@ fn report_resources(bundle: &LoadedBundle) -> Vec<ConformanceResourceReport> {
     resources
 }
 
-fn report_ui(ui: &UiIr) -> Option<ConformanceUiReport> {
-    build_native_ui(ui).ok().map(|root| ConformanceUiReport {
-        root: report_ui_node(&root),
-    })
+fn report_ui(ui: Option<&UiIr>) -> Option<UiReportResult> {
+    let ui = ui?;
+    match build_native_ui(ui) {
+        Ok(root) => Some(UiReportResult {
+            report: Some(ConformanceUiReport {
+                root: report_ui_node(&root),
+            }),
+            diagnostic: None,
+        }),
+        Err(diagnostic) => Some(UiReportResult {
+            report: None,
+            diagnostic: Some(diagnostic),
+        }),
+    }
 }
 
 fn report_ui_node(node: &crate::ui::NativeUiNode) -> ConformanceUiNodeReport {
