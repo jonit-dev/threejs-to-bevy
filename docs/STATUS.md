@@ -431,6 +431,11 @@ sampling, AABB, bounding-sphere, AABB intersection, and sphere intersection
 helpers, while the Bevy runtime mirrors the same calculations in
 `mesh_bounds` for native tests and host-side tooling.
 
+Curves, splines, easing functions, and path sampling now have matching web and
+Bevy runtime utilities. Both runtimes expose linear/ease-in/ease-out/ease-in-out
+quadratic easing plus deterministic line, quadratic Bezier, cubic Bezier, and
+Catmull-Rom path sampling helpers.
+
 V7-07 has landed the first scripting determinism and lifecycle evidence slice:
 `systems.ir.json` now accepts explicit lifecycle metadata for `fixed-trace`
 replay, `system-local-disallowed` state, `invalidate` hot reload behavior, and

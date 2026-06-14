@@ -15,6 +15,7 @@ pub mod first_person;
 pub mod input;
 pub mod map_world;
 pub mod mesh_bounds;
+pub mod path_sampling;
 pub mod physics;
 pub mod rendering;
 pub mod systems_context;
