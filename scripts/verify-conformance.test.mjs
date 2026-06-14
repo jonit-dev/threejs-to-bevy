@@ -132,7 +132,7 @@ test("should pass matching gate commands and save report path", async () => {
     });
 
     assert.equal(result.ok, true);
-    assert.equal(result.steps.length, 19);
+    assert.equal(result.steps.length, 20);
     assert.equal(result.reportPath.endsWith("artifacts/conformance/verification-report.json"), true);
     assert.equal(result.artifacts.nativeBasicSceneReportPath.endsWith("artifacts/conformance/basic-scene/bevy.report.json"), true);
     assert.equal(
@@ -228,9 +228,12 @@ test("should pass matching gate commands and save report path", async () => {
       true,
     );
     assert.equal(result.artifacts.v7PackagingComparisonReportPath.endsWith("artifacts/conformance/v7-packaging-target-profiles/comparison.report.json"), true);
+    assert.equal(result.artifacts.v7PerformanceWebReportPath.endsWith("artifacts/conformance/v7-performance-budgets/web.report.json"), true);
+    assert.equal(result.artifacts.v7PerformanceNativeReportPath.endsWith("artifacts/conformance/v7-performance-budgets/bevy.report.json"), true);
+    assert.equal(result.artifacts.v7PerformanceComparisonReportPath.endsWith("artifacts/conformance/v7-performance-budgets/comparison.report.json"), true);
     const report = JSON.parse(await readFile(result.reportPath, "utf8"));
     assert.equal(report.status, "pass");
-    assert.equal(report.steps.length, 19);
+    assert.equal(report.steps.length, 20);
     assert.equal(report.artifacts.nativeBasicSceneReportPath.endsWith("artifacts/conformance/basic-scene/bevy.report.json"), true);
     assert.equal(
       report.artifacts.nativeV6AnimationClipsReportPath.endsWith("artifacts/conformance/v6-animation-clips/bevy.report.json"),
@@ -325,6 +328,9 @@ test("should pass matching gate commands and save report path", async () => {
       true,
     );
     assert.equal(report.artifacts.v7PackagingComparisonReportPath.endsWith("artifacts/conformance/v7-packaging-target-profiles/comparison.report.json"), true);
+    assert.equal(report.artifacts.v7PerformanceWebReportPath.endsWith("artifacts/conformance/v7-performance-budgets/web.report.json"), true);
+    assert.equal(report.artifacts.v7PerformanceNativeReportPath.endsWith("artifacts/conformance/v7-performance-budgets/bevy.report.json"), true);
+    assert.equal(report.artifacts.v7PerformanceComparisonReportPath.endsWith("artifacts/conformance/v7-performance-budgets/comparison.report.json"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

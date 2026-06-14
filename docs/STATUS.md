@@ -433,6 +433,18 @@ under `dist/package/desktop` or the requested `--out` path, and writes
 Signed installers, mobile app stores, online publishing, and hosted services
 remain out of V7 scope.
 
+V7-09 has landed the first target-profile-aware performance evidence slice: the
+`v7-performance-budgets` conformance fixture declares frame, load, draw,
+instance, entity, texture, triangle, and package-size thresholds in
+`target.profile.json`. `scripts/verify-v7-performance-budgets.mjs` writes fixed
+web and Bevy-style metric reports plus a comparison report under
+`artifacts/conformance/v7-performance-budgets`, and `pnpm verify:v7` mirrors the
+current performance evidence under `artifacts/v7/performance`. Budget failures
+use `TN_PERF_*` diagnostics with metric, measured value, threshold, and artifact
+path fields. These reports are deterministic budget evidence, not live browser
+or native profiler captures; richer frame capture and platform profilers remain
+later work.
+
 V8 is the first planned local editor and inspector milestone. V9 is the first
 planned online project and publishing milestone. V10 is the first planned
 collaboration and runtime replication milestone. Editor, online, networking,

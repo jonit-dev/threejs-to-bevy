@@ -12,6 +12,7 @@ V7-06 adds the first fixed web/native renderer/dense-content trace.
 V7-07 adds the first fixed web/native scripting lifecycle trace.
 V7-08 adds the first desktop package artifact and target-profile diagnostics
 report.
+V7-09 adds the first target-profile-aware performance budget reports.
 
 Current V7 conformance evidence starts with:
 
@@ -50,6 +51,13 @@ Current V7 conformance evidence starts with:
 - `artifacts/v7/packaging/desktop/game.bundle`
 - `artifacts/v7/packaging/desktop/package.manifest.json`
 - `artifacts/v7/packaging/desktop/runtime.args.json`
+- `packages/ir/fixtures/conformance/v7-performance-budgets/game.bundle`
+- `artifacts/conformance/v7-performance-budgets/web.report.json`
+- `artifacts/conformance/v7-performance-budgets/bevy.report.json`
+- `artifacts/conformance/v7-performance-budgets/comparison.report.json`
+- `artifacts/v7/performance/web.report.json`
+- `artifacts/v7/performance/bevy.report.json`
+- `artifacts/v7/performance/comparison.report.json`
 
 The V7 fixture catalog maps V7-02 through V7-09 to baseline bundles, planned
 accepted and rejected fixture bundle paths, expected target capabilities,
@@ -106,6 +114,15 @@ paths and checks the expected unsupported mobile-target diagnostic. Signed
 installers, mobile app-store packaging, web-store distribution, online
 publishing, hosted services, and platform-specific entitlements remain out of
 scope.
+
+The current V7-09 performance evidence is intentionally narrow:
+`v7-performance-budgets` validates target-profile thresholds and compares fixed
+web/native-style metric reports for frame timing, load time, draw/entity counts,
+asset counts, and package size. Hard failures and warnings are separated, and
+`TN_PERF_*` diagnostics include metric, measured value, threshold, and artifact
+path. These are deterministic budget reports, not live browser profiler or
+native platform-profiler captures; script/UI/audio timing breakdowns and larger
+scene budget tuning remain later work.
 
 Conformance mismatch diagnostics must localize drift with:
 

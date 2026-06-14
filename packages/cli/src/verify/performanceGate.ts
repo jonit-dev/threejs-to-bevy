@@ -52,9 +52,9 @@ export function evaluatePerformanceGate(options: {
   const profile = options.targetProfile.performance;
   if (profile === undefined) {
     diagnostics.push({
-      code: "TN_PERFORMANCE_PROFILE_MISSING",
+      code: "TN_PERF_PROFILE_MISSING",
       likelyArea: "compiler",
-      message: "V3 target profile does not define performance thresholds.",
+      message: "Target profile does not define performance thresholds.",
       severity: "error",
     });
     return { diagnostics, status: "fail", warnings };
@@ -65,17 +65,25 @@ export function evaluatePerformanceGate(options: {
     const actual = options.metrics[summaryKey as keyof IPerformanceMetricSummary] as number;
     if (actual > threshold.max) {
       diagnostics.push({
-        code: "TN_PERFORMANCE_BUDGET_EXCEEDED",
+        actual,
+        artifactPath: options.artifactPath,
+        code: "TN_PERF_BUDGET_EXCEEDED",
         likelyArea: "runtime-web",
         message: `${metricName} measured ${actual}, exceeding max ${threshold.max}. Artifact: ${options.artifactPath}.`,
+        metric: metricName,
         severity: "error",
+        threshold: threshold.max,
       });
     } else if (threshold.warn !== undefined && actual > threshold.warn) {
       warnings.push({
-        code: "TN_PERFORMANCE_BUDGET_WARNING",
+        actual,
+        artifactPath: options.artifactPath,
+        code: "TN_PERF_BUDGET_WARNING",
         likelyArea: "runtime-web",
         message: `${metricName} measured ${actual}, exceeding warning ${threshold.warn}. Artifact: ${options.artifactPath}.`,
+        metric: metricName,
         severity: "warning",
+        threshold: threshold.warn,
       });
     }
   }

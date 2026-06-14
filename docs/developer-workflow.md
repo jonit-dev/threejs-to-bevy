@@ -309,6 +309,12 @@ Required after V1 before the broader MVP:
 - Android build smoke test once mobile packaging is in scope.
 - iOS build smoke test when iOS packaging is in scope.
 
+V7 performance evidence is target-profile driven. The current fixed reports
+record frame/load/draw/entity/package-size metrics in JSON, separate warnings
+from hard failures, and include metric, measured value, threshold, and artifact
+path on `TN_PERF_*` diagnostics. Live browser and native profiler captures are
+future additions, not prerequisites for the deterministic V7 budget gate.
+
 Do not rely on manual visual checks alone. Visual smoke tests are useful, but the project needs schema, compiler, and adapter tests that fail deterministically.
 
 ### V2 Conformance Workflow

@@ -1,0 +1,23 @@
+{
+  "schema": "threenative.target-profile",
+  "version": "0.1.0",
+  "targets": ["web", "desktop"],
+  "budgets": {
+    "maxBundleBytes": 20000,
+    "supportedModelFormats": ["glb", "gltf"],
+    "supportedTextureFormats": ["png", "jpeg"]
+  },
+  "performance": {
+    "requiredTarget": "web",
+    "averageFrameMs": { "warn": 16, "max": 20 },
+    "drawCalls": { "max": 8 },
+    "instancedGroups": { "max": 4 },
+    "instances": { "max": 16 },
+    "loadMs": { "warn": 100, "max": 140 },
+    "p95FrameMs": { "max": 24 },
+    "textureBytes": { "max": 1024 },
+    "triangles": { "max": 1000 },
+    "uninstancedRepeatedProps": { "max": 0 },
+    "worstFrameMs": { "max": 32 }
+  }
+}

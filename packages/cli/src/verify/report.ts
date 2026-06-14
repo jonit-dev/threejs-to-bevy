@@ -3,10 +3,14 @@ export type VerificationStatus = "pass" | "fail";
 export type VerificationArea = "sdk" | "compiler" | "runtime-web" | "example" | "camera/framing" | "unknown";
 
 export interface IVerificationDiagnostic {
+  actual?: number;
+  artifactPath?: string;
   code: string;
   likelyArea: VerificationArea;
   message: string;
+  metric?: string;
   severity: "error" | "warning" | "info";
+  threshold?: number;
 }
 
 export interface ICanvasCheck {

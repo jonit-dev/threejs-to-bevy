@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import { runCommand } from "./verify-conformance.mjs";
 import { verifyV7Packaging } from "./verify-v7-packaging.mjs";
+import { verifyV7PerformanceBudgets } from "./verify-v7-performance-budgets.mjs";
 import { summarize } from "./verify-v1.mjs";
 
 const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
@@ -42,11 +43,35 @@ export async function verifyV7(options = {}) {
     stderr: "",
     stdout: packagingReport.reportPath,
   });
+  if (!packagingReport.ok) {
+    return writeV7Report({
+      artifactDir,
+      ok: false,
+      packagingReportPath: packagingReport.reportPath,
+      reportPath,
+      startedAt,
+      startedAtMs,
+      steps,
+    });
+  }
+
+  const performanceReport = await verifyV7PerformanceBudgets({
+    artifactDir: resolve(artifactDir, "performance"),
+    repoRoot: root,
+  });
+  steps.push({
+    durationMs: 0,
+    exitCode: performanceReport.ok ? 0 : 1,
+    name: "verify v7 performance budgets",
+    stderr: "",
+    stdout: performanceReport.artifacts.comparisonReportPath,
+  });
 
   return writeV7Report({
     artifactDir,
-    ok: packagingReport.ok,
+    ok: performanceReport.ok,
     packagingReportPath: packagingReport.reportPath,
+    performanceReportPath: performanceReport.artifacts.comparisonReportPath,
     reportPath,
     startedAt,
     startedAtMs,
@@ -54,7 +79,7 @@ export async function verifyV7(options = {}) {
   });
 }
 
-async function writeV7Report({ artifactDir, ok, packagingReportPath, reportPath, startedAt, startedAtMs, steps }) {
+async function writeV7Report({ artifactDir, ok, packagingReportPath, performanceReportPath, reportPath, startedAt, startedAtMs, steps }) {
   await mkdir(resolve(reportPath, ".."), { recursive: true });
   const failedStep = steps.find((step) => step.exitCode !== 0);
   const diagnostics =
@@ -72,6 +97,7 @@ async function writeV7Report({ artifactDir, ok, packagingReportPath, reportPath,
   const report = {
     artifacts: {
       packagingReportPath: packagingReportPath ?? resolve(artifactDir, "packaging/verification-report.json"),
+      performanceReportPath: performanceReportPath ?? resolve(artifactDir, "performance/comparison.report.json"),
       reportPath,
     },
     code: ok ? "TN_VERIFY_V7_OK" : "TN_VERIFY_V7_FAILED",

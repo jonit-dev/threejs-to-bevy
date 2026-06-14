@@ -18,8 +18,34 @@ test("performanceGate should fail when p95 frame time exceeds the threshold", ()
   });
 
   assert.equal(result.status, "fail");
+  assert.equal(result.diagnostics[0]?.code, "TN_PERF_BUDGET_EXCEEDED");
+  assert.equal(result.diagnostics[0]?.metric, "p95FrameMs");
+  assert.equal(result.diagnostics[0]?.actual, 30);
+  assert.equal(result.diagnostics[0]?.threshold, 24);
+  assert.equal(result.diagnostics[0]?.artifactPath, "metrics.json");
   assert.match(result.diagnostics[0]?.message ?? "", /p95FrameMs measured 30/);
   assert.match(result.diagnostics[0]?.message ?? "", /metrics\.json/);
+});
+
+test("performanceGate should separate warnings from hard failures", () => {
+  const result = evaluatePerformanceGate({
+    artifactPath: "metrics.json",
+    metrics: { ...makeMetrics(), averageFrameMs: 17 },
+    targetProfile: {
+      ...makeProfile(),
+      performance: {
+        ...makeProfile().performance,
+        averageFrameMs: { max: 18, warn: 16 },
+      },
+    },
+  });
+
+  assert.equal(result.status, "pass");
+  assert.equal(result.diagnostics.length, 0);
+  assert.equal(result.warnings[0]?.code, "TN_PERF_BUDGET_WARNING");
+  assert.equal(result.warnings[0]?.metric, "averageFrameMs");
+  assert.equal(result.warnings[0]?.actual, 17);
+  assert.equal(result.warnings[0]?.threshold, 16);
 });
 
 test("performanceGate should fail when repeated vegetation is not instanced", () => {

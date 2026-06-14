@@ -234,6 +234,18 @@ test("should include capability tags for each conformance fixture", async () => 
     "rendering:mesh.primitive.cylinder",
     "transform:hierarchy",
   ]);
+  assertFixtureCapabilities(byName, "v7-performance-budgets", [
+    "performance:asset-load-budget",
+    "performance:draw-instance-budget",
+    "performance:entity-budget",
+    "performance:frame-budget",
+    "performance:package-size-budget",
+    "rendering:camera.perspective",
+    "rendering:light.directional",
+    "rendering:material.standard",
+    "rendering:mesh.primitive.box",
+    "transform:hierarchy",
+  ]);
 });
 
 function assertFixtureCapabilities(

@@ -33,9 +33,9 @@ entity, draw/instance, asset-load, script, UI, audio, and package size.
 
 **Implementation:**
 
-- [ ] Define V7 target profiles and budget fields.
-- [ ] Record metrics in machine-readable reports.
-- [ ] Separate warnings from release-blocking failures.
+- [x] Define V7 target profiles and budget fields.
+- [x] Record metrics in machine-readable reports.
+- [x] Separate warnings from release-blocking failures.
 
 #### Phase 2: Cross-Runtime Evidence - Reports cover web and native targets.
 
@@ -49,9 +49,9 @@ entity, draw/instance, asset-load, script, UI, audio, and package size.
 
 **Implementation:**
 
-- [ ] Collect web and Bevy performance/profiling observations where practical.
-- [ ] Link package-size and asset-load evidence.
-- [ ] Emit `TN_PERF_*` and `TN_VERIFY_V7_*` diagnostics with measured values.
+- [x] Collect web and Bevy performance/profiling observations where practical.
+- [x] Link package-size and asset-load evidence.
+- [x] Emit `TN_PERF_*` and `TN_VERIFY_V7_*` diagnostics with measured values.
 
 ## Verification Strategy
 
@@ -61,5 +61,5 @@ entity, draw/instance, asset-load, script, UI, audio, and package size.
 
 ## Acceptance Criteria
 
-- [ ] V7 performance budgets are target-profile aware and machine-readable.
-- [ ] Failed budgets identify metric, measured value, threshold, and artifact.
+- [x] V7 performance budgets are target-profile aware and machine-readable.
+- [x] Failed budgets identify metric, measured value, threshold, and artifact.

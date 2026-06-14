@@ -216,7 +216,8 @@
         "performance:asset-load-budget",
         "performance:draw-instance-budget",
         "performance:entity-budget",
-        "performance:frame-budget"
+        "performance:frame-budget",
+        "performance:package-size-budget"
       ],
       "reportArtifacts": [
         "artifacts/conformance/v7-performance-budgets/web.report.json",
