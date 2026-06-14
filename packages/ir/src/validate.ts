@@ -27,6 +27,8 @@ export interface IIrDiagnostic {
   code: string;
   message: string;
   path: string;
+  severity?: "error" | "warning";
+  suggestion?: string;
 }
 
 export interface IBundleValidationResult {
@@ -349,6 +351,8 @@ async function validateAssets(assets: IAssetsManifest, bundlePath: string, path:
           code: "TN_IR_ASSET_PATH_INVALID",
           message: `Asset '${asset.id}' must use a bundle-relative path without parent traversal.`,
           path: assetPath,
+          severity: "error",
+          suggestion: "Move the asset into the emitted bundle and reference it with a bundle-relative path.",
         });
         return;
       }
@@ -358,6 +362,8 @@ async function validateAssets(assets: IAssetsManifest, bundlePath: string, path:
           code: "TN_IR_ASSET_FORMAT_UNSUPPORTED",
           message: `Asset '${asset.id}' uses unsupported ${asset.kind} format '${asset.format}'.`,
           path: `${path}/assets/${index}/format`,
+          severity: "error",
+          suggestion: "Use a supported asset format for the asset kind or update the target profile before emitting the bundle.",
         });
       }
       try {
@@ -367,6 +373,8 @@ async function validateAssets(assets: IAssetsManifest, bundlePath: string, path:
           code: "TN_IR_ASSET_PATH_MISSING",
           message: `Asset '${asset.id}' path '${asset.path}' does not exist in the bundle.`,
           path: assetPath,
+          severity: "error",
+          suggestion: "Copy the referenced file into the bundle or update assets.manifest.json to point at an existing bundle-relative file.",
         });
       }
     }),
@@ -406,6 +414,8 @@ function validateMaterialTextureRefs(materials: IMaterialsIr, assets: IAssetsMan
           code: "TN_IR_MATERIAL_TEXTURE_ASSET_MISSING",
           message: `Material '${material.id}' references unknown texture asset '${value}'.`,
           path: `${path}/materials/${materialIndex}/${slot}`,
+          severity: "error",
+          suggestion: `Add texture asset '${value}' to assets.manifest.json or remove the ${slot} reference from material '${material.id}'.`,
         });
       }
     });
@@ -899,6 +909,8 @@ function validateRenderComponents(entity: IWorldIr["entities"][number], path: st
       code: "TN_IR_RENDER_VISIBILITY_INVALID",
       message: `MeshRenderer visibility for '${entity.id}' must be boolean.`,
       path: `${path}/components/MeshRenderer/visible`,
+      severity: "error",
+      suggestion: "Set MeshRenderer.visible to true or false, or omit it to inherit visibility.",
     });
   }
 
@@ -908,6 +920,8 @@ function validateRenderComponents(entity: IWorldIr["entities"][number], path: st
       code: "TN_IR_RENDER_VISIBILITY_INVALID",
       message: `Visibility component for '${entity.id}' must be boolean.`,
       path: `${path}/components/Visibility/visible`,
+      severity: "error",
+      suggestion: "Set Visibility.visible to true or false.",
     });
   }
 }
@@ -971,6 +985,8 @@ function validateUniqueIds(
         code,
         message: `Duplicate id '${item.id}'.`,
         path: `${path}/${index}/id`,
+        severity: "error",
+        suggestion: `Rename or remove the duplicate '${item.id}' entry so IDs are unique within this section.`,
       });
     }
     seen.add(item.id);
@@ -985,6 +1001,8 @@ async function readJson<T>(path: string, diagnostics: IIrDiagnostic[]): Promise<
       code: "TN_IR_FILE_INVALID",
       message: `Missing or invalid JSON file '${path}'.`,
       path,
+      severity: "error",
+      suggestion: "Regenerate the bundle or fix the manifest entry so it points at valid JSON.",
     });
     return undefined;
   }

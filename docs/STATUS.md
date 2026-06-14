@@ -99,6 +99,13 @@ bundle/artifact paths. The Bevy runtime also provides a headless
 `threenative_conformance` command, and `pnpm verify:conformance` writes an
 inspectable native summary at `artifacts/conformance/basic-scene/bevy.report.json`.
 
+V5-03 has landed the diagnostic-shape normalization slice: IR diagnostics now
+carry optional severity and concrete suggestions for high-volume bundle
+failures, compiler validation preserves upstream `TN_IR_*` codes instead of
+rewriting them, CLI JSON errors include normalized severity, Bevy map errors
+expose stable native code/path/suggestion accessors, and `check:docs:v5`
+verifies V5 diagnostic-range documentation.
+
 V5 should add or improve Rust tests for native runtime behavior whenever work
 touches shared IR, native runtime mapping, native scripting behavior, Bevy
 diagnostics, or visual-quality features that claim native support. The expected

@@ -21,6 +21,41 @@ pub enum MapError {
     },
 }
 
+impl MapError {
+    pub fn code(&self) -> &'static str {
+        match self {
+            Self::MissingMesh { .. } => "TN_BEVY_MESH_REFERENCE_MISSING",
+            Self::MissingMaterial { .. } => "TN_BEVY_MATERIAL_REFERENCE_MISSING",
+        }
+    }
+
+    pub fn path(&self) -> String {
+        match self {
+            Self::MissingMesh { entity_id, .. } => {
+                format!("world.ir.json/entities/{entity_id}/components/MeshRenderer/mesh")
+            }
+            Self::MissingMaterial { entity_id, .. } => {
+                format!("world.ir.json/entities/{entity_id}/components/MeshRenderer/material")
+            }
+        }
+    }
+
+    pub fn suggestion(&self) -> String {
+        match self {
+            Self::MissingMesh { mesh_id, .. } => {
+                format!(
+                    "Add mesh asset '{mesh_id}' to assets.manifest.json or update the MeshRenderer mesh reference."
+                )
+            }
+            Self::MissingMaterial { material_id, .. } => {
+                format!(
+                    "Add material '{material_id}' to materials.ir.json or update the MeshRenderer material reference."
+                )
+            }
+        }
+    }
+}
+
 pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result<(), MapError> {
     ensure_asset_resources(world);
     let camera_color_management = bundle

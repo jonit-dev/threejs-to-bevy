@@ -45,7 +45,9 @@ test("validate should reject duplicate entity ids", async () => {
     const report = await validateBundle(bundle);
 
     assert.equal(report.ok, false);
-    assert.equal(report.diagnostics[0]?.code, "TN-IR-DUPLICATE-ENTITY-ID");
+    assert.equal(report.diagnostics[0]?.code, "TN_IR_DUPLICATE_ENTITY_ID");
+    assert.equal(report.diagnostics[0]?.severity, "error");
+    assert.match(report.diagnostics[0]?.suggestion ?? "", /duplicate/);
   } finally {
     await rm(bundle, { force: true, recursive: true });
   }

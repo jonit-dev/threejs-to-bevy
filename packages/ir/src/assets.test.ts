@@ -21,6 +21,8 @@ test("assets should reject missing asset path", async () => {
     assert.equal(result.ok, false);
     assert.equal(result.diagnostics[0]?.code, "TN_IR_ASSET_PATH_MISSING");
     assert.equal(result.diagnostics[0]?.path, "assets.manifest.json/assets/0/path");
+    assert.equal(result.diagnostics[0]?.severity, "error");
+    assert.match(result.diagnostics[0]?.suggestion ?? "", /Copy the referenced file/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -40,6 +42,8 @@ test("assets should reject unknown texture asset", async () => {
 
     assert.equal(result.ok, false);
     assert.equal(result.diagnostics[0]?.code, "TN_IR_MATERIAL_TEXTURE_ASSET_MISSING");
+    assert.equal(result.diagnostics[0]?.severity, "error");
+    assert.match(result.diagnostics[0]?.suggestion ?? "", /baseColorTexture/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

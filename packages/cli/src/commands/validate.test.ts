@@ -47,10 +47,11 @@ test("should reject a missing scaffold entry", async () => {
     );
 
     const result = await validateProject(["--json"], { cwd: root });
-    const payload = JSON.parse(result.stderr ?? "{}") as { code: string };
+    const payload = JSON.parse(result.stderr ?? "{}") as { code: string; severity: string };
 
     assert.equal(result.exitCode, 1);
     assert.equal(payload.code, "TN_VALIDATE_ENTRY_MISSING");
+    assert.equal(payload.severity, "error");
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -67,10 +68,12 @@ test("validate should exit nonzero for invalid bundle", async () => {
     await writeFile(materialsPath, `${JSON.stringify(materials, null, 2)}\n`);
 
     const result = await validateProject(["--bundle", bundle, "--json"], { cwd: root });
-    const payload = JSON.parse(result.stdout) as { diagnostics: Array<{ code: string }> };
+    const payload = JSON.parse(result.stdout) as { diagnostics: Array<{ code: string; severity: string; suggestion?: string }> };
 
     assert.equal(result.exitCode, 1);
     assert.equal(payload.diagnostics[0]?.code, "TN-IR-2104");
+    assert.equal(payload.diagnostics[0]?.severity, "error");
+    assert.match(payload.diagnostics[0]?.suggestion ?? "", /materials\.ir\.json/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

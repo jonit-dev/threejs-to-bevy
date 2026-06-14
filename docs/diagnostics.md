@@ -59,6 +59,29 @@ such as `TN_WEB_SYSTEM_*`, `TN_BEVY_SYSTEM_*`, and
 `TN_V4_EFFECT_LOG_*`. Effect-log mismatch diagnostics should identify the
 stage/system/effect path and point to `artifacts/v4/effects-diff.json`.
 
+## V5 Diagnostic Normalization
+
+V5 keeps existing emitted codes stable. In particular, do not rewrite
+underscore-style IR codes such as `TN_IR_DUPLICATE_ENTITY_ID` into hyphenated
+variants in compiler or CLI wrappers. Compatibility aliases such as
+`TN-IR-2104` and `TN-IR-2105` may remain where they already exist for
+compiler-level missing material or mesh references.
+
+V5 verifier and native diagnostic ranges:
+
+- `TN_CONFORMANCE_*` for shared fixture and runtime observation mismatches.
+- `TN_DOCS_V5_*` for V5 documentation-gate failures.
+- `TN_VERIFY_V5_*` for the final V5 release-gate report.
+- `TN_BEVY_*` for Bevy adapter diagnostics, including native material,
+  rendering, asset, environment, and scripting failures.
+- `TN_WEB_*` for web runtime diagnostics emitted by runtime-web-three.
+
+V5 high-volume diagnostics should include `code`, `severity`, `message`, and a
+bundle-relative `path` or file path. Add `suggestion` when the failing layer has
+enough context to propose a concrete fix, especially for missing files, invalid
+asset refs, missing material/mesh refs, texture slots, visibility fields, and
+script/system permission mismatches.
+
 ## Guidance
 
 - Do not collapse asset, scene, and runtime failures into generic compiler

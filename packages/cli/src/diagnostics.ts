@@ -7,6 +7,7 @@ export interface ICommandResult {
 export interface IDiagnosticPayload {
   code: string;
   message: string;
+  severity?: "error" | "warning" | "info";
   [key: string]: unknown;
 }
 
@@ -14,7 +15,9 @@ export function diagnosticResult(
   payload: IDiagnosticPayload,
   options: { exitCode: number; json: boolean; stderr?: boolean },
 ): ICommandResult {
-  const body = options.json ? `${JSON.stringify(payload, null, 2)}\n` : `${payload.message}\n`;
+  const normalizedPayload =
+    options.exitCode === 0 || payload.severity !== undefined ? payload : { ...payload, severity: "error" as const };
+  const body = options.json ? `${JSON.stringify(normalizedPayload, null, 2)}\n` : `${payload.message}\n`;
 
   if (options.stderr === true) {
     return {

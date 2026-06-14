@@ -119,6 +119,13 @@ summary artifact at `artifacts/conformance/basic-scene/bevy.report.json`; this
 improves inspectability and mismatch localization but is not by itself a claim
 that every V5 visual feature has native parity.
 
+V5-03 is implemented for diagnostic normalization: high-volume IR failures now
+carry optional severity and actionable suggestions, compiler validation keeps
+upstream `TN_IR_*` codes stable, CLI JSON errors expose normalized severity, and
+Bevy world-mapping failures for missing mesh/material references expose stable
+native code/path/suggestion accessors. This improves failure repairability but
+does not add new rendering parity by itself.
+
 Priority V5 native coverage:
 
 1. Loader and fixture reuse for shared IR bundles used by both web and Bevy

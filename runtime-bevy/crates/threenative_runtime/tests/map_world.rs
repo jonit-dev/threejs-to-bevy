@@ -24,6 +24,23 @@ fn should_spawn_stable_ids_for_cube_fixture() {
     assert!(ids.contains(&"light.key"));
 }
 
+#[test]
+fn should_report_missing_material_with_stable_diagnostic_shape() {
+    let mut bundle = load_bundle(cube_fixture()).expect("cube fixture should load");
+    bundle.materials.materials.clear();
+    let mut app = App::new();
+
+    let error = map_bundle_into_world(app.world_mut(), &bundle)
+        .expect_err("missing material should fail mapping");
+
+    assert_eq!(error.code(), "TN_BEVY_MATERIAL_REFERENCE_MISSING");
+    assert_eq!(
+        error.path(),
+        "world.ir.json/entities/cube.main/components/MeshRenderer/material"
+    );
+    assert!(error.suggestion().contains("materials.ir.json"));
+}
+
 fn cube_fixture() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../../packages/ir/fixtures/cube-scene/game.bundle")
