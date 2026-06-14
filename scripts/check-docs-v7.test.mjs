@@ -59,6 +59,18 @@ test("should require V7 status and parity pointers", async () => {
   }
 });
 
+test("should require post-V6 maturity triage", async () => {
+  const root = await makeDocsRoot({ maturity: "V7-promoted Deferred Never portable artifacts/v7 verify:v7\n" });
+  try {
+    const result = await checkDocsV7(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_DOCS_V7_MATURITY_TRIAGE_MISSING"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should pass V7 docs gate shape", async () => {
   const root = await makeDocsRoot();
   try {
@@ -77,6 +89,7 @@ async function makeDocsRoot(overrides = {}) {
   await writeFile(join(root, "docs/PRDs/v7/README.md"), overrides.index ?? defaultIndex());
   await writeFile(join(root, "docs/STATUS.md"), overrides.status ?? defaultStatus());
   await writeFile(join(root, "docs/bevy-feature-parity.md"), overrides.parity ?? defaultParity());
+  await writeFile(join(root, "docs/feature-maturity.md"), overrides.maturity ?? defaultMaturity());
   return root;
 }
 
@@ -106,4 +119,8 @@ function defaultStatus() {
 
 function defaultParity() {
   return "V7 PRDs verify:v7 deferred never portable\n";
+}
+
+function defaultMaturity() {
+  return "## Post-V6 Gap Triage\nV7-promoted Deferred Never portable V6 baseline artifacts/v7 verify:v7\n";
 }

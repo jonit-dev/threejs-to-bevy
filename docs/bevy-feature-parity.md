@@ -321,11 +321,12 @@ traces, and final runtime parity observations are not claimed yet.
 
 The planned V7 implementation slice is tracked in
 [V7 PRDs](PRDs/v7/README.md). V7 starts after V6 and should close deeper parity
-gaps, or mark them deferred/never portable with stable diagnostics: advanced
-physics and character behavior, animation graphs/state machines/events and
-bounded particles, richer UI navigation/input, spatial audio and buses,
-runtime LOD/native instancing/imported asset edge cases, scripting determinism
-and lifecycle, desktop packaging/target profiles, performance budgets, one
+gaps from the [post-V6 gap triage](feature-maturity.md#post-v6-gap-triage), or
+mark them deferred/never portable with stable diagnostics: advanced physics and
+character behavior, animation graphs/state machines/events and bounded
+particles, richer UI navigation/input, spatial audio and buses, runtime
+LOD/native instancing/imported asset edge cases, scripting determinism and
+lifecycle, desktop packaging/target profiles, performance budgets, one
 functional V7 scene/template, and an aggregate `verify:v7` gate.
 
 V7 is still not the editor, online service, networking, replication,

@@ -323,9 +323,10 @@ determinism, packaging, and performance gaps. Remaining gaps should be
 explicitly deferred or marked never portable with stable diagnostics.
 
 The V7 ticket slice is tracked in [V7 PRDs](PRDs/v7/README.md). V7 starts from
-the post-V6 gap table and should promote deeper engine/runtime parity only when
-shared fixtures, runtime observations, native evidence where claimed, docs,
-diagnostics, functional scene/template proof, and `verify:v7` agree.
+the [post-V6 gap triage](feature-maturity.md#post-v6-gap-triage) table and
+should promote deeper engine/runtime parity only when shared fixtures, runtime
+observations, native evidence where claimed, docs, diagnostics, functional
+scene/template proof, and `verify:v7` agree.
 
 V8 is the first planned local editor and inspector milestone. V9 is the first
 planned online project and publishing milestone. V10 is the first planned

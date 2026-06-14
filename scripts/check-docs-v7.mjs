@@ -31,6 +31,16 @@ const requiredV7Phrases = [
   ["diagnostics", "V7 docs must require stable diagnostics."],
 ];
 
+const requiredMaturityPhrases = [
+  ["## Post-V6 Gap Triage", "Feature maturity docs must include the post-V6 gap triage table."],
+  ["V7-promoted", "Feature maturity docs must identify V7-promoted candidates."],
+  ["Deferred", "Feature maturity docs must identify deferred candidates."],
+  ["Never portable", "Feature maturity docs must identify never-portable candidates."],
+  ["V6 baseline", "Feature maturity docs must tie V7 candidates to their V6 baseline."],
+  ["artifacts/v7", "Feature maturity docs must require V7 artifact evidence."],
+  ["verify:v7", "Feature maturity docs must require V7 release-gate evidence."],
+];
+
 const unsupportedV7ClaimPatterns = [
   /\bV7\b[^\n.]{0,80}\b(?:supports?|includes?|promotes?|implements?|completes?|ships?|provides?)\b[^\n.]{0,80}\b(?:scene editor|editor|online|networking|replication|collaboration|(?:public )?plugins?(?: APIs?)?|raw Three\.js|direct Bevy(?: authoring)?|broad shader(?: |-)?graphs?)\b/gi,
   /\b(?:scene editor|editor|online|networking|replication|collaboration|(?:public )?plugins?(?: APIs?)?|raw Three\.js|direct Bevy(?: authoring)?|broad shader(?: |-)?graphs?)\b[^\n.]{0,80}\b(?:is|are)\b[^\n.]{0,80}\b(?:supported|implemented|complete|promoted|included|shipped|provided)\b[^\n.]{0,80}\b(?:in|by|for)\b[^\n.]{0,20}\bV7\b/gi,
@@ -46,12 +56,14 @@ const statusAndParityPhrases = [
 export async function checkDocsV7(root = repoRoot) {
   const diagnostics = [];
   const indexPath = "docs/PRDs/v7/README.md";
+  const maturityPath = "docs/feature-maturity.md";
   const parityPath = "docs/bevy-feature-parity.md";
   const statusPath = "docs/STATUS.md";
   const index = await readDoc(root, indexPath, diagnostics);
+  const maturity = await readDoc(root, maturityPath, diagnostics);
   const parity = await readDoc(root, parityPath, diagnostics);
   const status = await readDoc(root, statusPath, diagnostics);
-  const docsText = `${index}\n${status}\n${parity}`;
+  const docsText = `${index}\n${status}\n${parity}\n${maturity}`;
 
   for (const file of requiredV7Prds) {
     if (!indexIncludesMarkdownLink(index, file)) {
@@ -88,6 +100,17 @@ export async function checkDocsV7(root = repoRoot) {
           severity: "error",
         });
       }
+    }
+  }
+
+  for (const [phrase, message] of requiredMaturityPhrases) {
+    if (!maturity.includes(phrase)) {
+      diagnostics.push({
+        code: "TN_DOCS_V7_MATURITY_TRIAGE_MISSING",
+        file: maturityPath,
+        message,
+        severity: "error",
+      });
     }
   }
 
