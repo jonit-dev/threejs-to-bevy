@@ -1,0 +1,39 @@
+{
+  "schema": "threenative.ui",
+  "version": "0.1.0",
+  "root": {
+    "id": "hud",
+    "kind": "stack",
+    "children": [
+      {
+        "id": "hud.stack",
+        "kind": "column",
+        "children": [
+          {
+            "id": "hud.title",
+            "kind": "text",
+            "text": "Arena"
+          },
+          {
+            "id": "hud.health",
+            "kind": "bar",
+            "value": 7,
+            "max": 10,
+            "binding": {
+              "kind": "resource",
+              "name": "Health",
+              "field": "current"
+            }
+          },
+          {
+            "id": "hud.pause",
+            "kind": "button",
+            "label": "Pause",
+            "action": "Pause",
+            "focusable": true
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,7 +1,9 @@
 # UI Model
 
-> Status: Future-facing design. Portable UI runtime parity is not part of the
-> V3 release gate unless explicitly pulled into a narrow PRD.
+> Status: V6 retained UI is in progress. The current portable contract supports
+> a small retained tree, resource/component bindings, actions, and conformance
+> observations; runtime DOM/Bevy UI mounting and focus/click event delivery are
+> still being implemented.
 
 Game UI should be authored with React-style TypeScript/TSX, but React DOM should
 not be the portable runtime contract. The portable contract is a retained UI tree
@@ -134,21 +136,18 @@ This should compile to metadata, not DOM:
 }
 ```
 
-## Supported V1 Components
+## Supported V6 Components
 
 Keep the UI primitive set small:
 
-- `Root`
+- `Ui` root, emitted as a `stack` root node
 - `Stack`
-- `Panel`
 - `Text`
-- `Image`
 - `Button`
 - `Bar`
-- `Spacer`
-- `Slot`
-- `TouchButton`
-- `VirtualStick`
+- `Row`
+- `Column`
+- `TouchControl`
 
 Layout should start with simple primitives:
 

@@ -47,6 +47,22 @@ export interface IConformanceResourceReport {
   value: unknown;
 }
 
+export interface IConformanceUiNodeReport {
+  action?: string;
+  children: IConformanceUiNodeReport[];
+  focusable?: boolean;
+  id: string;
+  kind: string;
+  label?: string;
+  max?: number;
+  text?: string;
+  value?: number;
+}
+
+export interface IConformanceUiReport {
+  root: IConformanceUiNodeReport;
+}
+
 export interface IConformanceEntityReport {
   camera?: {
     far: number;
@@ -100,4 +116,5 @@ export interface IConformanceReport {
   materials: IConformanceMaterialReport[];
   resources: IConformanceResourceReport[];
   runtime: "bevy" | "web-three";
+  ui?: IConformanceUiReport;
 }

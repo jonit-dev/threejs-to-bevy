@@ -1,0 +1,13 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [],
+  "resources": {
+    "Health": {
+      "current": 7,
+      "max": 10
+    }
+  },
+  "events": {},
+  "prefabs": []
+}

@@ -327,10 +327,11 @@ function validateUi(ui: IUiIr, path: string, diagnostics: IIrDiagnostic[]): void
       path,
     });
   }
-  validateUiNode(ui.root, `${path}/root`, diagnostics);
+  const ids = new Set<string>();
+  validateUiNode(ui.root, `${path}/root`, diagnostics, ids);
 }
 
-function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[]): void {
+function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[], ids: Set<string>): void {
   const raw = node as unknown as Record<string, unknown>;
   for (const key of Object.keys(raw)) {
     if (!["action", "binding", "children", "focusable", "id", "kind", "label", "max", "text", "value"].includes(key)) {
@@ -348,6 +349,14 @@ function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnosti
       path: `${path}/kind`,
     });
   }
+  if (ids.has(node.id)) {
+    diagnostics.push({
+      code: "TN_IR_UI_ID_DUPLICATE",
+      message: `UI node ID '${node.id}' is duplicated.`,
+      path: `${path}/id`,
+    });
+  }
+  ids.add(node.id);
   if ((node.kind === "button" || node.kind === "touchControl") && node.action === undefined) {
     diagnostics.push({
       code: "TN_IR_UI_ACTION_MISSING",
@@ -355,7 +364,7 @@ function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnosti
       path: `${path}/action`,
     });
   }
-  node.children?.forEach((child, index) => validateUiNode(child, `${path}/children/${index}`, diagnostics));
+  node.children?.forEach((child, index) => validateUiNode(child, `${path}/children/${index}`, diagnostics, ids));
 }
 
 async function validateAssets(assets: IAssetsManifest, bundlePath: string, path: string, diagnostics: IIrDiagnostic[]): Promise<void> {

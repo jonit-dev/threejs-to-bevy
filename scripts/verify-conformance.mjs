@@ -16,6 +16,7 @@ export async function verifyConformance(options = {}) {
   const v6PhysicsEventsBundlePath = resolve(root, "packages/ir/fixtures/conformance/v6-physics-events/game.bundle");
   const v6AnimationClipsBundlePath = resolve(root, "packages/ir/fixtures/conformance/v6-animation-clips/game.bundle");
   const v6ResourcesEventsBundlePath = resolve(root, "packages/ir/fixtures/conformance/v6-resources-events/game.bundle");
+  const v6RetainedUiBundlePath = resolve(root, "packages/ir/fixtures/conformance/v6-retained-ui/game.bundle");
   const nativeBasicSceneReportPath = options.nativeBasicSceneReportPath ?? resolve(artifactDir, "basic-scene/bevy.report.json");
   const nativeV6PhysicsEventsReportPath =
     options.nativeV6PhysicsEventsReportPath ?? resolve(artifactDir, "v6-physics-events/bevy.report.json");
@@ -23,6 +24,8 @@ export async function verifyConformance(options = {}) {
     options.nativeV6AnimationClipsReportPath ?? resolve(artifactDir, "v6-animation-clips/bevy.report.json");
   const nativeV6ResourcesEventsReportPath =
     options.nativeV6ResourcesEventsReportPath ?? resolve(artifactDir, "v6-resources-events/bevy.report.json");
+  const nativeV6RetainedUiReportPath =
+    options.nativeV6RetainedUiReportPath ?? resolve(artifactDir, "v6-retained-ui/bevy.report.json");
   const v6AnimationDiffPath = options.v6AnimationDiffPath ?? resolve(artifactDir, "v6-animation-clips/effects-diff.json");
   const v6AnimationNativeEffectsPath = options.v6AnimationNativeEffectsPath ?? resolve(artifactDir, "v6-animation-clips/native-effects.json");
   const v6AnimationWebEffectsPath = options.v6AnimationWebEffectsPath ?? resolve(artifactDir, "v6-animation-clips/web-effects.json");
@@ -34,6 +37,7 @@ export async function verifyConformance(options = {}) {
     nativeV6AnimationClipsReportPath,
     nativeV6PhysicsEventsReportPath,
     nativeV6ResourcesEventsReportPath,
+    nativeV6RetainedUiReportPath,
     v6AnimationDiffPath,
     v6AnimationNativeEffectsPath,
     v6AnimationWebEffectsPath,
@@ -142,6 +146,22 @@ export async function verifyConformance(options = {}) {
       ],
       { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
     ],
+    [
+      "bevy native V6 retained UI observation report",
+      "cargo",
+      [
+        "run",
+        "-p",
+        "threenative_runtime",
+        "--bin",
+        "threenative_conformance",
+        "--",
+        v6RetainedUiBundlePath,
+        "v6-retained-ui",
+        nativeV6RetainedUiReportPath,
+      ],
+      { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
+    ],
   ];
 
   for (const [name, command, args, commandOptions] of commands) {
@@ -169,6 +189,7 @@ export function compareConformanceReports(left, right, options = {}) {
   compareCatalog(diagnostics, fixture, left.runtime, right.runtime, "$.entities", left.entities, right.entities, { artifactPaths, bundlePath });
   compareCatalog(diagnostics, fixture, left.runtime, right.runtime, "$.resources", left.resources, right.resources, { artifactPaths, bundlePath });
   compareCatalog(diagnostics, fixture, left.runtime, right.runtime, "$.events", left.events, right.events, { artifactPaths, bundlePath });
+  compareValue(diagnostics, fixture, left.runtime, right.runtime, "$.ui", left.ui, right.ui, { artifactPaths, bundlePath });
   compareValue(diagnostics, fixture, left.runtime, right.runtime, "$.diagnostics", left.diagnostics ?? [], right.diagnostics ?? [], { artifactPaths, bundlePath });
 
   return {

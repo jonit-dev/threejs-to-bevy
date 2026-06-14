@@ -4,10 +4,13 @@ use threenative_loader::{UiIr, UiNodeIr};
 pub struct NativeUiNode {
     pub action: Option<String>,
     pub children: Vec<NativeUiNode>,
+    pub focusable: Option<bool>,
     pub id: String,
     pub kind: String,
     pub label: Option<String>,
+    pub max: Option<f32>,
     pub text: Option<String>,
+    pub value: Option<f32>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -40,9 +43,12 @@ fn build_node(node: &UiNodeIr, path: &str) -> Result<NativeUiNode, UiDiagnostic>
             .enumerate()
             .map(|(index, child)| build_node(child, &format!("{path}/children/{index}")))
             .collect::<Result<Vec<_>, _>>()?,
+        focusable: node.focusable,
         id: node.id.clone(),
         kind: node.kind.clone(),
         label: node.label.clone(),
+        max: node.max,
         text: node.text.clone(),
+        value: node.value,
     })
 }

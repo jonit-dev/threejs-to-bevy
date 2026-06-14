@@ -83,3 +83,28 @@ test("should report animation clip conformance observations", async () => {
     { id: "run", loop: true, sourceClip: "Armature|Run", speed: 1.25 },
   ]);
 });
+
+test("should report retained ui conformance observations", async () => {
+  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/v6-retained-ui/game.bundle"));
+  const mapped = mapWorld(bundle);
+  const report = reportWebConformance(bundle, mapped, "v6-retained-ui");
+
+  assert.equal(report.fixture, "v6-retained-ui");
+  assert.deepEqual(report.ui, {
+    root: {
+      children: [
+        {
+          children: [
+            { children: [], id: "hud.title", kind: "text", text: "Arena" },
+            { children: [], id: "hud.health", kind: "bar", max: 10, value: 7 },
+            { action: "Pause", children: [], focusable: true, id: "hud.pause", kind: "button", label: "Pause" },
+          ],
+          id: "hud.stack",
+          kind: "column",
+        },
+      ],
+      id: "hud",
+      kind: "stack",
+    },
+  });
+});

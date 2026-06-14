@@ -280,6 +280,12 @@ trace compares the existing `animation.play` service-call effect log. Web/Bevy
 model animation playback state, stop/state queries, and visual animation parity
 are not claimed yet.
 
+V6-06 has started for retained UI: shared validation now rejects duplicate node
+IDs, the `v6-retained-ui` fixture covers portable HUD text, a resource-bound
+bar, and a focusable action button, and web/Bevy conformance reports include
+the UI tree. Native Bevy UI entity spawning, web DOM overlay mounting, focus
+navigation, and UI interaction events are not claimed yet.
+
 ## V7 Deep Engine Gap-Closure Plan
 
 The planned V7 implementation slice is tracked in

@@ -8,6 +8,8 @@ export type {
   IConformanceMaterialReport,
   IConformanceReport,
   IConformanceResourceReport,
+  IConformanceUiNodeReport,
+  IConformanceUiReport,
 } from "./conformanceReport.js";
 export type { IRuntimeDiagnostic } from "./runtimeDiagnostics.js";
 export type { IInputActionIr, IInputAxisIr, IInputIr, InputBinding } from "./input.js";

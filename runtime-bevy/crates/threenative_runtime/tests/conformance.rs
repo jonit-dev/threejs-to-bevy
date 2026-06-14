@@ -190,3 +190,39 @@ fn should_report_animation_clip_conformance_observations() {
     assert_eq!(animations[1].source_clip.as_deref(), Some("Armature|Run"));
     assert_eq!(animations[1].speed, Some(1.25));
 }
+
+#[test]
+fn should_report_retained_ui_conformance_observations() {
+    let fixture = load_conformance_fixture("v6-retained-ui");
+    let mut app = App::new();
+
+    map_bundle_into_world(app.world_mut(), &fixture.bundle).unwrap_or_else(|error| {
+        panic!(
+            "failed to map conformance fixture '{}' at '{}': {}",
+            fixture.name,
+            fixture.bundle_path.display(),
+            error
+        )
+    });
+    let report = report_bevy_conformance(app.world_mut(), &fixture.bundle, fixture.name);
+    let ui = report.ui.expect("ui report should be present");
+
+    assert_eq!(ui.root.id, "hud");
+    assert_eq!(ui.root.kind, "stack");
+    assert_eq!(ui.root.children[0].id, "hud.stack");
+    assert_eq!(
+        ui.root.children[0]
+            .children
+            .iter()
+            .map(|node| node.kind.as_str())
+            .collect::<Vec<_>>(),
+        vec!["text", "bar", "button"]
+    );
+    assert_eq!(ui.root.children[0].children[1].value, Some(7.0));
+    assert_eq!(ui.root.children[0].children[1].max, Some(10.0));
+    assert_eq!(
+        ui.root.children[0].children[2].action.as_deref(),
+        Some("Pause")
+    );
+    assert_eq!(ui.root.children[0].children[2].focusable, Some(true));
+}

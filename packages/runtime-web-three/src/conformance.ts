@@ -8,8 +8,11 @@ import type {
   IConformanceMaterialReport,
   IConformanceReport,
   IConformanceResourceReport,
+  IConformanceUiNodeReport,
+  IConformanceUiReport,
   IEnvironmentSceneIr,
   IMaterialIr,
+  IUiIr,
   IWorldEntity,
   Quat,
   Vec3,
@@ -42,6 +45,7 @@ export function reportWebConformance(
     materials: bundle.materials.materials.map(reportMaterial).sort((left, right) => left.id.localeCompare(right.id)),
     resources: reportResources(bundle.world.resources ?? {}),
     runtime: "web-three",
+    ui: bundle.ui === undefined ? undefined : reportUi(bundle.ui),
   };
 }
 
@@ -236,6 +240,24 @@ function reportResources(resources: Record<string, unknown>): IConformanceResour
   return Object.entries(resources)
     .map(([id, value]) => ({ id, value }))
     .sort((left, right) => left.id.localeCompare(right.id));
+}
+
+function reportUi(ui: IUiIr): IConformanceUiReport {
+  return { root: reportUiNode(ui.root) };
+}
+
+function reportUiNode(node: IUiIr["root"]): IConformanceUiNodeReport {
+  return {
+    ...(node.action === undefined ? {} : { action: node.action }),
+    children: (node.children ?? []).map(reportUiNode),
+    ...(node.focusable === undefined ? {} : { focusable: node.focusable }),
+    id: node.id,
+    kind: node.kind,
+    ...(node.label === undefined ? {} : { label: node.label }),
+    ...(node.max === undefined ? {} : { max: node.max }),
+    ...(node.text === undefined ? {} : { text: node.text }),
+    ...(node.value === undefined ? {} : { value: node.value }),
+  };
 }
 
 function componentNames(entity: IWorldEntity): string[] {

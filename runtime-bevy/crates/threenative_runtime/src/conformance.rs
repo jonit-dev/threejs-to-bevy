@@ -4,10 +4,12 @@ use bevy::prelude::*;
 use serde::Serialize;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{
-    AnimationClipIr, AssetIr, ColorIr, EnvironmentSceneIr, LoadedBundle, MaterialIr, WorldEntity,
+    AnimationClipIr, AssetIr, ColorIr, EnvironmentSceneIr, LoadedBundle, MaterialIr, UiIr,
+    WorldEntity,
 };
 
 use crate::physics::detect_physics_events;
+use crate::ui::build_native_ui;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -22,6 +24,8 @@ pub struct ConformanceReport {
     pub materials: Vec<ConformanceMaterialReport>,
     pub resources: Vec<ConformanceResourceReport>,
     pub runtime: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ui: Option<ConformanceUiReport>,
 }
 
 #[derive(Debug, Serialize)]
@@ -114,6 +118,31 @@ pub struct ConformanceEventReport {
 pub struct ConformanceResourceReport {
     pub id: String,
     pub value: serde_json::Value,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ConformanceUiReport {
+    pub root: ConformanceUiNodeReport,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConformanceUiNodeReport {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub action: Option<String>,
+    pub children: Vec<ConformanceUiNodeReport>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub focusable: Option<bool>,
+    pub id: String,
+    pub kind: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub value: Option<f32>,
 }
 
 #[derive(Debug, Serialize)]
@@ -251,6 +280,7 @@ pub fn report_bevy_conformance(
             .collect::<Vec<_>>(),
         resources: report_resources(bundle),
         runtime: "bevy".to_owned(),
+        ui: bundle.ui.as_ref().and_then(report_ui),
     }
 }
 
@@ -288,6 +318,26 @@ fn report_resources(bundle: &LoadedBundle) -> Vec<ConformanceResourceReport> {
         .collect::<Vec<_>>();
     resources.sort_by(|left, right| left.id.cmp(&right.id));
     resources
+}
+
+fn report_ui(ui: &UiIr) -> Option<ConformanceUiReport> {
+    build_native_ui(ui).ok().map(|root| ConformanceUiReport {
+        root: report_ui_node(&root),
+    })
+}
+
+fn report_ui_node(node: &crate::ui::NativeUiNode) -> ConformanceUiNodeReport {
+    ConformanceUiNodeReport {
+        action: node.action.clone(),
+        children: node.children.iter().map(report_ui_node).collect(),
+        focusable: node.focusable,
+        id: node.id.clone(),
+        kind: node.kind.clone(),
+        label: node.label.clone(),
+        max: node.max,
+        text: node.text.clone(),
+        value: node.value,
+    }
 }
 
 struct RuntimeEntityReport {

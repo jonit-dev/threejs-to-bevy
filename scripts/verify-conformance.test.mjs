@@ -85,7 +85,7 @@ test("should pass matching gate commands and save report path", async () => {
     });
 
     assert.equal(result.ok, true);
-    assert.equal(result.steps.length, 9);
+    assert.equal(result.steps.length, 10);
     assert.equal(result.reportPath.endsWith("artifacts/conformance/verification-report.json"), true);
     assert.equal(result.artifacts.nativeBasicSceneReportPath.endsWith("artifacts/conformance/basic-scene/bevy.report.json"), true);
     assert.equal(
@@ -100,6 +100,10 @@ test("should pass matching gate commands and save report path", async () => {
       result.artifacts.nativeV6ResourcesEventsReportPath.endsWith("artifacts/conformance/v6-resources-events/bevy.report.json"),
       true,
     );
+    assert.equal(
+      result.artifacts.nativeV6RetainedUiReportPath.endsWith("artifacts/conformance/v6-retained-ui/bevy.report.json"),
+      true,
+    );
     assert.equal(result.artifacts.v6AnimationDiffPath.endsWith("artifacts/conformance/v6-animation-clips/effects-diff.json"), true);
     assert.equal(result.artifacts.v6AnimationNativeEffectsPath.endsWith("artifacts/conformance/v6-animation-clips/native-effects.json"), true);
     assert.equal(result.artifacts.v6AnimationWebEffectsPath.endsWith("artifacts/conformance/v6-animation-clips/web-effects.json"), true);
@@ -108,7 +112,7 @@ test("should pass matching gate commands and save report path", async () => {
     assert.equal(result.artifacts.v6ResourceEventWebEffectsPath.endsWith("artifacts/conformance/v6-resources-events/web-effects.json"), true);
     const report = JSON.parse(await readFile(result.reportPath, "utf8"));
     assert.equal(report.status, "pass");
-    assert.equal(report.steps.length, 9);
+    assert.equal(report.steps.length, 10);
     assert.equal(report.artifacts.nativeBasicSceneReportPath.endsWith("artifacts/conformance/basic-scene/bevy.report.json"), true);
     assert.equal(
       report.artifacts.nativeV6AnimationClipsReportPath.endsWith("artifacts/conformance/v6-animation-clips/bevy.report.json"),
@@ -120,6 +124,10 @@ test("should pass matching gate commands and save report path", async () => {
     );
     assert.equal(
       report.artifacts.nativeV6ResourcesEventsReportPath.endsWith("artifacts/conformance/v6-resources-events/bevy.report.json"),
+      true,
+    );
+    assert.equal(
+      report.artifacts.nativeV6RetainedUiReportPath.endsWith("artifacts/conformance/v6-retained-ui/bevy.report.json"),
       true,
     );
     assert.equal(report.artifacts.v6AnimationDiffPath.endsWith("artifacts/conformance/v6-animation-clips/effects-diff.json"), true);

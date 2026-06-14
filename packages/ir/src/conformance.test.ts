@@ -79,6 +79,17 @@ test("should include capability tags for each conformance fixture", async () => 
     "scripting:script-bundle",
     "scripting:systems",
   ]);
+  assertFixtureCapabilities(byName, "v6-retained-ui", [
+    "ui:action",
+    "ui:binding.resource",
+    "ui:focusable",
+    "ui:node.bar",
+    "ui:node.button",
+    "ui:node.column",
+    "ui:node.stack",
+    "ui:node.text",
+    "ui:runtime",
+  ]);
 });
 
 function assertFixtureCapabilities(
