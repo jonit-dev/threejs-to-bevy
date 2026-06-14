@@ -82,6 +82,30 @@ enough context to propose a concrete fix, especially for missing files, invalid
 asset refs, missing material/mesh refs, texture slots, visibility fields, and
 script/system permission mismatches.
 
+## V6 Diagnostic Hardening
+
+V6 keeps upstream diagnostic metadata intact through compiler and CLI JSON
+output. When IR validation supplies `severity`, `path`, `suggestion`, `limit`,
+or `value`, wrappers should preserve those fields instead of replacing the
+diagnostic with a generic build or validation failure.
+
+V6 promoted feature ranges:
+
+- `TN_IR_SYSTEM_*` for resource/event permission, schedule, schema, and service
+  declaration failures.
+- `TN_IR_PHYSICS_*` for collider, rigid-body, trigger, layer/mask, and
+  unsupported solver-scope failures.
+- `TN_IR_CHARACTER_*` for controller dependency, input reference, speed,
+  blocking, and deferred grounding/navigation failures.
+- `TN_IR_ANIMATION_*` for clip metadata, unsupported graph/blend/IK/particle
+  fields, and invalid playback metadata.
+- `TN_IR_UI_*` for retained UI node, action, duplicate ID, and unsupported
+  adapter-private fields.
+- `TN_IR_AUDIO_*` and `TN_AUDIO_*` for audio IR reference failures and runtime
+  playback/asset diagnostics.
+- `TN_BEVY_*`, `TN_WEB_*`, and `TN_RUNTIME_*` for target-specific adapter drift
+  or runtime failures that cannot be represented as IR validation errors.
+
 ## Guidance
 
 - Do not collapse asset, scene, and runtime failures into generic compiler

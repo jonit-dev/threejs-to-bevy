@@ -296,6 +296,11 @@ both adapters expose deterministic audio command observations in conformance.
 Stop, volume, spatial audio, buses, and richer system/UI audio services remain
 deferred.
 
+V6-08 has started for diagnostic hardening: compiler validation and CLI JSON
+now preserve IR diagnostic `limit` and `value` metadata, and
+`docs/diagnostics.md` lists the V6 feature-code ranges for promoted systems,
+physics, character, animation, UI, audio, and target-specific runtime drift.
+
 ## V7 Deep Engine Gap-Closure Plan
 
 The planned V7 implementation slice is tracked in

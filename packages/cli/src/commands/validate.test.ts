@@ -7,6 +7,7 @@ import test from "node:test";
 import { validateProject } from "./validate.js";
 
 const cubeFixture = resolve(process.cwd(), "../ir/fixtures/cube-scene/game.bundle");
+const audioFixture = resolve(process.cwd(), "../ir/fixtures/conformance/v6-audio-playback/game.bundle");
 
 test("should validate a scaffolded project config and entry", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-validate-"));
@@ -74,6 +75,32 @@ test("validate should exit nonzero for invalid bundle", async () => {
     assert.equal(payload.diagnostics[0]?.code, "TN-IR-2104");
     assert.equal(payload.diagnostics[0]?.severity, "error");
     assert.match(payload.diagnostics[0]?.suggestion ?? "", /materials\.ir\.json/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("validate should preserve diagnostic limit and value in json output", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-validate-budget-"));
+  const bundle = join(root, "audio.bundle");
+  try {
+    await cp(audioFixture, bundle, { recursive: true });
+    const targetProfilePath = join(bundle, "target.profile.json");
+    const targetProfile = JSON.parse(await readFile(targetProfilePath, "utf8")) as { budgets?: Record<string, unknown> };
+    targetProfile.budgets = { maxBundleBytes: 1 };
+    await writeFile(targetProfilePath, `${JSON.stringify(targetProfile, null, 2)}\n`);
+
+    const result = await validateProject(["--bundle", bundle, "--json"], { cwd: root });
+    const payload = JSON.parse(result.stdout) as {
+      diagnostics: Array<{ code: string; limit?: number; severity: string; suggestion?: string; value?: number }>;
+    };
+    const diagnostic = payload.diagnostics.find((item) => item.code === "TN_IR_BUDGET_BUNDLE_BYTES_EXCEEDED");
+
+    assert.equal(result.exitCode, 1);
+    assert.equal(diagnostic?.severity, "error");
+    assert.equal(diagnostic?.limit, 1);
+    assert.equal(typeof diagnostic?.value, "number");
+    assert.match(diagnostic?.suggestion ?? "", /Reduce copied assets/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

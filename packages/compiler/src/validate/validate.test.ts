@@ -7,6 +7,7 @@ import { validateBundle } from "./index.js";
 import { copyFixtureBundle } from "../testFixtures.js";
 
 const cubeFixture = resolve(process.cwd(), "../ir/fixtures/cube-scene/game.bundle");
+const audioFixture = resolve(process.cwd(), "../ir/fixtures/conformance/v6-audio-playback/game.bundle");
 
 test("validate should return TN-IR-2104 when material is missing", async () => {
   const bundle = await copyCubeFixture();
@@ -48,6 +49,27 @@ test("validate should reject duplicate entity ids", async () => {
     assert.equal(report.diagnostics[0]?.code, "TN_IR_DUPLICATE_ENTITY_ID");
     assert.equal(report.diagnostics[0]?.severity, "error");
     assert.match(report.diagnostics[0]?.suggestion ?? "", /duplicate/);
+  } finally {
+    await rm(bundle, { force: true, recursive: true });
+  }
+});
+
+test("validate should preserve IR diagnostic limits and values", async () => {
+  const bundle = await copyFixtureBundle(audioFixture, "tn-validate-audio-budget-");
+  try {
+    const targetPath = join(bundle, "target.profile.json");
+    const targetProfile = JSON.parse(await readFile(targetPath, "utf8")) as { budgets?: Record<string, unknown> };
+    targetProfile.budgets = { maxBundleBytes: 1 };
+    await writeFile(targetPath, `${JSON.stringify(targetProfile, null, 2)}\n`);
+
+    const report = await validateBundle(bundle);
+    const diagnostic = report.diagnostics.find((item) => item.code === "TN_IR_BUDGET_BUNDLE_BYTES_EXCEEDED");
+
+    assert.equal(report.ok, false);
+    assert.equal(diagnostic?.severity, "error");
+    assert.equal(diagnostic?.limit, 1);
+    assert.equal(typeof diagnostic?.value, "number");
+    assert.match(diagnostic?.suggestion ?? "", /Reduce copied assets/);
   } finally {
     await rm(bundle, { force: true, recursive: true });
   }

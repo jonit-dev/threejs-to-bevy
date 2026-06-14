@@ -294,6 +294,12 @@ audio bundles and both adapters report deterministic audio command observations
 through conformance. Stop, volume, spatial audio, buses, and richer system/UI
 audio services remain later V6-07/V7 contract work.
 
+V6-08 has started with diagnostic metadata preservation: compiler validation
+and CLI JSON output now keep upstream IR diagnostic `limit` and `value` fields
+alongside existing code, severity, path, and suggestion metadata. The diagnostic
+guide now lists the V6 feature-code ranges for systems, physics, character,
+animation, UI, audio, and target-specific runtime drift.
+
 V7 is now planned as the deep engine gap-closure milestone. It should continue
 parity work that is too large or risky for V6, such as deeper physics,
 animation graphs, richer UI/audio, renderer/content parity, scripting/runtime

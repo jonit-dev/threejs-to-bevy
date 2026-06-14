@@ -32,10 +32,12 @@ export async function validateBundle(bundlePath: string): Promise<IValidationRep
   const diagnostics: ICompilerDiagnostic[] = base.diagnostics.map((diagnostic) => ({
     code: diagnostic.code,
     file: diagnostic.path.includes("/") ? diagnostic.path.split("/")[0] : diagnostic.path,
+    limit: diagnostic.limit,
     message: diagnostic.message,
     path: diagnostic.path,
     severity: diagnostic.severity ?? "error",
     suggestion: diagnostic.suggestion ?? suggestionForIrDiagnostic(diagnostic.code),
+    value: diagnostic.value,
   }));
 
   if (!base.ok) {

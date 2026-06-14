@@ -3,6 +3,7 @@ export type DiagnosticSeverity = "error" | "warning";
 export interface ICompilerDiagnostic {
   code: string;
   file?: string;
+  limit?: number | readonly string[];
   message: string;
   path: string;
   severity: DiagnosticSeverity;
