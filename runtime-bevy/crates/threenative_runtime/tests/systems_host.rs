@@ -83,6 +83,30 @@ fn systems_host_should_run_startup_before_update() {
 }
 
 #[test]
+fn systems_host_should_reconcile_spawned_entities_events_and_resources_across_schedules() {
+    let root = write_gameplay_host_bundle("gameplay-host");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+
+    run_native_systems_once(&mut bundle, time()).expect("systems should run");
+
+    assert!(
+        bundle
+            .world
+            .entities
+            .iter()
+            .all(|entity| entity.id != "marker")
+    );
+    assert_eq!(
+        bundle.world.resources.get("Score"),
+        Some(&serde_json::json!({ "events": 2, "health": 1 }))
+    );
+    assert_eq!(
+        bundle.world.events.get("Spawned"),
+        Some(&serde_json::json!([{ "via": "direct" }, { "via": "command" }]))
+    );
+}
+
+#[test]
 fn systems_host_should_reject_missing_export() {
     let root = write_bundle("missing-export", "missing_export");
     let mut bundle = load_bundle(&root).expect("scripted bundle should load");
@@ -232,6 +256,90 @@ fn write_resource_bundle(name: &str) -> PathBuf {
 };
 export const systemIds = Object.freeze({ "system_score": "score" });
 export const systems = Object.freeze({ "system_score": system_score });
+"#,
+    )
+    .expect("script bundle should be written");
+    root
+}
+
+fn write_gameplay_host_bundle(name: &str) -> PathBuf {
+    let root = root(name);
+    write_base_bundle(&root, true);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [],
+  "resources": {
+    "Score": { "value": 0 }
+  },
+  "events": {
+    "Spawned": []
+  }
+}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "seedMarker",
+      "schedule": "startup",
+      "reads": [],
+      "writes": [],
+      "queries": [],
+      "commands": [
+        { "kind": "spawn", "entity": "marker", "components": ["Health"] },
+        { "kind": "emitEvent", "event": "Spawned" }
+      ],
+      "eventReads": [],
+      "eventWrites": ["Spawned"],
+      "resourceReads": [],
+      "resourceWrites": [],
+      "services": [],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_seedMarker" }
+    },
+    {
+      "name": "consumeMarker",
+      "schedule": "update",
+      "reads": ["Health"],
+      "writes": [],
+      "queries": [{ "with": ["Health"], "without": [] }],
+      "commands": [
+        { "kind": "despawn", "entity": "marker" }
+      ],
+      "eventReads": ["Spawned"],
+      "eventWrites": [],
+      "resourceReads": ["Score"],
+      "resourceWrites": ["Score"],
+      "services": [],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_consumeMarker" }
+    }
+  ]
+}"#,
+    );
+    fs::write(
+        root.join("scripts.bundle.js"),
+        r#"const system_seedMarker = (ctx) => {
+  ctx.commands.spawn("marker", { Health: { current: 1 } });
+  ctx.events.emit("Spawned", { via: "direct" });
+  ctx.commands.emitEvent("Spawned", { via: "command" });
+};
+const system_consumeMarker = (ctx) => {
+  const marker = ctx.query({ with: ["Health"], without: [] })[0];
+  ctx.resources.set("Score", {
+    events: ctx.events.read("Spawned").length,
+    health: marker.get("Health").current
+  });
+  ctx.commands.despawn(marker.id);
+};
+export const systemIds = Object.freeze({ "system_seedMarker": "seedMarker", "system_consumeMarker": "consumeMarker" });
+export const systems = Object.freeze({ "system_seedMarker": system_seedMarker, "system_consumeMarker": system_consumeMarker });
 "#,
     )
     .expect("script bundle should be written");

@@ -174,6 +174,65 @@ test("should run systems apply full command buffer semantics", async () => {
   assert.deepEqual(world.events, { Spawned: [{ entity: "enemy" }] });
 });
 
+test("should reconcile spawned entities and events across later schedules", async () => {
+  const world = makeWorld();
+  world.resources = { Score: { value: 0 } };
+  const systems = makeSystems("update", "placeholder");
+  systems.systems = [
+    {
+      ...systems.systems[0]!,
+      commands: [
+        { components: ["Health"], entity: "marker", kind: "spawn" },
+        { event: "Spawned", kind: "emitEvent" },
+      ],
+      eventWrites: ["Spawned"],
+      name: "seedMarker",
+      queries: [],
+      reads: [],
+      schedule: "startup",
+      script: { bundle: "scripts.bundle.js", exportName: "seedMarker" },
+      writes: [],
+    },
+    {
+      ...systems.systems[0]!,
+      commands: [{ entity: "marker", kind: "despawn" }],
+      eventReads: ["Spawned"],
+      name: "consumeMarker",
+      queries: [{ with: ["Health"], without: [] }],
+      reads: ["Health"],
+      resourceWrites: ["Score"],
+      schedule: "update",
+      script: { bundle: "scripts.bundle.js", exportName: "consumeMarker" },
+      writes: [],
+    },
+  ];
+
+  const module = {
+    systems: {
+      seedMarker(context: any) {
+        context.commands.spawn("marker", { Health: { current: 1 } });
+        context.events.emit("Spawned", { via: "direct" });
+        context.commands.emitEvent("Spawned", { via: "command" });
+      },
+      consumeMarker(context: any) {
+        const marker = context.query({ with: ["Health"], without: [] })[0];
+        context.resources.set("Score", {
+          events: context.events.read("Spawned").length,
+          health: marker.get("Health").current,
+        });
+        context.commands.despawn(marker.id);
+      },
+    },
+  };
+
+  await runSchedule({ module, schedule: "startup", systems, world });
+  await runSchedule({ module, schedule: "update", systems, world });
+
+  assert.equal(world.entities.find((entity) => entity.id === "marker"), undefined);
+  assert.deepEqual(world.resources.Score, { events: 2, health: 1 });
+  assert.deepEqual(world.events, { Spawned: [{ via: "direct" }, { via: "command" }] });
+});
+
 test("should run systems expose v4 entity patch context", async () => {
   const world = makeWorld();
   const systems = makeSystems("fixedUpdate", "patchPlayer");
@@ -245,7 +304,7 @@ function makeWorld(): IWorldIr {
   };
 }
 
-function makeSystems(schedule: "fixedUpdate" | "update", exportName: string): ISystemsIr {
+function makeSystems(schedule: "fixedUpdate" | "postUpdate" | "startup" | "update", exportName: string): ISystemsIr {
   return {
     schema: "threenative.systems",
     version: "0.1.0",

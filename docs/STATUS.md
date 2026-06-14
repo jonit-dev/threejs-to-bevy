@@ -419,8 +419,12 @@ script-heavy multi-schedule trace covering startup, fixedUpdate, update, and
 postUpdate resource handoff, queued events, spawn/despawn commands, and
 `animation.play` service effects. `pnpm verify:conformance` compares the
 canonical web/native effect logs and writes artifacts under
-`artifacts/conformance/v7-scripting-lifecycle`. State-preserving hot reload,
-async systems, arbitrary npm/platform APIs, and dynamic scene reconciliation
+`artifacts/conformance/v7-scripting-lifecycle`. Follow-up focused runtime tests
+now prove command-buffer spawn/despawn reconciliation across later web/native
+schedules, native persistence for direct and command-buffer event writes, and
+native query filtering against dynamically spawned components. State-preserving
+hot reload, async systems, arbitrary npm/platform APIs, broad live-scene
+reconciliation, event clearing/windowing rules, and system-local persisted state
 remain unsupported or later work.
 
 V7-08 has landed the first desktop packaging and target-profile diagnostics

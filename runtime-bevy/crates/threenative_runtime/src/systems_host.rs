@@ -158,7 +158,6 @@ pub fn run_native_systems_once(
             )
         })?;
 
-    let mut events = BTreeMap::new();
     let mut logs = Vec::new();
     for schedule in ["startup", "fixedUpdate", "update", "postUpdate"] {
         let mut scheduled_systems = systems
@@ -168,8 +167,7 @@ pub fn run_native_systems_once(
         scheduled_systems.sort_by(|left, right| left.name.cmp(&right.name));
         for system in scheduled_systems {
             let effects =
-                call_system_export(&context, bundle, system, time.clone(), events.clone())?;
-            queue_events(&mut events, &effects);
+                call_system_export(&context, bundle, system, time.clone(), BTreeMap::new())?;
             let log =
                 apply_system_effects(bundle, system, &effects, 1, 1).map_err(|diagnostics| {
                     let first = diagnostics
@@ -251,15 +249,6 @@ fn call_system_export(
             ),
         )
     })
-}
-
-fn queue_events(events: &mut BTreeMap<String, Vec<Value>>, effects: &NativeSystemEffects) {
-    for event in &effects.events {
-        events
-            .entry(event.event.clone())
-            .or_default()
-            .push(event.payload.clone());
-    }
 }
 
 fn module_source(script_source: &str) -> String {
@@ -434,8 +423,13 @@ function __tnInvokeSystem(options) {
         effects.resources.push({ resource: normalize(name), value: clone(value) });
       }
     },
-    query() {
-      return entities;
+    query(query = { with: [], without: [] }) {
+      const withComponents = Array.isArray(query.with) ? query.with.map(normalize) : [];
+      const withoutComponents = Array.isArray(query.without) ? query.without.map(normalize) : [];
+      return entities.filter((entity) => (
+        withComponents.every((component) => entity.components[component] !== undefined) &&
+        withoutComponents.every((component) => entity.components[component] === undefined)
+      ));
     },
     events: {
       emit(event, payload) {

@@ -135,6 +135,45 @@ fn systems_effects_should_log_declared_event_write() {
     );
     assert_eq!(log.entries[0].frame, 8);
     assert_eq!(log.entries[0].tick, 13);
+    assert_eq!(
+        bundle.world.events.get("PlayerMoved"),
+        Some(&json!([{ "entity": "player", "distance": 1.5 }]))
+    );
+}
+
+#[test]
+fn systems_effects_should_apply_command_buffer_event_write() {
+    let root = write_bundle("apply-command-event");
+    let mut bundle = load_bundle(&root).expect("bundle should load");
+    let mut system = bundle
+        .systems
+        .as_ref()
+        .expect("systems should load")
+        .systems[0]
+        .clone();
+    system.commands = vec![SystemCommandIr::EmitEvent {
+        event: "Spawned".to_owned(),
+    }];
+    let effects = NativeSystemEffects {
+        commands: vec![NativeSystemCommandEffect {
+            command: "emitEvent".to_owned(),
+            component: None,
+            components: None,
+            entity: None,
+            event: Some("Spawned".to_owned()),
+            payload: Some(json!({ "entity": "marker" })),
+            value: None,
+        }],
+        ..Default::default()
+    };
+
+    apply_system_effects(&mut bundle, &system, &effects, 1, 1)
+        .expect("declared command event should apply");
+
+    assert_eq!(
+        bundle.world.events.get("Spawned"),
+        Some(&json!([{ "entity": "marker" }]))
+    );
 }
 
 #[test]

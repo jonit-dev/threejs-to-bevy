@@ -107,6 +107,9 @@ pub fn apply_system_effects(
         return Err(diagnostics);
     }
 
+    for event in &effects.events {
+        apply_event(bundle, event);
+    }
     for patch in &effects.patches {
         apply_patch(bundle, patch);
     }
@@ -454,8 +457,33 @@ fn apply_command(bundle: &mut LoadedBundle, command: &NativeSystemCommandEffect)
             };
             remove_component(&mut entity.components, component);
         }
-        "emitEvent" => {}
+        "emitEvent" => {
+            let (Some(event), Some(payload)) = (command.event.as_ref(), command.payload.as_ref())
+            else {
+                return;
+            };
+            apply_event(
+                bundle,
+                &NativeSystemEventEffect {
+                    event: event.clone(),
+                    payload: payload.clone(),
+                },
+            );
+        }
         _ => {}
+    }
+}
+
+fn apply_event(bundle: &mut LoadedBundle, event: &NativeSystemEventEffect) {
+    let queue = bundle
+        .world
+        .events
+        .entry(event.event.clone())
+        .or_insert_with(|| Value::Array(Vec::new()));
+    if let Value::Array(values) = queue {
+        values.push(event.payload.clone());
+    } else {
+        *queue = Value::Array(vec![event.payload.clone()]);
     }
 }
 
