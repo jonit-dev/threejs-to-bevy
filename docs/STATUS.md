@@ -14,19 +14,20 @@ Bevy runtime where support is claimed.
 
 ## Current Active Gate
 
-V5: aggregate hardening, visual-quality, native evidence, and game-authoring
-ergonomics gate.
+V7: deep engine gap-closure, functional scene/template, packaging, performance,
+conformance, docs, diagnostics, and native evidence gate.
 
 Current release command:
 
 ```bash
-pnpm verify:v5
+pnpm verify:v7
 ```
 
-`verify:v5` runs the V5 docs gate, selected TypeScript tests, the maintained
-visual scene checks, dense-content budget evidence, starter-template smoke,
-shared conformance, and Bevy native test evidence. It writes the V5 aggregate
-report under `artifacts/v5/verification-report.json`.
+`verify:v7` runs the V7 docs gate, docs/gate tests, selected TypeScript tests,
+the maintained V7 functional scene/template proof, rendered web evidence,
+shared conformance, Bevy native test evidence, desktop packaging checks,
+performance budget reports, and release-artifact presence checks. It writes the
+V7 aggregate report under `artifacts/v7/verification-report.json`.
 
 ## V4 Proves
 
@@ -367,7 +368,7 @@ conformance fixture cover the accepted portable shape, while IK, retargeting,
 engine-specific controllers, and unbounded particle behavior remain rejected or
 unsupported. `pnpm verify:conformance` now compares a fixed web/native V7
 animation trace for parameter-driven graph transitions, active clip
-selection, emitted animation event markers, and bounded particle spawn counts,
+selection, queued animation event payloads, and bounded particle spawn counts,
 writing web/native trace artifacts and a diff under
 `artifacts/conformance/v7-animation-graphs-particles`. Full visual mixer
 playback, stop/state query APIs, richer event scheduling, and rendered particle
@@ -457,6 +458,20 @@ artifacts for the example, packages its desktop bundle under
 under `artifacts/v7/template-smoke/v7-functional`. Deeper V7 feature parity is
 still proven by the focused conformance fixtures rather than by direct SDK
 authoring for every promoted IR shape.
+
+V7-11 has landed the aggregate release gate and docs consistency slice:
+`pnpm verify:v7` now runs the V7 docs gate, docs/gate script tests, selected
+TypeScript checks, conformance, the functional scene/template smoke, Bevy
+workspace tests, desktop packaging checks, performance reports, diagnostics
+checks, and final artifact presence checks. The gate writes
+`artifacts/v7/verification-report.json` with links to docs/diagnostics inputs,
+rendered web evidence, packaged desktop artifacts, template smoke output,
+`artifacts/conformance/verification-report.json`,
+`artifacts/v7/rust-test-report.json`, packaging, and performance reports. V7 is
+complete for the documented promoted slices when `verify:v7` passes; editor,
+online, networking, replication, collaboration, public plugin, raw Three.js,
+direct Bevy authoring, mobile packaging, and broad shader graph scope remain
+deferred or never portable as tracked in the parity and maturity docs.
 
 V8 is the first planned local editor and inspector milestone. V9 is the first
 planned online project and publishing milestone. V10 is the first planned

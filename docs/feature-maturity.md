@@ -25,6 +25,12 @@ functional scene or template proof where applicable, artifacts under
 completion claims. Never-portable rows must fail with stable diagnostics when
 they appear in public authoring surfaces.
 
+V7 is complete for the promoted rows below only through the aggregate
+`verify:v7` evidence: focused conformance fixtures, Bevy workspace tests,
+rendered web functional-scene screenshots, desktop package artifacts,
+performance reports, diagnostics checks, and template smoke output. This does
+not promote the deferred or never-portable rows.
+
 | Candidate | V6 baseline | V7 disposition | Required proof before support is claimed |
 | --- | --- | --- | --- |
 | Shape casts, contact filtering, deterministic collision ordering, and stronger character blocking | V6-03 primitive colliders and V6-04 character controller metadata | V7-promoted | Shared physics/character fixtures, web and Bevy observations, diagnostics for unsupported filters or solver behavior, and functional-scene evidence. |

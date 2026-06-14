@@ -35,9 +35,9 @@ example/template proof requirements, and final status/parity/maturity updates.
 
 **Implementation:**
 
-- [ ] Require every V7 ticket to be linked from the index.
-- [ ] Require promoted/deferred/never-portable language for deep parity gaps.
-- [ ] Reject forbidden editor, online, networking, collaboration, direct Bevy,
+- [x] Require every V7 ticket to be linked from the index.
+- [x] Require promoted/deferred/never-portable language for deep parity gaps.
+- [x] Reject forbidden editor, online, networking, collaboration, direct Bevy,
   raw Three.js, plugin, and broad shader graph claims.
 
 #### Phase 2: Aggregate Gate - One command proves V7.
@@ -52,17 +52,17 @@ example/template proof requirements, and final status/parity/maturity updates.
 
 **Implementation:**
 
-- [ ] Run docs checks, selected TypeScript tests, conformance, functional scene
+- [x] Run docs checks, selected TypeScript tests, conformance, functional scene
   verification, focused Rust tests, packaging checks, performance reports, and
   diagnostic checks.
-- [ ] Require the V7 proof example/template to produce inspectable evidence
+- [x] Require the V7 proof example/template to produce inspectable evidence
   under `artifacts/v7`, following existing folder conventions.
-- [ ] Require real rendered visual evidence for visible promoted features where
+- [x] Require real rendered visual evidence for visible promoted features where
   practical, including web screenshots and Bevy rendered evidence or documented
   native visual drift where native support is claimed.
-- [ ] Write `artifacts/v7/verification-report.json` with schema, version,
+- [x] Write `artifacts/v7/verification-report.json` with schema, version,
   status, code, steps, diagnostics, artifacts, startedAt, and durationMs.
-- [ ] Surface first failing step with stable `TN_VERIFY_V7_*` diagnostics.
+- [x] Surface first failing step with stable `TN_VERIFY_V7_*` diagnostics.
 
 ## Verification Strategy
 
@@ -75,13 +75,13 @@ example/template proof requirements, and final status/parity/maturity updates.
 
 ## Acceptance Criteria
 
-- [ ] `pnpm verify:v7` is the V7 aggregate release gate.
-- [ ] The V7 report links conformance, Rust, visual/runtime, packaging,
+- [x] `pnpm verify:v7` is the V7 aggregate release gate.
+- [x] The V7 report links conformance, Rust, visual/runtime, packaging,
   performance, diagnostics, and docs artifacts.
-- [ ] The V7 gate fails if the example/template proof or `artifacts/v7`
+- [x] The V7 gate fails if the example/template proof or `artifacts/v7`
   evidence is missing.
-- [ ] The V7 gate fails if visible promoted features have only build/log proof
+- [x] The V7 gate fails if visible promoted features have only build/log proof
   and no rendered artifact or explicit documented exception.
-- [ ] `docs/STATUS.md`, `docs/bevy-feature-parity.md`, and
+- [x] `docs/STATUS.md`, `docs/bevy-feature-parity.md`, and
   `docs/feature-maturity.md` reflect completed V7 state before V7 is marked
   complete.

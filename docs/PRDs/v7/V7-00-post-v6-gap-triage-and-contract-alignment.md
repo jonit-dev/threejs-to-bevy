@@ -36,13 +36,13 @@ never-portable categories before V7 feature work starts.
 
 **Implementation:**
 
-- [ ] Add promoted/deferred/never-portable categories for V7 candidates.
-- [ ] Require V6 baseline references for every V7 feature ticket.
-- [ ] Require a maintained `examples/` proof, optional matching template where
+- [x] Add promoted/deferred/never-portable categories for V7 candidates.
+- [x] Require V6 baseline references for every V7 feature ticket.
+- [x] Require a maintained `examples/` proof, optional matching template where
   promoted, and matching `artifacts/v7` evidence for the final V7 release gate.
-- [ ] Require rendered visual artifacts for promoted visible features where
+- [x] Require rendered visual artifacts for promoted visible features where
   practical, using the repo visual verification workflow as guidance.
-- [ ] State exclusions for editor, online, networking, collaboration, plugins,
+- [x] State exclusions for editor, online, networking, collaboration, plugins,
   direct Bevy, raw Three.js, and broad shader graphs.
 
 #### Phase 2: Docs Guardrails - V7 scope can be machine-checked.
@@ -56,13 +56,13 @@ never-portable categories before V7 feature work starts.
 
 **Implementation:**
 
-- [ ] Require every V7 ticket to be linked from the index.
-- [ ] Reject forbidden V7 completion claims.
-- [ ] Require docs to say V7 examples/templates and artifacts follow existing
+- [x] Require every V7 ticket to be linked from the index.
+- [x] Reject forbidden V7 completion claims.
+- [x] Require docs to say V7 examples/templates and artifacts follow existing
   folder patterns and prove runtime behavior, not just successful compilation.
-- [ ] Require docs to reject "build passed" as sufficient proof for visible
+- [x] Require docs to reject "build passed" as sufficient proof for visible
   runtime features.
-- [ ] Require explicit deferral or never-portable diagnostics for backend-only
+- [x] Require explicit deferral or never-portable diagnostics for backend-only
   features.
 
 ## Verification Strategy
@@ -73,9 +73,9 @@ never-portable categories before V7 feature work starts.
 
 ## Acceptance Criteria
 
-- [ ] V7 scope is discoverable, ordered, and tied to post-V6 gaps.
-- [ ] Status, parity, and maturity docs agree before implementation starts.
-- [ ] V7 instructions require an example under `examples/` and evidence under
+- [x] V7 scope is discoverable, ordered, and tied to post-V6 gaps.
+- [x] Status, parity, and maturity docs agree before implementation starts.
+- [x] V7 instructions require an example under `examples/` and evidence under
   `artifacts/v7`.
-- [ ] V7 instructions require real rendered artifacts for visible features where
+- [x] V7 instructions require real rendered artifacts for visible features where
   practical.

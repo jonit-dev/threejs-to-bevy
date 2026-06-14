@@ -54,8 +54,8 @@ controllers.
 
 **Implementation:**
 
-- [ ] Run graph transitions from scripted parameter changes.
-- [ ] Emit animation events into the portable event queue.
+- [x] Run graph transitions from scripted parameter changes.
+- [x] Emit animation events into the portable event queue.
 - [x] Report graph state, clip, transition, and particle observations.
 
 ## Verification Strategy
@@ -67,5 +67,5 @@ controllers.
 
 ## Acceptance Criteria
 
-- [ ] Animation graph behavior is constrained, observable, and portable.
+- [x] Animation graph behavior is constrained, observable, and portable.
 - [x] Unsupported animation systems fail with stable diagnostics.

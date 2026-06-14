@@ -33,9 +33,9 @@ UI/audio, renderer/content, scripting lifecycle, packaging, and performance.
 
 **Implementation:**
 
-- [ ] Add accepted and rejected V7 fixture categories before runtime claims.
-- [ ] Include bundle paths and target capability expectations.
-- [ ] Keep fixture content deterministic and minimal.
+- [x] Add accepted and rejected V7 fixture categories before runtime claims.
+- [x] Include bundle paths and target capability expectations.
+- [x] Keep fixture content deterministic and minimal.
 
 #### Phase 2: Report Evidence - Drift localizes to concrete artifacts.
 
@@ -50,10 +50,10 @@ UI/audio, renderer/content, scripting lifecycle, packaging, and performance.
 
 **Implementation:**
 
-- [ ] Report fixture ID, runtime, bundle path, expected value, actual value,
+- [x] Report fixture ID, runtime, bundle path, expected value, actual value,
   diagnostic code, and artifact path.
-- [ ] Preserve V5/V6 report compatibility where possible.
-- [ ] Fail conformance on unsupported silent drops.
+- [x] Preserve V5/V6 report compatibility where possible.
+- [x] Fail conformance on unsupported silent drops.
 
 ## Verification Strategy
 
@@ -63,5 +63,5 @@ UI/audio, renderer/content, scripting lifecycle, packaging, and performance.
 
 ## Acceptance Criteria
 
-- [ ] Every V7 feature ticket can point at a shared fixture or report path.
-- [ ] Report mismatches identify actionable paths and artifacts.
+- [x] Every V7 feature ticket can point at a shared fixture or report path.
+- [x] Report mismatches identify actionable paths and artifacts.

@@ -113,7 +113,8 @@ test("should build v7 functional example", async () => {
   assert.ok(manifest.requiredCapabilities.audio.includes("music"));
   assert.ok(manifest.requiredCapabilities.character.includes("controller"));
   assert.ok(manifest.requiredCapabilities.ecs.includes("resources"));
-  assert.ok(manifest.requiredCapabilities.scripting.includes("resource-writes"));
+  assert.ok(manifest.requiredCapabilities.scripting.includes("command.emitEvent"));
+  assert.ok(manifest.requiredCapabilities.scripting.includes("event-writes"));
   assert.ok(manifest.requiredCapabilities.scripting.includes("service.animation.play"));
   assert.ok(manifest.requiredCapabilities.ui.includes("node.touchControl"));
   assert.equal(runtimeConfig.window.title, "ThreeNative V7 Functional");

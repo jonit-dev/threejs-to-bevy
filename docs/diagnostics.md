@@ -106,6 +106,25 @@ V6 promoted feature ranges:
 - `TN_BEVY_*`, `TN_WEB_*`, and `TN_RUNTIME_*` for target-specific adapter drift
   or runtime failures that cannot be represented as IR validation errors.
 
+## V7 Release Diagnostics
+
+V7 keeps the V5/V6 diagnostic shape and adds release-gate evidence ranges:
+
+- `TN_DOCS_V7_*` for V7 PRD index, maturity, status/parity, and unsupported
+  scope-claim failures.
+- `TN_VERIFY_V7_*` for the aggregate V7 gate, including
+  `TN_VERIFY_V7_STEP_FAILED` for the first failing step and
+  `TN_VERIFY_V7_OK` / `TN_VERIFY_V7_FAILED` report codes.
+- `TN_CONFORMANCE_*` for fixture catalog, web/native trace, and artifact drift
+  reported by the shared conformance gate.
+- `TN_PACKAGE_*` for desktop package command and target-profile diagnostics.
+- `TN_PERF_*` for budget errors and warnings with metric, actual, threshold,
+  and artifact path fields.
+- `TN_IR_SYSTEM_*`, `TN_IR_PHYSICS_*`, `TN_IR_CHARACTER_*`,
+  `TN_IR_ANIMATION_*`, `TN_IR_UI_*`, `TN_IR_AUDIO_*`,
+  `TN_IR_ENVIRONMENT_*`, and `TN_SCRIPT_*` for V7 promoted or rejected
+  portable-contract validation failures.
+
 ## Guidance
 
 - Do not collapse asset, scene, and runtime failures into generic compiler

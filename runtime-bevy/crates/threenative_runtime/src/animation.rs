@@ -23,6 +23,7 @@ pub struct AnimationTraceObservation {
     pub initial_state: String,
     pub parameters: BTreeMap<String, Value>,
     pub particles: Vec<ParticleTraceObservation>,
+    pub queued_events: Vec<AnimationQueuedEventObservation>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub transition: Option<AnimationTransitionObservation>,
 }
@@ -41,6 +42,22 @@ pub struct AnimationTransitionObservation {
 pub struct AnimationEventObservation {
     pub at_seconds: f32,
     pub event: String,
+    pub state: String,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AnimationQueuedEventObservation {
+    pub event: String,
+    pub payload: AnimationQueuedEventPayload,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AnimationQueuedEventPayload {
+    pub asset: String,
+    pub at_seconds: f32,
+    pub clip: String,
     pub state: String,
 }
 
@@ -112,15 +129,29 @@ fn trace_asset_animation(
         .map(|emitter| trace_particle_emitter(emitter, fixed_delta))
         .collect::<Vec<_>>();
     particles.sort_by(|left, right| left.id.cmp(&right.id));
+    let events = active_events(state, fixed_delta);
+    let queued_events = events
+        .iter()
+        .map(|event| AnimationQueuedEventObservation {
+            event: event.event.clone(),
+            payload: AnimationQueuedEventPayload {
+                asset: asset_id.to_owned(),
+                at_seconds: event.at_seconds,
+                clip: state.clip.clone(),
+                state: event.state.clone(),
+            },
+        })
+        .collect::<Vec<_>>();
 
     AnimationTraceObservation {
         active_state: state.id.clone(),
         asset: asset_id.to_owned(),
         clip: state.clip.clone(),
-        events: active_events(state, fixed_delta),
+        events,
         initial_state: graph.initial_state.clone(),
         parameters,
         particles,
+        queued_events,
         transition: transition.map(|transition| AnimationTransitionObservation {
             blend_seconds: transition.blend_seconds,
             from: transition.from.clone(),

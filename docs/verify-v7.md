@@ -1,9 +1,11 @@
 # verify:v7
 
-`verify:v7` is not the final aggregate V7 release gate yet. It currently checks
-V7 docs, builds the CLI, and records the V7-08 desktop packaging evidence.
-V7-01 starts the evidence contract that later V7 feature tickets and the final
-V7 gate must use, and
+`verify:v7` is the aggregate V7 release gate for the documented scope. It runs
+the V7 docs gate, docs/gate script tests, selected TypeScript tests,
+conformance, the functional scene/template smoke, Bevy workspace tests,
+desktop packaging checks, performance budget reports, diagnostics checks, and a
+final artifact-presence check before writing `artifacts/v7/verification-report.json`.
+V7-01 starts the evidence contract that later V7 feature tickets use, and
 V7-02 now adds the first runtime-specific fixed trace. V7-03 adds the first
 animation/effects contract fixture and fixed web/native graph/particle trace.
 V7-04 adds the first fixed web/native UI navigation trace.
@@ -49,6 +51,9 @@ Current V7 conformance evidence starts with:
 - `artifacts/conformance/v7-scripting-lifecycle/effects-diff.json`
 - `pnpm verify:v7`
 - `artifacts/v7/verification-report.json`
+- `artifacts/v7/rust-test-report.json`
+- `scripts/check-docs-v7.mjs`
+- `docs/diagnostics.md`
 - `artifacts/v7/packaging/verification-report.json`
 - `artifacts/v7/packaging/desktop/game.bundle`
 - `artifacts/v7/packaging/desktop/package.manifest.json`
@@ -64,7 +69,7 @@ Current V7 conformance evidence starts with:
 - `examples/v7-functional/artifacts/verify/verification-report.json`
 - `examples/v7-functional/artifacts/verify/frame-01.png`
 - `examples/v7-functional/artifacts/verify/frame-02.png`
-- `artifacts/v7/functional-package/desktop/game.bundle`
+- `artifacts/v7/functional-package/desktop/v7-functional.bundle`
 - `artifacts/v7/functional-package/desktop/package.manifest.json`
 - `artifacts/v7/template-smoke/v7-functional`
 
@@ -78,9 +83,10 @@ metadata, animation event markers, and bounded particle emitters and exposes the
 required `animation:graph`, `animation:state-machine`, `animation:events`, and
 `particles:bounded-emitter` capabilities. The fixed trace compares web and
 native parameter-driven graph transitions, active clip selection,
-emitted event markers, and bounded particle spawn counts. This does not claim
-full visual mixer playback, stop/state query APIs, richer event scheduling, IK,
-retargeting, or rendered particle systems.
+queued animation event payloads, and bounded particle spawn counts. This does
+not claim full visual mixer playback, stop/state query APIs, richer event
+scheduling beyond the fixed trace, IK, retargeting, or rendered particle
+systems.
 
 The current V7-04 fixture evidence is intentionally narrow: the
 `v7-rich-ui-navigation` bundle validates focus order, navigation links,
@@ -145,6 +151,15 @@ parity, animation graph/particle metadata, spatial bus routing, dense renderer
 content, lifecycle replay, packaging diagnostics, and performance budgets remain
 anchored in the focused V7 conformance fixtures.
 
+The final V7-11 gate links all required release evidence in
+`artifacts/v7/verification-report.json`: docs and diagnostics inputs,
+functional bundle and rendered web screenshots, packaged desktop artifacts,
+template smoke output, `artifacts/conformance/verification-report.json`,
+`artifacts/v7/rust-test-report.json`, `artifacts/v7/packaging/verification-report.json`,
+and `artifacts/v7/performance/comparison.report.json`. A passing report uses
+`TN_VERIFY_V7_OK`; a failing report uses `TN_VERIFY_V7_FAILED` with the first
+failed step surfaced as `TN_VERIFY_V7_STEP_FAILED`.
+
 Conformance mismatch diagnostics must localize drift with:
 
 - `fixture`
@@ -158,9 +173,10 @@ Conformance mismatch diagnostics must localize drift with:
 - `artifactPaths`
 - stable diagnostic `code`
 
-This document does not claim full V7 runtime support. Additional runtime-specific
-V7 reports, functional scene artifacts, performance evidence, and the final
-aggregate `pnpm verify:v7` release gate remain later V7 tickets.
+This document does not claim full V7 runtime support beyond the documented
+promoted slices. The aggregate `pnpm verify:v7` gate is the completion evidence
+for those slices and keeps deferred or never-portable scope out of V7 support
+claims.
 
 The current V7-02 runtime evidence is intentionally narrow: the
 `v7-advanced-physics-character` fixture compares web and native fixed traces for

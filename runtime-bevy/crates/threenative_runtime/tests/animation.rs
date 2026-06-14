@@ -40,6 +40,11 @@ fn animation_trace_should_match_v7_graph_and_particle_fixture() {
     );
     assert_eq!(observation.events[0].event, "Footstep");
     assert_eq!(observation.events[0].at_seconds, 0.25);
+    assert_eq!(observation.queued_events[0].event, "Footstep");
+    assert_eq!(observation.queued_events[0].payload.asset, "model.hero");
+    assert_eq!(observation.queued_events[0].payload.clip, "run");
+    assert_eq!(observation.queued_events[0].payload.state, "run");
+    assert_eq!(observation.queued_events[0].payload.at_seconds, 0.25);
     assert_eq!(observation.particles[0].id, "dust");
     assert_eq!(observation.particles[0].spawned, 6);
 }
@@ -61,6 +66,7 @@ fn animation_trace_should_keep_initial_state_when_parameter_does_not_match() {
     assert_eq!(trace[0].clip, "idle");
     assert!(trace[0].transition.is_none());
     assert!(trace[0].events.is_empty());
+    assert!(trace[0].queued_events.is_empty());
 }
 
 fn write_animation_bundle() -> PathBuf {

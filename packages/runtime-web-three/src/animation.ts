@@ -26,6 +26,15 @@ export interface IAnimationTraceObservation {
     shape: string;
     spawned: number;
   }>;
+  queuedEvents: Array<{
+    event: string;
+    payload: {
+      asset: string;
+      atSeconds: number;
+      clip: string;
+      state: string;
+    };
+  }>;
   transition?: {
     blendSeconds?: number;
     from: string;
@@ -54,15 +63,25 @@ function traceAssetAnimation(
   if (state === undefined) {
     throw new Error(`Animation graph for '${asset.id}' does not declare any states.`);
   }
+  const events = activeEvents(state, fixedDelta);
 
   return {
     activeState: state.id,
     asset: asset.id,
     clip: state.clip,
-    events: activeEvents(state, fixedDelta),
+    events,
     initialState: graph.initialState,
     parameters,
     particles: (asset.particleEmitters ?? []).map((emitter) => traceParticleEmitter(emitter, fixedDelta)).sort((left, right) => left.id.localeCompare(right.id)),
+    queuedEvents: events.map((event) => ({
+      event: event.event,
+      payload: {
+        asset: asset.id,
+        atSeconds: event.atSeconds,
+        clip: state.clip,
+        state: event.state,
+      },
+    })),
     ...(transition === undefined
       ? {}
       : {

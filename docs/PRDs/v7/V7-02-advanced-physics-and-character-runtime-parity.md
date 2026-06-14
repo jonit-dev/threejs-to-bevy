@@ -36,10 +36,10 @@ handles adapter-private.
 
 **Implementation:**
 
-- [ ] Add backend-neutral shape cast, overlap, sensor, and filter declarations.
-- [ ] Validate shape parameters, masks, query permissions, and unsupported
+- [x] Add backend-neutral shape cast, overlap, sensor, and filter declarations.
+- [x] Validate shape parameters, masks, query permissions, and unsupported
   solver features.
-- [ ] Reject engine-specific handles with stable diagnostics.
+- [x] Reject engine-specific handles with stable diagnostics.
 
 #### Phase 2: Runtime Parity - Fixed traces produce equivalent observations.
 
@@ -67,5 +67,5 @@ handles adapter-private.
 
 ## Acceptance Criteria
 
-- [ ] Advanced physics features are portable or explicitly rejected.
-- [ ] Contact/query ordering is deterministic for release-gated traces.
+- [x] Advanced physics features are portable or explicitly rejected.
+- [x] Contact/query ordering is deterministic for release-gated traces.

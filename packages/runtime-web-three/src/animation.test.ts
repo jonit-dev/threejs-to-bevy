@@ -29,6 +29,17 @@ test("animation trace should match V7 graph and particle fixture", async () => {
           spawned: 6,
         },
       ],
+      queuedEvents: [
+        {
+          event: "Footstep",
+          payload: {
+            asset: "model.hero",
+            atSeconds: 0.25,
+            clip: "run",
+            state: "run",
+          },
+        },
+      ],
       transition: {
         blendSeconds: 0.15,
         from: "idle",
