@@ -1,0 +1,64 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "floor",
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "layer": "world",
+          "size": [8, 0.1, 8]
+        },
+        "RigidBody": {
+          "kind": "static"
+        },
+        "Transform": {
+          "position": [0, 0, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "pickup",
+      "components": {
+        "Collider": {
+          "kind": "sphere",
+          "layer": "item",
+          "radius": 0.5,
+          "trigger": true
+        },
+        "RigidBody": {
+          "kind": "static"
+        },
+        "Transform": {
+          "position": [2, 0.5, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "wall",
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "layer": "world",
+          "size": [1, 2, 1]
+        },
+        "RigidBody": {
+          "kind": "static"
+        },
+        "Transform": {
+          "position": [3, 1, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    }
+  ],
+  "events": {},
+  "resources": {},
+  "prefabs": []
+}

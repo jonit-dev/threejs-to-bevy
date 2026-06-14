@@ -18,6 +18,10 @@ export async function verifyConformance(options = {}) {
   const v6AnimationClipsBundlePath = resolve(root, "packages/ir/fixtures/conformance/v6-animation-clips/game.bundle");
   const v6ResourcesEventsBundlePath = resolve(root, "packages/ir/fixtures/conformance/v6-resources-events/game.bundle");
   const v6RetainedUiBundlePath = resolve(root, "packages/ir/fixtures/conformance/v6-retained-ui/game.bundle");
+  const v7AdvancedPhysicsCharacterBundlePath = resolve(
+    root,
+    "packages/ir/fixtures/conformance/v7-advanced-physics-character/game.bundle",
+  );
   const nativeBasicSceneReportPath = options.nativeBasicSceneReportPath ?? resolve(artifactDir, "basic-scene/bevy.report.json");
   const nativeV6PhysicsEventsReportPath =
     options.nativeV6PhysicsEventsReportPath ?? resolve(artifactDir, "v6-physics-events/bevy.report.json");
@@ -35,6 +39,11 @@ export async function verifyConformance(options = {}) {
   const v6ResourceEventDiffPath = options.v6ResourceEventDiffPath ?? resolve(artifactDir, "v6-resources-events/effects-diff.json");
   const v6ResourceEventNativeEffectsPath = options.v6ResourceEventNativeEffectsPath ?? resolve(artifactDir, "v6-resources-events/native-effects.json");
   const v6ResourceEventWebEffectsPath = options.v6ResourceEventWebEffectsPath ?? resolve(artifactDir, "v6-resources-events/web-effects.json");
+  const v7PhysicsQueryDiffPath = options.v7PhysicsQueryDiffPath ?? resolve(artifactDir, "v7-advanced-physics-character/effects-diff.json");
+  const v7PhysicsQueryNativeEffectsPath =
+    options.v7PhysicsQueryNativeEffectsPath ?? resolve(artifactDir, "v7-advanced-physics-character/native-effects.json");
+  const v7PhysicsQueryWebEffectsPath =
+    options.v7PhysicsQueryWebEffectsPath ?? resolve(artifactDir, "v7-advanced-physics-character/web-effects.json");
   const artifacts = {
     nativeBasicSceneReportPath,
     nativeV6AnimationClipsReportPath,
@@ -48,6 +57,9 @@ export async function verifyConformance(options = {}) {
     v6ResourceEventDiffPath,
     v6ResourceEventNativeEffectsPath,
     v6ResourceEventWebEffectsPath,
+    v7PhysicsQueryDiffPath,
+    v7PhysicsQueryNativeEffectsPath,
+    v7PhysicsQueryWebEffectsPath,
   };
   const steps = [];
 
@@ -181,6 +193,16 @@ export async function verifyConformance(options = {}) {
         nativeV6AudioPlaybackReportPath,
       ],
       { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
+    ],
+    [
+      "V7 physics query fixed trace parity",
+      process.execPath,
+      [
+        resolve(root, "scripts/verify-v7-physics-query-trace.mjs"),
+        v7AdvancedPhysicsCharacterBundlePath,
+        resolve(artifactDir, "v7-advanced-physics-character"),
+      ],
+      { timeoutMs: 120000 },
     ],
   ];
 
@@ -398,6 +420,9 @@ function fixtureForStep(stepName) {
   if (stepName.includes("V6 audio")) {
     return "v6-audio-playback";
   }
+  if (stepName.includes("V7 physics query")) {
+    return "v7-advanced-physics-character";
+  }
   return "conformance";
 }
 
@@ -426,6 +451,9 @@ function artifactPathForStep(stepName, artifacts) {
   if (stepName.includes("V6 audio")) {
     return artifacts.nativeV6AudioPlaybackReportPath;
   }
+  if (stepName.includes("V7 physics query")) {
+    return artifacts.v7PhysicsQueryDiffPath;
+  }
   return undefined;
 }
 
@@ -447,6 +475,9 @@ function bundlePathForStep(stepName) {
   }
   if (stepName.includes("V6 audio")) {
     return "packages/ir/fixtures/conformance/v6-audio-playback/game.bundle";
+  }
+  if (stepName.includes("V7 physics query")) {
+    return "packages/ir/fixtures/conformance/v7-advanced-physics-character/game.bundle";
   }
   return undefined;
 }

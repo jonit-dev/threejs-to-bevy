@@ -8,8 +8,9 @@ use threenative_loader::load_bundle;
 use threenative_runtime::{
     systems_context::{NativeSystemTimeSnapshot, build_system_context_snapshot},
     systems_services::{
-        NativeRaycastHit, NativeRaycastRequest, NativeRaycastResult, animation_play_payload,
-        raycast_primitive,
+        NativeOverlapRequest, NativeQueryShape, NativeRaycastHit, NativeRaycastRequest,
+        NativeRaycastResult, NativeShapeCastRequest, animation_play_payload, overlap_primitive,
+        raycast_primitive, shape_cast_primitive,
     },
 };
 
@@ -29,7 +30,9 @@ fn systems_services_should_raycast_primitive_floor() {
         &NativeRaycastRequest {
             direction: [0.0, -1.0, 0.0],
             ignore: vec!["player".to_owned()],
+            layer: None,
             layers: Vec::new(),
+            mask: Vec::new(),
             max_distance: 2.0,
             origin: [0.0, 1.0, 0.0],
         },
@@ -53,6 +56,71 @@ fn systems_services_should_raycast_primitive_floor() {
             "hit": true,
             "normal": [0.0, 1.0, 0.0],
             "point": [0.0, 0.05, 0.0],
+        })
+    );
+}
+
+#[test]
+fn systems_services_should_overlap_with_portable_filters() {
+    let root = write_bundle("overlap-filter");
+    let bundle = load_bundle(&root).expect("bundle should load");
+    let system = &bundle
+        .systems
+        .as_ref()
+        .expect("systems should load")
+        .systems[0];
+    let snapshot = build_system_context_snapshot(&bundle, system, time());
+
+    let result = overlap_primitive(
+        &snapshot,
+        &NativeOverlapRequest {
+            ignore: Vec::new(),
+            layer: Some("player".to_owned()),
+            layers: Vec::new(),
+            mask: vec!["world".to_owned()],
+            position: [0.0, 0.5, 0.0],
+            shape: NativeQueryShape::Sphere { radius: 0.75 },
+        },
+    );
+
+    assert_eq!(result.entities, vec!["floor".to_owned()]);
+}
+
+#[test]
+fn systems_services_should_shape_cast_primitive_collider() {
+    let root = write_bundle("shape-cast");
+    let bundle = load_bundle(&root).expect("bundle should load");
+    let system = &bundle
+        .systems
+        .as_ref()
+        .expect("systems should load")
+        .systems[0];
+    let snapshot = build_system_context_snapshot(&bundle, system, time());
+
+    let result = shape_cast_primitive(
+        &snapshot,
+        &NativeShapeCastRequest {
+            direction: [0.0, -1.0, 0.0],
+            ignore: vec!["player".to_owned()],
+            layer: None,
+            layers: Vec::new(),
+            mask: Vec::new(),
+            max_distance: 2.0,
+            origin: [0.0, 1.0, 0.0],
+            shape: NativeQueryShape::Box {
+                half_extents: [0.25, 0.25, 0.25],
+            },
+        },
+    );
+
+    assert_eq!(
+        result,
+        NativeRaycastResult::Hit(NativeRaycastHit {
+            distance: 0.7,
+            entity: "floor".to_owned(),
+            hit: true,
+            normal: [0.0, 1.0, 0.0],
+            point: [0.0, 0.3, 0.0],
         })
     );
 }
@@ -100,7 +168,7 @@ fn write_bundle(name: &str) -> PathBuf {
       "id": "floor",
       "components": {
         "Transform": { "position": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
-        "Collider": { "kind": "box", "size": [8, 0.1, 8] }
+        "Collider": { "kind": "box", "layer": "world", "mask": ["player"], "size": [8, 0.1, 8] }
       }
     }
   ]
@@ -122,7 +190,7 @@ fn write_bundle(name: &str) -> PathBuf {
       "commands": [],
       "eventReads": [],
       "eventWrites": [],
-      "services": ["physics.raycast"],
+      "services": ["physics.overlap", "physics.raycast", "physics.shapeCast"],
       "script": { "bundle": "scripts.bundle.js", "exportName": "system_raycast" }
     }
   ]

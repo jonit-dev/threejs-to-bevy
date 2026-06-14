@@ -10,6 +10,8 @@ interface IBounds {
   center: Vec3;
   halfExtents: Vec3;
   id: string;
+  layer?: string;
+  mask: string[];
   trigger: boolean;
 }
 
@@ -54,7 +56,7 @@ function detectPairs(bounds: IBounds[]): Map<string, IDetectedPair> {
     for (let rightIndex = leftIndex + 1; rightIndex < bounds.length; rightIndex += 1) {
       const left = bounds[leftIndex];
       const right = bounds[rightIndex];
-      if (left === undefined || right === undefined || !overlaps(left, right)) {
+      if (left === undefined || right === undefined || !overlaps(left, right) || !passesContactFilter(left, right)) {
         continue;
       }
       const payload = orderedPayload(left.id, right.id);
@@ -104,6 +106,8 @@ function colliderBounds(entity: IWorldEntity): IBounds[] {
       center: entity.components.Transform?.position ?? [0, 0, 0],
       halfExtents: halfExtents(collider),
       id: entity.id,
+      layer: collider.layer,
+      mask: [...(collider.mask ?? [])],
       trigger: collider.trigger === true,
     },
   ];
@@ -131,6 +135,14 @@ function overlaps(left: IBounds, right: IBounds): boolean {
     Math.abs(left.center[1] - right.center[1]) <= left.halfExtents[1] + right.halfExtents[1] &&
     Math.abs(left.center[2] - right.center[2]) <= left.halfExtents[2] + right.halfExtents[2]
   );
+}
+
+function passesContactFilter(left: IBounds, right: IBounds): boolean {
+  return allows(left, right) && allows(right, left);
+}
+
+function allows(left: IBounds, right: IBounds): boolean {
+  return left.mask.length === 0 || (right.layer !== undefined && left.mask.includes(right.layer));
 }
 
 function orderedPayload(left: string, right: string): Omit<IPhysicsEventPayload, "phase"> {

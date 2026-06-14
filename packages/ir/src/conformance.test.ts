@@ -129,6 +129,19 @@ test("should include capability tags for each conformance fixture", async () => 
     "ui:node.text",
     "ui:runtime",
   ]);
+  assertFixtureCapabilities(byName, "v7-advanced-physics-character", [
+    "physics:collider.box",
+    "physics:collider.sphere",
+    "physics:contact-filtering",
+    "physics:query.overlap",
+    "physics:query.shape-cast",
+    "physics:rigid-body.static",
+    "scripting:schedule.fixedUpdate",
+    "scripting:script-bundle",
+    "scripting:service.physics.overlap",
+    "scripting:service.physics.shapeCast",
+    "scripting:systems",
+  ]);
 });
 
 function assertFixtureCapabilities(

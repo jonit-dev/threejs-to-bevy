@@ -1,0 +1,28 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "physicsQueryProbe",
+      "schedule": "fixedUpdate",
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "queries": [
+        {
+          "with": ["Transform", "Collider"],
+          "without": []
+        }
+      ],
+      "reads": ["Transform", "Collider"],
+      "resourceReads": [],
+      "resourceWrites": [],
+      "services": ["physics.overlap", "physics.shapeCast"],
+      "script": {
+        "bundle": "scripts.bundle.js",
+        "exportName": "system_physicsQueryProbe"
+      },
+      "writes": []
+    }
+  ]
+}

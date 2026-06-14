@@ -278,14 +278,35 @@ function __tnInvokeSystem(options) {
   const readVec3 = (value, fallback) => Array.isArray(value) ? [Number(value[0] ?? fallback[0]), Number(value[1] ?? fallback[1]), Number(value[2] ?? fallback[2])] : fallback;
   const normalForAxis = (axis, sign) => axis === 0 ? [sign, 0, 0] : (axis === 1 ? [0, sign, 0] : [0, 0, sign]);
   const round6 = (value) => Number(value.toFixed(6));
-  const readColliderSize = (collider) => {
-    if (Array.isArray(collider?.size)) return readVec3(collider.size, [1, 1, 1]);
-    if (typeof collider?.radius === "number") {
-      const diameter = collider.radius * 2;
-      return [diameter, typeof collider.height === "number" ? collider.height : diameter, diameter];
-    }
-    return [1, 1, 1];
-  };
+    const readColliderSize = (collider) => {
+      if (Array.isArray(collider?.size)) return readVec3(collider.size, [1, 1, 1]);
+      if (typeof collider?.radius === "number") {
+        const diameter = collider.radius * 2;
+        return [diameter, typeof collider.height === "number" ? collider.height : diameter, diameter];
+      }
+      return [1, 1, 1];
+    };
+    const readColliderHalfExtents = (collider) => {
+      const size = readColliderSize(collider);
+      return [size[0] / 2, size[1] / 2, size[2] / 2];
+    };
+    const queryHalfExtents = (shape) => {
+      if (shape && shape.kind === "sphere") return [Number(shape.radius || 0), Number(shape.radius || 0), Number(shape.radius || 0)];
+      if (shape && shape.kind === "box" && Array.isArray(shape.halfExtents)) return readVec3(shape.halfExtents, [0.5, 0.5, 0.5]);
+      return [0.5, 0.5, 0.5];
+    };
+    const passesFilter = (collider, request) => {
+      const mask = [...(request.mask || []), ...(request.layers || [])];
+      const colliderLayer = typeof collider.layer === "string" ? collider.layer : undefined;
+      if (mask.length > 0 && (!colliderLayer || !mask.includes(colliderLayer))) return false;
+      if (request.layer && Array.isArray(collider.mask) && !collider.mask.includes(request.layer)) return false;
+      return true;
+    };
+    const boundsOverlap = (left, right) => (
+      Math.abs(left.center[0] - right.center[0]) <= left.halfExtents[0] + right.halfExtents[0] &&
+      Math.abs(left.center[1] - right.center[1]) <= left.halfExtents[1] + right.halfExtents[1] &&
+      Math.abs(left.center[2] - right.center[2]) <= left.halfExtents[2] + right.halfExtents[2]
+    );
   const intersectAabb = (request, center, size) => {
     const half = size.map((value) => value / 2);
     const min = [center[0] - half[0], center[1] - half[1], center[2] - half[2]];
@@ -331,16 +352,57 @@ function __tnInvokeSystem(options) {
     let best = { hit: false };
     for (const entity of data.entities) {
       if (ignored.has(entity.id)) continue;
-      const transform = entity.components.Transform;
-      const collider = entity.components.Collider;
-      if (!transform || !collider) continue;
-      const hit = intersectAabb(request, readVec3(transform.position, [0, 0, 0]), readColliderSize(collider));
-      if (hit.hit && (!best.hit || hit.distance < best.distance)) {
-        best = { ...hit, entity: entity.id };
+        const transform = entity.components.Transform;
+        const collider = entity.components.Collider;
+        if (!transform || !collider) continue;
+        if (!passesFilter(collider, request)) continue;
+        const hit = intersectAabb(request, readVec3(transform.position, [0, 0, 0]), readColliderSize(collider));
+        if (hit.hit && (!best.hit || hit.distance < best.distance)) {
+          best = { ...hit, entity: entity.id };
+        }
       }
-    }
-    return best;
-  };
+      return best;
+    };
+    const overlap = (request) => {
+      const ignored = new Set(request.ignore || []);
+      const queryBounds = { center: readVec3(request.position, [0, 0, 0]), halfExtents: queryHalfExtents(request.shape) };
+      return {
+        entities: data.entities
+          .filter((entity) => !ignored.has(entity.id))
+          .filter((entity) => {
+            const transform = entity.components.Transform;
+            const collider = entity.components.Collider;
+            if (!transform || !collider || !passesFilter(collider, request)) return false;
+            return boundsOverlap(queryBounds, {
+              center: readVec3(transform.position, [0, 0, 0]),
+              halfExtents: readColliderHalfExtents(collider)
+            });
+          })
+          .map((entity) => entity.id)
+          .sort()
+      };
+    };
+    const shapeCast = (request) => {
+      const ignored = new Set(request.ignore || []);
+      const queryExtents = queryHalfExtents(request.shape);
+      let best = { hit: false };
+      for (const entity of data.entities) {
+        if (ignored.has(entity.id)) continue;
+        const transform = entity.components.Transform;
+        const collider = entity.components.Collider;
+        if (!transform || !collider || !passesFilter(collider, request)) continue;
+        const size = readColliderSize(collider);
+        const hit = intersectAabb(
+          request,
+          readVec3(transform.position, [0, 0, 0]),
+          [size[0] + queryExtents[0] * 2, size[1] + queryExtents[1] * 2, size[2] + queryExtents[2] * 2]
+        );
+        if (hit.hit && (!best.hit || hit.distance < best.distance || (hit.distance === best.distance && entity.id < best.entity))) {
+          best = { ...hit, entity: entity.id };
+        }
+      }
+      return best;
+    };
   const entities = data.entities.map((source) => ({
     id: source.id,
     components: clone(source.components),
@@ -402,15 +464,27 @@ function __tnInvokeSystem(options) {
       emitEvent(event, payload) {
         effects.commands.push({ command: "emitEvent", event: normalize(event), payload: clone(payload) });
       }
-    },
-    physics: {
-      raycast(payload) {
-        const request = clone(payload);
-        const result = raycast(request);
-        effects.services.push({ service: "physics.raycast", payload: { request, result } });
-        return result;
-      }
-    },
+      },
+      physics: {
+        overlap(payload) {
+          const request = clone(payload);
+          const result = overlap(request);
+          effects.services.push({ service: "physics.overlap", payload: { request, result } });
+          return result;
+        },
+        raycast(payload) {
+          const request = clone(payload);
+          const result = raycast(request);
+          effects.services.push({ service: "physics.raycast", payload: { request, result } });
+          return result;
+        },
+        shapeCast(payload) {
+          const request = clone(payload);
+          const result = shapeCast(request);
+          effects.services.push({ service: "physics.shapeCast", payload: { request, result } });
+          return result;
+        }
+      },
     animation: {
       play(entity, clip, options = {}) {
         effects.services.push({ service: "animation.play", payload: { request: { entity, clip, options: clone(options) }, result: { accepted: true } } });

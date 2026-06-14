@@ -340,9 +340,13 @@ V7-02 has started at the physics/character contract layer: portable collider
 filters now validate with stable `layer`/`mask` metadata, backend-specific
 physics handles fail with `TN_IR_PHYSICS_ENGINE_HANDLE_UNSUPPORTED`, and
 systems may declare `physics.overlap` and `physics.shapeCast` service
-permissions beside `physics.raycast`. This is not yet a runtime parity claim;
-fixed trace observations and stronger character-controller behavior still need
-the V7-02 runtime phase.
+permissions beside `physics.raycast`. The first runtime phase now has a
+`v7-advanced-physics-character` conformance fixture and fixed web/native trace
+for primitive overlap and swept box shape-cast queries with portable collider
+layer filters, writing web/native effect logs and a diff under
+`artifacts/conformance/v7-advanced-physics-character`. Full solver behavior,
+contact ordering, sensors beyond the query fixture, and stronger
+character-controller movement/blocking behavior remain V7 work.
 
 V8 is the first planned local editor and inspector milestone. V9 is the first
 planned online project and publishing milestone. V10 is the first planned

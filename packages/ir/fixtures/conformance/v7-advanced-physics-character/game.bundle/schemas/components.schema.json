@@ -1,0 +1,27 @@
+{
+  "schema": "threenative.component-schemas",
+  "version": "0.1.0",
+  "schemas": {
+    "Collider": {
+      "fields": {
+        "kind": { "kind": "string", "required": true },
+        "layer": { "kind": "string", "required": false },
+        "radius": { "kind": "number", "required": false },
+        "size": { "kind": "vec3", "required": false },
+        "trigger": { "kind": "boolean", "required": false }
+      }
+    },
+    "RigidBody": {
+      "fields": {
+        "kind": { "kind": "string", "required": true }
+      }
+    },
+    "Transform": {
+      "fields": {
+        "position": { "kind": "vec3", "required": false },
+        "rotation": { "kind": "quat", "required": false },
+        "scale": { "kind": "vec3", "required": false }
+      }
+    }
+  }
+}

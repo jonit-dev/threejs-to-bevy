@@ -29,6 +29,21 @@ test("physics should emit deterministic enter stay and exit phases", () => {
   assert.deepEqual(world.events?.TriggerEvent, [{ a: "pickup", b: "player", phase: "exit" }]);
 });
 
+test("physics should apply portable contact filters before emitting events", () => {
+  const world = makePhysicsWorld();
+  const pickup = world.entities.find((entity) => entity.id === "pickup");
+  const player = world.entities.find((entity) => entity.id === "player");
+  if (pickup?.components.Collider !== undefined && player?.components.Collider !== undefined) {
+    pickup.components.Collider.layer = "pickup";
+    pickup.components.Collider.mask = ["enemy"];
+    player.components.Collider.layer = "player";
+    player.components.Collider.mask = ["pickup"];
+  }
+
+  assert.deepEqual(stepPhysics(world), []);
+  assert.deepEqual(world.events?.TriggerEvent, []);
+});
+
 function makePhysicsWorld(): IWorldIr {
   return {
     schema: "threenative.world" as const,

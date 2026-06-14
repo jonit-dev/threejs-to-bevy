@@ -41,6 +41,18 @@ fn physics_should_emit_fixed_trace_phases() {
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
 
+#[test]
+fn physics_should_apply_portable_contact_filters() {
+    let root = write_filtered_physics_bundle();
+    let bundle = load_bundle(&root).expect("physics bundle should load");
+
+    let events = detect_physics_events(&bundle);
+
+    assert!(events.is_empty());
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
 fn write_physics_bundle() -> PathBuf {
     let root = std::env::temp_dir().join(format!(
         "tn-physics-{}",
@@ -82,6 +94,70 @@ fn write_physics_bundle() -> PathBuf {
         "Collider": { "kind": "box", "size": [1, 1, 1] },
         "RigidBody": { "kind": "kinematic" },
         "Transform": { "position": [0.5, 0, 0] }
+      }
+    }
+  ]
+}"#,
+    );
+    write(
+        &root,
+        "assets.manifest.json",
+        r#"{ "schema": "threenative.assets", "version": "0.1.0", "assets": [] }"#,
+    );
+    write(
+        &root,
+        "materials.ir.json",
+        r#"{ "schema": "threenative.materials", "version": "0.1.0", "materials": [] }"#,
+    );
+    write(
+        &root,
+        "target.profile.json",
+        r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["desktop"] }"#,
+    );
+    root
+}
+
+fn write_filtered_physics_bundle() -> PathBuf {
+    let root = std::env::temp_dir().join(format!(
+        "tn-physics-filtered-{}",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system time should be after unix epoch")
+            .as_nanos()
+    ));
+    fs::create_dir_all(&root).expect("temporary bundle directory should be created");
+    write(
+        &root,
+        "manifest.json",
+        r#"{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "physics-filtered",
+  "entry": { "world": "world.ir.json" },
+  "files": { "assets": "assets.manifest.json", "materials": "materials.ir.json", "targetProfile": "target.profile.json" }
+}"#,
+    );
+    write(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "pickup",
+      "components": {
+        "Collider": { "kind": "sphere", "layer": "pickup", "mask": ["enemy"], "radius": 0.5, "trigger": true },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [0, 0, 0] }
+      }
+    },
+    {
+      "id": "player",
+      "components": {
+        "Collider": { "kind": "box", "layer": "player", "mask": ["pickup"], "size": [1, 1, 1] },
+        "RigidBody": { "kind": "kinematic" },
+        "Transform": { "position": [0.25, 0, 0] }
       }
     }
   ]

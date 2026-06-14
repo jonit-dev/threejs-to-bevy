@@ -15,6 +15,8 @@ struct Bounds<'a> {
     center: [f32; 3],
     half_extents: [f32; 3],
     id: &'a str,
+    layer: Option<&'a str>,
+    mask: &'a [String],
     trigger: bool,
 }
 
@@ -112,6 +114,8 @@ struct SimulatedEntity {
     center: [f32; 3],
     half_extents: [f32; 3],
     id: String,
+    layer: Option<String>,
+    mask: Vec<String>,
     trigger: bool,
     velocity: Option<[f32; 3]>,
 }
@@ -132,6 +136,8 @@ fn simulated_entity(entity: &WorldEntity) -> Option<SimulatedEntity> {
             .unwrap_or([0.0, 0.0, 0.0]),
         half_extents: half_extents(collider),
         id: entity.id.clone(),
+        layer: collider.layer.clone(),
+        mask: collider.mask.clone().unwrap_or_default(),
         trigger: collider.trigger.unwrap_or(false),
         velocity: entity
             .components
@@ -146,6 +152,8 @@ fn simulated_entity_bounds(entity: &SimulatedEntity) -> Bounds<'_> {
         center: entity.center,
         half_extents: entity.half_extents,
         id: &entity.id,
+        layer: entity.layer.as_deref(),
+        mask: &entity.mask,
         trigger: entity.trigger,
     }
 }
@@ -175,7 +183,7 @@ fn detect_pairs(bounds: Vec<Bounds<'_>>) -> BTreeMap<String, DetectedPair> {
         for right_index in (left_index + 1)..bounds.len() {
             let left = &bounds[left_index];
             let right = &bounds[right_index];
-            if overlaps(left, right) {
+            if overlaps(left, right) && passes_contact_filter(left, right) {
                 let (a, b) = ordered_pair(left.id, right.id);
                 let event = if left.trigger || right.trigger {
                     "TriggerEvent"
@@ -209,6 +217,8 @@ fn entity_bounds(entity: &WorldEntity) -> Option<Bounds<'_>> {
             .unwrap_or([0.0, 0.0, 0.0]),
         half_extents: half_extents(collider),
         id: &entity.id,
+        layer: collider.layer.as_deref(),
+        mask: collider.mask.as_deref().unwrap_or(&[]),
         trigger: collider.trigger.unwrap_or(false),
     })
 }
@@ -235,6 +245,17 @@ fn overlaps(left: &Bounds<'_>, right: &Bounds<'_>) -> bool {
     (left.center[0] - right.center[0]).abs() <= left.half_extents[0] + right.half_extents[0]
         && (left.center[1] - right.center[1]).abs() <= left.half_extents[1] + right.half_extents[1]
         && (left.center[2] - right.center[2]).abs() <= left.half_extents[2] + right.half_extents[2]
+}
+
+fn passes_contact_filter(left: &Bounds<'_>, right: &Bounds<'_>) -> bool {
+    allows(left, right) && allows(right, left)
+}
+
+fn allows(left: &Bounds<'_>, right: &Bounds<'_>) -> bool {
+    left.mask.is_empty()
+        || right
+            .layer
+            .is_some_and(|layer| left.mask.iter().any(|candidate| candidate == layer))
 }
 
 fn ordered_pair<'a>(left: &'a str, right: &'a str) -> (&'a str, &'a str) {

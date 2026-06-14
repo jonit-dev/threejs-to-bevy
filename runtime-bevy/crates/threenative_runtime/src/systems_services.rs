@@ -9,10 +9,57 @@ pub struct NativeRaycastRequest {
     pub direction: [f64; 3],
     #[serde(default)]
     pub ignore: Vec<String>,
+    pub layer: Option<String>,
     #[serde(default)]
     pub layers: Vec<String>,
+    #[serde(default)]
+    pub mask: Vec<String>,
     pub max_distance: f64,
     pub origin: [f64; 3],
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeOverlapRequest {
+    #[serde(default)]
+    pub ignore: Vec<String>,
+    pub layer: Option<String>,
+    #[serde(default)]
+    pub layers: Vec<String>,
+    #[serde(default)]
+    pub mask: Vec<String>,
+    pub position: [f64; 3],
+    pub shape: NativeQueryShape,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeShapeCastRequest {
+    pub direction: [f64; 3],
+    #[serde(default)]
+    pub ignore: Vec<String>,
+    pub layer: Option<String>,
+    #[serde(default)]
+    pub layers: Vec<String>,
+    #[serde(default)]
+    pub mask: Vec<String>,
+    pub max_distance: f64,
+    pub origin: [f64; 3],
+    pub shape: NativeQueryShape,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(tag = "kind")]
+pub enum NativeQueryShape {
+    #[serde(rename = "box", rename_all = "camelCase")]
+    Box { half_extents: [f64; 3] },
+    #[serde(rename = "sphere")]
+    Sphere { radius: f64 },
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq)]
+pub struct NativeOverlapResult {
+    pub entities: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq)]
@@ -36,6 +83,8 @@ pub struct NativeRaycastHit {
     pub point: [f64; 3],
 }
 
+pub type NativeShapeCastResult = NativeRaycastResult;
+
 pub fn raycast_primitive(
     snapshot: &NativeSystemContextSnapshot,
     request: &NativeRaycastRequest,
@@ -55,6 +104,9 @@ pub fn raycast_primitive(
         let Some(collider) = entity.components.get("Collider").and_then(Value::as_object) else {
             continue;
         };
+        if !passes_filter(collider, &request.layer, &request.layers, &request.mask) {
+            continue;
+        }
         let center = read_vec3(transform.get("position"), [0.0, 0.0, 0.0]);
         let size = read_collider_size(collider);
         let Some(hit) = intersect_aabb(request, center, size) else {
@@ -63,6 +115,112 @@ pub fn raycast_primitive(
         if best
             .as_ref()
             .map(|(_, existing)| hit.distance < existing.distance)
+            .unwrap_or(true)
+        {
+            best = Some((entity.id.clone(), hit));
+        }
+    }
+
+    match best {
+        Some((entity, hit)) => NativeRaycastResult::Hit(NativeRaycastHit {
+            distance: hit.distance,
+            entity,
+            hit: true,
+            normal: hit.normal,
+            point: hit.point,
+        }),
+        None => NativeRaycastResult::Miss(NativeRaycastMiss { hit: false }),
+    }
+}
+
+pub fn overlap_primitive(
+    snapshot: &NativeSystemContextSnapshot,
+    request: &NativeOverlapRequest,
+) -> NativeOverlapResult {
+    let query_bounds = QueryBounds {
+        center: request.position,
+        half_extents: query_half_extents(&request.shape),
+    };
+    let mut entities = Vec::new();
+    for entity in &snapshot.entities {
+        if request.ignore.iter().any(|ignored| ignored == &entity.id) {
+            continue;
+        }
+        let Some(transform) = entity
+            .components
+            .get("Transform")
+            .and_then(Value::as_object)
+        else {
+            continue;
+        };
+        let Some(collider) = entity.components.get("Collider").and_then(Value::as_object) else {
+            continue;
+        };
+        if !passes_filter(collider, &request.layer, &request.layers, &request.mask) {
+            continue;
+        }
+        if bounds_overlap(
+            &query_bounds,
+            &QueryBounds {
+                center: read_vec3(transform.get("position"), [0.0, 0.0, 0.0]),
+                half_extents: read_collider_half_extents(collider),
+            },
+        ) {
+            entities.push(entity.id.clone());
+        }
+    }
+    entities.sort();
+    NativeOverlapResult { entities }
+}
+
+pub fn shape_cast_primitive(
+    snapshot: &NativeSystemContextSnapshot,
+    request: &NativeShapeCastRequest,
+) -> NativeShapeCastResult {
+    let mut best: Option<(String, RayHit)> = None;
+    let query_extents = query_half_extents(&request.shape);
+    let ray_request = NativeRaycastRequest {
+        direction: request.direction,
+        ignore: request.ignore.clone(),
+        layer: request.layer.clone(),
+        layers: request.layers.clone(),
+        mask: request.mask.clone(),
+        max_distance: request.max_distance,
+        origin: request.origin,
+    };
+    for entity in &snapshot.entities {
+        if request.ignore.iter().any(|ignored| ignored == &entity.id) {
+            continue;
+        }
+        let Some(transform) = entity
+            .components
+            .get("Transform")
+            .and_then(Value::as_object)
+        else {
+            continue;
+        };
+        let Some(collider) = entity.components.get("Collider").and_then(Value::as_object) else {
+            continue;
+        };
+        if !passes_filter(collider, &request.layer, &request.layers, &request.mask) {
+            continue;
+        }
+        let center = read_vec3(transform.get("position"), [0.0, 0.0, 0.0]);
+        let size = read_collider_size(collider);
+        let expanded_size = [
+            size[0] + query_extents[0] * 2.0,
+            size[1] + query_extents[1] * 2.0,
+            size[2] + query_extents[2] * 2.0,
+        ];
+        let Some(hit) = intersect_aabb(&ray_request, center, expanded_size) else {
+            continue;
+        };
+        if best
+            .as_ref()
+            .map(|(existing_entity, existing)| {
+                hit.distance < existing.distance
+                    || (hit.distance == existing.distance && entity.id < *existing_entity)
+            })
             .unwrap_or(true)
         {
             best = Some((entity.id.clone(), hit));
@@ -97,6 +255,11 @@ struct RayHit {
     distance: f64,
     normal: [f64; 3],
     point: [f64; 3],
+}
+
+struct QueryBounds {
+    center: [f64; 3],
+    half_extents: [f64; 3],
 }
 
 fn intersect_aabb(
@@ -174,6 +337,50 @@ fn read_collider_size(collider: &serde_json::Map<String, Value>) -> [f64; 3] {
         ];
     }
     [1.0, 1.0, 1.0]
+}
+
+fn read_collider_half_extents(collider: &serde_json::Map<String, Value>) -> [f64; 3] {
+    let size = read_collider_size(collider);
+    [size[0] / 2.0, size[1] / 2.0, size[2] / 2.0]
+}
+
+fn query_half_extents(shape: &NativeQueryShape) -> [f64; 3] {
+    match shape {
+        NativeQueryShape::Box { half_extents } => *half_extents,
+        NativeQueryShape::Sphere { radius } => [*radius, *radius, *radius],
+    }
+}
+
+fn bounds_overlap(left: &QueryBounds, right: &QueryBounds) -> bool {
+    (left.center[0] - right.center[0]).abs() <= left.half_extents[0] + right.half_extents[0]
+        && (left.center[1] - right.center[1]).abs() <= left.half_extents[1] + right.half_extents[1]
+        && (left.center[2] - right.center[2]).abs() <= left.half_extents[2] + right.half_extents[2]
+}
+
+fn passes_filter(
+    collider: &serde_json::Map<String, Value>,
+    layer: &Option<String>,
+    layers: &[String],
+    mask: &[String],
+) -> bool {
+    let collider_layer = collider.get("layer").and_then(Value::as_str);
+    if (!mask.is_empty() || !layers.is_empty())
+        && collider_layer.is_none_or(|value| {
+            !mask.iter().any(|candidate| candidate == value)
+                && !layers.iter().any(|candidate| candidate == value)
+        })
+    {
+        return false;
+    }
+    if let Some(layer) = layer {
+        if let Some(collider_mask) = collider.get("mask").and_then(Value::as_array) {
+            return collider_mask
+                .iter()
+                .filter_map(Value::as_str)
+                .any(|value| value == layer);
+        }
+    }
+    true
 }
 
 fn read_vec3(value: Option<&Value>, fallback: [f64; 3]) -> [f64; 3] {
