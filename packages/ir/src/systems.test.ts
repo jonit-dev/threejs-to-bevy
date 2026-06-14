@@ -119,6 +119,25 @@ test("should allow built-in resource access without resource schema", async () =
   }
 });
 
+test("should accept startup system schedule", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-startup-"));
+  try {
+    await writeBundle(root, {
+      commands: [],
+      reads: ["Transform"],
+      schedule: "startup",
+      writes: ["Transform"],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject unsupported v4 system stage", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-v4-stage-"));
   try {

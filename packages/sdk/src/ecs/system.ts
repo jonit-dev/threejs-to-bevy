@@ -3,7 +3,7 @@ import type { CommandDeclaration } from "./commands.js";
 import type { IQueryDeclaration } from "./query.js";
 import type { EcsFactory, IEcsSchema } from "./schema.js";
 
-export type SystemSchedule = "fixedUpdate" | "postUpdate" | "update";
+export type SystemSchedule = "fixedUpdate" | "postUpdate" | "startup" | "update";
 export type SystemService = "animation.play" | "physics.raycast";
 export type PortableSystem<TContext = ISystemContext> = (context: TContext) => unknown;
 
@@ -102,6 +102,10 @@ export function defineSystem(config: IV4SystemConfig, run: PortableSystem = conf
 
 export function fixedUpdate(name: string, options: ISystemOptions = {}): ISystemDeclaration {
   return createSystem("fixedUpdate", name, options);
+}
+
+export function startup(name: string, options: ISystemOptions = {}): ISystemDeclaration {
+  return createSystem("startup", name, options);
 }
 
 export function update(name: string, options: ISystemOptions = {}): ISystemDeclaration {

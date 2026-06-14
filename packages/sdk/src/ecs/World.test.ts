@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { SdkError } from "../errors.js";
 import { World } from "./World.js";
-import { defineSystem } from "./system.js";
+import { defineSystem, startup } from "./system.js";
 import { defineComponent, defineEvent, defineResource } from "./schema.js";
 
 test("should declare ecs entity components and resources", () => {
@@ -125,6 +125,14 @@ test("should capture v4 primitive system declarations", () => {
   assert.deepEqual(system.resourceWrites, []);
   assert.deepEqual(system.services, ["physics.raycast"]);
   assert.deepEqual(system.writes, ["Transform"]);
+});
+
+test("should serialize startup system schedule", () => {
+  const world = new World();
+
+  world.addSystem(startup("loadLevel"));
+
+  assert.equal(world.toJSON().systems[0]?.schedule, "startup");
 });
 
 test("should expose stable entity context API", () => {

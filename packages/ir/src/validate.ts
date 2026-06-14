@@ -578,7 +578,7 @@ function validateSystems(
   systems.systems.forEach((system, systemIndex) => {
     const writes = new Set(system.writes);
     const eventWrites = new Set(system.eventWrites);
-    if (!["fixedUpdate", "postUpdate", "update"].includes(system.schedule)) {
+    if (!["fixedUpdate", "postUpdate", "startup", "update"].includes(system.schedule)) {
       diagnostics.push({
         code: "TN_IR_SYSTEM_STAGE_UNSUPPORTED",
         message: `System '${system.name}' uses unsupported schedule '${system.schedule}'.`,

@@ -1,6 +1,6 @@
 import type { SchemaVersion } from "./types.js";
 
-export type IrSystemSchedule = "fixedUpdate" | "postUpdate" | "update";
+export type IrSystemSchedule = "fixedUpdate" | "postUpdate" | "startup" | "update";
 export type IrSystemService = "animation.play" | "physics.raycast";
 
 export type IrSystemCommand =

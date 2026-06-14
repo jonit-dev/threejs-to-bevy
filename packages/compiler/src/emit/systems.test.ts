@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { commands, defineComponent, defineEvent, defineQuery, defineResource, fixedUpdate } from "@threenative/sdk";
+import { commands, defineComponent, defineEvent, defineQuery, defineResource, fixedUpdate, startup } from "@threenative/sdk";
 
 import { systemsToIr } from "./systems.js";
 
@@ -55,4 +55,10 @@ test("should emit ecs fixed update system access", () => {
       },
     ],
   });
+});
+
+test("should emit ecs startup system schedule", () => {
+  const system = startup("loadLevel");
+
+  assert.deepEqual(systemsToIr([system]).systems[0]?.schedule, "startup");
 });

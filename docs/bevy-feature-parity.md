@@ -244,6 +244,12 @@ payload. This is not yet a full resource/event runtime parity claim; functional
 V6 scene proof still needs to land before the gameplay ECS/systems row can move
 out of partial/missing status.
 
+V6-02 has started for schedule declarations: `startup` is now a valid SDK,
+compiler, and IR schedule value beside `fixedUpdate`, `update`, and
+`postUpdate`, with deterministic ordering documented in
+`docs/scripting-api.md`. Native/web runtime execution for startup and broader
+schedule-trace evidence is not claimed yet.
+
 ## V7 Deep Engine Gap-Closure Plan
 
 The planned V7 implementation slice is tracked in

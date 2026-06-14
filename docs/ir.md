@@ -485,7 +485,7 @@ component/event access, command permissions, and V4 service permissions.
 Rules:
 
 - `script.exportName` must exist in `scripts.bundle.js`.
-- `schedule` must be one of `fixedUpdate`, `update`, or `postUpdate`.
+- `schedule` must be one of `startup`, `fixedUpdate`, `update`, or `postUpdate`.
 - Read and write sets must be declared for ordering and parallelism.
 - Query component names must be known.
 - `commands` declares allowed structural mutation kinds and referenced

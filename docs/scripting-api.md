@@ -137,6 +137,26 @@ Rules:
 - Unsupported editor, networking, raw Three.js, runtime plugin, custom renderer,
   filesystem, DOM, and platform access remains invalid.
 
+## V6 Gameplay Schedule Contract
+
+V6 promotes a small declared schedule vocabulary for portable systems:
+
+| Stage | Intent | Ordering |
+| --- | --- | --- |
+| `startup` | One-shot setup before gameplay frames. | Runs before repeating gameplay stages once runtime execution support is enabled. |
+| `fixedUpdate` | Deterministic simulation and physics-facing gameplay. | Runs before `update` for each fixed tick. |
+| `update` | Per-frame gameplay and input-facing behavior. | Runs after fixed ticks for the frame. |
+| `postUpdate` | Cleanup, follow-up events, and presentation-facing state. | Runs after `update` for the frame. |
+
+Within a stage, systems are emitted and observed in deterministic system-name
+order unless a later PRD adds explicit ordering constraints. A system may only
+read or write the components, resources, events, commands, and services listed
+in `systems.ir.json`; undeclared effects are rejected before mutation.
+
+V6 still rejects portable systems that depend on async work, timers, direct
+runtime handles, DOM, filesystem, network, platform APIs, or undeclared
+system-local state. Use components and resources for persisted gameplay state.
+
 ## Missing Or Post-V4 API Inventory
 
 Keep this list close to the scripting API so implementation tickets can promote
@@ -160,7 +180,7 @@ show the feature.
 | Game starter template | V5 | Implemented | `v5-game-starter` is release-gated through `verify:v5` as a small playable SDK ergonomics proof. |
 | Full animation blending/state machine | V5 | Missing | Candidate for visual quality; V4 only proved command shape such as `animation.play`. |
 | Particle commands | V5 | Missing | Candidate only when particles are represented by portable scene/runtime data and visual verification artifacts. |
-| Resources write API | V5 or later | Missing | Requires deterministic scheduling and conformance coverage before broad gameplay use. |
+| Resources write API | V6 | Implemented for current resource/event trace | Resource write effects are validated and compared across web/native fixed trace artifacts; broader scene proof remains later V6 work. |
 | System-local persisted state | V5 or later | Missing | Prefer resources/components first; state-preserving hot reload remains later. |
 | Runtime prefab instantiation | V6 or later | Missing | V5 authoring-time prefab helpers expand to existing declarations; runtime instantiation remains future scope. |
 | Child hierarchy commands | V5 or V6 | Missing | Needs scene-visible proof and deterministic command application across web and Bevy. |

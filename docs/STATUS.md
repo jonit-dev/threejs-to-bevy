@@ -237,6 +237,12 @@ and resource effect logs, and writes
 `native-effects.json`, and `effects-diff.json`. V6 scene evidence remains part
 of later V6 phases.
 
+V6-02 has started with the schedule contract slice: SDK, compiler, and IR now
+accept a declared `startup` schedule alongside `fixedUpdate`, `update`, and
+`postUpdate`, and `docs/scripting-api.md` records the deterministic V6 stage
+ordering and unsupported lifecycle/state behavior. Runtime execution of
+`startup` and broader cross-runtime schedule traces remain later V6-02 work.
+
 V7 is now planned as the deep engine gap-closure milestone. It should continue
 parity work that is too large or risky for V6, such as deeper physics,
 animation graphs, richer UI/audio, renderer/content parity, scripting/runtime

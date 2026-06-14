@@ -24,6 +24,7 @@ export {
   defineSystem,
   fixedUpdate,
   postUpdate,
+  startup,
   update,
   type ISystemContext,
   type ISystemDeclaration,
