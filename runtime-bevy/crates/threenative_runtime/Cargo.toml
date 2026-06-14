@@ -16,6 +16,10 @@ name = "threenative_capture"
 path = "src/capture.rs"
 
 [[bin]]
+name = "threenative_conformance"
+path = "src/conformance_cli.rs"
+
+[[bin]]
 name = "threenative_systems_log"
 path = "src/systems_log.rs"
 

@@ -11,6 +11,12 @@ export async function verifyConformance(options = {}) {
   const root = options.repoRoot ?? repoRoot;
   const run = options.run ?? runCommand;
   const reportPath = options.reportPath ?? resolve(root, "artifacts/conformance/verification-report.json");
+  const artifactDir = options.artifactDir ?? resolve(reportPath, "..");
+  const basicSceneBundlePath = resolve(root, "packages/ir/fixtures/conformance/basic-scene/game.bundle");
+  const nativeBasicSceneReportPath = options.nativeBasicSceneReportPath ?? resolve(artifactDir, "basic-scene/bevy.report.json");
+  const artifacts = {
+    nativeBasicSceneReportPath,
+  };
   const steps = [];
 
   async function step(name, command, args, commandOptions = {}) {
@@ -28,60 +34,100 @@ export async function verifyConformance(options = {}) {
       { timeoutMs: 120000 },
     ],
     ["bevy runtime conformance", "cargo", ["test", "-p", "threenative_runtime", "conformance"], { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 }],
+    [
+      "bevy native observation report",
+      "cargo",
+      [
+        "run",
+        "-p",
+        "threenative_runtime",
+        "--bin",
+        "threenative_conformance",
+        "--",
+        basicSceneBundlePath,
+        "basic-scene",
+        nativeBasicSceneReportPath,
+      ],
+      { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
+    ],
   ];
 
   for (const [name, command, args, commandOptions] of commands) {
     if (!(await step(name, command, args, commandOptions))) {
-      await writeGateReport(reportPath, false, steps);
-      return { ok: false, reportPath, steps };
+      await writeGateReport(reportPath, false, steps, artifacts);
+      return { artifacts, ok: false, reportPath, steps };
     }
   }
 
-  await writeGateReport(reportPath, true, steps);
-  return { ok: true, reportPath, steps };
+  await writeGateReport(reportPath, true, steps, artifacts);
+  return { artifacts, ok: true, reportPath, steps };
 }
 
-export function compareConformanceReports(left, right) {
+export function compareConformanceReports(left, right, options = {}) {
   const diagnostics = [];
   const fixture = left.fixture ?? right.fixture ?? "unknown";
+  const artifactPaths = options.artifactPaths ?? {};
+  const bundlePath = options.bundlePath;
   if (left.fixture !== right.fixture) {
-    diagnostics.push(mismatch(fixture, "fixture", left.runtime, right.runtime, left.fixture, right.fixture));
+    diagnostics.push(mismatch(fixture, "$.fixture", left.runtime, right.runtime, left.fixture, right.fixture, { artifactPaths, bundlePath }));
   }
 
-  const rightEntities = new Map((right.entities ?? []).map((entity) => [entity.id, entity]));
-  for (const leftEntity of left.entities ?? []) {
-    const rightEntity = rightEntities.get(leftEntity.id);
-    if (rightEntity === undefined) {
-      diagnostics.push(mismatch(fixture, `entities.${leftEntity.id}`, left.runtime, right.runtime, "present", "missing"));
-      continue;
-    }
-    compareValue(diagnostics, fixture, left.runtime, right.runtime, `entities.${leftEntity.id}`, leftEntity, rightEntity);
-    rightEntities.delete(leftEntity.id);
-  }
-
-  for (const rightEntity of rightEntities.values()) {
-    diagnostics.push(mismatch(fixture, `entities.${rightEntity.id}`, left.runtime, right.runtime, "missing", "present"));
-  }
+  compareCatalog(diagnostics, fixture, left.runtime, right.runtime, "$.assets", left.assets, right.assets, { artifactPaths, bundlePath });
+  compareCatalog(diagnostics, fixture, left.runtime, right.runtime, "$.materials", left.materials, right.materials, { artifactPaths, bundlePath });
+  compareCatalog(diagnostics, fixture, left.runtime, right.runtime, "$.entities", left.entities, right.entities, { artifactPaths, bundlePath });
+  compareValue(diagnostics, fixture, left.runtime, right.runtime, "$.diagnostics", left.diagnostics ?? [], right.diagnostics ?? [], { artifactPaths, bundlePath });
 
   return {
+    artifactPaths,
+    bundlePath,
     diagnostics,
     ok: diagnostics.length === 0,
   };
 }
 
-function compareValue(diagnostics, fixture, leftRuntime, rightRuntime, path, left, right) {
+function compareCatalog(diagnostics, fixture, leftRuntime, rightRuntime, path, leftItems = [], rightItems = [], context) {
+  const rightById = new Map((rightItems ?? []).map((item) => [item.id, item]));
+  for (const leftItem of leftItems ?? []) {
+    const itemPath = `${path}[${JSON.stringify(leftItem.id)}]`;
+    const rightItem = rightById.get(leftItem.id);
+    if (rightItem === undefined) {
+      diagnostics.push(mismatch(fixture, itemPath, leftRuntime, rightRuntime, "present", "missing", context));
+      continue;
+    }
+    compareValue(diagnostics, fixture, leftRuntime, rightRuntime, itemPath, leftItem, rightItem, context);
+    rightById.delete(leftItem.id);
+  }
+
+  for (const rightItem of rightById.values()) {
+    diagnostics.push(mismatch(fixture, `${path}[${JSON.stringify(rightItem.id)}]`, leftRuntime, rightRuntime, "missing", "present", context));
+  }
+}
+
+function compareValue(diagnostics, fixture, leftRuntime, rightRuntime, path, left, right, context) {
   if (JSON.stringify(normalize(left)) === JSON.stringify(normalize(right))) {
     return;
   }
 
+  if (Array.isArray(left) || Array.isArray(right)) {
+    if (!Array.isArray(left) || !Array.isArray(right)) {
+      diagnostics.push(mismatch(fixture, path, leftRuntime, rightRuntime, left, right, context));
+      return;
+    }
+    const maxLength = Math.max(left.length, right.length);
+    for (let index = 0; index < maxLength; index += 1) {
+      compareValue(diagnostics, fixture, leftRuntime, rightRuntime, `${path}[${index}]`, left[index], right[index], context);
+    }
+    return;
+  }
+
   if (!isRecord(left) || !isRecord(right)) {
-    diagnostics.push(mismatch(fixture, path, leftRuntime, rightRuntime, left, right));
+    diagnostics.push(mismatch(fixture, path, leftRuntime, rightRuntime, left, right, context));
     return;
   }
 
   const keys = [...new Set([...Object.keys(left), ...Object.keys(right)])].sort();
   for (const key of keys) {
-    compareValue(diagnostics, fixture, leftRuntime, rightRuntime, `${path}.${key}`, left[key], right[key]);
+    compareValue(diagnostics, fixture, leftRuntime, rightRuntime, `${path}.${key}`, left[key], right[key], context);
   }
 }
 
@@ -99,8 +145,10 @@ function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function mismatch(fixture, path, leftRuntime, rightRuntime, left, right) {
+function mismatch(fixture, path, leftRuntime, rightRuntime, left, right, context = {}) {
   return {
+    artifactPaths: context.artifactPaths ?? {},
+    bundlePath: context.bundlePath,
     code: "TN_CONFORMANCE_MISMATCH",
     fixture,
     left,
@@ -113,12 +161,13 @@ function mismatch(fixture, path, leftRuntime, rightRuntime, left, right) {
   };
 }
 
-async function writeGateReport(reportPath, ok, steps) {
+async function writeGateReport(reportPath, ok, steps, artifacts = {}) {
   await mkdir(resolve(reportPath, ".."), { recursive: true });
   await writeFile(
     reportPath,
     `${JSON.stringify(
       {
+        artifacts,
         code: ok ? "TN_CONFORMANCE_OK" : "TN_CONFORMANCE_FAILED",
         status: ok ? "pass" : "fail",
         steps,
@@ -161,6 +210,7 @@ async function main() {
   const json = process.argv.includes("--json");
   const result = await verifyConformance();
   const payload = {
+    artifacts: result.artifacts,
     code: result.ok ? "TN_CONFORMANCE_OK" : "TN_CONFORMANCE_FAILED",
     reportPath: result.reportPath,
     status: result.ok ? "pass" : "fail",

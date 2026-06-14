@@ -1,6 +1,12 @@
 export { schemaUrls, type SchemaName } from "./schemas.js";
 export { listConformanceFixtures, type IConformanceFixture } from "./conformance.js";
-export type { IConformanceEntityReport, IConformanceReport } from "./conformanceReport.js";
+export type {
+  IConformanceAssetReport,
+  IConformanceEntityReport,
+  IConformanceEnvironmentReport,
+  IConformanceMaterialReport,
+  IConformanceReport,
+} from "./conformanceReport.js";
 export type { IRuntimeDiagnostic } from "./runtimeDiagnostics.js";
 export type { IInputActionIr, IInputAxisIr, IInputIr, InputBinding } from "./input.js";
 export type { IRuntimeConfigIr } from "./runtimeConfig.js";

@@ -175,11 +175,17 @@ pub struct MaterialsIr {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MaterialIr {
     pub id: String,
     pub kind: String,
     pub color: ColorIr,
+    pub base_color_texture: Option<String>,
+    pub emissive_texture: Option<String>,
     pub metalness: Option<f32>,
+    pub metallic_roughness_texture: Option<String>,
+    pub normal_texture: Option<String>,
+    pub occlusion_texture: Option<String>,
     pub roughness: Option<f32>,
 }
 

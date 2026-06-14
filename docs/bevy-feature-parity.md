@@ -111,6 +111,14 @@ surfaces for shared validation. The fixture is a contract catalog until later
 V5 PRDs add native observations, Rust regression coverage, and visual parity
 evidence for each promoted feature.
 
+V5-02 is implemented for shared observations: web and Bevy conformance reports
+now expose assets, materials, texture slots, mesh renderer state, visibility,
+entity transforms, lights, cameras, diagnostics, and environment IDs in one
+stable report shape. `pnpm verify:conformance` also produces a headless Bevy
+summary artifact at `artifacts/conformance/basic-scene/bevy.report.json`; this
+improves inspectability and mismatch localization but is not by itself a claim
+that every V5 visual feature has native parity.
+
 Priority V5 native coverage:
 
 1. Loader and fixture reuse for shared IR bundles used by both web and Bevy

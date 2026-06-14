@@ -10,14 +10,35 @@ test("should fail when runtime reports differ", () => {
   const result = compareConformanceReports(
     report("web-three", { material: "mat.cube" }),
     report("bevy", { material: "mat.other" }),
+    {
+      artifactPaths: {
+        leftReport: "artifacts/conformance/basic-scene/web-three.report.json",
+        rightReport: "artifacts/conformance/basic-scene/bevy.report.json",
+      },
+      bundlePath: "packages/ir/fixtures/conformance/basic-scene/game.bundle",
+    },
   );
 
   assert.equal(result.ok, false);
   assert.equal(result.diagnostics[0]?.code, "TN_CONFORMANCE_MISMATCH");
   assert.equal(result.diagnostics[0]?.fixture, "basic-scene");
   assert.equal(result.diagnostics[0]?.leftRuntime, "web-three");
-  assert.equal(result.diagnostics[0]?.path, "entities.cube.child.material");
+  assert.equal(result.diagnostics[0]?.path, '$.entities["cube.child"].material');
   assert.equal(result.diagnostics[0]?.rightRuntime, "bevy");
+  assert.equal(result.diagnostics[0]?.bundlePath, "packages/ir/fixtures/conformance/basic-scene/game.bundle");
+  assert.equal(result.diagnostics[0]?.artifactPaths.leftReport, "artifacts/conformance/basic-scene/web-three.report.json");
+});
+
+test("should localize material texture slot mismatches", () => {
+  const result = compareConformanceReports(
+    report("web-three", { baseColor: "tex.albedo" }),
+    report("bevy", { baseColor: "tex.other" }),
+  );
+
+  assert.equal(result.ok, false);
+  assert.equal(result.diagnostics[0]?.path, '$.materials["mat.cube"].textures.baseColor');
+  assert.equal(result.diagnostics[0]?.left, "tex.albedo");
+  assert.equal(result.diagnostics[0]?.right, "tex.other");
 });
 
 test("should pass matching reports", () => {
@@ -45,11 +66,13 @@ test("should pass matching gate commands and save report path", async () => {
     });
 
     assert.equal(result.ok, true);
-    assert.equal(result.steps.length, 3);
+    assert.equal(result.steps.length, 4);
     assert.equal(result.reportPath.endsWith("artifacts/conformance/verification-report.json"), true);
+    assert.equal(result.artifacts.nativeBasicSceneReportPath.endsWith("artifacts/conformance/basic-scene/bevy.report.json"), true);
     const report = JSON.parse(await readFile(result.reportPath, "utf8"));
     assert.equal(report.status, "pass");
-    assert.equal(report.steps.length, 3);
+    assert.equal(report.steps.length, 4);
+    assert.equal(report.artifacts.nativeBasicSceneReportPath.endsWith("artifacts/conformance/basic-scene/bevy.report.json"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -57,12 +80,25 @@ test("should pass matching gate commands and save report path", async () => {
 
 function report(runtime, overrides = {}) {
   return {
+    assets: [
+      {
+        format: "generated",
+        id: "mesh.cube",
+        kind: "mesh",
+        primitive: "box",
+        size: [1, 1, 1],
+      },
+    ],
     diagnostics: [],
     entities: [
       {
         components: ["Hierarchy", "MeshRenderer", "Transform"],
         id: "cube.child",
         material: overrides.material,
+        meshRenderer: {
+          material: overrides.material,
+          mesh: "mesh.cube",
+        },
         mesh: "mesh.cube",
         parent: "scene.root",
         transform: {
@@ -73,6 +109,17 @@ function report(runtime, overrides = {}) {
       },
     ],
     fixture: "basic-scene",
+    materials: [
+      {
+        color: "#c0ffee",
+        id: "mat.cube",
+        kind: "standard",
+        roughness: 0.5,
+        textures: {
+          baseColor: overrides.baseColor,
+        },
+      },
+    ],
     runtime,
   };
 }

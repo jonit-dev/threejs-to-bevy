@@ -26,11 +26,11 @@ artifacts that can be compared with web output.
 
 **Implementation:**
 
-- [ ] Represent `Visibility.visible`, `MeshRenderer.visible`, material scalar
+- [x] Represent `Visibility.visible`, `MeshRenderer.visible`, material scalar
   fields, texture slot IDs, mesh primitive metadata, asset refs, and
   diagnostics.
-- [ ] Emit JSON-path-like mismatch locations.
-- [ ] Preserve machine-readable report stability.
+- [x] Emit JSON-path-like mismatch locations.
+- [x] Preserve machine-readable report stability.
 
 #### Phase 2: Runtime Observation Producers
 
@@ -43,10 +43,10 @@ artifacts that can be compared with web output.
 
 **Implementation:**
 
-- [ ] Add web and Bevy observations for the expanded schema.
-- [ ] Include entities, transforms, meshes, materials, texture refs, lights,
+- [x] Add web and Bevy observations for the expanded schema.
+- [x] Include entities, transforms, meshes, materials, texture refs, lights,
   cameras, visibility, environment IDs, and diagnostics.
-- [ ] Write stable native summary artifacts where practical.
+- [x] Write stable native summary artifacts where practical.
 
 ## Verification Strategy
 
@@ -57,8 +57,20 @@ artifacts that can be compared with web output.
 
 ## Acceptance Criteria
 
-- [ ] Conformance failures name fixture, runtime pair, bundle path, expected
+- [x] Conformance failures name fixture, runtime pair, bundle path, expected
   value, actual value, and artifact paths.
-- [ ] Native observations can be inspected without opening a Bevy window.
-- [ ] Web and native report producers read the same shared fixtures.
+- [x] Native observations can be inspected without opening a Bevy window.
+- [x] Web and native report producers read the same shared fixtures.
 
+## Implementation Evidence
+
+- `IConformanceReport` now includes stable asset, material, environment,
+  visibility, mesh-renderer, diagnostic, and entity observations shared by web
+  and Bevy report producers.
+- `compareConformanceReports` emits JSON-path-like mismatch locations and can
+  attach bundle paths plus runtime report artifact paths to diagnostics.
+- The Bevy runtime exposes a headless `threenative_conformance` binary that
+  writes inspectable native observation JSON without opening a Bevy window.
+- `pnpm verify:conformance` now writes
+  `artifacts/conformance/basic-scene/bevy.report.json` and records that path in
+  `artifacts/conformance/verification-report.json`.

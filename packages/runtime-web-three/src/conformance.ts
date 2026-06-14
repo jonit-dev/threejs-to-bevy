@@ -1,7 +1,13 @@
 import * as THREE from "three";
 import type {
+  IAssetIr,
+  IConformanceAssetReport,
   IConformanceEntityReport,
+  IConformanceEnvironmentReport,
+  IConformanceMaterialReport,
   IConformanceReport,
+  IEnvironmentSceneIr,
+  IMaterialIr,
   IWorldEntity,
   Quat,
   Vec3,
@@ -20,11 +26,14 @@ export function reportWebConformance(
   }
 
   return {
+    assets: bundle.assets.assets.map(reportAsset).sort((left, right) => left.id.localeCompare(right.id)),
     diagnostics: mapped.diagnostics,
     entities: bundle.world.entities
       .map((entity) => reportEntity(entity, mapped, idsByObject))
       .sort((left, right) => left.id.localeCompare(right.id)),
+    environment: bundle.environmentScene === undefined ? undefined : reportEnvironment(bundle.environmentScene),
     fixture,
+    materials: bundle.materials.materials.map(reportMaterial).sort((left, right) => left.id.localeCompare(right.id)),
     runtime: "web-three",
   };
 }
@@ -53,8 +62,14 @@ function reportEntity(
   }
 
   if (entity.components.MeshRenderer !== undefined) {
-    report.mesh = entity.components.MeshRenderer.mesh;
-    report.material = entity.components.MeshRenderer.material;
+    const renderer = entity.components.MeshRenderer;
+    report.mesh = renderer.mesh;
+    report.material = renderer.material;
+    report.meshRenderer = {
+      material: renderer.material,
+      mesh: renderer.mesh,
+      visible: renderer.visible,
+    };
   }
   if (entity.components.Camera !== undefined) {
     report.camera = {
@@ -71,8 +86,56 @@ function reportEntity(
       kind: entity.components.Light.kind,
     };
   }
+  if (entity.components.Visibility !== undefined || entity.components.MeshRenderer?.visible !== undefined || object !== undefined) {
+    report.visibility = {
+      meshRendererVisible: entity.components.MeshRenderer?.visible,
+      runtimeVisible: object?.visible,
+      visible: entity.components.Visibility?.visible,
+    };
+  }
 
   return report;
+}
+
+function reportAsset(asset: IAssetIr): IConformanceAssetReport {
+  return {
+    bounds: "bounds" in asset ? asset.bounds : undefined,
+    format: asset.format,
+    id: asset.id,
+    kind: asset.kind,
+    path: "path" in asset ? asset.path : undefined,
+    primitive: "primitive" in asset ? asset.primitive : undefined,
+    size: "size" in asset ? asset.size : undefined,
+  };
+}
+
+function reportMaterial(material: IMaterialIr): IConformanceMaterialReport {
+  return {
+    color: material.color,
+    id: material.id,
+    kind: material.kind,
+    metalness: material.metalness,
+    roughness: material.roughness,
+    textures: {
+      baseColor: material.baseColorTexture,
+      emissive: material.emissiveTexture,
+      metallicRoughness: material.metallicRoughnessTexture,
+      normal: material.normalTexture,
+      occlusion: material.occlusionTexture,
+    },
+  };
+}
+
+function reportEnvironment(environment: IEnvironmentSceneIr): IConformanceEnvironmentReport {
+  return {
+    atmosphere: environment.atmosphere?.id,
+    bookmarks: (environment.bookmarks ?? []).map((bookmark) => bookmark.id).sort(),
+    instances: environment.instances.map((instance) => instance.id).sort(),
+    path: environment.path.id,
+    scatter: (environment.scatter ?? []).map((scatter) => scatter.id).sort(),
+    sourceAssets: environment.sourceAssets.map((asset) => asset.id).sort(),
+    terrain: environment.terrain?.id,
+  };
 }
 
 function componentNames(entity: IWorldEntity): string[] {

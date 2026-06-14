@@ -91,6 +91,14 @@ audio, physics, and environment IR, and the shared conformance catalog includes
 evidence, not a claim that every listed capability has full web/native runtime
 parity.
 
+V5-02 has landed the conformance-report and native-observation slice:
+web and Bevy conformance reports now expose stable asset, material, texture
+slot, visibility, mesh-renderer, environment-ID, diagnostic, and entity
+observations, while report mismatches carry JSON-path-like locations plus
+bundle/artifact paths. The Bevy runtime also provides a headless
+`threenative_conformance` command, and `pnpm verify:conformance` writes an
+inspectable native summary at `artifacts/conformance/basic-scene/bevy.report.json`.
+
 V5 should add or improve Rust tests for native runtime behavior whenever work
 touches shared IR, native runtime mapping, native scripting behavior, Bevy
 diagnostics, or visual-quality features that claim native support. The expected

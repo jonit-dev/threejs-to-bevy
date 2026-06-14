@@ -33,6 +33,40 @@ fn should_report_basic_scene_conformance_semantics() {
     assert_eq!(cube.parent.as_deref(), Some("scene.root"));
     assert_eq!(cube.mesh.as_deref(), Some("mesh.cube"));
     assert_eq!(cube.material.as_deref(), Some("mat.cube"));
+    assert_eq!(
+        cube.mesh_renderer
+            .as_ref()
+            .map(|renderer| renderer.mesh.as_str()),
+        Some("mesh.cube")
+    );
+    assert_eq!(
+        cube.mesh_renderer
+            .as_ref()
+            .map(|renderer| renderer.material.as_str()),
+        Some("mat.cube")
+    );
+    assert_eq!(
+        cube.visibility
+            .as_ref()
+            .and_then(|visibility| visibility.runtime_visible),
+        Some(true)
+    );
+
+    let cube_material = report
+        .materials
+        .iter()
+        .find(|material| material.id == "mat.cube")
+        .expect("cube material should be reported");
+    assert_eq!(cube_material.roughness, Some(0.8));
+    assert!(cube_material.textures.base_color.is_none());
+
+    let cube_mesh = report
+        .assets
+        .iter()
+        .find(|asset| asset.id == "mesh.cube")
+        .expect("cube mesh should be reported");
+    assert_eq!(cube_mesh.kind, "mesh");
+    assert_eq!(cube_mesh.primitive.as_deref(), Some("box"));
 
     assert!(report.entities.iter().any(|entity| {
         entity.id == "camera.main"

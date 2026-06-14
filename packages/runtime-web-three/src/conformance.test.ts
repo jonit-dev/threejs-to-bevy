@@ -21,6 +21,24 @@ test("should report basic scene conformance semantics", async () => {
   assert.equal(cube.parent, "scene.root");
   assert.equal(cube.mesh, "mesh.cube");
   assert.equal(cube.material, "mat.cube");
+  assert.deepEqual(cube.meshRenderer, { material: "mat.cube", mesh: "mesh.cube", visible: undefined });
+  assert.equal(cube.visibility?.runtimeVisible, true);
+
+  const cubeMaterial = report.materials.find((material) => material.id === "mat.cube");
+  assert.ok(cubeMaterial);
+  assert.equal(cubeMaterial.roughness, 0.8);
+  assert.deepEqual(cubeMaterial.textures, {
+    baseColor: undefined,
+    emissive: undefined,
+    metallicRoughness: undefined,
+    normal: undefined,
+    occlusion: undefined,
+  });
+
+  const cubeMesh = report.assets.find((asset) => asset.id === "mesh.cube");
+  assert.ok(cubeMesh);
+  assert.equal(cubeMesh.kind, "mesh");
+  assert.equal(cubeMesh.primitive, "box");
 
   assert.ok(report.entities.find((entity) => entity.id === "camera.main")?.components.includes("Camera"));
   assert.equal(report.entities.find((entity) => entity.id === "light.key")?.light?.kind, "directional");
