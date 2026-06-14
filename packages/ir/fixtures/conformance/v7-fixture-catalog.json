@@ -145,15 +145,36 @@
       "rejectedFixtureId": "v7-rejected-scripting-lifecycle",
       "rejectedBundlePath": "packages/ir/fixtures/conformance/v7-rejected-scripting-lifecycle/game.bundle",
       "targetCapabilities": [
-        "scripting:deterministic-state-handoff",
+        "ecs:component-schemas",
+        "ecs:event-schemas",
+        "ecs:events",
+        "ecs:resource-schemas",
+        "ecs:resources",
+        "scripting:command.despawn",
+        "scripting:command.spawn",
+        "scripting:event-reads",
+        "scripting:event-writes",
+        "scripting:hot-reload.invalidate",
         "scripting:larger-fixtures",
-        "scripting:lifecycle",
-        "scripting:persisted-state"
+        "scripting:replay.fixed-trace",
+        "scripting:resource-reads",
+        "scripting:resource-writes",
+        "scripting:schedule.fixedUpdate",
+        "scripting:schedule.postUpdate",
+        "scripting:schedule.startup",
+        "scripting:schedule.update",
+        "scripting:script-bundle",
+        "scripting:service.animation.play",
+        "scripting:state.system-local-disallowed",
+        "scripting:systems"
       ],
       "reportArtifacts": [
         "artifacts/conformance/v7-scripting-lifecycle/web.report.json",
         "artifacts/conformance/v7-scripting-lifecycle/bevy.report.json",
-        "artifacts/conformance/v7-scripting-lifecycle/comparison.report.json"
+        "artifacts/conformance/v7-scripting-lifecycle/comparison.report.json",
+        "artifacts/conformance/v7-scripting-lifecycle/web-effects.json",
+        "artifacts/conformance/v7-scripting-lifecycle/native-effects.json",
+        "artifacts/conformance/v7-scripting-lifecycle/effects-diff.json"
       ],
       "rejectedDiagnosticCodes": [
         "TN_V7_SCRIPTING_UNSUPPORTED"

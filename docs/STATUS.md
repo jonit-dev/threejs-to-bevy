@@ -409,6 +409,19 @@ artifacts and a diff under `artifacts/conformance/v7-renderer-dense-content`.
 Actual renderer-level native instancing, visual LOD mesh swapping, and portable
 post-processing remain unclaimed.
 
+V7-07 has landed the first scripting determinism and lifecycle evidence slice:
+`systems.ir.json` now accepts explicit lifecycle metadata for `fixed-trace`
+replay, `system-local-disallowed` state, and `invalidate` hot reload behavior,
+while unsupported lifecycle fields and async/timer/system-local state metadata
+fail with stable IR diagnostics. The `v7-scripting-lifecycle` fixture runs a
+script-heavy multi-schedule trace covering startup, fixedUpdate, update, and
+postUpdate resource handoff, queued events, spawn/despawn commands, and
+`animation.play` service effects. `pnpm verify:conformance` compares the
+canonical web/native effect logs and writes artifacts under
+`artifacts/conformance/v7-scripting-lifecycle`. State-preserving hot reload,
+async systems, arbitrary npm/platform APIs, and dynamic scene reconciliation
+remain unsupported or later work.
+
 V8 is the first planned local editor and inspector milestone. V9 is the first
 planned online project and publishing milestone. V10 is the first planned
 collaboration and runtime replication milestone. Editor, online, networking,

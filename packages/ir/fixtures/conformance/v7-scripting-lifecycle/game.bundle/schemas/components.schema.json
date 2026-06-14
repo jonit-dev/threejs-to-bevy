@@ -1,0 +1,14 @@
+{
+  "schema": "threenative.component-schemas",
+  "version": "0.1.0",
+  "schemas": {
+    "Health": {
+      "fields": {
+        "current": {
+          "kind": "number",
+          "required": true
+        }
+      }
+    }
+  }
+}

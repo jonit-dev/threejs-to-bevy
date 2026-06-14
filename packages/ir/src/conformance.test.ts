@@ -197,6 +197,30 @@ test("should include capability tags for each conformance fixture", async () => 
     "rendering:instancing-observation",
     "rendering:runtime-lod",
   ]);
+  assertFixtureCapabilities(byName, "v7-scripting-lifecycle", [
+    "ecs:component-schemas",
+    "ecs:event-schemas",
+    "ecs:events",
+    "ecs:resource-schemas",
+    "ecs:resources",
+    "scripting:command.despawn",
+    "scripting:command.spawn",
+    "scripting:event-reads",
+    "scripting:event-writes",
+    "scripting:hot-reload.invalidate",
+    "scripting:larger-fixtures",
+    "scripting:replay.fixed-trace",
+    "scripting:resource-reads",
+    "scripting:resource-writes",
+    "scripting:schedule.fixedUpdate",
+    "scripting:schedule.postUpdate",
+    "scripting:schedule.startup",
+    "scripting:schedule.update",
+    "scripting:script-bundle",
+    "scripting:service.animation.play",
+    "scripting:state.system-local-disallowed",
+    "scripting:systems",
+  ]);
 });
 
 function assertFixtureCapabilities(

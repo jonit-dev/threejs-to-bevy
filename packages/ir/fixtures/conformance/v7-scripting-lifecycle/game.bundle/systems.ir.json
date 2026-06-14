@@ -1,0 +1,133 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "lifecycle": {
+    "replay": "fixed-trace",
+    "state": "system-local-disallowed",
+    "hotReload": "invalidate"
+  },
+  "systems": [
+    {
+      "name": "bootLifecycle",
+      "schedule": "startup",
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [
+        "LifecycleEvent"
+      ],
+      "queries": [],
+      "reads": [],
+      "resourceReads": [
+        "Lifecycle",
+        "Score"
+      ],
+      "resourceWrites": [
+        "Lifecycle"
+      ],
+      "services": [],
+      "script": {
+        "bundle": "scripts.bundle.js",
+        "exportName": "system_bootLifecycle"
+      },
+      "writes": []
+    },
+    {
+      "name": "fixedAccumulator",
+      "schedule": "fixedUpdate",
+      "commands": [],
+      "eventReads": [
+        "LifecycleEvent"
+      ],
+      "eventWrites": [
+        "LifecycleEvent"
+      ],
+      "queries": [],
+      "reads": [],
+      "resourceReads": [
+        "Lifecycle",
+        "Score"
+      ],
+      "resourceWrites": [
+        "Lifecycle",
+        "Score"
+      ],
+      "services": [
+        "animation.play"
+      ],
+      "script": {
+        "bundle": "scripts.bundle.js",
+        "exportName": "system_fixedAccumulator"
+      },
+      "writes": []
+    },
+    {
+      "name": "updateDamage",
+      "schedule": "update",
+      "commands": [
+        {
+          "kind": "spawn",
+          "entity": "damage.marker",
+          "components": [
+            "Health"
+          ]
+        }
+      ],
+      "eventReads": [
+        "DamageEvent",
+        "LifecycleEvent"
+      ],
+      "eventWrites": [
+        "LifecycleEvent"
+      ],
+      "queries": [],
+      "reads": [],
+      "resourceReads": [
+        "Lifecycle",
+        "Score"
+      ],
+      "resourceWrites": [
+        "Lifecycle",
+        "Score"
+      ],
+      "services": [],
+      "script": {
+        "bundle": "scripts.bundle.js",
+        "exportName": "system_updateDamage"
+      },
+      "writes": [
+        "Health"
+      ]
+    },
+    {
+      "name": "postLifecycle",
+      "schedule": "postUpdate",
+      "commands": [
+        {
+          "kind": "despawn",
+          "entity": "damage.marker"
+        }
+      ],
+      "eventReads": [
+        "LifecycleEvent"
+      ],
+      "eventWrites": [
+        "LifecycleEvent"
+      ],
+      "queries": [],
+      "reads": [],
+      "resourceReads": [
+        "Lifecycle",
+        "Score"
+      ],
+      "resourceWrites": [
+        "Lifecycle"
+      ],
+      "services": [],
+      "script": {
+        "bundle": "scripts.bundle.js",
+        "exportName": "system_postLifecycle"
+      },
+      "writes": []
+    }
+  ]
+}

@@ -29,6 +29,7 @@ export async function verifyConformance(options = {}) {
   const v7RichUiNavigationBundlePath = resolve(root, "packages/ir/fixtures/conformance/v7-rich-ui-navigation/game.bundle");
   const v7SpatialAudioBusesBundlePath = resolve(root, "packages/ir/fixtures/conformance/v7-spatial-audio-buses/game.bundle");
   const v7RendererDenseContentBundlePath = resolve(root, "packages/ir/fixtures/conformance/v7-renderer-dense-content/game.bundle");
+  const v7ScriptingLifecycleBundlePath = resolve(root, "packages/ir/fixtures/conformance/v7-scripting-lifecycle/game.bundle");
   const nativeBasicSceneReportPath = options.nativeBasicSceneReportPath ?? resolve(artifactDir, "basic-scene/bevy.report.json");
   const nativeV6PhysicsEventsReportPath =
     options.nativeV6PhysicsEventsReportPath ?? resolve(artifactDir, "v6-physics-events/bevy.report.json");
@@ -76,6 +77,11 @@ export async function verifyConformance(options = {}) {
     options.v7EnvironmentContentNativeTracePath ?? resolve(artifactDir, "v7-renderer-dense-content/native-environment-content.json");
   const v7EnvironmentContentWebTracePath =
     options.v7EnvironmentContentWebTracePath ?? resolve(artifactDir, "v7-renderer-dense-content/web-environment-content.json");
+  const v7ScriptingLifecycleDiffPath = options.v7ScriptingLifecycleDiffPath ?? resolve(artifactDir, "v7-scripting-lifecycle/effects-diff.json");
+  const v7ScriptingLifecycleNativeEffectsPath =
+    options.v7ScriptingLifecycleNativeEffectsPath ?? resolve(artifactDir, "v7-scripting-lifecycle/native-effects.json");
+  const v7ScriptingLifecycleWebEffectsPath =
+    options.v7ScriptingLifecycleWebEffectsPath ?? resolve(artifactDir, "v7-scripting-lifecycle/web-effects.json");
   const artifacts = {
     nativeBasicSceneReportPath,
     nativeV6AnimationClipsReportPath,
@@ -107,6 +113,9 @@ export async function verifyConformance(options = {}) {
     v7EnvironmentContentDiffPath,
     v7EnvironmentContentNativeTracePath,
     v7EnvironmentContentWebTracePath,
+    v7ScriptingLifecycleDiffPath,
+    v7ScriptingLifecycleNativeEffectsPath,
+    v7ScriptingLifecycleWebEffectsPath,
   };
   const steps = [];
 
@@ -298,6 +307,16 @@ export async function verifyConformance(options = {}) {
         resolve(root, "scripts/verify-v7-environment-content-trace.mjs"),
         v7RendererDenseContentBundlePath,
         resolve(artifactDir, "v7-renderer-dense-content"),
+      ],
+      { timeoutMs: 120000 },
+    ],
+    [
+      "V7 scripting lifecycle fixed trace parity",
+      process.execPath,
+      [
+        resolve(root, "scripts/verify-v7-scripting-lifecycle-trace.mjs"),
+        v7ScriptingLifecycleBundlePath,
+        resolve(artifactDir, "v7-scripting-lifecycle"),
       ],
       { timeoutMs: 120000 },
     ],
@@ -535,6 +554,9 @@ function fixtureForStep(stepName) {
   if (stepName.includes("V7 environment content")) {
     return "v7-renderer-dense-content";
   }
+  if (stepName.includes("V7 scripting lifecycle")) {
+    return "v7-scripting-lifecycle";
+  }
   return "conformance";
 }
 
@@ -581,6 +603,9 @@ function artifactPathForStep(stepName, artifacts) {
   if (stepName.includes("V7 environment content")) {
     return artifacts.v7EnvironmentContentDiffPath;
   }
+  if (stepName.includes("V7 scripting lifecycle")) {
+    return artifacts.v7ScriptingLifecycleDiffPath;
+  }
   return undefined;
 }
 
@@ -620,6 +645,9 @@ function bundlePathForStep(stepName) {
   }
   if (stepName.includes("V7 environment content")) {
     return "packages/ir/fixtures/conformance/v7-renderer-dense-content/game.bundle";
+  }
+  if (stepName.includes("V7 scripting lifecycle")) {
+    return "packages/ir/fixtures/conformance/v7-scripting-lifecycle/game.bundle";
   }
   return undefined;
 }

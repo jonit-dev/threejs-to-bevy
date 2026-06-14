@@ -157,6 +157,12 @@ V6 still rejects portable systems that depend on async work, timers, direct
 runtime handles, DOM, filesystem, network, platform APIs, or undeclared
 system-local state. Use components and resources for persisted gameplay state.
 
+V7 adds explicit systems lifecycle metadata for fixed-trace replay, hot-reload
+invalidation, and disallowed system-local persisted state. The effect log
+remains the replay contract: resource writes, events, commands, and services are
+compared as canonical web/native entries with first-mismatch paths in V7
+reports.
+
 ## Missing Or Post-V4 API Inventory
 
 Keep this list close to the scripting API so implementation tickets can promote
@@ -417,6 +423,13 @@ Runtime effects:
   deterministic routed command observations and fixed loop start/stop lifecycle
   traces. Real spatial attenuation, mixer effects, streaming/network audio, and
   platform handles remain adapter-private or unsupported.
+- V7 scripting lifecycle evidence compares fixed web/native effect logs across
+  startup, fixedUpdate, update, and postUpdate systems, with explicit
+  `fixed-trace` replay, `invalidate` hot reload, and
+  `system-local-disallowed` state metadata. Resource handoff, queued event
+  reads/writes, spawn/despawn commands, and declared service calls are
+  portable; async, timers, arbitrary npm, platform APIs, hot reload state
+  preservation, and system-local persisted state remain unsupported or bounded.
 
 ## Resources
 

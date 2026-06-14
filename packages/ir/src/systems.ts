@@ -47,6 +47,11 @@ export interface IIrSystemDeclaration {
 }
 
 export interface ISystemsIr {
+  lifecycle?: {
+    hotReload: "invalidate";
+    replay: "fixed-trace";
+    state: "system-local-disallowed";
+  };
   schema: "threenative.systems";
   version: SchemaVersion;
   systems: IIrSystemDeclaration[];

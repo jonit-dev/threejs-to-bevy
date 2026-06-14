@@ -157,6 +157,78 @@ test("should accept startup system schedule", async () => {
   }
 });
 
+test("should accept v7 deterministic lifecycle metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-lifecycle-"));
+  try {
+    await writeBundle(root, {
+      commands: [],
+      lifecycle: {
+        hotReload: "invalidate",
+        replay: "fixed-trace",
+        state: "system-local-disallowed",
+      },
+      reads: ["Transform"],
+      schedule: "fixedUpdate",
+      writes: ["Transform"],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject unsupported scripting lifecycle assumptions", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-lifecycle-invalid-"));
+  try {
+    await writeBundle(root, {
+      async: true,
+      commands: [],
+      lifecycle: {
+        hotReload: "state-handoff",
+        npmPackage: "platform-timers",
+        replay: "wall-clock",
+        state: "system-local-persisted",
+      },
+      reads: ["Transform"],
+      schedule: "fixedUpdate",
+      timer: "setInterval",
+      writes: ["Transform"],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => diagnostic.code),
+      [
+        "TN_IR_SYSTEM_LIFECYCLE_FIELD_UNSUPPORTED",
+        "TN_IR_SYSTEM_LIFECYCLE_REPLAY_UNSUPPORTED",
+        "TN_IR_SYSTEM_LIFECYCLE_STATE_UNSUPPORTED",
+        "TN_IR_SYSTEM_LIFECYCLE_HOT_RELOAD_UNSUPPORTED",
+        "TN_IR_SYSTEM_FIELD_UNSUPPORTED",
+        "TN_IR_SYSTEM_FIELD_UNSUPPORTED",
+      ],
+    );
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => diagnostic.path),
+      [
+        "systems.ir.json/lifecycle/npmPackage",
+        "systems.ir.json/lifecycle/replay",
+        "systems.ir.json/lifecycle/state",
+        "systems.ir.json/lifecycle/hotReload",
+        "systems.ir.json/systems/0/async",
+        "systems.ir.json/systems/0/timer",
+      ],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject unsupported v4 system stage", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-v4-stage-"));
   try {
@@ -180,12 +252,15 @@ test("should reject unsupported v4 system stage", async () => {
 async function writeBundle(
   root: string,
   system: {
+    async?: unknown;
     commands: unknown[];
+    lifecycle?: unknown;
     reads: string[];
     resourceReads?: string[];
     resourceWrites?: string[];
     schedule?: unknown;
     services?: unknown[];
+    timer?: unknown;
     writes: string[];
   } = {
     commands: [{ component: "Health", entity: "target", kind: "setComponent" }],
@@ -219,10 +294,12 @@ async function writeBundle(
     prefabs: [],
   });
   await writeJson(root, "systems.ir.json", {
+    ...(system.lifecycle === undefined ? {} : { lifecycle: system.lifecycle }),
     schema: "threenative.systems",
     version: "0.1.0",
     systems: [
       {
+        ...(system.async === undefined ? {} : { async: system.async }),
         commands: system.commands,
         eventReads: [],
         eventWrites: [],
@@ -233,6 +310,7 @@ async function writeBundle(
         resourceWrites: system.resourceWrites ?? [],
         services: system.services ?? [],
         schedule: system.schedule ?? "fixedUpdate",
+        ...(system.timer === undefined ? {} : { timer: system.timer }),
         writes: system.writes,
       },
     ],

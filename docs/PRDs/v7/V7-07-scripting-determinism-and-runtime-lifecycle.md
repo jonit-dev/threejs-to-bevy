@@ -34,10 +34,10 @@ persisted state.
 
 **Implementation:**
 
-- [ ] Define effect ordering for resource writes, events, commands, and
+- [x] Define effect ordering for resource writes, events, commands, and
   services.
-- [ ] Add replay trace metadata and system-local state rules if needed.
-- [ ] Reject async, timers, arbitrary npm, platform APIs, and unsupported
+- [x] Add replay trace metadata and system-local state rules if needed.
+- [x] Reject async, timers, arbitrary npm, platform APIs, and unsupported
   hot-reload assumptions.
 
 #### Phase 2: Runtime Lifecycle Evidence - Web and Bevy replay traces match.
@@ -52,9 +52,9 @@ persisted state.
 
 **Implementation:**
 
-- [ ] Compare canonical logs for larger fixed traces.
-- [ ] Add lifecycle diagnostics for invalid reload/state behavior.
-- [ ] Record first mismatch path in V7 reports.
+- [x] Compare canonical logs for larger fixed traces.
+- [x] Add lifecycle diagnostics for invalid reload/state behavior.
+- [x] Record first mismatch path in V7 reports.
 
 ## Verification Strategy
 
@@ -65,6 +65,6 @@ persisted state.
 
 ## Acceptance Criteria
 
-- [ ] Script-heavy fixed traces replay equivalently across web and Bevy.
-- [ ] Unsupported lifecycle behavior fails before runtime or with stable runtime
+- [x] Script-heavy fixed traces replay equivalently across web and Bevy.
+- [x] Unsupported lifecycle behavior fails before runtime or with stable runtime
   diagnostics.

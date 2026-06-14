@@ -1,0 +1,26 @@
+{
+  "schema": "threenative.resource-schemas",
+  "version": "0.1.0",
+  "schemas": {
+    "Lifecycle": {
+      "fields": {
+        "phase": {
+          "kind": "string",
+          "required": true
+        },
+        "ticks": {
+          "kind": "number",
+          "required": true
+        }
+      }
+    },
+    "Score": {
+      "fields": {
+        "value": {
+          "kind": "number",
+          "required": true
+        }
+      }
+    }
+  }
+}

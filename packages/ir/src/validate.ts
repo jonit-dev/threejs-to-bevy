@@ -1139,6 +1139,18 @@ function validateSystems(
   eventSchemas: Record<string, IIrNamedSchema>,
   diagnostics: IIrDiagnostic[],
 ): void {
+  const rawSystems = systems as unknown as Record<string, unknown>;
+  for (const key of Object.keys(rawSystems)) {
+    if (!["lifecycle", "schema", "systems", "version"].includes(key)) {
+      diagnostics.push({
+        code: "TN_IR_SYSTEMS_FIELD_UNSUPPORTED",
+        message: `Systems IR uses unsupported field '${key}'.`,
+        path: `${path}/${key}`,
+        severity: "error",
+        suggestion: "Remove async, hot-reload, platform, or host-specific scripting metadata unless it is represented by promoted systems lifecycle fields.",
+      });
+    }
+  }
   if (systems.schema !== "threenative.systems" || systems.version !== "0.1.0") {
     diagnostics.push({
       code: "TN_IR_SYSTEMS_VERSION_UNSUPPORTED",
@@ -1146,8 +1158,21 @@ function validateSystems(
       path,
     });
   }
+  validateSystemsLifecycle(systems.lifecycle, `${path}/lifecycle`, diagnostics);
 
   systems.systems.forEach((system, systemIndex) => {
+    const rawSystem = system as unknown as Record<string, unknown>;
+    for (const key of Object.keys(rawSystem)) {
+      if (!["commands", "eventReads", "eventWrites", "name", "queries", "reads", "resourceReads", "resourceWrites", "schedule", "script", "services", "writes"].includes(key)) {
+        diagnostics.push({
+          code: "TN_IR_SYSTEM_FIELD_UNSUPPORTED",
+          message: `System '${system.name}' uses unsupported field '${key}'.`,
+          path: `${path}/systems/${systemIndex}/${key}`,
+          severity: "error",
+          suggestion: "Use deterministic schedules, declared effects, and promoted lifecycle metadata instead of async timers, platform APIs, or system-local persisted state.",
+        });
+      }
+    }
     const writes = new Set(system.writes);
     const eventWrites = new Set(system.eventWrites);
     if (!["fixedUpdate", "postUpdate", "startup", "update"].includes(system.schedule)) {
@@ -1293,6 +1318,47 @@ function validateSystems(
       }
     });
   });
+}
+
+function validateSystemsLifecycle(value: ISystemsIr["lifecycle"] | undefined, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  const raw = value as unknown as Record<string, unknown>;
+  for (const key of Object.keys(raw)) {
+    if (!["hotReload", "replay", "state"].includes(key)) {
+      diagnostics.push({
+        code: "TN_IR_SYSTEM_LIFECYCLE_FIELD_UNSUPPORTED",
+        message: `Systems lifecycle uses unsupported field '${key}'.`,
+        path: `${path}/${key}`,
+        severity: "error",
+      });
+    }
+  }
+  if (value.replay !== "fixed-trace") {
+    diagnostics.push({
+      code: "TN_IR_SYSTEM_LIFECYCLE_REPLAY_UNSUPPORTED",
+      message: "Systems lifecycle replay must be 'fixed-trace'.",
+      path: `${path}/replay`,
+      severity: "error",
+    });
+  }
+  if (value.state !== "system-local-disallowed") {
+    diagnostics.push({
+      code: "TN_IR_SYSTEM_LIFECYCLE_STATE_UNSUPPORTED",
+      message: "Systems lifecycle state must disallow system-local persisted state.",
+      path: `${path}/state`,
+      severity: "error",
+    });
+  }
+  if (value.hotReload !== "invalidate") {
+    diagnostics.push({
+      code: "TN_IR_SYSTEM_LIFECYCLE_HOT_RELOAD_UNSUPPORTED",
+      message: "Systems lifecycle hotReload must be 'invalidate'.",
+      path: `${path}/hotReload`,
+      severity: "error",
+    });
+  }
 }
 
 function validateSchemaFile(

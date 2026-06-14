@@ -373,6 +373,11 @@ function collectSystemCapabilities(systems: ISystemsIr | undefined, add: (domain
     return;
   }
   add("scripting", "systems");
+  if (systems.lifecycle !== undefined) {
+    add("scripting", "replay.fixed-trace");
+    add("scripting", `state.${systems.lifecycle.state}`);
+    add("scripting", `hot-reload.${systems.lifecycle.hotReload}`);
+  }
   for (const system of systems.systems) {
     add("scripting", `schedule.${system.schedule}`);
     if (system.script !== undefined) {

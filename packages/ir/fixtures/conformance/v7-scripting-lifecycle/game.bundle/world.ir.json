@@ -1,0 +1,23 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [],
+  "resources": {
+    "Lifecycle": {
+      "phase": "cold",
+      "ticks": 0
+    },
+    "Score": {
+      "value": 3
+    }
+  },
+  "events": {
+    "DamageEvent": [
+      {
+        "amount": 2,
+        "target": "player"
+      }
+    ]
+  },
+  "prefabs": []
+}

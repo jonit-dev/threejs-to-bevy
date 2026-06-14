@@ -1,0 +1,47 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "conformance-v7-scripting-lifecycle",
+  "requiredCapabilities": {
+    "ecs": [
+      "component-schemas",
+      "event-schemas",
+      "events",
+      "resource-schemas",
+      "resources"
+    ],
+    "scripting": [
+      "command.despawn",
+      "command.spawn",
+      "event-reads",
+      "event-writes",
+      "hot-reload.invalidate",
+      "larger-fixtures",
+      "replay.fixed-trace",
+      "resource-reads",
+      "resource-writes",
+      "schedule.fixedUpdate",
+      "schedule.postUpdate",
+      "schedule.startup",
+      "schedule.update",
+      "script-bundle",
+      "service.animation.play",
+      "state.system-local-disallowed",
+      "systems"
+    ]
+  },
+  "entry": {
+    "world": "world.ir.json",
+    "systems": "systems.ir.json",
+    "scripts": "scripts.bundle.js"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "materials": "materials.ir.json",
+    "scripts": "scripts.bundle.js",
+    "targetProfile": "target.profile.json",
+    "componentSchemas": "schemas/components.schema.json",
+    "eventSchemas": "schemas/events.schema.json",
+    "resourceSchemas": "schemas/resources.schema.json"
+  }
+}

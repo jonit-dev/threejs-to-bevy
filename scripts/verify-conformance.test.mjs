@@ -132,7 +132,7 @@ test("should pass matching gate commands and save report path", async () => {
     });
 
     assert.equal(result.ok, true);
-    assert.equal(result.steps.length, 17);
+    assert.equal(result.steps.length, 18);
     assert.equal(result.reportPath.endsWith("artifacts/conformance/verification-report.json"), true);
     assert.equal(result.artifacts.nativeBasicSceneReportPath.endsWith("artifacts/conformance/basic-scene/bevy.report.json"), true);
     assert.equal(
@@ -219,9 +219,12 @@ test("should pass matching gate commands and save report path", async () => {
       result.artifacts.v7EnvironmentContentWebTracePath.endsWith("artifacts/conformance/v7-renderer-dense-content/web-environment-content.json"),
       true,
     );
+    assert.equal(result.artifacts.v7ScriptingLifecycleDiffPath.endsWith("artifacts/conformance/v7-scripting-lifecycle/effects-diff.json"), true);
+    assert.equal(result.artifacts.v7ScriptingLifecycleNativeEffectsPath.endsWith("artifacts/conformance/v7-scripting-lifecycle/native-effects.json"), true);
+    assert.equal(result.artifacts.v7ScriptingLifecycleWebEffectsPath.endsWith("artifacts/conformance/v7-scripting-lifecycle/web-effects.json"), true);
     const report = JSON.parse(await readFile(result.reportPath, "utf8"));
     assert.equal(report.status, "pass");
-    assert.equal(report.steps.length, 17);
+    assert.equal(report.steps.length, 18);
     assert.equal(report.artifacts.nativeBasicSceneReportPath.endsWith("artifacts/conformance/basic-scene/bevy.report.json"), true);
     assert.equal(
       report.artifacts.nativeV6AnimationClipsReportPath.endsWith("artifacts/conformance/v6-animation-clips/bevy.report.json"),
@@ -307,6 +310,9 @@ test("should pass matching gate commands and save report path", async () => {
       report.artifacts.v7EnvironmentContentWebTracePath.endsWith("artifacts/conformance/v7-renderer-dense-content/web-environment-content.json"),
       true,
     );
+    assert.equal(report.artifacts.v7ScriptingLifecycleDiffPath.endsWith("artifacts/conformance/v7-scripting-lifecycle/effects-diff.json"), true);
+    assert.equal(report.artifacts.v7ScriptingLifecycleNativeEffectsPath.endsWith("artifacts/conformance/v7-scripting-lifecycle/native-effects.json"), true);
+    assert.equal(report.artifacts.v7ScriptingLifecycleWebEffectsPath.endsWith("artifacts/conformance/v7-scripting-lifecycle/web-effects.json"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

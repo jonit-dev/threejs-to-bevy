@@ -1,0 +1,30 @@
+{
+  "schema": "threenative.event-schemas",
+  "version": "0.1.0",
+  "schemas": {
+    "DamageEvent": {
+      "fields": {
+        "amount": {
+          "kind": "number",
+          "required": true
+        },
+        "target": {
+          "kind": "string",
+          "required": true
+        }
+      }
+    },
+    "LifecycleEvent": {
+      "fields": {
+        "phase": {
+          "kind": "string",
+          "required": true
+        },
+        "score": {
+          "kind": "number",
+          "required": true
+        }
+      }
+    }
+  }
+}

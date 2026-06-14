@@ -7,6 +7,7 @@ animation/effects contract fixture and fixed web/native graph/particle trace.
 V7-04 adds the first fixed web/native UI navigation trace.
 V7-05 adds the first fixed web/native audio lifecycle trace.
 V7-06 adds the first fixed web/native renderer/dense-content trace.
+V7-07 adds the first fixed web/native scripting lifecycle trace.
 
 Current V7 conformance evidence starts with:
 
@@ -15,6 +16,7 @@ Current V7 conformance evidence starts with:
 - `packages/ir/fixtures/conformance/v7-animation-graphs-particles/game.bundle`
 - `packages/ir/fixtures/conformance/v7-spatial-audio-buses/game.bundle`
 - `packages/ir/fixtures/conformance/v7-renderer-dense-content/game.bundle`
+- `packages/ir/fixtures/conformance/v7-scripting-lifecycle/game.bundle`
 - `pnpm verify:conformance`
 - `artifacts/conformance/verification-report.json`
 - `artifacts/conformance/v7-advanced-physics-character/web-effects.json`
@@ -35,6 +37,9 @@ Current V7 conformance evidence starts with:
 - `artifacts/conformance/v7-renderer-dense-content/web-environment-content.json`
 - `artifacts/conformance/v7-renderer-dense-content/native-environment-content.json`
 - `artifacts/conformance/v7-renderer-dense-content/environment-content-diff.json`
+- `artifacts/conformance/v7-scripting-lifecycle/web-effects.json`
+- `artifacts/conformance/v7-scripting-lifecycle/native-effects.json`
+- `artifacts/conformance/v7-scripting-lifecycle/effects-diff.json`
 
 The V7 fixture catalog maps V7-02 through V7-09 to baseline bundles, planned
 accepted and rejected fixture bundle paths, expected target capabilities,
@@ -73,6 +78,14 @@ then compares a fixed web/native trace for runtime LOD selection and
 model-backed repeated-instance observations. Actual renderer-level native
 instancing, visual LOD mesh swapping, portable post-processing, and arbitrary
 material overrides remain deferred or rejected.
+
+The current V7-07 fixture evidence is intentionally narrow: the
+`v7-scripting-lifecycle` bundle validates deterministic lifecycle metadata and
+compares a fixed web/native effect log for startup, fixedUpdate, update, and
+postUpdate resource handoff, queued events, spawn/despawn commands, and an
+`animation.play` service call. Async systems, timers, arbitrary npm/platform
+APIs, hidden system-local persisted state, state-preserving hot reload, and full
+dynamic scene reconciliation remain unsupported or later work.
 
 Conformance mismatch diagnostics must localize drift with:
 
