@@ -5,6 +5,11 @@ use bevy::{
 };
 use threenative_loader::{ColorIr, LoadedBundle};
 
+// Atmosphere sun is an additive environment light; keep it much lower than the
+// explicit world directional light so bundles that include both don't double the
+// direct lighting compared with the Three.js path.
+const THREE_COMPAT_ATMOSPHERE_SUN_ILLUMINANCE_PER_INTENSITY: f32 = 0.35;
+
 #[derive(Debug, PartialEq)]
 pub struct AtmosphereObservation {
     pub profile_id: Option<String>,
@@ -110,7 +115,8 @@ pub fn apply_atmosphere_to_world(world: &mut World, bundle: &LoadedBundle) {
         .spawn(DirectionalLightBundle {
             directional_light: DirectionalLight {
                 color: color_to_bevy(&profile.sun.color),
-                illuminance: profile.sun.intensity * 350.0,
+                illuminance: profile.sun.intensity / profile.color_management.exposure.max(0.001)
+                    * THREE_COMPAT_ATMOSPHERE_SUN_ILLUMINANCE_PER_INTENSITY,
                 shadows_enabled: profile.sun.casts_shadow && profile.shadows.enabled,
                 shadow_depth_bias: profile.shadows.bias.abs().max(0.005),
                 shadow_normal_bias: profile.shadows.normal_bias.max(0.02),

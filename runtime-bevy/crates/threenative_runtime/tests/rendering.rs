@@ -45,7 +45,7 @@ fn assert_directional_light(world: &mut World, id: &str) {
         .find_map(|(stable_id, light)| (stable_id.0 == id).then_some(light).flatten())
         .expect("directional light should be spawned");
 
-    assert!((light.illuminance - 4_000.0).abs() < 0.01);
+    assert!((light.illuminance - 4.0).abs() < 0.01);
     let color = light.color.to_srgba();
     assert!((color.red - 1.0).abs() < 0.01);
     assert!((color.green - 0xcc as f32 / 255.0).abs() < 0.01);
@@ -59,7 +59,7 @@ fn assert_point_light(world: &mut World, id: &str) {
         .find_map(|(stable_id, light)| (stable_id.0 == id).then_some(light).flatten())
         .expect("point light should be spawned");
 
-    assert!((light.intensity - 1_600.0).abs() < 0.01);
+    assert!((light.intensity - (2.0 * std::f32::consts::TAU * 2.0)).abs() < 0.01);
     assert!((light.range - 12.0).abs() < 0.01);
 }
 
@@ -70,7 +70,7 @@ fn assert_spot_light(world: &mut World, id: &str) {
         .find_map(|(stable_id, light)| (stable_id.0 == id).then_some(light).flatten())
         .expect("spot light should be spawned");
 
-    assert!((light.intensity - 2_400.0).abs() < 0.01);
+    assert!((light.intensity - (3.0 * std::f32::consts::TAU * 2.0)).abs() < 0.01);
     assert!((light.range - 16.0).abs() < 0.01);
     assert!((light.outer_angle - 0.65).abs() < 0.01);
 }

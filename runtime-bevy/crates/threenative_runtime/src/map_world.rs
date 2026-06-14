@@ -4,11 +4,22 @@ use bevy::{
     core_pipeline::tonemapping::Tonemapping,
     math::primitives::{Capsule3d, Cuboid, Cylinder, Rectangle, Sphere},
     prelude::*,
-    render::{camera::ScalingMode, view::ColorGrading},
+    render::{
+        camera::{Exposure, ScalingMode},
+        view::ColorGrading,
+    },
 };
 use thiserror::Error;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{AssetIr, ColorIr, LoadedBundle, MaterialIr, WorldEntity};
+
+// ThreeNative lights are authored in Three.js-style scalar units. Bevy stores
+// physically named units and multiplies lighting by camera Exposure, so the
+// native adapter converts through a small three-compat shim instead of exposing
+// raw Bevy light defaults to authored scenes.
+const THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY: f32 = 2.0;
+const THREE_COMPAT_POINT_LUMENS_PER_CANDELA: f32 = std::f32::consts::TAU * 2.0;
+const THREE_COMPAT_DEFAULT_RANGE: f32 = 1_000.0;
 
 #[derive(Debug, Error)]
 pub enum MapError {
@@ -177,6 +188,7 @@ fn spawn_entity(
         return Ok(world
             .spawn(Camera3dBundle {
                 color_grading: color_grading_for_profile(camera_color_management),
+                exposure: exposure_for_profile(camera_color_management),
                 projection,
                 tonemapping: tonemapping_for_profile(camera_color_management),
                 transform,
@@ -194,7 +206,10 @@ fn spawn_entity(
                 .spawn(DirectionalLightBundle {
                     directional_light: DirectionalLight {
                         color: color_to_bevy(&light.color),
-                        illuminance: light.intensity * 2_000.0,
+                        illuminance: directional_illuminance(
+                            light.intensity,
+                            camera_color_management,
+                        ),
                         ..Default::default()
                     },
                     transform: light_transform,
@@ -209,8 +224,8 @@ fn spawn_entity(
                 .spawn(PointLightBundle {
                     point_light: PointLight {
                         color: color_to_bevy(&light.color),
-                        intensity: light.intensity * 800.0,
-                        range: light.range.unwrap_or(20.0),
+                        intensity: point_lumens(light.intensity, camera_color_management),
+                        range: light.range.unwrap_or(THREE_COMPAT_DEFAULT_RANGE),
                         ..Default::default()
                     },
                     transform,
@@ -225,9 +240,9 @@ fn spawn_entity(
                 .spawn(SpotLightBundle {
                     spot_light: SpotLight {
                         color: color_to_bevy(&light.color),
-                        intensity: light.intensity * 800.0,
+                        intensity: point_lumens(light.intensity, camera_color_management),
                         outer_angle: light.angle.unwrap_or(std::f32::consts::FRAC_PI_4),
-                        range: light.range.unwrap_or(20.0),
+                        range: light.range.unwrap_or(THREE_COMPAT_DEFAULT_RANGE),
                         ..Default::default()
                     },
                     transform,
@@ -251,23 +266,55 @@ fn spawn_entity(
 }
 
 fn color_grading_for_profile(
-    color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
+    _color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
 ) -> ColorGrading {
-    let mut color_grading = ColorGrading::default();
-    if let Some(color_management) = color_management {
-        color_grading.global.exposure = color_management.exposure.max(0.001).log2();
+    ColorGrading::default()
+}
+
+fn exposure_for_profile(
+    color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
+) -> Exposure {
+    let exposure = color_management
+        .map(|profile| profile.exposure)
+        .unwrap_or(1.0)
+        .max(0.001);
+    Exposure {
+        ev100: -(1.2 * exposure).log2(),
     }
-    color_grading
 }
 
 fn tonemapping_for_profile(
     color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
 ) -> Tonemapping {
     match color_management.map(|profile| profile.tone_mapping.as_str()) {
-        Some("aces") => Tonemapping::AcesFitted,
+        Some("aces") => Tonemapping::None,
         Some("none") => Tonemapping::None,
         _ => Tonemapping::default(),
     }
+}
+
+fn camera_exposure_value(
+    color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
+) -> f32 {
+    color_management
+        .map(|profile| profile.exposure)
+        .unwrap_or(1.0)
+        .max(0.001)
+}
+
+fn directional_illuminance(
+    intensity: f32,
+    color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
+) -> f32 {
+    intensity / camera_exposure_value(color_management)
+        * THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY
+}
+
+fn point_lumens(
+    intensity: f32,
+    color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
+) -> f32 {
+    intensity / camera_exposure_value(color_management) * THREE_COMPAT_POINT_LUMENS_PER_CANDELA
 }
 
 fn add_mesh(world: &mut World, asset: &AssetIr) -> Handle<Mesh> {
