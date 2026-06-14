@@ -71,6 +71,10 @@ test("should include capability tags for each conformance fixture", async () => 
     "physics:rigid-body.static",
     "physics:trigger-collider",
   ]);
+  assertFixtureCapabilities(byName, "v6-animation-clips", [
+    "animation:clip-metadata",
+    "asset:model.glb",
+  ]);
 });
 
 function assertFixtureCapabilities(

@@ -33,8 +33,53 @@
           "additionalProperties": false,
           "properties": {
             "id": { "type": "string", "minLength": 1 },
-            "kind": { "enum": ["audio", "model", "texture"] },
-            "format": { "enum": ["glb", "gltf", "jpeg", "mp3", "ogg", "png", "wav"] },
+            "kind": { "const": "model" },
+            "format": { "enum": ["glb", "gltf"] },
+            "path": { "type": "string", "minLength": 1 },
+            "bounds": {
+              "type": "object",
+              "required": ["min", "max"],
+              "additionalProperties": false,
+              "properties": {
+                "min": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+                "max": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 }
+              }
+            },
+            "animations": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["id"],
+                "additionalProperties": false,
+                "properties": {
+                  "id": { "type": "string", "minLength": 1 },
+                  "loop": { "type": "boolean" },
+                  "sourceClip": { "type": "string", "minLength": 1 },
+                  "speed": { "type": "number", "exclusiveMinimum": 0 }
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["id", "kind", "format", "path"],
+          "additionalProperties": false,
+          "properties": {
+            "id": { "type": "string", "minLength": 1 },
+            "kind": { "const": "audio" },
+            "format": { "enum": ["mp3", "ogg", "wav"] },
+            "path": { "type": "string", "minLength": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["id", "kind", "format", "path"],
+          "additionalProperties": false,
+          "properties": {
+            "id": { "type": "string", "minLength": 1 },
+            "kind": { "const": "texture" },
+            "format": { "enum": ["jpeg", "png"] },
             "path": { "type": "string", "minLength": 1 }
           }
         }

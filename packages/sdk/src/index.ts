@@ -7,7 +7,17 @@ export {
   type IAudioMusicDeclaration,
   type IAudioOneShotDeclaration,
 } from "./audio.js";
-export { audioAsset, modelAsset, textureAsset, type AssetFormat, type AssetKind, type IAssetReference } from "./assets.js";
+export {
+  animationClip,
+  audioAsset,
+  modelAsset,
+  textureAsset,
+  type AssetFormat,
+  type AssetKind,
+  type IAnimationClipReference,
+  type IAssetReference,
+  type IUnsupportedAnimationAssetOptions,
+} from "./assets.js";
 export {
   CharacterController,
   characterController,

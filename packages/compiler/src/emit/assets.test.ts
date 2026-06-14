@@ -1,8 +1,13 @@
 import assert from "node:assert/strict";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
-import { BoxGeometry, Mesh, MeshStandardMaterial, Scene, textureAsset } from "@threenative/sdk";
+import { BoxGeometry, Mesh, MeshStandardMaterial, Object3D, Scene, animationClip, modelAsset, textureAsset } from "@threenative/sdk";
+import { validateBundle } from "@threenative/ir";
 
+import { emitBundle } from "./bundle.js";
 import { sceneToWorld } from "./scene-to-world.js";
 
 test("assets should emit texture asset references", () => {
@@ -68,4 +73,55 @@ test("assets should emit texture asset references", () => {
   assert.equal(emitted.materials[0]?.metallicRoughnessTexture, "tex.metallicRoughness");
   assert.equal(emitted.materials[0]?.normalTexture, "tex.normal");
   assert.equal(emitted.materials[0]?.occlusionTexture, "tex.occlusion");
+});
+
+test("assets should emit deterministic model animation metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-animation-assets-"));
+  try {
+    await mkdir(join(root, "assets"), { recursive: true });
+    await writeFile(join(root, "assets/hero.glb"), "model");
+    const scene = new Scene({ id: "scene" });
+    scene.add(
+      new Object3D({
+        assetRefs: [
+          modelAsset("model.hero", "assets/hero.glb", {
+            animations: [
+              animationClip("run", { loop: true, sourceClip: "Armature|Run", speed: 1.2 }),
+              animationClip("idle", { loop: true }),
+            ],
+          }),
+        ],
+        id: "hero.asset",
+      }),
+    );
+
+    const bundlePath = await emitBundle(
+      {
+        entry: "src/game.ts",
+        outDir: "dist/game.bundle",
+        projectPath: root,
+        schema: "threenative.project" as const,
+        version: "0.1.0" as const,
+      },
+      scene,
+    );
+    const assets = JSON.parse(await readFile(join(bundlePath, "assets.manifest.json"), "utf8"));
+    const manifest = JSON.parse(await readFile(join(bundlePath, "manifest.json"), "utf8"));
+    const result = await validateBundle(bundlePath);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(assets.assets.find((asset: { id: string }) => asset.id === "model.hero"), {
+      animations: [
+        { id: "idle", loop: true },
+        { id: "run", loop: true, sourceClip: "Armature|Run", speed: 1.2 },
+      ],
+      format: "glb",
+      id: "model.hero",
+      kind: "model",
+      path: "assets/hero.glb",
+    });
+    assert.ok(manifest.requiredCapabilities.animation.includes("clip-metadata"));
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
 });

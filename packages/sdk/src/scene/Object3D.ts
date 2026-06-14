@@ -1,8 +1,10 @@
 import { SdkError } from "../errors.js";
 import { Vector3 } from "../math/Vector3.js";
+import type { IAssetReference } from "../assets.js";
 import type { IPhysicsDeclaration } from "../physics.js";
 
 export interface IObject3DOptions {
+  assetRefs?: readonly IAssetReference[];
   id?: string;
   name?: string;
   physics?: IPhysicsDeclaration;
@@ -13,6 +15,7 @@ export class Object3D {
   readonly #children: Object3D[] = [];
 
   public readonly id?: string;
+  public readonly assetRefs: readonly IAssetReference[];
   public name: string;
   public parent: Object3D | undefined;
   public readonly physics?: IPhysicsDeclaration;
@@ -22,6 +25,7 @@ export class Object3D {
   public visible: boolean;
 
   public constructor(options: IObject3DOptions = {}) {
+    this.assetRefs = [...(options.assetRefs ?? [])].sort((left, right) => left.id.localeCompare(right.id));
     this.id = options.id;
     this.name = options.name ?? options.id ?? "";
     this.physics = options.physics;

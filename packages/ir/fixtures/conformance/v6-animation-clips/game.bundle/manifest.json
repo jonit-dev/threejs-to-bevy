@@ -1,0 +1,21 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "conformance-v6-animation-clips",
+  "requiredCapabilities": {
+    "animation": [
+      "clip-metadata"
+    ],
+    "asset": [
+      "model.glb"
+    ]
+  },
+  "entry": {
+    "world": "world.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "materials": "materials.ir.json",
+    "targetProfile": "target.profile.json"
+  }
+}

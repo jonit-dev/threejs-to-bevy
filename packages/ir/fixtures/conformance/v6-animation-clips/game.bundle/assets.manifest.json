@@ -1,0 +1,25 @@
+{
+  "schema": "threenative.assets",
+  "version": "0.1.0",
+  "assets": [
+    {
+      "id": "model.hero",
+      "kind": "model",
+      "format": "glb",
+      "path": "assets/hero.glb",
+      "animations": [
+        {
+          "id": "idle",
+          "loop": true,
+          "speed": 1
+        },
+        {
+          "id": "run",
+          "loop": true,
+          "sourceClip": "Armature|Run",
+          "speed": 1.25
+        }
+      ]
+    }
+  ]
+}

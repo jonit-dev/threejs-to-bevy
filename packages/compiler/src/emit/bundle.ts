@@ -350,6 +350,9 @@ function collectAssetCapabilities(assets: IAssetsManifest, add: (domain: string,
     if (asset.kind === "mesh" && asset.format === "generated") {
       add("rendering", `mesh.primitive.${asset.primitive}`);
     }
+    if (asset.kind === "model" && asset.animations !== undefined && asset.animations.length > 0) {
+      add("animation", "clip-metadata");
+    }
     add("asset", `${asset.kind}.${asset.format}`);
   }
 }

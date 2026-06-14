@@ -356,29 +356,38 @@ Rules:
 
 ## Animation API
 
-Animation should be commanded by stable clip and state IDs:
+Animation should be commanded by stable clip and state IDs. In V6, named clip
+metadata is declared on model assets and validated before runtime playback is
+claimed:
+
+```ts
+const heroModel = modelAsset("model.hero", "assets/hero.glb", {
+  animations: [
+    animationClip("idle", { loop: true, speed: 1 }),
+    animationClip("run", { loop: true, sourceClip: "Armature|Run", speed: 1.25 }),
+  ],
+});
+```
 
 ```ts
 ctx.animation.play(entity, "run", {
-  fadeSeconds: 0.12,
   speed: 1.0,
   loop: true,
 });
-
-ctx.animation.stop(entity, "run", { fadeSeconds: 0.08 });
-
-const state = ctx.animation.state(entity);
-if (state.current === "idle") {
-  ctx.animation.play(entity, "attack", { restart: true });
-}
 ```
 
 Runtime effects:
 
-- Web maps commands to Three.js animation mixers or a portable animation runner.
-- Native maps commands to Bevy animation state.
-- Scripts see only stable clip IDs, state names, booleans, numbers, and plain
-  data.
+- V6 validates clip IDs, optional source clip names, loop flags, and positive
+  playback speeds in model asset metadata.
+- V4/V5 currently expose `ctx.animation.play` as a declared service-call shape
+  that records deterministic effect logs.
+- V6 runtime playback, stop/state queries, and web/native playback observations
+  remain later V6-05 work.
+- Scripts see only stable clip IDs, booleans, numbers, and plain data for the
+  currently promoted command shape.
+- Animation graphs, blends, IK, retargeting, and particles are V7 scope and
+  must fail with stable diagnostics rather than being ignored.
 
 ## Resources
 

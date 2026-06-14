@@ -270,6 +270,13 @@ collection marks character controller, grounding, blocking, and interaction
 claims. Web/Bevy runtime movement and interaction trace parity is not claimed
 yet.
 
+V6-05 has started for the animation contract layer: SDK model assets can declare
+deterministic clip metadata, compiler emission preserves it in
+`assets.manifest.json`, IR validation covers clip IDs, source clip names, loop
+flags, speeds, model-only placement, and V7-deferred graph/blend/IK/retargeting/
+particle fields, and shared conformance includes `v6-animation-clips`. Web/Bevy
+playback state and visual animation parity are not claimed yet.
+
 ## V7 Deep Engine Gap-Closure Plan
 
 The planned V7 implementation slice is tracked in

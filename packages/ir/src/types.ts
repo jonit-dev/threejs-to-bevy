@@ -183,6 +183,12 @@ export type IAssetIr =
       path: string;
     }
   | {
+      animations?: Array<{
+        id: string;
+        loop?: boolean;
+        sourceClip?: string;
+        speed?: number;
+      }>;
       bounds?: {
         max: Vec3;
         min: Vec3;

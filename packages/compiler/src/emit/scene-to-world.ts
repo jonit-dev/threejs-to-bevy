@@ -3,6 +3,7 @@ import type { IAssetReference, IPhysicsDeclaration } from "@threenative/sdk";
 
 interface IObjectLike {
   activeCamera?: IObjectLike;
+  assetRefs?: readonly IAssetReference[];
   children: readonly IObjectLike[];
   id?: string;
   material?: {
@@ -79,6 +80,7 @@ function visitChildren(
       components.Hierarchy = { parent: parentId };
     }
     emitPhysics(child.physics, components);
+    emitAssetRefs(child.assetRefs, output.assets);
 
     if (child.constructor.name === "Mesh" && child.geometry !== undefined && child.material !== undefined) {
       const meshId = `mesh.${id}`;
@@ -210,14 +212,27 @@ function emitTextureSlots(
         return [[slot, value]];
       }
       assets.push({
+        format: value.format,
         id: value.id,
         kind: value.kind,
-        format: value.format,
         path: value.path,
+        ...(value.animations === undefined ? {} : { animations: value.animations }),
       });
       return [[slot, value.id]];
     }),
   );
+}
+
+function emitAssetRefs(refs: readonly IAssetReference[] | undefined, assets: ISceneEmitResult["assets"]): void {
+  for (const ref of refs ?? []) {
+    assets.push({
+      format: ref.format,
+      id: ref.id,
+      kind: ref.kind,
+      path: ref.path,
+      ...(ref.animations === undefined ? {} : { animations: ref.animations }),
+    });
+  }
 }
 
 function eulerToQuaternion([x, y, z]: [number, number, number]): [number, number, number, number] {

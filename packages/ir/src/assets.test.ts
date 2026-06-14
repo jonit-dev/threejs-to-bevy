@@ -150,3 +150,86 @@ test("assets should reject v3 environment bundle over budget", async () => {
     await rm(root, { force: true, recursive: true });
   }
 });
+
+test("assets should accept model animation clip metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-assets-animation-clips-"));
+  try {
+    await writeTestBundle(root, { createAssetsDir: true });
+    await writeFile(join(root, "assets/hero.glb"), "model");
+    await writeJson(root, "assets.manifest.json", {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [
+        {
+          animations: [
+            { id: "idle", loop: true, speed: 1 },
+            { id: "run", loop: true, sourceClip: "Armature|Run", speed: 1.25 },
+          ],
+          format: "glb",
+          id: "model.hero",
+          kind: "model",
+          path: "assets/hero.glb",
+        },
+      ],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("assets should reject invalid and unsupported animation clip metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-assets-animation-invalid-"));
+  try {
+    await writeTestBundle(root, { createAssetsDir: true });
+    await writeFile(join(root, "assets/hero.glb"), "model");
+    await writeFile(join(root, "assets/hit.wav"), "audio");
+    await writeJson(root, "assets.manifest.json", {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [
+        {
+          animations: [
+            { id: "", loop: "forever", speed: 0 },
+            { id: "run", blendGraph: "locomotion", sourceClip: "" },
+            { id: "run" },
+          ],
+          format: "glb",
+          id: "model.hero",
+          kind: "model",
+          path: "assets/hero.glb",
+          stateMachine: "Locomotion",
+        },
+        {
+          animations: [{ id: "hit" }],
+          format: "wav",
+          id: "audio.hit",
+          kind: "audio",
+          path: "assets/hit.wav",
+        },
+      ],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => diagnostic.code),
+      [
+        "TN_IR_ANIMATION_FIELD_UNSUPPORTED",
+        "TN_IR_ANIMATION_CLIP_ID_INVALID",
+        "TN_IR_ANIMATION_LOOP_INVALID",
+        "TN_IR_ANIMATION_SPEED_INVALID",
+        "TN_IR_ANIMATION_FIELD_UNSUPPORTED",
+        "TN_IR_ANIMATION_SOURCE_CLIP_INVALID",
+        "TN_IR_ANIMATION_CLIP_DUPLICATE",
+        "TN_IR_ANIMATION_MODEL_REQUIRED",
+      ],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});

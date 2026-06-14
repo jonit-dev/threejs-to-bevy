@@ -359,6 +359,7 @@ function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnosti
 }
 
 async function validateAssets(assets: IAssetsManifest, bundlePath: string, path: string, diagnostics: IIrDiagnostic[]): Promise<void> {
+  assets.assets.forEach((asset, index) => validateAssetMetadata(asset, `${path}/assets/${index}`, diagnostics));
   await Promise.all(
     assets.assets.map(async (asset, index) => {
       if (!("path" in asset)) {
@@ -398,6 +399,105 @@ async function validateAssets(assets: IAssetsManifest, bundlePath: string, path:
       }
     }),
   );
+}
+
+function validateAssetMetadata(asset: IAssetsManifest["assets"][number], path: string, diagnostics: IIrDiagnostic[]): void {
+  const raw = asset as unknown as Record<string, unknown>;
+  const allowed = new Set(
+    asset.kind === "mesh"
+      ? ["format", "id", "kind", "primitive", "size"]
+      : ["animations", "bounds", "format", "id", "kind", "path"],
+  );
+  for (const key of Object.keys(raw)) {
+    if (!allowed.has(key)) {
+      diagnostics.push({
+        code: key === "blendGraph" || key === "ik" || key === "particles" || key === "retargeting" || key === "stateMachine" ? "TN_IR_ANIMATION_FIELD_UNSUPPORTED" : "TN_IR_ASSET_FIELD_UNSUPPORTED",
+        message: `Asset '${asset.id}' uses unsupported field '${key}'.`,
+        path: `${path}/${key}`,
+        suggestion: "Animation graphs, blends, IK, retargeting, and particles are deferred to V7.",
+      });
+    }
+  }
+  if ("animations" in raw && asset.kind !== "model") {
+    diagnostics.push({
+      code: "TN_IR_ANIMATION_MODEL_REQUIRED",
+      message: `Asset '${asset.id}' can declare animations only when it is a model asset.`,
+      path: `${path}/animations`,
+    });
+    return;
+  }
+  if (asset.kind === "model" && "animations" in raw) {
+    validateAnimationClips(raw.animations, `${path}/animations`, diagnostics);
+  }
+}
+
+function validateAnimationClips(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (!Array.isArray(value)) {
+    diagnostics.push({
+      code: "TN_IR_ANIMATION_CLIPS_INVALID",
+      message: "Model asset animations must be an array.",
+      path,
+    });
+    return;
+  }
+  const seen = new Set<string>();
+  value.forEach((clip, index) => {
+    const clipPath = `${path}/${index}`;
+    if (!isRecord(clip)) {
+      diagnostics.push({
+        code: "TN_IR_ANIMATION_CLIP_INVALID",
+        message: "Animation clip metadata must be an object.",
+        path: clipPath,
+      });
+      return;
+    }
+    for (const key of Object.keys(clip)) {
+      if (!["id", "loop", "sourceClip", "speed"].includes(key)) {
+        diagnostics.push({
+          code: "TN_IR_ANIMATION_FIELD_UNSUPPORTED",
+          message: `Animation clip uses unsupported field '${key}'.`,
+          path: `${clipPath}/${key}`,
+          suggestion: "Animation graphs, blends, IK, retargeting, and particles are deferred to V7.",
+        });
+      }
+    }
+    if (typeof clip.id !== "string" || clip.id.trim() === "") {
+      diagnostics.push({
+        code: "TN_IR_ANIMATION_CLIP_ID_INVALID",
+        message: "Animation clip ID must be a non-empty string.",
+        path: `${clipPath}/id`,
+      });
+    } else if (seen.has(clip.id)) {
+      diagnostics.push({
+        code: "TN_IR_ANIMATION_CLIP_DUPLICATE",
+        message: `Animation clip ID '${clip.id}' is duplicated.`,
+        path: `${clipPath}/id`,
+      });
+    } else {
+      seen.add(clip.id);
+    }
+    if (clip.loop !== undefined && typeof clip.loop !== "boolean") {
+      diagnostics.push({
+        code: "TN_IR_ANIMATION_LOOP_INVALID",
+        message: "Animation clip loop must be boolean.",
+        path: `${clipPath}/loop`,
+      });
+    }
+    if (clip.sourceClip !== undefined && (typeof clip.sourceClip !== "string" || clip.sourceClip.trim() === "")) {
+      diagnostics.push({
+        code: "TN_IR_ANIMATION_SOURCE_CLIP_INVALID",
+        message: "Animation source clip must be a non-empty string.",
+        path: `${clipPath}/sourceClip`,
+      });
+    }
+    if (clip.speed !== undefined && (typeof clip.speed !== "number" || !Number.isFinite(clip.speed) || clip.speed <= 0)) {
+      diagnostics.push({
+        code: "TN_IR_ANIMATION_SPEED_INVALID",
+        message: "Animation clip speed must be a positive finite number.",
+        path: `${clipPath}/speed`,
+      });
+    }
+  });
 }
 
 function assetFormatMatches(kind: string, format: string, extension: string | undefined): boolean {

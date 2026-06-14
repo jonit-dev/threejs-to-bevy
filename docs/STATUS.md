@@ -265,6 +265,13 @@ axis/action references, and emitted bundles advertise character controller,
 grounding, blocking, and interaction capabilities. Runtime movement/blocking
 trace parity remains later V6-04 work.
 
+V6-05 has started with the animation clip contract: SDK model assets can now
+carry deterministic named clip metadata, emitted asset manifests preserve those
+clips, IR validation checks clip IDs, optional source clip names, loop flags,
+positive playback speeds, model-only placement, and V7-deferred graph/blend/IK/
+retargeting/particle fields, and the `v6-animation-clips` conformance fixture
+tracks the contract. Runtime playback observations remain later V6-05 work.
+
 V7 is now planned as the deep engine gap-closure milestone. It should continue
 parity work that is too large or risky for V6, such as deeper physics,
 animation graphs, richer UI/audio, renderer/content parity, scripting/runtime
