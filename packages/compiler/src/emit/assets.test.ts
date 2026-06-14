@@ -13,6 +13,10 @@ test("assets should emit texture asset references", () => {
       id: "crate",
       material: new MeshStandardMaterial({
         baseColorTexture: textureAsset("tex.crate", "assets/crate.png"),
+        emissiveTexture: textureAsset("tex.emissive", "assets/emissive.png"),
+        metallicRoughnessTexture: textureAsset("tex.metallicRoughness", "assets/metallic-roughness.png"),
+        normalTexture: textureAsset("tex.normal", "assets/normal.png"),
+        occlusionTexture: textureAsset("tex.occlusion", "assets/occlusion.png"),
         color: "#ffffff",
       }),
     }),
@@ -34,6 +38,34 @@ test("assets should emit texture asset references", () => {
       kind: "texture",
       path: "assets/crate.png",
     },
+    {
+      format: "png",
+      id: "tex.emissive",
+      kind: "texture",
+      path: "assets/emissive.png",
+    },
+    {
+      format: "png",
+      id: "tex.metallicRoughness",
+      kind: "texture",
+      path: "assets/metallic-roughness.png",
+    },
+    {
+      format: "png",
+      id: "tex.normal",
+      kind: "texture",
+      path: "assets/normal.png",
+    },
+    {
+      format: "png",
+      id: "tex.occlusion",
+      kind: "texture",
+      path: "assets/occlusion.png",
+    },
   ]);
   assert.equal(emitted.materials[0]?.baseColorTexture, "tex.crate");
+  assert.equal(emitted.materials[0]?.emissiveTexture, "tex.emissive");
+  assert.equal(emitted.materials[0]?.metallicRoughnessTexture, "tex.metallicRoughness");
+  assert.equal(emitted.materials[0]?.normalTexture, "tex.normal");
+  assert.equal(emitted.materials[0]?.occlusionTexture, "tex.occlusion");
 });

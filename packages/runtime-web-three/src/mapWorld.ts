@@ -22,7 +22,7 @@ export function mapWorld(bundle: IWebBundle): IThreeWorld {
 
   const entities = [...bundle.world.entities].sort((left, right) => left.id.localeCompare(right.id));
   for (const entity of entities) {
-    const object = mapEntity(entity, assetsById, materialsById, diagnostics);
+    const object = mapEntity(entity, assetsById, materialsById, diagnostics, bundle.source);
     applyTransform(object, entity);
     applyVisibility(object, entity);
     objectsById.set(entity.id, object);
@@ -72,13 +72,14 @@ function mapEntity(
   assetsById: Map<string, IAssetIr>,
   materialsById: Map<string, IMaterialIr>,
   diagnostics: IRuntimeDiagnostic[],
+  source?: string,
 ): THREE.Object3D {
   const renderer = entity.components.MeshRenderer;
   if (renderer !== undefined) {
     const asset = assetsById.get(renderer.mesh);
     const material = materialsById.get(renderer.material);
     if (asset !== undefined && material !== undefined) {
-      return new THREE.Mesh(mapGeometry(asset), mapMaterial(material));
+      return new THREE.Mesh(mapGeometry(asset), mapMaterial(material, assetsById, diagnostics, source));
     }
     diagnostics.push({
       code: "TN-WEB-MESH-REFERENCE-MISSING",
@@ -135,12 +136,86 @@ function mapGeometry(asset: IAssetIr): THREE.BufferGeometry {
   return new THREE.PlaneGeometry(x, y);
 }
 
-function mapMaterial(material: IMaterialIr): THREE.Material {
-  return new THREE.MeshStandardMaterial({
+function mapMaterial(
+  material: IMaterialIr,
+  assetsById: Map<string, IAssetIr>,
+  diagnostics: IRuntimeDiagnostic[],
+  source?: string,
+): THREE.Material {
+  const aoMap = mapTextureSlot(material, "occlusionTexture", assetsById, diagnostics, source);
+  const emissiveMap = mapTextureSlot(material, "emissiveTexture", assetsById, diagnostics, source);
+  const map = mapTextureSlot(material, "baseColorTexture", assetsById, diagnostics, source);
+  const metallicRoughnessTexture = mapTextureSlot(
+    material,
+    "metallicRoughnessTexture",
+    assetsById,
+    diagnostics,
+    source,
+  );
+  const normalMap = mapTextureSlot(material, "normalTexture", assetsById, diagnostics, source);
+  const parameters: THREE.MeshStandardMaterialParameters = {
     color: colorToThree(material.color),
     metalness: material.metalness ?? 0,
     roughness: material.roughness ?? 1,
-  });
+  };
+  if (aoMap !== undefined) {
+    parameters.aoMap = aoMap;
+  }
+  if (emissiveMap !== undefined) {
+    parameters.emissiveMap = emissiveMap;
+  }
+  if (map !== undefined) {
+    parameters.map = map;
+  }
+  if (metallicRoughnessTexture !== undefined) {
+    parameters.metalnessMap = metallicRoughnessTexture;
+    parameters.roughnessMap = metallicRoughnessTexture;
+  }
+  if (normalMap !== undefined) {
+    parameters.normalMap = normalMap;
+  }
+  const mapped = new THREE.MeshStandardMaterial(parameters);
+  mapped.needsUpdate = true;
+  return mapped;
+}
+
+function mapTextureSlot(
+  material: IMaterialIr,
+  slot: "baseColorTexture" | "emissiveTexture" | "metallicRoughnessTexture" | "normalTexture" | "occlusionTexture",
+  assetsById: Map<string, IAssetIr>,
+  diagnostics: IRuntimeDiagnostic[],
+  source?: string,
+): THREE.Texture | undefined {
+  const assetId = material[slot];
+  if (assetId === undefined) {
+    return undefined;
+  }
+
+  const asset = assetsById.get(assetId);
+  if (asset?.kind !== "texture" || asset.path === undefined) {
+    diagnostics.push({
+      code: "TN-WEB-MATERIAL-TEXTURE-REFERENCE-INVALID",
+      message: `Material '${material.id}' ${slot} references missing or non-texture asset '${assetId}'.`,
+      path: `materials.ir.json/materials/${material.id}/${slot}`,
+      severity: "error",
+    });
+    return undefined;
+  }
+
+  const url = source === undefined ? asset.path : `${source.replace(/\/$/, "")}/${asset.path}`;
+  const texture = canLoadImageInRuntime() ? new THREE.TextureLoader().load(url) : new THREE.Texture();
+  texture.name = asset.id;
+  texture.userData = {
+    ...texture.userData,
+    threenativeAssetId: asset.id,
+    threenativeSlot: slot,
+    threenativeUrl: url,
+  };
+  return texture;
+}
+
+function canLoadImageInRuntime(): boolean {
+  return (globalThis as { document?: unknown }).document !== undefined;
 }
 
 function applyTransform(object: THREE.Object3D, entity: IWorldEntity): void {

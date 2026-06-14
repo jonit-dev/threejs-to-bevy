@@ -100,6 +100,11 @@ fn assert_material(world: &mut World, id: &str) {
     assert!((color.red - 0x33 as f32 / 255.0).abs() < 0.01);
     assert!((color.green - 0x66 as f32 / 255.0).abs() < 0.01);
     assert!((color.blue - 0x99 as f32 / 255.0).abs() < 0.01);
+    assert!(material.base_color_texture.is_some());
+    assert!(material.emissive_texture.is_some());
+    assert!(material.metallic_roughness_texture.is_some());
+    assert!(material.normal_map_texture.is_some());
+    assert!(material.occlusion_texture.is_some());
     assert!((material.metallic - 0.25).abs() < 0.01);
     assert!((material.perceptual_roughness - 0.42).abs() < 0.01);
 }
@@ -190,7 +195,12 @@ fn write_rendering_bundle() -> PathBuf {
   "version": "0.1.0",
   "assets": [
     { "id": "mesh.cube", "kind": "mesh", "format": "generated", "primitive": "box", "size": [1, 1, 1] },
-    { "id": "mesh.capsule", "kind": "mesh", "format": "generated", "primitive": "capsule", "size": [0.4, 1.2] }
+    { "id": "mesh.capsule", "kind": "mesh", "format": "generated", "primitive": "capsule", "size": [0.4, 1.2] },
+    { "id": "tex.albedo", "kind": "texture", "format": "png", "path": "assets/albedo.png" },
+    { "id": "tex.normal", "kind": "texture", "format": "png", "path": "assets/normal.png" },
+    { "id": "tex.mr", "kind": "texture", "format": "png", "path": "assets/metallic-roughness.png" },
+    { "id": "tex.emissive", "kind": "texture", "format": "png", "path": "assets/emissive.png" },
+    { "id": "tex.occlusion", "kind": "texture", "format": "png", "path": "assets/occlusion.png" }
   ]
 }"#,
     );
@@ -200,7 +210,18 @@ fn write_rendering_bundle() -> PathBuf {
         r##"{
   "schema": "threenative.materials",
   "version": "0.1.0",
-  "materials": [{ "id": "mat.main", "kind": "standard", "color": "#336699", "roughness": 0.42, "metalness": 0.25 }]
+  "materials": [{
+    "id": "mat.main",
+    "kind": "standard",
+    "color": "#336699",
+    "baseColorTexture": "tex.albedo",
+    "normalTexture": "tex.normal",
+    "metallicRoughnessTexture": "tex.mr",
+    "emissiveTexture": "tex.emissive",
+    "occlusionTexture": "tex.occlusion",
+    "roughness": 0.42,
+    "metalness": 0.25
+  }]
 }"##,
     );
     write(

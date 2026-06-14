@@ -1,0 +1,165 @@
+import {
+  AmbientLight,
+  DirectionalLight,
+  PerspectiveCamera,
+  Scene,
+  action,
+  axis,
+  defineInputMap,
+  keyboard,
+  pointerAxis,
+} from "@threenative/sdk";
+
+const scene = new Scene({ id: "v5.functional.scene" });
+
+const camera = new PerspectiveCamera({
+  far: 120,
+  fovY: 60,
+  id: "camera.v5.main",
+  near: 0.05,
+});
+camera.position.set(0, 1.7, 7);
+
+const sun = new DirectionalLight({ color: "#ffd39a", id: "light.v5.sun", intensity: 3.1 });
+sun.position.set(-5, 8, 4);
+
+scene.add(camera);
+scene.add(new AmbientLight({ color: "#8fb2a5", id: "light.v5.ambient", intensity: 0.75 }));
+scene.add(sun);
+scene.setActiveCamera(camera);
+
+const input = defineInputMap({
+  actions: [
+    action("MoveBackward", [keyboard("KeyS")]),
+    action("MoveForward", [keyboard("KeyW")]),
+    action("MoveLeft", [keyboard("KeyA")]),
+    action("MoveRight", [keyboard("KeyD")]),
+    action("Sprint", [keyboard("ShiftLeft")]),
+  ],
+  axes: [
+    axis("LookX", { value: pointerAxis("deltaX") }),
+    axis("LookY", { value: pointerAxis("deltaY") }),
+  ],
+});
+
+export default {
+  input,
+  scene,
+  environment: {
+    sourceDir: "../v3-environment/assets-source/environment/glTF",
+    previewImage: "../v3-environment/assets-source/environment/Preview_2.jpg",
+    assetNames: ["CommonTree_1.gltf", "Grass_Common_Short.gltf", "Rock_Medium_1.gltf"],
+    budgets: {
+      maxAssetBytes: 5000000,
+      maxBundleBytes: 14000000,
+      supportedModelFormats: ["gltf"],
+      supportedTextureFormats: ["jpeg", "png"],
+    },
+    atmosphere: {
+      active: true,
+      id: "atmosphere.v5.functional",
+      sun: {
+        id: "sun.v5.functional",
+        direction: [-0.46, -0.82, -0.22],
+        color: "#ffd39a",
+        intensity: 3.1,
+        castsShadow: true,
+      },
+      ambient: {
+        mode: "constant",
+        color: "#8fb2a5",
+        intensity: 0.75,
+      },
+      fog: {
+        enabled: true,
+        mode: "exponential",
+        color: "#9eb6aa",
+        density: 0.02,
+      },
+      sky: {
+        color: "#9eb6aa",
+        horizonColor: "#d6c39d",
+      },
+      colorManagement: {
+        outputColorSpace: "srgb",
+        textureColorSpace: "srgb",
+        toneMapping: "aces",
+        exposure: 1.03,
+      },
+      shadows: {
+        enabled: true,
+        mapSize: 1024,
+        maxDistance: 40,
+        cascadeCount: 1,
+        bias: -0.0005,
+        normalBias: 0.02,
+        receiverPolicy: "terrain-and-path",
+      },
+    },
+    path: {
+      id: "v5.path.main",
+      width: 3,
+      edgeFalloff: 0.5,
+      clearingRadius: 2,
+      material: "v5.path.soil",
+      points: [
+        [0, 0, 8],
+        [-0.8, 0, 3],
+        [0.7, 0, -2],
+        [0, 0, -7],
+      ],
+    },
+    terrain: {
+      id: "terrain.v5.floor",
+      heightMode: "controlPoints",
+      controlPoints: [
+        [-8, 0.6, -8],
+        [-4, 0.2, 2],
+        [0, 0, 8],
+        [0.7, 0, -2],
+        [6, 0.55, -7],
+        [8, 0.8, 6],
+      ],
+      material: "v5.floor.moss",
+      bounds: {
+        min: [-8, 0, -8],
+        max: [8, 0, 9],
+      },
+    },
+    instances: [
+      {
+        id: "tree.v5.left",
+        kind: "hero",
+        sourceAsset: "env.CommonTree_1",
+        position: [-3.4, 0, 2.8],
+        scale: [1.3, 1.3, 1.3],
+        tags: ["tree", "textured", "foreground"],
+      },
+      {
+        id: "grass.v5.path",
+        kind: "hero",
+        sourceAsset: "env.Grass_Common_Short",
+        position: [2.2, 0, 0.6],
+        scale: [1.1, 1.1, 1.1],
+        tags: ["grass", "textured"],
+      },
+      {
+        id: "rock.v5.right",
+        kind: "hero",
+        sourceAsset: "env.Rock_Medium_1",
+        position: [2.8, 0, -2.6],
+        scale: [0.85, 0.85, 0.85],
+        tags: ["rock", "textured"],
+      },
+    ],
+    bookmarks: [
+      {
+        id: "bookmark.v5.textures",
+        position: [0, 1.7, 7],
+        yaw: 180,
+        pitch: -5,
+        expectedTags: ["textured", "tree", "grass", "rock"],
+      },
+    ],
+  },
+};

@@ -120,6 +120,14 @@ scripting effect behavior for transform/custom-component patches plus
 event/command/service log shapes. This is regression evidence for existing
 V3/V4 contracts, not a new rendering feature promotion by itself.
 
+V5-06 has landed the textured standard-material parity slice: supported material
+texture slots now serialize through SDK/compiler output, validate against
+texture assets and target formats, appear in shared conformance fixtures and
+observations, map to Three.js material texture slots, and map to Bevy
+`StandardMaterial` image handles for native regression coverage. The
+`examples/v5-functional` scene seed builds, validates, and visually verifies
+with bundle-local textured environment assets.
+
 V5 should add or improve Rust tests for native runtime behavior whenever work
 touches shared IR, native runtime mapping, native scripting behavior, Bevy
 diagnostics, or visual-quality features that claim native support. The expected

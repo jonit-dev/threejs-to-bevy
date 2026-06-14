@@ -7,6 +7,10 @@
       "kind": "standard",
       "color": "#ffffff",
       "baseColorTexture": "tex.albedo",
+      "normalTexture": "tex.normal",
+      "metallicRoughnessTexture": "tex.metallicRoughness",
+      "emissiveTexture": "tex.emissive",
+      "occlusionTexture": "tex.occlusion",
       "metalness": 0,
       "roughness": 0.7
     }

@@ -28,10 +28,10 @@ runtimes with explicit diagnostics for unsupported or invalid cases.
 
 **Implementation:**
 
-- [ ] Serialize supported texture slots deterministically.
-- [ ] Validate asset kind, supported format, missing files, and missing asset
+- [x] Serialize supported texture slots deterministically.
+- [x] Validate asset kind, supported format, missing files, and missing asset
   IDs.
-- [ ] Add accepted and rejected fixtures for base color, normal,
+- [x] Add accepted and rejected fixtures for base color, normal,
   metallic-roughness, emissive, occlusion, and alpha behavior if supported.
 
 #### Phase 2: Runtime Mapping and Evidence
@@ -47,10 +47,10 @@ runtimes with explicit diagnostics for unsupported or invalid cases.
 
 **Implementation:**
 
-- [ ] Resolve texture slots only from texture assets.
-- [ ] Apply supported slots to Three.js and Bevy materials.
-- [ ] Emit observations that expose applied texture refs.
-- [ ] Fail closed or document downgraded target behavior with stable
+- [x] Resolve texture slots only from texture assets.
+- [x] Apply supported slots to Three.js and Bevy materials.
+- [x] Emit observations that expose applied texture refs.
+- [x] Fail closed or document downgraded target behavior with stable
   diagnostics.
 
 ## Verification Strategy
@@ -64,8 +64,24 @@ runtimes with explicit diagnostics for unsupported or invalid cases.
 
 ## Acceptance Criteria
 
-- [ ] Texture slot support is covered by accepted and rejected fixtures.
-- [ ] Web and Bevy observations prove applied texture refs or stable downgrade
+- [x] Texture slot support is covered by accepted and rejected fixtures.
+- [x] Web and Bevy observations prove applied texture refs or stable downgrade
   diagnostics.
-- [ ] The V5 functional scene includes visibly textured environment assets.
+- [x] The V5 functional scene includes visibly textured environment assets.
 
+## Implementation Evidence
+
+- SDK/compiler texture asset references serialize deterministically for
+  base-color, normal, metallic-roughness, emissive, and occlusion slots.
+- IR validation accepts complete texture-slot material fixtures and rejects
+  missing, unsupported, and non-texture asset references with stable
+  diagnostics.
+- Web runtime maps validated texture assets to `MeshStandardMaterial` texture
+  slots and records slot/asset URL metadata on the texture object for runtime
+  inspection.
+- Bevy runtime maps validated texture references to `StandardMaterial` image
+  handles for the supported slots. Native image loading remains adapter-owned;
+  invalid refs are still rejected by the shared IR validator before runtime.
+- The `v5-drift-surface` conformance fixture now includes all supported texture
+  slots, and the V5 functional scene seed builds with bundle-local textured
+  environment assets.

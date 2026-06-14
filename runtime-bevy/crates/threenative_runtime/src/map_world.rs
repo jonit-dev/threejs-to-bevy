@@ -145,7 +145,7 @@ fn spawn_entity(
                 material_id: renderer.material.clone(),
             })?;
         let mesh = add_mesh(world, asset);
-        let material = add_material(world, material);
+        let material = add_material(world, material, assets_by_id);
         return Ok(world
             .spawn(PbrBundle {
                 mesh,
@@ -351,15 +351,43 @@ fn map_visibility(entity: &WorldEntity) -> Visibility {
     }
 }
 
-fn add_material(world: &mut World, material: &MaterialIr) -> Handle<StandardMaterial> {
+fn add_material(
+    world: &mut World,
+    material: &MaterialIr,
+    assets_by_id: &HashMap<&str, &AssetIr>,
+) -> Handle<StandardMaterial> {
     world
         .resource_mut::<Assets<StandardMaterial>>()
         .add(StandardMaterial {
             base_color: color_to_bevy(&material.color),
+            base_color_texture: texture_handle(
+                material.base_color_texture.as_deref(),
+                assets_by_id,
+            ),
+            emissive_texture: texture_handle(material.emissive_texture.as_deref(), assets_by_id),
             metallic: material.metalness.unwrap_or(0.0),
+            metallic_roughness_texture: texture_handle(
+                material.metallic_roughness_texture.as_deref(),
+                assets_by_id,
+            ),
+            normal_map_texture: texture_handle(material.normal_texture.as_deref(), assets_by_id),
+            occlusion_texture: texture_handle(material.occlusion_texture.as_deref(), assets_by_id),
             perceptual_roughness: material.roughness.unwrap_or(1.0),
             ..Default::default()
         })
+}
+
+fn texture_handle(
+    asset_id: Option<&str>,
+    assets_by_id: &HashMap<&str, &AssetIr>,
+) -> Option<Handle<Image>> {
+    let asset_id = asset_id?;
+    let asset = assets_by_id.get(asset_id)?;
+    if asset.kind == "texture" && asset.path.is_some() {
+        Some(Handle::default())
+    } else {
+        None
+    }
 }
 
 fn map_transform(entity: &WorldEntity) -> Transform {

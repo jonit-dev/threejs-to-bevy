@@ -24,6 +24,30 @@
       "kind": "texture",
       "format": "png",
       "path": "assets/albedo.png"
+    },
+    {
+      "id": "tex.normal",
+      "kind": "texture",
+      "format": "png",
+      "path": "assets/normal.png"
+    },
+    {
+      "id": "tex.metallicRoughness",
+      "kind": "texture",
+      "format": "png",
+      "path": "assets/metallic-roughness.png"
+    },
+    {
+      "id": "tex.emissive",
+      "kind": "texture",
+      "format": "png",
+      "path": "assets/emissive.png"
+    },
+    {
+      "id": "tex.occlusion",
+      "kind": "texture",
+      "format": "png",
+      "path": "assets/occlusion.png"
     }
   ]
 }

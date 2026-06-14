@@ -82,3 +82,114 @@ test("mapWorld should map v2 render fixture", () => {
   assert.equal(mapped.objectsById.get("capsule.hidden")?.visible, false);
   assert.equal(mapped.objectsById.get("cylinder.main") instanceof THREE.Mesh, true);
 });
+
+test("mapWorld should apply supported material texture slots", () => {
+  const mapped = mapWorld({
+    assets: {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [
+        { id: "mesh.cube", kind: "mesh", format: "generated", primitive: "box", size: [1, 1, 1] },
+        { id: "tex.albedo", kind: "texture", format: "png", path: "assets/albedo.png" },
+        { id: "tex.normal", kind: "texture", format: "png", path: "assets/normal.png" },
+        { id: "tex.mr", kind: "texture", format: "png", path: "assets/metallic-roughness.png" },
+        { id: "tex.emissive", kind: "texture", format: "png", path: "assets/emissive.png" },
+        { id: "tex.occlusion", kind: "texture", format: "png", path: "assets/occlusion.png" },
+      ],
+    },
+    manifest: {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "textured",
+      requiredCapabilities: {},
+      entry: { world: "world.ir.json" },
+      files: { assets: "assets.manifest.json", materials: "materials.ir.json", targetProfile: "target.profile.json" },
+    },
+    materials: {
+      schema: "threenative.materials",
+      version: "0.1.0",
+      materials: [
+        {
+          id: "mat.textured",
+          kind: "standard",
+          color: "#ffffff",
+          baseColorTexture: "tex.albedo",
+          emissiveTexture: "tex.emissive",
+          metallicRoughnessTexture: "tex.mr",
+          normalTexture: "tex.normal",
+          occlusionTexture: "tex.occlusion",
+        },
+      ],
+    },
+    source: "http://example.test/bundle",
+    targetProfile: { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] },
+    world: {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [
+        {
+          id: "cube.textured",
+          components: { MeshRenderer: { mesh: "mesh.cube", material: "mat.textured" } },
+        },
+      ],
+    },
+  });
+
+  const cube = mapped.objectsById.get("cube.textured");
+  assert.ok(cube instanceof THREE.Mesh);
+  assert.ok(cube.material instanceof THREE.MeshStandardMaterial);
+  assert.equal(cube.material.map?.userData.threenativeAssetId, "tex.albedo");
+  assert.equal(cube.material.normalMap?.userData.threenativeAssetId, "tex.normal");
+  assert.equal(cube.material.metalnessMap?.userData.threenativeAssetId, "tex.mr");
+  assert.equal(cube.material.roughnessMap?.userData.threenativeAssetId, "tex.mr");
+  assert.equal(cube.material.emissiveMap?.userData.threenativeAssetId, "tex.emissive");
+  assert.equal(cube.material.aoMap?.userData.threenativeAssetId, "tex.occlusion");
+  assert.equal(cube.material.map?.userData.threenativeUrl, "http://example.test/bundle/assets/albedo.png");
+  assert.equal(mapped.diagnostics.filter((diagnostic) => diagnostic.severity === "error").length, 0);
+});
+
+test("mapWorld should reject material texture slots that do not reference texture assets", () => {
+  const mapped = mapWorld({
+    assets: {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [
+        { id: "mesh.cube", kind: "mesh", format: "generated", primitive: "box", size: [1, 1, 1] },
+        { id: "model.not-texture", kind: "model", format: "gltf", path: "assets/model.gltf" },
+      ],
+    },
+    manifest: {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "invalid-texture",
+      requiredCapabilities: {},
+      entry: { world: "world.ir.json" },
+      files: { assets: "assets.manifest.json", materials: "materials.ir.json", targetProfile: "target.profile.json" },
+    },
+    materials: {
+      schema: "threenative.materials",
+      version: "0.1.0",
+      materials: [
+        { id: "mat.invalid", kind: "standard", color: "#ffffff", baseColorTexture: "model.not-texture" },
+      ],
+    },
+    targetProfile: { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] },
+    world: {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [
+        {
+          id: "cube.invalid",
+          components: { MeshRenderer: { mesh: "mesh.cube", material: "mat.invalid" } },
+        },
+      ],
+    },
+  });
+
+  const cube = mapped.objectsById.get("cube.invalid");
+  assert.ok(cube instanceof THREE.Mesh);
+  assert.ok(cube.material instanceof THREE.MeshStandardMaterial);
+  assert.equal(cube.material.map, null);
+  assert.equal(mapped.diagnostics[0]?.code, "TN-WEB-MATERIAL-TEXTURE-REFERENCE-INVALID");
+  assert.equal(mapped.diagnostics[0]?.path, "materials.ir.json/materials/mat.invalid/baseColorTexture");
+});

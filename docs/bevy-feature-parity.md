@@ -30,7 +30,7 @@ Baseline: the repo pins Bevy and `bevy_ecs` to `=0.14.2`.
 | Visibility | ⚠️ | IR and Bevy map visibility; confirm web enforcement and tests for `MeshRenderer.visible`/`Visibility`. |
 | Active camera/resource model | ⚠️ | `ActiveCamera` exists; general resources are still absent. |
 | Standard material scalar fields | ✅ | Color, metalness, and roughness are implemented for the base render slice. |
-| Material texture slots | ⚠️ | IR/compiler validation accepts texture slots; web/Bevy material loading does not yet apply real textures. |
+| Material texture slots | ⚠️ | V5-06 validates texture refs, web maps supported slots to Three.js textures, Bevy maps supported refs to `StandardMaterial` image handles, and conformance reports expose refs. Full native image loading/parity remains adapter-dependent. |
 | glTF/GLB asset bundling | ✅ | Compiler copies selected glTF/GLB, `.bin`, and texture dependencies; web-three and Bevy now resolve V3 environment instances to real bundle-local glTF scenes instead of placeholder model primitives. |
 | Asset manifest validation | ⚠️ | Bundle-relative existence, formats, and references are validated; diagnostics are still partly generic compiler errors instead of stable domain diagnostics everywhere. |
 | V3 environment scene IR | ✅ | `environment.scene.json` supports source assets, instances, scatter, terrain/path, hero placements, camera bookmarks, atmosphere, first-person config, and walkability metadata for the V3 proof scene. |
@@ -140,6 +140,14 @@ the existing V3 environment suite, and V4 scripting effect behavior for
 patch/event/command/service logs. This strengthens Bevy support evidence for
 already-promoted V3/V4 contracts and keeps future V5 visual work accountable
 to focused native tests.
+
+V5-06 is implemented for textured standard-material parity: texture slots are
+serialized deterministically, rejected unless they reference valid texture
+assets, surfaced in conformance observations, applied to Three.js material
+slots, mapped to Bevy `StandardMaterial` image handles, and demonstrated by the
+`examples/v5-functional` scene seed with bundle-local textured environment
+assets. Native texture image loading still needs later visual parity evidence
+before this row can move from partial to fully implemented.
 
 Priority V5 native coverage:
 

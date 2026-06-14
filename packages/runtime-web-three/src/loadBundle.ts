@@ -20,6 +20,7 @@ export interface IWebBundle {
   manifest: IBundleManifest;
   materials: IMaterialsIr;
   runtimeConfig?: IRuntimeConfigIr;
+  source?: string;
   systems?: ISystemsIr;
   targetProfile: ITargetProfile;
   ui?: IUiIr;
@@ -54,6 +55,7 @@ export async function loadBundle(source: string): Promise<IWebBundle> {
     manifest,
     materials: await readBundleJson<IMaterialsIr>(source, manifest.files.materials),
     runtimeConfig,
+    source,
     systems,
     targetProfile: await readBundleJson<ITargetProfile>(source, manifest.files.targetProfile),
     ui,
