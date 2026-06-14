@@ -1,0 +1,31 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "conformance-v6-resources-events",
+  "requiredCapabilities": {
+    "ecs": [
+      "event-schemas",
+      "events",
+      "resource-schemas",
+      "resources"
+    ],
+    "scripting": [
+      "event-reads",
+      "event-writes",
+      "resource-reads",
+      "resource-writes",
+      "systems"
+    ]
+  },
+  "entry": {
+    "world": "world.ir.json",
+    "systems": "systems.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "materials": "materials.ir.json",
+    "targetProfile": "target.profile.json",
+    "eventSchemas": "schemas/events.schema.json",
+    "resourceSchemas": "schemas/resources.schema.json"
+  }
+}

@@ -43,3 +43,13 @@ test("should report basic scene conformance semantics", async () => {
   assert.ok(report.entities.find((entity) => entity.id === "camera.main")?.components.includes("Camera"));
   assert.equal(report.entities.find((entity) => entity.id === "light.key")?.light?.kind, "directional");
 });
+
+test("should report resource and event conformance observations", async () => {
+  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/v6-resources-events/game.bundle"));
+  const mapped = mapWorld(bundle);
+  const report = reportWebConformance(bundle, mapped, "v6-resources-events");
+
+  assert.equal(report.fixture, "v6-resources-events");
+  assert.deepEqual(report.resources, [{ id: "Score", value: { value: 3 } }]);
+  assert.deepEqual(report.events, [{ id: "DamageEvent", values: [{ amount: 2, target: "player" }] }]);
+});

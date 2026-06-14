@@ -97,3 +97,30 @@ fn should_report_basic_scene_conformance_semantics() {
         .expect("camera entity should be serialized");
     assert_eq!(camera["camera"]["fovY"], 60.0);
 }
+
+#[test]
+fn should_report_resource_and_event_conformance_observations() {
+    let fixture = load_conformance_fixture("v6-resources-events");
+    let mut app = App::new();
+
+    map_bundle_into_world(app.world_mut(), &fixture.bundle).unwrap_or_else(|error| {
+        panic!(
+            "failed to map conformance fixture '{}' at '{}': {}",
+            fixture.name,
+            fixture.bundle_path.display(),
+            error
+        )
+    });
+    let report = report_bevy_conformance(app.world_mut(), &fixture.bundle, fixture.name);
+
+    assert_eq!(report.fixture, "v6-resources-events");
+    assert_eq!(report.resources.len(), 1);
+    assert_eq!(report.resources[0].id, "Score");
+    assert_eq!(report.resources[0].value, serde_json::json!({ "value": 3 }));
+    assert_eq!(report.events.len(), 1);
+    assert_eq!(report.events[0].id, "DamageEvent");
+    assert_eq!(
+        report.events[0].values,
+        vec![serde_json::json!({ "amount": 2, "target": "player" })]
+    );
+}

@@ -36,6 +36,16 @@ export interface IConformanceEnvironmentReport {
   terrain?: string;
 }
 
+export interface IConformanceEventReport {
+  id: string;
+  values: unknown[];
+}
+
+export interface IConformanceResourceReport {
+  id: string;
+  value: unknown;
+}
+
 export interface IConformanceEntityReport {
   camera?: {
     far: number;
@@ -84,7 +94,9 @@ export interface IConformanceReport {
   diagnostics: IRuntimeDiagnostic[];
   entities: IConformanceEntityReport[];
   environment?: IConformanceEnvironmentReport;
+  events: IConformanceEventReport[];
   fixture: string;
   materials: IConformanceMaterialReport[];
+  resources: IConformanceResourceReport[];
   runtime: "bevy" | "web-three";
 }

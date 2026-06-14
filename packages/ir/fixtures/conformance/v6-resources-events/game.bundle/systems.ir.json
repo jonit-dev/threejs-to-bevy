@@ -1,0 +1,27 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "resourceEventProbe",
+      "schedule": "update",
+      "commands": [],
+      "eventReads": [
+        "DamageEvent"
+      ],
+      "eventWrites": [
+        "DamageEvent"
+      ],
+      "queries": [],
+      "reads": [],
+      "resourceReads": [
+        "Score"
+      ],
+      "resourceWrites": [
+        "Score"
+      ],
+      "services": [],
+      "writes": []
+    }
+  ]
+}

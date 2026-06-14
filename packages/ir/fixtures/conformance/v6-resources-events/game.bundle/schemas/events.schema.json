@@ -1,0 +1,18 @@
+{
+  "schema": "threenative.event-schemas",
+  "version": "0.1.0",
+  "schemas": {
+    "DamageEvent": {
+      "fields": {
+        "amount": {
+          "kind": "number",
+          "required": true
+        },
+        "target": {
+          "kind": "string",
+          "required": true
+        }
+      }
+    }
+  }
+}

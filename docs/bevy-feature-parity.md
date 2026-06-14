@@ -234,10 +234,13 @@ validates queued resource write effects against `resourceWrites` before applying
 them and records those writes in canonical web effect logs. The native QuickJS
 host now deserializes the same `resourceReads`/`resourceWrites` metadata,
 validates queued resource write effects, applies declared writes to bundle world
-resources, and records resource entries in canonical native effect logs. This is
+resources, and records resource entries in canonical native effect logs. Shared
+web and Bevy conformance reports now expose serialized resource values and
+queued event payloads through the `v6-resources-events` fixture, with native
+artifact evidence under `artifacts/conformance/v6-resources-events`. This is
 not yet a full resource/event runtime parity claim; fixed web/native trace
-comparison, conformance evidence, and functional V6 scene proof still need to
-land before the gameplay ECS/systems row can move out of partial/missing status.
+comparison and functional V6 scene proof still need to land before the gameplay
+ECS/systems row can move out of partial/missing status.
 
 ## V7 Deep Engine Gap-Closure Plan
 

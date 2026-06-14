@@ -226,8 +226,12 @@ undeclared web resource writes before mutation, and records resource writes in
 the canonical web system effect log. The native QuickJS host now queues
 `ctx.resources.set` calls through the same effect shape, validates them against
 `resourceWrites`, applies declared writes to bundle world resources, and records
-resource log entries. Fixed web/native trace parity, conformance observations,
-and V6 scene evidence remain part of later V6-01 phases.
+resource log entries. Shared web and Bevy conformance reports now also expose
+serialized resource values and queued event payloads through the
+`v6-resources-events` fixture, and `pnpm verify:conformance` writes a native
+V6 observation artifact at
+`artifacts/conformance/v6-resources-events/bevy.report.json`. Fixed web/native
+trace parity and V6 scene evidence remain part of later V6-01 phases.
 
 V7 is now planned as the deep engine gap-closure milestone. It should continue
 parity work that is too large or risky for V6, such as deeper physics,

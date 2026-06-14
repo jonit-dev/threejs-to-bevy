@@ -15,8 +15,10 @@ pub struct ConformanceReport {
     pub entities: Vec<ConformanceEntityReport>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub environment: Option<ConformanceEnvironmentReport>,
+    pub events: Vec<ConformanceEventReport>,
     pub fixture: String,
     pub materials: Vec<ConformanceMaterialReport>,
+    pub resources: Vec<ConformanceResourceReport>,
     pub runtime: String,
 }
 
@@ -83,6 +85,18 @@ pub struct ConformanceEnvironmentReport {
     pub source_assets: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub terrain: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ConformanceEventReport {
+    pub id: String,
+    pub values: Vec<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ConformanceResourceReport {
+    pub id: String,
+    pub value: serde_json::Value,
 }
 
 #[derive(Debug, Serialize)]
@@ -210,6 +224,7 @@ pub fn report_bevy_conformance(
         diagnostics: Vec::new(),
         entities,
         environment: bundle.environment_scene.as_ref().map(report_environment),
+        events: report_events(bundle),
         fixture: fixture.into(),
         materials: bundle
             .materials
@@ -217,8 +232,37 @@ pub fn report_bevy_conformance(
             .iter()
             .map(report_material)
             .collect::<Vec<_>>(),
+        resources: report_resources(bundle),
         runtime: "bevy".to_owned(),
     }
+}
+
+fn report_events(bundle: &LoadedBundle) -> Vec<ConformanceEventReport> {
+    let mut events = bundle
+        .world
+        .events
+        .iter()
+        .map(|(id, value)| ConformanceEventReport {
+            id: id.clone(),
+            values: value.as_array().cloned().unwrap_or_default(),
+        })
+        .collect::<Vec<_>>();
+    events.sort_by(|left, right| left.id.cmp(&right.id));
+    events
+}
+
+fn report_resources(bundle: &LoadedBundle) -> Vec<ConformanceResourceReport> {
+    let mut resources = bundle
+        .world
+        .resources
+        .iter()
+        .map(|(id, value)| ConformanceResourceReport {
+            id: id.clone(),
+            value: value.clone(),
+        })
+        .collect::<Vec<_>>();
+    resources.sort_by(|left, right| left.id.cmp(&right.id));
+    resources
 }
 
 struct RuntimeEntityReport {

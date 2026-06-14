@@ -4,8 +4,10 @@ import type {
   IConformanceAssetReport,
   IConformanceEntityReport,
   IConformanceEnvironmentReport,
+  IConformanceEventReport,
   IConformanceMaterialReport,
   IConformanceReport,
+  IConformanceResourceReport,
   IEnvironmentSceneIr,
   IMaterialIr,
   IWorldEntity,
@@ -34,8 +36,10 @@ export function reportWebConformance(
       .map((entity) => reportEntity(entity, mapped, idsByObject))
       .sort((left, right) => left.id.localeCompare(right.id)),
     environment: bundle.environmentScene === undefined ? undefined : reportEnvironment(bundle.environmentScene),
+    events: reportEvents(bundle.world.events ?? {}),
     fixture,
     materials: bundle.materials.materials.map(reportMaterial).sort((left, right) => left.id.localeCompare(right.id)),
+    resources: reportResources(bundle.world.resources ?? {}),
     runtime: "web-three",
   };
 }
@@ -168,6 +172,21 @@ function reportEnvironment(environment: IEnvironmentSceneIr): IConformanceEnviro
     sourceAssets: environment.sourceAssets.map((asset) => asset.id).sort(),
     terrain: environment.terrain?.id,
   };
+}
+
+function reportEvents(events: Record<string, unknown>): IConformanceEventReport[] {
+  return Object.entries(events)
+    .map(([id, value]) => ({
+      id,
+      values: Array.isArray(value) ? value : [],
+    }))
+    .sort((left, right) => left.id.localeCompare(right.id));
+}
+
+function reportResources(resources: Record<string, unknown>): IConformanceResourceReport[] {
+  return Object.entries(resources)
+    .map(([id, value]) => ({ id, value }))
+    .sort((left, right) => left.id.localeCompare(right.id));
 }
 
 function componentNames(entity: IWorldEntity): string[] {

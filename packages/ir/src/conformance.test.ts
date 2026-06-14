@@ -49,6 +49,17 @@ test("should include capability tags for each conformance fixture", async () => 
     "rendering:visibility",
     "scripting:script-bundle",
   ]);
+  assertFixtureCapabilities(byName, "v6-resources-events", [
+    "ecs:event-schemas",
+    "ecs:events",
+    "ecs:resource-schemas",
+    "ecs:resources",
+    "scripting:event-reads",
+    "scripting:event-writes",
+    "scripting:resource-reads",
+    "scripting:resource-writes",
+    "scripting:systems",
+  ]);
 });
 
 function assertFixtureCapabilities(

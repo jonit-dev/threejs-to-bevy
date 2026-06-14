@@ -4,8 +4,10 @@ export type {
   IConformanceAssetReport,
   IConformanceEntityReport,
   IConformanceEnvironmentReport,
+  IConformanceEventReport,
   IConformanceMaterialReport,
   IConformanceReport,
+  IConformanceResourceReport,
 } from "./conformanceReport.js";
 export type { IRuntimeDiagnostic } from "./runtimeDiagnostics.js";
 export type { IInputActionIr, IInputAxisIr, IInputIr, InputBinding } from "./input.js";

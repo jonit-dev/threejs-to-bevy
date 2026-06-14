@@ -41,6 +41,25 @@ test("should localize material texture slot mismatches", () => {
   assert.equal(result.diagnostics[0]?.right, "tex.other");
 });
 
+test("should localize resource and event observation mismatches", () => {
+  const result = compareConformanceReports(
+    report("web-three", {
+      eventAmount: 2,
+      score: 3,
+    }),
+    report("bevy", {
+      eventAmount: 4,
+      score: 5,
+    }),
+  );
+
+  assert.equal(result.ok, false);
+  assert.equal(result.diagnostics[0]?.path, '$.resources["Score"].value.value');
+  assert.equal(result.diagnostics[0]?.left, 3);
+  assert.equal(result.diagnostics[0]?.right, 5);
+  assert.equal(result.diagnostics[1]?.path, '$.events["DamageEvent"].values[0].amount');
+});
+
 test("should pass matching reports", () => {
   const result = compareConformanceReports(
     report("web-three", { material: "mat.cube" }),
@@ -66,13 +85,21 @@ test("should pass matching gate commands and save report path", async () => {
     });
 
     assert.equal(result.ok, true);
-    assert.equal(result.steps.length, 4);
+    assert.equal(result.steps.length, 5);
     assert.equal(result.reportPath.endsWith("artifacts/conformance/verification-report.json"), true);
     assert.equal(result.artifacts.nativeBasicSceneReportPath.endsWith("artifacts/conformance/basic-scene/bevy.report.json"), true);
+    assert.equal(
+      result.artifacts.nativeV6ResourcesEventsReportPath.endsWith("artifacts/conformance/v6-resources-events/bevy.report.json"),
+      true,
+    );
     const report = JSON.parse(await readFile(result.reportPath, "utf8"));
     assert.equal(report.status, "pass");
-    assert.equal(report.steps.length, 4);
+    assert.equal(report.steps.length, 5);
     assert.equal(report.artifacts.nativeBasicSceneReportPath.endsWith("artifacts/conformance/basic-scene/bevy.report.json"), true);
+    assert.equal(
+      report.artifacts.nativeV6ResourcesEventsReportPath.endsWith("artifacts/conformance/v6-resources-events/bevy.report.json"),
+      true,
+    );
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -109,6 +136,16 @@ function report(runtime, overrides = {}) {
       },
     ],
     fixture: "basic-scene",
+    events: [
+      {
+        id: "DamageEvent",
+        values: [
+          {
+            amount: overrides.eventAmount ?? 2,
+          },
+        ],
+      },
+    ],
     materials: [
       {
         color: "#c0ffee",
@@ -117,6 +154,14 @@ function report(runtime, overrides = {}) {
         roughness: 0.5,
         textures: {
           baseColor: overrides.baseColor,
+        },
+      },
+    ],
+    resources: [
+      {
+        id: "Score",
+        value: {
+          value: overrides.score ?? 3,
         },
       },
     ],

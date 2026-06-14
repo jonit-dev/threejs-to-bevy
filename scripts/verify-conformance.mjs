@@ -13,9 +13,13 @@ export async function verifyConformance(options = {}) {
   const reportPath = options.reportPath ?? resolve(root, "artifacts/conformance/verification-report.json");
   const artifactDir = options.artifactDir ?? resolve(reportPath, "..");
   const basicSceneBundlePath = resolve(root, "packages/ir/fixtures/conformance/basic-scene/game.bundle");
+  const v6ResourcesEventsBundlePath = resolve(root, "packages/ir/fixtures/conformance/v6-resources-events/game.bundle");
   const nativeBasicSceneReportPath = options.nativeBasicSceneReportPath ?? resolve(artifactDir, "basic-scene/bevy.report.json");
+  const nativeV6ResourcesEventsReportPath =
+    options.nativeV6ResourcesEventsReportPath ?? resolve(artifactDir, "v6-resources-events/bevy.report.json");
   const artifacts = {
     nativeBasicSceneReportPath,
+    nativeV6ResourcesEventsReportPath,
   };
   const steps = [];
 
@@ -50,6 +54,22 @@ export async function verifyConformance(options = {}) {
       ],
       { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
     ],
+    [
+      "bevy native V6 resource/event observation report",
+      "cargo",
+      [
+        "run",
+        "-p",
+        "threenative_runtime",
+        "--bin",
+        "threenative_conformance",
+        "--",
+        v6ResourcesEventsBundlePath,
+        "v6-resources-events",
+        nativeV6ResourcesEventsReportPath,
+      ],
+      { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
+    ],
   ];
 
   for (const [name, command, args, commandOptions] of commands) {
@@ -75,6 +95,8 @@ export function compareConformanceReports(left, right, options = {}) {
   compareCatalog(diagnostics, fixture, left.runtime, right.runtime, "$.assets", left.assets, right.assets, { artifactPaths, bundlePath });
   compareCatalog(diagnostics, fixture, left.runtime, right.runtime, "$.materials", left.materials, right.materials, { artifactPaths, bundlePath });
   compareCatalog(diagnostics, fixture, left.runtime, right.runtime, "$.entities", left.entities, right.entities, { artifactPaths, bundlePath });
+  compareCatalog(diagnostics, fixture, left.runtime, right.runtime, "$.resources", left.resources, right.resources, { artifactPaths, bundlePath });
+  compareCatalog(diagnostics, fixture, left.runtime, right.runtime, "$.events", left.events, right.events, { artifactPaths, bundlePath });
   compareValue(diagnostics, fixture, left.runtime, right.runtime, "$.diagnostics", left.diagnostics ?? [], right.diagnostics ?? [], { artifactPaths, bundlePath });
 
   return {

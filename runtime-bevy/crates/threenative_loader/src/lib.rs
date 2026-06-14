@@ -78,6 +78,8 @@ pub struct WorldIr {
     pub version: String,
     pub entities: Vec<WorldEntity>,
     #[serde(default)]
+    pub events: HashMap<String, serde_json::Value>,
+    #[serde(default)]
     pub resources: HashMap<String, serde_json::Value>,
 }
 
