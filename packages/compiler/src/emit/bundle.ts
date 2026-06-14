@@ -298,6 +298,12 @@ function collectWorldCapabilities(world: IWorldIr | undefined, add: (domain: str
     }
     if (entity.components.Light !== undefined) {
       add("rendering", `light.${entity.components.Light.kind}`);
+      if (entity.components.Light.angle !== undefined) {
+        add("rendering", "light.angle");
+      }
+      if (entity.components.Light.range !== undefined) {
+        add("rendering", "light.range");
+      }
     }
     if (entity.components.RigidBody !== undefined) {
       add("physics", `rigid-body.${entity.components.RigidBody.kind}`);

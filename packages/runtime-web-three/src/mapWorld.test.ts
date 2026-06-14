@@ -51,11 +51,11 @@ test("mapWorld should map v2 render fixture", () => {
         },
         {
           id: "light.point",
-          components: { Light: { kind: "point", color: "#ffffff", intensity: 2 } },
+          components: { Light: { kind: "point", color: "#ffffff", intensity: 2, range: 12 } },
         },
         {
           id: "light.spot",
-          components: { Light: { kind: "spot", color: "#ffffff", intensity: 3 } },
+          components: { Light: { kind: "spot", color: "#ffffff", intensity: 3, range: 16, angle: 0.65 } },
         },
         {
           id: "capsule.hidden",
@@ -79,6 +79,9 @@ test("mapWorld should map v2 render fixture", () => {
   assert.equal(mapped.camera instanceof THREE.OrthographicCamera, true);
   assert.equal(mapped.objectsById.get("light.point") instanceof THREE.PointLight, true);
   assert.equal(mapped.objectsById.get("light.spot") instanceof THREE.SpotLight, true);
+  assert.equal((mapped.objectsById.get("light.point") as THREE.PointLight).distance, 12);
+  assert.equal((mapped.objectsById.get("light.spot") as THREE.SpotLight).distance, 16);
+  assert.equal((mapped.objectsById.get("light.spot") as THREE.SpotLight).angle, 0.65);
   assert.equal(mapped.objectsById.get("capsule.hidden")?.visible, false);
   assert.equal(mapped.objectsById.get("cylinder.main") instanceof THREE.Mesh, true);
 });

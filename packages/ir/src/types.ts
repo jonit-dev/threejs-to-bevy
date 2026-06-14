@@ -62,9 +62,11 @@ export interface IMeshRendererComponent {
 }
 
 export interface ILightComponent {
+  angle?: number;
   color: string | readonly [number, number, number] | readonly [number, number, number, number];
   intensity: number;
   kind: "ambient" | "directional" | "point" | "spot";
+  range?: number;
 }
 
 export interface IVisibilityComponent {

@@ -106,10 +106,14 @@ function mapEntity(
     return new THREE.AmbientLight(colorToThree(light.color), light.intensity);
   }
   if (light?.kind === "point") {
-    return new THREE.PointLight(colorToThree(light.color), light.intensity);
+    return new THREE.PointLight(colorToThree(light.color), light.intensity, light.range ?? 0);
   }
   if (light?.kind === "spot") {
-    return new THREE.SpotLight(colorToThree(light.color), light.intensity);
+    const spot = new THREE.SpotLight(colorToThree(light.color), light.intensity, light.range ?? 0);
+    if (light.angle !== undefined) {
+      spot.angle = light.angle;
+    }
+    return spot;
   }
 
   return new THREE.Object3D();

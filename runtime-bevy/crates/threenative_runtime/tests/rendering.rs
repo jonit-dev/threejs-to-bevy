@@ -60,6 +60,7 @@ fn assert_point_light(world: &mut World, id: &str) {
         .expect("point light should be spawned");
 
     assert!((light.intensity - 1_600.0).abs() < 0.01);
+    assert!((light.range - 12.0).abs() < 0.01);
 }
 
 fn assert_spot_light(world: &mut World, id: &str) {
@@ -70,6 +71,8 @@ fn assert_spot_light(world: &mut World, id: &str) {
         .expect("spot light should be spawned");
 
     assert!((light.intensity - 2_400.0).abs() < 0.01);
+    assert!((light.range - 16.0).abs() < 0.01);
+    assert!((light.outer_angle - 0.65).abs() < 0.01);
 }
 
 fn assert_transform(world: &mut World, id: &str, translation: [f32; 3], scale: [f32; 3]) {
@@ -167,8 +170,8 @@ fn write_rendering_bundle() -> PathBuf {
   "entities": [
     { "id": "camera.ui", "components": { "Camera": { "kind": "orthographic", "near": 0.1, "far": 100, "size": 4 } } },
     { "id": "light.sun", "components": { "Light": { "kind": "directional", "color": "#ffcc88", "intensity": 2 } } },
-    { "id": "light.point", "components": { "Light": { "kind": "point", "color": "#ffffff", "intensity": 2 } } },
-    { "id": "light.spot", "components": { "Light": { "kind": "spot", "color": "#ffffff", "intensity": 3 } } },
+    { "id": "light.point", "components": { "Light": { "kind": "point", "color": "#ffffff", "intensity": 2, "range": 12 } } },
+    { "id": "light.spot", "components": { "Light": { "kind": "spot", "color": "#ffffff", "intensity": 3, "range": 16, "angle": 0.65 } } },
     {
       "id": "cube.visible",
       "components": {

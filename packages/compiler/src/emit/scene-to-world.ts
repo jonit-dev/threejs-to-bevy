@@ -142,6 +142,7 @@ function visitChildren(
         kind: "point",
         color: "color" in child ? child.color : "#ffffff",
         intensity: "intensity" in child ? child.intensity : 1,
+        ...("range" in child && child.range !== undefined ? { range: child.range } : {}),
       };
     }
 
@@ -150,6 +151,8 @@ function visitChildren(
         kind: "spot",
         color: "color" in child ? child.color : "#ffffff",
         intensity: "intensity" in child ? child.intensity : 1,
+        ...("angle" in child && child.angle !== undefined ? { angle: child.angle } : {}),
+        ...("range" in child && child.range !== undefined ? { range: child.range } : {}),
       };
     }
 

@@ -6,10 +6,19 @@ export interface IAtmosphereObservation {
   ambientIntensity?: number;
   colorManagement?: IAtmosphereProfileIr["colorManagement"];
   diagnostics: Array<{ code: string; message: string; severity: "warning" }>;
+  fogColor?: string;
+  fogDensity?: number;
+  fogFar?: number;
   fogMode?: string;
+  fogNear?: number;
   profileId?: string;
+  shadowBias?: number;
+  shadowCascadeCount?: number;
+  shadowMaxDistance?: number;
   shadowMapSize?: number;
+  shadowNormalBias?: number;
   skyColor?: string;
+  skyHorizonColor?: string;
   sunColor?: string;
   sunDirection?: readonly [number, number, number];
   sunIntensity?: number;
@@ -49,10 +58,19 @@ export function observeAtmosphereProfile(profile: IAtmosphereProfileIr | undefin
     ambientIntensity: profile.ambient.intensity,
     colorManagement: profile.colorManagement,
     diagnostics: [],
+    fogColor: profile.fog?.enabled === true ? colorString(profile.fog.color) : undefined,
+    fogDensity: profile.fog?.enabled === true ? profile.fog.density : undefined,
+    fogFar: profile.fog?.enabled === true ? profile.fog.far : undefined,
     fogMode: profile.fog?.enabled === true ? profile.fog.mode : undefined,
+    fogNear: profile.fog?.enabled === true ? profile.fog.near : undefined,
     profileId: profile.id,
+    shadowBias: profile.shadows.bias,
+    shadowCascadeCount: profile.shadows.cascadeCount,
+    shadowMaxDistance: profile.shadows.maxDistance,
     shadowMapSize: profile.shadows.mapSize,
+    shadowNormalBias: profile.shadows.normalBias,
     skyColor: colorString(profile.sky.color),
+    skyHorizonColor: profile.sky.horizonColor === undefined ? undefined : colorString(profile.sky.horizonColor),
     sunColor: colorString(profile.sun.color),
     sunDirection: profile.sun.direction,
     sunIntensity: profile.sun.intensity,

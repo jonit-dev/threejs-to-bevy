@@ -148,12 +148,31 @@ pub struct CameraReport {
 
 #[derive(Debug, Serialize)]
 pub struct LightReport {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub angle: Option<f32>,
     pub color: ColorReport,
     pub intensity: f32,
     pub kind: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub range: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub runtime: Option<RuntimeLightReport>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
+pub struct RuntimeLightReport {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub angle: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub color: Option<ColorReport>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub intensity: Option<f32>,
+    pub kind: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub range: Option<f32>,
+}
+
+#[derive(Clone, Debug, Serialize)]
 #[serde(untagged)]
 pub enum ColorReport {
     Hex(String),
@@ -203,6 +222,7 @@ pub fn report_bevy_conformance(
 }
 
 struct RuntimeEntityReport {
+    light: Option<RuntimeLightReport>,
     parent: Option<String>,
     transform: Option<TransformReport>,
     visible: Option<bool>,
@@ -222,11 +242,16 @@ fn runtime_entities_by_id(world: &mut World) -> HashMap<String, RuntimeEntityRep
         Option<&Transform>,
         Option<&Parent>,
         Option<&Visibility>,
+        Option<&DirectionalLight>,
+        Option<&PointLight>,
+        Option<&SpotLight>,
     )>();
-    for (_entity, id, transform, parent, visibility) in query.iter(world) {
+    for (_entity, id, transform, parent, visibility, directional, point, spot) in query.iter(world)
+    {
         reports.insert(
             id.0.clone(),
             RuntimeEntityReport {
+                light: runtime_light(directional, point, spot),
                 parent: parent.and_then(|parent| ids_by_entity.get(&parent.get()).cloned()),
                 transform: transform.map(|transform| TransformReport {
                     position: transform.translation.to_array(),
@@ -244,6 +269,38 @@ fn runtime_entities_by_id(world: &mut World) -> HashMap<String, RuntimeEntityRep
     }
 
     reports
+}
+
+fn runtime_light(
+    directional: Option<&DirectionalLight>,
+    point: Option<&PointLight>,
+    spot: Option<&SpotLight>,
+) -> Option<RuntimeLightReport> {
+    if let Some(light) = directional {
+        return Some(RuntimeLightReport {
+            angle: None,
+            color: Some(color_report_from_bevy(light.color)),
+            intensity: Some(light.illuminance / 2_000.0),
+            kind: "directional".to_owned(),
+            range: None,
+        });
+    }
+    if let Some(light) = point {
+        return Some(RuntimeLightReport {
+            angle: None,
+            color: Some(color_report_from_bevy(light.color)),
+            intensity: Some(light.intensity / 800.0),
+            kind: "point".to_owned(),
+            range: Some(light.range),
+        });
+    }
+    spot.map(|light| RuntimeLightReport {
+        angle: Some(light.outer_angle),
+        color: Some(color_report_from_bevy(light.color)),
+        intensity: Some(light.intensity / 800.0),
+        kind: "spot".to_owned(),
+        range: Some(light.range),
+    })
 }
 
 fn report_environment(environment: &EnvironmentSceneIr) -> ConformanceEnvironmentReport {
@@ -340,9 +397,12 @@ fn report_entity(
         components: component_names(entity),
         id: entity.id.clone(),
         light: entity.components.light.as_ref().map(|light| LightReport {
+            angle: light.angle,
             color: color_report(&light.color),
             intensity: light.intensity,
             kind: light.kind.clone(),
+            range: light.range,
+            runtime: runtime.and_then(|runtime| runtime.light.clone()),
         }),
         material: entity
             .components
@@ -439,4 +499,12 @@ fn color_report(color: &ColorIr) -> ColorReport {
         ColorIr::Hex(hex) => ColorReport::Hex(hex.clone()),
         ColorIr::Rgb(rgb) => ColorReport::Rgb(*rgb),
     }
+}
+
+fn color_report_from_bevy(color: Color) -> ColorReport {
+    let color = color.to_srgba();
+    let red = (color.red.clamp(0.0, 1.0) * 255.0).round() as u8;
+    let green = (color.green.clamp(0.0, 1.0) * 255.0).round() as u8;
+    let blue = (color.blue.clamp(0.0, 1.0) * 255.0).round() as u8;
+    ColorReport::Hex(format!("#{red:02x}{green:02x}{blue:02x}"))
 }

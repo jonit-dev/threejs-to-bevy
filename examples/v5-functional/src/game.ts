@@ -2,7 +2,9 @@ import {
   AmbientLight,
   DirectionalLight,
   PerspectiveCamera,
+  PointLight,
   Scene,
+  SpotLight,
   action,
   axis,
   defineInputMap,
@@ -22,9 +24,15 @@ camera.position.set(0, 1.7, 7);
 
 const sun = new DirectionalLight({ color: "#ffd39a", id: "light.v5.sun", intensity: 3.1 });
 sun.position.set(-5, 8, 4);
+const lantern = new PointLight({ color: "#9fd7ff", id: "light.v5.point", intensity: 1.4, range: 7 });
+lantern.position.set(2.2, 2.1, 0.6);
+const canopySpot = new SpotLight({ angle: 0.55, color: "#fff1bf", id: "light.v5.spot", intensity: 1.8, range: 10 });
+canopySpot.position.set(-3.2, 4.5, 2.2);
 
 scene.add(camera);
 scene.add(new AmbientLight({ color: "#8fb2a5", id: "light.v5.ambient", intensity: 0.75 }));
+scene.add(lantern);
+scene.add(canopySpot);
 scene.add(sun);
 scene.setActiveCamera(camera);
 

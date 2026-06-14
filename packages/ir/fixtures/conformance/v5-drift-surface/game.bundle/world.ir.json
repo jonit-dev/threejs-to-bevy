@@ -13,6 +13,27 @@
       }
     },
     {
+      "id": "mesh.visible",
+      "components": {
+        "Transform": {
+          "position": [1.25, 0.5, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        },
+        "Hierarchy": {
+          "parent": "scene.root"
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.hidden.box",
+          "material": "mat.textured",
+          "visible": true
+        },
+        "Visibility": {
+          "visible": true
+        }
+      }
+    },
+    {
       "id": "mesh.hidden",
       "components": {
         "Transform": {
@@ -61,7 +82,8 @@
         "Light": {
           "kind": "point",
           "color": "#ffffff",
-          "intensity": 1.5
+          "intensity": 1.5,
+          "range": 12
         }
       }
     },
@@ -76,7 +98,9 @@
         "Light": {
           "kind": "spot",
           "color": "#ffd39a",
-          "intensity": 2
+          "intensity": 2,
+          "range": 16,
+          "angle": 0.65
         }
       }
     },

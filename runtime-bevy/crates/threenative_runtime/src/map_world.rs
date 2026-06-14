@@ -210,6 +210,7 @@ fn spawn_entity(
                     point_light: PointLight {
                         color: color_to_bevy(&light.color),
                         intensity: light.intensity * 800.0,
+                        range: light.range.unwrap_or(20.0),
                         ..Default::default()
                     },
                     transform,
@@ -225,6 +226,8 @@ fn spawn_entity(
                     spot_light: SpotLight {
                         color: color_to_bevy(&light.color),
                         intensity: light.intensity * 800.0,
+                        outer_angle: light.angle.unwrap_or(std::f32::consts::FRAC_PI_4),
+                        range: light.range.unwrap_or(20.0),
                         ..Default::default()
                     },
                     transform,

@@ -46,9 +46,18 @@ export interface IConformanceEntityReport {
   components: string[];
   id: string;
   light?: {
+    angle?: number;
     color: string | readonly [number, number, number] | readonly [number, number, number, number];
     intensity: number;
     kind: string;
+    range?: number;
+    runtime?: {
+      angle?: number;
+      color?: string | readonly [number, number, number];
+      intensity?: number;
+      kind: string;
+      range?: number;
+    };
   };
   material?: string;
   meshRenderer?: {

@@ -72,7 +72,7 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
             "sun": { "id": "sun.forest", "direction": [-0.4, -0.8, -0.2], "color": "#ffd39a", "intensity": 3.2, "castsShadow": true },
             "ambient": { "color": "#8fb2a5", "intensity": 0.8, "mode": "constant" },
             "fog": { "enabled": true, "mode": "exponential", "color": "#9eb6aa", "density": 0.028 },
-            "sky": { "color": "#9eb6aa" },
+            "sky": { "color": "#9eb6aa", "horizonColor": "#d6c39d" },
             "colorManagement": { "exposure": 1.05, "outputColorSpace": "srgb", "textureColorSpace": "srgb", "toneMapping": "aces" },
             "shadows": { "enabled": true, "mapSize": 1024, "maxDistance": 45, "cascadeCount": 1, "bias": -0.0005, "normalBias": 0.02, "receiverPolicy": "terrain-and-path" }
           },
@@ -86,8 +86,19 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
     let observation = observe_atmosphere(&bundle);
 
     assert_eq!(observation.profile_id.as_deref(), Some("atmosphere.forest"));
+    assert_eq!(observation.exposure, Some(1.05));
+    assert_eq!(observation.fog_color.as_deref(), Some("#9eb6aa"));
+    assert_eq!(observation.fog_density, Some(0.028));
     assert_eq!(observation.fog_mode.as_deref(), Some("exponential"));
+    assert_eq!(observation.output_color_space.as_deref(), Some("srgb"));
+    assert_eq!(observation.shadow_bias, Some(-0.0005));
+    assert_eq!(observation.shadow_cascade_count, Some(1));
+    assert_eq!(observation.shadow_max_distance, Some(45.0));
     assert_eq!(observation.shadow_map_size, Some(1024));
+    assert_eq!(observation.shadow_normal_bias, Some(0.02));
+    assert_eq!(observation.sky_horizon_color.as_deref(), Some("#d6c39d"));
+    assert_eq!(observation.texture_color_space.as_deref(), Some("srgb"));
+    assert_eq!(observation.tone_mapping.as_deref(), Some("aces"));
     assert_eq!(observation.diagnostics, Vec::<String>::new());
 
     let mut app = App::new();

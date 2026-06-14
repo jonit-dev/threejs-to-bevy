@@ -26,8 +26,8 @@ Baseline: the repo pins Bevy and `bevy_ecs` to `=0.14.2`.
 | Primitive mesh rendering | ✅ | Box/sphere/plane are proven; capsule/cylinder appear in IR/Bevy but need matching SDK/web confidence before treating as broad parity. |
 | Perspective camera | ✅ | Current cross-runtime path is usable. Orthographic exists in IR/Bevy but is not the V3 proof path. |
 | Ambient/directional lights | ✅ | Current baseline works. |
-| Point/spot lights | ⚠️ | SDK/compiler/Bevy paths exist, but verify web parity and add focused conformance before claiming done. |
-| Visibility | ⚠️ | IR and Bevy map visibility; confirm web enforcement and tests for `MeshRenderer.visible`/`Visibility`. |
+| Point/spot lights | ✅ | V5-07 preserves point range plus spot range/angle through SDK/compiler IR, maps them in web and Bevy, and exposes runtime-normalized conformance observations. |
+| Visibility | ✅ | V5-07 shared fixtures and runtime tests cover visible and hidden mesh states in web and Bevy reports. |
 | Active camera/resource model | ⚠️ | `ActiveCamera` exists; general resources are still absent. |
 | Standard material scalar fields | ✅ | Color, metalness, and roughness are implemented for the base render slice. |
 | Material texture slots | ⚠️ | V5-06 validates texture refs, web maps supported slots to Three.js textures, Bevy maps supported refs to `StandardMaterial` image handles, and conformance reports expose refs. Full native image loading/parity remains adapter-dependent. |
@@ -38,7 +38,7 @@ Baseline: the repo pins Bevy and `bevy_ecs` to `=0.14.2`.
 | V3 performance budgets | ✅ | Target profile, performance metrics, and `verify:v3` budget checks are wired for the V3 web proof. |
 | `verify:v3` release gate | ✅ | Script builds and validates the example, scaffolds and builds the V3 template, saves web performance reports, captures bookmarked Three.js/Bevy side-by-side visual artifacts from real model-loading paths, and runs V3 scene/atmosphere/first-person/walkability gates. |
 | Bevy V3 environment loading | ⚠️ | Native runtime maps `environment.scene.json` into terrain/path placeholders plus real glTF scene instances and can capture bookmarked Bevy screenshots; atmosphere/lighting parity and broader native interaction remain limited. |
-| Forest atmosphere | ⚠️ | Portable atmosphere data is emitted and observed for web/Bevy; native rendering parity for fog/sky/color management remains limited. |
+| Forest atmosphere | ⚠️ | V5-07 exposes fog, sky/horizon color, tone mapping, exposure, color spaces, and shadow fields in web/Bevy observations with focused tests. Native fog/sky/color rendering parity remains limited. |
 | First-person controls | ⚠️ | Portable first-person config, pointer-lock expectations, movement update, and walkthrough verification exist; native input capture is still smoke-level. |
 | Walkability and scene collision | ⚠️ | V3 walkable regions and blocking probes exist in IR, web resolver, Bevy helper, and release gate; this is not a general physics collision system. |
 | Coordinate/color-space conventions | ⚠️ | `docs/conventions.md` now defines axes, units, handedness, rotations, color space, and imported asset scale; runtime capture/parity work must keep proving adapters follow it. |
@@ -148,6 +148,15 @@ slots, mapped to Bevy `StandardMaterial` image handles, and demonstrated by the
 `examples/v5-functional` scene seed with bundle-local textured environment
 assets. Native texture image loading still needs later visual parity evidence
 before this row can move from partial to fully implemented.
+
+V5-07 is implemented for lighting, atmosphere, shadow, and color parity
+evidence: `v5-drift-surface` covers visible/hidden meshes and ranged point/spot
+lights, web and Bevy map point-light range plus spot-light range/angle, and
+runtime observations expose promoted fog, sky/horizon, color-management, shadow
+map, bias, normal-bias, cascade, and max-distance fields. The V5 functional
+scene builds, validates, and visually verifies with the promoted lighting and
+atmosphere fields, while native fog/sky/color output remains documented drift
+instead of a full renderer-parity claim.
 
 Priority V5 native coverage:
 

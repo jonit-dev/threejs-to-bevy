@@ -15,6 +15,8 @@ import type {
 import type { IWebBundle } from "./loadBundle.js";
 import type { IThreeWorld } from "./mapWorld.js";
 
+type IRuntimeLightReport = NonNullable<IConformanceEntityReport["light"]>["runtime"];
+
 export function reportWebConformance(
   bundle: IWebBundle,
   mapped: IThreeWorld,
@@ -81,9 +83,12 @@ function reportEntity(
   }
   if (entity.components.Light !== undefined) {
     report.light = {
+      angle: entity.components.Light.angle,
       color: entity.components.Light.color,
       intensity: entity.components.Light.intensity,
       kind: entity.components.Light.kind,
+      range: entity.components.Light.range,
+      runtime: object === undefined ? undefined : reportRuntimeLight(object),
     };
   }
   if (entity.components.Visibility !== undefined || entity.components.MeshRenderer?.visible !== undefined || object !== undefined) {
@@ -95,6 +100,33 @@ function reportEntity(
   }
 
   return report;
+}
+
+function reportRuntimeLight(object: THREE.Object3D): IRuntimeLightReport | undefined {
+  if (object instanceof THREE.DirectionalLight) {
+    return { color: `#${object.color.getHexString()}`, intensity: object.intensity, kind: "directional" };
+  }
+  if (object instanceof THREE.AmbientLight) {
+    return undefined;
+  }
+  if (object instanceof THREE.PointLight) {
+    return {
+      color: `#${object.color.getHexString()}`,
+      intensity: object.intensity,
+      kind: "point",
+      range: object.distance,
+    };
+  }
+  if (object instanceof THREE.SpotLight) {
+    return {
+      angle: object.angle,
+      color: `#${object.color.getHexString()}`,
+      intensity: object.intensity,
+      kind: "spot",
+      range: object.distance,
+    };
+  }
+  return undefined;
 }
 
 function reportAsset(asset: IAssetIr): IConformanceAssetReport {

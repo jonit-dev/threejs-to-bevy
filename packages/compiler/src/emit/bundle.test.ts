@@ -194,8 +194,8 @@ test("should derive manifest capabilities from emitted bundle IR", async () => {
     scene.add(parent);
     scene.add(camera);
     scene.add(new AmbientLight({ id: "light.ambient" }));
-    scene.add(new PointLight({ id: "light.point" }));
-    scene.add(new SpotLight({ id: "light.spot" }));
+    scene.add(new PointLight({ id: "light.point", range: 12 }));
+    scene.add(new SpotLight({ angle: 0.65, id: "light.spot", range: 16 }));
     scene.setActiveCamera(camera);
 
     const world = new World()
@@ -262,7 +262,9 @@ test("should derive manifest capabilities from emitted bundle IR", async () => {
     assertCapability(manifest, "physics", "rigid-body.dynamic");
     assertCapability(manifest, "rendering", "camera.active");
     assertCapability(manifest, "rendering", "camera.orthographic");
+    assertCapability(manifest, "rendering", "light.angle");
     assertCapability(manifest, "rendering", "light.point");
+    assertCapability(manifest, "rendering", "light.range");
     assertCapability(manifest, "rendering", "light.spot");
     assertCapability(manifest, "rendering", "material.texture.base-color");
     assertCapability(manifest, "rendering", "mesh.primitive.plane");

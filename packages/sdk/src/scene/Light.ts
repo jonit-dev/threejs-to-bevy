@@ -7,6 +7,15 @@ interface ILightOptions extends IObject3DOptions {
   intensity?: number;
 }
 
+interface IPointLightOptions extends ILightOptions {
+  range?: number;
+}
+
+interface ISpotLightOptions extends ILightOptions {
+  angle?: number;
+  range?: number;
+}
+
 export class DirectionalLight extends Object3D {
   public readonly color: ColorValue;
   public readonly intensity: number;
@@ -34,23 +43,38 @@ export class AmbientLight extends Object3D {
 export class PointLight extends Object3D {
   public readonly color: ColorValue;
   public readonly intensity: number;
+  public readonly range?: number;
 
-  public constructor(options: ILightOptions = {}) {
+  public constructor(options: IPointLightOptions = {}) {
     super(options);
     this.color = validateColor(options.color ?? "#ffffff");
     this.intensity = options.intensity ?? 1;
+    this.range = options.range;
     assertFiniteNumber(this.intensity, "TN_SDK_LIGHT_INVALID_INTENSITY", "PointLight.intensity");
+    if (this.range !== undefined) {
+      assertFiniteNumber(this.range, "TN_SDK_LIGHT_INVALID_RANGE", "PointLight.range");
+    }
   }
 }
 
 export class SpotLight extends Object3D {
+  public readonly angle?: number;
   public readonly color: ColorValue;
   public readonly intensity: number;
+  public readonly range?: number;
 
-  public constructor(options: ILightOptions = {}) {
+  public constructor(options: ISpotLightOptions = {}) {
     super(options);
+    this.angle = options.angle;
     this.color = validateColor(options.color ?? "#ffffff");
     this.intensity = options.intensity ?? 1;
+    this.range = options.range;
+    if (this.angle !== undefined) {
+      assertFiniteNumber(this.angle, "TN_SDK_LIGHT_INVALID_ANGLE", "SpotLight.angle");
+    }
     assertFiniteNumber(this.intensity, "TN_SDK_LIGHT_INVALID_INTENSITY", "SpotLight.intensity");
+    if (this.range !== undefined) {
+      assertFiniteNumber(this.range, "TN_SDK_LIGHT_INVALID_RANGE", "SpotLight.range");
+    }
   }
 }

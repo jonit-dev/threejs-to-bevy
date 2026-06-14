@@ -128,6 +128,15 @@ observations, map to Three.js material texture slots, and map to Bevy
 `examples/v5-functional` scene seed builds, validates, and visually verifies
 with bundle-local textured environment assets.
 
+V5-07 has landed the lighting, atmosphere, shadow, and color parity-evidence
+slice: shared fixtures now cover visible/hidden meshes plus ranged point and
+spot lights, SDK/compiler output preserves point-light range and spot-light
+range/angle, web and Bevy map those fields with runtime-normalized conformance
+observations, and atmosphere observations expose promoted fog, sky, color
+management, and shadow fields. Native fog/sky/color rendering remains
+target-drift rather than full visual parity, but the promoted fields are now
+validated, observable, and exercised by `examples/v5-functional`.
+
 V5 should add or improve Rust tests for native runtime behavior whenever work
 touches shared IR, native runtime mapping, native scripting behavior, Bevy
 diagnostics, or visual-quality features that claim native support. The expected

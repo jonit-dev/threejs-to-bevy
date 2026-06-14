@@ -132,6 +132,8 @@ pub struct LightComponent {
     pub kind: String,
     pub color: ColorIr,
     pub intensity: f32,
+    pub range: Option<f32>,
+    pub angle: Option<f32>,
 }
 
 #[derive(Debug, Deserialize)]
