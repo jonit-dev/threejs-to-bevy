@@ -12,8 +12,10 @@ V1 also gives an AI agent enough scaffold and visual feedback to keep building.
 V2 proves someone can build a real small game with it.
 V3 proves it can bundle and run a rich first-person environment scene.
 V4 proves native gameplay scripting through an embedded JavaScript backend.
-V5 proves it can support advanced engine and tooling extensions without
-breaking the portable contract.
+V5 proves the project can sustain itself while improving 3D visual quality:
+refactoring, stronger testing, release-harness work, and selected advanced
+rendering/content upgrades reduce drift after V1-V4.
+V6 moves online and editor workflows onto that cleaner foundation.
 ```
 
 ## Product Direction
@@ -82,7 +84,8 @@ focuses on turning the proven pipeline into a real game-making workflow.
 | V2 | Prove the flow can support an actual small game in web preview with a native data-path smoke. | A developer or AI can build, validate, preview, and iterate on a playable arena game faster than with raw Three.js, R3F, Godot, Unity, or Bevy, using ECS-compatible abstractions, R3F/JSX scene authoring, assets, input, UI, audio, physics, and constrained TypeScript gameplay systems. Native may gate scripted gameplay while still loading the same static bundle data. |
 | V3 | Prove the platform can bundle and run a rich first-person environment scene. | The `assets-source/environment` forest pack is composed into a dense stylized path scene with performant Three.js first-person camera controls, validates as one portable bundle, and runs through web and Bevy with documented content budgets and scene verification. |
 | V4 | Prove portable gameplay scripting can run natively. | The same constrained TypeScript systems emit one `scripts.bundle.js` that runs in web preview and embedded QuickJS-ng in Bevy native, with equivalent ECS patches, events, commands, and diagnostics for a representative gameplay fixture. |
-| V5 | Prove advanced parity and extensibility can fit the model. | Optional editor, networking, advanced rendering, plugin/native extension, and richer content workflows are added only where they preserve SDK-to-IR portability. |
+| V5 | Prove the V1-V4 foundation is maintainable while raising 3D visual quality. | Refactoring, conformance expansion, Rust/Bevy test coverage, fixture cleanup, diagnostic consistency, release-harness improvements, and selected advanced rendering/content upgrades make existing contracts safer and richer without taking on editor or online scope. |
+| V6 | Prove collaborative/editor workflows can fit the model. | Online services, scene editor workflows, inspectors, and richer authoring tools are introduced only after V5 hardens the SDK-to-IR-to-runtime harness. |
 
 ## V1: End-To-End Proof
 
@@ -373,7 +376,7 @@ author scene and gameplay with supported SDK or R3F/JSX
 - Rendering parity needed by the demo:
   - capsule and cylinder primitives if used by gameplay placeholders
   - point and spot lights
-  - orthographic camera support where UI or 2D overlays need it
+  - orthographic camera support where UI overlays need it
   - consistent visibility handling
 - Basic audio:
   - one-shot sound playback from gameplay events
@@ -595,8 +598,8 @@ The missing pieces are engine and pipeline capabilities, not more source props:
 Goal: prove that gameplay systems authored in TypeScript can run natively
 without exposing Bevy or embedding an unrestricted JavaScript runtime.
 
-V4 should make scripting a dedicated product gate. Web remains the reference
-iteration path and executes JavaScript directly. Native Bevy executes the same
+V4 is the completed scripting product gate. Web remains the reference iteration
+path and executes JavaScript directly. Native Bevy executes the same
 `scripts.bundle.js` through an embedded QuickJS-ng-style JavaScript host. The
 shared contract is equivalent ECS inputs producing equivalent patches, events,
 commands, service calls, and diagnostics. The release gate is `pnpm verify:v4`.
@@ -648,8 +651,8 @@ TypeScript gameplay systems
 
 ### V4 Demo
 
-The V4 demo should be a small deterministic gameplay scene, not a larger
-content milestone:
+The V4 demo is a small deterministic gameplay scene, not a larger content
+milestone:
 
 - one controllable entity
 - one enemy or target
@@ -658,7 +661,7 @@ content milestone:
 - one spawn or despawn command
 - identical web and native patch-log verification for a fixed input trace
 
-The demo can reuse the V2 arena assets if that keeps scope small.
+The demo keeps scope small and focuses on primitive scripting behavior.
 
 ### V4 Success Criteria
 
@@ -684,61 +687,182 @@ The demo can reuse the V2 arena assets if that keeps scope small.
 - user-authored native plugins
 - broad performance optimization for large script-heavy games
 
-## V5: Advanced Parity and Extensibility
+## V5: Refactoring, Harness Hardening, And 3D Visual Quality
 
-Goal: add higher-end engine and tooling capabilities after the portable product
-contract has proven itself through V1, V2, V3, and V4.
+Goal: make the V1-V4 platform easier to maintain while selectively improving
+the 3D visual bar.
 
-V5 should be selective. A feature belongs here only when it has a clear SDK
-surface, IR representation, validation story, and both web and native runtime
-mapping. Native-only or web-only features can exist as explicitly marked target
-capabilities, not as silent portability breaks.
+V5 should deliberately reduce scope pressure. It is not the editor milestone,
+not the networking milestone, and not the plugin milestone. Advanced rendering
+and advanced content can enter V5 only when they directly improve 3D scene
+quality, have a portable contract, and are covered by validation and runtime
+tests. Broad rendering systems and open-ended engine extensibility stay later.
+
+### Required Capabilities
+
+- Refactoring and architecture cleanup:
+  - tighten package boundaries between SDK, IR, compiler, CLI, web runtime, and
+    Bevy runtime
+  - remove duplicated fixture construction where structured builders or shared
+    fixtures can represent the same contract
+  - split overly broad compiler/runtime helpers into smaller units where tests
+    can cover behavior directly
+  - keep all refactors behavior-preserving unless a V5 PRD explicitly changes a
+    contract
+- Test harness improvements:
+  - make conformance fixture generation, normalization, and comparison easier to
+    reuse across V1-V4 contracts
+  - add focused regression tests around known drift areas from V3 and V4
+  - improve failure output for web/Bevy conformance mismatches, including paths
+    to the mismatched bundle fields and runtime observations
+  - reduce flaky visual and runtime checks by standardizing fixed traces,
+    deterministic clocks, and artifact paths
+- Rust/Bevy test coverage:
+  - expand `runtime-bevy` unit and integration tests for loader, renderer
+    mapping, environment scene loading, scripting host behavior, service
+    facades, and diagnostics
+  - add native-side conformance fixtures for every V5 visual-quality feature
+    that claims Bevy support
+  - keep web and Rust tests reading the same bundle fixtures where the contract
+    is shared instead of maintaining separate hand-written cases
+  - make native test artifacts easier to inspect, including observed scene
+    summaries, effect logs, screenshots where practical, and stable failure
+    messages
+  - include focused `cargo test` commands in each V5 PRD and add them to the V5
+    release-gate loop when the changed contract touches Bevy
+- Diagnostics and validation cleanup:
+  - normalize diagnostic shape across compiler, CLI, IR validation, and runtime
+    gates
+  - promote generic failures that block common workflows into stable diagnostic
+    codes with suggested fixes
+  - add accepted/rejected fixture coverage for high-risk validation rules
+- Release-gate and docs consistency:
+  - keep `pnpm verify`, `verify:conformance`, `verify:v3`, and `verify:v4`
+    aligned with the current status documents
+  - add a V5 release gate that runs the relevant TypeScript tests, Rust tests,
+    conformance checks, and visual-quality artifact checks repeatably
+  - require `cd runtime-bevy && cargo test` or a narrower documented Rust test
+    command for V5 work that changes shared IR, native runtime mapping, native
+    scripting behavior, or Bevy diagnostics
+  - document any intentional drift as future scope rather than accidental
+    support
+- Advanced 3D rendering quality:
+  - tighten material, lighting, shadow, atmosphere, fog, skybox, and color-space
+    parity where V3/V4 already expose partial contracts
+  - add target-gated post-processing or render-quality controls only when they
+    can fail closed with explicit diagnostics
+  - improve screenshot and visual-diff artifacts so visual-quality changes are
+    measurable instead of subjective
+  - keep custom shader/material graph work narrow and target-gated unless a V5
+    PRD defines a portable IR contract
+- Advanced 3D content quality:
+  - improve LOD, mesh/texture optimization, instancing, and asset budget
+    reporting for dense 3D scenes
+  - expand character-controller, raycast/shape-cast, animation, and particle
+    support only where the feature improves the existing 3D examples and can be
+    conformance-tested
+  - keep all new content features tied to maintained 3D examples and explicit
+    target capability profiles
+- Functional V5 scene:
+  - ship a functional 3D scene that visually demonstrates the V5 promoted
+    features where applicable
+  - use assets from `assets-source/environment` when they can reasonably show
+    the feature, especially for visual quality, dense content, instancing, LOD,
+    materials, lighting, atmosphere, movement, animation, or particles
+  - keep nonvisual refactoring and harness work tied to the same scene through
+    conformance fixtures, runtime observations, diagnostics, or artifact checks
+  - require web and Bevy evidence for every scene-visible feature that claims
+    cross-runtime support
+
+### V5 Success Criteria
+
+- Existing V1-V4 examples and gates still pass after refactoring.
+- Conformance failures are easier to localize to SDK, compiler, IR, web runtime,
+  Bevy runtime, or CLI behavior.
+- Rust/Bevy tests cover every V5 feature that claims native support, and shared
+  fixtures prove web/native behavior against the same IR inputs.
+- The test suite covers the currently supported contracts more directly and
+  with less duplicated setup.
+- Diagnostics are more consistent and actionable for the highest-volume failure
+  paths.
+- Promoted V5 visual-quality features have SDK/IR/validation/runtime coverage,
+  target capability behavior, and at least one maintained 3D example.
+- The V5 functional 3D scene visibly exercises most or all promoted V5
+  features where visual demonstration is applicable, using
+  `assets-source/environment` assets where practical.
+- No editor, online, plugin, or unrelated game-shape feature is claimed as
+  supported by V5 unless it is explicitly scoped as harness-only or internal
+  preparation.
+
+### V5 Explicit Exclusions
+
+- online services, networking, replication, or external integrations
+- visual scene editor or collaborative editor workflows
+- public plugin/native extension APIs
+- broad material graph or custom render-pipeline work without a portable V5 IR
+  contract
+- custom Rust/wgpu runtime replacement work
+
+## V6: Online And Scene Editor Foundations
+
+Goal: introduce collaborative and editor-oriented workflows after V5 has made
+the underlying contracts easier to verify.
+
+V6 should start with thin, portable workflows that still emit the same
+structured bundle consumed by web and native runtimes. The scene editor is a
+structured SDK/ECS/IR authoring surface, not a separate source of truth.
+Online work should begin with explicit service boundaries and deterministic
+local fallback behavior before any broad multiplayer promise.
+
+Each V6 editor or online feature must still be demonstrated through a
+functional 3D scene. Where the feature affects visible content, interaction, or
+runtime state, the release artifact should show it in-scene rather than only in
+logs or API tests.
 
 ### Candidate Capabilities
 
-- Advanced rendering:
-  - custom shader/material IR with target restrictions
-  - post-processing chains
-  - render-to-texture
-  - atmosphere, fog, skybox, and environment probes
-  - shadows beyond the V2/V3 minimum
-- Advanced content:
-  - richer physics integration
-  - raycasts and shape casts
-  - character controller helpers
-  - advanced animation blending, masks, IK, and morph targets
-  - particles
-  - LOD support
-  - meshopt and KTX2/Basis texture pipelines
-- Tooling and editor:
-  - visual scene editor
-  - runtime inspector
-  - richer devtools
-  - editor-oriented widgets
-  - broader R3F and Drei compatibility where components have portable IR
+- Scene editor foundation:
+  - visual scene editing backed by structured SDK/ECS/IR data
+  - runtime inspector for entities, components, assets, systems, and diagnostics
+  - editor-oriented widgets that save portable scene data instead of runtime
+    adapter state
+  - broader R3F and Drei compatibility only where components have portable IR
     meaning
+- Online/runtime services:
+  - project/session service boundaries
+  - networking experiments behind explicit target capability flags
+  - replication model research for ECS resources, components, events, and
+    commands
+  - external service integration points that do not leak into offline builds
+- Editor/dev workflow:
+  - local-first save/load flows for scene data
+  - bundle preview and validation directly from editor-authored data
+  - structured diffing for scene and asset changes
+  - collaboration primitives only after deterministic single-user editor flows
+    are stable
+
+### V6 Success Criteria
+
+- Editor-authored scenes validate and emit the same portable bundle shape as
+  code-authored scenes.
+- A V6 functional 3D scene demonstrates the editor-authored data and any online
+  or inspector feature that affects visible runtime behavior.
+- Online features fail closed when disabled or unsupported by a target profile.
+- Offline SDK/CLI workflows keep working without service dependencies.
+- Runtime/editor inspectors report the same entity, component, asset, and
+  diagnostic identifiers used by compiler and runtime artifacts.
+- Any networking or collaboration proof has deterministic test fixtures and a
+  clear non-networked fallback path.
+
+## V7+ Candidates: Advanced Engine Extensibility
+
+These are intentionally pushed beyond V5 and V6 until the maintainability,
+online, and editor foundations are proven.
+
 - Runtime extensibility:
   - native extension or plugin API
   - sandboxed Luau or Lua mods
   - custom Rust/wgpu runtime evaluation if Bevy blocks product-critical needs
-- Online/runtime services:
-  - networking experiments
-  - replication model
-  - external service integration points
-- Additional game shapes:
-  - stronger 2D rendering
-  - sprite sheets and atlases
-  - tilemaps
-  - React DOM-only app shell screens
-
-### V5 Success Criteria
-
-- Advanced capabilities fail closed when a target does not support them.
-- Optional extensions do not leak Bevy, Three.js internals, or native-only
-  assumptions into the base SDK contract.
-- At least one maintained example demonstrates each promoted V5 capability.
-- Validation can explain whether a feature is portable, web-only, native-only,
-  or unavailable for the selected target profile.
 
 ## Later Candidates
 
@@ -761,7 +885,12 @@ Before calling any version complete:
 - IR schema changes are versioned
 - CLI behavior is stable enough for examples
 - validator covers the new surface area
-- at least one example uses the new capability
+- at least one functional 3D scene uses the new capability
+- from V5 onward, the version scene should use assets from
+  `assets-source/environment` when those assets can reasonably demonstrate the
+  feature
+- features with visible output, interaction, or runtime state must be shown in
+  the version scene where applicable, not only covered by isolated unit tests
 - web and Bevy runtime adapter behavior is tested
 - examples can be rebuilt from source
 - docs match the actual supported API

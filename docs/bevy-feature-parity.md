@@ -79,19 +79,52 @@ Baseline: the repo pins Bevy and `bevy_ecs` to `=0.14.2`.
 5. Keep post-V3 features out of the V3 gate unless a PRD explicitly pulls in a
     narrow slice.
 
+## V5 Native Test And Visual-Quality Focus
+
+V5 should move unresolved Bevy drift into explicit Rust tests and shared
+conformance fixtures instead of relying on broad release-gate smoke checks.
+When a V5 feature claims native support, it needs native-side evidence in
+`runtime-bevy`, usually through focused `cargo test` coverage plus any relevant
+shared fixture or artifact comparison.
+
+Every V5 feature that affects visible output, interaction, or runtime state
+should also appear in the V5 functional 3D scene where practical. That scene
+should use `assets-source/environment` assets when they can show the feature,
+and Bevy evidence should connect back to the same scene through native tests,
+observed scene summaries, screenshots, effect logs, or diagnostics.
+
+Priority V5 native coverage:
+
+1. Loader and fixture reuse for shared IR bundles used by both web and Bevy
+   tests.
+2. Renderer mapping tests for material texture slots, visibility, lights,
+   shadows, atmosphere, fog, skybox, and color-space behavior promoted by V5.
+3. Environment-scene tests for dense 3D content quality: instancing/batching,
+   LOD, mesh/texture optimization metadata, asset budgets, and imported
+   transform conventions.
+4. Scripting-host tests for V4 behavior preserved through V5 refactors:
+   service facades, effect logs, diagnostics, and native patch application.
+5. Native artifact checks where practical: observed scene summaries, canonical
+   effect logs, screenshots, and stable failure messages that can be compared
+   against web runtime output.
+
+V5 is not the scene-editor, online, networking, plugin, or custom renderer
+milestone. Those remain V6 or later unless a V5 PRD scopes the work as internal
+cleanup or test-harness preparation.
+
 ## V4 Scripting Parity
 
 | Area | Status | What's drifting or missing |
 | --- | --- | --- |
 | V4 PRD scope and docs gate | ✅ | `docs/PRDs/v4` defines the QuickJS scripting proof and `check:docs:v4` rejects obvious scope drift. |
-| `systems.ir.json` scripting contract | ⚠️ | V4 system declarations now include reads/writes, queries, events, commands, services, stage, and script export metadata; Bevy consumes the primitive host subset, while broader dynamic world reconciliation is still pending. |
-| `scripts.bundle.js` compiler output | ⚠️ | The compiler emits deterministic portable script bundles only when systems exist, includes stable system ID metadata, passes an ESM loadability probe, and is loaded by the Bevy QuickJS host in focused tests. |
-| Web portable system runner | ⚠️ | Web executes the V4 primitive example through cloned portable query snapshots, validates effects before mutation, and emits canonical web patch/event/command/service logs for rotation, movement, spawn/despawn, event handoff, `physics.raycast`, and `animation.play`; fixed-trace native comparison is still pending. |
-| Bevy QuickJS host | ⚠️ | The native adapter embeds `quickjs-rusty`/QuickJS-ng, loads `scripts.bundle.js`, calls declared exports, snapshots portable ECS data, validates effects, applies declared patches, syncs scripted transform updates into the live Bevy preview, captures a V4 Bevy frame artifact, and keeps an unsupported-host diagnostic helper for unavailable builds; full dynamic native spawn/despawn reconciliation is still pending. |
-| Host service facades | ⚠️ | Web and native expose deterministic time/input/events/commands plus primitive `physics.raycast` and `animation.play` service facades with declared-service validation; full physics and animation playback remain post-V4. |
+| `systems.ir.json` scripting contract | ✅ | V4 system declarations include reads/writes, queries, events, commands, services, stage, and script export metadata for the primitive scripting proof. Broader dynamic world reconciliation is V5+ scope. |
+| `scripts.bundle.js` compiler output | ✅ | The compiler emits deterministic portable script bundles only when systems exist, includes stable system ID metadata, passes an ESM loadability probe, and is loaded by the Bevy QuickJS host in focused tests. |
+| Web portable system runner | ✅ | Web executes the V4 primitive example through cloned portable query snapshots, validates effects before mutation, and emits canonical web patch/event/command/service logs for rotation, movement, spawn/despawn, event handoff, `physics.raycast`, and `animation.play`. |
+| Bevy QuickJS host | ✅ | The native adapter embeds `quickjs-rusty`/QuickJS-ng, loads `scripts.bundle.js`, calls declared exports, snapshots portable ECS data, validates effects, applies declared patches, syncs scripted transform updates into the live Bevy preview, captures a V4 Bevy frame artifact, and keeps an unsupported-host diagnostic helper for unavailable builds. Full dynamic native spawn/despawn reconciliation is V5+ scope. |
+| Host service facades | ✅ | Web and native expose deterministic time/input/events/commands plus primitive `physics.raycast` and `animation.play` service facades with declared-service validation. Full physics and animation playback remain V5+ scope. |
 | Patch/event/command/service-call log parity | ✅ | `pnpm verify:v4` builds the primitive demo, runs web and native QuickJS over the same fixed trace, and compares canonical patch/event/command/service logs into `artifacts/v4/effects-diff.json`. |
 | V4 primitive scripting template | ✅ | `examples/v4-scripting` and `templates/v4-scripting` provide a self-contained primitive-only demo and `tn create --template v4-scripting` path for the current MVP API surface. |
-| Unsupported portable-script diagnostics | ⚠️ | DOM, Node/runtime imports, timer and worker APIs, arbitrary npm imports, undeclared writes, commands, events, and services fail before runtime for current bundled systems; deeper AST coverage is still pending. |
+| Unsupported portable-script diagnostics | ✅ | DOM, Node/runtime imports, timer and worker APIs, arbitrary npm imports, undeclared writes, commands, events, and services fail before runtime for current bundled systems. Deeper AST coverage is V5+ hardening scope. |
 
 ## Sources
 

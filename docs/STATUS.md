@@ -70,6 +70,33 @@ Current implemented V4 slice:
 - full dynamic native spawn/despawn reconciliation, runtime hot reload, or
   browser/native visual equivalence beyond the current primitive frame artifact
 
+## Next Roadmap Scope
+
+V5 is planned as a refactoring, test-harness, Rust/Bevy coverage, and 3D visual
+quality milestone. It should strengthen existing V1-V4 contracts before adding
+large new product surfaces, while allowing selected advanced 3D
+rendering/content work when the feature has SDK, IR, validation, web runtime,
+Bevy runtime, conformance, and release-gate coverage.
+
+V5 should add or improve Rust tests for native runtime behavior whenever work
+touches shared IR, native runtime mapping, native scripting behavior, Bevy
+diagnostics, or visual-quality features that claim native support. The expected
+verification loop for those changes includes focused `cargo test` commands, and
+broader V5 gates should include Rust tests alongside TypeScript and conformance
+checks.
+
+V5 and later versions must produce a functional 3D scene that visually
+demonstrates most or all promoted features where visual proof is applicable.
+Starting with V5, use `assets-source/environment` assets when they reasonably
+show the feature. Nonvisual refactoring and harness work should still connect
+to the version scene through shared fixtures, runtime observations,
+diagnostics, or artifact checks.
+
+V6 is the first planned online and scene-editor milestone. Online services,
+networking, replication, scene editor workflows, collaboration, and editor
+inspectors should not be treated as V5 support unless a V5 PRD explicitly
+limits the work to internal preparation or harness cleanup.
+
 ## V3 Proves
 
 - deterministic environment scene IR for the forest proof scene

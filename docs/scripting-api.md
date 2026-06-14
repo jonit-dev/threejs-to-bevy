@@ -4,10 +4,11 @@
 > by `pnpm verify:v4`. Broader gameplay APIs in this document remain design
 > direction until promoted by a later PRD.
 
-This document sketches the TypeScript gameplay APIs that should sit on top of
-the scripting model in [scripting.md](scripting.md). These APIs should feel like
-direct engine APIs, but they must lower to portable ECS reads, patches, events,
-commands, and service calls.
+This document tracks the TypeScript gameplay APIs that sit on top of the
+scripting model in [scripting.md](scripting.md). V4 is the completed primitive
+portable scripting baseline. V5 and later work should promote missing APIs only
+when they preserve portable ECS reads, patches, events, commands, and service
+calls.
 
 The public rule:
 
@@ -18,10 +19,10 @@ Native runs the same JavaScript bundle in QuickJS and calls Rust-owned services.
 No script receives raw Three.js, Bevy, renderer, filesystem, or platform handles.
 ```
 
-## V4 MVP Proof Scene
+## V4 Completed Proof Scene
 
-V4 should prove the scripting APIs with a small primitive scene, not the V3
-forest. The scene should be deterministic and easy to inspect:
+V4 proved the scripting APIs with a small primitive scene, not the V3 forest.
+The scene is deterministic and easy to inspect:
 
 - rotating cubes driven by `ctx.time`
 - one moving platform or target that patches `Transform`
@@ -34,12 +35,12 @@ forest. The scene should be deterministic and easy to inspect:
 - identical web JavaScript and native QuickJS patch/event/command logs for a
   fixed input trace
 
-The primitive scene must be driven by the same `scripts.bundle.js` in web
+The primitive scene is driven by the same `scripts.bundle.js` in web
 JavaScript and native QuickJS.
 
-The goal is not visual richness. The goal is to prove that authored TypeScript
-systems can run through both runtimes and produce the same validated ECS
-effects.
+The goal was not visual richness. The completed V4 proof shows that authored
+TypeScript systems can run through both runtimes and produce the same validated
+ECS effects.
 
 ## V4 MVP API Surface
 
@@ -70,13 +71,13 @@ direction until promoted by a PRD.
 | `ctx.animation.play(entity, clip, options)` | Prove engine service command shape. | Start a simple named transform animation or mocked clip command. |
 | `ctx.physics.raycast(options)` | Prove host query service shape. | Raycast from a cube to a primitive floor or target. |
 
-V4 may stub or narrowly implement `ctx.animation` and `ctx.physics` if the
-proof logs service calls and validates the host response shape. V4 must not
-turn into a full animation or physics milestone.
+V4 narrowly implements `ctx.animation` and `ctx.physics` as service-shape proof
+points. The proof logs service calls and validates host response shape, but it
+does not make V4 a full animation or physics milestone.
 
 ## V4 Minimal Components And Events
 
-The primitive proof scene should need only a small data vocabulary:
+The primitive proof scene uses only a small data vocabulary:
 
 ```ts
 type Transform = {
@@ -108,34 +109,39 @@ type HitEvent = {
 Use marker components or tags for `Player`, `Target`, `Projectile`,
 `Activated`, and `Disabled`.
 
-## Missing Or Post-V4 API Inventory
+## V5+ API Gap Inventory
 
 Keep this list close to the scripting API so implementation tickets can promote
-items deliberately.
+items deliberately. Starting in V5, promoted APIs must be demonstrated in a
+functional 3D scene when the behavior has visible output, interaction, or
+runtime state. Use `assets-source/environment` assets where they reasonably
+show the feature.
 
-| API Area | Status | Notes |
-| --- | --- | --- |
-| Query sorting and stable iteration order | Missing | V4 should not rely on implicit order. Add explicit sort later. |
-| Changed-query filters | Missing | Useful for optimization, not needed for V4 proof. |
-| System ordering constraints | Partial design | V4 can use stage order and fixed fixture ordering. |
-| System-local persisted state | Missing | Use resources/components in V4; state-preserving hot reload is later. |
-| Resources write API | Missing | V4 can read time/input and mutate components/events/commands only. |
-| Random resource | Missing | Needed for deterministic gameplay later; avoid randomness in V4 proof. |
-| Timers/cooldowns helpers | Missing | Can be modeled with `Lifetime` component in V4. |
-| Prefab instantiation | Missing | Use `commands.spawn` with explicit components in V4. |
-| Child hierarchy commands | Missing | Spawn flat primitive entities in V4. |
-| Bulk query snapshots/pagination | Missing | Important for performance later; V4 scene should stay small. |
-| Collision events from physics backend | Missing | V4 may use raycast/service proof, not full physics collision. |
-| Shape casts and overlap queries | Missing | Post-V4 physics API expansion. |
-| Character controller API | Missing | Post-V4. |
-| Full animation blending/state machine | Missing | V4 only proves command shape such as `animation.play`. |
-| Audio commands | Design only | Post-V4 unless a ticket pulls in one-shot command proof. |
-| UI commands/focus/input | Design only | Post-V4 portable UI milestone. |
-| Asset loading from script | Missing | Scripts may reference stable asset IDs only; no runtime loading in V4. |
-| Async/await in systems | Unsupported | Avoid until scheduler, determinism, and QuickJS behavior are specified. |
-| Network/file/platform APIs | Unsupported | Must remain outside portable systems. |
-| Arbitrary npm dependencies | Unsupported | Native QuickJS sandbox cannot assume them. |
-| Direct Three.js/Bevy access | Unsupported | Use portable context and service facades only. |
+| API Area | Starting Version | Status | Notes |
+| --- | --- | --- | --- |
+| Query sorting and stable iteration order | V5 | Missing | Add explicit stable ordering so visual and native conformance fixtures do not rely on incidental entity order. |
+| Changed-query filters | V5 | Missing | Useful for optimization and harness-scale regression fixtures. |
+| System ordering constraints | V5 | Partial design | Tighten stage ordering into explicit fixture-backed behavior before broader gameplay APIs depend on it. |
+| Bulk query snapshots/pagination | V5 | Missing | Important for dense 3D scenes, particles, and large environment fixtures. |
+| Random resource | V5 | Missing | Add deterministic seeded randomness only when visual scenes can replay the same scatter/gameplay result. |
+| Timers/cooldowns helpers | V5 | Missing | Promote as deterministic helpers over component state such as `Lifetime`. |
+| Collision events from physics backend | V5 | Missing | Promote only with web and Bevy fixture parity; V4 proved raycast service shape, not full collision events. |
+| Shape casts and overlap queries | V5 | Missing | Advanced 3D content quality candidate; requires target-gated service declarations and Rust tests. |
+| Character controller API | V5 | Missing | Candidate for 3D movement quality; must be visible in a functional scene and backed by native tests if claiming Bevy support. |
+| Full animation blending/state machine | V5 | Missing | Candidate for visual quality; V4 only proved command shape such as `animation.play`. |
+| Particle commands | V5 | Missing | Candidate only when particles are represented by portable scene/runtime data and visual verification artifacts. |
+| Resources write API | V5 or later | Missing | Requires deterministic scheduling and conformance coverage before broad gameplay use. |
+| System-local persisted state | V5 or later | Missing | Prefer resources/components first; state-preserving hot reload remains later. |
+| Prefab instantiation | V5 or V6 | Missing | V5 may add runtime-safe 3D content instantiation; V6 editor workflows may author prefabs. |
+| Child hierarchy commands | V5 or V6 | Missing | Needs scene-visible proof and deterministic command application across web and Bevy. |
+| Audio commands | V5 or later | Design only | Promote only with a maintained scene or gameplay fixture that needs audible runtime behavior. |
+| UI commands/focus/input | V6 or later | Design only | Better aligned with editor/inspector and online workflows unless a V5 visual-quality scene requires a narrow HUD. |
+| Asset lookup from script | V5 | Missing | Scripts may reference stable asset IDs and metadata; no arbitrary runtime file loading. |
+| Runtime asset loading from script | V6 or later | Unsupported | Requires service boundaries and offline fallback behavior. |
+| Async/await in systems | V6 or later | Unsupported | Avoid until scheduler, determinism, and QuickJS behavior are specified. |
+| Network/file/platform APIs | V6 or later | Unsupported | Network belongs to V6 service boundaries; file/platform access should remain outside portable systems. |
+| Arbitrary npm dependencies | Later | Unsupported | Native QuickJS sandbox cannot assume them. |
+| Direct Three.js/Bevy access | Never portable | Unsupported | Use portable context and service facades only. |
 
 ## API Shape
 
