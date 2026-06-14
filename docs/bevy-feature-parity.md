@@ -23,6 +23,14 @@ table below. Unchecked items are reminders to either promote through SDK/IR,
 validation, web, Bevy, conformance, and docs evidence, or explicitly defer with
 diagnostics. The baseline remains Bevy `=0.14.2`, not latest Bevy.
 
+Priority labels on unchecked items:
+
+- `P0`: Blocks a functional simple game or makes promoted behavior misleading.
+- `P1`: High-value small-game parity after the current promoted surface.
+- `P2`: Production workflow, scale, or polish needed before a stable release.
+- `P3`: Advanced engine parity, specialized workflows, or long-tail features.
+- `D`: Deferred or intentionally non-portable.
+
 ### 🧩 ECS, App, and Scheduling
 
 - [x] Entities, stable IDs, components, and component schemas
@@ -48,20 +56,20 @@ diagnostics. The baseline remains Bevy `=0.14.2`, not latest Bevy.
 - [x] Custom mesh generation and custom vertex attributes
 - [x] Mesh bounds, AABB/sphere intersection utilities, and sampling
 - [x] Curves, splines, easing functions, and path sampling
-- [x] Transform interpolation/smoothing helpers
-- [x] Gizmo geometry as debug/editor-only output
+- [x] `P1` Transform interpolation/smoothing helpers
+- [x] `P2` Gizmo geometry as debug/editor-only output
 
 ### 🎥 Cameras and Views
 
 - [x] Perspective camera and active camera selection
 - [x] Orthographic projection metadata and conformance observation
 - [x] First-person camera/controller metadata
-- [ ] Multiple active cameras, camera ordering, and split-screen
-- [ ] Viewports, sub-views, and render layers
-- [ ] Render-to-texture and depth-only camera targets
-- [ ] Custom projections
-- [ ] Camera effects: screen shake, orbit, pan, zoom, and view models
-- [ ] Screenshot/export camera workflows
+- [ ] `P1` Multiple active cameras, camera ordering, and split-screen
+- [ ] `P1` Viewports, sub-views, and render layers
+- [ ] `P2` Render-to-texture and depth-only camera targets
+- [ ] `P3` Custom projections
+- [ ] `P1` Camera effects: screen shake, orbit, pan, zoom, and view models
+- [ ] `P2` Screenshot/export camera workflows
 
 ### 💡 Lights, Shadows, and Global Illumination
 
@@ -70,32 +78,32 @@ diagnostics. The baseline remains Bevy `=0.14.2`, not latest Bevy.
 - [x] Point light with range
 - [x] Spot light with range and angle
 - [x] Shadow metadata and shadow conformance observations
-- [ ] Dynamic light limits, clustered-light behavior, and light culling budgets
-- [ ] Point-light PCF/shadow-filtering parity
-- [ ] Shadow bias controls
-- [ ] Per-mesh shadow caster/receiver controls
-- [ ] Spherical/area-light behavior
-- [ ] Lightmaps and mixed baked/dynamic lighting
-- [ ] Light probes and environment maps
-- [ ] Light gizmos/debug visualization
+- [ ] `P2` Dynamic light limits, clustered-light behavior, and light culling budgets
+- [ ] `P2` Point-light PCF/shadow-filtering parity
+- [ ] `P1` Shadow bias controls
+- [ ] `P1` Per-mesh shadow caster/receiver controls
+- [ ] `P3` Spherical/area-light behavior
+- [ ] `P3` Lightmaps and mixed baked/dynamic lighting
+- [ ] `P2` Light probes and environment maps
+- [ ] `P2` Light gizmos/debug visualization
 
 ### 🎨 Materials, Textures, and Shaders
 
 - [x] Standard material base color, metalness, roughness
 - [x] Texture references and web/native material slot observations
 - [x] Visibility flags on mesh renderers
-- [ ] Full native texture image loading and texture sampling parity
-- [ ] Alpha modes, transparency sorting, and blend modes
-- [ ] Emissive materials and HDR bloom contribution
-- [ ] Normal, occlusion, specular, clearcoat, and transmission maps
-- [ ] Parallax mapping and depth maps
-- [ ] Anisotropy, specular tint, and advanced PBR fields
-- [ ] Texture repeat/wrap/filter/UV transform controls
-- [ ] Multiple UV channels
-- [ ] Vertex colors
-- [ ] Custom materials and extended materials
-- [ ] Custom shaders, shader defs, storage buffers, and render phases
-- [ ] Bindless materials/textures
+- [ ] `P0` Full native texture image loading and texture sampling parity
+- [ ] `P1` Alpha modes, transparency sorting, and blend modes
+- [ ] `P1` Emissive materials and HDR bloom contribution
+- [ ] `P1` Normal, occlusion, specular, clearcoat, and transmission maps
+- [ ] `P3` Parallax mapping and depth maps
+- [ ] `P3` Anisotropy, specular tint, and advanced PBR fields
+- [ ] `P1` Texture repeat/wrap/filter/UV transform controls
+- [ ] `P2` Multiple UV channels
+- [ ] `P2` Vertex colors
+- [ ] `P2` Custom materials and extended materials
+- [ ] `P3` Custom shaders, shader defs, storage buffers, and render phases
+- [ ] `P3` Bindless materials/textures
 
 ### 🌌 3D Rendering, Atmosphere, and Post-Processing
 
@@ -103,23 +111,23 @@ diagnostics. The baseline remains Bevy `=0.14.2`, not latest Bevy.
 - [x] Fog, sky/horizon color, tone mapping, exposure, and color-space metadata
 - [x] Dense-content budget estimates and repeated-instance observations
 - [x] Source asset LOD metadata and fixed LOD-selection traces
-- [ ] Visual fog/sky/atmosphere parity in native output
-- [ ] Atmospheric scattering and atmospheric fog
-- [ ] Volumetric fog and volumetric lighting
-- [ ] Skyboxes and cubemap/compressed texture handling
-- [ ] Bloom
-- [ ] Anti-aliasing modes: MSAA, FXAA, TAA, SMAA
-- [ ] Color grading and filmic controls
-- [ ] Auto exposure
-- [ ] Depth of field
-- [ ] Motion blur and motion vectors
-- [ ] Screen-space reflections and mirrors
-- [ ] Decals
-- [ ] Deferred rendering
-- [ ] Visibility ranges/HLOD fade behavior
-- [ ] Renderer-level native instancing and batching parity
-- [ ] Virtual geometry/meshlet rendering
-- [ ] Custom post-processing passes
+- [ ] `P1` Visual fog/sky/atmosphere parity in native output
+- [ ] `P3` Atmospheric scattering and atmospheric fog
+- [ ] `P3` Volumetric fog and volumetric lighting
+- [ ] `P1` Skyboxes and cubemap/compressed texture handling
+- [ ] `P1` Bloom
+- [ ] `P1` Anti-aliasing modes: MSAA, FXAA, TAA, SMAA
+- [ ] `P2` Color grading and filmic controls
+- [ ] `P3` Auto exposure
+- [ ] `P2` Depth of field
+- [ ] `P3` Motion blur and motion vectors
+- [ ] `P3` Screen-space reflections and mirrors
+- [ ] `P2` Decals
+- [ ] `P3` Deferred rendering
+- [ ] `P2` Visibility ranges/HLOD fade behavior
+- [ ] `P1` Renderer-level native instancing and batching parity
+- [ ] `P3` Virtual geometry/meshlet rendering
+- [ ] `P3` Custom post-processing passes
 
 ### 📦 Assets, glTF, and Scenes
 
@@ -128,14 +136,14 @@ diagnostics. The baseline remains Bevy `=0.14.2`, not latest Bevy.
 - [x] Model scene instances in web and Bevy
 - [x] Material/texture/mesh asset diagnostics and conformance observations
 - [x] Typed animation clip metadata from model assets
-- [ ] Embedded assets
-- [ ] Web/network asset loading
-- [ ] Custom asset loaders and custom asset types
-- [ ] Multi-asset load synchronization
-- [ ] glTF extras and custom glTF vertex attributes
-- [ ] Query/update spawned glTF scene entities
-- [ ] Scene viewer/editor inspection workflow
-- [ ] Asset hot reload and state-preserving reload behavior
+- [ ] `P2` Embedded assets
+- [ ] `P2` Web/network asset loading
+- [ ] `P3` Custom asset loaders and custom asset types
+- [ ] `P1` Multi-asset load synchronization
+- [ ] `P2` glTF extras and custom glTF vertex attributes
+- [ ] `P1` Query/update spawned glTF scene entities
+- [ ] `P2` Scene viewer/editor inspection workflow
+- [ ] `P2` Asset hot reload and state-preserving reload behavior
 
 ### 🎞️ Animation and Particles
 
@@ -144,15 +152,15 @@ diagnostics. The baseline remains Bevy `=0.14.2`, not latest Bevy.
 - [x] Constrained animation graph metadata
 - [x] Animation event-marker metadata and fixed event traces
 - [x] Bounded particle-emitter metadata and deterministic spawn traces
-- [ ] Visual skeletal animation playback parity
-- [ ] Transform animation authored in code/IR
-- [ ] Animation blending beyond fixed graph traces
-- [ ] Animation masks
-- [ ] Animation stop/state query APIs
-- [ ] Morph-target animation
-- [ ] Retargeting and inverse kinematics
-- [ ] UI/property animation
-- [ ] Rendered particle systems
+- [ ] `P0` Visual skeletal animation playback parity
+- [ ] `P1` Transform animation authored in code/IR
+- [ ] `P1` Animation blending beyond fixed graph traces
+- [ ] `P2` Animation masks
+- [ ] `P1` Animation stop/state query APIs
+- [ ] `P2` Morph-target animation
+- [ ] `P3` Retargeting and inverse kinematics
+- [ ] `P2` UI/property animation
+- [ ] `P1` Rendered particle systems
 
 ### 🧱 Physics, Collision, and Character Movement
 
@@ -164,13 +172,13 @@ diagnostics. The baseline remains Bevy `=0.14.2`, not latest Bevy.
 - [x] Raycast-style grounding trace
 - [x] Overlap and shape-cast service traces
 - [x] Narrow character controller movement and blocking trace
-- [ ] Full rigid-body solver parity
-- [ ] Dynamic mesh colliders
-- [ ] Broad sensors beyond current trigger/overlap scope
-- [ ] Slopes, steps, ledges, moving platforms, and richer grounded state
-- [ ] Character interaction volumes and object pushing
-- [ ] Navmesh/pathfinding behavior
-- [ ] External physics backend integration strategy
+- [ ] `P1` Full rigid-body solver parity
+- [ ] `P2` Dynamic mesh colliders
+- [ ] `P1` Broad sensors beyond current trigger/overlap scope
+- [ ] `P0` Slopes, steps, ledges, moving platforms, and richer grounded state
+- [ ] `P1` Character interaction volumes and object pushing
+- [ ] `P2` Navmesh/pathfinding behavior
+- [ ] `P2` External physics backend integration strategy
 
 ### 🎮 Input, Picking, and Controls
 
@@ -178,14 +186,14 @@ diagnostics. The baseline remains Bevy `=0.14.2`, not latest Bevy.
 - [x] Pointer-lock expectation metadata
 - [x] UI action queue metadata
 - [x] Fixed first-person movement trace
-- [ ] Native input capture parity
-- [ ] Gamepad controls and gamepad viewer-style diagnostics
-- [ ] Touch input and gestures
-- [ ] Mouse picking and mesh picking
-- [ ] UI picking
-- [ ] Drag-and-drop picking events
-- [ ] Picking debug overlay
-- [ ] Input rebinding and device capability diagnostics
+- [ ] `P0` Native input capture parity
+- [ ] `P1` Gamepad controls and gamepad viewer-style diagnostics
+- [ ] `P1` Touch input and gestures
+- [ ] `P1` Mouse picking and mesh picking
+- [ ] `P1` UI picking
+- [ ] `P2` Drag-and-drop picking events
+- [ ] `P2` Picking debug overlay
+- [ ] `P1` Input rebinding and device capability diagnostics
 
 ### 🧭 UI, Text, and Accessibility
 
@@ -194,17 +202,17 @@ diagnostics. The baseline remains Bevy `=0.14.2`, not latest Bevy.
 - [x] Text, resource-bound bars, and focusable buttons
 - [x] Focus order, navigation links, input action refs, and safe-area metadata
 - [x] Fixed web/native focus and activation trace
-- [ ] Flex layout parity beyond promoted HUD cases
-- [ ] CSS grid-style layout
-- [ ] Anchors, size constraints, overflow, clipping, scrolling, and z-index
-- [ ] Borders, rounded corners, shadows, gradients, and transparency
-- [ ] Rich text styling: fonts, weights, wrapping, underline, strikethrough
-- [ ] Images, texture atlases, 9-slice scaling, flipping, and tiling
-- [ ] Standard widgets: sliders, scrollbars, virtual keyboard, context menus
-- [ ] Automatic directional navigation and tab navigation parity
-- [ ] UI transforms and render-to-texture/3D-world UI
-- [ ] Accessibility semantics and screen-reader-oriented diagnostics
-- [ ] UI debug overlay/gizmos
+- [ ] `P0` Flex layout parity beyond promoted HUD cases
+- [ ] `P2` CSS grid-style layout
+- [ ] `P1` Anchors, size constraints, overflow, clipping, scrolling, and z-index
+- [ ] `P1` Borders, rounded corners, shadows, gradients, and transparency
+- [ ] `P1` Rich text styling: fonts, weights, wrapping, underline, strikethrough
+- [ ] `P1` Images, texture atlases, 9-slice scaling, flipping, and tiling
+- [ ] `P2` Standard widgets: sliders, scrollbars, virtual keyboard, context menus
+- [ ] `P1` Automatic directional navigation and tab navigation parity
+- [ ] `P2` UI transforms and render-to-texture/3D-world UI
+- [ ] `P1` Accessibility semantics and screen-reader-oriented diagnostics
+- [ ] `P2` UI debug overlay/gizmos
 
 ### 🔊 Audio
 
@@ -213,14 +221,14 @@ diagnostics. The baseline remains Bevy `=0.14.2`, not latest Bevy.
 - [x] Portable volume and deterministic audio command observations
 - [x] Bus, listener, and spatial-emitter metadata
 - [x] Fixed loop start/stop lifecycle traces
-- [ ] Real 3D spatial attenuation and listener movement
-- [ ] Mixer buses, effects, ducking, and routing behavior
-- [ ] Playback handles for pause/resume/seek/stop/query
-- [ ] Pitch control and generated tone playback
-- [ ] Soundtrack/state-driven music transitions
-- [ ] Custom audio source/decoder support
-- [ ] Streaming and network audio
-- [ ] Platform-specific audio diagnostics
+- [ ] `P1` Real 3D spatial attenuation and listener movement
+- [ ] `P1` Mixer buses, effects, ducking, and routing behavior
+- [ ] `P0` Playback handles for pause/resume/seek/stop/query
+- [ ] `P2` Pitch control and generated tone playback
+- [ ] `P1` Soundtrack/state-driven music transitions
+- [ ] `P3` Custom audio source/decoder support
+- [ ] `P3` Streaming and network audio
+- [ ] `P2` Platform-specific audio diagnostics
 
 ### 🧪 Diagnostics, Tooling, Packaging, and Performance
 
@@ -230,34 +238,34 @@ diagnostics. The baseline remains Bevy `=0.14.2`, not latest Bevy.
 - [x] Release verification gates and artifact presence checks
 - [x] Desktop package manifest and runtime args for V7 packaging
 - [x] Fixed metric reports for frame/load/draw/entity/package-size budgets
-- [ ] Live profiler captures and native platform profiler evidence
-- [ ] GPU profiling and render-pass timing breakdowns
-- [ ] In-app FPS overlay and custom diagnostics
-- [ ] Signed installers and app-store/mobile packaging
-- [ ] Broader platform target profiles and repair hints
-- [ ] Large-scene stress-test fixtures for UI, text, lights, cubes, and animated models
+- [ ] `P2` Live profiler captures and native platform profiler evidence
+- [ ] `P2` GPU profiling and render-pass timing breakdowns
+- [ ] `P1` In-app FPS overlay and custom diagnostics
+- [ ] `P3` Signed installers and app-store/mobile packaging
+- [ ] `P1` Broader platform target profiles and repair hints
+- [ ] `P1` Large-scene stress-test fixtures for UI, text, lights, cubes, and animated models
 
 ### 🛠️ Editor, Debugging, and Developer Tools
 
 - [x] Local editor project snapshot validation
 - [x] Deterministic structured bundle-relative JSON diffs
 - [x] CLI entry points for `tn editor snapshot`, `tn editor apply`, and `tn editor diff`
-- [ ] Visual editor UI and inspector panels
+- [ ] `P2` Visual editor UI and inspector panels
 - [x] Save/load round trips through structured SDK/ECS/IR data
-- [ ] Scene hierarchy inspector and property editing
-- [ ] Gizmo overlays for transforms, lights, bounds, cameras, and UI nodes
-- [ ] Gamepad, scene viewer, and asset preview tools
-- [ ] Hot reload with state policy
-- [ ] Debug draw APIs for gameplay systems
+- [ ] `P2` Scene hierarchy inspector and property editing
+- [ ] `P2` Gizmo overlays for transforms, lights, bounds, cameras, and UI nodes
+- [ ] `P2` Gamepad, scene viewer, and asset preview tools
+- [ ] `P2` Hot reload with state policy
+- [ ] `P1` Debug draw APIs for gameplay systems
 
 ### 🚧 Intentionally Deferred or Non-Portable
 
-- [ ] Direct Bevy authoring from user TypeScript
-- [ ] Raw Three.js authoring as the source of truth
-- [ ] Public plugin escape hatches into renderer/runtime internals
-- [ ] Online services, networking, replication, and collaboration
-- [ ] Arbitrary npm, filesystem, worker, timer, or platform APIs in portable scripts
-- [ ] Backend-only features that cannot be represented in portable IR
+- [ ] `D` Direct Bevy authoring from user TypeScript
+- [ ] `D` Raw Three.js authoring as the source of truth
+- [ ] `D` Public plugin escape hatches into renderer/runtime internals
+- [ ] `D` Online services, networking, replication, and collaboration
+- [ ] `D` Arbitrary npm, filesystem, worker, timer, or platform APIs in portable scripts
+- [ ] `D` Backend-only features that cannot be represented in portable IR
 
 ## Parity Table
 
