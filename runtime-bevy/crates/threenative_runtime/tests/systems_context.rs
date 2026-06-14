@@ -161,6 +161,29 @@ fn systems_context_should_include_component_reflection_types() {
     assert_eq!(types[0].fields[1].default, Some(serde_json::json!(100)));
 }
 
+#[test]
+fn systems_context_should_include_fixed_trace_tasks_and_channels() {
+    let root = write_bundle("task-channel-context");
+    let bundle = load_bundle(&root).expect("bundle should load");
+    let system = &bundle
+        .systems
+        .as_ref()
+        .expect("systems should load")
+        .systems[0];
+
+    let snapshot = build_system_context_snapshot(&bundle, system, time());
+
+    assert_eq!(
+        snapshot.channel_events.get("damage"),
+        Some(&"DamageEvent".to_owned())
+    );
+    assert_eq!(snapshot.tasks.len(), 1);
+    assert_eq!(snapshot.tasks[0].id, "damageHandoff");
+    assert_eq!(snapshot.tasks[0].mode, "fixed-trace");
+    assert_eq!(snapshot.tasks[0].schedule, "update");
+    assert_eq!(snapshot.tasks[0].channel.as_deref(), Some("damage"));
+}
+
 fn write_bundle(name: &str) -> PathBuf {
     let root = root(name);
     fs::create_dir_all(&root).expect("temp bundle should be created");
@@ -271,6 +294,21 @@ fn write_bundle(name: &str) -> PathBuf {
       "event": "DamageEvent",
       "propagation": "target-ancestors",
       "phases": ["target", "bubble"]
+    }
+  ],
+  "channels": [
+    {
+      "id": "damage",
+      "event": "DamageEvent",
+      "delivery": "fixed-trace"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "damageHandoff",
+      "schedule": "update",
+      "mode": "fixed-trace",
+      "channel": "damage"
     }
   ],
   "systems": [

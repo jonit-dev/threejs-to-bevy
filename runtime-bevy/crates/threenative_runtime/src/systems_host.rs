@@ -433,6 +433,16 @@ function __tnInvokeSystem(options) {
         return clone(data.componentTypes);
       }
     },
+    channels: {
+      read(channel) {
+        const event = data.channelEvents[normalize(channel)];
+        return event ? clone(data.events[event] || []) : [];
+      },
+      send(channel, payload) {
+        const event = data.channelEvents[normalize(channel)];
+        if (event) effects.events.push({ event, payload: clone(payload) });
+      }
+    },
     resources: {
       get(name) { return clone(data.resources[name]); },
       set(name, value) {
@@ -442,6 +452,18 @@ function __tnInvokeSystem(options) {
     states: {
       get(id) {
         return data.states[normalize(id)] === undefined ? null : data.states[normalize(id)];
+      }
+    },
+    tasks: {
+      channel(id) {
+        const task = data.tasks.find((entry) => entry.id === normalize(id));
+        return task && typeof task.channel === "string" ? task.channel : null;
+      },
+      has(id) {
+        return data.tasks.some((entry) => entry.id === normalize(id));
+      },
+      list() {
+        return clone(data.tasks);
       }
     },
     query(query = { with: [], without: [] }) {

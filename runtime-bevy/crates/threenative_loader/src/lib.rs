@@ -325,6 +325,8 @@ pub struct TargetProfile {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct SystemsIr {
+    #[serde(default)]
+    pub channels: Vec<SystemChannelIr>,
     #[serde(default, rename = "componentHooks")]
     pub component_hooks: Vec<SystemComponentHookIr>,
     #[serde(default)]
@@ -333,7 +335,16 @@ pub struct SystemsIr {
     pub observers: Vec<SystemObserverIr>,
     pub schema: String,
     pub version: String,
+    #[serde(default)]
+    pub tasks: Vec<SystemTaskIr>,
     pub systems: Vec<SystemIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct SystemChannelIr {
+    pub delivery: String,
+    pub event: String,
+    pub id: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -347,6 +358,14 @@ pub struct SystemObserverIr {
     pub event: String,
     pub phases: Vec<String>,
     pub propagation: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct SystemTaskIr {
+    pub channel: Option<String>,
+    pub id: String,
+    pub mode: String,
+    pub schedule: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]

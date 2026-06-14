@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { ISystemsIr, IWorldIr } from "@threenative/ir";
 
-import { componentHookObservations, createSystemContext, evaluateStates, propagateObserverEvent } from "./context.js";
+import { channelEvent, componentHookObservations, createSystemContext, evaluateStates, propagateObserverEvent, taskChannel } from "./context.js";
 
 test("should expose fixed input trace", () => {
   const { context } = createSystemContext(makeWorld(), {
@@ -225,6 +225,40 @@ test("should expose component reflection metadata", () => {
     id: "Health",
   });
   assert.equal(context.components.type("Missing"), null);
+});
+
+test("should expose fixed-trace task metadata and event-backed channels", () => {
+  const world: IWorldIr = {
+    entities: [],
+    events: {
+      LifecycleEvent: [{ phase: "booted" }],
+    },
+    schema: "threenative.world",
+    version: "0.1.0",
+  };
+  const systems: ISystemsIr = {
+    channels: [{ delivery: "fixed-trace", event: "LifecycleEvent", id: "lifecycle" }],
+    schema: "threenative.systems",
+    systems: [],
+    tasks: [{ channel: "lifecycle", id: "handoff", mode: "fixed-trace", schedule: "update" }],
+    version: "0.1.0",
+  };
+
+  assert.equal(channelEvent(systems, "lifecycle"), "LifecycleEvent");
+  assert.equal(taskChannel(systems, "handoff"), "lifecycle");
+
+  const { context, events } = createSystemContext(world, { delta: 0.016, fixedDelta: 0.016, systems });
+
+  assert.deepEqual(context.channels.read("lifecycle"), [{ phase: "booted" }]);
+  assert.deepEqual(context.channels.read("missing"), []);
+  assert.equal(context.tasks.has("handoff"), true);
+  assert.equal(context.tasks.channel("handoff"), "lifecycle");
+  assert.deepEqual(context.tasks.list(), [{ channel: "lifecycle", id: "handoff", mode: "fixed-trace", schedule: "update" }]);
+
+  context.channels.send("lifecycle", { phase: "updated" });
+  context.channels.send("missing", { ignored: true });
+
+  assert.deepEqual(events, [{ event: "LifecycleEvent", payload: { phase: "updated" } }]);
 });
 
 function makeWorld(): IWorldIr {

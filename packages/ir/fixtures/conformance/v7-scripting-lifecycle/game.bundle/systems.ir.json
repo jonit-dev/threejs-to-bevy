@@ -71,6 +71,21 @@
       ]
     }
   ],
+  "channels": [
+    {
+      "id": "lifecycle",
+      "event": "LifecycleEvent",
+      "delivery": "fixed-trace"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "lifecycleHandoff",
+      "schedule": "update",
+      "mode": "fixed-trace",
+      "channel": "lifecycle"
+    }
+  ],
   "systems": [
     {
       "name": "bootLifecycle",

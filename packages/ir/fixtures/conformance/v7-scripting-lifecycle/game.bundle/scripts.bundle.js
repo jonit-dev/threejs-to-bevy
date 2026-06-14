@@ -4,25 +4,26 @@ const componentType = (ctx) => {
   const type = ctx.components.type("Health");
   return type === null ? "missing" : `${type.id}:${type.fields.map((field) => `${field.name}:${field.kind}:${field.required}`).join("|")}`;
 };
+const taskChannel = (ctx) => `${ctx.tasks.has("lifecycleHandoff")}:${ctx.tasks.channel("lifecycleHandoff")}:${ctx.tasks.list().length}`;
 
 const system_bootLifecycle = (ctx) => {
   const lifecycle = ctx.resources.get("Lifecycle");
   const score = ctx.resources.get("Score");
   const next = { combat: "safe", phase: "booted", ticks: lifecycle.ticks + 1 };
   ctx.resources.set("Lifecycle", next);
-  ctx.events.emit("LifecycleEvent", { componentHooks: componentHooks(ctx), componentType: componentType(ctx), game: ctx.states.get("Game"), observerRoute: observerRoute(ctx), phase: next.phase, score: score.value, scoreBand: ctx.states.get("ScoreBand") });
+  ctx.channels.send("lifecycle", { componentHooks: componentHooks(ctx), componentType: componentType(ctx), game: ctx.states.get("Game"), observerRoute: observerRoute(ctx), phase: next.phase, score: score.value, scoreBand: ctx.states.get("ScoreBand"), taskChannel: taskChannel(ctx) });
 };
 
 const system_fixedAccumulator = (ctx) => {
   const lifecycle = ctx.resources.get("Lifecycle");
   const score = ctx.resources.get("Score");
-  const handoffCount = ctx.events.read("LifecycleEvent").length;
+  const handoffCount = ctx.channels.read("lifecycle").length;
   const nextScore = { band: "high", value: score.value + handoffCount + 1 };
   const next = { combat: "safe", phase: "fixed", ticks: lifecycle.ticks + 1 };
   ctx.resources.set("Score", nextScore);
   ctx.resources.set("Lifecycle", next);
   ctx.animation.play("player", "pulse", { phase: next.phase });
-  ctx.events.emit("LifecycleEvent", { componentHooks: componentHooks(ctx), componentType: componentType(ctx), game: ctx.states.get("Game"), observerRoute: observerRoute(ctx), phase: next.phase, score: nextScore.value, scoreBand: ctx.states.get("ScoreBand") });
+  ctx.channels.send("lifecycle", { componentHooks: componentHooks(ctx), componentType: componentType(ctx), game: ctx.states.get("Game"), observerRoute: observerRoute(ctx), phase: next.phase, score: nextScore.value, scoreBand: ctx.states.get("ScoreBand"), taskChannel: taskChannel(ctx) });
 };
 
 const system_updateDamage = (ctx) => {
@@ -34,16 +35,16 @@ const system_updateDamage = (ctx) => {
   ctx.resources.set("Score", nextScore);
   ctx.resources.set("Lifecycle", next);
   ctx.commands.spawn("damage.marker", { Health: { current: nextScore.value } });
-  ctx.events.emit("LifecycleEvent", { combat: ctx.states.get("Combat"), componentHooks: componentHooks(ctx), componentType: componentType(ctx), game: ctx.states.get("Game"), observerRoute: observerRoute(ctx), phase: next.phase, score: nextScore.value, scoreBand: ctx.states.get("ScoreBand") });
+  ctx.channels.send("lifecycle", { combat: ctx.states.get("Combat"), componentHooks: componentHooks(ctx), componentType: componentType(ctx), game: ctx.states.get("Game"), observerRoute: observerRoute(ctx), phase: next.phase, score: nextScore.value, scoreBand: ctx.states.get("ScoreBand"), taskChannel: taskChannel(ctx) });
 };
 
 const system_postLifecycle = (ctx) => {
   const lifecycle = ctx.resources.get("Lifecycle");
   const score = ctx.resources.get("Score");
-  const next = { combat: "safe", phase: `post:${ctx.events.read("LifecycleEvent").length}`, ticks: lifecycle.ticks + 1 };
+  const next = { combat: "safe", phase: `post:${ctx.channels.read("lifecycle").length}`, ticks: lifecycle.ticks + 1 };
   ctx.resources.set("Lifecycle", next);
   ctx.commands.despawn("damage.marker");
-  ctx.events.emit("LifecycleEvent", { combat: ctx.states.get("Combat"), componentHooks: componentHooks(ctx), componentType: componentType(ctx), game: ctx.states.get("Game"), observerRoute: observerRoute(ctx), phase: next.phase, score: score.value, scoreBand: ctx.states.get("ScoreBand") });
+  ctx.channels.send("lifecycle", { combat: ctx.states.get("Combat"), componentHooks: componentHooks(ctx), componentType: componentType(ctx), game: ctx.states.get("Game"), observerRoute: observerRoute(ctx), phase: next.phase, score: score.value, scoreBand: ctx.states.get("ScoreBand"), taskChannel: taskChannel(ctx) });
 };
 
 export const systemIds = Object.freeze({

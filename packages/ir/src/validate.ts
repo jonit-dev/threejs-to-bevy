@@ -1141,13 +1141,13 @@ function validateSystems(
 ): void {
   const rawSystems = systems as unknown as Record<string, unknown>;
   for (const key of Object.keys(rawSystems)) {
-    if (!["componentHooks", "lifecycle", "observers", "schema", "systems", "version"].includes(key)) {
+    if (!["channels", "componentHooks", "lifecycle", "observers", "schema", "systems", "tasks", "version"].includes(key)) {
       diagnostics.push({
         code: "TN_IR_SYSTEMS_FIELD_UNSUPPORTED",
         message: `Systems IR uses unsupported field '${key}'.`,
         path: `${path}/${key}`,
         severity: "error",
-        suggestion: "Remove async, hot-reload, platform, or host-specific scripting metadata unless it is represented by promoted systems lifecycle fields.",
+        suggestion: "Remove platform or host-specific scripting metadata unless it is represented by promoted systems lifecycle, task, or channel fields.",
       });
     }
   }
@@ -1161,6 +1161,8 @@ function validateSystems(
   validateComponentHooks(systems.componentHooks, `${path}/componentHooks`, componentSchemas, diagnostics);
   validateSystemsLifecycle(systems.lifecycle, `${path}/lifecycle`, resourceSchemas, diagnostics);
   validateSystemObservers(systems.observers, `${path}/observers`, eventSchemas, diagnostics);
+  const channelIds = validateSystemChannels(systems.channels, `${path}/channels`, eventSchemas, diagnostics);
+  validateSystemTasks(systems.tasks, `${path}/tasks`, channelIds, diagnostics);
 
   systems.systems.forEach((system, systemIndex) => {
     const rawSystem = system as unknown as Record<string, unknown>;
@@ -1319,6 +1321,97 @@ function validateSystems(
         }
       }
     });
+  });
+}
+
+function validateSystemChannels(
+  value: ISystemsIr["channels"] | undefined,
+  path: string,
+  eventSchemas: Record<string, IIrNamedSchema>,
+  diagnostics: IIrDiagnostic[],
+): Set<string> {
+  const channelIds = new Set<string>();
+  if (value === undefined) {
+    return channelIds;
+  }
+  if (!Array.isArray(value)) {
+    diagnostics.push({ code: "TN_IR_SYSTEM_CHANNELS_INVALID", message: "Systems channels must be an array.", path, severity: "error" });
+    return channelIds;
+  }
+  const eventRoutes = new Set<string>();
+  value.forEach((channel, index) => {
+    const channelPath = `${path}/${index}`;
+    if (!isRecord(channel)) {
+      diagnostics.push({ code: "TN_IR_SYSTEM_CHANNEL_INVALID", message: "Channel declaration must be an object.", path: channelPath, severity: "error" });
+      return;
+    }
+    for (const key of Object.keys(channel)) {
+      if (!["delivery", "event", "id"].includes(key)) {
+        diagnostics.push({ code: "TN_IR_SYSTEM_CHANNEL_FIELD_UNSUPPORTED", message: `Channel declaration uses unsupported field '${key}'.`, path: `${channelPath}/${key}`, severity: "error" });
+      }
+    }
+    if (typeof channel.id !== "string" || channel.id.trim() === "") {
+      diagnostics.push({ code: "TN_IR_SYSTEM_CHANNEL_ID_INVALID", message: "Channel ID must be a non-empty string.", path: `${channelPath}/id`, severity: "error" });
+    } else if (channelIds.has(channel.id)) {
+      diagnostics.push({ code: "TN_IR_SYSTEM_CHANNEL_DUPLICATE", message: `Channel '${channel.id}' is duplicated.`, path: `${channelPath}/id`, severity: "error" });
+    } else {
+      channelIds.add(channel.id);
+    }
+    if (typeof channel.event !== "string" || channel.event.trim() === "" || eventSchemas[channel.event] === undefined) {
+      diagnostics.push({ code: "TN_IR_SYSTEM_CHANNEL_EVENT_SCHEMA_MISSING", message: "Channel event must reference a declared event schema.", path: `${channelPath}/event`, severity: "error" });
+    } else if (eventRoutes.has(channel.event)) {
+      diagnostics.push({ code: "TN_IR_SYSTEM_CHANNEL_EVENT_DUPLICATE", message: `Event '${channel.event}' is already bound to a channel.`, path: `${channelPath}/event`, severity: "error" });
+    } else {
+      eventRoutes.add(channel.event);
+    }
+    if (channel.delivery !== "fixed-trace") {
+      diagnostics.push({ code: "TN_IR_SYSTEM_CHANNEL_DELIVERY_UNSUPPORTED", message: "Channel delivery must be 'fixed-trace'.", path: `${channelPath}/delivery`, severity: "error" });
+    }
+  });
+  return channelIds;
+}
+
+function validateSystemTasks(
+  value: ISystemsIr["tasks"] | undefined,
+  path: string,
+  channelIds: ReadonlySet<string>,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!Array.isArray(value)) {
+    diagnostics.push({ code: "TN_IR_SYSTEM_TASKS_INVALID", message: "Systems tasks must be an array.", path, severity: "error" });
+    return;
+  }
+  const taskIds = new Set<string>();
+  value.forEach((task, index) => {
+    const taskPath = `${path}/${index}`;
+    if (!isRecord(task)) {
+      diagnostics.push({ code: "TN_IR_SYSTEM_TASK_INVALID", message: "Task declaration must be an object.", path: taskPath, severity: "error" });
+      return;
+    }
+    for (const key of Object.keys(task)) {
+      if (!["channel", "id", "mode", "schedule"].includes(key)) {
+        diagnostics.push({ code: "TN_IR_SYSTEM_TASK_FIELD_UNSUPPORTED", message: `Task declaration uses unsupported field '${key}'.`, path: `${taskPath}/${key}`, severity: "error" });
+      }
+    }
+    if (typeof task.id !== "string" || task.id.trim() === "") {
+      diagnostics.push({ code: "TN_IR_SYSTEM_TASK_ID_INVALID", message: "Task ID must be a non-empty string.", path: `${taskPath}/id`, severity: "error" });
+    } else if (taskIds.has(task.id)) {
+      diagnostics.push({ code: "TN_IR_SYSTEM_TASK_DUPLICATE", message: `Task '${task.id}' is duplicated.`, path: `${taskPath}/id`, severity: "error" });
+    } else {
+      taskIds.add(task.id);
+    }
+    if (task.mode !== "fixed-trace") {
+      diagnostics.push({ code: "TN_IR_SYSTEM_TASK_MODE_UNSUPPORTED", message: "Task mode must be 'fixed-trace'.", path: `${taskPath}/mode`, severity: "error" });
+    }
+    if (!["fixedUpdate", "postUpdate", "startup", "update"].includes(task.schedule as string)) {
+      diagnostics.push({ code: "TN_IR_SYSTEM_TASK_SCHEDULE_UNSUPPORTED", message: "Task schedule must be a supported system schedule.", path: `${taskPath}/schedule`, severity: "error" });
+    }
+    if (task.channel !== undefined && (typeof task.channel !== "string" || !channelIds.has(task.channel))) {
+      diagnostics.push({ code: "TN_IR_SYSTEM_TASK_CHANNEL_MISSING", message: "Task channel must reference a declared systems channel.", path: `${taskPath}/channel`, severity: "error" });
+    }
   });
 }
 

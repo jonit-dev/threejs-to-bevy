@@ -165,6 +165,120 @@ test("should reject schema event references without declarations", async () => {
   }
 });
 
+test("should validate fixed-trace systems tasks and channels", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-channels-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "manifest.json", {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "schema-test",
+      requiredCapabilities: {},
+      entry: {
+        systems: "systems.ir.json",
+        world: "world.ir.json",
+      },
+      files: {
+        assets: "assets.manifest.json",
+        materials: "materials.ir.json",
+        targetProfile: "target.profile.json",
+        componentSchemas: "schemas/components.schema.json",
+        eventSchemas: "schemas/events.schema.json",
+      },
+    });
+    await writeJson(root, "schemas/events.schema.json", {
+      schema: "threenative.event-schemas",
+      version: "0.1.0",
+      schemas: {
+        LifecycleEvent: {
+          fields: {
+            phase: { kind: "string", required: true },
+          },
+        },
+      },
+    });
+    await writeJson(root, "systems.ir.json", {
+      schema: "threenative.systems",
+      version: "0.1.0",
+      channels: [{ delivery: "fixed-trace", event: "LifecycleEvent", id: "lifecycle" }],
+      tasks: [{ channel: "lifecycle", id: "handoff", mode: "fixed-trace", schedule: "update" }],
+      systems: [
+        {
+          commands: [],
+          eventReads: ["LifecycleEvent"],
+          eventWrites: ["LifecycleEvent"],
+          name: "handoff",
+          queries: [],
+          reads: [],
+          resourceReads: [],
+          resourceWrites: [],
+          services: [],
+          schedule: "update",
+          writes: [],
+        },
+      ],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject invalid systems task and channel declarations", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-channels-invalid-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "manifest.json", {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "schema-test",
+      requiredCapabilities: {},
+      entry: {
+        systems: "systems.ir.json",
+        world: "world.ir.json",
+      },
+      files: {
+        assets: "assets.manifest.json",
+        materials: "materials.ir.json",
+        targetProfile: "target.profile.json",
+        componentSchemas: "schemas/components.schema.json",
+        eventSchemas: "schemas/events.schema.json",
+      },
+    });
+    await writeJson(root, "schemas/events.schema.json", {
+      schema: "threenative.event-schemas",
+      version: "0.1.0",
+      schemas: {},
+    });
+    await writeJson(root, "systems.ir.json", {
+      schema: "threenative.systems",
+      version: "0.1.0",
+      channels: [{ delivery: "timer", event: "LifecycleEvent", id: "lifecycle" }],
+      tasks: [{ channel: "missing", id: "handoff", mode: "promise", schedule: "async" }],
+      systems: [],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => diagnostic.code),
+      [
+        "TN_IR_SYSTEM_CHANNEL_EVENT_SCHEMA_MISSING",
+        "TN_IR_SYSTEM_CHANNEL_DELIVERY_UNSUPPORTED",
+        "TN_IR_SYSTEM_TASK_MODE_UNSUPPORTED",
+        "TN_IR_SYSTEM_TASK_SCHEDULE_UNSUPPORTED",
+        "TN_IR_SYSTEM_TASK_CHANNEL_MISSING",
+      ],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 async function writeBundle(root: string, health: Record<string, unknown>): Promise<void> {
   await mkdir(join(root, "schemas"), { recursive: true });
   await writeJson(root, "manifest.json", {

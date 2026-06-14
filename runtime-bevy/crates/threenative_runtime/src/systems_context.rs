@@ -9,6 +9,7 @@ use threenative_loader::{
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NativeSystemContextSnapshot {
+    pub channel_events: BTreeMap<String, String>,
     pub component_hooks: BTreeMap<String, Vec<NativeComponentHookObservation>>,
     pub component_types: NativeComponentReflectionRegistry,
     pub entities: Vec<NativeSystemEntitySnapshot>,
@@ -17,6 +18,7 @@ pub struct NativeSystemContextSnapshot {
     pub observer_routes: BTreeMap<String, BTreeMap<String, Vec<NativeObserverPropagationStep>>>,
     pub resources: BTreeMap<String, Value>,
     pub states: BTreeMap<String, Option<String>>,
+    pub tasks: Vec<NativeTaskDeclaration>,
     pub time: NativeSystemTimeSnapshot,
 }
 
@@ -47,6 +49,16 @@ pub struct NativeComponentHookObservation {
     pub component: String,
     pub entity: String,
     pub hook: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeTaskDeclaration {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub channel: Option<String>,
+    pub id: String,
+    pub mode: String,
+    pub schedule: String,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -112,6 +124,7 @@ pub fn build_system_context_snapshot_with_events(
         .collect();
 
     NativeSystemContextSnapshot {
+        channel_events: channel_events(bundle),
         component_hooks: component_hook_observations(bundle),
         component_types: component_reflection_registry(bundle),
         entities,
@@ -125,8 +138,43 @@ pub fn build_system_context_snapshot_with_events(
             .map(|(key, value)| (key.clone(), value.clone()))
             .collect(),
         states: evaluate_states(bundle),
+        tasks: task_declarations(bundle),
         time,
     }
+}
+
+pub fn channel_events(bundle: &LoadedBundle) -> BTreeMap<String, String> {
+    bundle
+        .systems
+        .as_ref()
+        .map(|systems| {
+            systems
+                .channels
+                .iter()
+                .filter(|channel| channel.delivery == "fixed-trace")
+                .map(|channel| (channel.id.clone(), channel.event.clone()))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+pub fn task_declarations(bundle: &LoadedBundle) -> Vec<NativeTaskDeclaration> {
+    bundle
+        .systems
+        .as_ref()
+        .map(|systems| {
+            systems
+                .tasks
+                .iter()
+                .map(|task| NativeTaskDeclaration {
+                    channel: task.channel.clone(),
+                    id: task.id.clone(),
+                    mode: task.mode.clone(),
+                    schedule: task.schedule.clone(),
+                })
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 pub fn component_reflection_registry(bundle: &LoadedBundle) -> NativeComponentReflectionRegistry {

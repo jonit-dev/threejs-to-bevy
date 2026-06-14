@@ -47,6 +47,7 @@ export interface IIrSystemDeclaration {
 }
 
 export interface ISystemsIr {
+  channels?: IIrSystemChannelDeclaration[];
   componentHooks?: IIrComponentHookDeclaration[];
   lifecycle?: {
     appStates?: IIrAppStateDeclaration[];
@@ -58,6 +59,7 @@ export interface ISystemsIr {
   };
   observers?: IIrObserverDeclaration[];
   schema: "threenative.systems";
+  tasks?: IIrSystemTaskDeclaration[];
   version: SchemaVersion;
   systems: IIrSystemDeclaration[];
 }
@@ -75,6 +77,19 @@ export interface IIrObserverDeclaration {
   event: string;
   phases: IrObserverPhase[];
   propagation: "target-ancestors";
+}
+
+export interface IIrSystemChannelDeclaration {
+  delivery: "fixed-trace";
+  event: string;
+  id: string;
+}
+
+export interface IIrSystemTaskDeclaration {
+  channel?: string;
+  id: string;
+  mode: "fixed-trace";
+  schedule: IrSystemSchedule;
 }
 
 export interface IIrStateSource {

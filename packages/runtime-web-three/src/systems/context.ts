@@ -42,6 +42,10 @@ export interface ISystemContext {
     type(component: unknown): IComponentReflectionType | null;
     types(): IComponentReflectionRegistry;
   };
+  channels: {
+    read(channel: unknown): unknown[];
+    send(channel: unknown, payload: unknown): void;
+  };
   events: {
     emit(event: unknown, payload: unknown): void;
     read(event: unknown): unknown[];
@@ -62,6 +66,11 @@ export interface ISystemContext {
   };
   states: {
     get(id: string): string | null;
+  };
+  tasks: {
+    channel(id: unknown): string | null;
+    has(id: unknown): boolean;
+    list(): ITaskDeclarationView[];
   };
   physics: {
     overlap(options: IOverlapRequest): IOverlapResult;
@@ -87,6 +96,13 @@ export interface IComponentHookObservation {
   component: string;
   entity: string;
   hook: "onAdd" | "onInsert";
+}
+
+export interface ITaskDeclarationView {
+  channel?: string;
+  id: string;
+  mode: "fixed-trace";
+  schedule: "fixedUpdate" | "postUpdate" | "startup" | "update";
 }
 
 export interface IQueuedCommand {
@@ -159,6 +175,22 @@ export function createSystemContext(
           commands.push({ components: cloneValue(components) as Record<string, unknown>, entity, kind: "spawn", source: "command" });
         },
       },
+      channels: {
+        read(channel) {
+          const event = channelEvent(options.systems, normalizeHandleName(channel));
+          if (event === undefined) {
+            return [];
+          }
+          const queue = world.events?.[event];
+          return Array.isArray(queue) ? cloneValue(queue) as unknown[] : [];
+        },
+        send(channel, payload) {
+          const event = channelEvent(options.systems, normalizeHandleName(channel));
+          if (event !== undefined) {
+            events.push({ event, payload: cloneValue(payload) });
+          }
+        },
+      },
       components: {
         hooks(component) {
           return componentHookObservations(world, options.systems, normalizeHandleName(component));
@@ -216,6 +248,17 @@ export function createSystemContext(
           return states[id] ?? null;
         },
       },
+      tasks: {
+        channel(id) {
+          return taskChannel(options.systems, normalizeHandleName(id));
+        },
+        has(id) {
+          return options.systems?.tasks?.some((task) => task.id === normalizeHandleName(id)) ?? false;
+        },
+        list() {
+          return cloneValue(options.systems?.tasks ?? []) as ITaskDeclarationView[];
+        },
+      },
       physics: {
         overlap(serviceOptions) {
           const request = cloneValue(serviceOptions);
@@ -249,6 +292,14 @@ export function createSystemContext(
     resources,
     services,
   };
+}
+
+export function channelEvent(systems: ISystemsIr | undefined, channel: string): string | undefined {
+  return systems?.channels?.find((candidate) => candidate.id === channel && candidate.delivery === "fixed-trace")?.event;
+}
+
+export function taskChannel(systems: ISystemsIr | undefined, task: string): string | null {
+  return systems?.tasks?.find((candidate) => candidate.id === task)?.channel ?? null;
 }
 
 export function componentHookObservations(world: IWorldIr, systems: ISystemsIr | undefined, component: string): IComponentHookObservation[] {
