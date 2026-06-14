@@ -110,6 +110,8 @@ function makeSystem(overrides: Partial<IIrSystemDeclaration> = {}): IIrSystemDec
     name: "move",
     queries: [{ with: ["Transform"], without: [] }],
     reads: ["Transform"],
+    resourceReads: [],
+    resourceWrites: [],
     schedule: "fixedUpdate",
     script: { bundle: "scripts.bundle.js", exportName: "move" },
     services: [],

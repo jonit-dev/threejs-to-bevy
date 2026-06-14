@@ -107,6 +107,10 @@ Rules:
 
 - Resource schemas follow the same data restrictions as components.
 - Resources are addressed by type name.
+- Portable systems that read or write serialized resources declare
+  `resourceReads` and `resourceWrites` alongside component and event access.
+  These declarations are emitted into `systems.ir.json` and validated against
+  `schemas/resources.schema.json` before runtime.
 - Runtime-provided resources can be read through context APIs but are not always serialized.
 - Runtime adapter resources should stay private unless surfaced through an SDK
   resource schema or context API.
@@ -119,6 +123,8 @@ Rules:
 
 - Events have schemas.
 - Events are not long-term storage.
+- Portable systems declare `eventReads` and `eventWrites`; emitted systems that
+  read or write undeclared event schemas fail validation before runtime.
 - Events may be dropped according to queue policy.
 - Events that must survive save/load should become components or resources.
 - Events should reference entities by stable entity ID at the SDK/IR boundary,

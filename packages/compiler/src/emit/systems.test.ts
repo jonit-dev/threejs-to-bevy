@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { commands, defineComponent, defineEvent, defineQuery, fixedUpdate } from "@threenative/sdk";
+import { commands, defineComponent, defineEvent, defineQuery, defineResource, fixedUpdate } from "@threenative/sdk";
 
 import { systemsToIr } from "./systems.js";
 
@@ -12,12 +12,17 @@ test("should emit ecs fixed update system access", () => {
     amount: "number",
     target: "entity",
   });
+  const Score = defineResource("Score", {
+    value: "number",
+  });
   const system = fixedUpdate("applyDamage", {
     commands: [commands.setComponent("target", Health), commands.emitEvent(DamageEvent)],
     eventReads: [DamageEvent],
     eventWrites: [DamageEvent],
     queries: [defineQuery({ with: [Health] })],
     reads: [Health],
+    resourceReads: [Score],
+    resourceWrites: [Score],
     writes: [Health],
   });
 
@@ -42,6 +47,8 @@ test("should emit ecs fixed update system access", () => {
         name: "applyDamage",
         queries: [{ with: ["Health"], without: [] }],
         reads: ["Health"],
+        resourceReads: ["Score"],
+        resourceWrites: ["Score"],
         services: [],
         schedule: "fixedUpdate",
         writes: ["Health"],

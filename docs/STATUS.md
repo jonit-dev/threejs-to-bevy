@@ -217,6 +217,13 @@ define planned work; they do not mark promoted V6 features as implemented until
 the corresponding SDK, IR, validation, web runtime, Bevy evidence,
 conformance, docs, example scene, and `verify:v6` release gate evidence lands.
 
+V6-01 has started with the SDK/IR declaration slice: portable system metadata
+now carries deterministic `resourceReads` and `resourceWrites`, compiler emit
+preserves those fields in `systems.ir.json`, and IR validation rejects resource
+access declarations that lack matching resource schemas. Runtime permission
+enforcement, resource write effect logs, web/native trace parity, conformance
+observations, and V6 scene evidence remain part of the later V6-01 phases.
+
 V7 is now planned as the deep engine gap-closure milestone. It should continue
 parity work that is too large or risky for V6, such as deeper physics,
 animation graphs, richer UI/audio, renderer/content parity, scripting/runtime

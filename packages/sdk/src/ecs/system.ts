@@ -13,6 +13,8 @@ export interface ISystemOptions {
   eventWrites?: ReadonlyArray<EcsFactory | IEcsSchema | string>;
   queries?: ReadonlyArray<IQueryDeclaration>;
   reads?: ReadonlyArray<EcsFactory | IEcsSchema | string>;
+  resourceReads?: ReadonlyArray<EcsFactory | IEcsSchema | string>;
+  resourceWrites?: ReadonlyArray<EcsFactory | IEcsSchema | string>;
   run?: PortableSystem;
   services?: ReadonlyArray<SystemService>;
   writes?: ReadonlyArray<EcsFactory | IEcsSchema | string>;
@@ -31,6 +33,9 @@ export interface ISystemDeclaration {
   name: string;
   queries: IQueryDeclaration[];
   reads: string[];
+  resourceReads: string[];
+  resourceSchemas: IEcsSchema[];
+  resourceWrites: string[];
   run?: PortableSystem;
   schedule: SystemSchedule;
   services: SystemService[];
@@ -132,6 +137,7 @@ function createSystem(schedule: SystemSchedule, name: string, options: ISystemOp
     ...(options.eventWrites ?? []),
     ...commands.flatMap((command) => ("schema" in command && command.schema !== undefined && command.schema.kind === "event" ? [command.schema] : [])),
   ];
+  const resourceSchemaSources = [...(options.resourceReads ?? []), ...(options.resourceWrites ?? [])];
 
   return {
     commands,
@@ -141,6 +147,9 @@ function createSystem(schedule: SystemSchedule, name: string, options: ISystemOp
     name,
     queries: [...(options.queries ?? [])],
     reads: normalizeNames(options.reads ?? []),
+    resourceReads: normalizeNames(options.resourceReads ?? []),
+    resourceSchemas: normalizeSchemas(resourceSchemaSources, "resource"),
+    resourceWrites: normalizeNames(options.resourceWrites ?? []),
     run: options.run,
     schedule,
     services: [...(options.services ?? [])].sort(),

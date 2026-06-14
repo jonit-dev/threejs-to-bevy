@@ -41,6 +41,8 @@ test("physics should damage entity on collision event", async () => {
         name: "damage",
         queries: [{ with: ["Health"], without: [] }],
         reads: ["Health"],
+        resourceReads: [],
+        resourceWrites: [],
         services: [],
         schedule: "fixedUpdate",
         script: { bundle: "scripts.bundle.js", exportName: "damage" },

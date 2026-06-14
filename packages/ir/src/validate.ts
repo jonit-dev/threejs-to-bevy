@@ -132,6 +132,7 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
       systems,
       manifest.entry.systems ?? "systems.ir.json",
       componentSchemas?.schemas ?? {},
+      resourceSchemas?.schemas ?? {},
       eventSchemas?.schemas ?? {},
       diagnostics,
     );
@@ -562,6 +563,7 @@ function validateSystems(
   systems: ISystemsIr,
   path: string,
   componentSchemas: Record<string, IIrNamedSchema>,
+  resourceSchemas: Record<string, IIrNamedSchema>,
   eventSchemas: Record<string, IIrNamedSchema>,
   diagnostics: IIrDiagnostic[],
 ): void {
@@ -598,6 +600,24 @@ function validateSystems(
           code: "TN_IR_SYSTEM_COMPONENT_SCHEMA_MISSING",
           message: `System '${system.name}' writes component '${component}' without a schema.`,
           path: `${path}/systems/${systemIndex}/writes/${componentIndex}`,
+        });
+      }
+    });
+    (system.resourceReads ?? []).forEach((resource, resourceIndex) => {
+      if (!isBuiltInResource(resource) && resourceSchemas[resource] === undefined) {
+        diagnostics.push({
+          code: "TN_IR_SYSTEM_RESOURCE_SCHEMA_MISSING",
+          message: `System '${system.name}' reads resource '${resource}' without a schema.`,
+          path: `${path}/systems/${systemIndex}/resourceReads/${resourceIndex}`,
+        });
+      }
+    });
+    (system.resourceWrites ?? []).forEach((resource, resourceIndex) => {
+      if (!isBuiltInResource(resource) && resourceSchemas[resource] === undefined) {
+        diagnostics.push({
+          code: "TN_IR_SYSTEM_RESOURCE_SCHEMA_MISSING",
+          message: `System '${system.name}' writes resource '${resource}' without a schema.`,
+          path: `${path}/systems/${systemIndex}/resourceWrites/${resourceIndex}`,
         });
       }
     });

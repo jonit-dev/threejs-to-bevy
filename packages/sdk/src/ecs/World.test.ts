@@ -121,6 +121,8 @@ test("should capture v4 primitive system declarations", () => {
   assert.equal(system.name, "rotateCubes");
   assert.equal(system.schedule, "fixedUpdate");
   assert.deepEqual(system.eventWrites, ["HitEvent"]);
+  assert.deepEqual(system.resourceReads, []);
+  assert.deepEqual(system.resourceWrites, []);
   assert.deepEqual(system.services, ["physics.raycast"]);
   assert.deepEqual(system.writes, ["Transform"]);
 });

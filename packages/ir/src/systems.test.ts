@@ -79,6 +79,46 @@ test("should reject undeclared service reference", async () => {
   }
 });
 
+test("should reject schema ecs system resource without schema", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-resource-schema-"));
+  try {
+    await writeBundle(root, {
+      commands: [],
+      reads: [],
+      resourceReads: ["Score"],
+      resourceWrites: ["Score"],
+      writes: [],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics[0]?.code, "TN_IR_SYSTEM_RESOURCE_SCHEMA_MISSING");
+    assert.equal(result.diagnostics[0]?.path, "systems.ir.json/systems/0/resourceReads/0");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should allow built-in resource access without resource schema", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-builtin-resource-"));
+  try {
+    await writeBundle(root, {
+      commands: [],
+      reads: [],
+      resourceReads: ["ActiveCamera"],
+      writes: [],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject unsupported v4 system stage", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-v4-stage-"));
   try {
@@ -104,6 +144,8 @@ async function writeBundle(
   system: {
     commands: unknown[];
     reads: string[];
+    resourceReads?: string[];
+    resourceWrites?: string[];
     schedule?: unknown;
     services?: unknown[];
     writes: string[];
@@ -149,6 +191,8 @@ async function writeBundle(
         name: "badDamage",
         queries: [],
         reads: system.reads,
+        resourceReads: system.resourceReads ?? [],
+        resourceWrites: system.resourceWrites ?? [],
         services: system.services ?? [],
         schedule: system.schedule ?? "fixedUpdate",
         writes: system.writes,

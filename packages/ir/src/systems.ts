@@ -35,6 +35,8 @@ export interface IIrSystemDeclaration {
   name: string;
   queries: IIrSystemQuery[];
   reads: string[];
+  resourceReads: string[];
+  resourceWrites: string[];
   services: IrSystemService[];
   script?: {
     bundle: "scripts.bundle.js";

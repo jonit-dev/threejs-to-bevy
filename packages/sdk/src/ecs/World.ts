@@ -38,6 +38,8 @@ export interface IWorldSystemDeclaration {
   name: string;
   queries: IWorldQueryDeclaration[];
   reads: string[];
+  resourceReads: string[];
+  resourceWrites: string[];
   services: SystemService[];
   script?: IWorldSystemScriptDeclaration;
   schedule: SystemSchedule;
@@ -129,6 +131,10 @@ export class World {
       assertSchemaKind(schema, "event");
       this.registerSchema(this.#eventSchemas, schema, "TN_SDK_ECS_EVENT_SCHEMA_DUPLICATE");
     }
+    for (const schema of system.resourceSchemas) {
+      assertSchemaKind(schema, "resource");
+      this.registerSchema(this.#resourceSchemas, schema, "TN_SDK_ECS_RESOURCE_SCHEMA_DUPLICATE");
+    }
     this.#systems.set(system.name, system);
     return this;
   }
@@ -201,6 +207,8 @@ function serializeSystem(system: ISystemDeclaration): IWorldSystemDeclaration {
     name: system.name,
     queries: system.queries.map(serializeQuery),
     reads: [...system.reads],
+    resourceReads: [...system.resourceReads],
+    resourceWrites: [...system.resourceWrites],
     services: [...system.services],
     script:
       system.run === undefined

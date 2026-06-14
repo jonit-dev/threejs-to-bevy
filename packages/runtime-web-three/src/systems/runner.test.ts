@@ -256,6 +256,8 @@ function makeSystems(schedule: "fixedUpdate" | "update", exportName: string): IS
         name: exportName,
         queries: [{ with: ["Transform"], without: [] }],
         reads: ["Transform"],
+        resourceReads: [],
+        resourceWrites: [],
         services: [],
         schedule,
         script: { bundle: "scripts.bundle.js", exportName },

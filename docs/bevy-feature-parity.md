@@ -227,6 +227,14 @@ artifacts agree. Features that remain too large for V6, including deeper
 physics, animation graphs, richer UI/audio, packaging, and broad performance
 profiling, should be explicitly deferred to V7.
 
+V6-01 has started at the contract layer: systems can now declare
+`resourceReads` and `resourceWrites`, compiler output preserves those fields,
+and IR validation checks them against resource schemas. This is not yet a full
+resource/event runtime parity claim; web and Bevy permission enforcement,
+canonical resource write observations, conformance evidence, and functional V6
+scene proof still need to land before the gameplay ECS/systems row can move out
+of partial/missing status.
+
 ## V7 Deep Engine Gap-Closure Plan
 
 The planned V7 implementation slice is tracked in
