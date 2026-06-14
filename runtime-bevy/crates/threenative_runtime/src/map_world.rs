@@ -268,7 +268,12 @@ fn spawn_entity(
 fn color_grading_for_profile(
     _color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
 ) -> ColorGrading {
-    ColorGrading::default()
+    let mut grading = ColorGrading::default();
+    // Bevy's ACES curve is darker than Three.js ACES at this scene's stylized
+    // texture range; this small EV lift keeps the compatibility adapter close
+    // without changing authored light/material data.
+    grading.global.exposure = 0.72;
+    grading
 }
 
 fn exposure_for_profile(
@@ -287,7 +292,7 @@ fn tonemapping_for_profile(
     color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
 ) -> Tonemapping {
     match color_management.map(|profile| profile.tone_mapping.as_str()) {
-        Some("aces") => Tonemapping::None,
+        Some("aces") => Tonemapping::AcesFitted,
         Some("none") => Tonemapping::None,
         _ => Tonemapping::default(),
     }

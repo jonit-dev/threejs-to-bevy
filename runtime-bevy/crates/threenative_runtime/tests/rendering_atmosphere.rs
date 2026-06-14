@@ -158,8 +158,8 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
         .iter(app.world())
         .next()
         .expect("camera color management should exist");
-    assert_eq!(*camera_color.0, Tonemapping::None);
-    assert!((camera_color.1.global.exposure - 0.0).abs() < 0.001);
+    assert_eq!(*camera_color.0, Tonemapping::AcesFitted);
+    assert!((camera_color.1.global.exposure - 0.72).abs() < 0.001);
     assert!((camera_color.1.global.post_saturation - 1.0).abs() < 0.001);
     assert!((camera_color.2.exposure() - 1.05).abs() < 0.001);
 
