@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -14,6 +14,7 @@ export async function verifyV5(options = {}) {
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
   const projectPath = resolve(root, "examples/v5-functional");
   const bundlePath = resolve(projectPath, "dist/v5-functional.bundle");
+  const starterProjectPath = resolve(artifactDir, "starter-smoke/v5-game-starter");
   const webVisualReportPath = resolve(projectPath, "artifacts/verify/verification-report.json");
   const steps = [];
 
@@ -74,6 +75,50 @@ export async function verifyV5(options = {}) {
     stderr: "",
     stdout: denseContentReport.artifacts.reportPath,
   });
+  if (denseContentReport.status !== "pass") {
+    return writeV5Report({
+      artifactDir,
+      bundlePath,
+      denseContentReportPath: denseContentReport.artifacts.reportPath,
+      ok: false,
+      reportPath,
+      starterProjectPath,
+      steps,
+      webVisualReportPath,
+    });
+  }
+
+  await rm(starterProjectPath, { force: true, recursive: true });
+  if (
+    !(await step(
+      "create v5 game starter template",
+      process.execPath,
+      [resolve(root, "packages/cli/dist/index.js"), "create", starterProjectPath, "--template", "v5-game-starter", "--json"],
+      { timeoutMs: 120000 },
+    ))
+  ) {
+    return writeV5Report({ artifactDir, bundlePath, denseContentReportPath: denseContentReport.artifacts.reportPath, ok: false, reportPath, starterProjectPath, steps, webVisualReportPath });
+  }
+  if (
+    !(await step(
+      "build v5 game starter template",
+      process.execPath,
+      [resolve(root, "packages/cli/dist/index.js"), "build", "--project", starterProjectPath, "--json"],
+      { timeoutMs: 120000 },
+    ))
+  ) {
+    return writeV5Report({ artifactDir, bundlePath, denseContentReportPath: denseContentReport.artifacts.reportPath, ok: false, reportPath, starterProjectPath, steps, webVisualReportPath });
+  }
+  if (
+    !(await step(
+      "validate v5 game starter bundle",
+      process.execPath,
+      [resolve(root, "packages/cli/dist/index.js"), "validate", "--project", starterProjectPath, "--json"],
+      { timeoutMs: 120000 },
+    ))
+  ) {
+    return writeV5Report({ artifactDir, bundlePath, denseContentReportPath: denseContentReport.artifacts.reportPath, ok: false, reportPath, starterProjectPath, steps, webVisualReportPath });
+  }
 
   return writeV5Report({
     artifactDir,
@@ -81,18 +126,20 @@ export async function verifyV5(options = {}) {
     denseContentReportPath: denseContentReport.artifacts.reportPath,
     ok: denseContentReport.status === "pass",
     reportPath,
+    starterProjectPath,
     steps,
     webVisualReportPath,
   });
 }
 
-async function writeV5Report({ artifactDir, bundlePath, denseContentReportPath, ok, reportPath, steps, webVisualReportPath }) {
+async function writeV5Report({ artifactDir, bundlePath, denseContentReportPath, ok, reportPath, starterProjectPath, steps, webVisualReportPath }) {
   await mkdir(resolve(reportPath, ".."), { recursive: true });
   const report = {
     artifacts: {
       bundlePath,
       denseContentReportPath: denseContentReportPath ?? resolve(artifactDir, "dense-content/v3-environment-report.json"),
       reportPath,
+      starterProjectPath: starterProjectPath ?? resolve(artifactDir, "starter-smoke/v5-game-starter"),
       webVisualReportPath,
     },
     code: ok ? "TN_VERIFY_V5_OK" : "TN_VERIFY_V5_FAILED",

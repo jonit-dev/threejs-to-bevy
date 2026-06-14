@@ -54,18 +54,18 @@ small playable 3D game.
 
 **How will this feature be reached?**
 
-- [ ] Entry point identified: `@threenative/sdk` exports and
+- [x] Entry point identified: `@threenative/sdk` exports and
   `tn create --template v5-game-starter`.
-- [ ] Caller file identified: user entry files such as
+- [x] Caller file identified: user entry files such as
   `templates/v5-game-starter/src/game.ts`.
-- [ ] Registration/wiring needed: export the new helpers from
+- [x] Registration/wiring needed: export the new helpers from
   `packages/sdk/src/index.ts`, accept the template in
   `packages/cli/src/commands/create.ts`, and keep compiler capture rooted in the
   existing `Scene`/`World`/bundle root path.
 
 **Is this user-facing?**
 
-- [ ] YES. User-facing pieces are SDK helper APIs, one maintained starter
+- [x] YES. User-facing pieces are SDK helper APIs, one maintained starter
   template, docs recipes, CLI template creation, diagnostics, and V5 verification
   evidence.
 
@@ -117,15 +117,15 @@ flowchart LR
 
 **Key Decisions:**
 
-- [ ] Prefer additive wrappers over replacing `Scene`, `World`, or R3F
+- [x] Prefer additive wrappers over replacing `Scene`, `World`, or R3F
   authoring.
-- [ ] Keep all emitted data deterministic and compatible with existing
+- [x] Keep all emitted data deterministic and compatible with existing
   validators.
-- [ ] Treat game-first helpers as authoring sugar unless a V5 PRD explicitly
+- [x] Treat game-first helpers as authoring sugar unless a V5 PRD explicitly
   promotes a new IR/runtime contract.
-- [ ] Add diagnostics for unsupported helper options instead of silently
+- [x] Add diagnostics for unsupported helper options instead of silently
   dropping them.
-- [ ] Use existing templates and `tn create` conventions.
+- [x] Use existing templates and `tn create` conventions.
 
 **Data Changes:** None required for Phase 1. Later phases may add IR fields only
 when tied to an existing V5 visual/scripting PRD and covered by validation,
@@ -170,11 +170,11 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add `defineGame({ scene, world, input, runtimeConfig })` that returns an
+- [x] Add `defineGame({ scene, world, input, runtimeConfig })` that returns an
   object compatible with existing bundle-root capture.
-- [ ] Validate duplicate or missing root pieces with `TN_SDK_GAME_*` errors.
-- [ ] Ensure `defineGame` does not create new IR concepts.
-- [ ] Add docs showing the equivalent low-level `Scene`/`World` shape.
+- [x] Validate duplicate or missing root pieces with `TN_SDK_GAME_*` errors.
+- [x] Ensure `defineGame` does not create new IR concepts.
+- [x] Add docs showing the equivalent low-level `Scene`/`World` shape.
 
 **Tests Required:**
 
@@ -236,11 +236,11 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add a starter with one scene, player-like entity, camera, lights, input,
+- [x] Add a starter with one scene, player-like entity, camera, lights, input,
   visible objective, and one portable system using already-supported V4/V5 APIs.
-- [ ] Keep assets local to the template or generated bundle.
-- [ ] Add `--template v5-game-starter` to CLI support and diagnostics.
-- [ ] Ensure scripts include validate, build, verify, and test where practical.
+- [x] Keep assets local to the template or generated bundle.
+- [x] Add `--template v5-game-starter` to CLI support and diagnostics.
+- [x] Ensure scripts include validate, build, verify, and test where practical.
 
 **Tests Required:**
 
@@ -270,12 +270,12 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add starter build/verify evidence to `pnpm verify:v5`.
-- [ ] Make V5 completion depend on this PRD without reducing existing V5
+- [x] Add starter build/verify evidence to `pnpm verify:v5`.
+- [x] Make V5 completion depend on this PRD without reducing existing V5
   hardening, visual-quality, native, conformance, or diagnostic requirements.
-- [ ] Gate docs against claims that this is a scene editor, networking layer,
+- [x] Gate docs against claims that this is a scene editor, networking layer,
   arbitrary Three.js compiler, public plugin API, or custom renderer.
-- [ ] Link any starter evidence to existing V5 conformance, diagnostics, and
+- [x] Link any starter evidence to existing V5 conformance, diagnostics, and
   runtime artifacts.
 
 **Tests Required:**
@@ -306,17 +306,32 @@ sequenceDiagram
 
 ## Acceptance Criteria
 
-- [ ] The new authoring layer is reachable from `@threenative/sdk` exports and
+- [x] The new authoring layer is reachable from `@threenative/sdk` exports and
   at least one `tn create` template.
-- [ ] Helpers lower into existing portable `Scene`, `World`, input, asset,
+- [x] Helpers lower into existing portable `Scene`, `World`, input, asset,
   system, and bundle paths unless another V5 PRD explicitly promotes new IR.
-- [ ] Misuse produces stable diagnostics instead of silent no-ops.
-- [ ] The starter demonstrates a playable small-game loop with less setup than
+- [x] Misuse produces stable diagnostics instead of silent no-ops.
+- [x] The starter demonstrates a playable small-game loop with less setup than
   the equivalent low-level SDK/Three.js-style scene.
-- [ ] Existing V1-V4 examples and V5 conformance expectations remain valid.
-- [ ] No V5 completion claim depends on editor, online, networking,
+- [x] Existing V1-V4 examples and V5 conformance expectations remain valid.
+- [x] No V5 completion claim depends on editor, online, networking,
   replication, public plugin API, raw Three.js compatibility, custom renderer
   replacement, arbitrary npm scripts, or direct Bevy access.
-- [ ] `docs/STATUS.md`, `docs/bevy-feature-parity.md`,
+- [x] `docs/STATUS.md`, `docs/bevy-feature-parity.md`,
   `docs/PRDs/v5/README.md`, and `docs/verify-v5.md` describe the exact supported
   scope before V5 is marked complete.
+
+## Implementation Evidence
+
+- `defineGame` is exported from `@threenative/sdk` and composes existing
+  `scene`, `world`, `input`, `audio`, `environment`, and `ui` roots without
+  adding IR.
+- `TN_SDK_GAME_ROOT_EMPTY` and `TN_SDK_GAME_RUNTIME_CONFIG_WORLD_REQUIRED`
+  guard unsupported helper usage.
+- `templates/v5-game-starter` provides a camera, lights, player-like entity,
+  visible goal, input, runtime config, and one portable movement system.
+- `tn create --template v5-game-starter` is wired and covered by CLI tests.
+- `pnpm verify:v5` now creates, builds, and validates the starter under
+  `artifacts/v5/starter-smoke`.
+- Phase 2 prefab/control recipes remain deferred; V5-11 is satisfied by the
+  narrower game-root helper and maintained starter template.

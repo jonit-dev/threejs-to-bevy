@@ -153,6 +153,14 @@ writes dense-content budget evidence under `artifacts/v5`, and records artifact
 links in `artifacts/v5/verification-report.json`. This is the current V5 visual
 scene gate, not the final aggregate release gate planned for V5-10.
 
+V5-11 has landed the first game-authoring ergonomics slice: `defineGame` is
+exported from `@threenative/sdk` as authoring sugar over the existing bundle
+root shape, `tn create --template v5-game-starter` scaffolds a small playable
+scene/world/input/system starter, and `pnpm verify:v5` creates, builds, and
+validates that starter under `artifacts/v5/starter-smoke`. This does not add a
+new runtime contract, prefab framework, editor workflow, networking, raw
+Three.js compatibility, plugin API, or custom renderer support.
+
 V5 should add or improve Rust tests for native runtime behavior whenever work
 touches shared IR, native runtime mapping, native scripting behavior, Bevy
 diagnostics, or visual-quality features that claim native support. The expected

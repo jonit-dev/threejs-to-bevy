@@ -30,6 +30,30 @@ test("should pass V5 diagnostics docs shape", async () => {
   }
 });
 
+test("should allow v5 game starter as authoring sugar", async () => {
+  const root = await makeDocsRoot({ verifyV5: "v5-game-starter defineGame authoring sugar\n" });
+  try {
+    const result = await checkDocsV5(root);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject broad game framework claims", async () => {
+  const root = await makeDocsRoot({ verifyV5: "V5 supports networking\n" });
+  try {
+    const result = await checkDocsV5(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.at(-1)?.code, "TN_DOCS_V5_SCOPE_CLAIM_UNSUPPORTED");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 async function makeDocsRoot(overrides = {}) {
   const root = await mkdtemp(join(tmpdir(), "tn-docs-v5-"));
   await mkdir(join(root, "docs/PRDs/v5"), { recursive: true });
@@ -51,6 +75,7 @@ async function makeDocsRoot(overrides = {}) {
     ].join("\n"),
   );
   await writeFile(join(root, "docs/STATUS.md"), "V5-03 diagnostic normalization\n");
+  await writeFile(join(root, "docs/verify-v5.md"), overrides.verifyV5 ?? "V5 visual-quality and v5-game-starter authoring sugar\n");
   await writeFile(
     join(root, "docs/diagnostics.md"),
     overrides.diagnostics ??

@@ -47,6 +47,7 @@ export {
   type SchemaKind,
 } from "./ecs/schema.js";
 export { BoxGeometry, CapsuleGeometry, CylinderGeometry, PlaneGeometry, SphereGeometry, type SupportedGeometry } from "./geometry/primitives.js";
+export { defineGame, type IGameRoot, type IGameRootOptions } from "./game.js";
 export {
   action,
   axis,

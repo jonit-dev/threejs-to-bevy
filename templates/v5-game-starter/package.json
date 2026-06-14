@@ -1,0 +1,20 @@
+{
+  "name": "threenative-v5-game-starter",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tn build",
+    "dev:web": "tn dev --target web",
+    "test": "pnpm build && tsc -p tsconfig.test.json && node --test dist/tests/gameplay.test.js",
+    "validate": "tn validate dist/v5-game-starter.bundle",
+    "verify": "tn verify --frames 2 --json"
+  },
+  "dependencies": {
+    "@threenative/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@threenative/cli": "workspace:*",
+    "@types/node": "^20.19.25",
+    "typescript": "^5.9.3"
+  }
+}

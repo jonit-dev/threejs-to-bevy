@@ -103,6 +103,41 @@ Both styles compile to the same ECS-shaped IR. In V2, supported R3F/JSX scene
 authoring also lowers into this same SDK graph and emitted IR; arbitrary R3F,
 Drei, React app, or browser behavior is outside the portable contract.
 
+### Game Root Helper
+
+Use `defineGame` when a project has more than one portable root. It is authoring
+sugar over the existing bundle root shape; it does not introduce new IR.
+
+```ts
+import { Scene, World, defineGame, defineInputMap } from "@threenative/sdk";
+
+const scene = new Scene({ id: "scene.game" });
+const world = new World();
+const input = defineInputMap({ actions: [], axes: [] });
+
+export default defineGame({
+  input,
+  scene,
+  world,
+});
+```
+
+The equivalent low-level export is:
+
+```ts
+export default {
+  input,
+  scene,
+  world,
+};
+```
+
+`defineGame` can compose existing `scene`, `world`, `input`, `audio`,
+`environment`, and `ui` declarations. `runtimeConfig` is supported only when a
+`World` is provided, because it lowers through the existing ECS runtime config
+path. Empty roots and unsupported runtime config placement throw stable
+`TN_SDK_GAME_*` errors.
+
 ### R3F/JSX Scene API
 
 Use this style when a JSX scene tree is clearer than direct SDK object

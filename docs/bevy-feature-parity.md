@@ -174,6 +174,12 @@ budget artifacts under `artifacts/v5`. Bevy evidence for scene-visible promoted
 contracts still comes from shared conformance and focused Rust tests until the
 later aggregate V5 gate expands native artifact collection.
 
+V5-11 is implemented for the first game-authoring ergonomics slice:
+`defineGame` and `v5-game-starter` lower into existing portable scene, world,
+input, runtime config, and system contracts. There is no new Bevy runtime
+surface; native evidence remains whatever the emitted existing contracts
+already have through conformance and focused Rust tests.
+
 Priority V5 native coverage:
 
 1. Loader and fixture reuse for shared IR bundles used by both web and Bevy

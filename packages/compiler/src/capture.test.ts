@@ -24,6 +24,30 @@ test("should capture starter scene root", async () => {
   }
 });
 
+test("should capture defineGame root through existing bundle path", async () => {
+  const root = await makeProject(
+    `import { Scene, World, defineGame } from "@threenative/sdk";\nconst scene = new Scene({ id: "scene" });\nconst world = new World();\nexport default defineGame({ scene, world });\n`,
+  );
+  try {
+    const captured = await captureEntry({
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project",
+      version: "0.1.0",
+    });
+
+    assert.equal(captured.summary.rootType, "World");
+    assert.equal(typeof captured.root, "object");
+    assert.notEqual(captured.root, null);
+    const rootObject = captured.root as Record<string, unknown>;
+    assert.equal("scene" in rootObject, true);
+    assert.equal("world" in rootObject, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject unsupported root", async () => {
   const root = await makeProject("export default {};\n");
   try {

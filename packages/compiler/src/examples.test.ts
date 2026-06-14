@@ -50,3 +50,19 @@ test("should build v4 scripting example", async () => {
   );
   assert.match(scripts, /const Transform = Object\.freeze/);
 });
+
+test("should build v5 game starter template", async () => {
+  const projectPath = resolve(process.cwd(), "../../templates/v5-game-starter");
+  const { bundlePath } = await buildProject(projectPath);
+  const report = await validateBundle(bundlePath);
+  const systems = JSON.parse(await readFile(resolve(bundlePath, "systems.ir.json"), "utf8"));
+  const runtimeConfig = JSON.parse(await readFile(resolve(bundlePath, "runtime.config.json"), "utf8"));
+
+  assert.equal(bundlePath, resolve(projectPath, "dist/v5-game-starter.bundle"));
+  assert.equal(report.ok, true);
+  assert.deepEqual(
+    systems.systems.map((system: { name: string }) => system.name),
+    ["movePlayerToGoal"],
+  );
+  assert.equal(runtimeConfig.window.title, "ThreeNative V5 Game Starter");
+});

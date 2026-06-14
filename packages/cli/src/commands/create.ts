@@ -26,7 +26,7 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
     return diagnosticResult(
       {
         code: "TN_CREATE_DESTINATION_REQUIRED",
-        message: "Usage: tn create <name> [--template v1|v2-arena|v3-environment|v4-scripting] [--json]",
+        message: "Usage: tn create <name> [--template v1|v2-arena|v3-environment|v4-scripting|v5-game-starter] [--json]",
       },
       { exitCode: 1, json, stderr: true },
     );
@@ -36,7 +36,7 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
     return diagnosticResult(
       {
         code: "TN_CREATE_TEMPLATE_UNSUPPORTED",
-        message: `Template '${template ?? ""}' is not supported. Use '--template v1', '--template v2-arena', '--template v3-environment', or '--template v4-scripting'.`,
+        message: `Template '${template ?? ""}' is not supported. Use '--template v1', '--template v2-arena', '--template v3-environment', '--template v4-scripting', or '--template v5-game-starter'.`,
         template,
       },
       { exitCode: 1, json, stderr: true },
@@ -91,8 +91,8 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
   };
 }
 
-function isSupportedTemplate(template: string | undefined): template is "v1" | "v2-arena" | "v3-environment" | "v4-scripting" {
-  return template === "v1" || template === "v2-arena" || template === "v3-environment" || template === "v4-scripting";
+function isSupportedTemplate(template: string | undefined): template is "v1" | "v2-arena" | "v3-environment" | "v4-scripting" | "v5-game-starter" {
+  return template === "v1" || template === "v2-arena" || template === "v3-environment" || template === "v4-scripting" || template === "v5-game-starter";
 }
 
 async function rewriteLocalWorkspaceDependencies(projectPath: string): Promise<void> {

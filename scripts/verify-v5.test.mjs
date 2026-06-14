@@ -34,7 +34,7 @@ test("should report failing v5 visual-quality step", async () => {
   }
 });
 
-test("should write v5 visual-quality report when scene and dense checks pass", async () => {
+test("should include starter smoke in v5 gate", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-verify-v5-"));
   try {
     const reportPath = join(root, "artifacts/v5/verification-report.json");
@@ -65,8 +65,9 @@ test("should write v5 visual-quality report when scene and dense checks pass", a
     const saved = JSON.parse(await readFile(reportPath, "utf8"));
     assert.equal(result.ok, true);
     assert.equal(result.status, "pass");
-    assert.equal(result.steps.at(-1)?.name, "verify v5 dense content budgets");
+    assert.equal(result.steps.at(-1)?.name, "validate v5 game starter bundle");
     assert.equal(saved.artifacts.denseContentReportPath, denseReportPath);
+    assert.match(saved.artifacts.starterProjectPath, /starter-smoke/);
     assert.equal(saved.code, "TN_VERIFY_V5_OK");
   } finally {
     await rm(root, { force: true, recursive: true });

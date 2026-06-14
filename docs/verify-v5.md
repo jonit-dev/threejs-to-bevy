@@ -18,12 +18,15 @@ The gate currently:
 - validates the emitted `dist/v5-functional.bundle`
 - captures web visual verification screenshots and diagnostics
 - writes dense-content budget evidence under `artifacts/v5/dense-content`
+- creates, builds, and validates `v5-game-starter` under
+  `artifacts/v5/starter-smoke`
 - writes `artifacts/v5/verification-report.json`
 
 The V5 scene demonstrates promoted V5 visual features that have already landed:
 textured environment assets, lighting and atmosphere metadata, shadow/color
 fields, repeated dense scatter, source-asset LOD metadata, and environment
-budget reports.
+budget reports. The starter smoke demonstrates the game-first SDK ergonomics
+path through `defineGame` and `tn create --template v5-game-starter`.
 
 This gate does not claim editor, online, networking, public plugin, custom
 renderer, runtime mesh LOD swapping, or renderer-level native instancing

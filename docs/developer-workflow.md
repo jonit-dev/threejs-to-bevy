@@ -118,6 +118,9 @@ tn verify
 Command expectations:
 
 - `tn create` creates a project from a maintained template.
+- `tn create my-game --template v5-game-starter` creates the V5 game-first
+  starter using `defineGame`, a portable scene, input, world, runtime config,
+  and a small movement system.
 - `tn dev` starts watch mode, IR generation, validation, and a runtime preview.
 - `tn validate` runs schema, semantic, asset, API, and target-profile checks.
 - `tn build` emits a versioned game bundle.

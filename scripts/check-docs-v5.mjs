@@ -29,6 +29,14 @@ const diagnosticPhrases = [
   "suggestion",
 ];
 
+const unsupportedV5Claims = [
+  "V5 supports scene editor",
+  "V5 supports networking",
+  "V5 supports raw Three.js",
+  "V5 supports public plugins",
+  "V5 supports custom renderer",
+];
+
 export async function checkDocsV5(root = repoRoot) {
   const diagnostics = [];
   const indexPath = "docs/PRDs/v5/README.md";
@@ -37,6 +45,7 @@ export async function checkDocsV5(root = repoRoot) {
   const index = await readDoc(root, indexPath, diagnostics);
   const diagnosticsDoc = await readDoc(root, diagnosticsPath, diagnostics);
   const status = await readDoc(root, statusPath, diagnostics);
+  const verifyV5 = await readDoc(root, "docs/verify-v5.md", diagnostics);
 
   for (const file of requiredV5Prds) {
     if (!index.includes(file)) {
@@ -67,6 +76,18 @@ export async function checkDocsV5(root = repoRoot) {
       message: "STATUS.md must mention the V5-03 diagnostic normalization slice once implemented.",
       severity: "error",
     });
+  }
+
+  const broadScopeText = `${status}\n${verifyV5}`;
+  for (const claim of unsupportedV5Claims) {
+    if (broadScopeText.includes(claim)) {
+      diagnostics.push({
+        code: "TN_DOCS_V5_SCOPE_CLAIM_UNSUPPORTED",
+        file: status.includes(claim) ? statusPath : "docs/verify-v5.md",
+        message: `V5 docs must not claim unsupported scope: '${claim}'.`,
+        severity: "error",
+      });
+    }
   }
 
   return { diagnostics, ok: diagnostics.length === 0 };

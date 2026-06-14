@@ -88,3 +88,11 @@ cd runtime-bevy && cargo test
 `pnpm verify:v5` should write a machine-readable report under `artifacts/v5`
 with ordered steps, diagnostics, Rust test evidence, conformance links, visual
 artifacts, SDK ergonomics/starter evidence, and the first failing step.
+
+## Implemented Ergonomics Scope
+
+V5-11 implements `defineGame` and `v5-game-starter` as additive authoring sugar
+over existing scene, world, input, runtime config, and system contracts. It does
+not add a new prefab framework, editor workflow, networking layer, raw Three.js
+compatibility mode, plugin API, custom renderer, or direct Bevy authoring
+surface.
