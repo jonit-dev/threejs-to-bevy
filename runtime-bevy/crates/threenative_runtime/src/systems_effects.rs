@@ -13,6 +13,8 @@ pub struct NativeSystemEffects {
     #[serde(default)]
     pub patches: Vec<NativeSystemPatchEffect>,
     #[serde(default)]
+    pub resources: Vec<NativeSystemResourceEffect>,
+    #[serde(default)]
     pub services: Vec<NativeSystemServiceEffect>,
 }
 
@@ -27,6 +29,12 @@ pub struct NativeSystemPatchEffect {
 pub struct NativeSystemEventEffect {
     pub event: String,
     pub payload: Value,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+pub struct NativeSystemResourceEffect {
+    pub resource: String,
+    pub value: Value,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
@@ -75,6 +83,8 @@ pub struct NativeSystemEffectLogEntry {
     pub kind: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub payload: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resource: Option<String>,
     pub schedule: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub service: Option<String>,
@@ -102,6 +112,9 @@ pub fn apply_system_effects(
     }
     for command in &effects.commands {
         apply_command(bundle, command);
+    }
+    for resource in &effects.resources {
+        apply_resource(bundle, resource);
     }
 
     Ok(log)
@@ -155,6 +168,23 @@ pub fn validate_system_effects(
                 format!(
                     "System '{}' emitted undeclared event '{}'.",
                     system.name, event.event
+                ),
+            ));
+        }
+    }
+    for resource in &effects.resources {
+        if !system
+            .resource_writes
+            .iter()
+            .any(|declared| declared == &resource.resource)
+        {
+            diagnostics.push(effect_diagnostic(
+                "TN_BEVY_SYSTEM_RESOURCE_WRITE_UNDECLARED",
+                system,
+                &format!("resourceWrites/{}", resource.resource),
+                format!(
+                    "System '{}' wrote undeclared resource '{}'.",
+                    system.name, resource.resource
                 ),
             ));
         }
@@ -235,6 +265,7 @@ pub fn native_effect_log(
             frame,
             kind: "event".to_owned(),
             payload: Some(event.payload.clone()),
+            resource: None,
             schedule: system.schedule.clone(),
             service: None,
             system: system.name.clone(),
@@ -251,6 +282,7 @@ pub fn native_effect_log(
             frame,
             kind: "patch".to_owned(),
             payload: None,
+            resource: None,
             schedule: system.schedule.clone(),
             service: None,
             system: system.name.clone(),
@@ -267,11 +299,29 @@ pub fn native_effect_log(
             frame,
             kind: "command".to_owned(),
             payload: command.payload.clone(),
+            resource: None,
             schedule: system.schedule.clone(),
             service: None,
             system: system.name.clone(),
             tick,
             value: command.value.clone().or_else(|| command.components.clone()),
+        });
+    }
+    for resource in &effects.resources {
+        entries.push(NativeSystemEffectLogEntry {
+            command: None,
+            component: None,
+            entity: None,
+            event: None,
+            frame,
+            kind: "resource".to_owned(),
+            payload: None,
+            resource: Some(resource.resource.clone()),
+            schedule: system.schedule.clone(),
+            service: None,
+            system: system.name.clone(),
+            tick,
+            value: Some(resource.value.clone()),
         });
     }
     for service in &effects.services {
@@ -283,6 +333,7 @@ pub fn native_effect_log(
             frame,
             kind: "service".to_owned(),
             payload: Some(service.payload.clone()),
+            resource: None,
             schedule: system.schedule.clone(),
             service: Some(service.service.clone()),
             system: system.name.clone(),
@@ -408,6 +459,13 @@ fn apply_command(bundle: &mut LoadedBundle, command: &NativeSystemCommandEffect)
     }
 }
 
+fn apply_resource(bundle: &mut LoadedBundle, resource: &NativeSystemResourceEffect) {
+    bundle
+        .world
+        .resources
+        .insert(resource.resource.clone(), resource.value.clone());
+}
+
 fn apply_component_value(components: &mut EntityComponents, component: &str, value: Value) {
     if component == "Transform" {
         let patch = NativeSystemPatchEffect {
@@ -453,7 +511,7 @@ fn remove_component(components: &mut EntityComponents, component: &str) {
 
 fn effect_log_key(entry: &NativeSystemEffectLogEntry) -> String {
     format!(
-        "{:012}\0{:012}\0{}\0{}\0{}\0{}\0{}\0{}\0{}\0{}\0{}",
+        "{:012}\0{:012}\0{}\0{}\0{}\0{}\0{}\0{}\0{}\0{}\0{}\0{}",
         entry.frame,
         entry.tick,
         entry.schedule,
@@ -463,6 +521,7 @@ fn effect_log_key(entry: &NativeSystemEffectLogEntry) -> String {
         entry.entity.as_deref().unwrap_or(""),
         entry.component.as_deref().unwrap_or(""),
         entry.event.as_deref().unwrap_or(""),
+        entry.resource.as_deref().unwrap_or(""),
         entry.service.as_deref().unwrap_or(""),
         serde_json::to_string(
             entry

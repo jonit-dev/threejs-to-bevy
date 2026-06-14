@@ -266,7 +266,7 @@ fn module_source(script_source: &str) -> String {
 fn bridge_source() -> &'static str {
     r#"
 function __tnInvokeSystem(options) {
-  const effects = { commands: [], events: [], patches: [], services: [] };
+  const effects = { commands: [], events: [], patches: [], resources: [], services: [] };
   const data = options.snapshot;
   const normalize = (handle) => typeof handle === "string" ? handle : (handle && typeof handle.name === "string" ? handle.name : String(handle));
   const clone = (value) => value === undefined ? undefined : JSON.parse(JSON.stringify(value));
@@ -363,7 +363,9 @@ function __tnInvokeSystem(options) {
     },
     resources: {
       get(name) { return clone(data.resources[name]); },
-      set() {}
+      set(name, value) {
+        effects.resources.push({ resource: normalize(name), value: clone(value) });
+      }
     },
     query() {
       return entities;

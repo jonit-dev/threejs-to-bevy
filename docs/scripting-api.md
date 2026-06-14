@@ -376,8 +376,8 @@ Rules:
   and recorded in the canonical system effect log.
 - Resource reads return cloned snapshots; systems should not rely on mutating a
   returned object.
-- Native resource write parity is V6 runtime work and must be proven with Bevy
-  QuickJS evidence before release.
+- Native QuickJS uses the same queued resource effect shape; release promotion
+  still requires fixed web/native trace, conformance, and scene evidence.
 
 ## Events
 

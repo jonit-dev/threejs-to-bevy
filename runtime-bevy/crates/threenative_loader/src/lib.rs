@@ -242,6 +242,10 @@ pub struct SystemIr {
     pub queries: Vec<SystemQueryIr>,
     #[serde(default)]
     pub reads: Vec<String>,
+    #[serde(default, rename = "resourceReads")]
+    pub resource_reads: Vec<String>,
+    #[serde(default, rename = "resourceWrites")]
+    pub resource_writes: Vec<String>,
     #[serde(default)]
     pub schedule: String,
     pub script: Option<SystemScriptIr>,

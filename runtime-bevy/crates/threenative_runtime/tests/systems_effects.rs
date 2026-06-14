@@ -7,7 +7,8 @@ use serde_json::json;
 use threenative_loader::{SystemCommandIr, load_bundle};
 use threenative_runtime::systems_effects::{
     NativeSystemCommandEffect, NativeSystemEffects, NativeSystemEventEffect,
-    NativeSystemPatchEffect, NativeSystemServiceEffect, apply_system_effects,
+    NativeSystemPatchEffect, NativeSystemResourceEffect, NativeSystemServiceEffect,
+    apply_system_effects,
 };
 
 #[test]
@@ -170,6 +171,78 @@ fn systems_effects_should_reject_undeclared_service_call() {
 }
 
 #[test]
+fn systems_effects_should_apply_declared_resource_write() {
+    let root = write_bundle("apply-resource");
+    let mut bundle = load_bundle(&root).expect("bundle should load");
+    bundle
+        .world
+        .resources
+        .insert("Score".to_owned(), json!({ "value": 1 }));
+    let mut system = bundle
+        .systems
+        .as_ref()
+        .expect("systems should load")
+        .systems[0]
+        .clone();
+    system.resource_writes.push("Score".to_owned());
+    let effects = NativeSystemEffects {
+        resources: vec![NativeSystemResourceEffect {
+            resource: "Score".to_owned(),
+            value: json!({ "value": 2 }),
+        }],
+        ..Default::default()
+    };
+
+    let log = apply_system_effects(&mut bundle, &system, &effects, 9, 14)
+        .expect("declared resource write should apply");
+
+    assert_eq!(
+        bundle.world.resources.get("Score"),
+        Some(&json!({ "value": 2 }))
+    );
+    assert_eq!(log.entries[0].kind, "resource");
+    assert_eq!(log.entries[0].resource.as_deref(), Some("Score"));
+    assert_eq!(log.entries[0].value, Some(json!({ "value": 2 })));
+    assert_eq!(log.entries[0].frame, 9);
+    assert_eq!(log.entries[0].tick, 14);
+}
+
+#[test]
+fn systems_effects_should_reject_undeclared_resource_write() {
+    let root = write_bundle("reject-resource");
+    let mut bundle = load_bundle(&root).expect("bundle should load");
+    bundle
+        .world
+        .resources
+        .insert("Score".to_owned(), json!({ "value": 1 }));
+    let system = bundle
+        .systems
+        .as_ref()
+        .expect("systems should load")
+        .systems[0]
+        .clone();
+    let effects = NativeSystemEffects {
+        resources: vec![NativeSystemResourceEffect {
+            resource: "Score".to_owned(),
+            value: json!({ "value": 2 }),
+        }],
+        ..Default::default()
+    };
+
+    let diagnostics = apply_system_effects(&mut bundle, &system, &effects, 1, 1)
+        .expect_err("undeclared resource write should fail");
+
+    assert_eq!(
+        diagnostics[0].code,
+        "TN_BEVY_SYSTEM_RESOURCE_WRITE_UNDECLARED"
+    );
+    assert_eq!(
+        bundle.world.resources.get("Score"),
+        Some(&json!({ "value": 1 }))
+    );
+}
+
+#[test]
 fn systems_effects_should_apply_declared_command() {
     let root = write_bundle("apply-command");
     let mut bundle = load_bundle(&root).expect("bundle should load");
@@ -248,6 +321,8 @@ fn write_bundle(name: &str) -> PathBuf {
       "commands": [],
       "eventReads": [],
       "eventWrites": [],
+      "resourceReads": [],
+      "resourceWrites": [],
       "services": [],
       "script": { "bundle": "scripts.bundle.js", "exportName": "system_movePlayer" }
     }

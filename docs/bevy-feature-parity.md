@@ -231,11 +231,13 @@ V6-01 has started at the contract layer: systems can now declare
 `resourceReads` and `resourceWrites`, compiler output preserves those fields,
 and IR validation checks them against resource schemas. The web runtime now
 validates queued resource write effects against `resourceWrites` before applying
-them and records those writes in canonical web effect logs. This is not yet a
-full resource/event runtime parity claim; Bevy permission enforcement,
-web/native trace parity, conformance evidence, and functional V6 scene proof
-still need to land before the gameplay ECS/systems row can move out of
-partial/missing status.
+them and records those writes in canonical web effect logs. The native QuickJS
+host now deserializes the same `resourceReads`/`resourceWrites` metadata,
+validates queued resource write effects, applies declared writes to bundle world
+resources, and records resource entries in canonical native effect logs. This is
+not yet a full resource/event runtime parity claim; fixed web/native trace
+comparison, conformance evidence, and functional V6 scene proof still need to
+land before the gameplay ECS/systems row can move out of partial/missing status.
 
 ## V7 Deep Engine Gap-Closure Plan
 

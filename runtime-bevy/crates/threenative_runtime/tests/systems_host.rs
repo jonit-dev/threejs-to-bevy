@@ -46,6 +46,25 @@ fn systems_host_should_pass_time_resource_to_quickjs_system() {
 }
 
 #[test]
+fn systems_host_should_apply_declared_resource_write() {
+    let root = write_resource_bundle("resource-context");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+
+    let run = run_native_systems_once(&mut bundle, time()).expect("system should run");
+
+    assert_eq!(
+        bundle.world.resources.get("Score"),
+        Some(&serde_json::json!({ "value": 3 }))
+    );
+    assert_eq!(run.logs[0].entries[0].kind, "resource");
+    assert_eq!(run.logs[0].entries[0].resource.as_deref(), Some("Score"));
+    assert_eq!(
+        run.logs[0].entries[0].value,
+        Some(serde_json::json!({ "value": 3 }))
+    );
+}
+
+#[test]
 fn systems_host_should_reject_missing_export() {
     let root = write_bundle("missing-export", "missing_export");
     let mut bundle = load_bundle(&root).expect("scripted bundle should load");
@@ -75,6 +94,59 @@ fn systems_host_should_keep_unsupported_diagnostic_for_unavailable_builds() {
     assert_eq!(diagnostic.severity, "error");
     assert_eq!(diagnostic.system_id.as_deref(), Some("movePlayer"));
     assert!(diagnostic.message.contains("QuickJS host"));
+}
+
+fn write_resource_bundle(name: &str) -> PathBuf {
+    let root = root(name);
+    write_base_bundle(&root, true);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [],
+  "resources": {
+    "Score": { "value": 1 }
+  }
+}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "score",
+      "schedule": "update",
+      "reads": [],
+      "writes": [],
+      "queries": [],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": ["Score"],
+      "resourceWrites": ["Score"],
+      "services": [],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_score" }
+    }
+  ]
+}"#,
+    );
+    fs::write(
+        root.join("scripts.bundle.js"),
+        r#"const system_score = (ctx) => {
+  const score = ctx.resources.get("Score");
+  ctx.resources.set("Score", { value: score.value + 2 });
+};
+export const systemIds = Object.freeze({ "system_score": "score" });
+export const systems = Object.freeze({ "system_score": system_score });
+"#,
+    )
+    .expect("script bundle should be written");
+    root
 }
 
 fn write_bundle(name: &str, export_name: &str) -> PathBuf {
@@ -113,6 +185,8 @@ fn write_bundle(name: &str, export_name: &str) -> PathBuf {
       "commands": [],
       "eventReads": [],
       "eventWrites": [],
+      "resourceReads": [],
+      "resourceWrites": [],
       "services": [],
       "script": {{ "bundle": "scripts.bundle.js", "exportName": "{export_name}" }}
     }}
