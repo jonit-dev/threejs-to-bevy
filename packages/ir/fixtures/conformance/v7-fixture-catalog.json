@@ -145,6 +145,7 @@
       "rejectedFixtureId": "v7-rejected-scripting-lifecycle",
       "rejectedBundlePath": "packages/ir/fixtures/conformance/v7-rejected-scripting-lifecycle/game.bundle",
       "targetCapabilities": [
+        "ecs:component-hooks",
         "ecs:component-schemas",
         "ecs:event-schemas",
         "ecs:events",
@@ -153,6 +154,7 @@
         "ecs:resources",
         "scripting:command.despawn",
         "scripting:command.spawn",
+        "scripting:component-hooks",
         "scripting:event-reads",
         "scripting:event-writes",
         "scripting:hot-reload.invalidate",

@@ -232,6 +232,30 @@ test("should accept resource-derived app states, computed states, and substates"
   }
 });
 
+test("should accept component lifecycle hook metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-component-hooks-"));
+  try {
+    await writeBundle(root, {
+      commands: [],
+      componentHooks: [
+        {
+          component: "Health",
+          hooks: ["onAdd", "onInsert"],
+        },
+      ],
+      reads: ["Health"],
+      writes: ["Health"],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should accept observer event propagation metadata", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-observers-"));
   try {
@@ -301,6 +325,45 @@ test("should reject unsupported scripting lifecycle assumptions", async () => {
         "systems.ir.json/systems/0/timer",
       ],
     );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject invalid component lifecycle hook metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-component-hooks-invalid-"));
+  try {
+    await writeBundle(root, {
+      commands: [],
+      componentHooks: [
+        {
+          component: "Missing",
+          hooks: ["onRemove", "onAdd", "onAdd"],
+          unsupported: true,
+        },
+        {
+          component: "Health",
+          hooks: ["onInsert"],
+        },
+        {
+          component: "Health",
+          hooks: ["onAdd"],
+        },
+      ],
+      reads: ["Health"],
+      writes: ["Health"],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.code), [
+      "TN_IR_SYSTEM_COMPONENT_HOOK_FIELD_UNSUPPORTED",
+      "TN_IR_SYSTEM_COMPONENT_HOOK_SCHEMA_MISSING",
+      "TN_IR_SYSTEM_COMPONENT_HOOK_KIND_UNSUPPORTED",
+      "TN_IR_SYSTEM_COMPONENT_HOOK_KIND_DUPLICATE",
+      "TN_IR_SYSTEM_COMPONENT_HOOK_DUPLICATE",
+    ]);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -427,6 +490,7 @@ async function writeBundle(
   system: {
     async?: unknown;
     commands: unknown[];
+    componentHooks?: unknown;
     lifecycle?: unknown;
     reads: string[];
     resourceReads?: string[];
@@ -470,6 +534,7 @@ async function writeBundle(
     prefabs: [],
   });
   await writeJson(root, "systems.ir.json", {
+    ...(system.componentHooks === undefined ? {} : { componentHooks: system.componentHooks }),
     ...(system.lifecycle === undefined ? {} : { lifecycle: system.lifecycle }),
     ...(system.observers === undefined ? {} : { observers: system.observers }),
     schema: "threenative.systems",

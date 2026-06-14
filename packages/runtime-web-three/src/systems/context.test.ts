@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { ISystemsIr, IWorldIr } from "@threenative/ir";
 
-import { createSystemContext, evaluateStates, propagateObserverEvent } from "./context.js";
+import { componentHookObservations, createSystemContext, evaluateStates, propagateObserverEvent } from "./context.js";
 
 test("should expose fixed input trace", () => {
   const { context } = createSystemContext(makeWorld(), {
@@ -159,6 +159,41 @@ test("should expose deterministic observer propagation routes", () => {
     { entity: "weapon", phase: "target" },
     { entity: "player", phase: "bubble" },
     { entity: "root", phase: "bubble" },
+  ]);
+});
+
+test("should expose deterministic component hook observations", () => {
+  const world: IWorldIr = {
+    entities: [
+      { components: { Health: { current: 10 } }, id: "player" },
+      { components: { Transform: { position: [0, 0, 0] } }, id: "light" },
+      { components: { Health: { current: 3 } }, id: "enemy" },
+    ],
+    schema: "threenative.world",
+    version: "0.1.0",
+  };
+  const systems: ISystemsIr = {
+    componentHooks: [{ component: "Health", hooks: ["onAdd", "onInsert"] }],
+    schema: "threenative.systems",
+    systems: [],
+    version: "0.1.0",
+  };
+
+  assert.deepEqual(componentHookObservations(world, systems, "Health"), [
+    { component: "Health", entity: "player", hook: "onAdd" },
+    { component: "Health", entity: "player", hook: "onInsert" },
+    { component: "Health", entity: "enemy", hook: "onAdd" },
+    { component: "Health", entity: "enemy", hook: "onInsert" },
+  ]);
+  assert.deepEqual(componentHookObservations(world, systems, "Missing"), []);
+
+  const { context } = createSystemContext(world, { delta: 0.016, fixedDelta: 0.016, systems });
+
+  assert.deepEqual(context.components.hooks("Health"), [
+    { component: "Health", entity: "player", hook: "onAdd" },
+    { component: "Health", entity: "player", hook: "onInsert" },
+    { component: "Health", entity: "enemy", hook: "onAdd" },
+    { component: "Health", entity: "enemy", hook: "onInsert" },
   ]);
 });
 

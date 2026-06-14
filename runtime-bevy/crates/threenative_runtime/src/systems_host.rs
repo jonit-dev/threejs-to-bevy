@@ -422,6 +422,11 @@ function __tnInvokeSystem(options) {
         return clone((data.observerRoutes[normalize(event)] || {})[target] || []);
       }
     },
+    components: {
+      hooks(component) {
+        return clone(data.componentHooks[normalize(component)] || []);
+      }
+    },
     resources: {
       get(name) { return clone(data.resources[name]); },
       set(name, value) {

@@ -73,7 +73,10 @@ fn systems_context_should_include_resource_derived_states() {
 
     let snapshot = build_system_context_snapshot(&bundle, system, time());
 
-    assert_eq!(snapshot.states.get("Game"), Some(&Some("playing".to_owned())));
+    assert_eq!(
+        snapshot.states.get("Game"),
+        Some(&Some("playing".to_owned()))
+    );
     assert_eq!(
         snapshot.states.get("Difficulty"),
         Some(&Some("danger".to_owned()))
@@ -108,6 +111,31 @@ fn systems_context_should_include_observer_propagation_routes() {
     assert_eq!(route[1].phase, "bubble");
     assert_eq!(route[2].entity, "root");
     assert_eq!(route[2].phase, "bubble");
+}
+
+#[test]
+fn systems_context_should_include_component_hook_observations() {
+    let root = write_bundle("component-hook-context");
+    let bundle = load_bundle(&root).expect("bundle should load");
+    let system = &bundle
+        .systems
+        .as_ref()
+        .expect("systems should load")
+        .systems[0];
+
+    let snapshot = build_system_context_snapshot(&bundle, system, time());
+    let hooks = snapshot
+        .component_hooks
+        .get("Health")
+        .expect("component hook observations should be present");
+
+    assert_eq!(hooks.len(), 2);
+    assert_eq!(hooks[0].component, "Health");
+    assert_eq!(hooks[0].entity, "player");
+    assert_eq!(hooks[0].hook, "onAdd");
+    assert_eq!(hooks[1].component, "Health");
+    assert_eq!(hooks[1].entity, "player");
+    assert_eq!(hooks[1].hook, "onInsert");
 }
 
 fn write_bundle(name: &str) -> PathBuf {
@@ -187,6 +215,12 @@ fn write_bundle(name: &str) -> PathBuf {
       { "id": "Locomotion", "parent": "Game", "parentValue": "playing", "fallback": "grounded", "source": { "resource": "GameState", "field": "locomotion" }, "values": ["grounded", "airborne"] }
     ]
   },
+  "componentHooks": [
+    {
+      "component": "Health",
+      "hooks": ["onAdd", "onInsert"]
+    }
+  ],
   "observers": [
     {
       "event": "DamageEvent",

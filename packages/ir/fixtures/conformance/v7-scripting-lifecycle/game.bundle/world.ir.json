@@ -4,7 +4,11 @@
   "entities": [
     {
       "id": "player",
-      "components": {}
+      "components": {
+        "Health": {
+          "current": 10
+        }
+      }
     },
     {
       "id": "player.weapon",

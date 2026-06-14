@@ -36,6 +36,9 @@ export interface ISystemContext {
     play(entity: string, clip: string, options?: Record<string, unknown>): void;
   };
   commands: ISystemCommandBuffer;
+  components: {
+    hooks(component: unknown): IComponentHookObservation[];
+  };
   events: {
     emit(event: unknown, payload: unknown): void;
     read(event: unknown): unknown[];
@@ -75,6 +78,12 @@ export interface ISystemContext {
 export interface IObserverPropagationStep {
   entity: string;
   phase: "bubble" | "target";
+}
+
+export interface IComponentHookObservation {
+  component: string;
+  entity: string;
+  hook: "onAdd" | "onInsert";
 }
 
 export interface IQueuedCommand {
@@ -144,6 +153,11 @@ export function createSystemContext(
         },
         spawn(entity, components = {}) {
           commands.push({ components: cloneValue(components) as Record<string, unknown>, entity, kind: "spawn", source: "command" });
+        },
+      },
+      components: {
+        hooks(component) {
+          return componentHookObservations(world, options.systems, normalizeHandleName(component));
         },
       },
       events: {
@@ -225,6 +239,23 @@ export function createSystemContext(
     resources,
     services,
   };
+}
+
+export function componentHookObservations(world: IWorldIr, systems: ISystemsIr | undefined, component: string): IComponentHookObservation[] {
+  const declaration = systems?.componentHooks?.find((candidate) => candidate.component === component);
+  if (declaration === undefined) {
+    return [];
+  }
+  const observations: IComponentHookObservation[] = [];
+  for (const entity of world.entities) {
+    if (entity.components[component] === undefined) {
+      continue;
+    }
+    for (const hook of declaration.hooks) {
+      observations.push({ component, entity: entity.id, hook });
+    }
+  }
+  return observations;
 }
 
 export function propagateObserverEvent(world: IWorldIr, systems: ISystemsIr | undefined, event: string, target: string): IObserverPropagationStep[] {

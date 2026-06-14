@@ -4,6 +4,7 @@
   "name": "conformance-v7-scripting-lifecycle",
   "requiredCapabilities": {
     "ecs": [
+      "component-hooks",
       "component-schemas",
       "event-schemas",
       "events",
@@ -14,6 +15,7 @@
     "scripting": [
       "command.despawn",
       "command.spawn",
+      "component-hooks",
       "event-reads",
       "event-writes",
       "hot-reload.invalidate",

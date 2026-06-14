@@ -9,6 +9,7 @@ use threenative_loader::{
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NativeSystemContextSnapshot {
+    pub component_hooks: BTreeMap<String, Vec<NativeComponentHookObservation>>,
     pub entities: Vec<NativeSystemEntitySnapshot>,
     pub events: BTreeMap<String, Vec<Value>>,
     pub input: NativeSystemInputSnapshot,
@@ -16,6 +17,13 @@ pub struct NativeSystemContextSnapshot {
     pub resources: BTreeMap<String, Value>,
     pub states: BTreeMap<String, Option<String>>,
     pub time: NativeSystemTimeSnapshot,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct NativeComponentHookObservation {
+    pub component: String,
+    pub entity: String,
+    pub hook: String,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -81,6 +89,7 @@ pub fn build_system_context_snapshot_with_events(
         .collect();
 
     NativeSystemContextSnapshot {
+        component_hooks: component_hook_observations(bundle),
         entities,
         events: merged_event_queues(bundle, events),
         input: NativeSystemInputSnapshot::fixed_trace(),
@@ -94,6 +103,32 @@ pub fn build_system_context_snapshot_with_events(
         states: evaluate_states(bundle),
         time,
     }
+}
+
+pub fn component_hook_observations(
+    bundle: &LoadedBundle,
+) -> BTreeMap<String, Vec<NativeComponentHookObservation>> {
+    let mut observations = BTreeMap::new();
+    let Some(systems) = bundle.systems.as_ref() else {
+        return observations;
+    };
+    for declaration in &systems.component_hooks {
+        let mut component_observations = Vec::new();
+        for entity in &bundle.world.entities {
+            if component_value(&entity.components, &declaration.component).is_none() {
+                continue;
+            }
+            for hook in &declaration.hooks {
+                component_observations.push(NativeComponentHookObservation {
+                    component: declaration.component.clone(),
+                    entity: entity.id.clone(),
+                    hook: hook.clone(),
+                });
+            }
+        }
+        observations.insert(declaration.component.clone(), component_observations);
+    }
+    observations
 }
 
 pub fn observer_routes(
@@ -119,14 +154,12 @@ pub fn observer_routes(
                 });
             }
             if observer.phases.iter().any(|phase| phase == "bubble") {
-                route.extend(
-                    ancestor_ids(bundle, &entity.id)
-                        .into_iter()
-                        .map(|entity| NativeObserverPropagationStep {
-                            entity,
-                            phase: "bubble".to_owned(),
-                        }),
-                );
+                route.extend(ancestor_ids(bundle, &entity.id).into_iter().map(|entity| {
+                    NativeObserverPropagationStep {
+                        entity,
+                        phase: "bubble".to_owned(),
+                    }
+                }));
             }
             event_routes.insert(entity.id.clone(), route);
         }
@@ -166,7 +199,10 @@ fn ancestor_ids(bundle: &LoadedBundle, target: &str) -> Vec<String> {
 
 pub fn evaluate_states(bundle: &LoadedBundle) -> BTreeMap<String, Option<String>> {
     let mut values = BTreeMap::new();
-    let Some(lifecycle) = bundle.systems.as_ref().and_then(|systems| systems.lifecycle.as_ref())
+    let Some(lifecycle) = bundle
+        .systems
+        .as_ref()
+        .and_then(|systems| systems.lifecycle.as_ref())
     else {
         return values;
     };

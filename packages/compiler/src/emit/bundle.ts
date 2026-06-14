@@ -391,6 +391,10 @@ function collectSystemCapabilities(systems: ISystemsIr | undefined, add: (domain
     add("ecs", "observer-propagation");
     add("scripting", "observer-propagation");
   }
+  if ((systems.componentHooks ?? []).length > 0) {
+    add("ecs", "component-hooks");
+    add("scripting", "component-hooks");
+  }
   for (const system of systems.systems) {
     add("scripting", `schedule.${system.schedule}`);
     if (system.script !== undefined) {

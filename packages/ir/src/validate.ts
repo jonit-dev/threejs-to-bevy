@@ -1141,7 +1141,7 @@ function validateSystems(
 ): void {
   const rawSystems = systems as unknown as Record<string, unknown>;
   for (const key of Object.keys(rawSystems)) {
-    if (!["lifecycle", "observers", "schema", "systems", "version"].includes(key)) {
+    if (!["componentHooks", "lifecycle", "observers", "schema", "systems", "version"].includes(key)) {
       diagnostics.push({
         code: "TN_IR_SYSTEMS_FIELD_UNSUPPORTED",
         message: `Systems IR uses unsupported field '${key}'.`,
@@ -1158,6 +1158,7 @@ function validateSystems(
       path,
     });
   }
+  validateComponentHooks(systems.componentHooks, `${path}/componentHooks`, componentSchemas, diagnostics);
   validateSystemsLifecycle(systems.lifecycle, `${path}/lifecycle`, resourceSchemas, diagnostics);
   validateSystemObservers(systems.observers, `${path}/observers`, eventSchemas, diagnostics);
 
@@ -1318,6 +1319,61 @@ function validateSystems(
         }
       }
     });
+  });
+}
+
+function validateComponentHooks(
+  value: unknown,
+  path: string,
+  componentSchemas: Record<string, IIrNamedSchema>,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!Array.isArray(value)) {
+    diagnostics.push({ code: "TN_IR_SYSTEM_COMPONENT_HOOKS_INVALID", message: "Component hooks must be an array.", path, severity: "error" });
+    return;
+  }
+  const components = new Set<string>();
+  value.forEach((declaration, index) => {
+    const declarationPath = `${path}/${index}`;
+    if (!isRecord(declaration)) {
+      diagnostics.push({ code: "TN_IR_SYSTEM_COMPONENT_HOOK_INVALID", message: "Component hook declaration must be an object.", path: declarationPath, severity: "error" });
+      return;
+    }
+    for (const key of Object.keys(declaration)) {
+      if (!["component", "hooks"].includes(key)) {
+        diagnostics.push({ code: "TN_IR_SYSTEM_COMPONENT_HOOK_FIELD_UNSUPPORTED", message: `Component hook declaration uses unsupported field '${key}'.`, path: `${declarationPath}/${key}`, severity: "error" });
+      }
+    }
+    if (typeof declaration.component !== "string" || declaration.component.trim() === "" || componentSchemas[declaration.component] === undefined) {
+      diagnostics.push({ code: "TN_IR_SYSTEM_COMPONENT_HOOK_SCHEMA_MISSING", message: "Component hook must reference a declared component schema.", path: `${declarationPath}/component`, severity: "error" });
+    } else if (components.has(declaration.component)) {
+      diagnostics.push({ code: "TN_IR_SYSTEM_COMPONENT_HOOK_DUPLICATE", message: `Component hook declaration for '${declaration.component}' is duplicated.`, path: declarationPath, severity: "error" });
+    } else {
+      components.add(declaration.component);
+    }
+    validateComponentHookKinds(declaration.hooks, `${declarationPath}/hooks`, diagnostics);
+  });
+}
+
+function validateComponentHookKinds(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (!Array.isArray(value) || value.length === 0) {
+    diagnostics.push({ code: "TN_IR_SYSTEM_COMPONENT_HOOK_KINDS_INVALID", message: "Component hook kinds must be a non-empty array.", path, severity: "error" });
+    return;
+  }
+  const hooks = new Set<string>();
+  value.forEach((hook, index) => {
+    if (hook !== "onAdd" && hook !== "onInsert") {
+      diagnostics.push({ code: "TN_IR_SYSTEM_COMPONENT_HOOK_KIND_UNSUPPORTED", message: "Component hook kind must be 'onAdd' or 'onInsert'.", path: `${path}/${index}`, severity: "error" });
+      return;
+    }
+    if (hooks.has(hook)) {
+      diagnostics.push({ code: "TN_IR_SYSTEM_COMPONENT_HOOK_KIND_DUPLICATE", message: `Component hook kind '${hook}' is duplicated.`, path: `${path}/${index}`, severity: "error" });
+      return;
+    }
+    hooks.add(hook);
   });
 }
 

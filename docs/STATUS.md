@@ -414,13 +414,15 @@ V7-07 has landed the first scripting determinism and lifecycle evidence slice:
 `systems.ir.json` now accepts explicit lifecycle metadata for `fixed-trace`
 replay, `system-local-disallowed` state, `invalidate` hot reload behavior, and
 bounded resource-derived app states, computed states, substates, and
-target-to-ancestor observer propagation exposed to scripts as `ctx.states.get()`
+component `onAdd`/`onInsert` hook observations plus target-to-ancestor observer
+propagation exposed to scripts as `ctx.states.get()`, `ctx.components.hooks()`,
 and `ctx.observers.propagate()`, while unsupported lifecycle fields and
 async/timer/system-local state metadata fail with stable IR diagnostics. The
 `v7-scripting-lifecycle` fixture runs a script-heavy multi-schedule trace
 covering startup, fixedUpdate, update, and postUpdate resource handoff, queued
 events, spawn/despawn commands, `animation.play` service effects, derived
-state/substate reads, and observer-route reads. `pnpm verify:conformance`
+state/substate reads, component-hook observations, and observer-route reads.
+`pnpm verify:conformance`
 compares the canonical
 web/native effect logs and writes artifacts under
 `artifacts/conformance/v7-scripting-lifecycle`. Follow-up focused runtime tests
@@ -428,8 +430,9 @@ now prove command-buffer spawn/despawn reconciliation across later web/native
 schedules, native persistence for direct and command-buffer event writes, and
 native query filtering against dynamically spawned components. State-preserving
 hot reload, async systems, arbitrary npm/platform APIs, broad live-scene
-reconciliation, event clearing/windowing rules, stoppable observers, and
-system-local persisted state remain unsupported or later work.
+reconciliation, event clearing/windowing rules, command-time/removal component
+hook callbacks, stoppable observers, and system-local persisted state remain
+unsupported or later work.
 
 V7-08 has landed the first desktop packaging and target-profile diagnostics
 slice: `tn package --target desktop --bundle <path>` now accepts an existing

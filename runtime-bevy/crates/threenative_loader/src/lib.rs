@@ -302,6 +302,8 @@ pub struct TargetProfile {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct SystemsIr {
+    #[serde(default, rename = "componentHooks")]
+    pub component_hooks: Vec<SystemComponentHookIr>,
     #[serde(default)]
     pub lifecycle: Option<SystemsLifecycleIr>,
     #[serde(default)]
@@ -309,6 +311,12 @@ pub struct SystemsIr {
     pub schema: String,
     pub version: String,
     pub systems: Vec<SystemIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct SystemComponentHookIr {
+    pub component: String,
+    pub hooks: Vec<String>,
 }
 
 #[derive(Clone, Debug, Deserialize)]

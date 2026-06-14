@@ -198,6 +198,7 @@ test("should include capability tags for each conformance fixture", async () => 
     "rendering:runtime-lod",
   ]);
   assertFixtureCapabilities(byName, "v7-scripting-lifecycle", [
+    "ecs:component-hooks",
     "ecs:component-schemas",
     "ecs:event-schemas",
     "ecs:events",
@@ -206,6 +207,7 @@ test("should include capability tags for each conformance fixture", async () => 
     "ecs:resources",
     "scripting:command.despawn",
     "scripting:command.spawn",
+    "scripting:component-hooks",
     "scripting:event-reads",
     "scripting:event-writes",
     "scripting:hot-reload.invalidate",

@@ -47,6 +47,7 @@ export interface IIrSystemDeclaration {
 }
 
 export interface ISystemsIr {
+  componentHooks?: IIrComponentHookDeclaration[];
   lifecycle?: {
     appStates?: IIrAppStateDeclaration[];
     computedStates?: IIrComputedStateDeclaration[];
@@ -62,6 +63,13 @@ export interface ISystemsIr {
 }
 
 export type IrObserverPhase = "bubble" | "target";
+
+export type IrComponentHookKind = "onAdd" | "onInsert";
+
+export interface IIrComponentHookDeclaration {
+  component: string;
+  hooks: IrComponentHookKind[];
+}
 
 export interface IIrObserverDeclaration {
   event: string;

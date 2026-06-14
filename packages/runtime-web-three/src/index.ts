@@ -29,9 +29,11 @@ export { createUiDomOverlay, type IUiDomOverlay } from "./ui/domOverlay.js";
 export { renderBundle, type IRenderResult } from "./render.js";
 export {
   createSystemContext,
+  componentHookObservations,
   evaluateStates,
   propagateObserverEvent,
   applyCommands,
+  type IComponentHookObservation,
   type IObserverPropagationStep,
   type ISystemContext,
 } from "./systems/context.js";

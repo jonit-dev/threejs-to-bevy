@@ -20,6 +20,10 @@
           "kind": "string",
           "required": false
         },
+        "componentHooks": {
+          "kind": "string",
+          "required": false
+        },
         "game": {
           "kind": "string",
           "required": false
