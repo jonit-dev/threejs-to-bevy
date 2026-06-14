@@ -125,6 +125,8 @@ pub fn component_value(components: &EntityComponents, component: &str) -> Option
             json!({
                 "kind": collider.kind,
                 "height": collider.height,
+                "layer": collider.layer,
+                "mask": collider.mask,
                 "radius": collider.radius,
                 "size": collider.size,
                 "trigger": collider.trigger,

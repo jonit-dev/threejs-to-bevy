@@ -316,7 +316,7 @@ const hit = ctx.physics.raycast({
   origin: [0, 2, 0],
   direction: [0, -1, 0],
   maxDistance: 5,
-  layers: ["world"],
+  mask: ["world"],
   ignore: [entity.id],
 });
 
@@ -350,6 +350,9 @@ type RaycastHit =
 Rules:
 
 - Query APIs are declared as service permissions such as `physics.raycast`.
+- V7 query permissions add `physics.overlap` and `physics.shapeCast` for
+  backend-neutral overlap and swept-shape checks. Query filters use portable
+  layer names and masks, not backend bitsets or handles.
 - Body mutation APIs lower to commands or component patches.
 - Backend-specific concepts such as Rapier handles or Bevy components are not
   script-visible.

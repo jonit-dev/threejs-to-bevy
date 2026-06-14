@@ -3,7 +3,7 @@ use std::path::Path;
 use bevy::prelude::*;
 use thiserror::Error;
 use threenative_components::ThreeNativeId;
-use threenative_loader::{load_bundle, LoadError, LoadedBundle, TransformComponent};
+use threenative_loader::{LoadError, LoadedBundle, TransformComponent, load_bundle};
 
 pub mod assets;
 pub mod audio;

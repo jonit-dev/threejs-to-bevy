@@ -4,6 +4,11 @@ import type { Vector3Tuple } from "./math/Vector3.js";
 export type PhysicsBodyKind = "dynamic" | "kinematic" | "static";
 export type PhysicsColliderKind = "box" | "capsule" | "cylinder" | "mesh" | "sphere";
 
+export interface IPhysicsFilterOptions {
+  layer?: string;
+  mask?: ReadonlyArray<string>;
+}
+
 export interface IRigidBodyDeclaration {
   kind: PhysicsBodyKind;
   mass?: number;
@@ -13,6 +18,8 @@ export interface IRigidBodyDeclaration {
 export interface IColliderDeclaration {
   height?: number;
   kind: PhysicsColliderKind;
+  layer?: string;
+  mask?: string[];
   radius?: number;
   size?: Vector3Tuple;
   trigger?: boolean;
@@ -36,34 +43,47 @@ export function rigidBody(kind: PhysicsBodyKind, options: { mass?: number; veloc
   return { kind, mass: options.mass, velocity: options.velocity };
 }
 
-export function boxCollider(size: Vector3Tuple, options: { trigger?: boolean } = {}): IColliderDeclaration {
+export function boxCollider(size: Vector3Tuple, options: { trigger?: boolean } & IPhysicsFilterOptions = {}): IColliderDeclaration {
   size.forEach((value, index) => {
     assertPositiveNumber(value, "TN_SDK_PHYSICS_COLLIDER_INVALID_SIZE", `Collider.size[${index}]`);
   });
-  return { kind: "box", size: [...size] as Vector3Tuple, trigger: options.trigger };
+  return { kind: "box", size: [...size] as Vector3Tuple, trigger: options.trigger, ...normalizeFilter(options) };
 }
 
-export function sphereCollider(radius: number, options: { trigger?: boolean } = {}): IColliderDeclaration {
+export function sphereCollider(radius: number, options: { trigger?: boolean } & IPhysicsFilterOptions = {}): IColliderDeclaration {
   assertPositiveNumber(radius, "TN_SDK_PHYSICS_COLLIDER_INVALID_RADIUS", "Collider.radius");
-  return { kind: "sphere", radius, trigger: options.trigger };
+  return { kind: "sphere", radius, trigger: options.trigger, ...normalizeFilter(options) };
 }
 
-export function capsuleCollider(radius: number, height: number, options: { trigger?: boolean } = {}): IColliderDeclaration {
-  assertPositiveNumber(radius, "TN_SDK_PHYSICS_COLLIDER_INVALID_RADIUS", "Collider.radius");
-  assertPositiveNumber(height, "TN_SDK_PHYSICS_COLLIDER_INVALID_HEIGHT", "Collider.height");
-  return { height, kind: "capsule", radius, trigger: options.trigger };
-}
-
-export function cylinderCollider(radius: number, height: number, options: { trigger?: boolean } = {}): IColliderDeclaration {
+export function capsuleCollider(radius: number, height: number, options: { trigger?: boolean } & IPhysicsFilterOptions = {}): IColliderDeclaration {
   assertPositiveNumber(radius, "TN_SDK_PHYSICS_COLLIDER_INVALID_RADIUS", "Collider.radius");
   assertPositiveNumber(height, "TN_SDK_PHYSICS_COLLIDER_INVALID_HEIGHT", "Collider.height");
-  return { height, kind: "cylinder", radius, trigger: options.trigger };
+  return { height, kind: "capsule", radius, trigger: options.trigger, ...normalizeFilter(options) };
 }
 
-export function meshCollider(options: { trigger?: boolean } = {}): IColliderDeclaration {
-  return { kind: "mesh", trigger: options.trigger };
+export function cylinderCollider(radius: number, height: number, options: { trigger?: boolean } & IPhysicsFilterOptions = {}): IColliderDeclaration {
+  assertPositiveNumber(radius, "TN_SDK_PHYSICS_COLLIDER_INVALID_RADIUS", "Collider.radius");
+  assertPositiveNumber(height, "TN_SDK_PHYSICS_COLLIDER_INVALID_HEIGHT", "Collider.height");
+  return { height, kind: "cylinder", radius, trigger: options.trigger, ...normalizeFilter(options) };
+}
+
+export function meshCollider(options: { trigger?: boolean } & IPhysicsFilterOptions = {}): IColliderDeclaration {
+  return { kind: "mesh", trigger: options.trigger, ...normalizeFilter(options) };
 }
 
 export function physics(options: IPhysicsDeclaration): IPhysicsDeclaration {
   return options;
+}
+
+function normalizeFilter(options: IPhysicsFilterOptions): Pick<IColliderDeclaration, "layer" | "mask"> {
+  if (options.layer !== undefined && options.layer.trim() === "") {
+    throw new SdkError("TN_SDK_PHYSICS_FILTER_INVALID", "Collider.layer must be a non-empty portable filter layer string.");
+  }
+  if (options.mask?.some((entry) => entry.trim() === "")) {
+    throw new SdkError("TN_SDK_PHYSICS_FILTER_INVALID", "Collider.mask entries must be non-empty portable filter layer strings.");
+  }
+  return {
+    ...(options.layer === undefined ? {} : { layer: options.layer }),
+    ...(options.mask === undefined ? {} : { mask: [...options.mask] }),
+  };
 }

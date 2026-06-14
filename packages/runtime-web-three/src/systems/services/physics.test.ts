@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { IWorldIr } from "@threenative/ir";
 
-import { raycastPrimitive } from "./physics.js";
+import { overlapPrimitive, raycastPrimitive, shapeCastPrimitive } from "./physics.js";
 
 test("should raycast primitive floor", () => {
   const result = raycastPrimitive(makeWorld(), {
@@ -21,16 +21,52 @@ test("should raycast primitive floor", () => {
   });
 });
 
+test("should overlap primitive colliders with portable filters", () => {
+  const result = overlapPrimitive(makeWorld(), {
+    layer: "player",
+    mask: ["world", "pickup"],
+    position: [0, 0.5, 0],
+    shape: { kind: "sphere", radius: 0.75 },
+  });
+
+  assert.deepEqual(result, { entities: ["crate", "floor"] });
+});
+
+test("should shape cast primitive colliders deterministically", () => {
+  const result = shapeCastPrimitive(makeWorld(), {
+    direction: [1, 0, 0],
+    ignore: ["player"],
+    maxDistance: 4,
+    origin: [-3, 0.5, 0],
+    shape: { halfExtents: [0.5, 0.5, 0.5], kind: "box" },
+  });
+
+  assert.deepEqual(result, {
+    distance: 2,
+    entity: "crate",
+    hit: true,
+    normal: [-1, 0, 0],
+    point: [-1, 0.5, 0],
+  });
+});
+
 function makeWorld(): IWorldIr {
   return {
     entities: [
       { components: { Transform: { position: [0, 1, 0] } }, id: "player" },
       {
         components: {
-          Collider: { kind: "box", size: [8, 0.1, 8] },
+          Collider: { kind: "box", layer: "world", mask: ["player"], size: [8, 0.1, 8] },
           Transform: { position: [0, 0, 0] },
         },
         id: "floor",
+      },
+      {
+        components: {
+          Collider: { kind: "box", layer: "pickup", mask: ["player"], size: [1, 1, 1] },
+          Transform: { position: [0.5, 0.5, 0] },
+        },
+        id: "crate",
       },
     ],
     schema: "threenative.world",

@@ -769,7 +769,7 @@ function validateSystems(
       });
     });
     (system.services ?? []).forEach((service, serviceIndex) => {
-      if (!["animation.play", "physics.raycast"].includes(service)) {
+      if (!["animation.play", "physics.overlap", "physics.raycast", "physics.shapeCast"].includes(service)) {
         diagnostics.push({
           code: "TN_IR_SYSTEM_SERVICE_UNSUPPORTED",
           message: `System '${system.name}' declares unsupported service '${service}'.`,
@@ -1107,14 +1107,15 @@ function validatePhysicsComponents(entity: IWorldIr["entities"][number], path: s
         suggestion: "Use a V6 portable collider shape: box, sphere, capsule, or static mesh.",
       });
     }
-    if ("layer" in colliderRecord || "mask" in colliderRecord) {
+    if (hasEnginePhysicsHandle(colliderRecord)) {
       diagnostics.push({
-        code: "TN_IR_PHYSICS_LAYER_MASK_UNSUPPORTED",
-        message: "Collider layer and mask filtering is deferred until the V7 physics contract.",
+        code: "TN_IR_PHYSICS_ENGINE_HANDLE_UNSUPPORTED",
+        message: "Collider must not expose backend-specific physics handles.",
         path: `${path}/components/Collider`,
-        suggestion: "Omit Collider.layer and Collider.mask for V6 bundles.",
+        suggestion: "Use portable Collider.layer and Collider.mask filter metadata instead of Rapier, Bevy, or native physics handles.",
       });
     }
+    validatePhysicsFilter(colliderRecord, `${path}/components/Collider`, diagnostics);
     if (colliderRecord.trigger !== undefined && typeof colliderRecord.trigger !== "boolean") {
       diagnostics.push({
         code: "TN_IR_PHYSICS_TRIGGER_INVALID",
@@ -1148,6 +1149,14 @@ function validatePhysicsComponents(entity: IWorldIr["entities"][number], path: s
       path: `${path}/components/RigidBody/kind`,
     });
   }
+  if (bodyRecord !== undefined && hasEnginePhysicsHandle(bodyRecord)) {
+    diagnostics.push({
+      code: "TN_IR_PHYSICS_ENGINE_HANDLE_UNSUPPORTED",
+      message: "RigidBody must not expose backend-specific physics handles.",
+      path: `${path}/components/RigidBody`,
+      suggestion: "Use portable body and query metadata instead of Rapier, Bevy, or native physics handles.",
+    });
+  }
   if (bodyRecord?.mass !== undefined) {
     validatePositiveFinite(bodyRecord.mass, `${path}/components/RigidBody/mass`, "TN_IR_PHYSICS_BODY_MASS_INVALID", diagnostics);
   }
@@ -1168,6 +1177,31 @@ function validatePhysicsComponents(entity: IWorldIr["entities"][number], path: s
       message: `RigidBody '${entity.id}' must have a Collider in the V6 portable physics contract.`,
       path: `${path}/components/Collider`,
     });
+  }
+}
+
+function hasEnginePhysicsHandle(value: Record<string, unknown>): boolean {
+  return Object.keys(value).some((key) => /(?:rapier|bevy|native|engine).*(?:handle|body|collider)|(?:handle|rawHandle)$/i.test(key));
+}
+
+function validatePhysicsFilter(value: Record<string, unknown>, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value.layer !== undefined && (typeof value.layer !== "string" || value.layer.trim() === "")) {
+    diagnostics.push({
+      code: "TN_IR_PHYSICS_FILTER_INVALID",
+      message: "Collider.layer must be a non-empty portable filter layer string.",
+      path: `${path}/layer`,
+      suggestion: "Use a stable gameplay layer name such as 'world', 'player', or 'sensor'.",
+    });
+  }
+  if (value.mask !== undefined) {
+    if (!Array.isArray(value.mask) || value.mask.some((entry) => typeof entry !== "string" || entry.trim() === "")) {
+      diagnostics.push({
+        code: "TN_IR_PHYSICS_FILTER_INVALID",
+        message: "Collider.mask must be an array of non-empty portable filter layer strings.",
+        path: `${path}/mask`,
+        suggestion: "Use stable gameplay layer names and keep backend bitmasks adapter-private.",
+      });
+    }
   }
 }
 

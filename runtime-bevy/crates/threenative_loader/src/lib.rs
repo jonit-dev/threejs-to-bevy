@@ -154,6 +154,8 @@ pub struct RigidBodyComponent {
 pub struct ColliderComponent {
     pub kind: String,
     pub height: Option<f32>,
+    pub layer: Option<String>,
+    pub mask: Option<Vec<String>>,
     pub radius: Option<f32>,
     pub size: Option<[f32; 3]>,
     pub trigger: Option<bool>,

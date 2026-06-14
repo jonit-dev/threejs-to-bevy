@@ -86,7 +86,31 @@ test("physics should reject invalid primitive collider dimensions", async () => 
   }
 });
 
-test("physics should reject invalid body fields and unsupported v6 collider options", async () => {
+test("physics should accept portable v7 collider filters", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-physics-v7-filters-"));
+  try {
+    await writeTestBundle(root, { createAssetsDir: true });
+    await writeJson(
+      root,
+      "world.ir.json",
+      physicsWorld([
+        {
+          Collider: { kind: "box", layer: "player", mask: ["world", "sensor"], size: [1, 1, 1] },
+          RigidBody: { kind: "kinematic" },
+        },
+      ]),
+    );
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("physics should reject invalid body fields and backend-specific collider options", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-physics-invalid-body-"));
   try {
     await writeTestBundle(root, { createAssetsDir: true });
@@ -99,8 +123,8 @@ test("physics should reject invalid body fields and unsupported v6 collider opti
           RigidBody: { kind: "static", mass: 0, velocity: [0, null, 0] },
         },
         {
-          Collider: { kind: "box", layer: 1, mask: 2, size: [1, 1, 1] },
-          RigidBody: { kind: "dynamic" },
+          Collider: { bevyColliderHandle: 7, kind: "box", layer: "", mask: ["world", ""], size: [1, 1, 1] },
+          RigidBody: { kind: "dynamic", rapierBodyHandle: 2 },
         },
       ]),
     );
@@ -114,7 +138,10 @@ test("physics should reject invalid body fields and unsupported v6 collider opti
         "TN_IR_PHYSICS_MESH_TRIGGER_UNSUPPORTED",
         "TN_IR_PHYSICS_BODY_MASS_INVALID",
         "TN_IR_PHYSICS_BODY_VELOCITY_INVALID",
-        "TN_IR_PHYSICS_LAYER_MASK_UNSUPPORTED",
+        "TN_IR_PHYSICS_ENGINE_HANDLE_UNSUPPORTED",
+        "TN_IR_PHYSICS_FILTER_INVALID",
+        "TN_IR_PHYSICS_FILTER_INVALID",
+        "TN_IR_PHYSICS_ENGINE_HANDLE_UNSUPPORTED",
       ],
     );
   } finally {

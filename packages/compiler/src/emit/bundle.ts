@@ -311,6 +311,9 @@ function collectWorldCapabilities(world: IWorldIr | undefined, add: (domain: str
     }
     if (entity.components.Collider !== undefined) {
       add("physics", `collider.${entity.components.Collider.kind}`);
+      if (entity.components.Collider.layer !== undefined || entity.components.Collider.mask !== undefined) {
+        add("physics", "contact-filtering");
+      }
       if (entity.components.Collider.trigger === true) {
         add("physics", "trigger-collider");
       }

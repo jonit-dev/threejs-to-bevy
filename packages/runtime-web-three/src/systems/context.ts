@@ -1,7 +1,17 @@
 import type { IIrSystemQuery, IWorldEntity, IWorldIr } from "@threenative/ir";
 import type { IWebInputState } from "../input.js";
 import { animationPlayPayload } from "./services/animation.js";
-import { raycastPrimitive, type IRaycastRequest, type IRaycastResult } from "./services/physics.js";
+import {
+  overlapPrimitive,
+  raycastPrimitive,
+  shapeCastPrimitive,
+  type IOverlapRequest,
+  type IOverlapResult,
+  type IRaycastRequest,
+  type IRaycastResult,
+  type IShapeCastRequest,
+  type IShapeCastResult,
+} from "./services/physics.js";
 
 export interface ISystemEntityView {
   components: IWorldEntity["components"];
@@ -42,7 +52,9 @@ export interface ISystemContext {
     set(name: string, value: unknown): void;
   };
   physics: {
+    overlap(options: IOverlapRequest): IOverlapResult;
     raycast(options: IRaycastRequest): IRaycastResult;
+    shapeCast(options: IShapeCastRequest): IShapeCastResult;
   };
   time: {
     delta: number;
@@ -77,7 +89,7 @@ export interface IQueuedResourceWrite {
 
 export interface IQueuedServiceCall {
   payload: unknown;
-  service: "animation.play" | "physics.raycast";
+  service: "animation.play" | "physics.overlap" | "physics.raycast" | "physics.shapeCast";
 }
 
 export function createSystemContext(
@@ -159,10 +171,22 @@ export function createSystemContext(
         },
       },
       physics: {
+        overlap(serviceOptions) {
+          const request = cloneValue(serviceOptions);
+          const result = overlapPrimitive(world, request);
+          services.push({ payload: { request, result }, service: "physics.overlap" });
+          return result;
+        },
         raycast(serviceOptions) {
           const request = cloneValue(serviceOptions);
           const result = raycastPrimitive(world, request);
           services.push({ payload: { request, result }, service: "physics.raycast" });
+          return result;
+        },
+        shapeCast(serviceOptions) {
+          const request = cloneValue(serviceOptions);
+          const result = shapeCastPrimitive(world, request);
+          services.push({ payload: { request, result }, service: "physics.shapeCast" });
           return result;
         },
       },

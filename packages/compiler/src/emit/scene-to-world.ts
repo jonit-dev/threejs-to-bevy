@@ -177,6 +177,8 @@ function emitPhysics(physics: IPhysicsDeclaration | undefined, components: Recor
       ...(physics.collider.size === undefined ? {} : { size: physics.collider.size }),
       ...(physics.collider.radius === undefined ? {} : { radius: physics.collider.radius }),
       ...(physics.collider.height === undefined ? {} : { height: physics.collider.height }),
+      ...(physics.collider.layer === undefined ? {} : { layer: physics.collider.layer }),
+      ...(physics.collider.mask === undefined ? {} : { mask: physics.collider.mask }),
       ...(physics.collider.trigger === undefined ? {} : { trigger: physics.collider.trigger }),
     };
   }

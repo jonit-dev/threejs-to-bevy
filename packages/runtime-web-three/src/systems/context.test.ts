@@ -53,6 +53,31 @@ test("should raycast primitive floor", () => {
   });
 });
 
+test("should log v7 physics query service calls", () => {
+  const { context, services } = createSystemContext(makeWorld(), { delta: 0.016, fixedDelta: 0.016 });
+
+  const overlap = context.physics.overlap({
+    layer: "player",
+    mask: ["world"],
+    position: [0, 0.5, 0],
+    shape: { kind: "sphere", radius: 0.75 },
+  });
+  const shapeCast = context.physics.shapeCast({
+    direction: [0, -1, 0],
+    maxDistance: 2,
+    origin: [0, 1, 0],
+    shape: { halfExtents: [0.25, 0.25, 0.25], kind: "box" },
+  });
+
+  assert.deepEqual(overlap, { entities: ["floor"] });
+  assert.equal(shapeCast.hit, true);
+  assert.deepEqual(services.map((service) => service.service), ["physics.overlap", "physics.shapeCast"]);
+  assert.deepEqual(services[0]?.payload, {
+    request: { layer: "player", mask: ["world"], position: [0, 0.5, 0], shape: { kind: "sphere", radius: 0.75 } },
+    result: overlap,
+  });
+});
+
 test("should log animation play service call", () => {
   const { context, services } = createSystemContext(makeWorld(), { delta: 0.016, fixedDelta: 0.016 });
 
@@ -72,7 +97,7 @@ function makeWorld(): IWorldIr {
     entities: [
       {
         components: {
-          Collider: { kind: "box", size: [8, 0.1, 8] },
+          Collider: { kind: "box", layer: "world", mask: ["player"], size: [8, 0.1, 8] },
           Transform: { position: [0, 0, 0] },
         },
         id: "floor",

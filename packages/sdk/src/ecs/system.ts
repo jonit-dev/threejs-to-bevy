@@ -4,7 +4,7 @@ import type { IQueryDeclaration } from "./query.js";
 import type { EcsFactory, IEcsSchema } from "./schema.js";
 
 export type SystemSchedule = "fixedUpdate" | "postUpdate" | "startup" | "update";
-export type SystemService = "animation.play" | "physics.raycast";
+export type SystemService = "animation.play" | "physics.overlap" | "physics.raycast" | "physics.shapeCast";
 export type PortableSystem<TContext = ISystemContext> = (context: TContext) => unknown;
 
 export interface ISystemOptions {
@@ -71,10 +71,18 @@ export interface ISystemContext {
     axis(name: string): number;
   };
   physics: {
+    overlap(options: {
+      layer?: string;
+      mask?: string[];
+      position: [number, number, number];
+      shape: { halfExtents: [number, number, number]; kind: "box" } | { kind: "sphere"; radius: number };
+    }): { entities: string[] };
     raycast(options: {
       direction: [number, number, number];
       ignore?: string[];
+      layer?: string;
       layers?: string[];
+      mask?: string[];
       maxDistance: number;
       origin: [number, number, number];
     }):
@@ -84,6 +92,23 @@ export interface ISystemContext {
           entity: string;
           hit: true;
           material?: string;
+          normal: [number, number, number];
+          point: [number, number, number];
+        };
+    shapeCast(options: {
+      direction: [number, number, number];
+      ignore?: string[];
+      layer?: string;
+      mask?: string[];
+      maxDistance: number;
+      origin: [number, number, number];
+      shape: { halfExtents: [number, number, number]; kind: "box" } | { kind: "sphere"; radius: number };
+    }):
+      | { hit: false }
+      | {
+          distance: number;
+          entity: string;
+          hit: true;
           normal: [number, number, number];
           point: [number, number, number];
         };

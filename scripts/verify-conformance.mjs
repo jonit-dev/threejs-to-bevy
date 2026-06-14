@@ -200,6 +200,17 @@ export function compareConformanceReports(left, right, options = {}) {
   const fixture = left.fixture ?? right.fixture ?? "unknown";
   const artifactPaths = options.artifactPaths ?? {};
   const bundlePath = options.bundlePath;
+  for (const requiredPath of options.requiredPaths ?? []) {
+    const path = typeof requiredPath === "string" ? requiredPath : requiredPath.path;
+    const expected = typeof requiredPath === "string" ? "present" : (requiredPath.expected ?? "present");
+    if (valueAtPath(left, path) === undefined) {
+      diagnostics.push(requiredObservationMissing(fixture, path, left.runtime, expected, { artifactPaths, bundlePath }));
+    }
+    if (valueAtPath(right, path) === undefined) {
+      diagnostics.push(requiredObservationMissing(fixture, path, right.runtime, expected, { artifactPaths, bundlePath }));
+    }
+  }
+
   if (left.fixture !== right.fixture) {
     diagnostics.push(mismatch(fixture, "$.fixture", left.runtime, right.runtime, left.fixture, right.fixture, { artifactPaths, bundlePath }));
   }
@@ -277,15 +288,49 @@ function normalize(value) {
   return value;
 }
 
+function valueAtPath(value, path) {
+  if (!path.startsWith("$.")) {
+    return undefined;
+  }
+  return path
+    .slice(2)
+    .split(".")
+    .reduce((current, key) => (isRecord(current) ? current[key] : undefined), value);
+}
+
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function mismatch(fixture, path, leftRuntime, rightRuntime, left, right, context = {}) {
+function requiredObservationMissing(fixture, path, runtime, expected, context = {}) {
+  const artifactPaths = context.artifactPaths ?? {};
   return {
-    artifactPaths: context.artifactPaths ?? {},
+    actual: "missing",
+    actualRuntime: runtime,
+    artifactPath: artifactPaths.comparisonReport ?? artifactPaths[`${runtime}Report`] ?? artifactPaths.rightReport ?? artifactPaths.leftReport,
+    artifactPaths,
+    bundlePath: context.bundlePath,
+    code: "TN_CONFORMANCE_REQUIRED_OBSERVATION_MISSING",
+    expected,
+    expectedRuntime: "catalog",
+    fixture,
+    message: `Conformance report for '${fixture}' is missing required observation '${path}'.`,
+    path,
+    severity: "error",
+  };
+}
+
+function mismatch(fixture, path, leftRuntime, rightRuntime, left, right, context = {}) {
+  const artifactPaths = context.artifactPaths ?? {};
+  return {
+    actual: right,
+    actualRuntime: rightRuntime,
+    artifactPath: artifactPaths.comparisonReport ?? artifactPaths.rightReport ?? artifactPaths.leftReport,
+    artifactPaths,
     bundlePath: context.bundlePath,
     code: "TN_CONFORMANCE_MISMATCH",
+    expected: left,
+    expectedRuntime: leftRuntime,
     fixture,
     left,
     leftRuntime,
@@ -299,12 +344,32 @@ function mismatch(fixture, path, leftRuntime, rightRuntime, left, right, context
 
 async function writeGateReport(reportPath, ok, steps, artifacts = {}) {
   await mkdir(resolve(reportPath, ".."), { recursive: true });
+  const failedStep = steps.find((step) => step.exitCode !== 0);
   await writeFile(
     reportPath,
     `${JSON.stringify(
       {
         artifacts,
         code: ok ? "TN_CONFORMANCE_OK" : "TN_CONFORMANCE_FAILED",
+        diagnostics:
+          failedStep === undefined
+            ? []
+            : [
+                {
+                  actual: failedStep.exitCode,
+                  actualRuntime: failedStep.name,
+                  artifactPath: artifactPathForStep(failedStep.name, artifacts) ?? reportPath,
+                  artifactPaths: artifacts,
+                  bundlePath: bundlePathForStep(failedStep.name),
+                  code: "TN_CONFORMANCE_STEP_FAILED",
+                  expected: 0,
+                  expectedRuntime: "conformance-gate",
+                  fixture: fixtureForStep(failedStep.name),
+                  message: `Conformance gate failed at '${failedStep.name}'.`,
+                  path: `steps.${steps.indexOf(failedStep)}.exitCode`,
+                  severity: "error",
+                },
+              ],
         status: ok ? "pass" : "fail",
         steps,
       },
@@ -312,6 +377,78 @@ async function writeGateReport(reportPath, ok, steps, artifacts = {}) {
       2,
     )}\n`,
   );
+}
+
+function fixtureForStep(stepName) {
+  if (stepName.includes("basic")) {
+    return "basic-scene";
+  }
+  if (stepName.includes("V6 physics")) {
+    return "v6-physics-events";
+  }
+  if (stepName.includes("V6 animation")) {
+    return "v6-animation-clips";
+  }
+  if (stepName.includes("V6 resource/event")) {
+    return "v6-resources-events";
+  }
+  if (stepName.includes("V6 retained UI")) {
+    return "v6-retained-ui";
+  }
+  if (stepName.includes("V6 audio")) {
+    return "v6-audio-playback";
+  }
+  return "conformance";
+}
+
+function artifactPathForStep(stepName, artifacts) {
+  if (stepName.includes("basic")) {
+    return artifacts.nativeBasicSceneReportPath;
+  }
+  if (stepName.includes("V6 physics")) {
+    return artifacts.nativeV6PhysicsEventsReportPath;
+  }
+  if (stepName.includes("V6 animation fixed trace")) {
+    return artifacts.v6AnimationDiffPath;
+  }
+  if (stepName.includes("V6 animation observation")) {
+    return artifacts.nativeV6AnimationClipsReportPath;
+  }
+  if (stepName.includes("V6 resource/event fixed trace")) {
+    return artifacts.v6ResourceEventDiffPath;
+  }
+  if (stepName.includes("V6 resource/event observation")) {
+    return artifacts.nativeV6ResourcesEventsReportPath;
+  }
+  if (stepName.includes("V6 retained UI")) {
+    return artifacts.nativeV6RetainedUiReportPath;
+  }
+  if (stepName.includes("V6 audio")) {
+    return artifacts.nativeV6AudioPlaybackReportPath;
+  }
+  return undefined;
+}
+
+function bundlePathForStep(stepName) {
+  if (stepName.includes("basic")) {
+    return "packages/ir/fixtures/conformance/basic-scene/game.bundle";
+  }
+  if (stepName.includes("V6 physics")) {
+    return "packages/ir/fixtures/conformance/v6-physics-events/game.bundle";
+  }
+  if (stepName.includes("V6 animation")) {
+    return "packages/ir/fixtures/conformance/v6-animation-clips/game.bundle";
+  }
+  if (stepName.includes("V6 resource/event")) {
+    return "packages/ir/fixtures/conformance/v6-resources-events/game.bundle";
+  }
+  if (stepName.includes("V6 retained UI")) {
+    return "packages/ir/fixtures/conformance/v6-retained-ui/game.bundle";
+  }
+  if (stepName.includes("V6 audio")) {
+    return "packages/ir/fixtures/conformance/v6-audio-playback/game.bundle";
+  }
+  return undefined;
 }
 
 export function runCommand({ args, command, cwd, timeoutMs = 60000 }) {

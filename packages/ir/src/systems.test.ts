@@ -59,13 +59,32 @@ test("should accept v4 movement system metadata", async () => {
   }
 });
 
+test("should accept v7 physics query services", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-v7-services-"));
+  try {
+    await writeBundle(root, {
+      commands: [],
+      reads: ["Transform"],
+      services: ["physics.overlap", "physics.raycast", "physics.shapeCast"],
+      writes: ["Transform"],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject undeclared service reference", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-v4-service-"));
   try {
     await writeBundle(root, {
       commands: [],
       reads: ["Transform"],
-      services: ["physics.overlap"],
+      services: ["physics.nativeHandle"],
       writes: ["Transform"],
     });
 

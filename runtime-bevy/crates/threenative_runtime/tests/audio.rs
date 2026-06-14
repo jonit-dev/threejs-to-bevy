@@ -1,6 +1,6 @@
 use threenative_loader::{AudioIr, AudioMusicIr, AudioOneShotIr};
 use threenative_runtime::audio::{
-    handle_audio_events, observe_audio, start_audio, NativeAudioCommandKind,
+    NativeAudioCommandKind, handle_audio_events, observe_audio, start_audio,
 };
 
 mod support;

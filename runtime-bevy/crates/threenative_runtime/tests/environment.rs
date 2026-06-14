@@ -90,13 +90,22 @@ fn environment_should_map_scene_to_terrain_path_and_instances() {
     assert_eq!(observation.total_instance_count, 3);
     assert_eq!(observation.lod_source_asset_count, 1);
     assert_eq!(
-        observation.lod_selections.get("env.Rock").map(String::as_str),
+        observation
+            .lod_selections
+            .get("env.Rock")
+            .map(String::as_str),
         Some("model.env.RockLow")
     );
     assert_eq!(observation.repeated_asset_groups.len(), 1);
-    assert_eq!(observation.repeated_asset_groups[0].source_asset, "env.Rock");
+    assert_eq!(
+        observation.repeated_asset_groups[0].source_asset,
+        "env.Rock"
+    );
     assert_eq!(observation.repeated_asset_groups[0].count, 2);
-    assert_eq!(observation.repeated_asset_groups[0].evidence, "model-asset-backed");
+    assert_eq!(
+        observation.repeated_asset_groups[0].evidence,
+        "model-asset-backed"
+    );
 
     let mut app = App::new();
     map_environment_into_world(app.world_mut(), &bundle);

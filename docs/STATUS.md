@@ -328,6 +328,22 @@ should promote deeper engine/runtime parity only when shared fixtures, runtime
 observations, native evidence where claimed, docs, diagnostics, functional
 scene/template proof, and `verify:v7` agree.
 
+V7-01 has started with the conformance evidence harness: the V7 fixture catalog
+now assigns each V7 feature ticket from V7-02 through V7-09 a baseline bundle,
+planned accepted/rejected fixture paths, target capabilities, conformance
+artifact paths, and rejected diagnostic code families. Conformance mismatch
+diagnostics now also expose V7-friendly `expected`, `actual`,
+`expectedRuntime`, `actualRuntime`, and `artifactPath` fields while preserving
+the existing `left`/`right` report shape.
+
+V7-02 has started at the physics/character contract layer: portable collider
+filters now validate with stable `layer`/`mask` metadata, backend-specific
+physics handles fail with `TN_IR_PHYSICS_ENGINE_HANDLE_UNSUPPORTED`, and
+systems may declare `physics.overlap` and `physics.shapeCast` service
+permissions beside `physics.raycast`. This is not yet a runtime parity claim;
+fixed trace observations and stronger character-controller behavior still need
+the V7-02 runtime phase.
+
 V8 is the first planned local editor and inspector milestone. V9 is the first
 planned online project and publishing milestone. V10 is the first planned
 collaboration and runtime replication milestone. Editor, online, networking,
@@ -383,6 +399,7 @@ sheet under `artifacts/v3`.
 - [V3 Completion Checklist](releases/v3-completion.md)
 - [Bevy Feature Parity Drift](bevy-feature-parity.md)
 - [Feature Maturity Matrix](feature-maturity.md)
+- [verify:v7](verify-v7.md)
 - [verify:v6](verify-v6.md)
 - [verify:v4](verify-v4.md)
 - [verify:v5](verify-v5.md)

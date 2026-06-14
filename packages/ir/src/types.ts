@@ -82,6 +82,8 @@ export interface IRigidBodyComponent {
 export interface IColliderComponent {
   height?: number;
   kind: "box" | "capsule" | "cylinder" | "mesh" | "sphere";
+  layer?: string;
+  mask?: readonly string[];
   radius?: number;
   size?: Vec3;
   trigger?: boolean;

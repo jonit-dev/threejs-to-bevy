@@ -14,7 +14,7 @@ test("physics should emit player collider and kinematic body", () => {
       material: new MeshStandardMaterial(),
       physics: physics({
         body: rigidBody("kinematic", { velocity: [1, 0, 0] }),
-        collider: boxCollider([1, 2, 1]),
+        collider: boxCollider([1, 2, 1], { layer: "player", mask: ["world"] }),
       }),
     }),
   );
@@ -23,5 +23,5 @@ test("physics should emit player collider and kinematic body", () => {
   const entity = emitted.world.entities.find((item) => item.id === "player");
 
   assert.deepEqual(entity?.components.RigidBody, { kind: "kinematic", velocity: [1, 0, 0] });
-  assert.deepEqual(entity?.components.Collider, { kind: "box", size: [1, 2, 1] });
+  assert.deepEqual(entity?.components.Collider, { kind: "box", layer: "player", mask: ["world"], size: [1, 2, 1] });
 });

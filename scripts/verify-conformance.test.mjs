@@ -12,6 +12,7 @@ test("should fail when runtime reports differ", () => {
     report("bevy", { material: "mat.other" }),
     {
       artifactPaths: {
+        comparisonReport: "artifacts/conformance/basic-scene/comparison.report.json",
         leftReport: "artifacts/conformance/basic-scene/web-three.report.json",
         rightReport: "artifacts/conformance/basic-scene/bevy.report.json",
       },
@@ -26,6 +27,11 @@ test("should fail when runtime reports differ", () => {
   assert.equal(result.diagnostics[0]?.path, '$.entities["cube.child"].material');
   assert.equal(result.diagnostics[0]?.rightRuntime, "bevy");
   assert.equal(result.diagnostics[0]?.bundlePath, "packages/ir/fixtures/conformance/basic-scene/game.bundle");
+  assert.equal(result.diagnostics[0]?.expected, "mat.cube");
+  assert.equal(result.diagnostics[0]?.actual, "mat.other");
+  assert.equal(result.diagnostics[0]?.expectedRuntime, "web-three");
+  assert.equal(result.diagnostics[0]?.actualRuntime, "bevy");
+  assert.equal(result.diagnostics[0]?.artifactPath, "artifacts/conformance/basic-scene/comparison.report.json");
   assert.equal(result.diagnostics[0]?.artifactPaths.leftReport, "artifacts/conformance/basic-scene/web-three.report.json");
 });
 
@@ -70,6 +76,35 @@ test("should localize audio observation mismatches", () => {
   assert.equal(result.diagnostics[0]?.path, "$.audio.commands[0].asset");
   assert.equal(result.diagnostics[0]?.left, "hit.sound");
   assert.equal(result.diagnostics[0]?.right, "other.sound");
+});
+
+test("should fail when required V7 observations are silently missing", () => {
+  const left = report("web-three");
+  const right = report("bevy");
+  left.ui = { focusOrder: ["start"] };
+  right.ui = { focusOrder: ["start"] };
+  delete right.ui;
+
+  const result = compareConformanceReports(left, right, {
+    artifactPaths: {
+      comparisonReport: "artifacts/conformance/v7-rich-ui-navigation/comparison.report.json",
+      leftReport: "artifacts/conformance/v7-rich-ui-navigation/web.report.json",
+      rightReport: "artifacts/conformance/v7-rich-ui-navigation/bevy.report.json",
+    },
+    bundlePath: "packages/ir/fixtures/conformance/v7-rich-ui-navigation/game.bundle",
+    requiredPaths: [{ expected: "ui navigation observation", path: "$.ui" }],
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.diagnostics[0]?.code, "TN_CONFORMANCE_REQUIRED_OBSERVATION_MISSING");
+  assert.equal(result.diagnostics[0]?.fixture, "basic-scene");
+  assert.equal(result.diagnostics[0]?.path, "$.ui");
+  assert.equal(result.diagnostics[0]?.expected, "ui navigation observation");
+  assert.equal(result.diagnostics[0]?.actual, "missing");
+  assert.equal(result.diagnostics[0]?.expectedRuntime, "catalog");
+  assert.equal(result.diagnostics[0]?.actualRuntime, "bevy");
+  assert.equal(result.diagnostics[0]?.bundlePath, "packages/ir/fixtures/conformance/v7-rich-ui-navigation/game.bundle");
+  assert.equal(result.diagnostics[0]?.artifactPath, "artifacts/conformance/v7-rich-ui-navigation/comparison.report.json");
 });
 
 test("should pass matching reports", () => {
