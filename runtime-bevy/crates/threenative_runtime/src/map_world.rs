@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use bevy::{
     core_pipeline::tonemapping::Tonemapping,
+    gltf::GltfAssetLabel,
     math::primitives::{
         Annulus, Capsule3d, Circle as PrimitiveCircle, Cone, ConicalFrustum, Cuboid, Cylinder,
         Extrusion, Rectangle, RegularPolygon, Sphere, Torus,
@@ -183,8 +184,24 @@ fn spawn_entity(
                 entity_id: entity.id.clone(),
                 material_id: renderer.material.clone(),
             })?;
-        let mesh = add_mesh(world, asset);
         let asset_server = world.get_resource::<AssetServer>().cloned();
+        if let Some(scene_path) = model_scene_path(asset) {
+            if let Some(asset_server) = asset_server.as_ref() {
+                let scene = asset_server.load(GltfAssetLabel::Scene(0).from_asset(scene_path));
+                let mut spawned = world.spawn(SceneBundle {
+                    scene,
+                    transform,
+                    visibility: map_visibility(entity),
+                    ..Default::default()
+                });
+                spawned.insert((stable_id, name));
+                if let Some(playback) = animation_playback(asset) {
+                    spawned.insert(playback);
+                }
+                return Ok(spawned.id());
+            }
+        }
+        let mesh = add_mesh(world, asset);
         let material = add_material(world, material, assets_by_id, asset_server.as_ref());
         let mut spawned = world.spawn(PbrBundle {
             mesh,
@@ -294,6 +311,13 @@ fn spawn_entity(
     Ok(world
         .spawn((stable_id, name, transform, map_visibility(entity)))
         .id())
+}
+
+fn model_scene_path(asset: &AssetIr) -> Option<String> {
+    if asset.kind != "model" || !matches!(asset.format.as_str(), "gltf" | "glb") {
+        return None;
+    }
+    asset.path.clone()
 }
 
 fn color_grading_for_profile(

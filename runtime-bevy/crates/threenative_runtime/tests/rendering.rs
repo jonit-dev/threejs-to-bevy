@@ -4,11 +4,16 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use bevy::render::{
-    mesh::{MeshVertexAttribute, VertexAttributeValues},
-    render_resource::VertexFormat,
+use bevy::{
+    asset::AssetPlugin,
+    gltf::GltfPlugin,
+    prelude::*,
+    render::{
+        mesh::{MeshVertexAttribute, VertexAttributeValues},
+        render_resource::VertexFormat,
+    },
+    scene::ScenePlugin,
 };
-use bevy::{asset::AssetPlugin, prelude::*};
 use threenative_components::ThreeNativeId;
 use threenative_loader::load_bundle;
 use threenative_runtime::map_world::{
@@ -136,6 +141,53 @@ fn rendering_should_attach_animation_playback_to_model_renderers() {
         animation_playback_for(app.world_mut(), "hero").time_seconds,
         0.5
     );
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn rendering_should_spawn_gltf_scene_for_model_renderers_when_asset_server_exists() {
+    let root = write_animated_model_bundle();
+    let bundle = load_bundle(&root).expect("animated model bundle should load");
+    let mut app = App::new();
+    app.add_plugins((
+        MinimalPlugins,
+        AssetPlugin {
+            file_path: root.display().to_string(),
+            ..Default::default()
+        },
+        ScenePlugin,
+        GltfPlugin::default(),
+    ));
+    app.finish();
+    app.cleanup();
+
+    map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map");
+
+    let scene_roots = app
+        .world_mut()
+        .query::<(&ThreeNativeId, &Handle<Scene>, &Transform)>()
+        .iter(app.world())
+        .map(|(id, _scene, transform)| (id.0.clone(), transform.translation))
+        .collect::<Vec<_>>();
+    assert!(
+        scene_roots
+            .iter()
+            .any(|(id, translation)| id == "hero" && *translation == Vec3::ZERO),
+        "expected hero to be spawned as a Bevy SceneBundle from the GLTF asset, got {scene_roots:?}",
+    );
+
+    let placeholder_count = app
+        .world_mut()
+        .query::<(&ThreeNativeId, &Handle<Mesh>)>()
+        .iter(app.world())
+        .filter(|(id, _mesh)| id.0 == "hero")
+        .count();
+    assert_eq!(
+        placeholder_count, 0,
+        "GLTF-backed model renderers should not also spawn cuboid placeholders"
+    );
+    assert_eq!(animation_playback_for(app.world_mut(), "hero").asset, "model.hero");
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
