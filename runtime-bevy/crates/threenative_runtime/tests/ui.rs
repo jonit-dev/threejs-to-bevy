@@ -1,11 +1,16 @@
 use std::{
+    collections::BTreeMap,
     fs,
     path::PathBuf,
     time::{SystemTime, UNIX_EPOCH},
 };
 
+use bevy::prelude::*;
+use threenative_components::ThreeNativeId;
 use threenative_loader::{UiIr, UiNodeIr, load_bundle};
-use threenative_runtime::ui::build_native_ui;
+use threenative_runtime::ui::{
+    NativeUiAction, NativeUiBar, NativeUiKind, build_native_ui, map_ui_into_world,
+};
 
 #[test]
 fn ui_should_build_bevy_hud_from_ui_ir() {
@@ -25,6 +30,75 @@ fn ui_should_build_bevy_hud_from_ui_ir() {
         vec!["text", "bar", "button"]
     );
     assert_eq!(native.children[2].action.as_deref(), Some("Pause"));
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn ui_should_spawn_bevy_entities_with_stable_ids_and_hierarchy() {
+    let root = write_ui_bundle();
+    let bundle = load_bundle(&root).expect("ui bundle should load");
+    let ui = bundle.ui.as_ref().expect("ui ir should be loaded");
+    let mut app = App::new();
+
+    map_ui_into_world(app.world_mut(), ui).expect("ui should map into world");
+
+    let entities_by_id = collect_ui_entities(app.world_mut());
+    assert_eq!(
+        entities_by_id
+            .keys()
+            .map(String::as_str)
+            .collect::<Vec<_>>(),
+        vec!["health", "hud", "label", "pause"]
+    );
+
+    let hud = entities_by_id["hud"];
+    let label = entities_by_id["label"];
+    let health = entities_by_id["health"];
+    let pause = entities_by_id["pause"];
+    let children = app
+        .world()
+        .get::<Children>(hud)
+        .expect("hud should have children");
+    assert_eq!(
+        children.iter().copied().collect::<Vec<_>>(),
+        vec![label, health, pause]
+    );
+
+    let label_text = app
+        .world()
+        .get::<Text>(label)
+        .expect("label should be text");
+    assert_eq!(label_text.sections[0].value, "Health");
+    assert!(app.world().get::<Button>(pause).is_some());
+    assert_eq!(
+        app.world()
+            .get::<NativeUiAction>(pause)
+            .expect("button action should be preserved"),
+        &NativeUiAction("Pause".to_owned())
+    );
+    assert_eq!(
+        app.world()
+            .get::<NativeUiBar>(health)
+            .expect("bar value should be preserved"),
+        &NativeUiBar {
+            value: 8.0,
+            max: 10.0,
+        }
+    );
+    let button_label = only_child(app.world(), pause);
+    let button_text = app
+        .world()
+        .get::<Text>(button_label)
+        .expect("button label should be text");
+    assert_eq!(button_text.sections[0].value, "Pause");
+
+    let bar_fill = only_child(app.world(), health);
+    let bar_fill_style = app
+        .world()
+        .get::<Style>(bar_fill)
+        .expect("bar fill should have style");
+    assert_eq!(bar_fill_style.width, Val::Percent(80.0));
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
@@ -115,4 +189,21 @@ fn write_ui_bundle() -> PathBuf {
 
 fn write(root: &PathBuf, file: &str, contents: &str) {
     fs::write(root.join(file), contents).expect("bundle file should be written");
+}
+
+fn collect_ui_entities(world: &mut World) -> BTreeMap<String, Entity> {
+    let mut query = world.query::<(Entity, &ThreeNativeId, &NativeUiKind)>();
+    query
+        .iter(world)
+        .map(|(entity, id, _kind)| (id.0.clone(), entity))
+        .collect()
+}
+
+fn only_child(world: &World, entity: Entity) -> Entity {
+    let children = world
+        .get::<Children>(entity)
+        .expect("entity should have one child");
+    let children = children.iter().copied().collect::<Vec<_>>();
+    assert_eq!(children.len(), 1);
+    children[0]
 }

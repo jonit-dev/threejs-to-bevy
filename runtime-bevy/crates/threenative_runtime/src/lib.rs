@@ -29,6 +29,8 @@ pub enum RuntimeError {
     Map(#[from] map_world::MapError),
     #[error(transparent)]
     SystemsHost(#[from] systems_host::SystemsHostError),
+    #[error(transparent)]
+    Ui(#[from] ui::UiDiagnostic),
 }
 
 pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeError> {
@@ -78,6 +80,9 @@ pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeErro
     rendering::apply_atmosphere_to_world(app.world_mut(), &bundle);
     map_world::map_bundle_into_world(app.world_mut(), &bundle)?;
     environment::map_environment_into_world(app.world_mut(), &bundle);
+    if let Some(ui) = bundle.ui.as_ref() {
+        ui::map_ui_into_world(app.world_mut(), ui)?;
+    }
     app.add_systems(Update, rendering::normalize_loaded_gltf_materials);
     if has_scripts {
         app.insert_resource(ScriptedRuntimeBundle { bundle });

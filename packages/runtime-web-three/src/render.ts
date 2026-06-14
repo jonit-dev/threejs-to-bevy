@@ -8,12 +8,15 @@ import { createGameLoopState, runGameFrame } from "./gameLoop.js";
 import { attachInputListeners, createInputState } from "./input.js";
 import { loadSystemModule } from "./systems/runner.js";
 import { createSystemEffectLog, type ISystemEffectLog } from "./systems/log.js";
+import { createUiDomOverlay } from "./ui/domOverlay.js";
+import { renderUi, type IRenderedUi } from "./ui/renderUi.js";
 
 export interface IRenderResult {
   canvas: HTMLCanvasElement;
   diagnostics: IRuntimeDiagnostic[];
   effectLog: ISystemEffectLog;
   renderer: THREE.WebGLRenderer;
+  ui?: IRenderedUi;
 }
 
 export interface IRenderOptions {
@@ -43,8 +46,12 @@ export async function renderBundle(source: string, container: HTMLElement, optio
   const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
   applyRendererColorManagement(renderer, bundle.environmentScene?.atmosphere?.colorManagement);
   const canvas = renderer.domElement;
+  const ui = bundle.ui === undefined ? undefined : renderUi(bundle.ui, bundle.world);
+  const uiOverlay = ui === undefined ? undefined : createUiDomOverlay(ui);
 
-  container.replaceChildren(canvas);
+  prepareRenderContainer(container);
+  canvas.style.display = "block";
+  container.replaceChildren(...([canvas, uiOverlay?.element].filter((child) => child !== undefined) as Node[]));
   attachInputListeners(window, input);
   resizeRenderer(renderer, mapped.camera, container);
   if (bundle.systems !== undefined) {
@@ -59,6 +66,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
       systems: bundle.systems,
       world: bundle.world,
     });
+    uiOverlay?.update();
   }
   renderer.render(mapped.scene, mapped.camera);
   if (bundle.systems !== undefined) {
@@ -77,6 +85,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
         systems: bundle.systems!,
         world: bundle.world,
       }).then(() => {
+        uiOverlay?.update();
         renderer.render(mapped.scene, mapped.camera);
         requestAnimationFrame(frame);
       });
@@ -89,7 +98,15 @@ export async function renderBundle(source: string, container: HTMLElement, optio
     diagnostics: mapped.diagnostics,
     effectLog,
     renderer,
+    ...(ui === undefined ? {} : { ui }),
   };
+}
+
+function prepareRenderContainer(container: HTMLElement): void {
+  const style = getComputedStyle(container);
+  if (style.position === "static") {
+    container.style.position = "relative";
+  }
 }
 
 function applyRendererColorManagement(

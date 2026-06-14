@@ -13,6 +13,7 @@ export { mapWorld, syncTransforms, type IRuntimeDiagnostic, type IThreeWorld } f
 export { stepPhysics, type IPhysicsEventPayload } from "./physics.js";
 export { resolveWalkableMovement, type IWalkabilityResolution } from "./walkability.js";
 export { renderUi, type IRenderedUi, type IRenderedUiNode } from "./ui/renderUi.js";
+export { createUiDomOverlay, type IUiDomOverlay } from "./ui/domOverlay.js";
 export { renderBundle, type IRenderResult } from "./render.js";
 export { createSystemContext, applyCommands, type ISystemContext } from "./systems/context.js";
 export { applySystemEffects, validateSystemEffects, type ISystemEffects } from "./systems/effects.js";

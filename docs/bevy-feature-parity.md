@@ -283,8 +283,10 @@ are not claimed yet.
 V6-06 has started for retained UI: shared validation now rejects duplicate node
 IDs, the `v6-retained-ui` fixture covers portable HUD text, a resource-bound
 bar, and a focusable action button, and web/Bevy conformance reports include
-the UI tree. Native Bevy UI entity spawning, web DOM overlay mounting, focus
-navigation, and UI interaction events are not claimed yet.
+the UI tree. Web preview now mounts the retained UI as a DOM overlay with
+resource-binding refresh and button/touch action dispatch into the UI action
+queue, while Bevy spawns UI entities with stable IDs, hierarchy, text, buttons,
+and bars. Focus navigation and native UI interaction events are not claimed yet.
 
 ## V7 Deep Engine Gap-Closure Plan
 

@@ -278,9 +278,12 @@ playback, stop/state queries, and graph behavior remain later work.
 V6-06 has started with the retained UI contract and observation layer: duplicate
 UI node IDs are rejected, the `v6-retained-ui` conformance fixture carries HUD
 text, a resource-bound bar, and a focusable action button, and web/Bevy
-conformance reports now expose the portable UI tree. Browser DOM overlay
-rendering, Bevy UI entity spawning, focus navigation, and click-to-event
-delivery remain later V6-06 runtime work.
+conformance reports now expose the portable UI tree. The web runtime now mounts
+that retained tree as a DOM overlay whose resource bindings update with the
+game loop and whose button/touch clicks enqueue UI actions. The Bevy runtime now
+spawns retained UI entities with stable `ThreeNativeId` metadata, hierarchy,
+buttons, bars, and text. Focus navigation and native click-to-event delivery
+remain later V6-06 runtime work.
 
 V7 is now planned as the deep engine gap-closure milestone. It should continue
 parity work that is too large or risky for V6, such as deeper physics,
