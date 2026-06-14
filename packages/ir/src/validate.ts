@@ -2444,12 +2444,12 @@ function validateCharacterComponents(
   }
 
   for (const key of Object.keys(controller)) {
-    if (!["blocking", "grounding", "interactAction", "moveXAxis", "moveZAxis", "speed"].includes(key)) {
+    if (!["blocking", "grounding", "interactAction", "moveXAxis", "moveZAxis", "speed", "stepOffset"].includes(key)) {
       diagnostics.push({
         code: "TN_IR_CHARACTER_FIELD_UNSUPPORTED",
         message: `CharacterController '${entity.id}' uses unsupported field '${key}'.`,
         path: `${path}/components/CharacterController/${key}`,
-        suggestion: "Slope, step, navmesh, and engine-specific controller fields are deferred to V7.",
+        suggestion: "Slope, navmesh, and engine-specific controller fields are deferred.",
       });
     }
   }
@@ -2493,7 +2493,7 @@ function validateCharacterComponents(
       code: "TN_IR_CHARACTER_GROUNDING_UNSUPPORTED",
       message: `CharacterController '${entity.id}' uses unsupported grounding mode '${String(controller.grounding)}'.`,
       path: `${path}/components/CharacterController/grounding`,
-      suggestion: "Use 'raycast' or 'none'. Slope and step handling are deferred to V7.",
+      suggestion: "Use 'raycast' or 'none'. Slope handling remains deferred.",
     });
   }
 
@@ -2519,6 +2519,13 @@ function validateInputRef(
       code: "TN_IR_CHARACTER_INPUT_REF_INVALID",
       message: `CharacterController ${kind} reference must be a non-empty string.`,
       path,
+  if (controller.stepOffset !== undefined && (typeof controller.stepOffset !== "number" || !Number.isFinite(controller.stepOffset) || controller.stepOffset < 0)) {
+    diagnostics.push({
+      code: "TN_IR_CHARACTER_STEP_INVALID",
+      message: "CharacterController.stepOffset must be a finite non-negative number.",
+      path: `${path}/components/CharacterController/stepOffset`,
+    });
+  }
     });
     return;
   }

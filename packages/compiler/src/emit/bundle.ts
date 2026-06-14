@@ -333,6 +333,9 @@ function collectWorldCapabilities(world: IWorldIr | undefined, add: (domain: str
       if (entity.components.CharacterController.interactAction !== undefined) {
         add("character", "interaction");
       }
+      if (entity.components.CharacterController.stepOffset !== undefined) {
+        add("character", "step-offset");
+      }
     }
   }
 }

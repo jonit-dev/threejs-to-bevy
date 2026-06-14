@@ -9,7 +9,9 @@ export interface ICharacterTraceObservation {
   blockedBy?: string;
   desired: Vec3;
   entity: string;
+  groundEntity?: string;
   grounded: boolean;
+  platformDelta?: Vec3;
   resolved: Vec3;
   start: Vec3;
 }
@@ -18,6 +20,13 @@ interface IBounds {
   center: Vec3;
   halfExtents: Vec3;
   id: string;
+  velocity?: Vec3;
+}
+
+interface IGroundResolution {
+  entity?: string;
+  platformDelta?: Vec3;
+  position: Vec3;
 }
 
 export function traceCharacterControllers(world: IWorldIr, input: ICharacterTraceInput = {}): ICharacterTraceObservation[] {
@@ -53,19 +62,21 @@ function traceCharacter(
     fixedDelta,
   ));
   const characterHalfExtents = halfExtents(collider);
-  const blockedBy = controller.blocking === true
-    ? firstBlocker(entity.id, desired, characterHalfExtents, blockers)
-    : undefined;
-  const ungrounded = blockedBy === undefined ? desired : start;
-  const grounded = controller.grounding === "raycast";
-  const resolved = grounded ? groundPosition(entity.id, ungrounded, characterHalfExtents, blockers) : ungrounded;
+  const horizontal = controller.blocking === true
+    ? resolveHorizontalContact(entity.id, start, desired, characterHalfExtents, blockers, controller.stepOffset ?? 0)
+    : { position: desired };
+  const ground = controller.grounding === "raycast"
+    ? groundPosition(entity.id, horizontal.position, characterHalfExtents, blockers, fixedDelta)
+    : { position: horizontal.position };
 
   return {
-    ...(blockedBy === undefined ? {} : { blockedBy }),
+    ...(horizontal.blockedBy === undefined ? {} : { blockedBy: horizontal.blockedBy }),
     desired,
     entity: entity.id,
-    grounded,
-    resolved,
+    ...(ground.entity === undefined ? {} : { groundEntity: ground.entity }),
+    grounded: ground.entity !== undefined,
+    ...(ground.platformDelta === undefined ? {} : { platformDelta: ground.platformDelta }),
+    resolved: ground.position,
     start,
   };
 }
@@ -79,23 +90,33 @@ function movementDelta(axisX: number, axisZ: number, speed: number, fixedDelta: 
   return [axisX * scale, 0, axisZ * scale];
 }
 
-function firstBlocker(
+function resolveHorizontalContact(
   characterId: string,
+  start: Vec3,
   desired: Vec3,
   characterHalfExtents: Vec3,
   blockers: readonly IWorldEntity[],
-): string | undefined {
-  const characterBounds = { center: desired, halfExtents: characterHalfExtents, id: characterId };
+  stepOffset: number,
+): { blockedBy?: string; position: Vec3 } {
+  let position = desired;
+  let characterBounds = { center: position, halfExtents: characterHalfExtents, id: characterId };
   for (const blocker of blockers) {
     if (blocker.id === characterId) {
       continue;
     }
     const bounds = entityBounds(blocker);
-    if (bounds !== undefined && penetrates(characterBounds, bounds) && isSideBlocker(desired, characterHalfExtents, bounds)) {
-      return blocker.id;
+    if (bounds === undefined || !penetrates(characterBounds, bounds) || !isSideBlocker(position, characterHalfExtents, bounds)) {
+      continue;
     }
+    if (canStepOnto(position, characterHalfExtents, bounds, stepOffset)) {
+      const top = bounds.center[1] + bounds.halfExtents[1];
+      position = [position[0], top + characterHalfExtents[1], position[2]];
+      characterBounds = { center: position, halfExtents: characterHalfExtents, id: characterId };
+      continue;
+    }
+    return { blockedBy: blocker.id, position: start };
   }
-  return undefined;
+  return { position };
 }
 
 function groundPosition(
@@ -103,8 +124,9 @@ function groundPosition(
   position: Vec3,
   characterHalfExtents: Vec3,
   blockers: readonly IWorldEntity[],
-): Vec3 {
-  let groundY: number | undefined;
+  fixedDelta: number,
+): IGroundResolution {
+  let ground: IBounds | undefined;
   for (const blocker of blockers) {
     if (blocker.id === characterId) {
       continue;
@@ -115,11 +137,21 @@ function groundPosition(
     }
     const top = bounds.center[1] + bounds.halfExtents[1];
     const foot = position[1] - characterHalfExtents[1];
-    if (top <= foot + SUPPORT_TOLERANCE && (groundY === undefined || top > groundY)) {
-      groundY = top;
+    if (top <= foot + SUPPORT_TOLERANCE && (ground === undefined || top > ground.center[1] + ground.halfExtents[1])) {
+      ground = bounds;
     }
   }
-  return groundY === undefined ? [position[0], position[1], position[2]] : [position[0], groundY + characterHalfExtents[1], position[2]];
+  if (ground === undefined) {
+    return { position };
+  }
+  const top = ground.center[1] + ground.halfExtents[1];
+  const grounded = [position[0], top + characterHalfExtents[1], position[2]] as Vec3;
+  const platformDelta = ground.velocity === undefined ? undefined : scale(ground.velocity, fixedDelta);
+  return {
+    entity: ground.id,
+    ...(platformDelta === undefined ? {} : { platformDelta }),
+    position: platformDelta === undefined ? grounded : add(grounded, platformDelta),
+  };
 }
 
 function entityBounds(entity: IWorldEntity): IBounds | undefined {
@@ -131,6 +163,7 @@ function entityBounds(entity: IWorldEntity): IBounds | undefined {
     center: vector(entity.components.Transform?.position),
     halfExtents: halfExtents(collider),
     id: entity.id,
+    velocity: entity.components.RigidBody?.velocity,
   };
 }
 
@@ -171,10 +204,20 @@ function isSideBlocker(position: Vec3, characterHalfExtents: Vec3, bounds: IBoun
   return top > foot + SUPPORT_TOLERANCE;
 }
 
+function canStepOnto(position: Vec3, characterHalfExtents: Vec3, bounds: IBounds, stepOffset: number): boolean {
+  const foot = position[1] - characterHalfExtents[1];
+  const top = bounds.center[1] + bounds.halfExtents[1];
+  return stepOffset > 0 && top > foot + SUPPORT_TOLERANCE && top <= foot + stepOffset + SUPPORT_TOLERANCE && coversXZ(position, bounds);
+}
+
 const SUPPORT_TOLERANCE = 0.1;
 
 function add(left: Vec3, right: Vec3): Vec3 {
   return [left[0] + right[0], left[1] + right[1], left[2] + right[2]];
+}
+
+function scale(vector: Vec3, amount: number): Vec3 {
+  return [vector[0] * amount, vector[1] * amount, vector[2] * amount];
 }
 
 function vector(value: readonly number[] | undefined): Vec3 {

@@ -5,7 +5,7 @@ import { characterController } from "./character.js";
 import { SdkError } from "./errors.js";
 
 test("should create deterministic character controller metadata", () => {
-  const controller = characterController({ interactAction: "Interact", speed: 5 });
+  const controller = characterController({ interactAction: "Interact", speed: 5, stepOffset: 0.35 });
 
   assert.equal(controller.schema.name, "CharacterController");
   assert.deepEqual(controller.data, {
@@ -15,6 +15,7 @@ test("should create deterministic character controller metadata", () => {
     moveXAxis: "MoveX",
     moveZAxis: "MoveZ",
     speed: 5,
+    stepOffset: 0.35,
   });
 });
 
@@ -28,7 +29,7 @@ test("should reject unsupported advanced character options", () => {
     (error: unknown) => error instanceof SdkError && error.code === "TN_SDK_CHARACTER_SLOPE_UNSUPPORTED",
   );
   assert.throws(
-    () => characterController({ unsupported: { stepOffset: 0.3 } }),
-    (error: unknown) => error instanceof SdkError && error.code === "TN_SDK_CHARACTER_STEP_UNSUPPORTED",
+    () => characterController({ stepOffset: -0.1 }),
+    (error: unknown) => error instanceof SdkError && error.code === "TN_SDK_CHARACTER_STEP_INVALID",
   );
 });

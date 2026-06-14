@@ -10,6 +10,7 @@ export interface ICharacterControllerDeclaration {
   moveXAxis: string;
   moveZAxis: string;
   speed: number;
+  stepOffset?: number;
 }
 
 export interface ICharacterControllerOptions {
@@ -19,13 +20,13 @@ export interface ICharacterControllerOptions {
   moveXAxis?: string;
   moveZAxis?: string;
   speed?: number;
+  stepOffset?: number;
   unsupported?: IUnsupportedCharacterControllerOptions;
 }
 
 export interface IUnsupportedCharacterControllerOptions {
   navmesh?: boolean;
   slopeLimit?: number;
-  stepOffset?: number;
 }
 
 export const CharacterController = defineComponent("CharacterController", {
@@ -35,12 +36,17 @@ export const CharacterController = defineComponent("CharacterController", {
   moveXAxis: "string",
   moveZAxis: "string",
   speed: "number",
+  stepOffset: { kind: "number", required: false },
 });
 
 export function characterController(options: ICharacterControllerOptions = {}): IEcsDeclaration {
   assertSupportedCharacterOptions(options.unsupported);
   const speed = options.speed ?? 4;
   assertPositiveNumber(speed, "TN_SDK_CHARACTER_SPEED_INVALID", "CharacterController.speed");
+  const stepOffset = options.stepOffset;
+  if (stepOffset !== undefined && (!Number.isFinite(stepOffset) || stepOffset < 0)) {
+    throw new SdkError("TN_SDK_CHARACTER_STEP_INVALID", "CharacterController.stepOffset must be a finite non-negative number.");
+  }
   return CharacterController({
     blocking: options.blocking ?? true,
     grounding: options.grounding ?? "raycast",
@@ -48,6 +54,7 @@ export function characterController(options: ICharacterControllerOptions = {}): 
     moveXAxis: assertNonEmpty(options.moveXAxis ?? "MoveX", "moveXAxis"),
     moveZAxis: assertNonEmpty(options.moveZAxis ?? "MoveZ", "moveZAxis"),
     speed,
+    ...(stepOffset === undefined ? {} : { stepOffset }),
   });
 }
 
@@ -57,9 +64,6 @@ function assertSupportedCharacterOptions(options: IUnsupportedCharacterControlle
   }
   if (options?.slopeLimit !== undefined) {
     throw new SdkError("TN_SDK_CHARACTER_SLOPE_UNSUPPORTED", "Character controller slope limits are deferred to V7.");
-  }
-  if (options?.stepOffset !== undefined) {
-    throw new SdkError("TN_SDK_CHARACTER_STEP_UNSUPPORTED", "Character controller step offsets are deferred to V7.");
   }
 }
 

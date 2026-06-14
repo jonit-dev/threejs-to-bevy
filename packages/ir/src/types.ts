@@ -96,6 +96,7 @@ export interface ICharacterControllerComponent {
   moveXAxis: string;
   moveZAxis: string;
   speed: number;
+  stepOffset?: number;
 }
 
 export interface IWorldEntity {

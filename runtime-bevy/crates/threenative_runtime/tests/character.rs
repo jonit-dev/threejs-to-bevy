@@ -36,6 +36,7 @@ fn character_trace_should_match_v7_conformance_fixture() {
     assert_eq!(trace[0].desired, [3.0, 1.0, 0.0]);
     assert_eq!(trace[0].resolved, [0.0, 1.05, 0.0]);
     assert!(trace[0].grounded);
+    assert_eq!(trace[0].ground_entity, Some("floor".to_owned()));
     assert_eq!(trace[0].blocked_by, Some("wall".to_owned()));
 }
 
@@ -59,6 +60,7 @@ fn character_trace_should_move_and_ground_from_declared_axes() {
     assert_eq!(trace[0].desired, [1.0, 1.0, 0.0]);
     assert_eq!(trace[0].resolved, [1.0, 1.05, 0.0]);
     assert!(trace[0].grounded);
+    assert_eq!(trace[0].ground_entity, Some("floor".to_owned()));
     assert_eq!(trace[0].blocked_by, None);
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
@@ -83,6 +85,129 @@ fn character_trace_should_stop_before_blocking_collider() {
     assert_eq!(trace[0].blocked_by, Some("wall".to_owned()));
     assert_eq!(trace[0].desired, [2.0, 1.0, 0.0]);
     assert_eq!(trace[0].resolved, [0.0, 1.05, 0.0]);
+    assert_eq!(trace[0].ground_entity, Some("floor".to_owned()));
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn character_trace_should_step_onto_low_blockers() {
+    let root = write_character_bundle();
+    write(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "step",
+      "components": {
+        "Collider": { "kind": "box", "size": [1, 0.4, 1] },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [2, 0.2, 0] }
+      }
+    },
+    {
+      "id": "floor",
+      "components": {
+        "Collider": { "kind": "box", "size": [6, 0.1, 6] },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [0, 0, 0] }
+      }
+    },
+    {
+      "id": "player",
+      "components": {
+        "CharacterController": {
+          "blocking": true,
+          "grounding": "raycast",
+          "moveXAxis": "MoveX",
+          "moveZAxis": "MoveZ",
+          "speed": 2,
+          "stepOffset": 0.5
+        },
+        "Collider": { "kind": "box", "size": [1, 2, 1] },
+        "RigidBody": { "kind": "kinematic" },
+        "Transform": { "position": [0, 1, 0] }
+      }
+    }
+  ]
+}"#,
+    );
+    let bundle = load_bundle(&root).expect("character bundle should load");
+
+    let trace = trace_character_controllers(
+        &bundle,
+        &[CharacterTraceAxis {
+            id: "MoveX",
+            value: 1.0,
+        }],
+        1.0,
+    );
+
+    assert_eq!(trace.len(), 1);
+    assert_eq!(trace[0].blocked_by, None);
+    assert_eq!(trace[0].ground_entity, Some("step".to_owned()));
+    assert_eq!(trace[0].resolved, [2.0, 1.4, 0.0]);
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn character_trace_should_report_ledges_and_moving_platforms() {
+    let root = write_character_bundle();
+    write(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "platform",
+      "components": {
+        "Collider": { "kind": "box", "size": [1, 0.1, 6] },
+        "RigidBody": { "kind": "kinematic", "velocity": [0.25, 0, 0] },
+        "Transform": { "position": [0, 0, 0] }
+      }
+    },
+    {
+      "id": "player",
+      "components": {
+        "CharacterController": {
+          "blocking": true,
+          "grounding": "raycast",
+          "moveXAxis": "MoveX",
+          "moveZAxis": "MoveZ",
+          "speed": 2
+        },
+        "Collider": { "kind": "box", "size": [1, 2, 1] },
+        "RigidBody": { "kind": "kinematic" },
+        "Transform": { "position": [0, 1, 0] }
+      }
+    }
+  ]
+}"#,
+    );
+    let bundle = load_bundle(&root).expect("character bundle should load");
+
+    let carried = trace_character_controllers(&bundle, &[], 2.0);
+    assert_eq!(carried[0].ground_entity, Some("platform".to_owned()));
+    assert_eq!(carried[0].platform_delta, Some([0.5, 0.0, 0.0]));
+    assert_eq!(carried[0].resolved, [0.5, 1.05, 0.0]);
+
+    let ledge = trace_character_controllers(
+        &bundle,
+        &[CharacterTraceAxis {
+            id: "MoveX",
+            value: 1.0,
+        }],
+        1.0,
+    );
+    assert!(!ledge[0].grounded);
+    assert_eq!(ledge[0].ground_entity, None);
+    assert_eq!(ledge[0].resolved, [2.0, 1.0, 0.0]);
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }

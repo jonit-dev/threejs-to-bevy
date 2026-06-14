@@ -106,7 +106,7 @@ test("should emit character controller capabilities from composed game roots", a
         }),
       }),
     );
-    const world = new World().spawn("player", characterController({ interactAction: "Interact" }));
+    const world = new World().spawn("player", characterController({ interactAction: "Interact", stepOffset: 0.35 }));
     const input = defineInputMap({
       actions: [action("Interact", [keyboard("KeyE")])],
       axes: [
@@ -133,6 +133,7 @@ test("should emit character controller capabilities from composed game roots", a
     assertCapability(manifest, "character", "blocking");
     assertCapability(manifest, "character", "grounding");
     assertCapability(manifest, "character", "interaction");
+    assertCapability(manifest, "character", "step-offset");
   } finally {
     await rm(root, { force: true, recursive: true });
   }
