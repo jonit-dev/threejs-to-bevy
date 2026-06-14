@@ -28,3 +28,4 @@ export { createSystemContext, applyCommands, type ISystemContext } from "./syste
 export { applySystemEffects, validateSystemEffects, type ISystemEffects } from "./systems/effects.js";
 export { createSystemEffectLog, serializeSystemEffectLog, stableSystemEffectLog, type ISystemEffectLog, type ISystemEffectLogEntry } from "./systems/log.js";
 export { loadSystemModule, runSchedule, type ISystemModule, type ISystemRunResult, type SystemFunction } from "./systems/runner.js";
+export { traceAnimationGraphs, type IAnimationTraceInput, type IAnimationTraceObservation } from "./animation.js";

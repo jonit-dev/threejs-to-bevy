@@ -358,6 +358,21 @@ contacts. Full solver behavior, sensors beyond the query fixture, and advanced
 character-controller behavior such as slopes, steps, navmesh, and full
 interaction parity remain V7 work.
 
+V7-03 has landed the first animation/effects parity slice: model assets can now
+carry a constrained `animationGraph` with states, transition conditions, blend
+durations, parameters, and animation event markers, plus bounded
+`particleEmitters` metadata. The SDK, IR schema/validator, compiler emission,
+capability manifest derivation, and `v7-animation-graphs-particles`
+conformance fixture cover the accepted portable shape, while IK, retargeting,
+engine-specific controllers, and unbounded particle behavior remain rejected or
+unsupported. `pnpm verify:conformance` now compares a fixed web/native V7
+animation trace for parameter-driven graph transitions, active clip
+selection, emitted animation event markers, and bounded particle spawn counts,
+writing web/native trace artifacts and a diff under
+`artifacts/conformance/v7-animation-graphs-particles`. Full visual mixer
+playback, stop/state query APIs, richer event scheduling, and rendered particle
+systems remain later V7 work.
+
 V8 is the first planned local editor and inspector milestone. V9 is the first
 planned online project and publishing milestone. V10 is the first planned
 collaboration and runtime replication milestone. Editor, online, networking,

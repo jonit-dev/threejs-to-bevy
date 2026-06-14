@@ -181,6 +181,46 @@ test("assets should accept model animation clip metadata", async () => {
   }
 });
 
+test("assets should accept v7 animation graph and bounded particle metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-assets-v7-animation-"));
+  try {
+    await writeTestBundle(root, {
+      createAssetsDir: true,
+      assets: {
+        schema: "threenative.assets",
+        version: "0.1.0",
+        assets: [
+          {
+            id: "model.hero",
+            kind: "model",
+            format: "glb",
+            path: "assets/hero.glb",
+            animations: [{ id: "idle" }, { id: "run" }],
+            animationGraph: {
+              initialState: "idle",
+              parameters: [{ default: false, id: "moving", kind: "boolean" }],
+              states: [
+                { id: "idle", clip: "idle" },
+                { id: "run", clip: "run", events: [{ event: "Footstep", atSeconds: 0.25 }] },
+              ],
+              transitions: [{ from: "idle", to: "run", blendSeconds: 0.15, when: { parameter: "moving", equals: true } }],
+            },
+            particleEmitters: [{ id: "dust", lifetimeSeconds: 0.5, maxParticles: 64, ratePerSecond: 12, shape: "point" }],
+          },
+        ],
+      },
+    });
+    await writeFile(join(root, "assets/hero.glb"), "model");
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("assets should reject invalid and unsupported animation clip metadata", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-assets-animation-invalid-"));
   try {
@@ -229,6 +269,48 @@ test("assets should reject invalid and unsupported animation clip metadata", asy
         "TN_IR_ANIMATION_MODEL_REQUIRED",
       ],
     );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("assets should reject invalid v7 animation graph and particle metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-assets-v7-animation-invalid-"));
+  try {
+    await writeTestBundle(root, {
+      createAssetsDir: true,
+      assets: {
+        schema: "threenative.assets",
+        version: "0.1.0",
+        assets: [
+          {
+            id: "model.hero",
+            kind: "model",
+            format: "glb",
+            path: "assets/hero.glb",
+            animations: [{ id: "idle" }],
+            animationGraph: {
+              initialState: "run",
+              states: [{ id: "run", clip: "missing" }],
+              transitions: [{ from: "run", to: "walk", blendSeconds: -1, when: { parameter: "moving" } }],
+            },
+            particleEmitters: [{ id: "dust", lifetimeSeconds: 0, maxParticles: 0, ratePerSecond: -1, shape: "unbounded", unbounded: true }],
+            ik: true,
+          },
+        ],
+      } as any,
+    });
+    await writeFile(join(root, "assets/hero.glb"), "model");
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_ANIMATION_FIELD_UNSUPPORTED"));
+    assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_ANIMATION_GRAPH_CLIP_MISSING"));
+    assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_ANIMATION_BLEND_INVALID"));
+    assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_PARTICLE_FIELD_UNSUPPORTED"));
+    assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_PARTICLE_MAX_INVALID"));
+    assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_PARTICLE_SHAPE_UNSUPPORTED"));
   } finally {
     await rm(root, { force: true, recursive: true });
   }

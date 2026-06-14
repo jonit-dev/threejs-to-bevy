@@ -191,6 +191,33 @@ export type IAssetIr =
         sourceClip?: string;
         speed?: number;
       }>;
+      animationGraph?: {
+        initialState: string;
+        parameters?: Array<{
+          default?: boolean | number;
+          id: string;
+          kind: "boolean" | "number" | "trigger";
+        }>;
+        states: Array<{
+          clip: string;
+          events?: Array<{
+            atSeconds: number;
+            event: string;
+          }>;
+          id: string;
+        }>;
+        transitions?: Array<{
+          blendSeconds?: number;
+          from: string;
+          to: string;
+          when: {
+            equals?: boolean | number;
+            greaterThan?: number;
+            lessThan?: number;
+            parameter: string;
+          };
+        }>;
+      };
       bounds?: {
         max: Vec3;
         min: Vec3;
@@ -198,6 +225,14 @@ export type IAssetIr =
       format: "glb" | "gltf";
       id: string;
       kind: "model";
+      particleEmitters?: Array<{
+        id: string;
+        lifetimeSeconds: number;
+        maxParticles: number;
+        radius?: number;
+        ratePerSecond: number;
+        shape: "point" | "sphere";
+      }>;
       path: string;
     }
   | {

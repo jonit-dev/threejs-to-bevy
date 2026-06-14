@@ -214,11 +214,13 @@ function emitTextureSlots(
         return [[slot, value]];
       }
       assets.push({
+        ...(value.animationGraph === undefined ? {} : { animationGraph: value.animationGraph }),
         format: value.format,
         id: value.id,
         kind: value.kind,
         path: value.path,
         ...(value.animations === undefined ? {} : { animations: value.animations }),
+        ...(value.particleEmitters === undefined ? {} : { particleEmitters: value.particleEmitters }),
       });
       return [[slot, value.id]];
     }),
@@ -228,11 +230,13 @@ function emitTextureSlots(
 function emitAssetRefs(refs: readonly IAssetReference[] | undefined, assets: ISceneEmitResult["assets"]): void {
   for (const ref of refs ?? []) {
     assets.push({
+      ...(ref.animationGraph === undefined ? {} : { animationGraph: ref.animationGraph }),
       format: ref.format,
       id: ref.id,
       kind: ref.kind,
       path: ref.path,
       ...(ref.animations === undefined ? {} : { animations: ref.animations }),
+      ...(ref.particleEmitters === undefined ? {} : { particleEmitters: ref.particleEmitters }),
     });
   }
 }

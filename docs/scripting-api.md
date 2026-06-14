@@ -408,8 +408,10 @@ Runtime effects:
   remain later V6-05 work.
 - Scripts see only stable clip IDs, booleans, numbers, and plain data for the
   currently promoted command shape.
-- Animation graphs, blends, IK, retargeting, and particles are V7 scope and
-  must fail with stable diagnostics rather than being ignored.
+- V7 promotes constrained model `animationGraph` metadata, event markers, and
+  bounded particle emitters for fixed trace observations. IK, retargeting,
+  backend animation controllers, and unbounded particle behavior must fail with
+  stable diagnostics rather than being ignored.
 
 ## Resources
 

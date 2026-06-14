@@ -5,6 +5,7 @@ use thiserror::Error;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{LoadError, LoadedBundle, TransformComponent, load_bundle};
 
+pub mod animation;
 pub mod assets;
 pub mod audio;
 pub mod character;

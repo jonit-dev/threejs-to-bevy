@@ -46,7 +46,10 @@
       "reportArtifacts": [
         "artifacts/conformance/v7-animation-graphs-particles/web.report.json",
         "artifacts/conformance/v7-animation-graphs-particles/bevy.report.json",
-        "artifacts/conformance/v7-animation-graphs-particles/comparison.report.json"
+        "artifacts/conformance/v7-animation-graphs-particles/comparison.report.json",
+        "artifacts/conformance/v7-animation-graphs-particles/web-animation.json",
+        "artifacts/conformance/v7-animation-graphs-particles/native-animation.json",
+        "artifacts/conformance/v7-animation-graphs-particles/animation-diff.json"
       ],
       "rejectedDiagnosticCodes": [
         "TN_V7_ANIMATION_UNSUPPORTED",

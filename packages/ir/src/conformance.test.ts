@@ -150,6 +150,14 @@ test("should include capability tags for each conformance fixture", async () => 
     "scripting:service.physics.shapeCast",
     "scripting:systems",
   ]);
+  assertFixtureCapabilities(byName, "v7-animation-graphs-particles", [
+    "animation:clip-metadata",
+    "animation:events",
+    "animation:graph",
+    "animation:state-machine",
+    "asset:model.glb",
+    "particles:bounded-emitter",
+  ]);
 });
 
 function assertFixtureCapabilities(

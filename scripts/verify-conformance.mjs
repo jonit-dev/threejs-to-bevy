@@ -22,6 +22,10 @@ export async function verifyConformance(options = {}) {
     root,
     "packages/ir/fixtures/conformance/v7-advanced-physics-character/game.bundle",
   );
+  const v7AnimationGraphsParticlesBundlePath = resolve(
+    root,
+    "packages/ir/fixtures/conformance/v7-animation-graphs-particles/game.bundle",
+  );
   const nativeBasicSceneReportPath = options.nativeBasicSceneReportPath ?? resolve(artifactDir, "basic-scene/bevy.report.json");
   const nativeV6PhysicsEventsReportPath =
     options.nativeV6PhysicsEventsReportPath ?? resolve(artifactDir, "v6-physics-events/bevy.report.json");
@@ -49,6 +53,11 @@ export async function verifyConformance(options = {}) {
     options.v7CharacterNativeTracePath ?? resolve(artifactDir, "v7-advanced-physics-character/native-character.json");
   const v7CharacterWebTracePath =
     options.v7CharacterWebTracePath ?? resolve(artifactDir, "v7-advanced-physics-character/web-character.json");
+  const v7AnimationDiffPath = options.v7AnimationDiffPath ?? resolve(artifactDir, "v7-animation-graphs-particles/animation-diff.json");
+  const v7AnimationNativeTracePath =
+    options.v7AnimationNativeTracePath ?? resolve(artifactDir, "v7-animation-graphs-particles/native-animation.json");
+  const v7AnimationWebTracePath =
+    options.v7AnimationWebTracePath ?? resolve(artifactDir, "v7-animation-graphs-particles/web-animation.json");
   const artifacts = {
     nativeBasicSceneReportPath,
     nativeV6AnimationClipsReportPath,
@@ -68,6 +77,9 @@ export async function verifyConformance(options = {}) {
     v7CharacterDiffPath,
     v7CharacterNativeTracePath,
     v7CharacterWebTracePath,
+    v7AnimationDiffPath,
+    v7AnimationNativeTracePath,
+    v7AnimationWebTracePath,
   };
   const steps = [];
 
@@ -219,6 +231,16 @@ export async function verifyConformance(options = {}) {
         resolve(root, "scripts/verify-v7-character-trace.mjs"),
         v7AdvancedPhysicsCharacterBundlePath,
         resolve(artifactDir, "v7-advanced-physics-character"),
+      ],
+      { timeoutMs: 120000 },
+    ],
+    [
+      "V7 animation graph fixed trace parity",
+      process.execPath,
+      [
+        resolve(root, "scripts/verify-v7-animation-trace.mjs"),
+        v7AnimationGraphsParticlesBundlePath,
+        resolve(artifactDir, "v7-animation-graphs-particles"),
       ],
       { timeoutMs: 120000 },
     ],
@@ -444,6 +466,9 @@ function fixtureForStep(stepName) {
   if (stepName.includes("V7 character")) {
     return "v7-advanced-physics-character";
   }
+  if (stepName.includes("V7 animation graph")) {
+    return "v7-animation-graphs-particles";
+  }
   return "conformance";
 }
 
@@ -478,6 +503,9 @@ function artifactPathForStep(stepName, artifacts) {
   if (stepName.includes("V7 character")) {
     return artifacts.v7CharacterDiffPath;
   }
+  if (stepName.includes("V7 animation graph")) {
+    return artifacts.v7AnimationDiffPath;
+  }
   return undefined;
 }
 
@@ -505,6 +533,9 @@ function bundlePathForStep(stepName) {
   }
   if (stepName.includes("V7 character")) {
     return "packages/ir/fixtures/conformance/v7-advanced-physics-character/game.bundle";
+  }
+  if (stepName.includes("V7 animation graph")) {
+    return "packages/ir/fixtures/conformance/v7-animation-graphs-particles/game.bundle";
   }
   return undefined;
 }

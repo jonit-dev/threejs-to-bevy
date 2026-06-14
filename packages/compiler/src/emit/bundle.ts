@@ -356,6 +356,14 @@ function collectAssetCapabilities(assets: IAssetsManifest, add: (domain: string,
     if (asset.kind === "model" && asset.animations !== undefined && asset.animations.length > 0) {
       add("animation", "clip-metadata");
     }
+    if (asset.kind === "model" && asset.animationGraph !== undefined) {
+      add("animation", "events");
+      add("animation", "graph");
+      add("animation", "state-machine");
+    }
+    if (asset.kind === "model" && asset.particleEmitters !== undefined && asset.particleEmitters.length > 0) {
+      add("particles", "bounded-emitter");
+    }
     add("asset", `${asset.kind}.${asset.format}`);
   }
 }

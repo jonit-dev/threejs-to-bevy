@@ -35,11 +35,11 @@ controllers.
 
 **Implementation:**
 
-- [ ] Support states, transitions, simple blend durations, parameters, clip refs,
+- [x] Support states, transitions, simple blend durations, parameters, clip refs,
   and animation event markers.
-- [ ] Add bounded particle emitter declarations if they can be observed in both
+- [x] Add bounded particle emitter declarations if they can be observed in both
   runtimes.
-- [ ] Reject IK, retargeting, arbitrary engine controllers, and unbounded
+- [x] Reject IK, retargeting, arbitrary engine controllers, and unbounded
   particle behavior.
 
 #### Phase 2: Runtime Observations - Graph state and events match fixed traces.
@@ -56,7 +56,7 @@ controllers.
 
 - [ ] Run graph transitions from scripted parameter changes.
 - [ ] Emit animation events into the portable event queue.
-- [ ] Report graph state, clip, transition, and particle observations.
+- [x] Report graph state, clip, transition, and particle observations.
 
 ## Verification Strategy
 
@@ -68,4 +68,4 @@ controllers.
 ## Acceptance Criteria
 
 - [ ] Animation graph behavior is constrained, observable, and portable.
-- [ ] Unsupported animation systems fail with stable diagnostics.
+- [x] Unsupported animation systems fail with stable diagnostics.

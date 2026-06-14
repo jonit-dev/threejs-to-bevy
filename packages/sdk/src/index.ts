@@ -9,13 +9,22 @@ export {
 } from "./audio.js";
 export {
   animationClip,
+  animationEvent,
+  animationGraph,
   audioAsset,
+  boundedParticleEmitter,
   modelAsset,
   textureAsset,
   type AssetFormat,
   type AssetKind,
+  type IAnimationEventMarker,
+  type IAnimationGraphDeclaration,
+  type IAnimationGraphParameter,
+  type IAnimationGraphState,
+  type IAnimationGraphTransition,
   type IAnimationClipReference,
   type IAssetReference,
+  type IBoundedParticleEmitter,
   type IUnsupportedAnimationAssetOptions,
 } from "./assets.js";
 export {

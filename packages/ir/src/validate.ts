@@ -430,28 +430,37 @@ function validateAssetMetadata(asset: IAssetsManifest["assets"][number], path: s
   const allowed = new Set(
     asset.kind === "mesh"
       ? ["format", "id", "kind", "primitive", "size"]
-      : ["animations", "bounds", "format", "id", "kind", "path"],
+      : ["animationGraph", "animations", "bounds", "format", "id", "kind", "particleEmitters", "path"],
   );
   for (const key of Object.keys(raw)) {
     if (!allowed.has(key)) {
       diagnostics.push({
-        code: key === "blendGraph" || key === "ik" || key === "particles" || key === "retargeting" || key === "stateMachine" ? "TN_IR_ANIMATION_FIELD_UNSUPPORTED" : "TN_IR_ASSET_FIELD_UNSUPPORTED",
+        code: key === "blendGraph" || key === "engineController" || key === "ik" || key === "particles" || key === "retargeting" || key === "stateMachine" ? "TN_IR_ANIMATION_FIELD_UNSUPPORTED" : "TN_IR_ASSET_FIELD_UNSUPPORTED",
         message: `Asset '${asset.id}' uses unsupported field '${key}'.`,
         path: `${path}/${key}`,
-        suggestion: "Animation graphs, blends, IK, retargeting, and particles are deferred to V7.",
+        suggestion: "Use constrained animationGraph and particleEmitters metadata; keep engine controllers, IK, retargeting, and unbounded particles out of portable IR.",
       });
     }
   }
-  if ("animations" in raw && asset.kind !== "model") {
+  if (("animations" in raw || "animationGraph" in raw || "particleEmitters" in raw) && asset.kind !== "model") {
     diagnostics.push({
       code: "TN_IR_ANIMATION_MODEL_REQUIRED",
-      message: `Asset '${asset.id}' can declare animations only when it is a model asset.`,
-      path: `${path}/animations`,
+      message: `Asset '${asset.id}' can declare animation graph, particle, or clip metadata only when it is a model asset.`,
+      path,
     });
     return;
   }
+  const clipIds = asset.kind === "model" && Array.isArray(raw.animations)
+    ? new Set(raw.animations.flatMap((clip) => isRecord(clip) && typeof clip.id === "string" ? [clip.id] : []))
+    : new Set<string>();
   if (asset.kind === "model" && "animations" in raw) {
     validateAnimationClips(raw.animations, `${path}/animations`, diagnostics);
+  }
+  if (asset.kind === "model" && "animationGraph" in raw) {
+    validateAnimationGraph(raw.animationGraph, clipIds, `${path}/animationGraph`, diagnostics);
+  }
+  if (asset.kind === "model" && "particleEmitters" in raw) {
+    validateParticleEmitters(raw.particleEmitters, `${path}/particleEmitters`, diagnostics);
   }
 }
 
@@ -522,6 +531,225 @@ function validateAnimationClips(value: unknown, path: string, diagnostics: IIrDi
       });
     }
   });
+}
+
+function validateAnimationGraph(value: unknown, clipIds: ReadonlySet<string>, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (!isRecord(value)) {
+    diagnostics.push({
+      code: "TN_IR_ANIMATION_GRAPH_INVALID",
+      message: "Animation graph must be an object.",
+      path,
+    });
+    return;
+  }
+  for (const key of Object.keys(value)) {
+    if (!["initialState", "parameters", "states", "transitions"].includes(key)) {
+      diagnostics.push({
+        code: "TN_IR_ANIMATION_GRAPH_FIELD_UNSUPPORTED",
+        message: `Animation graph uses unsupported field '${key}'.`,
+        path: `${path}/${key}`,
+        suggestion: "Keep engine-specific controllers and graph runtime handles adapter-private.",
+      });
+    }
+  }
+  if (typeof value.initialState !== "string" || value.initialState.trim() === "") {
+    diagnostics.push({
+      code: "TN_IR_ANIMATION_GRAPH_INITIAL_STATE_INVALID",
+      message: "Animation graph initialState must be a non-empty string.",
+      path: `${path}/initialState`,
+    });
+  }
+  const stateIds = validateAnimationGraphStates(value.states, clipIds, `${path}/states`, diagnostics);
+  const parameterIds = validateAnimationGraphParameters(value.parameters, `${path}/parameters`, diagnostics);
+  if (typeof value.initialState === "string" && value.initialState.trim() !== "" && !stateIds.has(value.initialState)) {
+    diagnostics.push({
+      code: "TN_IR_ANIMATION_GRAPH_INITIAL_STATE_MISSING",
+      message: `Animation graph initialState '${value.initialState}' is not declared in states.`,
+      path: `${path}/initialState`,
+    });
+  }
+  validateAnimationGraphTransitions(value.transitions, stateIds, parameterIds, `${path}/transitions`, diagnostics);
+}
+
+function validateAnimationGraphStates(value: unknown, clipIds: ReadonlySet<string>, path: string, diagnostics: IIrDiagnostic[]): Set<string> {
+  const stateIds = new Set<string>();
+  if (!Array.isArray(value) || value.length === 0) {
+    diagnostics.push({
+      code: "TN_IR_ANIMATION_GRAPH_STATES_INVALID",
+      message: "Animation graph states must be a non-empty array.",
+      path,
+    });
+    return stateIds;
+  }
+  value.forEach((state, index) => {
+    const statePath = `${path}/${index}`;
+    if (!isRecord(state)) {
+      diagnostics.push({ code: "TN_IR_ANIMATION_GRAPH_STATE_INVALID", message: "Animation graph state must be an object.", path: statePath });
+      return;
+    }
+    for (const key of Object.keys(state)) {
+      if (!["clip", "events", "id"].includes(key)) {
+        diagnostics.push({
+          code: "TN_IR_ANIMATION_GRAPH_STATE_FIELD_UNSUPPORTED",
+          message: `Animation graph state uses unsupported field '${key}'.`,
+          path: `${statePath}/${key}`,
+        });
+      }
+    }
+    if (typeof state.id !== "string" || state.id.trim() === "") {
+      diagnostics.push({ code: "TN_IR_ANIMATION_GRAPH_STATE_ID_INVALID", message: "Animation graph state ID must be a non-empty string.", path: `${statePath}/id` });
+    } else if (stateIds.has(state.id)) {
+      diagnostics.push({ code: "TN_IR_ANIMATION_GRAPH_STATE_DUPLICATE", message: `Animation graph state ID '${state.id}' is duplicated.`, path: `${statePath}/id` });
+    } else {
+      stateIds.add(state.id);
+    }
+    if (typeof state.clip !== "string" || state.clip.trim() === "") {
+      diagnostics.push({ code: "TN_IR_ANIMATION_GRAPH_CLIP_INVALID", message: "Animation graph state clip must be a non-empty string.", path: `${statePath}/clip` });
+    } else if (!clipIds.has(state.clip)) {
+      diagnostics.push({ code: "TN_IR_ANIMATION_GRAPH_CLIP_MISSING", message: `Animation graph state references unknown clip '${state.clip}'.`, path: `${statePath}/clip` });
+    }
+    validateAnimationEvents(state.events, `${statePath}/events`, diagnostics);
+  });
+  return stateIds;
+}
+
+function validateAnimationEvents(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!Array.isArray(value)) {
+    diagnostics.push({ code: "TN_IR_ANIMATION_EVENTS_INVALID", message: "Animation graph events must be an array.", path });
+    return;
+  }
+  value.forEach((event, index) => {
+    const eventPath = `${path}/${index}`;
+    if (!isRecord(event)) {
+      diagnostics.push({ code: "TN_IR_ANIMATION_EVENT_INVALID", message: "Animation graph event must be an object.", path: eventPath });
+      return;
+    }
+    if (typeof event.event !== "string" || event.event.trim() === "") {
+      diagnostics.push({ code: "TN_IR_ANIMATION_EVENT_ID_INVALID", message: "Animation graph event ID must be a non-empty string.", path: `${eventPath}/event` });
+    }
+    if (typeof event.atSeconds !== "number" || !Number.isFinite(event.atSeconds) || event.atSeconds < 0) {
+      diagnostics.push({ code: "TN_IR_ANIMATION_EVENT_TIME_INVALID", message: "Animation graph event atSeconds must be a non-negative finite number.", path: `${eventPath}/atSeconds` });
+    }
+  });
+}
+
+function validateAnimationGraphParameters(value: unknown, path: string, diagnostics: IIrDiagnostic[]): Set<string> {
+  const parameterIds = new Set<string>();
+  if (value === undefined) {
+    return parameterIds;
+  }
+  if (!Array.isArray(value)) {
+    diagnostics.push({ code: "TN_IR_ANIMATION_PARAMETERS_INVALID", message: "Animation graph parameters must be an array.", path });
+    return parameterIds;
+  }
+  value.forEach((parameter, index) => {
+    const parameterPath = `${path}/${index}`;
+    if (!isRecord(parameter)) {
+      diagnostics.push({ code: "TN_IR_ANIMATION_PARAMETER_INVALID", message: "Animation graph parameter must be an object.", path: parameterPath });
+      return;
+    }
+    if (typeof parameter.id !== "string" || parameter.id.trim() === "") {
+      diagnostics.push({ code: "TN_IR_ANIMATION_PARAMETER_ID_INVALID", message: "Animation graph parameter ID must be a non-empty string.", path: `${parameterPath}/id` });
+    } else if (parameterIds.has(parameter.id)) {
+      diagnostics.push({ code: "TN_IR_ANIMATION_PARAMETER_DUPLICATE", message: `Animation graph parameter ID '${parameter.id}' is duplicated.`, path: `${parameterPath}/id` });
+    } else {
+      parameterIds.add(parameter.id);
+    }
+    if (!["boolean", "number", "trigger"].includes(parameter.kind as string)) {
+      diagnostics.push({ code: "TN_IR_ANIMATION_PARAMETER_KIND_UNSUPPORTED", message: `Animation graph parameter kind '${String(parameter.kind)}' is unsupported.`, path: `${parameterPath}/kind` });
+    }
+  });
+  return parameterIds;
+}
+
+function validateAnimationGraphTransitions(value: unknown, stateIds: ReadonlySet<string>, parameterIds: ReadonlySet<string>, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!Array.isArray(value)) {
+    diagnostics.push({ code: "TN_IR_ANIMATION_TRANSITIONS_INVALID", message: "Animation graph transitions must be an array.", path });
+    return;
+  }
+  value.forEach((transition, index) => {
+    const transitionPath = `${path}/${index}`;
+    if (!isRecord(transition)) {
+      diagnostics.push({ code: "TN_IR_ANIMATION_TRANSITION_INVALID", message: "Animation graph transition must be an object.", path: transitionPath });
+      return;
+    }
+    if (typeof transition.from !== "string" || !stateIds.has(transition.from)) {
+      diagnostics.push({ code: "TN_IR_ANIMATION_TRANSITION_STATE_MISSING", message: "Animation graph transition from state must reference a declared state.", path: `${transitionPath}/from` });
+    }
+    if (typeof transition.to !== "string" || !stateIds.has(transition.to)) {
+      diagnostics.push({ code: "TN_IR_ANIMATION_TRANSITION_STATE_MISSING", message: "Animation graph transition to state must reference a declared state.", path: `${transitionPath}/to` });
+    }
+    if (transition.blendSeconds !== undefined && (typeof transition.blendSeconds !== "number" || !Number.isFinite(transition.blendSeconds) || transition.blendSeconds < 0)) {
+      diagnostics.push({ code: "TN_IR_ANIMATION_BLEND_INVALID", message: "Animation graph transition blendSeconds must be a non-negative finite number.", path: `${transitionPath}/blendSeconds` });
+    }
+    if (!isRecord(transition.when)) {
+      diagnostics.push({ code: "TN_IR_ANIMATION_TRANSITION_CONDITION_INVALID", message: "Animation graph transition when condition must be an object.", path: `${transitionPath}/when` });
+      return;
+    }
+    if (typeof transition.when.parameter !== "string" || !parameterIds.has(transition.when.parameter)) {
+      diagnostics.push({ code: "TN_IR_ANIMATION_TRANSITION_PARAMETER_MISSING", message: "Animation graph transition condition must reference a declared parameter.", path: `${transitionPath}/when/parameter` });
+    }
+  });
+}
+
+function validateParticleEmitters(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (!Array.isArray(value)) {
+    diagnostics.push({ code: "TN_IR_PARTICLE_EMITTERS_INVALID", message: "Particle emitters must be an array.", path });
+    return;
+  }
+  const seen = new Set<string>();
+  value.forEach((emitter, index) => {
+    const emitterPath = `${path}/${index}`;
+    if (!isRecord(emitter)) {
+      diagnostics.push({ code: "TN_IR_PARTICLE_EMITTER_INVALID", message: "Particle emitter must be an object.", path: emitterPath });
+      return;
+    }
+    for (const key of Object.keys(emitter)) {
+      if (!["id", "lifetimeSeconds", "maxParticles", "radius", "ratePerSecond", "shape"].includes(key)) {
+        diagnostics.push({ code: "TN_IR_PARTICLE_FIELD_UNSUPPORTED", message: `Particle emitter uses unsupported field '${key}'.`, path: `${emitterPath}/${key}` });
+      }
+    }
+    if (typeof emitter.id !== "string" || emitter.id.trim() === "") {
+      diagnostics.push({ code: "TN_IR_PARTICLE_EMITTER_ID_INVALID", message: "Particle emitter ID must be a non-empty string.", path: `${emitterPath}/id` });
+    } else if (seen.has(emitter.id)) {
+      diagnostics.push({ code: "TN_IR_PARTICLE_EMITTER_DUPLICATE", message: `Particle emitter ID '${emitter.id}' is duplicated.`, path: `${emitterPath}/id` });
+    } else {
+      seen.add(emitter.id);
+    }
+    validatePositiveInteger(emitter.maxParticles, `${emitterPath}/maxParticles`, "TN_IR_PARTICLE_MAX_INVALID", "Particle emitter maxParticles", diagnostics);
+    validateNonNegativeFinite(emitter.ratePerSecond, `${emitterPath}/ratePerSecond`, "TN_IR_PARTICLE_RATE_INVALID", "Particle emitter ratePerSecond", diagnostics);
+    validatePositiveFiniteValue(emitter.lifetimeSeconds, `${emitterPath}/lifetimeSeconds`, "TN_IR_PARTICLE_LIFETIME_INVALID", "Particle emitter lifetimeSeconds", diagnostics);
+    if (!["point", "sphere"].includes(emitter.shape as string)) {
+      diagnostics.push({ code: "TN_IR_PARTICLE_SHAPE_UNSUPPORTED", message: `Particle emitter shape '${String(emitter.shape)}' is unsupported.`, path: `${emitterPath}/shape` });
+    }
+    if (emitter.radius !== undefined) {
+      validatePositiveFiniteValue(emitter.radius, `${emitterPath}/radius`, "TN_IR_PARTICLE_RADIUS_INVALID", "Particle emitter radius", diagnostics);
+    }
+  });
+}
+
+function validatePositiveInteger(value: unknown, path: string, code: string, label: string, diagnostics: IIrDiagnostic[]): void {
+  if (typeof value !== "number" || !Number.isInteger(value) || value <= 0) {
+    diagnostics.push({ code, message: `${label} must be a positive integer.`, path });
+  }
+}
+
+function validateNonNegativeFinite(value: unknown, path: string, code: string, label: string, diagnostics: IIrDiagnostic[]): void {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    diagnostics.push({ code, message: `${label} must be a non-negative finite number.`, path });
+  }
+}
+
+function validatePositiveFiniteValue(value: unknown, path: string, code: string, label: string, diagnostics: IIrDiagnostic[]): void {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    diagnostics.push({ code, message: `${label} must be a positive finite number.`, path });
+  }
 }
 
 function assetFormatMatches(kind: string, format: string, extension: string | undefined): boolean {

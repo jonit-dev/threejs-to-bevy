@@ -2,12 +2,14 @@
 
 `verify:v7` is not the aggregate V7 release gate yet. V7-01 starts the evidence
 contract that later V7 feature tickets and the final V7 gate must use, and
-V7-02 now adds the first runtime-specific fixed trace.
+V7-02 now adds the first runtime-specific fixed trace. V7-03 adds the first
+animation/effects contract fixture and fixed web/native graph/particle trace.
 
 Current V7 conformance evidence starts with:
 
 - `packages/ir/fixtures/conformance/v7-fixture-catalog.json`
 - `packages/ir/fixtures/conformance/v7-advanced-physics-character/game.bundle`
+- `packages/ir/fixtures/conformance/v7-animation-graphs-particles/game.bundle`
 - `pnpm verify:conformance`
 - `artifacts/conformance/verification-report.json`
 - `artifacts/conformance/v7-advanced-physics-character/web-effects.json`
@@ -16,10 +18,23 @@ Current V7 conformance evidence starts with:
 - `artifacts/conformance/v7-advanced-physics-character/web-character.json`
 - `artifacts/conformance/v7-advanced-physics-character/native-character.json`
 - `artifacts/conformance/v7-advanced-physics-character/character-diff.json`
+- `artifacts/conformance/v7-animation-graphs-particles/web-animation.json`
+- `artifacts/conformance/v7-animation-graphs-particles/native-animation.json`
+- `artifacts/conformance/v7-animation-graphs-particles/animation-diff.json`
 
 The V7 fixture catalog maps V7-02 through V7-09 to baseline bundles, planned
 accepted and rejected fixture bundle paths, expected target capabilities,
 report artifact paths, and rejected diagnostic code families.
+
+The current V7-03 fixture evidence is intentionally narrow: the
+`v7-animation-graphs-particles` bundle validates constrained animation graph
+metadata, animation event markers, and bounded particle emitters and exposes the
+required `animation:graph`, `animation:state-machine`, `animation:events`, and
+`particles:bounded-emitter` capabilities. The fixed trace compares web and
+native parameter-driven graph transitions, active clip selection,
+emitted event markers, and bounded particle spawn counts. This does not claim
+full visual mixer playback, stop/state query APIs, richer event scheduling, IK,
+retargeting, or rendered particle systems.
 
 Conformance mismatch diagnostics must localize drift with:
 

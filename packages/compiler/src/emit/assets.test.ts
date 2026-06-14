@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { BoxGeometry, Mesh, MeshStandardMaterial, Object3D, Scene, animationClip, modelAsset, textureAsset } from "@threenative/sdk";
+import { BoxGeometry, Mesh, MeshStandardMaterial, Object3D, Scene, animationClip, animationGraph, boundedParticleEmitter, modelAsset, textureAsset } from "@threenative/sdk";
 import { validateBundle } from "@threenative/ir";
 
 import { emitBundle } from "./bundle.js";
@@ -121,6 +121,62 @@ test("assets should emit deterministic model animation metadata", async () => {
       path: "assets/hero.glb",
     });
     assert.ok(manifest.requiredCapabilities.animation.includes("clip-metadata"));
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("assets should emit v7 animation graph and bounded particle capabilities", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-v7-animation-assets-"));
+  try {
+    await mkdir(join(root, "assets"), { recursive: true });
+    await writeFile(join(root, "assets/hero.glb"), "model");
+    const scene = new Scene({ id: "scene" });
+    scene.add(
+      new Object3D({
+        assetRefs: [
+          modelAsset("model.hero", "assets/hero.glb", {
+            animationGraph: animationGraph({
+              initialState: "idle",
+              parameters: [{ default: false, id: "moving", kind: "boolean" }],
+              states: [
+                { clip: "run", events: [{ atSeconds: 0.25, event: "Footstep" }], id: "run" },
+                { clip: "idle", id: "idle" },
+              ],
+              transitions: [{ blendSeconds: 0.15, from: "idle", to: "run", when: { equals: true, parameter: "moving" } }],
+            }),
+            animations: [animationClip("run"), animationClip("idle")],
+            particleEmitters: [boundedParticleEmitter("dust", { lifetimeSeconds: 0.5, maxParticles: 64, ratePerSecond: 12, shape: "point" })],
+          }),
+        ],
+        id: "hero.asset",
+      }),
+    );
+
+    const bundlePath = await emitBundle(
+      {
+        entry: "src/game.ts",
+        outDir: "dist/game.bundle",
+        projectPath: root,
+        schema: "threenative.project" as const,
+        version: "0.1.0" as const,
+      },
+      scene,
+    );
+    const assets = JSON.parse(await readFile(join(bundlePath, "assets.manifest.json"), "utf8"));
+    const manifest = JSON.parse(await readFile(join(bundlePath, "manifest.json"), "utf8"));
+    const result = await validateBundle(bundlePath);
+    const model = assets.assets.find((asset: { id: string }) => asset.id === "model.hero");
+
+    assert.equal(result.ok, true);
+    assert.equal(model.animationGraph.initialState, "idle");
+    assert.deepEqual(model.particleEmitters, [
+      { id: "dust", lifetimeSeconds: 0.5, maxParticles: 64, ratePerSecond: 12, shape: "point" },
+    ]);
+    assert.ok(manifest.requiredCapabilities.animation.includes("events"));
+    assert.ok(manifest.requiredCapabilities.animation.includes("graph"));
+    assert.ok(manifest.requiredCapabilities.animation.includes("state-machine"));
+    assert.ok(manifest.requiredCapabilities.particles.includes("bounded-emitter"));
   } finally {
     await rm(root, { force: true, recursive: true });
   }

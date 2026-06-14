@@ -208,7 +208,11 @@ pub struct AssetIr {
     pub kind: String,
     pub format: String,
     pub animations: Option<Vec<AnimationClipIr>>,
+    #[serde(rename = "animationGraph")]
+    pub animation_graph: Option<AnimationGraphIr>,
     pub bounds: Option<AssetBoundsIr>,
+    #[serde(rename = "particleEmitters")]
+    pub particle_emitters: Option<Vec<ParticleEmitterIr>>,
     pub primitive: Option<String>,
     pub path: Option<String>,
     pub size: Option<Vec<f32>>,
@@ -222,6 +226,65 @@ pub struct AnimationClipIr {
     pub loop_: Option<bool>,
     pub source_clip: Option<String>,
     pub speed: Option<f32>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AnimationGraphIr {
+    pub initial_state: String,
+    pub parameters: Option<Vec<AnimationGraphParameterIr>>,
+    pub states: Vec<AnimationGraphStateIr>,
+    pub transitions: Option<Vec<AnimationGraphTransitionIr>>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AnimationGraphParameterIr {
+    pub id: String,
+    pub kind: String,
+    pub default: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AnimationGraphStateIr {
+    pub id: String,
+    pub clip: String,
+    pub events: Option<Vec<AnimationEventIr>>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AnimationEventIr {
+    pub event: String,
+    pub at_seconds: f32,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AnimationGraphTransitionIr {
+    pub from: String,
+    pub to: String,
+    pub blend_seconds: Option<f32>,
+    pub when: AnimationTransitionConditionIr,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AnimationTransitionConditionIr {
+    pub parameter: String,
+    pub equals: Option<serde_json::Value>,
+    pub greater_than: Option<f32>,
+    pub less_than: Option<f32>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ParticleEmitterIr {
+    pub id: String,
+    pub lifetime_seconds: f32,
+    pub max_particles: u32,
+    pub radius: Option<f32>,
+    pub rate_per_second: f32,
+    pub shape: String,
 }
 
 #[derive(Debug, Deserialize)]
