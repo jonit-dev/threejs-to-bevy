@@ -54,11 +54,11 @@ conceptual docs.
   boundaries, risks, and success criteria.
 - [V3 Completion Checklist](releases/v3-completion.md): operational release
   checklist for finishing V3.
-- [V3 Environment Scene IR](v3/environment-scene-ir.md): V3-specific rich scene
+- [V3 Environment Scene IR](environment-scene-ir.md): V3-specific rich scene
   composition contract.
-- [V3 Asset Pipeline](v3/asset-pipeline.md): supported asset inputs, bundle
+- [V3 Asset Pipeline](asset-pipeline.md): supported asset inputs, bundle
   behavior, texture policy, and budgets.
-- [V3 Visual Parity Policy](v3/visual-parity-policy.md): what V3 does and does
+- [V3 Visual Parity Policy](visual-parity-policy.md): what V3 does and does
   not require from Three.js/Bevy screenshots.
 - [V1 PRDs](PRDs/v1/README.md): implementation tickets for the V1 end-to-end
   proof, sliced from the roadmap and aligned with the architecture docs.

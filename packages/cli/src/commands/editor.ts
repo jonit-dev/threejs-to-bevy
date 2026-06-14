@@ -8,7 +8,7 @@ import {
   type IIrDiagnostic,
 } from "@threenative/ir";
 
-import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
+import { diagnosticResult, type ICommandResult, type IDiagnosticPayload } from "../diagnostics.js";
 
 interface IEditorOptions {
   cwd?: string;
@@ -63,7 +63,7 @@ async function snapshotCommand(argv: readonly string[], cwd: string, json: boole
   const outPath = resolve(cwd, flagValue(argv, "--out") ?? "editor.project.json");
   const manifest = await readJsonFile<IBundleManifest>(resolve(bundlePath, "manifest.json"));
   if (manifest.ok === false) {
-    return diagnosticResult(manifest.diagnostic, { exitCode: 1, json, stderr: !json });
+    return diagnosticResult(editorDiagnosticPayload(manifest.diagnostic), { exitCode: 1, json, stderr: !json });
   }
 
   const documentPaths = collectJsonDocuments(manifest.value);
@@ -71,7 +71,7 @@ async function snapshotCommand(argv: readonly string[], cwd: string, json: boole
   for (const documentPath of documentPaths) {
     const document = await readJsonFile<unknown>(resolve(bundlePath, documentPath), documentPath);
     if (document.ok === false) {
-      return diagnosticResult(document.diagnostic, { exitCode: 1, json, stderr: !json });
+      return diagnosticResult(editorDiagnosticPayload(document.diagnostic), { exitCode: 1, json, stderr: !json });
     }
     documents[documentPath] = document.value;
   }
@@ -188,9 +188,9 @@ async function readJsonFile<T>(
 }
 
 function diagnosticsResult(code: string, message: string, diagnostics: IIrDiagnostic[], json: boolean): ICommandResult {
-  const payload = {
+  const payload: IDiagnosticPayload = {
     code,
-    diagnostics,
+    diagnostics: diagnostics.map(editorDiagnosticPayload),
     message,
   };
 
@@ -205,6 +205,18 @@ function diagnosticsResult(code: string, message: string, diagnostics: IIrDiagno
     exitCode: 1,
     stderr: `${message}\n${diagnostics.map((diagnostic) => `${diagnostic.code} ${diagnostic.path}: ${diagnostic.message}`).join("\n")}\n`,
     stdout: "",
+  };
+}
+
+function editorDiagnosticPayload(diagnostic: IIrDiagnostic): IDiagnosticPayload {
+  return {
+    code: diagnostic.code,
+    message: diagnostic.message,
+    path: diagnostic.path,
+    ...(diagnostic.severity === undefined ? {} : { severity: diagnostic.severity }),
+    ...(diagnostic.suggestion === undefined ? {} : { suggestion: diagnostic.suggestion }),
+    ...(diagnostic.limit === undefined ? {} : { limit: diagnostic.limit }),
+    ...(diagnostic.value === undefined ? {} : { value: diagnostic.value }),
   };
 }
 
