@@ -22,6 +22,7 @@ pub mod systems_context;
 pub mod systems_effects;
 pub mod systems_host;
 pub mod systems_services;
+pub mod transform_interpolation;
 pub mod ui;
 pub mod walkability;
 

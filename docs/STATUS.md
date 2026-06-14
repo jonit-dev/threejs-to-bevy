@@ -436,6 +436,11 @@ Bevy runtime utilities. Both runtimes expose linear/ease-in/ease-out/ease-in-out
 quadratic easing plus deterministic line, quadratic Bezier, cubic Bezier, and
 Catmull-Rom path sampling helpers.
 
+Transform interpolation and smoothing helpers now have matching web and Bevy
+runtime utilities. Both runtimes expose deterministic vec3 interpolation,
+shortest-arc quaternion interpolation, full transform interpolation, and
+exponential smoothing helpers for host-side animation/state handoff code.
+
 V7-07 has landed the first scripting determinism and lifecycle evidence slice:
 `systems.ir.json` now accepts explicit lifecycle metadata for `fixed-trace`
 replay, `system-local-disallowed` state, `invalidate` hot reload behavior, and
