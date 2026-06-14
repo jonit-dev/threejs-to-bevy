@@ -40,6 +40,7 @@ export function validateEnvironmentSceneIr(
         path: `${path}/sourceAssets/${index}/asset`,
       });
     }
+    validateSourceAssetLod(sourceAsset, index, modelAssets, `${path}/sourceAssets/${index}`, diagnostics);
   });
 
   const sourceAssetIds = new Set(scene.sourceAssets.map((sourceAsset) => sourceAsset.id));
@@ -69,6 +70,74 @@ export function validateEnvironmentSceneIr(
   });
 
   return diagnostics;
+}
+
+function validateSourceAssetLod(
+  sourceAsset: IEnvironmentSceneIr["sourceAssets"][number],
+  sourceAssetIndex: number,
+  modelAssets: ReadonlySet<string>,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (sourceAsset.lod === undefined) {
+    return;
+  }
+  if (sourceAsset.lod.length === 0) {
+    diagnostics.push({
+      code: "TN_IR_ENVIRONMENT_LOD_LEVELS_MISSING",
+      message: `Environment source asset '${sourceAsset.id}' declares LOD metadata without levels.`,
+      path: `${path}/lod`,
+      severity: "error",
+      suggestion: "Add at least one LOD level or remove the lod field.",
+    });
+    return;
+  }
+  let previousMaxDistance = -Infinity;
+  sourceAsset.lod.forEach((level, levelIndex) => {
+    const levelPath = `${path}/lod/${levelIndex}`;
+    if (!modelAssets.has(level.asset)) {
+      diagnostics.push({
+        code: "TN_IR_ENVIRONMENT_LOD_ASSET_MISSING",
+        message: `Environment source asset '${sourceAsset.id}' LOD level ${levelIndex} references unknown model asset '${level.asset}'.`,
+        path: `${levelPath}/asset`,
+        severity: "error",
+        suggestion: `Add model asset '${level.asset}' to assets.manifest.json or update sourceAssets/${sourceAssetIndex}/lod/${levelIndex}/asset.`,
+      });
+    }
+    if (level.asset === sourceAsset.asset) {
+      diagnostics.push({
+        code: "TN_IR_ENVIRONMENT_LOD_CYCLE",
+        message: `Environment source asset '${sourceAsset.id}' LOD level ${levelIndex} points back to its primary asset.`,
+        path: `${levelPath}/asset`,
+        severity: "error",
+        suggestion: "Use a distinct simplified model asset for each LOD level.",
+      });
+    }
+    if (
+      !Number.isFinite(level.minDistance) ||
+      !Number.isFinite(level.maxDistance) ||
+      level.minDistance < 0 ||
+      level.maxDistance <= level.minDistance
+    ) {
+      diagnostics.push({
+        code: "TN_IR_ENVIRONMENT_LOD_DISTANCE_INVALID",
+        message: `Environment source asset '${sourceAsset.id}' LOD level ${levelIndex} must use finite ordered non-negative distances.`,
+        path: levelPath,
+        severity: "error",
+        suggestion: "Use minDistance >= 0 and maxDistance greater than minDistance.",
+      });
+    }
+    if (level.minDistance < previousMaxDistance) {
+      diagnostics.push({
+        code: "TN_IR_ENVIRONMENT_LOD_THRESHOLDS_UNSORTED",
+        message: `Environment source asset '${sourceAsset.id}' LOD level ${levelIndex} overlaps or sorts before the previous level.`,
+        path: levelPath,
+        severity: "error",
+        suggestion: "Sort LOD levels by distance and make each minDistance greater than or equal to the previous maxDistance.",
+      });
+    }
+    previousMaxDistance = Math.max(previousMaxDistance, level.maxDistance);
+  });
 }
 
 function validateWalkability(scene: IEnvironmentSceneIr, path: string, diagnostics: IIrDiagnostic[]): void {

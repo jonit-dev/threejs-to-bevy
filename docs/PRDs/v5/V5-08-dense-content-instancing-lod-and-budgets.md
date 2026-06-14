@@ -27,10 +27,10 @@ budget diagnostics, and add a narrow portable LOD metadata contract.
 
 **Implementation:**
 
-- [ ] Distinguish real instanced groups from placeholders in reports.
-- [ ] Report source asset count, instance count, group count, draw estimate,
+- [x] Distinguish real instanced groups from placeholders in reports.
+- [x] Report source asset count, instance count, group count, draw estimate,
   triangle estimate, texture estimate, and bundle size where available.
-- [ ] Add Bevy observed environment summaries for repeated assets.
+- [x] Add Bevy observed environment summaries for repeated assets.
 
 #### Phase 2: LOD Metadata and Budget Diagnostics
 
@@ -44,11 +44,11 @@ budget diagnostics, and add a narrow portable LOD metadata contract.
 
 **Implementation:**
 
-- [ ] Add bounded LOD metadata with distance thresholds and asset refs.
-- [ ] Reject missing levels, unsorted thresholds, unsupported formats, cycles,
+- [x] Add bounded LOD metadata with distance thresholds and asset refs.
+- [x] Reject missing levels, unsorted thresholds, unsupported formats, cycles,
   and target budget violations.
-- [ ] Let web choose deterministic LODs for fixed camera/bookmark tests.
-- [ ] Let Bevy observe the same metadata, with conservative fallback rendering
+- [x] Let web choose deterministic LODs for fixed camera/bookmark tests.
+- [x] Let Bevy observe the same metadata, with conservative fallback rendering
   allowed only when diagnosed.
 
 ## Verification Strategy
@@ -61,9 +61,22 @@ budget diagnostics, and add a narrow portable LOD metadata contract.
 
 ## Acceptance Criteria
 
-- [ ] Dense content reports identify real versus placeholder evidence.
-- [ ] Budget diagnostics include code, path, value, limit, and suggested fix
+- [x] Dense content reports identify real versus placeholder evidence.
+- [x] Budget diagnostics include code, path, value, limit, and suggested fix
   where supported.
-- [ ] LOD metadata is portable, validated, and target-gated.
-- [ ] The V5 scene emits a budget report using environment assets.
+- [x] LOD metadata is portable, validated, and target-gated.
+- [x] The V5 scene emits a budget report using environment assets.
 
+## Implementation Evidence
+
+- IR source assets now accept validated `lod` levels with bounded distance
+  ranges and model asset references.
+- Compiler emission copies LOD target models into the bundle while keeping
+  authored source assets distinct for dense-content reporting.
+- Web verification reports source asset, instance, group, draw, triangle,
+  texture, texture-byte, and bundle-byte estimates, plus deterministic LOD
+  selections.
+- Bevy environment observation reports repeated model-backed asset groups and
+  the same LOD metadata selections used by fixed-distance checks.
+- `examples/v5-functional` uses repeated grass scatter, source-asset LOD
+  metadata, target budgets, and environment assets for the V5-08 scene proof.

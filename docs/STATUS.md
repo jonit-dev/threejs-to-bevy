@@ -137,6 +137,15 @@ management, and shadow fields. Native fog/sky/color rendering remains
 target-drift rather than full visual parity, but the promoted fields are now
 validated, observable, and exercised by `examples/v5-functional`.
 
+V5-08 has landed the dense content, LOD metadata, and budget-evidence slice:
+environment source assets now carry validated bounded LOD metadata, compiler
+emission copies LOD target models without treating them as extra source assets,
+web performance reports expose source asset, instance, group, draw, triangle,
+texture, texture-byte, and bundle-byte estimates, and Bevy observations
+distinguish repeated model-backed groups from placeholders. The
+`examples/v5-functional` scene now exercises repeated grass scatter, source
+asset LOD metadata, and environment-asset budget reports.
+
 V5 should add or improve Rust tests for native runtime behavior whenever work
 touches shared IR, native runtime mapping, native scripting behavior, Bevy
 diagnostics, or visual-quality features that claim native support. The expected
@@ -172,6 +181,8 @@ limits the work to internal preparation or harness cleanup.
 - V3 web performance budget reporting
 - V3 web performance reports distinguish synthetic/placeholder instancing
   evidence from model-asset-backed instancing plans
+- portable bounded environment LOD metadata with web and Bevy observation
+  summaries
 - bookmarked visual verification artifacts
 - atmosphere metadata checks for the V3 scene
 - walkability and blocking probes for the V3 scene

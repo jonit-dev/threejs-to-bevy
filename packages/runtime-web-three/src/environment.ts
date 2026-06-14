@@ -14,9 +14,13 @@ export interface IEnvironmentRuntime {
 export interface IEnvironmentObservation {
   bookmarks: string[];
   heroPlacementIds: string[];
+  lodSelections: Record<string, string>;
+  lodSourceAssetCount: number;
   pathPointCount: number;
   scatterCountsByTag: Record<string, number>;
   scatterInstanceCount: number;
+  sourceAssetCount: number;
+  totalInstanceCount: number;
   terrain?: {
     id: string;
     max: readonly [number, number, number];
@@ -241,9 +245,13 @@ export function observeEnvironmentScene(scene: NonNullable<IWebBundle["environme
       .filter((instance) => instance.kind === "hero")
       .map((instance) => instance.id)
       .sort((left, right) => left.localeCompare(right)),
+    lodSelections: selectLodsForDistance(scene, 32),
+    lodSourceAssetCount: scene.sourceAssets.filter((asset) => asset.lod !== undefined && asset.lod.length > 0).length,
     pathPointCount: scene.path.points.length,
     scatterCountsByTag,
     scatterInstanceCount: scene.instances.filter((instance) => instance.kind === "scatter").length,
+    sourceAssetCount: scene.sourceAssets.length,
+    totalInstanceCount: scene.instances.length,
     terrain:
       scene.terrain === undefined
         ? undefined
@@ -253,6 +261,17 @@ export function observeEnvironmentScene(scene: NonNullable<IWebBundle["environme
             min: scene.terrain.bounds.min,
           },
   };
+}
+
+function selectLodsForDistance(scene: NonNullable<IWebBundle["environmentScene"]>, distance: number): Record<string, string> {
+  const selections: Record<string, string> = {};
+  for (const sourceAsset of [...scene.sourceAssets].sort((left, right) => left.id.localeCompare(right.id))) {
+    const selected = sourceAsset.lod
+      ?.find((level) => distance >= level.minDistance && distance < level.maxDistance)
+      ?.asset;
+    selections[sourceAsset.id] = selected ?? sourceAsset.asset;
+  }
+  return selections;
 }
 
 function matrixForInstance(

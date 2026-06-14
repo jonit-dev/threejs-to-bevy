@@ -57,11 +57,28 @@ export default {
     sourceDir: "../v3-environment/assets-source/environment/glTF",
     previewImage: "../v3-environment/assets-source/environment/Preview_2.jpg",
     assetNames: ["CommonTree_1.gltf", "Grass_Common_Short.gltf", "Rock_Medium_1.gltf"],
+    lod: {
+      "env.CommonTree_1": [{ assetName: "CommonTree_3.gltf", minDistance: 18, maxDistance: 70 }],
+      "env.Rock_Medium_1": [{ assetName: "Pebble_Round_1.gltf", minDistance: 14, maxDistance: 55 }],
+    },
     budgets: {
       maxAssetBytes: 5000000,
       maxBundleBytes: 14000000,
       supportedModelFormats: ["gltf"],
       supportedTextureFormats: ["jpeg", "png"],
+    },
+    performance: {
+      requiredTarget: "web",
+      drawCalls: { warn: 80, max: 120 },
+      instancedGroups: { warn: 20, max: 32 },
+      instances: { warn: 1000, max: 1600 },
+      triangles: { warn: 300000, max: 450000 },
+      textureBytes: { warn: 13000000, max: 18000000 },
+      loadMs: { warn: 1200, max: 2200 },
+      averageFrameMs: { warn: 14, max: 18 },
+      p95FrameMs: { warn: 18, max: 24 },
+      worstFrameMs: { warn: 28, max: 36 },
+      uninstancedRepeatedProps: { max: 0 },
     },
     atmosphere: {
       active: true,
@@ -158,6 +175,26 @@ export default {
         position: [2.8, 0, -2.6],
         scale: [0.85, 0.85, 0.85],
         tags: ["rock", "textured"],
+      },
+    ],
+    scatter: [
+      {
+        id: "scatter.v5.grass",
+        assetIds: ["env.Grass_Common_Short"],
+        bounds: { min: [-7, 0, -6], max: [7, 0, 7] },
+        count: 10,
+        exclusionZoneIds: ["zone.v5.path"],
+        minScale: 0.7,
+        maxScale: 1.25,
+        seed: 508,
+        tags: ["grass", "dense", "textured"],
+      },
+    ],
+    exclusionZones: [
+      {
+        id: "zone.v5.path",
+        bounds: { min: [-2.8, 0, -7.8], max: [2.8, 0, 8.6] },
+        tags: ["walkable"],
       },
     ],
     bookmarks: [

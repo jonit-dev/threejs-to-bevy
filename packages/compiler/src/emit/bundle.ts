@@ -154,6 +154,7 @@ interface IEnvironmentDeclaration {
   controller?: IEnvironmentSceneIr["controller"];
   exclusionZones?: IEnvironmentSceneIr["exclusionZones"];
   instances: IEnvironmentSceneIr["instances"];
+  lod?: Record<string, Array<{ assetName: string; maxDistance: number; minDistance: number }>>;
   path: IEnvironmentSceneIr["path"];
   performance?: ITargetProfile["performance"];
   previewImage?: string;
@@ -450,6 +451,9 @@ function collectEnvironmentCapabilities(
   if (environment.instances.some((instance) => instance.kind === "scatter")) {
     add("environment", "scatter-instances");
   }
+  if (environment.sourceAssets.some((asset) => asset.lod !== undefined && asset.lod.length > 0)) {
+    add("environment", "lod");
+  }
   if (environment.scatter !== undefined && environment.scatter.length > 0) {
     add("environment", "scatter");
   }
@@ -551,7 +555,8 @@ async function emitEnvironment(projectPath: string, declaration: IEnvironmentDec
   const sourceDir = resolve(projectPath, declaration.sourceDir);
   const entries = await readdir(sourceDir, { withFileTypes: true });
   const available = new Set(entries.filter((entry) => entry.isFile()).map((entry) => entry.name));
-  const assetNames = [...declaration.assetNames].sort((left, right) => left.localeCompare(right));
+  const sourceAssetNames = [...declaration.assetNames].sort((left, right) => left.localeCompare(right));
+  const assetNames = collectEnvironmentModelAssetNames(declaration);
   const assets: IEmittedEnvironment["assets"] = [];
   const extraFiles: IAssetCopy[] = [];
   const sourceAssets: IEnvironmentSceneIr["sourceAssets"] = [];
@@ -603,11 +608,14 @@ async function emitEnvironment(projectPath: string, declaration: IEnvironmentDec
         }
       }
     }
-    sourceAssets.push({
-      asset: `model.${id}`,
-      category: categorizeEnvironmentAsset(assetName),
-      id,
-    });
+    if (sourceAssetNames.includes(assetName)) {
+      sourceAssets.push({
+        asset: `model.${id}`,
+        category: categorizeEnvironmentAsset(assetName),
+        id,
+        ...emitSourceAssetLod(assetName, declaration),
+      });
+    }
   }
   const previewAsset =
     declaration.previewImage === undefined
@@ -637,6 +645,40 @@ async function emitEnvironment(projectPath: string, declaration: IEnvironmentDec
       ...(declaration.terrain === undefined ? {} : { terrain: declaration.terrain }),
       ...(declaration.walkability === undefined ? {} : { walkability: declaration.walkability }),
     },
+  };
+}
+
+function collectEnvironmentModelAssetNames(declaration: IEnvironmentDeclaration): string[] {
+  const assetNames = new Set(declaration.assetNames);
+  for (const levels of Object.values(declaration.lod ?? {})) {
+    for (const level of levels) {
+      assetNames.add(level.assetName);
+    }
+  }
+  return [...assetNames].sort((left, right) => left.localeCompare(right));
+}
+
+function emitSourceAssetLod(
+  assetName: string,
+  declaration: IEnvironmentDeclaration,
+): Pick<IEnvironmentSceneIr["sourceAssets"][number], "lod"> {
+  const sourceAssetId = `env.${assetName.slice(0, -(assetName.split(".").pop()!.length + 1))}`;
+  const levels = declaration.lod?.[sourceAssetId];
+  if (levels === undefined || levels.length === 0) {
+    return {};
+  }
+  return {
+    lod: [...levels]
+      .sort((left, right) => left.minDistance - right.minDistance || left.maxDistance - right.maxDistance || left.assetName.localeCompare(right.assetName))
+      .map((level) => {
+        const extension = level.assetName.split(".").pop()?.toLowerCase();
+        const id = `env.${level.assetName.slice(0, -((extension?.length ?? 0) + 1))}`;
+        return {
+          asset: `model.${id}`,
+          maxDistance: level.maxDistance,
+          minDistance: level.minDistance,
+        };
+      }),
   };
 }
 

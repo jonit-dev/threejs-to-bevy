@@ -141,6 +141,11 @@ test("assets should reject v3 environment bundle over budget", async () => {
 
     assert.equal(result.ok, false);
     assert.equal(result.diagnostics[0]?.code, "TN_IR_BUDGET_BUNDLE_BYTES_EXCEEDED");
+    assert.equal(result.diagnostics[0]?.limit, 1);
+    assert.equal(result.diagnostics[0]?.path, "target.profile.json/budgets/maxBundleBytes");
+    assert.equal(result.diagnostics[0]?.severity, "error");
+    assert.match(result.diagnostics[0]?.suggestion ?? "", /Reduce copied assets/);
+    assert.equal(result.diagnostics[0]?.value, 2);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

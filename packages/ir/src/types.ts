@@ -280,6 +280,13 @@ export interface IEnvironmentSourceAssetIr {
   asset: string;
   category: "flower" | "grass" | "mushroom" | "pebble" | "rock" | "terrain" | "tree" | "vegetation";
   id: string;
+  lod?: IEnvironmentLodLevelIr[];
+}
+
+export interface IEnvironmentLodLevelIr {
+  asset: string;
+  maxDistance: number;
+  minDistance: number;
 }
 
 export interface IEnvironmentInstanceIr {

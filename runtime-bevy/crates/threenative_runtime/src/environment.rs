@@ -20,6 +20,18 @@ pub struct EnvironmentObservation {
     pub scatter_counts_by_tag: HashMap<String, usize>,
     pub scatter_instance_count: usize,
     pub bookmark_ids: Vec<String>,
+    pub source_asset_count: usize,
+    pub total_instance_count: usize,
+    pub lod_source_asset_count: usize,
+    pub lod_selections: HashMap<String, String>,
+    pub repeated_asset_groups: Vec<EnvironmentRepeatedAssetGroup>,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct EnvironmentRepeatedAssetGroup {
+    pub source_asset: String,
+    pub count: usize,
+    pub evidence: String,
 }
 
 pub fn observe_environment(bundle: &LoadedBundle) -> Option<EnvironmentObservation> {
@@ -65,7 +77,87 @@ pub fn observe_environment(bundle: &LoadedBundle) -> Option<EnvironmentObservati
             .filter(|instance| instance.kind.as_deref() == Some("scatter"))
             .count(),
         bookmark_ids,
+        source_asset_count: scene.source_assets.len(),
+        total_instance_count: scene.instances.len(),
+        lod_source_asset_count: scene
+            .source_assets
+            .iter()
+            .filter(|asset| !asset.lod.is_empty())
+            .count(),
+        lod_selections: lod_selections(scene, 32.0),
+        repeated_asset_groups: repeated_asset_groups(scene, bundle),
     })
+}
+
+fn lod_selections(
+    scene: &threenative_loader::EnvironmentSceneIr,
+    distance: f32,
+) -> HashMap<String, String> {
+    let mut selections = HashMap::new();
+    for source_asset in &scene.source_assets {
+        let selected = source_asset
+            .lod
+            .iter()
+            .find(|level| distance >= level.min_distance && distance < level.max_distance)
+            .map(|level| level.asset.clone())
+            .unwrap_or_else(|| source_asset.asset.clone());
+        selections.insert(source_asset.id.clone(), selected);
+    }
+    selections
+}
+
+fn repeated_asset_groups(
+    scene: &threenative_loader::EnvironmentSceneIr,
+    bundle: &LoadedBundle,
+) -> Vec<EnvironmentRepeatedAssetGroup> {
+    let mut counts = HashMap::<String, usize>::new();
+    for instance in &scene.instances {
+        if instance.kind.as_deref() != Some("scatter") {
+            continue;
+        }
+        if instance
+            .tags
+            .iter()
+            .any(|tag| matches!(tag.as_str(), "hero" | "unique" | "foreground"))
+        {
+            continue;
+        }
+        *counts.entry(instance.source_asset.clone()).or_insert(0) += 1;
+    }
+    let source_assets = scene
+        .source_assets
+        .iter()
+        .map(|asset| (asset.id.as_str(), asset.asset.as_str()))
+        .collect::<HashMap<_, _>>();
+    let assets = bundle
+        .assets
+        .assets
+        .iter()
+        .map(|asset| (asset.id.as_str(), asset))
+        .collect::<HashMap<_, _>>();
+    let mut groups = counts
+        .into_iter()
+        .filter(|(_source_asset, count)| *count >= 2)
+        .map(|(source_asset, count)| {
+            let evidence = source_assets
+                .get(source_asset.as_str())
+                .and_then(|asset_id| assets.get(asset_id))
+                .filter(|asset| {
+                    asset.kind == "model"
+                        && matches!(asset.format.as_str(), "gltf" | "glb")
+                        && asset.path.is_some()
+                })
+                .map(|_| "model-asset-backed")
+                .unwrap_or("placeholder");
+            EnvironmentRepeatedAssetGroup {
+                source_asset,
+                count,
+                evidence: evidence.to_owned(),
+            }
+        })
+        .collect::<Vec<_>>();
+    groups.sort_by(|left, right| left.source_asset.cmp(&right.source_asset));
+    groups
 }
 
 pub fn map_environment_into_world(world: &mut World, bundle: &LoadedBundle) {

@@ -10,7 +10,14 @@ test("environment should apply the instancing plan during forest load", () => {
     environmentScene: {
       schema: "threenative.environment-scene",
       version: "0.1.0",
-      sourceAssets: [{ asset: "model.env.Rock", category: "rock", id: "env.Rock" }],
+      sourceAssets: [
+        {
+          asset: "model.env.Rock",
+          category: "rock",
+          id: "env.Rock",
+          lod: [{ asset: "model.env.RockLow", minDistance: 20, maxDistance: 80 }],
+        },
+      ],
       terrain: { bounds: { min: [-5, 0, -5], max: [5, 0, 5] }, heightMode: "flat", id: "terrain.forest" },
       bookmarks: [{ expectedTags: ["rock"], id: "bookmark.start", pitch: -5, position: [0, 1.7, 4], yaw: 180 }],
       instances: [
@@ -26,7 +33,11 @@ test("environment should apply the instancing plan during forest load", () => {
   assert.equal(runtime?.object.children.some((child) => child instanceof THREE.InstancedMesh), true);
   assert.equal(runtime?.observation.terrain?.id, "terrain.forest");
   assert.deepEqual(runtime?.observation.heroPlacementIds, ["rock.hero"]);
+  assert.deepEqual(runtime?.observation.lodSelections, { "env.Rock": "model.env.RockLow" });
+  assert.equal(runtime?.observation.lodSourceAssetCount, 1);
   assert.equal(runtime?.observation.scatterCountsByTag.rock, 2);
+  assert.equal(runtime?.observation.sourceAssetCount, 1);
+  assert.equal(runtime?.observation.totalInstanceCount, 3);
   assert.deepEqual(runtime?.observation.bookmarks, ["bookmark.start"]);
 });
 

@@ -25,10 +25,12 @@ import { validateEnvironmentSceneIr } from "./environment.js";
 
 export interface IIrDiagnostic {
   code: string;
+  limit?: number | readonly string[];
   message: string;
   path: string;
   severity?: "error" | "warning";
   suggestion?: string;
+  value?: number | string;
 }
 
 export interface IBundleValidationResult {
@@ -173,30 +175,46 @@ async function validateTargetBudgets(
   if (budgets.maxBundleBytes !== undefined && bundleBytes > budgets.maxBundleBytes) {
     diagnostics.push({
       code: "TN_IR_BUDGET_BUNDLE_BYTES_EXCEEDED",
+      limit: budgets.maxBundleBytes,
       message: `Bundle assets use ${bundleBytes} bytes, exceeding budget ${budgets.maxBundleBytes}.`,
       path: `${path}/budgets/maxBundleBytes`,
+      severity: "error",
+      suggestion: "Reduce copied assets, raise maxBundleBytes, or move non-runtime files out of the emitted bundle.",
+      value: bundleBytes,
     });
   }
   sizes.forEach(({ asset, bytes }, index) => {
     if (budgets.maxAssetBytes !== undefined && bytes > budgets.maxAssetBytes) {
       diagnostics.push({
         code: "TN_IR_BUDGET_ASSET_BYTES_EXCEEDED",
+        limit: budgets.maxAssetBytes,
         message: `Asset '${asset.id}' uses ${bytes} bytes, exceeding per-asset budget ${budgets.maxAssetBytes}.`,
         path: `${path}/budgets/maxAssetBytes/${index}`,
+        severity: "error",
+        suggestion: "Optimize or replace the asset, or raise maxAssetBytes for this target profile.",
+        value: bytes,
       });
     }
     if (asset.kind === "model" && budgets.supportedModelFormats !== undefined && !budgets.supportedModelFormats.includes(asset.format)) {
       diagnostics.push({
         code: "TN_IR_BUDGET_MODEL_FORMAT_UNSUPPORTED",
+        limit: budgets.supportedModelFormats,
         message: `Asset '${asset.id}' uses unsupported model format '${asset.format}' for this target profile.`,
         path: `${path}/budgets/supportedModelFormats`,
+        severity: "error",
+        suggestion: "Convert the model to a supported format or add the format to supportedModelFormats.",
+        value: asset.format,
       });
     }
     if (asset.kind === "texture" && budgets.supportedTextureFormats !== undefined && !budgets.supportedTextureFormats.includes(asset.format)) {
       diagnostics.push({
         code: "TN_IR_BUDGET_TEXTURE_FORMAT_UNSUPPORTED",
+        limit: budgets.supportedTextureFormats,
         message: `Asset '${asset.id}' uses unsupported texture format '${asset.format}' for this target profile.`,
         path: `${path}/budgets/supportedTextureFormats`,
+        severity: "error",
+        suggestion: "Convert the texture to a supported format or add the format to supportedTextureFormats.",
+        value: asset.format,
       });
     }
   });

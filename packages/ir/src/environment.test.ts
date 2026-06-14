@@ -42,6 +42,47 @@ test("environment should reject hero placement when asset is missing", () => {
   assert.match(diagnostics[0]?.message ?? "", /hero.missing/);
 });
 
+test("environment should accept ordered LOD metadata for source assets", () => {
+  const scene = makeScene({
+    sourceAssets: [
+      {
+        asset: "model.env.Tree",
+        category: "tree",
+        id: "env.Tree",
+        lod: [{ asset: "model.env.TreeLow", minDistance: 18, maxDistance: 60 }],
+      },
+    ],
+  });
+
+  const diagnostics = validateEnvironmentSceneIr(scene, makeAssets({ includeLod: true }), "environment.scene.json");
+
+  assert.deepEqual(diagnostics, []);
+});
+
+test("environment should reject invalid LOD metadata", () => {
+  const scene = makeScene({
+    sourceAssets: [
+      {
+        asset: "model.env.Tree",
+        category: "tree",
+        id: "env.Tree",
+        lod: [
+          { asset: "model.env.TreeLow", minDistance: 20, maxDistance: 40 },
+          { asset: "model.env.Tree", minDistance: 10, maxDistance: 30 },
+        ],
+      },
+    ],
+  });
+
+  const diagnostics = validateEnvironmentSceneIr(scene, makeAssets({ includeLod: true }), "environment.scene.json");
+
+  assert.deepEqual(
+    diagnostics.map((diagnostic) => diagnostic.code),
+    ["TN_IR_ENVIRONMENT_LOD_CYCLE", "TN_IR_ENVIRONMENT_LOD_THRESHOLDS_UNSORTED"],
+  );
+  assert.equal(diagnostics[0]?.path, "environment.scene.json/sourceAssets/0/lod/1/asset");
+});
+
 test("environment should validate camera bookmarks with expected tags", () => {
   const scene = makeScene({
     bookmarks: [{ expectedTags: ["tree", "path-edge"], id: "bookmark.start", pitch: -5, position: [0, 1.7, 6], yaw: 180 }],
@@ -124,11 +165,16 @@ function makeScene(overrides: Partial<IEnvironmentSceneIr> = {}): IEnvironmentSc
   };
 }
 
-function makeAssets(): IAssetsManifest {
+function makeAssets(options: { includeLod?: boolean } = {}): IAssetsManifest {
   return {
     schema: "threenative.assets",
     version: "0.1.0",
-    assets: [{ format: "gltf", id: "model.env.Tree", kind: "model", path: "assets/environment/Tree.gltf" }],
+    assets: [
+      { format: "gltf", id: "model.env.Tree", kind: "model", path: "assets/environment/Tree.gltf" },
+      ...(options.includeLod === true
+        ? [{ format: "gltf" as const, id: "model.env.TreeLow", kind: "model" as const, path: "assets/environment/TreeLow.gltf" }]
+        : []),
+    ],
   };
 }
 

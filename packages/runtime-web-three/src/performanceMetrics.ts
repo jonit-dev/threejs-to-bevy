@@ -8,16 +8,23 @@ export interface IRendererInfoLike {
 
 export interface IPerformanceMetricSummary {
   averageFrameMs: number;
+  bundleBytes: number;
   drawCalls: number;
+  drawEstimate: number;
+  environmentInstances: number;
   geometries: number;
   instancedGroups: number;
   instances: number;
+  instancingGroupCount: number;
   loadMs: number;
   p95FrameMs: number;
   programs: number;
+  sourceAssets: number;
   textures: number;
   textureBytes: number;
+  textureEstimate: number;
   triangles: number;
+  triangleEstimate: number;
   uninstancedRepeatedProps: number;
   worstFrameMs: number;
 }
@@ -37,23 +44,36 @@ export function summarizeFrameTimings(samples: readonly number[]): Pick<IPerform
 }
 
 export function collectPerformanceSummary(options: {
+  bundleBytes?: number;
+  environmentInstanceCount?: number;
   frameSamples: readonly number[];
   instancingPlan: IInstancingPlan;
   loadMs: number;
   rendererInfo: IRendererInfoLike;
+  sourceAssetCount?: number;
   textureBytes: number;
 }): IPerformanceMetricSummary {
+  const drawCalls = options.rendererInfo.render?.calls ?? 0;
+  const textures = options.rendererInfo.memory?.textures ?? 0;
+  const triangles = options.rendererInfo.render?.triangles ?? 0;
   return {
     ...summarizeFrameTimings(options.frameSamples),
-    drawCalls: options.rendererInfo.render?.calls ?? 0,
+    bundleBytes: options.bundleBytes ?? 0,
+    drawCalls,
+    drawEstimate: drawCalls,
+    environmentInstances: options.environmentInstanceCount ?? options.instancingPlan.instanceCount + options.instancingPlan.uninstanced.length,
     geometries: options.rendererInfo.memory?.geometries ?? 0,
     instancedGroups: options.instancingPlan.groups.length,
     instances: options.instancingPlan.instanceCount,
+    instancingGroupCount: options.instancingPlan.groups.length,
     loadMs: options.loadMs,
     programs: options.rendererInfo.programs?.length ?? 0,
-    textures: options.rendererInfo.memory?.textures ?? 0,
+    sourceAssets: options.sourceAssetCount ?? 0,
+    textures,
     textureBytes: options.textureBytes,
-    triangles: options.rendererInfo.render?.triangles ?? 0,
+    textureEstimate: textures,
+    triangles,
+    triangleEstimate: triangles,
     uninstancedRepeatedProps: options.instancingPlan.uninstancedRepeatedPropCount,
   };
 }

@@ -478,10 +478,21 @@ pub struct EnvironmentPathIr {
 }
 
 #[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct EnvironmentSourceAssetIr {
     pub id: String,
     pub asset: String,
     pub category: String,
+    #[serde(default)]
+    pub lod: Vec<EnvironmentLodLevelIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EnvironmentLodLevelIr {
+    pub asset: String,
+    pub min_distance: f32,
+    pub max_distance: f32,
 }
 
 #[derive(Clone, Debug, Deserialize)]

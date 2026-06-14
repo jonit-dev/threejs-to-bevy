@@ -34,7 +34,8 @@ Baseline: the repo pins Bevy and `bevy_ecs` to `=0.14.2`.
 | glTF/GLB asset bundling | ✅ | Compiler copies selected glTF/GLB, `.bin`, and texture dependencies; web-three and Bevy now resolve V3 environment instances to real bundle-local glTF scenes instead of placeholder model primitives. |
 | Asset manifest validation | ⚠️ | Bundle-relative existence, formats, and references are validated; diagnostics are still partly generic compiler errors instead of stable domain diagnostics everywhere. |
 | V3 environment scene IR | ✅ | `environment.scene.json` supports source assets, instances, scatter, terrain/path, hero placements, camera bookmarks, atmosphere, first-person config, and walkability metadata for the V3 proof scene. |
-| Instancing/batching | ⚠️ | Web builds an instancing plan and the async glTF loading path can emit real geometry/material `InstancedMesh` groups for repeated compatible assets; synchronous verification still uses placeholder geometry and synthetic renderer estimates, and Bevy equivalent budget evidence remains missing. |
+| Instancing/batching | ⚠️ | Web builds an instancing plan and the async glTF loading path can emit real geometry/material `InstancedMesh` groups for repeated compatible assets. V5-08 reports source asset, instance, group, draw, triangle, texture, texture-byte, and bundle-byte estimates, and Bevy observations now distinguish repeated model-backed groups from placeholders. Native renderer-level instancing remains adapter drift. |
+| Environment LOD metadata | ⚠️ | V5-08 adds portable bounded source-asset LOD metadata with validation, compiler emission, deterministic web selection, and Bevy observation. Runtime mesh swapping is not yet claimed as visual parity. |
 | V3 performance budgets | ✅ | Target profile, performance metrics, and `verify:v3` budget checks are wired for the V3 web proof. |
 | `verify:v3` release gate | ✅ | Script builds and validates the example, scaffolds and builds the V3 template, saves web performance reports, captures bookmarked Three.js/Bevy side-by-side visual artifacts from real model-loading paths, and runs V3 scene/atmosphere/first-person/walkability gates. |
 | Bevy V3 environment loading | ⚠️ | Native runtime maps `environment.scene.json` into terrain/path placeholders plus real glTF scene instances and can capture bookmarked Bevy screenshots; atmosphere/lighting parity and broader native interaction remain limited. |
@@ -157,6 +158,14 @@ map, bias, normal-bias, cascade, and max-distance fields. The V5 functional
 scene builds, validates, and visually verifies with the promoted lighting and
 atmosphere fields, while native fog/sky/color output remains documented drift
 instead of a full renderer-parity claim.
+
+V5-08 is implemented for dense content, LOD metadata, and budget evidence:
+source assets can carry validated bounded LOD levels, LOD target models are
+bundled without inflating source asset counts, web reports include concrete
+dense-content budget estimates, and Bevy environment observations identify
+model-backed repeated groups versus placeholders. The V5 functional scene now
+uses repeated grass scatter and source-asset LOD metadata, while native
+renderer-level instancing and runtime mesh LOD swapping remain documented drift.
 
 Priority V5 native coverage:
 

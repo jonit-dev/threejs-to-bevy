@@ -35,7 +35,14 @@ fn environment_should_map_scene_to_terrain_path_and_instances() {
     write_json(
         &root,
         "assets.manifest.json",
-        r#"{ "schema": "threenative.assets", "version": "0.1.0", "assets": [{ "id": "model.env.Rock", "kind": "model", "format": "gltf", "path": "assets/environment/Rock.gltf" }] }"#,
+        r#"{
+          "schema": "threenative.assets",
+          "version": "0.1.0",
+          "assets": [
+            { "id": "model.env.Rock", "kind": "model", "format": "gltf", "path": "assets/environment/Rock.gltf" },
+            { "id": "model.env.RockLow", "kind": "model", "format": "gltf", "path": "assets/environment/RockLow.gltf" }
+          ]
+        }"#,
     );
     write_json(
         &root,
@@ -55,10 +62,16 @@ fn environment_should_map_scene_to_terrain_path_and_instances() {
           "version": "0.1.0",
           "terrain": { "id": "terrain.forest", "heightMode": "flat", "bounds": { "min": [-5, 0, -5], "max": [5, 0, 5] } },
           "path": { "id": "path.main", "points": [[0, 0, 3], [0, 0, -3]], "width": 2 },
-          "sourceAssets": [{ "id": "env.Rock", "asset": "model.env.Rock", "category": "rock" }],
+          "sourceAssets": [{
+            "id": "env.Rock",
+            "asset": "model.env.Rock",
+            "category": "rock",
+            "lod": [{ "asset": "model.env.RockLow", "minDistance": 20, "maxDistance": 80 }]
+          }],
           "instances": [
             { "id": "rock.hero", "kind": "hero", "sourceAsset": "env.Rock", "position": [2, 0, 0], "tags": ["rock"] },
-            { "id": "rock.scatter.1", "kind": "scatter", "sourceAsset": "env.Rock", "position": [-2, 0, 0], "tags": ["rock"] }
+            { "id": "rock.scatter.1", "kind": "scatter", "sourceAsset": "env.Rock", "position": [-2, 0, 0], "tags": ["rock"] },
+            { "id": "rock.scatter.2", "kind": "scatter", "sourceAsset": "env.Rock", "position": [-1, 0, 0], "tags": ["rock"] }
           ],
           "bookmarks": [{ "id": "bookmark.start", "position": [0, 1.7, 4], "yaw": 180, "pitch": -5, "expectedTags": ["rock"] }]
         }"#,
@@ -70,9 +83,20 @@ fn environment_should_map_scene_to_terrain_path_and_instances() {
     assert_eq!(observation.terrain_id.as_deref(), Some("terrain.forest"));
     assert_eq!(observation.path_point_count, 2);
     assert_eq!(observation.hero_placement_ids, vec!["rock.hero"]);
-    assert_eq!(observation.scatter_instance_count, 1);
-    assert_eq!(observation.scatter_counts_by_tag.get("rock"), Some(&1));
+    assert_eq!(observation.scatter_instance_count, 2);
+    assert_eq!(observation.scatter_counts_by_tag.get("rock"), Some(&2));
     assert_eq!(observation.bookmark_ids, vec!["bookmark.start"]);
+    assert_eq!(observation.source_asset_count, 1);
+    assert_eq!(observation.total_instance_count, 3);
+    assert_eq!(observation.lod_source_asset_count, 1);
+    assert_eq!(
+        observation.lod_selections.get("env.Rock").map(String::as_str),
+        Some("model.env.RockLow")
+    );
+    assert_eq!(observation.repeated_asset_groups.len(), 1);
+    assert_eq!(observation.repeated_asset_groups[0].source_asset, "env.Rock");
+    assert_eq!(observation.repeated_asset_groups[0].count, 2);
+    assert_eq!(observation.repeated_asset_groups[0].evidence, "model-asset-backed");
 
     let mut app = App::new();
     map_environment_into_world(app.world_mut(), &bundle);
@@ -81,6 +105,11 @@ fn environment_should_map_scene_to_terrain_path_and_instances() {
         app.world_mut(),
         "environment:rock.scatter.1",
         [-2.0, 0.375, 0.0],
+    );
+    assert_instance_transform(
+        app.world_mut(),
+        "environment:rock.scatter.2",
+        [-1.0, 0.375, 0.0],
     );
 
     fs::remove_dir_all(root).expect("temp bundle should be removed");

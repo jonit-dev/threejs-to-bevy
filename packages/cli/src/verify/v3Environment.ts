@@ -9,6 +9,14 @@ type V3RendererEvidence = {
   metricsSource: "synthetic-estimate";
   modelAssetBackedGroups: number;
   placeholderGroups: number;
+  sourceAssetCount: number;
+  instanceCount: number;
+  groupCount: number;
+  drawEstimate: number;
+  triangleEstimate: number;
+  textureEstimate: number;
+  textureBytes: number;
+  bundleBytes: number;
   note: string;
 };
 
@@ -39,17 +47,32 @@ export async function verifyV3Environment(options: {
   const instancingPlan = environment?.instancingPlan ?? { diagnostics: [], groups: [], instanceCount: 0, uninstanced: [], uninstancedRepeatedPropCount: 0 };
   const rendererEvidence = collectRendererEvidence(bundle, instancingPlan);
   const rawSamples = { frameMs: [11, 12, 13, 14, 16, 18], loadMs: 75 };
+  const textureBytes = await sumTextureBytes(options.bundlePath, bundle.assets.assets);
+  const bundleBytes = await sumBundleBytes(options.bundlePath);
+  const renderCalls = Math.max(1, instancingPlan.groups.length + instancingPlan.uninstanced.length);
+  const renderTriangles = (bundle.environmentScene?.instances.length ?? 0) * 64;
   const metrics = collectPerformanceSummary({
+    bundleBytes,
+    environmentInstanceCount: bundle.environmentScene?.instances.length ?? 0,
     frameSamples: rawSamples.frameMs,
     instancingPlan,
     loadMs: rawSamples.loadMs,
     rendererInfo: {
       memory: { geometries: Math.max(1, instancingPlan.groups.length), textures: bundle.assets.assets.filter((asset) => asset.kind === "texture").length },
       programs: [{}],
-      render: { calls: Math.max(1, instancingPlan.groups.length + instancingPlan.uninstanced.length), triangles: (bundle.environmentScene?.instances.length ?? 0) * 64 },
+      render: { calls: renderCalls, triangles: renderTriangles },
     },
-    textureBytes: await sumTextureBytes(options.bundlePath, bundle.assets.assets),
+    sourceAssetCount: bundle.environmentScene?.sourceAssets.length ?? 0,
+    textureBytes,
   });
+  rendererEvidence.bundleBytes = bundleBytes;
+  rendererEvidence.drawEstimate = renderCalls;
+  rendererEvidence.instanceCount = bundle.environmentScene?.instances.length ?? 0;
+  rendererEvidence.groupCount = instancingPlan.groups.length;
+  rendererEvidence.sourceAssetCount = bundle.environmentScene?.sourceAssets.length ?? 0;
+  rendererEvidence.textureBytes = textureBytes;
+  rendererEvidence.textureEstimate = bundle.assets.assets.filter((asset) => asset.kind === "texture").length;
+  rendererEvidence.triangleEstimate = renderTriangles;
   const metricsPath = resolve(options.artifactDir, "v3-performance-summary.json");
   const rawSamplesPath = resolve(options.artifactDir, "v3-performance-samples.json");
   const reportPath = resolve(options.artifactDir, "v3-environment-report.json");
@@ -110,6 +133,14 @@ function collectRendererEvidence(
     metricsSource: "synthetic-estimate",
     modelAssetBackedGroups,
     placeholderGroups,
+    sourceAssetCount: 0,
+    instanceCount: 0,
+    groupCount: 0,
+    drawEstimate: 0,
+    triangleEstimate: 0,
+    textureEstimate: 0,
+    textureBytes: 0,
+    bundleBytes: 0,
     note: "createEnvironmentRuntime uses placeholder geometry for synchronous verification; loadEnvironmentAssetInstances performs real glTF mesh instancing when model assets are present.",
   };
 }
@@ -122,5 +153,22 @@ async function sumTextureBytes(bundlePath: string, assets: readonly { kind: stri
     }
     total += (await stat(resolve(bundlePath, asset.path))).size;
   }
+  return total;
+}
+
+async function sumBundleBytes(bundlePath: string): Promise<number> {
+  let total = 0;
+  async function visit(path: string): Promise<void> {
+    const entries = await readdir(path, { withFileTypes: true });
+    for (const entry of entries) {
+      const child = resolve(path, entry.name);
+      if (entry.isDirectory()) {
+        await visit(child);
+      } else if (entry.isFile()) {
+        total += (await stat(child)).size;
+      }
+    }
+  }
+  await visit(bundlePath);
   return total;
 }

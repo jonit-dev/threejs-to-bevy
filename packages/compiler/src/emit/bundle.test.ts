@@ -396,6 +396,16 @@ test("should emit sandboxed v3 environment bundle assets", async () => {
     );
     await writeFile(join(root, "assets-source/environment/glTF/Tree_1.bin"), "tree-binary");
     await writeFile(join(root, "assets-source/environment/glTF/Tree_Bark.png"), "tree-texture");
+    await writeFile(
+      join(root, "assets-source/environment/glTF/Tree_1_Low.gltf"),
+      JSON.stringify({
+        accessors: [{ max: [0.8, 2, 0.8], min: [-0.8, 0, -0.8] }],
+        asset: { version: "2.0" },
+        buffers: [{ uri: "Tree_1_Low.bin" }],
+        meshes: [{ primitives: [{ attributes: { POSITION: 0 } }] }],
+      }),
+    );
+    await writeFile(join(root, "assets-source/environment/glTF/Tree_1_Low.bin"), "tree-low-binary");
     await writeFile(join(root, "assets-source/environment/Preview_2.jpg"), "preview");
 
     const bundlePath = await emitBundle(
@@ -412,6 +422,9 @@ test("should emit sandboxed v3 environment bundle assets", async () => {
           sourceDir: "assets-source/environment/glTF",
           previewImage: "assets-source/environment/Preview_2.jpg",
           assetNames: ["Tree_1.gltf"],
+          lod: {
+            "env.Tree_1": [{ assetName: "Tree_1_Low.gltf", minDistance: 18, maxDistance: 60 }],
+          },
           budgets: {
             maxAssetBytes: 300,
             maxBundleBytes: 1000,
@@ -437,6 +450,7 @@ test("should emit sandboxed v3 environment bundle assets", async () => {
     const result = await validateBundle(bundlePath);
 
     assert.equal(manifest.entry.environmentScene, "environment.scene.json");
+    assertCapability(manifest, "environment", "lod");
     assert.deepEqual(
       assets.assets
         .map((asset: { path?: string }) => asset.path)
@@ -445,6 +459,8 @@ test("should emit sandboxed v3 environment bundle assets", async () => {
       [
         "assets/environment/Tree_1.bin",
         "assets/environment/Tree_1.gltf",
+        "assets/environment/Tree_1_Low.bin",
+        "assets/environment/Tree_1_Low.gltf",
         "assets/environment/Tree_Bark.png",
         "assets/environment/reference/Preview_2.jpg",
         "assets/mesh.cube.main.generated",
@@ -454,6 +470,7 @@ test("should emit sandboxed v3 environment bundle assets", async () => {
     );
     assert.equal(environment.referenceImage, "tex.env.reference.Preview_2");
     assert.equal(environment.sourceAssets[0].asset, "model.env.Tree_1");
+    assert.deepEqual(environment.sourceAssets[0].lod, [{ asset: "model.env.Tree_1_Low", maxDistance: 60, minDistance: 18 }]);
     assert.deepEqual(
       assets.assets.find((asset: { id: string }) => asset.id === "model.env.Tree_1")?.bounds,
       { max: [1, 3, 1], min: [-1, 0, -1] },
