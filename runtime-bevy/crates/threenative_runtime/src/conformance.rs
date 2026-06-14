@@ -7,6 +7,8 @@ use threenative_loader::{
     AssetIr, ColorIr, EnvironmentSceneIr, LoadedBundle, MaterialIr, WorldEntity,
 };
 
+use crate::physics::detect_physics_events;
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ConformanceReport {
@@ -238,14 +240,22 @@ pub fn report_bevy_conformance(
 }
 
 fn report_events(bundle: &LoadedBundle) -> Vec<ConformanceEventReport> {
-    let mut events = bundle
+    let mut event_values = bundle
         .world
         .events
         .iter()
-        .map(|(id, value)| ConformanceEventReport {
-            id: id.clone(),
-            values: value.as_array().cloned().unwrap_or_default(),
-        })
+        .map(|(id, value)| (id.clone(), value.as_array().cloned().unwrap_or_default()))
+        .collect::<HashMap<_, _>>();
+    for event in detect_physics_events(bundle) {
+        let values = event_values.entry(event.event).or_default();
+        let payload = serde_json::json!({ "a": event.a, "b": event.b, "phase": event.phase });
+        if !values.contains(&payload) {
+            values.push(payload);
+        }
+    }
+    let mut events = event_values
+        .into_iter()
+        .map(|(id, values)| ConformanceEventReport { id, values })
         .collect::<Vec<_>>();
     events.sort_by(|left, right| left.id.cmp(&right.id));
     events

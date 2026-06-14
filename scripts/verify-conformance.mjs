@@ -13,8 +13,11 @@ export async function verifyConformance(options = {}) {
   const reportPath = options.reportPath ?? resolve(root, "artifacts/conformance/verification-report.json");
   const artifactDir = options.artifactDir ?? resolve(reportPath, "..");
   const basicSceneBundlePath = resolve(root, "packages/ir/fixtures/conformance/basic-scene/game.bundle");
+  const v6PhysicsEventsBundlePath = resolve(root, "packages/ir/fixtures/conformance/v6-physics-events/game.bundle");
   const v6ResourcesEventsBundlePath = resolve(root, "packages/ir/fixtures/conformance/v6-resources-events/game.bundle");
   const nativeBasicSceneReportPath = options.nativeBasicSceneReportPath ?? resolve(artifactDir, "basic-scene/bevy.report.json");
+  const nativeV6PhysicsEventsReportPath =
+    options.nativeV6PhysicsEventsReportPath ?? resolve(artifactDir, "v6-physics-events/bevy.report.json");
   const nativeV6ResourcesEventsReportPath =
     options.nativeV6ResourcesEventsReportPath ?? resolve(artifactDir, "v6-resources-events/bevy.report.json");
   const v6ResourceEventDiffPath = options.v6ResourceEventDiffPath ?? resolve(artifactDir, "v6-resources-events/effects-diff.json");
@@ -22,6 +25,7 @@ export async function verifyConformance(options = {}) {
   const v6ResourceEventWebEffectsPath = options.v6ResourceEventWebEffectsPath ?? resolve(artifactDir, "v6-resources-events/web-effects.json");
   const artifacts = {
     nativeBasicSceneReportPath,
+    nativeV6PhysicsEventsReportPath,
     nativeV6ResourcesEventsReportPath,
     v6ResourceEventDiffPath,
     v6ResourceEventNativeEffectsPath,
@@ -57,6 +61,22 @@ export async function verifyConformance(options = {}) {
         basicSceneBundlePath,
         "basic-scene",
         nativeBasicSceneReportPath,
+      ],
+      { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
+    ],
+    [
+      "bevy native V6 physics observation report",
+      "cargo",
+      [
+        "run",
+        "-p",
+        "threenative_runtime",
+        "--bin",
+        "threenative_conformance",
+        "--",
+        v6PhysicsEventsBundlePath,
+        "v6-physics-events",
+        nativeV6PhysicsEventsReportPath,
       ],
       { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
     ],

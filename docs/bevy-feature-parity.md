@@ -256,8 +256,11 @@ V6-03 has started for the physics contract layer: IR validation now accepts
 positive finite primitive box, sphere, and capsule collider dimensions, checks
 rigid-body mass and velocity fields, rejects cylinder colliders, dynamic mesh
 colliders, and mesh trigger colliders, and rejects V6 collider layer/mask fields
-because contact filtering is deferred to V7. Web/Bevy contact and trigger event
-trace parity is not claimed yet.
+because contact filtering is deferred to V7. Web and Bevy now emit
+deterministic collision and trigger event phases (`enter`, `stay`, `exit`) for
+fixed traces, and shared conformance reports expose the `v6-physics-events`
+collision/trigger observations. Full rigid-body solver behavior and contact
+filtering are not claimed yet.
 
 ## V7 Deep Engine Gap-Closure Plan
 

@@ -278,6 +278,9 @@ Rules:
 - Cylinder colliders and deeper contact filtering are deferred to V7.
 - Layer and mask filtering is deferred to the V7 physics contract; V6 bundles
   that include collider layer or mask fields fail validation.
+- Primitive collision and trigger observations are delivered as
+  `CollisionEvent` and `TriggerEvent` payloads with `{ a, b, phase }`, where
+  `phase` is `enter`, `stay`, or `exit`.
 - Runtime scale handling must be documented by the physics adapter.
 
 ### AnimationPlayer

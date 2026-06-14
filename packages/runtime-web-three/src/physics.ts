@@ -3,6 +3,7 @@ import type { IColliderComponent, IWorldEntity, IWorldIr, Vec3 } from "@threenat
 export interface IPhysicsEventPayload {
   a: string;
   b: string;
+  phase: "enter" | "exit" | "stay";
 }
 
 interface IBounds {
@@ -12,14 +13,43 @@ interface IBounds {
   trigger: boolean;
 }
 
+type PhysicsEventName = "CollisionEvent" | "TriggerEvent";
+
+export interface IPhysicsEventObservation extends IPhysicsEventPayload {
+  event: PhysicsEventName;
+}
+
+interface IDetectedPair {
+  event: PhysicsEventName;
+  key: string;
+  payload: Omit<IPhysicsEventPayload, "phase">;
+}
+
+const previousPairsByWorld = new WeakMap<IWorldIr, Map<string, IDetectedPair>>();
+
 export function stepPhysics(world: IWorldIr, fixedDelta = 1 / 60): IPhysicsEventPayload[] {
   for (const entity of world.entities) {
     integrateEntity(entity, fixedDelta);
   }
 
-  const bounds = world.entities.flatMap((entity) => colliderBounds(entity));
-  const collisions: IPhysicsEventPayload[] = [];
-  const triggers: IPhysicsEventPayload[] = [];
+  const currentPairs = detectPairs(world.entities.flatMap((entity) => colliderBounds(entity)));
+  const previousPairs = previousPairsByWorld.get(world) ?? new Map();
+  const collisions = eventPayloads("CollisionEvent", currentPairs, previousPairs);
+  const triggers = eventPayloads("TriggerEvent", currentPairs, previousPairs);
+  previousPairsByWorld.set(world, currentPairs);
+  writeEventQueue(world, "CollisionEvent", collisions);
+  writeEventQueue(world, "TriggerEvent", triggers);
+  return [...collisions, ...triggers];
+}
+
+export function detectPhysicsEvents(world: IWorldIr): IPhysicsEventObservation[] {
+  return [...detectPairs(world.entities.flatMap((entity) => colliderBounds(entity))).values()]
+    .map((pair) => ({ event: pair.event, ...pair.payload, phase: "enter" as const }))
+    .sort((left, right) => left.event.localeCompare(right.event) || comparePhysicsEvents(left, right));
+}
+
+function detectPairs(bounds: IBounds[]): Map<string, IDetectedPair> {
+  const pairs = new Map<string, IDetectedPair>();
   for (let leftIndex = 0; leftIndex < bounds.length; leftIndex += 1) {
     for (let rightIndex = leftIndex + 1; rightIndex < bounds.length; rightIndex += 1) {
       const left = bounds[leftIndex];
@@ -28,16 +58,26 @@ export function stepPhysics(world: IWorldIr, fixedDelta = 1 / 60): IPhysicsEvent
         continue;
       }
       const payload = orderedPayload(left.id, right.id);
-      if (left.trigger || right.trigger) {
-        triggers.push(payload);
-      } else {
-        collisions.push(payload);
-      }
+      const event = left.trigger || right.trigger ? "TriggerEvent" : "CollisionEvent";
+      pairs.set(pairKey(event, payload), { event, key: pairKey(event, payload), payload });
     }
   }
-  writeEventQueue(world, "CollisionEvent", collisions);
-  writeEventQueue(world, "TriggerEvent", triggers);
-  return [...collisions, ...triggers];
+  return pairs;
+}
+
+function eventPayloads(event: PhysicsEventName, currentPairs: Map<string, IDetectedPair>, previousPairs: Map<string, IDetectedPair>): IPhysicsEventPayload[] {
+  const payloads: IPhysicsEventPayload[] = [];
+  for (const pair of currentPairs.values()) {
+    if (pair.event === event) {
+      payloads.push({ ...pair.payload, phase: previousPairs.has(pair.key) ? "stay" : "enter" });
+    }
+  }
+  for (const pair of previousPairs.values()) {
+    if (pair.event === event && !currentPairs.has(pair.key)) {
+      payloads.push({ ...pair.payload, phase: "exit" });
+    }
+  }
+  return payloads.sort(comparePhysicsEvents);
 }
 
 function integrateEntity(entity: IWorldEntity, fixedDelta: number): void {
@@ -93,8 +133,16 @@ function overlaps(left: IBounds, right: IBounds): boolean {
   );
 }
 
-function orderedPayload(left: string, right: string): IPhysicsEventPayload {
+function orderedPayload(left: string, right: string): Omit<IPhysicsEventPayload, "phase"> {
   return left.localeCompare(right) <= 0 ? { a: left, b: right } : { a: right, b: left };
+}
+
+function pairKey(event: PhysicsEventName, payload: Omit<IPhysicsEventPayload, "phase">): string {
+  return `${event}:${payload.a}:${payload.b}`;
+}
+
+function comparePhysicsEvents(left: IPhysicsEventPayload, right: IPhysicsEventPayload): number {
+  return left.a.localeCompare(right.a) || left.b.localeCompare(right.b) || left.phase.localeCompare(right.phase);
 }
 
 function writeEventQueue(world: IWorldIr, event: "CollisionEvent" | "TriggerEvent", payloads: IPhysicsEventPayload[]): void {

@@ -10,8 +10,23 @@ test("physics should detect trigger overlap", () => {
 
   const events = stepPhysics(world);
 
-  assert.deepEqual(events, [{ a: "pickup", b: "player" }]);
-  assert.deepEqual(world.events?.TriggerEvent, [{ a: "pickup", b: "player" }]);
+  assert.deepEqual(events, [{ a: "pickup", b: "player", phase: "enter" }]);
+  assert.deepEqual(world.events?.TriggerEvent, [{ a: "pickup", b: "player", phase: "enter" }]);
+});
+
+test("physics should emit deterministic enter stay and exit phases", () => {
+  const world = makePhysicsWorld();
+
+  assert.deepEqual(stepPhysics(world), [{ a: "pickup", b: "player", phase: "enter" }]);
+  assert.deepEqual(stepPhysics(world), [{ a: "pickup", b: "player", phase: "stay" }]);
+
+  const player = world.entities.find((entity) => entity.id === "player");
+  if (player?.components.Transform !== undefined) {
+    player.components.Transform.position = [4, 0, 0];
+  }
+
+  assert.deepEqual(stepPhysics(world), [{ a: "pickup", b: "player", phase: "exit" }]);
+  assert.deepEqual(world.events?.TriggerEvent, [{ a: "pickup", b: "player", phase: "exit" }]);
 });
 
 function makePhysicsWorld(): IWorldIr {

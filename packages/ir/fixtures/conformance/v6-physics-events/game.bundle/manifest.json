@@ -1,0 +1,23 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "conformance-v6-physics-events",
+  "requiredCapabilities": {
+    "physics": [
+      "collider.box",
+      "collider.sphere",
+      "rigid-body.kinematic",
+      "rigid-body.static",
+      "trigger-collider",
+      "collision-events"
+    ]
+  },
+  "entry": {
+    "world": "world.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "materials": "materials.ir.json",
+    "targetProfile": "target.profile.json"
+  }
+}

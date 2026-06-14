@@ -63,6 +63,14 @@ test("should include capability tags for each conformance fixture", async () => 
     "scripting:script-bundle",
     "scripting:systems",
   ]);
+  assertFixtureCapabilities(byName, "v6-physics-events", [
+    "physics:collider.box",
+    "physics:collider.sphere",
+    "physics:collision-events",
+    "physics:rigid-body.kinematic",
+    "physics:rigid-body.static",
+    "physics:trigger-collider",
+  ]);
 });
 
 function assertFixtureCapabilities(

@@ -173,7 +173,7 @@ show the feature.
 | Bulk query snapshots/pagination | V5 | Missing | Important for dense 3D scenes, particles, and large environment fixtures. |
 | Random resource | V5 | Missing | Add deterministic seeded randomness only when visual scenes can replay the same scatter/gameplay result. |
 | Timers/cooldowns helpers | V5 | Missing | Promote as deterministic helpers over component state such as `Lifetime`. |
-| Collision events from physics backend | V5 | Missing | Promote only with web and Bevy fixture parity; V4 proved raycast service shape, not full collision events. |
+| Collision events from physics backend | V6 | Partial | Primitive collision/trigger events now report deterministic `enter`, `stay`, and `exit` phases in web and Bevy; full solver behavior and contact filtering are deferred to V7. |
 | Shape casts and overlap queries | V5 | Missing | Advanced 3D content quality candidate; requires target-gated service declarations and Rust tests. |
 | Character controller API | V5 | Missing | Candidate for 3D movement quality; must be visible in a functional scene and backed by native tests if claiming Bevy support. |
 | Game root composition | V5 | Implemented | `defineGame` composes existing portable scene/world/input/runtime config declarations; it is not a new runtime contract. |

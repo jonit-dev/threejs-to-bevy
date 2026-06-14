@@ -75,7 +75,7 @@ test("physics should damage entity on collision event", async () => {
     world,
   });
 
-  assert.deepEqual(world.events?.CollisionEvent, [{ a: "enemy", b: "player" }]);
+  assert.deepEqual(world.events?.CollisionEvent, [{ a: "enemy", b: "player", phase: "enter" }]);
   assert.deepEqual(world.entities[0]?.components.Health, { value: 9 });
 });
 

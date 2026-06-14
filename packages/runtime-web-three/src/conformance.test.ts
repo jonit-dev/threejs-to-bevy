@@ -53,3 +53,21 @@ test("should report resource and event conformance observations", async () => {
   assert.deepEqual(report.resources, [{ id: "Score", value: { value: 3 } }]);
   assert.deepEqual(report.events, [{ id: "DamageEvent", values: [{ amount: 2, target: "player" }] }]);
 });
+
+test("should report physics collision and trigger conformance observations", async () => {
+  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/v6-physics-events/game.bundle"));
+  const mapped = mapWorld(bundle);
+  const report = reportWebConformance(bundle, mapped, "v6-physics-events");
+
+  assert.equal(report.fixture, "v6-physics-events");
+  assert.deepEqual(report.events, [
+    {
+      id: "CollisionEvent",
+      values: [
+        { a: "enemy", b: "player", phase: "enter" },
+        { a: "crate", b: "worker", phase: "enter" },
+      ],
+    },
+    { id: "TriggerEvent", values: [{ a: "pickup", b: "sensor", phase: "enter" }] },
+  ]);
+});

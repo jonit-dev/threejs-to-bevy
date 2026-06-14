@@ -124,3 +124,35 @@ fn should_report_resource_and_event_conformance_observations() {
         vec![serde_json::json!({ "amount": 2, "target": "player" })]
     );
 }
+
+#[test]
+fn should_report_physics_collision_and_trigger_conformance_observations() {
+    let fixture = load_conformance_fixture("v6-physics-events");
+    let mut app = App::new();
+
+    map_bundle_into_world(app.world_mut(), &fixture.bundle).unwrap_or_else(|error| {
+        panic!(
+            "failed to map conformance fixture '{}' at '{}': {}",
+            fixture.name,
+            fixture.bundle_path.display(),
+            error
+        )
+    });
+    let report = report_bevy_conformance(app.world_mut(), &fixture.bundle, fixture.name);
+
+    assert_eq!(report.fixture, "v6-physics-events");
+    assert_eq!(report.events.len(), 2);
+    assert_eq!(report.events[0].id, "CollisionEvent");
+    assert_eq!(
+        report.events[0].values,
+        vec![
+            serde_json::json!({ "a": "enemy", "b": "player", "phase": "enter" }),
+            serde_json::json!({ "a": "crate", "b": "worker", "phase": "enter" }),
+        ]
+    );
+    assert_eq!(report.events[1].id, "TriggerEvent");
+    assert_eq!(
+        report.events[1].values,
+        vec![serde_json::json!({ "a": "pickup", "b": "sensor", "phase": "enter" })]
+    );
+}

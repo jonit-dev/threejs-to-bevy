@@ -16,6 +16,7 @@ import type {
 } from "@threenative/ir";
 import type { IWebBundle } from "./loadBundle.js";
 import type { IThreeWorld } from "./mapWorld.js";
+import { detectPhysicsEvents } from "./physics.js";
 
 type IRuntimeLightReport = NonNullable<IConformanceEntityReport["light"]>["runtime"];
 
@@ -36,7 +37,7 @@ export function reportWebConformance(
       .map((entity) => reportEntity(entity, mapped, idsByObject))
       .sort((left, right) => left.id.localeCompare(right.id)),
     environment: bundle.environmentScene === undefined ? undefined : reportEnvironment(bundle.environmentScene),
-    events: reportEvents(bundle.world.events ?? {}),
+    events: reportEvents(observedEvents(bundle.world)),
     fixture,
     materials: bundle.materials.materials.map(reportMaterial).sort((left, right) => left.id.localeCompare(right.id)),
     resources: reportResources(bundle.world.resources ?? {}),
@@ -181,6 +182,53 @@ function reportEvents(events: Record<string, unknown>): IConformanceEventReport[
       values: Array.isArray(value) ? value : [],
     }))
     .sort((left, right) => left.id.localeCompare(right.id));
+}
+
+function observedEvents(world: IWebBundle["world"]): Record<string, unknown> {
+  const events: Record<string, unknown[]> = Object.fromEntries(
+    Object.entries(world.events ?? {}).map(([id, value]) => [id, Array.isArray(value) ? [...value] : []]),
+  );
+  for (const observation of detectPhysicsEvents(world)) {
+    const { event, ...payload } = observation;
+    if (!hasEventPayload(events[event] ?? [], payload)) {
+      events[event] = [...(events[event] ?? []), payload];
+    }
+  }
+  return events;
+}
+
+function hasEventPayload(values: unknown[], payload: unknown): boolean {
+  return values.some((value) => jsonEquals(value, payload));
+}
+
+function jsonEquals(left: unknown, right: unknown): boolean {
+  if (left === right) {
+    return true;
+  }
+  if (Array.isArray(left) || Array.isArray(right)) {
+    return (
+      Array.isArray(left) &&
+      Array.isArray(right) &&
+      left.length === right.length &&
+      left.every((value, index) => jsonEquals(value, right[index]))
+    );
+  }
+  if (isJsonObject(left) || isJsonObject(right)) {
+    if (!isJsonObject(left) || !isJsonObject(right)) {
+      return false;
+    }
+    const leftKeys = Object.keys(left).sort();
+    const rightKeys = Object.keys(right).sort();
+    return (
+      leftKeys.length === rightKeys.length &&
+      leftKeys.every((key, index) => key === rightKeys[index] && jsonEquals(left[key], right[key]))
+    );
+  }
+  return false;
+}
+
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function reportResources(resources: Record<string, unknown>): IConformanceResourceReport[] {

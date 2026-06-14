@@ -251,8 +251,12 @@ V6-03 has started with the collider validation contract: IR validation now
 accepts positive finite box, sphere, and capsule primitive collider dimensions,
 checks rigid-body mass and velocity fields, rejects cylinder colliders, dynamic
 mesh colliders, and mesh trigger colliders, and fails closed for V6 collider
-layer/mask fields that are deferred to V7. Runtime contact/trigger event trace
-parity remains later V6-03 work.
+layer/mask fields that are deferred to V7. The web runtime and native Bevy
+adapter now emit deterministic collision and trigger event phases (`enter`,
+`stay`, `exit`) for fixed traces, and the shared `v6-physics-events` fixture
+exposes collision/trigger `enter` observations in web and Bevy conformance
+reports. Full rigid-body solver parity and contact filtering remain deferred to
+V7.
 
 V7 is now planned as the deep engine gap-closure milestone. It should continue
 parity work that is too large or risky for V6, such as deeper physics,

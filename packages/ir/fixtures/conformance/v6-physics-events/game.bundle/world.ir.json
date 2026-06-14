@@ -1,0 +1,108 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "enemy",
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "size": [1, 1, 1]
+        },
+        "RigidBody": {
+          "kind": "static"
+        },
+        "Transform": {
+          "position": [0, 0, 0]
+        }
+      }
+    },
+    {
+      "id": "pickup",
+      "components": {
+        "Collider": {
+          "kind": "sphere",
+          "radius": 0.5,
+          "trigger": true
+        },
+        "RigidBody": {
+          "kind": "static"
+        },
+        "Transform": {
+          "position": [4, 0, 0]
+        }
+      }
+    },
+    {
+      "id": "crate",
+      "components": {
+        "Collider": {
+          "kind": "sphere",
+          "radius": 0.5
+        },
+        "RigidBody": {
+          "kind": "static"
+        },
+        "Transform": {
+          "position": [8, 0, 0]
+        }
+      }
+    },
+    {
+      "id": "player",
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "size": [1, 1, 1]
+        },
+        "RigidBody": {
+          "kind": "kinematic"
+        },
+        "Transform": {
+          "position": [0.5, 0, 0]
+        }
+      }
+    },
+    {
+      "id": "sensor",
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "size": [1, 1, 1]
+        },
+        "RigidBody": {
+          "kind": "kinematic"
+        },
+        "Transform": {
+          "position": [4.25, 0, 0]
+        }
+      }
+    },
+    {
+      "id": "worker",
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "size": [1, 1, 1]
+        },
+        "RigidBody": {
+          "kind": "kinematic"
+        },
+        "Transform": {
+          "position": [8.25, 0, 0]
+        }
+      }
+    }
+  ],
+  "resources": {},
+  "events": {
+    "CollisionEvent": [
+      {
+        "phase": "enter",
+        "a": "enemy",
+        "b": "player"
+      }
+    ]
+  },
+  "prefabs": []
+}
