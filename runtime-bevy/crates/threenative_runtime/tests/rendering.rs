@@ -4,11 +4,11 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use bevy::prelude::*;
 use bevy::render::{
     mesh::{MeshVertexAttribute, VertexAttributeValues},
     render_resource::VertexFormat,
 };
+use bevy::{asset::AssetPlugin, prelude::*};
 use threenative_components::ThreeNativeId;
 use threenative_loader::load_bundle;
 use threenative_runtime::map_world::map_bundle_into_world;
@@ -38,6 +38,41 @@ fn rendering_should_map_visibility_and_v2_lights() {
         visibility_for(app.world_mut(), "capsule.hidden"),
         Some(Visibility::Hidden)
     );
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn rendering_should_load_material_textures_through_asset_server() {
+    let root = write_rendering_bundle();
+    let bundle = load_bundle(&root).expect("rendering bundle should load");
+    let mut app = App::new();
+    app.add_plugins((
+        MinimalPlugins,
+        AssetPlugin {
+            file_path: root.display().to_string(),
+            ..Default::default()
+        },
+    ));
+    app.init_asset::<Image>();
+
+    map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map");
+
+    let material = material_for(app.world_mut(), "cube.visible");
+    assert_ne!(
+        material.base_color_texture,
+        Some(Handle::<Image>::default())
+    );
+    assert_ne!(
+        material.normal_map_texture,
+        Some(Handle::<Image>::default())
+    );
+    assert_ne!(
+        material.metallic_roughness_texture,
+        Some(Handle::<Image>::default())
+    );
+    assert_ne!(material.emissive_texture, Some(Handle::<Image>::default()));
+    assert_ne!(material.occlusion_texture, Some(Handle::<Image>::default()));
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
@@ -127,17 +162,7 @@ fn assert_transform(world: &mut World, id: &str, translation: [f32; 3], scale: [
 }
 
 fn assert_material(world: &mut World, id: &str) {
-    let handle = {
-        let mut query = world.query::<(&ThreeNativeId, &Handle<StandardMaterial>)>();
-        query
-            .iter(world)
-            .find_map(|(stable_id, handle)| (stable_id.0 == id).then_some(handle.clone()))
-            .expect("entity material handle should be spawned")
-    };
-    let material = world
-        .resource::<Assets<StandardMaterial>>()
-        .get(&handle)
-        .expect("standard material should be registered");
+    let material = material_for(world, id);
     let color = material.base_color.to_srgba();
 
     assert!((color.red - 0x33 as f32 / 255.0).abs() < 0.01);
@@ -150,6 +175,21 @@ fn assert_material(world: &mut World, id: &str) {
     assert!(material.occlusion_texture.is_some());
     assert!((material.metallic - 0.25).abs() < 0.01);
     assert!((material.perceptual_roughness - 0.42).abs() < 0.01);
+}
+
+fn material_for(world: &mut World, id: &str) -> StandardMaterial {
+    let handle = {
+        let mut query = world.query::<(&ThreeNativeId, &Handle<StandardMaterial>)>();
+        query
+            .iter(world)
+            .find_map(|(stable_id, handle)| (stable_id.0 == id).then_some(handle.clone()))
+            .expect("entity material handle should be spawned")
+    };
+    world
+        .resource::<Assets<StandardMaterial>>()
+        .get(&handle)
+        .expect("standard material should be registered")
+        .clone()
 }
 
 fn assert_mesh_handle(world: &mut World, id: &str) {

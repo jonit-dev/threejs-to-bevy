@@ -6,6 +6,8 @@ use threenative_loader::{
     EntityComponents, LoadedBundle, SystemIr, SystemQueryIr, SystemStateSourceIr,
 };
 
+use crate::input::NativeInputState;
+
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NativeSystemContextSnapshot {
@@ -118,6 +120,16 @@ pub fn build_system_context_snapshot_with_events(
     time: NativeSystemTimeSnapshot,
     events: BTreeMap<String, Vec<Value>>,
 ) -> NativeSystemContextSnapshot {
+    build_system_context_snapshot_with_events_and_input(bundle, system, time, events, None)
+}
+
+pub fn build_system_context_snapshot_with_events_and_input(
+    bundle: &LoadedBundle,
+    system: &SystemIr,
+    time: NativeSystemTimeSnapshot,
+    events: BTreeMap<String, Vec<Value>>,
+    input: Option<&NativeInputState>,
+) -> NativeSystemContextSnapshot {
     let query = system.queries.first();
     let readable_components = readable_components(system, query);
     let entities = bundle
@@ -143,7 +155,10 @@ pub fn build_system_context_snapshot_with_events(
         component_types: component_reflection_registry(bundle),
         entities,
         events: merged_event_queues(bundle, events),
-        input: NativeSystemInputSnapshot::fixed_trace(),
+        input: input.map_or_else(
+            NativeSystemInputSnapshot::fixed_trace,
+            NativeSystemInputSnapshot::from_native_input,
+        ),
         observer_routes: observer_routes(bundle),
         plugin_groups: plugin_group_declarations(bundle),
         plugins: plugin_declarations(bundle),
@@ -436,6 +451,16 @@ impl NativeSystemInputSnapshot {
         Self {
             actions: BTreeMap::from([("MoveForward".to_owned(), true), ("Jump".to_owned(), true)]),
             axes: BTreeMap::from([("MoveX".to_owned(), 1.0), ("MoveY".to_owned(), 0.0)]),
+        }
+    }
+
+    pub fn from_native_input(input: &NativeInputState) -> Self {
+        Self {
+            actions: input.action_ids().map(|id| (id.clone(), true)).collect(),
+            axes: input
+                .axes()
+                .map(|(id, value)| (id.clone(), *value))
+                .collect(),
         }
     }
 }

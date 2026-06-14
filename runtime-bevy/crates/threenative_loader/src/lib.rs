@@ -502,7 +502,7 @@ pub struct SystemScriptIr {
     pub export_name: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct InputIr {
     pub schema: String,
     pub version: String,
@@ -510,19 +510,20 @@ pub struct InputIr {
     pub axes: Vec<InputAxisIr>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct InputActionIr {
     pub id: String,
     pub bindings: Vec<InputBindingIr>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct InputAxisIr {
     pub id: String,
     #[serde(default)]
     pub negative: Vec<InputBindingIr>,
     #[serde(default)]
     pub positive: Vec<InputBindingIr>,
+    pub value: Option<InputBindingIr>,
 }
 
 #[derive(Clone, Debug, Deserialize)]

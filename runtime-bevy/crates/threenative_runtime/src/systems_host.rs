@@ -6,7 +6,10 @@ use thiserror::Error;
 use threenative_loader::{LoadedBundle, SystemIr};
 
 use crate::{
-    systems_context::{NativeSystemTimeSnapshot, build_system_context_snapshot_with_events},
+    input::NativeInputState,
+    systems_context::{
+        NativeSystemTimeSnapshot, build_system_context_snapshot_with_events_and_input,
+    },
     systems_effects::{NativeSystemEffectLog, NativeSystemEffects, apply_system_effects},
 };
 
@@ -108,6 +111,14 @@ pub fn run_native_systems_once(
     bundle: &mut LoadedBundle,
     time: NativeSystemTimeSnapshot,
 ) -> Result<NativeSystemsHostRun, SystemsHostError> {
+    run_native_systems_once_with_input(bundle, time, None)
+}
+
+pub fn run_native_systems_once_with_input(
+    bundle: &mut LoadedBundle,
+    time: NativeSystemTimeSnapshot,
+    input: Option<&NativeInputState>,
+) -> Result<NativeSystemsHostRun, SystemsHostError> {
     ensure_native_system_host_supported(bundle)?;
     if bundle.manifest.entry.scripts.is_none() {
         return Ok(NativeSystemsHostRun::default());
@@ -166,8 +177,14 @@ pub fn run_native_systems_once(
             .collect::<Vec<_>>();
         scheduled_systems.sort_by(|left, right| left.name.cmp(&right.name));
         for system in scheduled_systems {
-            let effects =
-                call_system_export(&context, bundle, system, time.clone(), BTreeMap::new())?;
+            let effects = call_system_export(
+                &context,
+                bundle,
+                system,
+                time.clone(),
+                BTreeMap::new(),
+                input,
+            )?;
             let log =
                 apply_system_effects(bundle, system, &effects, 1, 1).map_err(|diagnostics| {
                     let first = diagnostics
@@ -189,6 +206,7 @@ fn call_system_export(
     system: &SystemIr,
     time: NativeSystemTimeSnapshot,
     events: BTreeMap<String, Vec<Value>>,
+    input: Option<&NativeInputState>,
 ) -> Result<NativeSystemEffects, SystemsHostError> {
     let export_name = system
         .script
@@ -200,7 +218,8 @@ fn call_system_export(
                 format!("System '{}' does not declare a script export.", system.name),
             )
         })?;
-    let snapshot = build_system_context_snapshot_with_events(bundle, system, time, events);
+    let snapshot =
+        build_system_context_snapshot_with_events_and_input(bundle, system, time, events, input);
     let snapshot_json = serde_json::to_string(&snapshot).map_err(|source| {
         host_error(
             "TN_BEVY_SYSTEM_CONTEXT_SERIALIZE_FAILED",

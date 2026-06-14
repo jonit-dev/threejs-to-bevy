@@ -5,9 +5,13 @@ use std::{
 };
 
 use threenative_loader::load_bundle;
-use threenative_runtime::systems_context::{
-    NativeSystemTimeSnapshot, build_system_context_snapshot,
-    build_system_context_snapshot_with_events,
+use threenative_runtime::{
+    input::{NativeInputState, map_keyboard_event},
+    systems_context::{
+        NativeSystemTimeSnapshot, build_system_context_snapshot,
+        build_system_context_snapshot_with_events,
+        build_system_context_snapshot_with_events_and_input,
+    },
 };
 
 #[test]
@@ -59,6 +63,31 @@ fn systems_context_should_include_bundle_and_queued_events() {
             serde_json::json!({ "amount": 4 }),
         ])
     );
+}
+
+#[test]
+fn systems_context_should_use_captured_native_input_when_provided() {
+    let root = write_bundle("captured-input-context");
+    let bundle = load_bundle(&root).expect("bundle should load");
+    let system = &bundle
+        .systems
+        .as_ref()
+        .expect("systems should load")
+        .systems[0];
+    let input = bundle.input.as_ref().expect("input should load");
+    let mut state = NativeInputState::default();
+    map_keyboard_event(input, "KeyD", true, &mut state);
+
+    let snapshot = build_system_context_snapshot_with_events_and_input(
+        &bundle,
+        system,
+        time(),
+        BTreeMap::new(),
+        Some(&state),
+    );
+
+    assert_eq!(snapshot.input.actions.get("MoveForward"), None);
+    assert_eq!(snapshot.input.axes.get("MoveX"), Some(&1.0));
 }
 
 #[test]
@@ -219,6 +248,7 @@ fn write_bundle(name: &str) -> PathBuf {
   "files": {
     "assets": "assets.manifest.json",
     "componentSchemas": "schemas/components.schema.json",
+    "input": "input.ir.json",
     "materials": "materials.ir.json",
     "targetProfile": "target.profile.json"
   }
@@ -239,6 +269,25 @@ fn write_bundle(name: &str) -> PathBuf {
       }
     }
   }
+}"#,
+    );
+    write_json(
+        &root,
+        "input.ir.json",
+        r#"{
+  "schema": "threenative.input",
+  "version": "0.1.0",
+  "actions": [
+    { "id": "MoveForward", "bindings": [{ "device": "keyboard", "code": "KeyW" }] }
+  ],
+  "axes": [
+    {
+      "id": "MoveX",
+      "negative": [{ "device": "keyboard", "code": "KeyA" }],
+      "positive": [{ "device": "keyboard", "code": "KeyD" }],
+      "value": { "device": "pointer", "axis": "deltaX" }
+    }
+  ]
 }"#,
     );
     write_json(

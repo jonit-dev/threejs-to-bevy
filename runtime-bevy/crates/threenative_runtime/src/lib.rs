@@ -92,6 +92,11 @@ pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeErro
     if let Some(ui) = bundle.ui.as_ref() {
         ui::map_ui_into_world(app.world_mut(), ui)?;
     }
+    if let Some(input_map) = bundle.input.clone() {
+        app.insert_resource(input::NativeInputMap(input_map));
+        app.init_resource::<input::NativeInputState>();
+        app.add_systems(PreUpdate, input::capture_native_input);
+    }
     app.add_systems(Update, rendering::normalize_loaded_gltf_materials);
     if has_scripts {
         app.insert_resource(ScriptedRuntimeBundle { bundle });
@@ -107,6 +112,7 @@ struct ScriptedRuntimeBundle {
 
 fn run_scripted_runtime_systems(
     mut runtime: Option<ResMut<ScriptedRuntimeBundle>>,
+    input: Option<Res<input::NativeInputState>>,
     time: Res<Time>,
     mut transforms: Query<(&ThreeNativeId, &mut Transform)>,
 ) {
@@ -123,7 +129,11 @@ fn run_scripted_runtime_systems(
         paused: false,
     };
 
-    if let Err(error) = systems_host::run_native_systems_once(&mut runtime.bundle, snapshot) {
+    if let Err(error) = systems_host::run_native_systems_once_with_input(
+        &mut runtime.bundle,
+        snapshot,
+        input.as_deref(),
+    ) {
         error!("{error}");
         return;
     }
