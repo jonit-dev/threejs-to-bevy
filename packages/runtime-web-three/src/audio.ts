@@ -34,6 +34,12 @@ export interface IWebAudioRuntime {
   start(): void;
 }
 
+export interface IWebAudioLifecycleTrace {
+  activeLoops: string[];
+  commands: IWebAudioCommand[];
+  lifecycle: Array<{ id: string; kind: "start" | "stop" }>;
+}
+
 export function createWebAudioRuntime(audio: IAudioIr, sink?: IWebAudioSink): IWebAudioRuntime {
   const commands: IWebAudioCommand[] = [];
   const queue = (command: IWebAudioCommand) => {
@@ -54,6 +60,34 @@ export function createWebAudioRuntime(audio: IAudioIr, sink?: IWebAudioSink): IW
         queue({ asset: music.asset, ...(music.bus === undefined ? {} : { bus: music.bus }), id: music.id, kind: "loop", ...(music.volume === undefined ? {} : { volume: music.volume }) });
       }
     },
+  };
+}
+
+export function traceWebAudioLifecycle(
+  audio: IAudioIr,
+  events: ReadonlyArray<IQueuedEvent>,
+  stopLoops: readonly string[] = [],
+): IWebAudioLifecycleTrace {
+  const runtime = createWebAudioRuntime(audio);
+  const activeLoops = new Set<string>();
+  const lifecycle: IWebAudioLifecycleTrace["lifecycle"] = [];
+
+  runtime.start();
+  for (const command of runtime.commands.filter((command) => command.kind === "loop")) {
+    activeLoops.add(command.id);
+    lifecycle.push({ id: command.id, kind: "start" });
+  }
+  runtime.handleEvents(events);
+  for (const id of stopLoops) {
+    if (activeLoops.delete(id)) {
+      lifecycle.push({ id, kind: "stop" });
+    }
+  }
+
+  return {
+    activeLoops: [...activeLoops].sort(),
+    commands: [...runtime.commands].sort((left, right) => left.id.localeCompare(right.id)),
+    lifecycle,
   };
 }
 

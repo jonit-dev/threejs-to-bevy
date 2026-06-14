@@ -2,7 +2,7 @@ use threenative_loader::{
     AudioBusIr, AudioEmitterIr, AudioIr, AudioListenerIr, AudioMusicIr, AudioOneShotIr,
 };
 use threenative_runtime::audio::{
-    NativeAudioCommandKind, handle_audio_events, observe_audio, start_audio,
+    NativeAudioCommandKind, handle_audio_events, observe_audio, start_audio, trace_audio_lifecycle,
 };
 
 mod support;
@@ -131,4 +131,24 @@ fn audio_should_report_fixture_playback_observations() {
         NativeAudioCommandKind::OneShot
     );
     assert_eq!(observation.commands[1].volume, Some(0.75));
+}
+
+#[test]
+fn audio_lifecycle_trace_should_stop_active_loops() {
+    let fixture = load_conformance_fixture("v7-spatial-audio-buses");
+    let audio = fixture
+        .bundle
+        .audio
+        .as_ref()
+        .expect("audio fixture should load");
+
+    let trace = trace_audio_lifecycle(audio, &["DamageEvent"], &["music.arena"]);
+
+    assert!(trace.active_loops.is_empty());
+    assert_eq!(trace.lifecycle.len(), 2);
+    assert_eq!(trace.lifecycle[0].kind, "start");
+    assert_eq!(trace.lifecycle[1].kind, "stop");
+    assert_eq!(trace.commands.len(), 2);
+    assert_eq!(trace.commands[0].bus.as_deref(), Some("bus.music"));
+    assert_eq!(trace.commands[1].emitter.as_deref(), Some("emitter.player"));
 }

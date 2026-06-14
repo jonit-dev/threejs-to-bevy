@@ -26,6 +26,7 @@ export async function verifyConformance(options = {}) {
     root,
     "packages/ir/fixtures/conformance/v7-animation-graphs-particles/game.bundle",
   );
+  const v7SpatialAudioBusesBundlePath = resolve(root, "packages/ir/fixtures/conformance/v7-spatial-audio-buses/game.bundle");
   const nativeBasicSceneReportPath = options.nativeBasicSceneReportPath ?? resolve(artifactDir, "basic-scene/bevy.report.json");
   const nativeV6PhysicsEventsReportPath =
     options.nativeV6PhysicsEventsReportPath ?? resolve(artifactDir, "v6-physics-events/bevy.report.json");
@@ -58,6 +59,11 @@ export async function verifyConformance(options = {}) {
     options.v7AnimationNativeTracePath ?? resolve(artifactDir, "v7-animation-graphs-particles/native-animation.json");
   const v7AnimationWebTracePath =
     options.v7AnimationWebTracePath ?? resolve(artifactDir, "v7-animation-graphs-particles/web-animation.json");
+  const v7AudioLifecycleDiffPath = options.v7AudioLifecycleDiffPath ?? resolve(artifactDir, "v7-spatial-audio-buses/audio-lifecycle-diff.json");
+  const v7AudioLifecycleNativeTracePath =
+    options.v7AudioLifecycleNativeTracePath ?? resolve(artifactDir, "v7-spatial-audio-buses/native-audio-lifecycle.json");
+  const v7AudioLifecycleWebTracePath =
+    options.v7AudioLifecycleWebTracePath ?? resolve(artifactDir, "v7-spatial-audio-buses/web-audio-lifecycle.json");
   const artifacts = {
     nativeBasicSceneReportPath,
     nativeV6AnimationClipsReportPath,
@@ -80,6 +86,9 @@ export async function verifyConformance(options = {}) {
     v7AnimationDiffPath,
     v7AnimationNativeTracePath,
     v7AnimationWebTracePath,
+    v7AudioLifecycleDiffPath,
+    v7AudioLifecycleNativeTracePath,
+    v7AudioLifecycleWebTracePath,
   };
   const steps = [];
 
@@ -241,6 +250,16 @@ export async function verifyConformance(options = {}) {
         resolve(root, "scripts/verify-v7-animation-trace.mjs"),
         v7AnimationGraphsParticlesBundlePath,
         resolve(artifactDir, "v7-animation-graphs-particles"),
+      ],
+      { timeoutMs: 120000 },
+    ],
+    [
+      "V7 audio lifecycle fixed trace parity",
+      process.execPath,
+      [
+        resolve(root, "scripts/verify-v7-audio-lifecycle-trace.mjs"),
+        v7SpatialAudioBusesBundlePath,
+        resolve(artifactDir, "v7-spatial-audio-buses"),
       ],
       { timeoutMs: 120000 },
     ],
@@ -469,6 +488,9 @@ function fixtureForStep(stepName) {
   if (stepName.includes("V7 animation graph")) {
     return "v7-animation-graphs-particles";
   }
+  if (stepName.includes("V7 audio lifecycle")) {
+    return "v7-spatial-audio-buses";
+  }
   return "conformance";
 }
 
@@ -506,6 +528,9 @@ function artifactPathForStep(stepName, artifacts) {
   if (stepName.includes("V7 animation graph")) {
     return artifacts.v7AnimationDiffPath;
   }
+  if (stepName.includes("V7 audio lifecycle")) {
+    return artifacts.v7AudioLifecycleDiffPath;
+  }
   return undefined;
 }
 
@@ -536,6 +561,9 @@ function bundlePathForStep(stepName) {
   }
   if (stepName.includes("V7 animation graph")) {
     return "packages/ir/fixtures/conformance/v7-animation-graphs-particles/game.bundle";
+  }
+  if (stepName.includes("V7 audio lifecycle")) {
+    return "packages/ir/fixtures/conformance/v7-spatial-audio-buses/game.bundle";
   }
   return undefined;
 }

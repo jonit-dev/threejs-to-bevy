@@ -2,9 +2,11 @@ export { startWebPreview, type IWebPreviewServer } from "./devServer.js";
 export {
   createWebAudioElementSink,
   createWebAudioRuntime,
+  traceWebAudioLifecycle,
   type IWebAudioCommand,
   type IWebAudioElement,
   type IWebAudioElementSink,
+  type IWebAudioLifecycleTrace,
   type IWebAudioRuntime,
   type IWebAudioSink,
 } from "./audio.js";

@@ -96,7 +96,10 @@
       "reportArtifacts": [
         "artifacts/conformance/v7-spatial-audio-buses/web.report.json",
         "artifacts/conformance/v7-spatial-audio-buses/bevy.report.json",
-        "artifacts/conformance/v7-spatial-audio-buses/comparison.report.json"
+        "artifacts/conformance/v7-spatial-audio-buses/comparison.report.json",
+        "artifacts/conformance/v7-spatial-audio-buses/web-audio-lifecycle.json",
+        "artifacts/conformance/v7-spatial-audio-buses/native-audio-lifecycle.json",
+        "artifacts/conformance/v7-spatial-audio-buses/audio-lifecycle-diff.json"
       ],
       "rejectedDiagnosticCodes": [
         "TN_V7_AUDIO_UNSUPPORTED"

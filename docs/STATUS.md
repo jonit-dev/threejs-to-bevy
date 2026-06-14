@@ -373,14 +373,18 @@ writing web/native trace artifacts and a diff under
 playback, stop/state query APIs, richer event scheduling, and rendered particle
 systems remain later V7 work.
 
-V7-05 has started with the portable audio-routing contract: audio IR now accepts
-validated buses, listener positions, spatial emitter positions/radii, and
-bus/emitter references on looping music and event-triggered one-shots. The SDK,
-IR validator, compiler emitter, web runtime command log, native Bevy
-observation path, and `v7-spatial-audio-buses` conformance fixture preserve the
-deterministic routed/spatial command shape. Real spatial attenuation,
-stop/cleanup lifecycle traces, streaming/network audio, and platform audio
-handles remain later V7-05 work.
+V7-05 has landed the first portable audio-routing and lifecycle evidence slice:
+audio IR accepts validated buses, listener positions, spatial emitter
+positions/radii, and bus/emitter references on looping music and
+event-triggered one-shots while rejecting streaming/network/platform-only
+fields. The SDK, IR validator, compiler emitter, web runtime command log,
+native Bevy observation path, and `v7-spatial-audio-buses` conformance fixture
+preserve the deterministic routed/spatial command shape. `pnpm
+verify:conformance` now compares a fixed web/native audio lifecycle trace for
+loop start/stop cleanup and writes web/native trace artifacts and a diff under
+`artifacts/conformance/v7-spatial-audio-buses`. Real spatial attenuation, mixer
+effects, streaming/network audio, and platform audio handles remain unsupported
+or later work.
 
 V8 is the first planned local editor and inspector milestone. V9 is the first
 planned online project and publishing milestone. V10 is the first planned

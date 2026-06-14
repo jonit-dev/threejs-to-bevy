@@ -36,6 +36,36 @@ pub struct NativeAudioObservation {
     pub diagnostics: Vec<NativeAudioDiagnostic>,
 }
 
+#[derive(Clone, Debug, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeAudioLifecycleTrace {
+    pub active_loops: Vec<String>,
+    pub commands: Vec<NativeAudioCommandReport>,
+    pub lifecycle: Vec<NativeAudioLifecycleEvent>,
+}
+
+#[derive(Clone, Debug, PartialEq, serde::Serialize)]
+pub struct NativeAudioLifecycleEvent {
+    pub id: String,
+    pub kind: String,
+}
+
+#[derive(Clone, Debug, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeAudioCommandReport {
+    pub asset: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bus: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub emitter: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub event: Option<String>,
+    pub id: String,
+    pub kind: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub volume: Option<f32>,
+}
+
 pub fn start_audio(audio: &AudioIr) -> Vec<NativeAudioCommand> {
     audio
         .music
@@ -96,6 +126,61 @@ pub fn observe_audio(bundle: &LoadedBundle) -> Option<NativeAudioObservation> {
         commands,
         diagnostics,
     })
+}
+
+pub fn trace_audio_lifecycle(
+    audio: &AudioIr,
+    events: &[&str],
+    stop_loops: &[&str],
+) -> NativeAudioLifecycleTrace {
+    let mut commands = start_audio(audio);
+    let mut active_loops = commands
+        .iter()
+        .filter(|command| matches!(command.kind, NativeAudioCommandKind::Loop))
+        .map(|command| command.id.clone())
+        .collect::<Vec<_>>();
+    active_loops.sort();
+    let mut lifecycle = active_loops
+        .iter()
+        .map(|id| NativeAudioLifecycleEvent {
+            id: id.clone(),
+            kind: "start".to_owned(),
+        })
+        .collect::<Vec<_>>();
+
+    commands.extend(handle_audio_events(audio, events));
+    for id in stop_loops {
+        if let Some(index) = active_loops.iter().position(|active| active == id) {
+            active_loops.remove(index);
+            lifecycle.push(NativeAudioLifecycleEvent {
+                id: (*id).to_owned(),
+                kind: "stop".to_owned(),
+            });
+        }
+    }
+    commands.sort_by(|left, right| left.id.cmp(&right.id));
+
+    NativeAudioLifecycleTrace {
+        active_loops,
+        commands: commands.iter().map(audio_command_report).collect(),
+        lifecycle,
+    }
+}
+
+fn audio_command_report(command: &NativeAudioCommand) -> NativeAudioCommandReport {
+    NativeAudioCommandReport {
+        asset: command.asset.clone(),
+        bus: command.bus.clone(),
+        emitter: command.emitter.clone(),
+        event: command.event.clone(),
+        id: command.id.clone(),
+        kind: match command.kind {
+            NativeAudioCommandKind::Loop => "loop",
+            NativeAudioCommandKind::OneShot => "oneShot",
+        }
+        .to_owned(),
+        volume: command.volume,
+    }
 }
 
 pub fn spawn_startup_audio(world: &mut World, bundle: &LoadedBundle) -> Vec<NativeAudioDiagnostic> {

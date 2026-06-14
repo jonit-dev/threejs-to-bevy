@@ -36,7 +36,7 @@ loop lifecycle rules, and deterministic observations.
 
 - [x] Add listener, emitter, bus/group, routing, volume, loop, and lifecycle
   metadata.
-- [ ] Reject streaming, network, platform handles, and unsupported codecs.
+- [x] Reject streaming, network, platform handles, and unsupported codecs.
 
 #### Phase 2: Runtime Evidence - Audio observations prove behavior.
 
@@ -51,8 +51,8 @@ loop lifecycle rules, and deterministic observations.
 **Implementation:**
 
 - [x] Record deterministic play/stop/spatial/routing events.
-- [ ] Verify loop lifecycle and cleanup in fixed traces.
-- [ ] Expose target drift with stable diagnostics.
+- [x] Verify loop lifecycle and cleanup in fixed traces.
+- [x] Expose target drift with stable diagnostics.
 
 ## Verification Strategy
 
@@ -64,4 +64,4 @@ loop lifecycle rules, and deterministic observations.
 ## Acceptance Criteria
 
 - [x] Spatial/routed audio is either portable or explicitly rejected.
-- [ ] Runtime evidence covers lifecycle, not just asset validation.
+- [x] Runtime evidence covers lifecycle, not just asset validation.

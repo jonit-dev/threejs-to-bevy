@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createWebAudioElementSink, createWebAudioRuntime, type IWebAudioElement } from "./audio.js";
+import { createWebAudioElementSink, createWebAudioRuntime, traceWebAudioLifecycle, type IWebAudioElement } from "./audio.js";
 
 test("audio should play one shot on damage event", () => {
   const runtime = createWebAudioRuntime({
@@ -46,6 +46,32 @@ test("audio should preserve bus and spatial emitter commands", () => {
   assert.deepEqual(runtime.commands, [
     { asset: "arena.music", bus: "bus.sfx", id: "music.arena", kind: "loop" },
     { asset: "hit.sound", bus: "bus.sfx", emitter: "emitter.player", event: "DamageEvent", id: "sound.hit", kind: "oneShot" },
+  ]);
+});
+
+test("audio lifecycle trace should stop active loops deterministically", () => {
+  const trace = traceWebAudioLifecycle(
+    {
+      schema: "threenative.audio",
+      version: "0.1.0",
+      buses: [{ id: "bus.music", volume: 0.4 }, { id: "bus.sfx", volume: 0.8 }],
+      emitters: [{ id: "emitter.player", position: [1, 2, 3], radius: 12 }],
+      listeners: [{ id: "listener.main", position: [0, 1, 5] }],
+      music: [{ id: "music.arena", asset: "arena.music", autoplay: true, bus: "bus.music", loop: true, volume: 0.4 }],
+      oneShots: [{ id: "sound.hit", asset: "hit.sound", bus: "bus.sfx", emitter: "emitter.player", event: "DamageEvent", volume: 0.75 }],
+    },
+    [{ event: "DamageEvent", payload: { amount: 10 } }],
+    ["music.arena"],
+  );
+
+  assert.deepEqual(trace.activeLoops, []);
+  assert.deepEqual(trace.lifecycle, [
+    { id: "music.arena", kind: "start" },
+    { id: "music.arena", kind: "stop" },
+  ]);
+  assert.deepEqual(trace.commands, [
+    { asset: "arena.music", bus: "bus.music", id: "music.arena", kind: "loop", volume: 0.4 },
+    { asset: "hit.sound", bus: "bus.sfx", emitter: "emitter.player", event: "DamageEvent", id: "sound.hit", kind: "oneShot", volume: 0.75 },
   ]);
 });
 
