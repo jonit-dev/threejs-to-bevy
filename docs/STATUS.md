@@ -422,6 +422,17 @@ canonical web/native effect logs and writes artifacts under
 async systems, arbitrary npm/platform APIs, and dynamic scene reconciliation
 remain unsupported or later work.
 
+V7-08 has landed the first desktop packaging and target-profile diagnostics
+slice: `tn package --target desktop --bundle <path>` now accepts an existing
+bundle, validates the bundle target profile, emits a predictable local artifact layout
+under `dist/package/desktop` or the requested `--out` path, and writes
+`package.manifest.json` plus `runtime.args.json` for the Bevy runtime loader.
+`pnpm verify:v7` currently records this packaging evidence under
+`artifacts/v7/packaging` and fails with stable `TN_PACKAGE_*` /
+`TN_VERIFY_V7_*` diagnostics for unsupported targets or broken artifact checks.
+Signed installers, mobile app stores, online publishing, and hosted services
+remain out of V7 scope.
+
 V8 is the first planned local editor and inspector milestone. V9 is the first
 planned online project and publishing milestone. V10 is the first planned
 collaboration and runtime replication milestone. Editor, online, networking,

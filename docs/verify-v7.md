@@ -1,13 +1,17 @@
 # verify:v7
 
-`verify:v7` is not the aggregate V7 release gate yet. V7-01 starts the evidence
-contract that later V7 feature tickets and the final V7 gate must use, and
+`verify:v7` is not the final aggregate V7 release gate yet. It currently checks
+V7 docs, builds the CLI, and records the V7-08 desktop packaging evidence.
+V7-01 starts the evidence contract that later V7 feature tickets and the final
+V7 gate must use, and
 V7-02 now adds the first runtime-specific fixed trace. V7-03 adds the first
 animation/effects contract fixture and fixed web/native graph/particle trace.
 V7-04 adds the first fixed web/native UI navigation trace.
 V7-05 adds the first fixed web/native audio lifecycle trace.
 V7-06 adds the first fixed web/native renderer/dense-content trace.
 V7-07 adds the first fixed web/native scripting lifecycle trace.
+V7-08 adds the first desktop package artifact and target-profile diagnostics
+report.
 
 Current V7 conformance evidence starts with:
 
@@ -40,6 +44,12 @@ Current V7 conformance evidence starts with:
 - `artifacts/conformance/v7-scripting-lifecycle/web-effects.json`
 - `artifacts/conformance/v7-scripting-lifecycle/native-effects.json`
 - `artifacts/conformance/v7-scripting-lifecycle/effects-diff.json`
+- `pnpm verify:v7`
+- `artifacts/v7/verification-report.json`
+- `artifacts/v7/packaging/verification-report.json`
+- `artifacts/v7/packaging/desktop/game.bundle`
+- `artifacts/v7/packaging/desktop/package.manifest.json`
+- `artifacts/v7/packaging/desktop/runtime.args.json`
 
 The V7 fixture catalog maps V7-02 through V7-09 to baseline bundles, planned
 accepted and rejected fixture bundle paths, expected target capabilities,
@@ -87,6 +97,16 @@ postUpdate resource handoff, queued events, spawn/despawn commands, and an
 APIs, hidden system-local persisted state, state-preserving hot reload, and full
 dynamic scene reconciliation remain unsupported or later work.
 
+The current V7-08 packaging evidence is intentionally narrow: `tn package
+--target desktop --bundle <path>` validates an existing bundle, requires
+`target.profile.json` to include `desktop` and no unsupported package targets,
+copies the bundle into a predictable desktop artifact directory, and writes a
+package manifest plus Bevy runtime argument file. `pnpm verify:v7` records those
+paths and checks the expected unsupported mobile-target diagnostic. Signed
+installers, mobile app-store packaging, web-store distribution, online
+publishing, hosted services, and platform-specific entitlements remain out of
+scope.
+
 Conformance mismatch diagnostics must localize drift with:
 
 - `fixture`
@@ -100,9 +120,9 @@ Conformance mismatch diagnostics must localize drift with:
 - `artifactPaths`
 - stable diagnostic `code`
 
-This document does not claim V7 runtime support. Runtime-specific V7 reports,
-functional scene artifacts, packaging evidence, performance evidence, and the
-final `pnpm verify:v7` aggregate command remain later V7 tickets.
+This document does not claim full V7 runtime support. Additional runtime-specific
+V7 reports, functional scene artifacts, performance evidence, and the final
+aggregate `pnpm verify:v7` release gate remain later V7 tickets.
 
 The current V7-02 runtime evidence is intentionally narrow: the
 `v7-advanced-physics-character` fixture compares web and native fixed traces for

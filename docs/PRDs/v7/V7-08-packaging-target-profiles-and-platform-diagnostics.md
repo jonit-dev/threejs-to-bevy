@@ -34,9 +34,9 @@ artifact conventions, and diagnostics. Mobile app-store scope remains out.
 
 **Implementation:**
 
-- [ ] Define desktop target profiles and artifact layout.
-- [ ] Validate unsupported target/profile combinations.
-- [ ] Keep mobile and online publishing out of V7.
+- [x] Define desktop target profiles and artifact layout.
+- [x] Validate unsupported target/profile combinations.
+- [x] Keep mobile and online publishing out of V7.
 
 #### Phase 2: Packaged Runtime Evidence - Packaged artifacts load the bundle.
 
@@ -50,9 +50,9 @@ artifact conventions, and diagnostics. Mobile app-store scope remains out.
 
 **Implementation:**
 
-- [ ] Produce predictable packaged desktop artifacts.
-- [ ] Verify packaged bundle loading and target-profile diagnostics.
-- [ ] Record artifact paths and first failure in `verify:v7`.
+- [x] Produce predictable packaged desktop artifacts.
+- [x] Verify packaged bundle loading and target-profile diagnostics.
+- [x] Record artifact paths and first failure in `verify:v7`.
 
 ## Verification Strategy
 
@@ -62,5 +62,5 @@ artifact conventions, and diagnostics. Mobile app-store scope remains out.
 
 ## Acceptance Criteria
 
-- [ ] Desktop packaging has predictable local artifacts and diagnostics.
-- [ ] V7 does not claim mobile store, online publishing, or service scope.
+- [x] Desktop packaging has predictable local artifacts and diagnostics.
+- [x] V7 does not claim mobile store, online publishing, or service scope.

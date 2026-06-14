@@ -221,6 +221,19 @@ test("should include capability tags for each conformance fixture", async () => 
     "scripting:state.system-local-disallowed",
     "scripting:systems",
   ]);
+  assertFixtureCapabilities(byName, "v7-packaging-target-profiles", [
+    "diagnostics:platform",
+    "packaging:bundle-loading",
+    "packaging:desktop",
+    "packaging:target-profile",
+    "rendering:camera.perspective",
+    "rendering:light.directional",
+    "rendering:material.standard",
+    "rendering:mesh.primitive.box",
+    "rendering:mesh.primitive.capsule",
+    "rendering:mesh.primitive.cylinder",
+    "transform:hierarchy",
+  ]);
 });
 
 function assertFixtureCapabilities(

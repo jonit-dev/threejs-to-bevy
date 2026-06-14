@@ -112,6 +112,7 @@ tn dev --target web
 tn dev --target desktop
 tn validate
 tn build
+tn package --target desktop
 tn verify
 ```
 
@@ -124,6 +125,8 @@ Command expectations:
 - `tn dev` starts watch mode, IR generation, validation, and a runtime preview.
 - `tn validate` runs schema, semantic, asset, API, and target-profile checks.
 - `tn build` emits a versioned game bundle.
+- `tn package --target desktop` emits a local desktop artifact directory with a
+  copied `game.bundle`, package manifest, and Bevy runtime argument file.
 - `tn verify` runs visual self-verification for the web preview.
 
 Post-V1 commands can add target-specific packaging, profiling, conversion, and
@@ -273,7 +276,13 @@ Target expectations:
 - `android`: post-V1 Bevy Android package plus game bundle, mobile target profile, touch controls, and safe-area UI data.
 - `ios`: post-V1 Bevy iOS package plus game bundle, mobile target profile, touch controls, and safe-area UI data.
 
-Mobile packaging should enter after the desktop and web loop is stable. The first mobile milestone should target one known Android device and one known iPhone profile before broad device support.
+V7 desktop packaging is intentionally a local artifact layout, not a signed
+installer: `dist/package/desktop` contains the copied bundle,
+`package.manifest.json`, and `runtime.args.json` for the Bevy runtime loader.
+Mobile packaging, app-store publishing, online deployment, and hosted services
+remain outside the V7 packaging contract. The first mobile milestone should
+target one known Android device and one known iPhone profile before broad device
+support.
 
 ## Testing Expectations
 

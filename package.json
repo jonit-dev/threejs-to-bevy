@@ -24,7 +24,8 @@
     "verify:v3": "node scripts/verify-v3.mjs",
     "verify:v4": "pnpm --filter @threenative/cli build && node scripts/verify-v4.mjs",
     "verify:v5": "node scripts/verify-v5.mjs",
-    "verify:v6": "node scripts/verify-v6.mjs"
+    "verify:v6": "node scripts/verify-v6.mjs",
+    "verify:v7": "node scripts/verify-v7.mjs"
   },
   "devDependencies": {
     "typescript": "^5.9.3"

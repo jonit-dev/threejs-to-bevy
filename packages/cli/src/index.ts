@@ -6,6 +6,7 @@ import { buildCommand } from "./commands/build.js";
 import { compareImagesCommand } from "./commands/compareImages.js";
 import { createProject } from "./commands/create.js";
 import { devCommand } from "./commands/dev.js";
+import { packageCommand } from "./commands/package.js";
 import { validateProject } from "./commands/validate.js";
 import { verifyCommand } from "./commands/verify.js";
 import { type ICommandResult } from "./diagnostics.js";
@@ -41,6 +42,11 @@ const commands: Record<string, ICommandDefinition> = {
     description: "Run a runtime preview with optional rebuild watch mode.",
     implemented: true,
     usage: "tn dev --target <web|desktop> [--project <path>] [--watch]",
+  },
+  package: {
+    description: "Create a local desktop package artifact from a bundle.",
+    implemented: true,
+    usage: "tn package --target desktop --bundle <path> [--out <path>] [--json]",
   },
   verify: {
     description: "Run visual self-verification for the web preview.",
@@ -109,6 +115,10 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
 
   if (commandName === "dev") {
     return devCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "package") {
+    return packageCommand(normalizedArgv.slice(1));
   }
 
   if (commandName === "verify") {

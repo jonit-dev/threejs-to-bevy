@@ -132,7 +132,7 @@ test("should pass matching gate commands and save report path", async () => {
     });
 
     assert.equal(result.ok, true);
-    assert.equal(result.steps.length, 18);
+    assert.equal(result.steps.length, 19);
     assert.equal(result.reportPath.endsWith("artifacts/conformance/verification-report.json"), true);
     assert.equal(result.artifacts.nativeBasicSceneReportPath.endsWith("artifacts/conformance/basic-scene/bevy.report.json"), true);
     assert.equal(
@@ -222,9 +222,15 @@ test("should pass matching gate commands and save report path", async () => {
     assert.equal(result.artifacts.v7ScriptingLifecycleDiffPath.endsWith("artifacts/conformance/v7-scripting-lifecycle/effects-diff.json"), true);
     assert.equal(result.artifacts.v7ScriptingLifecycleNativeEffectsPath.endsWith("artifacts/conformance/v7-scripting-lifecycle/native-effects.json"), true);
     assert.equal(result.artifacts.v7ScriptingLifecycleWebEffectsPath.endsWith("artifacts/conformance/v7-scripting-lifecycle/web-effects.json"), true);
+    assert.equal(result.artifacts.v7PackagingPackageReportPath.endsWith("artifacts/conformance/v7-packaging-target-profiles/package.report.json"), true);
+    assert.equal(
+      result.artifacts.v7PackagingDesktopSmokeReportPath.endsWith("artifacts/conformance/v7-packaging-target-profiles/desktop-smoke.report.json"),
+      true,
+    );
+    assert.equal(result.artifacts.v7PackagingComparisonReportPath.endsWith("artifacts/conformance/v7-packaging-target-profiles/comparison.report.json"), true);
     const report = JSON.parse(await readFile(result.reportPath, "utf8"));
     assert.equal(report.status, "pass");
-    assert.equal(report.steps.length, 18);
+    assert.equal(report.steps.length, 19);
     assert.equal(report.artifacts.nativeBasicSceneReportPath.endsWith("artifacts/conformance/basic-scene/bevy.report.json"), true);
     assert.equal(
       report.artifacts.nativeV6AnimationClipsReportPath.endsWith("artifacts/conformance/v6-animation-clips/bevy.report.json"),
@@ -313,6 +319,12 @@ test("should pass matching gate commands and save report path", async () => {
     assert.equal(report.artifacts.v7ScriptingLifecycleDiffPath.endsWith("artifacts/conformance/v7-scripting-lifecycle/effects-diff.json"), true);
     assert.equal(report.artifacts.v7ScriptingLifecycleNativeEffectsPath.endsWith("artifacts/conformance/v7-scripting-lifecycle/native-effects.json"), true);
     assert.equal(report.artifacts.v7ScriptingLifecycleWebEffectsPath.endsWith("artifacts/conformance/v7-scripting-lifecycle/web-effects.json"), true);
+    assert.equal(report.artifacts.v7PackagingPackageReportPath.endsWith("artifacts/conformance/v7-packaging-target-profiles/package.report.json"), true);
+    assert.equal(
+      report.artifacts.v7PackagingDesktopSmokeReportPath.endsWith("artifacts/conformance/v7-packaging-target-profiles/desktop-smoke.report.json"),
+      true,
+    );
+    assert.equal(report.artifacts.v7PackagingComparisonReportPath.endsWith("artifacts/conformance/v7-packaging-target-profiles/comparison.report.json"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

@@ -30,6 +30,7 @@ export async function verifyConformance(options = {}) {
   const v7SpatialAudioBusesBundlePath = resolve(root, "packages/ir/fixtures/conformance/v7-spatial-audio-buses/game.bundle");
   const v7RendererDenseContentBundlePath = resolve(root, "packages/ir/fixtures/conformance/v7-renderer-dense-content/game.bundle");
   const v7ScriptingLifecycleBundlePath = resolve(root, "packages/ir/fixtures/conformance/v7-scripting-lifecycle/game.bundle");
+  const v7PackagingTargetProfilesBundlePath = resolve(root, "packages/ir/fixtures/conformance/v7-packaging-target-profiles/game.bundle");
   const nativeBasicSceneReportPath = options.nativeBasicSceneReportPath ?? resolve(artifactDir, "basic-scene/bevy.report.json");
   const nativeV6PhysicsEventsReportPath =
     options.nativeV6PhysicsEventsReportPath ?? resolve(artifactDir, "v6-physics-events/bevy.report.json");
@@ -82,6 +83,11 @@ export async function verifyConformance(options = {}) {
     options.v7ScriptingLifecycleNativeEffectsPath ?? resolve(artifactDir, "v7-scripting-lifecycle/native-effects.json");
   const v7ScriptingLifecycleWebEffectsPath =
     options.v7ScriptingLifecycleWebEffectsPath ?? resolve(artifactDir, "v7-scripting-lifecycle/web-effects.json");
+  const v7PackagingPackageReportPath = options.v7PackagingPackageReportPath ?? resolve(artifactDir, "v7-packaging-target-profiles/package.report.json");
+  const v7PackagingDesktopSmokeReportPath =
+    options.v7PackagingDesktopSmokeReportPath ?? resolve(artifactDir, "v7-packaging-target-profiles/desktop-smoke.report.json");
+  const v7PackagingComparisonReportPath =
+    options.v7PackagingComparisonReportPath ?? resolve(artifactDir, "v7-packaging-target-profiles/comparison.report.json");
   const artifacts = {
     nativeBasicSceneReportPath,
     nativeV6AnimationClipsReportPath,
@@ -116,6 +122,9 @@ export async function verifyConformance(options = {}) {
     v7ScriptingLifecycleDiffPath,
     v7ScriptingLifecycleNativeEffectsPath,
     v7ScriptingLifecycleWebEffectsPath,
+    v7PackagingPackageReportPath,
+    v7PackagingDesktopSmokeReportPath,
+    v7PackagingComparisonReportPath,
   };
   const steps = [];
 
@@ -317,6 +326,16 @@ export async function verifyConformance(options = {}) {
         resolve(root, "scripts/verify-v7-scripting-lifecycle-trace.mjs"),
         v7ScriptingLifecycleBundlePath,
         resolve(artifactDir, "v7-scripting-lifecycle"),
+      ],
+      { timeoutMs: 120000 },
+    ],
+    [
+      "V7 packaging target profile verification",
+      process.execPath,
+      [
+        resolve(root, "scripts/verify-v7-packaging-target-profiles.mjs"),
+        v7PackagingTargetProfilesBundlePath,
+        resolve(artifactDir, "v7-packaging-target-profiles"),
       ],
       { timeoutMs: 120000 },
     ],
@@ -557,6 +576,9 @@ function fixtureForStep(stepName) {
   if (stepName.includes("V7 scripting lifecycle")) {
     return "v7-scripting-lifecycle";
   }
+  if (stepName.includes("V7 packaging")) {
+    return "v7-packaging-target-profiles";
+  }
   return "conformance";
 }
 
@@ -606,6 +628,9 @@ function artifactPathForStep(stepName, artifacts) {
   if (stepName.includes("V7 scripting lifecycle")) {
     return artifacts.v7ScriptingLifecycleDiffPath;
   }
+  if (stepName.includes("V7 packaging")) {
+    return artifacts.v7PackagingComparisonReportPath;
+  }
   return undefined;
 }
 
@@ -648,6 +673,9 @@ function bundlePathForStep(stepName) {
   }
   if (stepName.includes("V7 scripting lifecycle")) {
     return "packages/ir/fixtures/conformance/v7-scripting-lifecycle/game.bundle";
+  }
+  if (stepName.includes("V7 packaging")) {
+    return "packages/ir/fixtures/conformance/v7-packaging-target-profiles/game.bundle";
   }
   return undefined;
 }
