@@ -425,6 +425,9 @@ function collectAudioCapabilities(audio: IAudioIr | undefined, add: (domain: str
   if (audio.oneShots.length > 0) {
     add("audio", "one-shot");
   }
+  if ([...audio.music, ...audio.oneShots].some((item) => item.volume !== undefined)) {
+    add("audio", "volume");
+  }
 }
 
 function collectUiCapabilities(ui: IUiIr | undefined, add: (domain: string, capability: string) => void): void {

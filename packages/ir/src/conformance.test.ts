@@ -118,6 +118,7 @@ test("should include capability tags for each conformance fixture", async () => 
     "audio:autoplay",
     "audio:loop",
     "audio:one-shot",
+    "audio:volume",
     "ecs:events",
   ]);
   assertFixtureCapabilities(byName, "v6-retained-ui", [

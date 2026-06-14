@@ -44,6 +44,8 @@ pub struct ConformanceAudioCommandReport {
     pub event: Option<String>,
     pub id: String,
     pub kind: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub volume: Option<f32>,
 }
 
 #[derive(Debug, Serialize)]
@@ -351,6 +353,7 @@ fn report_audio_command(command: &NativeAudioCommand) -> ConformanceAudioCommand
             NativeAudioCommandKind::OneShot => "oneShot",
         }
         .to_owned(),
+        volume: command.volume,
     }
 }
 

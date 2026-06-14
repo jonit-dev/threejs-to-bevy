@@ -6,14 +6,16 @@
       "id": "music.arena",
       "asset": "arena.music",
       "autoplay": true,
-      "loop": true
+      "loop": true,
+      "volume": 0.4
     }
   ],
   "oneShots": [
     {
       "id": "sound.hit",
       "asset": "hit.sound",
-      "event": "DamageEvent"
+      "event": "DamageEvent",
+      "volume": 0.75
     }
   ]
 }

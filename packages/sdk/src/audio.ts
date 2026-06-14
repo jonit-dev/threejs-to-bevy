@@ -8,6 +8,7 @@ export interface IAudioOneShotDeclaration {
   assetRef?: IAssetReference;
   event: string;
   id: string;
+  volume?: number;
 }
 
 export interface IAudioMusicDeclaration {
@@ -16,6 +17,7 @@ export interface IAudioMusicDeclaration {
   autoplay?: boolean;
   id: string;
   loop: boolean;
+  volume?: number;
 }
 
 export interface IAudioDeclaration {
@@ -24,22 +26,24 @@ export interface IAudioDeclaration {
   oneShots: IAudioOneShotDeclaration[];
 }
 
-export function oneShotSound(id: string, options: { asset: AudioAssetReference; event: string }): IAudioOneShotDeclaration {
+export function oneShotSound(id: string, options: { asset: AudioAssetReference; event: string; volume?: number }): IAudioOneShotDeclaration {
   assertNonEmpty(id, "TN_SDK_AUDIO_ID_EMPTY", "Audio one-shot ID must not be empty.");
   const asset = normalizeAsset(options.asset);
   assertNonEmpty(asset.id, "TN_SDK_AUDIO_ASSET_EMPTY", "Audio one-shot asset must not be empty.");
   assertNonEmpty(options.event, "TN_SDK_AUDIO_EVENT_EMPTY", "Audio one-shot event must not be empty.");
-  return { asset: asset.id, ...(asset.ref === undefined ? {} : { assetRef: asset.ref }), event: options.event, id };
+  assertVolume(options.volume);
+  return { asset: asset.id, ...(asset.ref === undefined ? {} : { assetRef: asset.ref }), event: options.event, id, ...(options.volume === undefined ? {} : { volume: options.volume }) };
 }
 
 export function loopingMusic(
   id: string,
-  options: { asset: AudioAssetReference; autoplay?: boolean },
+  options: { asset: AudioAssetReference; autoplay?: boolean; volume?: number },
 ): IAudioMusicDeclaration {
   assertNonEmpty(id, "TN_SDK_AUDIO_ID_EMPTY", "Audio music ID must not be empty.");
   const asset = normalizeAsset(options.asset);
   assertNonEmpty(asset.id, "TN_SDK_AUDIO_ASSET_EMPTY", "Audio music asset must not be empty.");
-  return { asset: asset.id, ...(asset.ref === undefined ? {} : { assetRef: asset.ref }), autoplay: options.autoplay ?? true, id, loop: true };
+  assertVolume(options.volume);
+  return { asset: asset.id, ...(asset.ref === undefined ? {} : { assetRef: asset.ref }), autoplay: options.autoplay ?? true, id, loop: true, ...(options.volume === undefined ? {} : { volume: options.volume }) };
 }
 
 export function defineAudio(options: {
@@ -56,6 +60,12 @@ export function defineAudio(options: {
 function assertNonEmpty(value: string, code: string, message: string): void {
   if (value.trim() === "") {
     throw new SdkError(code, message);
+  }
+}
+
+function assertVolume(value: number | undefined): void {
+  if (value !== undefined && (!Number.isFinite(value) || value < 0)) {
+    throw new SdkError("TN_SDK_AUDIO_VOLUME_INVALID", "Audio volume must be a finite number greater than or equal to 0.");
   }
 }
 

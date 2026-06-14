@@ -8,25 +8,25 @@ test("audio should play one shot on damage event", () => {
     schema: "threenative.audio",
     version: "0.1.0",
     music: [],
-    oneShots: [{ id: "sound.hit", asset: "hit.sound", event: "DamageEvent" }],
+    oneShots: [{ id: "sound.hit", asset: "hit.sound", event: "DamageEvent", volume: 0.75 }],
   });
 
   runtime.handleEvents([{ event: "DamageEvent", payload: { amount: 10 } }]);
 
-  assert.deepEqual(runtime.commands, [{ asset: "hit.sound", event: "DamageEvent", id: "sound.hit", kind: "oneShot" }]);
+  assert.deepEqual(runtime.commands, [{ asset: "hit.sound", event: "DamageEvent", id: "sound.hit", kind: "oneShot", volume: 0.75 }]);
 });
 
 test("audio should start looping music", () => {
   const runtime = createWebAudioRuntime({
     schema: "threenative.audio",
     version: "0.1.0",
-    music: [{ id: "music.arena", asset: "arena.music", autoplay: true, loop: true }],
+    music: [{ id: "music.arena", asset: "arena.music", autoplay: true, loop: true, volume: 0.4 }],
     oneShots: [],
   });
 
   runtime.start();
 
-  assert.deepEqual(runtime.commands, [{ asset: "arena.music", id: "music.arena", kind: "loop" }]);
+  assert.deepEqual(runtime.commands, [{ asset: "arena.music", id: "music.arena", kind: "loop", volume: 0.4 }]);
 });
 
 test("audio element sink should play bundle local one shots and loops", () => {
@@ -48,15 +48,17 @@ test("audio element sink should play bundle local one shots and loops", () => {
     },
   );
 
-  sink.queue({ asset: "arena.music", id: "music.arena", kind: "loop" });
-  sink.queue({ asset: "hit.sound", event: "DamageEvent", id: "sound.hit", kind: "oneShot" });
+  sink.queue({ asset: "arena.music", id: "music.arena", kind: "loop", volume: 0.4 });
+  sink.queue({ asset: "hit.sound", event: "DamageEvent", id: "sound.hit", kind: "oneShot", volume: 0.75 });
 
   assert.equal(elements.length, 2);
   assert.equal(elements[0]?.src, "/game.bundle/assets/arena.ogg");
   assert.equal(elements[0]?.loop, true);
+  assert.equal(elements[0]?.volume, 0.4);
   assert.equal(elements[0]?.plays, 1);
   assert.equal(elements[1]?.src, "/game.bundle/assets/hit.wav");
   assert.equal(elements[1]?.loop, false);
+  assert.equal(elements[1]?.volume, 0.75);
   assert.equal(elements[1]?.plays, 1);
   assert.deepEqual(sink.diagnostics, []);
 });
@@ -79,6 +81,7 @@ class FakeAudioElement implements IWebAudioElement {
   loop = false;
   plays = 0;
   src = "";
+  volume = 1;
 
   play(): void {
     this.plays += 1;

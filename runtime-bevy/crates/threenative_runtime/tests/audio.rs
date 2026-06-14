@@ -16,6 +16,7 @@ fn audio_should_start_looping_music_from_audio_ir() {
             asset: "arena.music".to_owned(),
             autoplay: Some(true),
             looped: Some(true),
+            volume: Some(0.4),
         }],
         one_shots: vec![],
     };
@@ -25,6 +26,7 @@ fn audio_should_start_looping_music_from_audio_ir() {
     assert_eq!(commands.len(), 1);
     assert_eq!(commands[0].asset, "arena.music");
     assert_eq!(commands[0].kind, NativeAudioCommandKind::Loop);
+    assert_eq!(commands[0].volume, Some(0.4));
 }
 
 #[test]
@@ -37,6 +39,7 @@ fn audio_should_play_one_shot_for_matching_event() {
             id: "sound.hit".to_owned(),
             asset: "hit.sound".to_owned(),
             event: "DamageEvent".to_owned(),
+            volume: Some(0.75),
         }],
     };
 
@@ -46,6 +49,7 @@ fn audio_should_play_one_shot_for_matching_event() {
     assert_eq!(commands[0].asset, "hit.sound");
     assert_eq!(commands[0].event.as_deref(), Some("DamageEvent"));
     assert_eq!(commands[0].kind, NativeAudioCommandKind::OneShot);
+    assert_eq!(commands[0].volume, Some(0.75));
 }
 
 #[test]
@@ -59,6 +63,7 @@ fn audio_should_report_fixture_playback_observations() {
     assert_eq!(observation.commands[0].id, "music.arena");
     assert_eq!(observation.commands[0].asset, "arena.music");
     assert_eq!(observation.commands[0].kind, NativeAudioCommandKind::Loop);
+    assert_eq!(observation.commands[0].volume, Some(0.4));
     assert_eq!(observation.commands[1].id, "sound.hit");
     assert_eq!(observation.commands[1].asset, "hit.sound");
     assert_eq!(
@@ -69,4 +74,5 @@ fn audio_should_report_fixture_playback_observations() {
         observation.commands[1].kind,
         NativeAudioCommandKind::OneShot
     );
+    assert_eq!(observation.commands[1].volume, Some(0.75));
 }

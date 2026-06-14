@@ -375,18 +375,19 @@ const heroModel = modelAsset("model.hero", "assets/hero.glb", {
 ## Audio API
 
 V6 audio playback currently starts from structured audio IR and bundle-local
-assets. Autoplay looped music and event-matched one-shots are reported in
-shared conformance observations, and adapters keep audio handles private:
+assets. Autoplay looped music, event-matched one-shots, and command volume are
+reported in shared conformance observations, and adapters keep audio handles
+private:
 
 ```ts
 defineAudio({
-  music: [loopingMusic("music.arena", { asset: audioAsset("arena.music", "assets/arena.ogg") })],
-  oneShots: [oneShotSound("sound.hit", { asset: audioAsset("hit.sound", "assets/hit.wav"), event: "DamageEvent" })],
+  music: [loopingMusic("music.arena", { asset: audioAsset("arena.music", "assets/arena.ogg"), volume: 0.4 })],
+  oneShots: [oneShotSound("sound.hit", { asset: audioAsset("hit.sound", "assets/hit.wav"), event: "DamageEvent", volume: 0.75 })],
 });
 ```
 
-Script/UI `audio.play`, `audio.stop`, volume, spatial audio, and buses are not
-portable V6 APIs yet.
+Script/UI `audio.play`, `audio.stop`, spatial audio, and buses are not portable
+V6 APIs yet.
 
 ```ts
 ctx.animation.play(entity, "run", {

@@ -68,6 +68,7 @@ export interface IConformanceAudioCommandReport {
   event?: string;
   id: string;
   kind: "loop" | "oneShot";
+  volume?: number;
 }
 
 export interface IConformanceAudioReport {

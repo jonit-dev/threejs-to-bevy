@@ -267,7 +267,7 @@ function validateAudioOneShot(
 ): void {
   const raw = oneShot as unknown as Record<string, unknown>;
   for (const key of Object.keys(raw)) {
-    if (!["asset", "event", "id"].includes(key)) {
+    if (!["asset", "event", "id", "volume"].includes(key)) {
       diagnostics.push({
         code: "TN_IR_AUDIO_FIELD_UNSUPPORTED",
         message: `Audio one-shot '${oneShot.id}' uses unsupported field '${key}'.`,
@@ -275,6 +275,7 @@ function validateAudioOneShot(
       });
     }
   }
+  validateAudioVolume(oneShot.volume, `${path}/volume`, diagnostics);
   validateAudioAssetRef(oneShot.asset, audioAssets, `${path}/asset`, diagnostics);
 }
 
@@ -286,7 +287,7 @@ function validateAudioMusic(
 ): void {
   const raw = music as unknown as Record<string, unknown>;
   for (const key of Object.keys(raw)) {
-    if (!["asset", "autoplay", "id", "loop"].includes(key)) {
+    if (!["asset", "autoplay", "id", "loop", "volume"].includes(key)) {
       diagnostics.push({
         code: "TN_IR_AUDIO_FIELD_UNSUPPORTED",
         message: `Audio music '${music.id}' uses unsupported field '${key}'.`,
@@ -301,7 +302,21 @@ function validateAudioMusic(
       path: `${path}/loop`,
     });
   }
+  validateAudioVolume(music.volume, `${path}/volume`, diagnostics);
   validateAudioAssetRef(music.asset, audioAssets, `${path}/asset`, diagnostics);
+}
+
+function validateAudioVolume(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    diagnostics.push({
+      code: "TN_IR_AUDIO_VOLUME_INVALID",
+      message: "Audio volume must be a finite number greater than or equal to 0.",
+      path,
+    });
+  }
 }
 
 function validateAudioAssetRef(

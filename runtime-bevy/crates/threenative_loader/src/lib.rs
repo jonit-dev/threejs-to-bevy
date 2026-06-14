@@ -409,6 +409,7 @@ pub struct AudioOneShotIr {
     pub id: String,
     pub asset: String,
     pub event: String,
+    pub volume: Option<f32>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -418,6 +419,7 @@ pub struct AudioMusicIr {
     pub autoplay: Option<bool>,
     #[serde(rename = "loop")]
     pub looped: Option<bool>,
+    pub volume: Option<f32>,
 }
 
 #[derive(Clone, Debug, Deserialize)]

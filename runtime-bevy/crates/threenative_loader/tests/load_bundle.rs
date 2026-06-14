@@ -95,15 +95,14 @@ fn should_load_optional_audio_ir() {
     write_json(
         &root,
         "audio.ir.json",
-        r#"{ "schema": "threenative.audio", "version": "0.1.0", "music": [{ "id": "music.arena", "asset": "arena.music", "loop": true }], "oneShots": [] }"#,
+        r#"{ "schema": "threenative.audio", "version": "0.1.0", "music": [{ "id": "music.arena", "asset": "arena.music", "loop": true, "volume": 0.4 }], "oneShots": [] }"#,
     );
 
     let bundle = load_bundle(&root).expect("audio bundle should load");
 
-    assert_eq!(
-        bundle.audio.expect("audio ir").music[0].asset,
-        "arena.music"
-    );
+    let audio = bundle.audio.expect("audio ir");
+    assert_eq!(audio.music[0].asset, "arena.music");
+    assert_eq!(audio.music[0].volume, Some(0.4));
     fs::remove_dir_all(root).expect("temp bundle should be removed");
 }
 

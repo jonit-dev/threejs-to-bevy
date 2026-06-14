@@ -271,8 +271,8 @@ test("should derive manifest capabilities from emitted bundle IR", async () => {
       },
       {
         audio: defineAudio({
-          music: [loopingMusic("music.main", { asset: audioAsset("audio.music", "assets/music.ogg") })],
-          oneShots: [oneShotSound("hit", { asset: audioAsset("audio.hit", "assets/hit.wav"), event: "HitEvent" })],
+          music: [loopingMusic("music.main", { asset: audioAsset("audio.music", "assets/music.ogg"), volume: 0.4 })],
+          oneShots: [oneShotSound("hit", { asset: audioAsset("audio.hit", "assets/hit.wav"), event: "HitEvent", volume: 0.75 })],
         }),
         environment: makeEnvironmentDeclaration(),
         input: defineInputMap({
@@ -305,6 +305,7 @@ test("should derive manifest capabilities from emitted bundle IR", async () => {
     assertCapability(manifest, "asset", "audio.ogg");
     assertCapability(manifest, "asset", "texture.png");
     assertCapability(manifest, "audio", "one-shot");
+    assertCapability(manifest, "audio", "volume");
     assertCapability(manifest, "environment", "walkability");
     assertCapability(manifest, "input", "device.gamepad");
     assertCapability(manifest, "physics", "collider.box");

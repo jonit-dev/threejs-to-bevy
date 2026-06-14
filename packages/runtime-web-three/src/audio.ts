@@ -7,6 +7,7 @@ export interface IWebAudioCommand {
   event?: string;
   id: string;
   kind: "loop" | "oneShot";
+  volume?: number;
 }
 
 export interface IWebAudioSink {
@@ -17,6 +18,7 @@ export interface IWebAudioElement {
   loop: boolean;
   src: string;
   currentTime: number;
+  volume: number;
   play(): Promise<void> | void;
 }
 
@@ -41,13 +43,13 @@ export function createWebAudioRuntime(audio: IAudioIr, sink?: IWebAudioSink): IW
     handleEvents(events) {
       for (const event of events) {
         for (const oneShot of audio.oneShots.filter((item) => item.event === event.event)) {
-          queue({ asset: oneShot.asset, event: event.event, id: oneShot.id, kind: "oneShot" });
+          queue({ asset: oneShot.asset, event: event.event, id: oneShot.id, kind: "oneShot", ...(oneShot.volume === undefined ? {} : { volume: oneShot.volume }) });
         }
       }
     },
     start() {
       for (const music of audio.music.filter((item) => item.loop && item.autoplay !== false)) {
-        queue({ asset: music.asset, id: music.id, kind: "loop" });
+        queue({ asset: music.asset, id: music.id, kind: "loop", ...(music.volume === undefined ? {} : { volume: music.volume }) });
       }
     },
   };
@@ -80,6 +82,7 @@ export function createWebAudioElementSink(
       element.src = asset.url;
       element.loop = command.kind === "loop";
       element.currentTime = 0;
+      element.volume = command.volume ?? 1;
       if (command.kind === "loop") {
         loops.set(command.id, element);
       }

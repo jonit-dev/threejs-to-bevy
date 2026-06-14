@@ -312,10 +312,12 @@ fn should_report_audio_playback_conformance_observations() {
     assert_eq!(audio.commands[0].id, "music.arena");
     assert_eq!(audio.commands[0].asset, "arena.music");
     assert_eq!(audio.commands[0].kind, "loop");
+    assert_eq!(audio.commands[0].volume, Some(0.4));
     assert_eq!(audio.commands[1].id, "sound.hit");
     assert_eq!(audio.commands[1].asset, "hit.sound");
     assert_eq!(audio.commands[1].event.as_deref(), Some("DamageEvent"));
     assert_eq!(audio.commands[1].kind, "oneShot");
+    assert_eq!(audio.commands[1].volume, Some(0.75));
 }
 
 #[test]

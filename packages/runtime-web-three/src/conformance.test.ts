@@ -142,8 +142,8 @@ test("should report audio playback conformance observations", async () => {
   assert.equal(report.fixture, "v6-audio-playback");
   assert.deepEqual(report.audio, {
     commands: [
-      { asset: "arena.music", id: "music.arena", kind: "loop" },
-      { asset: "hit.sound", event: "DamageEvent", id: "sound.hit", kind: "oneShot" },
+      { asset: "arena.music", id: "music.arena", kind: "loop", volume: 0.4 },
+      { asset: "hit.sound", event: "DamageEvent", id: "sound.hit", kind: "oneShot", volume: 0.75 },
     ],
   });
 });

@@ -13,14 +13,14 @@ import { emitBundle } from "./bundle.js";
 test("audio should emit hit sound and looping music", () => {
   const audio = emitAudio(
     defineAudio({
-      music: [loopingMusic("music.arena", { asset: "arena.music" })],
-      oneShots: [oneShotSound("sound.hit", { asset: "hit.sound", event: "DamageEvent" })],
+      music: [loopingMusic("music.arena", { asset: "arena.music", volume: 0.4 })],
+      oneShots: [oneShotSound("sound.hit", { asset: "hit.sound", event: "DamageEvent", volume: 0.75 })],
     }),
   );
 
   assert.equal(audio.schema, "threenative.audio");
-  assert.deepEqual(audio.oneShots, [{ asset: "hit.sound", event: "DamageEvent", id: "sound.hit" }]);
-  assert.deepEqual(audio.music, [{ asset: "arena.music", autoplay: true, id: "music.arena", loop: true }]);
+  assert.deepEqual(audio.oneShots, [{ asset: "hit.sound", event: "DamageEvent", id: "sound.hit", volume: 0.75 }]);
+  assert.deepEqual(audio.music, [{ asset: "arena.music", autoplay: true, id: "music.arena", loop: true, volume: 0.4 }]);
 });
 
 test("audio should emit bundle assets and validate playback declarations", async () => {

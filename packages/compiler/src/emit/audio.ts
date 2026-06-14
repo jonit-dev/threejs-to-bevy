@@ -10,11 +10,13 @@ export function emitAudio(audio: IAudioDeclaration): IAudioIr {
       autoplay: music.autoplay,
       id: music.id,
       loop: music.loop,
+      ...(music.volume === undefined ? {} : { volume: music.volume }),
     })),
     oneShots: audio.oneShots.map((oneShot) => ({
       asset: oneShot.asset,
       event: oneShot.event,
       id: oneShot.id,
+      ...(oneShot.volume === undefined ? {} : { volume: oneShot.volume }),
     })),
   };
 }

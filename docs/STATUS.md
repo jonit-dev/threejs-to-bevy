@@ -291,12 +291,13 @@ remain later V6-06 runtime work.
 
 V6-07 has started with bundle-local audio playback evidence: the shared
 `v6-audio-playback` conformance fixture declares local OGG/WAV assets,
-autoplay looping music, and an event-triggered one-shot. The web runtime now has
-a testable HTML audio-element sink for local asset playback and stable missing
-asset/playback diagnostics, while the Bevy runtime can spawn autoplay loop
-audio bundles and both adapters report deterministic audio command observations
-through conformance. Stop, volume, spatial audio, buses, and richer system/UI
-audio services remain later V6-07/V7 contract work.
+autoplay looping music, an event-triggered one-shot, and portable command
+volume. The web runtime now has a testable HTML audio-element sink for local
+asset playback and stable missing asset/playback diagnostics, while the Bevy
+runtime can spawn autoplay loop audio bundles with volume settings and both
+adapters report deterministic audio command observations through conformance.
+Stop, spatial audio, buses, and richer system/UI audio services remain later
+V6-07/V7 contract work.
 
 V6-08 has started with diagnostic metadata preservation: compiler validation
 and CLI JSON output now keep upstream IR diagnostic `limit` and `value` fields

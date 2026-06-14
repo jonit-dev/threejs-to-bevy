@@ -10,7 +10,8 @@
     "audio": [
       "autoplay",
       "loop",
-      "one-shot"
+      "one-shot",
+      "volume"
     ],
     "ecs": [
       "events"

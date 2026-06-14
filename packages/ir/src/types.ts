@@ -223,6 +223,7 @@ export interface IAudioOneShotIr {
   asset: string;
   event: string;
   id: string;
+  volume?: number;
 }
 
 export interface IAudioMusicIr {
@@ -230,6 +231,7 @@ export interface IAudioMusicIr {
   autoplay?: boolean;
   id: string;
   loop: boolean;
+  volume?: number;
 }
 
 export interface IAudioIr {

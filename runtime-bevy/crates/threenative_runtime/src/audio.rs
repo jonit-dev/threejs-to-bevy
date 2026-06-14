@@ -1,5 +1,5 @@
 use bevy::{
-    audio::{AudioBundle, PlaybackSettings},
+    audio::{AudioBundle, PlaybackSettings, Volume},
     prelude::*,
 };
 use threenative_components::ThreeNativeId;
@@ -11,6 +11,7 @@ pub struct NativeAudioCommand {
     pub event: Option<String>,
     pub id: String,
     pub kind: NativeAudioCommandKind,
+    pub volume: Option<f32>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -43,6 +44,7 @@ pub fn start_audio(audio: &AudioIr) -> Vec<NativeAudioCommand> {
             event: None,
             id: music.id.clone(),
             kind: NativeAudioCommandKind::Loop,
+            volume: music.volume,
         })
         .collect()
 }
@@ -60,6 +62,7 @@ pub fn handle_audio_events(audio: &AudioIr, events: &[&str]) -> Vec<NativeAudioC
                     event: Some((*event).to_owned()),
                     id: one_shot.id.clone(),
                     kind: NativeAudioCommandKind::OneShot,
+                    volume: one_shot.volume,
                 })
         })
         .collect()
@@ -102,7 +105,9 @@ pub fn spawn_startup_audio(world: &mut World, bundle: &LoadedBundle) -> Vec<Nati
                 world.spawn((
                     AudioBundle {
                         source: asset_server.load(path),
-                        settings: PlaybackSettings::LOOP,
+                        settings: command.volume.map_or(PlaybackSettings::LOOP, |volume| {
+                            PlaybackSettings::LOOP.with_volume(Volume::new(volume))
+                        }),
                     },
                     Name::new(command.id.clone()),
                     ThreeNativeId(command.id),
