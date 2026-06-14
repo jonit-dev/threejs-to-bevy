@@ -552,6 +552,55 @@ bundle JSON can be captured, edited as structured documents, validated through a
 temporary bundle, saved back to the portable bundle, and compared without making
 editor state a source of truth.
 
+After the initial V8 editor-plumbing slices, functional-game parity work has
+closed the P0 native input-capture gap for keyboard/mouse preview controls. The
+Bevy loader now preserves `axis.value`, the native runtime captures Bevy
+keyboard, mouse-button, pointer-motion, and cursor-position input into
+`NativeInputState`, and live native system snapshots receive captured input
+instead of fixed trace values. Gamepad, touch, picking, rebinding, and richer
+navigation diagnostics remain future input work.
+
+The same functional-game parity pass also closes the P0 native material texture
+loading gap for promoted standard-material slots. Bevy runtime material mapping
+now resolves bundle-local texture asset paths through `AssetServer::load` when
+the runtime app has an asset server, with headless mapping tests retaining
+placeholder handles. Renderer-specific sampling differences, alpha/blend
+modes, UV controls, and advanced PBR texture fields remain tracked as later
+material work.
+
+The audio P0 has also moved from bare loop start/stop traces to portable
+playback-id controls. SDK audio declarations can now include validated
+`pause`, `resume`, `seek`, `stop`, and `query` controls targeting declared
+music or one-shot playback ids; compiler output preserves those controls in
+`audio.ir.json`; web and Bevy lifecycle traces apply the controls and report
+active, paused, seek, stop, and query state deterministically. Platform-native
+audio handles, mixer effects, real spatial attenuation, streaming, and richer
+runtime audio services remain later work.
+
+The retained UI P0 flex-layout gap is also closed for portable HUD/container
+composition. UI nodes now carry validated `layout` metadata for flex direction,
+alignment, justification, row/column gaps, padding, size, and grow; the web DOM
+overlay maps those fields to CSS flex styles, the Bevy runtime maps them to
+Bevy `Style`, and compiler bundle capabilities flag `ui:flex-layout` when the
+metadata is present. Anchors, constraints, overflow/clipping/scrolling, z-index,
+richer styling, widgets, and accessibility semantics remain future UI work.
+
+The character-controller P0 has narrowed to slope limits and sloped-surface
+walkability. `CharacterController.stepOffset` is now a promoted SDK/IR field
+with validation and manifest capability emission, and both web and Bevy
+deterministic character traces step onto low blockers, report actual
+ground-entity contact, become ungrounded past ledges, and apply moving-platform
+carry from rigid-body velocity. Full sloped-surface support, navmesh behavior,
+interaction volumes, and object pushing remain later controller work.
+
+The animation P0 has moved from trace-only metadata toward runtime playback:
+model-backed renderers now receive a derived active animation playback state
+from clip and graph metadata in both web and Bevy, including active state, clip,
+source clip, loop flag, speed, and deterministic time advancement. Actual
+skinned-mesh deformation from loaded glTF animation clips remains the remaining
+P0 animation gap, along with richer graph runtime control, stop/state queries,
+IK, retargeting, and rendered particles.
+
 ## V3 Proves
 
 The V3 evidence loop is `pnpm verify:v3`, which regenerates the environment

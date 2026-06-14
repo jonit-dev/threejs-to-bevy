@@ -92,7 +92,7 @@ Priority labels on unchecked items:
 - [x] Standard material base color, metalness, roughness
 - [x] Texture references and web/native material slot observations
 - [x] Visibility flags on mesh renderers
-- [ ] `P0` Full native texture image loading and texture sampling parity
+- [x] Native texture image loading through Bevy `AssetServer` for promoted material slots
 - [ ] `P1` Alpha modes, transparency sorting, and blend modes
 - [ ] `P1` Emissive materials and HDR bloom contribution
 - [ ] `P1` Normal, occlusion, specular, clearcoat, and transmission maps
@@ -152,7 +152,8 @@ Priority labels on unchecked items:
 - [x] Constrained animation graph metadata
 - [x] Animation event-marker metadata and fixed event traces
 - [x] Bounded particle-emitter metadata and deterministic spawn traces
-- [ ] `P0` Visual skeletal animation playback parity
+- [x] Runtime animation playback binding and time advancement for model renderers in web and Bevy
+- [ ] `P0` Visual skeletal animation deformation from loaded glTF clips
 - [ ] `P1` Transform animation authored in code/IR
 - [ ] `P1` Animation blending beyond fixed graph traces
 - [ ] `P2` Animation masks
@@ -175,7 +176,8 @@ Priority labels on unchecked items:
 - [ ] `P1` Full rigid-body solver parity
 - [ ] `P2` Dynamic mesh colliders
 - [ ] `P1` Broad sensors beyond current trigger/overlap scope
-- [ ] `P0` Slopes, steps, ledges, moving platforms, and richer grounded state
+- [x] Step offsets, ledge ungrounding, moving-platform carry, and richer ground contact trace
+- [ ] `P0` Slope limits and sloped-surface walkability
 - [ ] `P1` Character interaction volumes and object pushing
 - [ ] `P2` Navmesh/pathfinding behavior
 - [ ] `P2` External physics backend integration strategy
@@ -186,7 +188,7 @@ Priority labels on unchecked items:
 - [x] Pointer-lock expectation metadata
 - [x] UI action queue metadata
 - [x] Fixed first-person movement trace
-- [ ] `P0` Native input capture parity
+- [x] Native keyboard, mouse-button, and pointer-axis input capture for Bevy preview/runtime systems
 - [ ] `P1` Gamepad controls and gamepad viewer-style diagnostics
 - [ ] `P1` Touch input and gestures
 - [ ] `P1` Mouse picking and mesh picking
@@ -202,7 +204,7 @@ Priority labels on unchecked items:
 - [x] Text, resource-bound bars, and focusable buttons
 - [x] Focus order, navigation links, input action refs, and safe-area metadata
 - [x] Fixed web/native focus and activation trace
-- [ ] `P0` Flex layout parity beyond promoted HUD cases
+- [x] `P0` Explicit flex layout metadata for direction, alignment, justification, gaps, padding, size, and grow
 - [ ] `P2` CSS grid-style layout
 - [ ] `P1` Anchors, size constraints, overflow, clipping, scrolling, and z-index
 - [ ] `P1` Borders, rounded corners, shadows, gradients, and transparency
@@ -221,9 +223,9 @@ Priority labels on unchecked items:
 - [x] Portable volume and deterministic audio command observations
 - [x] Bus, listener, and spatial-emitter metadata
 - [x] Fixed loop start/stop lifecycle traces
+- [x] Playback-id controls for pause, resume, seek, stop, and query traces
 - [ ] `P1` Real 3D spatial attenuation and listener movement
 - [ ] `P1` Mixer buses, effects, ducking, and routing behavior
-- [ ] `P0` Playback handles for pause/resume/seek/stop/query
 - [ ] `P2` Pitch control and generated tone playback
 - [ ] `P1` Soundtrack/state-driven music transitions
 - [ ] `P3` Custom audio source/decoder support
@@ -281,16 +283,16 @@ Priority labels on unchecked items:
 | Gizmo geometry | ✅ | Web and Bevy expose matching debug/editor-only axis, wire-box, and wire-sphere line geometry helpers with per-line colors and focused conversion tests for Three.js `BufferGeometry` and Bevy `LineList` meshes. | Larger editor overlay systems can compose these helpers for cameras, lights, bounds, and UI nodes. |
 | Cameras | ⚠️ | Perspective camera and active camera path are usable; orthographic camera projection maps in web and Bevy and is now exposed as a runtime conformance observation in `v5-drift-surface`. | General camera resource model and full orthographic visual parity are not complete. |
 | Lights | ✅ | Ambient, directional, point range, spot range/angle in SDK/compiler/IR, web, Bevy, and conformance observations. | Advanced lighting parity beyond promoted fields remains renderer-specific. |
-| Materials | ⚠️ | Standard color, metalness, roughness, and validated texture refs; web maps texture slots; Bevy maps refs to `StandardMaterial` image handles. | Full native texture image loading and visual texture parity remain adapter-dependent. |
+| Materials | ⚠️ | Standard color, metalness, roughness, and validated texture refs; web maps texture slots; Bevy maps refs to `StandardMaterial` image handles and now loads promoted texture asset paths through Bevy `AssetServer` in runtime apps. | Visual texture sampling parity beyond Bevy/Three.js renderer defaults, alpha/blend behavior, UV controls, and advanced PBR texture fields remain incomplete. |
 | Shadows/color/fog/sky | ⚠️ | Promoted fields for shadows, fog, sky/horizon color, tone mapping, exposure, and color spaces are serialized and observed. | Native fog/sky/color rendering parity is still limited. |
 | Assets/glTF/scenes | ✅ | Bundle-local glTF/GLB, `.bin`, and texture dependencies; V3 environment instances resolve to real model scenes in web and Bevy. | Asset diagnostics still need more stable domain codes in some paths. |
 | Instancing/dense content | ⚠️ | Web instancing plan, concrete dense-content budget estimates, repeated group observations, source asset LOD metadata; V7 compares fixed web/native environment content traces for LOD selection and model-backed repeated-instance observations through `v7-renderer-dense-content`. | Actual renderer-level native instancing, visual runtime LOD mesh swapping, and portable post-processing are not claimed. |
-| Animation | ⚠️ | V6 model clip metadata, validation, conformance reporting, and `animation.play` service-call trace; V7 validates and emits constrained animation graph, event-marker, and bounded particle-emitter metadata, and `v7-animation-graphs-particles` compares fixed web/native graph transition, active clip, queued animation event payload, and bounded particle spawn traces. | Full visual mixer playback, scripted graph playback beyond the fixed trace, stop/state query APIs, IK, retargeting, and rendered particle systems are incomplete. |
+| Animation | ⚠️ | V6 model clip metadata, validation, conformance reporting, and `animation.play` service-call trace; V7 validates and emits constrained animation graph, event-marker, and bounded particle-emitter metadata, and `v7-animation-graphs-particles` compares fixed web/native graph transition, active clip, queued animation event payload, and bounded particle spawn traces; model-backed renderers now receive active playback state and deterministic time advancement in web and Bevy. | Actual skinned-mesh deformation from loaded glTF animation clips, scripted graph playback beyond fixed traces, stop/state query APIs, IK, retargeting, and rendered particle systems are incomplete. |
 | Physics/collision | ⚠️ | V6 box/sphere/capsule collider validation, rigid-body fields, deterministic collision/trigger event phases for fixed traces; V7 contract metadata validates portable collider `layer`/`mask` filters and declares `physics.overlap` / `physics.shapeCast` service permissions; `v7-advanced-physics-character` now compares fixed web/native primitive overlap, swept box shape-cast service traces, and the narrow grounded/blocking character trace with portable layer filters; web/native runtime tests pin deterministic ordering for simultaneous contacts. | Full solver behavior, dynamic mesh colliders, and broader sensors are not claimed yet. |
-| Character controller | ⚠️ | V6 character controller metadata, input references, movement axes, speed, grounding/blocking/interaction declarations; V7 fixed web/native character trace covers one-step axis movement, raycast-style grounding, and stop-before-penetration blocking. | Full runtime interaction parity, slopes, steps, navmesh behavior, and richer controller state are incomplete. |
-| UI | ⚠️ | Retained UI IR, validation, web DOM overlay, Bevy entity spawning, conformance UI tree, resource-bound bar, focusable button; V7 focus order, navigation links, input action refs, safe-area metadata, and fixed web/native focus/activation trace. | Rich platform widget behavior, broad gamepad/touch coverage, styling/layout parity, and richer UI/audio UX are incomplete. |
-| Audio | ⚠️ | Local OGG/WAV validation, web HTML-audio sink, Bevy autoplay loop spawning, portable volume, deterministic audio command observations, and V7 bus/listener/spatial-emitter metadata with routed command reports plus fixed loop start/stop lifecycle traces through `v7-spatial-audio-buses`. | Real spatial attenuation, mixer effects, streaming/network audio, platform handles, and richer UI/audio services remain incomplete or unsupported. |
-| Input | ⚠️ | First-person config, pointer-lock expectations, movement update, input references, UI action queue metadata. | Native input capture and richer gamepad/touch navigation remain smoke-level or deferred. |
+| Character controller | ⚠️ | V6 character controller metadata, input references, movement axes, speed, grounding/blocking/interaction declarations; V7 fixed web/native character trace covers one-step axis movement, raycast-style grounding, stop-before-penetration blocking, promoted `stepOffset`, ledge ungrounding, ground-entity observations, and moving-platform carry from rigid-body velocity. | Slope limits, sloped-surface walkability, full runtime interaction parity, navmesh behavior, and object pushing are incomplete. |
+| UI | ⚠️ | Retained UI IR, validation, web DOM overlay, Bevy entity spawning, conformance UI tree, resource-bound bar, focusable button; V7 focus order, navigation links, input action refs, safe-area metadata, and fixed web/native focus/activation trace; explicit flex layout metadata now validates and maps direction, alignment, justification, gaps, padding, size, and grow across web DOM overlay and Bevy UI. | Anchors, constraints, overflow, clipping, scrolling, z-index, richer styling, platform widgets, broad gamepad/touch coverage, and accessibility diagnostics remain incomplete. |
+| Audio | ⚠️ | Local OGG/WAV validation, web HTML-audio sink, Bevy autoplay loop spawning, portable volume, deterministic audio command observations, and V7 bus/listener/spatial-emitter metadata with routed command reports plus fixed loop start/stop lifecycle traces through `v7-spatial-audio-buses`; portable playback ids now support validated pause, resume, seek, stop, and query control traces in web and Bevy. | Real spatial attenuation, mixer effects, streaming/network audio, platform-native handles, and richer UI/audio services remain incomplete or unsupported. |
+| Input | ⚠️ | First-person config, pointer-lock expectations, movement update, input references, UI action queue metadata; Bevy runtime now loads `axis.value` input bindings, captures keyboard actions/axes, mouse-button actions, pointer delta/position axes from Bevy input resources/events, and feeds captured native input into portable system snapshots during live preview/runtime updates. | Gamepad/touch capture, input rebinding, mesh/UI picking, and richer navigation diagnostics remain incomplete. |
 | Scripting | ✅ | V4 portable scripts, deterministic bundle output, web runner, Bevy QuickJS host, declared effect validation, patch/event/command/service logs; V7 `v7-scripting-lifecycle` compares a script-heavy multi-schedule web/native effect log with resource, event, command, service, `ctx.states.get()` app/computed/substate reads, `ctx.components.hooks()` component-hook reads, `ctx.components.type()` component-reflection reads, `ctx.observers.propagate()` observer-route reads, fixed-trace task/channel reads plus channel sends through `ctx.tasks.*()` / `ctx.channels.*()`, and read-only plugin composition through `ctx.plugins.*()`. | Arbitrary async timers/promises/workers, arbitrary npm/platform APIs, state-preserving hot reload, dynamic runtime plugin loading, full dynamic scene reconciliation, raw Bevy/renderer type IDs, command-time/removal component hook callbacks, stoppable observers, and system-local persisted state remain unsupported or bounded. |
 | Diagnostics | ⚠️ | Stable IR/compiler/CLI/native diagnostic shapes, severity, suggestions, metadata preservation, V5/V6 ranges. | Some asset/runtime failures still need better domain-specific codes and target-specific repair hints. |
 | Packaging/platforms | ⚠️ | Templates and verify gates build local bundles and web evidence; V7 adds `tn package --target desktop`, target-profile diagnostics, a local desktop package manifest, runtime args, `artifacts/v7/packaging`, and packaged `examples/v7-functional` evidence. | Signed installers, mobile app-store packaging, online publishing, hosted services, and broader platform diagnostics are not implemented. |
