@@ -66,3 +66,32 @@ test("should build v5 game starter template", async () => {
   );
   assert.equal(runtimeConfig.window.title, "ThreeNative V5 Game Starter");
 });
+
+test("should build v6 functional example", async () => {
+  const projectPath = resolve(process.cwd(), "../../examples/v6-functional");
+  const { bundlePath } = await buildProject(projectPath);
+  const report = await validateBundle(bundlePath);
+  const manifest = JSON.parse(await readFile(resolve(bundlePath, "manifest.json"), "utf8"));
+  const assets = JSON.parse(await readFile(resolve(bundlePath, "assets.manifest.json"), "utf8"));
+  const systems = JSON.parse(await readFile(resolve(bundlePath, "systems.ir.json"), "utf8"));
+  const runtimeConfig = JSON.parse(await readFile(resolve(bundlePath, "runtime.config.json"), "utf8"));
+
+  assert.equal(bundlePath, resolve(projectPath, "dist/v6-functional.bundle"));
+  assert.equal(report.ok, true);
+  assert.deepEqual(
+    systems.systems.map((system: { name: string }) => system.name),
+    ["seedDamageEvent", "v6ProofLoop"],
+  );
+  assert.ok(manifest.requiredCapabilities.animation.includes("clip-metadata"));
+  assert.ok(manifest.requiredCapabilities.audio.includes("music"));
+  assert.ok(manifest.requiredCapabilities.character.includes("controller"));
+  assert.ok(manifest.requiredCapabilities.input.includes("device.pointer"));
+  assert.ok(manifest.requiredCapabilities.physics.includes("collider.box"));
+  assert.ok(manifest.requiredCapabilities.scripting.includes("service.animation.play"));
+  assert.ok(manifest.requiredCapabilities.scripting.includes("service.physics.raycast"));
+  assert.deepEqual(assets.assets.find((asset: { id: string }) => asset.id === "model.hero")?.animations, [
+    { id: "idle", loop: true },
+    { id: "run", loop: true, sourceClip: "Armature|Run", speed: 1.1 },
+  ]);
+  assert.equal(runtimeConfig.window.title, "ThreeNative V6 Functional");
+});

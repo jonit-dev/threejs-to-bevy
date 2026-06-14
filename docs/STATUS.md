@@ -213,8 +213,8 @@ validation, web, Bevy where claimed, conformance, docs, examples, and release
 gates agree.
 
 The V6 ticket slice is tracked in [V6 PRDs](PRDs/v6/README.md). Those tickets
-define planned work; they do not mark promoted V6 features as implemented until
-the corresponding SDK, IR, validation, web runtime, Bevy evidence,
+define planned work; they do not mark promoted V6 features as fully implemented
+until the corresponding SDK, IR, validation, web runtime, Bevy evidence,
 conformance, docs, example scene, and `verify:v6` release gate evidence lands.
 
 V6-01 has started with the SDK/IR declaration slice: portable system metadata
@@ -302,6 +302,17 @@ animation, UI, audio, and target-specific runtime drift. Native conformance
 reports now surface bundle-inspection audio and UI diagnostics instead of
 silently dropping them, so missing native audio assets and unsupported Bevy UI
 nodes appear in runtime observation artifacts.
+
+V6-09 has started with the functional scene and initial aggregate gate:
+`examples/v6-functional` builds one bundle that combines V6 ECS resources,
+events, startup/update systems, primitive physics, a character controller,
+animation clip metadata, retained UI, input, audio, and runtime config.
+`pnpm verify:v6` now runs the V6 docs gate, V6 gate-script tests, CLI build,
+functional scene build/validation, and shared conformance, then writes
+`artifacts/v6/verification-report.json`. The report intentionally marks
+`visualEvidenceStatus` as `pending`; rendered screenshots, playable traces, and
+native frame/observation artifacts remain later V6-09 work before the scene can
+serve as final visual parity evidence.
 
 V7 is now planned as the deep engine gap-closure milestone. It should continue
 parity work that is too large or risky for V6, such as deeper physics,

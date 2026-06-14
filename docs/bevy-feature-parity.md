@@ -304,6 +304,18 @@ Bevy conformance reports now include audio/UI bundle-inspection diagnostics for
 missing native audio assets and unsupported retained UI nodes instead of hiding
 those target-specific failures.
 
+V6-09 has started for the functional scene/release-gate proof:
+`examples/v6-functional` now builds a single authored scene that exercises the
+promoted V6 contracts available today, including resources/events, declared
+systems, startup/update schedules, primitive colliders, a character controller,
+model clip metadata, retained UI, input, audio, and runtime config.
+`pnpm verify:v6` now provides the initial V6 aggregate gate by checking V6 docs,
+testing the gate scripts, building the CLI, building and validating the
+functional scene, and running shared conformance. This starts the example and
+release-gate evidence row, but visual animation playback, screenshot/playable
+trace evidence, native frame capture, and final runtime parity observations are
+not claimed yet.
+
 ## V7 Deep Engine Gap-Closure Plan
 
 The planned V7 implementation slice is tracked in

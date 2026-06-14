@@ -1,8 +1,31 @@
 # verify:v6
 
-`verify:v6` is not the aggregate V6 release gate yet. Until that command lands,
-V6 runtime slices attach their evidence to shared conformance and focused
-package tests.
+`verify:v6` is the initial aggregate V6 release gate. It proves the functional
+scene can build and validate against the current V6 contracts, and keeps the
+shared conformance suite in the loop while V6 visual/playable evidence is still
+being expanded.
+
+Current command:
+
+```bash
+pnpm verify:v6
+```
+
+Current V6 aggregate checks:
+
+- V6 docs gate: `scripts/check-docs-v6.mjs`.
+- V6 gate-script tests: `scripts/check-docs-v6.test.mjs` and
+  `scripts/verify-v6.test.mjs`.
+- CLI build before consuming the example.
+- `examples/v6-functional` build through `tn build`.
+- `examples/v6-functional` validation through `tn validate`.
+- shared conformance through `scripts/verify-conformance.mjs`.
+
+The aggregate report is written to
+`artifacts/v6/verification-report.json` with schema
+`threenative.verify.v6`. The report currently carries
+`visualEvidenceStatus: "pending"` because V6-09 rendered screenshots,
+playable traces, and native observation artifacts are still the next checkpoint.
 
 Current V6 trace evidence:
 
@@ -29,6 +52,7 @@ verify:conformance`.
 This current trace proves startup-before-update ordering, initial event
 visibility, declared resource writes, and event/resource effect-log parity for
 the V6 resource/event fixture. It also proves matching `animation.play`
-service-call logs for the V6 animation fixture. It does not yet replace the
-future aggregate `verify:v6` gate, functional V6 scene proof, real visual
-animation playback, or broader schedule/state coverage.
+service-call logs for the V6 animation fixture. The aggregate gate adds the
+functional scene build/validation proof, but does not yet prove real rendered
+animation playback, screenshot parity, playable input traces, native frame
+captures, or broader schedule/state coverage.
