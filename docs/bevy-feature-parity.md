@@ -15,6 +15,250 @@
 | ❌ | Not implemented in this repo. |
 | ⏭️ | Intentionally deferred or never portable. |
 
+## Bevy Feature Checklist
+
+This checklist is a Bevy-derived backlog for the portable ThreeNative contract.
+Checked items have an explicit ThreeNative row or promoted slice in the parity
+table below. Unchecked items are reminders to either promote through SDK/IR,
+validation, web, Bevy, conformance, and docs evidence, or explicitly defer with
+diagnostics. The baseline remains Bevy `=0.14.2`, not latest Bevy.
+
+### 🧩 ECS, App, and Scheduling
+
+- [x] Entities, stable IDs, components, and component schemas
+- [x] Parent/child hierarchy and local/global transform propagation
+- [x] Resources and typed game events
+- [x] Startup, fixed update, update, and post-update schedules
+- [x] Deterministic system ordering and command-buffer spawn/despawn
+- [x] State metadata and constrained lifecycle traces
+- [ ] Bevy-style computed states and substates
+- [ ] Observer/event propagation model
+- [ ] Component hooks and lifecycle hooks
+- [ ] Scene serialization/deserialization as an authoring feature
+- [ ] Reflection/type registration surface for portable components
+- [ ] Async task/channel patterns
+- [ ] Plugin/plugin-group composition as a portable declaration
+
+### 📐 Transforms, Math, and Geometry
+
+- [x] Translation, rotation, scale, and nested transforms
+- [x] Basic 3D mesh primitives: box, sphere, plane, capsule, cylinder
+- [x] Bounding/raycast-style queries for promoted physics traces
+- [ ] Full Bevy primitive catalog and extrusions
+- [ ] Custom mesh generation and custom vertex attributes
+- [ ] Mesh bounds, AABB/sphere intersection utilities, and sampling
+- [ ] Curves, splines, easing functions, and path sampling
+- [ ] Transform interpolation/smoothing helpers
+- [ ] Gizmo geometry as debug/editor-only output
+
+### 🎥 Cameras and Views
+
+- [x] Perspective camera and active camera selection
+- [x] Orthographic projection metadata and conformance observation
+- [x] First-person camera/controller metadata
+- [ ] Multiple active cameras, camera ordering, and split-screen
+- [ ] Viewports, sub-views, and render layers
+- [ ] Render-to-texture and depth-only camera targets
+- [ ] Custom projections
+- [ ] Camera effects: screen shake, orbit, pan, zoom, and view models
+- [ ] Screenshot/export camera workflows
+
+### 💡 Lights, Shadows, and Global Illumination
+
+- [x] Ambient light
+- [x] Directional light
+- [x] Point light with range
+- [x] Spot light with range and angle
+- [x] Shadow metadata and shadow conformance observations
+- [ ] Dynamic light limits, clustered-light behavior, and light culling budgets
+- [ ] Point-light PCF/shadow-filtering parity
+- [ ] Shadow bias controls
+- [ ] Per-mesh shadow caster/receiver controls
+- [ ] Spherical/area-light behavior
+- [ ] Lightmaps and mixed baked/dynamic lighting
+- [ ] Light probes and environment maps
+- [ ] Light gizmos/debug visualization
+
+### 🎨 Materials, Textures, and Shaders
+
+- [x] Standard material base color, metalness, roughness
+- [x] Texture references and web/native material slot observations
+- [x] Visibility flags on mesh renderers
+- [ ] Full native texture image loading and texture sampling parity
+- [ ] Alpha modes, transparency sorting, and blend modes
+- [ ] Emissive materials and HDR bloom contribution
+- [ ] Normal, occlusion, specular, clearcoat, and transmission maps
+- [ ] Parallax mapping and depth maps
+- [ ] Anisotropy, specular tint, and advanced PBR fields
+- [ ] Texture repeat/wrap/filter/UV transform controls
+- [ ] Multiple UV channels
+- [ ] Vertex colors
+- [ ] Custom materials and extended materials
+- [ ] Custom shaders, shader defs, storage buffers, and render phases
+- [ ] Bindless materials/textures
+
+### 🌌 3D Rendering, Atmosphere, and Post-Processing
+
+- [x] Basic 3D scene rendering through web Three.js and native Bevy
+- [x] Fog, sky/horizon color, tone mapping, exposure, and color-space metadata
+- [x] Dense-content budget estimates and repeated-instance observations
+- [x] Source asset LOD metadata and fixed LOD-selection traces
+- [ ] Visual fog/sky/atmosphere parity in native output
+- [ ] Atmospheric scattering and atmospheric fog
+- [ ] Volumetric fog and volumetric lighting
+- [ ] Skyboxes and cubemap/compressed texture handling
+- [ ] Bloom
+- [ ] Anti-aliasing modes: MSAA, FXAA, TAA, SMAA
+- [ ] Color grading and filmic controls
+- [ ] Auto exposure
+- [ ] Depth of field
+- [ ] Motion blur and motion vectors
+- [ ] Screen-space reflections and mirrors
+- [ ] Decals
+- [ ] Deferred rendering
+- [ ] Visibility ranges/HLOD fade behavior
+- [ ] Renderer-level native instancing and batching parity
+- [ ] Virtual geometry/meshlet rendering
+- [ ] Custom post-processing passes
+
+### 📦 Assets, glTF, and Scenes
+
+- [x] Bundle-local glTF/GLB assets
+- [x] glTF `.bin` and texture dependency bundling
+- [x] Model scene instances in web and Bevy
+- [x] Material/texture/mesh asset diagnostics and conformance observations
+- [x] Typed animation clip metadata from model assets
+- [ ] Embedded assets
+- [ ] Web/network asset loading
+- [ ] Custom asset loaders and custom asset types
+- [ ] Multi-asset load synchronization
+- [ ] glTF extras and custom glTF vertex attributes
+- [ ] Query/update spawned glTF scene entities
+- [ ] Scene viewer/editor inspection workflow
+- [ ] Asset hot reload and state-preserving reload behavior
+
+### 🎞️ Animation and Particles
+
+- [x] Animation clip metadata and validated clip refs
+- [x] `animation.play` service-call trace
+- [x] Constrained animation graph metadata
+- [x] Animation event-marker metadata and fixed event traces
+- [x] Bounded particle-emitter metadata and deterministic spawn traces
+- [ ] Visual skeletal animation playback parity
+- [ ] Transform animation authored in code/IR
+- [ ] Animation blending beyond fixed graph traces
+- [ ] Animation masks
+- [ ] Animation stop/state query APIs
+- [ ] Morph-target animation
+- [ ] Retargeting and inverse kinematics
+- [ ] UI/property animation
+- [ ] Rendered particle systems
+
+### 🧱 Physics, Collision, and Character Movement
+
+- [x] Fixed-timestep movement contract
+- [x] Box, sphere, and capsule colliders
+- [x] Rigid-body metadata
+- [x] Trigger/contact event phases for fixed traces
+- [x] Collision layer/mask metadata
+- [x] Raycast-style grounding trace
+- [x] Overlap and shape-cast service traces
+- [x] Narrow character controller movement and blocking trace
+- [ ] Full rigid-body solver parity
+- [ ] Dynamic mesh colliders
+- [ ] Broad sensors beyond current trigger/overlap scope
+- [ ] Slopes, steps, ledges, moving platforms, and richer grounded state
+- [ ] Character interaction volumes and object pushing
+- [ ] Navmesh/pathfinding behavior
+- [ ] External physics backend integration strategy
+
+### 🎮 Input, Picking, and Controls
+
+- [x] Keyboard/mouse-style input references for promoted systems
+- [x] Pointer-lock expectation metadata
+- [x] UI action queue metadata
+- [x] Fixed first-person movement trace
+- [ ] Native input capture parity
+- [ ] Gamepad controls and gamepad viewer-style diagnostics
+- [ ] Touch input and gestures
+- [ ] Mouse picking and mesh picking
+- [ ] UI picking
+- [ ] Drag-and-drop picking events
+- [ ] Picking debug overlay
+- [ ] Input rebinding and device capability diagnostics
+
+### 🧭 UI, Text, and Accessibility
+
+- [x] Retained UI IR and validation
+- [x] Web DOM overlay and Bevy UI entity spawning
+- [x] Text, resource-bound bars, and focusable buttons
+- [x] Focus order, navigation links, input action refs, and safe-area metadata
+- [x] Fixed web/native focus and activation trace
+- [ ] Flex layout parity beyond promoted HUD cases
+- [ ] CSS grid-style layout
+- [ ] Anchors, size constraints, overflow, clipping, scrolling, and z-index
+- [ ] Borders, rounded corners, shadows, gradients, and transparency
+- [ ] Rich text styling: fonts, weights, wrapping, underline, strikethrough
+- [ ] Images, texture atlases, 9-slice scaling, flipping, and tiling
+- [ ] Standard widgets: sliders, scrollbars, virtual keyboard, context menus
+- [ ] Automatic directional navigation and tab navigation parity
+- [ ] UI transforms and render-to-texture/3D-world UI
+- [ ] Accessibility semantics and screen-reader-oriented diagnostics
+- [ ] UI debug overlay/gizmos
+
+### 🔊 Audio
+
+- [x] Local OGG/WAV asset validation
+- [x] Web HTML-audio sink and Bevy autoplay loop spawning
+- [x] Portable volume and deterministic audio command observations
+- [x] Bus, listener, and spatial-emitter metadata
+- [x] Fixed loop start/stop lifecycle traces
+- [ ] Real 3D spatial attenuation and listener movement
+- [ ] Mixer buses, effects, ducking, and routing behavior
+- [ ] Playback handles for pause/resume/seek/stop/query
+- [ ] Pitch control and generated tone playback
+- [ ] Soundtrack/state-driven music transitions
+- [ ] Custom audio source/decoder support
+- [ ] Streaming and network audio
+- [ ] Platform-specific audio diagnostics
+
+### 🧪 Diagnostics, Tooling, Packaging, and Performance
+
+- [x] Stable IR/compiler/CLI/native diagnostic shapes
+- [x] JSON severity, suggestions, paths, and metadata preservation
+- [x] Conformance reports for web and Bevy observations
+- [x] Release verification gates and artifact presence checks
+- [x] Desktop package manifest and runtime args for V7 packaging
+- [x] Fixed metric reports for frame/load/draw/entity/package-size budgets
+- [ ] Live profiler captures and native platform profiler evidence
+- [ ] GPU profiling and render-pass timing breakdowns
+- [ ] In-app FPS overlay and custom diagnostics
+- [ ] Signed installers and app-store/mobile packaging
+- [ ] Broader platform target profiles and repair hints
+- [ ] Large-scene stress-test fixtures for UI, text, lights, cubes, and animated models
+
+### 🛠️ Editor, Debugging, and Developer Tools
+
+- [x] Local editor project snapshot validation
+- [x] Deterministic structured bundle-relative JSON diffs
+- [x] CLI entry points for `tn editor snapshot` and `tn editor diff`
+- [ ] Visual editor UI and inspector panels
+- [ ] Save/load round trips through structured SDK/ECS/IR data
+- [ ] Scene hierarchy inspector and property editing
+- [ ] Gizmo overlays for transforms, lights, bounds, cameras, and UI nodes
+- [ ] Gamepad, scene viewer, and asset preview tools
+- [ ] Hot reload with state policy
+- [ ] Debug draw APIs for gameplay systems
+
+### 🚧 Intentionally Deferred or Non-Portable
+
+- [ ] Direct Bevy authoring from user TypeScript
+- [ ] Raw Three.js authoring as the source of truth
+- [ ] Public plugin escape hatches into renderer/runtime internals
+- [ ] Online services, networking, replication, and collaboration
+- [ ] Arbitrary npm, filesystem, worker, timer, or platform APIs in portable scripts
+- [ ] Backend-only features that cannot be represented in portable IR
+
 ## Parity Table
 
 | Feature | Status | Done | Missing / gap |
