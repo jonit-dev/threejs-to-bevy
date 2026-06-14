@@ -21,6 +21,10 @@
         "Score"
       ],
       "services": [],
+      "script": {
+        "bundle": "scripts.bundle.js",
+        "exportName": "system_resourceEventProbe"
+      },
       "writes": []
     }
   ]

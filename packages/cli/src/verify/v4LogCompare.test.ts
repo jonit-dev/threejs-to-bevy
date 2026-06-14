@@ -31,6 +31,18 @@ test("v4LogCompare should report first mismatched command", () => {
   assert.equal(comparison.firstMismatch?.path, "entries/0/command");
 });
 
+test("v4LogCompare should compare resource entries deterministically", () => {
+  const log = effectLog([
+    { frame: 1, kind: "resource", schedule: "update", system: "resourceEventProbe", tick: 1, resource: "Score", value: { value: 5 } },
+    { frame: 1, kind: "event", schedule: "update", system: "resourceEventProbe", tick: 1, event: "DamageEvent", payload: { amount: 3 } },
+  ]);
+
+  const comparison = compareV4EffectLogs(log, effectLog([...log.entries].reverse()));
+
+  assert.equal(comparison.status, "pass");
+  assert.deepEqual(comparison.diagnostics, []);
+});
+
 function effectLog(entries: IV4EffectLog["entries"]): IV4EffectLog {
   return { entries, schema: "threenative.web-system-effects", version: 1 };
 }

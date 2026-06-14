@@ -58,6 +58,7 @@ test("should include capability tags for each conformance fixture", async () => 
     "scripting:event-writes",
     "scripting:resource-reads",
     "scripting:resource-writes",
+    "scripting:script-bundle",
     "scripting:systems",
   ]);
 });

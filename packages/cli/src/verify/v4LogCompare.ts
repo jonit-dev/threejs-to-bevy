@@ -14,6 +14,7 @@ export interface IV4EffectLogEntry {
   frame: number;
   kind: string;
   payload?: unknown;
+  resource?: string;
   schedule: string;
   service?: string;
   system: string;
@@ -165,6 +166,7 @@ function entryKey(entry: IV4EffectLogEntry): string {
     entry.entity ?? "",
     entry.component ?? "",
     entry.event ?? "",
+    entry.resource ?? "",
     entry.service ?? "",
     JSON.stringify(entry.payload ?? entry.value ?? null),
   ].join("\u0000");

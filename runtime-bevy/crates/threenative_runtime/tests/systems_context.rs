@@ -1,4 +1,5 @@
 use std::{
+    collections::BTreeMap,
     fs,
     path::{Path, PathBuf},
 };
@@ -6,6 +7,7 @@ use std::{
 use threenative_loader::load_bundle;
 use threenative_runtime::systems_context::{
     NativeSystemTimeSnapshot, build_system_context_snapshot,
+    build_system_context_snapshot_with_events,
 };
 
 #[test]
@@ -30,6 +32,35 @@ fn systems_context_should_build_declared_query_snapshot() {
     assert_eq!(snapshot.time.fixed_dt, 0.016);
 }
 
+#[test]
+fn systems_context_should_include_bundle_and_queued_events() {
+    let root = write_bundle("event-context");
+    let bundle = load_bundle(&root).expect("bundle should load");
+    let system = &bundle
+        .systems
+        .as_ref()
+        .expect("systems should load")
+        .systems[0];
+
+    let snapshot = build_system_context_snapshot_with_events(
+        &bundle,
+        system,
+        time(),
+        BTreeMap::from([(
+            "DamageEvent".to_owned(),
+            vec![serde_json::json!({ "amount": 4 })],
+        )]),
+    );
+
+    assert_eq!(
+        snapshot.events.get("DamageEvent"),
+        Some(&vec![
+            serde_json::json!({ "amount": 2 }),
+            serde_json::json!({ "amount": 4 }),
+        ])
+    );
+}
+
 fn write_bundle(name: &str) -> PathBuf {
     let root = root(name);
     fs::create_dir_all(&root).expect("temp bundle should be created");
@@ -51,6 +82,9 @@ fn write_bundle(name: &str) -> PathBuf {
         r#"{
   "schema": "threenative.world",
   "version": "0.1.0",
+  "events": {
+    "DamageEvent": [{ "amount": 2 }]
+  },
   "entities": [
     {
       "id": "player",

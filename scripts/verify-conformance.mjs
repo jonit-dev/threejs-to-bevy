@@ -17,9 +17,15 @@ export async function verifyConformance(options = {}) {
   const nativeBasicSceneReportPath = options.nativeBasicSceneReportPath ?? resolve(artifactDir, "basic-scene/bevy.report.json");
   const nativeV6ResourcesEventsReportPath =
     options.nativeV6ResourcesEventsReportPath ?? resolve(artifactDir, "v6-resources-events/bevy.report.json");
+  const v6ResourceEventDiffPath = options.v6ResourceEventDiffPath ?? resolve(artifactDir, "v6-resources-events/effects-diff.json");
+  const v6ResourceEventNativeEffectsPath = options.v6ResourceEventNativeEffectsPath ?? resolve(artifactDir, "v6-resources-events/native-effects.json");
+  const v6ResourceEventWebEffectsPath = options.v6ResourceEventWebEffectsPath ?? resolve(artifactDir, "v6-resources-events/web-effects.json");
   const artifacts = {
     nativeBasicSceneReportPath,
     nativeV6ResourcesEventsReportPath,
+    v6ResourceEventDiffPath,
+    v6ResourceEventNativeEffectsPath,
+    v6ResourceEventWebEffectsPath,
   };
   const steps = [];
 
@@ -53,6 +59,16 @@ export async function verifyConformance(options = {}) {
         nativeBasicSceneReportPath,
       ],
       { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
+    ],
+    [
+      "V6 resource/event fixed trace parity",
+      process.execPath,
+      [
+        resolve(root, "scripts/verify-v6-resource-events-trace.mjs"),
+        v6ResourcesEventsBundlePath,
+        resolve(artifactDir, "v6-resources-events"),
+      ],
+      { timeoutMs: 120000 },
     ],
     [
       "bevy native V6 resource/event observation report",

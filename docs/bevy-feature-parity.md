@@ -237,10 +237,12 @@ validates queued resource write effects, applies declared writes to bundle world
 resources, and records resource entries in canonical native effect logs. Shared
 web and Bevy conformance reports now expose serialized resource values and
 queued event payloads through the `v6-resources-events` fixture, with native
-artifact evidence under `artifacts/conformance/v6-resources-events`. This is
-not yet a full resource/event runtime parity claim; fixed web/native trace
-comparison and functional V6 scene proof still need to land before the gameplay
-ECS/systems row can move out of partial/missing status.
+artifact evidence under `artifacts/conformance/v6-resources-events`. The same
+fixture now runs a fixed web/native trace that compares canonical event and
+resource effect logs, including the `Score` resource write and `DamageEvent`
+payload. This is not yet a full resource/event runtime parity claim; functional
+V6 scene proof still needs to land before the gameplay ECS/systems row can move
+out of partial/missing status.
 
 ## V7 Deep Engine Gap-Closure Plan
 

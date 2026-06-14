@@ -72,7 +72,7 @@ pub fn build_system_context_snapshot_with_events(
 
     NativeSystemContextSnapshot {
         entities,
-        events,
+        events: merged_event_queues(bundle, events),
         input: NativeSystemInputSnapshot::fixed_trace(),
         resources: bundle
             .world
@@ -82,6 +82,22 @@ pub fn build_system_context_snapshot_with_events(
             .collect(),
         time,
     }
+}
+
+fn merged_event_queues(
+    bundle: &LoadedBundle,
+    queued_events: BTreeMap<String, Vec<Value>>,
+) -> BTreeMap<String, Vec<Value>> {
+    let mut events = bundle
+        .world
+        .events
+        .iter()
+        .map(|(key, value)| (key.clone(), value.as_array().cloned().unwrap_or_default()))
+        .collect::<BTreeMap<_, _>>();
+    for (event, values) in queued_events {
+        events.entry(event).or_default().extend(values);
+    }
+    events
 }
 
 impl NativeSystemInputSnapshot {
