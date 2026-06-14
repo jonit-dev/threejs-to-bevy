@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { ISystemsIr, IWorldIr } from "@threenative/ir";
 
-import { createSystemContext, evaluateStates } from "./context.js";
+import { createSystemContext, evaluateStates, propagateObserverEvent } from "./context.js";
 
 test("should expose fixed input trace", () => {
   const { context } = createSystemContext(makeWorld(), {
@@ -127,6 +127,39 @@ test("should expose resource-derived app states, computed states, and substates"
   assert.equal(context.states.get("Difficulty"), "danger");
   assert.equal(context.states.get("Locomotion"), "airborne");
   assert.equal(context.states.get("Missing"), null);
+});
+
+test("should expose deterministic observer propagation routes", () => {
+  const world: IWorldIr = {
+    entities: [
+      { components: {}, id: "root" },
+      { components: { Hierarchy: { parent: "root" } }, id: "player" },
+      { components: { Hierarchy: { parent: "player" } }, id: "weapon" },
+    ],
+    schema: "threenative.world",
+    version: "0.1.0",
+  };
+  const systems: ISystemsIr = {
+    observers: [{ event: "DamageEvent", phases: ["target", "bubble"], propagation: "target-ancestors" }],
+    schema: "threenative.systems",
+    systems: [],
+    version: "0.1.0",
+  };
+
+  assert.deepEqual(propagateObserverEvent(world, systems, "DamageEvent", "weapon"), [
+    { entity: "weapon", phase: "target" },
+    { entity: "player", phase: "bubble" },
+    { entity: "root", phase: "bubble" },
+  ]);
+  assert.deepEqual(propagateObserverEvent(world, systems, "MissingEvent", "weapon"), []);
+
+  const { context } = createSystemContext(world, { delta: 0.016, fixedDelta: 0.016, systems });
+
+  assert.deepEqual(context.observers.propagate("DamageEvent", "weapon"), [
+    { entity: "weapon", phase: "target" },
+    { entity: "player", phase: "bubble" },
+    { entity: "root", phase: "bubble" },
+  ]);
 });
 
 function makeWorld(): IWorldIr {

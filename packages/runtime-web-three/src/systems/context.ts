@@ -46,6 +46,9 @@ export interface ISystemContext {
     pressed(name: string): boolean;
     released(name: string): boolean;
   };
+  observers: {
+    propagate(event: unknown, target: string): IObserverPropagationStep[];
+  };
   query(query?: IIrSystemQuery): ISystemEntityView[];
   resources: {
     get(name: string): unknown;
@@ -67,6 +70,11 @@ export interface ISystemContext {
     fixedDt: number;
     paused: boolean;
   };
+}
+
+export interface IObserverPropagationStep {
+  entity: string;
+  phase: "bubble" | "target";
 }
 
 export interface IQueuedCommand {
@@ -161,6 +169,11 @@ export function createSystemContext(
           return options.input?.released(name) ?? false;
         },
       },
+      observers: {
+        propagate(event, target) {
+          return propagateObserverEvent(world, options.systems, normalizeHandleName(event), target);
+        },
+      },
       query(query = options.defaultQuery ?? { with: [], without: [] }) {
         return world.entities
           .filter((entity) => matchesQuery(entity, query))
@@ -212,6 +225,47 @@ export function createSystemContext(
     resources,
     services,
   };
+}
+
+export function propagateObserverEvent(world: IWorldIr, systems: ISystemsIr | undefined, event: string, target: string): IObserverPropagationStep[] {
+  const observer = systems?.observers?.find((candidate) => candidate.event === event && candidate.propagation === "target-ancestors");
+  if (observer === undefined || world.entities.every((entity) => entity.id !== target)) {
+    return [];
+  }
+  const ancestors = ancestorIds(world, target);
+  const route: IObserverPropagationStep[] = [];
+  if (observer.phases.includes("target")) {
+    route.push({ entity: target, phase: "target" });
+  }
+  if (observer.phases.includes("bubble")) {
+    route.push(...ancestors.map((entity) => ({ entity, phase: "bubble" as const })));
+  }
+  return route;
+}
+
+function ancestorIds(world: IWorldIr, target: string): string[] {
+  const byId = new Map(world.entities.map((entity) => [entity.id, entity]));
+  const ancestors: string[] = [];
+  const seen = new Set<string>([target]);
+  let current = byId.get(target);
+  while (current !== undefined) {
+    const parent = parentId(current);
+    if (parent === undefined || seen.has(parent)) {
+      break;
+    }
+    ancestors.push(parent);
+    seen.add(parent);
+    current = byId.get(parent);
+  }
+  return ancestors;
+}
+
+function parentId(entity: IWorldEntity): string | undefined {
+  const hierarchy = entity.components.Hierarchy;
+  if (isRecord(hierarchy) && typeof hierarchy.parent === "string" && hierarchy.parent.trim() !== "") {
+    return hierarchy.parent;
+  }
+  return undefined;
 }
 
 export function evaluateStates(world: IWorldIr, systems: ISystemsIr | undefined): Record<string, string | null> {

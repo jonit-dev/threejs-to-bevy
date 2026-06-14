@@ -339,13 +339,18 @@ and `state: "system-local-disallowed"` in `systems.ir.json`. Within that
 bounded lifecycle metadata, bundles may declare resource-derived app states,
 computed states, and substates. Scripts read those values with
 `ctx.states.get(id)`, which returns a string state value or `null` when a
-substate's parent is inactive. The narrow `v7-scripting-lifecycle` conformance
-fixture runs startup, fixedUpdate, update, and postUpdate systems, then
-compares web/native effect logs for deterministic resource handoff, queued
-event reads/writes, spawn/despawn commands, declared service calls, and
-derived state reads. Hidden system-local persisted state, async/timer-driven
-behavior, arbitrary npm packages, and platform APIs must fail validation or
-host diagnostics instead of being silently replayed.
+substate's parent is inactive. Bundles may also declare deterministic
+target-to-ancestor observer propagation for typed events; scripts read those
+routes with `ctx.observers.propagate(event, targetEntity)`, which returns
+ordered `{ phase, entity }` entries for the target and ancestor bubble phases.
+The narrow `v7-scripting-lifecycle` conformance fixture runs startup,
+fixedUpdate, update, and postUpdate systems, then compares web/native effect
+logs for deterministic resource handoff, queued event reads/writes,
+spawn/despawn commands, declared service calls, derived state reads, and
+observer-route reads. Hidden system-local persisted state, async/timer-driven
+behavior, arbitrary npm packages, platform APIs, and stoppable/dynamic
+observers must fail validation or host diagnostics instead of being silently
+replayed.
 
 ## Native Rust Escape Hatch
 

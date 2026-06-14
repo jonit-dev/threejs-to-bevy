@@ -1,7 +1,20 @@
 {
   "schema": "threenative.world",
   "version": "0.1.0",
-  "entities": [],
+  "entities": [
+    {
+      "id": "player",
+      "components": {}
+    },
+    {
+      "id": "player.weapon",
+      "components": {
+        "Hierarchy": {
+          "parent": "player"
+        }
+      }
+    }
+  ],
   "resources": {
     "Lifecycle": {
       "combat": "safe",

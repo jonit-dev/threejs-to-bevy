@@ -1141,7 +1141,7 @@ function validateSystems(
 ): void {
   const rawSystems = systems as unknown as Record<string, unknown>;
   for (const key of Object.keys(rawSystems)) {
-    if (!["lifecycle", "schema", "systems", "version"].includes(key)) {
+    if (!["lifecycle", "observers", "schema", "systems", "version"].includes(key)) {
       diagnostics.push({
         code: "TN_IR_SYSTEMS_FIELD_UNSUPPORTED",
         message: `Systems IR uses unsupported field '${key}'.`,
@@ -1159,6 +1159,7 @@ function validateSystems(
     });
   }
   validateSystemsLifecycle(systems.lifecycle, `${path}/lifecycle`, resourceSchemas, diagnostics);
+  validateSystemObservers(systems.observers, `${path}/observers`, eventSchemas, diagnostics);
 
   systems.systems.forEach((system, systemIndex) => {
     const rawSystem = system as unknown as Record<string, unknown>;
@@ -1317,6 +1318,66 @@ function validateSystems(
         }
       }
     });
+  });
+}
+
+function validateSystemObservers(
+  value: unknown,
+  path: string,
+  eventSchemas: Record<string, IIrNamedSchema>,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!Array.isArray(value)) {
+    diagnostics.push({ code: "TN_IR_SYSTEM_OBSERVERS_INVALID", message: "Systems observers must be an array.", path, severity: "error" });
+    return;
+  }
+  const routes = new Set<string>();
+  value.forEach((observer, index) => {
+    const observerPath = `${path}/${index}`;
+    if (!isRecord(observer)) {
+      diagnostics.push({ code: "TN_IR_SYSTEM_OBSERVER_INVALID", message: "Observer declaration must be an object.", path: observerPath, severity: "error" });
+      return;
+    }
+    for (const key of Object.keys(observer)) {
+      if (!["event", "phases", "propagation"].includes(key)) {
+        diagnostics.push({ code: "TN_IR_SYSTEM_OBSERVER_FIELD_UNSUPPORTED", message: `Observer declaration uses unsupported field '${key}'.`, path: `${observerPath}/${key}`, severity: "error" });
+      }
+    }
+    if (typeof observer.event !== "string" || observer.event.trim() === "" || eventSchemas[observer.event] === undefined) {
+      diagnostics.push({ code: "TN_IR_SYSTEM_OBSERVER_EVENT_SCHEMA_MISSING", message: "Observer event must reference a declared event schema.", path: `${observerPath}/event`, severity: "error" });
+    }
+    if (observer.propagation !== "target-ancestors") {
+      diagnostics.push({ code: "TN_IR_SYSTEM_OBSERVER_PROPAGATION_UNSUPPORTED", message: "Observer propagation must be 'target-ancestors'.", path: `${observerPath}/propagation`, severity: "error" });
+    }
+    validateObserverPhases(observer.phases, `${observerPath}/phases`, diagnostics);
+    const routeKey = `${String(observer.event)}:${String(observer.propagation)}:${JSON.stringify(observer.phases)}`;
+    if (routes.has(routeKey)) {
+      diagnostics.push({ code: "TN_IR_SYSTEM_OBSERVER_DUPLICATE", message: "Observer route is duplicated.", path: observerPath, severity: "error" });
+    } else {
+      routes.add(routeKey);
+    }
+  });
+}
+
+function validateObserverPhases(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (!Array.isArray(value) || value.length === 0) {
+    diagnostics.push({ code: "TN_IR_SYSTEM_OBSERVER_PHASES_INVALID", message: "Observer phases must be a non-empty array.", path, severity: "error" });
+    return;
+  }
+  const phases = new Set<string>();
+  value.forEach((phase, index) => {
+    if (phase !== "target" && phase !== "bubble") {
+      diagnostics.push({ code: "TN_IR_SYSTEM_OBSERVER_PHASE_UNSUPPORTED", message: "Observer phase must be 'target' or 'bubble'.", path: `${path}/${index}`, severity: "error" });
+      return;
+    }
+    if (phases.has(phase)) {
+      diagnostics.push({ code: "TN_IR_SYSTEM_OBSERVER_PHASE_DUPLICATE", message: `Observer phase '${phase}' is duplicated.`, path: `${path}/${index}`, severity: "error" });
+      return;
+    }
+    phases.add(phase);
   });
 }
 

@@ -304,9 +304,18 @@ pub struct TargetProfile {
 pub struct SystemsIr {
     #[serde(default)]
     pub lifecycle: Option<SystemsLifecycleIr>,
+    #[serde(default)]
+    pub observers: Vec<SystemObserverIr>,
     pub schema: String,
     pub version: String,
     pub systems: Vec<SystemIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct SystemObserverIr {
+    pub event: String,
+    pub phases: Vec<String>,
+    pub propagation: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]

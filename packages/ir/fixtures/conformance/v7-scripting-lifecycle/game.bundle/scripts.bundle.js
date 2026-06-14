@@ -1,9 +1,11 @@
+const observerRoute = (ctx) => ctx.observers.propagate("LifecycleEvent", "player.weapon").map((step) => `${step.phase}:${step.entity}`).join(">");
+
 const system_bootLifecycle = (ctx) => {
   const lifecycle = ctx.resources.get("Lifecycle");
   const score = ctx.resources.get("Score");
   const next = { combat: "safe", phase: "booted", ticks: lifecycle.ticks + 1 };
   ctx.resources.set("Lifecycle", next);
-  ctx.events.emit("LifecycleEvent", { game: ctx.states.get("Game"), phase: next.phase, score: score.value, scoreBand: ctx.states.get("ScoreBand") });
+  ctx.events.emit("LifecycleEvent", { game: ctx.states.get("Game"), observerRoute: observerRoute(ctx), phase: next.phase, score: score.value, scoreBand: ctx.states.get("ScoreBand") });
 };
 
 const system_fixedAccumulator = (ctx) => {
@@ -15,7 +17,7 @@ const system_fixedAccumulator = (ctx) => {
   ctx.resources.set("Score", nextScore);
   ctx.resources.set("Lifecycle", next);
   ctx.animation.play("player", "pulse", { phase: next.phase });
-  ctx.events.emit("LifecycleEvent", { game: ctx.states.get("Game"), phase: next.phase, score: nextScore.value, scoreBand: ctx.states.get("ScoreBand") });
+  ctx.events.emit("LifecycleEvent", { game: ctx.states.get("Game"), observerRoute: observerRoute(ctx), phase: next.phase, score: nextScore.value, scoreBand: ctx.states.get("ScoreBand") });
 };
 
 const system_updateDamage = (ctx) => {
@@ -27,7 +29,7 @@ const system_updateDamage = (ctx) => {
   ctx.resources.set("Score", nextScore);
   ctx.resources.set("Lifecycle", next);
   ctx.commands.spawn("damage.marker", { Health: { current: nextScore.value } });
-  ctx.events.emit("LifecycleEvent", { combat: ctx.states.get("Combat"), game: ctx.states.get("Game"), phase: next.phase, score: nextScore.value, scoreBand: ctx.states.get("ScoreBand") });
+  ctx.events.emit("LifecycleEvent", { combat: ctx.states.get("Combat"), game: ctx.states.get("Game"), observerRoute: observerRoute(ctx), phase: next.phase, score: nextScore.value, scoreBand: ctx.states.get("ScoreBand") });
 };
 
 const system_postLifecycle = (ctx) => {
@@ -36,7 +38,7 @@ const system_postLifecycle = (ctx) => {
   const next = { combat: "safe", phase: `post:${ctx.events.read("LifecycleEvent").length}`, ticks: lifecycle.ticks + 1 };
   ctx.resources.set("Lifecycle", next);
   ctx.commands.despawn("damage.marker");
-  ctx.events.emit("LifecycleEvent", { combat: ctx.states.get("Combat"), game: ctx.states.get("Game"), phase: next.phase, score: score.value, scoreBand: ctx.states.get("ScoreBand") });
+  ctx.events.emit("LifecycleEvent", { combat: ctx.states.get("Combat"), game: ctx.states.get("Game"), observerRoute: observerRoute(ctx), phase: next.phase, score: score.value, scoreBand: ctx.states.get("ScoreBand") });
 };
 
 export const systemIds = Object.freeze({

@@ -84,6 +84,32 @@ fn systems_context_should_include_resource_derived_states() {
     );
 }
 
+#[test]
+fn systems_context_should_include_observer_propagation_routes() {
+    let root = write_bundle("observer-context");
+    let bundle = load_bundle(&root).expect("bundle should load");
+    let system = &bundle
+        .systems
+        .as_ref()
+        .expect("systems should load")
+        .systems[0];
+
+    let snapshot = build_system_context_snapshot(&bundle, system, time());
+    let route = snapshot
+        .observer_routes
+        .get("DamageEvent")
+        .and_then(|routes| routes.get("weapon"))
+        .expect("observer route should be present");
+
+    assert_eq!(route.len(), 3);
+    assert_eq!(route[0].entity, "weapon");
+    assert_eq!(route[0].phase, "target");
+    assert_eq!(route[1].entity, "player");
+    assert_eq!(route[1].phase, "bubble");
+    assert_eq!(route[2].entity, "root");
+    assert_eq!(route[2].phase, "bubble");
+}
+
 fn write_bundle(name: &str) -> PathBuf {
     let root = root(name);
     fs::create_dir_all(&root).expect("temp bundle should be created");
@@ -113,11 +139,22 @@ fn write_bundle(name: &str) -> PathBuf {
   },
   "entities": [
     {
+      "id": "root",
+      "components": {}
+    },
+    {
       "id": "player",
       "components": {
+        "Hierarchy": { "parent": "root" },
         "Transform": { "position": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
         "Rotator": { "speed": 2 },
         "Health": { "value": 100 }
+      }
+    },
+    {
+      "id": "weapon",
+      "components": {
+        "Hierarchy": { "parent": "player" }
       }
     },
     {
@@ -150,6 +187,13 @@ fn write_bundle(name: &str) -> PathBuf {
       { "id": "Locomotion", "parent": "Game", "parentValue": "playing", "fallback": "grounded", "source": { "resource": "GameState", "field": "locomotion" }, "values": ["grounded", "airborne"] }
     ]
   },
+  "observers": [
+    {
+      "event": "DamageEvent",
+      "propagation": "target-ancestors",
+      "phases": ["target", "bubble"]
+    }
+  ],
   "systems": [
     {
       "name": "rotate",

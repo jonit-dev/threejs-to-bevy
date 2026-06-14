@@ -52,6 +52,16 @@
       }
     ]
   },
+  "observers": [
+    {
+      "event": "LifecycleEvent",
+      "propagation": "target-ancestors",
+      "phases": [
+        "target",
+        "bubble"
+      ]
+    }
+  ],
   "systems": [
     {
       "name": "bootLifecycle",

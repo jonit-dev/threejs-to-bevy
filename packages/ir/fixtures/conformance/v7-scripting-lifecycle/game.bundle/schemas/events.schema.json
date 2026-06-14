@@ -24,6 +24,10 @@
           "kind": "string",
           "required": false
         },
+        "observerRoute": {
+          "kind": "string",
+          "required": false
+        },
         "phase": {
           "kind": "string",
           "required": true

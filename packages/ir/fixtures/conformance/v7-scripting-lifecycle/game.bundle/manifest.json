@@ -7,6 +7,7 @@
       "component-schemas",
       "event-schemas",
       "events",
+      "observer-propagation",
       "resource-schemas",
       "resources"
     ],
@@ -26,6 +27,7 @@
       "schedule.update",
       "script-bundle",
       "service.animation.play",
+      "observer-propagation",
       "state.app",
       "state.computed",
       "state.substate",

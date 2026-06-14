@@ -12,6 +12,7 @@ pub struct NativeSystemContextSnapshot {
     pub entities: Vec<NativeSystemEntitySnapshot>,
     pub events: BTreeMap<String, Vec<Value>>,
     pub input: NativeSystemInputSnapshot,
+    pub observer_routes: BTreeMap<String, BTreeMap<String, Vec<NativeObserverPropagationStep>>>,
     pub resources: BTreeMap<String, Value>,
     pub states: BTreeMap<String, Option<String>>,
     pub time: NativeSystemTimeSnapshot,
@@ -21,6 +22,12 @@ pub struct NativeSystemContextSnapshot {
 pub struct NativeSystemEntitySnapshot {
     pub id: String,
     pub components: BTreeMap<String, Value>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct NativeObserverPropagationStep {
+    pub entity: String,
+    pub phase: String,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -77,6 +84,7 @@ pub fn build_system_context_snapshot_with_events(
         entities,
         events: merged_event_queues(bundle, events),
         input: NativeSystemInputSnapshot::fixed_trace(),
+        observer_routes: observer_routes(bundle),
         resources: bundle
             .world
             .resources
@@ -86,6 +94,74 @@ pub fn build_system_context_snapshot_with_events(
         states: evaluate_states(bundle),
         time,
     }
+}
+
+pub fn observer_routes(
+    bundle: &LoadedBundle,
+) -> BTreeMap<String, BTreeMap<String, Vec<NativeObserverPropagationStep>>> {
+    let mut routes = BTreeMap::new();
+    let Some(systems) = bundle.systems.as_ref() else {
+        return routes;
+    };
+    for observer in &systems.observers {
+        if observer.propagation != "target-ancestors" {
+            continue;
+        }
+        let event_routes = routes
+            .entry(observer.event.clone())
+            .or_insert_with(BTreeMap::new);
+        for entity in &bundle.world.entities {
+            let mut route = Vec::new();
+            if observer.phases.iter().any(|phase| phase == "target") {
+                route.push(NativeObserverPropagationStep {
+                    entity: entity.id.clone(),
+                    phase: "target".to_owned(),
+                });
+            }
+            if observer.phases.iter().any(|phase| phase == "bubble") {
+                route.extend(
+                    ancestor_ids(bundle, &entity.id)
+                        .into_iter()
+                        .map(|entity| NativeObserverPropagationStep {
+                            entity,
+                            phase: "bubble".to_owned(),
+                        }),
+                );
+            }
+            event_routes.insert(entity.id.clone(), route);
+        }
+    }
+    routes
+}
+
+fn ancestor_ids(bundle: &LoadedBundle, target: &str) -> Vec<String> {
+    let by_id = bundle
+        .world
+        .entities
+        .iter()
+        .map(|entity| (entity.id.as_str(), entity))
+        .collect::<BTreeMap<_, _>>();
+    let mut ancestors = Vec::new();
+    let mut seen = vec![target.to_owned()];
+    let mut current = by_id.get(target).copied();
+    while let Some(entity) = current {
+        let Some(parent) = entity
+            .components
+            .hierarchy
+            .as_ref()
+            .and_then(|hierarchy| hierarchy.parent.as_ref())
+            .filter(|parent| !parent.is_empty())
+        else {
+            break;
+        };
+        if seen.iter().any(|value| value == parent) {
+            break;
+        }
+        ancestors.push(parent.clone());
+        seen.push(parent.clone());
+        current = by_id.get(parent.as_str()).copied();
+    }
+    ancestors
 }
 
 pub fn evaluate_states(bundle: &LoadedBundle) -> BTreeMap<String, Option<String>> {

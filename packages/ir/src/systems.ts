@@ -55,9 +55,18 @@ export interface ISystemsIr {
     state: "system-local-disallowed";
     substates?: IIrSubstateDeclaration[];
   };
+  observers?: IIrObserverDeclaration[];
   schema: "threenative.systems";
   version: SchemaVersion;
   systems: IIrSystemDeclaration[];
+}
+
+export type IrObserverPhase = "bubble" | "target";
+
+export interface IIrObserverDeclaration {
+  event: string;
+  phases: IrObserverPhase[];
+  propagation: "target-ancestors";
 }
 
 export interface IIrStateSource {

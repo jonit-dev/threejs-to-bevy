@@ -232,6 +232,32 @@ test("should accept resource-derived app states, computed states, and substates"
   }
 });
 
+test("should accept observer event propagation metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-observers-"));
+  try {
+    await writeBundle(root, {
+      commands: [],
+      observers: [
+        {
+          event: "LifecycleEvent",
+          phases: ["target", "bubble"],
+          propagation: "target-ancestors",
+        },
+      ],
+      reads: ["Transform"],
+      schedule: "fixedUpdate",
+      writes: ["Transform"],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject unsupported scripting lifecycle assumptions", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-lifecycle-invalid-"));
   try {
@@ -273,6 +299,42 @@ test("should reject unsupported scripting lifecycle assumptions", async () => {
         "systems.ir.json/lifecycle/hotReload",
         "systems.ir.json/systems/0/async",
         "systems.ir.json/systems/0/timer",
+      ],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject invalid observer event propagation metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-observers-invalid-"));
+  try {
+    await writeBundle(root, {
+      commands: [],
+      observers: [
+        {
+          event: "MissingEvent",
+          phases: ["target", "target", "capture"],
+          propagation: "broadcast",
+          stop: "manual",
+        },
+      ],
+      reads: ["Transform"],
+      schedule: "fixedUpdate",
+      writes: ["Transform"],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => diagnostic.code),
+      [
+        "TN_IR_SYSTEM_OBSERVER_FIELD_UNSUPPORTED",
+        "TN_IR_SYSTEM_OBSERVER_EVENT_SCHEMA_MISSING",
+        "TN_IR_SYSTEM_OBSERVER_PROPAGATION_UNSUPPORTED",
+        "TN_IR_SYSTEM_OBSERVER_PHASE_DUPLICATE",
+        "TN_IR_SYSTEM_OBSERVER_PHASE_UNSUPPORTED",
       ],
     );
   } finally {
@@ -369,6 +431,7 @@ async function writeBundle(
     reads: string[];
     resourceReads?: string[];
     resourceWrites?: string[];
+    observers?: unknown;
     schedule?: unknown;
     services?: unknown[];
     timer?: unknown;
@@ -393,6 +456,7 @@ async function writeBundle(
       materials: "materials.ir.json",
       targetProfile: "target.profile.json",
       componentSchemas: "schemas/components.schema.json",
+      eventSchemas: "schemas/events.schema.json",
       resourceSchemas: "schemas/resources.schema.json",
     },
   });
@@ -407,6 +471,7 @@ async function writeBundle(
   });
   await writeJson(root, "systems.ir.json", {
     ...(system.lifecycle === undefined ? {} : { lifecycle: system.lifecycle }),
+    ...(system.observers === undefined ? {} : { observers: system.observers }),
     schema: "threenative.systems",
     version: "0.1.0",
     systems: [
@@ -457,6 +522,17 @@ async function writeBundle(
         fields: {
           difficulty: { kind: "string", required: false },
           locomotion: { kind: "string", required: false },
+          phase: { kind: "string", required: true },
+        },
+      },
+    },
+  });
+  await writeJson(root, "schemas/events.schema.json", {
+    schema: "threenative.event-schemas",
+    version: "0.1.0",
+    schemas: {
+      LifecycleEvent: {
+        fields: {
           phase: { kind: "string", required: true },
         },
       },

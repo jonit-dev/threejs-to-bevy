@@ -387,6 +387,10 @@ function collectSystemCapabilities(systems: ISystemsIr | undefined, add: (domain
     add("scripting", `state.${systems.lifecycle.state}`);
     add("scripting", `hot-reload.${systems.lifecycle.hotReload}`);
   }
+  if ((systems.observers ?? []).length > 0) {
+    add("ecs", "observer-propagation");
+    add("scripting", "observer-propagation");
+  }
   for (const system of systems.systems) {
     add("scripting", `schedule.${system.schedule}`);
     if (system.script !== undefined) {

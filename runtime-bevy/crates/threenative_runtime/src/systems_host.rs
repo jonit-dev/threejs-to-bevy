@@ -417,6 +417,11 @@ function __tnInvokeSystem(options) {
       pressed() { return false; },
       released() { return false; }
     },
+    observers: {
+      propagate(event, target) {
+        return clone((data.observerRoutes[normalize(event)] || {})[target] || []);
+      }
+    },
     resources: {
       get(name) { return clone(data.resources[name]); },
       set(name, value) {
