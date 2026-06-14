@@ -227,6 +227,10 @@ internal preparation or harness cleanup.
 
 ## V3 Proves
 
+The V3 evidence loop is `pnpm verify:v3`, which regenerates the environment
+bundle, web screenshots, Bevy GLTF smoke captures, and side-by-side contact
+sheet under `artifacts/v3`.
+
 - deterministic environment scene IR for the forest proof scene
 - bundle-local glTF/GLB, `.bin`, and texture dependency copying
 - web Three.js environment preview with first-person walkthrough checks
