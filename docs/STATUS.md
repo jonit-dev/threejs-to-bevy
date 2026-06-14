@@ -212,11 +212,21 @@ materials, environment parity, and native observations, only when SDK, IR,
 validation, web, Bevy where claimed, conformance, docs, examples, and release
 gates agree.
 
+The V6 ticket slice is tracked in [V6 PRDs](PRDs/v6/README.md). Those tickets
+define planned work; they do not mark promoted V6 features as implemented until
+the corresponding SDK, IR, validation, web runtime, Bevy evidence,
+conformance, docs, example scene, and release gate evidence lands.
+
 V7 is now planned as the deep engine gap-closure milestone. It should continue
 parity work that is too large or risky for V6, such as deeper physics,
 animation graphs, richer UI/audio, renderer/content parity, scripting/runtime
 determinism, packaging, and performance gaps. Remaining gaps should be
 explicitly deferred or marked never portable with stable diagnostics.
+
+The V7 ticket slice is tracked in [V7 PRDs](PRDs/v7/README.md). V7 starts from
+the post-V6 gap table and should promote deeper engine/runtime parity only when
+shared fixtures, runtime observations, native evidence where claimed, docs,
+diagnostics, functional scene/template proof, and `verify:v7` agree.
 
 V8 is the first planned local editor and inspector milestone. V9 is the first
 planned online project and publishing milestone. V10 is the first planned
@@ -267,6 +277,8 @@ sheet under `artifacts/v3`.
 
 ## Current Truth Sources
 
+- [V7 PRDs](PRDs/v7/README.md)
+- [V6 PRDs](PRDs/v6/README.md)
 - [V5 PRDs](PRDs/v5/README.md)
 - [V3 Completion Checklist](releases/v3-completion.md)
 - [Bevy Feature Parity Drift](bevy-feature-parity.md)

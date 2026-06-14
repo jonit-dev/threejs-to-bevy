@@ -210,6 +210,39 @@ V5 is not the scene-editor, online, networking, plugin, or custom renderer
 milestone. Those remain V6 or later unless a V5 PRD scopes the work as internal
 cleanup or test-harness preparation.
 
+## V6 Common Game-Engine Parity Plan
+
+The planned V6 implementation slice is tracked in
+[V6 PRDs](PRDs/v6/README.md). V6 should promote the highest-value missing
+contracts needed by most small 3D games: resources/events, deterministic
+gameplay schedules, primitive colliders and collision events, character
+interaction, animation playback, retained UI, audio playback, asset and
+diagnostic hardening, one functional V6 scene, and an aggregate `verify:v6`
+gate.
+
+V6 parity claims should move a row from partial or missing only when SDK, IR,
+compiler, validation, web runtime, Bevy runtime where claimed, shared
+conformance observations, docs, diagnostics, example evidence, and release-gate
+artifacts agree. Features that remain too large for V6, including deeper
+physics, animation graphs, richer UI/audio, packaging, and broad performance
+profiling, should be explicitly deferred to V7.
+
+## V7 Deep Engine Gap-Closure Plan
+
+The planned V7 implementation slice is tracked in
+[V7 PRDs](PRDs/v7/README.md). V7 starts after V6 and should close deeper parity
+gaps, or mark them deferred/never portable with stable diagnostics: advanced
+physics and character behavior, animation graphs/state machines/events and
+bounded particles, richer UI navigation/input, spatial audio and buses,
+runtime LOD/native instancing/imported asset edge cases, scripting determinism
+and lifecycle, desktop packaging/target profiles, performance budgets, one
+functional V7 scene/template, and an aggregate `verify:v7` gate.
+
+V7 is still not the editor, online service, networking, replication,
+collaboration, public plugin, direct Bevy, raw Three.js, or broad shader graph
+milestone. Those capabilities require separate future PRDs and should not be
+implied by V7 parity work.
+
 ## V4 Scripting Parity
 
 | Area | Status | What's drifting or missing |
