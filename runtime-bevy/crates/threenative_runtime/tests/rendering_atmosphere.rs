@@ -171,7 +171,7 @@ fn textured_gltf_materials_should_preserve_lit_cutout_rendering() {
     assert!((base_color.green - 1.0).abs() < 0.01);
     assert!((base_color.blue - 1.0).abs() < 0.01);
     assert_eq!(material.alpha_mode, AlphaMode::Mask(0.2));
-    assert!(!material.double_sided);
+    assert!(material.double_sided);
     assert_eq!(material.cull_mode, None);
     assert!(!material.unlit);
     assert!(material.normal_map_texture.is_some());
@@ -182,7 +182,7 @@ fn textured_gltf_materials_should_preserve_lit_cutout_rendering() {
 }
 
 #[test]
-fn textured_gltf_materials_should_render_cutout_backfaces_without_normal_flipping() {
+fn textured_gltf_materials_should_render_cutout_backfaces_for_foliage() {
     let mut material = StandardMaterial {
         base_color_texture: Some(Handle::default()),
         alpha_mode: AlphaMode::Mask(0.2),
@@ -191,7 +191,7 @@ fn textured_gltf_materials_should_render_cutout_backfaces_without_normal_flippin
 
     assert!(normalize_textured_material(&mut material));
     assert_eq!(material.alpha_mode, AlphaMode::Mask(0.2));
-    assert!(!material.double_sided);
+    assert!(material.double_sided);
     assert_eq!(material.cull_mode, None);
 }
 

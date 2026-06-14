@@ -149,7 +149,7 @@ pub fn normalize_textured_material(material: &mut StandardMaterial) -> bool {
     }
     material.base_color = Color::WHITE;
     material.alpha_mode = AlphaMode::Mask(0.2);
-    material.double_sided = false;
+    material.double_sided = true;
     material.cull_mode = None;
     true
 }
