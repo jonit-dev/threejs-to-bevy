@@ -425,6 +425,12 @@ attribute and matching vertex counts, the web runtime builds `BufferGeometry`
 attributes and indices, and the Bevy runtime builds `Mesh` attributes including
 stable `custom:<name>` float attributes.
 
+Mesh bounds and sampling utilities now exist in both runtimes for generated
+primitive and custom mesh assets. The web runtime exports deterministic point
+sampling, AABB, bounding-sphere, AABB intersection, and sphere intersection
+helpers, while the Bevy runtime mirrors the same calculations in
+`mesh_bounds` for native tests and host-side tooling.
+
 V7-07 has landed the first scripting determinism and lifecycle evidence slice:
 `systems.ir.json` now accepts explicit lifecycle metadata for `fixed-trace`
 replay, `system-local-disallowed` state, `invalidate` hot reload behavior, and
