@@ -94,6 +94,58 @@ test("assets should accept supported material texture slots", async () => {
   }
 });
 
+test("assets should accept expanded generated mesh primitive catalog", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-assets-generated-mesh-catalog-"));
+  try {
+    await writeTestBundle(root, { createAssetsDir: true });
+    await writeJson(root, "assets.manifest.json", {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [
+        { id: "mesh.cone", kind: "mesh", format: "generated", primitive: "cone", size: [0.5, 1] },
+        { id: "mesh.frustum", kind: "mesh", format: "generated", primitive: "conicalFrustum", size: [0.25, 0.5, 1] },
+        { id: "mesh.torus", kind: "mesh", format: "generated", primitive: "torus", size: [0.25, 0.75] },
+        { id: "mesh.circle", kind: "mesh", format: "generated", primitive: "circle", size: [0.5] },
+        { id: "mesh.annulus", kind: "mesh", format: "generated", primitive: "annulus", size: [0.25, 0.75] },
+        { id: "mesh.polygon", kind: "mesh", format: "generated", primitive: "regularPolygon", size: [0.5, 6] },
+        { id: "mesh.extruded", kind: "mesh", format: "generated", primitive: "extrudedRectangle", size: [1, 2, 0.5] },
+      ],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("assets should reject invalid generated mesh primitive dimensions", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-assets-generated-mesh-invalid-"));
+  try {
+    await writeTestBundle(root, { createAssetsDir: true });
+    await writeJson(root, "assets.manifest.json", {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [
+        { id: "mesh.torus", kind: "mesh", format: "generated", primitive: "torus", size: [1, 0.5] },
+        { id: "mesh.polygon", kind: "mesh", format: "generated", primitive: "regularPolygon", size: [0.5, 2] },
+      ],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => diagnostic.code),
+      ["TN_IR_MESH_SIZE_INVALID", "TN_IR_MESH_SIZE_INVALID"],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("assets should reject material texture slot referencing non-texture asset", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-assets-texture-kind-"));
   try {

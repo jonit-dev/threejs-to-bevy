@@ -86,6 +86,73 @@ test("mapWorld should map v2 render fixture", () => {
   assert.equal(mapped.objectsById.get("cylinder.main") instanceof THREE.Mesh, true);
 });
 
+test("mapWorld should map expanded generated primitive catalog", () => {
+  const assets = [
+    { id: "mesh.cone", kind: "mesh" as const, format: "generated" as const, primitive: "cone" as const, size: [0.5, 1] },
+    {
+      id: "mesh.frustum",
+      kind: "mesh" as const,
+      format: "generated" as const,
+      primitive: "conicalFrustum" as const,
+      size: [0.25, 0.5, 1],
+    },
+    { id: "mesh.torus", kind: "mesh" as const, format: "generated" as const, primitive: "torus" as const, size: [0.25, 0.75] },
+    { id: "mesh.circle", kind: "mesh" as const, format: "generated" as const, primitive: "circle" as const, size: [0.5] },
+    { id: "mesh.annulus", kind: "mesh" as const, format: "generated" as const, primitive: "annulus" as const, size: [0.25, 0.75] },
+    {
+      id: "mesh.polygon",
+      kind: "mesh" as const,
+      format: "generated" as const,
+      primitive: "regularPolygon" as const,
+      size: [0.5, 6],
+    },
+    {
+      id: "mesh.extruded",
+      kind: "mesh" as const,
+      format: "generated" as const,
+      primitive: "extrudedRectangle" as const,
+      size: [1, 2, 0.5],
+    },
+  ];
+  const mapped = mapWorld({
+    assets: { schema: "threenative.assets", version: "0.1.0", assets },
+    manifest: {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "primitive-catalog",
+      requiredCapabilities: {},
+      entry: { world: "world.ir.json" },
+      files: { assets: "assets.manifest.json", materials: "materials.ir.json", targetProfile: "target.profile.json" },
+    },
+    materials: { schema: "threenative.materials", version: "0.1.0", materials: [{ id: "mat.main", kind: "standard", color: "#ffffff" }] },
+    targetProfile: { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] },
+    world: {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: assets.map((asset) => ({
+        id: asset.id.replace("mesh.", "entity."),
+        components: { MeshRenderer: { mesh: asset.id, material: "mat.main" }, Transform: { position: [0, 0, 0] } },
+      })),
+    },
+  });
+
+  const geometryTypes = assets.map((asset) => {
+    const object = mapped.objectsById.get(asset.id.replace("mesh.", "entity."));
+    assert.ok(object instanceof THREE.Mesh);
+    return object.geometry.type;
+  });
+  assert.deepEqual(geometryTypes, [
+    "ConeGeometry",
+    "CylinderGeometry",
+    "TorusGeometry",
+    "CircleGeometry",
+    "RingGeometry",
+    "CircleGeometry",
+    "ExtrudeGeometry",
+  ]);
+  assert.equal(mapped.diagnostics.filter((diagnostic) => diagnostic.severity === "error").length, 0);
+});
+
 test("mapWorld should apply supported material texture slots", () => {
   const mapped = mapWorld({
     assets: {

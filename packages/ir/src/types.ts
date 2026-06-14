@@ -175,7 +175,19 @@ export type IAssetIr =
       format: "generated";
       id: string;
       kind: "mesh";
-      primitive: "box" | "capsule" | "cylinder" | "plane" | "sphere";
+      primitive:
+        | "annulus"
+        | "box"
+        | "capsule"
+        | "circle"
+        | "cone"
+        | "conicalFrustum"
+        | "cylinder"
+        | "extrudedRectangle"
+        | "plane"
+        | "regularPolygon"
+        | "sphere"
+        | "torus";
       size?: readonly number[];
     }
   | {

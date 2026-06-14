@@ -38,6 +38,29 @@ fn rendering_should_map_visibility_and_v2_lights() {
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
 
+#[test]
+fn rendering_should_map_expanded_generated_primitive_catalog() {
+    let root = write_primitive_catalog_bundle();
+    let bundle = load_bundle(&root).expect("primitive catalog bundle should load");
+    let mut app = App::new();
+
+    map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map");
+
+    for id in [
+        "entity.cone",
+        "entity.frustum",
+        "entity.torus",
+        "entity.circle",
+        "entity.annulus",
+        "entity.polygon",
+        "entity.extruded",
+    ] {
+        assert_mesh_handle(app.world_mut(), id);
+    }
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
 fn assert_directional_light(world: &mut World, id: &str) {
     let mut query = world.query::<(&ThreeNativeId, Option<&DirectionalLight>)>();
     let light = query
@@ -110,6 +133,20 @@ fn assert_material(world: &mut World, id: &str) {
     assert!(material.occlusion_texture.is_some());
     assert!((material.metallic - 0.25).abs() < 0.01);
     assert!((material.perceptual_roughness - 0.42).abs() < 0.01);
+}
+
+fn assert_mesh_handle(world: &mut World, id: &str) {
+    let handle = {
+        let mut query = world.query::<(&ThreeNativeId, &Handle<Mesh>)>();
+        query
+            .iter(world)
+            .find_map(|(stable_id, handle)| (stable_id.0 == id).then_some(handle.clone()))
+            .expect("entity mesh handle should be spawned")
+    };
+    world
+        .resource::<Assets<Mesh>>()
+        .get(&handle)
+        .expect("mesh asset should be registered");
 }
 
 fn has_component<T: Component>(world: &mut World, id: &str) -> bool {
@@ -225,6 +262,77 @@ fn write_rendering_bundle() -> PathBuf {
     "roughness": 0.42,
     "metalness": 0.25
   }]
+}"##,
+    );
+    write(
+        &root,
+        "target.profile.json",
+        r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["desktop"] }"#,
+    );
+    root
+}
+
+fn write_primitive_catalog_bundle() -> PathBuf {
+    let root = std::env::temp_dir().join(format!(
+        "tn-rendering-primitives-{}",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system time should be after unix epoch")
+            .as_nanos()
+    ));
+    fs::create_dir_all(&root).expect("temporary bundle directory should be created");
+    write(
+        &root,
+        "manifest.json",
+        r#"{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "primitive-catalog",
+  "entry": { "world": "world.ir.json" },
+  "files": { "assets": "assets.manifest.json", "materials": "materials.ir.json", "targetProfile": "target.profile.json" }
+}"#,
+    );
+    write(
+        &root,
+        "world.ir.json",
+        r##"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    { "id": "entity.cone", "components": { "MeshRenderer": { "mesh": "mesh.cone", "material": "mat.main" }, "Transform": { "position": [0, 0, 0] } } },
+    { "id": "entity.frustum", "components": { "MeshRenderer": { "mesh": "mesh.frustum", "material": "mat.main" }, "Transform": { "position": [1, 0, 0] } } },
+    { "id": "entity.torus", "components": { "MeshRenderer": { "mesh": "mesh.torus", "material": "mat.main" }, "Transform": { "position": [2, 0, 0] } } },
+    { "id": "entity.circle", "components": { "MeshRenderer": { "mesh": "mesh.circle", "material": "mat.main" }, "Transform": { "position": [3, 0, 0] } } },
+    { "id": "entity.annulus", "components": { "MeshRenderer": { "mesh": "mesh.annulus", "material": "mat.main" }, "Transform": { "position": [4, 0, 0] } } },
+    { "id": "entity.polygon", "components": { "MeshRenderer": { "mesh": "mesh.polygon", "material": "mat.main" }, "Transform": { "position": [5, 0, 0] } } },
+    { "id": "entity.extruded", "components": { "MeshRenderer": { "mesh": "mesh.extruded", "material": "mat.main" }, "Transform": { "position": [6, 0, 0] } } }
+  ]
+}"##,
+    );
+    write(
+        &root,
+        "assets.manifest.json",
+        r#"{
+  "schema": "threenative.assets",
+  "version": "0.1.0",
+  "assets": [
+    { "id": "mesh.cone", "kind": "mesh", "format": "generated", "primitive": "cone", "size": [0.5, 1] },
+    { "id": "mesh.frustum", "kind": "mesh", "format": "generated", "primitive": "conicalFrustum", "size": [0.25, 0.5, 1] },
+    { "id": "mesh.torus", "kind": "mesh", "format": "generated", "primitive": "torus", "size": [0.25, 0.75] },
+    { "id": "mesh.circle", "kind": "mesh", "format": "generated", "primitive": "circle", "size": [0.5] },
+    { "id": "mesh.annulus", "kind": "mesh", "format": "generated", "primitive": "annulus", "size": [0.25, 0.75] },
+    { "id": "mesh.polygon", "kind": "mesh", "format": "generated", "primitive": "regularPolygon", "size": [0.5, 6] },
+    { "id": "mesh.extruded", "kind": "mesh", "format": "generated", "primitive": "extrudedRectangle", "size": [1, 2, 0.5] }
+  ]
+}"#,
+    );
+    write(
+        &root,
+        "materials.ir.json",
+        r##"{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "materials": [{ "id": "mat.main", "kind": "standard", "color": "#ffffff" }]
 }"##,
     );
     write(

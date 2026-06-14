@@ -136,6 +136,40 @@ function mapGeometry(asset: IAssetIr): THREE.BufferGeometry {
   if (asset.primitive === "capsule") {
     return new THREE.CapsuleGeometry(asset.size?.[0] ?? 0.5, asset.size?.[1] ?? 1, 16, 32);
   }
+  if (asset.primitive === "cone") {
+    return new THREE.ConeGeometry(asset.size?.[0] ?? 0.5, asset.size?.[1] ?? 1, 32);
+  }
+  if (asset.primitive === "conicalFrustum") {
+    return new THREE.CylinderGeometry(asset.size?.[0] ?? 0.25, asset.size?.[1] ?? 0.5, asset.size?.[2] ?? 1, 32);
+  }
+  if (asset.primitive === "torus") {
+    const innerRadius = asset.size?.[0] ?? 0.5;
+    const outerRadius = asset.size?.[1] ?? 1;
+    const tubeRadius = (outerRadius - innerRadius) / 2;
+    const majorRadius = outerRadius - tubeRadius;
+    return new THREE.TorusGeometry(majorRadius, tubeRadius, 32, 64);
+  }
+  if (asset.primitive === "circle") {
+    return new THREE.CircleGeometry(asset.size?.[0] ?? 0.5, 64);
+  }
+  if (asset.primitive === "annulus") {
+    return new THREE.RingGeometry(asset.size?.[0] ?? 0.5, asset.size?.[1] ?? 1, 64);
+  }
+  if (asset.primitive === "regularPolygon") {
+    return new THREE.CircleGeometry(asset.size?.[0] ?? 0.5, asset.size?.[1] ?? 6);
+  }
+  if (asset.primitive === "extrudedRectangle") {
+    const [width = 1, height = 1, depth = 1] = asset.size ?? [];
+    const shape = new THREE.Shape()
+      .moveTo(-width / 2, -height / 2)
+      .lineTo(width / 2, -height / 2)
+      .lineTo(width / 2, height / 2)
+      .lineTo(-width / 2, height / 2)
+      .lineTo(-width / 2, -height / 2);
+    const geometry = new THREE.ExtrudeGeometry(shape, { bevelEnabled: false, depth });
+    geometry.translate(0, 0, -depth / 2);
+    return geometry;
+  }
   const [x = 1, y = 1] = asset.size ?? [];
   return new THREE.PlaneGeometry(x, y);
 }

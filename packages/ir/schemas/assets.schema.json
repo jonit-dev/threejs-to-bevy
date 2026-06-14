@@ -23,7 +23,22 @@
             "id": { "type": "string", "minLength": 1 },
             "kind": { "const": "mesh" },
             "format": { "const": "generated" },
-              "primitive": { "enum": ["box", "capsule", "cylinder", "sphere", "plane"] },
+              "primitive": {
+                "enum": [
+                  "annulus",
+                  "box",
+                  "capsule",
+                  "circle",
+                  "cone",
+                  "conicalFrustum",
+                  "cylinder",
+                  "extrudedRectangle",
+                  "plane",
+                  "regularPolygon",
+                  "sphere",
+                  "torus"
+                ]
+              },
             "size": { "type": "array", "items": { "type": "number" } }
           }
         },

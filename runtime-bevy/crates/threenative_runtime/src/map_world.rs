@@ -2,7 +2,10 @@ use std::collections::HashMap;
 
 use bevy::{
     core_pipeline::tonemapping::Tonemapping,
-    math::primitives::{Capsule3d, Cuboid, Cylinder, Rectangle, Sphere},
+    math::primitives::{
+        Annulus, Capsule3d, Circle as PrimitiveCircle, Cone, ConicalFrustum, Cuboid, Cylinder,
+        Extrusion, Rectangle, RegularPolygon, Sphere, Torus,
+    },
     prelude::*,
     render::{
         camera::{Exposure, ScalingMode},
@@ -360,6 +363,111 @@ fn add_mesh(world: &mut World, asset: &AssetIr) -> Handle<Mesh> {
                 .copied()
                 .unwrap_or(1.0),
         )),
+        Some("cone") => Mesh::from(Cone {
+            radius: asset
+                .size
+                .as_ref()
+                .and_then(|size| size.first())
+                .copied()
+                .unwrap_or(0.5),
+            height: asset
+                .size
+                .as_ref()
+                .and_then(|size| size.get(1))
+                .copied()
+                .unwrap_or(1.0),
+        }),
+        Some("conicalFrustum") => Mesh::from(ConicalFrustum {
+            radius_top: asset
+                .size
+                .as_ref()
+                .and_then(|size| size.first())
+                .copied()
+                .unwrap_or(0.25),
+            radius_bottom: asset
+                .size
+                .as_ref()
+                .and_then(|size| size.get(1))
+                .copied()
+                .unwrap_or(0.5),
+            height: asset
+                .size
+                .as_ref()
+                .and_then(|size| size.get(2))
+                .copied()
+                .unwrap_or(1.0),
+        }),
+        Some("torus") => Mesh::from(Torus::new(
+            asset
+                .size
+                .as_ref()
+                .and_then(|size| size.first())
+                .copied()
+                .unwrap_or(0.5),
+            asset
+                .size
+                .as_ref()
+                .and_then(|size| size.get(1))
+                .copied()
+                .unwrap_or(1.0),
+        )),
+        Some("circle") => Mesh::from(PrimitiveCircle::new(
+            asset
+                .size
+                .as_ref()
+                .and_then(|size| size.first())
+                .copied()
+                .unwrap_or(0.5),
+        )),
+        Some("annulus") => Mesh::from(Annulus::new(
+            asset
+                .size
+                .as_ref()
+                .and_then(|size| size.first())
+                .copied()
+                .unwrap_or(0.5),
+            asset
+                .size
+                .as_ref()
+                .and_then(|size| size.get(1))
+                .copied()
+                .unwrap_or(1.0),
+        )),
+        Some("regularPolygon") => Mesh::from(RegularPolygon::new(
+            asset
+                .size
+                .as_ref()
+                .and_then(|size| size.first())
+                .copied()
+                .unwrap_or(0.5),
+            asset
+                .size
+                .as_ref()
+                .and_then(|size| size.get(1))
+                .copied()
+                .unwrap_or(6.0) as usize,
+        )),
+        Some("extrudedRectangle") => {
+            let width = asset
+                .size
+                .as_ref()
+                .and_then(|size| size.first())
+                .copied()
+                .unwrap_or(1.0);
+            let height = asset
+                .size
+                .as_ref()
+                .and_then(|size| size.get(1))
+                .copied()
+                .unwrap_or(1.0);
+            let depth = asset
+                .size
+                .as_ref()
+                .and_then(|size| size.get(2))
+                .copied()
+                .unwrap_or(1.0);
+            Mesh::from(Extrusion::new(Rectangle::new(width, height), depth))
+        }
         Some("plane") => {
             let width = asset
                 .size

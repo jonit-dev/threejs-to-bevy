@@ -81,7 +81,21 @@ export {
   type SchemaFields,
   type SchemaKind,
 } from "./ecs/schema.js";
-export { BoxGeometry, CapsuleGeometry, CylinderGeometry, PlaneGeometry, SphereGeometry, type SupportedGeometry } from "./geometry/primitives.js";
+export {
+  AnnulusGeometry,
+  BoxGeometry,
+  CapsuleGeometry,
+  CircleGeometry,
+  ConeGeometry,
+  ConicalFrustumGeometry,
+  CylinderGeometry,
+  ExtrudedRectangleGeometry,
+  PlaneGeometry,
+  RegularPolygonGeometry,
+  SphereGeometry,
+  TorusGeometry,
+  type SupportedGeometry,
+} from "./geometry/primitives.js";
 export { defineGame, type IGameRoot, type IGameRootOptions } from "./game.js";
 export {
   action,

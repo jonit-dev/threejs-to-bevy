@@ -16,7 +16,18 @@ interface IObjectLike {
     occlusionTexture?: string | IAssetReference;
     roughness?: number;
   };
-  geometry?: { height?: number; kind: string; radius?: number; size?: readonly number[] };
+  geometry?: {
+    depth?: number;
+    height?: number;
+    innerRadius?: number;
+    kind: string;
+    outerRadius?: number;
+    radius?: number;
+    radiusBottom?: number;
+    radiusTop?: number;
+    sides?: number;
+    size?: readonly number[];
+  };
   physics?: IPhysicsDeclaration;
   position: { toArray(): [number, number, number] };
   rotation: { toArray(): [number, number, number] };
@@ -185,6 +196,19 @@ function emitPhysics(physics: IPhysicsDeclaration | undefined, components: Recor
 }
 
 function geometrySize(geometry: NonNullable<IObjectLike["geometry"]>): readonly number[] | undefined {
+  if (geometry.kind === "conicalFrustum") {
+    return [geometry.radiusTop ?? 0.25, geometry.radiusBottom ?? 0.5, geometry.height ?? 1];
+  }
+  if (geometry.kind === "torus" || geometry.kind === "annulus") {
+    return [geometry.innerRadius ?? 0.5, geometry.outerRadius ?? 1];
+  }
+  if (geometry.kind === "regularPolygon") {
+    return [geometry.radius ?? 0.5, geometry.sides ?? 6];
+  }
+  if (geometry.kind === "extrudedRectangle") {
+    const [width = 1, height = 1] = geometry.size ?? [];
+    return [width, height, geometry.depth ?? 1];
+  }
   if (geometry.size !== undefined) {
     return geometry.size;
   }

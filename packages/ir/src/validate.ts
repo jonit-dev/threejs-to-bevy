@@ -682,6 +682,70 @@ function validateAssetMetadata(asset: IAssetsManifest["assets"][number], path: s
   if (asset.kind === "model" && "particleEmitters" in raw) {
     validateParticleEmitters(raw.particleEmitters, `${path}/particleEmitters`, diagnostics);
   }
+  if (asset.kind === "mesh") {
+    validateGeneratedMeshAsset(asset, path, diagnostics);
+  }
+}
+
+const GENERATED_MESH_SIZE_ARITY: Record<string, number> = {
+  annulus: 2,
+  box: 3,
+  capsule: 2,
+  circle: 1,
+  cone: 2,
+  conicalFrustum: 3,
+  cylinder: 2,
+  extrudedRectangle: 3,
+  plane: 2,
+  regularPolygon: 2,
+  sphere: 1,
+  torus: 2,
+};
+
+function validateGeneratedMeshAsset(asset: Extract<IAssetsManifest["assets"][number], { kind: "mesh" }>, path: string, diagnostics: IIrDiagnostic[]): void {
+  const expectedSize = GENERATED_MESH_SIZE_ARITY[asset.primitive];
+  if (expectedSize === undefined) {
+    diagnostics.push({
+      code: "TN_IR_MESH_PRIMITIVE_UNSUPPORTED",
+      message: `Generated mesh '${asset.id}' uses unsupported primitive '${asset.primitive}'.`,
+      path: `${path}/primitive`,
+      severity: "error",
+      suggestion: "Use a supported generated primitive or emit a model asset.",
+    });
+    return;
+  }
+  const size = asset.size;
+  if (size === undefined) {
+    return;
+  }
+  if (size.length !== expectedSize || size.some((value) => !Number.isFinite(value) || value <= 0)) {
+    diagnostics.push({
+      code: "TN_IR_MESH_SIZE_INVALID",
+      message: `Generated mesh '${asset.id}' primitive '${asset.primitive}' expects ${expectedSize} positive finite size values.`,
+      path: `${path}/size`,
+      severity: "error",
+      suggestion: "Emit the canonical size tuple for the generated primitive.",
+    });
+    return;
+  }
+  const firstSize = size[0] ?? 0;
+  const secondSize = size[1] ?? 0;
+  if ((asset.primitive === "annulus" || asset.primitive === "torus") && secondSize <= firstSize) {
+    diagnostics.push({
+      code: "TN_IR_MESH_SIZE_INVALID",
+      message: `Generated mesh '${asset.id}' primitive '${asset.primitive}' requires outer radius greater than inner radius.`,
+      path: `${path}/size/1`,
+      severity: "error",
+    });
+  }
+  if (asset.primitive === "regularPolygon" && (!Number.isInteger(secondSize) || secondSize < 3)) {
+    diagnostics.push({
+      code: "TN_IR_MESH_SIZE_INVALID",
+      message: `Generated mesh '${asset.id}' regularPolygon requires at least three integer sides.`,
+      path: `${path}/size/1`,
+      severity: "error",
+    });
+  }
 }
 
 function validateAnimationClips(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {

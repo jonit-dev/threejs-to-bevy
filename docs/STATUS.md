@@ -410,6 +410,14 @@ artifacts and a diff under `artifacts/conformance/v7-renderer-dense-content`.
 Actual renderer-level native instancing, visual LOD mesh swapping, and portable
 post-processing remain unclaimed.
 
+Generated mesh primitive parity now covers the promoted Bevy-style primitive
+catalog in the shared SDK/IR asset contract: cone, conical frustum, torus,
+circle, annulus, regular polygon, and extruded rectangle join box, sphere,
+plane, capsule, and cylinder. The SDK/compiler emit deterministic primitive
+size tuples, IR validation rejects malformed tuple arity/radii/sides, the web
+runtime maps them to Three.js geometry, and the Bevy runtime maps them to native
+Bevy mesh primitives including `Extrusion<Rectangle>`.
+
 V7-07 has landed the first scripting determinism and lifecycle evidence slice:
 `systems.ir.json` now accepts explicit lifecycle metadata for `fixed-trace`
 replay, `system-local-disallowed` state, `invalidate` hot reload behavior, and
