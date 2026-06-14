@@ -374,6 +374,7 @@ export interface IUiNodeIr {
   id: string;
   kind: "bar" | "button" | "column" | "row" | "stack" | "text" | "touchControl";
   label?: string;
+  layout?: IUiLayoutIr;
   max?: number;
   navigation?: {
     down?: string;
@@ -383,6 +384,18 @@ export interface IUiNodeIr {
   };
   text?: string;
   value?: number;
+}
+
+export interface IUiLayoutIr {
+  align?: "center" | "end" | "start" | "stretch";
+  columnGap?: number;
+  direction?: "column" | "row";
+  grow?: number;
+  height?: number;
+  justify?: "center" | "end" | "spaceBetween" | "start";
+  padding?: number;
+  rowGap?: number;
+  width?: number;
 }
 
 export interface IUiIr {

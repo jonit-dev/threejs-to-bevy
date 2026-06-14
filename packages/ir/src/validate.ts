@@ -521,7 +521,7 @@ function validateUi(ui: IUiIr, path: string, diagnostics: IIrDiagnostic[]): void
 function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[], ids: Set<string>): void {
   const raw = node as unknown as Record<string, unknown>;
   for (const key of Object.keys(raw)) {
-    if (!["action", "binding", "children", "focusable", "id", "kind", "label", "max", "navigation", "text", "value"].includes(key)) {
+    if (!["action", "binding", "children", "focusable", "id", "kind", "label", "layout", "max", "navigation", "text", "value"].includes(key)) {
       diagnostics.push({
         code: "TN_IR_UI_FIELD_UNSUPPORTED",
         message: `UI node '${node.id}' uses unsupported field '${key}'.`,
@@ -529,6 +529,7 @@ function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnosti
       });
     }
   }
+  validateUiLayout(node.layout, `${path}/layout`, diagnostics);
   if (!["bar", "button", "column", "row", "stack", "text", "touchControl"].includes(node.kind)) {
     diagnostics.push({
       code: "TN_IR_UI_NODE_UNSUPPORTED",
@@ -552,6 +553,36 @@ function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnosti
     });
   }
   node.children?.forEach((child, index) => validateUiNode(child, `${path}/children/${index}`, diagnostics, ids));
+}
+
+function validateUiLayout(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value)) {
+    diagnostics.push({ code: "TN_IR_UI_LAYOUT_INVALID", message: "UI layout must be an object.", path });
+    return;
+  }
+  for (const key of Object.keys(value)) {
+    if (!["align", "columnGap", "direction", "grow", "height", "justify", "padding", "rowGap", "width"].includes(key)) {
+      diagnostics.push({ code: "TN_IR_UI_LAYOUT_FIELD_UNSUPPORTED", message: `UI layout uses unsupported field '${key}'.`, path: `${path}/${key}` });
+    }
+  }
+  if (value.direction !== undefined && !["column", "row"].includes(String(value.direction))) {
+    diagnostics.push({ code: "TN_IR_UI_LAYOUT_DIRECTION_INVALID", message: "UI layout direction must be row or column.", path: `${path}/direction` });
+  }
+  if (value.align !== undefined && !["center", "end", "start", "stretch"].includes(String(value.align))) {
+    diagnostics.push({ code: "TN_IR_UI_LAYOUT_ALIGN_INVALID", message: "UI layout align must be start, center, end, or stretch.", path: `${path}/align` });
+  }
+  if (value.justify !== undefined && !["center", "end", "spaceBetween", "start"].includes(String(value.justify))) {
+    diagnostics.push({ code: "TN_IR_UI_LAYOUT_JUSTIFY_INVALID", message: "UI layout justify must be start, center, end, or spaceBetween.", path: `${path}/justify` });
+  }
+  for (const key of ["columnGap", "grow", "height", "padding", "rowGap", "width"]) {
+    const item = value[key];
+    if (item !== undefined && (typeof item !== "number" || !Number.isFinite(item) || item < 0)) {
+      diagnostics.push({ code: "TN_IR_UI_LAYOUT_NUMBER_INVALID", message: `UI layout ${key} must be a finite non-negative number.`, path: `${path}/${key}` });
+    }
+  }
 }
 
 function collectFocusableUiIds(node: IUiNodeIr, focusableIds: Set<string>): void {
@@ -2488,6 +2519,13 @@ function validateCharacterComponents(
       path: `${path}/components/CharacterController/blocking`,
     });
   }
+  if (controller.stepOffset !== undefined && (typeof controller.stepOffset !== "number" || !Number.isFinite(controller.stepOffset) || controller.stepOffset < 0)) {
+    diagnostics.push({
+      code: "TN_IR_CHARACTER_STEP_INVALID",
+      message: "CharacterController.stepOffset must be a finite non-negative number.",
+      path: `${path}/components/CharacterController/stepOffset`,
+    });
+  }
   if (!["none", "raycast"].includes(controller.grounding as string)) {
     diagnostics.push({
       code: "TN_IR_CHARACTER_GROUNDING_UNSUPPORTED",
@@ -2519,13 +2557,6 @@ function validateInputRef(
       code: "TN_IR_CHARACTER_INPUT_REF_INVALID",
       message: `CharacterController ${kind} reference must be a non-empty string.`,
       path,
-  if (controller.stepOffset !== undefined && (typeof controller.stepOffset !== "number" || !Number.isFinite(controller.stepOffset) || controller.stepOffset < 0)) {
-    diagnostics.push({
-      code: "TN_IR_CHARACTER_STEP_INVALID",
-      message: "CharacterController.stepOffset must be a finite non-negative number.",
-      path: `${path}/components/CharacterController/stepOffset`,
-    });
-  }
     });
     return;
   }

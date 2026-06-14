@@ -102,6 +102,23 @@ fn ui_should_spawn_bevy_entities_with_stable_ids_and_hierarchy() {
         .get::<Style>(bar_fill)
         .expect("bar fill should have style");
     assert_eq!(bar_fill_style.width, Val::Percent(80.0));
+    let hud_style = app
+        .world()
+        .get::<Style>(hud)
+        .expect("hud should have style");
+    assert_eq!(hud_style.flex_direction, FlexDirection::Row);
+    assert_eq!(hud_style.justify_content, JustifyContent::SpaceBetween);
+    assert_eq!(hud_style.align_items, AlignItems::Center);
+    assert_eq!(hud_style.column_gap, Val::Px(12.0));
+    assert_eq!(hud_style.row_gap, Val::Px(4.0));
+    assert_eq!(hud_style.padding, UiRect::all(Val::Px(6.0)));
+    assert_eq!(hud_style.width, Val::Px(320.0));
+    assert_eq!(hud_style.height, Val::Px(48.0));
+    let pause_style = app
+        .world()
+        .get::<Style>(pause)
+        .expect("button should have style");
+    assert_eq!(pause_style.flex_grow, 1.0);
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
@@ -121,6 +138,7 @@ fn ui_should_reject_unsupported_ui_node() {
             id: "bad".to_owned(),
             kind: "html".to_owned(),
             label: None,
+            layout: None,
             max: None,
             navigation: None,
             text: None,
@@ -187,10 +205,11 @@ fn write_ui_bundle() -> PathBuf {
   "root": {
     "id": "hud",
     "kind": "column",
+    "layout": { "align": "center", "columnGap": 12, "direction": "row", "height": 48, "justify": "spaceBetween", "padding": 6, "rowGap": 4, "width": 320 },
     "children": [
       { "id": "label", "kind": "text", "text": "Health" },
       { "id": "health", "kind": "bar", "value": 8, "max": 10 },
-      { "id": "pause", "kind": "button", "label": "Pause", "action": "Pause" }
+      { "id": "pause", "kind": "button", "label": "Pause", "action": "Pause", "layout": { "grow": 1 } }
     ]
   }
 }"#,

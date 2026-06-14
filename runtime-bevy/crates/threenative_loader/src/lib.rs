@@ -588,6 +588,7 @@ pub struct UiNodeIr {
     pub id: String,
     pub kind: String,
     pub label: Option<String>,
+    pub layout: Option<UiLayoutIr>,
     pub text: Option<String>,
     pub action: Option<String>,
     pub focusable: Option<bool>,
@@ -596,6 +597,20 @@ pub struct UiNodeIr {
     pub max: Option<f32>,
     #[serde(default)]
     pub children: Vec<UiNodeIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UiLayoutIr {
+    pub align: Option<String>,
+    pub column_gap: Option<f32>,
+    pub direction: Option<String>,
+    pub grow: Option<f32>,
+    pub height: Option<f32>,
+    pub justify: Option<String>,
+    pub padding: Option<f32>,
+    pub row_gap: Option<f32>,
+    pub width: Option<f32>,
 }
 
 #[derive(Clone, Debug, Deserialize)]

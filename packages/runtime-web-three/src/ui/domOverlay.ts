@@ -129,6 +129,7 @@ function baseStyle(node: IRenderedUiNode): Partial<CSSStyleDeclaration> {
   if (node.kind === "button" || node.kind === "touchControl") {
     style.pointerEvents = "auto";
   }
+  applyLayoutStyle(style, node.layout);
   if (node.kind === "bar") {
     style.border = "1px solid currentColor";
     style.height = "12px";
@@ -136,4 +137,48 @@ function baseStyle(node: IRenderedUiNode): Partial<CSSStyleDeclaration> {
     style.width = "160px";
   }
   return style;
+}
+
+function applyLayoutStyle(style: Partial<CSSStyleDeclaration>, layout: IRenderedUiNode["layout"]): void {
+  if (layout === undefined) {
+    return;
+  }
+  style.display = "flex";
+  if (layout.direction !== undefined) {
+    style.flexDirection = layout.direction;
+  }
+  if (layout.justify !== undefined) {
+    style.justifyContent = {
+      center: "center",
+      end: "flex-end",
+      spaceBetween: "space-between",
+      start: "flex-start",
+    }[layout.justify];
+  }
+  if (layout.align !== undefined) {
+    style.alignItems = {
+      center: "center",
+      end: "flex-end",
+      start: "flex-start",
+      stretch: "stretch",
+    }[layout.align];
+  }
+  if (layout.rowGap !== undefined) {
+    style.rowGap = `${layout.rowGap}px`;
+  }
+  if (layout.columnGap !== undefined) {
+    style.columnGap = `${layout.columnGap}px`;
+  }
+  if (layout.padding !== undefined) {
+    style.padding = `${layout.padding}px`;
+  }
+  if (layout.width !== undefined) {
+    style.width = `${layout.width}px`;
+  }
+  if (layout.height !== undefined) {
+    style.height = `${layout.height}px`;
+  }
+  if (layout.grow !== undefined) {
+    style.flexGrow = String(layout.grow);
+  }
 }

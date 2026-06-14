@@ -36,6 +36,23 @@ test("ui dom overlay should dispatch button and touch control clicks to rendered
   ]);
 });
 
+test("ui dom overlay should apply explicit flex layout metadata", () => {
+  const overlay = createUiDomOverlay(renderUi(makeUi(), makeWorld()), new FakeDocument() as unknown as Document);
+  const controls = findByUiId(overlay.element, "controls");
+  const pause = findByUiId(overlay.element, "pause");
+
+  assert.equal(controls?.style.display, "flex");
+  assert.equal(controls?.style.flexDirection, "row");
+  assert.equal(controls?.style.justifyContent, "space-between");
+  assert.equal(controls?.style.alignItems, "center");
+  assert.equal(controls?.style.columnGap, "12px");
+  assert.equal(controls?.style.rowGap, "4px");
+  assert.equal(controls?.style.padding, "6px");
+  assert.equal(controls?.style.width, "320px");
+  assert.equal(controls?.style.height, "48px");
+  assert.equal(pause?.style.flexGrow, "1");
+});
+
 function makeUi(): IUiIr {
   return {
     schema: "threenative.ui",
@@ -49,8 +66,9 @@ function makeUi(): IUiIr {
         {
           id: "controls",
           kind: "row",
+          layout: { align: "center", columnGap: 12, direction: "row", height: 48, justify: "spaceBetween", padding: 6, rowGap: 4, width: 320 },
           children: [
-            { id: "pause", kind: "button", label: "Pause", action: "Pause" },
+            { id: "pause", kind: "button", label: "Pause", action: "Pause", layout: { grow: 1 } },
             { id: "jump", kind: "touchControl", label: "Jump", action: "Jump" },
           ],
         },

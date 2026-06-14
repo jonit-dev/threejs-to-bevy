@@ -527,6 +527,9 @@ function visitUiNode(node: IUiIr["root"], add: (domain: string, capability: stri
   if (node.focusable === true) {
     add("ui", "focusable");
   }
+  if (node.layout !== undefined) {
+    add("ui", "flex-layout");
+  }
   if (node.navigation !== undefined) {
     add("ui", "navigation");
   }

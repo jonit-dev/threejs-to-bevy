@@ -226,21 +226,21 @@ fn spawn_node(
             .id(),
         "button" => world
             .spawn(ButtonBundle {
-                style: leaf_style(),
+                style: leaf_style(node),
                 background_color: BackgroundColor(Color::srgb(0.15, 0.17, 0.2)),
                 ..Default::default()
             })
             .id(),
         "bar" => world
             .spawn(NodeBundle {
-                style: bar_style(),
+                style: bar_style(node),
                 background_color: BackgroundColor(Color::srgb(0.16, 0.18, 0.2)),
                 ..Default::default()
             })
             .id(),
         _ => world
             .spawn(NodeBundle {
-                style: layout_style(node.kind.as_str()),
+                style: layout_style(node),
                 background_color: BackgroundColor(Color::NONE),
                 ..Default::default()
             })
@@ -295,9 +295,9 @@ fn attach_children(world: &mut World, node: &UiNodeIr, entities_by_id: &HashMap<
     }
 }
 
-fn layout_style(kind: &str) -> Style {
-    Style {
-        flex_direction: match kind {
+fn layout_style(node: &UiNodeIr) -> Style {
+    let mut style = Style {
+        flex_direction: match node.kind.as_str() {
             "row" => FlexDirection::Row,
             "stack" => FlexDirection::Column,
             _ => FlexDirection::Column,
@@ -306,21 +306,73 @@ fn layout_style(kind: &str) -> Style {
         column_gap: Val::Px(8.0),
         padding: UiRect::all(Val::Px(8.0)),
         ..Default::default()
-    }
+    };
+    apply_layout(&mut style, node.layout.as_ref());
+    style
 }
 
-fn leaf_style() -> Style {
-    Style {
+fn leaf_style(node: &UiNodeIr) -> Style {
+    let mut style = Style {
         padding: UiRect::axes(Val::Px(12.0), Val::Px(8.0)),
         ..Default::default()
-    }
+    };
+    apply_layout(&mut style, node.layout.as_ref());
+    style
 }
 
-fn bar_style() -> Style {
-    Style {
+fn bar_style(node: &UiNodeIr) -> Style {
+    let mut style = Style {
         width: Val::Px(160.0),
         height: Val::Px(12.0),
         ..Default::default()
+    };
+    apply_layout(&mut style, node.layout.as_ref());
+    style
+}
+
+fn apply_layout(style: &mut Style, layout: Option<&threenative_loader::UiLayoutIr>) {
+    let Some(layout) = layout else {
+        return;
+    };
+    if let Some(direction) = layout.direction.as_deref() {
+        style.flex_direction = match direction {
+            "row" => FlexDirection::Row,
+            _ => FlexDirection::Column,
+        };
+    }
+    if let Some(justify) = layout.justify.as_deref() {
+        style.justify_content = match justify {
+            "center" => JustifyContent::Center,
+            "end" => JustifyContent::FlexEnd,
+            "spaceBetween" => JustifyContent::SpaceBetween,
+            _ => JustifyContent::FlexStart,
+        };
+    }
+    if let Some(align) = layout.align.as_deref() {
+        style.align_items = match align {
+            "center" => AlignItems::Center,
+            "end" => AlignItems::FlexEnd,
+            "stretch" => AlignItems::Stretch,
+            _ => AlignItems::FlexStart,
+        };
+    }
+    if let Some(row_gap) = layout.row_gap {
+        style.row_gap = Val::Px(row_gap);
+    }
+    if let Some(column_gap) = layout.column_gap {
+        style.column_gap = Val::Px(column_gap);
+    }
+    if let Some(padding) = layout.padding {
+        style.padding = UiRect::all(Val::Px(padding));
+    }
+    if let Some(width) = layout.width {
+        style.width = Val::Px(width);
+    }
+    if let Some(height) = layout.height {
+        style.height = Val::Px(height);
+    }
+    if let Some(grow) = layout.grow {
+        style.flex_grow = grow;
     }
 }
 

@@ -94,3 +94,52 @@ test("ui should validate v7 focus navigation metadata", async () => {
     await rm(root, { force: true, recursive: true });
   }
 });
+
+test("ui should validate explicit flex layout metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ui-layout-"));
+  try {
+    await writeTestBundle(root, { manifest: { entry: { ui: "ui.ir.json" } } });
+    await writeJson(root, "ui.ir.json", {
+      schema: "threenative.ui",
+      version: "0.1.0",
+      root: {
+        id: "hud",
+        kind: "row",
+        layout: { align: "center", columnGap: 12, direction: "row", height: 48, justify: "spaceBetween", padding: 6, rowGap: 4, width: 320 },
+        children: [{ id: "score", kind: "text", text: "0" }],
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("ui should reject invalid flex layout metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ui-layout-invalid-"));
+  try {
+    await writeTestBundle(root, { manifest: { entry: { ui: "ui.ir.json" } } });
+    await writeJson(root, "ui.ir.json", {
+      schema: "threenative.ui",
+      version: "0.1.0",
+      root: {
+        id: "hud",
+        kind: "row",
+        layout: { align: "baseline", direction: "diagonal", grow: -1, justify: "around" },
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_LAYOUT_DIRECTION_INVALID"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_LAYOUT_ALIGN_INVALID"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_LAYOUT_JUSTIFY_INVALID"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_LAYOUT_NUMBER_INVALID"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});

@@ -17,6 +17,17 @@ export interface IUiNodeProps {
     previous?: string;
   };
   label?: string;
+  layout?: {
+    align?: "center" | "end" | "start" | "stretch";
+    columnGap?: number;
+    direction?: "column" | "row";
+    grow?: number;
+    height?: number;
+    justify?: "center" | "end" | "spaceBetween" | "start";
+    padding?: number;
+    rowGap?: number;
+    width?: number;
+  };
   max?: number;
   navigation?: {
     down?: string;

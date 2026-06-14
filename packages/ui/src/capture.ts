@@ -25,6 +25,7 @@ export interface IUiNodeIr {
   id: string;
   kind: "bar" | "button" | "column" | "row" | "stack" | "text" | "touchControl";
   label?: string;
+  layout?: IUiLayoutIr;
   max?: number;
   navigation?: {
     down?: string;
@@ -34,6 +35,18 @@ export interface IUiNodeIr {
   };
   text?: string;
   value?: number;
+}
+
+export interface IUiLayoutIr {
+  align?: "center" | "end" | "start" | "stretch";
+  columnGap?: number;
+  direction?: "column" | "row";
+  grow?: number;
+  height?: number;
+  justify?: "center" | "end" | "spaceBetween" | "start";
+  padding?: number;
+  rowGap?: number;
+  width?: number;
 }
 
 export function captureUi(root: IUiElement): IUiIr {
@@ -66,6 +79,7 @@ function captureNode(element: IUiElement, fallback: string): IUiNodeIr {
     ...(element.props.binding === undefined ? {} : { binding: element.props.binding }),
     ...(element.props.focusable === undefined ? {} : { focusable: element.props.focusable }),
     ...(element.props.label === undefined ? {} : { label: element.props.label }),
+    ...(element.props.layout === undefined ? {} : { layout: element.props.layout }),
     ...(element.props.max === undefined ? {} : { max: element.props.max }),
     ...(element.props.navigation === undefined ? {} : { navigation: element.props.navigation }),
     ...(element.props.text === undefined ? {} : { text: element.props.text }),
