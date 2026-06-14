@@ -19,7 +19,10 @@
       "reportArtifacts": [
         "artifacts/conformance/v7-advanced-physics-character/web.report.json",
         "artifacts/conformance/v7-advanced-physics-character/bevy.report.json",
-        "artifacts/conformance/v7-advanced-physics-character/comparison.report.json"
+        "artifacts/conformance/v7-advanced-physics-character/comparison.report.json",
+        "artifacts/conformance/v7-advanced-physics-character/web-character.json",
+        "artifacts/conformance/v7-advanced-physics-character/native-character.json",
+        "artifacts/conformance/v7-advanced-physics-character/character-diff.json"
       ],
       "rejectedDiagnosticCodes": [
         "TN_V7_PHYSICS_UNSUPPORTED",

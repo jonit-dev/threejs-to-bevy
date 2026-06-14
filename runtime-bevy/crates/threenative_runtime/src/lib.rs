@@ -7,6 +7,7 @@ use threenative_loader::{LoadError, LoadedBundle, TransformComponent, load_bundl
 
 pub mod assets;
 pub mod audio;
+pub mod character;
 pub mod conformance;
 pub mod environment;
 pub mod first_person;

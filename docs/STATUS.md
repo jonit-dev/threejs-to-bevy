@@ -348,10 +348,14 @@ permissions beside `physics.raycast`. The first runtime phase now has a
 `v7-advanced-physics-character` conformance fixture and fixed web/native trace
 for primitive overlap and swept box shape-cast queries with portable collider
 layer filters, writing web/native effect logs and a diff under
-`artifacts/conformance/v7-advanced-physics-character`. Web and native runtime
-tests now also pin deterministic ordering for simultaneous collision/trigger
-contacts. Full solver behavior, sensors beyond the query fixture, and stronger
-character-controller movement/blocking behavior remain V7 work.
+`artifacts/conformance/v7-advanced-physics-character`. The fixture now carries
+a grounded/blocking `CharacterController` and `input.ir.json` axes, and
+`pnpm verify:conformance` compares a fixed web/native character movement trace
+with deterministic stop-before-penetration behavior. Web and native runtime
+tests also pin deterministic ordering for simultaneous collision/trigger
+contacts. Full solver behavior, sensors beyond the query fixture, and advanced
+character-controller behavior such as slopes, steps, navmesh, and full
+interaction parity remain V7 work.
 
 V8 is the first planned local editor and inspector milestone. V9 is the first
 planned online project and publishing milestone. V10 is the first planned

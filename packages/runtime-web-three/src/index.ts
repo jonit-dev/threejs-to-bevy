@@ -15,6 +15,7 @@ export { collectPerformanceSummary, summarizeFrameTimings, type IPerformanceMetr
 export { applyAtmosphereProfile, observeAtmosphereProfile, type IAtmosphereObservation } from "./rendering.js";
 export { createGameLoopState, runGameFrame, setPaused, type IGameLoopState } from "./gameLoop.js";
 export { attachInputListeners, createInputState, type IWebInputState } from "./input.js";
+export { traceCharacterControllers, type ICharacterTraceInput, type ICharacterTraceObservation } from "./character.js";
 export { createFirstPersonState, updateFirstPersonController, type IFirstPersonControllerState } from "./firstPerson.js";
 export { resolveWebAssets, type IResolvedWebAsset } from "./assets.js";
 export { mapWorld, syncTransforms, type IRuntimeDiagnostic, type IThreeWorld } from "./mapWorld.js";

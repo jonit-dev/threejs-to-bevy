@@ -9,8 +9,17 @@
       "contact-filtering",
       "query.overlap",
       "query.shape-cast",
+      "rigid-body.kinematic",
       "rigid-body.static",
       "trigger-collider"
+    ],
+    "character": [
+      "blocking",
+      "controller",
+      "grounding"
+    ],
+    "input": [
+      "axes"
     ],
     "scripting": [
       "schedule.fixedUpdate",
@@ -28,6 +37,7 @@
   "files": {
     "assets": "assets.manifest.json",
     "componentSchemas": "schemas/components.schema.json",
+    "input": "input.ir.json",
     "materials": "materials.ir.json",
     "targetProfile": "target.profile.json"
   }

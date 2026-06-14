@@ -44,6 +44,11 @@ export async function verifyConformance(options = {}) {
     options.v7PhysicsQueryNativeEffectsPath ?? resolve(artifactDir, "v7-advanced-physics-character/native-effects.json");
   const v7PhysicsQueryWebEffectsPath =
     options.v7PhysicsQueryWebEffectsPath ?? resolve(artifactDir, "v7-advanced-physics-character/web-effects.json");
+  const v7CharacterDiffPath = options.v7CharacterDiffPath ?? resolve(artifactDir, "v7-advanced-physics-character/character-diff.json");
+  const v7CharacterNativeTracePath =
+    options.v7CharacterNativeTracePath ?? resolve(artifactDir, "v7-advanced-physics-character/native-character.json");
+  const v7CharacterWebTracePath =
+    options.v7CharacterWebTracePath ?? resolve(artifactDir, "v7-advanced-physics-character/web-character.json");
   const artifacts = {
     nativeBasicSceneReportPath,
     nativeV6AnimationClipsReportPath,
@@ -60,6 +65,9 @@ export async function verifyConformance(options = {}) {
     v7PhysicsQueryDiffPath,
     v7PhysicsQueryNativeEffectsPath,
     v7PhysicsQueryWebEffectsPath,
+    v7CharacterDiffPath,
+    v7CharacterNativeTracePath,
+    v7CharacterWebTracePath,
   };
   const steps = [];
 
@@ -199,6 +207,16 @@ export async function verifyConformance(options = {}) {
       process.execPath,
       [
         resolve(root, "scripts/verify-v7-physics-query-trace.mjs"),
+        v7AdvancedPhysicsCharacterBundlePath,
+        resolve(artifactDir, "v7-advanced-physics-character"),
+      ],
+      { timeoutMs: 120000 },
+    ],
+    [
+      "V7 character fixed trace parity",
+      process.execPath,
+      [
+        resolve(root, "scripts/verify-v7-character-trace.mjs"),
         v7AdvancedPhysicsCharacterBundlePath,
         resolve(artifactDir, "v7-advanced-physics-character"),
       ],
@@ -423,6 +441,9 @@ function fixtureForStep(stepName) {
   if (stepName.includes("V7 physics query")) {
     return "v7-advanced-physics-character";
   }
+  if (stepName.includes("V7 character")) {
+    return "v7-advanced-physics-character";
+  }
   return "conformance";
 }
 
@@ -454,6 +475,9 @@ function artifactPathForStep(stepName, artifacts) {
   if (stepName.includes("V7 physics query")) {
     return artifacts.v7PhysicsQueryDiffPath;
   }
+  if (stepName.includes("V7 character")) {
+    return artifacts.v7CharacterDiffPath;
+  }
   return undefined;
 }
 
@@ -477,6 +501,9 @@ function bundlePathForStep(stepName) {
     return "packages/ir/fixtures/conformance/v6-audio-playback/game.bundle";
   }
   if (stepName.includes("V7 physics query")) {
+    return "packages/ir/fixtures/conformance/v7-advanced-physics-character/game.bundle";
+  }
+  if (stepName.includes("V7 character")) {
     return "packages/ir/fixtures/conformance/v7-advanced-physics-character/game.bundle";
   }
   return undefined;

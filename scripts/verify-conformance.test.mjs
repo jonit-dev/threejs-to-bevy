@@ -132,7 +132,7 @@ test("should pass matching gate commands and save report path", async () => {
     });
 
     assert.equal(result.ok, true);
-    assert.equal(result.steps.length, 12);
+    assert.equal(result.steps.length, 13);
     assert.equal(result.reportPath.endsWith("artifacts/conformance/verification-report.json"), true);
     assert.equal(result.artifacts.nativeBasicSceneReportPath.endsWith("artifacts/conformance/basic-scene/bevy.report.json"), true);
     assert.equal(
@@ -174,9 +174,18 @@ test("should pass matching gate commands and save report path", async () => {
       ),
       true,
     );
+    assert.equal(result.artifacts.v7CharacterDiffPath.endsWith("artifacts/conformance/v7-advanced-physics-character/character-diff.json"), true);
+    assert.equal(
+      result.artifacts.v7CharacterNativeTracePath.endsWith("artifacts/conformance/v7-advanced-physics-character/native-character.json"),
+      true,
+    );
+    assert.equal(
+      result.artifacts.v7CharacterWebTracePath.endsWith("artifacts/conformance/v7-advanced-physics-character/web-character.json"),
+      true,
+    );
     const report = JSON.parse(await readFile(result.reportPath, "utf8"));
     assert.equal(report.status, "pass");
-    assert.equal(report.steps.length, 12);
+    assert.equal(report.steps.length, 13);
     assert.equal(report.artifacts.nativeBasicSceneReportPath.endsWith("artifacts/conformance/basic-scene/bevy.report.json"), true);
     assert.equal(
       report.artifacts.nativeV6AnimationClipsReportPath.endsWith("artifacts/conformance/v6-animation-clips/bevy.report.json"),
@@ -215,6 +224,15 @@ test("should pass matching gate commands and save report path", async () => {
       report.artifacts.v7PhysicsQueryWebEffectsPath.endsWith(
         "artifacts/conformance/v7-advanced-physics-character/web-effects.json",
       ),
+      true,
+    );
+    assert.equal(report.artifacts.v7CharacterDiffPath.endsWith("artifacts/conformance/v7-advanced-physics-character/character-diff.json"), true);
+    assert.equal(
+      report.artifacts.v7CharacterNativeTracePath.endsWith("artifacts/conformance/v7-advanced-physics-character/native-character.json"),
+      true,
+    );
+    assert.equal(
+      report.artifacts.v7CharacterWebTracePath.endsWith("artifacts/conformance/v7-advanced-physics-character/web-character.json"),
       true,
     );
   } finally {

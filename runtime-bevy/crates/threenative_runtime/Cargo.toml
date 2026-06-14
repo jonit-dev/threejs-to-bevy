@@ -23,6 +23,10 @@ path = "src/conformance_cli.rs"
 name = "threenative_systems_log"
 path = "src/systems_log.rs"
 
+[[bin]]
+name = "threenative_character_trace"
+path = "src/character_trace.rs"
+
 [dependencies]
 bevy = "=0.14.2"
 quickjs-rusty = "=0.12.0"

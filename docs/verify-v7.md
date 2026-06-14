@@ -13,6 +13,9 @@ Current V7 conformance evidence starts with:
 - `artifacts/conformance/v7-advanced-physics-character/web-effects.json`
 - `artifacts/conformance/v7-advanced-physics-character/native-effects.json`
 - `artifacts/conformance/v7-advanced-physics-character/effects-diff.json`
+- `artifacts/conformance/v7-advanced-physics-character/web-character.json`
+- `artifacts/conformance/v7-advanced-physics-character/native-character.json`
+- `artifacts/conformance/v7-advanced-physics-character/character-diff.json`
 
 The V7 fixture catalog maps V7-02 through V7-09 to baseline bundles, planned
 accepted and rejected fixture bundle paths, expected target capabilities,
@@ -39,6 +42,8 @@ The current V7-02 runtime evidence is intentionally narrow: the
 `v7-advanced-physics-character` fixture compares web and native fixed traces for
 portable primitive overlap and swept box shape-cast queries with collider layer
 filters. Focused web and native runtime tests also pin deterministic ordering
-for simultaneous collision and trigger contacts. This does not claim full solver
-parity, dynamic mesh collider behavior, broader sensor coverage, or
-character-controller movement/blocking parity.
+for simultaneous collision and trigger contacts. The same fixture now compares a
+fixed character trace for one-step axis movement, raycast-style grounding, and
+stop-before-penetration blocking. This does not claim full solver parity,
+dynamic mesh collider behavior, broader sensor coverage, slopes, steps, navmesh,
+or full character interaction parity.

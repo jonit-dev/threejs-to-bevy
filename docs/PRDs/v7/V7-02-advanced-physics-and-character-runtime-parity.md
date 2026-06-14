@@ -53,10 +53,10 @@ handles adapter-private.
 
 **Implementation:**
 
-- [ ] Implement shape/overlap query observations for fixed traces.
-- [ ] Add deterministic contact ordering and stronger character-controller
+- [x] Implement shape/overlap query observations for fixed traces.
+- [x] Add deterministic contact ordering and stronger character-controller
   traces.
-- [ ] Document target drift where exact solver parity is impossible.
+- [x] Document target drift where exact solver parity is impossible.
 
 ## Verification Strategy
 

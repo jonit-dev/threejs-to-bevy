@@ -56,6 +56,32 @@
           "scale": [1, 1, 1]
         }
       }
+    },
+    {
+      "id": "player",
+      "components": {
+        "CharacterController": {
+          "blocking": true,
+          "grounding": "raycast",
+          "moveXAxis": "MoveX",
+          "moveZAxis": "MoveZ",
+          "speed": 3
+        },
+        "Collider": {
+          "kind": "box",
+          "layer": "player",
+          "mask": ["world"],
+          "size": [1, 2, 1]
+        },
+        "RigidBody": {
+          "kind": "kinematic"
+        },
+        "Transform": {
+          "position": [0, 1, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
     }
   ],
   "events": {},

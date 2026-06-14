@@ -132,11 +132,16 @@ test("should include capability tags for each conformance fixture", async () => 
     "ui:runtime",
   ]);
   assertFixtureCapabilities(byName, "v7-advanced-physics-character", [
+    "character:blocking",
+    "character:controller",
+    "character:grounding",
+    "input:axes",
     "physics:collider.box",
     "physics:collider.sphere",
     "physics:contact-filtering",
     "physics:query.overlap",
     "physics:query.shape-cast",
+    "physics:rigid-body.kinematic",
     "physics:rigid-body.static",
     "scripting:schedule.fixedUpdate",
     "scripting:script-bundle",
