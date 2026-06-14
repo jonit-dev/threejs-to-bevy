@@ -180,6 +180,13 @@ input, runtime config, and system contracts. There is no new Bevy runtime
 surface; native evidence remains whatever the emitted existing contracts
 already have through conformance and focused Rust tests.
 
+V5-10 is implemented for the aggregate release gate. `pnpm verify:v5` now links
+the visual scene artifacts, shared conformance report, focused Bevy native test
+evidence, dense-content budget report, diagnostics/docs gate, and
+game-authoring ergonomics starter smoke in one V5 report. This does not change
+the Bevy runtime surface; it makes the existing native tests and artifacts part
+of the V5 completion evidence.
+
 Priority V5 native coverage:
 
 1. Loader and fixture reuse for shared IR bundles used by both web and Bevy

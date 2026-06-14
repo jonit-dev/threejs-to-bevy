@@ -76,7 +76,7 @@ existing V1-V4 contracts
 
 ## Release Gate
 
-Before treating V5 as complete, run:
+V5 is complete for the documented scope when this aggregate gate passes:
 
 ```bash
 pnpm verify:v5
@@ -85,9 +85,10 @@ pnpm check:docs:v5
 cd runtime-bevy && cargo test
 ```
 
-`pnpm verify:v5` should write a machine-readable report under `artifacts/v5`
-with ordered steps, diagnostics, Rust test evidence, conformance links, visual
-artifacts, SDK ergonomics/starter evidence, and the first failing step.
+`pnpm verify:v5` writes a machine-readable report under `artifacts/v5` with
+ordered steps, diagnostics, Rust native test evidence, conformance links,
+visual scene artifacts, SDK ergonomics/starter evidence, and the first failing
+step.
 
 ## Implemented Ergonomics Scope
 

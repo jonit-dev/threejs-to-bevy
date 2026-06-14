@@ -31,19 +31,31 @@ const diagnosticPhrases = [
 
 const unsupportedV5Claims = [
   "V5 supports scene editor",
+  "V5 supports online",
   "V5 supports networking",
+  "V5 supports replication",
   "V5 supports raw Three.js",
+  "V5 supports public plugin",
   "V5 supports public plugins",
   "V5 supports custom renderer",
+  "V5 supports custom renderer replacement",
+];
+
+const statusAndParityPhrases = [
+  ["native test", "V5 docs must mention native test expectations."],
+  ["visual scene", "V5 docs must mention visual scene evidence."],
+  ["game-authoring ergonomics", "V5 docs must mention game-authoring ergonomics."],
 ];
 
 export async function checkDocsV5(root = repoRoot) {
   const diagnostics = [];
   const indexPath = "docs/PRDs/v5/README.md";
   const diagnosticsPath = "docs/diagnostics.md";
+  const parityPath = "docs/bevy-feature-parity.md";
   const statusPath = "docs/STATUS.md";
   const index = await readDoc(root, indexPath, diagnostics);
   const diagnosticsDoc = await readDoc(root, diagnosticsPath, diagnostics);
+  const parity = await readDoc(root, parityPath, diagnostics);
   const status = await readDoc(root, statusPath, diagnostics);
   const verifyV5 = await readDoc(root, "docs/verify-v5.md", diagnostics);
 
@@ -78,7 +90,23 @@ export async function checkDocsV5(root = repoRoot) {
     });
   }
 
-  const broadScopeText = `${status}\n${verifyV5}`;
+  for (const [phrase, message] of statusAndParityPhrases) {
+    for (const [file, text] of [
+      [statusPath, status],
+      [parityPath, parity],
+    ]) {
+      if (!text.includes(phrase)) {
+        diagnostics.push({
+          code: "TN_DOCS_V5_STATUS_PARITY_SCOPE_MISSING",
+          file,
+          message,
+          severity: "error",
+        });
+      }
+    }
+  }
+
+  const broadScopeText = `${status}\n${parity}\n${verifyV5}`;
   for (const claim of unsupportedV5Claims) {
     if (broadScopeText.includes(claim)) {
       diagnostics.push({

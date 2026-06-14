@@ -29,12 +29,12 @@ artifact conventions under `artifacts/v5`.
 
 **Implementation:**
 
-- [ ] Require every `docs/PRDs/v5/V5-*.md` to be linked from the index.
-- [ ] Require status and parity docs to mention V5 native test, visual scene,
+- [x] Require every `docs/PRDs/v5/V5-*.md` to be linked from the index.
+- [x] Require status and parity docs to mention V5 native test, visual scene,
   and game-authoring ergonomics expectations.
-- [ ] Reject V5 acceptance claims for editor, online, networking, replication,
+- [x] Reject V5 acceptance claims for editor, online, networking, replication,
   public plugins, and custom renderer replacement.
-- [ ] Require diagnostics and artifact docs to mention V5.
+- [x] Require diagnostics and artifact docs to mention V5.
 
 #### Phase 2: Release Harness
 
@@ -48,14 +48,14 @@ artifact conventions under `artifacts/v5`.
 
 **Implementation:**
 
-- [ ] Run docs V5, conformance, selected TypeScript tests, selected existing
+- [x] Run docs V5, conformance, selected TypeScript tests, selected existing
   V3/V4 gates or documented sub-gates, focused Rust tests, V5 scene checks, and
   the required V5 game starter smoke.
-- [ ] Write `artifacts/v5/verification-report.json`.
-- [ ] Include `schema`, `version`, `status`, `code`, `steps`, `diagnostics`,
+- [x] Write `artifacts/v5/verification-report.json`.
+- [x] Include `schema`, `version`, `status`, `code`, `steps`, `diagnostics`,
   `artifacts`, `startedAt`, and `durationMs`.
-- [ ] Capture Rust test evidence in `artifacts/v5/rust-test-report.json`.
-- [ ] Surface first failing step and stable `TN_VERIFY_V5_*` diagnostic codes.
+- [x] Capture Rust test evidence in `artifacts/v5/rust-test-report.json`.
+- [x] Surface first failing step and stable `TN_VERIFY_V5_*` diagnostic codes.
 
 ## Verification Strategy
 
@@ -68,9 +68,23 @@ artifact conventions under `artifacts/v5`.
 
 ## Acceptance Criteria
 
-- [ ] `pnpm verify:v5` is the V5 aggregate release gate.
-- [ ] The V5 report is machine-readable and links conformance, Rust, visual,
+- [x] `pnpm verify:v5` is the V5 aggregate release gate.
+- [x] The V5 report is machine-readable and links conformance, Rust, visual,
   SDK ergonomics/starter, diagnostics, and docs artifacts.
-- [ ] Docs checks catch missing V5 PRD links and forbidden V6 scope claims.
-- [ ] `docs/STATUS.md` and `docs/bevy-feature-parity.md` reflect the completed
+- [x] Docs checks catch missing V5 PRD links and forbidden V6 scope claims.
+- [x] `docs/STATUS.md` and `docs/bevy-feature-parity.md` reflect the completed
   V5 gate state before V5 is marked complete.
+
+## Implementation Evidence
+
+- `scripts/check-docs-v5.mjs` verifies the full V5 PRD index, diagnostics
+  ranges, status/parity V5 scope phrases, and unsupported V6-scope claims.
+- `scripts/verify-v5.mjs` is the aggregate V5 gate and now runs docs checks,
+  selected V5 script/SDK tests, CLI build, V5 scene build/validate/visual
+  verify, dense-content budget verification, starter create/build/validate
+  smoke, shared conformance, and Bevy native tests.
+- `artifacts/v5/verification-report.json` includes `schema`, `version`,
+  `status`, `code`, `steps`, `diagnostics`, `artifacts`, `startedAt`, and
+  `durationMs`.
+- `artifacts/v5/rust-test-report.json` captures the focused Rust test step, and
+  failing aggregate steps produce `TN_VERIFY_V5_STEP_FAILED`.

@@ -54,6 +54,18 @@ test("should reject broad game framework claims", async () => {
   }
 });
 
+test("should require v5 status and parity scope phrases", async () => {
+  const root = await makeDocsRoot({ parity: "native test\nvisual scene\n", status: "V5-03 diagnostic normalization\n" });
+  try {
+    const result = await checkDocsV5(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_DOCS_V5_STATUS_PARITY_SCOPE_MISSING"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 async function makeDocsRoot(overrides = {}) {
   const root = await mkdtemp(join(tmpdir(), "tn-docs-v5-"));
   await mkdir(join(root, "docs/PRDs/v5"), { recursive: true });
@@ -74,7 +86,8 @@ async function makeDocsRoot(overrides = {}) {
       "V5-11-game-authoring-ergonomics-refactor.md",
     ].join("\n"),
   );
-  await writeFile(join(root, "docs/STATUS.md"), "V5-03 diagnostic normalization\n");
+  await writeFile(join(root, "docs/STATUS.md"), overrides.status ?? "V5-03 diagnostic normalization\nnative test\nvisual scene\ngame-authoring ergonomics\n");
+  await writeFile(join(root, "docs/bevy-feature-parity.md"), overrides.parity ?? "native test\nvisual scene\ngame-authoring ergonomics\n");
   await writeFile(join(root, "docs/verify-v5.md"), overrides.verifyV5 ?? "V5 visual-quality and v5-game-starter authoring sugar\n");
   await writeFile(
     join(root, "docs/diagnostics.md"),

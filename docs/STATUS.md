@@ -5,17 +5,19 @@ conceptual docs when deciding what is supported, partial, or future-facing.
 
 ## Current Active Gate
 
-V4: native gameplay scripting proof for a primitive scene.
+V5: aggregate hardening, visual-quality, native evidence, and game-authoring
+ergonomics gate.
 
 Current release command:
 
 ```bash
-pnpm verify:v4
+pnpm verify:v5
 ```
 
-`verify:v4` builds the primitive scripting demo, runs the web JavaScript and
-native QuickJS hosts over the same fixed trace, compares canonical effect logs,
-and writes the V4 report under `artifacts/v4`.
+`verify:v5` runs the V5 docs gate, selected TypeScript tests, the maintained
+visual scene checks, dense-content budget evidence, starter-template smoke,
+shared conformance, and Bevy native test evidence. It writes the V5 aggregate
+report under `artifacts/v5/verification-report.json`.
 
 ## V4 Proves
 
@@ -160,6 +162,15 @@ scene/world/input/system starter, and `pnpm verify:v5` creates, builds, and
 validates that starter under `artifacts/v5/starter-smoke`. This does not add a
 new runtime contract, prefab framework, editor workflow, networking, raw
 Three.js compatibility, plugin API, or custom renderer support.
+
+V5-10 has landed the aggregate V5 release gate: `pnpm verify:v5` now produces a
+schema/versioned machine-readable report with ordered steps, diagnostics,
+startedAt/durationMs, first-failing-step diagnostics, conformance artifacts,
+Rust native test evidence at `artifacts/v5/rust-test-report.json`, visual scene
+artifacts, dense-content budget evidence, and game-authoring ergonomics starter
+smoke artifacts. V5 is complete for the documented scope of hardening,
+conformance, native tests, visual scene proof, diagnostics, and SDK/template
+ergonomics.
 
 V5 should add or improve Rust tests for native runtime behavior whenever work
 touches shared IR, native runtime mapping, native scripting behavior, Bevy

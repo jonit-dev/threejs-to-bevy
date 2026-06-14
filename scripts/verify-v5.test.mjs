@@ -29,6 +29,9 @@ test("should report failing v5 visual-quality step", async () => {
     assert.equal(result.steps[0]?.exitCode, 1);
     assert.equal(saved.artifacts.reportPath, reportPath);
     assert.equal(saved.code, "TN_VERIFY_V5_FAILED");
+    assert.equal(saved.diagnostics[0]?.code, "TN_VERIFY_V5_STEP_FAILED");
+    assert.equal(saved.schema, "threenative.verify.v5");
+    assert.equal(saved.version, "0.1.0");
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -65,10 +68,16 @@ test("should include starter smoke in v5 gate", async () => {
     const saved = JSON.parse(await readFile(reportPath, "utf8"));
     assert.equal(result.ok, true);
     assert.equal(result.status, "pass");
-    assert.equal(result.steps.at(-1)?.name, "validate v5 game starter bundle");
+    assert.equal(result.steps.at(-1)?.name, "test bevy runtime");
     assert.equal(saved.artifacts.denseContentReportPath, denseReportPath);
+    assert.match(saved.artifacts.conformanceReportPath, /artifacts\/conformance\/verification-report\.json/);
+    assert.match(saved.artifacts.rustTestReportPath, /rust-test-report\.json/);
     assert.match(saved.artifacts.starterProjectPath, /starter-smoke/);
     assert.equal(saved.code, "TN_VERIFY_V5_OK");
+    assert.equal(saved.diagnostics.length, 0);
+    assert.equal(saved.schema, "threenative.verify.v5");
+    assert.equal(saved.version, "0.1.0");
+    assert.equal(typeof saved.durationMs, "number");
   } finally {
     await rm(root, { force: true, recursive: true });
   }
