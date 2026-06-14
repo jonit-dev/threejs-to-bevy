@@ -373,6 +373,17 @@ writing web/native trace artifacts and a diff under
 playback, stop/state query APIs, richer event scheduling, and rendered particle
 systems remain later V7 work.
 
+V7-04 has landed the first rich UI navigation parity slice: `ui.ir.json` now
+accepts portable `focusOrder`, per-node `navigation` links, `safeArea`
+metadata, and UI `inputActions`, with validation for duplicate or invalid focus
+targets, bad navigation links, invalid safe-area edges, and malformed action
+refs. The `v7-rich-ui-navigation` conformance fixture covers a small menu, and
+`pnpm verify:conformance` compares a fixed web/native focus and activation
+trace under `artifacts/conformance/v7-rich-ui-navigation`. Keyboard, gamepad,
+pointer, and touch remain adapter inputs that lower into the same portable
+logical trace; richer platform-specific UI widgets and broad interaction
+coverage remain later V7 work.
+
 V7-05 has landed the first portable audio-routing and lifecycle evidence slice:
 audio IR accepts validated buses, listener positions, spatial emitter
 positions/radii, and bus/emitter references on looping music and

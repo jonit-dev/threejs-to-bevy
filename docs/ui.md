@@ -3,8 +3,10 @@
 > Status: V6 retained UI is in progress. The current portable contract supports
 > a small retained tree, resource/component bindings, actions, and conformance
 > observations. Web DOM overlay mounting and Bevy UI entity spawning are
-> implemented for the current primitive subset; focus navigation and native
-> click event delivery are still being implemented.
+> implemented for the current primitive subset. V7 adds portable focus order,
+> navigation links, safe-area metadata, UI input action refs, and a fixed
+> web/native focus trace; richer platform widgets and broad device coverage
+> remain later work.
 
 Game UI should be authored with React-style TypeScript/TSX, but React DOM should
 not be the portable runtime contract. The portable contract is a retained UI tree

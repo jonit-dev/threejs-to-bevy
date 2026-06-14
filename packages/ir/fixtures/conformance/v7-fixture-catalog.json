@@ -66,14 +66,18 @@
       "rejectedBundlePath": "packages/ir/fixtures/conformance/v7-rejected-rich-ui-navigation/game.bundle",
       "targetCapabilities": [
         "ui:focus-order",
-        "ui:gamepad-navigation",
+        "ui:input-actions",
         "ui:native-action-events",
+        "ui:navigation",
         "ui:safe-area"
       ],
       "reportArtifacts": [
         "artifacts/conformance/v7-rich-ui-navigation/web.report.json",
         "artifacts/conformance/v7-rich-ui-navigation/bevy.report.json",
-        "artifacts/conformance/v7-rich-ui-navigation/comparison.report.json"
+        "artifacts/conformance/v7-rich-ui-navigation/comparison.report.json",
+        "artifacts/conformance/v7-rich-ui-navigation/web-ui-navigation.json",
+        "artifacts/conformance/v7-rich-ui-navigation/native-ui-navigation.json",
+        "artifacts/conformance/v7-rich-ui-navigation/ui-navigation-diff.json"
       ],
       "rejectedDiagnosticCodes": [
         "TN_V7_UI_UNSUPPORTED"

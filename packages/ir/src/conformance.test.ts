@@ -158,6 +158,17 @@ test("should include capability tags for each conformance fixture", async () => 
     "asset:model.glb",
     "particles:bounded-emitter",
   ]);
+  assertFixtureCapabilities(byName, "v7-rich-ui-navigation", [
+    "ui:action",
+    "ui:focus-order",
+    "ui:input-actions",
+    "ui:navigation",
+    "ui:node.button",
+    "ui:node.column",
+    "ui:node.stack",
+    "ui:runtime",
+    "ui:safe-area",
+  ]);
   assertFixtureCapabilities(byName, "v7-spatial-audio-buses", [
     "asset:audio.ogg",
     "asset:audio.wav",

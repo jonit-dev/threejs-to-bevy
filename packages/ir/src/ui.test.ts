@@ -58,3 +58,39 @@ test("ui should reject duplicate node IDs", async () => {
     await rm(root, { force: true, recursive: true });
   }
 });
+
+test("ui should validate v7 focus navigation metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ui-navigation-"));
+  try {
+    await writeTestBundle(root, { manifest: { entry: { ui: "ui.ir.json" } } });
+    await writeJson(root, "ui.ir.json", {
+      schema: "threenative.ui",
+      version: "0.1.0",
+      focusOrder: ["play", "missing"],
+      safeArea: { mode: "avoid", edges: ["top", "diagonal"] },
+      inputActions: { activate: "UiActivate", next: "" },
+      root: {
+        id: "menu",
+        kind: "column",
+        children: [
+          { id: "play", kind: "button", label: "Play", action: "Start", navigation: { down: "missing" } },
+        ],
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => diagnostic.code),
+      [
+        "TN_IR_UI_FOCUS_TARGET_INVALID",
+        "TN_IR_UI_SAFE_AREA_EDGE_INVALID",
+        "TN_IR_UI_INPUT_ACTION_INVALID",
+        "TN_IR_UI_NAVIGATION_TARGET_INVALID",
+      ],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});

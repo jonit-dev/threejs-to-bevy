@@ -35,8 +35,8 @@ metadata, and UI event emission while keeping React DOM adapter-private.
 
 **Implementation:**
 
-- [ ] Add focus order, navigation links, safe-area fields, and input action refs.
-- [ ] Validate duplicate focus IDs, invalid links, unsupported layout features,
+- [x] Add focus order, navigation links, safe-area fields, and input action refs.
+- [x] Validate duplicate focus IDs, invalid links, unsupported layout features,
   and target-specific limitations.
 
 #### Phase 2: Runtime Input Parity - UI navigation works in fixed traces.
@@ -51,9 +51,9 @@ metadata, and UI event emission while keeping React DOM adapter-private.
 
 **Implementation:**
 
-- [ ] Route keyboard/gamepad/pointer/touch events into UI focus and activation.
-- [ ] Emit deterministic UI event observations.
-- [ ] Document unsupported platform inputs with diagnostics.
+- [x] Route keyboard/gamepad/pointer/touch events into UI focus and activation.
+- [x] Emit deterministic UI event observations.
+- [x] Document unsupported platform inputs with diagnostics.
 
 ## Verification Strategy
 
@@ -64,5 +64,5 @@ metadata, and UI event emission while keeping React DOM adapter-private.
 
 ## Acceptance Criteria
 
-- [ ] UI focus/navigation is portable for release-gated inputs.
-- [ ] Web DOM and Bevy widget details remain adapter-private.
+- [x] UI focus/navigation is portable for release-gated inputs.
+- [x] Web DOM and Bevy widget details remain adapter-private.

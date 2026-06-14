@@ -471,13 +471,16 @@ function validateUi(ui: IUiIr, path: string, diagnostics: IIrDiagnostic[]): void
     });
   }
   const ids = new Set<string>();
+  const focusableIds = new Set<string>();
   validateUiNode(ui.root, `${path}/root`, diagnostics, ids);
+  collectFocusableUiIds(ui.root, focusableIds);
+  validateUiMetadata(ui, path, diagnostics, ids, focusableIds);
 }
 
 function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[], ids: Set<string>): void {
   const raw = node as unknown as Record<string, unknown>;
   for (const key of Object.keys(raw)) {
-    if (!["action", "binding", "children", "focusable", "id", "kind", "label", "max", "text", "value"].includes(key)) {
+    if (!["action", "binding", "children", "focusable", "id", "kind", "label", "max", "navigation", "text", "value"].includes(key)) {
       diagnostics.push({
         code: "TN_IR_UI_FIELD_UNSUPPORTED",
         message: `UI node '${node.id}' uses unsupported field '${key}'.`,
@@ -508,6 +511,95 @@ function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnosti
     });
   }
   node.children?.forEach((child, index) => validateUiNode(child, `${path}/children/${index}`, diagnostics, ids));
+}
+
+function collectFocusableUiIds(node: IUiNodeIr, focusableIds: Set<string>): void {
+  if (node.focusable === true || node.kind === "button" || node.kind === "touchControl") {
+    focusableIds.add(node.id);
+  }
+  node.children?.forEach((child) => collectFocusableUiIds(child, focusableIds));
+}
+
+function validateUiMetadata(ui: IUiIr, path: string, diagnostics: IIrDiagnostic[], ids: Set<string>, focusableIds: Set<string>): void {
+  const raw = ui as unknown as Record<string, unknown>;
+  for (const key of Object.keys(raw)) {
+    if (!["focusOrder", "inputActions", "root", "safeArea", "schema", "version"].includes(key)) {
+      diagnostics.push({
+        code: "TN_IR_UI_FIELD_UNSUPPORTED",
+        message: `UI IR uses unsupported field '${key}'.`,
+        path: `${path}/${key}`,
+      });
+    }
+  }
+  validateUiFocusOrder(ui.focusOrder, `${path}/focusOrder`, diagnostics, focusableIds);
+  validateUiSafeArea(ui.safeArea, `${path}/safeArea`, diagnostics);
+  validateUiInputActions(ui.inputActions, `${path}/inputActions`, diagnostics);
+  validateUiNavigation(ui.root, `${path}/root`, diagnostics, ids, focusableIds);
+}
+
+function validateUiFocusOrder(value: unknown, path: string, diagnostics: IIrDiagnostic[], focusableIds: Set<string>): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!Array.isArray(value)) {
+    diagnostics.push({ code: "TN_IR_UI_FOCUS_ORDER_INVALID", message: "UI focusOrder must be an array.", path });
+    return;
+  }
+  const seen = new Set<string>();
+  value.forEach((id, index) => {
+    if (typeof id !== "string" || id.trim() === "") {
+      diagnostics.push({ code: "TN_IR_UI_FOCUS_ID_INVALID", message: "UI focusOrder entries must be non-empty node IDs.", path: `${path}/${index}` });
+    } else if (seen.has(id)) {
+      diagnostics.push({ code: "TN_IR_UI_FOCUS_ID_DUPLICATE", message: `UI focusOrder ID '${id}' is duplicated.`, path: `${path}/${index}` });
+    } else if (!focusableIds.has(id)) {
+      diagnostics.push({ code: "TN_IR_UI_FOCUS_TARGET_INVALID", message: `UI focusOrder references non-focusable or missing node '${id}'.`, path: `${path}/${index}` });
+    }
+    seen.add(String(id));
+  });
+}
+
+function validateUiSafeArea(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value) || !["avoid", "none"].includes(value.mode as string)) {
+    diagnostics.push({ code: "TN_IR_UI_SAFE_AREA_INVALID", message: "UI safeArea mode must be 'avoid' or 'none'.", path });
+    return;
+  }
+  if (value.edges !== undefined && (!Array.isArray(value.edges) || value.edges.some((edge) => !["bottom", "left", "right", "top"].includes(edge as string)))) {
+    diagnostics.push({ code: "TN_IR_UI_SAFE_AREA_EDGE_INVALID", message: "UI safeArea edges must be top, right, bottom, or left.", path: `${path}/edges` });
+  }
+}
+
+function validateUiInputActions(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value)) {
+    diagnostics.push({ code: "TN_IR_UI_INPUT_ACTIONS_INVALID", message: "UI inputActions must be an object.", path });
+    return;
+  }
+  for (const [key, action] of Object.entries(value)) {
+    if (!["activate", "cancel", "next", "previous"].includes(key) || typeof action !== "string" || action.trim() === "") {
+      diagnostics.push({ code: "TN_IR_UI_INPUT_ACTION_INVALID", message: `UI input action '${key}' must reference a non-empty action ID.`, path: `${path}/${key}` });
+    }
+  }
+}
+
+function validateUiNavigation(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[], ids: Set<string>, focusableIds: Set<string>): void {
+  const navigation = node.navigation as unknown;
+  if (navigation !== undefined) {
+    if (!isRecord(navigation)) {
+      diagnostics.push({ code: "TN_IR_UI_NAVIGATION_INVALID", message: "UI navigation must be an object.", path: `${path}/navigation` });
+    } else {
+      for (const [direction, target] of Object.entries(navigation)) {
+        if (!["down", "left", "right", "up"].includes(direction) || typeof target !== "string" || !ids.has(target) || !focusableIds.has(target)) {
+          diagnostics.push({ code: "TN_IR_UI_NAVIGATION_TARGET_INVALID", message: `UI navigation '${direction}' must reference a focusable node.`, path: `${path}/navigation/${direction}` });
+        }
+      }
+    }
+  }
+  node.children?.forEach((child, index) => validateUiNavigation(child, `${path}/children/${index}`, diagnostics, ids, focusableIds));
 }
 
 async function validateAssets(assets: IAssetsManifest, bundlePath: string, path: string, diagnostics: IIrDiagnostic[]): Promise<void> {

@@ -439,6 +439,12 @@ pub struct RuntimeWindowConfig {
 pub struct UiIr {
     pub schema: String,
     pub version: String,
+    #[serde(rename = "focusOrder")]
+    pub focus_order: Option<Vec<String>>,
+    #[serde(rename = "inputActions")]
+    pub input_actions: Option<UiInputActionsIr>,
+    #[serde(rename = "safeArea")]
+    pub safe_area: Option<UiSafeAreaIr>,
     pub root: UiNodeIr,
 }
 
@@ -450,10 +456,33 @@ pub struct UiNodeIr {
     pub text: Option<String>,
     pub action: Option<String>,
     pub focusable: Option<bool>,
+    pub navigation: Option<UiNavigationIr>,
     pub value: Option<f32>,
     pub max: Option<f32>,
     #[serde(default)]
     pub children: Vec<UiNodeIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct UiNavigationIr {
+    pub down: Option<String>,
+    pub left: Option<String>,
+    pub right: Option<String>,
+    pub up: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct UiInputActionsIr {
+    pub activate: Option<String>,
+    pub cancel: Option<String>,
+    pub next: Option<String>,
+    pub previous: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub struct UiSafeAreaIr {
+    pub edges: Option<Vec<String>>,
+    pub mode: String,
 }
 
 #[derive(Debug, Deserialize)]

@@ -8,9 +8,26 @@ export interface IUiNodeProps {
   binding?: UiBinding;
   children?: UiChild | UiChild[];
   focusable?: boolean;
+  focusOrder?: string[];
   id?: string;
+  inputActions?: {
+    activate?: string;
+    cancel?: string;
+    next?: string;
+    previous?: string;
+  };
   label?: string;
   max?: number;
+  navigation?: {
+    down?: string;
+    left?: string;
+    right?: string;
+    up?: string;
+  };
+  safeArea?: {
+    edges?: Array<"bottom" | "left" | "right" | "top">;
+    mode: "avoid" | "none";
+  };
   text?: string;
   value?: number;
 }

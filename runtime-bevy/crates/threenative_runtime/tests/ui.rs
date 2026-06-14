@@ -10,7 +10,10 @@ use threenative_components::ThreeNativeId;
 use threenative_loader::{UiIr, UiNodeIr, load_bundle};
 use threenative_runtime::ui::{
     NativeUiAction, NativeUiBar, NativeUiKind, build_native_ui, map_ui_into_world,
+    trace_ui_navigation,
 };
+
+mod support;
 
 #[test]
 fn ui_should_build_bevy_hud_from_ui_ir() {
@@ -106,6 +109,9 @@ fn ui_should_spawn_bevy_entities_with_stable_ids_and_hierarchy() {
 #[test]
 fn ui_should_reject_unsupported_ui_node() {
     let ui = UiIr {
+        focus_order: None,
+        input_actions: None,
+        safe_area: None,
         schema: "threenative.ui".to_owned(),
         version: "0.1.0".to_owned(),
         root: UiNodeIr {
@@ -116,6 +122,7 @@ fn ui_should_reject_unsupported_ui_node() {
             kind: "html".to_owned(),
             label: None,
             max: None,
+            navigation: None,
             text: None,
             value: None,
         },
@@ -126,6 +133,24 @@ fn ui_should_reject_unsupported_ui_node() {
     assert_eq!(diagnostic.code, "TN_BEVY_UI_NODE_UNSUPPORTED");
     assert!(diagnostic.message.contains("html"));
     assert_eq!(diagnostic.path, "ui.ir.json/root/kind");
+}
+
+#[test]
+fn ui_navigation_trace_should_match_v7_fixture() {
+    let fixture = support::load_conformance_fixture("v7-rich-ui-navigation");
+    let ui = fixture.bundle.ui.as_ref().expect("ui fixture should load");
+
+    let trace = trace_ui_navigation(ui, &["next", "activate"]);
+
+    assert_eq!(trace.focus_order, vec!["play", "settings"]);
+    assert_eq!(trace.initial_focus.as_deref(), Some("play"));
+    assert_eq!(trace.final_focus.as_deref(), Some("settings"));
+    assert_eq!(trace.events.len(), 2);
+    assert_eq!(trace.events[0].kind, "focus");
+    assert_eq!(trace.events[0].focus, "settings");
+    assert_eq!(trace.events[1].kind, "activate");
+    assert_eq!(trace.events[1].action.as_deref(), Some("OpenSettings"));
+    assert_eq!(trace.safe_area.as_ref().expect("safe area").mode, "avoid");
 }
 
 fn write_ui_bundle() -> PathBuf {

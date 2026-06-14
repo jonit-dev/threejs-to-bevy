@@ -132,7 +132,7 @@ test("should pass matching gate commands and save report path", async () => {
     });
 
     assert.equal(result.ok, true);
-    assert.equal(result.steps.length, 15);
+    assert.equal(result.steps.length, 16);
     assert.equal(result.reportPath.endsWith("artifacts/conformance/verification-report.json"), true);
     assert.equal(result.artifacts.nativeBasicSceneReportPath.endsWith("artifacts/conformance/basic-scene/bevy.report.json"), true);
     assert.equal(
@@ -192,6 +192,15 @@ test("should pass matching gate commands and save report path", async () => {
       result.artifacts.v7AnimationWebTracePath.endsWith("artifacts/conformance/v7-animation-graphs-particles/web-animation.json"),
       true,
     );
+    assert.equal(result.artifacts.v7UiNavigationDiffPath.endsWith("artifacts/conformance/v7-rich-ui-navigation/ui-navigation-diff.json"), true);
+    assert.equal(
+      result.artifacts.v7UiNavigationNativeTracePath.endsWith("artifacts/conformance/v7-rich-ui-navigation/native-ui-navigation.json"),
+      true,
+    );
+    assert.equal(
+      result.artifacts.v7UiNavigationWebTracePath.endsWith("artifacts/conformance/v7-rich-ui-navigation/web-ui-navigation.json"),
+      true,
+    );
     assert.equal(result.artifacts.v7AudioLifecycleDiffPath.endsWith("artifacts/conformance/v7-spatial-audio-buses/audio-lifecycle-diff.json"), true);
     assert.equal(
       result.artifacts.v7AudioLifecycleNativeTracePath.endsWith("artifacts/conformance/v7-spatial-audio-buses/native-audio-lifecycle.json"),
@@ -203,7 +212,7 @@ test("should pass matching gate commands and save report path", async () => {
     );
     const report = JSON.parse(await readFile(result.reportPath, "utf8"));
     assert.equal(report.status, "pass");
-    assert.equal(report.steps.length, 15);
+    assert.equal(report.steps.length, 16);
     assert.equal(report.artifacts.nativeBasicSceneReportPath.endsWith("artifacts/conformance/basic-scene/bevy.report.json"), true);
     assert.equal(
       report.artifacts.nativeV6AnimationClipsReportPath.endsWith("artifacts/conformance/v6-animation-clips/bevy.report.json"),
@@ -260,6 +269,15 @@ test("should pass matching gate commands and save report path", async () => {
     );
     assert.equal(
       report.artifacts.v7AnimationWebTracePath.endsWith("artifacts/conformance/v7-animation-graphs-particles/web-animation.json"),
+      true,
+    );
+    assert.equal(report.artifacts.v7UiNavigationDiffPath.endsWith("artifacts/conformance/v7-rich-ui-navigation/ui-navigation-diff.json"), true);
+    assert.equal(
+      report.artifacts.v7UiNavigationNativeTracePath.endsWith("artifacts/conformance/v7-rich-ui-navigation/native-ui-navigation.json"),
+      true,
+    );
+    assert.equal(
+      report.artifacts.v7UiNavigationWebTracePath.endsWith("artifacts/conformance/v7-rich-ui-navigation/web-ui-navigation.json"),
       true,
     );
     assert.equal(report.artifacts.v7AudioLifecycleDiffPath.endsWith("artifacts/conformance/v7-spatial-audio-buses/audio-lifecycle-diff.json"), true);

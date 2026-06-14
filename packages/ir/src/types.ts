@@ -343,11 +343,28 @@ export interface IUiNodeIr {
   kind: "bar" | "button" | "column" | "row" | "stack" | "text" | "touchControl";
   label?: string;
   max?: number;
+  navigation?: {
+    down?: string;
+    left?: string;
+    right?: string;
+    up?: string;
+  };
   text?: string;
   value?: number;
 }
 
 export interface IUiIr {
+  focusOrder?: string[];
+  inputActions?: {
+    activate?: string;
+    cancel?: string;
+    next?: string;
+    previous?: string;
+  };
+  safeArea?: {
+    edges?: Array<"bottom" | "left" | "right" | "top">;
+    mode: "avoid" | "none";
+  };
   schema: UiSchema;
   version: SchemaVersion;
   root: IUiNodeIr;

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use bevy::prelude::*;
+use serde::Serialize;
 use thiserror::Error;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{UiIr, UiNodeIr};
@@ -29,8 +30,39 @@ pub struct NativeUiNode {
     pub kind: String,
     pub label: Option<String>,
     pub max: Option<f32>,
+    pub navigation: Option<NativeUiNavigation>,
     pub text: Option<String>,
     pub value: Option<f32>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct NativeUiNavigation {
+    pub down: Option<String>,
+    pub left: Option<String>,
+    pub right: Option<String>,
+    pub up: Option<String>,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UiNavigationTrace {
+    pub events: Vec<UiNavigationEvent>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub final_focus: Option<String>,
+    pub focus_order: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub initial_focus: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub safe_area: Option<threenative_loader::UiSafeAreaIr>,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+pub struct UiNavigationEvent {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub action: Option<String>,
+    pub focus: String,
+    pub input: String,
+    pub kind: String,
 }
 
 #[derive(Clone, Debug, Error, PartialEq)]
@@ -79,9 +111,102 @@ fn build_node(node: &UiNodeIr, path: &str) -> Result<NativeUiNode, UiDiagnostic>
         kind: node.kind.clone(),
         label: node.label.clone(),
         max: node.max,
+        navigation: node
+            .navigation
+            .as_ref()
+            .map(|navigation| NativeUiNavigation {
+                down: navigation.down.clone(),
+                left: navigation.left.clone(),
+                right: navigation.right.clone(),
+                up: navigation.up.clone(),
+            }),
         text: node.text.clone(),
         value: node.value,
     })
+}
+
+pub fn trace_ui_navigation(ui: &UiIr, inputs: &[&str]) -> UiNavigationTrace {
+    let mut nodes = Vec::new();
+    collect_nodes(&ui.root, &mut nodes);
+    let focus_order = ui.focus_order.clone().unwrap_or_else(|| {
+        nodes
+            .iter()
+            .filter(|node| is_focusable(node))
+            .map(|node| node.id.clone())
+            .collect()
+    });
+    let mut focus = focus_order.first().cloned();
+    let mut events = Vec::new();
+    for input in inputs {
+        let Some(current) = focus.clone() else {
+            break;
+        };
+        if *input == "activate" {
+            events.push(UiNavigationEvent {
+                action: find_node(&nodes, &current).and_then(|node| node.action.clone()),
+                focus: current,
+                input: (*input).to_owned(),
+                kind: "activate".to_owned(),
+            });
+            continue;
+        }
+        let next = find_node(&nodes, &current)
+            .and_then(|node| navigation_target(node, input))
+            .or_else(|| sequential_target(&focus_order, &current, input));
+        if let Some(next) = next {
+            if next != current {
+                focus = Some(next.clone());
+                events.push(UiNavigationEvent {
+                    action: None,
+                    focus: next,
+                    input: (*input).to_owned(),
+                    kind: "focus".to_owned(),
+                });
+            }
+        }
+    }
+    UiNavigationTrace {
+        events,
+        final_focus: focus,
+        focus_order: focus_order.clone(),
+        initial_focus: focus_order.first().cloned(),
+        safe_area: ui.safe_area.clone(),
+    }
+}
+
+fn collect_nodes<'a>(node: &'a UiNodeIr, nodes: &mut Vec<&'a UiNodeIr>) {
+    nodes.push(node);
+    for child in &node.children {
+        collect_nodes(child, nodes);
+    }
+}
+
+fn find_node<'a>(nodes: &[&'a UiNodeIr], id: &str) -> Option<&'a UiNodeIr> {
+    nodes.iter().copied().find(|node| node.id == id)
+}
+
+fn is_focusable(node: &UiNodeIr) -> bool {
+    node.focusable == Some(true) || matches!(node.kind.as_str(), "button" | "touchControl")
+}
+
+fn navigation_target(node: &UiNodeIr, input: &str) -> Option<String> {
+    let navigation = node.navigation.as_ref()?;
+    match input {
+        "down" => navigation.down.clone(),
+        "left" => navigation.left.clone(),
+        "right" => navigation.right.clone(),
+        "up" => navigation.up.clone(),
+        _ => None,
+    }
+}
+
+fn sequential_target(order: &[String], current: &str, input: &str) -> Option<String> {
+    let index = order.iter().position(|id| id == current)?;
+    match input {
+        "next" | "down" | "right" => order.get((index + 1).min(order.len() - 1)).cloned(),
+        "previous" | "up" | "left" => order.get(index.saturating_sub(1)).cloned(),
+        _ => None,
+    }
 }
 
 fn spawn_node(

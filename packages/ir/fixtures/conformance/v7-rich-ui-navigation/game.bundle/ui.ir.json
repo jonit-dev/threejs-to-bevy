@@ -1,0 +1,46 @@
+{
+  "schema": "threenative.ui",
+  "version": "0.1.0",
+  "focusOrder": ["play", "settings"],
+  "inputActions": {
+    "activate": "UiActivate",
+    "next": "UiNext",
+    "previous": "UiPrevious"
+  },
+  "safeArea": {
+    "mode": "avoid",
+    "edges": ["top", "bottom"]
+  },
+  "root": {
+    "id": "menu",
+    "kind": "stack",
+    "children": [
+      {
+        "id": "menu.column",
+        "kind": "column",
+        "children": [
+          {
+            "id": "play",
+            "kind": "button",
+            "label": "Play",
+            "action": "StartGame",
+            "focusable": true,
+            "navigation": {
+              "down": "settings"
+            }
+          },
+          {
+            "id": "settings",
+            "kind": "button",
+            "label": "Settings",
+            "action": "OpenSettings",
+            "focusable": true,
+            "navigation": {
+              "up": "play"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

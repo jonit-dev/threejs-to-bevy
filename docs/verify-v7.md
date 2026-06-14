@@ -4,6 +4,7 @@
 contract that later V7 feature tickets and the final V7 gate must use, and
 V7-02 now adds the first runtime-specific fixed trace. V7-03 adds the first
 animation/effects contract fixture and fixed web/native graph/particle trace.
+V7-04 adds the first fixed web/native UI navigation trace.
 V7-05 adds the first fixed web/native audio lifecycle trace.
 
 Current V7 conformance evidence starts with:
@@ -23,6 +24,9 @@ Current V7 conformance evidence starts with:
 - `artifacts/conformance/v7-animation-graphs-particles/web-animation.json`
 - `artifacts/conformance/v7-animation-graphs-particles/native-animation.json`
 - `artifacts/conformance/v7-animation-graphs-particles/animation-diff.json`
+- `artifacts/conformance/v7-rich-ui-navigation/web-ui-navigation.json`
+- `artifacts/conformance/v7-rich-ui-navigation/native-ui-navigation.json`
+- `artifacts/conformance/v7-rich-ui-navigation/ui-navigation-diff.json`
 - `artifacts/conformance/v7-spatial-audio-buses/web-audio-lifecycle.json`
 - `artifacts/conformance/v7-spatial-audio-buses/native-audio-lifecycle.json`
 - `artifacts/conformance/v7-spatial-audio-buses/audio-lifecycle-diff.json`
@@ -40,6 +44,14 @@ native parameter-driven graph transitions, active clip selection,
 emitted event markers, and bounded particle spawn counts. This does not claim
 full visual mixer playback, stop/state query APIs, richer event scheduling, IK,
 retargeting, or rendered particle systems.
+
+The current V7-04 fixture evidence is intentionally narrow: the
+`v7-rich-ui-navigation` bundle validates focus order, navigation links,
+safe-area metadata, and UI input action refs, then compares a fixed web/native
+logical trace for focus movement and activation. Keyboard, gamepad, pointer,
+and touch are treated as adapter inputs that lower into the same portable
+logical events; rich platform widgets, broad device coverage, and styling/layout
+parity remain later work.
 
 The current V7-05 fixture evidence is intentionally narrow: the
 `v7-spatial-audio-buses` bundle validates portable bus routing,

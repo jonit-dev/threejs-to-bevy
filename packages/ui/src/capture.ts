@@ -1,6 +1,17 @@
 import type { IUiElement, UiChild } from "./jsx-runtime.js";
 
 export interface IUiIr {
+  focusOrder?: string[];
+  inputActions?: {
+    activate?: string;
+    cancel?: string;
+    next?: string;
+    previous?: string;
+  };
+  safeArea?: {
+    edges?: Array<"bottom" | "left" | "right" | "top">;
+    mode: "avoid" | "none";
+  };
   schema: "threenative.ui";
   version: "0.1.0";
   root: IUiNodeIr;
@@ -15,6 +26,12 @@ export interface IUiNodeIr {
   kind: "bar" | "button" | "column" | "row" | "stack" | "text" | "touchControl";
   label?: string;
   max?: number;
+  navigation?: {
+    down?: string;
+    left?: string;
+    right?: string;
+    up?: string;
+  };
   text?: string;
   value?: number;
 }
@@ -24,6 +41,9 @@ export function captureUi(root: IUiElement): IUiIr {
     throw new Error(`Portable UI root must be <ui>, got '${root.type}'.`);
   }
   return {
+    ...(root.props.focusOrder === undefined ? {} : { focusOrder: root.props.focusOrder }),
+    ...(root.props.inputActions === undefined ? {} : { inputActions: root.props.inputActions }),
+    ...(root.props.safeArea === undefined ? {} : { safeArea: root.props.safeArea }),
     schema: "threenative.ui",
     version: "0.1.0",
     root: captureNode(root, "ui"),
@@ -47,6 +67,7 @@ function captureNode(element: IUiElement, fallback: string): IUiNodeIr {
     ...(element.props.focusable === undefined ? {} : { focusable: element.props.focusable }),
     ...(element.props.label === undefined ? {} : { label: element.props.label }),
     ...(element.props.max === undefined ? {} : { max: element.props.max }),
+    ...(element.props.navigation === undefined ? {} : { navigation: element.props.navigation }),
     ...(element.props.text === undefined ? {} : { text: element.props.text }),
     ...(element.props.value === undefined ? {} : { value: element.props.value }),
     children: childrenOf(element).map((child, index) => captureNode(child, `${fallback}.${child.type}.${index}`)),
