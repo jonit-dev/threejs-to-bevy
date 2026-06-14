@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use serde::Serialize;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{
-    AssetIr, ColorIr, EnvironmentSceneIr, LoadedBundle, MaterialIr, WorldEntity,
+    AnimationClipIr, AssetIr, ColorIr, EnvironmentSceneIr, LoadedBundle, MaterialIr, WorldEntity,
 };
 
 use crate::physics::detect_physics_events;
@@ -28,6 +28,8 @@ pub struct ConformanceReport {
 #[serde(rename_all = "camelCase")]
 pub struct ConformanceAssetReport {
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub animations: Option<Vec<AnimationClipReport>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub bounds: Option<AssetBoundsReport>,
     pub format: String,
     pub id: String,
@@ -38,6 +40,19 @@ pub struct ConformanceAssetReport {
     pub primitive: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub size: Option<Vec<f32>>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AnimationClipReport {
+    pub id: String,
+    #[serde(rename = "loop")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub loop_: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_clip: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub speed: Option<f32>,
 }
 
 #[derive(Debug, Serialize)]
@@ -403,6 +418,11 @@ fn report_environment(environment: &EnvironmentSceneIr) -> ConformanceEnvironmen
 
 fn report_asset(asset: &AssetIr) -> ConformanceAssetReport {
     ConformanceAssetReport {
+        animations: asset.animations.as_ref().map(|clips| {
+            let mut clips = clips.iter().map(report_animation_clip).collect::<Vec<_>>();
+            clips.sort_by(|left, right| left.id.cmp(&right.id));
+            clips
+        }),
         bounds: asset.bounds.as_ref().map(|bounds| AssetBoundsReport {
             min: bounds.min,
             max: bounds.max,
@@ -413,6 +433,15 @@ fn report_asset(asset: &AssetIr) -> ConformanceAssetReport {
         path: asset.path.clone(),
         primitive: asset.primitive.clone(),
         size: asset.size.clone(),
+    }
+}
+
+fn report_animation_clip(clip: &AnimationClipIr) -> AnimationClipReport {
+    AnimationClipReport {
+        id: clip.id.clone(),
+        loop_: clip.loop_,
+        source_clip: clip.source_clip.clone(),
+        speed: clip.speed,
     }
 }
 

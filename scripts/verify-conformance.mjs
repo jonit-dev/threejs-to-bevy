@@ -14,19 +14,29 @@ export async function verifyConformance(options = {}) {
   const artifactDir = options.artifactDir ?? resolve(reportPath, "..");
   const basicSceneBundlePath = resolve(root, "packages/ir/fixtures/conformance/basic-scene/game.bundle");
   const v6PhysicsEventsBundlePath = resolve(root, "packages/ir/fixtures/conformance/v6-physics-events/game.bundle");
+  const v6AnimationClipsBundlePath = resolve(root, "packages/ir/fixtures/conformance/v6-animation-clips/game.bundle");
   const v6ResourcesEventsBundlePath = resolve(root, "packages/ir/fixtures/conformance/v6-resources-events/game.bundle");
   const nativeBasicSceneReportPath = options.nativeBasicSceneReportPath ?? resolve(artifactDir, "basic-scene/bevy.report.json");
   const nativeV6PhysicsEventsReportPath =
     options.nativeV6PhysicsEventsReportPath ?? resolve(artifactDir, "v6-physics-events/bevy.report.json");
+  const nativeV6AnimationClipsReportPath =
+    options.nativeV6AnimationClipsReportPath ?? resolve(artifactDir, "v6-animation-clips/bevy.report.json");
   const nativeV6ResourcesEventsReportPath =
     options.nativeV6ResourcesEventsReportPath ?? resolve(artifactDir, "v6-resources-events/bevy.report.json");
+  const v6AnimationDiffPath = options.v6AnimationDiffPath ?? resolve(artifactDir, "v6-animation-clips/effects-diff.json");
+  const v6AnimationNativeEffectsPath = options.v6AnimationNativeEffectsPath ?? resolve(artifactDir, "v6-animation-clips/native-effects.json");
+  const v6AnimationWebEffectsPath = options.v6AnimationWebEffectsPath ?? resolve(artifactDir, "v6-animation-clips/web-effects.json");
   const v6ResourceEventDiffPath = options.v6ResourceEventDiffPath ?? resolve(artifactDir, "v6-resources-events/effects-diff.json");
   const v6ResourceEventNativeEffectsPath = options.v6ResourceEventNativeEffectsPath ?? resolve(artifactDir, "v6-resources-events/native-effects.json");
   const v6ResourceEventWebEffectsPath = options.v6ResourceEventWebEffectsPath ?? resolve(artifactDir, "v6-resources-events/web-effects.json");
   const artifacts = {
     nativeBasicSceneReportPath,
+    nativeV6AnimationClipsReportPath,
     nativeV6PhysicsEventsReportPath,
     nativeV6ResourcesEventsReportPath,
+    v6AnimationDiffPath,
+    v6AnimationNativeEffectsPath,
+    v6AnimationWebEffectsPath,
     v6ResourceEventDiffPath,
     v6ResourceEventNativeEffectsPath,
     v6ResourceEventWebEffectsPath,
@@ -77,6 +87,32 @@ export async function verifyConformance(options = {}) {
         v6PhysicsEventsBundlePath,
         "v6-physics-events",
         nativeV6PhysicsEventsReportPath,
+      ],
+      { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
+    ],
+    [
+      "V6 animation fixed trace parity",
+      process.execPath,
+      [
+        resolve(root, "scripts/verify-v6-animation-trace.mjs"),
+        v6AnimationClipsBundlePath,
+        resolve(artifactDir, "v6-animation-clips"),
+      ],
+      { timeoutMs: 120000 },
+    ],
+    [
+      "bevy native V6 animation observation report",
+      "cargo",
+      [
+        "run",
+        "-p",
+        "threenative_runtime",
+        "--bin",
+        "threenative_conformance",
+        "--",
+        v6AnimationClipsBundlePath,
+        "v6-animation-clips",
+        nativeV6AnimationClipsReportPath,
       ],
       { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
     ],

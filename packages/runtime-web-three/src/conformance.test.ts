@@ -71,3 +71,15 @@ test("should report physics collision and trigger conformance observations", asy
     { id: "TriggerEvent", values: [{ a: "pickup", b: "sensor", phase: "enter" }] },
   ]);
 });
+
+test("should report animation clip conformance observations", async () => {
+  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/v6-animation-clips/game.bundle"));
+  const mapped = mapWorld(bundle);
+  const report = reportWebConformance(bundle, mapped, "v6-animation-clips");
+
+  assert.equal(report.fixture, "v6-animation-clips");
+  assert.deepEqual(report.assets.find((asset) => asset.id === "model.hero")?.animations, [
+    { id: "idle", loop: true, speed: 1 },
+    { id: "run", loop: true, sourceClip: "Armature|Run", speed: 1.25 },
+  ]);
+});

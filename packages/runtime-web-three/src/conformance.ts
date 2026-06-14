@@ -136,6 +136,7 @@ function reportRuntimeLight(object: THREE.Object3D): IRuntimeLightReport | undef
 
 function reportAsset(asset: IAssetIr): IConformanceAssetReport {
   return {
+    animations: "animations" in asset ? asset.animations : undefined,
     bounds: "bounds" in asset ? asset.bounds : undefined,
     format: asset.format,
     id: asset.id,

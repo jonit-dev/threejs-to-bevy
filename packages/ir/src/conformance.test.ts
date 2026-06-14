@@ -73,7 +73,11 @@ test("should include capability tags for each conformance fixture", async () => 
   ]);
   assertFixtureCapabilities(byName, "v6-animation-clips", [
     "animation:clip-metadata",
+    "animation:playback-service",
     "asset:model.glb",
+    "scripting:schedule.update",
+    "scripting:script-bundle",
+    "scripting:systems",
   ]);
 });
 

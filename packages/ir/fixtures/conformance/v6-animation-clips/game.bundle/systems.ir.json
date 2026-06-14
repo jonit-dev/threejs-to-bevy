@@ -1,0 +1,25 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "animationProbe",
+      "schedule": "update",
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "queries": [],
+      "reads": [],
+      "resourceReads": [],
+      "resourceWrites": [],
+      "services": [
+        "animation.play"
+      ],
+      "script": {
+        "bundle": "scripts.bundle.js",
+        "exportName": "system_animationProbe"
+      },
+      "writes": []
+    }
+  ]
+}

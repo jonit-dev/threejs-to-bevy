@@ -4,18 +4,27 @@
   "name": "conformance-v6-animation-clips",
   "requiredCapabilities": {
     "animation": [
-      "clip-metadata"
+      "clip-metadata",
+      "playback-service"
     ],
     "asset": [
       "model.glb"
+    ],
+    "scripting": [
+      "schedule.update",
+      "script-bundle",
+      "systems"
     ]
   },
   "entry": {
-    "world": "world.ir.json"
+    "world": "world.ir.json",
+    "systems": "systems.ir.json",
+    "scripts": "scripts.bundle.js"
   },
   "files": {
     "assets": "assets.manifest.json",
     "materials": "materials.ir.json",
+    "scripts": "scripts.bundle.js",
     "targetProfile": "target.profile.json"
   }
 }

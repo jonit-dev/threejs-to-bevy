@@ -2,6 +2,7 @@ import type { IRuntimeDiagnostic } from "./runtimeDiagnostics.js";
 import type { IAssetIr, IMaterialIr, Quat, Vec3 } from "./types.js";
 
 export interface IConformanceAssetReport {
+  animations?: Extract<IAssetIr, { animations?: unknown }>["animations"];
   bounds?: Extract<IAssetIr, { bounds?: unknown }>["bounds"];
   format: IAssetIr["format"];
   id: string;

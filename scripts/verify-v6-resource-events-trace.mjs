@@ -14,13 +14,15 @@ export async function verifyV6ResourceEventTrace(options = {}) {
   const webEffectsPath = options.webEffectsPath ?? resolve(artifactDir, "web-effects.json");
   const nativeEffectsPath = options.nativeEffectsPath ?? resolve(artifactDir, "native-effects.json");
   const diffPath = options.diffPath ?? resolve(artifactDir, "effects-diff.json");
+  const mismatchCode = options.mismatchCode ?? "TN_VERIFY_V6_RESOURCE_EVENT_TRACE_MISMATCH";
+  const mismatchLabel = options.mismatchLabel ?? "V6 resource/event trace";
   await mkdir(artifactDir, { recursive: true });
 
   const web = await runWebTrace(root, bundlePath);
   await writeFile(webEffectsPath, `${JSON.stringify(web, null, 2)}\n`);
   await runNativeTrace(root, bundlePath, nativeEffectsPath, options.runNativeTrace);
   const native = normalizeLog(JSON.parse(await readFile(nativeEffectsPath, "utf8")));
-  const comparison = compareLogs(web, native);
+  const comparison = compareLogs(web, native, { mismatchCode, mismatchLabel });
   await writeFile(
     diffPath,
     `${JSON.stringify(
@@ -93,15 +95,17 @@ async function runNativeTrace(root, bundlePath, nativeEffectsPath, runner) {
   );
 }
 
-function compareLogs(web, native) {
-  const firstMismatch = findFirstMismatch(web, native);
+function compareLogs(web, native, options = {}) {
+  const mismatchCode = options.mismatchCode ?? "TN_VERIFY_V6_RESOURCE_EVENT_TRACE_MISMATCH";
+  const mismatchLabel = options.mismatchLabel ?? "V6 resource/event trace";
+  const firstMismatch = findFirstMismatch(web, native, mismatchLabel);
   return {
     diagnostics:
       firstMismatch === undefined
         ? []
         : [
             {
-              code: "TN_VERIFY_V6_RESOURCE_EVENT_TRACE_MISMATCH",
+              code: mismatchCode,
               message: firstMismatch.message,
               path: firstMismatch.path,
               severity: "error",
@@ -117,15 +121,15 @@ function compareLogs(web, native) {
   };
 }
 
-function findFirstMismatch(web, native) {
+function findFirstMismatch(web, native, mismatchLabel) {
   if (web.schema !== native.schema) {
-    return mismatch("schema", web.schema, native.schema);
+    return mismatch(mismatchLabel, "schema", web.schema, native.schema);
   }
   if (web.version !== native.version) {
-    return mismatch("version", web.version, native.version);
+    return mismatch(mismatchLabel, "version", web.version, native.version);
   }
   if (web.entries.length !== native.entries.length) {
-    return mismatch("entries.length", web.entries.length, native.entries.length);
+    return mismatch(mismatchLabel, "entries.length", web.entries.length, native.entries.length);
   }
   for (let index = 0; index < web.entries.length; index += 1) {
     const expected = web.entries[index];
@@ -133,18 +137,18 @@ function findFirstMismatch(web, native) {
     const keys = new Set([...Object.keys(expected ?? {}), ...Object.keys(actual ?? {})].sort());
     for (const key of keys) {
       if (JSON.stringify(expected?.[key]) !== JSON.stringify(actual?.[key])) {
-        return mismatch(`entries/${index}/${key}`, expected?.[key], actual?.[key]);
+        return mismatch(mismatchLabel, `entries/${index}/${key}`, expected?.[key], actual?.[key]);
       }
     }
   }
   return undefined;
 }
 
-function mismatch(path, expected, actual) {
+function mismatch(label, path, expected, actual) {
   return {
     actual,
     expected,
-    message: `V6 resource/event trace mismatch at ${path}: expected ${JSON.stringify(expected)} but received ${JSON.stringify(actual)}.`,
+    message: `${label} mismatch at ${path}: expected ${JSON.stringify(expected)} but received ${JSON.stringify(actual)}.`,
     path,
   };
 }

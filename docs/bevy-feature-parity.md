@@ -274,8 +274,11 @@ V6-05 has started for the animation contract layer: SDK model assets can declare
 deterministic clip metadata, compiler emission preserves it in
 `assets.manifest.json`, IR validation covers clip IDs, source clip names, loop
 flags, speeds, model-only placement, and V7-deferred graph/blend/IK/retargeting/
-particle fields, and shared conformance includes `v6-animation-clips`. Web/Bevy
-playback state and visual animation parity are not claimed yet.
+particle fields, and shared conformance includes `v6-animation-clips`. Web and
+Bevy now report that clip metadata in conformance observations and the fixed
+trace compares the existing `animation.play` service-call effect log. Web/Bevy
+model animation playback state, stop/state queries, and visual animation parity
+are not claimed yet.
 
 ## V7 Deep Engine Gap-Closure Plan
 

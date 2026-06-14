@@ -205,10 +205,21 @@ pub struct AssetIr {
     pub id: String,
     pub kind: String,
     pub format: String,
+    pub animations: Option<Vec<AnimationClipIr>>,
     pub bounds: Option<AssetBoundsIr>,
     pub primitive: Option<String>,
     pub path: Option<String>,
     pub size: Option<Vec<f32>>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AnimationClipIr {
+    pub id: String,
+    #[serde(rename = "loop")]
+    pub loop_: Option<bool>,
+    pub source_clip: Option<String>,
+    pub speed: Option<f32>,
 }
 
 #[derive(Debug, Deserialize)]

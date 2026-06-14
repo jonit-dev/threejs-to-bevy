@@ -270,7 +270,10 @@ carry deterministic named clip metadata, emitted asset manifests preserve those
 clips, IR validation checks clip IDs, optional source clip names, loop flags,
 positive playback speeds, model-only placement, and V7-deferred graph/blend/IK/
 retargeting/particle fields, and the `v6-animation-clips` conformance fixture
-tracks the contract. Runtime playback observations remain later V6-05 work.
+tracks the contract. The fixture now also runs a fixed web/native
+`animation.play` service trace and both web and Bevy conformance observations
+report model clip metadata. Real model animation mixer/AnimationPlayer visual
+playback, stop/state queries, and graph behavior remain later work.
 
 V7 is now planned as the deep engine gap-closure milestone. It should continue
 parity work that is too large or risky for V6, such as deeper physics,

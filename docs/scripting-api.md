@@ -380,9 +380,11 @@ Runtime effects:
 
 - V6 validates clip IDs, optional source clip names, loop flags, and positive
   playback speeds in model asset metadata.
-- V4/V5 currently expose `ctx.animation.play` as a declared service-call shape
-  that records deterministic effect logs.
-- V6 runtime playback, stop/state queries, and web/native playback observations
+- V4/V5 expose `ctx.animation.play` as a declared service-call shape that
+  records deterministic effect logs.
+- V6 conformance observes model clip metadata and compares a fixed web/native
+  `animation.play` service trace for accepted playback commands.
+- Real runtime model playback, stop/state queries, and visual animation parity
   remain later V6-05 work.
 - Scripts see only stable clip IDs, booleans, numbers, and plain data for the
   currently promoted command shape.

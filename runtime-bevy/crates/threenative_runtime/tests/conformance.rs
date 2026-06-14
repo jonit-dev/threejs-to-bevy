@@ -156,3 +156,37 @@ fn should_report_physics_collision_and_trigger_conformance_observations() {
         vec![serde_json::json!({ "a": "pickup", "b": "sensor", "phase": "enter" })]
     );
 }
+
+#[test]
+fn should_report_animation_clip_conformance_observations() {
+    let fixture = load_conformance_fixture("v6-animation-clips");
+    let mut app = App::new();
+
+    map_bundle_into_world(app.world_mut(), &fixture.bundle).unwrap_or_else(|error| {
+        panic!(
+            "failed to map conformance fixture '{}' at '{}': {}",
+            fixture.name,
+            fixture.bundle_path.display(),
+            error
+        )
+    });
+    let report = report_bevy_conformance(app.world_mut(), &fixture.bundle, fixture.name);
+    let model = report
+        .assets
+        .iter()
+        .find(|asset| asset.id == "model.hero")
+        .expect("model asset should be reported");
+    let animations = model
+        .animations
+        .as_ref()
+        .expect("model animation clips should be reported");
+
+    assert_eq!(animations.len(), 2);
+    assert_eq!(animations[0].id, "idle");
+    assert_eq!(animations[0].loop_, Some(true));
+    assert_eq!(animations[0].speed, Some(1.0));
+    assert_eq!(animations[1].id, "run");
+    assert_eq!(animations[1].loop_, Some(true));
+    assert_eq!(animations[1].source_clip.as_deref(), Some("Armature|Run"));
+    assert_eq!(animations[1].speed, Some(1.25));
+}
