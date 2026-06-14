@@ -5,15 +5,17 @@ Complexity: 9 -> HIGH mode
 V5 uses [docs/ROADMAP.md](../../ROADMAP.md),
 [docs/STATUS.md](../../STATUS.md), and
 [docs/bevy-feature-parity.md](../../bevy-feature-parity.md) as the controlling
-scope. The goal is not a new product surface; it is making the V1-V4 foundation
-easier to maintain while selectively raising the 3D visual bar with contracts
-that are validated, tested, and release-gated.
+scope. The goal is not an unrelated product surface; it is making the V1-V4
+foundation easier to maintain while raising both the 3D visual bar and the
+game-authoring experience with contracts that are validated, tested, and
+release-gated.
 
 ```txt
 existing V1-V4 contracts
   -> cleaner fixtures and diagnostics
   -> shared conformance and native Rust evidence
   -> selected visual-quality promotions
+  -> game-first SDK/template ergonomics
   -> functional V5 scene
   -> repeatable verify:v5 gate
 ```
@@ -26,9 +28,12 @@ existing V1-V4 contracts
 - Every V5 feature that claims Bevy support needs focused Rust test evidence.
 - Promoted visual features must have SDK/IR/compiler/validation/runtime coverage
   and appear in a maintained 3D scene where practical.
-- V5 can harden scripting, diagnostics, rendering, asset, and release harness
-  behavior, but it does not introduce editor, online, networking, replication,
-  public plugin, or custom renderer scope.
+- V5 can harden scripting, diagnostics, rendering, asset, SDK authoring, and
+  release harness behavior, but it does not introduce editor, online,
+  networking, replication, public plugin, or custom renderer scope.
+- V5 requires a game-first authoring ergonomics layer and starter template that
+  lower into existing portable contracts unless a V5 PRD explicitly promotes a
+  new SDK/IR/runtime contract.
 - `assets-source/environment` should be used when it reasonably demonstrates a
   V5 visual-quality feature.
 
@@ -46,8 +51,8 @@ existing V1-V4 contracts
 | 7 | [V5-07 Lighting Atmosphere Shadow and Color Parity](./V5-07-lighting-atmosphere-shadow-and-color-parity.md) | V5-01, V5-02, V5-05 | Visibility, point/spot lights, shadows, fog, sky, and color fields have focused parity evidence. |
 | 8 | [V5-08 Dense Content Instancing LOD and Budgets](./V5-08-dense-content-instancing-lod-and-budgets.md) | V5-01, V5-02, V5-05 | Dense scene content has real instance/budget evidence and a narrow portable LOD metadata slice. |
 | 9 | [V5-09 Functional Visual Quality Scene](./V5-09-functional-visual-quality-scene.md) | V5-06, V5-07, V5-08 | A maintained scene demonstrates promoted V5 features with web and Bevy evidence. |
-| 10 | [V5-10 Release Gate and Docs Consistency](./V5-10-release-gate-and-docs-consistency.md) | All V5 tickets | `verify:v5`, `check:docs:v5`, status, parity, artifacts, and docs gate V5. |
-| Candidate | [V5-11 Game Authoring Ergonomics Refactor](./V5-11-game-authoring-ergonomics-refactor.md) | V5-04 preferred; V5-09 only if used by scene | Additive SDK/template ergonomics that can make small games faster to author without expanding V5 into editor, online, raw Three.js, or new runtime scope. |
+| 10 | [V5-11 Game Authoring Ergonomics Refactor](./V5-11-game-authoring-ergonomics-refactor.md) | V5-04, V5-09 | Required SDK/template ergonomics make small games faster to author without expanding V5 into editor, online, raw Three.js, or custom runtime scope. |
+| 11 | [V5-10 Release Gate and Docs Consistency](./V5-10-release-gate-and-docs-consistency.md) | All V5 tickets, including V5-11 | `verify:v5`, `check:docs:v5`, status, parity, artifacts, and docs gate V5. |
 
 ## V5 Acceptance Criteria
 
@@ -62,11 +67,12 @@ existing V1-V4 contracts
   behavior, validation, runtime coverage, and scene proof.
 - The V5 scene visibly exercises most promoted V5 visual features using
   `assets-source/environment` assets where practical.
+- The V5 game starter and ergonomics APIs prove a small playable game can be
+  authored with less low-level setup than direct scene/world assembly.
 - V5 does not claim editor, online, networking, replication, public plugin, or
   custom renderer support.
-- V5-11 remains a candidate/follow-up unless explicitly promoted before
-  V5-10; promoting it must not weaken the hardening, native evidence,
-  conformance, diagnostics, or visual-scene release criteria above.
+- V5-11 must not weaken the hardening, native evidence, conformance,
+  diagnostics, or visual-scene release criteria above.
 
 ## Release Gate
 
@@ -81,4 +87,4 @@ cd runtime-bevy && cargo test
 
 `pnpm verify:v5` should write a machine-readable report under `artifacts/v5`
 with ordered steps, diagnostics, Rust test evidence, conformance links, visual
-artifacts, and the first failing step.
+artifacts, SDK ergonomics/starter evidence, and the first failing step.

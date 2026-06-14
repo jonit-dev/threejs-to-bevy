@@ -4,19 +4,21 @@ Complexity: 8 -> HIGH mode
 
 ## Fit Assessment
 
-This PRD is a V5 candidate, not a required V5 release blocker unless the team
-explicitly promotes it before V5-10. It fits V5 only if implemented as an
-additive refactor over existing SDK, compiler, CLI, fixture, diagnostic, and
+This PRD is required V5 scope. It fits V5 because the roadmap already judges
+the product by whether a TypeScript developer or AI agent can build a small
+playable 3D game faster here than with raw Three.js. It must be implemented as
+an additive refactor over existing SDK, compiler, CLI, fixture, diagnostic, and
 template flows. It conflicts with V5 if it becomes a broad new game framework,
 editor workflow, raw Three.js compatibility layer, runtime plugin system, or
 unverified gameplay feature expansion.
 
-Recommended placement:
+Required placement:
 
 - Implement after V5-04 if it depends on fixture builders.
-- Keep it before V5-09 only if the V5 scene uses the ergonomic API.
-- Otherwise leave it after V5-10 as the first post-gate V5 follow-up or move it
-  to V6.
+- Implement after V5-09 if it reuses the maintained visual-quality scene as
+  evidence.
+- Complete before V5-10 so the final release gate includes SDK ergonomics,
+  starter-template, diagnostics, and docs evidence.
 
 ## Context
 
@@ -255,25 +257,22 @@ sequenceDiagram
 - Expected: The project builds, validates, and produces nonblank playable web
   evidence without raw Three.js setup.
 
-#### Phase 4: V5 Evidence and Scope Guardrails - The ergonomic layer is proven without expanding V5 beyond its contract.
+#### Phase 4: V5 Evidence and Scope Guardrails - The ergonomic layer is release-gated without expanding V5 beyond its contract.
 
 **Files (max 5):**
 
-- `scripts/verify-v5.mjs` - optional starter smoke step if this PRD is promoted
-  into the V5 gate.
-- `scripts/check-docs-v5.mjs` - require index links and reject broad claims if
-  promoted.
+- `scripts/verify-v5.mjs` - starter smoke and ergonomics evidence in the V5
+  gate.
+- `scripts/check-docs-v5.mjs` - require index links and reject broad claims.
 - `scripts/check-docs-v5.test.mjs` - docs gate tests.
-- `docs/PRDs/v5/README.md` - update status from candidate to required only if
-  promoted.
-- `docs/verify-v5.md` - document artifacts if included in the gate.
+- `docs/PRDs/v5/README.md` - required V5 scope and ordering.
+- `docs/verify-v5.md` - document starter and ergonomics artifacts.
 
 **Implementation:**
 
-- [ ] If promoted before V5-10, add starter build/verify evidence to
-  `pnpm verify:v5`.
-- [ ] If not promoted, keep this PRD listed as candidate/follow-up and do not
-  make V5 completion depend on it.
+- [ ] Add starter build/verify evidence to `pnpm verify:v5`.
+- [ ] Make V5 completion depend on this PRD without reducing existing V5
+  hardening, visual-quality, native, conformance, or diagnostic requirements.
 - [ ] Gate docs against claims that this is a scene editor, networking layer,
   arbitrary Three.js compiler, public plugin API, or custom renderer.
 - [ ] Link any starter evidence to existing V5 conformance, diagnostics, and
@@ -285,13 +284,13 @@ sequenceDiagram
 | --- | --- | --- |
 | `scripts/check-docs-v5.test.mjs` | `should allow v5 game starter as authoring sugar` | Docs gate accepts narrow helper/template language. |
 | `scripts/check-docs-v5.test.mjs` | `should reject broad game framework claims` | Docs gate rejects editor/networking/raw Three.js claims. |
-| `scripts/verify-v5.test.mjs` | `should include starter smoke only when promoted` | Report lists starter evidence behind the intended gate behavior. |
+| `scripts/verify-v5.test.mjs` | `should include starter smoke in v5 gate` | Report lists starter evidence as required V5 behavior. |
 
 **User Verification:**
 
-- Action: Run `pnpm check:docs:v5` and, if promoted, `pnpm verify:v5`.
-- Expected: V5 evidence includes the starter only when explicitly required, and
-  docs do not claim unsupported scope.
+- Action: Run `pnpm check:docs:v5` and `pnpm verify:v5`.
+- Expected: V5 evidence includes the starter, and docs do not claim unsupported
+  scope.
 
 ## Verification Strategy
 
@@ -300,8 +299,8 @@ sequenceDiagram
 - `pnpm --filter @threenative/cli test`
 - `pnpm tn -- build --project templates/v5-game-starter`
 - `pnpm verify:conformance`
-- `pnpm check:docs:v5` if this PRD is promoted into the V5 gate
-- `pnpm verify:v5` if this PRD is promoted into the V5 gate
+- `pnpm check:docs:v5`
+- `pnpm verify:v5`
 - `cd runtime-bevy && cargo test` only when helper output claims native runtime
   support beyond existing contracts
 
@@ -318,6 +317,6 @@ sequenceDiagram
 - [ ] No V5 completion claim depends on editor, online, networking,
   replication, public plugin API, raw Three.js compatibility, custom renderer
   replacement, arbitrary npm scripts, or direct Bevy access.
-- [ ] If promoted into V5, `docs/STATUS.md`, `docs/bevy-feature-parity.md`,
+- [ ] `docs/STATUS.md`, `docs/bevy-feature-parity.md`,
   `docs/PRDs/v5/README.md`, and `docs/verify-v5.md` describe the exact supported
   scope before V5 is marked complete.

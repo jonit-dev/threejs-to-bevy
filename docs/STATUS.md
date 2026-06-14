@@ -72,9 +72,10 @@ Current implemented V4 slice:
 
 ## Next Roadmap Scope
 
-V5 is planned as a refactoring, test-harness, Rust/Bevy coverage, and 3D visual
-quality milestone. It should strengthen existing V1-V4 contracts before adding
-large new product surfaces, while allowing selected advanced 3D
+V5 is planned as a refactoring, test-harness, Rust/Bevy coverage, 3D visual
+quality, and game-authoring ergonomics milestone. It should strengthen existing
+V1-V4 contracts before adding large new product surfaces, while requiring a
+game-first SDK/template layer and allowing selected advanced 3D
 rendering/content work when the feature has SDK, IR, validation, web runtime,
 Bevy runtime, conformance, and release-gate coverage.
 
@@ -96,6 +97,12 @@ Starting with V5, use `assets-source/environment` assets when they reasonably
 show the feature. Nonvisual refactoring and harness work should still connect
 to the version scene through shared fixtures, runtime observations,
 diagnostics, or artifact checks.
+
+V5 must also prove that a small playable game can be authored with less
+low-level setup than direct scene/world assembly by adding required game-first
+SDK ergonomics, a `v5-game-starter` template, stable diagnostics, and release
+gate evidence. This is authoring sugar over portable contracts unless a V5 PRD
+explicitly promotes a new SDK/IR/runtime contract.
 
 V6 is the first planned online and scene-editor milestone. Online services,
 networking, replication, scene editor workflows, collaboration, and editor

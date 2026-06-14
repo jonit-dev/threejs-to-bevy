@@ -15,12 +15,14 @@ networking, plugin, or broad renderer work.
 ## Solution
 
 Create the V5 PRD index and align front-door docs around one claim:
-maintainability plus selected 3D visual quality, backed by shared fixtures,
-conformance, Rust tests, diagnostics, and a release gate.
+maintainability plus selected 3D visual quality and additive game-authoring
+ergonomics, backed by shared fixtures, conformance, Rust tests, diagnostics,
+and a release gate.
 
 **Key Decisions:**
 
-- [ ] Treat V5 as hardening and visual-quality proof, not a new product surface.
+- [ ] Treat V5 as hardening, visual-quality proof, and additive authoring
+  ergonomics, not a new product surface.
 - [ ] Keep editor, online, networking, replication, public plugins, and custom
   renderer work as V6 or later.
 - [ ] Require Rust test evidence for any native support claim.
@@ -70,8 +72,7 @@ conformance, Rust tests, diagnostics, and a release gate.
 
 - [ ] V5 PRDs are discoverable from `docs/PRDs/v5/README.md`.
 - [ ] Status and parity docs agree that V5 is hardening plus selected visual
-  quality.
+  quality and additive game-authoring ergonomics.
 - [ ] V5 exclusions are explicit and machine-checkable.
 - [ ] No V5 doc claims editor, online, networking, replication, public plugin,
   or custom renderer support.
-

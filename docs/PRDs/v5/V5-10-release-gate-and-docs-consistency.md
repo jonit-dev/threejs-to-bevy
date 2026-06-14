@@ -5,8 +5,8 @@ Complexity: 8 -> HIGH mode
 ## Context
 
 **Problem:** V5 needs one repeatable release gate and docs check that prove the
-hardening, native evidence, diagnostics, conformance, visual artifacts, and
-scope exclusions remain aligned.
+hardening, native evidence, diagnostics, conformance, visual artifacts,
+game-authoring ergonomics, and scope exclusions remain aligned.
 
 ## Solution
 
@@ -30,8 +30,8 @@ artifact conventions under `artifacts/v5`.
 **Implementation:**
 
 - [ ] Require every `docs/PRDs/v5/V5-*.md` to be linked from the index.
-- [ ] Require status and parity docs to mention V5 native test and visual scene
-  expectations.
+- [ ] Require status and parity docs to mention V5 native test, visual scene,
+  and game-authoring ergonomics expectations.
 - [ ] Reject V5 acceptance claims for editor, online, networking, replication,
   public plugins, and custom renderer replacement.
 - [ ] Require diagnostics and artifact docs to mention V5.
@@ -49,7 +49,8 @@ artifact conventions under `artifacts/v5`.
 **Implementation:**
 
 - [ ] Run docs V5, conformance, selected TypeScript tests, selected existing
-  V3/V4 gates or documented sub-gates, focused Rust tests, and V5 scene checks.
+  V3/V4 gates or documented sub-gates, focused Rust tests, V5 scene checks, and
+  the required V5 game starter smoke.
 - [ ] Write `artifacts/v5/verification-report.json`.
 - [ ] Include `schema`, `version`, `status`, `code`, `steps`, `diagnostics`,
   `artifacts`, `startedAt`, and `durationMs`.
@@ -69,8 +70,7 @@ artifact conventions under `artifacts/v5`.
 
 - [ ] `pnpm verify:v5` is the V5 aggregate release gate.
 - [ ] The V5 report is machine-readable and links conformance, Rust, visual,
-  diagnostics, and docs artifacts.
+  SDK ergonomics/starter, diagnostics, and docs artifacts.
 - [ ] Docs checks catch missing V5 PRD links and forbidden V6 scope claims.
 - [ ] `docs/STATUS.md` and `docs/bevy-feature-parity.md` reflect the completed
   V5 gate state before V5 is marked complete.
-

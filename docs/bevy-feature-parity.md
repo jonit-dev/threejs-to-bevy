@@ -90,13 +90,19 @@ shared fixture or artifact comparison.
 The planned V5 implementation slice is tracked in
 [V5 PRDs](PRDs/v5/README.md). The PRDs define the order for shared fixtures,
 native observations, Rust regression coverage, promoted visual-quality features,
-the functional V5 scene, and the final `verify:v5` release gate.
+required game-authoring ergonomics, the functional V5 scene, and the final
+`verify:v5` release gate.
 
 Every V5 feature that affects visible output, interaction, or runtime state
 should also appear in the V5 functional 3D scene where practical. That scene
 should use `assets-source/environment` assets when they can show the feature,
 and Bevy evidence should connect back to the same scene through native tests,
 observed scene summaries, screenshots, effect logs, or diagnostics.
+
+V5 also requires a game-first SDK ergonomics layer and `v5-game-starter`
+template. Native parity is required only for the portable contracts emitted by
+that layer; authoring helpers remain SDK sugar unless a V5 PRD explicitly
+promotes new runtime behavior.
 
 Priority V5 native coverage:
 
@@ -112,6 +118,8 @@ Priority V5 native coverage:
 5. Native artifact checks where practical: observed scene summaries, canonical
    effect logs, screenshots, and stable failure messages that can be compared
    against web runtime output.
+6. Starter-template evidence showing the ergonomic SDK path emits the same
+   validated portable contracts consumed by web and, where claimed, Bevy.
 
 V5 is not the scene-editor, online, networking, plugin, or custom renderer
 milestone. Those remain V6 or later unless a V5 PRD scopes the work as internal
