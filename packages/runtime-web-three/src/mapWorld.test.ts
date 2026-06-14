@@ -4,7 +4,7 @@ import test from "node:test";
 import * as THREE from "three";
 
 import { loadBundle } from "./loadBundle.js";
-import { mapWorld } from "./mapWorld.js";
+import { advanceAnimationPlayback, mapWorld } from "./mapWorld.js";
 
 test("mapWorld should map cube fixture to three scene", async () => {
   const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/cube-scene/game.bundle"));
@@ -201,6 +201,68 @@ test("mapWorld should map custom generated mesh attributes", () => {
   assert.equal(object.geometry.getAttribute("color").itemSize, 4);
   assert.equal(object.geometry.getAttribute("weight").itemSize, 1);
   assert.deepEqual(Array.from(object.geometry.index?.array ?? []), [0, 1, 2]);
+});
+
+test("mapWorld should attach animation playback state to model renderers", () => {
+  const mapped = mapWorld({
+    assets: {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [
+        {
+          id: "model.hero",
+          kind: "model",
+          format: "glb",
+          path: "assets/hero.glb",
+          animations: [
+            { id: "idle", loop: true, speed: 1 },
+            { id: "run", loop: true, sourceClip: "Armature|Run", speed: 1.25 },
+          ],
+          animationGraph: {
+            initialState: "idle",
+            parameters: [{ id: "moving", kind: "boolean", default: false }],
+            states: [
+              { id: "idle", clip: "idle" },
+              { id: "run", clip: "run" },
+            ],
+          },
+        },
+      ],
+    },
+    manifest: {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "animated-model",
+      requiredCapabilities: {},
+      entry: { world: "world.ir.json" },
+      files: { assets: "assets.manifest.json", materials: "materials.ir.json", targetProfile: "target.profile.json" },
+    },
+    materials: { schema: "threenative.materials", version: "0.1.0", materials: [{ id: "mat.main", kind: "standard", color: "#ffffff" }] },
+    targetProfile: { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] },
+    world: {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [
+        {
+          id: "hero",
+          components: { MeshRenderer: { mesh: "model.hero", material: "mat.main" }, Transform: { position: [0, 0, 0] } },
+        },
+      ],
+    },
+  });
+
+  assert.deepEqual(mapped.objectsById.get("hero")?.userData.threeNativeAnimation, {
+    activeState: "idle",
+    asset: "model.hero",
+    clip: "idle",
+    loop: true,
+    sourceClip: "idle",
+    speed: 1,
+    timeSeconds: 0,
+  });
+
+  advanceAnimationPlayback(mapped, 0.5);
+  assert.equal(mapped.objectsById.get("hero")?.userData.threeNativeAnimation.timeSeconds, 0.5);
 });
 
 test("mapWorld should apply supported material texture slots", () => {

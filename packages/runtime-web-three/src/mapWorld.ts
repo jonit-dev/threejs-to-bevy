@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import type { IAssetIr, IMaterialIr, IRuntimeDiagnostic, IWorldEntity, IWorldIr } from "@threenative/ir";
+import { advanceAnimationPlaybackState, animationPlaybackState, type IAnimationPlaybackState } from "./animation.js";
 import type { IWebBundle } from "./loadBundle.js";
 
 export type { IRuntimeDiagnostic } from "@threenative/ir";
@@ -67,6 +68,15 @@ export function mapWorld(bundle: IWebBundle): IThreeWorld {
   return { camera: selectedCamera, diagnostics, objectsById, scene };
 }
 
+export function advanceAnimationPlayback(mapped: IThreeWorld, fixedDelta: number): void {
+  for (const object of mapped.objectsById.values()) {
+    const playback = object.userData.threeNativeAnimation as IAnimationPlaybackState | undefined;
+    if (playback !== undefined) {
+      object.userData.threeNativeAnimation = advanceAnimationPlaybackState(playback, fixedDelta);
+    }
+  }
+}
+
 function mapEntity(
   entity: IWorldEntity,
   assetsById: Map<string, IAssetIr>,
@@ -79,7 +89,14 @@ function mapEntity(
     const asset = assetsById.get(renderer.mesh);
     const material = materialsById.get(renderer.material);
     if (asset !== undefined && material !== undefined) {
-      return new THREE.Mesh(mapGeometry(asset), mapMaterial(material, assetsById, diagnostics, source));
+      const object = new THREE.Mesh(mapGeometry(asset), mapMaterial(material, assetsById, diagnostics, source));
+      if (asset.kind === "model") {
+        const playback = animationPlaybackState(asset);
+        if (playback !== undefined) {
+          object.userData.threeNativeAnimation = playback;
+        }
+      }
+      return object;
     }
     diagnostics.push({
       code: "TN-WEB-MESH-REFERENCE-MISSING",

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { resolve } from "node:path";
 import test from "node:test";
 
-import { traceAnimationGraphs } from "./animation.js";
+import { animationPlaybackState, traceAnimationGraphs } from "./animation.js";
 import { loadBundle } from "./loadBundle.js";
 
 test("animation trace should match V7 graph and particle fixture", async () => {
@@ -47,4 +47,20 @@ test("animation trace should match V7 graph and particle fixture", async () => {
       },
     },
   ]);
+});
+
+test("animation playback should resolve active visual clip metadata", async () => {
+  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/v7-animation-graphs-particles/game.bundle"));
+  const asset = bundle.assets.assets.find((candidate) => candidate.id === "model.hero");
+  assert.equal(asset?.kind, "model");
+
+  assert.deepEqual(animationPlaybackState(asset, { fixedDelta: 0.5, parameters: { moving: true } }), {
+    activeState: "run",
+    asset: "model.hero",
+    clip: "run",
+    loop: true,
+    sourceClip: "Armature|Run",
+    speed: 1.25,
+    timeSeconds: 0.625,
+  });
 });

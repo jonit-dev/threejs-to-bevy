@@ -21,7 +21,7 @@ export { attachInputListeners, createInputState, type IWebInputState } from "./i
 export { traceCharacterControllers, type ICharacterTraceInput, type ICharacterTraceObservation } from "./character.js";
 export { createFirstPersonState, updateFirstPersonController, type IFirstPersonControllerState } from "./firstPerson.js";
 export { resolveWebAssets, type IResolvedWebAsset } from "./assets.js";
-export { mapWorld, syncTransforms, type IRuntimeDiagnostic, type IThreeWorld } from "./mapWorld.js";
+export { advanceAnimationPlayback, mapWorld, syncTransforms, type IRuntimeDiagnostic, type IThreeWorld } from "./mapWorld.js";
 export { aabbIntersectsAabb, meshAabb, meshBoundingSphere, sampleMeshPoints, sphereIntersectsSphere, type IAabb, type IBoundingSphere } from "./meshBounds.js";
 export { ease, sampleCatmullRom, sampleCubicBezier, sampleLine, sampleQuadraticBezier, type EasingKind } from "./pathSampling.js";
 export { stepPhysics, type IPhysicsEventPayload } from "./physics.js";
@@ -44,4 +44,4 @@ export {
 export { applySystemEffects, validateSystemEffects, type ISystemEffects } from "./systems/effects.js";
 export { createSystemEffectLog, serializeSystemEffectLog, stableSystemEffectLog, type ISystemEffectLog, type ISystemEffectLogEntry } from "./systems/log.js";
 export { loadSystemModule, runSchedule, type ISystemModule, type ISystemRunResult, type SystemFunction } from "./systems/runner.js";
-export { traceAnimationGraphs, type IAnimationTraceInput, type IAnimationTraceObservation } from "./animation.js";
+export { advanceAnimationPlaybackState, traceAnimationGraphs, type IAnimationPlaybackState, type IAnimationTraceInput, type IAnimationTraceObservation } from "./animation.js";

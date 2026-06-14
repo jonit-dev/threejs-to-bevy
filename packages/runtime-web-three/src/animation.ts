@@ -42,12 +42,53 @@ export interface IAnimationTraceObservation {
   };
 }
 
+export interface IAnimationPlaybackState {
+  activeState?: string;
+  asset: string;
+  clip: string;
+  loop: boolean;
+  sourceClip: string;
+  speed: number;
+  timeSeconds: number;
+}
+
 export function traceAnimationGraphs(assets: IAssetsManifest, input: IAnimationTraceInput = {}): IAnimationTraceObservation[] {
   const fixedDelta = input.fixedDelta ?? 1;
   return assets.assets
     .filter((asset): asset is GraphModelAsset => asset.kind === "model" && asset.animationGraph !== undefined)
     .map((asset) => traceAssetAnimation(asset, input.parameters ?? {}, fixedDelta))
     .sort((left, right) => left.asset.localeCompare(right.asset));
+}
+
+export function animationPlaybackState(asset: ModelAsset, input: IAnimationTraceInput = {}): IAnimationPlaybackState | undefined {
+  if (asset.animations === undefined || asset.animations.length === 0) {
+    return undefined;
+  }
+  const graph = asset.animationGraph;
+  const parameters = graph === undefined ? {} : parameterValues(graph, input.parameters ?? {});
+  const transition = graph?.transitions?.find((candidate) => candidate.from === graph.initialState && conditionMatches(candidate, parameters));
+  const activeState = graph === undefined ? undefined : transition?.to ?? graph.initialState;
+  const clipId = graph?.states.find((candidate) => candidate.id === activeState)?.clip ?? asset.animations[0]?.id;
+  const clip = asset.animations.find((candidate) => candidate.id === clipId) ?? asset.animations[0];
+  if (clip === undefined) {
+    return undefined;
+  }
+  return {
+    ...(activeState === undefined ? {} : { activeState }),
+    asset: asset.id,
+    clip: clip.id,
+    loop: clip.loop ?? true,
+    sourceClip: clip.sourceClip ?? clip.id,
+    speed: clip.speed ?? 1,
+    timeSeconds: (input.fixedDelta ?? 0) * (clip.speed ?? 1),
+  };
+}
+
+export function advanceAnimationPlaybackState(playback: IAnimationPlaybackState, fixedDelta: number): IAnimationPlaybackState {
+  return {
+    ...playback,
+    timeSeconds: playback.timeSeconds + fixedDelta * playback.speed,
+  };
 }
 
 function traceAssetAnimation(

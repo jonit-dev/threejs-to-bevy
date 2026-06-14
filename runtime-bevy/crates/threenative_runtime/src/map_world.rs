@@ -15,9 +15,13 @@ use bevy::{
         view::ColorGrading,
     },
 };
+use serde_json::Value;
 use thiserror::Error;
 use threenative_components::ThreeNativeId;
-use threenative_loader::{AssetIr, ColorIr, LoadedBundle, MaterialIr, WorldEntity};
+use threenative_loader::{
+    AnimationGraphIr, AnimationGraphTransitionIr, AssetIr, ColorIr, LoadedBundle, MaterialIr,
+    WorldEntity,
+};
 
 // ThreeNative lights are authored in Three.js-style scalar units. Bevy stores
 // physically named units and multiplies lighting by camera Exposure, so the
@@ -26,6 +30,17 @@ use threenative_loader::{AssetIr, ColorIr, LoadedBundle, MaterialIr, WorldEntity
 const THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY: f32 = 2.0;
 const THREE_COMPAT_POINT_LUMENS_PER_CANDELA: f32 = std::f32::consts::TAU * 2.0;
 const THREE_COMPAT_DEFAULT_RANGE: f32 = 1_000.0;
+
+#[derive(Clone, Component, Debug, PartialEq)]
+pub struct NativeAnimationPlayback {
+    pub active_state: Option<String>,
+    pub asset: String,
+    pub clip: String,
+    pub loop_: bool,
+    pub source_clip: String,
+    pub speed: f32,
+    pub time_seconds: f32,
+}
 
 #[derive(Debug, Error)]
 pub enum MapError {
@@ -127,6 +142,13 @@ pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result
     Ok(())
 }
 
+pub fn advance_native_animation_playback(world: &mut World, fixed_delta: f32) {
+    let mut query = world.query::<&mut NativeAnimationPlayback>();
+    for mut playback in query.iter_mut(world) {
+        playback.time_seconds += fixed_delta * playback.speed;
+    }
+}
+
 fn ensure_asset_resources(world: &mut World) {
     if !world.contains_resource::<Assets<Mesh>>() {
         world.init_resource::<Assets<Mesh>>();
@@ -164,16 +186,18 @@ fn spawn_entity(
         let mesh = add_mesh(world, asset);
         let asset_server = world.get_resource::<AssetServer>().cloned();
         let material = add_material(world, material, assets_by_id, asset_server.as_ref());
-        return Ok(world
-            .spawn(PbrBundle {
-                mesh,
-                material,
-                transform,
-                visibility: map_visibility(entity),
-                ..Default::default()
-            })
-            .insert((stable_id, name))
-            .id());
+        let mut spawned = world.spawn(PbrBundle {
+            mesh,
+            material,
+            transform,
+            visibility: map_visibility(entity),
+            ..Default::default()
+        });
+        spawned.insert((stable_id, name));
+        if let Some(playback) = animation_playback(asset) {
+            spawned.insert(playback);
+        }
+        return Ok(spawned.id());
     }
 
     if let Some(camera) = &entity.components.camera {
@@ -498,6 +522,97 @@ fn add_mesh(world: &mut World, asset: &AssetIr) -> Handle<Mesh> {
         }
     };
     world.resource_mut::<Assets<Mesh>>().add(mesh)
+}
+
+fn animation_playback(asset: &AssetIr) -> Option<NativeAnimationPlayback> {
+    if asset.kind != "model" {
+        return None;
+    }
+    let animations = asset.animations.as_deref()?;
+    let clip_id = active_animation_clip_id(asset.animation_graph.as_ref(), animations)?;
+    let clip = animations
+        .iter()
+        .find(|candidate| candidate.id == clip_id)
+        .or_else(|| animations.first())?;
+    Some(NativeAnimationPlayback {
+        active_state: active_animation_state(asset.animation_graph.as_ref()),
+        asset: asset.id.clone(),
+        clip: clip.id.clone(),
+        loop_: clip.loop_.unwrap_or(true),
+        source_clip: clip.source_clip.clone().unwrap_or_else(|| clip.id.clone()),
+        speed: clip.speed.unwrap_or(1.0),
+        time_seconds: 0.0,
+    })
+}
+
+fn active_animation_clip_id(
+    graph: Option<&AnimationGraphIr>,
+    animations: &[threenative_loader::AnimationClipIr],
+) -> Option<String> {
+    let Some(graph) = graph else {
+        return animations.first().map(|clip| clip.id.clone());
+    };
+    let active_state = active_animation_state(Some(graph))?;
+    graph
+        .states
+        .iter()
+        .find(|state| state.id == active_state)
+        .map(|state| state.clip.clone())
+        .or_else(|| animations.first().map(|clip| clip.id.clone()))
+}
+
+fn active_animation_state(graph: Option<&AnimationGraphIr>) -> Option<String> {
+    let graph = graph?;
+    let transition = graph
+        .transitions
+        .as_deref()
+        .unwrap_or(&[])
+        .iter()
+        .find(|transition| {
+            transition.from == graph.initial_state && animation_condition_matches(transition, graph)
+        });
+    Some(
+        transition.map_or(graph.initial_state.clone(), |transition| {
+            transition.to.clone()
+        }),
+    )
+}
+
+fn animation_condition_matches(
+    transition: &AnimationGraphTransitionIr,
+    graph: &AnimationGraphIr,
+) -> bool {
+    let value = graph
+        .parameters
+        .as_deref()
+        .unwrap_or(&[])
+        .iter()
+        .find(|parameter| parameter.id == transition.when.parameter)
+        .and_then(|parameter| parameter.default.clone())
+        .unwrap_or_else(|| Value::from(false));
+    if transition
+        .when
+        .equals
+        .as_ref()
+        .is_some_and(|expected| expected != &value)
+    {
+        return false;
+    }
+    if transition.when.greater_than.is_some_and(|threshold| {
+        value
+            .as_f64()
+            .is_none_or(|actual| actual <= threshold as f64)
+    }) {
+        return false;
+    }
+    if transition.when.less_than.is_some_and(|threshold| {
+        value
+            .as_f64()
+            .is_none_or(|actual| actual >= threshold as f64)
+    }) {
+        return false;
+    }
+    true
 }
 
 fn custom_mesh(asset: &AssetIr) -> Mesh {
