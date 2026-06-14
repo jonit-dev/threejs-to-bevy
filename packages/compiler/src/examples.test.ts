@@ -95,3 +95,26 @@ test("should build v6 functional example", async () => {
   ]);
   assert.equal(runtimeConfig.window.title, "ThreeNative V6 Functional");
 });
+
+test("should build v7 functional example", async () => {
+  const projectPath = resolve(process.cwd(), "../../examples/v7-functional");
+  const { bundlePath } = await buildProject(projectPath);
+  const report = await validateBundle(bundlePath);
+  const manifest = JSON.parse(await readFile(resolve(bundlePath, "manifest.json"), "utf8"));
+  const systems = JSON.parse(await readFile(resolve(bundlePath, "systems.ir.json"), "utf8"));
+  const runtimeConfig = JSON.parse(await readFile(resolve(bundlePath, "runtime.config.json"), "utf8"));
+
+  assert.equal(bundlePath, resolve(projectPath, "dist/v7-functional.bundle"));
+  assert.equal(report.ok, true);
+  assert.deepEqual(
+    systems.systems.map((system: { name: string }) => system.name),
+    ["seedV7DamageEvent", "v7ProofLoop"],
+  );
+  assert.ok(manifest.requiredCapabilities.audio.includes("music"));
+  assert.ok(manifest.requiredCapabilities.character.includes("controller"));
+  assert.ok(manifest.requiredCapabilities.ecs.includes("resources"));
+  assert.ok(manifest.requiredCapabilities.scripting.includes("resource-writes"));
+  assert.ok(manifest.requiredCapabilities.scripting.includes("service.animation.play"));
+  assert.ok(manifest.requiredCapabilities.ui.includes("node.touchControl"));
+  assert.equal(runtimeConfig.window.title, "ThreeNative V7 Functional");
+});

@@ -39,11 +39,11 @@ visual drift where native support is claimed.
 
 **Implementation:**
 
-- [ ] Keep assets local to the example/template or emitted bundle.
-- [ ] Reuse the existing examples and templates folder structure and scripts
+- [x] Keep assets local to the example/template or emitted bundle.
+- [x] Reuse the existing examples and templates folder structure and scripts
   where practical.
-- [ ] Demonstrate promoted V7 features together.
-- [ ] Add template scripts for validate, build, verify, and package where
+- [x] Demonstrate promoted V7 features together.
+- [x] Add template scripts for validate, build, verify, and package where
   practical.
 
 #### Phase 2: Evidence Artifacts - Scene proof is part of the release gate.
@@ -58,14 +58,14 @@ visual drift where native support is claimed.
 
 **Implementation:**
 
-- [ ] Capture web visual/playable artifacts and fixed traces.
-- [ ] Capture Bevy observations, Rust tests, screenshots, or packaged run
+- [x] Capture web visual/playable artifacts and fixed traces.
+- [x] Capture Bevy observations, Rust tests, screenshots, or packaged run
   artifacts where practical.
-- [ ] Write all V7 proof outputs under `artifacts/v7` using the existing
+- [x] Write all V7 proof outputs under `artifacts/v7` using the existing
   artifact layout style.
-- [ ] Capture screenshots, image diffs, side-by-side renders, or equivalent
+- [x] Capture screenshots, image diffs, side-by-side renders, or equivalent
   real-world rendering artifacts for visible promoted features where practical.
-- [ ] Link performance and diagnostic artifacts in the V7 report.
+- [x] Link performance and diagnostic artifacts in the V7 report.
 
 ## Verification Strategy
 
@@ -76,8 +76,8 @@ visual drift where native support is claimed.
 
 ## Acceptance Criteria
 
-- [ ] The V7 scene/template demonstrates promoted features together.
-- [ ] The scene/template is self-contained and release-gated.
-- [ ] Artifacts under `artifacts/v7` prove the example/template is working.
-- [ ] Visible features are supported by rendered artifacts, not only logs or
+- [x] The V7 scene/template demonstrates promoted features together.
+- [x] The scene/template is self-contained and release-gated.
+- [x] Artifacts under `artifacts/v7` prove the example/template is working.
+- [x] Visible features are supported by rendered artifacts, not only logs or
   build success.

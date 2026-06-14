@@ -13,6 +13,8 @@ V7-07 adds the first fixed web/native scripting lifecycle trace.
 V7-08 adds the first desktop package artifact and target-profile diagnostics
 report.
 V7-09 adds the first target-profile-aware performance budget reports.
+V7-10 adds the maintained functional scene/template smoke and rendered web
+artifacts.
 
 Current V7 conformance evidence starts with:
 
@@ -58,6 +60,13 @@ Current V7 conformance evidence starts with:
 - `artifacts/v7/performance/web.report.json`
 - `artifacts/v7/performance/bevy.report.json`
 - `artifacts/v7/performance/comparison.report.json`
+- `examples/v7-functional/dist/v7-functional.bundle`
+- `examples/v7-functional/artifacts/verify/verification-report.json`
+- `examples/v7-functional/artifacts/verify/frame-01.png`
+- `examples/v7-functional/artifacts/verify/frame-02.png`
+- `artifacts/v7/functional-package/desktop/game.bundle`
+- `artifacts/v7/functional-package/desktop/package.manifest.json`
+- `artifacts/v7/template-smoke/v7-functional`
 
 The V7 fixture catalog maps V7-02 through V7-09 to baseline bundles, planned
 accepted and rejected fixture bundle paths, expected target capabilities,
@@ -123,6 +132,18 @@ asset counts, and package size. Hard failures and warnings are separated, and
 path. These are deterministic budget reports, not live browser profiler or
 native platform-profiler captures; script/UI/audio timing breakdowns and larger
 scene budget tuning remain later work.
+
+The current V7-10 functional evidence is intentionally narrow:
+`examples/v7-functional` and `templates/v7-functional` demonstrate the
+SDK-authored promoted surface together: scene primitives, local model/audio
+assets, physics colliders, character controller metadata, input, retained UI,
+audio, resources/events, scripted event writes, and `animation.play`
+service effects. `pnpm verify:v7` builds and validates the example, captures web
+visual screenshots through `tn verify`, packages a local desktop artifact, and
+create/build/validates the template smoke project. Advanced physics query
+parity, animation graph/particle metadata, spatial bus routing, dense renderer
+content, lifecycle replay, packaging diagnostics, and performance budgets remain
+anchored in the focused V7 conformance fixtures.
 
 Conformance mismatch diagnostics must localize drift with:
 

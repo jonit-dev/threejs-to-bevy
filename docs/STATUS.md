@@ -445,6 +445,19 @@ path fields. These reports are deterministic budget evidence, not live browser
 or native profiler captures; richer frame capture and platform profilers remain
 later work.
 
+V7-10 has landed the first maintained functional V7 scene/template slice:
+`examples/v7-functional` and `templates/v7-functional` keep their placeholder
+model/audio assets local, build through the standard CLI, and combine the
+currently SDK-authored V7-facing gameplay surface: primitive 3D scene content,
+physics colliders, a character controller declaration, input, retained UI,
+audio, resources/events, scripted event writes, and `animation.play`
+service effects. `pnpm verify:v7` now builds, validates, captures web visual
+artifacts for the example, packages its desktop bundle under
+`artifacts/v7/functional-package`, and create/build/validates the V7 template
+under `artifacts/v7/template-smoke/v7-functional`. Deeper V7 feature parity is
+still proven by the focused conformance fixtures rather than by direct SDK
+authoring for every promoted IR shape.
+
 V8 is the first planned local editor and inspector milestone. V9 is the first
 planned online project and publishing milestone. V10 is the first planned
 collaboration and runtime replication milestone. Editor, online, networking,

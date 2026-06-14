@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -16,6 +16,11 @@ export async function verifyV7(options = {}) {
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
   const startedAt = new Date();
   const startedAtMs = Date.now();
+  const projectPath = resolve(root, "examples/v7-functional");
+  const bundlePath = resolve(projectPath, "dist/v7-functional.bundle");
+  const functionalWebReportPath = resolve(projectPath, "artifacts/verify/verification-report.json");
+  const functionalPackageDir = resolve(artifactDir, "functional-package");
+  const templateProjectPath = resolve(artifactDir, "template-smoke/v7-functional");
   const steps = [];
 
   async function step(name, command, args, commandOptions = {}) {
@@ -29,6 +34,104 @@ export async function verifyV7(options = {}) {
   }
   if (!(await step("build cli", "pnpm", ["--filter", "@threenative/cli", "build"], { timeoutMs: 120000 }))) {
     return writeV7Report({ artifactDir, ok: false, reportPath, startedAt, startedAtMs, steps });
+  }
+  if (!(await step("build v7 functional scene", process.execPath, [resolve(root, "packages/cli/dist/index.js"), "build", "--project", projectPath, "--json"], { timeoutMs: 120000 }))) {
+    return writeV7Report({ artifactDir, bundlePath, ok: false, reportPath, startedAt, startedAtMs, steps });
+  }
+  if (!(await step("validate v7 functional bundle", process.execPath, [resolve(root, "packages/cli/dist/index.js"), "validate", "--project", projectPath, "--json"], { timeoutMs: 120000 }))) {
+    return writeV7Report({ artifactDir, bundlePath, ok: false, reportPath, startedAt, startedAtMs, steps });
+  }
+  if (!(await step("verify v7 functional web visual scene", process.execPath, [resolve(root, "packages/cli/dist/index.js"), "verify", "--project", projectPath, "--frames", "2", "--json"], { timeoutMs: 120000 }))) {
+    return writeV7Report({
+      artifactDir,
+      bundlePath,
+      functionalWebReportPath,
+      ok: false,
+      reportPath,
+      startedAt,
+      startedAtMs,
+      steps,
+    });
+  }
+  if (
+    !(await step(
+      "package v7 functional desktop artifact",
+      process.execPath,
+      [
+        resolve(root, "packages/cli/dist/index.js"),
+        "package",
+        "--bundle",
+        bundlePath,
+        "--target",
+        "desktop",
+        "--out",
+        functionalPackageDir,
+        "--json",
+      ],
+      { timeoutMs: 120000 },
+    ))
+  ) {
+    return writeV7Report({
+      artifactDir,
+      bundlePath,
+      functionalPackageDir,
+      functionalWebReportPath,
+      ok: false,
+      reportPath,
+      startedAt,
+      startedAtMs,
+      steps,
+    });
+  }
+  await rm(templateProjectPath, { force: true, recursive: true });
+  if (
+    !(await step(
+      "create v7 functional template",
+      process.execPath,
+      [resolve(root, "packages/cli/dist/index.js"), "create", templateProjectPath, "--template", "v7-functional", "--json"],
+      { timeoutMs: 120000 },
+    ))
+  ) {
+    return writeV7Report({
+      artifactDir,
+      bundlePath,
+      functionalPackageDir,
+      functionalWebReportPath,
+      ok: false,
+      reportPath,
+      startedAt,
+      startedAtMs,
+      steps,
+      templateProjectPath,
+    });
+  }
+  if (!(await step("build v7 functional template", process.execPath, [resolve(root, "packages/cli/dist/index.js"), "build", "--project", templateProjectPath, "--json"], { timeoutMs: 120000 }))) {
+    return writeV7Report({
+      artifactDir,
+      bundlePath,
+      functionalPackageDir,
+      functionalWebReportPath,
+      ok: false,
+      reportPath,
+      startedAt,
+      startedAtMs,
+      steps,
+      templateProjectPath,
+    });
+  }
+  if (!(await step("validate v7 functional template", process.execPath, [resolve(root, "packages/cli/dist/index.js"), "validate", "--project", templateProjectPath, "--json"], { timeoutMs: 120000 }))) {
+    return writeV7Report({
+      artifactDir,
+      bundlePath,
+      functionalPackageDir,
+      functionalWebReportPath,
+      ok: false,
+      reportPath,
+      startedAt,
+      startedAtMs,
+      steps,
+      templateProjectPath,
+    });
   }
 
   const packagingReport = await verifyV7Packaging({
@@ -46,6 +149,9 @@ export async function verifyV7(options = {}) {
   if (!packagingReport.ok) {
     return writeV7Report({
       artifactDir,
+      bundlePath,
+      functionalPackageDir,
+      functionalWebReportPath,
       ok: false,
       packagingReportPath: packagingReport.reportPath,
       reportPath,
@@ -69,6 +175,9 @@ export async function verifyV7(options = {}) {
 
   return writeV7Report({
     artifactDir,
+    bundlePath,
+    functionalPackageDir,
+    functionalWebReportPath,
     ok: performanceReport.ok,
     packagingReportPath: packagingReport.reportPath,
     performanceReportPath: performanceReport.artifacts.comparisonReportPath,
@@ -79,7 +188,20 @@ export async function verifyV7(options = {}) {
   });
 }
 
-async function writeV7Report({ artifactDir, ok, packagingReportPath, performanceReportPath, reportPath, startedAt, startedAtMs, steps }) {
+async function writeV7Report({
+  artifactDir,
+  bundlePath,
+  functionalPackageDir,
+  functionalWebReportPath,
+  ok,
+  packagingReportPath,
+  performanceReportPath,
+  reportPath,
+  startedAt,
+  startedAtMs,
+  steps,
+  templateProjectPath,
+}) {
   await mkdir(resolve(reportPath, ".."), { recursive: true });
   const failedStep = steps.find((step) => step.exitCode !== 0);
   const diagnostics =
@@ -96,9 +218,13 @@ async function writeV7Report({ artifactDir, ok, packagingReportPath, performance
         ];
   const report = {
     artifacts: {
+      bundlePath: bundlePath ?? resolve(artifactDir, "../../examples/v7-functional/dist/v7-functional.bundle"),
+      functionalPackageDir: functionalPackageDir ?? resolve(artifactDir, "functional-package"),
+      functionalWebReportPath: functionalWebReportPath ?? resolve(artifactDir, "../../examples/v7-functional/artifacts/verify/verification-report.json"),
       packagingReportPath: packagingReportPath ?? resolve(artifactDir, "packaging/verification-report.json"),
       performanceReportPath: performanceReportPath ?? resolve(artifactDir, "performance/comparison.report.json"),
       reportPath,
+      templateProjectPath: templateProjectPath ?? resolve(artifactDir, "template-smoke/v7-functional"),
     },
     code: ok ? "TN_VERIFY_V7_OK" : "TN_VERIFY_V7_FAILED",
     diagnostics,

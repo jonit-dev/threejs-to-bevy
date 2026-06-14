@@ -398,6 +398,12 @@ function collectSystemCapabilities(systems: ISystemsIr | undefined, add: (domain
     if (system.eventWrites.length > 0) {
       add("scripting", "event-writes");
     }
+    if (system.resourceReads.length > 0) {
+      add("scripting", "resource-reads");
+    }
+    if (system.resourceWrites.length > 0) {
+      add("scripting", "resource-writes");
+    }
   }
 }
 

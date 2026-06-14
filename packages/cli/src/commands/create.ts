@@ -26,7 +26,7 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
     return diagnosticResult(
       {
         code: "TN_CREATE_DESTINATION_REQUIRED",
-        message: "Usage: tn create <name> [--template v1|v2-arena|v3-environment|v4-scripting|v5-game-starter] [--json]",
+        message: "Usage: tn create <name> [--template v1|v2-arena|v3-environment|v4-scripting|v5-game-starter|v7-functional] [--json]",
       },
       { exitCode: 1, json, stderr: true },
     );
@@ -36,7 +36,7 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
     return diagnosticResult(
       {
         code: "TN_CREATE_TEMPLATE_UNSUPPORTED",
-        message: `Template '${template ?? ""}' is not supported. Use '--template v1', '--template v2-arena', '--template v3-environment', '--template v4-scripting', or '--template v5-game-starter'.`,
+        message: `Template '${template ?? ""}' is not supported. Use '--template v1', '--template v2-arena', '--template v3-environment', '--template v4-scripting', '--template v5-game-starter', or '--template v7-functional'.`,
         template,
       },
       { exitCode: 1, json, stderr: true },
@@ -91,8 +91,17 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
   };
 }
 
-function isSupportedTemplate(template: string | undefined): template is "v1" | "v2-arena" | "v3-environment" | "v4-scripting" | "v5-game-starter" {
-  return template === "v1" || template === "v2-arena" || template === "v3-environment" || template === "v4-scripting" || template === "v5-game-starter";
+function isSupportedTemplate(
+  template: string | undefined,
+): template is "v1" | "v2-arena" | "v3-environment" | "v4-scripting" | "v5-game-starter" | "v7-functional" {
+  return (
+    template === "v1" ||
+    template === "v2-arena" ||
+    template === "v3-environment" ||
+    template === "v4-scripting" ||
+    template === "v5-game-starter" ||
+    template === "v7-functional"
+  );
 }
 
 async function rewriteLocalWorkspaceDependencies(projectPath: string): Promise<void> {

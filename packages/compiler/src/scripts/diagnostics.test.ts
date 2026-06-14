@@ -37,6 +37,27 @@ test("should reject undeclared transform write", () => {
   assert.match(diagnostics[0]?.suggestion ?? "", /writes/);
 });
 
+test("should validate resource writes against resourceWrites", () => {
+  const missing = diagnosePortableSystem({
+    resourceWrites: [],
+    source: "(ctx) => ctx.resources.set(GameState, { score: 1 })",
+    systemName: "badResourceWrite",
+    writes: [],
+  });
+
+  assert.equal(missing[0]?.code, "TN_SCRIPT_RESOURCE_WRITE_UNDECLARED");
+  assert.equal(missing[0]?.path, "systems/badResourceWrite/resourceWrites/GameState");
+
+  const valid = diagnosePortableSystem({
+    resourceWrites: ["GameState"],
+    source: "(ctx) => ctx.resources.set(GameState, { score: 1 })",
+    systemName: "goodResourceWrite",
+    writes: [],
+  });
+
+  assert.deepEqual(valid, []);
+});
+
 test("should reject undeclared service command and event access", () => {
   const diagnostics = diagnosePortableSystem({
     commands: [],

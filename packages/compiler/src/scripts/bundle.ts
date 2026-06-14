@@ -8,6 +8,8 @@ export interface ISystemScriptSource {
   name: string;
   queries?: ReadonlyArray<{ with: string[]; without: string[] }>;
   reads?: ReadonlyArray<string>;
+  resourceReads?: ReadonlyArray<string>;
+  resourceWrites?: ReadonlyArray<string>;
   script?: {
     exportName: string;
     source: string;
@@ -30,6 +32,7 @@ export function bundleSystemScripts(systems: ReadonlyArray<ISystemScriptSource>)
     diagnosePortableSystem({
       commands: system.commands?.map((command) => command.kind),
       eventWrites: system.eventWrites,
+      resourceWrites: system.resourceWrites,
       services: system.services,
       source: system.script.source,
       systemName: system.name,
@@ -69,6 +72,8 @@ function scriptHandleNames(systems: ReadonlyArray<ISystemScriptSource>): string[
       ...(system.writes ?? []),
       ...(system.eventReads ?? []),
       ...(system.eventWrites ?? []),
+      ...(system.resourceReads ?? []),
+      ...(system.resourceWrites ?? []),
       ...(system.queries ?? []).flatMap((query) => [...query.with, ...query.without]),
     ]) {
       if (/^[A-Za-z_$][\w$]*$/.test(name)) {

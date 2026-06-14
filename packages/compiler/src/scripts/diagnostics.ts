@@ -4,6 +4,7 @@ export interface IPortableSystemSource {
   commands?: ReadonlyArray<string>;
   eventWrites?: ReadonlyArray<string>;
   file?: string;
+  resourceWrites?: ReadonlyArray<string>;
   services?: ReadonlyArray<string>;
   source: string;
   systemName: string;
@@ -72,11 +73,12 @@ export function diagnosePortableSystem(source: IPortableSystemSource): ICompiler
 function diagnoseDeclaredAccess(source: IPortableSystemSource): ICompilerDiagnostic[] {
   const diagnostics: ICompilerDiagnostic[] = [];
   const writes = new Set(source.writes ?? []);
+  const resourceWrites = new Set(source.resourceWrites ?? []);
   const commands = new Set(source.commands ?? []);
   const eventWrites = new Set(source.eventWrites ?? []);
   const services = new Set(source.services ?? []);
 
-  for (const component of uniqueMatches(source.source, /\b(?:patch|set)\s*\(\s*([A-Z][A-Za-z0-9_]*)/g)) {
+  for (const component of uniqueMatches(source.source, /(?<!resources\.)\b(?:patch|set|setComponent)\s*\(\s*([A-Z][A-Za-z0-9_]*)/g)) {
     if (!writes.has(component)) {
       diagnostics.push({
         code: "TN_SCRIPT_WRITE_UNDECLARED",
@@ -85,6 +87,19 @@ function diagnoseDeclaredAccess(source: IPortableSystemSource): ICompilerDiagnos
         path: `systems/${source.systemName}/writes/${component}`,
         severity: "error",
         suggestion: `Add '${component}' to the system writes list or remove the mutation.`,
+      });
+    }
+  }
+
+  for (const resource of uniqueMatches(source.source, /\bresources\.set\s*\(\s*([A-Z][A-Za-z0-9_]*)/g)) {
+    if (!resourceWrites.has(resource)) {
+      diagnostics.push({
+        code: "TN_SCRIPT_RESOURCE_WRITE_UNDECLARED",
+        file: source.file,
+        message: `System '${source.systemName}' writes resource '${resource}' without declaring it in resourceWrites.`,
+        path: `systems/${source.systemName}/resourceWrites/${resource}`,
+        severity: "error",
+        suggestion: `Add '${resource}' to the system resourceWrites list or remove the mutation.`,
       });
     }
   }
