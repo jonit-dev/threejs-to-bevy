@@ -55,6 +55,10 @@ save/load, structured diffs, diagnostics, and bundle preview evidence. Online
 services, networking, replication, collaboration, public plugins, raw Three.js
 authoring, and direct Bevy authoring remain outside V8.
 
+The first V8 slice adds IR-level editor project snapshot validation and
+deterministic structured diffs for bundle-relative JSON documents. It is local
+data plumbing, not a visual editor runtime.
+
 ## Sources
 
 | Source | Link |

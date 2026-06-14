@@ -23,6 +23,7 @@ consume. It is not a second source of truth and must not bypass validation.
 | Order | PRD | Depends On | Outcome |
 | --- | --- | --- | --- |
 | 0 | [V8-00 Local Editor Scope and Contract](./V8-00-local-editor-scope-and-contract.md) | V7 | V8 starts with local/offline editor boundaries, structured SDK/ECS/IR project data, save/load, structured diffs, diagnostics, and preview evidence requirements. |
+| 1 | [V8-01 Editor Project Snapshot and Structured Diffs](./V8-01-editor-project-snapshot-and-structured-diffs.md) | V8-00 | IR helpers validate local editor project snapshots and produce deterministic structured diffs over bundle-relative JSON documents. |
 
 ## Release Gate
 

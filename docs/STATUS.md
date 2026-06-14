@@ -482,6 +482,13 @@ milestone. Online services, networking, replication, collaboration, presence,
 and conflict resolution should not be treated as V8 support unless a later PRD
 explicitly changes that boundary.
 
+V8-01 has landed the first local editor data contract slice:
+`@threenative/ir` now exposes `threenative.editor-project` snapshot validation
+and deterministic structured diffs over bundle-relative JSON documents. This is
+offline SDK/ECS/IR project data plumbing for future save/load, inspector, and
+bundle preview workflows; it does not add a visual editor UI, online services,
+collaboration, raw Three.js authoring, or direct Bevy authoring.
+
 ## V3 Proves
 
 The V3 evidence loop is `pnpm verify:v3`, which regenerates the environment

@@ -6,6 +6,7 @@ const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 const requiredV8Prds = [
   "V8-00-local-editor-scope-and-contract.md",
+  "V8-01-editor-project-snapshot-and-structured-diffs.md",
 ];
 
 const requiredV8Phrases = [

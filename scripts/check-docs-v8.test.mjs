@@ -83,6 +83,7 @@ async function makeDocsRoot(overrides = {}) {
 function defaultIndex() {
   return [
     "[V8-00 Scope](./V8-00-local-editor-scope-and-contract.md)",
+    "[V8-01 Snapshot](./V8-01-editor-project-snapshot-and-structured-diffs.md)",
     "local editor structured SDK/ECS/IR save/load structured diffs bundle preview offline diagnostics",
   ].join("\n");
 }

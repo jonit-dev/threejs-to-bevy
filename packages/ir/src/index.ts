@@ -66,4 +66,10 @@ export type {
 } from "./types.js";
 export { validateBundle, type IBundleValidationResult, type IIrDiagnostic } from "./validate.js";
 export { validateEnvironmentSceneIr } from "./environment.js";
+export {
+  diffEditorProjectSnapshots,
+  validateEditorProjectSnapshot,
+  type EditorProjectDiffOperation,
+  type IEditorProjectSnapshot,
+} from "./editorProject.js";
 export { validatePerformanceProfile, type PerformanceMetricName } from "./performanceProfile.js";
