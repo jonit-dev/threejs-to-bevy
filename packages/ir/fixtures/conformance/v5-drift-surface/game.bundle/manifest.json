@@ -1,0 +1,67 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "conformance-v5-drift-surface",
+  "requiredCapabilities": {
+    "asset": [
+      "model.gltf",
+      "texture.png"
+    ],
+    "ecs": [
+      "component-schemas",
+      "event-schemas",
+      "events",
+      "resources"
+    ],
+    "environment": [
+      "atmosphere",
+      "camera-bookmarks",
+      "instances",
+      "path",
+      "scene",
+      "source-assets",
+      "terrain"
+    ],
+    "rendering": [
+      "camera.active",
+      "camera.orthographic",
+      "color-management",
+      "fog.exponential",
+      "light.ambient",
+      "light.point",
+      "light.spot",
+      "material.standard",
+      "material.texture.base-color",
+      "mesh-renderer",
+      "mesh.primitive.box",
+      "shadows",
+      "sky",
+      "visibility"
+    ],
+    "scripting": [
+      "command.emitEvent",
+      "event-writes",
+      "queries",
+      "schedule.fixedUpdate",
+      "script-bundle",
+      "systems"
+    ],
+    "transform": [
+      "hierarchy"
+    ]
+  },
+  "entry": {
+    "environmentScene": "environment.scene.json",
+    "scripts": "scripts.bundle.js",
+    "systems": "systems.ir.json",
+    "world": "world.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "componentSchemas": "schemas/components.schema.json",
+    "eventSchemas": "schemas/events.schema.json",
+    "materials": "materials.ir.json",
+    "scripts": "scripts.bundle.js",
+    "targetProfile": "target.profile.json"
+  }
+}

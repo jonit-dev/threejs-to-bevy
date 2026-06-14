@@ -1,0 +1,87 @@
+{
+  "schema": "threenative.environment-scene",
+  "version": "0.1.0",
+  "sourceAssets": [
+    {
+      "id": "env.Tree",
+      "asset": "model.env.Tree",
+      "category": "tree"
+    }
+  ],
+  "instances": [
+    {
+      "id": "tree.hero",
+      "kind": "hero",
+      "sourceAsset": "env.Tree",
+      "position": [2, 0, 0],
+      "scale": [1, 1, 1],
+      "tags": ["tree"]
+    }
+  ],
+  "path": {
+    "id": "path.main",
+    "points": [
+      [-4, 0, 0],
+      [4, 0, 0]
+    ],
+    "width": 2
+  },
+  "terrain": {
+    "id": "terrain.main",
+    "bounds": {
+      "min": [-5, 0, -5],
+      "max": [5, 0, 5]
+    },
+    "heightMode": "flat"
+  },
+  "atmosphere": {
+    "active": true,
+    "id": "atmosphere.v5",
+    "sun": {
+      "id": "sun.v5",
+      "color": "#ffffff",
+      "intensity": 2,
+      "direction": [-0.4, -0.8, -0.2],
+      "castsShadow": true
+    },
+    "ambient": {
+      "color": "#808080",
+      "intensity": 0.7,
+      "mode": "constant"
+    },
+    "fog": {
+      "enabled": true,
+      "mode": "exponential",
+      "color": "#9eb6aa",
+      "density": 0.02
+    },
+    "sky": {
+      "color": "#9eb6aa",
+      "horizonColor": "#d6c39d"
+    },
+    "colorManagement": {
+      "toneMapping": "aces",
+      "exposure": 1,
+      "outputColorSpace": "srgb",
+      "textureColorSpace": "srgb"
+    },
+    "shadows": {
+      "enabled": true,
+      "mapSize": 1024,
+      "maxDistance": 40,
+      "cascadeCount": 1,
+      "bias": -0.0005,
+      "normalBias": 0.02,
+      "receiverPolicy": "terrain-and-path"
+    }
+  },
+  "bookmarks": [
+    {
+      "id": "bookmark.ortho",
+      "position": [0, 4, 8],
+      "pitch": -20,
+      "yaw": 180,
+      "expectedTags": ["tree"]
+    }
+  ]
+}

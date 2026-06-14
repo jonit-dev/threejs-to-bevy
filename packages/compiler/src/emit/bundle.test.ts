@@ -4,23 +4,39 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import {
+  AmbientLight,
   BoxGeometry,
   Mesh,
   MeshStandardMaterial,
+  OrthographicCamera,
   PerspectiveCamera,
+  PlaneGeometry,
+  PointLight,
   Scene,
+  SpotLight,
   World,
   action,
   axis,
+  audioAsset,
+  boxCollider,
   commands,
+  defineAudio,
   defineInputMap,
   defineRuntimeConfig,
   defineComponent,
   defineEvent,
   defineQuery,
   fixedUpdate,
+  gamepad,
   keyboard,
+  loopingMusic,
+  oneShotSound,
   pointerButton,
+  pointerAxis,
+  physics,
+  rigidBody,
+  textureAsset,
+  touchControl,
   update,
 } from "@threenative/sdk";
 import { validateBundle } from "@threenative/ir";
@@ -137,6 +153,124 @@ test("should emit ecs schema files for world root", async () => {
     assert.deepEqual(input.actions.map((item: { id: string }) => item.id), ["Attack", "Pause"]);
     assert.equal(runtimeConfig.time.fixedDelta, 1 / 30);
     assert.match(scripts, /system_applyDamage/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should derive manifest capabilities from emitted bundle IR", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-capabilities-"));
+  try {
+    await mkdir(join(root, "assets"), { recursive: true });
+    await writeFile(join(root, "assets/albedo.png"), "texture");
+    await writeFile(join(root, "assets/music.ogg"), "music");
+    await writeFile(join(root, "assets/hit.wav"), "hit");
+    await writeEnvironmentAsset(root, "Grass.gltf");
+
+    const Health = defineComponent("Health", { current: "number" });
+    const HitEvent = defineEvent("HitEvent", { target: "entity" });
+    const scene = new Scene({ id: "scene" });
+    const parent = new Mesh({
+      geometry: new BoxGeometry(),
+      id: "parent",
+      material: new MeshStandardMaterial({ color: "#ffffff" }),
+    });
+    parent.add(
+      new Mesh({
+        geometry: new PlaneGeometry(),
+        id: "child.hidden",
+        material: new MeshStandardMaterial({
+          baseColorTexture: textureAsset("tex.albedo", "assets/albedo.png"),
+          color: "#ffffff",
+        }),
+        physics: physics({
+          body: rigidBody("dynamic", { mass: 1 }),
+          collider: boxCollider([1, 1, 1], { trigger: true }),
+        }),
+        visible: false,
+      }),
+    );
+    const camera = new OrthographicCamera({ far: 50, id: "camera.ortho", near: 0.1, size: 5 });
+    scene.add(parent);
+    scene.add(camera);
+    scene.add(new AmbientLight({ id: "light.ambient" }));
+    scene.add(new PointLight({ id: "light.point" }));
+    scene.add(new SpotLight({ id: "light.spot" }));
+    scene.setActiveCamera(camera);
+
+    const world = new World()
+      .spawn("player", Health({ current: 10 }))
+      .addEvent(HitEvent)
+      .setRuntimeConfig(defineRuntimeConfig({ fixedDelta: 1 / 30 }))
+      .addSystem(
+        fixedUpdate("tick", {
+          commands: [commands.emitEvent(HitEvent)],
+          eventWrites: [HitEvent],
+          queries: [defineQuery({ with: [Health] })],
+          run: (context) => context,
+          services: ["physics.raycast"],
+        }),
+      );
+
+    const bundlePath = await emitBundle(
+      {
+        entry: "src/game.ts",
+        outDir: "dist/game.bundle",
+        projectPath: root,
+        schema: "threenative.project" as const,
+        version: "0.1.0" as const,
+      },
+      {
+        audio: defineAudio({
+          music: [loopingMusic("music.main", { asset: audioAsset("audio.music", "assets/music.ogg") })],
+          oneShots: [oneShotSound("hit", { asset: audioAsset("audio.hit", "assets/hit.wav"), event: "HitEvent" })],
+        }),
+        environment: makeEnvironmentDeclaration(),
+        input: defineInputMap({
+          actions: [
+            action("Jump", [keyboard("Space"), pointerButton(0), gamepad("buttonSouth", { required: false })]),
+            action("MoveBackward", [keyboard("KeyS")]),
+            action("MoveForward", [keyboard("KeyW")]),
+            action("MoveLeft", [keyboard("KeyA")]),
+            action("MoveRight", [keyboard("KeyD")]),
+          ],
+          axes: [
+            axis("LookX", { negative: [touchControl("look", "x")], value: pointerAxis("deltaX") }),
+            axis("LookY", { value: pointerAxis("deltaY") }),
+          ],
+        }),
+        scene,
+        ui: Ui({
+          children: Button({ action: "Jump", focusable: true, id: "hud.jump", label: "Jump" }),
+          id: "hud",
+        }),
+        world,
+      },
+    );
+
+    const manifest = JSON.parse(await readFile(join(bundlePath, "manifest.json"), "utf8"));
+    const result = await validateBundle(bundlePath);
+
+    assert.deepEqual(result.diagnostics, []);
+    assert.equal(result.ok, true);
+    assertCapability(manifest, "asset", "audio.ogg");
+    assertCapability(manifest, "asset", "texture.png");
+    assertCapability(manifest, "audio", "one-shot");
+    assertCapability(manifest, "environment", "walkability");
+    assertCapability(manifest, "input", "device.gamepad");
+    assertCapability(manifest, "physics", "collider.box");
+    assertCapability(manifest, "physics", "rigid-body.dynamic");
+    assertCapability(manifest, "rendering", "camera.active");
+    assertCapability(manifest, "rendering", "camera.orthographic");
+    assertCapability(manifest, "rendering", "light.point");
+    assertCapability(manifest, "rendering", "light.spot");
+    assertCapability(manifest, "rendering", "material.texture.base-color");
+    assertCapability(manifest, "rendering", "mesh.primitive.plane");
+    assertCapability(manifest, "rendering", "visibility");
+    assertCapability(manifest, "scripting", "script-bundle");
+    assertCapability(manifest, "scripting", "service.physics.raycast");
+    assertCapability(manifest, "transform", "hierarchy");
+    assertCapability(manifest, "ui", "node.button");
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -428,6 +562,10 @@ test("environment should keep scatter instances outside path clearing", async ()
     await rm(root, { force: true, recursive: true });
   }
 });
+
+function assertCapability(manifest: { requiredCapabilities: Record<string, string[]> }, domain: string, capability: string): void {
+  assert.ok(manifest.requiredCapabilities[domain]?.includes(capability), `${domain}:${capability}`);
+}
 
 function makeScene(): Scene {
   const scene = new Scene({ id: "scene" });

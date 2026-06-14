@@ -18,13 +18,45 @@ test("should validate every conformance fixture", async () => {
 
 test("should include capability tags for each conformance fixture", async () => {
   const fixtures = await listConformanceFixtures();
+  const byName = new Map(fixtures.map((fixture) => [fixture.name, fixture]));
 
   for (const fixture of fixtures) {
     assert.ok(fixture.capabilityTags.length > 0, fixture.name);
-    assert.ok(fixture.capabilityTags.includes("rendering:mesh.primitive.box"), fixture.name);
-    assert.ok(fixture.capabilityTags.includes("rendering:material.standard"), fixture.name);
-    assert.ok(fixture.capabilityTags.includes("rendering:light.directional"), fixture.name);
-    assert.ok(fixture.capabilityTags.includes("rendering:camera.perspective"), fixture.name);
-    assert.ok(fixture.capabilityTags.includes("transform:hierarchy"), fixture.name);
+    assert.deepEqual(fixture.capabilityTags, [...fixture.capabilityTags].sort(), fixture.name);
   }
+
+  assertFixtureCapabilities(byName, "basic-scene", [
+    "rendering:mesh.primitive.box",
+    "rendering:material.standard",
+    "rendering:light.directional",
+    "rendering:camera.perspective",
+    "transform:hierarchy",
+  ]);
+  assertFixtureCapabilities(byName, "v5-drift-surface", [
+    "asset:model.gltf",
+    "asset:texture.png",
+    "environment:atmosphere",
+    "environment:camera-bookmarks",
+    "rendering:camera.active",
+    "rendering:camera.orthographic",
+    "rendering:fog.exponential",
+    "rendering:light.point",
+    "rendering:light.spot",
+    "rendering:material.texture.base-color",
+    "rendering:shadows",
+    "rendering:visibility",
+    "scripting:script-bundle",
+  ]);
 });
+
+function assertFixtureCapabilities(
+  byName: ReadonlyMap<string, { capabilityTags: string[] }>,
+  fixtureName: string,
+  expectedTags: string[],
+): void {
+  const fixture = byName.get(fixtureName);
+  assert.ok(fixture, fixtureName);
+  for (const tag of expectedTags) {
+    assert.ok(fixture.capabilityTags.includes(tag), `${fixtureName} ${tag}`);
+  }
+}

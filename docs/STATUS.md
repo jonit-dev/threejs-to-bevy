@@ -84,6 +84,13 @@ define planned work; they do not mark promoted V5 features as implemented until
 the corresponding contract, runtime, Rust test, conformance, scene, and release
 gate evidence lands.
 
+V5-01 has landed the first hardening slice: generated manifests now derive
+`requiredCapabilities` from emitted world, material, asset, systems, UI, input,
+audio, physics, and environment IR, and the shared conformance catalog includes
+`v5-drift-surface` for known V5 drift contracts. This is fixture and manifest
+evidence, not a claim that every listed capability has full web/native runtime
+parity.
+
 V5 should add or improve Rust tests for native runtime behavior whenever work
 touches shared IR, native runtime mapping, native scripting behavior, Bevy
 diagnostics, or visual-quality features that claim native support. The expected

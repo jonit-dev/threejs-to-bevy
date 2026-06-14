@@ -104,6 +104,13 @@ template. Native parity is required only for the portable contracts emitted by
 that layer; authoring helpers remain SDK sugar unless a V5 PRD explicitly
 promotes new runtime behavior.
 
+V5-01 is implemented for manifest and fixture hardening: emitted bundle
+manifests derive capability tags from concrete IR payloads, and
+`packages/ir/fixtures/conformance/v5-drift-surface` records current drift
+surfaces for shared validation. The fixture is a contract catalog until later
+V5 PRDs add native observations, Rust regression coverage, and visual parity
+evidence for each promoted feature.
+
 Priority V5 native coverage:
 
 1. Loader and fixture reuse for shared IR bundles used by both web and Bevy

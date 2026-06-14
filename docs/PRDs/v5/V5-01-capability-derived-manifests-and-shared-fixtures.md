@@ -26,11 +26,11 @@ fixture catalog for current drift contracts.
 
 **Implementation:**
 
-- [ ] Derive capabilities from world, material, asset, systems, UI, input,
+- [x] Derive capabilities from world, material, asset, systems, UI, input,
   audio, physics, and environment IR.
-- [ ] Cover primitive meshes, texture slots, point/spot lights, orthographic
+- [x] Cover primitive meshes, texture slots, point/spot lights, orthographic
   cameras, visibility, scripts, UI, audio, and physics when present.
-- [ ] Keep output deterministic.
+- [x] Keep output deterministic.
 
 #### Phase 2: Shared Drift Fixtures
 
@@ -42,12 +42,12 @@ fixture catalog for current drift contracts.
 
 **Implementation:**
 
-- [ ] Add fixtures for visibility, active camera, point/spot lights,
+- [x] Add fixtures for visibility, active camera, point/spot lights,
   orthographic camera, material texture slots, atmosphere, and compact V4
   scripting metadata.
-- [ ] Include accepted and rejected cases where the fixture exercises
+- [x] Include accepted and rejected cases where the fixture exercises
   validation behavior.
-- [ ] Ensure every fixture has accurate capability tags.
+- [x] Ensure every fixture has accurate capability tags.
 
 ## Verification Strategy
 
@@ -57,9 +57,20 @@ fixture catalog for current drift contracts.
 
 ## Acceptance Criteria
 
-- [ ] Manifest capabilities are derived from actual emitted IR.
-- [ ] Shared fixtures cover the known drift areas listed in the V5 roadmap and
+- [x] Manifest capabilities are derived from actual emitted IR.
+- [x] Shared fixtures cover the known drift areas listed in the V5 roadmap and
   parity tracker.
-- [ ] Fixture validation failures identify the fixture and bundle path.
-- [ ] No runtime support is claimed only because a schema field exists.
+- [x] Fixture validation failures identify the fixture and bundle path.
+- [x] No runtime support is claimed only because a schema field exists.
 
+## Implementation Evidence
+
+- `packages/compiler/src/emit/bundle.ts` derives `requiredCapabilities` from
+  emitted IR payloads instead of hardcoded baseline tags.
+- `packages/ir/fixtures/conformance/v5-drift-surface` catalogs the V5 drift
+  surfaces for visibility, active orthographic camera, point/spot lights,
+  texture slots, atmosphere metadata, environment source assets, and compact V4
+  scripting metadata.
+- Rejected validation behavior remains covered by focused IR validator tests;
+  the committed conformance fixture is an accepted source bundle shared by
+  conformance gates.

@@ -9,10 +9,21 @@
   },
   "name": "threenative-game",
   "requiredCapabilities": {
+    "asset": [
+      "mesh.generated"
+    ],
+    "ecs": [
+      "resources"
+    ],
     "rendering": [
-      "mesh.primitive.box",
+      "camera.active",
+      "camera.perspective",
+      "light.directional",
       "material.standard",
-      "light.directional"
+      "mesh-renderer",
+      "mesh.primitive.box",
+      "mesh.primitive.plane",
+      "mesh.primitive.sphere"
     ]
   },
   "schema": "threenative.bundle",

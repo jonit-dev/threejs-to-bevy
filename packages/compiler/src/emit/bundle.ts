@@ -1,6 +1,18 @@
 import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
-import { type IBundleManifest, type IEnvironmentSceneIr, type ITargetProfile, type IWorldIr } from "@threenative/ir";
+import {
+  type IAssetsManifest,
+  type IAudioIr,
+  type IBundleManifest,
+  type IEnvironmentSceneIr,
+  type IIrSchemaFile,
+  type IMaterialIr,
+  type IMaterialsIr,
+  type ITargetProfile,
+  type IUiIr,
+  type IWorldIr,
+} from "@threenative/ir";
+import type { IInputIr, IRuntimeConfigIr, ISystemsIr } from "@threenative/ir";
 import { type IAssetReference, type IAudioDeclaration, type IInputMapDeclaration, type World } from "@threenative/sdk";
 import { type IUiElement } from "@threenative/ui";
 
@@ -25,14 +37,43 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
   const audio = bundleRoot.audio === undefined ? undefined : emitAudio(bundleRoot.audio);
   const environment = bundleRoot.environment === undefined ? undefined : await emitEnvironment(config.projectPath, bundleRoot.environment);
   const assets = mergeEnvironmentAssets(mergeAudioAssets(emitted?.assets ?? [], bundleRoot.audio), environment?.assets ?? []);
-  const ui = bundleRoot.ui === undefined ? undefined : emitUi(bundleRoot.ui);
+  const ui = (bundleRoot.ui === undefined ? undefined : emitUi(bundleRoot.ui)) as IUiIr | undefined;
+  const world = mergeWorlds(emitted?.world, ecs?.world);
+  const materials: IMaterialsIr = {
+    schema: "threenative.materials",
+    version: "0.1.0",
+    materials: (emitted?.materials ?? []) as unknown as IMaterialIr[],
+  };
+  const assetsManifest: IAssetsManifest = {
+    schema: "threenative.assets",
+    version: "0.1.0",
+    assets: assets.map(stripInternalAssetFields) as IAssetsManifest["assets"],
+  };
+  const targetProfile: ITargetProfile = {
+    schema: "threenative.target-profile",
+    version: "0.1.0",
+    targets: ["web", "desktop"],
+    ...(environment?.budgets === undefined ? {} : { budgets: environment.budgets }),
+    ...(environment?.performance === undefined ? {} : { performance: environment.performance }),
+  };
   const manifest: IBundleManifest = {
     schema: "threenative.bundle",
     version: "0.1.0",
     name: "threenative-game",
-    requiredCapabilities: {
-      rendering: ["mesh.primitive.box", "material.standard", "light.directional"],
-    },
+    requiredCapabilities: deriveRequiredCapabilities({
+      assets: assetsManifest,
+      audio,
+      componentSchemas: ecs?.componentSchemas,
+      environment: environment?.scene,
+      eventSchemas: ecs?.eventSchemas,
+      input,
+      materials,
+      resourceSchemas: ecs?.resourceSchemas,
+      runtimeConfig: ecs?.runtimeConfig,
+      systems: ecs?.systems,
+      ui,
+      world,
+    }),
     entry: {
       ...(audio === undefined ? {} : { audio: "audio.ir.json" }),
       ...(environment === undefined ? {} : { environmentScene: "environment.scene.json" }),
@@ -64,25 +105,10 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
   await writeFile(resolve(outDir, "manifest.json"), stableJson(manifest));
   await copyAssetFiles(config.projectPath, outDir, assets);
   await copyExtraAssetFiles(config.projectPath, outDir, environment?.extraFiles ?? []);
-  await writeFile(resolve(outDir, "world.ir.json"), stableJson(mergeWorlds(emitted?.world, ecs?.world)));
-  await writeFile(
-    resolve(outDir, "materials.ir.json"),
-    stableJson({ schema: "threenative.materials", version: "0.1.0", materials: emitted?.materials ?? [] }),
-  );
-  await writeFile(
-    resolve(outDir, "assets.manifest.json"),
-    stableJson({ schema: "threenative.assets", version: "0.1.0", assets: assets.map(stripInternalAssetFields) }),
-  );
-  await writeFile(
-    resolve(outDir, "target.profile.json"),
-    stableJson({
-      schema: "threenative.target-profile",
-      version: "0.1.0",
-      targets: ["web", "desktop"],
-      ...(environment?.budgets === undefined ? {} : { budgets: environment.budgets }),
-      ...(environment?.performance === undefined ? {} : { performance: environment.performance }),
-    } satisfies ITargetProfile),
-  );
+  await writeFile(resolve(outDir, "world.ir.json"), stableJson(world));
+  await writeFile(resolve(outDir, "materials.ir.json"), stableJson(materials));
+  await writeFile(resolve(outDir, "assets.manifest.json"), stableJson(assetsManifest));
+  await writeFile(resolve(outDir, "target.profile.json"), stableJson(targetProfile));
   if (environment !== undefined) {
     await writeFile(resolve(outDir, "environment.scene.json"), stableJson(environment.scene));
   }
@@ -186,6 +212,269 @@ function mergeWorlds(scene: IWorldIr | undefined, ecs: IWorldIr | undefined): IW
     events: { ...(scene.events ?? {}), ...(ecs.events ?? {}) },
     resources: { ...(scene.resources ?? {}), ...(ecs.resources ?? {}) },
   };
+}
+
+interface ICapabilitySource {
+  assets: IAssetsManifest;
+  audio?: IAudioIr;
+  componentSchemas?: IIrSchemaFile;
+  environment?: IEnvironmentSceneIr;
+  eventSchemas?: IIrSchemaFile;
+  input?: IInputIr;
+  materials: IMaterialsIr;
+  resourceSchemas?: IIrSchemaFile;
+  runtimeConfig?: IRuntimeConfigIr;
+  systems?: ISystemsIr;
+  ui?: IUiIr;
+  world?: IWorldIr;
+}
+
+function deriveRequiredCapabilities(source: ICapabilitySource): IBundleManifest["requiredCapabilities"] {
+  const capabilities = new Map<string, Set<string>>();
+  const add = (domain: string, capability: string): void => {
+    const domainCapabilities = capabilities.get(domain) ?? new Set<string>();
+    domainCapabilities.add(capability);
+    capabilities.set(domain, domainCapabilities);
+  };
+
+  collectWorldCapabilities(source.world, add);
+  collectMaterialCapabilities(source.materials, add);
+  collectAssetCapabilities(source.assets, add);
+  collectSystemCapabilities(source.systems, add);
+  collectInputCapabilities(source.input, add);
+  collectAudioCapabilities(source.audio, add);
+  collectUiCapabilities(source.ui, add);
+  collectEnvironmentCapabilities(source.environment, add);
+
+  if (source.componentSchemas !== undefined && Object.keys(source.componentSchemas.schemas).length > 0) {
+    add("ecs", "component-schemas");
+  }
+  if (source.resourceSchemas !== undefined && Object.keys(source.resourceSchemas.schemas).length > 0) {
+    add("ecs", "resource-schemas");
+  }
+  if (source.eventSchemas !== undefined && Object.keys(source.eventSchemas.schemas).length > 0) {
+    add("ecs", "event-schemas");
+  }
+  if (source.runtimeConfig !== undefined) {
+    add("runtime", "config");
+    add("runtime", "fixed-timestep");
+  }
+
+  return Object.fromEntries(
+    [...capabilities.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([domain, domainCapabilities]) => [domain, [...domainCapabilities].sort((left, right) => left.localeCompare(right))]),
+  );
+}
+
+function collectWorldCapabilities(world: IWorldIr | undefined, add: (domain: string, capability: string) => void): void {
+  if (world === undefined) {
+    return;
+  }
+  if (Object.keys(world.resources ?? {}).length > 0) {
+    add("ecs", "resources");
+  }
+  if (world.resources?.ActiveCamera !== undefined) {
+    add("rendering", "camera.active");
+  }
+  if (Object.keys(world.events ?? {}).length > 0) {
+    add("ecs", "events");
+  }
+  for (const entity of world.entities) {
+    if (entity.components.Hierarchy !== undefined) {
+      add("transform", "hierarchy");
+    }
+    if (entity.components.Visibility !== undefined) {
+      add("rendering", "visibility");
+    }
+    if (entity.components.MeshRenderer !== undefined) {
+      add("rendering", "mesh-renderer");
+      if (entity.components.MeshRenderer.visible !== undefined) {
+        add("rendering", "visibility");
+      }
+    }
+    if (entity.components.Camera !== undefined) {
+      add("rendering", `camera.${entity.components.Camera.kind}`);
+    }
+    if (entity.components.Light !== undefined) {
+      add("rendering", `light.${entity.components.Light.kind}`);
+    }
+    if (entity.components.RigidBody !== undefined) {
+      add("physics", `rigid-body.${entity.components.RigidBody.kind}`);
+    }
+    if (entity.components.Collider !== undefined) {
+      add("physics", `collider.${entity.components.Collider.kind}`);
+      if (entity.components.Collider.trigger === true) {
+        add("physics", "trigger-collider");
+      }
+    }
+  }
+}
+
+function collectMaterialCapabilities(materials: IMaterialsIr, add: (domain: string, capability: string) => void): void {
+  for (const material of materials.materials) {
+    add("rendering", `material.${material.kind}`);
+    for (const slot of ["baseColorTexture", "normalTexture", "metallicRoughnessTexture", "emissiveTexture", "occlusionTexture"] as const) {
+      if (material[slot] !== undefined) {
+        add("rendering", `material.texture.${textureSlotCapability(slot)}`);
+      }
+    }
+  }
+}
+
+function textureSlotCapability(slot: string): string {
+  return slot.replace(/Texture$/, "").replace(/[A-Z]/g, (value) => `-${value.toLowerCase()}`);
+}
+
+function collectAssetCapabilities(assets: IAssetsManifest, add: (domain: string, capability: string) => void): void {
+  for (const asset of assets.assets) {
+    if (asset.kind === "mesh" && asset.format === "generated") {
+      add("rendering", `mesh.primitive.${asset.primitive}`);
+    }
+    add("asset", `${asset.kind}.${asset.format}`);
+  }
+}
+
+function collectSystemCapabilities(systems: ISystemsIr | undefined, add: (domain: string, capability: string) => void): void {
+  if (systems === undefined || systems.systems.length === 0) {
+    return;
+  }
+  add("scripting", "systems");
+  for (const system of systems.systems) {
+    add("scripting", `schedule.${system.schedule}`);
+    if (system.script !== undefined) {
+      add("scripting", "script-bundle");
+    }
+    if (system.queries.length > 0) {
+      add("scripting", "queries");
+    }
+    for (const command of system.commands) {
+      add("scripting", `command.${command.kind}`);
+    }
+    for (const service of system.services) {
+      add("scripting", `service.${service}`);
+    }
+    if (system.eventReads.length > 0) {
+      add("scripting", "event-reads");
+    }
+    if (system.eventWrites.length > 0) {
+      add("scripting", "event-writes");
+    }
+  }
+}
+
+function collectInputCapabilities(input: IInputIr | undefined, add: (domain: string, capability: string) => void): void {
+  if (input === undefined) {
+    return;
+  }
+  if (input.actions.length > 0) {
+    add("input", "actions");
+  }
+  if (input.axes.length > 0) {
+    add("input", "axes");
+  }
+  for (const binding of [
+    ...input.actions.flatMap((action) => action.bindings),
+    ...input.axes.flatMap((axis) => [...axis.negative, ...axis.positive, ...(axis.value === undefined ? [] : [axis.value])]),
+  ]) {
+    add("input", `device.${binding.device}`);
+    if (binding.required === true) {
+      add("input", "required-binding");
+    }
+  }
+}
+
+function collectAudioCapabilities(audio: IAudioIr | undefined, add: (domain: string, capability: string) => void): void {
+  if (audio === undefined) {
+    return;
+  }
+  if (audio.music.length > 0) {
+    add("audio", "music");
+  }
+  if (audio.music.some((music) => music.autoplay === true)) {
+    add("audio", "autoplay");
+  }
+  if (audio.music.some((music) => music.loop === true)) {
+    add("audio", "loop");
+  }
+  if (audio.oneShots.length > 0) {
+    add("audio", "one-shot");
+  }
+}
+
+function collectUiCapabilities(ui: IUiIr | undefined, add: (domain: string, capability: string) => void): void {
+  if (ui === undefined) {
+    return;
+  }
+  add("ui", "runtime");
+  visitUiNode(ui.root, add);
+}
+
+function visitUiNode(node: IUiIr["root"], add: (domain: string, capability: string) => void): void {
+  add("ui", `node.${node.kind}`);
+  if (node.binding !== undefined) {
+    add("ui", `binding.${node.binding.kind}`);
+  }
+  if (node.action !== undefined) {
+    add("ui", "action");
+  }
+  if (node.focusable === true) {
+    add("ui", "focusable");
+  }
+  for (const child of node.children ?? []) {
+    visitUiNode(child, add);
+  }
+}
+
+function collectEnvironmentCapabilities(
+  environment: IEnvironmentSceneIr | undefined,
+  add: (domain: string, capability: string) => void,
+): void {
+  if (environment === undefined) {
+    return;
+  }
+  add("environment", "scene");
+  add("environment", "path");
+  if (environment.sourceAssets.length > 0) {
+    add("environment", "source-assets");
+  }
+  if (environment.instances.length > 0) {
+    add("environment", "instances");
+  }
+  if (environment.instances.some((instance) => instance.kind === "scatter")) {
+    add("environment", "scatter-instances");
+  }
+  if (environment.scatter !== undefined && environment.scatter.length > 0) {
+    add("environment", "scatter");
+  }
+  if (environment.terrain !== undefined) {
+    add("environment", "terrain");
+  }
+  if (environment.atmosphere !== undefined) {
+    add("environment", "atmosphere");
+    add("rendering", "light.directional");
+    add("rendering", "light.ambient");
+    add("rendering", "color-management");
+    add("rendering", "sky");
+    if (environment.atmosphere.fog?.enabled === true) {
+      add("rendering", `fog.${environment.atmosphere.fog.mode}`);
+    }
+    if (environment.atmosphere.shadows.enabled) {
+      add("rendering", "shadows");
+    }
+  }
+  if (environment.controller !== undefined) {
+    add("environment", "first-person-controller");
+  }
+  if (environment.walkability !== undefined) {
+    add("environment", "walkability");
+  }
+  if (environment.bookmarks !== undefined && environment.bookmarks.length > 0) {
+    add("environment", "camera-bookmarks");
+  }
+  if (environment.referenceImage !== undefined) {
+    add("environment", "reference-image");
+  }
 }
 
 function mergeAudioAssets(

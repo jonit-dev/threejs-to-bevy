@@ -1,0 +1,14 @@
+{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "materials": [
+    {
+      "id": "mat.textured",
+      "kind": "standard",
+      "color": "#ffffff",
+      "baseColorTexture": "tex.albedo",
+      "metalness": 0,
+      "roughness": 0.7
+    }
+  ]
+}

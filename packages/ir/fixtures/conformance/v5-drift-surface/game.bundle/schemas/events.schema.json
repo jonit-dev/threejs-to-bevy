@@ -1,0 +1,13 @@
+{
+  "schema": "threenative.event-schemas",
+  "version": "0.1.0",
+  "schemas": {
+    "HitEvent": {
+      "fields": {
+        "target": {
+          "kind": "entity"
+        }
+      }
+    }
+  }
+}

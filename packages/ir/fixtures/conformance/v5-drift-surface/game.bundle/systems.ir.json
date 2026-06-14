@@ -1,0 +1,31 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "v5DriftSmoke",
+      "schedule": "fixedUpdate",
+      "reads": ["Health"],
+      "writes": [],
+      "queries": [
+        {
+          "with": ["Health"],
+          "without": []
+        }
+      ],
+      "eventReads": [],
+      "eventWrites": ["HitEvent"],
+      "commands": [
+        {
+          "kind": "emitEvent",
+          "event": "HitEvent"
+        }
+      ],
+      "services": [],
+      "script": {
+        "bundle": "scripts.bundle.js",
+        "exportName": "system_v5DriftSmoke"
+      }
+    }
+  ]
+}

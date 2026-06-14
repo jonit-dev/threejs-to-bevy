@@ -21,6 +21,8 @@
       "additionalProperties": false,
       "properties": {
         "world": { "const": "world.ir.json" },
+        "audio": { "type": "string" },
+        "environmentScene": { "type": "string" },
         "ui": { "type": "string" },
         "systems": { "type": "string" },
         "animations": { "type": "string" },
