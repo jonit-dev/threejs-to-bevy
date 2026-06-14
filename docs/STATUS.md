@@ -258,6 +258,13 @@ exposes collision/trigger `enter` observations in web and Bevy conformance
 reports. Full rigid-body solver parity and contact filtering remain deferred to
 V7.
 
+V6-04 has started with the character contract slice: the SDK now exposes a
+`characterController` helper that lowers to a built-in `CharacterController`
+component, IR validation checks collider/body dependencies plus input
+axis/action references, and emitted bundles advertise character controller,
+grounding, blocking, and interaction capabilities. Runtime movement/blocking
+trace parity remains later V6-04 work.
+
 V7 is now planned as the deep engine gap-closure milestone. It should continue
 parity work that is too large or risky for V6, such as deeper physics,
 animation graphs, richer UI/audio, renderer/content parity, scripting/runtime

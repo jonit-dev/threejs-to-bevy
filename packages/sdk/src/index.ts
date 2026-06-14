@@ -8,6 +8,14 @@ export {
   type IAudioOneShotDeclaration,
 } from "./audio.js";
 export { audioAsset, modelAsset, textureAsset, type AssetFormat, type AssetKind, type IAssetReference } from "./assets.js";
+export {
+  CharacterController,
+  characterController,
+  type CharacterGroundingMode,
+  type ICharacterControllerDeclaration,
+  type ICharacterControllerOptions,
+  type IUnsupportedCharacterControllerOptions,
+} from "./character.js";
 export { defineControls, type IControlActionRecipe, type IControlsOptions, type IWasdMovementOptions } from "./controls.js";
 export {
   World,

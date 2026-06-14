@@ -19,6 +19,7 @@ import {
   axis,
   audioAsset,
   boxCollider,
+  characterController,
   commands,
   defineAudio,
   defineInputMap,
@@ -84,6 +85,54 @@ test("should omit scripts bundle when no systems exist", async () => {
     assert.equal(manifest.entry.scripts, undefined);
     assert.equal(manifest.files.scripts, undefined);
     await assert.rejects(() => readFile(join(bundlePath, "scripts.bundle.js"), "utf8"));
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should emit character controller capabilities from composed game roots", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-character-"));
+  try {
+    await mkdir(join(root, "dist"));
+    const scene = new Scene({ id: "scene" });
+    scene.add(
+      new Mesh({
+        geometry: new BoxGeometry({ size: [1, 2, 1] }),
+        id: "player",
+        material: new MeshStandardMaterial({ color: "#2f80ed" }),
+        physics: physics({
+          body: rigidBody("kinematic"),
+          collider: boxCollider([1, 2, 1]),
+        }),
+      }),
+    );
+    const world = new World().spawn("player", characterController({ interactAction: "Interact" }));
+    const input = defineInputMap({
+      actions: [action("Interact", [keyboard("KeyE")])],
+      axes: [
+        axis("MoveX", { negative: [keyboard("KeyA")], positive: [keyboard("KeyD")] }),
+        axis("MoveZ", { negative: [keyboard("KeyW")], positive: [keyboard("KeyS")] }),
+      ],
+    });
+
+    const bundlePath = await emitBundle(
+      {
+        entry: "src/game.ts",
+        outDir: "dist/game.bundle",
+        projectPath: root,
+        schema: "threenative.project" as const,
+        version: "0.1.0" as const,
+      },
+      { input, scene, world },
+    );
+    const manifest = JSON.parse(await readFile(join(bundlePath, "manifest.json"), "utf8"));
+    const result = await validateBundle(bundlePath);
+
+    assert.equal(result.ok, true);
+    assertCapability(manifest, "character", "controller");
+    assertCapability(manifest, "character", "blocking");
+    assertCapability(manifest, "character", "grounding");
+    assertCapability(manifest, "character", "interaction");
   } finally {
     await rm(root, { force: true, recursive: true });
   }

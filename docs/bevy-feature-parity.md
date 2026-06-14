@@ -262,6 +262,14 @@ fixed traces, and shared conformance reports expose the `v6-physics-events`
 collision/trigger observations. Full rigid-body solver behavior and contact
 filtering are not claimed yet.
 
+V6-04 has started for the portable character contract: SDK authors can declare a
+`characterController` component recipe with movement axes, speed, grounding,
+blocking, and optional interaction action metadata; IR validation requires
+collider/body dependencies and valid input references; and compiler capability
+collection marks character controller, grounding, blocking, and interaction
+claims. Web/Bevy runtime movement and interaction trace parity is not claimed
+yet.
+
 ## V7 Deep Engine Gap-Closure Plan
 
 The planned V7 implementation slice is tracked in

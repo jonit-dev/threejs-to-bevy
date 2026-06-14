@@ -315,6 +315,18 @@ function collectWorldCapabilities(world: IWorldIr | undefined, add: (domain: str
         add("physics", "trigger-collider");
       }
     }
+    if (entity.components.CharacterController !== undefined) {
+      add("character", "controller");
+      if (entity.components.CharacterController.blocking === true) {
+        add("character", "blocking");
+      }
+      if (entity.components.CharacterController.grounding === "raycast") {
+        add("character", "grounding");
+      }
+      if (entity.components.CharacterController.interactAction !== undefined) {
+        add("character", "interaction");
+      }
+    }
   }
 }
 

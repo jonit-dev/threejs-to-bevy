@@ -178,6 +178,59 @@ through the promoted asset/runtime paths rather than runtime asset loading.
 Unsupported prefab and control options throw stable `TN_SDK_PREFAB_*` and
 `TN_SDK_CONTROLS_*` errors instead of being ignored.
 
+### Character Controller Recipe
+
+V6 adds a narrow `characterController` recipe for player-like entities. It emits
+a normal built-in `CharacterController` component that must be paired with
+`Collider`, `RigidBody`, `Transform`, and an input map.
+
+```ts
+import {
+  BoxGeometry,
+  Mesh,
+  MeshStandardMaterial,
+  World,
+  action,
+  axis,
+  boxCollider,
+  characterController,
+  defineGame,
+  defineInputMap,
+  keyboard,
+  physics,
+  rigidBody,
+} from "@threenative/sdk";
+
+const player = new Mesh({
+  geometry: new BoxGeometry({ size: [1, 2, 1] }),
+  id: "player",
+  material: new MeshStandardMaterial({ color: "#2f80ed" }),
+  physics: physics({
+    body: rigidBody("kinematic"),
+    collider: boxCollider([1, 2, 1]),
+  }),
+});
+
+const world = new World().spawn(
+  "player",
+  characterController({ interactAction: "Interact", speed: 5 }),
+);
+
+const input = defineInputMap({
+  actions: [action("Interact", [keyboard("KeyE")])],
+  axes: [
+    axis("MoveX", { negative: [keyboard("KeyA")], positive: [keyboard("KeyD")] }),
+    axis("MoveZ", { negative: [keyboard("KeyW")], positive: [keyboard("KeyS")] }),
+  ],
+});
+```
+
+Supported V6 fields are movement axis references, positive finite speed,
+`grounding: "raycast" | "none"`, `blocking`, and an optional interaction action.
+Slope limits, step offsets, navmesh controllers, and engine-specific controller
+handles are V7 scope and fail with stable `TN_SDK_CHARACTER_*` or
+`TN_IR_CHARACTER_*` diagnostics.
+
 ### R3F/JSX Scene API
 
 Use this style when a JSX scene tree is clearer than direct SDK object

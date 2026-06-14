@@ -87,9 +87,19 @@ export interface IColliderComponent {
   trigger?: boolean;
 }
 
+export interface ICharacterControllerComponent {
+  blocking: boolean;
+  grounding: "none" | "raycast";
+  interactAction?: string;
+  moveXAxis: string;
+  moveZAxis: string;
+  speed: number;
+}
+
 export interface IWorldEntity {
   components: Record<string, unknown> & {
     Camera?: ICameraComponent;
+    CharacterController?: ICharacterControllerComponent;
     Light?: ILightComponent;
     MeshRenderer?: IMeshRendererComponent;
     Collider?: IColliderComponent;

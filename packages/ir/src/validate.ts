@@ -86,7 +86,7 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
       : await readJson<IIrSchemaFile>(resolve(bundlePath, manifest.files.eventSchemas), diagnostics);
 
   if (world !== undefined) {
-    validateWorld(world, manifest.entry.world, diagnostics);
+    validateWorld(world, manifest.entry.world, diagnostics, input);
     const entityIds = new Set(world.entities.map((entity) => entity.id));
     if (componentSchemas !== undefined) {
       validateSchemaFile(componentSchemas, manifest.files.componentSchemas ?? "schemas/components.schema.json", "threenative.component-schemas", diagnostics);
@@ -787,7 +787,7 @@ function validateResources(
 }
 
 function isBuiltInComponent(componentName: string): boolean {
-  return ["Camera", "Collider", "Hierarchy", "Light", "MeshRenderer", "RigidBody", "Transform", "Visibility"].includes(componentName);
+  return ["Camera", "CharacterController", "Collider", "Hierarchy", "Light", "MeshRenderer", "RigidBody", "Transform", "Visibility"].includes(componentName);
 }
 
 function isBuiltInResource(resourceName: string): boolean {
@@ -908,7 +908,7 @@ function validateManifest(manifest: IBundleManifest, path: string, diagnostics: 
   }
 }
 
-function validateWorld(world: IWorldIr, path: string, diagnostics: IIrDiagnostic[]): void {
+function validateWorld(world: IWorldIr, path: string, diagnostics: IIrDiagnostic[], input: IInputIr | undefined): void {
   if (world.schema !== "threenative.world" || world.version !== "0.1.0") {
     diagnostics.push({
       code: "TN_IR_WORLD_VERSION_UNSUPPORTED",
@@ -920,6 +920,7 @@ function validateWorld(world: IWorldIr, path: string, diagnostics: IIrDiagnostic
   validateUniqueIds(world.entities, `${path}/entities`, "TN_IR_DUPLICATE_ENTITY_ID", diagnostics);
   world.entities.forEach((entity, index) => validateRenderComponents(entity, `${path}/entities/${index}`, diagnostics));
   world.entities.forEach((entity, index) => validatePhysicsComponents(entity, `${path}/entities/${index}`, diagnostics));
+  world.entities.forEach((entity, index) => validateCharacterComponents(entity, `${path}/entities/${index}`, input, diagnostics));
 }
 
 function validateRenderComponents(entity: IWorldIr["entities"][number], path: string, diagnostics: IIrDiagnostic[]): void {
@@ -1057,6 +1058,121 @@ function validatePhysicsComponents(entity: IWorldIr["entities"][number], path: s
       code: "TN_IR_PHYSICS_COLLIDER_MISSING",
       message: `RigidBody '${entity.id}' must have a Collider in the V6 portable physics contract.`,
       path: `${path}/components/Collider`,
+    });
+  }
+}
+
+function validateCharacterComponents(
+  entity: IWorldIr["entities"][number],
+  path: string,
+  input: IInputIr | undefined,
+  diagnostics: IIrDiagnostic[],
+): void {
+  const controller = entity.components.CharacterController as unknown;
+  if (controller === undefined) {
+    return;
+  }
+  if (!isRecord(controller)) {
+    diagnostics.push({
+      code: "TN_IR_CHARACTER_CONTROLLER_INVALID",
+      message: `CharacterController '${entity.id}' must be an object.`,
+      path: `${path}/components/CharacterController`,
+    });
+    return;
+  }
+
+  for (const key of Object.keys(controller)) {
+    if (!["blocking", "grounding", "interactAction", "moveXAxis", "moveZAxis", "speed"].includes(key)) {
+      diagnostics.push({
+        code: "TN_IR_CHARACTER_FIELD_UNSUPPORTED",
+        message: `CharacterController '${entity.id}' uses unsupported field '${key}'.`,
+        path: `${path}/components/CharacterController/${key}`,
+        suggestion: "Slope, step, navmesh, and engine-specific controller fields are deferred to V7.",
+      });
+    }
+  }
+  if (entity.components.Collider === undefined) {
+    diagnostics.push({
+      code: "TN_IR_CHARACTER_COLLIDER_MISSING",
+      message: `CharacterController '${entity.id}' must have a Collider.`,
+      path: `${path}/components/Collider`,
+    });
+  }
+  if (entity.components.Transform === undefined) {
+    diagnostics.push({
+      code: "TN_IR_CHARACTER_TRANSFORM_MISSING",
+      message: `CharacterController '${entity.id}' must have a Transform.`,
+      path: `${path}/components/Transform`,
+    });
+  }
+  if (entity.components.RigidBody === undefined) {
+    diagnostics.push({
+      code: "TN_IR_CHARACTER_BODY_MISSING",
+      message: `CharacterController '${entity.id}' must have a RigidBody.`,
+      path: `${path}/components/RigidBody`,
+    });
+  }
+  if (typeof controller.speed !== "number" || !Number.isFinite(controller.speed) || controller.speed <= 0) {
+    diagnostics.push({
+      code: "TN_IR_CHARACTER_SPEED_INVALID",
+      message: "CharacterController.speed must be a positive finite number.",
+      path: `${path}/components/CharacterController/speed`,
+    });
+  }
+  if (typeof controller.blocking !== "boolean") {
+    diagnostics.push({
+      code: "TN_IR_CHARACTER_BLOCKING_INVALID",
+      message: "CharacterController.blocking must be boolean.",
+      path: `${path}/components/CharacterController/blocking`,
+    });
+  }
+  if (!["none", "raycast"].includes(controller.grounding as string)) {
+    diagnostics.push({
+      code: "TN_IR_CHARACTER_GROUNDING_UNSUPPORTED",
+      message: `CharacterController '${entity.id}' uses unsupported grounding mode '${String(controller.grounding)}'.`,
+      path: `${path}/components/CharacterController/grounding`,
+      suggestion: "Use 'raycast' or 'none'. Slope and step handling are deferred to V7.",
+    });
+  }
+
+  const axisIds = new Set(input?.axes.map((axis) => axis.id) ?? []);
+  const actionIds = new Set(input?.actions.map((action) => action.id) ?? []);
+  validateInputRef(controller.moveXAxis, axisIds, input, `${path}/components/CharacterController/moveXAxis`, "axis", diagnostics);
+  validateInputRef(controller.moveZAxis, axisIds, input, `${path}/components/CharacterController/moveZAxis`, "axis", diagnostics);
+  if (controller.interactAction !== undefined) {
+    validateInputRef(controller.interactAction, actionIds, input, `${path}/components/CharacterController/interactAction`, "action", diagnostics);
+  }
+}
+
+function validateInputRef(
+  value: unknown,
+  ids: ReadonlySet<string>,
+  input: IInputIr | undefined,
+  path: string,
+  kind: "action" | "axis",
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (typeof value !== "string" || value.trim() === "") {
+    diagnostics.push({
+      code: "TN_IR_CHARACTER_INPUT_REF_INVALID",
+      message: `CharacterController ${kind} reference must be a non-empty string.`,
+      path,
+    });
+    return;
+  }
+  if (input === undefined) {
+    diagnostics.push({
+      code: "TN_IR_CHARACTER_INPUT_MISSING",
+      message: "CharacterController requires an input map for movement and interaction references.",
+      path,
+    });
+    return;
+  }
+  if (!ids.has(value)) {
+    diagnostics.push({
+      code: kind === "axis" ? "TN_IR_CHARACTER_AXIS_MISSING" : "TN_IR_CHARACTER_ACTION_MISSING",
+      message: `CharacterController references unknown input ${kind} '${value}'.`,
+      path,
     });
   }
 }
