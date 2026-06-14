@@ -601,11 +601,13 @@ model-backed renderers now receive a derived active animation playback state
 from clip and graph metadata in both web and Bevy, including active state, clip,
 source clip, loop flag, speed, and deterministic time advancement. Web and Bevy
 now resolve model-backed mesh renderers to bundle-local glTF/GLB scene assets;
-web also replaces the placeholder geometry and drives the selected visual clip
-through a Three.js `AnimationMixer`. Native Bevy `AnimationPlayer` binding and
-cross-runtime skinned-mesh deformation proof remain the remaining P0 animation
-gap, along with richer graph runtime control, stop/state queries, IK,
-retargeting, and rendered particles.
+web replaces the placeholder geometry and drives the selected visual clip
+through a Three.js `AnimationMixer`, while Bevy attaches a one-clip
+`AnimationGraph` to glTF-created `AnimationPlayer` entities and starts the
+selected clip with the authored loop and speed. Cross-runtime skinned-mesh
+deformation screenshot proof remains the remaining P0 animation gap, along
+with richer graph runtime control, stop/state queries, IK, retargeting, and
+rendered particles.
 
 ## V3 Proves
 

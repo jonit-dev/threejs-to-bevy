@@ -5,6 +5,7 @@ use std::{
 };
 
 use bevy::{
+    animation::{graph::AnimationGraph, AnimationPlugin, RepeatAnimation},
     asset::AssetPlugin,
     gltf::GltfPlugin,
     prelude::*,
@@ -17,7 +18,8 @@ use bevy::{
 use threenative_components::ThreeNativeId;
 use threenative_loader::load_bundle;
 use threenative_runtime::map_world::{
-    NativeAnimationPlayback, advance_native_animation_playback, map_bundle_into_world,
+    NativeAnimationPlayback, advance_native_animation_playback, bind_native_animation_players,
+    map_bundle_into_world,
 };
 
 #[test]
@@ -156,6 +158,7 @@ fn rendering_should_spawn_gltf_scene_for_model_renderers_when_asset_server_exist
             file_path: root.display().to_string(),
             ..Default::default()
         },
+        AnimationPlugin,
         ScenePlugin,
         GltfPlugin::default(),
     ));
@@ -192,6 +195,48 @@ fn rendering_should_spawn_gltf_scene_for_model_renderers_when_asset_server_exist
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
 
+#[test]
+fn rendering_should_bind_added_animation_players_to_model_renderer_clip() {
+    let root = write_animated_model_bundle();
+    let bundle = load_bundle(&root).expect("animated model bundle should load");
+    let mut app = App::new();
+    app.add_plugins((
+        MinimalPlugins,
+        AssetPlugin {
+            file_path: root.display().to_string(),
+            ..Default::default()
+        },
+        AnimationPlugin,
+        ScenePlugin,
+        GltfPlugin::default(),
+    ));
+    app.add_systems(Update, bind_native_animation_players);
+    app.finish();
+    app.cleanup();
+
+    map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map");
+    let hero = entity_for_id(app.world_mut(), "hero");
+    let player = app.world_mut().spawn(AnimationPlayer::default()).id();
+    app.world_mut().entity_mut(hero).push_children(&[player]);
+
+    app.update();
+
+    assert!(
+        app.world().entity(player).contains::<Handle<AnimationGraph>>(),
+        "animation player should receive a generated graph for the selected glTF clip",
+    );
+    let player_ref = app.world().entity(player).get::<AnimationPlayer>().unwrap();
+    let active = player_ref
+        .playing_animations()
+        .next()
+        .map(|(_index, active)| active)
+        .expect("animation player should be playing the selected clip");
+    assert_eq!(active.repeat_mode(), RepeatAnimation::Forever);
+    assert!((active.speed() - 1.0).abs() < 0.01);
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
 fn assert_directional_light(world: &mut World, id: &str) {
     let mut query = world.query::<(&ThreeNativeId, Option<&DirectionalLight>)>();
     let light = query
@@ -204,6 +249,14 @@ fn assert_directional_light(world: &mut World, id: &str) {
     assert!((color.red - 1.0).abs() < 0.01);
     assert!((color.green - 0xcc as f32 / 255.0).abs() < 0.01);
     assert!((color.blue - 0x88 as f32 / 255.0).abs() < 0.01);
+}
+
+fn entity_for_id(world: &mut World, id: &str) -> Entity {
+    world
+        .query::<(Entity, &ThreeNativeId)>()
+        .iter(world)
+        .find_map(|(entity, stable_id)| (stable_id.0 == id).then_some(entity))
+        .expect("entity should exist")
 }
 
 fn assert_point_light(world: &mut World, id: &str) {

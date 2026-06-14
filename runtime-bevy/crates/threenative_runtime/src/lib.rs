@@ -97,7 +97,13 @@ pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeErro
         app.init_resource::<input::NativeInputState>();
         app.add_systems(PreUpdate, input::capture_native_input);
     }
-    app.add_systems(Update, rendering::normalize_loaded_gltf_materials);
+    app.add_systems(
+        Update,
+        (
+            rendering::normalize_loaded_gltf_materials,
+            map_world::bind_native_animation_players,
+        ),
+    );
     if has_scripts {
         app.insert_resource(ScriptedRuntimeBundle { bundle });
         app.add_systems(Update, run_scripted_runtime_systems);

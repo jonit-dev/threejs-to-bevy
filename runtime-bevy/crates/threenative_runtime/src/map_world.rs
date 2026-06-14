@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use bevy::{
+    animation::graph::AnimationGraph,
     core_pipeline::tonemapping::Tonemapping,
     gltf::GltfAssetLabel,
     math::primitives::{
@@ -41,6 +42,13 @@ pub struct NativeAnimationPlayback {
     pub source_clip: String,
     pub speed: f32,
     pub time_seconds: f32,
+}
+
+#[derive(Clone, Component, Debug, PartialEq)]
+pub struct NativeAnimationSceneBinding {
+    pub clip: Handle<AnimationClip>,
+    pub loop_: bool,
+    pub speed: f32,
 }
 
 #[derive(Debug, Error)]
@@ -157,6 +165,9 @@ fn ensure_asset_resources(world: &mut World) {
     if !world.contains_resource::<Assets<StandardMaterial>>() {
         world.init_resource::<Assets<StandardMaterial>>();
     }
+    if !world.contains_resource::<Assets<AnimationGraph>>() {
+        world.init_resource::<Assets<AnimationGraph>>();
+    }
 }
 
 fn spawn_entity(
@@ -187,7 +198,21 @@ fn spawn_entity(
         let asset_server = world.get_resource::<AssetServer>().cloned();
         if let Some(scene_path) = model_scene_path(asset) {
             if let Some(asset_server) = asset_server.as_ref() {
-                let scene = asset_server.load(GltfAssetLabel::Scene(0).from_asset(scene_path));
+                let scene =
+                    asset_server.load(GltfAssetLabel::Scene(0).from_asset(scene_path.clone()));
+                let playback = animation_playback(asset);
+                let scene_binding = playback.as_ref().and_then(|playback| {
+                    world
+                        .contains_resource::<Assets<AnimationClip>>()
+                        .then(|| NativeAnimationSceneBinding {
+                            clip: asset_server.load(
+                                GltfAssetLabel::Animation(animation_clip_index(asset, playback))
+                                    .from_asset(scene_path.clone()),
+                            ),
+                            loop_: playback.loop_,
+                            speed: playback.speed,
+                        })
+                });
                 let mut spawned = world.spawn(SceneBundle {
                     scene,
                     transform,
@@ -195,7 +220,10 @@ fn spawn_entity(
                     ..Default::default()
                 });
                 spawned.insert((stable_id, name));
-                if let Some(playback) = animation_playback(asset) {
+                if let Some(binding) = scene_binding {
+                    spawned.insert(binding);
+                }
+                if let Some(playback) = playback {
                     spawned.insert(playback);
                 }
                 return Ok(spawned.id());
@@ -318,6 +346,44 @@ fn model_scene_path(asset: &AssetIr) -> Option<String> {
         return None;
     }
     asset.path.clone()
+}
+
+pub fn bind_native_animation_players(
+    mut commands: Commands,
+    mut graphs: ResMut<Assets<AnimationGraph>>,
+    bindings: Query<&NativeAnimationSceneBinding>,
+    parents: Query<&Parent>,
+    mut players: Query<(Entity, &mut AnimationPlayer), Added<AnimationPlayer>>,
+) {
+    for (entity, mut player) in &mut players {
+        let Some(binding) = ancestor_animation_binding(entity, &parents, &bindings) else {
+            continue;
+        };
+        let (graph, animation) = AnimationGraph::from_clip(binding.clip.clone());
+        let active = player.play(animation);
+        active.set_speed(binding.speed);
+        if binding.loop_ {
+            active.repeat();
+        }
+        commands.entity(entity).insert(graphs.add(graph));
+    }
+}
+
+fn ancestor_animation_binding<'a>(
+    entity: Entity,
+    parents: &Query<&Parent>,
+    bindings: &'a Query<&NativeAnimationSceneBinding>,
+) -> Option<&'a NativeAnimationSceneBinding> {
+    let mut current = entity;
+    loop {
+        if let Ok(binding) = bindings.get(current) {
+            return Some(binding);
+        }
+        let Ok(parent) = parents.get(current) else {
+            return None;
+        };
+        current = parent.get();
+    }
 }
 
 fn color_grading_for_profile(
@@ -567,6 +633,18 @@ fn animation_playback(asset: &AssetIr) -> Option<NativeAnimationPlayback> {
         speed: clip.speed.unwrap_or(1.0),
         time_seconds: 0.0,
     })
+}
+
+fn animation_clip_index(asset: &AssetIr, playback: &NativeAnimationPlayback) -> usize {
+    asset.animations
+        .as_deref()
+        .unwrap_or(&[])
+        .iter()
+        .position(|clip| {
+            clip.source_clip.as_deref().unwrap_or(clip.id.as_str()) == playback.source_clip
+                || clip.id == playback.clip
+        })
+        .unwrap_or(0)
 }
 
 fn active_animation_clip_id(
