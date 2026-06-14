@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { audioBus, audioListener, defineAudio, loopingMusic, oneShotSound, spatialAudioEmitter } from "./audio.js";
+import { audioBus, audioListener, audioPlaybackControl, defineAudio, loopingMusic, oneShotSound, spatialAudioEmitter } from "./audio.js";
 
 test("audio helpers should preserve optional volume", () => {
   assert.deepEqual(loopingMusic("music.arena", { asset: "arena.music", volume: 0.4 }), {
@@ -39,6 +39,23 @@ test("audio helpers should preserve spatial and bus routing metadata", () => {
   assert.equal(audio.oneShots[0]?.emitter, "emitter.player");
 });
 
+test("audio helpers should preserve playback controls", () => {
+  const audio = defineAudio({
+    controls: [
+      audioPlaybackControl("music.pause", { kind: "pause", target: "music.arena" }),
+      audioPlaybackControl("music.seek", { at: 12.5, kind: "seek", target: "music.arena" }),
+      audioPlaybackControl("music.query", { kind: "query", target: "music.arena" }),
+    ],
+    music: [loopingMusic("music.arena", { asset: "arena.music" })],
+  });
+
+  assert.deepEqual(audio.controls, [
+    { id: "music.pause", kind: "pause", target: "music.arena" },
+    { id: "music.query", kind: "query", target: "music.arena" },
+    { at: 12.5, id: "music.seek", kind: "seek", target: "music.arena" },
+  ]);
+});
+
 test("audio helpers should reject missing spatial and bus route metadata", () => {
   assert.throws(() => defineAudio({ music: [loopingMusic("music.arena", { asset: "arena.music", bus: "missing" })] }), {
     message: "Audio playback references unknown bus 'missing'.",
@@ -48,6 +65,27 @@ test("audio helpers should reject missing spatial and bus route metadata", () =>
     () => defineAudio({ oneShots: [oneShotSound("sound.hit", { asset: "hit.sound", emitter: "missing", event: "DamageEvent" })] }),
     {
       message: "Audio one-shot references unknown emitter 'missing'.",
+      name: "SdkError",
+    },
+  );
+});
+
+test("audio helpers should reject invalid playback controls", () => {
+  assert.throws(
+    () => defineAudio({ controls: [audioPlaybackControl("music.pause", { kind: "pause", target: "missing.music" })] }),
+    {
+      message: "Audio playback control 'music.pause' references unknown playback 'missing.music'.",
+      name: "SdkError",
+    },
+  );
+  assert.throws(
+    () =>
+      defineAudio({
+        controls: [audioPlaybackControl("music.pause", { at: 1, kind: "pause", target: "music.arena" })],
+        music: [loopingMusic("music.arena", { asset: "arena.music" })],
+      }),
+    {
+      message: "Audio playback control 'music.pause' may only set at for seek controls.",
       name: "SdkError",
     },
   );

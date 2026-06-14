@@ -1,5 +1,6 @@
 use threenative_loader::{
-    AudioBusIr, AudioEmitterIr, AudioIr, AudioListenerIr, AudioMusicIr, AudioOneShotIr,
+    AudioBusIr, AudioControlIr, AudioEmitterIr, AudioIr, AudioListenerIr, AudioMusicIr,
+    AudioOneShotIr,
 };
 use threenative_runtime::audio::{
     NativeAudioCommandKind, handle_audio_events, observe_audio, start_audio, trace_audio_lifecycle,
@@ -14,6 +15,7 @@ fn audio_should_start_looping_music_from_audio_ir() {
         schema: "threenative.audio".to_owned(),
         version: "0.1.0".to_owned(),
         buses: vec![],
+        controls: vec![],
         emitters: vec![],
         listeners: vec![],
         music: vec![AudioMusicIr {
@@ -41,6 +43,7 @@ fn audio_should_play_one_shot_for_matching_event() {
         schema: "threenative.audio".to_owned(),
         version: "0.1.0".to_owned(),
         buses: vec![],
+        controls: vec![],
         emitters: vec![],
         listeners: vec![],
         music: vec![],
@@ -72,6 +75,7 @@ fn audio_should_preserve_bus_and_spatial_emitter_observations() {
             id: "bus.sfx".to_owned(),
             volume: Some(0.8),
         }],
+        controls: vec![],
         emitters: vec![AudioEmitterIr {
             id: "emitter.player".to_owned(),
             position: [1.0, 2.0, 3.0],
@@ -131,6 +135,77 @@ fn audio_should_report_fixture_playback_observations() {
         NativeAudioCommandKind::OneShot
     );
     assert_eq!(observation.commands[1].volume, Some(0.75));
+}
+
+#[test]
+fn audio_lifecycle_trace_should_apply_playback_controls() {
+    let audio = AudioIr {
+        schema: "threenative.audio".to_owned(),
+        version: "0.1.0".to_owned(),
+        buses: vec![],
+        controls: vec![
+            AudioControlIr {
+                at: None,
+                id: "music.pause".to_owned(),
+                kind: "pause".to_owned(),
+                target: "music.arena".to_owned(),
+            },
+            AudioControlIr {
+                at: None,
+                id: "music.queryPaused".to_owned(),
+                kind: "query".to_owned(),
+                target: "music.arena".to_owned(),
+            },
+            AudioControlIr {
+                at: Some(8.5),
+                id: "music.seek".to_owned(),
+                kind: "seek".to_owned(),
+                target: "music.arena".to_owned(),
+            },
+            AudioControlIr {
+                at: None,
+                id: "music.resume".to_owned(),
+                kind: "resume".to_owned(),
+                target: "music.arena".to_owned(),
+            },
+            AudioControlIr {
+                at: None,
+                id: "music.stop".to_owned(),
+                kind: "stop".to_owned(),
+                target: "music.arena".to_owned(),
+            },
+            AudioControlIr {
+                at: None,
+                id: "music.queryStopped".to_owned(),
+                kind: "query".to_owned(),
+                target: "music.arena".to_owned(),
+            },
+        ],
+        emitters: vec![],
+        listeners: vec![],
+        music: vec![AudioMusicIr {
+            id: "music.arena".to_owned(),
+            asset: "arena.music".to_owned(),
+            autoplay: Some(true),
+            bus: None,
+            looped: Some(true),
+            volume: None,
+        }],
+        one_shots: vec![],
+    };
+
+    let trace = trace_audio_lifecycle(&audio, &[], &[]);
+
+    assert!(trace.active_loops.is_empty());
+    assert!(trace.paused_loops.is_empty());
+    assert_eq!(trace.lifecycle.len(), 7);
+    assert_eq!(trace.lifecycle[1].kind, "pause");
+    assert_eq!(trace.lifecycle[2].state.as_deref(), Some("paused"));
+    assert_eq!(trace.lifecycle[3].kind, "seek");
+    assert_eq!(trace.lifecycle[3].at, Some(8.5));
+    assert_eq!(trace.lifecycle[4].kind, "resume");
+    assert_eq!(trace.lifecycle[5].kind, "stop");
+    assert_eq!(trace.lifecycle[6].state.as_deref(), Some("stopped"));
 }
 
 #[test]

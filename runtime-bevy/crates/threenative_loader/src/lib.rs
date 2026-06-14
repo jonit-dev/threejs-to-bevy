@@ -627,6 +627,8 @@ pub struct AudioIr {
     #[serde(default)]
     pub buses: Vec<AudioBusIr>,
     #[serde(default)]
+    pub controls: Vec<AudioControlIr>,
+    #[serde(default)]
     pub emitters: Vec<AudioEmitterIr>,
     #[serde(default)]
     pub listeners: Vec<AudioListenerIr>,
@@ -634,6 +636,14 @@ pub struct AudioIr {
     pub music: Vec<AudioMusicIr>,
     #[serde(default)]
     pub one_shots: Vec<AudioOneShotIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct AudioControlIr {
+    pub at: Option<f32>,
+    pub id: String,
+    pub kind: String,
+    pub target: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]

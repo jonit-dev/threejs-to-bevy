@@ -488,6 +488,12 @@ function collectAudioCapabilities(audio: IAudioIr | undefined, add: (domain: str
   if ((audio.emitters ?? []).length > 0 || audio.oneShots.some((item) => item.emitter !== undefined)) {
     add("audio", "spatial-emitter");
   }
+  if ((audio.controls ?? []).length > 0) {
+    add("audio", "playback-control");
+    for (const control of audio.controls ?? []) {
+      add("audio", `playback-control.${control.kind}`);
+    }
+  }
 }
 
 function collectUiCapabilities(ui: IUiIr | undefined, add: (domain: string, capability: string) => void): void {

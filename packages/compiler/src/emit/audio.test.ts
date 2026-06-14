@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { BoxGeometry, Mesh, MeshStandardMaterial, Scene, audioAsset, audioBus, audioListener, defineAudio, loopingMusic, oneShotSound, spatialAudioEmitter } from "@threenative/sdk";
+import { BoxGeometry, Mesh, MeshStandardMaterial, Scene, audioAsset, audioBus, audioListener, audioPlaybackControl, defineAudio, loopingMusic, oneShotSound, spatialAudioEmitter } from "@threenative/sdk";
 import { validateBundle } from "@threenative/ir";
 
 import { emitAudio } from "./audio.js";
@@ -39,6 +39,23 @@ test("audio should emit spatial and bus routing metadata", () => {
   assert.deepEqual(audio.listeners, [{ id: "listener.main", position: [0, 1, 5] }]);
   assert.equal(audio.music[0]?.bus, "bus.sfx");
   assert.equal(audio.oneShots[0]?.emitter, "emitter.player");
+});
+
+test("audio should emit playback controls", () => {
+  const audio = emitAudio(
+    defineAudio({
+      controls: [
+        audioPlaybackControl("music.pause", { kind: "pause", target: "music.arena" }),
+        audioPlaybackControl("music.seek", { at: 10, kind: "seek", target: "music.arena" }),
+      ],
+      music: [loopingMusic("music.arena", { asset: "arena.music" })],
+    }),
+  );
+
+  assert.deepEqual(audio.controls, [
+    { id: "music.pause", kind: "pause", target: "music.arena" },
+    { at: 10, id: "music.seek", kind: "seek", target: "music.arena" },
+  ]);
 });
 
 test("audio should emit bundle assets and validate playback declarations", async () => {

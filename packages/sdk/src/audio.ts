@@ -39,8 +39,18 @@ export interface IAudioEmitterDeclaration {
   radius?: number;
 }
 
+export type AudioPlaybackControlKind = "pause" | "query" | "resume" | "seek" | "stop";
+
+export interface IAudioPlaybackControlDeclaration {
+  at?: number;
+  id: string;
+  kind: AudioPlaybackControlKind;
+  target: string;
+}
+
 export interface IAudioDeclaration {
   buses: IAudioBusDeclaration[];
+  controls: IAudioPlaybackControlDeclaration[];
   emitters: IAudioEmitterDeclaration[];
   kind: "Audio";
   listeners: IAudioListenerDeclaration[];
@@ -95,19 +105,35 @@ export function spatialAudioEmitter(id: string, options: { position: [number, nu
   return { id, position: options.position, ...(options.radius === undefined ? {} : { radius: options.radius }) };
 }
 
+export function audioPlaybackControl(id: string, options: { at?: number; kind: AudioPlaybackControlKind; target: string }): IAudioPlaybackControlDeclaration {
+  assertNonEmpty(id, "TN_SDK_AUDIO_CONTROL_EMPTY", "Audio playback control ID must not be empty.");
+  assertNonEmpty(options.target, "TN_SDK_AUDIO_CONTROL_TARGET_EMPTY", "Audio playback control target must not be empty.");
+  if (!["pause", "query", "resume", "seek", "stop"].includes(options.kind)) {
+    throw new SdkError("TN_SDK_AUDIO_CONTROL_KIND_INVALID", `Audio playback control '${id}' uses unsupported kind '${String(options.kind)}'.`);
+  }
+  if (options.at !== undefined && (!Number.isFinite(options.at) || options.at < 0)) {
+    throw new SdkError("TN_SDK_AUDIO_CONTROL_SEEK_INVALID", "Audio seek position must be a finite number greater than or equal to 0.");
+  }
+  return { id, kind: options.kind, target: options.target, ...(options.at === undefined ? {} : { at: options.at }) };
+}
+
 export function defineAudio(options: {
   buses?: IAudioBusDeclaration[];
+  controls?: IAudioPlaybackControlDeclaration[];
   emitters?: IAudioEmitterDeclaration[];
   listeners?: IAudioListenerDeclaration[];
   music?: IAudioMusicDeclaration[];
   oneShots?: IAudioOneShotDeclaration[];
 }): IAudioDeclaration {
   assertUnique(options.buses ?? [], "TN_SDK_AUDIO_BUS_DUPLICATE", "Audio bus");
+  assertUnique(options.controls ?? [], "TN_SDK_AUDIO_CONTROL_DUPLICATE", "Audio playback control");
   assertUnique(options.emitters ?? [], "TN_SDK_AUDIO_EMITTER_DUPLICATE", "Audio emitter");
   assertUnique(options.listeners ?? [], "TN_SDK_AUDIO_LISTENER_DUPLICATE", "Audio listener");
   assertRoutes(options);
+  assertControls(options);
   return {
     buses: [...(options.buses ?? [])].sort((left, right) => left.id.localeCompare(right.id)),
+    controls: [...(options.controls ?? [])].sort((left, right) => left.id.localeCompare(right.id)),
     emitters: [...(options.emitters ?? [])].sort((left, right) => left.id.localeCompare(right.id)),
     kind: "Audio",
     listeners: [...(options.listeners ?? [])].sort((left, right) => left.id.localeCompare(right.id)),
@@ -166,6 +192,23 @@ function assertRoutes(options: {
   for (const oneShot of options.oneShots ?? []) {
     if (oneShot.emitter !== undefined && !emitters.has(oneShot.emitter)) {
       throw new SdkError("TN_SDK_AUDIO_EMITTER_MISSING", `Audio one-shot references unknown emitter '${oneShot.emitter}'.`);
+    }
+  }
+}
+
+function assertControls(options: {
+  controls?: readonly IAudioPlaybackControlDeclaration[];
+  music?: readonly IAudioMusicDeclaration[];
+  oneShots?: readonly IAudioOneShotDeclaration[];
+}): void {
+  const playbackIds = new Set([...(options.music ?? []), ...(options.oneShots ?? [])].map((item) => item.id));
+  for (const control of options.controls ?? []) {
+    assertNonEmpty(control.id, "TN_SDK_AUDIO_CONTROL_EMPTY", "Audio playback control ID must not be empty.");
+    if (!playbackIds.has(control.target)) {
+      throw new SdkError("TN_SDK_AUDIO_CONTROL_TARGET_MISSING", `Audio playback control '${control.id}' references unknown playback '${control.target}'.`);
+    }
+    if (control.kind !== "seek" && control.at !== undefined) {
+      throw new SdkError("TN_SDK_AUDIO_CONTROL_SEEK_INVALID", `Audio playback control '${control.id}' may only set at for seek controls.`);
     }
   }
 }

@@ -114,6 +114,75 @@ test("audio should accept spatial and bus routing metadata", async () => {
   }
 });
 
+test("audio should accept playback controls for declared playback ids", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-audio-controls-"));
+  try {
+    await writeTestBundle(root, {
+      manifest: { entry: { audio: "audio.ir.json" } },
+      assets: {
+        schema: "threenative.assets",
+        version: "0.1.0",
+        assets: [{ id: "arena.music", kind: "audio", format: "ogg", path: "assets/arena.ogg" }],
+      },
+    });
+    await mkdir(join(root, "assets"), { recursive: true });
+    await writeFile(join(root, "assets/arena.ogg"), "");
+    await writeJson(root, "audio.ir.json", {
+      schema: "threenative.audio",
+      version: "0.1.0",
+      controls: [
+        { id: "music.pause", kind: "pause", target: "music.arena" },
+        { id: "music.seek", kind: "seek", target: "music.arena", at: 12.5 },
+        { id: "music.query", kind: "query", target: "music.arena" },
+      ],
+      music: [{ id: "music.arena", asset: "arena.music", autoplay: true, loop: true }],
+      oneShots: [],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("audio should reject invalid playback controls", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-audio-controls-invalid-"));
+  try {
+    await writeTestBundle(root, {
+      manifest: { entry: { audio: "audio.ir.json" } },
+      assets: {
+        schema: "threenative.assets",
+        version: "0.1.0",
+        assets: [{ id: "arena.music", kind: "audio", format: "ogg", path: "assets/arena.ogg" }],
+      },
+    });
+    await mkdir(join(root, "assets"), { recursive: true });
+    await writeFile(join(root, "assets/arena.ogg"), "");
+    await writeJson(root, "audio.ir.json", {
+      schema: "threenative.audio",
+      version: "0.1.0",
+      controls: [
+        { id: "music.bad", kind: "teleport", target: "music.arena" },
+        { id: "music.missing", kind: "pause", target: "missing.music" },
+        { id: "music.pause", kind: "pause", target: "music.arena", at: 1 },
+      ],
+      music: [{ id: "music.arena", asset: "arena.music", autoplay: true, loop: true }],
+      oneShots: [],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_AUDIO_CONTROL_KIND_INVALID"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_AUDIO_CONTROL_TARGET_MISSING"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_AUDIO_CONTROL_SEEK_INVALID"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("audio should reject invalid spatial and bus routing metadata", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-audio-spatial-invalid-"));
   try {

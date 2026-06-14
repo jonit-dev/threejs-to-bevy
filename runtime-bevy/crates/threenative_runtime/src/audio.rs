@@ -42,12 +42,17 @@ pub struct NativeAudioLifecycleTrace {
     pub active_loops: Vec<String>,
     pub commands: Vec<NativeAudioCommandReport>,
     pub lifecycle: Vec<NativeAudioLifecycleEvent>,
+    pub paused_loops: Vec<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize)]
 pub struct NativeAudioLifecycleEvent {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub at: Option<f32>,
     pub id: String,
     pub kind: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub state: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize)]
@@ -143,27 +148,107 @@ pub fn trace_audio_lifecycle(
     let mut lifecycle = active_loops
         .iter()
         .map(|id| NativeAudioLifecycleEvent {
+            at: None,
             id: id.clone(),
             kind: "start".to_owned(),
+            state: None,
         })
         .collect::<Vec<_>>();
+    let mut paused_loops = Vec::new();
 
     commands.extend(handle_audio_events(audio, events));
     for id in stop_loops {
         if let Some(index) = active_loops.iter().position(|active| active == id) {
             active_loops.remove(index);
             lifecycle.push(NativeAudioLifecycleEvent {
+                at: None,
                 id: (*id).to_owned(),
                 kind: "stop".to_owned(),
+                state: None,
             });
         }
     }
+    for control in &audio.controls {
+        match control.kind.as_str() {
+            "pause" => {
+                if let Some(index) = active_loops
+                    .iter()
+                    .position(|active| active == &control.target)
+                {
+                    active_loops.remove(index);
+                    paused_loops.push(control.target.clone());
+                    lifecycle.push(control_event(&control.target, "pause", None, None));
+                }
+            }
+            "resume" => {
+                if let Some(index) = paused_loops
+                    .iter()
+                    .position(|paused| paused == &control.target)
+                {
+                    paused_loops.remove(index);
+                    active_loops.push(control.target.clone());
+                    active_loops.sort();
+                    lifecycle.push(control_event(&control.target, "resume", None, None));
+                }
+            }
+            "stop" => {
+                let active = remove_loop(&mut active_loops, &control.target);
+                let paused = remove_loop(&mut paused_loops, &control.target);
+                if active || paused {
+                    lifecycle.push(control_event(&control.target, "stop", None, None));
+                }
+            }
+            "seek" => lifecycle.push(control_event(
+                &control.target,
+                "seek",
+                Some(control.at.unwrap_or(0.0)),
+                None,
+            )),
+            "query" => lifecycle.push(control_event(
+                &control.target,
+                "query",
+                None,
+                Some(if active_loops.iter().any(|id| id == &control.target) {
+                    "playing"
+                } else if paused_loops.iter().any(|id| id == &control.target) {
+                    "paused"
+                } else {
+                    "stopped"
+                }),
+            )),
+            _ => {}
+        }
+    }
+    paused_loops.sort();
     commands.sort_by(|left, right| left.id.cmp(&right.id));
 
     NativeAudioLifecycleTrace {
         active_loops,
         commands: commands.iter().map(audio_command_report).collect(),
         lifecycle,
+        paused_loops,
+    }
+}
+
+fn remove_loop(values: &mut Vec<String>, target: &str) -> bool {
+    let Some(index) = values.iter().position(|value| value == target) else {
+        return false;
+    };
+    values.remove(index);
+    true
+}
+
+fn control_event(
+    id: &str,
+    kind: &str,
+    at: Option<f32>,
+    state: Option<&str>,
+) -> NativeAudioLifecycleEvent {
+    NativeAudioLifecycleEvent {
+        at,
+        id: id.to_owned(),
+        kind: kind.to_owned(),
+        state: state.map(str::to_owned),
     }
 }
 

@@ -37,7 +37,8 @@ export interface IWebAudioRuntime {
 export interface IWebAudioLifecycleTrace {
   activeLoops: string[];
   commands: IWebAudioCommand[];
-  lifecycle: Array<{ id: string; kind: "start" | "stop" }>;
+  lifecycle: Array<{ at?: number; id: string; kind: "pause" | "query" | "resume" | "seek" | "start" | "stop"; state?: "paused" | "playing" | "stopped" }>;
+  pausedLoops: string[];
 }
 
 export function createWebAudioRuntime(audio: IAudioIr, sink?: IWebAudioSink): IWebAudioRuntime {
@@ -70,6 +71,7 @@ export function traceWebAudioLifecycle(
 ): IWebAudioLifecycleTrace {
   const runtime = createWebAudioRuntime(audio);
   const activeLoops = new Set<string>();
+  const pausedLoops = new Set<string>();
   const lifecycle: IWebAudioLifecycleTrace["lifecycle"] = [];
 
   runtime.start();
@@ -83,11 +85,43 @@ export function traceWebAudioLifecycle(
       lifecycle.push({ id, kind: "stop" });
     }
   }
+  for (const control of audio.controls ?? []) {
+    if (control.kind === "pause" && activeLoops.delete(control.target)) {
+      pausedLoops.add(control.target);
+      lifecycle.push({ id: control.target, kind: "pause" });
+      continue;
+    }
+    if (control.kind === "resume" && pausedLoops.delete(control.target)) {
+      activeLoops.add(control.target);
+      lifecycle.push({ id: control.target, kind: "resume" });
+      continue;
+    }
+    if (control.kind === "stop") {
+      const wasActive = activeLoops.delete(control.target);
+      const wasPaused = pausedLoops.delete(control.target);
+      if (wasActive || wasPaused) {
+        lifecycle.push({ id: control.target, kind: "stop" });
+      }
+      continue;
+    }
+    if (control.kind === "seek") {
+      lifecycle.push({ at: control.at ?? 0, id: control.target, kind: "seek" });
+      continue;
+    }
+    if (control.kind === "query") {
+      lifecycle.push({
+        id: control.target,
+        kind: "query",
+        state: activeLoops.has(control.target) ? "playing" : pausedLoops.has(control.target) ? "paused" : "stopped",
+      });
+    }
+  }
 
   return {
     activeLoops: [...activeLoops].sort(),
     commands: [...runtime.commands].sort((left, right) => left.id.localeCompare(right.id)),
     lifecycle,
+    pausedLoops: [...pausedLoops].sort(),
   };
 }
 

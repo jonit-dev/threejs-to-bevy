@@ -75,6 +75,38 @@ test("audio lifecycle trace should stop active loops deterministically", () => {
   ]);
 });
 
+test("audio lifecycle trace should apply playback controls", () => {
+  const trace = traceWebAudioLifecycle(
+    {
+      schema: "threenative.audio",
+      version: "0.1.0",
+      controls: [
+        { id: "music.pause", kind: "pause", target: "music.arena" },
+        { id: "music.queryPaused", kind: "query", target: "music.arena" },
+        { id: "music.seek", kind: "seek", target: "music.arena", at: 8.5 },
+        { id: "music.resume", kind: "resume", target: "music.arena" },
+        { id: "music.stop", kind: "stop", target: "music.arena" },
+        { id: "music.queryStopped", kind: "query", target: "music.arena" },
+      ],
+      music: [{ id: "music.arena", asset: "arena.music", autoplay: true, loop: true }],
+      oneShots: [],
+    },
+    [],
+  );
+
+  assert.deepEqual(trace.activeLoops, []);
+  assert.deepEqual(trace.pausedLoops, []);
+  assert.deepEqual(trace.lifecycle, [
+    { id: "music.arena", kind: "start" },
+    { id: "music.arena", kind: "pause" },
+    { id: "music.arena", kind: "query", state: "paused" },
+    { at: 8.5, id: "music.arena", kind: "seek" },
+    { id: "music.arena", kind: "resume" },
+    { id: "music.arena", kind: "stop" },
+    { id: "music.arena", kind: "query", state: "stopped" },
+  ]);
+});
+
 test("audio element sink should play bundle local one shots and loops", () => {
   const elements: FakeAudioElement[] = [];
   const sink = createWebAudioElementSink(

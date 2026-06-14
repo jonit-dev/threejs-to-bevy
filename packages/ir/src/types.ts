@@ -309,8 +309,18 @@ export interface IAudioEmitterIr {
   radius?: number;
 }
 
+export type AudioControlKind = "pause" | "query" | "resume" | "seek" | "stop";
+
+export interface IAudioControlIr {
+  at?: number;
+  id: string;
+  kind: AudioControlKind;
+  target: string;
+}
+
 export interface IAudioIr {
   buses?: IAudioBusIr[];
+  controls?: IAudioControlIr[];
   emitters?: IAudioEmitterIr[];
   listeners?: IAudioListenerIr[];
   schema: AudioSchema;

@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 
 import {
   type IAssetsManifest,
+  type IAudioControlIr,
   type IAudioIr,
   type IAudioMusicIr,
   type IAudioOneShotIr,
@@ -239,7 +240,7 @@ function validateAudio(
 ): void {
   const raw = audio as unknown as Record<string, unknown>;
   for (const key of Object.keys(raw)) {
-    if (!["buses", "emitters", "listeners", "music", "oneShots", "schema", "version"].includes(key)) {
+    if (!["buses", "controls", "emitters", "listeners", "music", "oneShots", "schema", "version"].includes(key)) {
       diagnostics.push({
         code: "TN_IR_AUDIO_FIELD_UNSUPPORTED",
         message: `Audio IR uses unsupported field '${key}'.`,
@@ -260,6 +261,7 @@ function validateAudio(
   validateAudioListeners(audio.listeners, `${path}/listeners`, diagnostics);
   audio.oneShots.forEach((oneShot, index) => validateAudioOneShot(oneShot, audioAssets, busIds, emitterIds, `${path}/oneShots/${index}`, diagnostics));
   audio.music.forEach((music, index) => validateAudioMusic(music, audioAssets, busIds, `${path}/music/${index}`, diagnostics));
+  validateAudioControls(audio.controls, audio, `${path}/controls`, diagnostics);
 }
 
 function validateAudioOneShot(
@@ -313,6 +315,45 @@ function validateAudioMusic(
   validateAudioVolume(music.volume, `${path}/volume`, diagnostics);
   validateAudioAssetRef(music.asset, audioAssets, `${path}/asset`, diagnostics);
   validateAudioRouteRef(music.bus, busIds, `${path}/bus`, "TN_IR_AUDIO_BUS_MISSING", "bus", diagnostics);
+}
+
+function validateAudioControls(
+  controls: IAudioControlIr[] | undefined,
+  audio: IAudioIr,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (controls === undefined) {
+    return;
+  }
+  if (!Array.isArray(controls)) {
+    diagnostics.push({ code: "TN_IR_AUDIO_CONTROLS_INVALID", message: "Audio controls must be an array.", path });
+    return;
+  }
+  const playbackIds = new Set([...audio.music, ...audio.oneShots].map((item) => item.id));
+  const ids = new Set<string>();
+  controls.forEach((control, index) => {
+    const controlPath = `${path}/${index}`;
+    const raw = control as unknown as Record<string, unknown>;
+    for (const key of Object.keys(raw)) {
+      if (!["at", "id", "kind", "target"].includes(key)) {
+        diagnostics.push({ code: "TN_IR_AUDIO_FIELD_UNSUPPORTED", message: `Audio control '${control.id}' uses unsupported field '${key}'.`, path: `${controlPath}/${key}` });
+      }
+    }
+    if (ids.has(control.id)) {
+      diagnostics.push({ code: "TN_IR_AUDIO_CONTROL_DUPLICATE", message: `Audio control '${control.id}' is duplicated.`, path: `${controlPath}/id` });
+    }
+    ids.add(control.id);
+    if (!["pause", "query", "resume", "seek", "stop"].includes(control.kind)) {
+      diagnostics.push({ code: "TN_IR_AUDIO_CONTROL_KIND_INVALID", message: `Audio control '${control.id}' uses unsupported kind '${String(control.kind)}'.`, path: `${controlPath}/kind` });
+    }
+    if (!playbackIds.has(control.target)) {
+      diagnostics.push({ code: "TN_IR_AUDIO_CONTROL_TARGET_MISSING", message: `Audio control '${control.id}' references unknown playback '${control.target}'.`, path: `${controlPath}/target` });
+    }
+    if (control.at !== undefined && (!Number.isFinite(control.at) || control.at < 0 || control.kind !== "seek")) {
+      diagnostics.push({ code: "TN_IR_AUDIO_CONTROL_SEEK_INVALID", message: `Audio control '${control.id}' has an invalid seek position.`, path: `${controlPath}/at` });
+    }
+  });
 }
 
 function validateAudioBuses(value: unknown, path: string, diagnostics: IIrDiagnostic[]): Set<string> {
