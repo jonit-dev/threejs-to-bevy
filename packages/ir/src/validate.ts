@@ -1158,7 +1158,7 @@ function validateSystems(
       path,
     });
   }
-  validateSystemsLifecycle(systems.lifecycle, `${path}/lifecycle`, diagnostics);
+  validateSystemsLifecycle(systems.lifecycle, `${path}/lifecycle`, resourceSchemas, diagnostics);
 
   systems.systems.forEach((system, systemIndex) => {
     const rawSystem = system as unknown as Record<string, unknown>;
@@ -1320,13 +1320,18 @@ function validateSystems(
   });
 }
 
-function validateSystemsLifecycle(value: ISystemsIr["lifecycle"] | undefined, path: string, diagnostics: IIrDiagnostic[]): void {
+function validateSystemsLifecycle(
+  value: ISystemsIr["lifecycle"] | undefined,
+  path: string,
+  resourceSchemas: Record<string, IIrNamedSchema>,
+  diagnostics: IIrDiagnostic[],
+): void {
   if (value === undefined) {
     return;
   }
   const raw = value as unknown as Record<string, unknown>;
   for (const key of Object.keys(raw)) {
-    if (!["hotReload", "replay", "state"].includes(key)) {
+    if (!["appStates", "computedStates", "hotReload", "replay", "state", "substates"].includes(key)) {
       diagnostics.push({
         code: "TN_IR_SYSTEM_LIFECYCLE_FIELD_UNSUPPORTED",
         message: `Systems lifecycle uses unsupported field '${key}'.`,
@@ -1358,6 +1363,131 @@ function validateSystemsLifecycle(value: ISystemsIr["lifecycle"] | undefined, pa
       path: `${path}/hotReload`,
       severity: "error",
     });
+  }
+  const stateIds = new Set<string>();
+  validateStateDeclarations(value.appStates, `${path}/appStates`, "app", resourceSchemas, stateIds, diagnostics);
+  validateStateDeclarations(value.computedStates, `${path}/computedStates`, "computed", resourceSchemas, stateIds, diagnostics);
+  validateSubstateDeclarations(value.substates, `${path}/substates`, resourceSchemas, stateIds, diagnostics);
+}
+
+function validateStateDeclarations(
+  value: unknown,
+  path: string,
+  kind: "app" | "computed",
+  resourceSchemas: Record<string, IIrNamedSchema>,
+  stateIds: Set<string>,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!Array.isArray(value)) {
+    diagnostics.push({ code: "TN_IR_SYSTEM_STATE_DECLARATIONS_INVALID", message: "State declarations must be an array.", path, severity: "error" });
+    return;
+  }
+  value.forEach((state, index) => {
+    const statePath = `${path}/${index}`;
+    if (!isRecord(state)) {
+      diagnostics.push({ code: "TN_IR_SYSTEM_STATE_INVALID", message: "State declaration must be an object.", path: statePath, severity: "error" });
+      return;
+    }
+    for (const key of Object.keys(state)) {
+      const allowed = kind === "app" ? ["id", "initial", "source", "values"] : ["fallback", "id", "source", "values"];
+      if (!allowed.includes(key)) {
+        diagnostics.push({ code: "TN_IR_SYSTEM_STATE_FIELD_UNSUPPORTED", message: `State declaration uses unsupported field '${key}'.`, path: `${statePath}/${key}`, severity: "error" });
+      }
+    }
+    validateStateId(state.id, `${statePath}/id`, stateIds, diagnostics);
+    validateStateValues(state.values, `${statePath}/values`, diagnostics);
+    const values = Array.isArray(state.values) ? state.values : [];
+    if (kind === "app") {
+      validateStateValueRef(state.initial, values, `${statePath}/initial`, "initial", diagnostics);
+    } else {
+      validateStateValueRef(state.fallback, values, `${statePath}/fallback`, "fallback", diagnostics);
+    }
+    validateStateSource(state.source, `${statePath}/source`, resourceSchemas, diagnostics);
+  });
+}
+
+function validateSubstateDeclarations(
+  value: unknown,
+  path: string,
+  resourceSchemas: Record<string, IIrNamedSchema>,
+  stateIds: ReadonlySet<string>,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!Array.isArray(value)) {
+    diagnostics.push({ code: "TN_IR_SYSTEM_STATE_DECLARATIONS_INVALID", message: "Substate declarations must be an array.", path, severity: "error" });
+    return;
+  }
+  const substateIds = new Set<string>();
+  value.forEach((state, index) => {
+    const statePath = `${path}/${index}`;
+    if (!isRecord(state)) {
+      diagnostics.push({ code: "TN_IR_SYSTEM_STATE_INVALID", message: "Substate declaration must be an object.", path: statePath, severity: "error" });
+      return;
+    }
+    for (const key of Object.keys(state)) {
+      if (!["fallback", "id", "parent", "parentValue", "source", "values"].includes(key)) {
+        diagnostics.push({ code: "TN_IR_SYSTEM_STATE_FIELD_UNSUPPORTED", message: `Substate declaration uses unsupported field '${key}'.`, path: `${statePath}/${key}`, severity: "error" });
+      }
+    }
+    validateStateId(state.id, `${statePath}/id`, substateIds, diagnostics);
+    if (typeof state.parent !== "string" || state.parent.trim() === "" || !stateIds.has(state.parent)) {
+      diagnostics.push({ code: "TN_IR_SYSTEM_SUBSTATE_PARENT_MISSING", message: "Substate parent must reference a declared app or computed state.", path: `${statePath}/parent`, severity: "error" });
+    }
+    validateStateValues(state.values, `${statePath}/values`, diagnostics);
+    const values = Array.isArray(state.values) ? state.values : [];
+    validateStateValueRef(state.fallback, values, `${statePath}/fallback`, "fallback", diagnostics);
+    if (typeof state.parentValue !== "string" || state.parentValue.trim() === "") {
+      diagnostics.push({ code: "TN_IR_SYSTEM_SUBSTATE_PARENT_VALUE_INVALID", message: "Substate parentValue must be a non-empty string.", path: `${statePath}/parentValue`, severity: "error" });
+    }
+    validateStateSource(state.source, `${statePath}/source`, resourceSchemas, diagnostics);
+  });
+}
+
+function validateStateId(value: unknown, path: string, ids: Set<string>, diagnostics: IIrDiagnostic[]): void {
+  if (typeof value !== "string" || value.trim() === "") {
+    diagnostics.push({ code: "TN_IR_SYSTEM_STATE_ID_INVALID", message: "State ID must be a non-empty string.", path, severity: "error" });
+    return;
+  }
+  if (ids.has(value)) {
+    diagnostics.push({ code: "TN_IR_SYSTEM_STATE_ID_DUPLICATE", message: `State ID '${value}' is duplicated.`, path, severity: "error" });
+    return;
+  }
+  ids.add(value);
+}
+
+function validateStateValues(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (!Array.isArray(value) || value.length === 0 || value.some((entry) => typeof entry !== "string" || entry.trim() === "")) {
+    diagnostics.push({ code: "TN_IR_SYSTEM_STATE_VALUES_INVALID", message: "State values must be a non-empty array of strings.", path, severity: "error" });
+  }
+}
+
+function validateStateValueRef(value: unknown, values: unknown[], path: string, label: "fallback" | "initial", diagnostics: IIrDiagnostic[]): void {
+  if (typeof value !== "string" || !values.includes(value)) {
+    diagnostics.push({ code: "TN_IR_SYSTEM_STATE_VALUE_MISSING", message: `State ${label} value must be declared in values.`, path, severity: "error" });
+  }
+}
+
+function validateStateSource(value: unknown, path: string, resourceSchemas: Record<string, IIrNamedSchema>, diagnostics: IIrDiagnostic[]): void {
+  if (!isRecord(value)) {
+    diagnostics.push({ code: "TN_IR_SYSTEM_STATE_SOURCE_INVALID", message: "State source must be an object.", path, severity: "error" });
+    return;
+  }
+  for (const key of Object.keys(value)) {
+    if (!["field", "resource"].includes(key)) {
+      diagnostics.push({ code: "TN_IR_SYSTEM_STATE_SOURCE_FIELD_UNSUPPORTED", message: `State source uses unsupported field '${key}'.`, path: `${path}/${key}`, severity: "error" });
+    }
+  }
+  if (typeof value.resource !== "string" || value.resource.trim() === "" || resourceSchemas[value.resource] === undefined) {
+    diagnostics.push({ code: "TN_IR_SYSTEM_STATE_RESOURCE_SCHEMA_MISSING", message: "State source resource must reference a declared resource schema.", path: `${path}/resource`, severity: "error" });
+  }
+  if (typeof value.field !== "string" || value.field.trim() === "" || value.field.includes("/")) {
+    diagnostics.push({ code: "TN_IR_SYSTEM_STATE_SOURCE_FIELD_INVALID", message: "State source field must be a non-empty resource field name.", path: `${path}/field`, severity: "error" });
   }
 }
 

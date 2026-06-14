@@ -48,11 +48,42 @@ export interface IIrSystemDeclaration {
 
 export interface ISystemsIr {
   lifecycle?: {
+    appStates?: IIrAppStateDeclaration[];
+    computedStates?: IIrComputedStateDeclaration[];
     hotReload: "invalidate";
     replay: "fixed-trace";
     state: "system-local-disallowed";
+    substates?: IIrSubstateDeclaration[];
   };
   schema: "threenative.systems";
   version: SchemaVersion;
   systems: IIrSystemDeclaration[];
+}
+
+export interface IIrStateSource {
+  field: string;
+  resource: string;
+}
+
+export interface IIrAppStateDeclaration {
+  id: string;
+  initial: string;
+  source: IIrStateSource;
+  values: string[];
+}
+
+export interface IIrComputedStateDeclaration {
+  fallback: string;
+  id: string;
+  source: IIrStateSource;
+  values: string[];
+}
+
+export interface IIrSubstateDeclaration {
+  fallback: string;
+  id: string;
+  parent: string;
+  parentValue: string;
+  source: IIrStateSource;
+  values: string[];
 }

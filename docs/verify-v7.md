@@ -115,9 +115,10 @@ material overrides remain deferred or rejected.
 The current V7-07 fixture evidence is intentionally narrow: the
 `v7-scripting-lifecycle` bundle validates deterministic lifecycle metadata and
 compares a fixed web/native effect log for startup, fixedUpdate, update, and
-postUpdate resource handoff, queued events, spawn/despawn commands, and an
-`animation.play` service call. Async systems, timers, arbitrary npm/platform
-APIs, hidden system-local persisted state, state-preserving hot reload, and full
+postUpdate resource handoff, queued events, spawn/despawn commands, an
+`animation.play` service call, and resource-derived app/computed/substate reads
+through `ctx.states.get()`. Async systems, timers, arbitrary npm/platform APIs,
+hidden system-local persisted state, state-preserving hot reload, and full
 dynamic scene reconciliation remain unsupported or later work.
 
 The current V7-08 packaging evidence is intentionally narrow: `tn package

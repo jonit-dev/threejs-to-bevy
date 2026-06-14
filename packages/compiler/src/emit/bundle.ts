@@ -375,6 +375,15 @@ function collectSystemCapabilities(systems: ISystemsIr | undefined, add: (domain
   add("scripting", "systems");
   if (systems.lifecycle !== undefined) {
     add("scripting", "replay.fixed-trace");
+    if ((systems.lifecycle.appStates ?? []).length > 0) {
+      add("scripting", "state.app");
+    }
+    if ((systems.lifecycle.computedStates ?? []).length > 0) {
+      add("scripting", "state.computed");
+    }
+    if ((systems.lifecycle.substates ?? []).length > 0) {
+      add("scripting", "state.substate");
+    }
     add("scripting", `state.${systems.lifecycle.state}`);
     add("scripting", `hot-reload.${systems.lifecycle.hotReload}`);
   }

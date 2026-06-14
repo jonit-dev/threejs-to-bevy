@@ -4,10 +4,12 @@
   "entities": [],
   "resources": {
     "Lifecycle": {
+      "combat": "safe",
       "phase": "cold",
       "ticks": 0
     },
     "Score": {
+      "band": "low",
       "value": 3
     }
   },

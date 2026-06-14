@@ -1,4 +1,4 @@
-import type { IIrSystemQuery, IWorldEntity, IWorldIr } from "@threenative/ir";
+import type { IIrStateSource, IIrSystemQuery, ISystemsIr, IWorldEntity, IWorldIr } from "@threenative/ir";
 import type { IWebInputState } from "../input.js";
 import { animationPlayPayload } from "./services/animation.js";
 import {
@@ -51,6 +51,9 @@ export interface ISystemContext {
     get(name: string): unknown;
     set(name: string, value: unknown): void;
   };
+  states: {
+    get(id: string): string | null;
+  };
   physics: {
     overlap(options: IOverlapRequest): IOverlapResult;
     raycast(options: IRaycastRequest): IRaycastResult;
@@ -94,7 +97,7 @@ export interface IQueuedServiceCall {
 
 export function createSystemContext(
   world: IWorldIr,
-  options: { defaultQuery?: IIrSystemQuery; delta: number; elapsed?: number; fixedDelta: number; input?: IWebInputState; paused?: boolean },
+  options: { defaultQuery?: IIrSystemQuery; delta: number; elapsed?: number; fixedDelta: number; input?: IWebInputState; paused?: boolean; systems?: ISystemsIr },
 ): {
   commands: IQueuedCommand[];
   context: ISystemContext;
@@ -106,6 +109,7 @@ export function createSystemContext(
   const events: IQueuedEvent[] = [];
   const resources: IQueuedResourceWrite[] = [];
   const services: IQueuedServiceCall[] = [];
+  const states = evaluateStates(world, options.systems);
   return {
     commands,
     context: {
@@ -170,6 +174,11 @@ export function createSystemContext(
           resources.push({ resource: normalizeHandleName(name), value: cloneValue(value) });
         },
       },
+      states: {
+        get(id) {
+          return states[id] ?? null;
+        },
+      },
       physics: {
         overlap(serviceOptions) {
           const request = cloneValue(serviceOptions);
@@ -203,6 +212,29 @@ export function createSystemContext(
     resources,
     services,
   };
+}
+
+export function evaluateStates(world: IWorldIr, systems: ISystemsIr | undefined): Record<string, string | null> {
+  const lifecycle = systems?.lifecycle;
+  const values: Record<string, string | null> = {};
+  for (const state of lifecycle?.appStates ?? []) {
+    values[state.id] = readDeclaredStateValue(world, state.source, state.values, state.initial);
+  }
+  for (const state of lifecycle?.computedStates ?? []) {
+    values[state.id] = readDeclaredStateValue(world, state.source, state.values, state.fallback);
+  }
+  for (const state of lifecycle?.substates ?? []) {
+    values[state.id] = values[state.parent] === state.parentValue
+      ? readDeclaredStateValue(world, state.source, state.values, state.fallback)
+      : null;
+  }
+  return values;
+}
+
+function readDeclaredStateValue(world: IWorldIr, source: IIrStateSource, values: ReadonlyArray<string>, fallback: string): string {
+  const resource = world.resources?.[source.resource];
+  const raw = isRecord(resource) ? resource[source.field] : undefined;
+  return typeof raw === "string" && values.includes(raw) ? raw : fallback;
 }
 
 function createEntityView(entity: IWorldEntity, commands: IQueuedCommand[]): ISystemEntityView {

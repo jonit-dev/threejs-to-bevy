@@ -26,6 +26,9 @@
       "schedule.update",
       "script-bundle",
       "service.animation.play",
+      "state.app",
+      "state.computed",
+      "state.substate",
       "state.system-local-disallowed",
       "systems"
     ]

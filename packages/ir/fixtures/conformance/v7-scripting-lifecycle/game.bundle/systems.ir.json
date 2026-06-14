@@ -4,7 +4,53 @@
   "lifecycle": {
     "replay": "fixed-trace",
     "state": "system-local-disallowed",
-    "hotReload": "invalidate"
+    "hotReload": "invalidate",
+    "appStates": [
+      {
+        "id": "Game",
+        "initial": "cold",
+        "source": {
+          "resource": "Lifecycle",
+          "field": "phase"
+        },
+        "values": [
+          "cold",
+          "booted",
+          "fixed",
+          "updated"
+        ]
+      }
+    ],
+    "computedStates": [
+      {
+        "id": "ScoreBand",
+        "fallback": "low",
+        "source": {
+          "resource": "Score",
+          "field": "band"
+        },
+        "values": [
+          "low",
+          "high"
+        ]
+      }
+    ],
+    "substates": [
+      {
+        "id": "Combat",
+        "parent": "Game",
+        "parentValue": "updated",
+        "fallback": "safe",
+        "source": {
+          "resource": "Lifecycle",
+          "field": "combat"
+        },
+        "values": [
+          "safe",
+          "engaged"
+        ]
+      }
+    ]
   },
   "systems": [
     {

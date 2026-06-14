@@ -16,6 +16,14 @@
     },
     "LifecycleEvent": {
       "fields": {
+        "combat": {
+          "kind": "string",
+          "required": false
+        },
+        "game": {
+          "kind": "string",
+          "required": false
+        },
         "phase": {
           "kind": "string",
           "required": true
@@ -23,6 +31,10 @@
         "score": {
           "kind": "number",
           "required": true
+        },
+        "scoreBand": {
+          "kind": "string",
+          "required": false
         }
       }
     }

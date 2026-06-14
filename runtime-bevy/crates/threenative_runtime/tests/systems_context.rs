@@ -61,6 +61,29 @@ fn systems_context_should_include_bundle_and_queued_events() {
     );
 }
 
+#[test]
+fn systems_context_should_include_resource_derived_states() {
+    let root = write_bundle("state-context");
+    let bundle = load_bundle(&root).expect("bundle should load");
+    let system = &bundle
+        .systems
+        .as_ref()
+        .expect("systems should load")
+        .systems[0];
+
+    let snapshot = build_system_context_snapshot(&bundle, system, time());
+
+    assert_eq!(snapshot.states.get("Game"), Some(&Some("playing".to_owned())));
+    assert_eq!(
+        snapshot.states.get("Difficulty"),
+        Some(&Some("danger".to_owned()))
+    );
+    assert_eq!(
+        snapshot.states.get("Locomotion"),
+        Some(&Some("airborne".to_owned()))
+    );
+}
+
 fn write_bundle(name: &str) -> PathBuf {
     let root = root(name);
     fs::create_dir_all(&root).expect("temp bundle should be created");
@@ -84,6 +107,9 @@ fn write_bundle(name: &str) -> PathBuf {
   "version": "0.1.0",
   "events": {
     "DamageEvent": [{ "amount": 2 }]
+  },
+  "resources": {
+    "GameState": { "difficulty": "danger", "locomotion": "airborne", "phase": "playing" }
   },
   "entities": [
     {
@@ -110,6 +136,20 @@ fn write_bundle(name: &str) -> PathBuf {
         r#"{
   "schema": "threenative.systems",
   "version": "0.1.0",
+  "lifecycle": {
+    "replay": "fixed-trace",
+    "state": "system-local-disallowed",
+    "hotReload": "invalidate",
+    "appStates": [
+      { "id": "Game", "initial": "boot", "source": { "resource": "GameState", "field": "phase" }, "values": ["boot", "playing"] }
+    ],
+    "computedStates": [
+      { "id": "Difficulty", "fallback": "safe", "source": { "resource": "GameState", "field": "difficulty" }, "values": ["safe", "danger"] }
+    ],
+    "substates": [
+      { "id": "Locomotion", "parent": "Game", "parentValue": "playing", "fallback": "grounded", "source": { "resource": "GameState", "field": "locomotion" }, "values": ["grounded", "airborne"] }
+    ]
+  },
   "systems": [
     {
       "name": "rotate",

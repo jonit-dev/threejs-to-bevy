@@ -181,6 +181,57 @@ test("should accept v7 deterministic lifecycle metadata", async () => {
   }
 });
 
+test("should accept resource-derived app states, computed states, and substates", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-states-"));
+  try {
+    await writeBundle(root, {
+      commands: [],
+      lifecycle: {
+        appStates: [
+          {
+            id: "Game",
+            initial: "boot",
+            source: { field: "phase", resource: "GameState" },
+            values: ["boot", "playing"],
+          },
+        ],
+        computedStates: [
+          {
+            fallback: "safe",
+            id: "Difficulty",
+            source: { field: "difficulty", resource: "GameState" },
+            values: ["safe", "danger"],
+          },
+        ],
+        hotReload: "invalidate",
+        replay: "fixed-trace",
+        state: "system-local-disallowed",
+        substates: [
+          {
+            fallback: "grounded",
+            id: "Locomotion",
+            parent: "Game",
+            parentValue: "playing",
+            source: { field: "locomotion", resource: "GameState" },
+            values: ["grounded", "airborne"],
+          },
+        ],
+      },
+      reads: ["Transform"],
+      resourceReads: ["GameState"],
+      schedule: "fixedUpdate",
+      writes: ["Transform"],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject unsupported scripting lifecycle assumptions", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-lifecycle-invalid-"));
   try {
@@ -222,6 +273,66 @@ test("should reject unsupported scripting lifecycle assumptions", async () => {
         "systems.ir.json/lifecycle/hotReload",
         "systems.ir.json/systems/0/async",
         "systems.ir.json/systems/0/timer",
+      ],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject invalid resource-derived state declarations", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-states-invalid-"));
+  try {
+    await writeBundle(root, {
+      commands: [],
+      lifecycle: {
+        appStates: [
+          {
+            id: "Game",
+            initial: "missing",
+            source: { field: "phase", resource: "MissingState" },
+            values: ["boot"],
+          },
+        ],
+        computedStates: [
+          {
+            fallback: "safe",
+            id: "Game",
+            source: { field: "difficulty", resource: "GameState" },
+            values: ["safe"],
+          },
+        ],
+        hotReload: "invalidate",
+        replay: "fixed-trace",
+        state: "system-local-disallowed",
+        substates: [
+          {
+            fallback: "grounded",
+            id: "Locomotion",
+            parent: "MissingParent",
+            parentValue: "",
+            source: { field: "locomotion", resource: "GameState" },
+            values: ["grounded"],
+          },
+        ],
+      },
+      reads: ["Transform"],
+      resourceReads: ["GameState"],
+      schedule: "fixedUpdate",
+      writes: ["Transform"],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => diagnostic.code),
+      [
+        "TN_IR_SYSTEM_STATE_VALUE_MISSING",
+        "TN_IR_SYSTEM_STATE_RESOURCE_SCHEMA_MISSING",
+        "TN_IR_SYSTEM_STATE_ID_DUPLICATE",
+        "TN_IR_SYSTEM_SUBSTATE_PARENT_MISSING",
+        "TN_IR_SYSTEM_SUBSTATE_PARENT_VALUE_INVALID",
       ],
     );
   } finally {
@@ -282,6 +393,7 @@ async function writeBundle(
       materials: "materials.ir.json",
       targetProfile: "target.profile.json",
       componentSchemas: "schemas/components.schema.json",
+      resourceSchemas: "schemas/resources.schema.json",
     },
   });
   await mkdir(join(root, "schemas"), { recursive: true });
@@ -333,6 +445,19 @@ async function writeBundle(
         fields: {
           position: { kind: "vec3", required: false },
           rotation: { kind: "quat", required: false },
+        },
+      },
+    },
+  });
+  await writeJson(root, "schemas/resources.schema.json", {
+    schema: "threenative.resource-schemas",
+    version: "0.1.0",
+    schemas: {
+      GameState: {
+        fields: {
+          difficulty: { kind: "string", required: false },
+          locomotion: { kind: "string", required: false },
+          phase: { kind: "string", required: true },
         },
       },
     },

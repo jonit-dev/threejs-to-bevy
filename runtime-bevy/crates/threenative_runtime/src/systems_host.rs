@@ -423,6 +423,11 @@ function __tnInvokeSystem(options) {
         effects.resources.push({ resource: normalize(name), value: clone(value) });
       }
     },
+    states: {
+      get(id) {
+        return data.states[normalize(id)] === undefined ? null : data.states[normalize(id)];
+      }
+    },
     query(query = { with: [], without: [] }) {
       const withComponents = Array.isArray(query.with) ? query.with.map(normalize) : [];
       const withoutComponents = Array.isArray(query.without) ? query.without.map(normalize) : [];

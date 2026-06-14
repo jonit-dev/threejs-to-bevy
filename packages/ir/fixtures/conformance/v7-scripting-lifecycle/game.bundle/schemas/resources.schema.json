@@ -4,6 +4,10 @@
   "schemas": {
     "Lifecycle": {
       "fields": {
+        "combat": {
+          "kind": "string",
+          "required": false
+        },
         "phase": {
           "kind": "string",
           "required": true
@@ -16,6 +20,10 @@
     },
     "Score": {
       "fields": {
+        "band": {
+          "kind": "string",
+          "required": false
+        },
         "value": {
           "kind": "number",
           "required": true

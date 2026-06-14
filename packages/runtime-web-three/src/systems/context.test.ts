@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { IWorldIr } from "@threenative/ir";
+import type { ISystemsIr, IWorldIr } from "@threenative/ir";
 
-import { createSystemContext } from "./context.js";
+import { createSystemContext, evaluateStates } from "./context.js";
 
 test("should expose fixed input trace", () => {
   const { context } = createSystemContext(makeWorld(), {
@@ -90,6 +90,43 @@ test("should log animation play service call", () => {
     },
     service: "animation.play",
   });
+});
+
+test("should expose resource-derived app states, computed states, and substates", () => {
+  const world: IWorldIr = {
+    entities: [],
+    resources: {
+      GameState: { difficulty: "danger", locomotion: "airborne", phase: "playing" },
+    },
+    schema: "threenative.world",
+    version: "0.1.0",
+  };
+  const systems: ISystemsIr = {
+    lifecycle: {
+      appStates: [{ id: "Game", initial: "boot", source: { field: "phase", resource: "GameState" }, values: ["boot", "playing"] }],
+      computedStates: [{ fallback: "safe", id: "Difficulty", source: { field: "difficulty", resource: "GameState" }, values: ["safe", "danger"] }],
+      hotReload: "invalidate",
+      replay: "fixed-trace",
+      state: "system-local-disallowed",
+      substates: [{ fallback: "grounded", id: "Locomotion", parent: "Game", parentValue: "playing", source: { field: "locomotion", resource: "GameState" }, values: ["grounded", "airborne"] }],
+    },
+    schema: "threenative.systems",
+    systems: [],
+    version: "0.1.0",
+  };
+
+  assert.deepEqual(evaluateStates(world, systems), {
+    Difficulty: "danger",
+    Game: "playing",
+    Locomotion: "airborne",
+  });
+
+  const { context } = createSystemContext(world, { delta: 0.016, fixedDelta: 0.016, systems });
+
+  assert.equal(context.states.get("Game"), "playing");
+  assert.equal(context.states.get("Difficulty"), "danger");
+  assert.equal(context.states.get("Locomotion"), "airborne");
+  assert.equal(context.states.get("Missing"), null);
 });
 
 function makeWorld(): IWorldIr {

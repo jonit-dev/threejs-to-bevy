@@ -19,6 +19,7 @@ export type { IRuntimeConfigIr } from "./runtimeConfig.js";
 export type {
   IIrSystemDeclaration,
   IIrSystemQuery,
+  IIrStateSource,
   IrSystemCommand,
   IrSystemSchedule,
   IrSystemService,

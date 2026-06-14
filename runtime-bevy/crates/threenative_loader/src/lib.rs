@@ -302,9 +302,58 @@ pub struct TargetProfile {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct SystemsIr {
+    #[serde(default)]
+    pub lifecycle: Option<SystemsLifecycleIr>,
     pub schema: String,
     pub version: String,
     pub systems: Vec<SystemIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct SystemsLifecycleIr {
+    #[serde(default, rename = "appStates")]
+    pub app_states: Vec<SystemAppStateIr>,
+    #[serde(default, rename = "computedStates")]
+    pub computed_states: Vec<SystemComputedStateIr>,
+    #[serde(rename = "hotReload")]
+    pub hot_reload: String,
+    pub replay: String,
+    pub state: String,
+    #[serde(default)]
+    pub substates: Vec<SystemSubstateIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct SystemStateSourceIr {
+    pub field: String,
+    pub resource: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct SystemAppStateIr {
+    pub id: String,
+    pub initial: String,
+    pub source: SystemStateSourceIr,
+    pub values: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct SystemComputedStateIr {
+    pub fallback: String,
+    pub id: String,
+    pub source: SystemStateSourceIr,
+    pub values: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct SystemSubstateIr {
+    pub fallback: String,
+    pub id: String,
+    pub parent: String,
+    #[serde(rename = "parentValue")]
+    pub parent_value: String,
+    pub source: SystemStateSourceIr,
+    pub values: Vec<String>,
 }
 
 #[derive(Clone, Debug, Deserialize)]

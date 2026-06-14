@@ -2,7 +2,9 @@ use std::collections::BTreeMap;
 
 use serde::Serialize;
 use serde_json::{Value, json};
-use threenative_loader::{EntityComponents, LoadedBundle, SystemIr, SystemQueryIr};
+use threenative_loader::{
+    EntityComponents, LoadedBundle, SystemIr, SystemQueryIr, SystemStateSourceIr,
+};
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -11,6 +13,7 @@ pub struct NativeSystemContextSnapshot {
     pub events: BTreeMap<String, Vec<Value>>,
     pub input: NativeSystemInputSnapshot,
     pub resources: BTreeMap<String, Value>,
+    pub states: BTreeMap<String, Option<String>>,
     pub time: NativeSystemTimeSnapshot,
 }
 
@@ -80,7 +83,72 @@ pub fn build_system_context_snapshot_with_events(
             .iter()
             .map(|(key, value)| (key.clone(), value.clone()))
             .collect(),
+        states: evaluate_states(bundle),
         time,
+    }
+}
+
+pub fn evaluate_states(bundle: &LoadedBundle) -> BTreeMap<String, Option<String>> {
+    let mut values = BTreeMap::new();
+    let Some(lifecycle) = bundle.systems.as_ref().and_then(|systems| systems.lifecycle.as_ref())
+    else {
+        return values;
+    };
+    for state in &lifecycle.app_states {
+        values.insert(
+            state.id.clone(),
+            Some(read_declared_state_value(
+                bundle,
+                &state.source,
+                &state.values,
+                &state.initial,
+            )),
+        );
+    }
+    for state in &lifecycle.computed_states {
+        values.insert(
+            state.id.clone(),
+            Some(read_declared_state_value(
+                bundle,
+                &state.source,
+                &state.values,
+                &state.fallback,
+            )),
+        );
+    }
+    for state in &lifecycle.substates {
+        let value = if values.get(&state.parent).and_then(|value| value.as_ref())
+            == Some(&state.parent_value)
+        {
+            Some(read_declared_state_value(
+                bundle,
+                &state.source,
+                &state.values,
+                &state.fallback,
+            ))
+        } else {
+            None
+        };
+        values.insert(state.id.clone(), value);
+    }
+    values
+}
+
+fn read_declared_state_value(
+    bundle: &LoadedBundle,
+    source: &SystemStateSourceIr,
+    values: &[String],
+    fallback: &str,
+) -> String {
+    let raw = bundle
+        .world
+        .resources
+        .get(&source.resource)
+        .and_then(|resource| resource.get(&source.field))
+        .and_then(Value::as_str);
+    match raw {
+        Some(value) if values.iter().any(|candidate| candidate == value) => value.to_owned(),
+        _ => fallback.to_owned(),
     }
 }
 

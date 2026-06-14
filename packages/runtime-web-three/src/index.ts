@@ -27,7 +27,7 @@ export { renderUi, type IRenderedUi, type IRenderedUiNode } from "./ui/renderUi.
 export { traceUiNavigation, type IUiNavigationTrace, type IUiNavigationTraceInput } from "./ui/navigation.js";
 export { createUiDomOverlay, type IUiDomOverlay } from "./ui/domOverlay.js";
 export { renderBundle, type IRenderResult } from "./render.js";
-export { createSystemContext, applyCommands, type ISystemContext } from "./systems/context.js";
+export { createSystemContext, evaluateStates, applyCommands, type ISystemContext } from "./systems/context.js";
 export { applySystemEffects, validateSystemEffects, type ISystemEffects } from "./systems/effects.js";
 export { createSystemEffectLog, serializeSystemEffectLog, stableSystemEffectLog, type ISystemEffectLog, type ISystemEffectLogEntry } from "./systems/log.js";
 export { loadSystemModule, runSchedule, type ISystemModule, type ISystemRunResult, type SystemFunction } from "./systems/runner.js";

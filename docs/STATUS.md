@@ -412,13 +412,15 @@ post-processing remain unclaimed.
 
 V7-07 has landed the first scripting determinism and lifecycle evidence slice:
 `systems.ir.json` now accepts explicit lifecycle metadata for `fixed-trace`
-replay, `system-local-disallowed` state, and `invalidate` hot reload behavior,
-while unsupported lifecycle fields and async/timer/system-local state metadata
-fail with stable IR diagnostics. The `v7-scripting-lifecycle` fixture runs a
-script-heavy multi-schedule trace covering startup, fixedUpdate, update, and
-postUpdate resource handoff, queued events, spawn/despawn commands, and
-`animation.play` service effects. `pnpm verify:conformance` compares the
-canonical web/native effect logs and writes artifacts under
+replay, `system-local-disallowed` state, `invalidate` hot reload behavior, and
+bounded resource-derived app states, computed states, and substates exposed to
+scripts as `ctx.states.get()`, while unsupported lifecycle fields and
+async/timer/system-local state metadata fail with stable IR diagnostics. The
+`v7-scripting-lifecycle` fixture runs a script-heavy multi-schedule trace
+covering startup, fixedUpdate, update, and postUpdate resource handoff, queued
+events, spawn/despawn commands, `animation.play` service effects, and derived
+state/substate reads. `pnpm verify:conformance` compares the canonical
+web/native effect logs and writes artifacts under
 `artifacts/conformance/v7-scripting-lifecycle`. Follow-up focused runtime tests
 now prove command-buffer spawn/despawn reconciliation across later web/native
 schedules, native persistence for direct and command-buffer event writes, and

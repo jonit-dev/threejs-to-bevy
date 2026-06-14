@@ -218,6 +218,9 @@ test("should include capability tags for each conformance fixture", async () => 
     "scripting:schedule.update",
     "scripting:script-bundle",
     "scripting:service.animation.play",
+    "scripting:state.app",
+    "scripting:state.computed",
+    "scripting:state.substate",
     "scripting:state.system-local-disallowed",
     "scripting:systems",
   ]);

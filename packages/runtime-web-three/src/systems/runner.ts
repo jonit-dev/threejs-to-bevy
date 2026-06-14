@@ -88,6 +88,7 @@ async function runSystem(
     fixedDelta: options.fixedDelta ?? 1 / 60,
     input: options.input,
     paused: options.paused ?? false,
+    systems: options.systems,
   });
   await fn(context);
   const result = applySystemEffects(options.world, system, { commands, events, resources, services }, { frame: options.frame ?? 0, tick: options.tick ?? 0 });

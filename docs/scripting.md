@@ -335,11 +335,15 @@ The runtime should refuse state-preserving reload when component schemas, system
 read/write sets, or command permissions change incompatibly.
 
 V7 currently promotes only `fixed-trace` replay with `hotReload: "invalidate"`
-and `state: "system-local-disallowed"` in `systems.ir.json`. The narrow
-`v7-scripting-lifecycle` conformance fixture runs startup, fixedUpdate, update,
-and postUpdate systems, then compares web/native effect logs for deterministic
-resource handoff, queued event reads/writes, spawn/despawn commands, and
-declared service calls. Hidden system-local persisted state, async/timer-driven
+and `state: "system-local-disallowed"` in `systems.ir.json`. Within that
+bounded lifecycle metadata, bundles may declare resource-derived app states,
+computed states, and substates. Scripts read those values with
+`ctx.states.get(id)`, which returns a string state value or `null` when a
+substate's parent is inactive. The narrow `v7-scripting-lifecycle` conformance
+fixture runs startup, fixedUpdate, update, and postUpdate systems, then
+compares web/native effect logs for deterministic resource handoff, queued
+event reads/writes, spawn/despawn commands, declared service calls, and
+derived state reads. Hidden system-local persisted state, async/timer-driven
 behavior, arbitrary npm packages, and platform APIs must fail validation or
 host diagnostics instead of being silently replayed.
 
