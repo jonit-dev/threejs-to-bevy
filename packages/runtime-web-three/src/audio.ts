@@ -4,6 +4,8 @@ import type { IQueuedEvent } from "./systems/context.js";
 
 export interface IWebAudioCommand {
   asset: string;
+  bus?: string;
+  emitter?: string;
   event?: string;
   id: string;
   kind: "loop" | "oneShot";
@@ -43,13 +45,13 @@ export function createWebAudioRuntime(audio: IAudioIr, sink?: IWebAudioSink): IW
     handleEvents(events) {
       for (const event of events) {
         for (const oneShot of audio.oneShots.filter((item) => item.event === event.event)) {
-          queue({ asset: oneShot.asset, event: event.event, id: oneShot.id, kind: "oneShot", ...(oneShot.volume === undefined ? {} : { volume: oneShot.volume }) });
+          queue({ asset: oneShot.asset, ...(oneShot.bus === undefined ? {} : { bus: oneShot.bus }), ...(oneShot.emitter === undefined ? {} : { emitter: oneShot.emitter }), event: event.event, id: oneShot.id, kind: "oneShot", ...(oneShot.volume === undefined ? {} : { volume: oneShot.volume }) });
         }
       }
     },
     start() {
       for (const music of audio.music.filter((item) => item.loop && item.autoplay !== false)) {
-        queue({ asset: music.asset, id: music.id, kind: "loop", ...(music.volume === undefined ? {} : { volume: music.volume }) });
+        queue({ asset: music.asset, ...(music.bus === undefined ? {} : { bus: music.bus }), id: music.id, kind: "loop", ...(music.volume === undefined ? {} : { volume: music.volume }) });
       }
     },
   };

@@ -462,15 +462,42 @@ pub struct AudioIr {
     pub schema: String,
     pub version: String,
     #[serde(default)]
+    pub buses: Vec<AudioBusIr>,
+    #[serde(default)]
+    pub emitters: Vec<AudioEmitterIr>,
+    #[serde(default)]
+    pub listeners: Vec<AudioListenerIr>,
+    #[serde(default)]
     pub music: Vec<AudioMusicIr>,
     #[serde(default)]
     pub one_shots: Vec<AudioOneShotIr>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
+pub struct AudioBusIr {
+    pub id: String,
+    pub volume: Option<f32>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct AudioListenerIr {
+    pub id: String,
+    pub position: [f32; 3],
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct AudioEmitterIr {
+    pub id: String,
+    pub position: [f32; 3],
+    pub radius: Option<f32>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
 pub struct AudioOneShotIr {
     pub id: String,
     pub asset: String,
+    pub bus: Option<String>,
+    pub emitter: Option<String>,
     pub event: String,
     pub volume: Option<f32>,
 }
@@ -480,6 +507,7 @@ pub struct AudioMusicIr {
     pub id: String,
     pub asset: String,
     pub autoplay: Option<bool>,
+    pub bus: Option<String>,
     #[serde(rename = "loop")]
     pub looped: Option<bool>,
     pub volume: Option<f32>,

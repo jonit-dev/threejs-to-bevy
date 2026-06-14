@@ -29,6 +29,26 @@ test("audio should start looping music", () => {
   assert.deepEqual(runtime.commands, [{ asset: "arena.music", id: "music.arena", kind: "loop", volume: 0.4 }]);
 });
 
+test("audio should preserve bus and spatial emitter commands", () => {
+  const runtime = createWebAudioRuntime({
+    schema: "threenative.audio",
+    version: "0.1.0",
+    buses: [{ id: "bus.sfx", volume: 0.8 }],
+    emitters: [{ id: "emitter.player", position: [1, 2, 3], radius: 12 }],
+    listeners: [{ id: "listener.main", position: [0, 1, 5] }],
+    music: [{ id: "music.arena", asset: "arena.music", autoplay: true, bus: "bus.sfx", loop: true }],
+    oneShots: [{ id: "sound.hit", asset: "hit.sound", bus: "bus.sfx", emitter: "emitter.player", event: "DamageEvent" }],
+  });
+
+  runtime.start();
+  runtime.handleEvents([{ event: "DamageEvent", payload: { amount: 10 } }]);
+
+  assert.deepEqual(runtime.commands, [
+    { asset: "arena.music", bus: "bus.sfx", id: "music.arena", kind: "loop" },
+    { asset: "hit.sound", bus: "bus.sfx", emitter: "emitter.player", event: "DamageEvent", id: "sound.hit", kind: "oneShot" },
+  ]);
+});
+
 test("audio element sink should play bundle local one shots and loops", () => {
   const elements: FakeAudioElement[] = [];
   const sink = createWebAudioElementSink(

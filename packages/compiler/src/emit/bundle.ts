@@ -436,6 +436,16 @@ function collectAudioCapabilities(audio: IAudioIr | undefined, add: (domain: str
   if ([...audio.music, ...audio.oneShots].some((item) => item.volume !== undefined)) {
     add("audio", "volume");
   }
+  if ((audio.buses ?? []).length > 0 || [...audio.music, ...audio.oneShots].some((item) => item.bus !== undefined)) {
+    add("audio", "bus");
+    add("audio", "volume-routing");
+  }
+  if ((audio.listeners ?? []).length > 0) {
+    add("audio", "listener");
+  }
+  if ((audio.emitters ?? []).length > 0 || audio.oneShots.some((item) => item.emitter !== undefined)) {
+    add("audio", "spatial-emitter");
+  }
 }
 
 function collectUiCapabilities(ui: IUiIr | undefined, add: (domain: string, capability: string) => void): void {

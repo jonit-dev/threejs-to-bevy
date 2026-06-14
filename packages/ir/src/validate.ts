@@ -239,7 +239,7 @@ function validateAudio(
 ): void {
   const raw = audio as unknown as Record<string, unknown>;
   for (const key of Object.keys(raw)) {
-    if (!["music", "oneShots", "schema", "version"].includes(key)) {
+    if (!["buses", "emitters", "listeners", "music", "oneShots", "schema", "version"].includes(key)) {
       diagnostics.push({
         code: "TN_IR_AUDIO_FIELD_UNSUPPORTED",
         message: `Audio IR uses unsupported field '${key}'.`,
@@ -255,19 +255,24 @@ function validateAudio(
     });
   }
   const audioAssets = new Set((assets?.assets ?? []).filter((asset) => asset.kind === "audio").map((asset) => asset.id));
-  audio.oneShots.forEach((oneShot, index) => validateAudioOneShot(oneShot, audioAssets, `${path}/oneShots/${index}`, diagnostics));
-  audio.music.forEach((music, index) => validateAudioMusic(music, audioAssets, `${path}/music/${index}`, diagnostics));
+  const busIds = validateAudioBuses(audio.buses, `${path}/buses`, diagnostics);
+  const emitterIds = validateAudioEmitters(audio.emitters, `${path}/emitters`, diagnostics);
+  validateAudioListeners(audio.listeners, `${path}/listeners`, diagnostics);
+  audio.oneShots.forEach((oneShot, index) => validateAudioOneShot(oneShot, audioAssets, busIds, emitterIds, `${path}/oneShots/${index}`, diagnostics));
+  audio.music.forEach((music, index) => validateAudioMusic(music, audioAssets, busIds, `${path}/music/${index}`, diagnostics));
 }
 
 function validateAudioOneShot(
   oneShot: IAudioOneShotIr,
   audioAssets: Set<string>,
+  busIds: Set<string>,
+  emitterIds: Set<string>,
   path: string,
   diagnostics: IIrDiagnostic[],
 ): void {
   const raw = oneShot as unknown as Record<string, unknown>;
   for (const key of Object.keys(raw)) {
-    if (!["asset", "event", "id", "volume"].includes(key)) {
+    if (!["asset", "bus", "emitter", "event", "id", "volume"].includes(key)) {
       diagnostics.push({
         code: "TN_IR_AUDIO_FIELD_UNSUPPORTED",
         message: `Audio one-shot '${oneShot.id}' uses unsupported field '${key}'.`,
@@ -277,17 +282,20 @@ function validateAudioOneShot(
   }
   validateAudioVolume(oneShot.volume, `${path}/volume`, diagnostics);
   validateAudioAssetRef(oneShot.asset, audioAssets, `${path}/asset`, diagnostics);
+  validateAudioRouteRef(oneShot.bus, busIds, `${path}/bus`, "TN_IR_AUDIO_BUS_MISSING", "bus", diagnostics);
+  validateAudioRouteRef(oneShot.emitter, emitterIds, `${path}/emitter`, "TN_IR_AUDIO_EMITTER_MISSING", "emitter", diagnostics);
 }
 
 function validateAudioMusic(
   music: IAudioMusicIr,
   audioAssets: Set<string>,
+  busIds: Set<string>,
   path: string,
   diagnostics: IIrDiagnostic[],
 ): void {
   const raw = music as unknown as Record<string, unknown>;
   for (const key of Object.keys(raw)) {
-    if (!["asset", "autoplay", "id", "loop", "volume"].includes(key)) {
+    if (!["asset", "autoplay", "bus", "id", "loop", "volume"].includes(key)) {
       diagnostics.push({
         code: "TN_IR_AUDIO_FIELD_UNSUPPORTED",
         message: `Audio music '${music.id}' uses unsupported field '${key}'.`,
@@ -304,6 +312,126 @@ function validateAudioMusic(
   }
   validateAudioVolume(music.volume, `${path}/volume`, diagnostics);
   validateAudioAssetRef(music.asset, audioAssets, `${path}/asset`, diagnostics);
+  validateAudioRouteRef(music.bus, busIds, `${path}/bus`, "TN_IR_AUDIO_BUS_MISSING", "bus", diagnostics);
+}
+
+function validateAudioBuses(value: unknown, path: string, diagnostics: IIrDiagnostic[]): Set<string> {
+  const ids = new Set<string>();
+  if (value === undefined) {
+    return ids;
+  }
+  if (!Array.isArray(value)) {
+    diagnostics.push({ code: "TN_IR_AUDIO_BUSES_INVALID", message: "Audio buses must be an array.", path });
+    return ids;
+  }
+  value.forEach((bus, index) => {
+    const busPath = `${path}/${index}`;
+    if (!isRecord(bus)) {
+      diagnostics.push({ code: "TN_IR_AUDIO_BUS_INVALID", message: "Audio bus must be an object.", path: busPath });
+      return;
+    }
+    for (const key of Object.keys(bus)) {
+      if (!["id", "volume"].includes(key)) {
+        diagnostics.push({ code: "TN_IR_AUDIO_FIELD_UNSUPPORTED", message: `Audio bus uses unsupported field '${key}'.`, path: `${busPath}/${key}` });
+      }
+    }
+    if (typeof bus.id !== "string" || bus.id.trim() === "") {
+      diagnostics.push({ code: "TN_IR_AUDIO_BUS_ID_INVALID", message: "Audio bus ID must be a non-empty string.", path: `${busPath}/id` });
+    } else if (ids.has(bus.id)) {
+      diagnostics.push({ code: "TN_IR_AUDIO_BUS_DUPLICATE", message: `Audio bus '${bus.id}' is duplicated.`, path: `${busPath}/id` });
+    } else {
+      ids.add(bus.id);
+    }
+    validateAudioVolume(bus.volume, `${busPath}/volume`, diagnostics);
+  });
+  return ids;
+}
+
+function validateAudioListeners(value: unknown, path: string, diagnostics: IIrDiagnostic[]): Set<string> {
+  const ids = new Set<string>();
+  if (value === undefined) {
+    return ids;
+  }
+  if (!Array.isArray(value)) {
+    diagnostics.push({ code: "TN_IR_AUDIO_LISTENERS_INVALID", message: "Audio listeners must be an array.", path });
+    return ids;
+  }
+  value.forEach((listener, index) => {
+    const listenerPath = `${path}/${index}`;
+    if (!isRecord(listener)) {
+      diagnostics.push({ code: "TN_IR_AUDIO_LISTENER_INVALID", message: "Audio listener must be an object.", path: listenerPath });
+      return;
+    }
+    for (const key of Object.keys(listener)) {
+      if (!["id", "position"].includes(key)) {
+        diagnostics.push({ code: "TN_IR_AUDIO_FIELD_UNSUPPORTED", message: `Audio listener uses unsupported field '${key}'.`, path: `${listenerPath}/${key}` });
+      }
+    }
+    if (typeof listener.id !== "string" || listener.id.trim() === "") {
+      diagnostics.push({ code: "TN_IR_AUDIO_LISTENER_ID_INVALID", message: "Audio listener ID must be a non-empty string.", path: `${listenerPath}/id` });
+    } else if (ids.has(listener.id)) {
+      diagnostics.push({ code: "TN_IR_AUDIO_LISTENER_DUPLICATE", message: `Audio listener '${listener.id}' is duplicated.`, path: `${listenerPath}/id` });
+    } else {
+      ids.add(listener.id);
+    }
+    validateFiniteVec3(listener.position, `${listenerPath}/position`, "TN_IR_AUDIO_LISTENER_POSITION_INVALID", diagnostics);
+  });
+  return ids;
+}
+
+function validateAudioEmitters(value: unknown, path: string, diagnostics: IIrDiagnostic[]): Set<string> {
+  const ids = new Set<string>();
+  if (value === undefined) {
+    return ids;
+  }
+  if (!Array.isArray(value)) {
+    diagnostics.push({ code: "TN_IR_AUDIO_EMITTERS_INVALID", message: "Audio emitters must be an array.", path });
+    return ids;
+  }
+  value.forEach((emitter, index) => {
+    const emitterPath = `${path}/${index}`;
+    if (!isRecord(emitter)) {
+      diagnostics.push({ code: "TN_IR_AUDIO_EMITTER_INVALID", message: "Audio emitter must be an object.", path: emitterPath });
+      return;
+    }
+    for (const key of Object.keys(emitter)) {
+      if (!["id", "position", "radius"].includes(key)) {
+        diagnostics.push({ code: "TN_IR_AUDIO_FIELD_UNSUPPORTED", message: `Audio emitter uses unsupported field '${key}'.`, path: `${emitterPath}/${key}` });
+      }
+    }
+    if (typeof emitter.id !== "string" || emitter.id.trim() === "") {
+      diagnostics.push({ code: "TN_IR_AUDIO_EMITTER_ID_INVALID", message: "Audio emitter ID must be a non-empty string.", path: `${emitterPath}/id` });
+    } else if (ids.has(emitter.id)) {
+      diagnostics.push({ code: "TN_IR_AUDIO_EMITTER_DUPLICATE", message: `Audio emitter '${emitter.id}' is duplicated.`, path: `${emitterPath}/id` });
+    } else {
+      ids.add(emitter.id);
+    }
+    validateFiniteVec3(emitter.position, `${emitterPath}/position`, "TN_IR_AUDIO_EMITTER_POSITION_INVALID", diagnostics);
+    if (emitter.radius !== undefined) {
+      validatePositiveFinite(emitter.radius, `${emitterPath}/radius`, "TN_IR_AUDIO_EMITTER_RADIUS_INVALID", diagnostics);
+    }
+  });
+  return ids;
+}
+
+function validateAudioRouteRef(
+  value: unknown,
+  ids: Set<string>,
+  path: string,
+  code: string,
+  label: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (value === undefined) {
+    return;
+  }
+  if (typeof value !== "string" || value.trim() === "" || !ids.has(value)) {
+    diagnostics.push({
+      code,
+      message: `Audio playback references unknown ${label} '${String(value)}'.`,
+      path,
+    });
+  }
 }
 
 function validateAudioVolume(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {

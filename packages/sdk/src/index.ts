@@ -1,9 +1,15 @@
 export { SdkError } from "./errors.js";
 export {
+  audioBus,
+  audioListener,
   defineAudio,
   loopingMusic,
   oneShotSound,
+  spatialAudioEmitter,
+  type IAudioBusDeclaration,
   type IAudioDeclaration,
+  type IAudioEmitterDeclaration,
+  type IAudioListenerDeclaration,
   type IAudioMusicDeclaration,
   type IAudioOneShotDeclaration,
 } from "./audio.js";

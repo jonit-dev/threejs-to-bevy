@@ -65,6 +65,8 @@ export interface IConformanceUiReport {
 
 export interface IConformanceAudioCommandReport {
   asset: string;
+  bus?: string;
+  emitter?: string;
   event?: string;
   id: string;
   kind: "loop" | "oneShot";

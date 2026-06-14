@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { loopingMusic, oneShotSound } from "./audio.js";
+import { audioBus, audioListener, defineAudio, loopingMusic, oneShotSound, spatialAudioEmitter } from "./audio.js";
 
 test("audio helpers should preserve optional volume", () => {
   assert.deepEqual(loopingMusic("music.arena", { asset: "arena.music", volume: 0.4 }), {
@@ -17,6 +17,40 @@ test("audio helpers should preserve optional volume", () => {
     id: "sound.hit",
     volume: 0.75,
   });
+});
+
+test("audio helpers should preserve spatial and bus routing metadata", () => {
+  const audio = defineAudio({
+    buses: [audioBus("bus.sfx", { volume: 0.8 }), audioBus("bus.music", { volume: 0.4 })],
+    emitters: [spatialAudioEmitter("emitter.player", { position: [1, 2, 3], radius: 12 })],
+    listeners: [audioListener("listener.main", { position: [0, 1, 5] })],
+    music: [loopingMusic("music.arena", { asset: "arena.music", bus: "bus.music" })],
+    oneShots: [oneShotSound("sound.hit", { asset: "hit.sound", bus: "bus.sfx", emitter: "emitter.player", event: "DamageEvent" })],
+  });
+
+  assert.deepEqual(audio.buses, [
+    { id: "bus.music", volume: 0.4 },
+    { id: "bus.sfx", volume: 0.8 },
+  ]);
+  assert.deepEqual(audio.emitters, [{ id: "emitter.player", position: [1, 2, 3], radius: 12 }]);
+  assert.deepEqual(audio.listeners, [{ id: "listener.main", position: [0, 1, 5] }]);
+  assert.equal(audio.music[0]?.bus, "bus.music");
+  assert.equal(audio.oneShots[0]?.bus, "bus.sfx");
+  assert.equal(audio.oneShots[0]?.emitter, "emitter.player");
+});
+
+test("audio helpers should reject missing spatial and bus route metadata", () => {
+  assert.throws(() => defineAudio({ music: [loopingMusic("music.arena", { asset: "arena.music", bus: "missing" })] }), {
+    message: "Audio playback references unknown bus 'missing'.",
+    name: "SdkError",
+  });
+  assert.throws(
+    () => defineAudio({ oneShots: [oneShotSound("sound.hit", { asset: "hit.sound", emitter: "missing", event: "DamageEvent" })] }),
+    {
+      message: "Audio one-shot references unknown emitter 'missing'.",
+      name: "SdkError",
+    },
+  );
 });
 
 test("audio helpers should reject invalid volume", () => {

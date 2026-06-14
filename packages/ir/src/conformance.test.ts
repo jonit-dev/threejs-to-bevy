@@ -158,6 +158,20 @@ test("should include capability tags for each conformance fixture", async () => 
     "asset:model.glb",
     "particles:bounded-emitter",
   ]);
+  assertFixtureCapabilities(byName, "v7-spatial-audio-buses", [
+    "asset:audio.ogg",
+    "asset:audio.wav",
+    "audio:autoplay",
+    "audio:bus",
+    "audio:listener",
+    "audio:loop",
+    "audio:music",
+    "audio:one-shot",
+    "audio:spatial-emitter",
+    "audio:volume",
+    "audio:volume-routing",
+    "ecs:events",
+  ]);
 });
 
 function assertFixtureCapabilities(

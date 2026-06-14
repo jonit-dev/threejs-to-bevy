@@ -412,6 +412,9 @@ Runtime effects:
   bounded particle emitters for fixed trace observations. IK, retargeting,
   backend animation controllers, and unbounded particle behavior must fail with
   stable diagnostics rather than being ignored.
+- V7 audio promotes portable bus routing plus listener/emitter metadata for
+  deterministic routed command observations. Real spatial attenuation, streaming
+  audio, and platform handles remain adapter-private or unsupported.
 
 ## Resources
 

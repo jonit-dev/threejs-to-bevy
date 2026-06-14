@@ -256,6 +256,8 @@ export interface IAssetsManifest {
 
 export interface IAudioOneShotIr {
   asset: string;
+  bus?: string;
+  emitter?: string;
   event: string;
   id: string;
   volume?: number;
@@ -264,12 +266,32 @@ export interface IAudioOneShotIr {
 export interface IAudioMusicIr {
   asset: string;
   autoplay?: boolean;
+  bus?: string;
   id: string;
   loop: boolean;
   volume?: number;
 }
 
+export interface IAudioBusIr {
+  id: string;
+  volume?: number;
+}
+
+export interface IAudioListenerIr {
+  id: string;
+  position: Vec3;
+}
+
+export interface IAudioEmitterIr {
+  id: string;
+  position: Vec3;
+  radius?: number;
+}
+
 export interface IAudioIr {
+  buses?: IAudioBusIr[];
+  emitters?: IAudioEmitterIr[];
+  listeners?: IAudioListenerIr[];
   schema: AudioSchema;
   version: SchemaVersion;
   music: IAudioMusicIr[];

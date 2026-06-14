@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { BoxGeometry, Mesh, MeshStandardMaterial, Scene, audioAsset, defineAudio, loopingMusic, oneShotSound } from "@threenative/sdk";
+import { BoxGeometry, Mesh, MeshStandardMaterial, Scene, audioAsset, audioBus, audioListener, defineAudio, loopingMusic, oneShotSound, spatialAudioEmitter } from "@threenative/sdk";
 import { validateBundle } from "@threenative/ir";
 
 import { emitAudio } from "./audio.js";
@@ -21,6 +21,24 @@ test("audio should emit hit sound and looping music", () => {
   assert.equal(audio.schema, "threenative.audio");
   assert.deepEqual(audio.oneShots, [{ asset: "hit.sound", event: "DamageEvent", id: "sound.hit", volume: 0.75 }]);
   assert.deepEqual(audio.music, [{ asset: "arena.music", autoplay: true, id: "music.arena", loop: true, volume: 0.4 }]);
+});
+
+test("audio should emit spatial and bus routing metadata", () => {
+  const audio = emitAudio(
+    defineAudio({
+      buses: [audioBus("bus.sfx", { volume: 0.8 })],
+      emitters: [spatialAudioEmitter("emitter.player", { position: [1, 2, 3], radius: 12 })],
+      listeners: [audioListener("listener.main", { position: [0, 1, 5] })],
+      music: [loopingMusic("music.arena", { asset: "arena.music", bus: "bus.sfx" })],
+      oneShots: [oneShotSound("sound.hit", { asset: "hit.sound", bus: "bus.sfx", emitter: "emitter.player", event: "DamageEvent" })],
+    }),
+  );
+
+  assert.deepEqual(audio.buses, [{ id: "bus.sfx", volume: 0.8 }]);
+  assert.deepEqual(audio.emitters, [{ id: "emitter.player", position: [1, 2, 3], radius: 12 }]);
+  assert.deepEqual(audio.listeners, [{ id: "listener.main", position: [0, 1, 5] }]);
+  assert.equal(audio.music[0]?.bus, "bus.sfx");
+  assert.equal(audio.oneShots[0]?.emitter, "emitter.player");
 });
 
 test("audio should emit bundle assets and validate playback declarations", async () => {

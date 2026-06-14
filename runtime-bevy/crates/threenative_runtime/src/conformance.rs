@@ -41,6 +41,10 @@ pub struct ConformanceAudioReport {
 pub struct ConformanceAudioCommandReport {
     pub asset: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub bus: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub emitter: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub event: Option<String>,
     pub id: String,
     pub kind: String,
@@ -346,6 +350,8 @@ fn report_audio(
 fn report_audio_command(command: &NativeAudioCommand) -> ConformanceAudioCommandReport {
     ConformanceAudioCommandReport {
         asset: command.asset.clone(),
+        bus: command.bus.clone(),
+        emitter: command.emitter.clone(),
         event: command.event.clone(),
         id: command.id.clone(),
         kind: match &command.kind {

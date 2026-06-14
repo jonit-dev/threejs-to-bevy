@@ -8,6 +8,8 @@ use threenative_loader::{AudioIr, LoadedBundle};
 #[derive(Clone, Debug, PartialEq)]
 pub struct NativeAudioCommand {
     pub asset: String,
+    pub bus: Option<String>,
+    pub emitter: Option<String>,
     pub event: Option<String>,
     pub id: String,
     pub kind: NativeAudioCommandKind,
@@ -41,6 +43,8 @@ pub fn start_audio(audio: &AudioIr) -> Vec<NativeAudioCommand> {
         .filter(|music| music.looped.unwrap_or(false) && music.autoplay.unwrap_or(true))
         .map(|music| NativeAudioCommand {
             asset: music.asset.clone(),
+            bus: music.bus.clone(),
+            emitter: None,
             event: None,
             id: music.id.clone(),
             kind: NativeAudioCommandKind::Loop,
@@ -59,6 +63,8 @@ pub fn handle_audio_events(audio: &AudioIr, events: &[&str]) -> Vec<NativeAudioC
                 .filter(move |one_shot| one_shot.event == **event)
                 .map(move |one_shot| NativeAudioCommand {
                     asset: one_shot.asset.clone(),
+                    bus: one_shot.bus.clone(),
+                    emitter: one_shot.emitter.clone(),
                     event: Some((*event).to_owned()),
                     id: one_shot.id.clone(),
                     kind: NativeAudioCommandKind::OneShot,

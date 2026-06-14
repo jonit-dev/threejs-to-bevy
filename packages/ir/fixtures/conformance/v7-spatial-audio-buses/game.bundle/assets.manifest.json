@@ -1,0 +1,18 @@
+{
+  "schema": "threenative.assets",
+  "version": "0.1.0",
+  "assets": [
+    {
+      "id": "arena.music",
+      "kind": "audio",
+      "format": "ogg",
+      "path": "assets/arena.ogg"
+    },
+    {
+      "id": "hit.sound",
+      "kind": "audio",
+      "format": "wav",
+      "path": "assets/hit.wav"
+    }
+  ]
+}
