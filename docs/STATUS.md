@@ -730,6 +730,13 @@ gestures from timestamped touch-point frames with matching thresholds and event
 payloads. Direct platform event stream wiring and richer gestures remain future
 input work.
 
+Input rebinding now has matching deterministic helpers in web and Bevy. The
+helpers clone an `input.ir.json` map, replace an action binding or axis slot, and
+return stable diagnostics for missing actions/axes, invalid binding indexes,
+duplicate bindings, and required gamepad bindings that should remain optional
+for portable projects. Interactive rebinding UI, persistence, and richer device
+overlays remain future work.
+
 The retained UI style surface now accepts portable `shadow` and linear
 `gradient` metadata with validation and capability flags. The web DOM overlay
 renders those as CSS `box-shadow` and `linear-gradient`; Bevy currently preserves

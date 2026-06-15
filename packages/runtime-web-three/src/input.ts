@@ -80,6 +80,21 @@ export interface ITouchGestureRecognizer {
   update(frame: ITouchGestureFrame): ITouchGestureEvent[];
 }
 
+export interface IInputRebindDiagnostic {
+  code: string;
+  message: string;
+  severity: "error" | "warning";
+}
+
+export type InputRebindTarget =
+  | { id: string; kind: "action"; bindingIndex?: number }
+  | { id: string; kind: "axis"; slot: "negative" | "positive" | "value"; bindingIndex?: number };
+
+export interface IInputRebindResult {
+  diagnostics: IInputRebindDiagnostic[];
+  input: IInputIr;
+}
+
 export function createInputState(input?: IInputIr): IWebInputState {
   const currentActions = new Set<string>();
   const previousActions = new Set<string>();
@@ -230,6 +245,108 @@ export function createInputState(input?: IInputIr): IWebInputState {
       return !currentActions.has(name) && previousActions.has(name);
     },
   };
+}
+
+export function rebindInput(input: IInputIr, target: InputRebindTarget, binding: InputBinding): IInputRebindResult {
+  const next: IInputIr = {
+    schema: input.schema,
+    version: input.version,
+    actions: input.actions.map((action) => ({ ...action, bindings: action.bindings.map((item) => ({ ...item })) })),
+    axes: input.axes.map((axis) => ({
+      ...axis,
+      negative: axis.negative.map((item) => ({ ...item })),
+      positive: axis.positive.map((item) => ({ ...item })),
+      ...(axis.value === undefined ? {} : { value: { ...axis.value } }),
+    })),
+  };
+  const diagnostics: IInputRebindDiagnostic[] = [];
+
+  if (target.kind === "action") {
+    const action = next.actions.find((item) => item.id === target.id);
+    if (action === undefined) {
+      diagnostics.push({ code: "TN_INPUT_REBIND_ACTION_MISSING", message: `Input action '${target.id}' does not exist.`, severity: "error" });
+      return { diagnostics, input: next };
+    }
+    replaceBinding(action.bindings, target.bindingIndex ?? 0, binding, diagnostics, `actions/${target.id}`);
+  } else {
+    const axis = next.axes.find((item) => item.id === target.id);
+    if (axis === undefined) {
+      diagnostics.push({ code: "TN_INPUT_REBIND_AXIS_MISSING", message: `Input axis '${target.id}' does not exist.`, severity: "error" });
+      return { diagnostics, input: next };
+    }
+    if (target.slot === "value") {
+      axis.value = { ...binding };
+    } else {
+      replaceBinding(axis[target.slot], target.bindingIndex ?? 0, binding, diagnostics, `axes/${target.id}/${target.slot}`);
+    }
+  }
+
+  diagnostics.push(...validateReboundInput(next));
+  return { diagnostics, input: next };
+}
+
+function replaceBinding(bindings: InputBinding[], index: number, binding: InputBinding, diagnostics: IInputRebindDiagnostic[], path: string): void {
+  if (!Number.isInteger(index) || index < 0) {
+    diagnostics.push({ code: "TN_INPUT_REBIND_INDEX_INVALID", message: `Input rebind index for '${path}' must be a non-negative integer.`, severity: "error" });
+    return;
+  }
+  if (index > bindings.length) {
+    diagnostics.push({ code: "TN_INPUT_REBIND_INDEX_INVALID", message: `Input rebind index ${index} is outside '${path}'.`, severity: "error" });
+    return;
+  }
+  bindings[index] = { ...binding };
+}
+
+function validateReboundInput(input: IInputIr): IInputRebindDiagnostic[] {
+  const diagnostics: IInputRebindDiagnostic[] = [];
+  const seen = new Map<string, string>();
+  for (const [path, binding] of inputBindings(input)) {
+    const key = inputBindingKey(binding);
+    if (seen.has(key)) {
+      diagnostics.push({
+        code: "TN_INPUT_REBIND_DUPLICATE",
+        message: `Input binding '${key}' is already used by '${seen.get(key)}'.`,
+        severity: "error",
+      });
+    } else {
+      seen.set(key, path);
+    }
+    if (binding.device === "gamepad" && binding.required !== false) {
+      diagnostics.push({
+        code: "TN_INPUT_REBIND_GAMEPAD_REQUIRED",
+        message: "Gamepad bindings must be optional for portable rebinding diagnostics.",
+        severity: "warning",
+      });
+    }
+  }
+  return diagnostics;
+}
+
+function inputBindings(input: IInputIr): Array<[string, InputBinding]> {
+  return [
+    ...input.actions.flatMap((action) => action.bindings.map((binding, index): [string, InputBinding] => [`action:${action.id}/${index}`, binding])),
+    ...input.axes.flatMap((axis) => [
+      ...axis.negative.map((binding, index): [string, InputBinding] => [`axis:${axis.id}/negative/${index}`, binding]),
+      ...axis.positive.map((binding, index): [string, InputBinding] => [`axis:${axis.id}/positive/${index}`, binding]),
+      ...(axis.value === undefined ? [] : [[`axis:${axis.id}/value`, axis.value] as [string, InputBinding]]),
+    ]),
+  ];
+}
+
+function inputBindingKey(binding: InputBinding): string {
+  if (binding.device === "keyboard") {
+    return `keyboard:${binding.code}`;
+  }
+  if (binding.device === "pointer" && "button" in binding) {
+    return `pointer:button:${binding.button}`;
+  }
+  if (binding.device === "pointer") {
+    return `pointer:axis:${binding.axis}`;
+  }
+  if (binding.device === "touch") {
+    return `touch:${binding.control}:${binding.axis ?? ""}`;
+  }
+  return `gamepad:${binding.control}`;
 }
 
 export function createTouchGestureRecognizer(): ITouchGestureRecognizer {

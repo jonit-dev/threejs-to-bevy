@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { IInputIr } from "@threenative/ir";
 
-import { createInputState, createTouchGestureRecognizer, reportGamepadCapabilities, requestPointerLock } from "./input.js";
+import { createInputState, createTouchGestureRecognizer, rebindInput, reportGamepadCapabilities, requestPointerLock } from "./input.js";
 
 test("input should map wasd to move axis", () => {
   const input = createInputState(makeInput());
@@ -126,6 +126,28 @@ test("input should recognize tap swipe and pinch gestures", () => {
   assert.deepEqual(recognizer.update({ timeMs: 520, touches: [] }), [
     { centerX: 5, centerY: 0, distance: 20, durationMs: 120, kind: "pinch", scale: 2 },
   ]);
+});
+
+test("input should rebind actions and axes without mutating source maps", () => {
+  const source = makeInput();
+  const actionRebind = rebindInput(source, { id: "Attack", kind: "action" }, { code: "KeyF", device: "keyboard" });
+  const axisRebind = rebindInput(actionRebind.input, { id: "MoveX", kind: "axis", slot: "positive" }, { code: "ArrowRight", device: "keyboard" });
+
+  assert.deepEqual(actionRebind.diagnostics, []);
+  assert.deepEqual(axisRebind.diagnostics, []);
+  assert.deepEqual(axisRebind.input.actions.find((action) => action.id === "Attack")?.bindings, [{ code: "KeyF", device: "keyboard" }]);
+  assert.deepEqual(axisRebind.input.axes.find((axis) => axis.id === "MoveX")?.positive, [{ code: "ArrowRight", device: "keyboard" }]);
+  assert.deepEqual(source.actions.find((action) => action.id === "Attack")?.bindings, [{ button: 0, device: "pointer" }]);
+});
+
+test("input should report rebinding diagnostics", () => {
+  const missing = rebindInput(makeInput(), { id: "Missing", kind: "action" }, { code: "KeyF", device: "keyboard" });
+  const duplicate = rebindInput(makeInput(), { id: "Attack", kind: "action" }, { code: "KeyD", device: "keyboard" });
+  const gamepad = rebindInput(makeInput(), { id: "Attack", kind: "action" }, { control: "buttonNorth", device: "gamepad" });
+
+  assert.equal(missing.diagnostics[0]?.code, "TN_INPUT_REBIND_ACTION_MISSING");
+  assert.equal(duplicate.diagnostics.some((diagnostic) => diagnostic.code === "TN_INPUT_REBIND_DUPLICATE"), true);
+  assert.equal(gamepad.diagnostics.some((diagnostic) => diagnostic.code === "TN_INPUT_REBIND_GAMEPAD_REQUIRED" && diagnostic.severity === "warning"), true);
 });
 
 test("input should ignore slow or tiny touch movement", () => {

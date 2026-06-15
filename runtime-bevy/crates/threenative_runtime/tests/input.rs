@@ -13,9 +13,10 @@ use bevy::{
 };
 use threenative_loader::{InputActionIr, InputAxisIr, InputBindingIr, InputIr};
 use threenative_runtime::input::{
-    capture_native_input, map_keyboard_event, map_pointer_button_event,
-    report_native_gamepad_capabilities, NativeInputMap, NativeInputState, NativeTouchGestureEvent,
-    NativeTouchGesturePoint, NativeTouchGestureTracker, NativeTouchState,
+    capture_native_input, map_keyboard_event, map_pointer_button_event, rebind_native_input,
+    report_native_gamepad_capabilities, NativeInputAxisRebindSlot, NativeInputMap,
+    NativeInputRebindTarget, NativeInputState, NativeTouchGestureEvent, NativeTouchGesturePoint,
+    NativeTouchGestureTracker, NativeTouchState,
 };
 
 #[test]
@@ -70,6 +71,127 @@ fn should_map_pointer_input_event_to_action() {
 
     map_pointer_button_event(&input, 0, false, &mut state);
     assert!(!state.action("Attack"));
+}
+
+#[test]
+fn should_rebind_native_input_actions_and_axes() {
+    let input = sample_rebind_input();
+
+    let action_rebind = rebind_native_input(
+        &input,
+        NativeInputRebindTarget::Action {
+            binding_index: None,
+            id: "Attack".to_owned(),
+        },
+        InputBindingIr::Keyboard {
+            code: "KeyF".to_owned(),
+        },
+    );
+    let axis_rebind = rebind_native_input(
+        &action_rebind.input,
+        NativeInputRebindTarget::Axis {
+            binding_index: None,
+            id: "MoveX".to_owned(),
+            slot: NativeInputAxisRebindSlot::Positive,
+        },
+        InputBindingIr::Keyboard {
+            code: "ArrowRight".to_owned(),
+        },
+    );
+
+    assert!(action_rebind.diagnostics.is_empty());
+    assert!(axis_rebind.diagnostics.is_empty());
+    assert!(matches!(
+        axis_rebind.input.actions[0].bindings.as_slice(),
+        [InputBindingIr::Keyboard { code }] if code == "KeyF"
+    ));
+    assert!(matches!(
+        axis_rebind.input.axes[0].positive.as_slice(),
+        [InputBindingIr::Keyboard { code }] if code == "ArrowRight"
+    ));
+    assert!(matches!(
+        input.actions[0].bindings.as_slice(),
+        [InputBindingIr::Pointer {
+            button: Some(0),
+            axis: None
+        }]
+    ));
+}
+
+#[test]
+fn should_report_native_rebind_diagnostics() {
+    let input = sample_rebind_input();
+
+    let missing = rebind_native_input(
+        &input,
+        NativeInputRebindTarget::Action {
+            binding_index: None,
+            id: "Missing".to_owned(),
+        },
+        InputBindingIr::Keyboard {
+            code: "KeyF".to_owned(),
+        },
+    );
+    let duplicate = rebind_native_input(
+        &input,
+        NativeInputRebindTarget::Action {
+            binding_index: None,
+            id: "Attack".to_owned(),
+        },
+        InputBindingIr::Keyboard {
+            code: "KeyD".to_owned(),
+        },
+    );
+    let gamepad = rebind_native_input(
+        &input,
+        NativeInputRebindTarget::Action {
+            binding_index: None,
+            id: "Attack".to_owned(),
+        },
+        InputBindingIr::Gamepad {
+            control: "buttonNorth".to_owned(),
+            required: None,
+        },
+    );
+
+    assert_eq!(
+        missing
+            .diagnostics
+            .first()
+            .map(|diagnostic| diagnostic.code.as_str()),
+        Some("TN_INPUT_REBIND_ACTION_MISSING")
+    );
+    assert!(duplicate
+        .diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.code == "TN_INPUT_REBIND_DUPLICATE"));
+    assert!(gamepad.diagnostics.iter().any(|diagnostic| diagnostic.code
+        == "TN_INPUT_REBIND_GAMEPAD_REQUIRED"
+        && diagnostic.severity == "warning"));
+}
+
+fn sample_rebind_input() -> InputIr {
+    InputIr {
+        schema: "threenative.input".to_owned(),
+        version: "0.1.0".to_owned(),
+        actions: vec![InputActionIr {
+            id: "Attack".to_owned(),
+            bindings: vec![InputBindingIr::Pointer {
+                button: Some(0),
+                axis: None,
+            }],
+        }],
+        axes: vec![InputAxisIr {
+            id: "MoveX".to_owned(),
+            negative: vec![InputBindingIr::Keyboard {
+                code: "KeyA".to_owned(),
+            }],
+            positive: vec![InputBindingIr::Keyboard {
+                code: "KeyD".to_owned(),
+            }],
+            value: None,
+        }],
+    }
 }
 
 #[test]

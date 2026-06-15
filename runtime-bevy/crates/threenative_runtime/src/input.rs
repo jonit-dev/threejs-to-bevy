@@ -53,6 +53,39 @@ pub struct NativeGamepadDiagnostic {
     pub severity: String,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum NativeInputRebindTarget {
+    Action {
+        binding_index: Option<usize>,
+        id: String,
+    },
+    Axis {
+        binding_index: Option<usize>,
+        id: String,
+        slot: NativeInputAxisRebindSlot,
+    },
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum NativeInputAxisRebindSlot {
+    Negative,
+    Positive,
+    Value,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct NativeInputRebindDiagnostic {
+    pub code: String,
+    pub message: String,
+    pub severity: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct NativeInputRebindResult {
+    pub diagnostics: Vec<NativeInputRebindDiagnostic>,
+    pub input: InputIr,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct NativeTouchGesturePoint {
     pub id: u64,
@@ -406,6 +439,173 @@ pub fn report_native_gamepad_capabilities(
         declared_controls,
         diagnostics,
         supported: gamepads.is_some(),
+    }
+}
+
+pub fn rebind_native_input(
+    input: &InputIr,
+    target: NativeInputRebindTarget,
+    binding: InputBindingIr,
+) -> NativeInputRebindResult {
+    let mut next = input.clone();
+    let mut diagnostics = Vec::new();
+    match target {
+        NativeInputRebindTarget::Action { binding_index, id } => {
+            if let Some(action) = next.actions.iter_mut().find(|action| action.id == id) {
+                replace_native_binding(
+                    &mut action.bindings,
+                    binding_index.unwrap_or(0),
+                    binding,
+                    &mut diagnostics,
+                    &format!("actions/{id}"),
+                );
+            } else {
+                diagnostics.push(NativeInputRebindDiagnostic {
+                    code: "TN_INPUT_REBIND_ACTION_MISSING".to_owned(),
+                    message: format!("Input action '{id}' does not exist."),
+                    severity: "error".to_owned(),
+                });
+                return NativeInputRebindResult {
+                    diagnostics,
+                    input: next,
+                };
+            }
+        }
+        NativeInputRebindTarget::Axis {
+            binding_index,
+            id,
+            slot,
+        } => {
+            if let Some(axis) = next.axes.iter_mut().find(|axis| axis.id == id) {
+                match slot {
+                    NativeInputAxisRebindSlot::Negative => replace_native_binding(
+                        &mut axis.negative,
+                        binding_index.unwrap_or(0),
+                        binding,
+                        &mut diagnostics,
+                        &format!("axes/{id}/negative"),
+                    ),
+                    NativeInputAxisRebindSlot::Positive => replace_native_binding(
+                        &mut axis.positive,
+                        binding_index.unwrap_or(0),
+                        binding,
+                        &mut diagnostics,
+                        &format!("axes/{id}/positive"),
+                    ),
+                    NativeInputAxisRebindSlot::Value => axis.value = Some(binding),
+                }
+            } else {
+                diagnostics.push(NativeInputRebindDiagnostic {
+                    code: "TN_INPUT_REBIND_AXIS_MISSING".to_owned(),
+                    message: format!("Input axis '{id}' does not exist."),
+                    severity: "error".to_owned(),
+                });
+                return NativeInputRebindResult {
+                    diagnostics,
+                    input: next,
+                };
+            }
+        }
+    }
+    diagnostics.extend(validate_rebound_input(&next));
+    NativeInputRebindResult {
+        diagnostics,
+        input: next,
+    }
+}
+
+fn replace_native_binding(
+    bindings: &mut Vec<InputBindingIr>,
+    index: usize,
+    binding: InputBindingIr,
+    diagnostics: &mut Vec<NativeInputRebindDiagnostic>,
+    path: &str,
+) {
+    if index > bindings.len() {
+        diagnostics.push(NativeInputRebindDiagnostic {
+            code: "TN_INPUT_REBIND_INDEX_INVALID".to_owned(),
+            message: format!("Input rebind index {index} is outside '{path}'."),
+            severity: "error".to_owned(),
+        });
+        return;
+    }
+    if index == bindings.len() {
+        bindings.push(binding);
+    } else {
+        bindings[index] = binding;
+    }
+}
+
+fn validate_rebound_input(input: &InputIr) -> Vec<NativeInputRebindDiagnostic> {
+    let mut diagnostics = Vec::new();
+    let mut seen = HashMap::new();
+    for (path, binding) in native_input_bindings(input) {
+        let key = native_input_binding_key(binding);
+        if let Some(existing) = seen.insert(key.clone(), path.clone()) {
+            diagnostics.push(NativeInputRebindDiagnostic {
+                code: "TN_INPUT_REBIND_DUPLICATE".to_owned(),
+                message: format!("Input binding '{key}' is already used by '{existing}'."),
+                severity: "error".to_owned(),
+            });
+        }
+        if matches!(
+            binding,
+            InputBindingIr::Gamepad {
+                required: Some(true) | None,
+                ..
+            }
+        ) {
+            diagnostics.push(NativeInputRebindDiagnostic {
+                code: "TN_INPUT_REBIND_GAMEPAD_REQUIRED".to_owned(),
+                message: "Gamepad bindings must be optional for portable rebinding diagnostics."
+                    .to_owned(),
+                severity: "warning".to_owned(),
+            });
+        }
+    }
+    diagnostics
+}
+
+fn native_input_bindings(input: &InputIr) -> Vec<(String, &InputBindingIr)> {
+    let mut bindings = Vec::new();
+    for action in &input.actions {
+        for (index, binding) in action.bindings.iter().enumerate() {
+            bindings.push((format!("action:{}/{}", action.id, index), binding));
+        }
+    }
+    for axis in &input.axes {
+        for (index, binding) in axis.negative.iter().enumerate() {
+            bindings.push((format!("axis:{}/negative/{}", axis.id, index), binding));
+        }
+        for (index, binding) in axis.positive.iter().enumerate() {
+            bindings.push((format!("axis:{}/positive/{}", axis.id, index), binding));
+        }
+        if let Some(binding) = axis.value.as_ref() {
+            bindings.push((format!("axis:{}/value", axis.id), binding));
+        }
+    }
+    bindings
+}
+
+fn native_input_binding_key(binding: &InputBindingIr) -> String {
+    match binding {
+        InputBindingIr::Keyboard { code } => format!("keyboard:{code}"),
+        InputBindingIr::Pointer {
+            button: Some(button),
+            axis: _,
+        } => format!("pointer:button:{button}"),
+        InputBindingIr::Pointer {
+            button: _,
+            axis: Some(axis),
+        } => format!("pointer:axis:{axis}"),
+        InputBindingIr::Pointer {
+            button: None,
+            axis: None,
+        } => "pointer:none".to_owned(),
+        InputBindingIr::Touch { control, axis } => {
+            format!("touch:{}:{}", control, axis.as_deref().unwrap_or(""))
+        }
+        InputBindingIr::Gamepad { control, .. } => format!("gamepad:{control}"),
     }
 }
 
