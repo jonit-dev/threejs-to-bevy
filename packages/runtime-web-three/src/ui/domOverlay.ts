@@ -181,4 +181,10 @@ function applyLayoutStyle(style: Partial<CSSStyleDeclaration>, layout: IRendered
   if (layout.grow !== undefined) {
     style.flexGrow = String(layout.grow);
   }
+  if (layout.overflow !== undefined) {
+    style.overflow = layout.overflow;
+  }
+  if (layout.zIndex !== undefined) {
+    style.zIndex = String(layout.zIndex);
+  }
 }

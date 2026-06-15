@@ -664,9 +664,11 @@ pub struct UiLayoutIr {
     pub grow: Option<f32>,
     pub height: Option<f32>,
     pub justify: Option<String>,
+    pub overflow: Option<String>,
     pub padding: Option<f32>,
     pub row_gap: Option<f32>,
     pub width: Option<f32>,
+    pub z_index: Option<i32>,
 }
 
 #[derive(Clone, Debug, Deserialize)]

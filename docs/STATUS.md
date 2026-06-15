@@ -221,6 +221,14 @@ maps enabled bloom onto camera `BloomSettings` with matching intensity and
 threshold. Advanced post-processing stacks and renderer-specific bloom radius
 controls remain future work.
 
+Post-V7 UI layout coverage now promotes two practical HUD layering controls:
+UI layout metadata accepts validated `overflow: "hidden" | "visible"` and
+integer `zIndex`; the UI authoring package preserves those fields; bundle
+capabilities report `ui:overflow` and `ui:z-index`; the web DOM overlay maps
+them to CSS overflow and z-index; and the Bevy UI adapter maps them to
+`Style.overflow` plus `ZIndex::Local`. Anchors, richer constraints, and
+scrolling remain future UI layout work.
+
 V5-07 has landed the lighting, atmosphere, shadow, and color parity-evidence
 slice: shared fixtures now cover visible/hidden meshes plus ranged point and
 spot lights, SDK/compiler output preserves point-light range and spot-light

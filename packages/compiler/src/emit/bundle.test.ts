@@ -455,6 +455,7 @@ test("should emit ui ir for scene with portable hud", async () => {
             Button({ action: "Pause", focusable: true, id: "hud.pause", label: "Pause" }),
           ],
           id: "hud.stack",
+          layout: { overflow: "hidden", zIndex: 5 },
         }),
         id: "hud",
       }),
@@ -470,6 +471,9 @@ test("should emit ui ir for scene with portable hud", async () => {
       ["text", "bar", "button"],
     );
     assert.equal(ui.root.children[0].children[2].action, "Pause");
+    assert.deepEqual(ui.root.children[0].layout, { overflow: "hidden", zIndex: 5 });
+    assertCapability(manifest, "ui", "overflow");
+    assertCapability(manifest, "ui", "z-index");
     assert.equal(result.ok, true);
   } finally {
     await rm(root, { force: true, recursive: true });

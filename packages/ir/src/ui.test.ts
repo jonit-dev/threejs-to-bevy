@@ -105,7 +105,7 @@ test("ui should validate explicit flex layout metadata", async () => {
       root: {
         id: "hud",
         kind: "row",
-        layout: { align: "center", columnGap: 12, direction: "row", height: 48, justify: "spaceBetween", padding: 6, rowGap: 4, width: 320 },
+        layout: { align: "center", columnGap: 12, direction: "row", height: 48, justify: "spaceBetween", overflow: "hidden", padding: 6, rowGap: 4, width: 320, zIndex: 5 },
         children: [{ id: "score", kind: "text", text: "0" }],
       },
     });
@@ -128,7 +128,7 @@ test("ui should reject invalid flex layout metadata", async () => {
       root: {
         id: "hud",
         kind: "row",
-        layout: { align: "baseline", direction: "diagonal", grow: -1, justify: "around" },
+        layout: { align: "baseline", direction: "diagonal", grow: -1, justify: "around", overflow: "scroll", zIndex: 0.5 },
       },
     });
 
@@ -138,7 +138,9 @@ test("ui should reject invalid flex layout metadata", async () => {
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_LAYOUT_DIRECTION_INVALID"), true);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_LAYOUT_ALIGN_INVALID"), true);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_LAYOUT_JUSTIFY_INVALID"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_LAYOUT_OVERFLOW_INVALID"), true);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_LAYOUT_NUMBER_INVALID"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_LAYOUT_Z_INDEX_INVALID"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

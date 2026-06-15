@@ -114,6 +114,13 @@ fn ui_should_spawn_bevy_entities_with_stable_ids_and_hierarchy() {
     assert_eq!(hud_style.padding, UiRect::all(Val::Px(6.0)));
     assert_eq!(hud_style.width, Val::Px(320.0));
     assert_eq!(hud_style.height, Val::Px(48.0));
+    assert_eq!(hud_style.overflow, Overflow::clip());
+    assert_eq!(
+        app.world()
+            .get::<ZIndex>(hud)
+            .expect("hud should have z-index"),
+        &ZIndex::Local(5)
+    );
     let pause_style = app
         .world()
         .get::<Style>(pause)
@@ -205,7 +212,7 @@ fn write_ui_bundle() -> PathBuf {
   "root": {
     "id": "hud",
     "kind": "column",
-    "layout": { "align": "center", "columnGap": 12, "direction": "row", "height": 48, "justify": "spaceBetween", "padding": 6, "rowGap": 4, "width": 320 },
+    "layout": { "align": "center", "columnGap": 12, "direction": "row", "height": 48, "justify": "spaceBetween", "overflow": "hidden", "padding": 6, "rowGap": 4, "width": 320, "zIndex": 5 },
     "children": [
       { "id": "label", "kind": "text", "text": "Health" },
       { "id": "health", "kind": "bar", "value": 8, "max": 10 },

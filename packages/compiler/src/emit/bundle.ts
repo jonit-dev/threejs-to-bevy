@@ -589,6 +589,12 @@ function visitUiNode(node: IUiIr["root"], add: (domain: string, capability: stri
   }
   if (node.layout !== undefined) {
     add("ui", "flex-layout");
+    if (node.layout.overflow !== undefined) {
+      add("ui", "overflow");
+    }
+    if (node.layout.zIndex !== undefined) {
+      add("ui", "z-index");
+    }
   }
   if (node.navigation !== undefined) {
     add("ui", "navigation");

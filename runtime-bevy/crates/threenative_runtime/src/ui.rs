@@ -260,6 +260,9 @@ fn spawn_node(
         if let Some(focusable) = node.focusable {
             entity_mut.insert(NativeUiFocusable(focusable));
         }
+        if let Some(z_index) = node.layout.as_ref().and_then(|layout| layout.z_index) {
+            entity_mut.insert(ZIndex::Local(z_index));
+        }
         if node.kind == "bar" {
             entity_mut.insert(NativeUiBar {
                 value: node.value.unwrap_or(0.0),
@@ -373,6 +376,12 @@ fn apply_layout(style: &mut Style, layout: Option<&threenative_loader::UiLayoutI
     }
     if let Some(grow) = layout.grow {
         style.flex_grow = grow;
+    }
+    if let Some(overflow) = layout.overflow.as_deref() {
+        style.overflow = match overflow {
+            "hidden" => Overflow::clip(),
+            _ => Overflow::visible(),
+        };
     }
 }
 

@@ -44,9 +44,11 @@ export interface IUiLayoutIr {
   grow?: number;
   height?: number;
   justify?: "center" | "end" | "spaceBetween" | "start";
+  overflow?: "hidden" | "visible";
   padding?: number;
   rowGap?: number;
   width?: number;
+  zIndex?: number;
 }
 
 export function captureUi(root: IUiElement): IUiIr {

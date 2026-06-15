@@ -564,7 +564,7 @@ function validateUiLayout(value: unknown, path: string, diagnostics: IIrDiagnost
     return;
   }
   for (const key of Object.keys(value)) {
-    if (!["align", "columnGap", "direction", "grow", "height", "justify", "padding", "rowGap", "width"].includes(key)) {
+    if (!["align", "columnGap", "direction", "grow", "height", "justify", "overflow", "padding", "rowGap", "width", "zIndex"].includes(key)) {
       diagnostics.push({ code: "TN_IR_UI_LAYOUT_FIELD_UNSUPPORTED", message: `UI layout uses unsupported field '${key}'.`, path: `${path}/${key}` });
     }
   }
@@ -577,11 +577,17 @@ function validateUiLayout(value: unknown, path: string, diagnostics: IIrDiagnost
   if (value.justify !== undefined && !["center", "end", "spaceBetween", "start"].includes(String(value.justify))) {
     diagnostics.push({ code: "TN_IR_UI_LAYOUT_JUSTIFY_INVALID", message: "UI layout justify must be start, center, end, or spaceBetween.", path: `${path}/justify` });
   }
+  if (value.overflow !== undefined && !["hidden", "visible"].includes(String(value.overflow))) {
+    diagnostics.push({ code: "TN_IR_UI_LAYOUT_OVERFLOW_INVALID", message: "UI layout overflow must be hidden or visible.", path: `${path}/overflow` });
+  }
   for (const key of ["columnGap", "grow", "height", "padding", "rowGap", "width"]) {
     const item = value[key];
     if (item !== undefined && (typeof item !== "number" || !Number.isFinite(item) || item < 0)) {
       diagnostics.push({ code: "TN_IR_UI_LAYOUT_NUMBER_INVALID", message: `UI layout ${key} must be a finite non-negative number.`, path: `${path}/${key}` });
     }
+  }
+  if (value.zIndex !== undefined && (typeof value.zIndex !== "number" || !Number.isInteger(value.zIndex))) {
+    diagnostics.push({ code: "TN_IR_UI_LAYOUT_Z_INDEX_INVALID", message: "UI layout zIndex must be an integer.", path: `${path}/zIndex` });
   }
 }
 
