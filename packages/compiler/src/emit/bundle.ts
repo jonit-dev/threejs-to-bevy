@@ -592,6 +592,14 @@ function visitUiNode(node: IUiIr["root"], add: (domain: string, capability: stri
     if (node.layout.position !== undefined || node.layout.inset !== undefined) {
       add("ui", "anchors");
     }
+    if (
+      node.layout.minWidth !== undefined
+      || node.layout.maxWidth !== undefined
+      || node.layout.minHeight !== undefined
+      || node.layout.maxHeight !== undefined
+    ) {
+      add("ui", "size-constraints");
+    }
     if (node.layout.overflow !== undefined) {
       add("ui", "overflow");
     }

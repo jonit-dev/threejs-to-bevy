@@ -564,7 +564,7 @@ function validateUiLayout(value: unknown, path: string, diagnostics: IIrDiagnost
     return;
   }
   for (const key of Object.keys(value)) {
-    if (!["align", "columnGap", "direction", "grow", "height", "inset", "justify", "overflow", "padding", "position", "rowGap", "width", "zIndex"].includes(key)) {
+    if (!["align", "columnGap", "direction", "grow", "height", "inset", "justify", "maxHeight", "maxWidth", "minHeight", "minWidth", "overflow", "padding", "position", "rowGap", "width", "zIndex"].includes(key)) {
       diagnostics.push({ code: "TN_IR_UI_LAYOUT_FIELD_UNSUPPORTED", message: `UI layout uses unsupported field '${key}'.`, path: `${path}/${key}` });
     }
   }
@@ -583,7 +583,7 @@ function validateUiLayout(value: unknown, path: string, diagnostics: IIrDiagnost
   if (value.position !== undefined && !["absolute", "relative"].includes(String(value.position))) {
     diagnostics.push({ code: "TN_IR_UI_LAYOUT_POSITION_INVALID", message: "UI layout position must be absolute or relative.", path: `${path}/position` });
   }
-  for (const key of ["columnGap", "grow", "height", "padding", "rowGap", "width"]) {
+  for (const key of ["columnGap", "grow", "height", "maxHeight", "maxWidth", "minHeight", "minWidth", "padding", "rowGap", "width"]) {
     const item = value[key];
     if (item !== undefined && (typeof item !== "number" || !Number.isFinite(item) || item < 0)) {
       diagnostics.push({ code: "TN_IR_UI_LAYOUT_NUMBER_INVALID", message: `UI layout ${key} must be a finite non-negative number.`, path: `${path}/${key}` });

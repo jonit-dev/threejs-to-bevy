@@ -394,6 +394,18 @@ fn apply_layout(style: &mut Style, layout: Option<&threenative_loader::UiLayoutI
     if let Some(height) = layout.height {
         style.height = Val::Px(height);
     }
+    if let Some(min_width) = layout.min_width {
+        style.min_width = Val::Px(min_width);
+    }
+    if let Some(max_width) = layout.max_width {
+        style.max_width = Val::Px(max_width);
+    }
+    if let Some(min_height) = layout.min_height {
+        style.min_height = Val::Px(min_height);
+    }
+    if let Some(max_height) = layout.max_height {
+        style.max_height = Val::Px(max_height);
+    }
     if let Some(grow) = layout.grow {
         style.flex_grow = grow;
     }

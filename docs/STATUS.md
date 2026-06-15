@@ -237,6 +237,13 @@ offsets; and Bevy maps them to `Style.position_type` plus top/right/bottom/left
 `Val::Px` offsets. Richer min/max constraints and scroll containers remain
 future work.
 
+Post-V7 UI layout constraints now promote `minWidth`, `maxWidth`, `minHeight`,
+and `maxHeight` as non-negative pixel constraints. The UI authoring package and
+IR validation preserve the fields, bundle capabilities report
+`ui:size-constraints`, the web DOM overlay maps them to CSS min/max dimensions,
+and the Bevy UI adapter maps them to `Style` min/max `Val::Px` fields.
+Scrolling containers remain future UI layout work.
+
 V5-07 has landed the lighting, atmosphere, shadow, and color parity-evidence
 slice: shared fixtures now cover visible/hidden meshes plus ranged point and
 spot lights, SDK/compiler output preserves point-light range and spot-light

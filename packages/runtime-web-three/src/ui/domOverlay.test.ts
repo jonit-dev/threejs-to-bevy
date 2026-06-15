@@ -53,6 +53,8 @@ test("ui dom overlay should apply explicit flex layout metadata", () => {
   assert.equal(controls?.style.top, "16px");
   assert.equal(controls?.style.width, "320px");
   assert.equal(controls?.style.height, "48px");
+  assert.equal(controls?.style.maxWidth, "480px");
+  assert.equal(controls?.style.minHeight, "24px");
   assert.equal(controls?.style.overflow, "hidden");
   assert.equal(controls?.style.zIndex, "5");
   assert.equal(pause?.style.flexGrow, "1");
@@ -71,7 +73,7 @@ function makeUi(): IUiIr {
         {
           id: "controls",
           kind: "row",
-          layout: { align: "center", columnGap: 12, direction: "row", height: 48, inset: { left: 24, top: 16 }, justify: "spaceBetween", overflow: "hidden", padding: 6, position: "absolute", rowGap: 4, width: 320, zIndex: 5 },
+          layout: { align: "center", columnGap: 12, direction: "row", height: 48, inset: { left: 24, top: 16 }, justify: "spaceBetween", maxWidth: 480, minHeight: 24, overflow: "hidden", padding: 6, position: "absolute", rowGap: 4, width: 320, zIndex: 5 },
           children: [
             { id: "pause", kind: "button", label: "Pause", action: "Pause", layout: { grow: 1 } },
             { id: "jump", kind: "touchControl", label: "Jump", action: "Jump" },

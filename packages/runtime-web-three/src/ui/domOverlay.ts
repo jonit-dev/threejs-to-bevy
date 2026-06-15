@@ -193,6 +193,18 @@ function applyLayoutStyle(style: Partial<CSSStyleDeclaration>, layout: IRendered
   if (layout.height !== undefined) {
     style.height = `${layout.height}px`;
   }
+  if (layout.minWidth !== undefined) {
+    style.minWidth = `${layout.minWidth}px`;
+  }
+  if (layout.maxWidth !== undefined) {
+    style.maxWidth = `${layout.maxWidth}px`;
+  }
+  if (layout.minHeight !== undefined) {
+    style.minHeight = `${layout.minHeight}px`;
+  }
+  if (layout.maxHeight !== undefined) {
+    style.maxHeight = `${layout.maxHeight}px`;
+  }
   if (layout.grow !== undefined) {
     style.flexGrow = String(layout.grow);
   }

@@ -50,6 +50,10 @@ export interface IUiLayoutIr {
     top?: number;
   };
   justify?: "center" | "end" | "spaceBetween" | "start";
+  maxHeight?: number;
+  maxWidth?: number;
+  minHeight?: number;
+  minWidth?: number;
   overflow?: "hidden" | "visible";
   padding?: number;
   position?: "absolute" | "relative";
