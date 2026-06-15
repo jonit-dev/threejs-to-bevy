@@ -80,6 +80,46 @@ export interface ITouchGestureRecognizer {
   update(frame: ITouchGestureFrame): ITouchGestureEvent[];
 }
 
+export interface IDragPickingFrame {
+  buttonDown: boolean;
+  pickedEntity?: string;
+  pointer: [number, number];
+  timeMs: number;
+}
+
+export type IDragPickingEvent =
+  | {
+      entity: string;
+      kind: "start";
+      pointer: [number, number];
+      timeMs: number;
+    }
+  | {
+      delta: [number, number];
+      entity: string;
+      kind: "move";
+      pointer: [number, number];
+      timeMs: number;
+    }
+  | {
+      delta: [number, number];
+      entity: string;
+      kind: "drop";
+      pointer: [number, number];
+      target?: string;
+      timeMs: number;
+    }
+  | {
+      entity: string;
+      kind: "cancel";
+      pointer: [number, number];
+      timeMs: number;
+    };
+
+export interface IDragPickingRecognizer {
+  update(frame: IDragPickingFrame): IDragPickingEvent[];
+}
+
 export interface IInputRebindDiagnostic {
   code: string;
   message: string;
@@ -285,6 +325,56 @@ export function rebindInput(input: IInputIr, target: InputRebindTarget, binding:
   return { diagnostics, input: next };
 }
 
+export function createDragPickingRecognizer(options: { moveThreshold?: number } = {}): IDragPickingRecognizer {
+  const moveThreshold = options.moveThreshold ?? 0.005;
+  let active: { entity: string; pointer: [number, number]; started: boolean; start: [number, number] } | undefined;
+
+  return {
+    update(frame) {
+      const events: IDragPickingEvent[] = [];
+      if (frame.buttonDown) {
+        if (active === undefined && frame.pickedEntity !== undefined) {
+          active = { entity: frame.pickedEntity, pointer: frame.pointer, started: false, start: frame.pointer };
+        }
+        if (active !== undefined) {
+          const delta: [number, number] = [
+            round(frame.pointer[0] - active.pointer[0]),
+            round(frame.pointer[1] - active.pointer[1]),
+          ];
+          const totalDistance = distance(frame.pointer, active.start);
+          if (!active.started && totalDistance >= moveThreshold) {
+            active.started = true;
+            events.push({ entity: active.entity, kind: "start", pointer: active.start, timeMs: frame.timeMs });
+          }
+          if (active.started && (delta[0] !== 0 || delta[1] !== 0)) {
+            events.push({ delta, entity: active.entity, kind: "move", pointer: frame.pointer, timeMs: frame.timeMs });
+          }
+          active.pointer = frame.pointer;
+        }
+        return events;
+      }
+
+      if (active === undefined) {
+        return events;
+      }
+      if (active.started) {
+        events.push({
+          delta: [round(frame.pointer[0] - active.start[0]), round(frame.pointer[1] - active.start[1])],
+          entity: active.entity,
+          kind: "drop",
+          pointer: frame.pointer,
+          ...(frame.pickedEntity === undefined ? {} : { target: frame.pickedEntity }),
+          timeMs: frame.timeMs,
+        });
+      } else {
+        events.push({ entity: active.entity, kind: "cancel", pointer: frame.pointer, timeMs: frame.timeMs });
+      }
+      active = undefined;
+      return events;
+    },
+  };
+}
+
 function replaceBinding(bindings: InputBinding[], index: number, binding: InputBinding, diagnostics: IInputRebindDiagnostic[], path: string): void {
   if (!Number.isInteger(index) || index < 0) {
     diagnostics.push({ code: "TN_INPUT_REBIND_INDEX_INVALID", message: `Input rebind index for '${path}' must be a non-negative integer.`, severity: "error" });
@@ -450,6 +540,14 @@ function classifyPinch(
 
 function clampAxis(value: number): number {
   return Math.max(-1, Math.min(1, value));
+}
+
+function distance(left: [number, number], right: [number, number]): number {
+  return Math.hypot(left[0] - right[0], left[1] - right[1]);
+}
+
+function round(value: number): number {
+  return Number(value.toFixed(6));
 }
 
 export function attachInputListeners(target: HTMLElement | Window, input: IWebInputState): () => void {

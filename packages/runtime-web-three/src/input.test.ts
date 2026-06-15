@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { IInputIr } from "@threenative/ir";
 
-import { createInputState, createTouchGestureRecognizer, rebindInput, reportGamepadCapabilities, requestPointerLock } from "./input.js";
+import { createDragPickingRecognizer, createInputState, createTouchGestureRecognizer, rebindInput, reportGamepadCapabilities, requestPointerLock } from "./input.js";
 
 test("input should map wasd to move axis", () => {
   const input = createInputState(makeInput());
@@ -157,6 +157,30 @@ test("input should ignore slow or tiny touch movement", () => {
   recognizer.update({ timeMs: 900, touches: [{ id: 1, x: 30, y: 0 }] });
 
   assert.deepEqual(recognizer.update({ timeMs: 950, touches: [] }), []);
+});
+
+test("input should recognize drag and drop picking events", () => {
+  const recognizer = createDragPickingRecognizer({ moveThreshold: 0.05 });
+
+  assert.deepEqual(recognizer.update({ buttonDown: true, pickedEntity: "crate", pointer: [0.1, 0.1], timeMs: 0 }), []);
+  assert.deepEqual(recognizer.update({ buttonDown: true, pickedEntity: "crate", pointer: [0.12, 0.11], timeMs: 16 }), []);
+  assert.deepEqual(recognizer.update({ buttonDown: true, pickedEntity: "floor", pointer: [0.2, 0.16], timeMs: 32 }), [
+    { entity: "crate", kind: "start", pointer: [0.1, 0.1], timeMs: 32 },
+    { delta: [0.1, 0.06], entity: "crate", kind: "move", pointer: [0.2, 0.16], timeMs: 32 },
+  ]);
+  assert.deepEqual(recognizer.update({ buttonDown: false, pickedEntity: "floor", pointer: [0.25, 0.2], timeMs: 48 }), [
+    { delta: [0.15, 0.1], entity: "crate", kind: "drop", pointer: [0.25, 0.2], target: "floor", timeMs: 48 },
+  ]);
+});
+
+test("input should cancel picked drag before threshold", () => {
+  const recognizer = createDragPickingRecognizer({ moveThreshold: 0.05 });
+
+  recognizer.update({ buttonDown: true, pickedEntity: "crate", pointer: [0.1, 0.1], timeMs: 0 });
+
+  assert.deepEqual(recognizer.update({ buttonDown: false, pointer: [0.11, 0.11], timeMs: 16 }), [
+    { entity: "crate", kind: "cancel", pointer: [0.11, 0.11], timeMs: 16 },
+  ]);
 });
 
 test("input should report pointer lock denied when browser rejects request", async () => {
