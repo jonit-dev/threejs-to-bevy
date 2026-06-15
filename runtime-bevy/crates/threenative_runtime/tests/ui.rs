@@ -9,7 +9,7 @@ use bevy::prelude::*;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{UiIr, UiNodeIr, load_bundle};
 use threenative_runtime::ui::{
-    NativeUiAction, NativeUiBar, NativeUiKind, build_native_ui, map_ui_into_world,
+    NativeUiAction, NativeUiBar, NativeUiKind, NativeUiStyle, build_native_ui, map_ui_into_world,
     trace_ui_navigation,
 };
 
@@ -33,6 +33,17 @@ fn ui_should_build_bevy_hud_from_ui_ir() {
         vec!["text", "bar", "button"]
     );
     assert_eq!(native.children[2].action.as_deref(), Some("Pause"));
+    assert_eq!(
+        native.style,
+        Some(NativeUiStyle {
+            background_color: Some("#101820cc".to_owned()),
+            border_color: Some("#ffffff".to_owned()),
+            border_radius: Some(8.0),
+            border_width: Some(2.0),
+            color: Some("#ffcc00".to_owned()),
+            opacity: Some(0.75),
+        })
+    );
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
@@ -73,6 +84,7 @@ fn ui_should_spawn_bevy_entities_with_stable_ids_and_hierarchy() {
         .get::<Text>(label)
         .expect("label should be text");
     assert_eq!(label_text.sections[0].value, "Health");
+    assert_color(label_text.sections[0].style.color, (1.0, 0.8, 0.0, 0.75));
     assert!(app.world().get::<Button>(pause).is_some());
     assert_eq!(
         app.world()
@@ -120,6 +132,27 @@ fn ui_should_spawn_bevy_entities_with_stable_ids_and_hierarchy() {
     assert_eq!(hud_style.max_width, Val::Px(480.0));
     assert_eq!(hud_style.min_height, Val::Px(24.0));
     assert_eq!(hud_style.overflow, Overflow::clip());
+    assert_eq!(hud_style.border, UiRect::all(Val::Px(2.0)));
+    assert_eq!(
+        app.world()
+            .get::<BorderRadius>(hud)
+            .expect("hud should have border radius"),
+        &BorderRadius::all(Val::Px(8.0))
+    );
+    assert_color(
+        app.world()
+            .get::<BackgroundColor>(hud)
+            .expect("hud should have background color")
+            .0,
+        (16.0 / 255.0, 24.0 / 255.0, 32.0 / 255.0, 0.6),
+    );
+    assert_color(
+        app.world()
+            .get::<BorderColor>(hud)
+            .expect("hud should have border color")
+            .0,
+        (1.0, 1.0, 1.0, 0.75),
+    );
     assert_eq!(
         app.world()
             .get::<ZIndex>(hud)
@@ -155,6 +188,7 @@ fn ui_should_reject_unsupported_ui_node() {
             navigation: None,
             text: None,
             value: None,
+            style: None,
         },
     };
 
@@ -211,20 +245,21 @@ fn write_ui_bundle() -> PathBuf {
     write(
         &root,
         "ui.ir.json",
-        r#"{
+        r##"{
   "schema": "threenative.ui",
   "version": "0.1.0",
   "root": {
     "id": "hud",
     "kind": "column",
     "layout": { "align": "center", "columnGap": 12, "direction": "row", "height": 48, "inset": { "left": 24, "top": 16 }, "justify": "spaceBetween", "maxWidth": 480, "minHeight": 24, "overflow": "hidden", "padding": 6, "position": "absolute", "rowGap": 4, "width": 320, "zIndex": 5 },
+    "style": { "backgroundColor": "#101820cc", "borderColor": "#ffffff", "borderRadius": 8, "borderWidth": 2, "color": "#ffcc00", "opacity": 0.75 },
     "children": [
-      { "id": "label", "kind": "text", "text": "Health" },
+      { "id": "label", "kind": "text", "text": "Health", "style": { "color": "#ffcc00", "opacity": 0.75 } },
       { "id": "health", "kind": "bar", "value": 8, "max": 10 },
       { "id": "pause", "kind": "button", "label": "Pause", "action": "Pause", "layout": { "grow": 1 } }
     ]
   }
-}"#,
+}"##,
     );
     write(
         &root,
@@ -263,4 +298,17 @@ fn only_child(world: &World, entity: Entity) -> Entity {
     let children = children.iter().copied().collect::<Vec<_>>();
     assert_eq!(children.len(), 1);
     children[0]
+}
+
+fn assert_color(color: Color, expected: (f32, f32, f32, f32)) {
+    let color = color.to_srgba();
+    assert!(
+        (color.red - expected.0).abs() < 0.001
+            && (color.green - expected.1).abs() < 0.001
+            && (color.blue - expected.2).abs() < 0.001
+            && (color.alpha - expected.3).abs() < 0.001,
+        "expected rgba {:?}, got {:?}",
+        expected,
+        color
+    );
 }

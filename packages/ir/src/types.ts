@@ -423,6 +423,7 @@ export interface IUiNodeIr {
     right?: string;
     up?: string;
   };
+  style?: IUiStyleIr;
   text?: string;
   value?: number;
 }
@@ -450,6 +451,15 @@ export interface IUiLayoutIr {
   rowGap?: number;
   width?: number;
   zIndex?: number;
+}
+
+export interface IUiStyleIr {
+  backgroundColor?: string;
+  borderColor?: string;
+  borderRadius?: number;
+  borderWidth?: number;
+  color?: string;
+  opacity?: number;
 }
 
 export interface IUiIr {

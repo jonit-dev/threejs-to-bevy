@@ -244,6 +244,14 @@ IR validation preserve the fields, bundle capabilities report
 and the Bevy UI adapter maps them to `Style` min/max `Val::Px` fields.
 Scrolling containers remain future UI layout work.
 
+Post-V7 UI visual styling now promotes common HUD/menu style fields:
+`backgroundColor`, `color`, `borderColor`, `borderWidth`, `borderRadius`, and
+`opacity`. The UI authoring package and IR validation preserve them, bundle
+capabilities report `ui:style` plus granular style capabilities, the web DOM
+overlay maps them to CSS visual properties, and the Bevy UI adapter maps them to
+`BackgroundColor`, `TextStyle.color`, `BorderColor`, `Style.border`, and
+`BorderRadius`. Shadows and gradients remain future UI styling work.
+
 V5-07 has landed the lighting, atmosphere, shadow, and color parity-evidence
 slice: shared fixtures now cover visible/hidden meshes plus ranged point and
 spot lights, SDK/compiler output preserves point-light range and spot-light

@@ -106,6 +106,7 @@ test("ui should validate explicit flex layout metadata", async () => {
         id: "hud",
         kind: "row",
         layout: { align: "center", columnGap: 12, direction: "row", height: 48, inset: { left: 24, top: 16 }, justify: "spaceBetween", maxWidth: 480, minHeight: 24, overflow: "hidden", padding: 6, position: "absolute", rowGap: 4, width: 320, zIndex: 5 },
+        style: { backgroundColor: "#101820cc", borderColor: "#ffffff", borderRadius: 8, borderWidth: 2, color: "#ffcc00", opacity: 0.75 },
         children: [{ id: "score", kind: "text", text: "0" }],
       },
     });
@@ -144,6 +145,40 @@ test("ui should reject invalid flex layout metadata", async () => {
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_LAYOUT_INSET_INVALID"), true);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_LAYOUT_NUMBER_INVALID"), true);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_LAYOUT_Z_INDEX_INVALID"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("ui should reject invalid style metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ui-style-invalid-"));
+  try {
+    await writeTestBundle(root, { manifest: { entry: { ui: "ui.ir.json" } } });
+    await writeJson(root, "ui.ir.json", {
+      schema: "threenative.ui",
+      version: "0.1.0",
+      root: {
+        id: "hud",
+        kind: "row",
+        style: {
+          backgroundColor: "blue",
+          borderColor: "#12345",
+          borderRadius: -1,
+          borderWidth: Number.POSITIVE_INFINITY,
+          color: "#000000",
+          opacity: 1.5,
+          shadow: true,
+        },
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_STYLE_FIELD_UNSUPPORTED"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_STYLE_COLOR_INVALID"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_STYLE_NUMBER_INVALID"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_STYLE_OPACITY_INVALID"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

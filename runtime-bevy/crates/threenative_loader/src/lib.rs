@@ -649,6 +649,7 @@ pub struct UiNodeIr {
     pub action: Option<String>,
     pub focusable: Option<bool>,
     pub navigation: Option<UiNavigationIr>,
+    pub style: Option<UiStyleIr>,
     pub value: Option<f32>,
     pub max: Option<f32>,
     #[serde(default)]
@@ -675,6 +676,17 @@ pub struct UiLayoutIr {
     pub row_gap: Option<f32>,
     pub width: Option<f32>,
     pub z_index: Option<i32>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UiStyleIr {
+    pub background_color: Option<String>,
+    pub border_color: Option<String>,
+    pub border_radius: Option<f32>,
+    pub border_width: Option<f32>,
+    pub color: Option<String>,
+    pub opacity: Option<f32>,
 }
 
 #[derive(Clone, Debug, Deserialize)]

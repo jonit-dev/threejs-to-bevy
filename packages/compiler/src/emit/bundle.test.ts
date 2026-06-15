@@ -326,7 +326,13 @@ test("should derive manifest capabilities from emitted bundle IR", async () => {
         }),
         scene,
         ui: Ui({
-          children: Button({ action: "Jump", focusable: true, id: "hud.jump", label: "Jump" }),
+          children: Button({
+            action: "Jump",
+            focusable: true,
+            id: "hud.jump",
+            label: "Jump",
+            style: { backgroundColor: "#101820cc", borderColor: "#ffffff", borderRadius: 8, borderWidth: 2, color: "#ffcc00", opacity: 0.75 },
+          }),
           id: "hud",
         }),
         world,
@@ -369,6 +375,12 @@ test("should derive manifest capabilities from emitted bundle IR", async () => {
     assertCapability(manifest, "scripting", "service.physics.raycast");
     assertCapability(manifest, "transform", "hierarchy");
     assertCapability(manifest, "ui", "node.button");
+    assertCapability(manifest, "ui", "style");
+    assertCapability(manifest, "ui", "style.background");
+    assertCapability(manifest, "ui", "style.border");
+    assertCapability(manifest, "ui", "style.color");
+    assertCapability(manifest, "ui", "style.opacity");
+    assertCapability(manifest, "ui", "style.radius");
   } finally {
     await rm(root, { force: true, recursive: true });
   }

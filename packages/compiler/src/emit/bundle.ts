@@ -607,6 +607,24 @@ function visitUiNode(node: IUiIr["root"], add: (domain: string, capability: stri
       add("ui", "z-index");
     }
   }
+  if (node.style !== undefined) {
+    add("ui", "style");
+    if (node.style.backgroundColor !== undefined) {
+      add("ui", "style.background");
+    }
+    if (node.style.borderColor !== undefined || node.style.borderWidth !== undefined) {
+      add("ui", "style.border");
+    }
+    if (node.style.borderRadius !== undefined) {
+      add("ui", "style.radius");
+    }
+    if (node.style.color !== undefined) {
+      add("ui", "style.color");
+    }
+    if (node.style.opacity !== undefined) {
+      add("ui", "style.opacity");
+    }
+  }
   if (node.navigation !== undefined) {
     add("ui", "navigation");
   }

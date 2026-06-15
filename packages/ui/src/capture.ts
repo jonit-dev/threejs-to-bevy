@@ -33,6 +33,7 @@ export interface IUiNodeIr {
     right?: string;
     up?: string;
   };
+  style?: IUiStyleIr;
   text?: string;
   value?: number;
 }
@@ -60,6 +61,15 @@ export interface IUiLayoutIr {
   rowGap?: number;
   width?: number;
   zIndex?: number;
+}
+
+export interface IUiStyleIr {
+  backgroundColor?: string;
+  borderColor?: string;
+  borderRadius?: number;
+  borderWidth?: number;
+  color?: string;
+  opacity?: number;
 }
 
 export function captureUi(root: IUiElement): IUiIr {
@@ -95,6 +105,7 @@ function captureNode(element: IUiElement, fallback: string): IUiNodeIr {
     ...(element.props.layout === undefined ? {} : { layout: element.props.layout }),
     ...(element.props.max === undefined ? {} : { max: element.props.max }),
     ...(element.props.navigation === undefined ? {} : { navigation: element.props.navigation }),
+    ...(element.props.style === undefined ? {} : { style: element.props.style }),
     ...(element.props.text === undefined ? {} : { text: element.props.text }),
     ...(element.props.value === undefined ? {} : { value: element.props.value }),
     children: childrenOf(element).map((child, index) => captureNode(child, `${fallback}.${child.type}.${index}`)),

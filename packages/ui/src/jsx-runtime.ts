@@ -52,6 +52,14 @@ export interface IUiNodeProps {
     edges?: Array<"bottom" | "left" | "right" | "top">;
     mode: "avoid" | "none";
   };
+  style?: {
+    backgroundColor?: string;
+    borderColor?: string;
+    borderRadius?: number;
+    borderWidth?: number;
+    color?: string;
+    opacity?: number;
+  };
   text?: string;
   value?: number;
 }

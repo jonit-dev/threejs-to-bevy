@@ -130,6 +130,7 @@ function baseStyle(node: IRenderedUiNode): Partial<CSSStyleDeclaration> {
     style.pointerEvents = "auto";
   }
   applyLayoutStyle(style, node.layout);
+  applyVisualStyle(style, node.style);
   if (node.kind === "bar") {
     style.border = "1px solid currentColor";
     style.height = "12px";
@@ -137,6 +138,31 @@ function baseStyle(node: IRenderedUiNode): Partial<CSSStyleDeclaration> {
     style.width = "160px";
   }
   return style;
+}
+
+function applyVisualStyle(style: Partial<CSSStyleDeclaration>, visual: IRenderedUiNode["style"]): void {
+  if (visual === undefined) {
+    return;
+  }
+  if (visual.backgroundColor !== undefined) {
+    style.backgroundColor = visual.backgroundColor;
+  }
+  if (visual.color !== undefined) {
+    style.color = visual.color;
+  }
+  if (visual.borderWidth !== undefined) {
+    style.borderStyle = "solid";
+    style.borderWidth = `${visual.borderWidth}px`;
+  }
+  if (visual.borderColor !== undefined) {
+    style.borderColor = visual.borderColor;
+  }
+  if (visual.borderRadius !== undefined) {
+    style.borderRadius = `${visual.borderRadius}px`;
+  }
+  if (visual.opacity !== undefined) {
+    style.opacity = String(visual.opacity);
+  }
 }
 
 function applyLayoutStyle(style: Partial<CSSStyleDeclaration>, layout: IRenderedUiNode["layout"]): void {

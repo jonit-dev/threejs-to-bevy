@@ -521,7 +521,7 @@ function validateUi(ui: IUiIr, path: string, diagnostics: IIrDiagnostic[]): void
 function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[], ids: Set<string>): void {
   const raw = node as unknown as Record<string, unknown>;
   for (const key of Object.keys(raw)) {
-    if (!["action", "binding", "children", "focusable", "id", "kind", "label", "layout", "max", "navigation", "text", "value"].includes(key)) {
+    if (!["action", "binding", "children", "focusable", "id", "kind", "label", "layout", "max", "navigation", "style", "text", "value"].includes(key)) {
       diagnostics.push({
         code: "TN_IR_UI_FIELD_UNSUPPORTED",
         message: `UI node '${node.id}' uses unsupported field '${key}'.`,
@@ -530,6 +530,7 @@ function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnosti
     }
   }
   validateUiLayout(node.layout, `${path}/layout`, diagnostics);
+  validateUiStyle(node.style, `${path}/style`, diagnostics);
   if (!["bar", "button", "column", "row", "stack", "text", "touchControl"].includes(node.kind)) {
     diagnostics.push({
       code: "TN_IR_UI_NODE_UNSUPPORTED",
@@ -553,6 +554,36 @@ function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnosti
     });
   }
   node.children?.forEach((child, index) => validateUiNode(child, `${path}/children/${index}`, diagnostics, ids));
+}
+
+function validateUiStyle(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value)) {
+    diagnostics.push({ code: "TN_IR_UI_STYLE_INVALID", message: "UI style must be an object.", path });
+    return;
+  }
+  for (const key of Object.keys(value)) {
+    if (!["backgroundColor", "borderColor", "borderRadius", "borderWidth", "color", "opacity"].includes(key)) {
+      diagnostics.push({ code: "TN_IR_UI_STYLE_FIELD_UNSUPPORTED", message: `UI style uses unsupported field '${key}'.`, path: `${path}/${key}` });
+    }
+  }
+  for (const key of ["backgroundColor", "borderColor", "color"]) {
+    const item = value[key];
+    if (item !== undefined && (typeof item !== "string" || !/^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(item))) {
+      diagnostics.push({ code: "TN_IR_UI_STYLE_COLOR_INVALID", message: `UI style ${key} must be #RRGGBB or #RRGGBBAA.`, path: `${path}/${key}` });
+    }
+  }
+  for (const key of ["borderRadius", "borderWidth"]) {
+    const item = value[key];
+    if (item !== undefined && (typeof item !== "number" || !Number.isFinite(item) || item < 0)) {
+      diagnostics.push({ code: "TN_IR_UI_STYLE_NUMBER_INVALID", message: `UI style ${key} must be a finite non-negative number.`, path: `${path}/${key}` });
+    }
+  }
+  if (value.opacity !== undefined && (typeof value.opacity !== "number" || !Number.isFinite(value.opacity) || value.opacity < 0 || value.opacity > 1)) {
+    diagnostics.push({ code: "TN_IR_UI_STYLE_OPACITY_INVALID", message: "UI style opacity must be between 0 and 1.", path: `${path}/opacity` });
+  }
 }
 
 function validateUiLayout(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {

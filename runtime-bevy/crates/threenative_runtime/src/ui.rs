@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use serde::Serialize;
 use thiserror::Error;
 use threenative_components::ThreeNativeId;
-use threenative_loader::{UiIr, UiNodeIr};
+use threenative_loader::{UiIr, UiNodeIr, UiStyleIr};
 
 #[derive(Clone, Component, Debug, Eq, PartialEq)]
 pub struct NativeUiKind(pub String);
@@ -31,8 +31,19 @@ pub struct NativeUiNode {
     pub label: Option<String>,
     pub max: Option<f32>,
     pub navigation: Option<NativeUiNavigation>,
+    pub style: Option<NativeUiStyle>,
     pub text: Option<String>,
     pub value: Option<f32>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct NativeUiStyle {
+    pub background_color: Option<String>,
+    pub border_color: Option<String>,
+    pub border_radius: Option<f32>,
+    pub border_width: Option<f32>,
+    pub color: Option<String>,
+    pub opacity: Option<f32>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -120,6 +131,14 @@ fn build_node(node: &UiNodeIr, path: &str) -> Result<NativeUiNode, UiDiagnostic>
                 right: navigation.right.clone(),
                 up: navigation.up.clone(),
             }),
+        style: node.style.as_ref().map(|style| NativeUiStyle {
+            background_color: style.background_color.clone(),
+            border_color: style.border_color.clone(),
+            border_radius: style.border_radius,
+            border_width: style.border_width,
+            color: style.color.clone(),
+            opacity: style.opacity,
+        }),
         text: node.text.clone(),
         value: node.value,
     })
@@ -221,27 +240,36 @@ fn spawn_node(
                     .as_deref()
                     .or(node.label.as_deref())
                     .unwrap_or_default(),
-                TextStyle::default(),
+                TextStyle {
+                    color: text_color(node),
+                    ..Default::default()
+                },
             ))
             .id(),
         "button" => world
             .spawn(ButtonBundle {
                 style: leaf_style(node),
-                background_color: BackgroundColor(Color::srgb(0.15, 0.17, 0.2)),
+                background_color: background_color(node, (0.15, 0.17, 0.2, 1.0)),
+                border_color: border_color(node),
+                border_radius: border_radius(node),
                 ..Default::default()
             })
             .id(),
         "bar" => world
             .spawn(NodeBundle {
                 style: bar_style(node),
-                background_color: BackgroundColor(Color::srgb(0.16, 0.18, 0.2)),
+                background_color: background_color(node, (0.16, 0.18, 0.2, 1.0)),
+                border_color: border_color(node),
+                border_radius: border_radius(node),
                 ..Default::default()
             })
             .id(),
         _ => world
             .spawn(NodeBundle {
                 style: layout_style(node),
-                background_color: BackgroundColor(Color::NONE),
+                background_color: background_color(node, (0.0, 0.0, 0.0, 0.0)),
+                border_color: border_color(node),
+                border_radius: border_radius(node),
                 ..Default::default()
             })
             .id(),
@@ -311,6 +339,7 @@ fn layout_style(node: &UiNodeIr) -> Style {
         ..Default::default()
     };
     apply_layout(&mut style, node.layout.as_ref());
+    apply_visual_style(&mut style, node.style.as_ref());
     style
 }
 
@@ -320,6 +349,7 @@ fn leaf_style(node: &UiNodeIr) -> Style {
         ..Default::default()
     };
     apply_layout(&mut style, node.layout.as_ref());
+    apply_visual_style(&mut style, node.style.as_ref());
     style
 }
 
@@ -330,7 +360,17 @@ fn bar_style(node: &UiNodeIr) -> Style {
         ..Default::default()
     };
     apply_layout(&mut style, node.layout.as_ref());
+    apply_visual_style(&mut style, node.style.as_ref());
     style
+}
+
+fn apply_visual_style(style: &mut Style, visual: Option<&UiStyleIr>) {
+    let Some(visual) = visual else {
+        return;
+    };
+    if let Some(border_width) = visual.border_width {
+        style.border = UiRect::all(Val::Px(border_width));
+    }
 }
 
 fn apply_layout(style: &mut Style, layout: Option<&threenative_loader::UiLayoutIr>) {
@@ -423,7 +463,10 @@ fn spawn_runtime_children(world: &mut World, parent: Entity, node: &UiNodeIr) {
             let label = world
                 .spawn(TextBundle::from_section(
                     label.clone(),
-                    TextStyle::default(),
+                    TextStyle {
+                        color: text_color(node),
+                        ..Default::default()
+                    },
                 ))
                 .insert(Name::new(format!("{}.label", node.id)))
                 .id();
@@ -448,4 +491,73 @@ fn spawn_runtime_children(world: &mut World, parent: Entity, node: &UiNodeIr) {
             .id();
         world.entity_mut(parent).push_children(&[fill]);
     }
+}
+
+fn background_color(node: &UiNodeIr, fallback: (f32, f32, f32, f32)) -> BackgroundColor {
+    BackgroundColor(styled_color(
+        node.style
+            .as_ref()
+            .and_then(|style| style.background_color.as_ref()),
+        fallback,
+        node.style.as_ref().and_then(|style| style.opacity),
+    ))
+}
+
+fn border_color(node: &UiNodeIr) -> BorderColor {
+    BorderColor(styled_color(
+        node.style
+            .as_ref()
+            .and_then(|style| style.border_color.as_ref()),
+        (0.0, 0.0, 0.0, 0.0),
+        node.style.as_ref().and_then(|style| style.opacity),
+    ))
+}
+
+fn border_radius(node: &UiNodeIr) -> BorderRadius {
+    node.style
+        .as_ref()
+        .and_then(|style| style.border_radius)
+        .map(|radius| BorderRadius::all(Val::Px(radius)))
+        .unwrap_or_default()
+}
+
+fn text_color(node: &UiNodeIr) -> Color {
+    styled_color(
+        node.style.as_ref().and_then(|style| style.color.as_ref()),
+        (1.0, 1.0, 1.0, 1.0),
+        node.style.as_ref().and_then(|style| style.opacity),
+    )
+}
+
+fn styled_color(
+    value: Option<&String>,
+    fallback: (f32, f32, f32, f32),
+    opacity: Option<f32>,
+) -> Color {
+    let opacity = opacity.unwrap_or(1.0);
+    if let Some(value) = value.and_then(|value| parse_hex_color(value, opacity)) {
+        return value;
+    }
+    Color::srgba(fallback.0, fallback.1, fallback.2, fallback.3 * opacity)
+}
+
+fn parse_hex_color(value: &str, opacity: f32) -> Option<Color> {
+    let value = value.strip_prefix('#')?;
+    if value.len() != 6 && value.len() != 8 {
+        return None;
+    }
+    let red = u8::from_str_radix(&value[0..2], 16).ok()?;
+    let green = u8::from_str_radix(&value[2..4], 16).ok()?;
+    let blue = u8::from_str_radix(&value[4..6], 16).ok()?;
+    let alpha = if value.len() == 8 {
+        u8::from_str_radix(&value[6..8], 16).ok()? as f32 / 255.0
+    } else {
+        1.0
+    };
+    Some(Color::srgba(
+        red as f32 / 255.0,
+        green as f32 / 255.0,
+        blue as f32 / 255.0,
+        alpha * opacity,
+    ))
 }
