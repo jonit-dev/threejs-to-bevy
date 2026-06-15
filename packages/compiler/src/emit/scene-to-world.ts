@@ -269,12 +269,20 @@ function emitTextureSlots(
       }
       assets.push({
         ...(value.animationGraph === undefined ? {} : { animationGraph: value.animationGraph }),
+        ...(value.center === undefined ? {} : { center: value.center }),
         format: value.format,
         id: value.id,
         kind: value.kind,
+        ...(value.magFilter === undefined ? {} : { magFilter: value.magFilter }),
+        ...(value.minFilter === undefined ? {} : { minFilter: value.minFilter }),
+        ...(value.offset === undefined ? {} : { offset: value.offset }),
         path: value.path,
         ...(value.animations === undefined ? {} : { animations: value.animations }),
         ...(value.particleEmitters === undefined ? {} : { particleEmitters: value.particleEmitters }),
+        ...(value.repeat === undefined ? {} : { repeat: value.repeat }),
+        ...(value.rotation === undefined ? {} : { rotation: value.rotation }),
+        ...(value.wrapS === undefined ? {} : { wrapS: value.wrapS }),
+        ...(value.wrapT === undefined ? {} : { wrapT: value.wrapT }),
       });
       return [[slot, value.id]];
     }),

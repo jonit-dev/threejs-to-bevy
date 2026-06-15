@@ -187,12 +187,20 @@ function reportAsset(asset: IAssetIr): IConformanceAssetReport {
   return {
     animations: "animations" in asset ? asset.animations : undefined,
     bounds: "bounds" in asset ? asset.bounds : undefined,
+    center: "center" in asset ? asset.center : undefined,
     format: asset.format,
     id: asset.id,
     kind: asset.kind,
+    magFilter: "magFilter" in asset ? asset.magFilter : undefined,
+    minFilter: "minFilter" in asset ? asset.minFilter : undefined,
+    offset: "offset" in asset ? asset.offset : undefined,
     path: "path" in asset ? asset.path : undefined,
     primitive: "primitive" in asset ? asset.primitive : undefined,
+    repeat: "repeat" in asset ? asset.repeat : undefined,
+    rotation: "rotation" in asset ? asset.rotation : undefined,
     size: "size" in asset ? asset.size : undefined,
+    wrapS: "wrapS" in asset ? asset.wrapS : undefined,
+    wrapT: "wrapT" in asset ? asset.wrapT : undefined,
   };
 }
 

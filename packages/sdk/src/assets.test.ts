@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { animationClip, animationEvent, animationGraph, boundedParticleEmitter, modelAsset } from "./assets.js";
+import { animationClip, animationEvent, animationGraph, boundedParticleEmitter, modelAsset, textureAsset } from "./assets.js";
 import { SdkError } from "./errors.js";
 
 test("assets should create deterministic model animation metadata", () => {
@@ -40,6 +40,45 @@ test("assets should reject unsupported advanced animation metadata", () => {
   assert.throws(
     () => modelAsset("model.hero", "assets/hero.glb", { unsupported: { engineController: true } }),
     (error: unknown) => error instanceof SdkError && error.code === "TN_SDK_ANIMATION_ENGINE_CONTROLLER_UNSUPPORTED",
+  );
+});
+
+test("assets should create texture sampler and transform metadata", () => {
+  const asset = textureAsset("tex.floor", "assets/floor.png", {
+    center: [0.5, 0.5],
+    magFilter: "nearest",
+    minFilter: "nearestMipmapLinear",
+    offset: [0.25, 0.5],
+    repeat: [4, 2],
+    rotation: 0.5,
+    wrapS: "repeat",
+    wrapT: "mirroredRepeat",
+  });
+
+  assert.deepEqual(asset, {
+    center: [0.5, 0.5],
+    format: "png",
+    id: "tex.floor",
+    kind: "texture",
+    magFilter: "nearest",
+    minFilter: "nearestMipmapLinear",
+    offset: [0.25, 0.5],
+    path: "assets/floor.png",
+    repeat: [4, 2],
+    rotation: 0.5,
+    wrapS: "repeat",
+    wrapT: "mirroredRepeat",
+  });
+});
+
+test("assets should reject invalid texture transforms", () => {
+  assert.throws(
+    () => textureAsset("tex.floor", "assets/floor.png", { repeat: [1, Number.NaN] }),
+    (error: unknown) => error instanceof SdkError && error.code === "TN_SDK_TEXTURE_VECTOR_INVALID",
+  );
+  assert.throws(
+    () => textureAsset("tex.floor", "assets/floor.png", { rotation: Number.POSITIVE_INFINITY }),
+    (error: unknown) => error instanceof SdkError && error.code === "TN_SDK_TEXTURE_ROTATION_INVALID",
   );
 });
 

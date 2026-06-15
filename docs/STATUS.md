@@ -169,6 +169,14 @@ Three.js `MeshPhysicalMaterial` when needed, Bevy maps them to
 material conformance reports preserve the promoted factors. Specular,
 clearcoat, and transmission texture maps remain future material work.
 
+Post-V7 texture-control coverage now promotes portable texture asset sampler and
+UV transform metadata: `textureAsset` accepts wrap, min/mag filter, repeat,
+offset, center, and rotation options; compiler emission preserves those fields
+in `assets.manifest.json`; IR/schema validation allows the promoted metadata;
+web maps it to Three.js texture wrapping, filtering, and transform properties;
+and web/native conformance reports preserve the authored asset controls. Bevy
+runtime visual application of sampler/UV controls remains future material work.
+
 Post-V7 shadow gap closure has also promoted per-mesh shadow controls:
 `Mesh` accepts optional `castShadow` and `receiveShadow` flags, compiler
 emission preserves them on `MeshRenderer`, IR validation rejects non-boolean
@@ -605,9 +613,8 @@ The same functional-game parity pass also closes the P0 native material texture
 loading gap for promoted standard-material slots. Bevy runtime material mapping
 now resolves bundle-local texture asset paths through `AssetServer::load` when
 the runtime app has an asset server, with headless mapping tests retaining
-placeholder handles. Renderer-specific sampling differences, alpha/blend
-modes, UV controls, and advanced PBR texture fields remain tracked as later
-material work.
+placeholder handles. Renderer-specific native sampling differences, alpha/blend
+modes, and advanced PBR texture fields remain tracked as later material work.
 
 The audio P0 has also moved from bare loop start/stop traces to portable
 playback-id controls. SDK audio declarations can now include validated

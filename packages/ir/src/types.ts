@@ -39,6 +39,16 @@ export interface IBundleManifest {
 
 export type Vec3 = readonly [number, number, number];
 export type Quat = readonly [number, number, number, number];
+export type Vec2 = readonly [number, number];
+export type TextureWrapMode = "clampToEdge" | "mirroredRepeat" | "repeat";
+export type TextureMinFilter =
+  | "linear"
+  | "linearMipmapLinear"
+  | "linearMipmapNearest"
+  | "nearest"
+  | "nearestMipmapLinear"
+  | "nearestMipmapNearest";
+export type TextureMagFilter = "linear" | "nearest";
 
 export interface ITransformComponent {
   position?: Vec3;
@@ -276,10 +286,18 @@ export type IAssetIr =
       path: string;
     }
   | {
+      center?: Vec2;
       format: "jpeg" | "png";
       id: string;
       kind: "texture";
+      magFilter?: TextureMagFilter;
+      minFilter?: TextureMinFilter;
+      offset?: Vec2;
       path: string;
+      repeat?: Vec2;
+      rotation?: number;
+      wrapS?: TextureWrapMode;
+      wrapT?: TextureWrapMode;
     }
   | {
       format: "mp3" | "ogg" | "wav";

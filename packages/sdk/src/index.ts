@@ -34,7 +34,11 @@ export {
   type IAnimationClipReference,
   type IAssetReference,
   type IBoundedParticleEmitter,
+  type ITextureAssetOptions,
   type IUnsupportedAnimationAssetOptions,
+  type TextureMagFilter,
+  type TextureMinFilter,
+  type TextureWrapMode,
 } from "./assets.js";
 export {
   CharacterController,

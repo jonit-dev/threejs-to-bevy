@@ -4,12 +4,20 @@ import type { IAssetIr, IMaterialIr, Quat, Vec3 } from "./types.js";
 export interface IConformanceAssetReport {
   animations?: Extract<IAssetIr, { animations?: unknown }>["animations"];
   bounds?: Extract<IAssetIr, { bounds?: unknown }>["bounds"];
+  center?: Extract<IAssetIr, { center?: unknown }>["center"];
   format: IAssetIr["format"];
   id: string;
   kind: IAssetIr["kind"];
+  magFilter?: Extract<IAssetIr, { magFilter?: unknown }>["magFilter"];
+  minFilter?: Extract<IAssetIr, { minFilter?: unknown }>["minFilter"];
+  offset?: Extract<IAssetIr, { offset?: unknown }>["offset"];
   path?: Extract<IAssetIr, { path: string }>["path"];
   primitive?: Extract<IAssetIr, { primitive: string }>["primitive"];
+  repeat?: Extract<IAssetIr, { repeat?: unknown }>["repeat"];
+  rotation?: Extract<IAssetIr, { rotation?: unknown }>["rotation"];
   size?: Extract<IAssetIr, { size?: readonly number[] }>["size"];
+  wrapS?: Extract<IAssetIr, { wrapS?: unknown }>["wrapS"];
+  wrapT?: Extract<IAssetIr, { wrapT?: unknown }>["wrapT"];
 }
 
 export interface IConformanceMaterialReport {

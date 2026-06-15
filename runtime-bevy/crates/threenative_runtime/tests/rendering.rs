@@ -65,6 +65,20 @@ fn rendering_should_map_visibility_and_v2_lights() {
 fn rendering_should_load_material_textures_through_asset_server() {
     let root = write_rendering_bundle();
     let bundle = load_bundle(&root).expect("rendering bundle should load");
+    let albedo = bundle
+        .assets
+        .assets
+        .iter()
+        .find(|asset| asset.id == "tex.albedo")
+        .expect("albedo texture should be loaded");
+    assert_eq!(albedo.wrap_s.as_deref(), Some("repeat"));
+    assert_eq!(albedo.wrap_t.as_deref(), Some("mirroredRepeat"));
+    assert_eq!(albedo.min_filter.as_deref(), Some("nearestMipmapLinear"));
+    assert_eq!(albedo.mag_filter.as_deref(), Some("nearest"));
+    assert_eq!(albedo.repeat, Some([4.0, 2.0]));
+    assert_eq!(albedo.offset, Some([0.25, 0.5]));
+    assert_eq!(albedo.center, Some([0.5, 0.5]));
+    assert_eq!(albedo.rotation, Some(0.5));
     let mut app = App::new();
     app.add_plugins((
         MinimalPlugins,
@@ -492,7 +506,20 @@ fn write_rendering_bundle() -> PathBuf {
   "assets": [
     { "id": "mesh.cube", "kind": "mesh", "format": "generated", "primitive": "box", "size": [1, 1, 1] },
     { "id": "mesh.capsule", "kind": "mesh", "format": "generated", "primitive": "capsule", "size": [0.4, 1.2] },
-    { "id": "tex.albedo", "kind": "texture", "format": "png", "path": "assets/albedo.png" },
+    {
+      "id": "tex.albedo",
+      "kind": "texture",
+      "format": "png",
+      "path": "assets/albedo.png",
+      "wrapS": "repeat",
+      "wrapT": "mirroredRepeat",
+      "minFilter": "nearestMipmapLinear",
+      "magFilter": "nearest",
+      "repeat": [4, 2],
+      "offset": [0.25, 0.5],
+      "center": [0.5, 0.5],
+      "rotation": 0.5
+    },
     { "id": "tex.normal", "kind": "texture", "format": "png", "path": "assets/normal.png" },
     { "id": "tex.mr", "kind": "texture", "format": "png", "path": "assets/metallic-roughness.png" },
     { "id": "tex.emissive", "kind": "texture", "format": "png", "path": "assets/emissive.png" },

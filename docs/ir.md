@@ -270,9 +270,16 @@ Rules:
     {
       "id": "tex.player.albedo",
       "kind": "texture",
-      "source": "assets/player-albedo.webp",
-      "format": "webp",
-      "colorSpace": "srgb"
+      "path": "assets/player-albedo.png",
+      "format": "png",
+      "wrapS": "repeat",
+      "wrapT": "repeat",
+      "minFilter": "linearMipmapLinear",
+      "magFilter": "linear",
+      "repeat": [2, 2],
+      "offset": [0, 0],
+      "center": [0.5, 0.5],
+      "rotation": 0
     },
     {
       "id": "mesh.player.box",
@@ -287,9 +294,11 @@ Rules:
 Rules:
 
 - Asset IDs are unique across the bundle.
-- Asset sources are bundle-relative unless marked as external and allowed by the target profile.
+- Asset paths are bundle-relative unless marked as external and allowed by the target profile.
 - Generated assets must include deterministic generator parameters.
-- Texture color space must be explicit.
+- Texture assets may include portable sampler and UV transform metadata:
+  `wrapS`, `wrapT`, `minFilter`, `magFilter`, `repeat`, `offset`, `center`,
+  and `rotation`.
 - Runtime loaders may preprocess assets, but logical IDs must remain stable.
 
 ## Materials IR

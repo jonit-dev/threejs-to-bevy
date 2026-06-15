@@ -388,7 +388,9 @@ Rules:
   non-negative and may exceed 1.
 - `specularIntensity`, `clearcoat`, `clearcoatRoughness`, and `transmission`
   are normalized factors from 0 to 1.
-- Texture references must resolve through the asset manifest.
+- Texture references must resolve through the asset manifest. `textureAsset`
+  may carry portable `wrapS`, `wrapT`, `minFilter`, `magFilter`, `repeat`,
+  `offset`, `center`, and `rotation` controls.
 - Unsupported material fields are validation errors, not silent no-ops.
 
 Deferred:
@@ -404,7 +406,7 @@ Deferred:
 Supported:
 
 - glTF and GLB models.
-- PNG, JPEG, WebP textures.
+- PNG and JPEG textures.
 - Audio files by manifest reference.
 - Named animation clips from glTF assets.
 

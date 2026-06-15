@@ -722,7 +722,9 @@ function validateAssetMetadata(asset: IAssetsManifest["assets"][number], path: s
   const allowed = new Set(
     asset.kind === "mesh"
       ? ["attributes", "format", "id", "indices", "kind", "primitive", "size"]
-      : ["animationGraph", "animations", "bounds", "format", "id", "kind", "particleEmitters", "path"],
+      : asset.kind === "texture"
+        ? ["center", "format", "id", "kind", "magFilter", "minFilter", "offset", "path", "repeat", "rotation", "wrapS", "wrapT"]
+        : ["animationGraph", "animations", "bounds", "format", "id", "kind", "particleEmitters", "path"],
   );
   for (const key of Object.keys(raw)) {
     if (!allowed.has(key)) {

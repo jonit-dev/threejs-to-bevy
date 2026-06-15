@@ -2,6 +2,26 @@ import { SdkError } from "./errors.js";
 
 export type AssetKind = "audio" | "model" | "texture";
 export type AssetFormat = "glb" | "gltf" | "jpeg" | "mp3" | "ogg" | "png" | "wav";
+export type TextureWrapMode = "clampToEdge" | "mirroredRepeat" | "repeat";
+export type TextureMinFilter =
+  | "linear"
+  | "linearMipmapLinear"
+  | "linearMipmapNearest"
+  | "nearest"
+  | "nearestMipmapLinear"
+  | "nearestMipmapNearest";
+export type TextureMagFilter = "linear" | "nearest";
+
+export interface ITextureAssetOptions {
+  center?: readonly [number, number];
+  magFilter?: TextureMagFilter;
+  minFilter?: TextureMinFilter;
+  offset?: readonly [number, number];
+  repeat?: readonly [number, number];
+  rotation?: number;
+  wrapS?: TextureWrapMode;
+  wrapT?: TextureWrapMode;
+}
 
 export interface IAnimationClipReference {
   id: string;
@@ -71,7 +91,15 @@ export interface IAssetReference {
   path: string;
   animationGraph?: IAnimationGraphDeclaration;
   animations?: IAnimationClipReference[];
+  center?: readonly [number, number];
+  magFilter?: TextureMagFilter;
+  minFilter?: TextureMinFilter;
+  offset?: readonly [number, number];
   particleEmitters?: IBoundedParticleEmitter[];
+  repeat?: readonly [number, number];
+  rotation?: number;
+  wrapS?: TextureWrapMode;
+  wrapT?: TextureWrapMode;
 }
 
 export function animationClip(id: string, options: Omit<IAnimationClipReference, "id"> = {}): IAnimationClipReference {
@@ -251,8 +279,19 @@ function assertNonNegativeFinite(value: number, code: string, label: string): vo
   }
 }
 
-export function textureAsset(id: string, path: string): IAssetReference {
-  return assetRef("texture", id, path, ["jpeg", "png"]);
+export function textureAsset(id: string, path: string, options: ITextureAssetOptions = {}): IAssetReference {
+  validateTextureOptions(options);
+  return {
+    ...assetRef("texture", id, path, ["jpeg", "png"]),
+    ...(options.center === undefined ? {} : { center: options.center }),
+    ...(options.magFilter === undefined ? {} : { magFilter: options.magFilter }),
+    ...(options.minFilter === undefined ? {} : { minFilter: options.minFilter }),
+    ...(options.offset === undefined ? {} : { offset: options.offset }),
+    ...(options.repeat === undefined ? {} : { repeat: options.repeat }),
+    ...(options.rotation === undefined ? {} : { rotation: options.rotation }),
+    ...(options.wrapS === undefined ? {} : { wrapS: options.wrapS }),
+    ...(options.wrapT === undefined ? {} : { wrapT: options.wrapT }),
+  };
 }
 
 export function audioAsset(id: string, path: string): IAssetReference {
@@ -271,6 +310,21 @@ function assetRef(kind: AssetKind, id: string, path: string, formats: AssetForma
     throw new SdkError("TN_SDK_ASSET_FORMAT_UNSUPPORTED", `Unsupported ${kind} asset format for '${path}'.`);
   }
   return { format, id, kind, path };
+}
+
+function validateTextureOptions(options: ITextureAssetOptions): void {
+  for (const [field, value] of Object.entries({
+    center: options.center,
+    offset: options.offset,
+    repeat: options.repeat,
+  })) {
+    if (value !== undefined && (!Array.isArray(value) || value.length !== 2 || !value.every((item) => Number.isFinite(item)))) {
+      throw new SdkError("TN_SDK_TEXTURE_VECTOR_INVALID", `Texture ${field} must be a pair of finite numbers.`);
+    }
+  }
+  if (options.rotation !== undefined && !Number.isFinite(options.rotation)) {
+    throw new SdkError("TN_SDK_TEXTURE_ROTATION_INVALID", "Texture rotation must be a finite number.");
+  }
 }
 
 function assertSupportedAnimationOptions(options: IUnsupportedAnimationAssetOptions | undefined): void {

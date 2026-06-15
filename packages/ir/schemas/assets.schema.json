@@ -190,11 +190,37 @@
             "id": { "type": "string", "minLength": 1 },
             "kind": { "const": "texture" },
             "format": { "enum": ["jpeg", "png"] },
-            "path": { "type": "string", "minLength": 1 }
+            "path": { "type": "string", "minLength": 1 },
+            "wrapS": { "$ref": "#/$defs/textureWrapMode" },
+            "wrapT": { "$ref": "#/$defs/textureWrapMode" },
+            "minFilter": { "$ref": "#/$defs/textureMinFilter" },
+            "magFilter": { "$ref": "#/$defs/textureMagFilter" },
+            "repeat": { "$ref": "#/$defs/vec2" },
+            "offset": { "$ref": "#/$defs/vec2" },
+            "rotation": { "type": "number" },
+            "center": { "$ref": "#/$defs/vec2" }
           }
         }
       ]
-    }
+    },
+    "textureWrapMode": { "enum": ["clampToEdge", "mirroredRepeat", "repeat"] },
+    "textureMinFilter": {
+      "enum": [
+        "linear",
+        "linearMipmapLinear",
+        "linearMipmapNearest",
+        "nearest",
+        "nearestMipmapLinear",
+        "nearestMipmapNearest"
+      ]
+    },
+    "textureMagFilter": { "enum": ["linear", "nearest"] },
+    "vec2": {
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 2,
+      "maxItems": 2
+    },
     "meshAttribute": {
       "type": "object",
       "required": ["name", "itemSize", "values"],

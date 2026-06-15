@@ -398,6 +398,22 @@ function collectAssetCapabilities(assets: IAssetsManifest, add: (domain: string,
     if (asset.kind === "model" && asset.particleEmitters !== undefined && asset.particleEmitters.length > 0) {
       add("particles", "bounded-emitter");
     }
+    if (
+      asset.kind === "texture"
+      && (
+        asset.center !== undefined
+        || asset.magFilter !== undefined
+        || asset.minFilter !== undefined
+        || asset.offset !== undefined
+        || asset.repeat !== undefined
+        || asset.rotation !== undefined
+        || asset.wrapS !== undefined
+        || asset.wrapT !== undefined
+      )
+    ) {
+      add("rendering", "texture.sampler");
+      add("rendering", "texture.uv-transform");
+    }
     add("asset", `${asset.kind}.${asset.format}`);
   }
 }

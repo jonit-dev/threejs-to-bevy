@@ -256,12 +256,24 @@ pub struct AssetIr {
     pub animation_graph: Option<AnimationGraphIr>,
     pub attributes: Option<Vec<MeshAttributeIr>>,
     pub bounds: Option<AssetBoundsIr>,
+    pub center: Option<[f32; 2]>,
     pub indices: Option<Vec<u32>>,
+    #[serde(rename = "magFilter")]
+    pub mag_filter: Option<String>,
+    #[serde(rename = "minFilter")]
+    pub min_filter: Option<String>,
+    pub offset: Option<[f32; 2]>,
     #[serde(rename = "particleEmitters")]
     pub particle_emitters: Option<Vec<ParticleEmitterIr>>,
     pub primitive: Option<String>,
     pub path: Option<String>,
+    pub repeat: Option<[f32; 2]>,
+    pub rotation: Option<f32>,
     pub size: Option<Vec<f32>>,
+    #[serde(rename = "wrapS")]
+    pub wrap_s: Option<String>,
+    #[serde(rename = "wrapT")]
+    pub wrap_t: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

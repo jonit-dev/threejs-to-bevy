@@ -59,15 +59,31 @@ pub struct ConformanceAssetReport {
     pub animations: Option<Vec<AnimationClipReport>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bounds: Option<AssetBoundsReport>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub center: Option<[f32; 2]>,
     pub format: String,
     pub id: String,
     pub kind: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mag_filter: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub min_filter: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub offset: Option<[f32; 2]>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub primitive: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub repeat: Option<[f32; 2]>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rotation: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub size: Option<Vec<f32>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wrap_s: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wrap_t: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -647,12 +663,20 @@ fn report_asset(asset: &AssetIr) -> ConformanceAssetReport {
             min: bounds.min,
             max: bounds.max,
         }),
+        center: asset.center,
         format: asset.format.clone(),
         id: asset.id.clone(),
         kind: asset.kind.clone(),
+        mag_filter: asset.mag_filter.clone(),
+        min_filter: asset.min_filter.clone(),
+        offset: asset.offset,
         path: asset.path.clone(),
         primitive: asset.primitive.clone(),
+        repeat: asset.repeat,
+        rotation: asset.rotation,
         size: asset.size.clone(),
+        wrap_s: asset.wrap_s.clone(),
+        wrap_t: asset.wrap_t.clone(),
     }
 }
 

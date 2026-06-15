@@ -340,7 +340,20 @@ test("mapWorld should apply supported material texture slots", () => {
       version: "0.1.0",
       assets: [
         { id: "mesh.cube", kind: "mesh", format: "generated", primitive: "box", size: [1, 1, 1] },
-        { id: "tex.albedo", kind: "texture", format: "png", path: "assets/albedo.png" },
+        {
+          id: "tex.albedo",
+          kind: "texture",
+          format: "png",
+          path: "assets/albedo.png",
+          center: [0.5, 0.5],
+          magFilter: "nearest",
+          minFilter: "nearestMipmapLinear",
+          offset: [0.25, 0.5],
+          repeat: [4, 2],
+          rotation: 0.5,
+          wrapS: "repeat",
+          wrapT: "mirroredRepeat",
+        },
         { id: "tex.normal", kind: "texture", format: "png", path: "assets/normal.png" },
         { id: "tex.mr", kind: "texture", format: "png", path: "assets/metallic-roughness.png" },
         { id: "tex.emissive", kind: "texture", format: "png", path: "assets/emissive.png" },
@@ -395,6 +408,14 @@ test("mapWorld should apply supported material texture slots", () => {
   assert.equal(cube.material.emissiveMap?.userData.threenativeAssetId, "tex.emissive");
   assert.equal(cube.material.aoMap?.userData.threenativeAssetId, "tex.occlusion");
   assert.equal(cube.material.map?.userData.threenativeUrl, "http://example.test/bundle/assets/albedo.png");
+  assert.equal(cube.material.map?.wrapS, THREE.RepeatWrapping);
+  assert.equal(cube.material.map?.wrapT, THREE.MirroredRepeatWrapping);
+  assert.equal(cube.material.map?.minFilter, THREE.NearestMipmapLinearFilter);
+  assert.equal(cube.material.map?.magFilter, THREE.NearestFilter);
+  assert.deepEqual(cube.material.map?.repeat.toArray(), [4, 2]);
+  assert.deepEqual(cube.material.map?.offset.toArray(), [0.25, 0.5]);
+  assert.deepEqual(cube.material.map?.center.toArray(), [0.5, 0.5]);
+  assert.equal(cube.material.map?.rotation, 0.5);
   assert.equal(mapped.diagnostics.filter((diagnostic) => diagnostic.severity === "error").length, 0);
 });
 
