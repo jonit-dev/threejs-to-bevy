@@ -14,7 +14,8 @@ use bevy::{
 use threenative_loader::{InputActionIr, InputAxisIr, InputBindingIr, InputIr};
 use threenative_runtime::input::{
     capture_native_input, map_keyboard_event, map_pointer_button_event,
-    report_native_gamepad_capabilities, NativeInputMap, NativeInputState, NativeTouchState,
+    report_native_gamepad_capabilities, NativeInputMap, NativeInputState, NativeTouchGestureEvent,
+    NativeTouchGesturePoint, NativeTouchGestureTracker, NativeTouchState,
 };
 
 #[test]
@@ -220,6 +221,100 @@ fn should_capture_gamepad_and_touch_input() {
     assert!(state.action("Jump"));
     assert_eq!(state.axis("MoveX"), 0.65);
     assert_eq!(state.axis("TouchMoveX"), -0.4);
+}
+
+#[test]
+fn should_recognize_native_touch_gestures() {
+    let mut tracker = NativeTouchGestureTracker::default();
+
+    assert_eq!(
+        tracker.update(
+            0.0,
+            &[NativeTouchGesturePoint {
+                id: 1,
+                x: 10.0,
+                y: 10.0,
+            }],
+        ),
+        Vec::<NativeTouchGestureEvent>::new()
+    );
+    assert_eq!(
+        tracker.update(120.0, &[]),
+        vec![NativeTouchGestureEvent::Tap {
+            duration_ms: 120.0,
+            id: 1,
+            x: 10.0,
+            y: 10.0,
+        }]
+    );
+
+    tracker.update(
+        200.0,
+        &[NativeTouchGesturePoint {
+            id: 2,
+            x: 10.0,
+            y: 10.0,
+        }],
+    );
+    tracker.update(
+        260.0,
+        &[NativeTouchGesturePoint {
+            id: 2,
+            x: 80.0,
+            y: 15.0,
+        }],
+    );
+    assert_eq!(
+        tracker.update(320.0, &[]),
+        vec![NativeTouchGestureEvent::Swipe {
+            delta_x: 70.0,
+            delta_y: 5.0,
+            direction: "right".to_owned(),
+            duration_ms: 120.0,
+            id: 2,
+        }]
+    );
+
+    tracker.update(
+        400.0,
+        &[
+            NativeTouchGesturePoint {
+                id: 3,
+                x: 0.0,
+                y: 0.0,
+            },
+            NativeTouchGesturePoint {
+                id: 4,
+                x: 10.0,
+                y: 0.0,
+            },
+        ],
+    );
+    tracker.update(
+        460.0,
+        &[
+            NativeTouchGesturePoint {
+                id: 3,
+                x: -5.0,
+                y: 0.0,
+            },
+            NativeTouchGesturePoint {
+                id: 4,
+                x: 15.0,
+                y: 0.0,
+            },
+        ],
+    );
+    assert_eq!(
+        tracker.update(520.0, &[]),
+        vec![NativeTouchGestureEvent::Pinch {
+            center_x: 5.0,
+            center_y: 0.0,
+            distance: 20.0,
+            duration_ms: 120.0,
+            scale: 2.0,
+        }]
+    );
 }
 
 #[test]

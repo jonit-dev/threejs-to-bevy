@@ -40,6 +40,46 @@ export interface IGamepadCapabilityReport {
   supported: boolean;
 }
 
+export interface ITouchGesturePoint {
+  id: number;
+  x: number;
+  y: number;
+}
+
+export interface ITouchGestureFrame {
+  timeMs: number;
+  touches: ITouchGesturePoint[];
+}
+
+export type ITouchGestureEvent =
+  | {
+      durationMs: number;
+      id: number;
+      kind: "tap";
+      x: number;
+      y: number;
+    }
+  | {
+      deltaX: number;
+      deltaY: number;
+      direction: "down" | "left" | "right" | "up";
+      durationMs: number;
+      id: number;
+      kind: "swipe";
+    }
+  | {
+      centerX: number;
+      centerY: number;
+      distance: number;
+      durationMs: number;
+      kind: "pinch";
+      scale: number;
+    };
+
+export interface ITouchGestureRecognizer {
+  update(frame: ITouchGestureFrame): ITouchGestureEvent[];
+}
+
 export function createInputState(input?: IInputIr): IWebInputState {
   const currentActions = new Set<string>();
   const previousActions = new Set<string>();
@@ -189,6 +229,105 @@ export function createInputState(input?: IInputIr): IWebInputState {
       refreshActions();
       return !currentActions.has(name) && previousActions.has(name);
     },
+  };
+}
+
+export function createTouchGestureRecognizer(): ITouchGestureRecognizer {
+  let activeSingle: { id: number; startTimeMs: number; startX: number; startY: number; x: number; y: number } | undefined;
+  let activePinch: { centerX: number; centerY: number; distance: number; startDistance: number; startTimeMs: number } | undefined;
+  let previousTouchCount = 0;
+  return {
+    update(frame) {
+      const events: ITouchGestureEvent[] = [];
+      const touches = frame.touches;
+      if (touches.length === 1) {
+        const touch = touches[0]!;
+        if (previousTouchCount !== 1 || activeSingle?.id !== touch.id) {
+          activeSingle = { id: touch.id, startTimeMs: frame.timeMs, startX: touch.x, startY: touch.y, x: touch.x, y: touch.y };
+        } else {
+          activeSingle = { ...activeSingle, x: touch.x, y: touch.y };
+        }
+        activePinch = undefined;
+      } else if (touches.length >= 2) {
+        const pinch = pinchState(touches[0]!, touches[1]!);
+        if (previousTouchCount < 2 || activePinch === undefined) {
+          activePinch = { ...pinch, startDistance: pinch.distance, startTimeMs: frame.timeMs };
+        } else {
+          activePinch = { ...activePinch, centerX: pinch.centerX, centerY: pinch.centerY, distance: pinch.distance };
+        }
+        activeSingle = undefined;
+      } else {
+        if (previousTouchCount === 1 && activeSingle !== undefined) {
+          const event = classifySingleTouch(activeSingle, frame.timeMs);
+          if (event !== undefined) {
+            events.push(event);
+          }
+        }
+        if (previousTouchCount >= 2 && activePinch !== undefined) {
+          const event = classifyPinch(activePinch, frame.timeMs);
+          if (event !== undefined) {
+            events.push(event);
+          }
+        }
+        activeSingle = undefined;
+        activePinch = undefined;
+      }
+      previousTouchCount = touches.length;
+      return events;
+    },
+  };
+}
+
+function classifySingleTouch(
+  touch: { id: number; startTimeMs: number; startX: number; startY: number; x: number; y: number },
+  endTimeMs: number,
+): ITouchGestureEvent | undefined {
+  const deltaX = touch.x - touch.startX;
+  const deltaY = touch.y - touch.startY;
+  const distance = Math.hypot(deltaX, deltaY);
+  const durationMs = Math.max(0, endTimeMs - touch.startTimeMs);
+  if (distance <= 10 && durationMs <= 300) {
+    return { durationMs, id: touch.id, kind: "tap", x: touch.x, y: touch.y };
+  }
+  if (distance >= 40 && durationMs <= 700) {
+    return {
+      deltaX,
+      deltaY,
+      direction: Math.abs(deltaX) >= Math.abs(deltaY) ? (deltaX >= 0 ? "right" : "left") : deltaY >= 0 ? "down" : "up",
+      durationMs,
+      id: touch.id,
+      kind: "swipe",
+    };
+  }
+  return undefined;
+}
+
+function pinchState(left: ITouchGesturePoint, right: ITouchGesturePoint): { centerX: number; centerY: number; distance: number } {
+  return {
+    centerX: (left.x + right.x) / 2,
+    centerY: (left.y + right.y) / 2,
+    distance: Math.hypot(right.x - left.x, right.y - left.y),
+  };
+}
+
+function classifyPinch(
+  pinch: { centerX: number; centerY: number; distance: number; startDistance: number; startTimeMs: number },
+  endTimeMs: number,
+): ITouchGestureEvent | undefined {
+  if (pinch.startDistance <= 0) {
+    return undefined;
+  }
+  const scale = pinch.distance / pinch.startDistance;
+  if (Math.abs(scale - 1) < 0.1) {
+    return undefined;
+  }
+  return {
+    centerX: pinch.centerX,
+    centerY: pinch.centerY,
+    distance: pinch.distance,
+    durationMs: Math.max(0, endTimeMs - pinch.startTimeMs),
+    kind: "pinch",
+    scale,
   };
 }
 

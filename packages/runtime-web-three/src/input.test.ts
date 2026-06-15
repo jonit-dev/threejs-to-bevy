@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { IInputIr } from "@threenative/ir";
 
-import { createInputState, reportGamepadCapabilities, requestPointerLock } from "./input.js";
+import { createInputState, createTouchGestureRecognizer, reportGamepadCapabilities, requestPointerLock } from "./input.js";
 
 test("input should map wasd to move axis", () => {
   const input = createInputState(makeInput());
@@ -105,6 +105,36 @@ test("input should map touch controls to actions and axes", () => {
 
   assert.equal(input.action("Jump"), false);
   assert.equal(input.axis("TouchMoveX"), 1);
+});
+
+test("input should recognize tap swipe and pinch gestures", () => {
+  const recognizer = createTouchGestureRecognizer();
+
+  assert.deepEqual(recognizer.update({ timeMs: 0, touches: [{ id: 1, x: 10, y: 10 }] }), []);
+  assert.deepEqual(recognizer.update({ timeMs: 120, touches: [] }), [
+    { durationMs: 120, id: 1, kind: "tap", x: 10, y: 10 },
+  ]);
+
+  recognizer.update({ timeMs: 200, touches: [{ id: 2, x: 10, y: 10 }] });
+  recognizer.update({ timeMs: 260, touches: [{ id: 2, x: 80, y: 15 }] });
+  assert.deepEqual(recognizer.update({ timeMs: 320, touches: [] }), [
+    { deltaX: 70, deltaY: 5, direction: "right", durationMs: 120, id: 2, kind: "swipe" },
+  ]);
+
+  recognizer.update({ timeMs: 400, touches: [{ id: 3, x: 0, y: 0 }, { id: 4, x: 10, y: 0 }] });
+  recognizer.update({ timeMs: 460, touches: [{ id: 3, x: -5, y: 0 }, { id: 4, x: 15, y: 0 }] });
+  assert.deepEqual(recognizer.update({ timeMs: 520, touches: [] }), [
+    { centerX: 5, centerY: 0, distance: 20, durationMs: 120, kind: "pinch", scale: 2 },
+  ]);
+});
+
+test("input should ignore slow or tiny touch movement", () => {
+  const recognizer = createTouchGestureRecognizer();
+
+  recognizer.update({ timeMs: 0, touches: [{ id: 1, x: 0, y: 0 }] });
+  recognizer.update({ timeMs: 900, touches: [{ id: 1, x: 30, y: 0 }] });
+
+  assert.deepEqual(recognizer.update({ timeMs: 950, touches: [] }), []);
 });
 
 test("input should report pointer lock denied when browser rejects request", async () => {

@@ -724,6 +724,12 @@ for unavailable gamepad APIs/resources, no connected controller, and unknown
 required controls. Input rebinding and richer interactive device overlays remain
 future work.
 
+Touch input now has a shared deterministic gesture recognizer for common mobile
+flows. Web and Bevy runtime helpers classify tap, directional swipe, and pinch
+gestures from timestamped touch-point frames with matching thresholds and event
+payloads. Direct platform event stream wiring and richer gestures remain future
+input work.
+
 The retained UI style surface now accepts portable `shadow` and linear
 `gradient` metadata with validation and capability flags. The web DOM overlay
 renders those as CSS `box-shadow` and `linear-gradient`; Bevy currently preserves

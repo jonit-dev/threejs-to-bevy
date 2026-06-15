@@ -53,6 +53,44 @@ pub struct NativeGamepadDiagnostic {
     pub severity: String,
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct NativeTouchGesturePoint {
+    pub id: u64,
+    pub x: f32,
+    pub y: f32,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum NativeTouchGestureEvent {
+    Tap {
+        duration_ms: f32,
+        id: u64,
+        x: f32,
+        y: f32,
+    },
+    Swipe {
+        delta_x: f32,
+        delta_y: f32,
+        direction: String,
+        duration_ms: f32,
+        id: u64,
+    },
+    Pinch {
+        center_x: f32,
+        center_y: f32,
+        distance: f32,
+        duration_ms: f32,
+        scale: f32,
+    },
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct NativeTouchGestureTracker {
+    active_pinch: Option<ActivePinchGesture>,
+    active_single: Option<ActiveSingleTouchGesture>,
+    previous_touch_count: usize,
+}
+
 impl NativeInputState {
     pub fn action(&self, id: &str) -> bool {
         self.actions.contains(id)
@@ -96,6 +134,163 @@ impl NativeTouchState {
             .copied()
             .unwrap_or(0.0)
     }
+}
+
+impl NativeTouchGestureTracker {
+    pub fn update(
+        &mut self,
+        time_ms: f32,
+        touches: &[NativeTouchGesturePoint],
+    ) -> Vec<NativeTouchGestureEvent> {
+        let mut events = Vec::new();
+        if touches.len() == 1 {
+            let touch = &touches[0];
+            if self.previous_touch_count != 1
+                || self
+                    .active_single
+                    .as_ref()
+                    .map(|active| active.id != touch.id)
+                    .unwrap_or(true)
+            {
+                self.active_single = Some(ActiveSingleTouchGesture {
+                    id: touch.id,
+                    start_time_ms: time_ms,
+                    start_x: touch.x,
+                    start_y: touch.y,
+                    x: touch.x,
+                    y: touch.y,
+                });
+            } else if let Some(active) = self.active_single.as_mut() {
+                active.x = touch.x;
+                active.y = touch.y;
+            }
+            self.active_pinch = None;
+        } else if touches.len() >= 2 {
+            let pinch = pinch_state(&touches[0], &touches[1]);
+            if self.previous_touch_count < 2 || self.active_pinch.is_none() {
+                self.active_pinch = Some(ActivePinchGesture {
+                    center_x: pinch.center_x,
+                    center_y: pinch.center_y,
+                    distance: pinch.distance,
+                    start_distance: pinch.distance,
+                    start_time_ms: time_ms,
+                });
+            } else if let Some(active) = self.active_pinch.as_mut() {
+                active.center_x = pinch.center_x;
+                active.center_y = pinch.center_y;
+                active.distance = pinch.distance;
+            }
+            self.active_single = None;
+        } else {
+            if self.previous_touch_count == 1 {
+                if let Some(active) = self.active_single.as_ref() {
+                    if let Some(event) = classify_single_touch(active, time_ms) {
+                        events.push(event);
+                    }
+                }
+            }
+            if self.previous_touch_count >= 2 {
+                if let Some(active) = self.active_pinch.as_ref() {
+                    if let Some(event) = classify_pinch(active, time_ms) {
+                        events.push(event);
+                    }
+                }
+            }
+            self.active_single = None;
+            self.active_pinch = None;
+        }
+        self.previous_touch_count = touches.len();
+        events
+    }
+}
+
+#[derive(Clone, Debug)]
+struct ActiveSingleTouchGesture {
+    id: u64,
+    start_time_ms: f32,
+    start_x: f32,
+    start_y: f32,
+    x: f32,
+    y: f32,
+}
+
+#[derive(Clone, Debug)]
+struct ActivePinchGesture {
+    center_x: f32,
+    center_y: f32,
+    distance: f32,
+    start_distance: f32,
+    start_time_ms: f32,
+}
+
+struct PinchState {
+    center_x: f32,
+    center_y: f32,
+    distance: f32,
+}
+
+fn classify_single_touch(
+    touch: &ActiveSingleTouchGesture,
+    end_time_ms: f32,
+) -> Option<NativeTouchGestureEvent> {
+    let delta_x = touch.x - touch.start_x;
+    let delta_y = touch.y - touch.start_y;
+    let distance = delta_x.hypot(delta_y);
+    let duration_ms = (end_time_ms - touch.start_time_ms).max(0.0);
+    if distance <= 10.0 && duration_ms <= 300.0 {
+        return Some(NativeTouchGestureEvent::Tap {
+            duration_ms,
+            id: touch.id,
+            x: touch.x,
+            y: touch.y,
+        });
+    }
+    if distance >= 40.0 && duration_ms <= 700.0 {
+        let direction = if delta_x.abs() >= delta_y.abs() {
+            if delta_x >= 0.0 {
+                "right"
+            } else {
+                "left"
+            }
+        } else if delta_y >= 0.0 {
+            "down"
+        } else {
+            "up"
+        };
+        return Some(NativeTouchGestureEvent::Swipe {
+            delta_x,
+            delta_y,
+            direction: direction.to_owned(),
+            duration_ms,
+            id: touch.id,
+        });
+    }
+    None
+}
+
+fn pinch_state(left: &NativeTouchGesturePoint, right: &NativeTouchGesturePoint) -> PinchState {
+    PinchState {
+        center_x: (left.x + right.x) / 2.0,
+        center_y: (left.y + right.y) / 2.0,
+        distance: (right.x - left.x).hypot(right.y - left.y),
+    }
+}
+
+fn classify_pinch(pinch: &ActivePinchGesture, end_time_ms: f32) -> Option<NativeTouchGestureEvent> {
+    if pinch.start_distance <= 0.0 {
+        return None;
+    }
+    let scale = pinch.distance / pinch.start_distance;
+    if (scale - 1.0).abs() < 0.1 {
+        return None;
+    }
+    Some(NativeTouchGestureEvent::Pinch {
+        center_x: pinch.center_x,
+        center_y: pinch.center_y,
+        distance: pinch.distance,
+        duration_ms: (end_time_ms - pinch.start_time_ms).max(0.0),
+        scale,
+    })
 }
 
 pub fn map_keyboard_event(
