@@ -5,14 +5,15 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use bevy::a11y::{AccessibilityNode, accesskit::Role};
+use bevy::a11y::{accesskit::Role, AccessibilityNode};
 use bevy::prelude::*;
 use bevy::text::BreakLineOn;
 use threenative_components::ThreeNativeId;
-use threenative_loader::{UiIr, UiNodeIr, load_bundle};
+use threenative_loader::{load_bundle, UiIr, UiNodeIr};
 use threenative_runtime::ui::{
-    NativeUiAction, NativeUiBar, NativeUiImageSrc, NativeUiKind, NativeUiScrollContainer,
-    NativeUiStyle, build_native_ui, map_ui_into_world, trace_ui_navigation,
+    build_native_ui, dispatch_native_ui_actions, map_ui_into_world, trace_ui_navigation,
+    NativeUiAction, NativeUiActionEvent, NativeUiActionQueue, NativeUiBar, NativeUiImageSrc,
+    NativeUiKind, NativeUiScrollContainer, NativeUiStyle,
 };
 
 mod support;
@@ -205,6 +206,83 @@ fn ui_should_spawn_bevy_entities_with_stable_ids_and_hierarchy() {
     assert_eq!(pause_style.flex_grow, 1.0);
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn ui_should_dispatch_native_button_and_touch_actions() {
+    let ui = UiIr {
+        focus_order: None,
+        input_actions: None,
+        safe_area: None,
+        schema: "threenative.ui".to_owned(),
+        version: "0.1.0".to_owned(),
+        root: UiNodeIr {
+            action: None,
+            accessibility_label: None,
+            children: vec![UiNodeIr {
+                action: Some("Jump".to_owned()),
+                accessibility_label: None,
+                children: Vec::new(),
+                focusable: None,
+                id: "jump".to_owned(),
+                kind: "touchControl".to_owned(),
+                label: Some("Jump".to_owned()),
+                layout: None,
+                max: None,
+                navigation: None,
+                role: None,
+                src: None,
+                style: None,
+                text: None,
+                value: None,
+            }],
+            focusable: None,
+            id: "hud".to_owned(),
+            kind: "column".to_owned(),
+            label: None,
+            layout: None,
+            max: None,
+            navigation: None,
+            role: None,
+            src: None,
+            text: None,
+            value: None,
+            style: None,
+        },
+    };
+    let mut app = App::new();
+    app.init_resource::<NativeUiActionQueue>();
+    app.add_systems(Update, dispatch_native_ui_actions);
+
+    map_ui_into_world(app.world_mut(), &ui).expect("ui should map into world");
+    let entities_by_id = collect_ui_entities(app.world_mut());
+    let jump = entities_by_id["jump"];
+
+    assert!(app.world().get::<Button>(jump).is_some());
+    assert_eq!(
+        app.world().get::<NativeUiAction>(jump),
+        Some(&NativeUiAction("Jump".to_owned()))
+    );
+
+    app.update();
+    assert!(app
+        .world()
+        .resource::<NativeUiActionQueue>()
+        .events
+        .is_empty());
+
+    app.world_mut()
+        .entity_mut(jump)
+        .insert(Interaction::Pressed);
+    app.update();
+
+    assert_eq!(
+        app.world().resource::<NativeUiActionQueue>().events,
+        vec![NativeUiActionEvent {
+            action: "Jump".to_owned(),
+            node: "jump".to_owned(),
+        }]
+    );
 }
 
 #[test]

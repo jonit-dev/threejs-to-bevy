@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use bevy::a11y::{
-    AccessibilityNode,
     accesskit::{NodeBuilder, Role},
+    AccessibilityNode,
 };
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::prelude::*;
@@ -17,6 +17,17 @@ pub struct NativeUiKind(pub String);
 
 #[derive(Clone, Component, Debug, Eq, PartialEq)]
 pub struct NativeUiAction(pub String);
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct NativeUiActionEvent {
+    pub action: String,
+    pub node: String,
+}
+
+#[derive(Debug, Default, Resource)]
+pub struct NativeUiActionQueue {
+    pub events: Vec<NativeUiActionEvent>,
+}
 
 #[derive(Clone, Component, Debug, PartialEq)]
 pub struct NativeUiBar {
@@ -269,7 +280,7 @@ fn spawn_node(
                 node,
             ))
             .id(),
-        "button" => world
+        "button" | "touchControl" => world
             .spawn(ButtonBundle {
                 style: leaf_style(node),
                 background_color: background_color(node, (0.15, 0.17, 0.2, 1.0)),
@@ -583,8 +594,25 @@ pub fn scroll_native_ui(
     }
 }
 
+pub fn dispatch_native_ui_actions(
+    mut queue: ResMut<NativeUiActionQueue>,
+    interactions: Query<
+        (&Interaction, &NativeUiAction, &ThreeNativeId),
+        (Changed<Interaction>, With<Button>),
+    >,
+) {
+    for (interaction, action, id) in &interactions {
+        if *interaction == Interaction::Pressed {
+            queue.events.push(NativeUiActionEvent {
+                action: action.0.clone(),
+                node: id.0.clone(),
+            });
+        }
+    }
+}
+
 fn spawn_runtime_children(world: &mut World, parent: Entity, node: &UiNodeIr) {
-    if node.kind == "button" {
+    if node.kind == "button" || node.kind == "touchControl" {
         if let Some(label) = node.label.as_ref() {
             let label = world
                 .spawn(text_bundle(label.clone(), node))

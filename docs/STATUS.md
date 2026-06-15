@@ -431,8 +431,9 @@ conformance reports now expose the portable UI tree. The web runtime now mounts
 that retained tree as a DOM overlay whose resource bindings update with the
 game loop and whose button/touch clicks enqueue UI actions. The Bevy runtime now
 spawns retained UI entities with stable `ThreeNativeId` metadata, hierarchy,
-buttons, bars, and text. Focus navigation and native click-to-event delivery
-remain later V6-06 runtime work.
+buttons, bars, and text. Native click-to-event delivery is now covered by a
+Bevy UI action queue that records `Interaction::Pressed` on buttons and touch
+controls. Broader focus heuristics and advanced widgets remain later UI work.
 
 V6-07 has started with bundle-local audio playback evidence: the shared
 `v6-audio-playback` conformance fixture declares local OGG/WAV assets,
@@ -710,9 +711,10 @@ through matching web and Bevy service logs. The picking surface now also include
 `picking.pointerRay`, which turns normalized screen/pointer coordinates plus
 portable camera IR into web/native service-logged rays that can feed
 `picking.mesh`. Basic UI Tab/arrow keyboard navigation now works through the web
-DOM overlay and matching web/native fixed traces. Gamepad viewer diagnostics,
-touch gestures, UI picking, rebinding, and richer navigation diagnostics remain
-future input work.
+DOM overlay and matching web/native fixed traces, and basic UI control picking
+now dispatches portable action events from web clicks and Bevy button/touch
+interactions. Gamepad viewer diagnostics, touch gestures, drag-and-drop picking,
+rebinding, and richer navigation diagnostics remain future input work.
 
 The same functional-game parity pass also closes the P0 native material texture
 loading gap for promoted standard-material slots. Bevy runtime material mapping
