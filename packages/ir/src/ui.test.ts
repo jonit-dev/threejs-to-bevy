@@ -105,7 +105,7 @@ test("ui should validate explicit flex layout metadata", async () => {
       root: {
         id: "hud",
         kind: "row",
-        layout: { align: "center", columnGap: 12, direction: "row", height: 48, justify: "spaceBetween", overflow: "hidden", padding: 6, rowGap: 4, width: 320, zIndex: 5 },
+        layout: { align: "center", columnGap: 12, direction: "row", height: 48, inset: { left: 24, top: 16 }, justify: "spaceBetween", overflow: "hidden", padding: 6, position: "absolute", rowGap: 4, width: 320, zIndex: 5 },
         children: [{ id: "score", kind: "text", text: "0" }],
       },
     });
@@ -128,7 +128,7 @@ test("ui should reject invalid flex layout metadata", async () => {
       root: {
         id: "hud",
         kind: "row",
-        layout: { align: "baseline", direction: "diagonal", grow: -1, justify: "around", overflow: "scroll", zIndex: 0.5 },
+        layout: { align: "baseline", direction: "diagonal", grow: -1, inset: { center: 10, left: -1 }, justify: "around", overflow: "scroll", position: "fixed", zIndex: 0.5 },
       },
     });
 
@@ -139,6 +139,9 @@ test("ui should reject invalid flex layout metadata", async () => {
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_LAYOUT_ALIGN_INVALID"), true);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_LAYOUT_JUSTIFY_INVALID"), true);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_LAYOUT_OVERFLOW_INVALID"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_LAYOUT_POSITION_INVALID"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_LAYOUT_INSET_FIELD_UNSUPPORTED"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_LAYOUT_INSET_INVALID"), true);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_LAYOUT_NUMBER_INVALID"), true);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_LAYOUT_Z_INDEX_INVALID"), true);
   } finally {

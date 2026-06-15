@@ -43,9 +43,16 @@ export interface IUiLayoutIr {
   direction?: "column" | "row";
   grow?: number;
   height?: number;
+  inset?: {
+    bottom?: number;
+    left?: number;
+    right?: number;
+    top?: number;
+  };
   justify?: "center" | "end" | "spaceBetween" | "start";
   overflow?: "hidden" | "visible";
   padding?: number;
+  position?: "absolute" | "relative";
   rowGap?: number;
   width?: number;
   zIndex?: number;

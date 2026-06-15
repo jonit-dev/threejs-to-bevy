@@ -172,6 +172,21 @@ function applyLayoutStyle(style: Partial<CSSStyleDeclaration>, layout: IRendered
   if (layout.padding !== undefined) {
     style.padding = `${layout.padding}px`;
   }
+  if (layout.position !== undefined) {
+    style.position = layout.position;
+  }
+  if (layout.inset?.top !== undefined) {
+    style.top = `${layout.inset.top}px`;
+  }
+  if (layout.inset?.right !== undefined) {
+    style.right = `${layout.inset.right}px`;
+  }
+  if (layout.inset?.bottom !== undefined) {
+    style.bottom = `${layout.inset.bottom}px`;
+  }
+  if (layout.inset?.left !== undefined) {
+    style.left = `${layout.inset.left}px`;
+  }
   if (layout.width !== undefined) {
     style.width = `${layout.width}px`;
   }

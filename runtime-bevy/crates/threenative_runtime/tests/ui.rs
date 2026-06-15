@@ -112,6 +112,9 @@ fn ui_should_spawn_bevy_entities_with_stable_ids_and_hierarchy() {
     assert_eq!(hud_style.column_gap, Val::Px(12.0));
     assert_eq!(hud_style.row_gap, Val::Px(4.0));
     assert_eq!(hud_style.padding, UiRect::all(Val::Px(6.0)));
+    assert_eq!(hud_style.position_type, PositionType::Absolute);
+    assert_eq!(hud_style.left, Val::Px(24.0));
+    assert_eq!(hud_style.top, Val::Px(16.0));
     assert_eq!(hud_style.width, Val::Px(320.0));
     assert_eq!(hud_style.height, Val::Px(48.0));
     assert_eq!(hud_style.overflow, Overflow::clip());
@@ -212,7 +215,7 @@ fn write_ui_bundle() -> PathBuf {
   "root": {
     "id": "hud",
     "kind": "column",
-    "layout": { "align": "center", "columnGap": 12, "direction": "row", "height": 48, "justify": "spaceBetween", "overflow": "hidden", "padding": 6, "rowGap": 4, "width": 320, "zIndex": 5 },
+    "layout": { "align": "center", "columnGap": 12, "direction": "row", "height": 48, "inset": { "left": 24, "top": 16 }, "justify": "spaceBetween", "overflow": "hidden", "padding": 6, "position": "absolute", "rowGap": 4, "width": 320, "zIndex": 5 },
     "children": [
       { "id": "label", "kind": "text", "text": "Health" },
       { "id": "health", "kind": "bar", "value": 8, "max": 10 },

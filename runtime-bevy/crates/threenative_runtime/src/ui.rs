@@ -368,6 +368,26 @@ fn apply_layout(style: &mut Style, layout: Option<&threenative_loader::UiLayoutI
     if let Some(padding) = layout.padding {
         style.padding = UiRect::all(Val::Px(padding));
     }
+    if let Some(position) = layout.position.as_deref() {
+        style.position_type = match position {
+            "absolute" => PositionType::Absolute,
+            _ => PositionType::Relative,
+        };
+    }
+    if let Some(inset) = layout.inset.as_ref() {
+        if let Some(top) = inset.top {
+            style.top = Val::Px(top);
+        }
+        if let Some(right) = inset.right {
+            style.right = Val::Px(right);
+        }
+        if let Some(bottom) = inset.bottom {
+            style.bottom = Val::Px(bottom);
+        }
+        if let Some(left) = inset.left {
+            style.left = Val::Px(left);
+        }
+    }
     if let Some(width) = layout.width {
         style.width = Val::Px(width);
     }

@@ -229,6 +229,14 @@ them to CSS overflow and z-index; and the Bevy UI adapter maps them to
 `Style.overflow` plus `ZIndex::Local`. Anchors, richer constraints, and
 scrolling remain future UI layout work.
 
+The same UI layout pass now promotes practical HUD anchoring: UI layout
+metadata accepts `position: "absolute" | "relative"` plus non-negative
+`inset` edges; the UI authoring package, IR validation, and bundle capability
+derivation preserve the fields; web maps them to CSS position and edge
+offsets; and Bevy maps them to `Style.position_type` plus top/right/bottom/left
+`Val::Px` offsets. Richer min/max constraints and scroll containers remain
+future work.
+
 V5-07 has landed the lighting, atmosphere, shadow, and color parity-evidence
 slice: shared fixtures now cover visible/hidden meshes plus ranged point and
 spot lights, SDK/compiler output preserves point-light range and spot-light

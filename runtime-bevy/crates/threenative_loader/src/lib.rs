@@ -663,12 +663,23 @@ pub struct UiLayoutIr {
     pub direction: Option<String>,
     pub grow: Option<f32>,
     pub height: Option<f32>,
+    pub inset: Option<UiInsetIr>,
     pub justify: Option<String>,
     pub overflow: Option<String>,
     pub padding: Option<f32>,
+    pub position: Option<String>,
     pub row_gap: Option<f32>,
     pub width: Option<f32>,
     pub z_index: Option<i32>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UiInsetIr {
+    pub bottom: Option<f32>,
+    pub left: Option<f32>,
+    pub right: Option<f32>,
+    pub top: Option<f32>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
