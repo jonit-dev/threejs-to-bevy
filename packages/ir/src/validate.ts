@@ -1567,7 +1567,7 @@ function validateSystems(
       });
     });
     (system.services ?? []).forEach((service, serviceIndex) => {
-      if (!["animation.play", "physics.overlap", "physics.raycast", "physics.shapeCast", "picking.mesh"].includes(service)) {
+      if (!["animation.play", "physics.overlap", "physics.raycast", "physics.shapeCast", "picking.mesh", "picking.pointerRay"].includes(service)) {
         diagnostics.push({
           code: "TN_IR_SYSTEM_SERVICE_UNSUPPORTED",
           message: `System '${system.name}' declares unsupported service '${service}'.`,

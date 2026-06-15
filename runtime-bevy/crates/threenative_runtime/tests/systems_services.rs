@@ -8,9 +8,10 @@ use threenative_loader::load_bundle;
 use threenative_runtime::{
     systems_context::{NativeSystemTimeSnapshot, build_system_context_snapshot},
     systems_services::{
-        NativeOverlapRequest, NativeQueryShape, NativeRaycastHit, NativeRaycastRequest,
-        NativeRaycastResult, NativeShapeCastRequest, animation_play_payload, overlap_primitive,
-        pick_mesh, raycast_primitive, shape_cast_primitive,
+        NativeOverlapRequest, NativePointerRayHit, NativePointerRayRequest, NativePointerRayResult,
+        NativeQueryShape, NativeRaycastHit, NativeRaycastRequest, NativeRaycastResult,
+        NativeShapeCastRequest, animation_play_payload, overlap_primitive, pick_mesh, pointer_ray,
+        raycast_primitive, shape_cast_primitive,
     },
 };
 
@@ -162,6 +163,38 @@ fn systems_services_should_pick_mesh_renderer_bounds() {
 }
 
 #[test]
+fn systems_services_should_generate_pointer_ray_from_active_camera() {
+    let root = write_bundle("pointer-ray");
+    let bundle = load_bundle(&root).expect("bundle should load");
+    let system = &bundle
+        .systems
+        .as_ref()
+        .expect("systems should load")
+        .systems[0];
+    let snapshot = build_system_context_snapshot(&bundle, system, time());
+
+    let result = pointer_ray(
+        &snapshot,
+        &NativePointerRayRequest {
+            aspect: None,
+            camera: None,
+            max_distance: None,
+            pointer: [0.5, 0.5],
+        },
+    );
+
+    assert_eq!(
+        result,
+        NativePointerRayResult::Hit(NativePointerRayHit {
+            direction: [0.0, 0.0, -1.0],
+            hit: true,
+            max_distance: 100.0,
+            origin: [0.0, 0.0, 4.0],
+        })
+    );
+}
+
+#[test]
 fn systems_services_should_log_animation_play_service_call() {
     assert_eq!(
         animation_play_payload("player", "run", json!({ "loop": true })),
@@ -195,6 +228,13 @@ fn write_bundle(name: &str) -> PathBuf {
   "version": "0.1.0",
   "entities": [
     {
+      "id": "camera.main",
+      "components": {
+        "Transform": { "position": [0, 0, 4], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Camera": { "kind": "perspective", "fovY": 60, "near": 0.1, "far": 100 }
+      }
+    },
+    {
       "id": "player",
       "components": {
         "Transform": { "position": [0, 1, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
@@ -214,7 +254,10 @@ fn write_bundle(name: &str) -> PathBuf {
         "MeshRenderer": { "mesh": "mesh.crate", "material": "mat.crate" }
       }
     }
-  ]
+  ],
+  "resources": {
+    "ActiveCamera": { "entity": "camera.main" }
+  }
 }"#,
     );
     write_json(
@@ -227,13 +270,13 @@ fn write_bundle(name: &str) -> PathBuf {
     {
       "name": "raycast",
       "schedule": "fixedUpdate",
-      "reads": ["Transform", "Collider", "MeshRenderer"],
+      "reads": ["Transform", "Collider", "MeshRenderer", "Camera"],
       "writes": [],
       "queries": [{ "with": ["Transform"], "without": [] }],
       "commands": [],
       "eventReads": [],
       "eventWrites": [],
-      "services": ["physics.overlap", "physics.raycast", "physics.shapeCast", "picking.mesh"],
+      "services": ["physics.overlap", "physics.raycast", "physics.shapeCast", "picking.mesh", "picking.pointerRay"],
       "script": { "bundle": "scripts.bundle.js", "exportName": "system_raycast" }
     }
   ]

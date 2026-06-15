@@ -51,7 +51,6 @@ fn systems_host_should_apply_declared_resource_write() {
     let mut bundle = load_bundle(&root).expect("scripted bundle should load");
 
     let run = run_native_systems_once(&mut bundle, time()).expect("system should run");
-
     assert_eq!(
         bundle.world.resources.get("Score"),
         Some(&serde_json::json!({ "value": 3 }))
@@ -70,7 +69,6 @@ fn systems_host_should_expose_mesh_picking_service() {
     let mut bundle = load_bundle(&root).expect("scripted bundle should load");
 
     let run = run_native_systems_once(&mut bundle, time()).expect("system should run");
-
     assert_eq!(
         bundle.world.resources.get("PickReport"),
         Some(&serde_json::json!({ "entity": "crate", "hit": true }))
@@ -78,13 +76,30 @@ fn systems_host_should_expose_mesh_picking_service() {
     let service_entry = run.logs[0]
         .entries
         .iter()
-        .find(|entry| entry.kind == "service")
+        .find(|entry| entry.kind == "service" && entry.service.as_deref() == Some("picking.mesh"))
         .expect("picking service call should be logged");
     assert_eq!(service_entry.kind, "service");
+    assert_eq!(service_entry.service.as_deref(), Some("picking.mesh"));
+}
+
+#[test]
+fn systems_host_should_expose_pointer_ray_service() {
+    let root = write_picking_bundle("pointer-ray-context");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+
+    let run = run_native_systems_once(&mut bundle, time()).expect("system should run");
+
     assert_eq!(
-        service_entry.service.as_deref(),
-        Some("picking.mesh")
+        bundle.world.resources.get("PickReport"),
+        Some(&serde_json::json!({ "entity": "crate", "hit": true }))
     );
+    let mut service_names: Vec<_> = run.logs[0]
+        .entries
+        .iter()
+        .filter_map(|entry| entry.service.as_deref())
+        .collect();
+    service_names.sort();
+    assert_eq!(service_names, vec!["picking.mesh", "picking.pointerRay"]);
 }
 
 #[test]
@@ -342,6 +357,13 @@ fn write_picking_bundle(name: &str) -> PathBuf {
   "version": "0.1.0",
   "entities": [
     {
+      "id": "camera.main",
+      "components": {
+        "Transform": { "position": [0, 0, 4], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Camera": { "kind": "perspective", "fovY": 60, "near": 0.1, "far": 100 }
+      }
+    },
+    {
       "id": "crate",
       "components": {
         "Transform": { "position": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
@@ -350,6 +372,7 @@ fn write_picking_bundle(name: &str) -> PathBuf {
     }
   ],
   "resources": {
+    "ActiveCamera": { "entity": "camera.main" },
     "PickReport": { "hit": false }
   }
 }"#,
@@ -364,15 +387,18 @@ fn write_picking_bundle(name: &str) -> PathBuf {
     {
       "name": "pick",
       "schedule": "update",
-      "reads": ["Transform", "MeshRenderer"],
+      "reads": ["Transform", "MeshRenderer", "Camera"],
       "writes": [],
-      "queries": [{ "with": ["Transform", "MeshRenderer"], "without": [] }],
+      "queries": [
+        { "with": ["Transform", "MeshRenderer"], "without": [] },
+        { "with": ["Camera"], "without": [] }
+      ],
       "commands": [],
       "eventReads": [],
       "eventWrites": [],
       "resourceReads": [],
       "resourceWrites": ["PickReport"],
-      "services": ["picking.mesh"],
+      "services": ["picking.mesh", "picking.pointerRay"],
       "script": { "bundle": "scripts.bundle.js", "exportName": "system_pick" }
     }
   ]
@@ -381,7 +407,8 @@ fn write_picking_bundle(name: &str) -> PathBuf {
     fs::write(
         root.join("scripts.bundle.js"),
         r#"const system_pick = (ctx) => {
-  const result = ctx.picking.mesh({ origin: [0, 0, 2], direction: [0, 0, -1], maxDistance: 10 });
+  const ray = ctx.picking.pointerRay({ pointer: [0.5, 0.5] });
+  const result = ray.hit ? ctx.picking.mesh(ray) : { hit: false };
   ctx.resources.set("PickReport", { hit: result.hit, entity: result.hit ? result.entity : null });
 };
 export const systemIds = Object.freeze({ "system_pick": "pick" });

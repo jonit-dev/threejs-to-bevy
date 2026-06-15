@@ -107,6 +107,26 @@ test("should log mesh picking service call", () => {
   });
 });
 
+test("should log pointer ray service call", () => {
+  const { context, services } = createSystemContext(makeWorld(), { delta: 0.016, fixedDelta: 0.016 });
+
+  const result = context.picking.pointerRay({ pointer: [0.5, 0.5] });
+
+  assert.deepEqual(result, {
+    direction: [0, 0, -1],
+    hit: true,
+    maxDistance: 100,
+    origin: [0, 0, 4],
+  });
+  assert.deepEqual(services[0], {
+    payload: {
+      request: { pointer: [0.5, 0.5] },
+      result,
+    },
+    service: "picking.pointerRay",
+  });
+});
+
 test("should log animation play service call", () => {
   const { context, services } = createSystemContext(makeWorld(), { delta: 0.016, fixedDelta: 0.016 });
 
@@ -316,6 +336,13 @@ function makeWorld(): IWorldIr {
     entities: [
       {
         components: {
+          Camera: { far: 100, fovY: 60, kind: "perspective", near: 0.1 },
+          Transform: { position: [0, 0, 4] },
+        },
+        id: "camera.main",
+      },
+      {
+        components: {
           Collider: { kind: "box", layer: "world", mask: ["player"], size: [8, 0.1, 8] },
           Transform: { position: [0, 0, 0] },
         },
@@ -335,6 +362,7 @@ function makeWorld(): IWorldIr {
         id: "crate",
       },
     ],
+    resources: { ActiveCamera: { entity: "camera.main" } },
     schema: "threenative.world",
     version: "0.1.0",
   };

@@ -4,7 +4,7 @@ import type { IQueryDeclaration } from "./query.js";
 import type { EcsFactory, IEcsSchema } from "./schema.js";
 
 export type SystemSchedule = "fixedUpdate" | "postUpdate" | "startup" | "update";
-export type SystemService = "animation.play" | "physics.overlap" | "physics.raycast" | "physics.shapeCast" | "picking.mesh";
+export type SystemService = "animation.play" | "physics.overlap" | "physics.raycast" | "physics.shapeCast" | "picking.mesh" | "picking.pointerRay";
 export type PortableSystem<TContext = ISystemContext> = (context: TContext) => unknown;
 
 export interface ISystemOptions {
@@ -127,6 +127,19 @@ export interface ISystemContext {
           hit: true;
           normal: [number, number, number];
           point: [number, number, number];
+        };
+    pointerRay(options: {
+      aspect?: number;
+      camera?: string;
+      maxDistance?: number;
+      pointer: [number, number];
+    }):
+      | { hit: false }
+      | {
+          direction: [number, number, number];
+          hit: true;
+          maxDistance: number;
+          origin: [number, number, number];
         };
   };
   query(): ISystemEntity[];

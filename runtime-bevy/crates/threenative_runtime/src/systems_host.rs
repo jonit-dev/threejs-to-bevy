@@ -284,8 +284,28 @@ function __tnInvokeSystem(options) {
   const normalize = (handle) => typeof handle === "string" ? handle : (handle && typeof handle.name === "string" ? handle.name : String(handle));
   const clone = (value) => value === undefined ? undefined : JSON.parse(JSON.stringify(value));
   const readVec3 = (value, fallback) => Array.isArray(value) ? [Number(value[0] ?? fallback[0]), Number(value[1] ?? fallback[1]), Number(value[2] ?? fallback[2])] : fallback;
+  const readQuat = (value, fallback) => Array.isArray(value) ? [Number(value[0] ?? fallback[0]), Number(value[1] ?? fallback[1]), Number(value[2] ?? fallback[2]), Number(value[3] ?? fallback[3])] : fallback;
   const normalForAxis = (axis, sign) => axis === 0 ? [sign, 0, 0] : (axis === 1 ? [0, sign, 0] : [0, 0, sign]);
   const round6 = (value) => Number(value.toFixed(6));
+  const roundVec3 = (value) => [round6(value[0]), round6(value[1]), round6(value[2])];
+  const positiveNumber = (value, fallback) => Number.isFinite(value) && value > 0 ? value : fallback;
+  const normalizeVec3 = (value) => {
+    const length = Math.hypot(value[0], value[1], value[2]);
+    return length <= 0.000001 ? [0, 0, -1] : [value[0] / length, value[1] / length, value[2] / length];
+  };
+  const rotateVec3 = (value, quaternion) => {
+    const [x, y, z] = value;
+    const [qx, qy, qz, qw] = quaternion;
+    const ix = qw * x + qy * z - qz * y;
+    const iy = qw * y + qz * x - qx * z;
+    const iz = qw * z + qx * y - qy * x;
+    const iw = -qx * x - qy * y - qz * z;
+    return [
+      ix * qw + iw * -qx + iy * -qz - iz * -qy,
+      iy * qw + iw * -qy + iz * -qx - ix * -qz,
+      iz * qw + iw * -qz + ix * -qy - iy * -qx
+    ];
+  };
     const readColliderSize = (collider) => {
       if (Array.isArray(collider?.size)) return readVec3(collider.size, [1, 1, 1]);
       if (typeof collider?.radius === "number") {
@@ -443,6 +463,41 @@ function __tnInvokeSystem(options) {
       }
       return best;
     };
+    const pointerRay = (request) => {
+      const activeCamera = data.resources.ActiveCamera && typeof data.resources.ActiveCamera.entity === "string" ? data.resources.ActiveCamera.entity : undefined;
+      const cameraId = typeof request.camera === "string" ? request.camera : activeCamera;
+      let entity = cameraId
+        ? data.entities.find((candidate) => candidate.id === cameraId && candidate.components.Camera)
+        : data.entities.find((candidate) => candidate.components.Camera);
+      if (!entity) entity = data.entities.find((candidate) => candidate.components.Camera);
+      if (!entity) return { hit: false };
+      const camera = entity.components.Camera;
+      const transform = entity.components.Transform || {};
+      const origin = readVec3(transform.position, [0, 0, 0]);
+      const rotation = readQuat(transform.rotation, [0, 0, 0, 1]);
+      const aspect = positiveNumber(request.aspect, 1);
+      const maxDistance = positiveNumber(request.maxDistance, Number(camera.far || 100));
+      const ndcX = Math.max(0, Math.min(1, Number(request.pointer?.[0] ?? 0.5))) * 2 - 1;
+      const ndcY = 1 - Math.max(0, Math.min(1, Number(request.pointer?.[1] ?? 0.5))) * 2;
+      if (camera.kind === "orthographic") {
+        const size = positiveNumber(camera.size, 1);
+        const offset = rotateVec3([ndcX * size * aspect * 0.5, ndcY * size * 0.5, 0], rotation);
+        return {
+          direction: roundVec3(normalizeVec3(rotateVec3([0, 0, -1], rotation))),
+          hit: true,
+          maxDistance,
+          origin: roundVec3([origin[0] + offset[0], origin[1] + offset[1], origin[2] + offset[2]])
+        };
+      }
+      const fovY = positiveNumber(camera.fovY, 60) * Math.PI / 180;
+      const tanHalfFovY = Math.tan(fovY / 2);
+      return {
+        direction: roundVec3(normalizeVec3(rotateVec3([ndcX * tanHalfFovY * aspect, ndcY * tanHalfFovY, -1], rotation))),
+        hit: true,
+        maxDistance,
+        origin: roundVec3(origin)
+      };
+    };
   const entities = data.entities.map((source) => ({
     id: source.id,
     components: clone(source.components),
@@ -589,6 +644,12 @@ function __tnInvokeSystem(options) {
         const request = clone(payload);
         const result = pickMesh(request);
         effects.services.push({ service: "picking.mesh", payload: { request, result } });
+        return result;
+      },
+      pointerRay(payload) {
+        const request = clone(payload);
+        const result = pointerRay(request);
+        effects.services.push({ service: "picking.pointerRay", payload: { request, result } });
         return result;
       }
     },

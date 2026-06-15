@@ -586,9 +586,11 @@ button/axis input into `NativeInputState`, and live native system snapshots
 receive captured input instead of fixed trace values. Web and Bevy runtimes also
 expose touch control/axis state hooks for portable touch bindings. Portable
 scripts can now declare `picking.mesh` and query generated mesh renderer bounds
-through matching web and Bevy service logs. Gamepad viewer diagnostics, touch
-gestures, mouse/screen pointer ray generation, UI picking, rebinding, and richer
-navigation diagnostics remain future input work.
+through matching web and Bevy service logs. The picking surface now also includes
+`picking.pointerRay`, which turns normalized screen/pointer coordinates plus
+portable camera IR into web/native service-logged rays that can feed
+`picking.mesh`. Gamepad viewer diagnostics, touch gestures, UI picking,
+rebinding, and richer navigation diagnostics remain future input work.
 
 The same functional-game parity pass also closes the P0 native material texture
 loading gap for promoted standard-material slots. Bevy runtime material mapping

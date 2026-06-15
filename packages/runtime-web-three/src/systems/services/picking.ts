@@ -5,6 +5,24 @@ import { type IRaycastRequest, type IRaycastResult } from "./physics.js";
 export type IPickMeshRequest = IRaycastRequest;
 export type IPickMeshResult = IRaycastResult;
 
+export interface IPointerRayRequest {
+  aspect?: number;
+  camera?: string;
+  maxDistance?: number;
+  pointer: [number, number];
+}
+
+export type IPointerRayResult =
+  | { hit: false }
+  | {
+      direction: [number, number, number];
+      hit: true;
+      maxDistance: number;
+      origin: [number, number, number];
+    };
+
+const IDENTITY_QUAT: [number, number, number, number] = [0, 0, 0, 1];
+
 export function pickMesh(world: IWorldIr, assets: IAssetsManifest | undefined, request: IPickMeshRequest): IPickMeshResult {
   const ignore = new Set(request.ignore ?? []);
   const meshes = new Map((assets?.assets ?? []).filter((asset) => asset.kind === "mesh").map((asset) => [asset.id, asset]));
@@ -48,6 +66,45 @@ export function pickMesh(world: IWorldIr, assets: IAssetsManifest | undefined, r
     }
   }
   return best;
+}
+
+export function pointerRay(world: IWorldIr, request: IPointerRayRequest): IPointerRayResult {
+  const cameraEntity = findCamera(world, request.camera);
+  if (cameraEntity === undefined) {
+    return { hit: false };
+  }
+  const camera = cameraEntity.components.Camera;
+  const transform = cameraEntity.components.Transform;
+  if (camera === undefined) {
+    return { hit: false };
+  }
+  const origin = readVec3(transform?.position, [0, 0, 0]);
+  const rotation = readQuat(transform?.rotation, IDENTITY_QUAT);
+  const aspect = positiveNumber(request.aspect, 1);
+  const maxDistance = positiveNumber(request.maxDistance, camera.far);
+  const ndcX = clamp(request.pointer[0], 0, 1) * 2 - 1;
+  const ndcY = 1 - clamp(request.pointer[1], 0, 1) * 2;
+
+  if (camera.kind === "orthographic") {
+    const size = positiveNumber(camera.size, 1);
+    const offset = rotateVec3([ndcX * size * aspect * 0.5, ndcY * size * 0.5, 0], rotation);
+    return {
+      direction: roundVec3(normalizeVec3(rotateVec3([0, 0, -1], rotation))),
+      hit: true,
+      maxDistance,
+      origin: roundVec3([origin[0] + offset[0], origin[1] + offset[1], origin[2] + offset[2]]),
+    };
+  }
+
+  const fovY = positiveNumber(camera.fovY, 60) * Math.PI / 180;
+  const tanHalfFovY = Math.tan(fovY / 2);
+  const localDirection: [number, number, number] = [ndcX * tanHalfFovY * aspect, ndcY * tanHalfFovY, -1];
+  return {
+    direction: roundVec3(normalizeVec3(rotateVec3(localDirection, rotation))),
+    hit: true,
+    maxDistance,
+    origin: roundVec3(origin),
+  };
 }
 
 function intersectAabb(
@@ -104,11 +161,64 @@ function intersectAabb(
   };
 }
 
+function findCamera(world: IWorldIr, cameraId: string | undefined): IWorldIr["entities"][number] | undefined {
+  const activeCamera = typeof world.resources?.ActiveCamera === "object" && world.resources.ActiveCamera !== null && "entity" in world.resources.ActiveCamera
+    ? String((world.resources.ActiveCamera as { entity?: unknown }).entity ?? "")
+    : undefined;
+  const selected = cameraId ?? activeCamera;
+  if (selected !== undefined && selected !== "") {
+    return world.entities.find((entity) => entity.id === selected && entity.components.Camera !== undefined)
+      ?? world.entities.find((entity) => entity.components.Camera !== undefined);
+  }
+  return world.entities.find((entity) => entity.components.Camera !== undefined);
+}
+
 function readVec3(value: unknown, fallback: [number, number, number]): [number, number, number] {
   if (!Array.isArray(value)) {
     return fallback;
   }
   return [numberAt(value, 0, fallback[0]), numberAt(value, 1, fallback[1]), numberAt(value, 2, fallback[2])];
+}
+
+function readQuat(value: unknown, fallback: [number, number, number, number]): [number, number, number, number] {
+  if (!Array.isArray(value)) {
+    return fallback;
+  }
+  return [numberAt(value, 0, fallback[0]), numberAt(value, 1, fallback[1]), numberAt(value, 2, fallback[2]), numberAt(value, 3, fallback[3])];
+}
+
+function positiveNumber(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function normalizeVec3(value: [number, number, number]): [number, number, number] {
+  const length = Math.hypot(value[0], value[1], value[2]);
+  if (length <= 0.000001) {
+    return [0, 0, -1];
+  }
+  return [value[0] / length, value[1] / length, value[2] / length];
+}
+
+function rotateVec3(value: [number, number, number], quaternion: [number, number, number, number]): [number, number, number] {
+  const [x, y, z] = value;
+  const [qx, qy, qz, qw] = quaternion;
+  const ix = qw * x + qy * z - qz * y;
+  const iy = qw * y + qz * x - qx * z;
+  const iz = qw * z + qx * y - qy * x;
+  const iw = -qx * x - qy * y - qz * z;
+  return [
+    ix * qw + iw * -qx + iy * -qz - iz * -qy,
+    iy * qw + iw * -qy + iz * -qx - ix * -qz,
+    iz * qw + iw * -qz + ix * -qy - iy * -qx,
+  ];
+}
+
+function roundVec3(value: [number, number, number]): [number, number, number] {
+  return [Number(value[0].toFixed(6)), Number(value[1].toFixed(6)), Number(value[2].toFixed(6))];
 }
 
 function numberAt(values: unknown[], index: number, fallback: number): number {

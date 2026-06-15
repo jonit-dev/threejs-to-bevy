@@ -504,8 +504,8 @@ Rules:
   component/event names.
 - `eventReads` and `eventWrites` must reference known event schemas.
 - `services` is limited to approved service IDs such as `physics.raycast`,
-  `physics.overlap`, `physics.shapeCast`, `picking.mesh`, and
-  `animation.play`.
+  `physics.overlap`, `physics.shapeCast`, `picking.pointerRay`, `picking.mesh`,
+  and `animation.play`.
 - System names are stable diagnostics and scheduling identifiers.
 
 The IR references system code by export name. It does not inline arbitrary function bodies into JSON.

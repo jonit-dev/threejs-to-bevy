@@ -49,6 +49,15 @@ pub struct NativeShapeCastRequest {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct NativePointerRayRequest {
+    pub aspect: Option<f64>,
+    pub camera: Option<String>,
+    pub max_distance: Option<f64>,
+    pub pointer: [f64; 2],
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(tag = "kind")]
 pub enum NativeQueryShape {
     #[serde(rename = "box", rename_all = "camelCase")]
@@ -81,6 +90,22 @@ pub struct NativeRaycastHit {
     pub hit: bool,
     pub normal: [f64; 3],
     pub point: [f64; 3],
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq)]
+#[serde(untagged)]
+pub enum NativePointerRayResult {
+    Miss(NativeRaycastMiss),
+    Hit(NativePointerRayHit),
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct NativePointerRayHit {
+    pub direction: [f64; 3],
+    pub hit: bool,
+    pub max_distance: f64,
+    pub origin: [f64; 3],
 }
 
 pub type NativeShapeCastResult = NativeRaycastResult;
@@ -304,6 +329,68 @@ pub fn pick_mesh(
     }
 }
 
+pub fn pointer_ray(
+    snapshot: &NativeSystemContextSnapshot,
+    request: &NativePointerRayRequest,
+) -> NativePointerRayResult {
+    let Some(entity) = find_camera(snapshot, request.camera.as_deref()) else {
+        return NativePointerRayResult::Miss(NativeRaycastMiss { hit: false });
+    };
+    let Some(camera) = entity.components.get("Camera").and_then(Value::as_object) else {
+        return NativePointerRayResult::Miss(NativeRaycastMiss { hit: false });
+    };
+    let transform = entity
+        .components
+        .get("Transform")
+        .and_then(Value::as_object);
+    let origin = read_vec3(
+        transform.and_then(|value| value.get("position")),
+        [0.0, 0.0, 0.0],
+    );
+    let rotation = read_quat(
+        transform.and_then(|value| value.get("rotation")),
+        [0.0, 0.0, 0.0, 1.0],
+    );
+    let aspect = positive_number(request.aspect, 1.0);
+    let max_distance = positive_number(request.max_distance, read_number(camera.get("far"), 100.0));
+    let ndc_x = request.pointer[0].clamp(0.0, 1.0) * 2.0 - 1.0;
+    let ndc_y = 1.0 - request.pointer[1].clamp(0.0, 1.0) * 2.0;
+
+    if camera.get("kind").and_then(Value::as_str) == Some("orthographic") {
+        let size = positive_number(camera.get("size").and_then(Value::as_f64), 1.0);
+        let offset = rotate_vec3(
+            [ndc_x * size * aspect * 0.5, ndc_y * size * 0.5, 0.0],
+            rotation,
+        );
+        return NativePointerRayResult::Hit(NativePointerRayHit {
+            direction: round_vec3(normalize_vec3(rotate_vec3([0.0, 0.0, -1.0], rotation))),
+            hit: true,
+            max_distance,
+            origin: round_vec3([
+                origin[0] + offset[0],
+                origin[1] + offset[1],
+                origin[2] + offset[2],
+            ]),
+        });
+    }
+
+    let fov_y = positive_number(camera.get("fovY").and_then(Value::as_f64), 60.0).to_radians();
+    let tan_half_fov_y = (fov_y / 2.0).tan();
+    NativePointerRayResult::Hit(NativePointerRayHit {
+        direction: round_vec3(normalize_vec3(rotate_vec3(
+            [
+                ndc_x * tan_half_fov_y * aspect,
+                ndc_y * tan_half_fov_y,
+                -1.0,
+            ],
+            rotation,
+        ))),
+        hit: true,
+        max_distance,
+        origin: round_vec3(origin),
+    })
+}
+
 pub fn animation_play_payload(entity: &str, clip: &str, options: Value) -> Value {
     json!({
         "request": {
@@ -448,6 +535,28 @@ fn passes_filter(
     true
 }
 
+fn find_camera<'a>(
+    snapshot: &'a NativeSystemContextSnapshot,
+    camera_id: Option<&str>,
+) -> Option<&'a crate::systems_context::NativeSystemEntitySnapshot> {
+    let active_camera = snapshot
+        .resources
+        .get("ActiveCamera")
+        .and_then(|value| value.get("entity"))
+        .and_then(Value::as_str);
+    let selected = camera_id.or(active_camera);
+    if let Some(selected) = selected {
+        return snapshot
+            .entities
+            .iter()
+            .find(|entity| entity.id == selected && entity.components.contains_key("Camera"));
+    }
+    snapshot
+        .entities
+        .iter()
+        .find(|entity| entity.components.contains_key("Camera"))
+}
+
 fn read_vec3(value: Option<&Value>, fallback: [f64; 3]) -> [f64; 3] {
     let Some(values) = value.and_then(Value::as_array) else {
         return fallback;
@@ -457,6 +566,50 @@ fn read_vec3(value: Option<&Value>, fallback: [f64; 3]) -> [f64; 3] {
         read_number(values.get(1), fallback[1]),
         read_number(values.get(2), fallback[2]),
     ]
+}
+
+fn read_quat(value: Option<&Value>, fallback: [f64; 4]) -> [f64; 4] {
+    let Some(values) = value.and_then(Value::as_array) else {
+        return fallback;
+    };
+    [
+        read_number(values.first(), fallback[0]),
+        read_number(values.get(1), fallback[1]),
+        read_number(values.get(2), fallback[2]),
+        read_number(values.get(3), fallback[3]),
+    ]
+}
+
+fn positive_number(value: Option<f64>, fallback: f64) -> f64 {
+    value
+        .filter(|value| value.is_finite() && *value > 0.0)
+        .unwrap_or(fallback)
+}
+
+fn normalize_vec3(value: [f64; 3]) -> [f64; 3] {
+    let length = (value[0] * value[0] + value[1] * value[1] + value[2] * value[2]).sqrt();
+    if length <= 0.000001 {
+        return [0.0, 0.0, -1.0];
+    }
+    [value[0] / length, value[1] / length, value[2] / length]
+}
+
+fn rotate_vec3(value: [f64; 3], quaternion: [f64; 4]) -> [f64; 3] {
+    let [x, y, z] = value;
+    let [qx, qy, qz, qw] = quaternion;
+    let ix = qw * x + qy * z - qz * y;
+    let iy = qw * y + qz * x - qx * z;
+    let iz = qw * z + qx * y - qy * x;
+    let iw = -qx * x - qy * y - qz * z;
+    [
+        ix * qw + iw * -qx + iy * -qz - iz * -qy,
+        iy * qw + iw * -qy + iz * -qx - ix * -qz,
+        iz * qw + iw * -qz + ix * -qy - iy * -qx,
+    ]
+}
+
+fn round_vec3(value: [f64; 3]) -> [f64; 3] {
+    [round6(value[0]), round6(value[1]), round6(value[2])]
 }
 
 fn read_number(value: Option<&Value>, fallback: f64) -> f64 {

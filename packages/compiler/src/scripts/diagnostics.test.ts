@@ -78,13 +78,18 @@ test("should reject undeclared v7 physics and picking query services", () => {
   const diagnostics = diagnosePortableSystem({
     services: ["physics.raycast"],
     source:
-      "(ctx) => { ctx.physics.raycast({ origin: [0,0,0], direction: [0,-1,0], maxDistance: 1 }); ctx.physics.overlap({ position: [0,0,0], shape: { kind: 'sphere', radius: 1 } }); ctx.physics.shapeCast({ origin: [0,0,0], direction: [1,0,0], maxDistance: 1, shape: { kind: 'sphere', radius: 1 } }); ctx.picking.mesh({ origin: [0,0,0], direction: [0,0,-1], maxDistance: 5 }); }",
+      "(ctx) => { ctx.physics.raycast({ origin: [0,0,0], direction: [0,-1,0], maxDistance: 1 }); ctx.physics.overlap({ position: [0,0,0], shape: { kind: 'sphere', radius: 1 } }); ctx.physics.shapeCast({ origin: [0,0,0], direction: [1,0,0], maxDistance: 1, shape: { kind: 'sphere', radius: 1 } }); ctx.picking.pointerRay({ pointer: [0.5, 0.5] }); ctx.picking.mesh({ origin: [0,0,0], direction: [0,0,-1], maxDistance: 5 }); }",
     systemName: "badV7Access",
   });
 
   assert.deepEqual(
     diagnostics.map((diagnostic) => diagnostic.path),
-    ["systems/badV7Access/services/physics.overlap", "systems/badV7Access/services/physics.shapeCast", "systems/badV7Access/services/picking.mesh"],
+    [
+      "systems/badV7Access/services/physics.overlap",
+      "systems/badV7Access/services/physics.shapeCast",
+      "systems/badV7Access/services/picking.mesh",
+      "systems/badV7Access/services/picking.pointerRay",
+    ],
   );
 });
 

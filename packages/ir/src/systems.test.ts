@@ -84,7 +84,7 @@ test("should accept v7 physics and picking query services", async () => {
     await writeBundle(root, {
       commands: [],
       reads: ["Transform"],
-      services: ["physics.overlap", "physics.raycast", "physics.shapeCast", "picking.mesh"],
+      services: ["physics.overlap", "physics.raycast", "physics.shapeCast", "picking.mesh", "picking.pointerRay"],
       writes: ["Transform"],
     });
 

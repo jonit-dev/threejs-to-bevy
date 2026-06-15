@@ -1,7 +1,7 @@
 import type { SchemaVersion } from "./types.js";
 
 export type IrSystemSchedule = "fixedUpdate" | "postUpdate" | "startup" | "update";
-export type IrSystemService = "animation.play" | "physics.overlap" | "physics.raycast" | "physics.shapeCast" | "picking.mesh";
+export type IrSystemService = "animation.play" | "physics.overlap" | "physics.raycast" | "physics.shapeCast" | "picking.mesh" | "picking.pointerRay";
 
 export type IrSystemCommand =
   | {

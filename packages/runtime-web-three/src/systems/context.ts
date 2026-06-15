@@ -2,7 +2,7 @@ import { buildComponentReflectionRegistry, type IComponentReflectionRegistry, ty
 import type { IAssetsManifest, IIrSchemaFile, IIrStateSource, IIrSystemQuery, ISystemsIr, IWorldEntity, IWorldIr } from "@threenative/ir";
 import type { IWebInputState } from "../input.js";
 import { animationPlayPayload } from "./services/animation.js";
-import { pickMesh, type IPickMeshRequest, type IPickMeshResult } from "./services/picking.js";
+import { pickMesh, pointerRay, type IPickMeshRequest, type IPickMeshResult, type IPointerRayRequest, type IPointerRayResult } from "./services/picking.js";
 import {
   overlapPrimitive,
   raycastPrimitive,
@@ -85,6 +85,7 @@ export interface ISystemContext {
   };
   picking: {
     mesh(options: IPickMeshRequest): IPickMeshResult;
+    pointerRay(options: IPointerRayRequest): IPointerRayResult;
   };
   time: {
     delta: number;
@@ -147,7 +148,7 @@ export interface IQueuedResourceWrite {
 
 export interface IQueuedServiceCall {
   payload: unknown;
-  service: "animation.play" | "physics.overlap" | "physics.raycast" | "physics.shapeCast" | "picking.mesh";
+  service: "animation.play" | "physics.overlap" | "physics.raycast" | "physics.shapeCast" | "picking.mesh" | "picking.pointerRay";
 }
 
 export function createSystemContext(
@@ -314,6 +315,12 @@ export function createSystemContext(
           const request = cloneValue(serviceOptions);
           const result = pickMesh(world, options.assets, request);
           services.push({ payload: { request, result }, service: "picking.mesh" });
+          return result;
+        },
+        pointerRay(serviceOptions) {
+          const request = cloneValue(serviceOptions);
+          const result = pointerRay(world, request);
+          services.push({ payload: { request, result }, service: "picking.pointerRay" });
           return result;
         },
       },
