@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { IAtmosphereProfileIr } from "@threenative/ir";
+import type { IAtmosphereProfileIr, IRuntimeConfigIr } from "@threenative/ir";
 import { loadBundle } from "./loadBundle.js";
 import { advanceAnimationPlayback, hasAnimationPlayback, loadWorldModelAssets, mapWorld, type IRuntimeDiagnostic } from "./mapWorld.js";
 import { applyEnvironmentBookmark, createEnvironmentRuntime, loadEnvironmentAssetInstances } from "./environment.js";
@@ -45,7 +45,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
   const loopState = createGameLoopState(bundle.runtimeConfig);
   const effectLog = createSystemEffectLog();
   const systemModule = await loadSystemModule(source, bundle.manifest);
-  const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  const renderer = new THREE.WebGLRenderer(webRendererParameters(bundle.runtimeConfig));
   applyRendererColorManagement(renderer, bundle.environmentScene?.atmosphere?.colorManagement);
   const canvas = renderer.domElement;
   const ui = bundle.ui === undefined ? undefined : renderUi(bundle.ui, bundle.world);
@@ -126,6 +126,13 @@ function audioEvents(events: Record<string, unknown>): Array<{ event: string; pa
       ? payloads.map((payload) => ({ event, payload }))
       : [{ event, payload: payloads }],
   );
+}
+
+export function webRendererParameters(config?: IRuntimeConfigIr): THREE.WebGLRendererParameters {
+  return {
+    antialias: config?.renderer?.antialias !== "none",
+    preserveDrawingBuffer: true,
+  };
 }
 
 function prepareRenderContainer(container: HTMLElement): void {

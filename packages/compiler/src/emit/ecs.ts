@@ -74,6 +74,7 @@ export function ecsToIr(world: IEcsWorldLike): IEcsEmitResult {
         : {
             schema: "threenative.runtime-config",
             version: "0.1.0",
+            renderer: snapshot.runtimeConfig.renderer,
             time: snapshot.runtimeConfig.time,
             window: snapshot.runtimeConfig.window,
           },

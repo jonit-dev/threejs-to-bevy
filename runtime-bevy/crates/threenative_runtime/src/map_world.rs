@@ -24,7 +24,7 @@ use thiserror::Error;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{
     AnimationGraphIr, AnimationGraphTransitionIr, AssetIr, ColorIr, LoadedBundle, MaterialIr,
-    WorldEntity,
+    RuntimeConfigIr, WorldEntity,
 };
 
 // ThreeNative lights are authored in Three.js-style scalar units. Bevy stores
@@ -101,6 +101,7 @@ impl MapError {
 
 pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result<(), MapError> {
     ensure_asset_resources(world);
+    apply_runtime_config(world, bundle.runtime_config.as_ref());
     let camera_color_management = bundle
         .environment_scene
         .as_ref()
@@ -151,6 +152,19 @@ pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result
     }
 
     Ok(())
+}
+
+fn apply_runtime_config(world: &mut World, config: Option<&RuntimeConfigIr>) {
+    let msaa = match config
+        .and_then(|config| config.renderer.as_ref())
+        .and_then(|renderer| renderer.antialias.as_deref())
+    {
+        Some("none") => Msaa::Off,
+        Some("msaa2") => Msaa::Sample2,
+        Some("msaa8") => Msaa::Sample8,
+        _ => Msaa::Sample4,
+    };
+    world.insert_resource(msaa);
 }
 
 pub fn advance_native_animation_playback(world: &mut World, fixed_delta: f32) {

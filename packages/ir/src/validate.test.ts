@@ -279,6 +279,37 @@ test("should reject invalid systems task and channel declarations", async () => 
   }
 });
 
+test("should accept promoted runtime renderer antialias modes", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-runtime-renderer-valid-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeRuntimeConfig(root, "msaa8");
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject invalid runtime renderer antialias modes", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-runtime-renderer-invalid-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeRuntimeConfig(root, "fxaa");
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics[0]?.code, "TN_IR_RUNTIME_RENDERER_ANTIALIAS_INVALID");
+    assert.equal(result.diagnostics[0]?.path, "runtime.config.json/renderer/antialias");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject invalid material alpha values", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-material-alpha-invalid-"));
   try {
@@ -482,6 +513,30 @@ async function writeBundle(root: string, health: Record<string, unknown>): Promi
   await writeJson(root, "assets.manifest.json", { schema: "threenative.assets", version: "0.1.0", assets: [] });
   await writeJson(root, "materials.ir.json", { schema: "threenative.materials", version: "0.1.0", materials: [] });
   await writeJson(root, "target.profile.json", { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] });
+}
+
+async function writeRuntimeConfig(root: string, antialias: string): Promise<void> {
+  await writeJson(root, "manifest.json", {
+    schema: "threenative.bundle",
+    version: "0.1.0",
+    name: "schema-test",
+    requiredCapabilities: {},
+    entry: { world: "world.ir.json" },
+    files: {
+      assets: "assets.manifest.json",
+      materials: "materials.ir.json",
+      targetProfile: "target.profile.json",
+      componentSchemas: "schemas/components.schema.json",
+      runtimeConfig: "runtime.config.json",
+    },
+  });
+  await writeJson(root, "runtime.config.json", {
+    schema: "threenative.runtime-config",
+    version: "0.1.0",
+    renderer: { antialias },
+    time: { fixedDelta: 1 / 60, paused: false },
+    window: { height: 720, width: 1280 },
+  });
 }
 
 async function writeJson(root: string, file: string, value: unknown): Promise<void> {

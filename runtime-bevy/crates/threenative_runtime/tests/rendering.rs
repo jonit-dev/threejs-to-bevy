@@ -120,6 +120,19 @@ fn rendering_should_load_material_textures_through_asset_server() {
 }
 
 #[test]
+fn rendering_should_map_runtime_antialias_to_msaa_resource() {
+    let root = write_rendering_bundle();
+    let bundle = load_bundle(&root).expect("rendering bundle should load");
+    let mut app = App::new();
+
+    map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map");
+
+    assert_eq!(app.world().resource::<Msaa>(), &Msaa::Sample8);
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
 fn rendering_should_map_expanded_generated_primitive_catalog() {
     let root = write_primitive_catalog_bundle();
     let bundle = load_bundle(&root).expect("primitive catalog bundle should load");
@@ -484,7 +497,18 @@ fn write_rendering_bundle() -> PathBuf {
   "version": "0.1.0",
   "name": "rendering",
   "entry": { "world": "world.ir.json" },
-  "files": { "assets": "assets.manifest.json", "materials": "materials.ir.json", "targetProfile": "target.profile.json" }
+  "files": { "assets": "assets.manifest.json", "materials": "materials.ir.json", "runtimeConfig": "runtime.config.json", "targetProfile": "target.profile.json" }
+}"#,
+    );
+    write(
+        &root,
+        "runtime.config.json",
+        r#"{
+  "schema": "threenative.runtime-config",
+  "version": "0.1.0",
+  "renderer": { "antialias": "msaa8" },
+  "time": { "fixedDelta": 0.016666666666666666, "paused": false },
+  "window": { "height": 720, "width": 1280 }
 }"#,
     );
     write(

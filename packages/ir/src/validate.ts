@@ -1441,6 +1441,16 @@ function validateRuntimeConfig(config: IRuntimeConfigIr, path: string, diagnosti
       path: `${path}/time/fixedDelta`,
     });
   }
+  if (
+    config.renderer !== undefined &&
+    !["none", "msaa2", "msaa4", "msaa8"].includes(config.renderer.antialias)
+  ) {
+    diagnostics.push({
+      code: "TN_IR_RUNTIME_RENDERER_ANTIALIAS_INVALID",
+      message: "Renderer antialias mode must be one of none, msaa2, msaa4, or msaa8.",
+      path: `${path}/renderer/antialias`,
+    });
+  }
   if (!Number.isFinite(config.window.width) || config.window.width <= 0) {
     diagnostics.push({
       code: "TN_IR_RUNTIME_WINDOW_INVALID",

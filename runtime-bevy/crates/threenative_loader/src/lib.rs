@@ -592,8 +592,15 @@ pub enum InputBindingIr {
 pub struct RuntimeConfigIr {
     pub schema: String,
     pub version: String,
+    pub renderer: Option<RuntimeRendererConfig>,
     pub time: RuntimeTimeConfig,
     pub window: RuntimeWindowConfig,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeRendererConfig {
+    pub antialias: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

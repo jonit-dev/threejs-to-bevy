@@ -7,6 +7,13 @@
   "properties": {
     "schema": { "const": "threenative.runtime-config" },
     "version": { "const": "0.1.0" },
+    "renderer": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "antialias": { "enum": ["none", "msaa2", "msaa4", "msaa8"] }
+      }
+    },
     "time": {
       "type": "object",
       "required": ["fixedDelta", "paused"],

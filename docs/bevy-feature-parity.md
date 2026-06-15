@@ -120,7 +120,8 @@ Priority labels on unchecked items:
 - [ ] `P3` Volumetric fog and volumetric lighting
 - [ ] `P1` Skyboxes and cubemap/compressed texture handling
 - [ ] `P1` Bloom
-- [ ] `P1` Anti-aliasing modes: MSAA, FXAA, TAA, SMAA
+- [x] `P1` MSAA anti-aliasing modes through runtime config in web and native
+- [ ] `P2` FXAA, TAA, and SMAA anti-aliasing modes
 - [ ] `P2` Color grading and filmic controls
 - [ ] `P3` Auto exposure
 - [ ] `P2` Depth of field

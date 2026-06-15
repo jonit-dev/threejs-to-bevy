@@ -3,6 +3,9 @@ import type { SchemaVersion } from "./types.js";
 export interface IRuntimeConfigIr {
   schema: "threenative.runtime-config";
   version: SchemaVersion;
+  renderer?: {
+    antialias: "none" | "msaa2" | "msaa4" | "msaa8";
+  };
   time: {
     fixedDelta: number;
     paused: boolean;

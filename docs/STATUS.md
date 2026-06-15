@@ -205,6 +205,14 @@ fields, Bevy maps them to light `shadow_depth_bias` /
 `shadow_normal_bias`, and web/native conformance reports preserve authored and
 runtime-applied bias values.
 
+Post-V7 renderer-quality coverage now promotes runtime-configured MSAA modes:
+`defineRuntimeConfig({ renderer: { antialias } })` emits `none`, `msaa2`,
+`msaa4`, or `msaa8`; IR validation rejects unsupported renderer antialias
+modes; web maps `none` to WebGL antialias disabled and all MSAA modes to
+WebGL antialias enabled; and Bevy maps the same contract to `Msaa::Off`,
+`Sample2`, `Sample4`, or `Sample8`. FXAA, TAA, SMAA, and visual
+post-processing antialias comparisons remain future work.
+
 V5-07 has landed the lighting, atmosphere, shadow, and color parity-evidence
 slice: shared fixtures now cover visible/hidden meshes plus ranged point and
 spot lights, SDK/compiler output preserves point-light range and spot-light

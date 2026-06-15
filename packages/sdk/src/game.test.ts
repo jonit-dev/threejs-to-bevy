@@ -12,7 +12,11 @@ test("should serialize game root when scene and world are provided", () => {
   const scene = new Scene({ id: "scene.game" });
   const world = new World();
   const input = defineInputMap({ actions: [action("Jump", [keyboard("Space")])] });
-  const runtimeConfig = defineRuntimeConfig({ fixedDelta: 1 / 30, window: { title: "Starter" } });
+  const runtimeConfig = defineRuntimeConfig({
+    fixedDelta: 1 / 30,
+    renderer: { antialias: "msaa8" },
+    window: { title: "Starter" },
+  });
 
   const root = defineGame({ input, runtimeConfig, scene, world });
 
@@ -20,6 +24,7 @@ test("should serialize game root when scene and world are provided", () => {
   assert.equal(root.world, world);
   assert.equal(root.input, input);
   assert.deepEqual(world.toJSON().runtimeConfig, runtimeConfig);
+  assert.equal(world.toJSON().runtimeConfig?.renderer.antialias, "msaa8");
 });
 
 test("should reject empty game root when no portable declarations are provided", () => {
