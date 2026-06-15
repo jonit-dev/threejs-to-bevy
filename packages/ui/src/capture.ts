@@ -69,7 +69,10 @@ export interface IUiStyleIr {
   borderRadius?: number;
   borderWidth?: number;
   color?: string;
+  fontSize?: number;
   opacity?: number;
+  textAlign?: "center" | "left" | "right";
+  wrap?: "character" | "none" | "word";
 }
 
 export function captureUi(root: IUiElement): IUiIr {

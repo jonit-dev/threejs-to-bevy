@@ -106,7 +106,7 @@ test("ui should validate explicit flex layout metadata", async () => {
         id: "hud",
         kind: "row",
         layout: { align: "center", columnGap: 12, direction: "row", height: 48, inset: { left: 24, top: 16 }, justify: "spaceBetween", maxWidth: 480, minHeight: 24, overflow: "hidden", padding: 6, position: "absolute", rowGap: 4, width: 320, zIndex: 5 },
-        style: { backgroundColor: "#101820cc", borderColor: "#ffffff", borderRadius: 8, borderWidth: 2, color: "#ffcc00", opacity: 0.75 },
+        style: { backgroundColor: "#101820cc", borderColor: "#ffffff", borderRadius: 8, borderWidth: 2, color: "#ffcc00", fontSize: 18, opacity: 0.75, textAlign: "center", wrap: "word" },
         children: [{ id: "score", kind: "text", text: "0" }],
       },
     });
@@ -166,7 +166,10 @@ test("ui should reject invalid style metadata", async () => {
           borderRadius: -1,
           borderWidth: Number.POSITIVE_INFINITY,
           color: "#000000",
+          fontSize: -4,
           opacity: 1.5,
+          textAlign: "middle",
+          wrap: "always",
           shadow: true,
         },
       },
@@ -179,6 +182,8 @@ test("ui should reject invalid style metadata", async () => {
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_STYLE_COLOR_INVALID"), true);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_STYLE_NUMBER_INVALID"), true);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_STYLE_OPACITY_INVALID"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_STYLE_TEXT_ALIGN_INVALID"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_STYLE_WRAP_INVALID"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

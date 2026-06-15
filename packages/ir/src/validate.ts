@@ -565,7 +565,7 @@ function validateUiStyle(value: unknown, path: string, diagnostics: IIrDiagnosti
     return;
   }
   for (const key of Object.keys(value)) {
-    if (!["backgroundColor", "borderColor", "borderRadius", "borderWidth", "color", "opacity"].includes(key)) {
+    if (!["backgroundColor", "borderColor", "borderRadius", "borderWidth", "color", "fontSize", "opacity", "textAlign", "wrap"].includes(key)) {
       diagnostics.push({ code: "TN_IR_UI_STYLE_FIELD_UNSUPPORTED", message: `UI style uses unsupported field '${key}'.`, path: `${path}/${key}` });
     }
   }
@@ -575,7 +575,7 @@ function validateUiStyle(value: unknown, path: string, diagnostics: IIrDiagnosti
       diagnostics.push({ code: "TN_IR_UI_STYLE_COLOR_INVALID", message: `UI style ${key} must be #RRGGBB or #RRGGBBAA.`, path: `${path}/${key}` });
     }
   }
-  for (const key of ["borderRadius", "borderWidth"]) {
+  for (const key of ["borderRadius", "borderWidth", "fontSize"]) {
     const item = value[key];
     if (item !== undefined && (typeof item !== "number" || !Number.isFinite(item) || item < 0)) {
       diagnostics.push({ code: "TN_IR_UI_STYLE_NUMBER_INVALID", message: `UI style ${key} must be a finite non-negative number.`, path: `${path}/${key}` });
@@ -583,6 +583,12 @@ function validateUiStyle(value: unknown, path: string, diagnostics: IIrDiagnosti
   }
   if (value.opacity !== undefined && (typeof value.opacity !== "number" || !Number.isFinite(value.opacity) || value.opacity < 0 || value.opacity > 1)) {
     diagnostics.push({ code: "TN_IR_UI_STYLE_OPACITY_INVALID", message: "UI style opacity must be between 0 and 1.", path: `${path}/opacity` });
+  }
+  if (value.textAlign !== undefined && !["center", "left", "right"].includes(String(value.textAlign))) {
+    diagnostics.push({ code: "TN_IR_UI_STYLE_TEXT_ALIGN_INVALID", message: "UI style textAlign must be left, center, or right.", path: `${path}/textAlign` });
+  }
+  if (value.wrap !== undefined && !["character", "none", "word"].includes(String(value.wrap))) {
+    diagnostics.push({ code: "TN_IR_UI_STYLE_WRAP_INVALID", message: "UI style wrap must be character, none, or word.", path: `${path}/wrap` });
   }
 }
 

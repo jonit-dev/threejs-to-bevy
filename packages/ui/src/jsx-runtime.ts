@@ -58,7 +58,10 @@ export interface IUiNodeProps {
     borderRadius?: number;
     borderWidth?: number;
     color?: string;
+    fontSize?: number;
     opacity?: number;
+    textAlign?: "center" | "left" | "right";
+    wrap?: "character" | "none" | "word";
   };
   text?: string;
   value?: number;

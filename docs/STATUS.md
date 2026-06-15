@@ -252,6 +252,13 @@ overlay maps them to CSS visual properties, and the Bevy UI adapter maps them to
 `BackgroundColor`, `TextStyle.color`, `BorderColor`, `Style.border`, and
 `BorderRadius`. Shadows and gradients remain future UI styling work.
 
+The same UI style surface now covers basic text presentation for high-frequency
+HUD/menu cases: `fontSize`, `textAlign`, and `wrap` (`word`, `character`, or
+`none`) validate through IR, emit as bundle style capabilities, map to CSS
+font-size/text-align/wrapping behavior in the web DOM overlay, and map to Bevy
+`TextStyle.font_size`, `Text.justify`, and `BreakLineOn`. Font assets, weights,
+inline spans, underline, and strikethrough remain future rich-text work.
+
 V5-07 has landed the lighting, atmosphere, shadow, and color parity-evidence
 slice: shared fixtures now cover visible/hidden meshes plus ranged point and
 spot lights, SDK/compiler output preserves point-light range and spot-light

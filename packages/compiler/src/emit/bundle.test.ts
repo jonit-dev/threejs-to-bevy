@@ -331,7 +331,7 @@ test("should derive manifest capabilities from emitted bundle IR", async () => {
             focusable: true,
             id: "hud.jump",
             label: "Jump",
-            style: { backgroundColor: "#101820cc", borderColor: "#ffffff", borderRadius: 8, borderWidth: 2, color: "#ffcc00", opacity: 0.75 },
+            style: { backgroundColor: "#101820cc", borderColor: "#ffffff", borderRadius: 8, borderWidth: 2, color: "#ffcc00", fontSize: 18, opacity: 0.75, textAlign: "center", wrap: "word" },
           }),
           id: "hud",
         }),
@@ -381,6 +381,7 @@ test("should derive manifest capabilities from emitted bundle IR", async () => {
     assertCapability(manifest, "ui", "style.color");
     assertCapability(manifest, "ui", "style.opacity");
     assertCapability(manifest, "ui", "style.radius");
+    assertCapability(manifest, "ui", "style.text");
   } finally {
     await rm(root, { force: true, recursive: true });
   }

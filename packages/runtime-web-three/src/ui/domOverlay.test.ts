@@ -63,7 +63,11 @@ test("ui dom overlay should apply explicit flex layout metadata", () => {
   assert.equal(controls?.style.borderStyle, "solid");
   assert.equal(controls?.style.borderWidth, "2px");
   assert.equal(controls?.style.color, "#ffcc00");
+  assert.equal(controls?.style.fontSize, "18px");
   assert.equal(controls?.style.opacity, "0.75");
+  assert.equal(controls?.style.overflowWrap, "normal");
+  assert.equal(controls?.style.textAlign, "center");
+  assert.equal(controls?.style.whiteSpace, "normal");
   assert.equal(pause?.style.flexGrow, "1");
 });
 
@@ -81,7 +85,7 @@ function makeUi(): IUiIr {
           id: "controls",
           kind: "row",
           layout: { align: "center", columnGap: 12, direction: "row", height: 48, inset: { left: 24, top: 16 }, justify: "spaceBetween", maxWidth: 480, minHeight: 24, overflow: "hidden", padding: 6, position: "absolute", rowGap: 4, width: 320, zIndex: 5 },
-          style: { backgroundColor: "#101820cc", borderColor: "#ffffff", borderRadius: 8, borderWidth: 2, color: "#ffcc00", opacity: 0.75 },
+          style: { backgroundColor: "#101820cc", borderColor: "#ffffff", borderRadius: 8, borderWidth: 2, color: "#ffcc00", fontSize: 18, opacity: 0.75, textAlign: "center", wrap: "word" },
           children: [
             { id: "pause", kind: "button", label: "Pause", action: "Pause", layout: { grow: 1 } },
             { id: "jump", kind: "touchControl", label: "Jump", action: "Jump" },

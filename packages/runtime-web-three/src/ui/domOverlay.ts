@@ -150,6 +150,16 @@ function applyVisualStyle(style: Partial<CSSStyleDeclaration>, visual: IRendered
   if (visual.color !== undefined) {
     style.color = visual.color;
   }
+  if (visual.fontSize !== undefined) {
+    style.fontSize = `${visual.fontSize}px`;
+  }
+  if (visual.textAlign !== undefined) {
+    style.textAlign = visual.textAlign;
+  }
+  if (visual.wrap !== undefined) {
+    style.whiteSpace = visual.wrap === "none" ? "nowrap" : "normal";
+    style.overflowWrap = visual.wrap === "character" ? "anywhere" : "normal";
+  }
   if (visual.borderWidth !== undefined) {
     style.borderStyle = "solid";
     style.borderWidth = `${visual.borderWidth}px`;

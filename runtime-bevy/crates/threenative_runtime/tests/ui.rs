@@ -6,6 +6,7 @@ use std::{
 };
 
 use bevy::prelude::*;
+use bevy::text::BreakLineOn;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{UiIr, UiNodeIr, load_bundle};
 use threenative_runtime::ui::{
@@ -41,7 +42,10 @@ fn ui_should_build_bevy_hud_from_ui_ir() {
             border_radius: Some(8.0),
             border_width: Some(2.0),
             color: Some("#ffcc00".to_owned()),
+            font_size: Some(18.0),
             opacity: Some(0.75),
+            text_align: Some("center".to_owned()),
+            wrap: Some("word".to_owned()),
         })
     );
 
@@ -85,6 +89,9 @@ fn ui_should_spawn_bevy_entities_with_stable_ids_and_hierarchy() {
         .expect("label should be text");
     assert_eq!(label_text.sections[0].value, "Health");
     assert_color(label_text.sections[0].style.color, (1.0, 0.8, 0.0, 0.75));
+    assert_eq!(label_text.sections[0].style.font_size, 18.0);
+    assert_eq!(label_text.justify, JustifyText::Center);
+    assert_eq!(label_text.linebreak_behavior, BreakLineOn::WordBoundary);
     assert!(app.world().get::<Button>(pause).is_some());
     assert_eq!(
         app.world()
@@ -252,9 +259,9 @@ fn write_ui_bundle() -> PathBuf {
     "id": "hud",
     "kind": "column",
     "layout": { "align": "center", "columnGap": 12, "direction": "row", "height": 48, "inset": { "left": 24, "top": 16 }, "justify": "spaceBetween", "maxWidth": 480, "minHeight": 24, "overflow": "hidden", "padding": 6, "position": "absolute", "rowGap": 4, "width": 320, "zIndex": 5 },
-    "style": { "backgroundColor": "#101820cc", "borderColor": "#ffffff", "borderRadius": 8, "borderWidth": 2, "color": "#ffcc00", "opacity": 0.75 },
+    "style": { "backgroundColor": "#101820cc", "borderColor": "#ffffff", "borderRadius": 8, "borderWidth": 2, "color": "#ffcc00", "fontSize": 18, "opacity": 0.75, "textAlign": "center", "wrap": "word" },
     "children": [
-      { "id": "label", "kind": "text", "text": "Health", "style": { "color": "#ffcc00", "opacity": 0.75 } },
+      { "id": "label", "kind": "text", "text": "Health", "style": { "color": "#ffcc00", "fontSize": 18, "opacity": 0.75, "textAlign": "center", "wrap": "word" } },
       { "id": "health", "kind": "bar", "value": 8, "max": 10 },
       { "id": "pause", "kind": "button", "label": "Pause", "action": "Pause", "layout": { "grow": 1 } }
     ]

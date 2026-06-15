@@ -686,7 +686,10 @@ pub struct UiStyleIr {
     pub border_radius: Option<f32>,
     pub border_width: Option<f32>,
     pub color: Option<String>,
+    pub font_size: Option<f32>,
     pub opacity: Option<f32>,
+    pub text_align: Option<String>,
+    pub wrap: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize)]

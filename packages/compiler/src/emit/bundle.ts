@@ -621,6 +621,9 @@ function visitUiNode(node: IUiIr["root"], add: (domain: string, capability: stri
     if (node.style.color !== undefined) {
       add("ui", "style.color");
     }
+    if (node.style.fontSize !== undefined || node.style.textAlign !== undefined || node.style.wrap !== undefined) {
+      add("ui", "style.text");
+    }
     if (node.style.opacity !== undefined) {
       add("ui", "style.opacity");
     }

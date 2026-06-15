@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use bevy::prelude::*;
+use bevy::text::BreakLineOn;
 use serde::Serialize;
 use thiserror::Error;
 use threenative_components::ThreeNativeId;
@@ -43,7 +44,10 @@ pub struct NativeUiStyle {
     pub border_radius: Option<f32>,
     pub border_width: Option<f32>,
     pub color: Option<String>,
+    pub font_size: Option<f32>,
     pub opacity: Option<f32>,
+    pub text_align: Option<String>,
+    pub wrap: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -137,7 +141,10 @@ fn build_node(node: &UiNodeIr, path: &str) -> Result<NativeUiNode, UiDiagnostic>
             border_radius: style.border_radius,
             border_width: style.border_width,
             color: style.color.clone(),
+            font_size: style.font_size,
             opacity: style.opacity,
+            text_align: style.text_align.clone(),
+            wrap: style.wrap.clone(),
         }),
         text: node.text.clone(),
         value: node.value,
@@ -235,15 +242,12 @@ fn spawn_node(
 ) -> Entity {
     let entity = match node.kind.as_str() {
         "text" => world
-            .spawn(TextBundle::from_section(
+            .spawn(text_bundle(
                 node.text
                     .as_deref()
                     .or(node.label.as_deref())
                     .unwrap_or_default(),
-                TextStyle {
-                    color: text_color(node),
-                    ..Default::default()
-                },
+                node,
             ))
             .id(),
         "button" => world
@@ -461,13 +465,7 @@ fn spawn_runtime_children(world: &mut World, parent: Entity, node: &UiNodeIr) {
     if node.kind == "button" {
         if let Some(label) = node.label.as_ref() {
             let label = world
-                .spawn(TextBundle::from_section(
-                    label.clone(),
-                    TextStyle {
-                        color: text_color(node),
-                        ..Default::default()
-                    },
-                ))
+                .spawn(text_bundle(label.clone(), node))
                 .insert(Name::new(format!("{}.label", node.id)))
                 .id();
             world.entity_mut(parent).push_children(&[label]);
@@ -527,6 +525,45 @@ fn text_color(node: &UiNodeIr) -> Color {
         (1.0, 1.0, 1.0, 1.0),
         node.style.as_ref().and_then(|style| style.opacity),
     )
+}
+
+fn text_bundle(value: impl Into<String>, node: &UiNodeIr) -> TextBundle {
+    let mut bundle = TextBundle::from_section(value, text_style(node));
+    bundle.text.justify = text_justify(node);
+    bundle.text.linebreak_behavior = text_wrap(node);
+    bundle
+}
+
+fn text_style(node: &UiNodeIr) -> TextStyle {
+    TextStyle {
+        color: text_color(node),
+        font_size: node
+            .style
+            .as_ref()
+            .and_then(|style| style.font_size)
+            .unwrap_or_else(|| TextStyle::default().font_size),
+        ..Default::default()
+    }
+}
+
+fn text_justify(node: &UiNodeIr) -> JustifyText {
+    match node
+        .style
+        .as_ref()
+        .and_then(|style| style.text_align.as_deref())
+    {
+        Some("center") => JustifyText::Center,
+        Some("right") => JustifyText::Right,
+        _ => JustifyText::Left,
+    }
+}
+
+fn text_wrap(node: &UiNodeIr) -> BreakLineOn {
+    match node.style.as_ref().and_then(|style| style.wrap.as_deref()) {
+        Some("character") => BreakLineOn::AnyCharacter,
+        Some("none") => BreakLineOn::NoWrap,
+        _ => BreakLineOn::WordBoundary,
+    }
 }
 
 fn styled_color(
