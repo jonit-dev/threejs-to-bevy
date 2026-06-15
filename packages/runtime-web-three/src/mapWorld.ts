@@ -153,7 +153,13 @@ function mapEntity(
     const asset = assetsById.get(renderer.mesh);
     const material = materialsById.get(renderer.material);
     if (asset !== undefined && material !== undefined) {
-      const object = new THREE.Mesh(mapGeometry(asset), mapMaterial(material, assetsById, diagnostics, source));
+      const geometry = mapGeometry(asset);
+      const mappedMaterial = mapMaterial(material, assetsById, diagnostics, source);
+      if (geometry.getAttribute("color") !== undefined && "vertexColors" in mappedMaterial) {
+        mappedMaterial.vertexColors = true;
+        mappedMaterial.needsUpdate = true;
+      }
+      const object = new THREE.Mesh(geometry, mappedMaterial);
       applyShadowSettings(object, renderer);
       if (asset.kind === "model") {
         const playback = animationPlaybackState(asset);

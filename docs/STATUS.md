@@ -134,6 +134,13 @@ scripting effect behavior for transform/custom-component patches plus
 event/command/service log shapes. This is regression evidence for existing
 V3/V4 contracts, not a new rendering feature promotion by itself.
 
+Post-V7 generated-mesh attribute coverage now treats `uv1` and `color` as
+promoted rendering attributes: SDK/IR validation already constrains their item
+sizes, compiler bundle capabilities now report `mesh.attribute.uv1` and
+`mesh.attribute.color`, web maps them to Three.js geometry attributes and
+enables material `vertexColors` for color-attributed meshes, and Bevy maps them
+to `Mesh::ATTRIBUTE_UV_1` and `Mesh::ATTRIBUTE_COLOR`.
+
 V5-06 has landed the textured standard-material parity slice: supported material
 texture slots now serialize through SDK/compiler output, validate against
 texture assets and target formats, appear in shared conformance fixtures and

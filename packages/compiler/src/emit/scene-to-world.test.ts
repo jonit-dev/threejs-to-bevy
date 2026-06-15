@@ -59,6 +59,7 @@ test("should emit custom mesh attributes and indices", () => {
       geometry: new CustomMeshGeometry({
         attributes: [
           { itemSize: 3, name: "position", values: [0, 0, 0, 1, 0, 0, 0, 1, 0] },
+          { itemSize: 2, name: "uv1", values: [0, 0, 1, 0, 0, 1] },
           { itemSize: 4, name: "color", values: [1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1] },
           { itemSize: 1, name: "custom:weight", values: [0, 0.5, 1] },
         ],
@@ -76,6 +77,7 @@ test("should emit custom mesh attributes and indices", () => {
       { itemSize: 4, name: "color", values: [1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1] },
       { itemSize: 1, name: "custom:weight", values: [0, 0.5, 1] },
       { itemSize: 3, name: "position", values: [0, 0, 0, 1, 0, 0, 0, 1, 0] },
+      { itemSize: 2, name: "uv1", values: [0, 0, 1, 0, 0, 1] },
     ],
     id: "mesh.custom",
     indices: [0, 1, 2],

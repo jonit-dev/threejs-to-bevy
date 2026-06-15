@@ -6,6 +6,7 @@ import test from "node:test";
 import {
   AmbientLight,
   BoxGeometry,
+  CustomMeshGeometry,
   Mesh,
   MeshStandardMaterial,
   OrthographicCamera,
@@ -254,6 +255,20 @@ test("should derive manifest capabilities from emitted bundle IR", async () => {
         visible: false,
       }),
     );
+    parent.add(
+      new Mesh({
+        geometry: new CustomMeshGeometry({
+          attributes: [
+            { itemSize: 3, name: "position", values: [0, 0, 0, 1, 0, 0, 0, 1, 0] },
+            { itemSize: 2, name: "uv1", values: [0, 0, 1, 0, 0, 1] },
+            { itemSize: 4, name: "color", values: [1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1] },
+          ],
+          indices: [0, 1, 2],
+        }),
+        id: "custom.surface",
+        material: new MeshStandardMaterial({ color: "#ffffff" }),
+      }),
+    );
     const camera = new OrthographicCamera({ far: 50, id: "camera.ortho", near: 0.1, size: 5 });
     scene.add(parent);
     scene.add(camera);
@@ -339,6 +354,8 @@ test("should derive manifest capabilities from emitted bundle IR", async () => {
     assertCapability(manifest, "rendering", "material.opacity");
     assertCapability(manifest, "rendering", "mesh-renderer.shadows");
     assertCapability(manifest, "rendering", "material.texture.base-color");
+    assertCapability(manifest, "rendering", "mesh.attribute.color");
+    assertCapability(manifest, "rendering", "mesh.attribute.uv1");
     assertCapability(manifest, "rendering", "mesh.primitive.plane");
     assertCapability(manifest, "rendering", "visibility");
     assertCapability(manifest, "scripting", "script-bundle");

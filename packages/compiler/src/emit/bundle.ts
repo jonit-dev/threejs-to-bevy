@@ -395,6 +395,11 @@ function collectAssetCapabilities(assets: IAssetsManifest, add: (domain: string,
   for (const asset of assets.assets) {
     if (asset.kind === "mesh" && asset.format === "generated") {
       add("rendering", `mesh.primitive.${asset.primitive}`);
+      for (const attribute of asset.attributes ?? []) {
+        if (attribute.name === "color" || attribute.name === "uv1") {
+          add("rendering", `mesh.attribute.${attribute.name}`);
+        }
+      }
     }
     if (asset.kind === "model" && asset.animations !== undefined && asset.animations.length > 0) {
       add("animation", "clip-metadata");

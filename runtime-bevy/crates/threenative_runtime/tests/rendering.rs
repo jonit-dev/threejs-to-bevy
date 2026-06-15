@@ -403,6 +403,10 @@ fn assert_custom_mesh_attributes(world: &mut World, id: &str) {
         mesh.attribute(Mesh::ATTRIBUTE_COLOR),
         Some(VertexAttributeValues::Float32x4(values)) if values.len() == 3
     ));
+    assert!(matches!(
+        mesh.attribute(Mesh::ATTRIBUTE_UV_1),
+        Some(VertexAttributeValues::Float32x2(values)) if values == &[[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]]
+    ));
     let custom = MeshVertexAttribute::new(
         "Vertex_Custom_weight",
         custom_test_attribute_id("custom:weight"),
@@ -694,6 +698,7 @@ fn write_custom_mesh_bundle() -> PathBuf {
     "primitive": "custom",
     "attributes": [
       { "itemSize": 3, "name": "position", "values": [0, 0, 0, 1, 0, 0, 0, 1, 0] },
+      { "itemSize": 2, "name": "uv1", "values": [0, 0, 1, 0, 0, 1] },
       { "itemSize": 4, "name": "color", "values": [1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1] },
       { "itemSize": 1, "name": "custom:weight", "values": [0, 0.5, 1] }
     ],

@@ -368,6 +368,10 @@ V1 may add an import path for static `BufferGeometry` later, but it must be
 captured as immutable mesh asset data. Runtime mutation of geometry attributes is
 not portable to the Bevy adapter without a dedicated dynamic mesh capability.
 
+Promoted custom generated-mesh attributes include `position`, `normal`, `uv`,
+`uv1`, `color`, and stable `custom:<name>` attributes. `uv1` is the portable
+secondary UV channel, and `color` is the portable per-vertex RGBA color channel.
+
 ### Materials
 
 Supported:

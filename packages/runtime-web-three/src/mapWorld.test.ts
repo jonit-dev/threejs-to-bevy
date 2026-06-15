@@ -167,6 +167,7 @@ test("mapWorld should map custom generated mesh attributes", () => {
           primitive: "custom",
           attributes: [
             { itemSize: 3, name: "position", values: [0, 0, 0, 1, 0, 0, 0, 1, 0] },
+            { itemSize: 2, name: "uv1", values: [0, 0, 1, 0, 0, 1] },
             { itemSize: 4, name: "color", values: [1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1] },
             { itemSize: 1, name: "custom:weight", values: [0, 0.5, 1] },
           ],
@@ -199,8 +200,11 @@ test("mapWorld should map custom generated mesh attributes", () => {
   const object = mapped.objectsById.get("entity.custom");
   assert.ok(object instanceof THREE.Mesh);
   assert.equal(object.geometry.getAttribute("position").itemSize, 3);
+  assert.equal(object.geometry.getAttribute("uv1").itemSize, 2);
   assert.equal(object.geometry.getAttribute("color").itemSize, 4);
   assert.equal(object.geometry.getAttribute("weight").itemSize, 1);
+  assert.ok(object.material instanceof THREE.MeshStandardMaterial);
+  assert.equal(object.material.vertexColors, true);
   assert.deepEqual(Array.from(object.geometry.index?.array ?? []), [0, 1, 2]);
 });
 

@@ -296,6 +296,9 @@ Rules:
 - Asset IDs are unique across the bundle.
 - Asset paths are bundle-relative unless marked as external and allowed by the target profile.
 - Generated assets must include deterministic generator parameters.
+- Custom generated mesh attributes may use promoted names `position`, `normal`,
+  `uv`, `uv1`, and `color`; `uv1` is the secondary UV channel and `color` is
+  per-vertex RGBA color.
 - Texture assets may include portable sampler and UV transform metadata:
   `wrapS`, `wrapT`, `minFilter`, `magFilter`, `repeat`, `offset`, `center`,
   and `rotation`.
