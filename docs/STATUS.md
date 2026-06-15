@@ -713,8 +713,16 @@ portable camera IR into web/native service-logged rays that can feed
 `picking.mesh`. Basic UI Tab/arrow keyboard navigation now works through the web
 DOM overlay and matching web/native fixed traces, and basic UI control picking
 now dispatches portable action events from web clicks and Bevy button/touch
-interactions. Gamepad viewer diagnostics, touch gestures, drag-and-drop picking,
-rebinding, and richer navigation diagnostics remain future input work.
+interactions. Touch gestures, drag-and-drop picking, rebinding, and richer
+navigation diagnostics remain future input work.
+
+Gamepad diagnostics now include a lightweight viewer-style capability report in
+web and Bevy. The report lists gamepad controls declared by `input.ir.json`,
+classifies them as portable button/axis/unknown controls, reports connected
+browser/Bevy gamepad devices when available, and emits stable warnings or errors
+for unavailable gamepad APIs/resources, no connected controller, and unknown
+required controls. Input rebinding and richer interactive device overlays remain
+future work.
 
 The retained UI style surface now accepts portable `shadow` and linear
 `gradient` metadata with validation and capability flags. The web DOM overlay

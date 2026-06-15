@@ -23,6 +23,23 @@ export interface IPointerLockState {
   status: "denied" | "locked" | "unlocked";
 }
 
+export interface IGamepadCapabilityReport {
+  connected: Array<{
+    axes: number;
+    buttons: number;
+    id: string;
+    index: number;
+    mapping: string;
+  }>;
+  declaredControls: Array<{
+    control: string;
+    kind: "axis" | "button" | "unknown";
+    required: boolean;
+  }>;
+  diagnostics: Array<{ code: string; message: string; severity: "error" | "warning" }>;
+  supported: boolean;
+}
+
 export function createInputState(input?: IInputIr): IWebInputState {
   const currentActions = new Set<string>();
   const previousActions = new Set<string>();
@@ -221,4 +238,82 @@ export async function requestPointerLock(target: { requestPointerLock(): Promise
       status: "denied",
     };
   }
+}
+
+export function reportGamepadCapabilities(
+  input?: IInputIr,
+  navigatorLike: { getGamepads?: () => Array<Gamepad | null> | readonly (Gamepad | null)[] } = globalThis.navigator,
+): IGamepadCapabilityReport {
+  const declaredControls = declaredGamepadControls(input);
+  const diagnostics: IGamepadCapabilityReport["diagnostics"] = [];
+  collectGamepadControlDiagnostics(declaredControls, diagnostics, "TN_WEB_GAMEPAD_CONTROL_UNKNOWN");
+  const getGamepads = navigatorLike.getGamepads;
+  if (typeof getGamepads !== "function") {
+    diagnostics.push({
+      code: "TN_WEB_GAMEPAD_API_UNAVAILABLE",
+      message: "Browser Gamepad API is unavailable.",
+      severity: "warning",
+    });
+    return { connected: [], declaredControls, diagnostics, supported: false };
+  }
+  const connected = [...getGamepads.call(navigatorLike)]
+    .filter((gamepad): gamepad is Gamepad => gamepad !== null)
+    .map((gamepad) => ({
+      axes: gamepad.axes.length,
+      buttons: gamepad.buttons.length,
+      id: gamepad.id,
+      index: gamepad.index,
+      mapping: gamepad.mapping,
+    }));
+  if (declaredControls.length > 0 && connected.length === 0) {
+    diagnostics.push({
+      code: "TN_WEB_GAMEPAD_NONE_CONNECTED",
+      message: "Input map declares gamepad controls, but no gamepad is connected.",
+      severity: "warning",
+    });
+  }
+  return { connected, declaredControls, diagnostics, supported: true };
+}
+
+function collectGamepadControlDiagnostics(
+  declaredControls: IGamepadCapabilityReport["declaredControls"],
+  diagnostics: IGamepadCapabilityReport["diagnostics"],
+  code: string,
+): void {
+  for (const control of declaredControls) {
+    if (control.kind === "unknown") {
+      diagnostics.push({
+        code,
+        message: `Gamepad control '${control.control}' is not a recognized portable control.`,
+        severity: control.required ? "error" : "warning",
+      });
+    }
+  }
+}
+
+function declaredGamepadControls(input?: IInputIr): IGamepadCapabilityReport["declaredControls"] {
+  const controls = new Map<string, IGamepadCapabilityReport["declaredControls"][number]>();
+  for (const binding of [
+    ...(input?.actions.flatMap((action) => action.bindings) ?? []),
+    ...(input?.axes.flatMap((axis) => [...axis.negative, ...axis.positive, ...(axis.value === undefined ? [] : [axis.value])]) ?? []),
+  ]) {
+    if (binding.device === "gamepad") {
+      controls.set(binding.control, {
+        control: binding.control,
+        kind: gamepadControlKind(binding.control),
+        required: binding.required ?? true,
+      });
+    }
+  }
+  return [...controls.values()].sort((left, right) => left.control.localeCompare(right.control));
+}
+
+function gamepadControlKind(control: string): "axis" | "button" | "unknown" {
+  if (["buttonSouth", "south", "buttonEast", "east", "buttonNorth", "north", "buttonWest", "west", "leftTrigger", "leftTrigger2", "rightTrigger", "rightTrigger2", "select", "start", "mode", "leftThumb", "rightThumb", "dpadUp", "dpadDown", "dpadLeft", "dpadRight"].includes(control)) {
+    return "button";
+  }
+  if (["leftStickX", "leftStickY", "leftZ", "rightStickX", "rightStickY", "rightZ"].includes(control)) {
+    return "axis";
+  }
+  return "unknown";
 }

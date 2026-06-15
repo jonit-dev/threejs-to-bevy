@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { IInputIr } from "@threenative/ir";
 
-import { createInputState, requestPointerLock } from "./input.js";
+import { createInputState, reportGamepadCapabilities, requestPointerLock } from "./input.js";
 
 test("input should map wasd to move axis", () => {
   const input = createInputState(makeInput());
@@ -50,6 +50,45 @@ test("input should map gamepad controls to actions and axes", () => {
 
   assert.equal(input.released("Interact"), true);
   assert.equal(input.axis("GamepadMoveX"), -1);
+});
+
+test("input should report gamepad capabilities and diagnostics", () => {
+  const report = reportGamepadCapabilities(makeInput(), {
+    getGamepads: () => [
+      {
+        axes: [0, 0],
+        buttons: [{ pressed: false, touched: false, value: 0 }],
+        connected: true,
+        hapticActuators: [],
+        id: "Standard Controller",
+        index: 0,
+        mapping: "standard",
+        timestamp: 1,
+        vibrationActuator: null,
+      } as unknown as Gamepad,
+    ],
+  });
+
+  assert.deepEqual(report.connected, [{ axes: 2, buttons: 1, id: "Standard Controller", index: 0, mapping: "standard" }]);
+  assert.deepEqual(report.declaredControls, [
+    { control: "buttonSouth", kind: "button", required: false },
+    { control: "leftStickX", kind: "axis", required: false },
+  ]);
+  assert.deepEqual(report.diagnostics, []);
+  assert.equal(report.supported, true);
+});
+
+test("input should report missing gamepad api and unknown controls", () => {
+  const report = reportGamepadCapabilities({
+    schema: "threenative.input",
+    version: "0.1.0",
+    actions: [{ id: "Cheat", bindings: [{ control: "turbo", device: "gamepad" }] }],
+    axes: [],
+  }, {});
+
+  assert.equal(report.supported, false);
+  assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_WEB_GAMEPAD_API_UNAVAILABLE"), true);
+  assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_WEB_GAMEPAD_CONTROL_UNKNOWN" && diagnostic.severity === "error"), true);
 });
 
 test("input should map touch controls to actions and axes", () => {

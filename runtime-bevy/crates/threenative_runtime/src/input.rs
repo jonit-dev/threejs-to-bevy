@@ -2,11 +2,9 @@ use std::collections::{HashMap, HashSet};
 
 use bevy::{
     input::{
-        ButtonInput,
-        gamepad::{
-            GamepadAxis, GamepadAxisType, GamepadButton, GamepadButtonType, Gamepads,
-        },
+        gamepad::{GamepadAxis, GamepadAxisType, GamepadButton, GamepadButtonType, Gamepads},
         mouse::MouseMotion,
+        ButtonInput,
     },
     prelude::*,
     window::PrimaryWindow,
@@ -26,6 +24,33 @@ pub struct NativeInputState {
 pub struct NativeTouchState {
     controls: HashSet<String>,
     axes: HashMap<(String, String), f32>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct NativeGamepadCapabilityReport {
+    pub connected: Vec<NativeGamepadDeviceReport>,
+    pub declared_controls: Vec<NativeGamepadControlReport>,
+    pub diagnostics: Vec<NativeGamepadDiagnostic>,
+    pub supported: bool,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct NativeGamepadDeviceReport {
+    pub index: usize,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct NativeGamepadControlReport {
+    pub control: String,
+    pub kind: String,
+    pub required: bool,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct NativeGamepadDiagnostic {
+    pub code: String,
+    pub message: String,
+    pub severity: String,
 }
 
 impl NativeInputState {
@@ -139,6 +164,97 @@ pub fn map_pointer_button_event(
     }
 }
 
+pub fn report_native_gamepad_capabilities(
+    input: Option<&InputIr>,
+    gamepads: Option<&Gamepads>,
+) -> NativeGamepadCapabilityReport {
+    let declared_controls = declared_gamepad_controls(input);
+    let connected = gamepads
+        .map(|gamepads| {
+            gamepads
+                .iter()
+                .map(|gamepad| NativeGamepadDeviceReport {
+                    index: gamepad.id as usize,
+                })
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    let mut diagnostics = Vec::new();
+    if gamepads.is_none() {
+        diagnostics.push(NativeGamepadDiagnostic {
+            code: "TN_BEVY_GAMEPAD_RESOURCE_UNAVAILABLE".to_owned(),
+            message: "Bevy Gamepads resource is unavailable.".to_owned(),
+            severity: "warning".to_owned(),
+        });
+    }
+    if !declared_controls.is_empty() && connected.is_empty() {
+        diagnostics.push(NativeGamepadDiagnostic {
+            code: "TN_BEVY_GAMEPAD_NONE_CONNECTED".to_owned(),
+            message: "Input map declares gamepad controls, but no gamepad is connected.".to_owned(),
+            severity: "warning".to_owned(),
+        });
+    }
+    for control in &declared_controls {
+        if control.kind == "unknown" {
+            diagnostics.push(NativeGamepadDiagnostic {
+                code: "TN_BEVY_GAMEPAD_CONTROL_UNKNOWN".to_owned(),
+                message: format!(
+                    "Gamepad control '{}' is not a recognized portable control.",
+                    control.control
+                ),
+                severity: if control.required { "error" } else { "warning" }.to_owned(),
+            });
+        }
+    }
+    NativeGamepadCapabilityReport {
+        connected,
+        declared_controls,
+        diagnostics,
+        supported: gamepads.is_some(),
+    }
+}
+
+fn declared_gamepad_controls(input: Option<&InputIr>) -> Vec<NativeGamepadControlReport> {
+    let mut controls = HashMap::new();
+    if let Some(input) = input {
+        for binding in input
+            .actions
+            .iter()
+            .flat_map(|action| action.bindings.iter())
+            .chain(input.axes.iter().flat_map(|axis| {
+                axis.negative
+                    .iter()
+                    .chain(axis.positive.iter())
+                    .chain(axis.value.iter())
+            }))
+        {
+            if let InputBindingIr::Gamepad { control, required } = binding {
+                controls.insert(
+                    control.clone(),
+                    NativeGamepadControlReport {
+                        control: control.clone(),
+                        kind: gamepad_control_kind(control).to_owned(),
+                        required: required.unwrap_or(true),
+                    },
+                );
+            }
+        }
+    }
+    let mut controls = controls.into_values().collect::<Vec<_>>();
+    controls.sort_by(|left, right| left.control.cmp(&right.control));
+    controls
+}
+
+fn gamepad_control_kind(control: &str) -> &'static str {
+    if gamepad_button_type(control).is_some() {
+        return "button";
+    }
+    if gamepad_axis_type(control).is_some() {
+        return "axis";
+    }
+    "unknown"
+}
+
 pub fn capture_native_input(
     input: Option<Res<NativeInputMap>>,
     keyboard: Res<ButtonInput<KeyCode>>,
@@ -184,24 +300,38 @@ pub fn capture_native_input(
     };
 
     for action in &input.0.actions {
-        if action
-            .bindings
-            .iter()
-            .any(|binding| binding_pressed(binding, &keyboard, &mouse_buttons, gamepad.as_ref(), touch.as_deref()))
-        {
+        if action.bindings.iter().any(|binding| {
+            binding_pressed(
+                binding,
+                &keyboard,
+                &mouse_buttons,
+                gamepad.as_ref(),
+                touch.as_deref(),
+            )
+        }) {
             state.actions.insert(action.id.clone());
         }
     }
 
     for axis in &input.0.axes {
-        let positive = axis
-            .positive
-            .iter()
-            .any(|binding| binding_pressed(binding, &keyboard, &mouse_buttons, gamepad.as_ref(), touch.as_deref()));
-        let negative = axis
-            .negative
-            .iter()
-            .any(|binding| binding_pressed(binding, &keyboard, &mouse_buttons, gamepad.as_ref(), touch.as_deref()));
+        let positive = axis.positive.iter().any(|binding| {
+            binding_pressed(
+                binding,
+                &keyboard,
+                &mouse_buttons,
+                gamepad.as_ref(),
+                touch.as_deref(),
+            )
+        });
+        let negative = axis.negative.iter().any(|binding| {
+            binding_pressed(
+                binding,
+                &keyboard,
+                &mouse_buttons,
+                gamepad.as_ref(),
+                touch.as_deref(),
+            )
+        });
         let digital_value = match (positive, negative) {
             (true, false) => 1.0,
             (false, true) => -1.0,
@@ -299,11 +429,25 @@ fn binding_axis_value(
         },
         InputBindingIr::Gamepad { control, .. } => gamepad
             .and_then(|state| state.axis_value(control))
-            .or_else(|| gamepad.map(|state| if state.control_active(control) { 1.0 } else { 0.0 })),
+            .or_else(|| {
+                gamepad.map(|state| {
+                    if state.control_active(control) {
+                        1.0
+                    } else {
+                        0.0
+                    }
+                })
+            }),
         InputBindingIr::Touch { control, axis } => touch.map(|state| {
             axis.as_deref()
                 .map(|axis| state.axis(control, axis))
-                .unwrap_or_else(|| if state.control_active(control) { 1.0 } else { 0.0 })
+                .unwrap_or_else(|| {
+                    if state.control_active(control) {
+                        1.0
+                    } else {
+                        0.0
+                    }
+                })
         }),
         _ => None,
     }

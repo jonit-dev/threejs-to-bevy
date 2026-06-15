@@ -1,21 +1,20 @@
 use bevy::{
     app::{App, PreUpdate},
     input::{
-        ButtonInput,
         gamepad::{
-            Gamepad, GamepadAxis, GamepadAxisType, GamepadButton, GamepadButtonType,
-            GamepadConnection, GamepadConnectionEvent, GamepadInfo, Gamepads,
-            gamepad_connection_system,
+            gamepad_connection_system, Gamepad, GamepadAxis, GamepadAxisType, GamepadButton,
+            GamepadButtonType, GamepadConnection, GamepadConnectionEvent, GamepadInfo, Gamepads,
         },
         mouse::MouseMotion,
+        ButtonInput,
     },
     prelude::*,
     window::PrimaryWindow,
 };
 use threenative_loader::{InputActionIr, InputAxisIr, InputBindingIr, InputIr};
 use threenative_runtime::input::{
-    NativeInputMap, NativeInputState, NativeTouchState, capture_native_input, map_keyboard_event,
-    map_pointer_button_event,
+    capture_native_input, map_keyboard_event, map_pointer_button_event,
+    report_native_gamepad_capabilities, NativeInputMap, NativeInputState, NativeTouchState,
 };
 
 #[test]
@@ -195,13 +194,12 @@ fn should_capture_gamepad_and_touch_input() {
     app.add_systems(PreUpdate, (gamepad_connection_system, capture_native_input));
 
     let gamepad = Gamepad::new(0);
-    app.world_mut()
-        .send_event(GamepadConnectionEvent::new(
-            gamepad,
-            GamepadConnection::Connected(GamepadInfo {
-                name: "Test Gamepad".to_owned(),
-            }),
-        ));
+    app.world_mut().send_event(GamepadConnectionEvent::new(
+        gamepad,
+        GamepadConnection::Connected(GamepadInfo {
+            name: "Test Gamepad".to_owned(),
+        }),
+    ));
     app.update();
 
     app.world_mut()
@@ -222,4 +220,83 @@ fn should_capture_gamepad_and_touch_input() {
     assert!(state.action("Jump"));
     assert_eq!(state.axis("MoveX"), 0.65);
     assert_eq!(state.axis("TouchMoveX"), -0.4);
+}
+
+#[test]
+fn should_report_native_gamepad_capabilities_and_diagnostics() {
+    let input = InputIr {
+        schema: "threenative.input".to_owned(),
+        version: "0.1.0".to_owned(),
+        actions: vec![
+            InputActionIr {
+                id: "Interact".to_owned(),
+                bindings: vec![InputBindingIr::Gamepad {
+                    control: "buttonSouth".to_owned(),
+                    required: Some(false),
+                }],
+            },
+            InputActionIr {
+                id: "Cheat".to_owned(),
+                bindings: vec![InputBindingIr::Gamepad {
+                    control: "turbo".to_owned(),
+                    required: Some(true),
+                }],
+            },
+        ],
+        axes: vec![InputAxisIr {
+            id: "MoveX".to_owned(),
+            negative: vec![],
+            positive: vec![],
+            value: Some(InputBindingIr::Gamepad {
+                control: "leftStickX".to_owned(),
+                required: Some(false),
+            }),
+        }],
+    };
+    let mut app = App::new();
+    app.add_event::<GamepadConnectionEvent>();
+    app.insert_resource(Axis::<GamepadAxis>::default());
+    app.insert_resource(Axis::<GamepadButton>::default());
+    app.insert_resource(ButtonInput::<GamepadButton>::default());
+    app.init_resource::<Gamepads>();
+    app.add_systems(PreUpdate, gamepad_connection_system);
+    app.world_mut().send_event(GamepadConnectionEvent::new(
+        Gamepad::new(2),
+        GamepadConnection::Connected(GamepadInfo {
+            name: "Test Controller".to_owned(),
+        }),
+    ));
+    app.update();
+
+    let report =
+        report_native_gamepad_capabilities(Some(&input), Some(app.world().resource::<Gamepads>()));
+
+    assert_eq!(report.connected.len(), 1);
+    assert_eq!(
+        report
+            .declared_controls
+            .iter()
+            .map(|control| (
+                control.control.as_str(),
+                control.kind.as_str(),
+                control.required
+            ))
+            .collect::<Vec<_>>(),
+        vec![
+            ("buttonSouth", "button", false),
+            ("leftStickX", "axis", false),
+            ("turbo", "unknown", true),
+        ]
+    );
+    assert!(report.supported);
+    assert!(report.diagnostics.iter().any(|diagnostic| diagnostic.code
+        == "TN_BEVY_GAMEPAD_CONTROL_UNKNOWN"
+        && diagnostic.severity == "error"));
+
+    let unavailable = report_native_gamepad_capabilities(Some(&input), None);
+    assert!(!unavailable.supported);
+    assert!(unavailable
+        .diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.code == "TN_BEVY_GAMEPAD_RESOURCE_UNAVAILABLE"));
 }
