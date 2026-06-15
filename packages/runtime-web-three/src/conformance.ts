@@ -319,6 +319,7 @@ function reportUi(ui: IUiIr): IConformanceUiReport {
 
 function reportUiNode(node: IUiIr["root"]): IConformanceUiNodeReport {
   return {
+    ...(node.accessibilityLabel === undefined ? {} : { accessibilityLabel: node.accessibilityLabel }),
     ...(node.action === undefined ? {} : { action: node.action }),
     children: (node.children ?? []).map(reportUiNode),
     ...(node.focusable === undefined ? {} : { focusable: node.focusable }),
@@ -326,6 +327,7 @@ function reportUiNode(node: IUiIr["root"]): IConformanceUiNodeReport {
     kind: node.kind,
     ...(node.label === undefined ? {} : { label: node.label }),
     ...(node.max === undefined ? {} : { max: node.max }),
+    ...(node.role === undefined ? {} : { role: node.role }),
     ...(node.src === undefined ? {} : { src: node.src }),
     ...(node.text === undefined ? {} : { text: node.text }),
     ...(node.value === undefined ? {} : { value: node.value }),

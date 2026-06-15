@@ -109,7 +109,7 @@ test("ui should validate explicit flex layout metadata", async () => {
         style: { backgroundColor: "#101820cc", borderColor: "#ffffff", borderRadius: 8, borderWidth: 2, color: "#ffcc00", fontSize: 18, opacity: 0.75, textAlign: "center", wrap: "word" },
         children: [
           { id: "score", kind: "text", text: "0" },
-          { id: "portrait", kind: "image", label: "Hero portrait", src: "assets/hero.png" },
+          { id: "portrait", kind: "image", accessibilityLabel: "Hero portrait", role: "image", src: "assets/hero.png" },
         ],
       },
     });
@@ -146,6 +146,36 @@ test("ui should reject invalid image metadata", async () => {
     assert.equal(result.ok, false);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_IMAGE_SRC_MISSING"), true);
     assert.equal(result.diagnostics.filter((diagnostic) => diagnostic.code === "TN_IR_UI_IMAGE_SRC_INVALID").length, 3);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_ACCESSIBILITY_LABEL_MISSING"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("ui should reject invalid accessibility metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ui-accessibility-invalid-"));
+  try {
+    await writeTestBundle(root, { manifest: { entry: { ui: "ui.ir.json" } } });
+    await writeJson(root, "ui.ir.json", {
+      schema: "threenative.ui",
+      version: "0.1.0",
+      root: {
+        id: "hud",
+        kind: "row",
+        children: [
+          { id: "icon-button", kind: "button", action: "Open" },
+          { id: "bad-role", kind: "text", text: "Score", role: "heading" },
+          { id: "bad-label", kind: "image", accessibilityLabel: "", src: "assets/icon.png" },
+        ],
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_ACCESSIBILITY_LABEL_INVALID"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_ACCESSIBILITY_LABEL_MISSING"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_ACCESSIBILITY_ROLE_INVALID"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

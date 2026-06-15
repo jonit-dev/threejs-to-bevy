@@ -641,10 +641,13 @@ pub struct UiIr {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct UiNodeIr {
+    #[serde(rename = "accessibilityLabel")]
+    pub accessibility_label: Option<String>,
     pub id: String,
     pub kind: String,
     pub label: Option<String>,
     pub layout: Option<UiLayoutIr>,
+    pub role: Option<String>,
     pub src: Option<String>,
     pub text: Option<String>,
     pub action: Option<String>,

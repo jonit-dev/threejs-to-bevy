@@ -19,6 +19,7 @@ export interface IUiIr {
 
 export interface IUiNodeIr {
   action?: string;
+  accessibilityLabel?: string;
   binding?: unknown;
   children?: IUiNodeIr[];
   focusable?: boolean;
@@ -33,6 +34,7 @@ export interface IUiNodeIr {
     right?: string;
     up?: string;
   };
+  role?: "button" | "group" | "image" | "list" | "listitem" | "none" | "progressbar" | "text";
   style?: IUiStyleIr;
   src?: string;
   text?: string;
@@ -93,9 +95,11 @@ export function captureUi(root: IUiElement): IUiIr {
 function captureNode(element: IUiElement, fallback: string): IUiNodeIr {
   if (element.type === "ui") {
     return {
+      ...(element.props.accessibilityLabel === undefined ? {} : { accessibilityLabel: element.props.accessibilityLabel }),
       children: childrenOf(element).map((child, index) => captureNode(child, `${fallback}.${child.type}.${index}`)),
       id: element.props.id ?? fallback,
       kind: "stack",
+      ...(element.props.role === undefined ? {} : { role: element.props.role }),
     };
   }
   if (!["bar", "button", "column", "image", "row", "stack", "text", "touchControl"].includes(element.type)) {
@@ -103,12 +107,14 @@ function captureNode(element: IUiElement, fallback: string): IUiNodeIr {
   }
   return {
     ...(element.props.action === undefined ? {} : { action: element.props.action }),
+    ...(element.props.accessibilityLabel === undefined ? {} : { accessibilityLabel: element.props.accessibilityLabel }),
     ...(element.props.binding === undefined ? {} : { binding: element.props.binding }),
     ...(element.props.focusable === undefined ? {} : { focusable: element.props.focusable }),
     ...(element.props.label === undefined ? {} : { label: element.props.label }),
     ...(element.props.layout === undefined ? {} : { layout: element.props.layout }),
     ...(element.props.max === undefined ? {} : { max: element.props.max }),
     ...(element.props.navigation === undefined ? {} : { navigation: element.props.navigation }),
+    ...(element.props.role === undefined ? {} : { role: element.props.role }),
     ...(element.props.style === undefined ? {} : { style: element.props.style }),
     ...(element.props.src === undefined ? {} : { src: element.props.src }),
     ...(element.props.text === undefined ? {} : { text: element.props.text }),

@@ -1,10 +1,12 @@
 export type UiElementType = "bar" | "button" | "column" | "image" | "row" | "stack" | "text" | "touchControl" | "ui";
+export type UiAccessibilityRole = "button" | "group" | "image" | "list" | "listitem" | "none" | "progressbar" | "text";
 export type UiBinding =
   | { kind: "resource"; name: string; field?: string }
   | { component: string; entity: string; field?: string; kind: "component" };
 
 export interface IUiNodeProps {
   action?: string;
+  accessibilityLabel?: string;
   binding?: UiBinding;
   children?: UiChild | UiChild[];
   focusable?: boolean;
@@ -48,6 +50,7 @@ export interface IUiNodeProps {
     right?: string;
     up?: string;
   };
+  role?: UiAccessibilityRole;
   safeArea?: {
     edges?: Array<"bottom" | "left" | "right" | "top">;
     mode: "avoid" | "none";

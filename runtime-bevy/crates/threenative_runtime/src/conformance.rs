@@ -193,6 +193,8 @@ pub struct ConformanceUiReport {
 #[serde(rename_all = "camelCase")]
 pub struct ConformanceUiNodeReport {
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub accessibility_label: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub action: Option<String>,
     pub children: Vec<ConformanceUiNodeReport>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -203,6 +205,8 @@ pub struct ConformanceUiNodeReport {
     pub label: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub role: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub src: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -504,6 +508,7 @@ fn report_ui(ui: Option<&UiIr>) -> Option<UiReportResult> {
 
 fn report_ui_node(node: &crate::ui::NativeUiNode) -> ConformanceUiNodeReport {
     ConformanceUiNodeReport {
+        accessibility_label: node.accessibility_label.clone(),
         action: node.action.clone(),
         children: node.children.iter().map(report_ui_node).collect(),
         focusable: node.focusable,
@@ -511,6 +516,7 @@ fn report_ui_node(node: &crate::ui::NativeUiNode) -> ConformanceUiNodeReport {
         kind: node.kind.clone(),
         label: node.label.clone(),
         max: node.max,
+        role: node.role.clone(),
         src: node.src.clone(),
         text: node.text.clone(),
         value: node.value,

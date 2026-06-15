@@ -587,6 +587,15 @@ function visitUiNode(node: IUiIr["root"], add: (domain: string, capability: stri
   if (node.action !== undefined) {
     add("ui", "action");
   }
+  if (node.accessibilityLabel !== undefined || node.role !== undefined) {
+    add("ui", "accessibility");
+  }
+  if (node.accessibilityLabel !== undefined) {
+    add("ui", "accessibility.label");
+  }
+  if (node.role !== undefined) {
+    add("ui", "accessibility.role");
+  }
   if (node.focusable === true) {
     add("ui", "focusable");
   }

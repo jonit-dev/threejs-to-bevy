@@ -5,6 +5,7 @@ import { dispatchUiAction, type IUiActionEvent } from "./inputBridge.js";
 
 export interface IRenderedUiNode {
   action?: string;
+  accessibilityLabel?: string;
   children: IRenderedUiNode[];
   focusable: boolean;
   id: string;
@@ -12,6 +13,7 @@ export interface IRenderedUiNode {
   label?: string;
   layout?: IUiNodeIr["layout"];
   max?: number;
+  role?: IUiNodeIr["role"];
   style?: IUiNodeIr["style"];
   src?: string;
   text?: string;
@@ -49,6 +51,7 @@ function renderNode(node: IUiNodeIr, world: IWorldIr): IRenderedUiNode {
   const bindingValue = resolveUiBinding(node.binding, world);
   return {
     ...(node.action === undefined ? {} : { action: node.action }),
+    ...(node.accessibilityLabel === undefined ? {} : { accessibilityLabel: node.accessibilityLabel }),
     children: node.children?.map((child) => renderNode(child, world)) ?? [],
     focusable: node.focusable ?? node.kind === "button",
     id: node.id,
@@ -56,6 +59,7 @@ function renderNode(node: IUiNodeIr, world: IWorldIr): IRenderedUiNode {
     ...(node.label === undefined ? {} : { label: node.label }),
     ...(node.layout === undefined ? {} : { layout: node.layout }),
     ...(node.max === undefined ? {} : { max: node.max }),
+    ...(node.role === undefined ? {} : { role: node.role }),
     ...(node.style === undefined ? {} : { style: node.style }),
     ...(node.src === undefined ? {} : { src: node.src }),
     text: node.text ?? (typeof bindingValue === "string" || typeof bindingValue === "number" ? String(bindingValue) : undefined),

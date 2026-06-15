@@ -87,14 +87,14 @@ function updateNodeElement(node: IRenderedUiNode, nodes: Map<string, HTMLElement
   }
   if (node.kind === "button" || node.kind === "touchControl") {
     element.textContent = node.label ?? node.text ?? "";
-    element.setAttribute("aria-label", node.label ?? node.text ?? node.id);
+    element.setAttribute("aria-label", accessibleName(node) ?? node.id);
   }
   if (node.kind === "bar") {
     const max = node.max ?? 1;
     const value = node.value ?? 0;
     const ratio = max <= 0 ? 0 : Math.max(0, Math.min(1, value / max));
     element.setAttribute("role", "progressbar");
-    element.setAttribute("aria-label", node.label ?? node.id);
+    element.setAttribute("aria-label", accessibleName(node) ?? node.id);
     element.setAttribute("aria-valuemin", "0");
     element.setAttribute("aria-valuemax", String(max));
     element.setAttribute("aria-valuenow", String(value));
@@ -105,15 +105,38 @@ function updateNodeElement(node: IRenderedUiNode, nodes: Map<string, HTMLElement
     }
   }
   if (node.kind === "image") {
-    element.setAttribute("alt", node.label ?? "");
+    element.setAttribute("alt", accessibleName(node) ?? "");
     if (node.src !== undefined) {
       element.setAttribute("src", node.src);
     }
   }
+  applyAccessibilityAttributes(element, node);
 
   for (const child of node.children) {
     updateNodeElement(child, nodes);
   }
+}
+
+function applyAccessibilityAttributes(element: HTMLElement, node: IRenderedUiNode): void {
+  const role = domRole(node.role);
+  if (role !== undefined) {
+    element.setAttribute("role", role);
+  }
+  const name = accessibleName(node);
+  if (name !== undefined && node.kind !== "image") {
+    element.setAttribute("aria-label", name);
+  }
+}
+
+function accessibleName(node: IRenderedUiNode): string | undefined {
+  return node.accessibilityLabel ?? node.label ?? node.text;
+}
+
+function domRole(role: IRenderedUiNode["role"]): string | undefined {
+  if (role === undefined) {
+    return undefined;
+  }
+  return role === "none" ? "presentation" : role;
 }
 
 function baseStyle(node: IRenderedUiNode): Partial<CSSStyleDeclaration> {

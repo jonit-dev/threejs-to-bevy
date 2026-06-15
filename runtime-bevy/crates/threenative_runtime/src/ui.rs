@@ -1,5 +1,9 @@
 use std::collections::HashMap;
 
+use bevy::a11y::{
+    AccessibilityNode,
+    accesskit::{NodeBuilder, Role},
+};
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::prelude::*;
 use bevy::text::BreakLineOn;
@@ -34,6 +38,7 @@ pub struct NativeUiImageSrc(pub String);
 #[derive(Clone, Debug, PartialEq)]
 pub struct NativeUiNode {
     pub action: Option<String>,
+    pub accessibility_label: Option<String>,
     pub children: Vec<NativeUiNode>,
     pub focusable: Option<bool>,
     pub id: String,
@@ -41,6 +46,7 @@ pub struct NativeUiNode {
     pub label: Option<String>,
     pub max: Option<f32>,
     pub navigation: Option<NativeUiNavigation>,
+    pub role: Option<String>,
     pub style: Option<NativeUiStyle>,
     pub src: Option<String>,
     pub text: Option<String>,
@@ -125,6 +131,7 @@ fn build_node(node: &UiNodeIr, path: &str) -> Result<NativeUiNode, UiDiagnostic>
     }
     Ok(NativeUiNode {
         action: node.action.clone(),
+        accessibility_label: node.accessibility_label.clone(),
         children: node
             .children
             .iter()
@@ -145,6 +152,7 @@ fn build_node(node: &UiNodeIr, path: &str) -> Result<NativeUiNode, UiDiagnostic>
                 right: navigation.right.clone(),
                 up: navigation.up.clone(),
             }),
+        role: node.role.clone(),
         style: node.style.as_ref().map(|style| NativeUiStyle {
             background_color: style.background_color.clone(),
             border_color: style.border_color.clone(),
@@ -312,6 +320,9 @@ fn spawn_node(
         if let Some(action) = node.action.as_ref() {
             entity_mut.insert(NativeUiAction(action.clone()));
         }
+        if let Some(accessibility) = accessibility_node(node) {
+            entity_mut.insert(accessibility);
+        }
         if let Some(src) = node.src.as_ref() {
             entity_mut.insert(NativeUiImageSrc(src.clone()));
         }
@@ -410,6 +421,43 @@ fn ui_image(world: &World, node: &UiNodeIr) -> UiImage {
         .get_resource::<AssetServer>()
         .map(|asset_server| UiImage::new(asset_server.load(src.clone())))
         .unwrap_or_default()
+}
+
+fn accessibility_node(node: &UiNodeIr) -> Option<AccessibilityNode> {
+    let role = accessibility_role(node)?;
+    let mut builder = NodeBuilder::new(role);
+    if let Some(name) = accessibility_name(node) {
+        builder.set_name(name);
+    }
+    Some(AccessibilityNode::from(builder))
+}
+
+fn accessibility_role(node: &UiNodeIr) -> Option<Role> {
+    match node.role.as_deref() {
+        Some("button") => Some(Role::Button),
+        Some("group") => Some(Role::Group),
+        Some("image") => Some(Role::Image),
+        Some("list") => Some(Role::List),
+        Some("listitem") => Some(Role::ListItem),
+        Some("none") => None,
+        Some("progressbar") => Some(Role::ProgressIndicator),
+        Some("text") => Some(Role::StaticText),
+        None => match node.kind.as_str() {
+            "bar" => Some(Role::ProgressIndicator),
+            "button" | "touchControl" => Some(Role::Button),
+            "image" => Some(Role::Image),
+            "text" => Some(Role::StaticText),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+fn accessibility_name(node: &UiNodeIr) -> Option<String> {
+    node.accessibility_label
+        .clone()
+        .or_else(|| node.label.clone())
+        .or_else(|| node.text.clone())
 }
 
 fn apply_visual_style(style: &mut Style, visual: Option<&UiStyleIr>) {

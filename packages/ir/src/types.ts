@@ -406,9 +406,11 @@ export interface IPerformanceProfile {
 export type IUiBinding =
   | { kind: "resource"; name: string; field?: string }
   | { component: string; entity: string; field?: string; kind: "component" };
+export type IUiAccessibilityRole = "button" | "group" | "image" | "list" | "listitem" | "none" | "progressbar" | "text";
 
 export interface IUiNodeIr {
   action?: string;
+  accessibilityLabel?: string;
   binding?: IUiBinding;
   children?: IUiNodeIr[];
   focusable?: boolean;
@@ -423,6 +425,7 @@ export interface IUiNodeIr {
     right?: string;
     up?: string;
   };
+  role?: IUiAccessibilityRole;
   style?: IUiStyleIr;
   src?: string;
   text?: string;

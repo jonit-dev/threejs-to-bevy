@@ -68,6 +68,7 @@ export interface IConformanceResourceReport {
 }
 
 export interface IConformanceUiNodeReport {
+  accessibilityLabel?: string;
   action?: string;
   children: IConformanceUiNodeReport[];
   focusable?: boolean;
@@ -75,6 +76,7 @@ export interface IConformanceUiNodeReport {
   kind: string;
   label?: string;
   max?: number;
+  role?: string;
   src?: string;
   text?: string;
   value?: number;

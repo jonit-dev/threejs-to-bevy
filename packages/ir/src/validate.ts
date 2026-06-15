@@ -521,7 +521,7 @@ function validateUi(ui: IUiIr, path: string, diagnostics: IIrDiagnostic[]): void
 function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[], ids: Set<string>): void {
   const raw = node as unknown as Record<string, unknown>;
   for (const key of Object.keys(raw)) {
-    if (!["action", "binding", "children", "focusable", "id", "kind", "label", "layout", "max", "navigation", "src", "style", "text", "value"].includes(key)) {
+    if (!["accessibilityLabel", "action", "binding", "children", "focusable", "id", "kind", "label", "layout", "max", "navigation", "role", "src", "style", "text", "value"].includes(key)) {
       diagnostics.push({
         code: "TN_IR_UI_FIELD_UNSUPPORTED",
         message: `UI node '${node.id}' uses unsupported field '${key}'.`,
@@ -531,6 +531,7 @@ function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnosti
   }
   validateUiLayout(node.layout, `${path}/layout`, diagnostics);
   validateUiStyle(node.style, `${path}/style`, diagnostics);
+  validateUiAccessibility(node, path, diagnostics);
   if (!["bar", "button", "column", "image", "row", "stack", "text", "touchControl"].includes(node.kind)) {
     diagnostics.push({
       code: "TN_IR_UI_NODE_UNSUPPORTED",
@@ -569,6 +570,21 @@ function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnosti
     }
   }
   node.children?.forEach((child, index) => validateUiNode(child, `${path}/children/${index}`, diagnostics, ids));
+}
+
+function validateUiAccessibility(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (node.accessibilityLabel !== undefined && (typeof node.accessibilityLabel !== "string" || node.accessibilityLabel.length === 0)) {
+    diagnostics.push({ code: "TN_IR_UI_ACCESSIBILITY_LABEL_INVALID", message: "UI accessibilityLabel must be a non-empty string when provided.", path: `${path}/accessibilityLabel` });
+  }
+  if (node.role !== undefined && !["button", "group", "image", "list", "listitem", "none", "progressbar", "text"].includes(String(node.role))) {
+    diagnostics.push({ code: "TN_IR_UI_ACCESSIBILITY_ROLE_INVALID", message: "UI role must be button, group, image, list, listitem, none, progressbar, or text.", path: `${path}/role` });
+  }
+  const hasAccessibleName = typeof node.accessibilityLabel === "string" && node.accessibilityLabel.length > 0
+    || typeof node.label === "string" && node.label.length > 0
+    || typeof node.text === "string" && node.text.length > 0;
+  if (["button", "image", "touchControl"].includes(node.kind) && !hasAccessibleName) {
+    diagnostics.push({ code: "TN_IR_UI_ACCESSIBILITY_LABEL_MISSING", message: `UI ${node.kind} node '${node.id}' must declare label, text, or accessibilityLabel.`, path });
+  }
 }
 
 function validateUiStyle(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {

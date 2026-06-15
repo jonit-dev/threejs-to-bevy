@@ -72,8 +72,10 @@ test("ui dom overlay should apply explicit flex layout metadata", () => {
   assert.equal(controls?.style.whiteSpace, "normal");
   assert.equal(portrait?.tagName, "img");
   assert.equal(portrait?.getAttribute("alt"), "Hero portrait");
+  assert.equal(portrait?.getAttribute("role"), "image");
   assert.equal(portrait?.getAttribute("src"), "assets/hero.png");
   assert.equal(portrait?.style.objectFit, "contain");
+  assert.equal(pause?.getAttribute("aria-label"), "Pause menu");
   assert.equal(pause?.style.flexGrow, "1");
 });
 
@@ -93,8 +95,8 @@ function makeUi(): IUiIr {
           layout: { align: "center", columnGap: 12, direction: "row", height: 48, inset: { left: 24, top: 16 }, justify: "spaceBetween", maxWidth: 480, minHeight: 24, overflow: "scroll", padding: 6, position: "absolute", rowGap: 4, width: 320, zIndex: 5 },
           style: { backgroundColor: "#101820cc", borderColor: "#ffffff", borderRadius: 8, borderWidth: 2, color: "#ffcc00", fontSize: 18, opacity: 0.75, textAlign: "center", wrap: "word" },
           children: [
-            { id: "pause", kind: "button", label: "Pause", action: "Pause", layout: { grow: 1 } },
-            { id: "portrait", kind: "image", label: "Hero portrait", src: "assets/hero.png" },
+            { id: "pause", kind: "button", accessibilityLabel: "Pause menu", label: "Pause", action: "Pause", layout: { grow: 1 } },
+            { id: "portrait", kind: "image", accessibilityLabel: "Hero portrait", role: "image", src: "assets/hero.png" },
             { id: "jump", kind: "touchControl", label: "Jump", action: "Jump" },
           ],
         },

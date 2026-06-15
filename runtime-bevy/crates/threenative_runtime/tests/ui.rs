@@ -5,6 +5,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+use bevy::a11y::{AccessibilityNode, accesskit::Role};
 use bevy::prelude::*;
 use bevy::text::BreakLineOn;
 use threenative_components::ThreeNativeId;
@@ -25,6 +26,8 @@ fn ui_should_build_bevy_hud_from_ui_ir() {
     let native = build_native_ui(ui).expect("ui should build");
 
     assert_eq!(native.kind, "column");
+    assert_eq!(native.accessibility_label.as_deref(), Some("Main HUD"));
+    assert_eq!(native.role.as_deref(), Some("group"));
     assert_eq!(
         native
             .children
@@ -33,6 +36,11 @@ fn ui_should_build_bevy_hud_from_ui_ir() {
             .collect::<Vec<_>>(),
         vec!["text", "bar", "image", "button"]
     );
+    assert_eq!(
+        native.children[2].accessibility_label.as_deref(),
+        Some("Hero portrait")
+    );
+    assert_eq!(native.children[2].role.as_deref(), Some("image"));
     assert_eq!(native.children[2].src.as_deref(), Some("assets/hero.png"));
     assert_eq!(native.children[3].action.as_deref(), Some("Pause"));
     assert_eq!(
@@ -115,6 +123,15 @@ fn ui_should_spawn_bevy_entities_with_stable_ids_and_hierarchy() {
             .get::<NativeUiImageSrc>(portrait)
             .expect("image source should be preserved"),
         &NativeUiImageSrc("assets/hero.png".to_owned())
+    );
+    let portrait_accessibility = app
+        .world()
+        .get::<AccessibilityNode>(portrait)
+        .expect("image accessibility should be preserved");
+    assert_eq!(portrait_accessibility.role(), Role::Image);
+    assert_eq!(
+        portrait_accessibility.name().as_deref(),
+        Some("Hero portrait")
     );
     assert!(app.world().get::<UiImage>(portrait).is_some());
     let button_label = only_child(app.world(), pause);
@@ -200,6 +217,7 @@ fn ui_should_reject_unsupported_ui_node() {
         version: "0.1.0".to_owned(),
         root: UiNodeIr {
             action: None,
+            accessibility_label: None,
             children: Vec::new(),
             focusable: None,
             id: "bad".to_owned(),
@@ -208,6 +226,7 @@ fn ui_should_reject_unsupported_ui_node() {
             layout: None,
             max: None,
             navigation: None,
+            role: None,
             src: None,
             text: None,
             value: None,
@@ -274,12 +293,14 @@ fn write_ui_bundle() -> PathBuf {
   "root": {
     "id": "hud",
     "kind": "column",
+    "accessibilityLabel": "Main HUD",
+    "role": "group",
     "layout": { "align": "center", "columnGap": 12, "direction": "row", "height": 48, "inset": { "left": 24, "top": 16 }, "justify": "spaceBetween", "maxWidth": 480, "minHeight": 24, "overflow": "scroll", "padding": 6, "position": "absolute", "rowGap": 4, "width": 320, "zIndex": 5 },
     "style": { "backgroundColor": "#101820cc", "borderColor": "#ffffff", "borderRadius": 8, "borderWidth": 2, "color": "#ffcc00", "fontSize": 18, "opacity": 0.75, "textAlign": "center", "wrap": "word" },
     "children": [
       { "id": "label", "kind": "text", "text": "Health", "style": { "color": "#ffcc00", "fontSize": 18, "opacity": 0.75, "textAlign": "center", "wrap": "word" } },
       { "id": "health", "kind": "bar", "value": 8, "max": 10 },
-      { "id": "portrait", "kind": "image", "label": "Hero portrait", "src": "assets/hero.png" },
+      { "id": "portrait", "kind": "image", "accessibilityLabel": "Hero portrait", "role": "image", "src": "assets/hero.png" },
       { "id": "pause", "kind": "button", "label": "Pause", "action": "Pause", "layout": { "grow": 1 } }
     ]
   }

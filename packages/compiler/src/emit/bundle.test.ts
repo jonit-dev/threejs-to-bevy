@@ -328,6 +328,7 @@ test("should derive manifest capabilities from emitted bundle IR", async () => {
         ui: Ui({
           children: [
             Button({
+              accessibilityLabel: "Jump action",
               action: "Jump",
               focusable: true,
               id: "hud.jump",
@@ -335,7 +336,7 @@ test("should derive manifest capabilities from emitted bundle IR", async () => {
               layout: { height: 48, overflow: "scroll" },
               style: { backgroundColor: "#101820cc", borderColor: "#ffffff", borderRadius: 8, borderWidth: 2, color: "#ffcc00", fontSize: 18, opacity: 0.75, textAlign: "center", wrap: "word" },
             }),
-            Image({ id: "hud.hero", label: "Hero portrait", src: "assets/hero.png" }),
+            Image({ accessibilityLabel: "Hero portrait", id: "hud.hero", role: "image", src: "assets/hero.png" }),
           ],
           id: "hud",
         }),
@@ -378,6 +379,9 @@ test("should derive manifest capabilities from emitted bundle IR", async () => {
     assertCapability(manifest, "scripting", "script-bundle");
     assertCapability(manifest, "scripting", "service.physics.raycast");
     assertCapability(manifest, "transform", "hierarchy");
+    assertCapability(manifest, "ui", "accessibility");
+    assertCapability(manifest, "ui", "accessibility.label");
+    assertCapability(manifest, "ui", "accessibility.role");
     assertCapability(manifest, "ui", "node.button");
     assertCapability(manifest, "ui", "node.image");
     assertCapability(manifest, "ui", "image");
