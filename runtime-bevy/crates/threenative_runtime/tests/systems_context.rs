@@ -37,6 +37,34 @@ fn systems_context_should_build_declared_query_snapshot() {
 }
 
 #[test]
+fn systems_context_should_include_union_of_declared_query_matches() {
+    let root = write_multi_query_bundle("multi-query-context");
+    let bundle = load_bundle(&root).expect("bundle should load");
+    let system = &bundle
+        .systems
+        .as_ref()
+        .expect("systems should load")
+        .systems[0];
+
+    let snapshot = build_system_context_snapshot(&bundle, system, time());
+    let entities = snapshot
+        .entities
+        .iter()
+        .map(|entity| entity.id.as_str())
+        .collect::<Vec<_>>();
+
+    assert_eq!(entities, vec!["obstacle", "player"]);
+    let obstacle = snapshot
+        .entities
+        .iter()
+        .find(|entity| entity.id == "obstacle")
+        .expect("obstacle query match should be present");
+    assert!(obstacle.components.contains_key("Obstacle"));
+    assert!(obstacle.components.contains_key("Transform"));
+    assert!(!obstacle.components.contains_key("RunnerBody"));
+}
+
+#[test]
 fn systems_context_should_include_bundle_and_queued_events() {
     let root = write_bundle("event-context");
     let bundle = load_bundle(&root).expect("bundle should load");
@@ -414,6 +442,101 @@ fn write_bundle(name: &str) -> PathBuf {
         "export const systems = Object.freeze({});\n",
     )
     .expect("script bundle should be written");
+    root
+}
+
+fn write_multi_query_bundle(name: &str) -> PathBuf {
+    let root = root(name);
+    fs::create_dir_all(&root).expect("temp bundle should be created");
+    write_json(
+        &root,
+        "manifest.json",
+        r#"{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "multi-query-context",
+  "requiredCapabilities": {},
+  "entry": { "world": "world.ir.json", "systems": "systems.ir.json" },
+  "files": {
+    "assets": "assets.manifest.json",
+    "componentSchemas": "schemas/components.schema.json",
+    "materials": "materials.ir.json",
+    "targetProfile": "target.profile.json"
+  }
+}"#,
+    );
+    fs::create_dir_all(root.join("schemas")).expect("schemas directory should be created");
+    write_json(
+        &root,
+        "schemas/components.schema.json",
+        r#"{
+  "schema": "threenative.component-schemas",
+  "version": "0.1.0",
+  "schemas": {
+    "Obstacle": { "fields": { "z": { "kind": "number", "required": true } } },
+    "RunnerBody": { "fields": { "z": { "kind": "number", "required": true } } }
+  }
+}"#,
+    );
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "events": {},
+  "resources": {},
+  "entities": [
+    {
+      "id": "obstacle",
+      "components": {
+        "Obstacle": { "z": -8 },
+        "Transform": { "position": [0, 0, -8], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+      }
+    },
+    {
+      "id": "player",
+      "components": {
+        "RunnerBody": { "z": 2.5 },
+        "Transform": { "position": [0, 0, 2.5], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+      }
+    },
+    {
+      "id": "decoration",
+      "components": {
+        "Transform": { "position": [3, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+      }
+    }
+  ]
+}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "runner",
+      "schedule": "fixedUpdate",
+      "reads": ["Obstacle", "RunnerBody", "Transform"],
+      "writes": ["Obstacle", "RunnerBody", "Transform"],
+      "queries": [
+        { "with": ["RunnerBody"], "without": [] },
+        { "with": ["Obstacle"], "without": [] }
+      ],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": [],
+      "resourceWrites": [],
+      "services": []
+    }
+  ]
+}"#,
+    );
+    write_common(&root);
     root
 }
 

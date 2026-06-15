@@ -1,0 +1,4 @@
+interface:
+  display_name: "ThreeNative Runner Playtest"
+  short_description: "Verify runner gameplay on web and Bevy"
+  default_prompt: "Use $threenative-runner-playtest to verify the Crystal Runner example across web and Bevy."

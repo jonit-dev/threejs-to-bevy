@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./dist/index.js",
+    "./reflection": "./dist/reflection.js",
     "./schemas/*": "./schemas/*"
   },
   "scripts": {

@@ -59,6 +59,25 @@ test("should accept v4 movement system metadata", async () => {
   }
 });
 
+test("should accept built-in transform system access without custom schema", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-builtin-transform-"));
+  try {
+    await writeBundle(root, {
+      commands: [{ component: "Transform", entity: "target", kind: "setComponent" }],
+      omitTransformSchema: true,
+      reads: ["Transform"],
+      writes: ["Transform"],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should accept v7 physics query services", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-v7-services-"));
   try {
@@ -549,6 +568,7 @@ async function writeBundle(
     commands: unknown[];
     componentHooks?: unknown;
     lifecycle?: unknown;
+    omitTransformSchema?: boolean;
     reads: string[];
     resourceReads?: string[];
     resourceWrites?: string[];
@@ -632,12 +652,16 @@ async function writeBundle(
           radiansPerSecond: { kind: "number", required: true },
         },
       },
-      Transform: {
-        fields: {
-          position: { kind: "vec3", required: false },
-          rotation: { kind: "quat", required: false },
-        },
-      },
+      ...(system.omitTransformSchema === true
+        ? {}
+        : {
+            Transform: {
+              fields: {
+                position: { kind: "vec3", required: false },
+                rotation: { kind: "quat", required: false },
+              },
+            },
+          }),
     },
   });
   await writeJson(root, "schemas/resources.schema.json", {

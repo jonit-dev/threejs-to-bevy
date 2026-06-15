@@ -25,9 +25,8 @@ export async function loadSystemModule(source: string, manifest: IBundleManifest
     return (await import(/* @vite-ignore */ `${source.replace(/\/$/, "")}/${scriptFile}`)) as ISystemModule;
   }
 
-  const nodePrefix = "node";
-  const pathModule = `${nodePrefix}:path`;
-  const urlModule = `${nodePrefix}:url`;
+  const pathModule = nodeModuleName("path");
+  const urlModule = nodeModuleName("url");
   const dynamicImport = new Function("moduleName", "return import(moduleName)") as <T>(
     moduleName: string,
   ) => Promise<T>;
@@ -107,6 +106,10 @@ function readSystemFunction(module: ISystemModule, exportName: string): SystemFu
     throw new Error(`System export '${exportName}' was not found in scripts bundle.`);
   }
   return value as SystemFunction;
+}
+
+function nodeModuleName(name: string): string {
+  return `node:${name}`;
 }
 
 function isFetchable(source: string): boolean {

@@ -79,9 +79,8 @@ async function readBundleJson<T>(source: string, file: string): Promise<T> {
     return (await response.json()) as T;
   }
 
-  const nodePrefix = "node";
-  const fsModule = `${nodePrefix}:fs/promises`;
-  const pathModule = `${nodePrefix}:path`;
+  const fsModule = nodeModuleName("fs/promises");
+  const pathModule = nodeModuleName("path");
   const dynamicImport = new Function("moduleName", "return import(moduleName)") as <T>(
     moduleName: string,
   ) => Promise<T>;
@@ -90,6 +89,10 @@ async function readBundleJson<T>(source: string, file: string): Promise<T> {
   );
   const { resolve } = await dynamicImport<{ resolve(...paths: string[]): string }>(pathModule);
   return JSON.parse(await readFile(resolve(source, file), "utf8")) as T;
+}
+
+function nodeModuleName(name: string): string {
+  return `node:${name}`;
 }
 
 function isFetchable(source: string): boolean {

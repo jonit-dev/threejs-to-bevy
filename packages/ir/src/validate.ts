@@ -1457,7 +1457,7 @@ function validateSystems(
       });
     }
     system.reads.forEach((component, componentIndex) => {
-      if (componentSchemas[component] === undefined) {
+      if (!isBuiltInComponent(component) && componentSchemas[component] === undefined) {
         diagnostics.push({
           code: "TN_IR_SYSTEM_COMPONENT_SCHEMA_MISSING",
           message: `System '${system.name}' reads component '${component}' without a schema.`,
@@ -1466,7 +1466,7 @@ function validateSystems(
       }
     });
     system.writes.forEach((component, componentIndex) => {
-      if (componentSchemas[component] === undefined) {
+      if (!isBuiltInComponent(component) && componentSchemas[component] === undefined) {
         diagnostics.push({
           code: "TN_IR_SYSTEM_COMPONENT_SCHEMA_MISSING",
           message: `System '${system.name}' writes component '${component}' without a schema.`,
@@ -1512,7 +1512,7 @@ function validateSystems(
     });
     system.queries.forEach((query, queryIndex) => {
       query.with.forEach((component, componentIndex) => {
-        if (componentSchemas[component] === undefined) {
+        if (!isBuiltInComponent(component) && componentSchemas[component] === undefined) {
           diagnostics.push({
             code: "TN_IR_SYSTEM_COMPONENT_SCHEMA_MISSING",
             message: `System '${system.name}' queries component '${component}' without a schema.`,
@@ -1521,7 +1521,7 @@ function validateSystems(
         }
       });
       query.without.forEach((component, componentIndex) => {
-        if (componentSchemas[component] === undefined) {
+        if (!isBuiltInComponent(component) && componentSchemas[component] === undefined) {
           diagnostics.push({
             code: "TN_IR_SYSTEM_COMPONENT_SCHEMA_MISSING",
             message: `System '${system.name}' excludes component '${component}' without a schema.`,
@@ -1541,7 +1541,7 @@ function validateSystems(
     });
     system.commands.forEach((command, commandIndex) => {
       if (command.kind === "addComponent" || command.kind === "removeComponent" || command.kind === "setComponent") {
-        if (componentSchemas[command.component] === undefined) {
+        if (!isBuiltInComponent(command.component) && componentSchemas[command.component] === undefined) {
           diagnostics.push({
             code: "TN_IR_SYSTEM_COMPONENT_SCHEMA_MISSING",
             message: `System '${system.name}' command references component '${command.component}' without a schema.`,
@@ -1558,7 +1558,7 @@ function validateSystems(
       }
       if (command.kind === "spawn") {
         command.components.forEach((component, componentIndex) => {
-          if (componentSchemas[component] === undefined) {
+          if (!isBuiltInComponent(component) && componentSchemas[component] === undefined) {
             diagnostics.push({
               code: "TN_IR_SYSTEM_COMPONENT_SCHEMA_MISSING",
               message: `System '${system.name}' command spawns component '${component}' without a schema.`,

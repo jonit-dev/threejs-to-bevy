@@ -15,14 +15,24 @@ struct CaptureConfig {
 
 fn main() -> ExitCode {
     let args = env::args().collect::<Vec<_>>();
-    if args.len() != 4 {
-        eprintln!("Usage: threenative_capture <bundle-path> <bookmark-id> <output-png>");
+    if args.len() != 4 && args.len() != 5 {
+        eprintln!(
+            "Usage: threenative_capture <bundle-path> <bookmark-id> <output-png> [request-frame]"
+        );
         return ExitCode::from(2);
     }
 
     let bundle_path = &args[1];
     let bookmark_id = &args[2];
     let output_path = PathBuf::from(&args[3]);
+    let request_frame = match args.get(4).map(|value| value.parse::<u32>()) {
+        Some(Ok(value)) if value > 0 => value,
+        Some(_) => {
+            eprintln!("request-frame must be a positive integer");
+            return ExitCode::from(2);
+        }
+        None => 120,
+    };
     let bundle = match load_bundle(bundle_path) {
         Ok(bundle) => bundle,
         Err(error) => {
@@ -48,6 +58,15 @@ fn main() -> ExitCode {
         eprintln!("bookmark '{bookmark_id}' was not found or no camera could be updated");
         return ExitCode::from(1);
     }
+    if let Some(parent) = output_path.parent() {
+        if let Err(error) = fs::create_dir_all(parent) {
+            eprintln!(
+                "failed to create screenshot directory '{}': {error}",
+                parent.display()
+            );
+            return ExitCode::from(1);
+        }
+    }
     if let Err(error) = fs::remove_file(&output_path) {
         if error.kind() != std::io::ErrorKind::NotFound {
             eprintln!(
@@ -60,8 +79,8 @@ fn main() -> ExitCode {
 
     app.insert_resource(CaptureConfig {
         output_path,
-        request_frame: 120,
-        max_frame: 900,
+        request_frame,
+        max_frame: request_frame.saturating_add(780),
     })
     .add_systems(Update, request_screenshot);
     app.run();

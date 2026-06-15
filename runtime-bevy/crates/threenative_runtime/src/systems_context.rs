@@ -130,13 +130,12 @@ pub fn build_system_context_snapshot_with_events_and_input(
     events: BTreeMap<String, Vec<Value>>,
     input: Option<&NativeInputState>,
 ) -> NativeSystemContextSnapshot {
-    let query = system.queries.first();
-    let readable_components = readable_components(system, query);
+    let readable_components = readable_components(system);
     let entities = bundle
         .world
         .entities
         .iter()
-        .filter(|entity| query.map_or(true, |query| matches_query(&entity.components, query)))
+        .filter(|entity| matches_declared_queries(&entity.components, system))
         .map(|entity| NativeSystemEntitySnapshot {
             id: entity.id.clone(),
             components: readable_components
@@ -530,14 +529,22 @@ pub fn transform_value(transform: &threenative_loader::TransformComponent) -> Va
     })
 }
 
-fn readable_components(system: &SystemIr, query: Option<&SystemQueryIr>) -> Vec<String> {
+fn readable_components(system: &SystemIr) -> Vec<String> {
     let mut components = system.reads.clone();
-    if let Some(query) = query {
+    for query in &system.queries {
         components.extend(query.with.iter().cloned());
     }
     components.sort();
     components.dedup();
     components
+}
+
+fn matches_declared_queries(components: &EntityComponents, system: &SystemIr) -> bool {
+    system.queries.is_empty()
+        || system
+            .queries
+            .iter()
+            .any(|query| matches_query(components, query))
 }
 
 fn matches_query(components: &EntityComponents, query: &SystemQueryIr) -> bool {
