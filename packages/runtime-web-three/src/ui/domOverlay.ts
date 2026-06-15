@@ -276,11 +276,17 @@ function applyVisualStyle(style: Partial<CSSStyleDeclaration>, visual: IRendered
   if (visual.fontSize !== undefined) {
     style.fontSize = `${visual.fontSize}px`;
   }
+  if (visual.fontWeight !== undefined) {
+    style.fontWeight = visual.fontWeight;
+  }
   if (visual.gradient !== undefined) {
     style.background = `linear-gradient(${visual.gradient.angle ?? 180}deg, ${visual.gradient.from}, ${visual.gradient.to})`;
   }
   if (visual.textAlign !== undefined) {
     style.textAlign = visual.textAlign;
+  }
+  if (visual.textDecoration !== undefined) {
+    style.textDecoration = visual.textDecoration === "lineThrough" ? "line-through" : visual.textDecoration;
   }
   if (visual.wrap !== undefined) {
     style.whiteSpace = visual.wrap === "none" ? "nowrap" : "normal";

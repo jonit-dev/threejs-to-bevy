@@ -691,9 +691,11 @@ pub struct UiStyleIr {
     pub border_width: Option<f32>,
     pub color: Option<String>,
     pub font_size: Option<f32>,
+    pub font_weight: Option<String>,
     pub gradient: Option<UiGradientIr>,
     pub opacity: Option<f32>,
     pub shadow: Option<UiShadowIr>,
+    pub text_decoration: Option<String>,
     pub text_align: Option<String>,
     pub wrap: Option<String>,
 }

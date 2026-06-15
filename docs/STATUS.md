@@ -722,6 +722,12 @@ renders those as CSS `box-shadow` and `linear-gradient`; Bevy currently preserve
 the metadata in `NativeUiStyle` for native mapping, but native visual rendering
 of shadows/gradients remains incomplete.
 
+Common rich-text styling has also moved one step forward: UI style now accepts
+portable `fontWeight` (`normal`/`bold`) and `textDecoration`
+(`none`/`underline`/`lineThrough`) metadata. The web DOM overlay renders these
+through CSS font weight and text decoration, while Bevy preserves the metadata
+for future native text rendering. Font assets and inline spans remain incomplete.
+
 The same functional-game parity pass also closes the P0 native material texture
 loading gap for promoted standard-material slots. Bevy runtime material mapping
 now resolves bundle-local texture asset paths through `AssetServer::load` when

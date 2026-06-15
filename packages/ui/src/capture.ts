@@ -73,6 +73,7 @@ export interface IUiStyleIr {
   borderWidth?: number;
   color?: string;
   fontSize?: number;
+  fontWeight?: "bold" | "normal";
   gradient?: {
     angle?: number;
     from: string;
@@ -87,6 +88,7 @@ export interface IUiStyleIr {
     offsetY?: number;
     spread?: number;
   };
+  textDecoration?: "lineThrough" | "none" | "underline";
   textAlign?: "center" | "left" | "right";
   wrap?: "character" | "none" | "word";
 }

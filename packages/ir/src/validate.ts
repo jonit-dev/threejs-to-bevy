@@ -596,7 +596,7 @@ function validateUiStyle(value: unknown, path: string, diagnostics: IIrDiagnosti
     return;
   }
   for (const key of Object.keys(value)) {
-    if (!["backgroundColor", "borderColor", "borderRadius", "borderWidth", "color", "fontSize", "gradient", "opacity", "shadow", "textAlign", "wrap"].includes(key)) {
+    if (!["backgroundColor", "borderColor", "borderRadius", "borderWidth", "color", "fontSize", "fontWeight", "gradient", "opacity", "shadow", "textAlign", "textDecoration", "wrap"].includes(key)) {
       diagnostics.push({ code: "TN_IR_UI_STYLE_FIELD_UNSUPPORTED", message: `UI style uses unsupported field '${key}'.`, path: `${path}/${key}` });
     }
   }
@@ -617,8 +617,14 @@ function validateUiStyle(value: unknown, path: string, diagnostics: IIrDiagnosti
   }
   validateUiGradient(value.gradient, `${path}/gradient`, diagnostics);
   validateUiShadow(value.shadow, `${path}/shadow`, diagnostics);
+  if (value.fontWeight !== undefined && !["bold", "normal"].includes(String(value.fontWeight))) {
+    diagnostics.push({ code: "TN_IR_UI_STYLE_FONT_WEIGHT_INVALID", message: "UI style fontWeight must be normal or bold.", path: `${path}/fontWeight` });
+  }
   if (value.textAlign !== undefined && !["center", "left", "right"].includes(String(value.textAlign))) {
     diagnostics.push({ code: "TN_IR_UI_STYLE_TEXT_ALIGN_INVALID", message: "UI style textAlign must be left, center, or right.", path: `${path}/textAlign` });
+  }
+  if (value.textDecoration !== undefined && !["lineThrough", "none", "underline"].includes(String(value.textDecoration))) {
+    diagnostics.push({ code: "TN_IR_UI_STYLE_TEXT_DECORATION_INVALID", message: "UI style textDecoration must be none, underline, or lineThrough.", path: `${path}/textDecoration` });
   }
   if (value.wrap !== undefined && !["character", "none", "word"].includes(String(value.wrap))) {
     diagnostics.push({ code: "TN_IR_UI_STYLE_WRAP_INVALID", message: "UI style wrap must be character, none, or word.", path: `${path}/wrap` });

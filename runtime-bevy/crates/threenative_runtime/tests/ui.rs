@@ -53,6 +53,7 @@ fn ui_should_build_bevy_hud_from_ui_ir() {
             border_width: Some(2.0),
             color: Some("#ffcc00".to_owned()),
             font_size: Some(18.0),
+            font_weight: Some("bold".to_owned()),
             gradient: Some(NativeUiGradient {
                 angle: Some(90.0),
                 from: "#101820".to_owned(),
@@ -67,6 +68,7 @@ fn ui_should_build_bevy_hud_from_ui_ir() {
                 offset_y: Some(4.0),
                 spread: Some(1.0),
             }),
+            text_decoration: Some("underline".to_owned()),
             text_align: Some("center".to_owned()),
             wrap: Some("word".to_owned()),
         })
@@ -406,7 +408,7 @@ fn write_ui_bundle() -> PathBuf {
     "accessibilityLabel": "Main HUD",
     "role": "group",
     "layout": { "align": "center", "columnGap": 12, "direction": "row", "height": 48, "inset": { "left": 24, "top": 16 }, "justify": "spaceBetween", "maxWidth": 480, "minHeight": 24, "overflow": "scroll", "padding": 6, "position": "absolute", "rowGap": 4, "width": 320, "zIndex": 5 },
-    "style": { "backgroundColor": "#101820cc", "borderColor": "#ffffff", "borderRadius": 8, "borderWidth": 2, "color": "#ffcc00", "fontSize": 18, "gradient": { "angle": 90, "from": "#101820", "kind": "linear", "to": "#203040" }, "opacity": 0.75, "shadow": { "blur": 12, "color": "#00000080", "offsetX": 0, "offsetY": 4, "spread": 1 }, "textAlign": "center", "wrap": "word" },
+    "style": { "backgroundColor": "#101820cc", "borderColor": "#ffffff", "borderRadius": 8, "borderWidth": 2, "color": "#ffcc00", "fontSize": 18, "fontWeight": "bold", "gradient": { "angle": 90, "from": "#101820", "kind": "linear", "to": "#203040" }, "opacity": 0.75, "shadow": { "blur": 12, "color": "#00000080", "offsetX": 0, "offsetY": 4, "spread": 1 }, "textAlign": "center", "textDecoration": "underline", "wrap": "word" },
     "children": [
       { "id": "label", "kind": "text", "text": "Health", "style": { "color": "#ffcc00", "fontSize": 18, "opacity": 0.75, "textAlign": "center", "wrap": "word" } },
       { "id": "health", "kind": "bar", "value": 8, "max": 10 },

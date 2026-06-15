@@ -93,11 +93,13 @@ test("ui dom overlay should apply explicit flex layout metadata", () => {
   assert.equal(controls?.style.borderWidth, "2px");
   assert.equal(controls?.style.color, "#ffcc00");
   assert.equal(controls?.style.fontSize, "18px");
+  assert.equal(controls?.style.fontWeight, "bold");
   assert.equal(controls?.style.background, "linear-gradient(90deg, #101820, #203040)");
   assert.equal(controls?.style.boxShadow, "0px 4px 12px 1px #00000080");
   assert.equal(controls?.style.opacity, "0.75");
   assert.equal(controls?.style.overflowWrap, "normal");
   assert.equal(controls?.style.textAlign, "center");
+  assert.equal(controls?.style.textDecoration, "underline");
   assert.equal(controls?.style.whiteSpace, "normal");
   assert.equal(portrait?.tagName, "img");
   assert.equal(portrait?.getAttribute("alt"), "Hero portrait");
@@ -122,7 +124,7 @@ function makeUi(): IUiIr {
           id: "controls",
           kind: "row",
           layout: { align: "center", columnGap: 12, direction: "row", height: 48, inset: { left: 24, top: 16 }, justify: "spaceBetween", maxWidth: 480, minHeight: 24, overflow: "scroll", padding: 6, position: "absolute", rowGap: 4, width: 320, zIndex: 5 },
-          style: { backgroundColor: "#101820cc", borderColor: "#ffffff", borderRadius: 8, borderWidth: 2, color: "#ffcc00", fontSize: 18, gradient: { angle: 90, from: "#101820", kind: "linear", to: "#203040" }, opacity: 0.75, shadow: { blur: 12, color: "#00000080", offsetX: 0, offsetY: 4, spread: 1 }, textAlign: "center", wrap: "word" },
+          style: { backgroundColor: "#101820cc", borderColor: "#ffffff", borderRadius: 8, borderWidth: 2, color: "#ffcc00", fontSize: 18, fontWeight: "bold", gradient: { angle: 90, from: "#101820", kind: "linear", to: "#203040" }, opacity: 0.75, shadow: { blur: 12, color: "#00000080", offsetX: 0, offsetY: 4, spread: 1 }, textAlign: "center", textDecoration: "underline", wrap: "word" },
           children: [
             { id: "pause", kind: "button", accessibilityLabel: "Pause menu", label: "Pause", action: "Pause", layout: { grow: 1 }, navigation: { right: "jump" } },
             { id: "portrait", kind: "image", accessibilityLabel: "Hero portrait", role: "image", src: "assets/hero.png" },
