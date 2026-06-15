@@ -30,7 +30,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let report = UiNavigationTraceReport {
         schema: "threenative.ui-navigation-trace",
         version: "0.1.0",
-        trace: trace_ui_navigation(ui, &["next", "activate"]),
+        trace: trace_ui_navigation(ui, &["tab", "activate"]),
     };
     if let Some(parent) = output_path.parent() {
         fs::create_dir_all(parent)?;

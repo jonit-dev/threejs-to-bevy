@@ -523,11 +523,13 @@ accepts portable `focusOrder`, per-node `navigation` links, `safeArea`
 metadata, and UI `inputActions`, with validation for duplicate or invalid focus
 targets, bad navigation links, invalid safe-area edges, and malformed action
 refs. The `v7-rich-ui-navigation` conformance fixture covers a small menu, and
-`pnpm verify:conformance` compares a fixed web/native focus and activation
-trace under `artifacts/conformance/v7-rich-ui-navigation`. Keyboard, gamepad,
-pointer, and touch remain adapter inputs that lower into the same portable
-logical trace; richer platform-specific UI widgets and broad interaction
-coverage remain later V7 work.
+`pnpm verify:conformance` compares a fixed web/native Tab focus and activation
+trace under `artifacts/conformance/v7-rich-ui-navigation`. The web DOM overlay
+now lowers Tab/Shift+Tab and arrow keys into the same focus model and activates
+focused controls with Enter/Space. Gamepad, pointer, and touch remain adapter
+inputs that lower into the same portable logical trace; spatial focus heuristics,
+richer platform-specific UI widgets, and broad interaction coverage remain
+later V7 work.
 
 V7-05 has landed the first portable audio-routing and lifecycle evidence slice:
 audio IR accepts validated buses, listener positions, spatial emitter
@@ -707,8 +709,10 @@ scripts can now declare `picking.mesh` and query generated mesh renderer bounds
 through matching web and Bevy service logs. The picking surface now also includes
 `picking.pointerRay`, which turns normalized screen/pointer coordinates plus
 portable camera IR into web/native service-logged rays that can feed
-`picking.mesh`. Gamepad viewer diagnostics, touch gestures, UI picking,
-rebinding, and richer navigation diagnostics remain future input work.
+`picking.mesh`. Basic UI Tab/arrow keyboard navigation now works through the web
+DOM overlay and matching web/native fixed traces. Gamepad viewer diagnostics,
+touch gestures, UI picking, rebinding, and richer navigation diagnostics remain
+future input work.
 
 The same functional-game parity pass also closes the P0 native material texture
 loading gap for promoted standard-material slots. Bevy runtime material mapping

@@ -248,8 +248,8 @@ fn navigation_target(node: &UiNodeIr, input: &str) -> Option<String> {
 fn sequential_target(order: &[String], current: &str, input: &str) -> Option<String> {
     let index = order.iter().position(|id| id == current)?;
     match input {
-        "next" | "down" | "right" => order.get((index + 1).min(order.len() - 1)).cloned(),
-        "previous" | "up" | "left" => order.get(index.saturating_sub(1)).cloned(),
+        "next" | "tab" | "down" | "right" => order.get((index + 1).min(order.len() - 1)).cloned(),
+        "previous" | "shiftTab" | "up" | "left" => order.get(index.saturating_sub(1)).cloned(),
         _ => None,
     }
 }

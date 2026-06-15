@@ -36,6 +36,33 @@ test("ui dom overlay should dispatch button and touch control clicks to rendered
   ]);
 });
 
+test("ui dom overlay should navigate focus with tab keys and activate focused controls", () => {
+  const rendered = renderUi(makeUi(), makeWorld());
+  const overlay = createUiDomOverlay(rendered, new FakeDocument() as unknown as Document);
+  const pause = findByUiId(overlay.element, "pause");
+  const jump = findByUiId(overlay.element, "jump");
+
+  pause?.dispatchKeyDown({ key: "Tab" });
+  assert.equal(jump?.focused, true);
+
+  jump?.dispatchKeyDown({ key: " " });
+  jump?.dispatchKeyDown({ key: "Tab", shiftKey: true });
+
+  assert.equal(pause?.focused, true);
+  assert.deepEqual(rendered.actions, [{ action: "Jump", node: "jump" }]);
+});
+
+test("ui dom overlay should follow explicit directional navigation links", () => {
+  const rendered = renderUi(makeUi(), makeWorld());
+  const overlay = createUiDomOverlay(rendered, new FakeDocument() as unknown as Document);
+  const pause = findByUiId(overlay.element, "pause");
+  const jump = findByUiId(overlay.element, "jump");
+
+  jump?.dispatchKeyDown({ key: "ArrowLeft" });
+
+  assert.equal(pause?.focused, true);
+});
+
 test("ui dom overlay should apply explicit flex layout metadata", () => {
   const overlay = createUiDomOverlay(renderUi(makeUi(), makeWorld()), new FakeDocument() as unknown as Document);
   const controls = findByUiId(overlay.element, "controls");
@@ -95,9 +122,9 @@ function makeUi(): IUiIr {
           layout: { align: "center", columnGap: 12, direction: "row", height: 48, inset: { left: 24, top: 16 }, justify: "spaceBetween", maxWidth: 480, minHeight: 24, overflow: "scroll", padding: 6, position: "absolute", rowGap: 4, width: 320, zIndex: 5 },
           style: { backgroundColor: "#101820cc", borderColor: "#ffffff", borderRadius: 8, borderWidth: 2, color: "#ffcc00", fontSize: 18, opacity: 0.75, textAlign: "center", wrap: "word" },
           children: [
-            { id: "pause", kind: "button", accessibilityLabel: "Pause menu", label: "Pause", action: "Pause", layout: { grow: 1 } },
+            { id: "pause", kind: "button", accessibilityLabel: "Pause menu", label: "Pause", action: "Pause", layout: { grow: 1 }, navigation: { right: "jump" } },
             { id: "portrait", kind: "image", accessibilityLabel: "Hero portrait", role: "image", src: "assets/hero.png" },
-            { id: "jump", kind: "touchControl", label: "Jump", action: "Jump" },
+            { id: "jump", kind: "touchControl", label: "Jump", action: "Jump", navigation: { left: "pause" } },
           ],
         },
       ],
@@ -151,7 +178,8 @@ class FakeElement {
   };
   readonly classNames: string[] = [];
   readonly dataset: Record<string, string> = {};
-  readonly listeners = new Map<string, Array<() => void>>();
+  focused = false;
+  readonly listeners = new Map<string, Array<(event?: FakeKeyboardEvent) => void>>();
   readonly style: Record<string, string> = {};
   tabIndex = -1;
   textContent = "";
@@ -159,7 +187,7 @@ class FakeElement {
 
   constructor(readonly tagName: string) {}
 
-  addEventListener(type: string, listener: () => void): void {
+  addEventListener(type: string, listener: (event?: FakeKeyboardEvent) => void): void {
     this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener]);
   }
 
@@ -171,6 +199,17 @@ class FakeElement {
     for (const listener of this.listeners.get("click") ?? []) {
       listener();
     }
+  }
+
+  dispatchKeyDown(event: FakeKeyboardEvent): void {
+    const keyEvent = { preventDefault: () => undefined, shiftKey: false, ...event };
+    for (const listener of this.listeners.get("keydown") ?? []) {
+      listener(keyEvent);
+    }
+  }
+
+  focus(): void {
+    this.focused = true;
   }
 
   getAttribute(name: string): string | null {
@@ -187,4 +226,10 @@ class FakeElement {
   setAttribute(name: string, value: string): void {
     this.attributes.set(name, value);
   }
+}
+
+interface FakeKeyboardEvent {
+  key: string;
+  preventDefault?: () => void;
+  shiftKey?: boolean;
 }

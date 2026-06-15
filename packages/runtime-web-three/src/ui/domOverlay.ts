@@ -41,6 +41,7 @@ function createNodeElement(
 
   if (node.focusable) {
     element.tabIndex = 0;
+    element.addEventListener("keydown", (event) => handleKeyboardNavigation(event, node.id, rendered, nodes));
   }
   if (node.kind === "button" || node.kind === "touchControl") {
     element.addEventListener("click", () => rendered.trigger(node.id));
@@ -62,6 +63,91 @@ function createNodeElement(
   }
 
   return element;
+}
+
+function handleKeyboardNavigation(
+  event: KeyboardEvent,
+  currentId: string,
+  rendered: IRenderedUi,
+  nodes: Map<string, HTMLElement>,
+): void {
+  const input = keyboardInput(event);
+  if (input === undefined) {
+    return;
+  }
+  event.preventDefault();
+  if (input === "activate") {
+    rendered.trigger(currentId);
+    return;
+  }
+  const renderedNodes = renderedNodesById(rendered.root);
+  const order = focusOrder(rendered, renderedNodes);
+  const targetId = navigationTarget(renderedNodes.get(currentId), input) ?? sequentialTarget(order, currentId, input);
+  if (targetId !== undefined && targetId !== currentId) {
+    nodes.get(targetId)?.focus();
+  }
+}
+
+function keyboardInput(event: KeyboardEvent): "activate" | "down" | "left" | "right" | "shiftTab" | "tab" | "up" | undefined {
+  if (event.key === "Enter" || event.key === " ") {
+    return "activate";
+  }
+  if (event.key === "Tab") {
+    return event.shiftKey ? "shiftTab" : "tab";
+  }
+  if (event.key === "ArrowDown") {
+    return "down";
+  }
+  if (event.key === "ArrowLeft") {
+    return "left";
+  }
+  if (event.key === "ArrowRight") {
+    return "right";
+  }
+  if (event.key === "ArrowUp") {
+    return "up";
+  }
+  return undefined;
+}
+
+function renderedNodesById(root: IRenderedUiNode): Map<string, IRenderedUiNode> {
+  const nodes = new Map<string, IRenderedUiNode>();
+  visitRenderedNode(root, (node) => nodes.set(node.id, node));
+  return nodes;
+}
+
+function visitRenderedNode(node: IRenderedUiNode, callback: (node: IRenderedUiNode) => void): void {
+  callback(node);
+  for (const child of node.children) {
+    visitRenderedNode(child, callback);
+  }
+}
+
+function focusOrder(rendered: IRenderedUi, nodes: Map<string, IRenderedUiNode>): string[] {
+  return (rendered.focusOrder ?? [...nodes.values()].filter((node) => node.focusable).map((node) => node.id)).filter(
+    (id) => nodes.get(id)?.focusable === true,
+  );
+}
+
+function navigationTarget(node: IRenderedUiNode | undefined, input: string): string | undefined {
+  if (input === "up" || input === "right" || input === "down" || input === "left") {
+    return node?.navigation?.[input];
+  }
+  return undefined;
+}
+
+function sequentialTarget(order: readonly string[], current: string, input: string): string | undefined {
+  const index = order.indexOf(current);
+  if (index < 0) {
+    return undefined;
+  }
+  if (input === "tab" || input === "down" || input === "right") {
+    return order[Math.min(order.length - 1, index + 1)];
+  }
+  if (input === "shiftTab" || input === "up" || input === "left") {
+    return order[Math.max(0, index - 1)];
+  }
+  return undefined;
 }
 
 function createElementForKind(node: IRenderedUiNode, doc: Document): HTMLElement {

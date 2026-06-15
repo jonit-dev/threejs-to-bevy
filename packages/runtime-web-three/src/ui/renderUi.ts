@@ -13,6 +13,7 @@ export interface IRenderedUiNode {
   label?: string;
   layout?: IUiNodeIr["layout"];
   max?: number;
+  navigation?: IUiNodeIr["navigation"];
   role?: IUiNodeIr["role"];
   style?: IUiNodeIr["style"];
   src?: string;
@@ -22,6 +23,7 @@ export interface IRenderedUiNode {
 
 export interface IRenderedUi {
   actions: IUiActionEvent[];
+  focusOrder?: string[];
   root: IRenderedUiNode;
   trigger(nodeId: string): void;
   update(): void;
@@ -32,6 +34,7 @@ export function renderUi(ui: IUiIr, world: IWorldIr): IRenderedUi {
   let root = renderNode(ui.root, world);
   return {
     actions,
+    ...(ui.focusOrder === undefined ? {} : { focusOrder: ui.focusOrder }),
     get root() {
       return root;
     },
@@ -53,12 +56,13 @@ function renderNode(node: IUiNodeIr, world: IWorldIr): IRenderedUiNode {
     ...(node.action === undefined ? {} : { action: node.action }),
     ...(node.accessibilityLabel === undefined ? {} : { accessibilityLabel: node.accessibilityLabel }),
     children: node.children?.map((child) => renderNode(child, world)) ?? [],
-    focusable: node.focusable ?? node.kind === "button",
+    focusable: node.focusable ?? (node.kind === "button" || node.kind === "touchControl"),
     id: node.id,
     kind: node.kind,
     ...(node.label === undefined ? {} : { label: node.label }),
     ...(node.layout === undefined ? {} : { layout: node.layout }),
     ...(node.max === undefined ? {} : { max: node.max }),
+    ...(node.navigation === undefined ? {} : { navigation: node.navigation }),
     ...(node.role === undefined ? {} : { role: node.role }),
     ...(node.style === undefined ? {} : { style: node.style }),
     ...(node.src === undefined ? {} : { src: node.src }),

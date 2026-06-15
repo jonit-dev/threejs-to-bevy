@@ -35,7 +35,7 @@ async function runWebTrace(root, bundlePath) {
   const bundle = await runtime.loadBundle(bundlePath);
   return normalizeReport({
     schema: "threenative.ui-navigation-trace",
-    trace: runtime.traceUiNavigation(bundle.ui, { events: ["next", "activate"] }),
+    trace: runtime.traceUiNavigation(bundle.ui, { events: ["tab", "activate"] }),
     version: "0.1.0",
   });
 }

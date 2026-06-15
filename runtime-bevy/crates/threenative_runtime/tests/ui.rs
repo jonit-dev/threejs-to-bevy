@@ -246,7 +246,7 @@ fn ui_navigation_trace_should_match_v7_fixture() {
     let fixture = support::load_conformance_fixture("v7-rich-ui-navigation");
     let ui = fixture.bundle.ui.as_ref().expect("ui fixture should load");
 
-    let trace = trace_ui_navigation(ui, &["next", "activate"]);
+    let trace = trace_ui_navigation(ui, &["tab", "activate"]);
 
     assert_eq!(trace.focus_order, vec!["play", "settings"]);
     assert_eq!(trace.initial_focus.as_deref(), Some("play"));
@@ -254,9 +254,28 @@ fn ui_navigation_trace_should_match_v7_fixture() {
     assert_eq!(trace.events.len(), 2);
     assert_eq!(trace.events[0].kind, "focus");
     assert_eq!(trace.events[0].focus, "settings");
+    assert_eq!(trace.events[0].input, "tab");
     assert_eq!(trace.events[1].kind, "activate");
     assert_eq!(trace.events[1].action.as_deref(), Some("OpenSettings"));
     assert_eq!(trace.safe_area.as_ref().expect("safe area").mode, "avoid");
+}
+
+#[test]
+fn ui_navigation_trace_should_support_reverse_tab() {
+    let fixture = support::load_conformance_fixture("v7-rich-ui-navigation");
+    let ui = fixture.bundle.ui.as_ref().expect("ui fixture should load");
+
+    let trace = trace_ui_navigation(ui, &["tab", "shiftTab"]);
+
+    assert_eq!(
+        trace
+            .events
+            .iter()
+            .map(|event| (event.focus.as_str(), event.input.as_str()))
+            .collect::<Vec<_>>(),
+        vec![("settings", "tab"), ("play", "shiftTab")]
+    );
+    assert_eq!(trace.final_focus.as_deref(), Some("play"));
 }
 
 fn write_ui_bundle() -> PathBuf {

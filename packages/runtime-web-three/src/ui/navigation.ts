@@ -1,7 +1,7 @@
 import type { IUiIr, IUiNodeIr } from "@threenative/ir";
 
 export interface IUiNavigationTraceInput {
-  events?: Array<"activate" | "down" | "left" | "next" | "previous" | "right" | "up">;
+  events?: Array<"activate" | "down" | "left" | "next" | "previous" | "right" | "shiftTab" | "tab" | "up">;
 }
 
 export interface IUiNavigationTrace {
@@ -73,10 +73,10 @@ function sequentialTarget(order: readonly string[], current: string, input: stri
   if (index < 0) {
     return undefined;
   }
-  if (input === "next" || input === "down" || input === "right") {
+  if (input === "next" || input === "tab" || input === "down" || input === "right") {
     return order[Math.min(order.length - 1, index + 1)];
   }
-  if (input === "previous" || input === "up" || input === "left") {
+  if (input === "previous" || input === "shiftTab" || input === "up" || input === "left") {
     return order[Math.max(0, index - 1)];
   }
   return undefined;
