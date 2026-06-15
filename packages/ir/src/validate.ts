@@ -710,7 +710,7 @@ function validateUiLayout(value: unknown, path: string, diagnostics: IIrDiagnost
     return;
   }
   for (const key of Object.keys(value)) {
-    if (!["align", "columnGap", "direction", "grow", "height", "inset", "justify", "maxHeight", "maxWidth", "minHeight", "minWidth", "overflow", "padding", "position", "rowGap", "width", "zIndex"].includes(key)) {
+    if (!["align", "columnGap", "direction", "grid", "grow", "height", "inset", "justify", "maxHeight", "maxWidth", "minHeight", "minWidth", "overflow", "padding", "position", "rowGap", "width", "zIndex"].includes(key)) {
       diagnostics.push({ code: "TN_IR_UI_LAYOUT_FIELD_UNSUPPORTED", message: `UI layout uses unsupported field '${key}'.`, path: `${path}/${key}` });
     }
   }
@@ -729,6 +729,7 @@ function validateUiLayout(value: unknown, path: string, diagnostics: IIrDiagnost
   if (value.position !== undefined && !["absolute", "relative"].includes(String(value.position))) {
     diagnostics.push({ code: "TN_IR_UI_LAYOUT_POSITION_INVALID", message: "UI layout position must be absolute or relative.", path: `${path}/position` });
   }
+  validateUiGridLayout(value.grid, `${path}/grid`, diagnostics);
   for (const key of ["columnGap", "grow", "height", "maxHeight", "maxWidth", "minHeight", "minWidth", "padding", "rowGap", "width"]) {
     const item = value[key];
     if (item !== undefined && (typeof item !== "number" || !Number.isFinite(item) || item < 0)) {
@@ -754,6 +755,33 @@ function validateUiLayout(value: unknown, path: string, diagnostics: IIrDiagnost
   }
   if (value.zIndex !== undefined && (typeof value.zIndex !== "number" || !Number.isInteger(value.zIndex))) {
     diagnostics.push({ code: "TN_IR_UI_LAYOUT_Z_INDEX_INVALID", message: "UI layout zIndex must be an integer.", path: `${path}/zIndex` });
+  }
+}
+
+function validateUiGridLayout(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value)) {
+    diagnostics.push({ code: "TN_IR_UI_LAYOUT_GRID_INVALID", message: "UI layout grid must be an object.", path });
+    return;
+  }
+  for (const key of Object.keys(value)) {
+    if (!["autoFlow", "columns", "rows"].includes(key)) {
+      diagnostics.push({ code: "TN_IR_UI_LAYOUT_GRID_FIELD_UNSUPPORTED", message: `UI layout grid uses unsupported field '${key}'.`, path: `${path}/${key}` });
+    }
+  }
+  if (value.autoFlow !== undefined && !["column", "row"].includes(String(value.autoFlow))) {
+    diagnostics.push({ code: "TN_IR_UI_LAYOUT_GRID_AUTO_FLOW_INVALID", message: "UI layout grid autoFlow must be row or column.", path: `${path}/autoFlow` });
+  }
+  for (const key of ["columns", "rows"]) {
+    const item = value[key];
+    if (item !== undefined && (typeof item !== "number" || !Number.isInteger(item) || item < 1)) {
+      diagnostics.push({ code: "TN_IR_UI_LAYOUT_GRID_TRACK_INVALID", message: `UI layout grid ${key} must be a positive integer.`, path: `${path}/${key}` });
+    }
+  }
+  if (value.columns === undefined && value.rows === undefined) {
+    diagnostics.push({ code: "TN_IR_UI_LAYOUT_GRID_TRACK_MISSING", message: "UI layout grid must declare columns or rows.", path });
   }
 }
 

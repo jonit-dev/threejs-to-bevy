@@ -69,6 +69,7 @@ test("ui dom overlay should apply explicit flex layout metadata", () => {
   const portrait = findByUiId(overlay.element, "portrait");
   const pause = findByUiId(overlay.element, "pause");
   const spacer = findByUiId(overlay.element, "spacer");
+  const inventory = findByUiId(overlay.element, "inventory");
 
   assert.equal(controls?.style.display, "flex");
   assert.equal(controls?.style.flexDirection, "row");
@@ -111,6 +112,10 @@ test("ui dom overlay should apply explicit flex layout metadata", () => {
   assert.equal(pause?.style.flexGrow, "1");
   assert.equal(spacer?.getAttribute("role"), "presentation");
   assert.equal(spacer?.getAttribute("aria-label"), null);
+  assert.equal(inventory?.style.display, "grid");
+  assert.equal(inventory?.style.gridAutoFlow, "row");
+  assert.equal(inventory?.style.gridTemplateColumns, "repeat(3, minmax(0, 1fr))");
+  assert.equal(inventory?.style.gridTemplateRows, "repeat(2, minmax(0, 1fr))");
 });
 
 function makeUi(): IUiIr {
@@ -133,6 +138,15 @@ function makeUi(): IUiIr {
             { id: "portrait", kind: "image", accessibilityLabel: "Hero portrait", role: "image", src: "assets/hero.png" },
             { id: "spacer", kind: "row", accessibilityLabel: "Decorative spacer", role: "none" },
             { id: "jump", kind: "touchControl", label: "Jump", action: "Jump", navigation: { left: "pause" } },
+          ],
+        },
+        {
+          id: "inventory",
+          kind: "column",
+          layout: { columnGap: 6, grid: { autoFlow: "row", columns: 3, rows: 2 }, rowGap: 6 },
+          children: [
+            { id: "slot-1", kind: "image", accessibilityLabel: "Potion", role: "image", src: "assets/potion.png" },
+            { id: "slot-2", kind: "image", accessibilityLabel: "Key", role: "image", src: "assets/key.png" },
           ],
         },
       ],

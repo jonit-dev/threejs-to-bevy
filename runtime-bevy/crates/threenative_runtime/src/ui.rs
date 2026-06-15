@@ -534,6 +534,21 @@ fn apply_layout(style: &mut Style, layout: Option<&threenative_loader::UiLayoutI
             _ => FlexDirection::Column,
         };
     }
+    if let Some(grid) = layout.grid.as_ref() {
+        style.display = Display::Grid;
+        if let Some(columns) = grid.columns {
+            style.grid_template_columns = RepeatedGridTrack::flex(columns, 1.0);
+        }
+        if let Some(rows) = grid.rows {
+            style.grid_template_rows = RepeatedGridTrack::flex(rows, 1.0);
+        }
+        if let Some(auto_flow) = grid.auto_flow.as_deref() {
+            style.grid_auto_flow = match auto_flow {
+                "column" => GridAutoFlow::Column,
+                _ => GridAutoFlow::Row,
+            };
+        }
+    }
     if let Some(justify) = layout.justify.as_deref() {
         style.justify_content = match justify {
             "center" => JustifyContent::Center,

@@ -333,7 +333,7 @@ test("should derive manifest capabilities from emitted bundle IR", async () => {
               focusable: true,
               id: "hud.jump",
               label: "Jump",
-              layout: { height: 48, overflow: "scroll" },
+              layout: { grid: { autoFlow: "row", columns: 2 }, height: 48, overflow: "scroll" },
               style: { backgroundColor: "#101820cc", borderColor: "#ffffff", borderRadius: 8, borderWidth: 2, color: "#ffcc00", fontSize: 18, fontWeight: "bold", gradient: { angle: 90, from: "#101820", kind: "linear", to: "#203040" }, opacity: 0.75, shadow: { blur: 12, color: "#00000080", offsetX: 0, offsetY: 4 }, textAlign: "center", textDecoration: "underline", wrap: "word" },
             }),
             Image({ accessibilityLabel: "Hero portrait", id: "hud.hero", role: "image", src: "assets/hero.png" }),
@@ -385,6 +385,7 @@ test("should derive manifest capabilities from emitted bundle IR", async () => {
     assertCapability(manifest, "ui", "node.button");
     assertCapability(manifest, "ui", "node.image");
     assertCapability(manifest, "ui", "image");
+    assertCapability(manifest, "ui", "grid-layout");
     assertCapability(manifest, "ui", "scroll-container");
     assertCapability(manifest, "ui", "style");
     assertCapability(manifest, "ui", "style.background");
@@ -477,7 +478,7 @@ test("should emit ui ir for scene with portable hud", async () => {
         children: Column({
           children: [
             Text({ id: "hud.health.label", text: "Health" }),
-            Bar({ binding: { field: "current", kind: "resource", name: "Health" }, id: "hud.health", max: 100 }),
+            Bar({ accessibilityLabel: "Health", binding: { field: "current", kind: "resource", name: "Health" }, id: "hud.health", max: 100 }),
             Button({ action: "Pause", focusable: true, id: "hud.pause", label: "Pause" }),
           ],
           id: "hud.stack",

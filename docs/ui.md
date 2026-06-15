@@ -160,10 +160,11 @@ Layout should start with simple primitives:
 - gap, padding, margin
 - fixed, fill, and content sizing
 - min/max width and height
+- basic grid rows/columns for inventory and menu layouts
 - z-index within UI
 
-Do not start with full CSS, arbitrary DOM, CSS selectors, grid layout, or
-browser-specific events.
+Do not start with full CSS, arbitrary DOM, CSS selectors, arbitrary grid
+placement/named areas, or browser-specific events.
 
 ## State And Bindings
 

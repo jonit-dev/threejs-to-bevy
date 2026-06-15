@@ -242,7 +242,16 @@ and `maxHeight` as non-negative pixel constraints. The UI authoring package and
 IR validation preserve the fields, bundle capabilities report
 `ui:size-constraints`, the web DOM overlay maps them to CSS min/max dimensions,
 and the Bevy UI adapter maps them to `Style` min/max `Val::Px` fields.
-Scrolling containers remain future UI layout work.
+Axis-specific and nested scrolling remain future UI layout work.
+
+Post-V7 UI grid layout now promotes a narrow CSS-grid-style subset for common
+inventory/menu grids. `layout.grid` accepts positive integer `columns` and/or
+`rows` plus optional `autoFlow`, validation rejects unsupported grid fields and
+invalid track counts, bundle capabilities report `ui:grid-layout`, the web DOM
+overlay maps the fields to repeat-count CSS grid tracks, and the Bevy UI adapter
+maps them to `Display::Grid`, repeated flexible grid tracks, and grid
+auto-flow. Explicit item placement, named grid areas, dense packing, and
+arbitrary CSS track strings remain future layout work.
 
 Post-V7 UI visual styling now promotes common HUD/menu style fields:
 `backgroundColor`, `color`, `borderColor`, `borderWidth`, `borderRadius`, and

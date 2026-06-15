@@ -315,6 +315,18 @@ function applyLayoutStyle(style: Partial<CSSStyleDeclaration>, layout: IRendered
     return;
   }
   style.display = "flex";
+  if (layout.grid !== undefined) {
+    style.display = "grid";
+    if (layout.grid.columns !== undefined) {
+      style.gridTemplateColumns = `repeat(${layout.grid.columns}, minmax(0, 1fr))`;
+    }
+    if (layout.grid.rows !== undefined) {
+      style.gridTemplateRows = `repeat(${layout.grid.rows}, minmax(0, 1fr))`;
+    }
+    if (layout.grid.autoFlow !== undefined) {
+      style.gridAutoFlow = layout.grid.autoFlow;
+    }
+  }
   if (layout.direction !== undefined) {
     style.flexDirection = layout.direction;
   }

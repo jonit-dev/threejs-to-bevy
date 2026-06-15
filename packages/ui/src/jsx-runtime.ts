@@ -23,6 +23,11 @@ export interface IUiNodeProps {
     align?: "center" | "end" | "start" | "stretch";
     columnGap?: number;
     direction?: "column" | "row";
+    grid?: {
+      autoFlow?: "column" | "row";
+      columns?: number;
+      rows?: number;
+    };
     grow?: number;
     height?: number;
     inset?: {

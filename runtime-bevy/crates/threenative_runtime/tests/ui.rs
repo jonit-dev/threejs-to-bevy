@@ -35,7 +35,7 @@ fn ui_should_build_bevy_hud_from_ui_ir() {
             .iter()
             .map(|node| node.kind.as_str())
             .collect::<Vec<_>>(),
-        vec!["text", "bar", "image", "button"]
+        vec!["text", "bar", "image", "button", "column"]
     );
     assert_eq!(
         native.children[2].accessibility_label.as_deref(),
@@ -92,7 +92,7 @@ fn ui_should_spawn_bevy_entities_with_stable_ids_and_hierarchy() {
             .keys()
             .map(String::as_str)
             .collect::<Vec<_>>(),
-        vec!["health", "hud", "label", "pause", "portrait"]
+        vec!["health", "hud", "inventory", "label", "pause", "portrait"]
     );
 
     let hud = entities_by_id["hud"];
@@ -100,13 +100,14 @@ fn ui_should_spawn_bevy_entities_with_stable_ids_and_hierarchy() {
     let health = entities_by_id["health"];
     let portrait = entities_by_id["portrait"];
     let pause = entities_by_id["pause"];
+    let inventory = entities_by_id["inventory"];
     let children = app
         .world()
         .get::<Children>(hud)
         .expect("hud should have children");
     assert_eq!(
         children.iter().copied().collect::<Vec<_>>(),
-        vec![label, health, portrait, pause]
+        vec![label, health, portrait, pause, inventory]
     );
 
     let label_text = app
@@ -219,6 +220,14 @@ fn ui_should_spawn_bevy_entities_with_stable_ids_and_hierarchy() {
         .get::<Style>(pause)
         .expect("button should have style");
     assert_eq!(pause_style.flex_grow, 1.0);
+    let inventory_style = app
+        .world()
+        .get::<Style>(inventory)
+        .expect("inventory should have style");
+    assert_eq!(inventory_style.display, Display::Grid);
+    assert_eq!(inventory_style.grid_auto_flow, GridAutoFlow::Row);
+    assert_eq!(inventory_style.grid_template_columns.len(), 1);
+    assert_eq!(inventory_style.grid_template_rows.len(), 1);
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
@@ -413,7 +422,8 @@ fn write_ui_bundle() -> PathBuf {
       { "id": "label", "kind": "text", "text": "Health", "style": { "color": "#ffcc00", "fontSize": 18, "opacity": 0.75, "textAlign": "center", "wrap": "word" } },
       { "id": "health", "kind": "bar", "value": 8, "max": 10 },
       { "id": "portrait", "kind": "image", "accessibilityLabel": "Hero portrait", "role": "image", "src": "assets/hero.png" },
-      { "id": "pause", "kind": "button", "label": "Pause", "action": "Pause", "layout": { "grow": 1 } }
+      { "id": "pause", "kind": "button", "label": "Pause", "action": "Pause", "layout": { "grow": 1 } },
+      { "id": "inventory", "kind": "column", "layout": { "grid": { "autoFlow": "row", "columns": 3, "rows": 2 }, "rowGap": 6, "columnGap": 6 } }
     ]
   }
 }"##,

@@ -666,6 +666,7 @@ pub struct UiLayoutIr {
     pub align: Option<String>,
     pub column_gap: Option<f32>,
     pub direction: Option<String>,
+    pub grid: Option<UiGridLayoutIr>,
     pub grow: Option<f32>,
     pub height: Option<f32>,
     pub inset: Option<UiInsetIr>,
@@ -680,6 +681,14 @@ pub struct UiLayoutIr {
     pub row_gap: Option<f32>,
     pub width: Option<f32>,
     pub z_index: Option<i32>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UiGridLayoutIr {
+    pub auto_flow: Option<String>,
+    pub columns: Option<u16>,
+    pub rows: Option<u16>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
