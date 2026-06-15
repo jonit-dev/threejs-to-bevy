@@ -23,7 +23,7 @@ export interface IUiNodeIr {
   children?: IUiNodeIr[];
   focusable?: boolean;
   id: string;
-  kind: "bar" | "button" | "column" | "row" | "stack" | "text" | "touchControl";
+  kind: "bar" | "button" | "column" | "image" | "row" | "stack" | "text" | "touchControl";
   label?: string;
   layout?: IUiLayoutIr;
   max?: number;
@@ -34,6 +34,7 @@ export interface IUiNodeIr {
     up?: string;
   };
   style?: IUiStyleIr;
+  src?: string;
   text?: string;
   value?: number;
 }
@@ -97,7 +98,7 @@ function captureNode(element: IUiElement, fallback: string): IUiNodeIr {
       kind: "stack",
     };
   }
-  if (!["bar", "button", "column", "row", "stack", "text", "touchControl"].includes(element.type)) {
+  if (!["bar", "button", "column", "image", "row", "stack", "text", "touchControl"].includes(element.type)) {
     throw new Error(`Unsupported portable UI node '${element.type}'.`);
   }
   return {
@@ -109,6 +110,7 @@ function captureNode(element: IUiElement, fallback: string): IUiNodeIr {
     ...(element.props.max === undefined ? {} : { max: element.props.max }),
     ...(element.props.navigation === undefined ? {} : { navigation: element.props.navigation }),
     ...(element.props.style === undefined ? {} : { style: element.props.style }),
+    ...(element.props.src === undefined ? {} : { src: element.props.src }),
     ...(element.props.text === undefined ? {} : { text: element.props.text }),
     ...(element.props.value === undefined ? {} : { value: element.props.value }),
     children: childrenOf(element).map((child, index) => captureNode(child, `${fallback}.${child.type}.${index}`)),

@@ -204,6 +204,8 @@ pub struct ConformanceUiNodeReport {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub src: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub text: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub value: Option<f32>,
@@ -509,6 +511,7 @@ fn report_ui_node(node: &crate::ui::NativeUiNode) -> ConformanceUiNodeReport {
         kind: node.kind.clone(),
         label: node.label.clone(),
         max: node.max,
+        src: node.src.clone(),
         text: node.text.clone(),
         value: node.value,
     }

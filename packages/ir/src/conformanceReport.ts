@@ -75,6 +75,7 @@ export interface IConformanceUiNodeReport {
   kind: string;
   label?: string;
   max?: number;
+  src?: string;
   text?: string;
   value?: number;
 }

@@ -578,6 +578,9 @@ function collectUiCapabilities(ui: IUiIr | undefined, add: (domain: string, capa
 
 function visitUiNode(node: IUiIr["root"], add: (domain: string, capability: string) => void): void {
   add("ui", `node.${node.kind}`);
+  if (node.kind === "image") {
+    add("ui", "image");
+  }
   if (node.binding !== undefined) {
     add("ui", `binding.${node.binding.kind}`);
   }

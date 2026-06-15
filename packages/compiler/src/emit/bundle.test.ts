@@ -42,7 +42,7 @@ import {
   update,
 } from "@threenative/sdk";
 import { validateBundle } from "@threenative/ir";
-import { Bar, Button, Column, Text, Ui } from "@threenative/ui";
+import { Bar, Button, Column, Image, Text, Ui } from "@threenative/ui";
 
 import { emitBundle } from "./bundle.js";
 
@@ -326,14 +326,17 @@ test("should derive manifest capabilities from emitted bundle IR", async () => {
         }),
         scene,
         ui: Ui({
-          children: Button({
-            action: "Jump",
-            focusable: true,
-            id: "hud.jump",
-            label: "Jump",
-            layout: { height: 48, overflow: "scroll" },
-            style: { backgroundColor: "#101820cc", borderColor: "#ffffff", borderRadius: 8, borderWidth: 2, color: "#ffcc00", fontSize: 18, opacity: 0.75, textAlign: "center", wrap: "word" },
-          }),
+          children: [
+            Button({
+              action: "Jump",
+              focusable: true,
+              id: "hud.jump",
+              label: "Jump",
+              layout: { height: 48, overflow: "scroll" },
+              style: { backgroundColor: "#101820cc", borderColor: "#ffffff", borderRadius: 8, borderWidth: 2, color: "#ffcc00", fontSize: 18, opacity: 0.75, textAlign: "center", wrap: "word" },
+            }),
+            Image({ id: "hud.hero", label: "Hero portrait", src: "assets/hero.png" }),
+          ],
           id: "hud",
         }),
         world,
@@ -376,6 +379,8 @@ test("should derive manifest capabilities from emitted bundle IR", async () => {
     assertCapability(manifest, "scripting", "service.physics.raycast");
     assertCapability(manifest, "transform", "hierarchy");
     assertCapability(manifest, "ui", "node.button");
+    assertCapability(manifest, "ui", "node.image");
+    assertCapability(manifest, "ui", "image");
     assertCapability(manifest, "ui", "scroll-container");
     assertCapability(manifest, "ui", "style");
     assertCapability(manifest, "ui", "style.background");

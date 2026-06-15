@@ -28,6 +28,9 @@ pub struct NativeUiScrollContainer {
     pub offset_y: f32,
 }
 
+#[derive(Clone, Component, Debug, Eq, PartialEq)]
+pub struct NativeUiImageSrc(pub String);
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct NativeUiNode {
     pub action: Option<String>,
@@ -39,6 +42,7 @@ pub struct NativeUiNode {
     pub max: Option<f32>,
     pub navigation: Option<NativeUiNavigation>,
     pub style: Option<NativeUiStyle>,
+    pub src: Option<String>,
     pub text: Option<String>,
     pub value: Option<f32>,
 }
@@ -111,7 +115,7 @@ pub fn map_ui_into_world(world: &mut World, ui: &UiIr) -> Result<(), UiDiagnosti
 fn build_node(node: &UiNodeIr, path: &str) -> Result<NativeUiNode, UiDiagnostic> {
     if !matches!(
         node.kind.as_str(),
-        "bar" | "button" | "column" | "row" | "stack" | "text" | "touchControl"
+        "bar" | "button" | "column" | "image" | "row" | "stack" | "text" | "touchControl"
     ) {
         return Err(UiDiagnostic {
             code: "TN_BEVY_UI_NODE_UNSUPPORTED".to_owned(),
@@ -152,6 +156,7 @@ fn build_node(node: &UiNodeIr, path: &str) -> Result<NativeUiNode, UiDiagnostic>
             text_align: style.text_align.clone(),
             wrap: style.wrap.clone(),
         }),
+        src: node.src.clone(),
         text: node.text.clone(),
         value: node.value,
     })
@@ -274,6 +279,18 @@ fn spawn_node(
                 ..Default::default()
             })
             .id(),
+        "image" => world
+            .spawn((
+                ImageBundle {
+                    style: leaf_style(node),
+                    image: ui_image(world, node),
+                    background_color: background_color(node, (0.0, 0.0, 0.0, 0.0)),
+                    ..Default::default()
+                },
+                border_color(node),
+                border_radius(node),
+            ))
+            .id(),
         _ => world
             .spawn(NodeBundle {
                 style: layout_style(node),
@@ -294,6 +311,9 @@ fn spawn_node(
         ));
         if let Some(action) = node.action.as_ref() {
             entity_mut.insert(NativeUiAction(action.clone()));
+        }
+        if let Some(src) = node.src.as_ref() {
+            entity_mut.insert(NativeUiImageSrc(src.clone()));
         }
         if let Some(focusable) = node.focusable {
             entity_mut.insert(NativeUiFocusable(focusable));
@@ -380,6 +400,16 @@ fn bar_style(node: &UiNodeIr) -> Style {
     apply_layout(&mut style, node.layout.as_ref());
     apply_visual_style(&mut style, node.style.as_ref());
     style
+}
+
+fn ui_image(world: &World, node: &UiNodeIr) -> UiImage {
+    let Some(src) = node.src.as_ref() else {
+        return UiImage::default();
+    };
+    world
+        .get_resource::<AssetServer>()
+        .map(|asset_server| UiImage::new(asset_server.load(src.clone())))
+        .unwrap_or_default()
 }
 
 fn apply_visual_style(style: &mut Style, visual: Option<&UiStyleIr>) {

@@ -326,6 +326,7 @@ function reportUiNode(node: IUiIr["root"]): IConformanceUiNodeReport {
     kind: node.kind,
     ...(node.label === undefined ? {} : { label: node.label }),
     ...(node.max === undefined ? {} : { max: node.max }),
+    ...(node.src === undefined ? {} : { src: node.src }),
     ...(node.text === undefined ? {} : { text: node.text }),
     ...(node.value === undefined ? {} : { value: node.value }),
   };

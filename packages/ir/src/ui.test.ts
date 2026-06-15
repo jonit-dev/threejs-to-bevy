@@ -107,13 +107,45 @@ test("ui should validate explicit flex layout metadata", async () => {
         kind: "row",
         layout: { align: "center", columnGap: 12, direction: "row", height: 48, inset: { left: 24, top: 16 }, justify: "spaceBetween", maxWidth: 480, minHeight: 24, overflow: "scroll", padding: 6, position: "absolute", rowGap: 4, width: 320, zIndex: 5 },
         style: { backgroundColor: "#101820cc", borderColor: "#ffffff", borderRadius: 8, borderWidth: 2, color: "#ffcc00", fontSize: 18, opacity: 0.75, textAlign: "center", wrap: "word" },
-        children: [{ id: "score", kind: "text", text: "0" }],
+        children: [
+          { id: "score", kind: "text", text: "0" },
+          { id: "portrait", kind: "image", label: "Hero portrait", src: "assets/hero.png" },
+        ],
       },
     });
 
     const result = await validateBundle(root);
 
     assert.equal(result.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("ui should reject invalid image metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ui-image-invalid-"));
+  try {
+    await writeTestBundle(root, { manifest: { entry: { ui: "ui.ir.json" } } });
+    await writeJson(root, "ui.ir.json", {
+      schema: "threenative.ui",
+      version: "0.1.0",
+      root: {
+        id: "hud",
+        kind: "row",
+        children: [
+          { id: "missing", kind: "image" },
+          { id: "absolute", kind: "image", src: "/assets/hero.png" },
+          { id: "parent", kind: "image", src: "../hero.png" },
+          { id: "remote", kind: "image", src: "https://example.com/hero.png" },
+        ],
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_IMAGE_SRC_MISSING"), true);
+    assert.equal(result.diagnostics.filter((diagnostic) => diagnostic.code === "TN_IR_UI_IMAGE_SRC_INVALID").length, 3);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

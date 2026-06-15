@@ -10,8 +10,8 @@ use bevy::text::BreakLineOn;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{UiIr, UiNodeIr, load_bundle};
 use threenative_runtime::ui::{
-    NativeUiAction, NativeUiBar, NativeUiKind, NativeUiScrollContainer, NativeUiStyle,
-    build_native_ui, map_ui_into_world, trace_ui_navigation,
+    NativeUiAction, NativeUiBar, NativeUiImageSrc, NativeUiKind, NativeUiScrollContainer,
+    NativeUiStyle, build_native_ui, map_ui_into_world, trace_ui_navigation,
 };
 
 mod support;
@@ -31,9 +31,10 @@ fn ui_should_build_bevy_hud_from_ui_ir() {
             .iter()
             .map(|node| node.kind.as_str())
             .collect::<Vec<_>>(),
-        vec!["text", "bar", "button"]
+        vec!["text", "bar", "image", "button"]
     );
-    assert_eq!(native.children[2].action.as_deref(), Some("Pause"));
+    assert_eq!(native.children[2].src.as_deref(), Some("assets/hero.png"));
+    assert_eq!(native.children[3].action.as_deref(), Some("Pause"));
     assert_eq!(
         native.style,
         Some(NativeUiStyle {
@@ -67,12 +68,13 @@ fn ui_should_spawn_bevy_entities_with_stable_ids_and_hierarchy() {
             .keys()
             .map(String::as_str)
             .collect::<Vec<_>>(),
-        vec!["health", "hud", "label", "pause"]
+        vec!["health", "hud", "label", "pause", "portrait"]
     );
 
     let hud = entities_by_id["hud"];
     let label = entities_by_id["label"];
     let health = entities_by_id["health"];
+    let portrait = entities_by_id["portrait"];
     let pause = entities_by_id["pause"];
     let children = app
         .world()
@@ -80,7 +82,7 @@ fn ui_should_spawn_bevy_entities_with_stable_ids_and_hierarchy() {
         .expect("hud should have children");
     assert_eq!(
         children.iter().copied().collect::<Vec<_>>(),
-        vec![label, health, pause]
+        vec![label, health, portrait, pause]
     );
 
     let label_text = app
@@ -108,6 +110,13 @@ fn ui_should_spawn_bevy_entities_with_stable_ids_and_hierarchy() {
             max: 10.0,
         }
     );
+    assert_eq!(
+        app.world()
+            .get::<NativeUiImageSrc>(portrait)
+            .expect("image source should be preserved"),
+        &NativeUiImageSrc("assets/hero.png".to_owned())
+    );
+    assert!(app.world().get::<UiImage>(portrait).is_some());
     let button_label = only_child(app.world(), pause);
     let button_text = app
         .world()
@@ -199,6 +208,7 @@ fn ui_should_reject_unsupported_ui_node() {
             layout: None,
             max: None,
             navigation: None,
+            src: None,
             text: None,
             value: None,
             style: None,
@@ -269,6 +279,7 @@ fn write_ui_bundle() -> PathBuf {
     "children": [
       { "id": "label", "kind": "text", "text": "Health", "style": { "color": "#ffcc00", "fontSize": 18, "opacity": 0.75, "textAlign": "center", "wrap": "word" } },
       { "id": "health", "kind": "bar", "value": 8, "max": 10 },
+      { "id": "portrait", "kind": "image", "label": "Hero portrait", "src": "assets/hero.png" },
       { "id": "pause", "kind": "button", "label": "Pause", "action": "Pause", "layout": { "grow": 1 } }
     ]
   }

@@ -39,6 +39,7 @@ test("ui dom overlay should dispatch button and touch control clicks to rendered
 test("ui dom overlay should apply explicit flex layout metadata", () => {
   const overlay = createUiDomOverlay(renderUi(makeUi(), makeWorld()), new FakeDocument() as unknown as Document);
   const controls = findByUiId(overlay.element, "controls");
+  const portrait = findByUiId(overlay.element, "portrait");
   const pause = findByUiId(overlay.element, "pause");
 
   assert.equal(controls?.style.display, "flex");
@@ -69,6 +70,10 @@ test("ui dom overlay should apply explicit flex layout metadata", () => {
   assert.equal(controls?.style.overflowWrap, "normal");
   assert.equal(controls?.style.textAlign, "center");
   assert.equal(controls?.style.whiteSpace, "normal");
+  assert.equal(portrait?.tagName, "img");
+  assert.equal(portrait?.getAttribute("alt"), "Hero portrait");
+  assert.equal(portrait?.getAttribute("src"), "assets/hero.png");
+  assert.equal(portrait?.style.objectFit, "contain");
   assert.equal(pause?.style.flexGrow, "1");
 });
 
@@ -89,6 +94,7 @@ function makeUi(): IUiIr {
           style: { backgroundColor: "#101820cc", borderColor: "#ffffff", borderRadius: 8, borderWidth: 2, color: "#ffcc00", fontSize: 18, opacity: 0.75, textAlign: "center", wrap: "word" },
           children: [
             { id: "pause", kind: "button", label: "Pause", action: "Pause", layout: { grow: 1 } },
+            { id: "portrait", kind: "image", label: "Hero portrait", src: "assets/hero.png" },
             { id: "jump", kind: "touchControl", label: "Jump", action: "Jump" },
           ],
         },

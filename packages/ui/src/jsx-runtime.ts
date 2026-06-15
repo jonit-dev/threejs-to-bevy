@@ -1,4 +1,4 @@
-export type UiElementType = "bar" | "button" | "column" | "row" | "stack" | "text" | "touchControl" | "ui";
+export type UiElementType = "bar" | "button" | "column" | "image" | "row" | "stack" | "text" | "touchControl" | "ui";
 export type UiBinding =
   | { kind: "resource"; name: string; field?: string }
   | { component: string; entity: string; field?: string; kind: "component" };
@@ -63,6 +63,7 @@ export interface IUiNodeProps {
     textAlign?: "center" | "left" | "right";
     wrap?: "character" | "none" | "word";
   };
+  src?: string;
   text?: string;
   value?: number;
 }
@@ -91,6 +92,7 @@ export namespace JSX {
     bar: IUiNodeProps;
     button: IUiNodeProps;
     column: IUiNodeProps;
+    image: IUiNodeProps;
     row: IUiNodeProps;
     stack: IUiNodeProps;
     text: IUiNodeProps;

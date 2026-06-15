@@ -13,6 +13,7 @@ export interface IRenderedUiNode {
   layout?: IUiNodeIr["layout"];
   max?: number;
   style?: IUiNodeIr["style"];
+  src?: string;
   text?: string;
   value?: number;
 }
@@ -56,6 +57,7 @@ function renderNode(node: IUiNodeIr, world: IWorldIr): IRenderedUiNode {
     ...(node.layout === undefined ? {} : { layout: node.layout }),
     ...(node.max === undefined ? {} : { max: node.max }),
     ...(node.style === undefined ? {} : { style: node.style }),
+    ...(node.src === undefined ? {} : { src: node.src }),
     text: node.text ?? (typeof bindingValue === "string" || typeof bindingValue === "number" ? String(bindingValue) : undefined),
     value: typeof bindingValue === "number" ? bindingValue : node.value,
   };

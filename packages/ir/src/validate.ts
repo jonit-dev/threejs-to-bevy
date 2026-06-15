@@ -521,7 +521,7 @@ function validateUi(ui: IUiIr, path: string, diagnostics: IIrDiagnostic[]): void
 function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[], ids: Set<string>): void {
   const raw = node as unknown as Record<string, unknown>;
   for (const key of Object.keys(raw)) {
-    if (!["action", "binding", "children", "focusable", "id", "kind", "label", "layout", "max", "navigation", "style", "text", "value"].includes(key)) {
+    if (!["action", "binding", "children", "focusable", "id", "kind", "label", "layout", "max", "navigation", "src", "style", "text", "value"].includes(key)) {
       diagnostics.push({
         code: "TN_IR_UI_FIELD_UNSUPPORTED",
         message: `UI node '${node.id}' uses unsupported field '${key}'.`,
@@ -531,7 +531,7 @@ function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnosti
   }
   validateUiLayout(node.layout, `${path}/layout`, diagnostics);
   validateUiStyle(node.style, `${path}/style`, diagnostics);
-  if (!["bar", "button", "column", "row", "stack", "text", "touchControl"].includes(node.kind)) {
+  if (!["bar", "button", "column", "image", "row", "stack", "text", "touchControl"].includes(node.kind)) {
     diagnostics.push({
       code: "TN_IR_UI_NODE_UNSUPPORTED",
       message: `Unsupported UI node kind '${String(node.kind)}'.`,
@@ -552,6 +552,21 @@ function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnosti
       message: `UI ${node.kind} node '${node.id}' must declare an action.`,
       path: `${path}/action`,
     });
+  }
+  if (node.kind === "image") {
+    if (typeof node.src !== "string" || node.src.length === 0) {
+      diagnostics.push({
+        code: "TN_IR_UI_IMAGE_SRC_MISSING",
+        message: `UI image node '${node.id}' must declare a non-empty src.`,
+        path: `${path}/src`,
+      });
+    } else if (node.src.startsWith("/") || node.src.includes("..") || /^[a-z]+:/i.test(node.src)) {
+      diagnostics.push({
+        code: "TN_IR_UI_IMAGE_SRC_INVALID",
+        message: "UI image src must be a bundle-relative path.",
+        path: `${path}/src`,
+      });
+    }
   }
   node.children?.forEach((child, index) => validateUiNode(child, `${path}/children/${index}`, diagnostics, ids));
 }

@@ -65,6 +65,9 @@ function createNodeElement(
 }
 
 function createElementForKind(node: IRenderedUiNode, doc: Document): HTMLElement {
+  if (node.kind === "image") {
+    return doc.createElement("img");
+  }
   if (node.kind === "button" || node.kind === "touchControl") {
     const button = doc.createElement("button");
     button.type = "button";
@@ -101,6 +104,12 @@ function updateNodeElement(node: IRenderedUiNode, nodes: Map<string, HTMLElement
       fill.style.width = `${ratio * 100}%`;
     }
   }
+  if (node.kind === "image") {
+    element.setAttribute("alt", node.label ?? "");
+    if (node.src !== undefined) {
+      element.setAttribute("src", node.src);
+    }
+  }
 
   for (const child of node.children) {
     updateNodeElement(child, nodes);
@@ -128,6 +137,11 @@ function baseStyle(node: IRenderedUiNode): Partial<CSSStyleDeclaration> {
   }
   if (node.kind === "button" || node.kind === "touchControl") {
     style.pointerEvents = "auto";
+  }
+  if (node.kind === "image") {
+    style.display = "block";
+    style.maxWidth = "100%";
+    style.objectFit = "contain";
   }
   applyLayoutStyle(style, node.layout);
   applyVisualStyle(style, node.style);

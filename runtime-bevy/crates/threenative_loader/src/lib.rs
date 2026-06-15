@@ -645,6 +645,7 @@ pub struct UiNodeIr {
     pub kind: String,
     pub label: Option<String>,
     pub layout: Option<UiLayoutIr>,
+    pub src: Option<String>,
     pub text: Option<String>,
     pub action: Option<String>,
     pub focusable: Option<bool>,

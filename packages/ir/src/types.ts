@@ -413,7 +413,7 @@ export interface IUiNodeIr {
   children?: IUiNodeIr[];
   focusable?: boolean;
   id: string;
-  kind: "bar" | "button" | "column" | "row" | "stack" | "text" | "touchControl";
+  kind: "bar" | "button" | "column" | "image" | "row" | "stack" | "text" | "touchControl";
   label?: string;
   layout?: IUiLayoutIr;
   max?: number;
@@ -424,6 +424,7 @@ export interface IUiNodeIr {
     up?: string;
   };
   style?: IUiStyleIr;
+  src?: string;
   text?: string;
   value?: number;
 }

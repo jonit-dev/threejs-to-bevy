@@ -267,6 +267,15 @@ adapter maps it to `Overflow::clip_y()` plus a `NativeUiScrollContainer` wheel
 system that offsets direct children after layout. Nested scroll hit-testing,
 horizontal scroll containers, and richer scrollbar styling remain future work.
 
+Basic UI image nodes are now promoted for common HUD portraits, icons, and menu
+artwork. The UI authoring package exposes an `Image` helper / `image` intrinsic,
+IR validation accepts `kind: "image"` with a required bundle-relative `src`,
+bundle capabilities report `ui:image`, the web DOM overlay renders `<img>` with
+alt text from `label`, web/native conformance reports preserve `src`, and the
+Bevy UI adapter spawns `ImageBundle` with `AssetServer` loading when available.
+Texture atlases, 9-slice scaling, flipping, tiling, and richer image diagnostics
+remain future UI image work.
+
 V5-07 has landed the lighting, atmosphere, shadow, and color parity-evidence
 slice: shared fixtures now cover visible/hidden meshes plus ranged point and
 spot lights, SDK/compiler output preserves point-light range and spot-light
