@@ -16,13 +16,23 @@
         "properties": {
           "id": { "type": "string", "minLength": 1 },
           "kind": { "const": "standard" },
+          "alphaMode": { "enum": ["opaque", "mask", "blend"] },
+          "alphaCutoff": { "type": "number", "minimum": 0, "maximum": 1 },
           "color": {
             "oneOf": [
               { "type": "string", "pattern": "^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$" },
               { "type": "array", "minItems": 3, "maxItems": 4, "items": { "type": "number" } }
             ]
           },
+          "emissive": {
+            "oneOf": [
+              { "type": "string", "pattern": "^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$" },
+              { "type": "array", "minItems": 3, "maxItems": 4, "items": { "type": "number" } }
+            ]
+          },
+          "emissiveIntensity": { "type": "number", "minimum": 0 },
           "metalness": { "type": "number" },
+          "opacity": { "type": "number", "minimum": 0, "maximum": 1 },
           "roughness": { "type": "number" },
           "baseColorTexture": { "type": "string", "minLength": 1 },
           "normalTexture": { "type": "string", "minLength": 1 },

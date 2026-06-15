@@ -18,6 +18,11 @@ interface IGltfModel {
   scene: THREE.Object3D;
 }
 
+interface IShadowSettings {
+  castShadow?: boolean;
+  receiveShadow?: boolean;
+}
+
 export interface IWorldModelLoader {
   loadAsync(url: string): Promise<IGltfModel>;
 }
@@ -110,7 +115,10 @@ export async function loadWorldModelAssets(
   const entities = [...bundle.world.entities].sort((left, right) => left.id.localeCompare(right.id));
   for (const entity of entities) {
     const renderer = entity.components.MeshRenderer;
-    const asset = renderer === undefined ? undefined : assetsById.get(renderer.mesh);
+    if (renderer === undefined) {
+      continue;
+    }
+    const asset = assetsById.get(renderer.mesh);
     if (asset?.kind !== "model" || asset.path === undefined || !isLoadableModelFormat(asset)) {
       continue;
     }
@@ -120,7 +128,7 @@ export async function loadWorldModelAssets(
     }
     try {
       const gltf = await loader.loadAsync(bundleUrl(source, asset.path));
-      attachLoadedModel(object, asset, gltf);
+      attachLoadedModel(object, asset, gltf, renderer);
     } catch (error) {
       const reason = error instanceof Error ? ` ${error.message}` : "";
       mapped.diagnostics.push({
@@ -146,6 +154,7 @@ function mapEntity(
     const material = materialsById.get(renderer.material);
     if (asset !== undefined && material !== undefined) {
       const object = new THREE.Mesh(mapGeometry(asset), mapMaterial(material, assetsById, diagnostics, source));
+      applyShadowSettings(object, renderer);
       if (asset.kind === "model") {
         const playback = animationPlaybackState(asset);
         if (playback !== undefined) {
@@ -192,10 +201,10 @@ function mapEntity(
   return new THREE.Object3D();
 }
 
-function attachLoadedModel(object: THREE.Object3D, asset: Extract<IAssetIr, { kind: "model" }>, gltf: IGltfModel): void {
+function attachLoadedModel(object: THREE.Object3D, asset: Extract<IAssetIr, { kind: "model" }>, gltf: IGltfModel, shadowSettings: IShadowSettings): void {
   const model = gltf.scene;
   model.name = model.name === "" ? `model:${asset.id}` : model.name;
-  prepareLoadedModel(model);
+  prepareLoadedModel(model, shadowSettings);
   clearPlaceholderGeometry(object);
   object.add(model);
 
@@ -218,13 +227,25 @@ function attachLoadedModel(object: THREE.Object3D, asset: Extract<IAssetIr, { ki
   object.userData.threeNativeAnimationClip = clip.name;
 }
 
-function prepareLoadedModel(model: THREE.Object3D): void {
+function prepareLoadedModel(model: THREE.Object3D, shadowSettings: IShadowSettings): void {
   model.traverse((child) => {
     if (child instanceof THREE.Mesh) {
-      child.castShadow = true;
-      child.receiveShadow = true;
+      child.castShadow = shadowSettings.castShadow ?? true;
+      child.receiveShadow = shadowSettings.receiveShadow ?? true;
     }
   });
+}
+
+function applyShadowSettings(object: THREE.Object3D, shadowSettings: IShadowSettings): void {
+  if (!(object instanceof THREE.Mesh)) {
+    return;
+  }
+  if (shadowSettings.castShadow !== undefined) {
+    object.castShadow = shadowSettings.castShadow;
+  }
+  if (shadowSettings.receiveShadow !== undefined) {
+    object.receiveShadow = shadowSettings.receiveShadow;
+  }
 }
 
 function clearPlaceholderGeometry(object: THREE.Object3D): void {
@@ -346,10 +367,19 @@ function mapMaterial(
   );
   const normalMap = mapTextureSlot(material, "normalTexture", assetsById, diagnostics, source);
   const parameters: THREE.MeshStandardMaterialParameters = {
+    alphaTest: material.alphaMode === "mask" ? material.alphaCutoff ?? 0.5 : 0,
     color: colorToThree(material.color),
+    emissive: material.emissive === undefined ? new THREE.Color("#000000") : colorToThree(material.emissive),
+    emissiveIntensity: material.emissiveIntensity ?? 1,
     metalness: material.metalness ?? 0,
     roughness: material.roughness ?? 1,
   };
+  if (material.alphaMode === "blend" || (material.opacity !== undefined && material.opacity < 1)) {
+    parameters.opacity = material.opacity ?? 1;
+    parameters.transparent = true;
+  } else if (material.opacity !== undefined) {
+    parameters.opacity = material.opacity;
+  }
   if (aoMap !== undefined) {
     parameters.aoMap = aoMap;
   }
@@ -367,6 +397,7 @@ function mapMaterial(
     parameters.normalMap = normalMap;
   }
   const mapped = new THREE.MeshStandardMaterial(parameters);
+  mapped.userData.threeNativeAlphaMode = material.alphaMode ?? "opaque";
   mapped.needsUpdate = true;
   return mapped;
 }

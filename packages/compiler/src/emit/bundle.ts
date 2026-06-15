@@ -294,6 +294,9 @@ function collectWorldCapabilities(world: IWorldIr | undefined, add: (domain: str
     }
     if (entity.components.MeshRenderer !== undefined) {
       add("rendering", "mesh-renderer");
+      if (entity.components.MeshRenderer.castShadow !== undefined || entity.components.MeshRenderer.receiveShadow !== undefined) {
+        add("rendering", "mesh-renderer.shadows");
+      }
       if (entity.components.MeshRenderer.visible !== undefined) {
         add("rendering", "visibility");
       }
@@ -349,6 +352,15 @@ function collectWorldCapabilities(world: IWorldIr | undefined, add: (domain: str
 function collectMaterialCapabilities(materials: IMaterialsIr, add: (domain: string, capability: string) => void): void {
   for (const material of materials.materials) {
     add("rendering", `material.${material.kind}`);
+    if (material.alphaMode !== undefined && material.alphaMode !== "opaque") {
+      add("rendering", `material.alpha.${material.alphaMode}`);
+    }
+    if (material.opacity !== undefined && material.opacity < 1) {
+      add("rendering", "material.opacity");
+    }
+    if (material.emissive !== undefined || material.emissiveIntensity !== undefined) {
+      add("rendering", "material.emissive");
+    }
     for (const slot of ["baseColorTexture", "normalTexture", "metallicRoughnessTexture", "emissiveTexture", "occlusionTexture"] as const) {
       if (material[slot] !== undefined) {
         add("rendering", `material.texture.${textureSlotCapability(slot)}`);

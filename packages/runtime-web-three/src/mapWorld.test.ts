@@ -443,3 +443,91 @@ test("mapWorld should reject material texture slots that do not reference textur
   assert.equal(mapped.diagnostics[0]?.code, "TN-WEB-MATERIAL-TEXTURE-REFERENCE-INVALID");
   assert.equal(mapped.diagnostics[0]?.path, "materials.ir.json/materials/mat.invalid/baseColorTexture");
 });
+
+test("mapWorld should apply material alpha mode and opacity", () => {
+  const mapped = mapWorld({
+    assets: {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [{ id: "mesh.cube", kind: "mesh", format: "generated", primitive: "box", size: [1, 1, 1] }],
+    },
+    manifest: {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "alpha-material",
+      requiredCapabilities: {},
+      entry: { world: "world.ir.json" },
+      files: { assets: "assets.manifest.json", materials: "materials.ir.json", targetProfile: "target.profile.json" },
+    },
+    materials: {
+      schema: "threenative.materials",
+      version: "0.1.0",
+      materials: [
+        { id: "mat.glass", kind: "standard", alphaMode: "blend", color: "#ffffff", emissive: "#33ccff", emissiveIntensity: 2.5, opacity: 0.45 },
+        { id: "mat.leaves", kind: "standard", alphaCutoff: 0.35, alphaMode: "mask", color: "#ffffff" },
+      ],
+    },
+    targetProfile: { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] },
+    world: {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [
+        { id: "glass", components: { MeshRenderer: { mesh: "mesh.cube", material: "mat.glass" } } },
+        { id: "leaves", components: { MeshRenderer: { mesh: "mesh.cube", material: "mat.leaves" } } },
+      ],
+    },
+  });
+
+  const glass = mapped.objectsById.get("glass");
+  const leaves = mapped.objectsById.get("leaves");
+  assert.ok(glass instanceof THREE.Mesh);
+  assert.ok(glass.material instanceof THREE.MeshStandardMaterial);
+  assert.equal(glass.material.transparent, true);
+  assert.equal(glass.material.opacity, 0.45);
+  assert.equal(glass.material.emissive.getHexString(), "33ccff");
+  assert.equal(glass.material.emissiveIntensity, 2.5);
+  assert.equal(glass.material.userData.threeNativeAlphaMode, "blend");
+  assert.ok(leaves instanceof THREE.Mesh);
+  assert.ok(leaves.material instanceof THREE.MeshStandardMaterial);
+  assert.equal(leaves.material.alphaTest, 0.35);
+  assert.equal(leaves.material.userData.threeNativeAlphaMode, "mask");
+});
+
+test("mapWorld should apply mesh renderer shadow controls", () => {
+  const mapped = mapWorld({
+    assets: {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [{ id: "mesh.cube", kind: "mesh", format: "generated", primitive: "box", size: [1, 1, 1] }],
+    },
+    manifest: {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "shadow-flags",
+      requiredCapabilities: {},
+      entry: { world: "world.ir.json" },
+      files: { assets: "assets.manifest.json", materials: "materials.ir.json", targetProfile: "target.profile.json" },
+    },
+    materials: {
+      schema: "threenative.materials",
+      version: "0.1.0",
+      materials: [{ id: "mat.main", kind: "standard", color: "#ffffff" }],
+    },
+    targetProfile: { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] },
+    world: {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [
+        {
+          id: "decor",
+          components: { MeshRenderer: { castShadow: true, mesh: "mesh.cube", material: "mat.main", receiveShadow: false } },
+        },
+      ],
+    },
+  });
+
+  const decor = mapped.objectsById.get("decor");
+  assert.ok(decor instanceof THREE.Mesh);
+  assert.equal(decor.castShadow, true);
+  assert.equal(decor.receiveShadow, false);
+});

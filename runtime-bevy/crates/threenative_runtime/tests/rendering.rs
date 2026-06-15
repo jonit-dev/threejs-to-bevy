@@ -8,8 +8,10 @@ use bevy::{
     animation::{graph::AnimationGraph, AnimationPlugin, RepeatAnimation},
     asset::AssetPlugin,
     gltf::GltfPlugin,
+    pbr::{NotShadowCaster, NotShadowReceiver},
     prelude::*,
     render::{
+        alpha::AlphaMode,
         mesh::{MeshVertexAttribute, VertexAttributeValues},
         render_resource::VertexFormat,
     },
@@ -43,6 +45,8 @@ fn rendering_should_map_visibility_and_v2_lights() {
         [2.0, 2.0, 2.0],
     );
     assert_material(app.world_mut(), "cube.visible");
+    assert!(has_component::<NotShadowCaster>(app.world_mut(), "cube.visible"));
+    assert!(has_component::<NotShadowReceiver>(app.world_mut(), "cube.visible"));
     assert_eq!(
         visibility_for(app.world_mut(), "capsule.hidden"),
         Some(Visibility::Hidden)
@@ -300,6 +304,9 @@ fn assert_material(world: &mut World, id: &str) {
     assert!((color.red - 0x33 as f32 / 255.0).abs() < 0.01);
     assert!((color.green - 0x66 as f32 / 255.0).abs() < 0.01);
     assert!((color.blue - 0x99 as f32 / 255.0).abs() < 0.01);
+    assert!((color.alpha - 0.65).abs() < 0.01);
+    assert_eq!(material.alpha_mode, AlphaMode::Mask(0.35));
+    assert!((material.emissive.blue - 2.5).abs() < 0.01);
     assert!(material.base_color_texture.is_some());
     assert!(material.emissive_texture.is_some());
     assert!(material.metallic_roughness_texture.is_some());
@@ -446,7 +453,7 @@ fn write_rendering_bundle() -> PathBuf {
     {
       "id": "cube.visible",
       "components": {
-        "MeshRenderer": { "mesh": "mesh.cube", "material": "mat.main", "visible": true },
+        "MeshRenderer": { "mesh": "mesh.cube", "material": "mat.main", "visible": true, "castShadow": false, "receiveShadow": false },
         "Transform": { "position": [1, 2, 3], "rotation": [0, 0, 0, 1], "scale": [2, 2, 2] }
       }
     },
@@ -487,7 +494,12 @@ fn write_rendering_bundle() -> PathBuf {
   "materials": [{
     "id": "mat.main",
     "kind": "standard",
+    "alphaMode": "mask",
+    "alphaCutoff": 0.35,
     "color": "#336699",
+    "emissive": "#0000ff",
+    "emissiveIntensity": 2.5,
+    "opacity": 0.65,
     "baseColorTexture": "tex.albedo",
     "normalTexture": "tex.normal",
     "metallicRoughnessTexture": "tex.mr",

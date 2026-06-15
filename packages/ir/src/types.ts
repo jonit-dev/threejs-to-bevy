@@ -56,8 +56,10 @@ export interface ICameraComponent {
 }
 
 export interface IMeshRendererComponent {
+  castShadow?: boolean;
   material: string;
   mesh: string;
+  receiveShadow?: boolean;
   visible?: boolean;
 }
 
@@ -160,8 +162,12 @@ export interface IIrSchemaFile {
 }
 
 export interface IMaterialIr {
+  alphaCutoff?: number;
+  alphaMode?: "opaque" | "mask" | "blend";
   baseColorTexture?: string;
   color: string | readonly [number, number, number] | readonly [number, number, number, number];
+  emissive?: string | readonly [number, number, number] | readonly [number, number, number, number];
+  emissiveIntensity?: number;
   emissiveTexture?: string;
   id: string;
   kind: "standard";
@@ -169,6 +175,7 @@ export interface IMaterialIr {
   metallicRoughnessTexture?: string;
   normalTexture?: string;
   occlusionTexture?: string;
+  opacity?: number;
   roughness?: number;
 }
 

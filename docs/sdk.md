@@ -356,6 +356,7 @@ Supported:
 - `CapsuleGeometry`
 - `CylinderGeometry`
 - External glTF mesh assets.
+- Mesh shadow controls: `castShadow`, `receiveShadow`.
 
 Deferred:
 
@@ -373,12 +374,16 @@ Supported:
 
 - `MeshStandardMaterial`
 - `MeshBasicMaterial`
-- PBR parameters: `baseColor`, `metallic`, `roughness`, `emissive`, `alphaMode`.
+- PBR parameters: `color`, `metalness`, `roughness`, `emissive`, `alphaMode`, `alphaCutoff`, `opacity`.
 - Texture slots: `baseColorTexture`, `normalTexture`, `metallicRoughnessTexture`, `emissiveTexture`, `occlusionTexture`.
 
 Rules:
 
 - Colors serialize as `#rrggbb` or linear RGBA arrays.
+- `alphaMode` accepts `opaque`, `mask`, or `blend`; `opacity` and `alphaCutoff`
+  must be between 0 and 1.
+- `emissive` uses the same color format as `color`; `emissiveIntensity` must be
+  non-negative and may exceed 1.
 - Texture references must resolve through the asset manifest.
 - Unsupported material fields are validation errors, not silent no-ops.
 

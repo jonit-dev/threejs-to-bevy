@@ -4,16 +4,22 @@ import type { IAssetReference, IPhysicsDeclaration } from "@threenative/sdk";
 interface IObjectLike {
   activeCamera?: IObjectLike;
   assetRefs?: readonly IAssetReference[];
+  castShadow?: boolean;
   children: readonly IObjectLike[];
   id?: string;
   material?: {
+    alphaCutoff?: number;
+    alphaMode?: string;
     baseColorTexture?: string | IAssetReference;
     color: unknown;
+    emissive?: unknown;
+    emissiveIntensity?: number;
     emissiveTexture?: string | IAssetReference;
     metalness?: number;
     metallicRoughnessTexture?: string | IAssetReference;
     normalTexture?: string | IAssetReference;
     occlusionTexture?: string | IAssetReference;
+    opacity?: number;
     roughness?: number;
   };
   geometry?: {
@@ -32,6 +38,7 @@ interface IObjectLike {
   };
   physics?: IPhysicsDeclaration;
   position: { toArray(): [number, number, number] };
+  receiveShadow?: boolean;
   rotation: { toArray(): [number, number, number] };
   scale: { toArray(): [number, number, number] };
   visible?: boolean;
@@ -98,7 +105,13 @@ function visitChildren(
     if (child.constructor.name === "Mesh" && child.geometry !== undefined && child.material !== undefined) {
       const meshId = `mesh.${id}`;
       const materialId = `mat.${id}`;
-      components.MeshRenderer = { material: materialId, mesh: meshId, ...(child.visible === false ? { visible: false } : {}) };
+      components.MeshRenderer = {
+        ...(child.castShadow === undefined ? {} : { castShadow: child.castShadow }),
+        material: materialId,
+        mesh: meshId,
+        ...(child.receiveShadow === undefined ? {} : { receiveShadow: child.receiveShadow }),
+        ...(child.visible === false ? { visible: false } : {}),
+      };
       output.assets.push({
         ...(child.geometry.kind === "custom" ? { attributes: child.geometry.attributes ?? [], indices: child.geometry.indices } : {}),
         id: meshId,
@@ -110,8 +123,13 @@ function visitChildren(
       output.materials.push({
         id: materialId,
         kind: "standard",
+        ...(child.material.alphaCutoff === undefined ? {} : { alphaCutoff: child.material.alphaCutoff }),
+        ...(child.material.alphaMode === undefined || child.material.alphaMode === "opaque" ? {} : { alphaMode: child.material.alphaMode }),
         color: child.material.color,
+        ...(child.material.emissive === undefined ? {} : { emissive: child.material.emissive }),
+        ...(child.material.emissiveIntensity === undefined || child.material.emissiveIntensity === 1 ? {} : { emissiveIntensity: child.material.emissiveIntensity }),
         metalness: child.material.metalness ?? 0,
+        ...(child.material.opacity === undefined || child.material.opacity === 1 ? {} : { opacity: child.material.opacity }),
         roughness: child.material.roughness ?? 1,
         ...emitTextureSlots(child.material, output.assets),
       });

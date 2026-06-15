@@ -98,8 +98,10 @@ function reportEntity(
     report.mesh = renderer.mesh;
     report.material = renderer.material;
     report.meshRenderer = {
+      castShadow: renderer.castShadow,
       material: renderer.material,
       mesh: renderer.mesh,
+      receiveShadow: renderer.receiveShadow,
       visible: renderer.visible,
     };
   }
@@ -196,10 +198,15 @@ function reportAsset(asset: IAssetIr): IConformanceAssetReport {
 
 function reportMaterial(material: IMaterialIr): IConformanceMaterialReport {
   return {
+    alphaCutoff: material.alphaCutoff,
+    alphaMode: material.alphaMode,
     color: material.color,
+    emissive: material.emissive,
+    emissiveIntensity: material.emissiveIntensity,
     id: material.id,
     kind: material.kind,
     metalness: material.metalness,
+    opacity: material.opacity,
     roughness: material.roughness,
     textures: {
       baseColor: material.baseColorTexture,

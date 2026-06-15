@@ -81,7 +81,7 @@ Priority labels on unchecked items:
 - [ ] `P2` Dynamic light limits, clustered-light behavior, and light culling budgets
 - [ ] `P2` Point-light PCF/shadow-filtering parity
 - [ ] `P1` Shadow bias controls
-- [ ] `P1` Per-mesh shadow caster/receiver controls
+- [x] `P1` Per-mesh shadow caster/receiver controls
 - [ ] `P3` Spherical/area-light behavior
 - [ ] `P3` Lightmaps and mixed baked/dynamic lighting
 - [ ] `P2` Light probes and environment maps
@@ -93,8 +93,10 @@ Priority labels on unchecked items:
 - [x] Texture references and web/native material slot observations
 - [x] Visibility flags on mesh renderers
 - [x] Native texture image loading through Bevy `AssetServer` for promoted material slots
-- [ ] `P1` Alpha modes, transparency sorting, and blend modes
-- [ ] `P1` Emissive materials and HDR bloom contribution
+- [x] `P1` Authored alpha modes, opacity, alpha cutoff, and web/native material observations
+- [ ] `P1` Transparency sorting and richer blend-mode parity
+- [x] `P1` Authored emissive material color/intensity and web/native material observations
+- [ ] `P1` HDR bloom contribution from emissive materials
 - [ ] `P1` Normal, occlusion, specular, clearcoat, and transmission maps
 - [ ] `P3` Parallax mapping and depth maps
 - [ ] `P3` Anisotropy, specular tint, and advanced PBR fields
@@ -283,8 +285,8 @@ Priority labels on unchecked items:
 | Gizmo geometry | ✅ | Web and Bevy expose matching debug/editor-only axis, wire-box, and wire-sphere line geometry helpers with per-line colors and focused conversion tests for Three.js `BufferGeometry` and Bevy `LineList` meshes. | Larger editor overlay systems can compose these helpers for cameras, lights, bounds, and UI nodes. |
 | Cameras | ⚠️ | Perspective camera and active camera path are usable; orthographic camera projection maps in web and Bevy and is now exposed as a runtime conformance observation in `v5-drift-surface`. | General camera resource model and full orthographic visual parity are not complete. |
 | Lights | ✅ | Ambient, directional, point range, spot range/angle in SDK/compiler/IR, web, Bevy, and conformance observations. | Advanced lighting parity beyond promoted fields remains renderer-specific. |
-| Materials | ⚠️ | Standard color, metalness, roughness, and validated texture refs; web maps texture slots; Bevy maps refs to `StandardMaterial` image handles and now loads promoted texture asset paths through Bevy `AssetServer` in runtime apps. | Visual texture sampling parity beyond Bevy/Three.js renderer defaults, alpha/blend behavior, UV controls, and advanced PBR texture fields remain incomplete. |
-| Shadows/color/fog/sky | ⚠️ | Promoted fields for shadows, fog, sky/horizon color, tone mapping, exposure, and color spaces are serialized and observed. | Native fog/sky/color rendering parity is still limited. |
+| Materials | ⚠️ | Standard color, metalness, roughness, and validated texture refs; web maps texture slots; Bevy maps refs to `StandardMaterial` image handles and now loads promoted texture asset paths through Bevy `AssetServer` in runtime apps; authored `alphaMode` (`opaque`, `mask`, `blend`), `opacity`, and `alphaCutoff` now validate through SDK/IR, emit from scene capture, map to Three.js `transparent`/`opacity`/`alphaTest`, map to Bevy `StandardMaterial` `AlphaMode` and base-color alpha, and appear in web/native conformance material observations; authored `emissive` color and `emissiveIntensity` now validate and map to Three.js emissive material fields plus Bevy `StandardMaterial.emissive`, with web/native conformance observations. | Visual texture sampling parity beyond Bevy/Three.js renderer defaults, renderer-level transparency sorting, richer blend operations, HDR bloom/post-processing contribution, UV controls, and advanced PBR texture fields remain incomplete. |
+| Shadows/color/fog/sky | ⚠️ | Promoted fields for shadows, fog, sky/horizon color, tone mapping, exposure, and color spaces are serialized and observed; mesh renderers now carry optional `castShadow` and `receiveShadow` controls through SDK/IR/compiler output, web Three.js mesh flags, Bevy `NotShadowCaster` / `NotShadowReceiver` markers, manifest capabilities, validation, and conformance observations. | Native fog/sky/color rendering parity, shadow filtering, point-light shadow parity, and broader visual shadow proof are still limited. |
 | Assets/glTF/scenes | ✅ | Bundle-local glTF/GLB, `.bin`, and texture dependencies; V3 environment instances resolve to real model scenes in web and Bevy. | Asset diagnostics still need more stable domain codes in some paths. |
 | Instancing/dense content | ⚠️ | Web instancing plan, concrete dense-content budget estimates, repeated group observations, source asset LOD metadata; V7 compares fixed web/native environment content traces for LOD selection and model-backed repeated-instance observations through `v7-renderer-dense-content`. | Actual renderer-level native instancing, visual runtime LOD mesh swapping, and portable post-processing are not claimed. |
 | Animation | ⚠️ | V6 model clip metadata, validation, conformance reporting, and `animation.play` service-call trace; V7 validates and emits constrained animation graph, event-marker, and bounded particle-emitter metadata, and `v7-animation-graphs-particles` compares fixed web/native graph transition, active clip, queued animation event payload, and bounded particle spawn traces; model-backed renderers now receive active playback state and deterministic time advancement in web and Bevy; web and Bevy model renderers load bundle-local glTF/GLB scene assets; web drives selected clips through `AnimationMixer`; Bevy attaches generated one-clip `AnimationGraph` handles to glTF-created `AnimationPlayer` entities and starts the selected clip with authored loop/speed. | Cross-runtime skinned-mesh deformation screenshot proof, scripted graph playback beyond fixed traces, stop/state query APIs, IK, retargeting, and rendered particle systems are incomplete. |

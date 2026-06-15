@@ -1290,6 +1290,42 @@ function validateMaterials(materials: IMaterialsIr, path: string, diagnostics: I
         path: `${path}/materials/${index}/kind`,
       });
     }
+    if (material.alphaMode !== undefined && !["opaque", "mask", "blend"].includes(material.alphaMode)) {
+      diagnostics.push({
+        code: "TN_IR_MATERIAL_ALPHA_MODE_INVALID",
+        message: `Material '${material.id}' uses unsupported alphaMode '${String(material.alphaMode)}'.`,
+        path: `${path}/materials/${index}/alphaMode`,
+        severity: "error",
+        suggestion: "Use alphaMode 'opaque', 'mask', or 'blend'.",
+      });
+    }
+    if (material.alphaCutoff !== undefined && (!Number.isFinite(material.alphaCutoff) || material.alphaCutoff < 0 || material.alphaCutoff > 1)) {
+      diagnostics.push({
+        code: "TN_IR_MATERIAL_ALPHA_CUTOFF_INVALID",
+        message: `Material '${material.id}' alphaCutoff must be between 0 and 1.`,
+        path: `${path}/materials/${index}/alphaCutoff`,
+        severity: "error",
+        suggestion: "Set alphaCutoff to a normalized value between 0 and 1.",
+      });
+    }
+    if (material.opacity !== undefined && (!Number.isFinite(material.opacity) || material.opacity < 0 || material.opacity > 1)) {
+      diagnostics.push({
+        code: "TN_IR_MATERIAL_OPACITY_INVALID",
+        message: `Material '${material.id}' opacity must be between 0 and 1.`,
+        path: `${path}/materials/${index}/opacity`,
+        severity: "error",
+        suggestion: "Set opacity to a normalized value between 0 and 1.",
+      });
+    }
+    if (material.emissiveIntensity !== undefined && (!Number.isFinite(material.emissiveIntensity) || material.emissiveIntensity < 0)) {
+      diagnostics.push({
+        code: "TN_IR_MATERIAL_EMISSIVE_INTENSITY_INVALID",
+        message: `Material '${material.id}' emissiveIntensity must be a non-negative finite number.`,
+        path: `${path}/materials/${index}/emissiveIntensity`,
+        severity: "error",
+        suggestion: "Set emissiveIntensity to 0 or a positive finite value.",
+      });
+    }
     for (const key of ["shader", "vertexShader", "fragmentShader", "nodeGraph", "postprocess"]) {
       if (raw[key] !== undefined) {
         diagnostics.push({
@@ -2302,6 +2338,24 @@ function validateRenderComponents(entity: IWorldIr["entities"][number], path: st
   }
 
   const renderer = entity.components.MeshRenderer;
+  if (renderer?.castShadow !== undefined && typeof renderer.castShadow !== "boolean") {
+    diagnostics.push({
+      code: "TN_IR_RENDER_SHADOW_FLAG_INVALID",
+      message: `MeshRenderer castShadow for '${entity.id}' must be boolean.`,
+      path: `${path}/components/MeshRenderer/castShadow`,
+      severity: "error",
+      suggestion: "Set MeshRenderer.castShadow to true or false, or omit it to use runtime defaults.",
+    });
+  }
+  if (renderer?.receiveShadow !== undefined && typeof renderer.receiveShadow !== "boolean") {
+    diagnostics.push({
+      code: "TN_IR_RENDER_SHADOW_FLAG_INVALID",
+      message: `MeshRenderer receiveShadow for '${entity.id}' must be boolean.`,
+      path: `${path}/components/MeshRenderer/receiveShadow`,
+      severity: "error",
+      suggestion: "Set MeshRenderer.receiveShadow to true or false, or omit it to use runtime defaults.",
+    });
+  }
   if (renderer?.visible !== undefined && typeof renderer.visible !== "boolean") {
     diagnostics.push({
       code: "TN_IR_RENDER_VISIBILITY_INVALID",

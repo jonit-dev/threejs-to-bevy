@@ -279,6 +279,109 @@ test("should reject invalid systems task and channel declarations", async () => 
   }
 });
 
+test("should reject invalid material alpha values", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-material-alpha-invalid-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "materials.ir.json", {
+      schema: "threenative.materials",
+      version: "0.1.0",
+      materials: [
+        { id: "mat.invalid", kind: "standard", alphaCutoff: 1.2, alphaMode: "screen", color: "#ffffff", opacity: -0.1 },
+      ],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => diagnostic.code),
+      [
+        "TN_IR_MATERIAL_ALPHA_MODE_INVALID",
+        "TN_IR_MATERIAL_ALPHA_CUTOFF_INVALID",
+        "TN_IR_MATERIAL_OPACITY_INVALID",
+      ],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject invalid material emissive intensity", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-material-emissive-invalid-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "materials.ir.json", {
+      schema: "threenative.materials",
+      version: "0.1.0",
+      materials: [
+        { id: "mat.invalid", kind: "standard", color: "#ffffff", emissive: "#33ccff", emissiveIntensity: -0.1 },
+      ],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics[0]?.code, "TN_IR_MATERIAL_EMISSIVE_INTENSITY_INVALID");
+    assert.equal(result.diagnostics[0]?.path, "materials.ir.json/materials/0/emissiveIntensity");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject invalid mesh renderer shadow flags", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-renderer-shadow-invalid-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "world.ir.json", {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [
+        {
+          id: "mesh",
+          components: {
+            MeshRenderer: { castShadow: "yes", material: "mat.main", mesh: "mesh.main", receiveShadow: 1 },
+          },
+        },
+      ],
+      resources: {},
+      events: {},
+      prefabs: [],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.code), [
+      "TN_IR_RENDER_SHADOW_FLAG_INVALID",
+      "TN_IR_RENDER_SHADOW_FLAG_INVALID",
+    ]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should accept material alpha metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-material-alpha-valid-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "materials.ir.json", {
+      schema: "threenative.materials",
+      version: "0.1.0",
+      materials: [
+        { id: "mat.masked", kind: "standard", alphaCutoff: 0.4, alphaMode: "mask", color: "#ffffff", emissive: "#33ccff", emissiveIntensity: 2, opacity: 0.8 },
+      ],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.deepEqual(result.diagnostics, []);
+    assert.equal(result.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 async function writeBundle(root: string, health: Record<string, unknown>): Promise<void> {
   await mkdir(join(root, "schemas"), { recursive: true });
   await writeJson(root, "manifest.json", {

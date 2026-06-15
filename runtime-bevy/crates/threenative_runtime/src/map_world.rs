@@ -8,8 +8,10 @@ use bevy::{
         Annulus, Capsule3d, Circle as PrimitiveCircle, Cone, ConicalFrustum, Cuboid, Cylinder,
         Extrusion, Rectangle, RegularPolygon, Sphere, Torus,
     },
+    pbr::{NotShadowCaster, NotShadowReceiver},
     prelude::*,
     render::{
+        alpha::AlphaMode,
         camera::{Exposure, ScalingMode},
         mesh::{Indices, MeshVertexAttribute, PrimitiveTopology, VertexAttributeValues},
         render_asset::RenderAssetUsages,
@@ -220,6 +222,7 @@ fn spawn_entity(
                     ..Default::default()
                 });
                 spawned.insert((stable_id, name));
+                insert_shadow_markers(&mut spawned, renderer);
                 if let Some(binding) = scene_binding {
                     spawned.insert(binding);
                 }
@@ -239,6 +242,7 @@ fn spawn_entity(
             ..Default::default()
         });
         spawned.insert((stable_id, name));
+        insert_shadow_markers(&mut spawned, renderer);
         if let Some(playback) = animation_playback(asset) {
             spawned.insert(playback);
         }
@@ -339,6 +343,15 @@ fn spawn_entity(
     Ok(world
         .spawn((stable_id, name, transform, map_visibility(entity)))
         .id())
+}
+
+fn insert_shadow_markers(spawned: &mut EntityWorldMut<'_>, renderer: &threenative_loader::MeshRendererComponent) {
+    if renderer.cast_shadow == Some(false) {
+        spawned.insert(NotShadowCaster);
+    }
+    if renderer.receive_shadow == Some(false) {
+        spawned.insert(NotShadowReceiver);
+    }
 }
 
 fn model_scene_path(asset: &AssetIr) -> Option<String> {
@@ -833,12 +846,14 @@ fn add_material(
     world
         .resource_mut::<Assets<StandardMaterial>>()
         .add(StandardMaterial {
-            base_color: color_to_bevy(&material.color),
+            alpha_mode: alpha_mode(material),
+            base_color: color_with_opacity(&material.color, material.opacity.unwrap_or(1.0)),
             base_color_texture: texture_handle(
                 material.base_color_texture.as_deref(),
                 assets_by_id,
                 asset_server,
             ),
+            emissive: emissive_color(material),
             emissive_texture: texture_handle(
                 material.emissive_texture.as_deref(),
                 assets_by_id,
@@ -863,6 +878,22 @@ fn add_material(
             perceptual_roughness: material.roughness.unwrap_or(1.0),
             ..Default::default()
         })
+}
+
+fn alpha_mode(material: &MaterialIr) -> AlphaMode {
+    match material.alpha_mode.as_deref() {
+        Some("mask") => AlphaMode::Mask(material.alpha_cutoff.unwrap_or(0.5)),
+        Some("blend") => AlphaMode::Blend,
+        _ => AlphaMode::Opaque,
+    }
+}
+
+fn emissive_color(material: &MaterialIr) -> LinearRgba {
+    let Some(color) = material.emissive.as_ref() else {
+        return LinearRgba::BLACK;
+    };
+    let linear = color_to_bevy(color).to_linear();
+    linear * material.emissive_intensity.unwrap_or(1.0)
 }
 
 fn texture_handle(
@@ -917,4 +948,9 @@ fn color_to_bevy(color: &ColorIr) -> Color {
         }
         ColorIr::Rgb(rgb) => Color::srgb(rgb[0], rgb[1], rgb[2]),
     }
+}
+
+fn color_with_opacity(color: &ColorIr, opacity: f32) -> Color {
+    let srgba = color_to_bevy(color).to_srgba();
+    Color::srgba(srgba.red, srgba.green, srgba.blue, opacity)
 }

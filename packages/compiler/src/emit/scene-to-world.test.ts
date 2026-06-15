@@ -84,3 +84,51 @@ test("should emit custom mesh attributes and indices", () => {
     primitive: "custom",
   });
 });
+
+test("should emit material alpha metadata", () => {
+  const scene = new Scene({ id: "scene" });
+  scene.add(
+    new Mesh({
+      geometry: new CustomMeshGeometry({
+        attributes: [{ itemSize: 3, name: "position", values: [0, 0, 0, 1, 0, 0, 0, 1, 0] }],
+        indices: [0, 1, 2],
+      }),
+      id: "transparent",
+      material: new MeshStandardMaterial({ alphaCutoff: 0.4, alphaMode: "mask", color: "#ffffff", emissive: "#33ccff", emissiveIntensity: 2.5, opacity: 0.65 }),
+    }),
+  );
+
+  const result = sceneToWorld(scene);
+
+  assert.equal(result.materials[0]?.alphaMode, "mask");
+  assert.equal(result.materials[0]?.alphaCutoff, 0.4);
+  assert.equal(result.materials[0]?.emissive, "#33ccff");
+  assert.equal(result.materials[0]?.emissiveIntensity, 2.5);
+  assert.equal(result.materials[0]?.opacity, 0.65);
+});
+
+test("should emit mesh shadow controls", () => {
+  const scene = new Scene({ id: "scene" });
+  scene.add(
+    new Mesh({
+      castShadow: false,
+      geometry: new CustomMeshGeometry({
+        attributes: [{ itemSize: 3, name: "position", values: [0, 0, 0, 1, 0, 0, 0, 1, 0] }],
+        indices: [0, 1, 2],
+      }),
+      id: "decor",
+      material: new MeshStandardMaterial({ color: "#ffffff" }),
+      receiveShadow: true,
+    }),
+  );
+
+  const result = sceneToWorld(scene);
+  const entity = result.world.entities.find((item) => item.id === "decor");
+
+  assert.deepEqual(entity?.components.MeshRenderer, {
+    castShadow: false,
+    material: "mat.decor",
+    mesh: "mesh.decor",
+    receiveShadow: true,
+  });
+});

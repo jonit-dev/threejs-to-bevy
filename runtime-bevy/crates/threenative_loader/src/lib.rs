@@ -135,9 +135,12 @@ pub struct TransformComponent {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MeshRendererComponent {
+    pub cast_shadow: Option<bool>,
     pub mesh: String,
     pub material: String,
+    pub receive_shadow: Option<bool>,
     pub visible: Option<bool>,
 }
 
@@ -215,15 +218,20 @@ pub struct MaterialsIr {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MaterialIr {
+    pub alpha_cutoff: Option<f32>,
+    pub alpha_mode: Option<String>,
     pub id: String,
     pub kind: String,
     pub color: ColorIr,
     pub base_color_texture: Option<String>,
+    pub emissive: Option<ColorIr>,
+    pub emissive_intensity: Option<f32>,
     pub emissive_texture: Option<String>,
     pub metalness: Option<f32>,
     pub metallic_roughness_texture: Option<String>,
     pub normal_texture: Option<String>,
     pub occlusion_texture: Option<String>,
+    pub opacity: Option<f32>,
     pub roughness: Option<f32>,
 }
 

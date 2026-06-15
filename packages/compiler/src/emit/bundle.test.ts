@@ -231,12 +231,18 @@ test("should derive manifest capabilities from emitted bundle IR", async () => {
     });
     parent.add(
       new Mesh({
+        castShadow: false,
         geometry: new PlaneGeometry(),
         id: "child.hidden",
         material: new MeshStandardMaterial({
+          alphaMode: "blend",
           baseColorTexture: textureAsset("tex.albedo", "assets/albedo.png"),
           color: "#ffffff",
+          emissive: "#33ccff",
+          emissiveIntensity: 2,
+          opacity: 0.6,
         }),
+        receiveShadow: true,
         physics: physics({
           body: rigidBody("dynamic", { mass: 1 }),
           collider: boxCollider([1, 1, 1], { trigger: true }),
@@ -321,6 +327,10 @@ test("should derive manifest capabilities from emitted bundle IR", async () => {
     assertCapability(manifest, "rendering", "light.point");
     assertCapability(manifest, "rendering", "light.range");
     assertCapability(manifest, "rendering", "light.spot");
+    assertCapability(manifest, "rendering", "material.alpha.blend");
+    assertCapability(manifest, "rendering", "material.emissive");
+    assertCapability(manifest, "rendering", "material.opacity");
+    assertCapability(manifest, "rendering", "mesh-renderer.shadows");
     assertCapability(manifest, "rendering", "material.texture.base-color");
     assertCapability(manifest, "rendering", "mesh.primitive.plane");
     assertCapability(manifest, "rendering", "visibility");

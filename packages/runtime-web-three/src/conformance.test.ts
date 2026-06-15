@@ -21,7 +21,7 @@ test("should report basic scene conformance semantics", async () => {
   assert.equal(cube.parent, "scene.root");
   assert.equal(cube.mesh, "mesh.cube");
   assert.equal(cube.material, "mat.cube");
-  assert.deepEqual(cube.meshRenderer, { material: "mat.cube", mesh: "mesh.cube", visible: undefined });
+  assert.deepEqual(cube.meshRenderer, { castShadow: undefined, material: "mat.cube", mesh: "mesh.cube", receiveShadow: undefined, visible: undefined });
   assert.equal(cube.visibility?.runtimeVisible, true);
 
   const cubeMaterial = report.materials.find((material) => material.id === "mat.cube");

@@ -142,6 +142,32 @@ observations, map to Three.js material texture slots, and map to Bevy
 `examples/v5-functional` scene seed builds, validates, and visually verifies
 with bundle-local textured environment assets.
 
+Post-V7 material gap closure has started on the high-value transparency slice:
+`MeshStandardMaterial` now carries authored `alphaMode` (`opaque`, `mask`,
+`blend`), `opacity`, and `alphaCutoff`; compiler emission serializes non-default
+alpha metadata; IR validation rejects invalid alpha values with stable material
+diagnostics; web maps alpha to Three.js material transparency and alpha-test
+fields; Bevy maps alpha to `StandardMaterial` `AlphaMode` and base-color alpha;
+and web/native material conformance reports preserve the promoted alpha
+metadata. Renderer-level transparency sorting and richer blend operations remain
+future work.
+
+The same post-V7 material gap pass now also promotes authored emissive material
+factors: `MeshStandardMaterial` accepts `emissive` and non-negative
+`emissiveIntensity`, compiler emission preserves non-default values, IR
+validation rejects invalid intensities, web maps them to Three.js emissive
+material fields, Bevy maps them to `StandardMaterial.emissive`, and material
+conformance reports preserve the promoted fields. Bloom/post-processing
+contribution from emissive values remains a separate renderer feature.
+
+Post-V7 shadow gap closure has also promoted per-mesh shadow controls:
+`Mesh` accepts optional `castShadow` and `receiveShadow` flags, compiler
+emission preserves them on `MeshRenderer`, IR validation rejects non-boolean
+shadow flags, web maps them to Three.js mesh shadow booleans, Bevy maps explicit
+false values to `NotShadowCaster` / `NotShadowReceiver`, and conformance
+reports preserve the authored mesh-renderer shadow metadata. Shadow filtering,
+point-light shadow parity, and broader visual shadow proof remain future work.
+
 V5-07 has landed the lighting, atmosphere, shadow, and color parity-evidence
 slice: shared fixtures now cover visible/hidden meshes plus ranged point and
 spot lights, SDK/compiler output preserves point-light range and spot-light

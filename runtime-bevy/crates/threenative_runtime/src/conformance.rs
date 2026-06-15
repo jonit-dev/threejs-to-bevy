@@ -92,11 +92,21 @@ pub struct AssetBoundsReport {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ConformanceMaterialReport {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub alpha_cutoff: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub alpha_mode: Option<String>,
     pub color: ColorReport,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub emissive: Option<ColorReport>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub emissive_intensity: Option<f32>,
     pub id: String,
     pub kind: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub metalness: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub opacity: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub roughness: Option<f32>,
     pub textures: MaterialTexturesReport,
@@ -195,8 +205,12 @@ pub struct ConformanceEntityReport {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MeshRendererReport {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cast_shadow: Option<bool>,
     pub material: String,
     pub mesh: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub receive_shadow: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub visible: Option<bool>,
 }
@@ -645,10 +659,15 @@ fn report_animation_clip(clip: &AnimationClipIr) -> AnimationClipReport {
 
 fn report_material(material: &MaterialIr) -> ConformanceMaterialReport {
     ConformanceMaterialReport {
+        alpha_cutoff: material.alpha_cutoff,
+        alpha_mode: material.alpha_mode.clone(),
         color: color_report(&material.color),
+        emissive: material.emissive.as_ref().map(color_report),
+        emissive_intensity: material.emissive_intensity,
         id: material.id.clone(),
         kind: material.kind.clone(),
         metalness: material.metalness,
+        opacity: material.opacity,
         roughness: material.roughness,
         textures: MaterialTexturesReport {
             base_color: material.base_color_texture.clone(),
@@ -694,8 +713,10 @@ fn report_entity(
             .map(|renderer| renderer.material.clone()),
         mesh_renderer: entity.components.mesh_renderer.as_ref().map(|renderer| {
             MeshRendererReport {
+                cast_shadow: renderer.cast_shadow,
                 material: renderer.material.clone(),
                 mesh: renderer.mesh.clone(),
+                receive_shadow: renderer.receive_shadow,
                 visible: renderer.visible,
             }
         }),

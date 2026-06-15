@@ -131,7 +131,9 @@ scene hierarchy.
         },
         "MeshRenderer": {
           "mesh": "mesh.player.box",
-          "material": "mat.player"
+          "material": "mat.player",
+          "castShadow": true,
+          "receiveShadow": true
         },
         "PlayerController": {
           "speed": 5
@@ -172,6 +174,8 @@ Entity rules:
 - Entities may be ordered for deterministic diffs, but runtime behavior must not depend on array order.
 - Runtime adapters must map entity IDs to native handles during load. Native
   handles are never serialized in portable IR.
+- `MeshRenderer.castShadow` and `MeshRenderer.receiveShadow` are optional
+  booleans. When omitted, runtimes use their established mesh/model defaults.
 
 Resource rules:
 
@@ -299,11 +303,15 @@ Rules:
   "materials": [
     {
       "id": "mat.player",
-      "type": "standard",
-      "baseColor": "#ff3b30",
-      "metallic": 0,
+      "kind": "standard",
+      "color": "#ff3b30",
+      "emissive": "#33ccff",
+      "emissiveIntensity": 2,
+      "metalness": 0,
       "roughness": 0.7,
-      "alphaMode": "opaque"
+      "alphaMode": "mask",
+      "alphaCutoff": 0.4,
+      "opacity": 0.85
     }
   ]
 }
@@ -314,6 +322,10 @@ Rules:
 - Material IDs share the asset ID namespace.
 - Material type determines valid fields.
 - Numeric material factors must be finite.
+- `alphaMode` is optional and must be `opaque`, `mask`, or `blend`; `opacity`
+  and `alphaCutoff` are normalized values from 0 to 1.
+- `emissive` uses the same color representation as `color`; `emissiveIntensity`
+  must be non-negative and may exceed 1 for HDR-style material output.
 - Texture fields reference texture asset IDs.
 - Unsupported shader features are rejected during validation.
 

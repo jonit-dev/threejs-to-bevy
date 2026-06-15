@@ -13,10 +13,15 @@ export interface IConformanceAssetReport {
 }
 
 export interface IConformanceMaterialReport {
+  alphaCutoff?: number;
+  alphaMode?: IMaterialIr["alphaMode"];
   color: IMaterialIr["color"];
+  emissive?: IMaterialIr["emissive"];
+  emissiveIntensity?: number;
   id: string;
   kind: IMaterialIr["kind"];
   metalness?: number;
+  opacity?: number;
   roughness?: number;
   textures: {
     baseColor?: string;
@@ -110,8 +115,10 @@ export interface IConformanceEntityReport {
   };
   material?: string;
   meshRenderer?: {
+    castShadow?: boolean;
     material: string;
     mesh: string;
+    receiveShadow?: boolean;
     visible?: boolean;
   };
   mesh?: string;
