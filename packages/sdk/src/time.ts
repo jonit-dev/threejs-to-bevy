@@ -1,6 +1,11 @@
 export interface IRuntimeConfigDeclaration {
   renderer: {
     antialias: "none" | "msaa2" | "msaa4" | "msaa8";
+    bloom?: {
+      enabled: boolean;
+      intensity: number;
+      threshold: number;
+    };
   };
   time: {
     fixedDelta: number;
@@ -16,12 +21,24 @@ export interface IRuntimeConfigDeclaration {
 export function defineRuntimeConfig(options: {
   fixedDelta?: number;
   paused?: boolean;
-  renderer?: { antialias?: "none" | "msaa2" | "msaa4" | "msaa8" };
+  renderer?: {
+    antialias?: "none" | "msaa2" | "msaa4" | "msaa8";
+    bloom?: { enabled?: boolean; intensity?: number; threshold?: number };
+  };
   window?: { height?: number; title?: string; width?: number };
 } = {}): IRuntimeConfigDeclaration {
   return {
     renderer: {
       antialias: options.renderer?.antialias ?? "msaa4",
+      ...(options.renderer?.bloom === undefined
+        ? {}
+        : {
+            bloom: {
+              enabled: options.renderer.bloom.enabled ?? true,
+              intensity: options.renderer.bloom.intensity ?? 0.15,
+              threshold: options.renderer.bloom.threshold ?? 0,
+            },
+          }),
     },
     time: {
       fixedDelta: options.fixedDelta ?? 1 / 60,

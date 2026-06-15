@@ -1,4 +1,7 @@
 import * as THREE from "three";
+import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import type { IAtmosphereProfileIr, IRuntimeConfigIr } from "@threenative/ir";
 import { loadBundle } from "./loadBundle.js";
 import { advanceAnimationPlayback, hasAnimationPlayback, loadWorldModelAssets, mapWorld, type IRuntimeDiagnostic } from "./mapWorld.js";
@@ -24,6 +27,17 @@ export interface IRenderOptions {
   bookmarkId?: string;
 }
 
+export interface IWebBloomSettings {
+  enabled: boolean;
+  intensity: number;
+  threshold: number;
+}
+
+interface IRenderPipeline {
+  render(): void;
+  setSize(width: number, height: number): void;
+}
+
 export async function renderBundle(source: string, container: HTMLElement, options: IRenderOptions = {}): Promise<IRenderResult> {
   const bundle = await loadBundle(source);
   const mapped = mapWorld(bundle);
@@ -47,6 +61,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
   const systemModule = await loadSystemModule(source, bundle.manifest);
   const renderer = new THREE.WebGLRenderer(webRendererParameters(bundle.runtimeConfig));
   applyRendererColorManagement(renderer, bundle.environmentScene?.atmosphere?.colorManagement);
+  const pipeline = createRenderPipeline(renderer, mapped.scene, mapped.camera, bundle.runtimeConfig);
   const canvas = renderer.domElement;
   const ui = bundle.ui === undefined ? undefined : renderUi(bundle.ui, bundle.world);
   const uiOverlay = ui === undefined ? undefined : createUiDomOverlay(ui);
@@ -62,7 +77,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
   canvas.style.display = "block";
   container.replaceChildren(...([canvas, uiOverlay?.element].filter((child) => child !== undefined) as Node[]));
   attachInputListeners(window, input);
-  resizeRenderer(renderer, mapped.camera, container);
+  resizeRenderer(renderer, pipeline, mapped.camera, container);
   if (bundle.systems !== undefined) {
     await runGameFrame({
       assets: bundle.assets,
@@ -80,7 +95,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
     uiOverlay?.update();
   }
   advanceAnimationPlayback(mapped, 1 / 60);
-  renderer.render(mapped.scene, mapped.camera);
+  pipeline.render();
   if (bundle.systems !== undefined || hasAnimationPlayback(mapped)) {
     let lastTime = performance.now();
     const frame = (time: number) => {
@@ -104,7 +119,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
       void gameFrame.then(() => {
         advanceAnimationPlayback(mapped, delta);
         uiOverlay?.update();
-        renderer.render(mapped.scene, mapped.camera);
+        pipeline.render();
         requestAnimationFrame(frame);
       });
     };
@@ -135,6 +150,37 @@ export function webRendererParameters(config?: IRuntimeConfigIr): THREE.WebGLRen
   };
 }
 
+export function webBloomSettings(config?: IRuntimeConfigIr): IWebBloomSettings {
+  const bloom = config?.renderer?.bloom;
+  return {
+    enabled: bloom?.enabled ?? false,
+    intensity: bloom?.intensity ?? 0.15,
+    threshold: bloom?.threshold ?? 0,
+  };
+}
+
+function createRenderPipeline(
+  renderer: THREE.WebGLRenderer,
+  scene: THREE.Scene,
+  camera: THREE.Camera,
+  config?: IRuntimeConfigIr,
+): IRenderPipeline {
+  const bloom = webBloomSettings(config);
+  if (!bloom.enabled) {
+    return {
+      render: () => renderer.render(scene, camera),
+      setSize: () => undefined,
+    };
+  }
+  const composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, camera));
+  composer.addPass(new UnrealBloomPass(new THREE.Vector2(1, 1), bloom.intensity, 0, bloom.threshold));
+  return {
+    render: () => composer.render(),
+    setSize: (width, height) => composer.setSize(width, height),
+  };
+}
+
 function prepareRenderContainer(container: HTMLElement): void {
   const style = getComputedStyle(container);
   if (style.position === "static") {
@@ -154,10 +200,11 @@ function applyRendererColorManagement(
   renderer.toneMappingExposure = colorManagement.exposure;
 }
 
-function resizeRenderer(renderer: THREE.WebGLRenderer, camera: THREE.Camera, container: HTMLElement): void {
+function resizeRenderer(renderer: THREE.WebGLRenderer, pipeline: IRenderPipeline, camera: THREE.Camera, container: HTMLElement): void {
   const width = Math.max(1, container.clientWidth || window.innerWidth || 800);
   const height = Math.max(1, container.clientHeight || window.innerHeight || 600);
   renderer.setSize(width, height, false);
+  pipeline.setSize(width, height);
 
   if (camera instanceof THREE.PerspectiveCamera) {
     camera.aspect = width / height;

@@ -7,6 +7,7 @@ use std::{
 use bevy::{
     animation::{AnimationPlugin, RepeatAnimation, graph::AnimationGraph},
     asset::AssetPlugin,
+    core_pipeline::bloom::BloomSettings,
     gltf::GltfPlugin,
     pbr::{NotShadowCaster, NotShadowReceiver},
     prelude::*,
@@ -128,6 +129,22 @@ fn rendering_should_map_runtime_antialias_to_msaa_resource() {
     map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map");
 
     assert_eq!(app.world().resource::<Msaa>(), &Msaa::Sample8);
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn rendering_should_map_runtime_bloom_to_camera() {
+    let root = write_rendering_bundle();
+    let bundle = load_bundle(&root).expect("rendering bundle should load");
+    let mut app = App::new();
+
+    map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map");
+
+    let mut query = app.world_mut().query::<&BloomSettings>();
+    let bloom = query.single(app.world());
+    assert!((bloom.intensity - 0.35).abs() < 0.01);
+    assert!((bloom.prefilter_settings.threshold - 0.8).abs() < 0.01);
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
@@ -506,7 +523,7 @@ fn write_rendering_bundle() -> PathBuf {
         r#"{
   "schema": "threenative.runtime-config",
   "version": "0.1.0",
-  "renderer": { "antialias": "msaa8" },
+  "renderer": { "antialias": "msaa8", "bloom": { "enabled": true, "intensity": 0.35, "threshold": 0.8 } },
   "time": { "fixedDelta": 0.016666666666666666, "paused": false },
   "window": { "height": 720, "width": 1280 }
 }"#,

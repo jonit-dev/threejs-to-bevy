@@ -601,6 +601,15 @@ pub struct RuntimeConfigIr {
 #[serde(rename_all = "camelCase")]
 pub struct RuntimeRendererConfig {
     pub antialias: Option<String>,
+    pub bloom: Option<RuntimeRendererBloomConfig>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeRendererBloomConfig {
+    pub enabled: bool,
+    pub intensity: f32,
+    pub threshold: f32,
 }
 
 #[derive(Debug, Deserialize)]

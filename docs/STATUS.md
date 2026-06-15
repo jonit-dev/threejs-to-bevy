@@ -213,6 +213,14 @@ WebGL antialias enabled; and Bevy maps the same contract to `Msaa::Off`,
 `Sample2`, `Sample4`, or `Sample8`. FXAA, TAA, SMAA, and visual
 post-processing antialias comparisons remain future work.
 
+Post-V7 bloom coverage now promotes a small runtime renderer bloom contract:
+`defineRuntimeConfig({ renderer: { bloom } })` emits `enabled`, `intensity`,
+and `threshold`; IR validation rejects malformed bloom values; web routes
+enabled bloom through an `EffectComposer`/`UnrealBloomPass` pipeline; and Bevy
+maps enabled bloom onto camera `BloomSettings` with matching intensity and
+threshold. Advanced post-processing stacks and renderer-specific bloom radius
+controls remain future work.
+
 V5-07 has landed the lighting, atmosphere, shadow, and color parity-evidence
 slice: shared fixtures now cover visible/hidden meshes plus ranged point and
 spot lights, SDK/compiler output preserves point-light range and spot-light

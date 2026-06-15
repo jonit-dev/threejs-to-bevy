@@ -2,7 +2,10 @@ use std::collections::HashMap;
 
 use bevy::{
     animation::graph::AnimationGraph,
-    core_pipeline::tonemapping::Tonemapping,
+    core_pipeline::{
+        bloom::{BloomPrefilterSettings, BloomSettings},
+        tonemapping::Tonemapping,
+    },
     gltf::GltfAssetLabel,
     math::primitives::{
         Annulus, Capsule3d, Circle as PrimitiveCircle, Cone, ConicalFrustum, Cuboid, Cylinder,
@@ -108,6 +111,7 @@ pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result
         .and_then(|scene| scene.atmosphere.as_ref())
         .filter(|profile| profile.active)
         .map(|profile| &profile.color_management);
+    let bloom_settings = bloom_settings_for_runtime(bundle.runtime_config.as_ref());
 
     let assets_by_id = bundle
         .assets
@@ -130,6 +134,7 @@ pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result
             &assets_by_id,
             &materials_by_id,
             camera_color_management,
+            bloom_settings.as_ref(),
         )?;
         entities_by_id.insert(entity.id.as_str(), bevy_entity);
     }
@@ -167,6 +172,23 @@ fn apply_runtime_config(world: &mut World, config: Option<&RuntimeConfigIr>) {
     world.insert_resource(msaa);
 }
 
+fn bloom_settings_for_runtime(config: Option<&RuntimeConfigIr>) -> Option<BloomSettings> {
+    let bloom = config
+        .and_then(|config| config.renderer.as_ref())
+        .and_then(|renderer| renderer.bloom.as_ref())?;
+    if !bloom.enabled {
+        return None;
+    }
+    Some(BloomSettings {
+        intensity: bloom.intensity,
+        prefilter_settings: BloomPrefilterSettings {
+            threshold: bloom.threshold,
+            ..Default::default()
+        },
+        ..Default::default()
+    })
+}
+
 pub fn advance_native_animation_playback(world: &mut World, fixed_delta: f32) {
     let mut query = world.query::<&mut NativeAnimationPlayback>();
     for mut playback in query.iter_mut(world) {
@@ -192,6 +214,7 @@ fn spawn_entity(
     assets_by_id: &HashMap<&str, &AssetIr>,
     materials_by_id: &HashMap<&str, &MaterialIr>,
     camera_color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
+    bloom_settings: Option<&BloomSettings>,
 ) -> Result<Entity, MapError> {
     let transform = map_transform(entity);
     let name = Name::new(entity.id.clone());
@@ -279,17 +302,19 @@ fn spawn_entity(
                 ..Default::default()
             })
         };
-        return Ok(world
-            .spawn(Camera3dBundle {
-                color_grading: color_grading_for_profile(camera_color_management),
-                exposure: exposure_for_profile(camera_color_management),
-                projection,
-                tonemapping: tonemapping_for_profile(camera_color_management),
-                transform,
-                ..Default::default()
-            })
-            .insert((stable_id, name, map_visibility(entity)))
-            .id());
+        let mut spawned = world.spawn(Camera3dBundle {
+            color_grading: color_grading_for_profile(camera_color_management),
+            exposure: exposure_for_profile(camera_color_management),
+            projection,
+            tonemapping: tonemapping_for_profile(camera_color_management),
+            transform,
+            ..Default::default()
+        });
+        spawned.insert((stable_id, name, map_visibility(entity)));
+        if let Some(bloom_settings) = bloom_settings {
+            spawned.insert(bloom_settings.clone());
+        }
+        return Ok(spawned.id());
     }
 
     if let Some(light) = &entity.components.light {

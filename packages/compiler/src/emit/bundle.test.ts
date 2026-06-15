@@ -162,7 +162,11 @@ test("should emit ecs schema files for world root", async () => {
           axes: [axis("MoveX", { negative: [keyboard("KeyA")], positive: [keyboard("KeyD")] })],
         }),
       )
-      .setRuntimeConfig(defineRuntimeConfig({ fixedDelta: 1 / 30, renderer: { antialias: "msaa8" }, window: { height: 720, width: 1280 } }))
+      .setRuntimeConfig(defineRuntimeConfig({
+        fixedDelta: 1 / 30,
+        renderer: { antialias: "msaa8", bloom: { enabled: true, intensity: 0.35, threshold: 0.8 } },
+        window: { height: 720, width: 1280 },
+      }))
       .addSystem(
         fixedUpdate("applyDamage", {
           commands: [commands.setComponent("target", Health), commands.emitEvent(DamageEvent)],
@@ -207,6 +211,7 @@ test("should emit ecs schema files for world root", async () => {
     assert.deepEqual(systems.systems[0]?.script, { bundle: "scripts.bundle.js", exportName: "system_applyDamage" });
     assert.deepEqual(input.actions.map((item: { id: string }) => item.id), ["Attack", "Pause"]);
     assert.equal(runtimeConfig.renderer.antialias, "msaa8");
+    assert.deepEqual(runtimeConfig.renderer.bloom, { enabled: true, intensity: 0.35, threshold: 0.8 });
     assert.equal(runtimeConfig.time.fixedDelta, 1 / 30);
     assert.match(scripts, /system_applyDamage/);
   } finally {

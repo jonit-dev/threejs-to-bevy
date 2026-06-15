@@ -11,7 +11,17 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "antialias": { "enum": ["none", "msaa2", "msaa4", "msaa8"] }
+        "antialias": { "enum": ["none", "msaa2", "msaa4", "msaa8"] },
+        "bloom": {
+          "type": "object",
+          "required": ["enabled", "intensity", "threshold"],
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "intensity": { "type": "number", "minimum": 0 },
+            "threshold": { "type": "number", "minimum": 0 }
+          }
+        }
       }
     },
     "time": {

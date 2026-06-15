@@ -5,6 +5,11 @@ export interface IRuntimeConfigIr {
   version: SchemaVersion;
   renderer?: {
     antialias: "none" | "msaa2" | "msaa4" | "msaa8";
+    bloom?: {
+      enabled: boolean;
+      intensity: number;
+      threshold: number;
+    };
   };
   time: {
     fixedDelta: number;

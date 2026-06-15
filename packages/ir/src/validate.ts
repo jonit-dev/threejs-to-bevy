@@ -1451,6 +1451,29 @@ function validateRuntimeConfig(config: IRuntimeConfigIr, path: string, diagnosti
       path: `${path}/renderer/antialias`,
     });
   }
+  if (config.renderer?.bloom !== undefined) {
+    if (typeof config.renderer.bloom.enabled !== "boolean") {
+      diagnostics.push({
+        code: "TN_IR_RUNTIME_RENDERER_BLOOM_INVALID",
+        message: "Renderer bloom enabled must be a boolean.",
+        path: `${path}/renderer/bloom/enabled`,
+      });
+    }
+    if (!Number.isFinite(config.renderer.bloom.intensity) || config.renderer.bloom.intensity < 0) {
+      diagnostics.push({
+        code: "TN_IR_RUNTIME_RENDERER_BLOOM_INVALID",
+        message: "Renderer bloom intensity must be a non-negative finite number.",
+        path: `${path}/renderer/bloom/intensity`,
+      });
+    }
+    if (!Number.isFinite(config.renderer.bloom.threshold) || config.renderer.bloom.threshold < 0) {
+      diagnostics.push({
+        code: "TN_IR_RUNTIME_RENDERER_BLOOM_INVALID",
+        message: "Renderer bloom threshold must be a non-negative finite number.",
+        path: `${path}/renderer/bloom/threshold`,
+      });
+    }
+  }
   if (!Number.isFinite(config.window.width) || config.window.width <= 0) {
     diagnostics.push({
       code: "TN_IR_RUNTIME_WINDOW_INVALID",

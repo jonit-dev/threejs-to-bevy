@@ -283,7 +283,7 @@ test("should accept promoted runtime renderer antialias modes", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-runtime-renderer-valid-"));
   try {
     await writeBundle(root, { current: 100, max: 100 });
-    await writeRuntimeConfig(root, "msaa8");
+    await writeRuntimeConfig(root, { antialias: "msaa8", bloom: { enabled: true, intensity: 0.35, threshold: 0.8 } });
 
     const result = await validateBundle(root);
 
@@ -298,13 +298,35 @@ test("should reject invalid runtime renderer antialias modes", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-runtime-renderer-invalid-"));
   try {
     await writeBundle(root, { current: 100, max: 100 });
-    await writeRuntimeConfig(root, "fxaa");
+    await writeRuntimeConfig(root, { antialias: "fxaa" });
 
     const result = await validateBundle(root);
 
     assert.equal(result.ok, false);
     assert.equal(result.diagnostics[0]?.code, "TN_IR_RUNTIME_RENDERER_ANTIALIAS_INVALID");
     assert.equal(result.diagnostics[0]?.path, "runtime.config.json/renderer/antialias");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject invalid runtime renderer bloom settings", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-runtime-bloom-invalid-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeRuntimeConfig(root, { antialias: "msaa4", bloom: { enabled: "yes", intensity: -0.1, threshold: Number.NaN } });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => diagnostic.path),
+      [
+        "runtime.config.json/renderer/bloom/enabled",
+        "runtime.config.json/renderer/bloom/intensity",
+        "runtime.config.json/renderer/bloom/threshold",
+      ],
+    );
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -515,7 +537,7 @@ async function writeBundle(root: string, health: Record<string, unknown>): Promi
   await writeJson(root, "target.profile.json", { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] });
 }
 
-async function writeRuntimeConfig(root: string, antialias: string): Promise<void> {
+async function writeRuntimeConfig(root: string, renderer: Record<string, unknown>): Promise<void> {
   await writeJson(root, "manifest.json", {
     schema: "threenative.bundle",
     version: "0.1.0",
@@ -533,7 +555,7 @@ async function writeRuntimeConfig(root: string, antialias: string): Promise<void
   await writeJson(root, "runtime.config.json", {
     schema: "threenative.runtime-config",
     version: "0.1.0",
-    renderer: { antialias },
+    renderer,
     time: { fixedDelta: 1 / 60, paused: false },
     window: { height: 720, width: 1280 },
   });
