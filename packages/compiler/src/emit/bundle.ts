@@ -627,6 +627,9 @@ function visitUiNode(node: IUiIr["root"], add: (domain: string, capability: stri
     if (node.style.backgroundColor !== undefined) {
       add("ui", "style.background");
     }
+    if (node.style.gradient !== undefined) {
+      add("ui", "style.gradient");
+    }
     if (node.style.borderColor !== undefined || node.style.borderWidth !== undefined) {
       add("ui", "style.border");
     }
@@ -641,6 +644,9 @@ function visitUiNode(node: IUiIr["root"], add: (domain: string, capability: stri
     }
     if (node.style.opacity !== undefined) {
       add("ui", "style.opacity");
+    }
+    if (node.style.shadow !== undefined) {
+      add("ui", "style.shadow");
     }
   }
   if (node.navigation !== undefined) {

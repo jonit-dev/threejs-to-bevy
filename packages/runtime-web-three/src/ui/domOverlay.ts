@@ -276,6 +276,9 @@ function applyVisualStyle(style: Partial<CSSStyleDeclaration>, visual: IRendered
   if (visual.fontSize !== undefined) {
     style.fontSize = `${visual.fontSize}px`;
   }
+  if (visual.gradient !== undefined) {
+    style.background = `linear-gradient(${visual.gradient.angle ?? 180}deg, ${visual.gradient.from}, ${visual.gradient.to})`;
+  }
   if (visual.textAlign !== undefined) {
     style.textAlign = visual.textAlign;
   }
@@ -295,6 +298,9 @@ function applyVisualStyle(style: Partial<CSSStyleDeclaration>, visual: IRendered
   }
   if (visual.opacity !== undefined) {
     style.opacity = String(visual.opacity);
+  }
+  if (visual.shadow !== undefined) {
+    style.boxShadow = `${visual.shadow.offsetX ?? 0}px ${visual.shadow.offsetY ?? 0}px ${visual.shadow.blur ?? 0}px ${visual.shadow.spread ?? 0}px ${visual.shadow.color}`;
   }
 }
 

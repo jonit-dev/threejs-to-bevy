@@ -716,6 +716,12 @@ now dispatches portable action events from web clicks and Bevy button/touch
 interactions. Gamepad viewer diagnostics, touch gestures, drag-and-drop picking,
 rebinding, and richer navigation diagnostics remain future input work.
 
+The retained UI style surface now accepts portable `shadow` and linear
+`gradient` metadata with validation and capability flags. The web DOM overlay
+renders those as CSS `box-shadow` and `linear-gradient`; Bevy currently preserves
+the metadata in `NativeUiStyle` for native mapping, but native visual rendering
+of shadows/gradients remains incomplete.
+
 The same functional-game parity pass also closes the P0 native material texture
 loading gap for promoted standard-material slots. Bevy runtime material mapping
 now resolves bundle-local texture asset paths through `AssetServer::load` when

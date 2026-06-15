@@ -691,9 +691,30 @@ pub struct UiStyleIr {
     pub border_width: Option<f32>,
     pub color: Option<String>,
     pub font_size: Option<f32>,
+    pub gradient: Option<UiGradientIr>,
     pub opacity: Option<f32>,
+    pub shadow: Option<UiShadowIr>,
     pub text_align: Option<String>,
     pub wrap: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UiGradientIr {
+    pub angle: Option<f32>,
+    pub from: String,
+    pub kind: String,
+    pub to: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UiShadowIr {
+    pub blur: Option<f32>,
+    pub color: String,
+    pub offset_x: Option<f32>,
+    pub offset_y: Option<f32>,
+    pub spread: Option<f32>,
 }
 
 #[derive(Clone, Debug, Deserialize)]

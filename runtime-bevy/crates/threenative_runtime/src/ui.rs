@@ -10,7 +10,7 @@ use bevy::text::BreakLineOn;
 use serde::Serialize;
 use thiserror::Error;
 use threenative_components::ThreeNativeId;
-use threenative_loader::{UiIr, UiNodeIr, UiStyleIr};
+use threenative_loader::{UiGradientIr, UiIr, UiNodeIr, UiShadowIr, UiStyleIr};
 
 #[derive(Clone, Component, Debug, Eq, PartialEq)]
 pub struct NativeUiKind(pub String);
@@ -72,9 +72,28 @@ pub struct NativeUiStyle {
     pub border_width: Option<f32>,
     pub color: Option<String>,
     pub font_size: Option<f32>,
+    pub gradient: Option<NativeUiGradient>,
     pub opacity: Option<f32>,
+    pub shadow: Option<NativeUiShadow>,
     pub text_align: Option<String>,
     pub wrap: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct NativeUiGradient {
+    pub angle: Option<f32>,
+    pub from: String,
+    pub kind: String,
+    pub to: String,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct NativeUiShadow {
+    pub blur: Option<f32>,
+    pub color: String,
+    pub offset_x: Option<f32>,
+    pub offset_y: Option<f32>,
+    pub spread: Option<f32>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -171,7 +190,9 @@ fn build_node(node: &UiNodeIr, path: &str) -> Result<NativeUiNode, UiDiagnostic>
             border_width: style.border_width,
             color: style.color.clone(),
             font_size: style.font_size,
+            gradient: style.gradient.as_ref().map(native_ui_gradient),
             opacity: style.opacity,
+            shadow: style.shadow.as_ref().map(native_ui_shadow),
             text_align: style.text_align.clone(),
             wrap: style.wrap.clone(),
         }),
@@ -179,6 +200,25 @@ fn build_node(node: &UiNodeIr, path: &str) -> Result<NativeUiNode, UiDiagnostic>
         text: node.text.clone(),
         value: node.value,
     })
+}
+
+fn native_ui_gradient(gradient: &UiGradientIr) -> NativeUiGradient {
+    NativeUiGradient {
+        angle: gradient.angle,
+        from: gradient.from.clone(),
+        kind: gradient.kind.clone(),
+        to: gradient.to.clone(),
+    }
+}
+
+fn native_ui_shadow(shadow: &UiShadowIr) -> NativeUiShadow {
+    NativeUiShadow {
+        blur: shadow.blur,
+        color: shadow.color.clone(),
+        offset_x: shadow.offset_x,
+        offset_y: shadow.offset_y,
+        spread: shadow.spread,
+    }
 }
 
 pub fn trace_ui_navigation(ui: &UiIr, inputs: &[&str]) -> UiNavigationTrace {

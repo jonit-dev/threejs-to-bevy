@@ -12,8 +12,8 @@ use threenative_components::ThreeNativeId;
 use threenative_loader::{load_bundle, UiIr, UiNodeIr};
 use threenative_runtime::ui::{
     build_native_ui, dispatch_native_ui_actions, map_ui_into_world, trace_ui_navigation,
-    NativeUiAction, NativeUiActionEvent, NativeUiActionQueue, NativeUiBar, NativeUiImageSrc,
-    NativeUiKind, NativeUiScrollContainer, NativeUiStyle,
+    NativeUiAction, NativeUiActionEvent, NativeUiActionQueue, NativeUiBar, NativeUiGradient,
+    NativeUiImageSrc, NativeUiKind, NativeUiScrollContainer, NativeUiShadow, NativeUiStyle,
 };
 
 mod support;
@@ -53,7 +53,20 @@ fn ui_should_build_bevy_hud_from_ui_ir() {
             border_width: Some(2.0),
             color: Some("#ffcc00".to_owned()),
             font_size: Some(18.0),
+            gradient: Some(NativeUiGradient {
+                angle: Some(90.0),
+                from: "#101820".to_owned(),
+                kind: "linear".to_owned(),
+                to: "#203040".to_owned(),
+            }),
             opacity: Some(0.75),
+            shadow: Some(NativeUiShadow {
+                blur: Some(12.0),
+                color: "#00000080".to_owned(),
+                offset_x: Some(0.0),
+                offset_y: Some(4.0),
+                spread: Some(1.0),
+            }),
             text_align: Some("center".to_owned()),
             wrap: Some("word".to_owned()),
         })
@@ -393,7 +406,7 @@ fn write_ui_bundle() -> PathBuf {
     "accessibilityLabel": "Main HUD",
     "role": "group",
     "layout": { "align": "center", "columnGap": 12, "direction": "row", "height": 48, "inset": { "left": 24, "top": 16 }, "justify": "spaceBetween", "maxWidth": 480, "minHeight": 24, "overflow": "scroll", "padding": 6, "position": "absolute", "rowGap": 4, "width": 320, "zIndex": 5 },
-    "style": { "backgroundColor": "#101820cc", "borderColor": "#ffffff", "borderRadius": 8, "borderWidth": 2, "color": "#ffcc00", "fontSize": 18, "opacity": 0.75, "textAlign": "center", "wrap": "word" },
+    "style": { "backgroundColor": "#101820cc", "borderColor": "#ffffff", "borderRadius": 8, "borderWidth": 2, "color": "#ffcc00", "fontSize": 18, "gradient": { "angle": 90, "from": "#101820", "kind": "linear", "to": "#203040" }, "opacity": 0.75, "shadow": { "blur": 12, "color": "#00000080", "offsetX": 0, "offsetY": 4, "spread": 1 }, "textAlign": "center", "wrap": "word" },
     "children": [
       { "id": "label", "kind": "text", "text": "Health", "style": { "color": "#ffcc00", "fontSize": 18, "opacity": 0.75, "textAlign": "center", "wrap": "word" } },
       { "id": "health", "kind": "bar", "value": 8, "max": 10 },

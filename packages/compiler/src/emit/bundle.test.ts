@@ -334,7 +334,7 @@ test("should derive manifest capabilities from emitted bundle IR", async () => {
               id: "hud.jump",
               label: "Jump",
               layout: { height: 48, overflow: "scroll" },
-              style: { backgroundColor: "#101820cc", borderColor: "#ffffff", borderRadius: 8, borderWidth: 2, color: "#ffcc00", fontSize: 18, opacity: 0.75, textAlign: "center", wrap: "word" },
+              style: { backgroundColor: "#101820cc", borderColor: "#ffffff", borderRadius: 8, borderWidth: 2, color: "#ffcc00", fontSize: 18, gradient: { angle: 90, from: "#101820", kind: "linear", to: "#203040" }, opacity: 0.75, shadow: { blur: 12, color: "#00000080", offsetX: 0, offsetY: 4 }, textAlign: "center", wrap: "word" },
             }),
             Image({ accessibilityLabel: "Hero portrait", id: "hud.hero", role: "image", src: "assets/hero.png" }),
           ],
@@ -390,8 +390,10 @@ test("should derive manifest capabilities from emitted bundle IR", async () => {
     assertCapability(manifest, "ui", "style.background");
     assertCapability(manifest, "ui", "style.border");
     assertCapability(manifest, "ui", "style.color");
+    assertCapability(manifest, "ui", "style.gradient");
     assertCapability(manifest, "ui", "style.opacity");
     assertCapability(manifest, "ui", "style.radius");
+    assertCapability(manifest, "ui", "style.shadow");
     assertCapability(manifest, "ui", "style.text");
   } finally {
     await rm(root, { force: true, recursive: true });

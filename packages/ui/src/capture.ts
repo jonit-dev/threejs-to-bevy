@@ -73,7 +73,20 @@ export interface IUiStyleIr {
   borderWidth?: number;
   color?: string;
   fontSize?: number;
+  gradient?: {
+    angle?: number;
+    from: string;
+    kind: "linear";
+    to: string;
+  };
   opacity?: number;
+  shadow?: {
+    blur?: number;
+    color: string;
+    offsetX?: number;
+    offsetY?: number;
+    spread?: number;
+  };
   textAlign?: "center" | "left" | "right";
   wrap?: "character" | "none" | "word";
 }

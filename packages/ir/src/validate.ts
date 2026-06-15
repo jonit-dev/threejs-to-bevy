@@ -596,7 +596,7 @@ function validateUiStyle(value: unknown, path: string, diagnostics: IIrDiagnosti
     return;
   }
   for (const key of Object.keys(value)) {
-    if (!["backgroundColor", "borderColor", "borderRadius", "borderWidth", "color", "fontSize", "opacity", "textAlign", "wrap"].includes(key)) {
+    if (!["backgroundColor", "borderColor", "borderRadius", "borderWidth", "color", "fontSize", "gradient", "opacity", "shadow", "textAlign", "wrap"].includes(key)) {
       diagnostics.push({ code: "TN_IR_UI_STYLE_FIELD_UNSUPPORTED", message: `UI style uses unsupported field '${key}'.`, path: `${path}/${key}` });
     }
   }
@@ -615,11 +615,70 @@ function validateUiStyle(value: unknown, path: string, diagnostics: IIrDiagnosti
   if (value.opacity !== undefined && (typeof value.opacity !== "number" || !Number.isFinite(value.opacity) || value.opacity < 0 || value.opacity > 1)) {
     diagnostics.push({ code: "TN_IR_UI_STYLE_OPACITY_INVALID", message: "UI style opacity must be between 0 and 1.", path: `${path}/opacity` });
   }
+  validateUiGradient(value.gradient, `${path}/gradient`, diagnostics);
+  validateUiShadow(value.shadow, `${path}/shadow`, diagnostics);
   if (value.textAlign !== undefined && !["center", "left", "right"].includes(String(value.textAlign))) {
     diagnostics.push({ code: "TN_IR_UI_STYLE_TEXT_ALIGN_INVALID", message: "UI style textAlign must be left, center, or right.", path: `${path}/textAlign` });
   }
   if (value.wrap !== undefined && !["character", "none", "word"].includes(String(value.wrap))) {
     diagnostics.push({ code: "TN_IR_UI_STYLE_WRAP_INVALID", message: "UI style wrap must be character, none, or word.", path: `${path}/wrap` });
+  }
+}
+
+function validateUiGradient(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value)) {
+    diagnostics.push({ code: "TN_IR_UI_STYLE_GRADIENT_INVALID", message: "UI style gradient must be an object.", path });
+    return;
+  }
+  for (const key of Object.keys(value)) {
+    if (!["angle", "from", "kind", "to"].includes(key)) {
+      diagnostics.push({ code: "TN_IR_UI_STYLE_FIELD_UNSUPPORTED", message: `UI style gradient uses unsupported field '${key}'.`, path: `${path}/${key}` });
+    }
+  }
+  if (value.kind !== "linear") {
+    diagnostics.push({ code: "TN_IR_UI_STYLE_GRADIENT_INVALID", message: "UI style gradient kind must be linear.", path: `${path}/kind` });
+  }
+  for (const key of ["from", "to"]) {
+    const item = value[key];
+    if (typeof item !== "string" || !/^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(item)) {
+      diagnostics.push({ code: "TN_IR_UI_STYLE_COLOR_INVALID", message: `UI style gradient ${key} must be #RRGGBB or #RRGGBBAA.`, path: `${path}/${key}` });
+    }
+  }
+  if (value.angle !== undefined && (typeof value.angle !== "number" || !Number.isFinite(value.angle))) {
+    diagnostics.push({ code: "TN_IR_UI_STYLE_NUMBER_INVALID", message: "UI style gradient angle must be a finite number.", path: `${path}/angle` });
+  }
+}
+
+function validateUiShadow(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value)) {
+    diagnostics.push({ code: "TN_IR_UI_STYLE_SHADOW_INVALID", message: "UI style shadow must be an object.", path });
+    return;
+  }
+  for (const key of Object.keys(value)) {
+    if (!["blur", "color", "offsetX", "offsetY", "spread"].includes(key)) {
+      diagnostics.push({ code: "TN_IR_UI_STYLE_FIELD_UNSUPPORTED", message: `UI style shadow uses unsupported field '${key}'.`, path: `${path}/${key}` });
+    }
+  }
+  if (typeof value.color !== "string" || !/^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(value.color)) {
+    diagnostics.push({ code: "TN_IR_UI_STYLE_COLOR_INVALID", message: "UI style shadow color must be #RRGGBB or #RRGGBBAA.", path: `${path}/color` });
+  }
+  for (const key of ["offsetX", "offsetY"]) {
+    const item = value[key];
+    if (item !== undefined && (typeof item !== "number" || !Number.isFinite(item))) {
+      diagnostics.push({ code: "TN_IR_UI_STYLE_NUMBER_INVALID", message: `UI style shadow ${key} must be a finite number.`, path: `${path}/${key}` });
+    }
+  }
+  for (const key of ["blur", "spread"]) {
+    const item = value[key];
+    if (item !== undefined && (typeof item !== "number" || !Number.isFinite(item) || item < 0)) {
+      diagnostics.push({ code: "TN_IR_UI_STYLE_NUMBER_INVALID", message: `UI style shadow ${key} must be a finite non-negative number.`, path: `${path}/${key}` });
+    }
   }
 }
 
