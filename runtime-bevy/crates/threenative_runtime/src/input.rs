@@ -1,7 +1,13 @@
 use std::collections::{HashMap, HashSet};
 
 use bevy::{
-    input::{ButtonInput, mouse::MouseMotion},
+    input::{
+        ButtonInput,
+        gamepad::{
+            GamepadAxis, GamepadAxisType, GamepadButton, GamepadButtonType, Gamepads,
+        },
+        mouse::MouseMotion,
+    },
     prelude::*,
     window::PrimaryWindow,
 };
@@ -14,6 +20,12 @@ pub struct NativeInputMap(pub InputIr);
 pub struct NativeInputState {
     actions: HashSet<String>,
     axes: HashMap<String, f32>,
+}
+
+#[derive(Debug, Default, Resource)]
+pub struct NativeTouchState {
+    controls: HashSet<String>,
+    axes: HashMap<(String, String), f32>,
 }
 
 impl NativeInputState {
@@ -31,6 +43,33 @@ impl NativeInputState {
 
     pub fn axes(&self) -> impl Iterator<Item = (&String, &f32)> {
         self.axes.iter()
+    }
+}
+
+impl NativeTouchState {
+    pub fn set_control(&mut self, control: impl Into<String>, active: bool) {
+        let control = control.into();
+        if active {
+            self.controls.insert(control);
+        } else {
+            self.controls.remove(&control);
+        }
+    }
+
+    pub fn set_axis(&mut self, control: impl Into<String>, axis: impl Into<String>, value: f32) {
+        self.axes
+            .insert((control.into(), axis.into()), value.clamp(-1.0, 1.0));
+    }
+
+    fn control_active(&self, control: &str) -> bool {
+        self.controls.contains(control)
+    }
+
+    fn axis(&self, control: &str, axis: &str) -> f32 {
+        self.axes
+            .get(&(control.to_owned(), axis.to_owned()))
+            .copied()
+            .unwrap_or(0.0)
     }
 }
 
@@ -104,6 +143,11 @@ pub fn capture_native_input(
     input: Option<Res<NativeInputMap>>,
     keyboard: Res<ButtonInput<KeyCode>>,
     mouse_buttons: Res<ButtonInput<MouseButton>>,
+    gamepads: Option<Res<Gamepads>>,
+    gamepad_buttons: Option<Res<ButtonInput<GamepadButton>>>,
+    gamepad_button_axes: Option<Res<Axis<GamepadButton>>>,
+    gamepad_axes: Option<Res<Axis<GamepadAxis>>>,
+    touch: Option<Res<NativeTouchState>>,
     mut mouse_motion: EventReader<MouseMotion>,
     mut cursor_moved: EventReader<CursorMoved>,
     windows: Query<&Window, With<PrimaryWindow>>,
@@ -124,12 +168,26 @@ pub fn capture_native_input(
 
     state.actions.clear();
     state.axes.clear();
+    let gamepad = match (
+        &gamepads,
+        &gamepad_buttons,
+        &gamepad_button_axes,
+        &gamepad_axes,
+    ) {
+        (Some(gamepads), Some(buttons), Some(button_axes), Some(axes)) => Some(GamepadInput {
+            gamepads,
+            buttons,
+            button_axes,
+            axes,
+        }),
+        _ => None,
+    };
 
     for action in &input.0.actions {
         if action
             .bindings
             .iter()
-            .any(|binding| binding_pressed(binding, &keyboard, &mouse_buttons))
+            .any(|binding| binding_pressed(binding, &keyboard, &mouse_buttons, gamepad.as_ref(), touch.as_deref()))
         {
             state.actions.insert(action.id.clone());
         }
@@ -139,11 +197,11 @@ pub fn capture_native_input(
         let positive = axis
             .positive
             .iter()
-            .any(|binding| binding_pressed(binding, &keyboard, &mouse_buttons));
+            .any(|binding| binding_pressed(binding, &keyboard, &mouse_buttons, gamepad.as_ref(), touch.as_deref()));
         let negative = axis
             .negative
             .iter()
-            .any(|binding| binding_pressed(binding, &keyboard, &mouse_buttons));
+            .any(|binding| binding_pressed(binding, &keyboard, &mouse_buttons, gamepad.as_ref(), touch.as_deref()));
         let digital_value = match (positive, negative) {
             (true, false) => 1.0,
             (false, true) => -1.0,
@@ -155,7 +213,14 @@ pub fn capture_native_input(
             .chain(axis.positive.iter())
             .chain(axis.negative.iter())
             .filter_map(|binding| {
-                binding_axis_value(binding, pointer_delta, pointer_position, window_size)
+                binding_axis_value(
+                    binding,
+                    pointer_delta,
+                    pointer_position,
+                    window_size,
+                    gamepad.as_ref(),
+                    touch.as_deref(),
+                )
             })
             .next()
             .unwrap_or(0.0);
@@ -182,6 +247,8 @@ fn binding_pressed(
     binding: &InputBindingIr,
     keyboard: &ButtonInput<KeyCode>,
     mouse_buttons: &ButtonInput<MouseButton>,
+    gamepad: Option<&GamepadInput>,
+    touch: Option<&NativeTouchState>,
 ) -> bool {
     match binding {
         InputBindingIr::Keyboard { code } => key_code(code)
@@ -193,6 +260,16 @@ fn binding_pressed(
         } => pointer_button(*button)
             .map(|button| mouse_buttons.pressed(button))
             .unwrap_or(false),
+        InputBindingIr::Gamepad { control, .. } => gamepad
+            .map(|state| state.control_active(control))
+            .unwrap_or(false),
+        InputBindingIr::Touch { control, axis } => touch
+            .map(|state| {
+                axis.as_deref()
+                    .map(|axis| state.axis(control, axis).abs() > 0.5)
+                    .unwrap_or_else(|| state.control_active(control))
+            })
+            .unwrap_or(false),
         _ => false,
     }
 }
@@ -202,24 +279,106 @@ fn binding_axis_value(
     pointer_delta: Vec2,
     pointer_position: Option<Vec2>,
     window_size: Option<Vec2>,
+    gamepad: Option<&GamepadInput>,
+    touch: Option<&NativeTouchState>,
 ) -> Option<f32> {
-    let InputBindingIr::Pointer {
-        button: _,
-        axis: Some(axis),
-    } = binding
-    else {
-        return None;
-    };
+    match binding {
+        InputBindingIr::Pointer {
+            button: _,
+            axis: Some(axis),
+        } => match axis.as_str() {
+            "deltaX" => Some(pointer_delta.x),
+            "deltaY" => Some(pointer_delta.y),
+            "x" => pointer_position
+                .zip(window_size)
+                .map(|(position, size)| position.x / size.x),
+            "y" => pointer_position
+                .zip(window_size)
+                .map(|(position, size)| position.y / size.y),
+            _ => None,
+        },
+        InputBindingIr::Gamepad { control, .. } => gamepad
+            .and_then(|state| state.axis_value(control))
+            .or_else(|| gamepad.map(|state| if state.control_active(control) { 1.0 } else { 0.0 })),
+        InputBindingIr::Touch { control, axis } => touch.map(|state| {
+            axis.as_deref()
+                .map(|axis| state.axis(control, axis))
+                .unwrap_or_else(|| if state.control_active(control) { 1.0 } else { 0.0 })
+        }),
+        _ => None,
+    }
+}
 
-    match axis.as_str() {
-        "deltaX" => Some(pointer_delta.x),
-        "deltaY" => Some(pointer_delta.y),
-        "x" => pointer_position
-            .zip(window_size)
-            .map(|(position, size)| position.x / size.x),
-        "y" => pointer_position
-            .zip(window_size)
-            .map(|(position, size)| position.y / size.y),
+struct GamepadInput<'a> {
+    gamepads: &'a Gamepads,
+    buttons: &'a ButtonInput<GamepadButton>,
+    button_axes: &'a Axis<GamepadButton>,
+    axes: &'a Axis<GamepadAxis>,
+}
+
+impl GamepadInput<'_> {
+    fn control_active(&self, control: &str) -> bool {
+        for gamepad in self.gamepads.iter() {
+            if let Some(button_type) = gamepad_button_type(control) {
+                let button = GamepadButton::new(gamepad, button_type);
+                if self.buttons.pressed(button)
+                    || self.button_axes.get(button).unwrap_or(0.0).abs() > 0.5
+                {
+                    return true;
+                }
+            }
+            if let Some(axis_type) = gamepad_axis_type(control) {
+                let axis = GamepadAxis::new(gamepad, axis_type);
+                if self.axes.get(axis).unwrap_or(0.0).abs() > 0.5 {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    fn axis_value(&self, control: &str) -> Option<f32> {
+        let axis_type = gamepad_axis_type(control)?;
+        self.gamepads
+            .iter()
+            .filter_map(|gamepad| self.axes.get(GamepadAxis::new(gamepad, axis_type)))
+            .find(|value| value.abs() > 0.0)
+            .map(|value| value.clamp(-1.0, 1.0))
+            .or(Some(0.0))
+    }
+}
+
+fn gamepad_button_type(control: &str) -> Option<GamepadButtonType> {
+    match control {
+        "buttonSouth" | "south" => Some(GamepadButtonType::South),
+        "buttonEast" | "east" => Some(GamepadButtonType::East),
+        "buttonNorth" | "north" => Some(GamepadButtonType::North),
+        "buttonWest" | "west" => Some(GamepadButtonType::West),
+        "leftTrigger" => Some(GamepadButtonType::LeftTrigger),
+        "leftTrigger2" => Some(GamepadButtonType::LeftTrigger2),
+        "rightTrigger" => Some(GamepadButtonType::RightTrigger),
+        "rightTrigger2" => Some(GamepadButtonType::RightTrigger2),
+        "select" => Some(GamepadButtonType::Select),
+        "start" => Some(GamepadButtonType::Start),
+        "mode" => Some(GamepadButtonType::Mode),
+        "leftThumb" => Some(GamepadButtonType::LeftThumb),
+        "rightThumb" => Some(GamepadButtonType::RightThumb),
+        "dpadUp" => Some(GamepadButtonType::DPadUp),
+        "dpadDown" => Some(GamepadButtonType::DPadDown),
+        "dpadLeft" => Some(GamepadButtonType::DPadLeft),
+        "dpadRight" => Some(GamepadButtonType::DPadRight),
+        _ => None,
+    }
+}
+
+fn gamepad_axis_type(control: &str) -> Option<GamepadAxisType> {
+    match control {
+        "leftStickX" => Some(GamepadAxisType::LeftStickX),
+        "leftStickY" => Some(GamepadAxisType::LeftStickY),
+        "leftZ" => Some(GamepadAxisType::LeftZ),
+        "rightStickX" => Some(GamepadAxisType::RightStickX),
+        "rightStickY" => Some(GamepadAxisType::RightStickY),
+        "rightZ" => Some(GamepadAxisType::RightZ),
         _ => None,
     }
 }

@@ -189,11 +189,15 @@ function fixedInputState(): IWebInputState {
       return name === "MoveX" ? 1 : 0;
     },
     beginFrame() {},
+    handleGamepadAxis() {},
+    handleGamepadButton() {},
     handleKeyDown() {},
     handleKeyUp() {},
     handlePointerDown() {},
     handlePointerMove() {},
     handlePointerUp() {},
+    handleTouchAxis() {},
+    handleTouchControl() {},
     pressed() {
       return false;
     },

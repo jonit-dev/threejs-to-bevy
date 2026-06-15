@@ -4,11 +4,15 @@ export interface IWebInputState {
   action(name: string): boolean;
   axis(name: string): number;
   beginFrame(): void;
+  handleGamepadButton(control: string, pressed: boolean): void;
+  handleGamepadAxis(control: string, value: number): void;
   handleKeyDown(event: { code: string }): void;
   handleKeyUp(event: { code: string }): void;
   handlePointerDown(event: { button: number }): void;
   handlePointerMove(event: { clientX?: number; clientY?: number; movementX?: number; movementY?: number }, bounds?: { height: number; width: number }): void;
   handlePointerUp(event: { button: number }): void;
+  handleTouchControl(control: string, active: boolean): void;
+  handleTouchAxis(control: string, axis: "x" | "y", value: number): void;
   pressed(name: string): boolean;
   released(name: string): boolean;
 }
@@ -25,6 +29,10 @@ export function createInputState(input?: IInputIr): IWebInputState {
   const keys = new Set<string>();
   const pointerButtons = new Set<number>();
   const pointerAxes = new Map<string, number>();
+  const gamepadButtons = new Set<string>();
+  const gamepadAxes = new Map<string, number>();
+  const touchControls = new Set<string>();
+  const touchAxes = new Map<string, number>();
 
   function readAction(id: string): boolean {
     const action = input?.actions.find((item) => item.id === id);
@@ -51,6 +59,12 @@ export function createInputState(input?: IInputIr): IWebInputState {
     if (binding.device === "pointer" && "button" in binding) {
       return pointerButtons.has(binding.button);
     }
+    if (binding.device === "gamepad") {
+      return gamepadButtons.has(binding.control) || Math.abs(gamepadAxes.get(binding.control) ?? 0) > 0.5;
+    }
+    if (binding.device === "touch") {
+      return touchControls.has(binding.control) || Math.abs(touchAxisValue(binding)) > 0.5;
+    }
     return bindingValue(binding) !== 0;
   }
 
@@ -58,7 +72,20 @@ export function createInputState(input?: IInputIr): IWebInputState {
     if (binding.device === "pointer" && "axis" in binding) {
       return pointerAxes.get(binding.axis) ?? 0;
     }
+    if (binding.device === "gamepad") {
+      return gamepadAxes.get(binding.control) ?? 0;
+    }
+    if (binding.device === "touch") {
+      return touchAxisValue(binding);
+    }
     return 0;
+  }
+
+  function touchAxisValue(binding: Extract<InputBinding, { device: "touch" }>): number {
+    if (binding.axis === undefined) {
+      return touchControls.has(binding.control) ? 1 : 0;
+    }
+    return touchAxes.get(`${binding.control}:${binding.axis}`) ?? 0;
   }
 
   function refreshActions(): void {
@@ -84,6 +111,18 @@ export function createInputState(input?: IInputIr): IWebInputState {
       refreshActions();
       pointerAxes.set("deltaX", 0);
       pointerAxes.set("deltaY", 0);
+    },
+    handleGamepadButton(control, pressed) {
+      if (pressed) {
+        gamepadButtons.add(control);
+      } else {
+        gamepadButtons.delete(control);
+      }
+      refreshActions();
+    },
+    handleGamepadAxis(control, value) {
+      gamepadAxes.set(control, clampAxis(value));
+      refreshActions();
     },
     handleKeyDown(event) {
       keys.add(event.code);
@@ -113,6 +152,18 @@ export function createInputState(input?: IInputIr): IWebInputState {
       pointerButtons.delete(event.button);
       refreshActions();
     },
+    handleTouchControl(control, active) {
+      if (active) {
+        touchControls.add(control);
+      } else {
+        touchControls.delete(control);
+      }
+      refreshActions();
+    },
+    handleTouchAxis(control, axis, value) {
+      touchAxes.set(`${control}:${axis}`, clampAxis(value));
+      refreshActions();
+    },
     pressed(name) {
       refreshActions();
       return currentActions.has(name) && !previousActions.has(name);
@@ -122,6 +173,10 @@ export function createInputState(input?: IInputIr): IWebInputState {
       return !currentActions.has(name) && previousActions.has(name);
     },
   };
+}
+
+function clampAxis(value: number): number {
+  return Math.max(-1, Math.min(1, value));
 }
 
 export function attachInputListeners(target: HTMLElement | Window, input: IWebInputState): () => void {

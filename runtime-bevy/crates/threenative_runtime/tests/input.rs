@@ -1,12 +1,20 @@
 use bevy::{
     app::{App, PreUpdate},
-    input::{ButtonInput, mouse::MouseMotion},
+    input::{
+        ButtonInput,
+        gamepad::{
+            Gamepad, GamepadAxis, GamepadAxisType, GamepadButton, GamepadButtonType,
+            GamepadConnection, GamepadConnectionEvent, GamepadInfo, Gamepads,
+            gamepad_connection_system,
+        },
+        mouse::MouseMotion,
+    },
     prelude::*,
     window::PrimaryWindow,
 };
 use threenative_loader::{InputActionIr, InputAxisIr, InputBindingIr, InputIr};
 use threenative_runtime::input::{
-    NativeInputMap, NativeInputState, capture_native_input, map_keyboard_event,
+    NativeInputMap, NativeInputState, NativeTouchState, capture_native_input, map_keyboard_event,
     map_pointer_button_event,
 };
 
@@ -128,4 +136,90 @@ fn should_capture_bevy_keyboard_and_pointer_input() {
     assert!(state.action("Attack"));
     assert_eq!(state.axis("MoveX"), 1.0);
     assert_eq!(state.axis("LookX"), 0.5);
+}
+
+#[test]
+fn should_capture_gamepad_and_touch_input() {
+    let mut app = App::new();
+    app.add_event::<MouseMotion>();
+    app.add_event::<CursorMoved>();
+    app.add_event::<GamepadConnectionEvent>();
+    app.insert_resource(ButtonInput::<KeyCode>::default());
+    app.insert_resource(ButtonInput::<MouseButton>::default());
+    app.insert_resource(ButtonInput::<GamepadButton>::default());
+    app.insert_resource(Axis::<GamepadButton>::default());
+    app.insert_resource(Axis::<GamepadAxis>::default());
+    app.init_resource::<Gamepads>();
+    app.init_resource::<NativeInputState>();
+    app.init_resource::<NativeTouchState>();
+    app.insert_resource(NativeInputMap(InputIr {
+        schema: "threenative.input".to_owned(),
+        version: "0.1.0".to_owned(),
+        actions: vec![
+            InputActionIr {
+                id: "Interact".to_owned(),
+                bindings: vec![InputBindingIr::Gamepad {
+                    control: "buttonSouth".to_owned(),
+                    required: Some(false),
+                }],
+            },
+            InputActionIr {
+                id: "Jump".to_owned(),
+                bindings: vec![InputBindingIr::Touch {
+                    control: "jump".to_owned(),
+                    axis: None,
+                }],
+            },
+        ],
+        axes: vec![
+            InputAxisIr {
+                id: "MoveX".to_owned(),
+                negative: vec![],
+                positive: vec![],
+                value: Some(InputBindingIr::Gamepad {
+                    control: "leftStickX".to_owned(),
+                    required: Some(false),
+                }),
+            },
+            InputAxisIr {
+                id: "TouchMoveX".to_owned(),
+                negative: vec![],
+                positive: vec![],
+                value: Some(InputBindingIr::Touch {
+                    control: "move-stick".to_owned(),
+                    axis: Some("x".to_owned()),
+                }),
+            },
+        ],
+    }));
+    app.add_systems(PreUpdate, (gamepad_connection_system, capture_native_input));
+
+    let gamepad = Gamepad::new(0);
+    app.world_mut()
+        .send_event(GamepadConnectionEvent::new(
+            gamepad,
+            GamepadConnection::Connected(GamepadInfo {
+                name: "Test Gamepad".to_owned(),
+            }),
+        ));
+    app.update();
+
+    app.world_mut()
+        .resource_mut::<ButtonInput<GamepadButton>>()
+        .press(GamepadButton::new(gamepad, GamepadButtonType::South));
+    app.world_mut()
+        .resource_mut::<Axis<GamepadAxis>>()
+        .set(GamepadAxis::new(gamepad, GamepadAxisType::LeftStickX), 0.65);
+    {
+        let mut touch = app.world_mut().resource_mut::<NativeTouchState>();
+        touch.set_control("jump", true);
+        touch.set_axis("move-stick", "x", -0.4);
+    }
+    app.update();
+
+    let state = app.world().resource::<NativeInputState>();
+    assert!(state.action("Interact"));
+    assert!(state.action("Jump"));
+    assert_eq!(state.axis("MoveX"), 0.65);
+    assert_eq!(state.axis("TouchMoveX"), -0.4);
 }

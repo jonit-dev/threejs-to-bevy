@@ -34,6 +34,40 @@ test("input should track pointer action pressed released and position", () => {
   assert.equal(input.released("Attack"), true);
 });
 
+test("input should map gamepad controls to actions and axes", () => {
+  const input = createInputState(makeInput());
+
+  input.handleGamepadButton("buttonSouth", true);
+  input.handleGamepadAxis("leftStickX", 0.75);
+
+  assert.equal(input.action("Interact"), true);
+  assert.equal(input.pressed("Interact"), true);
+  assert.equal(input.axis("GamepadMoveX"), 0.75);
+
+  input.beginFrame();
+  input.handleGamepadButton("buttonSouth", false);
+  input.handleGamepadAxis("leftStickX", -2);
+
+  assert.equal(input.released("Interact"), true);
+  assert.equal(input.axis("GamepadMoveX"), -1);
+});
+
+test("input should map touch controls to actions and axes", () => {
+  const input = createInputState(makeInput());
+
+  input.handleTouchControl("jump", true);
+  input.handleTouchAxis("move-stick", "x", -0.5);
+
+  assert.equal(input.action("Jump"), true);
+  assert.equal(input.axis("TouchMoveX"), -0.5);
+
+  input.handleTouchControl("jump", false);
+  input.handleTouchAxis("move-stick", "x", 2);
+
+  assert.equal(input.action("Jump"), false);
+  assert.equal(input.axis("TouchMoveX"), 1);
+});
+
 test("input should report pointer lock denied when browser rejects request", async () => {
   const state = await requestPointerLock({
     requestPointerLock: async () => {
@@ -49,7 +83,11 @@ function makeInput(): IInputIr {
   return {
     schema: "threenative.input",
     version: "0.1.0",
-    actions: [{ id: "Attack", bindings: [{ button: 0, device: "pointer" }] }],
+    actions: [
+      { id: "Attack", bindings: [{ button: 0, device: "pointer" }] },
+      { id: "Interact", bindings: [{ control: "buttonSouth", device: "gamepad", required: false }] },
+      { id: "Jump", bindings: [{ control: "jump", device: "touch" }] },
+    ],
     axes: [
       {
         id: "MoveX",
@@ -67,6 +105,18 @@ function makeInput(): IInputIr {
         negative: [],
         positive: [],
         value: { axis: "deltaX", device: "pointer" },
+      },
+      {
+        id: "GamepadMoveX",
+        negative: [],
+        positive: [],
+        value: { control: "leftStickX", device: "gamepad", required: false },
+      },
+      {
+        id: "TouchMoveX",
+        negative: [],
+        positive: [],
+        value: { axis: "x", control: "move-stick", device: "touch" },
       },
     ],
   };
