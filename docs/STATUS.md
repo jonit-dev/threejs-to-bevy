@@ -278,13 +278,13 @@ remain future UI image work.
 
 Basic UI accessibility semantics are now promoted for common HUD/menu controls.
 UI nodes accept portable `role` and `accessibilityLabel` metadata, validation
-rejects invalid roles and missing accessible names for image/button controls,
+rejects invalid roles, missing accessible names for image/button/bar/focusable
+controls, unnamed explicit progressbars, and malformed list/listitem structure,
 bundle capabilities report `ui:accessibility` with label/role granularity, the
 web DOM overlay maps metadata to ARIA roles and labels, web/native conformance
 reports preserve the fields, and the Bevy UI adapter inserts AccessKit
-`AccessibilityNode` components. Broader screen-reader audits, focus narration,
-disabled-state semantics, and target-specific accessibility diagnostics remain
-future work.
+`AccessibilityNode` components. Focus narration, disabled-state semantics, and
+target-specific accessibility audits remain future work.
 
 V5-07 has landed the lighting, atmosphere, shadow, and color parity-evidence
 slice: shared fixtures now cover visible/hidden meshes plus ranged point and

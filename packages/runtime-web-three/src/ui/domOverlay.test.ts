@@ -68,6 +68,7 @@ test("ui dom overlay should apply explicit flex layout metadata", () => {
   const controls = findByUiId(overlay.element, "controls");
   const portrait = findByUiId(overlay.element, "portrait");
   const pause = findByUiId(overlay.element, "pause");
+  const spacer = findByUiId(overlay.element, "spacer");
 
   assert.equal(controls?.style.display, "flex");
   assert.equal(controls?.style.flexDirection, "row");
@@ -108,6 +109,8 @@ test("ui dom overlay should apply explicit flex layout metadata", () => {
   assert.equal(portrait?.style.objectFit, "contain");
   assert.equal(pause?.getAttribute("aria-label"), "Pause menu");
   assert.equal(pause?.style.flexGrow, "1");
+  assert.equal(spacer?.getAttribute("role"), "presentation");
+  assert.equal(spacer?.getAttribute("aria-label"), null);
 });
 
 function makeUi(): IUiIr {
@@ -128,6 +131,7 @@ function makeUi(): IUiIr {
           children: [
             { id: "pause", kind: "button", accessibilityLabel: "Pause menu", label: "Pause", action: "Pause", layout: { grow: 1 }, navigation: { right: "jump" } },
             { id: "portrait", kind: "image", accessibilityLabel: "Hero portrait", role: "image", src: "assets/hero.png" },
+            { id: "spacer", kind: "row", accessibilityLabel: "Decorative spacer", role: "none" },
             { id: "jump", kind: "touchControl", label: "Jump", action: "Jump", navigation: { left: "pause" } },
           ],
         },

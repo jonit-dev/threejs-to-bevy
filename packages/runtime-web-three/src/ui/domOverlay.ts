@@ -209,7 +209,7 @@ function applyAccessibilityAttributes(element: HTMLElement, node: IRenderedUiNod
     element.setAttribute("role", role);
   }
   const name = accessibleName(node);
-  if (name !== undefined && node.kind !== "image") {
+  if (name !== undefined && node.kind !== "image" && node.role !== "none") {
     element.setAttribute("aria-label", name);
   }
 }

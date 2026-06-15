@@ -582,8 +582,21 @@ function validateUiAccessibility(node: IUiNodeIr, path: string, diagnostics: IIr
   const hasAccessibleName = typeof node.accessibilityLabel === "string" && node.accessibilityLabel.length > 0
     || typeof node.label === "string" && node.label.length > 0
     || typeof node.text === "string" && node.text.length > 0;
-  if (["button", "image", "touchControl"].includes(node.kind) && !hasAccessibleName) {
+  if (["bar", "button", "image", "touchControl"].includes(node.kind) && !hasAccessibleName) {
     diagnostics.push({ code: "TN_IR_UI_ACCESSIBILITY_LABEL_MISSING", message: `UI ${node.kind} node '${node.id}' must declare label, text, or accessibilityLabel.`, path });
+  }
+  if (node.focusable === true && !hasAccessibleName) {
+    diagnostics.push({ code: "TN_IR_UI_ACCESSIBILITY_FOCUSABLE_NAME_MISSING", message: `Focusable UI node '${node.id}' must declare label, text, or accessibilityLabel.`, path });
+  }
+  if (node.role === "progressbar" && !hasAccessibleName) {
+    diagnostics.push({ code: "TN_IR_UI_ACCESSIBILITY_PROGRESS_NAME_MISSING", message: `UI progressbar node '${node.id}' must declare label, text, or accessibilityLabel.`, path });
+  }
+  if (node.role === "list") {
+    node.children?.forEach((child, index) => {
+      if (child.role !== "listitem") {
+        diagnostics.push({ code: "TN_IR_UI_ACCESSIBILITY_LISTITEM_MISSING", message: `UI list child '${child.id}' must declare role 'listitem'.`, path: `${path}/children/${index}/role` });
+      }
+    });
   }
 }
 

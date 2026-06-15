@@ -127,7 +127,7 @@ test("should report retained ui conformance observations", async () => {
         {
           children: [
             { children: [], id: "hud.title", kind: "text", text: "Arena" },
-            { children: [], id: "hud.health", kind: "bar", max: 10, value: 7 },
+            { accessibilityLabel: "Health", children: [], id: "hud.health", kind: "bar", max: 10, value: 7 },
             { action: "Pause", children: [], focusable: true, id: "hud.pause", kind: "button", label: "Pause" },
           ],
           id: "hud.stack",

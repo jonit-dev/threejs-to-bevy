@@ -17,6 +17,7 @@
           {
             "id": "hud.health",
             "kind": "bar",
+            "accessibilityLabel": "Health",
             "value": 7,
             "max": 10,
             "binding": {

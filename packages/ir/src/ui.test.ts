@@ -166,6 +166,10 @@ test("ui should reject invalid accessibility metadata", async () => {
           { id: "icon-button", kind: "button", action: "Open" },
           { id: "bad-role", kind: "text", text: "Score", role: "heading" },
           { id: "bad-label", kind: "image", accessibilityLabel: "", src: "assets/icon.png" },
+          { id: "focusable-panel", kind: "row", focusable: true },
+          { id: "meter", kind: "bar", value: 1, max: 2 },
+          { id: "status", kind: "row", role: "progressbar" },
+          { id: "menu", kind: "column", role: "list", children: [{ id: "play", kind: "text", text: "Play" }] },
         ],
       },
     });
@@ -176,6 +180,9 @@ test("ui should reject invalid accessibility metadata", async () => {
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_ACCESSIBILITY_LABEL_INVALID"), true);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_ACCESSIBILITY_LABEL_MISSING"), true);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_ACCESSIBILITY_ROLE_INVALID"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_ACCESSIBILITY_FOCUSABLE_NAME_MISSING"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_ACCESSIBILITY_PROGRESS_NAME_MISSING"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_ACCESSIBILITY_LISTITEM_MISSING"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
