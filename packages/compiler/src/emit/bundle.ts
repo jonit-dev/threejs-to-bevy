@@ -370,7 +370,16 @@ function collectMaterialCapabilities(materials: IMaterialsIr, add: (domain: stri
     if (material.transmission !== undefined) {
       add("rendering", "material.transmission");
     }
-    for (const slot of ["baseColorTexture", "normalTexture", "metallicRoughnessTexture", "emissiveTexture", "occlusionTexture"] as const) {
+    for (const slot of [
+      "baseColorTexture",
+      "normalTexture",
+      "metallicRoughnessTexture",
+      "emissiveTexture",
+      "occlusionTexture",
+      "clearcoatTexture",
+      "clearcoatRoughnessTexture",
+      "transmissionTexture",
+    ] as const) {
       if (material[slot] !== undefined) {
         add("rendering", `material.texture.${textureSlotCapability(slot)}`);
       }

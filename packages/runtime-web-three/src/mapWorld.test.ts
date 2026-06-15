@@ -358,6 +358,9 @@ test("mapWorld should apply supported material texture slots", () => {
         { id: "tex.mr", kind: "texture", format: "png", path: "assets/metallic-roughness.png" },
         { id: "tex.emissive", kind: "texture", format: "png", path: "assets/emissive.png" },
         { id: "tex.occlusion", kind: "texture", format: "png", path: "assets/occlusion.png" },
+        { id: "tex.clearcoat", kind: "texture", format: "png", path: "assets/clearcoat.png" },
+        { id: "tex.clearcoatRoughness", kind: "texture", format: "png", path: "assets/clearcoat-roughness.png" },
+        { id: "tex.transmission", kind: "texture", format: "png", path: "assets/transmission.png" },
       ],
     },
     manifest: {
@@ -381,6 +384,9 @@ test("mapWorld should apply supported material texture slots", () => {
           metallicRoughnessTexture: "tex.mr",
           normalTexture: "tex.normal",
           occlusionTexture: "tex.occlusion",
+          clearcoatTexture: "tex.clearcoat",
+          clearcoatRoughnessTexture: "tex.clearcoatRoughness",
+          transmissionTexture: "tex.transmission",
         },
       ],
     },
@@ -400,13 +406,16 @@ test("mapWorld should apply supported material texture slots", () => {
 
   const cube = mapped.objectsById.get("cube.textured");
   assert.ok(cube instanceof THREE.Mesh);
-  assert.ok(cube.material instanceof THREE.MeshStandardMaterial);
+  assert.ok(cube.material instanceof THREE.MeshPhysicalMaterial);
   assert.equal(cube.material.map?.userData.threenativeAssetId, "tex.albedo");
   assert.equal(cube.material.normalMap?.userData.threenativeAssetId, "tex.normal");
   assert.equal(cube.material.metalnessMap?.userData.threenativeAssetId, "tex.mr");
   assert.equal(cube.material.roughnessMap?.userData.threenativeAssetId, "tex.mr");
   assert.equal(cube.material.emissiveMap?.userData.threenativeAssetId, "tex.emissive");
   assert.equal(cube.material.aoMap?.userData.threenativeAssetId, "tex.occlusion");
+  assert.equal(cube.material.clearcoatMap?.userData.threenativeAssetId, "tex.clearcoat");
+  assert.equal(cube.material.clearcoatRoughnessMap?.userData.threenativeAssetId, "tex.clearcoatRoughness");
+  assert.equal(cube.material.transmissionMap?.userData.threenativeAssetId, "tex.transmission");
   assert.equal(cube.material.map?.userData.threenativeUrl, "http://example.test/bundle/assets/albedo.png");
   assert.equal(cube.material.map?.wrapS, THREE.RepeatWrapping);
   assert.equal(cube.material.map?.wrapT, THREE.MirroredRepeatWrapping);

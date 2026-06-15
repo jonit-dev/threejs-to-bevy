@@ -25,12 +25,23 @@ test("should store emissive color and intensity", () => {
 });
 
 test("should store physical material factors", () => {
-  const material = new MeshStandardMaterial({ clearcoat: 0.8, clearcoatRoughness: 0.25, specularIntensity: 0.7, transmission: 0.45 });
+  const material = new MeshStandardMaterial({
+    clearcoat: 0.8,
+    clearcoatRoughness: 0.25,
+    clearcoatRoughnessTexture: "tex.clearcoatRoughness",
+    clearcoatTexture: "tex.clearcoat",
+    specularIntensity: 0.7,
+    transmission: 0.45,
+    transmissionTexture: "tex.transmission",
+  });
 
   assert.equal(material.clearcoat, 0.8);
   assert.equal(material.clearcoatRoughness, 0.25);
+  assert.equal(material.clearcoatRoughnessTexture, "tex.clearcoatRoughness");
+  assert.equal(material.clearcoatTexture, "tex.clearcoat");
   assert.equal(material.specularIntensity, 0.7);
   assert.equal(material.transmission, 0.45);
+  assert.equal(material.transmissionTexture, "tex.transmission");
 });
 
 test("should reject invalid alpha values", () => {

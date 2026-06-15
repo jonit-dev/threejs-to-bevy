@@ -204,16 +204,16 @@ fn spawn_entity(
                     asset_server.load(GltfAssetLabel::Scene(0).from_asset(scene_path.clone()));
                 let playback = animation_playback(asset);
                 let scene_binding = playback.as_ref().and_then(|playback| {
-                    world
-                        .contains_resource::<Assets<AnimationClip>>()
-                        .then(|| NativeAnimationSceneBinding {
+                    world.contains_resource::<Assets<AnimationClip>>().then(|| {
+                        NativeAnimationSceneBinding {
                             clip: asset_server.load(
                                 GltfAssetLabel::Animation(animation_clip_index(asset, playback))
                                     .from_asset(scene_path.clone()),
                             ),
                             loop_: playback.loop_,
                             speed: playback.speed,
-                        })
+                        }
+                    })
                 });
                 let mut spawned = world.spawn(SceneBundle {
                     scene,
@@ -345,7 +345,10 @@ fn spawn_entity(
         .id())
 }
 
-fn insert_shadow_markers(spawned: &mut EntityWorldMut<'_>, renderer: &threenative_loader::MeshRendererComponent) {
+fn insert_shadow_markers(
+    spawned: &mut EntityWorldMut<'_>,
+    renderer: &threenative_loader::MeshRendererComponent,
+) {
     if renderer.cast_shadow == Some(false) {
         spawned.insert(NotShadowCaster);
     }
@@ -649,7 +652,8 @@ fn animation_playback(asset: &AssetIr) -> Option<NativeAnimationPlayback> {
 }
 
 fn animation_clip_index(asset: &AssetIr, playback: &NativeAnimationPlayback) -> usize {
-    asset.animations
+    asset
+        .animations
         .as_deref()
         .unwrap_or(&[])
         .iter()
@@ -855,6 +859,16 @@ fn add_material(
             ),
             clearcoat: material.clearcoat.unwrap_or(0.0),
             clearcoat_perceptual_roughness: material.clearcoat_roughness.unwrap_or(0.0),
+            clearcoat_roughness_texture: texture_handle(
+                material.clearcoat_roughness_texture.as_deref(),
+                assets_by_id,
+                asset_server,
+            ),
+            clearcoat_texture: texture_handle(
+                material.clearcoat_texture.as_deref(),
+                assets_by_id,
+                asset_server,
+            ),
             emissive: emissive_color(material),
             emissive_texture: texture_handle(
                 material.emissive_texture.as_deref(),
@@ -880,6 +894,11 @@ fn add_material(
             perceptual_roughness: material.roughness.unwrap_or(1.0),
             reflectance: material.specular_intensity.unwrap_or(0.5),
             specular_transmission: material.transmission.unwrap_or(0.0),
+            specular_transmission_texture: texture_handle(
+                material.transmission_texture.as_deref(),
+                assets_by_id,
+                asset_server,
+            ),
             ..Default::default()
         })
 }

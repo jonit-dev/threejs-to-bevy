@@ -1265,7 +1265,16 @@ function assetFormatMatches(kind: string, format: string, extension: string | un
 
 function validateMaterialTextureRefs(materials: IMaterialsIr, assets: IAssetsManifest | undefined, path: string, diagnostics: IIrDiagnostic[]): void {
   const textureAssets = new Set((assets?.assets ?? []).filter((asset) => asset.kind === "texture").map((asset) => asset.id));
-  const slots = ["baseColorTexture", "normalTexture", "metallicRoughnessTexture", "emissiveTexture", "occlusionTexture"] as const;
+  const slots = [
+    "baseColorTexture",
+    "normalTexture",
+    "metallicRoughnessTexture",
+    "emissiveTexture",
+    "occlusionTexture",
+    "clearcoatTexture",
+    "clearcoatRoughnessTexture",
+    "transmissionTexture",
+  ] as const;
   materials.materials.forEach((material, materialIndex) => {
     slots.forEach((slot) => {
       const value = material[slot];

@@ -341,7 +341,9 @@ Rules:
   must be non-negative and may exceed 1 for HDR-style material output.
 - `specularIntensity`, `clearcoat`, `clearcoatRoughness`, and `transmission`
   are optional normalized physical factors from 0 to 1.
-- Texture fields reference texture asset IDs.
+- Texture fields reference texture asset IDs. Promoted physical texture fields
+  are `clearcoatTexture`, `clearcoatRoughnessTexture`, and
+  `transmissionTexture`.
 - Unsupported shader features are rejected during validation.
 
 V1 material types:

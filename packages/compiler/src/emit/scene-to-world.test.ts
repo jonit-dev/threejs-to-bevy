@@ -99,12 +99,15 @@ test("should emit material alpha and physical metadata", () => {
         alphaMode: "mask",
         clearcoat: 0.8,
         clearcoatRoughness: 0.25,
+        clearcoatRoughnessTexture: "tex.clearcoatRoughness",
+        clearcoatTexture: "tex.clearcoat",
         color: "#ffffff",
         emissive: "#33ccff",
         emissiveIntensity: 2.5,
         opacity: 0.65,
         specularIntensity: 0.7,
         transmission: 0.45,
+        transmissionTexture: "tex.transmission",
       }),
     }),
   );
@@ -118,8 +121,11 @@ test("should emit material alpha and physical metadata", () => {
   assert.equal(result.materials[0]?.opacity, 0.65);
   assert.equal(result.materials[0]?.clearcoat, 0.8);
   assert.equal(result.materials[0]?.clearcoatRoughness, 0.25);
+  assert.equal(result.materials[0]?.clearcoatRoughnessTexture, "tex.clearcoatRoughness");
+  assert.equal(result.materials[0]?.clearcoatTexture, "tex.clearcoat");
   assert.equal(result.materials[0]?.specularIntensity, 0.7);
   assert.equal(result.materials[0]?.transmission, 0.45);
+  assert.equal(result.materials[0]?.transmissionTexture, "tex.transmission");
 });
 
 test("should emit mesh shadow controls", () => {

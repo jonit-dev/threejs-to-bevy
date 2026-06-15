@@ -44,7 +44,7 @@ name = "threenative_environment_content_trace"
 path = "src/environment_content_trace.rs"
 
 [dependencies]
-bevy = "=0.14.2"
+bevy = { version = "=0.14.2", features = ["pbr_multi_layer_material_textures", "pbr_transmission_textures"] }
 quickjs-rusty = "=0.12.0"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"

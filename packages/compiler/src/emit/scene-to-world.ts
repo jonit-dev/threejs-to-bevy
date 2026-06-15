@@ -13,6 +13,8 @@ interface IObjectLike {
     baseColorTexture?: string | IAssetReference;
     clearcoat?: number;
     clearcoatRoughness?: number;
+    clearcoatRoughnessTexture?: string | IAssetReference;
+    clearcoatTexture?: string | IAssetReference;
     color: unknown;
     emissive?: unknown;
     emissiveIntensity?: number;
@@ -25,6 +27,7 @@ interface IObjectLike {
     roughness?: number;
     specularIntensity?: number;
     transmission?: number;
+    transmissionTexture?: string | IAssetReference;
   };
   geometry?: {
     attributes?: readonly { itemSize: number; name: string; values: readonly number[] }[];
@@ -258,6 +261,9 @@ function emitTextureSlots(
     metallicRoughnessTexture: material.metallicRoughnessTexture,
     emissiveTexture: material.emissiveTexture,
     occlusionTexture: material.occlusionTexture,
+    clearcoatTexture: material.clearcoatTexture,
+    clearcoatRoughnessTexture: material.clearcoatRoughnessTexture,
+    transmissionTexture: material.transmissionTexture,
   };
   return Object.fromEntries(
     Object.entries(slots).flatMap(([slot, value]) => {

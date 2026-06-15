@@ -177,6 +177,8 @@ export interface IMaterialIr {
   baseColorTexture?: string;
   clearcoat?: number;
   clearcoatRoughness?: number;
+  clearcoatRoughnessTexture?: string;
+  clearcoatTexture?: string;
   color: string | readonly [number, number, number] | readonly [number, number, number, number];
   emissive?: string | readonly [number, number, number] | readonly [number, number, number, number];
   emissiveIntensity?: number;
@@ -191,6 +193,7 @@ export interface IMaterialIr {
   roughness?: number;
   specularIntensity?: number;
   transmission?: number;
+  transmissionTexture?: string;
 }
 
 export interface IMaterialsIr {

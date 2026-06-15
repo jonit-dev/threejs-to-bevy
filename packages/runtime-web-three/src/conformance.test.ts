@@ -32,10 +32,13 @@ test("should report basic scene conformance semantics", async () => {
   assert.equal(cubeMaterial.transmission, undefined);
   assert.deepEqual(cubeMaterial.textures, {
     baseColor: undefined,
+    clearcoat: undefined,
+    clearcoatRoughness: undefined,
     emissive: undefined,
     metallicRoughness: undefined,
     normal: undefined,
     occlusion: undefined,
+    transmission: undefined,
   });
 
   const cubeMesh = report.assets.find((asset) => asset.id === "mesh.cube");

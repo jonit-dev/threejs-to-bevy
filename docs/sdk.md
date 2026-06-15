@@ -377,7 +377,7 @@ Supported:
 - PBR parameters: `color`, `metalness`, `roughness`, `emissive`,
   `emissiveIntensity`, `alphaMode`, `alphaCutoff`, `opacity`,
   `specularIntensity`, `clearcoat`, `clearcoatRoughness`, and `transmission`.
-- Texture slots: `baseColorTexture`, `normalTexture`, `metallicRoughnessTexture`, `emissiveTexture`, `occlusionTexture`.
+- Texture slots: `baseColorTexture`, `normalTexture`, `metallicRoughnessTexture`, `emissiveTexture`, `occlusionTexture`, `clearcoatTexture`, `clearcoatRoughnessTexture`, `transmissionTexture`.
 
 Rules:
 

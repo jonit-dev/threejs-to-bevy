@@ -106,6 +106,15 @@ fn rendering_should_load_material_textures_through_asset_server() {
     );
     assert_ne!(material.emissive_texture, Some(Handle::<Image>::default()));
     assert_ne!(material.occlusion_texture, Some(Handle::<Image>::default()));
+    assert_ne!(material.clearcoat_texture, Some(Handle::<Image>::default()));
+    assert_ne!(
+        material.clearcoat_roughness_texture,
+        Some(Handle::<Image>::default())
+    );
+    assert_ne!(
+        material.specular_transmission_texture,
+        Some(Handle::<Image>::default())
+    );
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
@@ -523,7 +532,10 @@ fn write_rendering_bundle() -> PathBuf {
     { "id": "tex.normal", "kind": "texture", "format": "png", "path": "assets/normal.png" },
     { "id": "tex.mr", "kind": "texture", "format": "png", "path": "assets/metallic-roughness.png" },
     { "id": "tex.emissive", "kind": "texture", "format": "png", "path": "assets/emissive.png" },
-    { "id": "tex.occlusion", "kind": "texture", "format": "png", "path": "assets/occlusion.png" }
+    { "id": "tex.occlusion", "kind": "texture", "format": "png", "path": "assets/occlusion.png" },
+    { "id": "tex.clearcoat", "kind": "texture", "format": "png", "path": "assets/clearcoat.png" },
+    { "id": "tex.clearcoatRoughness", "kind": "texture", "format": "png", "path": "assets/clearcoat-roughness.png" },
+    { "id": "tex.transmission", "kind": "texture", "format": "png", "path": "assets/transmission.png" }
   ]
 }"#,
     );
@@ -549,6 +561,9 @@ fn write_rendering_bundle() -> PathBuf {
     "metallicRoughnessTexture": "tex.mr",
     "emissiveTexture": "tex.emissive",
     "occlusionTexture": "tex.occlusion",
+    "clearcoatTexture": "tex.clearcoat",
+    "clearcoatRoughnessTexture": "tex.clearcoatRoughness",
+    "transmissionTexture": "tex.transmission",
     "roughness": 0.42,
     "metalness": 0.25,
     "specularIntensity": 0.7,

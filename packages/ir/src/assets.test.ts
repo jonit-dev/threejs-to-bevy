@@ -54,7 +54,7 @@ test("assets should accept supported material texture slots", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-assets-texture-slots-"));
   try {
     await writeTestBundle(root, { createAssetsDir: true });
-    for (const file of ["albedo.png", "normal.png", "metallic-roughness.png", "emissive.png", "occlusion.png"]) {
+    for (const file of ["albedo.png", "normal.png", "metallic-roughness.png", "emissive.png", "occlusion.png", "clearcoat.png", "clearcoat-roughness.png", "transmission.png"]) {
       await writeFile(join(root, "assets", file), "texture");
     }
     await writeJson(root, "assets.manifest.json", {
@@ -79,6 +79,9 @@ test("assets should accept supported material texture slots", async () => {
         { id: "tex.mr", kind: "texture", format: "png", path: "assets/metallic-roughness.png" },
         { id: "tex.emissive", kind: "texture", format: "png", path: "assets/emissive.png" },
         { id: "tex.occlusion", kind: "texture", format: "png", path: "assets/occlusion.png" },
+        { id: "tex.clearcoat", kind: "texture", format: "png", path: "assets/clearcoat.png" },
+        { id: "tex.clearcoatRoughness", kind: "texture", format: "png", path: "assets/clearcoat-roughness.png" },
+        { id: "tex.transmission", kind: "texture", format: "png", path: "assets/transmission.png" },
       ],
     });
     await writeJson(root, "materials.ir.json", {
@@ -94,6 +97,9 @@ test("assets should accept supported material texture slots", async () => {
           metallicRoughnessTexture: "tex.mr",
           emissiveTexture: "tex.emissive",
           occlusionTexture: "tex.occlusion",
+          clearcoatTexture: "tex.clearcoat",
+          clearcoatRoughnessTexture: "tex.clearcoatRoughness",
+          transmissionTexture: "tex.transmission",
         },
       ],
     });

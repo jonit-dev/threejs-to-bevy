@@ -142,6 +142,10 @@ pub struct MaterialTexturesReport {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub base_color: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub clearcoat: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub clearcoat_roughness: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub emissive: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub metallic_roughness: Option<String>,
@@ -149,6 +153,8 @@ pub struct MaterialTexturesReport {
     pub normal: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub occlusion: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub transmission: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -707,10 +713,13 @@ fn report_material(material: &MaterialIr) -> ConformanceMaterialReport {
         transmission: material.transmission,
         textures: MaterialTexturesReport {
             base_color: material.base_color_texture.clone(),
+            clearcoat: material.clearcoat_texture.clone(),
+            clearcoat_roughness: material.clearcoat_roughness_texture.clone(),
             emissive: material.emissive_texture.clone(),
             metallic_roughness: material.metallic_roughness_texture.clone(),
             normal: material.normal_texture.clone(),
             occlusion: material.occlusion_texture.clone(),
+            transmission: material.transmission_texture.clone(),
         },
     }
 }

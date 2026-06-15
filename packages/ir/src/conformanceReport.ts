@@ -37,10 +37,13 @@ export interface IConformanceMaterialReport {
   transmission?: number;
   textures: {
     baseColor?: string;
+    clearcoat?: string;
+    clearcoatRoughness?: string;
     emissive?: string;
     metallicRoughness?: string;
     normal?: string;
     occlusion?: string;
+    transmission?: string;
   };
 }
 

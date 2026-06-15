@@ -222,10 +222,13 @@ function reportMaterial(material: IMaterialIr): IConformanceMaterialReport {
     transmission: material.transmission,
     textures: {
       baseColor: material.baseColorTexture,
+      clearcoat: material.clearcoatTexture,
+      clearcoatRoughness: material.clearcoatRoughnessTexture,
       emissive: material.emissiveTexture,
       metallicRoughness: material.metallicRoughnessTexture,
       normal: material.normalTexture,
       occlusion: material.occlusionTexture,
+      transmission: material.transmissionTexture,
     },
   };
 }

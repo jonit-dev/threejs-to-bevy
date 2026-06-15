@@ -166,8 +166,12 @@ Post-V7 physical material scalar coverage now promotes `specularIntensity`,
 IR validation rejects out-of-range factors, web maps authored factors to
 Three.js `MeshPhysicalMaterial` when needed, Bevy maps them to
 `StandardMaterial.reflectance`, clearcoat, and specular transmission fields, and
-material conformance reports preserve the promoted factors. Specular,
-clearcoat, and transmission texture maps remain future material work.
+material conformance reports preserve the promoted factors. Clearcoat,
+clearcoat-roughness, and transmission texture maps are now promoted through SDK,
+IR validation, compiler emission, web physical material maps, Bevy PBR texture
+fields with `pbr_multi_layer_material_textures` /
+`pbr_transmission_textures`, and web/native conformance reports. Specular
+texture maps remain future material work.
 
 Post-V7 texture-control coverage now promotes portable texture asset sampler and
 UV transform metadata: `textureAsset` accepts wrap, min/mag filter, repeat,

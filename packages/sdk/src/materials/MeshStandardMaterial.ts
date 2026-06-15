@@ -10,7 +10,9 @@ export interface IMeshStandardMaterialOptions {
   alphaMode?: MaterialAlphaMode;
   baseColorTexture?: TextureSlotReference;
   clearcoat?: number;
+  clearcoatTexture?: TextureSlotReference;
   clearcoatRoughness?: number;
+  clearcoatRoughnessTexture?: TextureSlotReference;
   color?: ColorValue;
   emissive?: ColorValue;
   emissiveIntensity?: number;
@@ -23,6 +25,7 @@ export interface IMeshStandardMaterialOptions {
   roughness?: number;
   specularIntensity?: number;
   transmission?: number;
+  transmissionTexture?: TextureSlotReference;
 }
 
 export class MeshStandardMaterial {
@@ -30,7 +33,9 @@ export class MeshStandardMaterial {
   public readonly alphaMode: MaterialAlphaMode;
   public readonly baseColorTexture?: TextureSlotReference;
   public readonly clearcoat: number;
+  public readonly clearcoatTexture?: TextureSlotReference;
   public readonly clearcoatRoughness: number;
+  public readonly clearcoatRoughnessTexture?: TextureSlotReference;
   public readonly color: ColorValue;
   public readonly emissive?: ColorValue;
   public readonly emissiveIntensity: number;
@@ -43,13 +48,16 @@ export class MeshStandardMaterial {
   public readonly roughness: number;
   public readonly specularIntensity: number;
   public readonly transmission: number;
+  public readonly transmissionTexture?: TextureSlotReference;
 
   public constructor(options: IMeshStandardMaterialOptions = {}) {
     this.alphaCutoff = options.alphaCutoff;
     this.alphaMode = options.alphaMode ?? "opaque";
     this.baseColorTexture = options.baseColorTexture;
     this.clearcoat = options.clearcoat ?? 0;
+    this.clearcoatTexture = options.clearcoatTexture;
     this.clearcoatRoughness = options.clearcoatRoughness ?? 0;
+    this.clearcoatRoughnessTexture = options.clearcoatRoughnessTexture;
     this.color = validateColor(options.color ?? "#ffffff");
     this.emissive = options.emissive === undefined ? undefined : validateColor(options.emissive);
     this.emissiveIntensity = options.emissiveIntensity ?? 1;
@@ -62,6 +70,7 @@ export class MeshStandardMaterial {
     this.roughness = options.roughness ?? 1;
     this.specularIntensity = options.specularIntensity ?? 0.5;
     this.transmission = options.transmission ?? 0;
+    this.transmissionTexture = options.transmissionTexture;
     if (!["opaque", "mask", "blend"].includes(this.alphaMode)) {
       throw new SdkError("TN_SDK_MATERIAL_ALPHA_MODE_INVALID", "MeshStandardMaterial.alphaMode must be opaque, mask, or blend.");
     }

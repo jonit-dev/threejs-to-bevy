@@ -27,10 +27,13 @@ test("assets should emit texture asset references", () => {
           wrapS: "repeat",
           wrapT: "mirroredRepeat",
         }),
+        clearcoatTexture: textureAsset("tex.clearcoat", "assets/clearcoat.png"),
+        clearcoatRoughnessTexture: textureAsset("tex.clearcoatRoughness", "assets/clearcoat-roughness.png"),
         emissiveTexture: textureAsset("tex.emissive", "assets/emissive.png"),
         metallicRoughnessTexture: textureAsset("tex.metallicRoughness", "assets/metallic-roughness.png"),
         normalTexture: textureAsset("tex.normal", "assets/normal.png"),
         occlusionTexture: textureAsset("tex.occlusion", "assets/occlusion.png"),
+        transmissionTexture: textureAsset("tex.transmission", "assets/transmission.png"),
         color: "#ffffff",
       }),
     }),
@@ -45,6 +48,18 @@ test("assets should emit texture asset references", () => {
       kind: "mesh",
       primitive: "box",
       size: [1, 1, 1],
+    },
+    {
+      format: "png",
+      id: "tex.clearcoat",
+      kind: "texture",
+      path: "assets/clearcoat.png",
+    },
+    {
+      format: "png",
+      id: "tex.clearcoatRoughness",
+      kind: "texture",
+      path: "assets/clearcoat-roughness.png",
     },
     {
       center: [0.5, 0.5],
@@ -84,12 +99,21 @@ test("assets should emit texture asset references", () => {
       kind: "texture",
       path: "assets/occlusion.png",
     },
+    {
+      format: "png",
+      id: "tex.transmission",
+      kind: "texture",
+      path: "assets/transmission.png",
+    },
   ]);
   assert.equal(emitted.materials[0]?.baseColorTexture, "tex.crate");
+  assert.equal(emitted.materials[0]?.clearcoatTexture, "tex.clearcoat");
+  assert.equal(emitted.materials[0]?.clearcoatRoughnessTexture, "tex.clearcoatRoughness");
   assert.equal(emitted.materials[0]?.emissiveTexture, "tex.emissive");
   assert.equal(emitted.materials[0]?.metallicRoughnessTexture, "tex.metallicRoughness");
   assert.equal(emitted.materials[0]?.normalTexture, "tex.normal");
   assert.equal(emitted.materials[0]?.occlusionTexture, "tex.occlusion");
+  assert.equal(emitted.materials[0]?.transmissionTexture, "tex.transmission");
 });
 
 test("assets should emit deterministic model animation metadata", async () => {

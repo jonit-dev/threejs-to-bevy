@@ -39,10 +39,13 @@
           "specularIntensity": { "type": "number", "minimum": 0, "maximum": 1 },
           "transmission": { "type": "number", "minimum": 0, "maximum": 1 },
           "baseColorTexture": { "type": "string", "minLength": 1 },
+          "clearcoatTexture": { "type": "string", "minLength": 1 },
+          "clearcoatRoughnessTexture": { "type": "string", "minLength": 1 },
           "normalTexture": { "type": "string", "minLength": 1 },
           "metallicRoughnessTexture": { "type": "string", "minLength": 1 },
           "emissiveTexture": { "type": "string", "minLength": 1 },
-          "occlusionTexture": { "type": "string", "minLength": 1 }
+          "occlusionTexture": { "type": "string", "minLength": 1 },
+          "transmissionTexture": { "type": "string", "minLength": 1 }
         }
       }
     }

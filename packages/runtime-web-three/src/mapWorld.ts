@@ -356,6 +356,8 @@ function mapMaterial(
   source?: string,
 ): THREE.Material {
   const aoMap = mapTextureSlot(material, "occlusionTexture", assetsById, diagnostics, source);
+  const clearcoatMap = mapTextureSlot(material, "clearcoatTexture", assetsById, diagnostics, source);
+  const clearcoatRoughnessMap = mapTextureSlot(material, "clearcoatRoughnessTexture", assetsById, diagnostics, source);
   const emissiveMap = mapTextureSlot(material, "emissiveTexture", assetsById, diagnostics, source);
   const map = mapTextureSlot(material, "baseColorTexture", assetsById, diagnostics, source);
   const metallicRoughnessTexture = mapTextureSlot(
@@ -366,6 +368,7 @@ function mapMaterial(
     source,
   );
   const normalMap = mapTextureSlot(material, "normalTexture", assetsById, diagnostics, source);
+  const transmissionMap = mapTextureSlot(material, "transmissionTexture", assetsById, diagnostics, source);
   const physical = hasPhysicalMaterialFields(material);
   const parameters: THREE.MeshStandardMaterialParameters & THREE.MeshPhysicalMaterialParameters = {
     alphaTest: material.alphaMode === "mask" ? material.alphaCutoff ?? 0.5 : 0,
@@ -393,6 +396,12 @@ function mapMaterial(
   if (emissiveMap !== undefined) {
     parameters.emissiveMap = emissiveMap;
   }
+  if (clearcoatMap !== undefined) {
+    parameters.clearcoatMap = clearcoatMap;
+  }
+  if (clearcoatRoughnessMap !== undefined) {
+    parameters.clearcoatRoughnessMap = clearcoatRoughnessMap;
+  }
   if (map !== undefined) {
     parameters.map = map;
   }
@@ -403,6 +412,9 @@ function mapMaterial(
   if (normalMap !== undefined) {
     parameters.normalMap = normalMap;
   }
+  if (transmissionMap !== undefined) {
+    parameters.transmissionMap = transmissionMap;
+  }
   const mapped = physical ? new THREE.MeshPhysicalMaterial(parameters) : new THREE.MeshStandardMaterial(parameters);
   mapped.userData.threeNativeAlphaMode = material.alphaMode ?? "opaque";
   mapped.needsUpdate = true;
@@ -412,13 +424,24 @@ function mapMaterial(
 function hasPhysicalMaterialFields(material: IMaterialIr): boolean {
   return material.clearcoat !== undefined
     || material.clearcoatRoughness !== undefined
+    || material.clearcoatRoughnessTexture !== undefined
+    || material.clearcoatTexture !== undefined
     || material.specularIntensity !== undefined
-    || material.transmission !== undefined;
+    || material.transmission !== undefined
+    || material.transmissionTexture !== undefined;
 }
 
 function mapTextureSlot(
   material: IMaterialIr,
-  slot: "baseColorTexture" | "emissiveTexture" | "metallicRoughnessTexture" | "normalTexture" | "occlusionTexture",
+  slot:
+    | "baseColorTexture"
+    | "clearcoatRoughnessTexture"
+    | "clearcoatTexture"
+    | "emissiveTexture"
+    | "metallicRoughnessTexture"
+    | "normalTexture"
+    | "occlusionTexture"
+    | "transmissionTexture",
   assetsById: Map<string, IAssetIr>,
   diagnostics: IRuntimeDiagnostic[],
   source?: string,
