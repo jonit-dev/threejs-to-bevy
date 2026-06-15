@@ -361,6 +361,15 @@ function collectMaterialCapabilities(materials: IMaterialsIr, add: (domain: stri
     if (material.emissive !== undefined || material.emissiveIntensity !== undefined) {
       add("rendering", "material.emissive");
     }
+    if (material.specularIntensity !== undefined) {
+      add("rendering", "material.specular");
+    }
+    if (material.clearcoat !== undefined || material.clearcoatRoughness !== undefined) {
+      add("rendering", "material.clearcoat");
+    }
+    if (material.transmission !== undefined) {
+      add("rendering", "material.transmission");
+    }
     for (const slot of ["baseColorTexture", "normalTexture", "metallicRoughnessTexture", "emissiveTexture", "occlusionTexture"] as const) {
       if (material[slot] !== undefined) {
         add("rendering", `material.texture.${textureSlotCapability(slot)}`);

@@ -374,7 +374,9 @@ Supported:
 
 - `MeshStandardMaterial`
 - `MeshBasicMaterial`
-- PBR parameters: `color`, `metalness`, `roughness`, `emissive`, `alphaMode`, `alphaCutoff`, `opacity`.
+- PBR parameters: `color`, `metalness`, `roughness`, `emissive`,
+  `emissiveIntensity`, `alphaMode`, `alphaCutoff`, `opacity`,
+  `specularIntensity`, `clearcoat`, `clearcoatRoughness`, and `transmission`.
 - Texture slots: `baseColorTexture`, `normalTexture`, `metallicRoughnessTexture`, `emissiveTexture`, `occlusionTexture`.
 
 Rules:
@@ -384,6 +386,8 @@ Rules:
   must be between 0 and 1.
 - `emissive` uses the same color format as `color`; `emissiveIntensity` must be
   non-negative and may exceed 1.
+- `specularIntensity`, `clearcoat`, `clearcoatRoughness`, and `transmission`
+  are normalized factors from 0 to 1.
 - Texture references must resolve through the asset manifest.
 - Unsupported material fields are validation errors, not silent no-ops.
 

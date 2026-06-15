@@ -329,6 +329,35 @@ test("should reject invalid material emissive intensity", async () => {
   }
 });
 
+test("should reject invalid physical material factors", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-material-physical-invalid-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "materials.ir.json", {
+      schema: "threenative.materials",
+      version: "0.1.0",
+      materials: [
+        { id: "mat.invalid", kind: "standard", clearcoat: 1.2, clearcoatRoughness: -0.1, color: "#ffffff", specularIntensity: 2, transmission: -0.1 },
+      ],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => diagnostic.path),
+      [
+        "materials.ir.json/materials/0/clearcoat",
+        "materials.ir.json/materials/0/clearcoatRoughness",
+        "materials.ir.json/materials/0/specularIntensity",
+        "materials.ir.json/materials/0/transmission",
+      ],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject invalid mesh renderer shadow flags", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-renderer-shadow-invalid-"));
   try {

@@ -200,6 +200,8 @@ function reportMaterial(material: IMaterialIr): IConformanceMaterialReport {
   return {
     alphaCutoff: material.alphaCutoff,
     alphaMode: material.alphaMode,
+    clearcoat: material.clearcoat,
+    clearcoatRoughness: material.clearcoatRoughness,
     color: material.color,
     emissive: material.emissive,
     emissiveIntensity: material.emissiveIntensity,
@@ -208,6 +210,8 @@ function reportMaterial(material: IMaterialIr): IConformanceMaterialReport {
     metalness: material.metalness,
     opacity: material.opacity,
     roughness: material.roughness,
+    specularIntensity: material.specularIntensity,
+    transmission: material.transmission,
     textures: {
       baseColor: material.baseColorTexture,
       emissive: material.emissiveTexture,

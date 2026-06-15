@@ -5,7 +5,7 @@ use std::{
 };
 
 use bevy::{
-    animation::{graph::AnimationGraph, AnimationPlugin, RepeatAnimation},
+    animation::{AnimationPlugin, RepeatAnimation, graph::AnimationGraph},
     asset::AssetPlugin,
     gltf::GltfPlugin,
     pbr::{NotShadowCaster, NotShadowReceiver},
@@ -45,8 +45,14 @@ fn rendering_should_map_visibility_and_v2_lights() {
         [2.0, 2.0, 2.0],
     );
     assert_material(app.world_mut(), "cube.visible");
-    assert!(has_component::<NotShadowCaster>(app.world_mut(), "cube.visible"));
-    assert!(has_component::<NotShadowReceiver>(app.world_mut(), "cube.visible"));
+    assert!(has_component::<NotShadowCaster>(
+        app.world_mut(),
+        "cube.visible"
+    ));
+    assert!(has_component::<NotShadowReceiver>(
+        app.world_mut(),
+        "cube.visible"
+    ));
     assert_eq!(
         visibility_for(app.world_mut(), "capsule.hidden"),
         Some(Visibility::Hidden)
@@ -194,7 +200,10 @@ fn rendering_should_spawn_gltf_scene_for_model_renderers_when_asset_server_exist
         placeholder_count, 0,
         "GLTF-backed model renderers should not also spawn cuboid placeholders"
     );
-    assert_eq!(animation_playback_for(app.world_mut(), "hero").asset, "model.hero");
+    assert_eq!(
+        animation_playback_for(app.world_mut(), "hero").asset,
+        "model.hero"
+    );
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
@@ -226,7 +235,9 @@ fn rendering_should_bind_added_animation_players_to_model_renderer_clip() {
     app.update();
 
     assert!(
-        app.world().entity(player).contains::<Handle<AnimationGraph>>(),
+        app.world()
+            .entity(player)
+            .contains::<Handle<AnimationGraph>>(),
         "animation player should receive a generated graph for the selected glTF clip",
     );
     let player_ref = app.world().entity(player).get::<AnimationPlayer>().unwrap();
@@ -312,8 +323,12 @@ fn assert_material(world: &mut World, id: &str) {
     assert!(material.metallic_roughness_texture.is_some());
     assert!(material.normal_map_texture.is_some());
     assert!(material.occlusion_texture.is_some());
+    assert!((material.clearcoat - 0.8).abs() < 0.01);
+    assert!((material.clearcoat_perceptual_roughness - 0.25).abs() < 0.01);
     assert!((material.metallic - 0.25).abs() < 0.01);
     assert!((material.perceptual_roughness - 0.42).abs() < 0.01);
+    assert!((material.reflectance - 0.7).abs() < 0.01);
+    assert!((material.specular_transmission - 0.45).abs() < 0.01);
 }
 
 fn material_for(world: &mut World, id: &str) -> StandardMaterial {
@@ -497,6 +512,8 @@ fn write_rendering_bundle() -> PathBuf {
     "alphaMode": "mask",
     "alphaCutoff": 0.35,
     "color": "#336699",
+    "clearcoat": 0.8,
+    "clearcoatRoughness": 0.25,
     "emissive": "#0000ff",
     "emissiveIntensity": 2.5,
     "opacity": 0.65,
@@ -506,7 +523,9 @@ fn write_rendering_bundle() -> PathBuf {
     "emissiveTexture": "tex.emissive",
     "occlusionTexture": "tex.occlusion",
     "roughness": 0.42,
-    "metalness": 0.25
+    "metalness": 0.25,
+    "specularIntensity": 0.7,
+    "transmission": 0.45
   }]
 }"##,
     );

@@ -1326,6 +1326,18 @@ function validateMaterials(materials: IMaterialsIr, path: string, diagnostics: I
         suggestion: "Set emissiveIntensity to 0 or a positive finite value.",
       });
     }
+    for (const key of ["clearcoat", "clearcoatRoughness", "specularIntensity", "transmission"] as const) {
+      const value = material[key];
+      if (value !== undefined && (!Number.isFinite(value) || value < 0 || value > 1)) {
+        diagnostics.push({
+          code: "TN_IR_MATERIAL_FACTOR_INVALID",
+          message: `Material '${material.id}' ${key} must be between 0 and 1.`,
+          path: `${path}/materials/${index}/${key}`,
+          severity: "error",
+          suggestion: `Set ${key} to a normalized value between 0 and 1.`,
+        });
+      }
+    }
     for (const key of ["shader", "vertexShader", "fragmentShader", "nodeGraph", "postprocess"]) {
       if (raw[key] !== undefined) {
         diagnostics.push({

@@ -27,6 +27,9 @@ test("should report basic scene conformance semantics", async () => {
   const cubeMaterial = report.materials.find((material) => material.id === "mat.cube");
   assert.ok(cubeMaterial);
   assert.equal(cubeMaterial.roughness, 0.8);
+  assert.equal(cubeMaterial.clearcoat, undefined);
+  assert.equal(cubeMaterial.specularIntensity, undefined);
+  assert.equal(cubeMaterial.transmission, undefined);
   assert.deepEqual(cubeMaterial.textures, {
     baseColor: undefined,
     emissive: undefined,

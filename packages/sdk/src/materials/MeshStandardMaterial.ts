@@ -9,6 +9,8 @@ export interface IMeshStandardMaterialOptions {
   alphaCutoff?: number;
   alphaMode?: MaterialAlphaMode;
   baseColorTexture?: TextureSlotReference;
+  clearcoat?: number;
+  clearcoatRoughness?: number;
   color?: ColorValue;
   emissive?: ColorValue;
   emissiveIntensity?: number;
@@ -19,13 +21,17 @@ export interface IMeshStandardMaterialOptions {
   occlusionTexture?: TextureSlotReference;
   opacity?: number;
   roughness?: number;
+  specularIntensity?: number;
+  transmission?: number;
 }
 
 export class MeshStandardMaterial {
   public readonly alphaCutoff?: number;
   public readonly alphaMode: MaterialAlphaMode;
-  public readonly color: ColorValue;
   public readonly baseColorTexture?: TextureSlotReference;
+  public readonly clearcoat: number;
+  public readonly clearcoatRoughness: number;
+  public readonly color: ColorValue;
   public readonly emissive?: ColorValue;
   public readonly emissiveIntensity: number;
   public readonly emissiveTexture?: TextureSlotReference;
@@ -35,12 +41,16 @@ export class MeshStandardMaterial {
   public readonly occlusionTexture?: TextureSlotReference;
   public readonly opacity: number;
   public readonly roughness: number;
+  public readonly specularIntensity: number;
+  public readonly transmission: number;
 
   public constructor(options: IMeshStandardMaterialOptions = {}) {
     this.alphaCutoff = options.alphaCutoff;
     this.alphaMode = options.alphaMode ?? "opaque";
-    this.color = validateColor(options.color ?? "#ffffff");
     this.baseColorTexture = options.baseColorTexture;
+    this.clearcoat = options.clearcoat ?? 0;
+    this.clearcoatRoughness = options.clearcoatRoughness ?? 0;
+    this.color = validateColor(options.color ?? "#ffffff");
     this.emissive = options.emissive === undefined ? undefined : validateColor(options.emissive);
     this.emissiveIntensity = options.emissiveIntensity ?? 1;
     this.emissiveTexture = options.emissiveTexture;
@@ -50,6 +60,8 @@ export class MeshStandardMaterial {
     this.occlusionTexture = options.occlusionTexture;
     this.opacity = options.opacity ?? 1;
     this.roughness = options.roughness ?? 1;
+    this.specularIntensity = options.specularIntensity ?? 0.5;
+    this.transmission = options.transmission ?? 0;
     if (!["opaque", "mask", "blend"].includes(this.alphaMode)) {
       throw new SdkError("TN_SDK_MATERIAL_ALPHA_MODE_INVALID", "MeshStandardMaterial.alphaMode must be opaque, mask, or blend.");
     }
@@ -60,14 +72,28 @@ export class MeshStandardMaterial {
       }
     }
     assertFiniteNumber(this.metalness, "TN_SDK_MATERIAL_INVALID_VALUE", "MeshStandardMaterial.metalness");
+    assertFiniteNumber(this.clearcoat, "TN_SDK_MATERIAL_INVALID_VALUE", "MeshStandardMaterial.clearcoat");
+    assertFiniteNumber(this.clearcoatRoughness, "TN_SDK_MATERIAL_INVALID_VALUE", "MeshStandardMaterial.clearcoatRoughness");
     assertFiniteNumber(this.emissiveIntensity, "TN_SDK_MATERIAL_INVALID_VALUE", "MeshStandardMaterial.emissiveIntensity");
     assertFiniteNumber(this.opacity, "TN_SDK_MATERIAL_INVALID_VALUE", "MeshStandardMaterial.opacity");
     assertFiniteNumber(this.roughness, "TN_SDK_MATERIAL_INVALID_VALUE", "MeshStandardMaterial.roughness");
+    assertFiniteNumber(this.specularIntensity, "TN_SDK_MATERIAL_INVALID_VALUE", "MeshStandardMaterial.specularIntensity");
+    assertFiniteNumber(this.transmission, "TN_SDK_MATERIAL_INVALID_VALUE", "MeshStandardMaterial.transmission");
     if (this.emissiveIntensity < 0) {
       throw new SdkError("TN_SDK_MATERIAL_INVALID_VALUE", "MeshStandardMaterial.emissiveIntensity must be non-negative.");
     }
     if (this.opacity < 0 || this.opacity > 1) {
       throw new SdkError("TN_SDK_MATERIAL_INVALID_VALUE", "MeshStandardMaterial.opacity must be between 0 and 1.");
+    }
+    for (const [name, value] of [
+      ["clearcoat", this.clearcoat],
+      ["clearcoatRoughness", this.clearcoatRoughness],
+      ["specularIntensity", this.specularIntensity],
+      ["transmission", this.transmission],
+    ] as const) {
+      if (value < 0 || value > 1) {
+        throw new SdkError("TN_SDK_MATERIAL_INVALID_VALUE", `MeshStandardMaterial.${name} must be between 0 and 1.`);
+      }
     }
   }
 }

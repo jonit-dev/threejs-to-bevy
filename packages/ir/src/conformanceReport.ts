@@ -15,6 +15,8 @@ export interface IConformanceAssetReport {
 export interface IConformanceMaterialReport {
   alphaCutoff?: number;
   alphaMode?: IMaterialIr["alphaMode"];
+  clearcoat?: number;
+  clearcoatRoughness?: number;
   color: IMaterialIr["color"];
   emissive?: IMaterialIr["emissive"];
   emissiveIntensity?: number;
@@ -23,6 +25,8 @@ export interface IConformanceMaterialReport {
   metalness?: number;
   opacity?: number;
   roughness?: number;
+  specularIntensity?: number;
+  transmission?: number;
   textures: {
     baseColor?: string;
     emissive?: string;

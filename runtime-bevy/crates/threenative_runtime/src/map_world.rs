@@ -853,6 +853,8 @@ fn add_material(
                 assets_by_id,
                 asset_server,
             ),
+            clearcoat: material.clearcoat.unwrap_or(0.0),
+            clearcoat_perceptual_roughness: material.clearcoat_roughness.unwrap_or(0.0),
             emissive: emissive_color(material),
             emissive_texture: texture_handle(
                 material.emissive_texture.as_deref(),
@@ -876,6 +878,8 @@ fn add_material(
                 asset_server,
             ),
             perceptual_roughness: material.roughness.unwrap_or(1.0),
+            reflectance: material.specular_intensity.unwrap_or(0.5),
+            specular_transmission: material.transmission.unwrap_or(0.0),
             ..Default::default()
         })
 }

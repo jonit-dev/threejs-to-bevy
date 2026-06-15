@@ -24,6 +24,15 @@ test("should store emissive color and intensity", () => {
   assert.equal(material.emissiveIntensity, 2.5);
 });
 
+test("should store physical material factors", () => {
+  const material = new MeshStandardMaterial({ clearcoat: 0.8, clearcoatRoughness: 0.25, specularIntensity: 0.7, transmission: 0.45 });
+
+  assert.equal(material.clearcoat, 0.8);
+  assert.equal(material.clearcoatRoughness, 0.25);
+  assert.equal(material.specularIntensity, 0.7);
+  assert.equal(material.transmission, 0.45);
+});
+
 test("should reject invalid alpha values", () => {
   assert.throws(() => new MeshStandardMaterial({ alphaCutoff: 1.5 }), /alphaCutoff/);
   assert.throws(() => new MeshStandardMaterial({ opacity: -0.1 }), /opacity/);
@@ -32,4 +41,11 @@ test("should reject invalid alpha values", () => {
 
 test("should reject invalid emissive intensity", () => {
   assert.throws(() => new MeshStandardMaterial({ emissiveIntensity: -1 }), /emissiveIntensity/);
+});
+
+test("should reject invalid physical material factors", () => {
+  assert.throws(() => new MeshStandardMaterial({ clearcoat: 1.1 }), /clearcoat/);
+  assert.throws(() => new MeshStandardMaterial({ clearcoatRoughness: -0.1 }), /clearcoatRoughness/);
+  assert.throws(() => new MeshStandardMaterial({ specularIntensity: 2 }), /specularIntensity/);
+  assert.throws(() => new MeshStandardMaterial({ transmission: -0.1 }), /transmission/);
 });

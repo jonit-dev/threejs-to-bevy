@@ -307,8 +307,12 @@ Rules:
       "color": "#ff3b30",
       "emissive": "#33ccff",
       "emissiveIntensity": 2,
+      "clearcoat": 0.8,
+      "clearcoatRoughness": 0.25,
       "metalness": 0,
       "roughness": 0.7,
+      "specularIntensity": 0.7,
+      "transmission": 0.45,
       "alphaMode": "mask",
       "alphaCutoff": 0.4,
       "opacity": 0.85
@@ -326,6 +330,8 @@ Rules:
   and `alphaCutoff` are normalized values from 0 to 1.
 - `emissive` uses the same color representation as `color`; `emissiveIntensity`
   must be non-negative and may exceed 1 for HDR-style material output.
+- `specularIntensity`, `clearcoat`, `clearcoatRoughness`, and `transmission`
+  are optional normalized physical factors from 0 to 1.
 - Texture fields reference texture asset IDs.
 - Unsupported shader features are rejected during validation.
 

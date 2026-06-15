@@ -366,7 +366,8 @@ function mapMaterial(
     source,
   );
   const normalMap = mapTextureSlot(material, "normalTexture", assetsById, diagnostics, source);
-  const parameters: THREE.MeshStandardMaterialParameters = {
+  const physical = hasPhysicalMaterialFields(material);
+  const parameters: THREE.MeshStandardMaterialParameters & THREE.MeshPhysicalMaterialParameters = {
     alphaTest: material.alphaMode === "mask" ? material.alphaCutoff ?? 0.5 : 0,
     color: colorToThree(material.color),
     emissive: material.emissive === undefined ? new THREE.Color("#000000") : colorToThree(material.emissive),
@@ -374,6 +375,12 @@ function mapMaterial(
     metalness: material.metalness ?? 0,
     roughness: material.roughness ?? 1,
   };
+  if (physical) {
+    parameters.clearcoat = material.clearcoat ?? 0;
+    parameters.clearcoatRoughness = material.clearcoatRoughness ?? 0;
+    parameters.specularIntensity = material.specularIntensity ?? 0.5;
+    parameters.transmission = material.transmission ?? 0;
+  }
   if (material.alphaMode === "blend" || (material.opacity !== undefined && material.opacity < 1)) {
     parameters.opacity = material.opacity ?? 1;
     parameters.transparent = true;
@@ -396,10 +403,17 @@ function mapMaterial(
   if (normalMap !== undefined) {
     parameters.normalMap = normalMap;
   }
-  const mapped = new THREE.MeshStandardMaterial(parameters);
+  const mapped = physical ? new THREE.MeshPhysicalMaterial(parameters) : new THREE.MeshStandardMaterial(parameters);
   mapped.userData.threeNativeAlphaMode = material.alphaMode ?? "opaque";
   mapped.needsUpdate = true;
   return mapped;
+}
+
+function hasPhysicalMaterialFields(material: IMaterialIr): boolean {
+  return material.clearcoat !== undefined
+    || material.clearcoatRoughness !== undefined
+    || material.specularIntensity !== undefined
+    || material.transmission !== undefined;
 }
 
 function mapTextureSlot(

@@ -224,6 +224,8 @@ pub struct MaterialIr {
     pub kind: String,
     pub color: ColorIr,
     pub base_color_texture: Option<String>,
+    pub clearcoat: Option<f32>,
+    pub clearcoat_roughness: Option<f32>,
     pub emissive: Option<ColorIr>,
     pub emissive_intensity: Option<f32>,
     pub emissive_texture: Option<String>,
@@ -233,6 +235,8 @@ pub struct MaterialIr {
     pub occlusion_texture: Option<String>,
     pub opacity: Option<f32>,
     pub roughness: Option<f32>,
+    pub specular_intensity: Option<f32>,
+    pub transmission: Option<f32>,
 }
 
 #[derive(Debug, Deserialize)]

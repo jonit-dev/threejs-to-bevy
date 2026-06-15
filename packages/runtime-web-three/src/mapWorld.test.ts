@@ -493,6 +493,45 @@ test("mapWorld should apply material alpha mode and opacity", () => {
   assert.equal(leaves.material.userData.threeNativeAlphaMode, "mask");
 });
 
+test("mapWorld should apply physical material factors", () => {
+  const mapped = mapWorld({
+    assets: {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [{ id: "mesh.cube", kind: "mesh", format: "generated", primitive: "box", size: [1, 1, 1] }],
+    },
+    manifest: {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "physical-material",
+      requiredCapabilities: {},
+      entry: { world: "world.ir.json" },
+      files: { assets: "assets.manifest.json", materials: "materials.ir.json", targetProfile: "target.profile.json" },
+    },
+    materials: {
+      schema: "threenative.materials",
+      version: "0.1.0",
+      materials: [
+        { id: "mat.coat", kind: "standard", clearcoat: 0.8, clearcoatRoughness: 0.25, color: "#ffffff", specularIntensity: 0.7, transmission: 0.45 },
+      ],
+    },
+    targetProfile: { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] },
+    world: {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [{ id: "coated", components: { MeshRenderer: { mesh: "mesh.cube", material: "mat.coat" } } }],
+    },
+  });
+
+  const coated = mapped.objectsById.get("coated");
+  assert.ok(coated instanceof THREE.Mesh);
+  assert.ok(coated.material instanceof THREE.MeshPhysicalMaterial);
+  assert.equal(coated.material.clearcoat, 0.8);
+  assert.equal(coated.material.clearcoatRoughness, 0.25);
+  assert.equal(coated.material.specularIntensity, 0.7);
+  assert.equal(coated.material.transmission, 0.45);
+});
+
 test("mapWorld should apply mesh renderer shadow controls", () => {
   const mapped = mapWorld({
     assets: {

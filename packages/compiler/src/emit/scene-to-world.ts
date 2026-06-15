@@ -11,6 +11,8 @@ interface IObjectLike {
     alphaCutoff?: number;
     alphaMode?: string;
     baseColorTexture?: string | IAssetReference;
+    clearcoat?: number;
+    clearcoatRoughness?: number;
     color: unknown;
     emissive?: unknown;
     emissiveIntensity?: number;
@@ -21,6 +23,8 @@ interface IObjectLike {
     occlusionTexture?: string | IAssetReference;
     opacity?: number;
     roughness?: number;
+    specularIntensity?: number;
+    transmission?: number;
   };
   geometry?: {
     attributes?: readonly { itemSize: number; name: string; values: readonly number[] }[];
@@ -125,12 +129,16 @@ function visitChildren(
         kind: "standard",
         ...(child.material.alphaCutoff === undefined ? {} : { alphaCutoff: child.material.alphaCutoff }),
         ...(child.material.alphaMode === undefined || child.material.alphaMode === "opaque" ? {} : { alphaMode: child.material.alphaMode }),
+        ...(child.material.clearcoat === undefined || child.material.clearcoat === 0 ? {} : { clearcoat: child.material.clearcoat }),
+        ...(child.material.clearcoatRoughness === undefined || child.material.clearcoatRoughness === 0 ? {} : { clearcoatRoughness: child.material.clearcoatRoughness }),
         color: child.material.color,
         ...(child.material.emissive === undefined ? {} : { emissive: child.material.emissive }),
         ...(child.material.emissiveIntensity === undefined || child.material.emissiveIntensity === 1 ? {} : { emissiveIntensity: child.material.emissiveIntensity }),
         metalness: child.material.metalness ?? 0,
         ...(child.material.opacity === undefined || child.material.opacity === 1 ? {} : { opacity: child.material.opacity }),
         roughness: child.material.roughness ?? 1,
+        ...(child.material.specularIntensity === undefined || child.material.specularIntensity === 0.5 ? {} : { specularIntensity: child.material.specularIntensity }),
+        ...(child.material.transmission === undefined || child.material.transmission === 0 ? {} : { transmission: child.material.transmission }),
         ...emitTextureSlots(child.material, output.assets),
       });
     }

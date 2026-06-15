@@ -165,6 +165,8 @@ export interface IMaterialIr {
   alphaCutoff?: number;
   alphaMode?: "opaque" | "mask" | "blend";
   baseColorTexture?: string;
+  clearcoat?: number;
+  clearcoatRoughness?: number;
   color: string | readonly [number, number, number] | readonly [number, number, number, number];
   emissive?: string | readonly [number, number, number] | readonly [number, number, number, number];
   emissiveIntensity?: number;
@@ -177,6 +179,8 @@ export interface IMaterialIr {
   occlusionTexture?: string;
   opacity?: number;
   roughness?: number;
+  specularIntensity?: number;
+  transmission?: number;
 }
 
 export interface IMaterialsIr {

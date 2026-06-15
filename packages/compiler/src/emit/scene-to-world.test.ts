@@ -85,7 +85,7 @@ test("should emit custom mesh attributes and indices", () => {
   });
 });
 
-test("should emit material alpha metadata", () => {
+test("should emit material alpha and physical metadata", () => {
   const scene = new Scene({ id: "scene" });
   scene.add(
     new Mesh({
@@ -94,7 +94,18 @@ test("should emit material alpha metadata", () => {
         indices: [0, 1, 2],
       }),
       id: "transparent",
-      material: new MeshStandardMaterial({ alphaCutoff: 0.4, alphaMode: "mask", color: "#ffffff", emissive: "#33ccff", emissiveIntensity: 2.5, opacity: 0.65 }),
+      material: new MeshStandardMaterial({
+        alphaCutoff: 0.4,
+        alphaMode: "mask",
+        clearcoat: 0.8,
+        clearcoatRoughness: 0.25,
+        color: "#ffffff",
+        emissive: "#33ccff",
+        emissiveIntensity: 2.5,
+        opacity: 0.65,
+        specularIntensity: 0.7,
+        transmission: 0.45,
+      }),
     }),
   );
 
@@ -105,6 +116,10 @@ test("should emit material alpha metadata", () => {
   assert.equal(result.materials[0]?.emissive, "#33ccff");
   assert.equal(result.materials[0]?.emissiveIntensity, 2.5);
   assert.equal(result.materials[0]?.opacity, 0.65);
+  assert.equal(result.materials[0]?.clearcoat, 0.8);
+  assert.equal(result.materials[0]?.clearcoatRoughness, 0.25);
+  assert.equal(result.materials[0]?.specularIntensity, 0.7);
+  assert.equal(result.materials[0]?.transmission, 0.45);
 });
 
 test("should emit mesh shadow controls", () => {

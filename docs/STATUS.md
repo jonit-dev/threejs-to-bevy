@@ -160,6 +160,15 @@ material fields, Bevy maps them to `StandardMaterial.emissive`, and material
 conformance reports preserve the promoted fields. Bloom/post-processing
 contribution from emissive values remains a separate renderer feature.
 
+Post-V7 physical material scalar coverage now promotes `specularIntensity`,
+`clearcoat`, `clearcoatRoughness`, and `transmission` as normalized
+`MeshStandardMaterial` factors. Compiler emission preserves non-default values,
+IR validation rejects out-of-range factors, web maps authored factors to
+Three.js `MeshPhysicalMaterial` when needed, Bevy maps them to
+`StandardMaterial.reflectance`, clearcoat, and specular transmission fields, and
+material conformance reports preserve the promoted factors. Specular,
+clearcoat, and transmission texture maps remain future material work.
+
 Post-V7 shadow gap closure has also promoted per-mesh shadow controls:
 `Mesh` accepts optional `castShadow` and `receiveShadow` flags, compiler
 emission preserves them on `MeshRenderer`, IR validation rejects non-boolean

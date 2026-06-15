@@ -96,6 +96,10 @@ pub struct ConformanceMaterialReport {
     pub alpha_cutoff: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub alpha_mode: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub clearcoat: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub clearcoat_roughness: Option<f32>,
     pub color: ColorReport,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub emissive: Option<ColorReport>,
@@ -109,6 +113,10 @@ pub struct ConformanceMaterialReport {
     pub opacity: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub roughness: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub specular_intensity: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub transmission: Option<f32>,
     pub textures: MaterialTexturesReport,
 }
 
@@ -661,6 +669,8 @@ fn report_material(material: &MaterialIr) -> ConformanceMaterialReport {
     ConformanceMaterialReport {
         alpha_cutoff: material.alpha_cutoff,
         alpha_mode: material.alpha_mode.clone(),
+        clearcoat: material.clearcoat,
+        clearcoat_roughness: material.clearcoat_roughness,
         color: color_report(&material.color),
         emissive: material.emissive.as_ref().map(color_report),
         emissive_intensity: material.emissive_intensity,
@@ -669,6 +679,8 @@ fn report_material(material: &MaterialIr) -> ConformanceMaterialReport {
         metalness: material.metalness,
         opacity: material.opacity,
         roughness: material.roughness,
+        specular_intensity: material.specular_intensity,
+        transmission: material.transmission,
         textures: MaterialTexturesReport {
             base_color: material.base_color_texture.clone(),
             emissive: material.emissive_texture.clone(),

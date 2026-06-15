@@ -31,9 +31,13 @@
             ]
           },
           "emissiveIntensity": { "type": "number", "minimum": 0 },
+          "clearcoat": { "type": "number", "minimum": 0, "maximum": 1 },
+          "clearcoatRoughness": { "type": "number", "minimum": 0, "maximum": 1 },
           "metalness": { "type": "number" },
           "opacity": { "type": "number", "minimum": 0, "maximum": 1 },
           "roughness": { "type": "number" },
+          "specularIntensity": { "type": "number", "minimum": 0, "maximum": 1 },
+          "transmission": { "type": "number", "minimum": 0, "maximum": 1 },
           "baseColorTexture": { "type": "string", "minLength": 1 },
           "normalTexture": { "type": "string", "minLength": 1 },
           "metallicRoughnessTexture": { "type": "string", "minLength": 1 },

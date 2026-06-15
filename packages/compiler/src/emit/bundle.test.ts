@@ -237,10 +237,14 @@ test("should derive manifest capabilities from emitted bundle IR", async () => {
         material: new MeshStandardMaterial({
           alphaMode: "blend",
           baseColorTexture: textureAsset("tex.albedo", "assets/albedo.png"),
+          clearcoat: 0.8,
+          clearcoatRoughness: 0.25,
           color: "#ffffff",
           emissive: "#33ccff",
           emissiveIntensity: 2,
           opacity: 0.6,
+          specularIntensity: 0.7,
+          transmission: 0.45,
         }),
         receiveShadow: true,
         physics: physics({
@@ -329,6 +333,9 @@ test("should derive manifest capabilities from emitted bundle IR", async () => {
     assertCapability(manifest, "rendering", "light.spot");
     assertCapability(manifest, "rendering", "material.alpha.blend");
     assertCapability(manifest, "rendering", "material.emissive");
+    assertCapability(manifest, "rendering", "material.specular");
+    assertCapability(manifest, "rendering", "material.clearcoat");
+    assertCapability(manifest, "rendering", "material.transmission");
     assertCapability(manifest, "rendering", "material.opacity");
     assertCapability(manifest, "rendering", "mesh-renderer.shadows");
     assertCapability(manifest, "rendering", "material.texture.base-color");
