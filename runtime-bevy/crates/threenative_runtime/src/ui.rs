@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::prelude::*;
 use bevy::text::BreakLineOn;
 use serde::Serialize;
@@ -21,6 +22,11 @@ pub struct NativeUiBar {
 
 #[derive(Clone, Component, Debug, Eq, PartialEq)]
 pub struct NativeUiFocusable(pub bool);
+
+#[derive(Clone, Component, Debug, PartialEq)]
+pub struct NativeUiScrollContainer {
+    pub offset_y: f32,
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct NativeUiNode {
@@ -295,6 +301,14 @@ fn spawn_node(
         if let Some(z_index) = node.layout.as_ref().and_then(|layout| layout.z_index) {
             entity_mut.insert(ZIndex::Local(z_index));
         }
+        if node
+            .layout
+            .as_ref()
+            .and_then(|layout| layout.overflow.as_deref())
+            == Some("scroll")
+        {
+            entity_mut.insert(NativeUiScrollContainer { offset_y: 0.0 });
+        }
         if node.kind == "bar" {
             entity_mut.insert(NativeUiBar {
                 value: node.value.unwrap_or(0.0),
@@ -456,8 +470,38 @@ fn apply_layout(style: &mut Style, layout: Option<&threenative_loader::UiLayoutI
     if let Some(overflow) = layout.overflow.as_deref() {
         style.overflow = match overflow {
             "hidden" => Overflow::clip(),
+            "scroll" => Overflow::clip_y(),
             _ => Overflow::visible(),
         };
+    }
+}
+
+pub fn scroll_native_ui(
+    mut mouse_wheel_events: EventReader<MouseWheel>,
+    mut containers: Query<(&mut NativeUiScrollContainer, &Children, &Node)>,
+    child_nodes: Query<&Node>,
+    mut child_styles: Query<&mut Style>,
+) {
+    for event in mouse_wheel_events.read() {
+        let dy = match event.unit {
+            MouseScrollUnit::Line => event.y * 20.0,
+            MouseScrollUnit::Pixel => event.y,
+        };
+        for (mut scroll, children, container_node) in &mut containers {
+            let content_height = children
+                .iter()
+                .filter_map(|child| child_nodes.get(*child).ok())
+                .map(|node| node.size().y)
+                .sum::<f32>();
+            let max_scroll = (content_height - container_node.size().y).max(0.0);
+            scroll.offset_y = (scroll.offset_y + dy).clamp(-max_scroll, 0.0);
+            for child in children.iter() {
+                if let Ok(mut style) = child_styles.get_mut(*child) {
+                    style.position_type = PositionType::Relative;
+                    style.top = Val::Px(scroll.offset_y);
+                }
+            }
+        }
     }
 }
 

@@ -445,7 +445,7 @@ export interface IUiLayoutIr {
   maxWidth?: number;
   minHeight?: number;
   minWidth?: number;
-  overflow?: "hidden" | "visible";
+  overflow?: "hidden" | "scroll" | "visible";
   padding?: number;
   position?: "absolute" | "relative";
   rowGap?: number;

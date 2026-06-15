@@ -245,7 +245,12 @@ function applyLayoutStyle(style: Partial<CSSStyleDeclaration>, layout: IRendered
     style.flexGrow = String(layout.grow);
   }
   if (layout.overflow !== undefined) {
-    style.overflow = layout.overflow;
+    if (layout.overflow === "scroll") {
+      style.overflowX = "hidden";
+      style.overflowY = "auto";
+    } else {
+      style.overflow = layout.overflow;
+    }
   }
   if (layout.zIndex !== undefined) {
     style.zIndex = String(layout.zIndex);

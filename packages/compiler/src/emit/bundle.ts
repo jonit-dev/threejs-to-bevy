@@ -602,6 +602,9 @@ function visitUiNode(node: IUiIr["root"], add: (domain: string, capability: stri
     }
     if (node.layout.overflow !== undefined) {
       add("ui", "overflow");
+      if (node.layout.overflow === "scroll") {
+        add("ui", "scroll-container");
+      }
     }
     if (node.layout.zIndex !== undefined) {
       add("ui", "z-index");

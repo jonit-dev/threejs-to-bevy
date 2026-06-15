@@ -614,8 +614,8 @@ function validateUiLayout(value: unknown, path: string, diagnostics: IIrDiagnost
   if (value.justify !== undefined && !["center", "end", "spaceBetween", "start"].includes(String(value.justify))) {
     diagnostics.push({ code: "TN_IR_UI_LAYOUT_JUSTIFY_INVALID", message: "UI layout justify must be start, center, end, or spaceBetween.", path: `${path}/justify` });
   }
-  if (value.overflow !== undefined && !["hidden", "visible"].includes(String(value.overflow))) {
-    diagnostics.push({ code: "TN_IR_UI_LAYOUT_OVERFLOW_INVALID", message: "UI layout overflow must be hidden or visible.", path: `${path}/overflow` });
+  if (value.overflow !== undefined && !["hidden", "scroll", "visible"].includes(String(value.overflow))) {
+    diagnostics.push({ code: "TN_IR_UI_LAYOUT_OVERFLOW_INVALID", message: "UI layout overflow must be hidden, scroll, or visible.", path: `${path}/overflow` });
   }
   if (value.position !== undefined && !["absolute", "relative"].includes(String(value.position))) {
     diagnostics.push({ code: "TN_IR_UI_LAYOUT_POSITION_INVALID", message: "UI layout position must be absolute or relative.", path: `${path}/position` });

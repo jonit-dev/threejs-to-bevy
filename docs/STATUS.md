@@ -259,6 +259,14 @@ font-size/text-align/wrapping behavior in the web DOM overlay, and map to Bevy
 `TextStyle.font_size`, `Text.justify`, and `BreakLineOn`. Font assets, weights,
 inline spans, underline, and strikethrough remain future rich-text work.
 
+Basic vertical UI scroll containers are now promoted through
+`layout.overflow: "scroll"`. The IR validator and UI authoring types accept the
+value, bundle capabilities report `ui:scroll-container`, the web DOM overlay
+maps it to vertical browser scrolling with horizontal clipping, and the Bevy UI
+adapter maps it to `Overflow::clip_y()` plus a `NativeUiScrollContainer` wheel
+system that offsets direct children after layout. Nested scroll hit-testing,
+horizontal scroll containers, and richer scrollbar styling remain future work.
+
 V5-07 has landed the lighting, atmosphere, shadow, and color parity-evidence
 slice: shared fixtures now cover visible/hidden meshes plus ranged point and
 spot lights, SDK/compiler output preserves point-light range and spot-light

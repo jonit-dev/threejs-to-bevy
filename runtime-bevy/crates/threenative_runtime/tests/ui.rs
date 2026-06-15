@@ -10,8 +10,8 @@ use bevy::text::BreakLineOn;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{UiIr, UiNodeIr, load_bundle};
 use threenative_runtime::ui::{
-    NativeUiAction, NativeUiBar, NativeUiKind, NativeUiStyle, build_native_ui, map_ui_into_world,
-    trace_ui_navigation,
+    NativeUiAction, NativeUiBar, NativeUiKind, NativeUiScrollContainer, NativeUiStyle,
+    build_native_ui, map_ui_into_world, trace_ui_navigation,
 };
 
 mod support;
@@ -138,7 +138,13 @@ fn ui_should_spawn_bevy_entities_with_stable_ids_and_hierarchy() {
     assert_eq!(hud_style.height, Val::Px(48.0));
     assert_eq!(hud_style.max_width, Val::Px(480.0));
     assert_eq!(hud_style.min_height, Val::Px(24.0));
-    assert_eq!(hud_style.overflow, Overflow::clip());
+    assert_eq!(hud_style.overflow, Overflow::clip_y());
+    assert_eq!(
+        app.world()
+            .get::<NativeUiScrollContainer>(hud)
+            .expect("hud should be a scroll container"),
+        &NativeUiScrollContainer { offset_y: 0.0 }
+    );
     assert_eq!(hud_style.border, UiRect::all(Val::Px(2.0)));
     assert_eq!(
         app.world()
@@ -258,7 +264,7 @@ fn write_ui_bundle() -> PathBuf {
   "root": {
     "id": "hud",
     "kind": "column",
-    "layout": { "align": "center", "columnGap": 12, "direction": "row", "height": 48, "inset": { "left": 24, "top": 16 }, "justify": "spaceBetween", "maxWidth": 480, "minHeight": 24, "overflow": "hidden", "padding": 6, "position": "absolute", "rowGap": 4, "width": 320, "zIndex": 5 },
+    "layout": { "align": "center", "columnGap": 12, "direction": "row", "height": 48, "inset": { "left": 24, "top": 16 }, "justify": "spaceBetween", "maxWidth": 480, "minHeight": 24, "overflow": "scroll", "padding": 6, "position": "absolute", "rowGap": 4, "width": 320, "zIndex": 5 },
     "style": { "backgroundColor": "#101820cc", "borderColor": "#ffffff", "borderRadius": 8, "borderWidth": 2, "color": "#ffcc00", "fontSize": 18, "opacity": 0.75, "textAlign": "center", "wrap": "word" },
     "children": [
       { "id": "label", "kind": "text", "text": "Health", "style": { "color": "#ffcc00", "fontSize": 18, "opacity": 0.75, "textAlign": "center", "wrap": "word" } },

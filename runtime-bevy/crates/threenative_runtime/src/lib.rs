@@ -91,6 +91,7 @@ pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeErro
     }
     if let Some(ui) = bundle.ui.as_ref() {
         ui::map_ui_into_world(app.world_mut(), ui)?;
+        app.add_systems(Update, ui::scroll_native_ui);
     }
     if let Some(input_map) = bundle.input.clone() {
         app.insert_resource(input::NativeInputMap(input_map));

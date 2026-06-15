@@ -331,6 +331,7 @@ test("should derive manifest capabilities from emitted bundle IR", async () => {
             focusable: true,
             id: "hud.jump",
             label: "Jump",
+            layout: { height: 48, overflow: "scroll" },
             style: { backgroundColor: "#101820cc", borderColor: "#ffffff", borderRadius: 8, borderWidth: 2, color: "#ffcc00", fontSize: 18, opacity: 0.75, textAlign: "center", wrap: "word" },
           }),
           id: "hud",
@@ -375,6 +376,7 @@ test("should derive manifest capabilities from emitted bundle IR", async () => {
     assertCapability(manifest, "scripting", "service.physics.raycast");
     assertCapability(manifest, "transform", "hierarchy");
     assertCapability(manifest, "ui", "node.button");
+    assertCapability(manifest, "ui", "scroll-container");
     assertCapability(manifest, "ui", "style");
     assertCapability(manifest, "ui", "style.background");
     assertCapability(manifest, "ui", "style.border");
