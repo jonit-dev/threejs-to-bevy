@@ -290,6 +290,12 @@ fn spawn_entity(
                             light.intensity,
                             camera_color_management,
                         ),
+                        shadow_depth_bias: light
+                            .shadow_bias
+                            .unwrap_or(DirectionalLight::DEFAULT_SHADOW_DEPTH_BIAS),
+                        shadow_normal_bias: light
+                            .shadow_normal_bias
+                            .unwrap_or(DirectionalLight::DEFAULT_SHADOW_NORMAL_BIAS),
                         ..Default::default()
                     },
                     transform: light_transform,
@@ -306,6 +312,12 @@ fn spawn_entity(
                         color: color_to_bevy(&light.color),
                         intensity: point_lumens(light.intensity, camera_color_management),
                         range: light.range.unwrap_or(THREE_COMPAT_DEFAULT_RANGE),
+                        shadow_depth_bias: light
+                            .shadow_bias
+                            .unwrap_or(PointLight::DEFAULT_SHADOW_DEPTH_BIAS),
+                        shadow_normal_bias: light
+                            .shadow_normal_bias
+                            .unwrap_or(PointLight::DEFAULT_SHADOW_NORMAL_BIAS),
                         ..Default::default()
                     },
                     transform,
@@ -323,6 +335,12 @@ fn spawn_entity(
                         intensity: point_lumens(light.intensity, camera_color_management),
                         outer_angle: light.angle.unwrap_or(std::f32::consts::FRAC_PI_4),
                         range: light.range.unwrap_or(THREE_COMPAT_DEFAULT_RANGE),
+                        shadow_depth_bias: light
+                            .shadow_bias
+                            .unwrap_or(SpotLight::DEFAULT_SHADOW_DEPTH_BIAS),
+                        shadow_normal_bias: light
+                            .shadow_normal_bias
+                            .unwrap_or(SpotLight::DEFAULT_SHADOW_NORMAL_BIAS),
                         ..Default::default()
                     },
                     transform,

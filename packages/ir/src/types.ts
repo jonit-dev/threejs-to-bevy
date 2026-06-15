@@ -79,6 +79,8 @@ export interface ILightComponent {
   intensity: number;
   kind: "ambient" | "directional" | "point" | "spot";
   range?: number;
+  shadowBias?: number;
+  shadowNormalBias?: number;
 }
 
 export interface IVisibilityComponent {

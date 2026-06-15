@@ -176,6 +176,8 @@ Entity rules:
   handles are never serialized in portable IR.
 - `MeshRenderer.castShadow` and `MeshRenderer.receiveShadow` are optional
   booleans. When omitted, runtimes use their established mesh/model defaults.
+- `Light.shadowBias` and `Light.shadowNormalBias` are optional finite numbers
+  for directional, point, and spot light shadow tuning.
 
 Resource rules:
 

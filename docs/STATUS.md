@@ -196,6 +196,15 @@ false values to `NotShadowCaster` / `NotShadowReceiver`, and conformance
 reports preserve the authored mesh-renderer shadow metadata. Shadow filtering,
 point-light shadow parity, and broader visual shadow proof remain future work.
 
+Post-V7 light shadow-bias coverage now promotes optional `shadowBias` and
+`shadowNormalBias` on directional, point, and spot lights. SDK validation
+requires finite bias values, compiler emission preserves them on `Light`, IR
+validation rejects non-finite values, bundle manifests declare
+`rendering:light.shadow-bias`, web maps them to Three.js `LightShadow` bias
+fields, Bevy maps them to light `shadow_depth_bias` /
+`shadow_normal_bias`, and web/native conformance reports preserve authored and
+runtime-applied bias values.
+
 V5-07 has landed the lighting, atmosphere, shadow, and color parity-evidence
 slice: shared fixtures now cover visible/hidden meshes plus ranged point and
 spot lights, SDK/compiler output preserves point-light range and spot-light

@@ -188,23 +188,37 @@ function mapEntity(
 
   const light = entity.components.Light;
   if (light?.kind === "directional") {
-    return new THREE.DirectionalLight(colorToThree(light.color), light.intensity);
+    const mapped = new THREE.DirectionalLight(colorToThree(light.color), light.intensity);
+    applyLightShadowBias(mapped, light);
+    return mapped;
   }
   if (light?.kind === "ambient") {
     return new THREE.AmbientLight(colorToThree(light.color), light.intensity);
   }
   if (light?.kind === "point") {
-    return new THREE.PointLight(colorToThree(light.color), light.intensity, light.range ?? 0);
+    const mapped = new THREE.PointLight(colorToThree(light.color), light.intensity, light.range ?? 0);
+    applyLightShadowBias(mapped, light);
+    return mapped;
   }
   if (light?.kind === "spot") {
     const spot = new THREE.SpotLight(colorToThree(light.color), light.intensity, light.range ?? 0);
     if (light.angle !== undefined) {
       spot.angle = light.angle;
     }
+    applyLightShadowBias(spot, light);
     return spot;
   }
 
   return new THREE.Object3D();
+}
+
+function applyLightShadowBias(light: THREE.Light & { shadow: THREE.LightShadow }, source: NonNullable<IWorldEntity["components"]["Light"]>): void {
+  if (source.shadowBias !== undefined) {
+    light.shadow.bias = source.shadowBias;
+  }
+  if (source.shadowNormalBias !== undefined) {
+    light.shadow.normalBias = source.shadowNormalBias;
+  }
 }
 
 function attachLoadedModel(object: THREE.Object3D, asset: Extract<IAssetIr, { kind: "model" }>, gltf: IGltfModel, shadowSettings: IShadowSettings): void {

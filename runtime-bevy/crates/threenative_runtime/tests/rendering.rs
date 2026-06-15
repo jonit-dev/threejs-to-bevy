@@ -287,6 +287,8 @@ fn assert_directional_light(world: &mut World, id: &str) {
     assert!((color.red - 1.0).abs() < 0.01);
     assert!((color.green - 0xcc as f32 / 255.0).abs() < 0.01);
     assert!((color.blue - 0x88 as f32 / 255.0).abs() < 0.01);
+    assert!((light.shadow_depth_bias - 0.001).abs() < 0.0001);
+    assert!((light.shadow_normal_bias - 0.03).abs() < 0.0001);
 }
 
 fn entity_for_id(world: &mut World, id: &str) -> Entity {
@@ -306,6 +308,8 @@ fn assert_point_light(world: &mut World, id: &str) {
 
     assert!((light.intensity - (2.0 * std::f32::consts::TAU * 2.0)).abs() < 0.01);
     assert!((light.range - 12.0).abs() < 0.01);
+    assert!((light.shadow_depth_bias - 0.002).abs() < 0.0001);
+    assert!((light.shadow_normal_bias - 0.04).abs() < 0.0001);
 }
 
 fn assert_spot_light(world: &mut World, id: &str) {
@@ -318,6 +322,8 @@ fn assert_spot_light(world: &mut World, id: &str) {
     assert!((light.intensity - (3.0 * std::f32::consts::TAU * 2.0)).abs() < 0.01);
     assert!((light.range - 16.0).abs() < 0.01);
     assert!((light.outer_angle - 0.65).abs() < 0.01);
+    assert!((light.shadow_depth_bias - 0.003).abs() < 0.0001);
+    assert!((light.shadow_normal_bias - 0.05).abs() < 0.0001);
 }
 
 fn assert_transform(world: &mut World, id: &str, translation: [f32; 3], scale: [f32; 3]) {
@@ -489,9 +495,9 @@ fn write_rendering_bundle() -> PathBuf {
   "version": "0.1.0",
   "entities": [
     { "id": "camera.ui", "components": { "Camera": { "kind": "orthographic", "near": 0.1, "far": 100, "size": 4 } } },
-    { "id": "light.sun", "components": { "Light": { "kind": "directional", "color": "#ffcc88", "intensity": 2 } } },
-    { "id": "light.point", "components": { "Light": { "kind": "point", "color": "#ffffff", "intensity": 2, "range": 12 } } },
-    { "id": "light.spot", "components": { "Light": { "kind": "spot", "color": "#ffffff", "intensity": 3, "range": 16, "angle": 0.65 } } },
+    { "id": "light.sun", "components": { "Light": { "kind": "directional", "color": "#ffcc88", "intensity": 2, "shadowBias": 0.001, "shadowNormalBias": 0.03 } } },
+    { "id": "light.point", "components": { "Light": { "kind": "point", "color": "#ffffff", "intensity": 2, "range": 12, "shadowBias": 0.002, "shadowNormalBias": 0.04 } } },
+    { "id": "light.spot", "components": { "Light": { "kind": "spot", "color": "#ffffff", "intensity": 3, "range": 16, "angle": 0.65, "shadowBias": 0.003, "shadowNormalBias": 0.05 } } },
     {
       "id": "cube.visible",
       "components": {

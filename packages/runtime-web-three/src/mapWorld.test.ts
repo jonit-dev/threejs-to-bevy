@@ -52,11 +52,11 @@ test("mapWorld should map v2 render fixture", () => {
         },
         {
           id: "light.point",
-          components: { Light: { kind: "point", color: "#ffffff", intensity: 2, range: 12 } },
+          components: { Light: { kind: "point", color: "#ffffff", intensity: 2, range: 12, shadowBias: 0.001, shadowNormalBias: 0.03 } },
         },
         {
           id: "light.spot",
-          components: { Light: { kind: "spot", color: "#ffffff", intensity: 3, range: 16, angle: 0.65 } },
+          components: { Light: { kind: "spot", color: "#ffffff", intensity: 3, range: 16, angle: 0.65, shadowBias: 0.002, shadowNormalBias: 0.04 } },
         },
         {
           id: "capsule.hidden",
@@ -81,8 +81,12 @@ test("mapWorld should map v2 render fixture", () => {
   assert.equal(mapped.objectsById.get("light.point") instanceof THREE.PointLight, true);
   assert.equal(mapped.objectsById.get("light.spot") instanceof THREE.SpotLight, true);
   assert.equal((mapped.objectsById.get("light.point") as THREE.PointLight).distance, 12);
+  assert.equal((mapped.objectsById.get("light.point") as THREE.PointLight).shadow.bias, 0.001);
+  assert.equal((mapped.objectsById.get("light.point") as THREE.PointLight).shadow.normalBias, 0.03);
   assert.equal((mapped.objectsById.get("light.spot") as THREE.SpotLight).distance, 16);
   assert.equal((mapped.objectsById.get("light.spot") as THREE.SpotLight).angle, 0.65);
+  assert.equal((mapped.objectsById.get("light.spot") as THREE.SpotLight).shadow.bias, 0.002);
+  assert.equal((mapped.objectsById.get("light.spot") as THREE.SpotLight).shadow.normalBias, 0.04);
   assert.equal(mapped.objectsById.get("capsule.hidden")?.visible, false);
   assert.equal(mapped.objectsById.get("cylinder.main") instanceof THREE.Mesh, true);
 });

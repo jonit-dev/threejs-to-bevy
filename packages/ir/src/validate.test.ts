@@ -390,6 +390,38 @@ test("should reject invalid mesh renderer shadow flags", async () => {
   }
 });
 
+test("should reject invalid light shadow bias values", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-light-shadow-bias-invalid-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "world.ir.json", {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [
+        {
+          id: "sun",
+          components: {
+            Light: { color: "#ffffff", intensity: 1, kind: "directional", shadowBias: "low", shadowNormalBias: Number.POSITIVE_INFINITY },
+          },
+        },
+      ],
+      resources: {},
+      events: {},
+      prefabs: [],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.code), [
+      "TN_IR_LIGHT_SHADOW_BIAS_INVALID",
+      "TN_IR_LIGHT_SHADOW_BIAS_INVALID",
+    ]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should accept material alpha metadata", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-material-alpha-valid-"));
   try {

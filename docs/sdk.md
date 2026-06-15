@@ -310,6 +310,9 @@ Supported:
 - `PointLight`
 - `SpotLight`
 
+Directional, point, and spot lights accept optional finite `shadowBias` and
+`shadowNormalBias` controls for portable shadow acne/peter-panning tuning.
+
 Deferred:
 
 - Multiple render passes.

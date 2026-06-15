@@ -122,6 +122,8 @@ function reportEntity(
       intensity: entity.components.Light.intensity,
       kind: entity.components.Light.kind,
       range: entity.components.Light.range,
+      shadowBias: entity.components.Light.shadowBias,
+      shadowNormalBias: entity.components.Light.shadowNormalBias,
       runtime: object === undefined ? undefined : reportRuntimeLight(object),
     };
   }
@@ -158,7 +160,7 @@ function reportRuntimeCamera(object: THREE.Object3D): NonNullable<NonNullable<IC
 
 function reportRuntimeLight(object: THREE.Object3D): IRuntimeLightReport | undefined {
   if (object instanceof THREE.DirectionalLight) {
-    return { color: `#${object.color.getHexString()}`, intensity: object.intensity, kind: "directional" };
+    return { color: `#${object.color.getHexString()}`, intensity: object.intensity, kind: "directional", shadowBias: object.shadow.bias, shadowNormalBias: object.shadow.normalBias };
   }
   if (object instanceof THREE.AmbientLight) {
     return undefined;
@@ -169,6 +171,8 @@ function reportRuntimeLight(object: THREE.Object3D): IRuntimeLightReport | undef
       intensity: object.intensity,
       kind: "point",
       range: object.distance,
+      shadowBias: object.shadow.bias,
+      shadowNormalBias: object.shadow.normalBias,
     };
   }
   if (object instanceof THREE.SpotLight) {
@@ -178,6 +182,8 @@ function reportRuntimeLight(object: THREE.Object3D): IRuntimeLightReport | undef
       intensity: object.intensity,
       kind: "spot",
       range: object.distance,
+      shadowBias: object.shadow.bias,
+      shadowNormalBias: object.shadow.normalBias,
     };
   }
   return undefined;

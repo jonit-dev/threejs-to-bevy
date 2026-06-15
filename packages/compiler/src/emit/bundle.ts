@@ -312,6 +312,9 @@ function collectWorldCapabilities(world: IWorldIr | undefined, add: (domain: str
       if (entity.components.Light.range !== undefined) {
         add("rendering", "light.range");
       }
+      if (entity.components.Light.shadowBias !== undefined || entity.components.Light.shadowNormalBias !== undefined) {
+        add("rendering", "light.shadow-bias");
+      }
     }
     if (entity.components.RigidBody !== undefined) {
       add("physics", `rigid-body.${entity.components.RigidBody.kind}`);

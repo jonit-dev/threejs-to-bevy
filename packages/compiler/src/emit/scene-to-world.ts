@@ -48,6 +48,8 @@ interface IObjectLike {
   receiveShadow?: boolean;
   rotation: { toArray(): [number, number, number] };
   scale: { toArray(): [number, number, number] };
+  shadowBias?: number;
+  shadowNormalBias?: number;
   visible?: boolean;
   constructor: { name: string };
 }
@@ -171,6 +173,7 @@ function visitChildren(
         kind: "directional",
         color: "color" in child ? child.color : "#ffffff",
         intensity: "intensity" in child ? child.intensity : 1,
+        ...emitLightShadowBias(child),
       };
     }
 
@@ -188,6 +191,7 @@ function visitChildren(
         color: "color" in child ? child.color : "#ffffff",
         intensity: "intensity" in child ? child.intensity : 1,
         ...("range" in child && child.range !== undefined ? { range: child.range } : {}),
+        ...emitLightShadowBias(child),
       };
     }
 
@@ -198,6 +202,7 @@ function visitChildren(
         intensity: "intensity" in child ? child.intensity : 1,
         ...("angle" in child && child.angle !== undefined ? { angle: child.angle } : {}),
         ...("range" in child && child.range !== undefined ? { range: child.range } : {}),
+        ...emitLightShadowBias(child),
       };
     }
 
@@ -249,6 +254,13 @@ function geometrySize(geometry: NonNullable<IObjectLike["geometry"]>): readonly 
     return undefined;
   }
   return geometry.height === undefined ? [geometry.radius] : [geometry.radius, geometry.height];
+}
+
+function emitLightShadowBias(light: IObjectLike): Record<string, number> {
+  return {
+    ...(light.shadowBias === undefined ? {} : { shadowBias: light.shadowBias }),
+    ...(light.shadowNormalBias === undefined ? {} : { shadowNormalBias: light.shadowNormalBias }),
+  };
 }
 
 function emitTextureSlots(

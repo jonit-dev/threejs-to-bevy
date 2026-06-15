@@ -4,6 +4,7 @@ import {
   AnnulusGeometry,
   ConicalFrustumGeometry,
   CustomMeshGeometry,
+  DirectionalLight,
   ExtrudedRectangleGeometry,
   Mesh,
   MeshStandardMaterial,
@@ -153,5 +154,21 @@ test("should emit mesh shadow controls", () => {
     material: "mat.decor",
     mesh: "mesh.decor",
     receiveShadow: true,
+  });
+});
+
+test("should emit light shadow bias controls", () => {
+  const scene = new Scene({ id: "scene" });
+  scene.add(new DirectionalLight({ id: "sun", shadowBias: -0.0005, shadowNormalBias: 0.02 }));
+
+  const result = sceneToWorld(scene);
+  const entity = result.world.entities.find((item) => item.id === "sun");
+
+  assert.deepEqual(entity?.components.Light, {
+    color: "#ffffff",
+    intensity: 1,
+    kind: "directional",
+    shadowBias: -0.0005,
+    shadowNormalBias: 0.02,
   });
 });

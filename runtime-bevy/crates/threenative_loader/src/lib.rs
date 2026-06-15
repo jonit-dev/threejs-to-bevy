@@ -162,6 +162,10 @@ pub struct LightComponent {
     pub intensity: f32,
     pub range: Option<f32>,
     pub angle: Option<f32>,
+    #[serde(rename = "shadowBias")]
+    pub shadow_bias: Option<f32>,
+    #[serde(rename = "shadowNormalBias")]
+    pub shadow_normal_bias: Option<f32>,
 }
 
 #[derive(Debug, Deserialize)]

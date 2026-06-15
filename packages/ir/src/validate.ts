@@ -2360,6 +2360,22 @@ function validateRenderComponents(entity: IWorldIr["entities"][number], path: st
     }
   }
 
+  const light = entity.components.Light;
+  if (light !== undefined) {
+    for (const key of ["shadowBias", "shadowNormalBias"] as const) {
+      const value = light[key];
+      if (value !== undefined && (typeof value !== "number" || !Number.isFinite(value))) {
+        diagnostics.push({
+          code: "TN_IR_LIGHT_SHADOW_BIAS_INVALID",
+          message: `Light ${key} for '${entity.id}' must be a finite number.`,
+          path: `${path}/components/Light/${key}`,
+          severity: "error",
+          suggestion: "Use finite portable shadow bias values or omit the field to use runtime defaults.",
+        });
+      }
+    }
+  }
+
   const renderer = entity.components.MeshRenderer;
   if (renderer?.castShadow !== undefined && typeof renderer.castShadow !== "boolean") {
     diagnostics.push({

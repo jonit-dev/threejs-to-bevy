@@ -120,12 +120,16 @@ export interface IConformanceEntityReport {
     intensity: number;
     kind: string;
     range?: number;
+    shadowBias?: number;
+    shadowNormalBias?: number;
     runtime?: {
       angle?: number;
       color?: string | readonly [number, number, number];
       intensity?: number;
       kind: string;
       range?: number;
+      shadowBias?: number;
+      shadowNormalBias?: number;
     };
   };
   material?: string;

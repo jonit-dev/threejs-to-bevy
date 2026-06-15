@@ -302,6 +302,10 @@ pub struct LightReport {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub range: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub shadow_bias: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub shadow_normal_bias: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub runtime: Option<RuntimeLightReport>,
 }
 
@@ -316,6 +320,10 @@ pub struct RuntimeLightReport {
     pub kind: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub range: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub shadow_bias: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub shadow_normal_bias: Option<f32>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -594,6 +602,8 @@ fn runtime_light(
             intensity: Some(light.illuminance / 2_000.0),
             kind: "directional".to_owned(),
             range: None,
+            shadow_bias: Some(light.shadow_depth_bias),
+            shadow_normal_bias: Some(light.shadow_normal_bias),
         });
     }
     if let Some(light) = point {
@@ -603,6 +613,8 @@ fn runtime_light(
             intensity: Some(light.intensity / 800.0),
             kind: "point".to_owned(),
             range: Some(light.range),
+            shadow_bias: Some(light.shadow_depth_bias),
+            shadow_normal_bias: Some(light.shadow_normal_bias),
         });
     }
     spot.map(|light| RuntimeLightReport {
@@ -611,6 +623,8 @@ fn runtime_light(
         intensity: Some(light.intensity / 800.0),
         kind: "spot".to_owned(),
         range: Some(light.range),
+        shadow_bias: Some(light.shadow_depth_bias),
+        shadow_normal_bias: Some(light.shadow_normal_bias),
     })
 }
 
@@ -749,6 +763,8 @@ fn report_entity(
             intensity: light.intensity,
             kind: light.kind.clone(),
             range: light.range,
+            shadow_bias: light.shadow_bias,
+            shadow_normal_bias: light.shadow_normal_bias,
             runtime: runtime.and_then(|runtime| runtime.light.clone()),
         }),
         material: entity
