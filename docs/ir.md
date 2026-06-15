@@ -503,8 +503,9 @@ Rules:
 - `commands` declares allowed structural mutation kinds and referenced
   component/event names.
 - `eventReads` and `eventWrites` must reference known event schemas.
-- `services` is limited to V4-approved service IDs such as `physics.raycast`
-  and `animation.play`.
+- `services` is limited to approved service IDs such as `physics.raycast`,
+  `physics.overlap`, `physics.shapeCast`, `picking.mesh`, and
+  `animation.play`.
 - System names are stable diagnostics and scheduling identifiers.
 
 The IR references system code by export name. It does not inline arbitrary function bodies into JSON.

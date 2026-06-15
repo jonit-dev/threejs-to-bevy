@@ -134,6 +134,7 @@ function diagnoseDeclaredAccess(source: IPortableSystemSource): ICompilerDiagnos
     ...uniqueMatches(source.source, /\bphysics\.overlap\s*\(/g).map(() => "physics.overlap"),
     ...uniqueMatches(source.source, /\bphysics\.raycast\s*\(/g).map(() => "physics.raycast"),
     ...uniqueMatches(source.source, /\bphysics\.shapeCast\s*\(/g).map(() => "physics.shapeCast"),
+    ...uniqueMatches(source.source, /\bpicking\.mesh\s*\(/g).map(() => "picking.mesh"),
     ...uniqueMatches(source.source, /\banimation\.play\s*\(/g).map(() => "animation.play"),
   ]) {
     if (!services.has(service)) {

@@ -4,7 +4,7 @@ import type { IQueryDeclaration } from "./query.js";
 import type { EcsFactory, IEcsSchema } from "./schema.js";
 
 export type SystemSchedule = "fixedUpdate" | "postUpdate" | "startup" | "update";
-export type SystemService = "animation.play" | "physics.overlap" | "physics.raycast" | "physics.shapeCast";
+export type SystemService = "animation.play" | "physics.overlap" | "physics.raycast" | "physics.shapeCast" | "picking.mesh";
 export type PortableSystem<TContext = ISystemContext> = (context: TContext) => unknown;
 
 export interface ISystemOptions {
@@ -103,6 +103,22 @@ export interface ISystemContext {
       maxDistance: number;
       origin: [number, number, number];
       shape: { halfExtents: [number, number, number]; kind: "box" } | { kind: "sphere"; radius: number };
+    }):
+      | { hit: false }
+      | {
+          distance: number;
+          entity: string;
+          hit: true;
+          normal: [number, number, number];
+          point: [number, number, number];
+        };
+  };
+  picking: {
+    mesh(options: {
+      direction: [number, number, number];
+      ignore?: string[];
+      maxDistance: number;
+      origin: [number, number, number];
     }):
       | { hit: false }
       | {

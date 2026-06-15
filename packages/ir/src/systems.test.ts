@@ -78,13 +78,13 @@ test("should accept built-in transform system access without custom schema", asy
   }
 });
 
-test("should accept v7 physics query services", async () => {
+test("should accept v7 physics and picking query services", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-v7-services-"));
   try {
     await writeBundle(root, {
       commands: [],
       reads: ["Transform"],
-      services: ["physics.overlap", "physics.raycast", "physics.shapeCast"],
+      services: ["physics.overlap", "physics.raycast", "physics.shapeCast", "picking.mesh"],
       writes: ["Transform"],
     });
 

@@ -65,6 +65,29 @@ fn systems_host_should_apply_declared_resource_write() {
 }
 
 #[test]
+fn systems_host_should_expose_mesh_picking_service() {
+    let root = write_picking_bundle("picking-context");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+
+    let run = run_native_systems_once(&mut bundle, time()).expect("system should run");
+
+    assert_eq!(
+        bundle.world.resources.get("PickReport"),
+        Some(&serde_json::json!({ "entity": "crate", "hit": true }))
+    );
+    let service_entry = run.logs[0]
+        .entries
+        .iter()
+        .find(|entry| entry.kind == "service")
+        .expect("picking service call should be logged");
+    assert_eq!(service_entry.kind, "service");
+    assert_eq!(
+        service_entry.service.as_deref(),
+        Some("picking.mesh")
+    );
+}
+
+#[test]
 fn systems_host_should_run_startup_before_update() {
     let root = write_startup_bundle("startup-order");
     let mut bundle = load_bundle(&root).expect("scripted bundle should load");
@@ -295,6 +318,74 @@ fn write_resource_bundle(name: &str) -> PathBuf {
 };
 export const systemIds = Object.freeze({ "system_score": "score" });
 export const systems = Object.freeze({ "system_score": system_score });
+"#,
+    )
+    .expect("script bundle should be written");
+    root
+}
+
+fn write_picking_bundle(name: &str) -> PathBuf {
+    let root = root(name);
+    write_base_bundle(&root, true);
+    write_json(
+        &root,
+        "assets.manifest.json",
+        r#"{"schema":"threenative.assets","version":"0.1.0","assets":[
+  { "id": "mesh.crate", "kind": "mesh", "format": "generated", "primitive": "box", "size": [1, 1, 1] }
+]}"#,
+    );
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "crate",
+      "components": {
+        "Transform": { "position": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "MeshRenderer": { "mesh": "mesh.crate", "material": "mat.crate" }
+      }
+    }
+  ],
+  "resources": {
+    "PickReport": { "hit": false }
+  }
+}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "pick",
+      "schedule": "update",
+      "reads": ["Transform", "MeshRenderer"],
+      "writes": [],
+      "queries": [{ "with": ["Transform", "MeshRenderer"], "without": [] }],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": [],
+      "resourceWrites": ["PickReport"],
+      "services": ["picking.mesh"],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_pick" }
+    }
+  ]
+}"#,
+    );
+    fs::write(
+        root.join("scripts.bundle.js"),
+        r#"const system_pick = (ctx) => {
+  const result = ctx.picking.mesh({ origin: [0, 0, 2], direction: [0, 0, -1], maxDistance: 10 });
+  ctx.resources.set("PickReport", { hit: result.hit, entity: result.hit ? result.entity : null });
+};
+export const systemIds = Object.freeze({ "system_pick": "pick" });
+export const systems = Object.freeze({ "system_pick": system_pick });
 "#,
     )
     .expect("script bundle should be written");

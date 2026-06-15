@@ -82,6 +82,31 @@ test("should log v7 physics query service calls", () => {
   });
 });
 
+test("should log mesh picking service call", () => {
+  const { context, services } = createSystemContext(makeWorld(), { assets: makeAssets(), delta: 0.016, fixedDelta: 0.016 });
+
+  const result = context.picking.mesh({
+    direction: [0, 0, -1],
+    maxDistance: 10,
+    origin: [0, 0, 2],
+  });
+
+  assert.deepEqual(result, {
+    distance: 1.5,
+    entity: "crate",
+    hit: true,
+    normal: [0, 0, 1],
+    point: [0, 0, 0.5],
+  });
+  assert.deepEqual(services[0], {
+    payload: {
+      request: { direction: [0, 0, -1], maxDistance: 10, origin: [0, 0, 2] },
+      result,
+    },
+    service: "picking.mesh",
+  });
+});
+
 test("should log animation play service call", () => {
   const { context, services } = createSystemContext(makeWorld(), { delta: 0.016, fixedDelta: 0.016 });
 
@@ -302,8 +327,25 @@ function makeWorld(): IWorldIr {
         },
         id: "player",
       },
+      {
+        components: {
+          MeshRenderer: { material: "mat.crate", mesh: "mesh.crate" },
+          Transform: { position: [0, 0, 0] },
+        },
+        id: "crate",
+      },
     ],
     schema: "threenative.world",
     version: "0.1.0",
+  };
+}
+
+function makeAssets() {
+  return {
+    assets: [
+      { format: "generated" as const, id: "mesh.crate", kind: "mesh" as const, primitive: "box" as const, size: [1, 1, 1] },
+    ],
+    schema: "threenative.assets" as const,
+    version: "0.1.0" as const,
   };
 }

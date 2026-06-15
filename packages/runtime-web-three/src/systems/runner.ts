@@ -1,4 +1,4 @@
-import type { IBundleManifest, IIrSchemaFile, IIrSystemDeclaration, IRuntimeDiagnostic, IrSystemSchedule, ISystemsIr, IWorldIr } from "@threenative/ir";
+import type { IAssetsManifest, IBundleManifest, IIrSchemaFile, IIrSystemDeclaration, IRuntimeDiagnostic, IrSystemSchedule, ISystemsIr, IWorldIr } from "@threenative/ir";
 import type { IWebInputState } from "../input.js";
 
 import { createSystemContext } from "./context.js";
@@ -36,6 +36,7 @@ export async function loadSystemModule(source: string, manifest: IBundleManifest
 }
 
 export async function runSchedule(options: {
+  assets?: IAssetsManifest;
   delta?: number;
   effectLog?: ISystemEffectLog;
   frame?: number;
@@ -64,6 +65,7 @@ export async function runSchedule(options: {
 async function runSystem(
   system: IIrSystemDeclaration,
   options: {
+    assets?: IAssetsManifest;
     delta?: number;
     elapsed?: number;
     componentSchemas?: IIrSchemaFile;
@@ -83,6 +85,7 @@ async function runSystem(
   }
   const fn = readSystemFunction(options.module, system.script.exportName);
   const { commands, context, events, resources, services } = createSystemContext(options.world, {
+    assets: options.assets,
     defaultQuery: system.queries[0],
     componentSchemas: options.componentSchemas,
     delta: options.delta ?? 0,

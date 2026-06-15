@@ -1,4 +1,4 @@
-import type { IIrSchemaFile, IRuntimeConfigIr, ISystemsIr, IWorldIr } from "@threenative/ir";
+import type { IAssetsManifest, IIrSchemaFile, IRuntimeConfigIr, ISystemsIr, IWorldIr } from "@threenative/ir";
 import type { IWebInputState } from "./input.js";
 import type { IThreeWorld } from "./mapWorld.js";
 import { syncTransforms } from "./mapWorld.js";
@@ -31,6 +31,7 @@ export function setPaused(state: IGameLoopState, paused: boolean): void {
 }
 
 export async function runGameFrame(options: {
+  assets?: IAssetsManifest;
   delta: number;
   componentSchemas?: IIrSchemaFile;
   effectLog?: ISystemEffectLog;

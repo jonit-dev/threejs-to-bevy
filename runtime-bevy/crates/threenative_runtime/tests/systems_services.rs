@@ -10,7 +10,7 @@ use threenative_runtime::{
     systems_services::{
         NativeOverlapRequest, NativeQueryShape, NativeRaycastHit, NativeRaycastRequest,
         NativeRaycastResult, NativeShapeCastRequest, animation_play_payload, overlap_primitive,
-        raycast_primitive, shape_cast_primitive,
+        pick_mesh, raycast_primitive, shape_cast_primitive,
     },
 };
 
@@ -126,6 +126,42 @@ fn systems_services_should_shape_cast_primitive_collider() {
 }
 
 #[test]
+fn systems_services_should_pick_mesh_renderer_bounds() {
+    let root = write_bundle("pick-mesh");
+    let bundle = load_bundle(&root).expect("bundle should load");
+    let system = &bundle
+        .systems
+        .as_ref()
+        .expect("systems should load")
+        .systems[0];
+    let snapshot = build_system_context_snapshot(&bundle, system, time());
+
+    let result = pick_mesh(
+        &snapshot,
+        &NativeRaycastRequest {
+            direction: [0.0, 0.0, -1.0],
+            ignore: Vec::new(),
+            layer: None,
+            layers: Vec::new(),
+            mask: Vec::new(),
+            max_distance: 10.0,
+            origin: [0.0, 0.0, 2.0],
+        },
+    );
+
+    assert_eq!(
+        result,
+        NativeRaycastResult::Hit(NativeRaycastHit {
+            distance: 1.5,
+            entity: "crate".to_owned(),
+            hit: true,
+            normal: [0.0, 0.0, 1.0],
+            point: [0.0, 0.0, 0.5],
+        })
+    );
+}
+
+#[test]
 fn systems_services_should_log_animation_play_service_call() {
     assert_eq!(
         animation_play_payload("player", "run", json!({ "loop": true })),
@@ -170,6 +206,13 @@ fn write_bundle(name: &str) -> PathBuf {
         "Transform": { "position": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
         "Collider": { "kind": "box", "layer": "world", "mask": ["player"], "size": [8, 0.1, 8] }
       }
+    },
+    {
+      "id": "crate",
+      "components": {
+        "Transform": { "position": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "MeshRenderer": { "mesh": "mesh.crate", "material": "mat.crate" }
+      }
     }
   ]
 }"#,
@@ -184,13 +227,13 @@ fn write_bundle(name: &str) -> PathBuf {
     {
       "name": "raycast",
       "schedule": "fixedUpdate",
-      "reads": ["Transform", "Collider"],
+      "reads": ["Transform", "Collider", "MeshRenderer"],
       "writes": [],
       "queries": [{ "with": ["Transform"], "without": [] }],
       "commands": [],
       "eventReads": [],
       "eventWrites": [],
-      "services": ["physics.overlap", "physics.raycast", "physics.shapeCast"],
+      "services": ["physics.overlap", "physics.raycast", "physics.shapeCast", "picking.mesh"],
       "script": { "bundle": "scripts.bundle.js", "exportName": "system_raycast" }
     }
   ]
@@ -209,7 +252,9 @@ fn write_common(root: &Path) {
     write_json(
         root,
         "assets.manifest.json",
-        r#"{"schema":"threenative.assets","version":"0.1.0","assets":[]}"#,
+        r#"{"schema":"threenative.assets","version":"0.1.0","assets":[
+  { "id": "mesh.crate", "kind": "mesh", "format": "generated", "primitive": "box", "size": [1, 1, 1] }
+]}"#,
     );
     write_json(
         root,

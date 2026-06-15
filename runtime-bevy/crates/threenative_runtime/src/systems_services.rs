@@ -84,6 +84,8 @@ pub struct NativeRaycastHit {
 }
 
 pub type NativeShapeCastResult = NativeRaycastResult;
+pub type NativePickMeshRequest = NativeRaycastRequest;
+pub type NativePickMeshResult = NativeRaycastResult;
 
 pub fn raycast_primitive(
     snapshot: &NativeSystemContextSnapshot,
@@ -213,6 +215,69 @@ pub fn shape_cast_primitive(
             size[2] + query_extents[2] * 2.0,
         ];
         let Some(hit) = intersect_aabb(&ray_request, center, expanded_size) else {
+            continue;
+        };
+        if best
+            .as_ref()
+            .map(|(existing_entity, existing)| {
+                hit.distance < existing.distance
+                    || (hit.distance == existing.distance && entity.id < *existing_entity)
+            })
+            .unwrap_or(true)
+        {
+            best = Some((entity.id.clone(), hit));
+        }
+    }
+
+    match best {
+        Some((entity, hit)) => NativeRaycastResult::Hit(NativeRaycastHit {
+            distance: hit.distance,
+            entity,
+            hit: true,
+            normal: hit.normal,
+            point: hit.point,
+        }),
+        None => NativeRaycastResult::Miss(NativeRaycastMiss { hit: false }),
+    }
+}
+
+pub fn pick_mesh(
+    snapshot: &NativeSystemContextSnapshot,
+    request: &NativePickMeshRequest,
+) -> NativePickMeshResult {
+    let mut best: Option<(String, RayHit)> = None;
+    for entity in &snapshot.entities {
+        if request.ignore.iter().any(|ignored| ignored == &entity.id) {
+            continue;
+        }
+        let Some(bounds) = snapshot.mesh_bounds.get(&entity.id) else {
+            continue;
+        };
+        let Some(transform) = entity
+            .components
+            .get("Transform")
+            .and_then(Value::as_object)
+        else {
+            continue;
+        };
+        let position = read_vec3(transform.get("position"), [0.0, 0.0, 0.0]);
+        let scale = read_vec3(transform.get("scale"), [1.0, 1.0, 1.0]);
+        let local_center = [
+            (bounds.min[0] + bounds.max[0]) / 2.0,
+            (bounds.min[1] + bounds.max[1]) / 2.0,
+            (bounds.min[2] + bounds.max[2]) / 2.0,
+        ];
+        let center = [
+            position[0] + local_center[0] * scale[0],
+            position[1] + local_center[1] * scale[1],
+            position[2] + local_center[2] * scale[2],
+        ];
+        let size = [
+            ((bounds.max[0] - bounds.min[0]) * scale[0]).abs(),
+            ((bounds.max[1] - bounds.min[1]) * scale[1]).abs(),
+            ((bounds.max[2] - bounds.min[2]) * scale[2]).abs(),
+        ];
+        let Some(hit) = intersect_aabb(request, center, size) else {
             continue;
         };
         if best

@@ -73,6 +73,7 @@ direction until promoted by a PRD.
 | `ctx.commands.removeComponent(id, Component)` | Remove marker/data component. | Clear `Activated` or `Disabled`. |
 | `ctx.animation.play(entity, clip, options)` | Prove engine service command shape. | Start a simple named transform animation or mocked clip command. |
 | `ctx.physics.raycast(options)` | Prove host query service shape. | Raycast from a cube to a primitive floor or target. |
+| `ctx.picking.mesh(options)` | Query generated mesh renderer bounds without exposing renderer handles. | Pick a mesh entity from a ray and log the service result. |
 
 V4 narrowly implements `ctx.animation` and `ctx.physics` as service-shape proof
 points. The proof logs service calls and validates host response shape, but it
@@ -359,6 +360,9 @@ Rules:
 - V7 query permissions add `physics.overlap` and `physics.shapeCast` for
   backend-neutral overlap and swept-shape checks. Query filters use portable
   layer names and masks, not backend bitsets or handles.
+- Mesh picking uses the `picking.mesh` service permission and intersects rays
+  with generated mesh renderer bounds. It does not expose Three.js or Bevy
+  renderer handles.
 - Body mutation APIs lower to commands or component patches.
 - Backend-specific concepts such as Rapier handles or Bevy components are not
   script-visible.
@@ -482,6 +486,7 @@ execution source of truth. Native QuickJS hosting is an implementation detail:
 
 ```txt
 ctx.physics.raycast(...)
+ctx.picking.mesh(...)
   web: call JavaScript runtime service
   native: QuickJS calls host function, Rust executes service, JS receives plain object
 ```

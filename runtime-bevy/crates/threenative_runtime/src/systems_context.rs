@@ -7,6 +7,7 @@ use threenative_loader::{
 };
 
 use crate::input::NativeInputState;
+use crate::mesh_bounds::mesh_aabb;
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -17,6 +18,7 @@ pub struct NativeSystemContextSnapshot {
     pub entities: Vec<NativeSystemEntitySnapshot>,
     pub events: BTreeMap<String, Vec<Value>>,
     pub input: NativeSystemInputSnapshot,
+    pub mesh_bounds: BTreeMap<String, NativeMeshBoundsSnapshot>,
     pub observer_routes: BTreeMap<String, BTreeMap<String, Vec<NativeObserverPropagationStep>>>,
     pub plugin_groups: Vec<NativePluginGroupDeclaration>,
     pub plugins: Vec<NativePluginDeclaration>,
@@ -91,6 +93,14 @@ pub struct NativeObserverPropagationStep {
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct NativeMeshBoundsSnapshot {
+    pub max: [f64; 3],
+    pub mesh: String,
+    pub min: [f64; 3],
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NativeSystemTimeSnapshot {
     pub delta: f32,
     pub dt: f32,
@@ -158,6 +168,7 @@ pub fn build_system_context_snapshot_with_events_and_input(
             NativeSystemInputSnapshot::fixed_trace,
             NativeSystemInputSnapshot::from_native_input,
         ),
+        mesh_bounds: mesh_bounds(bundle),
         observer_routes: observer_routes(bundle),
         plugin_groups: plugin_group_declarations(bundle),
         plugins: plugin_declarations(bundle),
@@ -171,6 +182,36 @@ pub fn build_system_context_snapshot_with_events_and_input(
         tasks: task_declarations(bundle),
         time,
     }
+}
+
+pub fn mesh_bounds(bundle: &LoadedBundle) -> BTreeMap<String, NativeMeshBoundsSnapshot> {
+    let assets_by_id = bundle
+        .assets
+        .assets
+        .iter()
+        .map(|asset| (asset.id.as_str(), asset))
+        .collect::<BTreeMap<_, _>>();
+    bundle
+        .world
+        .entities
+        .iter()
+        .filter_map(|entity| {
+            let renderer = entity.components.mesh_renderer.as_ref()?;
+            if renderer.visible == Some(false) {
+                return None;
+            }
+            let asset = assets_by_id.get(renderer.mesh.as_str())?;
+            let bounds = mesh_aabb(asset)?;
+            Some((
+                entity.id.clone(),
+                NativeMeshBoundsSnapshot {
+                    max: bounds.max.map(f64::from),
+                    mesh: renderer.mesh.clone(),
+                    min: bounds.min.map(f64::from),
+                },
+            ))
+        })
+        .collect()
 }
 
 pub fn plugin_declarations(bundle: &LoadedBundle) -> Vec<NativePluginDeclaration> {

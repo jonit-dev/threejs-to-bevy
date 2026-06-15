@@ -411,6 +411,38 @@ function __tnInvokeSystem(options) {
       }
       return best;
     };
+    const pickMesh = (request) => {
+      const ignored = new Set(request.ignore || []);
+      let best = { hit: false };
+      for (const entity of data.entities) {
+        if (ignored.has(entity.id)) continue;
+        const bounds = data.meshBounds[entity.id];
+        const transform = entity.components.Transform;
+        if (!bounds || !transform) continue;
+        const position = readVec3(transform.position, [0, 0, 0]);
+        const scale = readVec3(transform.scale, [1, 1, 1]);
+        const localCenter = [
+          (bounds.min[0] + bounds.max[0]) / 2,
+          (bounds.min[1] + bounds.max[1]) / 2,
+          (bounds.min[2] + bounds.max[2]) / 2
+        ];
+        const center = [
+          position[0] + localCenter[0] * scale[0],
+          position[1] + localCenter[1] * scale[1],
+          position[2] + localCenter[2] * scale[2]
+        ];
+        const size = [
+          Math.abs((bounds.max[0] - bounds.min[0]) * scale[0]),
+          Math.abs((bounds.max[1] - bounds.min[1]) * scale[1]),
+          Math.abs((bounds.max[2] - bounds.min[2]) * scale[2])
+        ];
+        const hit = intersectAabb(request, center, size);
+        if (hit.hit && (!best.hit || hit.distance < best.distance || (hit.distance === best.distance && entity.id < best.entity))) {
+          best = { ...hit, entity: entity.id };
+        }
+      }
+      return best;
+    };
   const entities = data.entities.map((source) => ({
     id: source.id,
     components: clone(source.components),
@@ -552,6 +584,14 @@ function __tnInvokeSystem(options) {
           return result;
         }
       },
+    picking: {
+      mesh(payload) {
+        const request = clone(payload);
+        const result = pickMesh(request);
+        effects.services.push({ service: "picking.mesh", payload: { request, result } });
+        return result;
+      }
+    },
     animation: {
       play(entity, clip, options = {}) {
         effects.services.push({ service: "animation.play", payload: { request: { entity, clip, options: clone(options) }, result: { accepted: true } } });

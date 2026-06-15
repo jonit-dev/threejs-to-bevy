@@ -65,6 +65,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
   resizeRenderer(renderer, mapped.camera, container);
   if (bundle.systems !== undefined) {
     await runGameFrame({
+      assets: bundle.assets,
       componentSchemas: bundle.componentSchemas,
       delta: 1 / 60,
       effectLog,
@@ -88,6 +89,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
       const gameFrame = bundle.systems === undefined
         ? Promise.resolve()
         : runGameFrame({
+            assets: bundle.assets,
             componentSchemas: bundle.componentSchemas,
             delta,
             effectLog,

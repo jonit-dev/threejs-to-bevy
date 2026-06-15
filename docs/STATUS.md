@@ -581,9 +581,13 @@ editor state a source of truth.
 After the initial V8 editor-plumbing slices, functional-game parity work has
 closed the P0 native input-capture gap for keyboard/mouse preview controls. The
 Bevy loader now preserves `axis.value`, the native runtime captures Bevy
-keyboard, mouse-button, pointer-motion, and cursor-position input into
-`NativeInputState`, and live native system snapshots receive captured input
-instead of fixed trace values. Gamepad, touch, picking, rebinding, and richer
+keyboard, mouse-button, pointer-motion, cursor-position, and optional gamepad
+button/axis input into `NativeInputState`, and live native system snapshots
+receive captured input instead of fixed trace values. Web and Bevy runtimes also
+expose touch control/axis state hooks for portable touch bindings. Portable
+scripts can now declare `picking.mesh` and query generated mesh renderer bounds
+through matching web and Bevy service logs. Gamepad viewer diagnostics, touch
+gestures, mouse/screen pointer ray generation, UI picking, rebinding, and richer
 navigation diagnostics remain future input work.
 
 The same functional-game parity pass also closes the P0 native material texture

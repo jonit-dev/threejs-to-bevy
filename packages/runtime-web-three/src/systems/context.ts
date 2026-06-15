@@ -1,7 +1,8 @@
 import { buildComponentReflectionRegistry, type IComponentReflectionRegistry, type IComponentReflectionType } from "@threenative/ir/reflection";
-import type { IIrSchemaFile, IIrStateSource, IIrSystemQuery, ISystemsIr, IWorldEntity, IWorldIr } from "@threenative/ir";
+import type { IAssetsManifest, IIrSchemaFile, IIrStateSource, IIrSystemQuery, ISystemsIr, IWorldEntity, IWorldIr } from "@threenative/ir";
 import type { IWebInputState } from "../input.js";
 import { animationPlayPayload } from "./services/animation.js";
+import { pickMesh, type IPickMeshRequest, type IPickMeshResult } from "./services/picking.js";
 import {
   overlapPrimitive,
   raycastPrimitive,
@@ -82,6 +83,9 @@ export interface ISystemContext {
     raycast(options: IRaycastRequest): IRaycastResult;
     shapeCast(options: IShapeCastRequest): IShapeCastResult;
   };
+  picking: {
+    mesh(options: IPickMeshRequest): IPickMeshResult;
+  };
   time: {
     delta: number;
     dt: number;
@@ -143,12 +147,12 @@ export interface IQueuedResourceWrite {
 
 export interface IQueuedServiceCall {
   payload: unknown;
-  service: "animation.play" | "physics.overlap" | "physics.raycast" | "physics.shapeCast";
+  service: "animation.play" | "physics.overlap" | "physics.raycast" | "physics.shapeCast" | "picking.mesh";
 }
 
 export function createSystemContext(
   world: IWorldIr,
-  options: { componentSchemas?: IIrSchemaFile; defaultQuery?: IIrSystemQuery; delta: number; elapsed?: number; fixedDelta: number; input?: IWebInputState; paused?: boolean; systems?: ISystemsIr },
+  options: { assets?: IAssetsManifest; componentSchemas?: IIrSchemaFile; defaultQuery?: IIrSystemQuery; delta: number; elapsed?: number; fixedDelta: number; input?: IWebInputState; paused?: boolean; systems?: ISystemsIr },
 ): {
   commands: IQueuedCommand[];
   context: ISystemContext;
@@ -302,6 +306,14 @@ export function createSystemContext(
           const request = cloneValue(serviceOptions);
           const result = shapeCastPrimitive(world, request);
           services.push({ payload: { request, result }, service: "physics.shapeCast" });
+          return result;
+        },
+      },
+      picking: {
+        mesh(serviceOptions) {
+          const request = cloneValue(serviceOptions);
+          const result = pickMesh(world, options.assets, request);
+          services.push({ payload: { request, result }, service: "picking.mesh" });
           return result;
         },
       },
