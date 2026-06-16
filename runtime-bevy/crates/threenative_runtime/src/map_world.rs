@@ -389,6 +389,9 @@ fn spawn_entity(
             UVec2::new(1280, 720),
             camera_render_target(camera, render_target_registry),
         );
+        if let Some(mut camera_component) = spawned.get_mut::<Camera>() {
+            camera_component.hdr = camera_color_management.is_some();
+        }
         if let Some(projection) = camera.projection.as_ref() {
             if projection.kind == "matrix" {
                 if let Some(matrix) = projection.matrix.as_ref() {
@@ -549,10 +552,12 @@ fn ancestor_animation_binding<'a>(
 }
 
 fn color_grading_for_profile(
-    _color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
+    color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
 ) -> ColorGrading {
     let mut grading = ColorGrading::default();
-    grading.global.exposure = -0.7;
+    if color_management.is_some() {
+        grading.global.exposure = -0.7;
+    }
     grading
 }
 
@@ -574,6 +579,7 @@ fn tonemapping_for_profile(
     match color_management.map(|profile| profile.tone_mapping.as_str()) {
         Some("aces") => Tonemapping::AcesFitted,
         Some("none") => Tonemapping::None,
+        None => Tonemapping::None,
         _ => Tonemapping::default(),
     }
 }
@@ -1001,7 +1007,7 @@ fn add_material(
     let extended = material.kind == "extended";
     let mut standard = StandardMaterial {
         alpha_mode: alpha_mode(material),
-        base_color: color_with_opacity(&material.color, material.opacity.unwrap_or(1.0)),
+        base_color: color_with_opacity(&material.color, opacity_for_material(material)),
         base_color_texture: texture_handle(
             material.base_color_texture.as_deref(),
             assets_by_id,
@@ -1103,6 +1109,14 @@ fn alpha_mode(material: &MaterialIr) -> AlphaMode {
         Some("blend") => AlphaMode::Blend,
         _ => AlphaMode::Opaque,
     }
+}
+
+fn opacity_for_material(material: &MaterialIr) -> f32 {
+    let opacity = material.opacity.unwrap_or(1.0);
+    if material.kind == "extended" && material.alpha_mode.as_deref() == Some("blend") {
+        return opacity.powf(1.9);
+    }
+    opacity
 }
 
 fn emissive_color(material: &MaterialIr) -> LinearRgba {

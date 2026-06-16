@@ -195,6 +195,24 @@ fn textured_gltf_materials_should_preserve_lit_cutout_rendering() {
 }
 
 #[test]
+fn extended_unlit_textured_materials_should_not_be_normalized() {
+    let mut material = StandardMaterial {
+        base_color: Color::srgb(0.25, 0.75, 0.42),
+        base_color_texture: Some(Handle::default()),
+        unlit: true,
+        alpha_mode: AlphaMode::Mask(0.45),
+        ..Default::default()
+    };
+
+    assert!(!normalize_textured_material(&mut material));
+    let base_color = material.base_color.to_srgba();
+    assert!((base_color.red - 0.25).abs() < 0.01);
+    assert!((base_color.green - 0.75).abs() < 0.01);
+    assert!((base_color.blue - 0.42).abs() < 0.01);
+    assert_eq!(material.alpha_mode, AlphaMode::Mask(0.45));
+}
+
+#[test]
 fn textured_gltf_materials_should_render_cutout_backfaces_for_foliage() {
     let mut material = StandardMaterial {
         base_color_texture: Some(Handle::default()),

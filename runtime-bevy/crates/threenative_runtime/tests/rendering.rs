@@ -49,6 +49,7 @@ fn rendering_should_map_visibility_and_v2_lights() {
         [2.0, 2.0, 2.0],
     );
     assert_material(app.world_mut(), "cube.visible");
+    assert_extended_blend_material(app.world_mut(), "plane.glass");
     assert!(has_component::<NotShadowCaster>(
         app.world_mut(),
         "cube.visible"
@@ -403,6 +404,15 @@ fn assert_material(world: &mut World, id: &str) {
     assert!((material.specular_transmission - 0.45).abs() < 0.01);
 }
 
+fn assert_extended_blend_material(world: &mut World, id: &str) {
+    let material = material_for(world, id);
+    let color = material.base_color.to_srgba();
+
+    assert!(material.unlit);
+    assert_eq!(material.alpha_mode, AlphaMode::Blend);
+    assert!((color.alpha - 0.35_f32.powf(1.9)).abs() < 0.01);
+}
+
 fn material_for(world: &mut World, id: &str) -> StandardMaterial {
     let handle = {
         let mut query = world.query::<(&ThreeNativeId, &Handle<StandardMaterial>)>();
@@ -591,6 +601,13 @@ fn write_rendering_bundle() -> PathBuf {
       }
     },
     {
+      "id": "plane.glass",
+      "components": {
+        "MeshRenderer": { "mesh": "mesh.cube", "material": "mat.extendedBlend", "visible": true },
+        "Transform": { "position": [0, 0, 0], "scale": [1, 1, 1] }
+      }
+    },
+    {
       "id": "capsule.hidden",
       "components": {
         "MeshRenderer": { "mesh": "mesh.capsule", "material": "mat.main", "visible": false },
@@ -663,6 +680,13 @@ fn write_rendering_bundle() -> PathBuf {
     "metalness": 0.25,
     "specularIntensity": 0.7,
     "transmission": 0.45
+  }, {
+    "id": "mat.extendedBlend",
+    "kind": "extended",
+    "alphaMode": "blend",
+    "color": "#9ed7ff",
+    "extension": { "doubleSided": false, "preset": "unlitMasked" },
+    "opacity": 0.35
   }]
 }"##,
     );

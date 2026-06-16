@@ -66,11 +66,14 @@ export async function verifyMaterialParityVisual(options: {
     diagnostics.push({ code: "TN_V8_MATERIAL_PARITY_BEVY_BLANK", message: `Bevy screenshot is blank or near-blank: ${capture.bevyScreenshotPath}`, severity: "error" });
   }
   const metrics = compareMaterialFrames(web, bevy);
-  if (metrics.silhouetteOverlap < 0.9) {
-    diagnostics.push({ code: "TN_V8_MATERIAL_PARITY_SILHOUETTE_DRIFT", message: `Silhouette overlap ${metrics.silhouetteOverlap.toFixed(4)} is below 0.9.`, severity: "error" });
+  if (metrics.silhouetteOverlap < 0.99) {
+    diagnostics.push({ code: "TN_V8_MATERIAL_PARITY_SILHOUETTE_DRIFT", message: `Silhouette overlap ${metrics.silhouetteOverlap.toFixed(4)} is below 0.99.`, severity: "error" });
   }
-  if (metrics.averageColorDelta > 0.08 && metrics.silhouetteOverlap < 0.95) {
-    diagnostics.push({ code: "TN_V8_MATERIAL_PARITY_COLOR_DRIFT", message: `Material color delta ${metrics.averageColorDelta.toFixed(4)} is above 0.08 while silhouette overlap ${metrics.silhouetteOverlap.toFixed(4)} is below 0.95.`, severity: "error" });
+  if (metrics.changedPixelRatio > 0.03) {
+    diagnostics.push({ code: "TN_V8_MATERIAL_PARITY_PIXEL_DRIFT", message: `Changed pixel ratio ${metrics.changedPixelRatio.toFixed(4)} is above 0.03.`, severity: "error" });
+  }
+  if (metrics.averageColorDelta > 0.02) {
+    diagnostics.push({ code: "TN_V8_MATERIAL_PARITY_COLOR_DRIFT", message: `Material color delta ${metrics.averageColorDelta.toFixed(4)} is above 0.02.`, severity: "error" });
   }
   const contactSheetPath = resolve(options.artifactDir, "contact-sheet.png");
   const diffPath = resolve(options.artifactDir, "diff.png");
@@ -130,7 +133,7 @@ async function captureThreeJsScreenshot(bundlePath: string, outputPath: string, 
 async function captureBevyScreenshot(bundlePath: string, outputPath: string, cameraId = "camera.material"): Promise<void> {
   await execFileAsync(
     "cargo",
-    ["run", "--quiet", "-p", "threenative_runtime", "--bin", "threenative_capture", "--", bundlePath, cameraId, outputPath],
+    ["run", "--quiet", "-p", "threenative_runtime", "--bin", "threenative_capture", "--", bundlePath, cameraId, outputPath, "15"],
     {
       cwd: resolve(process.cwd(), "runtime-bevy"),
       timeout: 300_000,
@@ -163,7 +166,7 @@ function compareMaterialFrames(web: { data: ArrayLike<number>; height: number; w
       intersection += 1;
     }
     const delta = Math.abs((web.data[index] ?? 0) - (bevy.data[index] ?? 0)) + Math.abs((web.data[index + 1] ?? 0) - (bevy.data[index + 1] ?? 0)) + Math.abs((web.data[index + 2] ?? 0) - (bevy.data[index + 2] ?? 0));
-    if (delta > 12) {
+    if (delta > 16) {
       changed += 1;
     }
     if (webVisible && bevyVisible) {

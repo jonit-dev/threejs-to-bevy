@@ -634,6 +634,7 @@ function mapTextureSlot(
         .loadAsync(url)
         .then((loaded) => {
           texture.image = loaded.image;
+          texture.colorSpace = THREE.SRGBColorSpace;
           texture.needsUpdate = true;
           applyTextureControls(texture, asset);
         })
