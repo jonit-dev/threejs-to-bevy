@@ -9,6 +9,7 @@ const requiredV8Prds = [
   "V8-01-editor-project-snapshot-and-structured-diffs.md",
   "V8-05-optional-react-webview-overlay.md",
   "V8-07-material-texture-shader-parity.md",
+  "V8-13-advanced-renderer-feature-gate.md",
 ];
 
 const requiredV8Phrases = [
@@ -24,6 +25,8 @@ const requiredV8Phrases = [
   ["retained UI", "V8 docs must keep retained UI as the portable default."],
   ["verify:v8:overlay", "V8 docs must link the overlay verification command."],
   ["verify:v8:material-parity", "V8 docs must link the material parity verification command."],
+  ["advanced renderer", "V8 docs must mention the advanced renderer feature gate."],
+  ["promotion criteria", "V8 docs must document advanced renderer promotion criteria."],
 ];
 
 const requiredStatusPhrases = [
@@ -40,18 +43,60 @@ const unsupportedV8ClaimPatterns = [
   /\b(?:online|networking|replication|collaboration|presence|conflict resolution|hosted|(?:public )?plugins?(?: APIs?)?|raw Three\.js|direct Bevy(?: authoring)?)\b[^\n.]{0,80}\b(?:is|are)\b[^\n.]{0,80}\b(?:supported|implemented|complete|promoted|included|shipped|provided)\b[^\n.]{0,80}\b(?:in|by|for)\b[^\n.]{0,20}\bV8\b/gi,
 ];
 
+const advancedRendererTerms =
+  /(?:volumetrics?|volumetric fog|volumetric lighting|atmospheric scattering|atmospheric fog|deferred rendering|screen-space reflections|SSR|GI\/lightmaps?|global illumination|lightmaps?|storage buffers?|raw render phases?|render phases?)/i;
+
+const advancedRendererPromotionPattern =
+  /\b(?:supports?|includes?|implements?|completes?|ships?|provides?|complete|supported|implemented|promoted|shipped)\b/i;
+
+const requiredAdvancedRendererDocs = [
+  {
+    path: "docs/STATUS.md",
+    phrases: [
+      ["V8-13", "STATUS must identify the V8-13 advanced renderer gate."],
+      ["TN_IR_ADVANCED_RENDERER", "STATUS must name the stable advanced renderer diagnostic family."],
+    ],
+  },
+  {
+    path: "docs/bevy-feature-parity.md",
+    phrases: [
+      ["V8-13", "Parity docs must identify the V8-13 advanced renderer gate."],
+      ["volumetrics", "Parity docs must keep volumetrics explicitly tracked."],
+      ["storage buffers", "Parity docs must keep storage buffers explicitly tracked."],
+      ["render phases", "Parity docs must keep raw render phases explicitly tracked."],
+    ],
+  },
+  {
+    path: "docs/advanced-features-roadmap.md",
+    phrases: [
+      ["V8-13", "Advanced features roadmap must identify the V8-13 feature gate."],
+      ["promotion criteria", "Advanced features roadmap must document promotion criteria."],
+      ["fail-loud diagnostics", "Advanced features roadmap must require fail-loud diagnostics."],
+    ],
+  },
+];
+
 export async function checkDocsV8(root = repoRoot) {
   const diagnostics = [];
   const indexPath = "docs/PRDs/v8/README.md";
   const statusPath = "docs/STATUS.md";
   const parityPath = "docs/bevy-feature-parity.md";
   const roadmapPath = "docs/ROADMAP.md";
+  const advancedRoadmapPath = "docs/advanced-features-roadmap.md";
 
   const index = await readDoc(root, indexPath, diagnostics);
   const status = await readDoc(root, statusPath, diagnostics);
   const parity = await readDoc(root, parityPath, diagnostics);
   const roadmap = await readDoc(root, roadmapPath, diagnostics);
-  const allDocs = `${index}\n${status}\n${parity}\n${roadmap}`;
+  const advancedRoadmap = await readDoc(root, advancedRoadmapPath, diagnostics);
+  const allDocs = `${index}\n${status}\n${parity}\n${roadmap}\n${advancedRoadmap}`;
+  const docContents = new Map([
+    [indexPath, index],
+    [statusPath, status],
+    [parityPath, parity],
+    [roadmapPath, roadmap],
+    [advancedRoadmapPath, advancedRoadmap],
+  ]);
 
   for (const file of requiredV8Prds) {
     if (!index.includes(file)) {
@@ -99,6 +144,45 @@ export async function checkDocsV8(root = repoRoot) {
         severity: "error",
       });
     }
+  }
+
+  for (const requirement of requiredAdvancedRendererDocs) {
+    const content = docContents.get(requirement.path) ?? "";
+    for (const [phrase, message] of requirement.phrases) {
+      if (!content.includes(phrase)) {
+        diagnostics.push({
+          code: "TN_DOCS_V8_ADVANCED_RENDERER_ANCHOR_MISSING",
+          path: requirement.path,
+          message,
+          severity: "error",
+        });
+      }
+    }
+  }
+
+  for (const [docPath, content] of [
+    [statusPath, status],
+    [parityPath, parity],
+    [advancedRoadmapPath, advancedRoadmap],
+  ]) {
+    const lines = content.split(/\r?\n/);
+    lines.forEach((line, index) => {
+      if (!advancedRendererTerms.test(line)) {
+        return;
+      }
+      const isCompletedChecklist = /^\s*-\s*\[x\]/i.test(line);
+      const isCompletedTableRow = line.includes("| ✅ |");
+      const isPromotionClaim = advancedRendererPromotionPattern.test(line);
+      const hasEvidenceAnchor = /\b(?:V8-13|verify:|artifacts\/|PRDs\/v8\/V8-13-advanced-renderer-feature-gate\.md)\b/.test(line);
+      if ((isCompletedChecklist || isCompletedTableRow || isPromotionClaim) && !hasEvidenceAnchor) {
+        diagnostics.push({
+          code: "TN_DOCS_V8_ADVANCED_RENDERER_CLAIM_UNANCHORED",
+          path: `${docPath}:${index + 1}`,
+          message: "Advanced renderer completion or support claims must reference V8-13 and verification/evidence anchors.",
+          severity: "error",
+        });
+      }
+    });
   }
 
   return { diagnostics, ok: diagnostics.length === 0 };

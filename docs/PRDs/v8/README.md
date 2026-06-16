@@ -13,6 +13,9 @@ consume. It is not a second source of truth and must not bypass validation.
   evidence are V8-promoted.
 - Diagnostics must reject invalid editor data before runtime and should point to
   the same entity, asset, component, system, or bundle paths used by CLI flows.
+- V8-13 keeps advanced renderer surfaces such as volumetrics, atmospheric
+  scattering, deferred rendering, SSR/GI, storage buffers, and raw render
+  phases behind fail-loud diagnostics until promotion criteria are met.
 - Offline SDK and CLI workflows must keep working without editor state.
 - V8 does not claim online services, hosted workflows, networking, replication,
   collaboration, presence, conflict resolution, public plugin APIs, raw

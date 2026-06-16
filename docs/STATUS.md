@@ -296,6 +296,13 @@ maps enabled bloom onto camera `BloomSettings` with matching intensity and
 threshold. Advanced post-processing stacks and renderer-specific bloom radius
 controls remain future work.
 
+V8-13 has a narrow advanced renderer feature-gate slice: authored volumetrics,
+atmospheric scattering/fog, deferred rendering, SSR/GI/lightmaps, storage
+buffers, and raw render phases are rejected through the
+`TN_IR_ADVANCED_RENDERER_*` diagnostic family instead of being silently ignored.
+The gate is contract/diagnostic-only for now; promotion requires portable
+SDK/IR/runtime semantics plus web and Bevy verification evidence.
+
 Post-V7 camera parity now also pins Bevy render-camera activation to
 `world.resources.ActiveCamera` when present, matching the web runtime fallback
 of selecting the first camera and then applying the active-camera resource.
