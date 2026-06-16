@@ -4,7 +4,7 @@
 | --- | --- |
 | Contract | Three.js-style TypeScript game engine -> validated IR bundle -> web Three.js + native Bevy |
 | Native baseline | Bevy and `bevy_ecs` pinned to `=0.14.2` |
-| Evidence anchors | native test, visual scene, game-authoring ergonomics, V6 PRDs, verify:v6, V7 PRDs, verify:v7, V8 PRDs, examples/v7-functional, artifacts/v7 |
+| Evidence anchors | native test, visual scene, game-authoring ergonomics, V6 PRDs, verify:v6, V7 PRDs, verify:v7, V8 PRDs, examples/v7-functional, artifacts/v7, GitHub open-game usage scan |
 
 ## Status
 
@@ -30,6 +30,67 @@ Priority labels on unchecked items:
 - `P2`: Production workflow, scale, or polish needed before a stable release.
 - `P3`: Advanced engine parity, specialized workflows, or long-tail features.
 - `D`: Deferred or intentionally non-portable.
+
+### GitHub Open-Game Usage Scan
+
+This backlog is also informed by a lightweight scan of open-source Bevy games
+and game templates on GitHub, focused on `Cargo.toml` dependencies and source
+usage rather than Bevy engine examples. Sampled repos include
+`fishfolk/jumpy`, `Dreamtowards/Ethertum`, `RaminKav/LostInTime`,
+`opstic/gdclone`, `ShenMian/sokoban-rs`, `wesfly/bevy_fs`,
+`NiiightmareXD/golab`, `traffloat/traffloat`, `aratama/magiaforge`,
+`PraxTube/tsumi`, `cleder/brkrs`, `chriamue/flyconomy`,
+`nilaysavant/keep-it-rolling-game`, and `jmbhughes/rustytowers`.
+
+Repeated patterns in those games:
+
+- ECS resources/events/states, explicit schedules, commands, timers, and
+  state-gated systems are the common gameplay backbone.
+- Real games frequently reach for physics plugins (`bevy_rapier`, Avian),
+  action-map input (`leafwing-input-manager`), asset loading/state machines,
+  audio plugins, inspector/debug UI, egui-style panels, save/config crates, and
+  dev-time asset watching.
+- Many open Bevy games are 2D-first, but ThreeNative is currently scoped as a
+  3D-only engine. Treat sprites, tilemaps, LDtk/Tiled, and 2D-specific
+  collisions as out of active scope unless the product boundary changes.
+- Some games use networking (`lightyear`, `bevy_renet`, websockets), but this
+  remains outside the portable contract for now. The priority is stable
+  unsupported-networking diagnostics, not runtime networking parity.
+
+### 3D-Only Focus Order
+
+ThreeNative is currently a 3D-only engine. Use this order when choosing the
+next parity slice:
+
+1. Animation and particles: prove visual skeletal animation deformation from
+   loaded glTF clips first, then transform animation, stop/state query APIs,
+   blending, and rendered particles.
+2. Physics, collision, and character movement: close the full rigid-body solver
+   gap, object pushing, interaction volumes, richer sensors, and pathfinding.
+3. Assets, glTF, and scenes: add multi-asset load synchronization,
+   query/update access for spawned glTF scene entities, dev-time asset file
+   watching diagnostics, and scene inspection.
+4. Cameras and views: add follow/orbit/pan/zoom/screen-shake helpers, then
+   multiple cameras, viewports, render layers, and render-to-texture targets.
+5. Materials, textures, and shaders: finish transparency sorting, specular
+   maps, custom/extended materials, and only then broader shader surfaces.
+6. 3D rendering, atmosphere, and post-processing: prioritize native fog/sky
+   parity, skyboxes/cubemaps, native instancing/batching, antialiasing, and
+   color grading before advanced renderer features.
+7. Lights, shadows, and global illumination: improve shadow filtering,
+   point-light shadows, environment maps, and light probes before GI/lightmaps.
+8. Input, picking, and controls: add rebinding persistence/UI, drag picking,
+   debug overlays, and richer device diagnostics.
+9. UI, text, and accessibility: add font assets/rich text, 9-slice/images,
+   native shadows/gradients, and standard widgets.
+10. Audio: add real 3D spatial attenuation, listener movement, music
+    transitions, and mixer buses/effects.
+11. Persistence, settings, and local data: add save slots and settings once
+    gameplay resources/components are stable enough to serialize.
+12. Editor, debugging, diagnostics, packaging, and performance: advance these
+    as support tracks alongside feature work, especially scene hierarchy,
+    property inspection, asset preview, debug draw, and unsupported-feature
+    diagnostics.
 
 ### 🧩 ECS, App, and Scheduling
 
@@ -151,7 +212,8 @@ Priority labels on unchecked items:
 - [ ] `P1` Multi-asset load synchronization
 - [ ] `P2` glTF extras and custom glTF vertex attributes
 - [ ] `P1` Query/update spawned glTF scene entities
-- [ ] `P2` Scene viewer/editor inspection workflow
+- [ ] `P1` Scene viewer/editor inspection workflow
+- [ ] `P1` Dev-time asset file watching and explicit reload diagnostics
 - [ ] `P2` Asset hot reload and state-preserving reload behavior
 
 ### 🎞️ Animation and Particles
@@ -188,8 +250,8 @@ Priority labels on unchecked items:
 - [x] Step offsets, ledge ungrounding, moving-platform carry, and richer ground contact trace
 - [x] `P0` Slope limits and sloped-surface walkability for promoted ramp colliders
 - [ ] `P1` Character interaction volumes and object pushing
-- [ ] `P2` Navmesh/pathfinding behavior
-- [ ] `P2` External physics backend integration strategy
+- [ ] `P1` Navmesh/pathfinding behavior
+- [ ] `P1` External physics backend integration strategy
 
 ### 🎮 Input, Picking, and Controls
 
@@ -237,6 +299,14 @@ Priority labels on unchecked items:
 - [x] `P1` Broader screen-reader diagnostics for focusable names, progressbar names, and list/listitem structure
 - [ ] `P2` UI debug overlay/gizmos
 
+### 💾 Persistence, Settings, and Local Data
+
+- [ ] `P1` Portable save slots for declared resources/components
+- [ ] `P1` Local settings/key-value persistence for controls, audio, video, and accessibility options
+- [ ] `P2` Save migration/version metadata and diagnostics
+- [ ] `P2` Checkpoint/autosave lifecycle hooks
+- [ ] `P3` Cloud save and account-bound storage integration
+
 ### 🔊 Audio
 
 - [x] Local OGG/WAV asset validation
@@ -267,17 +337,18 @@ Priority labels on unchecked items:
 - [ ] `P3` Signed installers and app-store/mobile packaging
 - [ ] `P1` Broader platform target profiles and repair hints
 - [ ] `P1` Large-scene stress-test fixtures for UI, text, lights, cubes, and animated models
+- [ ] `P1` Stable unsupported-networking diagnostics for multiplayer/websocket/replication declarations
 
 ### 🛠️ Editor, Debugging, and Developer Tools
 
 - [x] Local editor project snapshot validation
 - [x] Deterministic structured bundle-relative JSON diffs
 - [x] CLI entry points for `tn editor snapshot`, `tn editor apply`, and `tn editor diff`
-- [ ] `P2` Visual editor UI and inspector panels
+- [ ] `P1` Visual editor UI and inspector panels
 - [x] Save/load round trips through structured SDK/ECS/IR data
-- [ ] `P2` Scene hierarchy inspector and property editing
+- [ ] `P1` Scene hierarchy inspector and property editing
 - [ ] `P2` Gizmo overlays for transforms, lights, bounds, cameras, and UI nodes
-- [ ] `P2` Gamepad, scene viewer, and asset preview tools
+- [ ] `P1` Gamepad, scene viewer, and asset preview tools
 - [ ] `P2` Hot reload with state policy
 - [ ] `P1` Debug draw APIs for gameplay systems
 
@@ -287,6 +358,7 @@ Priority labels on unchecked items:
 - [ ] `D` Raw Three.js authoring as the source of truth
 - [ ] `D` Public plugin escape hatches into renderer/runtime internals
 - [ ] `D` Online services, networking, replication, and collaboration
+- [ ] `D` 2D sprite, tilemap, LDtk/Tiled, and 2D-specific collision workflows while ThreeNative is scoped as 3D-only
 - [ ] `D` Arbitrary npm, filesystem, worker, timer, or platform APIs in portable scripts
 - [ ] `D` Backend-only features that cannot be represented in portable IR
 
@@ -312,6 +384,7 @@ Priority labels on unchecked items:
 | Physics/collision | ⚠️ | V6 box/sphere/capsule collider validation, rigid-body fields, deterministic collision/trigger event phases for fixed traces; V7 contract metadata validates portable collider `layer`/`mask` filters and declares `physics.overlap` / `physics.shapeCast` service permissions; `v7-advanced-physics-character` now compares fixed web/native primitive overlap, swept box shape-cast service traces, and the narrow grounded/blocking character trace with portable layer filters; web/native runtime tests pin deterministic ordering for simultaneous contacts. | Full solver behavior, dynamic mesh colliders, and broader sensors are not claimed yet. |
 | Character controller | ⚠️ | V6 character controller metadata, input references, movement axes, speed, grounding/blocking/interaction declarations; V7 fixed web/native character trace covers one-step axis movement, raycast-style grounding, stop-before-penetration blocking, promoted `stepOffset`, ledge ungrounding, ground-entity observations, moving-platform carry from rigid-body velocity, and promoted box-ramp slope walkability gated by `slopeLimit`; portable scripts can declare `character.move` and call `ctx.character.move(entity, { axes, fixedDelta })` for the same deterministic trace observation in web and Bevy QuickJS. | Full runtime interaction parity, arbitrary sloped mesh terrain, navmesh behavior, and object pushing are incomplete. |
 | UI | ⚠️ | Retained `ui.ir.json` UI IR, validation, web DOM overlay, Bevy entity spawning, conformance UI tree, resource-bound bar, focusable button; V7 focus order, navigation links, input action refs, safe-area metadata, and fixed web/native focus/activation trace now include Tab/Shift+Tab semantics, while the web DOM overlay moves focus with Tab/arrow keys and activates focused controls with Enter/Space. Web clicks and Bevy `Interaction::Pressed` now enqueue portable UI action events for buttons and touch controls. Explicit flex layout metadata now validates and maps direction, alignment, justification, gaps, padding, size, grow, min/max constraints, overflow clipping, z-index layering, absolute positioning, inset anchors, basic vertical scroll containers, and basic repeat-count grid rows/columns with auto-flow across web DOM overlay and Bevy UI. Common visual style metadata now validates and maps background/text color, border color/width, border radius, opacity, font size, text alignment, word/character/no-wrap behavior, portable shadow/linear-gradient metadata, and portable text weight/decoration metadata; web DOM renders shadows, gradients, weight, underline, and strikethrough, while Bevy preserves the same metadata for native mapping. Basic UI image nodes now validate bundle-relative `src`, render as DOM images, and map to Bevy UI images through `AssetServer` when available. Accessibility metadata now validates portable roles and labels, reports missing accessible names for image/button/bar/focusable controls, validates explicit progressbar names and list/listitem structure, maps presentation roles to ARIA without names in web, and maps to Bevy AccessKit nodes. V8 adds an explicit optional React/CSS webview overlay contract through `overlays.ir.json`, `requiredCapabilities.overlay`, a web iframe host, typed bridge message validation, deterministic input-capture policy that lets `none`/`keyboard` modes pass Bevy/game clicks through, native bridge/input diagnostics tests, an adapter-private optional `native-webview` host feature using `wry`, default `TN_OVERLAY_TARGET_UNSUPPORTED` diagnostics when that host is disabled, and focused inventory-overlay evidence under `artifacts/v8-overlay-webview/`. | Native-rendered UI shadows/gradients/text decorations, font assets, rich inline spans, nested/axis-specific scroll behavior, arbitrary grid placement/named areas/dense packing, texture atlases/9-slice/flipping/tiling, platform widgets, spatial navigation heuristics, drag-and-drop picking, broad gamepad/touch coverage, focus narration, disabled-state semantics, target-specific accessibility audits, and broad manually inspected desktop webview packaging remain incomplete. |
+| Persistence/settings | ❌ | No portable save-slot, local settings, save migration, or checkpoint contract is claimed yet. | Open Bevy games commonly use save/config/key-value crates for settings, game progress, and asset-backed content state. Portable declared-resource/component persistence should be a P1 gap for practical game templates. |
 | Audio | ⚠️ | Local OGG/WAV validation, web HTML-audio sink, Bevy autoplay loop spawning, portable volume, deterministic audio command observations, and V7 bus/listener/spatial-emitter metadata with routed command reports plus fixed loop start/stop lifecycle traces through `v7-spatial-audio-buses`; portable playback ids now support validated pause, resume, seek, stop, and query control traces in web and Bevy. | Real spatial attenuation, mixer effects, streaming/network audio, platform-native handles, and richer UI/audio services remain incomplete or unsupported. |
 | Input | ⚠️ | First-person config, pointer-lock expectations, movement update, input references, UI action queue metadata; Bevy runtime now loads `axis.value` input bindings, captures keyboard actions/axes, mouse-button actions, pointer delta/position axes, and optional gamepad button/axis controls from Bevy input resources/events, and feeds captured native input into portable system snapshots during live preview/runtime updates; web and Bevy now expose touch control/axis state hooks for portable touch bindings plus deterministic tap/swipe/pinch gesture recognizers; web and Bevy report gamepad capability snapshots with declared controls, connected device counts/metadata, unavailable-device diagnostics, and unknown-control diagnostics; web and Bevy provide deterministic input rebinding helpers with missing-target, duplicate-binding, and required-gamepad diagnostics; portable scripts can declare `picking.pointerRay` and `picking.mesh` to generate camera-based pointer rays and query generated mesh renderer bounds in web and Bevy; basic UI control picking dispatches portable action events across web and Bevy. | Interactive rebinding UI/persistence, platform touch event stream wiring, richer gestures, drag-and-drop picking, picking debug overlays, richer device overlays, and richer navigation diagnostics remain incomplete. |
 | Scripting | ✅ | V4 portable scripts, deterministic bundle output, web runner, Bevy QuickJS host, declared effect validation, patch/event/command/service logs; V7 `v7-scripting-lifecycle` compares a script-heavy multi-schedule web/native effect log with resource, event, command, service, explicit same-stage `before`/`after` system ordering, `ctx.states.get()` app/computed/substate reads, `ctx.components.hooks()` component-hook reads, `ctx.components.type()` component-reflection reads, `ctx.observers.propagate()` observer-route reads, fixed-trace task/channel reads plus channel sends through `ctx.tasks.*()` / `ctx.channels.*()`, query ordering/pagination/changed filters through `ctx.query(...)`, read-only plugin composition through `ctx.plugins.*()`, deterministic seeded random helpers through `ctx.random.float/range/int/bool/pick`, deterministic timer/cooldown helpers through `ctx.timers.elapsed/remaining/progress/done/ready`, read-only bundle asset manifest metadata through `ctx.assets.get()` / `ctx.assets.list()`, declared bundle-local asset load service effects through `ctx.assets.load()` / `assets.load`, and declared `ctx.character.move()` / `character.move` fixed-trace character-controller observations. | Arbitrary async timers/promises/workers, arbitrary npm/platform APIs, network/file asset loading, custom runtime asset loaders, hidden runtime diffing for changed queries, state-preserving hot reload, dynamic runtime plugin loading, full dynamic scene reconciliation, raw Bevy/renderer type IDs, command-time/removal component hook callbacks, stoppable observers, and system-local persisted state remain unsupported or bounded. |
@@ -348,3 +421,11 @@ plumbing, not a visual editor runtime.
 | Bevy examples catalog | https://bevy.org/examples/ |
 | Bevy 0.14 release notes | https://bevy.org/news/bevy-0-14/ |
 | Bevy crate documentation | https://docs.rs/bevy |
+| Open Bevy game: Jumpy | https://github.com/fishfolk/jumpy |
+| Open Bevy game: Ethertum | https://github.com/Dreamtowards/Ethertum |
+| Open Bevy game: Lost In Time | https://github.com/RaminKav/LostInTime |
+| Open Bevy game: gdclone | https://github.com/opstic/gdclone |
+| Open Bevy game: sokoban-rs | https://github.com/ShenMian/sokoban-rs |
+| Open Bevy game: Golab | https://github.com/NiiightmareXD/golab |
+| Open Bevy game: Tsumi | https://github.com/PraxTube/tsumi |
+| Open Bevy game: Flyconomy | https://github.com/chriamue/flyconomy |
