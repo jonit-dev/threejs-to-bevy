@@ -36,6 +36,7 @@
     "verify:v8:support-evidence": "node scripts/verify-v8-support-evidence.mjs --run-prd-verifiers",
     "verify:v8:local-data": "node scripts/verify-v8-local-data.mjs",
     "verify:v8:ui-disabled": "node scripts/verify-v8-ui-disabled.mjs",
+    "verify:v8:lights-shadows": "node scripts/verify-v8-lights-shadows-probes.mjs",
     "verify:v9:skeletal-animation": "node scripts/verify-v9-skeletal-animation.mjs"
   },
   "devDependencies": {

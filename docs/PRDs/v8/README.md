@@ -107,3 +107,17 @@ The audio proof reuses `v7-spatial-audio-buses`, compares web/native
 listener-emitter attenuation observations, and writes web, native, and diff
 artifacts under `artifacts/v8/audio/`. It does not claim mixer effects, music
 transitions, listener movement, or backend spatial panning/output.
+
+Lights/shadows trace:
+
+```bash
+pnpm verify:v8:lights-shadows
+```
+
+The V8-12 lights/shadows proof reuses the V3 environment shadow fixture,
+captures matched Three.js and Bevy screenshots, records active shadow
+policy/bias metadata, and writes
+`artifacts/v8/lights-shadows/verification-report.json`. This is report-only
+evidence for shadow-policy and shadow-sensitive screenshot drift; it does not
+promote point-light PCF/shadow-filtering parity, light budgets/culling,
+environment maps/probes, or light debug visualization.

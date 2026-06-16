@@ -317,14 +317,31 @@ async function captureBookmarkScreenshots(options: {
 }
 
 async function writeBevyGltfCapture(path: string, bundlePath: string, bookmarkId: string): Promise<void> {
-  await execFileAsync(
-    "cargo",
-    ["run", "--quiet", "-p", "threenative_runtime", "--bin", "threenative_capture", "--", bundlePath, bookmarkId, path],
-    {
-      cwd: resolve(process.cwd(), "runtime-bevy"),
-      timeout: 180_000,
-    },
-  );
+  const env = { ...process.env };
+  delete env.RUSTUP_TOOLCHAIN;
+  const cargo = process.env.CARGO ?? "cargo";
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= 5; attempt += 1) {
+    try {
+      await execFileAsync(
+        cargo,
+        ["run", "--quiet", "-p", "threenative_runtime", "--bin", "threenative_capture", "--", bundlePath, bookmarkId, path, "180"],
+        {
+          cwd: resolve(process.cwd(), "runtime-bevy"),
+          env,
+          timeout: 180_000,
+        },
+      );
+      return;
+    } catch (error) {
+      lastError = error;
+      if (attempt < 5) {
+        await new Promise((resolveRetry) => setTimeout(resolveRetry, 1_000));
+      }
+    }
+  }
+  const message = lastError instanceof Error ? lastError.message : String(lastError);
+  throw new Error(`Bevy GLTF screenshot capture failed after 5 attempts for '${bookmarkId}': ${message}`);
 }
 async function writeSideBySideSheet(page: Page, captures: readonly IV3BookmarkCapture[], path: string): Promise<void> {
   const rows = await Promise.all(captures.map(async (capture) => {
