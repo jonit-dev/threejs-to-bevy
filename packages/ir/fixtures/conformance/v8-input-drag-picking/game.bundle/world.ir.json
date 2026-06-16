@@ -1,0 +1,58 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "camera.pick",
+      "components": {
+        "Transform": {
+          "position": [0, 0, 4],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        },
+        "Camera": {
+          "kind": "orthographic",
+          "size": 2,
+          "near": 0.1,
+          "far": 100,
+          "priority": 0
+        }
+      }
+    },
+    {
+      "id": "crate",
+      "components": {
+        "Transform": {
+          "position": [0, 0, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.crate",
+          "material": "mat.pickable"
+        }
+      }
+    },
+    {
+      "id": "dock",
+      "components": {
+        "Transform": {
+          "position": [0.6, 0, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.dock",
+          "material": "mat.pickable"
+        }
+      }
+    }
+  ],
+  "resources": {
+    "ActiveCamera": {
+      "entity": "camera.pick"
+    }
+  },
+  "events": {},
+  "prefabs": []
+}

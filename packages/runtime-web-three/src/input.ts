@@ -349,7 +349,9 @@ export function createDragPickingRecognizer(options: { moveThreshold?: number } 
           if (active.started && (delta[0] !== 0 || delta[1] !== 0)) {
             events.push({ delta, entity: active.entity, kind: "move", pointer: frame.pointer, timeMs: frame.timeMs });
           }
-          active.pointer = frame.pointer;
+          if (active.started) {
+            active.pointer = frame.pointer;
+          }
         }
         return events;
       }

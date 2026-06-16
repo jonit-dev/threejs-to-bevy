@@ -1,23 +1,23 @@
 use bevy::{
     app::{App, PreUpdate},
     input::{
-        ButtonInput,
         gamepad::{
-            Gamepad, GamepadAxis, GamepadAxisType, GamepadButton, GamepadButtonType,
-            GamepadConnection, GamepadConnectionEvent, GamepadInfo, Gamepads,
-            gamepad_connection_system,
+            gamepad_connection_system, Gamepad, GamepadAxis, GamepadAxisType, GamepadButton,
+            GamepadButtonType, GamepadConnection, GamepadConnectionEvent, GamepadInfo, Gamepads,
         },
         mouse::MouseMotion,
+        ButtonInput,
     },
     prelude::*,
     window::PrimaryWindow,
 };
 use threenative_loader::{InputActionIr, InputAxisIr, InputBindingIr, InputIr};
 use threenative_runtime::input::{
-    NativeInputAxisRebindSlot, NativeInputMap, NativeInputRebindTarget, NativeInputState,
-    NativeTouchGestureEvent, NativeTouchGesturePoint, NativeTouchGestureTracker, NativeTouchState,
     capture_native_input, map_keyboard_event, map_pointer_button_event, rebind_native_input,
-    report_native_gamepad_capabilities,
+    report_native_gamepad_capabilities, NativeDragPickingEvent, NativeDragPickingFrame,
+    NativeDragPickingTracker, NativeInputAxisRebindSlot, NativeInputMap, NativeInputRebindTarget,
+    NativeInputState, NativeTouchGestureEvent, NativeTouchGesturePoint, NativeTouchGestureTracker,
+    NativeTouchState,
 };
 
 #[test]
@@ -162,15 +162,99 @@ fn should_report_native_rebind_diagnostics() {
             .map(|diagnostic| diagnostic.code.as_str()),
         Some("TN_INPUT_REBIND_ACTION_MISSING")
     );
-    assert!(
-        duplicate
-            .diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.code == "TN_INPUT_REBIND_DUPLICATE")
-    );
+    assert!(duplicate
+        .diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.code == "TN_INPUT_REBIND_DUPLICATE"));
     assert!(gamepad.diagnostics.iter().any(|diagnostic| diagnostic.code
         == "TN_INPUT_REBIND_GAMEPAD_REQUIRED"
         && diagnostic.severity == "warning"));
+}
+
+#[test]
+fn should_recognize_native_drag_and_drop_picking_events() {
+    let mut tracker = NativeDragPickingTracker::new(0.05);
+
+    assert_eq!(
+        tracker.update(NativeDragPickingFrame {
+            button_down: true,
+            picked_entity: Some("crate".to_owned()),
+            pointer: [0.1, 0.1],
+            time_ms: 0.0,
+        }),
+        vec![]
+    );
+    assert_eq!(
+        tracker.update(NativeDragPickingFrame {
+            button_down: true,
+            picked_entity: Some("crate".to_owned()),
+            pointer: [0.12, 0.11],
+            time_ms: 16.0,
+        }),
+        vec![]
+    );
+    assert_eq!(
+        tracker.update(NativeDragPickingFrame {
+            button_down: true,
+            picked_entity: Some("floor".to_owned()),
+            pointer: [0.2, 0.16],
+            time_ms: 32.0,
+        }),
+        vec![
+            NativeDragPickingEvent::Start {
+                entity: "crate".to_owned(),
+                pointer: [0.1, 0.1],
+                time_ms: 32.0,
+            },
+            NativeDragPickingEvent::Move {
+                delta: [0.1, 0.06],
+                entity: "crate".to_owned(),
+                pointer: [0.2, 0.16],
+                time_ms: 32.0,
+            },
+        ]
+    );
+    assert_eq!(
+        tracker.update(NativeDragPickingFrame {
+            button_down: false,
+            picked_entity: Some("floor".to_owned()),
+            pointer: [0.25, 0.2],
+            time_ms: 48.0,
+        }),
+        vec![NativeDragPickingEvent::Drop {
+            delta: [0.15, 0.1],
+            entity: "crate".to_owned(),
+            pointer: [0.25, 0.2],
+            target: Some("floor".to_owned()),
+            time_ms: 48.0,
+        }]
+    );
+}
+
+#[test]
+fn should_cancel_native_picked_drag_before_threshold() {
+    let mut tracker = NativeDragPickingTracker::new(0.05);
+
+    tracker.update(NativeDragPickingFrame {
+        button_down: true,
+        picked_entity: Some("crate".to_owned()),
+        pointer: [0.1, 0.1],
+        time_ms: 0.0,
+    });
+
+    assert_eq!(
+        tracker.update(NativeDragPickingFrame {
+            button_down: false,
+            picked_entity: None,
+            pointer: [0.11, 0.11],
+            time_ms: 16.0,
+        }),
+        vec![NativeDragPickingEvent::Cancel {
+            entity: "crate".to_owned(),
+            pointer: [0.11, 0.11],
+            time_ms: 16.0,
+        }]
+    );
 }
 
 fn sample_rebind_input() -> InputIr {
@@ -515,10 +599,8 @@ fn should_report_native_gamepad_capabilities_and_diagnostics() {
 
     let unavailable = report_native_gamepad_capabilities(Some(&input), None);
     assert!(!unavailable.supported);
-    assert!(
-        unavailable
-            .diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.code == "TN_BEVY_GAMEPAD_RESOURCE_UNAVAILABLE")
-    );
+    assert!(unavailable
+        .diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.code == "TN_BEVY_GAMEPAD_RESOURCE_UNAVAILABLE"));
 }

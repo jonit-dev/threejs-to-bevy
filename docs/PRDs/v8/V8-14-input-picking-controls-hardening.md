@@ -66,9 +66,12 @@ overlay observations, and richer `TN_INPUT_*` diagnostics.
 
 **Implementation:**
 
-- [ ] Add capture, move, drop, and cancel phases.
-- [ ] Use camera pointer rays from V8-06.
-- [ ] Ensure deterministic ordering across web and Bevy.
+- [x] Add capture/start, move, drop, and cancel phases for the proven 3D mesh
+  picking trace.
+- [x] Use camera pointer rays from V8-06 for the proven 3D mesh picking trace.
+- [x] Ensure deterministic ordering across web and Bevy for
+  `v8-input-drag-picking` ordered JSON trace artifacts.
+- [ ] Extend the same drag phases to UI targets.
 
 **Verification Plan:** Shared fixture and focused runtime tests.
 

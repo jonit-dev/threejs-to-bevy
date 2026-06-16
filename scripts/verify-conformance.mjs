@@ -33,6 +33,7 @@ export async function verifyConformance(options = {}) {
   const v7ScriptingLifecycleBundlePath = resolve(root, "packages/ir/fixtures/conformance/v7-scripting-lifecycle/game.bundle");
   const v7PackagingTargetProfilesBundlePath = resolve(root, "packages/ir/fixtures/conformance/v7-packaging-target-profiles/game.bundle");
   const v7PerformanceBudgetsBundlePath = resolve(root, "packages/ir/fixtures/conformance/v7-performance-budgets/game.bundle");
+  const v8InputDragPickingBundlePath = resolve(root, "packages/ir/fixtures/conformance/v8-input-drag-picking/game.bundle");
   const nativeBasicSceneReportPath = options.nativeBasicSceneReportPath ?? resolve(artifactDir, "basic-scene/bevy.report.json");
   const nativePrimitiveMappingReportPath =
     options.nativePrimitiveMappingReportPath ?? resolve(artifactDir, "primitive-mapping/bevy.report.json");
@@ -96,6 +97,11 @@ export async function verifyConformance(options = {}) {
   const v7PerformanceNativeReportPath = options.v7PerformanceNativeReportPath ?? resolve(artifactDir, "v7-performance-budgets/bevy.report.json");
   const v7PerformanceComparisonReportPath =
     options.v7PerformanceComparisonReportPath ?? resolve(artifactDir, "v7-performance-budgets/comparison.report.json");
+  const v8DragPickingDiffPath = options.v8DragPickingDiffPath ?? resolve(artifactDir, "v8-input-drag-picking/drag-picking-diff.json");
+  const v8DragPickingNativeTracePath =
+    options.v8DragPickingNativeTracePath ?? resolve(artifactDir, "v8-input-drag-picking/native-drag-picking.json");
+  const v8DragPickingWebTracePath =
+    options.v8DragPickingWebTracePath ?? resolve(artifactDir, "v8-input-drag-picking/web-drag-picking.json");
   const artifacts = {
     nativeBasicSceneReportPath,
     nativePrimitiveMappingReportPath,
@@ -137,6 +143,9 @@ export async function verifyConformance(options = {}) {
     v7PerformanceWebReportPath,
     v7PerformanceNativeReportPath,
     v7PerformanceComparisonReportPath,
+    v8DragPickingDiffPath,
+    v8DragPickingNativeTracePath,
+    v8DragPickingWebTracePath,
   };
   const steps = [];
 
@@ -374,6 +383,16 @@ export async function verifyConformance(options = {}) {
         resolve(root, "scripts/verify-v7-performance-budgets.mjs"),
         v7PerformanceBudgetsBundlePath,
         resolve(artifactDir, "v7-performance-budgets"),
+      ],
+      { timeoutMs: 120000 },
+    ],
+    [
+      "V8 drag picking fixed trace parity",
+      process.execPath,
+      [
+        resolve(root, "scripts/verify-v8-drag-picking-trace.mjs"),
+        v8InputDragPickingBundlePath,
+        resolve(artifactDir, "v8-input-drag-picking"),
       ],
       { timeoutMs: 120000 },
     ],

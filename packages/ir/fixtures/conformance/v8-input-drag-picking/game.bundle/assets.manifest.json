@@ -1,0 +1,20 @@
+{
+  "schema": "threenative.assets",
+  "version": "0.1.0",
+  "assets": [
+    {
+      "id": "mesh.crate",
+      "kind": "mesh",
+      "format": "generated",
+      "primitive": "box",
+      "size": [0.5, 0.5, 0.5]
+    },
+    {
+      "id": "mesh.dock",
+      "kind": "mesh",
+      "format": "generated",
+      "primitive": "box",
+      "size": [0.4, 0.4, 0.4]
+    }
+  ]
+}

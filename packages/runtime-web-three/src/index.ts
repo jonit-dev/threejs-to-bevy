@@ -17,7 +17,7 @@ export { collectPerformanceSummary, summarizeFrameTimings, type IPerformanceMetr
 export { applyAtmosphereProfile, observeAtmosphereProfile, type IAtmosphereObservation } from "./rendering.js";
 export { createGameLoopState, runGameFrame, setPaused, type IGameLoopState } from "./gameLoop.js";
 export { createAxisGizmo, createWireBoxGizmo, createWireSphereGizmo, gizmoToBufferGeometry, type IGizmoGeometry, type IGizmoLine } from "./gizmoGeometry.js";
-export { attachInputListeners, createInputState, createTouchGestureRecognizer, rebindInput, reportGamepadCapabilities, type IGamepadCapabilityReport, type IInputRebindDiagnostic, type IInputRebindResult, type InputRebindTarget, type ITouchGestureEvent, type ITouchGestureFrame, type ITouchGesturePoint, type ITouchGestureRecognizer, type IWebInputState } from "./input.js";
+export { attachInputListeners, createDragPickingRecognizer, createInputState, createTouchGestureRecognizer, rebindInput, reportGamepadCapabilities, type IDragPickingEvent, type IDragPickingFrame, type IDragPickingRecognizer, type IGamepadCapabilityReport, type IInputRebindDiagnostic, type IInputRebindResult, type InputRebindTarget, type ITouchGestureEvent, type ITouchGestureFrame, type ITouchGesturePoint, type ITouchGestureRecognizer, type IWebInputState } from "./input.js";
 export { traceCharacterControllers, type ICharacterTraceInput, type ICharacterTraceObservation } from "./character.js";
 export { createFirstPersonState, updateFirstPersonController, type IFirstPersonControllerState } from "./firstPerson.js";
 export { resolveWebAssets, traceAssetLoadSynchronization, type IAssetLoadTrace, type IAssetLoadTraceAsset, type IAssetLoadTraceGltfScene, type IResolvedWebAsset } from "./assets.js";
@@ -41,6 +41,7 @@ export {
   type IObserverPropagationStep,
   type ISystemContext,
 } from "./systems/context.js";
+export { pickMesh, pointerRay, type IPickMeshRequest, type IPickMeshResult, type IPointerRayRequest, type IPointerRayResult } from "./systems/services/picking.js";
 export { applySystemEffects, validateSystemEffects, type ISystemEffects } from "./systems/effects.js";
 export { createSystemEffectLog, serializeSystemEffectLog, stableSystemEffectLog, type ISystemEffectLog, type ISystemEffectLogEntry } from "./systems/log.js";
 export { loadSystemModule, runSchedule, type ISystemModule, type ISystemRunResult, type SystemFunction } from "./systems/runner.js";
