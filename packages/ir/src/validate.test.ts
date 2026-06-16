@@ -388,6 +388,38 @@ test("should reject invalid runtime renderer bloom settings", async () => {
   }
 });
 
+test("should reject unsupported advanced runtime renderer features with stable diagnostics", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-runtime-advanced-renderer-invalid-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeRuntimeConfig(root, {
+      antialias: "msaa4",
+      atmosphericScattering: { density: 0.4 },
+      deferredRendering: true,
+      gi: { mode: "probe" },
+      screenSpaceReflections: true,
+      volumetrics: { fog: true },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.path, diagnostic.severity]),
+      [
+        ["TN_IR_ADVANCED_RENDERER_VOLUMETRICS_UNSUPPORTED", "runtime.config.json/renderer/volumetrics", "error"],
+        ["TN_IR_ADVANCED_RENDERER_ATMOSPHERE_UNSUPPORTED", "runtime.config.json/renderer/atmosphericScattering", "error"],
+        ["TN_IR_ADVANCED_RENDERER_DEFERRED_UNSUPPORTED", "runtime.config.json/renderer/deferredRendering", "error"],
+        ["TN_IR_ADVANCED_RENDERER_SCREEN_SPACE_UNSUPPORTED", "runtime.config.json/renderer/screenSpaceReflections", "error"],
+        ["TN_IR_ADVANCED_RENDERER_GI_UNSUPPORTED", "runtime.config.json/renderer/gi", "error"],
+      ],
+    );
+    assert.match(result.diagnostics[0]?.suggestion ?? "", /portable SDK\/IR\/runtime contract/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject invalid material alpha values", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-material-alpha-invalid-"));
   try {
@@ -411,6 +443,44 @@ test("should reject invalid material alpha values", async () => {
         "TN_IR_MATERIAL_OPACITY_INVALID",
       ],
     );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject unsupported advanced material renderer capabilities with stable diagnostics", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-material-advanced-renderer-invalid-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "materials.ir.json", {
+      schema: "threenative.materials",
+      version: "0.1.0",
+      materials: [
+        {
+          color: "#ffffff",
+          fragmentShader: "fn fragment() {}",
+          id: "mat.advanced",
+          kind: "standard",
+          postprocess: { pass: "custom-bloom" },
+          renderPhase: "transparent-post-lighting",
+          storageBuffers: ["particles"],
+        },
+      ],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.path, diagnostic.severity]),
+      [
+        ["TN_IR_ADVANCED_RENDERER_SHADER_UNSUPPORTED", "materials.ir.json/materials/0/fragmentShader", "error"],
+        ["TN_IR_ADVANCED_RENDERER_POSTPROCESS_UNSUPPORTED", "materials.ir.json/materials/0/postprocess", "error"],
+        ["TN_IR_ADVANCED_RENDERER_STORAGE_BUFFER_UNSUPPORTED", "materials.ir.json/materials/0/storageBuffers", "error"],
+        ["TN_IR_ADVANCED_RENDERER_RENDER_PHASE_UNSUPPORTED", "materials.ir.json/materials/0/renderPhase", "error"],
+      ],
+    );
+    assert.match(result.diagnostics[0]?.suggestion ?? "", /V8-13 promotion criteria/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

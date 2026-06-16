@@ -1725,6 +1725,18 @@ function validateMaterialTextureRefs(materials: IMaterialsIr, assets: IAssetsMan
 function validateMaterials(materials: IMaterialsIr, path: string, diagnostics: IIrDiagnostic[]): void {
   const supportedBlendModes = new Set(["normal", "additive", "multiply", "premultipliedAlpha"]);
   const supportedExtendedPresets = new Set(["unlitMasked", "foliage"]);
+  const unsupportedAdvancedMaterialCapabilities = new Map<string, { code: string; label: string }>([
+    ["shader", { code: "TN_IR_ADVANCED_RENDERER_SHADER_UNSUPPORTED", label: "custom shader module" }],
+    ["vertexShader", { code: "TN_IR_ADVANCED_RENDERER_SHADER_UNSUPPORTED", label: "custom vertex shader" }],
+    ["fragmentShader", { code: "TN_IR_ADVANCED_RENDERER_SHADER_UNSUPPORTED", label: "custom fragment shader" }],
+    ["nodeGraph", { code: "TN_IR_ADVANCED_RENDERER_SHADER_UNSUPPORTED", label: "shader node graph" }],
+    ["postprocess", { code: "TN_IR_ADVANCED_RENDERER_POSTPROCESS_UNSUPPORTED", label: "custom postprocess pass" }],
+    ["storageBuffer", { code: "TN_IR_ADVANCED_RENDERER_STORAGE_BUFFER_UNSUPPORTED", label: "storage buffer binding" }],
+    ["storageBuffers", { code: "TN_IR_ADVANCED_RENDERER_STORAGE_BUFFER_UNSUPPORTED", label: "storage buffer bindings" }],
+    ["renderPhase", { code: "TN_IR_ADVANCED_RENDERER_RENDER_PHASE_UNSUPPORTED", label: "raw render phase" }],
+    ["renderPhases", { code: "TN_IR_ADVANCED_RENDERER_RENDER_PHASE_UNSUPPORTED", label: "raw render phases" }],
+  ]);
+
   materials.materials.forEach((material, index) => {
     const raw = material as unknown as Record<string, unknown>;
     if (raw.kind !== "standard" && raw.kind !== "extended") {
@@ -1872,12 +1884,14 @@ function validateMaterials(materials: IMaterialsIr, path: string, diagnostics: I
         });
       }
     }
-    for (const key of ["shader", "vertexShader", "fragmentShader", "nodeGraph", "postprocess"]) {
+    for (const [key, capability] of unsupportedAdvancedMaterialCapabilities) {
       if (raw[key] !== undefined) {
         diagnostics.push({
-          code: "TN_IR_MATERIAL_CAPABILITY_UNSUPPORTED",
-          message: `Material '${material.id}' uses unsupported shader capability '${key}'.`,
+          code: capability.code,
+          message: `Material '${material.id}' declares unsupported advanced renderer capability '${key}' (${capability.label}).`,
           path: `${path}/materials/${index}/${key}`,
+          severity: "error",
+          suggestion: "Remove this renderer-specific field until V8-13 promotion criteria define a portable SDK/IR/runtime contract with web and Bevy evidence.",
         });
       }
     }
@@ -2038,6 +2052,9 @@ function validateRuntimeConfig(config: unknown, path: string, diagnostics: IIrDi
       }
     }
   }
+  if (isRecord(renderer)) {
+    validateUnsupportedAdvancedRendererConfig(renderer, `${path}/renderer`, diagnostics);
+  }
 
   const window = config.window;
   if (!isRecord(window)) {
@@ -2066,6 +2083,35 @@ function validateRuntimeConfig(config: unknown, path: string, diagnostics: IIrDi
         code: "TN_IR_RUNTIME_WINDOW_INVALID",
         message: "Window title must be a non-empty string when present.",
         path: `${path}/window/title`,
+      });
+    }
+  }
+}
+
+function validateUnsupportedAdvancedRendererConfig(renderer: Record<string, unknown>, path: string, diagnostics: IIrDiagnostic[]): void {
+  const unsupportedRendererFeatures = new Map<string, { code: string; label: string }>([
+    ["volumetrics", { code: "TN_IR_ADVANCED_RENDERER_VOLUMETRICS_UNSUPPORTED", label: "volumetrics" }],
+    ["volumetricFog", { code: "TN_IR_ADVANCED_RENDERER_VOLUMETRICS_UNSUPPORTED", label: "volumetric fog" }],
+    ["volumetricLighting", { code: "TN_IR_ADVANCED_RENDERER_VOLUMETRICS_UNSUPPORTED", label: "volumetric lighting" }],
+    ["atmosphericScattering", { code: "TN_IR_ADVANCED_RENDERER_ATMOSPHERE_UNSUPPORTED", label: "atmospheric scattering" }],
+    ["atmosphericFog", { code: "TN_IR_ADVANCED_RENDERER_ATMOSPHERE_UNSUPPORTED", label: "atmospheric fog" }],
+    ["deferred", { code: "TN_IR_ADVANCED_RENDERER_DEFERRED_UNSUPPORTED", label: "deferred rendering" }],
+    ["deferredRendering", { code: "TN_IR_ADVANCED_RENDERER_DEFERRED_UNSUPPORTED", label: "deferred rendering" }],
+    ["ssr", { code: "TN_IR_ADVANCED_RENDERER_SCREEN_SPACE_UNSUPPORTED", label: "screen-space reflections" }],
+    ["screenSpaceReflections", { code: "TN_IR_ADVANCED_RENDERER_SCREEN_SPACE_UNSUPPORTED", label: "screen-space reflections" }],
+    ["gi", { code: "TN_IR_ADVANCED_RENDERER_GI_UNSUPPORTED", label: "global illumination" }],
+    ["globalIllumination", { code: "TN_IR_ADVANCED_RENDERER_GI_UNSUPPORTED", label: "global illumination" }],
+    ["lightmaps", { code: "TN_IR_ADVANCED_RENDERER_GI_UNSUPPORTED", label: "lightmaps" }],
+  ]);
+
+  for (const [key, feature] of unsupportedRendererFeatures) {
+    if (renderer[key] !== undefined) {
+      diagnostics.push({
+        code: feature.code,
+        message: `Runtime renderer config declares unsupported advanced renderer feature '${key}' (${feature.label}).`,
+        path: `${path}/${key}`,
+        severity: "error",
+        suggestion: "Remove this renderer-specific field until V8-13 promotion criteria define a portable SDK/IR/runtime contract with web and Bevy evidence.",
       });
     }
   }

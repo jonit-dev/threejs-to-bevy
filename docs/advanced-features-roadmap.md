@@ -96,6 +96,14 @@ Promotion rule: this tier should start experimental and capability-gated. A
 feature should not become portable until both web and Bevy adapters can execute
 the same IR-level contract or produce stable, actionable diagnostics.
 
+V8-13 advanced renderer feature gate: volumetrics, atmospheric scattering,
+deferred rendering, SSR/GI/lightmaps, storage buffers, and raw render phases
+remain fail-loud diagnostics until promotion criteria are met. Promotion
+criteria for each class require a named SDK authoring surface, versioned IR
+schema, rejected diagnostics for unsupported targets, web and Bevy runtime
+mapping or explicit fallback behavior, conformance fixtures, and visual or
+report evidence under a documented verification command.
+
 ## Feature Tracks
 
 ### Terrain And Heightfields

@@ -178,6 +178,10 @@ next parity slice:
 - [ ] `P3` Custom shaders, shader defs, storage buffers, and render phases
 - [ ] `P3` Bindless materials/textures
 
+V8-13 keeps custom shaders, storage buffers, and raw render phases behind
+stable advanced renderer diagnostics until portable promotion criteria and
+web/Bevy evidence exist.
+
 ### 🌌 3D Rendering, Atmosphere, and Post-Processing
 
 - [x] Basic 3D scene rendering through web Three.js and native Bevy
@@ -202,6 +206,10 @@ next parity slice:
 - [ ] `P1` Renderer-level native instancing and batching parity
 - [ ] `P3` Virtual geometry/meshlet rendering
 - [ ] `P3` Custom post-processing passes
+
+V8-13 keeps volumetrics, atmospheric scattering/fog, deferred rendering,
+SSR/GI/lightmaps, and custom post-processing behind stable advanced renderer
+diagnostics until portable promotion criteria and web/Bevy evidence exist.
 
 ### 📦 Assets, glTF, and Scenes
 
