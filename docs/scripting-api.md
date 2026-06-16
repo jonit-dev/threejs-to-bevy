@@ -22,6 +22,116 @@ Native runs the same JavaScript bundle in QuickJS and calls Rust-owned services.
 No script receives raw Three.js, Bevy, renderer, filesystem, or platform handles.
 ```
 
+## Status Legend
+
+| Status | Meaning |
+| --- | --- |
+| [x] Implemented | Works across the SDK/IR, web runtime, and Bevy QuickJS where claimed. |
+| [ ] Partial | Some contract or evidence exists, but the behavior is intentionally narrow or not fully aligned. |
+| [ ] Missing | Not implemented as a portable scripting API in this repo. |
+| [ ] Design only | Directional design, not a supported runtime contract. |
+| [ ] Unsupported | Intentionally rejected or not portable. |
+
+## Portable Scripting Checklist
+
+This checklist is the implementation tracker for portable scripting APIs. A
+checked item is promoted only for the version scope and runtime behavior named
+in the item; unchecked items remain future-facing, partial, design-only, or
+unsupported.
+
+### Core Systems, Queries, and Entities
+
+- [x] `defineSystem(config, run)` portable system registration.
+- [x] Declared system stages: `startup`, `fixedUpdate`, `update`, and
+  `postUpdate`.
+- [x] Deterministic same-stage system ordering with `before`/`after`
+  constraints and system-name tie breaks.
+- [x] Query snapshots through `ctx.query()`.
+- [x] Stable entity identity through `entity.id`.
+- [x] Component reads through `entity.get(Component)`.
+- [x] Component patches through `entity.patch(Component, partial)`.
+- [x] Component replacement through `entity.set(Component, value)`.
+- [x] Marker/tag checks through `entity.has(ComponentOrTag)`.
+- [x] Query sorting by entity ID with `orderBy: "id"`.
+- [x] Query pagination with deterministic `offset` and `limit` windows.
+- [x] Changed-query filters from explicit fixed-trace change metadata.
+- [ ] Missing hidden runtime diffing for changed queries.
+
+### Time, Input, Randomness, and Timers
+
+- [x] Variable timestep reads through `ctx.time.dt`.
+- [x] Fixed timestep reads through `ctx.time.fixedDt`.
+- [x] Logical input axes through `ctx.input.axis(name)`.
+- [x] Logical input actions through `ctx.input.action(name)`.
+- [x] Deterministic seeded random helpers through
+  `ctx.random.float/range/int/bool/pick`.
+- [x] Deterministic timer/cooldown helpers through
+  `ctx.timers.elapsed/remaining/progress/done/ready`.
+- [ ] Unsupported wall-clock timer scheduling inside portable systems.
+- [ ] Unsupported platform RNG access inside portable systems.
+
+### Resources, Events, Commands, and Lifecycle
+
+- [x] Typed event emission through `ctx.events.emit(Event, payload)`.
+- [x] Typed event reads through `ctx.events.read(Event)`.
+- [x] Resource reads through `ctx.resources.get(name)`.
+- [x] Resource writes through `ctx.resources.set(name, value)`.
+- [x] Command-buffer entity spawn through `ctx.commands.spawn(id, components)`.
+- [x] Command-buffer entity despawn through `ctx.commands.despawn(id, policy)`.
+- [x] Command-buffer component add through
+  `ctx.commands.addComponent(id, component)`.
+- [x] Command-buffer component removal through
+  `ctx.commands.removeComponent(id, Component)`.
+- [x] Fixed-trace replay and hot-reload invalidation metadata.
+- [ ] Missing state-preserving hot reload.
+- [ ] Missing system-local persisted state.
+- [ ] Partial component-hook observations; command-time/removal hook callbacks
+  remain incomplete.
+- [ ] Partial observer propagation; stoppable observers remain incomplete.
+
+### Services
+
+- [x] Animation command shape through `ctx.animation.play(entity, clip, options)`.
+- [x] Primitive raycast service through `ctx.physics.raycast(options)`.
+- [x] Primitive overlap query service through `ctx.physics.overlap(options)`.
+- [x] Primitive shape-cast query service through
+  `ctx.physics.shapeCast(options)`.
+- [x] Narrow fixed-trace character movement through
+  `ctx.character.move(entity, options)`.
+- [x] Pointer ray generation through `ctx.picking.pointerRay(options)`.
+- [x] Generated mesh bounds picking through `ctx.picking.mesh(options)`.
+- [x] Asset manifest lookup through `ctx.assets.get(id)` and
+  `ctx.assets.list()`.
+- [x] Declared bundle-local asset load service through `ctx.assets.load(id)`.
+- [ ] Partial collision/trigger event phases for fixed traces; full solver
+  behavior and contact filtering remain outside the current claim.
+- [ ] Missing full animation blending/state-machine scripting.
+- [ ] Missing particle commands.
+- [ ] Missing audio script commands such as `audio.play` and `audio.stop`.
+- [ ] Missing UI command/focus/input script APIs.
+
+### Authoring Ergonomics
+
+- [x] `defineGame({ scene, world, input, runtimeConfig })` game-root
+  composition.
+- [x] `defineControls({ movement, actions })` portable input-map helper.
+- [x] `primitiveActorPrefab(...)` primitive actor prefab helper.
+- [x] `modelActorPrefab(...)` model actor metadata helper.
+- [x] `tn create --template v5-game-starter` starter template.
+- [ ] Missing runtime prefab instantiation.
+- [ ] Missing child hierarchy commands from scripts.
+
+### Intentionally Unsupported Or Non-Portable
+
+- [ ] Unsupported direct Three.js, Bevy, renderer, DOM, filesystem, network,
+  worker, or platform access.
+- [ ] Unsupported arbitrary npm dependencies in portable scripts.
+- [ ] Unsupported async/await, promises, workers, and unrestricted async timers
+  in systems.
+- [ ] Unsupported runtime file/network asset loading, custom loaders, and raw
+  runtime asset handles from scripts.
+- [ ] Unsupported dynamic runtime plugin loading.
+
 ## V4 Completed Proof Scene
 
 V4 proved the scripting APIs with a small primitive scene, not the V3 forest.
@@ -52,29 +162,41 @@ trace that compares web JavaScript and native QuickJS patch/event/command and
 service logs through `verify:v4`. Everything else in this document is design
 direction until promoted by a PRD.
 
-| API | V4 Need | Proof In Primitive Scene |
-| --- | --- | --- |
-| `defineSystem(config, run)` | Register portable systems with declared access. | All scripted behavior is declared through systems. |
-| `ctx.query()` | Iterate matching entity snapshots. | Rotate all `Rotator` cubes and move one platform. |
-| `entity.id` | Stable entity identity. | Event payloads and commands reference entities by ID. |
-| `entity.get(Component)` | Read declared component data. | Read `Transform`, `Rotator`, `Velocity`, or `Health`. |
-| `entity.patch(Component, partial)` | Emit component patches. | Update `Transform.rotation` and `Transform.position`. |
-| `entity.set(Component, value)` | Replace declared component data. | Reset a marker or health component. |
-| `entity.has(ComponentOrTag)` | Check marker/tag presence. | Skip disabled cubes or identify targets. |
-| `ctx.time.dt` | Variable timestep. | Smooth rotation or visual-only movement. |
-| `ctx.time.fixedDt` | Deterministic fixed timestep. | Golden patch-log movement fixture. |
-| `ctx.input.axis(name)` | Read logical axis value. | Move a cube or platform on `moveX`. |
-| `ctx.input.action(name)` | Read logical button/action state. | Spawn marker/projectile on `fire`. |
-| `ctx.events.emit(Event, payload)` | Emit typed transient data. | Emit `HitEvent` or `ReachedMarkerEvent`. |
-| `ctx.events.read(Event)` | Consume typed events. | A second system flashes, moves, or despawns a target. |
-| `ctx.commands.spawn(id, components)` | Add entities at schedule boundary. | Spawn a projectile or marker cube. |
-| `ctx.commands.despawn(id, policy)` | Remove entities at schedule boundary. | Despawn projectile/marker after an event. |
-| `ctx.commands.addComponent(id, component)` | Add marker/data component. | Mark a cube as `Activated`. |
-| `ctx.commands.removeComponent(id, Component)` | Remove marker/data component. | Clear `Activated` or `Disabled`. |
-| `ctx.animation.play(entity, clip, options)` | Prove engine service command shape. | Start a simple named transform animation or mocked clip command. |
-| `ctx.physics.raycast(options)` | Prove host query service shape. | Raycast from a cube to a primitive floor or target. |
-| `ctx.picking.pointerRay(options)` | Generate a portable camera ray from normalized pointer coordinates. | Convert pointer state into a ray for mesh picking. |
-| `ctx.picking.mesh(options)` | Query generated mesh renderer bounds without exposing renderer handles. | Pick a mesh entity from a ray and log the service result. |
+- [x] `defineSystem(config, run)` registers portable systems with declared
+  access. The proof scene declares all scripted behavior through systems.
+- [x] `ctx.query()` iterates matching entity snapshots. The proof scene rotates
+  all `Rotator` cubes and moves one platform.
+- [x] `entity.id` exposes stable entity identity. Event payloads and commands
+  reference entities by ID.
+- [x] `entity.get(Component)` reads declared component data such as `Transform`,
+  `Rotator`, `Velocity`, or `Health`.
+- [x] `entity.patch(Component, partial)` emits component patches for
+  `Transform.rotation` and `Transform.position`.
+- [x] `entity.set(Component, value)` replaces declared component data for marker
+  or health resets.
+- [x] `entity.has(ComponentOrTag)` checks marker/tag presence, such as
+  `Disabled` or target tags.
+- [x] `ctx.time.dt` provides variable timestep data for smooth rotation or
+  visual-only movement.
+- [x] `ctx.time.fixedDt` provides deterministic fixed timestep data for golden
+  patch-log movement fixtures.
+- [x] `ctx.input.axis(name)` reads logical axis values such as `moveX`.
+- [x] `ctx.input.action(name)` reads logical action state such as `fire`.
+- [x] `ctx.events.emit(Event, payload)` emits typed transient data.
+- [x] `ctx.events.read(Event)` consumes typed events from another system.
+- [x] `ctx.commands.spawn(id, components)` adds entities at schedule boundaries.
+- [x] `ctx.commands.despawn(id, policy)` removes entities at schedule
+  boundaries.
+- [x] `ctx.commands.addComponent(id, component)` adds marker/data components.
+- [x] `ctx.commands.removeComponent(id, Component)` removes marker/data
+  components.
+- [x] `ctx.animation.play(entity, clip, options)` proves the engine-service
+  command shape.
+- [x] `ctx.physics.raycast(options)` proves the host query service shape.
+- [x] `ctx.picking.pointerRay(options)` generates portable camera rays from
+  normalized pointer coordinates.
+- [x] `ctx.picking.mesh(options)` queries generated mesh renderer bounds without
+  exposing renderer handles.
 
 V4 narrowly implements `ctx.animation` and `ctx.physics` as service-shape proof
 points. The proof logs service calls and validates host response shape, but it
@@ -121,13 +243,20 @@ not by giving scripts direct renderer or native handles.
 
 Supported V5 authoring ergonomics:
 
-| API | V5 Contract | Runtime Meaning |
-| --- | --- | --- |
-| `defineGame({ scene, world, input, runtimeConfig })` | Compose existing portable declarations into one captured root. | Lowers through the existing `Scene`/`World`/input/runtime-config bundle paths. |
-| `defineControls({ movement, actions })` | Build portable input maps from narrow WASD, optional gamepad, and action-button recipes. | Lowers through the existing input map contract. |
-| `primitiveActorPrefab(...)` | Create a renderable primitive actor plus deterministic ECS component declarations. | Lowers through existing `Mesh`, `World.spawn`, and component declaration paths. |
-| `modelActorPrefab(...)` | Create deterministic model actor metadata. | Records model asset metadata only; it does not add runtime model loading. |
-| `tn create --template v5-game-starter` | Scaffold a small playable starter that uses the V5 helper path. | The V5 gate creates, builds, and validates the starter as release evidence. |
+- [x] `defineGame({ scene, world, input, runtimeConfig })` composes existing
+  portable declarations into one captured root. It lowers through the existing
+  `Scene`/`World`/input/runtime-config bundle paths.
+- [x] `defineControls({ movement, actions })` builds portable input maps from
+  narrow WASD, optional gamepad, and action-button recipes. It lowers through
+  the existing input map contract.
+- [x] `primitiveActorPrefab(...)` creates a renderable primitive actor plus
+  deterministic ECS component declarations. It lowers through existing `Mesh`,
+  `World.spawn`, and component declaration paths.
+- [x] `modelActorPrefab(...)` creates deterministic model actor metadata. It
+  records model asset metadata only; it does not add runtime model loading.
+- [x] `tn create --template v5-game-starter` scaffolds a small playable starter
+  that uses the V5 helper path. The V5 gate creates, builds, and validates the
+  starter as release evidence.
 
 Rules:
 
@@ -175,33 +304,90 @@ functional 3D scene when the behavior has visible output, interaction, or
 runtime state. Use `assets-source/environment` assets where they reasonably
 show the feature.
 
-| API Area | Starting Version | Status | Notes |
-| --- | --- | --- | --- |
-| Query sorting and stable iteration order | V5 | Implemented for `orderBy: "id"` | Query declarations and `ctx.query(...)` can request deterministic entity-id ordering in SDK/IR/web/Bevy QuickJS. |
-| Changed-query filters | V5 | Implemented for fixed-trace metadata | `changed: [...]` filters against structured change metadata from `world.resources.__changed`, `world.resources.Changed`, or entity `__changed` markers; runtimes do not infer diffs from hidden state. |
-| System ordering constraints | V5 | Implemented for same-stage `before`/`after` constraints | SDK/IR/compiler/web/Bevy support deterministic topological same-stage ordering with system-name tie breaks; validation rejects missing, cross-stage, self, and cyclic constraints. |
-| Bulk query snapshots/pagination | V5 | Implemented for offset/limit windows | Query declarations and `ctx.query(...)` support deterministic `offset` and `limit` windows after filtering and optional ordering. |
-| Random resource | V5 | Implemented | `ctx.random.float/range/int/bool/pick` uses deterministic per-context seeded randomness from `world.resources.Random.seed` or `world.resources.__randomSeed`; no wall-clock or platform RNG access. |
-| Timers/cooldowns helpers | V5 | Implemented | `ctx.timers.elapsed/remaining/progress/done/ready` derive deterministic timer and cooldown values from `ctx.time.elapsed`; async timers and wall-clock scheduling remain unsupported. |
-| Collision events from physics backend | V6 | Partial | Primitive collision/trigger events now report deterministic `enter`, `stay`, and `exit` phases in web and Bevy; full solver behavior and contact filtering are deferred to V7. |
-| Shape casts and overlap queries | V7 | Implemented for primitive fixed-trace services | Systems declare `physics.overlap` and `physics.shapeCast`; web and Bevy QuickJS return deterministic primitive collider results with portable filters and service logs. Full physics-solver contact behavior remains tracked under collision/character parity. |
-| Character controller API | V5 | Implemented for declared fixed-trace movement service | Systems declare `character.move`; `ctx.character.move(entity, { axes, fixedDelta })` returns a deterministic controller trace observation in web and Bevy QuickJS using the portable `CharacterController`, `Collider`, `RigidBody`, and `Transform` data. Full solver-backed interaction, navmesh, and object pushing remain outside this narrow service. |
-| Game root composition | V5 | Implemented | `defineGame` composes existing portable scene/world/input/runtime config declarations; it is not a new runtime contract. |
-| Game starter template | V5 | Implemented | `v5-game-starter` is release-gated through `verify:v5` as a small playable SDK ergonomics proof. |
-| Full animation blending/state machine | V5 | Missing | Candidate for visual quality; V4 only proved command shape such as `animation.play`. |
-| Particle commands | V5 | Missing | Candidate only when particles are represented by portable scene/runtime data and visual verification artifacts. |
-| Resources write API | V6 | Implemented for current resource/event trace | Resource write effects are validated and compared across web/native fixed trace artifacts; broader scene proof remains later V6 work. |
-| System-local persisted state | V5 or later | Missing | Prefer resources/components first; state-preserving hot reload remains later. |
-| Runtime prefab instantiation | V6 or later | Missing | V5 authoring-time prefab helpers expand to existing declarations; runtime instantiation remains future scope. |
-| Child hierarchy commands | V5 or V6 | Missing | Needs scene-visible proof and deterministic command application across web and Bevy. |
-| Audio commands | V5 or later | Design only | Promote only with a maintained scene or gameplay fixture that needs audible runtime behavior. |
-| UI commands/focus/input | V6 or later | Design only | Better aligned with editor/inspector and online workflows unless a V5 visual-quality scene requires a narrow HUD. |
-| Asset lookup from script | V5 | Implemented | `ctx.assets.get(id)` and `ctx.assets.list()` expose cloned bundle manifest metadata in web and Bevy QuickJS without granting file, network, renderer, or native asset handles. |
-| Runtime asset loading from script | V6 or later | Implemented for declared bundle-local metadata loads | `ctx.assets.load(id)` is a declared `assets.load` service that returns deterministic ready/missing results for assets already present in `assets.manifest.json`; arbitrary file/network loads, custom loaders, and raw runtime handles remain unsupported. |
-| Async/await in systems | V6 or later | Unsupported | Avoid until scheduler, determinism, and QuickJS behavior are specified. |
-| Network/file/platform APIs | V6 or later | Unsupported | Network belongs to V6 service boundaries; file/platform access should remain outside portable systems. |
-| Arbitrary npm dependencies | Later | Unsupported | Native QuickJS sandbox cannot assume them. |
-| Direct Three.js/Bevy access | Never portable | Unsupported | Use portable context and service facades only. |
+### Implemented
+
+- [x] V5 query sorting and stable iteration order for `orderBy: "id"`.
+  Query declarations and `ctx.query(...)` can request deterministic entity-id
+  ordering in SDK/IR/web/Bevy QuickJS.
+- [x] V5 changed-query filters for fixed-trace metadata. `changed: [...]`
+  filters against structured change metadata from `world.resources.__changed`,
+  `world.resources.Changed`, or entity `__changed` markers; runtimes do not
+  infer diffs from hidden state.
+- [x] V5 same-stage system ordering constraints. SDK/IR/compiler/web/Bevy
+  support deterministic topological `before`/`after` ordering with system-name
+  tie breaks; validation rejects missing, cross-stage, self, and cyclic
+  constraints.
+- [x] V5 bulk query snapshots/pagination for deterministic `offset` and
+  `limit` windows after filtering and optional ordering.
+- [x] V5 deterministic random helpers. `ctx.random.float/range/int/bool/pick`
+  uses seeded randomness from `world.resources.Random.seed` or
+  `world.resources.__randomSeed`.
+- [x] V5 deterministic timer/cooldown helpers.
+  `ctx.timers.elapsed/remaining/progress/done/ready` derive values from
+  `ctx.time.elapsed`.
+- [x] V7 primitive shape casts and overlap queries. Systems declare
+  `physics.overlap` and `physics.shapeCast`; web and Bevy QuickJS return
+  deterministic primitive collider results with portable filters and service
+  logs.
+- [x] V5 narrow character controller API. Systems declare `character.move`, and
+  `ctx.character.move(entity, { axes, fixedDelta })` returns deterministic
+  fixed-trace observations in web and Bevy QuickJS.
+- [x] V5 game root composition. `defineGame` composes existing portable
+  scene/world/input/runtime config declarations; it is not a new runtime
+  contract.
+- [x] V5 game starter template. `v5-game-starter` is release-gated through
+  `verify:v5` as a small playable SDK ergonomics proof.
+- [x] V6 resource write API for current resource/event traces. Resource write
+  effects are validated and compared across web/native fixed trace artifacts.
+- [x] V5 asset lookup from scripts. `ctx.assets.get(id)` and
+  `ctx.assets.list()` expose cloned bundle manifest metadata in web and Bevy
+  QuickJS without granting file, network, renderer, or native asset handles.
+- [x] V6 declared bundle-local asset loading from scripts. `ctx.assets.load(id)`
+  is a declared `assets.load` service that returns deterministic ready/missing
+  results for assets already present in `assets.manifest.json`.
+
+### Partial
+
+- [ ] V6 collision events from the physics backend. Primitive
+  collision/trigger events report deterministic `enter`, `stay`, and `exit`
+  phases in web and Bevy; full solver behavior and richer contact filtering are
+  still outside the current scripting claim.
+- [ ] V7 character movement beyond the narrow fixed-trace service. Full
+  solver-backed interaction, navmesh behavior, arbitrary sloped mesh terrain,
+  and object pushing remain incomplete.
+- [ ] V7 component hook and observer evidence. Read observations and fixed
+  traces exist, while command-time/removal hook callbacks and stoppable
+  observers remain incomplete.
+
+### Missing
+
+- [ ] Full animation blending/state-machine scripting. V4 only proved command
+  shape such as `animation.play`.
+- [ ] Particle commands. Promote only when particles are represented by
+  portable scene/runtime data and visual verification artifacts.
+- [ ] System-local persisted state. Prefer resources/components first;
+  state-preserving hot reload remains later.
+- [ ] Runtime prefab instantiation. V5 authoring-time prefab helpers expand to
+  existing declarations; runtime instantiation remains future scope.
+- [ ] Child hierarchy commands. This needs scene-visible proof and deterministic
+  command application across web and Bevy.
+
+### Design Only
+
+- [ ] Audio commands. Promote only with a maintained scene or gameplay fixture
+  that needs audible runtime behavior.
+- [ ] UI commands/focus/input. Better aligned with editor/inspector and online
+  workflows unless a visual-quality scene requires a narrow HUD.
+
+### Unsupported
+
+- [ ] Async/await in systems. Avoid until scheduler, determinism, and QuickJS
+  behavior are specified.
+- [ ] Network/file/platform APIs. Network belongs behind explicit service
+  boundaries; file/platform access should remain outside portable systems.
+- [ ] Arbitrary npm dependencies. Native QuickJS sandbox cannot assume them.
+- [ ] Direct Three.js/Bevy access. Use portable context and service facades
+  only.
 
 ## API Shape
 
