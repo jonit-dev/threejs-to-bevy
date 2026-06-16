@@ -43,6 +43,10 @@ path = "src/audio_lifecycle_trace.rs"
 name = "threenative_environment_content_trace"
 path = "src/environment_content_trace.rs"
 
+[[bin]]
+name = "threenative_asset_load_trace"
+path = "src/asset_load_trace.rs"
+
 [dependencies]
 bevy = { version = "=0.14.2", features = ["pbr_multi_layer_material_textures", "pbr_transmission_textures"] }
 quickjs-rusty = "=0.12.0"
