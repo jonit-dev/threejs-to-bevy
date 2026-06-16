@@ -1,0 +1,37 @@
+---
+description: Open a PR against main only after self-verification passes
+alwaysApply: true
+---
+
+# Open PR After Validation
+
+When implementing a PRD, feature, or multi-phase task, do not stop at "code written."
+Finish only when verification proves it works, then open a PR against `main`.
+
+## Required flow
+
+1. Implement in an isolated worktree/branch when the task is non-trivial.
+2. Self-verify with the narrowest relevant gate first, then broader gates when contracts change.
+3. Fix failures until verification passes; capture artifact/report paths as evidence.
+4. Open a PR against `main` only after validation succeeds.
+
+## ThreeNative verification defaults
+
+- Package tests for touched areas (`pnpm --filter <pkg> test`)
+- Focused version gate when one exists (e.g. `pnpm verify:v8:camera-views`)
+- `pnpm check:docs:v8` (or relevant docs gate) for version-scoped work
+- `pnpm verify:conformance` when shared IR/runtime contracts change
+- Visual verification skill for rendering work: build example, run `tn verify` or version gate, inspect report JSON and screenshots
+
+## PR requirements
+
+- Rebase onto latest `origin/main` so the PR contains only the feature commit(s)
+- Push branch with `-u origin HEAD`
+- Create PR with summary, test plan, and evidence paths/metrics
+- Return the PR URL to the user
+
+## Do not
+
+- Stop after implementation without running verification
+- Open a PR while focused gates are still failing
+- Commit or push unless the user asked, except when opening the PR requires it
