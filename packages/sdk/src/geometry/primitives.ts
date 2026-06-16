@@ -10,6 +10,24 @@ export interface ICustomMeshAttribute {
   values: readonly number[];
 }
 
+export interface IMeshBounds {
+  max: Vector3Tuple;
+  min: Vector3Tuple;
+}
+
+export interface IMeshGenerationMetadata {
+  helper?: string;
+  id: string;
+  seed?: number;
+  source: "MeshBuilder" | "BufferGeometrySnapshot";
+}
+
+export interface IMeshBudgetMetadata {
+  classification: "doodad" | "hero-prop" | "standard-prop";
+  limit: number;
+  vertexCount: number;
+}
+
 export class BoxGeometry {
   public readonly kind = "box";
   public readonly size: Vector3Tuple;
@@ -175,11 +193,32 @@ export class ExtrudedRectangleGeometry {
 export class CustomMeshGeometry {
   public readonly kind = "custom";
   public readonly attributes: readonly ICustomMeshAttribute[];
+  public readonly bounds?: IMeshBounds;
+  public readonly budget?: IMeshBudgetMetadata;
+  public readonly generation?: IMeshGenerationMetadata;
   public readonly indices?: readonly number[];
+  public readonly storage?: "binary" | "inline";
+  public readonly topology?: "triangle-list";
+  public readonly usage?: "static";
 
-  public constructor(options: { attributes: readonly ICustomMeshAttribute[]; indices?: readonly number[] }) {
+  public constructor(options: {
+    attributes: readonly ICustomMeshAttribute[];
+    bounds?: IMeshBounds;
+    budget?: IMeshBudgetMetadata;
+    generation?: IMeshGenerationMetadata;
+    indices?: readonly number[];
+    storage?: "binary" | "inline";
+    topology?: "triangle-list";
+    usage?: "static";
+  }) {
     this.attributes = normalizeMeshAttributes(options.attributes);
+    this.bounds = options.bounds === undefined ? undefined : normalizeBounds(options.bounds);
+    this.budget = options.budget === undefined ? undefined : { ...options.budget };
+    this.generation = options.generation === undefined ? undefined : { ...options.generation };
     this.indices = normalizeMeshIndices(options.indices);
+    this.storage = options.storage;
+    this.topology = options.topology;
+    this.usage = options.usage;
   }
 }
 
@@ -243,6 +282,23 @@ function normalizeMeshIndices(indices: readonly number[] | undefined): readonly 
     }
   });
   return [...indices];
+}
+
+function normalizeBounds(bounds: IMeshBounds): IMeshBounds {
+  bounds.min.forEach((value, index) => {
+    if (!Number.isFinite(value)) {
+      throw new SdkError("TN_SDK_GEOMETRY_MESH_BOUNDS_INVALID", `CustomMeshGeometry.bounds.min[${index}] must be finite.`);
+    }
+  });
+  bounds.max.forEach((value, index) => {
+    if (!Number.isFinite(value)) {
+      throw new SdkError("TN_SDK_GEOMETRY_MESH_BOUNDS_INVALID", `CustomMeshGeometry.bounds.max[${index}] must be finite.`);
+    }
+    if (value < (bounds.min[index] ?? 0)) {
+      throw new SdkError("TN_SDK_GEOMETRY_MESH_BOUNDS_INVALID", `CustomMeshGeometry.bounds.max[${index}] must be greater than or equal to min.`);
+    }
+  });
+  return { min: [...bounds.min] as Vector3Tuple, max: [...bounds.max] as Vector3Tuple };
 }
 
 function validateMeshAttributeName(name: string, path: string): void {

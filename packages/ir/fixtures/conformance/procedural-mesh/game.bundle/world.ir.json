@@ -1,0 +1,126 @@
+{
+  "entities": [
+    {
+      "components": {
+        "Camera": {
+          "far": 20,
+          "kind": "orthographic",
+          "near": 0.1,
+          "priority": 0,
+          "size": 2.8
+        },
+        "Transform": {
+          "position": [
+            0,
+            1.15,
+            5
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "id": "camera.procedural"
+    },
+    {
+      "components": {
+        "Light": {
+          "color": "#ffffff",
+          "intensity": 0.65,
+          "kind": "ambient"
+        },
+        "Transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "id": "light.ambient"
+    },
+    {
+      "components": {
+        "Light": {
+          "color": "#ffffff",
+          "intensity": 1.35,
+          "kind": "directional"
+        },
+        "Transform": {
+          "position": [
+            2,
+            4,
+            3
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "id": "light.key"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.prop.tree.pine",
+          "mesh": "mesh.prop.tree.pine"
+        },
+        "Transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "id": "prop.tree.pine"
+    }
+  ],
+  "events": {},
+  "prefabs": [],
+  "resources": {
+    "ActiveCamera": {
+      "entity": "camera.procedural"
+    }
+  },
+  "schema": "threenative.world",
+  "version": "0.1.0"
+}

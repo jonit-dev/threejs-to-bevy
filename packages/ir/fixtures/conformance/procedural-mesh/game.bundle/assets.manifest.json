@@ -1,0 +1,72 @@
+{
+  "assets": [
+    {
+      "binaryAttributes": [
+        {
+          "count": 228,
+          "format": "float32x4",
+          "itemSize": 4,
+          "name": "color",
+          "path": "generated/meshes/mesh.prop.tree.pine.00.color.bin"
+        },
+        {
+          "count": 228,
+          "format": "float32x3",
+          "itemSize": 3,
+          "name": "normal",
+          "path": "generated/meshes/mesh.prop.tree.pine.01.normal.bin"
+        },
+        {
+          "count": 228,
+          "format": "float32x3",
+          "itemSize": 3,
+          "name": "position",
+          "path": "generated/meshes/mesh.prop.tree.pine.02.position.bin"
+        },
+        {
+          "count": 228,
+          "format": "float32x2",
+          "itemSize": 2,
+          "name": "uv",
+          "path": "generated/meshes/mesh.prop.tree.pine.03.uv.bin"
+        }
+      ],
+      "binaryIndices": {
+        "count": 630,
+        "format": "uint16",
+        "path": "generated/meshes/mesh.prop.tree.pine.indices.uint16.bin"
+      },
+      "bounds": {
+        "max": [
+          0.7713772464472801,
+          2.0452,
+          0.765786508742293
+        ],
+        "min": [
+          -0.78382275355272,
+          0,
+          -0.765786508742293
+        ]
+      },
+      "budget": {
+        "classification": "standard-prop",
+        "limit": 8000,
+        "vertexCount": 228
+      },
+      "format": "generated",
+      "generation": {
+        "helper": "pineTree",
+        "id": "prop.tree.pine",
+        "seed": 12,
+        "source": "MeshBuilder"
+      },
+      "id": "mesh.prop.tree.pine",
+      "kind": "mesh",
+      "primitive": "custom",
+      "topology": "triangle-list",
+      "usage": "static"
+    }
+  ],
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}

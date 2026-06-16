@@ -210,10 +210,45 @@ export interface IMeshAttributeIr {
   values: readonly number[];
 }
 
+export interface IMeshBinaryAttributeIr {
+  count: number;
+  format: "float32x1" | "float32x2" | "float32x3" | "float32x4";
+  itemSize: 1 | 2 | 3 | 4;
+  name: "color" | "normal" | "position" | "uv" | "uv1" | `custom:${string}`;
+  path: string;
+}
+
+export interface IMeshBinaryIndicesIr {
+  count: number;
+  format: "uint16" | "uint32";
+  path: string;
+}
+
+export interface IGeneratedMeshMetadataIr {
+  helper?: string;
+  id: string;
+  seed?: number;
+  source: "BufferGeometrySnapshot" | "MeshBuilder";
+}
+
+export interface IGeneratedMeshBudgetIr {
+  classification: "doodad" | "hero-prop" | "standard-prop";
+  limit: number;
+  vertexCount: number;
+}
+
 export type IAssetIr =
   | {
       attributes?: readonly IMeshAttributeIr[];
+      binaryAttributes?: readonly IMeshBinaryAttributeIr[];
+      binaryIndices?: IMeshBinaryIndicesIr;
+      bounds?: {
+        max: Vec3;
+        min: Vec3;
+      };
+      budget?: IGeneratedMeshBudgetIr;
       format: "generated";
+      generation?: IGeneratedMeshMetadataIr;
       id: string;
       indices?: readonly number[];
       kind: "mesh";
@@ -232,6 +267,8 @@ export type IAssetIr =
         | "sphere"
         | "torus";
       size?: readonly number[];
+      topology?: "triangle-list";
+      usage?: "static";
     }
   | {
       format: "bin";

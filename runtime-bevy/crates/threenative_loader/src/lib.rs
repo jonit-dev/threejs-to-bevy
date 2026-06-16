@@ -262,8 +262,14 @@ pub struct AssetIr {
     #[serde(rename = "animationGraph")]
     pub animation_graph: Option<AnimationGraphIr>,
     pub attributes: Option<Vec<MeshAttributeIr>>,
+    #[serde(rename = "binaryAttributes")]
+    pub binary_attributes: Option<Vec<MeshBinaryAttributeIr>>,
+    #[serde(rename = "binaryIndices")]
+    pub binary_indices: Option<MeshBinaryIndicesIr>,
     pub bounds: Option<AssetBoundsIr>,
+    pub budget: Option<MeshBudgetIr>,
     pub center: Option<[f32; 2]>,
+    pub generation: Option<MeshGenerationIr>,
     pub indices: Option<Vec<u32>>,
     #[serde(rename = "magFilter")]
     pub mag_filter: Option<String>,
@@ -277,6 +283,8 @@ pub struct AssetIr {
     pub repeat: Option<[f32; 2]>,
     pub rotation: Option<f32>,
     pub size: Option<Vec<f32>>,
+    pub topology: Option<String>,
+    pub usage: Option<String>,
     #[serde(rename = "wrapS")]
     pub wrap_s: Option<String>,
     #[serde(rename = "wrapT")]
@@ -285,10 +293,44 @@ pub struct AssetIr {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct MeshGenerationIr {
+    pub id: String,
+    pub source: String,
+    pub helper: Option<String>,
+    pub seed: Option<f32>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MeshBudgetIr {
+    pub classification: String,
+    pub vertex_count: usize,
+    pub limit: usize,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MeshAttributeIr {
     pub name: String,
     pub item_size: usize,
     pub values: Vec<f32>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MeshBinaryAttributeIr {
+    pub name: String,
+    pub item_size: usize,
+    pub format: String,
+    pub count: usize,
+    pub path: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MeshBinaryIndicesIr {
+    pub format: String,
+    pub count: usize,
+    pub path: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -1038,8 +1080,9 @@ pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadEr
     ensure_supported(&world.schema, &world.version)?;
     let materials: MaterialsIr = read_json(bundle_path, &manifest.files.materials)?;
     ensure_supported(&materials.schema, &materials.version)?;
-    let assets: AssetsManifest = read_json(bundle_path, &manifest.files.assets)?;
+    let mut assets: AssetsManifest = read_json(bundle_path, &manifest.files.assets)?;
     ensure_supported(&assets.schema, &assets.version)?;
+    hydrate_generated_mesh_assets(&mut assets, bundle_path)?;
     let target_profile: TargetProfile = read_json(bundle_path, &manifest.files.target_profile)?;
     ensure_supported(&target_profile.schema, &target_profile.version)?;
     let component_schemas = match manifest.files.component_schemas.as_ref() {
@@ -1113,6 +1156,79 @@ pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadEr
         target_profile,
         ui,
         world,
+    })
+}
+
+fn hydrate_generated_mesh_assets(
+    assets: &mut AssetsManifest,
+    bundle_path: &Path,
+) -> Result<(), LoadError> {
+    for asset in &mut assets.assets {
+        if asset.kind != "mesh" || asset.primitive.as_deref() != Some("custom") {
+            continue;
+        }
+        let Some(binary_attributes) = asset.binary_attributes.as_ref() else {
+            continue;
+        };
+        let mut attributes = Vec::new();
+        for attribute in binary_attributes {
+            attributes.push(MeshAttributeIr {
+                name: attribute.name.clone(),
+                item_size: attribute.item_size,
+                values: read_f32_payload(bundle_path, &attribute.path, attribute.count * attribute.item_size)?,
+            });
+        }
+        asset.attributes = Some(attributes);
+        if let Some(indices) = asset.binary_indices.as_ref() {
+            asset.indices = Some(read_index_payload(
+                bundle_path,
+                &indices.path,
+                indices.count,
+                indices.format.as_str(),
+            )?);
+        }
+    }
+    Ok(())
+}
+
+fn read_f32_payload(
+    bundle_path: &Path,
+    file: &str,
+    count: usize,
+) -> Result<Vec<f32>, LoadError> {
+    let bytes = read_binary(bundle_path, file)?;
+    let mut values = Vec::with_capacity(count);
+    for chunk in bytes.chunks_exact(4).take(count) {
+        values.push(f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]));
+    }
+    Ok(values)
+}
+
+fn read_index_payload(
+    bundle_path: &Path,
+    file: &str,
+    count: usize,
+    format: &str,
+) -> Result<Vec<u32>, LoadError> {
+    let bytes = read_binary(bundle_path, file)?;
+    let mut values = Vec::with_capacity(count);
+    if format == "uint16" {
+        for chunk in bytes.chunks_exact(2).take(count) {
+            values.push(u16::from_le_bytes([chunk[0], chunk[1]]) as u32);
+        }
+    } else {
+        for chunk in bytes.chunks_exact(4).take(count) {
+            values.push(u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]));
+        }
+    }
+    Ok(values)
+}
+
+fn read_binary(bundle_path: &Path, file: &str) -> Result<Vec<u8>, LoadError> {
+    let path = bundle_path.join(file);
+    fs::read(&path).map_err(|source| LoadError::Read {
+        path: path.display().to_string(),
+        source,
     })
 }
 

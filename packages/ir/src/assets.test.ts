@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -192,6 +192,85 @@ test("assets should accept custom generated mesh attributes and indices", async 
 
     assert.equal(result.ok, true);
     assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("assets should accept binary generated mesh payload references", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-assets-binary-mesh-"));
+  try {
+    await writeTestBundle(root, { createAssetsDir: true });
+    await mkdir(join(root, "generated/meshes"), { recursive: true });
+    await writeFile(join(root, "generated/meshes/mesh.position.bin"), float32([0, 0, 0, 1, 0, 0, 0, 1, 0]));
+    await writeFile(join(root, "generated/meshes/mesh.normal.bin"), float32([0, 0, 1, 0, 0, 1, 0, 0, 1]));
+    await writeFile(join(root, "generated/meshes/mesh.uv.bin"), float32([0, 0, 1, 0, 0, 1]));
+    await writeFile(join(root, "generated/meshes/mesh.indices.bin"), uint16([0, 1, 2]));
+    await writeJson(root, "assets.manifest.json", {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [
+        {
+          id: "mesh.procedural",
+          kind: "mesh",
+          format: "generated",
+          primitive: "custom",
+          topology: "triangle-list",
+          usage: "static",
+          bounds: { min: [0, 0, 0], max: [1, 1, 0] },
+          budget: { classification: "standard-prop", vertexCount: 3, limit: 8000 },
+          generation: { id: "prop.test", source: "MeshBuilder", seed: 3 },
+          binaryAttributes: [
+            { name: "position", itemSize: 3, format: "float32x3", count: 3, path: "generated/meshes/mesh.position.bin" },
+            { name: "normal", itemSize: 3, format: "float32x3", count: 3, path: "generated/meshes/mesh.normal.bin" },
+            { name: "uv", itemSize: 2, format: "float32x2", count: 3, path: "generated/meshes/mesh.uv.bin" },
+          ],
+          binaryIndices: { format: "uint16", count: 3, path: "generated/meshes/mesh.indices.bin" },
+        },
+      ],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("assets should reject generated mesh indices outside the vertex range", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-assets-binary-mesh-invalid-"));
+  try {
+    await writeTestBundle(root, { createAssetsDir: true });
+    await mkdir(join(root, "generated/meshes"), { recursive: true });
+    await writeFile(join(root, "generated/meshes/mesh.position.bin"), float32([0, 0, 0, 1, 0, 0, 0, 1, 0]));
+    await writeFile(join(root, "generated/meshes/mesh.indices.bin"), uint16([0, 1, 4]));
+    await writeJson(root, "assets.manifest.json", {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [
+        {
+          id: "mesh.procedural",
+          kind: "mesh",
+          format: "generated",
+          primitive: "custom",
+          topology: "triangle-list",
+          usage: "static",
+          bounds: { min: [0, 0, 0], max: [1, 1, 0] },
+          binaryAttributes: [
+            { name: "position", itemSize: 3, format: "float32x3", count: 3, path: "generated/meshes/mesh.position.bin" },
+          ],
+          binaryIndices: { format: "uint16", count: 3, path: "generated/meshes/mesh.indices.bin" },
+        },
+      ],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics[0]?.code, "TN_IR_MESH_INDICES_INVALID");
+    assert.match(result.diagnostics[0]?.path ?? "", /binaryIndices\/2$/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -452,3 +531,15 @@ test("assets should reject invalid v7 animation graph and particle metadata", as
     await rm(root, { force: true, recursive: true });
   }
 });
+
+function float32(values: readonly number[]): Buffer {
+  const buffer = Buffer.alloc(values.length * 4);
+  values.forEach((value, index) => buffer.writeFloatLE(value, index * 4));
+  return buffer;
+}
+
+function uint16(values: readonly number[]): Buffer {
+  const buffer = Buffer.alloc(values.length * 2);
+  values.forEach((value, index) => buffer.writeUInt16LE(value, index * 2));
+  return buffer;
+}

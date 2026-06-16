@@ -103,6 +103,57 @@ Both styles compile to the same ECS-shaped IR. In V2, supported R3F/JSX scene
 authoring also lowers into this same SDK graph and emitted IR; arbitrary R3F,
 Drei, React app, or browser behavior is outside the portable contract.
 
+### Procedural MeshBuilder
+
+Use `MeshBuilder` when a static prop should be authored in TypeScript instead
+of imported from Blender. The builder composes portable primitives and emits a
+`CustomMeshGeometry` with deterministic attributes, indices, bounds, generation
+metadata, and budget metadata. Larger generated meshes can be written as
+bundle-local binary payloads and consumed by both Three.js and Bevy.
+
+```ts
+import {
+  Mesh,
+  MeshBuilder,
+  MeshStandardMaterial,
+  OrthographicCamera,
+  Scene,
+  pineTree,
+} from "@threenative/sdk";
+
+const scene = new Scene({ id: "scene.procedural" });
+
+const pine = new Mesh({
+  geometry: pineTree({ id: "prop.tree.pine", seed: 12 }),
+  id: "prop.tree.pine",
+  material: new MeshStandardMaterial({ color: "#ffffff", roughness: 0.82 }),
+});
+scene.add(pine);
+
+const customRock = new Mesh({
+  geometry: MeshBuilder.create("prop.rock.lowpoly")
+    .color("#6f7469")
+    .scale([0.8, 0.45, 0.65])
+    .icosphere({ radius: 0.7, rings: 5, segments: 10 })
+    .flatNormals()
+    .build({ helper: "exampleRock", seed: 3, storage: "binary" }),
+  id: "prop.rock.lowpoly",
+  material: new MeshStandardMaterial({ color: "#ffffff" }),
+});
+scene.add(customRock);
+
+const camera = new OrthographicCamera({ id: "camera.main", size: 3, near: 0.1, far: 20 });
+camera.position.set(0, 1.2, 5);
+scene.add(camera);
+scene.setActiveCamera(camera);
+```
+
+P1 procedural mesh authoring is static: runtime vertex mutation, CSG,
+terrain-chunk streaming, deformable meshes, and direct Three.js/Bevy mesh APIs
+are outside the portable SDK contract. Migration tooling may normalize a
+compiler-only BufferGeometry snapshot into portable mesh data, but runtimes only
+consume validated IR/bundle assets.
+
 ### Game Root Helper
 
 Use `defineGame` when a project has more than one portable root. It is authoring

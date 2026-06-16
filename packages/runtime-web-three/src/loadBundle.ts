@@ -53,8 +53,9 @@ export async function loadBundle(source: string): Promise<IWebBundle> {
       ? undefined
       : await readBundleJson<IIrSchemaFile>(source, manifest.files.componentSchemas);
   const ui = manifest.entry.ui === undefined ? undefined : await readBundleJson<IUiIr>(source, manifest.entry.ui);
+  const assets = await hydrateGeneratedMeshAssets(await readBundleJson<IAssetsManifest>(source, manifest.files.assets), source);
   return {
-    assets: await readBundleJson<IAssetsManifest>(source, manifest.files.assets),
+    assets,
     audio,
     componentSchemas,
     environmentScene,
@@ -68,6 +69,59 @@ export async function loadBundle(source: string): Promise<IWebBundle> {
     ui,
     world: await readBundleJson<IWorldIr>(source, manifest.entry.world),
   };
+}
+
+async function hydrateGeneratedMeshAssets(assets: IAssetsManifest, source: string): Promise<IAssetsManifest> {
+  return {
+    ...assets,
+    assets: await Promise.all(assets.assets.map(async (asset) => {
+      if (asset.kind !== "mesh" || asset.primitive !== "custom" || asset.binaryAttributes === undefined) {
+        return asset;
+      }
+      const attributes = await Promise.all(asset.binaryAttributes.map(async (attribute) => ({
+        itemSize: attribute.itemSize,
+        name: attribute.name,
+        values: await readFloat32Payload(source, attribute.path, attribute.count * attribute.itemSize),
+      })));
+      const indices = asset.binaryIndices === undefined
+        ? undefined
+        : await readIndexPayload(source, asset.binaryIndices.path, asset.binaryIndices.count, asset.binaryIndices.format);
+      return {
+        ...asset,
+        attributes,
+        ...(indices === undefined ? {} : { indices }),
+      };
+    })),
+  };
+}
+
+async function readFloat32Payload(source: string, file: string, count: number): Promise<number[]> {
+  const bytes = await readBundleBytes(source, file);
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  return Array.from({ length: count }, (_, index) => view.getFloat32(index * 4, true));
+}
+
+async function readIndexPayload(source: string, file: string, count: number, format: "uint16" | "uint32"): Promise<number[]> {
+  const bytes = await readBundleBytes(source, file);
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const itemBytes = format === "uint16" ? 2 : 4;
+  return Array.from({ length: count }, (_, index) => format === "uint16" ? view.getUint16(index * itemBytes, true) : view.getUint32(index * itemBytes, true));
+}
+
+async function readBundleBytes(source: string, file: string): Promise<Uint8Array> {
+  if (isFetchable(source)) {
+    const response = await fetch(`${source.replace(/\/$/, "")}/${file}`);
+    if (!response.ok) {
+      throw new Error(`Failed to load bundle file '${file}': ${response.status}`);
+    }
+    return new Uint8Array(await response.arrayBuffer());
+  }
+  const fsModule = nodeModuleName("fs/promises");
+  const pathModule = nodeModuleName("path");
+  const dynamicImport = new Function("moduleName", "return import(moduleName)") as <T>(moduleName: string) => Promise<T>;
+  const { readFile } = await dynamicImport<{ readFile(path: string): Promise<Uint8Array> }>(fsModule);
+  const { resolve } = await dynamicImport<{ resolve(...paths: string[]): string }>(pathModule);
+  return readFile(resolve(source, file));
 }
 
 async function readBundleJson<T>(source: string, file: string): Promise<T> {

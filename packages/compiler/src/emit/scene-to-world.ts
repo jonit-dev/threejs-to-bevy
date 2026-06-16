@@ -31,6 +31,9 @@ interface IObjectLike {
   };
   geometry?: {
     attributes?: readonly { itemSize: number; name: string; values: readonly number[] }[];
+    bounds?: { max: readonly [number, number, number]; min: readonly [number, number, number] };
+    budget?: Record<string, unknown>;
+    generation?: Record<string, unknown>;
     depth?: number;
     height?: number;
     indices?: readonly number[];
@@ -42,6 +45,9 @@ interface IObjectLike {
     radiusTop?: number;
     sides?: number;
     size?: readonly number[];
+    storage?: "binary" | "inline";
+    topology?: "triangle-list";
+    usage?: "static";
   };
   physics?: IPhysicsDeclaration;
   position: { toArray(): [number, number, number] };
@@ -122,7 +128,18 @@ function visitChildren(
         ...(child.visible === false ? { visible: false } : {}),
       };
       output.assets.push({
-        ...(child.geometry.kind === "custom" ? { attributes: child.geometry.attributes ?? [], indices: child.geometry.indices } : {}),
+        ...(child.geometry.kind === "custom"
+          ? {
+              attributes: child.geometry.attributes ?? [],
+              ...(child.geometry.bounds === undefined ? {} : { bounds: child.geometry.bounds }),
+              ...(child.geometry.budget === undefined ? {} : { budget: child.geometry.budget }),
+              ...(child.geometry.generation === undefined ? {} : { generation: child.geometry.generation }),
+              indices: child.geometry.indices,
+              ...(child.geometry.storage === undefined ? {} : { storage: child.geometry.storage }),
+              ...(child.geometry.topology === undefined ? {} : { topology: child.geometry.topology }),
+              ...(child.geometry.usage === undefined ? {} : { usage: child.geometry.usage }),
+            }
+          : {}),
         id: meshId,
         kind: "mesh",
         format: "generated",

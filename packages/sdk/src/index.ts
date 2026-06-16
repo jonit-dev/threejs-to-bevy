@@ -107,6 +107,8 @@ export {
   TorusGeometry,
   type SupportedGeometry,
 } from "./geometry/primitives.js";
+export { MeshBuilder, type IMeshBuilderBuildOptions } from "./geometry/meshBuilder.js";
+export { mushroom, pineTree, rock, stylizedTree, type IOrganicMeshOptions } from "./geometry/meshBuilderOrganic.js";
 export { defineGame, type IGameRoot, type IGameRootOptions } from "./game.js";
 export {
   action,

@@ -141,6 +141,22 @@ sizes, compiler bundle capabilities now report `mesh.attribute.uv1` and
 enables material `vertexColors` for color-attributed meshes, and Bevy maps them
 to `Mesh::ATTRIBUTE_UV_1` and `Mesh::ATTRIBUTE_COLOR`.
 
+V8-04 has landed the portable procedural mesh authoring slice:
+`MeshBuilder` now produces deterministic static custom meshes from portable
+primitive composition, transforms, modifiers, normals, UVs, vertex colors,
+bounds, generation metadata, and budget metadata. Generated custom meshes can
+emit deterministic bundle-local binary attribute/index payloads under
+`generated/meshes/`, validate through IR/schema checks, hydrate in the web
+Three.js loader and Bevy loader, and map to matching `BufferGeometry` / Bevy
+`Mesh` attributes. Organic helpers include reusable pine tree, stylized tree,
+mushroom, and rock recipes, and compiler-only BufferGeometry snapshots normalize
+into the same portable mesh contract. The focused gate
+`node scripts/verify-v8-procedural-mesh.mjs` builds the pine fixture, captures
+real web Three.js and native Bevy screenshots, and writes comparison artifacts
+under `artifacts/v8/procedural-mesh/`. This promotes static procedural mesh
+authoring only; runtime deformation, CSG, chunk streaming, and shader/storage
+buffer procedural geometry remain future work.
+
 V5-06 has landed the textured standard-material parity slice: supported material
 texture slots now serialize through SDK/compiler output, validate against
 texture assets and target formats, appear in shared conformance fixtures and

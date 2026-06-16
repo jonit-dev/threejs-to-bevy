@@ -44,11 +44,40 @@
               "type": "array",
               "items": { "$ref": "#/$defs/meshAttribute" }
             },
+            "binaryAttributes": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/meshBinaryAttribute" }
+            },
+            "binaryIndices": { "$ref": "#/$defs/meshBinaryIndices" },
+            "bounds": { "$ref": "#/$defs/bounds" },
+            "budget": {
+              "type": "object",
+              "required": ["classification", "vertexCount", "limit"],
+              "additionalProperties": false,
+              "properties": {
+                "classification": { "enum": ["standard-prop", "hero-prop", "doodad"] },
+                "vertexCount": { "type": "integer", "minimum": 1 },
+                "limit": { "type": "integer", "minimum": 1 }
+              }
+            },
+            "generation": {
+              "type": "object",
+              "required": ["id", "source"],
+              "additionalProperties": false,
+              "properties": {
+                "id": { "type": "string", "minLength": 1 },
+                "source": { "enum": ["MeshBuilder", "BufferGeometrySnapshot"] },
+                "helper": { "type": "string", "minLength": 1 },
+                "seed": { "type": "number" }
+              }
+            },
             "indices": {
               "type": "array",
               "items": { "type": "integer", "minimum": 0 }
             },
-            "size": { "type": "array", "items": { "type": "number" } }
+            "size": { "type": "array", "items": { "type": "number" } },
+            "topology": { "const": "triangle-list" },
+            "usage": { "const": "static" }
           }
         },
         {
@@ -60,15 +89,7 @@
             "kind": { "const": "model" },
             "format": { "enum": ["glb", "gltf"] },
             "path": { "type": "string", "minLength": 1 },
-            "bounds": {
-              "type": "object",
-              "required": ["min", "max"],
-              "additionalProperties": false,
-              "properties": {
-                "min": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
-                "max": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 }
-              }
-            },
+            "bounds": { "$ref": "#/$defs/bounds" },
             "animations": {
               "type": "array",
               "items": {
@@ -232,6 +253,40 @@
         },
         "itemSize": { "enum": [1, 2, 3, 4] },
         "values": { "type": "array", "items": { "type": "number" } }
+      }
+    },
+    "meshBinaryAttribute": {
+      "type": "object",
+      "required": ["name", "itemSize", "format", "count", "path"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^(position|normal|uv|uv1|color|custom:[A-Za-z_][A-Za-z0-9_]*)$"
+        },
+        "itemSize": { "enum": [1, 2, 3, 4] },
+        "format": { "enum": ["float32x1", "float32x2", "float32x3", "float32x4"] },
+        "count": { "type": "integer", "minimum": 1 },
+        "path": { "type": "string", "minLength": 1 }
+      }
+    },
+    "meshBinaryIndices": {
+      "type": "object",
+      "required": ["format", "count", "path"],
+      "additionalProperties": false,
+      "properties": {
+        "format": { "enum": ["uint16", "uint32"] },
+        "count": { "type": "integer", "minimum": 3 },
+        "path": { "type": "string", "minLength": 1 }
+      }
+    },
+    "bounds": {
+      "type": "object",
+      "required": ["min", "max"],
+      "additionalProperties": false,
+      "properties": {
+        "min": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+        "max": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 }
       }
     }
   }

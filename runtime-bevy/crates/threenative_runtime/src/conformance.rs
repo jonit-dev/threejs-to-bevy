@@ -4,8 +4,8 @@ use bevy::{prelude::*, render::camera::ScalingMode};
 use serde::Serialize;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{
-    AnimationClipIr, AssetIr, ColorIr, EnvironmentSceneIr, LoadedBundle, MaterialIr, RuntimeConfigIr,
-    UiIr, WorldEntity,
+    AnimationClipIr, AssetIr, ColorIr, EnvironmentSceneIr, LoadedBundle, MaterialIr,
+    MeshGenerationIr, RuntimeConfigIr, UiIr, WorldEntity,
 };
 
 use crate::audio::{self, NativeAudioCommand, NativeAudioCommandKind, NativeAudioDiagnostic};
@@ -90,7 +90,11 @@ pub struct ConformanceAssetReport {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub center: Option<[f32; 2]>,
     pub format: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub generation: Option<MeshGenerationReport>,
     pub id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub index_count: Option<usize>,
     pub kind: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mag_filter: Option<String>,
@@ -109,9 +113,26 @@ pub struct ConformanceAssetReport {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub size: Option<Vec<f32>>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub topology: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub usage: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vertex_count: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub wrap_s: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub wrap_t: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MeshGenerationReport {
+    pub id: String,
+    pub source: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub helper: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub seed: Option<f32>,
 }
 
 #[derive(Debug, Serialize)]
@@ -747,7 +768,9 @@ fn report_asset(asset: &AssetIr) -> ConformanceAssetReport {
         }),
         center: asset.center,
         format: asset.format.clone(),
+        generation: asset.generation.as_ref().map(report_mesh_generation),
         id: asset.id.clone(),
+        index_count: asset.indices.as_ref().map(Vec::len),
         kind: asset.kind.clone(),
         mag_filter: asset.mag_filter.clone(),
         min_filter: asset.min_filter.clone(),
@@ -757,9 +780,30 @@ fn report_asset(asset: &AssetIr) -> ConformanceAssetReport {
         repeat: asset.repeat,
         rotation: asset.rotation,
         size: asset.size.clone(),
+        topology: asset.topology.clone(),
+        usage: asset.usage.clone(),
+        vertex_count: mesh_vertex_count(asset),
         wrap_s: asset.wrap_s.clone(),
         wrap_t: asset.wrap_t.clone(),
     }
+}
+
+fn report_mesh_generation(generation: &MeshGenerationIr) -> MeshGenerationReport {
+    MeshGenerationReport {
+        id: generation.id.clone(),
+        source: generation.source.clone(),
+        helper: generation.helper.clone(),
+        seed: generation.seed,
+    }
+}
+
+fn mesh_vertex_count(asset: &AssetIr) -> Option<usize> {
+    asset
+        .attributes
+        .as_ref()?
+        .iter()
+        .find(|attribute| attribute.name == "position")
+        .map(|attribute| attribute.values.len() / attribute.item_size)
 }
 
 fn report_animation_clip(clip: &AnimationClipIr) -> AnimationClipReport {

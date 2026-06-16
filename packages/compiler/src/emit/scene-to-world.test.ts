@@ -1,4 +1,8 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 import {
   AnnulusGeometry,
@@ -8,12 +12,14 @@ import {
   ExtrudedRectangleGeometry,
   Mesh,
   MeshStandardMaterial,
+  MeshBuilder,
   Object3D,
   RegularPolygonGeometry,
   Scene,
   TorusGeometry,
 } from "@threenative/sdk";
 
+import { emitBundle } from "./bundle.js";
 import { sceneToWorld } from "./scene-to-world.js";
 
 test("should preserve parent child hierarchy", () => {
@@ -86,6 +92,50 @@ test("should emit custom mesh attributes and indices", () => {
     format: "generated",
     primitive: "custom",
   });
+});
+
+test("should emit procedural mesh binaries deterministically", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-procedural-mesh-emit-"));
+  try {
+    const scene = new Scene({ id: "scene" });
+    scene.add(
+      new Mesh({
+        geometry: MeshBuilder.create("prop.mushroom.red")
+          .position([0, 0.35, 0])
+          .cylinder({ height: 0.7, radius: 0.16, segments: 12 })
+          .position([0, 0.8, 0])
+          .scale([1.05, 0.42, 1.05])
+          .sphere({ radius: 0.55, rings: 8, segments: 18 })
+          .build({ helper: "mushroom", seed: 7 }),
+        id: "mushroom",
+        material: new MeshStandardMaterial({ color: "#d94b4b" }),
+      }),
+    );
+    const config = {
+      entry: "src/game.ts",
+      outDir: "dist/first.bundle",
+      projectPath: root,
+      schema: "threenative.project" as const,
+      version: "0.1.0" as const,
+    };
+
+    const first = await emitBundle(config, scene);
+    const firstManifest = JSON.parse(await readFile(join(first, "assets.manifest.json"), "utf8"));
+    const firstAsset = firstManifest.assets.find((asset: { id: string }) => asset.id === "mesh.mushroom");
+    const firstHashes = await hashPayloads(first, firstAsset);
+    const second = await emitBundle({ ...config, outDir: "dist/second.bundle" }, scene);
+    const secondManifest = JSON.parse(await readFile(join(second, "assets.manifest.json"), "utf8"));
+    const secondAsset = secondManifest.assets.find((asset: { id: string }) => asset.id === "mesh.mushroom");
+    const secondHashes = await hashPayloads(second, secondAsset);
+
+    assert.deepEqual(firstAsset.binaryAttributes, secondAsset.binaryAttributes);
+    assert.deepEqual(firstAsset.binaryIndices, secondAsset.binaryIndices);
+    assert.deepEqual(firstHashes, secondHashes);
+    assert.equal(firstAsset.topology, "triangle-list");
+    assert.equal(firstAsset.usage, "static");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
 });
 
 test("should emit material alpha and physical metadata", () => {
@@ -172,3 +222,25 @@ test("should emit light shadow bias controls", () => {
     shadowNormalBias: 0.02,
   });
 });
+
+async function hashPayloads(root: string, asset: {
+  binaryAttributes: Array<{ name: string; path: string }>;
+  binaryIndices?: { path: string };
+}): Promise<Record<string, string>> {
+  const binaryIndices = asset.binaryIndices;
+  const entries = await Promise.all([
+    ...asset.binaryAttributes.map(async (attribute) => [
+      attribute.name,
+      createHash("sha256").update(await readFile(join(root, attribute.path))).digest("hex"),
+    ] as const),
+    ...(binaryIndices === undefined
+      ? []
+      : [
+          (async () => [
+            "indices",
+            createHash("sha256").update(await readFile(join(root, binaryIndices.path))).digest("hex"),
+          ] as const)(),
+        ]),
+  ]);
+  return Object.fromEntries(entries);
+}

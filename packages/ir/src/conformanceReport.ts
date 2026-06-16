@@ -5,6 +5,8 @@ import type { IAssetIr, IMaterialIr, Quat, Vec3 } from "./types.js";
 export interface IConformanceAssetReport {
   animations?: Extract<IAssetIr, { animations?: unknown }>["animations"];
   bounds?: Extract<IAssetIr, { bounds?: unknown }>["bounds"];
+  generation?: Extract<IAssetIr, { generation?: unknown }>["generation"];
+  indexCount?: number;
   center?: Extract<IAssetIr, { center?: unknown }>["center"];
   format: IAssetIr["format"];
   id: string;
@@ -17,6 +19,9 @@ export interface IConformanceAssetReport {
   repeat?: Extract<IAssetIr, { repeat?: unknown }>["repeat"];
   rotation?: Extract<IAssetIr, { rotation?: unknown }>["rotation"];
   size?: Extract<IAssetIr, { size?: readonly number[] }>["size"];
+  topology?: Extract<IAssetIr, { topology?: unknown }>["topology"];
+  usage?: Extract<IAssetIr, { usage?: unknown }>["usage"];
+  vertexCount?: number;
   wrapS?: Extract<IAssetIr, { wrapS?: unknown }>["wrapS"];
   wrapT?: Extract<IAssetIr, { wrapT?: unknown }>["wrapT"];
 }

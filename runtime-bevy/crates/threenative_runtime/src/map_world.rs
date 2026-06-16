@@ -480,10 +480,7 @@ fn color_grading_for_profile(
     _color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
 ) -> ColorGrading {
     let mut grading = ColorGrading::default();
-    // Bevy's ACES curve is darker than Three.js ACES at this scene's stylized
-    // texture range; this small EV lift keeps the compatibility adapter close
-    // without changing authored light/material data.
-    grading.global.exposure = 0.72;
+    grading.global.exposure = -0.7;
     grading
 }
 

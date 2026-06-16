@@ -13,7 +13,7 @@ use bevy::{
     prelude::*,
     render::{
         alpha::AlphaMode,
-        mesh::{MeshVertexAttribute, VertexAttributeValues},
+        mesh::{Indices, MeshVertexAttribute, VertexAttributeValues},
         render_resource::VertexFormat,
     },
     scene::ScenePlugin,
@@ -24,6 +24,9 @@ use threenative_runtime::map_world::{
     NativeAnimationPlayback, advance_native_animation_playback, bind_native_animation_players,
     map_bundle_into_world,
 };
+
+mod support;
+use support::load_conformance_fixture;
 
 #[test]
 fn rendering_should_map_visibility_and_v2_lights() {
@@ -183,6 +186,16 @@ fn rendering_should_map_custom_generated_mesh_attributes() {
     assert_custom_mesh_attributes(app.world_mut(), "entity.custom");
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn rendering_should_map_procedural_mesh_binary_attributes() {
+    let fixture = load_conformance_fixture("procedural-mesh");
+    let mut app = App::new();
+
+    map_bundle_into_world(app.world_mut(), &fixture.bundle).expect("bundle should map");
+
+    assert_procedural_mesh_attributes(app.world_mut(), "prop.tree.pine");
 }
 
 #[test]
@@ -452,6 +465,37 @@ fn assert_custom_mesh_attributes(world: &mut World, id: &str) {
         mesh.attribute(custom),
         Some(VertexAttributeValues::Float32(values)) if values == &[0.0, 0.5, 1.0]
     ));
+}
+
+fn assert_procedural_mesh_attributes(world: &mut World, id: &str) {
+    let handle = {
+        let mut query = world.query::<(&ThreeNativeId, &Handle<Mesh>)>();
+        query
+            .iter(world)
+            .find_map(|(stable_id, handle)| (stable_id.0 == id).then_some(handle.clone()))
+            .expect("entity mesh handle should be spawned")
+    };
+    let mesh = world
+        .resource::<Assets<Mesh>>()
+        .get(&handle)
+        .expect("mesh asset should be registered");
+    assert!(matches!(
+        mesh.attribute(Mesh::ATTRIBUTE_POSITION),
+        Some(VertexAttributeValues::Float32x3(values)) if values.len() == 228
+    ));
+    assert!(matches!(
+        mesh.attribute(Mesh::ATTRIBUTE_NORMAL),
+        Some(VertexAttributeValues::Float32x3(values)) if values.len() == 228
+    ));
+    assert!(matches!(
+        mesh.attribute(Mesh::ATTRIBUTE_UV_0),
+        Some(VertexAttributeValues::Float32x2(values)) if values.len() == 228
+    ));
+    assert!(matches!(
+        mesh.attribute(Mesh::ATTRIBUTE_COLOR),
+        Some(VertexAttributeValues::Float32x4(values)) if values.len() == 228
+    ));
+    assert!(matches!(mesh.indices(), Some(Indices::U32(indices)) if indices.len() == 630));
 }
 
 fn animation_playback_for(world: &mut World, id: &str) -> NativeAnimationPlayback {

@@ -1,5 +1,5 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import {
   type IAssetsManifest,
   type IBundleManifest,
@@ -35,7 +35,10 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
   const input = bundleRoot.input === undefined ? ecs?.input : inputToIr(bundleRoot.input);
   const audio = bundleRoot.audio === undefined ? undefined : emitAudio(bundleRoot.audio);
   const environment = bundleRoot.environment === undefined ? undefined : await emitEnvironment(config.projectPath, bundleRoot.environment);
-  const assets = mergeEnvironmentAssets(mergeAudioAssets(emitted?.assets ?? [], bundleRoot.audio), environment?.assets ?? []);
+  const generatedMeshPayloads = prepareGeneratedMeshPayloads(
+    mergeEnvironmentAssets(mergeAudioAssets(emitted?.assets ?? [], bundleRoot.audio), environment?.assets ?? []),
+  );
+  const assets = generatedMeshPayloads.assets;
   const ui = (bundleRoot.ui === undefined ? undefined : emitUi(bundleRoot.ui)) as IUiIr | undefined;
   const world = mergeWorlds(emitted?.world, ecs?.world);
   const materials: IMaterialsIr = {
@@ -101,6 +104,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
   await rm(outDir, { force: true, recursive: true });
   await mkdir(outDir, { recursive: true });
   await mkdir(resolve(outDir, "schemas"), { recursive: true });
+  await writeGeneratedMeshPayloads(outDir, generatedMeshPayloads.payloads);
   await writeFile(resolve(outDir, "manifest.json"), stableJson(manifest));
   await copyAssetFiles(config.projectPath, outDir, assets);
   await copyExtraAssetFiles(config.projectPath, outDir, environment?.extraFiles ?? []);
@@ -216,6 +220,78 @@ function audioAssetRefs(audio: IAudioDeclaration | undefined): IAssetReference[]
 }
 
 function stripInternalAssetFields(asset: IInternalAsset): Record<string, unknown> & { id: string } {
-  const { sourcePath: _sourcePath, ...publicAsset } = asset;
+  const { sourcePath: _sourcePath, storage: _storage, ...publicAsset } = asset;
   return publicAsset;
+}
+
+interface IGeneratedMeshPayload {
+  bytes: Buffer;
+  path: string;
+}
+
+function prepareGeneratedMeshPayloads(assets: IInternalAsset[]): { assets: IInternalAsset[]; payloads: IGeneratedMeshPayload[] } {
+  const payloads: IGeneratedMeshPayload[] = [];
+  const prepared = assets.map((asset) => {
+    if (asset.kind !== "mesh" || asset.primitive !== "custom" || asset.storage !== "binary" || !Array.isArray(asset.attributes)) {
+      return asset;
+    }
+    const meshId = sanitizeMeshId(asset.id);
+    const binaryAttributes = asset.attributes.map((attribute, index) => {
+      const typed = attribute as { itemSize: 1 | 2 | 3 | 4; name: string; values: readonly number[] };
+      const path = `generated/meshes/${meshId}.${String(index).padStart(2, "0")}.${typed.name.replace(":", "-")}.bin`;
+      payloads.push({ bytes: float32Payload(typed.values), path });
+      return {
+        count: typed.values.length / typed.itemSize,
+        format: `float32x${typed.itemSize}`,
+        itemSize: typed.itemSize,
+        name: typed.name,
+        path,
+      };
+    });
+    const indices = Array.isArray(asset.indices) ? asset.indices as readonly number[] : undefined;
+    const binaryIndices = indices === undefined ? undefined : (() => {
+      const format = indices.every((index) => index <= 0xffff) ? "uint16" : "uint32";
+      const path = `generated/meshes/${meshId}.indices.${format}.bin`;
+      payloads.push({ bytes: indexPayload(indices, format), path });
+      return { count: indices.length, format, path };
+    })();
+    const { attributes: _attributes, indices: _indices, storage: _storage, ...rest } = asset;
+    return {
+      ...rest,
+      binaryAttributes,
+      ...(binaryIndices === undefined ? {} : { binaryIndices }),
+    };
+  });
+  return { assets: prepared, payloads };
+}
+
+async function writeGeneratedMeshPayloads(outDir: string, payloads: readonly IGeneratedMeshPayload[]): Promise<void> {
+  for (const payload of payloads) {
+    const path = resolve(outDir, payload.path);
+    await mkdir(dirname(path), { recursive: true });
+    await writeFile(path, payload.bytes);
+  }
+}
+
+function float32Payload(values: readonly number[]): Buffer {
+  const bytes = Buffer.alloc(values.length * 4);
+  values.forEach((value, index) => bytes.writeFloatLE(value, index * 4));
+  return bytes;
+}
+
+function indexPayload(values: readonly number[], format: "uint16" | "uint32"): Buffer {
+  const itemBytes = format === "uint16" ? 2 : 4;
+  const bytes = Buffer.alloc(values.length * itemBytes);
+  values.forEach((value, index) => {
+    if (format === "uint16") {
+      bytes.writeUInt16LE(value, index * itemBytes);
+    } else {
+      bytes.writeUInt32LE(value, index * itemBytes);
+    }
+  });
+  return bytes;
+}
+
+function sanitizeMeshId(id: string): string {
+  return id.replace(/[^A-Za-z0-9_.-]+/g, "_");
 }

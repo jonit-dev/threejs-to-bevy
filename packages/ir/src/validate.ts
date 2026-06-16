@@ -879,6 +879,9 @@ async function validateAssets(assets: IAssetsManifest, bundlePath: string, path:
   assets.assets.forEach((asset, index) => validateAssetMetadata(asset, `${path}/assets/${index}`, diagnostics));
   await Promise.all(
     assets.assets.map(async (asset, index) => {
+      if (asset.kind === "mesh") {
+        await validateMeshPayloadFiles(asset, bundlePath, `${path}/assets/${index}`, diagnostics);
+      }
       if (!("path" in asset)) {
         return;
       }
@@ -918,11 +921,67 @@ async function validateAssets(assets: IAssetsManifest, bundlePath: string, path:
   );
 }
 
+async function validateMeshPayloadFiles(
+  asset: IAssetsManifest["assets"][number],
+  bundlePath: string,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+): Promise<void> {
+  if (asset.kind !== "mesh") {
+    return;
+  }
+  const binaryAttributes = "binaryAttributes" in asset ? asset.binaryAttributes ?? [] : [];
+  await Promise.all(
+    binaryAttributes.map(async (attribute, index) => {
+      const payloadPath = `${path}/binaryAttributes/${index}/path`;
+      try {
+        const bytes = await readFile(resolve(bundlePath, attribute.path));
+        const expectedBytes = attribute.count * attribute.itemSize * 4;
+        if (bytes.byteLength !== expectedBytes) {
+          diagnostics.push({ code: "TN_IR_MESH_PAYLOAD_SIZE_INVALID", message: `Binary mesh attribute '${attribute.name}' expected ${expectedBytes} bytes but found ${bytes.byteLength}.`, path: payloadPath, severity: "error" });
+          return;
+        }
+        for (let offset = 0; offset < bytes.byteLength; offset += 4) {
+          if (!Number.isFinite(bytes.readFloatLE(offset))) {
+            diagnostics.push({ code: "TN_IR_MESH_ATTRIBUTE_VALUES_INVALID", message: `Binary mesh attribute '${attribute.name}' contains a non-finite value.`, path: payloadPath, severity: "error" });
+            return;
+          }
+        }
+      } catch {
+        diagnostics.push({ code: "TN_IR_ASSET_PATH_MISSING", message: `Binary mesh payload '${attribute.path}' does not exist in the bundle.`, path: payloadPath, severity: "error" });
+      }
+    }),
+  );
+  const indices = "binaryIndices" in asset ? asset.binaryIndices : undefined;
+  const inlinePosition = "attributes" in asset ? asset.attributes?.find((attribute) => attribute.name === "position") : undefined;
+  const positionCount = binaryAttributes.find((attribute) => attribute.name === "position")?.count
+    ?? (inlinePosition === undefined ? undefined : inlinePosition.values.length / 3);
+  if (indices !== undefined) {
+    try {
+      const bytes = await readFile(resolve(bundlePath, indices.path));
+      const itemBytes = indices.format === "uint16" ? 2 : 4;
+      if (bytes.byteLength !== indices.count * itemBytes) {
+        diagnostics.push({ code: "TN_IR_MESH_PAYLOAD_SIZE_INVALID", message: `Binary mesh indices expected ${indices.count * itemBytes} bytes but found ${bytes.byteLength}.`, path: `${path}/binaryIndices/path`, severity: "error" });
+        return;
+      }
+      for (let item = 0; item < indices.count; item += 1) {
+        const value = indices.format === "uint16" ? bytes.readUInt16LE(item * itemBytes) : bytes.readUInt32LE(item * itemBytes);
+        if (positionCount !== undefined && value >= positionCount) {
+          diagnostics.push({ code: "TN_IR_MESH_INDICES_INVALID", message: "Binary mesh indices must be within the position vertex count.", path: `${path}/binaryIndices/${item}`, severity: "error" });
+          return;
+        }
+      }
+    } catch {
+      diagnostics.push({ code: "TN_IR_ASSET_PATH_MISSING", message: `Binary mesh payload '${indices.path}' does not exist in the bundle.`, path: `${path}/binaryIndices/path`, severity: "error" });
+    }
+  }
+}
+
 function validateAssetMetadata(asset: IAssetsManifest["assets"][number], path: string, diagnostics: IIrDiagnostic[]): void {
   const raw = asset as unknown as Record<string, unknown>;
   const allowed = new Set(
     asset.kind === "mesh"
-      ? ["attributes", "format", "id", "indices", "kind", "primitive", "size"]
+      ? ["attributes", "binaryAttributes", "binaryIndices", "bounds", "budget", "format", "generation", "id", "indices", "kind", "primitive", "size", "topology", "usage"]
       : asset.kind === "texture"
         ? ["center", "format", "id", "kind", "magFilter", "minFilter", "offset", "path", "repeat", "rotation", "wrapS", "wrapT"]
         : ["animationGraph", "animations", "bounds", "format", "id", "kind", "particleEmitters", "path"],
@@ -994,7 +1053,7 @@ function validateGeneratedMeshAsset(asset: Extract<IAssetsManifest["assets"][num
     validateCustomMeshAsset(asset as Extract<IAssetsManifest["assets"][number], { kind: "mesh" }> & { attributes?: unknown; indices?: unknown }, path, diagnostics);
     return;
   }
-  if ("attributes" in asset || "indices" in asset) {
+  if ("attributes" in asset || "indices" in asset || "binaryAttributes" in asset || "binaryIndices" in asset) {
     diagnostics.push({
       code: "TN_IR_MESH_CUSTOM_FIELD_UNSUPPORTED",
       message: `Generated mesh '${asset.id}' may declare attributes or indices only when primitive is 'custom'.`,
@@ -1037,7 +1096,7 @@ function validateGeneratedMeshAsset(asset: Extract<IAssetsManifest["assets"][num
 }
 
 function validateCustomMeshAsset(
-  asset: Extract<IAssetsManifest["assets"][number], { kind: "mesh" }> & { attributes?: unknown; indices?: unknown },
+  asset: Extract<IAssetsManifest["assets"][number], { kind: "mesh" }> & { attributes?: unknown; binaryAttributes?: unknown; binaryIndices?: unknown; indices?: unknown },
   path: string,
   diagnostics: IIrDiagnostic[],
 ): void {
@@ -1049,10 +1108,21 @@ function validateCustomMeshAsset(
       severity: "error",
     });
   }
-  if (!Array.isArray(asset.attributes) || asset.attributes.length === 0) {
+  if (asset.topology !== undefined && asset.topology !== "triangle-list") {
+    diagnostics.push({ code: "TN_IR_MESH_TOPOLOGY_UNSUPPORTED", message: `Custom mesh '${asset.id}' uses unsupported topology '${String(asset.topology)}'.`, path: `${path}/topology`, severity: "error" });
+  }
+  if (asset.usage !== undefined && asset.usage !== "static") {
+    diagnostics.push({ code: "TN_IR_MESH_USAGE_UNSUPPORTED", message: `Custom mesh '${asset.id}' uses unsupported usage '${String(asset.usage)}'.`, path: `${path}/usage`, severity: "error" });
+  }
+  validateMeshBounds(asset.bounds, `${path}/bounds`, diagnostics);
+  validateMeshBudget(asset.budget, `${path}/budget`, diagnostics);
+  validateMeshGeneration(asset.generation, `${path}/generation`, diagnostics);
+  const hasInline = Array.isArray(asset.attributes) && asset.attributes.length > 0;
+  const hasBinary = Array.isArray(asset.binaryAttributes) && asset.binaryAttributes.length > 0;
+  if (!hasInline && !hasBinary) {
     diagnostics.push({
       code: "TN_IR_MESH_ATTRIBUTES_INVALID",
-      message: `Custom mesh '${asset.id}' must include mesh attributes.`,
+      message: `Custom mesh '${asset.id}' must include inline or binary mesh attributes.`,
       path: `${path}/attributes`,
       severity: "error",
     });
@@ -1061,7 +1131,7 @@ function validateCustomMeshAsset(
   const seen = new Set<string>();
   let vertexCount: number | undefined;
   let positionVertexCount: number | undefined;
-  asset.attributes.forEach((attribute, index) => {
+  (Array.isArray(asset.attributes) ? asset.attributes : []).forEach((attribute, index) => {
     const attributePath = `${path}/attributes/${index}`;
     if (!isRecord(attribute)) {
       diagnostics.push({ code: "TN_IR_MESH_ATTRIBUTES_INVALID", message: "Mesh attribute must be an object.", path: attributePath, severity: "error" });
@@ -1106,6 +1176,47 @@ function validateCustomMeshAsset(
       positionVertexCount = count;
     }
   });
+  (Array.isArray(asset.binaryAttributes) ? asset.binaryAttributes : []).forEach((attribute, index) => {
+    const attributePath = `${path}/binaryAttributes/${index}`;
+    if (!isRecord(attribute)) {
+      diagnostics.push({ code: "TN_IR_MESH_ATTRIBUTES_INVALID", message: "Binary mesh attribute must be an object.", path: attributePath, severity: "error" });
+      return;
+    }
+    if (typeof attribute.name !== "string" || !isMeshAttributeName(attribute.name)) {
+      diagnostics.push({ code: "TN_IR_MESH_ATTRIBUTE_NAME_INVALID", message: "Mesh attribute name must be position, normal, uv, uv1, color, or custom:<identifier>.", path: `${attributePath}/name`, severity: "error" });
+      return;
+    }
+    if (seen.has(attribute.name)) {
+      diagnostics.push({ code: "TN_IR_MESH_ATTRIBUTE_DUPLICATE", message: `Mesh attribute '${attribute.name}' is duplicated.`, path: `${attributePath}/name`, severity: "error" });
+      return;
+    }
+    seen.add(attribute.name);
+    if (![1, 2, 3, 4].includes(attribute.itemSize as number)) {
+      diagnostics.push({ code: "TN_IR_MESH_ATTRIBUTE_ITEM_SIZE_INVALID", message: "Mesh attribute itemSize must be 1, 2, 3, or 4.", path: `${attributePath}/itemSize`, severity: "error" });
+      return;
+    }
+    const expectedItemSize = expectedMeshAttributeItemSize(attribute.name);
+    if (expectedItemSize !== undefined && attribute.itemSize !== expectedItemSize) {
+      diagnostics.push({ code: "TN_IR_MESH_ATTRIBUTE_ITEM_SIZE_INVALID", message: `Mesh attribute '${attribute.name}' itemSize must be ${expectedItemSize}.`, path: `${attributePath}/itemSize`, severity: "error" });
+      return;
+    }
+    if (attribute.format !== `float32x${attribute.itemSize}`) {
+      diagnostics.push({ code: "TN_IR_MESH_ATTRIBUTE_FORMAT_INVALID", message: "Binary mesh attribute format must match itemSize.", path: `${attributePath}/format`, severity: "error" });
+    }
+    if (!Number.isInteger(attribute.count) || (attribute.count as number) <= 0) {
+      diagnostics.push({ code: "TN_IR_MESH_ATTRIBUTE_COUNT_INVALID", message: "Binary mesh attribute count must be a positive integer.", path: `${attributePath}/count`, severity: "error" });
+      return;
+    }
+    const count = attribute.count as number;
+    vertexCount ??= count;
+    if (count !== vertexCount) {
+      diagnostics.push({ code: "TN_IR_MESH_ATTRIBUTE_VERTEX_COUNT_INVALID", message: "All mesh attributes must have the same vertex count.", path: `${attributePath}/count`, severity: "error" });
+    }
+    validateBundleRelativePath(attribute.path, `${attributePath}/path`, diagnostics);
+    if (attribute.name === "position") {
+      positionVertexCount = count;
+    }
+  });
   if (positionVertexCount === undefined) {
     diagnostics.push({
       code: "TN_IR_MESH_POSITION_REQUIRED",
@@ -1114,7 +1225,66 @@ function validateCustomMeshAsset(
       severity: "error",
     });
   }
+  if (asset.binaryIndices !== undefined) {
+    validateBinaryIndicesMetadata(asset.binaryIndices, `${path}/binaryIndices`, diagnostics);
+  }
   validateCustomMeshIndices(asset, positionVertexCount, path, diagnostics);
+}
+
+function validateMeshBounds(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value) || !Array.isArray(value.min) || !Array.isArray(value.max)) {
+    diagnostics.push({ code: "TN_IR_MESH_BOUNDS_INVALID", message: "Mesh bounds must include min and max vec3 values.", path, severity: "error" });
+    return;
+  }
+  validateVec3(value.min, `${path}/min`, diagnostics);
+  validateVec3(value.max, `${path}/max`, diagnostics);
+}
+
+function validateMeshBudget(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value) || !["standard-prop", "hero-prop", "doodad"].includes(String(value.classification)) || !Number.isInteger(value.vertexCount) || !Number.isInteger(value.limit)) {
+    diagnostics.push({ code: "TN_IR_MESH_BUDGET_INVALID", message: "Mesh budget must include classification, vertexCount, and limit.", path, severity: "error" });
+  }
+}
+
+function validateMeshGeneration(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value) || typeof value.id !== "string" || !["MeshBuilder", "BufferGeometrySnapshot"].includes(String(value.source))) {
+    diagnostics.push({ code: "TN_IR_MESH_GENERATION_INVALID", message: "Mesh generation metadata must include id and supported source.", path, severity: "error" });
+  }
+}
+
+function validateBinaryIndicesMetadata(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (!isRecord(value)) {
+    diagnostics.push({ code: "TN_IR_MESH_INDICES_INVALID", message: "Binary mesh indices must be an object.", path, severity: "error" });
+    return;
+  }
+  if (!["uint16", "uint32"].includes(String(value.format))) {
+    diagnostics.push({ code: "TN_IR_MESH_INDICES_FORMAT_INVALID", message: "Binary mesh indices format must be uint16 or uint32.", path: `${path}/format`, severity: "error" });
+  }
+  if (!Number.isInteger(value.count) || (value.count as number) <= 0 || (value.count as number) % 3 !== 0) {
+    diagnostics.push({ code: "TN_IR_MESH_INDICES_INVALID", message: "Binary mesh indices count must define complete triangles.", path: `${path}/count`, severity: "error" });
+  }
+  validateBundleRelativePath(value.path, `${path}/path`, diagnostics);
+}
+
+function validateBundleRelativePath(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (typeof value !== "string" || value.trim() === "" || value.startsWith("/") || value.includes("..")) {
+    diagnostics.push({
+      code: "TN_IR_ASSET_PATH_INVALID",
+      message: "Binary mesh payloads must use bundle-relative paths without parent traversal.",
+      path,
+      severity: "error",
+      suggestion: "Emit generated mesh payloads under generated/meshes/.",
+    });
+  }
 }
 
 function validateCustomMeshIndices(

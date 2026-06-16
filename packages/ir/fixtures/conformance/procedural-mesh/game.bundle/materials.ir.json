@@ -1,0 +1,13 @@
+{
+  "materials": [
+    {
+      "color": "#ffffff",
+      "id": "mat.prop.tree.pine",
+      "kind": "standard",
+      "metalness": 0,
+      "roughness": 0.82
+    }
+  ],
+  "schema": "threenative.materials",
+  "version": "0.1.0"
+}

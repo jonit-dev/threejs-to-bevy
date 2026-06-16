@@ -83,6 +83,17 @@ test("should include capability tags for each conformance fixture", async () => 
     "rendering:camera.perspective",
     "transform:hierarchy",
   ]);
+  assertFixtureCapabilities(byName, "procedural-mesh", [
+    "asset:mesh.generated",
+    "ecs:resources",
+    "rendering:camera.active",
+    "rendering:camera.orthographic",
+    "rendering:light.ambient",
+    "rendering:light.directional",
+    "rendering:material.standard",
+    "rendering:mesh-renderer",
+    "rendering:mesh.primitive.custom",
+  ]);
   assertFixtureCapabilities(byName, "v5-drift-surface", [
     "asset:model.gltf",
     "asset:texture.png",

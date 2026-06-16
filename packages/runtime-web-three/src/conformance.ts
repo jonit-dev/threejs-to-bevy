@@ -220,7 +220,9 @@ function reportAsset(asset: IAssetIr): IConformanceAssetReport {
     bounds: "bounds" in asset ? asset.bounds : undefined,
     center: "center" in asset ? asset.center : undefined,
     format: asset.format,
+    generation: "generation" in asset ? asset.generation : undefined,
     id: asset.id,
+    indexCount: "indices" in asset ? asset.indices?.length : undefined,
     kind: asset.kind,
     magFilter: "magFilter" in asset ? asset.magFilter : undefined,
     minFilter: "minFilter" in asset ? asset.minFilter : undefined,
@@ -230,9 +232,19 @@ function reportAsset(asset: IAssetIr): IConformanceAssetReport {
     repeat: "repeat" in asset ? asset.repeat : undefined,
     rotation: "rotation" in asset ? asset.rotation : undefined,
     size: "size" in asset ? asset.size : undefined,
+    topology: "topology" in asset ? asset.topology : undefined,
+    usage: "usage" in asset ? asset.usage : undefined,
+    vertexCount: "attributes" in asset
+      ? vertexCountForAttributes(asset.attributes)
+      : undefined,
     wrapS: "wrapS" in asset ? asset.wrapS : undefined,
     wrapT: "wrapT" in asset ? asset.wrapT : undefined,
   };
+}
+
+function vertexCountForAttributes(attributes: Extract<IAssetIr, { kind: "mesh" }>["attributes"]): number | undefined {
+  const position = attributes?.find((attribute) => attribute.name === "position");
+  return position === undefined ? undefined : position.values.length / 3;
 }
 
 function reportMaterial(material: IMaterialIr): IConformanceMaterialReport {
