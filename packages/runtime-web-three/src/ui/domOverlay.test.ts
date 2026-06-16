@@ -29,11 +29,25 @@ test("ui dom overlay should dispatch button and touch control clicks to rendered
 
   findByUiId(overlay.element, "pause")?.click();
   findByUiId(overlay.element, "jump")?.click();
+  findByUiId(overlay.element, "locked")?.click();
 
   assert.deepEqual(rendered.actions, [
     { action: "Pause", node: "pause" },
     { action: "Jump", node: "jump" },
   ]);
+});
+
+test("ui dom overlay should expose disabled controls as inert", () => {
+  const rendered = renderUi(makeUi(), makeWorld());
+  const overlay = createUiDomOverlay(rendered, new FakeDocument() as unknown as Document);
+  const locked = findByUiId(overlay.element, "locked");
+
+  locked?.dispatchKeyDown({ key: " " });
+
+  assert.equal(locked?.tabIndex, -1);
+  assert.equal(locked?.getAttribute("aria-disabled"), "true");
+  assert.equal(locked?.getAttribute("disabled"), "");
+  assert.deepEqual(rendered.actions, []);
 });
 
 test("ui dom overlay should navigate focus with tab keys and activate focused controls", () => {
@@ -138,6 +152,7 @@ function makeUi(): IUiIr {
             { id: "portrait", kind: "image", accessibilityLabel: "Hero portrait", role: "image", src: "assets/hero.png" },
             { id: "spacer", kind: "row", accessibilityLabel: "Decorative spacer", role: "none" },
             { id: "jump", kind: "touchControl", label: "Jump", action: "Jump", navigation: { left: "pause" } },
+            { id: "locked", kind: "button", label: "Locked", action: "Locked", disabled: true },
           ],
         },
         {

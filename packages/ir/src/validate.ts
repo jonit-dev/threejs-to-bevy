@@ -550,7 +550,7 @@ function validateUi(ui: IUiIr, path: string, diagnostics: IIrDiagnostic[]): void
 function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[], ids: Set<string>): void {
   const raw = node as unknown as Record<string, unknown>;
   for (const key of Object.keys(raw)) {
-    if (!["accessibilityLabel", "action", "binding", "children", "focusable", "id", "kind", "label", "layout", "max", "navigation", "role", "src", "style", "text", "value"].includes(key)) {
+    if (!["accessibilityLabel", "action", "binding", "children", "disabled", "focusable", "id", "kind", "label", "layout", "max", "navigation", "role", "src", "style", "text", "value"].includes(key)) {
       diagnostics.push({
         code: "TN_IR_UI_FIELD_UNSUPPORTED",
         message: `UI node '${node.id}' uses unsupported field '${key}'.`,
@@ -561,6 +561,13 @@ function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnosti
   validateUiLayout(node.layout, `${path}/layout`, diagnostics);
   validateUiStyle(node.style, `${path}/style`, diagnostics);
   validateUiAccessibility(node, path, diagnostics);
+  if (node.disabled !== undefined && typeof node.disabled !== "boolean") {
+    diagnostics.push({
+      code: "TN_IR_UI_DISABLED_INVALID",
+      message: "UI disabled must be a boolean when provided.",
+      path: `${path}/disabled`,
+    });
+  }
   if (!["bar", "button", "column", "image", "row", "stack", "text", "touchControl"].includes(node.kind)) {
     diagnostics.push({
       code: "TN_IR_UI_NODE_UNSUPPORTED",
@@ -815,10 +822,17 @@ function validateUiGridLayout(value: unknown, path: string, diagnostics: IIrDiag
 }
 
 function collectFocusableUiIds(node: IUiNodeIr, focusableIds: Set<string>): void {
-  if (node.focusable === true || node.kind === "button" || node.kind === "touchControl") {
+  if (isFocusableUiNode(node)) {
     focusableIds.add(node.id);
   }
   node.children?.forEach((child) => collectFocusableUiIds(child, focusableIds));
+}
+
+function isFocusableUiNode(node: IUiNodeIr): boolean {
+  if (node.disabled === true) {
+    return false;
+  }
+  return node.focusable === true || node.kind === "button" || node.kind === "touchControl";
 }
 
 function validateUiMetadata(ui: IUiIr, path: string, diagnostics: IIrDiagnostic[], ids: Set<string>, focusableIds: Set<string>): void {

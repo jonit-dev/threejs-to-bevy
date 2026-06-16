@@ -11,9 +11,10 @@ use bevy::text::BreakLineOn;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{UiIr, UiNodeIr, load_bundle};
 use threenative_runtime::ui::{
-    NativeUiAction, NativeUiActionEvent, NativeUiActionQueue, NativeUiBar, NativeUiGradient,
-    NativeUiImageSrc, NativeUiKind, NativeUiScrollContainer, NativeUiShadow, NativeUiStyle,
-    build_native_ui, dispatch_native_ui_actions, map_ui_into_world, trace_ui_navigation,
+    NativeUiAction, NativeUiActionEvent, NativeUiActionQueue, NativeUiBar, NativeUiDisabled,
+    NativeUiGradient, NativeUiImageSrc, NativeUiKind, NativeUiScrollContainer, NativeUiShadow,
+    NativeUiStyle, build_native_ui, dispatch_native_ui_actions, map_ui_into_world,
+    trace_ui_navigation,
 };
 
 mod support;
@@ -247,6 +248,7 @@ fn ui_should_dispatch_native_button_and_touch_actions() {
                 action: Some("Jump".to_owned()),
                 accessibility_label: None,
                 children: Vec::new(),
+                disabled: None,
                 focusable: None,
                 id: "jump".to_owned(),
                 kind: "touchControl".to_owned(),
@@ -260,6 +262,7 @@ fn ui_should_dispatch_native_button_and_touch_actions() {
                 text: None,
                 value: None,
             }],
+            disabled: None,
             focusable: None,
             id: "hud".to_owned(),
             kind: "column".to_owned(),
@@ -311,6 +314,103 @@ fn ui_should_dispatch_native_button_and_touch_actions() {
 }
 
 #[test]
+fn ui_should_preserve_disabled_state_and_suppress_native_actions() {
+    let ui = UiIr {
+        focus_order: Some(vec!["jump".to_owned(), "locked".to_owned()]),
+        input_actions: None,
+        safe_area: None,
+        schema: "threenative.ui".to_owned(),
+        version: "0.1.0".to_owned(),
+        root: UiNodeIr {
+            action: None,
+            accessibility_label: None,
+            children: vec![
+                UiNodeIr {
+                    action: Some("Jump".to_owned()),
+                    accessibility_label: None,
+                    children: Vec::new(),
+                    disabled: None,
+                    focusable: None,
+                    id: "jump".to_owned(),
+                    kind: "button".to_owned(),
+                    label: Some("Jump".to_owned()),
+                    layout: None,
+                    max: None,
+                    navigation: None,
+                    role: None,
+                    src: None,
+                    style: None,
+                    text: None,
+                    value: None,
+                },
+                UiNodeIr {
+                    action: Some("Locked".to_owned()),
+                    accessibility_label: None,
+                    children: Vec::new(),
+                    disabled: Some(true),
+                    focusable: None,
+                    id: "locked".to_owned(),
+                    kind: "button".to_owned(),
+                    label: Some("Locked".to_owned()),
+                    layout: None,
+                    max: None,
+                    navigation: None,
+                    role: None,
+                    src: None,
+                    style: None,
+                    text: None,
+                    value: None,
+                },
+            ],
+            disabled: None,
+            focusable: None,
+            id: "hud".to_owned(),
+            kind: "column".to_owned(),
+            label: None,
+            layout: None,
+            max: None,
+            navigation: None,
+            role: None,
+            src: None,
+            text: None,
+            value: None,
+            style: None,
+        },
+    };
+    let mut app = App::new();
+    app.init_resource::<NativeUiActionQueue>();
+    app.add_systems(Update, dispatch_native_ui_actions);
+
+    map_ui_into_world(app.world_mut(), &ui).expect("ui should map into world");
+    let entities_by_id = collect_ui_entities(app.world_mut());
+    let locked = entities_by_id["locked"];
+    assert_eq!(
+        app.world().get::<NativeUiDisabled>(locked),
+        Some(&NativeUiDisabled(true))
+    );
+    let accessibility = app
+        .world()
+        .get::<AccessibilityNode>(locked)
+        .expect("disabled button should keep accessibility");
+    assert_eq!(accessibility.role(), Role::Button);
+    assert_eq!(accessibility.name().as_deref(), Some("Locked"));
+    assert_eq!(accessibility.is_disabled(), true);
+
+    app.world_mut()
+        .entity_mut(locked)
+        .insert(Interaction::Pressed);
+    app.update();
+
+    assert!(
+        app.world()
+            .resource::<NativeUiActionQueue>()
+            .events
+            .is_empty()
+    );
+    assert_eq!(trace_ui_navigation(&ui, &["tab"]).focus_order, vec!["jump"]);
+}
+
+#[test]
 fn ui_should_reject_unsupported_ui_node() {
     let ui = UiIr {
         focus_order: None,
@@ -322,6 +422,7 @@ fn ui_should_reject_unsupported_ui_node() {
             action: None,
             accessibility_label: None,
             children: Vec::new(),
+            disabled: None,
             focusable: None,
             id: "bad".to_owned(),
             kind: "html".to_owned(),

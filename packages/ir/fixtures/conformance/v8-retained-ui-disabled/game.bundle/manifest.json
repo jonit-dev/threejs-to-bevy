@@ -1,0 +1,29 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "conformance-v8-retained-ui-disabled",
+  "requiredCapabilities": {
+    "rendering": [
+      "camera.perspective"
+    ],
+    "ui": [
+      "accessibility",
+      "action",
+      "disabled",
+      "focus-order",
+      "node.button",
+      "node.column",
+      "node.stack",
+      "runtime"
+    ]
+  },
+  "entry": {
+    "world": "world.ir.json",
+    "ui": "ui.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "materials": "materials.ir.json",
+    "targetProfile": "target.profile.json"
+  }
+}

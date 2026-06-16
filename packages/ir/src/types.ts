@@ -587,6 +587,7 @@ export interface IUiNodeIr {
   accessibilityLabel?: string;
   binding?: IUiBinding;
   children?: IUiNodeIr[];
+  disabled?: boolean;
   focusable?: boolean;
   id: string;
   kind: "bar" | "button" | "column" | "image" | "row" | "stack" | "text" | "touchControl";

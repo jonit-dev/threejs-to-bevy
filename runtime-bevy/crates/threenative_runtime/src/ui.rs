@@ -38,6 +38,9 @@ pub struct NativeUiBar {
 #[derive(Clone, Component, Debug, Eq, PartialEq)]
 pub struct NativeUiFocusable(pub bool);
 
+#[derive(Clone, Component, Debug, Eq, PartialEq)]
+pub struct NativeUiDisabled(pub bool);
+
 #[derive(Clone, Component, Debug, PartialEq)]
 pub struct NativeUiScrollContainer {
     pub offset_y: f32,
@@ -51,6 +54,7 @@ pub struct NativeUiNode {
     pub action: Option<String>,
     pub accessibility_label: Option<String>,
     pub children: Vec<NativeUiNode>,
+    pub disabled: Option<bool>,
     pub focusable: Option<bool>,
     pub id: String,
     pub kind: String,
@@ -170,6 +174,7 @@ fn build_node(node: &UiNodeIr, path: &str) -> Result<NativeUiNode, UiDiagnostic>
             .enumerate()
             .map(|(index, child)| build_node(child, &format!("{path}/children/{index}")))
             .collect::<Result<Vec<_>, _>>()?,
+        disabled: node.disabled,
         focusable: node.focusable,
         id: node.id.clone(),
         kind: node.kind.clone(),
@@ -235,6 +240,10 @@ pub fn trace_ui_navigation(ui: &UiIr, inputs: &[&str]) -> UiNavigationTrace {
             .map(|node| node.id.clone())
             .collect()
     });
+    let focus_order = focus_order
+        .into_iter()
+        .filter(|id| find_node(&nodes, id).is_some_and(is_focusable))
+        .collect::<Vec<_>>();
     let mut focus = focus_order.first().cloned();
     let mut events = Vec::new();
     for input in inputs {
@@ -286,6 +295,9 @@ fn find_node<'a>(nodes: &[&'a UiNodeIr], id: &str) -> Option<&'a UiNodeIr> {
 }
 
 fn is_focusable(node: &UiNodeIr) -> bool {
+    if node.disabled == Some(true) {
+        return false;
+    }
     node.focusable == Some(true) || matches!(node.kind.as_str(), "button" | "touchControl")
 }
 
@@ -374,6 +386,9 @@ fn spawn_node(
         ));
         if let Some(action) = node.action.as_ref() {
             entity_mut.insert(NativeUiAction(action.clone()));
+        }
+        if let Some(disabled) = node.disabled {
+            entity_mut.insert(NativeUiDisabled(disabled));
         }
         if let Some(accessibility) = accessibility_node(node) {
             entity_mut.insert(accessibility);
@@ -483,6 +498,9 @@ fn accessibility_node(node: &UiNodeIr) -> Option<AccessibilityNode> {
     let mut builder = NodeBuilder::new(role);
     if let Some(name) = accessibility_name(node) {
         builder.set_name(name);
+    }
+    if node.disabled == Some(true) {
+        builder.set_disabled();
     }
     Some(AccessibilityNode::from(builder))
 }
@@ -656,12 +674,17 @@ pub fn scroll_native_ui(
 pub fn dispatch_native_ui_actions(
     mut queue: ResMut<NativeUiActionQueue>,
     interactions: Query<
-        (&Interaction, &NativeUiAction, &ThreeNativeId),
+        (
+            &Interaction,
+            &NativeUiAction,
+            &ThreeNativeId,
+            Option<&NativeUiDisabled>,
+        ),
         (Changed<Interaction>, With<Button>),
     >,
 ) {
-    for (interaction, action, id) in &interactions {
-        if *interaction == Interaction::Pressed {
+    for (interaction, action, id, disabled) in &interactions {
+        if *interaction == Interaction::Pressed && disabled.is_none_or(|disabled| !disabled.0) {
             queue.events.push(NativeUiActionEvent {
                 action: action.0.clone(),
                 node: id.0.clone(),

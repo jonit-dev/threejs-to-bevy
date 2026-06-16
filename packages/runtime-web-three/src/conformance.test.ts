@@ -177,6 +177,21 @@ test("should report retained ui conformance observations", async () => {
   });
 });
 
+test("should report disabled ui conformance observations", async () => {
+  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/v8-retained-ui-disabled/game.bundle"));
+  const mapped = mapWorld(bundle);
+  const report = reportWebConformance(bundle, mapped, "v8-retained-ui-disabled");
+
+  assert.deepEqual(report.ui?.root.children[0]?.children[1], {
+    action: "Locked",
+    children: [],
+    disabled: true,
+    id: "menu.locked",
+    kind: "button",
+    label: "Locked",
+  });
+});
+
 test("should report audio playback conformance observations", async () => {
   const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/v6-audio-playback/game.bundle"));
   const mapped = mapWorld(bundle);

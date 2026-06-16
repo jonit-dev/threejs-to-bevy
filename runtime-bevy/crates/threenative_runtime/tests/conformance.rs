@@ -486,3 +486,34 @@ fn should_report_ui_diagnostics_in_conformance_observations() {
     assert_eq!(report.diagnostics[0].severity, "error");
     assert_eq!(report.diagnostics[0].path, "ui.ir.json/root/kind");
 }
+
+#[test]
+fn should_report_disabled_ui_conformance_observations() {
+    let fixture = load_conformance_fixture("v8-retained-ui-disabled");
+    let mut app = App::new();
+
+    map_bundle_into_world(app.world_mut(), &fixture.bundle).unwrap_or_else(|error| {
+        panic!(
+            "failed to map conformance fixture '{}' at '{}': {}",
+            fixture.name,
+            fixture.bundle_path.display(),
+            error
+        )
+    });
+    let report = report_bevy_conformance(app.world_mut(), &fixture.bundle, fixture.name);
+    let report_json = serde_json::to_value(&report).expect("report should serialize");
+
+    assert_eq!(report.fixture, "v8-retained-ui-disabled");
+    assert!(report.diagnostics.is_empty());
+    assert_eq!(
+        report_json["ui"]["root"]["children"][0]["children"][1],
+        serde_json::json!({
+            "action": "Locked",
+            "children": [],
+            "disabled": true,
+            "id": "menu.locked",
+            "kind": "button",
+            "label": "Locked"
+        })
+    );
+}

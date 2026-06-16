@@ -84,6 +84,7 @@ export interface IConformanceUiNodeReport {
   accessibilityLabel?: string;
   action?: string;
   children: IConformanceUiNodeReport[];
+  disabled?: boolean;
   focusable?: boolean;
   id: string;
   kind: string;

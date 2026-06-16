@@ -306,6 +306,8 @@ pub struct ConformanceUiNodeReport {
     pub action: Option<String>,
     pub children: Vec<ConformanceUiNodeReport>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub disabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub focusable: Option<bool>,
     pub id: String,
     pub kind: String,
@@ -731,6 +733,7 @@ fn report_ui_node(node: &crate::ui::NativeUiNode) -> ConformanceUiNodeReport {
         accessibility_label: node.accessibility_label.clone(),
         action: node.action.clone(),
         children: node.children.iter().map(report_ui_node).collect(),
+        disabled: node.disabled,
         focusable: node.focusable,
         id: node.id.clone(),
         kind: node.kind.clone(),

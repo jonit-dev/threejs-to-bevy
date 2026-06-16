@@ -13,6 +13,7 @@ test("ui should emit hud and pause ui ir", () => {
         <Text id="hud.health.label" text="Health" />
         <Bar id="hud.health" max={100} binding={{ kind: "resource", name: "Health", field: "current" }} />
         <Button id="hud.pause" label="Pause" action="Pause" focusable />
+        <Button id="hud.locked" label="Locked" action="Locked" disabled />
       </Column>
     </Ui>,
   );
@@ -21,7 +22,8 @@ test("ui should emit hud and pause ui ir", () => {
   assert.equal(emitted.root.children?.[0]?.kind, "column");
   assert.deepEqual(
     emitted.root.children?.[0]?.children?.map((node) => node.kind),
-    ["text", "bar", "button"],
+    ["text", "bar", "button", "button"],
   );
   assert.equal(emitted.root.children?.[0]?.children?.[2]?.action, "Pause");
+  assert.equal(emitted.root.children?.[0]?.children?.[3]?.disabled, true);
 });

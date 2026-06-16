@@ -1,0 +1,26 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "camera.main",
+      "components": {
+        "Transform": {
+          "position": [0, 0, 5],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        },
+        "Camera": {
+          "kind": "perspective",
+          "fovY": 60,
+          "near": 0.1,
+          "far": 100,
+          "priority": 0
+        }
+      }
+    }
+  ],
+  "resources": {},
+  "events": {},
+  "prefabs": []
+}
