@@ -266,9 +266,20 @@ pub struct MaterialsIr {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct MaterialExtensionIr {
+    pub double_sided: Option<bool>,
+    pub preset: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MaterialIr {
     pub alpha_cutoff: Option<f32>,
     pub alpha_mode: Option<String>,
+    pub blend_mode: Option<String>,
+    pub depth_test: Option<bool>,
+    pub depth_write: Option<bool>,
+    pub extension: Option<MaterialExtensionIr>,
     pub id: String,
     pub kind: String,
     pub color: ColorIr,
@@ -285,8 +296,10 @@ pub struct MaterialIr {
     pub normal_texture: Option<String>,
     pub occlusion_texture: Option<String>,
     pub opacity: Option<f32>,
+    pub render_order: Option<i32>,
     pub roughness: Option<f32>,
     pub specular_intensity: Option<f32>,
+    pub specular_texture: Option<String>,
     pub transmission: Option<f32>,
     pub transmission_texture: Option<String>,
 }

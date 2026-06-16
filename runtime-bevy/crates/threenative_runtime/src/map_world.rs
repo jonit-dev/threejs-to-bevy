@@ -30,6 +30,8 @@ use threenative_loader::{
     RuntimeConfigIr, WorldEntity,
 };
 
+use crate::assets::texture_uv_transform;
+
 // ThreeNative lights are authored in Three.js-style scalar units. Bevy stores
 // physically named units and multiplies lighting by camera Exposure, so the
 // native adapter converts through a small three-compat shim instead of exposing
@@ -37,6 +39,17 @@ use threenative_loader::{
 const THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY: f32 = 2.0;
 const THREE_COMPAT_POINT_LUMENS_PER_CANDELA: f32 = std::f32::consts::TAU * 2.0;
 const THREE_COMPAT_DEFAULT_RANGE: f32 = 1_000.0;
+
+#[derive(Clone, Component, Debug, PartialEq)]
+pub struct NativeMaterialPolicy {
+    pub blend_mode: Option<String>,
+    pub depth_test: Option<bool>,
+    pub depth_write: Option<bool>,
+    pub extension_preset: Option<String>,
+    pub render_order: i32,
+    pub specular_texture: Option<String>,
+    pub unsupported_blend_diagnostic: Option<String>,
+}
 
 #[derive(Clone, Component, Debug, PartialEq)]
 pub struct NativeAnimationPlayback {
@@ -126,6 +139,7 @@ pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result
         .iter()
         .map(|material| (material.id.as_str(), material))
         .collect::<HashMap<_, _>>();
+    world.insert_resource(crate::assets::build_texture_controls_registry(&bundle.assets));
 
     let mut entities_by_id = HashMap::new();
     for entity in &bundle.world.entities {
@@ -283,15 +297,17 @@ fn spawn_entity(
             }
         }
         let mesh = add_mesh(world, asset);
-        let material = add_material(world, material, assets_by_id, asset_server.as_ref());
+        let policy = material_policy(material);
+        let material_handle = add_material(world, material, assets_by_id, asset_server.as_ref());
         let mut spawned = world.spawn(PbrBundle {
             mesh,
-            material,
+            material: material_handle,
             transform,
             visibility: map_visibility(entity),
             ..Default::default()
         });
         spawned.insert((stable_id, name));
+        spawned.insert(policy);
         insert_shadow_markers(&mut spawned, renderer);
         if let Some(playback) = animation_playback(asset) {
             spawned.insert(playback);
@@ -918,60 +934,102 @@ fn add_material(
     assets_by_id: &HashMap<&str, &AssetIr>,
     asset_server: Option<&AssetServer>,
 ) -> Handle<StandardMaterial> {
+    let base_texture_asset = material
+        .base_color_texture
+        .as_deref()
+        .and_then(|asset_id| assets_by_id.get(asset_id).copied());
+    let uv_transform = base_texture_asset
+        .map(texture_uv_transform)
+        .unwrap_or_default();
+    let extended = material.kind == "extended";
+    let mut standard = StandardMaterial {
+        alpha_mode: alpha_mode(material),
+        base_color: color_with_opacity(&material.color, material.opacity.unwrap_or(1.0)),
+        base_color_texture: texture_handle(
+            material.base_color_texture.as_deref(),
+            assets_by_id,
+            asset_server,
+        ),
+        clearcoat: material.clearcoat.unwrap_or(0.0),
+        clearcoat_perceptual_roughness: material.clearcoat_roughness.unwrap_or(0.0),
+        clearcoat_roughness_texture: texture_handle(
+            material.clearcoat_roughness_texture.as_deref(),
+            assets_by_id,
+            asset_server,
+        ),
+        clearcoat_texture: texture_handle(
+            material.clearcoat_texture.as_deref(),
+            assets_by_id,
+            asset_server,
+        ),
+        double_sided: material
+            .extension
+            .as_ref()
+            .and_then(|extension| extension.double_sided)
+            .unwrap_or(false),
+        emissive: emissive_color(material),
+        emissive_texture: texture_handle(
+            material.emissive_texture.as_deref(),
+            assets_by_id,
+            asset_server,
+        ),
+        metallic: material.metalness.unwrap_or(0.0),
+        metallic_roughness_texture: texture_handle(
+            material.metallic_roughness_texture.as_deref(),
+            assets_by_id,
+            asset_server,
+        ),
+        normal_map_texture: texture_handle(
+            material.normal_texture.as_deref(),
+            assets_by_id,
+            asset_server,
+        ),
+        occlusion_texture: texture_handle(
+            material.occlusion_texture.as_deref(),
+            assets_by_id,
+            asset_server,
+        ),
+        perceptual_roughness: material.roughness.unwrap_or(1.0),
+        reflectance: material.specular_intensity.unwrap_or(0.5),
+        specular_transmission: material.transmission.unwrap_or(0.0),
+        specular_transmission_texture: texture_handle(
+            material.transmission_texture.as_deref(),
+            assets_by_id,
+            asset_server,
+        ),
+        unlit: extended,
+        uv_transform,
+        ..Default::default()
+    };
+    if extended {
+        standard.metallic = 0.0;
+        standard.perceptual_roughness = 1.0;
+        standard.reflectance = 0.0;
+    }
     world
         .resource_mut::<Assets<StandardMaterial>>()
-        .add(StandardMaterial {
-            alpha_mode: alpha_mode(material),
-            base_color: color_with_opacity(&material.color, material.opacity.unwrap_or(1.0)),
-            base_color_texture: texture_handle(
-                material.base_color_texture.as_deref(),
-                assets_by_id,
-                asset_server,
-            ),
-            clearcoat: material.clearcoat.unwrap_or(0.0),
-            clearcoat_perceptual_roughness: material.clearcoat_roughness.unwrap_or(0.0),
-            clearcoat_roughness_texture: texture_handle(
-                material.clearcoat_roughness_texture.as_deref(),
-                assets_by_id,
-                asset_server,
-            ),
-            clearcoat_texture: texture_handle(
-                material.clearcoat_texture.as_deref(),
-                assets_by_id,
-                asset_server,
-            ),
-            emissive: emissive_color(material),
-            emissive_texture: texture_handle(
-                material.emissive_texture.as_deref(),
-                assets_by_id,
-                asset_server,
-            ),
-            metallic: material.metalness.unwrap_or(0.0),
-            metallic_roughness_texture: texture_handle(
-                material.metallic_roughness_texture.as_deref(),
-                assets_by_id,
-                asset_server,
-            ),
-            normal_map_texture: texture_handle(
-                material.normal_texture.as_deref(),
-                assets_by_id,
-                asset_server,
-            ),
-            occlusion_texture: texture_handle(
-                material.occlusion_texture.as_deref(),
-                assets_by_id,
-                asset_server,
-            ),
-            perceptual_roughness: material.roughness.unwrap_or(1.0),
-            reflectance: material.specular_intensity.unwrap_or(0.5),
-            specular_transmission: material.transmission.unwrap_or(0.0),
-            specular_transmission_texture: texture_handle(
-                material.transmission_texture.as_deref(),
-                assets_by_id,
-                asset_server,
-            ),
-            ..Default::default()
-        })
+        .add(standard)
+}
+
+fn material_policy(material: &MaterialIr) -> NativeMaterialPolicy {
+    let unsupported_blend_diagnostic = match material.blend_mode.as_deref() {
+        Some("normal") | None => None,
+        Some(mode) => Some(format!(
+            "TN_BEVY_MATERIAL_BLEND_MODE_UNSUPPORTED: Bevy 0.14 cannot map blendMode '{mode}' with matching semantics."
+        )),
+    };
+    NativeMaterialPolicy {
+        blend_mode: material.blend_mode.clone(),
+        depth_test: material.depth_test,
+        depth_write: material.depth_write,
+        extension_preset: material
+            .extension
+            .as_ref()
+            .map(|extension| extension.preset.clone()),
+        render_order: material.render_order.unwrap_or(0),
+        specular_texture: material.specular_texture.clone(),
+        unsupported_blend_diagnostic,
+    }
 }
 
 fn alpha_mode(material: &MaterialIr) -> AlphaMode {

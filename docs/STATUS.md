@@ -188,7 +188,9 @@ diagnostics; web maps alpha to Three.js material transparency and alpha-test
 fields; Bevy maps alpha to `StandardMaterial` `AlphaMode` and base-color alpha;
 and web/native material conformance reports preserve the promoted alpha
 metadata. Renderer-level transparency sorting and richer blend operations remain
-future work.
+partially promoted: portable `blendMode`, `renderOrder`, and depth policy now
+validate and map in web with Bevy observations/diagnostics, but only `normal`
+blend is natively supported today.
 
 The same post-V7 material gap pass now also promotes authored emissive material
 factors: `MeshStandardMaterial` accepts `emissive` and non-negative
@@ -209,15 +211,29 @@ clearcoat-roughness, and transmission texture maps are now promoted through SDK,
 IR validation, compiler emission, web physical material maps, Bevy PBR texture
 fields with `pbr_multi_layer_material_textures` /
 `pbr_transmission_textures`, and web/native conformance reports. Specular
-texture maps remain future material work.
+texture maps are now promoted through SDK/IR validation, compiler emission,
+web physical material mapping, and conformance observations; Bevy preserves the
+IR slot and reports it even though `StandardMaterial` has no native specular
+texture field in Bevy 0.14.
 
 Post-V7 texture-control coverage now promotes portable texture asset sampler and
 UV transform metadata: `textureAsset` accepts wrap, min/mag filter, repeat,
 offset, center, and rotation options; compiler emission preserves those fields
 in `assets.manifest.json`; IR/schema validation allows the promoted metadata;
 web maps it to Three.js texture wrapping, filtering, and transform properties;
-and web/native conformance reports preserve the authored asset controls. Bevy
-runtime visual application of sampler/UV controls remains future material work.
+Bevy now applies sampler wrap/filter controls on loaded images and maps
+repeat/offset/center/rotation through `StandardMaterial.uv_transform`, with
+focused material-parity screenshot evidence under
+`artifacts/v8/material-parity/`.
+
+V8-07 material parity now promotes transparency policy fields (`blendMode`,
+`renderOrder`, `depthWrite`, `depthTest`), `specularTexture`, constrained
+extended material presets (`unlitMasked`, `foliage`), and the
+`examples/v8-material-parity` scene. SDK/IR/compiler/web/Bevy/conformance
+coverage validates and reports the new fields; Bevy emits stable diagnostics for
+unsupported native blend modes beyond `normal`; raw shader payloads remain
+rejected; and `pnpm verify:v8:material-parity` aggregates IR/compiler tests,
+`pnpm verify:conformance`, and web/native screenshot evidence.
 
 Post-V7 shadow gap closure has also promoted per-mesh shadow controls:
 `Mesh` accepts optional `castShadow` and `receiveShadow` flags, compiler

@@ -162,20 +162,30 @@ pub struct ConformanceMaterialReport {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub alpha_mode: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub blend_mode: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub clearcoat: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub clearcoat_roughness: Option<f32>,
     pub color: ColorReport,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub depth_test: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub depth_write: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub emissive: Option<ColorReport>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub emissive_intensity: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub extension: Option<serde_json::Value>,
     pub id: String,
     pub kind: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub metalness: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub opacity: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub render_order: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub roughness: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -202,6 +212,8 @@ pub struct MaterialTexturesReport {
     pub normal: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub occlusion: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub specular: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub transmission: Option<String>,
 }
@@ -819,15 +831,25 @@ fn report_material(material: &MaterialIr) -> ConformanceMaterialReport {
     ConformanceMaterialReport {
         alpha_cutoff: material.alpha_cutoff,
         alpha_mode: material.alpha_mode.clone(),
+        blend_mode: material.blend_mode.clone(),
         clearcoat: material.clearcoat,
         clearcoat_roughness: material.clearcoat_roughness,
         color: color_report(&material.color),
+        depth_test: material.depth_test,
+        depth_write: material.depth_write,
         emissive: material.emissive.as_ref().map(color_report),
         emissive_intensity: material.emissive_intensity,
+        extension: material.extension.as_ref().map(|extension| {
+            serde_json::json!({
+                "preset": extension.preset,
+                "doubleSided": extension.double_sided,
+            })
+        }),
         id: material.id.clone(),
         kind: material.kind.clone(),
         metalness: material.metalness,
         opacity: material.opacity,
+        render_order: material.render_order,
         roughness: material.roughness,
         specular_intensity: material.specular_intensity,
         transmission: material.transmission,
@@ -839,6 +861,7 @@ fn report_material(material: &MaterialIr) -> ConformanceMaterialReport {
             metallic_roughness: material.metallic_roughness_texture.clone(),
             normal: material.normal_texture.clone(),
             occlusion: material.occlusion_texture.clone(),
+            specular: material.specular_texture.clone(),
             transmission: material.transmission_texture.clone(),
         },
     }

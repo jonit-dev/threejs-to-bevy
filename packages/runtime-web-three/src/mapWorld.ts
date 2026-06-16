@@ -161,6 +161,9 @@ function mapEntity(
       }
       const object = new THREE.Mesh(geometry, mappedMaterial);
       applyShadowSettings(object, renderer);
+      if (material.renderOrder !== undefined) {
+        object.renderOrder = material.renderOrder;
+      }
       if (asset.kind === "model") {
         const playback = animationPlaybackState(asset);
         if (playback !== undefined) {
@@ -375,6 +378,9 @@ function mapMaterial(
   diagnostics: IRuntimeDiagnostic[],
   source?: string,
 ): THREE.Material {
+  if (material.kind === "extended") {
+    return mapExtendedMaterial(material, assetsById, diagnostics, source);
+  }
   const aoMap = mapTextureSlot(material, "occlusionTexture", assetsById, diagnostics, source);
   const clearcoatMap = mapTextureSlot(material, "clearcoatTexture", assetsById, diagnostics, source);
   const clearcoatRoughnessMap = mapTextureSlot(material, "clearcoatRoughnessTexture", assetsById, diagnostics, source);
@@ -388,6 +394,7 @@ function mapMaterial(
     source,
   );
   const normalMap = mapTextureSlot(material, "normalTexture", assetsById, diagnostics, source);
+  const specularMap = mapTextureSlot(material, "specularTexture", assetsById, diagnostics, source);
   const transmissionMap = mapTextureSlot(material, "transmissionTexture", assetsById, diagnostics, source);
   const physical = hasPhysicalMaterialFields(material);
   const parameters: THREE.MeshStandardMaterialParameters & THREE.MeshPhysicalMaterialParameters = {
@@ -436,9 +443,73 @@ function mapMaterial(
     parameters.transmissionMap = transmissionMap;
   }
   const mapped = physical ? new THREE.MeshPhysicalMaterial(parameters) : new THREE.MeshStandardMaterial(parameters);
+  if (specularMap !== undefined) {
+    (mapped as THREE.MeshPhysicalMaterial & { specularIntensityMap?: THREE.Texture }).specularIntensityMap = specularMap;
+  }
+  applyMaterialPolicy(mapped, material);
   mapped.userData.threeNativeAlphaMode = material.alphaMode ?? "opaque";
   mapped.needsUpdate = true;
   return mapped;
+}
+
+function mapExtendedMaterial(
+  material: IMaterialIr,
+  assetsById: Map<string, IAssetIr>,
+  diagnostics: IRuntimeDiagnostic[],
+  source?: string,
+): THREE.Material {
+  const preset = material.extension?.preset;
+  const map = mapTextureSlot(material, "baseColorTexture", assetsById, diagnostics, source);
+  const parameters: THREE.MeshBasicMaterialParameters = {
+    alphaTest: material.alphaMode === "mask" ? material.alphaCutoff ?? 0.5 : 0,
+    color: colorToThree(material.color),
+    side: material.extension?.doubleSided === true ? THREE.DoubleSide : THREE.FrontSide,
+  };
+  if (material.alphaMode === "blend" || (material.opacity !== undefined && material.opacity < 1)) {
+    parameters.opacity = material.opacity ?? 1;
+    parameters.transparent = true;
+  } else if (material.opacity !== undefined) {
+    parameters.opacity = material.opacity;
+  }
+  if (map !== undefined) {
+    parameters.map = map;
+  }
+  const mapped = new THREE.MeshBasicMaterial(parameters);
+  applyMaterialPolicy(mapped, material);
+  mapped.userData.threeNativeMaterialKind = "extended";
+  mapped.userData.threeNativeExtendedPreset = preset;
+  mapped.needsUpdate = true;
+  return mapped;
+}
+
+function applyMaterialPolicy(material: THREE.Material, source: IMaterialIr): void {
+  if (source.depthWrite !== undefined) {
+    material.depthWrite = source.depthWrite;
+  }
+  if (source.depthTest !== undefined) {
+    material.depthTest = source.depthTest;
+  }
+  if (source.alphaMode === "blend" && source.blendMode !== undefined) {
+    switch (source.blendMode) {
+      case "additive":
+        material.blending = THREE.AdditiveBlending;
+        break;
+      case "multiply":
+        material.blending = THREE.MultiplyBlending;
+        break;
+      case "premultipliedAlpha":
+        material.premultipliedAlpha = true;
+        material.blending = THREE.NormalBlending;
+        break;
+      default:
+        material.blending = THREE.NormalBlending;
+        break;
+    }
+  }
+  material.userData.threeNativeBlendMode = source.blendMode ?? "normal";
+  material.userData.threeNativeDepthWrite = source.depthWrite;
+  material.userData.threeNativeDepthTest = source.depthTest;
+  material.userData.threeNativeRenderOrder = source.renderOrder;
 }
 
 function hasPhysicalMaterialFields(material: IMaterialIr): boolean {
@@ -447,6 +518,7 @@ function hasPhysicalMaterialFields(material: IMaterialIr): boolean {
     || material.clearcoatRoughnessTexture !== undefined
     || material.clearcoatTexture !== undefined
     || material.specularIntensity !== undefined
+    || material.specularTexture !== undefined
     || material.transmission !== undefined
     || material.transmissionTexture !== undefined;
 }
@@ -461,6 +533,7 @@ function mapTextureSlot(
     | "metallicRoughnessTexture"
     | "normalTexture"
     | "occlusionTexture"
+    | "specularTexture"
     | "transmissionTexture",
   assetsById: Map<string, IAssetIr>,
   diagnostics: IRuntimeDiagnostic[],

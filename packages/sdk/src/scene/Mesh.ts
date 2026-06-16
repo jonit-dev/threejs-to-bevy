@@ -1,18 +1,21 @@
 import { Object3D, type IObject3DOptions } from "./Object3D.js";
+import { type MeshExtendedMaterial } from "../materials/MeshExtendedMaterial.js";
 import { type MeshStandardMaterial } from "../materials/MeshStandardMaterial.js";
 import { type SupportedGeometry } from "../geometry/primitives.js";
+
+export type MeshMaterial = MeshExtendedMaterial | MeshStandardMaterial;
 
 export interface IMeshOptions extends IObject3DOptions {
   castShadow?: boolean;
   geometry: SupportedGeometry;
-  material: MeshStandardMaterial;
+  material: MeshMaterial;
   receiveShadow?: boolean;
 }
 
 export class Mesh extends Object3D {
   public readonly castShadow?: boolean;
   public readonly geometry: SupportedGeometry;
-  public readonly material: MeshStandardMaterial;
+  public readonly material: MeshMaterial;
   public readonly receiveShadow?: boolean;
 
   public constructor(options: IMeshOptions) {

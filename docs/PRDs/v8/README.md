@@ -26,6 +26,8 @@ consume. It is not a second source of truth and must not bypass validation.
 | 1 | [V8-01 Editor Project Snapshot and Structured Diffs](./V8-01-editor-project-snapshot-and-structured-diffs.md) | V8-00 | IR helpers validate local editor project snapshots and produce deterministic structured diffs over bundle-relative JSON documents. |
 | 4 | [V8-04 Portable Procedural Mesh Authoring](./V8-04-portable-procedural-mesh-authoring.md) | V8-00, V7 renderer parity | MeshBuilder, generated mesh asset payloads, organic prop helpers, compiler-only BufferGeometry snapshot import, and web/Bevy screenshot parity evidence for one authored procedural prop. |
 | 5 | [V8-05 Optional React Webview Overlay](./V8-05-optional-react-webview-overlay.md) | V6 retained UI, V7 rich UI, V8-00 | Projects can opt into a capability-gated React/CSS webview overlay for rich desktop/editor-like surfaces while retained UI remains the portable game UI contract. |
+| 6 | [V8-06 Camera Helpers, Multi-View Rendering, and Render Targets](./V8-06-camera-helpers-multi-view-and-render-targets.md) | V3 first-person camera, V5/V7 conformance, V8-00 | Bevy 0.14 camera parity for helpers, multiple ordered cameras, viewports, render layers, render-to-texture/depth targets, screenshot/export workflows, portable custom projections, and diagnostics for backend-only payloads. |
+| 7 | [V8-07 Material, Texture, and Shader Parity](./V8-07-material-texture-shader-parity.md) | V5 textured materials, V7 renderer parity, V8-00 | Standard-material parity for transparent ordering/blending, specular maps, native sampler/UV application, constrained extended materials, and explicit gates before broader shader surfaces. |
 
 ## Release Gate
 
@@ -38,6 +40,16 @@ Initial docs guard:
 ```bash
 pnpm check:docs:v8
 ```
+
+Material parity proof:
+
+```bash
+pnpm verify:v8:material-parity
+```
+
+The material parity proof builds `examples/v8-material-parity`, validates the
+bundle, runs conformance, captures web/native screenshots, and writes
+`artifacts/v8/material-parity/verification-report.json`.
 
 Optional React webview overlay proof:
 

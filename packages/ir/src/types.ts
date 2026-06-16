@@ -175,27 +175,42 @@ export interface IIrSchemaFile {
   schemas: Record<string, IIrNamedSchema>;
 }
 
+export type MaterialBlendMode = "additive" | "multiply" | "normal" | "premultipliedAlpha";
+export type MaterialKind = "extended" | "standard";
+export type ExtendedMaterialPreset = "foliage" | "unlitMasked";
+
+export interface IMaterialExtensionIr {
+  doubleSided?: boolean;
+  preset: ExtendedMaterialPreset;
+}
+
 export interface IMaterialIr {
   alphaCutoff?: number;
-  alphaMode?: "opaque" | "mask" | "blend";
+  alphaMode?: "blend" | "mask" | "opaque";
   baseColorTexture?: string;
+  blendMode?: MaterialBlendMode;
   clearcoat?: number;
   clearcoatRoughness?: number;
   clearcoatRoughnessTexture?: string;
   clearcoatTexture?: string;
   color: string | readonly [number, number, number] | readonly [number, number, number, number];
+  depthTest?: boolean;
+  depthWrite?: boolean;
   emissive?: string | readonly [number, number, number] | readonly [number, number, number, number];
   emissiveIntensity?: number;
   emissiveTexture?: string;
+  extension?: IMaterialExtensionIr;
   id: string;
-  kind: "standard";
+  kind: MaterialKind;
   metalness?: number;
   metallicRoughnessTexture?: string;
   normalTexture?: string;
   occlusionTexture?: string;
   opacity?: number;
+  renderOrder?: number;
   roughness?: number;
   specularIntensity?: number;
+  specularTexture?: string;
   transmission?: number;
   transmissionTexture?: string;
 }

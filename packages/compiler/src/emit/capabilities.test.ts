@@ -4,6 +4,32 @@ import type { IAssetsManifest, IMaterialsIr, IWorldIr } from "@threenative/ir";
 
 import { deriveRequiredCapabilities } from "./capabilities.js";
 
+test("should derive transparent material capabilities", () => {
+  const capabilities = deriveRequiredCapabilities({
+    assets: assetsManifest([]),
+    materials: materialsIr([
+      {
+        id: "mat.glass",
+        kind: "standard",
+        color: "#ffffff",
+        alphaMode: "blend",
+        blendMode: "additive",
+        renderOrder: 2,
+        depthWrite: false,
+      },
+    ]),
+    world: worldIr({ entities: [] }),
+  });
+
+  assert.deepEqual(capabilities.rendering, [
+    "material.alpha.blend",
+    "material.blend.additive",
+    "material.depth-policy",
+    "material.render-order",
+    "material.standard",
+  ]);
+});
+
 test("should derive sorted rendering and physics capabilities from world, materials, and assets", () => {
   const capabilities = deriveRequiredCapabilities({
     assets: assetsManifest([

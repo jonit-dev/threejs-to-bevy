@@ -155,6 +155,7 @@ pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeErro
         Update,
         (
             rendering::normalize_loaded_gltf_materials,
+            assets::apply_loaded_texture_controls,
             map_world::bind_native_animation_players,
         ),
     );

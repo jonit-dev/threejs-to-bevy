@@ -29,15 +29,20 @@ export interface IConformanceAssetReport {
 export interface IConformanceMaterialReport {
   alphaCutoff?: number;
   alphaMode?: IMaterialIr["alphaMode"];
+  blendMode?: IMaterialIr["blendMode"];
   clearcoat?: number;
   clearcoatRoughness?: number;
   color: IMaterialIr["color"];
+  depthTest?: boolean;
+  depthWrite?: boolean;
   emissive?: IMaterialIr["emissive"];
   emissiveIntensity?: number;
+  extension?: IMaterialIr["extension"];
   id: string;
   kind: IMaterialIr["kind"];
   metalness?: number;
   opacity?: number;
+  renderOrder?: number;
   roughness?: number;
   specularIntensity?: number;
   transmission?: number;
@@ -49,6 +54,7 @@ export interface IConformanceMaterialReport {
     metallicRoughness?: string;
     normal?: string;
     occlusion?: string;
+    specular?: string;
     transmission?: string;
   };
 }
