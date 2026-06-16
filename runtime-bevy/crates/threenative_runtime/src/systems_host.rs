@@ -1,4 +1,7 @@
-use std::{collections::BTreeMap, fs};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fs,
+};
 
 use quickjs_rusty::Context;
 use serde_json::{Value, json};
@@ -171,11 +174,7 @@ pub fn run_native_systems_once_with_input(
 
     let mut logs = Vec::new();
     for schedule in ["startup", "fixedUpdate", "update", "postUpdate"] {
-        let mut scheduled_systems = systems
-            .iter()
-            .filter(|system| system.schedule == schedule)
-            .collect::<Vec<_>>();
-        scheduled_systems.sort_by(|left, right| left.name.cmp(&right.name));
+        let scheduled_systems = ordered_systems_for_schedule(&systems, schedule);
         for system in scheduled_systems {
             let effects = call_system_export(
                 &context,
@@ -198,6 +197,80 @@ pub fn run_native_systems_once_with_input(
     }
 
     Ok(NativeSystemsHostRun { logs })
+}
+
+fn ordered_systems_for_schedule<'a>(systems: &'a [SystemIr], schedule: &str) -> Vec<&'a SystemIr> {
+    let mut scheduled = systems
+        .iter()
+        .filter(|system| system.schedule == schedule)
+        .collect::<Vec<_>>();
+    scheduled.sort_by(|left, right| left.name.cmp(&right.name));
+
+    let mut by_name = BTreeMap::new();
+    let mut outgoing: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    let mut indegree: BTreeMap<String, usize> = BTreeMap::new();
+    for system in &scheduled {
+        by_name.insert(system.name.clone(), *system);
+        outgoing.insert(system.name.clone(), BTreeSet::new());
+        indegree.insert(system.name.clone(), 0);
+    }
+    for system in &scheduled {
+        for target in &system.before {
+            if by_name.contains_key(target) {
+                add_order_edge(&system.name, target, &mut outgoing, &mut indegree);
+            }
+        }
+        for source in &system.after {
+            if by_name.contains_key(source) {
+                add_order_edge(source, &system.name, &mut outgoing, &mut indegree);
+            }
+        }
+    }
+
+    let mut ready = indegree
+        .iter()
+        .filter_map(|(name, count)| (*count == 0).then_some(name.clone()))
+        .collect::<Vec<_>>();
+    ready.sort();
+    let mut ordered = Vec::new();
+    while !ready.is_empty() {
+        let name = ready.remove(0);
+        if let Some(system) = by_name.get(&name) {
+            ordered.push(*system);
+        }
+        for next in outgoing
+            .get(&name)
+            .map(|targets| targets.iter().cloned().collect::<Vec<_>>())
+            .unwrap_or_default()
+        {
+            if let Some(count) = indegree.get_mut(&next) {
+                *count = count.saturating_sub(1);
+                if *count == 0 {
+                    ready.push(next);
+                    ready.sort();
+                }
+            }
+        }
+    }
+
+    if ordered.len() == scheduled.len() {
+        ordered
+    } else {
+        scheduled
+    }
+}
+
+fn add_order_edge(
+    source: &str,
+    target: &str,
+    outgoing: &mut BTreeMap<String, BTreeSet<String>>,
+    indegree: &mut BTreeMap<String, usize>,
+) {
+    if let Some(edges) = outgoing.get_mut(source) {
+        if edges.insert(target.to_owned()) {
+            *indegree.entry(target.to_owned()).or_insert(0) += 1;
+        }
+    }
 }
 
 fn call_system_export(
@@ -289,6 +362,88 @@ function __tnInvokeSystem(options) {
   const round6 = (value) => Number(value.toFixed(6));
   const roundVec3 = (value) => [round6(value[0]), round6(value[1]), round6(value[2])];
   const positiveNumber = (value, fallback) => Number.isFinite(value) && value > 0 ? value : fallback;
+  const hashSeed = (seed) => {
+    const source = typeof seed === "string" || typeof seed === "number" || typeof seed === "boolean" ? String(seed) : JSON.stringify(seed);
+    let hash = 2166136261;
+    for (const char of (source || "0")) {
+      hash ^= char.charCodeAt(0);
+      hash = Math.imul(hash, 16777619);
+    }
+    return hash >>> 0;
+  };
+  const createRandom = (seed) => {
+    let state = hashSeed(seed);
+    const next = () => {
+      state = (state + 0x6D2B79F5) >>> 0;
+      let value = state;
+      value = Math.imul(value ^ (value >>> 15), value | 1);
+      value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+      return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+    };
+    const clamp01 = (value) => Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0.5));
+    return {
+      bool(probability = 0.5) { return next() < clamp01(probability); },
+      float() { return next(); },
+      int(min, max) {
+        const lower = Math.ceil(Math.min(min, max));
+        const upper = Math.floor(Math.max(min, max));
+        if (upper < lower) return lower;
+        return Math.floor(next() * (upper - lower + 1)) + lower;
+      },
+      pick(values) { return Array.isArray(values) && values.length > 0 ? values[Math.floor(next() * values.length)] : undefined; },
+      range(min, max) { return next() * (max - min) + min; }
+    };
+  };
+  const randomSeed = data.resources.Random && data.resources.Random.seed !== undefined ? data.resources.Random.seed : (data.resources.__randomSeed ?? 0);
+  const finiteNumber = (value, fallback) => Number.isFinite(value) ? value : fallback;
+  const createTimers = (now) => {
+    const normalizedNow = finiteNumber(now, 0);
+    const elapsed = (start) => Math.max(0, normalizedNow - finiteNumber(start, normalizedNow));
+    return {
+      done(start, duration) { return elapsed(start) >= Math.max(0, finiteNumber(duration, 0)); },
+      elapsed,
+      progress(start, duration) {
+        const total = Math.max(0, finiteNumber(duration, 0));
+        return total === 0 ? 1 : Math.max(0, Math.min(1, elapsed(start) / total));
+      },
+      ready(lastRun, cooldown) { return elapsed(lastRun) >= Math.max(0, finiteNumber(cooldown, 0)); },
+      remaining(start, duration) { return Math.max(0, Math.max(0, finiteNumber(duration, 0)) - elapsed(start)); }
+    };
+  };
+  const assetById = (id) => data.assets.find((asset) => asset.id === id);
+  const loadAsset = (id) => {
+    const asset = assetById(id);
+    return asset
+      ? { accepted: true, asset: clone(asset), id, status: "ready" }
+      : { accepted: false, asset: null, id, status: "missing" };
+  };
+  const changedValues = (value, entityId) => {
+    if (Array.isArray(value)) return value.filter((item) => typeof item === "string");
+    if (!value || typeof value !== "object") return [];
+    if (Array.isArray(value[entityId])) return value[entityId].filter((item) => typeof item === "string");
+    if (value.entities && Array.isArray(value.entities[entityId])) return value.entities[entityId].filter((item) => typeof item === "string");
+    return [];
+  };
+  const changedComponents = (entity) => new Set([
+    ...changedValues(entity.components.__changed, entity.id),
+    ...changedValues(data.resources.__changed, entity.id),
+    ...changedValues(data.resources.Changed, entity.id)
+  ]);
+  const applyQuery = (source, query) => {
+    const withComponents = Array.isArray(query.with) ? query.with.map(normalize) : [];
+    const withoutComponents = Array.isArray(query.without) ? query.without.map(normalize) : [];
+    const changed = Array.isArray(query.changed) ? query.changed.map(normalize) : [];
+    const filtered = source.filter((entity) => {
+      const changedSet = changedComponents(entity);
+      return withComponents.every((component) => entity.components[component] !== undefined) &&
+        withoutComponents.every((component) => entity.components[component] === undefined) &&
+        changed.every((component) => changedSet.has(component));
+    });
+    const ordered = query.orderBy === "id" ? [...filtered].sort((left, right) => left.id.localeCompare(right.id)) : filtered;
+    const offset = Math.max(0, Math.floor(Number(query.offset ?? 0)));
+    const limit = query.limit === undefined ? undefined : Math.max(0, Math.floor(Number(query.limit)));
+    return ordered.slice(offset, limit === undefined ? undefined : offset + limit);
+  };
   const normalizeVec3 = (value) => {
     const length = Math.hypot(value[0], value[1], value[2]);
     return length <= 0.000001 ? [0, 0, -1] : [value[0] / length, value[1] / length, value[2] / length];
@@ -431,6 +586,133 @@ function __tnInvokeSystem(options) {
       }
       return best;
     };
+    const addVec3 = (left, right) => [left[0] + right[0], left[1] + right[1], left[2] + right[2]];
+    const scaleVec3 = (value, scalar) => [value[0] * scalar, value[1] * scalar, value[2] * scalar];
+    const characterMovementDelta = (axisX, axisZ, speed, fixedDelta) => {
+      const length = Math.hypot(axisX, axisZ);
+      if (length === 0) return [0, 0, 0];
+      const scale = speed * fixedDelta / Math.max(1, length);
+      return [axisX * scale, 0, axisZ * scale];
+    };
+    const entityBounds = (entity) => {
+      const collider = entity.components.Collider;
+      if (!collider) return undefined;
+      return {
+        center: readVec3(entity.components.Transform && entity.components.Transform.position, [0, 0, 0]),
+        halfExtents: readColliderHalfExtents(collider),
+        id: entity.id,
+        slope: collider.slope ? {
+          angle: Math.atan2(Number(collider.slope.rise || 0), Number(collider.slope.run || 1)) * 180 / Math.PI,
+          axis: collider.slope.axis,
+          direction: Number(collider.slope.direction || 1),
+          rise: Number(collider.slope.rise || 0),
+          run: Number(collider.slope.run || 1)
+        } : undefined,
+        velocity: entity.components.RigidBody && Array.isArray(entity.components.RigidBody.velocity) ? readVec3(entity.components.RigidBody.velocity, [0, 0, 0]) : undefined
+      };
+    };
+    const characterPenetrates = (left, right) => (
+      Math.abs(left.center[0] - right.center[0]) < left.halfExtents[0] + right.halfExtents[0] - 0.00001 &&
+      Math.abs(left.center[1] - right.center[1]) < left.halfExtents[1] + right.halfExtents[1] - 0.00001 &&
+      Math.abs(left.center[2] - right.center[2]) < left.halfExtents[2] + right.halfExtents[2] - 0.00001
+    );
+    const coversXZ = (point, bounds) => (
+      Math.abs(point[0] - bounds.center[0]) <= bounds.halfExtents[0] &&
+      Math.abs(point[2] - bounds.center[2]) <= bounds.halfExtents[2]
+    );
+    const surfaceTop = (position, bounds) => {
+      if (!bounds.slope) return bounds.center[1] + bounds.halfExtents[1];
+      const axisIndex = bounds.slope.axis === "x" ? 0 : 2;
+      const min = bounds.center[axisIndex] - bounds.halfExtents[axisIndex];
+      const max = bounds.center[axisIndex] + bounds.halfExtents[axisIndex];
+      const span = Math.max(0.0001, max - min);
+      const distance = bounds.slope.direction === 1 ? position[axisIndex] - min : max - position[axisIndex];
+      const t = Math.min(1, Math.max(0, distance / span));
+      return bounds.center[1] - bounds.halfExtents[1] + t * bounds.slope.rise;
+    };
+    const canWalkSlope = (position, bounds, slopeLimit) => !bounds.slope || (coversXZ(position, bounds) && bounds.slope.angle <= slopeLimit + 0.0001);
+    const canStepOnto = (position, characterHalfExtents, bounds, stepOffset) => {
+      const foot = position[1] - characterHalfExtents[1];
+      const top = surfaceTop(position, bounds);
+      return stepOffset > 0 && top > foot + 0.02 && top <= foot + stepOffset + 0.02 && coversXZ(position, bounds);
+    };
+    const isSideBlocker = (position, characterHalfExtents, bounds) => surfaceTop(position, bounds) > position[1] - characterHalfExtents[1] + 0.02;
+    const resolveHorizontalContact = (characterId, start, desired, characterHalfExtents, blockers, stepOffset, slopeLimit) => {
+      let position = desired;
+      let characterBounds = { center: position, halfExtents: characterHalfExtents, id: characterId };
+      for (const blocker of blockers) {
+        if (blocker.id === characterId) continue;
+        const bounds = entityBounds(blocker);
+        if (!bounds || !characterPenetrates(characterBounds, bounds) || !isSideBlocker(position, characterHalfExtents, bounds)) continue;
+        if (bounds.slope && canWalkSlope(position, bounds, slopeLimit)) {
+          position = [position[0], surfaceTop(position, bounds) + characterHalfExtents[1], position[2]];
+          characterBounds = { center: position, halfExtents: characterHalfExtents, id: characterId };
+          continue;
+        }
+        if (canStepOnto(position, characterHalfExtents, bounds, stepOffset)) {
+          position = [position[0], surfaceTop(position, bounds) + characterHalfExtents[1], position[2]];
+          characterBounds = { center: position, halfExtents: characterHalfExtents, id: characterId };
+          continue;
+        }
+        return { blockedBy: blocker.id, position: start };
+      }
+      return { position };
+    };
+    const groundPosition = (characterId, position, characterHalfExtents, blockers, fixedDelta, slopeLimit) => {
+      let ground;
+      let groundTop;
+      for (const blocker of blockers) {
+        if (blocker.id === characterId) continue;
+        const bounds = entityBounds(blocker);
+        if (!bounds || !coversXZ(position, bounds) || !canWalkSlope(position, bounds, slopeLimit)) continue;
+        const top = surfaceTop(position, bounds);
+        const foot = position[1] - characterHalfExtents[1];
+        if (top <= foot + 0.02 && (groundTop === undefined || top > groundTop)) {
+          ground = bounds;
+          groundTop = top;
+        }
+      }
+      if (!ground || groundTop === undefined) return { position };
+      const grounded = [position[0], groundTop + characterHalfExtents[1], position[2]];
+      const platformDelta = ground.velocity ? scaleVec3(ground.velocity, fixedDelta) : undefined;
+      return { entity: ground.id, platformDelta, position: platformDelta ? addVec3(grounded, platformDelta) : grounded };
+    };
+    const characterMove = (entityId, moveOptions = {}) => {
+      const entity = data.entities.find((candidate) => candidate.id === entityId);
+      const controller = entity && entity.components.CharacterController;
+      const collider = entity && entity.components.Collider;
+      if (!entity || !controller || !collider) return null;
+      const fixedDelta = Number(moveOptions.fixedDelta ?? data.time.fixedDelta ?? 1);
+      const axes = moveOptions.axes || {};
+      const start = readVec3(entity.components.Transform && entity.components.Transform.position, [0, 0, 0]);
+      const desired = addVec3(start, characterMovementDelta(
+        Number(axes[controller.moveXAxis] ?? data.input.axes[controller.moveXAxis] ?? 0),
+        Number(axes[controller.moveZAxis] ?? data.input.axes[controller.moveZAxis] ?? 0),
+        Number(controller.speed ?? 0),
+        fixedDelta
+      ));
+      const blockers = data.entities
+        .filter((candidate) => candidate.components.Collider && candidate.components.Collider.trigger !== true)
+        .sort((left, right) => left.id.localeCompare(right.id));
+      const halfExtents = readColliderHalfExtents(collider);
+      const slopeLimit = Number(controller.slopeLimit ?? 45);
+      const horizontal = controller.blocking === true
+        ? resolveHorizontalContact(entity.id, start, desired, halfExtents, blockers, Number(controller.stepOffset ?? 0), slopeLimit)
+        : { position: desired };
+      const ground = controller.grounding === "raycast"
+        ? groundPosition(entity.id, horizontal.position, halfExtents, blockers, fixedDelta, slopeLimit)
+        : { position: horizontal.position };
+      return {
+        ...(horizontal.blockedBy === undefined ? {} : { blockedBy: horizontal.blockedBy }),
+        desired,
+        entity: entity.id,
+        ...(ground.entity === undefined ? {} : { groundEntity: ground.entity }),
+        grounded: ground.entity !== undefined,
+        ...(ground.platformDelta === undefined ? {} : { platformDelta: ground.platformDelta }),
+        resolved: ground.position,
+        start
+      };
+    };
     const pickMesh = (request) => {
       const ignored = new Set(request.ignore || []);
       let best = { hit: false };
@@ -517,6 +799,31 @@ function __tnInvokeSystem(options) {
   }));
   const context = {
     time: data.time,
+    random: createRandom(randomSeed),
+    timers: createTimers(data.time.elapsed),
+    assets: {
+      get(id) {
+        return clone(assetById(normalize(id)) || null);
+      },
+      list() {
+        return clone(data.assets);
+      },
+      load(id) {
+        const request = { id: normalize(id) };
+        const result = loadAsset(request.id);
+        effects.services.push({ service: "assets.load", payload: { request, result } });
+        return clone(result);
+      }
+    },
+    character: {
+      move(entity, options = {}) {
+        const entityId = typeof entity === "string" ? entity : entity.id;
+        const request = { entity: entityId, options: clone(options) };
+        const result = characterMove(entityId, options);
+        effects.services.push({ service: "character.move", payload: { request, result } });
+        return clone(result);
+      }
+    },
     input: {
       action(name) { return !!data.input.actions[name]; },
       axis(name) { return Number(data.input.axes[name] ?? 0); },
@@ -583,13 +890,8 @@ function __tnInvokeSystem(options) {
         return clone(data.plugins);
       }
     },
-    query(query = { with: [], without: [] }) {
-      const withComponents = Array.isArray(query.with) ? query.with.map(normalize) : [];
-      const withoutComponents = Array.isArray(query.without) ? query.without.map(normalize) : [];
-      return entities.filter((entity) => (
-        withComponents.every((component) => entity.components[component] !== undefined) &&
-        withoutComponents.every((component) => entity.components[component] === undefined)
-      ));
+    query(query = data.defaultQuery || { with: [], without: [] }) {
+      return applyQuery(entities, query);
     },
     events: {
       emit(event, payload) {

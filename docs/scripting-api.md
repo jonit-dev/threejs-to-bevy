@@ -150,10 +150,12 @@ V6 promotes a small declared schedule vocabulary for portable systems:
 | `update` | Per-frame gameplay and input-facing behavior. | Runs after fixed ticks for the frame. |
 | `postUpdate` | Cleanup, follow-up events, and presentation-facing state. | Runs after `update` for the frame. |
 
-Within a stage, systems are emitted and observed in deterministic system-name
-order unless a later PRD adds explicit ordering constraints. A system may only
-read or write the components, resources, events, commands, and services listed
-in `systems.ir.json`; undeclared effects are rejected before mutation.
+Within a stage, systems run in deterministic system-name order unless explicit
+same-stage `before`/`after` constraints are declared. The IR validator rejects
+missing, cross-stage, self-referential, and cyclic ordering constraints before
+runtime. A system may only read or write the components, resources, events,
+commands, and services listed in `systems.ir.json`; undeclared effects are
+rejected before mutation.
 
 V6 still rejects portable systems that depend on async work, timers, direct
 runtime handles, DOM, filesystem, network, platform APIs, or undeclared
@@ -175,15 +177,15 @@ show the feature.
 
 | API Area | Starting Version | Status | Notes |
 | --- | --- | --- | --- |
-| Query sorting and stable iteration order | V5 | Missing | Add explicit stable ordering so visual and native conformance fixtures do not rely on incidental entity order. |
-| Changed-query filters | V5 | Missing | Useful for optimization and harness-scale regression fixtures. |
-| System ordering constraints | V5 | Partial design | Tighten stage ordering into explicit fixture-backed behavior before broader gameplay APIs depend on it. |
-| Bulk query snapshots/pagination | V5 | Missing | Important for dense 3D scenes, particles, and large environment fixtures. |
-| Random resource | V5 | Missing | Add deterministic seeded randomness only when visual scenes can replay the same scatter/gameplay result. |
-| Timers/cooldowns helpers | V5 | Missing | Promote as deterministic helpers over component state such as `Lifetime`. |
+| Query sorting and stable iteration order | V5 | Implemented for `orderBy: "id"` | Query declarations and `ctx.query(...)` can request deterministic entity-id ordering in SDK/IR/web/Bevy QuickJS. |
+| Changed-query filters | V5 | Implemented for fixed-trace metadata | `changed: [...]` filters against structured change metadata from `world.resources.__changed`, `world.resources.Changed`, or entity `__changed` markers; runtimes do not infer diffs from hidden state. |
+| System ordering constraints | V5 | Implemented for same-stage `before`/`after` constraints | SDK/IR/compiler/web/Bevy support deterministic topological same-stage ordering with system-name tie breaks; validation rejects missing, cross-stage, self, and cyclic constraints. |
+| Bulk query snapshots/pagination | V5 | Implemented for offset/limit windows | Query declarations and `ctx.query(...)` support deterministic `offset` and `limit` windows after filtering and optional ordering. |
+| Random resource | V5 | Implemented | `ctx.random.float/range/int/bool/pick` uses deterministic per-context seeded randomness from `world.resources.Random.seed` or `world.resources.__randomSeed`; no wall-clock or platform RNG access. |
+| Timers/cooldowns helpers | V5 | Implemented | `ctx.timers.elapsed/remaining/progress/done/ready` derive deterministic timer and cooldown values from `ctx.time.elapsed`; async timers and wall-clock scheduling remain unsupported. |
 | Collision events from physics backend | V6 | Partial | Primitive collision/trigger events now report deterministic `enter`, `stay`, and `exit` phases in web and Bevy; full solver behavior and contact filtering are deferred to V7. |
-| Shape casts and overlap queries | V5 | Missing | Advanced 3D content quality candidate; requires target-gated service declarations and Rust tests. |
-| Character controller API | V5 | Missing | Candidate for 3D movement quality; must be visible in a functional scene and backed by native tests if claiming Bevy support. |
+| Shape casts and overlap queries | V7 | Implemented for primitive fixed-trace services | Systems declare `physics.overlap` and `physics.shapeCast`; web and Bevy QuickJS return deterministic primitive collider results with portable filters and service logs. Full physics-solver contact behavior remains tracked under collision/character parity. |
+| Character controller API | V5 | Implemented for declared fixed-trace movement service | Systems declare `character.move`; `ctx.character.move(entity, { axes, fixedDelta })` returns a deterministic controller trace observation in web and Bevy QuickJS using the portable `CharacterController`, `Collider`, `RigidBody`, and `Transform` data. Full solver-backed interaction, navmesh, and object pushing remain outside this narrow service. |
 | Game root composition | V5 | Implemented | `defineGame` composes existing portable scene/world/input/runtime config declarations; it is not a new runtime contract. |
 | Game starter template | V5 | Implemented | `v5-game-starter` is release-gated through `verify:v5` as a small playable SDK ergonomics proof. |
 | Full animation blending/state machine | V5 | Missing | Candidate for visual quality; V4 only proved command shape such as `animation.play`. |
@@ -194,8 +196,8 @@ show the feature.
 | Child hierarchy commands | V5 or V6 | Missing | Needs scene-visible proof and deterministic command application across web and Bevy. |
 | Audio commands | V5 or later | Design only | Promote only with a maintained scene or gameplay fixture that needs audible runtime behavior. |
 | UI commands/focus/input | V6 or later | Design only | Better aligned with editor/inspector and online workflows unless a V5 visual-quality scene requires a narrow HUD. |
-| Asset lookup from script | V5 | Missing | Scripts may reference stable asset IDs and metadata; no arbitrary runtime file loading. |
-| Runtime asset loading from script | V6 or later | Unsupported | Requires service boundaries and offline fallback behavior. |
+| Asset lookup from script | V5 | Implemented | `ctx.assets.get(id)` and `ctx.assets.list()` expose cloned bundle manifest metadata in web and Bevy QuickJS without granting file, network, renderer, or native asset handles. |
+| Runtime asset loading from script | V6 or later | Implemented for declared bundle-local metadata loads | `ctx.assets.load(id)` is a declared `assets.load` service that returns deterministic ready/missing results for assets already present in `assets.manifest.json`; arbitrary file/network loads, custom loaders, and raw runtime handles remain unsupported. |
 | Async/await in systems | V6 or later | Unsupported | Avoid until scheduler, determinism, and QuickJS behavior are specified. |
 | Network/file/platform APIs | V6 or later | Unsupported | Network belongs to V6 service boundaries; file/platform access should remain outside portable systems. |
 | Arbitrary npm dependencies | Later | Unsupported | Native QuickJS sandbox cannot assume them. |
@@ -215,7 +217,7 @@ export const playerMovement = defineSystem({
   },
   reads: [PlayerController, Transform, Input, Time],
   writes: [Transform, RigidBody],
-  services: ["physics.raycast", "animation.play"],
+  services: ["physics.raycast", "animation.play", "assets.load"],
   events: {
     reads: [],
     writes: [FootstepEvent],
@@ -256,16 +258,18 @@ validated against `systems.ir.json`.
 
 | Field | Purpose | Runtime Contract |
 | --- | --- | --- |
-| `ctx.query()` | Iterates matching entities. | Returns stable entity IDs and declared component snapshots only. |
+| `ctx.query()` | Iterates matching entities. | Returns stable entity IDs and declared component snapshots only; supports `with`, `without`, `changed`, `orderBy: "id"`, `offset`, and `limit`. |
 | `ctx.time` | Fixed and variable timestep data. | Runtime-provided resource; no wall-clock access from scripts. |
+| `ctx.timers` | Deterministic timer and cooldown calculations. | Pure helpers over `ctx.time.elapsed`; no async scheduling, wall-clock access, or hidden timer state. |
 | `ctx.input` | Logical actions and axes. | Reads `input.ir.json` mappings and current input state. |
+| `ctx.random` | Deterministic seeded random values. | Per-context PRNG seeded from a world resource; exposes `float`, `range`, `int`, `bool`, and `pick` without platform RNG access. |
 | `ctx.resources` | Reads and writes declared singleton world state. | Reads are cloned snapshots; writes are queued effects and apply only after `resourceWrites` validation. |
 | `ctx.events` | Reads and emits typed events. | Event schemas are declared and queues are runtime-owned. |
 | `ctx.commands` | Structural world changes. | Commands flush at schedule boundaries after validation. |
 | `ctx.physics` | Controlled physics queries and body commands. | Runtime service facade; no Rapier or Bevy physics handles. |
 | `ctx.animation` | Playback commands and simple state queries. | Runtime service facade; animation graph state is runtime-owned. |
 | `ctx.audio` | One-shot and looping audio commands. | Planned runtime service facade; V6 currently proves bundle-local playback through audio IR and event observations, not a general script API. |
-| `ctx.assets` | Stable asset lookup by ID. | Returns IDs and metadata, not renderer or native handles. |
+| `ctx.assets` | Stable asset lookup by ID. | `get`/`list` return cloned manifest metadata; `load` is a declared `assets.load` service returning deterministic ready/missing metadata, not renderer or native handles. |
 
 ## Entity API
 
@@ -361,6 +365,11 @@ Rules:
 - V7 query permissions add `physics.overlap` and `physics.shapeCast` for
   backend-neutral overlap and swept-shape checks. Query filters use portable
   layer names and masks, not backend bitsets or handles.
+- Character movement uses the `character.move` service permission and returns a
+  fixed-trace observation for one declared character controller. Scripts pass an
+  entity id or entity view plus optional axis values and fixed delta; runtimes
+  return plain data such as `desired`, `resolved`, `grounded`, `groundEntity`,
+  and `blockedBy`.
 - Mesh picking uses the `picking.mesh` service permission and intersects rays
   with generated mesh renderer bounds. It does not expose Three.js or Bevy
   renderer handles.

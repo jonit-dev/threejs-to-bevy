@@ -78,13 +78,13 @@ test("should accept built-in transform system access without custom schema", asy
   }
 });
 
-test("should accept v7 physics and picking query services", async () => {
+test("should accept v7 physics, picking, and character query services", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-v7-services-"));
   try {
     await writeBundle(root, {
       commands: [],
       reads: ["Transform"],
-      services: ["physics.overlap", "physics.raycast", "physics.shapeCast", "picking.mesh", "picking.pointerRay"],
+      services: ["character.move", "physics.overlap", "physics.raycast", "physics.shapeCast", "picking.mesh", "picking.pointerRay"],
       writes: ["Transform"],
     });
 
@@ -92,6 +92,148 @@ test("should accept v7 physics and picking query services", async () => {
 
     assert.equal(result.ok, true);
     assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should accept declared bundle-local asset load service", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-assets-load-"));
+  try {
+    await writeBundle(root, {
+      commands: [],
+      reads: [],
+      services: ["assets.load"],
+      writes: [],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should accept query ordering pagination and changed filters", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-query-metadata-"));
+  try {
+    await writeBundle(root, {
+      commands: [],
+      queries: [{ changed: ["Transform"], limit: 2, offset: 1, orderBy: "id", with: ["Transform"], without: ["Health"] }],
+      reads: ["Transform"],
+      writes: [],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject invalid query metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-invalid-query-metadata-"));
+  try {
+    await writeBundle(root, {
+      commands: [],
+      queries: [{ changed: ["MissingComponent"], limit: -1, offset: 0.5, orderBy: "z", with: ["Transform"], without: [] }],
+      reads: ["Transform"],
+      writes: [],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => diagnostic.code),
+      [
+        "TN_IR_SYSTEM_QUERY_ORDER_UNSUPPORTED",
+        "TN_IR_SYSTEM_QUERY_OFFSET_INVALID",
+        "TN_IR_SYSTEM_QUERY_LIMIT_INVALID",
+        "TN_IR_SYSTEM_COMPONENT_SCHEMA_MISSING",
+      ],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should accept same-schedule system ordering constraints", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-ordering-"));
+  try {
+    await writeBundle(root, {
+      commands: [],
+      reads: [],
+      systemsOverride: [
+        systemDeclaration({ before: ["applyDamage"], name: "collectInput" }),
+        systemDeclaration({ after: ["collectInput"], before: ["score"], name: "applyDamage" }),
+        systemDeclaration({ after: ["applyDamage"], name: "score" }),
+      ],
+      writes: [],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject invalid system ordering constraints", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-ordering-invalid-"));
+  try {
+    await writeBundle(root, {
+      commands: [],
+      reads: [],
+      systemsOverride: [
+        systemDeclaration({ after: ["missing"], before: ["collectInput"], name: "collectInput" }),
+        systemDeclaration({ after: ["score"], name: "applyDamage" }),
+        systemDeclaration({ before: ["applyDamage"], name: "score", schedule: "postUpdate" }),
+      ],
+      writes: [],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => diagnostic.code),
+      [
+        "TN_IR_SYSTEM_ORDER_SELF_REFERENCE",
+        "TN_IR_SYSTEM_ORDER_TARGET_MISSING",
+        "TN_IR_SYSTEM_ORDER_CROSS_SCHEDULE",
+        "TN_IR_SYSTEM_ORDER_CROSS_SCHEDULE",
+      ],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject cyclic system ordering constraints", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-ordering-cycle-"));
+  try {
+    await writeBundle(root, {
+      commands: [],
+      reads: [],
+      systemsOverride: [
+        systemDeclaration({ after: ["score"], name: "collectInput" }),
+        systemDeclaration({ after: ["collectInput"], name: "applyDamage" }),
+        systemDeclaration({ after: ["applyDamage"], name: "score" }),
+      ],
+      writes: [],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics[0]?.code, "TN_IR_SYSTEM_ORDER_CYCLE");
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -575,8 +717,10 @@ async function writeBundle(
     observers?: unknown;
     pluginGroups?: unknown;
     plugins?: unknown;
+    queries?: unknown[];
     schedule?: unknown;
     services?: unknown[];
+    systemsOverride?: unknown[];
     timer?: unknown;
     writes: string[];
   } = {
@@ -620,23 +764,25 @@ async function writeBundle(
     ...(system.plugins === undefined ? {} : { plugins: system.plugins }),
     schema: "threenative.systems",
     version: "0.1.0",
-    systems: [
-      {
-        ...(system.async === undefined ? {} : { async: system.async }),
-        commands: system.commands,
-        eventReads: [],
-        eventWrites: [],
-        name: "badDamage",
-        queries: [],
-        reads: system.reads,
-        resourceReads: system.resourceReads ?? [],
-        resourceWrites: system.resourceWrites ?? [],
-        services: system.services ?? [],
-        schedule: system.schedule ?? "fixedUpdate",
-        ...(system.timer === undefined ? {} : { timer: system.timer }),
-        writes: system.writes,
-      },
-    ],
+    systems:
+      system.systemsOverride ??
+      [
+        {
+          ...(system.async === undefined ? {} : { async: system.async }),
+          commands: system.commands,
+          eventReads: [],
+          eventWrites: [],
+          name: "badDamage",
+          queries: system.queries ?? [],
+          reads: system.reads,
+          resourceReads: system.resourceReads ?? [],
+          resourceWrites: system.resourceWrites ?? [],
+          services: system.services ?? [],
+          schedule: system.schedule ?? "fixedUpdate",
+          ...(system.timer === undefined ? {} : { timer: system.timer }),
+          writes: system.writes,
+        },
+      ],
   });
   await writeJson(root, "schemas/components.schema.json", {
     schema: "threenative.component-schemas",
@@ -691,6 +837,24 @@ async function writeBundle(
   await writeJson(root, "assets.manifest.json", { schema: "threenative.assets", version: "0.1.0", assets: [] });
   await writeJson(root, "materials.ir.json", { schema: "threenative.materials", version: "0.1.0", materials: [] });
   await writeJson(root, "target.profile.json", { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] });
+}
+
+function systemDeclaration(options: { after?: string[]; before?: string[]; name: string; schedule?: string }): Record<string, unknown> {
+  return {
+    ...(options.after === undefined ? {} : { after: options.after }),
+    ...(options.before === undefined ? {} : { before: options.before }),
+    commands: [],
+    eventReads: [],
+    eventWrites: [],
+    name: options.name,
+    queries: [],
+    reads: [],
+    resourceReads: [],
+    resourceWrites: [],
+    schedule: options.schedule ?? "update",
+    services: [],
+    writes: [],
+  };
 }
 
 async function writeJson(root: string, file: string, value: unknown): Promise<void> {

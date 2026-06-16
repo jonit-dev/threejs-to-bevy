@@ -1,7 +1,15 @@
 import type { SchemaVersion } from "./types.js";
 
 export type IrSystemSchedule = "fixedUpdate" | "postUpdate" | "startup" | "update";
-export type IrSystemService = "animation.play" | "physics.overlap" | "physics.raycast" | "physics.shapeCast" | "picking.mesh" | "picking.pointerRay";
+export type IrSystemService =
+  | "animation.play"
+  | "assets.load"
+  | "character.move"
+  | "physics.overlap"
+  | "physics.raycast"
+  | "physics.shapeCast"
+  | "picking.mesh"
+  | "picking.pointerRay";
 
 export type IrSystemCommand =
   | {
@@ -24,11 +32,17 @@ export type IrSystemCommand =
     };
 
 export interface IIrSystemQuery {
+  changed?: string[];
+  limit?: number;
+  offset?: number;
+  orderBy?: "id";
   with: string[];
   without: string[];
 }
 
 export interface IIrSystemDeclaration {
+  after?: string[];
+  before?: string[];
   commands: IrSystemCommand[];
   eventReads: string[];
   eventWrites: string[];

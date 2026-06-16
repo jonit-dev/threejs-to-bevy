@@ -22,6 +22,7 @@ import type { ISystemsIr } from "./systems.js";
 import type { IInputIr, InputBinding } from "./input.js";
 import { validatePerformanceProfile } from "./performanceProfile.js";
 import { validateEnvironmentSceneIr } from "./environment.js";
+import { validateOverlaysIr, type IOverlaysIr } from "./overlays.js";
 
 export interface IIrDiagnostic {
   code: string;
@@ -74,6 +75,10 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
       : await readJson<unknown>(resolve(bundlePath, manifest.files.runtimeConfig), diagnostics);
   const ui =
     manifest.entry.ui === undefined ? undefined : await readJson<IUiIr>(resolve(bundlePath, manifest.entry.ui), diagnostics);
+  const overlays =
+    manifest.entry.overlays === undefined
+      ? undefined
+      : await readJson<IOverlaysIr>(resolve(bundlePath, manifest.entry.overlays), diagnostics);
   const componentSchemas =
     manifest.files.componentSchemas === undefined
       ? undefined
@@ -147,6 +152,9 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
   }
   if (ui !== undefined) {
     validateUi(ui, manifest.entry.ui ?? "ui.ir.json", diagnostics);
+  }
+  if (overlays !== undefined) {
+    diagnostics.push(...validateOverlaysIr(overlays, manifest.entry.overlays ?? "overlays.ir.json"));
   }
 
   return { diagnostics, ok: diagnostics.length === 0 };
@@ -1952,13 +1960,14 @@ function validateSystems(
   const channelIds = validateSystemChannels(systems.channels, `${path}/channels`, eventSchemas, diagnostics);
   validateSystemTasks(systems.tasks, `${path}/tasks`, channelIds, diagnostics);
   const systemNames = new Set(systems.systems.map((system) => system.name));
+  validateSystemOrdering(systems.systems, `${path}/systems`, diagnostics);
   const pluginIds = validateSystemPlugins(systems.plugins, `${path}/plugins`, systemNames, diagnostics);
   validateSystemPluginGroups(systems.pluginGroups, `${path}/pluginGroups`, pluginIds, diagnostics);
 
   systems.systems.forEach((system, systemIndex) => {
     const rawSystem = system as unknown as Record<string, unknown>;
     for (const key of Object.keys(rawSystem)) {
-      if (!["commands", "eventReads", "eventWrites", "name", "queries", "reads", "resourceReads", "resourceWrites", "schedule", "script", "services", "writes"].includes(key)) {
+      if (!["after", "before", "commands", "eventReads", "eventWrites", "name", "queries", "reads", "resourceReads", "resourceWrites", "schedule", "script", "services", "writes"].includes(key)) {
         diagnostics.push({
           code: "TN_IR_SYSTEM_FIELD_UNSUPPORTED",
           message: `System '${system.name}' uses unsupported field '${key}'.`,
@@ -2032,6 +2041,36 @@ function validateSystems(
       }
     });
     system.queries.forEach((query, queryIndex) => {
+      if (query.orderBy !== undefined && query.orderBy !== "id") {
+        diagnostics.push({
+          code: "TN_IR_SYSTEM_QUERY_ORDER_UNSUPPORTED",
+          message: `System '${system.name}' declares unsupported query order '${query.orderBy}'.`,
+          path: `${path}/systems/${systemIndex}/queries/${queryIndex}/orderBy`,
+        });
+      }
+      if (query.offset !== undefined && (!Number.isInteger(query.offset) || query.offset < 0)) {
+        diagnostics.push({
+          code: "TN_IR_SYSTEM_QUERY_OFFSET_INVALID",
+          message: `System '${system.name}' query offset must be a non-negative integer.`,
+          path: `${path}/systems/${systemIndex}/queries/${queryIndex}/offset`,
+        });
+      }
+      if (query.limit !== undefined && (!Number.isInteger(query.limit) || query.limit < 0)) {
+        diagnostics.push({
+          code: "TN_IR_SYSTEM_QUERY_LIMIT_INVALID",
+          message: `System '${system.name}' query limit must be a non-negative integer.`,
+          path: `${path}/systems/${systemIndex}/queries/${queryIndex}/limit`,
+        });
+      }
+      (query.changed ?? []).forEach((component, componentIndex) => {
+        if (!isBuiltInComponent(component) && componentSchemas[component] === undefined) {
+          diagnostics.push({
+            code: "TN_IR_SYSTEM_COMPONENT_SCHEMA_MISSING",
+            message: `System '${system.name}' changed-query filter references component '${component}' without a schema.`,
+            path: `${path}/systems/${systemIndex}/queries/${queryIndex}/changed/${componentIndex}`,
+          });
+        }
+      });
       query.with.forEach((component, componentIndex) => {
         if (!isBuiltInComponent(component) && componentSchemas[component] === undefined) {
           diagnostics.push({
@@ -2052,7 +2091,7 @@ function validateSystems(
       });
     });
     (system.services ?? []).forEach((service, serviceIndex) => {
-      if (!["animation.play", "physics.overlap", "physics.raycast", "physics.shapeCast", "picking.mesh", "picking.pointerRay"].includes(service)) {
+      if (!["animation.play", "assets.load", "character.move", "physics.overlap", "physics.raycast", "physics.shapeCast", "picking.mesh", "picking.pointerRay"].includes(service)) {
         diagnostics.push({
           code: "TN_IR_SYSTEM_SERVICE_UNSUPPORTED",
           message: `System '${system.name}' declares unsupported service '${service}'.`,
@@ -2113,6 +2152,136 @@ function validateSystems(
       }
     });
   });
+}
+
+function validateSystemOrdering(systems: ISystemsIr["systems"], path: string, diagnostics: IIrDiagnostic[]): void {
+  const byName = new Map<string, { index: number; schedule: string; system: ISystemsIr["systems"][number] }>();
+  systems.forEach((system, index) => {
+    byName.set(system.name, { index, schedule: system.schedule, system });
+  });
+
+  systems.forEach((system, systemIndex) => {
+    validateSystemOrderRefs(system.before, `${path}/${systemIndex}/before`, "before", system, byName, diagnostics);
+    validateSystemOrderRefs(system.after, `${path}/${systemIndex}/after`, "after", system, byName, diagnostics);
+  });
+
+  for (const schedule of ["startup", "fixedUpdate", "update", "postUpdate"]) {
+    const scheduled = systems.filter((system) => system.schedule === schedule);
+    const names = new Set(scheduled.map((system) => system.name));
+    const outgoing = new Map<string, Set<string>>();
+    const indegree = new Map<string, number>();
+    for (const name of names) {
+      outgoing.set(name, new Set());
+      indegree.set(name, 0);
+    }
+    for (const system of scheduled) {
+      for (const target of system.before ?? []) {
+        if (target === system.name || !names.has(target)) {
+          continue;
+        }
+        addSystemOrderEdge(system.name, target, outgoing, indegree);
+      }
+      for (const source of system.after ?? []) {
+        if (source === system.name || !names.has(source)) {
+          continue;
+        }
+        addSystemOrderEdge(source, system.name, outgoing, indegree);
+      }
+    }
+    const ready = [...names].filter((name) => indegree.get(name) === 0).sort();
+    let visited = 0;
+    while (ready.length > 0) {
+      const name = ready.shift()!;
+      visited += 1;
+      for (const next of [...(outgoing.get(name) ?? [])].sort()) {
+        indegree.set(next, (indegree.get(next) ?? 0) - 1);
+        if (indegree.get(next) === 0) {
+          ready.push(next);
+          ready.sort();
+        }
+      }
+    }
+    if (visited !== names.size) {
+      diagnostics.push({
+        code: "TN_IR_SYSTEM_ORDER_CYCLE",
+        message: `Systems in schedule '${schedule}' declare cyclic before/after ordering constraints.`,
+        path,
+        severity: "error",
+        suggestion: "Remove one of the before/after constraints so the schedule has a deterministic acyclic order.",
+      });
+    }
+  }
+}
+
+function validateSystemOrderRefs(
+  value: string[] | undefined,
+  path: string,
+  field: "after" | "before",
+  system: ISystemsIr["systems"][number],
+  byName: ReadonlyMap<string, { index: number; schedule: string; system: ISystemsIr["systems"][number] }>,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (value === undefined) {
+    return;
+  }
+  const raw = value as unknown;
+  if (!Array.isArray(raw)) {
+    diagnostics.push({
+      code: "TN_IR_SYSTEM_ORDER_INVALID",
+      message: `System '${system.name}' ${field} constraints must be an array of system names.`,
+      path,
+      severity: "error",
+    });
+    return;
+  }
+  raw.forEach((candidate, index) => {
+    if (typeof candidate !== "string" || candidate.trim() === "") {
+      diagnostics.push({
+        code: "TN_IR_SYSTEM_ORDER_INVALID",
+        message: `System '${system.name}' ${field} constraint must reference a non-empty system name.`,
+        path: `${path}/${index}`,
+        severity: "error",
+      });
+      return;
+    }
+    if (candidate === system.name) {
+      diagnostics.push({
+        code: "TN_IR_SYSTEM_ORDER_SELF_REFERENCE",
+        message: `System '${system.name}' cannot order itself with a ${field} constraint.`,
+        path: `${path}/${index}`,
+        severity: "error",
+      });
+      return;
+    }
+    const target = byName.get(candidate);
+    if (target === undefined) {
+      diagnostics.push({
+        code: "TN_IR_SYSTEM_ORDER_TARGET_MISSING",
+        message: `System '${system.name}' ${field} constraint references missing system '${candidate}'.`,
+        path: `${path}/${index}`,
+        severity: "error",
+      });
+      return;
+    }
+    if (target.schedule !== system.schedule) {
+      diagnostics.push({
+        code: "TN_IR_SYSTEM_ORDER_CROSS_SCHEDULE",
+        message: `System '${system.name}' ${field} constraint references system '${candidate}' in schedule '${target.schedule}', not '${system.schedule}'.`,
+        path: `${path}/${index}`,
+        severity: "error",
+        suggestion: "Only order systems within the same schedule; stage order remains startup, fixedUpdate, update, postUpdate.",
+      });
+    }
+  });
+}
+
+function addSystemOrderEdge(source: string, target: string, outgoing: Map<string, Set<string>>, indegree: Map<string, number>): void {
+  const edges = outgoing.get(source);
+  if (edges === undefined || edges.has(target)) {
+    return;
+  }
+  edges.add(target);
+  indegree.set(target, (indegree.get(target) ?? 0) + 1);
 }
 
 function validateSystemPlugins(
@@ -2806,6 +2975,9 @@ function validateManifest(manifest: unknown, path: string, diagnostics: IIrDiagn
       path: "manifest.json/entry/world",
     });
   }
+  if (isRecord(entry) && entry.overlays !== undefined) {
+    validateManifestPath(entry.overlays, `${path}/entry/overlays`, "overlays.ir.json", diagnostics);
+  }
 
   const files = manifest.files;
   if (!isRecord(files)) {
@@ -2838,6 +3010,7 @@ function validateManifest(manifest: unknown, path: string, diagnostics: IIrDiagn
     (entry.audio === undefined || typeof entry.audio === "string") &&
     (entry.environmentScene === undefined || typeof entry.environmentScene === "string") &&
     (entry.systems === undefined || typeof entry.systems === "string") &&
+    (entry.overlays === undefined || typeof entry.overlays === "string") &&
     (entry.ui === undefined || typeof entry.ui === "string") &&
     (files.componentSchemas === undefined || typeof files.componentSchemas === "string") &&
     (files.eventSchemas === undefined || typeof files.eventSchemas === "string") &&

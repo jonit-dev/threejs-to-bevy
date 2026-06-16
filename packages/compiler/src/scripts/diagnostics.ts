@@ -137,6 +137,8 @@ function diagnoseDeclaredAccess(source: IPortableSystemSource): ICompilerDiagnos
     ...uniqueMatches(source.source, /\bpicking\.mesh\s*\(/g).map(() => "picking.mesh"),
     ...uniqueMatches(source.source, /\bpicking\.pointerRay\s*\(/g).map(() => "picking.pointerRay"),
     ...uniqueMatches(source.source, /\banimation\.play\s*\(/g).map(() => "animation.play"),
+    ...uniqueMatches(source.source, /\bassets\.load\s*\(/g).map(() => "assets.load"),
+    ...uniqueMatches(source.source, /\bcharacter\.move\s*\(/g).map(() => "character.move"),
   ]) {
     if (!services.has(service)) {
       diagnostics.push({

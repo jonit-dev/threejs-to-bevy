@@ -93,6 +93,40 @@ test("should reject undeclared v7 physics and picking query services", () => {
   );
 });
 
+test("should reject undeclared asset load service while allowing metadata lookup", () => {
+  const diagnostics = diagnosePortableSystem({
+    services: [],
+    source: "(ctx) => { ctx.assets.get('mesh.crate'); ctx.assets.list(); ctx.assets.load('mesh.crate'); }",
+    systemName: "badAssetLoad",
+  });
+
+  assert.deepEqual(
+    diagnostics.map((diagnostic) => diagnostic.path),
+    ["systems/badAssetLoad/services/assets.load"],
+  );
+});
+
+test("should reject undeclared character move service", () => {
+  const missing = diagnosePortableSystem({
+    services: [],
+    source: "(ctx) => ctx.character.move('player', { axes: { MoveX: 1 } })",
+    systemName: "badCharacterMove",
+  });
+
+  assert.deepEqual(
+    missing.map((diagnostic) => diagnostic.path),
+    ["systems/badCharacterMove/services/character.move"],
+  );
+
+  const declared = diagnosePortableSystem({
+    services: ["character.move"],
+    source: "(ctx) => ctx.character.move('player', { axes: { MoveX: 1 } })",
+    systemName: "goodCharacterMove",
+  });
+
+  assert.deepEqual(declared, []);
+});
+
 test("should reject node fs import", () => {
   const diagnostics = diagnosePortableSystem({
     source: "() => require('fs').readFileSync('save.json')",

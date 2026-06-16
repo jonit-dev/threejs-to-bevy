@@ -29,6 +29,21 @@ shared conformance, Bevy native test evidence, desktop packaging checks,
 performance budget reports, and release-artifact presence checks. It writes the
 V7 aggregate report under `artifacts/v7/verification-report.json`.
 
+Focused V8 evidence exists for the optional React webview overlay slice:
+`pnpm verify:v8:overlay` builds `examples/v8-overlay-webview`, bundles a
+React/CSS inventory overlay with local item sprites, validates
+`overlays.ir.json` and `requiredCapabilities.overlay`, exercises typed
+`inventory:use-item` bridge messages, verifies non-pointer overlay modes do not
+capture game clicks, runs native overlay bridge/input diagnostics tests, checks
+the default native unsupported-host diagnostic path, and writes
+`artifacts/v8-overlay-webview/verification-report.json`. Retained `ui.ir.json`
+remains the portable game UI contract; overlays are explicit, bundle-local,
+capability-gated, and optional. The desktop native webview host is
+adapter-private behind `runtime-bevy`'s optional `native-webview` feature, which
+selects the `wry` backend; default builds fail fast with
+`TN_OVERLAY_TARGET_UNSUPPORTED` when desktop overlays are declared without that
+host.
+
 ## V4 Proves
 
 V4 is complete for the primitive native scripting proof. It proves one
@@ -539,10 +554,13 @@ layer filters, writing web/native effect logs and a diff under
 `artifacts/conformance/v7-advanced-physics-character`. The fixture now carries
 a grounded/blocking `CharacterController` and `input.ir.json` axes, and
 `pnpm verify:conformance` compares a fixed web/native character movement trace
-with deterministic stop-before-penetration behavior. Web and native runtime
-tests also pin deterministic ordering for simultaneous collision/trigger
-contacts. Full solver behavior, sensors beyond the query fixture, and advanced
-character-controller behavior such as slopes, steps, navmesh, and full
+with deterministic stop-before-penetration behavior. Portable scripts may also
+declare `character.move`; `ctx.character.move(entity, { axes, fixedDelta })`
+returns the same fixed-trace character observation through web and Bevy QuickJS
+service logs. Web and native runtime tests also pin deterministic ordering for
+simultaneous collision/trigger contacts. Full solver behavior, sensors beyond
+the query fixture, and advanced character-controller behavior such as navmesh
+and full
 interaction parity remain V7 work.
 
 V7-03 has landed the first animation/effects parity slice: model assets can now
@@ -651,7 +669,22 @@ state metadata fail with stable IR diagnostics. The
 covering startup, fixedUpdate, update, and postUpdate resource handoff, queued
 events, spawn/despawn commands, `animation.play` service effects, derived
 state/substate reads, component-hook observations, component-reflection reads,
-observer-route reads, and fixed-trace channel handoff.
+observer-route reads, fixed-trace channel handoff, read-only bundle asset
+manifest lookups through `ctx.assets.get()` / `ctx.assets.list()`, and declared
+bundle-local asset load service effects through `ctx.assets.load()` /
+`assets.load`. Portable systems also expose deterministic per-context random
+helpers through `ctx.random.float/range/int/bool/pick`, seeded from
+`world.resources.Random.seed` or `world.resources.__randomSeed`, without using
+wall-clock or platform RNG state. Deterministic timer/cooldown helpers are
+available as `ctx.timers.elapsed/remaining/progress/done/ready`, derived only
+from `ctx.time.elapsed` with no async scheduling or hidden timer state. Query
+declarations and `ctx.query(...)` now support deterministic entity-id ordering,
+offset/limit windows, and fixed-trace changed-component filters backed by
+structured change metadata instead of hidden runtime diffing. Systems can now
+declare same-stage `before`/`after` ordering constraints; SDK/IR/compiler,
+web, and Bevy QuickJS resolve them with deterministic topological ordering and
+system-name tie breaks, while validation rejects missing, cross-stage,
+self-referential, and cyclic constraints.
 It also records portable plugin/plugin-group composition metadata in the shared
 trace without exposing renderer or native runtime extension points.
 `pnpm verify:conformance`
@@ -662,6 +695,7 @@ now prove command-buffer spawn/despawn reconciliation across later web/native
 schedules, native persistence for direct and command-buffer event writes, and
 native query filtering against dynamically spawned components. State-preserving
 hot reload, arbitrary async timers/promises/workers, arbitrary npm/platform APIs,
+network/file asset loading, custom runtime asset loaders,
 dynamic runtime plugins, public plugin escape hatches, broad live-scene
 reconciliation, event clearing/windowing rules, raw Bevy/renderer type IDs,
 command-time/removal component hook callbacks, stoppable observers, and

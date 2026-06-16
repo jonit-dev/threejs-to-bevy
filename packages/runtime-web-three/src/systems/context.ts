@@ -1,5 +1,6 @@
 import { buildComponentReflectionRegistry, type IComponentReflectionRegistry, type IComponentReflectionType } from "@threenative/ir/reflection";
 import type { IAssetsManifest, IIrSchemaFile, IIrStateSource, IIrSystemQuery, ISystemsIr, IWorldEntity, IWorldIr } from "@threenative/ir";
+import { traceCharacterControllers, type ICharacterTraceObservation } from "../character.js";
 import type { IWebInputState } from "../input.js";
 import { animationPlayPayload } from "./services/animation.js";
 import { pickMesh, pointerRay, type IPickMeshRequest, type IPickMeshResult, type IPointerRayRequest, type IPointerRayResult } from "./services/picking.js";
@@ -37,6 +38,14 @@ export interface ISystemContext {
   animation: {
     play(entity: string, clip: string, options?: Record<string, unknown>): void;
   };
+  assets: {
+    get(id: unknown): IAssetsManifest["assets"][number] | null;
+    list(): IAssetsManifest["assets"];
+    load(id: unknown): IAssetLoadResult;
+  };
+  character: {
+    move(entity: string | ISystemEntityView, options?: ICharacterMoveRequest): ICharacterTraceObservation | null;
+  };
   commands: ISystemCommandBuffer;
   components: {
     hooks(component: unknown): IComponentHookObservation[];
@@ -66,6 +75,20 @@ export interface ISystemContext {
     list(): IPluginDeclarationView[];
   };
   query(query?: IIrSystemQuery): ISystemEntityView[];
+  random: {
+    bool(probability?: number): boolean;
+    float(): number;
+    int(min: number, max: number): number;
+    pick<T>(values: readonly T[]): T | undefined;
+    range(min: number, max: number): number;
+  };
+  timers: {
+    done(start: number, duration: number): boolean;
+    elapsed(start: number): number;
+    progress(start: number, duration: number): number;
+    ready(lastRun: number, cooldown: number): boolean;
+    remaining(start: number, duration: number): number;
+  };
   resources: {
     get(name: string): unknown;
     set(name: string, value: unknown): void;
@@ -148,7 +171,19 @@ export interface IQueuedResourceWrite {
 
 export interface IQueuedServiceCall {
   payload: unknown;
-  service: "animation.play" | "physics.overlap" | "physics.raycast" | "physics.shapeCast" | "picking.mesh" | "picking.pointerRay";
+  service: "animation.play" | "assets.load" | "character.move" | "physics.overlap" | "physics.raycast" | "physics.shapeCast" | "picking.mesh" | "picking.pointerRay";
+}
+
+export interface IAssetLoadResult {
+  accepted: boolean;
+  asset: IAssetsManifest["assets"][number] | null;
+  id: string;
+  status: "missing" | "ready";
+}
+
+export interface ICharacterMoveRequest {
+  axes?: Record<string, number>;
+  fixedDelta?: number;
 }
 
 export function createSystemContext(
@@ -167,12 +202,45 @@ export function createSystemContext(
   const services: IQueuedServiceCall[] = [];
   const states = evaluateStates(world, options.systems);
   const componentTypes = buildComponentReflectionRegistry(options.componentSchemas);
+  const random = createDeterministicRandom(randomSeed(world));
   return {
     commands,
     context: {
       animation: {
         play(entity, clip, playOptions = {}) {
           services.push({ payload: animationPlayPayload({ clip, entity, options: cloneValue(playOptions) as Record<string, unknown> }), service: "animation.play" });
+        },
+      },
+      assets: {
+        get(id) {
+          return cloneValue(assetById(options.assets, normalizeHandleName(id)) ?? null) as IAssetsManifest["assets"][number] | null;
+        },
+        list() {
+          return cloneValue(options.assets?.assets ?? []) as IAssetsManifest["assets"];
+        },
+        load(id) {
+          const request = { id: normalizeHandleName(id) };
+          const asset = assetById(options.assets, request.id);
+          const result: IAssetLoadResult = asset === undefined
+            ? { accepted: false, asset: null, id: request.id, status: "missing" }
+            : { accepted: true, asset: cloneValue(asset) as IAssetsManifest["assets"][number], id: request.id, status: "ready" };
+          services.push({ payload: { request, result }, service: "assets.load" });
+          return cloneValue(result) as IAssetLoadResult;
+        },
+      },
+      character: {
+        move(entity, moveOptions = {}) {
+          const entityId = typeof entity === "string" ? entity : entity.id;
+          const request = {
+            entity: entityId,
+            options: cloneValue(moveOptions) as ICharacterMoveRequest,
+          };
+          const result = traceCharacterControllers(world, {
+            axes: moveOptions.axes ?? characterAxes(world, options.input),
+            fixedDelta: moveOptions.fixedDelta ?? options.fixedDelta,
+          }).find((observation) => observation.entity === entityId) ?? null;
+          services.push({ payload: { request, result }, service: "character.move" });
+          return cloneValue(result) as ICharacterTraceObservation | null;
         },
       },
       commands: {
@@ -262,10 +330,11 @@ export function createSystemContext(
         },
       },
       query(query = options.defaultQuery ?? { with: [], without: [] }) {
-        return world.entities
-          .filter((entity) => matchesQuery(entity, query))
+        return applyQueryWindow(world.entities.filter((entity) => matchesQuery(world, entity, query)), query)
           .map((entity) => createEntityView(entity, commands));
       },
+      random,
+      timers: createTimerHelpers(options.elapsed ?? 0),
       resources: {
         get(name) {
           return cloneValue(world.resources?.[name]);
@@ -372,6 +441,26 @@ export function componentHookObservations(world: IWorldIr, systems: ISystemsIr |
   return observations;
 }
 
+function characterAxes(world: IWorldIr, input: IWebInputState | undefined): Record<string, number> {
+  if (input === undefined) {
+    return {};
+  }
+  const axes = new Set<string>();
+  for (const entity of world.entities) {
+    const controller = entity.components.CharacterController;
+    if (!isRecord(controller)) {
+      continue;
+    }
+    if (typeof controller.moveXAxis === "string") {
+      axes.add(controller.moveXAxis);
+    }
+    if (typeof controller.moveZAxis === "string") {
+      axes.add(controller.moveZAxis);
+    }
+  }
+  return Object.fromEntries([...axes].sort().map((axis) => [axis, input.axis(axis)]));
+}
+
 export function propagateObserverEvent(world: IWorldIr, systems: ISystemsIr | undefined, event: string, target: string): IObserverPropagationStep[] {
   const observer = systems?.observers?.find((candidate) => candidate.event === event && candidate.propagation === "target-ancestors");
   if (observer === undefined || world.entities.every((entity) => entity.id !== target)) {
@@ -434,6 +523,92 @@ function readDeclaredStateValue(world: IWorldIr, source: IIrStateSource, values:
   const resource = world.resources?.[source.resource];
   const raw = isRecord(resource) ? resource[source.field] : undefined;
   return typeof raw === "string" && values.includes(raw) ? raw : fallback;
+}
+
+function randomSeed(world: IWorldIr): unknown {
+  const randomResource = world.resources?.Random;
+  if (isRecord(randomResource) && randomResource.seed !== undefined) {
+    return randomResource.seed;
+  }
+  return world.resources?.__randomSeed ?? 0;
+}
+
+function createDeterministicRandom(seed: unknown): ISystemContext["random"] {
+  let state = hashSeed(seed);
+  const next = () => {
+    state = (state + 0x6D2B79F5) >>> 0;
+    let value = state;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
+  return {
+    bool(probability = 0.5) {
+      return next() < clamp01(probability);
+    },
+    float() {
+      return next();
+    },
+    int(min, max) {
+      const lower = Math.ceil(Math.min(min, max));
+      const upper = Math.floor(Math.max(min, max));
+      if (upper < lower) {
+        return lower;
+      }
+      return Math.floor(next() * (upper - lower + 1)) + lower;
+    },
+    pick(values) {
+      return values.length === 0 ? undefined : values[Math.floor(next() * values.length)];
+    },
+    range(min, max) {
+      return next() * (max - min) + min;
+    },
+  };
+}
+
+function hashSeed(seed: unknown): number {
+  const source = typeof seed === "string" || typeof seed === "number" || typeof seed === "boolean"
+    ? String(seed)
+    : JSON.stringify(seed);
+  let hash = 2166136261;
+  for (const char of source ?? "0") {
+    hash ^= char.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function clamp01(value: number): number {
+  return Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0.5));
+}
+
+function createTimerHelpers(now: number): ISystemContext["timers"] {
+  const normalizedNow = finiteNumber(now, 0);
+  const elapsed = (start: number) => Math.max(0, normalizedNow - finiteNumber(start, normalizedNow));
+  return {
+    done(start, duration) {
+      return elapsed(start) >= Math.max(0, finiteNumber(duration, 0));
+    },
+    elapsed,
+    progress(start, duration) {
+      const total = Math.max(0, finiteNumber(duration, 0));
+      return total === 0 ? 1 : clamp01(elapsed(start) / total);
+    },
+    ready(lastRun, cooldown) {
+      return elapsed(lastRun) >= Math.max(0, finiteNumber(cooldown, 0));
+    },
+    remaining(start, duration) {
+      return Math.max(0, Math.max(0, finiteNumber(duration, 0)) - elapsed(start));
+    },
+  };
+}
+
+function finiteNumber(value: number, fallback: number): number {
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function assetById(assets: IAssetsManifest | undefined, id: string): IAssetsManifest["assets"][number] | undefined {
+  return assets?.assets.find((asset) => asset.id === id);
 }
 
 function createEntityView(entity: IWorldEntity, commands: IQueuedCommand[]): ISystemEntityView {
@@ -538,8 +713,43 @@ export function applyResourceWrites(world: IWorldIr, resources: ReadonlyArray<IQ
   };
 }
 
-function matchesQuery(entity: IWorldEntity, query: IIrSystemQuery): boolean {
-  return query.with.every((component) => entity.components[component] !== undefined) && query.without.every((component) => entity.components[component] === undefined);
+function applyQueryWindow(entities: IWorldEntity[], query: IIrSystemQuery): IWorldEntity[] {
+  const ordered = query.orderBy === "id" ? [...entities].sort((left, right) => left.id.localeCompare(right.id)) : entities;
+  const offset = Math.max(0, Math.floor(query.offset ?? 0));
+  const limit = query.limit === undefined ? undefined : Math.max(0, Math.floor(query.limit));
+  return ordered.slice(offset, limit === undefined ? undefined : offset + limit);
+}
+
+function matchesQuery(world: IWorldIr, entity: IWorldEntity, query: IIrSystemQuery): boolean {
+  return (query.with ?? []).every((component) => entity.components[component] !== undefined)
+    && (query.without ?? []).every((component) => entity.components[component] === undefined)
+    && (query.changed ?? []).every((component) => changedComponents(world, entity).has(component));
+}
+
+function changedComponents(world: IWorldIr, entity: IWorldEntity): Set<string> {
+  const values = [
+    readChangedValue(entity.components.__changed, entity.id),
+    readChangedValue(world.resources?.__changed, entity.id),
+    readChangedValue(world.resources?.Changed, entity.id),
+  ].flat();
+  return new Set(values);
+}
+
+function readChangedValue(value: unknown, entityId: string): string[] {
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === "string");
+  }
+  if (!isRecord(value)) {
+    return [];
+  }
+  if (Array.isArray(value[entityId])) {
+    return (value[entityId] as unknown[]).filter((item): item is string => typeof item === "string");
+  }
+  const entities = value.entities;
+  if (isRecord(entities) && Array.isArray(entities[entityId])) {
+    return (entities[entityId] as unknown[]).filter((item): item is string => typeof item === "string");
+  }
+  return [];
 }
 
 function cloneValue<T>(value: T): T {

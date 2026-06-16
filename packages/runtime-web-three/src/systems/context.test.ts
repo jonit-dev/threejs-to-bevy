@@ -141,6 +141,122 @@ test("should log animation play service call", () => {
   });
 });
 
+test("should expose character move service call", () => {
+  const world = makeWorld();
+  const player = world.entities.find((entity) => entity.id === "player");
+  assert.ok(player);
+  player.components.Collider = { kind: "box", layer: "player", mask: ["world"], size: [0.5, 1, 0.5] };
+  player.components.CharacterController = {
+    blocking: true,
+    grounding: "raycast",
+    moveXAxis: "MoveX",
+    moveZAxis: "MoveZ",
+    speed: 2,
+    stepOffset: 0.25,
+  };
+  const { context, services } = createSystemContext(world, { delta: 0.016, fixedDelta: 0.5 });
+
+  const result = context.character.move("player", { axes: { MoveX: 1, MoveZ: 0 }, fixedDelta: 0.5 });
+
+  assert.deepEqual(result, {
+    desired: [1, 1, 0],
+    entity: "player",
+    groundEntity: "floor",
+    grounded: true,
+    resolved: [1, 0.55, 0],
+    start: [0, 1, 0],
+  });
+  assert.deepEqual(services[0], {
+    payload: {
+      request: { entity: "player", options: { axes: { MoveX: 1, MoveZ: 0 }, fixedDelta: 0.5 } },
+      result,
+    },
+    service: "character.move",
+  });
+});
+
+test("should expose bundle asset metadata and log asset load service calls", () => {
+  const { context, services } = createSystemContext(makeWorld(), { assets: makeAssets(), delta: 0.016, fixedDelta: 0.016 });
+
+  assert.deepEqual(context.assets.get("mesh.crate"), makeAssets().assets[0]);
+  assert.deepEqual(context.assets.list(), makeAssets().assets);
+
+  const ready = context.assets.load("mesh.crate");
+  const missing = context.assets.load("mesh.missing");
+
+  assert.deepEqual(ready, {
+    accepted: true,
+    asset: makeAssets().assets[0],
+    id: "mesh.crate",
+    status: "ready",
+  });
+  assert.deepEqual(missing, {
+    accepted: false,
+    asset: null,
+    id: "mesh.missing",
+    status: "missing",
+  });
+  assert.deepEqual(services.map((service) => service.service), ["assets.load", "assets.load"]);
+  assert.deepEqual(services[0], {
+    payload: {
+      request: { id: "mesh.crate" },
+      result: ready,
+    },
+    service: "assets.load",
+  });
+});
+
+test("should expose deterministic random helpers from world seed", () => {
+  const seededWorld = makeWorld();
+  seededWorld.resources = { Random: { seed: "arena-1" } };
+  const first = createSystemContext(seededWorld, { delta: 0.016, fixedDelta: 0.016 }).context;
+  const second = createSystemContext(seededWorld, { delta: 0.016, fixedDelta: 0.016 }).context;
+  const otherWorld = makeWorld();
+  otherWorld.resources = { Random: { seed: "arena-2" } };
+  const other = createSystemContext(otherWorld, { delta: 0.016, fixedDelta: 0.016 }).context;
+
+  const sample = (context: typeof first) => [
+    context.random.float(),
+    context.random.range(10, 20),
+    context.random.int(1, 6),
+    context.random.bool(0.75),
+    context.random.pick(["a", "b", "c"]),
+  ];
+
+  assert.deepEqual(sample(first), sample(second));
+  assert.notDeepEqual(sample(createSystemContext(seededWorld, { delta: 0.016, fixedDelta: 0.016 }).context), sample(other));
+});
+
+test("should expose deterministic timer helpers from elapsed time", () => {
+  const { context } = createSystemContext(makeWorld(), { delta: 0.016, elapsed: 12, fixedDelta: 0.016 });
+
+  assert.equal(context.timers.elapsed(9.5), 2.5);
+  assert.equal(context.timers.remaining(9.5, 4), 1.5);
+  assert.equal(context.timers.progress(9.5, 5), 0.5);
+  assert.equal(context.timers.done(9.5, 2), true);
+  assert.equal(context.timers.done(9.5, 3), false);
+  assert.equal(context.timers.ready(7, 5), true);
+  assert.equal(context.timers.ready(8, 5), false);
+  assert.equal(context.timers.progress(12, 0), 1);
+});
+
+test("should apply query ordering pagination and changed filters", () => {
+  const world = makeWorld();
+  world.resources = { __changed: { entities: { "enemy.b": ["Transform"], player: ["Transform"] } } };
+  world.entities = [
+    { components: { Transform: { position: [0, 0, 0] } }, id: "enemy.b" },
+    { components: { Health: { current: 1 }, Transform: { position: [0, 0, 0] } }, id: "enemy.a" },
+    { components: { Transform: { position: [0, 0, 0] } }, id: "player" },
+    { components: { Transform: { position: [0, 0, 0] } }, id: "enemy.c" },
+  ];
+  const { context } = createSystemContext(world, { delta: 0.016, fixedDelta: 0.016 });
+
+  assert.deepEqual(
+    context.query({ changed: ["Transform"], limit: 1, offset: 1, orderBy: "id", with: ["Transform"], without: ["Health"] }).map((entity) => entity.id),
+    ["player"],
+  );
+});
+
 test("should expose resource-derived app states, computed states, and substates", () => {
   const world: IWorldIr = {
     entities: [],

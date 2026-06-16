@@ -1,13 +1,23 @@
 import { SdkError } from "../errors.js";
 import type { CommandDeclaration } from "./commands.js";
-import type { IQueryDeclaration } from "./query.js";
+import type { IQueryDeclaration, IQueryOptions } from "./query.js";
 import type { EcsFactory, IEcsSchema } from "./schema.js";
 
 export type SystemSchedule = "fixedUpdate" | "postUpdate" | "startup" | "update";
-export type SystemService = "animation.play" | "physics.overlap" | "physics.raycast" | "physics.shapeCast" | "picking.mesh" | "picking.pointerRay";
+export type SystemService =
+  | "animation.play"
+  | "assets.load"
+  | "character.move"
+  | "physics.overlap"
+  | "physics.raycast"
+  | "physics.shapeCast"
+  | "picking.mesh"
+  | "picking.pointerRay";
 export type PortableSystem<TContext = ISystemContext> = (context: TContext) => unknown;
 
 export interface ISystemOptions {
+  after?: ReadonlyArray<string>;
+  before?: ReadonlyArray<string>;
   commands?: ReadonlyArray<CommandDeclaration>;
   eventReads?: ReadonlyArray<EcsFactory | IEcsSchema | string>;
   eventWrites?: ReadonlyArray<EcsFactory | IEcsSchema | string>;
@@ -26,6 +36,8 @@ export interface IV4SystemConfig extends ISystemOptions {
 }
 
 export interface ISystemDeclaration {
+  after: string[];
+  before: string[];
   commands: CommandDeclaration[];
   eventReads: string[];
   eventSchemas: IEcsSchema[];
@@ -54,6 +66,29 @@ export interface ISystemEntity {
 export interface ISystemContext {
   animation: {
     play(entity: ISystemEntity | string, clip: string, options?: Record<string, unknown>): void;
+  };
+  assets: {
+    get(id: unknown): Record<string, unknown> | null;
+    list(): Record<string, unknown>[];
+    load(id: unknown): { accepted: boolean; asset: Record<string, unknown> | null; id: string; status: "missing" | "ready" };
+  };
+  character: {
+    move(
+      entity: ISystemEntity | string,
+      options?: {
+        axes?: Record<string, number>;
+        fixedDelta?: number;
+      },
+    ): {
+      blockedBy?: string;
+      desired: [number, number, number];
+      entity: string;
+      groundEntity?: string;
+      grounded: boolean;
+      platformDelta?: [number, number, number];
+      resolved: [number, number, number];
+      start: [number, number, number];
+    } | null;
   };
   commands: {
     addComponent(entity: string, component: EcsFactory | IEcsSchema | string, value?: unknown): void;
@@ -142,7 +177,21 @@ export interface ISystemContext {
           origin: [number, number, number];
         };
   };
-  query(): ISystemEntity[];
+  query(query?: IQueryDeclaration | IQueryOptions): ISystemEntity[];
+  random: {
+    bool(probability?: number): boolean;
+    float(): number;
+    int(min: number, max: number): number;
+    pick<T>(values: readonly T[]): T | undefined;
+    range(min: number, max: number): number;
+  };
+  timers: {
+    done(start: number, duration: number): boolean;
+    elapsed(start: number): number;
+    progress(start: number, duration: number): number;
+    ready(lastRun: number, cooldown: number): boolean;
+    remaining(start: number, duration: number): number;
+  };
   time: {
     dt: number;
     elapsed: number;
@@ -198,6 +247,8 @@ function createSystem(schedule: SystemSchedule, name: string, options: ISystemOp
   const resourceSchemaSources = [...(options.resourceReads ?? []), ...(options.resourceWrites ?? [])];
 
   return {
+    after: normalizeSystemRefs(options.after ?? []),
+    before: normalizeSystemRefs(options.before ?? []),
     commands,
     eventReads: normalizeNames(options.eventReads ?? []),
     eventSchemas: normalizeSchemas(eventSchemaSources, "event"),
@@ -214,6 +265,10 @@ function createSystem(schedule: SystemSchedule, name: string, options: ISystemOp
     schemas: normalizeSchemas(componentSchemaSources, "component"),
     writes: normalizeNames(options.writes ?? []),
   };
+}
+
+function normalizeSystemRefs(values: ReadonlyArray<string>): string[] {
+  return [...new Set(values.map((value) => value.trim()).filter((value) => value.length > 0))].sort();
 }
 
 function normalizeNames(values: ReadonlyArray<EcsFactory | IEcsSchema | string>): string[] {

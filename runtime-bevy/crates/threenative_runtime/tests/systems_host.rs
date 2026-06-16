@@ -103,6 +103,107 @@ fn systems_host_should_expose_pointer_ray_service() {
 }
 
 #[test]
+fn systems_host_should_expose_asset_lookup_and_load_service() {
+    let root = write_asset_service_bundle("asset-service-context");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+
+    let run = run_native_systems_once(&mut bundle, time()).expect("system should run");
+
+    assert_eq!(
+        bundle.world.resources.get("AssetReport"),
+        Some(&serde_json::json!({
+            "first": "mesh.crate",
+            "loaded": true,
+            "missing": "missing",
+            "total": 1
+        }))
+    );
+    let service_entry = run.logs[0]
+        .entries
+        .iter()
+        .find(|entry| entry.kind == "service" && entry.service.as_deref() == Some("assets.load"))
+        .expect("asset load service call should be logged");
+    assert_eq!(service_entry.service.as_deref(), Some("assets.load"));
+}
+
+#[test]
+fn systems_host_should_expose_character_move_service() {
+    let root = write_character_service_bundle("character-move-context");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+
+    let run = run_native_systems_once(&mut bundle, time()).expect("system should run");
+
+    assert_eq!(
+        bundle.world.resources.get("CharacterReport"),
+        Some(&serde_json::json!({
+            "entity": "player",
+            "grounded": true,
+            "ground": "floor",
+            "resolved": [1, 0.55, 0]
+        }))
+    );
+    let service_entry = run.logs[0]
+        .entries
+        .iter()
+        .find(|entry| entry.kind == "service" && entry.service.as_deref() == Some("character.move"))
+        .expect("character move service call should be logged");
+    assert_eq!(service_entry.service.as_deref(), Some("character.move"));
+}
+
+#[test]
+fn systems_host_should_expose_seeded_random_helpers() {
+    let root = write_random_bundle("random-context");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+
+    run_native_systems_once(&mut bundle, time()).expect("system should run");
+
+    let first = bundle
+        .world
+        .resources
+        .get("RandomReport")
+        .expect("random report should be written")
+        .clone();
+    let mut second_bundle = load_bundle(&root).expect("scripted bundle should load again");
+    run_native_systems_once(&mut second_bundle, time()).expect("system should run again");
+    assert_eq!(
+        second_bundle.world.resources.get("RandomReport"),
+        Some(&first)
+    );
+}
+
+#[test]
+fn systems_host_should_expose_timer_helpers() {
+    let root = write_timer_bundle("timer-context");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+
+    run_native_systems_once(&mut bundle, time()).expect("system should run");
+
+    assert_eq!(
+        bundle.world.resources.get("TimerReport"),
+        Some(&serde_json::json!({
+            "done": true,
+            "elapsed": 1.5,
+            "progress": 0.75,
+            "ready": false,
+            "remaining": 0.5
+        }))
+    );
+}
+
+#[test]
+fn systems_host_should_apply_query_metadata() {
+    let root = write_query_metadata_bundle("query-metadata-context");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+
+    run_native_systems_once(&mut bundle, time()).expect("system should run");
+
+    assert_eq!(
+        bundle.world.resources.get("QueryReport"),
+        Some(&serde_json::json!({ "ids": ["player"] }))
+    );
+}
+
+#[test]
 fn systems_host_should_run_startup_before_update() {
     let root = write_startup_bundle("startup-order");
     let mut bundle = load_bundle(&root).expect("scripted bundle should load");
@@ -118,6 +219,23 @@ fn systems_host_should_run_startup_before_update() {
     assert_eq!(run.logs[0].entries[0].schedule, "startup");
     assert_eq!(run.logs[1].entries[0].system, "score");
     assert_eq!(run.logs[1].entries[0].schedule, "update");
+}
+
+#[test]
+fn systems_host_should_run_systems_using_ordering_constraints() {
+    let root = write_ordering_bundle("ordering-constraints");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+
+    let run = run_native_systems_once(&mut bundle, time()).expect("systems should run");
+
+    assert_eq!(
+        bundle.world.resources.get("Order"),
+        Some(&serde_json::json!({ "values": ["collectInput", "applyDamage", "score"] }))
+    );
+    assert_eq!(run.logs.len(), 3);
+    assert_eq!(run.logs[0].entries[0].system, "collectInput");
+    assert_eq!(run.logs[1].entries[0].system, "applyDamage");
+    assert_eq!(run.logs[2].entries[0].system, "score");
 }
 
 #[test]
@@ -339,6 +457,96 @@ export const systems = Object.freeze({ "system_score": system_score });
     root
 }
 
+fn write_ordering_bundle(name: &str) -> PathBuf {
+    let root = root(name);
+    write_base_bundle(&root, true);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [],
+  "resources": {
+    "Order": { "values": [] }
+  }
+}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "score",
+      "schedule": "update",
+      "reads": [],
+      "writes": [],
+      "queries": [],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": ["Order"],
+      "resourceWrites": ["Order"],
+      "services": [],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_score" }
+    },
+    {
+      "name": "applyDamage",
+      "schedule": "update",
+      "after": ["collectInput"],
+      "before": ["score"],
+      "reads": [],
+      "writes": [],
+      "queries": [],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": ["Order"],
+      "resourceWrites": ["Order"],
+      "services": [],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_applyDamage" }
+    },
+    {
+      "name": "collectInput",
+      "schedule": "update",
+      "before": ["applyDamage"],
+      "reads": [],
+      "writes": [],
+      "queries": [],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": ["Order"],
+      "resourceWrites": ["Order"],
+      "services": [],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_collectInput" }
+    }
+  ]
+}"#,
+    );
+    fs::write(
+        root.join("scripts.bundle.js"),
+        r#"const append = (ctx, value) => {
+  const order = ctx.resources.get("Order");
+  ctx.resources.set("Order", { values: [...order.values, value] });
+};
+const system_score = (ctx) => append(ctx, "score");
+const system_applyDamage = (ctx) => append(ctx, "applyDamage");
+const system_collectInput = (ctx) => append(ctx, "collectInput");
+export const systems = Object.freeze({
+  "system_score": system_score,
+  "system_applyDamage": system_applyDamage,
+  "system_collectInput": system_collectInput
+});
+"#,
+    )
+    .expect("script bundle should be written");
+    root
+}
+
 fn write_picking_bundle(name: &str) -> PathBuf {
     let root = root(name);
     write_base_bundle(&root, true);
@@ -413,6 +621,334 @@ fn write_picking_bundle(name: &str) -> PathBuf {
 };
 export const systemIds = Object.freeze({ "system_pick": "pick" });
 export const systems = Object.freeze({ "system_pick": system_pick });
+"#,
+    )
+    .expect("script bundle should be written");
+    root
+}
+
+fn write_asset_service_bundle(name: &str) -> PathBuf {
+    let root = root(name);
+    write_base_bundle(&root, true);
+    write_json(
+        &root,
+        "assets.manifest.json",
+        r#"{"schema":"threenative.assets","version":"0.1.0","assets":[
+  { "id": "mesh.crate", "kind": "mesh", "format": "generated", "primitive": "box", "size": [1, 1, 1] }
+]}"#,
+    );
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [],
+  "resources": {
+    "AssetReport": {}
+  }
+}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "reportAssets",
+      "schedule": "update",
+      "reads": [],
+      "writes": [],
+      "queries": [],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": ["AssetReport"],
+      "resourceWrites": ["AssetReport"],
+      "services": ["assets.load"],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_reportAssets" }
+    }
+  ]
+}"#,
+    );
+    fs::write(
+        root.join("scripts.bundle.js"),
+        r#"const system_reportAssets = (ctx) => {
+  const list = ctx.assets.list();
+  const ready = ctx.assets.load("mesh.crate");
+  const missing = ctx.assets.load("mesh.missing");
+  ctx.resources.set("AssetReport", {
+    first: ctx.assets.get("mesh.crate").id,
+    loaded: ready.accepted && ready.asset.id === "mesh.crate",
+    missing: missing.status,
+    total: list.length
+  });
+};
+export const systemIds = Object.freeze({ "system_reportAssets": "reportAssets" });
+export const systems = Object.freeze({ "system_reportAssets": system_reportAssets });
+"#,
+    )
+    .expect("script bundle should be written");
+    root
+}
+
+fn write_character_service_bundle(name: &str) -> PathBuf {
+    let root = root(name);
+    write_base_bundle(&root, true);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "floor",
+      "components": {
+        "Transform": { "position": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Collider": { "kind": "box", "size": [8, 0.1, 8], "layer": "world", "mask": ["player"] },
+        "RigidBody": { "kind": "static" }
+      }
+    },
+    {
+      "id": "player",
+      "components": {
+        "Transform": { "position": [0, 1, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Collider": { "kind": "box", "size": [0.5, 1, 0.5], "layer": "player", "mask": ["world"] },
+        "RigidBody": { "kind": "kinematic" },
+        "CharacterController": {
+          "blocking": true,
+          "grounding": "raycast",
+          "moveXAxis": "MoveX",
+          "moveZAxis": "MoveZ",
+          "speed": 2,
+          "stepOffset": 0.25
+        }
+      }
+    }
+  ],
+  "resources": {
+    "CharacterReport": {}
+  }
+}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "moveCharacter",
+      "schedule": "update",
+      "reads": ["Transform", "Collider", "RigidBody", "CharacterController"],
+      "writes": [],
+      "queries": [],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": ["CharacterReport"],
+      "resourceWrites": ["CharacterReport"],
+      "services": ["character.move"],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_moveCharacter" }
+    }
+  ]
+}"#,
+    );
+    fs::write(
+        root.join("scripts.bundle.js"),
+        r#"const system_moveCharacter = (ctx) => {
+  const result = ctx.character.move("player", { axes: { MoveX: 1, MoveZ: 0 }, fixedDelta: 0.5 });
+  const rounded = result.resolved.map((value) => Number(value.toFixed(6)));
+  ctx.resources.set("CharacterReport", {
+    entity: result.entity,
+    grounded: result.grounded,
+    ground: result.groundEntity,
+    resolved: rounded
+  });
+};
+export const systemIds = Object.freeze({ "system_moveCharacter": "moveCharacter" });
+export const systems = Object.freeze({ "system_moveCharacter": system_moveCharacter });
+"#,
+    )
+    .expect("script bundle should be written");
+    root
+}
+
+fn write_random_bundle(name: &str) -> PathBuf {
+    let root = root(name);
+    write_base_bundle(&root, true);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [],
+  "resources": {
+    "Random": { "seed": "arena-1" },
+    "RandomReport": {}
+  }
+}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "reportRandom",
+      "schedule": "update",
+      "reads": [],
+      "writes": [],
+      "queries": [],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": ["Random", "RandomReport"],
+      "resourceWrites": ["RandomReport"],
+      "services": [],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_reportRandom" }
+    }
+  ]
+}"#,
+    );
+    fs::write(
+        root.join("scripts.bundle.js"),
+        r#"const system_reportRandom = (ctx) => {
+  ctx.resources.set("RandomReport", {
+    float: ctx.random.float(),
+    range: ctx.random.range(10, 20),
+    int: ctx.random.int(1, 6),
+    bool: ctx.random.bool(0.75),
+    pick: ctx.random.pick(["a", "b", "c"])
+  });
+};
+export const systemIds = Object.freeze({ "system_reportRandom": "reportRandom" });
+export const systems = Object.freeze({ "system_reportRandom": system_reportRandom });
+"#,
+    )
+    .expect("script bundle should be written");
+    root
+}
+
+fn write_timer_bundle(name: &str) -> PathBuf {
+    let root = root(name);
+    write_base_bundle(&root, true);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [],
+  "resources": {
+    "TimerReport": {}
+  }
+}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "reportTimers",
+      "schedule": "update",
+      "reads": [],
+      "writes": [],
+      "queries": [],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": ["TimerReport"],
+      "resourceWrites": ["TimerReport"],
+      "services": [],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_reportTimers" }
+    }
+  ]
+}"#,
+    );
+    fs::write(
+        root.join("scripts.bundle.js"),
+        r#"const system_reportTimers = (ctx) => {
+  ctx.resources.set("TimerReport", {
+    done: ctx.timers.done(-0.5, 1.25),
+    elapsed: ctx.timers.elapsed(-0.5),
+    progress: ctx.timers.progress(-0.5, 2),
+    ready: ctx.timers.ready(0.25, 1),
+    remaining: ctx.timers.remaining(-0.5, 2)
+  });
+};
+export const systemIds = Object.freeze({ "system_reportTimers": "reportTimers" });
+export const systems = Object.freeze({ "system_reportTimers": system_reportTimers });
+"#,
+    )
+    .expect("script bundle should be written");
+    root
+}
+
+fn write_query_metadata_bundle(name: &str) -> PathBuf {
+    let root = root(name);
+    write_base_bundle(&root, true);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    { "id": "enemy.b", "components": { "Transform": { "position": [0, 0, 0] } } },
+    { "id": "enemy.a", "components": { "Transform": { "position": [0, 0, 0] }, "Health": { "current": 1 } } },
+    { "id": "player", "components": { "Transform": { "position": [0, 0, 0] } } },
+    { "id": "enemy.c", "components": { "Transform": { "position": [0, 0, 0] } } }
+  ],
+  "resources": {
+    "__changed": { "entities": { "enemy.b": ["Transform"], "player": ["Transform"] } },
+    "QueryReport": {}
+  }
+}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "reportQuery",
+      "schedule": "update",
+      "reads": ["Transform"],
+      "writes": [],
+      "queries": [
+        { "with": ["Transform"], "without": ["Health"], "changed": ["Transform"], "orderBy": "id", "offset": 1, "limit": 1 }
+      ],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": ["QueryReport"],
+      "resourceWrites": ["QueryReport"],
+      "services": [],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_reportQuery" }
+    }
+  ]
+}"#,
+    );
+    fs::write(
+        root.join("scripts.bundle.js"),
+        r#"const system_reportQuery = (ctx) => {
+  ctx.resources.set("QueryReport", { ids: ctx.query().map((entity) => entity.id) });
+};
+export const systemIds = Object.freeze({ "system_reportQuery": "reportQuery" });
+export const systems = Object.freeze({ "system_reportQuery": system_reportQuery });
 "#,
     )
     .expect("script bundle should be written");
