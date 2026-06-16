@@ -57,6 +57,7 @@ const v8Evidence = [
   {
     id: "V8-07",
     prdPath: "docs/PRDs/v8/V8-07-material-texture-shader-parity.md",
+    command: ["node", ["scripts/verify-v8-material-parity.mjs", "--json"]],
     reportPaths: ["artifacts/v8/material-parity/verification-report.json"],
     screenshotPaths: [
       "artifacts/v8/material-parity/web.png",
@@ -170,36 +171,48 @@ export async function verifyV8SupportEvidence(options = {}) {
   steps.push({ ...summarize(docsResult), name: "check v8 docs" });
 
   if (runPrdVerifiers) {
-    for (const evidence of v8Evidence) {
-      if (evidence.command === undefined) {
-        continue;
+    const prebuildResult = await run({
+      args: ["--filter", "@threenative/cli...", "build"],
+      command: "pnpm",
+      cwd: root,
+      name: "build verifier dependencies",
+      timeoutMs: 180000,
+    });
+    steps.push({ ...summarize(prebuildResult), name: "build verifier dependencies" });
+    if (prebuildResult.exitCode === 0) {
+      for (const evidence of v8Evidence) {
+        if (evidence.command === undefined) {
+          continue;
+        }
+        const [command, args] = evidence.command;
+        const result = await run({
+          args,
+          command: command === "node" ? process.execPath : command,
+          cwd: root,
+          name: `run ${evidence.id} focused verifier`,
+          timeoutMs: 180000,
+        });
+        steps.push({ ...summarize(result), name: `run ${evidence.id} focused verifier` });
       }
-      const [command, args] = evidence.command;
-      const result = await run({
-        args,
-        command: command === "node" ? process.execPath : command,
-        cwd: root,
-        name: `run ${evidence.id} focused verifier`,
-        timeoutMs: 180000,
-      });
-      steps.push({ ...summarize(result), name: `run ${evidence.id} focused verifier` });
     }
   }
 
   const artifactInventory = await inventoryEvidence(root);
+  const missingArtifacts = collectMissingArtifacts(artifactInventory, reportPath);
   const inventoryStep = {
     durationMs: artifactInventory.durationMs,
-    exitCode: 0,
+    exitCode: missingArtifacts.length === 0 ? 0 : 1,
     name: "inventory v8 support evidence",
-    stderr: "",
+    stderr: missingArtifacts.map((artifact) => artifact.path).join("\n"),
     stdout: reportPath,
   };
   steps.push(inventoryStep);
 
-  const ok = docsResult.exitCode === 0 && (!runPrdVerifiers || steps.every((step) => step.exitCode === 0));
+  const ok = docsResult.exitCode === 0 && missingArtifacts.length === 0 && (!runPrdVerifiers || steps.every((step) => step.exitCode === 0));
   return writeReport({
     artifactDir,
     artifactInventory,
+    missingArtifacts,
     ok,
     reportPath,
     runPrdVerifiers,
@@ -241,21 +254,35 @@ async function checkPath(root, path) {
   return { exists, path: absolutePath };
 }
 
-async function writeReport({ artifactDir, artifactInventory, ok, reportPath, runPrdVerifiers, startedAt, startedAtMs, steps }) {
+function collectMissingArtifacts(artifactInventory, reportPath) {
+  const requiredArtifacts = artifactInventory.prds.flatMap((prd) =>
+    [...prd.reportPaths, ...prd.screenshotPaths].map((artifact) => ({ ...artifact, prdId: prd.id })),
+  );
+  return requiredArtifacts.filter((artifact) => artifact.path !== reportPath && !artifact.exists);
+}
+
+async function writeReport({ artifactDir, artifactInventory, missingArtifacts, ok, reportPath, runPrdVerifiers, startedAt, startedAtMs, steps }) {
   await mkdir(artifactDir, { recursive: true });
   const failedStep = steps.find((step) => step.exitCode !== 0);
-  const diagnostics =
-    failedStep === undefined
-      ? []
-      : [
-          {
-            code: "TN_VERIFY_V8_SUPPORT_EVIDENCE_STEP_FAILED",
-            message: `V8 support evidence verification failed at '${failedStep.name}'.`,
-            path: `steps.${steps.indexOf(failedStep)}`,
-            severity: "error",
-            step: failedStep.name,
-          },
-        ];
+  const diagnostics = [];
+  if (failedStep !== undefined) {
+    diagnostics.push({
+      code: "TN_VERIFY_V8_SUPPORT_EVIDENCE_STEP_FAILED",
+      message: `V8 support evidence verification failed at '${failedStep.name}'.`,
+      path: `steps.${steps.indexOf(failedStep)}`,
+      severity: "error",
+      step: failedStep.name,
+    });
+  }
+  if (missingArtifacts.length > 0) {
+    diagnostics.push({
+      artifacts: missingArtifacts.map(({ exists, ...artifact }) => artifact),
+      code: "TN_VERIFY_V8_SUPPORT_EVIDENCE_ARTIFACT_MISSING",
+      message: `V8 support evidence is missing ${missingArtifacts.length} required artifact${missingArtifacts.length === 1 ? "" : "s"}.`,
+      path: "evidence",
+      severity: "error",
+    });
+  }
   const evidence = artifactInventory.prds.map((prd) => ({
     ...prd,
     reportPaths: prd.reportPaths.map((artifact) => (artifact.path === reportPath ? { ...artifact, exists: true } : artifact)),
