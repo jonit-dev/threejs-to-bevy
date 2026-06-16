@@ -20,6 +20,7 @@ export interface IBundleManifest {
     animations?: string;
     audio?: string;
     environmentScene?: string;
+    localData?: string;
     scripts?: string;
     systems?: string;
     overlays?: string;

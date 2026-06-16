@@ -25,6 +25,11 @@ checkpoint lifecycle contract.
   checks.
 - [x] Registration/wiring needed: serialization whitelist, local backend
   adapters, migration diagnostics, fixtures, docs, and gates.
+- [x] Runtime validation boundary documented: web and native runtime loaders
+  consume bundles that have already passed IR/compiler validation; in this
+  slice they parse supported local-data schema/version metadata for
+  observations, but do not independently enforce every local-data semantic
+  validation rule.
 
 **Is this user-facing?** Yes. Save slots and settings are required for practical
 game templates.

@@ -1,5 +1,6 @@
 import type { IRuntimeDiagnostic } from "./runtimeDiagnostics.js";
 import type { IRuntimeConfigIr } from "./runtimeConfig.js";
+import type { ILocalDataIr } from "./localData.js";
 import type { IAssetIr, IMaterialIr, Quat, Vec3 } from "./types.js";
 
 export interface IConformanceAssetReport {
@@ -119,6 +120,14 @@ export interface IConformanceRuntimeConfigReport {
   };
 }
 
+export interface IConformanceLocalDataReport {
+  checkpoints: Array<NonNullable<ILocalDataIr["checkpoints"]>[number]>;
+  migrations: Array<NonNullable<ILocalDataIr["migrations"]>[number]>;
+  saveSlots: Array<ILocalDataIr["saveSlots"][number]>;
+  settings: Array<ILocalDataIr["settings"][number]>;
+  storage: ILocalDataIr["storage"];
+}
+
 export interface IConformanceCameraViewReport {
   cameraId: string;
   clearMode?: string;
@@ -205,6 +214,7 @@ export interface IConformanceReport {
   environment?: IConformanceEnvironmentReport;
   events: IConformanceEventReport[];
   fixture: string;
+  localData?: IConformanceLocalDataReport;
   materials: IConformanceMaterialReport[];
   resources: IConformanceResourceReport[];
   runtime: "bevy" | "web-three";

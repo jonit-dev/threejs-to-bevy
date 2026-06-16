@@ -159,6 +159,65 @@ fn should_load_optional_environment_scene_ir() {
     fs::remove_dir_all(root).expect("temp bundle should be removed");
 }
 
+#[test]
+fn should_load_optional_local_data_ir() {
+    let root = temp_bundle_dir();
+    write_json(
+        &root,
+        "manifest.json",
+        r#"{
+          "schema": "threenative.bundle",
+          "version": "0.1.0",
+          "name": "local-data",
+          "entry": { "world": "world.ir.json", "localData": "local-data.ir.json" },
+          "files": {
+            "assets": "assets.manifest.json",
+            "materials": "materials.ir.json",
+            "targetProfile": "target.profile.json"
+          }
+        }"#,
+    );
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{ "schema": "threenative.world", "version": "0.1.0", "entities": [] }"#,
+    );
+    write_json(
+        &root,
+        "assets.manifest.json",
+        r#"{ "schema": "threenative.assets", "version": "0.1.0", "assets": [] }"#,
+    );
+    write_json(
+        &root,
+        "materials.ir.json",
+        r#"{ "schema": "threenative.materials", "version": "0.1.0", "materials": [] }"#,
+    );
+    write_json(
+        &root,
+        "target.profile.json",
+        r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["desktop"] }"#,
+    );
+    write_json(
+        &root,
+        "local-data.ir.json",
+        r#"{
+          "schema": "threenative.local-data",
+          "version": "0.1.0",
+          "storage": "local-only",
+          "saveSlots": [{ "id": "slot.autosave", "version": "1.0.0", "resources": ["Progress"] }],
+          "settings": [{ "id": "audio.masterVolume", "group": "audio", "kind": "number", "default": 0.8 }]
+        }"#,
+    );
+
+    let bundle = load_bundle(&root).expect("local data bundle should load");
+
+    let local_data = bundle.local_data.expect("local data ir");
+    assert_eq!(local_data.storage, "local-only");
+    assert_eq!(local_data.save_slots[0].id, "slot.autosave");
+    assert_eq!(local_data.settings[0].id, "audio.masterVolume");
+    fs::remove_dir_all(root).expect("temp bundle should be removed");
+}
+
 fn cube_fixture() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../../packages/ir/fixtures/cube-scene/game.bundle")

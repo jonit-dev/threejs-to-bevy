@@ -190,3 +190,41 @@ test("should report audio playback conformance observations", async () => {
     ],
   });
 });
+
+test("should report local data conformance observations", async () => {
+  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/v8-local-data/game.bundle"));
+  const mapped = mapWorld(bundle);
+  const report = reportWebConformance(bundle, mapped, "v8-local-data");
+
+  assert.equal(report.fixture, "v8-local-data");
+  assert.deepEqual(report.localData, {
+    checkpoints: [{ event: "CheckpointReached", id: "checkpoint.reached", saveSlot: "slot.autosave", schedule: "postUpdate" }],
+    migrations: [
+      {
+        appliesTo: "slot.autosave",
+        fromVersion: "0.9.0",
+        hint: "Import the old progress value into PlayerProgress.level before loading this slot.",
+        id: "progress-v0-to-v1",
+        strategy: "diagnostic",
+        toVersion: "1.0.0",
+      },
+    ],
+    saveSlots: [
+      {
+        components: [{ component: "Checkpoint", entity: "player" }],
+        id: "slot.autosave",
+        label: "Autosave",
+        maxBytes: 65536,
+        resources: ["PlayerProgress"],
+        version: "1.0.0",
+      },
+    ],
+    settings: [
+      { default: false, group: "accessibility", id: "accessibility.reducedMotion", kind: "boolean" },
+      { default: 0.8, group: "audio", id: "audio.masterVolume", kind: "number", max: 1, min: 0 },
+      { default: false, group: "controls", id: "controls.invertY", kind: "boolean" },
+      { default: "windowed", group: "video", id: "video.displayMode", kind: "string", values: ["windowed", "fullscreen"] },
+    ],
+    storage: "local-only",
+  });
+});

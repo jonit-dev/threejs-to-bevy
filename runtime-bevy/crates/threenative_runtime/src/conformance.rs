@@ -5,7 +5,7 @@ use serde::Serialize;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{
     AnimationClipIr, AssetIr, ColorIr, EnvironmentSceneIr, LoadedBundle, MaterialIr,
-    MeshGenerationIr, RuntimeConfigIr, UiIr, WorldEntity,
+    LocalDataIr, MeshGenerationIr, RuntimeConfigIr, UiIr, WorldEntity,
 };
 
 use crate::audio::{self, NativeAudioCommand, NativeAudioCommandKind, NativeAudioDiagnostic};
@@ -30,6 +30,8 @@ pub struct ConformanceReport {
     pub environment: Option<ConformanceEnvironmentReport>,
     pub events: Vec<ConformanceEventReport>,
     pub fixture: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub local_data: Option<ConformanceLocalDataReport>,
     pub materials: Vec<ConformanceMaterialReport>,
     pub resources: Vec<ConformanceResourceReport>,
     pub runtime: String,
@@ -39,6 +41,16 @@ pub struct ConformanceReport {
     pub screenshot_exports: Option<Vec<ConformanceScreenshotExportReport>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ui: Option<ConformanceUiReport>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConformanceLocalDataReport {
+    pub checkpoints: Vec<threenative_loader::LocalDataCheckpointIr>,
+    pub migrations: Vec<threenative_loader::LocalDataMigrationIr>,
+    pub save_slots: Vec<threenative_loader::LocalDataSaveSlotIr>,
+    pub settings: Vec<threenative_loader::LocalDataSettingIr>,
+    pub storage: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -474,6 +486,7 @@ pub fn report_bevy_conformance(
         environment: bundle.environment_scene.as_ref().map(report_environment),
         events: report_events(bundle),
         fixture: fixture.into(),
+        local_data: report_local_data(bundle.local_data.as_ref()),
         materials: bundle
             .materials
             .materials
@@ -495,6 +508,25 @@ pub fn report_bevy_conformance(
         ),
         ui: ui_report.and_then(|report| report.report),
     }
+}
+
+fn report_local_data(local_data: Option<&LocalDataIr>) -> Option<ConformanceLocalDataReport> {
+    let local_data = local_data?;
+    let mut checkpoints = local_data.checkpoints.clone();
+    checkpoints.sort_by(|left, right| left.id.cmp(&right.id));
+    let mut migrations = local_data.migrations.clone();
+    migrations.sort_by(|left, right| left.id.cmp(&right.id));
+    let mut save_slots = local_data.save_slots.clone();
+    save_slots.sort_by(|left, right| left.id.cmp(&right.id));
+    let mut settings = local_data.settings.clone();
+    settings.sort_by(|left, right| left.id.cmp(&right.id));
+    Some(ConformanceLocalDataReport {
+        checkpoints,
+        migrations,
+        save_slots,
+        settings,
+        storage: local_data.storage.clone(),
+    })
 }
 
 fn report_camera_views(bundle: &LoadedBundle) -> Vec<ConformanceCameraViewReport> {
@@ -1086,6 +1118,7 @@ fn component_names(entity: &WorldEntity) -> Vec<String> {
     if entity.components.visibility.is_some() {
         names.push("Visibility".to_owned());
     }
+    names.extend(entity.components.extra.keys().cloned());
     names.sort();
     names
 }

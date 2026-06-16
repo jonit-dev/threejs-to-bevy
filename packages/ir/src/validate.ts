@@ -24,6 +24,7 @@ import { validatePerformanceProfile } from "./performanceProfile.js";
 import { validateEnvironmentSceneIr } from "./environment.js";
 import { validateOverlaysIr, type IOverlaysIr } from "./overlays.js";
 import { validateCameraViews } from "./camera.js";
+import { validateLocalDataIr, type ILocalDataIr } from "./localData.js";
 
 export interface IIrDiagnostic {
   code: string;
@@ -61,6 +62,10 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
     manifest.entry.environmentScene === undefined
       ? undefined
       : await readJson<IEnvironmentSceneIr>(resolve(bundlePath, manifest.entry.environmentScene), diagnostics);
+  const localData =
+    manifest.entry.localData === undefined
+      ? undefined
+      : await readJson<ILocalDataIr>(resolve(bundlePath, manifest.entry.localData), diagnostics);
   const materials = await readJson<IMaterialsIr>(resolve(bundlePath, manifest.files.materials), diagnostics);
   const assets = await readJson<IAssetsManifest>(resolve(bundlePath, manifest.files.assets), diagnostics);
   const targetProfile = await readJson<ITargetProfile>(resolve(bundlePath, manifest.files.targetProfile), diagnostics);
@@ -156,6 +161,17 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
   }
   if (overlays !== undefined) {
     diagnostics.push(...validateOverlaysIr(overlays, manifest.entry.overlays ?? "overlays.ir.json"));
+  }
+  if (localData !== undefined) {
+    validateLocalDataIr(
+      localData,
+      manifest.entry.localData ?? "local-data.ir.json",
+      componentSchemas?.schemas ?? {},
+      resourceSchemas?.schemas ?? {},
+      eventSchemas?.schemas ?? {},
+      world,
+      diagnostics,
+    );
   }
   if (world !== undefined) {
     validateCameraViews(world, materials, assets, manifest.entry.world, diagnostics);
@@ -3168,6 +3184,9 @@ function validateManifest(manifest: unknown, path: string, diagnostics: IIrDiagn
   if (isRecord(entry) && entry.overlays !== undefined) {
     validateManifestPath(entry.overlays, `${path}/entry/overlays`, "overlays.ir.json", diagnostics);
   }
+  if (isRecord(entry) && entry.localData !== undefined) {
+    validateManifestPath(entry.localData, `${path}/entry/localData`, "local-data.ir.json", diagnostics);
+  }
 
   const files = manifest.files;
   if (!isRecord(files)) {
@@ -3199,6 +3218,7 @@ function validateManifest(manifest: unknown, path: string, diagnostics: IIrDiagn
     typeof files.targetProfile === "string" &&
     (entry.audio === undefined || typeof entry.audio === "string") &&
     (entry.environmentScene === undefined || typeof entry.environmentScene === "string") &&
+    (entry.localData === undefined || typeof entry.localData === "string") &&
     (entry.systems === undefined || typeof entry.systems === "string") &&
     (entry.overlays === undefined || typeof entry.overlays === "string") &&
     (entry.ui === undefined || typeof entry.ui === "string") &&

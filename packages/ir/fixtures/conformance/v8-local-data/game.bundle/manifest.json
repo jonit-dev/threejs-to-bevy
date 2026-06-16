@@ -1,0 +1,21 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "v8-local-data",
+  "requiredCapabilities": {
+    "ecs": ["component-schemas", "event-schemas", "resource-schemas", "resources"],
+    "localData": ["checkpoints", "local-only", "migration-diagnostics", "save-slots", "settings"]
+  },
+  "entry": {
+    "world": "world.ir.json",
+    "localData": "local-data.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "componentSchemas": "schemas/components.schema.json",
+    "eventSchemas": "schemas/events.schema.json",
+    "materials": "materials.ir.json",
+    "resourceSchemas": "schemas/resources.schema.json",
+    "targetProfile": "target.profile.json"
+  }
+}

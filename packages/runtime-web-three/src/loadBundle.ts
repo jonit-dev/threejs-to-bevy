@@ -4,6 +4,7 @@ import type {
   IBundleManifest,
   IEnvironmentSceneIr,
   IInputIr,
+  ILocalDataIr,
   IIrSchemaFile,
   IMaterialsIr,
   IOverlaysIr,
@@ -20,6 +21,7 @@ export interface IWebBundle {
   componentSchemas?: IIrSchemaFile;
   environmentScene?: IEnvironmentSceneIr;
   input?: IInputIr;
+  localData?: ILocalDataIr;
   manifest: IBundleManifest;
   materials: IMaterialsIr;
   runtimeConfig?: IRuntimeConfigIr;
@@ -46,6 +48,10 @@ export async function loadBundle(source: string): Promise<IWebBundle> {
       : await readBundleJson<IEnvironmentSceneIr>(source, manifest.entry.environmentScene);
   const input =
     manifest.files.input === undefined ? undefined : await readBundleJson<IInputIr>(source, manifest.files.input);
+  const localData =
+    manifest.entry.localData === undefined
+      ? undefined
+      : await readBundleJson<ILocalDataIr>(source, manifest.entry.localData);
   const runtimeConfig =
     manifest.files.runtimeConfig === undefined
       ? undefined
@@ -64,6 +70,7 @@ export async function loadBundle(source: string): Promise<IWebBundle> {
     componentSchemas,
     environmentScene,
     input,
+    localData,
     manifest,
     materials: await readBundleJson<IMaterialsIr>(source, manifest.files.materials),
     runtimeConfig,

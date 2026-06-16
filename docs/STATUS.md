@@ -75,6 +75,21 @@ radius attenuation, bus gain, source volume, and effective volume. Listener
 movement, real backend spatial panning/output, mixer effects/ducking, and music
 transitions remain outside this slice.
 
+V8-17 has landed the first portable local-data contract slice:
+`local-data.ir.json` can declare local-only save slots for declared
+resources/components, common controls/audio/video/accessibility setting keys,
+diagnostic migration metadata, and checkpoint event hooks. IR validation rejects
+undeclared persisted resources/components, unsupported storage scopes, invalid
+setting groups/kinds/defaults, missing migration slots, and missing checkpoint
+event schemas. The `v8-local-data` conformance fixture is loaded by both the
+Three.js web runtime and the Bevy runtime, and `pnpm verify:v8:local-data`
+writes matching web, Bevy, and comparison reports under
+`artifacts/v8-local-data/`. This is contract and observation evidence only:
+web/native runtime loaders consume already validated bundles and do not
+independently enforce the full local-data semantic validation rules beyond
+parsing supported schema/version metadata. Runtime save/load services, storage
+backends, CLI import/export, and autosave execution remain future V8-17 work.
+
 ## V4 Proves
 
 V4 is complete for the primitive native scripting proof. It proves one

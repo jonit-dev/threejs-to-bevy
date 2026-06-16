@@ -90,6 +90,18 @@ test("should localize runtime config mismatches", () => {
   assert.equal(result.diagnostics[0]?.right, "msaa8");
 });
 
+test("should localize local data observation mismatches", () => {
+  const result = compareConformanceReports(
+    report("web-three", { settingDefault: 0.8 }),
+    report("bevy", { settingDefault: 0.5 }),
+  );
+
+  assert.equal(result.ok, false);
+  assert.equal(result.diagnostics[0]?.path, "$.localData.settings[0].default");
+  assert.equal(result.diagnostics[0]?.left, 0.8);
+  assert.equal(result.diagnostics[0]?.right, 0.5);
+});
+
 test("should localize active camera mismatches", () => {
   const result = compareConformanceReports(
     report("web-three", { activeCamera: "camera.main" }),
@@ -424,6 +436,13 @@ function report(runtime, overrides = {}) {
         },
       },
     ],
+    localData: {
+      checkpoints: [{ event: "CheckpointReached", id: "checkpoint.reached", saveSlot: "slot.autosave", schedule: "postUpdate" }],
+      migrations: [],
+      saveSlots: [{ id: "slot.autosave", resources: ["Score"], version: "1.0.0" }],
+      settings: [{ default: overrides.settingDefault ?? 0.8, group: "audio", id: "audio.masterVolume", kind: "number" }],
+      storage: "local-only",
+    },
     resources: [
       {
         id: "Score",

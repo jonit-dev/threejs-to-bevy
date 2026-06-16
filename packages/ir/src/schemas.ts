@@ -1,6 +1,7 @@
 export const schemaUrls = {
   assets: new URL("../schemas/assets.schema.json", import.meta.url),
   input: new URL("../schemas/input.schema.json", import.meta.url),
+  localData: new URL("../schemas/local-data.schema.json", import.meta.url),
   manifest: new URL("../schemas/manifest.schema.json", import.meta.url),
   materials: new URL("../schemas/materials.schema.json", import.meta.url),
   runtimeConfig: new URL("../schemas/runtime-config.schema.json", import.meta.url),

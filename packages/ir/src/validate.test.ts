@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import test from "node:test";
 
 import { validateBundle } from "./validate.js";
@@ -617,6 +617,85 @@ test("should accept material alpha metadata", async () => {
 
     assert.deepEqual(result.diagnostics, []);
     assert.equal(result.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should accept declared local data save slots and settings", async () => {
+  const result = await validateBundle(resolve(process.cwd(), "fixtures/conformance/v8-local-data/game.bundle"));
+
+  assert.deepEqual(result.diagnostics, []);
+  assert.equal(result.ok, true);
+});
+
+test("should reject local data persistence outside declared schemas", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-local-data-invalid-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "manifest.json", {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "schema-test",
+      requiredCapabilities: {},
+      entry: { world: "world.ir.json", localData: "local-data.ir.json" },
+      files: {
+        assets: "assets.manifest.json",
+        componentSchemas: "schemas/components.schema.json",
+        eventSchemas: "schemas/events.schema.json",
+        materials: "materials.ir.json",
+        resourceSchemas: "schemas/resources.schema.json",
+        targetProfile: "target.profile.json",
+      },
+    });
+    await writeJson(root, "schemas/resources.schema.json", {
+      schema: "threenative.resource-schemas",
+      version: "0.1.0",
+      schemas: {
+        GameState: { fields: { phase: { kind: "string", required: true } } },
+      },
+    });
+    await writeJson(root, "schemas/events.schema.json", {
+      schema: "threenative.event-schemas",
+      version: "0.1.0",
+      schemas: {
+        CheckpointReached: { fields: { checkpoint: { kind: "string", required: true } } },
+      },
+    });
+    await writeJson(root, "local-data.ir.json", {
+      schema: "threenative.local-data",
+      version: "0.1.0",
+      storage: "cloud",
+      saveSlots: [
+        {
+          id: "slot.autosave",
+          version: "1.0.0",
+          resources: ["MissingResource"],
+          components: [{ component: "MissingComponent", entity: "missing" }],
+        },
+      ],
+      settings: [{ id: "network.region", group: "network", kind: "object", default: {} }],
+      migrations: [{ id: "bad", appliesTo: "missing", fromVersion: "0", toVersion: "1", strategy: "auto", hint: "" }],
+      checkpoints: [{ id: "bad", event: "MissingEvent", saveSlot: "missing", schedule: "render" }],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.code), [
+      "TN_IR_LOCAL_DATA_STORAGE_UNSUPPORTED",
+      "TN_IR_LOCAL_DATA_RESOURCE_SCHEMA_MISSING",
+      "TN_IR_LOCAL_DATA_COMPONENT_SCHEMA_MISSING",
+      "TN_IR_LOCAL_DATA_COMPONENT_ENTITY_MISSING",
+      "TN_IR_LOCAL_DATA_SETTING_GROUP_UNSUPPORTED",
+      "TN_IR_LOCAL_DATA_SETTING_KIND_UNSUPPORTED",
+      "TN_IR_LOCAL_DATA_MIGRATION_SLOT_MISSING",
+      "TN_IR_LOCAL_DATA_MIGRATION_STRATEGY_UNSUPPORTED",
+      "TN_IR_LOCAL_DATA_MIGRATION_INVALID",
+      "TN_IR_LOCAL_DATA_CHECKPOINT_SLOT_MISSING",
+      "TN_IR_LOCAL_DATA_CHECKPOINT_EVENT_SCHEMA_MISSING",
+      "TN_IR_LOCAL_DATA_CHECKPOINT_SCHEDULE_UNSUPPORTED",
+    ]);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

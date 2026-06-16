@@ -301,6 +301,17 @@ test("should include capability tags for each conformance fixture", async () => 
     "scripting:service.picking.mesh",
     "scripting:service.picking.pointerRay",
   ]);
+  assertFixtureCapabilities(byName, "v8-local-data", [
+    "ecs:component-schemas",
+    "ecs:event-schemas",
+    "ecs:resource-schemas",
+    "ecs:resources",
+    "localData:checkpoints",
+    "localData:local-only",
+    "localData:migration-diagnostics",
+    "localData:save-slots",
+    "localData:settings",
+  ]);
 });
 
 function assertFixtureCapabilities(

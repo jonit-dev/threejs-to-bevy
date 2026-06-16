@@ -8,6 +8,7 @@ export type {
   IConformanceEntityReport,
   IConformanceEnvironmentReport,
   IConformanceEventReport,
+  IConformanceLocalDataReport,
   IConformanceMaterialReport,
   IConformanceReport,
   IConformanceResourceReport,
@@ -19,6 +20,20 @@ export type {
 export type { IRuntimeDiagnostic } from "./runtimeDiagnostics.js";
 export type { IInputActionIr, IInputAxisIr, IInputIr, InputBinding } from "./input.js";
 export type { IRuntimeConfigIr } from "./runtimeConfig.js";
+export { validateLocalDataIr } from "./localData.js";
+export type {
+  ILocalDataCheckpointIr,
+  ILocalDataComponentRefIr,
+  ILocalDataIr,
+  ILocalDataMigrationIr,
+  ILocalDataSaveSlotIr,
+  ILocalDataSettingIr,
+  LocalDataCheckpointSchedule,
+  LocalDataSchema,
+  LocalDataSettingGroup,
+  LocalDataSettingKind,
+  LocalDataStorage,
+} from "./localData.js";
 export {
   buildComponentReflectionRegistry,
   type IComponentReflectionField,
