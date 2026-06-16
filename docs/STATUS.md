@@ -67,6 +67,14 @@ the rest of V8-10: public asset-group declarations, spawned glTF node
 query/update handles, material override handles, editor inspection commands,
 watch diagnostics, and state-preserving hot reload remain future work.
 
+V8-16 has a narrow spatial-audio parity trace slice: `pnpm verify:v8:audio`
+reuses the V7 audio lifecycle fixture and compares web/native listener-emitter
+attenuation observations under `artifacts/v8/audio/`. The proven evidence is
+one deterministic event-triggered spatial one-shot with matching distance,
+radius attenuation, bus gain, source volume, and effective volume. Listener
+movement, real backend spatial panning/output, mixer effects/ducking, and music
+transitions remain outside this slice.
+
 ## V4 Proves
 
 V4 is complete for the primitive native scripting proof. It proves one
@@ -895,8 +903,10 @@ playback-id controls. SDK audio declarations can now include validated
 music or one-shot playback ids; compiler output preserves those controls in
 `audio.ir.json`; web and Bevy lifecycle traces apply the controls and report
 active, paused, seek, stop, and query state deterministically. Platform-native
-audio handles, mixer effects, real spatial attenuation, streaming, and richer
-runtime audio services remain later work.
+audio handles, mixer effects, streaming, and richer runtime audio services
+remain later work. V8-16 adds only fixed listener-emitter attenuation trace
+evidence for one spatial one-shot; actual backend spatial panning/output and
+listener movement remain unclaimed.
 
 The retained UI P0 flex-layout gap is also closed for portable HUD/container
 composition. UI nodes now carry validated `layout` metadata for flex direction,

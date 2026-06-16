@@ -96,3 +96,14 @@ pnpm verify:v8:material-parity
 The material parity proof builds `examples/v8-material-parity`, validates the
 bundle, runs conformance, captures web/native screenshots, and writes
 `artifacts/v8/material-parity/verification-report.json`.
+
+Spatial audio trace proof:
+
+```bash
+pnpm verify:v8:audio
+```
+
+The audio proof reuses `v7-spatial-audio-buses`, compares web/native
+listener-emitter attenuation observations, and writes web, native, and diff
+artifacts under `artifacts/v8/audio/`. It does not claim mixer effects, music
+transitions, listener movement, or backend spatial panning/output.

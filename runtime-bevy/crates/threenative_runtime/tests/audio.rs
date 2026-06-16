@@ -3,7 +3,8 @@ use threenative_loader::{
     AudioOneShotIr,
 };
 use threenative_runtime::audio::{
-    NativeAudioCommandKind, handle_audio_events, observe_audio, start_audio, trace_audio_lifecycle,
+    handle_audio_events, observe_audio, start_audio, trace_audio_lifecycle,
+    trace_audio_spatial_attenuation, NativeAudioCommandKind,
 };
 
 mod support;
@@ -226,4 +227,34 @@ fn audio_lifecycle_trace_should_stop_active_loops() {
     assert_eq!(trace.commands.len(), 2);
     assert_eq!(trace.commands[0].bus.as_deref(), Some("bus.music"));
     assert_eq!(trace.commands[1].emitter.as_deref(), Some("emitter.player"));
+}
+
+#[test]
+fn audio_spatial_trace_should_compute_listener_emitter_attenuation() {
+    let fixture = load_conformance_fixture("v7-spatial-audio-buses");
+    let audio = fixture
+        .bundle
+        .audio
+        .as_ref()
+        .expect("audio fixture should load");
+
+    let trace = trace_audio_spatial_attenuation(audio, &["DamageEvent"]);
+
+    assert_eq!(trace.observations.len(), 1);
+    let observation = &trace.observations[0];
+    assert_eq!(observation.id, "sound.hit");
+    assert_eq!(observation.listener, "listener.main");
+    assert_eq!(observation.emitter, "emitter.player");
+    assert_eq!(
+        (observation.distance * 1_000_000.0).round() / 1_000_000.0,
+        2.44949
+    );
+    assert_eq!(
+        (observation.attenuation * 1_000_000.0).round() / 1_000_000.0,
+        0.795876
+    );
+    assert_eq!(
+        (observation.effective_volume * 1_000_000.0).round() / 1_000_000.0,
+        0.477526
+    );
 }

@@ -3,12 +3,15 @@ export {
   createWebAudioElementSink,
   createWebAudioRuntime,
   traceWebAudioLifecycle,
+  traceWebAudioSpatialAttenuation,
   type IWebAudioCommand,
   type IWebAudioElement,
   type IWebAudioElementSink,
   type IWebAudioLifecycleTrace,
   type IWebAudioRuntime,
   type IWebAudioSink,
+  type IWebAudioSpatialObservation,
+  type IWebAudioSpatialTrace,
 } from "./audio.js";
 export { loadBundle, type IWebBundle } from "./loadBundle.js";
 export { applyEnvironmentBookmark, createEnvironmentRuntime, loadEnvironmentAssetInstances, observeEnvironmentScene, traceEnvironmentContent, type IEnvironmentObservation, type IEnvironmentRuntime } from "./environment.js";
