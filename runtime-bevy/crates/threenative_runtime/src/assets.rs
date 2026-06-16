@@ -5,7 +5,8 @@ use bevy::{
     prelude::*,
     render::texture::{ImageAddressMode, ImageFilterMode, ImageSampler, ImageSamplerDescriptor},
 };
-use threenative_loader::{AssetIr, AssetsManifest};
+use serde::Serialize;
+use threenative_loader::{AssetIr, AssetsManifest, EnvironmentSceneIr};
 
 #[derive(Debug, PartialEq)]
 pub struct NativeAssetRef {
@@ -23,6 +24,44 @@ pub struct TextureAssetControls {
     pub path: String,
     pub wrap_s: Option<String>,
     pub wrap_t: Option<String>,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeAssetLoadTrace {
+    pub barrier: NativeAssetLoadBarrierTrace,
+    pub assets: Vec<NativeAssetLoadTraceAsset>,
+    pub gltf_scenes: Vec<NativeGltfSceneTrace>,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeAssetLoadBarrierTrace {
+    pub id: &'static str,
+    pub model_scene_count: usize,
+    pub status: &'static str,
+    pub total: usize,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeAssetLoadTraceAsset {
+    pub format: String,
+    pub id: String,
+    pub kind: String,
+    pub load_index: usize,
+    pub path: String,
+    pub phase: &'static str,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeGltfSceneTrace {
+    pub asset: String,
+    pub category: String,
+    pub instance_ids: Vec<String>,
+    pub lod_assets: Vec<String>,
+    pub source_asset: String,
 }
 
 pub fn resolve_asset_manifest(manifest: &AssetsManifest) -> HashMap<String, NativeAssetRef> {
@@ -136,4 +175,73 @@ fn map_filter_mode(value: &str) -> ImageFilterMode {
         "nearest" | "nearestMipmapNearest" | "nearestMipmapLinear" => ImageFilterMode::Nearest,
         _ => ImageFilterMode::Linear,
     }
+}
+
+pub fn trace_asset_load_synchronization(
+    manifest: &AssetsManifest,
+    environment_scene: Option<&EnvironmentSceneIr>,
+) -> NativeAssetLoadTrace {
+    let mut assets: Vec<_> = manifest
+        .assets
+        .iter()
+        .filter_map(|asset| {
+            asset.path.as_ref().map(|path| NativeAssetLoadTraceAsset {
+                format: asset.format.clone(),
+                id: asset.id.clone(),
+                kind: asset.kind.clone(),
+                load_index: 0,
+                path: path.clone(),
+                phase: "resolved",
+            })
+        })
+        .collect();
+    assets.sort_by(|left, right| left.id.cmp(&right.id));
+    for (index, asset) in assets.iter_mut().enumerate() {
+        asset.load_index = index;
+    }
+    let gltf_scenes = trace_gltf_scenes(environment_scene);
+    NativeAssetLoadTrace {
+        barrier: NativeAssetLoadBarrierTrace {
+            id: "bundle.requiredAssets",
+            model_scene_count: gltf_scenes.len(),
+            status: "ready",
+            total: assets.len(),
+        },
+        assets,
+        gltf_scenes,
+    }
+}
+
+fn trace_gltf_scenes(environment_scene: Option<&EnvironmentSceneIr>) -> Vec<NativeGltfSceneTrace> {
+    let Some(scene) = environment_scene else {
+        return Vec::new();
+    };
+    let mut scenes: Vec<_> = scene
+        .source_assets
+        .iter()
+        .map(|source_asset| {
+            let mut instance_ids: Vec<_> = scene
+                .instances
+                .iter()
+                .filter(|instance| instance.source_asset == source_asset.id)
+                .map(|instance| instance.id.clone())
+                .collect();
+            instance_ids.sort();
+            let mut lod_assets: Vec<_> = source_asset
+                .lod
+                .iter()
+                .map(|level| level.asset.clone())
+                .collect();
+            lod_assets.sort();
+            NativeGltfSceneTrace {
+                asset: source_asset.asset.clone(),
+                category: source_asset.category.clone(),
+                instance_ids,
+                lod_assets,
+                source_asset: source_asset.id.clone(),
+            }
+        })
+        .collect();
+    scenes.sort_by(|left, right| left.source_asset.cmp(&right.source_asset));
+    scenes
 }
