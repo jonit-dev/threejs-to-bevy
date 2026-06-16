@@ -13,8 +13,8 @@ test("physics should emit player collider and kinematic body", () => {
       id: "player",
       material: new MeshStandardMaterial(),
       physics: physics({
-        body: rigidBody("kinematic", { velocity: [1, 0, 0] }),
-        collider: boxCollider([1, 2, 1], { layer: "player", mask: ["world"], slope: { axis: "x", direction: 1, rise: 1, run: 2 } }),
+        body: rigidBody("kinematic", { damping: 0.2, gravityScale: 0, velocity: [1, 0, 0] }),
+        collider: boxCollider([1, 2, 1], { friction: 0.6, layer: "player", mask: ["world"], restitution: 0.1, slope: { axis: "x", direction: 1, rise: 1, run: 2 } }),
       }),
     }),
   );
@@ -22,6 +22,6 @@ test("physics should emit player collider and kinematic body", () => {
   const emitted = sceneToWorld(scene);
   const entity = emitted.world.entities.find((item) => item.id === "player");
 
-  assert.deepEqual(entity?.components.RigidBody, { kind: "kinematic", velocity: [1, 0, 0] });
-  assert.deepEqual(entity?.components.Collider, { kind: "box", layer: "player", mask: ["world"], size: [1, 2, 1], slope: { axis: "x", direction: 1, rise: 1, run: 2 } });
+  assert.deepEqual(entity?.components.RigidBody, { damping: 0.2, gravityScale: 0, kind: "kinematic", velocity: [1, 0, 0] });
+  assert.deepEqual(entity?.components.Collider, { friction: 0.6, kind: "box", layer: "player", mask: ["world"], restitution: 0.1, size: [1, 2, 1], slope: { axis: "x", direction: 1, rise: 1, run: 2 } });
 });

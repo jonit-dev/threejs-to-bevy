@@ -160,6 +160,7 @@ export {
   type IColliderSlopeDeclaration,
   type IColliderDeclaration,
   type IPhysicsDeclaration,
+  type IPhysicsMaterialOptions,
   type IRigidBodyDeclaration,
   type PhysicsBodyKind,
   type PhysicsColliderKind,

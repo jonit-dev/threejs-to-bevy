@@ -11,6 +11,21 @@ pub struct PhysicsEvent {
     pub phase: String,
 }
 
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RigidBodyTraceObservation {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub contact: Option<String>,
+    pub damping: f32,
+    pub entity: String,
+    pub friction: f32,
+    pub gravity_scale: f32,
+    pub position: [f32; 3],
+    pub restitution: f32,
+    pub step: usize,
+    pub velocity: [f32; 3],
+}
+
 struct Bounds<'a> {
     center: [f32; 3],
     half_extents: [f32; 3],
@@ -61,6 +76,41 @@ pub fn detect_physics_event_trace(
     events
 }
 
+pub fn trace_rigid_body_primitives(
+    bundle: &LoadedBundle,
+    steps: usize,
+    fixed_delta: f32,
+) -> Vec<RigidBodyTraceObservation> {
+    let mut entities = bundle
+        .world
+        .entities
+        .iter()
+        .filter_map(simulated_entity)
+        .collect::<Vec<_>>();
+    let mut observations = Vec::new();
+    for step in 1..=steps {
+        let contacts = step_primitive_bodies(&mut entities, fixed_delta, [0.0, -9.81, 0.0]);
+        for entity in entities
+            .iter()
+            .filter(|entity| entity.body_kind.as_deref() == Some("dynamic"))
+        {
+            observations.push(RigidBodyTraceObservation {
+                contact: contacts.get(&entity.id).cloned(),
+                damping: round(entity.damping),
+                entity: entity.id.clone(),
+                friction: round(entity.friction),
+                gravity_scale: round(entity.gravity_scale),
+                position: round_vec3(entity.center),
+                restitution: round(entity.restitution),
+                step,
+                velocity: round_vec3(entity.velocity.unwrap_or([0.0, 0.0, 0.0])),
+            });
+        }
+    }
+    observations.sort_by(|left, right| left.step.cmp(&right.step).then(left.entity.cmp(&right.entity)));
+    observations
+}
+
 fn physics_events_for_pairs(current_pairs: BTreeMap<String, DetectedPair>) -> Vec<PhysicsEvent> {
     physics_events_for_pair_delta(&current_pairs, &BTreeMap::new())
 }
@@ -100,22 +150,100 @@ fn integrate_entities(entities: &mut [SimulatedEntity], fixed_delta: f32) {
         if body_kind != "dynamic" && body_kind != "kinematic" {
             continue;
         }
-        let Some(velocity) = entity.velocity else {
-            continue;
-        };
+        let velocity = entity.velocity.unwrap_or([0.0, 0.0, 0.0]);
         entity.center[0] += velocity[0] * fixed_delta;
         entity.center[1] += velocity[1] * fixed_delta;
         entity.center[2] += velocity[2] * fixed_delta;
     }
 }
 
+fn step_primitive_bodies(
+    entities: &mut [SimulatedEntity],
+    fixed_delta: f32,
+    gravity: [f32; 3],
+) -> BTreeMap<String, String> {
+    for entity in entities.iter_mut() {
+        let Some(body_kind) = entity.body_kind.as_deref() else {
+            continue;
+        };
+        if body_kind != "dynamic" && body_kind != "kinematic" {
+            continue;
+        }
+        let source_velocity = entity.velocity.unwrap_or([0.0, 0.0, 0.0]);
+        let damping_factor = (1.0 - entity.damping * fixed_delta).max(0.0);
+        let gravity_scale = if body_kind == "dynamic" {
+            entity.gravity_scale
+        } else {
+            0.0
+        };
+        let velocity = [
+            (source_velocity[0] + gravity[0] * gravity_scale * fixed_delta) * damping_factor,
+            (source_velocity[1] + gravity[1] * gravity_scale * fixed_delta) * damping_factor,
+            (source_velocity[2] + gravity[2] * gravity_scale * fixed_delta) * damping_factor,
+        ];
+        entity.velocity = Some(velocity);
+        entity.center[0] += velocity[0] * fixed_delta;
+        entity.center[1] += velocity[1] * fixed_delta;
+        entity.center[2] += velocity[2] * fixed_delta;
+    }
+
+    let static_entities = entities
+        .iter()
+        .filter(|entity| entity.body_kind.as_deref() == Some("static"))
+        .cloned()
+        .collect::<Vec<_>>();
+    let mut contacts = BTreeMap::new();
+    for entity in entities
+        .iter_mut()
+        .filter(|entity| entity.body_kind.as_deref() == Some("dynamic"))
+    {
+        for floor in &static_entities {
+            if resolve_vertical_contact(entity, floor) {
+                contacts.insert(entity.id.clone(), floor.id.clone());
+                break;
+            }
+        }
+    }
+    contacts
+}
+
+fn resolve_vertical_contact(entity: &mut SimulatedEntity, floor: &SimulatedEntity) -> bool {
+    let entity_bounds = simulated_entity_bounds(entity);
+    let floor_bounds = simulated_entity_bounds(floor);
+    if !overlaps(&entity_bounds, &floor_bounds) {
+        return false;
+    }
+    let floor_top = floor.center[1] + floor.half_extents[1];
+    entity.center[1] = round(floor_top + entity.half_extents[1]);
+    let restitution = entity.restitution.max(floor.restitution);
+    let friction = (entity.friction + floor.friction) / 2.0;
+    let velocity = entity.velocity.unwrap_or([0.0, 0.0, 0.0]);
+    let next_y = if velocity[1] < 0.0 {
+        -velocity[1] * restitution
+    } else {
+        velocity[1]
+    };
+    let friction_factor = (1.0 - friction).max(0.0);
+    entity.velocity = Some([
+        velocity[0] * friction_factor,
+        if next_y.abs() < 0.000001 { 0.0 } else { next_y },
+        velocity[2] * friction_factor,
+    ]);
+    true
+}
+
+#[derive(Clone)]
 struct SimulatedEntity {
     body_kind: Option<String>,
     center: [f32; 3],
+    damping: f32,
+    friction: f32,
+    gravity_scale: f32,
     half_extents: [f32; 3],
     id: String,
     layer: Option<String>,
     mask: Vec<String>,
+    restitution: f32,
     trigger: bool,
     velocity: Option<[f32; 3]>,
 }
@@ -134,10 +262,24 @@ fn simulated_entity(entity: &WorldEntity) -> Option<SimulatedEntity> {
             .as_ref()
             .and_then(|transform| transform.position)
             .unwrap_or([0.0, 0.0, 0.0]),
+        damping: entity
+            .components
+            .rigid_body
+            .as_ref()
+            .and_then(|body| body.damping)
+            .unwrap_or(0.0),
+        friction: collider.friction.unwrap_or(0.0),
+        gravity_scale: entity
+            .components
+            .rigid_body
+            .as_ref()
+            .and_then(|body| body.gravity_scale)
+            .unwrap_or(1.0),
         half_extents: half_extents(collider),
         id: entity.id.clone(),
         layer: collider.layer.clone(),
         mask: collider.mask.clone().unwrap_or_default(),
+        restitution: collider.restitution.unwrap_or(0.0),
         trigger: collider.trigger.unwrap_or(false),
         velocity: entity
             .components
@@ -256,6 +398,14 @@ fn allows(left: &Bounds<'_>, right: &Bounds<'_>) -> bool {
         || right
             .layer
             .is_some_and(|layer| left.mask.iter().any(|candidate| candidate == layer))
+}
+
+fn round_vec3(value: [f32; 3]) -> [f32; 3] {
+    [round(value[0]), round(value[1]), round(value[2])]
+}
+
+fn round(value: f32) -> f32 {
+    (value * 1_000_000.0).round() / 1_000_000.0
 }
 
 fn ordered_pair<'a>(left: &'a str, right: &'a str) -> (&'a str, &'a str) {

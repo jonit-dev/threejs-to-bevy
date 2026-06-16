@@ -224,17 +224,21 @@ export interface IVisibilityComponent {
 }
 
 export interface IRigidBodyComponent {
+  damping?: number;
+  gravityScale?: number;
   kind: "dynamic" | "kinematic" | "static";
   mass?: number;
   velocity?: Vec3;
 }
 
 export interface IColliderComponent {
+  friction?: number;
   height?: number;
   kind: "box" | "capsule" | "cylinder" | "mesh" | "sphere";
   layer?: string;
   mask?: readonly string[];
   radius?: number;
+  restitution?: number;
   size?: Vec3;
   slope?: {
     axis: "x" | "z";

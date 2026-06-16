@@ -27,12 +27,28 @@ interface IDetectedPair {
   payload: Omit<IPhysicsEventPayload, "phase">;
 }
 
+export interface IRigidBodyTraceInput {
+  fixedDelta?: number;
+  gravity?: Vec3;
+  steps?: number;
+}
+
+export interface IRigidBodyTraceObservation {
+  contact?: string;
+  damping: number;
+  entity: string;
+  friction: number;
+  gravityScale: number;
+  position: Vec3;
+  restitution: number;
+  step: number;
+  velocity: Vec3;
+}
+
 const previousPairsByWorld = new WeakMap<IWorldIr, Map<string, IDetectedPair>>();
 
 export function stepPhysics(world: IWorldIr, fixedDelta = 1 / 60): IPhysicsEventPayload[] {
-  for (const entity of world.entities) {
-    integrateEntity(entity, fixedDelta);
-  }
+  stepPrimitiveBodies(world, fixedDelta, [0, -9.81, 0]);
 
   const currentPairs = detectPairs(world.entities.flatMap((entity) => colliderBounds(entity)));
   const previousPairs = previousPairsByWorld.get(world) ?? new Map();
@@ -42,6 +58,35 @@ export function stepPhysics(world: IWorldIr, fixedDelta = 1 / 60): IPhysicsEvent
   writeEventQueue(world, "CollisionEvent", collisions);
   writeEventQueue(world, "TriggerEvent", triggers);
   return [...collisions, ...triggers];
+}
+
+export function traceRigidBodyPrimitive(world: IWorldIr, input: IRigidBodyTraceInput = {}): IRigidBodyTraceObservation[] {
+  const fixedDelta = input.fixedDelta ?? 0.25;
+  const gravity = input.gravity ?? [0, -9.81, 0];
+  const observations: IRigidBodyTraceObservation[] = [];
+  for (let step = 1; step <= (input.steps ?? 4); step += 1) {
+    const contacts = stepPrimitiveBodies(world, fixedDelta, gravity);
+    for (const entity of world.entities) {
+      const body = entity.components.RigidBody;
+      const collider = entity.components.Collider;
+      const position = entity.components.Transform?.position;
+      if (body?.kind !== "dynamic" || collider === undefined || position === undefined) {
+        continue;
+      }
+      observations.push({
+        ...(contacts.get(entity.id) === undefined ? {} : { contact: contacts.get(entity.id) }),
+        damping: roundNumber(body.damping ?? 0),
+        entity: entity.id,
+        friction: roundNumber(collider.friction ?? 0),
+        gravityScale: roundNumber(body.gravityScale ?? 1),
+        position: roundVec3(position),
+        restitution: roundNumber(collider.restitution ?? 0),
+        step,
+        velocity: roundVec3(body.velocity ?? [0, 0, 0]),
+      });
+    }
+  }
+  return observations.sort((left, right) => left.step - right.step || left.entity.localeCompare(right.entity));
 }
 
 export function detectPhysicsEvents(world: IWorldIr): IPhysicsEventObservation[] {
@@ -82,18 +127,75 @@ function eventPayloads(event: PhysicsEventName, currentPairs: Map<string, IDetec
   return payloads.sort(comparePhysicsEvents);
 }
 
-function integrateEntity(entity: IWorldEntity, fixedDelta: number): void {
+function stepPrimitiveBodies(world: IWorldIr, fixedDelta: number, gravity: Vec3): Map<string, string> {
+  const contacts = new Map<string, string>();
+  for (const entity of world.entities) {
+    integrateEntity(entity, fixedDelta, gravity);
+  }
+  const statics = world.entities.filter((entity) => entity.components.RigidBody?.kind === "static" && entity.components.Collider !== undefined);
+  for (const entity of world.entities) {
+    if (entity.components.RigidBody?.kind !== "dynamic" || entity.components.Collider === undefined || entity.components.Transform?.position === undefined) {
+      continue;
+    }
+    for (const floor of statics) {
+      if (floor.id === entity.id || floor.components.Collider === undefined) {
+        continue;
+      }
+      if (resolveVerticalContact(entity, floor)) {
+        contacts.set(entity.id, floor.id);
+        break;
+      }
+    }
+  }
+  return contacts;
+}
+
+function integrateEntity(entity: IWorldEntity, fixedDelta: number, gravity: Vec3): void {
   const body = entity.components.RigidBody;
-  const velocity = body?.velocity;
   const transform = entity.components.Transform;
-  if ((body?.kind !== "dynamic" && body?.kind !== "kinematic") || velocity === undefined || transform?.position === undefined) {
+  if ((body?.kind !== "dynamic" && body?.kind !== "kinematic") || transform?.position === undefined) {
     return;
   }
+  const sourceVelocity = body.velocity ?? [0, 0, 0];
+  const dampingFactor = Math.max(0, 1 - (body.damping ?? 0) * fixedDelta);
+  const gravityScale = body.kind === "dynamic" ? (body.gravityScale ?? 1) : 0;
+  const velocity: Vec3 = [
+    (sourceVelocity[0] + gravity[0] * gravityScale * fixedDelta) * dampingFactor,
+    (sourceVelocity[1] + gravity[1] * gravityScale * fixedDelta) * dampingFactor,
+    (sourceVelocity[2] + gravity[2] * gravityScale * fixedDelta) * dampingFactor,
+  ];
+  body.velocity = velocity;
   transform.position = [
     transform.position[0] + velocity[0] * fixedDelta,
     transform.position[1] + velocity[1] * fixedDelta,
     transform.position[2] + velocity[2] * fixedDelta,
   ];
+}
+
+function resolveVerticalContact(entity: IWorldEntity, floor: IWorldEntity): boolean {
+  const body = entity.components.RigidBody;
+  const collider = entity.components.Collider;
+  const transform = entity.components.Transform;
+  const floorCollider = floor.components.Collider;
+  const floorTransform = floor.components.Transform;
+  if (body === undefined || collider === undefined || transform?.position === undefined || floorCollider === undefined) {
+    return false;
+  }
+  const bounds = { center: transform.position, halfExtents: halfExtents(collider) };
+  const floorBounds = { center: floorTransform?.position ?? [0, 0, 0], halfExtents: halfExtents(floorCollider) };
+  if (!boundsOverlap(bounds, floorBounds)) {
+    return false;
+  }
+  const floorTop = floorBounds.center[1] + floorBounds.halfExtents[1];
+  const resolvedY = floorTop + bounds.halfExtents[1];
+  transform.position = [transform.position[0], roundNumber(resolvedY), transform.position[2]];
+  const restitution = Math.max(collider.restitution ?? 0, floorCollider.restitution ?? 0);
+  const friction = ((collider.friction ?? 0) + (floorCollider.friction ?? 0)) / 2;
+  const velocity = body.velocity ?? [0, 0, 0];
+  const nextY = velocity[1] < 0 ? -velocity[1] * restitution : velocity[1];
+  const frictionFactor = Math.max(0, 1 - friction);
+  body.velocity = [velocity[0] * frictionFactor, Math.abs(nextY) < 0.000001 ? 0 : nextY, velocity[2] * frictionFactor];
+  return true;
 }
 
 function colliderBounds(entity: IWorldEntity): IBounds[] {
@@ -137,6 +239,17 @@ function overlaps(left: IBounds, right: IBounds): boolean {
   );
 }
 
+function boundsOverlap(
+  left: { center: Vec3; halfExtents: Vec3 },
+  right: { center: Vec3; halfExtents: Vec3 },
+): boolean {
+  return (
+    Math.abs(left.center[0] - right.center[0]) <= left.halfExtents[0] + right.halfExtents[0] &&
+    Math.abs(left.center[1] - right.center[1]) <= left.halfExtents[1] + right.halfExtents[1] &&
+    Math.abs(left.center[2] - right.center[2]) <= left.halfExtents[2] + right.halfExtents[2]
+  );
+}
+
 function passesContactFilter(left: IBounds, right: IBounds): boolean {
   return allows(left, right) && allows(right, left);
 }
@@ -162,4 +275,12 @@ function writeEventQueue(world: IWorldIr, event: "CollisionEvent" | "TriggerEven
     ...(world.events ?? {}),
     [event]: payloads,
   };
+}
+
+function roundVec3(value: Vec3): Vec3 {
+  return [roundNumber(value[0]), roundNumber(value[1]), roundNumber(value[2])];
+}
+
+function roundNumber(value: number): number {
+  return Number(value.toFixed(6));
 }

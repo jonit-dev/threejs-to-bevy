@@ -75,6 +75,17 @@ evidence under `artifacts/v8/animation-controls/`. Stateful runtime playback
 control semantics, broader blending, and rendered particles remain open V8-08
 work.
 
+V8-09 has a narrow rigid-body primitive solver parity slice: `RigidBody`
+metadata now carries portable `gravityScale` and `damping`, `Collider` metadata
+now carries portable `restitution` and `friction`, and the web/native primitive
+trace proves a dynamic box falling under gravity onto a static floor with
+deterministic position, velocity, material, and contact observations. Run
+`pnpm verify:v8:rigid-body-primitive` after building the web runtime; it writes
+`artifacts/conformance/v8-rigid-body-primitive/web-rigid-body.json`,
+`native-rigid-body.json`, and `rigid-body-diff.json`. This does not complete
+full V8-09 rigid-body, character navigation, object pushing, or pathfinding
+acceptance.
+
 ## V4 Proves
 
 V4 is complete for the primitive native scripting proof. It proves one

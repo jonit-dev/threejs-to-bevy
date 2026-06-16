@@ -597,6 +597,8 @@ pub fn component_value(components: &EntityComponents, component: &str) -> Option
         }),
         "RigidBody" => components.rigid_body.as_ref().map(|rigid_body| {
             json!({
+                "damping": rigid_body.damping,
+                "gravityScale": rigid_body.gravity_scale,
                 "kind": rigid_body.kind,
                 "mass": rigid_body.mass,
                 "velocity": rigid_body.velocity,

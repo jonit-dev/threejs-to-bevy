@@ -40,8 +40,8 @@ test("physics should accept supported primitive collider dimensions", async () =
       root,
       "world.ir.json",
       physicsWorld([
-        { Collider: { kind: "box", size: [1, 2, 3] }, RigidBody: { kind: "static" } },
-        { Collider: { kind: "sphere", radius: 0.5 }, RigidBody: { kind: "dynamic", mass: 1, velocity: [0, 0, 1] } },
+        { Collider: { friction: 0.5, kind: "box", restitution: 0.25, size: [1, 2, 3] }, RigidBody: { kind: "static" } },
+        { Collider: { kind: "sphere", radius: 0.5 }, RigidBody: { damping: 0.2, gravityScale: 0.5, kind: "dynamic", mass: 1, velocity: [0, 0, 1] } },
         { Collider: { kind: "capsule", height: 2, radius: 0.25, trigger: true }, RigidBody: { kind: "kinematic" } },
       ]),
     );
@@ -124,7 +124,11 @@ test("physics should reject invalid body fields and backend-specific collider op
         },
         {
           Collider: { bevyColliderHandle: 7, kind: "box", layer: "", mask: ["world", ""], size: [1, 1, 1] },
-          RigidBody: { kind: "dynamic", rapierBodyHandle: 2 },
+          RigidBody: { damping: -1, gravityScale: null, kind: "dynamic", rapierBodyHandle: 2 },
+        },
+        {
+          Collider: { friction: -1, kind: "box", restitution: 2, size: [1, 1, 1] },
+          RigidBody: { kind: "static" },
         },
       ]),
     );
@@ -142,6 +146,10 @@ test("physics should reject invalid body fields and backend-specific collider op
         "TN_IR_PHYSICS_FILTER_INVALID",
         "TN_IR_PHYSICS_FILTER_INVALID",
         "TN_IR_PHYSICS_ENGINE_HANDLE_UNSUPPORTED",
+        "TN_IR_PHYSICS_BODY_DAMPING_INVALID",
+        "TN_IR_PHYSICS_BODY_GRAVITY_SCALE_INVALID",
+        "TN_IR_PHYSICS_COLLIDER_FRICTION_INVALID",
+        "TN_IR_PHYSICS_COLLIDER_RESTITUTION_INVALID",
       ],
     );
   } finally {
