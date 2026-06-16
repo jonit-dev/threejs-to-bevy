@@ -233,6 +233,52 @@ test("should reconcile spawned entities and events across later schedules", asyn
   assert.deepEqual(world.events, { Spawned: [{ via: "direct" }, { via: "command" }] });
 });
 
+test("should run systems using before and after ordering constraints", async () => {
+  const world = makeWorld();
+  world.resources = { Order: { values: [] } };
+  const systems = makeSystems("update", "placeholder");
+  systems.systems = [
+    { ...systems.systems[0]!, name: "score", resourceReads: ["Order"], resourceWrites: ["Order"], script: { bundle: "scripts.bundle.js", exportName: "score" } },
+    {
+      ...systems.systems[0]!,
+      after: ["collectInput"],
+      before: ["score"],
+      name: "applyDamage",
+      resourceReads: ["Order"],
+      resourceWrites: ["Order"],
+      script: { bundle: "scripts.bundle.js", exportName: "applyDamage" },
+    },
+    {
+      ...systems.systems[0]!,
+      before: ["applyDamage"],
+      name: "collectInput",
+      resourceReads: ["Order"],
+      resourceWrites: ["Order"],
+      script: { bundle: "scripts.bundle.js", exportName: "collectInput" },
+    },
+  ];
+
+  const pushOrder = (context: any, value: string) => {
+    const order = context.resources.get("Order");
+    context.resources.set("Order", { values: [...order.values, value] });
+  };
+
+  await runSchedule({
+    module: {
+      systems: {
+        applyDamage: (context: any) => pushOrder(context, "applyDamage"),
+        collectInput: (context: any) => pushOrder(context, "collectInput"),
+        score: (context: any) => pushOrder(context, "score"),
+      },
+    },
+    schedule: "update",
+    systems,
+    world,
+  });
+
+  assert.deepEqual(world.resources.Order, { values: ["collectInput", "applyDamage", "score"] });
+});
+
 test("should run systems expose v4 entity patch context", async () => {
   const world = makeWorld();
   const systems = makeSystems("fixedUpdate", "patchPlayer");

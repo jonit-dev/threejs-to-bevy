@@ -3,7 +3,7 @@ use std::path::Path;
 use bevy::prelude::*;
 use thiserror::Error;
 use threenative_components::ThreeNativeId;
-use threenative_loader::{load_bundle, LoadError, LoadedBundle, TransformComponent};
+use threenative_loader::{LoadError, LoadedBundle, TransformComponent, load_bundle};
 
 pub mod animation;
 pub mod assets;
@@ -16,6 +16,8 @@ pub mod gizmo_geometry;
 pub mod input;
 pub mod map_world;
 pub mod mesh_bounds;
+pub mod overlay;
+pub mod overlay_host;
 pub mod path_sampling;
 pub mod physics;
 pub mod rendering;
@@ -56,6 +58,14 @@ pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeErro
     )?;
     let asset_root = bundle.bundle_path.display().to_string();
     let window = bundle.runtime_config.as_ref().map(|config| &config.window);
+    #[cfg(feature = "native-webview")]
+    let native_overlay_init_error = match overlay_host::create_native_overlay_host_plan(
+        bundle.overlays.as_ref(),
+        &bundle.bundle_path,
+    ) {
+        Ok(Some(_)) => overlay_host::initialize_native_webview_backend().err(),
+        Ok(None) | Err(_) => None,
+    };
     let mut app = App::new();
     app.insert_resource(ClearColor(Color::srgb(
         17.0 / 255.0,
@@ -96,6 +106,45 @@ pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeErro
             Update,
             (ui::scroll_native_ui, ui::dispatch_native_ui_actions),
         );
+    }
+    match overlay_host::create_native_overlay_host_plan(
+        bundle.overlays.as_ref(),
+        &bundle.bundle_path,
+    ) {
+        Ok(Some(plan)) => {
+            info!(
+                "prepared {} native overlay mount(s) using {}",
+                plan.mounts.len(),
+                plan.backend
+            );
+            #[cfg(feature = "native-webview")]
+            {
+                if let Some(error) = native_overlay_init_error.as_ref() {
+                    warn!("TN_OVERLAY_NATIVE_INIT_FAILED: {error}");
+                } else {
+                    if let Some(overlays) = bundle.overlays.clone() {
+                        app.insert_resource(overlay_host::NativeOverlayBridgeResource::new(
+                            overlays,
+                        ));
+                    }
+                    app.insert_resource(overlay_host::NativeOverlayHostPlanResource(plan));
+                    app.add_systems(
+                        Update,
+                        (
+                            overlay_host::mount_native_overlay_webviews,
+                            overlay_host::resize_native_overlay_webviews,
+                            overlay_host::pump_native_overlay_webview_events,
+                        ),
+                    );
+                }
+            }
+        }
+        Ok(None) => {}
+        Err(diagnostics) => {
+            for diagnostic in diagnostics {
+                warn!("{}: {}", diagnostic.code, diagnostic.message);
+            }
+        }
     }
     if let Some(input_map) = bundle.input.clone() {
         app.insert_resource(input::NativeInputMap(input_map));

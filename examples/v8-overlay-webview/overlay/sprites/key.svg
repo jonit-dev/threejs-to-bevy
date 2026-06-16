@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Gate key">
+  <circle cx="22" cy="31" r="12" fill="#ffd166"/>
+  <circle cx="22" cy="31" r="5" fill="#263238"/>
+  <path d="M33 31h24" stroke="#ffd166" stroke-width="8" stroke-linecap="round"/>
+  <path d="M48 31v9M56 31v7" stroke="#ffd166" stroke-width="6" stroke-linecap="round"/>
+</svg>

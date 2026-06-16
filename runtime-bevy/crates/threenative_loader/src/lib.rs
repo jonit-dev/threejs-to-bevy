@@ -40,6 +40,7 @@ pub struct BundleEntry {
     pub audio: Option<String>,
     #[serde(rename = "environmentScene")]
     pub environment_scene: Option<String>,
+    pub overlays: Option<String>,
     pub scripts: Option<String>,
     pub systems: Option<String>,
     pub ui: Option<String>,
@@ -67,11 +68,55 @@ pub struct LoadedBundle {
     pub input: Option<InputIr>,
     pub manifest: BundleManifest,
     pub materials: MaterialsIr,
+    pub overlays: Option<OverlaysIr>,
     pub runtime_config: Option<RuntimeConfigIr>,
     pub systems: Option<SystemsIr>,
     pub target_profile: TargetProfile,
     pub ui: Option<UiIr>,
     pub world: WorldIr,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct OverlaysIr {
+    pub schema: String,
+    pub version: String,
+    pub overlays: Vec<OverlayIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OverlayIr {
+    pub id: String,
+    pub entry: String,
+    pub transparent: bool,
+    pub z_index: u32,
+    pub input: String,
+    pub messages: OverlayBridgeMessagesIr,
+    pub target_profiles: Vec<String>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OverlayBridgeMessagesIr {
+    #[serde(default)]
+    pub overlay_to_game: Vec<OverlayMessageIr>,
+    #[serde(default)]
+    pub game_to_overlay: Vec<OverlayMessageIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct OverlayMessageIr {
+    pub name: String,
+    pub schema: OverlayMessageSchemaIr,
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+pub struct OverlayMessageSchemaIr {
+    pub kind: String,
+    #[serde(default)]
+    pub fields: HashMap<String, String>,
+    #[serde(default)]
+    pub required: Vec<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -527,6 +572,10 @@ pub struct SystemSubstateIr {
 pub struct SystemIr {
     pub name: String,
     #[serde(default)]
+    pub after: Vec<String>,
+    #[serde(default)]
+    pub before: Vec<String>,
+    #[serde(default)]
     pub commands: Vec<SystemCommandIr>,
     #[serde(default, rename = "eventReads")]
     pub event_reads: Vec<String>,
@@ -571,6 +620,12 @@ pub enum SystemCommandIr {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct SystemQueryIr {
+    #[serde(default)]
+    pub changed: Vec<String>,
+    pub limit: Option<usize>,
+    pub offset: Option<usize>,
+    #[serde(rename = "orderBy")]
+    pub order_by: Option<String>,
     #[serde(default)]
     pub with: Vec<String>,
     #[serde(default)]
@@ -1141,6 +1196,14 @@ pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadEr
         }
         None => None,
     };
+    let overlays = match manifest.entry.overlays.as_ref() {
+        Some(file) => {
+            let overlays: OverlaysIr = read_json(bundle_path, file)?;
+            ensure_supported(&overlays.schema, &overlays.version)?;
+            Some(overlays)
+        }
+        None => None,
+    };
 
     Ok(LoadedBundle {
         bundle_path: canonical_bundle_path,
@@ -1151,6 +1214,7 @@ pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadEr
         input,
         manifest,
         materials,
+        overlays,
         runtime_config,
         systems,
         target_profile,
@@ -1175,7 +1239,11 @@ fn hydrate_generated_mesh_assets(
             attributes.push(MeshAttributeIr {
                 name: attribute.name.clone(),
                 item_size: attribute.item_size,
-                values: read_f32_payload(bundle_path, &attribute.path, attribute.count * attribute.item_size)?,
+                values: read_f32_payload(
+                    bundle_path,
+                    &attribute.path,
+                    attribute.count * attribute.item_size,
+                )?,
             });
         }
         asset.attributes = Some(attributes);
@@ -1191,11 +1259,7 @@ fn hydrate_generated_mesh_assets(
     Ok(())
 }
 
-fn read_f32_payload(
-    bundle_path: &Path,
-    file: &str,
-    count: usize,
-) -> Result<Vec<f32>, LoadError> {
+fn read_f32_payload(bundle_path: &Path, file: &str, count: usize) -> Result<Vec<f32>, LoadError> {
     let bytes = read_binary(bundle_path, file)?;
     let mut values = Vec::with_capacity(count);
     for chunk in bytes.chunks_exact(4).take(count) {

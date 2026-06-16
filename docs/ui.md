@@ -37,6 +37,34 @@ Do not use React DOM, browser CSS, or a WebView as the native game UI strategy.
 They may be useful for web preview and developer tools, but native game UI must
 be recreatable from portable data.
 
+## Optional React Webview Overlays
+
+V8 adds an opt-in overlay path for rich React/CSS surfaces such as inventory
+panels, settings shells, and editor-like tools. This path is intentionally
+separate from retained game UI:
+
+```txt
+Retained UI -> ui.ir.json -> portable web DOM / Bevy UI mapping
+React overlay -> overlays.ir.json + bundle-local web assets -> optional webview/iframe host
+```
+
+Rules:
+
+- Retained `ui.ir.json` remains the default portable game UI contract.
+- React/CSS overlays must be declared explicitly with `overlay.mount(...)`.
+- Overlay entries and assets must be bundle-local; absolute paths, parent
+  traversal, remote URLs, and inline scripts are rejected.
+- Overlay code communicates with gameplay only through typed bridge messages.
+  It cannot directly mutate ECS, Bevy, Three.js, filesystem, network, or native
+  handles.
+- Overlay input capture is explicit. `none` and `keyboard` do not capture
+  pointer clicks, `pointer` captures only pointer input over the overlay,
+  `pointer-and-keyboard` captures both, and `modal` intentionally blocks both.
+- The native desktop adapter keeps webview handles private behind
+  `runtime-bevy`; the optional `native-webview` feature selects the maintained
+  `wry` backend. Default builds that do not enable the desktop host fail fast
+  with `TN_OVERLAY_TARGET_UNSUPPORTED` instead of silently ignoring overlays.
+
 ## UI Categories
 
 Separate UI into two categories.

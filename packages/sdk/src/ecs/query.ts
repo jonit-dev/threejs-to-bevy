@@ -1,19 +1,31 @@
 import type { EcsFactory, IEcsSchema } from "./schema.js";
 
 export interface IQueryDeclaration {
+  changed?: string[];
+  limit?: number;
+  offset?: number;
+  orderBy?: "id";
   schemas: IEcsSchema[];
   with: string[];
   without: string[];
 }
 
 export interface IQueryOptions {
+  changed?: ReadonlyArray<EcsFactory | IEcsSchema | string>;
+  limit?: number;
+  offset?: number;
+  orderBy?: "id";
   with?: ReadonlyArray<EcsFactory | IEcsSchema | string>;
   without?: ReadonlyArray<EcsFactory | IEcsSchema | string>;
 }
 
 export function defineQuery(options: IQueryOptions): IQueryDeclaration {
   return {
-    schemas: normalizeSchemas([...(options.with ?? []), ...(options.without ?? [])]),
+    ...(options.changed === undefined ? {} : { changed: normalizeSchemaNames(options.changed) }),
+    ...(options.limit === undefined ? {} : { limit: options.limit }),
+    ...(options.offset === undefined ? {} : { offset: options.offset }),
+    ...(options.orderBy === undefined ? {} : { orderBy: options.orderBy }),
+    schemas: normalizeSchemas([...(options.with ?? []), ...(options.without ?? []), ...(options.changed ?? [])]),
     with: normalizeSchemaNames(options.with ?? []),
     without: normalizeSchemaNames(options.without ?? []),
   };

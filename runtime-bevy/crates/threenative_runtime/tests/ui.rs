@@ -5,15 +5,15 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use bevy::a11y::{accesskit::Role, AccessibilityNode};
+use bevy::a11y::{AccessibilityNode, accesskit::Role};
 use bevy::prelude::*;
 use bevy::text::BreakLineOn;
 use threenative_components::ThreeNativeId;
-use threenative_loader::{load_bundle, UiIr, UiNodeIr};
+use threenative_loader::{UiIr, UiNodeIr, load_bundle};
 use threenative_runtime::ui::{
-    build_native_ui, dispatch_native_ui_actions, map_ui_into_world, trace_ui_navigation,
     NativeUiAction, NativeUiActionEvent, NativeUiActionQueue, NativeUiBar, NativeUiGradient,
     NativeUiImageSrc, NativeUiKind, NativeUiScrollContainer, NativeUiShadow, NativeUiStyle,
+    build_native_ui, dispatch_native_ui_actions, map_ui_into_world, trace_ui_navigation,
 };
 
 mod support;
@@ -289,11 +289,12 @@ fn ui_should_dispatch_native_button_and_touch_actions() {
     );
 
     app.update();
-    assert!(app
-        .world()
-        .resource::<NativeUiActionQueue>()
-        .events
-        .is_empty());
+    assert!(
+        app.world()
+            .resource::<NativeUiActionQueue>()
+            .events
+            .is_empty()
+    );
 
     app.world_mut()
         .entity_mut(jump)

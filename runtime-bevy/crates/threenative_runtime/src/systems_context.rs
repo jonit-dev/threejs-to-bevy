@@ -13,8 +13,10 @@ use crate::mesh_bounds::mesh_aabb;
 #[serde(rename_all = "camelCase")]
 pub struct NativeSystemContextSnapshot {
     pub channel_events: BTreeMap<String, String>,
+    pub assets: Vec<NativeAssetDeclaration>,
     pub component_hooks: BTreeMap<String, Vec<NativeComponentHookObservation>>,
     pub component_types: NativeComponentReflectionRegistry,
+    pub default_query: Value,
     pub entities: Vec<NativeSystemEntitySnapshot>,
     pub events: BTreeMap<String, Vec<Value>>,
     pub input: NativeSystemInputSnapshot,
@@ -86,6 +88,20 @@ pub struct NativeSystemEntitySnapshot {
 }
 
 #[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeAssetDeclaration {
+    pub format: String,
+    pub id: String,
+    pub kind: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub primitive: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub size: Option<Vec<f32>>,
+}
+
+#[derive(Clone, Debug, Serialize)]
 pub struct NativeObserverPropagationStep {
     pub entity: String,
     pub phase: String,
@@ -145,7 +161,7 @@ pub fn build_system_context_snapshot_with_events_and_input(
         .world
         .entities
         .iter()
-        .filter(|entity| matches_declared_queries(&entity.components, system))
+        .filter(|entity| matches_declared_queries(bundle, &entity.id, &entity.components, system))
         .map(|entity| NativeSystemEntitySnapshot {
             id: entity.id.clone(),
             components: readable_components
@@ -159,9 +175,15 @@ pub fn build_system_context_snapshot_with_events_and_input(
         .collect();
 
     NativeSystemContextSnapshot {
+        assets: asset_declarations(bundle),
         channel_events: channel_events(bundle),
         component_hooks: component_hook_observations(bundle),
         component_types: component_reflection_registry(bundle),
+        default_query: system
+            .queries
+            .first()
+            .map(query_value)
+            .unwrap_or_else(|| json!({ "with": [], "without": [] })),
         entities,
         events: merged_event_queues(bundle, events),
         input: input.map_or_else(
@@ -182,6 +204,33 @@ pub fn build_system_context_snapshot_with_events_and_input(
         tasks: task_declarations(bundle),
         time,
     }
+}
+
+pub fn asset_declarations(bundle: &LoadedBundle) -> Vec<NativeAssetDeclaration> {
+    bundle
+        .assets
+        .assets
+        .iter()
+        .map(|asset| NativeAssetDeclaration {
+            format: asset.format.clone(),
+            id: asset.id.clone(),
+            kind: asset.kind.clone(),
+            path: asset.path.clone(),
+            primitive: asset.primitive.clone(),
+            size: asset.size.clone(),
+        })
+        .collect()
+}
+
+fn query_value(query: &SystemQueryIr) -> Value {
+    json!({
+        "changed": query.changed,
+        "limit": query.limit,
+        "offset": query.offset,
+        "orderBy": query.order_by,
+        "with": query.with,
+        "without": query.without,
+    })
 }
 
 pub fn mesh_bounds(bundle: &LoadedBundle) -> BTreeMap<String, NativeMeshBoundsSnapshot> {
@@ -573,6 +622,7 @@ pub fn transform_value(transform: &threenative_loader::TransformComponent) -> Va
 fn readable_components(system: &SystemIr) -> Vec<String> {
     let mut components = system.reads.clone();
     for query in &system.queries {
+        components.extend(query.changed.iter().cloned());
         components.extend(query.with.iter().cloned());
     }
     components.sort();
@@ -580,15 +630,25 @@ fn readable_components(system: &SystemIr) -> Vec<String> {
     components
 }
 
-fn matches_declared_queries(components: &EntityComponents, system: &SystemIr) -> bool {
+fn matches_declared_queries(
+    bundle: &LoadedBundle,
+    entity_id: &str,
+    components: &EntityComponents,
+    system: &SystemIr,
+) -> bool {
     system.queries.is_empty()
         || system
             .queries
             .iter()
-            .any(|query| matches_query(components, query))
+            .any(|query| matches_query(bundle, entity_id, components, query))
 }
 
-fn matches_query(components: &EntityComponents, query: &SystemQueryIr) -> bool {
+fn matches_query(
+    bundle: &LoadedBundle,
+    entity_id: &str,
+    components: &EntityComponents,
+    query: &SystemQueryIr,
+) -> bool {
     query
         .with
         .iter()
@@ -597,4 +657,50 @@ fn matches_query(components: &EntityComponents, query: &SystemQueryIr) -> bool {
             .without
             .iter()
             .all(|component| component_value(components, component).is_none())
+        && query
+            .changed
+            .iter()
+            .all(|component| changed_components(bundle, entity_id, components).contains(component))
+}
+
+fn changed_components(
+    bundle: &LoadedBundle,
+    entity_id: &str,
+    components: &EntityComponents,
+) -> Vec<String> {
+    [
+        read_changed_value(components.extra.get("__changed"), entity_id),
+        read_changed_value(bundle.world.resources.get("__changed"), entity_id),
+        read_changed_value(bundle.world.resources.get("Changed"), entity_id),
+    ]
+    .concat()
+}
+
+fn read_changed_value(value: Option<&Value>, entity_id: &str) -> Vec<String> {
+    let Some(value) = value else {
+        return Vec::new();
+    };
+    if let Some(items) = value.as_array() {
+        return items
+            .iter()
+            .filter_map(|item| item.as_str().map(str::to_owned))
+            .collect();
+    }
+    if let Some(items) = value.get(entity_id).and_then(Value::as_array) {
+        return items
+            .iter()
+            .filter_map(|item| item.as_str().map(str::to_owned))
+            .collect();
+    }
+    value
+        .get("entities")
+        .and_then(|entities| entities.get(entity_id))
+        .and_then(Value::as_array)
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(|item| item.as_str().map(str::to_owned))
+                .collect()
+        })
+        .unwrap_or_default()
 }

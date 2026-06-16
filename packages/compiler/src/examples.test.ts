@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import test from "node:test";
+import { promisify } from "node:util";
 
 import { buildProject, validateBundle } from "./index.js";
+
+const execFileAsync = promisify(execFile);
 
 test("should build canonical v1 example", async () => {
   const projectPath = resolve(process.cwd(), "../../examples/v1-canonical");
@@ -118,4 +122,24 @@ test("should build v7 functional example", async () => {
   assert.ok(manifest.requiredCapabilities.scripting.includes("service.animation.play"));
   assert.ok(manifest.requiredCapabilities.ui.includes("node.touchControl"));
   assert.equal(runtimeConfig.window.title, "ThreeNative V7 Functional");
+});
+
+test("builds v8 overlay example", async () => {
+  const projectPath = resolve(process.cwd(), "../../examples/v8-overlay-webview");
+  await execFileAsync(process.execPath, [resolve(process.cwd(), "../../scripts/build-v8-overlay-webview-overlay.mjs")], {
+    cwd: resolve(process.cwd(), "../.."),
+  });
+
+  const { bundlePath } = await buildProject(projectPath);
+  const report = await validateBundle(bundlePath);
+  const manifest = JSON.parse(await readFile(resolve(bundlePath, "manifest.json"), "utf8"));
+  const overlays = JSON.parse(await readFile(resolve(bundlePath, "overlays.ir.json"), "utf8"));
+
+  assert.equal(bundlePath, resolve(projectPath, "dist/v8-overlay-webview.bundle"));
+  assert.equal(report.ok, true);
+  assert.equal(manifest.entry.overlays, "overlays.ir.json");
+  assert.ok(manifest.requiredCapabilities.overlay.includes("webview"));
+  assert.ok(manifest.requiredCapabilities.overlay.includes("bridge"));
+  assert.ok(manifest.requiredCapabilities.overlay.includes("input.pointer"));
+  assert.equal(overlays.overlays[0].id, "inventory");
 });

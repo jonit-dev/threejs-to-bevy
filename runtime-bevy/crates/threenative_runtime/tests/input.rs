@@ -1,22 +1,23 @@
 use bevy::{
     app::{App, PreUpdate},
     input::{
+        ButtonInput,
         gamepad::{
-            gamepad_connection_system, Gamepad, GamepadAxis, GamepadAxisType, GamepadButton,
-            GamepadButtonType, GamepadConnection, GamepadConnectionEvent, GamepadInfo, Gamepads,
+            Gamepad, GamepadAxis, GamepadAxisType, GamepadButton, GamepadButtonType,
+            GamepadConnection, GamepadConnectionEvent, GamepadInfo, Gamepads,
+            gamepad_connection_system,
         },
         mouse::MouseMotion,
-        ButtonInput,
     },
     prelude::*,
     window::PrimaryWindow,
 };
 use threenative_loader::{InputActionIr, InputAxisIr, InputBindingIr, InputIr};
 use threenative_runtime::input::{
+    NativeInputAxisRebindSlot, NativeInputMap, NativeInputRebindTarget, NativeInputState,
+    NativeTouchGestureEvent, NativeTouchGesturePoint, NativeTouchGestureTracker, NativeTouchState,
     capture_native_input, map_keyboard_event, map_pointer_button_event, rebind_native_input,
-    report_native_gamepad_capabilities, NativeInputAxisRebindSlot, NativeInputMap,
-    NativeInputRebindTarget, NativeInputState, NativeTouchGestureEvent, NativeTouchGesturePoint,
-    NativeTouchGestureTracker, NativeTouchState,
+    report_native_gamepad_capabilities,
 };
 
 #[test]
@@ -161,10 +162,12 @@ fn should_report_native_rebind_diagnostics() {
             .map(|diagnostic| diagnostic.code.as_str()),
         Some("TN_INPUT_REBIND_ACTION_MISSING")
     );
-    assert!(duplicate
-        .diagnostics
-        .iter()
-        .any(|diagnostic| diagnostic.code == "TN_INPUT_REBIND_DUPLICATE"));
+    assert!(
+        duplicate
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.code == "TN_INPUT_REBIND_DUPLICATE")
+    );
     assert!(gamepad.diagnostics.iter().any(|diagnostic| diagnostic.code
         == "TN_INPUT_REBIND_GAMEPAD_REQUIRED"
         && diagnostic.severity == "warning"));
@@ -512,8 +515,10 @@ fn should_report_native_gamepad_capabilities_and_diagnostics() {
 
     let unavailable = report_native_gamepad_capabilities(Some(&input), None);
     assert!(!unavailable.supported);
-    assert!(unavailable
-        .diagnostics
-        .iter()
-        .any(|diagnostic| diagnostic.code == "TN_BEVY_GAMEPAD_RESOURCE_UNAVAILABLE"));
+    assert!(
+        unavailable
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.code == "TN_BEVY_GAMEPAD_RESOURCE_UNAVAILABLE")
+    );
 }

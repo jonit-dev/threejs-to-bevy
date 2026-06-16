@@ -32,6 +32,8 @@ export type IWorldCommandDeclaration =
     };
 
 export interface IWorldSystemDeclaration {
+  after?: string[];
+  before?: string[];
   commands: IWorldCommandDeclaration[];
   eventReads: string[];
   eventWrites: string[];
@@ -52,6 +54,10 @@ export interface IWorldSystemScriptDeclaration {
 }
 
 export interface IWorldQueryDeclaration {
+  changed?: string[];
+  limit?: number;
+  offset?: number;
+  orderBy?: "id";
   with: string[];
   without: string[];
 }
@@ -201,6 +207,8 @@ function sameSchema(left: IEcsSchema, right: IEcsSchema): boolean {
 
 function serializeSystem(system: ISystemDeclaration): IWorldSystemDeclaration {
   return {
+    ...(system.after.length === 0 ? {} : { after: [...system.after] }),
+    ...(system.before.length === 0 ? {} : { before: [...system.before] }),
     commands: system.commands.map(serializeCommand),
     eventReads: [...system.eventReads],
     eventWrites: [...system.eventWrites],
@@ -229,6 +237,10 @@ function systemExportName(name: string): string {
 
 function serializeQuery(query: IQueryDeclaration): IWorldQueryDeclaration {
   return {
+    ...(query.changed === undefined ? {} : { changed: [...query.changed] }),
+    ...(query.limit === undefined ? {} : { limit: query.limit }),
+    ...(query.offset === undefined ? {} : { offset: query.offset }),
+    ...(query.orderBy === undefined ? {} : { orderBy: query.orderBy }),
     with: [...query.with],
     without: [...query.without],
   };

@@ -92,6 +92,32 @@ test("should derive ECS and runtime capabilities from schemas and runtime config
   assert.deepEqual(capabilities.scripting, ["component-reflection", "schedule.update", "systems"]);
 });
 
+test("derives overlay capabilities", () => {
+  const capabilities = deriveRequiredCapabilities({
+    assets: assetsManifest([]),
+    materials: materialsIr([]),
+    overlays: {
+      schema: "threenative.overlays",
+      version: "0.1.0",
+      overlays: [
+        {
+          entry: "overlay/index.html",
+          id: "inventory",
+          input: "pointer",
+          messages: {
+            overlayToGame: [{ name: "inventory:use-item", schema: { kind: "object", fields: { itemId: "string" }, required: ["itemId"] } }],
+          },
+          targetProfiles: ["desktop", "web"],
+          transparent: true,
+          zIndex: 20,
+        },
+      ],
+    },
+  });
+
+  assert.deepEqual(capabilities.overlay, ["bridge", "input.pointer", "target.desktop", "target.web", "transparent", "webview"]);
+});
+
 function assetsManifest(assets: IAssetsManifest["assets"]): IAssetsManifest {
   return { assets, schema: "threenative.assets", version: "0.1.0" };
 }

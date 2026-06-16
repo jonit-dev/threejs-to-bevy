@@ -33,6 +33,7 @@ import {
   keyboard,
   loopingMusic,
   oneShotSound,
+  overlay,
   pointerButton,
   pointerAxis,
   physics,
@@ -214,6 +215,81 @@ test("should emit ecs schema files for world root", async () => {
     assert.deepEqual(runtimeConfig.renderer.bloom, { enabled: true, intensity: 0.35, threshold: 0.8 });
     assert.equal(runtimeConfig.time.fixedDelta, 1 / 30);
     assert.match(scripts, /system_applyDamage/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("emits overlay ir and manifest entry", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-overlay-"));
+  try {
+    await mkdir(join(root, "overlay"), { recursive: true });
+    await writeFile(join(root, "overlay/index.html"), "<!doctype html><button>Use potion</button>");
+    await writeFile(join(root, "overlay/inventory.css"), ".item{width:32px;height:32px}");
+
+    const bundlePath = await emitBundle(
+      {
+        entry: "src/game.ts",
+        outDir: "dist/game.bundle",
+        projectPath: root,
+        schema: "threenative.project" as const,
+        version: "0.1.0" as const,
+      },
+      {
+        overlay: overlay.mount({
+          assets: ["overlay/inventory.css"],
+          entry: "overlay/index.html",
+          id: "inventory",
+          input: "pointer",
+          messages: {
+            gameToOverlay: [{ name: "inventory:snapshot", schema: { kind: "object", fields: { gold: "integer" }, required: ["gold"] } }],
+            overlayToGame: [{ name: "inventory:use-item", schema: { kind: "object", fields: { itemId: "string" }, required: ["itemId"] } }],
+          },
+          zIndex: 25,
+        }),
+        scene: makeScene(),
+      },
+    );
+    const manifest = JSON.parse(await readFile(join(bundlePath, "manifest.json"), "utf8"));
+    const overlays = JSON.parse(await readFile(join(bundlePath, "overlays.ir.json"), "utf8"));
+    const copiedHtml = await readFile(join(bundlePath, "overlay/index.html"), "utf8");
+    const copiedCss = await readFile(join(bundlePath, "overlay/inventory.css"), "utf8");
+    const result = await validateBundle(bundlePath);
+
+    assert.equal(result.ok, true);
+    assert.equal(manifest.entry.overlays, "overlays.ir.json");
+    assert.deepEqual(manifest.requiredCapabilities.overlay, ["bridge", "input.pointer", "target.desktop", "target.web", "transparent", "webview"]);
+    assert.equal(overlays.overlays[0].id, "inventory");
+    assert.equal(overlays.overlays[0].input, "pointer");
+    assert.match(copiedHtml, /Use potion/);
+    assert.match(copiedCss, /item/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("rejects undeclared overlay assets", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-overlay-missing-"));
+  try {
+    await mkdir(join(root, "overlay"), { recursive: true });
+    await writeFile(join(root, "overlay/index.html"), "<!doctype html>");
+
+    await assert.rejects(
+      () => emitBundle(
+        {
+          entry: "src/game.ts",
+          outDir: "dist/game.bundle",
+          projectPath: root,
+          schema: "threenative.project" as const,
+          version: "0.1.0" as const,
+        },
+        {
+          overlay: overlay.mount({ assets: ["overlay/missing.css"], entry: "overlay/index.html", id: "inventory" }),
+          scene: makeScene(),
+        },
+      ),
+      /TN_COMPILER_OVERLAY_ASSET_MISSING/,
+    );
   } finally {
     await rm(root, { force: true, recursive: true });
   }

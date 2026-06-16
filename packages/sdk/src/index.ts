@@ -127,6 +127,16 @@ export {
 export { MeshStandardMaterial, type ColorValue, type MaterialAlphaMode, type TextureSlotReference } from "./materials/MeshStandardMaterial.js";
 export { Vector3, type Vector3Tuple } from "./math/Vector3.js";
 export {
+  overlay,
+  type IOverlayDeclaration,
+  type IOverlayMessageDeclaration,
+  type IOverlayMessageSchema,
+  type IOverlayMountOptions,
+  type OverlayInputMode,
+  type OverlayMessageSchemaKind,
+  type OverlayTargetProfile,
+} from "./overlay.js";
+export {
   boxCollider,
   capsuleCollider,
   cylinderCollider,

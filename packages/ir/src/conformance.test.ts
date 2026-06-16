@@ -288,6 +288,14 @@ test("should include capability tags for each conformance fixture", async () => 
     "rendering:mesh.primitive.box",
     "transform:hierarchy",
   ]);
+  assertFixtureCapabilities(byName, "v8-overlay-webview", [
+    "overlay:bridge",
+    "overlay:input.none",
+    "overlay:target.desktop",
+    "overlay:target.web",
+    "overlay:transparent",
+    "overlay:webview",
+  ]);
 });
 
 function assertFixtureCapabilities(

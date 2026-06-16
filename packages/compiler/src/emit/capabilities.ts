@@ -5,6 +5,7 @@ import type {
   IEnvironmentSceneIr,
   IIrSchemaFile,
   IMaterialsIr,
+  IOverlaysIr,
   IUiIr,
   IWorldIr,
 } from "@threenative/ir";
@@ -18,6 +19,7 @@ export interface ICapabilitySource {
   eventSchemas?: IIrSchemaFile;
   input?: IInputIr;
   materials: IMaterialsIr;
+  overlays?: IOverlaysIr;
   resourceSchemas?: IIrSchemaFile;
   runtimeConfig?: IRuntimeConfigIr;
   systems?: ISystemsIr;
@@ -40,6 +42,7 @@ export function deriveRequiredCapabilities(source: ICapabilitySource): IBundleMa
   collectInputCapabilities(source.input, add);
   collectAudioCapabilities(source.audio, add);
   collectUiCapabilities(source.ui, add);
+  collectOverlayCapabilities(source.overlays, add);
   collectEnvironmentCapabilities(source.environment, add);
 
   if (source.componentSchemas !== undefined && Object.keys(source.componentSchemas.schemas).length > 0) {
@@ -65,6 +68,23 @@ export function deriveRequiredCapabilities(source: ICapabilitySource): IBundleMa
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([domain, domainCapabilities]) => [domain, [...domainCapabilities].sort((left, right) => left.localeCompare(right))]),
   );
+}
+
+function collectOverlayCapabilities(overlays: IOverlaysIr | undefined, add: (domain: string, capability: string) => void): void {
+  if (overlays === undefined || overlays.overlays.length === 0) {
+    return;
+  }
+  add("overlay", "bridge");
+  add("overlay", "webview");
+  for (const overlay of overlays.overlays) {
+    if (overlay.transparent) {
+      add("overlay", "transparent");
+    }
+    add("overlay", `input.${overlay.input}`);
+    for (const profile of overlay.targetProfiles) {
+      add("overlay", `target.${profile}`);
+    }
+  }
 }
 
 function collectWorldCapabilities(world: IWorldIr | undefined, add: (domain: string, capability: string) => void): void {

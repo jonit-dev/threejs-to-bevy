@@ -52,9 +52,7 @@ export async function runSchedule(options: {
   world: IWorldIr;
 }): Promise<ISystemRunResult> {
   const diagnostics: IRuntimeDiagnostic[] = [];
-  const scheduledSystems = options.systems.systems
-    .filter((system) => system.schedule === options.schedule)
-    .sort((left, right) => left.name.localeCompare(right.name));
+  const scheduledSystems = orderedSystemsForSchedule(options.systems.systems, options.schedule);
   for (const system of scheduledSystems) {
     const result = await runSystem(system, options);
     diagnostics.push(...result.diagnostics);
@@ -101,6 +99,56 @@ async function runSystem(
     appendSystemEffectLog(options.effectLog, result.entries);
   }
   return { diagnostics: result.diagnostics };
+}
+
+function orderedSystemsForSchedule(systems: readonly IIrSystemDeclaration[], schedule: IrSystemSchedule): IIrSystemDeclaration[] {
+  const scheduled = systems.filter((system) => system.schedule === schedule).sort((left, right) => left.name.localeCompare(right.name));
+  const byName = new Map(scheduled.map((system) => [system.name, system] as const));
+  const outgoing = new Map<string, Set<string>>();
+  const indegree = new Map<string, number>();
+  for (const system of scheduled) {
+    outgoing.set(system.name, new Set());
+    indegree.set(system.name, 0);
+  }
+  for (const system of scheduled) {
+    for (const target of system.before ?? []) {
+      if (byName.has(target)) {
+        addOrderEdge(system.name, target, outgoing, indegree);
+      }
+    }
+    for (const source of system.after ?? []) {
+      if (byName.has(source)) {
+        addOrderEdge(source, system.name, outgoing, indegree);
+      }
+    }
+  }
+
+  const ready = scheduled.map((system) => system.name).filter((name) => indegree.get(name) === 0).sort();
+  const ordered: IIrSystemDeclaration[] = [];
+  while (ready.length > 0) {
+    const name = ready.shift()!;
+    const system = byName.get(name);
+    if (system !== undefined) {
+      ordered.push(system);
+    }
+    for (const next of [...(outgoing.get(name) ?? [])].sort()) {
+      indegree.set(next, (indegree.get(next) ?? 0) - 1);
+      if (indegree.get(next) === 0) {
+        ready.push(next);
+        ready.sort();
+      }
+    }
+  }
+  return ordered.length === scheduled.length ? ordered : scheduled;
+}
+
+function addOrderEdge(source: string, target: string, outgoing: Map<string, Set<string>>, indegree: Map<string, number>): void {
+  const edges = outgoing.get(source);
+  if (edges === undefined || edges.has(target)) {
+    return;
+  }
+  edges.add(target);
+  indegree.set(target, (indegree.get(target) ?? 0) + 1);
 }
 
 function readSystemFunction(module: ISystemModule, exportName: string): SystemFunction {

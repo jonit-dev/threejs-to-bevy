@@ -14,12 +14,14 @@ import { createSystemEffectLog, type ISystemEffectLog } from "./systems/log.js";
 import { createUiDomOverlay } from "./ui/domOverlay.js";
 import { renderUi, type IRenderedUi } from "./ui/renderUi.js";
 import { createWebAudioElementSink, createWebAudioRuntime } from "./audio.js";
+import { createWebOverlayHost, type IWebOverlayHost } from "./overlay/host.js";
 
 export interface IRenderResult {
   canvas: HTMLCanvasElement;
   diagnostics: IRuntimeDiagnostic[];
   effectLog: ISystemEffectLog;
   renderer: THREE.WebGLRenderer;
+  overlayHost?: IWebOverlayHost;
   ui?: IRenderedUi;
 }
 
@@ -65,6 +67,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
   const canvas = renderer.domElement;
   const ui = bundle.ui === undefined ? undefined : renderUi(bundle.ui, bundle.world);
   const uiOverlay = ui === undefined ? undefined : createUiDomOverlay(ui);
+  const overlayHost = bundle.overlays === undefined ? undefined : createWebOverlayHost(bundle.overlays, source);
   if (bundle.audio !== undefined) {
     const audioSink = createWebAudioElementSink(source, bundle.assets);
     const audioRuntime = createWebAudioRuntime(bundle.audio, audioSink);
@@ -75,7 +78,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
 
   prepareRenderContainer(container);
   canvas.style.display = "block";
-  container.replaceChildren(...([canvas, uiOverlay?.element].filter((child) => child !== undefined) as Node[]));
+  container.replaceChildren(...([canvas, uiOverlay?.element, overlayHost?.element].filter((child) => child !== undefined) as Node[]));
   attachInputListeners(window, input);
   resizeRenderer(renderer, pipeline, mapped.camera, container);
   if (bundle.systems !== undefined) {
@@ -130,6 +133,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
     canvas,
     diagnostics: mapped.diagnostics,
     effectLog,
+    ...(overlayHost === undefined ? {} : { overlayHost }),
     renderer,
     ...(ui === undefined ? {} : { ui }),
   };

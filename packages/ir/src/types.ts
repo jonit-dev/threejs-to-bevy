@@ -8,6 +8,7 @@ export type TargetProfileSchema = "threenative.target-profile";
 export type RuntimeConfigSchema = "threenative.runtime-config";
 export type UiSchema = "threenative.ui";
 export type EnvironmentSceneSchema = "threenative.environment-scene";
+export type OverlaysSchema = "threenative.overlays";
 
 export interface IBundleManifest {
   schema: BundleSchema;
@@ -21,6 +22,7 @@ export interface IBundleManifest {
     environmentScene?: string;
     scripts?: string;
     systems?: string;
+    overlays?: string;
     ui?: string;
   };
   files: {

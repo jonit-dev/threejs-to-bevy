@@ -1,0 +1,24 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "conformance-v8-overlay-webview",
+  "requiredCapabilities": {
+    "overlay": [
+      "bridge",
+      "input.none",
+      "target.desktop",
+      "target.web",
+      "transparent",
+      "webview"
+    ]
+  },
+  "entry": {
+    "world": "world.ir.json",
+    "overlays": "overlays.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "materials": "materials.ir.json",
+    "targetProfile": "target.profile.json"
+  }
+}

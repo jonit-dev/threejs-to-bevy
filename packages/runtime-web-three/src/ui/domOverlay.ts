@@ -11,6 +11,7 @@ export function createUiDomOverlay(rendered: IRenderedUi, doc: Document = docume
   element.classList.add("tn-ui-overlay");
   Object.assign(element.style, {
     boxSizing: "border-box",
+    fontFamily: "monospace",
     inset: "0",
     pointerEvents: "none",
     position: "absolute",

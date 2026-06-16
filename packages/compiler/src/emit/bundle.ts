@@ -9,7 +9,7 @@ import {
   type IUiIr,
   type IWorldIr,
 } from "@threenative/ir";
-import { type IAssetReference, type IAudioDeclaration, type IInputMapDeclaration, type World } from "@threenative/sdk";
+import { type IAssetReference, type IAudioDeclaration, type IInputMapDeclaration, type IOverlayDeclaration, type World } from "@threenative/sdk";
 import { type IUiElement } from "@threenative/ui";
 
 import { type IProjectConfig } from "../config.js";
@@ -19,6 +19,7 @@ import { deriveRequiredCapabilities } from "./capabilities.js";
 import { ecsToIr } from "./ecs.js";
 import { emitEnvironment, type IEnvironmentDeclaration } from "./environment.js";
 import { inputToIr } from "./input.js";
+import { emitOverlays } from "../overlay/emit.js";
 import { sceneToWorld } from "./scene-to-world.js";
 import { stableJson } from "./stable-json.js";
 import { emitUi } from "./ui.js";
@@ -35,6 +36,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
   const input = bundleRoot.input === undefined ? ecs?.input : inputToIr(bundleRoot.input);
   const audio = bundleRoot.audio === undefined ? undefined : emitAudio(bundleRoot.audio);
   const environment = bundleRoot.environment === undefined ? undefined : await emitEnvironment(config.projectPath, bundleRoot.environment);
+  const overlays = bundleRoot.overlay === undefined ? undefined : await emitOverlays(config.projectPath, bundleRoot.overlay);
   const generatedMeshPayloads = prepareGeneratedMeshPayloads(
     mergeEnvironmentAssets(mergeAudioAssets(emitted?.assets ?? [], bundleRoot.audio), environment?.assets ?? []),
   );
@@ -70,6 +72,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
       eventSchemas: ecs?.eventSchemas,
       input,
       materials,
+      overlays: overlays?.overlays,
       resourceSchemas: ecs?.resourceSchemas,
       runtimeConfig: ecs?.runtimeConfig,
       systems: ecs?.systems,
@@ -81,6 +84,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
       ...(environment === undefined ? {} : { environmentScene: "environment.scene.json" }),
       ...(ecs?.scriptBundle === undefined ? {} : { scripts: "scripts.bundle.js" }),
       ...(ecs === undefined ? {} : { systems: "systems.ir.json" }),
+      ...(overlays === undefined ? {} : { overlays: "overlays.ir.json" }),
       ...(ui === undefined ? {} : { ui: "ui.ir.json" }),
       world: "world.ir.json",
     },
@@ -107,7 +111,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
   await writeGeneratedMeshPayloads(outDir, generatedMeshPayloads.payloads);
   await writeFile(resolve(outDir, "manifest.json"), stableJson(manifest));
   await copyAssetFiles(config.projectPath, outDir, assets);
-  await copyExtraAssetFiles(config.projectPath, outDir, environment?.extraFiles ?? []);
+  await copyExtraAssetFiles(config.projectPath, outDir, [...(environment?.extraFiles ?? []), ...(overlays?.extraFiles ?? [])]);
   await writeFile(resolve(outDir, "world.ir.json"), stableJson(world));
   await writeFile(resolve(outDir, "materials.ir.json"), stableJson(materials));
   await writeFile(resolve(outDir, "assets.manifest.json"), stableJson(assetsManifest));
@@ -117,6 +121,9 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
   }
   if (ui !== undefined) {
     await writeFile(resolve(outDir, "ui.ir.json"), stableJson(ui));
+  }
+  if (overlays !== undefined) {
+    await writeFile(resolve(outDir, "overlays.ir.json"), stableJson(overlays.overlays));
   }
   if (audio !== undefined) {
     await writeFile(resolve(outDir, "audio.ir.json"), stableJson(audio));
@@ -144,7 +151,8 @@ interface IBundleRoot {
   audio?: IAudioDeclaration;
   environment?: IEnvironmentDeclaration;
   input?: IInputMapDeclaration;
-  scene: unknown;
+  overlay?: IOverlayDeclaration;
+  scene?: unknown;
   ui?: IUiElement;
   world?: World;
 }
@@ -157,7 +165,11 @@ function normalizeBundleRoot(root: unknown): IBundleRoot {
 }
 
 function isBundleRoot(root: unknown): root is IBundleRoot {
-  return typeof root === "object" && root !== null && "scene" in root;
+  return (
+    typeof root === "object"
+    && root !== null
+    && ["audio", "environment", "input", "overlay", "scene", "ui", "world"].some((key) => key in root)
+  );
 }
 
 function mergeWorlds(scene: IWorldIr | undefined, ecs: IWorldIr | undefined): IWorldIr | undefined {

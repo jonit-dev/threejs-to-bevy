@@ -1,0 +1,20 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [],
+  "resources": {
+    "Inventory": {
+      "items": [
+        {
+          "id": "potion",
+          "count": 2
+        }
+      ],
+      "selected": "potion"
+    }
+  },
+  "events": {
+    "UseItemEvent": []
+  },
+  "prefabs": []
+}

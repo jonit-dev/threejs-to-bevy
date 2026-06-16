@@ -51,3 +51,10 @@ serde_json = "1.0.145"
 thiserror = "2.0.17"
 threenative_components = { path = "../threenative_components" }
 threenative_loader = { path = "../threenative_loader" }
+gtk = { version = "0.18.2", optional = true }
+wry = { version = "0.53.5", features = ["transparent"], optional = true }
+winit = { version = "0.30.13", default-features = false, optional = true }
+
+[features]
+default = []
+native-webview = ["dep:gtk", "dep:winit", "dep:wry"]

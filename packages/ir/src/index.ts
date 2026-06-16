@@ -79,6 +79,18 @@ export type {
 export { validateBundle, type IBundleValidationResult, type IIrDiagnostic } from "./validate.js";
 export { validateEnvironmentSceneIr } from "./environment.js";
 export {
+  validateOverlayEntry,
+  validateOverlaysIr,
+  type IOverlayBridgeMessages,
+  type IOverlayIr,
+  type IOverlayMessageDeclaration,
+  type IOverlayMessageSchema,
+  type IOverlaysIr,
+  type OverlayInputMode,
+  type OverlayMessageSchemaKind,
+  type OverlayTargetProfile,
+} from "./overlays.js";
+export {
   diffEditorProjectSnapshots,
   validateEditorProjectSnapshot,
   type EditorProjectDiffOperation,

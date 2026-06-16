@@ -7,6 +7,7 @@ const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const requiredV8Prds = [
   "V8-00-local-editor-scope-and-contract.md",
   "V8-01-editor-project-snapshot-and-structured-diffs.md",
+  "V8-05-optional-react-webview-overlay.md",
 ];
 
 const requiredV8Phrases = [
@@ -18,6 +19,9 @@ const requiredV8Phrases = [
   ["bundle preview", "V8 docs must include bundle preview evidence."],
   ["offline", "V8 docs must preserve offline workflows."],
   ["diagnostics", "V8 docs must require stable diagnostics."],
+  ["React webview overlay", "V8 docs must mention the optional React webview overlay scope."],
+  ["retained UI", "V8 docs must keep retained UI as the portable default."],
+  ["verify:v8:overlay", "V8 docs must link the overlay verification command."],
 ];
 
 const requiredStatusPhrases = [
@@ -25,6 +29,8 @@ const requiredStatusPhrases = [
   ["local editor", "STATUS and parity docs must mention local editor scope."],
   ["offline", "STATUS and parity docs must mention offline scope."],
   ["collaboration", "STATUS and parity docs must keep collaboration out of V8."],
+  ["optional React", "STATUS and parity docs must mention the optional React overlay scope."],
+  ["ui.ir.json", "STATUS and parity docs must keep retained UI as the portable UI contract."],
 ];
 
 const unsupportedV8ClaimPatterns = [

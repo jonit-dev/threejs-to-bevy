@@ -23,6 +23,7 @@
         "world": { "const": "world.ir.json" },
         "audio": { "type": "string" },
         "environmentScene": { "type": "string" },
+        "overlays": { "const": "overlays.ir.json" },
         "ui": { "type": "string" },
         "systems": { "type": "string" },
         "animations": { "type": "string" },

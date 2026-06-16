@@ -1,0 +1,49 @@
+{
+  "schema": "threenative.overlays",
+  "version": "0.1.0",
+  "overlays": [
+    {
+      "id": "inventory",
+      "entry": "overlay/index.html",
+      "targetProfiles": [
+        "web",
+        "desktop"
+      ],
+      "transparent": true,
+      "zIndex": 10,
+      "input": "none",
+      "messages": {
+        "gameToOverlay": [
+          {
+            "name": "inventory:snapshot",
+            "schema": {
+              "kind": "object",
+              "fields": {
+                "selected": "string",
+                "count": "integer"
+              },
+              "required": [
+                "selected",
+                "count"
+              ]
+            }
+          }
+        ],
+        "overlayToGame": [
+          {
+            "name": "inventory:use-item",
+            "schema": {
+              "kind": "object",
+              "fields": {
+                "itemId": "string"
+              },
+              "required": [
+                "itemId"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

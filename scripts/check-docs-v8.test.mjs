@@ -84,16 +84,17 @@ function defaultIndex() {
   return [
     "[V8-00 Scope](./V8-00-local-editor-scope-and-contract.md)",
     "[V8-01 Snapshot](./V8-01-editor-project-snapshot-and-structured-diffs.md)",
-    "local editor structured SDK/ECS/IR save/load structured diffs bundle preview offline diagnostics",
+    "[V8-05 Overlay](./V8-05-optional-react-webview-overlay.md)",
+    "local editor structured SDK/ECS/IR save/load structured diffs bundle preview offline diagnostics React webview overlay retained UI verify:v8:overlay",
   ].join("\n");
 }
 
 function defaultStatus() {
-  return "V8 PRDs local editor offline collaboration\n";
+  return "V8 PRDs local editor offline collaboration optional React ui.ir.json\n";
 }
 
 function defaultParity() {
-  return "V8 PRDs local editor offline collaboration\n";
+  return "V8 PRDs local editor offline collaboration optional React ui.ir.json\n";
 }
 
 function defaultRoadmap() {

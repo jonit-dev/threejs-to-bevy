@@ -99,6 +99,33 @@ test("should log declared service and reject undeclared service", () => {
   assert.equal(rejected.diagnostics[0]?.code, "TN_WEB_SYSTEM_SERVICE_UNDECLARED");
 });
 
+test("should log declared asset load service", () => {
+  const world = makeWorld();
+  const result = applySystemEffects(
+    world,
+    makeSystem({ services: ["assets.load"] }),
+    {
+      commands: [],
+      events: [],
+      resources: [],
+      services: [
+        {
+          payload: {
+            request: { id: "mesh.crate" },
+            result: { accepted: true, asset: { format: "generated", id: "mesh.crate", kind: "mesh", primitive: "box" }, id: "mesh.crate", status: "ready" },
+          },
+          service: "assets.load",
+        },
+      ],
+    },
+    { frame: 1, tick: 2 },
+  );
+
+  assert.deepEqual(result.diagnostics, []);
+  assert.equal(result.entries[0]?.kind, "service");
+  assert.equal(result.entries[0]?.service, "assets.load");
+});
+
 test("should apply and log declared resource writes", () => {
   const world = makeWorld();
   world.resources = { Score: { value: 1 } };

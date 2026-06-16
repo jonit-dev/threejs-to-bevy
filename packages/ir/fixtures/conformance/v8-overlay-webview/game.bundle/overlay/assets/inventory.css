@@ -1,0 +1,15 @@
+.inventory {
+  align-items: center;
+  background: rgb(18 21 27 / 78%);
+  border: 1px solid rgb(255 255 255 / 20%);
+  color: white;
+  display: inline-flex;
+  font: 600 14px system-ui, sans-serif;
+  gap: 8px;
+  padding: 8px 10px;
+}
+
+.inventory img {
+  height: 24px;
+  width: 24px;
+}

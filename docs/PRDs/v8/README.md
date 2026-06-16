@@ -38,3 +38,15 @@ Initial docs guard:
 ```bash
 pnpm check:docs:v8
 ```
+
+Optional React webview overlay proof:
+
+```bash
+pnpm verify:v8:overlay
+```
+
+The overlay proof builds `examples/v8-overlay-webview`, emits
+`overlays.ir.json`, copies the React/CSS inventory overlay and item sprites into
+the bundle, validates bridge messages, checks input capture pass-through for
+non-pointer modes, runs native overlay diagnostics tests, and writes
+`artifacts/v8-overlay-webview/verification-report.json`.

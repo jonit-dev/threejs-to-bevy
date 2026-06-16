@@ -27,9 +27,13 @@
     "verify:v4": "pnpm --filter @threenative/cli build && node scripts/verify-v4.mjs",
     "verify:v5": "node scripts/verify-v5.mjs",
     "verify:v6": "node scripts/verify-v6.mjs",
-    "verify:v7": "node scripts/verify-v7.mjs"
+    "verify:v7": "node scripts/verify-v7.mjs",
+    "verify:v8:overlay": "node scripts/verify-v8-overlay-webview.mjs"
   },
   "devDependencies": {
-    "typescript": "^5.9.3"
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.5"
   }
 }

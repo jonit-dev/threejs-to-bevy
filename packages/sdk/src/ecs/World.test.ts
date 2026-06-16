@@ -3,7 +3,8 @@ import test from "node:test";
 
 import { SdkError } from "../errors.js";
 import { World } from "./World.js";
-import { defineSystem, startup } from "./system.js";
+import { defineQuery } from "./query.js";
+import { defineSystem, startup, update } from "./system.js";
 import { defineComponent, defineEvent, defineResource } from "./schema.js";
 
 test("should declare ecs entity components and resources", () => {
@@ -133,6 +134,53 @@ test("should serialize startup system schedule", () => {
   world.addSystem(startup("loadLevel"));
 
   assert.equal(world.toJSON().systems[0]?.schedule, "startup");
+});
+
+test("should serialize system ordering constraints", () => {
+  const world = new World();
+
+  world.addSystem(update("applyDamage", { after: ["collectInput"], before: ["score"] }));
+
+  assert.deepEqual(world.toJSON().systems[0], {
+    after: ["collectInput"],
+    before: ["score"],
+    commands: [],
+    eventReads: [],
+    eventWrites: [],
+    name: "applyDamage",
+    queries: [],
+    reads: [],
+    resourceReads: [],
+    resourceWrites: [],
+    script: undefined,
+    services: [],
+    schedule: "update",
+    writes: [],
+  });
+});
+
+test("should serialize query ordering pagination and changed filters", () => {
+  const Transform = defineComponent("Transform", { position: "vec3" });
+  const Health = defineComponent("Health", { current: "number" });
+  const world = new World();
+
+  world.addSystem(defineSystem({
+    id: "queryChanged",
+    queries: [defineQuery({ changed: [Transform], limit: 2, offset: 1, orderBy: "id", with: [Transform], without: [Health] })],
+    reads: [Transform],
+    stage: "update",
+  }));
+
+  assert.deepEqual(world.toJSON().systems[0]?.queries, [
+    {
+      changed: ["Transform"],
+      limit: 2,
+      offset: 1,
+      orderBy: "id",
+      with: ["Transform"],
+      without: ["Health"],
+    },
+  ]);
 });
 
 test("should expose stable entity context API", () => {

@@ -62,3 +62,13 @@ test("should emit ecs startup system schedule", () => {
 
   assert.deepEqual(systemsToIr([system]).systems[0]?.schedule, "startup");
 });
+
+test("should emit system ordering constraints", () => {
+  const first = fixedUpdate("first", { before: ["second"] });
+  const second = fixedUpdate("second", { after: ["first"] });
+
+  assert.deepEqual(systemsToIr([second, first]).systems.map((system) => ({ after: system.after, before: system.before, name: system.name })), [
+    { after: undefined, before: ["second"], name: "first" },
+    { after: ["first"], before: undefined, name: "second" },
+  ]);
+});

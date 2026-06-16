@@ -1,0 +1,21 @@
+{
+  "name": "v8-overlay-webview",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node ../../scripts/build-v8-overlay-webview-overlay.mjs && tn build",
+    "build:overlay": "node ../../scripts/build-v8-overlay-webview-overlay.mjs",
+    "validate": "tn validate",
+    "verify": "node ../../scripts/verify-v8-overlay-webview.mjs --json"
+  },
+  "dependencies": {
+    "@threenative/sdk": "workspace:*",
+    "@threenative/ui": "workspace:*",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "vite": "^7.3.5"
+  }
+}

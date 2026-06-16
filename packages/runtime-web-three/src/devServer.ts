@@ -94,6 +94,10 @@ function bundlePlugin(bundlePath: string): Plugin {
 
 export function contentTypeForBundleFile(filePath: string): string {
   switch (extname(filePath)) {
+    case ".css":
+      return "text/css; charset=utf-8";
+    case ".html":
+      return "text/html; charset=utf-8";
     case ".js":
       return "text/javascript; charset=utf-8";
     case ".json":
@@ -109,6 +113,8 @@ export function contentTypeForBundleFile(filePath: string): string {
       return "image/jpeg";
     case ".png":
       return "image/png";
+    case ".svg":
+      return "image/svg+xml";
     case ".ogg":
       return "audio/ogg";
     case ".wav":

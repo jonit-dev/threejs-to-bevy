@@ -1,6 +1,8 @@
 import type { ISystemsIr } from "@threenative/ir";
 
 interface ISystemLike {
+  after?: string[];
+  before?: string[];
   commands: ISystemsIr["systems"][number]["commands"];
   eventReads: string[];
   eventWrites: string[];
@@ -24,6 +26,8 @@ export function systemsToIr(systems: ReadonlyArray<ISystemLike>): ISystemsIr {
     systems: [...systems]
       .sort((left, right) => left.name.localeCompare(right.name))
       .map((system) => ({
+        ...((system.after ?? []).length === 0 ? {} : { after: [...(system.after ?? [])].sort() }),
+        ...((system.before ?? []).length === 0 ? {} : { before: [...(system.before ?? [])].sort() }),
         commands: system.commands.map((command) => {
           if (command.kind === "spawn") {
             return { components: [...command.components].sort(), entity: command.entity, kind: command.kind };
@@ -40,6 +44,10 @@ export function systemsToIr(systems: ReadonlyArray<ISystemLike>): ISystemsIr {
         eventWrites: [...system.eventWrites].sort(),
         name: system.name,
         queries: system.queries.map((query) => ({
+          ...(query.changed === undefined ? {} : { changed: [...query.changed].sort() }),
+          ...(query.limit === undefined ? {} : { limit: query.limit }),
+          ...(query.offset === undefined ? {} : { offset: query.offset }),
+          ...(query.orderBy === undefined ? {} : { orderBy: query.orderBy }),
           with: [...query.with].sort(),
           without: [...query.without].sort(),
         })),

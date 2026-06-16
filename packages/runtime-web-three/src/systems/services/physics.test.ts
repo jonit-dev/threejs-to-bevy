@@ -34,19 +34,20 @@ test("should overlap primitive colliders with portable filters", () => {
 
 test("should shape cast primitive colliders deterministically", () => {
   const result = shapeCastPrimitive(makeWorld(), {
-    direction: [1, 0, 0],
+    direction: [0, -1, 0],
     ignore: ["player"],
-    maxDistance: 4,
-    origin: [-3, 0.5, 0],
-    shape: { halfExtents: [0.5, 0.5, 0.5], kind: "box" },
+    mask: ["world"],
+    maxDistance: 2,
+    origin: [0, 1, 0],
+    shape: { halfExtents: [0.25, 0.25, 0.25], kind: "box" },
   });
 
   assert.deepEqual(result, {
-    distance: 2,
-    entity: "crate",
+    distance: 0.7,
+    entity: "floor",
     hit: true,
-    normal: [-1, 0, 0],
-    point: [-1, 0.5, 0],
+    normal: [0, 1, 0],
+    point: [0, 0.3, 0],
   });
 });
 
