@@ -19,6 +19,26 @@ export interface IFrameComparison extends IPixelCheck {
   };
 }
 
+export interface INormalizedRegion {
+  height: number;
+  width: number;
+  x: number;
+  y: number;
+}
+
+export interface IAverageColor {
+  blue: number;
+  green: number;
+  red: number;
+}
+
+export interface IDetailedFrameComparison extends IFrameComparison {
+  maxChannelDelta: number;
+  p95ChannelDelta: number;
+  signedAverageBrightnessDelta: number;
+  signedAverageColorDelta: IAverageColor;
+}
+
 export const defaultNonblankThreshold = 0.002;
 export const defaultDiffThreshold = 0.001;
 
@@ -152,5 +172,121 @@ export function compareFrames(
     changedPixelRatio,
     ok: changedPixelRatio >= threshold,
     threshold,
+  };
+}
+
+export function absoluteRegion(frame: IPixelFrame, region: INormalizedRegion): { height: number; width: number; x: number; y: number } {
+  return {
+    height: Math.max(1, Math.floor(frame.height * region.height)),
+    width: Math.max(1, Math.floor(frame.width * region.width)),
+    x: Math.floor(frame.width * region.x),
+    y: Math.floor(frame.height * region.y),
+  };
+}
+
+export function cropFrame(frame: IPixelFrame, region: { height: number; width: number; x: number; y: number }): IPixelFrame {
+  const width = Math.min(region.width, frame.width - region.x);
+  const height = Math.min(region.height, frame.height - region.y);
+  const data = new Uint8ClampedArray(width * height * 4);
+  for (let row = 0; row < height; row += 1) {
+    for (let column = 0; column < width; column += 1) {
+      const from = ((row + region.y) * frame.width + column + region.x) * 4;
+      const to = (row * width + column) * 4;
+      data[to] = frame.data[from] ?? 0;
+      data[to + 1] = frame.data[from + 1] ?? 0;
+      data[to + 2] = frame.data[from + 2] ?? 0;
+      data[to + 3] = frame.data[from + 3] ?? 255;
+    }
+  }
+  return { data, height, width };
+}
+
+export function averageColor(frame: IPixelFrame): IAverageColor {
+  let red = 0;
+  let green = 0;
+  let blue = 0;
+  const total = frame.width * frame.height;
+  if (total <= 0) {
+    return { blue: 0, green: 0, red: 0 };
+  }
+  for (let index = 0; index < frame.data.length; index += 4) {
+    red += frame.data[index] ?? 0;
+    green += frame.data[index + 1] ?? 0;
+    blue += frame.data[index + 2] ?? 0;
+  }
+  return { blue: blue / total / 255, green: green / total / 255, red: red / total / 255 };
+}
+
+export function colorDistance(first: IAverageColor, second: IAverageColor): number {
+  return Math.hypot(first.red - second.red, first.green - second.green, first.blue - second.blue);
+}
+
+export function parseHexColor(hex: string): IAverageColor {
+  const trimmed = hex.trim().replace("#", "");
+  if (trimmed.length !== 6) {
+    return { blue: 0, green: 0, red: 0 };
+  }
+  const value = Number.parseInt(trimmed, 16);
+  return {
+    blue: (value & 0xff) / 255,
+    green: ((value >> 8) & 0xff) / 255,
+    red: ((value >> 16) & 0xff) / 255,
+  };
+}
+
+export function compareFramesDetailed(
+  first: IPixelFrame,
+  second: IPixelFrame,
+  threshold = defaultDiffThreshold,
+): IDetailedFrameComparison {
+  const absolute = compareFrames(first, second, threshold);
+  if (first.width !== second.width || first.height !== second.height || first.width * first.height <= 0) {
+    return {
+      ...absolute,
+      maxChannelDelta: 1,
+      p95ChannelDelta: 1,
+      signedAverageBrightnessDelta: 0,
+      signedAverageColorDelta: { blue: 0, green: 0, red: 0 },
+    };
+  }
+
+  const totalPixels = first.width * first.height;
+  const perPixelDeltas: number[] = [];
+  let signedBrightness = 0;
+  let signedRed = 0;
+  let signedGreen = 0;
+  let signedBlue = 0;
+  let maxChannelDelta = 0;
+  const length = Math.min(first.data.length, second.data.length);
+  for (let index = 0; index < length; index += 4) {
+    const firstRed = first.data[index] ?? 0;
+    const firstGreen = first.data[index + 1] ?? 0;
+    const firstBlue = first.data[index + 2] ?? 0;
+    const secondRed = second.data[index] ?? 0;
+    const secondGreen = second.data[index + 1] ?? 0;
+    const secondBlue = second.data[index + 2] ?? 0;
+    const redDelta = Math.abs(firstRed - secondRed);
+    const greenDelta = Math.abs(firstGreen - secondGreen);
+    const blueDelta = Math.abs(firstBlue - secondBlue);
+    maxChannelDelta = Math.max(maxChannelDelta, redDelta, greenDelta, blueDelta);
+    perPixelDeltas.push((redDelta + greenDelta + blueDelta) / 3 / 255);
+    signedRed += secondRed - firstRed;
+    signedGreen += secondGreen - firstGreen;
+    signedBlue += secondBlue - firstBlue;
+    signedBrightness += (secondRed + secondGreen + secondBlue - firstRed - firstGreen - firstBlue) / 3;
+  }
+
+  perPixelDeltas.sort((left, right) => left - right);
+  const p95Index = Math.min(perPixelDeltas.length - 1, Math.floor(perPixelDeltas.length * 0.95));
+  return {
+    ...absolute,
+    maxChannelDelta: maxChannelDelta / 255,
+    p95ChannelDelta: perPixelDeltas[p95Index] ?? 0,
+    signedAverageBrightnessDelta: signedBrightness / totalPixels / 255,
+    signedAverageColorDelta: {
+      blue: signedBlue / totalPixels / 255,
+      green: signedGreen / totalPixels / 255,
+      red: signedRed / totalPixels / 255,
+    },
   };
 }

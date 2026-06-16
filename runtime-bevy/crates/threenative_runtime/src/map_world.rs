@@ -42,7 +42,8 @@ use crate::render_targets::{
 // physically named units and multiplies lighting by camera Exposure, so the
 // native adapter converts through a small three-compat shim instead of exposing
 // raw Bevy light defaults to authored scenes.
-const THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY: f32 = 2.0;
+// Three.js r152+ directional lights use photometric lux; keep Bevy illuminance aligned.
+const THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY: f32 = 1.7;
 const THREE_COMPAT_POINT_LUMENS_PER_CANDELA: f32 = std::f32::consts::TAU * 2.0;
 const THREE_COMPAT_DEFAULT_RANGE: f32 = 1_000.0;
 
@@ -534,10 +535,12 @@ fn ancestor_animation_binding<'a>(
 }
 
 fn color_grading_for_profile(
-    _color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
+    color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
 ) -> ColorGrading {
     let mut grading = ColorGrading::default();
-    grading.global.exposure = -0.7;
+    if color_management.is_some() {
+        grading.global.exposure = -0.7;
+    }
     grading
 }
 
@@ -559,6 +562,7 @@ fn tonemapping_for_profile(
     match color_management.map(|profile| profile.tone_mapping.as_str()) {
         Some("aces") => Tonemapping::AcesFitted,
         Some("none") => Tonemapping::None,
+        None => Tonemapping::None,
         _ => Tonemapping::default(),
     }
 }
@@ -976,6 +980,7 @@ fn add_material(
     asset_server: Option<&AssetServer>,
     render_target_registry: &NativeRenderTargetRegistry,
 ) -> Handle<StandardMaterial> {
+    let unlit_color_display = uses_unlit_emissive_display(material);
     world
         .resource_mut::<Assets<StandardMaterial>>()
         .add(StandardMaterial {
@@ -1001,7 +1006,11 @@ fn add_material(
                 asset_server,
                 render_target_registry,
             ),
-            emissive: emissive_color(material),
+            emissive: if unlit_color_display {
+                LinearRgba::BLACK
+            } else {
+                emissive_color(material)
+            },
             emissive_texture: texture_handle(
                 material.emissive_texture.as_deref(),
                 assets_by_id,
@@ -1036,6 +1045,7 @@ fn add_material(
                 asset_server,
                 render_target_registry,
             ),
+            unlit: unlit_color_display,
             ..Default::default()
         })
 }
@@ -1054,6 +1064,12 @@ fn emissive_color(material: &MaterialIr) -> LinearRgba {
     };
     let linear = color_to_bevy(color).to_linear();
     linear * material.emissive_intensity.unwrap_or(1.0)
+}
+
+fn uses_unlit_emissive_display(material: &MaterialIr) -> bool {
+    material.emissive.is_some()
+        && material.metalness.unwrap_or(0.0) <= 0.0
+        && material.roughness.unwrap_or(1.0) >= 0.99
 }
 
 fn texture_handle(

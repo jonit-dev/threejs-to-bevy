@@ -306,10 +306,12 @@ function applyRendererColorManagement(
   renderer: THREE.WebGLRenderer,
   colorManagement: IAtmosphereProfileIr["colorManagement"] | undefined,
 ): void {
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
   if (colorManagement === undefined) {
+    renderer.toneMapping = THREE.NoToneMapping;
+    renderer.toneMappingExposure = 1;
     return;
   }
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = colorManagement.toneMapping === "aces" ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
   renderer.toneMappingExposure = colorManagement.exposure;
 }
