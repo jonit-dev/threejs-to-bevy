@@ -1,0 +1,30 @@
+{
+  "schema": "threenative.animations",
+  "version": "0.1.0",
+  "transformClips": [
+    {
+      "id": "move",
+      "loop": "repeat",
+      "tracks": [
+        {
+          "target": "cube",
+          "channel": "position",
+          "easing": "linear",
+          "keyframes": [
+            { "timeSeconds": 0, "value": [0, 0, 0] },
+            { "timeSeconds": 1, "value": [2, 0, 0] }
+          ]
+        },
+        {
+          "target": "cube",
+          "channel": "scale",
+          "easing": "step",
+          "keyframes": [
+            { "timeSeconds": 0, "value": [1, 1, 1] },
+            { "timeSeconds": 1, "value": [2, 2, 2] }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -4,7 +4,8 @@ use serde::Serialize;
 use serde_json::Value;
 use threenative_loader::load_bundle;
 use threenative_runtime::animation::{
-    AnimationTraceInput, AnimationTraceObservation, trace_animation_graphs,
+    AnimationTraceInput, AnimationTraceObservation, TransformAnimationSample,
+    sample_transform_animations, trace_animation_graphs,
 };
 
 #[derive(Serialize)]
@@ -12,6 +13,8 @@ struct AnimationTraceReport {
     schema: &'static str,
     version: &'static str,
     observations: Vec<AnimationTraceObservation>,
+    #[serde(skip_serializing_if = "Vec::is_empty", rename = "transformSamples")]
+    transform_samples: Vec<TransformAnimationSample>,
 }
 
 fn main() {
@@ -38,6 +41,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
                 parameters,
             },
         ),
+        transform_samples: sample_transform_animations(&bundle, 0.5),
     };
     if let Some(parent) = output_path.parent() {
         fs::create_dir_all(parent)?;

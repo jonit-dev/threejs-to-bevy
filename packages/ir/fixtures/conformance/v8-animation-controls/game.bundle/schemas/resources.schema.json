@@ -1,0 +1,26 @@
+{
+  "schema": "threenative.resource-schemas",
+  "version": "0.1.0",
+  "schemas": {
+    "AnimationReport": {
+      "fields": {
+        "active": {
+          "kind": "boolean",
+          "required": false
+        },
+        "clip": {
+          "kind": "string",
+          "required": false
+        },
+        "entity": {
+          "kind": "string",
+          "required": false
+        },
+        "stopped": {
+          "kind": "boolean",
+          "required": false
+        }
+      }
+    }
+  }
+}

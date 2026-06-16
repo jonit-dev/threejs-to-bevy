@@ -127,6 +127,27 @@ test("should reject undeclared character move service", () => {
   assert.deepEqual(declared, []);
 });
 
+test("should reject undeclared animation control services", () => {
+  const missing = diagnosePortableSystem({
+    services: ["animation.play"],
+    source: "(ctx) => { ctx.animation.play('player', 'run'); ctx.animation.query('player', 'run'); ctx.animation.stop('player'); }",
+    systemName: "badAnimationControls",
+  });
+
+  assert.deepEqual(
+    missing.map((diagnostic) => diagnostic.path),
+    ["systems/badAnimationControls/services/animation.query", "systems/badAnimationControls/services/animation.stop"],
+  );
+
+  const declared = diagnosePortableSystem({
+    services: ["animation.play", "animation.query", "animation.stop"],
+    source: "(ctx) => { ctx.animation.play('player', 'run'); ctx.animation.query('player', 'run'); ctx.animation.stop('player'); }",
+    systemName: "goodAnimationControls",
+  });
+
+  assert.deepEqual(declared, []);
+});
+
 test("should reject node fs import", () => {
   const diagnostics = diagnosePortableSystem({
     source: "() => require('fs').readFileSync('save.json')",

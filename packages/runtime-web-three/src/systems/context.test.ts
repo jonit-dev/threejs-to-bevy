@@ -141,6 +141,38 @@ test("should log animation play service call", () => {
   });
 });
 
+test("should log animation query and stop service calls", () => {
+  const { context, services } = createSystemContext(makeWorld(), { delta: 0.016, fixedDelta: 0.016 });
+  const player = context.query({ with: ["Transform"], without: [] }).find((entity) => entity.id === "player");
+
+  assert.ok(player);
+  assert.deepEqual(context.animation.query(player, "run"), {
+    active: false,
+    clip: "run",
+    entity: "player",
+    paused: false,
+    stopped: true,
+    timeSeconds: 0,
+  });
+  assert.deepEqual(context.animation.stop(player), { accepted: true, stopped: true });
+  assert.deepEqual(services, [
+    {
+      payload: {
+        request: { clip: "run", entity: "player" },
+        result: { active: false, clip: "run", entity: "player", paused: false, stopped: true, timeSeconds: 0 },
+      },
+      service: "animation.query",
+    },
+    {
+      payload: {
+        request: { entity: "player" },
+        result: { accepted: true, stopped: true },
+      },
+      service: "animation.stop",
+    },
+  ]);
+});
+
 test("should expose character move service call", () => {
   const world = makeWorld();
   const player = world.entities.find((entity) => entity.id === "player");

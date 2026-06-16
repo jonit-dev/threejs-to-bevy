@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 
 use crate::systems_context::NativeSystemContextSnapshot;
 
@@ -399,6 +399,45 @@ pub fn animation_play_payload(entity: &str, clip: &str, options: Value) -> Value
             "options": options,
         },
         "result": { "accepted": true },
+    })
+}
+
+pub fn animation_stop_payload(entity: &str, clip: Option<&str>) -> Value {
+    let request = match clip {
+        Some(clip) => json!({ "clip": clip, "entity": entity }),
+        None => json!({ "entity": entity }),
+    };
+    json!({
+        "request": request,
+        "result": { "accepted": true, "stopped": true },
+    })
+}
+
+pub fn animation_query_payload(entity: &str, clip: Option<&str>) -> Value {
+    let request = match clip {
+        Some(clip) => json!({ "clip": clip, "entity": entity }),
+        None => json!({ "entity": entity }),
+    };
+    let result = match clip {
+        Some(clip) => json!({
+            "active": false,
+            "clip": clip,
+            "entity": entity,
+            "paused": false,
+            "stopped": true,
+            "timeSeconds": 0.0,
+        }),
+        None => json!({
+            "active": false,
+            "entity": entity,
+            "paused": false,
+            "stopped": true,
+            "timeSeconds": 0.0,
+        }),
+    };
+    json!({
+        "request": request,
+        "result": result,
     })
 }
 

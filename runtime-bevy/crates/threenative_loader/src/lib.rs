@@ -37,6 +37,7 @@ pub struct BundleManifest {
 
 #[derive(Debug, Deserialize)]
 pub struct BundleEntry {
+    pub animations: Option<String>,
     pub audio: Option<String>,
     #[serde(rename = "environmentScene")]
     pub environment_scene: Option<String>,
@@ -50,6 +51,7 @@ pub struct BundleEntry {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BundleFiles {
+    pub animations: Option<String>,
     pub assets: String,
     pub component_schemas: Option<String>,
     pub input: Option<String>,
@@ -60,6 +62,7 @@ pub struct BundleFiles {
 
 #[derive(Debug)]
 pub struct LoadedBundle {
+    pub animations: Option<AnimationsIr>,
     pub bundle_path: PathBuf,
     pub assets: AssetsManifest,
     pub audio: Option<AudioIr>,
@@ -74,6 +77,39 @@ pub struct LoadedBundle {
     pub target_profile: TargetProfile,
     pub ui: Option<UiIr>,
     pub world: WorldIr,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AnimationsIr {
+    pub schema: String,
+    pub version: String,
+    #[serde(rename = "transformClips")]
+    pub transform_clips: Vec<TransformAnimationClipIr>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TransformAnimationClipIr {
+    pub id: String,
+    #[serde(rename = "loop")]
+    pub loop_: Option<String>,
+    pub tracks: Vec<TransformAnimationTrackIr>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TransformAnimationTrackIr {
+    pub target: String,
+    pub channel: String,
+    pub easing: Option<String>,
+    pub keyframes: Vec<TransformAnimationKeyframeIr>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TransformAnimationKeyframeIr {
+    pub time_seconds: f32,
+    pub value: Vec<f32>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -1267,6 +1303,14 @@ pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadEr
     hydrate_generated_mesh_assets(&mut assets, bundle_path)?;
     let target_profile: TargetProfile = read_json(bundle_path, &manifest.files.target_profile)?;
     ensure_supported(&target_profile.schema, &target_profile.version)?;
+    let animations = match manifest.entry.animations.as_ref() {
+        Some(file) => {
+            let animations: AnimationsIr = read_json(bundle_path, file)?;
+            ensure_supported(&animations.schema, &animations.version)?;
+            Some(animations)
+        }
+        None => None,
+    };
     let component_schemas = match manifest.files.component_schemas.as_ref() {
         Some(file) => {
             let schemas: SchemaFileIr = read_json(bundle_path, file)?;
@@ -1333,6 +1377,7 @@ pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadEr
     };
 
     Ok(LoadedBundle {
+        animations,
         bundle_path: canonical_bundle_path,
         assets,
         audio,

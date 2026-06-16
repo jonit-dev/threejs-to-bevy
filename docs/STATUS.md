@@ -56,6 +56,25 @@ V8-07 material parity is implemented with focused material/texture evidence:
 validates the bundle, runs conformance, captures web/native screenshots, and
 writes `artifacts/v8/material-parity/verification-report.json`.
 
+V8-08 has started with a transform animation contract slice:
+`animations.ir.json` now carries validated entity transform clips with
+position/rotation/scale tracks, monotonic finite keyframes, `linear`/`step`
+sampling, and `none`/`repeat` loop policy. The SDK can author
+`defineAnimations()` / `transformAnimationClip()` declarations, compiler output
+emits `animation:transform-*` capabilities, web and Bevy loaders consume the
+same bundle document, and `pnpm verify:v8:animation-transform` compares web and
+native transform samples through
+`packages/ir/fixtures/conformance/v8-transform-animation/game.bundle`, writing
+trace evidence under `artifacts/v8/animation-transform/`. The same slice now
+also exposes `animation.query` and `animation.stop` as declared portable system
+services in SDK/IR, web, and Bevy QuickJS contexts; `pnpm
+verify:v8:animation-controls` compares their web/native command-shape and
+service-payload effect logs through
+`packages/ir/fixtures/conformance/v8-animation-controls/game.bundle` and writes
+evidence under `artifacts/v8/animation-controls/`. Stateful runtime playback
+control semantics, broader blending, and rendered particles remain open V8-08
+work.
+
 ## V4 Proves
 
 V4 is complete for the primitive native scripting proof. It proves one
@@ -895,10 +914,16 @@ now resolve model-backed mesh renderers to bundle-local glTF/GLB scene assets;
 web replaces the placeholder geometry and drives the selected visual clip
 through a Three.js `AnimationMixer`, while Bevy attaches a one-clip
 `AnimationGraph` to glTF-created `AnimationPlayer` entities and starts the
-selected clip with the authored loop and speed. Cross-runtime skinned-mesh
-deformation screenshot proof remains the remaining P0 animation gap, along
-with richer graph runtime control, stop/state queries, IK, retargeting, and
-rendered particles.
+selected clip with the authored loop and speed. `pnpm verify:v9:skeletal-animation`
+now proves cross-runtime skinned-mesh deformation from bundle-local glTF clips
+through `examples/v9-skeletal-animation`, web motion screenshots, and native
+Bevy dual-frame capture evidence under `artifacts/v9/skeletal-animation/`.
+V8 transform animation also has exact trace parity for authored entity
+position/rotation/scale tracks through `pnpm verify:v8:animation-transform`,
+plus declared `animation.query` / `animation.stop` command-shape/service-payload
+parity through `pnpm verify:v8:animation-controls`. Richer graph runtime
+control, stateful playback control semantics, broader blending, IK,
+retargeting, and rendered particles remain later animation work.
 
 ## V3 Proves
 

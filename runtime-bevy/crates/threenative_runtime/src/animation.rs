@@ -4,7 +4,7 @@ use serde::Serialize;
 use serde_json::Value;
 use threenative_loader::{
     AnimationGraphIr, AnimationGraphStateIr, AnimationGraphTransitionIr, LoadedBundle,
-    ParticleEmitterIr,
+    ParticleEmitterIr, TransformAnimationTrackIr,
 };
 
 #[derive(Clone, Debug, Default)]
@@ -71,6 +71,16 @@ pub struct ParticleTraceObservation {
     pub spawned: u32,
 }
 
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TransformAnimationSample {
+    pub channel: String,
+    pub clip: String,
+    pub target: String,
+    pub time_seconds: f32,
+    pub value: Vec<f32>,
+}
+
 pub fn trace_animation_graphs(
     bundle: &LoadedBundle,
     input: &AnimationTraceInput,
@@ -97,6 +107,86 @@ pub fn trace_animation_graphs(
         .collect::<Vec<_>>();
     observations.sort_by(|left, right| left.asset.cmp(&right.asset));
     observations
+}
+
+pub fn sample_transform_animations(
+    bundle: &LoadedBundle,
+    time_seconds: f32,
+) -> Vec<TransformAnimationSample> {
+    let Some(animations) = bundle.animations.as_ref() else {
+        return Vec::new();
+    };
+    let mut samples = animations
+        .transform_clips
+        .iter()
+        .flat_map(|clip| {
+            clip.tracks.iter().map(move |track| {
+                let last_time = track
+                    .keyframes
+                    .last()
+                    .map_or(0.0, |keyframe| keyframe.time_seconds);
+                let sample_time = if clip.loop_.as_deref() == Some("repeat") && last_time > 0.0 {
+                    time_seconds % last_time
+                } else {
+                    time_seconds.min(last_time)
+                };
+                TransformAnimationSample {
+                    channel: track.channel.clone(),
+                    clip: clip.id.clone(),
+                    target: track.target.clone(),
+                    time_seconds: round(sample_time),
+                    value: sample_track(track, sample_time),
+                }
+            })
+        })
+        .collect::<Vec<_>>();
+    samples.sort_by(|left, right| {
+        left.clip
+            .cmp(&right.clip)
+            .then(left.target.cmp(&right.target))
+            .then(left.channel.cmp(&right.channel))
+    });
+    samples
+}
+
+fn sample_track(track: &TransformAnimationTrackIr, time_seconds: f32) -> Vec<f32> {
+    let Some(first) = track.keyframes.first() else {
+        return Vec::new();
+    };
+    let Some(last) = track.keyframes.last() else {
+        return Vec::new();
+    };
+    if time_seconds <= first.time_seconds {
+        return first.value.iter().map(|value| round(*value)).collect();
+    }
+    if time_seconds >= last.time_seconds {
+        return last.value.iter().map(|value| round(*value)).collect();
+    }
+    let next_index = track
+        .keyframes
+        .iter()
+        .position(|keyframe| keyframe.time_seconds >= time_seconds)
+        .unwrap_or(track.keyframes.len() - 1);
+    let next = &track.keyframes[next_index];
+    let previous = &track.keyframes[next_index.saturating_sub(1)];
+    if track.easing.as_deref() == Some("step") || next.time_seconds == previous.time_seconds {
+        return previous.value.iter().map(|value| round(*value)).collect();
+    }
+    let alpha =
+        (time_seconds - previous.time_seconds) / (next.time_seconds - previous.time_seconds);
+    previous
+        .value
+        .iter()
+        .enumerate()
+        .map(|(index, value)| {
+            let next_value = next.value.get(index).copied().unwrap_or(*value);
+            round(value + (next_value - value) * alpha)
+        })
+        .collect()
+}
+
+fn round(value: f32) -> f32 {
+    (value * 1_000_000.0).round() / 1_000_000.0
 }
 
 fn trace_asset_animation(

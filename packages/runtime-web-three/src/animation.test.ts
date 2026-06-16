@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { resolve } from "node:path";
 import test from "node:test";
 
-import { animationPlaybackState, traceAnimationGraphs } from "./animation.js";
+import { animationPlaybackState, sampleTransformAnimations, traceAnimationGraphs } from "./animation.js";
 import { loadBundle } from "./loadBundle.js";
 
 test("animation trace should match V7 graph and particle fixture", async () => {
@@ -63,4 +63,42 @@ test("animation playback should resolve active visual clip metadata", async () =
     speed: 1.25,
     timeSeconds: 0.625,
   });
+});
+
+test("transform animation sampler should interpolate and loop deterministically", () => {
+  const samples = sampleTransformAnimations({
+    schema: "threenative.animations",
+    version: "0.1.0",
+    transformClips: [
+      {
+        id: "move",
+        loop: "repeat",
+        tracks: [
+          {
+            channel: "position",
+            easing: "linear",
+            keyframes: [
+              { timeSeconds: 0, value: [0, 0, 0] },
+              { timeSeconds: 1, value: [2, 0, 0] },
+            ],
+            target: "cube",
+          },
+          {
+            channel: "scale",
+            easing: "step",
+            keyframes: [
+              { timeSeconds: 0, value: [1, 1, 1] },
+              { timeSeconds: 1, value: [2, 2, 2] },
+            ],
+            target: "cube",
+          },
+        ],
+      },
+    ],
+  }, { timeSeconds: 1.25 });
+
+  assert.deepEqual(samples, [
+    { channel: "position", clip: "move", target: "cube", timeSeconds: 0.25, value: [0.5, 0, 0] },
+    { channel: "scale", clip: "move", target: "cube", timeSeconds: 0.25, value: [1, 1, 1] },
+  ]);
 });

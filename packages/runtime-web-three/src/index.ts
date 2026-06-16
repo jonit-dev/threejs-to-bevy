@@ -44,4 +44,12 @@ export {
 export { applySystemEffects, validateSystemEffects, type ISystemEffects } from "./systems/effects.js";
 export { createSystemEffectLog, serializeSystemEffectLog, stableSystemEffectLog, type ISystemEffectLog, type ISystemEffectLogEntry } from "./systems/log.js";
 export { loadSystemModule, runSchedule, type ISystemModule, type ISystemRunResult, type SystemFunction } from "./systems/runner.js";
-export { advanceAnimationPlaybackState, traceAnimationGraphs, type IAnimationPlaybackState, type IAnimationTraceInput, type IAnimationTraceObservation } from "./animation.js";
+export {
+  advanceAnimationPlaybackState,
+  sampleTransformAnimations,
+  traceAnimationGraphs,
+  type IAnimationPlaybackState,
+  type IAnimationTraceInput,
+  type IAnimationTraceObservation,
+  type ITransformAnimationSample,
+} from "./animation.js";

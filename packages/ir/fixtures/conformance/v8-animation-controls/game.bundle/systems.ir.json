@@ -1,0 +1,23 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "animationControls",
+      "schedule": "update",
+      "reads": ["Transform"],
+      "writes": [],
+      "queries": [],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": ["AnimationReport"],
+      "resourceWrites": ["AnimationReport"],
+      "services": ["animation.query", "animation.stop"],
+      "script": {
+        "bundle": "scripts.bundle.js",
+        "exportName": "system_animationControls"
+      }
+    }
+  ]
+}
