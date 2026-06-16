@@ -11,7 +11,7 @@ use bevy::{
         Annulus, Capsule3d, Circle as PrimitiveCircle, Cone, ConicalFrustum, Cuboid, Cylinder,
         Extrusion, Rectangle, RegularPolygon, Sphere, Torus,
     },
-    pbr::{NotShadowCaster, NotShadowReceiver},
+    pbr::{FogFalloff, FogSettings, NotShadowCaster, NotShadowReceiver},
     prelude::*,
     render::{
         alpha::AlphaMode,
@@ -26,8 +26,8 @@ use serde_json::Value;
 use thiserror::Error;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{
-    AnimationGraphIr, AnimationGraphTransitionIr, AssetIr, ColorIr, LoadedBundle, MaterialIr,
-    RuntimeConfigIr, WorldEntity,
+    AnimationGraphIr, AnimationGraphTransitionIr, AssetIr, AtmosphereProfileIr, ColorIr,
+    LoadedBundle, MaterialIr, RuntimeConfigIr, WorldEntity,
 };
 
 use crate::assets::texture_uv_transform;
@@ -36,7 +36,8 @@ use crate::cameras::{
     render_layers_for_names, NativeRenderLayerMap,
 };
 use crate::render_targets::{
-    allocate_render_targets, camera_render_target, NativeCustomProjection, NativeRenderTargetRegistry,
+    allocate_render_targets, camera_render_target, NativeCustomProjection,
+    NativeRenderTargetRegistry,
 };
 
 // ThreeNative lights are authored in Three.js-style scalar units. Bevy stores
@@ -125,12 +126,12 @@ impl MapError {
 pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result<(), MapError> {
     ensure_asset_resources(world);
     apply_runtime_config(world, bundle.runtime_config.as_ref());
-    let camera_color_management = bundle
+    let camera_atmosphere = bundle
         .environment_scene
         .as_ref()
         .and_then(|scene| scene.atmosphere.as_ref())
-        .filter(|profile| profile.active)
-        .map(|profile| &profile.color_management);
+        .filter(|profile| profile.active);
+    let camera_color_management = camera_atmosphere.map(|profile| &profile.color_management);
     let bloom_settings = bloom_settings_for_runtime(bundle.runtime_config.as_ref());
     let layer_map = build_render_layer_map(bundle);
     world.insert_resource(layer_map.clone());
@@ -167,6 +168,7 @@ pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result
             &active_camera_set,
             fallback_active.as_deref(),
             camera_color_management,
+            camera_atmosphere,
             bloom_settings.as_ref(),
             &render_target_registry,
         )?;
@@ -264,6 +266,7 @@ fn spawn_entity(
     active_cameras: &std::collections::HashSet<&str>,
     fallback_active_camera: Option<&str>,
     camera_color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
+    camera_atmosphere: Option<&AtmosphereProfileIr>,
     bloom_settings: Option<&BloomSettings>,
     render_target_registry: &NativeRenderTargetRegistry,
 ) -> Result<Entity, MapError> {
@@ -375,6 +378,9 @@ fn spawn_entity(
             transform,
             ..Default::default()
         });
+        if let Some(fog) = fog_settings_for_profile(camera_atmosphere) {
+            spawned.insert(fog);
+        }
         let is_active = if active_cameras.is_empty() {
             fallback_active_camera.map_or(true, |id| id == entity.id)
         } else {
@@ -559,6 +565,28 @@ fn color_grading_for_profile(
         grading.global.exposure = -0.7;
     }
     grading
+}
+
+fn fog_settings_for_profile(profile: Option<&AtmosphereProfileIr>) -> Option<FogSettings> {
+    let fog = profile?.fog.as_ref().filter(|fog| fog.enabled)?;
+    let falloff = match fog.mode.as_str() {
+        "linear" => {
+            let start = fog.near.unwrap_or(0.0).max(0.0);
+            FogFalloff::Linear {
+                start,
+                end: fog.far.unwrap_or(1_000.0).max(start + 0.001),
+            }
+        }
+        "exponential" => FogFalloff::Exponential {
+            density: fog.density.unwrap_or(0.0).max(0.0),
+        },
+        _ => return None,
+    };
+    Some(FogSettings {
+        color: color_to_bevy(&fog.color),
+        falloff,
+        ..Default::default()
+    })
 }
 
 fn exposure_for_profile(

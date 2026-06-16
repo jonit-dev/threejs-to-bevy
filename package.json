@@ -35,6 +35,7 @@
     "verify:v8:animation-controls": "node scripts/verify-v8-animation-controls.mjs",
     "verify:v8:rigid-body-primitive": "node scripts/verify-v8-rigid-body-primitive-trace.mjs",
     "verify:v8:asset-load-gltf-inspection": "node scripts/verify-v8-asset-load-gltf-inspection.mjs",
+    "verify:v8:rendering-quality": "node scripts/verify-v8-rendering-quality.mjs",
     "verify:v9:skeletal-animation": "node scripts/verify-v9-skeletal-animation.mjs"
   },
   "devDependencies": {

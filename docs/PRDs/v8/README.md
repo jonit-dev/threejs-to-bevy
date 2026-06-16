@@ -93,3 +93,14 @@ pnpm verify:v8:material-parity
 The material parity proof builds `examples/v8-material-parity`, validates the
 bundle, runs conformance, captures web/native screenshots, and writes
 `artifacts/v8/material-parity/verification-report.json`.
+
+Rendering-quality fog/sky proof:
+
+```bash
+pnpm verify:v8:rendering-quality
+```
+
+The rendering-quality proof builds `examples/v8-rendering-quality`, validates
+the bundle, captures web/native screenshots, compares sky/foreground/fog-depth
+regions, verifies fog convergence, and writes artifacts under
+`artifacts/v8/rendering-quality/`.
