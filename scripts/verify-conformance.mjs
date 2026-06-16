@@ -13,6 +13,7 @@ export async function verifyConformance(options = {}) {
   const reportPath = options.reportPath ?? resolve(root, "artifacts/conformance/verification-report.json");
   const artifactDir = options.artifactDir ?? resolve(reportPath, "..");
   const basicSceneBundlePath = resolve(root, "packages/ir/fixtures/conformance/basic-scene/game.bundle");
+  const primitiveMappingBundlePath = resolve(root, "packages/ir/fixtures/conformance/primitive-mapping/game.bundle");
   const v6PhysicsEventsBundlePath = resolve(root, "packages/ir/fixtures/conformance/v6-physics-events/game.bundle");
   const v6AudioPlaybackBundlePath = resolve(root, "packages/ir/fixtures/conformance/v6-audio-playback/game.bundle");
   const v6AnimationClipsBundlePath = resolve(root, "packages/ir/fixtures/conformance/v6-animation-clips/game.bundle");
@@ -33,6 +34,8 @@ export async function verifyConformance(options = {}) {
   const v7PackagingTargetProfilesBundlePath = resolve(root, "packages/ir/fixtures/conformance/v7-packaging-target-profiles/game.bundle");
   const v7PerformanceBudgetsBundlePath = resolve(root, "packages/ir/fixtures/conformance/v7-performance-budgets/game.bundle");
   const nativeBasicSceneReportPath = options.nativeBasicSceneReportPath ?? resolve(artifactDir, "basic-scene/bevy.report.json");
+  const nativePrimitiveMappingReportPath =
+    options.nativePrimitiveMappingReportPath ?? resolve(artifactDir, "primitive-mapping/bevy.report.json");
   const nativeV6PhysicsEventsReportPath =
     options.nativeV6PhysicsEventsReportPath ?? resolve(artifactDir, "v6-physics-events/bevy.report.json");
   const nativeV6AnimationClipsReportPath =
@@ -95,6 +98,7 @@ export async function verifyConformance(options = {}) {
     options.v7PerformanceComparisonReportPath ?? resolve(artifactDir, "v7-performance-budgets/comparison.report.json");
   const artifacts = {
     nativeBasicSceneReportPath,
+    nativePrimitiveMappingReportPath,
     nativeV6AnimationClipsReportPath,
     nativeV6AudioPlaybackReportPath,
     nativeV6PhysicsEventsReportPath,
@@ -164,6 +168,22 @@ export async function verifyConformance(options = {}) {
         basicSceneBundlePath,
         "basic-scene",
         nativeBasicSceneReportPath,
+      ],
+      { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
+    ],
+    [
+      "bevy native primitive mapping observation report",
+      "cargo",
+      [
+        "run",
+        "-p",
+        "threenative_runtime",
+        "--bin",
+        "threenative_conformance",
+        "--",
+        primitiveMappingBundlePath,
+        "primitive-mapping",
+        nativePrimitiveMappingReportPath,
       ],
       { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
     ],
@@ -395,7 +415,9 @@ export function compareConformanceReports(left, right, options = {}) {
   compareCatalog(diagnostics, fixture, left.runtime, right.runtime, "$.entities", left.entities, right.entities, { artifactPaths, bundlePath });
   compareCatalog(diagnostics, fixture, left.runtime, right.runtime, "$.resources", left.resources, right.resources, { artifactPaths, bundlePath });
   compareCatalog(diagnostics, fixture, left.runtime, right.runtime, "$.events", left.events, right.events, { artifactPaths, bundlePath });
+  compareValue(diagnostics, fixture, left.runtime, right.runtime, "$.activeCamera", left.activeCamera, right.activeCamera, { artifactPaths, bundlePath });
   compareValue(diagnostics, fixture, left.runtime, right.runtime, "$.audio", left.audio, right.audio, { artifactPaths, bundlePath });
+  compareValue(diagnostics, fixture, left.runtime, right.runtime, "$.runtimeConfig", left.runtimeConfig, right.runtimeConfig, { artifactPaths, bundlePath });
   compareValue(diagnostics, fixture, left.runtime, right.runtime, "$.ui", left.ui, right.ui, { artifactPaths, bundlePath });
   compareValue(diagnostics, fixture, left.runtime, right.runtime, "$.diagnostics", left.diagnostics ?? [], right.diagnostics ?? [], { artifactPaths, bundlePath });
 
@@ -558,6 +580,9 @@ function fixtureForStep(stepName) {
   if (stepName.includes("basic")) {
     return "basic-scene";
   }
+  if (stepName.includes("primitive mapping")) {
+    return "primitive-mapping";
+  }
   if (stepName.includes("V6 physics")) {
     return "v6-physics-events";
   }
@@ -606,6 +631,9 @@ function fixtureForStep(stepName) {
 function artifactPathForStep(stepName, artifacts) {
   if (stepName.includes("basic")) {
     return artifacts.nativeBasicSceneReportPath;
+  }
+  if (stepName.includes("primitive mapping")) {
+    return artifacts.nativePrimitiveMappingReportPath;
   }
   if (stepName.includes("V6 physics")) {
     return artifacts.nativeV6PhysicsEventsReportPath;
@@ -661,6 +689,9 @@ function artifactPathForStep(stepName, artifacts) {
 function bundlePathForStep(stepName) {
   if (stepName.includes("basic")) {
     return "packages/ir/fixtures/conformance/basic-scene/game.bundle";
+  }
+  if (stepName.includes("primitive mapping")) {
+    return "packages/ir/fixtures/conformance/primitive-mapping/game.bundle";
   }
   if (stepName.includes("V6 physics")) {
     return "packages/ir/fixtures/conformance/v6-physics-events/game.bundle";

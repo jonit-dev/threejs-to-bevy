@@ -9,6 +9,7 @@
     "version": { "const": "0.1.0" },
     "renderer": {
       "type": "object",
+      "required": ["antialias"],
       "additionalProperties": false,
       "properties": {
         "antialias": { "enum": ["none", "msaa2", "msaa4", "msaa8"] },

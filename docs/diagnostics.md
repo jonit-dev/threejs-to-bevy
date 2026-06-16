@@ -14,6 +14,12 @@ Prefer diagnostics with:
 - affected entity, asset, material, system, or bookmark ID when available
 - suggested fix when the local diagnostic model supports it
 
+## CLI JSON Streams
+
+When a CLI command runs with `--json`, machine-readable success and failure
+payloads are written to stdout. Stderr is reserved for non-JSON human-readable
+errors and unexpected process-level failures.
+
 ## Namespaces
 
 | Namespace | Meaning |

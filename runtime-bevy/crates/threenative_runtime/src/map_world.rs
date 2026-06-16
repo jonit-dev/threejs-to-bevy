@@ -112,6 +112,7 @@ pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result
         .filter(|profile| profile.active)
         .map(|profile| &profile.color_management);
     let bloom_settings = bloom_settings_for_runtime(bundle.runtime_config.as_ref());
+    let active_camera = active_camera_id(bundle);
 
     let assets_by_id = bundle
         .assets
@@ -133,6 +134,7 @@ pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result
             entity,
             &assets_by_id,
             &materials_by_id,
+            active_camera.as_deref(),
             camera_color_management,
             bloom_settings.as_ref(),
         )?;
@@ -162,7 +164,7 @@ pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result
 fn apply_runtime_config(world: &mut World, config: Option<&RuntimeConfigIr>) {
     let msaa = match config
         .and_then(|config| config.renderer.as_ref())
-        .and_then(|renderer| renderer.antialias.as_deref())
+        .map(|renderer| renderer.antialias.as_str())
     {
         Some("none") => Msaa::Off,
         Some("msaa2") => Msaa::Sample2,
@@ -189,6 +191,16 @@ fn bloom_settings_for_runtime(config: Option<&RuntimeConfigIr>) -> Option<BloomS
     })
 }
 
+fn active_camera_id(bundle: &LoadedBundle) -> Option<String> {
+    bundle
+        .world
+        .resources
+        .get("ActiveCamera")
+        .and_then(|value| value.get("entity"))
+        .and_then(|value| value.as_str())
+        .map(str::to_owned)
+}
+
 pub fn advance_native_animation_playback(world: &mut World, fixed_delta: f32) {
     let mut query = world.query::<&mut NativeAnimationPlayback>();
     for mut playback in query.iter_mut(world) {
@@ -213,6 +225,7 @@ fn spawn_entity(
     entity: &WorldEntity,
     assets_by_id: &HashMap<&str, &AssetIr>,
     materials_by_id: &HashMap<&str, &MaterialIr>,
+    active_camera: Option<&str>,
     camera_color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
     bloom_settings: Option<&BloomSettings>,
 ) -> Result<Entity, MapError> {
@@ -303,6 +316,10 @@ fn spawn_entity(
             })
         };
         let mut spawned = world.spawn(Camera3dBundle {
+            camera: Camera {
+                is_active: active_camera.map_or(true, |id| id == entity.id),
+                ..Default::default()
+            },
             color_grading: color_grading_for_profile(camera_color_management),
             exposure: exposure_for_profile(camera_color_management),
             projection,

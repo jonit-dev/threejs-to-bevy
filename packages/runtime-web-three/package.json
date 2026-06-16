@@ -7,7 +7,7 @@
     ".": "./dist/index.js"
   },
   "scripts": {
-    "build": "pnpm --filter @threenative/ir build && pnpm --filter @threenative/compiler build && tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json",
     "lint": "tsc -p tsconfig.json --noEmit",
     "test": "node scripts/run-tests.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"

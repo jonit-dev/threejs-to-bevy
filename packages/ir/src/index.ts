@@ -10,6 +10,7 @@ export type {
   IConformanceMaterialReport,
   IConformanceReport,
   IConformanceResourceReport,
+  IConformanceRuntimeConfigReport,
   IConformanceUiNodeReport,
   IConformanceUiReport,
 } from "./conformanceReport.js";

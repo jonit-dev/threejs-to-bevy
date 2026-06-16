@@ -1,5 +1,6 @@
 import { cp, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { basename, resolve } from "node:path";
+import { validateBundle } from "@threenative/compiler";
 
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
 
@@ -50,6 +51,19 @@ export async function packageCommand(argv: readonly string[], cwd = process.env.
 
   try {
     const bundlePath = resolve(cwd, bundle);
+    const validation = await validateBundle(bundlePath);
+    if (!validation.ok) {
+      return diagnosticResult(
+        {
+          code: "TN_PACKAGE_BUNDLE_INVALID",
+          diagnostics: validation.diagnostics,
+          message: `Bundle validation failed with ${validation.diagnostics.length} error(s).`,
+          path: bundlePath,
+          severity: "error",
+        },
+        { exitCode: 1, json, stderr: true },
+      );
+    }
     await assertDesktopTarget(bundlePath);
     const packageRoot = resolve(cwd, outDir, "desktop");
     const packagedBundlePath = resolve(packageRoot, basename(bundlePath));

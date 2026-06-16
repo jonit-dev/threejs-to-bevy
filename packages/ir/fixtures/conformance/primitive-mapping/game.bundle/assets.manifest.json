@@ -1,0 +1,18 @@
+{
+  "schema": "threenative.assets",
+  "version": "0.1.0",
+  "assets": [
+    { "id": "mesh.annulus", "kind": "mesh", "format": "generated", "primitive": "annulus", "size": [0.25, 0.75] },
+    { "id": "mesh.box", "kind": "mesh", "format": "generated", "primitive": "box", "size": [1, 1, 1] },
+    { "id": "mesh.capsule", "kind": "mesh", "format": "generated", "primitive": "capsule", "size": [0.35, 1.1] },
+    { "id": "mesh.circle", "kind": "mesh", "format": "generated", "primitive": "circle", "size": [0.5] },
+    { "id": "mesh.cone", "kind": "mesh", "format": "generated", "primitive": "cone", "size": [0.5, 1] },
+    { "id": "mesh.conical-frustum", "kind": "mesh", "format": "generated", "primitive": "conicalFrustum", "size": [0.25, 0.5, 1] },
+    { "id": "mesh.cylinder", "kind": "mesh", "format": "generated", "primitive": "cylinder", "size": [0.45, 1.2] },
+    { "id": "mesh.extruded-rectangle", "kind": "mesh", "format": "generated", "primitive": "extrudedRectangle", "size": [1, 2, 0.5] },
+    { "id": "mesh.plane", "kind": "mesh", "format": "generated", "primitive": "plane", "size": [1, 0.5] },
+    { "id": "mesh.regular-polygon", "kind": "mesh", "format": "generated", "primitive": "regularPolygon", "size": [0.5, 6] },
+    { "id": "mesh.sphere", "kind": "mesh", "format": "generated", "primitive": "sphere", "size": [0.5] },
+    { "id": "mesh.torus", "kind": "mesh", "format": "generated", "primitive": "torus", "size": [0.25, 0.75] }
+  ]
+}

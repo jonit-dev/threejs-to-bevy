@@ -1,8 +1,0 @@
-{
-  "schema": "threenative.target-profile",
-  "targets": [
-    "web",
-    "desktop"
-  ],
-  "version": "0.1.0"
-}

@@ -1,0 +1,127 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "scene.root",
+      "components": {
+        "Transform": { "position": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+      }
+    },
+    {
+      "id": "camera.main",
+      "components": {
+        "Transform": { "position": [0, 4, 8], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Camera": { "kind": "perspective", "fovY": 60, "near": 0.1, "far": 100, "priority": 0 }
+      }
+    },
+    {
+      "id": "light.key",
+      "components": {
+        "Transform": { "position": [3, 4, 2], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Light": { "kind": "directional", "color": "#ffffff", "intensity": 2 }
+      }
+    },
+    {
+      "id": "primitive.annulus",
+      "components": {
+        "Transform": { "position": [-3, 0, -2], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Hierarchy": { "parent": "scene.root" },
+        "MeshRenderer": { "mesh": "mesh.annulus", "material": "mat.primitive" }
+      }
+    },
+    {
+      "id": "primitive.box",
+      "components": {
+        "Transform": { "position": [-1.8, 0, -2], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Hierarchy": { "parent": "scene.root" },
+        "MeshRenderer": { "mesh": "mesh.box", "material": "mat.primitive" }
+      }
+    },
+    {
+      "id": "primitive.capsule",
+      "components": {
+        "Transform": { "position": [-0.6, 0, -2], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Hierarchy": { "parent": "scene.root" },
+        "MeshRenderer": { "mesh": "mesh.capsule", "material": "mat.primitive" }
+      }
+    },
+    {
+      "id": "primitive.circle",
+      "components": {
+        "Transform": { "position": [0.6, 0, -2], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Hierarchy": { "parent": "scene.root" },
+        "MeshRenderer": { "mesh": "mesh.circle", "material": "mat.primitive" }
+      }
+    },
+    {
+      "id": "primitive.cone",
+      "components": {
+        "Transform": { "position": [1.8, 0, -2], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Hierarchy": { "parent": "scene.root" },
+        "MeshRenderer": { "mesh": "mesh.cone", "material": "mat.primitive" }
+      }
+    },
+    {
+      "id": "primitive.conical-frustum",
+      "components": {
+        "Transform": { "position": [3, 0, -2], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Hierarchy": { "parent": "scene.root" },
+        "MeshRenderer": { "mesh": "mesh.conical-frustum", "material": "mat.primitive" }
+      }
+    },
+    {
+      "id": "primitive.cylinder",
+      "components": {
+        "Transform": { "position": [-3, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Hierarchy": { "parent": "scene.root" },
+        "MeshRenderer": { "mesh": "mesh.cylinder", "material": "mat.primitive" }
+      }
+    },
+    {
+      "id": "primitive.extruded-rectangle",
+      "components": {
+        "Transform": { "position": [-1.8, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Hierarchy": { "parent": "scene.root" },
+        "MeshRenderer": { "mesh": "mesh.extruded-rectangle", "material": "mat.primitive" }
+      }
+    },
+    {
+      "id": "primitive.plane",
+      "components": {
+        "Transform": { "position": [-0.6, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Hierarchy": { "parent": "scene.root" },
+        "MeshRenderer": { "mesh": "mesh.plane", "material": "mat.primitive" }
+      }
+    },
+    {
+      "id": "primitive.regular-polygon",
+      "components": {
+        "Transform": { "position": [0.6, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Hierarchy": { "parent": "scene.root" },
+        "MeshRenderer": { "mesh": "mesh.regular-polygon", "material": "mat.primitive" }
+      }
+    },
+    {
+      "id": "primitive.sphere",
+      "components": {
+        "Transform": { "position": [1.8, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Hierarchy": { "parent": "scene.root" },
+        "MeshRenderer": { "mesh": "mesh.sphere", "material": "mat.primitive" }
+      }
+    },
+    {
+      "id": "primitive.torus",
+      "components": {
+        "Transform": { "position": [3, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Hierarchy": { "parent": "scene.root" },
+        "MeshRenderer": { "mesh": "mesh.torus", "material": "mat.primitive" }
+      }
+    }
+  ],
+  "resources": {
+    "ActiveCamera": { "entity": "camera.main" }
+  },
+  "events": {},
+  "prefabs": []
+}

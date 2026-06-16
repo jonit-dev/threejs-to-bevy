@@ -29,6 +29,7 @@ import { Bar, Button, Column, Text, TouchControl, Ui } from "@threenative/ui";
 const RunnerBody = defineComponent("RunnerBody", {
   grounded: "boolean",
   lane: "integer",
+  laneInputHeld: "boolean",
   yVelocity: "number",
   z: "number",
 });
@@ -137,7 +138,7 @@ const input = defineInputMap({
 });
 
 const world = new World()
-  .spawn("player", RunnerBody({ grounded: true, lane: 1, yVelocity: 0, z: 2.5 }))
+  .spawn("player", RunnerBody({ grounded: true, lane: 1, laneInputHeld: false, yVelocity: 0, z: 2.5 }))
   .spawn("obstacle.1", Obstacle({ lane: 0, z: -8 }))
   .spawn("obstacle.2", Obstacle({ lane: 2, z: -15 }))
   .spawn("obstacle.3", Obstacle({ lane: 1, z: -23 }))
@@ -178,11 +179,16 @@ const world = new World()
         const state = context.resources.get("RunnerState") ?? { distance: 0, health: 100, score: 0, speed: 7.5 };
         const runner = playerEntity.get("RunnerBody");
         const laneInput = context.input.axis("MoveLane");
+        const laneLeftPressed = laneInput < -0.5 || context.input.pressed("LaneLeft");
+        const laneRightPressed = laneInput > 0.5 || context.input.pressed("LaneRight");
+        const laneInputHeld = laneLeftPressed || laneRightPressed;
         let lane = runner.lane;
-        if (laneInput < -0.5 || context.input.pressed("LaneLeft")) {
-          lane = Math.max(0, lane - 1);
-        } else if (laneInput > 0.5 || context.input.pressed("LaneRight")) {
-          lane = Math.min(2, lane + 1);
+        if (!runner.laneInputHeld) {
+          if (laneLeftPressed) {
+            lane = Math.max(0, lane - 1);
+          } else if (laneRightPressed) {
+            lane = Math.min(2, lane + 1);
+          }
         }
 
         let yVelocity = runner.yVelocity;
@@ -198,7 +204,7 @@ const world = new World()
         }
 
         playerEntity.patch("Transform", { position: [lanes[lane], y, runner.z] });
-        playerEntity.patch("RunnerBody", { grounded, lane, yVelocity, z: runner.z });
+        playerEntity.patch("RunnerBody", { grounded, lane, laneInputHeld, yVelocity, z: runner.z });
 
         let score = state.score;
         let health = state.health;
@@ -252,7 +258,7 @@ const ui = Ui({
     layout: { align: "stretch", rowGap: 8, width: 184 },
     children: [
       Text({ id: "hud.title", text: "Crystal Runner" }),
-      Bar({ id: "hud.health", binding: { kind: "resource", resource: "RunnerState", field: "health" }, max: 100 }),
+      Bar({ id: "hud.health", accessibilityLabel: "Health", binding: { kind: "resource", resource: "RunnerState", field: "health" }, max: 100 }),
       Button({ action: "Pause", focusable: true, id: "hud.pause", label: "Pause", layout: { width: 184 } }),
       TouchControl({ action: "Jump", id: "hud.jump", label: "Jump", layout: { width: 184 } }),
       TouchControl({ action: "LaneLeft", id: "hud.left", label: "Left", layout: { width: 184 } }),

@@ -1,8 +1,9 @@
 use std::path::PathBuf;
 
 use bevy::prelude::*;
+use serde_json::json;
 use threenative_components::ThreeNativeId;
-use threenative_loader::load_bundle;
+use threenative_loader::{WorldEntity, load_bundle};
 use threenative_runtime::map_world::map_bundle_into_world;
 
 #[test]
@@ -22,6 +23,43 @@ fn should_spawn_stable_ids_for_cube_fixture() {
     assert!(ids.contains(&"cube.main"));
     assert!(ids.contains(&"camera.main"));
     assert!(ids.contains(&"light.key"));
+}
+
+#[test]
+fn should_activate_only_declared_active_camera() {
+    let mut bundle = load_bundle(cube_fixture()).expect("cube fixture should load");
+    let secondary = WorldEntity {
+        id: "camera.ui".to_owned(),
+        components: serde_json::from_value(json!({
+            "Camera": {
+                "kind": "orthographic",
+                "near": 0.1,
+                "far": 100,
+                "size": 4
+            },
+            "Transform": {
+                "position": [0, 3, 5]
+            }
+        }))
+        .expect("camera components should deserialize"),
+    };
+    bundle.world.entities.push(secondary);
+    bundle
+        .world
+        .resources
+        .insert("ActiveCamera".to_owned(), json!({ "entity": "camera.ui" }));
+    let mut app = App::new();
+
+    map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map");
+
+    let mut query = app.world_mut().query::<(&ThreeNativeId, &Camera)>();
+    let cameras = query
+        .iter(app.world())
+        .map(|(id, camera)| (id.0.as_str(), camera.is_active))
+        .collect::<Vec<_>>();
+
+    assert!(cameras.contains(&("camera.main", false)));
+    assert!(cameras.contains(&("camera.ui", true)));
 }
 
 #[test]

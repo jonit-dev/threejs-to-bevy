@@ -252,7 +252,7 @@ test("should reject non-empty destination", async () => {
     await writeFile(join(destination, "keep.txt"), "do not overwrite");
 
     const result = await createProject(["existing", "--json"], { cwd: root });
-    const payload = JSON.parse(result.stderr ?? "{}") as { code: string };
+    const payload = JSON.parse(result.stdout) as { code: string };
 
     assert.equal(result.exitCode, 1);
     assert.equal(payload.code, "TN_CREATE_DESTINATION_NOT_EMPTY");

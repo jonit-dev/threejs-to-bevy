@@ -3,12 +3,12 @@ import { tmpdir } from "node:os";
 import { basename, dirname, resolve } from "node:path";
 import {
   diffEditorProjectSnapshots,
-  validateBundle,
   validateEditorProjectSnapshot,
   type IBundleManifest,
   type IEditorProjectSnapshot,
   type IIrDiagnostic,
 } from "@threenative/ir";
+import { validateBundle } from "@threenative/compiler";
 
 import { diagnosticResult, type ICommandResult, type IDiagnosticPayload } from "../diagnostics.js";
 
@@ -17,6 +17,7 @@ interface IEditorOptions {
 }
 
 type JsonRecord = Record<string, unknown>;
+type EditorDiagnostic = Omit<IIrDiagnostic, "value"> & { value?: unknown };
 
 const usage = [
   "tn editor snapshot --bundle <path> [--out <path>] [--json]",
@@ -74,9 +75,10 @@ async function applyCommand(argv: readonly string[], cwd: string, json: boolean)
     return diagnosticsResult("TN_EDITOR_APPLY_INVALID", "Editor snapshot is invalid.", snapshot.diagnostics, json);
   }
 
-  const tempRoot = await mkdtemp(resolve(tmpdir(), "tn-editor-apply-"));
-  const tempBundle = resolve(tempRoot, "game.bundle");
+  let tempRoot: string | undefined;
   try {
+    tempRoot = await mkdtemp(resolve(tmpdir(), "tn-editor-apply-"));
+    const tempBundle = resolve(tempRoot, "game.bundle");
     await cp(bundlePath, tempBundle, { recursive: true });
     await writeSnapshotDocuments(snapshot.value, tempBundle);
     const validation = await validateBundle(tempBundle);
@@ -84,8 +86,22 @@ async function applyCommand(argv: readonly string[], cwd: string, json: boolean)
       return diagnosticsResult("TN_EDITOR_APPLY_BUNDLE_INVALID", "Applied editor snapshot produced an invalid bundle.", validation.diagnostics, json);
     }
     await writeSnapshotDocuments(snapshot.value, bundlePath);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return diagnosticResult(
+      {
+        code: "TN_EDITOR_APPLY_FAILED",
+        message,
+        path: bundlePath,
+        severity: "error",
+        suggestion: "Check that the bundle path exists and is writable, then retry editor apply.",
+      },
+      { exitCode: 1, json, stderr: !json },
+    );
   } finally {
-    await rm(tempRoot, { force: true, recursive: true });
+    if (tempRoot !== undefined) {
+      await rm(tempRoot, { force: true, recursive: true });
+    }
   }
 
   const documentPaths = Object.keys(snapshot.value.documents).sort();
@@ -251,7 +267,7 @@ async function readJsonFile<T>(
   }
 }
 
-function diagnosticsResult(code: string, message: string, diagnostics: IIrDiagnostic[], json: boolean): ICommandResult {
+function diagnosticsResult(code: string, message: string, diagnostics: readonly EditorDiagnostic[], json: boolean): ICommandResult {
   const payload: IDiagnosticPayload = {
     code,
     diagnostics: diagnostics.map(editorDiagnosticPayload),
@@ -272,7 +288,7 @@ function diagnosticsResult(code: string, message: string, diagnostics: IIrDiagno
   };
 }
 
-function editorDiagnosticPayload(diagnostic: IIrDiagnostic): IDiagnosticPayload {
+function editorDiagnosticPayload(diagnostic: EditorDiagnostic): IDiagnosticPayload {
   return {
     code: diagnostic.code,
     message: diagnostic.message,

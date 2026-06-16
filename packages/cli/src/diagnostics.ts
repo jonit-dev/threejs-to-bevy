@@ -19,7 +19,7 @@ export function diagnosticResult(
     options.exitCode === 0 || payload.severity !== undefined ? payload : { ...payload, severity: "error" as const };
   const body = options.json ? `${JSON.stringify(normalizedPayload, null, 2)}\n` : `${payload.message}\n`;
 
-  if (options.stderr === true) {
+  if (!options.json && options.stderr === true) {
     return {
       exitCode: options.exitCode,
       stderr: body,

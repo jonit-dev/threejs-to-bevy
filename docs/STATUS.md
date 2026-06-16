@@ -213,6 +213,11 @@ WebGL antialias enabled; and Bevy maps the same contract to `Msaa::Off`,
 `Sample2`, `Sample4`, or `Sample8`. FXAA, TAA, SMAA, and visual
 post-processing antialias comparisons remain future work.
 
+Runtime-config drift checks now include conformance report observations:
+web and Bevy reports preserve authored renderer antialias and bloom settings,
+and `verify:conformance` compares `runtimeConfig` alongside assets, materials,
+entities, resources, events, audio, UI, and diagnostics.
+
 Post-V7 bloom coverage now promotes a small runtime renderer bloom contract:
 `defineRuntimeConfig({ renderer: { bloom } })` emits `enabled`, `intensity`,
 and `threshold`; IR validation rejects malformed bloom values; web routes
@@ -220,6 +225,17 @@ enabled bloom through an `EffectComposer`/`UnrealBloomPass` pipeline; and Bevy
 maps enabled bloom onto camera `BloomSettings` with matching intensity and
 threshold. Advanced post-processing stacks and renderer-specific bloom radius
 controls remain future work.
+
+Post-V7 camera parity now also pins Bevy render-camera activation to
+`world.resources.ActiveCamera` when present, matching the web runtime fallback
+of selecting the first camera and then applying the active-camera resource.
+Web and Bevy conformance reports now include the selected active camera ID so
+`verify:conformance` can catch drift in multi-camera scenes.
+
+Post-V7 primitive mapping parity now includes the shared `primitive-mapping`
+conformance fixture. It covers all promoted generated mesh primitives across
+web Three.js and native Bevy report paths so changes to the hand-maintained
+runtime primitive tables have a fixture-backed drift surface.
 
 Post-V7 UI layout coverage now promotes two practical HUD layering controls:
 UI layout metadata accepts validated `overflow: "hidden" | "visible"` and

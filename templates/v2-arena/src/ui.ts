@@ -6,7 +6,7 @@ export const arenaUi = Ui({
     id: "hud.stack",
     children: [
       Text({ id: "hud.health.label", text: "Health" }),
-      Bar({ id: "hud.health", max: 100, binding: { kind: "component", entity: "player", component: "Health", field: "current" } }),
+      Bar({ id: "hud.health", accessibilityLabel: "Health", max: 100, binding: { kind: "component", entity: "player", component: "Health", field: "current" } }),
       Button({ id: "hud.pause", label: "Pause", action: "Pause", focusable: true }),
       TouchControl({ id: "hud.attack", label: "Attack", action: "Attack" }),
     ],

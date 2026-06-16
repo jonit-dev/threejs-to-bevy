@@ -48,7 +48,7 @@ test("should reject a missing scaffold entry", async () => {
     );
 
     const result = await validateProject(["--json"], { cwd: root });
-    const payload = JSON.parse(result.stderr ?? "{}") as { code: string; severity: string };
+    const payload = JSON.parse(result.stdout) as { code: string; severity: string };
 
     assert.equal(result.exitCode, 1);
     assert.equal(payload.code, "TN_VALIDATE_ENTRY_MISSING");

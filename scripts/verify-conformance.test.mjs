@@ -78,6 +78,30 @@ test("should localize audio observation mismatches", () => {
   assert.equal(result.diagnostics[0]?.right, "other.sound");
 });
 
+test("should localize runtime config mismatches", () => {
+  const result = compareConformanceReports(
+    report("web-three", { antialias: "msaa4" }),
+    report("bevy", { antialias: "msaa8" }),
+  );
+
+  assert.equal(result.ok, false);
+  assert.equal(result.diagnostics[0]?.path, "$.runtimeConfig.renderer.antialias");
+  assert.equal(result.diagnostics[0]?.left, "msaa4");
+  assert.equal(result.diagnostics[0]?.right, "msaa8");
+});
+
+test("should localize active camera mismatches", () => {
+  const result = compareConformanceReports(
+    report("web-three", { activeCamera: "camera.main" }),
+    report("bevy", { activeCamera: "camera.ui" }),
+  );
+
+  assert.equal(result.ok, false);
+  assert.equal(result.diagnostics[0]?.path, "$.activeCamera");
+  assert.equal(result.diagnostics[0]?.left, "camera.main");
+  assert.equal(result.diagnostics[0]?.right, "camera.ui");
+});
+
 test("should fail when required V7 observations are silently missing", () => {
   const left = report("web-three");
   const right = report("bevy");
@@ -132,9 +156,13 @@ test("should pass matching gate commands and save report path", async () => {
     });
 
     assert.equal(result.ok, true);
-    assert.equal(result.steps.length, 20);
+    assert.equal(result.steps.length, 21);
     assert.equal(result.reportPath.endsWith("artifacts/conformance/verification-report.json"), true);
     assert.equal(result.artifacts.nativeBasicSceneReportPath.endsWith("artifacts/conformance/basic-scene/bevy.report.json"), true);
+    assert.equal(
+      result.artifacts.nativePrimitiveMappingReportPath.endsWith("artifacts/conformance/primitive-mapping/bevy.report.json"),
+      true,
+    );
     assert.equal(
       result.artifacts.nativeV6AnimationClipsReportPath.endsWith("artifacts/conformance/v6-animation-clips/bevy.report.json"),
       true,
@@ -233,8 +261,12 @@ test("should pass matching gate commands and save report path", async () => {
     assert.equal(result.artifacts.v7PerformanceComparisonReportPath.endsWith("artifacts/conformance/v7-performance-budgets/comparison.report.json"), true);
     const report = JSON.parse(await readFile(result.reportPath, "utf8"));
     assert.equal(report.status, "pass");
-    assert.equal(report.steps.length, 20);
+    assert.equal(report.steps.length, 21);
     assert.equal(report.artifacts.nativeBasicSceneReportPath.endsWith("artifacts/conformance/basic-scene/bevy.report.json"), true);
+    assert.equal(
+      report.artifacts.nativePrimitiveMappingReportPath.endsWith("artifacts/conformance/primitive-mapping/bevy.report.json"),
+      true,
+    );
     assert.equal(
       report.artifacts.nativeV6AnimationClipsReportPath.endsWith("artifacts/conformance/v6-animation-clips/bevy.report.json"),
       true,
@@ -338,6 +370,7 @@ test("should pass matching gate commands and save report path", async () => {
 
 function report(runtime, overrides = {}) {
   return {
+    activeCamera: overrides.activeCamera ?? "camera.main",
     assets: [
       {
         format: "generated",
@@ -400,5 +433,11 @@ function report(runtime, overrides = {}) {
       },
     ],
     runtime,
+    runtimeConfig: {
+      renderer: {
+        antialias: overrides.antialias ?? "msaa4",
+        bloom: { enabled: true, intensity: 0.25, threshold: 0.8 },
+      },
+    },
   };
 }

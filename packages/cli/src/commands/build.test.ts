@@ -31,7 +31,7 @@ test("build should emit structured scripts diagnostic", async () => {
     );
 
     const result = await buildCommand(["--json"], root);
-    const payload = JSON.parse(result.stderr ?? "{}") as { code: string; severity: string; suggestion: string };
+    const payload = JSON.parse(result.stdout) as { code: string; severity: string; suggestion: string };
 
     assert.equal(result.exitCode, 1);
     assert.equal(payload.code, "TN_SCRIPT_DOM_API_UNSUPPORTED");
@@ -67,7 +67,7 @@ test("build should emit structured portable script diagnostic", async () => {
     );
 
     const result = await buildCommand(["--json"], root);
-    const payload = JSON.parse(result.stderr ?? "{}") as { code: string; severity: string; suggestion: string };
+    const payload = JSON.parse(result.stdout) as { code: string; severity: string; suggestion: string };
 
     assert.equal(result.exitCode, 1);
     assert.equal(payload.code, "TN_SCRIPT_NODE_API_UNSUPPORTED");

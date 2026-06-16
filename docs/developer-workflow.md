@@ -309,6 +309,10 @@ Required after V1 before the broader MVP:
 - Android build smoke test once mobile packaging is in scope.
 - iOS build smoke test when iOS packaging is in scope.
 
+Root verification is split by cost and runtime scope: `pnpm verify` is the
+default JavaScript workspace gate, while `pnpm verify:all` runs that gate plus
+shared web/native conformance and the Bevy runtime Cargo tests.
+
 V7 performance evidence is target-profile driven. The current fixed reports
 record frame/load/draw/entity/package-size metrics in JSON, separate warnings
 from hard failures, and include metric, measured value, threshold, and artifact

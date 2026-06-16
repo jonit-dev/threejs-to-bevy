@@ -131,6 +131,73 @@ fn should_report_basic_scene_conformance_semantics() {
 }
 
 #[test]
+fn should_report_promoted_generated_primitive_mapping_semantics() {
+    let fixture = load_conformance_fixture("primitive-mapping");
+    let mut app = App::new();
+
+    map_bundle_into_world(app.world_mut(), &fixture.bundle).unwrap_or_else(|error| {
+        panic!(
+            "failed to map conformance fixture '{}' at '{}': {}",
+            fixture.name,
+            fixture.bundle_path.display(),
+            error
+        )
+    });
+    let report = report_bevy_conformance(app.world_mut(), &fixture.bundle, fixture.name);
+
+    assert_eq!(report.fixture, "primitive-mapping");
+    assert_eq!(report.runtime, "bevy");
+    assert!(report.diagnostics.is_empty());
+
+    let mut primitive_assets = report
+        .assets
+        .iter()
+        .filter(|asset| asset.kind == "mesh")
+        .map(|asset| {
+            (
+                asset.id.clone(),
+                asset.primitive.as_deref().unwrap_or_default().to_owned(),
+            )
+        })
+        .collect::<Vec<_>>();
+    primitive_assets.sort_by(|left, right| left.0.cmp(&right.0));
+    assert_eq!(
+        primitive_assets,
+        vec![
+            ("mesh.annulus".to_owned(), "annulus".to_owned()),
+            ("mesh.box".to_owned(), "box".to_owned()),
+            ("mesh.capsule".to_owned(), "capsule".to_owned()),
+            ("mesh.circle".to_owned(), "circle".to_owned()),
+            ("mesh.cone".to_owned(), "cone".to_owned()),
+            (
+                "mesh.conical-frustum".to_owned(),
+                "conicalFrustum".to_owned()
+            ),
+            ("mesh.cylinder".to_owned(), "cylinder".to_owned()),
+            (
+                "mesh.extruded-rectangle".to_owned(),
+                "extrudedRectangle".to_owned()
+            ),
+            ("mesh.plane".to_owned(), "plane".to_owned()),
+            (
+                "mesh.regular-polygon".to_owned(),
+                "regularPolygon".to_owned()
+            ),
+            ("mesh.sphere".to_owned(), "sphere".to_owned()),
+            ("mesh.torus".to_owned(), "torus".to_owned()),
+        ]
+    );
+    for (mesh, _) in primitive_assets {
+        let entity = report
+            .entities
+            .iter()
+            .find(|candidate| candidate.mesh.as_deref() == Some(mesh.as_str()))
+            .unwrap_or_else(|| panic!("entity should reference {mesh}"));
+        assert_eq!(entity.material.as_deref(), Some("mat.primitive"), "{mesh}");
+    }
+}
+
+#[test]
 fn should_report_resource_and_event_conformance_observations() {
     let fixture = load_conformance_fixture("v6-resources-events");
     let mut app = App::new();

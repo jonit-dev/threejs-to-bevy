@@ -65,6 +65,24 @@ test("should include capability tags for each conformance fixture", async () => 
     "rendering:camera.perspective",
     "transform:hierarchy",
   ]);
+  assertFixtureCapabilities(byName, "primitive-mapping", [
+    "rendering:mesh.primitive.annulus",
+    "rendering:mesh.primitive.box",
+    "rendering:mesh.primitive.capsule",
+    "rendering:mesh.primitive.circle",
+    "rendering:mesh.primitive.cone",
+    "rendering:mesh.primitive.conicalFrustum",
+    "rendering:mesh.primitive.cylinder",
+    "rendering:mesh.primitive.extrudedRectangle",
+    "rendering:mesh.primitive.plane",
+    "rendering:mesh.primitive.regularPolygon",
+    "rendering:mesh.primitive.sphere",
+    "rendering:mesh.primitive.torus",
+    "rendering:material.standard",
+    "rendering:light.directional",
+    "rendering:camera.perspective",
+    "transform:hierarchy",
+  ]);
   assertFixtureCapabilities(byName, "v5-drift-surface", [
     "asset:model.gltf",
     "asset:texture.png",

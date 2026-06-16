@@ -6,6 +6,62 @@ import test from "node:test";
 
 import { validateBundle } from "./validate.js";
 
+test("should return diagnostics for malformed manifest shape", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-manifest-shape-"));
+  try {
+    await writeJson(root, "manifest.json", {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      entry: {},
+      files: { targetProfile: "target.profile.json" },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_WORLD_ENTRY_INVALID"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_MANIFEST_PATH_INVALID"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should return diagnostics for malformed runtime config shape", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-runtime-shape-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "manifest.json", {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "schema-test",
+      requiredCapabilities: {},
+      entry: { world: "world.ir.json" },
+      files: {
+        assets: "assets.manifest.json",
+        materials: "materials.ir.json",
+        targetProfile: "target.profile.json",
+        componentSchemas: "schemas/components.schema.json",
+        runtimeConfig: "runtime.config.json",
+      },
+    });
+    await writeJson(root, "runtime.config.json", {
+      schema: "threenative.runtime-config",
+      version: "0.1.0",
+      renderer: { bloom: true },
+      window: {},
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_RUNTIME_TIME_INVALID"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_RUNTIME_RENDERER_ANTIALIAS_INVALID"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "runtime.config.json/renderer/bloom"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject component values outside schema", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-schema-"));
   try {

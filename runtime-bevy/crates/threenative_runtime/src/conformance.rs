@@ -4,8 +4,8 @@ use bevy::{prelude::*, render::camera::ScalingMode};
 use serde::Serialize;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{
-    AnimationClipIr, AssetIr, ColorIr, EnvironmentSceneIr, LoadedBundle, MaterialIr, UiIr,
-    WorldEntity,
+    AnimationClipIr, AssetIr, ColorIr, EnvironmentSceneIr, LoadedBundle, MaterialIr, RuntimeConfigIr,
+    UiIr, WorldEntity,
 };
 
 use crate::audio::{self, NativeAudioCommand, NativeAudioCommandKind, NativeAudioDiagnostic};
@@ -15,6 +15,8 @@ use crate::ui::{UiDiagnostic, build_native_ui};
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ConformanceReport {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub active_camera: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub audio: Option<ConformanceAudioReport>,
     pub assets: Vec<ConformanceAssetReport>,
@@ -28,7 +30,33 @@ pub struct ConformanceReport {
     pub resources: Vec<ConformanceResourceReport>,
     pub runtime: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub runtime_config: Option<ConformanceRuntimeConfigReport>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub ui: Option<ConformanceUiReport>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConformanceRuntimeConfigReport {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub renderer: Option<RuntimeRendererReport>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeRendererReport {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub antialias: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bloom: Option<RuntimeBloomReport>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeBloomReport {
+    pub enabled: bool,
+    pub intensity: f32,
+    pub threshold: f32,
 }
 
 #[derive(Debug, Serialize)]
@@ -364,6 +392,7 @@ pub fn report_bevy_conformance(
     let ui_report = report_ui(bundle.ui.as_ref());
 
     ConformanceReport {
+        active_camera: report_active_camera(world),
         audio: report_audio(audio_observation.as_ref()),
         assets: bundle
             .assets
@@ -384,8 +413,32 @@ pub fn report_bevy_conformance(
             .collect::<Vec<_>>(),
         resources: report_resources(bundle),
         runtime: "bevy".to_owned(),
+        runtime_config: report_runtime_config(bundle.runtime_config.as_ref()),
         ui: ui_report.and_then(|report| report.report),
     }
+}
+
+fn report_active_camera(world: &mut World) -> Option<String> {
+    let mut query = world.query::<(&ThreeNativeId, &Camera)>();
+    query
+        .iter(world)
+        .find_map(|(id, camera)| camera.is_active.then(|| id.0.clone()))
+}
+
+fn report_runtime_config(
+    config: Option<&RuntimeConfigIr>,
+) -> Option<ConformanceRuntimeConfigReport> {
+    let renderer = config.and_then(|config| config.renderer.as_ref())?;
+    Some(ConformanceRuntimeConfigReport {
+        renderer: Some(RuntimeRendererReport {
+            antialias: Some(renderer.antialias.clone()),
+            bloom: renderer.bloom.as_ref().map(|bloom| RuntimeBloomReport {
+                enabled: bloom.enabled,
+                intensity: bloom.intensity,
+                threshold: bloom.threshold,
+            }),
+        }),
+    })
 }
 
 struct UiReportResult {

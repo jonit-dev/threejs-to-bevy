@@ -145,6 +145,81 @@ test("editor apply should reject snapshots with non-bundle-relative document pat
   }
 });
 
+test("editor apply should reject compiler-level bundle validation failures", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-editor-apply-ref-invalid-"));
+  try {
+    const bundlePath = join(root, "game.bundle");
+    const snapshotPath = join(root, "editor.project.json");
+    await writeBundleFixture(bundlePath);
+    await writeFile(
+      snapshotPath,
+      `${JSON.stringify(
+        {
+          documents: {
+            "world.ir.json": {
+              entities: [
+                {
+                  components: { MeshRenderer: { material: "missing.material", mesh: "missing.mesh" } },
+                  id: "player",
+                },
+              ],
+              schema: "threenative.world",
+              version: "0.1.0",
+            },
+          },
+          name: "edited",
+          schema: "threenative.editor-project",
+          version: "0.1.0",
+        },
+        null,
+        2,
+      )}\n`,
+    );
+
+    const result = await editorCommand(["apply", "--snapshot", snapshotPath, "--bundle", bundlePath, "--json"], { cwd: root });
+    const payload = JSON.parse(result.stdout) as { code: string; diagnostics: Array<{ code: string }> };
+
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.code, "TN_EDITOR_APPLY_BUNDLE_INVALID");
+    assert.equal(payload.diagnostics.some((diagnostic) => diagnostic.code === "TN-IR-2104"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("editor apply should wrap missing bundle failures in structured json", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-editor-apply-missing-bundle-"));
+  try {
+    const snapshotPath = join(root, "editor.project.json");
+    await writeFile(
+      snapshotPath,
+      `${JSON.stringify(
+        {
+          documents: {
+            "world.ir.json": { entities: [], schema: "threenative.world", version: "0.1.0" },
+          },
+          name: "edited",
+          schema: "threenative.editor-project",
+          version: "0.1.0",
+        },
+        null,
+        2,
+      )}\n`,
+    );
+
+    const result = await editorCommand(["apply", "--snapshot", snapshotPath, "--bundle", "missing.bundle", "--json"], { cwd: root });
+    const payload = JSON.parse(result.stdout) as { code: string; message: string; path: string };
+
+    assert.equal(result.exitCode, 1);
+    assert.equal(result.stderr, undefined);
+    assert.equal(payload.code, "TN_EDITOR_APPLY_FAILED");
+    assert.equal(payload.path, join(root, "missing.bundle"));
+    assert.match(payload.message, /no such file|ENOENT/i);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 function editorSnapshot(entityName: string): unknown {
   return {
     documents: {

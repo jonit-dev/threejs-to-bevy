@@ -10,10 +10,12 @@ import type {
   IConformanceMaterialReport,
   IConformanceReport,
   IConformanceResourceReport,
+  IConformanceRuntimeConfigReport,
   IConformanceUiNodeReport,
   IConformanceUiReport,
   IEnvironmentSceneIr,
   IMaterialIr,
+  IRuntimeConfigIr,
   IUiIr,
   IWorldEntity,
   Quat,
@@ -37,6 +39,7 @@ export function reportWebConformance(
   }
 
   return {
+    activeCamera: activeCameraId(mapped),
     audio: bundle.audio === undefined ? undefined : reportAudio(bundle.audio, bundle.world.events ?? {}),
     assets: bundle.assets.assets.map(reportAsset).sort((left, right) => left.id.localeCompare(right.id)),
     diagnostics: mapped.diagnostics,
@@ -49,7 +52,29 @@ export function reportWebConformance(
     materials: bundle.materials.materials.map(reportMaterial).sort((left, right) => left.id.localeCompare(right.id)),
     resources: reportResources(bundle.world.resources ?? {}),
     runtime: "web-three",
+    runtimeConfig: reportRuntimeConfig(bundle.runtimeConfig),
     ui: bundle.ui === undefined ? undefined : reportUi(bundle.ui),
+  };
+}
+
+function activeCameraId(mapped: IThreeWorld): string | undefined {
+  for (const [id, object] of mapped.objectsById.entries()) {
+    if (object === mapped.camera) {
+      return id;
+    }
+  }
+  return undefined;
+}
+
+function reportRuntimeConfig(config: IRuntimeConfigIr | undefined): IConformanceRuntimeConfigReport | undefined {
+  if (config?.renderer === undefined) {
+    return undefined;
+  }
+  return {
+    renderer: {
+      antialias: config.renderer.antialias,
+      ...(config.renderer.bloom === undefined ? {} : { bloom: config.renderer.bloom }),
+    },
   };
 }
 

@@ -20,7 +20,6 @@ import {
 } from "./types.js";
 import type { ISystemsIr } from "./systems.js";
 import type { IInputIr, InputBinding } from "./input.js";
-import type { IRuntimeConfigIr } from "./runtimeConfig.js";
 import { validatePerformanceProfile } from "./performanceProfile.js";
 import { validateEnvironmentSceneIr } from "./environment.js";
 
@@ -41,13 +40,15 @@ export interface IBundleValidationResult {
 
 export async function validateBundle(bundlePath: string): Promise<IBundleValidationResult> {
   const diagnostics: IIrDiagnostic[] = [];
-  const manifest = await readJson<IBundleManifest>(resolve(bundlePath, "manifest.json"), diagnostics);
+  const manifest = await readJson<unknown>(resolve(bundlePath, "manifest.json"), diagnostics);
 
   if (manifest === undefined) {
     return { diagnostics, ok: false };
   }
 
-  validateManifest(manifest, "manifest.json", diagnostics);
+  if (!validateManifest(manifest, "manifest.json", diagnostics)) {
+    return { diagnostics, ok: false };
+  }
 
   const world = await readJson<IWorldIr>(resolve(bundlePath, manifest.entry.world), diagnostics);
   const audio =
@@ -70,7 +71,7 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
   const runtimeConfig =
     manifest.files.runtimeConfig === undefined
       ? undefined
-      : await readJson<IRuntimeConfigIr>(resolve(bundlePath, manifest.files.runtimeConfig), diagnostics);
+      : await readJson<unknown>(resolve(bundlePath, manifest.files.runtimeConfig), diagnostics);
   const ui =
     manifest.entry.ui === undefined ? undefined : await readJson<IUiIr>(resolve(bundlePath, manifest.entry.ui), diagnostics);
   const componentSchemas =
@@ -1626,7 +1627,17 @@ function bindingKey(binding: InputBinding): string {
   return `gamepad:${binding.control}`;
 }
 
-function validateRuntimeConfig(config: IRuntimeConfigIr, path: string, diagnostics: IIrDiagnostic[]): void {
+function validateRuntimeConfig(config: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (!isRecord(config)) {
+    diagnostics.push({
+      code: "TN_IR_RUNTIME_CONFIG_INVALID",
+      message: "Runtime config IR must be a JSON object.",
+      path,
+      severity: "error",
+      suggestion: "Regenerate runtime.config.json from defineRuntimeConfig or remove the manifest reference.",
+    });
+    return;
+  }
   if (config.schema !== "threenative.runtime-config" || config.version !== "0.1.0") {
     diagnostics.push({
       code: "TN_IR_RUNTIME_CONFIG_VERSION_UNSUPPORTED",
@@ -1634,59 +1645,107 @@ function validateRuntimeConfig(config: IRuntimeConfigIr, path: string, diagnosti
       path,
     });
   }
-  if (!Number.isFinite(config.time.fixedDelta) || config.time.fixedDelta <= 0) {
+  const time = config.time;
+  if (!isRecord(time)) {
     diagnostics.push({
-      code: "TN_IR_RUNTIME_FIXED_DELTA_INVALID",
-      message: "Fixed timestep must be a positive finite number.",
-      path: `${path}/time/fixedDelta`,
+      code: "TN_IR_RUNTIME_TIME_INVALID",
+      message: "Runtime config time must define fixedDelta and paused.",
+      path: `${path}/time`,
+    });
+  } else {
+    if (typeof time.fixedDelta !== "number" || !Number.isFinite(time.fixedDelta) || time.fixedDelta <= 0) {
+      diagnostics.push({
+        code: "TN_IR_RUNTIME_FIXED_DELTA_INVALID",
+        message: "Fixed timestep must be a positive finite number.",
+        path: `${path}/time/fixedDelta`,
+      });
+    }
+    if (typeof time.paused !== "boolean") {
+      diagnostics.push({
+        code: "TN_IR_RUNTIME_PAUSED_INVALID",
+        message: "Runtime paused flag must be a boolean.",
+        path: `${path}/time/paused`,
+      });
+    }
+  }
+
+  const renderer = config.renderer;
+  if (renderer !== undefined && !isRecord(renderer)) {
+    diagnostics.push({
+      code: "TN_IR_RUNTIME_RENDERER_INVALID",
+      message: "Runtime renderer config must be an object.",
+      path: `${path}/renderer`,
     });
   }
-  if (
-    config.renderer !== undefined &&
-    !["none", "msaa2", "msaa4", "msaa8"].includes(config.renderer.antialias)
-  ) {
+  if (isRecord(renderer) && !["none", "msaa2", "msaa4", "msaa8"].includes(renderer.antialias as string)) {
     diagnostics.push({
       code: "TN_IR_RUNTIME_RENDERER_ANTIALIAS_INVALID",
       message: "Renderer antialias mode must be one of none, msaa2, msaa4, or msaa8.",
       path: `${path}/renderer/antialias`,
     });
   }
-  if (config.renderer?.bloom !== undefined) {
-    if (typeof config.renderer.bloom.enabled !== "boolean") {
+  const bloom = isRecord(renderer) ? renderer.bloom : undefined;
+  if (bloom !== undefined) {
+    if (!isRecord(bloom)) {
       diagnostics.push({
         code: "TN_IR_RUNTIME_RENDERER_BLOOM_INVALID",
-        message: "Renderer bloom enabled must be a boolean.",
-        path: `${path}/renderer/bloom/enabled`,
+        message: "Renderer bloom config must be an object.",
+        path: `${path}/renderer/bloom`,
       });
-    }
-    if (!Number.isFinite(config.renderer.bloom.intensity) || config.renderer.bloom.intensity < 0) {
-      diagnostics.push({
-        code: "TN_IR_RUNTIME_RENDERER_BLOOM_INVALID",
-        message: "Renderer bloom intensity must be a non-negative finite number.",
-        path: `${path}/renderer/bloom/intensity`,
-      });
-    }
-    if (!Number.isFinite(config.renderer.bloom.threshold) || config.renderer.bloom.threshold < 0) {
-      diagnostics.push({
-        code: "TN_IR_RUNTIME_RENDERER_BLOOM_INVALID",
-        message: "Renderer bloom threshold must be a non-negative finite number.",
-        path: `${path}/renderer/bloom/threshold`,
-      });
+    } else {
+      if (typeof bloom.enabled !== "boolean") {
+        diagnostics.push({
+          code: "TN_IR_RUNTIME_RENDERER_BLOOM_INVALID",
+          message: "Renderer bloom enabled must be a boolean.",
+          path: `${path}/renderer/bloom/enabled`,
+        });
+      }
+      if (typeof bloom.intensity !== "number" || !Number.isFinite(bloom.intensity) || bloom.intensity < 0) {
+        diagnostics.push({
+          code: "TN_IR_RUNTIME_RENDERER_BLOOM_INVALID",
+          message: "Renderer bloom intensity must be a non-negative finite number.",
+          path: `${path}/renderer/bloom/intensity`,
+        });
+      }
+      if (typeof bloom.threshold !== "number" || !Number.isFinite(bloom.threshold) || bloom.threshold < 0) {
+        diagnostics.push({
+          code: "TN_IR_RUNTIME_RENDERER_BLOOM_INVALID",
+          message: "Renderer bloom threshold must be a non-negative finite number.",
+          path: `${path}/renderer/bloom/threshold`,
+        });
+      }
     }
   }
-  if (!Number.isFinite(config.window.width) || config.window.width <= 0) {
+
+  const window = config.window;
+  if (!isRecord(window)) {
     diagnostics.push({
       code: "TN_IR_RUNTIME_WINDOW_INVALID",
-      message: "Window width must be a positive finite number.",
-      path: `${path}/window/width`,
+      message: "Runtime config window must define width and height.",
+      path: `${path}/window`,
     });
-  }
-  if (!Number.isFinite(config.window.height) || config.window.height <= 0) {
-    diagnostics.push({
-      code: "TN_IR_RUNTIME_WINDOW_INVALID",
-      message: "Window height must be a positive finite number.",
-      path: `${path}/window/height`,
-    });
+  } else {
+    if (typeof window.width !== "number" || !Number.isFinite(window.width) || window.width <= 0) {
+      diagnostics.push({
+        code: "TN_IR_RUNTIME_WINDOW_INVALID",
+        message: "Window width must be a positive finite number.",
+        path: `${path}/window/width`,
+      });
+    }
+    if (typeof window.height !== "number" || !Number.isFinite(window.height) || window.height <= 0) {
+      diagnostics.push({
+        code: "TN_IR_RUNTIME_WINDOW_INVALID",
+        message: "Window height must be a positive finite number.",
+        path: `${path}/window/height`,
+      });
+    }
+    if (window.title !== undefined && (typeof window.title !== "string" || window.title.length === 0)) {
+      diagnostics.push({
+        code: "TN_IR_RUNTIME_WINDOW_INVALID",
+        message: "Window title must be a non-empty string when present.",
+        path: `${path}/window/title`,
+      });
+    }
   }
 }
 
@@ -2541,7 +2600,18 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function validateManifest(manifest: IBundleManifest, path: string, diagnostics: IIrDiagnostic[]): void {
+function validateManifest(manifest: unknown, path: string, diagnostics: IIrDiagnostic[]): manifest is IBundleManifest {
+  if (!isRecord(manifest)) {
+    diagnostics.push({
+      code: "TN_IR_MANIFEST_INVALID",
+      message: "Manifest must be a JSON object.",
+      path,
+      severity: "error",
+      suggestion: "Regenerate the bundle so manifest.json contains a threenative.bundle object.",
+    });
+    return false;
+  }
+
   if (manifest.schema !== "threenative.bundle" || manifest.version !== "0.1.0") {
     diagnostics.push({
       code: "TN_IR_MANIFEST_VERSION_UNSUPPORTED",
@@ -2550,11 +2620,71 @@ function validateManifest(manifest: IBundleManifest, path: string, diagnostics: 
     });
   }
 
-  if (manifest.entry.world !== "world.ir.json") {
+  const entry = manifest.entry;
+  if (!isRecord(entry)) {
+    diagnostics.push({
+      code: "TN_IR_MANIFEST_ENTRY_INVALID",
+      message: "Manifest entry must be an object with a world document path.",
+      path: `${path}/entry`,
+      severity: "error",
+      suggestion: "Regenerate the bundle or add entry.world: 'world.ir.json'.",
+    });
+  } else if (entry.world !== "world.ir.json") {
     diagnostics.push({
       code: "TN_IR_WORLD_ENTRY_INVALID",
       message: "V1 manifest entry.world must be world.ir.json.",
       path: "manifest.json/entry/world",
+    });
+  }
+
+  const files = manifest.files;
+  if (!isRecord(files)) {
+    diagnostics.push({
+      code: "TN_IR_MANIFEST_FILES_INVALID",
+      message: "Manifest files must be an object with assets, materials, and targetProfile document paths.",
+      path: `${path}/files`,
+      severity: "error",
+      suggestion: "Regenerate the bundle so manifest.json includes all required bundle file references.",
+    });
+  } else {
+    validateManifestPath(files.assets, `${path}/files/assets`, "assets.manifest.json", diagnostics);
+    validateManifestPath(files.materials, `${path}/files/materials`, "materials.ir.json", diagnostics);
+    validateManifestPath(files.targetProfile, `${path}/files/targetProfile`, "target.profile.json", diagnostics);
+    for (const key of ["componentSchemas", "eventSchemas", "input", "resourceSchemas", "runtimeConfig"] as const) {
+      if (files[key] !== undefined) {
+        validateManifestPath(files[key], `${path}/files/${key}`, undefined, diagnostics);
+      }
+    }
+  }
+
+  if (!isRecord(entry) || !isRecord(files)) {
+    return false;
+  }
+  return (
+    typeof entry.world === "string" &&
+    typeof files.assets === "string" &&
+    typeof files.materials === "string" &&
+    typeof files.targetProfile === "string" &&
+    (entry.audio === undefined || typeof entry.audio === "string") &&
+    (entry.environmentScene === undefined || typeof entry.environmentScene === "string") &&
+    (entry.systems === undefined || typeof entry.systems === "string") &&
+    (entry.ui === undefined || typeof entry.ui === "string") &&
+    (files.componentSchemas === undefined || typeof files.componentSchemas === "string") &&
+    (files.eventSchemas === undefined || typeof files.eventSchemas === "string") &&
+    (files.input === undefined || typeof files.input === "string") &&
+    (files.resourceSchemas === undefined || typeof files.resourceSchemas === "string") &&
+    (files.runtimeConfig === undefined || typeof files.runtimeConfig === "string")
+  );
+}
+
+function validateManifestPath(value: unknown, path: string, expected: string | undefined, diagnostics: IIrDiagnostic[]): void {
+  if (typeof value !== "string" || value.trim() === "") {
+    diagnostics.push({
+      code: "TN_IR_MANIFEST_PATH_INVALID",
+      message: "Manifest file references must be non-empty bundle-relative paths.",
+      path,
+      severity: "error",
+      suggestion: expected === undefined ? "Regenerate the bundle or remove the optional manifest entry." : `Regenerate the bundle or set this path to '${expected}'.`,
     });
   }
 }

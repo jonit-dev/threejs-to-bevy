@@ -19,6 +19,7 @@
     "tn": "pnpm --filter @threenative/sdk build && pnpm --filter @threenative/ir build && pnpm --filter @threenative/compiler build && pnpm --filter @threenative/runtime-web-three build && pnpm --filter @threenative/cli build && pnpm --filter @threenative/cli tn",
     "typecheck": "pnpm -r --if-present typecheck",
     "verify": "pnpm build && pnpm typecheck && pnpm lint && pnpm test",
+    "verify:all": "pnpm verify && pnpm verify:conformance && cargo test --manifest-path runtime-bevy/Cargo.toml",
     "verify:conformance": "node scripts/verify-conformance.mjs",
     "verify:v1": "node scripts/verify-v1.mjs",
     "verify:v2": "node scripts/verify-v2.mjs",

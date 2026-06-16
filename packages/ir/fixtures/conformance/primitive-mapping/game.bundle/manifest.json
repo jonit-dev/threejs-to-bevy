@@ -1,0 +1,35 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "conformance-primitive-mapping",
+  "requiredCapabilities": {
+    "rendering": [
+      "camera.perspective",
+      "light.directional",
+      "material.standard",
+      "mesh.primitive.annulus",
+      "mesh.primitive.box",
+      "mesh.primitive.capsule",
+      "mesh.primitive.circle",
+      "mesh.primitive.cone",
+      "mesh.primitive.conicalFrustum",
+      "mesh.primitive.cylinder",
+      "mesh.primitive.extrudedRectangle",
+      "mesh.primitive.plane",
+      "mesh.primitive.regularPolygon",
+      "mesh.primitive.sphere",
+      "mesh.primitive.torus"
+    ],
+    "transform": [
+      "hierarchy"
+    ]
+  },
+  "entry": {
+    "world": "world.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "materials": "materials.ir.json",
+    "targetProfile": "target.profile.json"
+  }
+}

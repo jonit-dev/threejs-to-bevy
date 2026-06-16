@@ -600,7 +600,7 @@ pub struct RuntimeConfigIr {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RuntimeRendererConfig {
-    pub antialias: Option<String>,
+    pub antialias: String,
     pub bloom: Option<RuntimeRendererBloomConfig>,
 }
 

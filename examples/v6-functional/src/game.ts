@@ -152,7 +152,7 @@ const ui = Ui({
     id: "hud.stack",
     children: [
       Text({ id: "hud.health.label", text: "Health" }),
-      Bar({ id: "hud.health", binding: { kind: "component", component: "Health", entity: "player", field: "current" }, max: 100 }),
+      Bar({ id: "hud.health", accessibilityLabel: "Health", binding: { kind: "component", component: "Health", entity: "player", field: "current" }, max: 100 }),
       Button({ action: "Pause", focusable: true, id: "hud.pause", label: "Pause" }),
       TouchControl({ action: "Attack", id: "hud.attack", label: "Attack" }),
     ],

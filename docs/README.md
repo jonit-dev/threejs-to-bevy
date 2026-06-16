@@ -12,7 +12,7 @@ conceptual docs.
 
 ## Core Documents
 
-- [Status](STATUS.md): current active gate, V3 proof scope, non-goals, and
+- [Status](STATUS.md): current active gate, proof scope, non-goals, and
   implementation truth sources.
 - [Architecture](architecture.md): system boundaries, package layout, runtime
   split, and early technical decisions.
@@ -69,15 +69,17 @@ conceptual docs.
 
 ## Current Status
 
-The active release gate is V3.
+The active release gate is tracked in [STATUS.md](STATUS.md). As of the current
+status front door, the maintained release gate is V7.
 
-V3 proves that ThreeNative can bundle and run a rich first-person environment
-scene from real assets through the web Three.js runtime and native Bevy adapter.
+V7 proves the documented promoted slices for deep engine gap-closure,
+functional scene/template, packaging, performance, and aggregate release-gate
+evidence. See [STATUS.md](STATUS.md) for the authoritative current scope.
 
 Use:
 
 ```bash
-pnpm verify:v3
+pnpm verify:v7
 ```
 
 V1 and V2 docs remain useful historical and foundation references. The current

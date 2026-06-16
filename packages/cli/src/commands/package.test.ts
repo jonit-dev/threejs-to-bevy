@@ -20,7 +20,7 @@ test("package should copy a desktop bundle into stable artifact layout", async (
     assert.equal(payload.artifacts.packagedBundlePath.endsWith("artifacts/package/desktop/game.bundle"), true);
     assert.equal(payload.manifestPath.endsWith("artifacts/package/desktop/package.manifest.json"), true);
     assert.equal(payload.runtimeArgsPath.endsWith("artifacts/package/desktop/runtime.args.json"), true);
-    assert.deepEqual(payload.files, ["manifest.json", "target.profile.json", "world.ir.json"]);
+    assert.deepEqual(payload.files, ["assets.manifest.json", "manifest.json", "materials.ir.json", "target.profile.json", "world.ir.json"]);
 
     const report = JSON.parse(await readFile(join(root, "artifacts/package/desktop/package.report.json"), "utf8"));
     assert.equal(report.schema, "threenative.package-report");
@@ -41,7 +41,7 @@ test("package should reject mobile and online targets", async () => {
     await writeBundle(root, ["web", "desktop", "mobile"]);
 
     const result = await packageCommand(["--bundle", "game.bundle", "--json"], root);
-    const payload = JSON.parse(result.stderr ?? "{}");
+    const payload = JSON.parse(result.stdout);
 
     assert.equal(result.exitCode, 1);
     assert.equal(payload.code, "TN_PACKAGE_FAILED");
@@ -57,10 +57,30 @@ test("package should reject non-desktop command target", async () => {
     await writeBundle(root, ["web", "desktop"]);
 
     const result = await packageCommand(["--bundle", "game.bundle", "--target", "ios", "--json"], root);
-    const payload = JSON.parse(result.stderr ?? "{}");
+    const payload = JSON.parse(result.stdout);
 
     assert.equal(result.exitCode, 1);
     assert.equal(payload.code, "TN_PACKAGE_TARGET_UNSUPPORTED");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("package should reject invalid bundles before copying artifacts", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-package-invalid-"));
+  try {
+    await writeBundle(root, ["web", "desktop"]);
+    await writeFile(
+      join(root, "game.bundle", "manifest.json"),
+      JSON.stringify({ schema: "threenative.bundle", version: "0.1.0", entry: { world: "world.ir.json" }, files: { targetProfile: "target.profile.json" } }),
+    );
+
+    const result = await packageCommand(["--bundle", "game.bundle", "--json"], root);
+    const payload = JSON.parse(result.stdout);
+
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.code, "TN_PACKAGE_BUNDLE_INVALID");
+    assert.equal(payload.diagnostics.some((diagnostic: { code?: string }) => diagnostic.code === "TN_IR_MANIFEST_PATH_INVALID"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -71,8 +91,15 @@ async function writeBundle(root: string, targets: string[]): Promise<void> {
   await mkdir(bundle);
   await writeFile(
     join(bundle, "manifest.json"),
-    JSON.stringify({ schema: "threenative.bundle", version: "0.1.0", entry: { world: "world.ir.json" }, files: { targetProfile: "target.profile.json" } }),
+    JSON.stringify({
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      entry: { world: "world.ir.json" },
+      files: { assets: "assets.manifest.json", materials: "materials.ir.json", targetProfile: "target.profile.json" },
+    }),
   );
   await writeFile(join(bundle, "target.profile.json"), JSON.stringify({ schema: "threenative.target-profile", version: "0.1.0", targets }));
   await writeFile(join(bundle, "world.ir.json"), JSON.stringify({ schema: "threenative.world", version: "0.1.0", entities: [], prefabs: [] }));
+  await writeFile(join(bundle, "assets.manifest.json"), JSON.stringify({ schema: "threenative.assets", version: "0.1.0", assets: [] }));
+  await writeFile(join(bundle, "materials.ir.json"), JSON.stringify({ schema: "threenative.materials", version: "0.1.0", materials: [] }));
 }

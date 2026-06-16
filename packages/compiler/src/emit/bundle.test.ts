@@ -509,6 +509,39 @@ test("should emit ui ir for scene with portable hud", async () => {
   }
 });
 
+test("should reject unsafe asset copy destinations before writing files", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-unsafe-asset-"));
+  try {
+    const scene = new Scene({ id: "scene" });
+    scene.add(
+      new Mesh({
+        geometry: new PlaneGeometry(),
+        id: "unsafe.mesh",
+        material: new MeshStandardMaterial({
+          baseColorTexture: { format: "png", id: "tex.unsafe", kind: "texture", path: "../escape.png" } as never,
+        }),
+      }),
+    );
+
+    await assert.rejects(
+      () =>
+        emitBundle(
+          {
+            entry: "src/game.ts",
+            outDir: "dist/game.bundle",
+            projectPath: root,
+            schema: "threenative.project" as const,
+            version: "0.1.0" as const,
+          },
+          { scene },
+        ),
+      /must be relative and must not contain parent traversal/,
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should emit sandboxed v3 environment bundle assets", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-emit-v3-env-"));
   try {

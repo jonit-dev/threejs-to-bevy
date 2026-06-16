@@ -1,4 +1,5 @@
 import type { IRuntimeDiagnostic } from "./runtimeDiagnostics.js";
+import type { IRuntimeConfigIr } from "./runtimeConfig.js";
 import type { IAssetIr, IMaterialIr, Quat, Vec3 } from "./types.js";
 
 export interface IConformanceAssetReport {
@@ -100,6 +101,13 @@ export interface IConformanceAudioReport {
   commands: IConformanceAudioCommandReport[];
 }
 
+export interface IConformanceRuntimeConfigReport {
+  renderer?: {
+    antialias?: NonNullable<IRuntimeConfigIr["renderer"]>["antialias"];
+    bloom?: NonNullable<NonNullable<IRuntimeConfigIr["renderer"]>["bloom"]>;
+  };
+}
+
 export interface IConformanceEntityReport {
   camera?: {
     far: number;
@@ -158,6 +166,7 @@ export interface IConformanceEntityReport {
 }
 
 export interface IConformanceReport {
+  activeCamera?: string;
   audio?: IConformanceAudioReport;
   assets: IConformanceAssetReport[];
   diagnostics: IRuntimeDiagnostic[];
@@ -168,5 +177,6 @@ export interface IConformanceReport {
   materials: IConformanceMaterialReport[];
   resources: IConformanceResourceReport[];
   runtime: "bevy" | "web-three";
+  runtimeConfig?: IConformanceRuntimeConfigReport;
   ui?: IConformanceUiReport;
 }

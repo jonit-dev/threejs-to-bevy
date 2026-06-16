@@ -13,6 +13,7 @@ test("should report basic scene conformance semantics", async () => {
 
   assert.equal(report.fixture, "basic-scene");
   assert.equal(report.runtime, "web-three");
+  assert.equal(report.activeCamera, "camera.main");
   assert.deepEqual(report.diagnostics, []);
 
   const cube = report.entities.find((entity) => entity.id === "cube.child");
@@ -54,6 +55,34 @@ test("should report basic scene conformance semantics", async () => {
   assert.equal(report.entities.find((entity) => entity.id === "light.key")?.light?.kind, "directional");
 });
 
+test("should report promoted generated primitive mapping semantics", async () => {
+  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/primitive-mapping/game.bundle"));
+  const mapped = mapWorld(bundle);
+  const report = reportWebConformance(bundle, mapped, "primitive-mapping");
+
+  assert.equal(report.fixture, "primitive-mapping");
+  assert.equal(report.runtime, "web-three");
+  assert.deepEqual(report.diagnostics, []);
+  assert.deepEqual(primitiveAssets(report), [
+    ["mesh.annulus", "annulus"],
+    ["mesh.box", "box"],
+    ["mesh.capsule", "capsule"],
+    ["mesh.circle", "circle"],
+    ["mesh.cone", "cone"],
+    ["mesh.conical-frustum", "conicalFrustum"],
+    ["mesh.cylinder", "cylinder"],
+    ["mesh.extruded-rectangle", "extrudedRectangle"],
+    ["mesh.plane", "plane"],
+    ["mesh.regular-polygon", "regularPolygon"],
+    ["mesh.sphere", "sphere"],
+    ["mesh.torus", "torus"],
+  ]);
+  for (const [mesh] of primitiveAssets(report)) {
+    const entity = report.entities.find((candidate) => candidate.mesh === mesh);
+    assert.equal(entity?.material, "mat.primitive", mesh);
+  }
+});
+
 test("should report resource and event conformance observations", async () => {
   const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/v6-resources-events/game.bundle"));
   const mapped = mapWorld(bundle);
@@ -63,6 +92,13 @@ test("should report resource and event conformance observations", async () => {
   assert.deepEqual(report.resources, [{ id: "Score", value: { value: 3 } }]);
   assert.deepEqual(report.events, [{ id: "DamageEvent", values: [{ amount: 2, target: "player" }] }]);
 });
+
+function primitiveAssets(report: ReturnType<typeof reportWebConformance>): Array<[string, string | undefined]> {
+  return report.assets
+    .filter((asset) => asset.kind === "mesh")
+    .map((asset) => [asset.id, asset.primitive] as [string, string | undefined])
+    .sort(([left], [right]) => left.localeCompare(right));
+}
 
 test("should report physics collision and trigger conformance observations", async () => {
   const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/v6-physics-events/game.bundle"));
