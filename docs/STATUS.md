@@ -56,6 +56,17 @@ V8-07 material parity is implemented with focused material/texture evidence:
 validates the bundle, runs conformance, captures web/native screenshots, and
 writes `artifacts/v8/material-parity/verification-report.json`.
 
+V8 color, lighting, and tone parity evidence is implemented with screenshot
+diff metrics and calibrated sample regions:
+`pnpm verify:v8:color-parity` builds `examples/v8-color-parity` and
+`examples/v8-lighting-tone`, validates both bundles, captures web/native
+screenshots, compares unlit swatch colors plus lit PBR sphere probes, and
+writes `artifacts/v8/color-parity/verification-report.json` plus
+`artifacts/v8/lighting-tone/lighting-tone-report.json`. Unlit swatch parity is
+near-exact (full-frame changed pixel ratio `0`, max channel delta `~1/255`);
+lit scenes gate on full-frame average color/brightness deltas (`~1%`) with probe
+regions tolerating localized PBR gradient differences.
+
 ## V4 Proves
 
 V4 is complete for the primitive native scripting proof. It proves one
