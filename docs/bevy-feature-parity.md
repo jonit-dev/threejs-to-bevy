@@ -184,7 +184,7 @@ next parity slice:
 - [x] Fog, sky/horizon color, tone mapping, exposure, and color-space metadata
 - [x] Dense-content budget estimates and repeated-instance observations
 - [x] Source asset LOD metadata and fixed LOD-selection traces
-- [ ] `P1` Visual fog/sky/atmosphere parity in native output
+- [x] `P1` Focused visual fog/sky parity evidence in native output
 - [ ] `P3` Atmospheric scattering and atmospheric fog
 - [ ] `P3` Volumetric fog and volumetric lighting
 - [ ] `P1` Skyboxes and cubemap/compressed texture handling

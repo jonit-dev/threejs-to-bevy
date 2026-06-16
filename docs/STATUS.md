@@ -56,6 +56,15 @@ V8-07 material parity is implemented with focused material/texture evidence:
 validates the bundle, runs conformance, captures web/native screenshots, and
 writes `artifacts/v8/material-parity/verification-report.json`.
 
+V8-11 now has a focused rendering-quality slice for fog and sky visual parity:
+`pnpm verify:v8:rendering-quality` builds `examples/v8-rendering-quality`,
+validates the bundle, captures web/native screenshots, checks nonblank output,
+compares sky/foreground/fog-depth regions, verifies far fog convergence toward
+the authored fog color, and writes artifacts under
+`artifacts/v8/rendering-quality/`. This is not the full V8-11 post-processing
+surface; skybox/cubemap contracts, instancing/batching evidence, and broader
+post-processing controls remain tracked as open parity work.
+
 ## V4 Proves
 
 V4 is complete for the primitive native scripting proof. It proves one
