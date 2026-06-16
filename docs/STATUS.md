@@ -867,10 +867,12 @@ now resolve model-backed mesh renderers to bundle-local glTF/GLB scene assets;
 web replaces the placeholder geometry and drives the selected visual clip
 through a Three.js `AnimationMixer`, while Bevy attaches a one-clip
 `AnimationGraph` to glTF-created `AnimationPlayer` entities and starts the
-selected clip with the authored loop and speed. Cross-runtime skinned-mesh
-deformation screenshot proof remains the remaining P0 animation gap, along
-with richer graph runtime control, stop/state queries, IK, retargeting, and
-rendered particles.
+selected clip with the authored loop and speed. `pnpm verify:v9:skeletal-animation`
+now proves cross-runtime skinned-mesh deformation from bundle-local glTF clips
+through `examples/v9-skeletal-animation`, web motion screenshots, and native
+Bevy dual-frame capture evidence under `artifacts/v9/skeletal-animation/`.
+Richer graph runtime control, stop/state queries, IK, retargeting, and rendered
+particles remain later animation work.
 
 ## V3 Proves
 

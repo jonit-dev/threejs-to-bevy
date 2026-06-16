@@ -17,10 +17,37 @@ import {
   RegularPolygonGeometry,
   Scene,
   TorusGeometry,
+  animationClip,
+  modelAsset,
 } from "@threenative/sdk";
 
 import { emitBundle } from "./bundle.js";
 import { sceneToWorld } from "./scene-to-world.js";
+
+test("should emit model-backed mesh renderer when mesh declares a model asset ref", () => {
+  const scene = new Scene({ id: "scene" });
+  scene.add(
+    new Mesh({
+      assetRefs: [modelAsset("model.hero", "assets/hero.glb", { animations: [animationClip("run")] })],
+      geometry: new CustomMeshGeometry({
+        attributes: [{ itemSize: 3, name: "position", values: [0, 0, 0, 1, 0, 0, 0, 1, 0] }],
+        indices: [0, 1, 2],
+      }),
+      id: "hero",
+      material: new MeshStandardMaterial({ color: "#ffffff" }),
+    }),
+  );
+
+  const result = sceneToWorld(scene);
+  const entity = result.world.entities.find((item) => item.id === "hero");
+
+  assert.deepEqual(entity?.components.MeshRenderer, {
+    material: "mat.hero",
+    mesh: "model.hero",
+  });
+  assert.equal(result.assets.find((asset) => asset.id === "mesh.hero"), undefined);
+  assert.equal(result.assets.find((asset) => asset.id === "model.hero")?.kind, "model");
+});
 
 test("should preserve parent child hierarchy", () => {
   const scene = new Scene({ id: "scene" });

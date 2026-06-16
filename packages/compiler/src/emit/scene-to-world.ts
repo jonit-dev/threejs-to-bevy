@@ -118,7 +118,8 @@ function visitChildren(
     emitAssetRefs(child.assetRefs, output.assets);
 
     if (child.constructor.name === "Mesh" && child.geometry !== undefined && child.material !== undefined) {
-      const meshId = `mesh.${id}`;
+      const modelRef = (child.assetRefs ?? []).find((ref) => ref.kind === "model");
+      const meshId = modelRef?.id ?? `mesh.${id}`;
       const materialId = `mat.${id}`;
       components.MeshRenderer = {
         ...(child.castShadow === undefined ? {} : { castShadow: child.castShadow }),
@@ -127,25 +128,27 @@ function visitChildren(
         ...(child.receiveShadow === undefined ? {} : { receiveShadow: child.receiveShadow }),
         ...(child.visible === false ? { visible: false } : {}),
       };
-      output.assets.push({
-        ...(child.geometry.kind === "custom"
-          ? {
-              attributes: child.geometry.attributes ?? [],
-              ...(child.geometry.bounds === undefined ? {} : { bounds: child.geometry.bounds }),
-              ...(child.geometry.budget === undefined ? {} : { budget: child.geometry.budget }),
-              ...(child.geometry.generation === undefined ? {} : { generation: child.geometry.generation }),
-              indices: child.geometry.indices,
-              ...(child.geometry.storage === undefined ? {} : { storage: child.geometry.storage }),
-              ...(child.geometry.topology === undefined ? {} : { topology: child.geometry.topology }),
-              ...(child.geometry.usage === undefined ? {} : { usage: child.geometry.usage }),
-            }
-          : {}),
-        id: meshId,
-        kind: "mesh",
-        format: "generated",
-        primitive: child.geometry.kind,
-        ...(child.geometry.kind === "custom" ? {} : { size: geometrySize(child.geometry) }),
-      });
+      if (modelRef === undefined) {
+        output.assets.push({
+          ...(child.geometry.kind === "custom"
+            ? {
+                attributes: child.geometry.attributes ?? [],
+                ...(child.geometry.bounds === undefined ? {} : { bounds: child.geometry.bounds }),
+                ...(child.geometry.budget === undefined ? {} : { budget: child.geometry.budget }),
+                ...(child.geometry.generation === undefined ? {} : { generation: child.geometry.generation }),
+                indices: child.geometry.indices,
+                ...(child.geometry.storage === undefined ? {} : { storage: child.geometry.storage }),
+                ...(child.geometry.topology === undefined ? {} : { topology: child.geometry.topology }),
+                ...(child.geometry.usage === undefined ? {} : { usage: child.geometry.usage }),
+              }
+            : {}),
+          id: meshId,
+          kind: "mesh",
+          format: "generated",
+          primitive: child.geometry.kind,
+          ...(child.geometry.kind === "custom" ? {} : { size: geometrySize(child.geometry) }),
+        });
+      }
       output.materials.push({
         id: materialId,
         kind: "standard",

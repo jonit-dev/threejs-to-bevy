@@ -8,31 +8,64 @@ use threenative_runtime::{app_from_bundle, environment::apply_environment_bookma
 
 #[derive(Resource)]
 struct CaptureConfig {
+    captures: Vec<CaptureTarget>,
+    max_frame: u32,
+}
+
+#[derive(Clone)]
+struct CaptureTarget {
+    captured: bool,
     output_path: PathBuf,
     request_frame: u32,
-    max_frame: u32,
 }
 
 fn main() -> ExitCode {
     let args = env::args().collect::<Vec<_>>();
-    if args.len() != 4 && args.len() != 5 {
+    if args.len() != 4 && args.len() != 5 && args.len() != 7 {
         eprintln!(
-            "Usage: threenative_capture <bundle-path> <bookmark-id> <output-png> [request-frame]"
+            "Usage: threenative_capture <bundle-path> <bookmark-id> <output-png> [request-frame] [<output-png-2> <request-frame-2>]"
         );
         return ExitCode::from(2);
     }
 
     let bundle_path = &args[1];
     let bookmark_id = &args[2];
-    let output_path = PathBuf::from(&args[3]);
-    let request_frame = match args.get(4).map(|value| value.parse::<u32>()) {
-        Some(Ok(value)) if value > 0 => value,
-        Some(_) => {
-            eprintln!("request-frame must be a positive integer");
-            return ExitCode::from(2);
-        }
-        None => 120,
+    let first_output = PathBuf::from(&args[3]);
+    let first_frame = match parse_frame(args.get(4), 120) {
+        Ok(frame) => frame,
+        Err(code) => return code,
     };
+    let captures = if args.len() == 7 {
+        let second_frame = match parse_frame(Some(&args[6]), first_frame.saturating_add(60)) {
+            Ok(frame) => frame,
+            Err(code) => return code,
+        };
+        vec![
+            CaptureTarget {
+                captured: false,
+                output_path: first_output,
+                request_frame: first_frame,
+            },
+            CaptureTarget {
+                captured: false,
+                output_path: PathBuf::from(&args[5]),
+                request_frame: second_frame,
+            },
+        ]
+    } else {
+        vec![CaptureTarget {
+            captured: false,
+            output_path: first_output,
+            request_frame: first_frame,
+        }]
+    };
+    let max_frame = captures
+        .iter()
+        .map(|capture| capture.request_frame)
+        .max()
+        .unwrap_or(first_frame)
+        .saturating_add(780);
+
     let bundle = match load_bundle(bundle_path) {
         Ok(bundle) => bundle,
         Err(error) => {
@@ -58,64 +91,98 @@ fn main() -> ExitCode {
         eprintln!("bookmark '{bookmark_id}' was not found or no camera could be updated");
         return ExitCode::from(1);
     }
+    for capture in &captures {
+        if let Err(code) = prepare_output_path(&capture.output_path) {
+            return code;
+        }
+    }
+
+    app.insert_resource(CaptureConfig { captures, max_frame })
+        .add_systems(Update, request_screenshot);
+    app.run();
+    ExitCode::SUCCESS
+}
+
+fn parse_frame(value: Option<&String>, fallback: u32) -> Result<u32, ExitCode> {
+    match value.map(|raw| raw.parse::<u32>()) {
+        Some(Ok(frame)) if frame > 0 => Ok(frame),
+        Some(_) => {
+            eprintln!("request-frame must be a positive integer");
+            Err(ExitCode::from(2))
+        }
+        None => Ok(fallback),
+    }
+}
+
+fn prepare_output_path(output_path: &PathBuf) -> Result<(), ExitCode> {
     if let Some(parent) = output_path.parent() {
         if let Err(error) = fs::create_dir_all(parent) {
             eprintln!(
                 "failed to create screenshot directory '{}': {error}",
                 parent.display()
             );
-            return ExitCode::from(1);
+            return Err(ExitCode::from(1));
         }
     }
-    if let Err(error) = fs::remove_file(&output_path) {
+    if let Err(error) = fs::remove_file(output_path) {
         if error.kind() != std::io::ErrorKind::NotFound {
             eprintln!(
                 "failed to remove existing screenshot '{}': {error}",
                 output_path.display()
             );
-            return ExitCode::from(1);
+            return Err(ExitCode::from(1));
         }
     }
-
-    app.insert_resource(CaptureConfig {
-        output_path,
-        request_frame,
-        max_frame: request_frame.saturating_add(780),
-    })
-    .add_systems(Update, request_screenshot);
-    app.run();
-    ExitCode::SUCCESS
+    Ok(())
 }
 
 fn request_screenshot(
     mut frame: Local<u32>,
-    mut requested: Local<bool>,
-    config: Res<CaptureConfig>,
+    mut config: ResMut<CaptureConfig>,
     windows: Query<Entity, With<PrimaryWindow>>,
     mut screenshots: ResMut<ScreenshotManager>,
     mut exit: EventWriter<AppExit>,
 ) {
     *frame += 1;
-    if *frame >= config.request_frame && !*requested {
-        *requested = true;
-        if let Ok(window) = windows.get_single() {
-            if let Err(error) = screenshots.save_screenshot_to_disk(window, &config.output_path) {
-                error!("failed to request screenshot: {error}");
-                exit.send(AppExit::error());
+    if let Ok(window) = windows.get_single() {
+        for capture in &mut config.captures {
+            if !capture.captured && *frame >= capture.request_frame {
+                if let Err(error) =
+                    screenshots.save_screenshot_to_disk(window, &capture.output_path)
+                {
+                    error!("failed to request screenshot: {error}");
+                    exit.send(AppExit::error());
+                    return;
+                }
+                capture.captured = true;
             }
         }
     }
-    if *requested
-        && fs::metadata(&config.output_path)
-            .map(|metadata| metadata.len() > 0)
-            .unwrap_or(false)
-    {
+
+    let all_written = config.captures.iter().all(|capture| {
+        capture.captured
+            && fs::metadata(&capture.output_path)
+                .map(|metadata| metadata.len() > 0)
+                .unwrap_or(false)
+    });
+    if all_written {
         exit.send(AppExit::Success);
     } else if *frame >= config.max_frame {
+        let pending = config
+            .captures
+            .iter()
+            .filter(|capture| {
+                !capture.captured
+                    || fs::metadata(&capture.output_path)
+                        .map(|metadata| metadata.len() == 0)
+                        .unwrap_or(true)
+            })
+            .map(|capture| capture.output_path.display().to_string())
+            .collect::<Vec<_>>()
+            .join(", ");
         error!(
-            "screenshot was not written before frame {}: {}",
-            config.max_frame,
-            config.output_path.display()
+            "screenshot(s) were not written before frame {}: {pending}",
+            config.max_frame
         );
         exit.send(AppExit::error());
     }
