@@ -1,0 +1,116 @@
+{
+  "artifacts": {
+    "bevyScreenshotPath": "/home/joao/projects/threejs-to-bevy/.worktrees/v8-11-rendering-atmosphere-post/artifacts/v8/rendering-quality/bevy.png",
+    "bundleHash": "7afc79baf725051ff7ac231f419680a65c6eac3070088c0967f76c2951595f93",
+    "contactSheetPath": "/home/joao/projects/threejs-to-bevy/.worktrees/v8-11-rendering-atmosphere-post/artifacts/v8/rendering-quality/contact-sheet.png",
+    "diffPath": "/home/joao/projects/threejs-to-bevy/.worktrees/v8-11-rendering-atmosphere-post/artifacts/v8/rendering-quality/diff.png",
+    "reportPath": "/home/joao/projects/threejs-to-bevy/.worktrees/v8-11-rendering-atmosphere-post/artifacts/v8/rendering-quality/rendering-quality-report.json",
+    "webScreenshotPath": "/home/joao/projects/threejs-to-bevy/.worktrees/v8-11-rendering-atmosphere-post/artifacts/v8/rendering-quality/web.png"
+  },
+  "diagnostics": [],
+  "fogEvidence": {
+    "bevy": {
+      "farDistanceToFogColor": 0.18846318940872,
+      "foregroundDistanceToFogColor": 0.22950459809740978,
+      "ok": true
+    },
+    "web": {
+      "farDistanceToFogColor": 0.17702856273415235,
+      "foregroundDistanceToFogColor": 0.37694148102992925,
+      "ok": true
+    }
+  },
+  "regions": [
+    {
+      "averageColor": {
+        "blue": 0.8392156862745098,
+        "green": 0.6823529411764706,
+        "red": 0.41568627450980394
+      },
+      "comparison": {
+        "averageBrightnessDelta": 0,
+        "averageColorDelta": {
+          "blue": 0,
+          "green": 0,
+          "red": 0
+        },
+        "changedPixelRatio": 0,
+        "ok": false,
+        "threshold": 0.001
+      },
+      "name": "sky",
+      "ok": true,
+      "thresholds": {
+        "averageBrightnessDelta": 0.08,
+        "averageColorDelta": 0.08,
+        "changedPixelRatio": 0.35
+      }
+    },
+    {
+      "averageColor": {
+        "blue": 0.821983833504332,
+        "green": 0.6151515475376197,
+        "red": 0.48798494143296856
+      },
+      "comparison": {
+        "averageBrightnessDelta": 0.046823670723132746,
+        "averageColorDelta": {
+          "blue": 0.07015895747834018,
+          "green": 0.07385582321591427,
+          "red": 0.13336486120611035
+        },
+        "changedPixelRatio": 0.8905114462209303,
+        "ok": true,
+        "threshold": 0.001
+      },
+      "name": "foreground",
+      "ok": true,
+      "thresholds": {
+        "averageBrightnessDelta": 0.16,
+        "averageColorDelta": 0.16,
+        "changedPixelRatio": 0.92
+      }
+    },
+    {
+      "averageColor": {
+        "blue": 0.7599695358788922,
+        "green": 0.7497292243160426,
+        "red": 0.6368609181419708
+      },
+      "comparison": {
+        "averageBrightnessDelta": 0.007523197143412442,
+        "averageColorDelta": {
+          "blue": 0.012869642971194993,
+          "green": 0.008627762899720906,
+          "red": 0.009749929818151032
+        },
+        "changedPixelRatio": 0.3278160745398076,
+        "ok": true,
+        "threshold": 0.001
+      },
+      "name": "fog-depth",
+      "ok": true,
+      "thresholds": {
+        "averageBrightnessDelta": 0.18,
+        "averageColorDelta": 0.18,
+        "changedPixelRatio": 0.85
+      }
+    }
+  ],
+  "renderers": {
+    "bevy": "native-capture",
+    "threejs": "web-preview"
+  },
+  "status": "pass",
+  "visualComparison": {
+    "averageBrightnessDelta": 0.022460527584889697,
+    "averageColorDelta": {
+      "blue": 0.036590601171023966,
+      "green": 0.023216307529956428,
+      "red": 0.03499454912173203
+    },
+    "changedPixelRatio": 0.43512912326388886,
+    "ok": true,
+    "threshold": 0.001
+  }
+}

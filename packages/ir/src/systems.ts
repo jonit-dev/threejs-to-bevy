@@ -3,6 +3,8 @@ import type { SchemaVersion } from "./types.js";
 export type IrSystemSchedule = "fixedUpdate" | "postUpdate" | "startup" | "update";
 export type IrSystemService =
   | "animation.play"
+  | "animation.query"
+  | "animation.stop"
   | "assets.load"
   | "character.move"
   | "physics.overlap"

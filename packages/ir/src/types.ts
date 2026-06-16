@@ -9,6 +9,7 @@ export type RuntimeConfigSchema = "threenative.runtime-config";
 export type UiSchema = "threenative.ui";
 export type EnvironmentSceneSchema = "threenative.environment-scene";
 export type OverlaysSchema = "threenative.overlays";
+export type AnimationsSchema = "threenative.animations";
 
 export interface IBundleManifest {
   schema: BundleSchema;
@@ -37,6 +38,30 @@ export interface IBundleManifest {
     runtimeConfig?: "runtime.config.json";
     scripts?: "scripts.bundle.js";
   };
+}
+
+export interface ITransformAnimationKeyframeIr {
+  timeSeconds: number;
+  value: readonly number[];
+}
+
+export interface ITransformAnimationTrackIr {
+  channel: "position" | "rotation" | "scale";
+  easing?: "linear" | "step";
+  keyframes: readonly ITransformAnimationKeyframeIr[];
+  target: string;
+}
+
+export interface ITransformAnimationClipIr {
+  id: string;
+  loop?: "none" | "repeat";
+  tracks: readonly ITransformAnimationTrackIr[];
+}
+
+export interface IAnimationsIr {
+  schema: AnimationsSchema;
+  version: SchemaVersion;
+  transformClips: readonly ITransformAnimationClipIr[];
 }
 
 export type Vec3 = readonly [number, number, number];
@@ -199,17 +224,21 @@ export interface IVisibilityComponent {
 }
 
 export interface IRigidBodyComponent {
+  damping?: number;
+  gravityScale?: number;
   kind: "dynamic" | "kinematic" | "static";
   mass?: number;
   velocity?: Vec3;
 }
 
 export interface IColliderComponent {
+  friction?: number;
   height?: number;
   kind: "box" | "capsule" | "cylinder" | "mesh" | "sphere";
   layer?: string;
   mask?: readonly string[];
   radius?: number;
+  restitution?: number;
   size?: Vec3;
   slope?: {
     axis: "x" | "z";
@@ -285,27 +314,42 @@ export interface IIrSchemaFile {
   schemas: Record<string, IIrNamedSchema>;
 }
 
+export type MaterialBlendMode = "additive" | "multiply" | "normal" | "premultipliedAlpha";
+export type MaterialKind = "extended" | "standard";
+export type ExtendedMaterialPreset = "foliage" | "unlitMasked";
+
+export interface IMaterialExtensionIr {
+  doubleSided?: boolean;
+  preset: ExtendedMaterialPreset;
+}
+
 export interface IMaterialIr {
   alphaCutoff?: number;
-  alphaMode?: "opaque" | "mask" | "blend";
+  alphaMode?: "blend" | "mask" | "opaque";
   baseColorTexture?: string;
+  blendMode?: MaterialBlendMode;
   clearcoat?: number;
   clearcoatRoughness?: number;
   clearcoatRoughnessTexture?: string;
   clearcoatTexture?: string;
   color: string | readonly [number, number, number] | readonly [number, number, number, number];
+  depthTest?: boolean;
+  depthWrite?: boolean;
   emissive?: string | readonly [number, number, number] | readonly [number, number, number, number];
   emissiveIntensity?: number;
   emissiveTexture?: string;
+  extension?: IMaterialExtensionIr;
   id: string;
-  kind: "standard";
+  kind: MaterialKind;
   metalness?: number;
   metallicRoughnessTexture?: string;
   normalTexture?: string;
   occlusionTexture?: string;
   opacity?: number;
+  renderOrder?: number;
   roughness?: number;
   specularIntensity?: number;
+  specularTexture?: string;
   transmission?: number;
   transmissionTexture?: string;
 }

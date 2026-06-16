@@ -7,7 +7,7 @@ use std::{
 use bevy::{
     animation::{AnimationPlugin, RepeatAnimation, graph::AnimationGraph},
     asset::AssetPlugin,
-    core_pipeline::bloom::BloomSettings,
+    core_pipeline::{bloom::BloomSettings, tonemapping::Tonemapping},
     gltf::GltfPlugin,
     pbr::{NotShadowCaster, NotShadowReceiver},
     prelude::*,
@@ -15,6 +15,7 @@ use bevy::{
         alpha::AlphaMode,
         mesh::{Indices, MeshVertexAttribute, VertexAttributeValues},
         render_resource::VertexFormat,
+        view::ColorGrading,
     },
     scene::ScenePlugin,
 };
@@ -49,6 +50,7 @@ fn rendering_should_map_visibility_and_v2_lights() {
         [2.0, 2.0, 2.0],
     );
     assert_material(app.world_mut(), "cube.visible");
+    assert_extended_blend_material(app.world_mut(), "plane.glass");
     assert!(has_component::<NotShadowCaster>(
         app.world_mut(),
         "cube.visible"
@@ -403,6 +405,15 @@ fn assert_material(world: &mut World, id: &str) {
     assert!((material.specular_transmission - 0.45).abs() < 0.01);
 }
 
+fn assert_extended_blend_material(world: &mut World, id: &str) {
+    let material = material_for(world, id);
+    let color = material.base_color.to_srgba();
+
+    assert!(material.unlit);
+    assert_eq!(material.alpha_mode, AlphaMode::Blend);
+    assert!((color.alpha - 0.35_f32.powf(1.9)).abs() < 0.01);
+}
+
 fn material_for(world: &mut World, id: &str) -> StandardMaterial {
     let handle = {
         let mut query = world.query::<(&ThreeNativeId, &Handle<StandardMaterial>)>();
@@ -591,6 +602,13 @@ fn write_rendering_bundle() -> PathBuf {
       }
     },
     {
+      "id": "plane.glass",
+      "components": {
+        "MeshRenderer": { "mesh": "mesh.cube", "material": "mat.extendedBlend", "visible": true },
+        "Transform": { "position": [0, 0, 0], "scale": [1, 1, 1] }
+      }
+    },
+    {
       "id": "capsule.hidden",
       "components": {
         "MeshRenderer": { "mesh": "mesh.capsule", "material": "mat.main", "visible": false },
@@ -663,6 +681,13 @@ fn write_rendering_bundle() -> PathBuf {
     "metalness": 0.25,
     "specularIntensity": 0.7,
     "transmission": 0.45
+  }, {
+    "id": "mat.extendedBlend",
+    "kind": "extended",
+    "alphaMode": "blend",
+    "color": "#9ed7ff",
+    "extension": { "doubleSided": false, "preset": "unlitMasked" },
+    "opacity": 0.35
   }]
 }"##,
     );
@@ -902,6 +927,82 @@ fn emissive_color_cards_should_map_to_unlit_base_color() {
     assert!((color.red - 0xe6 as f32 / 255.0).abs() < 0.01);
     assert!((color.green - 0x19 as f32 / 255.0).abs() < 0.01);
     assert!((color.blue - 0x4b as f32 / 255.0).abs() < 0.01);
+}
+
+#[test]
+fn cameras_without_atmosphere_should_disable_tonemapping_and_color_grading_exposure() {
+    let root = write_color_parity_camera_bundle();
+    let bundle = load_bundle(&root).expect("color parity camera bundle should load");
+    let mut app = App::new();
+    map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map");
+
+    let mut query = app
+        .world_mut()
+        .query::<(&ThreeNativeId, &Tonemapping, &ColorGrading)>();
+    let camera = query
+        .iter(app.world())
+        .find(|(stable_id, _, _)| stable_id.0 == "camera.color")
+        .expect("color parity camera should be spawned");
+    assert_eq!(*camera.1, Tonemapping::None);
+    assert!((camera.2.global.exposure - 0.0).abs() < 0.001);
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+fn write_color_parity_camera_bundle() -> PathBuf {
+    let root = std::env::temp_dir().join(format!(
+        "tn-rendering-color-parity-camera-{}",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system time should be after unix epoch")
+            .as_nanos()
+    ));
+    fs::create_dir_all(&root).expect("temporary bundle directory should be created");
+    write(
+        &root,
+        "manifest.json",
+        r#"{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "color-parity-camera",
+  "entry": { "world": "world.ir.json" },
+  "files": { "assets": "assets.manifest.json", "materials": "materials.ir.json", "targetProfile": "target.profile.json" }
+}"#,
+    );
+    write(
+        &root,
+        "world.ir.json",
+        r##"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "camera.color",
+      "components": {
+        "Camera": { "kind": "orthographic", "near": 0.1, "far": 20, "size": 4.5 },
+        "Transform": { "position": [0, 0, 5] }
+      }
+    }
+  ],
+  "resources": { "ActiveCamera": { "entity": "camera.color" } }
+}"##,
+    );
+    write(
+        &root,
+        "assets.manifest.json",
+        r#"{ "schema": "threenative.assets", "version": "0.1.0", "assets": [] }"#,
+    );
+    write(
+        &root,
+        "materials.ir.json",
+        r#"{ "schema": "threenative.materials", "version": "0.1.0", "materials": [] }"#,
+    );
+    write(
+        &root,
+        "target.profile.json",
+        r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["desktop"] }"#,
+    );
+    root
 }
 
 fn write_emissive_color_card_bundle() -> PathBuf {

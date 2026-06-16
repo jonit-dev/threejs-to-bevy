@@ -327,7 +327,7 @@ async function captureBevyScreenshot(bundlePath: string, outputPath: string, cam
     try {
       await execFileAsync(
         "cargo",
-        ["run", "--quiet", "-p", "threenative_runtime", "--bin", "threenative_capture", "--", bundlePath, cameraId, outputPath],
+        ["run", "--quiet", "-p", "threenative_runtime", "--bin", "threenative_capture", "--", bundlePath, cameraId, outputPath, "15"],
         {
           cwd: resolve(process.cwd(), "runtime-bevy"),
           env,

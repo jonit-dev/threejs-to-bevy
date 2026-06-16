@@ -20,3 +20,17 @@ export function assertPositiveNumber(value: number, code: string, label: string)
     throw new SdkError(code, `${label} must be greater than zero.`);
   }
 }
+
+export function assertNonNegativeNumber(value: number, code: string, label: string): void {
+  assertFiniteNumber(value, code, label);
+  if (value < 0) {
+    throw new SdkError(code, `${label} must be zero or greater.`);
+  }
+}
+
+export function assertNormalizedNumber(value: number, code: string, label: string): void {
+  assertFiniteNumber(value, code, label);
+  if (value < 0 || value > 1) {
+    throw new SdkError(code, `${label} must be between 0 and 1.`);
+  }
+}

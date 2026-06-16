@@ -4,7 +4,9 @@ use bevy::{
     app::AppExit, prelude::*, render::view::screenshot::ScreenshotManager, window::PrimaryWindow,
 };
 use threenative_loader::load_bundle;
-use threenative_runtime::{app_from_bundle, environment::apply_environment_bookmark};
+use threenative_runtime::{
+    app_from_bundle, assets::TextureAssetControlsRegistry, environment::apply_environment_bookmark,
+};
 
 #[derive(Resource)]
 struct CaptureConfig {
@@ -17,7 +19,11 @@ struct CaptureTarget {
     captured: bool,
     output_path: PathBuf,
     request_frame: u32,
+    texture_grace_frames: u32,
 }
+
+#[derive(Default, Resource)]
+struct TextureAssetsReady(bool);
 
 fn main() -> ExitCode {
     let args = env::args().collect::<Vec<_>>();
@@ -45,11 +51,13 @@ fn main() -> ExitCode {
                 captured: false,
                 output_path: first_output,
                 request_frame: first_frame,
+                texture_grace_frames: first_frame.saturating_add(120),
             },
             CaptureTarget {
                 captured: false,
                 output_path: PathBuf::from(&args[5]),
                 request_frame: second_frame,
+                texture_grace_frames: second_frame.saturating_add(120),
             },
         ]
     } else {
@@ -57,6 +65,7 @@ fn main() -> ExitCode {
             captured: false,
             output_path: first_output,
             request_frame: first_frame,
+            texture_grace_frames: first_frame.saturating_add(120),
         }]
     };
     let max_frame = captures
@@ -102,7 +111,8 @@ fn main() -> ExitCode {
         .map(|capture| capture.output_path.clone())
         .collect::<Vec<_>>();
     app.insert_resource(CaptureConfig { captures, max_frame })
-        .add_systems(Update, request_screenshot);
+        .insert_resource(TextureAssetsReady::default())
+        .add_systems(Update, (wait_for_texture_assets, request_screenshot));
     app.run();
     let missing = final_output_paths
         .iter()
@@ -154,9 +164,33 @@ fn prepare_output_path(output_path: &PathBuf) -> Result<(), ExitCode> {
     Ok(())
 }
 
+fn wait_for_texture_assets(
+    asset_server: Res<AssetServer>,
+    controls: Option<Res<TextureAssetControlsRegistry>>,
+    mut ready: ResMut<TextureAssetsReady>,
+) {
+    if ready.0 {
+        return;
+    }
+    let Some(controls) = controls else {
+        ready.0 = true;
+        return;
+    };
+    if controls.0.values().all(|control| {
+        let handle: Handle<Image> = asset_server.load(control.path.clone());
+        matches!(
+            asset_server.load_state(&handle),
+            bevy::asset::LoadState::Loaded
+        )
+    }) {
+        ready.0 = true;
+    }
+}
+
 fn request_screenshot(
     mut frame: Local<u32>,
     mut config: ResMut<CaptureConfig>,
+    textures_ready: Res<TextureAssetsReady>,
     windows: Query<Entity, With<PrimaryWindow>>,
     mut screenshots: ResMut<ScreenshotManager>,
     mut exit: EventWriter<AppExit>,
@@ -164,7 +198,8 @@ fn request_screenshot(
     *frame += 1;
     if let Ok(window) = windows.get_single() {
         for capture in &mut config.captures {
-            if !capture.captured && *frame >= capture.request_frame {
+            let should_capture = textures_ready.0 || *frame >= capture.texture_grace_frames;
+            if !capture.captured && *frame >= capture.request_frame && should_capture {
                 if let Err(error) =
                     screenshots.save_screenshot_to_disk(window, &capture.output_path)
                 {

@@ -60,3 +60,13 @@ test("should reject invalid physical material factors", () => {
   assert.throws(() => new MeshStandardMaterial({ specularIntensity: 2 }), /specularIntensity/);
   assert.throws(() => new MeshStandardMaterial({ transmission: -0.1 }), /transmission/);
 });
+
+test("should store specular texture map", () => {
+  const material = new MeshStandardMaterial({
+    specularIntensity: 0.85,
+    specularTexture: "tex.specular",
+  });
+
+  assert.equal(material.specularTexture, "tex.specular");
+  assert.equal(material.specularIntensity, 0.85);
+});

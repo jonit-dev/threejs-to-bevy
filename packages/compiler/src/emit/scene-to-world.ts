@@ -15,21 +15,29 @@ interface IObjectLike {
     alphaCutoff?: number;
     alphaMode?: string;
     baseColorTexture?: string | IAssetReference;
+    blendMode?: string;
     clearcoat?: number;
     clearcoatRoughness?: number;
     clearcoatRoughnessTexture?: string | IAssetReference;
     clearcoatTexture?: string | IAssetReference;
     color: unknown;
+    depthTest?: boolean;
+    depthWrite?: boolean;
+    doubleSided?: boolean;
     emissive?: unknown;
     emissiveIntensity?: number;
     emissiveTexture?: string | IAssetReference;
+    kind?: string;
     metalness?: number;
     metallicRoughnessTexture?: string | IAssetReference;
     normalTexture?: string | IAssetReference;
     occlusionTexture?: string | IAssetReference;
     opacity?: number;
+    preset?: string;
+    renderOrder?: number;
     roughness?: number;
     specularIntensity?: number;
+    specularTexture?: string | IAssetReference;
     transmission?: number;
     transmissionTexture?: string | IAssetReference;
   };
@@ -194,16 +202,28 @@ function visitChildren(
       }
       output.materials.push({
         id: materialId,
-        kind: "standard",
+        kind: child.material.kind === "extended" || child.material.preset !== undefined ? "extended" : "standard",
         ...(child.material.alphaCutoff === undefined ? {} : { alphaCutoff: child.material.alphaCutoff }),
         ...(child.material.alphaMode === undefined || child.material.alphaMode === "opaque" ? {} : { alphaMode: child.material.alphaMode }),
+        ...(child.material.blendMode === undefined ? {} : { blendMode: child.material.blendMode }),
         ...(child.material.clearcoat === undefined || child.material.clearcoat === 0 ? {} : { clearcoat: child.material.clearcoat }),
         ...(child.material.clearcoatRoughness === undefined || child.material.clearcoatRoughness === 0 ? {} : { clearcoatRoughness: child.material.clearcoatRoughness }),
         color: child.material.color,
+        ...(child.material.depthTest === undefined ? {} : { depthTest: child.material.depthTest }),
+        ...(child.material.depthWrite === undefined ? {} : { depthWrite: child.material.depthWrite }),
         ...(child.material.emissive === undefined ? {} : { emissive: child.material.emissive }),
         ...(child.material.emissiveIntensity === undefined || child.material.emissiveIntensity === 1 ? {} : { emissiveIntensity: child.material.emissiveIntensity }),
+        ...(child.material.preset === undefined
+          ? {}
+          : {
+              extension: {
+                preset: child.material.preset,
+                ...(child.material.doubleSided === undefined ? {} : { doubleSided: child.material.doubleSided }),
+              },
+            }),
         metalness: child.material.metalness ?? 0,
         ...(child.material.opacity === undefined || child.material.opacity === 1 ? {} : { opacity: child.material.opacity }),
+        ...(child.material.renderOrder === undefined ? {} : { renderOrder: child.material.renderOrder }),
         roughness: child.material.roughness ?? 1,
         ...(child.material.specularIntensity === undefined || child.material.specularIntensity === 0.5 ? {} : { specularIntensity: child.material.specularIntensity }),
         ...(child.material.transmission === undefined || child.material.transmission === 0 ? {} : { transmission: child.material.transmission }),
@@ -304,6 +324,8 @@ function emitPhysics(physics: IPhysicsDeclaration | undefined, components: Recor
   if (physics?.body !== undefined) {
     components.RigidBody = {
       kind: physics.body.kind,
+      ...(physics.body.damping === undefined ? {} : { damping: physics.body.damping }),
+      ...(physics.body.gravityScale === undefined ? {} : { gravityScale: physics.body.gravityScale }),
       ...(physics.body.mass === undefined ? {} : { mass: physics.body.mass }),
       ...(physics.body.velocity === undefined ? {} : { velocity: physics.body.velocity }),
     };
@@ -316,6 +338,8 @@ function emitPhysics(physics: IPhysicsDeclaration | undefined, components: Recor
       ...(physics.collider.height === undefined ? {} : { height: physics.collider.height }),
       ...(physics.collider.layer === undefined ? {} : { layer: physics.collider.layer }),
       ...(physics.collider.mask === undefined ? {} : { mask: physics.collider.mask }),
+      ...(physics.collider.friction === undefined ? {} : { friction: physics.collider.friction }),
+      ...(physics.collider.restitution === undefined ? {} : { restitution: physics.collider.restitution }),
       ...(physics.collider.slope === undefined ? {} : { slope: physics.collider.slope }),
       ...(physics.collider.trigger === undefined ? {} : { trigger: physics.collider.trigger }),
     };
@@ -365,6 +389,7 @@ function emitTextureSlots(
     clearcoatTexture: material.clearcoatTexture,
     clearcoatRoughnessTexture: material.clearcoatRoughnessTexture,
     transmissionTexture: material.transmissionTexture,
+    specularTexture: material.specularTexture,
   };
   return Object.fromEntries(
     Object.entries(slots).flatMap(([slot, value]) => {

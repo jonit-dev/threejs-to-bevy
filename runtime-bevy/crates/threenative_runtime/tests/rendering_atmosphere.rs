@@ -6,7 +6,7 @@ use std::{
 
 use bevy::{
     core_pipeline::tonemapping::Tonemapping,
-    pbr::{CascadeShadowConfig, DirectionalLightShadowMap},
+    pbr::{CascadeShadowConfig, DirectionalLightShadowMap, FogFalloff, FogSettings},
     prelude::*,
     render::{alpha::AlphaMode, camera::Exposure, render_resource::Face, view::ColorGrading},
 };
@@ -154,7 +154,7 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
     assert_eq!(mapped_directional_count, 1);
     let camera_color = app
         .world_mut()
-        .query::<(&Tonemapping, &ColorGrading, &Exposure)>()
+        .query::<(&Tonemapping, &ColorGrading, &Exposure, &FogSettings)>()
         .iter(app.world())
         .next()
         .expect("camera color management should exist");
@@ -162,6 +162,14 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
     assert!((camera_color.1.global.exposure + 0.7).abs() < 0.001);
     assert!((camera_color.1.global.post_saturation - 1.0).abs() < 0.001);
     assert!((camera_color.2.exposure() - 1.05).abs() < 0.001);
+    let fog_color = camera_color.3.color.to_srgba();
+    assert!((fog_color.red - 0x9e as f32 / 255.0).abs() < 0.01);
+    assert!((fog_color.green - 0xb6 as f32 / 255.0).abs() < 0.01);
+    assert!((fog_color.blue - 0xaa as f32 / 255.0).abs() < 0.01);
+    assert!(matches!(
+        camera_color.3.falloff,
+        FogFalloff::Exponential { density } if (density - 0.028).abs() < 0.001
+    ));
 
     fs::remove_dir_all(root).expect("temp bundle should be removed");
 }
@@ -192,6 +200,24 @@ fn textured_gltf_materials_should_preserve_lit_cutout_rendering() {
     let mut untextured = StandardMaterial::default();
     assert!(!normalize_textured_material(&mut untextured));
     assert_eq!(untextured.alpha_mode, AlphaMode::Opaque);
+}
+
+#[test]
+fn extended_unlit_textured_materials_should_not_be_normalized() {
+    let mut material = StandardMaterial {
+        base_color: Color::srgb(0.25, 0.75, 0.42),
+        base_color_texture: Some(Handle::default()),
+        unlit: true,
+        alpha_mode: AlphaMode::Mask(0.45),
+        ..Default::default()
+    };
+
+    assert!(!normalize_textured_material(&mut material));
+    let base_color = material.base_color.to_srgba();
+    assert!((base_color.red - 0.25).abs() < 0.01);
+    assert!((base_color.green - 0.75).abs() < 0.01);
+    assert!((base_color.blue - 0.42).abs() < 0.01);
+    assert_eq!(material.alpha_mode, AlphaMode::Mask(0.45));
 }
 
 #[test]

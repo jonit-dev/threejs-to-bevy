@@ -1,5 +1,16 @@
 export { SdkError } from "./errors.js";
 export {
+  defineAnimations,
+  transformAnimationClip,
+  type IAnimationsDeclaration,
+  type ITransformAnimationClipDeclaration,
+  type ITransformAnimationKeyframe,
+  type ITransformAnimationTrack,
+  type TransformAnimationChannel,
+  type TransformAnimationEasing,
+  type TransformAnimationLoop,
+} from "./animation.js";
+export {
   audioPlaybackControl,
   audioBus,
   audioListener,
@@ -125,7 +136,8 @@ export {
   type IInputMapDeclaration,
   type InputBinding,
 } from "./input.js";
-export { MeshStandardMaterial, type ColorValue, type MaterialAlphaMode, type TextureSlotReference } from "./materials/MeshStandardMaterial.js";
+export { MeshExtendedMaterial, type ExtendedMaterialPreset, type IMeshExtendedMaterialOptions } from "./materials/MeshExtendedMaterial.js";
+export { MeshStandardMaterial, type ColorValue, type MaterialAlphaMode, type MaterialBlendMode, type TextureSlotReference } from "./materials/MeshStandardMaterial.js";
 export { Vector3, type Vector3Tuple } from "./math/Vector3.js";
 export {
   overlay,
@@ -148,6 +160,7 @@ export {
   type IColliderSlopeDeclaration,
   type IColliderDeclaration,
   type IPhysicsDeclaration,
+  type IPhysicsMaterialOptions,
   type IRigidBodyDeclaration,
   type PhysicsBodyKind,
   type PhysicsColliderKind,

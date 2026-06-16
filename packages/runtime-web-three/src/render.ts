@@ -16,7 +16,7 @@ import {
   renderTargetCameraPasses,
   type IRenderTargetRegistry,
 } from "./renderTargets.js";
-import { advanceAnimationPlayback, hasAnimationPlayback, loadWorldModelAssets, mapWorld, type IRuntimeDiagnostic, type IThreeWorld } from "./mapWorld.js";
+import { advanceAnimationPlayback, hasAnimationPlayback, loadPendingMaterialTextures, loadWorldModelAssets, mapWorld, type IRuntimeDiagnostic, type IThreeWorld } from "./mapWorld.js";
 import { applyEnvironmentBookmark, createEnvironmentRuntime, loadEnvironmentAssetInstances } from "./environment.js";
 import { applyAtmosphereProfile } from "./rendering.js";
 import { createGameLoopState, runGameFrame } from "./gameLoop.js";
@@ -56,6 +56,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
   const bundle = await loadBundle(source);
   const mapped = mapWorld(bundle);
   await loadWorldModelAssets(mapped, bundle, source);
+  await loadPendingMaterialTextures();
   const environment = createEnvironmentRuntime(bundle, { renderPlaceholders: false });
   if (environment !== undefined) {
     applyAtmosphereProfile(mapped.scene, bundle.environmentScene?.atmosphere);
@@ -302,7 +303,7 @@ function prepareRenderContainer(container: HTMLElement): void {
   }
 }
 
-function applyRendererColorManagement(
+export function applyRendererColorManagement(
   renderer: THREE.WebGLRenderer,
   colorManagement: IAtmosphereProfileIr["colorManagement"] | undefined,
 ): void {

@@ -52,6 +52,16 @@ Initial docs guard:
 pnpm check:docs:v8
 ```
 
+Material parity proof:
+
+```bash
+pnpm verify:v8:material-parity
+```
+
+The material parity proof builds `examples/v8-material-parity`, validates the
+bundle, runs conformance, captures web/native screenshots, and writes
+`artifacts/v8/material-parity/verification-report.json`.
+
 Optional React webview overlay proof:
 
 ```bash
@@ -83,3 +93,28 @@ pnpm verify:v8:material-parity
 The material parity proof builds `examples/v8-material-parity`, validates the
 bundle, runs conformance, captures web/native screenshots, and writes
 `artifacts/v8/material-parity/verification-report.json`.
+
+Color, lighting, and tone parity proof:
+
+```bash
+pnpm verify:v8:color-parity
+pnpm test:color-parity
+```
+
+The color parity proof builds `examples/v8-color-parity` and
+`examples/v8-lighting-tone`, validates both bundles, captures web/native
+screenshots, compares unlit swatch colors plus lit PBR sphere probes, and writes
+artifacts under `artifacts/v8/color-parity/` and
+`artifacts/v8/lighting-tone/`. `pnpm test:color-parity` runs the fast contract
+harness that locks thresholds, example alignment, and verifier wiring.
+
+Rendering-quality fog/sky proof:
+
+```bash
+pnpm verify:v8:rendering-quality
+```
+
+The rendering-quality proof builds `examples/v8-rendering-quality`, validates
+the bundle, captures web/native screenshots, compares sky/foreground/fog-depth
+regions, verifies fog convergence, and writes artifacts under
+`artifacts/v8/rendering-quality/`.

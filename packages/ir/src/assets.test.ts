@@ -113,6 +113,97 @@ test("assets should accept supported material texture slots", async () => {
   }
 });
 
+test("animations should accept transform tracks when targets exist", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-transform-animation-"));
+  try {
+    await writeTestBundle(root, {
+      manifest: {
+        entry: { animations: "animations.ir.json" },
+        files: { animations: "animations.ir.json" },
+      },
+      world: {
+        schema: "threenative.world",
+        version: "0.1.0",
+        entities: [{ id: "cube", components: { Transform: { position: [0, 0, 0], scale: [1, 1, 1] } } }],
+      },
+    });
+    await writeJson(root, "animations.ir.json", {
+      schema: "threenative.animations",
+      version: "0.1.0",
+      transformClips: [
+        {
+          id: "move",
+          loop: "repeat",
+          tracks: [
+            {
+              channel: "position",
+              easing: "linear",
+              keyframes: [
+                { timeSeconds: 0, value: [0, 0, 0] },
+                { timeSeconds: 1, value: [2, 0, 0] },
+              ],
+              target: "cube",
+            },
+          ],
+        },
+      ],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("animations should reject missing targets and non-monotonic keyframes", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-transform-animation-invalid-"));
+  try {
+    await writeTestBundle(root, {
+      manifest: {
+        entry: { animations: "animations.ir.json" },
+        files: { animations: "animations.ir.json" },
+      },
+      world: {
+        schema: "threenative.world",
+        version: "0.1.0",
+        entities: [{ id: "cube", components: { Transform: { position: [0, 0, 0] } } }],
+      },
+    });
+    await writeJson(root, "animations.ir.json", {
+      schema: "threenative.animations",
+      version: "0.1.0",
+      transformClips: [
+        {
+          id: "bad",
+          tracks: [
+            {
+              channel: "scale",
+              keyframes: [
+                { timeSeconds: 0, value: [1, 1, 1] },
+                { timeSeconds: 0, value: [2, 2, 2] },
+              ],
+              target: "missing",
+            },
+          ],
+        },
+      ],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => diagnostic.code),
+      ["TN_IR_TRANSFORM_ANIMATION_TARGET_MISSING", "TN_IR_TRANSFORM_ANIMATION_TIME_NON_MONOTONIC"],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("assets should accept expanded generated mesh primitive catalog", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-assets-generated-mesh-catalog-"));
   try {

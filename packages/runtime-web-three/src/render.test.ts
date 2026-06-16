@@ -5,7 +5,7 @@ import * as THREE from "three";
 import type { IRuntimeConfigIr } from "@threenative/ir";
 
 import { mapWorld } from "./mapWorld.js";
-import { renderCameraViews, webBloomSettings, webRendererParameters } from "./render.js";
+import { applyRendererColorManagement, renderCameraViews, webBloomSettings, webRendererParameters } from "./render.js";
 
 function runtimeConfig(
   antialias: NonNullable<IRuntimeConfigIr["renderer"]>["antialias"],
@@ -19,6 +19,26 @@ function runtimeConfig(
     window: { height: 720, width: 1280 },
   };
 }
+
+test("should disable tone mapping by default to match Bevy without atmosphere color management", () => {
+  const renderer = new THREE.WebGLRenderer();
+  applyRendererColorManagement(renderer, undefined);
+  assert.equal(renderer.outputColorSpace, THREE.SRGBColorSpace);
+  assert.equal(renderer.toneMapping, THREE.NoToneMapping);
+  assert.equal(renderer.toneMappingExposure, 1);
+});
+
+test("should map atmosphere color management to renderer tone mapping", () => {
+  const renderer = new THREE.WebGLRenderer();
+  applyRendererColorManagement(renderer, {
+    exposure: 1.05,
+    outputColorSpace: "srgb",
+    textureColorSpace: "srgb",
+    toneMapping: "aces",
+  });
+  assert.equal(renderer.toneMapping, THREE.ACESFilmicToneMapping);
+  assert.equal(renderer.toneMappingExposure, 1.05);
+});
 
 test("should map runtime antialias modes to WebGL renderer parameters", () => {
   assert.deepEqual(webRendererParameters(runtimeConfig("none")), {

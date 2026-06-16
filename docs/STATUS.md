@@ -65,7 +65,60 @@ writes `artifacts/v8/color-parity/verification-report.json` plus
 `artifacts/v8/lighting-tone/lighting-tone-report.json`. Unlit swatch parity is
 near-exact (full-frame changed pixel ratio `0`, max channel delta `~1/255`);
 lit scenes gate on full-frame average color/brightness deltas (`~1%`) with probe
-regions tolerating localized PBR gradient differences.
+regions tolerating localized PBR gradient differences. Fast regression harness:
+`pnpm test:color-parity` locks thresholds, example swatch alignment, required
+harness files, and verifier orchestration without rerunning Playwright/Bevy
+captures.
+
+V8-08 has started with a transform animation contract slice:
+`animations.ir.json` now carries validated entity transform clips with
+position/rotation/scale tracks, monotonic finite keyframes, `linear`/`step`
+sampling, and `none`/`repeat` loop policy. The SDK can author
+`defineAnimations()` / `transformAnimationClip()` declarations, compiler output
+emits `animation:transform-*` capabilities, web and Bevy loaders consume the
+same bundle document, and `pnpm verify:v8:animation-transform` compares web and
+native transform samples through
+`packages/ir/fixtures/conformance/v8-transform-animation/game.bundle`, writing
+trace evidence under `artifacts/v8/animation-transform/`. The same slice now
+also exposes `animation.query` and `animation.stop` as declared portable system
+services in SDK/IR, web, and Bevy QuickJS contexts; `pnpm
+verify:v8:animation-controls` compares their web/native command-shape and
+service-payload effect logs through
+`packages/ir/fixtures/conformance/v8-animation-controls/game.bundle` and writes
+evidence under `artifacts/v8/animation-controls/`. Stateful runtime playback
+control semantics, broader blending, and rendered particles remain open V8-08
+work.
+
+V8-09 has a narrow rigid-body primitive solver parity slice: `RigidBody`
+metadata now carries portable `gravityScale` and `damping`, `Collider` metadata
+now carries portable `restitution` and `friction`, and the web/native primitive
+trace proves a dynamic box falling under gravity onto a static floor with
+deterministic position, velocity, material, and contact observations. Run
+`pnpm verify:v8:rigid-body-primitive` after building the web runtime; it writes
+`artifacts/conformance/v8-rigid-body-primitive/web-rigid-body.json`,
+`native-rigid-body.json`, and `rigid-body-diff.json`. This does not complete
+full V8-09 rigid-body, character navigation, object pushing, or pathfinding
+acceptance.
+
+V8-10 has a narrow asset/glTF inspection evidence slice: web and Bevy now emit a
+deterministic `threenative.asset-load-sync-trace` for bundle-local path assets
+and environment model scene references. The trace records sorted asset load
+order, a `bundle.requiredAssets` ready barrier, and bundle-declared glTF source
+asset to instance/LOD relationships, with focused comparison artifacts written
+by `pnpm verify:v8:asset-load-gltf-inspection` under
+`artifacts/conformance/v8-asset-load-gltf-inspection/`. This does not promote
+the rest of V8-10: public asset-group declarations, spawned glTF node
+query/update handles, material override handles, editor inspection commands,
+watch diagnostics, and state-preserving hot reload remain future work.
+
+V8-11 now has a focused rendering-quality slice for fog and sky visual parity:
+`pnpm verify:v8:rendering-quality` builds `examples/v8-rendering-quality`,
+validates the bundle, captures web/native screenshots, checks nonblank output,
+compares sky/foreground/fog-depth regions, verifies far fog convergence toward
+the authored fog color, and writes artifacts under
+`artifacts/v8/rendering-quality/`. This is not the full V8-11 post-processing
+surface; skybox/cubemap contracts, instancing/batching evidence, and broader
+post-processing controls remain tracked as open parity work.
 
 ## V4 Proves
 
@@ -244,7 +297,7 @@ UV transform metadata: `textureAsset` accepts wrap, min/mag filter, repeat,
 offset, center, and rotation options; compiler emission preserves those fields
 in `assets.manifest.json`; IR/schema validation allows the promoted metadata;
 web maps it to Three.js texture wrapping, filtering, and transform properties;
-Bevy applies sampler wrap/filter controls on loaded images and maps
+Bevy now applies sampler wrap/filter controls on loaded images and maps
 repeat/offset/center/rotation through `StandardMaterial.uv_transform`, with
 focused material-parity screenshot evidence under
 `artifacts/v8/material-parity/`.
@@ -910,8 +963,12 @@ selected clip with the authored loop and speed. `pnpm verify:v9:skeletal-animati
 now proves cross-runtime skinned-mesh deformation from bundle-local glTF clips
 through `examples/v9-skeletal-animation`, web motion screenshots, and native
 Bevy dual-frame capture evidence under `artifacts/v9/skeletal-animation/`.
-Richer graph runtime control, stop/state queries, IK, retargeting, and rendered
-particles remain later animation work.
+V8 transform animation also has exact trace parity for authored entity
+position/rotation/scale tracks through `pnpm verify:v8:animation-transform`,
+plus declared `animation.query` / `animation.stop` command-shape/service-payload
+parity through `pnpm verify:v8:animation-controls`. Richer graph runtime
+control, stateful playback control semantics, broader blending, IK,
+retargeting, and rendered particles remain later animation work.
 
 ## V3 Proves
 

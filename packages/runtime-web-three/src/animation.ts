@@ -1,4 +1,4 @@
-import type { IAssetsManifest } from "@threenative/ir";
+import type { IAnimationsIr, IAssetsManifest } from "@threenative/ir";
 
 type ModelAsset = Extract<IAssetsManifest["assets"][number], { kind: "model" }>;
 type AnimationGraph = NonNullable<ModelAsset["animationGraph"]>;
@@ -52,6 +52,14 @@ export interface IAnimationPlaybackState {
   timeSeconds: number;
 }
 
+export interface ITransformAnimationSample {
+  channel: "position" | "rotation" | "scale";
+  clip: string;
+  target: string;
+  timeSeconds: number;
+  value: number[];
+}
+
 export function traceAnimationGraphs(assets: IAssetsManifest, input: IAnimationTraceInput = {}): IAnimationTraceObservation[] {
   const fixedDelta = input.fixedDelta ?? 1;
   return assets.assets
@@ -89,6 +97,56 @@ export function advanceAnimationPlaybackState(playback: IAnimationPlaybackState,
     ...playback,
     timeSeconds: playback.timeSeconds + fixedDelta * playback.speed,
   };
+}
+
+export function sampleTransformAnimations(
+  animations: IAnimationsIr | undefined,
+  input: { timeSeconds?: number } = {},
+): ITransformAnimationSample[] {
+  if (animations === undefined) {
+    return [];
+  }
+  const requestedTime = input.timeSeconds ?? 0;
+  return animations.transformClips
+    .flatMap((clip) => clip.tracks.map((track) => {
+      const lastTime = track.keyframes.at(-1)?.timeSeconds ?? 0;
+      const timeSeconds = clip.loop === "repeat" && lastTime > 0 ? requestedTime % lastTime : Math.min(requestedTime, lastTime);
+      return {
+        channel: track.channel,
+        clip: clip.id,
+        target: track.target,
+        timeSeconds: round(timeSeconds),
+        value: sampleTrack(track.keyframes, timeSeconds, track.easing ?? "linear"),
+      };
+    }))
+    .sort((left, right) => left.clip.localeCompare(right.clip) || left.target.localeCompare(right.target) || left.channel.localeCompare(right.channel));
+}
+
+function sampleTrack(
+  keyframes: readonly { timeSeconds: number; value: readonly number[] }[],
+  timeSeconds: number,
+  easing: "linear" | "step",
+): number[] {
+  const first = keyframes[0];
+  const last = keyframes.at(-1);
+  if (first === undefined || last === undefined || timeSeconds <= first.timeSeconds) {
+    return [...(first?.value ?? [])].map(round);
+  }
+  if (timeSeconds >= last.timeSeconds) {
+    return [...last.value].map(round);
+  }
+  const nextIndex = keyframes.findIndex((keyframe) => keyframe.timeSeconds >= timeSeconds);
+  const next = keyframes[nextIndex] ?? last;
+  const previous = keyframes[nextIndex - 1] ?? first;
+  if (easing === "step" || next.timeSeconds === previous.timeSeconds) {
+    return [...previous.value].map(round);
+  }
+  const alpha = (timeSeconds - previous.timeSeconds) / (next.timeSeconds - previous.timeSeconds);
+  return previous.value.map((value, index) => round(value + ((next.value[index] ?? value) - value) * alpha));
+}
+
+function round(value: number): number {
+  return Number(value.toFixed(6));
 }
 
 function traceAssetAnimation(

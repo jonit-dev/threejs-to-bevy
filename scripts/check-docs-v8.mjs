@@ -8,6 +8,7 @@ const requiredV8Prds = [
   "V8-00-local-editor-scope-and-contract.md",
   "V8-01-editor-project-snapshot-and-structured-diffs.md",
   "V8-05-optional-react-webview-overlay.md",
+  "V8-07-material-texture-shader-parity.md",
 ];
 
 const requiredV8Phrases = [
@@ -22,6 +23,7 @@ const requiredV8Phrases = [
   ["React webview overlay", "V8 docs must mention the optional React webview overlay scope."],
   ["retained UI", "V8 docs must keep retained UI as the portable default."],
   ["verify:v8:overlay", "V8 docs must link the overlay verification command."],
+  ["verify:v8:material-parity", "V8 docs must link the material parity verification command."],
 ];
 
 const requiredStatusPhrases = [

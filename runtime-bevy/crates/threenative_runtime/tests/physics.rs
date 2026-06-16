@@ -5,7 +5,9 @@ use std::{
 };
 
 use threenative_loader::load_bundle;
-use threenative_runtime::physics::{detect_physics_event_trace, detect_physics_events};
+use threenative_runtime::physics::{
+    detect_physics_event_trace, detect_physics_events, trace_rigid_body_primitives,
+};
 
 #[test]
 fn physics_should_detect_collision_fixture() {
@@ -78,6 +80,28 @@ fn physics_should_emit_deterministic_contact_ordering() {
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
 
+#[test]
+fn physics_should_trace_dynamic_box_falling_onto_static_floor() {
+    let root = write_falling_box_bundle();
+    let bundle = load_bundle(&root).expect("physics bundle should load");
+
+    let observations = trace_rigid_body_primitives(&bundle, 4, 0.25);
+
+    assert_eq!(observations.len(), 4);
+    assert_eq!(observations[0].contact, None);
+    assert_eq!(observations[0].position, [0.0, 1.386875, 0.0]);
+    assert_eq!(observations[0].velocity, [0.0, -2.4525, 0.0]);
+    assert_eq!(observations[1].contact.as_deref(), Some("floor"));
+    assert_eq!(observations[1].position, [0.0, 0.55, 0.0]);
+    assert_eq!(observations[1].velocity, [0.0, 0.0, 0.0]);
+    assert_eq!(observations[1].gravity_scale, 1.0);
+    assert_eq!(observations[1].damping, 0.0);
+    assert_eq!(observations[1].friction, 0.5);
+    assert_eq!(observations[1].restitution, 0.0);
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
 fn write_physics_bundle() -> PathBuf {
     let root = std::env::temp_dir().join(format!(
         "tn-physics-{}",
@@ -119,6 +143,70 @@ fn write_physics_bundle() -> PathBuf {
         "Collider": { "kind": "box", "size": [1, 1, 1] },
         "RigidBody": { "kind": "kinematic" },
         "Transform": { "position": [0.5, 0, 0] }
+      }
+    }
+  ]
+}"#,
+    );
+    write(
+        &root,
+        "assets.manifest.json",
+        r#"{ "schema": "threenative.assets", "version": "0.1.0", "assets": [] }"#,
+    );
+    write(
+        &root,
+        "materials.ir.json",
+        r#"{ "schema": "threenative.materials", "version": "0.1.0", "materials": [] }"#,
+    );
+    write(
+        &root,
+        "target.profile.json",
+        r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["desktop"] }"#,
+    );
+    root
+}
+
+fn write_falling_box_bundle() -> PathBuf {
+    let root = std::env::temp_dir().join(format!(
+        "tn-physics-falling-box-{}",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system time should be after unix epoch")
+            .as_nanos()
+    ));
+    fs::create_dir_all(&root).expect("temporary bundle directory should be created");
+    write(
+        &root,
+        "manifest.json",
+        r#"{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "physics-falling-box",
+  "entry": { "world": "world.ir.json" },
+  "files": { "assets": "assets.manifest.json", "materials": "materials.ir.json", "targetProfile": "target.profile.json" }
+}"#,
+    );
+    write(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "floor",
+      "components": {
+        "Collider": { "friction": 0.5, "kind": "box", "restitution": 0, "size": [4, 0.1, 4] },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [0, 0, 0] }
+      }
+    },
+    {
+      "id": "box",
+      "components": {
+        "Collider": { "friction": 0.5, "kind": "box", "restitution": 0, "size": [1, 1, 1] },
+        "RigidBody": { "gravityScale": 1, "kind": "dynamic", "velocity": [0, 0, 0] },
+        "Transform": { "position": [0, 2, 0] }
       }
     }
   ]

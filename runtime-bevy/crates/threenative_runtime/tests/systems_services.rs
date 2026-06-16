@@ -6,12 +6,12 @@ use std::{
 use serde_json::json;
 use threenative_loader::load_bundle;
 use threenative_runtime::{
-    systems_context::{NativeSystemTimeSnapshot, build_system_context_snapshot},
+    systems_context::{build_system_context_snapshot, NativeSystemTimeSnapshot},
     systems_services::{
-        NativeOverlapRequest, NativePointerRayHit, NativePointerRayRequest, NativePointerRayResult,
-        NativeQueryShape, NativeRaycastHit, NativeRaycastRequest, NativeRaycastResult,
-        NativeShapeCastRequest, animation_play_payload, overlap_primitive, pick_mesh, pointer_ray,
-        raycast_primitive, shape_cast_primitive,
+        animation_play_payload, animation_query_payload, animation_stop_payload, overlap_primitive,
+        pick_mesh, pointer_ray, raycast_primitive, shape_cast_primitive, NativeOverlapRequest,
+        NativePointerRayHit, NativePointerRayRequest, NativePointerRayResult, NativeQueryShape,
+        NativeRaycastHit, NativeRaycastRequest, NativeRaycastResult, NativeShapeCastRequest,
     },
 };
 
@@ -201,6 +201,31 @@ fn systems_services_should_log_animation_play_service_call() {
         json!({
             "request": { "clip": "run", "entity": "player", "options": { "loop": true } },
             "result": { "accepted": true },
+        })
+    );
+}
+
+#[test]
+fn systems_services_should_log_animation_query_and_stop_service_calls() {
+    assert_eq!(
+        animation_query_payload("player", Some("run")),
+        json!({
+            "request": { "clip": "run", "entity": "player" },
+            "result": {
+                "active": false,
+                "clip": "run",
+                "entity": "player",
+                "paused": false,
+                "stopped": true,
+                "timeSeconds": 0.0,
+            },
+        })
+    );
+    assert_eq!(
+        animation_stop_payload("player", None),
+        json!({
+            "request": { "entity": "player" },
+            "result": { "accepted": true, "stopped": true },
         })
     );
 }
