@@ -1,0 +1,51 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "floor",
+      "components": {
+        "Collider": {
+          "friction": 0.5,
+          "kind": "box",
+          "restitution": 0,
+          "size": [4, 0.1, 4]
+        },
+        "RigidBody": {
+          "kind": "static"
+        },
+        "Transform": {
+          "position": [0, 0, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "box",
+      "components": {
+        "Collider": {
+          "friction": 0.5,
+          "kind": "box",
+          "restitution": 0,
+          "size": [1, 1, 1]
+        },
+        "RigidBody": {
+          "damping": 0,
+          "gravityScale": 1,
+          "kind": "dynamic",
+          "mass": 1,
+          "velocity": [0, 0, 0]
+        },
+        "Transform": {
+          "position": [0, 2, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    }
+  ],
+  "events": {},
+  "resources": {},
+  "prefabs": []
+}

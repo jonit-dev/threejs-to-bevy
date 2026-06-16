@@ -366,7 +366,10 @@ pub struct HierarchyComponent {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RigidBodyComponent {
+    pub damping: Option<f32>,
+    pub gravity_scale: Option<f32>,
     pub kind: String,
     pub mass: Option<f32>,
     pub velocity: Option<[f32; 3]>,
@@ -374,11 +377,13 @@ pub struct RigidBodyComponent {
 
 #[derive(Debug, Deserialize)]
 pub struct ColliderComponent {
+    pub friction: Option<f32>,
     pub kind: String,
     pub height: Option<f32>,
     pub layer: Option<String>,
     pub mask: Option<Vec<String>>,
     pub radius: Option<f32>,
+    pub restitution: Option<f32>,
     pub size: Option<[f32; 3]>,
     pub slope: Option<ColliderSlopeComponent>,
     pub trigger: Option<bool>,

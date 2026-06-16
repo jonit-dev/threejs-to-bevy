@@ -321,6 +321,8 @@ function emitPhysics(physics: IPhysicsDeclaration | undefined, components: Recor
   if (physics?.body !== undefined) {
     components.RigidBody = {
       kind: physics.body.kind,
+      ...(physics.body.damping === undefined ? {} : { damping: physics.body.damping }),
+      ...(physics.body.gravityScale === undefined ? {} : { gravityScale: physics.body.gravityScale }),
       ...(physics.body.mass === undefined ? {} : { mass: physics.body.mass }),
       ...(physics.body.velocity === undefined ? {} : { velocity: physics.body.velocity }),
     };
@@ -333,6 +335,8 @@ function emitPhysics(physics: IPhysicsDeclaration | undefined, components: Recor
       ...(physics.collider.height === undefined ? {} : { height: physics.collider.height }),
       ...(physics.collider.layer === undefined ? {} : { layer: physics.collider.layer }),
       ...(physics.collider.mask === undefined ? {} : { mask: physics.collider.mask }),
+      ...(physics.collider.friction === undefined ? {} : { friction: physics.collider.friction }),
+      ...(physics.collider.restitution === undefined ? {} : { restitution: physics.collider.restitution }),
       ...(physics.collider.slope === undefined ? {} : { slope: physics.collider.slope }),
       ...(physics.collider.trigger === undefined ? {} : { trigger: physics.collider.trigger }),
     };

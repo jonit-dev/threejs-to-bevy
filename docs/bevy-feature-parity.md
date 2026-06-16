@@ -244,12 +244,15 @@ next parity slice:
 - [x] Fixed-timestep movement contract
 - [x] Box, sphere, and capsule colliders
 - [x] Rigid-body metadata
+- [x] Primitive rigid-body solver trace for gravityScale, damping, restitution,
+  friction, and a falling dynamic box against a static floor
 - [x] Trigger/contact event phases for fixed traces
 - [x] Collision layer/mask metadata
 - [x] Raycast-style grounding trace
 - [x] Overlap and shape-cast service traces
 - [x] Narrow character controller movement and blocking trace
-- [ ] `P1` Full rigid-body solver parity
+- [ ] `P1` Full rigid-body solver parity beyond the current primitive
+  falling-box trace
 - [ ] `P2` Dynamic mesh colliders
 - [ ] `P1` Broad sensors beyond current trigger/overlap scope
 - [x] Step offsets, ledge ungrounding, moving-platform carry, and richer ground contact trace

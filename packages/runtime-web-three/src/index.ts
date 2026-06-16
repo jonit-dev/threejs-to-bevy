@@ -24,7 +24,7 @@ export { resolveWebAssets, type IResolvedWebAsset } from "./assets.js";
 export { advanceAnimationPlayback, mapWorld, syncTransforms, type IRuntimeDiagnostic, type IThreeWorld } from "./mapWorld.js";
 export { aabbIntersectsAabb, meshAabb, meshBoundingSphere, sampleMeshPoints, sphereIntersectsSphere, type IAabb, type IBoundingSphere } from "./meshBounds.js";
 export { ease, sampleCatmullRom, sampleCubicBezier, sampleLine, sampleQuadraticBezier, type EasingKind } from "./pathSampling.js";
-export { stepPhysics, type IPhysicsEventPayload } from "./physics.js";
+export { stepPhysics, traceRigidBodyPrimitive, type IPhysicsEventPayload, type IRigidBodyTraceInput, type IRigidBodyTraceObservation } from "./physics.js";
 export { interpolateQuat, interpolateTransform, interpolateVec3, smoothDampVec3, type ITransformSample } from "./transformInterpolation.js";
 export { resolveWalkableMovement, type IWalkabilityResolution } from "./walkability.js";
 export { renderUi, type IRenderedUi, type IRenderedUiNode } from "./ui/renderUi.js";

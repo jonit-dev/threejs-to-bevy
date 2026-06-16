@@ -3474,6 +3474,12 @@ function validatePhysicsComponents(entity: IWorldIr["entities"][number], path: s
         path: `${path}/components/Collider/trigger`,
       });
     }
+    if (colliderRecord.friction !== undefined) {
+      validateFiniteMinimum(colliderRecord.friction, 0, `${path}/components/Collider/friction`, "TN_IR_PHYSICS_COLLIDER_FRICTION_INVALID", diagnostics);
+    }
+    if (colliderRecord.restitution !== undefined) {
+      validateFiniteRange(colliderRecord.restitution, 0, 1, `${path}/components/Collider/restitution`, "TN_IR_PHYSICS_COLLIDER_RESTITUTION_INVALID", diagnostics);
+    }
     if (colliderRecord.kind === "box") {
       validatePositiveVec3(colliderRecord.size, `${path}/components/Collider/size`, "TN_IR_PHYSICS_COLLIDER_SIZE_INVALID", diagnostics);
       validateColliderSlope(colliderRecord.slope, `${path}/components/Collider/slope`, diagnostics);
@@ -3517,6 +3523,12 @@ function validatePhysicsComponents(entity: IWorldIr["entities"][number], path: s
   }
   if (bodyRecord?.mass !== undefined) {
     validatePositiveFinite(bodyRecord.mass, `${path}/components/RigidBody/mass`, "TN_IR_PHYSICS_BODY_MASS_INVALID", diagnostics);
+  }
+  if (bodyRecord?.damping !== undefined) {
+    validateFiniteMinimum(bodyRecord.damping, 0, `${path}/components/RigidBody/damping`, "TN_IR_PHYSICS_BODY_DAMPING_INVALID", diagnostics);
+  }
+  if (bodyRecord?.gravityScale !== undefined) {
+    validateFiniteNumber(bodyRecord.gravityScale, `${path}/components/RigidBody/gravityScale`, "TN_IR_PHYSICS_BODY_GRAVITY_SCALE_INVALID", diagnostics);
   }
   if (bodyRecord?.velocity !== undefined) {
     validateFiniteVec3(bodyRecord.velocity, `${path}/components/RigidBody/velocity`, "TN_IR_PHYSICS_BODY_VELOCITY_INVALID", diagnostics);
@@ -3744,6 +3756,36 @@ function validatePositiveFinite(value: unknown, path: string, code: string, diag
     diagnostics.push({
       code,
       message: "Expected a positive finite number.",
+      path,
+    });
+  }
+}
+
+function validateFiniteNumber(value: unknown, path: string, code: string, diagnostics: IIrDiagnostic[]): void {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    diagnostics.push({
+      code,
+      message: "Expected a finite number.",
+      path,
+    });
+  }
+}
+
+function validateFiniteMinimum(value: unknown, minimum: number, path: string, code: string, diagnostics: IIrDiagnostic[]): void {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < minimum) {
+    diagnostics.push({
+      code,
+      message: `Expected a finite number greater than or equal to ${minimum}.`,
+      path,
+    });
+  }
+}
+
+function validateFiniteRange(value: unknown, minimum: number, maximum: number, path: string, code: string, diagnostics: IIrDiagnostic[]): void {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < minimum || value > maximum) {
+    diagnostics.push({
+      code,
+      message: `Expected a finite number between ${minimum} and ${maximum}.`,
       path,
     });
   }
