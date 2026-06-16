@@ -296,6 +296,11 @@ test("should include capability tags for each conformance fixture", async () => 
     "overlay:transparent",
     "overlay:webview",
   ]);
+  assertFixtureCapabilities(byName, "v8-input-drag-picking", [
+    "input:drag-picking",
+    "scripting:service.picking.mesh",
+    "scripting:service.picking.pointerRay",
+  ]);
 });
 
 function assertFixtureCapabilities(

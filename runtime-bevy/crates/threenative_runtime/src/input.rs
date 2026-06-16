@@ -2,9 +2,9 @@ use std::collections::{HashMap, HashSet};
 
 use bevy::{
     input::{
-        ButtonInput,
         gamepad::{GamepadAxis, GamepadAxisType, GamepadButton, GamepadButtonType, Gamepads},
         mouse::MouseMotion,
+        ButtonInput,
     },
     prelude::*,
     window::PrimaryWindow,
@@ -115,6 +115,57 @@ pub enum NativeTouchGestureEvent {
         duration_ms: f32,
         scale: f32,
     },
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct NativeDragPickingFrame {
+    pub button_down: bool,
+    pub picked_entity: Option<String>,
+    pub pointer: [f64; 2],
+    pub time_ms: f64,
+}
+
+#[derive(Clone, Debug, PartialEq, serde::Serialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum NativeDragPickingEvent {
+    #[serde(rename = "start")]
+    Start {
+        entity: String,
+        pointer: [f64; 2],
+        #[serde(rename = "timeMs")]
+        time_ms: f64,
+    },
+    #[serde(rename = "move")]
+    Move {
+        delta: [f64; 2],
+        entity: String,
+        pointer: [f64; 2],
+        #[serde(rename = "timeMs")]
+        time_ms: f64,
+    },
+    #[serde(rename = "drop")]
+    Drop {
+        delta: [f64; 2],
+        entity: String,
+        pointer: [f64; 2],
+        #[serde(skip_serializing_if = "Option::is_none")]
+        target: Option<String>,
+        #[serde(rename = "timeMs")]
+        time_ms: f64,
+    },
+    #[serde(rename = "cancel")]
+    Cancel {
+        entity: String,
+        pointer: [f64; 2],
+        #[serde(rename = "timeMs")]
+        time_ms: f64,
+    },
+}
+
+#[derive(Clone, Debug)]
+pub struct NativeDragPickingTracker {
+    active: Option<ActiveDragPicking>,
+    move_threshold: f64,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -237,6 +288,95 @@ impl NativeTouchGestureTracker {
     }
 }
 
+impl Default for NativeDragPickingTracker {
+    fn default() -> Self {
+        Self::new(0.005)
+    }
+}
+
+impl NativeDragPickingTracker {
+    pub fn new(move_threshold: f64) -> Self {
+        Self {
+            active: None,
+            move_threshold,
+        }
+    }
+
+    pub fn update(&mut self, frame: NativeDragPickingFrame) -> Vec<NativeDragPickingEvent> {
+        let mut events = Vec::new();
+        if frame.button_down {
+            if self.active.is_none() {
+                if let Some(entity) = frame.picked_entity.as_ref() {
+                    self.active = Some(ActiveDragPicking {
+                        entity: entity.clone(),
+                        pointer: frame.pointer,
+                        start: frame.pointer,
+                        started: false,
+                    });
+                }
+            }
+            if let Some(active) = self.active.as_mut() {
+                let delta = [
+                    round_f64(frame.pointer[0] - active.pointer[0]),
+                    round_f64(frame.pointer[1] - active.pointer[1]),
+                ];
+                let total_distance = distance2(frame.pointer, active.start);
+                if !active.started && total_distance >= self.move_threshold {
+                    active.started = true;
+                    events.push(NativeDragPickingEvent::Start {
+                        entity: active.entity.clone(),
+                        pointer: active.start,
+                        time_ms: frame.time_ms,
+                    });
+                }
+                if active.started && (delta[0] != 0.0 || delta[1] != 0.0) {
+                    events.push(NativeDragPickingEvent::Move {
+                        delta,
+                        entity: active.entity.clone(),
+                        pointer: frame.pointer,
+                        time_ms: frame.time_ms,
+                    });
+                }
+                if active.started {
+                    active.pointer = frame.pointer;
+                }
+            }
+            return events;
+        }
+
+        let Some(active) = self.active.take() else {
+            return events;
+        };
+        if active.started {
+            events.push(NativeDragPickingEvent::Drop {
+                delta: [
+                    round_f64(frame.pointer[0] - active.start[0]),
+                    round_f64(frame.pointer[1] - active.start[1]),
+                ],
+                entity: active.entity,
+                pointer: frame.pointer,
+                target: frame.picked_entity,
+                time_ms: frame.time_ms,
+            });
+        } else {
+            events.push(NativeDragPickingEvent::Cancel {
+                entity: active.entity,
+                pointer: frame.pointer,
+                time_ms: frame.time_ms,
+            });
+        }
+        events
+    }
+}
+
+#[derive(Clone, Debug)]
+struct ActiveDragPicking {
+    entity: String,
+    pointer: [f64; 2],
+    start: [f64; 2],
+    started: bool,
+}
+
 #[derive(Clone, Debug)]
 struct ActiveSingleTouchGesture {
     id: u64,
@@ -262,6 +402,14 @@ struct PinchState {
     distance: f32,
 }
 
+fn distance2(left: [f64; 2], right: [f64; 2]) -> f64 {
+    (left[0] - right[0]).hypot(left[1] - right[1])
+}
+
+fn round_f64(value: f64) -> f64 {
+    (value * 1_000_000.0).round() / 1_000_000.0
+}
+
 fn classify_single_touch(
     touch: &ActiveSingleTouchGesture,
     end_time_ms: f32,
@@ -280,7 +428,11 @@ fn classify_single_touch(
     }
     if distance >= 40.0 && duration_ms <= 700.0 {
         let direction = if delta_x.abs() >= delta_y.abs() {
-            if delta_x >= 0.0 { "right" } else { "left" }
+            if delta_x >= 0.0 {
+                "right"
+            } else {
+                "left"
+            }
         } else if delta_y >= 0.0 {
             "down"
         } else {

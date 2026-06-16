@@ -834,8 +834,20 @@ portable camera IR into web/native service-logged rays that can feed
 `picking.mesh`. Basic UI Tab/arrow keyboard navigation now works through the web
 DOM overlay and matching web/native fixed traces, and basic UI control picking
 now dispatches portable action events from web clicks and Bevy button/touch
-interactions. Touch gestures, drag-and-drop picking, rebinding, and richer
-navigation diagnostics remain future input work.
+interactions. Touch gestures, UI-target drag-and-drop picking, rebinding, and
+richer navigation diagnostics remain future input work.
+
+V8-14 has started with a parity-first 3D drag-picking slice. Web and Bevy now
+share a deterministic recognizer for mesh drag phases (`start`, `move`, `drop`,
+and pre-threshold `cancel`) fed by the existing `picking.pointerRay` and
+`picking.mesh` services. The focused fixture
+`packages/ir/fixtures/conformance/v8-input-drag-picking/game.bundle` compares
+ordered web/native JSON traces through
+`scripts/verify-v8-drag-picking-trace.mjs` and writes
+`artifacts/conformance/v8-input-drag-picking/web-drag-picking.json`,
+`native-drag-picking.json`, and `drag-picking-diff.json`. This proves the mesh
+drag trace only; persisted rebinding UI, UI-target drag picking, debug overlays,
+and richer device diagnostics remain future V8-14 work.
 
 Gamepad diagnostics now include a lightweight viewer-style capability report in
 web and Bevy. The report lists gamepad controls declared by `input.ir.json`,
