@@ -47,6 +47,8 @@ observations.
 
 **Implementation:**
 
+- [x] Add deterministic listener/emitter attenuation trace evidence using the
+  existing listener position, emitter position, and emitter radius IR fields.
 - [ ] Add listener transform binding and attenuation curves.
 - [ ] Validate min/max distance and nonportable panning fields.
 
@@ -56,10 +58,20 @@ observations.
 
 **Implementation:**
 
+- [x] Compare web and Bevy spatial attenuation observations with
+  `pnpm verify:v8:audio`, writing web/native/diff artifacts under
+  `artifacts/v8/audio`.
 - [ ] Map web audio graph and Bevy spatial audio.
 - [ ] Record listener/emitter observations and movement traces.
 
 **Verification Plan:** Web/Bevy runtime tests and conformance.
+
+**Current proven slice:** The V8-16 parity slice reuses the V7
+`v7-spatial-audio-buses` fixture and proves one event-triggered spatial
+one-shot trace. Web and Bevy compute the same listener/emitter distance,
+radius-based linear attenuation, bus gain, source volume, and effective volume.
+This is trace evidence only; it does not claim actual backend panning,
+listener movement, mixer effects, ducking, or music transitions.
 
 #### Phase 3: Mixer Buses, Effects, and Ducking - Routing behavior is narrow
 

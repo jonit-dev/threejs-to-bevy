@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createWebAudioElementSink, createWebAudioRuntime, traceWebAudioLifecycle, type IWebAudioElement } from "./audio.js";
+import { createWebAudioElementSink, createWebAudioRuntime, traceWebAudioLifecycle, traceWebAudioSpatialAttenuation, type IWebAudioElement } from "./audio.js";
 
 test("audio should play one shot on damage event", () => {
   const runtime = createWebAudioRuntime({
@@ -73,6 +73,29 @@ test("audio lifecycle trace should stop active loops deterministically", () => {
     { asset: "arena.music", bus: "bus.music", id: "music.arena", kind: "loop", volume: 0.4 },
     { asset: "hit.sound", bus: "bus.sfx", emitter: "emitter.player", event: "DamageEvent", id: "sound.hit", kind: "oneShot", volume: 0.75 },
   ]);
+});
+
+test("audio spatial trace should compute listener emitter attenuation deterministically", () => {
+  const trace = traceWebAudioSpatialAttenuation(
+    {
+      schema: "threenative.audio",
+      version: "0.1.0",
+      buses: [{ id: "bus.sfx", volume: 0.8 }],
+      emitters: [{ id: "emitter.player", position: [1, 2, 3], radius: 12 }],
+      listeners: [{ id: "listener.main", position: [0, 1, 5] }],
+      music: [],
+      oneShots: [{ id: "sound.hit", asset: "hit.sound", bus: "bus.sfx", emitter: "emitter.player", event: "DamageEvent", volume: 0.75 }],
+    },
+    [{ event: "DamageEvent", payload: { amount: 10 } }],
+  );
+
+  assert.equal(trace.observations.length, 1);
+  assert.equal(trace.observations[0]?.id, "sound.hit");
+  assert.equal(trace.observations[0]?.listener, "listener.main");
+  assert.equal(trace.observations[0]?.emitter, "emitter.player");
+  assert.equal(Number(trace.observations[0]?.distance.toFixed(6)), 2.44949);
+  assert.equal(Number(trace.observations[0]?.attenuation.toFixed(6)), 0.795876);
+  assert.equal(Number(trace.observations[0]?.effectiveVolume.toFixed(6)), 0.477526);
 });
 
 test("audio lifecycle trace should apply playback controls", () => {

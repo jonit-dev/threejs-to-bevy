@@ -46,6 +46,31 @@ pub struct NativeAudioLifecycleTrace {
 }
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeAudioSpatialTrace {
+    pub observations: Vec<NativeAudioSpatialObservation>,
+}
+
+#[derive(Clone, Debug, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeAudioSpatialObservation {
+    pub attenuation: f32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bus: Option<String>,
+    pub bus_gain: f32,
+    pub distance: f32,
+    pub effective_volume: f32,
+    pub emitter: String,
+    pub emitter_position: [f32; 3],
+    pub event: String,
+    pub id: String,
+    pub listener: String,
+    pub listener_position: [f32; 3],
+    pub radius: f32,
+    pub source_volume: f32,
+}
+
+#[derive(Clone, Debug, PartialEq, serde::Serialize)]
 pub struct NativeAudioLifecycleEvent {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub at: Option<f32>,
@@ -230,6 +255,68 @@ pub fn trace_audio_lifecycle(
     }
 }
 
+pub fn trace_audio_spatial_attenuation(
+    audio: &AudioIr,
+    events: &[&str],
+) -> NativeAudioSpatialTrace {
+    let Some(listener) = audio
+        .listeners
+        .iter()
+        .min_by(|left, right| left.id.cmp(&right.id))
+    else {
+        return NativeAudioSpatialTrace {
+            observations: Vec::new(),
+        };
+    };
+    let mut observations = Vec::new();
+
+    for event in events {
+        for one_shot in audio
+            .one_shots
+            .iter()
+            .filter(|one_shot| one_shot.event == *event && one_shot.emitter.is_some())
+        {
+            let Some(emitter_id) = &one_shot.emitter else {
+                continue;
+            };
+            let Some(emitter) = audio
+                .emitters
+                .iter()
+                .find(|emitter| &emitter.id == emitter_id)
+            else {
+                continue;
+            };
+            let distance = vec3_distance(listener.position, emitter.position);
+            let radius = emitter.radius.unwrap_or(1.0);
+            let attenuation = (1.0 - distance / radius).clamp(0.0, 1.0);
+            let source_volume = one_shot.volume.unwrap_or(1.0);
+            let bus_gain = one_shot
+                .bus
+                .as_ref()
+                .and_then(|bus_id| audio.buses.iter().find(|bus| &bus.id == bus_id))
+                .and_then(|bus| bus.volume)
+                .unwrap_or(1.0);
+            observations.push(NativeAudioSpatialObservation {
+                attenuation,
+                bus: one_shot.bus.clone(),
+                bus_gain,
+                distance,
+                effective_volume: source_volume * bus_gain * attenuation,
+                emitter: emitter.id.clone(),
+                emitter_position: emitter.position,
+                event: (*event).to_owned(),
+                id: one_shot.id.clone(),
+                listener: listener.id.clone(),
+                listener_position: listener.position,
+                radius,
+                source_volume,
+            });
+        }
+    }
+    observations.sort_by(|left, right| left.id.cmp(&right.id));
+    NativeAudioSpatialTrace { observations }
+}
+
 fn remove_loop(values: &mut Vec<String>, target: &str) -> bool {
     let Some(index) = values.iter().position(|value| value == target) else {
         return false;
@@ -250,6 +337,13 @@ fn control_event(
         kind: kind.to_owned(),
         state: state.map(str::to_owned),
     }
+}
+
+fn vec3_distance(left: [f32; 3], right: [f32; 3]) -> f32 {
+    let dx = left[0] - right[0];
+    let dy = left[1] - right[1];
+    let dz = left[2] - right[2];
+    (dx * dx + dy * dy + dz * dz).sqrt()
 }
 
 fn audio_command_report(command: &NativeAudioCommand) -> NativeAudioCommandReport {

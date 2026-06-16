@@ -41,6 +41,26 @@ export interface IWebAudioLifecycleTrace {
   pausedLoops: string[];
 }
 
+export interface IWebAudioSpatialObservation {
+  attenuation: number;
+  bus?: string;
+  busGain: number;
+  distance: number;
+  effectiveVolume: number;
+  emitter: string;
+  emitterPosition: readonly [number, number, number];
+  event: string;
+  id: string;
+  listener: string;
+  listenerPosition: readonly [number, number, number];
+  radius: number;
+  sourceVolume: number;
+}
+
+export interface IWebAudioSpatialTrace {
+  observations: IWebAudioSpatialObservation[];
+}
+
 export function createWebAudioRuntime(audio: IAudioIr, sink?: IWebAudioSink): IWebAudioRuntime {
   const commands: IWebAudioCommand[] = [];
   const queue = (command: IWebAudioCommand) => {
@@ -125,6 +145,47 @@ export function traceWebAudioLifecycle(
   };
 }
 
+export function traceWebAudioSpatialAttenuation(audio: IAudioIr, events: ReadonlyArray<IQueuedEvent>): IWebAudioSpatialTrace {
+  const listener = [...(audio.listeners ?? [])].sort((left, right) => left.id.localeCompare(right.id))[0];
+  if (listener === undefined) {
+    return { observations: [] };
+  }
+
+  const emitters = new Map((audio.emitters ?? []).map((emitter) => [emitter.id, emitter]));
+  const busGains = new Map((audio.buses ?? []).map((bus) => [bus.id, bus.volume ?? 1]));
+  const observations: IWebAudioSpatialObservation[] = [];
+  for (const event of events) {
+    for (const oneShot of audio.oneShots.filter((item) => item.event === event.event && item.emitter !== undefined)) {
+      const emitter = emitters.get(oneShot.emitter ?? "");
+      if (emitter === undefined) {
+        continue;
+      }
+      const distance = vec3Distance(listener.position, emitter.position);
+      const radius = emitter.radius ?? 1;
+      const attenuation = Math.max(0, Math.min(1, 1 - distance / radius));
+      const sourceVolume = oneShot.volume ?? 1;
+      const busGain = oneShot.bus === undefined ? 1 : (busGains.get(oneShot.bus) ?? 1);
+      observations.push({
+        attenuation,
+        ...(oneShot.bus === undefined ? {} : { bus: oneShot.bus }),
+        busGain,
+        distance,
+        effectiveVolume: sourceVolume * busGain * attenuation,
+        emitter: emitter.id,
+        emitterPosition: emitter.position,
+        event: event.event,
+        id: oneShot.id,
+        listener: listener.id,
+        listenerPosition: listener.position,
+        radius,
+        sourceVolume,
+      });
+    }
+  }
+  observations.sort((left, right) => left.id.localeCompare(right.id));
+  return { observations };
+}
+
 export function createWebAudioElementSink(
   source: string,
   assets: IAssetsManifest,
@@ -177,4 +238,11 @@ function defaultAudioElement(): IWebAudioElement {
 
 function isPromiseLike(value: unknown): value is Promise<void> {
   return typeof value === "object" && value !== null && "catch" in value;
+}
+
+function vec3Distance(left: readonly [number, number, number], right: readonly [number, number, number]): number {
+  const dx = left[0] - right[0];
+  const dy = left[1] - right[1];
+  const dz = left[2] - right[2];
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
