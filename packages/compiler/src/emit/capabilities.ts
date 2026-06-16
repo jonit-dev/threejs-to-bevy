@@ -201,8 +201,20 @@ function collectWorldCapabilities(world: IWorldIr | undefined, add: (domain: str
 function collectMaterialCapabilities(materials: IMaterialsIr, add: (domain: string, capability: string) => void): void {
   for (const material of materials.materials) {
     add("rendering", `material.${material.kind}`);
+    if (material.extension !== undefined) {
+      add("rendering", `material.extended.${material.extension.preset}`);
+    }
     if (material.alphaMode !== undefined && material.alphaMode !== "opaque") {
       add("rendering", `material.alpha.${material.alphaMode}`);
+    }
+    if (material.blendMode !== undefined) {
+      add("rendering", `material.blend.${material.blendMode}`);
+    }
+    if (material.renderOrder !== undefined) {
+      add("rendering", "material.render-order");
+    }
+    if (material.depthWrite !== undefined || material.depthTest !== undefined) {
+      add("rendering", "material.depth-policy");
     }
     if (material.opacity !== undefined && material.opacity < 1) {
       add("rendering", "material.opacity");
@@ -210,7 +222,7 @@ function collectMaterialCapabilities(materials: IMaterialsIr, add: (domain: stri
     if (material.emissive !== undefined || material.emissiveIntensity !== undefined) {
       add("rendering", "material.emissive");
     }
-    if (material.specularIntensity !== undefined) {
+    if (material.specularIntensity !== undefined || material.specularTexture !== undefined) {
       add("rendering", "material.specular");
     }
     if (material.clearcoat !== undefined || material.clearcoatRoughness !== undefined) {
@@ -228,6 +240,7 @@ function collectMaterialCapabilities(materials: IMaterialsIr, add: (domain: stri
       "clearcoatTexture",
       "clearcoatRoughnessTexture",
       "transmissionTexture",
+      "specularTexture",
     ] as const) {
       if (material[slot] !== undefined) {
         add("rendering", `material.texture.${textureSlotCapability(slot)}`);

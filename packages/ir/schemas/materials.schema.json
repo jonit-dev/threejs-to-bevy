@@ -15,8 +15,21 @@
         "additionalProperties": false,
         "properties": {
           "id": { "type": "string", "minLength": 1 },
-          "kind": { "const": "standard" },
+          "kind": { "enum": ["standard", "extended"] },
           "alphaMode": { "enum": ["opaque", "mask", "blend"] },
+          "blendMode": { "enum": ["normal", "additive", "multiply", "premultipliedAlpha"] },
+          "depthTest": { "type": "boolean" },
+          "depthWrite": { "type": "boolean" },
+          "extension": {
+            "type": "object",
+            "required": ["preset"],
+            "additionalProperties": false,
+            "properties": {
+              "preset": { "enum": ["unlitMasked", "foliage"] },
+              "doubleSided": { "type": "boolean" }
+            }
+          },
+          "renderOrder": { "type": "integer" },
           "alphaCutoff": { "type": "number", "minimum": 0, "maximum": 1 },
           "color": {
             "oneOf": [
@@ -45,7 +58,8 @@
           "metallicRoughnessTexture": { "type": "string", "minLength": 1 },
           "emissiveTexture": { "type": "string", "minLength": 1 },
           "occlusionTexture": { "type": "string", "minLength": 1 },
-          "transmissionTexture": { "type": "string", "minLength": 1 }
+          "transmissionTexture": { "type": "string", "minLength": 1 },
+          "specularTexture": { "type": "string", "minLength": 1 }
         }
       }
     }

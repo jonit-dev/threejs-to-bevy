@@ -1,0 +1,1 @@
+- Try WebGPU as primary renderer, fallback to WebGL if WebGPU is not supported

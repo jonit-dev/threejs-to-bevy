@@ -39,6 +39,7 @@ test("should report basic scene conformance semantics", async () => {
     metallicRoughness: undefined,
     normal: undefined,
     occlusion: undefined,
+    specular: undefined,
     transmission: undefined,
   });
 

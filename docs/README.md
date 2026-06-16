@@ -36,6 +36,8 @@ conceptual docs.
   checklist for roadmap prioritization.
 - [Feature Maturity Matrix](feature-maturity.md): separates supported,
   partial, schema-only, experimental, and future features.
+- [Advanced Features Roadmap](advanced-features-roadmap.md): planning track for
+  procedural worlds, GPU pipelines, custom rendering, and LAAS-class scenes.
 - [Conventions](conventions.md): coordinate, unit, rotation, imported scale, and
   color-space decisions.
 - [verify:v3](verify-v3.md): release-gate command, checks, artifacts, and

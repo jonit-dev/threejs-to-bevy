@@ -30,6 +30,7 @@ use threenative_loader::{
     RuntimeConfigIr, WorldEntity,
 };
 
+use crate::assets::texture_uv_transform;
 use crate::cameras::{
     active_camera_ids, apply_camera_components, build_render_layer_map, camera_order,
     render_layers_for_names, NativeRenderLayerMap,
@@ -45,6 +46,17 @@ use crate::render_targets::{
 const THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY: f32 = 2.0;
 const THREE_COMPAT_POINT_LUMENS_PER_CANDELA: f32 = std::f32::consts::TAU * 2.0;
 const THREE_COMPAT_DEFAULT_RANGE: f32 = 1_000.0;
+
+#[derive(Clone, Component, Debug, PartialEq)]
+pub struct NativeMaterialPolicy {
+    pub blend_mode: Option<String>,
+    pub depth_test: Option<bool>,
+    pub depth_write: Option<bool>,
+    pub extension_preset: Option<String>,
+    pub render_order: i32,
+    pub specular_texture: Option<String>,
+    pub unsupported_blend_diagnostic: Option<String>,
+}
 
 #[derive(Clone, Component, Debug, PartialEq)]
 pub struct NativeAnimationPlayback {
@@ -142,6 +154,7 @@ pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result
         .iter()
         .map(|material| (material.id.as_str(), material))
         .collect::<HashMap<_, _>>();
+    world.insert_resource(crate::assets::build_texture_controls_registry(&bundle.assets));
 
     let mut entities_by_id = HashMap::new();
     for entity in &bundle.world.entities {
@@ -311,7 +324,8 @@ fn spawn_entity(
             }
         }
         let mesh = add_mesh(world, asset);
-        let material = add_material(
+        let policy = material_policy(material);
+        let material_handle = add_material(
             world,
             material,
             assets_by_id,
@@ -320,12 +334,13 @@ fn spawn_entity(
         );
         let mut spawned = world.spawn(PbrBundle {
             mesh,
-            material,
+            material: material_handle,
             transform,
             visibility: map_visibility(entity),
             ..Default::default()
         });
         spawned.insert((stable_id, name));
+        spawned.insert(policy);
         insert_shadow_markers(&mut spawned, renderer);
         if let Some(layers) = entity.components.render_layers.as_ref() {
             spawned.insert(render_layers_for_names(layer_map, &layers.layers));
@@ -374,6 +389,9 @@ fn spawn_entity(
             UVec2::new(1280, 720),
             camera_render_target(camera, render_target_registry),
         );
+        if let Some(mut camera_component) = spawned.get_mut::<Camera>() {
+            camera_component.hdr = camera_color_management.is_some();
+        }
         if let Some(projection) = camera.projection.as_ref() {
             if projection.kind == "matrix" {
                 if let Some(matrix) = projection.matrix.as_ref() {
@@ -534,10 +552,12 @@ fn ancestor_animation_binding<'a>(
 }
 
 fn color_grading_for_profile(
-    _color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
+    color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
 ) -> ColorGrading {
     let mut grading = ColorGrading::default();
-    grading.global.exposure = -0.7;
+    if color_management.is_some() {
+        grading.global.exposure = -0.7;
+    }
     grading
 }
 
@@ -559,6 +579,7 @@ fn tonemapping_for_profile(
     match color_management.map(|profile| profile.tone_mapping.as_str()) {
         Some("aces") => Tonemapping::AcesFitted,
         Some("none") => Tonemapping::None,
+        None => Tonemapping::None,
         _ => Tonemapping::default(),
     }
 }
@@ -976,68 +997,110 @@ fn add_material(
     asset_server: Option<&AssetServer>,
     render_target_registry: &NativeRenderTargetRegistry,
 ) -> Handle<StandardMaterial> {
+    let base_texture_asset = material
+        .base_color_texture
+        .as_deref()
+        .and_then(|asset_id| assets_by_id.get(asset_id).copied());
+    let uv_transform = base_texture_asset
+        .map(texture_uv_transform)
+        .unwrap_or_default();
+    let extended = material.kind == "extended";
+    let mut standard = StandardMaterial {
+        alpha_mode: alpha_mode(material),
+        base_color: color_with_opacity(&material.color, opacity_for_material(material)),
+        base_color_texture: texture_handle(
+            material.base_color_texture.as_deref(),
+            assets_by_id,
+            asset_server,
+            render_target_registry,
+        ),
+        clearcoat: material.clearcoat.unwrap_or(0.0),
+        clearcoat_perceptual_roughness: material.clearcoat_roughness.unwrap_or(0.0),
+        clearcoat_roughness_texture: texture_handle(
+            material.clearcoat_roughness_texture.as_deref(),
+            assets_by_id,
+            asset_server,
+            render_target_registry,
+        ),
+        clearcoat_texture: texture_handle(
+            material.clearcoat_texture.as_deref(),
+            assets_by_id,
+            asset_server,
+            render_target_registry,
+        ),
+        double_sided: material
+            .extension
+            .as_ref()
+            .and_then(|extension| extension.double_sided)
+            .unwrap_or(false),
+        emissive: emissive_color(material),
+        emissive_texture: texture_handle(
+            material.emissive_texture.as_deref(),
+            assets_by_id,
+            asset_server,
+            render_target_registry,
+        ),
+        metallic: material.metalness.unwrap_or(0.0),
+        metallic_roughness_texture: texture_handle(
+            material.metallic_roughness_texture.as_deref(),
+            assets_by_id,
+            asset_server,
+            render_target_registry,
+        ),
+        normal_map_texture: texture_handle(
+            material.normal_texture.as_deref(),
+            assets_by_id,
+            asset_server,
+            render_target_registry,
+        ),
+        occlusion_texture: texture_handle(
+            material.occlusion_texture.as_deref(),
+            assets_by_id,
+            asset_server,
+            render_target_registry,
+        ),
+        perceptual_roughness: material.roughness.unwrap_or(1.0),
+        reflectance: material.specular_intensity.unwrap_or(0.5),
+        specular_transmission: material.transmission.unwrap_or(0.0),
+        specular_transmission_texture: texture_handle(
+            material.transmission_texture.as_deref(),
+            assets_by_id,
+            asset_server,
+            render_target_registry,
+        ),
+        unlit: extended,
+        uv_transform,
+        ..Default::default()
+    };
+    if extended {
+        standard.metallic = 0.0;
+        standard.perceptual_roughness = 1.0;
+        standard.reflectance = 0.0;
+    }
     world
         .resource_mut::<Assets<StandardMaterial>>()
-        .add(StandardMaterial {
-            alpha_mode: alpha_mode(material),
-            base_color: color_with_opacity(&material.color, material.opacity.unwrap_or(1.0)),
-            base_color_texture: texture_handle(
-                material.base_color_texture.as_deref(),
-                assets_by_id,
-                asset_server,
-                render_target_registry,
-            ),
-            clearcoat: material.clearcoat.unwrap_or(0.0),
-            clearcoat_perceptual_roughness: material.clearcoat_roughness.unwrap_or(0.0),
-            clearcoat_roughness_texture: texture_handle(
-                material.clearcoat_roughness_texture.as_deref(),
-                assets_by_id,
-                asset_server,
-                render_target_registry,
-            ),
-            clearcoat_texture: texture_handle(
-                material.clearcoat_texture.as_deref(),
-                assets_by_id,
-                asset_server,
-                render_target_registry,
-            ),
-            emissive: emissive_color(material),
-            emissive_texture: texture_handle(
-                material.emissive_texture.as_deref(),
-                assets_by_id,
-                asset_server,
-                render_target_registry,
-            ),
-            metallic: material.metalness.unwrap_or(0.0),
-            metallic_roughness_texture: texture_handle(
-                material.metallic_roughness_texture.as_deref(),
-                assets_by_id,
-                asset_server,
-                render_target_registry,
-            ),
-            normal_map_texture: texture_handle(
-                material.normal_texture.as_deref(),
-                assets_by_id,
-                asset_server,
-                render_target_registry,
-            ),
-            occlusion_texture: texture_handle(
-                material.occlusion_texture.as_deref(),
-                assets_by_id,
-                asset_server,
-                render_target_registry,
-            ),
-            perceptual_roughness: material.roughness.unwrap_or(1.0),
-            reflectance: material.specular_intensity.unwrap_or(0.5),
-            specular_transmission: material.transmission.unwrap_or(0.0),
-            specular_transmission_texture: texture_handle(
-                material.transmission_texture.as_deref(),
-                assets_by_id,
-                asset_server,
-                render_target_registry,
-            ),
-            ..Default::default()
-        })
+        .add(standard)
+}
+
+fn material_policy(material: &MaterialIr) -> NativeMaterialPolicy {
+    let unsupported_blend_diagnostic = match material.blend_mode.as_deref() {
+        Some("normal") | None => None,
+        Some(mode) => Some(format!(
+            "TN_BEVY_MATERIAL_BLEND_MODE_UNSUPPORTED: Bevy 0.14 cannot map blendMode '{mode}' with matching semantics."
+        )),
+    };
+    NativeMaterialPolicy {
+        blend_mode: material.blend_mode.clone(),
+        depth_test: material.depth_test,
+        depth_write: material.depth_write,
+        extension_preset: material
+            .extension
+            .as_ref()
+            .map(|extension| extension.preset.clone()),
+        render_order: material.render_order.unwrap_or(0),
+        specular_texture: material.specular_texture.clone(),
+        unsupported_blend_diagnostic,
+    }
 }
 
 fn alpha_mode(material: &MaterialIr) -> AlphaMode {
@@ -1046,6 +1109,14 @@ fn alpha_mode(material: &MaterialIr) -> AlphaMode {
         Some("blend") => AlphaMode::Blend,
         _ => AlphaMode::Opaque,
     }
+}
+
+fn opacity_for_material(material: &MaterialIr) -> f32 {
+    let opacity = material.opacity.unwrap_or(1.0);
+    if material.kind == "extended" && material.alpha_mode.as_deref() == Some("blend") {
+        return opacity.powf(1.9);
+    }
+    opacity
 }
 
 fn emissive_color(material: &MaterialIr) -> LinearRgba {

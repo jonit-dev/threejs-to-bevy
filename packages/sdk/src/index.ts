@@ -125,7 +125,8 @@ export {
   type IInputMapDeclaration,
   type InputBinding,
 } from "./input.js";
-export { MeshStandardMaterial, type ColorValue, type MaterialAlphaMode, type TextureSlotReference } from "./materials/MeshStandardMaterial.js";
+export { MeshExtendedMaterial, type ExtendedMaterialPreset, type IMeshExtendedMaterialOptions } from "./materials/MeshExtendedMaterial.js";
+export { MeshStandardMaterial, type ColorValue, type MaterialAlphaMode, type MaterialBlendMode, type TextureSlotReference } from "./materials/MeshStandardMaterial.js";
 export { Vector3, type Vector3Tuple } from "./math/Vector3.js";
 export {
   overlay,

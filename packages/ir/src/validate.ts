@@ -1704,6 +1704,7 @@ function validateMaterialTextureRefs(materials: IMaterialsIr, assets: IAssetsMan
     "clearcoatTexture",
     "clearcoatRoughnessTexture",
     "transmissionTexture",
+    "specularTexture",
   ] as const;
   materials.materials.forEach((material, materialIndex) => {
     slots.forEach((slot) => {
@@ -1722,13 +1723,105 @@ function validateMaterialTextureRefs(materials: IMaterialsIr, assets: IAssetsMan
 }
 
 function validateMaterials(materials: IMaterialsIr, path: string, diagnostics: IIrDiagnostic[]): void {
+  const supportedBlendModes = new Set(["normal", "additive", "multiply", "premultipliedAlpha"]);
+  const supportedExtendedPresets = new Set(["unlitMasked", "foliage"]);
   materials.materials.forEach((material, index) => {
     const raw = material as unknown as Record<string, unknown>;
-    if (raw.kind !== "standard") {
+    if (raw.kind !== "standard" && raw.kind !== "extended") {
       diagnostics.push({
         code: "TN_IR_MATERIAL_UNSUPPORTED",
         message: `Material '${material.id}' uses unsupported material kind '${String(raw.kind)}'.`,
         path: `${path}/materials/${index}/kind`,
+      });
+    }
+    if (material.kind === "extended") {
+      if (material.extension === undefined) {
+        diagnostics.push({
+          code: "TN_IR_MATERIAL_EXTENSION_MISSING",
+          message: `Extended material '${material.id}' must declare an extension preset.`,
+          path: `${path}/materials/${index}/extension`,
+          severity: "error",
+          suggestion: "Add extension.preset with a supported portable preset such as 'unlitMasked' or 'foliage'.",
+        });
+      } else if (!supportedExtendedPresets.has(material.extension.preset)) {
+        diagnostics.push({
+          code: "TN_IR_MATERIAL_EXTENSION_UNSUPPORTED",
+          message: `Material '${material.id}' uses unsupported extended preset '${material.extension.preset}'.`,
+          path: `${path}/materials/${index}/extension/preset`,
+          severity: "error",
+          suggestion: "Use a supported extended preset: unlitMasked or foliage.",
+        });
+      }
+    } else if (material.extension !== undefined) {
+      diagnostics.push({
+        code: "TN_IR_MATERIAL_EXTENSION_INVALID",
+        message: `Standard material '${material.id}' cannot declare extension metadata.`,
+        path: `${path}/materials/${index}/extension`,
+        severity: "error",
+        suggestion: "Remove extension from standard materials or change kind to 'extended'.",
+      });
+    }
+    if (material.renderOrder !== undefined && (!Number.isInteger(material.renderOrder) || !Number.isFinite(material.renderOrder))) {
+      diagnostics.push({
+        code: "TN_IR_MATERIAL_RENDER_ORDER_INVALID",
+        message: `Material '${material.id}' renderOrder must be a finite integer.`,
+        path: `${path}/materials/${index}/renderOrder`,
+        severity: "error",
+        suggestion: "Set renderOrder to an integer such as 0, 1, or -1.",
+      });
+    }
+    if (material.depthWrite !== undefined && typeof material.depthWrite !== "boolean") {
+      diagnostics.push({
+        code: "TN_IR_MATERIAL_DEPTH_WRITE_INVALID",
+        message: `Material '${material.id}' depthWrite must be a boolean.`,
+        path: `${path}/materials/${index}/depthWrite`,
+        severity: "error",
+      });
+    }
+    if (material.depthTest !== undefined && typeof material.depthTest !== "boolean") {
+      diagnostics.push({
+        code: "TN_IR_MATERIAL_DEPTH_TEST_INVALID",
+        message: `Material '${material.id}' depthTest must be a boolean.`,
+        path: `${path}/materials/${index}/depthTest`,
+        severity: "error",
+      });
+    }
+    if (material.blendMode !== undefined) {
+      if (!supportedBlendModes.has(material.blendMode)) {
+        diagnostics.push({
+          code: "TN_IR_MATERIAL_BLEND_MODE_UNSUPPORTED",
+          message: `Material '${material.id}' uses unsupported blendMode '${material.blendMode}'.`,
+          path: `${path}/materials/${index}/blendMode`,
+          severity: "error",
+          suggestion: "Use blendMode 'normal', 'additive', 'multiply', or 'premultipliedAlpha'.",
+        });
+      } else if (material.alphaMode !== "blend") {
+        diagnostics.push({
+          code: "TN_IR_MATERIAL_BLEND_MODE_INVALID",
+          message: `Material '${material.id}' blendMode is only supported when alphaMode is 'blend'.`,
+          path: `${path}/materials/${index}/blendMode`,
+          severity: "error",
+          suggestion: "Set alphaMode to 'blend' or remove blendMode.",
+        });
+      }
+      if (material.blendMode !== "normal" && material.alphaMode === "mask") {
+        diagnostics.push({
+          code: "TN_IR_MATERIAL_BLEND_MODE_INVALID",
+          message: `Material '${material.id}' cannot combine alphaMode 'mask' with blendMode '${material.blendMode}'.`,
+          path: `${path}/materials/${index}/blendMode`,
+          severity: "error",
+          suggestion: "Use alphaMode 'blend' for non-normal blend modes.",
+        });
+      }
+    }
+    const alphaMode = material.alphaMode ?? "opaque";
+    if (material.depthTest === false && alphaMode === "opaque") {
+      diagnostics.push({
+        code: "TN_IR_MATERIAL_DEPTH_TEST_INVALID",
+        message: `Material '${material.id}' cannot disable depthTest on opaque materials.`,
+        path: `${path}/materials/${index}/depthTest`,
+        severity: "error",
+        suggestion: "Use alphaMode 'blend' or remove depthTest: false from opaque materials.",
       });
     }
     if (material.alphaMode !== undefined && !["opaque", "mask", "blend"].includes(material.alphaMode)) {

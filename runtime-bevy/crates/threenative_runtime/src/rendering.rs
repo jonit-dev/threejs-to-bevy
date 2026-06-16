@@ -150,7 +150,7 @@ pub fn normalize_loaded_gltf_materials(mut materials: ResMut<Assets<StandardMate
 }
 
 pub fn normalize_textured_material(material: &mut StandardMaterial) -> bool {
-    if material.base_color_texture.is_none() {
+    if material.base_color_texture.is_none() || material.unlit {
         return false;
     }
     material.base_color = Color::WHITE;
