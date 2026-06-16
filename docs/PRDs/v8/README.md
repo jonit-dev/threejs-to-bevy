@@ -24,6 +24,8 @@ consume. It is not a second source of truth and must not bypass validation.
 | --- | --- | --- | --- |
 | 0 | [V8-00 Local Editor Scope and Contract](./V8-00-local-editor-scope-and-contract.md) | V7 | V8 starts with local/offline editor boundaries, structured SDK/ECS/IR project data, save/load, structured diffs, diagnostics, and preview evidence requirements. |
 | 1 | [V8-01 Editor Project Snapshot and Structured Diffs](./V8-01-editor-project-snapshot-and-structured-diffs.md) | V8-00 | IR helpers validate local editor project snapshots and produce deterministic structured diffs over bundle-relative JSON documents. |
+| 4 | [V8-04 Portable Procedural Mesh Authoring](./V8-04-portable-procedural-mesh-authoring.md) | V8-00, V7 renderer parity | MeshBuilder, generated mesh asset payloads, organic prop helpers, compiler-only BufferGeometry snapshot import, and web/Bevy screenshot parity evidence for one authored procedural prop. |
+| 5 | [V8-05 Optional React Webview Overlay](./V8-05-optional-react-webview-overlay.md) | V6 retained UI, V7 rich UI, V8-00 | Projects can opt into a capability-gated React/CSS webview overlay for rich desktop/editor-like surfaces while retained UI remains the portable game UI contract. |
 
 ## Release Gate
 
