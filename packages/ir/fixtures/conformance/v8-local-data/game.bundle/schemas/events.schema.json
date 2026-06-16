@@ -1,0 +1,14 @@
+{
+  "schema": "threenative.event-schemas",
+  "version": "0.1.0",
+  "schemas": {
+    "CheckpointReached": {
+      "fields": {
+        "checkpoint": {
+          "kind": "string",
+          "required": true
+        }
+      }
+    }
+  }
+}

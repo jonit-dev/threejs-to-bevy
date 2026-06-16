@@ -1,0 +1,18 @@
+{
+  "schema": "threenative.component-schemas",
+  "version": "0.1.0",
+  "schemas": {
+    "Checkpoint": {
+      "fields": {
+        "id": {
+          "kind": "string",
+          "required": true
+        },
+        "visited": {
+          "kind": "boolean",
+          "required": true
+        }
+      }
+    }
+  }
+}

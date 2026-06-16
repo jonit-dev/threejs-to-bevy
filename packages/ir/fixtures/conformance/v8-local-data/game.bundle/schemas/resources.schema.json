@@ -1,0 +1,18 @@
+{
+  "schema": "threenative.resource-schemas",
+  "version": "0.1.0",
+  "schemas": {
+    "PlayerProgress": {
+      "fields": {
+        "level": {
+          "kind": "integer",
+          "required": true
+        },
+        "xp": {
+          "kind": "integer",
+          "required": true
+        }
+      }
+    }
+  }
+}

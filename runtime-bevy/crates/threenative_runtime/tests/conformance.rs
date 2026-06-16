@@ -411,6 +411,54 @@ fn should_report_audio_diagnostics_in_conformance_observations() {
 }
 
 #[test]
+fn should_report_local_data_conformance_observations() {
+    let fixture = load_conformance_fixture("v8-local-data");
+    let mut app = App::new();
+
+    map_bundle_into_world(app.world_mut(), &fixture.bundle).unwrap_or_else(|error| {
+        panic!(
+            "failed to map conformance fixture '{}' at '{}': {}",
+            fixture.name,
+            fixture.bundle_path.display(),
+            error
+        )
+    });
+    let report = report_bevy_conformance(app.world_mut(), &fixture.bundle, fixture.name);
+    let local_data = report
+        .local_data
+        .expect("local data report should be present");
+
+    assert_eq!(local_data.storage, "local-only");
+    assert_eq!(local_data.save_slots.len(), 1);
+    assert_eq!(local_data.save_slots[0].id, "slot.autosave");
+    assert_eq!(
+        local_data.save_slots[0].resources,
+        vec!["PlayerProgress".to_owned()]
+    );
+    assert_eq!(local_data.save_slots[0].components[0].component, "Checkpoint");
+    assert_eq!(
+        local_data.save_slots[0].components[0].entity.as_deref(),
+        Some("player")
+    );
+    assert_eq!(
+        local_data
+            .settings
+            .iter()
+            .map(|setting| setting.id.as_str())
+            .collect::<Vec<_>>(),
+        vec![
+            "accessibility.reducedMotion",
+            "audio.masterVolume",
+            "controls.invertY",
+            "video.displayMode"
+        ]
+    );
+    assert_eq!(local_data.migrations[0].strategy, "diagnostic");
+    assert_eq!(local_data.checkpoints[0].event, "CheckpointReached");
+    assert_eq!(local_data.checkpoints[0].schedule, "postUpdate");
+}
+
+#[test]
 fn should_report_ui_diagnostics_in_conformance_observations() {
     let mut fixture = load_conformance_fixture("v6-retained-ui");
     fixture

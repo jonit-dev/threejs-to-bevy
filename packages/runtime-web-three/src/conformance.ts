@@ -8,6 +8,7 @@ import type {
   IConformanceEntityReport,
   IConformanceEnvironmentReport,
   IConformanceEventReport,
+  IConformanceLocalDataReport,
   IConformanceMaterialReport,
   IConformanceReport,
   IConformanceResourceReport,
@@ -16,6 +17,7 @@ import type {
   IConformanceUiNodeReport,
   IConformanceUiReport,
   IEnvironmentSceneIr,
+  ILocalDataIr,
   IMaterialIr,
   IRuntimeConfigIr,
   IUiIr,
@@ -54,12 +56,26 @@ export function reportWebConformance(
     environment: bundle.environmentScene === undefined ? undefined : reportEnvironment(bundle.environmentScene),
     events: reportEvents(observedEvents(bundle.world)),
     fixture,
+    localData: reportLocalData(bundle.localData),
     materials: bundle.materials.materials.map(reportMaterial).sort((left, right) => left.id.localeCompare(right.id)),
     resources: reportResources(bundle.world.resources ?? {}),
     runtime: "web-three",
     runtimeConfig: reportRuntimeConfig(bundle.runtimeConfig),
     screenshotExports: reportScreenshotExports(bundle.world),
     ui: bundle.ui === undefined ? undefined : reportUi(bundle.ui),
+  };
+}
+
+function reportLocalData(localData: ILocalDataIr | undefined): IConformanceLocalDataReport | undefined {
+  if (localData === undefined) {
+    return undefined;
+  }
+  return {
+    checkpoints: [...(localData.checkpoints ?? [])].sort((left, right) => left.id.localeCompare(right.id)),
+    migrations: [...(localData.migrations ?? [])].sort((left, right) => left.id.localeCompare(right.id)),
+    saveSlots: [...localData.saveSlots].sort((left, right) => left.id.localeCompare(right.id)),
+    settings: [...localData.settings].sort((left, right) => left.id.localeCompare(right.id)),
+    storage: localData.storage,
   };
 }
 
