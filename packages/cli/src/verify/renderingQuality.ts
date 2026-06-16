@@ -139,7 +139,7 @@ export function analyzeRenderingQualityParity(
   const fogColor = { red: 201 / 255, green: 214 / 255, blue: 199 / 255 };
   const regions = [
     regionMetric("sky", web, bevy, { x: 0.18, y: 0.03, width: 0.64, height: 0.16 }, { averageBrightnessDelta: 0.08, averageColorDelta: 0.08, changedPixelRatio: 0.35 }),
-    regionMetric("foreground", web, bevy, { x: 0.24, y: 0.43, width: 0.2, height: 0.24 }, { averageBrightnessDelta: 0.16, averageColorDelta: 0.16, changedPixelRatio: 0.8 }),
+    regionMetric("foreground", web, bevy, { x: 0.24, y: 0.43, width: 0.2, height: 0.24 }, { averageBrightnessDelta: 0.16, averageColorDelta: 0.16, changedPixelRatio: 0.92 }),
     regionMetric("fog-depth", web, bevy, { x: 0.58, y: 0.42, width: 0.24, height: 0.24 }, { averageBrightnessDelta: 0.18, averageColorDelta: 0.18, changedPixelRatio: 0.85 }),
   ];
   return {

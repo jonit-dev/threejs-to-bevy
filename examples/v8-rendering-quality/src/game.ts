@@ -23,11 +23,11 @@ scene.add(ground);
 
 const nearMarker = new Mesh({
   castShadow: true,
-  geometry: new BoxGeometry({ size: [1.7, 1.7, 1.7] }),
+  geometry: new BoxGeometry({ size: [2.1, 2.1, 2.1] }),
   id: "mesh.fog.near",
   material: new MeshStandardMaterial({ color: "#2457d6", roughness: 0.85 }),
 });
-nearMarker.position.set(-2.2, 0.85, -5.5);
+nearMarker.position.set(-2.35, 1.05, -3.8);
 scene.add(nearMarker);
 
 const midMarker = new Mesh({
