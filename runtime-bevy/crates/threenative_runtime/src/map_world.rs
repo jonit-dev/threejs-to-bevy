@@ -30,6 +30,14 @@ use threenative_loader::{
     RuntimeConfigIr, WorldEntity,
 };
 
+use crate::cameras::{
+    active_camera_ids, apply_camera_components, build_render_layer_map, camera_order,
+    render_layers_for_names, NativeRenderLayerMap,
+};
+use crate::render_targets::{
+    allocate_render_targets, camera_render_target, NativeCustomProjection, NativeRenderTargetRegistry,
+};
+
 // ThreeNative lights are authored in Three.js-style scalar units. Bevy stores
 // physically named units and multiplies lighting by camera Exposure, so the
 // native adapter converts through a small three-compat shim instead of exposing
@@ -112,7 +120,15 @@ pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result
         .filter(|profile| profile.active)
         .map(|profile| &profile.color_management);
     let bloom_settings = bloom_settings_for_runtime(bundle.runtime_config.as_ref());
-    let active_camera = active_camera_id(bundle);
+    let layer_map = build_render_layer_map(bundle);
+    world.insert_resource(layer_map.clone());
+    let render_target_registry = allocate_render_targets(world, bundle);
+    let active_cameras = active_camera_ids(bundle);
+    let active_camera_set = active_cameras
+        .iter()
+        .map(String::as_str)
+        .collect::<std::collections::HashSet<_>>();
+    let fallback_active = active_camera_id(bundle);
 
     let assets_by_id = bundle
         .assets
@@ -134,9 +150,12 @@ pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result
             entity,
             &assets_by_id,
             &materials_by_id,
-            active_camera.as_deref(),
+            &layer_map,
+            &active_camera_set,
+            fallback_active.as_deref(),
             camera_color_management,
             bloom_settings.as_ref(),
+            &render_target_registry,
         )?;
         entities_by_id.insert(entity.id.as_str(), bevy_entity);
     }
@@ -212,6 +231,9 @@ fn ensure_asset_resources(world: &mut World) {
     if !world.contains_resource::<Assets<Mesh>>() {
         world.init_resource::<Assets<Mesh>>();
     }
+    if !world.contains_resource::<Assets<Image>>() {
+        world.init_resource::<Assets<Image>>();
+    }
     if !world.contains_resource::<Assets<StandardMaterial>>() {
         world.init_resource::<Assets<StandardMaterial>>();
     }
@@ -225,9 +247,12 @@ fn spawn_entity(
     entity: &WorldEntity,
     assets_by_id: &HashMap<&str, &AssetIr>,
     materials_by_id: &HashMap<&str, &MaterialIr>,
-    active_camera: Option<&str>,
+    layer_map: &NativeRenderLayerMap,
+    active_cameras: &std::collections::HashSet<&str>,
+    fallback_active_camera: Option<&str>,
     camera_color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
     bloom_settings: Option<&BloomSettings>,
+    render_target_registry: &NativeRenderTargetRegistry,
 ) -> Result<Entity, MapError> {
     let transform = map_transform(entity);
     let name = Name::new(entity.id.clone());
@@ -273,6 +298,9 @@ fn spawn_entity(
                 });
                 spawned.insert((stable_id, name));
                 insert_shadow_markers(&mut spawned, renderer);
+                if let Some(layers) = entity.components.render_layers.as_ref() {
+                    spawned.insert(render_layers_for_names(layer_map, &layers.layers));
+                }
                 if let Some(binding) = scene_binding {
                     spawned.insert(binding);
                 }
@@ -283,7 +311,13 @@ fn spawn_entity(
             }
         }
         let mesh = add_mesh(world, asset);
-        let material = add_material(world, material, assets_by_id, asset_server.as_ref());
+        let material = add_material(
+            world,
+            material,
+            assets_by_id,
+            asset_server.as_ref(),
+            render_target_registry,
+        );
         let mut spawned = world.spawn(PbrBundle {
             mesh,
             material,
@@ -293,6 +327,9 @@ fn spawn_entity(
         });
         spawned.insert((stable_id, name));
         insert_shadow_markers(&mut spawned, renderer);
+        if let Some(layers) = entity.components.render_layers.as_ref() {
+            spawned.insert(render_layers_for_names(layer_map, &layers.layers));
+        }
         if let Some(playback) = animation_playback(asset) {
             spawned.insert(playback);
         }
@@ -316,10 +353,6 @@ fn spawn_entity(
             })
         };
         let mut spawned = world.spawn(Camera3dBundle {
-            camera: Camera {
-                is_active: active_camera.map_or(true, |id| id == entity.id),
-                ..Default::default()
-            },
             color_grading: color_grading_for_profile(camera_color_management),
             exposure: exposure_for_profile(camera_color_management),
             projection,
@@ -327,6 +360,30 @@ fn spawn_entity(
             transform,
             ..Default::default()
         });
+        let is_active = if active_cameras.is_empty() {
+            fallback_active_camera.map_or(true, |id| id == entity.id)
+        } else {
+            active_cameras.contains(entity.id.as_str())
+        };
+        apply_camera_components(
+            camera,
+            &mut spawned,
+            layer_map,
+            camera_order(camera),
+            is_active,
+            UVec2::new(1280, 720),
+            camera_render_target(camera, render_target_registry),
+        );
+        if let Some(projection) = camera.projection.as_ref() {
+            if projection.kind == "matrix" {
+                if let Some(matrix) = projection.matrix.as_ref() {
+                    if matrix.len() == 16 {
+                        let values: [f32; 16] = matrix.clone().try_into().unwrap_or([0.0; 16]);
+                        spawned.insert(NativeCustomProjection(values));
+                    }
+                }
+            }
+        }
         spawned.insert((stable_id, name, map_visibility(entity)));
         if let Some(bloom_settings) = bloom_settings {
             spawned.insert(bloom_settings.clone());
@@ -917,6 +974,7 @@ fn add_material(
     material: &MaterialIr,
     assets_by_id: &HashMap<&str, &AssetIr>,
     asset_server: Option<&AssetServer>,
+    render_target_registry: &NativeRenderTargetRegistry,
 ) -> Handle<StandardMaterial> {
     world
         .resource_mut::<Assets<StandardMaterial>>()
@@ -927,6 +985,7 @@ fn add_material(
                 material.base_color_texture.as_deref(),
                 assets_by_id,
                 asset_server,
+                render_target_registry,
             ),
             clearcoat: material.clearcoat.unwrap_or(0.0),
             clearcoat_perceptual_roughness: material.clearcoat_roughness.unwrap_or(0.0),
@@ -934,33 +993,39 @@ fn add_material(
                 material.clearcoat_roughness_texture.as_deref(),
                 assets_by_id,
                 asset_server,
+                render_target_registry,
             ),
             clearcoat_texture: texture_handle(
                 material.clearcoat_texture.as_deref(),
                 assets_by_id,
                 asset_server,
+                render_target_registry,
             ),
             emissive: emissive_color(material),
             emissive_texture: texture_handle(
                 material.emissive_texture.as_deref(),
                 assets_by_id,
                 asset_server,
+                render_target_registry,
             ),
             metallic: material.metalness.unwrap_or(0.0),
             metallic_roughness_texture: texture_handle(
                 material.metallic_roughness_texture.as_deref(),
                 assets_by_id,
                 asset_server,
+                render_target_registry,
             ),
             normal_map_texture: texture_handle(
                 material.normal_texture.as_deref(),
                 assets_by_id,
                 asset_server,
+                render_target_registry,
             ),
             occlusion_texture: texture_handle(
                 material.occlusion_texture.as_deref(),
                 assets_by_id,
                 asset_server,
+                render_target_registry,
             ),
             perceptual_roughness: material.roughness.unwrap_or(1.0),
             reflectance: material.specular_intensity.unwrap_or(0.5),
@@ -969,6 +1034,7 @@ fn add_material(
                 material.transmission_texture.as_deref(),
                 assets_by_id,
                 asset_server,
+                render_target_registry,
             ),
             ..Default::default()
         })
@@ -994,8 +1060,12 @@ fn texture_handle(
     asset_id: Option<&str>,
     assets_by_id: &HashMap<&str, &AssetIr>,
     asset_server: Option<&AssetServer>,
+    render_target_registry: &NativeRenderTargetRegistry,
 ) -> Option<Handle<Image>> {
     let asset_id = asset_id?;
+    if let Some(handle) = render_target_registry.images.get(asset_id) {
+        return Some(handle.clone());
+    }
     let asset = assets_by_id.get(asset_id)?;
     if asset.kind != "texture" {
         return None;

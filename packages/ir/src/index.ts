@@ -4,6 +4,7 @@ export type {
   IConformanceAssetReport,
   IConformanceAudioCommandReport,
   IConformanceAudioReport,
+  IConformanceCameraViewReport,
   IConformanceEntityReport,
   IConformanceEnvironmentReport,
   IConformanceEventReport,
@@ -11,6 +12,7 @@ export type {
   IConformanceReport,
   IConformanceResourceReport,
   IConformanceRuntimeConfigReport,
+  IConformanceScreenshotExportReport,
   IConformanceUiNodeReport,
   IConformanceUiReport,
 } from "./conformanceReport.js";
@@ -44,7 +46,26 @@ export type {
   IAudioMusicIr,
   IAudioOneShotIr,
   IBundleManifest,
+  IActiveCameraResource,
+  IActiveCamerasResource,
+  ICameraClear,
   ICameraComponent,
+  ICameraFollowHelper,
+  ICameraOrbitHelper,
+  ICameraOutputConfig,
+  ICameraPanHelper,
+  ICameraPortableProjection,
+  ICameraBackendProjection,
+  ICameraProjection,
+  ICameraScreenShakeHelper,
+  ICameraTarget,
+  ICameraTargetBackbuffer,
+  ICameraTargetDepth,
+  ICameraTargetTexture,
+  ICameraViewModelHelper,
+  ICameraViewport,
+  ICameraZoomHelper,
+  IRenderLayersComponent,
   IColliderComponent,
   IEnvironmentInstanceIr,
   IEnvironmentCameraBookmarkIr,
@@ -77,6 +98,7 @@ export type {
   Vec3,
 } from "./types.js";
 export { validateBundle, type IBundleValidationResult, type IIrDiagnostic } from "./validate.js";
+export { validateCameraViews } from "./camera.js";
 export { validateEnvironmentSceneIr } from "./environment.js";
 export {
   validateOverlayEntry,

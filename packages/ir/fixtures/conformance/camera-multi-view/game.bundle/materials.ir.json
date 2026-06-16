@@ -1,0 +1,11 @@
+{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "materials": [
+    { "color": "#2244aa", "id": "mat.main", "kind": "standard" },
+    { "color": "#228833", "id": "mat.minimap", "kind": "standard" },
+    { "color": "#ff8844", "id": "mat.split", "kind": "standard" },
+    { "color": "#ff55aa", "id": "mat.monitor-subject", "kind": "standard" },
+    { "baseColorTexture": "rt.monitor", "color": "#ffffff", "id": "mat.monitor-screen", "kind": "standard" }
+  ]
+}

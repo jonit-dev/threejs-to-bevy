@@ -1,0 +1,23 @@
+{
+  "entry": {
+    "world": "world.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "materials": "materials.ir.json",
+    "targetProfile": "target.profile.json"
+  },
+  "name": "camera-multi-view",
+  "requiredCapabilities": {
+    "rendering": [
+      "camera.helpers",
+      "camera.multiple",
+      "camera.viewport",
+      "camera.render-target",
+      "camera.screenshot-export",
+      "render-layers"
+    ]
+  },
+  "schema": "threenative.bundle",
+  "version": "0.1.0"
+}

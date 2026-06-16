@@ -50,6 +50,39 @@ export function analyzeNonblank(frame: IPixelFrame, threshold = defaultNonblankT
   };
 }
 
+export function analyzeRegionNonblank(
+  frame: IPixelFrame,
+  region: { height: number; width: number; x: number; y: number },
+  threshold = defaultNonblankThreshold,
+): IPixelCheck & { nonblankRatio: number } {
+  const xEnd = Math.min(frame.width, region.x + region.width);
+  const yEnd = Math.min(frame.height, region.y + region.height);
+  let visiblePixels = 0;
+  let totalPixels = 0;
+  for (let y = Math.max(0, region.y); y < yEnd; y += 1) {
+    for (let x = Math.max(0, region.x); x < xEnd; x += 1) {
+      totalPixels += 1;
+      const index = (y * frame.width + x) * 4;
+      const red = frame.data[index] ?? 0;
+      const green = frame.data[index + 1] ?? 0;
+      const blue = frame.data[index + 2] ?? 0;
+      const alpha = frame.data[index + 3] ?? 0;
+      const brightest = Math.max(red, green, blue);
+      const darkest = Math.min(red, green, blue);
+      if (alpha > 0 && (brightest > 12 || brightest - darkest > 8)) {
+        visiblePixels += 1;
+      }
+    }
+  }
+  const nonblankRatio = totalPixels === 0 ? 0 : visiblePixels / totalPixels;
+  return {
+    changedPixelRatio: nonblankRatio,
+    nonblankRatio,
+    ok: nonblankRatio >= threshold,
+    threshold,
+  };
+}
+
 export function compareFrames(
   first: IPixelFrame,
   second: IPixelFrame,

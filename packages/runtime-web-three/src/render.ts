@@ -2,9 +2,21 @@ import * as THREE from "three";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
-import type { IAtmosphereProfileIr, IRuntimeConfigIr } from "@threenative/ir";
-import { loadBundle } from "./loadBundle.js";
-import { advanceAnimationPlayback, hasAnimationPlayback, loadWorldModelAssets, mapWorld, type IRuntimeDiagnostic } from "./mapWorld.js";
+import type { IAtmosphereProfileIr, ICameraClear, IMaterialsIr, IRuntimeConfigIr, IWorldIr } from "@threenative/ir";
+import { loadBundle, type IWebBundle } from "./loadBundle.js";
+import {
+  updateCameraHelpers,
+  updateCameraProjection,
+  viewportToPhysical,
+  type ICameraViewPlan,
+} from "./cameras.js";
+import {
+  bindRenderTargetTextures,
+  createRenderTargetRegistry,
+  renderTargetCameraPasses,
+  type IRenderTargetRegistry,
+} from "./renderTargets.js";
+import { advanceAnimationPlayback, hasAnimationPlayback, loadWorldModelAssets, mapWorld, type IRuntimeDiagnostic, type IThreeWorld } from "./mapWorld.js";
 import { applyEnvironmentBookmark, createEnvironmentRuntime, loadEnvironmentAssetInstances } from "./environment.js";
 import { applyAtmosphereProfile } from "./rendering.js";
 import { createGameLoopState, runGameFrame } from "./gameLoop.js";
@@ -36,7 +48,7 @@ export interface IWebBloomSettings {
 }
 
 interface IRenderPipeline {
-  render(): void;
+  render(delta?: number): void;
   setSize(width: number, height: number): void;
 }
 
@@ -63,7 +75,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
   const systemModule = await loadSystemModule(source, bundle.manifest);
   const renderer = new THREE.WebGLRenderer(webRendererParameters(bundle.runtimeConfig));
   applyRendererColorManagement(renderer, bundle.environmentScene?.atmosphere?.colorManagement);
-  const pipeline = createRenderPipeline(renderer, mapped.scene, mapped.camera, bundle.runtimeConfig);
+  const pipeline = createRenderPipeline(renderer, mapped, bundle.world, bundle.runtimeConfig, bundle.assets, bundle.materials);
   const canvas = renderer.domElement;
   const ui = bundle.ui === undefined ? undefined : renderUi(bundle.ui, bundle.world);
   const uiOverlay = ui === undefined ? undefined : createUiDomOverlay(ui);
@@ -80,7 +92,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
   canvas.style.display = "block";
   container.replaceChildren(...([canvas, uiOverlay?.element, overlayHost?.element].filter((child) => child !== undefined) as Node[]));
   attachInputListeners(window, input);
-  resizeRenderer(renderer, pipeline, mapped.camera, container);
+  resizeRenderer(renderer, pipeline, mapped, container);
   if (bundle.systems !== undefined) {
     await runGameFrame({
       assets: bundle.assets,
@@ -122,7 +134,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
       void gameFrame.then(() => {
         advanceAnimationPlayback(mapped, delta);
         uiOverlay?.update();
-        pipeline.render();
+        pipeline.render(delta);
         requestAnimationFrame(frame);
       });
     };
@@ -163,21 +175,119 @@ export function webBloomSettings(config?: IRuntimeConfigIr): IWebBloomSettings {
   };
 }
 
+export interface IRenderPassRecord {
+  cameraId: string;
+  clear?: ICameraClear;
+  viewport?: { height: number; width: number; x: number; y: number };
+}
+
+function sortCameraViews(views: readonly ICameraViewPlan[]): ICameraViewPlan[] {
+  return [...views].sort((left, right) => {
+    if (left.targetKind !== right.targetKind) {
+      return left.targetKind !== "backbuffer" ? -1 : 1;
+    }
+    if (left.order !== right.order) {
+      return left.order - right.order;
+    }
+    return left.entityId.localeCompare(right.entityId);
+  });
+}
+
+function clearColorForMode(clear: ICameraClear | undefined, fallback: THREE.Color): THREE.Color {
+  if (clear?.mode === "color" && clear.color !== undefined) {
+    if (typeof clear.color === "string") {
+      return new THREE.Color(clear.color);
+    }
+    return new THREE.Color(clear.color[0], clear.color[1], clear.color[2]);
+  }
+  return fallback;
+}
+
+export function renderCameraViews(
+  renderer: THREE.WebGLRenderer,
+  mapped: IThreeWorld,
+  world: IWorldIr,
+  delta = 0,
+  renderTargets?: IRenderTargetRegistry,
+): IRenderPassRecord[] {
+  const registry = renderTargets ?? mapped.renderTargets;
+  if (registry !== undefined) {
+    renderTargetCameraPasses(renderer, mapped, world, registry, delta);
+  } else {
+    updateCameraHelpers(world, mapped.objectsById, delta);
+  }
+  const renderWidth = renderer.domElement.width;
+  const renderHeight = renderer.domElement.height;
+  const views = sortCameraViews(
+    mapped.cameraViews.length > 0
+      ? mapped.cameraViews
+      : [{ cameraId: "primary", clear: undefined, entityId: "primary", layers: ["default"], order: 0, targetKind: "backbuffer" }],
+  );
+  const records: IRenderPassRecord[] = [];
+  const previousAutoClear = renderer.autoClear;
+  const previousScissor = renderer.getScissorTest();
+  const sceneBackground = mapped.scene.background instanceof THREE.Color ? mapped.scene.background : new THREE.Color("#111318");
+
+  for (const view of views) {
+    if (view.targetKind === "texture" || view.targetKind === "depth") {
+      continue;
+    }
+    const camera = view.entityId === "primary" ? mapped.camera : mapped.cameras.get(view.entityId) ?? mapped.camera;
+    const viewport = view.viewport === undefined
+      ? { x: 0, y: 0, width: renderWidth, height: renderHeight }
+      : viewportToPhysical(view.viewport, renderWidth, renderHeight);
+    updateCameraProjection(camera, viewport.width, viewport.height, view.entityId === "primary" ? undefined : world.entities.find((entity) => entity.id === view.entityId)?.components.Camera);
+    renderer.setScissorTest(true);
+    renderer.setViewport(viewport.x, viewport.y, viewport.width, viewport.height);
+    renderer.setScissor(viewport.x, viewport.y, viewport.width, viewport.height);
+    const clear = view.clear;
+    if (clear?.mode === "none") {
+      renderer.autoClear = false;
+    } else {
+      renderer.autoClear = true;
+      renderer.setClearColor(clearColorForMode(clear, sceneBackground));
+    }
+    renderer.render(mapped.scene, camera);
+    records.push({
+      cameraId: view.entityId,
+      clear,
+      viewport,
+    });
+  }
+
+  renderer.autoClear = previousAutoClear;
+  renderer.setScissorTest(previousScissor);
+  renderer.setViewport(0, 0, renderWidth, renderHeight);
+  renderer.setScissor(0, 0, renderWidth, renderHeight);
+  return records;
+}
+
 function createRenderPipeline(
   renderer: THREE.WebGLRenderer,
-  scene: THREE.Scene,
-  camera: THREE.Camera,
+  mapped: IThreeWorld,
+  world: IWorldIr,
   config?: IRuntimeConfigIr,
+  assets?: IWebBundle["assets"],
+  materials?: IMaterialsIr,
 ): IRenderPipeline {
+  const renderTargets = assets === undefined ? undefined : createRenderTargetRegistry(assets, renderer);
+  if (renderTargets !== undefined) {
+    mapped.renderTargets = renderTargets;
+    bindRenderTargetTextures(mapped, renderTargets, materials?.materials ?? []);
+  }
   const bloom = webBloomSettings(config);
-  if (!bloom.enabled) {
+  const backbufferViews = mapped.cameraViews.filter((view) => view.targetKind === "backbuffer");
+  const useBloom = bloom.enabled && backbufferViews.length <= 1;
+  if (!useBloom) {
     return {
-      render: () => renderer.render(scene, camera),
+      render: (delta = 0) => {
+        renderCameraViews(renderer, mapped, world, delta, renderTargets);
+      },
       setSize: () => undefined,
     };
   }
   const composer = new EffectComposer(renderer);
-  composer.addPass(new RenderPass(scene, camera));
+  composer.addPass(new RenderPass(mapped.scene, mapped.camera));
   composer.addPass(new UnrealBloomPass(new THREE.Vector2(1, 1), bloom.intensity, 0, bloom.threshold));
   return {
     render: () => composer.render(),
@@ -204,24 +314,21 @@ function applyRendererColorManagement(
   renderer.toneMappingExposure = colorManagement.exposure;
 }
 
-function resizeRenderer(renderer: THREE.WebGLRenderer, pipeline: IRenderPipeline, camera: THREE.Camera, container: HTMLElement): void {
+function resizeRenderer(renderer: THREE.WebGLRenderer, pipeline: IRenderPipeline, mapped: IThreeWorld, container: HTMLElement): void {
   const width = Math.max(1, container.clientWidth || window.innerWidth || 800);
   const height = Math.max(1, container.clientHeight || window.innerHeight || 600);
   renderer.setSize(width, height, false);
   pipeline.setSize(width, height);
 
-  if (camera instanceof THREE.PerspectiveCamera) {
-    camera.aspect = width / height;
-    camera.updateProjectionMatrix();
-  }
-  if (camera instanceof THREE.OrthographicCamera) {
-    const size = Math.max(camera.top - camera.bottom, 1);
-    const halfHeight = size / 2;
-    const halfWidth = halfHeight * (width / height);
-    camera.left = -halfWidth;
-    camera.right = halfWidth;
-    camera.top = halfHeight;
-    camera.bottom = -halfHeight;
-    camera.updateProjectionMatrix();
+  updateCameraProjection(mapped.camera, width, height);
+  for (const [entityId, camera] of mapped.cameras.entries()) {
+    const view = mapped.cameraViews.find((entry) => entry.entityId === entityId);
+    const viewport = view?.viewport;
+    if (viewport === undefined) {
+      updateCameraProjection(camera, width, height);
+      continue;
+    }
+    const physical = viewportToPhysical(viewport, width, height);
+    updateCameraProjection(camera, physical.width, physical.height);
   }
 }
