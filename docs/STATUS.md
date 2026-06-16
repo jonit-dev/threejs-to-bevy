@@ -51,6 +51,11 @@ bundle, captures web/native screenshots with viewport-region checks, and writes
 artifacts under `artifacts/v8/camera-views/`. The shared conformance fixture is
 `packages/ir/fixtures/conformance/camera-multi-view/game.bundle`.
 
+V8-07 material parity is implemented with focused material/texture evidence:
+`pnpm verify:v8:material-parity` builds `examples/v8-material-parity`,
+validates the bundle, runs conformance, captures web/native screenshots, and
+writes `artifacts/v8/material-parity/verification-report.json`.
+
 ## V4 Proves
 
 V4 is complete for the primitive native scripting proof. It proves one
