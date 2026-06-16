@@ -58,13 +58,122 @@ export interface ITransformComponent {
   scale?: Vec3;
 }
 
+export type ICameraViewport = readonly [number, number, number, number];
+
+export interface ICameraClear {
+  color?: string | readonly [number, number, number] | readonly [number, number, number, number];
+  mode: "color" | "default" | "none";
+}
+
+export interface ICameraTargetBackbuffer {
+  kind: "backbuffer";
+}
+
+export interface ICameraTargetTexture {
+  asset: string;
+  kind: "texture";
+}
+
+export interface ICameraTargetDepth {
+  asset: string;
+  kind: "depth";
+  sample?: boolean;
+}
+
+export type ICameraTarget = ICameraTargetBackbuffer | ICameraTargetDepth | ICameraTargetTexture;
+
+export interface ICameraOutputConfig {
+  format?: "jpeg" | "png";
+  height?: number;
+  mode?: "default" | "writeback";
+  path?: string;
+  width?: number;
+}
+
+export interface ICameraFollowHelper {
+  offset?: Vec3;
+  smoothing?: number;
+  target: string;
+}
+
+export interface ICameraOrbitHelper {
+  distance?: number;
+  maxDistance?: number;
+  minDistance?: number;
+  smoothing?: number;
+  target: string;
+}
+
+export interface ICameraPanHelper {
+  axisX?: string;
+  axisY?: string;
+  smoothing?: number;
+}
+
+export interface ICameraZoomHelper {
+  axis?: string;
+  max?: number;
+  min?: number;
+  smoothing?: number;
+}
+
+export interface ICameraScreenShakeHelper {
+  amplitude: number;
+  decay?: number;
+  frequency?: number;
+}
+
+export interface ICameraViewModelHelper {
+  fovScale?: number;
+  offset?: Vec3;
+}
+
+export interface ICameraPortableProjection {
+  handedness?: "left" | "right";
+  kind: "matrix";
+  matrix: readonly number[];
+}
+
+export interface ICameraBackendProjection {
+  backend: string;
+  kind: "backend";
+  payload?: unknown;
+}
+
+export type ICameraProjection = ICameraBackendProjection | ICameraPortableProjection;
+
 export interface ICameraComponent {
+  clear?: ICameraClear;
   far: number;
+  follow?: ICameraFollowHelper;
   fovY?: number;
   kind: "perspective" | "orthographic";
+  layers?: readonly string[];
   near: number;
+  orbit?: ICameraOrbitHelper;
+  order?: number;
+  output?: ICameraOutputConfig;
+  pan?: ICameraPanHelper;
   priority?: number;
+  projection?: ICameraProjection;
+  screenShake?: ICameraScreenShakeHelper;
   size?: number;
+  target?: ICameraTarget;
+  viewModel?: ICameraViewModelHelper;
+  viewport?: ICameraViewport;
+  zoom?: ICameraZoomHelper;
+}
+
+export interface IRenderLayersComponent {
+  layers: readonly string[];
+}
+
+export interface IActiveCamerasResource {
+  cameras: readonly { entity: string; order?: number }[];
+}
+
+export interface IActiveCameraResource {
+  entity: string;
 }
 
 export interface IMeshRendererComponent {
@@ -129,6 +238,7 @@ export interface IWorldEntity {
     Light?: ILightComponent;
     MeshRenderer?: IMeshRendererComponent;
     Collider?: IColliderComponent;
+    RenderLayers?: IRenderLayersComponent;
     RigidBody?: IRigidBodyComponent;
     Transform?: ITransformComponent;
     Visibility?: IVisibilityComponent;
@@ -348,6 +458,15 @@ export type IAssetIr =
       id: string;
       kind: "audio";
       path: string;
+    }
+  | {
+      format: "depth24plus" | "rgba16f" | "rgba8";
+      height: number;
+      id: string;
+      kind: "render-target";
+      sampleCount?: number;
+      usage: "color" | "depth";
+      width: number;
     };
 
 export interface IAssetsManifest {

@@ -97,10 +97,28 @@ fn main() -> ExitCode {
         }
     }
 
+    let final_output_paths = captures
+        .iter()
+        .map(|capture| capture.output_path.clone())
+        .collect::<Vec<_>>();
     app.insert_resource(CaptureConfig { captures, max_frame })
         .add_systems(Update, request_screenshot);
     app.run();
-    ExitCode::SUCCESS
+    let missing = final_output_paths
+        .iter()
+        .filter(|path| {
+            fs::metadata(path)
+                .map(|metadata| metadata.len() == 0)
+                .unwrap_or(true)
+        })
+        .map(|path| path.display().to_string())
+        .collect::<Vec<_>>();
+    if missing.is_empty() {
+        ExitCode::SUCCESS
+    } else {
+        eprintln!("screenshot(s) were not written: {}", missing.join(", "));
+        ExitCode::from(1)
+    }
 }
 
 fn parse_frame(value: Option<&String>, fallback: u32) -> Result<u32, ExitCode> {

@@ -441,7 +441,7 @@ function __tnInvokeSystem(options) {
     });
     const ordered = query.orderBy === "id" ? [...filtered].sort((left, right) => left.id.localeCompare(right.id)) : filtered;
     const offset = Math.max(0, Math.floor(Number(query.offset ?? 0)));
-    const limit = query.limit === undefined ? undefined : Math.max(0, Math.floor(Number(query.limit)));
+    const limit = query.limit == null ? undefined : Math.max(0, Math.floor(Number(query.limit)));
     return ordered.slice(offset, limit === undefined ? undefined : offset + limit);
   };
   const normalizeVec3 = (value) => {
@@ -890,8 +890,8 @@ function __tnInvokeSystem(options) {
         return clone(data.plugins);
       }
     },
-    query(query = data.defaultQuery || { with: [], without: [] }) {
-      return applyQuery(entities, query);
+    query(query) {
+      return applyQuery(entities, query === undefined ? (data.defaultQuery || { with: [], without: [] }) : query);
     },
     events: {
       emit(event, payload) {

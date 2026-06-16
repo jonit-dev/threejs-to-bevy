@@ -9,7 +9,9 @@ use threenative_loader::{
 };
 
 use crate::audio::{self, NativeAudioCommand, NativeAudioCommandKind, NativeAudioDiagnostic};
+use crate::cameras::{active_camera_ids, camera_order};
 use crate::physics::detect_physics_events;
+use crate::render_targets::list_screenshot_exports;
 use crate::ui::{UiDiagnostic, build_native_ui};
 
 #[derive(Debug, Serialize)]
@@ -20,6 +22,8 @@ pub struct ConformanceReport {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub audio: Option<ConformanceAudioReport>,
     pub assets: Vec<ConformanceAssetReport>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub camera_views: Option<Vec<ConformanceCameraViewReport>>,
     pub diagnostics: Vec<RuntimeDiagnostic>,
     pub entities: Vec<ConformanceEntityReport>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -32,7 +36,38 @@ pub struct ConformanceReport {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub runtime_config: Option<ConformanceRuntimeConfigReport>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub screenshot_exports: Option<Vec<ConformanceScreenshotExportReport>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub ui: Option<ConformanceUiReport>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConformanceCameraViewReport {
+    pub camera_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub clear_mode: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub export_path: Option<String>,
+    pub layers: Vec<String>,
+    pub order: i32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub projection_kind: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub projection_matrix_hash: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub target_asset: Option<String>,
+    pub target_kind: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub viewport: Option<[f32; 4]>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConformanceScreenshotExportReport {
+    pub camera_id: String,
+    pub format: String,
+    pub path: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -421,6 +456,7 @@ pub fn report_bevy_conformance(
             .iter()
             .map(report_asset)
             .collect::<Vec<_>>(),
+        camera_views: Some(report_camera_views(bundle)),
         diagnostics: report_diagnostics(audio_observation.as_ref(), ui_report.as_ref()),
         entities,
         environment: bundle.environment_scene.as_ref().map(report_environment),
@@ -435,8 +471,74 @@ pub fn report_bevy_conformance(
         resources: report_resources(bundle),
         runtime: "bevy".to_owned(),
         runtime_config: report_runtime_config(bundle.runtime_config.as_ref()),
+        screenshot_exports: Some(
+            list_screenshot_exports(bundle)
+                .into_iter()
+                .map(|entry| ConformanceScreenshotExportReport {
+                    camera_id: entry.camera_id,
+                    format: entry.format,
+                    path: entry.path,
+                })
+                .collect(),
+        ),
         ui: ui_report.and_then(|report| report.report),
     }
+}
+
+fn report_camera_views(bundle: &LoadedBundle) -> Vec<ConformanceCameraViewReport> {
+    let active_ids = active_camera_ids(bundle);
+    let entity_by_id = bundle
+        .world
+        .entities
+        .iter()
+        .map(|entity| (entity.id.as_str(), entity))
+        .collect::<HashMap<_, _>>();
+    let mut views = active_ids
+        .iter()
+        .filter_map(|entity_id| {
+            let entity = entity_by_id.get(entity_id.as_str())?;
+            let camera = entity.components.camera.as_ref()?;
+            let target = camera.target.as_ref();
+            let target_kind = target.map(|value| value.kind.as_str()).unwrap_or("backbuffer");
+            Some(ConformanceCameraViewReport {
+                camera_id: entity_id.clone(),
+                clear_mode: camera.clear.as_ref().map(|clear| clear.mode.clone()),
+                export_path: camera
+                    .output
+                    .as_ref()
+                    .and_then(|output| output.path.clone()),
+                layers: camera
+                    .layers
+                    .clone()
+                    .unwrap_or_else(|| vec!["default".to_owned()]),
+                order: camera_order(camera),
+                projection_kind: camera.projection.as_ref().map(|projection| projection.kind.clone()),
+                projection_matrix_hash: camera
+                    .projection
+                    .as_ref()
+                    .and_then(|projection| projection.matrix.as_ref())
+                    .map(|matrix| {
+                        matrix
+                            .iter()
+                            .map(|value| format!("{value:.6}"))
+                            .collect::<Vec<_>>()
+                            .join(",")
+                    }),
+                target_asset: target.and_then(|value| value.asset.clone()),
+                target_kind: target_kind.to_owned(),
+                viewport: camera
+                    .viewport
+                    .as_ref()
+                    .map(|viewport| viewport.as_tuple()),
+            })
+        })
+        .collect::<Vec<_>>();
+    views.sort_by(|left, right| {
+        left.order
+            .cmp(&right.order)
+            .then_with(|| left.camera_id.cmp(&right.camera_id))
+    });
+    views
 }
 
 fn report_active_camera(world: &mut World) -> Option<String> {

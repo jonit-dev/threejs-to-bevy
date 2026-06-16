@@ -14,6 +14,8 @@ import {
   MeshStandardMaterial,
   MeshBuilder,
   Object3D,
+  OrthographicCamera,
+  PerspectiveCamera,
   RegularPolygonGeometry,
   Scene,
   TorusGeometry,
@@ -247,6 +249,87 @@ test("should emit light shadow bias controls", () => {
     kind: "directional",
     shadowBias: -0.0005,
     shadowNormalBias: 0.02,
+  });
+});
+
+test("scene-to-world should emit camera helper metadata", () => {
+  const scene = new Scene({ id: "scene" });
+  const followTarget = new Object3D({ id: "player" });
+  const camera = new PerspectiveCamera({
+    far: 100,
+    follow: { offset: [0, 2, -4], smoothing: 0.2, target: "player" },
+    fovY: 60,
+    id: "camera.main",
+    near: 0.1,
+    orbit: { distance: { max: 12, min: 4 }, smoothing: 0.15, target: "player" },
+    order: 1,
+    screenShake: { amplitude: 0.1, decay: 0.5, frequency: 12 },
+    zoom: { max: 8, min: 2, smoothing: 0.1 },
+  });
+  scene.add(followTarget);
+  scene.add(camera);
+  scene.setActiveCamera(camera);
+
+  const result = sceneToWorld(scene);
+  const entity = result.world.entities.find((item) => item.id === "camera.main");
+
+  assert.deepEqual(entity?.components.Camera, {
+    far: 100,
+    follow: { offset: [0, 2, -4], smoothing: 0.2, target: "player" },
+    fovY: 60,
+    kind: "perspective",
+    near: 0.1,
+    orbit: { maxDistance: 12, minDistance: 4, smoothing: 0.15, target: "player" },
+    order: 1,
+    screenShake: { amplitude: 0.1, decay: 0.5, frequency: 12 },
+    zoom: { max: 8, min: 2, smoothing: 0.1 },
+  });
+});
+
+test("scene-to-world should emit ActiveCameras and render layers for multi-view scenes", () => {
+  const scene = new Scene({ id: "scene" });
+  const left = new PerspectiveCamera({
+    far: 100,
+    fovY: 60,
+    id: "camera.left",
+    layers: ["main"],
+    near: 0.1,
+    order: 0,
+    viewport: [0, 0, 0.5, 1],
+  });
+  const right = new PerspectiveCamera({
+    far: 100,
+    fovY: 60,
+    id: "camera.right",
+    layers: ["hud"],
+    near: 0.1,
+    order: 1,
+    viewport: [0.5, 0, 0.5, 1],
+  });
+  const mesh = new Mesh({
+    geometry: new CustomMeshGeometry({
+      attributes: [{ itemSize: 3, name: "position", values: [0, 0, 0, 1, 0, 0, 0, 1, 0] }],
+      indices: [0, 1, 2],
+    }),
+    id: "mesh.main",
+    layers: ["main"],
+    material: new MeshStandardMaterial({ color: "#ffffff" }),
+  });
+  scene.add(left);
+  scene.add(right);
+  scene.add(mesh);
+  scene.setActiveCameras([left, right]);
+
+  const result = sceneToWorld(scene);
+
+  assert.deepEqual(result.world.resources?.ActiveCameras, {
+    cameras: [
+      { entity: "camera.left", order: 0 },
+      { entity: "camera.right", order: 1 },
+    ],
+  });
+  assert.deepEqual(result.world.entities.find((entity) => entity.id === "mesh.main")?.components.RenderLayers, {
+    layers: ["main"],
   });
 });
 

@@ -29,6 +29,7 @@
     "verify:v6": "node scripts/verify-v6.mjs",
     "verify:v7": "node scripts/verify-v7.mjs",
     "verify:v8:overlay": "node scripts/verify-v8-overlay-webview.mjs",
+    "verify:v8:camera-views": "node scripts/verify-v8-camera-views.mjs",
     "verify:v9:skeletal-animation": "node scripts/verify-v9-skeletal-animation.mjs"
   },
   "devDependencies": {

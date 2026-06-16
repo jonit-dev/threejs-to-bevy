@@ -1,0 +1,9 @@
+{
+  "schema": "threenative.assets",
+  "version": "0.1.0",
+  "assets": [
+    { "format": "primitive", "id": "mesh.box", "kind": "mesh", "primitive": "box", "size": [1, 1, 1] },
+    { "format": "primitive", "id": "mesh.plane", "kind": "mesh", "primitive": "plane", "size": [12, 12] },
+    { "format": "rgba8", "height": 256, "id": "rt.monitor", "kind": "render-target", "usage": "color", "width": 256 }
+  ]
+}

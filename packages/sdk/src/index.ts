@@ -23,6 +23,7 @@ export {
   audioAsset,
   boundedParticleEmitter,
   modelAsset,
+  renderTargetAsset,
   textureAsset,
   type AssetFormat,
   type AssetKind,

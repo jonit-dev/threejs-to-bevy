@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import * as THREE from "three";
 
 import type { IRuntimeConfigIr } from "@threenative/ir";
 
-import { webBloomSettings, webRendererParameters } from "./render.js";
+import { mapWorld } from "./mapWorld.js";
+import { renderCameraViews, webBloomSettings, webRendererParameters } from "./render.js";
 
 function runtimeConfig(
   antialias: NonNullable<IRuntimeConfigIr["renderer"]>["antialias"],
@@ -55,4 +57,103 @@ test("should map runtime bloom settings to web post-processing settings", () => 
     intensity: 0.35,
     threshold: 0.8,
   });
+});
+
+test("should render active cameras in order with viewport scissors", () => {
+  const mapped = mapWorld({
+    assets: {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [],
+    },
+    manifest: {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "multi-view",
+      requiredCapabilities: {},
+      entry: { world: "world.ir.json" },
+      files: { assets: "assets.manifest.json", materials: "materials.ir.json", targetProfile: "target.profile.json" },
+    },
+    materials: {
+      schema: "threenative.materials",
+      version: "0.1.0",
+      materials: [],
+    },
+    targetProfile: { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] },
+    world: {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [
+        {
+          id: "camera.left",
+          components: {
+            Camera: {
+              clear: { color: "#ff0000", mode: "color" },
+              far: 100,
+              kind: "perspective",
+              near: 0.1,
+              order: 1,
+              viewport: [0, 0, 0.5, 1],
+            },
+          },
+        },
+        {
+          id: "camera.right",
+          components: {
+            Camera: {
+              clear: { color: "#0000ff", mode: "color" },
+              far: 100,
+              kind: "perspective",
+              near: 0.1,
+              order: 2,
+              viewport: [0.5, 0, 0.5, 1],
+            },
+          },
+        },
+      ],
+      resources: {
+        ActiveCameras: { cameras: [{ entity: "camera.left" }, { entity: "camera.right" }] },
+      },
+    },
+  });
+
+  const renderer = {
+    autoClear: true,
+    domElement: { height: 600, width: 800 },
+    getScissorTest: () => false,
+    render: () => undefined,
+    setClearColor: () => undefined,
+    setScissor: () => undefined,
+    setScissorTest: () => undefined,
+    setViewport: () => undefined,
+  } as unknown as THREE.WebGLRenderer;
+
+  const viewportCalls: Array<{ height: number; width: number; x: number; y: number }> = [];
+  const renderOrder: string[] = [];
+  renderer.setViewport = ((x: number, y: number, width: number, height: number) => {
+    viewportCalls.push({ x, y, width, height });
+  }) as typeof renderer.setViewport;
+  renderer.setScissor = ((x: number, y: number, width: number, height: number) => {
+    viewportCalls.push({ x, y, width, height });
+  }) as typeof renderer.setScissor;
+  renderer.render = ((_scene: THREE.Scene, camera: THREE.Camera) => {
+    for (const [id, mappedCamera] of mapped.cameras.entries()) {
+      if (mappedCamera === camera) {
+        renderOrder.push(id);
+      }
+    }
+  }) as typeof renderer.render;
+
+  const records = renderCameraViews(renderer, mapped, {
+    schema: "threenative.world",
+    version: "0.1.0",
+    entities: [],
+    resources: { ActiveCameras: { cameras: [{ entity: "camera.left" }, { entity: "camera.right" }] } },
+  });
+
+  assert.deepEqual(renderOrder, ["camera.left", "camera.right"]);
+  assert.deepEqual(records.map((record) => record.cameraId), ["camera.left", "camera.right"]);
+  assert.deepEqual(records[0]?.viewport, { x: 0, y: 0, width: 400, height: 600 });
+  assert.deepEqual(records[1]?.viewport, { x: 400, y: 0, width: 400, height: 600 });
+  assert.ok(viewportCalls.length >= 4);
 });

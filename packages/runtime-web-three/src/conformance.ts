@@ -4,6 +4,7 @@ import type {
   IAudioIr,
   IConformanceAssetReport,
   IConformanceAudioReport,
+  IConformanceCameraViewReport,
   IConformanceEntityReport,
   IConformanceEnvironmentReport,
   IConformanceEventReport,
@@ -11,6 +12,7 @@ import type {
   IConformanceReport,
   IConformanceResourceReport,
   IConformanceRuntimeConfigReport,
+  IConformanceScreenshotExportReport,
   IConformanceUiNodeReport,
   IConformanceUiReport,
   IEnvironmentSceneIr,
@@ -22,8 +24,10 @@ import type {
   Vec3,
 } from "@threenative/ir";
 import { createWebAudioRuntime } from "./audio.js";
+import { projectionMatrixHash } from "./cameras.js";
 import type { IWebBundle } from "./loadBundle.js";
 import type { IThreeWorld } from "./mapWorld.js";
+import { listScreenshotExportDeclarations } from "./renderTargets.js";
 import { detectPhysicsEvents } from "./physics.js";
 
 type IRuntimeLightReport = NonNullable<IConformanceEntityReport["light"]>["runtime"];
@@ -42,6 +46,7 @@ export function reportWebConformance(
     activeCamera: activeCameraId(mapped),
     audio: bundle.audio === undefined ? undefined : reportAudio(bundle.audio, bundle.world.events ?? {}),
     assets: bundle.assets.assets.map(reportAsset).sort((left, right) => left.id.localeCompare(right.id)),
+    cameraViews: reportCameraViews(bundle, mapped),
     diagnostics: mapped.diagnostics,
     entities: bundle.world.entities
       .map((entity) => reportEntity(entity, mapped, idsByObject))
@@ -53,8 +58,40 @@ export function reportWebConformance(
     resources: reportResources(bundle.world.resources ?? {}),
     runtime: "web-three",
     runtimeConfig: reportRuntimeConfig(bundle.runtimeConfig),
+    screenshotExports: reportScreenshotExports(bundle.world),
     ui: bundle.ui === undefined ? undefined : reportUi(bundle.ui),
   };
+}
+
+function reportCameraViews(bundle: IWebBundle, mapped: IThreeWorld): IConformanceCameraViewReport[] {
+  const entityById = new Map(bundle.world.entities.map((entity) => [entity.id, entity]));
+  return mapped.cameraViews.map((view) => {
+    const camera = entityById.get(view.entityId)?.components.Camera;
+    return {
+      cameraId: view.entityId,
+      clearMode: camera?.clear?.mode,
+      ...(camera?.output?.path === undefined ? {} : { exportPath: camera.output.path }),
+      layers: [...view.layers],
+      order: view.order,
+      ...(camera?.projection === undefined
+        ? {}
+        : {
+            projectionKind: camera.projection.kind,
+            projectionMatrixHash: projectionMatrixHash(camera.projection),
+          }),
+      ...(view.targetAsset === undefined ? {} : { targetAsset: view.targetAsset }),
+      targetKind: view.targetKind,
+      ...(view.viewport === undefined ? {} : { viewport: view.viewport }),
+    };
+  });
+}
+
+function reportScreenshotExports(world: IWebBundle["world"]): IConformanceScreenshotExportReport[] {
+  return listScreenshotExportDeclarations(world).map((entry) => ({
+    cameraId: entry.cameraId,
+    format: entry.format,
+    path: entry.path,
+  }));
 }
 
 function activeCameraId(mapped: IThreeWorld): string | undefined {
