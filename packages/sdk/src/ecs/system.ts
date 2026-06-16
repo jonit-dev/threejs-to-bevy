@@ -6,6 +6,8 @@ import type { EcsFactory, IEcsSchema } from "./schema.js";
 export type SystemSchedule = "fixedUpdate" | "postUpdate" | "startup" | "update";
 export type SystemService =
   | "animation.play"
+  | "animation.query"
+  | "animation.stop"
   | "assets.load"
   | "character.move"
   | "physics.overlap"
@@ -66,6 +68,8 @@ export interface ISystemEntity {
 export interface ISystemContext {
   animation: {
     play(entity: ISystemEntity | string, clip: string, options?: Record<string, unknown>): void;
+    query(entity: ISystemEntity | string, clip?: string): { active: boolean; clip?: string; entity: string; paused: boolean; stopped: boolean; timeSeconds: number };
+    stop(entity: ISystemEntity | string, clip?: string): { accepted: true; stopped: true };
   };
   assets: {
     get(id: unknown): Record<string, unknown> | null;

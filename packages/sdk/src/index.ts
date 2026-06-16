@@ -1,5 +1,16 @@
 export { SdkError } from "./errors.js";
 export {
+  defineAnimations,
+  transformAnimationClip,
+  type IAnimationsDeclaration,
+  type ITransformAnimationClipDeclaration,
+  type ITransformAnimationKeyframe,
+  type ITransformAnimationTrack,
+  type TransformAnimationChannel,
+  type TransformAnimationEasing,
+  type TransformAnimationLoop,
+} from "./animation.js";
+export {
   audioPlaybackControl,
   audioBus,
   audioListener,

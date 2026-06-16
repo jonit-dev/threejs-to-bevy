@@ -1,0 +1,13 @@
+{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "materials": [
+    {
+      "id": "mat.cube",
+      "kind": "standard",
+      "color": "#ffffff",
+      "metalness": 0,
+      "roughness": 1
+    }
+  ]
+}

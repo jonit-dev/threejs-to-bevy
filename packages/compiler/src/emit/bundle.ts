@@ -2,6 +2,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import {
   type IAssetsManifest,
+  type IAnimationsIr,
   type IBundleManifest,
   type IMaterialIr,
   type IMaterialsIr,
@@ -9,7 +10,7 @@ import {
   type IUiIr,
   type IWorldIr,
 } from "@threenative/ir";
-import { type IAssetReference, type IAudioDeclaration, type IInputMapDeclaration, type IOverlayDeclaration, type World } from "@threenative/sdk";
+import { type IAnimationsDeclaration, type IAssetReference, type IAudioDeclaration, type IInputMapDeclaration, type IOverlayDeclaration, type World } from "@threenative/sdk";
 import { type IUiElement } from "@threenative/ui";
 
 import { type IProjectConfig } from "../config.js";
@@ -35,6 +36,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
   const ecs = worldRoot === undefined ? undefined : ecsToIr(worldRoot as Parameters<typeof ecsToIr>[0]);
   const input = bundleRoot.input === undefined ? ecs?.input : inputToIr(bundleRoot.input);
   const audio = bundleRoot.audio === undefined ? undefined : emitAudio(bundleRoot.audio);
+  const animations = bundleRoot.animations === undefined ? undefined : emitAnimations(bundleRoot.animations);
   const environment = bundleRoot.environment === undefined ? undefined : await emitEnvironment(config.projectPath, bundleRoot.environment);
   const overlays = bundleRoot.overlay === undefined ? undefined : await emitOverlays(config.projectPath, bundleRoot.overlay);
   const generatedMeshPayloads = prepareGeneratedMeshPayloads(
@@ -67,6 +69,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
     requiredCapabilities: deriveRequiredCapabilities({
       assets: assetsManifest,
       audio,
+      animations,
       componentSchemas: ecs?.componentSchemas,
       environment: environment?.scene,
       eventSchemas: ecs?.eventSchemas,
@@ -81,6 +84,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
     }),
     entry: {
       ...(audio === undefined ? {} : { audio: "audio.ir.json" }),
+      ...(animations === undefined ? {} : { animations: "animations.ir.json" }),
       ...(environment === undefined ? {} : { environmentScene: "environment.scene.json" }),
       ...(ecs?.scriptBundle === undefined ? {} : { scripts: "scripts.bundle.js" }),
       ...(ecs === undefined ? {} : { systems: "systems.ir.json" }),
@@ -90,6 +94,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
     },
     files: {
       assets: "assets.manifest.json",
+      ...(animations === undefined ? {} : { animations: "animations.ir.json" }),
       ...(input === undefined ? {} : { input: "input.ir.json" }),
       materials: "materials.ir.json",
       targetProfile: "target.profile.json",
@@ -128,6 +133,9 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
   if (audio !== undefined) {
     await writeFile(resolve(outDir, "audio.ir.json"), stableJson(audio));
   }
+  if (animations !== undefined) {
+    await writeFile(resolve(outDir, "animations.ir.json"), stableJson(animations));
+  }
   if (input !== undefined) {
     await writeFile(resolve(outDir, "input.ir.json"), stableJson(input));
   }
@@ -148,6 +156,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
 }
 
 interface IBundleRoot {
+  animations?: IAnimationsDeclaration;
   audio?: IAudioDeclaration;
   environment?: IEnvironmentDeclaration;
   input?: IInputMapDeclaration;
@@ -168,8 +177,25 @@ function isBundleRoot(root: unknown): root is IBundleRoot {
   return (
     typeof root === "object"
     && root !== null
-    && ["audio", "environment", "input", "overlay", "scene", "ui", "world"].some((key) => key in root)
+    && ["animations", "audio", "environment", "input", "overlay", "scene", "ui", "world"].some((key) => key in root)
   );
+}
+
+function emitAnimations(animations: IAnimationsDeclaration): IAnimationsIr {
+  return {
+    schema: "threenative.animations",
+    version: "0.1.0",
+    transformClips: animations.transformClips.map((clip) => ({
+      id: clip.id,
+      ...(clip.loop === undefined ? {} : { loop: clip.loop }),
+      tracks: clip.tracks.map((track) => ({
+        channel: track.channel,
+        ...(track.easing === undefined ? {} : { easing: track.easing }),
+        keyframes: track.keyframes.map((keyframe) => ({ timeSeconds: keyframe.timeSeconds, value: [...keyframe.value] })),
+        target: track.target,
+      })),
+    })),
+  };
 }
 
 function mergeWorlds(scene: IWorldIr | undefined, ecs: IWorldIr | undefined): IWorldIr | undefined {

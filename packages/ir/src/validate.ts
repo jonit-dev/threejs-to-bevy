@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 
 import {
   type IAssetsManifest,
+  type IAnimationsIr,
   type IAudioControlIr,
   type IAudioIr,
   type IAudioMusicIr,
@@ -57,6 +58,10 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
     manifest.entry.audio === undefined
       ? undefined
       : await readJson<IAudioIr>(resolve(bundlePath, manifest.entry.audio), diagnostics);
+  const animations =
+    manifest.entry.animations === undefined
+      ? undefined
+      : await readJson<IAnimationsIr>(resolve(bundlePath, manifest.entry.animations), diagnostics);
   const environmentScene =
     manifest.entry.environmentScene === undefined
       ? undefined
@@ -123,6 +128,9 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
   }
   if (audio !== undefined) {
     validateAudio(audio, assets, manifest.entry.audio ?? "audio.ir.json", diagnostics);
+  }
+  if (animations !== undefined) {
+    validateAnimations(animations, world, manifest.entry.animations ?? "animations.ir.json", diagnostics);
   }
   if (targetProfile !== undefined) {
     if (targetProfile.targets.length === 0) {
@@ -243,6 +251,141 @@ function validateVec3(value: readonly number[], path: string, diagnostics: IIrDi
       path,
     });
   }
+}
+
+function validateAnimations(
+  animations: IAnimationsIr,
+  world: IWorldIr | undefined,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (animations.schema !== "threenative.animations" || animations.version !== "0.1.0") {
+    diagnostics.push({
+      code: "TN_IR_ANIMATIONS_VERSION_UNSUPPORTED",
+      message: "Animations IR must use threenative.animations version 0.1.0.",
+      path,
+    });
+  }
+  const raw = animations as unknown as Record<string, unknown>;
+  for (const key of Object.keys(raw)) {
+    if (!["schema", "transformClips", "version"].includes(key)) {
+      diagnostics.push({
+        code: "TN_IR_ANIMATIONS_FIELD_UNSUPPORTED",
+        message: `Animations IR uses unsupported field '${key}'.`,
+        path: `${path}/${key}`,
+        severity: "error",
+        suggestion: "Use transformClips for portable transform animation; keep IK, morph targets, masks, and engine controllers out of portable IR.",
+      });
+    }
+  }
+  if (!Array.isArray(raw.transformClips)) {
+    diagnostics.push({
+      code: "TN_IR_TRANSFORM_ANIMATION_CLIPS_INVALID",
+      message: "Animations IR transformClips must be an array.",
+      path: `${path}/transformClips`,
+    });
+    return;
+  }
+  const entityIds = new Set((world?.entities ?? []).map((entity) => entity.id));
+  const seen = new Set<string>();
+  raw.transformClips.forEach((clip, index) => {
+    const clipPath = `${path}/transformClips/${index}`;
+    if (!isRecord(clip)) {
+      diagnostics.push({ code: "TN_IR_TRANSFORM_ANIMATION_CLIP_INVALID", message: "Transform animation clips must be objects.", path: clipPath });
+      return;
+    }
+    for (const key of Object.keys(clip)) {
+      if (!["id", "loop", "tracks"].includes(key)) {
+        diagnostics.push({ code: "TN_IR_TRANSFORM_ANIMATION_FIELD_UNSUPPORTED", message: `Transform animation clip uses unsupported field '${key}'.`, path: `${clipPath}/${key}` });
+      }
+    }
+    if (typeof clip.id !== "string" || clip.id.trim() === "") {
+      diagnostics.push({ code: "TN_IR_TRANSFORM_ANIMATION_CLIP_ID_INVALID", message: "Transform animation clip ID must be a non-empty string.", path: `${clipPath}/id` });
+    } else if (seen.has(clip.id)) {
+      diagnostics.push({ code: "TN_IR_TRANSFORM_ANIMATION_CLIP_DUPLICATE", message: `Transform animation clip ID '${clip.id}' is duplicated.`, path: `${clipPath}/id` });
+    } else {
+      seen.add(clip.id);
+    }
+    if (clip.loop !== undefined && clip.loop !== "none" && clip.loop !== "repeat") {
+      diagnostics.push({ code: "TN_IR_TRANSFORM_ANIMATION_LOOP_UNSUPPORTED", message: "Transform animation loop must be 'none' or 'repeat'.", path: `${clipPath}/loop` });
+    }
+    validateTransformAnimationTracks(clip.tracks, entityIds, `${clipPath}/tracks`, diagnostics);
+  });
+}
+
+function validateTransformAnimationTracks(
+  value: unknown,
+  entityIds: ReadonlySet<string>,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (!Array.isArray(value) || value.length === 0) {
+    diagnostics.push({
+      code: "TN_IR_TRANSFORM_ANIMATION_TRACKS_INVALID",
+      message: "Transform animation clips must declare at least one track.",
+      path,
+    });
+    return;
+  }
+  value.forEach((track, index) => {
+    const trackPath = `${path}/${index}`;
+    if (!isRecord(track)) {
+      diagnostics.push({ code: "TN_IR_TRANSFORM_ANIMATION_TRACK_INVALID", message: "Transform animation tracks must be objects.", path: trackPath });
+      return;
+    }
+    const channel = track.channel;
+    if (typeof track.target !== "string" || track.target.trim() === "" || !entityIds.has(track.target)) {
+      diagnostics.push({
+        code: "TN_IR_TRANSFORM_ANIMATION_TARGET_MISSING",
+        message: "Transform animation target must reference a world entity.",
+        path: `${trackPath}/target`,
+        severity: "error",
+        suggestion: "Use a stable entity id from world.ir.json as the transform animation target.",
+      });
+    }
+    if (channel !== "position" && channel !== "rotation" && channel !== "scale") {
+      diagnostics.push({ code: "TN_IR_TRANSFORM_ANIMATION_CHANNEL_UNSUPPORTED", message: "Transform animation channel must be position, rotation, or scale.", path: `${trackPath}/channel` });
+    }
+    if (track.easing !== undefined && track.easing !== "linear" && track.easing !== "step") {
+      diagnostics.push({ code: "TN_IR_TRANSFORM_ANIMATION_EASING_UNSUPPORTED", message: "Transform animation easing must be linear or step.", path: `${trackPath}/easing` });
+    }
+    validateTransformAnimationKeyframes(track.keyframes, channel, `${trackPath}/keyframes`, diagnostics);
+  });
+}
+
+function validateTransformAnimationKeyframes(
+  value: unknown,
+  channel: unknown,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (!Array.isArray(value) || value.length < 2) {
+    diagnostics.push({ code: "TN_IR_TRANSFORM_ANIMATION_KEYFRAMES_TOO_FEW", message: "Transform animation tracks require at least two keyframes.", path });
+    return;
+  }
+  let previous = -Infinity;
+  value.forEach((keyframe, index) => {
+    const keyframePath = `${path}/${index}`;
+    if (!isRecord(keyframe)) {
+      diagnostics.push({ code: "TN_IR_TRANSFORM_ANIMATION_KEYFRAME_INVALID", message: "Transform animation keyframes must be objects.", path: keyframePath });
+      return;
+    }
+    if (typeof keyframe.timeSeconds !== "number" || !Number.isFinite(keyframe.timeSeconds) || keyframe.timeSeconds < 0) {
+      diagnostics.push({ code: "TN_IR_TRANSFORM_ANIMATION_TIME_INVALID", message: "Transform animation keyframe time must be a non-negative finite number.", path: `${keyframePath}/timeSeconds` });
+    } else if (keyframe.timeSeconds <= previous) {
+      diagnostics.push({ code: "TN_IR_TRANSFORM_ANIMATION_TIME_NON_MONOTONIC", message: "Transform animation keyframe times must be strictly increasing.", path: `${keyframePath}/timeSeconds` });
+    } else {
+      previous = keyframe.timeSeconds;
+    }
+    const expectedLength = channel === "rotation" ? 4 : 3;
+    if (!Array.isArray(keyframe.value) || keyframe.value.length !== expectedLength || keyframe.value.some((item) => typeof item !== "number" || !Number.isFinite(item))) {
+      diagnostics.push({
+        code: "TN_IR_TRANSFORM_ANIMATION_VALUE_INVALID",
+        message: `Transform animation keyframe value must be a finite ${expectedLength}-component vector.`,
+        path: `${keyframePath}/value`,
+      });
+    }
+  });
 }
 
 function validateAudio(
@@ -2235,7 +2378,7 @@ function validateSystems(
       });
     });
     (system.services ?? []).forEach((service, serviceIndex) => {
-      if (!["animation.play", "assets.load", "character.move", "physics.overlap", "physics.raycast", "physics.shapeCast", "picking.mesh", "picking.pointerRay"].includes(service)) {
+      if (!["animation.play", "animation.query", "animation.stop", "assets.load", "character.move", "physics.overlap", "physics.raycast", "physics.shapeCast", "picking.mesh", "picking.pointerRay"].includes(service)) {
         diagnostics.push({
           code: "TN_IR_SYSTEM_SERVICE_UNSUPPORTED",
           message: `System '${system.name}' declares unsupported service '${service}'.`,
@@ -3122,6 +3265,9 @@ function validateManifest(manifest: unknown, path: string, diagnostics: IIrDiagn
   if (isRecord(entry) && entry.overlays !== undefined) {
     validateManifestPath(entry.overlays, `${path}/entry/overlays`, "overlays.ir.json", diagnostics);
   }
+  if (isRecord(entry) && entry.animations !== undefined) {
+    validateManifestPath(entry.animations, `${path}/entry/animations`, "animations.ir.json", diagnostics);
+  }
 
   const files = manifest.files;
   if (!isRecord(files)) {
@@ -3136,7 +3282,7 @@ function validateManifest(manifest: unknown, path: string, diagnostics: IIrDiagn
     validateManifestPath(files.assets, `${path}/files/assets`, "assets.manifest.json", diagnostics);
     validateManifestPath(files.materials, `${path}/files/materials`, "materials.ir.json", diagnostics);
     validateManifestPath(files.targetProfile, `${path}/files/targetProfile`, "target.profile.json", diagnostics);
-    for (const key of ["componentSchemas", "eventSchemas", "input", "resourceSchemas", "runtimeConfig"] as const) {
+    for (const key of ["animations", "componentSchemas", "eventSchemas", "input", "resourceSchemas", "runtimeConfig"] as const) {
       if (files[key] !== undefined) {
         validateManifestPath(files[key], `${path}/files/${key}`, undefined, diagnostics);
       }
@@ -3152,11 +3298,13 @@ function validateManifest(manifest: unknown, path: string, diagnostics: IIrDiagn
     typeof files.materials === "string" &&
     typeof files.targetProfile === "string" &&
     (entry.audio === undefined || typeof entry.audio === "string") &&
+    (entry.animations === undefined || typeof entry.animations === "string") &&
     (entry.environmentScene === undefined || typeof entry.environmentScene === "string") &&
     (entry.systems === undefined || typeof entry.systems === "string") &&
     (entry.overlays === undefined || typeof entry.overlays === "string") &&
     (entry.ui === undefined || typeof entry.ui === "string") &&
     (files.componentSchemas === undefined || typeof files.componentSchemas === "string") &&
+    (files.animations === undefined || typeof files.animations === "string") &&
     (files.eventSchemas === undefined || typeof files.eventSchemas === "string") &&
     (files.input === undefined || typeof files.input === "string") &&
     (files.resourceSchemas === undefined || typeof files.resourceSchemas === "string") &&
