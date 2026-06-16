@@ -5,7 +5,7 @@ use std::{
 
 use threenative_loader::load_bundle;
 use threenative_runtime::{
-    systems_context::NativeSystemTimeSnapshot,
+    systems_context::{build_system_context_snapshot, NativeSystemTimeSnapshot},
     systems_host::{
         diagnose_native_system_host, ensure_native_system_host_supported, run_native_systems_once,
         unsupported_native_system_host_diagnostic,
@@ -16,7 +16,16 @@ use threenative_runtime::{
 fn systems_host_should_call_quickjs_system_export() {
     let root = write_bundle("call-export", "system_movePlayer");
     let mut bundle = load_bundle(&root).expect("scripted bundle should load");
-
+    let system = bundle
+        .systems
+        .as_ref()
+        .and_then(|systems| systems.systems.first())
+        .expect("system should exist");
+    let snapshot = build_system_context_snapshot(&bundle, system, time());
+    assert_eq!(snapshot.entities.len(), 1);
+    assert_eq!(snapshot.entities[0].id, "player");
+    assert!(snapshot.entities[0].components.contains_key("Transform"));
+    assert_eq!(snapshot.default_query["with"], serde_json::json!(["Transform"]));
     let run = run_native_systems_once(&mut bundle, time()).expect("system should run");
 
     let transform = bundle.world.entities[0]
