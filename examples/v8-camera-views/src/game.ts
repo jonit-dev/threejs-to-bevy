@@ -1,15 +1,17 @@
 import {
   AmbientLight,
   BoxGeometry,
-  DirectionalLight,
   Mesh,
   MeshStandardMaterial,
   OrthographicCamera,
   PerspectiveCamera,
-  PlaneGeometry,
   Scene,
   renderTargetAsset,
 } from "@threenative/sdk";
+
+function markerMaterial(color: string): MeshStandardMaterial {
+  return new MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1 });
+}
 
 const scene = new Scene({
   assetRefs: [renderTargetAsset("rt.monitor", { height: 256, usage: "color", width: 256 })],
@@ -19,54 +21,49 @@ const scene = new Scene({
 const player = new Mesh({
   geometry: new BoxGeometry({ size: [0.8, 0.8, 0.8] }),
   id: "player.main",
-  material: new MeshStandardMaterial({ color: "#55ccff" }),
+  material: markerMaterial("#55ccff"),
 });
 player.position.set(0, 0.4, 0);
 scene.add(player);
 
-const mainFloor = new Mesh({
-  geometry: new PlaneGeometry({ size: [12, 12] }),
-  id: "mesh.main-floor",
-  layers: ["main"],
-  material: new MeshStandardMaterial({ color: "#2244aa" }),
-});
-mainFloor.rotation.set(-Math.PI / 2, 0, 0);
-scene.add(mainFloor);
-
-const minimapFloor = new Mesh({
-  geometry: new PlaneGeometry({ size: [8, 8] }),
-  id: "mesh.minimap-floor",
+const minimapMarker = new Mesh({
+  geometry: new BoxGeometry({ size: [2.4, 0.35, 2.4] }),
+  id: "mesh.minimap-marker",
   layers: ["minimap"],
-  material: new MeshStandardMaterial({ color: "#228833" }),
+  material: markerMaterial("#22cc55"),
 });
-minimapFloor.rotation.set(-Math.PI / 2, 0, 0);
-scene.add(minimapFloor);
+minimapMarker.position.set(0, 0.175, 0);
+scene.add(minimapMarker);
 
 const splitMarker = new Mesh({
   geometry: new BoxGeometry({ size: [1.2, 1.2, 1.2] }),
   id: "mesh.split-marker",
   layers: ["split"],
-  material: new MeshStandardMaterial({ color: "#ff8844" }),
+  material: markerMaterial("#ff8844"),
 });
-splitMarker.position.set(2, 0.6, -1);
+splitMarker.position.set(0, 0.6, 0);
 scene.add(splitMarker);
 
 const monitorSubject = new Mesh({
   geometry: new BoxGeometry({ size: [1.5, 1.5, 1.5] }),
   id: "mesh.monitor-subject",
   layers: ["monitor"],
-  material: new MeshStandardMaterial({ color: "#ff55aa" }),
+  material: markerMaterial("#ff55aa"),
 });
 monitorSubject.position.set(0, 0.75, 0);
 scene.add(monitorSubject);
 
 const monitorScreen = new Mesh({
-  geometry: new PlaneGeometry({ size: [1.6, 1.2] }),
+  geometry: new BoxGeometry({ size: [1.6, 1.2, 0.08] }),
   id: "mesh.monitor-screen",
-  material: new MeshStandardMaterial({ baseColorTexture: "rt.monitor", color: "#ffffff" }),
+  material: new MeshStandardMaterial({
+    baseColorTexture: "rt.monitor",
+    color: "#ffffff",
+    emissive: "#ffffff",
+    emissiveIntensity: 0.25,
+  }),
 });
-monitorScreen.position.set(-1.5, 1.2, 1.5);
-monitorScreen.rotation.set(0, Math.PI / 4, 0);
+monitorScreen.position.set(-1.55, 1.2, 0);
 scene.add(monitorScreen);
 
 const cameraMain = new PerspectiveCamera({
@@ -100,6 +97,7 @@ scene.add(cameraMinimap);
 const cameraSplit = new PerspectiveCamera({
   clear: { color: "#331111", mode: "color" },
   far: 50,
+  follow: { offset: [0, 1.6, 4], smoothing: 12, target: "mesh.split-marker" },
   fovY: 55,
   id: "camera.split",
   layers: ["split"],
@@ -107,12 +105,13 @@ const cameraSplit = new PerspectiveCamera({
   order: 3,
   viewport: [0.7, 0.35, 0.3, 0.65],
 });
-cameraSplit.position.set(4, 2, 4);
+cameraSplit.position.set(0, 1.6, 4);
 scene.add(cameraSplit);
 
 const cameraMonitor = new PerspectiveCamera({
   clear: { color: "#220022", mode: "color" },
   far: 30,
+  follow: { offset: [0, 0.75, 3], smoothing: 12, target: "mesh.monitor-subject" },
   fovY: 50,
   id: "camera.monitor",
   layers: ["monitor"],
@@ -138,10 +137,7 @@ const cameraCustom = new PerspectiveCamera({
 });
 scene.add(cameraCustom);
 
-scene.add(new AmbientLight({ color: "#ffffff", id: "light.ambient", intensity: 0.55 }));
-const key = new DirectionalLight({ color: "#ffffff", id: "light.key", intensity: 1.1 });
-key.position.set(3, 5, 2);
-scene.add(key);
+scene.add(new AmbientLight({ color: "#ffffff", id: "light.ambient", intensity: 0.2 }));
 
 scene.setActiveCameras([cameraMonitor, cameraMain, cameraMinimap, cameraSplit, cameraCustom]);
 
