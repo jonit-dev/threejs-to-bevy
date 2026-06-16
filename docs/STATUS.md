@@ -86,6 +86,17 @@ deterministic position, velocity, material, and contact observations. Run
 full V8-09 rigid-body, character navigation, object pushing, or pathfinding
 acceptance.
 
+V8-10 has a narrow asset/glTF inspection evidence slice: web and Bevy now emit a
+deterministic `threenative.asset-load-sync-trace` for bundle-local path assets
+and environment model scene references. The trace records sorted asset load
+order, a `bundle.requiredAssets` ready barrier, and bundle-declared glTF source
+asset to instance/LOD relationships, with focused comparison artifacts written
+by `pnpm verify:v8:asset-load-gltf-inspection` under
+`artifacts/conformance/v8-asset-load-gltf-inspection/`. This does not promote
+the rest of V8-10: public asset-group declarations, spawned glTF node
+query/update handles, material override handles, editor inspection commands,
+watch diagnostics, and state-preserving hot reload remain future work.
+
 ## V4 Proves
 
 V4 is complete for the primitive native scripting proof. It proves one
