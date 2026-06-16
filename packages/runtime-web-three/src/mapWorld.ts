@@ -2,14 +2,29 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import type { IAssetIr, IMaterialIr, IRuntimeDiagnostic, IWorldEntity, IWorldIr } from "@threenative/ir";
 import { advanceAnimationPlaybackState, animationPlaybackState, type IAnimationPlaybackState } from "./animation.js";
+import {
+  applyCameraRenderLayers,
+  applyRenderLayersToObject,
+  collectLayerNames,
+  allocateRenderLayers,
+  planCameraViews,
+  resolvePrimaryCameraId,
+  type ICameraViewPlan,
+} from "./cameras.js";
 import type { IWebBundle } from "./loadBundle.js";
+import type { IRenderTargetRegistry } from "./renderTargets.js";
 
 export type { IRuntimeDiagnostic } from "@threenative/ir";
+export type { ICameraViewPlan } from "./cameras.js";
 
 export interface IThreeWorld {
   camera: THREE.Camera;
+  cameraViews: ICameraViewPlan[];
+  cameras: Map<string, THREE.Camera>;
   diagnostics: IRuntimeDiagnostic[];
+  layerAllocation: Map<string, number>;
   objectsById: Map<string, THREE.Object3D>;
+  renderTargets?: IRenderTargetRegistry;
   scene: THREE.Scene;
 }
 
@@ -38,13 +53,14 @@ export function mapWorld(bundle: IWebBundle): IThreeWorld {
   const diagnostics: IRuntimeDiagnostic[] = [];
   const assetsById = new Map(bundle.assets.assets.map((asset) => [asset.id, asset]));
   const materialsById = new Map(bundle.materials.materials.map((material) => [material.id, material]));
-  let selectedCamera: THREE.Camera | undefined;
 
+  const layerAllocation = allocateRenderLayers(collectLayerNames(bundle.world), diagnostics);
   const entities = [...bundle.world.entities].sort((left, right) => left.id.localeCompare(right.id));
   for (const entity of entities) {
     const object = mapEntity(entity, assetsById, materialsById, diagnostics, bundle.source);
     applyTransform(object, entity);
     applyVisibility(object, entity);
+    applyEntityRenderLayers(object, entity, layerAllocation);
     objectsById.set(entity.id, object);
   }
 
@@ -61,16 +77,37 @@ export function mapWorld(bundle: IWebBundle): IThreeWorld {
     } else {
       scene.add(object);
     }
+  }
 
-    if (object instanceof THREE.Camera && selectedCamera === undefined) {
-      selectedCamera = object;
+  const cameras = new Map<string, THREE.Camera>();
+  for (const [id, object] of objectsById.entries()) {
+    if (object instanceof THREE.Camera) {
+      cameras.set(id, object);
+      const entity = entities.find((entry) => entry.id === id);
+      if (entity !== undefined) {
+        object.userData.threeNativeCamera = entity.components.Camera;
+        applyCameraRenderLayers(object, entity.components.Camera?.layers ?? ["default"], layerAllocation);
+      }
     }
   }
 
-  const activeCameraEntity = readActiveCamera(bundle);
-  const activeCamera = activeCameraEntity === undefined ? undefined : objectsById.get(activeCameraEntity);
-  if (activeCamera instanceof THREE.Camera) {
-    selectedCamera = activeCamera;
+  const cameraViews = planCameraViews(bundle.world, objectsById);
+  const primaryCameraId = resolvePrimaryCameraId(cameraViews);
+  let selectedCamera: THREE.Camera | undefined = primaryCameraId === undefined ? undefined : cameras.get(primaryCameraId);
+
+  if (selectedCamera === undefined) {
+    const activeCameraEntity = readActiveCamera(bundle);
+    const activeCamera = activeCameraEntity === undefined ? undefined : objectsById.get(activeCameraEntity);
+    if (activeCamera instanceof THREE.Camera) {
+      selectedCamera = activeCamera;
+    }
+  }
+
+  if (selectedCamera === undefined) {
+    for (const object of cameras.values()) {
+      selectedCamera = object;
+      break;
+    }
   }
 
   if (selectedCamera === undefined) {
@@ -84,7 +121,15 @@ export function mapWorld(bundle: IWebBundle): IThreeWorld {
     });
   }
 
-  return { camera: selectedCamera, diagnostics, objectsById, scene };
+  return {
+    camera: selectedCamera,
+    cameras,
+    cameraViews,
+    diagnostics,
+    layerAllocation,
+    objectsById,
+    scene,
+  };
 }
 
 export function advanceAnimationPlayback(mapped: IThreeWorld, fixedDelta: number): void {
@@ -160,6 +205,7 @@ function mapEntity(
         mappedMaterial.needsUpdate = true;
       }
       const object = new THREE.Mesh(geometry, mappedMaterial);
+      object.userData.threeNativeMaterialId = material.id;
       applyShadowSettings(object, renderer);
       if (asset.kind === "model") {
         const playback = animationPlaybackState(asset);
@@ -179,11 +225,15 @@ function mapEntity(
 
   const camera = entity.components.Camera;
   if (camera?.kind === "perspective") {
-    return new THREE.PerspectiveCamera(camera.fovY ?? 60, 1, camera.near, camera.far);
+    const mapped = new THREE.PerspectiveCamera(camera.fovY ?? 60, 1, camera.near, camera.far);
+    mapped.userData.threeNativeCamera = camera;
+    return mapped;
   }
   if (camera?.kind === "orthographic") {
     const halfSize = (camera.size ?? 1) / 2;
-    return new THREE.OrthographicCamera(-halfSize, halfSize, halfSize, -halfSize, camera.near, camera.far);
+    const mapped = new THREE.OrthographicCamera(-halfSize, halfSize, halfSize, -halfSize, camera.near, camera.far);
+    mapped.userData.threeNativeCamera = camera;
+    return mapped;
   }
 
   const light = entity.components.Light;
@@ -570,6 +620,18 @@ function applyTransform(object: THREE.Object3D, entity: IWorldEntity): void {
   if (transform?.scale !== undefined) {
     object.scale.fromArray([...transform.scale]);
   }
+}
+
+function applyEntityRenderLayers(
+  object: THREE.Object3D,
+  entity: IWorldEntity,
+  allocation: Map<string, number>,
+): void {
+  const layers = entity.components.RenderLayers?.layers;
+  if (layers === undefined) {
+    return;
+  }
+  applyRenderLayersToObject(object, layers, allocation);
 }
 
 function applyVisibility(object: THREE.Object3D, entity: IWorldEntity): void {

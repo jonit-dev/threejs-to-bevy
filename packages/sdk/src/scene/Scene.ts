@@ -6,6 +6,7 @@ type SceneCamera = OrthographicCamera | PerspectiveCamera;
 
 export class Scene extends Object3D {
   public activeCamera: SceneCamera | undefined;
+  public activeCameras: SceneCamera[] = [];
 
   public constructor(options: IObject3DOptions = {}) {
     super(options);
@@ -16,6 +17,21 @@ export class Scene extends Object3D {
       throw new SdkError("TN_SDK_CAMERA_NOT_IN_SCENE", "Active camera must be part of the scene hierarchy.");
     }
     this.activeCamera = camera;
+    this.activeCameras = [camera];
+    return this;
+  }
+
+  public setActiveCameras(cameras: readonly SceneCamera[]): this {
+    if (cameras.length === 0) {
+      throw new SdkError("TN_SDK_CAMERA_NOT_IN_SCENE", "Active cameras must include at least one camera.");
+    }
+    for (const camera of cameras) {
+      if (!this.contains(camera)) {
+        throw new SdkError("TN_SDK_CAMERA_NOT_IN_SCENE", "Active cameras must be part of the scene hierarchy.");
+      }
+    }
+    this.activeCameras = [...cameras];
+    this.activeCamera = cameras[0];
     return this;
   }
 

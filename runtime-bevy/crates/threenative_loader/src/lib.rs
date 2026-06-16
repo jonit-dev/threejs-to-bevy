@@ -165,6 +165,7 @@ pub struct EntityComponents {
     pub hierarchy: Option<HierarchyComponent>,
     pub light: Option<LightComponent>,
     pub mesh_renderer: Option<MeshRendererComponent>,
+    pub render_layers: Option<RenderLayersComponent>,
     pub rigid_body: Option<RigidBodyComponent>,
     pub transform: Option<TransformComponent>,
     pub visibility: Option<VisibilityComponent>,
@@ -189,15 +190,125 @@ pub struct MeshRendererComponent {
     pub visible: Option<bool>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
+pub struct CameraViewportIr {
+    #[serde(rename = "0")]
+    pub x: Option<f32>,
+    #[serde(rename = "1")]
+    pub y: Option<f32>,
+    #[serde(rename = "2")]
+    pub width: Option<f32>,
+    #[serde(rename = "3")]
+    pub height: Option<f32>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(untagged)]
+pub enum CameraViewportIrValue {
+    Tuple([f32; 4]),
+    Object(CameraViewportIr),
+}
+
+impl CameraViewportIrValue {
+    pub fn as_tuple(&self) -> [f32; 4] {
+        match self {
+            Self::Tuple(values) => *values,
+            Self::Object(value) => [
+                value.x.unwrap_or(0.0),
+                value.y.unwrap_or(0.0),
+                value.width.unwrap_or(1.0),
+                value.height.unwrap_or(1.0),
+            ],
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct CameraClearIr {
+    pub color: Option<ColorIr>,
+    pub mode: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct CameraOutputIr {
+    pub format: Option<String>,
+    pub height: Option<u32>,
+    pub mode: Option<String>,
+    pub path: Option<String>,
+    pub width: Option<u32>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct CameraProjectionIr {
+    pub backend: Option<String>,
+    pub handedness: Option<String>,
+    pub kind: String,
+    pub matrix: Option<Vec<f32>>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct CameraTargetIr {
+    pub asset: Option<String>,
+    pub kind: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct CameraFollowHelperIr {
+    pub offset: Option<[f32; 3]>,
+    pub smoothing: Option<f32>,
+    pub target: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct CameraOrbitHelperIr {
+    pub distance: Option<f32>,
+    #[serde(rename = "maxDistance")]
+    pub max_distance: Option<f32>,
+    #[serde(rename = "minDistance")]
+    pub min_distance: Option<f32>,
+    pub smoothing: Option<f32>,
+    pub target: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct CameraScreenShakeHelperIr {
+    pub amplitude: f32,
+    pub decay: Option<f32>,
+    pub frequency: Option<f32>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct CameraViewModelHelperIr {
+    pub offset: Option<[f32; 3]>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct RenderLayersComponent {
+    pub layers: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
 pub struct CameraComponent {
+    pub clear: Option<CameraClearIr>,
+    pub follow: Option<CameraFollowHelperIr>,
     pub kind: String,
     #[serde(rename = "fovY")]
     pub fov_y: Option<f32>,
+    pub layers: Option<Vec<String>>,
     pub near: f32,
     pub far: f32,
+    pub orbit: Option<CameraOrbitHelperIr>,
+    pub order: Option<i32>,
+    pub output: Option<CameraOutputIr>,
     pub priority: Option<i32>,
+    pub projection: Option<CameraProjectionIr>,
+    #[serde(rename = "screenShake")]
+    pub screen_shake: Option<CameraScreenShakeHelperIr>,
     pub size: Option<f32>,
+    pub target: Option<CameraTargetIr>,
+    #[serde(rename = "viewModel")]
+    pub view_model: Option<CameraViewModelHelperIr>,
+    pub viewport: Option<CameraViewportIrValue>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -327,9 +438,12 @@ pub struct AssetIr {
     pub path: Option<String>,
     pub repeat: Option<[f32; 2]>,
     pub rotation: Option<f32>,
+    pub sample_count: Option<u32>,
     pub size: Option<Vec<f32>>,
     pub topology: Option<String>,
     pub usage: Option<String>,
+    pub width: Option<f32>,
+    pub height: Option<f32>,
     #[serde(rename = "wrapS")]
     pub wrap_s: Option<String>,
     #[serde(rename = "wrapT")]

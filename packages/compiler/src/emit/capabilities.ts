@@ -97,6 +97,9 @@ function collectWorldCapabilities(world: IWorldIr | undefined, add: (domain: str
   if (world.resources?.ActiveCamera !== undefined) {
     add("rendering", "camera.active");
   }
+  if (world.resources?.ActiveCameras !== undefined) {
+    add("rendering", "camera.multiple");
+  }
   if (Object.keys(world.events ?? {}).length > 0) {
     add("ecs", "events");
   }
@@ -118,6 +121,34 @@ function collectWorldCapabilities(world: IWorldIr | undefined, add: (domain: str
     }
     if (entity.components.Camera !== undefined) {
       add("rendering", `camera.${entity.components.Camera.kind}`);
+      if (
+        entity.components.Camera.follow !== undefined
+        || entity.components.Camera.orbit !== undefined
+        || entity.components.Camera.pan !== undefined
+        || entity.components.Camera.zoom !== undefined
+        || entity.components.Camera.screenShake !== undefined
+        || entity.components.Camera.viewModel !== undefined
+      ) {
+        add("rendering", "camera.helpers");
+      }
+      if (entity.components.Camera.viewport !== undefined) {
+        add("rendering", "camera.viewport");
+      }
+      if (entity.components.Camera.layers !== undefined && entity.components.Camera.layers.length > 0) {
+        add("rendering", "render-layers");
+      }
+      if (entity.components.Camera.target?.kind === "texture") {
+        add("rendering", "camera.render-target");
+      }
+      if (entity.components.Camera.target?.kind === "depth") {
+        add("rendering", "camera.depth-target");
+      }
+      if (entity.components.Camera.output !== undefined) {
+        add("rendering", "camera.screenshot-export");
+      }
+    }
+    if (entity.components.RenderLayers !== undefined) {
+      add("rendering", "render-layers");
     }
     if (entity.components.Light !== undefined) {
       add("rendering", `light.${entity.components.Light.kind}`);
