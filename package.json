@@ -33,6 +33,7 @@
     "verify:v8:material-parity": "node scripts/verify-v8-material-parity.mjs",
     "verify:v8:asset-load-gltf-inspection": "node scripts/verify-v8-asset-load-gltf-inspection.mjs",
     "verify:v8:audio": "pnpm --filter @threenative/runtime-web-three build && node scripts/verify-v8-audio.mjs",
+    "verify:v8:support-evidence": "node scripts/verify-v8-support-evidence.mjs",
     "verify:v9:skeletal-animation": "node scripts/verify-v9-skeletal-animation.mjs"
   },
   "devDependencies": {

@@ -828,6 +828,15 @@ bundle JSON can be captured, edited as structured documents, validated through a
 temporary bundle, saved back to the portable bundle, and compared without making
 editor state a source of truth.
 
+V8-18 now has a narrow support-evidence inventory slice:
+`pnpm verify:v8:support-evidence` runs the V8 docs check, records command
+stdout/stderr for the support-evidence gate steps, inventories known V8 focused
+report and screenshot paths, and writes
+`artifacts/v8/support-evidence/verification-report.json` with remaining gaps per
+tracked V8 PRD. This is parity-proof infrastructure only; it does not complete
+the V8-18 inspector, asset preview, debug draw, package-repair, or profiler
+phases.
+
 After the initial V8 editor-plumbing slices, functional-game parity work has
 closed the P0 native input-capture gap for keyboard/mouse preview controls. The
 Bevy loader now preserves `axis.value`, the native runtime captures Bevy
