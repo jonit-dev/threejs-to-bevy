@@ -8,6 +8,7 @@ use threenative_loader::{LoadError, LoadedBundle, TransformComponent, load_bundl
 pub mod animation;
 pub mod assets;
 pub mod audio;
+pub mod cameras;
 pub mod character;
 pub mod conformance;
 pub mod environment;
@@ -21,6 +22,7 @@ pub mod overlay_host;
 pub mod path_sampling;
 pub mod physics;
 pub mod rendering;
+pub mod render_targets;
 pub mod systems_context;
 pub mod systems_effects;
 pub mod systems_host;
@@ -157,6 +159,7 @@ pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeErro
             rendering::normalize_loaded_gltf_materials,
             assets::apply_loaded_texture_controls,
             map_world::bind_native_animation_players,
+            cameras::update_native_camera_helpers,
         ),
     );
     if has_scripts {

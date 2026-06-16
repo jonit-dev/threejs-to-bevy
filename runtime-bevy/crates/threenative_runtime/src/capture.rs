@@ -77,6 +77,7 @@ fn main() -> ExitCode {
         }
     }
 
+    let final_output_path = output_path.clone();
     app.insert_resource(CaptureConfig {
         output_path,
         request_frame,
@@ -84,7 +85,18 @@ fn main() -> ExitCode {
     })
     .add_systems(Update, request_screenshot);
     app.run();
-    ExitCode::SUCCESS
+    if fs::metadata(&final_output_path)
+        .map(|metadata| metadata.len() > 0)
+        .unwrap_or(false)
+    {
+        ExitCode::SUCCESS
+    } else {
+        eprintln!(
+            "screenshot was not written: {}",
+            final_output_path.display()
+        );
+        ExitCode::from(1)
+    }
 }
 
 fn request_screenshot(

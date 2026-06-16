@@ -3,10 +3,14 @@ import type { IAssetReference, IPhysicsDeclaration } from "@threenative/sdk";
 
 interface IObjectLike {
   activeCamera?: IObjectLike;
+  activeCameras?: readonly IObjectLike[];
   assetRefs?: readonly IAssetReference[];
   castShadow?: boolean;
   children: readonly IObjectLike[];
+  clear?: { color?: string; mode: string };
+  follow?: { offset?: readonly number[]; smoothing?: number; target: string };
   id?: string;
+  layers?: readonly string[];
   material?: {
     alphaCutoff?: number;
     alphaMode?: string;
@@ -62,9 +66,19 @@ interface IObjectLike {
   receiveShadow?: boolean;
   rotation: { toArray(): [number, number, number] };
   scale: { toArray(): [number, number, number] };
+  orbit?: { distance?: { max: number; min: number }; smoothing?: number; target: string };
+  order?: number;
+  output?: { format?: string; height?: number; mode?: string; path?: string; width?: number };
+  pan?: { axisX?: string; axisY?: string; speed?: number };
+  projection?: { handedness?: string; kind: string; matrix?: readonly number[] };
+  screenShake?: { amplitude: number; decay?: number; frequency?: number };
   shadowBias?: number;
   shadowNormalBias?: number;
+  target?: { asset?: string; kind: string };
+  viewModel?: { fovScale?: number; offset?: readonly number[] };
+  viewport?: readonly [number, number, number, number];
   visible?: boolean;
+  zoom?: { max: number; min: number; smoothing?: number };
   constructor: { name: string };
 }
 
@@ -79,13 +93,25 @@ export function sceneToWorld(scene: IObjectLike): ISceneEmitResult {
   const assets: ISceneEmitResult["assets"] = [];
   const materials: ISceneEmitResult["materials"] = [];
 
+  emitAssetRefs(scene.assetRefs, assets);
   visitChildren(scene, undefined, { assets, entities, materials });
 
   entities.sort((left, right) => left.id.localeCompare(right.id));
   assets.sort((left, right) => left.id.localeCompare(right.id));
   materials.sort((left, right) => left.id.localeCompare(right.id));
 
-  const camera = scene.activeCamera?.id === undefined ? entities.find((entity) => entity.components.Camera !== undefined) : entities.find((entity) => entity.id === scene.activeCamera?.id);
+  const activeCameras = resolveActiveCameras(scene, entities);
+  const resources: IWorldIr["resources"] = {};
+  if (activeCameras.length > 1) {
+    resources.ActiveCameras = {
+      cameras: activeCameras.map((camera, index) => ({
+        entity: camera.id,
+        ...(camera.order === undefined ? { order: index } : { order: camera.order }),
+      })),
+    };
+  } else if (activeCameras.length === 1) {
+    resources.ActiveCamera = { entity: activeCameras[0]!.id };
+  }
 
   return {
     assets,
@@ -94,11 +120,28 @@ export function sceneToWorld(scene: IObjectLike): ISceneEmitResult {
       schema: "threenative.world",
       version: "0.1.0",
       entities,
-      resources: camera === undefined ? {} : { ActiveCamera: { entity: camera.id } },
+      resources,
       events: {},
       prefabs: [],
     },
   };
+}
+
+function resolveActiveCameras(
+  scene: IObjectLike,
+  entities: IWorldIr["entities"],
+): Array<{ id: string; order?: number }> {
+  if (scene.activeCameras !== undefined && scene.activeCameras.length > 0) {
+    return scene.activeCameras.map((camera, index) => ({
+      id: camera.id ?? entities.filter((entity) => entity.components.Camera !== undefined)[index]?.id ?? `camera.${index}`,
+      order: camera.order,
+    }));
+  }
+  if (scene.activeCamera?.id !== undefined) {
+    return [{ id: scene.activeCamera.id, order: scene.activeCamera.order }];
+  }
+  const fallback = entities.find((entity) => entity.components.Camera !== undefined);
+  return fallback === undefined ? [] : [{ id: fallback.id }];
 }
 
 function visitChildren(
@@ -183,26 +226,17 @@ function visitChildren(
         ...(child.material.transmission === undefined || child.material.transmission === 0 ? {} : { transmission: child.material.transmission }),
         ...emitTextureSlots(child.material, output.assets),
       });
+      if (child.layers !== undefined && child.layers.length > 0) {
+        components.RenderLayers = { layers: [...child.layers].sort((left, right) => left.localeCompare(right)) };
+      }
     }
 
     if (child.constructor.name === "PerspectiveCamera") {
-      components.Camera = {
-        kind: "perspective",
-        fovY: "fovY" in child ? child.fovY : 60,
-        near: "near" in child ? child.near : 0.1,
-        far: "far" in child ? child.far : 100,
-        priority: 0,
-      };
+      components.Camera = emitCameraComponent(child, "perspective");
     }
 
     if (child.constructor.name === "OrthographicCamera") {
-      components.Camera = {
-        kind: "orthographic",
-        size: "size" in child ? child.size : 1,
-        near: "near" in child ? child.near : 0.1,
-        far: "far" in child ? child.far : 100,
-        priority: 0,
-      };
+      components.Camera = emitCameraComponent(child, "orthographic");
     }
 
     if (child.constructor.name === "DirectionalLight") {
@@ -246,6 +280,41 @@ function visitChildren(
     output.entities.push({ id, components });
     visitChildren(child, id, output);
   });
+}
+
+function emitCameraComponent(child: IObjectLike, kind: "orthographic" | "perspective"): Record<string, unknown> {
+  const camera: Record<string, unknown> = {
+    kind,
+    near: "near" in child ? child.near : 0.1,
+    far: "far" in child ? child.far : 100,
+    ...(kind === "perspective"
+      ? { fovY: "fovY" in child ? child.fovY : 60 }
+      : { size: "size" in child ? child.size : 1 }),
+    ...(child.order === undefined ? { priority: 0 } : { order: child.order }),
+    ...(child.viewport === undefined ? {} : { viewport: child.viewport }),
+    ...(child.clear === undefined ? {} : { clear: child.clear }),
+    ...(child.layers === undefined || child.layers.length === 0 ? {} : { layers: [...child.layers].sort((left, right) => left.localeCompare(right)) }),
+    ...(child.target === undefined ? {} : { target: child.target }),
+    ...(child.output === undefined ? {} : { output: child.output }),
+    ...(child.projection === undefined ? {} : { projection: child.projection }),
+    ...(child.follow === undefined ? {} : { follow: child.follow }),
+    ...(child.orbit === undefined
+      ? {}
+      : {
+          orbit: {
+            target: child.orbit.target,
+            ...(child.orbit.smoothing === undefined ? {} : { smoothing: child.orbit.smoothing }),
+            ...(child.orbit.distance === undefined
+              ? {}
+              : { minDistance: child.orbit.distance.min, maxDistance: child.orbit.distance.max }),
+          },
+        }),
+    ...(child.pan === undefined ? {} : { pan: child.pan }),
+    ...(child.zoom === undefined ? {} : { zoom: child.zoom }),
+    ...(child.screenShake === undefined ? {} : { screenShake: child.screenShake }),
+    ...(child.viewModel === undefined ? {} : { viewModel: child.viewModel }),
+  };
+  return camera;
 }
 
 function emitPhysics(physics: IPhysicsDeclaration | undefined, components: Record<string, unknown>): void {
@@ -352,7 +421,11 @@ function emitAssetRefs(refs: readonly IAssetReference[] | undefined, assets: ISc
       format: ref.format,
       id: ref.id,
       kind: ref.kind,
-      path: ref.path,
+      ...(ref.path === undefined ? {} : { path: ref.path }),
+      ...(ref.height === undefined ? {} : { height: ref.height }),
+      ...(ref.width === undefined ? {} : { width: ref.width }),
+      ...(ref.usage === undefined ? {} : { usage: ref.usage }),
+      ...(ref.sampleCount === undefined ? {} : { sampleCount: ref.sampleCount }),
       ...(ref.animations === undefined ? {} : { animations: ref.animations }),
       ...(ref.particleEmitters === undefined ? {} : { particleEmitters: ref.particleEmitters }),
     });

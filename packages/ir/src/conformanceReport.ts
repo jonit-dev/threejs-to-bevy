@@ -119,6 +119,25 @@ export interface IConformanceRuntimeConfigReport {
   };
 }
 
+export interface IConformanceCameraViewReport {
+  cameraId: string;
+  clearMode?: string;
+  exportPath?: string;
+  layers: string[];
+  order: number;
+  projectionKind?: string;
+  projectionMatrixHash?: string;
+  targetAsset?: string;
+  targetKind: string;
+  viewport?: readonly [number, number, number, number];
+}
+
+export interface IConformanceScreenshotExportReport {
+  cameraId: string;
+  format: string;
+  path: string;
+}
+
 export interface IConformanceEntityReport {
   camera?: {
     far: number;
@@ -180,6 +199,7 @@ export interface IConformanceReport {
   activeCamera?: string;
   audio?: IConformanceAudioReport;
   assets: IConformanceAssetReport[];
+  cameraViews?: IConformanceCameraViewReport[];
   diagnostics: IRuntimeDiagnostic[];
   entities: IConformanceEntityReport[];
   environment?: IConformanceEnvironmentReport;
@@ -189,5 +209,6 @@ export interface IConformanceReport {
   resources: IConformanceResourceReport[];
   runtime: "bevy" | "web-three";
   runtimeConfig?: IConformanceRuntimeConfigReport;
+  screenshotExports?: IConformanceScreenshotExportReport[];
   ui?: IConformanceUiReport;
 }

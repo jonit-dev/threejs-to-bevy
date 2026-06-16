@@ -1,0 +1,162 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "player.main",
+      "components": {
+        "Transform": { "position": [0, 0.4, 0] },
+        "MeshRenderer": { "material": "mat.main", "mesh": "mesh.box" }
+      }
+    },
+    {
+      "id": "mesh.main-floor",
+      "components": {
+        "Transform": { "position": [0, 0, 0], "rotation": [-1.5707963267948966, 0, 0, 1] },
+        "MeshRenderer": { "material": "mat.main", "mesh": "mesh.plane" },
+        "RenderLayers": { "layers": ["main"] }
+      }
+    },
+    {
+      "id": "mesh.minimap-floor",
+      "components": {
+        "Transform": { "position": [0, 0, 0], "rotation": [-1.5707963267948966, 0, 0, 1] },
+        "MeshRenderer": { "material": "mat.minimap", "mesh": "mesh.plane" },
+        "RenderLayers": { "layers": ["minimap"] }
+      }
+    },
+    {
+      "id": "mesh.split-marker",
+      "components": {
+        "Transform": { "position": [2, 0.6, -1] },
+        "MeshRenderer": { "material": "mat.split", "mesh": "mesh.box" },
+        "RenderLayers": { "layers": ["split"] }
+      }
+    },
+    {
+      "id": "mesh.monitor-subject",
+      "components": {
+        "Transform": { "position": [0, 0.75, 0] },
+        "MeshRenderer": { "material": "mat.monitor-subject", "mesh": "mesh.box" },
+        "RenderLayers": { "layers": ["monitor"] }
+      }
+    },
+    {
+      "id": "mesh.monitor-screen",
+      "components": {
+        "Transform": { "position": [-1.5, 1.2, 1.5], "rotation": [0, 0.7853981633974483, 0, 0.8660254037844386] },
+        "MeshRenderer": { "material": "mat.monitor-screen", "mesh": "mesh.plane" }
+      }
+    },
+    {
+      "id": "camera.main",
+      "components": {
+        "Transform": { "position": [0, 2.5, 5] },
+        "Camera": {
+          "clear": { "color": "#111318", "mode": "color" },
+          "far": 50,
+          "follow": { "offset": [0, 2.5, 5], "smoothing": 10, "target": "player.main" },
+          "fovY": 60,
+          "kind": "perspective",
+          "near": 0.1,
+          "order": 1,
+          "output": { "format": "png", "mode": "writeback", "path": "artifacts/v8/camera-views/export-main.png" },
+          "viewport": [0, 0, 0.7, 1]
+        }
+      }
+    },
+    {
+      "id": "camera.minimap",
+      "components": {
+        "Transform": { "position": [0, 8, 0], "rotation": [-1.5707963267948966, 0, 0, 1] },
+        "Camera": {
+          "clear": { "color": "#0a2010", "mode": "color" },
+          "far": 50,
+          "kind": "orthographic",
+          "layers": ["minimap"],
+          "near": 0.1,
+          "order": 2,
+          "size": 6,
+          "viewport": [0.7, 0, 0.3, 0.35]
+        }
+      }
+    },
+    {
+      "id": "camera.split",
+      "components": {
+        "Transform": { "position": [4, 2, 4] },
+        "Camera": {
+          "clear": { "color": "#331111", "mode": "color" },
+          "far": 50,
+          "fovY": 55,
+          "kind": "perspective",
+          "layers": ["split"],
+          "near": 0.1,
+          "order": 3,
+          "viewport": [0.7, 0.35, 0.3, 0.65]
+        }
+      }
+    },
+    {
+      "id": "camera.monitor",
+      "components": {
+        "Transform": { "position": [0, 1.5, 3] },
+        "Camera": {
+          "clear": { "color": "#220022", "mode": "color" },
+          "far": 30,
+          "fovY": 50,
+          "kind": "perspective",
+          "layers": ["monitor"],
+          "near": 0.1,
+          "order": 0,
+          "target": { "asset": "rt.monitor", "kind": "texture" }
+        }
+      }
+    },
+    {
+      "id": "camera.custom",
+      "components": {
+        "Transform": { "position": [0, 2, 5] },
+        "Camera": {
+          "far": 50,
+          "fovY": 60,
+          "kind": "perspective",
+          "near": 0.1,
+          "order": 4,
+          "projection": {
+            "handedness": "right",
+            "kind": "matrix",
+            "matrix": [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1.002, -0.2002, 0, 0, -1, 0]
+          },
+          "viewport": [0, 0, 0.01, 0.01]
+        }
+      }
+    },
+    {
+      "id": "light.ambient",
+      "components": {
+        "Light": { "color": "#ffffff", "intensity": 0.55, "kind": "ambient" }
+      }
+    },
+    {
+      "id": "light.key",
+      "components": {
+        "Transform": { "position": [3, 5, 2] },
+        "Light": { "color": "#ffffff", "intensity": 1.1, "kind": "directional" }
+      }
+    }
+  ],
+  "resources": {
+    "ActiveCameras": {
+      "cameras": [
+        { "entity": "camera.monitor", "order": 0 },
+        { "entity": "camera.main", "order": 1 },
+        { "entity": "camera.minimap", "order": 2 },
+        { "entity": "camera.split", "order": 3 },
+        { "entity": "camera.custom", "order": 4 }
+      ]
+    }
+  },
+  "events": {},
+  "prefabs": []
+}

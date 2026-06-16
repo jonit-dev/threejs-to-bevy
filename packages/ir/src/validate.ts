@@ -23,6 +23,7 @@ import type { IInputIr, InputBinding } from "./input.js";
 import { validatePerformanceProfile } from "./performanceProfile.js";
 import { validateEnvironmentSceneIr } from "./environment.js";
 import { validateOverlaysIr, type IOverlaysIr } from "./overlays.js";
+import { validateCameraViews } from "./camera.js";
 
 export interface IIrDiagnostic {
   code: string;
@@ -155,6 +156,9 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
   }
   if (overlays !== undefined) {
     diagnostics.push(...validateOverlaysIr(overlays, manifest.entry.overlays ?? "overlays.ir.json"));
+  }
+  if (world !== undefined) {
+    validateCameraViews(world, materials, assets, manifest.entry.world, diagnostics);
   }
 
   return { diagnostics, ok: diagnostics.length === 0 };
@@ -992,7 +996,9 @@ function validateAssetMetadata(asset: IAssetsManifest["assets"][number], path: s
       ? ["attributes", "binaryAttributes", "binaryIndices", "bounds", "budget", "format", "generation", "id", "indices", "kind", "primitive", "size", "topology", "usage"]
       : asset.kind === "texture"
         ? ["center", "format", "id", "kind", "magFilter", "minFilter", "offset", "path", "repeat", "rotation", "wrapS", "wrapT"]
-        : ["animationGraph", "animations", "bounds", "format", "id", "kind", "particleEmitters", "path"],
+        : asset.kind === "render-target"
+          ? ["format", "height", "id", "kind", "sampleCount", "usage", "width"]
+          : ["animationGraph", "animations", "bounds", "format", "id", "kind", "particleEmitters", "path"],
   );
   for (const key of Object.keys(raw)) {
     if (!allowed.has(key)) {
@@ -1026,6 +1032,46 @@ function validateAssetMetadata(asset: IAssetsManifest["assets"][number], path: s
   }
   if (asset.kind === "mesh") {
     validateGeneratedMeshAsset(asset, path, diagnostics);
+  }
+  if (asset.kind === "render-target") {
+    validateRenderTargetAsset(asset, path, diagnostics);
+  }
+}
+
+function validateRenderTargetAsset(
+  asset: Extract<IAssetsManifest["assets"][number], { kind: "render-target" }>,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (!Number.isFinite(asset.width) || asset.width <= 0) {
+    diagnostics.push({
+      code: "TN_IR_RENDER_TARGET_SIZE_INVALID",
+      message: `Render target '${asset.id}' width must be a positive finite number.`,
+      path: `${path}/width`,
+    });
+  }
+  if (!Number.isFinite(asset.height) || asset.height <= 0) {
+    diagnostics.push({
+      code: "TN_IR_RENDER_TARGET_SIZE_INVALID",
+      message: `Render target '${asset.id}' height must be a positive finite number.`,
+      path: `${path}/height`,
+    });
+  }
+  if (asset.usage !== "color" && asset.usage !== "depth") {
+    diagnostics.push({
+      code: "TN_IR_RENDER_TARGET_USAGE_INVALID",
+      message: `Render target '${asset.id}' usage must be 'color' or 'depth'.`,
+      path: `${path}/usage`,
+    });
+  }
+  if (asset.sampleCount !== undefined && (!Number.isInteger(asset.sampleCount) || asset.sampleCount < 1)) {
+    diagnostics.push({
+      code: "TN_IR_RENDER_TARGET_SAMPLE_COUNT_INVALID",
+      message: `Render target '${asset.id}' sampleCount must be a positive integer when declared.`,
+      path: `${path}/sampleCount`,
+      severity: "error",
+      suggestion: "Omit sampleCount for single-sample targets or use a supported sample count.",
+    });
   }
 }
 
@@ -1644,6 +1690,11 @@ function assetFormatMatches(kind: string, format: string, extension: string | un
 
 function validateMaterialTextureRefs(materials: IMaterialsIr, assets: IAssetsManifest | undefined, path: string, diagnostics: IIrDiagnostic[]): void {
   const textureAssets = new Set((assets?.assets ?? []).filter((asset) => asset.kind === "texture").map((asset) => asset.id));
+  const renderTargetTextures = new Set(
+    (assets?.assets ?? [])
+      .filter((asset): asset is Extract<typeof asset, { kind: "render-target" }> => asset.kind === "render-target" && asset.usage === "color")
+      .map((asset) => asset.id),
+  );
   const slots = [
     "baseColorTexture",
     "normalTexture",
@@ -1658,7 +1709,7 @@ function validateMaterialTextureRefs(materials: IMaterialsIr, assets: IAssetsMan
   materials.materials.forEach((material, materialIndex) => {
     slots.forEach((slot) => {
       const value = material[slot];
-      if (value !== undefined && !textureAssets.has(value)) {
+      if (value !== undefined && !textureAssets.has(value) && !renderTargetTextures.has(value)) {
         diagnostics.push({
           code: "TN_IR_MATERIAL_TEXTURE_ASSET_MISSING",
           message: `Material '${material.id}' references unknown texture asset '${value}'.`,
@@ -2929,11 +2980,11 @@ function validateResources(
 }
 
 function isBuiltInComponent(componentName: string): boolean {
-  return ["Camera", "CharacterController", "Collider", "Hierarchy", "Light", "MeshRenderer", "RigidBody", "Transform", "Visibility"].includes(componentName);
+  return ["Camera", "CharacterController", "Collider", "Hierarchy", "Light", "MeshRenderer", "RenderLayers", "RigidBody", "Transform", "Visibility"].includes(componentName);
 }
 
 function isBuiltInResource(resourceName: string): boolean {
-  return resourceName === "ActiveCamera";
+  return resourceName === "ActiveCamera" || resourceName === "ActiveCameras";
 }
 
 function validateWorldEvents(
@@ -3176,6 +3227,16 @@ function validateRenderComponents(entity: IWorldIr["entities"][number], path: st
   }
 
   const renderer = entity.components.MeshRenderer;
+  const renderLayers = entity.components.RenderLayers;
+  if (renderLayers !== undefined) {
+    if (!Array.isArray(renderLayers.layers) || renderLayers.layers.length === 0) {
+      diagnostics.push({
+        code: "TN_IR_RENDER_LAYERS_INVALID",
+        message: `RenderLayers for '${entity.id}' must include at least one layer name.`,
+        path: `${path}/components/RenderLayers/layers`,
+      });
+    }
+  }
   if (renderer?.castShadow !== undefined && typeof renderer.castShadow !== "boolean") {
     diagnostics.push({
       code: "TN_IR_RENDER_SHADOW_FLAG_INVALID",

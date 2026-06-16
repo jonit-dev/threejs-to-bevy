@@ -118,6 +118,72 @@ test("should derive ECS and runtime capabilities from schemas and runtime config
   assert.deepEqual(capabilities.scripting, ["component-reflection", "schedule.update", "systems"]);
 });
 
+test("should derive multi-view camera capabilities", () => {
+  const capabilities = deriveRequiredCapabilities({
+    assets: assetsManifest([
+      { format: "rgba8", height: 256, id: "rt.monitor", kind: "render-target", usage: "color", width: 256 },
+    ]),
+    materials: materialsIr([
+      { baseColorTexture: "rt.monitor", color: "#ffffff", id: "mat.monitor", kind: "standard" },
+    ]),
+    world: worldIr({
+      entities: [
+        {
+          components: {
+            Camera: {
+              far: 100,
+              follow: { target: "player" },
+              fovY: 60,
+              kind: "perspective",
+              layers: ["main"],
+              near: 0.1,
+              order: 0,
+              target: { asset: "rt.monitor", kind: "texture" },
+              viewport: [0, 0, 0.5, 1],
+            },
+            RenderLayers: { layers: ["main"] },
+            Transform: { position: [0, 1, 3] },
+          },
+          id: "camera.left",
+        },
+        {
+          components: {
+            Camera: {
+              far: 100,
+              fovY: 60,
+              kind: "perspective",
+              near: 0.1,
+              order: 1,
+              viewport: [0.5, 0, 0.5, 1],
+            },
+            Transform: { position: [0, 1, 3] },
+          },
+          id: "camera.right",
+        },
+      ],
+      resources: {
+        ActiveCameras: {
+          cameras: [
+            { entity: "camera.left", order: 0 },
+            { entity: "camera.right", order: 1 },
+          ],
+        },
+      },
+    }),
+  });
+
+  assert.deepEqual(capabilities.rendering, [
+    "camera.helpers",
+    "camera.multiple",
+    "camera.perspective",
+    "camera.render-target",
+    "camera.viewport",
+    "material.standard",
+    "material.texture.base-color",
+    "render-layers",
+  ]);
+});
+
 test("derives overlay capabilities", () => {
   const capabilities = deriveRequiredCapabilities({
     assets: assetsManifest([]),

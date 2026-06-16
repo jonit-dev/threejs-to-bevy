@@ -44,6 +44,13 @@ selects the `wry` backend; default builds fail fast with
 `TN_OVERLAY_TARGET_UNSUPPORTED` when desktop overlays are declared without that
 host.
 
+V8-06 camera helpers, multi-view rendering, render targets, custom projections,
+and screenshot export are implemented with shared conformance and visual evidence:
+`pnpm verify:v8:camera-views` builds `examples/v8-camera-views`, validates the
+bundle, captures web/native screenshots with viewport-region checks, and writes
+artifacts under `artifacts/v8/camera-views/`. The shared conformance fixture is
+`packages/ir/fixtures/conformance/camera-multi-view/game.bundle`.
+
 ## V4 Proves
 
 V4 is complete for the primitive native scripting proof. It proves one

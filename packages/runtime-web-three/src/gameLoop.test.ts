@@ -115,7 +115,15 @@ function makeWorld(): IWorldIr {
 }
 
 function makeMapped(): IThreeWorld {
-  return { camera: {} as IThreeWorld["camera"], diagnostics: [], objectsById: new Map(), scene: {} as IThreeWorld["scene"] };
+  return {
+    camera: {} as IThreeWorld["camera"],
+    cameras: new Map(),
+    cameraViews: [],
+    diagnostics: [],
+    layerAllocation: new Map([["default", 0]]),
+    objectsById: new Map(),
+    scene: {} as IThreeWorld["scene"],
+  };
 }
 
 function makeSystems(systems = [system("tick", "fixedUpdate")]): ISystemsIr {

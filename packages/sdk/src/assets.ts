@@ -1,7 +1,7 @@
 import { SdkError } from "./errors.js";
 
-export type AssetKind = "audio" | "model" | "texture";
-export type AssetFormat = "glb" | "gltf" | "jpeg" | "mp3" | "ogg" | "png" | "wav";
+export type AssetKind = "audio" | "model" | "render-target" | "texture";
+export type AssetFormat = "depth24plus" | "glb" | "gltf" | "jpeg" | "mp3" | "ogg" | "png" | "rgba16f" | "rgba8" | "wav";
 export type TextureWrapMode = "clampToEdge" | "mirroredRepeat" | "repeat";
 export type TextureMinFilter =
   | "linear"
@@ -88,7 +88,11 @@ export interface IAssetReference {
   format: AssetFormat;
   id: string;
   kind: AssetKind;
-  path: string;
+  path?: string;
+  sampleCount?: number;
+  usage?: "color" | "depth";
+  height?: number;
+  width?: number;
   animationGraph?: IAnimationGraphDeclaration;
   animations?: IAnimationClipReference[];
   center?: readonly [number, number];
@@ -291,6 +295,23 @@ export function textureAsset(id: string, path: string, options: ITextureAssetOpt
     ...(options.rotation === undefined ? {} : { rotation: options.rotation }),
     ...(options.wrapS === undefined ? {} : { wrapS: options.wrapS }),
     ...(options.wrapT === undefined ? {} : { wrapT: options.wrapT }),
+  };
+}
+
+export function renderTargetAsset(
+  id: string,
+  options: { format?: "rgba8"; height: number; usage: "color" | "depth"; width: number },
+): IAssetReference {
+  if (id.trim() === "") {
+    throw new SdkError("TN_SDK_ASSET_ID_EMPTY", "Asset ID must not be empty.");
+  }
+  return {
+    format: options.format ?? "rgba8",
+    height: options.height,
+    id,
+    kind: "render-target",
+    usage: options.usage,
+    width: options.width,
   };
 }
 

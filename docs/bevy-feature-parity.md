@@ -129,12 +129,12 @@ next parity slice:
 - [x] Perspective camera and active camera selection
 - [x] Orthographic projection metadata and conformance observation
 - [x] First-person camera/controller metadata
-- [ ] `P1` Multiple active cameras, camera ordering, and split-screen
-- [ ] `P1` Viewports, sub-views, and render layers
-- [ ] `P2` Render-to-texture and depth-only camera targets
-- [ ] `P3` Custom projections
-- [ ] `P1` Camera effects: screen shake, orbit, pan, zoom, and view models
-- [ ] `P2` Screenshot/export camera workflows
+- [x] `P1` Multiple active cameras, camera ordering, and split-screen
+- [x] `P1` Viewports, sub-views, and render layers
+- [x] `P2` Render-to-texture and depth-only camera targets
+- [x] `P3` Custom projections
+- [x] `P1` Camera effects: screen shake, orbit, pan, zoom, and view models
+- [x] `P2` Screenshot/export camera workflows
 
 ### 💡 Lights, Shadows, and Global Illumination
 
