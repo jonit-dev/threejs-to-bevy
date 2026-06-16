@@ -70,10 +70,14 @@ next parity slice:
 3. Assets, glTF, and scenes: add multi-asset load synchronization,
    query/update access for spawned glTF scene entities, dev-time asset file
    watching diagnostics, and scene inspection.
-4. Cameras and views: add follow/orbit/pan/zoom/screen-shake helpers, then
-   multiple cameras, viewports, render layers, and render-to-texture targets.
-5. Materials, textures, and shaders: finish transparency sorting, specular
-   maps, custom/extended materials, and only then broader shader surfaces.
+4. Cameras and views: V8-06 covers helpers, multi-view rendering, viewports,
+   render layers, render targets, custom projections, and screenshot/export
+   workflows; future work should be residual diagnostics or editor tooling, not
+   a second camera parity slice.
+5. Materials, textures, and shaders: V8-07 covers transparency policy,
+   specular maps, native sampler/UV application, and constrained extended
+   presets; future work should move to shader surfaces only after explicit
+   portable contracts exist.
 6. 3D rendering, atmosphere, and post-processing: prioritize native fog/sky
    parity, skyboxes/cubemaps, native instancing/batching, antialiasing, and
    color grading before advanced renderer features.
@@ -159,18 +163,18 @@ next parity slice:
 - [x] Visibility flags on mesh renderers
 - [x] Native texture image loading through Bevy `AssetServer` for promoted material slots
 - [x] `P1` Authored alpha modes, opacity, alpha cutoff, and web/native material observations
-- [ ] `P1` Transparency sorting and richer blend-mode parity
+- [x] `P1` Transparency sorting metadata, portable blend modes, and depth policy with web/native observations
 - [x] `P1` Authored emissive material color/intensity and web/native material observations
 - [ ] `P1` HDR bloom contribution from emissive materials
 - [x] `P1` Normal/occlusion texture refs plus authored specular, clearcoat, and transmission scalar factors
 - [x] `P1` Clearcoat, clearcoat-roughness, and transmission texture maps
-- [ ] `P1` Specular texture maps
+- [x] `P1` Specular texture maps
 - [ ] `P3` Parallax mapping and depth maps
 - [ ] `P3` Anisotropy, specular tint, and advanced PBR fields
 - [x] `P1` Authored texture repeat/wrap/filter/UV transform controls in IR, web runtime mapping, and native observations
 - [x] `P2` Multiple generated-mesh UV channels
 - [x] `P2` Generated-mesh vertex colors
-- [ ] `P2` Custom materials and extended materials
+- [x] `P2` Constrained extended material presets (`unlitMasked`, `foliage`)
 - [ ] `P3` Custom shaders, shader defs, storage buffers, and render phases
 - [ ] `P3` Bindless materials/textures
 
@@ -374,9 +378,9 @@ next parity slice:
 | Curves and path sampling | ✅ | Web and Bevy expose matching quadratic easing helpers plus line, quadratic Bezier, cubic Bezier, and Catmull-Rom path sampling utilities with focused parity tests. | Broader authored path components and editor curve handles can build on these helpers. |
 | Transform interpolation | ✅ | Web and Bevy expose matching vec3 interpolation, shortest-arc quaternion interpolation, full transform interpolation, and exponential smoothing helpers with focused parity tests. | Broader animation/state smoothing APIs can build on these helpers. |
 | Gizmo geometry | ✅ | Web and Bevy expose matching debug/editor-only axis, wire-box, and wire-sphere line geometry helpers with per-line colors and focused conversion tests for Three.js `BufferGeometry` and Bevy `LineList` meshes. | Larger editor overlay systems can compose these helpers for cameras, lights, bounds, and UI nodes. |
-| Cameras | ⚠️ | Perspective camera and active camera path are usable; Bevy scene mapping now honors `world.resources.ActiveCamera` for render-camera activation like web; conformance reports now compare the selected active camera; orthographic camera projection maps in web and Bevy and is now exposed as a runtime conformance observation in `v5-drift-surface`. | General camera resource model and full orthographic visual parity are not complete. |
+| Cameras | ✅ | Perspective and orthographic cameras, active camera selection, first-person/controller metadata, camera helper metadata, multiple ordered cameras, split-screen/sub-views, normalized viewports, render layers, render-to-texture and depth-only camera targets, custom projections, and screenshot/export workflows are promoted through V8-06 with shared conformance and web/native screenshot evidence under `artifacts/v8/camera-views/`. | Future camera work is residual editor/debug tooling, diagnostics, and advanced renderer integrations rather than a missing core camera parity contract. |
 | Lights | ✅ | Ambient, directional, point range, spot range/angle in SDK/compiler/IR, web, Bevy, and conformance observations. | Advanced lighting parity beyond promoted fields remains renderer-specific. |
-| Materials | ⚠️ | Standard color, metalness, roughness, and validated texture refs; web maps texture slots; Bevy maps refs to `StandardMaterial` image handles and now loads promoted texture asset paths through Bevy `AssetServer` in runtime apps; authored `alphaMode` (`opaque`, `mask`, `blend`), `opacity`, and `alphaCutoff` now validate through SDK/IR, emit from scene capture, map to Three.js `transparent`/`opacity`/`alphaTest`, map to Bevy `StandardMaterial` `AlphaMode` and base-color alpha, and appear in web/native conformance material observations; authored `emissive` color and `emissiveIntensity` now validate and map to Three.js emissive material fields plus Bevy `StandardMaterial.emissive`, with web/native conformance observations; authored `specularIntensity`, `clearcoat`, `clearcoatRoughness`, and `transmission` now validate, emit, map to Three.js physical material fields and Bevy `StandardMaterial` physical factors, and appear in conformance material observations; texture assets now carry portable wrap, filter, repeat, offset, center, and rotation metadata through SDK/IR/compiler output, Three.js texture objects, and web/native conformance asset observations; `clearcoatTexture`, `clearcoatRoughnessTexture`, and `transmissionTexture` validate and map to Three.js physical maps plus Bevy gated PBR texture fields. | Renderer-level native visual application of texture sampler/UV controls, transparency sorting, richer blend operations, specular texture maps, and advanced PBR texture fields remain incomplete. |
+| Materials | ⚠️ | Standard color, metalness, roughness, and validated texture refs; web maps texture slots; Bevy maps refs to `StandardMaterial` image handles and now loads promoted texture asset paths through Bevy `AssetServer` in runtime apps; authored `alphaMode` (`opaque`, `mask`, `blend`), `opacity`, and `alphaCutoff` now validate through SDK/IR, emit from scene capture, map to Three.js `transparent`/`opacity`/`alphaTest`, map to Bevy `StandardMaterial` `AlphaMode` and base-color alpha, and appear in web/native conformance material observations; authored `blendMode`, `renderOrder`, `depthWrite`, and `depthTest` now validate and map to Three.js material/mesh policy with Bevy observations/diagnostics, while native non-`normal` blend modes remain explicitly unsupported; authored `emissive` color and `emissiveIntensity` now validate and map to Three.js emissive material fields plus Bevy `StandardMaterial.emissive`, with web/native conformance observations; authored `specularIntensity`, `clearcoat`, `clearcoatRoughness`, and `transmission` now validate, emit, map to Three.js physical material fields and Bevy `StandardMaterial` physical factors, and appear in conformance material observations; `specularTexture` now validates, emits, maps to Three.js physical specular intensity maps, and appears in conformance observations; texture assets now carry portable wrap, filter, repeat, offset, center, and rotation metadata through SDK/IR/compiler output, Three.js texture objects, Bevy image sampler configuration, `StandardMaterial.uv_transform`, and web/native conformance asset observations; `clearcoatTexture`, `clearcoatRoughnessTexture`, and `transmissionTexture` validate and map to Three.js physical maps plus Bevy gated PBR texture fields; constrained extended presets (`unlitMasked`, `foliage`) validate, emit, and map to web `MeshBasicMaterial` plus Bevy unlit/masked `StandardMaterial` with screenshot evidence in `artifacts/v8/material-parity/`. | Advanced blend parity on Bevy, native specular texture rendering, custom shader surfaces, and broader extended-material catalogs remain incomplete. |
 | Shadows/color/fog/sky | ⚠️ | Promoted fields for shadows, fog, sky/horizon color, tone mapping, exposure, and color spaces are serialized and observed; mesh renderers now carry optional `castShadow` and `receiveShadow` controls through SDK/IR/compiler output, web Three.js mesh flags, Bevy `NotShadowCaster` / `NotShadowReceiver` markers, manifest capabilities, validation, and conformance observations; directional, point, and spot lights now carry optional `shadowBias` and `shadowNormalBias` through SDK/IR/compiler output, web `LightShadow` bias fields, Bevy light shadow-bias fields, manifest capabilities, validation, and web/native conformance reports. | Native fog/sky/color rendering parity, shadow filtering, point-light shadow parity, and broader visual shadow proof are still limited. |
 | Assets/glTF/scenes | ✅ | Bundle-local glTF/GLB, `.bin`, and texture dependencies; V3 environment instances resolve to real model scenes in web and Bevy. | Asset diagnostics still need more stable domain codes in some paths. |
 | Instancing/dense content | ⚠️ | Web instancing plan, concrete dense-content budget estimates, repeated group observations, source asset LOD metadata; V7 compares fixed web/native environment content traces for LOD selection and model-backed repeated-instance observations through `v7-renderer-dense-content`. | Actual renderer-level native instancing, visual runtime LOD mesh swapping, and portable post-processing are not claimed. |
@@ -410,8 +414,11 @@ authoring, and direct Bevy authoring remain outside V8.
 The first V8 slices add IR-level editor project snapshot validation,
 deterministic structured diffs for bundle-relative JSON documents, validated
 save/load through structured snapshot application, and CLI entry points for
-`tn editor snapshot` / `tn editor apply` / `tn editor diff`. This is local data
-plumbing, not a visual editor runtime.
+`tn editor snapshot` / `tn editor apply` / `tn editor diff`. V8-06 and V8-07 are
+also treated as completed parity slices for camera views and material/texture
+parity respectively. The remaining V8 queue in [V8 PRDs](PRDs/v8/README.md)
+continues the 3D-only focus order through animation, physics, assets, renderer
+quality, lights, input, UI, audio, persistence, and support-track tooling.
 
 ## Sources
 
