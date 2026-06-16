@@ -1,4 +1,4 @@
-# V8-02 Portable Procedural Mesh Authoring
+# V8-04 Portable Procedural Mesh Authoring
 
 Complexity: 7 -> HIGH mode
 
@@ -181,7 +181,7 @@ sequenceDiagram
   bounds, and no renderer-specific objects.
 
 **Checkpoint:** Automated review after this phase:
-`Review checkpoint for phase 1 of PRD at docs/PRDs/v8/V8-02-portable-procedural-mesh-authoring.md`.
+`Review checkpoint for phase 1 of PRD at docs/PRDs/v8/V8-04-portable-procedural-mesh-authoring.md`.
 
 #### Phase 2: Generated Mesh Asset Contract - Large procedural meshes emit as validated bundle-local assets
 
@@ -234,7 +234,7 @@ sequenceDiagram
   binary files and validation accepts the bundle.
 
 **Checkpoint:** Automated review after this phase:
-`Review checkpoint for phase 2 of PRD at docs/PRDs/v8/V8-02-portable-procedural-mesh-authoring.md`.
+`Review checkpoint for phase 2 of PRD at docs/PRDs/v8/V8-04-portable-procedural-mesh-authoring.md`.
 
 #### Phase 3: Runtime Mesh Mapping - Web and Bevy load the same generated mesh asset
 
@@ -285,7 +285,7 @@ sequenceDiagram
   asset references.
 
 **Checkpoint:** Automated review after this phase:
-`Review checkpoint for phase 3 of PRD at docs/PRDs/v8/V8-02-portable-procedural-mesh-authoring.md`.
+`Review checkpoint for phase 3 of PRD at docs/PRDs/v8/V8-04-portable-procedural-mesh-authoring.md`.
 
 #### Phase 4: Organic Prop Helpers and Snapshot Import - AI-friendly shape authoring covers common custom props
 
@@ -337,7 +337,7 @@ sequenceDiagram
   budgets.
 
 **Checkpoint:** Automated review after this phase:
-`Review checkpoint for phase 4 of PRD at docs/PRDs/v8/V8-02-portable-procedural-mesh-authoring.md`.
+`Review checkpoint for phase 4 of PRD at docs/PRDs/v8/V8-04-portable-procedural-mesh-authoring.md`.
 
 #### Phase 5: Screenshot Parity Gate - The same procedural prop is self-verified in web and Bevy
 
@@ -395,7 +395,7 @@ sequenceDiagram
   shape silhouette, framing, and material color within documented tolerance.
 
 **Checkpoint:** Automated review after this phase:
-`Review checkpoint for phase 5 of PRD at docs/PRDs/v8/V8-02-portable-procedural-mesh-authoring.md`.
+`Review checkpoint for phase 5 of PRD at docs/PRDs/v8/V8-04-portable-procedural-mesh-authoring.md`.
 
 ## Verification Strategy
 
