@@ -31,7 +31,10 @@ export interface ILoadWorldModelAssetsOptions {
   loader?: IWorldModelLoader;
 }
 
+let pendingTextureLoads: Promise<void>[] = [];
+
 export function mapWorld(bundle: IWebBundle): IThreeWorld {
+  pendingTextureLoads = [];
   const scene = new THREE.Scene();
   scene.background = new THREE.Color("#111318");
   const objectsById = new Map<string, THREE.Object3D>();
@@ -102,6 +105,11 @@ export function advanceAnimationPlayback(mapped: IThreeWorld, fixedDelta: number
 
 export function hasAnimationPlayback(mapped: IThreeWorld): boolean {
   return [...mapped.objectsById.values()].some((object) => object.userData.threeNativeAnimation !== undefined);
+}
+
+export async function loadPendingMaterialTextures(): Promise<void> {
+  await Promise.all(pendingTextureLoads);
+  pendingTextureLoads = [];
 }
 
 export async function loadWorldModelAssets(
@@ -408,8 +416,17 @@ function mapMaterial(
   if (physical) {
     parameters.clearcoat = material.clearcoat ?? 0;
     parameters.clearcoatRoughness = material.clearcoatRoughness ?? 0;
+    parameters.specularColor = new THREE.Color("#ffffff");
     parameters.specularIntensity = material.specularIntensity ?? 0.5;
     parameters.transmission = material.transmission ?? 0;
+    if (specularMap !== undefined) {
+      parameters.specularIntensityMap = specularMap;
+    }
+    if ((material.transmission ?? 0) > 0) {
+      parameters.ior = 1.5;
+      parameters.thickness = 0.2;
+      parameters.side = THREE.DoubleSide;
+    }
   }
   if (material.alphaMode === "blend" || (material.opacity !== undefined && material.opacity < 1)) {
     parameters.opacity = material.opacity ?? 1;
@@ -443,9 +460,6 @@ function mapMaterial(
     parameters.transmissionMap = transmissionMap;
   }
   const mapped = physical ? new THREE.MeshPhysicalMaterial(parameters) : new THREE.MeshStandardMaterial(parameters);
-  if (specularMap !== undefined) {
-    (mapped as THREE.MeshPhysicalMaterial & { specularIntensityMap?: THREE.Texture }).specularIntensityMap = specularMap;
-  }
   applyMaterialPolicy(mapped, material);
   mapped.userData.threeNativeAlphaMode = material.alphaMode ?? "opaque";
   mapped.needsUpdate = true;
@@ -556,7 +570,7 @@ function mapTextureSlot(
   }
 
   const url = source === undefined ? asset.path : `${source.replace(/\/$/, "")}/${asset.path}`;
-  const texture = canLoadImageInRuntime() ? new THREE.TextureLoader().load(url) : new THREE.Texture();
+  const texture = new THREE.Texture();
   texture.name = asset.id;
   texture.userData = {
     ...texture.userData,
@@ -564,7 +578,18 @@ function mapTextureSlot(
     threenativeSlot: slot,
     threenativeUrl: url,
   };
-  applyTextureControls(texture, asset);
+  if (canLoadImageInRuntime()) {
+    pendingTextureLoads.push(
+      new THREE.TextureLoader()
+        .loadAsync(url)
+        .then((loaded) => {
+          texture.image = loaded.image;
+          texture.needsUpdate = true;
+          applyTextureControls(texture, asset);
+        })
+        .catch(() => undefined),
+    );
+  }
   return texture;
 }
 
