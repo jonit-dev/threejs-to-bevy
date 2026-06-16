@@ -1,0 +1,25 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "v8-animation-controls",
+  "requiredCapabilities": {
+    "scripting": [
+      "schedule.update",
+      "script-bundle",
+      "service.animation.query",
+      "service.animation.stop",
+      "systems"
+    ]
+  },
+  "entry": {
+    "scripts": "scripts.bundle.js",
+    "systems": "systems.ir.json",
+    "world": "world.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "materials": "materials.ir.json",
+    "resourceSchemas": "schemas/resources.schema.json",
+    "targetProfile": "target.profile.json"
+  }
+}

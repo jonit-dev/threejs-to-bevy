@@ -18,6 +18,7 @@ import {
   World,
   action,
   axis,
+  defineAnimations,
   audioAsset,
   boxCollider,
   characterController,
@@ -40,6 +41,7 @@ import {
   rigidBody,
   textureAsset,
   touchControl,
+  transformAnimationClip,
   update,
 } from "@threenative/sdk";
 import { validateBundle } from "@threenative/ir";
@@ -138,6 +140,62 @@ test("should emit character controller capabilities from composed game roots", a
     assertCapability(manifest, "character", "slope-limit");
     assertCapability(manifest, "character", "step-offset");
     assertCapability(manifest, "physics", "collider.slope");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should emit transform animation bundle document and capabilities", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-transform-animation-"));
+  try {
+    const scene = new Scene({ id: "scene" });
+    scene.add(
+      new Mesh({
+        geometry: new BoxGeometry({ size: [1, 1, 1] }),
+        id: "cube",
+        material: new MeshStandardMaterial({ color: "#ffffff" }),
+      }),
+    );
+    const animations = defineAnimations({
+      transformClips: [
+        transformAnimationClip("move", {
+          loop: "repeat",
+          tracks: [
+            {
+              channel: "position",
+              easing: "linear",
+              keyframes: [
+                { timeSeconds: 0, value: [0, 0, 0] },
+                { timeSeconds: 1, value: [2, 0, 0] },
+              ],
+              target: "cube",
+            },
+          ],
+        }),
+      ],
+    });
+
+    const bundlePath = await emitBundle(
+      {
+        entry: "src/game.ts",
+        outDir: "dist/game.bundle",
+        projectPath: root,
+        schema: "threenative.project" as const,
+        version: "0.1.0" as const,
+      },
+      { animations, scene },
+    );
+    const manifest = JSON.parse(await readFile(join(bundlePath, "manifest.json"), "utf8"));
+    const emittedAnimations = JSON.parse(await readFile(join(bundlePath, "animations.ir.json"), "utf8"));
+    const result = await validateBundle(bundlePath);
+
+    assert.equal(result.ok, true);
+    assert.equal(manifest.entry.animations, "animations.ir.json");
+    assert.equal(manifest.files.animations, "animations.ir.json");
+    assert.deepEqual(emittedAnimations.transformClips[0].tracks[0].target, "cube");
+    assertCapability(manifest, "animation", "transform-tracks");
+    assertCapability(manifest, "animation", "transform.position");
+    assertCapability(manifest, "animation", "loop-repeat");
   } finally {
     await rm(root, { force: true, recursive: true });
   }

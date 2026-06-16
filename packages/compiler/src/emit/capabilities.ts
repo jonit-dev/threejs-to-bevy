@@ -1,5 +1,6 @@
 import type {
   IAssetsManifest,
+  IAnimationsIr,
   IAudioIr,
   IBundleManifest,
   IEnvironmentSceneIr,
@@ -13,6 +14,7 @@ import type { IInputIr, IRuntimeConfigIr, ISystemsIr } from "@threenative/ir";
 
 export interface ICapabilitySource {
   assets: IAssetsManifest;
+  animations?: IAnimationsIr;
   audio?: IAudioIr;
   componentSchemas?: IIrSchemaFile;
   environment?: IEnvironmentSceneIr;
@@ -38,6 +40,7 @@ export function deriveRequiredCapabilities(source: ICapabilitySource): IBundleMa
   collectWorldCapabilities(source.world, add);
   collectMaterialCapabilities(source.materials, add);
   collectAssetCapabilities(source.assets, add);
+  collectAnimationCapabilities(source.animations, add);
   collectSystemCapabilities(source.systems, add);
   collectInputCapabilities(source.input, add);
   collectAudioCapabilities(source.audio, add);
@@ -291,6 +294,24 @@ function collectAssetCapabilities(assets: IAssetsManifest, add: (domain: string,
       add("rendering", "texture.uv-transform");
     }
     add("asset", `${asset.kind}.${asset.format}`);
+  }
+}
+
+function collectAnimationCapabilities(animations: IAnimationsIr | undefined, add: (domain: string, capability: string) => void): void {
+  if (animations === undefined || animations.transformClips.length === 0) {
+    return;
+  }
+  add("animation", "transform-tracks");
+  for (const clip of animations.transformClips) {
+    if (clip.loop === "repeat") {
+      add("animation", "loop-repeat");
+    }
+    for (const track of clip.tracks) {
+      add("animation", `transform.${track.channel}`);
+      if (track.easing !== undefined) {
+        add("animation", `easing.${track.easing}`);
+      }
+    }
   }
 }
 

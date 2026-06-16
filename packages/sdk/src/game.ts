@@ -1,3 +1,4 @@
+import type { IAnimationsDeclaration } from "./animation.js";
 import type { IAudioDeclaration } from "./audio.js";
 import { SdkError } from "./errors.js";
 import type { IInputMapDeclaration } from "./input.js";
@@ -6,6 +7,7 @@ import type { IRuntimeConfigDeclaration } from "./time.js";
 import type { World } from "./ecs/World.js";
 
 export interface IGameRoot {
+  animations?: IAnimationsDeclaration;
   audio?: IAudioDeclaration;
   environment?: unknown;
   input?: IInputMapDeclaration;
@@ -23,6 +25,7 @@ export function defineGame(options: IGameRootOptions): IGameRoot {
   const world = options.world;
   const hasPortableRoot =
     options.scene !== undefined ||
+    options.animations !== undefined ||
     world !== undefined ||
     options.input !== undefined ||
     options.audio !== undefined ||
@@ -40,6 +43,7 @@ export function defineGame(options: IGameRootOptions): IGameRoot {
   }
 
   return {
+    ...(options.animations === undefined ? {} : { animations: options.animations }),
     ...(options.audio === undefined ? {} : { audio: options.audio }),
     ...(options.environment === undefined ? {} : { environment: options.environment }),
     ...(options.input === undefined ? {} : { input: options.input }),

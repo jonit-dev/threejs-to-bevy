@@ -3,7 +3,7 @@ import test from "node:test";
 
 import type { IWorldIr } from "@threenative/ir";
 
-import { stepPhysics } from "./physics.js";
+import { stepPhysics, traceRigidBodyPrimitive } from "./physics.js";
 
 test("physics should detect trigger overlap", () => {
   const world = makePhysicsWorld();
@@ -59,6 +59,84 @@ test("physics should emit deterministic contact ordering across simultaneous pai
     { a: "middle", b: "zeta", phase: "enter" },
   ]);
   assert.deepEqual(world.events?.TriggerEvent, [{ a: "middle", b: "sensor", phase: "enter" }]);
+});
+
+test("physics should trace dynamic box falling onto a static floor", () => {
+  const world = makeFallingBoxWorld();
+
+  assert.deepEqual(traceRigidBodyPrimitive(world, { fixedDelta: 0.25, steps: 4 }), [
+    {
+      damping: 0,
+      entity: "box",
+      friction: 0.5,
+      gravityScale: 1,
+      position: [0, 1.386875, 0],
+      restitution: 0,
+      step: 1,
+      velocity: [0, -2.4525, 0],
+    },
+    {
+      contact: "floor",
+      damping: 0,
+      entity: "box",
+      friction: 0.5,
+      gravityScale: 1,
+      position: [0, 0.55, 0],
+      restitution: 0,
+      step: 2,
+      velocity: [0, 0, 0],
+    },
+    {
+      contact: "floor",
+      damping: 0,
+      entity: "box",
+      friction: 0.5,
+      gravityScale: 1,
+      position: [0, 0.55, 0],
+      restitution: 0,
+      step: 3,
+      velocity: [0, 0, 0],
+    },
+    {
+      contact: "floor",
+      damping: 0,
+      entity: "box",
+      friction: 0.5,
+      gravityScale: 1,
+      position: [0, 0.55, 0],
+      restitution: 0,
+      step: 4,
+      velocity: [0, 0, 0],
+    },
+  ]);
+});
+
+test("physics should apply gravity scale, damping, restitution, and friction in primitive trace", () => {
+  const world = makeFallingBoxWorld();
+  const box = world.entities.find((entity) => entity.id === "box");
+  const floor = world.entities.find((entity) => entity.id === "floor");
+  if (box?.components.RigidBody !== undefined && box.components.Collider !== undefined && floor?.components.Collider !== undefined) {
+    box.components.RigidBody.damping = 0.4;
+    box.components.RigidBody.gravityScale = 0.5;
+    box.components.RigidBody.velocity = [1, 0, 0];
+    box.components.Collider.friction = 0.25;
+    box.components.Collider.restitution = 0.5;
+    floor.components.Collider.friction = 0.75;
+  }
+
+  const observations = traceRigidBodyPrimitive(world, { fixedDelta: 0.25, steps: 4 });
+
+  assert.deepEqual(observations[2], {
+    contact: "floor",
+    damping: 0.4,
+    entity: "box",
+    friction: 0.25,
+    gravityScale: 0.5,
+    position: [0.60975, 0.55, 0],
+    restitution: 0.5,
+    step: 3,
+    velocity: [0.3645, 1.495412, 0],
+  });
 });
 
 function makePhysicsWorld(): IWorldIr {
@@ -121,6 +199,31 @@ function makeUnorderedContactWorld(): IWorldIr {
           Collider: { kind: "box" as const, size: [1, 1, 1] as const },
           RigidBody: { kind: "static" as const },
           Transform: { position: [-0.1, 0, 0] as const },
+        },
+      },
+    ],
+  };
+}
+
+function makeFallingBoxWorld(): IWorldIr {
+  return {
+    schema: "threenative.world" as const,
+    version: "0.1.0" as const,
+    entities: [
+      {
+        id: "floor",
+        components: {
+          Collider: { friction: 0.5, kind: "box" as const, restitution: 0, size: [4, 0.1, 4] as const },
+          RigidBody: { kind: "static" as const },
+          Transform: { position: [0, 0, 0] as const },
+        },
+      },
+      {
+        id: "box",
+        components: {
+          Collider: { friction: 0.5, kind: "box" as const, restitution: 0, size: [1, 1, 1] as const },
+          RigidBody: { gravityScale: 1, kind: "dynamic" as const, velocity: [0, 0, 0] as const },
+          Transform: { position: [0, 2, 0] as const },
         },
       },
     ],

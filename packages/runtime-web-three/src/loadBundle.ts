@@ -1,5 +1,6 @@
 import type {
   IAssetsManifest,
+  IAnimationsIr,
   IAudioIr,
   IBundleManifest,
   IEnvironmentSceneIr,
@@ -16,6 +17,7 @@ import type {
 
 export interface IWebBundle {
   assets: IAssetsManifest;
+  animations?: IAnimationsIr;
   audio?: IAudioIr;
   componentSchemas?: IIrSchemaFile;
   environmentScene?: IEnvironmentSceneIr;
@@ -36,6 +38,8 @@ export async function loadBundle(source: string): Promise<IWebBundle> {
 
   const audio =
     manifest.entry.audio === undefined ? undefined : await readBundleJson<IAudioIr>(source, manifest.entry.audio);
+  const animations =
+    manifest.entry.animations === undefined ? undefined : await readBundleJson<IAnimationsIr>(source, manifest.entry.animations);
   const systems =
     manifest.entry.systems === undefined
       ? undefined
@@ -60,6 +64,7 @@ export async function loadBundle(source: string): Promise<IWebBundle> {
   const assets = await hydrateGeneratedMeshAssets(await readBundleJson<IAssetsManifest>(source, manifest.files.assets), source);
   return {
     assets,
+    animations,
     audio,
     componentSchemas,
     environmentScene,

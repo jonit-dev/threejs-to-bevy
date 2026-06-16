@@ -31,6 +31,10 @@
     "verify:v8:overlay": "node scripts/verify-v8-overlay-webview.mjs",
     "verify:v8:camera-views": "node scripts/verify-v8-camera-views.mjs",
     "verify:v8:material-parity": "node scripts/verify-v8-material-parity.mjs",
+    "verify:v8:animation-transform": "node scripts/verify-v8-animation-transform-trace.mjs",
+    "verify:v8:animation-controls": "node scripts/verify-v8-animation-controls.mjs",
+    "verify:v8:rigid-body-primitive": "node scripts/verify-v8-rigid-body-primitive-trace.mjs",
+    "verify:v8:asset-load-gltf-inspection": "node scripts/verify-v8-asset-load-gltf-inspection.mjs",
     "verify:v8:rendering-quality": "node scripts/verify-v8-rendering-quality.mjs",
     "verify:v9:skeletal-animation": "node scripts/verify-v9-skeletal-animation.mjs"
   },

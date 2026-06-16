@@ -2,7 +2,7 @@ import { buildComponentReflectionRegistry, type IComponentReflectionRegistry, ty
 import type { IAssetsManifest, IIrSchemaFile, IIrStateSource, IIrSystemQuery, ISystemsIr, IWorldEntity, IWorldIr } from "@threenative/ir";
 import { traceCharacterControllers, type ICharacterTraceObservation } from "../character.js";
 import type { IWebInputState } from "../input.js";
-import { animationPlayPayload } from "./services/animation.js";
+import { animationPlayPayload, animationQueryPayload, animationStopPayload } from "./services/animation.js";
 import { pickMesh, pointerRay, type IPickMeshRequest, type IPickMeshResult, type IPointerRayRequest, type IPointerRayResult } from "./services/picking.js";
 import {
   overlapPrimitive,
@@ -36,7 +36,9 @@ export interface ISystemCommandBuffer {
 
 export interface ISystemContext {
   animation: {
-    play(entity: string, clip: string, options?: Record<string, unknown>): void;
+    play(entity: string | ISystemEntityView, clip: string, options?: Record<string, unknown>): void;
+    query(entity: string | ISystemEntityView, clip?: string): ReturnType<typeof animationQueryPayload>["result"];
+    stop(entity: string | ISystemEntityView, clip?: string): ReturnType<typeof animationStopPayload>["result"];
   };
   assets: {
     get(id: unknown): IAssetsManifest["assets"][number] | null;
@@ -171,7 +173,7 @@ export interface IQueuedResourceWrite {
 
 export interface IQueuedServiceCall {
   payload: unknown;
-  service: "animation.play" | "assets.load" | "character.move" | "physics.overlap" | "physics.raycast" | "physics.shapeCast" | "picking.mesh" | "picking.pointerRay";
+  service: "animation.play" | "animation.query" | "animation.stop" | "assets.load" | "character.move" | "physics.overlap" | "physics.raycast" | "physics.shapeCast" | "picking.mesh" | "picking.pointerRay";
 }
 
 export interface IAssetLoadResult {
@@ -208,7 +210,17 @@ export function createSystemContext(
     context: {
       animation: {
         play(entity, clip, playOptions = {}) {
-          services.push({ payload: animationPlayPayload({ clip, entity, options: cloneValue(playOptions) as Record<string, unknown> }), service: "animation.play" });
+          services.push({ payload: animationPlayPayload({ clip, entity: normalizeEntityRef(entity), options: cloneValue(playOptions) as Record<string, unknown> }), service: "animation.play" });
+        },
+        query(entity, clip) {
+          const payload = animationQueryPayload({ ...(clip === undefined ? {} : { clip }), entity: normalizeEntityRef(entity) });
+          services.push({ payload, service: "animation.query" });
+          return cloneValue(payload.result) as ReturnType<typeof animationQueryPayload>["result"];
+        },
+        stop(entity, clip) {
+          const payload = animationStopPayload({ ...(clip === undefined ? {} : { clip }), entity: normalizeEntityRef(entity) });
+          services.push({ payload, service: "animation.stop" });
+          return cloneValue(payload.result) as ReturnType<typeof animationStopPayload>["result"];
         },
       },
       assets: {
@@ -653,6 +665,10 @@ function normalizeHandleName(value: unknown): string {
     return value.name;
   }
   return String(value);
+}
+
+function normalizeEntityRef(entity: string | ISystemEntityView): string {
+  return typeof entity === "string" ? entity : entity.id;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

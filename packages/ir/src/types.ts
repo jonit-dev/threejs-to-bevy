@@ -9,6 +9,7 @@ export type RuntimeConfigSchema = "threenative.runtime-config";
 export type UiSchema = "threenative.ui";
 export type EnvironmentSceneSchema = "threenative.environment-scene";
 export type OverlaysSchema = "threenative.overlays";
+export type AnimationsSchema = "threenative.animations";
 
 export interface IBundleManifest {
   schema: BundleSchema;
@@ -37,6 +38,30 @@ export interface IBundleManifest {
     runtimeConfig?: "runtime.config.json";
     scripts?: "scripts.bundle.js";
   };
+}
+
+export interface ITransformAnimationKeyframeIr {
+  timeSeconds: number;
+  value: readonly number[];
+}
+
+export interface ITransformAnimationTrackIr {
+  channel: "position" | "rotation" | "scale";
+  easing?: "linear" | "step";
+  keyframes: readonly ITransformAnimationKeyframeIr[];
+  target: string;
+}
+
+export interface ITransformAnimationClipIr {
+  id: string;
+  loop?: "none" | "repeat";
+  tracks: readonly ITransformAnimationTrackIr[];
+}
+
+export interface IAnimationsIr {
+  schema: AnimationsSchema;
+  version: SchemaVersion;
+  transformClips: readonly ITransformAnimationClipIr[];
 }
 
 export type Vec3 = readonly [number, number, number];
@@ -199,17 +224,21 @@ export interface IVisibilityComponent {
 }
 
 export interface IRigidBodyComponent {
+  damping?: number;
+  gravityScale?: number;
   kind: "dynamic" | "kinematic" | "static";
   mass?: number;
   velocity?: Vec3;
 }
 
 export interface IColliderComponent {
+  friction?: number;
   height?: number;
   kind: "box" | "capsule" | "cylinder" | "mesh" | "sphere";
   layer?: string;
   mask?: readonly string[];
   radius?: number;
+  restitution?: number;
   size?: Vec3;
   slope?: {
     axis: "x" | "z";

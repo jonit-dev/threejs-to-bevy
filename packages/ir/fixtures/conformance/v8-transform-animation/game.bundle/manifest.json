@@ -1,0 +1,32 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "v8-transform-animation",
+  "requiredCapabilities": {
+    "animation": [
+      "easing.linear",
+      "easing.step",
+      "loop-repeat",
+      "transform-tracks",
+      "transform.position",
+      "transform.scale"
+    ],
+    "asset": [
+      "mesh.generated"
+    ],
+    "rendering": [
+      "mesh-renderer",
+      "mesh.primitive.box"
+    ]
+  },
+  "entry": {
+    "animations": "animations.ir.json",
+    "world": "world.ir.json"
+  },
+  "files": {
+    "animations": "animations.ir.json",
+    "assets": "assets.manifest.json",
+    "materials": "materials.ir.json",
+    "targetProfile": "target.profile.json"
+  }
+}

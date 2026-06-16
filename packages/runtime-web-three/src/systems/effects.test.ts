@@ -63,12 +63,16 @@ test("should log declared service and reject undeclared service", () => {
   const world = makeWorld();
   const allowed = applySystemEffects(
     world,
-    makeSystem({ services: ["animation.play"] }),
+    makeSystem({ services: ["animation.play", "animation.query", "animation.stop"] }),
     {
       commands: [],
       events: [],
       resources: [],
-      services: [{ payload: { request: { clip: "run", entity: "player", options: {} }, result: { accepted: true } }, service: "animation.play" }],
+      services: [
+        { payload: { request: { clip: "run", entity: "player", options: {} }, result: { accepted: true } }, service: "animation.play" },
+        { payload: { request: { clip: "run", entity: "player" }, result: { active: false, clip: "run", entity: "player", paused: false, stopped: true, timeSeconds: 0 } }, service: "animation.query" },
+        { payload: { request: { entity: "player" }, result: { accepted: true, stopped: true } }, service: "animation.stop" },
+      ],
     },
     { frame: 1, tick: 2 },
   );
@@ -83,6 +87,8 @@ test("should log declared service and reject undeclared service", () => {
     system: "move",
     tick: 2,
   });
+  assert.equal(allowed.entries[1]?.service, "animation.query");
+  assert.equal(allowed.entries[2]?.service, "animation.stop");
 
   const rejected = applySystemEffects(
     world,

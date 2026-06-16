@@ -25,7 +25,10 @@ fn systems_host_should_call_quickjs_system_export() {
     assert_eq!(snapshot.entities.len(), 1);
     assert_eq!(snapshot.entities[0].id, "player");
     assert!(snapshot.entities[0].components.contains_key("Transform"));
-    assert_eq!(snapshot.default_query["with"], serde_json::json!(["Transform"]));
+    assert_eq!(
+        snapshot.default_query["with"],
+        serde_json::json!(["Transform"])
+    );
     let run = run_native_systems_once(&mut bundle, time()).expect("system should run");
 
     let transform = bundle.world.entities[0]
@@ -160,6 +163,31 @@ fn systems_host_should_expose_character_move_service() {
 }
 
 #[test]
+fn systems_host_should_expose_animation_query_and_stop_services() {
+    let root = write_animation_control_service_bundle("animation-control-context");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+
+    let run = run_native_systems_once(&mut bundle, time()).expect("system should run");
+
+    assert_eq!(
+        bundle.world.resources.get("AnimationReport"),
+        Some(&serde_json::json!({
+            "active": false,
+            "clip": "run",
+            "entity": "player",
+            "stopped": true
+        }))
+    );
+    let mut service_names: Vec<_> = run.logs[0]
+        .entries
+        .iter()
+        .filter_map(|entry| entry.service.as_deref())
+        .collect();
+    service_names.sort();
+    assert_eq!(service_names, vec!["animation.query", "animation.stop"]);
+}
+
+#[test]
 fn systems_host_should_expose_seeded_random_helpers() {
     let root = write_random_bundle("random-context");
     let mut bundle = load_bundle(&root).expect("scripted bundle should load");
@@ -254,13 +282,11 @@ fn systems_host_should_reconcile_spawned_entities_events_and_resources_across_sc
 
     run_native_systems_once(&mut bundle, time()).expect("systems should run");
 
-    assert!(
-        bundle
-            .world
-            .entities
-            .iter()
-            .all(|entity| entity.id != "marker")
-    );
+    assert!(bundle
+        .world
+        .entities
+        .iter()
+        .all(|entity| entity.id != "marker"));
     assert_eq!(
         bundle.world.resources.get("Score"),
         Some(&serde_json::json!({ "events": 2, "health": 1 }))
@@ -781,6 +807,72 @@ fn write_character_service_bundle(name: &str) -> PathBuf {
 };
 export const systemIds = Object.freeze({ "system_moveCharacter": "moveCharacter" });
 export const systems = Object.freeze({ "system_moveCharacter": system_moveCharacter });
+"#,
+    )
+    .expect("script bundle should be written");
+    root
+}
+
+fn write_animation_control_service_bundle(name: &str) -> PathBuf {
+    let root = root(name);
+    write_base_bundle(&root, true);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "player",
+      "components": {
+        "Transform": { "position": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+      }
+    }
+  ],
+  "resources": {
+    "AnimationReport": {}
+  }
+}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "animationControls",
+      "schedule": "update",
+      "reads": ["Transform"],
+      "writes": [],
+      "queries": [],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": ["AnimationReport"],
+      "resourceWrites": ["AnimationReport"],
+      "services": ["animation.query", "animation.stop"],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_animationControls" }
+    }
+  ]
+}"#,
+    );
+    fs::write(
+        root.join("scripts.bundle.js"),
+        r#"const system_animationControls = (ctx) => {
+  const query = ctx.animation.query("player", "run");
+  const stop = ctx.animation.stop("player");
+  ctx.resources.set("AnimationReport", {
+    active: query.active,
+    clip: query.clip,
+    entity: query.entity,
+    stopped: stop.stopped
+  });
+};
+export const systemIds = Object.freeze({ "system_animationControls": "animationControls" });
+export const systems = Object.freeze({ "system_animationControls": system_animationControls });
 "#,
     )
     .expect("script bundle should be written");

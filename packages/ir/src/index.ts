@@ -41,6 +41,7 @@ export type {
 export type {
   IAssetIr,
   IAssetsManifest,
+  IAnimationsIr,
   IAtmosphereProfileIr,
   IAudioIr,
   IAudioMusicIr,
