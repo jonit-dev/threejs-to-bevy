@@ -949,6 +949,7 @@ pub struct UiNodeIr {
     pub src: Option<String>,
     pub text: Option<String>,
     pub action: Option<String>,
+    pub disabled: Option<bool>,
     pub focusable: Option<bool>,
     pub navigation: Option<UiNavigationIr>,
     pub style: Option<UiStyleIr>,

@@ -1,0 +1,32 @@
+{
+  "schema": "threenative.ui",
+  "version": "0.1.0",
+  "focusOrder": ["menu.resume"],
+  "root": {
+    "id": "menu",
+    "kind": "stack",
+    "accessibilityLabel": "Pause menu",
+    "role": "group",
+    "children": [
+      {
+        "id": "menu.actions",
+        "kind": "column",
+        "children": [
+          {
+            "id": "menu.resume",
+            "kind": "button",
+            "label": "Resume",
+            "action": "Resume"
+          },
+          {
+            "id": "menu.locked",
+            "kind": "button",
+            "label": "Locked",
+            "action": "Locked",
+            "disabled": true
+          }
+        ]
+      }
+    ]
+  }
+}

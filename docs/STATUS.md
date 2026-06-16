@@ -408,8 +408,17 @@ controls, unnamed explicit progressbars, and malformed list/listitem structure,
 bundle capabilities report `ui:accessibility` with label/role granularity, the
 web DOM overlay maps metadata to ARIA roles and labels, web/native conformance
 reports preserve the fields, and the Bevy UI adapter inserts AccessKit
-`AccessibilityNode` components. Focus narration, disabled-state semantics, and
-target-specific accessibility audits remain future work.
+`AccessibilityNode` components. V8-15 now adds static retained UI `disabled`
+metadata semantics: IR validation requires a boolean value, authored disabled
+controls are removed from initial focus order/action dispatch, the web DOM
+overlay emits `aria-disabled` plus native button disabling, and Bevy preserves
+the state through `NativeUiDisabled` plus AccessKit disabled nodes. The focused
+web/Bevy parity evidence is
+`artifacts/conformance/v8-retained-ui-disabled/web.report.json`,
+`artifacts/conformance/v8-retained-ui-disabled/bevy.report.json`, and
+`artifacts/conformance/v8-retained-ui-disabled/comparison.report.json`.
+Runtime disabled-to-enabled updates, focus narration, and target-specific
+accessibility audits remain future work.
 
 V5-07 has landed the lighting, atmosphere, shadow, and color parity-evidence
 slice: shared fixtures now cover visible/hidden meshes plus ranged point and

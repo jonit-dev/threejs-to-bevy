@@ -22,6 +22,7 @@ export interface IUiNodeIr {
   accessibilityLabel?: string;
   binding?: unknown;
   children?: IUiNodeIr[];
+  disabled?: boolean;
   focusable?: boolean;
   id: string;
   kind: "bar" | "button" | "column" | "image" | "row" | "stack" | "text" | "touchControl";
@@ -129,6 +130,7 @@ function captureNode(element: IUiElement, fallback: string): IUiNodeIr {
     ...(element.props.action === undefined ? {} : { action: element.props.action }),
     ...(element.props.accessibilityLabel === undefined ? {} : { accessibilityLabel: element.props.accessibilityLabel }),
     ...(element.props.binding === undefined ? {} : { binding: element.props.binding }),
+    ...(element.props.disabled === undefined ? {} : { disabled: element.props.disabled }),
     ...(element.props.focusable === undefined ? {} : { focusable: element.props.focusable }),
     ...(element.props.label === undefined ? {} : { label: element.props.label }),
     ...(element.props.layout === undefined ? {} : { layout: element.props.layout }),

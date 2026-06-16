@@ -9,6 +9,7 @@ export interface IUiNodeProps {
   accessibilityLabel?: string;
   binding?: UiBinding;
   children?: UiChild | UiChild[];
+  disabled?: boolean;
   focusable?: boolean;
   focusOrder?: string[];
   id?: string;

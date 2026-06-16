@@ -95,6 +95,35 @@ test("ui should validate v7 focus navigation metadata", async () => {
   }
 });
 
+test("ui should validate disabled controls as non-focusable", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ui-disabled-"));
+  try {
+    await writeTestBundle(root, { manifest: { entry: { ui: "ui.ir.json" } } });
+    await writeJson(root, "ui.ir.json", {
+      schema: "threenative.ui",
+      version: "0.1.0",
+      focusOrder: ["resume", "disabled"],
+      root: {
+        id: "menu",
+        kind: "column",
+        children: [
+          { id: "resume", kind: "button", label: "Resume", action: "Resume" },
+          { id: "disabled", kind: "button", label: "Disabled", action: "Disabled", disabled: true },
+          { id: "bad", kind: "button", label: "Bad", action: "Bad", disabled: "yes" },
+        ],
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_DISABLED_INVALID"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_FOCUS_TARGET_INVALID"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("ui should validate explicit flex layout metadata", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ui-layout-"));
   try {

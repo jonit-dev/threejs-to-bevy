@@ -25,6 +25,9 @@ diagnostics remain incomplete.
   UI renderer, Bevy UI renderer, AccessKit mapping, and verify scripts.
 - [x] Registration/wiring needed: font/image assets, widgets, accessibility
   diagnostics, fixtures, docs, and gates.
+- [x] Disabled-state scope documented: this slice promotes static authored
+  `disabled` IR metadata and initial runtime observations only; reversible
+  disabled-to-enabled updates remain future UI runtime work.
 
 **Is this user-facing?** Yes. This is the portable in-game UI track; React
 webview overlays stay optional and separate.

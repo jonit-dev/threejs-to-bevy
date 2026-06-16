@@ -418,6 +418,7 @@ function reportUiNode(node: IUiIr["root"]): IConformanceUiNodeReport {
     ...(node.accessibilityLabel === undefined ? {} : { accessibilityLabel: node.accessibilityLabel }),
     ...(node.action === undefined ? {} : { action: node.action }),
     children: (node.children ?? []).map(reportUiNode),
+    ...(node.disabled === undefined ? {} : { disabled: node.disabled }),
     ...(node.focusable === undefined ? {} : { focusable: node.focusable }),
     id: node.id,
     kind: node.kind,

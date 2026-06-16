@@ -7,6 +7,7 @@ export interface IRenderedUiNode {
   action?: string;
   accessibilityLabel?: string;
   children: IRenderedUiNode[];
+  disabled: boolean;
   focusable: boolean;
   id: string;
   kind: IUiNodeIr["kind"];
@@ -40,7 +41,7 @@ export function renderUi(ui: IUiIr, world: IWorldIr): IRenderedUi {
     },
     trigger(nodeId) {
       const node = findNode(ui.root, nodeId);
-      if (node !== undefined) {
+      if (node !== undefined && node.disabled !== true) {
         dispatchUiAction(node, (event) => actions.push(event));
       }
     },
@@ -56,7 +57,8 @@ function renderNode(node: IUiNodeIr, world: IWorldIr): IRenderedUiNode {
     ...(node.action === undefined ? {} : { action: node.action }),
     ...(node.accessibilityLabel === undefined ? {} : { accessibilityLabel: node.accessibilityLabel }),
     children: node.children?.map((child) => renderNode(child, world)) ?? [],
-    focusable: node.focusable ?? (node.kind === "button" || node.kind === "touchControl"),
+    disabled: node.disabled === true,
+    focusable: node.disabled === true ? false : (node.focusable ?? (node.kind === "button" || node.kind === "touchControl")),
     id: node.id,
     kind: node.kind,
     ...(node.label === undefined ? {} : { label: node.label }),

@@ -44,7 +44,7 @@ function createNodeElement(
     element.tabIndex = 0;
     element.addEventListener("keydown", (event) => handleKeyboardNavigation(event, node.id, rendered, nodes));
   }
-  if (node.kind === "button" || node.kind === "touchControl") {
+  if ((node.kind === "button" || node.kind === "touchControl") && !node.disabled) {
     element.addEventListener("click", () => rendered.trigger(node.id));
   }
   if (node.kind === "bar") {
@@ -78,7 +78,10 @@ function handleKeyboardNavigation(
   }
   event.preventDefault();
   if (input === "activate") {
-    rendered.trigger(currentId);
+    const current = renderedNodesById(rendered.root).get(currentId);
+    if (current?.disabled !== true) {
+      rendered.trigger(currentId);
+    }
     return;
   }
   const renderedNodes = renderedNodesById(rendered.root);
@@ -212,6 +215,12 @@ function applyAccessibilityAttributes(element: HTMLElement, node: IRenderedUiNod
   const name = accessibleName(node);
   if (name !== undefined && node.kind !== "image" && node.role !== "none") {
     element.setAttribute("aria-label", name);
+  }
+  if (node.disabled) {
+    element.setAttribute("aria-disabled", "true");
+    if (node.kind === "button" || node.kind === "touchControl") {
+      element.setAttribute("disabled", "");
+    }
   }
 }
 

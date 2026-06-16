@@ -25,6 +25,16 @@ test("ui should dispatch pause action from button", () => {
   assert.deepEqual(rendered.actions, [{ action: "Pause", node: "pause" }]);
 });
 
+test("ui should keep disabled controls inert", () => {
+  const rendered = renderUi(makeUi(), makeWorld());
+
+  rendered.trigger("locked");
+
+  assert.equal(rendered.root.children[2]?.disabled, true);
+  assert.equal(rendered.root.children[2]?.focusable, false);
+  assert.deepEqual(rendered.actions, []);
+});
+
 function makeUi(): IUiIr {
   return {
     schema: "threenative.ui",
@@ -35,6 +45,7 @@ function makeUi(): IUiIr {
       children: [
         { id: "health", kind: "bar", max: 10, binding: { kind: "resource", name: "Health", field: "current" } },
         { id: "pause", kind: "button", label: "Pause", action: "Pause" },
+        { id: "locked", kind: "button", label: "Locked", action: "Locked", disabled: true },
       ],
     },
   };
