@@ -48,9 +48,11 @@ budget metadata, environment map/probe refs, and debug visualization metadata.
 
 **Implementation:**
 
+- [x] Add a report-only `pnpm verify:v8:lights-shadows` trace for existing
+  shadow policy/bias metadata plus matched Three.js/Bevy screenshot drift.
 - [ ] Add PCF/filter quality enum and map limits.
 - [ ] Validate unsupported combinations.
-- [ ] Report web/native observations.
+- [x] Report web/native observations for the proven shadow-policy trace only.
 
 **Verification Plan:** SDK/IR tests, runtime mapping tests, and diagnostics.
 

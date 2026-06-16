@@ -1,0 +1,69 @@
+{
+  "artifacts": {
+    "atmosphereReportPath": "/home/joao/projects/threejs-to-bevy/.worktrees/v8-12-lights-shadows-probes/artifacts/v8/lights-shadows/v3-atmosphere-report.json",
+    "bundlePath": "/home/joao/projects/threejs-to-bevy/.worktrees/v8-12-lights-shadows-probes/examples/v3-environment/dist/forest.bundle",
+    "lightingColorReportPath": "/home/joao/projects/threejs-to-bevy/.worktrees/v8-12-lights-shadows-probes/artifacts/v8/lights-shadows/v3-lighting-color-report.json",
+    "lightsShadowsReportPath": "/home/joao/projects/threejs-to-bevy/.worktrees/v8-12-lights-shadows-probes/artifacts/v8/lights-shadows/v8-lights-shadows-report.json",
+    "reportPath": "/home/joao/projects/threejs-to-bevy/.worktrees/v8-12-lights-shadows-probes/artifacts/v8/lights-shadows/verification-report.json",
+    "sceneReportPath": "/home/joao/projects/threejs-to-bevy/.worktrees/v8-12-lights-shadows-probes/artifacts/v8/lights-shadows/v3-scene-report.json",
+    "visualContactSheetPath": "/home/joao/projects/threejs-to-bevy/.worktrees/v8-12-lights-shadows-probes/artifacts/v8/lights-shadows/screenshots/threejs-bevy-side-by-side.png"
+  },
+  "code": "TN_VERIFY_V8_LIGHTS_SHADOWS_OK",
+  "scope": {
+    "prd": "V8-12",
+    "provenSlice": "shadow-policy-and-shadow-sensitive-capture-trace",
+    "visualParity": "not-asserted"
+  },
+  "status": "pass",
+  "steps": [
+    {
+      "durationMs": 1922,
+      "exitCode": 0,
+      "stderr": "(node:556582) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n(Use `node --trace-warnings ...` to show where the warning was created)\n",
+      "stdout": "\n> @threenative/cli@0.1.0 build /home/joao/projects/threejs-to-bevy/.worktrees/v8-12-lights-shadows-probes/packages/cli\n> tsc -p tsconfig.json\n\n",
+      "name": "build cli"
+    },
+    {
+      "durationMs": 954,
+      "exitCode": 0,
+      "stderr": "",
+      "stdout": "{\n  \"code\": \"TN_BUILD_OK\",\n  \"bundlePath\": \"/home/joao/projects/threejs-to-bevy/.worktrees/v8-12-lights-shadows-probes/examples/v3-environment/dist/forest.bundle\",\n  \"message\": \"Built game bundle at '/home/joao/projects/threejs-to-bevy/.worktrees/v8-12-lights-shadows-probes/examples/v3-environment/dist/forest.bundle'.\"\n}\n",
+      "name": "build v3 environment shadow fixture"
+    },
+    {
+      "durationMs": 854,
+      "exitCode": 0,
+      "stderr": "",
+      "stdout": "{\n  \"code\": \"TN_VALIDATE_OK\",\n  \"diagnostics\": [],\n  \"message\": \"Bundle validation passed.\",\n  \"path\": \"/home/joao/projects/threejs-to-bevy/.worktrees/v8-12-lights-shadows-probes/examples/v3-environment/dist/forest.bundle\"\n}\n",
+      "name": "validate v3 environment shadow fixture"
+    },
+    {
+      "durationMs": 0,
+      "exitCode": 0,
+      "name": "capture web/native shadow screenshots",
+      "stderr": "",
+      "stdout": "/home/joao/projects/threejs-to-bevy/.worktrees/v8-12-lights-shadows-probes/artifacts/v8/lights-shadows/v3-scene-report.json"
+    },
+    {
+      "durationMs": 0,
+      "exitCode": 0,
+      "name": "verify shadow policy metadata",
+      "stderr": "",
+      "stdout": "/home/joao/projects/threejs-to-bevy/.worktrees/v8-12-lights-shadows-probes/artifacts/v8/lights-shadows/v3-atmosphere-report.json"
+    },
+    {
+      "durationMs": 0,
+      "exitCode": 0,
+      "name": "record lighting color drift metrics",
+      "stderr": "",
+      "stdout": "/home/joao/projects/threejs-to-bevy/.worktrees/v8-12-lights-shadows-probes/artifacts/v8/lights-shadows/v3-lighting-color-report.json"
+    },
+    {
+      "durationMs": 0,
+      "exitCode": 0,
+      "name": "verify v8 lights/shadows trace",
+      "stderr": "",
+      "stdout": "/home/joao/projects/threejs-to-bevy/.worktrees/v8-12-lights-shadows-probes/artifacts/v8/lights-shadows/v8-lights-shadows-report.json"
+    }
+  ]
+}

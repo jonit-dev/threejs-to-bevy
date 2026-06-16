@@ -90,6 +90,15 @@ independently enforce the full local-data semantic validation rules beyond
 parsing supported schema/version metadata. Runtime save/load services, storage
 backends, CLI import/export, and autosave execution remain future V8-17 work.
 
+V8-12 has a narrow report-only lights/shadows trace:
+`pnpm verify:v8:lights-shadows` builds and validates the V3 environment shadow
+fixture, captures matched Three.js and Bevy screenshots, records the active
+shadow policy/bias metadata, and writes
+`artifacts/v8/lights-shadows/v8-lights-shadows-report.json`. This proves only a
+shadow-policy and shadow-sensitive capture trace. Point-light PCF/shadow
+filtering parity, light budgets/culling, environment maps/probes, and light
+debug visualization remain unpromoted.
+
 ## V4 Proves
 
 V4 is complete for the primitive native scripting proof. It proves one

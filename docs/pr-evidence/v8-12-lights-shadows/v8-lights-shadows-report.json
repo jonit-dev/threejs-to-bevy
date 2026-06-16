@@ -1,0 +1,119 @@
+{
+  "artifacts": {
+    "atmosphereReportPath": "/home/joao/projects/threejs-to-bevy/.worktrees/v8-12-lights-shadows-probes/artifacts/v8/lights-shadows/v3-atmosphere-report.json",
+    "bundlePath": "/home/joao/projects/threejs-to-bevy/.worktrees/v8-12-lights-shadows-probes/examples/v3-environment/dist/forest.bundle",
+    "contactSheetPath": "/home/joao/projects/threejs-to-bevy/.worktrees/v8-12-lights-shadows-probes/artifacts/v8/lights-shadows/screenshots/threejs-bevy-side-by-side.png",
+    "reportPath": "/home/joao/projects/threejs-to-bevy/.worktrees/v8-12-lights-shadows-probes/artifacts/v8/lights-shadows/v8-lights-shadows-report.json",
+    "sceneReportPath": "/home/joao/projects/threejs-to-bevy/.worktrees/v8-12-lights-shadows-probes/artifacts/v8/lights-shadows/v3-scene-report.json"
+  },
+  "diagnostics": [],
+  "lightTrace": {
+    "counts": {
+      "ambient": 1,
+      "directional": 1,
+      "point": 0,
+      "shadowCasters": 0,
+      "shadowReceivers": 0,
+      "spot": 0
+    },
+    "pointLightShadowParity": "not-proven",
+    "shadowBiasLights": []
+  },
+  "samples": [
+    {
+      "bevyGltfPath": "/home/joao/projects/threejs-to-bevy/.worktrees/v8-12-lights-shadows-probes/artifacts/v8/lights-shadows/screenshots/bookmark-bend.bevy-gltf.png",
+      "bookmarkId": "bookmark.bend",
+      "metrics": {
+        "averageBrightnessDelta": 0.1738200713733331,
+        "averageColorDelta": {
+          "blue": 0.14667495574618736,
+          "green": 0.2002561742578976,
+          "red": 0.1754549249387255
+        },
+        "changedPixelRatio": 0.9961414930555555,
+        "ok": true,
+        "threshold": 0.001
+      },
+      "shadowTrace": {
+        "bevyDarkPixelRatio": 0.3271560329861111,
+        "darkPixelRatioDelta": 0.1617523871527778,
+        "interpretation": "bevy-darker-shadow-regions",
+        "threejsDarkPixelRatio": 0.16540364583333333
+      },
+      "threejsPath": "/home/joao/projects/threejs-to-bevy/.worktrees/v8-12-lights-shadows-probes/artifacts/v8/lights-shadows/screenshots/bookmark-bend.threejs.png"
+    },
+    {
+      "bevyGltfPath": "/home/joao/projects/threejs-to-bevy/.worktrees/v8-12-lights-shadows-probes/artifacts/v8/lights-shadows/screenshots/bookmark-entry.bevy-gltf.png",
+      "bookmarkId": "bookmark.entry",
+      "metrics": {
+        "averageBrightnessDelta": 0.16834639246321648,
+        "averageColorDelta": {
+          "blue": 0.13780229609204792,
+          "green": 0.19480967030909588,
+          "red": 0.1752225881672113
+        },
+        "changedPixelRatio": 0.9973524305555556,
+        "ok": true,
+        "threshold": 0.001
+      },
+      "shadowTrace": {
+        "bevyDarkPixelRatio": 0.40330078125,
+        "darkPixelRatioDelta": 0.20531141493055557,
+        "interpretation": "bevy-darker-shadow-regions",
+        "threejsDarkPixelRatio": 0.19798936631944444
+      },
+      "threejsPath": "/home/joao/projects/threejs-to-bevy/.worktrees/v8-12-lights-shadows-probes/artifacts/v8/lights-shadows/screenshots/bookmark-entry.threejs.png"
+    },
+    {
+      "bevyGltfPath": "/home/joao/projects/threejs-to-bevy/.worktrees/v8-12-lights-shadows-probes/artifacts/v8/lights-shadows/screenshots/bookmark-midpath.bevy-gltf.png",
+      "bookmarkId": "bookmark.midPath",
+      "metrics": {
+        "averageBrightnessDelta": 0.16510965300468328,
+        "averageColorDelta": {
+          "blue": 0.13382165713507624,
+          "green": 0.19264300789760347,
+          "red": 0.1716543096405229
+        },
+        "changedPixelRatio": 0.9980924479166666,
+        "ok": true,
+        "threshold": 0.001
+      },
+      "shadowTrace": {
+        "bevyDarkPixelRatio": 0.36423177083333336,
+        "darkPixelRatioDelta": 0.18987413194444447,
+        "interpretation": "bevy-darker-shadow-regions",
+        "threejsDarkPixelRatio": 0.1743576388888889
+      },
+      "threejsPath": "/home/joao/projects/threejs-to-bevy/.worktrees/v8-12-lights-shadows-probes/artifacts/v8/lights-shadows/screenshots/bookmark-midpath.threejs.png"
+    }
+  ],
+  "shadowPolicy": {
+    "bias": -0.0005,
+    "cascadeCount": 1,
+    "enabled": true,
+    "mapSize": 1024,
+    "maxDistance": 45,
+    "normalBias": 0.02,
+    "receiverPolicy": "terrain-and-path"
+  },
+  "status": "pass",
+  "summary": {
+    "averageDarkPixelRatioDelta": 0.18564597800925928,
+    "maxAverageBrightnessDelta": 0.1738200713733331,
+    "maxChangedPixelRatio": 0.9980924479166666,
+    "sampleCount": 3
+  },
+  "thresholds": {
+    "mode": "report-only",
+    "note": "This V8-12 slice records shadow-policy metadata and shadow-sensitive web/native screenshot drift; it does not assert point-light, PCF, probe, or full shadow parity.",
+    "suggestedShadowFixture": {
+      "averageBrightnessDelta": 0.08,
+      "darkPixelRatioDelta": 0.08
+    }
+  },
+  "v8Scope": {
+    "prd": "V8-12",
+    "provenSlice": "shadow-policy-and-shadow-sensitive-capture-trace",
+    "visualParity": "not-asserted"
+  }
+}

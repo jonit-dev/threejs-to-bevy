@@ -147,6 +147,7 @@ next parity slice:
 - [x] Point light with range
 - [x] Spot light with range and angle
 - [x] Shadow metadata and shadow conformance observations
+- [x] `P2` Report-only V8-12 shadow-policy and shadow-sensitive web/native screenshot trace
 - [ ] `P2` Dynamic light limits, clustered-light behavior, and light culling budgets
 - [ ] `P2` Point-light PCF/shadow-filtering parity
 - [x] `P1` Shadow bias controls
