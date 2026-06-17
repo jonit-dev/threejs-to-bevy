@@ -17,7 +17,14 @@ export type {
   IConformanceUiNodeReport,
   IConformanceUiReport,
 } from "./conformanceReport.js";
-export type { IRuntimeDiagnostic } from "./runtimeDiagnostics.js";
+export {
+  diagnoseUnsupportedRuntimeDeclarations,
+  validateRuntimeDiagnosticReport,
+  type IRuntimeDiagnostic,
+  type IRuntimeDiagnosticReport,
+  type IRuntimeDiagnosticsValidationResult,
+  type RuntimeDiagnosticSeverity,
+} from "./runtimeDiagnostics.js";
 export {
   validateAssetReloadReport,
   type AssetReloadChangeKind,

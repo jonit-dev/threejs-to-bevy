@@ -16,6 +16,7 @@ export { loadBundle, type IWebBundle } from "./loadBundle.js";
 export { applyEnvironmentBookmark, createEnvironmentRuntime, loadEnvironmentAssetInstances, observeEnvironmentScene, traceEnvironmentContent, type IEnvironmentObservation, type IEnvironmentRuntime } from "./environment.js";
 export { buildInstancingPlan, type IInstancingGroup, type IInstancingPlan } from "./instancing.js";
 export { collectPerformanceSummary, summarizeFrameTimings, type IPerformanceMetricSummary } from "./performanceMetrics.js";
+export { renderDebugOverlay, type IWebDebugCounter, type IWebDebugDrawPrimitive, type IWebDebugOverlayInput, type IWebDebugOverlayModel, type IWebDebugOverlayRow } from "./debugOverlay.js";
 export { applyAtmosphereProfile, observeAtmosphereProfile, type IAtmosphereObservation } from "./rendering.js";
 export { createGameLoopState, runGameFrame, setPaused, type IGameLoopState } from "./gameLoop.js";
 export { createAxisGizmo, createWireBoxGizmo, createWireSphereGizmo, gizmoToBufferGeometry, type IGizmoGeometry, type IGizmoLine } from "./gizmoGeometry.js";

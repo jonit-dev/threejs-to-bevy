@@ -12,6 +12,7 @@ pub mod audio;
 pub mod cameras;
 pub mod character;
 pub mod conformance;
+pub mod debug_overlay;
 pub mod environment;
 pub mod first_person;
 pub mod gizmo_geometry;

@@ -1071,6 +1071,18 @@ This proves local-only save/settings contracts and autosave checkpoint metadata;
 durable platform storage backends and cloud/account-bound saves remain later
 work.
 
+V9-06 diagnostics/debug draw now has a Phase 3 evidence slice:
+`packages/sdk/src/debug.ts` captures lines, rays, bounds, spheres, boxes, labels,
+transform axes, camera frustums, light volumes, UI node rectangles, FPS overlay
+settings, custom counters, platform-audio diagnostics, unsupported-feature
+diagnostics, and unsupported-networking diagnostics. `runtimeDiagnostics`
+validates report shape and emits stable networking/feature rejection diagnostics,
+web exposes a deterministic debug overlay model for FPS/counters/diagnostic
+rows and draw primitives, Bevy exposes a matching native debug overlay
+observation report, and `pnpm verify:v9:diagnostics-support` writes the focused
+artifact set under `artifacts/v9/diagnostics-support/`. Runtime networking
+services remain explicitly out of scope.
+
 ## V3 Proves
 
 The V3 evidence loop is `pnpm verify:v3`, which regenerates the environment
