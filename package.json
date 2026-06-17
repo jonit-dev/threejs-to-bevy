@@ -51,7 +51,8 @@
     "verify:v9:diagnostics-support": "node scripts/verify-v9-diagnostics-support.mjs",
     "verify:v9:editor-support": "node scripts/verify-v9-editor-support.mjs",
     "verify:v9:stress-support": "node scripts/verify-v9-stress-support.mjs",
-    "verify:v9:support": "node scripts/verify-v9-support.mjs"
+    "verify:v9:support": "node scripts/verify-v9-support.mjs",
+    "verify:v9:input-ui-accessibility": "node scripts/verify-v9-input-ui-accessibility.mjs"
   },
   "devDependencies": {
     "react": "^19.2.7",
