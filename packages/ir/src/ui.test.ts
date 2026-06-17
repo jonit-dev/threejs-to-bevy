@@ -301,6 +301,30 @@ test("ui should reject invalid accessibility metadata", async () => {
   }
 });
 
+test("ui should reject unsupported world-space UI requests with explicit diagnostics", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ui-world-ui-invalid-"));
+  try {
+    await writeTestBundle(root, { manifest: { entry: { ui: "ui.ir.json" } } });
+    await writeJson(root, "ui.ir.json", {
+      schema: "threenative.ui",
+      version: "0.1.0",
+      root: {
+        id: "world-label",
+        kind: "text",
+        text: "Nameplate",
+        worldSpace: true,
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_WORLD_SPACE_UNSUPPORTED"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("ui should reject invalid flex layout metadata", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ui-layout-invalid-"));
   try {
