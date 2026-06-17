@@ -751,6 +751,7 @@ export interface IPerformanceThreshold {
 export interface IPerformanceProfile {
   averageFrameMs: IPerformanceThreshold;
   drawCalls: IPerformanceThreshold;
+  profiler?: ISupportProfilerMetadata;
   instancedGroups: IPerformanceThreshold;
   instances: IPerformanceThreshold;
   loadMs: IPerformanceThreshold;
@@ -758,8 +759,43 @@ export interface IPerformanceProfile {
   requiredTarget: "web";
   textureBytes: IPerformanceThreshold;
   triangles: IPerformanceThreshold;
+  support?: ISupportTargetProfile;
   uninstancedRepeatedProps: IPerformanceThreshold;
   worstFrameMs: IPerformanceThreshold;
+}
+
+export type SupportTargetCategory = "audio" | "desktopNative" | "desktopWeb" | "diagnosticsOverlay" | "localData" | "localEditor";
+
+export interface ISupportRepairHint {
+  code: string;
+  missingCapability: string;
+  suggestion: string;
+  target: SupportTargetCategory;
+}
+
+export interface ISupportCapabilityRequirement {
+  availableCapabilities?: readonly string[];
+  category: SupportTargetCategory;
+  repairHints: readonly ISupportRepairHint[];
+  requiredCapabilities: readonly string[];
+}
+
+export interface ISupportTargetProfile {
+  requirements: readonly ISupportCapabilityRequirement[];
+}
+
+export interface ISupportProfilerMetadata {
+  audioVoiceCount?: number;
+  drawCount?: number;
+  entityCount?: number;
+  frameTimeMs?: number;
+  gpuTimingUnavailable?: boolean;
+  memoryEstimateBytes?: number;
+  renderPassMs?: number;
+  renderTimeMs?: number;
+  saveLatencyMs?: number;
+  uiNodeCount?: number;
+  updateTimeMs?: number;
 }
 
 export type IUiBinding =

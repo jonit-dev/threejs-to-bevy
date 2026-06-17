@@ -1097,6 +1097,19 @@ structured-diff, panel, scene-viewer, asset-preview, and gamepad-viewer evidence
 under `artifacts/v9/editor-support/`. A full visual editor app and
 state-preserving hot reload remain later work.
 
+V9-06 target profiles and stress/profiler evidence now have a Phase 5 slice:
+performance profiles can declare support target categories, required
+capabilities, repair hints, and profiler metadata for local data, audio,
+desktop web/native, diagnostics overlays, and local editor support. The CLI has
+a stable package repair-hint diagnostic shape, web performance summaries can
+carry support metrics for audio voices, debug draw, local-data slots, UI nodes,
+save latency, and memory estimate, and native conformance reports now include a
+deterministic support profiler summary plus a GPU timing unavailable warning
+when that capability is not present. `pnpm verify:v9:stress-support` writes the
+focused large-scene metrics, profiler summary, and repair-hint artifacts under
+`artifacts/v9/stress-support/`. This does not claim full live browser or native
+platform profiler capture parity.
+
 ## V3 Proves
 
 The V3 evidence loop is `pnpm verify:v3`, which regenerates the environment

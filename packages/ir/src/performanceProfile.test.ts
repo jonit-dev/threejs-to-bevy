@@ -20,6 +20,34 @@ test("performanceProfile should reject warning thresholds above hard thresholds"
   assert.match(diagnostics[0]?.message ?? "", /p95FrameMs/);
 });
 
+test("should validate support profile repair hints when target capability is missing", () => {
+  const diagnostics = validatePerformanceProfile({
+    ...makeProfile(),
+    support: {
+      requirements: [
+        {
+          availableCapabilities: ["audio.device"],
+          category: "audio",
+          repairHints: [
+            {
+              code: "TN_SUPPORT_AUDIO_BACKEND_MISSING",
+              missingCapability: "audio.decoder.ogg",
+              suggestion: "Install or enable an OGG decoder backend for the target runtime.",
+              target: "audio",
+            },
+          ],
+          requiredCapabilities: ["audio.device", "audio.decoder.ogg"],
+        },
+      ],
+    },
+  });
+
+  assert.equal(diagnostics[0]?.code, "TN_IR_SUPPORT_PROFILE_CAPABILITY_MISSING");
+  assert.equal(diagnostics[0]?.value, "audio.decoder.ogg");
+  assert.match(diagnostics[0]?.message ?? "", /audio/);
+  assert.match(diagnostics[0]?.suggestion ?? "", /OGG decoder/);
+});
+
 function makeProfile(): IPerformanceProfile {
   return {
     averageFrameMs: { max: 18, warn: 16 },

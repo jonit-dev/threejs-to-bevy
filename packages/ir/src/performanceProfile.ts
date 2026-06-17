@@ -1,4 +1,4 @@
-import type { IPerformanceProfile } from "./types.js";
+import type { IPerformanceProfile, ISupportRepairHint } from "./types.js";
 import type { IIrDiagnostic } from "./validate.js";
 
 const metricNames = [
@@ -57,5 +57,56 @@ export function validatePerformanceProfile(
       }
     }
   }
+  if (profile.support !== undefined) {
+    validateSupportProfile(profile.support, `${path}/support`, diagnostics);
+  }
+  if (profile.profiler !== undefined) {
+    validateProfilerMetadata(profile.profiler, `${path}/profiler`, diagnostics);
+  }
   return diagnostics;
+}
+
+function validateSupportProfile(support: IPerformanceProfile["support"], path: string, diagnostics: IIrDiagnostic[]): void {
+  if (support === undefined || !Array.isArray(support.requirements)) {
+    diagnostics.push({
+      code: "TN_IR_SUPPORT_PROFILE_INVALID",
+      message: "Support profile must include requirements.",
+      path,
+      severity: "error",
+    });
+    return;
+  }
+  for (const [index, requirement] of support.requirements.entries()) {
+    const available = new Set(requirement.availableCapabilities ?? []);
+    for (const capability of requirement.requiredCapabilities ?? []) {
+      if (available.has(capability)) {
+        continue;
+      }
+      const hint = requirement.repairHints?.find((candidate: ISupportRepairHint) => candidate.missingCapability === capability);
+      diagnostics.push({
+        code: "TN_IR_SUPPORT_PROFILE_CAPABILITY_MISSING",
+        message: `Support target '${requirement.category}' is missing capability '${capability}'.`,
+        path: `${path}/requirements/${index}/requiredCapabilities`,
+        severity: "warning",
+        suggestion: hint?.suggestion ?? "Add the missing support capability or remove it from requiredCapabilities.",
+        value: capability,
+      });
+    }
+  }
+}
+
+function validateProfilerMetadata(profiler: NonNullable<IPerformanceProfile["profiler"]>, path: string, diagnostics: IIrDiagnostic[]): void {
+  for (const [key, value] of Object.entries(profiler)) {
+    if (typeof value === "boolean") {
+      continue;
+    }
+    if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+      diagnostics.push({
+        code: "TN_IR_SUPPORT_PROFILER_FIELD_INVALID",
+        message: `Support profiler field '${key}' must be a non-negative finite number.`,
+        path: `${path}/${key}`,
+        severity: "error",
+      });
+    }
+  }
 }
