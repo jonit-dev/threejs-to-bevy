@@ -11,6 +11,7 @@ export interface IUiNodeProps {
   children?: UiChild | UiChild[];
   focusable?: boolean;
   focusOrder?: string[];
+  fonts?: UiFontAsset[];
   id?: string;
   inputActions?: {
     activate?: string;
@@ -56,6 +57,7 @@ export interface IUiNodeProps {
     up?: string;
   };
   role?: UiAccessibilityRole;
+  spans?: UiRichTextSpan[];
   safeArea?: {
     edges?: Array<"bottom" | "left" | "right" | "top">;
     mode: "avoid" | "none";
@@ -66,6 +68,7 @@ export interface IUiNodeProps {
     borderRadius?: number;
     borderWidth?: number;
     color?: string;
+    fontFamily?: string;
     fontSize?: number;
     fontWeight?: "bold" | "normal";
     gradient?: {
@@ -92,6 +95,26 @@ export interface IUiNodeProps {
 }
 
 export type UiChild = IUiElement | false | null | undefined;
+
+export interface UiFontAsset {
+  asset: string;
+  fallbackFamily?: string;
+  family: string;
+  glyphRanges?: Array<{ from: number; to: number }>;
+  style?: "italic" | "normal";
+  weight?: "bold" | "normal" | number;
+}
+
+export interface UiRichTextSpan {
+  accessibilityText?: string;
+  color?: string;
+  decoration?: "lineThrough" | "none" | "underline";
+  fontFamily?: string;
+  fontSize?: number;
+  italic?: boolean;
+  text: string;
+  weight?: "bold" | "normal" | number;
+}
 
 export interface IUiElement {
   props: IUiNodeProps;

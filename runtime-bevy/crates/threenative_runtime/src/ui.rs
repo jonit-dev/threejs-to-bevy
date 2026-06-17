@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use bevy::a11y::{
-    AccessibilityNode,
     accesskit::{NodeBuilder, Role},
+    AccessibilityNode,
 };
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::prelude::*;
@@ -10,7 +10,9 @@ use bevy::text::BreakLineOn;
 use serde::Serialize;
 use thiserror::Error;
 use threenative_components::ThreeNativeId;
-use threenative_loader::{UiGradientIr, UiIr, UiNodeIr, UiShadowIr, UiStyleIr};
+use threenative_loader::{
+    UiFontAssetIr, UiGradientIr, UiIr, UiNodeIr, UiRichTextSpanIr, UiShadowIr, UiStyleIr,
+};
 
 #[derive(Clone, Component, Debug, Eq, PartialEq)]
 pub struct NativeUiKind(pub String);
@@ -58,10 +60,23 @@ pub struct NativeUiNode {
     pub max: Option<f32>,
     pub navigation: Option<NativeUiNavigation>,
     pub role: Option<String>,
+    pub spans: Vec<NativeUiRichTextSpan>,
     pub style: Option<NativeUiStyle>,
     pub src: Option<String>,
     pub text: Option<String>,
     pub value: Option<f32>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct NativeUiRichTextSpan {
+    pub accessibility_text: Option<String>,
+    pub color: Option<String>,
+    pub decoration: Option<String>,
+    pub font_family: Option<String>,
+    pub font_size: Option<f32>,
+    pub italic: Option<bool>,
+    pub text: String,
+    pub weight: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -71,6 +86,7 @@ pub struct NativeUiStyle {
     pub border_radius: Option<f32>,
     pub border_width: Option<f32>,
     pub color: Option<String>,
+    pub font_family: Option<String>,
     pub font_size: Option<f32>,
     pub font_weight: Option<String>,
     pub gradient: Option<NativeUiGradient>,
@@ -144,10 +160,90 @@ pub fn map_ui_into_world(world: &mut World, ui: &UiIr) -> Result<(), UiDiagnosti
     build_native_ui(ui)?;
 
     let mut entities_by_id = HashMap::new();
-    spawn_node(world, &ui.root, &mut entities_by_id);
+    spawn_node(world, &ui.root, &ui.fonts, &mut entities_by_id);
     attach_children(world, &ui.root, &entities_by_id);
 
     Ok(())
+}
+
+pub fn diagnose_native_ui_visual_support(ui: &UiIr) -> Vec<UiDiagnostic> {
+    let mut diagnostics = Vec::new();
+    diagnose_node_visual_support(&ui.root, "ui.ir.json/root", &mut diagnostics);
+    diagnostics
+}
+
+fn diagnose_node_visual_support(node: &UiNodeIr, path: &str, diagnostics: &mut Vec<UiDiagnostic>) {
+    if let Some(style) = node.style.as_ref() {
+        if style.shadow.is_some() {
+            diagnostics.push(UiDiagnostic {
+                code: "TN_BEVY_UI_STYLE_SHADOW_UNSUPPORTED".to_owned(),
+                message:
+                    "Bevy native UI preserves shadow metadata but does not render portable UI shadows yet."
+                        .to_owned(),
+                path: format!("{path}/style/shadow"),
+            });
+        }
+        if style.gradient.is_some() {
+            diagnostics.push(UiDiagnostic {
+                code: "TN_BEVY_UI_STYLE_GRADIENT_UNSUPPORTED".to_owned(),
+                message:
+                    "Bevy native UI preserves gradient metadata but does not render portable UI gradients yet."
+                        .to_owned(),
+                path: format!("{path}/style/gradient"),
+            });
+        }
+        if style.font_weight.is_some() {
+            diagnostics.push(UiDiagnostic {
+                code: "TN_BEVY_UI_TEXT_WEIGHT_UNSUPPORTED".to_owned(),
+                message:
+                    "Bevy native UI maps text sections and font handles but cannot render portable text weight metadata yet."
+                        .to_owned(),
+                path: format!("{path}/style/fontWeight"),
+            });
+        }
+        if style.text_decoration.is_some() {
+            diagnostics.push(UiDiagnostic {
+                code: "TN_BEVY_UI_TEXT_DECORATION_UNSUPPORTED".to_owned(),
+                message:
+                    "Bevy native UI maps text sections and font handles but cannot render portable text decoration metadata yet."
+                        .to_owned(),
+                path: format!("{path}/style/textDecoration"),
+            });
+        }
+    }
+    for (index, span) in node.spans.iter().enumerate() {
+        let span_path = format!("{path}/spans/{index}");
+        if span.weight.is_some() {
+            diagnostics.push(UiDiagnostic {
+                code: "TN_BEVY_UI_TEXT_WEIGHT_UNSUPPORTED".to_owned(),
+                message:
+                    "Bevy native UI maps rich text spans and font handles but cannot render per-span text weight metadata yet."
+                        .to_owned(),
+                path: format!("{span_path}/weight"),
+            });
+        }
+        if span.decoration.is_some() {
+            diagnostics.push(UiDiagnostic {
+                code: "TN_BEVY_UI_TEXT_DECORATION_UNSUPPORTED".to_owned(),
+                message:
+                    "Bevy native UI maps rich text spans and font handles but cannot render per-span text decoration metadata yet."
+                        .to_owned(),
+                path: format!("{span_path}/decoration"),
+            });
+        }
+        if span.italic == Some(true) {
+            diagnostics.push(UiDiagnostic {
+                code: "TN_BEVY_UI_TEXT_ITALIC_UNSUPPORTED".to_owned(),
+                message:
+                    "Bevy native UI maps rich text spans and font handles but cannot render per-span italic metadata yet."
+                        .to_owned(),
+                path: format!("{span_path}/italic"),
+            });
+        }
+    }
+    for (index, child) in node.children.iter().enumerate() {
+        diagnose_node_visual_support(child, &format!("{path}/children/{index}"), diagnostics);
+    }
 }
 
 fn build_node(node: &UiNodeIr, path: &str) -> Result<NativeUiNode, UiDiagnostic> {
@@ -191,6 +287,7 @@ fn build_node(node: &UiNodeIr, path: &str) -> Result<NativeUiNode, UiDiagnostic>
             border_radius: style.border_radius,
             border_width: style.border_width,
             color: style.color.clone(),
+            font_family: style.font_family.clone(),
             font_size: style.font_size,
             font_weight: style.font_weight.clone(),
             gradient: style.gradient.as_ref().map(native_ui_gradient),
@@ -200,10 +297,24 @@ fn build_node(node: &UiNodeIr, path: &str) -> Result<NativeUiNode, UiDiagnostic>
             text_align: style.text_align.clone(),
             wrap: style.wrap.clone(),
         }),
+        spans: node.spans.iter().map(native_rich_text_span).collect(),
         src: node.src.clone(),
         text: node.text.clone(),
         value: node.value,
     })
+}
+
+fn native_rich_text_span(span: &UiRichTextSpanIr) -> NativeUiRichTextSpan {
+    NativeUiRichTextSpan {
+        accessibility_text: span.accessibility_text.clone(),
+        color: span.color.clone(),
+        decoration: span.decoration.clone(),
+        font_family: span.font_family.clone(),
+        font_size: span.font_size,
+        italic: span.italic,
+        text: span.text.clone(),
+        weight: span.weight.as_ref().map(value_to_string),
+    }
 }
 
 fn native_ui_gradient(gradient: &UiGradientIr) -> NativeUiGradient {
@@ -312,16 +423,19 @@ fn sequential_target(order: &[String], current: &str, input: &str) -> Option<Str
 fn spawn_node(
     world: &mut World,
     node: &UiNodeIr,
+    fonts: &[UiFontAssetIr],
     entities_by_id: &mut HashMap<String, Entity>,
 ) -> Entity {
     let entity = match node.kind.as_str() {
         "text" => world
             .spawn(text_bundle(
+                world,
                 node.text
                     .as_deref()
                     .or(node.label.as_deref())
                     .unwrap_or_default(),
                 node,
+                fonts,
             ))
             .id(),
         "button" | "touchControl" => world
@@ -403,11 +517,11 @@ fn spawn_node(
         }
     }
 
-    spawn_runtime_children(world, entity, node);
+    spawn_runtime_children(world, entity, node, fonts);
 
     entities_by_id.insert(node.id.clone(), entity);
     for child in &node.children {
-        spawn_node(world, child, entities_by_id);
+        spawn_node(world, child, fonts, entities_by_id);
     }
 
     entity
@@ -670,11 +784,16 @@ pub fn dispatch_native_ui_actions(
     }
 }
 
-fn spawn_runtime_children(world: &mut World, parent: Entity, node: &UiNodeIr) {
+fn spawn_runtime_children(
+    world: &mut World,
+    parent: Entity,
+    node: &UiNodeIr,
+    fonts: &[UiFontAssetIr],
+) {
     if node.kind == "button" || node.kind == "touchControl" {
         if let Some(label) = node.label.as_ref() {
             let label = world
-                .spawn(text_bundle(label.clone(), node))
+                .spawn(text_bundle(world, label.clone(), node, fonts))
                 .insert(Name::new(format!("{}.label", node.id)))
                 .id();
             world.entity_mut(parent).push_children(&[label]);
@@ -736,23 +855,75 @@ fn text_color(node: &UiNodeIr) -> Color {
     )
 }
 
-fn text_bundle(value: impl Into<String>, node: &UiNodeIr) -> TextBundle {
-    let mut bundle = TextBundle::from_section(value, text_style(node));
+fn text_bundle(
+    world: &World,
+    value: impl Into<String>,
+    node: &UiNodeIr,
+    fonts: &[UiFontAssetIr],
+) -> TextBundle {
+    let mut bundle = if node.spans.is_empty() {
+        TextBundle::from_section(value, text_style(world, node, None, fonts))
+    } else {
+        TextBundle::from_sections(
+            node.spans
+                .iter()
+                .map(|span| {
+                    TextSection::new(
+                        span.text.clone(),
+                        text_style(world, node, Some(span), fonts),
+                    )
+                })
+                .collect::<Vec<_>>(),
+        )
+    };
     bundle.text.justify = text_justify(node);
     bundle.text.linebreak_behavior = text_wrap(node);
     bundle
 }
 
-fn text_style(node: &UiNodeIr) -> TextStyle {
+fn text_style(
+    world: &World,
+    node: &UiNodeIr,
+    span: Option<&UiRichTextSpanIr>,
+    fonts: &[UiFontAssetIr],
+) -> TextStyle {
+    let asset_server = world.get_resource::<AssetServer>();
+    let font_family = span
+        .and_then(|span| span.font_family.as_deref())
+        .or_else(|| {
+            node.style
+                .as_ref()
+                .and_then(|style| style.font_family.as_deref())
+        });
+    let font = font_family
+        .and_then(|family| fonts.iter().find(|font| font.family == family))
+        .and_then(|font| asset_server.map(|asset_server| asset_server.load(font.asset.clone())))
+        .unwrap_or_default();
     TextStyle {
-        color: text_color(node),
-        font_size: node
-            .style
-            .as_ref()
-            .and_then(|style| style.font_size)
+        color: span
+            .and_then(|span| span.color.as_ref())
+            .map(|color| {
+                styled_color(
+                    Some(color),
+                    (1.0, 1.0, 1.0, 1.0),
+                    node.style.as_ref().and_then(|style| style.opacity),
+                )
+            })
+            .unwrap_or_else(|| text_color(node)),
+        font,
+        font_size: span
+            .and_then(|span| span.font_size)
+            .or_else(|| node.style.as_ref().and_then(|style| style.font_size))
             .unwrap_or_else(|| TextStyle::default().font_size),
         ..Default::default()
     }
+}
+
+fn value_to_string(value: &serde_json::Value) -> String {
+    value
+        .as_str()
+        .map(str::to_owned)
+        .unwrap_or_else(|| value.to_string())
 }
 
 fn text_justify(node: &UiNodeIr) -> JustifyText {

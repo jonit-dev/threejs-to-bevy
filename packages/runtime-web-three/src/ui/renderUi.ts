@@ -15,6 +15,7 @@ export interface IRenderedUiNode {
   max?: number;
   navigation?: IUiNodeIr["navigation"];
   role?: IUiNodeIr["role"];
+  spans?: IUiNodeIr["spans"];
   style?: IUiNodeIr["style"];
   src?: string;
   text?: string;
@@ -64,6 +65,7 @@ function renderNode(node: IUiNodeIr, world: IWorldIr): IRenderedUiNode {
     ...(node.max === undefined ? {} : { max: node.max }),
     ...(node.navigation === undefined ? {} : { navigation: node.navigation }),
     ...(node.role === undefined ? {} : { role: node.role }),
+    ...(node.spans === undefined ? {} : { spans: node.spans }),
     ...(node.style === undefined ? {} : { style: node.style }),
     ...(node.src === undefined ? {} : { src: node.src }),
     text: node.text ?? (typeof bindingValue === "string" || typeof bindingValue === "number" ? String(bindingValue) : undefined),

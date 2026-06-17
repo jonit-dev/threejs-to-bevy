@@ -1,6 +1,11 @@
 import type { IUiElement, UiChild } from "./jsx-runtime.js";
 
+export type IUiBinding =
+  | { kind: "resource"; name: string; field?: string }
+  | { component: string; entity: string; field?: string; kind: "component" };
+
 export interface IUiIr {
+  fonts?: IUiFontAssetIr[];
   focusOrder?: string[];
   inputActions?: {
     activate?: string;
@@ -20,7 +25,7 @@ export interface IUiIr {
 export interface IUiNodeIr {
   action?: string;
   accessibilityLabel?: string;
-  binding?: unknown;
+  binding?: IUiBinding;
   children?: IUiNodeIr[];
   focusable?: boolean;
   id: string;
@@ -35,10 +40,31 @@ export interface IUiNodeIr {
     up?: string;
   };
   role?: "button" | "group" | "image" | "list" | "listitem" | "none" | "progressbar" | "text";
+  spans?: IUiRichTextSpanIr[];
   style?: IUiStyleIr;
   src?: string;
   text?: string;
   value?: number;
+}
+
+export interface IUiFontAssetIr {
+  asset: string;
+  fallbackFamily?: string;
+  family: string;
+  glyphRanges?: Array<{ from: number; to: number }>;
+  style?: "italic" | "normal";
+  weight?: "bold" | "normal" | number;
+}
+
+export interface IUiRichTextSpanIr {
+  accessibilityText?: string;
+  color?: string;
+  decoration?: "lineThrough" | "none" | "underline";
+  fontFamily?: string;
+  fontSize?: number;
+  italic?: boolean;
+  text: string;
+  weight?: "bold" | "normal" | number;
 }
 
 export interface IUiLayoutIr {
@@ -77,6 +103,7 @@ export interface IUiStyleIr {
   borderRadius?: number;
   borderWidth?: number;
   color?: string;
+  fontFamily?: string;
   fontSize?: number;
   fontWeight?: "bold" | "normal";
   gradient?: {
@@ -103,6 +130,7 @@ export function captureUi(root: IUiElement): IUiIr {
     throw new Error(`Portable UI root must be <ui>, got '${root.type}'.`);
   }
   return {
+    ...(root.props.fonts === undefined ? {} : { fonts: root.props.fonts }),
     ...(root.props.focusOrder === undefined ? {} : { focusOrder: root.props.focusOrder }),
     ...(root.props.inputActions === undefined ? {} : { inputActions: root.props.inputActions }),
     ...(root.props.safeArea === undefined ? {} : { safeArea: root.props.safeArea }),
@@ -135,6 +163,7 @@ function captureNode(element: IUiElement, fallback: string): IUiNodeIr {
     ...(element.props.max === undefined ? {} : { max: element.props.max }),
     ...(element.props.navigation === undefined ? {} : { navigation: element.props.navigation }),
     ...(element.props.role === undefined ? {} : { role: element.props.role }),
+    ...(element.props.spans === undefined ? {} : { spans: element.props.spans }),
     ...(element.props.style === undefined ? {} : { style: element.props.style }),
     ...(element.props.src === undefined ? {} : { src: element.props.src }),
     ...(element.props.text === undefined ? {} : { text: element.props.text }),

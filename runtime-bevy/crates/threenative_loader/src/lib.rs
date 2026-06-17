@@ -966,6 +966,8 @@ pub struct RuntimeWindowConfig {
 pub struct UiIr {
     pub schema: String,
     pub version: String,
+    #[serde(default)]
+    pub fonts: Vec<UiFontAssetIr>,
     #[serde(rename = "focusOrder")]
     pub focus_order: Option<Vec<String>>,
     #[serde(rename = "inputActions")]
@@ -973,6 +975,24 @@ pub struct UiIr {
     #[serde(rename = "safeArea")]
     pub safe_area: Option<UiSafeAreaIr>,
     pub root: UiNodeIr,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UiFontAssetIr {
+    pub asset: String,
+    pub fallback_family: Option<String>,
+    pub family: String,
+    #[serde(default)]
+    pub glyph_ranges: Vec<UiGlyphRangeIr>,
+    pub style: Option<String>,
+    pub weight: Option<serde_json::Value>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct UiGlyphRangeIr {
+    pub from: u32,
+    pub to: u32,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -989,11 +1009,26 @@ pub struct UiNodeIr {
     pub action: Option<String>,
     pub focusable: Option<bool>,
     pub navigation: Option<UiNavigationIr>,
+    #[serde(default)]
+    pub spans: Vec<UiRichTextSpanIr>,
     pub style: Option<UiStyleIr>,
     pub value: Option<f32>,
     pub max: Option<f32>,
     #[serde(default)]
     pub children: Vec<UiNodeIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UiRichTextSpanIr {
+    pub accessibility_text: Option<String>,
+    pub color: Option<String>,
+    pub decoration: Option<String>,
+    pub font_family: Option<String>,
+    pub font_size: Option<f32>,
+    pub italic: Option<bool>,
+    pub text: String,
+    pub weight: Option<serde_json::Value>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -1035,6 +1070,7 @@ pub struct UiStyleIr {
     pub border_radius: Option<f32>,
     pub border_width: Option<f32>,
     pub color: Option<String>,
+    pub font_family: Option<String>,
     pub font_size: Option<f32>,
     pub font_weight: Option<String>,
     pub gradient: Option<UiGradientIr>,

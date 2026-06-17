@@ -170,7 +170,7 @@ function updateNodeElement(node: IRenderedUiNode, nodes: Map<string, HTMLElement
   }
 
   if (node.kind === "text") {
-    element.textContent = node.text ?? "";
+    updateRichTextElement(element, node);
   }
   if (node.kind === "button" || node.kind === "touchControl") {
     element.textContent = node.label ?? node.text ?? "";
@@ -216,7 +216,7 @@ function applyAccessibilityAttributes(element: HTMLElement, node: IRenderedUiNod
 }
 
 function accessibleName(node: IRenderedUiNode): string | undefined {
-  return node.accessibilityLabel ?? node.label ?? node.text;
+  return node.accessibilityLabel ?? node.label ?? node.spans?.map((span) => span.accessibilityText ?? span.text).join("") ?? node.text;
 }
 
 function domRole(role: IRenderedUiNode["role"]): string | undefined {
@@ -277,6 +277,9 @@ function applyVisualStyle(style: Partial<CSSStyleDeclaration>, visual: IRendered
   if (visual.fontSize !== undefined) {
     style.fontSize = `${visual.fontSize}px`;
   }
+  if (visual.fontFamily !== undefined) {
+    style.fontFamily = visual.fontFamily;
+  }
   if (visual.fontWeight !== undefined) {
     style.fontWeight = visual.fontWeight;
   }
@@ -308,6 +311,40 @@ function applyVisualStyle(style: Partial<CSSStyleDeclaration>, visual: IRendered
   }
   if (visual.shadow !== undefined) {
     style.boxShadow = `${visual.shadow.offsetX ?? 0}px ${visual.shadow.offsetY ?? 0}px ${visual.shadow.blur ?? 0}px ${visual.shadow.spread ?? 0}px ${visual.shadow.color}`;
+  }
+}
+
+function updateRichTextElement(element: HTMLElement, node: IRenderedUiNode): void {
+  if (node.spans === undefined) {
+    element.textContent = node.text ?? "";
+    return;
+  }
+  element.textContent = "";
+  for (const span of node.spans) {
+    const child = element.ownerDocument?.createElement("span") ?? document.createElement("span");
+    child.textContent = span.text;
+    if (span.accessibilityText !== undefined) {
+      child.setAttribute("aria-label", span.accessibilityText);
+    }
+    if (span.color !== undefined) {
+      child.style.color = span.color;
+    }
+    if (span.fontFamily !== undefined) {
+      child.style.fontFamily = span.fontFamily;
+    }
+    if (span.fontSize !== undefined) {
+      child.style.fontSize = `${span.fontSize}px`;
+    }
+    if (span.weight !== undefined) {
+      child.style.fontWeight = String(span.weight);
+    }
+    if (span.italic === true) {
+      child.style.fontStyle = "italic";
+    }
+    if (span.decoration !== undefined) {
+      child.style.textDecoration = span.decoration === "lineThrough" ? "line-through" : span.decoration;
+    }
+    element.append(child);
   }
 }
 

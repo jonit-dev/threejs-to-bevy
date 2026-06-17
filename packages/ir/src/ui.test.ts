@@ -122,6 +122,58 @@ test("ui should validate explicit flex layout metadata", async () => {
   }
 });
 
+test("ui should validate rich text spans with bundle local font assets", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ui-rich-text-"));
+  try {
+    await writeTestBundle(root, { manifest: { entry: { ui: "ui.ir.json" } } });
+    await writeJson(root, "ui.ir.json", {
+      schema: "threenative.ui",
+      version: "0.1.0",
+      fonts: [{ asset: "assets/fonts/menu.ttf", family: "menu", glyphRanges: [{ from: 32, to: 126 }], weight: "bold" }],
+      root: {
+        id: "title",
+        kind: "text",
+        accessibilityLabel: "Paused menu title",
+        spans: [
+          { text: "Paused", fontFamily: "menu", fontSize: 24, weight: "bold", color: "#ffffff", decoration: "underline" },
+          { text: "!", accessibilityText: " exclamation mark", fontFamily: "menu", italic: true },
+        ],
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("ui should reject rich text span when font asset is missing", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ui-rich-text-missing-font-"));
+  try {
+    await writeTestBundle(root, { manifest: { entry: { ui: "ui.ir.json" } } });
+    await writeJson(root, "ui.ir.json", {
+      schema: "threenative.ui",
+      version: "0.1.0",
+      root: {
+        id: "title",
+        kind: "text",
+        spans: [{ text: "Paused", fontFamily: "missing" }],
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics[0]?.code, "TN_IR_UI_FONT_MISSING");
+    assert.equal(result.diagnostics[0]?.path, "ui.ir.json/root/spans/0/fontFamily");
+    assert.match(result.diagnostics[0]?.suggestion ?? "", /ui\.fonts/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("ui should reject invalid image metadata", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ui-image-invalid-"));
   try {

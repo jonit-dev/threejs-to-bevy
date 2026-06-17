@@ -691,10 +691,31 @@ export interface IUiNodeIr {
     up?: string;
   };
   role?: IUiAccessibilityRole;
+  spans?: IUiRichTextSpanIr[];
   style?: IUiStyleIr;
   src?: string;
   text?: string;
   value?: number;
+}
+
+export interface IUiFontAssetIr {
+  asset: string;
+  fallbackFamily?: string;
+  family: string;
+  glyphRanges?: Array<{ from: number; to: number }>;
+  style?: "italic" | "normal";
+  weight?: "bold" | "normal" | number;
+}
+
+export interface IUiRichTextSpanIr {
+  accessibilityText?: string;
+  color?: string;
+  decoration?: "lineThrough" | "none" | "underline";
+  fontFamily?: string;
+  fontSize?: number;
+  italic?: boolean;
+  text: string;
+  weight?: "bold" | "normal" | number;
 }
 
 export interface IUiLayoutIr {
@@ -733,6 +754,7 @@ export interface IUiStyleIr {
   borderRadius?: number;
   borderWidth?: number;
   color?: string;
+  fontFamily?: string;
   fontSize?: number;
   fontWeight?: "bold" | "normal";
   gradient?: {
@@ -755,6 +777,7 @@ export interface IUiStyleIr {
 }
 
 export interface IUiIr {
+  fonts?: IUiFontAssetIr[];
   focusOrder?: string[];
   inputActions?: {
     activate?: string;

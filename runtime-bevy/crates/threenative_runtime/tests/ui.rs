@@ -52,6 +52,7 @@ fn ui_should_build_bevy_hud_from_ui_ir() {
             border_radius: Some(8.0),
             border_width: Some(2.0),
             color: Some("#ffcc00".to_owned()),
+            font_family: None,
             font_size: Some(18.0),
             font_weight: Some("bold".to_owned()),
             gradient: Some(NativeUiGradient {
@@ -235,6 +236,7 @@ fn ui_should_spawn_bevy_entities_with_stable_ids_and_hierarchy() {
 #[test]
 fn ui_should_dispatch_native_button_and_touch_actions() {
     let ui = UiIr {
+        fonts: Vec::new(),
         focus_order: None,
         input_actions: None,
         safe_area: None,
@@ -255,6 +257,7 @@ fn ui_should_dispatch_native_button_and_touch_actions() {
                 max: None,
                 navigation: None,
                 role: None,
+                spans: Vec::new(),
                 src: None,
                 style: None,
                 text: None,
@@ -268,6 +271,7 @@ fn ui_should_dispatch_native_button_and_touch_actions() {
             max: None,
             navigation: None,
             role: None,
+            spans: Vec::new(),
             src: None,
             text: None,
             value: None,
@@ -313,6 +317,7 @@ fn ui_should_dispatch_native_button_and_touch_actions() {
 #[test]
 fn ui_should_reject_unsupported_ui_node() {
     let ui = UiIr {
+        fonts: Vec::new(),
         focus_order: None,
         input_actions: None,
         safe_area: None,
@@ -330,6 +335,7 @@ fn ui_should_reject_unsupported_ui_node() {
             max: None,
             navigation: None,
             role: None,
+            spans: Vec::new(),
             src: None,
             text: None,
             value: None,

@@ -994,7 +994,13 @@ Common rich-text styling has also moved one step forward: UI style now accepts
 portable `fontWeight` (`normal`/`bold`) and `textDecoration`
 (`none`/`underline`/`lineThrough`) metadata. The web DOM overlay renders these
 through CSS font weight and text decoration, while Bevy preserves the metadata
-for future native text rendering. Font assets and inline spans remain incomplete.
+for future native text rendering. V9-05 Phase 3 adds bundle-local `ui.fonts`
+declarations plus rich inline text spans with per-span color, font family, font
+size, weight, italic, decoration, and accessibility text overrides. Web maps
+spans to DOM children with CSS text styles; Bevy maps spans to native
+`TextSection`s and font handles when an `AssetServer` is available, and emits
+stable diagnostics for unsupported native text weight, italic, and decoration
+rendering instead of silently dropping those requests.
 
 The same functional-game parity pass also closes the P0 native material texture
 loading gap for promoted standard-material slots. Bevy runtime material mapping

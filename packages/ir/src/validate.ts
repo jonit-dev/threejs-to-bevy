@@ -677,15 +677,16 @@ function validateUi(ui: IUiIr, path: string, diagnostics: IIrDiagnostic[]): void
   }
   const ids = new Set<string>();
   const focusableIds = new Set<string>();
-  validateUiNode(ui.root, `${path}/root`, diagnostics, ids);
+  const fontFamilies = validateUiFonts(ui, path, diagnostics);
+  validateUiNode(ui.root, `${path}/root`, diagnostics, ids, fontFamilies);
   collectFocusableUiIds(ui.root, focusableIds);
   validateUiMetadata(ui, path, diagnostics, ids, focusableIds);
 }
 
-function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[], ids: Set<string>): void {
+function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[], ids: Set<string>, fontFamilies: Set<string>): void {
   const raw = node as unknown as Record<string, unknown>;
   for (const key of Object.keys(raw)) {
-    if (!["accessibilityLabel", "action", "binding", "children", "focusable", "id", "kind", "label", "layout", "max", "navigation", "role", "src", "style", "text", "value"].includes(key)) {
+    if (!["accessibilityLabel", "action", "binding", "children", "focusable", "id", "kind", "label", "layout", "max", "navigation", "role", "spans", "src", "style", "text", "value"].includes(key)) {
       diagnostics.push({
         code: "TN_IR_UI_FIELD_UNSUPPORTED",
         message: `UI node '${node.id}' uses unsupported field '${key}'.`,
@@ -695,6 +696,7 @@ function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnosti
   }
   validateUiLayout(node.layout, `${path}/layout`, diagnostics);
   validateUiStyle(node.style, `${path}/style`, diagnostics);
+  validateUiSpans(node, path, diagnostics, fontFamilies);
   validateUiAccessibility(node, path, diagnostics);
   if (!["bar", "button", "column", "image", "row", "stack", "text", "touchControl"].includes(node.kind)) {
     diagnostics.push({
@@ -733,7 +735,69 @@ function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnosti
       });
     }
   }
-  node.children?.forEach((child, index) => validateUiNode(child, `${path}/children/${index}`, diagnostics, ids));
+  node.children?.forEach((child, index) => validateUiNode(child, `${path}/children/${index}`, diagnostics, ids, fontFamilies));
+}
+
+function validateUiFonts(ui: IUiIr, path: string, diagnostics: IIrDiagnostic[]): Set<string> {
+  const families = new Set<string>();
+  ui.fonts?.forEach((font, index) => {
+    const fontPath = `${path}/fonts/${index}`;
+    if (font.family.trim() === "") {
+      diagnostics.push({ code: "TN_IR_UI_FONT_FAMILY_INVALID", message: "UI font family must not be empty.", path: `${fontPath}/family`, suggestion: "Use a stable family id such as 'body'." });
+    }
+    if (families.has(font.family)) {
+      diagnostics.push({ code: "TN_IR_UI_FONT_DUPLICATE", message: `UI font family '${font.family}' is declared more than once.`, path: `${fontPath}/family`, suggestion: "Keep one font declaration per family id." });
+    }
+    families.add(font.family);
+    if (font.asset.trim() === "" || font.asset.startsWith("/") || font.asset.includes("..") || /^[a-z]+:/i.test(font.asset)) {
+      diagnostics.push({ code: "TN_IR_UI_FONT_ASSET_INVALID", message: "UI font asset must be a bundle-relative path.", path: `${fontPath}/asset`, suggestion: "Store the font inside the bundle and reference it with a relative path such as 'assets/fonts/body.ttf'." });
+    }
+    if (font.weight !== undefined && !(font.weight === "normal" || font.weight === "bold" || typeof font.weight === "number" && Number.isInteger(font.weight) && font.weight >= 100 && font.weight <= 900)) {
+      diagnostics.push({ code: "TN_IR_UI_FONT_WEIGHT_INVALID", message: "UI font weight must be normal, bold, or an integer from 100 to 900.", path: `${fontPath}/weight`, suggestion: "Use 'normal', 'bold', or a CSS-compatible numeric weight." });
+    }
+    font.glyphRanges?.forEach((range, rangeIndex) => {
+      if (!Number.isInteger(range.from) || !Number.isInteger(range.to) || range.from < 0 || range.to < range.from) {
+        diagnostics.push({ code: "TN_IR_UI_FONT_GLYPH_RANGE_INVALID", message: "UI font glyph range must use non-negative integer code points with from <= to.", path: `${fontPath}/glyphRanges/${rangeIndex}`, suggestion: "Use inclusive Unicode code point ranges such as { from: 32, to: 126 }." });
+      }
+    });
+  });
+  return families;
+}
+
+function validateUiSpans(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[], fontFamilies: Set<string>): void {
+  if (node.spans === undefined) {
+    return;
+  }
+  if (node.kind !== "text") {
+    diagnostics.push({ code: "TN_IR_UI_RICH_TEXT_NODE_INVALID", message: "Rich text spans are only supported on text nodes.", path: `${path}/spans`, suggestion: "Move spans to a text node or use plain children for layout." });
+  }
+  if (node.spans.length === 0) {
+    diagnostics.push({ code: "TN_IR_UI_RICH_TEXT_EMPTY", message: "Rich text spans must not be empty.", path: `${path}/spans`, suggestion: "Remove spans or add at least one text span." });
+  }
+  node.spans.forEach((span, index) => {
+    const spanPath = `${path}/spans/${index}`;
+    if (span.text.length === 0) {
+      diagnostics.push({ code: "TN_IR_UI_RICH_TEXT_SPAN_EMPTY", message: "Rich text span text must not be empty.", path: `${spanPath}/text`, suggestion: "Remove empty spans or provide visible text." });
+    }
+    if (span.fontFamily !== undefined && !fontFamilies.has(span.fontFamily)) {
+      diagnostics.push({ code: "TN_IR_UI_FONT_MISSING", message: `Rich text span references missing font family '${span.fontFamily}'.`, path: `${spanPath}/fontFamily`, suggestion: `Declare ui.fonts with family '${span.fontFamily}' and a bundle-relative asset path.` });
+    }
+    if (span.color !== undefined && !/^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(span.color)) {
+      diagnostics.push({ code: "TN_IR_UI_STYLE_COLOR_INVALID", message: "Rich text span color must be #RRGGBB or #RRGGBBAA.", path: `${spanPath}/color` });
+    }
+    if (span.fontSize !== undefined && (!Number.isFinite(span.fontSize) || span.fontSize <= 0)) {
+      diagnostics.push({ code: "TN_IR_UI_STYLE_NUMBER_INVALID", message: "Rich text span fontSize must be a finite positive number.", path: `${spanPath}/fontSize` });
+    }
+    if (span.weight !== undefined && !(span.weight === "normal" || span.weight === "bold" || typeof span.weight === "number" && Number.isInteger(span.weight) && span.weight >= 100 && span.weight <= 900)) {
+      diagnostics.push({ code: "TN_IR_UI_STYLE_FONT_WEIGHT_INVALID", message: "Rich text span weight must be normal, bold, or an integer from 100 to 900.", path: `${spanPath}/weight` });
+    }
+    if (span.decoration !== undefined && !["lineThrough", "none", "underline"].includes(span.decoration)) {
+      diagnostics.push({ code: "TN_IR_UI_STYLE_TEXT_DECORATION_INVALID", message: "Rich text span decoration must be none, underline, or lineThrough.", path: `${spanPath}/decoration` });
+    }
+    if (span.accessibilityText !== undefined && span.accessibilityText.length === 0) {
+      diagnostics.push({ code: "TN_IR_UI_RICH_TEXT_ACCESSIBILITY_INVALID", message: "Rich text accessibilityText must not be empty.", path: `${spanPath}/accessibilityText`, suggestion: "Provide replacement accessible text or omit accessibilityText." });
+    }
+  });
 }
 
 function validateUiAccessibility(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[]): void {
@@ -773,7 +837,7 @@ function validateUiStyle(value: unknown, path: string, diagnostics: IIrDiagnosti
     return;
   }
   for (const key of Object.keys(value)) {
-    if (!["backgroundColor", "borderColor", "borderRadius", "borderWidth", "color", "fontSize", "fontWeight", "gradient", "opacity", "shadow", "textAlign", "textDecoration", "wrap"].includes(key)) {
+    if (!["backgroundColor", "borderColor", "borderRadius", "borderWidth", "color", "fontFamily", "fontSize", "fontWeight", "gradient", "opacity", "shadow", "textAlign", "textDecoration", "wrap"].includes(key)) {
       diagnostics.push({ code: "TN_IR_UI_STYLE_FIELD_UNSUPPORTED", message: `UI style uses unsupported field '${key}'.`, path: `${path}/${key}` });
     }
   }
@@ -959,7 +1023,7 @@ function collectFocusableUiIds(node: IUiNodeIr, focusableIds: Set<string>): void
 function validateUiMetadata(ui: IUiIr, path: string, diagnostics: IIrDiagnostic[], ids: Set<string>, focusableIds: Set<string>): void {
   const raw = ui as unknown as Record<string, unknown>;
   for (const key of Object.keys(raw)) {
-    if (!["focusOrder", "inputActions", "root", "safeArea", "schema", "version"].includes(key)) {
+    if (!["focusOrder", "fonts", "inputActions", "root", "safeArea", "schema", "version"].includes(key)) {
       diagnostics.push({
         code: "TN_IR_UI_FIELD_UNSUPPORTED",
         message: `UI IR uses unsupported field '${key}'.`,
