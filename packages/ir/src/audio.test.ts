@@ -114,6 +114,53 @@ test("audio should accept spatial and bus routing metadata", async () => {
   }
 });
 
+test("audio should accept attenuation pitch tones ducking and music transitions", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-audio-v9-"));
+  try {
+    await writeTestBundle(root, {
+      manifest: { entry: { audio: "audio.ir.json" } },
+      assets: {
+        schema: "threenative.assets",
+        version: "0.1.0",
+        assets: [
+          { id: "intro.music", kind: "audio", format: "ogg", path: "assets/intro.ogg" },
+          { id: "loop.music", kind: "audio", format: "ogg", path: "assets/loop.ogg" },
+          { id: "alarm.sound", kind: "audio", format: "wav", path: "assets/alarm.wav" },
+        ],
+      },
+    });
+    await mkdir(join(root, "assets"), { recursive: true });
+    await writeFile(join(root, "assets/intro.ogg"), "");
+    await writeFile(join(root, "assets/loop.ogg"), "");
+    await writeFile(join(root, "assets/alarm.wav"), "");
+    await writeJson(root, "audio.ir.json", {
+      schema: "threenative.audio",
+      version: "0.1.0",
+      buses: [
+        { id: "bus.master", gain: 1 },
+        { id: "bus.music", gain: 0.8, parent: "bus.master" },
+        { id: "bus.sfx", mute: false, solo: false, volume: 0.9 },
+      ],
+      duckingRules: [{ id: "duck.music", attack: 0.05, gain: 0.35, release: 0.2, sourceBus: "bus.sfx", targetBus: "bus.music" }],
+      listeners: [{ id: "listener.main", binding: { kind: "activeCamera" }, position: [0, 0, 0] }],
+      emitters: [{ id: "emitter.alarm", attenuation: { curve: "inverse", maxDistance: 24, minDistance: 1, rolloffFactor: 1 }, position: [2, 0, 0] }],
+      music: [
+        { id: "music.intro", asset: "intro.music", autoplay: true, bus: "bus.music", loop: true, pitch: 1 },
+        { id: "music.loop", asset: "loop.music", autoplay: false, bus: "bus.music", loop: true },
+      ],
+      musicTransitions: [{ id: "transition.loop", duration: 2, from: "music.intro", kind: "crossfade", playbackId: "music.state.loop", state: "playing", to: "music.loop" }],
+      oneShots: [{ id: "sound.alarm", asset: "alarm.sound", bus: "bus.sfx", emitter: "emitter.alarm", event: "AlarmEvent", pitch: 1.25 }],
+      tones: [{ id: "tone.confirm", bus: "bus.sfx", duration: 0.25, frequency: 880, volume: 0.2, waveform: "sine" }],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("audio should accept playback controls for declared playback ids", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-audio-controls-"));
   try {
@@ -209,7 +256,7 @@ test("audio should reject invalid spatial and bus routing metadata", async () =>
   }
 });
 
-test("audio should reject mixer fields", async () => {
+test("should reject streaming audio when portable audio only allows bundle-local sources", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-audio-unsupported-"));
   try {
     await writeTestBundle(root, { manifest: { entry: { audio: "audio.ir.json" } } });
@@ -228,7 +275,11 @@ test("audio should reject mixer fields", async () => {
     const result = await validateBundle(root);
 
     assert.equal(result.ok, false);
-    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_AUDIO_FIELD_UNSUPPORTED"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_AUDIO_STREAMING_UNSUPPORTED"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_AUDIO_NETWORK_UNSUPPORTED"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_AUDIO_PLATFORM_HANDLE_UNSUPPORTED"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_AUDIO_DECODER_PLUGIN_UNSUPPORTED"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_AUDIO_EFFECT_CHAIN_UNSUPPORTED"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

@@ -1,0 +1,13 @@
+{
+  "schema": "threenative.assets",
+  "version": "0.1.0",
+  "assets": [
+    {
+      "format": "generated",
+      "id": "mesh.cube",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [1, 1, 1]
+    }
+  ]
+}

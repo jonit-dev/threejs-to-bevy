@@ -5,6 +5,7 @@ export type MaterialsSchema = "threenative.materials";
 export type AssetsSchema = "threenative.assets";
 export type GltfSceneSchema = "threenative.gltf-scene";
 export type AudioSchema = "threenative.audio";
+export type LocalDataSchema = "threenative.local-data";
 export type TargetProfileSchema = "threenative.target-profile";
 export type RuntimeConfigSchema = "threenative.runtime-config";
 export type UiSchema = "threenative.ui";
@@ -22,6 +23,7 @@ export interface IBundleManifest {
     animations?: string;
     audio?: string;
     environmentScene?: string;
+    localData?: string;
     scripts?: string;
     systems?: string;
     overlays?: string;
@@ -36,10 +38,57 @@ export interface IBundleManifest {
     eventSchemas?: "schemas/events.schema.json";
     input?: string;
     gltfScene?: string;
+    localData?: string;
     resourceSchemas?: "schemas/resources.schema.json";
     runtimeConfig?: "runtime.config.json";
     scripts?: "scripts.bundle.js";
   };
+}
+
+export type LocalDataSettingGroup = "accessibility" | "audio" | "controls" | "video";
+export type LocalDataSettingKind = "boolean" | "number" | "string";
+
+export interface ILocalDataSchemaEntryIr {
+  id: string;
+  schema: Record<string, unknown>;
+}
+
+export interface ILocalDataSettingIr {
+  defaultValue: boolean | number | string;
+  enumValues?: readonly string[];
+  group: LocalDataSettingGroup;
+  key: string;
+  kind: LocalDataSettingKind;
+  max?: number;
+  min?: number;
+}
+
+export interface ILocalDataSaveSlotIr {
+  appVersion: string;
+  id: string;
+  schemaVersion: number;
+}
+
+export interface ILocalDataMigrationIr {
+  currentVersion: number;
+  migrators: readonly number[];
+}
+
+export interface ILocalDataAutosaveIr {
+  checkpointEvents?: readonly string[];
+  debounceMs: number;
+  intervalSeconds?: number;
+}
+
+export interface ILocalDataIr {
+  autosave?: ILocalDataAutosaveIr;
+  components: readonly ILocalDataSchemaEntryIr[];
+  migration?: ILocalDataMigrationIr;
+  resources: readonly ILocalDataSchemaEntryIr[];
+  saveSlots: readonly ILocalDataSaveSlotIr[];
+  schema: LocalDataSchema;
+  settings: readonly ILocalDataSettingIr[];
+  version: SchemaVersion;
 }
 
 export interface ITransformAnimationKeyframeIr {
@@ -588,6 +637,7 @@ export interface IAudioOneShotIr {
   emitter?: string;
   event: string;
   id: string;
+  pitch?: number;
   volume?: number;
 }
 
@@ -597,23 +647,64 @@ export interface IAudioMusicIr {
   bus?: string;
   id: string;
   loop: boolean;
+  pitch?: number;
   volume?: number;
 }
 
 export interface IAudioBusIr {
+  gain?: number;
   id: string;
+  mute?: boolean;
+  parent?: string;
+  solo?: boolean;
   volume?: number;
 }
 
 export interface IAudioListenerIr {
+  binding?: { entity?: string; kind: "activeCamera" | "entity" };
   id: string;
   position: Vec3;
 }
 
 export interface IAudioEmitterIr {
+  attenuation?: {
+    curve: "exponential" | "inverse" | "linear";
+    maxDistance: number;
+    minDistance: number;
+    rolloffFactor: number;
+  };
   id: string;
   position: Vec3;
   radius?: number;
+}
+
+export interface IAudioDuckingRuleIr {
+  attack: number;
+  gain: number;
+  id: string;
+  release: number;
+  sourceBus: string;
+  targetBus: string;
+}
+
+export interface IAudioToneIr {
+  bus?: string;
+  duration: number;
+  frequency?: number;
+  id: string;
+  pitch?: number;
+  volume?: number;
+  waveform: "noise" | "sine" | "square";
+}
+
+export interface IAudioMusicTransitionIr {
+  duration?: number;
+  from?: string;
+  id: string;
+  kind: "crossfade" | "intro" | "loop" | "stinger";
+  playbackId: string;
+  state: string;
+  to: string;
 }
 
 export type AudioControlKind = "pause" | "query" | "resume" | "seek" | "stop";
@@ -628,9 +719,12 @@ export interface IAudioControlIr {
 export interface IAudioIr {
   buses?: IAudioBusIr[];
   controls?: IAudioControlIr[];
+  duckingRules?: IAudioDuckingRuleIr[];
   emitters?: IAudioEmitterIr[];
   listeners?: IAudioListenerIr[];
+  musicTransitions?: IAudioMusicTransitionIr[];
   schema: AudioSchema;
+  tones?: IAudioToneIr[];
   version: SchemaVersion;
   music: IAudioMusicIr[];
   oneShots: IAudioOneShotIr[];
@@ -657,6 +751,7 @@ export interface IPerformanceThreshold {
 export interface IPerformanceProfile {
   averageFrameMs: IPerformanceThreshold;
   drawCalls: IPerformanceThreshold;
+  profiler?: ISupportProfilerMetadata;
   instancedGroups: IPerformanceThreshold;
   instances: IPerformanceThreshold;
   loadMs: IPerformanceThreshold;
@@ -664,8 +759,43 @@ export interface IPerformanceProfile {
   requiredTarget: "web";
   textureBytes: IPerformanceThreshold;
   triangles: IPerformanceThreshold;
+  support?: ISupportTargetProfile;
   uninstancedRepeatedProps: IPerformanceThreshold;
   worstFrameMs: IPerformanceThreshold;
+}
+
+export type SupportTargetCategory = "audio" | "desktopNative" | "desktopWeb" | "diagnosticsOverlay" | "localData" | "localEditor";
+
+export interface ISupportRepairHint {
+  code: string;
+  missingCapability: string;
+  suggestion: string;
+  target: SupportTargetCategory;
+}
+
+export interface ISupportCapabilityRequirement {
+  availableCapabilities?: readonly string[];
+  category: SupportTargetCategory;
+  repairHints: readonly ISupportRepairHint[];
+  requiredCapabilities: readonly string[];
+}
+
+export interface ISupportTargetProfile {
+  requirements: readonly ISupportCapabilityRequirement[];
+}
+
+export interface ISupportProfilerMetadata {
+  audioVoiceCount?: number;
+  drawCount?: number;
+  entityCount?: number;
+  frameTimeMs?: number;
+  gpuTimingUnavailable?: boolean;
+  memoryEstimateBytes?: number;
+  renderPassMs?: number;
+  renderTimeMs?: number;
+  saveLatencyMs?: number;
+  uiNodeCount?: number;
+  updateTimeMs?: number;
 }
 
 export type IUiBinding =

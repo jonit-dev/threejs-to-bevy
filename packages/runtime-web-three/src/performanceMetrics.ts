@@ -8,7 +8,9 @@ export interface IRendererInfoLike {
 
 export interface IPerformanceMetricSummary {
   averageFrameMs: number;
+  audioVoiceCount?: number;
   bundleBytes: number;
+  debugDrawCount?: number;
   drawCalls: number;
   drawEstimate: number;
   environmentInstances: number;
@@ -17,8 +19,11 @@ export interface IPerformanceMetricSummary {
   instances: number;
   instancingGroupCount: number;
   loadMs: number;
+  localDataSlotCount?: number;
+  memoryEstimateBytes?: number;
   p95FrameMs: number;
   programs: number;
+  saveLatencyMs?: number;
   sourceAssets: number;
   textures: number;
   textureBytes: number;
@@ -26,6 +31,7 @@ export interface IPerformanceMetricSummary {
   triangles: number;
   triangleEstimate: number;
   uninstancedRepeatedProps: number;
+  uiNodeCount?: number;
   worstFrameMs: number;
 }
 
@@ -51,6 +57,14 @@ export function collectPerformanceSummary(options: {
   loadMs: number;
   rendererInfo: IRendererInfoLike;
   sourceAssetCount?: number;
+  supportMetrics?: {
+    audioVoiceCount?: number;
+    debugDrawCount?: number;
+    localDataSlotCount?: number;
+    memoryEstimateBytes?: number;
+    saveLatencyMs?: number;
+    uiNodeCount?: number;
+  };
   textureBytes: number;
 }): IPerformanceMetricSummary {
   const drawCalls = options.rendererInfo.render?.calls ?? 0;
@@ -58,7 +72,9 @@ export function collectPerformanceSummary(options: {
   const triangles = options.rendererInfo.render?.triangles ?? 0;
   return {
     ...summarizeFrameTimings(options.frameSamples),
+    audioVoiceCount: options.supportMetrics?.audioVoiceCount ?? 0,
     bundleBytes: options.bundleBytes ?? 0,
+    debugDrawCount: options.supportMetrics?.debugDrawCount ?? 0,
     drawCalls,
     drawEstimate: drawCalls,
     environmentInstances: options.environmentInstanceCount ?? options.instancingPlan.instanceCount + options.instancingPlan.uninstanced.length,
@@ -67,7 +83,10 @@ export function collectPerformanceSummary(options: {
     instances: options.instancingPlan.instanceCount,
     instancingGroupCount: options.instancingPlan.groups.length,
     loadMs: options.loadMs,
+    localDataSlotCount: options.supportMetrics?.localDataSlotCount ?? 0,
+    memoryEstimateBytes: options.supportMetrics?.memoryEstimateBytes ?? 0,
     programs: options.rendererInfo.programs?.length ?? 0,
+    saveLatencyMs: options.supportMetrics?.saveLatencyMs ?? 0,
     sourceAssets: options.sourceAssetCount ?? 0,
     textures,
     textureBytes: options.textureBytes,
@@ -75,5 +94,6 @@ export function collectPerformanceSummary(options: {
     triangles,
     triangleEstimate: triangles,
     uninstancedRepeatedProps: options.instancingPlan.uninstancedRepeatedPropCount,
+    uiNodeCount: options.supportMetrics?.uiNodeCount ?? 0,
   };
 }

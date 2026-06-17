@@ -112,7 +112,9 @@ export interface IConformanceAudioCommandReport {
   emitter?: string;
   event?: string;
   id: string;
-  kind: "loop" | "oneShot";
+  kind: "loop" | "oneShot" | "tone";
+  pitch?: number;
+  tone?: { duration: number; frequency?: number; waveform: "noise" | "sine" | "square" };
   volume?: number;
 }
 

@@ -5,6 +5,7 @@ import type {
   IBundleManifest,
   IEnvironmentSceneIr,
   IIrSchemaFile,
+  ILocalDataIr,
   IMaterialsIr,
   IOverlaysIr,
   IUiIr,
@@ -20,6 +21,7 @@ export interface ICapabilitySource {
   environment?: IEnvironmentSceneIr;
   eventSchemas?: IIrSchemaFile;
   input?: IInputIr;
+  localData?: ILocalDataIr;
   materials: IMaterialsIr;
   overlays?: IOverlaysIr;
   resourceSchemas?: IIrSchemaFile;
@@ -44,6 +46,7 @@ export function deriveRequiredCapabilities(source: ICapabilitySource): IBundleMa
   collectSystemCapabilities(source.systems, add);
   collectInputCapabilities(source.input, add);
   collectAudioCapabilities(source.audio, add);
+  collectLocalDataCapabilities(source.localData, add);
   collectUiCapabilities(source.ui, add);
   collectOverlayCapabilities(source.overlays, add);
   collectEnvironmentCapabilities(source.environment, add);
@@ -486,6 +489,34 @@ function collectAudioCapabilities(audio: IAudioIr | undefined, add: (domain: str
     for (const control of audio.controls ?? []) {
       add("audio", `playback-control.${control.kind}`);
     }
+  }
+}
+
+function collectLocalDataCapabilities(localData: ILocalDataIr | undefined, add: (domain: string, capability: string) => void): void {
+  if (localData === undefined) {
+    return;
+  }
+  add("localData", "runtime");
+  if (localData.saveSlots.length > 0) {
+    add("localData", "save-slots");
+  }
+  if (localData.resources.length > 0) {
+    add("localData", "resources");
+  }
+  if (localData.components.length > 0) {
+    add("localData", "components");
+  }
+  if (localData.settings.length > 0) {
+    add("localData", "settings");
+    for (const setting of localData.settings) {
+      add("localData", `settings.${setting.group}`);
+    }
+  }
+  if (localData.migration !== undefined) {
+    add("localData", "migration");
+  }
+  if (localData.autosave !== undefined) {
+    add("localData", "autosave");
   }
 }
 

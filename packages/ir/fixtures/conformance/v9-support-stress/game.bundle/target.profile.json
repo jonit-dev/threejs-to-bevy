@@ -1,0 +1,47 @@
+{
+  "schema": "threenative.target-profile",
+  "version": "0.1.0",
+  "targets": ["web", "desktop"],
+  "performance": {
+    "requiredTarget": "web",
+    "averageFrameMs": { "max": 18, "warn": 16 },
+    "drawCalls": { "max": 600, "warn": 480 },
+    "instancedGroups": { "max": 96, "warn": 72 },
+    "instances": { "max": 5000, "warn": 4000 },
+    "loadMs": { "max": 3000, "warn": 2200 },
+    "p95FrameMs": { "max": 24, "warn": 20 },
+    "textureBytes": { "max": 32000000, "warn": 24000000 },
+    "triangles": { "max": 900000, "warn": 700000 },
+    "uninstancedRepeatedProps": { "max": 0 },
+    "worstFrameMs": { "max": 40, "warn": 32 },
+    "support": {
+      "requirements": [
+        {
+          "category": "audio",
+          "requiredCapabilities": ["audio.device", "audio.decoder.ogg"],
+          "availableCapabilities": ["audio.device", "audio.decoder.ogg"],
+          "repairHints": [
+            {
+              "code": "TN_SUPPORT_AUDIO_BACKEND_MISSING",
+              "target": "audio",
+              "missingCapability": "audio.decoder.ogg",
+              "suggestion": "Enable an OGG decoder backend for this target."
+            }
+          ]
+        }
+      ]
+    },
+    "profiler": {
+      "audioVoiceCount": 8,
+      "drawCount": 256,
+      "entityCount": 320,
+      "frameTimeMs": 16.67,
+      "gpuTimingUnavailable": true,
+      "memoryEstimateBytes": 1048576,
+      "renderTimeMs": 8,
+      "saveLatencyMs": 4,
+      "uiNodeCount": 96,
+      "updateTimeMs": 4
+    }
+  }
+}

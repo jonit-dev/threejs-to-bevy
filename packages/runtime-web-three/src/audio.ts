@@ -8,7 +8,9 @@ export interface IWebAudioCommand {
   emitter?: string;
   event?: string;
   id: string;
-  kind: "loop" | "oneShot";
+  kind: "loop" | "oneShot" | "tone";
+  pitch?: number;
+  tone?: { duration: number; frequency?: number; waveform: "noise" | "sine" | "square" };
   volume?: number;
 }
 
@@ -41,6 +43,14 @@ export interface IWebAudioLifecycleTrace {
   pausedLoops: string[];
 }
 
+export interface IWebAudioSupportTrace {
+  attenuation: Array<{ emitter: string; gain: number; listener: string; listenerPosition: readonly [number, number, number] }>;
+  ducking: Array<{ gain: number; id: string; sourceBus: string; targetBus: string }>;
+  listenerBindings: Array<{ entity?: string; id: string; kind: "activeCamera" | "entity" | "fixed" }>;
+  musicTransitions: Array<{ duration?: number; from?: string; id: string; kind: string; playbackId: string; state: string; to: string }>;
+  tones: Array<{ bus?: string; duration: number; frequency?: number; id: string; pitch?: number; volume?: number; waveform: string }>;
+}
+
 export function createWebAudioRuntime(audio: IAudioIr, sink?: IWebAudioSink): IWebAudioRuntime {
   const commands: IWebAudioCommand[] = [];
   const queue = (command: IWebAudioCommand) => {
@@ -52,13 +62,16 @@ export function createWebAudioRuntime(audio: IAudioIr, sink?: IWebAudioSink): IW
     handleEvents(events) {
       for (const event of events) {
         for (const oneShot of audio.oneShots.filter((item) => item.event === event.event)) {
-          queue({ asset: oneShot.asset, ...(oneShot.bus === undefined ? {} : { bus: oneShot.bus }), ...(oneShot.emitter === undefined ? {} : { emitter: oneShot.emitter }), event: event.event, id: oneShot.id, kind: "oneShot", ...(oneShot.volume === undefined ? {} : { volume: oneShot.volume }) });
+          queue({ asset: oneShot.asset, ...(oneShot.bus === undefined ? {} : { bus: oneShot.bus }), ...(oneShot.emitter === undefined ? {} : { emitter: oneShot.emitter }), event: event.event, id: oneShot.id, kind: "oneShot", ...(oneShot.pitch === undefined ? {} : { pitch: oneShot.pitch }), ...(oneShot.volume === undefined ? {} : { volume: oneShot.volume }) });
         }
       }
     },
     start() {
       for (const music of audio.music.filter((item) => item.loop && item.autoplay !== false)) {
-        queue({ asset: music.asset, ...(music.bus === undefined ? {} : { bus: music.bus }), id: music.id, kind: "loop", ...(music.volume === undefined ? {} : { volume: music.volume }) });
+        queue({ asset: music.asset, ...(music.bus === undefined ? {} : { bus: music.bus }), id: music.id, kind: "loop", ...(music.pitch === undefined ? {} : { pitch: music.pitch }), ...(music.volume === undefined ? {} : { volume: music.volume }) });
+      }
+      for (const tone of audio.tones ?? []) {
+        queue({ asset: `generated:${tone.id}`, ...(tone.bus === undefined ? {} : { bus: tone.bus }), id: tone.id, kind: "tone", ...(tone.pitch === undefined ? {} : { pitch: tone.pitch }), tone: { duration: tone.duration, ...(tone.frequency === undefined ? {} : { frequency: tone.frequency }), waveform: tone.waveform }, ...(tone.volume === undefined ? {} : { volume: tone.volume }) });
       }
     },
   };
@@ -123,6 +136,55 @@ export function traceWebAudioLifecycle(
     lifecycle,
     pausedLoops: [...pausedLoops].sort(),
   };
+}
+
+export function traceWebAudioSupport(audio: IAudioIr, listenerPositions?: Record<string, Array<readonly [number, number, number]>>): IWebAudioSupportTrace {
+  const attenuation: IWebAudioSupportTrace["attenuation"] = [];
+  for (const listener of audio.listeners ?? []) {
+    const positions = listenerPositions?.[listener.id] ?? [listener.position];
+    for (const position of positions) {
+      for (const emitter of audio.emitters ?? []) {
+        attenuation.push({
+          emitter: emitter.id,
+          gain: attenuationGain(distance(position, emitter.position), emitter.attenuation ?? (emitter.radius === undefined ? undefined : { curve: "linear", minDistance: 1, maxDistance: emitter.radius, rolloffFactor: 1 })),
+          listener: listener.id,
+          listenerPosition: position,
+        });
+      }
+    }
+  }
+  return {
+    attenuation,
+    ducking: (audio.duckingRules ?? []).map((rule) => ({ gain: rule.gain, id: rule.id, sourceBus: rule.sourceBus, targetBus: rule.targetBus })),
+    listenerBindings: (audio.listeners ?? []).map((listener) => ({ id: listener.id, kind: listener.binding?.kind ?? "fixed", ...(listener.binding?.entity === undefined ? {} : { entity: listener.binding.entity }) })),
+    musicTransitions: (audio.musicTransitions ?? []).map((transition) => ({ ...(transition.duration === undefined ? {} : { duration: transition.duration }), ...(transition.from === undefined ? {} : { from: transition.from }), id: transition.id, kind: transition.kind, playbackId: transition.playbackId, state: transition.state, to: transition.to })),
+    tones: (audio.tones ?? []).map((tone) => ({ ...(tone.bus === undefined ? {} : { bus: tone.bus }), duration: tone.duration, ...(tone.frequency === undefined ? {} : { frequency: tone.frequency }), id: tone.id, ...(tone.pitch === undefined ? {} : { pitch: tone.pitch }), ...(tone.volume === undefined ? {} : { volume: tone.volume }), waveform: tone.waveform })),
+  };
+}
+
+function distance(left: readonly [number, number, number], right: readonly [number, number, number]): number {
+  return Math.hypot(left[0] - right[0], left[1] - right[1], left[2] - right[2]);
+}
+
+function attenuationGain(distanceValue: number, attenuation: { curve: "exponential" | "inverse" | "linear"; maxDistance: number; minDistance: number; rolloffFactor: number } | undefined): number {
+  if (attenuation === undefined || distanceValue <= attenuation.minDistance) {
+    return 1;
+  }
+  if (distanceValue >= attenuation.maxDistance) {
+    return 0;
+  }
+  const normalized = (distanceValue - attenuation.minDistance) / (attenuation.maxDistance - attenuation.minDistance);
+  if (attenuation.curve === "linear") {
+    return clamp01(1 - normalized * attenuation.rolloffFactor);
+  }
+  if (attenuation.curve === "exponential") {
+    return clamp01((distanceValue / attenuation.minDistance) ** -attenuation.rolloffFactor);
+  }
+  return clamp01(attenuation.minDistance / (attenuation.minDistance + attenuation.rolloffFactor * (distanceValue - attenuation.minDistance)));
+}
+
+function clamp01(value: number): number {
+  return Math.min(1, Math.max(0, Number(value.toFixed(6))));
 }
 
 export function createWebAudioElementSink(

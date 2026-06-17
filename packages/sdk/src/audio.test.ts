@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { audioBus, audioListener, audioPlaybackControl, defineAudio, loopingMusic, oneShotSound, spatialAudioEmitter } from "./audio.js";
+import { audioBus, audioDuckingRule, audioListener, audioPlaybackControl, defineAudio, generatedTone, loopingMusic, musicTransition, oneShotSound, spatialAudioEmitter } from "./audio.js";
 
 test("audio helpers should preserve optional volume", () => {
   assert.deepEqual(loopingMusic("music.arena", { asset: "arena.music", volume: 0.4 }), {
@@ -54,6 +54,37 @@ test("audio helpers should preserve playback controls", () => {
     { id: "music.query", kind: "query", target: "music.arena" },
     { at: 12.5, id: "music.seek", kind: "seek", target: "music.arena" },
   ]);
+});
+
+test("should capture attenuation and music transitions when audio declarations are valid", () => {
+  const audio = defineAudio({
+    buses: [
+      audioBus("bus.master", { gain: 1 }),
+      audioBus("bus.music", { gain: 0.8, parent: "bus.master" }),
+      audioBus("bus.sfx", { mute: false, solo: false, volume: 0.9 }),
+    ],
+    duckingRules: [audioDuckingRule("duck.music", { attack: 0.05, gain: 0.35, release: 0.2, sourceBus: "bus.sfx", targetBus: "bus.music" })],
+    emitters: [spatialAudioEmitter("emitter.alarm", { attenuation: { curve: "inverse", maxDistance: 24, minDistance: 1, rolloffFactor: 1 }, position: [2, 0, 0] })],
+    listeners: [audioListener("listener.main", { binding: { kind: "activeCamera" }, position: [0, 0, 0] })],
+    music: [
+      loopingMusic("music.intro", { asset: "intro.music", bus: "bus.music", pitch: 1 }),
+      loopingMusic("music.loop", { asset: "loop.music", bus: "bus.music" }),
+    ],
+    musicTransitions: [
+      musicTransition("transition.intro", { duration: 1.5, kind: "intro", playbackId: "music.state.intro", state: "menu", to: "music.intro" }),
+      musicTransition("transition.loop", { duration: 2, from: "music.intro", kind: "crossfade", playbackId: "music.state.loop", state: "playing", to: "music.loop" }),
+    ],
+    oneShots: [oneShotSound("sound.alarm", { asset: "alarm.sound", bus: "bus.sfx", emitter: "emitter.alarm", event: "AlarmEvent", pitch: 1.25 })],
+    tones: [generatedTone("tone.confirm", { bus: "bus.sfx", duration: 0.25, frequency: 880, volume: 0.2, waveform: "sine" })],
+  });
+
+  assert.deepEqual(audio.listeners[0]?.binding, { kind: "activeCamera" });
+  assert.deepEqual(audio.emitters[0]?.attenuation, { curve: "inverse", maxDistance: 24, minDistance: 1, rolloffFactor: 1 });
+  assert.equal(audio.buses.find((bus) => bus.id === "bus.music")?.parent, "bus.master");
+  assert.equal(audio.duckingRules[0]?.targetBus, "bus.music");
+  assert.equal(audio.oneShots[0]?.pitch, 1.25);
+  assert.equal(audio.tones[0]?.waveform, "sine");
+  assert.equal(audio.musicTransitions[1]?.kind, "crossfade");
 });
 
 test("audio helpers should reject missing spatial and bus route metadata", () => {

@@ -1,0 +1,18 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "cube.0",
+      "components": {
+        "Transform": {
+          "position": [0, 0, 0]
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.cube",
+          "material": "mat.cube"
+        }
+      }
+    }
+  ]
+}

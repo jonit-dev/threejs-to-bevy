@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  buildEditorInspectorSnapshot,
   diffEditorProjectSnapshots,
   type IEditorProjectSnapshot,
+  validateEditorPropertyEdit,
   validateEditorProjectSnapshot,
 } from "./editorProject.js";
 
@@ -78,6 +80,32 @@ test("should produce deterministic structured editor diffs", () => {
       path: "/documents/world.ir.json/entities/0/components/Transform/position/0",
     },
   ]);
+});
+
+test("should reject property edit when path targets runtime-only data", () => {
+  assert.deepEqual(validateEditorPropertyEdit("/documents/world.ir.json/entities/0/components/Runtime/runtimeHandle").map((diagnostic) => diagnostic.code), [
+    "TN_IR_EDITOR_PROPERTY_RUNTIME_ONLY",
+  ]);
+});
+
+test("should build inspector metadata from structured bundle documents", () => {
+  const inspector = buildEditorInspectorSnapshot({
+    "assets.manifest.json": { assets: [{ id: "model.player" }] },
+    "world.ir.json": {
+      entities: [{ components: { MeshRenderer: { mesh: "model.player" }, Transform: { position: [0, 1, 0] } }, id: "player" }],
+    },
+  });
+
+  assert.deepEqual(inspector.hierarchy[0], {
+    children: [],
+    components: ["MeshRenderer", "Transform"],
+    id: "player",
+    label: "player",
+    path: "/documents/world.ir.json/entities/0",
+  });
+  assert.equal(inspector.assetRefs[0], "model.player");
+  assert.equal(inspector.editableProperties.some((property) => property.path.endsWith("/Transform/position/1")), true);
+  assert.equal(inspector.hotReload.some((entry) => entry.policy === "reloadRejected"), true);
 });
 
 function makeSnapshot(documents: Record<string, unknown>): IEditorProjectSnapshot {

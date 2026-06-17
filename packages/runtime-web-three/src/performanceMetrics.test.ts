@@ -11,6 +11,31 @@ test("performanceMetrics should summarize frame timing samples with average p95 
   assert.equal(summary.worstFrameMs, 20);
 });
 
+test("should include support overlay metrics when diagnostics are enabled", () => {
+  const summary = collectPerformanceSummary({
+    frameSamples: [16],
+    instancingPlan: { diagnostics: [], groups: [], instanceCount: 0, uninstanced: [], uninstancedRepeatedPropCount: 0 },
+    loadMs: 12,
+    rendererInfo: { render: { calls: 2, triangles: 24 } },
+    supportMetrics: {
+      audioVoiceCount: 6,
+      debugDrawCount: 10,
+      localDataSlotCount: 3,
+      memoryEstimateBytes: 2048,
+      saveLatencyMs: 4,
+      uiNodeCount: 12,
+    },
+    textureBytes: 0,
+  });
+
+  assert.equal(summary.audioVoiceCount, 6);
+  assert.equal(summary.debugDrawCount, 10);
+  assert.equal(summary.localDataSlotCount, 3);
+  assert.equal(summary.memoryEstimateBytes, 2048);
+  assert.equal(summary.saveLatencyMs, 4);
+  assert.equal(summary.uiNodeCount, 12);
+});
+
 test("performanceMetrics should include renderer draw and texture metrics", () => {
   const summary = collectPerformanceSummary({
     bundleBytes: 4096,
