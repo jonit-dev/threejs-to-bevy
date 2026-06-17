@@ -104,6 +104,7 @@ export type {
   IEnvironmentSceneIr,
   IEnvironmentScatterSpecIr,
   IEnvironmentSourceAssetIr,
+  IEnvironmentTextureSourceIr,
   IEnvironmentTerrainIr,
   IFirstPersonControllerIr,
   IWalkabilityIr,

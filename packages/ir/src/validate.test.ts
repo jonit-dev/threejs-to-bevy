@@ -391,6 +391,7 @@ test("should reject unsupported advanced renderer requests with stable diagnosti
     await writeBundle(root, { current: 100, max: 100 });
     await writeRuntimeConfig(root, {
       antialias: "msaa4",
+      customPasses: [{ fragment: "frag.wgsl" }],
       depthOfField: { enabled: true },
       motionVectors: true,
       renderPath: "deferred",
@@ -405,6 +406,7 @@ test("should reject unsupported advanced renderer requests with stable diagnosti
     assert.deepEqual(
       result.diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.path]),
       [
+        ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/customPasses"],
         ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/depthOfField"],
         ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/motionVectors"],
         ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/screenSpaceReflections"],
@@ -642,6 +644,49 @@ test("should reject invalid rendering light budget metadata", async () => {
       "TN_IR_LIGHT_BUDGET_INVALID",
       "TN_IR_LIGHT_BUDGET_INVALID",
     ]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should report over-budget dynamic lights when budget policy is error", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-light-budget-exceeded-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "world.ir.json", {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [
+        {
+          id: "light.point.a",
+          components: {
+            Light: { color: "#ffffff", intensity: 1, kind: "point", shadowFilter: { mode: "pcf", quality: "medium" } },
+          },
+        },
+        {
+          id: "light.point.b",
+          components: {
+            Light: { color: "#ffffff", intensity: 1, kind: "point", shadowFilter: { mode: "pcf", quality: "medium" } },
+          },
+        },
+      ],
+      resources: {
+        RenderingLightBudget: {
+          cullingPolicy: "nearest",
+          maximumShadowedPointLights: 1,
+          maximumVisibleDynamicLights: 1,
+          overBudgetSeverity: "error",
+        },
+      },
+      events: {},
+      prefabs: [],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.at(-1)?.code, "TN_IR_LIGHT_BUDGET_EXCEEDED");
+    assert.equal(result.diagnostics.at(-1)?.path, "world.ir.json/resources/RenderingLightBudget");
   } finally {
     await rm(root, { force: true, recursive: true });
   }

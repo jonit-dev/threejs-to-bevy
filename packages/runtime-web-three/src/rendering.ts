@@ -1,5 +1,6 @@
 import * as THREE from "three";
-import type { IAtmosphereProfileIr } from "@threenative/ir";
+import type { IAssetsManifest, IAtmosphereProfileIr, IEnvironmentSceneIr, IEnvironmentTextureSourceIr } from "@threenative/ir";
+import { resolveWebAssets } from "./assets.js";
 
 export interface IAtmosphereObservation {
   ambientColor?: string;
@@ -22,6 +23,27 @@ export interface IAtmosphereObservation {
   sunColor?: string;
   sunDirection?: readonly [number, number, number];
   sunIntensity?: number;
+}
+
+export interface IEnvironmentLightingObservation {
+  diagnostics: Array<{ code: string; message: string; severity: "warning" }>;
+  environmentMap?: {
+    applied: boolean;
+    assetIds: string[];
+    intent: string;
+    mode: string;
+  };
+  lightProbes: Array<{
+    applied: boolean;
+    assetIds: string[];
+    id: string;
+    intent: string;
+  }>;
+  skybox?: {
+    applied: boolean;
+    assetIds: string[];
+    mode: string;
+  };
 }
 
 export function applyAtmosphereProfile(scene: THREE.Scene, profile: IAtmosphereProfileIr | undefined): IAtmosphereObservation {
@@ -75,6 +97,117 @@ export function observeAtmosphereProfile(profile: IAtmosphereProfileIr | undefin
     sunDirection: profile.sun.direction,
     sunIntensity: profile.sun.intensity,
   };
+}
+
+export async function applyEnvironmentLighting(
+  scene: THREE.Scene,
+  environment: IEnvironmentSceneIr | undefined,
+  assets: IAssetsManifest,
+  source: string,
+): Promise<IEnvironmentLightingObservation> {
+  const observation = observeEnvironmentLighting(environment);
+  if (environment === undefined) {
+    return observation;
+  }
+  const resolved = resolveWebAssets(source, assets);
+  const loader = new THREE.TextureLoader();
+
+  if (environment.skybox !== undefined) {
+    const url = firstTextureUrl(environment.skybox, resolved);
+    if (url === undefined) {
+      observation.diagnostics.push({
+        code: "TN_WEB_ENVIRONMENT_SKYBOX_TEXTURE_MISSING",
+        message: "Skybox texture asset could not be resolved for web rendering.",
+        severity: "warning",
+      });
+    } else {
+      try {
+        const texture = await loader.loadAsync(url);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        if (environment.skybox.mode === "equirect") {
+          texture.mapping = THREE.EquirectangularReflectionMapping;
+        }
+        scene.background = texture;
+        observation.skybox = { ...observation.skybox!, applied: true };
+      } catch (error) {
+        observation.diagnostics.push({
+          code: "TN_WEB_ENVIRONMENT_SKYBOX_TEXTURE_LOAD_FAILED",
+          message: `Skybox texture '${url}' failed to load: ${error instanceof Error ? error.message : String(error)}.`,
+          severity: "warning",
+        });
+      }
+    }
+  }
+
+  if (environment.environmentMap !== undefined) {
+    const url = firstTextureUrl(environment.environmentMap, resolved);
+    if (url !== undefined) {
+      try {
+        const texture = await loader.loadAsync(url);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.mapping = THREE.EquirectangularReflectionMapping;
+        scene.environment = texture;
+        observation.environmentMap = { ...observation.environmentMap!, applied: true };
+      } catch (error) {
+        observation.diagnostics.push({
+          code: "TN_WEB_ENVIRONMENT_MAP_TEXTURE_LOAD_FAILED",
+          message: `Environment map texture '${url}' failed to load: ${error instanceof Error ? error.message : String(error)}.`,
+          severity: "warning",
+        });
+      }
+    }
+  }
+
+  return observation;
+}
+
+export function observeEnvironmentLighting(environment: IEnvironmentSceneIr | undefined): IEnvironmentLightingObservation {
+  return {
+    diagnostics: [],
+    environmentMap:
+      environment?.environmentMap === undefined
+        ? undefined
+        : {
+            applied: false,
+            assetIds: textureAssetIds(environment.environmentMap),
+            intent: environment.environmentMap.intent,
+            mode: environment.environmentMap.mode,
+          },
+    lightProbes: (environment?.lightProbes ?? []).map((probe) => ({
+      applied: false,
+      assetIds: textureAssetIds(probe.source),
+      id: probe.id,
+      intent: probe.intent,
+    })),
+    skybox:
+      environment?.skybox === undefined
+        ? undefined
+        : {
+            applied: false,
+            assetIds: textureAssetIds(environment.skybox),
+            mode: environment.skybox.mode,
+          },
+  };
+}
+
+function firstTextureUrl(source: IEnvironmentTextureSourceIr, resolved: ReadonlyMap<string, { url: string }>): string | undefined {
+  return textureAssetIds(source)
+    .map((assetId) => resolved.get(assetId)?.url)
+    .find((url): url is string => url !== undefined);
+}
+
+function textureAssetIds(source: IEnvironmentTextureSourceIr): string[] {
+  if (source.mode === "equirect") {
+    return [source.asset];
+  }
+  return [
+    source.faces.positiveX,
+    source.faces.negativeX,
+    source.faces.positiveY,
+    source.faces.negativeY,
+    source.faces.positiveZ,
+    source.faces.negativeZ,
+  ];
 }
 
 function colorString(color: string | readonly [number, number, number]): string {

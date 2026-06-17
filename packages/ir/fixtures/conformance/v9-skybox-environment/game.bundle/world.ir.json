@@ -3,6 +3,92 @@
   "version": "0.1.0",
   "entities": [
     {
+      "id": "camera.main",
+      "components": {
+        "Camera": {
+          "far": 100,
+          "fovY": 55,
+          "kind": "perspective",
+          "near": 0.1
+        },
+        "Transform": {
+          "position": [
+            0,
+            2.1,
+            5.4
+          ],
+          "rotation": [
+            -0.173648,
+            0,
+            0,
+            0.984808
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      }
+    },
+    {
+      "id": "mesh.ground",
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.ground",
+          "mesh": "mesh.ground",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      }
+    },
+    {
+      "id": "mesh.reflector",
+      "components": {
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.reflector",
+          "mesh": "mesh.reflector",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            0,
+            0.75,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      }
+    },
+    {
       "id": "light.key",
       "components": {
         "Light": {
@@ -102,6 +188,9 @@
     }
   ],
   "resources": {
+    "ActiveCamera": {
+      "entity": "camera.main"
+    },
     "RenderingLightBudget": {
       "cullingPolicy": "nearest",
       "maximumShadowedPointLights": 0,

@@ -53,6 +53,30 @@ export interface IRuntimeFogEvidence {
   ok: boolean;
 }
 
+export interface IV9RenderingLightsVisualReport {
+  artifacts: {
+    bevyScreenshotPath: string;
+    bundleHash: string;
+    contactSheetPath: string;
+    diffPath: string;
+    reportPath: string;
+    webScreenshotPath: string;
+  };
+  diagnostics: Array<{ code: string; message: string; severity: "error" }>;
+  evidence: {
+    bevyNonblank: ReturnType<typeof analyzeNonblank>;
+    requiredRegions: string[];
+    webNonblank: ReturnType<typeof analyzeNonblank>;
+  };
+  regions: IRenderingQualityRegionMetric[];
+  renderers: {
+    bevy: "native-capture";
+    threejs: "web-preview";
+  };
+  status: "fail" | "pass";
+  visualComparison: IFrameComparison;
+}
+
 export type RenderingQualityScreenshotCapturer = (options: {
   artifactDir: string;
   bundlePath: string;
@@ -132,6 +156,84 @@ export async function verifyRenderingQualityVisual(options: {
   return report;
 }
 
+export async function verifyV9RenderingLightsVisual(options: {
+  artifactDir: string;
+  bundlePath: string;
+  screenshotCapturer?: RenderingQualityScreenshotCapturer;
+}): Promise<IV9RenderingLightsVisualReport> {
+  await mkdir(options.artifactDir, { recursive: true });
+  const bundle = await loadBundle(options.bundlePath);
+  const cameraId = activeCameraId(bundle) ?? "camera.main";
+  const capture = await (options.screenshotCapturer ?? captureRenderingQualityScreenshots)({
+    artifactDir: options.artifactDir,
+    bundlePath: options.bundlePath,
+    cameraId,
+  });
+  const web = await readPngFrame(capture.webScreenshotPath);
+  const bevy = await readPngFrame(capture.bevyScreenshotPath);
+  const diagnostics: IV9RenderingLightsVisualReport["diagnostics"] = [];
+  const webNonblank = analyzeNonblank(web);
+  const bevyNonblank = analyzeNonblank(bevy);
+  if (!webNonblank.ok) {
+    diagnostics.push({ code: "TN_V9_RENDERING_LIGHTS_WEB_BLANK", message: `Web screenshot is blank or near-blank: ${capture.webScreenshotPath}`, severity: "error" });
+  }
+  if (!bevyNonblank.ok) {
+    diagnostics.push({ code: "TN_V9_RENDERING_LIGHTS_BEVY_BLANK", message: `Bevy screenshot is blank or near-blank: ${capture.bevyScreenshotPath}`, severity: "error" });
+  }
+
+  const regions = analyzeV9RenderingLightsParity(web, bevy).regions;
+  const requiredRegions = ["skybox", "reflection-probe", "point-shadow-pcf", "dense-hlod", "debug-gizmo"];
+  for (const name of requiredRegions) {
+    if (!regions.some((region) => region.name === name)) {
+      diagnostics.push({
+        code: "TN_V9_RENDERING_LIGHTS_REGION_MISSING",
+        message: `Required V9 visual evidence region '${name}' was not sampled.`,
+        severity: "error",
+      });
+    }
+  }
+  for (const region of regions) {
+    if (!region.ok) {
+      diagnostics.push({
+        code: "TN_V9_RENDERING_LIGHTS_REGION_DRIFT",
+        message: `Region '${region.name}' exceeds thresholds: changed ${region.comparison.changedPixelRatio.toFixed(4)}, brightness ${region.comparison.averageBrightnessDelta.toFixed(4)}, RGB ${region.comparison.averageColorDelta.red.toFixed(4)}/${region.comparison.averageColorDelta.green.toFixed(4)}/${region.comparison.averageColorDelta.blue.toFixed(4)}.`,
+        severity: "error",
+      });
+    }
+  }
+
+  const contactSheetPath = resolve(options.artifactDir, "contact-sheet.png");
+  const diffPath = resolve(options.artifactDir, "diff.png");
+  await writeContactSheet(contactSheetPath, capture.webScreenshotPath, capture.bevyScreenshotPath);
+  await writeDiff(diffPath, web, bevy);
+  const reportPath = resolve(options.artifactDir, "v9-rendering-lights-visual-report.json");
+  const report: IV9RenderingLightsVisualReport = {
+    artifacts: {
+      bevyScreenshotPath: capture.bevyScreenshotPath,
+      bundleHash: await hashFile(resolve(options.bundlePath, "manifest.json")),
+      contactSheetPath,
+      diffPath,
+      reportPath,
+      webScreenshotPath: capture.webScreenshotPath,
+    },
+    diagnostics,
+    evidence: {
+      bevyNonblank,
+      requiredRegions,
+      webNonblank,
+    },
+    regions,
+    renderers: {
+      bevy: "native-capture",
+      threejs: "web-preview",
+    },
+    status: diagnostics.length === 0 ? "pass" : "fail",
+    visualComparison: compareFrames(web, bevy),
+  };
+  await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`);
+  return report;
+}
+
 export function analyzeRenderingQualityParity(
   web: IPixelFrame,
   bevy: IPixelFrame,
@@ -148,6 +250,18 @@ export function analyzeRenderingQualityParity(
       web: fogEvidence(web, fogColor),
     },
     regions,
+  };
+}
+
+export function analyzeV9RenderingLightsParity(web: IPixelFrame, bevy: IPixelFrame): Pick<IV9RenderingLightsVisualReport, "regions"> {
+  return {
+    regions: [
+      regionMetric("skybox", web, bevy, { x: 0.18, y: 0.03, width: 0.64, height: 0.18 }, { averageBrightnessDelta: 0.24, averageColorDelta: 0.24, changedPixelRatio: 0.96 }),
+      regionMetric("reflection-probe", web, bevy, { x: 0.4, y: 0.36, width: 0.2, height: 0.24 }, { averageBrightnessDelta: 0.34, averageColorDelta: 0.34, changedPixelRatio: 1 }),
+      regionMetric("point-shadow-pcf", web, bevy, { x: 0.33, y: 0.58, width: 0.34, height: 0.18 }, { averageBrightnessDelta: 0.42, averageColorDelta: 0.42, changedPixelRatio: 1 }),
+      regionMetric("dense-hlod", web, bevy, { x: 0.08, y: 0.36, width: 0.22, height: 0.32 }, { averageBrightnessDelta: 0.45, averageColorDelta: 0.45, changedPixelRatio: 1 }),
+      regionMetric("debug-gizmo", web, bevy, { x: 0.7, y: 0.2, width: 0.22, height: 0.32 }, { averageBrightnessDelta: 0.5, averageColorDelta: 0.5, changedPixelRatio: 1 }),
+    ],
   };
 }
 
@@ -230,7 +344,7 @@ function colorDistance(first: { blue: number; green: number; red: number }, seco
   return Math.hypot(first.red - second.red, first.green - second.green, first.blue - second.blue);
 }
 
-async function captureRenderingQualityScreenshots(options: {
+export async function captureRenderingQualityScreenshots(options: {
   artifactDir: string;
   bundlePath: string;
   cameraId?: string;
@@ -294,7 +408,7 @@ async function assertScreenshotWritten(path: string, runtime: string): Promise<v
   }
 }
 
-async function writeContactSheet(path: string, webPath: string, bevyPath: string): Promise<void> {
+export async function writeContactSheet(path: string, webPath: string, bevyPath: string): Promise<void> {
   const web = PNG.sync.read(await readFile(webPath));
   const bevy = PNG.sync.read(await readFile(bevyPath));
   const sheet = new PNG({ height: Math.max(web.height, bevy.height), width: web.width + bevy.width });
@@ -304,7 +418,7 @@ async function writeContactSheet(path: string, webPath: string, bevyPath: string
   await writeFile(path, PNG.sync.write(sheet));
 }
 
-async function writeDiff(path: string, web: IPixelFrame, bevy: IPixelFrame): Promise<void> {
+export async function writeDiff(path: string, web: IPixelFrame, bevy: IPixelFrame): Promise<void> {
   const diff = new PNG({ height: web.height, width: web.width });
   for (let index = 0; index < diff.data.length; index += 4) {
     diff.data[index] = Math.abs((web.data[index] ?? 0) - (bevy.data[index] ?? 0));

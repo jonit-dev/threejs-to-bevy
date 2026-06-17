@@ -55,6 +55,26 @@
       "id": "model.env.TreeLow",
       "kind": "model",
       "path": "assets/env/tree-low.glb"
+    },
+    {
+      "format": "generated",
+      "id": "mesh.ground",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        8,
+        0.08,
+        8
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.reflector",
+      "kind": "mesh",
+      "primitive": "sphere",
+      "size": [
+        0.85
+      ]
     }
   ]
 }

@@ -2614,7 +2614,7 @@ function validateColorGrading(value: unknown, path: string, diagnostics: IIrDiag
   }
 }
 
-function validateRenderingLightBudget(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+function validateRenderingLightBudget(value: unknown, path: string, diagnostics: IIrDiagnostic[], entities: IWorldIr["entities"]): void {
   if (value === undefined) {
     return;
   }
@@ -2646,6 +2646,32 @@ function validateRenderingLightBudget(value: unknown, path: string, diagnostics:
       path: `${path}/overBudgetSeverity`,
       severity: "error",
     });
+  }
+  if (
+    value.overBudgetSeverity === "error" &&
+    typeof value.maximumVisibleDynamicLights === "number" &&
+    Number.isInteger(value.maximumVisibleDynamicLights) &&
+    value.maximumVisibleDynamicLights >= 0 &&
+    typeof value.maximumShadowedPointLights === "number" &&
+    Number.isInteger(value.maximumShadowedPointLights) &&
+    value.maximumShadowedPointLights >= 0
+  ) {
+    const dynamicLights = entities.filter((entity) => entity.components.Light !== undefined);
+    const shadowedPointLights = dynamicLights.filter((entity) => {
+      const light = entity.components.Light;
+      return light?.kind === "point" && light.shadowFilter !== undefined;
+    });
+    if (dynamicLights.length > value.maximumVisibleDynamicLights || shadowedPointLights.length > value.maximumShadowedPointLights) {
+      diagnostics.push({
+        code: "TN_IR_LIGHT_BUDGET_EXCEEDED",
+        limit: [`maximumVisibleDynamicLights=${value.maximumVisibleDynamicLights}`, `maximumShadowedPointLights=${value.maximumShadowedPointLights}`],
+        message: "RenderingLightBudget is exceeded by authored dynamic lights.",
+        path,
+        severity: "error",
+        suggestion: "Reduce dynamic or shadowed point lights, raise the budget, or use overBudgetSeverity: 'warning' for reporting-only fixtures.",
+        value: `dynamicLights=${dynamicLights.length}; shadowedPointLights=${shadowedPointLights.length}`,
+      });
+    }
   }
 }
 
@@ -3782,7 +3808,7 @@ function validateWorld(world: IWorldIr, path: string, diagnostics: IIrDiagnostic
 
   validateUniqueIds(world.entities, `${path}/entities`, "TN_IR_DUPLICATE_ENTITY_ID", diagnostics);
   validateNavigationResources(world, `${path}/resources`, diagnostics);
-  validateRenderingLightBudget(world.resources?.RenderingLightBudget, `${path}/resources/RenderingLightBudget`, diagnostics);
+  validateRenderingLightBudget(world.resources?.RenderingLightBudget, `${path}/resources/RenderingLightBudget`, diagnostics, world.entities);
   world.entities.forEach((entity, index) => validateRenderComponents(entity, `${path}/entities/${index}`, diagnostics));
   world.entities.forEach((entity, index) => validatePhysicsComponents(entity, `${path}/entities/${index}`, diagnostics));
   world.entities.forEach((entity, index) => validateCharacterComponents(entity, `${path}/entities/${index}`, input, diagnostics));

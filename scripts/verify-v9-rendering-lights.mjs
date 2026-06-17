@@ -2,6 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import { validateBundle } from "../packages/ir/dist/index.js";
+import { verifyV9RenderingLightsVisual } from "../packages/cli/dist/verify/renderingQuality.js";
 import { reportWebConformance } from "../packages/runtime-web-three/dist/conformance.js";
 import { loadBundle } from "../packages/runtime-web-three/dist/loadBundle.js";
 import { mapWorld } from "../packages/runtime-web-three/dist/mapWorld.js";
@@ -19,12 +20,21 @@ if (!validation.ok) {
 
 const bundle = await loadBundle(bundlePath);
 const report = reportWebConformance(bundle, mapWorld(bundle), fixture);
+const visualReport = await verifyV9RenderingLightsVisual({
+  artifactDir: resolve(artifactsRoot, "skybox-environment"),
+  bundlePath,
+});
+if (visualReport.status !== "pass") {
+  console.error(JSON.stringify(visualReport.diagnostics, null, 2));
+  process.exit(1);
+}
 
 const skyboxEnvironment = {
   fixture,
   runtime: report.runtime,
   environment: report.environment,
   validation: { ok: validation.ok, diagnostics: validation.diagnostics },
+  visual: visualReport,
 };
 const lightsShadows = {
   fixture,
@@ -48,6 +58,7 @@ const postProcessing = {
 const aggregate = {
   fixture,
   generatedAt: new Date().toISOString(),
+  status: "pass",
   promoted: [
     "skybox",
     "environment-map",
@@ -58,7 +69,7 @@ const aggregate = {
     "hlod-fades",
     "debug-gizmo-observations",
     "forward-render-path",
-    "color-grading-metadata",
+    "color-grading-tone-mapping-exposure",
   ],
   deferred: [
     "fxaa",
@@ -77,6 +88,13 @@ const aggregate = {
     lightsShadows: "artifacts/v9/rendering-lights/lights-shadows/verification-report.json",
     postProcessing: "artifacts/v9/rendering-lights/post-processing/verification-report.json",
     skyboxEnvironment: "artifacts/v9/rendering-lights/skybox-environment/verification-report.json",
+    visualReport: "artifacts/v9/rendering-lights/skybox-environment/v9-rendering-lights-visual-report.json",
+    visualScreenshots: {
+      bevy: "artifacts/v9/rendering-lights/skybox-environment/bevy.png",
+      contactSheet: "artifacts/v9/rendering-lights/skybox-environment/contact-sheet.png",
+      diff: "artifacts/v9/rendering-lights/skybox-environment/diff.png",
+      web: "artifacts/v9/rendering-lights/skybox-environment/web.png",
+    },
   },
 };
 
