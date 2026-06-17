@@ -95,6 +95,7 @@ async function writeBundle(root: string, targets: string[]): Promise<void> {
       schema: "threenative.bundle",
       version: "0.1.0",
       entry: { world: "world.ir.json" },
+      requiredCapabilities: {},
       files: { assets: "assets.manifest.json", materials: "materials.ir.json", targetProfile: "target.profile.json" },
     }),
   );

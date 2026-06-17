@@ -107,6 +107,66 @@ test("should reject schema unknown component fields", async () => {
   }
 });
 
+test("should reject public renderer plugin escape hatches", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-v10-renderer-plugin-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "manifest.json", {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "v10-boundary-test",
+      requiredCapabilities: { renderer: ["runtime-plugin.custom-pass"] },
+      entry: { world: "world.ir.json" },
+      files: {
+        assets: "assets.manifest.json",
+        materials: "materials.ir.json",
+        targetProfile: "target.profile.json",
+        componentSchemas: "schemas/components.schema.json",
+      },
+    });
+
+    const result = await validateBundle(root);
+    const diagnostic = result.diagnostics.find((item) => item.code === "TN_IR_RENDERER_PLUGIN_UNSUPPORTED");
+
+    assert.equal(result.ok, false);
+    assert.equal(diagnostic?.severity, "error");
+    assert.equal(diagnostic?.path, "manifest.json/requiredCapabilities/renderer");
+    assert.equal(diagnostic?.target, "portable-web-native");
+    assert.match(diagnostic?.suggestion ?? "", /portable plugin contract|SDK\/IR/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject online replication declarations while networking is non-portable", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-v10-networking-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "manifest.json", {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "v10-boundary-test",
+      requiredCapabilities: { networking: ["replication.websocket"] },
+      entry: { world: "world.ir.json" },
+      files: {
+        assets: "assets.manifest.json",
+        materials: "materials.ir.json",
+        targetProfile: "target.profile.json",
+        componentSchemas: "schemas/components.schema.json",
+      },
+    });
+
+    const result = await validateBundle(root);
+    const diagnostic = result.diagnostics.find((item) => item.code === "TN_IR_NETWORKING_UNSUPPORTED");
+
+    assert.equal(result.ok, false);
+    assert.equal(diagnostic?.target, "portable-web-native");
+    assert.match(diagnostic?.suggestion ?? "", /networking PRD|resources\/events/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject schema unknown resource fields", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-schema-resource-extra-"));
   try {

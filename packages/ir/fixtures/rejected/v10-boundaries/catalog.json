@@ -1,0 +1,48 @@
+{
+  "schema": "threenative.rejected-fixtures.v10-boundaries",
+  "version": "0.1.0",
+  "fixtures": [
+    {
+      "id": "direct-bevy-authoring",
+      "requiredCapabilities": { "native": ["bevy.system"] },
+      "expectedDiagnostic": "TN_IR_NATIVE_AUTHORING_UNSUPPORTED",
+      "ownerPrd": "docs/PRDs/v10/V10-01-scope-triage-and-release-gate.md"
+    },
+    {
+      "id": "raw-three-source",
+      "requiredCapabilities": { "renderer": ["raw-three.scene"] },
+      "expectedDiagnostic": "TN_IR_RAW_THREE_SOURCE_UNSUPPORTED",
+      "ownerPrd": "docs/PRDs/v10/V10-01-scope-triage-and-release-gate.md"
+    },
+    {
+      "id": "renderer-plugin-escape",
+      "requiredCapabilities": { "renderer": ["runtime-plugin.custom-pass"] },
+      "expectedDiagnostic": "TN_IR_RENDERER_PLUGIN_UNSUPPORTED",
+      "ownerPrd": "docs/PRDs/v10/V10-01-scope-triage-and-release-gate.md"
+    },
+    {
+      "id": "online-replication",
+      "requiredCapabilities": { "networking": ["replication.websocket"] },
+      "expectedDiagnostic": "TN_IR_NETWORKING_UNSUPPORTED",
+      "ownerPrd": "docs/PRDs/v10/V10-01-scope-triage-and-release-gate.md"
+    },
+    {
+      "id": "two-dimensional-workflow",
+      "requiredCapabilities": { "workflow": ["tilemap.ldtk"] },
+      "expectedDiagnostic": "TN_IR_2D_WORKFLOW_UNSUPPORTED",
+      "ownerPrd": "docs/PRDs/v10/V10-01-scope-triage-and-release-gate.md"
+    },
+    {
+      "id": "platform-api",
+      "requiredCapabilities": { "platform-api": ["filesystem.worker.timer"] },
+      "expectedDiagnostic": "TN_IR_PLATFORM_API_UNSUPPORTED",
+      "ownerPrd": "docs/PRDs/v10/V10-01-scope-triage-and-release-gate.md"
+    },
+    {
+      "id": "backend-only",
+      "requiredCapabilities": { "backend-only": ["server-rendered-matchmaking"] },
+      "expectedDiagnostic": "TN_IR_PLATFORM_API_UNSUPPORTED",
+      "ownerPrd": "docs/PRDs/v10/V10-01-scope-triage-and-release-gate.md"
+    }
+  ]
+}
