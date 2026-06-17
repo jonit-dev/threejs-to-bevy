@@ -39,8 +39,8 @@ platform packaging work, and intentionally non-portable boundaries.
 ## Checklist Coverage
 
 This PRD owns the V10 planning and gate mechanics for the current final-gap
-runtime/platform batch. Feature implementation is split across V10-02 and
-V10-04.
+runtime/platform batch. Feature implementation is split across V10-02, V10-03,
+and V10-04.
 
 Retained editor UI, visual inspector panels, and broader authoring-tool UX are
 left unowned by this V10 batch by request and should remain unchecked until a
@@ -71,7 +71,7 @@ covered by explicit diagnostic and documentation tests.
 **Full user flow:**
 
 1. Contributor selects a remaining parity item from `docs/bevy-feature-parity.md`.
-2. The V10 README maps the item to V10-02, V10-04, or a non-portable
+2. The V10 README maps the item to V10-02, V10-03, V10-04, or a non-portable
    diagnostic boundary.
 3. Implementation promotes the item through the portable SDK/IR/runtime path or
    adds stable unsupported diagnostics with tests.
@@ -198,7 +198,7 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Run focused gates from V10-02 and V10-04 after they exist.
+- [ ] Run focused gates from V10-02, V10-03, and V10-04 after they exist.
 - [ ] Write `artifacts/v10/verification-report.json` with command summaries,
   diagnostics, promoted/deferred feature lists, artifact paths, and durations.
 - [ ] Fail when a V10 PRD claims completion but the focused gate is missing from

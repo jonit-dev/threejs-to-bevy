@@ -41,7 +41,8 @@ are future implementation gates; the current active release command remains
 V10 planning now exists under `docs/PRDs/v10/README.md`. V10 is the current
 final-gap triage batch for remaining runtime/platform parity rows after the V9
 push: advanced renderer/material/physics features, production platform/audio/
-asset extension policy, packaging, and explicit non-portable diagnostics.
+asset extension policy, packaging, cross-runtime visual calibration, and
+explicit non-portable diagnostics.
 Retained editor UI and visual inspector UX are intentionally outside this V10
 batch until a dedicated editor/UI planning pass is requested. V10 commands such
 as `pnpm verify:v10` and `pnpm check:quality:v10` are planned future gates, not

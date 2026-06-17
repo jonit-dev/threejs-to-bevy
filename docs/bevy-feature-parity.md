@@ -41,6 +41,9 @@ implementation:
   for intentionally non-portable boundaries.
 - `V10-02` owns advanced renderer, lighting, material/shader, post-processing,
   native-instancing, dynamic mesh-collider, and high-end physics residuals.
+- `V10-03` owns cross-runtime visual calibration experiments for isolated
+  color, material, lighting, atmosphere, post-processing, geometry, dense
+  content, and combined-scene look-and-feel parity.
 - `V10-04` owns production platform work: custom asset/audio extension policy,
   streaming diagnostics, cloud-save boundary, signed/mobile packaging, profiler
   maturity, and release hardening.
