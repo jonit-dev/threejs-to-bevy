@@ -143,3 +143,24 @@ test("builds v8 overlay example", async () => {
   assert.ok(manifest.requiredCapabilities.overlay.includes("input.pointer"));
   assert.equal(overlays.overlays[0].id, "inventory");
 });
+
+test("should build the V9 support example without nonportable fields", async () => {
+  const projectPath = resolve(process.cwd(), "../../examples/v9-support");
+  const { bundlePath } = await buildProject(projectPath);
+  const report = await validateBundle(bundlePath);
+  const manifest = JSON.parse(await readFile(resolve(bundlePath, "manifest.json"), "utf8"));
+  const audio = JSON.parse(await readFile(resolve(bundlePath, "audio.ir.json"), "utf8"));
+  const localData = JSON.parse(await readFile(resolve(bundlePath, "local-data.ir.json"), "utf8"));
+
+  assert.equal(bundlePath, resolve(projectPath, "dist/v9-support.bundle"));
+  assert.equal(report.ok, true);
+  assert.equal(manifest.entry.audio, "audio.ir.json");
+  assert.equal(manifest.entry.localData, "local-data.ir.json");
+  assert.ok(manifest.requiredCapabilities.audio.includes("spatial-emitter"));
+  assert.ok(manifest.requiredCapabilities.localData.includes("save-slots"));
+  assert.equal(audio.emitters[0]?.attenuation.curve, "inverse");
+  assert.equal(audio.musicTransitions[0]?.kind, "crossfade");
+  assert.equal(localData.resources[0]?.id, "SupportProgress");
+  assert.equal(JSON.stringify(localData).includes("runtimeHandle"), false);
+  assert.equal(JSON.stringify(localData).includes("nativeHandle"), false);
+});

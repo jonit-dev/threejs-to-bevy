@@ -17,7 +17,14 @@ export type {
   IConformanceUiNodeReport,
   IConformanceUiReport,
 } from "./conformanceReport.js";
-export type { IRuntimeDiagnostic } from "./runtimeDiagnostics.js";
+export {
+  diagnoseUnsupportedRuntimeDeclarations,
+  validateRuntimeDiagnosticReport,
+  type IRuntimeDiagnostic,
+  type IRuntimeDiagnosticReport,
+  type IRuntimeDiagnosticsValidationResult,
+  type RuntimeDiagnosticSeverity,
+} from "./runtimeDiagnostics.js";
 export {
   validateAssetReloadReport,
   type AssetReloadChangeKind,
@@ -97,9 +104,21 @@ export type {
   IAnimationsIr,
   IAtmosphereProfileIr,
   IAudioIr,
+  IAudioBusIr,
+  IAudioDuckingRuleIr,
+  IAudioEmitterIr,
+  IAudioListenerIr,
   IAudioMusicIr,
+  IAudioMusicTransitionIr,
   IAudioOneShotIr,
+  IAudioToneIr,
   IBundleManifest,
+  ILocalDataAutosaveIr,
+  ILocalDataIr,
+  ILocalDataMigrationIr,
+  ILocalDataSaveSlotIr,
+  ILocalDataSchemaEntryIr,
+  ILocalDataSettingIr,
   IActiveCameraResource,
   IActiveCamerasResource,
   ICameraClear,
@@ -168,9 +187,15 @@ export {
   type OverlayTargetProfile,
 } from "./overlays.js";
 export {
+  buildEditorInspectorSnapshot,
   diffEditorProjectSnapshots,
+  validateEditorPropertyEdit,
   validateEditorProjectSnapshot,
   type EditorProjectDiffOperation,
+  type IEditorEditableProperty,
+  type IEditorHotReloadPolicy,
+  type IEditorInspectorNode,
+  type IEditorInspectorSnapshot,
   type IEditorProjectSnapshot,
 } from "./editorProject.js";
 export {

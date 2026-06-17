@@ -476,7 +476,8 @@ sequenceDiagram
    gamepad controls.
 3. **Runtime Proof:** Run `pnpm verify:v9:editor-support` to capture inspector
    JSON, structured before/after diff, panel screenshot, scene viewer
-   screenshot, asset preview report, and gamepad viewer report.
+   screenshot, asset preview report, and gamepad viewer report under
+   `artifacts/v9/editor-support/`.
 4. **Evidence Required:** the edit round trip modifies only structured bundle
    data, validates before save, and emits repair hints for hot reload policy
    rejections.

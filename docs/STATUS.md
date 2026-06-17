@@ -1043,6 +1043,19 @@ active, paused, seek, stop, and query state deterministically. Platform-native
 audio handles, mixer effects, real spatial attenuation, streaming, and richer
 runtime audio services remain later work.
 
+V9-06 Phase 1 has landed a focused audio support slice. `audio.ir.json` now
+accepts bounded `linear` / `inverse` / `exponential` attenuation metadata,
+listener bindings to the active camera or an entity, routed bus gain/mute/solo
+and parent metadata, one portable ducking rule shape, pitch scalars, generated
+`sine` / `square` / `noise` tone descriptors, and state-driven music transition
+rules with deterministic playback ids. The SDK captures those declarations, the
+compiler emits stable audio JSON, web and Bevy expose matching deterministic
+support observations for listener movement attenuation, ducking, tones, and
+music transitions, and IR diagnostics now reject streaming/network audio,
+platform-native handles, decoder plugins, and unsupported effect chains with
+specific `TN_IR_AUDIO_*` codes. This is still deterministic observation support,
+not a claim of full live mixer/effects/audio-device parity.
+
 The retained UI P0 flex-layout gap is also closed for portable HUD/container
 composition. UI nodes now carry validated `layout` metadata for flex direction,
 alignment, justification, row/column gaps, padding, size, and grow; the web DOM
@@ -1086,6 +1099,66 @@ under `artifacts/v9/animation-state/`, `artifacts/v9/animation-blending/`,
 and `artifacts/v9/animation-particles/`. Animation masks/layers, morph-target
 animation, retargeting, IK, UI/property animation, arbitrary blend trees, and
 GPU/external-shader particle systems remain deferred with explicit diagnostics.
+
+V9-06 local data now has a schema-backed Phase 2 slice: SDK persistence
+declarations lower through the compiler into `local-data.ir.json`, bundle
+manifests carry the optional local-data entry, IR validation rejects non-portable
+runtime/native/renderer/platform handles and missing migration metadata, the web
+runtime exposes deterministic save-slot/settings helpers that restore only
+declared resources/components, and Bevy loads the local-data document and reports
+native migration diagnostics for missing or forward-incompatible save versions.
+This proves local-only save/settings contracts and autosave checkpoint metadata;
+durable platform storage backends and cloud/account-bound saves remain later
+work.
+
+V9-06 diagnostics/debug draw now has a Phase 3 evidence slice:
+`packages/sdk/src/debug.ts` captures lines, rays, bounds, spheres, boxes, labels,
+transform axes, camera frustums, light volumes, UI node rectangles, FPS overlay
+settings, custom counters, platform-audio diagnostics, unsupported-feature
+diagnostics, and unsupported-networking diagnostics. `runtimeDiagnostics`
+validates report shape and emits stable networking/feature rejection diagnostics,
+web exposes a deterministic debug overlay model for FPS/counters/diagnostic
+rows and draw primitives, Bevy exposes a matching native debug overlay
+observation report, and `pnpm verify:v9:diagnostics-support` writes the focused
+artifact set under `artifacts/v9/diagnostics-support/`. Runtime networking
+services remain explicitly out of scope.
+
+V9-06 editor tooling now has a Phase 4 slice on top of the V8 structured editor
+track: `tn editor inspect` emits deterministic hierarchy, editable property
+paths, asset references, diagnostics, and hot-reload policy metadata from bundle
+JSON; `tn editor set` applies a single JSON-pointer edit through the same
+structured bundle documents and validates the temp bundle before writing;
+`editorProject` rejects runtime-only property edits; the web runtime exposes
+local inspector panel models for hierarchy, properties, scene viewer, asset
+preview, and gamepad viewer; editor gizmo overlays compose existing
+debug/editor-only line geometry for transforms, lights, bounds, cameras, and UI
+nodes; and `pnpm verify:v9:editor-support` writes the focused inspector,
+structured-diff, panel, scene-viewer, asset-preview, and gamepad-viewer evidence
+under `artifacts/v9/editor-support/`. A full visual editor app and
+state-preserving hot reload remain later work.
+
+V9-06 target profiles and stress/profiler evidence now have a Phase 5 slice:
+performance profiles can declare support target categories, required
+capabilities, repair hints, and profiler metadata for local data, audio,
+desktop web/native, diagnostics overlays, and local editor support. The CLI has
+a stable package repair-hint diagnostic shape, web performance summaries can
+carry support metrics for audio voices, debug draw, local-data slots, UI nodes,
+save latency, and memory estimate, and native conformance reports now include a
+deterministic support profiler summary plus a GPU timing unavailable warning
+when that capability is not present. `pnpm verify:v9:stress-support` writes the
+focused large-scene metrics, profiler summary, and repair-hint artifacts under
+`artifacts/v9/stress-support/`. This does not claim full live browser or native
+platform profiler capture parity.
+
+V9-06 aggregate support gate evidence now ties the support slices together.
+`examples/v9-support` builds to a validated bundle with `audio.ir.json` and
+`local-data.ir.json`, `check:docs:v9` guards the PRD/status/parity support
+claims and explicit deferrals, `pnpm verify:v9:support` runs the audio,
+local-data, diagnostics, editor, stress, and shared conformance checks, and the
+aggregate report is written to `artifacts/v9/support/verification-report.json`.
+Cloud save, streaming/network audio, runtime networking, signed installers,
+online publishing, collaboration, raw Three.js authoring, and direct Bevy
+authoring remain explicitly deferred.
 
 ## V3 Proves
 

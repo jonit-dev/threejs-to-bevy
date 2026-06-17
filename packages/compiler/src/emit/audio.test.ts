@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { BoxGeometry, Mesh, MeshStandardMaterial, Scene, audioAsset, audioBus, audioListener, audioPlaybackControl, defineAudio, loopingMusic, oneShotSound, spatialAudioEmitter } from "@threenative/sdk";
+import { BoxGeometry, Mesh, MeshStandardMaterial, Scene, audioAsset, audioBus, audioDuckingRule, audioListener, audioPlaybackControl, defineAudio, generatedTone, loopingMusic, musicTransition, oneShotSound, spatialAudioEmitter } from "@threenative/sdk";
 import { validateBundle } from "@threenative/ir";
 
 import { emitAudio } from "./audio.js";
@@ -56,6 +56,50 @@ test("audio should emit playback controls", () => {
     { id: "music.pause", kind: "pause", target: "music.arena" },
     { at: 10, id: "music.seek", kind: "seek", target: "music.arena" },
   ]);
+});
+
+test("should emit routed audio and generated tone metadata when declared in SDK", () => {
+  const audio = emitAudio(
+    defineAudio({
+      buses: [
+        audioBus("bus.master", { gain: 1 }),
+        audioBus("bus.music", { gain: 0.8, parent: "bus.master" }),
+        audioBus("bus.sfx", { mute: false, solo: false, volume: 0.9 }),
+      ],
+      duckingRules: [audioDuckingRule("duck.music", { attack: 0.05, gain: 0.35, release: 0.2, sourceBus: "bus.sfx", targetBus: "bus.music" })],
+      emitters: [spatialAudioEmitter("emitter.alarm", { attenuation: { curve: "inverse", maxDistance: 24, minDistance: 1, rolloffFactor: 1 }, position: [2, 0, 0] })],
+      listeners: [audioListener("listener.main", { binding: { kind: "activeCamera" }, position: [0, 0, 0] })],
+      music: [
+        loopingMusic("music.intro", { asset: "intro.music", bus: "bus.music", pitch: 1 }),
+        loopingMusic("music.loop", { asset: "loop.music", bus: "bus.music" }),
+      ],
+      musicTransitions: [
+        musicTransition("transition.loop", { duration: 2, from: "music.intro", kind: "crossfade", playbackId: "music.state.loop", state: "playing", to: "music.loop" }),
+      ],
+      oneShots: [oneShotSound("sound.alarm", { asset: "alarm.sound", bus: "bus.sfx", emitter: "emitter.alarm", event: "AlarmEvent", pitch: 1.25 })],
+      tones: [generatedTone("tone.confirm", { bus: "bus.sfx", duration: 0.25, frequency: 880, volume: 0.2, waveform: "sine" })],
+    }),
+  );
+
+  assert.deepEqual(audio, {
+    schema: "threenative.audio",
+    version: "0.1.0",
+    buses: [
+      { gain: 1, id: "bus.master" },
+      { gain: 0.8, id: "bus.music", parent: "bus.master" },
+      { id: "bus.sfx", mute: false, solo: false, volume: 0.9 },
+    ],
+    duckingRules: [{ attack: 0.05, gain: 0.35, id: "duck.music", release: 0.2, sourceBus: "bus.sfx", targetBus: "bus.music" }],
+    emitters: [{ attenuation: { curve: "inverse", maxDistance: 24, minDistance: 1, rolloffFactor: 1 }, id: "emitter.alarm", position: [2, 0, 0] }],
+    listeners: [{ binding: { kind: "activeCamera" }, id: "listener.main", position: [0, 0, 0] }],
+    music: [
+      { asset: "intro.music", autoplay: true, bus: "bus.music", id: "music.intro", loop: true, pitch: 1 },
+      { asset: "loop.music", autoplay: true, bus: "bus.music", id: "music.loop", loop: true },
+    ],
+    musicTransitions: [{ duration: 2, from: "music.intro", id: "transition.loop", kind: "crossfade", playbackId: "music.state.loop", state: "playing", to: "music.loop" }],
+    oneShots: [{ asset: "alarm.sound", bus: "bus.sfx", emitter: "emitter.alarm", event: "AlarmEvent", id: "sound.alarm", pitch: 1.25 }],
+    tones: [{ bus: "bus.sfx", duration: 0.25, frequency: 880, id: "tone.confirm", volume: 0.2, waveform: "sine" }],
+  });
 });
 
 test("audio should emit bundle assets and validate playback declarations", async () => {

@@ -14,6 +14,7 @@
     "check:docs:v6": "node scripts/check-docs-v6.mjs",
     "check:docs:v7": "node scripts/check-docs-v7.mjs",
     "check:docs:v8": "node scripts/check-docs-v8.mjs",
+    "check:docs:v9": "node scripts/check-docs-v9.mjs",
     "lint": "pnpm -r --if-present lint",
     "test": "pnpm -r --if-present test && node --test scripts/*.test.mjs",
     "tn": "pnpm --filter @threenative/sdk build && pnpm --filter @threenative/ir build && pnpm --filter @threenative/compiler build && pnpm --filter @threenative/runtime-web-three build && pnpm --filter @threenative/cli build && pnpm --filter @threenative/cli tn",
@@ -45,7 +46,13 @@
     "verify:v9:physics-character": "node scripts/verify-v9-physics-character.mjs",
     "verify:v9:assets-gltf-scene-workflow": "pnpm --filter @threenative/cli build && pnpm --filter @threenative/ir build && pnpm --filter @threenative/runtime-web-three build && node scripts/verify-v9-assets-gltf-scene-workflow.mjs",
     "verify:v9:rendering-lights": "pnpm --filter @threenative/ir build && pnpm --filter @threenative/runtime-web-three build && pnpm --filter @threenative/cli build && node scripts/verify-v9-rendering-lights.mjs",
-    "verify:v9:input-ui-accessibility": "node scripts/verify-v9-input-ui-accessibility.mjs"
+    "verify:v9:input-ui-accessibility": "node scripts/verify-v9-input-ui-accessibility.mjs",
+    "verify:v9:audio-support": "node scripts/verify-v9-audio-support.mjs",
+    "verify:v9:local-data-support": "node scripts/verify-v9-local-data-support.mjs",
+    "verify:v9:diagnostics-support": "node scripts/verify-v9-diagnostics-support.mjs",
+    "verify:v9:editor-support": "node scripts/verify-v9-editor-support.mjs",
+    "verify:v9:stress-support": "node scripts/verify-v9-stress-support.mjs",
+    "verify:v9:support": "node scripts/verify-v9-support.mjs"
   },
   "devDependencies": {
     "react": "^19.2.7",

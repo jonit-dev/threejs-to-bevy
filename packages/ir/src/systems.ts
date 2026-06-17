@@ -13,7 +13,15 @@ export type IrSystemService =
   | "physics.shapeCast"
   | "navigation.path"
   | "picking.mesh"
-  | "picking.pointerRay";
+  | "picking.pointerRay"
+  | "persistence.delete"
+  | "persistence.listSlots"
+  | "persistence.load"
+  | "persistence.save"
+  | "settings.export"
+  | "settings.get"
+  | "settings.import"
+  | "settings.set";
 
 export type IrSystemCommand =
   | {

@@ -2,8 +2,10 @@ import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, resolve } from "node:path";
 import {
-  diffEditorProjectSnapshots,
   buildSceneInspectionReport,
+  buildEditorInspectorSnapshot,
+  diffEditorProjectSnapshots,
+  validateEditorPropertyEdit,
   validateEditorProjectSnapshot,
   type IAssetsManifest,
   type IBundleManifest,
@@ -27,6 +29,7 @@ type EditorDiagnostic = Omit<IIrDiagnostic, "value"> & { value?: unknown };
 const usage = [
   "tn editor snapshot --bundle <path> [--out <path>] [--json]",
   "tn editor inspect --bundle <path> [--out <path>] [--json]",
+  "tn editor set --bundle <path> --path <json-pointer> --value <json> [--json]",
   "tn editor apply --snapshot <path> --bundle <path> [--json]",
   "tn editor diff --before <path> --after <path> [--json]",
 ].join("\n");
@@ -44,6 +47,10 @@ export async function editorCommand(argv: readonly string[], options: IEditorOpt
 
   if (subcommand === "inspect") {
     return inspectCommand(commandArgv, cwd, json);
+  }
+
+  if (subcommand === "set") {
+    return setCommand(commandArgv, cwd, json);
   }
 
   if (subcommand === "apply") {
@@ -83,17 +90,18 @@ async function inspectCommand(argv: readonly string[], cwd: string, json: boolea
     return diagnosticsResult("TN_EDITOR_INSPECT_BUNDLE_INVALID", "Editor inspect requires a valid bundle.", validation.diagnostics, json);
   }
 
-  const manifest = await readJsonFile<IBundleManifest>(resolve(bundlePath, "manifest.json"), "manifest.json");
-  if (manifest.ok === false) {
-    return diagnosticResult(editorDiagnosticPayload(manifest.diagnostic), { exitCode: 1, json, stderr: !json });
+  const documents = await readBundleDocuments(bundlePath);
+  if (documents.ok === false) {
+    return diagnosticResult(editorDiagnosticPayload(documents.diagnostic), { exitCode: 1, json, stderr: !json });
   }
-  const assets = await readJsonFile<IAssetsManifest>(resolve(bundlePath, manifest.value.files.assets), manifest.value.files.assets);
-  const materials = await readJsonFile<IMaterialsIr>(resolve(bundlePath, manifest.value.files.materials), manifest.value.files.materials);
-  const world = await readJsonFile<IWorldIr>(resolve(bundlePath, manifest.value.entry.world), manifest.value.entry.world);
+  const manifest = documents.manifest;
+  const assets = await readJsonFile<IAssetsManifest>(resolve(bundlePath, manifest.files.assets), manifest.files.assets);
+  const materials = await readJsonFile<IMaterialsIr>(resolve(bundlePath, manifest.files.materials), manifest.files.materials);
+  const world = await readJsonFile<IWorldIr>(resolve(bundlePath, manifest.entry.world), manifest.entry.world);
   const gltfScene =
-    manifest.value.files.gltfScene === undefined
+    manifest.files.gltfScene === undefined
       ? undefined
-      : await readJsonFile<IGltfSceneMetadataIr>(resolve(bundlePath, manifest.value.files.gltfScene), manifest.value.files.gltfScene);
+      : await readJsonFile<IGltfSceneMetadataIr>(resolve(bundlePath, manifest.files.gltfScene), manifest.files.gltfScene);
   if (assets.ok === false) {
     return diagnosticResult(editorDiagnosticPayload(assets.diagnostic), { exitCode: 1, json, stderr: !json });
   }
@@ -111,10 +119,11 @@ async function inspectCommand(argv: readonly string[], cwd: string, json: boolea
     assets: assets.value,
     diagnostics: [],
     ...(gltfScene === undefined ? {} : { gltfScene: gltfScene.value }),
-    manifest: manifest.value,
+    manifest,
     materials: materials.value,
     world: world.value,
   });
+  const inspector = buildEditorInspectorSnapshot(documents.documents);
   const outArg = flagValue(argv, "--out");
   if (outArg !== undefined) {
     const outPath = resolve(cwd, outArg);
@@ -131,14 +140,90 @@ async function inspectCommand(argv: readonly string[], cwd: string, json: boolea
     return { exitCode: 0, stdout: json ? `${JSON.stringify(payload, null, 2)}\n` : `${payload.message}\n` };
   }
 
+  const payload = {
+    assetRefs: inspector.assetRefs,
+    code: "TN_EDITOR_INSPECT_OK",
+    diagnostics: inspector.diagnostics,
+    editableProperties: inspector.editableProperties,
+    hierarchy: inspector.hierarchy,
+    hotReload: inspector.hotReload,
+    message: `Editor inspect found ${inspector.hierarchy.length} root node(s), ${inspector.editableProperties.length} editable path(s), and ${report.assets.length} inspected asset(s).`,
+    path: bundlePath,
+    sceneInspection: {
+      assets: report.assets.length,
+      documents: report.bundle.documents,
+      entities: report.entities.length,
+      gltfAssets: report.gltfAssets.length,
+      schema: report.schema,
+      version: report.version,
+    },
+  };
   if (json) {
-    return { exitCode: 0, stdout: `${JSON.stringify(report, null, 2)}\n` };
+    return { exitCode: 0, stdout: `${JSON.stringify(payload, null, 2)}\n` };
   }
 
   return {
     exitCode: 0,
-    stdout: `Scene inspection: ${report.assets.length} asset(s), ${report.entities.length} entit${report.entities.length === 1 ? "y" : "ies"}, ${report.gltfAssets.length} glTF asset(s).\n`,
+    stdout: `${payload.message}\n`,
   };
+}
+
+async function setCommand(argv: readonly string[], cwd: string, json: boolean): Promise<ICommandResult> {
+  const bundleArg = flagValue(argv, "--bundle");
+  const pathArg = flagValue(argv, "--path");
+  const valueArg = flagValue(argv, "--value");
+  if (bundleArg === undefined || pathArg === undefined || valueArg === undefined) {
+    return diagnosticResult(
+      {
+        code: "TN_EDITOR_SET_INPUT_MISSING",
+        message: "Editor set requires --bundle <path> --path <json-pointer> --value <json>.",
+        usage,
+      },
+      { exitCode: 1, json, stderr: !json },
+    );
+  }
+  const pathDiagnostics = validateEditorPropertyEdit(pathArg);
+  if (pathDiagnostics.length > 0) {
+    return diagnosticsResult("TN_EDITOR_SET_PATH_INVALID", "Editor set path is invalid.", pathDiagnostics, json);
+  }
+  let value: unknown;
+  try {
+    value = JSON.parse(valueArg);
+  } catch {
+    value = valueArg;
+  }
+  const bundlePath = resolve(cwd, bundleArg);
+  const documents = await readBundleDocuments(bundlePath);
+  if (documents.ok === false) {
+    return diagnosticResult(editorDiagnosticPayload(documents.diagnostic), { exitCode: 1, json, stderr: !json });
+  }
+  const edit = applyDocumentEdit(documents.documents, pathArg, value);
+  if (edit.ok === false) {
+    return diagnosticsResult("TN_EDITOR_SET_PATH_INVALID", "Editor set path is invalid.", [edit.diagnostic], json);
+  }
+  let tempRoot: string | undefined;
+  try {
+    tempRoot = await mkdtemp(resolve(tmpdir(), "tn-editor-set-"));
+    const tempBundle = resolve(tempRoot, "game.bundle");
+    await cp(bundlePath, tempBundle, { recursive: true });
+    await writeFile(resolve(tempBundle, edit.document), `${JSON.stringify(documents.documents[edit.document], null, 2)}\n`);
+    const validation = await validateBundle(tempBundle);
+    if (!validation.ok) {
+      return diagnosticsResult("TN_EDITOR_SET_BUNDLE_INVALID", "Editor set produced an invalid bundle.", validation.diagnostics, json);
+    }
+    await writeFile(resolve(bundlePath, edit.document), `${JSON.stringify(documents.documents[edit.document], null, 2)}\n`);
+  } finally {
+    if (tempRoot !== undefined) {
+      await rm(tempRoot, { force: true, recursive: true });
+    }
+  }
+  const payload = {
+    code: "TN_EDITOR_SET_OK",
+    document: edit.document,
+    message: `Editor set updated ${pathArg}.`,
+    path: pathArg,
+  };
+  return { exitCode: 0, stdout: json ? `${JSON.stringify(payload, null, 2)}\n` : `${payload.message}\n` };
 }
 
 async function applyCommand(argv: readonly string[], cwd: string, json: boolean): Promise<ICommandResult> {
@@ -220,28 +305,19 @@ async function snapshotCommand(argv: readonly string[], cwd: string, json: boole
 
   const bundlePath = resolve(cwd, bundleArg);
   const outPath = resolve(cwd, flagValue(argv, "--out") ?? "editor.project.json");
-  const manifest = await readJsonFile<IBundleManifest>(resolve(bundlePath, "manifest.json"));
-  if (manifest.ok === false) {
-    return diagnosticResult(editorDiagnosticPayload(manifest.diagnostic), { exitCode: 1, json, stderr: !json });
-  }
-
-  const documentPaths = collectJsonDocuments(manifest.value);
-  const documents: Record<string, unknown> = {};
-  for (const documentPath of documentPaths) {
-    const document = await readJsonFile<unknown>(resolve(bundlePath, documentPath), documentPath);
-    if (document.ok === false) {
-      return diagnosticResult(editorDiagnosticPayload(document.diagnostic), { exitCode: 1, json, stderr: !json });
-    }
-    documents[documentPath] = document.value;
+  const bundleDocuments = await readBundleDocuments(bundlePath);
+  if (bundleDocuments.ok === false) {
+    return diagnosticResult(editorDiagnosticPayload(bundleDocuments.diagnostic), { exitCode: 1, json, stderr: !json });
   }
 
   const snapshot: IEditorProjectSnapshot = {
-    documents,
+    documents: bundleDocuments.documents,
+    inspector: buildEditorInspectorSnapshot(bundleDocuments.documents),
     metadata: {
       bundlePath,
       source: "bundle",
     },
-    name: manifest.value.name || basename(bundlePath),
+    name: bundleDocuments.manifest.name || basename(bundlePath),
     schema: "threenative.editor-project",
     version: "0.1.0",
   };
@@ -255,8 +331,8 @@ async function snapshotCommand(argv: readonly string[], cwd: string, json: boole
 
   const payload = {
     code: "TN_EDITOR_SNAPSHOT_OK",
-    documents: documentPaths,
-    message: `Editor snapshot wrote ${documentPaths.length} document(s).`,
+    documents: bundleDocuments.documentPaths,
+    message: `Editor snapshot wrote ${bundleDocuments.documentPaths.length} document(s).`,
     path: outPath,
   };
 
@@ -264,6 +340,62 @@ async function snapshotCommand(argv: readonly string[], cwd: string, json: boole
     exitCode: 0,
     stdout: json ? `${JSON.stringify(payload, null, 2)}\n` : `${payload.message}\n`,
   };
+}
+
+async function readBundleDocuments(bundlePath: string): Promise<
+  { documentPaths: string[]; documents: Record<string, unknown>; manifest: IBundleManifest; ok: true } | { diagnostic: IIrDiagnostic; ok: false }
+> {
+  const manifest = await readJsonFile<IBundleManifest>(resolve(bundlePath, "manifest.json"));
+  if (manifest.ok === false) {
+    return { diagnostic: manifest.diagnostic, ok: false };
+  }
+  const documentPaths = collectJsonDocuments(manifest.value);
+  const documents: Record<string, unknown> = {};
+  for (const documentPath of documentPaths) {
+    const document = await readJsonFile<unknown>(resolve(bundlePath, documentPath), documentPath);
+    if (document.ok === false) {
+      return { diagnostic: document.diagnostic, ok: false };
+    }
+    documents[documentPath] = document.value;
+  }
+  return { documentPaths, documents, manifest: manifest.value, ok: true };
+}
+
+function applyDocumentEdit(documents: Record<string, unknown>, path: string, value: unknown): { document: string; ok: true } | { diagnostic: IIrDiagnostic; ok: false } {
+  const segments = path.split("/").slice(1).map(unescapePointer);
+  if (segments[0] !== "documents" || segments[1] === undefined) {
+    return { diagnostic: { code: "TN_EDITOR_SET_DOCUMENT_MISSING", message: "Editor set path must target a document.", path, severity: "error" }, ok: false };
+  }
+  const document = segments[1];
+  const root = documents[document];
+  if (root === undefined) {
+    return { diagnostic: { code: "TN_EDITOR_SET_DOCUMENT_MISSING", message: `Editor document '${document}' does not exist.`, path, severity: "error" }, ok: false };
+  }
+  if (segments.length === 2) {
+    documents[document] = value;
+    return { document, ok: true };
+  }
+  let parent: unknown = root;
+  for (const segment of segments.slice(2, -1)) {
+    parent = Array.isArray(parent) ? parent[Number(segment)] : isRecord(parent) ? parent[segment] : undefined;
+    if (parent === undefined) {
+      return { diagnostic: { code: "TN_EDITOR_SET_PATH_MISSING", message: `Editor set path '${path}' does not exist.`, path, severity: "error" }, ok: false };
+    }
+  }
+  const leaf = segments.at(-1)!;
+  if (Array.isArray(parent)) {
+    const index = Number(leaf);
+    if (!Number.isInteger(index) || index < 0 || index >= parent.length) {
+      return { diagnostic: { code: "TN_EDITOR_SET_PATH_MISSING", message: `Editor set array index '${leaf}' does not exist.`, path, severity: "error" }, ok: false };
+    }
+    parent[index] = value;
+    return { document, ok: true };
+  }
+  if (isRecord(parent) && leaf in parent) {
+    parent[leaf] = value;
+    return { document, ok: true };
+  }
+  return { diagnostic: { code: "TN_EDITOR_SET_PATH_MISSING", message: `Editor set path '${path}' does not exist.`, path, severity: "error" }, ok: false };
 }
 
 async function writeSnapshotDocuments(snapshot: IEditorProjectSnapshot, bundlePath: string): Promise<void> {
@@ -400,6 +532,14 @@ function collectManifestPaths(paths: Set<string>, record: JsonRecord): void {
       paths.add(value);
     }
   }
+}
+
+function unescapePointer(value: string): string {
+  return value.replace(/~1/g, "/").replace(/~0/g, "~");
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function flagValue(argv: readonly string[], flag: string): string | undefined {

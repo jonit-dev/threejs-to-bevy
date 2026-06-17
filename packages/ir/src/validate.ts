@@ -13,6 +13,7 @@ import {
   type IIrNamedSchema,
   type IIrSchemaFile,
   type IIrSchemaField,
+  type ILocalDataIr,
   type IMaterialsIr,
   type ITargetProfile,
   type IUiIr,
@@ -67,6 +68,10 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
     manifest.entry.environmentScene === undefined
       ? undefined
       : await readJson<IEnvironmentSceneIr>(resolve(bundlePath, manifest.entry.environmentScene), diagnostics);
+  const localData =
+    manifest.entry.localData === undefined
+      ? undefined
+      : await readJson<ILocalDataIr>(resolve(bundlePath, manifest.entry.localData), diagnostics);
   const materials = await readJson<IMaterialsIr>(resolve(bundlePath, manifest.files.materials), diagnostics);
   const assets = await readJson<IAssetsManifest>(resolve(bundlePath, manifest.files.assets), diagnostics);
   const targetProfile = await readJson<ITargetProfile>(resolve(bundlePath, manifest.files.targetProfile), diagnostics);
@@ -139,6 +144,9 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
   }
   if (gltfScene !== undefined) {
     diagnostics.push(...validateGltfSceneMetadata(gltfScene, manifest.files.gltfScene ?? "gltf.scene.json"));
+  }
+  if (localData !== undefined) {
+    validateLocalData(localData, manifest.entry.localData ?? "local-data.ir.json", diagnostics);
   }
   if (targetProfile !== undefined) {
     if (targetProfile.targets.length === 0) {
@@ -404,12 +412,8 @@ function validateAudio(
 ): void {
   const raw = audio as unknown as Record<string, unknown>;
   for (const key of Object.keys(raw)) {
-    if (!["buses", "controls", "emitters", "listeners", "music", "oneShots", "schema", "version"].includes(key)) {
-      diagnostics.push({
-        code: "TN_IR_AUDIO_FIELD_UNSUPPORTED",
-        message: `Audio IR uses unsupported field '${key}'.`,
-        path: `${path}/${key}`,
-      });
+    if (!["buses", "controls", "duckingRules", "emitters", "listeners", "music", "musicTransitions", "oneShots", "schema", "tones", "version"].includes(key)) {
+      pushUnsupportedAudioField(diagnostics, key, `${path}/${key}`, "Audio IR");
     }
   }
   if (audio.schema !== "threenative.audio" || audio.version !== "0.1.0") {
@@ -423,8 +427,11 @@ function validateAudio(
   const busIds = validateAudioBuses(audio.buses, `${path}/buses`, diagnostics);
   const emitterIds = validateAudioEmitters(audio.emitters, `${path}/emitters`, diagnostics);
   validateAudioListeners(audio.listeners, `${path}/listeners`, diagnostics);
+  validateAudioDuckingRules(audio.duckingRules, busIds, `${path}/duckingRules`, diagnostics);
+  validateAudioTones(audio.tones, busIds, `${path}/tones`, diagnostics);
   audio.oneShots.forEach((oneShot, index) => validateAudioOneShot(oneShot, audioAssets, busIds, emitterIds, `${path}/oneShots/${index}`, diagnostics));
   audio.music.forEach((music, index) => validateAudioMusic(music, audioAssets, busIds, `${path}/music/${index}`, diagnostics));
+  validateAudioMusicTransitions(audio.musicTransitions, audio, `${path}/musicTransitions`, diagnostics);
   validateAudioControls(audio.controls, audio, `${path}/controls`, diagnostics);
 }
 
@@ -438,15 +445,14 @@ function validateAudioOneShot(
 ): void {
   const raw = oneShot as unknown as Record<string, unknown>;
   for (const key of Object.keys(raw)) {
-    if (!["asset", "bus", "emitter", "event", "id", "volume"].includes(key)) {
+    if (!["asset", "bus", "emitter", "event", "id", "pitch", "volume"].includes(key)) {
       diagnostics.push({
-        code: "TN_IR_AUDIO_FIELD_UNSUPPORTED",
-        message: `Audio one-shot '${oneShot.id}' uses unsupported field '${key}'.`,
-        path: `${path}/${key}`,
+        ...unsupportedAudioField(key, `${path}/${key}`, `Audio one-shot '${oneShot.id}'`),
       });
     }
   }
   validateAudioVolume(oneShot.volume, `${path}/volume`, diagnostics);
+  validateAudioPitch(oneShot.pitch, `${path}/pitch`, diagnostics);
   validateAudioAssetRef(oneShot.asset, audioAssets, `${path}/asset`, diagnostics);
   validateAudioRouteRef(oneShot.bus, busIds, `${path}/bus`, "TN_IR_AUDIO_BUS_MISSING", "bus", diagnostics);
   validateAudioRouteRef(oneShot.emitter, emitterIds, `${path}/emitter`, "TN_IR_AUDIO_EMITTER_MISSING", "emitter", diagnostics);
@@ -461,11 +467,9 @@ function validateAudioMusic(
 ): void {
   const raw = music as unknown as Record<string, unknown>;
   for (const key of Object.keys(raw)) {
-    if (!["asset", "autoplay", "bus", "id", "loop", "volume"].includes(key)) {
+    if (!["asset", "autoplay", "bus", "id", "loop", "pitch", "volume"].includes(key)) {
       diagnostics.push({
-        code: "TN_IR_AUDIO_FIELD_UNSUPPORTED",
-        message: `Audio music '${music.id}' uses unsupported field '${key}'.`,
-        path: `${path}/${key}`,
+        ...unsupportedAudioField(key, `${path}/${key}`, `Audio music '${music.id}'`),
       });
     }
   }
@@ -477,6 +481,7 @@ function validateAudioMusic(
     });
   }
   validateAudioVolume(music.volume, `${path}/volume`, diagnostics);
+  validateAudioPitch(music.pitch, `${path}/pitch`, diagnostics);
   validateAudioAssetRef(music.asset, audioAssets, `${path}/asset`, diagnostics);
   validateAudioRouteRef(music.bus, busIds, `${path}/bus`, "TN_IR_AUDIO_BUS_MISSING", "bus", diagnostics);
 }
@@ -536,8 +541,8 @@ function validateAudioBuses(value: unknown, path: string, diagnostics: IIrDiagno
       return;
     }
     for (const key of Object.keys(bus)) {
-      if (!["id", "volume"].includes(key)) {
-        diagnostics.push({ code: "TN_IR_AUDIO_FIELD_UNSUPPORTED", message: `Audio bus uses unsupported field '${key}'.`, path: `${busPath}/${key}` });
+      if (!["gain", "id", "mute", "parent", "solo", "volume"].includes(key)) {
+        pushUnsupportedAudioField(diagnostics, key, `${busPath}/${key}`, "Audio bus");
       }
     }
     if (typeof bus.id !== "string" || bus.id.trim() === "") {
@@ -546,6 +551,14 @@ function validateAudioBuses(value: unknown, path: string, diagnostics: IIrDiagno
       diagnostics.push({ code: "TN_IR_AUDIO_BUS_DUPLICATE", message: `Audio bus '${bus.id}' is duplicated.`, path: `${busPath}/id` });
     } else {
       ids.add(bus.id);
+    }
+    validateAudioGain(bus.gain, `${busPath}/gain`, diagnostics);
+    validateAudioRouteRef(bus.parent, ids, `${busPath}/parent`, "TN_IR_AUDIO_BUS_MISSING", "bus", diagnostics);
+    if (bus.mute !== undefined && typeof bus.mute !== "boolean") {
+      diagnostics.push({ code: "TN_IR_AUDIO_BUS_FLAG_INVALID", message: "Audio bus mute must be boolean.", path: `${busPath}/mute` });
+    }
+    if (bus.solo !== undefined && typeof bus.solo !== "boolean") {
+      diagnostics.push({ code: "TN_IR_AUDIO_BUS_FLAG_INVALID", message: "Audio bus solo must be boolean.", path: `${busPath}/solo` });
     }
     validateAudioVolume(bus.volume, `${busPath}/volume`, diagnostics);
   });
@@ -568,8 +581,8 @@ function validateAudioListeners(value: unknown, path: string, diagnostics: IIrDi
       return;
     }
     for (const key of Object.keys(listener)) {
-      if (!["id", "position"].includes(key)) {
-        diagnostics.push({ code: "TN_IR_AUDIO_FIELD_UNSUPPORTED", message: `Audio listener uses unsupported field '${key}'.`, path: `${listenerPath}/${key}` });
+      if (!["binding", "id", "position"].includes(key)) {
+        pushUnsupportedAudioField(diagnostics, key, `${listenerPath}/${key}`, "Audio listener");
       }
     }
     if (typeof listener.id !== "string" || listener.id.trim() === "") {
@@ -579,6 +592,7 @@ function validateAudioListeners(value: unknown, path: string, diagnostics: IIrDi
     } else {
       ids.add(listener.id);
     }
+    validateAudioListenerBinding(listener.binding, `${listenerPath}/binding`, diagnostics);
     validateFiniteVec3(listener.position, `${listenerPath}/position`, "TN_IR_AUDIO_LISTENER_POSITION_INVALID", diagnostics);
   });
   return ids;
@@ -600,8 +614,8 @@ function validateAudioEmitters(value: unknown, path: string, diagnostics: IIrDia
       return;
     }
     for (const key of Object.keys(emitter)) {
-      if (!["id", "position", "radius"].includes(key)) {
-        diagnostics.push({ code: "TN_IR_AUDIO_FIELD_UNSUPPORTED", message: `Audio emitter uses unsupported field '${key}'.`, path: `${emitterPath}/${key}` });
+      if (!["attenuation", "id", "position", "radius"].includes(key)) {
+        pushUnsupportedAudioField(diagnostics, key, `${emitterPath}/${key}`, "Audio emitter");
       }
     }
     if (typeof emitter.id !== "string" || emitter.id.trim() === "") {
@@ -612,11 +626,179 @@ function validateAudioEmitters(value: unknown, path: string, diagnostics: IIrDia
       ids.add(emitter.id);
     }
     validateFiniteVec3(emitter.position, `${emitterPath}/position`, "TN_IR_AUDIO_EMITTER_POSITION_INVALID", diagnostics);
+    validateAudioAttenuation(emitter.attenuation, `${emitterPath}/attenuation`, diagnostics);
     if (emitter.radius !== undefined) {
       validatePositiveFinite(emitter.radius, `${emitterPath}/radius`, "TN_IR_AUDIO_EMITTER_RADIUS_INVALID", diagnostics);
     }
   });
   return ids;
+}
+
+function validateAudioDuckingRules(value: unknown, busIds: Set<string>, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!Array.isArray(value)) {
+    diagnostics.push({ code: "TN_IR_AUDIO_DUCKING_INVALID", message: "Audio ducking rules must be an array.", path });
+    return;
+  }
+  const ids = new Set<string>();
+  value.forEach((rule, index) => {
+    const rulePath = `${path}/${index}`;
+    if (!isRecord(rule)) {
+      diagnostics.push({ code: "TN_IR_AUDIO_DUCKING_INVALID", message: "Audio ducking rule must be an object.", path: rulePath });
+      return;
+    }
+    for (const key of Object.keys(rule)) {
+      if (!["attack", "gain", "id", "release", "sourceBus", "targetBus"].includes(key)) {
+        diagnostics.push({ code: "TN_IR_AUDIO_FIELD_UNSUPPORTED", message: `Audio ducking rule uses unsupported field '${key}'.`, path: `${rulePath}/${key}` });
+      }
+    }
+    if (typeof rule.id !== "string" || rule.id.trim() === "") {
+      diagnostics.push({ code: "TN_IR_AUDIO_DUCKING_ID_INVALID", message: "Audio ducking rule ID must be a non-empty string.", path: `${rulePath}/id` });
+    } else if (ids.has(rule.id)) {
+      diagnostics.push({ code: "TN_IR_AUDIO_DUCKING_DUPLICATE", message: `Audio ducking rule '${rule.id}' is duplicated.`, path: `${rulePath}/id` });
+    } else {
+      ids.add(rule.id);
+    }
+    validateAudioRouteRef(rule.sourceBus, busIds, `${rulePath}/sourceBus`, "TN_IR_AUDIO_BUS_MISSING", "bus", diagnostics);
+    validateAudioRouteRef(rule.targetBus, busIds, `${rulePath}/targetBus`, "TN_IR_AUDIO_BUS_MISSING", "bus", diagnostics);
+    validateAudioGain(rule.gain, `${rulePath}/gain`, diagnostics);
+    validateAudioDuration(rule.attack, `${rulePath}/attack`, "TN_IR_AUDIO_DUCKING_TIME_INVALID", diagnostics);
+    validateAudioDuration(rule.release, `${rulePath}/release`, "TN_IR_AUDIO_DUCKING_TIME_INVALID", diagnostics);
+  });
+}
+
+function validateAudioTones(value: unknown, busIds: Set<string>, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!Array.isArray(value)) {
+    diagnostics.push({ code: "TN_IR_AUDIO_TONES_INVALID", message: "Audio tones must be an array.", path });
+    return;
+  }
+  const ids = new Set<string>();
+  value.forEach((tone, index) => {
+    const tonePath = `${path}/${index}`;
+    if (!isRecord(tone)) {
+      diagnostics.push({ code: "TN_IR_AUDIO_TONE_INVALID", message: "Audio tone must be an object.", path: tonePath });
+      return;
+    }
+    for (const key of Object.keys(tone)) {
+      if (!["bus", "duration", "frequency", "id", "pitch", "volume", "waveform"].includes(key)) {
+        diagnostics.push({ code: "TN_IR_AUDIO_FIELD_UNSUPPORTED", message: `Audio tone uses unsupported field '${key}'.`, path: `${tonePath}/${key}` });
+      }
+    }
+    if (typeof tone.id !== "string" || tone.id.trim() === "") {
+      diagnostics.push({ code: "TN_IR_AUDIO_TONE_ID_INVALID", message: "Audio tone ID must be a non-empty string.", path: `${tonePath}/id` });
+    } else if (ids.has(tone.id)) {
+      diagnostics.push({ code: "TN_IR_AUDIO_TONE_DUPLICATE", message: `Audio tone '${tone.id}' is duplicated.`, path: `${tonePath}/id` });
+    } else {
+      ids.add(tone.id);
+    }
+    if (!["noise", "sine", "square"].includes(String(tone.waveform))) {
+      diagnostics.push({ code: "TN_IR_AUDIO_TONE_WAVEFORM_INVALID", message: `Audio tone '${String(tone.id)}' uses unsupported waveform '${String(tone.waveform)}'.`, path: `${tonePath}/waveform` });
+    }
+    validateAudioRouteRef(tone.bus, busIds, `${tonePath}/bus`, "TN_IR_AUDIO_BUS_MISSING", "bus", diagnostics);
+    validateAudioDuration(tone.duration, `${tonePath}/duration`, "TN_IR_AUDIO_TONE_DURATION_INVALID", diagnostics);
+    validateAudioFrequency(tone.frequency, `${tonePath}/frequency`, diagnostics);
+    validateAudioPitch(tone.pitch, `${tonePath}/pitch`, diagnostics);
+    validateAudioVolume(tone.volume, `${tonePath}/volume`, diagnostics);
+  });
+}
+
+function validateAudioMusicTransitions(value: unknown, audio: IAudioIr, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!Array.isArray(value)) {
+    diagnostics.push({ code: "TN_IR_AUDIO_TRANSITIONS_INVALID", message: "Audio music transitions must be an array.", path });
+    return;
+  }
+  const ids = new Set<string>();
+  const musicIds = new Set(audio.music.map((music) => music.id));
+  value.forEach((transition, index) => {
+    const transitionPath = `${path}/${index}`;
+    if (!isRecord(transition)) {
+      diagnostics.push({ code: "TN_IR_AUDIO_TRANSITION_INVALID", message: "Audio music transition must be an object.", path: transitionPath });
+      return;
+    }
+    for (const key of Object.keys(transition)) {
+      if (!["duration", "from", "id", "kind", "playbackId", "state", "to"].includes(key)) {
+        diagnostics.push({ code: "TN_IR_AUDIO_FIELD_UNSUPPORTED", message: `Audio music transition uses unsupported field '${key}'.`, path: `${transitionPath}/${key}` });
+      }
+    }
+    if (typeof transition.id !== "string" || transition.id.trim() === "") {
+      diagnostics.push({ code: "TN_IR_AUDIO_TRANSITION_ID_INVALID", message: "Audio music transition ID must be a non-empty string.", path: `${transitionPath}/id` });
+    } else if (ids.has(transition.id)) {
+      diagnostics.push({ code: "TN_IR_AUDIO_TRANSITION_DUPLICATE", message: `Audio music transition '${transition.id}' is duplicated.`, path: `${transitionPath}/id` });
+    } else {
+      ids.add(transition.id);
+    }
+    if (!["crossfade", "intro", "loop", "stinger"].includes(String(transition.kind))) {
+      diagnostics.push({ code: "TN_IR_AUDIO_TRANSITION_KIND_INVALID", message: `Audio music transition '${String(transition.id)}' uses unsupported kind '${String(transition.kind)}'.`, path: `${transitionPath}/kind` });
+    }
+    if (typeof transition.playbackId !== "string" || transition.playbackId.trim() === "") {
+      diagnostics.push({ code: "TN_IR_AUDIO_TRANSITION_PLAYBACK_INVALID", message: "Audio music transition playbackId must be a non-empty string.", path: `${transitionPath}/playbackId` });
+    }
+    if (typeof transition.state !== "string" || transition.state.trim() === "") {
+      diagnostics.push({ code: "TN_IR_AUDIO_TRANSITION_STATE_INVALID", message: "Audio music transition state must be a non-empty string.", path: `${transitionPath}/state` });
+    }
+    if (transition.from !== undefined && (typeof transition.from !== "string" || !musicIds.has(transition.from))) {
+      diagnostics.push({ code: "TN_IR_AUDIO_TRANSITION_TARGET_MISSING", message: `Audio music transition references unknown source music '${String(transition.from)}'.`, path: `${transitionPath}/from` });
+    }
+    if (typeof transition.to !== "string" || !musicIds.has(transition.to)) {
+      diagnostics.push({ code: "TN_IR_AUDIO_TRANSITION_TARGET_MISSING", message: `Audio music transition references unknown target music '${String(transition.to)}'.`, path: `${transitionPath}/to` });
+    }
+    if (transition.duration !== undefined) {
+      validateAudioDuration(transition.duration, `${transitionPath}/duration`, "TN_IR_AUDIO_TRANSITION_DURATION_INVALID", diagnostics);
+    }
+  });
+}
+
+function validateAudioAttenuation(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value)) {
+    diagnostics.push({ code: "TN_IR_AUDIO_ATTENUATION_INVALID", message: "Audio attenuation must be an object.", path });
+    return;
+  }
+  for (const key of Object.keys(value)) {
+    if (!["curve", "maxDistance", "minDistance", "rolloffFactor"].includes(key)) {
+      diagnostics.push({ code: "TN_IR_AUDIO_FIELD_UNSUPPORTED", message: `Audio attenuation uses unsupported field '${key}'.`, path: `${path}/${key}` });
+    }
+  }
+  if (!["exponential", "inverse", "linear"].includes(String(value.curve))) {
+    diagnostics.push({ code: "TN_IR_AUDIO_ATTENUATION_CURVE_INVALID", message: `Audio attenuation uses unsupported curve '${String(value.curve)}'.`, path: `${path}/curve` });
+  }
+  if (typeof value.minDistance !== "number" || !Number.isFinite(value.minDistance) || value.minDistance <= 0 || typeof value.maxDistance !== "number" || !Number.isFinite(value.maxDistance) || value.maxDistance <= value.minDistance) {
+    diagnostics.push({ code: "TN_IR_AUDIO_ATTENUATION_DISTANCE_INVALID", message: "Audio attenuation distances must be finite and maxDistance must be greater than minDistance.", path });
+  }
+  if (typeof value.rolloffFactor !== "number" || !Number.isFinite(value.rolloffFactor) || value.rolloffFactor < 0 || value.rolloffFactor > 10) {
+    diagnostics.push({ code: "TN_IR_AUDIO_ATTENUATION_ROLLOFF_INVALID", message: "Audio attenuation rolloffFactor must be a finite number between 0 and 10.", path: `${path}/rolloffFactor` });
+  }
+}
+
+function validateAudioListenerBinding(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value)) {
+    diagnostics.push({ code: "TN_IR_AUDIO_LISTENER_BINDING_INVALID", message: "Audio listener binding must be an object.", path });
+    return;
+  }
+  for (const key of Object.keys(value)) {
+    if (!["entity", "kind"].includes(key)) {
+      diagnostics.push({ code: "TN_IR_AUDIO_FIELD_UNSUPPORTED", message: `Audio listener binding uses unsupported field '${key}'.`, path: `${path}/${key}` });
+    }
+  }
+  if (!["activeCamera", "entity"].includes(String(value.kind))) {
+    diagnostics.push({ code: "TN_IR_AUDIO_LISTENER_BINDING_INVALID", message: `Audio listener binding uses unsupported kind '${String(value.kind)}'.`, path: `${path}/kind` });
+  }
+  if (value.kind === "entity" && (typeof value.entity !== "string" || value.entity.trim() === "")) {
+    diagnostics.push({ code: "TN_IR_AUDIO_LISTENER_BINDING_ENTITY_INVALID", message: "Audio listener entity binding must include an entity ID.", path: `${path}/entity` });
+  }
 }
 
 function validateAudioRouteRef(
@@ -652,6 +834,39 @@ function validateAudioVolume(value: unknown, path: string, diagnostics: IIrDiagn
   }
 }
 
+function validateAudioGain(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 1) {
+    diagnostics.push({ code: "TN_IR_AUDIO_GAIN_INVALID", message: "Audio gain must be a finite number between 0 and 1.", path });
+  }
+}
+
+function validateAudioPitch(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0 || value > 4) {
+    diagnostics.push({ code: "TN_IR_AUDIO_PITCH_INVALID", message: "Audio pitch must be a positive finite number up to 4.", path });
+  }
+}
+
+function validateAudioDuration(value: unknown, path: string, code: string, diagnostics: IIrDiagnostic[]): void {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 60) {
+    diagnostics.push({ code, message: "Audio duration must be a finite number between 0 and 60 seconds.", path });
+  }
+}
+
+function validateAudioFrequency(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0 || value > 24_000) {
+    diagnostics.push({ code: "TN_IR_AUDIO_TONE_FREQUENCY_INVALID", message: "Audio tone frequency must be a positive finite number up to 24000 Hz.", path });
+  }
+}
+
 function validateAudioAssetRef(
   asset: string,
   audioAssets: Set<string>,
@@ -665,6 +880,53 @@ function validateAudioAssetRef(
       path,
     });
   }
+}
+
+function pushUnsupportedAudioField(diagnostics: IIrDiagnostic[], key: string, path: string, label: string): void {
+  diagnostics.push(unsupportedAudioField(key, path, label));
+}
+
+function unsupportedAudioField(key: string, path: string, label: string): IIrDiagnostic {
+  if (["stream", "streaming", "streamingUrl"].includes(key)) {
+    return {
+      code: "TN_IR_AUDIO_STREAMING_UNSUPPORTED",
+      message: `${label} uses unsupported streaming audio field '${key}'. Audio sources must be bundle-local OGG or WAV assets.`,
+      path,
+    };
+  }
+  if (["networkUrl", "networkStream"].includes(key)) {
+    return {
+      code: "TN_IR_AUDIO_NETWORK_UNSUPPORTED",
+      message: `${label} uses unsupported network audio field '${key}'. Audio sources must be bundle-local.`,
+      path,
+    };
+  }
+  if (["nativeHandle", "platformHandle"].includes(key)) {
+    return {
+      code: "TN_IR_AUDIO_PLATFORM_HANDLE_UNSUPPORTED",
+      message: `${label} uses unsupported platform-native audio handle field '${key}'.`,
+      path,
+    };
+  }
+  if (["codec", "decoderPlugin"].includes(key)) {
+    return {
+      code: "TN_IR_AUDIO_DECODER_PLUGIN_UNSUPPORTED",
+      message: `${label} uses unsupported decoder/plugin field '${key}'.`,
+      path,
+    };
+  }
+  if (["effect", "effectChain", "effects", "mixer"].includes(key)) {
+    return {
+      code: "TN_IR_AUDIO_EFFECT_CHAIN_UNSUPPORTED",
+      message: `${label} uses unsupported audio effect chain field '${key}'.`,
+      path,
+    };
+  }
+  return {
+    code: "TN_IR_AUDIO_FIELD_UNSUPPORTED",
+    message: `${label} uses unsupported field '${key}'.`,
+    path,
+  };
 }
 
 function validateUi(ui: IUiIr, path: string, diagnostics: IIrDiagnostic[]): void {
@@ -3235,7 +3497,7 @@ function validateSystems(
       });
     });
     (system.services ?? []).forEach((service, serviceIndex) => {
-      if (!["animation.play", "animation.query", "animation.stop", "assets.load", "character.move", "navigation.path", "physics.overlap", "physics.raycast", "physics.sensor", "physics.shapeCast", "picking.mesh", "picking.pointerRay"].includes(service)) {
+      if (!SUPPORTED_SYSTEM_SERVICES.includes(service)) {
         diagnostics.push({
           code: "TN_IR_SYSTEM_SERVICE_UNSUPPORTED",
           message: `System '${system.name}' declares unsupported service '${service}'.`,
@@ -3356,6 +3618,29 @@ function validateSystemOrdering(systems: ISystemsIr["systems"], path: string, di
     }
   }
 }
+
+const SUPPORTED_SYSTEM_SERVICES = [
+  "animation.play",
+  "animation.query",
+  "animation.stop",
+  "assets.load",
+  "character.move",
+  "navigation.path",
+  "physics.overlap",
+  "physics.raycast",
+  "physics.sensor",
+  "physics.shapeCast",
+  "picking.mesh",
+  "picking.pointerRay",
+  "persistence.delete",
+  "persistence.listSlots",
+  "persistence.load",
+  "persistence.save",
+  "settings.export",
+  "settings.get",
+  "settings.import",
+  "settings.set",
+] as const;
 
 function validateSystemOrderRefs(
   value: string[] | undefined,
@@ -4075,6 +4360,215 @@ function validateFieldValue(
   }
 }
 
+function validateLocalData(localData: ILocalDataIr, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (!isRecord(localData)) {
+    diagnostics.push({
+      code: "TN_IR_LOCAL_DATA_INVALID",
+      message: "Local data IR must be a JSON object.",
+      path,
+      severity: "error",
+      suggestion: "Regenerate local-data.ir.json from SDK persistence declarations.",
+    });
+    return;
+  }
+  if (localData.schema !== "threenative.local-data" || localData.version !== "0.1.0") {
+    diagnostics.push({
+      code: "TN_IR_LOCAL_DATA_VERSION_UNSUPPORTED",
+      message: "Local data IR must use threenative.local-data version 0.1.0.",
+      path,
+      severity: "error",
+    });
+  }
+  for (const key of Object.keys(localData)) {
+    if (!["autosave", "components", "migration", "resources", "saveSlots", "schema", "settings", "version"].includes(key)) {
+      diagnostics.push({
+        code: "TN_IR_LOCAL_DATA_FIELD_UNSUPPORTED",
+        message: `Local data IR field '${key}' is not supported.`,
+        path: `${path}/${key}`,
+        suggestion: "Remove runtime-specific persistence fields from local-data.ir.json.",
+      });
+    }
+  }
+  validateLocalDataSchemaEntries(localData.resources, `${path}/resources`, "resource", diagnostics);
+  validateLocalDataSchemaEntries(localData.components, `${path}/components`, "component", diagnostics);
+  validateLocalDataSettings(localData.settings, `${path}/settings`, diagnostics);
+  validateLocalDataSaveSlots(localData.saveSlots, `${path}/saveSlots`, diagnostics);
+  validateLocalDataMigration(localData.migration, `${path}/migration`, diagnostics);
+  validateLocalDataAutosave(localData.autosave, `${path}/autosave`, diagnostics);
+}
+
+function validateLocalDataSchemaEntries(value: unknown, path: string, label: "component" | "resource", diagnostics: IIrDiagnostic[]): void {
+  if (!Array.isArray(value)) {
+    diagnostics.push({
+      code: "TN_IR_LOCAL_DATA_SCHEMA_LIST_INVALID",
+      message: `Local data ${label}s must be an array.`,
+      path,
+      severity: "error",
+    });
+    return;
+  }
+  const ids = new Set<string>();
+  value.forEach((entry, index) => {
+    const entryPath = `${path}/${index}`;
+    if (!isRecord(entry)) {
+      diagnostics.push({ code: "TN_IR_LOCAL_DATA_SCHEMA_INVALID", message: `Local data ${label} declaration must be an object.`, path: entryPath });
+      return;
+    }
+    if (typeof entry.id !== "string" || entry.id.trim() === "") {
+      diagnostics.push({ code: "TN_IR_LOCAL_DATA_ID_INVALID", message: `Local data ${label} id must be a non-empty string.`, path: `${entryPath}/id` });
+    } else if (ids.has(entry.id)) {
+      diagnostics.push({ code: "TN_IR_LOCAL_DATA_ID_DUPLICATE", message: `Local data ${label} id '${entry.id}' is duplicated.`, path: `${entryPath}/id` });
+    } else {
+      ids.add(entry.id);
+    }
+    if (!isRecord(entry.schema)) {
+      diagnostics.push({ code: "TN_IR_LOCAL_DATA_SCHEMA_INVALID", message: `Local data ${label} schema must be an object.`, path: `${entryPath}/schema` });
+    } else if (containsPortableHandle(entry.schema)) {
+      diagnostics.push({
+        code: "TN_IR_LOCAL_DATA_RUNTIME_HANDLE_UNSUPPORTED",
+        message: `Local data ${label} '${String(entry.id)}' schema must not include runtime handles.`,
+        path: `${entryPath}/schema`,
+        severity: "error",
+        suggestion: "Persist portable ids and scalar data instead of renderer, runtime, native, or platform handles.",
+      });
+    }
+  });
+}
+
+function validateLocalDataSettings(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (!Array.isArray(value)) {
+    diagnostics.push({ code: "TN_IR_LOCAL_DATA_SETTINGS_INVALID", message: "Local data settings must be an array.", path });
+    return;
+  }
+  const keys = new Set<string>();
+  value.forEach((setting, index) => {
+    const settingPath = `${path}/${index}`;
+    if (!isRecord(setting)) {
+      diagnostics.push({ code: "TN_IR_LOCAL_DATA_SETTING_INVALID", message: "Local data setting must be an object.", path: settingPath });
+      return;
+    }
+    const key = setting.key;
+    if (typeof key !== "string" || key.trim() === "") {
+      diagnostics.push({ code: "TN_IR_LOCAL_DATA_SETTING_KEY_INVALID", message: "Local data setting key must be a non-empty string.", path: `${settingPath}/key` });
+    } else if (keys.has(key)) {
+      diagnostics.push({ code: "TN_IR_LOCAL_DATA_SETTING_DUPLICATE", message: `Local data setting '${key}' is duplicated.`, path: `${settingPath}/key` });
+    } else {
+      keys.add(key);
+    }
+    if (!["accessibility", "audio", "controls", "video"].includes(String(setting.group))) {
+      diagnostics.push({ code: "TN_IR_LOCAL_DATA_SETTING_GROUP_INVALID", message: "Local data setting group must be accessibility, audio, controls, or video.", path: `${settingPath}/group` });
+    }
+    if (!["boolean", "number", "string"].includes(String(setting.kind))) {
+      diagnostics.push({ code: "TN_IR_LOCAL_DATA_SETTING_KIND_INVALID", message: "Local data setting kind must be boolean, number, or string.", path: `${settingPath}/kind` });
+      return;
+    }
+    if (typeof setting.defaultValue !== setting.kind) {
+      diagnostics.push({ code: "TN_IR_LOCAL_DATA_SETTING_DEFAULT_INVALID", message: `Local data setting '${String(key)}' default value must match kind '${String(setting.kind)}'.`, path: `${settingPath}/defaultValue` });
+    }
+    if (setting.kind === "number") {
+      validateOptionalFiniteNumber(setting.min, `${settingPath}/min`, "TN_IR_LOCAL_DATA_SETTING_RANGE_INVALID", diagnostics);
+      validateOptionalFiniteNumber(setting.max, `${settingPath}/max`, "TN_IR_LOCAL_DATA_SETTING_RANGE_INVALID", diagnostics);
+      if (typeof setting.min === "number" && typeof setting.max === "number" && setting.max < setting.min) {
+        diagnostics.push({ code: "TN_IR_LOCAL_DATA_SETTING_RANGE_INVALID", message: "Local data setting max must be greater than or equal to min.", path: `${settingPath}/max` });
+      }
+    }
+    if (setting.enumValues !== undefined && (setting.kind !== "string" || !Array.isArray(setting.enumValues) || setting.enumValues.length === 0 || setting.enumValues.some((item) => typeof item !== "string" || item.trim() === ""))) {
+      diagnostics.push({ code: "TN_IR_LOCAL_DATA_SETTING_ENUM_INVALID", message: "Local data setting enum values require non-empty string choices.", path: `${settingPath}/enumValues` });
+    }
+  });
+}
+
+function validateLocalDataSaveSlots(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (!Array.isArray(value)) {
+    diagnostics.push({ code: "TN_IR_LOCAL_DATA_SAVE_SLOTS_INVALID", message: "Local data saveSlots must be an array.", path });
+    return;
+  }
+  const ids = new Set<string>();
+  value.forEach((slot, index) => {
+    const slotPath = `${path}/${index}`;
+    if (!isRecord(slot)) {
+      diagnostics.push({ code: "TN_IR_LOCAL_DATA_SAVE_SLOT_INVALID", message: "Local data save slot must be an object.", path: slotPath });
+      return;
+    }
+    if (typeof slot.id !== "string" || slot.id.trim() === "") {
+      diagnostics.push({ code: "TN_IR_LOCAL_DATA_SAVE_SLOT_ID_INVALID", message: "Local data save slot id must be a non-empty string.", path: `${slotPath}/id` });
+    } else if (ids.has(slot.id)) {
+      diagnostics.push({ code: "TN_IR_LOCAL_DATA_SAVE_SLOT_DUPLICATE", message: `Local data save slot '${slot.id}' is duplicated.`, path: `${slotPath}/id` });
+    } else {
+      ids.add(slot.id);
+    }
+    if (typeof slot.appVersion !== "string" || slot.appVersion.trim() === "") {
+      diagnostics.push({ code: "TN_IR_LOCAL_DATA_SAVE_SLOT_APP_VERSION_INVALID", message: "Local data save slot appVersion must be a non-empty string.", path: `${slotPath}/appVersion` });
+    }
+    if (!Number.isInteger(slot.schemaVersion) || Number(slot.schemaVersion) <= 0) {
+      diagnostics.push({ code: "TN_IR_LOCAL_DATA_SAVE_SLOT_SCHEMA_VERSION_INVALID", message: "Local data save slot schemaVersion must be a positive integer.", path: `${slotPath}/schemaVersion` });
+    }
+  });
+}
+
+function validateLocalDataMigration(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value)) {
+    diagnostics.push({ code: "TN_IR_LOCAL_DATA_MIGRATION_INVALID", message: "Local data migration must be an object.", path });
+    return;
+  }
+  if (!Number.isInteger(value.currentVersion) || Number(value.currentVersion) <= 0) {
+    diagnostics.push({ code: "TN_IR_LOCAL_DATA_MIGRATION_VERSION_INVALID", message: "Local data currentVersion must be a positive integer.", path: `${path}/currentVersion` });
+  }
+  if (!Array.isArray(value.migrators) || value.migrators.some((entry) => !Number.isInteger(entry) || Number(entry) <= 0)) {
+    diagnostics.push({ code: "TN_IR_LOCAL_DATA_MIGRATORS_INVALID", message: "Local data migrators must be positive integer versions.", path: `${path}/migrators` });
+    return;
+  }
+  if (Number.isInteger(value.currentVersion) && Number(value.currentVersion) > 1) {
+    const required = Number(value.currentVersion) - 1;
+    if (!value.migrators.includes(required)) {
+      diagnostics.push({
+        code: "TN_IR_LOCAL_DATA_MIGRATOR_MISSING",
+        message: `Local data migration to version ${String(value.currentVersion)} must declare a migrator from version ${required}.`,
+        path: `${path}/migrators`,
+        suggestion: "Add the missing migrator metadata or lower currentVersion.",
+      });
+    }
+  }
+}
+
+function validateLocalDataAutosave(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value)) {
+    diagnostics.push({ code: "TN_IR_LOCAL_DATA_AUTOSAVE_INVALID", message: "Local data autosave must be an object.", path });
+    return;
+  }
+  if (typeof value.debounceMs !== "number" || !Number.isFinite(value.debounceMs) || value.debounceMs < 0) {
+    diagnostics.push({ code: "TN_IR_LOCAL_DATA_AUTOSAVE_DEBOUNCE_INVALID", message: "Local data autosave debounceMs must be a non-negative finite number.", path: `${path}/debounceMs` });
+  }
+  if (value.intervalSeconds !== undefined && (typeof value.intervalSeconds !== "number" || !Number.isFinite(value.intervalSeconds) || value.intervalSeconds <= 0)) {
+    diagnostics.push({ code: "TN_IR_LOCAL_DATA_AUTOSAVE_INTERVAL_INVALID", message: "Local data autosave intervalSeconds must be positive when provided.", path: `${path}/intervalSeconds` });
+  }
+  if (value.checkpointEvents !== undefined && (!Array.isArray(value.checkpointEvents) || value.checkpointEvents.some((entry) => typeof entry !== "string" || entry.trim() === ""))) {
+    diagnostics.push({ code: "TN_IR_LOCAL_DATA_AUTOSAVE_EVENT_INVALID", message: "Local data autosave checkpointEvents must be non-empty event names.", path: `${path}/checkpointEvents` });
+  }
+}
+
+function validateOptionalFiniteNumber(value: unknown, path: string, code: string, diagnostics: IIrDiagnostic[]): void {
+  if (value !== undefined && (typeof value !== "number" || !Number.isFinite(value))) {
+    diagnostics.push({ code, message: "Local data numeric setting bounds must be finite numbers.", path });
+  }
+}
+
+function containsPortableHandle(value: unknown): boolean {
+  if (Array.isArray(value)) {
+    return value.some(containsPortableHandle);
+  }
+  if (isRecord(value)) {
+    return Object.entries(value).some(([key, child]) => ["nativeHandle", "platformPath", "rendererObject", "runtimeHandle"].includes(key) || containsPortableHandle(child));
+  }
+  return false;
+}
+
 function isNumberTuple(value: unknown, length: number): boolean {
   return Array.isArray(value) && value.length === length && value.every((item) => typeof item === "number" && Number.isFinite(item));
 }
@@ -4125,6 +4619,9 @@ function validateManifest(manifest: unknown, path: string, diagnostics: IIrDiagn
   if (isRecord(entry) && entry.animations !== undefined) {
     validateManifestPath(entry.animations, `${path}/entry/animations`, "animations.ir.json", diagnostics);
   }
+  if (isRecord(entry) && entry.localData !== undefined) {
+    validateManifestPath(entry.localData, `${path}/entry/localData`, "local-data.ir.json", diagnostics);
+  }
 
   const files = manifest.files;
   if (!isRecord(files)) {
@@ -4139,7 +4636,7 @@ function validateManifest(manifest: unknown, path: string, diagnostics: IIrDiagn
     validateManifestPath(files.assets, `${path}/files/assets`, "assets.manifest.json", diagnostics);
     validateManifestPath(files.materials, `${path}/files/materials`, "materials.ir.json", diagnostics);
     validateManifestPath(files.targetProfile, `${path}/files/targetProfile`, "target.profile.json", diagnostics);
-    for (const key of ["animations", "componentSchemas", "eventSchemas", "gltfScene", "input", "resourceSchemas", "runtimeConfig"] as const) {
+    for (const key of ["animations", "componentSchemas", "eventSchemas", "gltfScene", "input", "localData", "resourceSchemas", "runtimeConfig"] as const) {
       if (files[key] !== undefined) {
         validateManifestPath(files[key], `${path}/files/${key}`, undefined, diagnostics);
       }
@@ -4157,6 +4654,7 @@ function validateManifest(manifest: unknown, path: string, diagnostics: IIrDiagn
     (entry.audio === undefined || typeof entry.audio === "string") &&
     (entry.animations === undefined || typeof entry.animations === "string") &&
     (entry.environmentScene === undefined || typeof entry.environmentScene === "string") &&
+    (entry.localData === undefined || typeof entry.localData === "string") &&
     (entry.systems === undefined || typeof entry.systems === "string") &&
     (entry.overlays === undefined || typeof entry.overlays === "string") &&
     (entry.ui === undefined || typeof entry.ui === "string") &&
@@ -4165,6 +4663,7 @@ function validateManifest(manifest: unknown, path: string, diagnostics: IIrDiagn
     (files.eventSchemas === undefined || typeof files.eventSchemas === "string") &&
     (files.gltfScene === undefined || typeof files.gltfScene === "string") &&
     (files.input === undefined || typeof files.input === "string") &&
+    (files.localData === undefined || typeof files.localData === "string") &&
     (files.resourceSchemas === undefined || typeof files.resourceSchemas === "string") &&
     (files.runtimeConfig === undefined || typeof files.runtimeConfig === "string")
   );

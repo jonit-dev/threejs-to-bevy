@@ -181,6 +181,27 @@ fn should_report_v9_environment_lighting_budgets_and_renderer_quality() {
 }
 
 #[test]
+fn should_preserve_support_profiler_fields_in_native_conformance_report() {
+    let fixture = load_conformance_fixture("basic-scene");
+    let mut app = App::new();
+
+    map_bundle_into_world(app.world_mut(), &fixture.bundle).unwrap();
+    let report = report_bevy_conformance(app.world_mut(), &fixture.bundle, fixture.name);
+    let profiler = report.profiler.expect("profiler report should be present");
+
+    assert!(profiler.entity_count > 0);
+    assert!(profiler.draw_count > 0);
+    assert_eq!(profiler.gpu_timing_available, false);
+    assert_eq!(
+        profiler
+            .gpu_timing_warning
+            .as_ref()
+            .map(|diagnostic| diagnostic.code.as_str()),
+        Some("TN_PROFILER_GPU_TIMING_UNAVAILABLE")
+    );
+}
+
+#[test]
 fn should_report_promoted_generated_primitive_mapping_semantics() {
     let fixture = load_conformance_fixture("primitive-mapping");
     let mut app = App::new();

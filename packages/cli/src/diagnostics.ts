@@ -32,3 +32,20 @@ export function diagnosticResult(
     stdout: body,
   };
 }
+
+export function formatPackageRepairHintDiagnostic(options: {
+  artifactPath: string;
+  code?: string;
+  message: string;
+  suggestion: string;
+  target: string;
+}): IDiagnosticPayload {
+  return {
+    artifactPath: options.artifactPath,
+    code: options.code ?? "TN_PACKAGE_SUPPORT_ARTIFACT_REPAIR_HINT",
+    message: options.message,
+    severity: "error",
+    suggestion: options.suggestion,
+    target: options.target,
+  };
+}
