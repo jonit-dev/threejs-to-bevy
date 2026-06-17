@@ -896,21 +896,25 @@ pub struct SystemScriptIr {
     pub export_name: String,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct InputIr {
     pub schema: String,
     pub version: String,
     pub actions: Vec<InputActionIr>,
     pub axes: Vec<InputAxisIr>,
+    #[serde(default, rename = "controlsSettings")]
+    pub controls_settings: Option<ControlsSettingsIr>,
+    #[serde(default, rename = "persistedBindingOverrides")]
+    pub persisted_binding_overrides: Vec<PersistedBindingOverrideIr>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct InputActionIr {
     pub id: String,
     pub bindings: Vec<InputBindingIr>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct InputAxisIr {
     pub id: String,
     #[serde(default)]
@@ -920,7 +924,39 @@ pub struct InputAxisIr {
     pub value: Option<InputBindingIr>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ControlsSettingsIr {
+    pub profile_id: String,
+    pub rows: Vec<ControlsSettingsRowIr>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ControlsSettingsRowIr {
+    pub action_or_axis_id: String,
+    pub axis_slot: Option<String>,
+    pub capture_state: Option<String>,
+    pub default_bindings: Vec<InputBindingIr>,
+    pub kind: String,
+    pub ui_node_id: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PersistedBindingOverrideIr {
+    pub action_or_axis_id: String,
+    pub axis_slot: Option<String>,
+    pub control: String,
+    pub deadzone: Option<f32>,
+    pub device: String,
+    pub modifiers: Option<Vec<String>>,
+    pub profile_id: String,
+    pub scale: Option<f32>,
+    pub updated_at: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(tag = "device")]
 pub enum InputBindingIr {
     #[serde(rename = "keyboard")]
