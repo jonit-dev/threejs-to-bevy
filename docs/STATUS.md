@@ -29,6 +29,15 @@ shared conformance, Bevy native test evidence, desktop packaging checks,
 performance budget reports, and release-artifact presence checks. It writes the
 V7 aggregate report under `artifacts/v7/verification-report.json`.
 
+V9 planning now exists under `docs/PRDs/v9/README.md`. The V9 PRDs are
+checklist-driven and aim to close the most remaining Bevy-feature parity checks
+per category without making any PRD too broad to verify. They cover
+animation/particles, physics/character, assets/glTF/scene workflow,
+rendering/lights/post-processing, input/UI/accessibility, and
+audio/persistence/tooling support. The V9 verifier commands named in those PRDs
+are future implementation gates; the current active release command remains
+`pnpm verify:v7`.
+
 Focused V8 evidence exists for the optional React webview overlay slice:
 `pnpm verify:v8:overlay` builds `examples/v8-overlay-webview`, bundles a
 React/CSS inventory overlay with local item sprites, validates

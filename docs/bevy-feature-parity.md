@@ -57,46 +57,6 @@ Repeated patterns in those games:
   remains outside the portable contract for now. The priority is stable
   unsupported-networking diagnostics, not runtime networking parity.
 
-### 3D-Only Focus Order
-
-ThreeNative is currently a 3D-only engine. Use this order when choosing the
-next parity slice:
-
-1. Animation and particles: prove visual skeletal animation deformation from
-   loaded glTF clips first, then transform animation, stop/state query APIs,
-   blending, and rendered particles.
-2. Physics, collision, and character movement: close the full rigid-body solver
-   gap, object pushing, interaction volumes, richer sensors, and pathfinding.
-3. Assets, glTF, and scenes: add multi-asset load synchronization,
-   query/update access for spawned glTF scene entities, dev-time asset file
-   watching diagnostics, and scene inspection.
-4. Cameras and views: V8-06 covers helpers, multi-view rendering, viewports,
-   render layers, render targets, custom projections, and screenshot/export
-   workflows; future work should be residual diagnostics or editor tooling, not
-   a second camera parity slice.
-5. Materials, textures, and shaders: V8-07 covers transparency policy,
-   specular maps, native sampler/UV application, and constrained extended
-   presets; future work should move to shader surfaces only after explicit
-   portable contracts exist.
-6. 3D rendering, atmosphere, and post-processing: V8-11 covers focused native
-   fog/sky visual parity; remaining work should prioritize skyboxes/cubemaps,
-   native instancing/batching, antialiasing policy, color grading, and advanced
-   atmosphere/post-processing before deeper renderer features.
-7. Lights, shadows, and global illumination: improve shadow filtering,
-   point-light shadows, environment maps, and light probes before GI/lightmaps.
-8. Input, picking, and controls: add rebinding persistence/UI, drag picking,
-   debug overlays, and richer device diagnostics.
-9. UI, text, and accessibility: add font assets/rich text, 9-slice/images,
-   native shadows/gradients, and standard widgets.
-10. Audio: add real 3D spatial attenuation, listener movement, music
-    transitions, and mixer buses/effects.
-11. Persistence, settings, and local data: add save slots and settings once
-    gameplay resources/components are stable enough to serialize.
-12. Editor, debugging, diagnostics, packaging, and performance: advance these
-    as support tracks alongside feature work, especially scene hierarchy,
-    property inspection, asset preview, debug draw, and unsupported-feature
-    diagnostics.
-
 ### 🧩 ECS, App, and Scheduling
 
 - [x] Entities, stable IDs, components, and component schemas
@@ -140,6 +100,7 @@ next parity slice:
 - [x] `P3` Custom projections
 - [x] `P1` Camera effects: screen shake, orbit, pan, zoom, and view models
 - [x] `P2` Screenshot/export camera workflows
+- [ ] `P2` Residual camera diagnostics and editor/debug tooling
 
 ### 💡 Lights, Shadows, and Global Illumination
 
@@ -177,6 +138,7 @@ next parity slice:
 - [x] `P2` Multiple generated-mesh UV channels
 - [x] `P2` Generated-mesh vertex colors
 - [x] `P2` Constrained extended material presets (`unlitMasked`, `foliage`)
+- [ ] `P2` Explicit portable shader promotion criteria and unsupported-feature diagnostics
 - [ ] `P3` Custom shaders, shader defs, storage buffers, and render phases
 - [ ] `P3` Bindless materials/textures
 
@@ -281,6 +243,8 @@ next parity slice:
 - [ ] `P2` Drag-and-drop picking events
 - [ ] `P2` Picking debug overlay
 - [x] `P1` Basic input rebinding helpers and device capability diagnostics
+- [ ] `P1` Interactive input rebinding UI and persistence
+- [ ] `P2` Richer device diagnostics overlays and repair hints
 
 ### 🧭 UI, Text, and Accessibility
 
@@ -349,6 +313,7 @@ next parity slice:
 - [ ] `P3` Signed installers and app-store/mobile packaging
 - [ ] `P1` Broader platform target profiles and repair hints
 - [ ] `P1` Large-scene stress-test fixtures for UI, text, lights, cubes, and animated models
+- [ ] `P1` Stable unsupported-feature diagnostics for advanced renderer, material, and runtime declarations
 - [ ] `P1` Stable unsupported-networking diagnostics for multiplayer/websocket/replication declarations
 
 ### 🛠️ Editor, Debugging, and Developer Tools
@@ -424,15 +389,17 @@ deterministic structured diffs for bundle-relative JSON documents, validated
 save/load through structured snapshot application, and CLI entry points for
 `tn editor snapshot` / `tn editor apply` / `tn editor diff`. V8-06 through
 V8-12 plus the pending V8-15 PR are also treated as completed or partially
-promoted parity slices for
-camera views, material/texture parity, transform animation and animation
-service traces, primitive rigid-body traces, asset/glTF inspection, and focused
-rendering-quality fog/sky evidence, lights/shadows trace evidence, and static
-disabled retained-UI behavior. Latest color-parity work adds focused web/native
-color and lighting-tone evidence. The remaining V8 queue in
-[V8 PRDs](PRDs/v8/README.md) continues the 3D-only focus order through residual
-animation, physics, assets, renderer quality, lights, input, UI, audio,
-persistence, and support-track tooling.
+promoted parity slices for camera views, material/texture parity, transform
+animation and animation service traces, primitive rigid-body traces, asset/glTF
+inspection, focused rendering-quality fog/sky evidence, lights/shadows trace
+evidence, and static disabled retained-UI behavior. Latest color-parity work
+adds focused web/native color and lighting-tone evidence.
+
+[V9 PRDs](PRDs/v9/README.md) convert the remaining unchecked checklist backlog
+into category PRDs that aim to complete the most checks per category without
+making any single PRD too broad to verify. V9 covers animation/particles,
+physics/character, assets/glTF/scene workflow, rendering/lights/post-processing,
+input/UI/accessibility, and audio/persistence/tooling support.
 
 ## Sources
 
