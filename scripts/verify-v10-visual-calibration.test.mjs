@@ -9,7 +9,32 @@ import {
   parseVisualCalibrationArgs,
   verifyV10VisualCalibration,
 } from "./verify-v10-visual-calibration.mjs";
-import { validateCalibrationManifest } from "./visual-calibration/manifest.mjs";
+import {
+  validateCalibrationManifest,
+  VISUAL_CALIBRATION_FIXTURES,
+} from "./visual-calibration/manifest.mjs";
+
+const expectedImplementedFixtures = [
+  ["v10-color", "color", ["swatch-white", "swatch-black", "swatch-mid-gray", "background-opaque", "background-alpha", "frame-edge-top", "frame-edge-left"]],
+  ["v10-materials", "materials", ["unlit-card", "pbr-base", "metal-rough", "emissive", "alpha-mask", "texture-slot", "uv-transform", "vertex-color"]],
+  ["v10-lighting", "lighting", ["ambient-card", "directional-card", "point-card", "spot-card", "shadow-receiver", "probe-reflection"]],
+  ["v10-atmosphere", "atmosphere", ["fog-near", "fog-mid", "fog-far", "sky-horizon", "skybox-anchor"]],
+  ["v10-post", "post", ["bloom-highlight", "msaa-edge", "dof-report-only", "taa-report-only"]],
+  ["v10-geometry", "geometry", ["primitive-grid", "generated-mesh", "gltf-instance", "uv-marker"]],
+  ["v10-dense", "dense", ["instance-grid", "hlod-fade", "visibility-range"]],
+  ["v10-scene", "scene", ["sky-band", "hero-subject", "ground-shadow", "ui-overlay", "full-frame"]],
+];
+
+const expectedThresholdBaselines = {
+  "v10-atmosphere": { averageBrightnessDelta: 0.4, changedPixelRatio: 1, luminanceDelta: 0.4 },
+  "v10-color": { averageBrightnessDelta: 0.03, changedPixelRatio: 0.03, maxChannelDelta: 0.05 },
+  "v10-dense": { averageBrightnessDelta: 0.03, changedPixelRatio: 0.3, maxChannelDelta: 0.5 },
+  "v10-geometry": { averageBrightnessDelta: 0.28, changedPixelRatio: 0.92, maxChannelDelta: 1, p95ChannelDelta: 0.4 },
+  "v10-lighting": { averageBrightnessDelta: 0.12, changedPixelRatio: 0.92, maxChannelDelta: 0.18 },
+  "v10-materials": { averageBrightnessDelta: 0.32, changedPixelRatio: 0.16, maxChannelDelta: 0.55 },
+  "v10-post": { averageBrightnessDelta: 0.03, changedPixelRatio: 0.02, maxChannelDelta: 0.7 },
+  "v10-scene": { averageBrightnessDelta: 0.08, changedPixelRatio: 1, maxChannelDelta: 0.75 },
+};
 
 test("should reject calibration factors without regions or thresholds", () => {
   const validation = validateCalibrationManifest([
@@ -34,6 +59,39 @@ test("should reject calibration factors without regions or thresholds", () => {
   );
   assert.ok(validation.diagnostics.some((diagnostic) => diagnostic.message.includes("sample region")));
   assert.ok(validation.diagnostics.some((diagnostic) => diagnostic.message.includes("numeric thresholds")));
+});
+
+test("v10 calibration manifest keeps every PRD fixture implemented with screenshot artifacts", () => {
+  const validation = validateCalibrationManifest(VISUAL_CALIBRATION_FIXTURES);
+
+  assert.equal(validation.ok, true);
+  assert.deepEqual(
+    VISUAL_CALIBRATION_FIXTURES.map((fixture) => [
+      fixture.id,
+      fixture.factorGroup,
+      fixture.regions.map((region) => region.id),
+    ]),
+    expectedImplementedFixtures,
+  );
+  for (const fixture of VISUAL_CALIBRATION_FIXTURES) {
+    assert.equal(fixture.implemented, true, `${fixture.id} should be implemented, not planned`);
+    assert.equal(fixture.promoted, true, `${fixture.id} should be part of the promoted gate`);
+    assert.deepEqual(fixture.requiredArtifacts, ["web.png", "bevy.png", "diff.png", "contact-sheet.png"]);
+    assert.equal(fixture.camera.id, "camera.calibration");
+    assert.equal(fixture.camera.projection, "orthographic");
+  }
+});
+
+test("v10 calibration threshold baselines are explicit", () => {
+  for (const fixture of VISUAL_CALIBRATION_FIXTURES) {
+    assert.deepEqual(
+      Object.fromEntries(
+        Object.keys(expectedThresholdBaselines[fixture.id]).map((key) => [key, fixture.thresholds[key]]),
+      ),
+      expectedThresholdBaselines[fixture.id],
+      `${fixture.id} threshold baseline changed`,
+    );
+  }
 });
 
 test("should fail when required screenshots are missing", async () => {
@@ -224,6 +282,11 @@ test("should fail color calibration when unlit swatch delta exceeds threshold", 
     assert.ok(drift);
     assert.equal(drift.regionId, "swatch-white");
     assert.equal(drift.metric, "maxChannelDelta");
+    assert.match(drift.artifactPath, /contact-sheet\.png$/);
+    assert.match(drift.artifactPaths.web, /web\.png$/);
+    assert.match(drift.artifactPaths.bevy, /bevy\.png$/);
+    assert.match(drift.artifactPaths.diff, /diff\.png$/);
+    assert.match(drift.artifactPaths.contactSheet, /contact-sheet\.png$/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

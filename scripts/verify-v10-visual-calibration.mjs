@@ -1,5 +1,5 @@
 import { access, mkdir, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { analyzeCalibrationFixture } from "./visual-calibration/analyze.mjs";
 import { captureCalibrationArtifacts, readCalibrationFrame } from "./visual-calibration/capture.mjs";
@@ -166,6 +166,7 @@ export async function runCalibrationFixture(options) {
     const bevyFrame = await readCalibrationFrame(root, resolve(artifactDir, "bevy.png"));
     analysis = await analyzeCalibrationFixture({ bevyFrame, fixture, repoRoot: root, webFrame });
   }
+  analysis.diagnostics = withArtifactPaths(analysis.diagnostics, artifactDir);
 
   const fixtureReportPath = resolve(artifactDir, "fixture-report.json");
   await writeFile(
@@ -188,6 +189,20 @@ export async function runCalibrationFixture(options) {
     ok: analysis.status === "pass",
     steps,
   };
+}
+
+function withArtifactPaths(diagnostics, artifactDir) {
+  const artifactPaths = {
+    bevy: join(artifactDir, "bevy.png"),
+    contactSheet: join(artifactDir, "contact-sheet.png"),
+    diff: join(artifactDir, "diff.png"),
+    web: join(artifactDir, "web.png"),
+  };
+  return diagnostics.map((diagnostic) => ({
+    ...diagnostic,
+    artifactPath: diagnostic.artifactPath ?? artifactPaths.contactSheet,
+    artifactPaths: diagnostic.artifactPaths ?? artifactPaths,
+  }));
 }
 
 function stepFailureDiagnostic(fixture, steps) {

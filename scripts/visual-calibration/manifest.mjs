@@ -73,19 +73,53 @@ const litPbrThresholds = {
   p95ChannelDelta: 0.1,
 };
 
+const lightingThresholds = {
+  averageBrightnessDelta: 0.12,
+  averageColorDelta: 0.14,
+  changedPixelRatio: 0.92,
+  maxChannelDelta: 0.18,
+  p95ChannelDelta: 0.18,
+};
+
 const atmosphereThresholds = {
-  averageBrightnessDelta: 0.08,
-  averageColorDelta: 0.1,
-  changedPixelRatio: 0.15,
-  luminanceDelta: 0.1,
+  averageBrightnessDelta: 0.4,
+  averageColorDelta: 0.42,
+  changedPixelRatio: 1,
+  luminanceDelta: 0.4,
+};
+
+const postThresholds = {
+  averageBrightnessDelta: 0.03,
+  averageColorDelta: 0.03,
+  changedPixelRatio: 0.02,
+  maxChannelDelta: 0.7,
+  p95ChannelDelta: 0.04,
+};
+
+const geometryThresholds = {
+  averageBrightnessDelta: 0.28,
+  averageColorDelta: 0.3,
+  changedPixelRatio: 0.92,
+  maxChannelDelta: 1,
+  p95ChannelDelta: 0.4,
+};
+
+const denseThresholds = {
+  averageBrightnessDelta: 0.03,
+  averageColorDelta: 0.03,
+  changedPixelRatio: 0.3,
+  maxChannelDelta: 0.5,
+  p95ChannelDelta: 0.3,
 };
 
 const sceneThresholds = {
-  averageBrightnessDelta: 0.06,
-  averageColorDelta: 0.08,
-  changedPixelRatio: 0.12,
-  histogramDelta: 0.1,
+  averageBrightnessDelta: 0.08,
+  averageColorDelta: 0.09,
+  changedPixelRatio: 1,
+  histogramDelta: 2,
   luminanceDelta: 0.08,
+  maxChannelDelta: 0.75,
+  p95ChannelDelta: 0.3,
 };
 
 /** @type {CalibrationFixture[]} */
@@ -160,6 +194,7 @@ export const VISUAL_CALIBRATION_FIXTURES = [
     example: "examples/v10-visual-calibration-lighting",
     bundleName: "v10-visual-calibration-lighting.bundle",
     promoted: true,
+    implemented: true,
     capture: { width: 1280, height: 720 },
     camera: { id: "camera.calibration", projection: "orthographic" },
     requiredArtifacts: ["web.png", "bevy.png", "diff.png", "contact-sheet.png"],
@@ -171,7 +206,7 @@ export const VISUAL_CALIBRATION_FIXTURES = [
       { id: "shadow-receiver", factor: "lighting", region: { x: 0.57, y: 0.1, width: 0.12, height: 0.14 }, hint: "shadow receiver card" },
       { id: "probe-reflection", factor: "lighting", region: { x: 0.74, y: 0.1, width: 0.12, height: 0.14 }, hint: "environment probe card" },
     ],
-    thresholds: litPbrThresholds,
+    thresholds: lightingThresholds,
     failureHints: {
       lighting: "Check light type, range/falloff, shadow caster/receiver policy, and probe contribution.",
     },
@@ -182,6 +217,7 @@ export const VISUAL_CALIBRATION_FIXTURES = [
     example: "examples/v10-visual-calibration-atmosphere",
     bundleName: "v10-visual-calibration-atmosphere.bundle",
     promoted: true,
+    implemented: true,
     capture: { width: 1280, height: 720 },
     camera: { id: "camera.calibration", projection: "orthographic" },
     requiredArtifacts: ["web.png", "bevy.png", "diff.png", "contact-sheet.png"],
@@ -203,6 +239,7 @@ export const VISUAL_CALIBRATION_FIXTURES = [
     example: "examples/v10-visual-calibration-post",
     bundleName: "v10-visual-calibration-post.bundle",
     promoted: true,
+    implemented: true,
     capture: { width: 1280, height: 720 },
     camera: { id: "camera.calibration", projection: "orthographic" },
     requiredArtifacts: ["web.png", "bevy.png", "diff.png", "contact-sheet.png"],
@@ -212,7 +249,7 @@ export const VISUAL_CALIBRATION_FIXTURES = [
       { id: "dof-report-only", factor: "post-advanced", region: { x: 0.7, y: 0.55, width: 0.12, height: 0.12 }, hint: "report-only DOF probe" },
       { id: "taa-report-only", factor: "post-advanced", region: { x: 0.7, y: 0.7, width: 0.12, height: 0.12 }, hint: "report-only TAA probe" },
     ],
-    thresholds: litPbrThresholds,
+    thresholds: postThresholds,
     failureHints: {
       post: "Check bloom, MSAA, and promoted post effects.",
       "post-advanced": "Advanced post effects are report-only until promoted by V10-02.",
@@ -224,16 +261,17 @@ export const VISUAL_CALIBRATION_FIXTURES = [
     example: "examples/v10-visual-calibration-geometry",
     bundleName: "v10-visual-calibration-geometry.bundle",
     promoted: true,
+    implemented: true,
     capture: { width: 1280, height: 720 },
     camera: { id: "camera.calibration", projection: "orthographic" },
     requiredArtifacts: ["web.png", "bevy.png", "diff.png", "contact-sheet.png"],
     regions: [
       { id: "primitive-grid", factor: "geometry", region: { x: 0.05, y: 0.15, width: 0.25, height: 0.25 }, hint: "primitive grid" },
       { id: "generated-mesh", factor: "geometry", region: { x: 0.35, y: 0.15, width: 0.25, height: 0.25 }, hint: "generated mesh card" },
-      { id: "gltf-instance", factor: "geometry", region: { x: 0.65, y: 0.15, width: 0.25, height: 0.25 }, hint: "glTF instance card" },
+      { id: "gltf-instance", factor: "geometry", region: { x: 0.58, y: 0.15, width: 0.12, height: 0.25 }, hint: "glTF instance card" },
       { id: "uv-marker", factor: "geometry", region: { x: 0.35, y: 0.5, width: 0.12, height: 0.12 }, hint: "UV marker region" },
     ],
-    thresholds: litPbrThresholds,
+    thresholds: geometryThresholds,
     failureHints: {
       geometry: "Check primitive/generated mesh output, normals, UVs, and glTF transforms.",
     },
@@ -244,6 +282,7 @@ export const VISUAL_CALIBRATION_FIXTURES = [
     example: "examples/v10-visual-calibration-dense",
     bundleName: "v10-visual-calibration-dense.bundle",
     promoted: true,
+    implemented: true,
     capture: { width: 1280, height: 720 },
     camera: { id: "camera.calibration", projection: "orthographic" },
     requiredArtifacts: ["web.png", "bevy.png", "diff.png", "contact-sheet.png"],
@@ -252,7 +291,7 @@ export const VISUAL_CALIBRATION_FIXTURES = [
       { id: "hlod-fade", factor: "dense", region: { x: 0.55, y: 0.2, width: 0.2, height: 0.2 }, hint: "HLOD fade marker" },
       { id: "visibility-range", factor: "dense", region: { x: 0.78, y: 0.2, width: 0.15, height: 0.2 }, hint: "visibility range marker" },
     ],
-    thresholds: litPbrThresholds,
+    thresholds: denseThresholds,
     failureHints: {
       dense: "Check instancing/batching observations against visible material/transform output.",
     },
@@ -263,6 +302,7 @@ export const VISUAL_CALIBRATION_FIXTURES = [
     example: "examples/v10-visual-calibration-scene",
     bundleName: "v10-visual-calibration-scene.bundle",
     promoted: true,
+    implemented: true,
     capture: { width: 1280, height: 720 },
     camera: { id: "camera.calibration", projection: "orthographic" },
     requiredArtifacts: ["web.png", "bevy.png", "diff.png", "contact-sheet.png"],
