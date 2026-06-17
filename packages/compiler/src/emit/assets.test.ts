@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { BoxGeometry, Mesh, MeshStandardMaterial, Object3D, Scene, animationClip, animationGraph, boundedParticleEmitter, modelAsset, textureAsset } from "@threenative/sdk";
+import { BoxGeometry, Mesh, MeshStandardMaterial, Object3D, Scene, animationClip, animationGraph, assetGroup, boundedParticleEmitter, embeddedAsset, modelAsset, networkAsset, textureAsset } from "@threenative/sdk";
 import { validateBundle } from "@threenative/ir";
 
 import { emitBundle } from "./bundle.js";
@@ -54,12 +54,14 @@ test("assets should emit texture asset references", () => {
       id: "tex.clearcoat",
       kind: "texture",
       path: "assets/clearcoat.png",
+      sourceMode: "bundle",
     },
     {
       format: "png",
       id: "tex.clearcoatRoughness",
       kind: "texture",
       path: "assets/clearcoat-roughness.png",
+      sourceMode: "bundle",
     },
     {
       center: [0.5, 0.5],
@@ -72,6 +74,7 @@ test("assets should emit texture asset references", () => {
       path: "assets/crate.png",
       repeat: [4, 2],
       rotation: 0.5,
+      sourceMode: "bundle",
       wrapS: "repeat",
       wrapT: "mirroredRepeat",
     },
@@ -80,30 +83,35 @@ test("assets should emit texture asset references", () => {
       id: "tex.emissive",
       kind: "texture",
       path: "assets/emissive.png",
+      sourceMode: "bundle",
     },
     {
       format: "png",
       id: "tex.metallicRoughness",
       kind: "texture",
       path: "assets/metallic-roughness.png",
+      sourceMode: "bundle",
     },
     {
       format: "png",
       id: "tex.normal",
       kind: "texture",
       path: "assets/normal.png",
+      sourceMode: "bundle",
     },
     {
       format: "png",
       id: "tex.occlusion",
       kind: "texture",
       path: "assets/occlusion.png",
+      sourceMode: "bundle",
     },
     {
       format: "png",
       id: "tex.transmission",
       kind: "texture",
       path: "assets/transmission.png",
+      sourceMode: "bundle",
     },
   ]);
   assert.equal(emitted.materials[0]?.baseColorTexture, "tex.crate");
@@ -160,8 +168,70 @@ test("assets should emit deterministic model animation metadata", async () => {
       id: "model.hero",
       kind: "model",
       path: "assets/hero.glb",
+      sourceMode: "bundle",
     });
     assert.ok(manifest.requiredCapabilities.animation.includes("clip-metadata"));
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should emit assets source modes and groups deterministically", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-v9-assets-"));
+  try {
+    await mkdir(join(root, "assets"), { recursive: true });
+    await writeFile(join(root, "assets/hero.glb"), "model");
+    const scene = new Scene({ id: "scene" });
+    const localModel = modelAsset("model.hero", "assets/hero.glb");
+    const embeddedMeta = embeddedAsset("buffer.meta", {
+      data: "{\"level\":\"demo\"}",
+      hash: "sha256-demo",
+      mediaType: "application/json",
+    });
+    const remoteTexture = networkAsset("tex.remote", "https://cdn.example.com/texture.png", {
+      cachePolicy: "immutable",
+      format: "png",
+      integrity: "sha256-texture",
+      kind: "texture",
+    });
+    scene.add(
+      new Object3D({
+        assetRefs: [remoteTexture, localModel, embeddedMeta],
+        id: "asset.refs",
+      }),
+    );
+
+    const build = async (outDir: string): Promise<string> => {
+      const bundlePath = await emitBundle(
+        {
+          entry: "src/game.ts",
+          outDir,
+          projectPath: root,
+          schema: "threenative.project" as const,
+          version: "0.1.0" as const,
+        },
+        {
+          assetGroups: [assetGroup("level.hero", { optional: [remoteTexture], required: [localModel, embeddedMeta], timeoutMs: 5000 })],
+          scene,
+        },
+      );
+      return readFile(join(bundlePath, "assets.manifest.json"), "utf8");
+    };
+
+    const first = await build("dist/first.bundle");
+    const second = await build("dist/second.bundle");
+    const manifest = JSON.parse(first);
+
+    assert.equal(first, second);
+    assert.deepEqual(manifest.assets.map((asset: { id: string; sourceMode: string }) => [asset.id, asset.sourceMode]), [
+      ["buffer.meta", "embedded"],
+      ["model.hero", "bundle"],
+      ["tex.remote", "network"],
+    ]);
+    assert.deepEqual(manifest.groups, [
+      { id: "bundle.requiredAssets", required: ["buffer.meta", "model.hero", "tex.remote"] },
+      { id: "level.hero", optional: ["tex.remote"], required: ["buffer.meta", "model.hero"], timeoutMs: 5000 },
+    ]);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

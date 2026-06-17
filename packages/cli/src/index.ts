@@ -45,9 +45,9 @@ const commands: Record<string, ICommandDefinition> = {
     usage: "tn dev --target <web|desktop> [--project <path>] [--watch]",
   },
   editor: {
-    description: "Create, apply, and diff local editor snapshots from bundle JSON.",
+    description: "Inspect bundles and create, apply, or diff local editor snapshots from bundle JSON.",
     implemented: true,
-    usage: "tn editor snapshot --bundle <path> [--out <path>] [--json]\n              tn editor apply --snapshot <path> --bundle <path> [--json]",
+    usage: "tn editor inspect --bundle <path> [--out <path>] [--json]\n              tn editor snapshot --bundle <path> [--out <path>] [--json]\n              tn editor apply --snapshot <path> --bundle <path> [--json]",
   },
   package: {
     description: "Create a local desktop package artifact from a bundle.",

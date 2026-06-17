@@ -5,7 +5,40 @@ import { join, resolve } from "node:path";
 import test from "node:test";
 import type { BevyRuntimeProcess } from "../native/bevy.js";
 
-import { devCommand } from "./dev.js";
+import { classifyDevAssetReload, devCommand } from "./dev.js";
+
+test("dev watch should report reloadable texture edits", () => {
+  const report = classifyDevAssetReload({ assetId: "tex.crate", path: "assets/crate.png" });
+
+  assert.equal(report.schema, "threenative.asset-reload");
+  assert.equal(report.classification, "reloadable");
+  assert.equal(report.statePolicy, "preserve");
+  assert.deepEqual(report.changedAssets, [{ assetId: "tex.crate", change: "changed", path: "assets/crate.png" }]);
+  assert.deepEqual(report.diagnostics, []);
+});
+
+test("dev watch should require rebuild when gltf node topology changes", () => {
+  const report = classifyDevAssetReload({
+    afterGltfScene: {
+      assets: [{ assetId: "model.level", customAttributes: [], nodes: [{ name: "Window", path: "/Root/Window", spawnedHandleEligible: true }] }],
+      schema: "threenative.gltf-scene",
+      version: "0.1.0",
+    },
+    assetId: "model.level",
+    beforeGltfScene: {
+      assets: [{ assetId: "model.level", customAttributes: [], nodes: [{ name: "Door", path: "/Root/Door", spawnedHandleEligible: true }] }],
+      schema: "threenative.gltf-scene",
+      version: "0.1.0",
+    },
+    path: "assets/level.gltf",
+  });
+
+  assert.equal(report.classification, "rebuildRequired");
+  assert.equal(report.statePolicy, "rebuild");
+  assert.deepEqual(report.impactedHandles, ["/Root/Door"]);
+  assert.equal(report.diagnostics[0]?.code, "TN_DEV_ASSET_RELOAD_GLTF_TOPOLOGY_CHANGED");
+  assert.match(report.diagnostics[0]?.suggestion ?? "", /Rebuild/);
+});
 
 test("should start web dev server for valid bundle", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-dev-"));

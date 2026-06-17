@@ -6,6 +6,7 @@ use threenative_components::ThreeNativeId;
 use threenative_loader::{LoadError, LoadedBundle, TransformComponent, load_bundle};
 
 pub mod animation;
+pub mod asset_reload;
 pub mod assets;
 pub mod audio;
 pub mod cameras;
@@ -14,6 +15,7 @@ pub mod conformance;
 pub mod environment;
 pub mod first_person;
 pub mod gizmo_geometry;
+pub mod gltf_scene_handles;
 pub mod input;
 pub mod map_world;
 pub mod mesh_bounds;

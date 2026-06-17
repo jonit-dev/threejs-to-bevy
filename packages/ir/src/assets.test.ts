@@ -113,6 +113,105 @@ test("assets should accept supported material texture slots", async () => {
   }
 });
 
+test("should accept embedded assets within the configured byte limit", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-assets-embedded-"));
+  try {
+    await writeTestBundle(root, { createAssetsDir: true });
+    await writeJson(root, "assets.manifest.json", {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [
+        {
+          id: "buffer.meta",
+          kind: "buffer",
+          format: "bin",
+          sourceMode: "embedded",
+          embedded: {
+            byteLength: 16,
+            data: "eyJsZXZlbCI6ImRlbW8ifQ==",
+            encoding: "base64",
+            hash: "sha256-demo",
+            mediaType: "application/json",
+          },
+        },
+      ],
+      groups: [{ id: "bundle.requiredAssets", required: ["buffer.meta"] }],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject network assets when target profile disallows remote sources", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-assets-network-offline-"));
+  try {
+    await writeTestBundle(root, { createAssetsDir: true });
+    await writeJson(root, "assets.manifest.json", {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [
+        {
+          id: "tex.remote",
+          kind: "texture",
+          format: "png",
+          sourceMode: "network",
+          network: {
+            cachePolicy: "immutable",
+            integrity: "sha256-demo",
+            url: "https://cdn.example.com/texture.png",
+          },
+        },
+      ],
+      groups: [{ id: "bundle.requiredAssets", required: ["tex.remote"] }],
+    });
+    await writeJson(root, "target.profile.json", {
+      schema: "threenative.target-profile",
+      version: "0.1.0",
+      targets: ["desktop"],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    const diagnostic = result.diagnostics.find((item) => item.code === "TN_IR_ASSET_NETWORK_TARGET_UNSUPPORTED");
+    assert.equal(diagnostic?.path, "assets.manifest.json/assets/0/network");
+    assert.match(diagnostic?.message ?? "", /tex\.remote/);
+    assert.match(diagnostic?.message ?? "", /desktop/);
+    assert.match(diagnostic?.message ?? "", /https:\/\/cdn\.example\.com\/texture\.png/);
+    assert.match(diagnostic?.suggestion ?? "", /Bundle the asset locally/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject asset groups that reference unknown required assets", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-assets-group-missing-"));
+  try {
+    await writeTestBundle(root, { createAssetsDir: true });
+    await writeFile(join(root, "assets", "crate.png"), "texture");
+    await writeJson(root, "assets.manifest.json", {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [{ id: "tex.crate", kind: "texture", format: "png", path: "assets/crate.png", sourceMode: "bundle" }],
+      groups: [{ id: "group.level", required: ["tex.missing"] }],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    const diagnostic = result.diagnostics.find((item) => item.code === "TN_IR_ASSET_GROUP_ASSET_MISSING");
+    assert.equal(diagnostic?.path, "assets.manifest.json/groups/0/required/0");
+    assert.match(diagnostic?.message ?? "", /tex\.missing/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("animations should accept transform tracks when targets exist", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-transform-animation-"));
   try {

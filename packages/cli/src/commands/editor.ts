@@ -3,10 +3,15 @@ import { tmpdir } from "node:os";
 import { basename, dirname, resolve } from "node:path";
 import {
   diffEditorProjectSnapshots,
+  buildSceneInspectionReport,
   validateEditorProjectSnapshot,
+  type IAssetsManifest,
   type IBundleManifest,
   type IEditorProjectSnapshot,
+  type IGltfSceneMetadataIr,
   type IIrDiagnostic,
+  type IMaterialsIr,
+  type IWorldIr,
 } from "@threenative/ir";
 import { validateBundle } from "@threenative/compiler";
 
@@ -21,6 +26,7 @@ type EditorDiagnostic = Omit<IIrDiagnostic, "value"> & { value?: unknown };
 
 const usage = [
   "tn editor snapshot --bundle <path> [--out <path>] [--json]",
+  "tn editor inspect --bundle <path> [--out <path>] [--json]",
   "tn editor apply --snapshot <path> --bundle <path> [--json]",
   "tn editor diff --before <path> --after <path> [--json]",
 ].join("\n");
@@ -34,6 +40,10 @@ export async function editorCommand(argv: readonly string[], options: IEditorOpt
 
   if (subcommand === "snapshot") {
     return snapshotCommand(commandArgv, cwd, json);
+  }
+
+  if (subcommand === "inspect") {
+    return inspectCommand(commandArgv, cwd, json);
   }
 
   if (subcommand === "apply") {
@@ -52,6 +62,83 @@ export async function editorCommand(argv: readonly string[], options: IEditorOpt
     },
     { exitCode: 1, json, stderr: !json },
   );
+}
+
+async function inspectCommand(argv: readonly string[], cwd: string, json: boolean): Promise<ICommandResult> {
+  const bundleArg = flagValue(argv, "--bundle");
+  if (bundleArg === undefined) {
+    return diagnosticResult(
+      {
+        code: "TN_EDITOR_INSPECT_BUNDLE_MISSING",
+        message: "Editor inspect requires --bundle <path>.",
+        usage,
+      },
+      { exitCode: 1, json, stderr: !json },
+    );
+  }
+
+  const bundlePath = resolve(cwd, bundleArg);
+  const validation = await validateBundle(bundlePath);
+  if (!validation.ok) {
+    return diagnosticsResult("TN_EDITOR_INSPECT_BUNDLE_INVALID", "Editor inspect requires a valid bundle.", validation.diagnostics, json);
+  }
+
+  const manifest = await readJsonFile<IBundleManifest>(resolve(bundlePath, "manifest.json"), "manifest.json");
+  if (manifest.ok === false) {
+    return diagnosticResult(editorDiagnosticPayload(manifest.diagnostic), { exitCode: 1, json, stderr: !json });
+  }
+  const assets = await readJsonFile<IAssetsManifest>(resolve(bundlePath, manifest.value.files.assets), manifest.value.files.assets);
+  const materials = await readJsonFile<IMaterialsIr>(resolve(bundlePath, manifest.value.files.materials), manifest.value.files.materials);
+  const world = await readJsonFile<IWorldIr>(resolve(bundlePath, manifest.value.entry.world), manifest.value.entry.world);
+  const gltfScene =
+    manifest.value.files.gltfScene === undefined
+      ? undefined
+      : await readJsonFile<IGltfSceneMetadataIr>(resolve(bundlePath, manifest.value.files.gltfScene), manifest.value.files.gltfScene);
+  if (assets.ok === false) {
+    return diagnosticResult(editorDiagnosticPayload(assets.diagnostic), { exitCode: 1, json, stderr: !json });
+  }
+  if (materials.ok === false) {
+    return diagnosticResult(editorDiagnosticPayload(materials.diagnostic), { exitCode: 1, json, stderr: !json });
+  }
+  if (world.ok === false) {
+    return diagnosticResult(editorDiagnosticPayload(world.diagnostic), { exitCode: 1, json, stderr: !json });
+  }
+  if (gltfScene?.ok === false) {
+    return diagnosticResult(editorDiagnosticPayload(gltfScene.diagnostic), { exitCode: 1, json, stderr: !json });
+  }
+
+  const report = buildSceneInspectionReport({
+    assets: assets.value,
+    diagnostics: [],
+    ...(gltfScene === undefined ? {} : { gltfScene: gltfScene.value }),
+    manifest: manifest.value,
+    materials: materials.value,
+    world: world.value,
+  });
+  const outArg = flagValue(argv, "--out");
+  if (outArg !== undefined) {
+    const outPath = resolve(cwd, outArg);
+    await mkdir(dirname(outPath), { recursive: true });
+    await writeFile(outPath, `${JSON.stringify(report, null, 2)}\n`);
+    const payload = {
+      code: "TN_EDITOR_INSPECT_OK",
+      documents: report.bundle.documents,
+      message: `Editor inspect wrote ${report.bundle.documents.length} inspected document(s).`,
+      path: outPath,
+      schema: report.schema,
+      version: report.version,
+    };
+    return { exitCode: 0, stdout: json ? `${JSON.stringify(payload, null, 2)}\n` : `${payload.message}\n` };
+  }
+
+  if (json) {
+    return { exitCode: 0, stdout: `${JSON.stringify(report, null, 2)}\n` };
+  }
+
+  return {
+    exitCode: 0,
+    stdout: `Scene inspection: ${report.assets.length} asset(s), ${report.entities.length} entit${report.entities.length === 1 ? "y" : "ies"}, ${report.gltfAssets.length} glTF asset(s).\n`,
+  };
 }
 
 async function applyCommand(argv: readonly string[], cwd: string, json: boolean): Promise<ICommandResult> {

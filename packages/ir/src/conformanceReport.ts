@@ -14,7 +14,7 @@ export interface IConformanceAssetReport {
   magFilter?: Extract<IAssetIr, { magFilter?: unknown }>["magFilter"];
   minFilter?: Extract<IAssetIr, { minFilter?: unknown }>["minFilter"];
   offset?: Extract<IAssetIr, { offset?: unknown }>["offset"];
-  path?: Extract<IAssetIr, { path: string }>["path"];
+  path?: string;
   primitive?: Extract<IAssetIr, { primitive: string }>["primitive"];
   repeat?: Extract<IAssetIr, { repeat?: unknown }>["repeat"];
   rotation?: Extract<IAssetIr, { rotation?: unknown }>["rotation"];

@@ -4,13 +4,14 @@ import {
   type IAssetsManifest,
   type IAnimationsIr,
   type IBundleManifest,
+  type IGltfSceneMetadataIr,
   type IMaterialIr,
   type IMaterialsIr,
   type ITargetProfile,
   type IUiIr,
   type IWorldIr,
 } from "@threenative/ir";
-import { type IAnimationsDeclaration, type IAssetReference, type IAudioDeclaration, type IInputMapDeclaration, type IOverlayDeclaration, type World } from "@threenative/sdk";
+import { type IAnimationsDeclaration, type IAssetGroupDeclaration, type IAssetReference, type IAudioDeclaration, type IInputMapDeclaration, type IOverlayDeclaration, type World } from "@threenative/sdk";
 import { type IUiElement } from "@threenative/ui";
 
 import { type IProjectConfig } from "../config.js";
@@ -24,6 +25,7 @@ import { emitOverlays } from "../overlay/emit.js";
 import { sceneToWorld } from "./scene-to-world.js";
 import { stableJson } from "./stable-json.js";
 import { emitUi } from "./ui.js";
+import { extractGltfSceneMetadata } from "../gltf/metadata.js";
 
 export async function emitBundle(config: IProjectConfig, root: unknown): Promise<string> {
   const outDir = resolve(config.projectPath, config.outDir);
@@ -54,7 +56,9 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
     schema: "threenative.assets",
     version: "0.1.0",
     assets: assets.map(stripInternalAssetFields) as IAssetsManifest["assets"],
+    groups: assetGroups(assets, bundleRoot.assetGroups),
   };
+  const gltfScene: IGltfSceneMetadataIr | undefined = await extractGltfSceneMetadata(config.projectPath, assets);
   const targetProfile: ITargetProfile = {
     schema: "threenative.target-profile",
     version: "0.1.0",
@@ -98,6 +102,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
       ...(input === undefined ? {} : { input: "input.ir.json" }),
       materials: "materials.ir.json",
       targetProfile: "target.profile.json",
+      ...(gltfScene === undefined ? {} : { gltfScene: "gltf.scene.json" }),
       ...(ecs === undefined
         ? {}
         : {
@@ -136,6 +141,9 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
   if (animations !== undefined) {
     await writeFile(resolve(outDir, "animations.ir.json"), stableJson(animations));
   }
+  if (gltfScene !== undefined) {
+    await writeFile(resolve(outDir, "gltf.scene.json"), stableJson(gltfScene));
+  }
   if (input !== undefined) {
     await writeFile(resolve(outDir, "input.ir.json"), stableJson(input));
   }
@@ -156,6 +164,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
 }
 
 interface IBundleRoot {
+  assetGroups?: readonly IAssetGroupDeclaration[];
   animations?: IAnimationsDeclaration;
   audio?: IAudioDeclaration;
   environment?: IEnvironmentDeclaration;
@@ -177,7 +186,7 @@ function isBundleRoot(root: unknown): root is IBundleRoot {
   return (
     typeof root === "object"
     && root !== null
-    && ["animations", "audio", "environment", "input", "overlay", "scene", "ui", "world"].some((key) => key in root)
+    && ["assetGroups", "animations", "audio", "environment", "input", "overlay", "scene", "ui", "world"].some((key) => key in root)
   );
 }
 
@@ -260,6 +269,24 @@ function audioAssetRefs(audio: IAudioDeclaration | undefined): IAssetReference[]
 function stripInternalAssetFields(asset: IInternalAsset): Record<string, unknown> & { id: string } {
   const { sourcePath: _sourcePath, storage: _storage, ...publicAsset } = asset;
   return publicAsset;
+}
+
+function assetGroups(assets: readonly IInternalAsset[], groups: readonly IAssetGroupDeclaration[] | undefined): IAssetsManifest["groups"] {
+  const required = assets
+    .filter((asset) => asset.kind !== "render-target")
+    .map((asset) => asset.id)
+    .sort((left, right) => left.localeCompare(right));
+  const normalized = [
+    ...(required.length === 0 ? [] : [{ id: "bundle.requiredAssets", required }]),
+    ...(groups ?? []).map((group) => ({
+      id: group.id,
+      ...(group.failurePolicy === undefined ? {} : { failurePolicy: group.failurePolicy }),
+      ...(group.optional === undefined ? {} : { optional: [...group.optional].sort((left, right) => left.localeCompare(right)) }),
+      required: [...group.required].sort((left, right) => left.localeCompare(right)),
+      ...(group.timeoutMs === undefined ? {} : { timeoutMs: group.timeoutMs }),
+    })),
+  ].sort((left, right) => left.id.localeCompare(right.id));
+  return normalized.length === 0 ? undefined : normalized;
 }
 
 interface IGeneratedMeshPayload {

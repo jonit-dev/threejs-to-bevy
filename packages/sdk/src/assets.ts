@@ -1,7 +1,9 @@
 import { SdkError } from "./errors.js";
 
-export type AssetKind = "audio" | "model" | "render-target" | "texture";
-export type AssetFormat = "depth24plus" | "glb" | "gltf" | "jpeg" | "mp3" | "ogg" | "png" | "rgba16f" | "rgba8" | "wav";
+export type AssetKind = "audio" | "buffer" | "model" | "render-target" | "texture";
+export type AssetFormat = "bin" | "depth24plus" | "glb" | "gltf" | "jpeg" | "mp3" | "ogg" | "png" | "rgba16f" | "rgba8" | "wav";
+export type AssetSourceMode = "bundle" | "embedded" | "network";
+export type AssetCachePolicy = "immutable" | "no-store" | "revalidate";
 export type TextureWrapMode = "clampToEdge" | "mirroredRepeat" | "repeat";
 export type TextureMinFilter =
   | "linear"
@@ -84,12 +86,29 @@ export interface IUnsupportedAnimationAssetOptions {
   stateMachine?: boolean;
 }
 
+export interface IEmbeddedAssetSource {
+  byteLength: number;
+  data: string;
+  encoding: "base64";
+  hash?: string;
+  mediaType: string;
+}
+
+export interface INetworkAssetSource {
+  cachePolicy?: AssetCachePolicy;
+  integrity?: string;
+  url: string;
+}
+
 export interface IAssetReference {
+  embedded?: IEmbeddedAssetSource;
   format: AssetFormat;
   id: string;
   kind: AssetKind;
+  network?: INetworkAssetSource;
   path?: string;
   sampleCount?: number;
+  sourceMode?: AssetSourceMode;
   usage?: "color" | "depth";
   height?: number;
   width?: number;
@@ -104,6 +123,23 @@ export interface IAssetReference {
   rotation?: number;
   wrapS?: TextureWrapMode;
   wrapT?: TextureWrapMode;
+}
+
+export type AssetGroupFailurePolicy = "fail" | "warn";
+
+export interface IAssetGroupDeclaration {
+  failurePolicy?: AssetGroupFailurePolicy;
+  id: string;
+  optional?: string[];
+  required: string[];
+  timeoutMs?: number;
+}
+
+export interface IAssetGroupOptions {
+  failurePolicy?: AssetGroupFailurePolicy;
+  optional?: readonly (IAssetReference | string)[];
+  required: readonly (IAssetReference | string)[];
+  timeoutMs?: number;
 }
 
 export function animationClip(id: string, options: Omit<IAnimationClipReference, "id"> = {}): IAnimationClipReference {
@@ -167,6 +203,83 @@ export function boundedParticleEmitter(id: string, options: Omit<IBoundedParticl
   const emitter = { id, ...options };
   validateParticleEmitters([emitter]);
   return emitter;
+}
+
+export function embeddedAsset(
+  id: string,
+  options: {
+    data: string | Uint8Array;
+    format?: "bin";
+    hash?: string;
+    kind?: "buffer";
+    mediaType: string;
+  },
+): IAssetReference {
+  assertAssetId(id);
+  if (options.mediaType.trim() === "") {
+    throw new SdkError("TN_SDK_ASSET_MEDIA_TYPE_INVALID", "Embedded asset mediaType must not be empty.");
+  }
+  const bytes = typeof options.data === "string" ? new TextEncoder().encode(options.data) : options.data;
+  if (bytes.byteLength === 0) {
+    throw new SdkError("TN_SDK_ASSET_EMBEDDED_EMPTY", "Embedded asset data must not be empty.");
+  }
+  return {
+    embedded: {
+      byteLength: bytes.byteLength,
+      data: base64(bytes),
+      encoding: "base64",
+      ...(options.hash === undefined ? {} : { hash: options.hash }),
+      mediaType: options.mediaType,
+    },
+    format: options.format ?? "bin",
+    id,
+    kind: options.kind ?? "buffer",
+    sourceMode: "embedded",
+  };
+}
+
+export function networkAsset(
+  id: string,
+  url: string,
+  options: {
+    cachePolicy?: AssetCachePolicy;
+    format: "glb" | "gltf" | "jpeg" | "mp3" | "ogg" | "png" | "wav";
+    integrity?: string;
+    kind: "audio" | "model" | "texture";
+  },
+): IAssetReference {
+  assertAssetId(id);
+  validateNetworkUrl(url);
+  return {
+    format: options.format,
+    id,
+    kind: options.kind,
+    network: {
+      ...(options.cachePolicy === undefined ? {} : { cachePolicy: options.cachePolicy }),
+      ...(options.integrity === undefined ? {} : { integrity: options.integrity }),
+      url,
+    },
+    sourceMode: "network",
+  };
+}
+
+export function assetGroup(id: string, options: IAssetGroupOptions): IAssetGroupDeclaration {
+  if (id.trim() === "") {
+    throw new SdkError("TN_SDK_ASSET_GROUP_ID_EMPTY", "Asset group ID must not be empty.");
+  }
+  if (options.required.length === 0) {
+    throw new SdkError("TN_SDK_ASSET_GROUP_REQUIRED_EMPTY", "Asset groups must declare at least one required asset.");
+  }
+  if (options.timeoutMs !== undefined && (!Number.isFinite(options.timeoutMs) || options.timeoutMs <= 0)) {
+    throw new SdkError("TN_SDK_ASSET_GROUP_TIMEOUT_INVALID", "Asset group timeoutMs must be a positive finite number.");
+  }
+  return {
+    id,
+    ...(options.failurePolicy === undefined ? {} : { failurePolicy: options.failurePolicy }),
+    ...(options.optional === undefined ? {} : { optional: normalizeAssetIds(options.optional) }),
+    required: normalizeAssetIds(options.required),
+    ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
+  };
 }
 
 function assertUniqueAnimationClipIds(clips: readonly IAnimationClipReference[]): void {
@@ -320,9 +433,7 @@ export function audioAsset(id: string, path: string): IAssetReference {
 }
 
 function assetRef(kind: AssetKind, id: string, path: string, formats: AssetFormat[]): IAssetReference {
-  if (id.trim() === "") {
-    throw new SdkError("TN_SDK_ASSET_ID_EMPTY", "Asset ID must not be empty.");
-  }
+  assertAssetId(id);
   if (path.trim() === "" || path.startsWith("/") || path.includes("..")) {
     throw new SdkError("TN_SDK_ASSET_PATH_INVALID", "Asset path must be bundle-relative and must not traverse parent directories.");
   }
@@ -330,7 +441,56 @@ function assetRef(kind: AssetKind, id: string, path: string, formats: AssetForma
   if (format === undefined || !formats.includes(format)) {
     throw new SdkError("TN_SDK_ASSET_FORMAT_UNSUPPORTED", `Unsupported ${kind} asset format for '${path}'.`);
   }
-  return { format, id, kind, path };
+  return { format, id, kind, path, sourceMode: "bundle" };
+}
+
+function assertAssetId(id: string): void {
+  if (id.trim() === "") {
+    throw new SdkError("TN_SDK_ASSET_ID_EMPTY", "Asset ID must not be empty.");
+  }
+}
+
+function base64(bytes: Uint8Array): string {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  let output = "";
+  for (let index = 0; index < bytes.length; index += 3) {
+    const first = bytes[index] ?? 0;
+    const second = bytes[index + 1] ?? 0;
+    const third = bytes[index + 2] ?? 0;
+    const triplet = (first << 16) | (second << 8) | third;
+    output += alphabet[(triplet >> 18) & 63];
+    output += alphabet[(triplet >> 12) & 63];
+    output += index + 1 < bytes.length ? alphabet[(triplet >> 6) & 63] : "=";
+    output += index + 2 < bytes.length ? alphabet[triplet & 63] : "=";
+  }
+  return output;
+}
+
+function normalizeAssetIds(values: readonly (IAssetReference | string)[]): string[] {
+  const ids = values.map((value) => typeof value === "string" ? value : value.id);
+  const seen = new Set<string>();
+  for (const id of ids) {
+    if (id.trim() === "") {
+      throw new SdkError("TN_SDK_ASSET_GROUP_ASSET_ID_EMPTY", "Asset group asset IDs must not be empty.");
+    }
+    if (seen.has(id)) {
+      throw new SdkError("TN_SDK_ASSET_GROUP_ASSET_DUPLICATE", `Asset group references asset '${id}' more than once.`);
+    }
+    seen.add(id);
+  }
+  return [...ids].sort((left, right) => left.localeCompare(right));
+}
+
+function validateNetworkUrl(url: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new SdkError("TN_SDK_ASSET_NETWORK_URL_INVALID", "Network asset URL must be a valid HTTPS URL.");
+  }
+  if (parsed.protocol !== "https:") {
+    throw new SdkError("TN_SDK_ASSET_NETWORK_URL_INVALID", "Network asset URL must use HTTPS.");
+  }
 }
 
 function validateTextureOptions(options: ITextureAssetOptions): void {

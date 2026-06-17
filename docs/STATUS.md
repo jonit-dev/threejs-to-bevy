@@ -147,6 +147,24 @@ the rest of V8-10: public asset-group declarations, spawned glTF node
 query/update handles, material override handles, editor inspection commands,
 watch diagnostics, and state-preserving hot reload remain future work.
 
+V9-03 assets/glTF scene workflow is implemented as a promoted V9 proof:
+SDK declarations and compiler emission now cover bundle-local, bounded
+embedded, and HTTPS network asset source modes plus deterministic asset groups;
+IR validation rejects oversized embedded payloads, unsupported network target
+profiles, unsafe bundle paths, duplicate groups, and group references to unknown
+assets; compiler output can include deterministic glTF scene metadata for named
+nodes, selected extras, and custom vertex attributes; spawned glTF scene handles
+support portable transform, visibility, material, and extras lookup operations
+with web and Bevy runtime observations; `tn editor inspect` emits structured
+scene inspection JSON; and dev reload classification reports reloadable,
+state-preserving, rebuild-required, and unsupported changes. The aggregate
+proof is `pnpm verify:v9:assets-gltf-scene-workflow`, which writes
+`inspection.json`, `web-report.json`, `native-report.json`,
+`reload-report.json`, and `diff.json` under
+`artifacts/v9/assets-gltf-scene-workflow/`. Custom asset loaders/custom asset
+types, arbitrary runtime file/network access from scripts, and custom shader
+consumption of glTF custom attributes remain deferred.
+
 V8-11 now has a focused rendering-quality slice for fog and sky visual parity:
 `pnpm verify:v8:rendering-quality` builds `examples/v8-rendering-quality`,
 validates the bundle, captures web/native screenshots, checks nonblank output,

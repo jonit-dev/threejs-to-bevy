@@ -36,7 +36,7 @@ export interface IAssetLoadTrace {
 export function resolveWebAssets(source: string, manifest: IAssetsManifest): Map<string, IResolvedWebAsset> {
   return new Map(
     manifest.assets
-      .filter((asset) => "path" in asset)
+      .filter((asset): asset is IAssetIr & { path: string } => "path" in asset && typeof asset.path === "string")
       .map((asset) => [
         asset.id,
         {
