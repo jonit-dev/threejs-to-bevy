@@ -27,6 +27,14 @@ export {
   type IGltfSceneNodeIr,
   type IGltfNodeTransformIr,
 } from "./gltfScene.js";
+export {
+  normalizeGltfSceneHandlesIr,
+  validateGltfSceneHandlesIr,
+  type GltfSceneHandlesSchema,
+  type IGltfNodeHandleIr,
+  type IGltfNodeOperationIr,
+  type IGltfSceneHandlesIr,
+} from "./gltfSceneHandles.js";
 export type { IInputActionIr, IInputAxisIr, IInputIr, InputBinding } from "./input.js";
 export type { IRuntimeConfigIr } from "./runtimeConfig.js";
 export {

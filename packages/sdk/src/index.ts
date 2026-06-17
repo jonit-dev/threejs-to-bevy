@@ -134,6 +134,18 @@ export { MeshBuilder, type IMeshBuilderBuildOptions } from "./geometry/meshBuild
 export { mushroom, pineTree, rock, stylizedTree, type IOrganicMeshOptions } from "./geometry/meshBuilderOrganic.js";
 export { defineGame, type IGameRoot, type IGameRootOptions } from "./game.js";
 export {
+  gltfNodeHandle,
+  gltfSceneHandles,
+  lookupGltfNodeExtras,
+  setGltfNodeMaterial,
+  setGltfNodeTransform,
+  setGltfNodeVisibility,
+  type GltfNodeHandleOperation,
+  type IGltfNodeHandleDeclaration,
+  type IGltfNodeTransformOverride,
+  type IGltfSceneHandlesDeclaration,
+} from "./gltfScene.js";
+export {
   action,
   axis,
   defineInputMap,

@@ -14,6 +14,7 @@ pub mod conformance;
 pub mod environment;
 pub mod first_person;
 pub mod gizmo_geometry;
+pub mod gltf_scene_handles;
 pub mod input;
 pub mod map_world;
 pub mod mesh_bounds;
