@@ -3,7 +3,7 @@ use std::path::Path;
 use bevy::prelude::*;
 use thiserror::Error;
 use threenative_components::ThreeNativeId;
-use threenative_loader::{LoadError, LoadedBundle, TransformComponent, load_bundle};
+use threenative_loader::{load_bundle, LoadError, LoadedBundle, TransformComponent};
 
 pub mod animation;
 pub mod asset_reload;
@@ -36,6 +36,7 @@ pub mod systems_host;
 pub mod systems_services;
 pub mod transform_interpolation;
 pub mod ui;
+pub mod ui_debug;
 pub mod walkability;
 
 #[derive(Debug, Error)]

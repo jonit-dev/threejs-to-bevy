@@ -1,0 +1,12 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [],
+  "resources": {
+    "Settings": {
+      "volume": 0.5
+    }
+  },
+  "events": {},
+  "prefabs": []
+}

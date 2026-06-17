@@ -508,8 +508,13 @@ controls, unnamed explicit progressbars, and malformed list/listitem structure,
 bundle capabilities report `ui:accessibility` with label/role granularity, the
 web DOM overlay maps metadata to ARIA roles and labels, web/native conformance
 reports preserve the fields, and the Bevy UI adapter inserts AccessKit
-`AccessibilityNode` components. Focus narration, disabled-state semantics, and
-target-specific accessibility audits remain future work.
+`AccessibilityNode` components. V9-05 Phase 5 adds a target-oriented retained UI
+accessibility audit with stable repair hints, plus web/native UI debug reports
+that expose node IDs, roles, accessible names, focus index, bounds, clipping,
+z-index, disabled state, action binding, image source, font/widget state, and
+gizmo observations. The `pnpm verify:v9:input-ui-accessibility` gate writes the
+combined evidence under `artifacts/v9/input-ui-accessibility/`. Focus narration
+and manually inspected target accessibility audits remain future work.
 
 V5-07 has landed the lighting, atmosphere, shadow, and color parity-evidence
 slice: shared fixtures now cover visible/hidden meshes plus ranged point and
@@ -1015,6 +1020,12 @@ dispatch value-bearing portable UI action events through the existing action
 queue, context-menu items dispatch regular button actions, disabled items are
 suppressed, and unsupported virtual keyboard requests fail with a stable SDK
 diagnostic instead of being silently ignored.
+
+V9-05 Phase 5 adds retained UI debug reports and gate artifacts for promoted
+input/UI/accessibility parity. Web reports are generated from rendered UI trees,
+native reports preserve AccessKit-facing role/name/disabled/widget state from
+`ui.ir.json`, and the V9 gate now rejects missing accessibility repair hints,
+missing debug reports, and missing picking overlay evidence before release.
 
 The same functional-game parity pass also closes the P0 native material texture
 loading gap for promoted standard-material slots. Bevy runtime material mapping

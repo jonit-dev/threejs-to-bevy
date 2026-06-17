@@ -956,6 +956,7 @@ function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnosti
       });
     }
   }
+  validateUnsupportedUiRequests(raw, path, diagnostics);
   validateUiLayout(node.layout, `${path}/layout`, diagnostics);
   validateUiStyle(node.style, `${path}/style`, diagnostics);
   validateUiSpans(node, path, diagnostics, fontFamilies);
@@ -1009,6 +1010,36 @@ function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnosti
     });
   }
   node.children?.forEach((child, index) => validateUiNode(child, `${path}/children/${index}`, diagnostics, ids, fontFamilies));
+}
+
+function validateUnsupportedUiRequests(raw: Record<string, unknown>, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (raw.transform !== undefined || raw.transforms !== undefined) {
+    diagnostics.push({
+      code: "TN_IR_UI_TRANSFORM_UNSUPPORTED",
+      message: "Broad retained UI transforms are not supported in the V9 portable UI contract.",
+      path: `${path}/${raw.transform !== undefined ? "transform" : "transforms"}`,
+      severity: "error",
+      suggestion: "Use promoted layout positioning fields until portable UI transforms are promoted.",
+    });
+  }
+  if (raw.renderTarget !== undefined || raw.renderToTexture !== undefined) {
+    diagnostics.push({
+      code: "TN_IR_UI_RENDER_TO_TEXTURE_UNSUPPORTED",
+      message: "Render-to-texture UI is not supported in the V9 portable UI contract.",
+      path: `${path}/${raw.renderTarget !== undefined ? "renderTarget" : "renderToTexture"}`,
+      severity: "error",
+      suggestion: "Render retained UI through the promoted web DOM or native UI adapters.",
+    });
+  }
+  if (raw.worldSpace !== undefined || raw.worldUi !== undefined || raw.spatial !== undefined) {
+    diagnostics.push({
+      code: "TN_IR_UI_WORLD_SPACE_UNSUPPORTED",
+      message: "3D-world UI is not supported in the V9 portable UI contract.",
+      path: `${path}/${raw.worldSpace !== undefined ? "worldSpace" : raw.worldUi !== undefined ? "worldUi" : "spatial"}`,
+      severity: "error",
+      suggestion: "Use screen-space retained UI and promoted picking metadata until 3D-world UI is promoted.",
+    });
+  }
 }
 
 function validateUiImageMetadata(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[]): void {

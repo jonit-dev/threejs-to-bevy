@@ -1,0 +1,33 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "conformance-v9-input-ui-accessibility",
+  "requiredCapabilities": {
+    "input": ["rebinding.persistence", "picking.drag"],
+    "ui": [
+      "accessibility",
+      "debug-overlay",
+      "image",
+      "image.metadata",
+      "image.nine-slice",
+      "native-action-events",
+      "node.button",
+      "node.column",
+      "node.contextMenu",
+      "node.image",
+      "node.slider",
+      "widget",
+      "widget.contextMenu",
+      "widget.slider"
+    ]
+  },
+  "entry": {
+    "world": "world.ir.json",
+    "ui": "ui.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "materials": "materials.ir.json",
+    "targetProfile": "target.profile.json"
+  }
+}

@@ -77,6 +77,7 @@ export {
   type PickingTargetKind,
 } from "./picking.js";
 export type { IRuntimeConfigIr } from "./runtimeConfig.js";
+export { auditUiAccessibility, type IUiAccessibilityDiagnostic, type IUiAccessibilityReport } from "./uiAccessibility.js";
 export {
   buildComponentReflectionRegistry,
   type IComponentReflectionField,
