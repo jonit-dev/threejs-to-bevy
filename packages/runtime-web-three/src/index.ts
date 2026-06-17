@@ -17,7 +17,7 @@ export { collectPerformanceSummary, summarizeFrameTimings, type IPerformanceMetr
 export { applyAtmosphereProfile, observeAtmosphereProfile, type IAtmosphereObservation } from "./rendering.js";
 export { createGameLoopState, runGameFrame, setPaused, type IGameLoopState } from "./gameLoop.js";
 export { createAxisGizmo, createWireBoxGizmo, createWireSphereGizmo, gizmoToBufferGeometry, type IGizmoGeometry, type IGizmoLine } from "./gizmoGeometry.js";
-export { attachInputListeners, createInputState, createTouchGestureRecognizer, rebindInput, reportGamepadCapabilities, type IGamepadCapabilityReport, type IInputRebindDiagnostic, type IInputRebindResult, type InputRebindTarget, type ITouchGestureEvent, type ITouchGestureFrame, type ITouchGesturePoint, type ITouchGestureRecognizer, type IWebInputState } from "./input.js";
+export { applyPersistedBindingOverrides, attachInputListeners, createInputState, createTouchGestureRecognizer, loadPersistedBindingOverrides, persistBindingOverride, rebindInput, reportGamepadCapabilities, savePersistedBindingOverrides, type IControlsSettingsStorage, type IGamepadCapabilityReport, type IInputRebindDiagnostic, type IInputRebindResult, type InputRebindTarget, type ITouchGestureEvent, type ITouchGestureFrame, type ITouchGesturePoint, type ITouchGestureRecognizer, type IWebInputState, type IWebInputStateOptions } from "./input.js";
 export { traceCharacterControllers, type ICharacterTraceInput, type ICharacterTraceObservation } from "./character.js";
 export { queryNavigationPath, traceNavigationPaths, type INavigationPathRequest, type INavigationPathResult } from "./navigation.js";
 export { createFirstPersonState, updateFirstPersonController, type IFirstPersonControllerState } from "./firstPerson.js";

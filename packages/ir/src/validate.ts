@@ -20,7 +20,7 @@ import {
   type IWorldIr,
 } from "./types.js";
 import type { ISystemsIr } from "./systems.js";
-import type { IInputIr, InputBinding } from "./input.js";
+import { sortedPersistedBindingOverrides, type IInputIr, type IPersistedBindingOverrideIr, type InputBinding } from "./input.js";
 import { validatePerformanceProfile } from "./performanceProfile.js";
 import { validateEnvironmentSceneIr } from "./environment.js";
 import { validateOverlaysIr, type IOverlaysIr } from "./overlays.js";
@@ -2343,6 +2343,168 @@ function validateInput(input: IInputIr, path: string, diagnostics: IIrDiagnostic
       validateBinding(axis.value, `${path}/axes/${axisIndex}/value`, diagnostics);
     }
   });
+  validateControlsSettings(input, path, diagnostics);
+  validatePersistedBindingOverrides(input, path, diagnostics);
+}
+
+function validateControlsSettings(input: IInputIr, path: string, diagnostics: IIrDiagnostic[]): void {
+  const settings = input.controlsSettings;
+  if (settings === undefined) {
+    return;
+  }
+  if (settings.profileId.trim() === "") {
+    diagnostics.push({
+      code: "TN_IR_INPUT_CONTROLS_PROFILE_INVALID",
+      message: "Controls settings profileId must not be empty.",
+      path: `${path}/controlsSettings/profileId`,
+      suggestion: "Use a stable profile id such as 'default'.",
+    });
+  }
+  const actionIds = new Set(input.actions.map((action) => action.id));
+  const axisIds = new Set(input.axes.map((axis) => axis.id));
+  const rowKeys = new Set<string>();
+  settings.rows.forEach((row, index) => {
+    const rowPath = `${path}/controlsSettings/rows/${index}`;
+    const exists = row.kind === "action" ? actionIds.has(row.actionOrAxisId) : axisIds.has(row.actionOrAxisId);
+    if (!exists) {
+      diagnostics.push({
+        code: row.kind === "action" ? "TN_IR_INPUT_CONTROLS_ACTION_MISSING" : "TN_IR_INPUT_CONTROLS_AXIS_MISSING",
+        message: `Controls settings row references missing ${row.kind} '${row.actionOrAxisId}'.`,
+        path: `${rowPath}/actionOrAxisId`,
+        suggestion: `Declare '${row.actionOrAxisId}' in input.${row.kind === "action" ? "actions" : "axes"} before adding a rebind row.`,
+      });
+    }
+    if (row.kind === "axis" && row.axisSlot === undefined) {
+      diagnostics.push({
+        code: "TN_IR_INPUT_CONTROLS_AXIS_SLOT_MISSING",
+        message: `Controls settings row for axis '${row.actionOrAxisId}' must declare an axisSlot.`,
+        path: `${rowPath}/axisSlot`,
+        suggestion: "Set axisSlot to 'negative', 'positive', or 'value'.",
+      });
+    }
+    if (row.kind === "action" && row.axisSlot !== undefined) {
+      diagnostics.push({
+        code: "TN_IR_INPUT_CONTROLS_ACTION_AXIS_SLOT_INVALID",
+        message: `Controls settings row for action '${row.actionOrAxisId}' cannot declare an axisSlot.`,
+        path: `${rowPath}/axisSlot`,
+        suggestion: "Remove axisSlot for action rebind rows.",
+      });
+    }
+    validateBindings(row.defaultBindings, `${rowPath}/defaultBindings`, diagnostics);
+    const key = `${row.kind}:${row.actionOrAxisId}:${row.axisSlot ?? ""}`;
+    if (rowKeys.has(key)) {
+      diagnostics.push({
+        code: "TN_IR_INPUT_CONTROLS_ROW_DUPLICATE",
+        message: `Controls settings row '${key}' is declared more than once.`,
+        path: rowPath,
+        suggestion: "Keep one rebind row per action or axis slot.",
+      });
+    }
+    rowKeys.add(key);
+  });
+}
+
+function validatePersistedBindingOverrides(input: IInputIr, path: string, diagnostics: IIrDiagnostic[]): void {
+  const overrides = input.persistedBindingOverrides;
+  if (overrides === undefined) {
+    return;
+  }
+  if (input.controlsSettings === undefined) {
+    diagnostics.push({
+      code: "TN_IR_INPUT_CONTROLS_SETTINGS_MISSING",
+      message: "Persisted binding overrides require controlsSettings metadata.",
+      path: `${path}/persistedBindingOverrides`,
+      suggestion: "Declare controlsSettings rows for actions or axes that can be rebound.",
+    });
+  }
+  const actionIds = new Set(input.actions.map((action) => action.id));
+  const axisIds = new Set(input.axes.map((axis) => axis.id));
+  const rowKeys = new Set(input.controlsSettings?.rows.map((row) => `${row.kind}:${row.actionOrAxisId}:${row.axisSlot ?? ""}`) ?? []);
+  const sorted = sortedPersistedBindingOverrides(overrides);
+  overrides.forEach((override, index) => {
+    const overridePath = `${path}/persistedBindingOverrides/${index}`;
+    const sortedOverride = sorted[index];
+    if (sortedOverride !== undefined && overrideSortKey(override) !== overrideSortKey(sortedOverride)) {
+      diagnostics.push({
+        code: "TN_IR_INPUT_OVERRIDE_ORDER_UNSTABLE",
+        message: "Persisted binding overrides must be sorted deterministically.",
+        path: `${path}/persistedBindingOverrides`,
+        suggestion: "Sort overrides by profileId, actionOrAxisId, axisSlot, device, and control before emitting input.ir.json.",
+      });
+    }
+    const targetKind = actionIds.has(override.actionOrAxisId) ? "action" : axisIds.has(override.actionOrAxisId) ? "axis" : undefined;
+    if (targetKind === undefined) {
+      diagnostics.push({
+        code: "TN_IR_INPUT_OVERRIDE_TARGET_MISSING",
+        message: `Persisted binding override references missing action or axis '${override.actionOrAxisId}'.`,
+        path: `${overridePath}/actionOrAxisId`,
+        suggestion: `Declare '${override.actionOrAxisId}' in input.actions or input.axes, or remove this persisted override.`,
+      });
+      return;
+    }
+    if (targetKind === "action" && override.axisSlot !== undefined) {
+      diagnostics.push({
+        code: "TN_IR_INPUT_OVERRIDE_ACTION_AXIS_SLOT_INVALID",
+        message: `Persisted binding override for action '${override.actionOrAxisId}' cannot declare an axisSlot.`,
+        path: `${overridePath}/axisSlot`,
+        suggestion: "Remove axisSlot for action overrides.",
+      });
+    }
+    if (targetKind === "axis" && override.axisSlot === undefined) {
+      diagnostics.push({
+        code: "TN_IR_INPUT_OVERRIDE_AXIS_SLOT_MISSING",
+        message: `Persisted binding override for axis '${override.actionOrAxisId}' must declare an axisSlot.`,
+        path: `${overridePath}/axisSlot`,
+        suggestion: "Set axisSlot to 'negative', 'positive', or 'value'.",
+      });
+    }
+    if (!rowKeys.has(`${targetKind}:${override.actionOrAxisId}:${override.axisSlot ?? ""}`)) {
+      diagnostics.push({
+        code: "TN_IR_INPUT_OVERRIDE_CONTROLS_ROW_MISSING",
+        message: `Persisted binding override for '${override.actionOrAxisId}' has no matching controls settings row.`,
+        path: overridePath,
+        suggestion: "Add a controlsSettings row for this target so players can inspect and reset the override.",
+      });
+    }
+    validateBinding(overrideToBinding(override), overridePath, diagnostics);
+    if (override.deadzone !== undefined && (!Number.isFinite(override.deadzone) || override.deadzone < 0 || override.deadzone > 1)) {
+      diagnostics.push({
+        code: "TN_IR_INPUT_OVERRIDE_DEADZONE_INVALID",
+        message: "Persisted binding override deadzone must be between 0 and 1.",
+        path: `${overridePath}/deadzone`,
+        suggestion: "Clamp deadzone to a normalized value between 0 and 1.",
+      });
+    }
+    if (override.scale !== undefined && !Number.isFinite(override.scale)) {
+      diagnostics.push({
+        code: "TN_IR_INPUT_OVERRIDE_SCALE_INVALID",
+        message: "Persisted binding override scale must be finite.",
+        path: `${overridePath}/scale`,
+        suggestion: "Use a finite numeric scale or omit scale.",
+      });
+    }
+  });
+}
+
+function overrideSortKey(override: IPersistedBindingOverrideIr): string {
+  return `${override.profileId}\0${override.actionOrAxisId}\0${override.axisSlot ?? ""}\0${override.device}\0${override.control}`;
+}
+
+function overrideToBinding(override: IPersistedBindingOverrideIr): InputBinding {
+  if (override.device === "keyboard") {
+    return { code: override.control, device: "keyboard" };
+  }
+  if (override.device === "pointer") {
+    if (override.control.startsWith("axis:")) {
+      return { axis: override.control.slice(5) as "deltaX" | "deltaY" | "x" | "y", device: "pointer" };
+    }
+    return { button: Number.parseInt(override.control.replace(/^button:/, ""), 10), device: "pointer" };
+  }
+  if (override.device === "touch") {
+    const [control, axis] = override.control.split(":");
+    return { axis: axis as "x" | "y" | undefined, control: control ?? "", device: "touch" };
+  }
+  return { control: override.control, device: "gamepad", required: false };
 }
 
 function validateBindings(bindings: InputBinding[], path: string, diagnostics: IIrDiagnostic[]): void {

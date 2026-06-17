@@ -157,6 +157,11 @@ pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeErro
         }
     }
     if let Some(input_map) = bundle.input.clone() {
+        let input_map = input::apply_native_persisted_binding_overrides(
+            &input_map,
+            &input_map.persisted_binding_overrides,
+            None,
+        );
         app.insert_resource(input::NativeInputMap(input_map));
         app.init_resource::<input::NativeInputState>();
         app.add_systems(PreUpdate, input::capture_native_input);

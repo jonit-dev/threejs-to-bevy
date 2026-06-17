@@ -84,6 +84,8 @@ fn make_input() -> InputIr {
             make_keyboard_action("MoveRight", "KeyD"),
         ],
         axes: vec![],
+        controls_settings: None,
+        persisted_binding_overrides: vec![],
     }
 }
 

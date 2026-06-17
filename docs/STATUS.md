@@ -972,8 +972,12 @@ Input rebinding now has matching deterministic helpers in web and Bevy. The
 helpers clone an `input.ir.json` map, replace an action binding or axis slot, and
 return stable diagnostics for missing actions/axes, invalid binding indexes,
 duplicate bindings, and required gamepad bindings that should remain optional
-for portable projects. Interactive rebinding UI, persistence, and richer device
-overlays remain future work.
+for portable projects. V9-05 Phase 1 adds controls settings metadata for
+retained UI rebind rows, persisted logical binding override records with
+deterministic sorting and validation, web local storage helpers, and Bevy local
+JSON reload/apply before the first input snapshot. Full visual settings-screen
+UX polish, broader local settings APIs, and richer device overlays remain future
+work.
 
 The retained UI style surface now accepts portable `shadow` and linear
 `gradient` metadata with validation and capability flags. The web DOM overlay
