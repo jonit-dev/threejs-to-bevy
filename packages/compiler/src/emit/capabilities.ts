@@ -103,6 +103,10 @@ function collectWorldCapabilities(world: IWorldIr | undefined, add: (domain: str
   if (world.resources?.ActiveCameras !== undefined) {
     add("rendering", "camera.multiple");
   }
+  if (world.resources?.Navigation !== undefined) {
+    add("navigation", "static-regions");
+    add("navigation", "path");
+  }
   if (Object.keys(world.events ?? {}).length > 0) {
     add("ecs", "events");
   }
@@ -182,6 +186,10 @@ function collectWorldCapabilities(world: IWorldIr | undefined, add: (domain: str
       if (entity.components.Collider.trigger === true) {
         add("physics", "trigger-collider");
       }
+      if (entity.components.Collider.sensor !== undefined) {
+        add("physics", "sensors");
+        add("physics", "interaction-volumes");
+      }
     }
     if (entity.components.CharacterController !== undefined) {
       add("character", "controller");
@@ -199,6 +207,9 @@ function collectWorldCapabilities(world: IWorldIr | undefined, add: (domain: str
       }
       if (entity.components.CharacterController.slopeLimit !== undefined) {
         add("character", "slope-limit");
+      }
+      if (entity.components.CharacterController.pushPolicy?.enabled === true) {
+        add("character", "push");
       }
     }
   }

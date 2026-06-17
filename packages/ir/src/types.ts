@@ -250,7 +250,22 @@ export interface IColliderComponent {
     rise: number;
     run: number;
   };
+  sensor?: {
+    interactionKind?: "checkpoint" | "hazard" | "pickup" | "prompt" | "zone";
+    occupantLimit?: number;
+    phases?: readonly ("enter" | "exit" | "stay")[];
+    trackOccupants?: boolean;
+  };
   trigger?: boolean;
+}
+
+export interface ICharacterPushPolicyComponent {
+  allowedLayers?: readonly string[];
+  blockedWhenTooHeavy?: boolean;
+  enabled: boolean;
+  impulseScale?: number;
+  maxPushMass?: number;
+  minMoveSpeed?: number;
 }
 
 export interface ICharacterControllerComponent {
@@ -259,6 +274,7 @@ export interface ICharacterControllerComponent {
   interactAction?: string;
   moveXAxis: string;
   moveZAxis: string;
+  pushPolicy?: ICharacterPushPolicyComponent;
   slopeLimit?: number;
   speed: number;
   stepOffset?: number;

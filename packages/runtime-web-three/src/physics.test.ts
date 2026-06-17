@@ -139,6 +139,17 @@ test("physics should apply gravity scale, damping, restitution, and friction in 
   });
 });
 
+test("physics should settle stacked primitive bodies with deterministic contact order", () => {
+  const world = makeStackedBoxWorld();
+
+  const observations = traceRigidBodyPrimitive(world, { fixedDelta: 0.25, steps: 2 });
+
+  assert.deepEqual(observations.filter((observation) => observation.step === 2).map((observation) => ({ contact: observation.contact, contacts: observation.contacts, entity: observation.entity, position: observation.position })), [
+    { contact: "floor", contacts: undefined, entity: "lower", position: [0, 0.55, 0] },
+    { contact: "lower", contacts: undefined, entity: "upper", position: [0, 1.55, 0] },
+  ]);
+});
+
 function makePhysicsWorld(): IWorldIr {
   return {
     schema: "threenative.world" as const,
@@ -158,6 +169,39 @@ function makePhysicsWorld(): IWorldIr {
           Collider: { kind: "sphere" as const, radius: 0.5, trigger: true },
           RigidBody: { kind: "static" as const },
           Transform: { position: [0.25, 0, 0] as const },
+        },
+      },
+    ],
+  };
+}
+
+function makeStackedBoxWorld(): IWorldIr {
+  return {
+    schema: "threenative.world" as const,
+    version: "0.1.0" as const,
+    entities: [
+      {
+        id: "floor",
+        components: {
+          Collider: { kind: "box" as const, size: [4, 0.1, 4] as const },
+          RigidBody: { kind: "static" as const },
+          Transform: { position: [0, 0, 0] as const },
+        },
+      },
+      {
+        id: "lower",
+        components: {
+          Collider: { kind: "box" as const, size: [1, 1, 1] as const },
+          RigidBody: { kind: "dynamic" as const, velocity: [0, 0, 0] as const },
+          Transform: { position: [0, 0.8, 0] as const },
+        },
+      },
+      {
+        id: "upper",
+        components: {
+          Collider: { kind: "box" as const, size: [1, 1, 1] as const },
+          RigidBody: { kind: "dynamic" as const, velocity: [0, 0, 0] as const },
+          Transform: { position: [0, 1.9, 0] as const },
         },
       },
     ],

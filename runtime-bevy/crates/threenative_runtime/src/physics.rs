@@ -16,6 +16,8 @@ pub struct PhysicsEvent {
 pub struct RigidBodyTraceObservation {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub contact: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub contacts: Option<Vec<String>>,
     pub damping: f32,
     pub entity: String,
     pub friction: f32,
@@ -95,7 +97,12 @@ pub fn trace_rigid_body_primitives(
             .filter(|entity| entity.body_kind.as_deref() == Some("dynamic"))
         {
             observations.push(RigidBodyTraceObservation {
-                contact: contacts.get(&entity.id).cloned(),
+                contact: contacts
+                    .get(&entity.id)
+                    .and_then(|contacts| contacts.first().cloned()),
+                contacts: contacts
+                    .get(&entity.id)
+                    .and_then(|contacts| if contacts.len() > 1 { Some(contacts.clone()) } else { None }),
                 damping: round(entity.damping),
                 entity: entity.id.clone(),
                 friction: round(entity.friction),
@@ -161,7 +168,7 @@ fn step_primitive_bodies(
     entities: &mut [SimulatedEntity],
     fixed_delta: f32,
     gravity: [f32; 3],
-) -> BTreeMap<String, String> {
+) -> BTreeMap<String, Vec<String>> {
     for entity in entities.iter_mut() {
         let Some(body_kind) = entity.body_kind.as_deref() else {
             continue;
@@ -187,24 +194,57 @@ fn step_primitive_bodies(
         entity.center[2] += velocity[2] * fixed_delta;
     }
 
-    let static_entities = entities
+    let mut blockers = entities
         .iter()
-        .filter(|entity| entity.body_kind.as_deref() == Some("static"))
+        .filter(|entity| {
+            matches!(
+                entity.body_kind.as_deref(),
+                Some("static") | Some("kinematic")
+            )
+        })
         .cloned()
         .collect::<Vec<_>>();
+    blockers.sort_by(|left, right| {
+        entity_bottom(left)
+            .partial_cmp(&entity_bottom(right))
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then(left.id.cmp(&right.id))
+    });
     let mut contacts = BTreeMap::new();
-    for entity in entities
-        .iter_mut()
-        .filter(|entity| entity.body_kind.as_deref() == Some("dynamic"))
-    {
-        for floor in &static_entities {
-            if resolve_vertical_contact(entity, floor) {
-                contacts.insert(entity.id.clone(), floor.id.clone());
-                break;
+    let mut dynamic_indices = entities
+        .iter()
+        .enumerate()
+        .filter(|(_, entity)| entity.body_kind.as_deref() == Some("dynamic"))
+        .map(|(index, entity)| (index, entity_bottom(entity), entity.id.clone()))
+        .collect::<Vec<_>>();
+    dynamic_indices.sort_by(|left, right| {
+        left.1
+            .partial_cmp(&right.1)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then(left.2.cmp(&right.2))
+    });
+    let mut settled = Vec::new();
+    for (index, _, _) in dynamic_indices {
+        let mut local_blockers = blockers.clone();
+        local_blockers.extend(settled.clone());
+        local_blockers.sort_by(|left, right| left.id.cmp(&right.id));
+        for floor in &local_blockers {
+            if floor.id == entities[index].id {
+                continue;
+            }
+            if resolve_vertical_contact(&mut entities[index], floor) {
+                let entry = contacts.entry(entities[index].id.clone()).or_insert_with(Vec::new);
+                entry.push(floor.id.clone());
+                entry.sort();
             }
         }
+        settled.push(entities[index].clone());
     }
     contacts
+}
+
+fn entity_bottom(entity: &SimulatedEntity) -> f32 {
+    entity.center[1] - entity.half_extents[1]
 }
 
 fn resolve_vertical_contact(entity: &mut SimulatedEntity, floor: &SimulatedEntity) -> bool {

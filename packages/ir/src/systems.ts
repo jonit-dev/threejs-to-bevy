@@ -9,7 +9,9 @@ export type IrSystemService =
   | "character.move"
   | "physics.overlap"
   | "physics.raycast"
+  | "physics.sensor"
   | "physics.shapeCast"
+  | "navigation.path"
   | "picking.mesh"
   | "picking.pointerRay";
 

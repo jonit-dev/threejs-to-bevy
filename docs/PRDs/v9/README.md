@@ -49,3 +49,9 @@ pnpm verify:v9
 The aggregate should run the individual V9 gates, docs consistency checks,
 shared conformance, focused web/runtime tests, native Bevy tests, and artifact
 presence checks for the promoted V9 surfaces.
+
+Implemented focused V9 gates:
+
+```bash
+pnpm verify:v9:physics-character
+```

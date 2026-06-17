@@ -112,6 +112,66 @@ test("character should reject controller input references without an input map",
   }
 });
 
+test("character should accept bounded v9 push policy", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-character-v9-push-"));
+  try {
+    await writeTestBundle(root, {
+      manifest: { files: { input: "input.ir.json" } },
+      world: characterWorld({
+        CharacterController: {
+          blocking: true,
+          grounding: "raycast",
+          moveXAxis: "MoveX",
+          moveZAxis: "MoveZ",
+          pushPolicy: { allowedLayers: ["pushable"], blockedWhenTooHeavy: true, enabled: true, impulseScale: 1, maxPushMass: 10, minMoveSpeed: 0.1 },
+          speed: 4,
+        },
+        Collider: { kind: "box", size: [1, 2, 1] },
+        RigidBody: { kind: "kinematic" },
+      }),
+    });
+    await writeJson(root, "input.ir.json", characterInput());
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("character should reject invalid v9 push policy", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-character-v9-push-invalid-"));
+  try {
+    await writeTestBundle(root, {
+      manifest: { files: { input: "input.ir.json" } },
+      world: characterWorld({
+        CharacterController: {
+          blocking: true,
+          grounding: "raycast",
+          moveXAxis: "MoveX",
+          moveZAxis: "MoveZ",
+          pushPolicy: { allowedLayers: [""], enabled: "yes", impulseScale: 1001, maxPushMass: -1, minMoveSpeed: -0.1 },
+          speed: 4,
+        },
+        Collider: { kind: "box", size: [1, 2, 1] },
+        RigidBody: { kind: "kinematic" },
+      }),
+    });
+    await writeJson(root, "input.ir.json", characterInput());
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => diagnostic.code),
+      ["TN_IR_CHARACTER_PUSH_POLICY_INVALID", "TN_IR_CHARACTER_PUSH_MASS_INVALID", "TN_IR_CHARACTER_PUSH_IMPULSE_INVALID", "TN_IR_CHARACTER_PUSH_SPEED_INVALID", "TN_IR_CHARACTER_PUSH_LAYERS_INVALID"],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 function characterWorld(components: Record<string, unknown>, options: { transform?: boolean } = {}): IWorldIr {
   return {
     schema: "threenative.world",

@@ -319,6 +319,82 @@ test("physics should report malformed built-in physics components without throwi
   }
 });
 
+test("physics should accept primitive broad sensor metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-physics-v9-sensor-"));
+  try {
+    await writeTestBundle(root, { createAssetsDir: true });
+    await writeJson(
+      root,
+      "world.ir.json",
+      physicsWorld([
+        { Collider: { kind: "box", sensor: { interactionKind: "pickup", occupantLimit: 8, phases: ["enter", "stay", "exit"], trackOccupants: true }, size: [1, 1, 1] }, RigidBody: { kind: "static" } },
+      ]),
+    );
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("physics should reject mesh sensors and unbounded occupant histories", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-physics-v9-sensor-invalid-"));
+  try {
+    await writeTestBundle(root, { createAssetsDir: true });
+    await writeJson(
+      root,
+      "world.ir.json",
+      physicsWorld([
+        { Collider: { kind: "mesh", sensor: { occupantLimit: 129 } }, RigidBody: { kind: "static" } },
+      ]),
+    );
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => diagnostic.code),
+      ["TN_IR_PHYSICS_SENSOR_MESH_UNSUPPORTED", "TN_IR_PHYSICS_SENSOR_OCCUPANT_LIMIT_INVALID"],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("physics should reject backend navigation handles and dynamic rebakes", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-navigation-v9-invalid-"));
+  try {
+    await writeTestBundle(root, {
+      createAssetsDir: true,
+      world: {
+        schema: "threenative.world",
+        version: "0.1.0",
+        entities: [],
+        resources: {
+          Navigation: {
+            agentRadius: 0.5,
+            backendNavmeshHandle: "native",
+            dynamicRebake: true,
+            regions: [],
+          },
+        },
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => diagnostic.code),
+      ["TN_IR_NAVIGATION_BACKEND_UNSUPPORTED", "TN_IR_NAVIGATION_BACKEND_UNSUPPORTED", "TN_IR_NAVIGATION_REGIONS_INVALID"],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 function physicsWorld(components: Array<Record<string, unknown>>): unknown {
   return {
     schema: "threenative.world",

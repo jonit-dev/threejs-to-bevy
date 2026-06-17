@@ -16,6 +16,15 @@ export interface IColliderSlopeDeclaration {
   run: number;
 }
 
+export type SensorPhase = "enter" | "exit" | "stay";
+
+export interface ISensorDeclaration {
+  interactionKind?: "checkpoint" | "hazard" | "pickup" | "prompt" | "zone";
+  occupantLimit?: number;
+  phases?: ReadonlyArray<SensorPhase>;
+  trackOccupants?: boolean;
+}
+
 export interface IRigidBodyDeclaration {
   /** Primitive solver v2 metadata is portable only for box, sphere, and capsule collider bodies. */
   angularVelocity?: Vector3Tuple;
@@ -37,6 +46,7 @@ export interface IColliderDeclaration {
   mask?: string[];
   radius?: number;
   restitution?: number;
+  sensor?: ISensorDeclaration;
   size?: Vector3Tuple;
   slope?: IColliderSlopeDeclaration;
   trigger?: boolean;
@@ -106,22 +116,25 @@ export function rigidBody(
   };
 }
 
-export function boxCollider(size: Vector3Tuple, options: { slope?: IColliderSlopeDeclaration; trigger?: boolean } & IPhysicsFilterOptions & IPhysicsMaterialOptions = {}): IColliderDeclaration {
+export function boxCollider(size: Vector3Tuple, options: { sensor?: ISensorDeclaration; slope?: IColliderSlopeDeclaration; trigger?: boolean } & IPhysicsFilterOptions & IPhysicsMaterialOptions = {}): IColliderDeclaration {
   size.forEach((value, index) => {
     assertPositiveNumber(value, "TN_SDK_PHYSICS_COLLIDER_INVALID_SIZE", `Collider.size[${index}]`);
   });
-  return { kind: "box", size: [...size] as Vector3Tuple, slope: normalizeSlope(options.slope), trigger: options.trigger, ...normalizeFilter(options), ...normalizeMaterial(options) };
+  const sensor = normalizeSensor(options.sensor);
+  return { kind: "box", ...(sensor === undefined ? {} : { sensor }), size: [...size] as Vector3Tuple, slope: normalizeSlope(options.slope), trigger: options.trigger, ...normalizeFilter(options), ...normalizeMaterial(options) };
 }
 
-export function sphereCollider(radius: number, options: { trigger?: boolean } & IPhysicsFilterOptions & IPhysicsMaterialOptions = {}): IColliderDeclaration {
+export function sphereCollider(radius: number, options: { sensor?: ISensorDeclaration; trigger?: boolean } & IPhysicsFilterOptions & IPhysicsMaterialOptions = {}): IColliderDeclaration {
   assertPositiveNumber(radius, "TN_SDK_PHYSICS_COLLIDER_INVALID_RADIUS", "Collider.radius");
-  return { kind: "sphere", radius, trigger: options.trigger, ...normalizeFilter(options), ...normalizeMaterial(options) };
+  const sensor = normalizeSensor(options.sensor);
+  return { kind: "sphere", radius, ...(sensor === undefined ? {} : { sensor }), trigger: options.trigger, ...normalizeFilter(options), ...normalizeMaterial(options) };
 }
 
-export function capsuleCollider(radius: number, height: number, options: { trigger?: boolean } & IPhysicsFilterOptions & IPhysicsMaterialOptions = {}): IColliderDeclaration {
+export function capsuleCollider(radius: number, height: number, options: { sensor?: ISensorDeclaration; trigger?: boolean } & IPhysicsFilterOptions & IPhysicsMaterialOptions = {}): IColliderDeclaration {
   assertPositiveNumber(radius, "TN_SDK_PHYSICS_COLLIDER_INVALID_RADIUS", "Collider.radius");
   assertPositiveNumber(height, "TN_SDK_PHYSICS_COLLIDER_INVALID_HEIGHT", "Collider.height");
-  return { height, kind: "capsule", radius, trigger: options.trigger, ...normalizeFilter(options), ...normalizeMaterial(options) };
+  const sensor = normalizeSensor(options.sensor);
+  return { height, kind: "capsule", radius, ...(sensor === undefined ? {} : { sensor }), trigger: options.trigger, ...normalizeFilter(options), ...normalizeMaterial(options) };
 }
 
 export function cylinderCollider(radius: number, height: number, options: { trigger?: boolean } & IPhysicsFilterOptions & IPhysicsMaterialOptions = {}): IColliderDeclaration {
@@ -182,4 +195,23 @@ function normalizeSlope(slope: IColliderSlopeDeclaration | undefined): ICollider
   assertPositiveNumber(slope.rise, "TN_SDK_PHYSICS_COLLIDER_SLOPE_INVALID", "Collider.slope.rise");
   assertPositiveNumber(slope.run, "TN_SDK_PHYSICS_COLLIDER_SLOPE_INVALID", "Collider.slope.run");
   return { axis: slope.axis, direction: slope.direction, rise: slope.rise, run: slope.run };
+}
+
+function normalizeSensor(sensor: ISensorDeclaration | undefined): ISensorDeclaration | undefined {
+  if (sensor === undefined) {
+    return undefined;
+  }
+  if (sensor.occupantLimit !== undefined && (!Number.isInteger(sensor.occupantLimit) || sensor.occupantLimit < 1 || sensor.occupantLimit > 128)) {
+    throw new SdkError("TN_SDK_PHYSICS_SENSOR_INVALID", "Collider.sensor.occupantLimit must be an integer from 1 to 128.");
+  }
+  const phases = sensor.phases === undefined ? undefined : [...sensor.phases];
+  if (phases?.some((phase) => phase !== "enter" && phase !== "stay" && phase !== "exit")) {
+    throw new SdkError("TN_SDK_PHYSICS_SENSOR_INVALID", "Collider.sensor.phases may include enter, stay, and exit only.");
+  }
+  return {
+    ...(sensor.interactionKind === undefined ? {} : { interactionKind: sensor.interactionKind }),
+    ...(sensor.occupantLimit === undefined ? {} : { occupantLimit: sensor.occupantLimit }),
+    ...(phases === undefined ? {} : { phases }),
+    ...(sensor.trackOccupants === undefined ? {} : { trackOccupants: sensor.trackOccupants }),
+  };
 }

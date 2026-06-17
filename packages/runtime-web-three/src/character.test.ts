@@ -195,6 +195,57 @@ test("character trace should walk shallow slopes and reject steep slopes", () =>
   ]);
 });
 
+test("character trace should push light dynamic bodies and block heavy bodies", () => {
+  const light = makeCharacterWorld();
+  const lightCrate = light.entities.find((entity) => entity.id === "wall");
+  const lightPlayer = light.entities.find((entity) => entity.id === "player");
+  if (lightCrate !== undefined) {
+    lightCrate.id = "light-crate";
+    lightCrate.components.Collider = { kind: "box", layer: "pushable", size: [1, 2, 1] };
+    lightCrate.components.RigidBody = { kind: "dynamic", mass: 2 };
+  }
+  if (lightPlayer?.components.CharacterController !== undefined) {
+    lightPlayer.components.CharacterController.pushPolicy = { allowedLayers: ["pushable"], blockedWhenTooHeavy: true, enabled: true, impulseScale: 1, maxPushMass: 10, minMoveSpeed: 0.1 };
+  }
+
+  assert.deepEqual(traceCharacterControllers(light, { axes: { MoveX: 1 }, fixedDelta: 1 }), [
+    {
+      desired: [2, 1, 0],
+      entity: "player",
+      groundEntity: "floor",
+      grounded: true,
+      pushed: { entity: "light-crate", impulse: [2, 0, 0], position: [4, 1, 0] },
+      resolved: [2, 1.05, 0],
+      start: [0, 1, 0],
+    },
+  ]);
+
+  const heavy = makeCharacterWorld();
+  const heavyCrate = heavy.entities.find((entity) => entity.id === "wall");
+  const heavyPlayer = heavy.entities.find((entity) => entity.id === "player");
+  if (heavyCrate !== undefined) {
+    heavyCrate.id = "heavy-crate";
+    heavyCrate.components.Collider = { kind: "box", layer: "pushable", size: [1, 2, 1] };
+    heavyCrate.components.RigidBody = { kind: "dynamic", mass: 50 };
+  }
+  if (heavyPlayer?.components.CharacterController !== undefined) {
+    heavyPlayer.components.CharacterController.pushPolicy = { allowedLayers: ["pushable"], blockedWhenTooHeavy: true, enabled: true, maxPushMass: 10 };
+  }
+
+  assert.deepEqual(traceCharacterControllers(heavy, { axes: { MoveX: 1 }, fixedDelta: 1 }), [
+    {
+      blockedBy: "heavy-crate",
+      desired: [2, 1, 0],
+      entity: "player",
+      groundEntity: "floor",
+      grounded: true,
+      resolved: [0, 1.05, 0],
+      start: [0, 1, 0],
+      tooHeavy: "heavy-crate",
+    },
+  ]);
+});
+
 function makeCharacterWorld(): IWorldIr {
   return {
     schema: "threenative.world",

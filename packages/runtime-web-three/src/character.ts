@@ -12,8 +12,14 @@ export interface ICharacterTraceObservation {
   groundEntity?: string;
   grounded: boolean;
   platformDelta?: Vec3;
+  pushed?: {
+    entity: string;
+    impulse: Vec3;
+    position: Vec3;
+  };
   resolved: Vec3;
   start: Vec3;
+  tooHeavy?: string;
 }
 
 interface IBounds {
@@ -35,6 +41,8 @@ interface IGroundResolution {
   platformDelta?: Vec3;
   position: Vec3;
 }
+
+type CharacterPushPolicy = NonNullable<NonNullable<IWorldEntity["components"]["CharacterController"]>["pushPolicy"]>;
 
 export function traceCharacterControllers(world: IWorldIr, input: ICharacterTraceInput = {}): ICharacterTraceObservation[] {
   const fixedDelta = input.fixedDelta ?? 1;
@@ -70,7 +78,7 @@ function traceCharacter(
   ));
   const characterHalfExtents = halfExtents(collider);
   const horizontal = controller.blocking === true
-    ? resolveHorizontalContact(entity.id, start, desired, characterHalfExtents, blockers, controller.stepOffset ?? 0, controller.slopeLimit ?? DEFAULT_SLOPE_LIMIT)
+    ? resolveHorizontalContact(entity.id, start, desired, characterHalfExtents, blockers, controller.stepOffset ?? 0, controller.slopeLimit ?? DEFAULT_SLOPE_LIMIT, controller.pushPolicy)
     : { position: desired };
   const ground = controller.grounding === "raycast"
     ? groundPosition(entity.id, horizontal.position, characterHalfExtents, blockers, fixedDelta, controller.slopeLimit ?? DEFAULT_SLOPE_LIMIT)
@@ -83,8 +91,10 @@ function traceCharacter(
     ...(ground.entity === undefined ? {} : { groundEntity: ground.entity }),
     grounded: ground.entity !== undefined,
     ...(ground.platformDelta === undefined ? {} : { platformDelta: ground.platformDelta }),
+    ...(horizontal.pushed === undefined ? {} : { pushed: horizontal.pushed }),
     resolved: ground.position,
     start,
+    ...(horizontal.tooHeavy === undefined ? {} : { tooHeavy: horizontal.tooHeavy }),
   };
 }
 
@@ -105,9 +115,11 @@ function resolveHorizontalContact(
   blockers: readonly IWorldEntity[],
   stepOffset: number,
   slopeLimit: number,
-): { blockedBy?: string; position: Vec3 } {
+  pushPolicy: CharacterPushPolicy | undefined,
+): { blockedBy?: string; position: Vec3; pushed?: ICharacterTraceObservation["pushed"]; tooHeavy?: string } {
   let position = desired;
   let characterBounds = { center: position, halfExtents: characterHalfExtents, id: characterId };
+  const move = [desired[0] - start[0], desired[1] - start[1], desired[2] - start[2]] as Vec3;
   for (const blocker of blockers) {
     if (blocker.id === characterId) {
       continue;
@@ -128,9 +140,50 @@ function resolveHorizontalContact(
       characterBounds = { center: position, halfExtents: characterHalfExtents, id: characterId };
       continue;
     }
+    const push = resolvePush(pushPolicy, blocker, move);
+    if (push.kind === "pushed") {
+      return { position, pushed: push.pushed };
+    }
+    if (push.kind === "too-heavy") {
+      return { blockedBy: blocker.id, position: start, tooHeavy: blocker.id };
+    }
     return { blockedBy: blocker.id, position: start };
   }
   return { position };
+}
+
+function resolvePush(
+  pushPolicy: CharacterPushPolicy | undefined,
+  blocker: IWorldEntity,
+  move: Vec3,
+): { kind: "none" } | { kind: "pushed"; pushed: NonNullable<ICharacterTraceObservation["pushed"]> } | { kind: "too-heavy" } {
+  const body = blocker.components.RigidBody;
+  if (pushPolicy?.enabled !== true || body?.kind !== "dynamic") {
+    return { kind: "none" };
+  }
+  const layer = blocker.components.Collider?.layer;
+  if (pushPolicy.allowedLayers !== undefined && (layer === undefined || !pushPolicy.allowedLayers.includes(layer))) {
+    return { kind: "none" };
+  }
+  const mass = body.mass ?? (body.inverseMass === undefined || body.inverseMass === 0 ? 1 : 1 / body.inverseMass);
+  if (mass > (pushPolicy.maxPushMass ?? Number.POSITIVE_INFINITY)) {
+    return pushPolicy.blockedWhenTooHeavy === false ? { kind: "none" } : { kind: "too-heavy" };
+  }
+  const speed = Math.hypot(move[0], move[2]);
+  if (speed < (pushPolicy.minMoveSpeed ?? 0)) {
+    return { kind: "none" };
+  }
+  const impulseScale = pushPolicy.impulseScale ?? 1;
+  const impulse = [move[0] * impulseScale, 0, move[2] * impulseScale] as Vec3;
+  const start = vector(blocker.components.Transform?.position);
+  return {
+    kind: "pushed",
+    pushed: {
+      entity: blocker.id,
+      impulse,
+      position: add(start, impulse),
+    },
+  };
 }
 
 function groundPosition(

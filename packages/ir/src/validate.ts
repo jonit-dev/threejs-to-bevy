@@ -2400,7 +2400,7 @@ function validateSystems(
       });
     });
     (system.services ?? []).forEach((service, serviceIndex) => {
-      if (!["animation.play", "animation.query", "animation.stop", "assets.load", "character.move", "physics.overlap", "physics.raycast", "physics.shapeCast", "picking.mesh", "picking.pointerRay"].includes(service)) {
+      if (!["animation.play", "animation.query", "animation.stop", "assets.load", "character.move", "navigation.path", "physics.overlap", "physics.raycast", "physics.sensor", "physics.shapeCast", "picking.mesh", "picking.pointerRay"].includes(service)) {
         diagnostics.push({
           code: "TN_IR_SYSTEM_SERVICE_UNSUPPORTED",
           message: `System '${system.name}' declares unsupported service '${service}'.`,
@@ -3149,7 +3149,7 @@ function isBuiltInComponent(componentName: string): boolean {
 }
 
 function isBuiltInResource(resourceName: string): boolean {
-  return resourceName === "ActiveCamera" || resourceName === "ActiveCameras";
+  return resourceName === "ActiveCamera" || resourceName === "ActiveCameras" || resourceName === "Navigation";
 }
 
 function validateWorldEvents(
@@ -3356,9 +3356,114 @@ function validateWorld(world: IWorldIr, path: string, diagnostics: IIrDiagnostic
   }
 
   validateUniqueIds(world.entities, `${path}/entities`, "TN_IR_DUPLICATE_ENTITY_ID", diagnostics);
+  validateNavigationResources(world, `${path}/resources`, diagnostics);
   world.entities.forEach((entity, index) => validateRenderComponents(entity, `${path}/entities/${index}`, diagnostics));
   world.entities.forEach((entity, index) => validatePhysicsComponents(entity, `${path}/entities/${index}`, diagnostics));
   world.entities.forEach((entity, index) => validateCharacterComponents(entity, `${path}/entities/${index}`, input, diagnostics));
+}
+
+function validateNavigationResources(world: IWorldIr, path: string, diagnostics: IIrDiagnostic[]): void {
+  const navigation = world.resources?.Navigation;
+  if (navigation === undefined) {
+    return;
+  }
+  if (!isRecord(navigation)) {
+    diagnostics.push({ code: "TN_IR_NAVIGATION_INVALID", message: "Navigation resource must be an object.", path: `${path}/Navigation`, severity: "error" });
+    return;
+  }
+  for (const key of Object.keys(navigation)) {
+    if (!["agentRadius", "areaCosts", "queries", "regions"].includes(key)) {
+      diagnostics.push({
+        code: hasNavigationBackendHandle(key) || key === "dynamicRebake" ? "TN_IR_NAVIGATION_BACKEND_UNSUPPORTED" : "TN_IR_NAVIGATION_FIELD_UNSUPPORTED",
+        message: `Navigation uses unsupported field '${key}'.`,
+        path: `${path}/Navigation/${key}`,
+        severity: "error",
+        suggestion: "Use static portable navigation regions and keep backend navmesh handles, dynamic rebakes, crowd steering, and off-mesh links out of the IR.",
+      });
+    }
+  }
+  validateFiniteRange(navigation.agentRadius, 0, V9_MAX_NAV_AGENT_RADIUS, `${path}/Navigation/agentRadius`, "TN_IR_NAVIGATION_AGENT_RADIUS_INVALID", diagnostics);
+  if (!Array.isArray(navigation.regions) || navigation.regions.length === 0) {
+    diagnostics.push({ code: "TN_IR_NAVIGATION_REGIONS_INVALID", message: "Navigation.regions must be a non-empty array.", path: `${path}/Navigation/regions`, severity: "error" });
+  } else {
+    const regionIds = new Set<string>();
+    navigation.regions.forEach((region, index) => validateNavigationRegion(region, `${path}/Navigation/regions/${index}`, regionIds, diagnostics));
+  }
+  if (navigation.areaCosts !== undefined) {
+    if (!isRecord(navigation.areaCosts)) {
+      diagnostics.push({ code: "TN_IR_NAVIGATION_AREA_COST_INVALID", message: "Navigation.areaCosts must be an object.", path: `${path}/Navigation/areaCosts`, severity: "error" });
+    } else {
+      for (const [area, cost] of Object.entries(navigation.areaCosts)) {
+        if (area.trim() === "") {
+          diagnostics.push({ code: "TN_IR_NAVIGATION_AREA_COST_INVALID", message: "Navigation area cost keys must be non-empty.", path: `${path}/Navigation/areaCosts`, severity: "error" });
+        }
+        validateFiniteRange(cost, 0, V9_MAX_NAV_AREA_COST, `${path}/Navigation/areaCosts/${area}`, "TN_IR_NAVIGATION_AREA_COST_INVALID", diagnostics);
+      }
+    }
+  }
+  if (navigation.queries !== undefined) {
+    if (!Array.isArray(navigation.queries)) {
+      diagnostics.push({ code: "TN_IR_NAVIGATION_QUERIES_INVALID", message: "Navigation.queries must be an array.", path: `${path}/Navigation/queries`, severity: "error" });
+    } else {
+      navigation.queries.forEach((query, index) => validateNavigationQuery(query, `${path}/Navigation/queries/${index}`, diagnostics));
+    }
+  }
+}
+
+function validateNavigationRegion(value: unknown, path: string, regionIds: Set<string>, diagnostics: IIrDiagnostic[]): void {
+  if (!isRecord(value)) {
+    diagnostics.push({ code: "TN_IR_NAVIGATION_REGION_INVALID", message: "Navigation region must be an object.", path, severity: "error" });
+    return;
+  }
+  for (const key of Object.keys(value)) {
+    if (!["area", "center", "id", "neighbors", "points"].includes(key)) {
+      diagnostics.push({ code: "TN_IR_NAVIGATION_REGION_FIELD_UNSUPPORTED", message: `Navigation region uses unsupported field '${key}'.`, path: `${path}/${key}`, severity: "error" });
+    }
+  }
+  if (typeof value.id !== "string" || value.id.trim() === "") {
+    diagnostics.push({ code: "TN_IR_NAVIGATION_REGION_ID_INVALID", message: "Navigation region id must be a non-empty string.", path: `${path}/id`, severity: "error" });
+  } else if (regionIds.has(value.id)) {
+    diagnostics.push({ code: "TN_IR_NAVIGATION_REGION_ID_DUPLICATE", message: `Navigation region id '${value.id}' is duplicated.`, path: `${path}/id`, severity: "error" });
+  } else {
+    regionIds.add(value.id);
+  }
+  validateFiniteVec3(value.center, `${path}/center`, "TN_IR_NAVIGATION_REGION_CENTER_INVALID", diagnostics);
+  if (!Array.isArray(value.points) || value.points.length < 3) {
+    diagnostics.push({ code: "TN_IR_NAVIGATION_REGION_POINTS_INVALID", message: "Navigation region points must contain at least three [x,z] vertices.", path: `${path}/points`, severity: "error" });
+  } else {
+    value.points.forEach((point, index) => {
+      if (!Array.isArray(point) || point.length !== 2 || point.some((item) => typeof item !== "number" || !Number.isFinite(item))) {
+        diagnostics.push({ code: "TN_IR_NAVIGATION_REGION_POINTS_INVALID", message: "Navigation region points must be finite [x,z] tuples.", path: `${path}/points/${index}`, severity: "error" });
+      }
+    });
+  }
+  if (value.neighbors !== undefined && (!Array.isArray(value.neighbors) || value.neighbors.some((neighbor) => typeof neighbor !== "string" || neighbor.trim() === ""))) {
+    diagnostics.push({ code: "TN_IR_NAVIGATION_REGION_NEIGHBORS_INVALID", message: "Navigation region neighbors must be an array of non-empty IDs.", path: `${path}/neighbors`, severity: "error" });
+  }
+  if (value.area !== undefined && (typeof value.area !== "string" || value.area.trim() === "")) {
+    diagnostics.push({ code: "TN_IR_NAVIGATION_REGION_AREA_INVALID", message: "Navigation region area must be a non-empty string.", path: `${path}/area`, severity: "error" });
+  }
+}
+
+function validateNavigationQuery(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (!isRecord(value)) {
+    diagnostics.push({ code: "TN_IR_NAVIGATION_QUERY_INVALID", message: "Navigation query must be an object.", path, severity: "error" });
+    return;
+  }
+  for (const key of Object.keys(value)) {
+    if (!["goal", "id", "start"].includes(key)) {
+      diagnostics.push({ code: "TN_IR_NAVIGATION_QUERY_FIELD_UNSUPPORTED", message: `Navigation query uses unsupported field '${key}'.`, path: `${path}/${key}`, severity: "error" });
+    }
+  }
+  if (typeof value.id !== "string" || value.id.trim() === "") {
+    diagnostics.push({ code: "TN_IR_NAVIGATION_QUERY_ID_INVALID", message: "Navigation query id must be a non-empty string.", path: `${path}/id`, severity: "error" });
+  }
+  validateFiniteVec3(value.start, `${path}/start`, "TN_IR_NAVIGATION_QUERY_POINT_INVALID", diagnostics);
+  validateFiniteVec3(value.goal, `${path}/goal`, "TN_IR_NAVIGATION_QUERY_POINT_INVALID", diagnostics);
+}
+
+function hasNavigationBackendHandle(key: string): boolean {
+  return /(?:navmesh|backend|rapier|bevy|native|crowd|offMesh|obstacle)/i.test(key);
 }
 
 function validateRenderComponents(entity: IWorldIr["entities"][number], path: string, diagnostics: IIrDiagnostic[]): void {
@@ -3454,6 +3559,11 @@ const V9_MAX_PHYSICS_SLEEP_THRESHOLD = 100;
 const V9_MAX_PHYSICS_SOLVER_ITERATIONS = 64;
 const V9_MAX_PHYSICS_SPEED = 10_000;
 const V9_MAX_PHYSICS_FRICTION = 10;
+const V9_MAX_SENSOR_OCCUPANTS = 128;
+const V9_MAX_CHARACTER_PUSH_MASS = 1_000_000;
+const V9_MAX_CHARACTER_PUSH_IMPULSE = 1000;
+const V9_MAX_NAV_AGENT_RADIUS = 100;
+const V9_MAX_NAV_AREA_COST = 1000;
 
 function validatePhysicsComponents(entity: IWorldIr["entities"][number], path: string, diagnostics: IIrDiagnostic[]): void {
   const collider = entity.components.Collider as unknown;
@@ -3504,6 +3614,7 @@ function validatePhysicsComponents(entity: IWorldIr["entities"][number], path: s
         path: `${path}/components/Collider/trigger`,
       });
     }
+    validatePhysicsSensor(colliderRecord.sensor, colliderRecord.kind, `${path}/components/Collider/sensor`, diagnostics);
     if (colliderRecord.friction !== undefined) {
       validateFiniteRange(colliderRecord.friction, 0, V9_MAX_PHYSICS_FRICTION, `${path}/components/Collider/friction`, "TN_IR_PHYSICS_COLLIDER_FRICTION_INVALID", diagnostics);
     }
@@ -3592,6 +3703,44 @@ function validatePhysicsComponents(entity: IWorldIr["entities"][number], path: s
       message: `RigidBody '${entity.id}' must have a Collider in the V6 portable physics contract.`,
       path: `${path}/components/Collider`,
     });
+  }
+}
+
+function validatePhysicsSensor(value: unknown, colliderKind: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (colliderKind === "mesh") {
+    diagnostics.push({
+      code: "TN_IR_PHYSICS_SENSOR_MESH_UNSUPPORTED",
+      message: "Mesh sensor colliders are not supported in the V9 portable broad sensor contract.",
+      path,
+      severity: "error",
+      suggestion: "Use a primitive box, sphere, or capsule sensor volume.",
+    });
+  }
+  if (!isRecord(value)) {
+    diagnostics.push({ code: "TN_IR_PHYSICS_SENSOR_INVALID", message: "Collider.sensor must be an object.", path, severity: "error" });
+    return;
+  }
+  for (const key of Object.keys(value)) {
+    if (!["interactionKind", "occupantLimit", "phases", "trackOccupants"].includes(key)) {
+      diagnostics.push({ code: "TN_IR_PHYSICS_SENSOR_FIELD_UNSUPPORTED", message: `Collider.sensor uses unsupported field '${key}'.`, path: `${path}/${key}`, severity: "error" });
+    }
+  }
+  if (value.interactionKind !== undefined && !["checkpoint", "hazard", "pickup", "prompt", "zone"].includes(value.interactionKind as string)) {
+    diagnostics.push({ code: "TN_IR_PHYSICS_SENSOR_INVALID", message: "Collider.sensor.interactionKind must be checkpoint, hazard, pickup, prompt, or zone.", path: `${path}/interactionKind`, severity: "error" });
+  }
+  if (value.occupantLimit !== undefined) {
+    validateIntegerRange(value.occupantLimit, 1, V9_MAX_SENSOR_OCCUPANTS, `${path}/occupantLimit`, "TN_IR_PHYSICS_SENSOR_OCCUPANT_LIMIT_INVALID", diagnostics);
+  }
+  if (value.trackOccupants !== undefined && typeof value.trackOccupants !== "boolean") {
+    diagnostics.push({ code: "TN_IR_PHYSICS_SENSOR_INVALID", message: "Collider.sensor.trackOccupants must be boolean.", path: `${path}/trackOccupants`, severity: "error" });
+  }
+  if (value.phases !== undefined) {
+    if (!Array.isArray(value.phases) || value.phases.length === 0 || value.phases.some((phase) => !["enter", "stay", "exit"].includes(phase as string))) {
+      diagnostics.push({ code: "TN_IR_PHYSICS_SENSOR_PHASES_INVALID", message: "Collider.sensor.phases must be a non-empty array containing enter, stay, or exit.", path: `${path}/phases`, severity: "error" });
+    }
   }
 }
 
@@ -3722,7 +3871,7 @@ function validateCharacterComponents(
   }
 
   for (const key of Object.keys(controller)) {
-    if (!["blocking", "grounding", "interactAction", "moveXAxis", "moveZAxis", "slopeLimit", "speed", "stepOffset"].includes(key)) {
+    if (!["blocking", "grounding", "interactAction", "moveXAxis", "moveZAxis", "pushPolicy", "slopeLimit", "speed", "stepOffset"].includes(key)) {
       diagnostics.push({
         code: "TN_IR_CHARACTER_FIELD_UNSUPPORTED",
         message: `CharacterController '${entity.id}' uses unsupported field '${key}'.`,
@@ -3731,6 +3880,7 @@ function validateCharacterComponents(
       });
     }
   }
+  validateCharacterPushPolicy(controller.pushPolicy, `${path}/components/CharacterController/pushPolicy`, diagnostics);
   if (entity.components.Collider === undefined) {
     diagnostics.push({
       code: "TN_IR_CHARACTER_COLLIDER_MISSING",
@@ -3795,6 +3945,39 @@ function validateCharacterComponents(
   validateInputRef(controller.moveZAxis, axisIds, input, `${path}/components/CharacterController/moveZAxis`, "axis", diagnostics);
   if (controller.interactAction !== undefined) {
     validateInputRef(controller.interactAction, actionIds, input, `${path}/components/CharacterController/interactAction`, "action", diagnostics);
+  }
+}
+
+function validateCharacterPushPolicy(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value)) {
+    diagnostics.push({ code: "TN_IR_CHARACTER_PUSH_POLICY_INVALID", message: "CharacterController.pushPolicy must be an object.", path, severity: "error" });
+    return;
+  }
+  for (const key of Object.keys(value)) {
+    if (!["allowedLayers", "blockedWhenTooHeavy", "enabled", "impulseScale", "maxPushMass", "minMoveSpeed"].includes(key)) {
+      diagnostics.push({ code: "TN_IR_CHARACTER_PUSH_FIELD_UNSUPPORTED", message: `CharacterController.pushPolicy uses unsupported field '${key}'.`, path: `${path}/${key}`, severity: "error" });
+    }
+  }
+  if (typeof value.enabled !== "boolean") {
+    diagnostics.push({ code: "TN_IR_CHARACTER_PUSH_POLICY_INVALID", message: "CharacterController.pushPolicy.enabled must be boolean.", path: `${path}/enabled`, severity: "error" });
+  }
+  if (value.maxPushMass !== undefined) {
+    validateFiniteRange(value.maxPushMass, 0, V9_MAX_CHARACTER_PUSH_MASS, `${path}/maxPushMass`, "TN_IR_CHARACTER_PUSH_MASS_INVALID", diagnostics);
+  }
+  if (value.impulseScale !== undefined) {
+    validateFiniteRange(value.impulseScale, 0, V9_MAX_CHARACTER_PUSH_IMPULSE, `${path}/impulseScale`, "TN_IR_CHARACTER_PUSH_IMPULSE_INVALID", diagnostics);
+  }
+  if (value.minMoveSpeed !== undefined) {
+    validateFiniteRange(value.minMoveSpeed, 0, V9_MAX_PHYSICS_SPEED, `${path}/minMoveSpeed`, "TN_IR_CHARACTER_PUSH_SPEED_INVALID", diagnostics);
+  }
+  if (value.blockedWhenTooHeavy !== undefined && typeof value.blockedWhenTooHeavy !== "boolean") {
+    diagnostics.push({ code: "TN_IR_CHARACTER_PUSH_POLICY_INVALID", message: "CharacterController.pushPolicy.blockedWhenTooHeavy must be boolean.", path: `${path}/blockedWhenTooHeavy`, severity: "error" });
+  }
+  if (value.allowedLayers !== undefined && (!Array.isArray(value.allowedLayers) || value.allowedLayers.some((layer) => typeof layer !== "string" || layer.trim() === ""))) {
+    diagnostics.push({ code: "TN_IR_CHARACTER_PUSH_LAYERS_INVALID", message: "CharacterController.pushPolicy.allowedLayers must be an array of non-empty layer strings.", path: `${path}/allowedLayers`, severity: "error" });
   }
 }
 

@@ -35,6 +35,7 @@ export interface IRigidBodyTraceInput {
 
 export interface IRigidBodyTraceObservation {
   contact?: string;
+  contacts?: string[];
   damping: number;
   entity: string;
   friction: number;
@@ -73,8 +74,10 @@ export function traceRigidBodyPrimitive(world: IWorldIr, input: IRigidBodyTraceI
       if (body?.kind !== "dynamic" || collider === undefined || position === undefined) {
         continue;
       }
+      const entityContacts = contacts.get(entity.id);
       observations.push({
-        ...(contacts.get(entity.id) === undefined ? {} : { contact: contacts.get(entity.id) }),
+        ...(entityContacts?.[0] === undefined ? {} : { contact: entityContacts[0] }),
+        ...(entityContacts === undefined || entityContacts.length <= 1 ? {} : { contacts: entityContacts }),
         damping: roundNumber(body.damping ?? 0),
         entity: entity.id,
         friction: roundNumber(collider.friction ?? 0),
@@ -127,25 +130,34 @@ function eventPayloads(event: PhysicsEventName, currentPairs: Map<string, IDetec
   return payloads.sort(comparePhysicsEvents);
 }
 
-function stepPrimitiveBodies(world: IWorldIr, fixedDelta: number, gravity: Vec3): Map<string, string> {
-  const contacts = new Map<string, string>();
+function stepPrimitiveBodies(world: IWorldIr, fixedDelta: number, gravity: Vec3): Map<string, string[]> {
+  const contacts = new Map<string, string[]>();
   for (const entity of world.entities) {
     integrateEntity(entity, fixedDelta, gravity);
   }
-  const statics = world.entities.filter((entity) => entity.components.RigidBody?.kind === "static" && entity.components.Collider !== undefined);
-  for (const entity of world.entities) {
+  const staticOrKinematic = world.entities
+    .filter((entity) => entity.components.RigidBody?.kind === "static" || entity.components.RigidBody?.kind === "kinematic")
+    .filter((entity) => entity.components.Collider !== undefined)
+    .sort(compareEntityBottomThenId);
+  const settledDynamics: IWorldEntity[] = [];
+  const dynamics = world.entities
+    .filter((entity) => entity.components.RigidBody?.kind === "dynamic" && entity.components.Collider !== undefined && entity.components.Transform?.position !== undefined)
+    .sort(compareEntityBottomThenId);
+  for (const entity of dynamics) {
     if (entity.components.RigidBody?.kind !== "dynamic" || entity.components.Collider === undefined || entity.components.Transform?.position === undefined) {
       continue;
     }
-    for (const floor of statics) {
-      if (floor.id === entity.id || floor.components.Collider === undefined) {
+    for (const blocker of [...staticOrKinematic, ...settledDynamics].sort((left, right) => left.id.localeCompare(right.id))) {
+      if (blocker.id === entity.id || blocker.components.Collider === undefined) {
         continue;
       }
-      if (resolveVerticalContact(entity, floor)) {
-        contacts.set(entity.id, floor.id);
-        break;
+      if (resolveVerticalContact(entity, blocker)) {
+        const entityContacts = contacts.get(entity.id) ?? [];
+        entityContacts.push(blocker.id);
+        contacts.set(entity.id, entityContacts.sort((left, right) => left.localeCompare(right)));
       }
     }
+    settledDynamics.push(entity);
   }
   return contacts;
 }
@@ -196,6 +208,16 @@ function resolveVerticalContact(entity: IWorldEntity, floor: IWorldEntity): bool
   const frictionFactor = Math.max(0, 1 - friction);
   body.velocity = [velocity[0] * frictionFactor, Math.abs(nextY) < 0.000001 ? 0 : nextY, velocity[2] * frictionFactor];
   return true;
+}
+
+function compareEntityBottomThenId(left: IWorldEntity, right: IWorldEntity): number {
+  return entityBottom(left) - entityBottom(right) || left.id.localeCompare(right.id);
+}
+
+function entityBottom(entity: IWorldEntity): number {
+  const collider = entity.components.Collider;
+  const position = entity.components.Transform?.position ?? [0, 0, 0];
+  return collider === undefined ? position[1] : position[1] - halfExtents(collider)[1];
 }
 
 function colliderBounds(entity: IWorldEntity): IBounds[] {

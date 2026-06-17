@@ -51,6 +51,10 @@ path = "src/rigid_body_trace.rs"
 name = "threenative_asset_load_trace"
 path = "src/asset_load_trace.rs"
 
+[[bin]]
+name = "threenative_v9_physics_character_trace"
+path = "src/v9_physics_character_trace.rs"
+
 [dependencies]
 bevy = { version = "=0.14.2", features = ["pbr_multi_layer_material_textures", "pbr_transmission_textures"] }
 quickjs-rusty = "=0.12.0"

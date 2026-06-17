@@ -1,0 +1,10 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    { "id": "mesh-sensor", "components": { "Collider": { "kind": "mesh", "sensor": { "occupantLimit": 1 } }, "RigidBody": { "kind": "static" }, "Transform": { "position": [0, 0, 0] } } }
+  ],
+  "events": {},
+  "resources": {},
+  "prefabs": []
+}

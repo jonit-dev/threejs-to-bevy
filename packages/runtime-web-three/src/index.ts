@@ -19,12 +19,14 @@ export { createGameLoopState, runGameFrame, setPaused, type IGameLoopState } fro
 export { createAxisGizmo, createWireBoxGizmo, createWireSphereGizmo, gizmoToBufferGeometry, type IGizmoGeometry, type IGizmoLine } from "./gizmoGeometry.js";
 export { attachInputListeners, createInputState, createTouchGestureRecognizer, rebindInput, reportGamepadCapabilities, type IGamepadCapabilityReport, type IInputRebindDiagnostic, type IInputRebindResult, type InputRebindTarget, type ITouchGestureEvent, type ITouchGestureFrame, type ITouchGesturePoint, type ITouchGestureRecognizer, type IWebInputState } from "./input.js";
 export { traceCharacterControllers, type ICharacterTraceInput, type ICharacterTraceObservation } from "./character.js";
+export { queryNavigationPath, traceNavigationPaths, type INavigationPathRequest, type INavigationPathResult } from "./navigation.js";
 export { createFirstPersonState, updateFirstPersonController, type IFirstPersonControllerState } from "./firstPerson.js";
 export { resolveWebAssets, traceAssetLoadSynchronization, type IAssetLoadTrace, type IAssetLoadTraceAsset, type IAssetLoadTraceGltfScene, type IResolvedWebAsset } from "./assets.js";
 export { advanceAnimationPlayback, mapWorld, syncTransforms, type IRuntimeDiagnostic, type IThreeWorld } from "./mapWorld.js";
 export { aabbIntersectsAabb, meshAabb, meshBoundingSphere, sampleMeshPoints, sphereIntersectsSphere, type IAabb, type IBoundingSphere } from "./meshBounds.js";
 export { ease, sampleCatmullRom, sampleCubicBezier, sampleLine, sampleQuadraticBezier, type EasingKind } from "./pathSampling.js";
 export { stepPhysics, traceRigidBodyPrimitive, type IPhysicsEventPayload, type IRigidBodyTraceInput, type IRigidBodyTraceObservation } from "./physics.js";
+export { tracePhysicsSensors, type IPhysicsSensorEvent, type IPhysicsSensorTraceInput } from "./sensors.js";
 export { interpolateQuat, interpolateTransform, interpolateVec3, smoothDampVec3, type ITransformSample } from "./transformInterpolation.js";
 export { resolveWalkableMovement, type IWalkabilityResolution } from "./walkability.js";
 export { renderUi, type IRenderedUi, type IRenderedUiNode } from "./ui/renderUi.js";

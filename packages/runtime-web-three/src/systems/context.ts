@@ -3,6 +3,8 @@ import type { IAssetsManifest, IIrSchemaFile, IIrStateSource, IIrSystemQuery, IS
 import { AnimationRuntimeController } from "../animation.js";
 import { traceCharacterControllers, type ICharacterTraceObservation } from "../character.js";
 import type { IWebInputState } from "../input.js";
+import { queryNavigationPath, type INavigationPathRequest, type INavigationPathResult } from "../navigation.js";
+import { tracePhysicsSensors, type IPhysicsSensorEvent } from "../sensors.js";
 import { animationPlayPayload, animationQueryPayload, animationStopPayload } from "./services/animation.js";
 import { pickMesh, pointerRay, type IPickMeshRequest, type IPickMeshResult, type IPointerRayRequest, type IPointerRayResult } from "./services/picking.js";
 import {
@@ -107,7 +109,11 @@ export interface ISystemContext {
   physics: {
     overlap(options: IOverlapRequest): IOverlapResult;
     raycast(options: IRaycastRequest): IRaycastResult;
+    sensor(options?: IPhysicsSensorRequest): IPhysicsSensorResult;
     shapeCast(options: IShapeCastRequest): IShapeCastResult;
+  };
+  navigation: {
+    path(options: INavigationPathRequest): INavigationPathResult;
   };
   picking: {
     mesh(options: IPickMeshRequest): IPickMeshResult;
@@ -174,7 +180,7 @@ export interface IQueuedResourceWrite {
 
 export interface IQueuedServiceCall {
   payload: unknown;
-  service: "animation.play" | "animation.query" | "animation.stop" | "assets.load" | "character.move" | "physics.overlap" | "physics.raycast" | "physics.shapeCast" | "picking.mesh" | "picking.pointerRay";
+  service: "animation.play" | "animation.query" | "animation.stop" | "assets.load" | "character.move" | "navigation.path" | "physics.overlap" | "physics.raycast" | "physics.sensor" | "physics.shapeCast" | "picking.mesh" | "picking.pointerRay";
 }
 
 export interface IAssetLoadResult {
@@ -187,6 +193,15 @@ export interface IAssetLoadResult {
 export interface ICharacterMoveRequest {
   axes?: Record<string, number>;
   fixedDelta?: number;
+}
+
+export interface IPhysicsSensorRequest {
+  phases?: Array<"enter" | "exit" | "stay">;
+  sensor?: string;
+}
+
+export interface IPhysicsSensorResult {
+  events: IPhysicsSensorEvent[];
 }
 
 export function createSystemContext(
@@ -393,11 +408,27 @@ export function createSystemContext(
           services.push({ payload: { request, result }, service: "physics.raycast" });
           return result;
         },
+        sensor(serviceOptions = {}) {
+          const request = cloneValue(serviceOptions) as IPhysicsSensorRequest;
+          const result: IPhysicsSensorResult = {
+            events: tracePhysicsSensors(world, { phases: request.phases, steps: 1 }).filter((event) => request.sensor === undefined || event.sensor === request.sensor),
+          };
+          services.push({ payload: { request, result }, service: "physics.sensor" });
+          return cloneValue(result) as IPhysicsSensorResult;
+        },
         shapeCast(serviceOptions) {
           const request = cloneValue(serviceOptions);
           const result = shapeCastPrimitive(world, request);
           services.push({ payload: { request, result }, service: "physics.shapeCast" });
           return result;
+        },
+      },
+      navigation: {
+        path(serviceOptions) {
+          const request = cloneValue(serviceOptions) as INavigationPathRequest;
+          const result = queryNavigationPath(world, request);
+          services.push({ payload: { request, result }, service: "navigation.path" });
+          return cloneValue(result) as INavigationPathResult;
         },
       },
       picking: {

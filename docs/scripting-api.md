@@ -558,6 +558,19 @@ Rules:
   restitution, sleep threshold, and solver iteration policy. Static and
   kinematic inverse mass is `0`; dynamic inverse mass must be positive and must
   match `1 / mass` when both are authored.
+- V9 broad sensors are primitive non-solid `Collider.sensor` volumes. Scripts
+  declare `physics.sensor` and call `ctx.physics.sensor({ sensor?, phases? })`
+  for deterministic fixed-step sensor snapshots containing ordered occupants,
+  enter/stay/exit phases, and filtered-out entity IDs.
+- V9 character pushing is declared with `CharacterController.pushPolicy`.
+  `ctx.character.move(...)` observations may include `pushed` for light dynamic
+  primitive bodies or `tooHeavy` when policy blocks movement against a dynamic
+  primitive above the authored mass limit.
+- V9 static pathfinding uses a built-in `Navigation` world resource containing
+  bounded static convex regions, area costs, and optional fixture queries.
+  Scripts declare `navigation.path` and call `ctx.navigation.path({ start,
+  goal, id? })`; results include `status`, `path`, `visitedRegions`,
+  `totalCost`, and a stable failure reason for invalid start/goal or no route.
 - Dynamic mesh and cylinder solver bodies, joints, constraints, backend solver
   handles, random seeds, and nondeterministic solver settings are rejected
   before runtime. Mesh colliders remain static-only until a later promoted

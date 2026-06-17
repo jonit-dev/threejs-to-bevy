@@ -122,16 +122,19 @@ deterministic position, velocity, material, and contact observations. Run
 full V8-09 rigid-body, character navigation, object pushing, or pathfinding
 acceptance.
 
-V9-02 Phase 1 has started at the contract layer for primitive solver parity:
-SDK, compiler emission, IR validation, and the conformance fixture
-`packages/ir/fixtures/conformance/v9-physics-character-solver/game.bundle`
-now carry the promoted `physics:primitive-solver-v2` declaration for bounded
-box/capsule/sphere rigid bodies. The contract preserves bounded mass,
-inverse-mass, linear and angular velocity, gravity scale, damping, friction,
-restitution, sleep threshold, and solver iteration policy, and rejects dynamic
-mesh solver bodies, constraints, backend solver fields, and nondeterministic
-settings before runtime. Web/native multi-body contact traces, sensors,
-character pushing, navigation, and backend strategy remain later V9-02 phases.
+V9-02 physics-character parity is implemented for the promoted P1 surface:
+SDK/IR/compiler contracts and web/native runtime traces now cover bounded
+primitive solver v2 declarations, deterministic multi-body primitive contact
+traces, broad primitive sensors, character object pushing, static navigation
+path queries, and backend-boundary diagnostics. The accepted fixture is
+`packages/ir/fixtures/conformance/v9-physics-character/game.bundle`; rejected
+fixtures cover mesh sensors and backend/dynamic navigation handles. Run
+`pnpm verify:v9:physics-character` to validate the bundle, emit web/native
+solver/sensor/push/navigation traces, compare drift, and write
+`artifacts/conformance/v9-physics-character/verification-report.json`.
+Dynamic mesh colliders, joints/constraints, dynamic navmesh rebakes, crowd
+steering, off-mesh links, and public backend physics/navmesh handles remain
+deferred with promotion criteria in the V9-02 PRD.
 
 V8-10 has a narrow asset/glTF inspection evidence slice: web and Bevy now emit a
 deterministic `threenative.asset-load-sync-trace` for bundle-local path assets

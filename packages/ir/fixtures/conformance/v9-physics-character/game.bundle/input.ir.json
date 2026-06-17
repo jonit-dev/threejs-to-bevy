@@ -1,0 +1,9 @@
+{
+  "schema": "threenative.input",
+  "version": "0.1.0",
+  "actions": [],
+  "axes": [
+    { "id": "MoveX", "negative": [{ "device": "keyboard", "code": "KeyA" }], "positive": [{ "device": "keyboard", "code": "KeyD" }] },
+    { "id": "MoveZ", "negative": [{ "device": "keyboard", "code": "KeyW" }], "positive": [{ "device": "keyboard", "code": "KeyS" }] }
+  ]
+}
