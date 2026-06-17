@@ -146,6 +146,22 @@ export {
   type IGltfSceneHandlesDeclaration,
 } from "./gltfScene.js";
 export {
+  environmentMap,
+  lightProbe,
+  skybox,
+  EnvironmentMapDeclaration,
+  LightProbeDeclaration,
+  SkyboxDeclaration,
+  type EnvironmentTextureIntent,
+  type EnvironmentTextureMode,
+  type EnvironmentTextureSourceDeclaration,
+  type IEnvironmentCubemapFacesDeclaration,
+  type IEnvironmentMapDeclarationJson,
+  type IEnvironmentTextureSourceJson,
+  type ILightProbeDeclarationJson,
+  type ISkyboxDeclarationJson,
+} from "./environment.js";
+export {
   action,
   axis,
   defineInputMap,

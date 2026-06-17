@@ -621,6 +621,15 @@ function collectEnvironmentCapabilities(
       add("rendering", "shadows");
     }
   }
+  if (environment.skybox !== undefined) {
+    add("rendering", "skybox");
+  }
+  if (environment.environmentMap !== undefined) {
+    add("rendering", "environment-map");
+  }
+  if (environment.lightProbes !== undefined && environment.lightProbes.length > 0) {
+    add("rendering", "light-probes");
+  }
   if (environment.controller !== undefined) {
     add("environment", "first-person-controller");
   }

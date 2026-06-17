@@ -947,16 +947,61 @@ export interface IAtmosphereProfileIr {
   };
 }
 
+export interface IEnvironmentCubemapFacesIr {
+  negativeX: string;
+  negativeY: string;
+  negativeZ: string;
+  positiveX: string;
+  positiveY: string;
+  positiveZ: string;
+}
+
+export type EnvironmentTextureIntent = "irradiance" | "reflection" | "reflection-and-irradiance";
+
+export type IEnvironmentTextureSourceIr =
+  | {
+      asset: string;
+      mode: "equirect";
+    }
+  | {
+      faces: IEnvironmentCubemapFacesIr;
+      mode: "cubemap";
+    };
+
+export type ISkyboxIr = IEnvironmentTextureSourceIr & {
+  intensity?: number;
+  rotationY?: number;
+};
+
+export type IEnvironmentMapIr = IEnvironmentTextureSourceIr & {
+  intensity?: number;
+  intent: EnvironmentTextureIntent;
+};
+
+export interface ILightProbeIr {
+  bounds: {
+    max: Vec3;
+    min: Vec3;
+  };
+  id: string;
+  influenceRadius: number;
+  intent: EnvironmentTextureIntent;
+  source: IEnvironmentTextureSourceIr;
+}
+
 export interface IEnvironmentSceneIr {
   schema: EnvironmentSceneSchema;
   version: SchemaVersion;
   atmosphere?: IAtmosphereProfileIr;
   bookmarks?: IEnvironmentCameraBookmarkIr[];
   controller?: IFirstPersonControllerIr;
+  environmentMap?: IEnvironmentMapIr;
   exclusionZones?: IEnvironmentExclusionZoneIr[];
   referenceImage?: string;
+  lightProbes?: ILightProbeIr[];
   scatter?: IEnvironmentScatterSpecIr[];
   sourceAssets: IEnvironmentSourceAssetIr[];
+  skybox?: ISkyboxIr;
   instances: IEnvironmentInstanceIr[];
   path: IEnvironmentPathIr;
   terrain?: IEnvironmentTerrainIr;

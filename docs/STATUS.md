@@ -174,6 +174,16 @@ the authored fog color, and writes artifacts under
 surface; skybox/cubemap contracts, instancing/batching evidence, and broader
 post-processing controls remain tracked as open parity work.
 
+V9-04 Phase 1 adds the portable contract slice for bundle-local skyboxes,
+environment maps, and bounded light probes. `environment.scene.json` can now
+carry cubemap or equirect texture sources, intensity/rotation metadata,
+reflection/irradiance intent, and probe bounds; validation rejects missing,
+unsupported, or malformed texture/probe refs before runtime; compiler output
+emits `rendering:skybox`, `rendering:environment-map`, and
+`rendering:light-probes` capabilities. The conformance fixture is
+`packages/ir/fixtures/conformance/v9-skybox-environment/game.bundle`. Runtime
+web/Bevy visual mapping and screenshot evidence remain Phase 2 work.
+
 ## V4 Proves
 
 V4 is complete for the primitive native scripting proof. It proves one

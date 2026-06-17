@@ -1,7 +1,7 @@
 import type { IAssetsManifest, IEnvironmentSceneIr, Vec3 } from "./types.js";
 import type { IInputIr } from "./input.js";
 import type { IIrDiagnostic } from "./validate.js";
-import { validateAtmosphereProfile } from "./rendering.js";
+import { validateAtmosphereProfile, validateEnvironmentLighting } from "./rendering.js";
 
 export function validateEnvironmentSceneIr(
   scene: IEnvironmentSceneIr,
@@ -12,7 +12,24 @@ export function validateEnvironmentSceneIr(
   const diagnostics: IIrDiagnostic[] = [];
   validateUnsupportedFields(
     scene,
-    ["atmosphere", "bookmarks", "controller", "exclusionZones", "instances", "path", "referenceImage", "scatter", "schema", "sourceAssets", "terrain", "version", "walkability"],
+    [
+      "atmosphere",
+      "bookmarks",
+      "controller",
+      "environmentMap",
+      "exclusionZones",
+      "instances",
+      "lightProbes",
+      "path",
+      "referenceImage",
+      "scatter",
+      "schema",
+      "skybox",
+      "sourceAssets",
+      "terrain",
+      "version",
+      "walkability",
+    ],
     path,
     "Environment scene",
     diagnostics,
@@ -81,6 +98,7 @@ export function validateEnvironmentSceneIr(
 
   validateTerrainAndPath(scene, path, diagnostics);
   diagnostics.push(...validateAtmosphereProfile(scene.atmosphere, `${path}/atmosphere`));
+  diagnostics.push(...validateEnvironmentLighting(scene, assets, path));
   validateFirstPersonController(scene, input, path, diagnostics);
   validateWalkability(scene, path, diagnostics);
   validateScatter(scene, path, sourceAssetIds, diagnostics);
