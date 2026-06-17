@@ -713,6 +713,70 @@ function __tnInvokeSystem(options) {
         start
       };
     };
+    const sensorSnapshot = (payload = {}) => {
+      const requestedPhases = new Set(payload.phases || ["enter", "stay", "exit"]);
+      const events = [];
+      const sensors = data.entities
+        .filter((entity) => entity.components.Collider && entity.components.Collider.sensor)
+        .sort((left, right) => left.id.localeCompare(right.id));
+      for (const sensor of sensors) {
+        if (payload.sensor && payload.sensor !== sensor.id) continue;
+        const collider = sensor.components.Collider;
+        const sensorBounds = {
+          center: readVec3(sensor.components.Transform && sensor.components.Transform.position, [0, 0, 0]),
+          halfExtents: readColliderHalfExtents(collider)
+        };
+        const occupants = data.entities
+          .filter((entity) => entity.id !== sensor.id && entity.components.Collider)
+          .filter((entity) => boundsOverlap(sensorBounds, {
+            center: readVec3(entity.components.Transform && entity.components.Transform.position, [0, 0, 0]),
+            halfExtents: readColliderHalfExtents(entity.components.Collider)
+          }))
+          .filter((entity) => !Array.isArray(collider.mask) || collider.mask.length === 0 || collider.mask.includes(entity.components.Collider.layer))
+          .map((entity) => entity.id)
+          .sort()
+          .slice(0, Number(collider.sensor.occupantLimit ?? data.entities.length));
+        if (occupants.length > 0 && requestedPhases.has("enter")) {
+          events.push({
+            ...(collider.sensor.interactionKind === undefined ? {} : { interactionKind: collider.sensor.interactionKind }),
+            filteredOut: [],
+            occupants,
+            phase: "enter",
+            sensor: sensor.id,
+            step: 1
+          });
+        }
+      }
+      return { events };
+    };
+    const pointInPolygon = (point, polygon) => {
+      let inside = false;
+      for (let index = 0, previous = polygon.length - 1; index < polygon.length; previous = index++) {
+        const current = polygon[index];
+        const prior = polygon[previous];
+        const intersects = ((current[1] > point[1]) !== (prior[1] > point[1])) &&
+          point[0] < (prior[0] - current[0]) * (point[1] - current[1]) / (prior[1] - current[1]) + current[0];
+        if (intersects) inside = !inside;
+      }
+      return inside;
+    };
+    const navigationRegionFor = (regions, point) => [...regions].sort((left, right) => left.id.localeCompare(right.id)).find((region) => pointInPolygon([point[0], point[2]], region.points || []));
+    const navigationPath = (request) => {
+      const navigation = data.resources.Navigation;
+      const query = request.id || "query";
+      if (!navigation || !Array.isArray(navigation.regions)) return { failureReason: "no-route", path: [], query, status: "failed", totalCost: 0, visitedRegions: [] };
+      const start = navigationRegionFor(navigation.regions, readVec3(request.start, [0, 0, 0]));
+      if (!start) return { failureReason: "start-outside", path: [], query, status: "failed", totalCost: 0, visitedRegions: [] };
+      const goal = navigationRegionFor(navigation.regions, readVec3(request.goal, [0, 0, 0]));
+      if (!goal) return { failureReason: "goal-outside", path: [], query, status: "failed", totalCost: 0, visitedRegions: [start.id] };
+      const route = [start.id];
+      if (start.id !== goal.id) {
+        const neighbor = (start.neighbors || []).find((id) => id === goal.id);
+        if (!neighbor) return { failureReason: "no-route", path: [], query, status: "failed", totalCost: 0, visitedRegions: [start.id] };
+        route.push(goal.id);
+      }
+      return { path: [readVec3(request.start, [0, 0, 0]), readVec3(request.goal, [0, 0, 0])], query, status: "success", totalCost: route.length - 1, visitedRegions: route };
+    };
     const pickMesh = (request) => {
       const ignored = new Set(request.ignore || []);
       let best = { hit: false };
@@ -1034,8 +1098,22 @@ function __tnInvokeSystem(options) {
           const result = shapeCast(request);
           effects.services.push({ service: "physics.shapeCast", payload: { request, result } });
           return result;
+        },
+        sensor(payload = {}) {
+          const request = clone(payload);
+          const result = sensorSnapshot(request);
+          effects.services.push({ service: "physics.sensor", payload: { request, result } });
+          return result;
         }
       },
+    navigation: {
+      path(payload) {
+        const request = clone(payload);
+        const result = navigationPath(request);
+        effects.services.push({ service: "navigation.path", payload: { request, result } });
+        return result;
+      }
+    },
     picking: {
       mesh(payload) {
         const request = clone(payload);

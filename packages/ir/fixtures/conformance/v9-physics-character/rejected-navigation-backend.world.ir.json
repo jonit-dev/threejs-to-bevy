@@ -1,0 +1,15 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [],
+  "events": {},
+  "resources": {
+    "Navigation": {
+      "agentRadius": 0.5,
+      "backendNavmeshHandle": "rapier-navmesh",
+      "dynamicRebake": true,
+      "regions": []
+    }
+  },
+  "prefabs": []
+}

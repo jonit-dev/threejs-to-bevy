@@ -368,10 +368,14 @@ pub struct HierarchyComponent {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RigidBodyComponent {
+    pub angular_velocity: Option<[f32; 3]>,
     pub damping: Option<f32>,
     pub gravity_scale: Option<f32>,
+    pub inverse_mass: Option<f32>,
     pub kind: String,
     pub mass: Option<f32>,
+    pub sleep_threshold: Option<f32>,
+    pub solver_iterations: Option<u32>,
     pub velocity: Option<[f32; 3]>,
 }
 
@@ -386,6 +390,7 @@ pub struct ColliderComponent {
     pub restitution: Option<f32>,
     pub size: Option<[f32; 3]>,
     pub slope: Option<ColliderSlopeComponent>,
+    pub sensor: Option<serde_json::Value>,
     pub trigger: Option<bool>,
 }
 

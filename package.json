@@ -41,7 +41,8 @@
     "verify:v9:skeletal-animation": "node scripts/verify-v9-skeletal-animation.mjs",
     "verify:v9:animation-state": "node scripts/verify-v9-animation-state.mjs",
     "verify:v9:animation-blending": "node scripts/verify-v9-animation-blending.mjs",
-    "verify:v9:animation-particles": "node scripts/verify-v9-animation-particles.mjs"
+    "verify:v9:animation-particles": "node scripts/verify-v9-animation-particles.mjs",
+    "verify:v9:physics-character": "node scripts/verify-v9-physics-character.mjs"
   },
   "devDependencies": {
     "react": "^19.2.7",

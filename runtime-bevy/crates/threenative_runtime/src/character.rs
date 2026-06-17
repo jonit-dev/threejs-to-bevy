@@ -13,8 +13,20 @@ pub struct CharacterTraceObservation {
     pub grounded: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub platform_delta: Option<[f32; 3]>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pushed: Option<CharacterPushObservation>,
     pub resolved: [f32; 3],
     pub start: [f32; 3],
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub too_heavy: Option<String>,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CharacterPushObservation {
+    pub entity: String,
+    pub impulse: [f32; 3],
+    pub position: [f32; 3],
 }
 
 #[derive(Clone, Copy)]
@@ -50,6 +62,8 @@ struct GroundResolution {
 struct HorizontalResolution {
     blocked_by: Option<String>,
     position: [f32; 3],
+    pushed: Option<CharacterPushObservation>,
+    too_heavy: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -59,9 +73,21 @@ struct CharacterControllerComponent {
     grounding: String,
     move_x_axis: String,
     move_z_axis: String,
+    push_policy: Option<CharacterPushPolicy>,
     slope_limit: Option<f32>,
     speed: f32,
     step_offset: Option<f32>,
+}
+
+#[derive(Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CharacterPushPolicy {
+    allowed_layers: Option<Vec<String>>,
+    blocked_when_too_heavy: Option<bool>,
+    enabled: bool,
+    impulse_scale: Option<f32>,
+    max_push_mass: Option<f32>,
+    min_move_speed: Option<f32>,
 }
 
 pub fn trace_character_controllers(
@@ -121,11 +147,14 @@ fn trace_character(
             blockers,
             controller.step_offset.unwrap_or(0.0),
             controller.slope_limit.unwrap_or(DEFAULT_SLOPE_LIMIT),
+            controller.push_policy.as_ref(),
         )
     } else {
         HorizontalResolution {
             blocked_by: None,
             position: desired,
+            pushed: None,
+            too_heavy: None,
         }
     };
     let ground = if controller.grounding == "raycast" {
@@ -152,8 +181,10 @@ fn trace_character(
         ground_entity: ground.entity.clone(),
         grounded: ground.entity.is_some(),
         platform_delta: ground.platform_delta,
+        pushed: horizontal.pushed,
         resolved: ground.position,
         start,
+        too_heavy: horizontal.too_heavy,
     })
 }
 
@@ -182,6 +213,7 @@ fn resolve_horizontal_contact(
     blockers: &[&WorldEntity],
     step_offset: f32,
     slope_limit: f32,
+    push_policy: Option<&CharacterPushPolicy>,
 ) -> HorizontalResolution {
     let mut position = desired;
     let mut character_bounds = Bounds {
@@ -191,6 +223,7 @@ fn resolve_horizontal_contact(
         slope: None,
         velocity: None,
     };
+    let movement = [desired[0] - start[0], 0.0, desired[2] - start[2]];
     for blocker in blockers {
         if blocker.id == character_id {
             continue;
@@ -215,15 +248,83 @@ fn resolve_horizontal_contact(
             character_bounds.center = position;
             continue;
         }
+        match resolve_push(push_policy, blocker, movement) {
+            PushResolution::Pushed(pushed) => {
+                return HorizontalResolution {
+                    blocked_by: None,
+                    position,
+                    pushed: Some(pushed),
+                    too_heavy: None,
+                };
+            }
+            PushResolution::TooHeavy => {
+                return HorizontalResolution {
+                    blocked_by: Some(blocker.id.clone()),
+                    position: start,
+                    pushed: None,
+                    too_heavy: Some(blocker.id.clone()),
+                };
+            }
+            PushResolution::None => {}
+        }
         return HorizontalResolution {
             blocked_by: Some(blocker.id.clone()),
             position: start,
+            pushed: None,
+            too_heavy: None,
         };
     }
     HorizontalResolution {
         blocked_by: None,
         position,
+        pushed: None,
+        too_heavy: None,
     }
+}
+
+enum PushResolution {
+    None,
+    Pushed(CharacterPushObservation),
+    TooHeavy,
+}
+
+fn resolve_push(policy: Option<&CharacterPushPolicy>, blocker: &WorldEntity, movement: [f32; 3]) -> PushResolution {
+    let Some(policy) = policy else {
+        return PushResolution::None;
+    };
+    if !policy.enabled {
+        return PushResolution::None;
+    }
+    let Some(body) = blocker.components.rigid_body.as_ref() else {
+        return PushResolution::None;
+    };
+    if body.kind != "dynamic" {
+        return PushResolution::None;
+    }
+    let layer = blocker.components.collider.as_ref().and_then(|collider| collider.layer.as_ref());
+    if policy.allowed_layers.as_ref().is_some_and(|layers| layer.is_none_or(|value| !layers.iter().any(|candidate| candidate == value))) {
+        return PushResolution::None;
+    }
+    let mass = body.mass.unwrap_or_else(|| match body.inverse_mass {
+        Some(value) if value > 0.0 => 1.0 / value,
+        _ => 1.0,
+    });
+    if mass > policy.max_push_mass.unwrap_or(f32::INFINITY) {
+        return if policy.blocked_when_too_heavy.unwrap_or(true) {
+            PushResolution::TooHeavy
+        } else {
+            PushResolution::None
+        };
+    }
+    if movement[0].hypot(movement[2]) < policy.min_move_speed.unwrap_or(0.0) {
+        return PushResolution::None;
+    }
+    let impulse = scale(movement, policy.impulse_scale.unwrap_or(1.0));
+    PushResolution::Pushed(CharacterPushObservation {
+        entity: blocker.id.clone(),
+        impulse,
+        position: add(position(blocker), impulse),
+    })
 }
 
 fn ground_position(

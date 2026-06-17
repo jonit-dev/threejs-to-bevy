@@ -103,6 +103,10 @@ function collectWorldCapabilities(world: IWorldIr | undefined, add: (domain: str
   if (world.resources?.ActiveCameras !== undefined) {
     add("rendering", "camera.multiple");
   }
+  if (world.resources?.Navigation !== undefined) {
+    add("navigation", "static-regions");
+    add("navigation", "path");
+  }
   if (Object.keys(world.events ?? {}).length > 0) {
     add("ecs", "events");
   }
@@ -167,6 +171,9 @@ function collectWorldCapabilities(world: IWorldIr | undefined, add: (domain: str
     }
     if (entity.components.RigidBody !== undefined) {
       add("physics", `rigid-body.${entity.components.RigidBody.kind}`);
+      if (usesPrimitiveSolverV2(entity.components.RigidBody, entity.components.Collider)) {
+        add("physics", "primitive-solver-v2");
+      }
     }
     if (entity.components.Collider !== undefined) {
       add("physics", `collider.${entity.components.Collider.kind}`);
@@ -178,6 +185,10 @@ function collectWorldCapabilities(world: IWorldIr | undefined, add: (domain: str
       }
       if (entity.components.Collider.trigger === true) {
         add("physics", "trigger-collider");
+      }
+      if (entity.components.Collider.sensor !== undefined) {
+        add("physics", "sensors");
+        add("physics", "interaction-volumes");
       }
     }
     if (entity.components.CharacterController !== undefined) {
@@ -197,8 +208,32 @@ function collectWorldCapabilities(world: IWorldIr | undefined, add: (domain: str
       if (entity.components.CharacterController.slopeLimit !== undefined) {
         add("character", "slope-limit");
       }
+      if (entity.components.CharacterController.pushPolicy?.enabled === true) {
+        add("character", "push");
+      }
     }
   }
+}
+
+function usesPrimitiveSolverV2(
+  body: NonNullable<IWorldIr["entities"][number]["components"]["RigidBody"]>,
+  collider: IWorldIr["entities"][number]["components"]["Collider"] | undefined,
+): boolean {
+  if (collider === undefined || !["box", "capsule", "sphere"].includes(collider.kind)) {
+    return false;
+  }
+  return [
+    body.angularVelocity,
+    body.damping,
+    body.gravityScale,
+    body.inverseMass,
+    body.mass,
+    body.sleepThreshold,
+    body.solverIterations,
+    body.velocity,
+    collider.friction,
+    collider.restitution,
+  ].some((value) => value !== undefined);
 }
 
 function collectMaterialCapabilities(materials: IMaterialsIr, add: (domain: string, capability: string) => void): void {

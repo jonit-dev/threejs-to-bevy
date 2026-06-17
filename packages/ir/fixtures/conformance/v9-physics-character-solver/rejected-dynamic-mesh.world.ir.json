@@ -1,0 +1,26 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "dynamic-mesh",
+      "components": {
+        "Collider": {
+          "kind": "mesh"
+        },
+        "RigidBody": {
+          "kind": "dynamic",
+          "mass": 1
+        },
+        "Transform": {
+          "position": [0, 1, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    }
+  ],
+  "events": {},
+  "resources": {},
+  "prefabs": []
+}

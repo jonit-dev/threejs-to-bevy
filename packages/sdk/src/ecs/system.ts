@@ -10,8 +10,10 @@ export type SystemService =
   | "animation.stop"
   | "assets.load"
   | "character.move"
+  | "navigation.path"
   | "physics.overlap"
   | "physics.raycast"
+  | "physics.sensor"
   | "physics.shapeCast"
   | "picking.mesh"
   | "picking.pointerRay";
@@ -151,6 +153,30 @@ export interface ISystemContext {
           normal: [number, number, number];
           point: [number, number, number];
         };
+    sensor(options?: {
+      phases?: Array<"enter" | "exit" | "stay">;
+      sensor?: string;
+    }): {
+      events: Array<{
+        occupants: string[];
+        phase: "enter" | "exit" | "stay";
+        sensor: string;
+      }>;
+    };
+  };
+  navigation: {
+    path(options: {
+      goal: [number, number, number];
+      id?: string;
+      start: [number, number, number];
+    }): {
+      failureReason?: "goal-outside" | "no-route" | "start-outside";
+      path: Array<[number, number, number]>;
+      query: string;
+      status: "failed" | "success";
+      totalCost: number;
+      visitedRegions: string[];
+    };
   };
   picking: {
     mesh(options: {

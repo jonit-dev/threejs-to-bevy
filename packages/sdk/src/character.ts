@@ -9,9 +9,19 @@ export interface ICharacterControllerDeclaration {
   interactAction?: string;
   moveXAxis: string;
   moveZAxis: string;
+  pushPolicy?: ICharacterPushPolicy;
   slopeLimit?: number;
   speed: number;
   stepOffset?: number;
+}
+
+export interface ICharacterPushPolicy {
+  allowedLayers?: ReadonlyArray<string>;
+  blockedWhenTooHeavy?: boolean;
+  enabled: boolean;
+  impulseScale?: number;
+  maxPushMass?: number;
+  minMoveSpeed?: number;
 }
 
 export interface ICharacterControllerOptions {
@@ -20,6 +30,7 @@ export interface ICharacterControllerOptions {
   interactAction?: string;
   moveXAxis?: string;
   moveZAxis?: string;
+  pushPolicy?: ICharacterPushPolicy;
   slopeLimit?: number;
   speed?: number;
   stepOffset?: number;
@@ -59,10 +70,37 @@ export function characterController(options: ICharacterControllerOptions = {}): 
     ...(options.interactAction === undefined ? {} : { interactAction: assertNonEmpty(options.interactAction, "interactAction") }),
     moveXAxis: assertNonEmpty(options.moveXAxis ?? "MoveX", "moveXAxis"),
     moveZAxis: assertNonEmpty(options.moveZAxis ?? "MoveZ", "moveZAxis"),
+    ...(options.pushPolicy === undefined ? {} : { pushPolicy: normalizePushPolicy(options.pushPolicy) }),
     ...(slopeLimit === undefined ? {} : { slopeLimit }),
     speed,
     ...(stepOffset === undefined ? {} : { stepOffset }),
   });
+}
+
+function normalizePushPolicy(policy: ICharacterPushPolicy): ICharacterPushPolicy {
+  if (typeof policy.enabled !== "boolean") {
+    throw new SdkError("TN_SDK_CHARACTER_PUSH_INVALID", "CharacterController.pushPolicy.enabled must be boolean.");
+  }
+  if (policy.maxPushMass !== undefined && (!Number.isFinite(policy.maxPushMass) || policy.maxPushMass < 0 || policy.maxPushMass > 1_000_000)) {
+    throw new SdkError("TN_SDK_CHARACTER_PUSH_INVALID", "CharacterController.pushPolicy.maxPushMass must be a finite number from 0 to 1000000.");
+  }
+  if (policy.impulseScale !== undefined && (!Number.isFinite(policy.impulseScale) || policy.impulseScale < 0 || policy.impulseScale > 1000)) {
+    throw new SdkError("TN_SDK_CHARACTER_PUSH_INVALID", "CharacterController.pushPolicy.impulseScale must be a finite number from 0 to 1000.");
+  }
+  if (policy.minMoveSpeed !== undefined && (!Number.isFinite(policy.minMoveSpeed) || policy.minMoveSpeed < 0)) {
+    throw new SdkError("TN_SDK_CHARACTER_PUSH_INVALID", "CharacterController.pushPolicy.minMoveSpeed must be a finite non-negative number.");
+  }
+  if (policy.allowedLayers !== undefined && policy.allowedLayers.some((layer) => layer.trim() === "")) {
+    throw new SdkError("TN_SDK_CHARACTER_PUSH_INVALID", "CharacterController.pushPolicy.allowedLayers must contain non-empty strings.");
+  }
+  return {
+    ...(policy.allowedLayers === undefined ? {} : { allowedLayers: [...policy.allowedLayers] }),
+    ...(policy.blockedWhenTooHeavy === undefined ? {} : { blockedWhenTooHeavy: policy.blockedWhenTooHeavy }),
+    enabled: policy.enabled,
+    ...(policy.impulseScale === undefined ? {} : { impulseScale: policy.impulseScale }),
+    ...(policy.maxPushMass === undefined ? {} : { maxPushMass: policy.maxPushMass }),
+    ...(policy.minMoveSpeed === undefined ? {} : { minMoveSpeed: policy.minMoveSpeed }),
+  };
 }
 
 function assertSupportedCharacterOptions(options: IUnsupportedCharacterControllerOptions | undefined): void {

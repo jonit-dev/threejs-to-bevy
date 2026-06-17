@@ -58,6 +58,7 @@ export {
   type CharacterGroundingMode,
   type ICharacterControllerDeclaration,
   type ICharacterControllerOptions,
+  type ICharacterPushPolicy,
   type IUnsupportedCharacterControllerOptions,
 } from "./character.js";
 export { defineControls, type IControlActionRecipe, type IControlsOptions, type IWasdMovementOptions } from "./controls.js";
@@ -140,6 +141,14 @@ export { MeshExtendedMaterial, type ExtendedMaterialPreset, type IMeshExtendedMa
 export { MeshStandardMaterial, type ColorValue, type MaterialAlphaMode, type MaterialBlendMode, type TextureSlotReference } from "./materials/MeshStandardMaterial.js";
 export { Vector3, type Vector3Tuple } from "./math/Vector3.js";
 export {
+  staticNavigation,
+  type INavigationPathQueryDeclaration,
+  type INavigationRegionDeclaration,
+  type IStaticNavigationDeclaration,
+  type NavigationPoint2,
+  type NavigationPoint3,
+} from "./navigation.js";
+export {
   overlay,
   type IOverlayDeclaration,
   type IOverlayMessageDeclaration,
@@ -162,8 +171,10 @@ export {
   type IPhysicsDeclaration,
   type IPhysicsMaterialOptions,
   type IRigidBodyDeclaration,
+  type ISensorDeclaration,
   type PhysicsBodyKind,
   type PhysicsColliderKind,
+  type SensorPhase,
 } from "./physics.js";
 export {
   PrefabModelAsset,
