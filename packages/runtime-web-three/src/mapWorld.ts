@@ -628,6 +628,7 @@ function mapTextureSlot(
     threenativeSlot: slot,
     threenativeUrl: url,
   };
+  applyTextureControls(texture, asset);
   if (canLoadImageInRuntime()) {
     pendingTextureLoads.push(
       new THREE.TextureLoader()
@@ -636,7 +637,6 @@ function mapTextureSlot(
           texture.image = loaded.image;
           texture.colorSpace = THREE.SRGBColorSpace;
           texture.needsUpdate = true;
-          applyTextureControls(texture, asset);
         })
         .catch(() => undefined),
     );

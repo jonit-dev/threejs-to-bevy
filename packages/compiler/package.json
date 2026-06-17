@@ -1,10 +1,16 @@
 {
   "name": "@threenative/compiler",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -16,10 +22,10 @@
     "@threenative/ir": "workspace:*",
     "@threenative/r3f": "workspace:*",
     "@threenative/sdk": "workspace:*",
-    "@threenative/ui": "workspace:*"
+    "@threenative/ui": "workspace:*",
+    "typescript": "^5.9.3"
   },
   "devDependencies": {
-    "@types/node": "^20.19.25",
-    "typescript": "^5.9.3"
+    "@types/node": "^20.19.25"
   }
 }

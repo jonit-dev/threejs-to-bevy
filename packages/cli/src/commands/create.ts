@@ -1,4 +1,4 @@
-import { chmod, cp, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { access, chmod, cp, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -8,9 +8,11 @@ interface ICreateOptions {
   cwd?: string;
 }
 
-const templatesRoot = fileURLToPath(new URL("../../../../templates/", import.meta.url));
-const repoRoot = resolve(templatesRoot, "..");
+const packagedTemplatesRoot = fileURLToPath(new URL("../templates/", import.meta.url));
+const sourceTemplatesRoot = fileURLToPath(new URL("../../../../templates/", import.meta.url));
+const repoRoot = resolve(sourceTemplatesRoot, "..");
 const cliBin = resolve(repoRoot, "packages/cli/dist/index.js");
+const publishedPackageVersion = "0.1.0";
 
 export async function createProject(argv: readonly string[], options: ICreateOptions = {}): Promise<ICommandResult> {
   const normalizedArgv = argv[0] === "--" ? argv.slice(1) : argv;
@@ -65,10 +67,18 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
     }
   }
 
+  const sourceCheckout = await isSourceCheckout();
+  const templatesRoot = sourceCheckout ? sourceTemplatesRoot : packagedTemplatesRoot;
+
   await mkdir(projectPath, { recursive: true });
   await cp(resolve(templatesRoot, template), projectPath, { recursive: true, force: false, errorOnExist: true });
-  await rewriteLocalWorkspaceDependencies(projectPath);
-  await writeLocalCliShim(projectPath);
+
+  if (sourceCheckout) {
+    await rewriteLocalWorkspaceDependencies(projectPath);
+    await writeLocalCliShim(projectPath);
+  } else {
+    await rewritePublishedDependencies(projectPath);
+  }
 
   const payload = {
     code: "TN_CREATE_OK",
@@ -126,6 +136,28 @@ async function rewriteLocalWorkspaceDependencies(projectPath: string): Promise<v
   await writeFile(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
 }
 
+async function rewritePublishedDependencies(projectPath: string): Promise<void> {
+  const packageJsonPath = resolve(projectPath, "package.json");
+  const packageJson = JSON.parse(await readFile(packageJsonPath, "utf8")) as {
+    dependencies?: Record<string, string>;
+    devDependencies?: Record<string, string>;
+  };
+
+  packageJson.dependencies = rewritePublishedDependency(packageJson.dependencies ?? {}, "@threenative/sdk");
+  packageJson.dependencies = rewritePublishedDependency(packageJson.dependencies, "@threenative/r3f", {
+    onlyIfPresent: true,
+  });
+  packageJson.dependencies = rewritePublishedDependency(packageJson.dependencies, "@threenative/ui", {
+    onlyIfPresent: true,
+  });
+  packageJson.devDependencies = {
+    ...packageJson.devDependencies,
+    "@threenative/cli": `^${publishedPackageVersion}`,
+  };
+
+  await writeFile(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
+}
+
 function rewriteDependency(
   dependencies: Record<string, string>,
   name: string,
@@ -140,6 +172,31 @@ function rewriteDependency(
     ...dependencies,
     [name]: `file:${resolve(repoRoot, packagePath)}`,
   };
+}
+
+function rewritePublishedDependency(
+  dependencies: Record<string, string>,
+  name: string,
+  options: { onlyIfPresent?: boolean } = {},
+): Record<string, string> {
+  if (options.onlyIfPresent === true && dependencies[name] === undefined) {
+    return dependencies;
+  }
+
+  return {
+    ...dependencies,
+    [name]: `^${publishedPackageVersion}`,
+  };
+}
+
+async function isSourceCheckout(): Promise<boolean> {
+  try {
+    await access(resolve(sourceTemplatesRoot, "v1", "package.json"));
+    await access(resolve(repoRoot, "packages", "cli", "package.json"));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function writeLocalCliShim(projectPath: string): Promise<void> {

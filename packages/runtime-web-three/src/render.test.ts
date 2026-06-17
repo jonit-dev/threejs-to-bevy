@@ -21,7 +21,7 @@ function runtimeConfig(
 }
 
 test("should disable tone mapping by default to match Bevy without atmosphere color management", () => {
-  const renderer = new THREE.WebGLRenderer();
+  const renderer = mockRenderer();
   applyRendererColorManagement(renderer, undefined);
   assert.equal(renderer.outputColorSpace, THREE.SRGBColorSpace);
   assert.equal(renderer.toneMapping, THREE.NoToneMapping);
@@ -29,7 +29,7 @@ test("should disable tone mapping by default to match Bevy without atmosphere co
 });
 
 test("should map atmosphere color management to renderer tone mapping", () => {
-  const renderer = new THREE.WebGLRenderer();
+  const renderer = mockRenderer();
   applyRendererColorManagement(renderer, {
     exposure: 1.05,
     outputColorSpace: "srgb",
@@ -41,11 +41,7 @@ test("should map atmosphere color management to renderer tone mapping", () => {
 });
 
 test("should let runtime color grading drive renderer tone mapping and exposure", () => {
-  const renderer = {
-    outputColorSpace: THREE.NoColorSpace,
-    toneMapping: THREE.NoToneMapping,
-    toneMappingExposure: 1,
-  } as THREE.WebGLRenderer;
+  const renderer = mockRenderer();
   applyRendererColorManagement(
     renderer,
     {
@@ -64,6 +60,14 @@ test("should let runtime color grading drive renderer tone mapping and exposure"
   assert.equal(renderer.toneMapping, THREE.ACESFilmicToneMapping);
   assert.equal(renderer.toneMappingExposure, 1.2);
 });
+
+function mockRenderer(): THREE.WebGLRenderer {
+  return {
+    outputColorSpace: THREE.NoColorSpace,
+    toneMapping: THREE.NoToneMapping,
+    toneMappingExposure: 1,
+  } as THREE.WebGLRenderer;
+}
 
 test("should map runtime antialias modes to WebGL renderer parameters", () => {
   assert.deepEqual(webRendererParameters(runtimeConfig("none")), {

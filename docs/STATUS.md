@@ -38,6 +38,20 @@ audio/persistence/tooling support. The V9 verifier commands named in those PRDs
 are future implementation gates; the current active release command remains
 `pnpm verify:v7`.
 
+Distribution packaging is published and verified for the
+TypeScript packages: `@threenative/sdk`, `@threenative/ir`,
+`@threenative/ui`, `@threenative/r3f`, `@threenative/compiler`,
+`@threenative/runtime-web-three`, and `@threenative/cli` are public on npm at
+`0.1.0`. The published package metadata resolves from the registry, and a clean
+external npm project installed `@threenative/cli@0.1.0`, ran `tn create`, installed
+the generated game dependencies, built `dist/game.bundle`, served the web preview,
+and passed `tn verify` with nonblank 1280x720 frames. Run `pnpm
+verify:distribution` to reproduce the local packed-tarball proof from a clean
+temporary npm consumer project. Run `pnpm run deploy -- --dry-run` to execute the
+guarded release path: full repo verification, distribution proof, ordered pack,
+and npm publish dry-run. `pnpm run deploy -- --skip-tests` is available only as
+an explicit fast publish retry path.
+
 V9-01 animation and particles runtime parity is implemented with focused
 stateful animation, blending, and rendered particle evidence:
 `pnpm verify:v9:animation-state` compares web/native `animation.play/query/stop`

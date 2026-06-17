@@ -65,7 +65,7 @@ export function raycastPrimitive(world: IWorldIr, request: IRaycastRequest): IRa
     const center = readVec3(transform.position, [0, 0, 0]);
     const size = readColliderSize(collider);
     const hit = intersectAabb(request, center, size);
-    if (hit.hit && (!best.hit || hit.distance < best.distance)) {
+    if (hit.hit && hit.distance > 0.000001 && (!best.hit || hit.distance < best.distance)) {
       best = { ...hit, entity: entity.id };
     }
   }

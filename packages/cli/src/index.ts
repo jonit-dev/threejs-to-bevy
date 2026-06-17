@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { buildCommand } from "./commands/build.js";
@@ -164,10 +165,22 @@ export async function main(argv: readonly string[] = process.argv.slice(2)): Pro
   process.exitCode = result.exitCode;
 }
 
-if (process.argv[1] !== undefined && fileURLToPath(import.meta.url) === process.argv[1]) {
+if (isEntrypoint(process.argv[1], fileURLToPath(import.meta.url))) {
   void main().catch((error: unknown) => {
     const message = error instanceof Error ? error.message : String(error);
     process.stderr.write(`${message}\n`);
     process.exitCode = 1;
   });
+}
+
+function isEntrypoint(argvPath: string | undefined, modulePath: string): boolean {
+  if (argvPath === undefined) {
+    return false;
+  }
+
+  try {
+    return realpathSync(argvPath) === realpathSync(modulePath);
+  } catch {
+    return argvPath === modulePath;
+  }
 }
