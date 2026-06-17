@@ -7,5 +7,6 @@ artifacts/
 packages/*/.tn/
 target/
 runtime-bevy/target/
+.worktrees/
 
 assets-source

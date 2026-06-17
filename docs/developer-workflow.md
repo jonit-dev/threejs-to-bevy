@@ -344,6 +344,22 @@ presence, transforms, camera/light/material mappings, events, logical input
 state, UI state, audio triggers, and physics events where applicable. They must
 not compare runtime-private handles or renderer internals.
 
+### V9 Quality-Control Workflow
+
+For latest V9 merge work, run the focused gate for the area you changed first,
+then the aggregate quality gate:
+
+```bash
+pnpm verify:v9:<area>
+pnpm check:quality:v9
+pnpm verify:v9
+```
+
+Use `pnpm verify:all` when shared runtime contracts change outside the V9 slice.
+Release evidence is written under `artifacts/v9/verification-report.json`,
+`artifacts/v9/sample-scenes/`, `artifacts/v9/visual-matrix/`, and the focused
+gate directories referenced by `packages/ir/fixtures/conformance/v9-fixture-catalog.json`.
+
 ### V2 Arena Workflow
 
 The canonical playable V2 proof lives in `examples/v2-arena` and can also be

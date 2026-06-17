@@ -5,6 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./dist/index.js",
+    "./conformance": "./dist/conformance.js",
+    "./input": "./dist/input.js",
     "./reflection": "./dist/reflection.js",
     "./schemas/*": "./schemas/*"
   },

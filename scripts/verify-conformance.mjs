@@ -1,4 +1,5 @@
 import { mkdir, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -12,8 +13,6 @@ export async function verifyConformance(options = {}) {
   const run = options.run ?? runCommand;
   const reportPath = options.reportPath ?? resolve(root, "artifacts/conformance/verification-report.json");
   const artifactDir = options.artifactDir ?? resolve(reportPath, "..");
-  const nativeRuntimeCwd = resolve(root, "runtime-bevy");
-  const nativeCargoEnv = { CARGO_TARGET_DIR: resolve(artifactDir, "cargo-target") };
   const basicSceneBundlePath = resolve(root, "packages/ir/fixtures/conformance/basic-scene/game.bundle");
   const primitiveMappingBundlePath = resolve(root, "packages/ir/fixtures/conformance/primitive-mapping/game.bundle");
   const v6PhysicsEventsBundlePath = resolve(root, "packages/ir/fixtures/conformance/v6-physics-events/game.bundle");
@@ -37,6 +36,8 @@ export async function verifyConformance(options = {}) {
   const v7PerformanceBudgetsBundlePath = resolve(root, "packages/ir/fixtures/conformance/v7-performance-budgets/game.bundle");
   const v9AnimationStateBundlePath = resolve(root, "packages/ir/fixtures/conformance/v9-animation-state/game.bundle");
   const v9AnimationBlendingBundlePath = resolve(root, "packages/ir/fixtures/conformance/v9-animation-blending/game.bundle");
+  const v9PhysicsCharacterBundlePath = resolve(root, "packages/ir/fixtures/conformance/v9-physics-character/game.bundle");
+  const v9SkyboxEnvironmentBundlePath = resolve(root, "packages/ir/fixtures/conformance/v9-skybox-environment/game.bundle");
   const v9SupportStressBundlePath = resolve(root, "packages/ir/fixtures/conformance/v9-support-stress/game.bundle");
   const nativeBasicSceneReportPath = options.nativeBasicSceneReportPath ?? resolve(artifactDir, "basic-scene/bevy.report.json");
   const nativePrimitiveMappingReportPath =
@@ -107,6 +108,12 @@ export async function verifyConformance(options = {}) {
   const v9AnimationBlendingReportPath = options.v9AnimationBlendingReportPath ?? resolve(artifactDir, "v9-animation-blending/blend-report.json");
   const v9AnimationBlendingNativeTracePath = options.v9AnimationBlendingNativeTracePath ?? resolve(artifactDir, "v9-animation-blending/native-blend.json");
   const v9AnimationBlendingWebTracePath = options.v9AnimationBlendingWebTracePath ?? resolve(artifactDir, "v9-animation-blending/web-blend.json");
+  const v9PhysicsCharacterDiffPath = options.v9PhysicsCharacterDiffPath ?? resolve(artifactDir, "v9-physics-character/diff-v9-physics-character.json");
+  const v9PhysicsCharacterNativeTracePath = options.v9PhysicsCharacterNativeTracePath ?? resolve(artifactDir, "v9-physics-character/native-v9-physics-character.json");
+  const v9PhysicsCharacterReportPath = options.v9PhysicsCharacterReportPath ?? resolve(artifactDir, "v9-physics-character/verification-report.json");
+  const v9PhysicsCharacterWebTracePath = options.v9PhysicsCharacterWebTracePath ?? resolve(artifactDir, "v9-physics-character/web-v9-physics-character.json");
+  const v9AssetsGltfReportPath = options.v9AssetsGltfReportPath ?? resolve(root, "artifacts/v9/assets-gltf-scene-workflow/diff.json");
+  const v9RenderingLightsReportPath = options.v9RenderingLightsReportPath ?? resolve(root, "artifacts/v9/rendering-lights/verification-report.json");
   const nativeV9SupportStressReportPath = options.nativeV9SupportStressReportPath ?? resolve(artifactDir, "v9-support-stress/bevy.report.json");
   const artifacts = {
     nativeBasicSceneReportPath,
@@ -155,15 +162,18 @@ export async function verifyConformance(options = {}) {
     v9AnimationStateDiffPath,
     v9AnimationStateNativeTracePath,
     v9AnimationStateWebTracePath,
+    v9AssetsGltfReportPath,
+    v9PhysicsCharacterDiffPath,
+    v9PhysicsCharacterNativeTracePath,
+    v9PhysicsCharacterReportPath,
+    v9PhysicsCharacterWebTracePath,
+    v9RenderingLightsReportPath,
     nativeV9SupportStressReportPath,
   };
   const steps = [];
 
   async function step(name, command, args, commandOptions = {}) {
-    const cwd = commandOptions.cwd ?? root;
-    const env =
-      command === "cargo" && cwd === nativeRuntimeCwd ? { ...nativeCargoEnv, ...commandOptions.env } : commandOptions.env;
-    const result = await run({ args, command, cwd, env, name, timeoutMs: commandOptions.timeoutMs });
+    const result = await run({ args, command, cwd: commandOptions.cwd ?? root, name, timeoutMs: commandOptions.timeoutMs });
     steps.push({ ...summarize(result), name });
     return result.exitCode === 0;
   }
@@ -176,12 +186,7 @@ export async function verifyConformance(options = {}) {
       ["--filter", "@threenative/runtime-web-three", "test", "--", "--run", "conformance"],
       { timeoutMs: 120000 },
     ],
-    [
-      "bevy runtime conformance",
-      "cargo",
-      ["test", "-p", "threenative_runtime", "--test", "conformance"],
-      { cwd: nativeRuntimeCwd, timeoutMs: 300000 },
-    ],
+    ["bevy runtime conformance", "cargo", ["test", "-p", "threenative_runtime", "conformance"], { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 }],
     [
       "bevy native observation report",
       "cargo",
@@ -196,7 +201,7 @@ export async function verifyConformance(options = {}) {
         "basic-scene",
         nativeBasicSceneReportPath,
       ],
-      { cwd: nativeRuntimeCwd, timeoutMs: 120000 },
+      { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
     ],
     [
       "bevy native primitive mapping observation report",
@@ -212,7 +217,7 @@ export async function verifyConformance(options = {}) {
         "primitive-mapping",
         nativePrimitiveMappingReportPath,
       ],
-      { cwd: nativeRuntimeCwd, timeoutMs: 120000 },
+      { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
     ],
     [
       "bevy native V6 physics observation report",
@@ -228,7 +233,7 @@ export async function verifyConformance(options = {}) {
         "v6-physics-events",
         nativeV6PhysicsEventsReportPath,
       ],
-      { cwd: nativeRuntimeCwd, timeoutMs: 120000 },
+      { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
     ],
     [
       "V6 animation fixed trace parity",
@@ -254,7 +259,7 @@ export async function verifyConformance(options = {}) {
         "v6-animation-clips",
         nativeV6AnimationClipsReportPath,
       ],
-      { cwd: nativeRuntimeCwd, timeoutMs: 120000 },
+      { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
     ],
     [
       "V6 resource/event fixed trace parity",
@@ -280,7 +285,7 @@ export async function verifyConformance(options = {}) {
         "v6-resources-events",
         nativeV6ResourcesEventsReportPath,
       ],
-      { cwd: nativeRuntimeCwd, timeoutMs: 120000 },
+      { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
     ],
     [
       "bevy native V6 retained UI observation report",
@@ -296,7 +301,7 @@ export async function verifyConformance(options = {}) {
         "v6-retained-ui",
         nativeV6RetainedUiReportPath,
       ],
-      { cwd: nativeRuntimeCwd, timeoutMs: 120000 },
+      { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
     ],
     [
       "bevy native V6 audio observation report",
@@ -312,7 +317,7 @@ export async function verifyConformance(options = {}) {
         "v6-audio-playback",
         nativeV6AudioPlaybackReportPath,
       ],
-      { cwd: nativeRuntimeCwd, timeoutMs: 120000 },
+      { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
     ],
     [
       "V7 physics query fixed trace parity",
@@ -423,6 +428,24 @@ export async function verifyConformance(options = {}) {
         resolve(artifactDir, "v9-animation-blending"),
       ],
       { timeoutMs: 120000 },
+    ],
+    [
+      "V9 physics character runtime trace parity",
+      process.execPath,
+      [resolve(root, "scripts/verify-v9-physics-character.mjs")],
+      { timeoutMs: 180000 },
+    ],
+    [
+      "V9 assets glTF scene workflow artifact comparison",
+      process.execPath,
+      [resolve(root, "scripts/verify-v9-assets-gltf-scene-workflow.mjs")],
+      { timeoutMs: 180000 },
+    ],
+    [
+      "V9 rendering lights validation report comparison",
+      process.execPath,
+      [resolve(root, "scripts/verify-v9-rendering-lights.mjs")],
+      { timeoutMs: 300000 },
     ],
     [
       "bevy native V9 support stress observation report",
@@ -688,6 +711,24 @@ function fixtureForStep(stepName) {
   if (stepName.includes("V7 performance")) {
     return "v7-performance-budgets";
   }
+  if (stepName.includes("V9 animation state")) {
+    return "v9-animation-state";
+  }
+  if (stepName.includes("V9 animation blending")) {
+    return "v9-animation-blending";
+  }
+  if (stepName.includes("V9 physics character")) {
+    return "v9-physics-character";
+  }
+  if (stepName.includes("V9 assets glTF")) {
+    return "v9-assets-gltf-scene-workflow";
+  }
+  if (stepName.includes("V9 rendering lights")) {
+    return "v9-skybox-environment";
+  }
+  if (stepName.includes("V9 support stress")) {
+    return "v9-support-stress";
+  }
   return "conformance";
 }
 
@@ -746,6 +787,24 @@ function artifactPathForStep(stepName, artifacts) {
   if (stepName.includes("V7 performance")) {
     return artifacts.v7PerformanceComparisonReportPath;
   }
+  if (stepName.includes("V9 animation state")) {
+    return artifacts.v9AnimationStateDiffPath;
+  }
+  if (stepName.includes("V9 animation blending")) {
+    return artifacts.v9AnimationBlendingReportPath;
+  }
+  if (stepName.includes("V9 physics character")) {
+    return artifacts.v9PhysicsCharacterReportPath;
+  }
+  if (stepName.includes("V9 assets glTF")) {
+    return artifacts.v9AssetsGltfReportPath;
+  }
+  if (stepName.includes("V9 rendering lights")) {
+    return artifacts.v9RenderingLightsReportPath;
+  }
+  if (stepName.includes("V9 support stress")) {
+    return artifacts.nativeV9SupportStressReportPath;
+  }
   return undefined;
 }
 
@@ -798,13 +857,38 @@ function bundlePathForStep(stepName) {
   if (stepName.includes("V7 performance")) {
     return "packages/ir/fixtures/conformance/v7-performance-budgets/game.bundle";
   }
+  if (stepName.includes("V9 animation state")) {
+    return "packages/ir/fixtures/conformance/v9-animation-state/game.bundle";
+  }
+  if (stepName.includes("V9 animation blending")) {
+    return "packages/ir/fixtures/conformance/v9-animation-blending/game.bundle";
+  }
+  if (stepName.includes("V9 physics character")) {
+    return "packages/ir/fixtures/conformance/v9-physics-character/game.bundle";
+  }
+  if (stepName.includes("V9 rendering lights")) {
+    return "packages/ir/fixtures/conformance/v9-skybox-environment/game.bundle";
+  }
+  if (stepName.includes("V9 support stress")) {
+    return "packages/ir/fixtures/conformance/v9-support-stress/game.bundle";
+  }
   return undefined;
 }
 
-export function runCommand({ args, command, cwd, env, timeoutMs = 60000 }) {
+function nativeCargoEnv() {
+  const toolchainBin = resolve(homedir(), ".rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin");
+  return { PATH: `${toolchainBin}:${process.env.PATH ?? ""}` };
+}
+
+export function runCommand({ args, command, cwd, timeoutMs = 60000, env }) {
   return new Promise((resolveResult) => {
     const startedAt = Date.now();
-    const child = spawn(command, args, { cwd, env: env ? { ...process.env, ...env } : process.env, stdio: ["ignore", "pipe", "pipe"] });
+    const childEnv = {
+      ...process.env,
+      ...(command === "cargo" ? nativeCargoEnv() : {}),
+      ...env,
+    };
+    const child = spawn(command, args, { cwd, env: childEnv, stdio: ["ignore", "pipe", "pipe"] });
     let stdout = "";
     let stderr = "";
     const timer = setTimeout(() => {

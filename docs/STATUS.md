@@ -420,6 +420,26 @@ maps enabled bloom onto camera `BloomSettings` with matching intensity and
 threshold. Advanced post-processing stacks and renderer-specific bloom radius
 controls remain future work.
 
+V8-13 has a narrow advanced renderer feature-gate slice: authored volumetrics,
+atmospheric scattering/fog, deferred rendering, SSR/GI/lightmaps, storage
+buffers, and raw render phases are rejected through the
+`TN_IR_ADVANCED_RENDERER_*` diagnostic family instead of being silently ignored.
+The gate is contract/diagnostic-only for now; promotion requires portable
+SDK/IR/runtime semantics plus web and Bevy verification evidence.
+
+V9-07 is now the implemented engine quality-control hardening slice. Run the
+aggregate gate with:
+
+```bash
+pnpm verify:v9
+```
+
+`pnpm check:quality:v9` guards PRD/script/fixture/sample/docs drift.
+`pnpm verify:v9` orchestrates focused V9-01..V9-04 gates, shared conformance,
+TypeScript-authored sample scenes under `examples/v9-*`, the visual matrix under
+`artifacts/v9/visual-matrix/`, and writes the aggregate report to
+`artifacts/v9/verification-report.json`.
+
 Post-V7 camera parity now also pins Bevy render-camera activation to
 `world.resources.ActiveCamera` when present, matching the web runtime fallback
 of selecting the first camera and then applying the active-camera resource.

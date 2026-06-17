@@ -156,7 +156,7 @@ test("should pass matching gate commands and save report path", async () => {
     });
 
     assert.equal(result.ok, true);
-    assert.equal(result.steps.length, 24);
+    assert.equal(result.steps.length, 27);
     assert.equal(result.reportPath.endsWith("artifacts/conformance/verification-report.json"), true);
     assert.equal(result.artifacts.nativeBasicSceneReportPath.endsWith("artifacts/conformance/basic-scene/bevy.report.json"), true);
     assert.equal(
@@ -265,10 +265,16 @@ test("should pass matching gate commands and save report path", async () => {
     assert.equal(result.artifacts.v9AnimationBlendingReportPath.endsWith("artifacts/conformance/v9-animation-blending/blend-report.json"), true);
     assert.equal(result.artifacts.v9AnimationBlendingNativeTracePath.endsWith("artifacts/conformance/v9-animation-blending/native-blend.json"), true);
     assert.equal(result.artifacts.v9AnimationBlendingWebTracePath.endsWith("artifacts/conformance/v9-animation-blending/web-blend.json"), true);
+    assert.equal(result.artifacts.v9PhysicsCharacterDiffPath.endsWith("artifacts/conformance/v9-physics-character/diff-v9-physics-character.json"), true);
+    assert.equal(result.artifacts.v9PhysicsCharacterNativeTracePath.endsWith("artifacts/conformance/v9-physics-character/native-v9-physics-character.json"), true);
+    assert.equal(result.artifacts.v9PhysicsCharacterReportPath.endsWith("artifacts/conformance/v9-physics-character/verification-report.json"), true);
+    assert.equal(result.artifacts.v9PhysicsCharacterWebTracePath.endsWith("artifacts/conformance/v9-physics-character/web-v9-physics-character.json"), true);
+    assert.equal(result.artifacts.v9AssetsGltfReportPath.endsWith("artifacts/v9/assets-gltf-scene-workflow/diff.json"), true);
+    assert.equal(result.artifacts.v9RenderingLightsReportPath.endsWith("artifacts/v9/rendering-lights/verification-report.json"), true);
     assert.equal(result.artifacts.nativeV9SupportStressReportPath.endsWith("artifacts/conformance/v9-support-stress/bevy.report.json"), true);
     const report = JSON.parse(await readFile(result.reportPath, "utf8"));
     assert.equal(report.status, "pass");
-    assert.equal(report.steps.length, 24);
+    assert.equal(report.steps.length, 27);
     assert.equal(report.artifacts.nativeBasicSceneReportPath.endsWith("artifacts/conformance/basic-scene/bevy.report.json"), true);
     assert.equal(
       report.artifacts.nativePrimitiveMappingReportPath.endsWith("artifacts/conformance/primitive-mapping/bevy.report.json"),
@@ -376,31 +382,49 @@ test("should pass matching gate commands and save report path", async () => {
     assert.equal(report.artifacts.v9AnimationBlendingReportPath.endsWith("artifacts/conformance/v9-animation-blending/blend-report.json"), true);
     assert.equal(report.artifacts.v9AnimationBlendingNativeTracePath.endsWith("artifacts/conformance/v9-animation-blending/native-blend.json"), true);
     assert.equal(report.artifacts.v9AnimationBlendingWebTracePath.endsWith("artifacts/conformance/v9-animation-blending/web-blend.json"), true);
-    assert.equal(report.artifacts.nativeV9SupportStressReportPath.endsWith("artifacts/conformance/v9-support-stress/bevy.report.json"), true);
+    assert.equal(report.artifacts.v9PhysicsCharacterReportPath.endsWith("artifacts/conformance/v9-physics-character/verification-report.json"), true);
+    assert.equal(report.artifacts.v9AssetsGltfReportPath.endsWith("artifacts/v9/assets-gltf-scene-workflow/diff.json"), true);
+    assert.equal(report.artifacts.v9RenderingLightsReportPath.endsWith("artifacts/v9/rendering-lights/verification-report.json"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
 });
 
-test("should include V9 support fixtures when support gate is enabled", async () => {
-  const root = await mkdtemp(join(tmpdir(), "tn-conformance-v9-support-"));
+test("should map V9 physics failures to the V9 physics fixture", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-conformance-v9-physics-"));
   try {
-    const calls = [];
+    const reportPath = join(root, "artifacts/conformance/verification-report.json");
     const result = await verifyConformance({
+      artifactDir: join(root, "artifacts/conformance"),
       repoRoot: root,
-      reportPath: join(root, "artifacts/conformance/verification-report.json"),
-      run: async (call) => {
-        calls.push(call);
-        return { durationMs: 1, exitCode: 0, stderr: "", stdout: "" };
-      },
+      reportPath,
+      run: async ({ name }) => ({
+        durationMs: 1,
+        exitCode: name === "V9 physics character runtime trace parity" ? 1 : 0,
+        stderr: name === "V9 physics character runtime trace parity" ? "physics failed" : "",
+        stdout: "",
+      }),
     });
+    const report = JSON.parse(await readFile(reportPath, "utf8"));
+    assert.equal(result.ok, false);
+    assert.equal(report.diagnostics[0]?.fixture, "v9-physics-character");
+    assert.match(report.diagnostics[0]?.artifactPath ?? "", /v9-physics-character\/verification-report\.json/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
 
-    assert.equal(result.ok, true);
-    assert.equal(
-      calls.some((call) => call.args.includes(join(root, "packages/ir/fixtures/conformance/v9-support-stress/game.bundle"))),
-      true,
-    );
-    assert.equal(result.artifacts.nativeV9SupportStressReportPath, join(root, "artifacts/conformance/v9-support-stress/bevy.report.json"));
+test("should expose V9 artifact paths for latest PR gates", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-conformance-v9-artifacts-"));
+  try {
+    const result = await verifyConformance({
+      artifactDir: join(root, "artifacts/conformance"),
+      repoRoot: root,
+      run: async () => ({ durationMs: 1, exitCode: 0, stderr: "", stdout: "" }),
+    });
+    assert.match(result.artifacts.v9PhysicsCharacterReportPath, /v9-physics-character\/verification-report\.json/);
+    assert.match(result.artifacts.v9AssetsGltfReportPath, /assets-gltf-scene-workflow\/diff\.json/);
+    assert.match(result.artifacts.v9RenderingLightsReportPath, /rendering-lights\/verification-report\.json/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

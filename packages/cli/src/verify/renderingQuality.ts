@@ -351,9 +351,11 @@ export async function captureRenderingQualityScreenshots(options: {
 }): Promise<{ bevyScreenshotPath: string; webScreenshotPath: string }> {
   const webScreenshotPath = resolve(options.artifactDir, "web.png");
   const bevyScreenshotPath = resolve(options.artifactDir, "bevy.png");
-  await captureThreeJsScreenshot(options.bundlePath, webScreenshotPath, options.cameraId);
+  const bundle = await loadBundle(options.bundlePath);
+  const cameraId = options.cameraId ?? activeCameraId(bundle) ?? "camera.main";
+  await captureThreeJsScreenshot(options.bundlePath, webScreenshotPath, cameraId);
   await assertScreenshotWritten(webScreenshotPath, "Web");
-  await captureBevyScreenshot(options.bundlePath, bevyScreenshotPath, options.cameraId);
+  await captureBevyScreenshot(options.bundlePath, bevyScreenshotPath, cameraId);
   await assertScreenshotWritten(bevyScreenshotPath, "Bevy");
   return { bevyScreenshotPath, webScreenshotPath };
 }
@@ -363,8 +365,14 @@ async function captureThreeJsScreenshot(bundlePath: string, outputPath: string, 
   const browser = await chromium.launch({ headless: true });
   try {
     const page = await browser.newPage({ viewport: { height: 720, width: 1280 } });
-    await page.goto(`${server.url}?bundle=/bundle&bookmark=${encodeURIComponent(cameraId)}`, { waitUntil: "domcontentloaded" });
-    await page.waitForFunction("Boolean(globalThis.__THREENATIVE_READY__)", undefined, { timeout: 10_000 });
+    await page.goto(`${server.url}?bundle=/bundle&bookmark=${encodeURIComponent(cameraId)}`, { waitUntil: "networkidle" });
+    try {
+      await page.waitForFunction("Boolean(globalThis.__THREENATIVE_READY__)", undefined, { timeout: 30_000 });
+    } catch (error) {
+      const url = page.url();
+      const title = await page.title().catch(() => "unknown");
+      throw new Error(`Timed out waiting for ThreeNative web preview readiness at ${url} (${title}): ${String(error)}`);
+    }
     await page.waitForTimeout(500);
     await page.screenshot({ path: outputPath });
   } finally {

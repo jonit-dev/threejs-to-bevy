@@ -1,0 +1,16 @@
+{
+  "schema": "threenative.verify.v9-sample",
+  "version": "0.1.0",
+  "domain": "assets-gltf-workflow",
+  "ownerPrd": "docs/PRDs/v9/V9-03-assets-gltf-scene-workflow.md",
+  "promoted": [
+    "asset:embedded",
+    "asset:network-policy",
+    "asset:model.glb",
+    "gltf:scene-handles"
+  ],
+  "deferred": [
+    "asset:hot-reload-native-network",
+    "editor:scene-inspection-ui"
+  ]
+}
