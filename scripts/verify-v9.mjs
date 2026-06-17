@@ -93,6 +93,18 @@ export async function verifyV9(options = {}) {
   if (!(await step("build ir package", "pnpm", ["--filter", "@threenative/ir", "build"], { timeoutMs: 120000 }))) {
     return writeV9Report({ artifactDir, artifacts, commands, deferred, diagnostics: stepDiagnostics(steps), ok: false, promoted, reportPath, startedAt, startedAtMs, steps });
   }
+  if (!(await step("build sdk package", "pnpm", ["--filter", "@threenative/sdk", "build"], { timeoutMs: 120000 }))) {
+    return writeV9Report({ artifactDir, artifacts, commands, deferred, diagnostics: stepDiagnostics(steps), ok: false, promoted, reportPath, startedAt, startedAtMs, steps });
+  }
+  if (!(await step("build ui package", "pnpm", ["--filter", "@threenative/ui", "build"], { timeoutMs: 120000 }))) {
+    return writeV9Report({ artifactDir, artifacts, commands, deferred, diagnostics: stepDiagnostics(steps), ok: false, promoted, reportPath, startedAt, startedAtMs, steps });
+  }
+  if (!(await step("build r3f package", "pnpm", ["--filter", "@threenative/r3f", "build"], { timeoutMs: 120000 }))) {
+    return writeV9Report({ artifactDir, artifacts, commands, deferred, diagnostics: stepDiagnostics(steps), ok: false, promoted, reportPath, startedAt, startedAtMs, steps });
+  }
+  if (!(await step("build compiler package", "pnpm", ["--filter", "@threenative/compiler", "build"], { timeoutMs: 120000 }))) {
+    return writeV9Report({ artifactDir, artifacts, commands, deferred, diagnostics: stepDiagnostics(steps), ok: false, promoted, reportPath, startedAt, startedAtMs, steps });
+  }
   if (!(await step("build web runtime package", "pnpm", ["--filter", "@threenative/runtime-web-three", "build"], { timeoutMs: 120000 }))) {
     return writeV9Report({ artifactDir, artifacts, commands, deferred, diagnostics: stepDiagnostics(steps), ok: false, promoted, reportPath, startedAt, startedAtMs, steps });
   }
