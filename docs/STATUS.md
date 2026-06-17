@@ -1110,6 +1110,16 @@ focused large-scene metrics, profiler summary, and repair-hint artifacts under
 `artifacts/v9/stress-support/`. This does not claim full live browser or native
 platform profiler capture parity.
 
+V9-06 aggregate support gate evidence now ties the support slices together.
+`examples/v9-support` builds to a validated bundle with `audio.ir.json` and
+`local-data.ir.json`, `check:docs:v9` guards the PRD/status/parity support
+claims and explicit deferrals, `pnpm verify:v9:support` runs the audio,
+local-data, diagnostics, editor, stress, and shared conformance checks, and the
+aggregate report is written to `artifacts/v9/support/verification-report.json`.
+Cloud save, streaming/network audio, runtime networking, signed installers,
+online publishing, collaboration, raw Three.js authoring, and direct Bevy
+authoring remain explicitly deferred.
+
 ## V3 Proves
 
 The V3 evidence loop is `pnpm verify:v3`, which regenerates the environment

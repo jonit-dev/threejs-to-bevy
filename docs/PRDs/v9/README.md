@@ -31,7 +31,7 @@ and verifiable.
 | 3 | [V9-03 Assets, glTF, and Scene Workflow](./V9-03-assets-gltf-scene-workflow.md) | Embedded/network asset policy, glTF metadata, spawned scene handles, scene inspection, watch/reload diagnostics, narrow hot reload | Asset-heavy scenes gain structured source policy, glTF scene access, editor inspection, and explicit reload behavior without turning raw runtime state into source of truth. |
 | 4 | [V9-04 Rendering, Lights, and Post-Processing Parity](./V9-04-rendering-lights-post-processing-parity.md) | Skyboxes/cubemaps, probes/environment maps, light budgets, point-shadow filtering, light gizmos, AA policy, color grading, depth-of-field policy, HLOD fades, instancing/batching | Renderer and lighting parity advances through compact promoted surfaces plus explicit diagnostics for advanced renderer features not yet portable. |
 | 5 | [V9-05 Input, UI, and Accessibility Parity](./V9-05-input-ui-accessibility-parity.md) | Rebinding UI/persistence, drag picking, picking/device overlays, native UI visual parity, rich text/fonts, atlas/9-slice images, widgets, UI debug tools | Menu/HUD/control workflows become portable through retained UI and input contracts rather than optional webview overlays. |
-| 6 | [V9-06 Audio, Persistence, and Tooling Support](./V9-06-audio-persistence-tooling-support.md) | Spatial/mixer audio, save slots, settings, migration/autosave, profiler/FPS diagnostics, target repair hints, stress fixtures, editor inspector/debug tools | Support-track systems are planned as vertical slices covering audio, local data, diagnostics, performance, packaging repair hints, editor panels, and debug draw. |
+| 6 | [V9-06 Audio, Persistence, and Tooling Support](./V9-06-audio-persistence-tooling-support.md) | Spatial/mixer audio, save slots, settings, migration/autosave, profiler/FPS diagnostics, target repair hints, stress fixtures, editor inspector/debug tools | Support-track systems now have focused verifier entry points for audio, local data, diagnostics, editor, stress, and aggregate support evidence. |
 
 ## Release Gate
 
@@ -54,4 +54,12 @@ Implemented focused V9 gates:
 
 ```bash
 pnpm verify:v9:physics-character
+pnpm verify:v9:assets-gltf-scene-workflow
+pnpm verify:v9:rendering-lights
+pnpm verify:v9:audio-support
+pnpm verify:v9:local-data-support
+pnpm verify:v9:diagnostics-support
+pnpm verify:v9:editor-support
+pnpm verify:v9:stress-support
+pnpm verify:v9:support
 ```

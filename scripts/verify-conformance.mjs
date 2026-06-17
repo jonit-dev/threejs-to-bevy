@@ -35,6 +35,7 @@ export async function verifyConformance(options = {}) {
   const v7PerformanceBudgetsBundlePath = resolve(root, "packages/ir/fixtures/conformance/v7-performance-budgets/game.bundle");
   const v9AnimationStateBundlePath = resolve(root, "packages/ir/fixtures/conformance/v9-animation-state/game.bundle");
   const v9AnimationBlendingBundlePath = resolve(root, "packages/ir/fixtures/conformance/v9-animation-blending/game.bundle");
+  const v9SupportStressBundlePath = resolve(root, "packages/ir/fixtures/conformance/v9-support-stress/game.bundle");
   const nativeBasicSceneReportPath = options.nativeBasicSceneReportPath ?? resolve(artifactDir, "basic-scene/bevy.report.json");
   const nativePrimitiveMappingReportPath =
     options.nativePrimitiveMappingReportPath ?? resolve(artifactDir, "primitive-mapping/bevy.report.json");
@@ -104,6 +105,7 @@ export async function verifyConformance(options = {}) {
   const v9AnimationBlendingReportPath = options.v9AnimationBlendingReportPath ?? resolve(artifactDir, "v9-animation-blending/blend-report.json");
   const v9AnimationBlendingNativeTracePath = options.v9AnimationBlendingNativeTracePath ?? resolve(artifactDir, "v9-animation-blending/native-blend.json");
   const v9AnimationBlendingWebTracePath = options.v9AnimationBlendingWebTracePath ?? resolve(artifactDir, "v9-animation-blending/web-blend.json");
+  const nativeV9SupportStressReportPath = options.nativeV9SupportStressReportPath ?? resolve(artifactDir, "v9-support-stress/bevy.report.json");
   const artifacts = {
     nativeBasicSceneReportPath,
     nativePrimitiveMappingReportPath,
@@ -151,6 +153,7 @@ export async function verifyConformance(options = {}) {
     v9AnimationStateDiffPath,
     v9AnimationStateNativeTracePath,
     v9AnimationStateWebTracePath,
+    nativeV9SupportStressReportPath,
   };
   const steps = [];
 
@@ -410,6 +413,22 @@ export async function verifyConformance(options = {}) {
         resolve(artifactDir, "v9-animation-blending"),
       ],
       { timeoutMs: 120000 },
+    ],
+    [
+      "bevy native V9 support stress observation report",
+      "cargo",
+      [
+        "run",
+        "-p",
+        "threenative_runtime",
+        "--bin",
+        "threenative_conformance",
+        "--",
+        v9SupportStressBundlePath,
+        "v9-support-stress",
+        nativeV9SupportStressReportPath,
+      ],
+      { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
     ],
   ];
 
