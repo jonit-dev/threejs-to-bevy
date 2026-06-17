@@ -17,9 +17,10 @@ export { applyEnvironmentBookmark, createEnvironmentRuntime, loadEnvironmentAsse
 export { buildInstancingPlan, type IInstancingGroup, type IInstancingPlan } from "./instancing.js";
 export { collectPerformanceSummary, summarizeFrameTimings, type IPerformanceMetricSummary } from "./performanceMetrics.js";
 export { renderDebugOverlay, type IWebDebugCounter, type IWebDebugDrawPrimitive, type IWebDebugOverlayInput, type IWebDebugOverlayModel, type IWebDebugOverlayRow } from "./debugOverlay.js";
+export { renderEditorInspectorPanels, type IEditorInspectorPanelModel } from "./editor/inspector.js";
 export { applyAtmosphereProfile, observeAtmosphereProfile, type IAtmosphereObservation } from "./rendering.js";
 export { createGameLoopState, runGameFrame, setPaused, type IGameLoopState } from "./gameLoop.js";
-export { createAxisGizmo, createWireBoxGizmo, createWireSphereGizmo, gizmoToBufferGeometry, type IGizmoGeometry, type IGizmoLine } from "./gizmoGeometry.js";
+export { buildEditorGizmoOverlay, createAxisGizmo, createWireBoxGizmo, createWireSphereGizmo, gizmoToBufferGeometry, type EditorGizmoKind, type IEditorGizmoOverlay, type IGizmoGeometry, type IGizmoLine } from "./gizmoGeometry.js";
 export { attachInputListeners, createInputState, createTouchGestureRecognizer, rebindInput, reportGamepadCapabilities, type IGamepadCapabilityReport, type IInputRebindDiagnostic, type IInputRebindResult, type InputRebindTarget, type ITouchGestureEvent, type ITouchGestureFrame, type ITouchGesturePoint, type ITouchGestureRecognizer, type IWebInputState } from "./input.js";
 export { traceCharacterControllers, type ICharacterTraceInput, type ICharacterTraceObservation } from "./character.js";
 export { queryNavigationPath, traceNavigationPaths, type INavigationPathRequest, type INavigationPathResult } from "./navigation.js";

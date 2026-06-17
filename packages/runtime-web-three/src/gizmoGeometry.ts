@@ -3,6 +3,7 @@ import * as THREE from "three";
 export type Vec3Tuple = readonly [number, number, number];
 export type RgbTuple = readonly [number, number, number];
 export type GizmoKind = "axis" | "wireBox" | "wireSphere";
+export type EditorGizmoKind = "bounds" | "camera" | "light" | "transform" | "uiNode";
 
 export interface IGizmoLine {
   color: RgbTuple;
@@ -14,6 +15,11 @@ export interface IGizmoGeometry {
   debugOnly: true;
   kind: GizmoKind;
   lines: IGizmoLine[];
+}
+
+export interface IEditorGizmoOverlay {
+  debugOnly: true;
+  gizmos: Array<IGizmoGeometry & { id: string; role: EditorGizmoKind }>;
 }
 
 export function createAxisGizmo(length = 1): IGizmoGeometry {
@@ -89,6 +95,32 @@ export function gizmoToBufferGeometry(gizmo: IGizmoGeometry): THREE.BufferGeomet
   geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
   geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
   return geometry;
+}
+
+export function buildEditorGizmoOverlay(options: {
+  bounds?: readonly { id: string; size?: Vec3Tuple }[];
+  cameras?: readonly { id: string }[];
+  lights?: readonly { id: string; radius?: number }[];
+  transforms?: readonly { id: string; length?: number }[];
+  uiNodes?: readonly { id: string; size?: Vec3Tuple }[];
+}): IEditorGizmoOverlay {
+  const gizmos: IEditorGizmoOverlay["gizmos"] = [];
+  for (const item of options.transforms ?? []) {
+    gizmos.push({ ...createAxisGizmo(item.length ?? 1), id: item.id, role: "transform" });
+  }
+  for (const item of options.bounds ?? []) {
+    gizmos.push({ ...createWireBoxGizmo(item.size ?? [1, 1, 1], [1, 0.85, 0]), id: item.id, role: "bounds" });
+  }
+  for (const item of options.cameras ?? []) {
+    gizmos.push({ ...createWireBoxGizmo([1.2, 0.7, 1], [0.25, 0.65, 1]), id: item.id, role: "camera" });
+  }
+  for (const item of options.lights ?? []) {
+    gizmos.push({ ...createWireSphereGizmo(item.radius ?? 0.5, 12, [1, 0.95, 0.35]), id: item.id, role: "light" });
+  }
+  for (const item of options.uiNodes ?? []) {
+    gizmos.push({ ...createWireBoxGizmo(item.size ?? [1, 1, 0], [0.9, 0.35, 1]), id: item.id, role: "uiNode" });
+  }
+  return { debugOnly: true, gizmos: gizmos.sort((left, right) => left.id.localeCompare(right.id)) };
 }
 
 function circlePoint(plane: "xy" | "xz" | "yz", radius: number, angle: number): Vec3Tuple {

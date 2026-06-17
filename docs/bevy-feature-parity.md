@@ -100,7 +100,7 @@ Repeated patterns in those games:
 - [x] `P3` Custom projections
 - [x] `P1` Camera effects: screen shake, orbit, pan, zoom, and view models
 - [x] `P2` Screenshot/export camera workflows
-- [ ] `P2` Residual camera diagnostics and editor/debug tooling
+- [x] `P2` Residual camera diagnostics and editor/debug tooling
 
 ### 💡 Lights, Shadows, and Global Illumination
 
@@ -284,7 +284,7 @@ Repeated patterns in those games:
 - [x] `P1` Basic UI accessibility roles, labels, and missing-label diagnostics
 - [x] `P1` Broader screen-reader diagnostics for focusable names, progressbar names, and list/listitem structure
 - [x] `P1` Static disabled UI metadata for focus/action suppression and ARIA/AccessKit state
-- [ ] `P2` UI debug overlay/gizmos
+- [x] `P2` UI debug overlay/gizmos
 
 ### 💾 Persistence, Settings, and Local Data
 
@@ -335,7 +335,7 @@ Repeated patterns in those games:
 - [ ] `P1` Visual editor UI and inspector panels
 - [x] Save/load round trips through structured SDK/ECS/IR data
 - [ ] `P1` Scene hierarchy inspector and property editing
-- [ ] `P2` Gizmo overlays for transforms, lights, bounds, cameras, and UI nodes
+- [x] `P2` Gizmo overlays for transforms, lights, bounds, cameras, and UI nodes
 - [ ] `P1` Gamepad, scene viewer, and asset preview tools
 - [ ] `P2` Hot reload with state policy
 - [ ] `P1` Debug draw APIs for gameplay systems
@@ -379,7 +379,7 @@ Repeated patterns in those games:
 | Diagnostics | ⚠️ | Stable IR/compiler/CLI/native diagnostic shapes, severity, suggestions, metadata preservation, V5/V6 ranges. V9-06 now adds debug draw declarations, in-app FPS/custom diagnostic overlay models, platform audio diagnostic codes, unsupported-feature diagnostics, unsupported-networking diagnostics, and focused web/native/script evidence under `artifacts/v9/diagnostics-support/`. | Some asset/runtime failures still need better domain-specific codes and target-specific repair hints. |
 | Packaging/platforms | ⚠️ | Templates and verify gates build local bundles and web evidence; V7 adds `tn package --target desktop`, target-profile diagnostics, a local desktop package manifest, runtime args, `artifacts/v7/packaging`, and packaged `examples/v7-functional` evidence. | Signed installers, mobile app-store packaging, online publishing, hosted services, and broader platform diagnostics are not implemented. |
 | Performance/profiling | ⚠️ | V3/V5 dense-content budget artifacts and release-gate reports; V7 adds target-profile-aware fixed metric reports for frame/load/draw/entity/package-size budgets through `v7-performance-budgets` and `artifacts/v7/performance`. | Live browser profiling, native platform profiler captures, script/UI/audio timing breakdowns, and larger-scene budget tuning remain incomplete. |
-| Editor/inspector | ⚠️ | V8 has started the local/offline editor track with structured editor project snapshot validation, deterministic bundle-relative JSON diffs, validated save/load round trips through `tn editor snapshot` / `tn editor apply`, and CLI entry points for `tn editor snapshot` / `tn editor apply` / `tn editor diff`. | Visual editor UI, inspector panels, preview evidence, and richer editor diagnostics are not complete. |
+| Editor/inspector | ⚠️ | V8 started the local/offline editor track with structured editor project snapshot validation, deterministic bundle-relative JSON diffs, validated save/load round trips, and CLI entry points for `tn editor snapshot` / `tn editor apply` / `tn editor diff`. V9-06 now adds `tn editor inspect`, `tn editor set`, inspector hierarchy/property metadata, runtime-only edit rejection diagnostics, local web inspector panel models for hierarchy/properties/scene viewer/asset preview/gamepad viewer, editor gizmo overlays for transforms/lights/bounds/cameras/UI nodes, and focused evidence under `artifacts/v9/editor-support/`. | A full visual editor application and live state-preserving hot reload remain incomplete. |
 | Online/plugins/raw renderer | ⏭️ | Product boundary keeps Bevy as an internal adapter and V8 local/offline only. | Online services, networking, replication, collaboration, public plugins, raw Three.js authoring, direct Bevy authoring, and broad shader graphs are deferred or never portable. |
 
 V7 is complete for the promoted parity slices only when `pnpm verify:v7`

@@ -1083,6 +1083,20 @@ observation report, and `pnpm verify:v9:diagnostics-support` writes the focused
 artifact set under `artifacts/v9/diagnostics-support/`. Runtime networking
 services remain explicitly out of scope.
 
+V9-06 editor tooling now has a Phase 4 slice on top of the V8 structured editor
+track: `tn editor inspect` emits deterministic hierarchy, editable property
+paths, asset references, diagnostics, and hot-reload policy metadata from bundle
+JSON; `tn editor set` applies a single JSON-pointer edit through the same
+structured bundle documents and validates the temp bundle before writing;
+`editorProject` rejects runtime-only property edits; the web runtime exposes
+local inspector panel models for hierarchy, properties, scene viewer, asset
+preview, and gamepad viewer; editor gizmo overlays compose existing
+debug/editor-only line geometry for transforms, lights, bounds, cameras, and UI
+nodes; and `pnpm verify:v9:editor-support` writes the focused inspector,
+structured-diff, panel, scene-viewer, asset-preview, and gamepad-viewer evidence
+under `artifacts/v9/editor-support/`. A full visual editor app and
+state-preserving hot reload remain later work.
+
 ## V3 Proves
 
 The V3 evidence loop is `pnpm verify:v3`, which regenerates the environment

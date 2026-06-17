@@ -163,9 +163,15 @@ export {
   type OverlayTargetProfile,
 } from "./overlays.js";
 export {
+  buildEditorInspectorSnapshot,
   diffEditorProjectSnapshots,
+  validateEditorPropertyEdit,
   validateEditorProjectSnapshot,
   type EditorProjectDiffOperation,
+  type IEditorEditableProperty,
+  type IEditorHotReloadPolicy,
+  type IEditorInspectorNode,
+  type IEditorInspectorSnapshot,
   type IEditorProjectSnapshot,
 } from "./editorProject.js";
 export {
