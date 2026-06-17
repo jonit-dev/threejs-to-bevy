@@ -45,12 +45,17 @@ TypeScript packages: `@threenative/sdk`, `@threenative/ir`,
 `0.1.0`. The published package metadata resolves from the registry, and a clean
 external npm project installed `@threenative/cli@0.1.0`, ran `tn create`, installed
 the generated game dependencies, built `dist/game.bundle`, served the web preview,
-and passed `tn verify` with nonblank 1280x720 frames. Run `pnpm
-verify:distribution` to reproduce the local packed-tarball proof from a clean
-temporary npm consumer project. Run `pnpm run deploy -- --dry-run` to execute the
-guarded release path: full repo verification, distribution proof, ordered pack,
-and npm publish dry-run. `pnpm run deploy -- --skip-tests` is available only as
-an explicit fast publish retry path.
+and passed `tn verify` with nonblank 1280x720 frames. The CLI tarball now also
+ships the Bevy runtime source under `dist/runtime-bevy`, and
+`pnpm verify:distribution` confirms a generated project installed from packed
+tarballs can compile the bundled native runtime with Cargo before packaging a
+desktop bundle. Run `pnpm verify:distribution` to reproduce the local
+packed-tarball proof from a clean temporary npm consumer project. Run `pnpm run
+deploy -- --dry-run` to execute the guarded release path: full repo
+verification, distribution proof, ordered pack, local desktop distributable
+creation/validation, installed native runtime build, and npm publish dry-run.
+`pnpm run deploy -- --skip-tests` is available only as an explicit fast publish
+retry path.
 
 V9-01 animation and particles runtime parity is implemented with focused
 stateful animation, blending, and rendered particle evidence:
@@ -1239,7 +1244,6 @@ sheet under `artifacts/v3`.
 - [V7 PRDs](PRDs/v7/README.md)
 - [V6 PRDs](PRDs/v6/README.md)
 - [V5 PRDs](PRDs/v5/README.md)
-- [V3 Completion Checklist](releases/v3-completion.md)
 - [Bevy Feature Parity Drift](bevy-feature-parity.md)
 - [Feature Maturity Matrix](feature-maturity.md)
 - [verify:v7](verify-v7.md)

@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { access, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { spawn } from "node:child_process";
@@ -19,6 +19,8 @@ const workRoot = await mkdtemp(join(tmpdir(), "threenative-distribution-"));
 const packDir = join(workRoot, "packs");
 const consumerDir = join(workRoot, "consumer");
 const gameDir = join(consumerDir, "simple-game");
+const releaseVersion = JSON.parse(await readFile(join(repoRoot, "package.json"), "utf8")).version;
+const distributableArchiveName = `threenative-simple-game-desktop-${releaseVersion}.tar.gz`;
 
 const tarballs = new Map();
 
@@ -45,8 +47,45 @@ try {
   await rewriteGameDependencies(gameDir, tarballs);
   await run("npm", ["install"], { cwd: gameDir });
   await run("npm", ["run", "build"], { cwd: gameDir });
+  const installedBevyManifest = join(gameDir, "node_modules", "@threenative", "cli", "dist", "runtime-bevy", "Cargo.toml");
+  await access(installedBevyManifest);
+  await run("cargo", [
+    "build",
+    "--manifest-path",
+    installedBevyManifest,
+    "-p",
+    "threenative_runtime",
+    "--bin",
+    "threenative_runtime",
+    "--quiet",
+  ], { cwd: gameDir });
   await run("npx", ["playwright", "install", "chromium"], { cwd: gameDir });
   await run("npm", ["run", "verify", "--", "--json"], { cwd: gameDir });
+  await run("npx", [
+    "tn",
+    "package",
+    "--bundle",
+    "dist/game.bundle",
+    "--target",
+    "desktop",
+    "--out",
+    "dist/local-distributable",
+    "--json",
+  ], { cwd: gameDir });
+  await run("npx", [
+    "tn",
+    "validate",
+    "--bundle",
+    "dist/local-distributable/desktop/game.bundle",
+    "--json",
+  ], { cwd: gameDir });
+  await run("tar", [
+    "-czf",
+    `dist/local-distributable/${distributableArchiveName}`,
+    "-C",
+    "dist/local-distributable",
+    "desktop",
+  ], { cwd: gameDir });
 
   const preview = await startPreview(gameDir);
   try {
@@ -68,6 +107,9 @@ try {
   const result = {
     bundlePath: join(gameDir, "dist", "game.bundle"),
     consumerDir,
+    distributableArchive: join(gameDir, "dist", "local-distributable", distributableArchiveName),
+    distributablePath: join(gameDir, "dist", "local-distributable", "desktop"),
+    nativeRuntimeVerified: true,
     previewVerified: true,
     reportPath,
     status: report.status,

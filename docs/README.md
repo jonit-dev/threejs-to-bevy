@@ -54,8 +54,6 @@ conceptual docs.
   repair, and profile games through docs, schemas, CLI, and future MCP tools.
 - [Roadmap](ROADMAP.md): V1/V2/V3 goals, scaffold and verification loops,
   boundaries, risks, and success criteria.
-- [V3 Completion Checklist](releases/v3-completion.md): operational release
-  checklist for finishing V3.
 - [V3 Environment Scene IR](environment-scene-ir.md): V3-specific rich scene
   composition contract.
 - [V3 Asset Pipeline](asset-pipeline.md): supported asset inputs, bundle
@@ -89,7 +87,6 @@ truth for implementation status is:
 
 - [STATUS.md](STATUS.md)
 - [bevy-feature-parity.md](bevy-feature-parity.md)
-- [releases/v3-completion.md](releases/v3-completion.md)
 
 ## Design Principles
 

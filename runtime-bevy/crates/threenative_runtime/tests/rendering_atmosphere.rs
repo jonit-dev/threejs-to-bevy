@@ -149,7 +149,7 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
         .world_mut()
         .query::<&DirectionalLight>()
         .iter(app.world())
-        .filter(|light| (light.illuminance - (3.2 / 1.05 * 1.7)).abs() < 0.01)
+        .filter(|light| (light.illuminance - (3.2 / 1.05 * 68.0)).abs() < 0.01)
         .count();
     assert_eq!(mapped_directional_count, 1);
     let camera_color = app

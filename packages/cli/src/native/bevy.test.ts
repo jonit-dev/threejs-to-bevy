@@ -2,13 +2,13 @@ import assert from "node:assert/strict";
 import { resolve } from "node:path";
 import test from "node:test";
 
-import { bevyRuntimeArgs } from "./bevy.js";
+import { bevyRuntimeArgs, resolveBevyRuntime } from "./bevy.js";
 
 test("should select threenative runtime binary", () => {
   const repoRoot = "/repo";
   const bundlePath = "/project/dist/game.bundle";
 
-  assert.deepEqual(bevyRuntimeArgs(repoRoot, { bundlePath }), [
+  assert.deepEqual(bevyRuntimeArgs(repoRoot, { bundlePath }, {}), [
     "run",
     "--manifest-path",
     resolve(repoRoot, "runtime-bevy/Cargo.toml"),
@@ -19,4 +19,27 @@ test("should select threenative runtime binary", () => {
     "--",
     bundlePath,
   ]);
+});
+
+test("should resolve Bevy runtime from explicit repo root", () => {
+  assert.deepEqual(resolveBevyRuntime("/installed/cli", { THREENATIVE_REPO_ROOT: "/repo" }), {
+    cwd: resolve("/repo"),
+    manifestPath: resolve("/repo", "runtime-bevy/Cargo.toml"),
+  });
+});
+
+test("should resolve Bevy runtime from bundled manifest when present", () => {
+  const bundledManifest = resolve(import.meta.dirname, "../../dist/runtime-bevy/Cargo.toml");
+
+  assert.deepEqual(resolveBevyRuntime("/installed/cli", {}, bundledManifest), {
+    cwd: resolve(import.meta.dirname, "../../dist/runtime-bevy"),
+    manifestPath: bundledManifest,
+  });
+});
+
+test("should resolve Bevy runtime from explicit manifest path", () => {
+  assert.deepEqual(resolveBevyRuntime("/installed/cli", { THREENATIVE_BEVY_MANIFEST: "/repo/runtime-bevy/Cargo.toml" }), {
+    cwd: resolve("/repo/runtime-bevy"),
+    manifestPath: resolve("/repo/runtime-bevy/Cargo.toml"),
+  });
 });

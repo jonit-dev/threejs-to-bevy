@@ -46,9 +46,12 @@ use crate::rendering::spawn_rendered_particles;
 // native adapter converts through a small three-compat shim instead of exposing
 // raw Bevy light defaults to authored scenes.
 // Three.js r152+ directional lights use photometric lux; keep Bevy illuminance aligned.
-const THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY: f32 = 1.7;
-const THREE_COMPAT_POINT_LUMENS_PER_CANDELA: f32 = std::f32::consts::TAU * 2.0;
+// Tuned against the v1 cube fixture so lit standard-material faces match web preview.
+const THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY: f32 = 68.0;
+const THREE_COMPAT_POINT_LUMENS_PER_CANDELA: f32 =
+    std::f32::consts::TAU * 2.0 * (68.0 / 1.7);
 const THREE_COMPAT_DEFAULT_RANGE: f32 = 1_000.0;
+const THREE_COMPAT_DEFAULT_CAMERA_EV100: f32 = 7.55;
 
 #[derive(Clone, Component, Debug, PartialEq)]
 pub struct NativeMaterialPolicy {
@@ -595,10 +598,12 @@ fn fog_settings_for_profile(profile: Option<&AtmosphereProfileIr>) -> Option<Fog
 fn exposure_for_profile(
     color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
 ) -> Exposure {
-    let exposure = color_management
-        .map(|profile| profile.exposure)
-        .unwrap_or(1.0)
-        .max(0.001);
+    let Some(color_management) = color_management else {
+        return Exposure {
+            ev100: THREE_COMPAT_DEFAULT_CAMERA_EV100,
+        };
+    };
+    let exposure = color_management.exposure.max(0.001);
     Exposure {
         ev100: -(1.2 * exposure).log2(),
     }

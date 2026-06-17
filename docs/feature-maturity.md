@@ -78,7 +78,8 @@ not promote the deferred or never-portable rows.
   feature.
 - Experimental: implementation may exist but is not a release promise.
 - Adapter-private: runtime-internal behavior that is not public API.
-- V3-critical: required by [V3 Completion Checklist](releases/v3-completion.md).
+- V3-critical: required by the V3 release gate documented in
+  [verify:v3](verify-v3.md).
 - Post-V3: intentionally outside the V3 release gate.
 - V4 supported: implemented and release-gated only for the primitive
   TypeScript/QuickJS scripting MVP described in [verify:v4](verify-v4.md).

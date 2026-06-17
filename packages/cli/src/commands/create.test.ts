@@ -35,6 +35,8 @@ test("should create v1 template files", async () => {
     assert.equal(packageJson.scripts.build, "tn build");
     assert.equal(packageJson.scripts["dev:web"], "tn dev --target web");
     assert.equal(packageJson.scripts["dev:desktop"], "tn dev --target desktop");
+    assert.equal(packageJson.scripts["package:desktop"], "npm run build && tn package --bundle dist/game.bundle --target desktop --out dist/local-distributable --json && tn validate --bundle dist/local-distributable/desktop/game.bundle --json");
+    assert.equal(packageJson.scripts.desktop, "npm run package:desktop && tar -czf dist/local-distributable/threenative-simple-game-desktop-0.1.0.tar.gz -C dist/local-distributable desktop");
     assert.equal(packageJson.scripts.verify, "tn verify");
     assert.match(packageJson.dependencies["@threenative/sdk"] ?? "", /^file:/);
     assert.equal(packageJson.dependencies["@threenative/r3f"], undefined);

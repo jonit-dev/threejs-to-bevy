@@ -8,7 +8,6 @@ export async function checkDocsV3(root = repoRoot) {
   const files = [
     "docs/STATUS.md",
     "docs/README.md",
-    "docs/releases/v3-completion.md",
     "docs/conventions.md",
     "docs/feature-maturity.md",
     "docs/verify-v3.md",
@@ -37,7 +36,7 @@ export async function checkDocsV3(root = repoRoot) {
   if (/V1 is the current implemented release candidate path/i.test(docsReadme)) {
     diagnostics.push({ code: "TN_DOCS_V3_STALE_STATUS", file: docsReadmePath, message: "Docs README still claims V1 is the current release candidate path." });
   }
-  for (const required of ["docs/releases/v3-completion.md", "docs/conventions.md", "docs/feature-maturity.md", "docs/verify-v3.md"]) {
+  for (const required of ["docs/conventions.md", "docs/feature-maturity.md", "docs/verify-v3.md"]) {
     if (!docsReadme.includes(required.replace("docs/", "")) && !docsReadme.includes(required)) {
       diagnostics.push({ code: "TN_DOCS_V3_FRONT_DOOR_LINK_MISSING", file: docsReadmePath, message: `Docs README does not link '${required}'.` });
     }

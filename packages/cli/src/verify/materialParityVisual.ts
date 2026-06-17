@@ -133,7 +133,7 @@ async function captureThreeJsScreenshot(bundlePath: string, outputPath: string, 
 async function captureBevyScreenshot(bundlePath: string, outputPath: string, cameraId = "camera.material"): Promise<void> {
   await execFileAsync(
     "cargo",
-    ["run", "--quiet", "-p", "threenative_runtime", "--bin", "threenative_capture", "--", bundlePath, cameraId, outputPath, "15"],
+    ["run", "--quiet", "-p", "threenative_runtime", "--bin", "threenative_capture", "--", bundlePath, cameraId, outputPath, "60"],
     {
       cwd: resolve(process.cwd(), "runtime-bevy"),
       timeout: 300_000,

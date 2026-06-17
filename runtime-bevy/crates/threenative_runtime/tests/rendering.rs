@@ -13,6 +13,7 @@ use bevy::{
     prelude::*,
     render::{
         alpha::AlphaMode,
+        camera::Exposure,
         mesh::{Indices, MeshVertexAttribute, VertexAttributeValues},
         render_resource::VertexFormat,
         view::ColorGrading,
@@ -377,7 +378,7 @@ fn assert_directional_light(world: &mut World, id: &str) {
         .find_map(|(stable_id, light)| (stable_id.0 == id).then_some(light).flatten())
         .expect("directional light should be spawned");
 
-    assert!((light.illuminance - 3.4).abs() < 0.01);
+    assert!((light.illuminance - 136.0).abs() < 0.01);
     let color = light.color.to_srgba();
     assert!((color.red - 1.0).abs() < 0.01);
     assert!((color.green - 0xcc as f32 / 255.0).abs() < 0.01);
@@ -401,7 +402,7 @@ fn assert_point_light(world: &mut World, id: &str) {
         .find_map(|(stable_id, light)| (stable_id.0 == id).then_some(light).flatten())
         .expect("point light should be spawned");
 
-    assert!((light.intensity - (2.0 * std::f32::consts::TAU * 2.0)).abs() < 0.01);
+    assert!((light.intensity - (2.0 * std::f32::consts::TAU * 2.0 * 68.0 / 1.7)).abs() < 0.01);
     assert!((light.range - 12.0).abs() < 0.01);
     assert!((light.shadow_depth_bias - 0.002).abs() < 0.0001);
     assert!((light.shadow_normal_bias - 0.04).abs() < 0.0001);
@@ -414,7 +415,7 @@ fn assert_spot_light(world: &mut World, id: &str) {
         .find_map(|(stable_id, light)| (stable_id.0 == id).then_some(light).flatten())
         .expect("spot light should be spawned");
 
-    assert!((light.intensity - (3.0 * std::f32::consts::TAU * 2.0)).abs() < 0.01);
+    assert!((light.intensity - (3.0 * std::f32::consts::TAU * 2.0 * 68.0 / 1.7)).abs() < 0.01);
     assert!((light.range - 16.0).abs() < 0.01);
     assert!((light.outer_angle - 0.65).abs() < 0.01);
     assert!((light.shadow_depth_bias - 0.003).abs() < 0.0001);
@@ -988,13 +989,14 @@ fn cameras_without_atmosphere_should_disable_tonemapping_and_color_grading_expos
 
     let mut query = app
         .world_mut()
-        .query::<(&ThreeNativeId, &Tonemapping, &ColorGrading)>();
+        .query::<(&ThreeNativeId, &Tonemapping, &ColorGrading, &Exposure)>();
     let camera = query
         .iter(app.world())
-        .find(|(stable_id, _, _)| stable_id.0 == "camera.color")
+        .find(|(stable_id, _, _, _)| stable_id.0 == "camera.color")
         .expect("color parity camera should be spawned");
     assert_eq!(*camera.1, Tonemapping::None);
     assert!((camera.2.global.exposure - 0.0).abs() < 0.001);
+    assert!((camera.3.ev100 - 7.55).abs() < 0.001);
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }

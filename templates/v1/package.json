@@ -8,6 +8,8 @@
     "build": "tn build",
     "dev:web": "tn dev --target web",
     "dev:desktop": "tn dev --target desktop",
+    "package:desktop": "npm run build && tn package --bundle dist/game.bundle --target desktop --out dist/local-distributable --json && tn validate --bundle dist/local-distributable/desktop/game.bundle --json",
+    "desktop": "npm run package:desktop && tar -czf dist/local-distributable/threenative-simple-game-desktop-0.1.0.tar.gz -C dist/local-distributable desktop",
     "verify": "tn verify"
   },
   "dependencies": {

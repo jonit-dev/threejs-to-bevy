@@ -5,6 +5,7 @@ artifacts/
 .turbo/
 .tn/
 packages/*/.tn/
+tmp/
 target/
 runtime-bevy/target/
 .worktrees/

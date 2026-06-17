@@ -44,7 +44,8 @@ try {
     } catch {
       throw new Error(`Could not find packed tarball for ${name}.`);
     }
-    tarballs.push([name, join(packDir, expectedTarball)]);
+    const packageJson = await readPackageJson(packagePath);
+    tarballs.push([name, join(packDir, expectedTarball), packageJson.version]);
   }
 
   const env = { ...process.env };
@@ -52,7 +53,11 @@ try {
     env.NPM_CONFIG_USERCONFIG = userConfig;
   }
 
-  for (const [name, tarball] of tarballs) {
+  for (const [name, tarball, version] of tarballs) {
+    if (dryRun && (await isPublishedVersion(name, version, env))) {
+      console.log(`Dry-run skipping ${name}@${version}; version is already published.`);
+      continue;
+    }
     console.log(`${dryRun ? "Dry-run publishing" : "Publishing"} ${name} from ${basename(tarball)}`);
     await run("npm", [
       "publish",
@@ -73,7 +78,7 @@ try {
         dryRun,
         packDir,
         skippedTests: skipTests,
-        published: tarballs.map(([name, tarball]) => ({ name, tarball: basename(tarball) })),
+        published: tarballs.map(([name, tarball, version]) => ({ name, tarball: basename(tarball), version })),
       },
       null,
       2,
@@ -91,9 +96,21 @@ function readValueFlag(name) {
 }
 
 async function readExpectedTarball(packagePath) {
-  const packageJson = JSON.parse(await readFile(join(repoRoot, packagePath, "package.json"), "utf8"));
+  const packageJson = await readPackageJson(packagePath);
   const name = packageJson.name.replace(/^@/, "").replace("/", "-");
   return `${name}-${packageJson.version}.tgz`;
+}
+
+async function readPackageJson(packagePath) {
+  return JSON.parse(await readFile(join(repoRoot, packagePath, "package.json"), "utf8"));
+}
+
+async function isPublishedVersion(name, version, env) {
+  const result = await runCapture("npm", ["view", `${name}@${version}`, "version", "--json"], {
+    cwd: repoRoot,
+    env,
+  });
+  return result.code === 0 && JSON.parse(result.stdout.trim()) === version;
 }
 
 async function run(command, args, options) {
@@ -110,6 +127,30 @@ async function run(command, args, options) {
         return;
       }
       reject(new Error(`${command} ${args.join(" ")} failed with ${signal ?? code}.`));
+    });
+  });
+}
+
+async function runCapture(command, args, options) {
+  return await new Promise((resolveRun, reject) => {
+    const child = spawn(command, args, {
+      cwd: options.cwd,
+      env: options.env ?? process.env,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk;
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk;
+    });
+    child.on("error", reject);
+    child.on("exit", (code, signal) => {
+      resolveRun({ code: code ?? 1, signal, stdout, stderr });
     });
   });
 }
