@@ -26,6 +26,26 @@ fn should_spawn_stable_ids_for_cube_fixture() {
 }
 
 #[test]
+fn cube_fixture_directional_light_should_use_web_tuned_illuminance() {
+    let bundle = load_bundle(cube_fixture()).expect("cube fixture should load");
+    let mut app = App::new();
+    map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map");
+
+    let mut query = app.world_mut().query::<(&ThreeNativeId, Option<&DirectionalLight>)>();
+    let light = query
+        .iter(app.world())
+        .find_map(|(stable_id, light)| {
+            (stable_id.0 == "light.key").then_some(light).flatten()
+        })
+        .expect("cube key light should be spawned");
+
+    assert!(
+        (light.illuminance - (2.0 * 47.0)).abs() < 0.01,
+        "directional illuminance should match the web-tuned cube fixture constant"
+    );
+}
+
+#[test]
 fn should_activate_only_declared_active_camera() {
     let mut bundle = load_bundle(cube_fixture()).expect("cube fixture should load");
     let secondary = WorldEntity {

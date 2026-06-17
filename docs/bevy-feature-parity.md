@@ -4,7 +4,7 @@
 | --- | --- |
 | Contract | Three.js-style TypeScript game engine -> validated IR bundle -> web Three.js + native Bevy |
 | Native baseline | Bevy and `bevy_ecs` pinned to `=0.14.2` |
-| Evidence anchors | native test, visual scene, game-authoring ergonomics, V6 PRDs, verify:v6, V7 PRDs, verify:v7, V8 PRDs, examples/v7-functional, artifacts/v7, GitHub open-game usage scan |
+| Evidence anchors | native test, visual scene, game-authoring ergonomics, V6 PRDs, verify:v6, V7 PRDs, verify:v7, V8 PRDs, examples/v7-functional, artifacts/v7, GitHub open-game usage scan, V9 PRDs, verify:v9, V10 PRDs |
 
 ## Status
 
@@ -30,6 +30,27 @@ Priority labels on unchecked items:
 - `P2`: Production workflow, scale, or polish needed before a stable release.
 - `P3`: Advanced engine parity, specialized workflows, or long-tail features.
 - `D`: Deferred or intentionally non-portable.
+
+### V10 Residual Ownership Map
+
+V9 closes the practical small-game parity surface and leaves a smaller residual
+set. V10 planning now assigns those remaining unchecked items without claiming
+implementation:
+
+- `V10-01` owns final-gap triage, aggregate V10 gate planning, and diagnostics
+  for intentionally non-portable boundaries.
+- `V10-02` owns advanced renderer, lighting, material/shader, post-processing,
+  native-instancing, dynamic mesh-collider, and high-end physics residuals.
+- `V10-04` owns production platform work: custom asset/audio extension policy,
+  streaming diagnostics, cloud-save boundary, signed/mobile packaging, profiler
+  maturity, and release hardening.
+- Retained editor UI, visual inspector panels, and broader authoring-tool UX are
+  intentionally not part of this V10 batch and remain unchecked until a
+  dedicated editor/UI planning pass is requested.
+
+Unchecked rows below should remain unchecked until their V10 owner adds SDK/IR,
+validation, compiler, web, Bevy, conformance, docs, and artifact evidence, or
+adds stable diagnostics that make the feature explicitly unsupported.
 
 ### GitHub Open-Game Usage Scan
 
