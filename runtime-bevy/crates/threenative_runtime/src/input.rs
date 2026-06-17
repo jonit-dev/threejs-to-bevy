@@ -1,4 +1,8 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    fs,
+    path::Path,
+};
 
 use bevy::{
     input::{
@@ -9,7 +13,7 @@ use bevy::{
     prelude::*,
     window::PrimaryWindow,
 };
-use threenative_loader::{InputBindingIr, InputIr};
+use threenative_loader::{InputBindingIr, InputIr, PersistedBindingOverrideIr};
 
 #[derive(Clone, Debug, Resource)]
 pub struct NativeInputMap(pub InputIr);
@@ -84,6 +88,11 @@ pub struct NativeInputRebindDiagnostic {
 pub struct NativeInputRebindResult {
     pub diagnostics: Vec<NativeInputRebindDiagnostic>,
     pub input: InputIr,
+}
+
+#[derive(Clone, Debug)]
+pub struct NativePersistedBindingOverrides {
+    pub overrides: Vec<PersistedBindingOverrideIr>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -507,6 +516,158 @@ pub fn rebind_native_input(
     NativeInputRebindResult {
         diagnostics,
         input: next,
+    }
+}
+
+pub fn apply_native_persisted_binding_overrides(
+    input: &InputIr,
+    overrides: &[PersistedBindingOverrideIr],
+    profile_id: Option<&str>,
+) -> InputIr {
+    let mut next = input.clone();
+    let profile_id = profile_id
+        .or_else(|| {
+            input
+                .controls_settings
+                .as_ref()
+                .map(|settings| settings.profile_id.as_str())
+        })
+        .unwrap_or("default");
+    let mut sorted = overrides.to_vec();
+    sort_native_persisted_binding_overrides(&mut sorted);
+    for binding_override in sorted
+        .iter()
+        .filter(|binding_override| binding_override.profile_id == profile_id)
+    {
+        let Some(binding) = binding_from_override(binding_override) else {
+            continue;
+        };
+        if let Some(action) = next
+            .actions
+            .iter_mut()
+            .find(|action| action.id == binding_override.action_or_axis_id)
+        {
+            action.bindings = vec![binding];
+            continue;
+        }
+        let Some(axis) = next
+            .axes
+            .iter_mut()
+            .find(|axis| axis.id == binding_override.action_or_axis_id)
+        else {
+            continue;
+        };
+        match binding_override.axis_slot.as_deref() {
+            Some("negative") => axis.negative = vec![binding],
+            Some("positive") => axis.positive = vec![binding],
+            Some("value") => axis.value = Some(binding),
+            _ => {}
+        }
+    }
+    next.persisted_binding_overrides = sorted;
+    next
+}
+
+pub fn load_native_persisted_binding_overrides(path: &Path) -> Vec<PersistedBindingOverrideIr> {
+    let Ok(raw) = fs::read_to_string(path) else {
+        return Vec::new();
+    };
+    let Ok(mut overrides) = serde_json::from_str::<Vec<PersistedBindingOverrideIr>>(&raw) else {
+        return Vec::new();
+    };
+    sort_native_persisted_binding_overrides(&mut overrides);
+    overrides
+}
+
+pub fn save_native_persisted_binding_overrides(
+    path: &Path,
+    overrides: &[PersistedBindingOverrideIr],
+) -> std::io::Result<Vec<PersistedBindingOverrideIr>> {
+    let mut sorted = overrides.to_vec();
+    sort_native_persisted_binding_overrides(&mut sorted);
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let bytes = serde_json::to_vec_pretty(&sorted).map_err(std::io::Error::other)?;
+    fs::write(path, bytes)?;
+    Ok(sorted)
+}
+
+pub fn persist_native_binding_override(
+    path: &Path,
+    binding_override: PersistedBindingOverrideIr,
+) -> std::io::Result<Vec<PersistedBindingOverrideIr>> {
+    let mut overrides = load_native_persisted_binding_overrides(path)
+        .into_iter()
+        .filter(|item| {
+            !(item.profile_id == binding_override.profile_id
+                && item.action_or_axis_id == binding_override.action_or_axis_id
+                && item.axis_slot == binding_override.axis_slot)
+        })
+        .collect::<Vec<_>>();
+    overrides.push(binding_override);
+    save_native_persisted_binding_overrides(path, &overrides)
+}
+
+fn sort_native_persisted_binding_overrides(overrides: &mut [PersistedBindingOverrideIr]) {
+    for binding_override in overrides.iter_mut() {
+        if let Some(modifiers) = binding_override.modifiers.as_mut() {
+            modifiers.sort();
+        }
+    }
+    overrides.sort_by(|left, right| {
+        (
+            &left.profile_id,
+            &left.action_or_axis_id,
+            &left.axis_slot,
+            &left.device,
+            &left.control,
+        )
+            .cmp(&(
+                &right.profile_id,
+                &right.action_or_axis_id,
+                &right.axis_slot,
+                &right.device,
+                &right.control,
+            ))
+    });
+}
+
+fn binding_from_override(binding_override: &PersistedBindingOverrideIr) -> Option<InputBindingIr> {
+    match binding_override.device.as_str() {
+        "keyboard" => Some(InputBindingIr::Keyboard {
+            code: binding_override.control.clone(),
+        }),
+        "pointer" => {
+            if let Some(axis) = binding_override.control.strip_prefix("axis:") {
+                Some(InputBindingIr::Pointer {
+                    button: None,
+                    axis: Some(axis.to_owned()),
+                })
+            } else {
+                binding_override
+                    .control
+                    .strip_prefix("button:")
+                    .unwrap_or(&binding_override.control)
+                    .parse::<u8>()
+                    .ok()
+                    .map(|button| InputBindingIr::Pointer {
+                        button: Some(button),
+                        axis: None,
+                    })
+            }
+        }
+        "touch" => {
+            let mut parts = binding_override.control.split(':');
+            let control = parts.next().unwrap_or_default().to_owned();
+            let axis = parts.next().map(str::to_owned);
+            Some(InputBindingIr::Touch { control, axis })
+        }
+        "gamepad" => Some(InputBindingIr::Gamepad {
+            control: binding_override.control.clone(),
+            required: Some(false),
+        }),
+        _ => None,
     }
 }
 

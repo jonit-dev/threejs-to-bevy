@@ -3,7 +3,7 @@ use std::path::Path;
 use bevy::prelude::*;
 use thiserror::Error;
 use threenative_components::ThreeNativeId;
-use threenative_loader::{LoadError, LoadedBundle, TransformComponent, load_bundle};
+use threenative_loader::{load_bundle, LoadError, LoadedBundle, TransformComponent};
 
 pub mod animation;
 pub mod asset_reload;
@@ -27,6 +27,7 @@ pub mod path_sampling;
 pub mod persistence;
 pub mod physics;
 pub mod physics_sensors;
+pub mod picking;
 pub mod rendering;
 pub mod render_targets;
 pub mod systems_context;
@@ -35,6 +36,7 @@ pub mod systems_host;
 pub mod systems_services;
 pub mod transform_interpolation;
 pub mod ui;
+pub mod ui_debug;
 pub mod walkability;
 
 #[derive(Debug, Error)]
@@ -159,6 +161,11 @@ pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeErro
         }
     }
     if let Some(input_map) = bundle.input.clone() {
+        let input_map = input::apply_native_persisted_binding_overrides(
+            &input_map,
+            &input_map.persisted_binding_overrides,
+            None,
+        );
         app.insert_resource(input::NativeInputMap(input_map));
         app.init_resource::<input::NativeInputState>();
         app.add_systems(PreUpdate, input::capture_native_input);

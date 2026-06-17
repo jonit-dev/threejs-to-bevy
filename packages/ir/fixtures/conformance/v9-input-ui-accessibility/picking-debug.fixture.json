@@ -1,0 +1,41 @@
+{
+  "dragLog": [
+    {
+      "currentTargetId": "ui.inventory.item",
+      "kind": "dragStart",
+      "pointerId": 1,
+      "screen": { "x": 0.15, "y": 0.15 },
+      "sourceTargetId": "ui.inventory.item"
+    },
+    {
+      "currentTargetId": "ui.inventory.item",
+      "kind": "dragMove",
+      "pointerId": 1,
+      "screen": { "x": 0.15, "y": 0.15 },
+      "sourceTargetId": "ui.inventory.item"
+    },
+    {
+      "currentTargetId": "mesh.chest",
+      "kind": "drop",
+      "pointerId": 1,
+      "screen": { "x": 0.4, "y": 0.4 },
+      "sourceTargetId": "ui.inventory.item"
+    },
+    {
+      "currentTargetId": "mesh.chest",
+      "kind": "dragEnd",
+      "pointerId": 1,
+      "screen": { "x": 0.4, "y": 0.4 },
+      "sourceTargetId": "ui.inventory.item"
+    }
+  ],
+  "overlayReport": {
+    "captureOwner": "ui.inventory.item",
+    "connectedDevices": [{ "id": "pointer", "kind": "pointer", "status": "observed" }],
+    "deviceDiagnostics": [],
+    "eventLog": ["dragStart", "dragMove", "drop", "dragEnd"],
+    "meshBounds": [{ "id": "mesh.chest" }],
+    "pointerRays": [{ "pointerId": 1, "origin": { "x": 0, "y": 0, "z": 5 }, "direction": { "x": 0, "y": 0, "z": -1 } }],
+    "uiBounds": [{ "id": "ui.inventory.item", "zIndex": 10 }]
+  }
+}

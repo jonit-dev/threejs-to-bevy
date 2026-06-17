@@ -220,6 +220,7 @@ export {
 export {
   action,
   axis,
+  controlsSettings,
   defineInputMap,
   gamepad,
   keyboard,
@@ -228,7 +229,11 @@ export {
   touchControl,
   type IInputActionDeclaration,
   type IInputAxisDeclaration,
+  type IControlsSettingsDeclaration,
+  type IControlsSettingsRowDeclaration,
+  type ControlsSettingsRowOptions,
   type IInputMapDeclaration,
+  type IPersistedBindingOverrideDeclaration,
   type InputBinding,
 } from "./input.js";
 export { MeshExtendedMaterial, type ExtendedMaterialPreset, type IMeshExtendedMaterialOptions } from "./materials/MeshExtendedMaterial.js";
@@ -252,6 +257,10 @@ export {
   type OverlayMessageSchemaKind,
   type OverlayTargetProfile,
 } from "./overlay.js";
+export {
+  validateUiWidgetSupport,
+  type IUnsupportedUiWidgetOptions,
+} from "./ui.js";
 export {
   boxCollider,
   capsuleCollider,

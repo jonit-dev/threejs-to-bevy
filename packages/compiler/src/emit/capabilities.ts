@@ -534,6 +534,12 @@ function collectUiCapabilities(ui: IUiIr | undefined, add: (domain: string, capa
   if (ui.safeArea !== undefined) {
     add("ui", "safe-area");
   }
+  if ((ui.fonts ?? []).length > 0) {
+    add("ui", "font-assets");
+    for (const font of ui.fonts ?? []) {
+      add("ui", `font.${font.family}`);
+    }
+  }
   visitUiNode(ui.root, add);
 }
 
@@ -541,6 +547,31 @@ function visitUiNode(node: IUiIr["root"], add: (domain: string, capability: stri
   add("ui", `node.${node.kind}`);
   if (node.kind === "image") {
     add("ui", "image");
+  }
+  if (node.kind === "slider" || node.kind === "scrollbar" || node.kind === "contextMenu") {
+    add("ui", "widget");
+    add("ui", `widget.${node.kind}`);
+  }
+  if (node.disabled === true) {
+    add("ui", "disabled");
+  }
+  if (node.image !== undefined) {
+    add("ui", "image.metadata");
+    if (node.image.atlas !== undefined) {
+      add("ui", "image.atlas");
+    }
+    if (node.image.nineSlice !== undefined) {
+      add("ui", "image.nine-slice");
+    }
+    if (node.image.flipX === true || node.image.flipY === true) {
+      add("ui", "image.flip");
+    }
+    if (node.image.tileSize !== undefined) {
+      add("ui", "image.tile");
+    }
+  }
+  if ((node.spans ?? []).length > 0) {
+    add("ui", "rich-text");
   }
   if (node.binding !== undefined) {
     add("ui", `binding.${node.binding.kind}`);
@@ -605,6 +636,7 @@ function visitUiNode(node: IUiIr["root"], add: (domain: string, capability: stri
     }
     if (
       node.style.fontSize !== undefined
+      || node.style.fontFamily !== undefined
       || node.style.fontWeight !== undefined
       || node.style.textAlign !== undefined
       || node.style.textDecoration !== undefined

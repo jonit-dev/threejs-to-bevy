@@ -41,6 +41,8 @@ fn should_map_keyboard_input_event_to_action() {
             }],
             value: None,
         }],
+        controls_settings: None,
+        persisted_binding_overrides: vec![],
     };
     let mut state = NativeInputState::default();
 
@@ -64,6 +66,8 @@ fn should_map_pointer_input_event_to_action() {
             }],
         }],
         axes: vec![],
+        controls_settings: None,
+        persisted_binding_overrides: vec![],
     };
     let mut state = NativeInputState::default();
 
@@ -194,6 +198,8 @@ fn sample_rebind_input() -> InputIr {
             }],
             value: None,
         }],
+        controls_settings: None,
+        persisted_binding_overrides: vec![],
     }
 }
 
@@ -235,6 +241,8 @@ fn should_capture_bevy_keyboard_and_pointer_input() {
                 }),
             },
         ],
+        controls_settings: None,
+        persisted_binding_overrides: vec![],
     }));
     app.init_resource::<NativeInputState>();
     app.world_mut().spawn((
@@ -316,6 +324,8 @@ fn should_capture_gamepad_and_touch_input() {
                 }),
             },
         ],
+        controls_settings: None,
+        persisted_binding_overrides: vec![],
     }));
     app.add_systems(PreUpdate, (gamepad_connection_system, capture_native_input));
 
@@ -472,6 +482,8 @@ fn should_report_native_gamepad_capabilities_and_diagnostics() {
                 required: Some(false),
             }),
         }],
+        controls_settings: None,
+        persisted_binding_overrides: vec![],
     };
     let mut app = App::new();
     app.add_event::<GamepadConnectionEvent>();

@@ -12,6 +12,8 @@ export async function verifyConformance(options = {}) {
   const run = options.run ?? runCommand;
   const reportPath = options.reportPath ?? resolve(root, "artifacts/conformance/verification-report.json");
   const artifactDir = options.artifactDir ?? resolve(reportPath, "..");
+  const nativeRuntimeCwd = resolve(root, "runtime-bevy");
+  const nativeCargoEnv = { CARGO_TARGET_DIR: resolve(artifactDir, "cargo-target") };
   const basicSceneBundlePath = resolve(root, "packages/ir/fixtures/conformance/basic-scene/game.bundle");
   const primitiveMappingBundlePath = resolve(root, "packages/ir/fixtures/conformance/primitive-mapping/game.bundle");
   const v6PhysicsEventsBundlePath = resolve(root, "packages/ir/fixtures/conformance/v6-physics-events/game.bundle");
@@ -158,7 +160,10 @@ export async function verifyConformance(options = {}) {
   const steps = [];
 
   async function step(name, command, args, commandOptions = {}) {
-    const result = await run({ args, command, cwd: commandOptions.cwd ?? root, name, timeoutMs: commandOptions.timeoutMs });
+    const cwd = commandOptions.cwd ?? root;
+    const env =
+      command === "cargo" && cwd === nativeRuntimeCwd ? { ...nativeCargoEnv, ...commandOptions.env } : commandOptions.env;
+    const result = await run({ args, command, cwd, env, name, timeoutMs: commandOptions.timeoutMs });
     steps.push({ ...summarize(result), name });
     return result.exitCode === 0;
   }
@@ -171,7 +176,12 @@ export async function verifyConformance(options = {}) {
       ["--filter", "@threenative/runtime-web-three", "test", "--", "--run", "conformance"],
       { timeoutMs: 120000 },
     ],
-    ["bevy runtime conformance", "cargo", ["test", "-p", "threenative_runtime", "conformance"], { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 }],
+    [
+      "bevy runtime conformance",
+      "cargo",
+      ["test", "-p", "threenative_runtime", "--test", "conformance"],
+      { cwd: nativeRuntimeCwd, timeoutMs: 300000 },
+    ],
     [
       "bevy native observation report",
       "cargo",
@@ -186,7 +196,7 @@ export async function verifyConformance(options = {}) {
         "basic-scene",
         nativeBasicSceneReportPath,
       ],
-      { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
+      { cwd: nativeRuntimeCwd, timeoutMs: 120000 },
     ],
     [
       "bevy native primitive mapping observation report",
@@ -202,7 +212,7 @@ export async function verifyConformance(options = {}) {
         "primitive-mapping",
         nativePrimitiveMappingReportPath,
       ],
-      { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
+      { cwd: nativeRuntimeCwd, timeoutMs: 120000 },
     ],
     [
       "bevy native V6 physics observation report",
@@ -218,7 +228,7 @@ export async function verifyConformance(options = {}) {
         "v6-physics-events",
         nativeV6PhysicsEventsReportPath,
       ],
-      { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
+      { cwd: nativeRuntimeCwd, timeoutMs: 120000 },
     ],
     [
       "V6 animation fixed trace parity",
@@ -244,7 +254,7 @@ export async function verifyConformance(options = {}) {
         "v6-animation-clips",
         nativeV6AnimationClipsReportPath,
       ],
-      { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
+      { cwd: nativeRuntimeCwd, timeoutMs: 120000 },
     ],
     [
       "V6 resource/event fixed trace parity",
@@ -270,7 +280,7 @@ export async function verifyConformance(options = {}) {
         "v6-resources-events",
         nativeV6ResourcesEventsReportPath,
       ],
-      { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
+      { cwd: nativeRuntimeCwd, timeoutMs: 120000 },
     ],
     [
       "bevy native V6 retained UI observation report",
@@ -286,7 +296,7 @@ export async function verifyConformance(options = {}) {
         "v6-retained-ui",
         nativeV6RetainedUiReportPath,
       ],
-      { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
+      { cwd: nativeRuntimeCwd, timeoutMs: 120000 },
     ],
     [
       "bevy native V6 audio observation report",
@@ -302,7 +312,7 @@ export async function verifyConformance(options = {}) {
         "v6-audio-playback",
         nativeV6AudioPlaybackReportPath,
       ],
-      { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
+      { cwd: nativeRuntimeCwd, timeoutMs: 120000 },
     ],
     [
       "V7 physics query fixed trace parity",
@@ -791,10 +801,10 @@ function bundlePathForStep(stepName) {
   return undefined;
 }
 
-export function runCommand({ args, command, cwd, timeoutMs = 60000 }) {
+export function runCommand({ args, command, cwd, env, timeoutMs = 60000 }) {
   return new Promise((resolveResult) => {
     const startedAt = Date.now();
-    const child = spawn(command, args, { cwd, stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn(command, args, { cwd, env: env ? { ...process.env, ...env } : process.env, stdio: ["ignore", "pipe", "pipe"] });
     let stdout = "";
     let stderr = "";
     const timer = setTimeout(() => {

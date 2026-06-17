@@ -1,4 +1,4 @@
-import type { IInputIr, InputBinding } from "@threenative/ir";
+import { sortedPersistedBindingOverrides, type IInputIr, type IPersistedBindingOverrideIr, type InputBinding } from "@threenative/ir";
 
 export interface IWebInputState {
   action(name: string): boolean;
@@ -15,6 +15,17 @@ export interface IWebInputState {
   handleTouchAxis(control: string, axis: "x" | "y", value: number): void;
   pressed(name: string): boolean;
   released(name: string): boolean;
+}
+
+export interface IControlsSettingsStorage {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+}
+
+export interface IWebInputStateOptions {
+  profileId?: string;
+  storage?: IControlsSettingsStorage;
+  storageKey?: string;
 }
 
 export interface IPointerLockState {
@@ -135,7 +146,11 @@ export interface IInputRebindResult {
   input: IInputIr;
 }
 
-export function createInputState(input?: IInputIr): IWebInputState {
+export function createInputState(input?: IInputIr, options: IWebInputStateOptions = {}): IWebInputState {
+  input = input === undefined ? undefined : applyPersistedBindingOverrides(input, [
+    ...(input.persistedBindingOverrides ?? []),
+    ...loadPersistedBindingOverrides(options.storage, options.storageKey),
+  ], options.profileId ?? input.controlsSettings?.profileId ?? "default");
   const currentActions = new Set<string>();
   const previousActions = new Set<string>();
   const keys = new Set<string>();
@@ -325,6 +340,121 @@ export function rebindInput(input: IInputIr, target: InputRebindTarget, binding:
   return { diagnostics, input: next };
 }
 
+export function applyPersistedBindingOverrides(
+  input: IInputIr,
+  overrides: ReadonlyArray<IPersistedBindingOverrideIr>,
+  profileId = input.controlsSettings?.profileId ?? "default",
+): IInputIr {
+  let next = cloneInput(input);
+  for (const override of sortedPersistedBindingOverrides(overrides).filter((item) => item.profileId === profileId)) {
+    const binding = bindingFromOverride(override);
+    const action = next.actions.find((item) => item.id === override.actionOrAxisId);
+    if (action !== undefined) {
+      action.bindings = [binding];
+      continue;
+    }
+    const axis = next.axes.find((item) => item.id === override.actionOrAxisId);
+    if (axis === undefined || override.axisSlot === undefined) {
+      continue;
+    }
+    if (override.axisSlot === "value") {
+      axis.value = binding;
+    } else {
+      axis[override.axisSlot] = [binding];
+    }
+  }
+  return next;
+}
+
+export function loadPersistedBindingOverrides(
+  storage: IControlsSettingsStorage | undefined = defaultControlsSettingsStorage(),
+  storageKey = "threenative.controls.bindings",
+): IPersistedBindingOverrideIr[] {
+  if (storage === undefined) {
+    return [];
+  }
+  try {
+    const raw = storage.getItem(storageKey);
+    if (raw === null) {
+      return [];
+    }
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    return sortedPersistedBindingOverrides(parsed.filter(isPersistedBindingOverride));
+  } catch {
+    return [];
+  }
+}
+
+export function savePersistedBindingOverrides(
+  overrides: ReadonlyArray<IPersistedBindingOverrideIr>,
+  storage: IControlsSettingsStorage | undefined = defaultControlsSettingsStorage(),
+  storageKey = "threenative.controls.bindings",
+): IPersistedBindingOverrideIr[] {
+  const sorted = sortedPersistedBindingOverrides(overrides);
+  storage?.setItem(storageKey, JSON.stringify(sorted));
+  return sorted;
+}
+
+export function persistBindingOverride(
+  override: IPersistedBindingOverrideIr,
+  storage: IControlsSettingsStorage | undefined = defaultControlsSettingsStorage(),
+  storageKey = "threenative.controls.bindings",
+): IPersistedBindingOverrideIr[] {
+  const current = loadPersistedBindingOverrides(storage, storageKey).filter((item) => {
+    return !(item.profileId === override.profileId && item.actionOrAxisId === override.actionOrAxisId && item.axisSlot === override.axisSlot);
+  });
+  current.push(override);
+  return savePersistedBindingOverrides(current, storage, storageKey);
+}
+
+function cloneInput(input: IInputIr): IInputIr {
+  return {
+    schema: input.schema,
+    version: input.version,
+    actions: input.actions.map((action) => ({ ...action, bindings: action.bindings.map((item) => ({ ...item })) })),
+    axes: input.axes.map((axis) => ({
+      ...axis,
+      negative: axis.negative.map((item) => ({ ...item })),
+      positive: axis.positive.map((item) => ({ ...item })),
+      ...(axis.value === undefined ? {} : { value: { ...axis.value } }),
+    })),
+    ...(input.controlsSettings === undefined ? {} : { controlsSettings: input.controlsSettings }),
+    ...(input.persistedBindingOverrides === undefined ? {} : { persistedBindingOverrides: sortedPersistedBindingOverrides(input.persistedBindingOverrides) }),
+  };
+}
+
+function bindingFromOverride(override: IPersistedBindingOverrideIr): InputBinding {
+  if (override.device === "keyboard") {
+    return { code: override.control, device: "keyboard" };
+  }
+  if (override.device === "pointer") {
+    if (override.control.startsWith("axis:")) {
+      return { axis: override.control.slice(5) as Extract<InputBinding, { device: "pointer"; axis: string }>["axis"], device: "pointer" };
+    }
+    return { button: Number.parseInt(override.control.replace(/^button:/, ""), 10), device: "pointer" };
+  }
+  if (override.device === "touch") {
+    const [control, axis] = override.control.split(":");
+    return { axis: axis === "x" || axis === "y" ? axis : undefined, control: control ?? "", device: "touch" };
+  }
+  return { control: override.control, device: "gamepad", required: false };
+}
+
+function isPersistedBindingOverride(value: unknown): value is IPersistedBindingOverrideIr {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const candidate = value as Partial<IPersistedBindingOverrideIr>;
+  return typeof candidate.profileId === "string" && typeof candidate.actionOrAxisId === "string" && typeof candidate.device === "string" && typeof candidate.control === "string" && typeof candidate.updatedAt === "string";
+}
+
+function defaultControlsSettingsStorage(): IControlsSettingsStorage | undefined {
+  return typeof globalThis.localStorage === "undefined" ? undefined : globalThis.localStorage;
+}
+
 export function createDragPickingRecognizer(options: { moveThreshold?: number } = {}): IDragPickingRecognizer {
   const moveThreshold = options.moveThreshold ?? 0.005;
   let active: { entity: string; pointer: [number, number]; started: boolean; start: [number, number] } | undefined;
@@ -342,12 +472,17 @@ export function createDragPickingRecognizer(options: { moveThreshold?: number } 
             round(frame.pointer[1] - active.pointer[1]),
           ];
           const totalDistance = distance(frame.pointer, active.start);
+          let justStarted = false;
           if (!active.started && totalDistance >= moveThreshold) {
             active.started = true;
+            justStarted = true;
             events.push({ entity: active.entity, kind: "start", pointer: active.start, timeMs: frame.timeMs });
           }
-          if (active.started && (delta[0] !== 0 || delta[1] !== 0)) {
-            events.push({ delta, entity: active.entity, kind: "move", pointer: frame.pointer, timeMs: frame.timeMs });
+          const moveDelta: [number, number] = justStarted
+            ? [round(frame.pointer[0] - active.start[0]), round(frame.pointer[1] - active.start[1])]
+            : delta;
+          if (active.started && (moveDelta[0] !== 0 || moveDelta[1] !== 0)) {
+            events.push({ delta: moveDelta, entity: active.entity, kind: "move", pointer: frame.pointer, timeMs: frame.timeMs });
           }
           active.pointer = frame.pointer;
         }

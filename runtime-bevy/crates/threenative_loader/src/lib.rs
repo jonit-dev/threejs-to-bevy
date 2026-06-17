@@ -896,21 +896,25 @@ pub struct SystemScriptIr {
     pub export_name: String,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct InputIr {
     pub schema: String,
     pub version: String,
     pub actions: Vec<InputActionIr>,
     pub axes: Vec<InputAxisIr>,
+    #[serde(default, rename = "controlsSettings")]
+    pub controls_settings: Option<ControlsSettingsIr>,
+    #[serde(default, rename = "persistedBindingOverrides")]
+    pub persisted_binding_overrides: Vec<PersistedBindingOverrideIr>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct InputActionIr {
     pub id: String,
     pub bindings: Vec<InputBindingIr>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct InputAxisIr {
     pub id: String,
     #[serde(default)]
@@ -920,7 +924,39 @@ pub struct InputAxisIr {
     pub value: Option<InputBindingIr>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ControlsSettingsIr {
+    pub profile_id: String,
+    pub rows: Vec<ControlsSettingsRowIr>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ControlsSettingsRowIr {
+    pub action_or_axis_id: String,
+    pub axis_slot: Option<String>,
+    pub capture_state: Option<String>,
+    pub default_bindings: Vec<InputBindingIr>,
+    pub kind: String,
+    pub ui_node_id: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PersistedBindingOverrideIr {
+    pub action_or_axis_id: String,
+    pub axis_slot: Option<String>,
+    pub control: String,
+    pub deadzone: Option<f32>,
+    pub device: String,
+    pub modifiers: Option<Vec<String>>,
+    pub profile_id: String,
+    pub scale: Option<f32>,
+    pub updated_at: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(tag = "device")]
 pub enum InputBindingIr {
     #[serde(rename = "keyboard")]
@@ -1000,6 +1036,8 @@ pub struct RuntimeWindowConfig {
 pub struct UiIr {
     pub schema: String,
     pub version: String,
+    #[serde(default)]
+    pub fonts: Vec<UiFontAssetIr>,
     #[serde(rename = "focusOrder")]
     pub focus_order: Option<Vec<String>>,
     #[serde(rename = "inputActions")]
@@ -1010,24 +1048,99 @@ pub struct UiIr {
 }
 
 #[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UiFontAssetIr {
+    pub asset: String,
+    pub fallback_family: Option<String>,
+    pub family: String,
+    #[serde(default)]
+    pub glyph_ranges: Vec<UiGlyphRangeIr>,
+    pub style: Option<String>,
+    pub weight: Option<serde_json::Value>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct UiGlyphRangeIr {
+    pub from: u32,
+    pub to: u32,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UiNodeIr {
-    #[serde(rename = "accessibilityLabel")]
     pub accessibility_label: Option<String>,
+    pub action: Option<String>,
+    pub anchor_id: Option<String>,
+    #[serde(default)]
+    pub children: Vec<UiNodeIr>,
+    pub disabled: Option<bool>,
+    pub focusable: Option<bool>,
     pub id: String,
+    pub image: Option<UiImageMetadataIr>,
     pub kind: String,
     pub label: Option<String>,
     pub layout: Option<UiLayoutIr>,
+    pub max: Option<f32>,
+    pub min: Option<f32>,
+    pub navigation: Option<UiNavigationIr>,
+    pub orientation: Option<String>,
     pub role: Option<String>,
+    #[serde(default)]
+    pub spans: Vec<UiRichTextSpanIr>,
+    pub step: Option<f32>,
+    pub style: Option<UiStyleIr>,
     pub src: Option<String>,
     pub text: Option<String>,
-    pub action: Option<String>,
-    pub focusable: Option<bool>,
-    pub navigation: Option<UiNavigationIr>,
-    pub style: Option<UiStyleIr>,
     pub value: Option<f32>,
-    pub max: Option<f32>,
-    #[serde(default)]
-    pub children: Vec<UiNodeIr>,
+    pub value_text: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UiImageMetadataIr {
+    pub atlas: Option<UiAtlasRectIr>,
+    pub flip_x: Option<bool>,
+    pub flip_y: Option<bool>,
+    pub nine_slice: Option<UiNineSliceIr>,
+    pub scale_mode: Option<String>,
+    pub source_size: Option<UiImageSizeIr>,
+    pub tile_size: Option<UiImageSizeIr>,
+    pub tint: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct UiAtlasRectIr {
+    pub height: f32,
+    pub width: f32,
+    pub x: f32,
+    pub y: f32,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct UiImageSizeIr {
+    pub height: f32,
+    pub width: f32,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct UiNineSliceIr {
+    pub bottom: f32,
+    pub left: f32,
+    pub right: f32,
+    pub top: f32,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UiRichTextSpanIr {
+    pub accessibility_text: Option<String>,
+    pub color: Option<String>,
+    pub decoration: Option<String>,
+    pub font_family: Option<String>,
+    pub font_size: Option<f32>,
+    pub italic: Option<bool>,
+    pub text: String,
+    pub weight: Option<serde_json::Value>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -1069,6 +1182,7 @@ pub struct UiStyleIr {
     pub border_radius: Option<f32>,
     pub border_width: Option<f32>,
     pub color: Option<String>,
+    pub font_family: Option<String>,
     pub font_size: Option<f32>,
     pub font_weight: Option<String>,
     pub gradient: Option<UiGradientIr>,

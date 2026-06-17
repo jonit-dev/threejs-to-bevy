@@ -21,7 +21,7 @@ export { renderEditorInspectorPanels, type IEditorInspectorPanelModel } from "./
 export { applyAtmosphereProfile, observeAtmosphereProfile, type IAtmosphereObservation } from "./rendering.js";
 export { createGameLoopState, runGameFrame, setPaused, type IGameLoopState } from "./gameLoop.js";
 export { buildEditorGizmoOverlay, createAxisGizmo, createWireBoxGizmo, createWireSphereGizmo, gizmoToBufferGeometry, type EditorGizmoKind, type IEditorGizmoOverlay, type IGizmoGeometry, type IGizmoLine } from "./gizmoGeometry.js";
-export { attachInputListeners, createInputState, createTouchGestureRecognizer, rebindInput, reportGamepadCapabilities, type IGamepadCapabilityReport, type IInputRebindDiagnostic, type IInputRebindResult, type InputRebindTarget, type ITouchGestureEvent, type ITouchGestureFrame, type ITouchGesturePoint, type ITouchGestureRecognizer, type IWebInputState } from "./input.js";
+export { applyPersistedBindingOverrides, attachInputListeners, createInputState, createTouchGestureRecognizer, loadPersistedBindingOverrides, persistBindingOverride, rebindInput, reportGamepadCapabilities, savePersistedBindingOverrides, type IControlsSettingsStorage, type IGamepadCapabilityReport, type IInputRebindDiagnostic, type IInputRebindResult, type InputRebindTarget, type ITouchGestureEvent, type ITouchGestureFrame, type ITouchGesturePoint, type ITouchGestureRecognizer, type IWebInputState, type IWebInputStateOptions } from "./input.js";
 export { traceCharacterControllers, type ICharacterTraceInput, type ICharacterTraceObservation } from "./character.js";
 export { queryNavigationPath, traceNavigationPaths, type INavigationPathRequest, type INavigationPathResult } from "./navigation.js";
 export { createFirstPersonState, updateFirstPersonController, type IFirstPersonControllerState } from "./firstPerson.js";
@@ -34,6 +34,7 @@ export { tracePhysicsSensors, type IPhysicsSensorEvent, type IPhysicsSensorTrace
 export { interpolateQuat, interpolateTransform, interpolateVec3, smoothDampVec3, type ITransformSample } from "./transformInterpolation.js";
 export { resolveWalkableMovement, type IWalkabilityResolution } from "./walkability.js";
 export { renderUi, type IRenderedUi, type IRenderedUiNode } from "./ui/renderUi.js";
+export { createWebDragPickingRecognizer, resolveTopPickingTarget, type IWebDragPickingEvent, type IWebDragPickingFrame, type IWebDragPickingRecognizer, type IWebPickingDebugOverlayReport, type IWebPickingTarget, type IWebPickingVec2, type IWebPickingVec3 } from "./picking/drag.js";
 export { traceUiNavigation, type IUiNavigationTrace, type IUiNavigationTraceInput } from "./ui/navigation.js";
 export { createUiDomOverlay, type IUiDomOverlay } from "./ui/domOverlay.js";
 export { createRenderedParticleObjects, renderBundle, type IRenderResult } from "./render.js";

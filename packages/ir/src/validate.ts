@@ -21,7 +21,7 @@ import {
   type IWorldIr,
 } from "./types.js";
 import type { ISystemsIr } from "./systems.js";
-import type { IInputIr, InputBinding } from "./input.js";
+import { sortedPersistedBindingOverrides, type IInputIr, type IPersistedBindingOverrideIr, type InputBinding } from "./input.js";
 import { validatePerformanceProfile } from "./performanceProfile.js";
 import { validateEnvironmentSceneIr } from "./environment.js";
 import { validateOverlaysIr, type IOverlaysIr } from "./overlays.js";
@@ -939,15 +939,16 @@ function validateUi(ui: IUiIr, path: string, diagnostics: IIrDiagnostic[]): void
   }
   const ids = new Set<string>();
   const focusableIds = new Set<string>();
-  validateUiNode(ui.root, `${path}/root`, diagnostics, ids);
+  const fontFamilies = validateUiFonts(ui, path, diagnostics);
+  validateUiNode(ui.root, `${path}/root`, diagnostics, ids, fontFamilies);
   collectFocusableUiIds(ui.root, focusableIds);
   validateUiMetadata(ui, path, diagnostics, ids, focusableIds);
 }
 
-function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[], ids: Set<string>): void {
+function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[], ids: Set<string>, fontFamilies: Set<string>): void {
   const raw = node as unknown as Record<string, unknown>;
   for (const key of Object.keys(raw)) {
-    if (!["accessibilityLabel", "action", "binding", "children", "focusable", "id", "kind", "label", "layout", "max", "navigation", "role", "src", "style", "text", "value"].includes(key)) {
+    if (!["accessibilityLabel", "action", "anchorId", "binding", "children", "disabled", "focusable", "id", "image", "kind", "label", "layout", "max", "min", "navigation", "orientation", "role", "spans", "src", "step", "style", "text", "value", "valueText"].includes(key)) {
       diagnostics.push({
         code: "TN_IR_UI_FIELD_UNSUPPORTED",
         message: `UI node '${node.id}' uses unsupported field '${key}'.`,
@@ -955,10 +956,14 @@ function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnosti
       });
     }
   }
+  validateUnsupportedUiRequests(raw, path, diagnostics);
   validateUiLayout(node.layout, `${path}/layout`, diagnostics);
   validateUiStyle(node.style, `${path}/style`, diagnostics);
+  validateUiSpans(node, path, diagnostics, fontFamilies);
+  validateUiImageMetadata(node, path, diagnostics);
+  validateUiWidget(node, path, diagnostics);
   validateUiAccessibility(node, path, diagnostics);
-  if (!["bar", "button", "column", "image", "row", "stack", "text", "touchControl"].includes(node.kind)) {
+  if (!["bar", "button", "column", "contextMenu", "image", "row", "scrollbar", "slider", "stack", "text", "touchControl"].includes(node.kind)) {
     diagnostics.push({
       code: "TN_IR_UI_NODE_UNSUPPORTED",
       message: `Unsupported UI node kind '${String(node.kind)}'.`,
@@ -995,7 +1000,225 @@ function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnosti
       });
     }
   }
-  node.children?.forEach((child, index) => validateUiNode(child, `${path}/children/${index}`, diagnostics, ids));
+  if (raw.virtualKeyboard !== undefined) {
+    diagnostics.push({
+      code: "TN_IR_UI_WIDGET_VIRTUAL_KEYBOARD_UNSUPPORTED",
+      message: "Virtual keyboard widgets are deferred from the V9 retained UI widget set.",
+      path: `${path}/virtualKeyboard`,
+      severity: "error",
+      suggestion: "Use slider, scrollbar, or contextMenu widgets in V9; defer virtual keyboard UI until mobile packaging is promoted.",
+    });
+  }
+  node.children?.forEach((child, index) => validateUiNode(child, `${path}/children/${index}`, diagnostics, ids, fontFamilies));
+}
+
+function validateUnsupportedUiRequests(raw: Record<string, unknown>, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (raw.transform !== undefined || raw.transforms !== undefined) {
+    diagnostics.push({
+      code: "TN_IR_UI_TRANSFORM_UNSUPPORTED",
+      message: "Broad retained UI transforms are not supported in the V9 portable UI contract.",
+      path: `${path}/${raw.transform !== undefined ? "transform" : "transforms"}`,
+      severity: "error",
+      suggestion: "Use promoted layout positioning fields until portable UI transforms are promoted.",
+    });
+  }
+  if (raw.renderTarget !== undefined || raw.renderToTexture !== undefined) {
+    diagnostics.push({
+      code: "TN_IR_UI_RENDER_TO_TEXTURE_UNSUPPORTED",
+      message: "Render-to-texture UI is not supported in the V9 portable UI contract.",
+      path: `${path}/${raw.renderTarget !== undefined ? "renderTarget" : "renderToTexture"}`,
+      severity: "error",
+      suggestion: "Render retained UI through the promoted web DOM or native UI adapters.",
+    });
+  }
+  if (raw.worldSpace !== undefined || raw.worldUi !== undefined || raw.spatial !== undefined) {
+    diagnostics.push({
+      code: "TN_IR_UI_WORLD_SPACE_UNSUPPORTED",
+      message: "3D-world UI is not supported in the V9 portable UI contract.",
+      path: `${path}/${raw.worldSpace !== undefined ? "worldSpace" : raw.worldUi !== undefined ? "worldUi" : "spatial"}`,
+      severity: "error",
+      suggestion: "Use screen-space retained UI and promoted picking metadata until 3D-world UI is promoted.",
+    });
+  }
+}
+
+function validateUiImageMetadata(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[]): void {
+  const image = node.image;
+  if (image === undefined) {
+    return;
+  }
+  if (node.kind !== "image") {
+    diagnostics.push({ code: "TN_IR_UI_IMAGE_METADATA_INVALID", message: "UI image metadata is only supported on image nodes.", path: `${path}/image` });
+  }
+  if (image.scaleMode !== undefined && !["contain", "cover", "stretch"].includes(image.scaleMode)) {
+    diagnostics.push({ code: "TN_IR_UI_IMAGE_SCALE_MODE_INVALID", message: "UI image scaleMode must be contain, cover, or stretch.", path: `${path}/image/scaleMode` });
+  }
+  if (image.tint !== undefined && !/^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(image.tint)) {
+    diagnostics.push({ code: "TN_IR_UI_STYLE_COLOR_INVALID", message: "UI image tint must be #RRGGBB or #RRGGBBAA.", path: `${path}/image/tint` });
+  }
+  validatePositiveSize(image.sourceSize, `${path}/image/sourceSize`, diagnostics);
+  validatePositiveSize(image.tileSize, `${path}/image/tileSize`, diagnostics);
+  validateImageRect(image.atlas, image.sourceSize, `${path}/image/atlas`, diagnostics);
+  validateNineSlice(image.nineSlice, image.sourceSize, `${path}/image/nineSlice`, diagnostics);
+  if (image.nineSlice !== undefined && image.tileSize !== undefined) {
+    diagnostics.push({
+      code: "TN_IR_UI_IMAGE_MODE_INCOMPATIBLE",
+      message: "UI image nineSlice and tileSize cannot be combined in the V9 portable image metadata.",
+      path: `${path}/image`,
+      suggestion: "Use nineSlice for panel scaling or tileSize for repeated textures, not both.",
+    });
+  }
+}
+
+function validateUiWidget(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (node.kind !== "slider" && node.kind !== "scrollbar" && node.kind !== "contextMenu") {
+    return;
+  }
+  if (node.kind === "slider" || node.kind === "scrollbar") {
+    const min = node.min ?? 0;
+    const max = node.max ?? 1;
+    const value = node.value ?? min;
+    if (!Number.isFinite(min) || !Number.isFinite(max) || min >= max) {
+      diagnostics.push({ code: "TN_IR_UI_WIDGET_RANGE_INVALID", message: "UI slider/scrollbar min must be less than max.", path });
+    }
+    if (!Number.isFinite(value) || value < min || value > max) {
+      diagnostics.push({ code: "TN_IR_UI_WIDGET_VALUE_INVALID", message: "UI slider/scrollbar value must be inside min/max.", path: `${path}/value` });
+    }
+    if (node.step !== undefined && (!Number.isFinite(node.step) || node.step <= 0)) {
+      diagnostics.push({ code: "TN_IR_UI_WIDGET_STEP_INVALID", message: "UI slider/scrollbar step must be a finite positive number.", path: `${path}/step` });
+    }
+    if (node.orientation !== undefined && node.orientation !== "horizontal" && node.orientation !== "vertical") {
+      diagnostics.push({ code: "TN_IR_UI_WIDGET_ORIENTATION_INVALID", message: "UI slider/scrollbar orientation must be horizontal or vertical.", path: `${path}/orientation` });
+    }
+    if (node.kind === "slider" && node.action === undefined) {
+      diagnostics.push({ code: "TN_IR_UI_WIDGET_ACTION_MISSING", message: "UI slider must declare an action for portable value-change events.", path: `${path}/action` });
+    }
+  }
+  if (node.kind === "contextMenu") {
+    const children = node.children ?? [];
+    children.forEach((child, index) => {
+      if (child.kind !== "button") {
+        diagnostics.push({ code: "TN_IR_UI_CONTEXT_MENU_ITEM_INVALID", message: "UI contextMenu children must be button items.", path: `${path}/children/${index}/kind` });
+      }
+    });
+  }
+}
+
+function validatePositiveSize(value: { width: number; height: number } | undefined, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!Number.isFinite(value.width) || !Number.isFinite(value.height) || value.width <= 0 || value.height <= 0) {
+    diagnostics.push({ code: "TN_IR_UI_IMAGE_SIZE_INVALID", message: "UI image dimensions must be finite positive numbers.", path });
+  }
+}
+
+function validateImageRect(
+  rect: { x: number; y: number; width: number; height: number } | undefined,
+  sourceSize: { width: number; height: number } | undefined,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (rect === undefined) {
+    return;
+  }
+  if (![rect.x, rect.y, rect.width, rect.height].every(Number.isFinite) || rect.x < 0 || rect.y < 0 || rect.width <= 0 || rect.height <= 0) {
+    diagnostics.push({ code: "TN_IR_UI_IMAGE_ATLAS_INVALID", message: "UI image atlas rect must use finite non-negative origin and positive dimensions.", path });
+    return;
+  }
+  if (sourceSize !== undefined && (rect.x + rect.width > sourceSize.width || rect.y + rect.height > sourceSize.height)) {
+    diagnostics.push({
+      code: "TN_IR_UI_IMAGE_ATLAS_BOUNDS_INVALID",
+      message: "UI image atlas rect must fit inside sourceSize.",
+      path,
+      suggestion: "Adjust atlas x/y/width/height or update image.sourceSize to match the source texture.",
+    });
+  }
+}
+
+function validateNineSlice(
+  slice: { left: number; right: number; top: number; bottom: number } | undefined,
+  sourceSize: { width: number; height: number } | undefined,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (slice === undefined) {
+    return;
+  }
+  if (![slice.left, slice.right, slice.top, slice.bottom].every(Number.isFinite) || slice.left < 0 || slice.right < 0 || slice.top < 0 || slice.bottom < 0) {
+    diagnostics.push({ code: "TN_IR_UI_IMAGE_NINE_SLICE_INVALID", message: "UI image nineSlice insets must be finite non-negative numbers.", path });
+    return;
+  }
+  if (sourceSize !== undefined && (slice.left + slice.right >= sourceSize.width || slice.top + slice.bottom >= sourceSize.height)) {
+    diagnostics.push({
+      code: "TN_IR_UI_IMAGE_NINE_SLICE_BOUNDS_INVALID",
+      message: "UI image nineSlice insets must fit inside sourceSize without overlapping.",
+      path,
+      suggestion: "Reduce nineSlice insets or provide the correct sourceSize.",
+    });
+  }
+}
+
+function validateUiFonts(ui: IUiIr, path: string, diagnostics: IIrDiagnostic[]): Set<string> {
+  const families = new Set<string>();
+  ui.fonts?.forEach((font, index) => {
+    const fontPath = `${path}/fonts/${index}`;
+    if (font.family.trim() === "") {
+      diagnostics.push({ code: "TN_IR_UI_FONT_FAMILY_INVALID", message: "UI font family must not be empty.", path: `${fontPath}/family`, suggestion: "Use a stable family id such as 'body'." });
+    }
+    if (families.has(font.family)) {
+      diagnostics.push({ code: "TN_IR_UI_FONT_DUPLICATE", message: `UI font family '${font.family}' is declared more than once.`, path: `${fontPath}/family`, suggestion: "Keep one font declaration per family id." });
+    }
+    families.add(font.family);
+    if (font.asset.trim() === "" || font.asset.startsWith("/") || font.asset.includes("..") || /^[a-z]+:/i.test(font.asset)) {
+      diagnostics.push({ code: "TN_IR_UI_FONT_ASSET_INVALID", message: "UI font asset must be a bundle-relative path.", path: `${fontPath}/asset`, suggestion: "Store the font inside the bundle and reference it with a relative path such as 'assets/fonts/body.ttf'." });
+    }
+    if (font.weight !== undefined && !(font.weight === "normal" || font.weight === "bold" || typeof font.weight === "number" && Number.isInteger(font.weight) && font.weight >= 100 && font.weight <= 900)) {
+      diagnostics.push({ code: "TN_IR_UI_FONT_WEIGHT_INVALID", message: "UI font weight must be normal, bold, or an integer from 100 to 900.", path: `${fontPath}/weight`, suggestion: "Use 'normal', 'bold', or a CSS-compatible numeric weight." });
+    }
+    font.glyphRanges?.forEach((range, rangeIndex) => {
+      if (!Number.isInteger(range.from) || !Number.isInteger(range.to) || range.from < 0 || range.to < range.from) {
+        diagnostics.push({ code: "TN_IR_UI_FONT_GLYPH_RANGE_INVALID", message: "UI font glyph range must use non-negative integer code points with from <= to.", path: `${fontPath}/glyphRanges/${rangeIndex}`, suggestion: "Use inclusive Unicode code point ranges such as { from: 32, to: 126 }." });
+      }
+    });
+  });
+  return families;
+}
+
+function validateUiSpans(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[], fontFamilies: Set<string>): void {
+  if (node.spans === undefined) {
+    return;
+  }
+  if (node.kind !== "text") {
+    diagnostics.push({ code: "TN_IR_UI_RICH_TEXT_NODE_INVALID", message: "Rich text spans are only supported on text nodes.", path: `${path}/spans`, suggestion: "Move spans to a text node or use plain children for layout." });
+  }
+  if (node.spans.length === 0) {
+    diagnostics.push({ code: "TN_IR_UI_RICH_TEXT_EMPTY", message: "Rich text spans must not be empty.", path: `${path}/spans`, suggestion: "Remove spans or add at least one text span." });
+  }
+  node.spans.forEach((span, index) => {
+    const spanPath = `${path}/spans/${index}`;
+    if (span.text.length === 0) {
+      diagnostics.push({ code: "TN_IR_UI_RICH_TEXT_SPAN_EMPTY", message: "Rich text span text must not be empty.", path: `${spanPath}/text`, suggestion: "Remove empty spans or provide visible text." });
+    }
+    if (span.fontFamily !== undefined && !fontFamilies.has(span.fontFamily)) {
+      diagnostics.push({ code: "TN_IR_UI_FONT_MISSING", message: `Rich text span references missing font family '${span.fontFamily}'.`, path: `${spanPath}/fontFamily`, suggestion: `Declare ui.fonts with family '${span.fontFamily}' and a bundle-relative asset path.` });
+    }
+    if (span.color !== undefined && !/^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(span.color)) {
+      diagnostics.push({ code: "TN_IR_UI_STYLE_COLOR_INVALID", message: "Rich text span color must be #RRGGBB or #RRGGBBAA.", path: `${spanPath}/color` });
+    }
+    if (span.fontSize !== undefined && (!Number.isFinite(span.fontSize) || span.fontSize <= 0)) {
+      diagnostics.push({ code: "TN_IR_UI_STYLE_NUMBER_INVALID", message: "Rich text span fontSize must be a finite positive number.", path: `${spanPath}/fontSize` });
+    }
+    if (span.weight !== undefined && !(span.weight === "normal" || span.weight === "bold" || typeof span.weight === "number" && Number.isInteger(span.weight) && span.weight >= 100 && span.weight <= 900)) {
+      diagnostics.push({ code: "TN_IR_UI_STYLE_FONT_WEIGHT_INVALID", message: "Rich text span weight must be normal, bold, or an integer from 100 to 900.", path: `${spanPath}/weight` });
+    }
+    if (span.decoration !== undefined && !["lineThrough", "none", "underline"].includes(span.decoration)) {
+      diagnostics.push({ code: "TN_IR_UI_STYLE_TEXT_DECORATION_INVALID", message: "Rich text span decoration must be none, underline, or lineThrough.", path: `${spanPath}/decoration` });
+    }
+    if (span.accessibilityText !== undefined && span.accessibilityText.length === 0) {
+      diagnostics.push({ code: "TN_IR_UI_RICH_TEXT_ACCESSIBILITY_INVALID", message: "Rich text accessibilityText must not be empty.", path: `${spanPath}/accessibilityText`, suggestion: "Provide replacement accessible text or omit accessibilityText." });
+    }
+  });
 }
 
 function validateUiAccessibility(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[]): void {
@@ -1008,14 +1231,14 @@ function validateUiAccessibility(node: IUiNodeIr, path: string, diagnostics: IIr
   const hasAccessibleName = typeof node.accessibilityLabel === "string" && node.accessibilityLabel.length > 0
     || typeof node.label === "string" && node.label.length > 0
     || typeof node.text === "string" && node.text.length > 0;
-  if (["bar", "button", "image", "touchControl"].includes(node.kind) && !hasAccessibleName) {
+  if (["bar", "button", "image", "scrollbar", "slider", "touchControl"].includes(node.kind) && !hasAccessibleName) {
     diagnostics.push({ code: "TN_IR_UI_ACCESSIBILITY_LABEL_MISSING", message: `UI ${node.kind} node '${node.id}' must declare label, text, or accessibilityLabel.`, path });
   }
   if (node.focusable === true && !hasAccessibleName) {
     diagnostics.push({ code: "TN_IR_UI_ACCESSIBILITY_FOCUSABLE_NAME_MISSING", message: `Focusable UI node '${node.id}' must declare label, text, or accessibilityLabel.`, path });
   }
-  if (node.role === "progressbar" && !hasAccessibleName) {
-    diagnostics.push({ code: "TN_IR_UI_ACCESSIBILITY_PROGRESS_NAME_MISSING", message: `UI progressbar node '${node.id}' must declare label, text, or accessibilityLabel.`, path });
+  if ((node.role === "progressbar" || node.kind === "slider" || node.kind === "scrollbar") && !hasAccessibleName) {
+    diagnostics.push({ code: "TN_IR_UI_ACCESSIBILITY_PROGRESS_NAME_MISSING", message: `UI range node '${node.id}' must declare label, text, or accessibilityLabel.`, path });
   }
   if (node.role === "list") {
     node.children?.forEach((child, index) => {
@@ -1035,7 +1258,7 @@ function validateUiStyle(value: unknown, path: string, diagnostics: IIrDiagnosti
     return;
   }
   for (const key of Object.keys(value)) {
-    if (!["backgroundColor", "borderColor", "borderRadius", "borderWidth", "color", "fontSize", "fontWeight", "gradient", "opacity", "shadow", "textAlign", "textDecoration", "wrap"].includes(key)) {
+    if (!["backgroundColor", "borderColor", "borderRadius", "borderWidth", "color", "fontFamily", "fontSize", "fontWeight", "gradient", "opacity", "shadow", "textAlign", "textDecoration", "wrap"].includes(key)) {
       diagnostics.push({ code: "TN_IR_UI_STYLE_FIELD_UNSUPPORTED", message: `UI style uses unsupported field '${key}'.`, path: `${path}/${key}` });
     }
   }
@@ -1221,7 +1444,7 @@ function collectFocusableUiIds(node: IUiNodeIr, focusableIds: Set<string>): void
 function validateUiMetadata(ui: IUiIr, path: string, diagnostics: IIrDiagnostic[], ids: Set<string>, focusableIds: Set<string>): void {
   const raw = ui as unknown as Record<string, unknown>;
   for (const key of Object.keys(raw)) {
-    if (!["focusOrder", "inputActions", "root", "safeArea", "schema", "version"].includes(key)) {
+    if (!["focusOrder", "fonts", "inputActions", "root", "safeArea", "schema", "version"].includes(key)) {
       diagnostics.push({
         code: "TN_IR_UI_FIELD_UNSUPPORTED",
         message: `UI IR uses unsupported field '${key}'.`,
@@ -2605,6 +2828,168 @@ function validateInput(input: IInputIr, path: string, diagnostics: IIrDiagnostic
       validateBinding(axis.value, `${path}/axes/${axisIndex}/value`, diagnostics);
     }
   });
+  validateControlsSettings(input, path, diagnostics);
+  validatePersistedBindingOverrides(input, path, diagnostics);
+}
+
+function validateControlsSettings(input: IInputIr, path: string, diagnostics: IIrDiagnostic[]): void {
+  const settings = input.controlsSettings;
+  if (settings === undefined) {
+    return;
+  }
+  if (settings.profileId.trim() === "") {
+    diagnostics.push({
+      code: "TN_IR_INPUT_CONTROLS_PROFILE_INVALID",
+      message: "Controls settings profileId must not be empty.",
+      path: `${path}/controlsSettings/profileId`,
+      suggestion: "Use a stable profile id such as 'default'.",
+    });
+  }
+  const actionIds = new Set(input.actions.map((action) => action.id));
+  const axisIds = new Set(input.axes.map((axis) => axis.id));
+  const rowKeys = new Set<string>();
+  settings.rows.forEach((row, index) => {
+    const rowPath = `${path}/controlsSettings/rows/${index}`;
+    const exists = row.kind === "action" ? actionIds.has(row.actionOrAxisId) : axisIds.has(row.actionOrAxisId);
+    if (!exists) {
+      diagnostics.push({
+        code: row.kind === "action" ? "TN_IR_INPUT_CONTROLS_ACTION_MISSING" : "TN_IR_INPUT_CONTROLS_AXIS_MISSING",
+        message: `Controls settings row references missing ${row.kind} '${row.actionOrAxisId}'.`,
+        path: `${rowPath}/actionOrAxisId`,
+        suggestion: `Declare '${row.actionOrAxisId}' in input.${row.kind === "action" ? "actions" : "axes"} before adding a rebind row.`,
+      });
+    }
+    if (row.kind === "axis" && row.axisSlot === undefined) {
+      diagnostics.push({
+        code: "TN_IR_INPUT_CONTROLS_AXIS_SLOT_MISSING",
+        message: `Controls settings row for axis '${row.actionOrAxisId}' must declare an axisSlot.`,
+        path: `${rowPath}/axisSlot`,
+        suggestion: "Set axisSlot to 'negative', 'positive', or 'value'.",
+      });
+    }
+    if (row.kind === "action" && row.axisSlot !== undefined) {
+      diagnostics.push({
+        code: "TN_IR_INPUT_CONTROLS_ACTION_AXIS_SLOT_INVALID",
+        message: `Controls settings row for action '${row.actionOrAxisId}' cannot declare an axisSlot.`,
+        path: `${rowPath}/axisSlot`,
+        suggestion: "Remove axisSlot for action rebind rows.",
+      });
+    }
+    validateBindings(row.defaultBindings, `${rowPath}/defaultBindings`, diagnostics);
+    const key = `${row.kind}:${row.actionOrAxisId}:${row.axisSlot ?? ""}`;
+    if (rowKeys.has(key)) {
+      diagnostics.push({
+        code: "TN_IR_INPUT_CONTROLS_ROW_DUPLICATE",
+        message: `Controls settings row '${key}' is declared more than once.`,
+        path: rowPath,
+        suggestion: "Keep one rebind row per action or axis slot.",
+      });
+    }
+    rowKeys.add(key);
+  });
+}
+
+function validatePersistedBindingOverrides(input: IInputIr, path: string, diagnostics: IIrDiagnostic[]): void {
+  const overrides = input.persistedBindingOverrides;
+  if (overrides === undefined) {
+    return;
+  }
+  if (input.controlsSettings === undefined) {
+    diagnostics.push({
+      code: "TN_IR_INPUT_CONTROLS_SETTINGS_MISSING",
+      message: "Persisted binding overrides require controlsSettings metadata.",
+      path: `${path}/persistedBindingOverrides`,
+      suggestion: "Declare controlsSettings rows for actions or axes that can be rebound.",
+    });
+  }
+  const actionIds = new Set(input.actions.map((action) => action.id));
+  const axisIds = new Set(input.axes.map((axis) => axis.id));
+  const rowKeys = new Set(input.controlsSettings?.rows.map((row) => `${row.kind}:${row.actionOrAxisId}:${row.axisSlot ?? ""}`) ?? []);
+  const sorted = sortedPersistedBindingOverrides(overrides);
+  overrides.forEach((override, index) => {
+    const overridePath = `${path}/persistedBindingOverrides/${index}`;
+    const sortedOverride = sorted[index];
+    if (sortedOverride !== undefined && overrideSortKey(override) !== overrideSortKey(sortedOverride)) {
+      diagnostics.push({
+        code: "TN_IR_INPUT_OVERRIDE_ORDER_UNSTABLE",
+        message: "Persisted binding overrides must be sorted deterministically.",
+        path: `${path}/persistedBindingOverrides`,
+        suggestion: "Sort overrides by profileId, actionOrAxisId, axisSlot, device, and control before emitting input.ir.json.",
+      });
+    }
+    const targetKind = actionIds.has(override.actionOrAxisId) ? "action" : axisIds.has(override.actionOrAxisId) ? "axis" : undefined;
+    if (targetKind === undefined) {
+      diagnostics.push({
+        code: "TN_IR_INPUT_OVERRIDE_TARGET_MISSING",
+        message: `Persisted binding override references missing action or axis '${override.actionOrAxisId}'.`,
+        path: `${overridePath}/actionOrAxisId`,
+        suggestion: `Declare '${override.actionOrAxisId}' in input.actions or input.axes, or remove this persisted override.`,
+      });
+      return;
+    }
+    if (targetKind === "action" && override.axisSlot !== undefined) {
+      diagnostics.push({
+        code: "TN_IR_INPUT_OVERRIDE_ACTION_AXIS_SLOT_INVALID",
+        message: `Persisted binding override for action '${override.actionOrAxisId}' cannot declare an axisSlot.`,
+        path: `${overridePath}/axisSlot`,
+        suggestion: "Remove axisSlot for action overrides.",
+      });
+    }
+    if (targetKind === "axis" && override.axisSlot === undefined) {
+      diagnostics.push({
+        code: "TN_IR_INPUT_OVERRIDE_AXIS_SLOT_MISSING",
+        message: `Persisted binding override for axis '${override.actionOrAxisId}' must declare an axisSlot.`,
+        path: `${overridePath}/axisSlot`,
+        suggestion: "Set axisSlot to 'negative', 'positive', or 'value'.",
+      });
+    }
+    if (!rowKeys.has(`${targetKind}:${override.actionOrAxisId}:${override.axisSlot ?? ""}`)) {
+      diagnostics.push({
+        code: "TN_IR_INPUT_OVERRIDE_CONTROLS_ROW_MISSING",
+        message: `Persisted binding override for '${override.actionOrAxisId}' has no matching controls settings row.`,
+        path: overridePath,
+        suggestion: "Add a controlsSettings row for this target so players can inspect and reset the override.",
+      });
+    }
+    validateBinding(overrideToBinding(override), overridePath, diagnostics);
+    if (override.deadzone !== undefined && (!Number.isFinite(override.deadzone) || override.deadzone < 0 || override.deadzone > 1)) {
+      diagnostics.push({
+        code: "TN_IR_INPUT_OVERRIDE_DEADZONE_INVALID",
+        message: "Persisted binding override deadzone must be between 0 and 1.",
+        path: `${overridePath}/deadzone`,
+        suggestion: "Clamp deadzone to a normalized value between 0 and 1.",
+      });
+    }
+    if (override.scale !== undefined && !Number.isFinite(override.scale)) {
+      diagnostics.push({
+        code: "TN_IR_INPUT_OVERRIDE_SCALE_INVALID",
+        message: "Persisted binding override scale must be finite.",
+        path: `${overridePath}/scale`,
+        suggestion: "Use a finite numeric scale or omit scale.",
+      });
+    }
+  });
+}
+
+function overrideSortKey(override: IPersistedBindingOverrideIr): string {
+  return `${override.profileId}\0${override.actionOrAxisId}\0${override.axisSlot ?? ""}\0${override.device}\0${override.control}`;
+}
+
+function overrideToBinding(override: IPersistedBindingOverrideIr): InputBinding {
+  if (override.device === "keyboard") {
+    return { code: override.control, device: "keyboard" };
+  }
+  if (override.device === "pointer") {
+    if (override.control.startsWith("axis:")) {
+      return { axis: override.control.slice(5) as "deltaX" | "deltaY" | "x" | "y", device: "pointer" };
+    }
+    return { button: Number.parseInt(override.control.replace(/^button:/, ""), 10), device: "pointer" };
+  }
+  if (override.device === "touch") {
+    const [control, axis] = override.control.split(":");
+    return { axis: axis as "x" | "y" | undefined, control: control ?? "", device: "touch" };
+  }
+  return { control: override.control, device: "gamepad", required: false };
 }
 
 function validateBindings(bindings: InputBinding[], path: string, diagnostics: IIrDiagnostic[]): void {

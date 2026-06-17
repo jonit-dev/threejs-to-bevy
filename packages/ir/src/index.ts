@@ -52,8 +52,32 @@ export {
   type IGltfNodeOperationIr,
   type IGltfSceneHandlesIr,
 } from "./gltfSceneHandles.js";
-export type { IInputActionIr, IInputAxisIr, IInputIr, InputBinding } from "./input.js";
+export {
+  sortedPersistedBindingOverrides,
+  type ControlsSettingsAxisSlot,
+  type ControlsSettingsCaptureState,
+  type ControlsSettingsTargetKind,
+  type IControlsSettingsIr,
+  type IControlsSettingsRowIr,
+  type IInputActionIr,
+  type IInputAxisIr,
+  type IInputIr,
+  type IPersistedBindingOverrideIr,
+  type InputBinding,
+} from "./input.js";
+export {
+  validatePickingIr,
+  type IPickingDebugOverlayIr,
+  type IPickingDragTargetIr,
+  type IPickingIr,
+  type PickingAxisConstraint,
+  type PickingCancelPolicy,
+  type PickingDragPhase,
+  type PickingPointerEvents,
+  type PickingTargetKind,
+} from "./picking.js";
 export type { IRuntimeConfigIr } from "./runtimeConfig.js";
+export { auditUiAccessibility, type IUiAccessibilityDiagnostic, type IUiAccessibilityReport } from "./uiAccessibility.js";
 export {
   buildComponentReflectionRegistry,
   type IComponentReflectionField,

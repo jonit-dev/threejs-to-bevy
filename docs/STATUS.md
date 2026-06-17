@@ -492,8 +492,14 @@ IR validation accepts `kind: "image"` with a required bundle-relative `src`,
 bundle capabilities report `ui:image`, the web DOM overlay renders `<img>` with
 alt text from `label`, web/native conformance reports preserve `src`, and the
 Bevy UI adapter spawns `ImageBundle` with `AssetServer` loading when available.
-Texture atlases, 9-slice scaling, flipping, tiling, and richer image diagnostics
-remain future UI image work.
+V9-05 Phase 4 adds promoted image metadata for atlas rects, 9-slice insets,
+scale mode, horizontal/vertical flip, tile size, tint, and source pixel size.
+The IR validator reports stable diagnostics for invalid image metadata,
+incompatible 9-slice/tile modes, atlas bounds, and non-overlapping 9-slice
+constraints; the web DOM overlay exposes deterministic atlas/9-slice/tile/flip
+observations and CSS mapping where the browser can render them, while Bevy
+preserves the same metadata on `NativeUiImageMetadata` for native mapping.
+Renderer-native 9-slice and tiled image rendering remain future polish.
 
 Basic UI accessibility semantics are now promoted for common HUD/menu controls.
 UI nodes accept portable `role` and `accessibilityLabel` metadata, validation
@@ -502,8 +508,13 @@ controls, unnamed explicit progressbars, and malformed list/listitem structure,
 bundle capabilities report `ui:accessibility` with label/role granularity, the
 web DOM overlay maps metadata to ARIA roles and labels, web/native conformance
 reports preserve the fields, and the Bevy UI adapter inserts AccessKit
-`AccessibilityNode` components. Focus narration, disabled-state semantics, and
-target-specific accessibility audits remain future work.
+`AccessibilityNode` components. V9-05 Phase 5 adds a target-oriented retained UI
+accessibility audit with stable repair hints, plus web/native UI debug reports
+that expose node IDs, roles, accessible names, focus index, bounds, clipping,
+z-index, disabled state, action binding, image source, font/widget state, and
+gizmo observations. The `pnpm verify:v9:input-ui-accessibility` gate writes the
+combined evidence under `artifacts/v9/input-ui-accessibility/`. Focus narration
+and manually inspected target accessibility audits remain future work.
 
 V5-07 has landed the lighting, atmosphere, shadow, and color parity-evidence
 slice: shared fixtures now cover visible/hidden meshes plus ranged point and
@@ -948,11 +959,16 @@ scripts can now declare `picking.mesh` and query generated mesh renderer bounds
 through matching web and Bevy service logs. The picking surface now also includes
 `picking.pointerRay`, which turns normalized screen/pointer coordinates plus
 portable camera IR into web/native service-logged rays that can feed
-`picking.mesh`. Basic UI Tab/arrow keyboard navigation now works through the web
-DOM overlay and matching web/native fixed traces, and basic UI control picking
-now dispatches portable action events from web clicks and Bevy button/touch
-interactions. Touch gestures, drag-and-drop picking, rebinding, and richer
-navigation diagnostics remain future input work.
+`picking.mesh`. V9-05 Phase 2 adds a promoted drag-picking metadata/schema
+slice, deterministic drag phases (`dragStart`, `dragMove`, `dragEnter`,
+`dragLeave`, `drop`, `dragCancel`, and `dragEnd`), UI-over-mesh ordering with
+`pointerEvents: "pass-through"`, web/native recognizer tests, and structured
+picking overlay observations for rays, target bounds, capture owner, hovered
+target, drag path, event log, and observed pointer devices. Basic UI Tab/arrow
+keyboard navigation now works through the web DOM overlay and matching web/native
+fixed traces, and basic UI control picking now dispatches portable action events
+from web clicks and Bevy button/touch interactions. Touch platform event stream
+wiring and richer navigation diagnostics remain future input work.
 
 Gamepad diagnostics now include a lightweight viewer-style capability report in
 web and Bevy. The report lists gamepad controls declared by `input.ir.json`,
@@ -972,7 +988,11 @@ Input rebinding now has matching deterministic helpers in web and Bevy. The
 helpers clone an `input.ir.json` map, replace an action binding or axis slot, and
 return stable diagnostics for missing actions/axes, invalid binding indexes,
 duplicate bindings, and required gamepad bindings that should remain optional
-for portable projects. Interactive rebinding UI, persistence, and richer device
+for portable projects. V9-05 Phase 1 adds controls settings metadata for
+retained UI rebind rows, persisted logical binding override records with
+deterministic sorting and validation, web local storage helpers, and Bevy local
+JSON reload/apply before the first input snapshot. Full visual settings-screen
+UX polish, broader local settings APIs, and richer repair-oriented device
 overlays remain future work.
 
 The retained UI style surface now accepts portable `shadow` and linear
@@ -985,7 +1005,27 @@ Common rich-text styling has also moved one step forward: UI style now accepts
 portable `fontWeight` (`normal`/`bold`) and `textDecoration`
 (`none`/`underline`/`lineThrough`) metadata. The web DOM overlay renders these
 through CSS font weight and text decoration, while Bevy preserves the metadata
-for future native text rendering. Font assets and inline spans remain incomplete.
+for future native text rendering. V9-05 Phase 3 adds bundle-local `ui.fonts`
+declarations plus rich inline text spans with per-span color, font family, font
+size, weight, italic, decoration, and accessibility text overrides. Web maps
+spans to DOM children with CSS text styles; Bevy maps spans to native
+`TextSection`s and font handles when an `AssetServer` is available, and emits
+stable diagnostics for unsupported native text weight, italic, and decoration
+rendering instead of silently dropping those requests.
+
+V9-05 Phase 4 also promotes retained `Slider`, `Scrollbar`, and `ContextMenu`
+nodes through SDK/UI authoring types, IR validation, compiler capability tags,
+web DOM overlay widgets, and Bevy UI components. Slider and scrollbar inputs
+dispatch value-bearing portable UI action events through the existing action
+queue, context-menu items dispatch regular button actions, disabled items are
+suppressed, and unsupported virtual keyboard requests fail with a stable SDK
+diagnostic instead of being silently ignored.
+
+V9-05 Phase 5 adds retained UI debug reports and gate artifacts for promoted
+input/UI/accessibility parity. Web reports are generated from rendered UI trees,
+native reports preserve AccessKit-facing role/name/disabled/widget state from
+`ui.ir.json`, and the V9 gate now rejects missing accessibility repair hints,
+missing debug reports, and missing picking overlay evidence before release.
 
 The same functional-game parity pass also closes the P0 native material texture
 loading gap for promoted standard-material slots. Bevy runtime material mapping
