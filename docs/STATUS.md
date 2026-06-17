@@ -29,11 +29,15 @@ pnpm verify
 pnpm verify:conformance
 ```
 
-Aggregate parity evidence currently runs through the legacy alias
-`pnpm verify:v9`. Packaging, performance, and desktop distribution evidence
-still runs through the legacy alias `pnpm verify:v7`. Both commands remain
-supported compatibility aliases until `pnpm verify:release` replaces them in a
-later cleanup phase.
+Aggregate parity evidence runs through the canonical release gate:
+
+```bash
+pnpm verify:release
+```
+
+Packaging, performance, and desktop distribution evidence still runs through
+`pnpm verify:v7`. Legacy milestone aliases such as `verify:v9` forward to
+`verify:release` with a deprecation diagnostic.
 
 `verify:v7` runs docs gates, selected TypeScript tests, the maintained
 functional scene/template proof, rendered web evidence, shared conformance,

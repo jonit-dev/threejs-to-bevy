@@ -68,6 +68,22 @@
       "policy": "Keep under archive index; do not use as current workflow entry points."
     },
     {
+      "id": "verify-tools",
+      "pathPattern": "^tools/verify/",
+      "classification": "current-surface",
+      "owner": "cleanup-versioned-debt",
+      "rationale": "Typed verification tooling replaces milestone-numbered script orchestration.",
+      "policy": "Keep as canonical implementation for check:docs and verify:release."
+    },
+    {
+      "id": "fixture-catalog",
+      "pathPattern": "^packages/ir/fixtures/conformance/fixture-catalog\\.json$",
+      "classification": "current-surface",
+      "owner": "cleanup-versioned-debt",
+      "rationale": "Canonical capability fixture catalog with legacy id aliases.",
+      "policy": "Expand as conformance runners migrate off hard-coded milestone fixture paths."
+    },
+    {
       "id": "general-scripts",
       "pathPattern": "^scripts/",
       "classification": "compat-alias",

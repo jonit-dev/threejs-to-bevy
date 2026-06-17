@@ -70,6 +70,8 @@ canonical command targets, and the retained-reference allowlist enforced by
   not require from Three.js/Bevy screenshots.
 - [V1 PRDs](PRDs/v1/README.md): implementation tickets for the V1 end-to-end
   proof, sliced from the roadmap and aligned with the architecture docs.
+- [PRD Index](PRDs/README.md): current initiatives and historical milestone
+  archive index.
 - [V4 PRDs](PRDs/v4/README.md): implementation tickets for the native QuickJS
   scripting proof and primitive scripting demo.
 - [References](references.md): external Bevy, Three.js, and related AI-tooling
@@ -85,11 +87,12 @@ Current contributor checks:
 
 ```bash
 pnpm check:names
-pnpm verify
+pnpm check:docs
+pnpm verify:release
 pnpm verify:conformance
 ```
 
-Legacy milestone script names such as `verify:v7` and `verify:v9` remain as
+Legacy milestone script names such as `verify:v9` and `check:docs:v8` remain as
 compatibility aliases during the cleanup described in
 [PRDs/cleanup-versioned-debt.md](PRDs/cleanup-versioned-debt.md).
 

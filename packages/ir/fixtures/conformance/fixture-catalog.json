@@ -1,0 +1,86 @@
+{
+  "schema": "threenative.conformance.fixture-catalog",
+  "version": "0.1.0",
+  "legacyCatalogs": [
+    "packages/ir/fixtures/conformance/v7-fixture-catalog.json",
+    "packages/ir/fixtures/conformance/v9-fixture-catalog.json"
+  ],
+  "fixtures": [
+    {
+      "canonicalId": "animation-state",
+      "legacyAliases": ["v9-animation-state"],
+      "ownerDocs": "docs/PRDs/v9/V9-01-animation-particles-runtime-parity.md",
+      "aggregateGate": "verify:release",
+      "bundlePath": "packages/ir/fixtures/conformance/v9-animation-state/game.bundle",
+      "promotedCapabilities": [
+        "scripting:service.animation.play",
+        "scripting:service.animation.query",
+        "scripting:service.animation.stop"
+      ],
+      "reportArtifacts": [
+        "artifacts/conformance/v9-animation-state/state-diff.json",
+        "artifacts/v9/animation-state/state-diff.json"
+      ]
+    },
+    {
+      "canonicalId": "animation-blending",
+      "legacyAliases": ["v9-animation-blending"],
+      "ownerDocs": "docs/PRDs/v9/V9-01-animation-particles-runtime-parity.md",
+      "aggregateGate": "verify:release",
+      "bundlePath": "packages/ir/fixtures/conformance/v9-animation-blending/game.bundle",
+      "promotedCapabilities": [
+        "animation:blend.crossfade",
+        "scripting:service.animation.play",
+        "scripting:service.animation.query"
+      ],
+      "reportArtifacts": [
+        "artifacts/conformance/v9-animation-blending/blend-report.json",
+        "artifacts/v9/animation-blending/blend-report.json"
+      ]
+    },
+    {
+      "canonicalId": "physics-character",
+      "legacyAliases": ["v9-physics-character"],
+      "ownerDocs": "docs/PRDs/v9/V9-02-physics-character-runtime-parity.md",
+      "aggregateGate": "verify:release",
+      "bundlePath": "packages/ir/fixtures/conformance/v9-physics-character/game.bundle",
+      "promotedCapabilities": [
+        "character:push-policy",
+        "navigation:static-regions",
+        "physics:broad-sensors",
+        "physics:primitive-solver-v2"
+      ],
+      "reportArtifacts": [
+        "artifacts/conformance/v9-physics-character/verification-report.json"
+      ]
+    },
+    {
+      "canonicalId": "physics-character-solver",
+      "legacyAliases": ["v9-physics-character-solver"],
+      "ownerDocs": "docs/PRDs/v9/V9-02-physics-character-runtime-parity.md",
+      "aggregateGate": "verify:release",
+      "bundlePath": "packages/ir/fixtures/conformance/v9-physics-character-solver/game.bundle",
+      "promotedCapabilities": [
+        "physics:primitive-solver-v2",
+        "physics:rigid-body.dynamic"
+      ],
+      "reportArtifacts": []
+    },
+    {
+      "canonicalId": "rendering-lights",
+      "legacyAliases": ["v9-skybox-environment", "v9-rendering-lights"],
+      "ownerDocs": "docs/PRDs/v9/V9-04-rendering-lights-post-processing-parity.md",
+      "aggregateGate": "verify:release",
+      "bundlePath": "packages/ir/fixtures/conformance/v9-skybox-environment/game.bundle",
+      "promotedCapabilities": [
+        "environment:light-probes",
+        "environment:skybox",
+        "rendering:debug-gizmos",
+        "rendering:hlod-fades"
+      ],
+      "reportArtifacts": [
+        "artifacts/v9/rendering-lights/verification-report.json"
+      ]
+    }
+  ]
+}

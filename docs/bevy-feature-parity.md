@@ -4,7 +4,7 @@
 | --- | --- |
 | Contract | Three.js-style TypeScript game engine -> validated IR bundle -> web Three.js + native Bevy |
 | Native baseline | Bevy and `bevy_ecs` pinned to `=0.14.2` |
-| Evidence anchors | native test, visual scene, game-authoring ergonomics, V6 PRDs, verify:v6, V7 PRDs, verify:v7, V8 PRDs, examples/v7-functional, artifacts/v7, GitHub open-game usage scan |
+| Evidence anchors | native test, visual scene, game-authoring ergonomics, capability conformance fixtures, `pnpm verify:release`, `pnpm verify:conformance`, starter-functional template, release artifacts under `artifacts/release/` and `artifacts/conformance/`, historical milestone archive under `docs/PRDs/archive/` |
 
 ## Status
 
