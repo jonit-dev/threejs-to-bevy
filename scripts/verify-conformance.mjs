@@ -5,6 +5,7 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 import { summarize } from "./verify-v1.mjs";
+import { loadFixtureCatalog, loadDefaultFixtureCatalog, resolveFixtureBundlePath } from "./conformance-fixture-catalog.mjs";
 
 const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
@@ -13,6 +14,18 @@ export async function verifyConformance(options = {}) {
   const run = options.run ?? runCommand;
   const reportPath = options.reportPath ?? resolve(root, "artifacts/conformance/verification-report.json");
   const artifactDir = options.artifactDir ?? resolve(reportPath, "..");
+  let fixtureCatalog = options.fixtureCatalog;
+  if (!fixtureCatalog) {
+    try {
+      fixtureCatalog = await loadFixtureCatalog(root);
+    } catch (error) {
+      if (error?.code === "ENOENT" && root !== repoRoot) {
+        fixtureCatalog = await loadDefaultFixtureCatalog();
+      } else {
+        throw error;
+      }
+    }
+  }
   const basicSceneBundlePath = resolve(root, "packages/ir/fixtures/conformance/basic-scene/game.bundle");
   const primitiveMappingBundlePath = resolve(root, "packages/ir/fixtures/conformance/primitive-mapping/game.bundle");
   const v6PhysicsEventsBundlePath = resolve(root, "packages/ir/fixtures/conformance/v6-physics-events/game.bundle");
@@ -34,10 +47,10 @@ export async function verifyConformance(options = {}) {
   const v7ScriptingLifecycleBundlePath = resolve(root, "packages/ir/fixtures/conformance/v7-scripting-lifecycle/game.bundle");
   const v7PackagingTargetProfilesBundlePath = resolve(root, "packages/ir/fixtures/conformance/v7-packaging-target-profiles/game.bundle");
   const v7PerformanceBudgetsBundlePath = resolve(root, "packages/ir/fixtures/conformance/v7-performance-budgets/game.bundle");
-  const v9AnimationStateBundlePath = resolve(root, "packages/ir/fixtures/conformance/v9-animation-state/game.bundle");
-  const v9AnimationBlendingBundlePath = resolve(root, "packages/ir/fixtures/conformance/v9-animation-blending/game.bundle");
-  const v9PhysicsCharacterBundlePath = resolve(root, "packages/ir/fixtures/conformance/v9-physics-character/game.bundle");
-  const v9SkyboxEnvironmentBundlePath = resolve(root, "packages/ir/fixtures/conformance/v9-skybox-environment/game.bundle");
+  const v9AnimationStateBundlePath = resolveFixtureBundlePath(fixtureCatalog, "animation-state", root).bundlePath;
+  const v9AnimationBlendingBundlePath = resolveFixtureBundlePath(fixtureCatalog, "animation-blending", root).bundlePath;
+  const v9PhysicsCharacterBundlePath = resolveFixtureBundlePath(fixtureCatalog, "physics-character", root).bundlePath;
+  const v9SkyboxEnvironmentBundlePath = resolveFixtureBundlePath(fixtureCatalog, "rendering-lights", root).bundlePath;
   const v9SupportStressBundlePath = resolve(root, "packages/ir/fixtures/conformance/v9-support-stress/game.bundle");
   const nativeBasicSceneReportPath = options.nativeBasicSceneReportPath ?? resolve(artifactDir, "basic-scene/bevy.report.json");
   const nativePrimitiveMappingReportPath =

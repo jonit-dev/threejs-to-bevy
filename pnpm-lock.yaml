@@ -114,6 +114,12 @@ importers:
 
   packages/ui: {}
 
+  tools/verify:
+    devDependencies:
+      '@types/node':
+        specifier: ^20.19.25
+        version: 20.19.43
+
 packages:
 
   '@dimforge/rapier3d-compat@0.12.0':

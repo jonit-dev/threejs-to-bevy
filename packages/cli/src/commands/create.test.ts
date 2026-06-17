@@ -6,14 +6,15 @@ import test from "node:test";
 
 import { createProject } from "./create.js";
 
-test("should create v1 template files", async () => {
+test("should create starter template files", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-create-"));
   try {
     const result = await createProject(["my-game", "--json"], { cwd: root });
-    const payload = JSON.parse(result.stdout) as { code: string; path: string };
+    const payload = JSON.parse(result.stdout) as { code: string; path: string; template: string };
 
     assert.equal(result.exitCode, 0);
     assert.equal(payload.code, "TN_CREATE_OK");
+    assert.equal(payload.template, "starter");
 
     const files = await readdir(payload.path);
     assert.equal(files.includes(".gitignore"), true);
@@ -55,7 +56,7 @@ test("should create v2 arena template", async () => {
 
     assert.equal(result.exitCode, 0);
     assert.equal(payload.code, "TN_CREATE_OK");
-    assert.equal(payload.template, "v2-arena");
+    assert.equal(payload.template, "arena");
 
     const files = await readdir(join(payload.path, "src"));
     assert.equal(files.includes("game.tsx"), true);
@@ -73,7 +74,7 @@ test("should create v2 arena template", async () => {
     };
 
     assert.equal(config.entry, "src/game.tsx");
-    assert.equal(config.template, "v2-arena");
+    assert.equal(config.template, "arena");
     assert.equal(packageJson.scripts.build, "tn build");
     assert.equal(packageJson.scripts.verify, "tn verify --profile v2-arena");
     assert.match(packageJson.dependencies["@threenative/r3f"] ?? "", /^file:/);
@@ -91,7 +92,7 @@ test("should create v3 environment template", async () => {
 
     assert.equal(result.exitCode, 0);
     assert.equal(payload.code, "TN_CREATE_OK");
-    assert.equal(payload.template, "v3-environment");
+    assert.equal(payload.template, "environment");
 
     const files = await readdir(join(payload.path, "src"));
     assert.equal(files.includes("game.ts"), true);
@@ -110,7 +111,7 @@ test("should create v3 environment template", async () => {
 
     assert.equal(config.entry, "src/game.ts");
     assert.equal(config.outDir, "dist/forest.bundle");
-    assert.equal(config.template, "v3-environment");
+    assert.equal(config.template, "environment");
     assert.equal(packageJson.scripts.build, "tn build");
     assert.equal(packageJson.scripts["dev:web"], "tn dev --target web");
     assert.match(packageJson.dependencies["@threenative/sdk"] ?? "", /^file:/);
@@ -131,7 +132,7 @@ test("should create v4 scripting template", async () => {
 
     assert.equal(result.exitCode, 0);
     assert.equal(payload.code, "TN_CREATE_OK");
-    assert.equal(payload.template, "v4-scripting");
+    assert.equal(payload.template, "scripting");
 
     const files = await readdir(join(payload.path, "src"));
     assert.equal(files.includes("game.ts"), true);
@@ -152,7 +153,7 @@ test("should create v4 scripting template", async () => {
 
     assert.equal(config.entry, "src/game.ts");
     assert.equal(config.outDir, "dist/v4-scripting.bundle");
-    assert.equal(config.template, "v4-scripting");
+    assert.equal(config.template, "scripting");
     assert.equal(packageJson.scripts.build, "tn build");
     assert.equal(packageJson.scripts.verify, "tn verify --frames 3 --expect-motion --json");
     assert.equal(packageJson.scripts.test, "pnpm build && tsc -p tsconfig.test.json && node --test dist/tests/gameplay.test.js");
@@ -172,7 +173,7 @@ test("should create v5 game starter template", async () => {
 
     assert.equal(result.exitCode, 0);
     assert.equal(payload.code, "TN_CREATE_OK");
-    assert.equal(payload.template, "v5-game-starter");
+    assert.equal(payload.template, "game-starter");
 
     const files = await readdir(join(payload.path, "src"));
     assert.equal(files.includes("game.ts"), true);
@@ -192,7 +193,7 @@ test("should create v5 game starter template", async () => {
 
     assert.equal(config.entry, "src/game.ts");
     assert.equal(config.outDir, "dist/v5-game-starter.bundle");
-    assert.equal(config.template, "v5-game-starter");
+    assert.equal(config.template, "game-starter");
     assert.equal(packageJson.scripts.build, "tn build");
     assert.equal(packageJson.scripts.verify, "tn verify --frames 2 --json");
     assert.equal(packageJson.scripts.test, "pnpm build && tsc -p tsconfig.test.json && node --test dist/tests/gameplay.test.js");
@@ -206,7 +207,59 @@ test("should create v5 game starter template", async () => {
   }
 });
 
-test("should create v7 functional template", async () => {
+test("should create starter-functional template by canonical name", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-create-starter-functional-"));
+  try {
+    const result = await createProject(["functional", "--template", "starter-functional", "--json"], { cwd: root });
+    const payload = JSON.parse(result.stdout) as { code: string; path: string; template: string };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.template, "starter-functional");
+
+    const config = JSON.parse(await readFile(join(payload.path, "threenative.config.json"), "utf8")) as {
+      template: string;
+    };
+    assert.equal(config.template, "starter-functional");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should create legacy v7-functional template with deprecation diagnostic", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-create-v7-functional-"));
+  try {
+    const result = await createProject(["v7", "--template", "v7-functional", "--json"], { cwd: root });
+    const payload = JSON.parse(result.stdout) as { code: string; path: string; template: string; legacyAliasUsed?: boolean };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.template, "starter-functional");
+    assert.equal(payload.legacyAliasUsed, true);
+
+    const config = JSON.parse(await readFile(join(payload.path, "threenative.config.json"), "utf8")) as {
+      template: string;
+    };
+    assert.equal(config.template, "starter-functional");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject unknown template with canonical options", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-create-unknown-template-"));
+  try {
+    const result = await createProject(["game", "--template", "unknown-template", "--json"], { cwd: root });
+    const payload = JSON.parse(result.stdout) as { code: string; message: string };
+
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.code, "TN_CREATE_TEMPLATE_UNSUPPORTED");
+    assert.match(payload.message, /starter-functional/);
+    assert.match(payload.message, /legacy aliases/i);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should create legacy v7-functional template files", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-create-v7-functional-"));
   try {
     const result = await createProject(["v7", "--template", "v7-functional", "--json"], { cwd: root });
@@ -214,7 +267,7 @@ test("should create v7 functional template", async () => {
 
     assert.equal(result.exitCode, 0);
     assert.equal(payload.code, "TN_CREATE_OK");
-    assert.equal(payload.template, "v7-functional");
+    assert.equal(payload.template, "starter-functional");
 
     const files = await readdir(join(payload.path, "src"));
     assert.equal(files.includes("game.ts"), true);
@@ -231,12 +284,12 @@ test("should create v7 functional template", async () => {
     const source = await readFile(join(payload.path, "src/game.ts"), "utf8");
 
     assert.equal(config.entry, "src/game.ts");
-    assert.equal(config.outDir, "dist/v7-functional.bundle");
-    assert.equal(config.template, "v7-functional");
+    assert.equal(config.outDir, "dist/starter-functional.bundle");
+    assert.equal(config.template, "starter-functional");
     assert.equal(packageJson.scripts.build, "tn build");
     assert.equal(packageJson.scripts.validate, "tn validate");
     assert.equal(packageJson.scripts.verify, "tn verify --frames 2 --json");
-    assert.equal(packageJson.scripts["package:desktop"], "tn package --bundle dist/v7-functional.bundle --target desktop --out artifacts/package --json");
+    assert.equal(packageJson.scripts["package:desktop"], "tn package --bundle dist/starter-functional.bundle --target desktop --out artifacts/package --json");
     assert.match(packageJson.dependencies["@threenative/sdk"] ?? "", /^file:/);
     assert.match(packageJson.dependencies["@threenative/ui"] ?? "", /^file:/);
     assert.match(source, /ThreeNative V7 Functional/);

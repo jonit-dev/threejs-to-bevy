@@ -3,13 +3,20 @@ import { isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
+import {
+  formatTemplateUsage,
+  resolveTemplate,
+  resolveTemplateSourcePath,
+  templateDeprecationMessage,
+  templatesRootFromModule,
+} from "../templates/registry.js";
 
 interface ICreateOptions {
   cwd?: string;
 }
 
-const packagedTemplatesRoot = fileURLToPath(new URL("../templates/", import.meta.url));
-const sourceTemplatesRoot = fileURLToPath(new URL("../../../../templates/", import.meta.url));
+const moduleUrl = import.meta.url;
+const { packaged: packagedTemplatesRoot, source: sourceTemplatesRoot } = templatesRootFromModule(moduleUrl);
 const repoRoot = resolve(sourceTemplatesRoot, "..");
 const cliBin = resolve(repoRoot, "packages/cli/dist/index.js");
 const publishedPackageVersion = "0.1.0";
@@ -18,7 +25,7 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
   const normalizedArgv = argv[0] === "--" ? argv.slice(1) : argv;
   const json = normalizedArgv.includes("--json");
   const templateFlagIndex = normalizedArgv.indexOf("--template");
-  const template = templateFlagIndex === -1 ? "v1" : normalizedArgv[templateFlagIndex + 1];
+  const requestedTemplate = templateFlagIndex === -1 ? undefined : normalizedArgv[templateFlagIndex + 1];
   const destinationArg = normalizedArgv.find((arg, index) => {
     const previous = normalizedArgv[index - 1];
     return !arg.startsWith("-") && previous !== "--template";
@@ -28,23 +35,25 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
     return diagnosticResult(
       {
         code: "TN_CREATE_DESTINATION_REQUIRED",
-        message: "Usage: tn create <name> [--template v1|v2-arena|v3-environment|v4-scripting|v5-game-starter|v7-functional] [--json]",
+        message: `Usage: tn create <name> [${formatTemplateUsage()}] [--json]`,
       },
       { exitCode: 1, json, stderr: true },
     );
   }
 
-  if (!isSupportedTemplate(template)) {
+  const resolvedTemplate = resolveTemplate(requestedTemplate);
+  if (!resolvedTemplate) {
     return diagnosticResult(
       {
         code: "TN_CREATE_TEMPLATE_UNSUPPORTED",
-        message: `Template '${template ?? ""}' is not supported. Use '--template v1', '--template v2-arena', '--template v3-environment', '--template v4-scripting', '--template v5-game-starter', or '--template v7-functional'.`,
-        template,
+        message: `Template '${requestedTemplate ?? ""}' is not supported. Canonical options: ${formatTemplateUsage()}.`,
+        template: requestedTemplate,
       },
       { exitCode: 1, json, stderr: true },
     );
   }
 
+  const { definition, legacyAliasUsed } = resolvedTemplate;
   const cwd = options.cwd ?? process.env.INIT_CWD ?? process.cwd();
   const projectPath = isAbsolute(destinationArg) ? destinationArg : resolve(cwd, destinationArg);
 
@@ -69,9 +78,11 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
 
   const sourceCheckout = await isSourceCheckout();
   const templatesRoot = sourceCheckout ? sourceTemplatesRoot : packagedTemplatesRoot;
+  const templateSourcePath = resolveTemplateSourcePath(templatesRoot, definition);
 
   await mkdir(projectPath, { recursive: true });
-  await cp(resolve(templatesRoot, template), projectPath, { recursive: true, force: false, errorOnExist: true });
+  await cp(templateSourcePath, projectPath, { recursive: true, force: false });
+  await rewriteProjectTemplateMetadata(projectPath, definition.canonical);
 
   if (sourceCheckout) {
     await rewriteLocalWorkspaceDependencies(projectPath);
@@ -82,10 +93,12 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
 
   const payload = {
     code: "TN_CREATE_OK",
-    message: `Created ${template} project at '${projectPath}'.`,
+    legacyAliasUsed,
+    legacyTemplate: legacyAliasUsed ? requestedTemplate : undefined,
+    message: `Created ${definition.canonical} project at '${projectPath}'.`,
     nextCommands: ["pnpm install", "pnpm run validate", "pnpm run build", "pnpm run verify"],
     path: projectPath,
-    template,
+    template: definition.canonical,
   };
 
   if (json) {
@@ -95,23 +108,25 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
     };
   }
 
+  const deprecation = legacyAliasUsed && requestedTemplate
+    ? `${templateDeprecationMessage(requestedTemplate, definition.canonical)}\n`
+    : "";
+
   return {
     exitCode: 0,
-    stdout: `${payload.message}\nNext: cd ${projectPath} && pnpm install && pnpm run validate\n`,
+    stdout: `${deprecation}${payload.message}\nNext: cd ${projectPath} && pnpm install && pnpm run validate\n`,
   };
 }
 
-function isSupportedTemplate(
-  template: string | undefined,
-): template is "v1" | "v2-arena" | "v3-environment" | "v4-scripting" | "v5-game-starter" | "v7-functional" {
-  return (
-    template === "v1" ||
-    template === "v2-arena" ||
-    template === "v3-environment" ||
-    template === "v4-scripting" ||
-    template === "v5-game-starter" ||
-    template === "v7-functional"
-  );
+async function rewriteProjectTemplateMetadata(projectPath: string, canonicalTemplate: string): Promise<void> {
+  const configPath = resolve(projectPath, "threenative.config.json");
+  try {
+    const config = JSON.parse(await readFile(configPath, "utf8")) as { template?: string };
+    config.template = canonicalTemplate;
+    await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`, "utf8");
+  } catch {
+    // Some templates may not ship a config yet.
+  }
 }
 
 async function rewriteLocalWorkspaceDependencies(projectPath: string): Promise<void> {
@@ -189,6 +204,15 @@ function rewritePublishedDependency(
   };
 }
 
+async function writeLocalCliShim(projectPath: string): Promise<void> {
+  const binDir = resolve(projectPath, "node_modules/.bin");
+  const shimPath = resolve(binDir, "tn");
+
+  await mkdir(binDir, { recursive: true });
+  await writeFile(shimPath, `#!/usr/bin/env sh\nexec node ${JSON.stringify(cliBin)} "$@"\n`);
+  await chmod(shimPath, 0o755);
+}
+
 async function isSourceCheckout(): Promise<boolean> {
   try {
     await access(resolve(sourceTemplatesRoot, "v1", "package.json"));
@@ -199,11 +223,10 @@ async function isSourceCheckout(): Promise<boolean> {
   }
 }
 
-async function writeLocalCliShim(projectPath: string): Promise<void> {
-  const binDir = resolve(projectPath, "node_modules/.bin");
-  const shimPath = resolve(binDir, "tn");
-
-  await mkdir(binDir, { recursive: true });
-  await writeFile(shimPath, `#!/usr/bin/env sh\nexec node ${JSON.stringify(cliBin)} "$@"\n`);
-  await chmod(shimPath, 0o755);
-}
+export {
+  formatTemplateUsage,
+  listCanonicalTemplates,
+  listLegacyTemplateAliases,
+  resolveTemplate,
+  TEMPLATE_REGISTRY,
+} from "../templates/registry.js";

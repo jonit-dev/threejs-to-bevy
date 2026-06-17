@@ -2,6 +2,5 @@
   "schema": "threenative.project",
   "version": "0.1.0",
   "entry": "src/game.ts",
-  "outDir": "dist/v7-functional.bundle",
-  "template": "v7-functional"
+  "outDir": "dist/rendering-lights.bundle"
 }

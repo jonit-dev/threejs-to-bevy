@@ -153,16 +153,16 @@ sequenceDiagram
 - `docs/PRDs/v10/V10-01-scope-triage-and-release-gate.md` - scope contract.
 - `docs/bevy-feature-parity.md` - V10 planning notes and PRD ownership.
 - `docs/STATUS.md` - current status and V10 planning pointer.
-- `scripts/check-docs-v10.mjs` - future docs ownership guard.
+- `scripts/check-docs-v10.mjs` - docs ownership guard.
 
 **Implementation:**
 
-- [ ] Add V10 PRD index and scope contract.
-- [ ] Annotate the parity tracker with V10 ownership for current-batch residual
+- [x] Add V10 PRD index and scope contract.
+- [x] Annotate the parity tracker with V10 ownership for current-batch residual
   checklist categories without marking features implemented.
-- [ ] Add status language that V10 planning exists but the active release gate
-  remains V7/V9 as currently documented.
-- [ ] Add a docs guard that fails when an unchecked non-deferred item lacks a
+- [x] Add status language that V10 planning exists and V10-01 gate commands are
+  implemented without replacing the active V7 release command.
+- [x] Add a docs guard that fails when an unchecked non-deferred item lacks a
   V10 owner or an explicit deferred/non-portable policy.
 
 **Tests Required:**
@@ -198,14 +198,14 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Run focused gates from V10-02, V10-03, and V10-04 after they exist.
-- [ ] Write `artifacts/v10/verification-report.json` with command summaries,
+- [x] Run focused gates from V10-02, V10-03, and V10-04 after they exist.
+- [x] Write `artifacts/v10/verification-report.json` with command summaries,
   diagnostics, promoted/deferred feature lists, artifact paths, and durations.
-- [ ] Fail when a V10 PRD claims completion but the focused gate is missing from
+- [x] Fail when a V10 PRD claims completion but the focused gate is missing from
   the aggregate verifier.
-- [ ] Fail when a checklist item is checked without docs/status evidence and a
+- [x] Fail when a checklist item is checked without docs/status evidence and a
   conformance, runtime, or diagnostic proof appropriate to the feature.
-- [ ] Preserve V9 gates; V10 extends quality control rather than replacing V9.
+- [x] Preserve V9 gates; V10 extends quality control rather than replacing V9.
 
 **Tests Required:**
 
@@ -245,14 +245,14 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add rejected fixtures for direct Bevy authoring, raw Three.js source of
+- [x] Add rejected fixtures for direct Bevy authoring, raw Three.js source of
   truth, public renderer/runtime plugins, online services, networking,
   replication, arbitrary npm/filesystem/worker/timer/platform APIs, backend-only
   features, and 2D-only workflows while ThreeNative is scoped as 3D.
-- [ ] Ensure diagnostics include severity, code, bundle path or source path,
+- [x] Ensure diagnostics include severity, code, bundle path or source path,
   target profile when relevant, and a suggested portable alternative.
-- [ ] Wire rejected fixtures into `verify:v10` and `check:quality:v10`.
-- [ ] Document promotion criteria for features that are diagnostic-only rather
+- [x] Wire rejected fixtures into `verify:v10` and `check:quality:v10`.
+- [x] Document promotion criteria for features that are diagnostic-only rather
   than permanently non-portable.
 
 **Tests Required:**
@@ -282,11 +282,11 @@ sequenceDiagram
 
 ## Acceptance Criteria
 
-- [ ] All current-batch unchecked non-deferred checklist items have a V10 owner
+- [x] All current-batch unchecked non-deferred checklist items have a V10 owner
   PRD.
-- [ ] Deferred and non-portable features have stable diagnostics or documented
+- [x] Deferred and non-portable features have stable diagnostics or documented
   promotion criteria.
-- [ ] `pnpm verify:v10` exists and writes an aggregate report.
-- [ ] `pnpm check:quality:v10` prevents PRD/status/parity drift.
-- [ ] V10 completion claims update `docs/STATUS.md` and
+- [x] `pnpm verify:v10` exists and writes an aggregate report.
+- [x] `pnpm check:quality:v10` prevents PRD/status/parity drift.
+- [x] V10 completion claims update `docs/STATUS.md` and
   `docs/bevy-feature-parity.md` in the same change.

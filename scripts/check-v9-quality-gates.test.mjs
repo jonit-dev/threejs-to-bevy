@@ -47,7 +47,7 @@ test("should fail when a completed V9 PRD lacks sample or visual evidence", asyn
   const root = await mkdtemp(join(tmpdir(), "tn-check-v9-"));
   try {
     await writeMinimalV9Repo(root);
-    await rm(join(root, "examples/v9-physics-character/verification.manifest.json"), { force: true });
+    await rm(join(root, "examples/physics-character/verification.manifest.json"), { force: true });
     const result = await checkV9QualityGates({ repoRoot: root });
     assert.equal(result.ok, false);
     assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_DOCS_V9_SAMPLE_EVIDENCE_MISSING"));
@@ -88,7 +88,7 @@ export async function writeMinimalV9Repo(root, options = {}) {
   await writeFile(join(root, "docs/STATUS.md"), "# status\n\nUse `pnpm verify:v9`.\n");
   await writeFile(join(root, "docs/bevy-feature-parity.md"), "# parity\n\n`pnpm verify:v9`\n");
   await writeFile(join(root, "docs/developer-workflow.md"), "# workflow\n\nRun focused gate, then `pnpm verify:v9`, then `pnpm verify:all`.\n");
-  for (const example of ["v9-skeletal-animation", "v9-physics-character", "v9-assets-gltf-workflow", "v9-rendering-lights"]) {
+  for (const example of ["v9-skeletal-animation", "physics-character", "assets-gltf-scene-workflow", "rendering-lights"]) {
     await mkdir(join(root, "examples", example), { recursive: true });
     await writeFile(join(root, "examples", example, "package.json"), "{}\n");
     await writeFile(join(root, "examples", example, "verification.manifest.json"), "{}\n");

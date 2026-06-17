@@ -92,11 +92,11 @@ function defaultIndex() {
 }
 
 function defaultStatus() {
-  return "V8 PRDs local editor offline collaboration optional React ui.ir.json\n";
+  return "V8 PRDs local editor offline collaboration optional React ui.ir.json verify:v8:material-parity\n";
 }
 
 function defaultParity() {
-  return "V8 PRDs local editor offline collaboration optional React ui.ir.json\n";
+  return "V8 PRDs local editor offline collaboration optional React ui.ir.json verify:v8:material-parity\n";
 }
 
 function defaultRoadmap() {

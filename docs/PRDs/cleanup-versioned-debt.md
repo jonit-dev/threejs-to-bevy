@@ -7,6 +7,12 @@ Complexity: 9 -> HIGH mode
 **Problem:** The repo uses `v1` through `v9` as product architecture, script
 organization, docs structure, examples, fixtures, and release language, which
 makes the current supported surface hard to understand and expensive to change.
+The same cleanup boundary applies to active V10 work. `V10` may be used to split
+PRD planning documents and historical evidence, but not as the long-term shape
+for code, package scripts, examples, fixtures, report schemas, or maintained
+engine workflows. Those surfaces should use capability/release names, with
+versioned names retained only as temporary compatibility aliases or archived
+planning context.
 
 **Files Analyzed:**
 
@@ -68,11 +74,17 @@ archived, or explicitly left alone with a reason.
 | Artifact paths and reports | `artifacts/v9`, `artifacts/conformance/v7-*`, JSON `generatedBy` fields | New reports use canonical paths; old paths are readable compatibility inputs or archived generated output. |
 | CI and automation references | any workflow, README, or agent instruction invoking `verify:v*` | Update to canonical scripts; keep explicit compatibility tests for old commands. |
 | AGENTS and skill references | repo guidance mentioning V1/V2/V3/V4 milestones | Update only current workflow guidance; preserve historical context where it describes past milestones. |
+| Active V10 planning and gates | `docs/PRDs/v10`, `verify:v10`, `check:quality:v10`, focused `verify:v10:*` scripts | Keep `docs/PRDs/v10` as a planning partition if useful, but migrate active scripts, generated reports, fixtures, examples, and maintained engine surfaces to capability/release names. Any retained `verify:v10`-style command must be a documented temporary alias to a canonical command. |
 
 **Interpretation of Cleanup:**
 
 - Remove version-numbered nomenclature from current product surfaces and active
   workflows.
+- Treat active V10 planning as in scope for cleanup: V10 can name the PRD
+  planning batch, but it must not reintroduce milestone-only names as the
+  maintained engine API, package script, example, fixture, report, or release
+  surface. Focused V10 gates should become capability gates or temporary aliases
+  to capability gates.
 - Preserve historical PRDs and evidence through an explicit archive structure,
   redirects, or compatibility aliases.
 - Do not rename IR document `version` fields such as `"0.1.0"`; those are real
@@ -190,23 +202,23 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Create a generated inventory of all `v[0-9]` names in docs, scripts,
+- [x] Create a generated inventory of all `v[0-9]` names in docs, scripts,
   package scripts, templates, examples, fixtures, artifacts, CLI tests, Rust
   tests, schema IDs, diagnostic codes, generated manifests, package metadata,
   and README command references.
-- [ ] Classify each occurrence as `historical-archive`, `compat-alias`,
+- [x] Classify each occurrence as `historical-archive`, `compat-alias`,
   `current-surface`, `fixture-id`, `artifact-path`, `schema-version`,
   `diagnostic-code`, `generated-output`, `package-metadata`, or
   `external-compatibility`.
-- [ ] Define the target naming map, including examples:
+- [x] Define the target naming map, including examples:
   `verify:v9` -> `verify:release`, `check:docs:v9` -> `check:docs`,
   `v7-functional` -> `starter-functional`, `v9-physics-character` ->
   `physics-character`, `docs/PRDs/v9` -> `docs/PRDs/archive/milestones/v9`.
-- [ ] Add an allowlist file that forces every retained version reference to carry
+- [x] Add an allowlist file that forces every retained version reference to carry
   a classification, owner, rationale, and removal/migration policy.
-- [ ] Update current docs to point to the cleanup PRD and state that versioned
+- [x] Update current docs to point to the cleanup PRD and state that versioned
   names are legacy unless explicitly marked historical.
-- [ ] Add a test that fails if new current-surface `v[0-9]` names are introduced
+- [x] Add a test that fails if new current-surface `v[0-9]` names are introduced
   outside the allowlist.
 
 **Tests Required:**
@@ -237,20 +249,20 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add a TypeScript tools workspace or package using the repo's ESM
+- [x] Add a TypeScript tools workspace or package using the repo's ESM
   `NodeNext` settings.
-- [ ] Move common command execution, timeout, diagnostics, report writing, and
+- [x] Move common command execution, timeout, diagnostics, report writing, and
   summary logic out of `scripts/verify-v*.mjs` into `tools/verify/src/runner.ts`.
-- [ ] Implement `pnpm check:docs` as a capability-aware docs check that replaces
+- [x] Implement `pnpm check:docs` as a capability-aware docs check that replaces
   one-off `check:docs:v*` current usage.
-- [ ] Implement `pnpm verify:release` as the current aggregate release gate.
-- [ ] Rename active report schemas and `generatedBy` fields to canonical tool
+- [x] Implement `pnpm verify:release` as the current aggregate release gate.
+- [x] Rename active report schemas and `generatedBy` fields to canonical tool
   names while preserving legacy readers for existing reports.
-- [ ] Include a typed migration wrapper for package-level test runners so
+- [x] Include a typed migration wrapper for package-level test runners so
   `packages/sdk`, `packages/ir`, `packages/compiler`, `packages/cli`,
   `packages/r3f`, `packages/ui`, and `packages/runtime-web-three` do not keep
   duplicated `.mjs` runner logic.
-- [ ] Keep old package scripts as aliases that call the new typed entry points
+- [x] Keep old package scripts as aliases that call the new typed entry points
   and print a deprecation diagnostic.
 
 **Tests Required:**
@@ -282,16 +294,16 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Replace hard-coded template union checks with a registry containing
+- [x] Replace hard-coded template union checks with a registry containing
   canonical names, legacy aliases, source directory, deprecation message, and
   generated config template value.
-- [ ] Promote capability template names such as `starter`, `arena`,
+- [x] Promote capability template names such as `starter`, `arena`,
   `environment`, `scripting`, and `starter-functional`.
-- [ ] Keep legacy `v1`, `v2-arena`, `v3-environment`, `v4-scripting`,
+- [x] Keep legacy `v1`, `v2-arena`, `v3-environment`, `v4-scripting`,
   `v5-game-starter`, and `v7-functional` aliases for one deprecation window.
-- [ ] Rename current examples/templates whose folder name is only a milestone
+- [x] Rename current examples/templates whose folder name is only a milestone
   label and update references in tests and docs.
-- [ ] Update package names, README titles, `threenative.config.json` template
+- [x] Update package names, README titles, `threenative.config.json` template
   values, `outDir` paths, generated package scripts, and example-specific
   verification manifests in the same change as each folder rename.
 - [ ] Update code comments and visual helper constants that name old example
@@ -327,12 +339,12 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Create a canonical fixture catalog grouped by capability:
+- [x] Create a canonical fixture catalog grouped by capability:
   `physics-character`, `animation-state`, `animation-blending`,
   `rendering-lights`, `assets-gltf-scene-workflow`, `ui-navigation`, and so on.
-- [ ] Update conformance runners to resolve fixtures through the catalog rather
+- [x] Update conformance runners to resolve fixtures through the catalog rather
   than hard-coded versioned paths.
-- [ ] Keep legacy fixture paths or symlink-free aliases until all tests and docs
+- [x] Keep legacy fixture paths or symlink-free aliases until all tests and docs
   use the catalog.
 - [ ] Rename report labels and artifact metadata to capability names while
   preserving old artifact paths as read-compatible inputs where practical.
@@ -372,17 +384,17 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Create a PRD index that separates `Current initiatives`, `Capability PRDs`,
+- [x] Create a PRD index that separates `Current initiatives`, `Capability PRDs`,
   and `Historical milestone archive`.
-- [ ] Move or link historical `docs/PRDs/v1` through `docs/PRDs/v9` under
+- [x] Move or link historical `docs/PRDs/v1` through `docs/PRDs/v9` under
   `docs/PRDs/archive/milestones/` after updating relative links.
-- [ ] Rewrite `docs/STATUS.md` so the active gate is capability/release based
+- [x] Rewrite `docs/STATUS.md` so the active gate is capability/release based
   and no longer contradicts implemented V9 evidence.
-- [ ] Rewrite `docs/bevy-feature-parity.md` evidence anchors to canonical
+- [x] Rewrite `docs/bevy-feature-parity.md` evidence anchors to canonical
   capability gates and archive links.
 - [ ] Remove stale standalone `docs/verify-v*.md` pages or move them to the
   archive with replacement pages for current commands.
-- [ ] Update docs references in `docs/architecture.md`, `docs/developer-workflow.md`,
+- [x] Update docs references in `docs/architecture.md`, `docs/developer-workflow.md`,
   `docs/runtime-adapters.md`, `docs/feature-maturity.md`, `docs/diagnostics.md`,
   and any example/template READMEs found by the name inventory.
 - [ ] Update AGENTS guidance only where it describes current required workflow;
@@ -419,9 +431,9 @@ sequenceDiagram
 **Implementation:**
 
 - [ ] Remove old `check:docs:v*` scripts once `check:docs` covers current docs.
-- [ ] Either remove old `verify:v*` aliases or keep them as hidden compatibility
+- [x] Either remove old `verify:v*` aliases or keep them as hidden compatibility
   aliases that fail with a clear migration message, depending on release policy.
-- [ ] Ensure current package scripts, docs, examples, and tests do not require a
+- [x] Ensure current package scripts, docs, examples, and tests do not require a
   versioned name to run the maintained product.
 - [ ] Ensure current TypeScript module names, Rust test names, diagnostics,
   fixture IDs, package metadata, generated config values, README command
@@ -508,12 +520,12 @@ diagnostics, and identify canonical replacements.
 
 **Evidence Required:**
 
-- [ ] Name inventory report committed or generated by `pnpm check:names`.
-- [ ] Current docs gate passes.
+- [x] Name inventory report committed or generated by `pnpm check:names`.
+- [x] Current docs gate passes.
 - [ ] Release gate passes using canonical names.
-- [ ] Conformance gate passes with capability fixture catalog.
-- [ ] Legacy alias tests pass until aliases are intentionally removed.
-- [ ] `docs/STATUS.md` and `docs/bevy-feature-parity.md` are updated with the
+- [x] Conformance gate passes with capability fixture catalog.
+- [x] Legacy alias tests pass until aliases are intentionally removed.
+- [x] `docs/STATUS.md` and `docs/bevy-feature-parity.md` are updated with the
   final cleanup state.
 
 ## 7. Acceptance Criteria
@@ -538,6 +550,10 @@ diagnostics, and identify canonical replacements.
   policies, CLI output, package metadata, README command examples, TypeScript
   verification modules, and Rust/runtime test references follow the canonical
   naming policy or are covered by the retained-reference allowlist.
+- [ ] Active V10 docs and gates are covered by the same cleanup policy:
+  `docs/PRDs/v10` may remain as a PRD planning split, while package scripts,
+  code modules, examples, fixtures, reports, and promoted engine surfaces use
+  canonical capability/release names or documented temporary aliases.
 - [ ] `pnpm verify`, `pnpm verify:release`, `pnpm check:docs`, and
   `pnpm verify:conformance` pass.
 - [ ] Automated checkpoint reviews passed for every phase, with manual docs
