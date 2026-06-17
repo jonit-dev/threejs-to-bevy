@@ -534,6 +534,12 @@ function collectUiCapabilities(ui: IUiIr | undefined, add: (domain: string, capa
   if (ui.safeArea !== undefined) {
     add("ui", "safe-area");
   }
+  if ((ui.fonts ?? []).length > 0) {
+    add("ui", "font-assets");
+    for (const font of ui.fonts ?? []) {
+      add("ui", `font.${font.family}`);
+    }
+  }
   visitUiNode(ui.root, add);
 }
 
@@ -541,6 +547,9 @@ function visitUiNode(node: IUiIr["root"], add: (domain: string, capability: stri
   add("ui", `node.${node.kind}`);
   if (node.kind === "image") {
     add("ui", "image");
+  }
+  if ((node.spans ?? []).length > 0) {
+    add("ui", "rich-text");
   }
   if (node.binding !== undefined) {
     add("ui", `binding.${node.binding.kind}`);
@@ -605,6 +614,7 @@ function visitUiNode(node: IUiIr["root"], add: (domain: string, capability: stri
     }
     if (
       node.style.fontSize !== undefined
+      || node.style.fontFamily !== undefined
       || node.style.fontWeight !== undefined
       || node.style.textAlign !== undefined
       || node.style.textDecoration !== undefined
