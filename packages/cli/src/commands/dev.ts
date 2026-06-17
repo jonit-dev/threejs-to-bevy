@@ -1,6 +1,7 @@
 import { access } from "node:fs/promises";
 import { resolve } from "node:path";
 import { buildProject, loadProjectConfig, validateBundle } from "@threenative/compiler";
+import type { IAssetReloadReportIr, IGltfSceneMetadataIr } from "@threenative/ir";
 import { startWebPreview, type IWebPreviewServer } from "@threenative/runtime-web-three";
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
 import { startDevWatch, type IDevWatchSession } from "../dev/watch.js";
@@ -14,6 +15,13 @@ export interface IDevResult extends ICommandResult {
 
 export interface IDevCommandOptions {
   bevyRunner?: BevyRuntimeRunner;
+}
+
+export interface IDevAssetReloadChange {
+  afterGltfScene?: IGltfSceneMetadataIr;
+  assetId: string;
+  beforeGltfScene?: IGltfSceneMetadataIr;
+  path: string;
 }
 
 export async function devCommand(
@@ -98,6 +106,79 @@ export async function devCommand(
     const message = error instanceof Error ? error.message : String(error);
     return diagnosticResult({ code: "TN_DEV_FAILED", message }, { exitCode: 1, json, stderr: true });
   }
+}
+
+export function classifyDevAssetReload(change: IDevAssetReloadChange): IAssetReloadReportIr {
+  const extension = change.path.split(".").pop()?.toLowerCase() ?? "";
+  if (["png", "jpg", "jpeg"].includes(extension)) {
+    return {
+      changedAssets: [{ assetId: change.assetId, change: "changed", path: change.path }],
+      classification: "reloadable",
+      diagnostics: [],
+      impactedHandles: [],
+      schema: "threenative.asset-reload",
+      statePolicy: "preserve",
+      version: "0.1.0",
+    };
+  }
+  if (extension === "gltf" || extension === "glb") {
+    const removedHandles = removedGltfHandlePaths(change.assetId, change.beforeGltfScene, change.afterGltfScene);
+    if (removedHandles.length > 0) {
+      return {
+        changedAssets: [{ assetId: change.assetId, change: "changed", path: change.path }],
+        classification: "rebuildRequired",
+        diagnostics: [
+          {
+            code: "TN_DEV_ASSET_RELOAD_GLTF_TOPOLOGY_CHANGED",
+            message: `glTF asset '${change.assetId}' removed or renamed ${removedHandles.length} spawned handle node(s).`,
+            path: change.path,
+            severity: "error",
+            suggestion: "Rebuild the bundle so spawned glTF handle topology matches the authored metadata.",
+          },
+        ],
+        impactedHandles: removedHandles,
+        schema: "threenative.asset-reload",
+        statePolicy: "rebuild",
+        version: "0.1.0",
+      };
+    }
+    return {
+      changedAssets: [{ assetId: change.assetId, change: "changed", path: change.path }],
+      classification: "statePreservingReload",
+      diagnostics: [],
+      impactedHandles: [],
+      schema: "threenative.asset-reload",
+      statePolicy: "preserve",
+      version: "0.1.0",
+    };
+  }
+  return {
+    changedAssets: [{ assetId: change.assetId, change: "unsupportedExtension", path: change.path }],
+    classification: "unsupported",
+    diagnostics: [
+      {
+        code: "TN_DEV_ASSET_RELOAD_EXTENSION_UNSUPPORTED",
+        message: `Asset '${change.assetId}' uses unsupported reload extension '${extension}'.`,
+        path: change.path,
+        severity: "error",
+        suggestion: "Edit a declared texture or glTF asset, or rebuild the project.",
+      },
+    ],
+    impactedHandles: [],
+    schema: "threenative.asset-reload",
+    statePolicy: "restart",
+    version: "0.1.0",
+  };
+}
+
+function removedGltfHandlePaths(assetId: string, before: IGltfSceneMetadataIr | undefined, after: IGltfSceneMetadataIr | undefined): string[] {
+  const beforePaths = new Set(
+    before?.assets.find((asset) => asset.assetId === assetId)?.nodes
+      .filter((node) => node.spawnedHandleEligible)
+      .map((node) => node.path) ?? [],
+  );
+  const afterPaths = new Set(after?.assets.find((asset) => asset.assetId === assetId)?.nodes.map((node) => node.path) ?? []);
+  return [...beforePaths].filter((path) => !afterPaths.has(path)).sort((left, right) => left.localeCompare(right));
 }
 
 async function ensureProjectBundle(projectPath: string): Promise<string> {

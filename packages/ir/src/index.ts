@@ -18,6 +18,15 @@ export type {
 } from "./conformanceReport.js";
 export type { IRuntimeDiagnostic } from "./runtimeDiagnostics.js";
 export {
+  validateAssetReloadReport,
+  type AssetReloadChangeKind,
+  type AssetReloadClassification,
+  type AssetReloadSchema,
+  type AssetReloadStatePolicy,
+  type IAssetReloadChangeIr,
+  type IAssetReloadReportIr,
+} from "./assetReload.js";
+export {
   MAX_GLTF_EXTRAS_BYTES,
   MAX_GLTF_EXTRAS_DEPTH,
   validateGltfSceneMetadata,
