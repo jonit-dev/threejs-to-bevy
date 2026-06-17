@@ -17,6 +17,16 @@ export type {
   IConformanceUiReport,
 } from "./conformanceReport.js";
 export type { IRuntimeDiagnostic } from "./runtimeDiagnostics.js";
+export {
+  MAX_GLTF_EXTRAS_BYTES,
+  MAX_GLTF_EXTRAS_DEPTH,
+  validateGltfSceneMetadata,
+  type IGltfCustomAttributeIr,
+  type IGltfSceneAssetIr,
+  type IGltfSceneMetadataIr,
+  type IGltfSceneNodeIr,
+  type IGltfNodeTransformIr,
+} from "./gltfScene.js";
 export type { IInputActionIr, IInputAxisIr, IInputIr, InputBinding } from "./input.js";
 export type { IRuntimeConfigIr } from "./runtimeConfig.js";
 export {
@@ -41,6 +51,7 @@ export type {
 export type {
   IAssetIr,
   IAssetsManifest,
+  GltfSceneSchema,
   IAnimationsIr,
   IAtmosphereProfileIr,
   IAudioIr,

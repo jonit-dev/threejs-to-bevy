@@ -25,6 +25,7 @@ import { validatePerformanceProfile } from "./performanceProfile.js";
 import { validateEnvironmentSceneIr } from "./environment.js";
 import { validateOverlaysIr, type IOverlaysIr } from "./overlays.js";
 import { validateCameraViews } from "./camera.js";
+import { validateGltfSceneMetadata, type IGltfSceneMetadataIr } from "./gltfScene.js";
 
 export interface IIrDiagnostic {
   code: string;
@@ -85,6 +86,10 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
     manifest.entry.overlays === undefined
       ? undefined
       : await readJson<IOverlaysIr>(resolve(bundlePath, manifest.entry.overlays), diagnostics);
+  const gltfScene =
+    manifest.files.gltfScene === undefined
+      ? undefined
+      : await readJson<IGltfSceneMetadataIr>(resolve(bundlePath, manifest.files.gltfScene), diagnostics);
   const componentSchemas =
     manifest.files.componentSchemas === undefined
       ? undefined
@@ -131,6 +136,9 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
   }
   if (animations !== undefined) {
     validateAnimations(animations, world, manifest.entry.animations ?? "animations.ir.json", diagnostics);
+  }
+  if (gltfScene !== undefined) {
+    diagnostics.push(...validateGltfSceneMetadata(gltfScene, manifest.files.gltfScene ?? "gltf.scene.json"));
   }
   if (targetProfile !== undefined) {
     if (targetProfile.targets.length === 0) {
@@ -3569,7 +3577,7 @@ function validateManifest(manifest: unknown, path: string, diagnostics: IIrDiagn
     validateManifestPath(files.assets, `${path}/files/assets`, "assets.manifest.json", diagnostics);
     validateManifestPath(files.materials, `${path}/files/materials`, "materials.ir.json", diagnostics);
     validateManifestPath(files.targetProfile, `${path}/files/targetProfile`, "target.profile.json", diagnostics);
-    for (const key of ["animations", "componentSchemas", "eventSchemas", "input", "resourceSchemas", "runtimeConfig"] as const) {
+    for (const key of ["animations", "componentSchemas", "eventSchemas", "gltfScene", "input", "resourceSchemas", "runtimeConfig"] as const) {
       if (files[key] !== undefined) {
         validateManifestPath(files[key], `${path}/files/${key}`, undefined, diagnostics);
       }
@@ -3593,6 +3601,7 @@ function validateManifest(manifest: unknown, path: string, diagnostics: IIrDiagn
     (files.componentSchemas === undefined || typeof files.componentSchemas === "string") &&
     (files.animations === undefined || typeof files.animations === "string") &&
     (files.eventSchemas === undefined || typeof files.eventSchemas === "string") &&
+    (files.gltfScene === undefined || typeof files.gltfScene === "string") &&
     (files.input === undefined || typeof files.input === "string") &&
     (files.resourceSchemas === undefined || typeof files.resourceSchemas === "string") &&
     (files.runtimeConfig === undefined || typeof files.runtimeConfig === "string")

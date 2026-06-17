@@ -3,6 +3,7 @@ export type BundleSchema = "threenative.bundle";
 export type WorldSchema = "threenative.world";
 export type MaterialsSchema = "threenative.materials";
 export type AssetsSchema = "threenative.assets";
+export type GltfSceneSchema = "threenative.gltf-scene";
 export type AudioSchema = "threenative.audio";
 export type TargetProfileSchema = "threenative.target-profile";
 export type RuntimeConfigSchema = "threenative.runtime-config";
@@ -34,6 +35,7 @@ export interface IBundleManifest {
     componentSchemas?: "schemas/components.schema.json";
     eventSchemas?: "schemas/events.schema.json";
     input?: string;
+    gltfScene?: string;
     resourceSchemas?: "schemas/resources.schema.json";
     runtimeConfig?: "runtime.config.json";
     scripts?: "scripts.bundle.js";
