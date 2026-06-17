@@ -246,7 +246,7 @@ sequenceDiagram
 - [x] Implement `pnpm verify:release` as the current aggregate release gate.
 - [x] Rename active report schemas and `generatedBy` fields to canonical tool
   names while preserving legacy readers for existing reports.
-- [ ] Include a typed migration wrapper for package-level test runners so
+- [x] Include a typed migration wrapper for package-level test runners so
   `packages/sdk`, `packages/ir`, `packages/compiler`, `packages/cli`,
   `packages/r3f`, `packages/ui`, and `packages/runtime-web-three` do not keep
   duplicated `.mjs` runner logic.
@@ -289,7 +289,7 @@ sequenceDiagram
   `environment`, `scripting`, and `starter-functional`.
 - [x] Keep legacy `v1`, `v2-arena`, `v3-environment`, `v4-scripting`,
   `v5-game-starter`, and `v7-functional` aliases for one deprecation window.
-- [ ] Rename current examples/templates whose folder name is only a milestone
+- [x] Rename current examples/templates whose folder name is only a milestone
   label and update references in tests and docs.
 - [x] Update package names, README titles, `threenative.config.json` template
   values, `outDir` paths, generated package scripts, and example-specific
@@ -330,7 +330,7 @@ sequenceDiagram
 - [x] Create a canonical fixture catalog grouped by capability:
   `physics-character`, `animation-state`, `animation-blending`,
   `rendering-lights`, `assets-gltf-scene-workflow`, `ui-navigation`, and so on.
-- [ ] Update conformance runners to resolve fixtures through the catalog rather
+- [x] Update conformance runners to resolve fixtures through the catalog rather
   than hard-coded versioned paths.
 - [x] Keep legacy fixture paths or symlink-free aliases until all tests and docs
   use the catalog.
@@ -382,7 +382,7 @@ sequenceDiagram
   capability gates and archive links.
 - [ ] Remove stale standalone `docs/verify-v*.md` pages or move them to the
   archive with replacement pages for current commands.
-- [ ] Update docs references in `docs/architecture.md`, `docs/developer-workflow.md`,
+- [x] Update docs references in `docs/architecture.md`, `docs/developer-workflow.md`,
   `docs/runtime-adapters.md`, `docs/feature-maturity.md`, `docs/diagnostics.md`,
   and any example/template READMEs found by the name inventory.
 - [ ] Update AGENTS guidance only where it describes current required workflow;

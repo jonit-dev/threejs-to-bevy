@@ -944,7 +944,7 @@ or native profiler captures; richer frame capture and platform profilers remain
 later work.
 
 V7-10 has landed the first maintained functional V7 scene/template slice:
-`examples/v7-functional` and `templates/v7-functional` keep their placeholder
+`examples/v7-functional` and `templates/starter-functional` keep their placeholder
 model/audio assets local, build through the standard CLI, and combine the
 currently SDK-authored V7-facing gameplay surface: primitive 3D scene content,
 physics colliders, a character controller declaration, input, retained UI,

@@ -2,5 +2,5 @@
   "schema": "threenative.project",
   "version": "0.1.0",
   "entry": "src/game.ts",
-  "outDir": "dist/v9-physics-character.bundle"
+  "outDir": "dist/assets-gltf-scene-workflow.bundle"
 }

@@ -1,5 +1,5 @@
 {
-  "name": "v7-functional",
+  "name": "starter-functional",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -7,7 +7,7 @@
     "build": "tn build",
     "validate": "tn validate",
     "verify": "tn verify --frames 2 --json",
-    "package:desktop": "tn package --bundle dist/v7-functional.bundle --target desktop --out artifacts/package --json"
+    "package:desktop": "tn package --bundle dist/starter-functional.bundle --target desktop --out artifacts/package --json"
   },
   "dependencies": {
     "@threenative/sdk": "workspace:*",

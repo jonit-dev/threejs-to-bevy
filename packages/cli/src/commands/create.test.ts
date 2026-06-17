@@ -282,12 +282,12 @@ test("should create legacy v7-functional template files", async () => {
     const source = await readFile(join(payload.path, "src/game.ts"), "utf8");
 
     assert.equal(config.entry, "src/game.ts");
-    assert.equal(config.outDir, "dist/v7-functional.bundle");
+    assert.equal(config.outDir, "dist/starter-functional.bundle");
     assert.equal(config.template, "starter-functional");
     assert.equal(packageJson.scripts.build, "tn build");
     assert.equal(packageJson.scripts.validate, "tn validate");
     assert.equal(packageJson.scripts.verify, "tn verify --frames 2 --json");
-    assert.equal(packageJson.scripts["package:desktop"], "tn package --bundle dist/v7-functional.bundle --target desktop --out artifacts/package --json");
+    assert.equal(packageJson.scripts["package:desktop"], "tn package --bundle dist/starter-functional.bundle --target desktop --out artifacts/package --json");
     assert.match(packageJson.dependencies["@threenative/sdk"] ?? "", /^file:/);
     assert.match(packageJson.dependencies["@threenative/ui"] ?? "", /^file:/);
     assert.match(source, /ThreeNative V7 Functional/);

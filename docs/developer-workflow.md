@@ -287,7 +287,7 @@ support.
 ## Verification And Naming Conventions
 
 ThreeNative is migrating away from milestone-numbered command and folder names
-(`verify:v7`, `examples/v9-physics-character`, `templates/v7-functional`) toward
+(`verify:v7`, `examples/physics-character`, `templates/starter-functional`) toward
 capability-based names (`verify:release`, `physics-character`,
 `starter-functional`). The migration plan lives in
 [PRDs/cleanup-versioned-debt.md](PRDs/cleanup-versioned-debt.md).

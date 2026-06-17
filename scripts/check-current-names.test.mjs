@@ -14,7 +14,7 @@ test("should classify legacy version names when scanning repo surfaces", async (
   const root = await makeRepoRoot({
     "docs/PRDs/v9/README.md": "# V9 PRDs\n\nHistorical milestone batch.\n",
     "scripts/verify-v9.mjs": "export const gate = 'verify:v9';\n",
-    "examples/v9-physics-character/package.json": '{"name":"v9-physics-character"}\n',
+    "examples/v9-physics-character/package.json": '{"name":"physics-character"}\n',
   });
 
   try {

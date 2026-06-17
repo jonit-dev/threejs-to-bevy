@@ -16,9 +16,9 @@ export const V9_FOCUSED_SCRIPT_NAMES = [
 
 export const V9_SAMPLE_SCENES = [
   { domain: "animation", example: "examples/v9-skeletal-animation", prd: "V9-01" },
-  { domain: "physics-character", example: "examples/v9-physics-character", prd: "V9-02" },
-  { domain: "assets-gltf-workflow", example: "examples/v9-assets-gltf-workflow", prd: "V9-03" },
-  { domain: "rendering-lights", example: "examples/v9-rendering-lights", prd: "V9-04" },
+  { domain: "physics-character", example: "examples/physics-character", prd: "V9-02" },
+  { domain: "assets-gltf-workflow", example: "examples/assets-gltf-scene-workflow", prd: "V9-03" },
+  { domain: "rendering-lights", example: "examples/rendering-lights", prd: "V9-04" },
 ];
 
 export async function checkV9QualityGates(options = {}) {
