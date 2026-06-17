@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createWebAudioElementSink, createWebAudioRuntime, traceWebAudioLifecycle, type IWebAudioElement } from "./audio.js";
+import { createWebAudioElementSink, createWebAudioRuntime, traceWebAudioLifecycle, traceWebAudioSupport, type IWebAudioElement } from "./audio.js";
 
 test("audio should play one shot on damage event", () => {
   const runtime = createWebAudioRuntime({
@@ -47,6 +47,37 @@ test("audio should preserve bus and spatial emitter commands", () => {
     { asset: "arena.music", bus: "bus.sfx", id: "music.arena", kind: "loop" },
     { asset: "hit.sound", bus: "bus.sfx", emitter: "emitter.player", event: "DamageEvent", id: "sound.hit", kind: "oneShot" },
   ]);
+});
+
+test("should report attenuation and ducking observations when listener moves", () => {
+  const trace = traceWebAudioSupport(
+    {
+      schema: "threenative.audio",
+      version: "0.1.0",
+      buses: [
+        { id: "bus.master", gain: 1 },
+        { id: "bus.music", gain: 0.8, parent: "bus.master" },
+        { id: "bus.sfx", volume: 0.9 },
+      ],
+      duckingRules: [{ id: "duck.music", attack: 0.05, gain: 0.35, release: 0.2, sourceBus: "bus.sfx", targetBus: "bus.music" }],
+      emitters: [{ id: "emitter.alarm", attenuation: { curve: "linear", maxDistance: 10, minDistance: 1, rolloffFactor: 1 }, position: [0, 0, 0] }],
+      listeners: [{ id: "listener.main", binding: { kind: "activeCamera" }, position: [1, 0, 0] }],
+      music: [
+        { id: "music.intro", asset: "intro.music", autoplay: true, loop: true },
+        { id: "music.loop", asset: "loop.music", autoplay: false, loop: true },
+      ],
+      musicTransitions: [{ id: "transition.loop", duration: 2, from: "music.intro", kind: "crossfade", playbackId: "music.state.loop", state: "playing", to: "music.loop" }],
+      oneShots: [],
+      tones: [{ id: "tone.confirm", bus: "bus.sfx", duration: 0.25, frequency: 880, waveform: "sine" }],
+    },
+    { "listener.main": [[1, 0, 0], [10, 0, 0]] },
+  );
+
+  assert.deepEqual(trace.attenuation.map((item) => item.gain), [1, 0]);
+  assert.deepEqual(trace.ducking, [{ gain: 0.35, id: "duck.music", sourceBus: "bus.sfx", targetBus: "bus.music" }]);
+  assert.deepEqual(trace.listenerBindings, [{ id: "listener.main", kind: "activeCamera" }]);
+  assert.equal(trace.musicTransitions[0]?.playbackId, "music.state.loop");
+  assert.equal(trace.tones[0]?.waveform, "sine");
 });
 
 test("audio lifecycle trace should stop active loops deterministically", () => {

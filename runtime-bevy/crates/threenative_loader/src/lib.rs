@@ -1069,13 +1069,19 @@ pub struct AudioIr {
     #[serde(default)]
     pub controls: Vec<AudioControlIr>,
     #[serde(default)]
+    pub ducking_rules: Vec<AudioDuckingRuleIr>,
+    #[serde(default)]
     pub emitters: Vec<AudioEmitterIr>,
     #[serde(default)]
     pub listeners: Vec<AudioListenerIr>,
     #[serde(default)]
     pub music: Vec<AudioMusicIr>,
     #[serde(default)]
+    pub music_transitions: Vec<AudioMusicTransitionIr>,
+    #[serde(default)]
     pub one_shots: Vec<AudioOneShotIr>,
+    #[serde(default)]
+    pub tones: Vec<AudioToneIr>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -1088,21 +1094,42 @@ pub struct AudioControlIr {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct AudioBusIr {
+    pub gain: Option<f32>,
     pub id: String,
+    pub mute: Option<bool>,
+    pub parent: Option<String>,
+    pub solo: Option<bool>,
     pub volume: Option<f32>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct AudioListenerIr {
+    pub binding: Option<AudioListenerBindingIr>,
     pub id: String,
     pub position: [f32; 3],
 }
 
 #[derive(Clone, Debug, Deserialize)]
+pub struct AudioListenerBindingIr {
+    pub entity: Option<String>,
+    pub kind: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
 pub struct AudioEmitterIr {
+    pub attenuation: Option<AudioAttenuationIr>,
     pub id: String,
     pub position: [f32; 3],
     pub radius: Option<f32>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AudioAttenuationIr {
+    pub curve: String,
+    pub max_distance: f32,
+    pub min_distance: f32,
+    pub rolloff_factor: f32,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -1112,6 +1139,7 @@ pub struct AudioOneShotIr {
     pub bus: Option<String>,
     pub emitter: Option<String>,
     pub event: String,
+    pub pitch: Option<f32>,
     pub volume: Option<f32>,
 }
 
@@ -1123,7 +1151,42 @@ pub struct AudioMusicIr {
     pub bus: Option<String>,
     #[serde(rename = "loop")]
     pub looped: Option<bool>,
+    pub pitch: Option<f32>,
     pub volume: Option<f32>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AudioDuckingRuleIr {
+    pub attack: f32,
+    pub gain: f32,
+    pub id: String,
+    pub release: f32,
+    pub source_bus: String,
+    pub target_bus: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct AudioToneIr {
+    pub bus: Option<String>,
+    pub duration: f32,
+    pub frequency: Option<f32>,
+    pub id: String,
+    pub pitch: Option<f32>,
+    pub volume: Option<f32>,
+    pub waveform: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AudioMusicTransitionIr {
+    pub duration: Option<f32>,
+    pub from: Option<String>,
+    pub id: String,
+    pub kind: String,
+    pub playback_id: String,
+    pub state: String,
+    pub to: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]

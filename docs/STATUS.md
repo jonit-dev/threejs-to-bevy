@@ -1003,6 +1003,19 @@ active, paused, seek, stop, and query state deterministically. Platform-native
 audio handles, mixer effects, real spatial attenuation, streaming, and richer
 runtime audio services remain later work.
 
+V9-06 Phase 1 has landed a focused audio support slice. `audio.ir.json` now
+accepts bounded `linear` / `inverse` / `exponential` attenuation metadata,
+listener bindings to the active camera or an entity, routed bus gain/mute/solo
+and parent metadata, one portable ducking rule shape, pitch scalars, generated
+`sine` / `square` / `noise` tone descriptors, and state-driven music transition
+rules with deterministic playback ids. The SDK captures those declarations, the
+compiler emits stable audio JSON, web and Bevy expose matching deterministic
+support observations for listener movement attenuation, ducking, tones, and
+music transitions, and IR diagnostics now reject streaming/network audio,
+platform-native handles, decoder plugins, and unsupported effect chains with
+specific `TN_IR_AUDIO_*` codes. This is still deterministic observation support,
+not a claim of full live mixer/effects/audio-device parity.
+
 The retained UI P0 flex-layout gap is also closed for portable HUD/container
 composition. UI nodes now carry validated `layout` metadata for flex direction,
 alignment, justification, row/column gaps, padding, size, and grow; the web DOM

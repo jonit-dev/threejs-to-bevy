@@ -13,13 +13,23 @@ pub struct NativeAudioCommand {
     pub event: Option<String>,
     pub id: String,
     pub kind: NativeAudioCommandKind,
+    pub pitch: Option<f32>,
+    pub tone: Option<NativeAudioToneCommand>,
     pub volume: Option<f32>,
+}
+
+#[derive(Clone, Debug, PartialEq, serde::Serialize)]
+pub struct NativeAudioToneCommand {
+    pub duration: f32,
+    pub frequency: Option<f32>,
+    pub waveform: String,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum NativeAudioCommandKind {
     Loop,
     OneShot,
+    Tone,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -43,6 +53,60 @@ pub struct NativeAudioLifecycleTrace {
     pub commands: Vec<NativeAudioCommandReport>,
     pub lifecycle: Vec<NativeAudioLifecycleEvent>,
     pub paused_loops: Vec<String>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct NativeAudioSupportTrace {
+    pub attenuation: Vec<NativeAudioAttenuationObservation>,
+    pub ducking: Vec<NativeAudioDuckingObservation>,
+    pub listener_bindings: Vec<NativeAudioListenerBindingObservation>,
+    pub music_transitions: Vec<NativeAudioTransitionObservation>,
+    pub tones: Vec<NativeAudioToneObservation>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct NativeAudioAttenuationObservation {
+    pub emitter: String,
+    pub gain: f32,
+    pub listener: String,
+    pub listener_position: [f32; 3],
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct NativeAudioDuckingObservation {
+    pub gain: f32,
+    pub id: String,
+    pub source_bus: String,
+    pub target_bus: String,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct NativeAudioListenerBindingObservation {
+    pub entity: Option<String>,
+    pub id: String,
+    pub kind: String,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct NativeAudioTransitionObservation {
+    pub duration: Option<f32>,
+    pub from: Option<String>,
+    pub id: String,
+    pub kind: String,
+    pub playback_id: String,
+    pub state: String,
+    pub to: String,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct NativeAudioToneObservation {
+    pub bus: Option<String>,
+    pub duration: f32,
+    pub frequency: Option<f32>,
+    pub id: String,
+    pub pitch: Option<f32>,
+    pub volume: Option<f32>,
+    pub waveform: String,
 }
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize)]
@@ -83,6 +147,8 @@ pub fn start_audio(audio: &AudioIr) -> Vec<NativeAudioCommand> {
             event: None,
             id: music.id.clone(),
             kind: NativeAudioCommandKind::Loop,
+            pitch: music.pitch,
+            tone: None,
             volume: music.volume,
         })
         .collect()
@@ -103,10 +169,124 @@ pub fn handle_audio_events(audio: &AudioIr, events: &[&str]) -> Vec<NativeAudioC
                     event: Some((*event).to_owned()),
                     id: one_shot.id.clone(),
                     kind: NativeAudioCommandKind::OneShot,
+                    pitch: one_shot.pitch,
+                    tone: None,
                     volume: one_shot.volume,
                 })
         })
         .collect()
+}
+
+pub fn trace_audio_support(
+    audio: &AudioIr,
+    listener_positions: &[(&str, Vec<[f32; 3]>)],
+) -> NativeAudioSupportTrace {
+    let mut attenuation = Vec::new();
+    for listener in &audio.listeners {
+        let positions = listener_positions
+            .iter()
+            .find(|(id, _)| *id == listener.id)
+            .map(|(_, positions)| positions.as_slice())
+            .unwrap_or(std::slice::from_ref(&listener.position));
+        for position in positions {
+            for emitter in &audio.emitters {
+                attenuation.push(NativeAudioAttenuationObservation {
+                    emitter: emitter.id.clone(),
+                    gain: attenuation_gain(
+                        distance(*position, emitter.position),
+                        emitter
+                            .attenuation
+                            .as_ref()
+                            .map(|attenuation| {
+                                (
+                                    attenuation.curve.as_str(),
+                                    attenuation.min_distance,
+                                    attenuation.max_distance,
+                                    attenuation.rolloff_factor,
+                                )
+                            })
+                            .or_else(|| emitter.radius.map(|radius| ("linear", 1.0, radius, 1.0))),
+                    ),
+                    listener: listener.id.clone(),
+                    listener_position: *position,
+                });
+            }
+        }
+    }
+    NativeAudioSupportTrace {
+        attenuation,
+        ducking: audio
+            .ducking_rules
+            .iter()
+            .map(|rule| NativeAudioDuckingObservation {
+                gain: rule.gain,
+                id: rule.id.clone(),
+                source_bus: rule.source_bus.clone(),
+                target_bus: rule.target_bus.clone(),
+            })
+            .collect(),
+        listener_bindings: audio
+            .listeners
+            .iter()
+            .map(|listener| NativeAudioListenerBindingObservation {
+                entity: listener.binding.as_ref().and_then(|binding| binding.entity.clone()),
+                id: listener.id.clone(),
+                kind: listener
+                    .binding
+                    .as_ref()
+                    .map_or_else(|| "fixed".to_owned(), |binding| binding.kind.clone()),
+            })
+            .collect(),
+        music_transitions: audio
+            .music_transitions
+            .iter()
+            .map(|transition| NativeAudioTransitionObservation {
+                duration: transition.duration,
+                from: transition.from.clone(),
+                id: transition.id.clone(),
+                kind: transition.kind.clone(),
+                playback_id: transition.playback_id.clone(),
+                state: transition.state.clone(),
+                to: transition.to.clone(),
+            })
+            .collect(),
+        tones: audio
+            .tones
+            .iter()
+            .map(|tone| NativeAudioToneObservation {
+                bus: tone.bus.clone(),
+                duration: tone.duration,
+                frequency: tone.frequency,
+                id: tone.id.clone(),
+                pitch: tone.pitch,
+                volume: tone.volume,
+                waveform: tone.waveform.clone(),
+            })
+            .collect(),
+    }
+}
+
+fn distance(left: [f32; 3], right: [f32; 3]) -> f32 {
+    ((left[0] - right[0]).powi(2) + (left[1] - right[1]).powi(2) + (left[2] - right[2]).powi(2)).sqrt()
+}
+
+fn attenuation_gain(distance: f32, attenuation: Option<(&str, f32, f32, f32)>) -> f32 {
+    let Some((curve, min_distance, max_distance, rolloff_factor)) = attenuation else {
+        return 1.0;
+    };
+    if distance <= min_distance {
+        return 1.0;
+    }
+    if distance >= max_distance {
+        return 0.0;
+    }
+    let normalized = (distance - min_distance) / (max_distance - min_distance);
+    let value = match curve {
+        "exponential" => (distance / min_distance).powf(-rolloff_factor),
+        "inverse" => min_distance / (min_distance + rolloff_factor * (distance - min_distance)),
+        _ => 1.0 - normalized * rolloff_factor,
+    };
+    (value.clamp(0.0, 1.0) * 1_000_000.0).round() / 1_000_000.0
 }
 
 pub fn observe_audio(bundle: &LoadedBundle) -> Option<NativeAudioObservation> {
@@ -262,6 +442,7 @@ fn audio_command_report(command: &NativeAudioCommand) -> NativeAudioCommandRepor
         kind: match command.kind {
             NativeAudioCommandKind::Loop => "loop",
             NativeAudioCommandKind::OneShot => "oneShot",
+            NativeAudioCommandKind::Tone => "tone",
         }
         .to_owned(),
         volume: command.volume,

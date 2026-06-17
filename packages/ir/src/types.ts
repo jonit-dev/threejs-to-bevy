@@ -588,6 +588,7 @@ export interface IAudioOneShotIr {
   emitter?: string;
   event: string;
   id: string;
+  pitch?: number;
   volume?: number;
 }
 
@@ -597,23 +598,64 @@ export interface IAudioMusicIr {
   bus?: string;
   id: string;
   loop: boolean;
+  pitch?: number;
   volume?: number;
 }
 
 export interface IAudioBusIr {
+  gain?: number;
   id: string;
+  mute?: boolean;
+  parent?: string;
+  solo?: boolean;
   volume?: number;
 }
 
 export interface IAudioListenerIr {
+  binding?: { entity?: string; kind: "activeCamera" | "entity" };
   id: string;
   position: Vec3;
 }
 
 export interface IAudioEmitterIr {
+  attenuation?: {
+    curve: "exponential" | "inverse" | "linear";
+    maxDistance: number;
+    minDistance: number;
+    rolloffFactor: number;
+  };
   id: string;
   position: Vec3;
   radius?: number;
+}
+
+export interface IAudioDuckingRuleIr {
+  attack: number;
+  gain: number;
+  id: string;
+  release: number;
+  sourceBus: string;
+  targetBus: string;
+}
+
+export interface IAudioToneIr {
+  bus?: string;
+  duration: number;
+  frequency?: number;
+  id: string;
+  pitch?: number;
+  volume?: number;
+  waveform: "noise" | "sine" | "square";
+}
+
+export interface IAudioMusicTransitionIr {
+  duration?: number;
+  from?: string;
+  id: string;
+  kind: "crossfade" | "intro" | "loop" | "stinger";
+  playbackId: string;
+  state: string;
+  to: string;
 }
 
 export type AudioControlKind = "pause" | "query" | "resume" | "seek" | "stop";
@@ -628,9 +670,12 @@ export interface IAudioControlIr {
 export interface IAudioIr {
   buses?: IAudioBusIr[];
   controls?: IAudioControlIr[];
+  duckingRules?: IAudioDuckingRuleIr[];
   emitters?: IAudioEmitterIr[];
   listeners?: IAudioListenerIr[];
+  musicTransitions?: IAudioMusicTransitionIr[];
   schema: AudioSchema;
+  tones?: IAudioToneIr[];
   version: SchemaVersion;
   music: IAudioMusicIr[];
   oneShots: IAudioOneShotIr[];

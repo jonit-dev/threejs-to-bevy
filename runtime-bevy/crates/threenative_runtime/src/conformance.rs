@@ -8,7 +8,10 @@ use threenative_loader::{
     MaterialIr, MeshGenerationIr, RuntimeConfigIr, SkyboxIr, UiIr, WorldEntity,
 };
 
-use crate::audio::{self, NativeAudioCommand, NativeAudioCommandKind, NativeAudioDiagnostic};
+use crate::audio::{
+    self, NativeAudioCommand, NativeAudioCommandKind, NativeAudioDiagnostic,
+    NativeAudioToneCommand,
+};
 use crate::cameras::{active_camera_ids, camera_order};
 use crate::physics::detect_physics_events;
 use crate::render_targets::list_screenshot_exports;
@@ -165,6 +168,10 @@ pub struct ConformanceAudioCommandReport {
     pub event: Option<String>,
     pub id: String,
     pub kind: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pitch: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tone: Option<NativeAudioToneCommand>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub volume: Option<f32>,
 }
@@ -753,8 +760,11 @@ fn report_audio_command(command: &NativeAudioCommand) -> ConformanceAudioCommand
         kind: match &command.kind {
             NativeAudioCommandKind::Loop => "loop",
             NativeAudioCommandKind::OneShot => "oneShot",
+            NativeAudioCommandKind::Tone => "tone",
         }
         .to_owned(),
+        pitch: command.pitch,
+        tone: command.tone.clone(),
         volume: command.volume,
     }
 }

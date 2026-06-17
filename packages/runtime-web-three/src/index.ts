@@ -2,6 +2,7 @@ export { startWebPreview, type IWebPreviewServer } from "./devServer.js";
 export {
   createWebAudioElementSink,
   createWebAudioRuntime,
+  traceWebAudioSupport,
   traceWebAudioLifecycle,
   type IWebAudioCommand,
   type IWebAudioElement,
@@ -9,6 +10,7 @@ export {
   type IWebAudioLifecycleTrace,
   type IWebAudioRuntime,
   type IWebAudioSink,
+  type IWebAudioSupportTrace,
 } from "./audio.js";
 export { loadBundle, type IWebBundle } from "./loadBundle.js";
 export { applyEnvironmentBookmark, createEnvironmentRuntime, loadEnvironmentAssetInstances, observeEnvironmentScene, traceEnvironmentContent, type IEnvironmentObservation, type IEnvironmentRuntime } from "./environment.js";
