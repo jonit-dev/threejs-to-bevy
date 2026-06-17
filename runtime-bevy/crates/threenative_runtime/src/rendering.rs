@@ -3,12 +3,40 @@ use bevy::{
     prelude::*,
     render::alpha::AlphaMode,
 };
+use threenative_components::ThreeNativeId;
 use threenative_loader::{ColorIr, LoadedBundle};
 
 // Atmosphere sun is an additive environment light; keep it much lower than the
 // explicit world directional light so bundles that include both don't double the
 // direct lighting compared with the Three.js path.
 const THREE_COMPAT_ATMOSPHERE_SUN_ILLUMINANCE_PER_INTENSITY: f32 = 0.35;
+
+#[derive(Clone, Component, Debug, PartialEq)]
+pub struct NativeRenderedParticle {
+    pub asset: String,
+    pub emitter: String,
+    pub index: u32,
+    pub shape: String,
+}
+
+#[derive(Clone, Component, Debug, PartialEq)]
+pub struct NativeParticleMaterialPolicy {
+    pub base_color: String,
+    pub opacity: f32,
+    pub size: f32,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct RenderedParticleEmitterObservation {
+    pub asset: String,
+    pub base_color: String,
+    pub count: u32,
+    pub emitter: String,
+    pub max_particles: u32,
+    pub opacity: f32,
+    pub shape: String,
+    pub size: f32,
+}
 
 #[derive(Debug, PartialEq)]
 pub struct AtmosphereObservation {
@@ -141,6 +169,99 @@ pub fn apply_atmosphere_to_world(world: &mut World, bundle: &LoadedBundle) {
             ..Default::default()
         })
         .insert(Name::new(profile.sun.id.clone()));
+}
+
+pub fn observe_rendered_particles(bundle: &LoadedBundle, elapsed_seconds: f32) -> Vec<RenderedParticleEmitterObservation> {
+    let mut observations = bundle
+        .assets
+        .assets
+        .iter()
+        .filter(|asset| asset.kind == "model")
+        .flat_map(|asset| {
+            asset
+                .particle_emitters
+                .as_deref()
+                .unwrap_or(&[])
+                .iter()
+                .map(|emitter| RenderedParticleEmitterObservation {
+                    asset: asset.id.clone(),
+                    base_color: "#f6c36a".to_owned(),
+                    count: rendered_particle_count(emitter.max_particles, emitter.rate_per_second, elapsed_seconds),
+                    emitter: emitter.id.clone(),
+                    max_particles: emitter.max_particles,
+                    opacity: 0.82,
+                    shape: emitter.shape.clone(),
+                    size: 0.08,
+                })
+        })
+        .collect::<Vec<_>>();
+    observations.sort_by(|left, right| left.asset.cmp(&right.asset).then(left.emitter.cmp(&right.emitter)));
+    observations
+}
+
+pub fn spawn_rendered_particles(world: &mut World, bundle: &LoadedBundle, elapsed_seconds: f32) {
+    for observation in observe_rendered_particles(bundle, elapsed_seconds) {
+        for index in 0..observation.count {
+            world
+                .spawn((
+                    NativeRenderedParticle {
+                        asset: observation.asset.clone(),
+                        emitter: observation.emitter.clone(),
+                        index,
+                        shape: observation.shape.clone(),
+                    },
+                    NativeParticleMaterialPolicy {
+                        base_color: observation.base_color.clone(),
+                        opacity: observation.opacity,
+                        size: observation.size,
+                    },
+                    ThreeNativeId(format!(
+                        "particle.{}.{}.{}",
+                        observation.asset, observation.emitter, index
+                    )),
+                    Name::new(format!(
+                        "particle.{}.{}.{}",
+                        observation.asset, observation.emitter, index
+                    )),
+                    Transform::from_translation(particle_position(
+                        &observation.asset,
+                        &observation.emitter,
+                        index,
+                        &observation.shape,
+                        0.25,
+                    )),
+                ));
+        }
+    }
+}
+
+fn rendered_particle_count(max_particles: u32, rate_per_second: f32, elapsed_seconds: f32) -> u32 {
+    if !rate_per_second.is_finite() || !elapsed_seconds.is_finite() || rate_per_second <= 0.0 || elapsed_seconds <= 0.0 {
+        return 0;
+    }
+    max_particles.min((rate_per_second * elapsed_seconds).floor() as u32)
+}
+
+fn particle_position(asset: &str, emitter: &str, index: u32, shape: &str, radius: f32) -> Vec3 {
+    let seed = format!("{asset}:{emitter}");
+    let x = seeded_unit(&seed, index, 0) * 2.0 - 1.0;
+    let y = seeded_unit(&seed, index, 1);
+    let z = seeded_unit(&seed, index, 2) * 2.0 - 1.0;
+    if shape == "sphere" {
+        let direction = Vec3::new(x, y, z).normalize_or_zero();
+        return direction * radius;
+    }
+    Vec3::new(x * 0.05, y * 0.2, z * 0.05)
+}
+
+fn seeded_unit(seed: &str, index: u32, channel: u32) -> f32 {
+    let input = format!("{seed}:{index}:{channel}");
+    let mut hash = 2166136261u32;
+    for byte in input.as_bytes() {
+        hash ^= *byte as u32;
+        hash = hash.wrapping_mul(16777619);
+    }
+    hash as f32 / u32::MAX as f32
 }
 
 pub fn normalize_loaded_gltf_materials(mut materials: ResMut<Assets<StandardMaterial>>) {

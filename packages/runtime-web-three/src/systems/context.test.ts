@@ -130,12 +130,25 @@ test("should log pointer ray service call", () => {
 test("should log animation play service call", () => {
   const { context, services } = createSystemContext(makeWorld(), { delta: 0.016, fixedDelta: 0.016 });
 
-  context.animation.play("player", "run", { loop: true });
+  const result = context.animation.play("player", "run", { activeState: "run", durationSeconds: 2, loop: true, sourceClip: "Armature|Run", speed: 1.25 });
 
+  assert.deepEqual(result, {
+    accepted: true,
+    active: true,
+    activeState: "run",
+    clip: "run",
+    entity: "player",
+    loop: true,
+    normalizedTime: 0,
+    sourceClip: "Armature|Run",
+    speed: 1.25,
+    stopped: false,
+    timeSeconds: 0,
+  });
   assert.deepEqual(services[0], {
     payload: {
-      request: { clip: "run", entity: "player", options: { loop: true } },
-      result: { accepted: true },
+      request: { clip: "run", entity: "player", options: { activeState: "run", durationSeconds: 2, loop: true, sourceClip: "Armature|Run", speed: 1.25 } },
+      result,
     },
     service: "animation.play",
   });
@@ -148,29 +161,70 @@ test("should log animation query and stop service calls", () => {
   assert.ok(player);
   assert.deepEqual(context.animation.query(player, "run"), {
     active: false,
+    activeState: "run",
     clip: "run",
     entity: "player",
-    paused: false,
+    loop: false,
+    normalizedTime: 0,
+    sourceClip: "run",
+    speed: 0,
     stopped: true,
+    stopReason: "not-found",
     timeSeconds: 0,
   });
-  assert.deepEqual(context.animation.stop(player), { accepted: true, stopped: true });
+  assert.deepEqual(context.animation.stop(player), {
+    accepted: true,
+    active: false,
+    activeState: "",
+    clip: "",
+    entity: "player",
+    loop: false,
+    normalizedTime: 0,
+    sourceClip: "",
+    speed: 0,
+    stopped: true,
+    stopReason: "requested",
+    timeSeconds: 0,
+  });
   assert.deepEqual(services, [
     {
       payload: {
         request: { clip: "run", entity: "player" },
-        result: { active: false, clip: "run", entity: "player", paused: false, stopped: true, timeSeconds: 0 },
+        result: { active: false, activeState: "run", clip: "run", entity: "player", loop: false, normalizedTime: 0, sourceClip: "run", speed: 0, stopped: true, stopReason: "not-found", timeSeconds: 0 },
       },
       service: "animation.query",
     },
     {
       payload: {
         request: { entity: "player" },
-        result: { accepted: true, stopped: true },
+        result: { accepted: true, active: false, activeState: "", clip: "", entity: "player", loop: false, normalizedTime: 0, sourceClip: "", speed: 0, stopped: true, stopReason: "requested", timeSeconds: 0 },
       },
       service: "animation.stop",
     },
   ]);
+});
+
+test("should stop animation state when stop service is called", () => {
+  const { context } = createSystemContext(makeWorld(), { delta: 0.016, fixedDelta: 0.016 });
+
+  context.animation.play("player", "run", { durationSeconds: 2, loop: true, speed: 1.5 });
+  const stopped = context.animation.stop("player", "run");
+  const query = context.animation.query("player", "run");
+
+  assert.equal(stopped.accepted, true);
+  assert.deepEqual(query, {
+    active: false,
+    activeState: "run",
+    clip: "run",
+    entity: "player",
+    loop: true,
+    normalizedTime: 0,
+    sourceClip: "run",
+    speed: 1.5,
+    stopped: true,
+    stopReason: "requested",
+    timeSeconds: 0,
+  });
 });
 
 test("should expose character move service call", () => {

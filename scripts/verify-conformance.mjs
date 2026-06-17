@@ -33,6 +33,8 @@ export async function verifyConformance(options = {}) {
   const v7ScriptingLifecycleBundlePath = resolve(root, "packages/ir/fixtures/conformance/v7-scripting-lifecycle/game.bundle");
   const v7PackagingTargetProfilesBundlePath = resolve(root, "packages/ir/fixtures/conformance/v7-packaging-target-profiles/game.bundle");
   const v7PerformanceBudgetsBundlePath = resolve(root, "packages/ir/fixtures/conformance/v7-performance-budgets/game.bundle");
+  const v9AnimationStateBundlePath = resolve(root, "packages/ir/fixtures/conformance/v9-animation-state/game.bundle");
+  const v9AnimationBlendingBundlePath = resolve(root, "packages/ir/fixtures/conformance/v9-animation-blending/game.bundle");
   const nativeBasicSceneReportPath = options.nativeBasicSceneReportPath ?? resolve(artifactDir, "basic-scene/bevy.report.json");
   const nativePrimitiveMappingReportPath =
     options.nativePrimitiveMappingReportPath ?? resolve(artifactDir, "primitive-mapping/bevy.report.json");
@@ -96,6 +98,12 @@ export async function verifyConformance(options = {}) {
   const v7PerformanceNativeReportPath = options.v7PerformanceNativeReportPath ?? resolve(artifactDir, "v7-performance-budgets/bevy.report.json");
   const v7PerformanceComparisonReportPath =
     options.v7PerformanceComparisonReportPath ?? resolve(artifactDir, "v7-performance-budgets/comparison.report.json");
+  const v9AnimationStateDiffPath = options.v9AnimationStateDiffPath ?? resolve(artifactDir, "v9-animation-state/state-diff.json");
+  const v9AnimationStateNativeTracePath = options.v9AnimationStateNativeTracePath ?? resolve(artifactDir, "v9-animation-state/native-state.json");
+  const v9AnimationStateWebTracePath = options.v9AnimationStateWebTracePath ?? resolve(artifactDir, "v9-animation-state/web-state.json");
+  const v9AnimationBlendingReportPath = options.v9AnimationBlendingReportPath ?? resolve(artifactDir, "v9-animation-blending/blend-report.json");
+  const v9AnimationBlendingNativeTracePath = options.v9AnimationBlendingNativeTracePath ?? resolve(artifactDir, "v9-animation-blending/native-blend.json");
+  const v9AnimationBlendingWebTracePath = options.v9AnimationBlendingWebTracePath ?? resolve(artifactDir, "v9-animation-blending/web-blend.json");
   const artifacts = {
     nativeBasicSceneReportPath,
     nativePrimitiveMappingReportPath,
@@ -137,6 +145,12 @@ export async function verifyConformance(options = {}) {
     v7PerformanceWebReportPath,
     v7PerformanceNativeReportPath,
     v7PerformanceComparisonReportPath,
+    v9AnimationBlendingNativeTracePath,
+    v9AnimationBlendingReportPath,
+    v9AnimationBlendingWebTracePath,
+    v9AnimationStateDiffPath,
+    v9AnimationStateNativeTracePath,
+    v9AnimationStateWebTracePath,
   };
   const steps = [];
 
@@ -374,6 +388,26 @@ export async function verifyConformance(options = {}) {
         resolve(root, "scripts/verify-v7-performance-budgets.mjs"),
         v7PerformanceBudgetsBundlePath,
         resolve(artifactDir, "v7-performance-budgets"),
+      ],
+      { timeoutMs: 120000 },
+    ],
+    [
+      "V9 animation state runtime trace parity",
+      process.execPath,
+      [
+        resolve(root, "scripts/verify-v9-animation-state.mjs"),
+        v9AnimationStateBundlePath,
+        resolve(artifactDir, "v9-animation-state"),
+      ],
+      { timeoutMs: 120000 },
+    ],
+    [
+      "V9 animation blending runtime trace parity",
+      process.execPath,
+      [
+        resolve(root, "scripts/verify-v9-animation-blending.mjs"),
+        v9AnimationBlendingBundlePath,
+        resolve(artifactDir, "v9-animation-blending"),
       ],
       { timeoutMs: 120000 },
     ],

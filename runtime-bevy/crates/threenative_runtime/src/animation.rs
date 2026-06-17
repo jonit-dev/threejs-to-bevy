@@ -81,6 +81,163 @@ pub struct TransformAnimationSample {
     pub value: Vec<f32>,
 }
 
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AnimationRuntimeState {
+    pub active: bool,
+    pub active_state: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub blend: Option<AnimationRuntimeBlendState>,
+    pub clip: String,
+    pub entity: String,
+    pub loop_: bool,
+    pub normalized_time: f32,
+    pub source_clip: String,
+    pub speed: f32,
+    pub stopped: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stop_reason: Option<String>,
+    pub time_seconds: f32,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AnimationRuntimeBlendState {
+    pub complete: bool,
+    pub duration_seconds: f32,
+    pub elapsed_seconds: f32,
+    pub from_clip: String,
+    pub from_weight: f32,
+    pub to_clip: String,
+    pub to_weight: f32,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct AnimationRuntimePlayOptions {
+    pub active_state: Option<String>,
+    pub blend_elapsed_seconds: Option<f32>,
+    pub blend_seconds: Option<f32>,
+    pub duration_seconds: Option<f32>,
+    pub loop_: Option<bool>,
+    pub source_clip: Option<String>,
+    pub speed: Option<f32>,
+}
+
+#[derive(Clone, Debug)]
+struct AnimationRuntimeStateRecord {
+    active: bool,
+    active_state: String,
+    blend: Option<AnimationRuntimeBlendState>,
+    clip: String,
+    duration_seconds: f32,
+    entity: String,
+    loop_: bool,
+    source_clip: String,
+    speed: f32,
+    stopped: bool,
+    stop_reason: Option<String>,
+    time_seconds: f32,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct AnimationRuntimeController {
+    states: BTreeMap<String, AnimationRuntimeStateRecord>,
+}
+
+impl AnimationRuntimeController {
+    pub fn play(
+        &mut self,
+        entity: impl Into<String>,
+        clip: impl Into<String>,
+        options: AnimationRuntimePlayOptions,
+    ) -> AnimationRuntimeState {
+        let entity = entity.into();
+        let clip = clip.into();
+        let duration_seconds = positive_number(options.duration_seconds, 1.0);
+        let blend_seconds = positive_number(options.blend_seconds, 0.0);
+        let blend_elapsed_seconds = non_negative_number(options.blend_elapsed_seconds, 0.0);
+        let blend = self
+            .states
+            .get(&entity)
+            .filter(|previous| previous.active && previous.clip != clip && blend_seconds > 0.0)
+            .map(|previous| {
+                create_blend_state(&previous.clip, &clip, blend_seconds, blend_elapsed_seconds)
+            });
+        let state = AnimationRuntimeStateRecord {
+            active: true,
+            active_state: options.active_state.unwrap_or_else(|| clip.clone()),
+            blend,
+            clip: clip.clone(),
+            duration_seconds,
+            entity: entity.clone(),
+            loop_: options.loop_.unwrap_or(true),
+            source_clip: options.source_clip.unwrap_or_else(|| clip.clone()),
+            speed: positive_number(options.speed, 1.0),
+            stopped: false,
+            stop_reason: None,
+            time_seconds: 0.0,
+        };
+        self.states.insert(entity, state.clone());
+        serialize_runtime_state(&state)
+    }
+
+    pub fn query(&self, entity: &str, clip: Option<&str>) -> AnimationRuntimeState {
+        let Some(state) = self.states.get(entity) else {
+            return stopped_runtime_state(entity, clip, Some("not-found"));
+        };
+        if clip.is_some_and(|clip| state.clip != clip) {
+            return stopped_runtime_state(entity, clip, Some("not-found"));
+        }
+        serialize_runtime_state(state)
+    }
+
+    pub fn stop(&mut self, entity: &str, clip: Option<&str>) -> AnimationRuntimeState {
+        let Some(state) = self.states.get(entity) else {
+            let stopped = stopped_runtime_state(entity, clip, Some("requested"));
+            self.states.insert(
+                entity.to_owned(),
+                AnimationRuntimeStateRecord {
+                    active: stopped.active,
+                    active_state: stopped.active_state.clone(),
+                    blend: stopped.blend.clone(),
+                    clip: stopped.clip.clone(),
+                    duration_seconds: 1.0,
+                    entity: stopped.entity.clone(),
+                    loop_: stopped.loop_,
+                    source_clip: stopped.source_clip.clone(),
+                    speed: stopped.speed,
+                    stopped: stopped.stopped,
+                    stop_reason: stopped.stop_reason.clone(),
+                    time_seconds: stopped.time_seconds,
+                },
+            );
+            return stopped;
+        };
+        if clip.is_some_and(|clip| state.clip != clip) {
+            return stopped_runtime_state(entity, clip, Some("requested"));
+        }
+        let mut stopped = state.clone();
+        stopped.active = false;
+        stopped.blend = None;
+        stopped.stopped = true;
+        stopped.stop_reason = Some("requested".to_owned());
+        self.states.insert(entity.to_owned(), stopped.clone());
+        serialize_runtime_state(&stopped)
+    }
+
+    pub fn advance(&mut self, delta_seconds: f32) {
+        if !delta_seconds.is_finite() || delta_seconds <= 0.0 {
+            return;
+        }
+        for state in self.states.values_mut() {
+            if state.active {
+                state.blend = advance_blend(state.blend.as_ref(), delta_seconds);
+                state.time_seconds += delta_seconds * state.speed;
+            }
+        }
+    }
+}
+
 pub fn trace_animation_graphs(
     bundle: &LoadedBundle,
     input: &AnimationTraceInput,
@@ -187,6 +344,108 @@ fn sample_track(track: &TransformAnimationTrackIr, time_seconds: f32) -> Vec<f32
 
 fn round(value: f32) -> f32 {
     (value * 1_000_000.0).round() / 1_000_000.0
+}
+
+fn serialize_runtime_state(state: &AnimationRuntimeStateRecord) -> AnimationRuntimeState {
+    AnimationRuntimeState {
+        active: state.active,
+        active_state: state.active_state.clone(),
+        blend: state.blend.clone(),
+        clip: state.clip.clone(),
+        entity: state.entity.clone(),
+        loop_: state.loop_,
+        normalized_time: normalized_animation_time(
+            state.time_seconds,
+            state.duration_seconds,
+            state.loop_,
+        ),
+        source_clip: state.source_clip.clone(),
+        speed: round(state.speed),
+        stopped: state.stopped,
+        stop_reason: state.stop_reason.clone(),
+        time_seconds: round(state.time_seconds),
+    }
+}
+
+fn stopped_runtime_state(
+    entity: &str,
+    clip: Option<&str>,
+    stop_reason: Option<&str>,
+) -> AnimationRuntimeState {
+    let clip = clip.unwrap_or("").to_owned();
+    AnimationRuntimeState {
+        active: false,
+        active_state: clip.clone(),
+        blend: None,
+        clip: clip.clone(),
+        entity: entity.to_owned(),
+        loop_: false,
+        normalized_time: 0.0,
+        source_clip: clip,
+        speed: 0.0,
+        stopped: true,
+        stop_reason: stop_reason.map(str::to_owned),
+        time_seconds: 0.0,
+    }
+}
+
+fn create_blend_state(
+    from_clip: &str,
+    to_clip: &str,
+    duration_seconds: f32,
+    elapsed_seconds: f32,
+) -> AnimationRuntimeBlendState {
+    let elapsed = elapsed_seconds.max(0.0).min(duration_seconds);
+    let alpha = if duration_seconds <= 0.0 {
+        1.0
+    } else {
+        elapsed / duration_seconds
+    };
+    AnimationRuntimeBlendState {
+        complete: elapsed >= duration_seconds,
+        duration_seconds: round(duration_seconds),
+        elapsed_seconds: round(elapsed),
+        from_clip: from_clip.to_owned(),
+        from_weight: round(1.0 - alpha),
+        to_clip: to_clip.to_owned(),
+        to_weight: round(alpha),
+    }
+}
+
+fn advance_blend(
+    blend: Option<&AnimationRuntimeBlendState>,
+    delta_seconds: f32,
+) -> Option<AnimationRuntimeBlendState> {
+    blend.map(|blend| {
+        create_blend_state(
+            &blend.from_clip,
+            &blend.to_clip,
+            blend.duration_seconds,
+            blend.elapsed_seconds + delta_seconds,
+        )
+    })
+}
+
+fn normalized_animation_time(time_seconds: f32, duration_seconds: f32, loop_: bool) -> f32 {
+    if duration_seconds <= 0.0 {
+        return 0.0;
+    }
+    let normalized = time_seconds / duration_seconds;
+    if loop_ {
+        round(normalized % 1.0)
+    } else {
+        round(normalized.min(1.0))
+    }
+}
+
+fn positive_number(value: Option<f32>, fallback: f32) -> f32 {
+    value.filter(|value| value.is_finite() && *value > 0.0)
+        .unwrap_or(fallback)
+}
+
+fn non_negative_number(value: Option<f32>, fallback: f32) -> f32 {
+    value.filter(|value| value.is_finite() && *value >= 0.0)
+        .unwrap_or(fallback)
 }
 
 fn trace_asset_animation(

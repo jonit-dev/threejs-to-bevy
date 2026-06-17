@@ -38,6 +38,19 @@ audio/persistence/tooling support. The V9 verifier commands named in those PRDs
 are future implementation gates; the current active release command remains
 `pnpm verify:v7`.
 
+V9-01 animation and particles runtime parity is implemented with focused
+stateful animation, blending, and rendered particle evidence:
+`pnpm verify:v9:animation-state` compares web/native `animation.play/query/stop`
+runtime service traces under `artifacts/v9/animation-state/` using the
+`v9-animation-state` conformance fixture;
+`pnpm verify:v9:animation-blending` compares bounded crossfade blend weights and
+event ordering under `artifacts/v9/animation-blending/` using the
+`v9-animation-blending` fixture;
+`pnpm verify:v9:animation-particles` compares rendered bounded CPU particle
+emitter counts plus web/native SVG evidence under
+`artifacts/v9/animation-particles/`. Masks, morph targets, IK, retargeting, and
+UI/property animation remain explicitly unsupported with stable diagnostics.
+
 Focused V8 evidence exists for the optional React webview overlay slice:
 `pnpm verify:v8:overlay` builds `examples/v8-overlay-webview`, bundles a
 React/CSS inventory overlay with local item sprites, validates
@@ -975,9 +988,15 @@ Bevy dual-frame capture evidence under `artifacts/v9/skeletal-animation/`.
 V8 transform animation also has exact trace parity for authored entity
 position/rotation/scale tracks through `pnpm verify:v8:animation-transform`,
 plus declared `animation.query` / `animation.stop` command-shape/service-payload
-parity through `pnpm verify:v8:animation-controls`. Richer graph runtime
-control, stateful playback control semantics, broader blending, IK,
-retargeting, and rendered particles remain later animation work.
+parity through `pnpm verify:v8:animation-controls`. V9-01 promotes stateful
+`animation.play/query/stop` runtime state through
+`pnpm verify:v9:animation-state`, bounded crossfade state through
+`pnpm verify:v9:animation-blending`, and rendered bounded CPU particle
+emitters through `pnpm verify:v9:animation-particles`; evidence is written
+under `artifacts/v9/animation-state/`, `artifacts/v9/animation-blending/`,
+and `artifacts/v9/animation-particles/`. Animation masks/layers, morph-target
+animation, retargeting, IK, UI/property animation, arbitrary blend trees, and
+GPU/external-shader particle systems remain deferred with explicit diagnostics.
 
 ## V3 Proves
 

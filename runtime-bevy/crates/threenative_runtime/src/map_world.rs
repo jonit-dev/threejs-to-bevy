@@ -39,6 +39,7 @@ use crate::render_targets::{
     allocate_render_targets, camera_render_target, NativeCustomProjection,
     NativeRenderTargetRegistry,
 };
+use crate::rendering::spawn_rendered_particles;
 
 // ThreeNative lights are authored in Three.js-style scalar units. Bevy stores
 // physically named units and multiplies lighting by camera Exposure, so the
@@ -192,6 +193,7 @@ pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result
             world.entity_mut(*parent).push_children(&[*child]);
         }
     }
+    spawn_rendered_particles(world, bundle, 1.0);
 
     Ok(())
 }

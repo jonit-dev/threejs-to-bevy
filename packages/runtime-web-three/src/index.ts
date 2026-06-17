@@ -30,7 +30,7 @@ export { resolveWalkableMovement, type IWalkabilityResolution } from "./walkabil
 export { renderUi, type IRenderedUi, type IRenderedUiNode } from "./ui/renderUi.js";
 export { traceUiNavigation, type IUiNavigationTrace, type IUiNavigationTraceInput } from "./ui/navigation.js";
 export { createUiDomOverlay, type IUiDomOverlay } from "./ui/domOverlay.js";
-export { renderBundle, type IRenderResult } from "./render.js";
+export { createRenderedParticleObjects, renderBundle, type IRenderResult } from "./render.js";
 export {
   createSystemContext,
   componentHookObservations,
@@ -45,9 +45,11 @@ export { applySystemEffects, validateSystemEffects, type ISystemEffects } from "
 export { createSystemEffectLog, serializeSystemEffectLog, stableSystemEffectLog, type ISystemEffectLog, type ISystemEffectLogEntry } from "./systems/log.js";
 export { loadSystemModule, runSchedule, type ISystemModule, type ISystemRunResult, type SystemFunction } from "./systems/runner.js";
 export {
+  AnimationRuntimeController,
   advanceAnimationPlaybackState,
   sampleTransformAnimations,
   traceAnimationGraphs,
+  type IAnimationRuntimeState,
   type IAnimationPlaybackState,
   type IAnimationTraceInput,
   type IAnimationTraceObservation,
