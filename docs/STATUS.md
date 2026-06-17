@@ -122,6 +122,17 @@ deterministic position, velocity, material, and contact observations. Run
 full V8-09 rigid-body, character navigation, object pushing, or pathfinding
 acceptance.
 
+V9-02 Phase 1 has started at the contract layer for primitive solver parity:
+SDK, compiler emission, IR validation, and the conformance fixture
+`packages/ir/fixtures/conformance/v9-physics-character-solver/game.bundle`
+now carry the promoted `physics:primitive-solver-v2` declaration for bounded
+box/capsule/sphere rigid bodies. The contract preserves bounded mass,
+inverse-mass, linear and angular velocity, gravity scale, damping, friction,
+restitution, sleep threshold, and solver iteration policy, and rejects dynamic
+mesh solver bodies, constraints, backend solver fields, and nondeterministic
+settings before runtime. Web/native multi-body contact traces, sensors,
+character pushing, navigation, and backend strategy remain later V9-02 phases.
+
 V8-10 has a narrow asset/glTF inspection evidence slice: web and Bevy now emit a
 deterministic `threenative.asset-load-sync-trace` for bundle-local path assets
 and environment model scene references. The trace records sorted asset load

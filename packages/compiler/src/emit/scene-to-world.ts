@@ -324,9 +324,13 @@ function emitPhysics(physics: IPhysicsDeclaration | undefined, components: Recor
   if (physics?.body !== undefined) {
     components.RigidBody = {
       kind: physics.body.kind,
+      ...(physics.body.angularVelocity === undefined ? {} : { angularVelocity: physics.body.angularVelocity }),
       ...(physics.body.damping === undefined ? {} : { damping: physics.body.damping }),
       ...(physics.body.gravityScale === undefined ? {} : { gravityScale: physics.body.gravityScale }),
+      ...(physics.body.inverseMass === undefined ? {} : { inverseMass: physics.body.inverseMass }),
       ...(physics.body.mass === undefined ? {} : { mass: physics.body.mass }),
+      ...(physics.body.sleepThreshold === undefined ? {} : { sleepThreshold: physics.body.sleepThreshold }),
+      ...(physics.body.solverIterations === undefined ? {} : { solverIterations: physics.body.solverIterations }),
       ...(physics.body.velocity === undefined ? {} : { velocity: physics.body.velocity }),
     };
   }

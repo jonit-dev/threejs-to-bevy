@@ -551,6 +551,17 @@ Rules:
 - V7 query permissions add `physics.overlap` and `physics.shapeCast` for
   backend-neutral overlap and swept-shape checks. Query filters use portable
   layer names and masks, not backend bitsets or handles.
+- V9 primitive solver declarations are backend-neutral metadata on `RigidBody`
+  and `Collider`, scoped to box, sphere, and capsule bodies. Dynamic,
+  kinematic, and static primitive bodies may carry bounded mass, inverse mass,
+  linear velocity, angular velocity, gravity scale, damping, friction,
+  restitution, sleep threshold, and solver iteration policy. Static and
+  kinematic inverse mass is `0`; dynamic inverse mass must be positive and must
+  match `1 / mass` when both are authored.
+- Dynamic mesh and cylinder solver bodies, joints, constraints, backend solver
+  handles, random seeds, and nondeterministic solver settings are rejected
+  before runtime. Mesh colliders remain static-only until a later promoted
+  contract proves matching web/native behavior.
 - Character movement uses the `character.move` service permission and returns a
   fixed-trace observation for one declared character controller. Scripts pass an
   entity id or entity view plus optional axis values and fixed delta; runtimes

@@ -1,0 +1,78 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "floor",
+      "components": {
+        "Collider": {
+          "friction": 0.8,
+          "kind": "box",
+          "restitution": 0,
+          "size": [8, 0.5, 8]
+        },
+        "RigidBody": {
+          "inverseMass": 0,
+          "kind": "static"
+        },
+        "Transform": {
+          "position": [0, 0, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "falling-box",
+      "components": {
+        "Collider": {
+          "friction": 0.6,
+          "kind": "box",
+          "restitution": 0.25,
+          "size": [1, 1, 1]
+        },
+        "RigidBody": {
+          "angularVelocity": [0, 0.5, 0],
+          "damping": 0.05,
+          "gravityScale": 1,
+          "inverseMass": 0.5,
+          "kind": "dynamic",
+          "mass": 2,
+          "sleepThreshold": 0.01,
+          "solverIterations": 12,
+          "velocity": [0, -1, 0]
+        },
+        "Transform": {
+          "position": [0, 3, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "kinematic-capsule",
+      "components": {
+        "Collider": {
+          "kind": "capsule",
+          "height": 2,
+          "radius": 0.4
+        },
+        "RigidBody": {
+          "angularVelocity": [0, 0, 0],
+          "inverseMass": 0,
+          "kind": "kinematic",
+          "solverIterations": 4,
+          "velocity": [1, 0, 0]
+        },
+        "Transform": {
+          "position": [2, 1, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    }
+  ],
+  "events": {},
+  "resources": {},
+  "prefabs": []
+}

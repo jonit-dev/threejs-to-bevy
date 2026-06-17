@@ -224,10 +224,14 @@ export interface IVisibilityComponent {
 }
 
 export interface IRigidBodyComponent {
+  angularVelocity?: Vec3;
   damping?: number;
   gravityScale?: number;
+  inverseMass?: number;
   kind: "dynamic" | "kinematic" | "static";
   mass?: number;
+  sleepThreshold?: number;
+  solverIterations?: number;
   velocity?: Vec3;
 }
 

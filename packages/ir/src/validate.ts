@@ -3447,6 +3447,14 @@ function validateRenderComponents(entity: IWorldIr["entities"][number], path: st
   }
 }
 
+const V9_MAX_PHYSICS_DAMPING = 1000;
+const V9_MAX_PHYSICS_GRAVITY_SCALE = 100;
+const V9_MAX_PHYSICS_MASS = 1_000_000;
+const V9_MAX_PHYSICS_SLEEP_THRESHOLD = 100;
+const V9_MAX_PHYSICS_SOLVER_ITERATIONS = 64;
+const V9_MAX_PHYSICS_SPEED = 10_000;
+const V9_MAX_PHYSICS_FRICTION = 10;
+
 function validatePhysicsComponents(entity: IWorldIr["entities"][number], path: string, diagnostics: IIrDiagnostic[]): void {
   const collider = entity.components.Collider as unknown;
   const body = entity.components.RigidBody as unknown;
@@ -3497,7 +3505,7 @@ function validatePhysicsComponents(entity: IWorldIr["entities"][number], path: s
       });
     }
     if (colliderRecord.friction !== undefined) {
-      validateFiniteMinimum(colliderRecord.friction, 0, `${path}/components/Collider/friction`, "TN_IR_PHYSICS_COLLIDER_FRICTION_INVALID", diagnostics);
+      validateFiniteRange(colliderRecord.friction, 0, V9_MAX_PHYSICS_FRICTION, `${path}/components/Collider/friction`, "TN_IR_PHYSICS_COLLIDER_FRICTION_INVALID", diagnostics);
     }
     if (colliderRecord.restitution !== undefined) {
       validateFiniteRange(colliderRecord.restitution, 0, 1, `${path}/components/Collider/restitution`, "TN_IR_PHYSICS_COLLIDER_RESTITUTION_INVALID", diagnostics);
@@ -3543,17 +3551,32 @@ function validatePhysicsComponents(entity: IWorldIr["entities"][number], path: s
       suggestion: "Use portable body and query metadata instead of Rapier, Bevy, or native physics handles.",
     });
   }
+  if (bodyRecord !== undefined) {
+    validateUnsupportedPhysicsSolverFields(bodyRecord, `${path}/components/RigidBody`, diagnostics);
+  }
   if (bodyRecord?.mass !== undefined) {
-    validatePositiveFinite(bodyRecord.mass, `${path}/components/RigidBody/mass`, "TN_IR_PHYSICS_BODY_MASS_INVALID", diagnostics);
+    validateFiniteRange(bodyRecord.mass, Number.MIN_VALUE, V9_MAX_PHYSICS_MASS, `${path}/components/RigidBody/mass`, "TN_IR_PHYSICS_BODY_MASS_INVALID", diagnostics);
   }
   if (bodyRecord?.damping !== undefined) {
-    validateFiniteMinimum(bodyRecord.damping, 0, `${path}/components/RigidBody/damping`, "TN_IR_PHYSICS_BODY_DAMPING_INVALID", diagnostics);
+    validateFiniteRange(bodyRecord.damping, 0, V9_MAX_PHYSICS_DAMPING, `${path}/components/RigidBody/damping`, "TN_IR_PHYSICS_BODY_DAMPING_INVALID", diagnostics);
   }
   if (bodyRecord?.gravityScale !== undefined) {
-    validateFiniteNumber(bodyRecord.gravityScale, `${path}/components/RigidBody/gravityScale`, "TN_IR_PHYSICS_BODY_GRAVITY_SCALE_INVALID", diagnostics);
+    validateFiniteRange(bodyRecord.gravityScale, -V9_MAX_PHYSICS_GRAVITY_SCALE, V9_MAX_PHYSICS_GRAVITY_SCALE, `${path}/components/RigidBody/gravityScale`, "TN_IR_PHYSICS_BODY_GRAVITY_SCALE_INVALID", diagnostics);
   }
   if (bodyRecord?.velocity !== undefined) {
-    validateFiniteVec3(bodyRecord.velocity, `${path}/components/RigidBody/velocity`, "TN_IR_PHYSICS_BODY_VELOCITY_INVALID", diagnostics);
+    validateFiniteVec3Range(bodyRecord.velocity, -V9_MAX_PHYSICS_SPEED, V9_MAX_PHYSICS_SPEED, `${path}/components/RigidBody/velocity`, "TN_IR_PHYSICS_BODY_VELOCITY_INVALID", diagnostics);
+  }
+  if (bodyRecord?.angularVelocity !== undefined) {
+    validateFiniteVec3Range(bodyRecord.angularVelocity, -V9_MAX_PHYSICS_SPEED, V9_MAX_PHYSICS_SPEED, `${path}/components/RigidBody/angularVelocity`, "TN_IR_PHYSICS_BODY_ANGULAR_VELOCITY_INVALID", diagnostics);
+  }
+  if (bodyRecord?.sleepThreshold !== undefined) {
+    validateFiniteRange(bodyRecord.sleepThreshold, 0, V9_MAX_PHYSICS_SLEEP_THRESHOLD, `${path}/components/RigidBody/sleepThreshold`, "TN_IR_PHYSICS_BODY_SLEEP_THRESHOLD_INVALID", diagnostics);
+  }
+  if (bodyRecord?.solverIterations !== undefined) {
+    validateIntegerRange(bodyRecord.solverIterations, 1, V9_MAX_PHYSICS_SOLVER_ITERATIONS, `${path}/components/RigidBody/solverIterations`, "TN_IR_PHYSICS_BODY_SOLVER_ITERATIONS_INVALID", diagnostics);
+  }
+  if (bodyRecord?.inverseMass !== undefined) {
+    validateInverseMass(bodyRecord, `${path}/components/RigidBody`, diagnostics);
   }
   if (colliderRecord?.kind === "mesh" && bodyRecord?.kind !== undefined && bodyRecord.kind !== "static") {
     diagnostics.push({
@@ -3568,6 +3591,61 @@ function validatePhysicsComponents(entity: IWorldIr["entities"][number], path: s
       code: "TN_IR_PHYSICS_COLLIDER_MISSING",
       message: `RigidBody '${entity.id}' must have a Collider in the V6 portable physics contract.`,
       path: `${path}/components/Collider`,
+    });
+  }
+}
+
+function validateUnsupportedPhysicsSolverFields(body: Record<string, unknown>, path: string, diagnostics: IIrDiagnostic[]): void {
+  for (const key of ["constraint", "constraints", "joint", "joints", "randomSeed", "solverRandomSeed", "nondeterministic", "backendSolver"] as const) {
+    if (body[key] !== undefined) {
+      diagnostics.push({
+        code: "TN_IR_PHYSICS_SOLVER_FIELD_UNSUPPORTED",
+        message: `RigidBody uses unsupported solver field '${key}'.`,
+        path: `${path}/${key}`,
+        severity: "error",
+        suggestion: "Use portable primitive body metadata only; joints, constraints, backend solvers, and nondeterministic settings are deferred.",
+      });
+    }
+  }
+}
+
+function validateInverseMass(body: Record<string, unknown>, path: string, diagnostics: IIrDiagnostic[]): void {
+  const value = body.inverseMass;
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > V9_MAX_PHYSICS_MASS) {
+    diagnostics.push({
+      code: "TN_IR_PHYSICS_BODY_INVERSE_MASS_INVALID",
+      message: `RigidBody.inverseMass must be a finite number from 0 to ${V9_MAX_PHYSICS_MASS}.`,
+      path: `${path}/inverseMass`,
+      severity: "error",
+      suggestion: "Use 0 for static or kinematic bodies, or a positive reciprocal of mass for dynamic primitive bodies.",
+    });
+    return;
+  }
+  if (body.kind !== "dynamic" && value !== 0) {
+    diagnostics.push({
+      code: "TN_IR_PHYSICS_BODY_INVERSE_MASS_INVALID",
+      message: "RigidBody.inverseMass must be 0 for static and kinematic bodies.",
+      path: `${path}/inverseMass`,
+      severity: "error",
+      suggestion: "Set inverseMass to 0 or omit it for non-dynamic bodies.",
+    });
+  }
+  if (body.kind === "dynamic" && value <= 0) {
+    diagnostics.push({
+      code: "TN_IR_PHYSICS_BODY_INVERSE_MASS_INVALID",
+      message: "Dynamic RigidBody.inverseMass must be greater than 0.",
+      path: `${path}/inverseMass`,
+      severity: "error",
+      suggestion: "Use a positive reciprocal of mass for dynamic primitive bodies.",
+    });
+  }
+  if (typeof body.mass === "number" && Number.isFinite(body.mass) && Math.abs(value - 1 / body.mass) > 0.000001) {
+    diagnostics.push({
+      code: "TN_IR_PHYSICS_BODY_INVERSE_MASS_INVALID",
+      message: "RigidBody.inverseMass must match 1 / RigidBody.mass when both are authored.",
+      path: `${path}/inverseMass`,
+      severity: "error",
+      suggestion: "Omit inverseMass and let adapters derive it, or set it to the reciprocal of mass.",
     });
   }
 }
@@ -3773,6 +3851,18 @@ function validateFiniteVec3(value: unknown, path: string, code: string, diagnost
   }
 }
 
+function validateFiniteVec3Range(value: unknown, minimum: number, maximum: number, path: string, code: string, diagnostics: IIrDiagnostic[]): void {
+  if (!Array.isArray(value) || value.length !== 3 || value.some((item) => typeof item !== "number" || !Number.isFinite(item) || item < minimum || item > maximum)) {
+    diagnostics.push({
+      code,
+      message: `Expected a three-component finite numeric vector with each value between ${minimum} and ${maximum}.`,
+      path,
+      severity: "error",
+      suggestion: "Keep authored primitive body velocities inside the portable solver range.",
+    });
+  }
+}
+
 function validatePositiveFinite(value: unknown, path: string, code: string, diagnostics: IIrDiagnostic[]): void {
   if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
     diagnostics.push({
@@ -3809,6 +3899,18 @@ function validateFiniteRange(value: unknown, minimum: number, maximum: number, p
       code,
       message: `Expected a finite number between ${minimum} and ${maximum}.`,
       path,
+    });
+  }
+}
+
+function validateIntegerRange(value: unknown, minimum: number, maximum: number, path: string, code: string, diagnostics: IIrDiagnostic[]): void {
+  if (typeof value !== "number" || !Number.isInteger(value) || value < minimum || value > maximum) {
+    diagnostics.push({
+      code,
+      message: `Expected an integer between ${minimum} and ${maximum}.`,
+      path,
+      severity: "error",
+      suggestion: "Use a bounded deterministic solver iteration count.",
     });
   }
 }
