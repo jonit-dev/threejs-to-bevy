@@ -78,6 +78,56 @@ test("should derive sorted rendering and physics capabilities from world, materi
   ]);
 });
 
+test("should derive primitive solver v2 capability from bounded primitive body metadata", () => {
+  const capabilities = deriveRequiredCapabilities({
+    assets: assetsManifest([]),
+    materials: materialsIr([]),
+    world: worldIr({
+      entities: [
+        {
+          components: {
+            Collider: { friction: 0.6, kind: "box", restitution: 0.2, size: [1, 1, 1] },
+            RigidBody: { angularVelocity: [0, 0, 0], kind: "dynamic", mass: 1, sleepThreshold: 0.01, solverIterations: 8, velocity: [0, 0, 0] },
+            Transform: { position: [0, 0, 0] },
+          },
+          id: "crate",
+        },
+        {
+          components: {
+            Collider: { kind: "mesh" },
+            RigidBody: { kind: "static" },
+            Transform: { position: [0, 0, 0] },
+          },
+          id: "terrain",
+        },
+      ],
+    }),
+  });
+
+  assert.deepEqual(capabilities.physics, ["collider.box", "collider.mesh", "primitive-solver-v2", "rigid-body.dynamic", "rigid-body.static"]);
+});
+
+test("should not derive primitive solver v2 capability for mesh bodies", () => {
+  const capabilities = deriveRequiredCapabilities({
+    assets: assetsManifest([]),
+    materials: materialsIr([]),
+    world: worldIr({
+      entities: [
+        {
+          components: {
+            Collider: { kind: "mesh" },
+            RigidBody: { kind: "static", mass: 1 },
+            Transform: { position: [0, 0, 0] },
+          },
+          id: "terrain",
+        },
+      ],
+    }),
+  });
+
+  assert.deepEqual(capabilities.physics, ["collider.mesh", "rigid-body.static"]);
+});
+
 test("should derive ECS and runtime capabilities from schemas and runtime config", () => {
   const capabilities = deriveRequiredCapabilities({
     assets: assetsManifest([]),

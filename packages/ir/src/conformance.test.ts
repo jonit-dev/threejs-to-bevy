@@ -296,6 +296,14 @@ test("should include capability tags for each conformance fixture", async () => 
     "overlay:transparent",
     "overlay:webview",
   ]);
+  assertFixtureCapabilities(byName, "v9-physics-character-solver", [
+    "physics:collider.box",
+    "physics:collider.capsule",
+    "physics:primitive-solver-v2",
+    "physics:rigid-body.dynamic",
+    "physics:rigid-body.kinematic",
+    "physics:rigid-body.static",
+  ]);
 });
 
 function assertFixtureCapabilities(

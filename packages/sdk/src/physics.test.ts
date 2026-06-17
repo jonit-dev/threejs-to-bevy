@@ -34,12 +34,39 @@ test("physics should create deterministic collider filters and slopes", () => {
 });
 
 test("physics should create primitive solver material and body metadata", () => {
-  assert.deepEqual(rigidBody("dynamic", { damping: 0.1, gravityScale: 0.5, mass: 2, velocity: [0, -1, 0] }), {
-    damping: 0.1,
-    gravityScale: 0.5,
-    kind: "dynamic",
-    mass: 2,
-    velocity: [0, -1, 0],
+  assert.deepEqual(
+    rigidBody("dynamic", {
+      angularVelocity: [0, 0.5, 0],
+      damping: 0.1,
+      gravityScale: 0.5,
+      inverseMass: 0.5,
+      mass: 2,
+      sleepThreshold: 0.01,
+      solverIterations: 8,
+      velocity: [0, -1, 0],
+    }),
+    {
+      angularVelocity: [0, 0.5, 0],
+      damping: 0.1,
+      gravityScale: 0.5,
+      inverseMass: 0.5,
+      kind: "dynamic",
+      mass: 2,
+      sleepThreshold: 0.01,
+      solverIterations: 8,
+      velocity: [0, -1, 0],
+    },
+  );
+  assert.deepEqual(rigidBody("static", { inverseMass: 0 }), {
+    angularVelocity: undefined,
+    damping: undefined,
+    gravityScale: undefined,
+    inverseMass: 0,
+    kind: "static",
+    mass: undefined,
+    sleepThreshold: undefined,
+    solverIterations: undefined,
+    velocity: undefined,
   });
   assert.deepEqual(boxCollider([1, 1, 1], { friction: 0.75, restitution: 0.25 }), {
     friction: 0.75,
@@ -60,8 +87,13 @@ test("physics should reject invalid portable filter names", () => {
 });
 
 test("physics should reject invalid primitive solver metadata", () => {
+  assertSdkCode(() => rigidBody("dynamic", { angularVelocity: [0, Number.NaN, 0] }), "TN_SDK_PHYSICS_BODY_INVALID_ANGULAR_VELOCITY");
   assertSdkCode(() => rigidBody("dynamic", { damping: -1 }), "TN_SDK_PHYSICS_BODY_INVALID_DAMPING");
   assertSdkCode(() => rigidBody("dynamic", { gravityScale: Number.NaN }), "TN_SDK_PHYSICS_BODY_INVALID_GRAVITY_SCALE");
+  assertSdkCode(() => rigidBody("dynamic", { inverseMass: 1, mass: 2 }), "TN_SDK_PHYSICS_BODY_INVALID_INVERSE_MASS");
+  assertSdkCode(() => rigidBody("kinematic", { inverseMass: 1 }), "TN_SDK_PHYSICS_BODY_INVALID_INVERSE_MASS");
+  assertSdkCode(() => rigidBody("dynamic", { sleepThreshold: -1 }), "TN_SDK_PHYSICS_BODY_INVALID_SLEEP_THRESHOLD");
+  assertSdkCode(() => rigidBody("dynamic", { solverIterations: 65 }), "TN_SDK_PHYSICS_BODY_INVALID_SOLVER_ITERATIONS");
   assertSdkCode(() => boxCollider([1, 1, 1], { friction: -1 }), "TN_SDK_PHYSICS_COLLIDER_INVALID_FRICTION");
   assertSdkCode(() => boxCollider([1, 1, 1], { restitution: 1.5 }), "TN_SDK_PHYSICS_COLLIDER_INVALID_RESTITUTION");
 });
