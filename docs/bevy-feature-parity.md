@@ -138,8 +138,8 @@ Repeated patterns in those games:
 - [x] `P2` Point-light PCF/shadow-filtering metadata parity
 - [x] `P1` Shadow bias controls
 - [x] `P1` Per-mesh shadow caster/receiver controls
-- [ ] `P3` Spherical/area-light behavior
-- [ ] `P3` Lightmaps and mixed baked/dynamic lighting
+- [ ] `P3` Spherical/area-light behavior (V10-02)
+- [ ] `P3` Lightmaps and mixed baked/dynamic lighting (V10-02)
 - [x] `P2` Light probes and environment maps
   - [x] V9-04 SDK/IR/compiler/runtime conformance contract and evidence for
     bundle-local skybox, environment-map, and bounded light-probe declarations
@@ -154,19 +154,19 @@ Repeated patterns in those games:
 - [x] `P1` Authored alpha modes, opacity, alpha cutoff, and web/native material observations
 - [x] `P1` Transparency sorting metadata, portable blend modes, and depth policy with web/native observations
 - [x] `P1` Authored emissive material color/intensity and web/native material observations
-- [ ] `P1` HDR bloom contribution from emissive materials
+- [ ] `P1` HDR bloom contribution from emissive materials (V10-02, V10-03 calibration)
 - [x] `P1` Normal/occlusion texture refs plus authored specular, clearcoat, and transmission scalar factors
 - [x] `P1` Clearcoat, clearcoat-roughness, and transmission texture maps
 - [x] `P1` Specular texture maps
-- [ ] `P3` Parallax mapping and depth maps
-- [ ] `P3` Anisotropy, specular tint, and advanced PBR fields
+- [ ] `P3` Parallax mapping and depth maps (V10-02)
+- [ ] `P3` Anisotropy, specular tint, and advanced PBR fields (V10-02)
 - [x] `P1` Authored texture repeat/wrap/filter/UV transform controls in IR, web runtime mapping, native sampler/UV application, and conformance observations
 - [x] `P2` Multiple generated-mesh UV channels
 - [x] `P2` Generated-mesh vertex colors
 - [x] `P2` Constrained extended material presets (`unlitMasked`, `foliage`)
-- [ ] `P2` Explicit portable shader promotion criteria and unsupported-feature diagnostics
-- [ ] `P3` Custom shaders, shader defs, storage buffers, and render phases
-- [ ] `P3` Bindless materials/textures
+- [ ] `P2` Explicit portable shader promotion criteria and unsupported-feature diagnostics (V10-02)
+- [ ] `P3` Custom shaders, shader defs, storage buffers, and render phases (V10-02)
+- [ ] `P3` Bindless materials/textures (V10-02)
 
 V8-13 keeps custom shaders, storage buffers, and raw render phases behind
 stable advanced renderer diagnostics until portable promotion criteria and
@@ -182,8 +182,8 @@ web/Bevy evidence exist.
 - [x] Source asset LOD metadata and fixed LOD-selection traces
 - [x] `P1` Focused visual fog/sky parity evidence in native output
 - [x] `P1` Focused unlit color swatch and lit PBR sphere parity evidence
-- [ ] `P3` Atmospheric scattering and atmospheric fog
-- [ ] `P3` Volumetric fog and volumetric lighting
+- [ ] `P3` Atmospheric scattering and atmospheric fog (V10-02, V10-03 calibration)
+- [ ] `P3` Volumetric fog and volumetric lighting (V10-02, V10-03 calibration)
 - [x] `P1` Skyboxes and cubemap/equirect texture handling
   - [x] V9-04 validates bundle-local cubemap/equirect texture refs, emits
     rendering capabilities, reports web/native skybox observations, and writes
@@ -192,18 +192,18 @@ web/Bevy evidence exist.
     formats remain deferred
 - [x] `P1` Bloom through runtime config in web and native camera runtime
 - [x] `P1` MSAA anti-aliasing modes through runtime config in web and native
-- [ ] `P2` FXAA, TAA, and SMAA anti-aliasing modes
+- [ ] `P2` FXAA, TAA, and SMAA anti-aliasing modes (V10-02, V10-03 calibration)
 - [x] `P2` Color grading and filmic metadata observations
-- [ ] `P3` Auto exposure
-- [ ] `P2` Depth of field
-- [ ] `P3` Motion blur and motion vectors
-- [ ] `P3` Screen-space reflections and mirrors
-- [ ] `P2` Decals
-- [ ] `P3` Deferred rendering
+- [ ] `P3` Auto exposure (V10-02, V10-03 calibration)
+- [ ] `P2` Depth of field (V10-02, V10-03 calibration)
+- [ ] `P3` Motion blur and motion vectors (V10-02, V10-03 calibration)
+- [ ] `P3` Screen-space reflections and mirrors (V10-02, V10-03 calibration)
+- [ ] `P2` Decals (V10-02, V10-03 calibration)
+- [ ] `P3` Deferred rendering (V10-02)
 - [x] `P2` Visibility ranges/HLOD fade observations
-- [ ] `P1` Renderer-level native instancing and batching parity
-- [ ] `P3` Virtual geometry/meshlet rendering
-- [ ] `P3` Custom post-processing passes
+- [ ] `P1` Renderer-level native instancing and batching parity (V10-02, V10-03 calibration)
+- [ ] `P3` Virtual geometry/meshlet rendering (V10-02, V10-03 calibration)
+- [ ] `P3` Custom post-processing passes (V10-02, V10-03 calibration)
 
 V8-13 keeps volumetrics, atmospheric scattering/fog, deferred rendering,
 SSR/GI/lightmaps, and custom post-processing behind stable advanced renderer
@@ -218,7 +218,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] Typed animation clip metadata from model assets
 - [x] `P1` Declared embedded asset manifest entries with bounded payload validation
 - [x] `P1` Declared HTTPS network asset manifest entries with target-profile validation
-- [ ] `P3` Custom asset loaders and custom asset types
+- [ ] `P3` Custom asset loaders and custom asset types (V10-04)
 - [x] `P1` Deterministic multi-asset load synchronization trace
 - [x] `P1` Declared asset groups and default `bundle.requiredAssets` manifest group
 - [x] `P2` glTF extras and custom glTF vertex attributes
@@ -239,11 +239,11 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P1` Transform animation authored in code/IR
 - [x] `P1` `animation.query` / `animation.stop` declared command-shape/service-payload parity
 - [x] `P1` Animation blending beyond fixed graph traces
-- [ ] `P2` Animation masks
+- [ ] `P2` Animation masks (V10-02)
 - [x] `P1` Stateful animation stop/state query runtime semantics
-- [ ] `P2` Morph-target animation
-- [ ] `P3` Retargeting and inverse kinematics
-- [ ] `P2` UI/property animation
+- [ ] `P2` Morph-target animation (V10-02)
+- [ ] `P3` Retargeting and inverse kinematics (V10-02)
+- [ ] `P2` UI/property animation (V10-02)
 - [x] `P1` Rendered particle systems
 
 ### 🧱 Physics, Collision, and Character Movement
@@ -263,7 +263,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] Narrow character controller movement and blocking trace
 - [x] `P1` Full rigid-body solver parity beyond the current primitive
   falling-box trace
-- [ ] `P2` Dynamic mesh colliders
+- [ ] `P2` Dynamic mesh colliders (V10-02)
 - [x] `P1` Broad sensors beyond current trigger/overlap scope
 - [x] Step offsets, ledge ungrounding, moving-platform carry, and richer ground contact trace
 - [x] `P0` Slope limits and sloped-surface walkability for promoted ramp colliders
@@ -285,11 +285,11 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P1` Mesh picking service for generated mesh renderer bounds in web and Bevy scripts
 - [x] `P1` Mouse/screen pointer ray generation for picking workflows
 - [x] `P1` Basic UI picking/action dispatch for web and Bevy buttons/touch controls
-- [ ] `P2` Drag-and-drop picking events
-- [ ] `P2` Picking debug overlay
+- [ ] `P2` Drag-and-drop picking events (V10-04)
+- [ ] `P2` Picking debug overlay (V10-04)
 - [x] `P1` Basic input rebinding helpers and device capability diagnostics
 - [x] `P1` Controls settings rebind metadata and local input override persistence
-- [ ] `P2` Richer device diagnostics overlays and repair hints
+- [ ] `P2` Richer device diagnostics overlays and repair hints (V10-04)
 
 ### 🧭 UI, Text, and Accessibility
 
@@ -306,15 +306,15 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P1` Basic vertical UI scrolling containers
 - [x] `P1` UI background/text color, borders, rounded corners, and opacity
 - [x] `P1` Portable UI shadow/linear-gradient metadata and web DOM rendering
-- [ ] `P1` Native-rendered UI shadows and gradients
+- [ ] `P1` Native-rendered UI shadows and gradients (V10-02, V10-03 calibration)
 - [x] `P1` Basic UI text size, alignment, and wrapping
 - [x] `P1` Portable UI text weight/decoration metadata and web DOM rendering
-- [ ] `P1` Rich text styling: font assets, inline spans, and native-rendered weight/decoration
+- [ ] `P1` Rich text styling: font assets, inline spans, and native-rendered weight/decoration (V10-04)
 - [x] `P1` Basic UI image nodes
-- [ ] `P1` UI texture atlases, 9-slice scaling, flipping, and tiling
-- [ ] `P2` Standard widgets: sliders, scrollbars, virtual keyboard, context menus
+- [ ] `P1` UI texture atlases, 9-slice scaling, flipping, and tiling (V10-04)
+- [ ] `P2` Standard widgets: sliders, scrollbars, virtual keyboard, context menus (V10-04)
 - [x] `P1` Basic automatic tab/sequential directional navigation parity
-- [ ] `P2` UI transforms and render-to-texture/3D-world UI
+- [ ] `P2` UI transforms and render-to-texture/3D-world UI (V10-04)
 - [x] `P1` Basic UI accessibility roles, labels, and missing-label diagnostics
 - [x] `P1` Broader screen-reader diagnostics for focusable names, progressbar names, and list/listitem structure
 - [x] `P1` Static disabled UI metadata for focus/action suppression and ARIA/AccessKit state
@@ -326,7 +326,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P1` Local settings/key-value persistence for controls, audio, video, and accessibility options
 - [x] `P2` Save migration/version metadata and diagnostics
 - [x] `P2` Checkpoint/autosave lifecycle hooks
-- [ ] `P3` Cloud save and account-bound storage integration
+- [ ] `P3` Cloud save and account-bound storage integration (V10-04 boundary)
 
 ### 🔊 Audio
 
@@ -340,8 +340,8 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P1` Mixer buses, ducking, and routing observations
 - [x] `P2` Pitch control and generated tone playback metadata
 - [x] `P1` Soundtrack/state-driven music transitions
-- [ ] `P3` Custom audio source/decoder support
-- [ ] `P3` Streaming and network audio
+- [ ] `P3` Custom audio source/decoder support (V10-04)
+- [ ] `P3` Streaming and network audio (V10-04 boundary)
 - [x] `P2` Platform-specific audio diagnostics
 
 ### 🧪 Diagnostics, Tooling, Packaging, and Performance
@@ -355,7 +355,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P2` Live profiler captures and native platform profiler evidence
 - [x] `P2` GPU profiling and render-pass timing breakdowns
 - [x] `P1` In-app FPS overlay and custom diagnostics
-- [ ] `P3` Signed installers and app-store/mobile packaging
+- [ ] `P3` Signed installers and app-store/mobile packaging (V10-04)
 - [x] `P1` Broader platform target profiles and repair hints
 - [x] `P1` Large-scene stress-test fixtures for UI, text, lights, cubes, and animated models
 - [x] `P1` Stable unsupported-feature diagnostics for advanced renderer, material, and runtime declarations
@@ -376,13 +376,13 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 
 ### 🚧 Intentionally Deferred or Non-Portable
 
-- [ ] `D` Direct Bevy authoring from user TypeScript
-- [ ] `D` Raw Three.js authoring as the source of truth
-- [ ] `D` Public plugin escape hatches into renderer/runtime internals
-- [ ] `D` Online services, networking, replication, and collaboration
-- [ ] `D` 2D sprite, tilemap, LDtk/Tiled, and 2D-specific collision workflows while ThreeNative is scoped as 3D-only
-- [ ] `D` Arbitrary npm, filesystem, worker, timer, or platform APIs in portable scripts
-- [ ] `D` Backend-only features that cannot be represented in portable IR
+- [ ] `D` Direct Bevy authoring from user TypeScript (V10-01 boundary)
+- [ ] `D` Raw Three.js authoring as the source of truth (V10-01 boundary)
+- [ ] `D` Public plugin escape hatches into renderer/runtime internals (V10-01 boundary)
+- [ ] `D` Online services, networking, replication, and collaboration (V10-01 boundary)
+- [ ] `D` 2D sprite, tilemap, LDtk/Tiled, and 2D-specific collision workflows while ThreeNative is scoped as 3D-only (V10-01 boundary)
+- [ ] `D` Arbitrary npm, filesystem, worker, timer, or platform APIs in portable scripts (V10-01 boundary)
+- [ ] `D` Backend-only features that cannot be represented in portable IR (V10-01 boundary)
 
 ## Parity Table
 

@@ -15,6 +15,19 @@ test("should reject scripts browser api in portable system", () => {
   assert.match(diagnostics[0]?.suggestion ?? "", /portable system context/);
 });
 
+test("should preserve source path for non-portable platform API usage", () => {
+  const diagnostics = diagnosePortableSystem({
+    file: "src/systems/platform.ts",
+    source: "() => fetch('/state').then(() => setTimeout(() => undefined, 1))",
+    systemName: "badPlatform",
+  });
+
+  assert.equal(diagnostics.some((diagnostic) => diagnostic.code === "TN_SCRIPT_NETWORK_API_UNSUPPORTED"), true);
+  assert.equal(diagnostics.some((diagnostic) => diagnostic.code === "TN_SCRIPT_TIMER_API_UNSUPPORTED"), true);
+  assert.equal(diagnostics[0]?.file, "src/systems/platform.ts");
+  assert.match(diagnostics[0]?.suggestion ?? "", /resources|events|schedule|timers/);
+});
+
 test("should reject direct DOM access in v4 system", () => {
   const diagnostics = diagnosePortableSystem({
     source: "() => window.requestAnimationFrame(() => undefined)",

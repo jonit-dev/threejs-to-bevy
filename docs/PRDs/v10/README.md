@@ -43,13 +43,14 @@ dedicated editor/UI planning pass is requested.
 
 ## Release Gate
 
-V10 planning defines the future aggregate gate:
+V10-01 implements the aggregate planning gate and drift guard:
 
 ```bash
 pnpm verify:v10
 pnpm check:quality:v10
 ```
 
-These commands do not exist until V10 implementation starts. Each V10 PRD must
-add its focused gate first, then wire it into the aggregate V10 verifier before
-claiming completion.
+These commands prove V10 ownership, non-portable boundary diagnostics, and
+artifact/report wiring. V10-02, V10-03, and V10-04 must still add focused gates
+for promoted feature work, then wire those gates into the aggregate V10 verifier
+before claiming checklist completion.
