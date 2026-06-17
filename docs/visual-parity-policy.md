@@ -52,3 +52,33 @@ Use focused `pnpm verify:v9:rendering-lights` when adjusting region thresholds f
 the skybox-environment fixture. Use the visual matrix for latest-merge smoke and
 nonblank/framing coverage across animation, particles, physics, assets, and
 rendering sample/fixture scenes.
+
+## V10 Visual Calibration
+
+`pnpm verify:v10:visual-calibration` is the cross-runtime calibration gate for
+V10 advanced rendering promotion. It uses a versioned manifest under
+`scripts/visual-calibration/manifest.mjs` to define isolated factor fixtures and
+a combined scene with explicit sample regions, thresholds, and failure hints.
+
+Calibration policy:
+
+- promoted factors fail the gate when drift exceeds their declared thresholds
+- report-only factors (for example advanced post or atmospheric probes) write
+  diagnostics but do not fail the promoted gate by themselves
+- threshold changes require artifact evidence and PRD/status notes; do not loosen
+  thresholds without updating the manifest version and recording why
+- unlit/color factors use strict thresholds; lit PBR, atmosphere, and combined
+  scene factors use calibrated tolerances documented in the manifest
+
+Useful commands:
+
+```bash
+pnpm verify:v10:visual-calibration -- --list
+pnpm verify:v10:visual-calibration -- --group color,materials
+pnpm verify:v10:visual-calibration -- --manifest-only
+```
+
+Evidence is written under `artifacts/v10/visual-calibration/`, including
+`manifest-report.json` and the aggregate `verification-report.json`. Calibration
+failures emit `TN_VERIFY_VISUAL_CALIBRATION_*` diagnostics with fixture, factor,
+region, metric, threshold, observed value, and artifact paths when available.
