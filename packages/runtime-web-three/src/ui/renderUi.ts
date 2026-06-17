@@ -6,27 +6,34 @@ import { dispatchUiAction, type IUiActionEvent } from "./inputBridge.js";
 export interface IRenderedUiNode {
   action?: string;
   accessibilityLabel?: string;
+  anchorId?: string;
   children: IRenderedUiNode[];
+  disabled?: boolean;
   focusable: boolean;
   id: string;
+  image?: IUiNodeIr["image"];
   kind: IUiNodeIr["kind"];
   label?: string;
   layout?: IUiNodeIr["layout"];
   max?: number;
+  min?: number;
   navigation?: IUiNodeIr["navigation"];
+  orientation?: IUiNodeIr["orientation"];
   role?: IUiNodeIr["role"];
   spans?: IUiNodeIr["spans"];
+  step?: number;
   style?: IUiNodeIr["style"];
   src?: string;
   text?: string;
   value?: number;
+  valueText?: string;
 }
 
 export interface IRenderedUi {
   actions: IUiActionEvent[];
   focusOrder?: string[];
   root: IRenderedUiNode;
-  trigger(nodeId: string): void;
+  trigger(nodeId: string, value?: number): void;
   update(): void;
 }
 
@@ -39,10 +46,10 @@ export function renderUi(ui: IUiIr, world: IWorldIr): IRenderedUi {
     get root() {
       return root;
     },
-    trigger(nodeId) {
+    trigger(nodeId, value) {
       const node = findNode(ui.root, nodeId);
       if (node !== undefined) {
-        dispatchUiAction(node, (event) => actions.push(event));
+        dispatchUiAction(node, (event) => actions.push(event), value);
       }
     },
     update() {
@@ -56,20 +63,27 @@ function renderNode(node: IUiNodeIr, world: IWorldIr): IRenderedUiNode {
   return {
     ...(node.action === undefined ? {} : { action: node.action }),
     ...(node.accessibilityLabel === undefined ? {} : { accessibilityLabel: node.accessibilityLabel }),
+    ...(node.anchorId === undefined ? {} : { anchorId: node.anchorId }),
     children: node.children?.map((child) => renderNode(child, world)) ?? [],
-    focusable: node.focusable ?? (node.kind === "button" || node.kind === "touchControl"),
+    ...(node.disabled === undefined ? {} : { disabled: node.disabled }),
+    focusable: node.focusable ?? (node.kind === "button" || node.kind === "touchControl" || node.kind === "slider" || node.kind === "scrollbar"),
     id: node.id,
+    ...(node.image === undefined ? {} : { image: node.image }),
     kind: node.kind,
     ...(node.label === undefined ? {} : { label: node.label }),
     ...(node.layout === undefined ? {} : { layout: node.layout }),
     ...(node.max === undefined ? {} : { max: node.max }),
+    ...(node.min === undefined ? {} : { min: node.min }),
     ...(node.navigation === undefined ? {} : { navigation: node.navigation }),
+    ...(node.orientation === undefined ? {} : { orientation: node.orientation }),
     ...(node.role === undefined ? {} : { role: node.role }),
     ...(node.spans === undefined ? {} : { spans: node.spans }),
+    ...(node.step === undefined ? {} : { step: node.step }),
     ...(node.style === undefined ? {} : { style: node.style }),
     ...(node.src === undefined ? {} : { src: node.src }),
     text: node.text ?? (typeof bindingValue === "string" || typeof bindingValue === "number" ? String(bindingValue) : undefined),
     value: typeof bindingValue === "number" ? bindingValue : node.value,
+    ...(node.valueText === undefined ? {} : { valueText: node.valueText }),
   };
 }
 

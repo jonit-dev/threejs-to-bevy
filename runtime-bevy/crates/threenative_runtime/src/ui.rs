@@ -11,7 +11,8 @@ use serde::Serialize;
 use thiserror::Error;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{
-    UiFontAssetIr, UiGradientIr, UiIr, UiNodeIr, UiRichTextSpanIr, UiShadowIr, UiStyleIr,
+    UiFontAssetIr, UiGradientIr, UiImageMetadataIr, UiIr, UiNodeIr, UiRichTextSpanIr, UiShadowIr,
+    UiStyleIr,
 };
 
 #[derive(Clone, Component, Debug, Eq, PartialEq)]
@@ -48,23 +49,53 @@ pub struct NativeUiScrollContainer {
 #[derive(Clone, Component, Debug, Eq, PartialEq)]
 pub struct NativeUiImageSrc(pub String);
 
+#[derive(Clone, Component, Debug, PartialEq)]
+pub struct NativeUiImageMetadata {
+    pub atlas: Option<(f32, f32, f32, f32)>,
+    pub flip_x: bool,
+    pub flip_y: bool,
+    pub nine_slice: Option<(f32, f32, f32, f32)>,
+    pub scale_mode: Option<String>,
+    pub source_size: Option<(f32, f32)>,
+    pub tile_size: Option<(f32, f32)>,
+    pub tint: Option<String>,
+}
+
+#[derive(Clone, Component, Debug, PartialEq)]
+pub struct NativeUiWidget {
+    pub kind: String,
+    pub max: f32,
+    pub min: f32,
+    pub orientation: String,
+    pub step: Option<f32>,
+    pub value: f32,
+    pub value_text: Option<String>,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct NativeUiNode {
     pub action: Option<String>,
     pub accessibility_label: Option<String>,
+    pub anchor_id: Option<String>,
     pub children: Vec<NativeUiNode>,
+    pub disabled: Option<bool>,
     pub focusable: Option<bool>,
     pub id: String,
+    pub image: Option<NativeUiImageMetadata>,
     pub kind: String,
     pub label: Option<String>,
     pub max: Option<f32>,
+    pub min: Option<f32>,
     pub navigation: Option<NativeUiNavigation>,
+    pub orientation: Option<String>,
     pub role: Option<String>,
     pub spans: Vec<NativeUiRichTextSpan>,
+    pub step: Option<f32>,
     pub style: Option<NativeUiStyle>,
     pub src: Option<String>,
     pub text: Option<String>,
     pub value: Option<f32>,
+    pub value_text: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -249,7 +280,17 @@ fn diagnose_node_visual_support(node: &UiNodeIr, path: &str, diagnostics: &mut V
 fn build_node(node: &UiNodeIr, path: &str) -> Result<NativeUiNode, UiDiagnostic> {
     if !matches!(
         node.kind.as_str(),
-        "bar" | "button" | "column" | "image" | "row" | "stack" | "text" | "touchControl"
+        "bar"
+            | "button"
+            | "column"
+            | "contextMenu"
+            | "image"
+            | "row"
+            | "scrollbar"
+            | "slider"
+            | "stack"
+            | "text"
+            | "touchControl"
     ) {
         return Err(UiDiagnostic {
             code: "TN_BEVY_UI_NODE_UNSUPPORTED".to_owned(),
@@ -260,17 +301,21 @@ fn build_node(node: &UiNodeIr, path: &str) -> Result<NativeUiNode, UiDiagnostic>
     Ok(NativeUiNode {
         action: node.action.clone(),
         accessibility_label: node.accessibility_label.clone(),
+        anchor_id: node.anchor_id.clone(),
         children: node
             .children
             .iter()
             .enumerate()
             .map(|(index, child)| build_node(child, &format!("{path}/children/{index}")))
             .collect::<Result<Vec<_>, _>>()?,
+        disabled: node.disabled,
         focusable: node.focusable,
         id: node.id.clone(),
+        image: node.image.as_ref().map(native_ui_image_metadata),
         kind: node.kind.clone(),
         label: node.label.clone(),
         max: node.max,
+        min: node.min,
         navigation: node
             .navigation
             .as_ref()
@@ -280,6 +325,7 @@ fn build_node(node: &UiNodeIr, path: &str) -> Result<NativeUiNode, UiDiagnostic>
                 right: navigation.right.clone(),
                 up: navigation.up.clone(),
             }),
+        orientation: node.orientation.clone(),
         role: node.role.clone(),
         style: node.style.as_ref().map(|style| NativeUiStyle {
             background_color: style.background_color.clone(),
@@ -298,10 +344,37 @@ fn build_node(node: &UiNodeIr, path: &str) -> Result<NativeUiNode, UiDiagnostic>
             wrap: style.wrap.clone(),
         }),
         spans: node.spans.iter().map(native_rich_text_span).collect(),
+        step: node.step,
         src: node.src.clone(),
         text: node.text.clone(),
         value: node.value,
+        value_text: node.value_text.clone(),
     })
+}
+
+fn native_ui_image_metadata(image: &UiImageMetadataIr) -> NativeUiImageMetadata {
+    NativeUiImageMetadata {
+        atlas: image
+            .atlas
+            .as_ref()
+            .map(|atlas| (atlas.x, atlas.y, atlas.width, atlas.height)),
+        flip_x: image.flip_x.unwrap_or(false),
+        flip_y: image.flip_y.unwrap_or(false),
+        nine_slice: image
+            .nine_slice
+            .as_ref()
+            .map(|slice| (slice.left, slice.right, slice.top, slice.bottom)),
+        scale_mode: image.scale_mode.clone(),
+        source_size: image
+            .source_size
+            .as_ref()
+            .map(|size| (size.width, size.height)),
+        tile_size: image
+            .tile_size
+            .as_ref()
+            .map(|size| (size.width, size.height)),
+        tint: image.tint.clone(),
+    }
 }
 
 fn native_rich_text_span(span: &UiRichTextSpanIr) -> NativeUiRichTextSpan {
@@ -438,7 +511,7 @@ fn spawn_node(
                 fonts,
             ))
             .id(),
-        "button" | "touchControl" => world
+        "button" | "touchControl" | "slider" | "scrollbar" => world
             .spawn(ButtonBundle {
                 style: leaf_style(node),
                 background_color: background_color(node, (0.15, 0.17, 0.2, 1.0)),
@@ -495,8 +568,25 @@ fn spawn_node(
         if let Some(src) = node.src.as_ref() {
             entity_mut.insert(NativeUiImageSrc(src.clone()));
         }
+        if let Some(image) = node.image.as_ref() {
+            entity_mut.insert(native_ui_image_metadata(image));
+        }
         if let Some(focusable) = node.focusable {
             entity_mut.insert(NativeUiFocusable(focusable));
+        }
+        if node.kind == "slider" || node.kind == "scrollbar" {
+            entity_mut.insert(NativeUiWidget {
+                kind: node.kind.clone(),
+                max: node.max.unwrap_or(1.0),
+                min: node.min.unwrap_or(0.0),
+                orientation: node
+                    .orientation
+                    .clone()
+                    .unwrap_or_else(|| "horizontal".to_owned()),
+                step: node.step,
+                value: node.value.unwrap_or(node.min.unwrap_or(0.0)),
+                value_text: node.value_text.clone(),
+            });
         }
         if let Some(z_index) = node.layout.as_ref().and_then(|layout| layout.z_index) {
             entity_mut.insert(ZIndex::Local(z_index));
@@ -614,6 +704,8 @@ fn accessibility_role(node: &UiNodeIr) -> Option<Role> {
         None => match node.kind.as_str() {
             "bar" => Some(Role::ProgressIndicator),
             "button" | "touchControl" => Some(Role::Button),
+            "slider" => Some(Role::Slider),
+            "scrollbar" => Some(Role::ProgressIndicator),
             "image" => Some(Role::Image),
             "text" => Some(Role::StaticText),
             _ => None,

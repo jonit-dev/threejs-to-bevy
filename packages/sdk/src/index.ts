@@ -202,6 +202,10 @@ export {
   type OverlayTargetProfile,
 } from "./overlay.js";
 export {
+  validateUiWidgetSupport,
+  type IUnsupportedUiWidgetOptions,
+} from "./ui.js";
+export {
   boxCollider,
   capsuleCollider,
   cylinderCollider,

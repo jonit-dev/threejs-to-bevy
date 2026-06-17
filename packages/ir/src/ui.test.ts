@@ -174,6 +174,67 @@ test("ui should reject rich text span when font asset is missing", async () => {
   }
 });
 
+test("ui should validate nine slice image metadata when insets fit source size", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ui-nine-slice-"));
+  try {
+    await writeTestBundle(root, { manifest: { entry: { ui: "ui.ir.json" } } });
+    await writeJson(root, "ui.ir.json", {
+      schema: "threenative.ui",
+      version: "0.1.0",
+      root: {
+        id: "panel",
+        kind: "image",
+        accessibilityLabel: "Inventory panel",
+        role: "image",
+        src: "assets/panel.png",
+        image: {
+          atlas: { x: 0, y: 0, width: 64, height: 64 },
+          nineSlice: { left: 8, right: 8, top: 8, bottom: 8 },
+          scaleMode: "stretch",
+          sourceSize: { width: 64, height: 64 },
+          tint: "#ffffffff",
+        },
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("ui should reject atlas rect outside image bounds", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ui-atlas-invalid-"));
+  try {
+    await writeTestBundle(root, { manifest: { entry: { ui: "ui.ir.json" } } });
+    await writeJson(root, "ui.ir.json", {
+      schema: "threenative.ui",
+      version: "0.1.0",
+      root: {
+        id: "icon",
+        kind: "image",
+        accessibilityLabel: "Potion",
+        role: "image",
+        src: "assets/icons.png",
+        image: {
+          atlas: { x: 48, y: 48, width: 32, height: 32 },
+          sourceSize: { width: 64, height: 64 },
+        },
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics[0]?.code, "TN_IR_UI_IMAGE_ATLAS_BOUNDS_INVALID");
+    assert.equal(result.diagnostics[0]?.path, "ui.ir.json/root/image/atlas");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("ui should reject invalid image metadata", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ui-image-invalid-"));
   try {

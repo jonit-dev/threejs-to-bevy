@@ -492,8 +492,14 @@ IR validation accepts `kind: "image"` with a required bundle-relative `src`,
 bundle capabilities report `ui:image`, the web DOM overlay renders `<img>` with
 alt text from `label`, web/native conformance reports preserve `src`, and the
 Bevy UI adapter spawns `ImageBundle` with `AssetServer` loading when available.
-Texture atlases, 9-slice scaling, flipping, tiling, and richer image diagnostics
-remain future UI image work.
+V9-05 Phase 4 adds promoted image metadata for atlas rects, 9-slice insets,
+scale mode, horizontal/vertical flip, tile size, tint, and source pixel size.
+The IR validator reports stable diagnostics for invalid image metadata,
+incompatible 9-slice/tile modes, atlas bounds, and non-overlapping 9-slice
+constraints; the web DOM overlay exposes deterministic atlas/9-slice/tile/flip
+observations and CSS mapping where the browser can render them, while Bevy
+preserves the same metadata on `NativeUiImageMetadata` for native mapping.
+Renderer-native 9-slice and tiled image rendering remain future polish.
 
 Basic UI accessibility semantics are now promoted for common HUD/menu controls.
 UI nodes accept portable `role` and `accessibilityLabel` metadata, validation
@@ -1001,6 +1007,14 @@ spans to DOM children with CSS text styles; Bevy maps spans to native
 `TextSection`s and font handles when an `AssetServer` is available, and emits
 stable diagnostics for unsupported native text weight, italic, and decoration
 rendering instead of silently dropping those requests.
+
+V9-05 Phase 4 also promotes retained `Slider`, `Scrollbar`, and `ContextMenu`
+nodes through SDK/UI authoring types, IR validation, compiler capability tags,
+web DOM overlay widgets, and Bevy UI components. Slider and scrollbar inputs
+dispatch value-bearing portable UI action events through the existing action
+queue, context-menu items dispatch regular button actions, disabled items are
+suppressed, and unsupported virtual keyboard requests fail with a stable SDK
+diagnostic instead of being silently ignored.
 
 The same functional-game parity pass also closes the P0 native material texture
 loading gap for promoted standard-material slots. Bevy runtime material mapping

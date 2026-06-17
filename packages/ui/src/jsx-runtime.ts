@@ -1,4 +1,4 @@
-export type UiElementType = "bar" | "button" | "column" | "image" | "row" | "stack" | "text" | "touchControl" | "ui";
+export type UiElementType = "bar" | "button" | "column" | "contextMenu" | "image" | "row" | "scrollbar" | "slider" | "stack" | "text" | "touchControl" | "ui";
 export type UiAccessibilityRole = "button" | "group" | "image" | "list" | "listitem" | "none" | "progressbar" | "text";
 export type UiBinding =
   | { kind: "resource"; name: string; field?: string }
@@ -7,8 +7,10 @@ export type UiBinding =
 export interface IUiNodeProps {
   action?: string;
   accessibilityLabel?: string;
+  anchorId?: string;
   binding?: UiBinding;
   children?: UiChild | UiChild[];
+  disabled?: boolean;
   focusable?: boolean;
   focusOrder?: string[];
   fonts?: UiFontAsset[];
@@ -19,6 +21,7 @@ export interface IUiNodeProps {
     next?: string;
     previous?: string;
   };
+  image?: UiImageMetadata;
   label?: string;
   layout?: {
     align?: "center" | "end" | "start" | "stretch";
@@ -50,12 +53,14 @@ export interface IUiNodeProps {
     zIndex?: number;
   };
   max?: number;
+  min?: number;
   navigation?: {
     down?: string;
     left?: string;
     right?: string;
     up?: string;
   };
+  orientation?: "horizontal" | "vertical";
   role?: UiAccessibilityRole;
   spans?: UiRichTextSpan[];
   safeArea?: {
@@ -90,8 +95,10 @@ export interface IUiNodeProps {
     wrap?: "character" | "none" | "word";
   };
   src?: string;
+  step?: number;
   text?: string;
   value?: number;
+  valueText?: string;
 }
 
 export type UiChild = IUiElement | false | null | undefined;
@@ -116,6 +123,17 @@ export interface UiRichTextSpan {
   weight?: "bold" | "normal" | number;
 }
 
+export interface UiImageMetadata {
+  atlas?: { x: number; y: number; width: number; height: number };
+  flipX?: boolean;
+  flipY?: boolean;
+  nineSlice?: { left: number; right: number; top: number; bottom: number };
+  scaleMode?: "contain" | "cover" | "stretch";
+  sourceSize?: { width: number; height: number };
+  tileSize?: { width: number; height: number };
+  tint?: string;
+}
+
 export interface IUiElement {
   props: IUiNodeProps;
   type: UiElementType;
@@ -138,8 +156,11 @@ export namespace JSX {
     bar: IUiNodeProps;
     button: IUiNodeProps;
     column: IUiNodeProps;
+    contextMenu: IUiNodeProps;
     image: IUiNodeProps;
     row: IUiNodeProps;
+    scrollbar: IUiNodeProps;
+    slider: IUiNodeProps;
     stack: IUiNodeProps;
     text: IUiNodeProps;
     touchControl: IUiNodeProps;

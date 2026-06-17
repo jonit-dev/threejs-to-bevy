@@ -5,9 +5,14 @@ export interface IUiDomOverlay {
   update(): void;
 }
 
+interface IUiDomOverlayState {
+  openMenuId?: string;
+}
+
 export function createUiDomOverlay(rendered: IRenderedUi, doc: Document = document): IUiDomOverlay {
   const nodes = new Map<string, HTMLElement>();
-  const element = createNodeElement(rendered.root, rendered, nodes, doc);
+  const state: IUiDomOverlayState = {};
+  const element = createNodeElement(rendered.root, rendered, nodes, doc, state);
   element.classList.add("tn-ui-overlay");
   Object.assign(element.style, {
     boxSizing: "border-box",
@@ -17,12 +22,27 @@ export function createUiDomOverlay(rendered: IRenderedUi, doc: Document = docume
     position: "absolute",
   });
   updateNodeElement(rendered.root, nodes);
+  updateContextMenus(rendered.root, nodes, state);
+  doc.addEventListener?.("click", (event) => {
+    if (state.openMenuId === undefined) {
+      return;
+    }
+    const menu = nodes.get(state.openMenuId);
+    const anchor = menuAnchor(rendered.root, state.openMenuId);
+    const anchorElement = anchor === undefined ? undefined : nodes.get(anchor);
+    const target = event.target as Node | null;
+    if (target !== null && (menu?.contains(target) === true || anchorElement?.contains(target) === true)) {
+      return;
+    }
+    closeContextMenu(rendered.root, nodes, state);
+  });
 
   return {
     element,
     update() {
       rendered.update();
       updateNodeElement(rendered.root, nodes);
+      updateContextMenus(rendered.root, nodes, state);
     },
   };
 }
@@ -32,6 +52,7 @@ function createNodeElement(
   rendered: IRenderedUi,
   nodes: Map<string, HTMLElement>,
   doc: Document,
+  state: IUiDomOverlayState,
 ): HTMLElement {
   const element = createElementForKind(node, doc);
   nodes.set(node.id, element);
@@ -42,10 +63,31 @@ function createNodeElement(
 
   if (node.focusable) {
     element.tabIndex = 0;
-    element.addEventListener("keydown", (event) => handleKeyboardNavigation(event, node.id, rendered, nodes));
+    element.addEventListener("keydown", (event) => handleKeyboardNavigation(event, node.id, rendered, nodes, state));
+  }
+  if (node.kind === "contextMenu") {
+    element.addEventListener("keydown", (event) => handleKeyboardNavigation(event, node.id, rendered, nodes, state));
   }
   if (node.kind === "button" || node.kind === "touchControl") {
-    element.addEventListener("click", () => rendered.trigger(node.id));
+    element.addEventListener("click", () => {
+      if (node.disabled === true) {
+        return;
+      }
+      const contextMenuId = contextMenuForAnchor(rendered.root, node.id);
+      if (contextMenuId !== undefined) {
+        openContextMenu(contextMenuId, rendered.root, nodes, state);
+        return;
+      }
+      rendered.trigger(node.id);
+      closeContextMenu(rendered.root, nodes, state);
+    });
+  }
+  if (node.kind === "slider" || node.kind === "scrollbar") {
+    element.addEventListener("input", () => {
+      if (node.disabled !== true) {
+        rendered.trigger(node.id, Number((element as HTMLInputElement).value));
+      }
+    });
   }
   if (node.kind === "bar") {
     const fill = doc.createElement("div");
@@ -60,7 +102,7 @@ function createNodeElement(
   }
 
   for (const child of node.children) {
-    element.append(createNodeElement(child, rendered, nodes, doc));
+    element.append(createNodeElement(child, rendered, nodes, doc, state));
   }
 
   return element;
@@ -71,7 +113,16 @@ function handleKeyboardNavigation(
   currentId: string,
   rendered: IRenderedUi,
   nodes: Map<string, HTMLElement>,
+  state: IUiDomOverlayState,
 ): void {
+  if (event.key === "Escape") {
+    const contextMenuId = containingContextMenu(rendered.root, currentId);
+    if (contextMenuId !== undefined && state.openMenuId === contextMenuId) {
+      event.preventDefault();
+      closeContextMenu(rendered.root, nodes, state);
+    }
+    return;
+  }
   const input = keyboardInput(event);
   if (input === undefined) {
     return;
@@ -79,10 +130,11 @@ function handleKeyboardNavigation(
   event.preventDefault();
   if (input === "activate") {
     rendered.trigger(currentId);
+    closeContextMenu(rendered.root, nodes, state);
     return;
   }
   const renderedNodes = renderedNodesById(rendered.root);
-  const order = focusOrder(rendered, renderedNodes);
+  const order = focusOrder(rendered, renderedNodes, state);
   const targetId = navigationTarget(renderedNodes.get(currentId), input) ?? sequentialTarget(order, currentId, input);
   if (targetId !== undefined && targetId !== currentId) {
     nodes.get(targetId)?.focus();
@@ -124,10 +176,17 @@ function visitRenderedNode(node: IRenderedUiNode, callback: (node: IRenderedUiNo
   }
 }
 
-function focusOrder(rendered: IRenderedUi, nodes: Map<string, IRenderedUiNode>): string[] {
-  return (rendered.focusOrder ?? [...nodes.values()].filter((node) => node.focusable).map((node) => node.id)).filter(
-    (id) => nodes.get(id)?.focusable === true,
-  );
+function focusOrder(rendered: IRenderedUi, nodes: Map<string, IRenderedUiNode>, state: IUiDomOverlayState): string[] {
+  if (state.openMenuId !== undefined) {
+    const menu = nodes.get(state.openMenuId);
+    if (menu !== undefined) {
+      return focusableDescendants(menu).map((node) => node.id);
+    }
+  }
+  return (rendered.focusOrder ?? [...nodes.values()].filter((node) => node.focusable).map((node) => node.id)).filter((id) => {
+    const node = nodes.get(id);
+    return node?.focusable === true && node.disabled !== true;
+  });
 }
 
 function navigationTarget(node: IRenderedUiNode | undefined, input: string): string | undefined {
@@ -143,10 +202,10 @@ function sequentialTarget(order: readonly string[], current: string, input: stri
     return undefined;
   }
   if (input === "tab" || input === "down" || input === "right") {
-    return order[Math.min(order.length - 1, index + 1)];
+    return order[(index + 1) % order.length];
   }
   if (input === "shiftTab" || input === "up" || input === "left") {
-    return order[Math.max(0, index - 1)];
+    return order[(index - 1 + order.length) % order.length];
   }
   return undefined;
 }
@@ -154,6 +213,11 @@ function sequentialTarget(order: readonly string[], current: string, input: stri
 function createElementForKind(node: IRenderedUiNode, doc: Document): HTMLElement {
   if (node.kind === "image") {
     return doc.createElement("img");
+  }
+  if (node.kind === "slider" || node.kind === "scrollbar") {
+    const input = doc.createElement("input");
+    input.type = "range";
+    return input;
   }
   if (node.kind === "button" || node.kind === "touchControl") {
     const button = doc.createElement("button");
@@ -176,6 +240,33 @@ function updateNodeElement(node: IRenderedUiNode, nodes: Map<string, HTMLElement
     element.textContent = node.label ?? node.text ?? "";
     element.setAttribute("aria-label", accessibleName(node) ?? node.id);
   }
+  if (node.kind === "contextMenu") {
+    element.setAttribute("role", "menu");
+    element.setAttribute("aria-label", accessibleName(node) ?? node.id);
+  }
+  if (node.kind === "slider" || node.kind === "scrollbar") {
+    const min = node.min ?? 0;
+    const max = node.max ?? 1;
+    const value = node.value ?? min;
+    element.setAttribute("role", node.kind === "slider" ? "slider" : "scrollbar");
+    element.setAttribute("aria-label", accessibleName(node) ?? node.id);
+    element.setAttribute("aria-valuemin", String(min));
+    element.setAttribute("aria-valuemax", String(max));
+    element.setAttribute("aria-valuenow", String(value));
+    if (node.valueText !== undefined) {
+      element.setAttribute("aria-valuetext", node.valueText);
+    }
+    if (node.orientation !== undefined) {
+      element.setAttribute("aria-orientation", node.orientation);
+    }
+    (element as HTMLInputElement).min = String(min);
+    (element as HTMLInputElement).max = String(max);
+    (element as HTMLInputElement).value = String(value);
+    if (node.step !== undefined) {
+      (element as HTMLInputElement).step = String(node.step);
+    }
+    element.dataset.threenativeUiValue = String(value);
+  }
   if (node.kind === "bar") {
     const max = node.max ?? 1;
     const value = node.value ?? 0;
@@ -196,6 +287,12 @@ function updateNodeElement(node: IRenderedUiNode, nodes: Map<string, HTMLElement
     if (node.src !== undefined) {
       element.setAttribute("src", node.src);
     }
+    applyImageMetadata(element, node);
+  }
+  if (node.disabled === true) {
+    element.setAttribute("aria-disabled", "true");
+    (element as HTMLButtonElement | HTMLInputElement).disabled = true;
+    element.tabIndex = -1;
   }
   applyAccessibilityAttributes(element, node);
 
@@ -248,6 +345,14 @@ function baseStyle(node: IRenderedUiNode): Partial<CSSStyleDeclaration> {
   if (node.kind === "button" || node.kind === "touchControl") {
     style.pointerEvents = "auto";
   }
+  if (node.kind === "slider" || node.kind === "scrollbar") {
+    style.pointerEvents = "auto";
+  }
+  if (node.kind === "contextMenu") {
+    style.display = "none";
+    style.position = "absolute";
+    style.pointerEvents = "auto";
+  }
   if (node.kind === "image") {
     style.display = "block";
     style.maxWidth = "100%";
@@ -262,6 +367,126 @@ function baseStyle(node: IRenderedUiNode): Partial<CSSStyleDeclaration> {
     style.width = "160px";
   }
   return style;
+}
+
+function openContextMenu(
+  menuId: string,
+  root: IRenderedUiNode,
+  nodes: Map<string, HTMLElement>,
+  state: IUiDomOverlayState,
+): void {
+  state.openMenuId = menuId;
+  updateContextMenus(root, nodes, state);
+  const first = firstFocusableDescendant(nodes.get(menuId));
+  first?.focus();
+}
+
+function closeContextMenu(root: IRenderedUiNode, nodes: Map<string, HTMLElement>, state: IUiDomOverlayState): void {
+  if (state.openMenuId === undefined) {
+    return;
+  }
+  state.openMenuId = undefined;
+  updateContextMenus(root, nodes, state);
+}
+
+function updateContextMenus(root: IRenderedUiNode, nodes: Map<string, HTMLElement>, state: IUiDomOverlayState): void {
+  visitRenderedNode(root, (node) => {
+    if (node.kind !== "contextMenu") {
+      return;
+    }
+    const element = nodes.get(node.id);
+    if (element === undefined) {
+      return;
+    }
+    const isOpen = state.openMenuId === node.id;
+    element.dataset.threenativeUiOpen = String(isOpen);
+    element.setAttribute("aria-hidden", String(!isOpen));
+    element.style.display = isOpen ? "block" : "none";
+    element.style.pointerEvents = isOpen ? "auto" : "none";
+    if (isOpen && node.anchorId !== undefined) {
+      const anchor = nodes.get(node.anchorId);
+      const rect = anchor?.getBoundingClientRect();
+      if (rect !== undefined) {
+        element.style.left = `${rect.left}px`;
+        element.style.top = `${rect.bottom}px`;
+      }
+    }
+  });
+}
+
+function contextMenuForAnchor(root: IRenderedUiNode, anchorId: string): string | undefined {
+  let menuId: string | undefined;
+  visitRenderedNode(root, (node) => {
+    if (node.kind === "contextMenu" && node.anchorId === anchorId) {
+      menuId = node.id;
+    }
+  });
+  return menuId;
+}
+
+function menuAnchor(root: IRenderedUiNode, menuId: string): string | undefined {
+  return renderedNodesById(root).get(menuId)?.anchorId;
+}
+
+function containingContextMenu(root: IRenderedUiNode, nodeId: string): string | undefined {
+  if (root.id === nodeId) {
+    return root.kind === "contextMenu" ? root.id : undefined;
+  }
+  for (const child of root.children) {
+    const contained = containingContextMenu(child, nodeId);
+    if (contained !== undefined) {
+      return root.kind === "contextMenu" ? root.id : contained;
+    }
+  }
+  return undefined;
+}
+
+function focusableDescendants(root: IRenderedUiNode): IRenderedUiNode[] {
+  const focusable: IRenderedUiNode[] = [];
+  visitRenderedNode(root, (node) => {
+    if (node.focusable && node.disabled !== true) {
+      focusable.push(node);
+    }
+  });
+  return focusable;
+}
+
+function firstFocusableDescendant(root: HTMLElement | undefined): HTMLElement | undefined {
+  const all = root?.querySelectorAll<HTMLElement>("[tabindex=\"0\"]");
+  return (all === undefined ? [] : Array.from(all)).find((element) => element.getAttribute("aria-disabled") !== "true");
+}
+
+function applyImageMetadata(element: HTMLElement, node: IRenderedUiNode): void {
+  const metadata = node.image;
+  if (metadata === undefined) {
+    return;
+  }
+  if (metadata.scaleMode !== undefined) {
+    element.style.objectFit = metadata.scaleMode === "stretch" ? "fill" : metadata.scaleMode;
+  }
+  const transforms = [];
+  if (metadata.flipX === true) {
+    transforms.push("scaleX(-1)");
+  }
+  if (metadata.flipY === true) {
+    transforms.push("scaleY(-1)");
+  }
+  if (transforms.length > 0) {
+    element.style.transform = transforms.join(" ");
+  }
+  if (metadata.tint !== undefined) {
+    element.style.backgroundColor = metadata.tint;
+  }
+  if (metadata.tileSize !== undefined) {
+    element.style.backgroundSize = `${metadata.tileSize.width}px ${metadata.tileSize.height}px`;
+    element.style.backgroundRepeat = "repeat";
+  }
+  if (metadata.atlas !== undefined) {
+    element.dataset.threenativeUiAtlas = `${metadata.atlas.x},${metadata.atlas.y},${metadata.atlas.width},${metadata.atlas.height}`;
+  }
+  if (metadata.nineSlice !== undefined) {
+    element.dataset.threenativeUiNineSlice = `${metadata.nineSlice.top},${metadata.nineSlice.right},${metadata.nineSlice.bottom},${metadata.nineSlice.left}`;
+  }
 }
 
 function applyVisualStyle(style: Partial<CSSStyleDeclaration>, visual: IRenderedUiNode["style"]): void {
