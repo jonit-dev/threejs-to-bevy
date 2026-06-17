@@ -40,7 +40,7 @@ fn cube_fixture_directional_light_should_use_web_tuned_illuminance() {
         .expect("cube key light should be spawned");
 
     assert!(
-        (light.illuminance - (2.0 * 47.0)).abs() < 0.01,
+        (light.illuminance - (2.0 * 90.0)).abs() < 0.01,
         "directional illuminance should match the web-tuned cube fixture constant"
     );
 }

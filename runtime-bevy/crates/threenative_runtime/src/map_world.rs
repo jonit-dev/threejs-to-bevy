@@ -47,11 +47,11 @@ use crate::rendering::spawn_rendered_particles;
 // raw Bevy light defaults to authored scenes.
 // Three.js r152+ directional lights use photometric lux; keep Bevy illuminance aligned.
 // Tuned against the v1 cube fixture so lit standard-material faces match web preview.
-const THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY: f32 = 47.0;
+const THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY: f32 = 90.0;
 const THREE_COMPAT_POINT_LUMENS_PER_CANDELA: f32 =
-    std::f32::consts::TAU * 2.0 * (47.0 / 1.7);
+    std::f32::consts::TAU * 2.0 * (90.0 / 1.7);
 const THREE_COMPAT_DEFAULT_RANGE: f32 = 1_000.0;
-const THREE_COMPAT_DEFAULT_CAMERA_EV100: f32 = 6.5;
+const THREE_COMPAT_DEFAULT_CAMERA_EV100: f32 = 7.55;
 
 #[derive(Clone, Component, Debug, PartialEq)]
 pub struct NativeMaterialPolicy {
