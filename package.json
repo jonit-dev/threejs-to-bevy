@@ -49,7 +49,19 @@
     "verify:v9:assets-gltf-scene-workflow": "pnpm --filter @threenative/cli build && pnpm --filter @threenative/ir build && pnpm --filter @threenative/runtime-web-three build && node scripts/verify-v9-assets-gltf-scene-workflow.mjs",
     "verify:v9:rendering-lights": "pnpm --filter @threenative/ir build && pnpm --filter @threenative/runtime-web-three build && pnpm --filter @threenative/cli build && node scripts/verify-v9-rendering-lights.mjs",
     "verify:v9": "node scripts/verify-v9.mjs",
-    "check:quality:v9": "node scripts/check-v9-quality-gates.mjs"
+    "check:quality:v9": "node scripts/check-v9-quality-gates.mjs",
+    "verify:v10:visual-calibration": "pnpm --filter @threenative/cli build && node scripts/verify-v10-visual-calibration.mjs",
+    "verify:v10:advanced-physics": "node scripts/verify-v10-advanced-physics.mjs",
+    "verify:v10:debug-draw": "node scripts/verify-v10-debug-draw.mjs",
+    "verify:v10:editor-panels": "node scripts/verify-v10-editor-panels.mjs",
+    "verify:v10:editor-property-editing": "node scripts/verify-v10-editor-property-editing.mjs",
+    "verify:v10:editor-tools": "node scripts/verify-v10-editor-tools.mjs",
+    "verify:v10:emissive-bloom": "node scripts/verify-v10-emissive-bloom.mjs",
+    "verify:v10:native-instancing": "node scripts/verify-v10-native-instancing.mjs",
+    "verify:v10:native-ui-effects": "node scripts/verify-v10-native-ui-effects.mjs",
+    "verify:v10:native-ui-images": "node scripts/verify-v10-native-ui-images.mjs",
+    "verify:v10:native-rich-text": "node scripts/verify-v10-native-rich-text.mjs",
+    "verify:v10:post-antialiasing": "node scripts/verify-v10-post-antialiasing.mjs"
   },
   "devDependencies": {
     "react": "^19.2.7",

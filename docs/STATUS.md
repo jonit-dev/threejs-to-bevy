@@ -43,10 +43,10 @@ final-gap triage batch for remaining runtime/platform parity rows after the V9
 push: advanced renderer/material/physics features, production platform/audio/
 asset extension policy, packaging, cross-runtime visual calibration, and
 explicit non-portable diagnostics.
-Retained editor UI and visual inspector UX are intentionally outside this V10
-batch until a dedicated editor/UI planning pass is requested. V10 commands such
-as `pnpm verify:v10` and `pnpm check:quality:v10` are planned future gates, not
-current implemented release commands.
+Broader authoring-tool UX remains outside this V10 batch except for bounded
+visual panel evidence explicitly promoted in the status entries below. V10
+commands such as `pnpm verify:v10` and `pnpm check:quality:v10` are planned
+future gates, not current implemented release commands.
 
 Distribution packaging is published and verified for the
 TypeScript packages: `@threenative/sdk`, `@threenative/ir`,
@@ -162,8 +162,113 @@ fixtures cover mesh sensors and backend/dynamic navigation handles. Run
 solver/sensor/push/navigation traces, compare drift, and write
 `artifacts/conformance/v9-physics-character/verification-report.json`.
 Dynamic mesh colliders, joints/constraints, dynamic navmesh rebakes, crowd
-steering, off-mesh links, and public backend physics/navmesh handles remain
-deferred with promotion criteria in the V9-02 PRD.
+steering, off-mesh links, and public backend physics/navmesh handles remained
+deferred at V9 scope with promotion criteria in the V9-02 PRD.
+
+The V10 advanced-physics pass now promotes a bounded racing-useful physics
+slice: SDK/IR/compiler contracts accept explicit `Collider.mesh.bounds` and
+`triangleCount` metadata for static and dynamic mesh colliders, `RigidBody.ccd`
+with `swept-aabb` mode, and portable `PhysicsJoint` metadata for hinge, slider,
+and suspension joints. Web and Bevy deterministic traces use mesh AABB bounds
+for high-speed track contact, preserve CCD observations, and report suspension
+joint metadata. `pnpm verify:v10:advanced-physics` writes sequential web/native
+frame PNGs, a contact sheet, JSON traces, and per-frame comparison metrics under
+`artifacts/v10/advanced-physics/`. Full constraint solving, tire/friction
+models, vehicle drivetrains, soft bodies, ragdolls, and public backend handles
+remain future physics work.
+
+The V10 emissive-bloom pass promotes HDR bloom contribution metadata for
+emissive materials. `MeshStandardMaterial.emissiveBloom` now validates through
+SDK/IR/schema checks, emits from scene capture, contributes a manifest
+capability, maps to web material user data and Bevy `StandardMaterial.emissive`
+without the unlit color-card shortcut, and exposes deterministic web/native
+contribution observations. `pnpm verify:v10:emissive-bloom` writes sequential
+web/native frame PNGs, a contact sheet, JSON traces, and per-frame comparison
+metrics under `artifacts/v10/emissive-bloom/`. This does not claim full GPU
+bloom pixel identity beyond the promoted contribution trace.
+
+The V10 native-instancing pass promotes renderer-level repeated-prop batching
+evidence for environment scatter instances. Bevy now records
+`NativeEnvironmentInstancingReport` resources, tags grouped instances with
+`NativeInstancedMember`, reuses shared mesh/material handles for repeated
+placeholder scatter props, and reports model-scene handle grouping for
+bundle-local glTF/GLB source assets. `pnpm verify:v10:native-instancing` writes
+sequential web/native trace-frame PNGs, a contact sheet, JSON traces, and
+per-frame comparison metrics under `artifacts/v10/native-instancing/`. This is
+not a broad custom GPU instance-attribute API, and visual runtime LOD mesh
+swapping remains future work.
+
+The V10 native-UI-effects pass promotes portable retained UI shadows and linear
+gradients beyond metadata preservation. Bevy now materializes authored shadow
+and gradient style entries as native rendered-effect components, exposes a
+deterministic native visual-effect trace, and stops reporting those style fields
+as unsupported. `pnpm verify:v10:native-ui-effects`
+writes sequential web/native trace-frame PNGs, a contact sheet, JSON traces, and
+per-frame comparison metrics under `artifacts/v10/native-ui-effects/`. This is a
+bounded retained UI effect slice, not a full CSS filter/shader parity claim.
+
+The V10 native-rich-text pass promotes bounded rich text style observations for
+the native Bevy UI adapter. Bevy now materializes retained font-family,
+font-weight, text-decoration, and per-span rich text style metadata as
+`NativeUiRenderedTextStyle` components, exposes deterministic
+`trace_native_ui_text_styles` observations, and stops reporting native
+weight/decoration diagnostics while retaining the explicit per-span italic
+diagnostic. `pnpm verify:v10:native-rich-text` writes sequential web/native
+trace-frame PNGs, a contact sheet, JSON traces, and per-frame comparison metrics
+under `artifacts/v10/native-rich-text/`. This is a metadata/render-style
+promotion for retained UI text, not a claim that Bevy synthesizes missing font
+faces for every portable weight.
+
+The V10 native-UI-images pass promotes retained UI texture atlas, nine-slice,
+flip, tile, tint, scale-mode, and source-size metadata into explicit native
+image render-plan observations. Bevy continues to preserve the authored
+`NativeUiImageMetadata` component and now exposes deterministic
+`trace_native_ui_image_rendering` observations for atlas/nine-slice panels and
+tiled image fills. `pnpm verify:v10:native-ui-images` writes sequential
+web/native trace-frame PNGs, a contact sheet, JSON traces, and per-frame
+comparison metrics under `artifacts/v10/native-ui-images/`. This is a bounded
+retained-image metadata/render-plan proof, not a full custom Bevy nine-slice
+mesh or tiled-material renderer implementation.
+
+The V10 post-antialiasing pass promotes runtime `fxaa`, `taa`, and `smaa`
+antialias modes. SDK/runtime config types, IR validation/schema, and compiler
+capability derivation now accept and report those modes; web conformance reports
+post-antialiasing as applied without enabling canvas MSAA, and Bevy attaches the
+matching FXAA, TAA, or SMAA camera component while leaving the MSAA resource off.
+`pnpm verify:v10:post-antialiasing` writes sequential web/native trace-frame
+PNGs, a contact sheet, JSON traces, and per-frame comparison metrics under
+`artifacts/v10/post-antialiasing/`. This is not a full temporal history quality
+or exact shader-output parity claim.
+
+The V10 editor-panels pass promotes a bounded visual editor/inspector panel
+model on top of the structured editor snapshot track. `@threenative/ir` now
+builds a deterministic `threenative.editor-visual-panels` snapshot with scene
+hierarchy, property inspector, assets, diagnostics, and reload-policy panels;
+`tn editor inspect --json` returns the same panel model alongside existing
+inspector metadata; and `pnpm verify:v10:editor-panels` writes sequential
+web/native trace-frame PNGs, a contact sheet, JSON traces, and per-frame
+comparison metrics under `artifacts/v10/editor-panels/`. This is a portable
+panel-data and visual evidence slice, not a full native desktop editor shell.
+
+The V10 editor-property-editing pass promotes bounded scene hierarchy property
+editing evidence. `tn editor inspect --json` exposes selectable hierarchy and
+editable property paths, `tn editor set` now has focused coverage for applying a
+validated `Transform.position` JSON-pointer edit back to `world.ir.json`, and
+`pnpm verify:v10:editor-property-editing` writes sequential web/native
+trace-frame PNGs, a contact sheet, JSON traces, and per-frame comparison
+metrics under `artifacts/v10/editor-property-editing/`. This remains structured
+bundle editing rather than live runtime scene mutation.
+
+The V10 editor-tools pass promotes bounded scene viewer, asset preview, and
+gamepad viewer metadata. `@threenative/ir` now builds deterministic
+`threenative.editor-tools` snapshots that derive scene cameras, renderables, and
+bounds from `world.ir.json`, asset preview rows from `assets.manifest.json`, and
+declared gamepad controls from `input.ir.json`; `tn editor inspect --json`
+returns that payload beside inspector and visual panel data. `pnpm
+verify:v10:editor-tools` writes sequential web/native trace-frame PNGs, a
+contact sheet, JSON traces, and per-frame comparison metrics under
+`artifacts/v10/editor-tools/`. This remains offline bundle inspection rather
+than a connected-device gamepad monitor or full native desktop editor shell.
 
 V8-10 has a narrow asset/glTF inspection evidence slice: web and Bevy now emit a
 deterministic `threenative.asset-load-sync-trace` for bundle-local path assets
@@ -410,6 +515,15 @@ coverage validates and reports the new fields; Bevy emits stable diagnostics for
 unsupported native blend modes beyond `normal`; raw shader payloads remain
 rejected; and `pnpm verify:v8:material-parity` aggregates IR/compiler tests,
 `pnpm verify:conformance`, and web/native screenshot evidence.
+
+The V10 shader-diagnostics pass tightens that rejection path for unsupported
+shader features without promoting custom shaders. Material-owned `shader`,
+`vertexShader`, `fragmentShader`, `nodeGraph`, `shaderDefs`, storage-buffer,
+render-phase, bindless, and material postprocess requests now fail validation
+with stable `TN_IR_SHADER_*_UNSUPPORTED` diagnostics. Each diagnostic includes
+the path, `error` severity, and promotion criteria requiring a constrained
+portable shader model, deterministic web/native resource binding, rejected
+fixtures, and visual evidence before support can be promoted.
 
 Post-V7 shadow gap closure has also promoted per-mesh shadow controls:
 `Mesh` accepts optional `castShadow` and `receiveShadow` flags, compiler
@@ -1171,6 +1285,14 @@ rows and draw primitives, Bevy exposes a matching native debug overlay
 observation report, and `pnpm verify:v9:diagnostics-support` writes the focused
 artifact set under `artifacts/v9/diagnostics-support/`. Runtime networking
 services remain explicitly out of scope.
+
+The V10 debug-draw pass promotes that gameplay helper catalog with sequential
+visual evidence. The SDK test now covers all promoted primitive helpers, web and
+native overlay tests preserve deterministic primitive ordering, and `pnpm
+verify:v10:debug-draw` writes matching web/native trace JSON, three sequential
+PNG frame pairs, a contact sheet, and zero-drift comparison metrics under
+`artifacts/v10/debug-draw/`. This remains a bounded overlay/report helper path,
+not a claim of arbitrary live engine-integrated debug rendering.
 
 V9-06 editor tooling now has a Phase 4 slice on top of the V8 structured editor
 track: `tn editor inspect` emits deterministic hierarchy, editable property
