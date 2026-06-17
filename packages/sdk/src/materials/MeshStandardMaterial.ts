@@ -6,6 +6,12 @@ export type TextureSlotReference = string | IAssetReference;
 export type MaterialAlphaMode = "blend" | "mask" | "opaque";
 export type MaterialBlendMode = "additive" | "multiply" | "normal" | "premultipliedAlpha";
 
+export interface IMaterialEmissiveBloomOptions {
+  enabled?: boolean;
+  intensity?: number;
+  threshold?: number;
+}
+
 export interface IMeshStandardMaterialOptions {
   alphaCutoff?: number;
   alphaMode?: MaterialAlphaMode;
@@ -19,6 +25,7 @@ export interface IMeshStandardMaterialOptions {
   depthTest?: boolean;
   depthWrite?: boolean;
   emissive?: ColorValue;
+  emissiveBloom?: IMaterialEmissiveBloomOptions;
   emissiveIntensity?: number;
   emissiveTexture?: TextureSlotReference;
   metalness?: number;
@@ -47,6 +54,7 @@ export class MeshStandardMaterial {
   public readonly depthTest?: boolean;
   public readonly depthWrite?: boolean;
   public readonly emissive?: ColorValue;
+  public readonly emissiveBloom?: Required<IMaterialEmissiveBloomOptions>;
   public readonly emissiveIntensity: number;
   public readonly emissiveTexture?: TextureSlotReference;
   public readonly metalness: number;
@@ -74,6 +82,7 @@ export class MeshStandardMaterial {
     this.depthTest = options.depthTest;
     this.depthWrite = options.depthWrite;
     this.emissive = options.emissive === undefined ? undefined : validateColor(options.emissive);
+    this.emissiveBloom = normalizeEmissiveBloom(options.emissiveBloom);
     this.emissiveIntensity = options.emissiveIntensity ?? 1;
     this.emissiveTexture = options.emissiveTexture;
     this.metalness = options.metalness ?? 0;
@@ -152,4 +161,22 @@ export function validateColor(color: ColorValue): ColorValue {
   });
 
   return [...color] as ColorValue;
+}
+
+function normalizeEmissiveBloom(value: IMaterialEmissiveBloomOptions | undefined): Required<IMaterialEmissiveBloomOptions> | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  const enabled = value.enabled ?? true;
+  const intensity = value.intensity ?? 1;
+  const threshold = value.threshold ?? 1;
+  if (typeof enabled !== "boolean") {
+    throw new SdkError("TN_SDK_MATERIAL_INVALID_VALUE", "MeshStandardMaterial.emissiveBloom.enabled must be a boolean.");
+  }
+  assertFiniteNumber(intensity, "TN_SDK_MATERIAL_INVALID_VALUE", "MeshStandardMaterial.emissiveBloom.intensity");
+  assertFiniteNumber(threshold, "TN_SDK_MATERIAL_INVALID_VALUE", "MeshStandardMaterial.emissiveBloom.threshold");
+  if (intensity < 0 || threshold < 0) {
+    throw new SdkError("TN_SDK_MATERIAL_INVALID_VALUE", "MeshStandardMaterial.emissiveBloom intensity and threshold must be non-negative.");
+  }
+  return { enabled, intensity, threshold };
 }

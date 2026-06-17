@@ -18,9 +18,10 @@ test("should store alpha mode, cutoff, and opacity", () => {
 });
 
 test("should store emissive color and intensity", () => {
-  const material = new MeshStandardMaterial({ emissive: "#33ccff", emissiveIntensity: 2.5 });
+  const material = new MeshStandardMaterial({ emissive: "#33ccff", emissiveBloom: { intensity: 0.8, threshold: 1.2 }, emissiveIntensity: 2.5 });
 
   assert.equal(material.emissive, "#33ccff");
+  assert.deepEqual(material.emissiveBloom, { enabled: true, intensity: 0.8, threshold: 1.2 });
   assert.equal(material.emissiveIntensity, 2.5);
 });
 
@@ -52,6 +53,8 @@ test("should reject invalid alpha values", () => {
 
 test("should reject invalid emissive intensity", () => {
   assert.throws(() => new MeshStandardMaterial({ emissiveIntensity: -1 }), /emissiveIntensity/);
+  assert.throws(() => new MeshStandardMaterial({ emissiveBloom: { intensity: -1 } }), /emissiveBloom/);
+  assert.throws(() => new MeshStandardMaterial({ emissiveBloom: { threshold: Number.NaN } }), /emissiveBloom/);
 });
 
 test("should reject invalid physical material factors", () => {

@@ -24,8 +24,17 @@ struct SimEntity {
     velocity: Option<[f32; 3]>,
 }
 
-pub fn trace_physics_sensors(bundle: &LoadedBundle, steps: usize, fixed_delta: f32) -> Vec<PhysicsSensorEvent> {
-    let mut entities = bundle.world.entities.iter().map(sim_entity).collect::<Vec<_>>();
+pub fn trace_physics_sensors(
+    bundle: &LoadedBundle,
+    steps: usize,
+    fixed_delta: f32,
+) -> Vec<PhysicsSensorEvent> {
+    let mut entities = bundle
+        .world
+        .entities
+        .iter()
+        .map(sim_entity)
+        .collect::<Vec<_>>();
     let mut previous = std::collections::BTreeMap::<String, Vec<String>>::new();
     let mut events = Vec::new();
     for step in 1..=steps {
@@ -49,7 +58,12 @@ pub fn trace_physics_sensors(bundle: &LoadedBundle, steps: usize, fixed_delta: f
             previous.insert(sensor.id, current.0);
         }
     }
-    events.sort_by(|left, right| left.step.cmp(&right.step).then(left.sensor.cmp(&right.sensor)).then(left.phase.cmp(&right.phase)));
+    events.sort_by(|left, right| {
+        left.step
+            .cmp(&right.step)
+            .then(left.sensor.cmp(&right.sensor))
+            .then(left.phase.cmp(&right.phase))
+    });
     events
 }
 
@@ -62,27 +76,66 @@ fn occupants_for(sensor: &SimEntity, entities: &[SimEntity]) -> (Vec<String>, Ve
         if entity.id == sensor.id || !overlaps(sensor, &entity) {
             continue;
         }
-        if !sensor.mask.is_empty() && !entity.layer.as_ref().is_some_and(|layer| sensor.mask.iter().any(|candidate| candidate == layer)) {
+        if !sensor.mask.is_empty()
+            && !entity
+                .layer
+                .as_ref()
+                .is_some_and(|layer| sensor.mask.iter().any(|candidate| candidate == layer))
+        {
             filtered.push(entity.id);
             continue;
         }
         occupants.push(entity.id);
     }
-    let limit = sensor.sensor.as_ref().and_then(|value| value.get("occupantLimit")).and_then(|value| value.as_u64()).unwrap_or(occupants.len() as u64) as usize;
+    let limit = sensor
+        .sensor
+        .as_ref()
+        .and_then(|value| value.get("occupantLimit"))
+        .and_then(|value| value.as_u64())
+        .unwrap_or(occupants.len() as u64) as usize;
     occupants.truncate(limit);
     (occupants, filtered)
 }
 
-fn phase_events(sensor: &SimEntity, previous: &[String], current: &[String], filtered: &[String], step: usize) -> Vec<PhysicsSensorEvent> {
-    let phases = sensor.sensor.as_ref().and_then(|value| value.get("phases")).and_then(|value| value.as_array());
-    let allows = |phase: &str| phases.is_none_or(|items| items.iter().any(|item| item.as_str() == Some(phase)));
-    let interaction_kind = sensor.sensor.as_ref().and_then(|value| value.get("interactionKind")).and_then(|value| value.as_str()).map(str::to_owned);
+fn phase_events(
+    sensor: &SimEntity,
+    previous: &[String],
+    current: &[String],
+    filtered: &[String],
+    step: usize,
+) -> Vec<PhysicsSensorEvent> {
+    let phases = sensor
+        .sensor
+        .as_ref()
+        .and_then(|value| value.get("phases"))
+        .and_then(|value| value.as_array());
+    let allows = |phase: &str| {
+        phases.is_none_or(|items| items.iter().any(|item| item.as_str() == Some(phase)))
+    };
+    let interaction_kind = sensor
+        .sensor
+        .as_ref()
+        .and_then(|value| value.get("interactionKind"))
+        .and_then(|value| value.as_str())
+        .map(str::to_owned);
     let previous_set = previous.iter().collect::<std::collections::BTreeSet<_>>();
     let current_set = current.iter().collect::<std::collections::BTreeSet<_>>();
     let mut events = Vec::new();
-    let entered = current.iter().filter(|id| !previous_set.contains(id)).cloned().collect::<Vec<_>>();
-    let stayed = current.iter().filter(|id| previous_set.contains(id)).cloned().collect::<Vec<_>>();
-    let exited = previous.iter().filter(|id| !current_set.contains(id)).cloned().collect::<Vec<_>>();
+    let entered = current
+        .iter()
+        .filter(|id| !previous_set.contains(id))
+        .cloned()
+        .collect::<Vec<_>>();
+    let stayed = current
+        .iter()
+        .filter(|id| previous_set.contains(id))
+        .cloned()
+        .collect::<Vec<_>>();
+    let exited = previous
+        .iter()
+        .filter(|id| !current_set.contains(id))
+        .cloned()
+        .collect::<Vec<_>>();
     for (phase, occupants) in [("enter", entered), ("stay", stayed), ("exit", exited)] {
         if occupants.is_empty() || !allows(phase) {
             continue;
@@ -102,13 +155,24 @@ fn phase_events(sensor: &SimEntity, previous: &[String], current: &[String], fil
 fn sim_entity(entity: &WorldEntity) -> SimEntity {
     let collider = entity.components.collider.as_ref();
     SimEntity {
-        center: entity.components.transform.as_ref().and_then(|transform| transform.position).unwrap_or([0.0, 0.0, 0.0]),
+        center: entity
+            .components
+            .transform
+            .as_ref()
+            .and_then(|transform| transform.position)
+            .unwrap_or([0.0, 0.0, 0.0]),
         half_extents: collider.map(half_extents).unwrap_or([0.5, 0.5, 0.5]),
         id: entity.id.clone(),
         layer: collider.and_then(|collider| collider.layer.clone()),
-        mask: collider.and_then(|collider| collider.mask.clone()).unwrap_or_default(),
+        mask: collider
+            .and_then(|collider| collider.mask.clone())
+            .unwrap_or_default(),
         sensor: collider.and_then(|collider| collider.sensor.clone()),
-        velocity: entity.components.rigid_body.as_ref().and_then(|body| body.velocity),
+        velocity: entity
+            .components
+            .rigid_body
+            .as_ref()
+            .and_then(|body| body.velocity),
     }
 }
 

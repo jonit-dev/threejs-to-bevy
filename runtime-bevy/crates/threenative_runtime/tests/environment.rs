@@ -7,7 +7,10 @@ use std::{
 use bevy::prelude::*;
 use threenative_components::ThreeNativeId;
 use threenative_loader::load_bundle;
-use threenative_runtime::environment::{map_environment_into_world, observe_environment};
+use threenative_runtime::environment::{
+    NativeInstancedMember, map_environment_into_world, observe_environment,
+    trace_native_environment_instancing,
+};
 
 mod support;
 use support::load_conformance_fixture;
@@ -129,6 +132,7 @@ fn environment_should_map_scene_to_terrain_path_and_instances() {
         "environment:rock.scatter.2",
         [-1.0, 0.375, 0.0],
     );
+    assert_native_instancing(app.world_mut());
 
     fs::remove_dir_all(root).expect("temp bundle should be removed");
 }
@@ -180,6 +184,59 @@ fn assert_instance_transform(world: &mut World, id: &str, expected_translation: 
         Vec3::from_array(expected_translation),
         "environment instance transform should preserve authored x/z and category height placement"
     );
+}
+
+fn assert_native_instancing(world: &mut World) {
+    let report = trace_native_environment_instancing(world)
+        .expect("native environment instancing report should exist");
+    assert_eq!(report.groups.len(), 1);
+    assert_eq!(report.groups[0].source_asset, "env.Rock");
+    assert_eq!(report.groups[0].count, 2);
+    assert_eq!(
+        report.groups[0].instance_ids,
+        vec!["rock.scatter.1", "rock.scatter.2"]
+    );
+    assert_eq!(report.groups[0].evidence, "model-scene-handle-batched");
+    assert_eq!(report.total_instanced_instances, 2);
+
+    let mut query = world.query::<(&ThreeNativeId, &NativeInstancedMember)>();
+    let mut ids = query
+        .iter(world)
+        .map(|(id, member)| {
+            assert_eq!(member.source_asset, "env.Rock");
+            assert_eq!(member.group_id, "instanced:env.Rock");
+            id.0.clone()
+        })
+        .collect::<Vec<_>>();
+    ids.sort();
+    assert_eq!(
+        ids,
+        vec![
+            "environment:rock.scatter.1".to_owned(),
+            "environment:rock.scatter.2".to_owned(),
+        ]
+    );
+    let handles = instanced_pbr_handles(world);
+    assert_eq!(handles.len(), 2);
+    assert_eq!(handles[0].1, handles[1].1);
+    assert_eq!(handles[0].2, handles[1].2);
+}
+
+fn instanced_pbr_handles(
+    world: &mut World,
+) -> Vec<(String, Handle<Mesh>, Handle<StandardMaterial>)> {
+    let mut query = world.query::<(
+        &ThreeNativeId,
+        &NativeInstancedMember,
+        &Handle<Mesh>,
+        &Handle<StandardMaterial>,
+    )>();
+    let mut rows = query
+        .iter(world)
+        .map(|(id, _member, mesh, material)| (id.0.clone(), mesh.clone(), material.clone()))
+        .collect::<Vec<_>>();
+    rows.sort_by(|left, right| left.0.cmp(&right.0));
+    rows
 }
 
 fn temp_bundle_dir() -> PathBuf {

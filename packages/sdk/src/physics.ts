@@ -28,6 +28,7 @@ export interface ISensorDeclaration {
 export interface IRigidBodyDeclaration {
   /** Primitive solver v2 metadata is portable only for box, sphere, and capsule collider bodies. */
   angularVelocity?: Vector3Tuple;
+  ccd?: ICcdDeclaration;
   damping?: number;
   gravityScale?: number;
   inverseMass?: number;
@@ -38,12 +39,28 @@ export interface IRigidBodyDeclaration {
   velocity?: Vector3Tuple;
 }
 
+export interface ICcdDeclaration {
+  enabled: boolean;
+  maxSubsteps?: number;
+  mode: "linear" | "swept-aabb";
+}
+
+export interface IMeshColliderDeclaration {
+  bounds: {
+    center?: Vector3Tuple;
+    size: Vector3Tuple;
+  };
+  source?: string;
+  triangleCount: number;
+}
+
 export interface IColliderDeclaration {
   friction?: number;
   height?: number;
   kind: PhysicsColliderKind;
   layer?: string;
   mask?: string[];
+  mesh?: IMeshColliderDeclaration;
   radius?: number;
   restitution?: number;
   sensor?: ISensorDeclaration;
@@ -52,15 +69,31 @@ export interface IColliderDeclaration {
   trigger?: boolean;
 }
 
+export interface IPhysicsJointDeclaration {
+  anchor?: Vector3Tuple;
+  axis?: Vector3Tuple;
+  connectedEntity: string;
+  damping?: number;
+  kind: "hinge" | "slider" | "suspension";
+  limits?: {
+    max: number;
+    min: number;
+  };
+  stiffness?: number;
+  travel?: number;
+}
+
 export interface IPhysicsDeclaration {
   body?: IRigidBodyDeclaration;
   collider?: IColliderDeclaration;
+  joint?: IPhysicsJointDeclaration;
 }
 
 export function rigidBody(
   kind: PhysicsBodyKind,
   options: {
     angularVelocity?: Vector3Tuple;
+    ccd?: ICcdDeclaration;
     damping?: number;
     gravityScale?: number;
     inverseMass?: number;
@@ -76,6 +109,7 @@ export function rigidBody(
   options.angularVelocity?.forEach((value, index) => {
     assertFiniteNumber(value, "TN_SDK_PHYSICS_BODY_INVALID_ANGULAR_VELOCITY", `RigidBody.angularVelocity[${index}]`);
   });
+  const ccd = normalizeCcd(options.ccd);
   if (options.damping !== undefined) {
     assertNonNegativeNumber(options.damping, "TN_SDK_PHYSICS_BODY_INVALID_DAMPING", "RigidBody.damping");
   }
@@ -105,6 +139,7 @@ export function rigidBody(
   });
   return {
     angularVelocity: options.angularVelocity,
+    ...(ccd === undefined ? {} : { ccd }),
     damping: options.damping,
     gravityScale: options.gravityScale,
     inverseMass: options.inverseMass,
@@ -143,12 +178,73 @@ export function cylinderCollider(radius: number, height: number, options: { trig
   return { height, kind: "cylinder", radius, trigger: options.trigger, ...normalizeFilter(options), ...normalizeMaterial(options) };
 }
 
-export function meshCollider(options: { trigger?: boolean } & IPhysicsFilterOptions & IPhysicsMaterialOptions = {}): IColliderDeclaration {
-  return { kind: "mesh", trigger: options.trigger, ...normalizeFilter(options), ...normalizeMaterial(options) };
+export function meshCollider(options: { mesh?: IMeshColliderDeclaration; trigger?: boolean } & IPhysicsFilterOptions & IPhysicsMaterialOptions = {}): IColliderDeclaration {
+  const mesh = options.mesh === undefined ? undefined : normalizeMeshCollider(options.mesh);
+  return { kind: "mesh", ...(mesh === undefined ? {} : { mesh }), trigger: options.trigger, ...normalizeFilter(options), ...normalizeMaterial(options) };
 }
 
 export function physics(options: IPhysicsDeclaration): IPhysicsDeclaration {
   return options;
+}
+
+export function physicsJoint(kind: IPhysicsJointDeclaration["kind"], connectedEntity: string, options: Omit<IPhysicsJointDeclaration, "connectedEntity" | "kind"> = {}): IPhysicsJointDeclaration {
+  if (!["hinge", "slider", "suspension"].includes(kind)) {
+    throw new SdkError("TN_SDK_PHYSICS_JOINT_UNSUPPORTED", "Physics joint kind must be hinge, slider, or suspension.");
+  }
+  if (connectedEntity.trim() === "") {
+    throw new SdkError("TN_SDK_PHYSICS_JOINT_INVALID", "Physics joint connectedEntity must be a non-empty entity id.");
+  }
+  options.anchor?.forEach((value, index) => assertFiniteNumber(value, "TN_SDK_PHYSICS_JOINT_INVALID", `PhysicsJoint.anchor[${index}]`));
+  options.axis?.forEach((value, index) => assertFiniteNumber(value, "TN_SDK_PHYSICS_JOINT_INVALID", `PhysicsJoint.axis[${index}]`));
+  if (options.damping !== undefined) {
+    assertNonNegativeNumber(options.damping, "TN_SDK_PHYSICS_JOINT_INVALID", "PhysicsJoint.damping");
+  }
+  if (options.stiffness !== undefined) {
+    assertNonNegativeNumber(options.stiffness, "TN_SDK_PHYSICS_JOINT_INVALID", "PhysicsJoint.stiffness");
+  }
+  if (options.travel !== undefined) {
+    assertNonNegativeNumber(options.travel, "TN_SDK_PHYSICS_JOINT_INVALID", "PhysicsJoint.travel");
+  }
+  if (options.limits !== undefined) {
+    assertFiniteNumber(options.limits.min, "TN_SDK_PHYSICS_JOINT_INVALID", "PhysicsJoint.limits.min");
+    assertFiniteNumber(options.limits.max, "TN_SDK_PHYSICS_JOINT_INVALID", "PhysicsJoint.limits.max");
+    if (options.limits.min > options.limits.max) {
+      throw new SdkError("TN_SDK_PHYSICS_JOINT_INVALID", "PhysicsJoint.limits.min must be less than or equal to limits.max.");
+    }
+  }
+  return { connectedEntity, kind, ...options };
+}
+
+function normalizeCcd(value: ICcdDeclaration | undefined): ICcdDeclaration | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (typeof value.enabled !== "boolean" || !["linear", "swept-aabb"].includes(value.mode)) {
+    throw new SdkError("TN_SDK_PHYSICS_CCD_INVALID", "RigidBody.ccd requires enabled boolean and mode linear or swept-aabb.");
+  }
+  if (value.maxSubsteps !== undefined && (!Number.isInteger(value.maxSubsteps) || value.maxSubsteps < 1 || value.maxSubsteps > 16)) {
+    throw new SdkError("TN_SDK_PHYSICS_CCD_INVALID", "RigidBody.ccd.maxSubsteps must be an integer from 1 to 16.");
+  }
+  return { enabled: value.enabled, ...(value.maxSubsteps === undefined ? {} : { maxSubsteps: value.maxSubsteps }), mode: value.mode };
+}
+
+function normalizeMeshCollider(value: IMeshColliderDeclaration): IMeshColliderDeclaration {
+  if (!Number.isInteger(value.triangleCount) || value.triangleCount < 1 || value.triangleCount > 10000) {
+    throw new SdkError("TN_SDK_PHYSICS_MESH_COLLIDER_INVALID", "Mesh collider triangleCount must be an integer from 1 to 10000.");
+  }
+  value.bounds.size.forEach((item, index) => assertPositiveNumber(item, "TN_SDK_PHYSICS_MESH_COLLIDER_INVALID", `Collider.mesh.bounds.size[${index}]`));
+  value.bounds.center?.forEach((item, index) => assertFiniteNumber(item, "TN_SDK_PHYSICS_MESH_COLLIDER_INVALID", `Collider.mesh.bounds.center[${index}]`));
+  if (value.source !== undefined && value.source.trim() === "") {
+    throw new SdkError("TN_SDK_PHYSICS_MESH_COLLIDER_INVALID", "Mesh collider source must be a non-empty asset id when authored.");
+  }
+  return {
+    bounds: {
+      ...(value.bounds.center === undefined ? {} : { center: [...value.bounds.center] as Vector3Tuple }),
+      size: [...value.bounds.size] as Vector3Tuple,
+    },
+    ...(value.source === undefined ? {} : { source: value.source }),
+    triangleCount: value.triangleCount,
+  };
 }
 
 function normalizeFilter(options: IPhysicsFilterOptions): Pick<IColliderDeclaration, "layer" | "mask"> {

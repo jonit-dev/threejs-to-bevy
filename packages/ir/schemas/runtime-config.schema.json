@@ -12,7 +12,7 @@
       "required": ["antialias"],
       "additionalProperties": false,
       "properties": {
-        "antialias": { "enum": ["none", "msaa2", "msaa4", "msaa8"] },
+        "antialias": { "enum": ["none", "msaa2", "msaa4", "msaa8", "fxaa", "taa", "smaa"] },
         "bloom": {
           "type": "object",
           "required": ["enabled", "intensity", "threshold"],
@@ -34,6 +34,17 @@
             "temperature": { "type": "number" },
             "tint": { "type": "number" },
             "toneMapping": { "enum": ["aces", "linear", "none", "reinhard"] }
+          }
+        },
+        "depthOfField": {
+          "type": "object",
+          "required": ["enabled", "focusDistance", "aperture", "maxBlur"],
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "focusDistance": { "type": "number", "exclusiveMinimum": 0 },
+            "aperture": { "type": "number", "minimum": 0 },
+            "maxBlur": { "type": "number", "minimum": 0 }
           }
         },
         "renderPath": { "const": "forward" }

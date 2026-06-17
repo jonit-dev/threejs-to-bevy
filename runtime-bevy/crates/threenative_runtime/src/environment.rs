@@ -13,6 +13,29 @@ use serde::Serialize;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{AssetIr, LoadedBundle};
 
+#[derive(Clone, Component, Debug, PartialEq)]
+pub struct NativeInstancedMember {
+    pub evidence: String,
+    pub group_id: String,
+    pub source_asset: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Resource, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeEnvironmentInstancingReport {
+    pub groups: Vec<NativeEnvironmentInstancingGroup>,
+    pub total_instanced_instances: usize,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeEnvironmentInstancingGroup {
+    pub count: usize,
+    pub evidence: String,
+    pub instance_ids: Vec<String>,
+    pub source_asset: String,
+}
+
 #[derive(Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EnvironmentObservation {
@@ -60,6 +83,14 @@ pub struct EnvironmentRepeatedAssetGroup {
     pub source_asset: String,
     pub count: usize,
     pub evidence: String,
+}
+
+pub fn trace_native_environment_instancing(
+    world: &World,
+) -> Option<NativeEnvironmentInstancingReport> {
+    world
+        .get_resource::<NativeEnvironmentInstancingReport>()
+        .cloned()
 }
 
 pub fn observe_environment(bundle: &LoadedBundle) -> Option<EnvironmentObservation> {
@@ -213,11 +244,95 @@ fn repeated_asset_groups(
     groups
 }
 
+fn native_instancing_report(bundle: &LoadedBundle) -> Option<NativeEnvironmentInstancingReport> {
+    let scene = bundle.environment_scene.as_ref()?;
+    let source_assets = scene
+        .source_assets
+        .iter()
+        .map(|asset| (asset.id.as_str(), asset.asset.as_str()))
+        .collect::<HashMap<_, _>>();
+    let assets = bundle
+        .assets
+        .assets
+        .iter()
+        .map(|asset| (asset.id.as_str(), asset))
+        .collect::<HashMap<_, _>>();
+    let mut by_source = HashMap::<String, Vec<String>>::new();
+    for instance in &scene.instances {
+        if !is_instancing_compatible(instance) {
+            continue;
+        }
+        by_source
+            .entry(instance.source_asset.clone())
+            .or_default()
+            .push(instance.id.clone());
+    }
+    let mut groups = by_source
+        .into_iter()
+        .filter(|(_source_asset, ids)| ids.len() >= 2)
+        .map(|(source_asset, mut instance_ids)| {
+            instance_ids.sort();
+            let evidence = source_assets
+                .get(source_asset.as_str())
+                .and_then(|asset_id| assets.get(asset_id))
+                .filter(|asset| {
+                    asset.kind == "model"
+                        && matches!(asset.format.as_str(), "gltf" | "glb")
+                        && asset.path.is_some()
+                })
+                .map(|_| "model-scene-handle-batched")
+                .unwrap_or("shared-mesh-material-batched");
+            NativeEnvironmentInstancingGroup {
+                count: instance_ids.len(),
+                evidence: evidence.to_owned(),
+                instance_ids,
+                source_asset,
+            }
+        })
+        .collect::<Vec<_>>();
+    groups.sort_by(|left, right| left.source_asset.cmp(&right.source_asset));
+    let total_instanced_instances = groups.iter().map(|group| group.count).sum();
+    Some(NativeEnvironmentInstancingReport {
+        groups,
+        total_instanced_instances,
+    })
+}
+
+fn is_instancing_compatible(instance: &threenative_loader::EnvironmentInstanceIr) -> bool {
+    instance.kind.as_deref() == Some("scatter")
+        && !instance
+            .tags
+            .iter()
+            .any(|tag| matches!(tag.as_str(), "hero" | "unique" | "foreground"))
+}
+
 pub fn map_environment_into_world(world: &mut World, bundle: &LoadedBundle) {
     let Some(scene) = bundle.environment_scene.as_ref() else {
         return;
     };
     ensure_asset_resources(world);
+    let instancing_report =
+        native_instancing_report(bundle).unwrap_or(NativeEnvironmentInstancingReport {
+            groups: Vec::new(),
+            total_instanced_instances: 0,
+        });
+    let instanced_members = instancing_report
+        .groups
+        .iter()
+        .flat_map(|group| {
+            group.instance_ids.iter().map(|id| {
+                (
+                    id.clone(),
+                    NativeInstancedMember {
+                        evidence: group.evidence.clone(),
+                        group_id: format!("instanced:{}", group.source_asset),
+                        source_asset: group.source_asset.clone(),
+                    },
+                )
+            })
+        })
+        .collect::<HashMap<_, _>>();
+    world.insert_resource(instancing_report);
     let source_assets = scene
         .source_assets
         .iter()
@@ -235,6 +350,8 @@ pub fn map_environment_into_world(world: &mut World, bundle: &LoadedBundle) {
         .map(|asset| (asset.id.as_str(), asset))
         .collect::<HashMap<_, _>>();
     let asset_server = world.get_resource::<AssetServer>().cloned();
+    let mut placeholder_batches =
+        HashMap::<String, (Handle<Mesh>, Handle<StandardMaterial>)>::new();
 
     if let Some(terrain) = scene.terrain.as_ref() {
         let material = material(world, Color::WHITE);
@@ -265,6 +382,7 @@ pub fn map_environment_into_world(world: &mut World, bundle: &LoadedBundle) {
             .unwrap_or("vegetation");
         let position = instance.position;
         let scale = instance.scale.unwrap_or([1.0, 1.0, 1.0]);
+        let instanced_member = instanced_members.get(instance.id.as_str()).cloned();
         let y = position[1] + terrain_height_at(bundle, position[0], position[2]);
         let mut transform = Transform::from_xyz(position[0], y, position[2]);
         if let Some(rotation) = instance.rotation {
@@ -284,27 +402,58 @@ pub fn map_environment_into_world(world: &mut World, bundle: &LoadedBundle) {
                 }
             }) {
                 apply_gltf_normalization(&mut transform, category, asset);
-                spawn_gltf_scene(
+                let entity = spawn_gltf_scene(
                     world,
                     asset_server,
                     &format!("environment:{}", instance.id),
                     asset.path.as_deref().unwrap_or_default(),
                     transform,
                 );
+                if let Some(member) = instanced_member {
+                    world.entity_mut(entity).insert(member);
+                }
                 continue;
             }
         }
 
         let base_size = size_for_category(category);
         transform.translation.y = y + base_size[1] * scale[1] / 2.0;
-        let material = material(world, color_for_category(category));
-        spawn_pbr(
-            world,
-            &format!("environment:{}", instance.id),
-            Mesh::from(Cuboid::new(base_size[0], base_size[1], base_size[2])),
-            material,
-            transform,
-        );
+        let entity = if instanced_member.is_some() {
+            let (mesh, material) = placeholder_batches
+                .entry(instance.source_asset.clone())
+                .or_insert_with(|| {
+                    (
+                        world
+                            .resource_mut::<Assets<Mesh>>()
+                            .add(Mesh::from(Cuboid::new(
+                                base_size[0],
+                                base_size[1],
+                                base_size[2],
+                            ))),
+                        material(world, color_for_category(category)),
+                    )
+                })
+                .clone();
+            spawn_pbr_handles(
+                world,
+                &format!("environment:{}", instance.id),
+                mesh,
+                material,
+                transform,
+            )
+        } else {
+            let material = material(world, color_for_category(category));
+            spawn_pbr(
+                world,
+                &format!("environment:{}", instance.id),
+                Mesh::from(Cuboid::new(base_size[0], base_size[1], base_size[2])),
+                material,
+                transform,
+            )
+        };
+        if let Some(member) = instanced_member {
+            world.entity_mut(entity).insert(member);
+        }
     }
 }
 
@@ -369,7 +518,7 @@ fn spawn_gltf_scene(
     id: &str,
     model_path: &str,
     transform: Transform,
-) {
+) -> Entity {
     let scene = asset_server.load(GltfAssetLabel::Scene(0).from_asset(model_path.to_owned()));
     world
         .spawn(SceneBundle {
@@ -377,7 +526,8 @@ fn spawn_gltf_scene(
             transform,
             ..Default::default()
         })
-        .insert((ThreeNativeId(id.to_owned()), Name::new(id.to_owned())));
+        .insert((ThreeNativeId(id.to_owned()), Name::new(id.to_owned())))
+        .id()
 }
 
 fn spawn_pbr(
@@ -386,8 +536,18 @@ fn spawn_pbr(
     mesh: Mesh,
     material: Handle<StandardMaterial>,
     transform: Transform,
-) {
+) -> Entity {
     let mesh = world.resource_mut::<Assets<Mesh>>().add(mesh);
+    spawn_pbr_handles(world, id, mesh, material, transform)
+}
+
+fn spawn_pbr_handles(
+    world: &mut World,
+    id: &str,
+    mesh: Handle<Mesh>,
+    material: Handle<StandardMaterial>,
+    transform: Transform,
+) -> Entity {
     world
         .spawn(PbrBundle {
             mesh,
@@ -395,7 +555,8 @@ fn spawn_pbr(
             transform,
             ..Default::default()
         })
-        .insert((ThreeNativeId(id.to_owned()), Name::new(id.to_owned())));
+        .insert((ThreeNativeId(id.to_owned()), Name::new(id.to_owned())))
+        .id()
 }
 
 fn material(world: &mut World, color: Color) -> Handle<StandardMaterial> {

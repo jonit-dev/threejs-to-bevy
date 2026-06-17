@@ -114,21 +114,26 @@ function reportRuntimeConfig(config: IRuntimeConfigIr | undefined): IConformance
       antialias: config.renderer.antialias,
       ...(config.renderer.bloom === undefined ? {} : { bloom: config.renderer.bloom }),
       ...(config.renderer.colorGrading === undefined ? {} : { colorGrading: config.renderer.colorGrading }),
+      ...(config.renderer.depthOfField === undefined ? {} : { depthOfField: config.renderer.depthOfField }),
       postProcessing: {
         applied: [
           ...(config.renderer.bloom?.enabled === true ? ["bloom"] : []),
           ...(config.renderer.colorGrading === undefined ? [] : ["colorGrading"]),
+          ...(config.renderer.depthOfField?.enabled === true ? ["depthOfField"] : []),
+          ...postAntialiasFeatures(config.renderer.antialias),
         ],
-        skipped: [
-          { feature: "fxaa", reason: "diagnostic-only until native/web visual parity evidence is promoted" },
-          { feature: "taa", reason: "unsupported in V9" },
-          { feature: "smaa", reason: "unsupported in V9" },
-          { feature: "depthOfField", reason: "unsupported in V9" },
-        ],
+        skipped: [],
       },
       ...(config.renderer.renderPath === undefined ? {} : { renderPath: config.renderer.renderPath }),
     },
   };
+}
+
+function postAntialiasFeatures(mode: NonNullable<IRuntimeConfigIr["renderer"]>["antialias"]): string[] {
+  if (mode === "fxaa" || mode === "taa" || mode === "smaa") {
+    return [`antialias.${mode}`];
+  }
+  return [];
 }
 
 function reportAudio(audio: IAudioIr, events: Record<string, unknown>): IConformanceAudioReport {
@@ -314,6 +319,7 @@ function reportMaterial(material: IMaterialIr): IConformanceMaterialReport {
     depthTest: material.depthTest,
     depthWrite: material.depthWrite,
     emissive: material.emissive,
+    emissiveBloom: material.emissiveBloom,
     emissiveIntensity: material.emissiveIntensity,
     extension: material.extension,
     id: material.id,

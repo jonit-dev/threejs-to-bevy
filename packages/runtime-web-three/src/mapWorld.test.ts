@@ -5,7 +5,7 @@ import * as THREE from "three";
 
 import { loadBundle } from "./loadBundle.js";
 import type { IWebBundle } from "./loadBundle.js";
-import { advanceAnimationPlayback, hasAnimationPlayback, loadWorldModelAssets, mapWorld } from "./mapWorld.js";
+import { advanceAnimationPlayback, hasAnimationPlayback, loadWorldModelAssets, mapWorld, traceEmissiveBloomContributions } from "./mapWorld.js";
 
 test("mapWorld should map cube fixture to three scene", async () => {
   const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/cube-scene/game.bundle"));
@@ -519,7 +519,7 @@ test("mapWorld should apply material alpha mode and opacity", () => {
       schema: "threenative.materials",
       version: "0.1.0",
       materials: [
-        { id: "mat.glass", kind: "standard", alphaMode: "blend", color: "#ffffff", emissive: "#33ccff", emissiveIntensity: 2.5, opacity: 0.45 },
+        { id: "mat.glass", kind: "standard", alphaMode: "blend", color: "#ffffff", emissive: "#33ccff", emissiveBloom: { enabled: true, intensity: 0.8, threshold: 0.5 }, emissiveIntensity: 2.5, opacity: 0.45 },
         { id: "mat.leaves", kind: "standard", alphaCutoff: 0.35, alphaMode: "mask", color: "#ffffff" },
       ],
     },
@@ -542,11 +542,56 @@ test("mapWorld should apply material alpha mode and opacity", () => {
   assert.equal(glass.material.opacity, 0.45);
   assert.equal(glass.material.emissive.getHexString(), "33ccff");
   assert.equal(glass.material.emissiveIntensity, 2.5);
+  assert.deepEqual(glass.material.userData.threeNativeEmissiveBloom, {
+    contribution: 1.022191,
+    emissiveIntensity: 2.5,
+    enabled: true,
+    entityId: "",
+    exceedsThreshold: true,
+    materialId: "mat.glass",
+    materialIntensity: 0.8,
+    threshold: 0.5,
+  });
   assert.equal(glass.material.userData.threeNativeAlphaMode, "blend");
   assert.ok(leaves instanceof THREE.Mesh);
   assert.ok(leaves.material instanceof THREE.MeshStandardMaterial);
   assert.equal(leaves.material.alphaTest, 0.35);
   assert.equal(leaves.material.userData.threeNativeAlphaMode, "mask");
+});
+
+test("mapWorld should trace emissive bloom contribution metadata", () => {
+  const bundle: IWebBundle = {
+    assets: {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [{ id: "mesh.cube", kind: "mesh", format: "generated", primitive: "box", size: [1, 1, 1] }],
+    },
+    manifest: { schema: "threenative.bundle", version: "0.1.0", name: "emissive-bloom", requiredCapabilities: {}, entry: { world: "world.ir.json" }, files: { assets: "assets.manifest.json", materials: "materials.ir.json", targetProfile: "target.profile.json" } },
+    materials: {
+      schema: "threenative.materials",
+      version: "0.1.0",
+      materials: [{ id: "mat.neon", kind: "standard", color: "#111111", emissive: "#ffffff", emissiveBloom: { enabled: true, intensity: 0.75, threshold: 1.1 }, emissiveIntensity: 2 }],
+    },
+    targetProfile: { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] },
+    world: {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [{ id: "neon", components: { MeshRenderer: { mesh: "mesh.cube", material: "mat.neon" } } }],
+    },
+  };
+
+  assert.deepEqual(traceEmissiveBloomContributions(bundle), [
+    {
+      contribution: 1.5,
+      emissiveIntensity: 2,
+      enabled: true,
+      entityId: "neon",
+      exceedsThreshold: true,
+      materialId: "mat.neon",
+      materialIntensity: 0.75,
+      threshold: 1.1,
+    },
+  ]);
 });
 
 test("mapWorld should apply physical material factors", () => {

@@ -34,6 +34,7 @@ export interface IRigidBodyTraceInput {
 }
 
 export interface IRigidBodyTraceObservation {
+  ccd?: boolean;
   contact?: string;
   contacts?: string[];
   damping: number;
@@ -44,6 +45,13 @@ export interface IRigidBodyTraceObservation {
   restitution: number;
   step: number;
   velocity: Vec3;
+}
+
+export interface IPhysicsJointObservation {
+  axis?: Vec3;
+  connectedEntity: string;
+  entity: string;
+  kind: string;
 }
 
 const previousPairsByWorld = new WeakMap<IWorldIr, Map<string, IDetectedPair>>();
@@ -76,6 +84,7 @@ export function traceRigidBodyPrimitive(world: IWorldIr, input: IRigidBodyTraceI
       }
       const entityContacts = contacts.get(entity.id);
       observations.push({
+        ...(body.ccd?.enabled === true ? { ccd: true } : {}),
         ...(entityContacts?.[0] === undefined ? {} : { contact: entityContacts[0] }),
         ...(entityContacts === undefined || entityContacts.length <= 1 ? {} : { contacts: entityContacts }),
         damping: roundNumber(body.damping ?? 0),
@@ -90,6 +99,25 @@ export function traceRigidBodyPrimitive(world: IWorldIr, input: IRigidBodyTraceI
     }
   }
   return observations.sort((left, right) => left.step - right.step || left.entity.localeCompare(right.entity));
+}
+
+export function tracePhysicsJoints(world: IWorldIr): IPhysicsJointObservation[] {
+  return world.entities
+    .flatMap((entity) => {
+      const joint = entity.components.PhysicsJoint;
+      if (joint === undefined) {
+        return [];
+      }
+      return [
+        {
+          ...(joint.axis === undefined ? {} : { axis: joint.axis }),
+          connectedEntity: joint.connectedEntity,
+          entity: entity.id,
+          kind: joint.kind,
+        },
+      ];
+    })
+    .sort((left, right) => left.entity.localeCompare(right.entity));
 }
 
 export function detectPhysicsEvents(world: IWorldIr): IPhysicsEventObservation[] {
@@ -132,6 +160,13 @@ function eventPayloads(event: PhysicsEventName, currentPairs: Map<string, IDetec
 
 function stepPrimitiveBodies(world: IWorldIr, fixedDelta: number, gravity: Vec3): Map<string, string[]> {
   const contacts = new Map<string, string[]>();
+  const previousCenters = new Map<string, Vec3>();
+  for (const entity of world.entities) {
+    const position = entity.components.Transform?.position;
+    if (position !== undefined) {
+      previousCenters.set(entity.id, [...position] as Vec3);
+    }
+  }
   for (const entity of world.entities) {
     integrateEntity(entity, fixedDelta, gravity);
   }
@@ -151,7 +186,7 @@ function stepPrimitiveBodies(world: IWorldIr, fixedDelta: number, gravity: Vec3)
       if (blocker.id === entity.id || blocker.components.Collider === undefined) {
         continue;
       }
-      if (resolveVerticalContact(entity, blocker)) {
+      if (resolveVerticalContact(entity, blocker, previousCenters.get(entity.id))) {
         const entityContacts = contacts.get(entity.id) ?? [];
         entityContacts.push(blocker.id);
         contacts.set(entity.id, entityContacts.sort((left, right) => left.localeCompare(right)));
@@ -184,7 +219,7 @@ function integrateEntity(entity: IWorldEntity, fixedDelta: number, gravity: Vec3
   ];
 }
 
-function resolveVerticalContact(entity: IWorldEntity, floor: IWorldEntity): boolean {
+function resolveVerticalContact(entity: IWorldEntity, floor: IWorldEntity, previousCenter?: Vec3): boolean {
   const body = entity.components.RigidBody;
   const collider = entity.components.Collider;
   const transform = entity.components.Transform;
@@ -193,9 +228,10 @@ function resolveVerticalContact(entity: IWorldEntity, floor: IWorldEntity): bool
   if (body === undefined || collider === undefined || transform?.position === undefined || floorCollider === undefined) {
     return false;
   }
-  const bounds = { center: transform.position, halfExtents: halfExtents(collider) };
-  const floorBounds = { center: floorTransform?.position ?? [0, 0, 0], halfExtents: halfExtents(floorCollider) };
-  if (!boundsOverlap(bounds, floorBounds)) {
+  const bounds = { center: colliderCenter(collider, transform.position), halfExtents: halfExtents(collider) };
+  const floorBounds = { center: colliderCenter(floorCollider, floorTransform?.position ?? [0, 0, 0]), halfExtents: halfExtents(floorCollider) };
+  const previousBoundsCenter = previousCenter === undefined ? undefined : colliderCenter(collider, previousCenter);
+  if (!boundsOverlap(bounds, floorBounds) && !sweptVerticalOverlap(entity, bounds, floorBounds, previousBoundsCenter)) {
     return false;
   }
   const floorTop = floorBounds.center[1] + floorBounds.halfExtents[1];
@@ -227,7 +263,7 @@ function colliderBounds(entity: IWorldEntity): IBounds[] {
   }
   return [
     {
-      center: entity.components.Transform?.position ?? [0, 0, 0],
+      center: colliderCenter(collider, entity.components.Transform?.position ?? [0, 0, 0]),
       halfExtents: halfExtents(collider),
       id: entity.id,
       layer: collider.layer,
@@ -238,6 +274,10 @@ function colliderBounds(entity: IWorldEntity): IBounds[] {
 }
 
 function halfExtents(collider: IColliderComponent): Vec3 {
+  if (collider.kind === "mesh" && collider.mesh !== undefined) {
+    const [x, y, z] = collider.mesh.bounds.size;
+    return [x / 2, y / 2, z / 2];
+  }
   if (collider.kind === "box") {
     const [x = 1, y = 1, z = 1] = collider.size ?? [];
     return [x / 2, y / 2, z / 2];
@@ -251,6 +291,27 @@ function halfExtents(collider: IColliderComponent): Vec3 {
     return [radius, (collider.height ?? 1) / 2, radius];
   }
   return [0.5, 0.5, 0.5];
+}
+
+function colliderCenter(collider: IColliderComponent, transformPosition: Vec3): Vec3 {
+  const local = collider.kind === "mesh" ? collider.mesh?.bounds.center : undefined;
+  if (local === undefined) {
+    return transformPosition;
+  }
+  return [transformPosition[0] + local[0], transformPosition[1] + local[1], transformPosition[2] + local[2]];
+}
+
+function sweptVerticalOverlap(entity: IWorldEntity, bounds: { center: Vec3; halfExtents: Vec3 }, floorBounds: { center: Vec3; halfExtents: Vec3 }, previousCenter?: Vec3): boolean {
+  const body = entity.components.RigidBody;
+  if (body?.ccd?.enabled !== true || previousCenter === undefined) {
+    return false;
+  }
+  const previousBottom = previousCenter[1] - bounds.halfExtents[1];
+  const currentBottom = bounds.center[1] - bounds.halfExtents[1];
+  const floorTop = floorBounds.center[1] + floorBounds.halfExtents[1];
+  const xOverlaps = Math.abs(bounds.center[0] - floorBounds.center[0]) <= bounds.halfExtents[0] + floorBounds.halfExtents[0];
+  const zOverlaps = Math.abs(bounds.center[2] - floorBounds.center[2]) <= bounds.halfExtents[2] + floorBounds.halfExtents[2];
+  return xOverlaps && zOverlaps && previousBottom >= floorTop && currentBottom <= floorTop;
 }
 
 function overlaps(left: IBounds, right: IBounds): boolean {

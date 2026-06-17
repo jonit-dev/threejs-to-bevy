@@ -203,7 +203,10 @@ pub fn apply_atmosphere_to_world(world: &mut World, bundle: &LoadedBundle) {
         .insert(Name::new(profile.sun.id.clone()));
 }
 
-pub fn observe_rendered_particles(bundle: &LoadedBundle, elapsed_seconds: f32) -> Vec<RenderedParticleEmitterObservation> {
+pub fn observe_rendered_particles(
+    bundle: &LoadedBundle,
+    elapsed_seconds: f32,
+) -> Vec<RenderedParticleEmitterObservation> {
     let mut observations = bundle
         .assets
         .assets
@@ -218,7 +221,11 @@ pub fn observe_rendered_particles(bundle: &LoadedBundle, elapsed_seconds: f32) -
                 .map(|emitter| RenderedParticleEmitterObservation {
                     asset: asset.id.clone(),
                     base_color: "#f6c36a".to_owned(),
-                    count: rendered_particle_count(emitter.max_particles, emitter.rate_per_second, elapsed_seconds),
+                    count: rendered_particle_count(
+                        emitter.max_particles,
+                        emitter.rate_per_second,
+                        elapsed_seconds,
+                    ),
                     emitter: emitter.id.clone(),
                     max_particles: emitter.max_particles,
                     opacity: 0.82,
@@ -227,48 +234,55 @@ pub fn observe_rendered_particles(bundle: &LoadedBundle, elapsed_seconds: f32) -
                 })
         })
         .collect::<Vec<_>>();
-    observations.sort_by(|left, right| left.asset.cmp(&right.asset).then(left.emitter.cmp(&right.emitter)));
+    observations.sort_by(|left, right| {
+        left.asset
+            .cmp(&right.asset)
+            .then(left.emitter.cmp(&right.emitter))
+    });
     observations
 }
 
 pub fn spawn_rendered_particles(world: &mut World, bundle: &LoadedBundle, elapsed_seconds: f32) {
     for observation in observe_rendered_particles(bundle, elapsed_seconds) {
         for index in 0..observation.count {
-            world
-                .spawn((
-                    NativeRenderedParticle {
-                        asset: observation.asset.clone(),
-                        emitter: observation.emitter.clone(),
-                        index,
-                        shape: observation.shape.clone(),
-                    },
-                    NativeParticleMaterialPolicy {
-                        base_color: observation.base_color.clone(),
-                        opacity: observation.opacity,
-                        size: observation.size,
-                    },
-                    ThreeNativeId(format!(
-                        "particle.{}.{}.{}",
-                        observation.asset, observation.emitter, index
-                    )),
-                    Name::new(format!(
-                        "particle.{}.{}.{}",
-                        observation.asset, observation.emitter, index
-                    )),
-                    Transform::from_translation(particle_position(
-                        &observation.asset,
-                        &observation.emitter,
-                        index,
-                        &observation.shape,
-                        0.25,
-                    )),
-                ));
+            world.spawn((
+                NativeRenderedParticle {
+                    asset: observation.asset.clone(),
+                    emitter: observation.emitter.clone(),
+                    index,
+                    shape: observation.shape.clone(),
+                },
+                NativeParticleMaterialPolicy {
+                    base_color: observation.base_color.clone(),
+                    opacity: observation.opacity,
+                    size: observation.size,
+                },
+                ThreeNativeId(format!(
+                    "particle.{}.{}.{}",
+                    observation.asset, observation.emitter, index
+                )),
+                Name::new(format!(
+                    "particle.{}.{}.{}",
+                    observation.asset, observation.emitter, index
+                )),
+                Transform::from_translation(particle_position(
+                    &observation.asset,
+                    &observation.emitter,
+                    index,
+                    &observation.shape,
+                    0.25,
+                )),
+            ));
         }
     }
 }
 
 fn rendered_particle_count(max_particles: u32, rate_per_second: f32, elapsed_seconds: f32) -> u32 {
-    if !rate_per_second.is_finite() || !elapsed_seconds.is_finite() || rate_per_second <= 0.0 || elapsed_seconds <= 0.0 {
+    if !rate_per_second.is_finite()
+        || !elapsed_seconds.is_finite()
+        || rate_per_second <= 0.0
+        || elapsed_seconds <= 0.0
+    {
         return 0;
     }
     max_particles.min((rate_per_second * elapsed_seconds).floor() as u32)
@@ -306,15 +320,18 @@ pub fn observe_environment_lighting(bundle: &LoadedBundle) -> EnvironmentLightin
         };
     };
     EnvironmentLightingObservation {
-        skybox: scene.skybox.as_ref().map(|skybox| EnvironmentTextureObservation {
-            mode: skybox.mode.clone(),
-            asset_ids: texture_asset_ids(&EnvironmentTextureSourceIr {
-                asset: skybox.asset.clone(),
-                faces: skybox.faces.clone(),
+        skybox: scene
+            .skybox
+            .as_ref()
+            .map(|skybox| EnvironmentTextureObservation {
                 mode: skybox.mode.clone(),
+                asset_ids: texture_asset_ids(&EnvironmentTextureSourceIr {
+                    asset: skybox.asset.clone(),
+                    faces: skybox.faces.clone(),
+                    mode: skybox.mode.clone(),
+                }),
+                applied: false,
             }),
-            applied: false,
-        }),
         environment_map: scene.environment_map.as_ref().map(|environment_map| {
             EnvironmentMapObservation {
                 mode: environment_map.mode.clone(),
@@ -341,7 +358,10 @@ pub fn observe_environment_lighting(bundle: &LoadedBundle) -> EnvironmentLightin
     }
 }
 
-pub fn apply_environment_lighting_to_world(world: &mut World, bundle: &LoadedBundle) -> EnvironmentLightingObservation {
+pub fn apply_environment_lighting_to_world(
+    world: &mut World,
+    bundle: &LoadedBundle,
+) -> EnvironmentLightingObservation {
     let mut observation = observe_environment_lighting(bundle);
     let Some(scene) = bundle.environment_scene.as_ref() else {
         return observation;
@@ -422,7 +442,10 @@ fn color_to_bevy(color: &ColorIr) -> Color {
     }
 }
 
-fn average_texture_color(bundle: &LoadedBundle, source: &EnvironmentTextureSourceIr) -> Option<Color> {
+fn average_texture_color(
+    bundle: &LoadedBundle,
+    source: &EnvironmentTextureSourceIr,
+) -> Option<Color> {
     let asset_id = texture_asset_ids(source).into_iter().next()?;
     let asset = bundle
         .assets

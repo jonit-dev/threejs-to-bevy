@@ -185,6 +185,7 @@ test("should emit material alpha and physical metadata", () => {
         clearcoatTexture: "tex.clearcoat",
         color: "#ffffff",
         emissive: "#33ccff",
+        emissiveBloom: { intensity: 0.8, threshold: 1.2 },
         emissiveIntensity: 2.5,
         opacity: 0.65,
         specularIntensity: 0.7,
@@ -199,6 +200,7 @@ test("should emit material alpha and physical metadata", () => {
   assert.equal(result.materials[0]?.alphaMode, "mask");
   assert.equal(result.materials[0]?.alphaCutoff, 0.4);
   assert.equal(result.materials[0]?.emissive, "#33ccff");
+  assert.deepEqual(result.materials[0]?.emissiveBloom, { enabled: true, intensity: 0.8, threshold: 1.2 });
   assert.equal(result.materials[0]?.emissiveIntensity, 2.5);
   assert.equal(result.materials[0]?.opacity, 0.65);
   assert.equal(result.materials[0]?.clearcoat, 0.8);

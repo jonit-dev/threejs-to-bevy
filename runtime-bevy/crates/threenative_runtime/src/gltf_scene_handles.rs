@@ -32,10 +32,21 @@ pub struct NativeGltfNodeHandle {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum NativeGltfNodeOperation {
-    ExtrasLookup { handle: String },
-    Material { handle: String, material: String },
-    Transform { handle: String, transform: NativeGltfTransform },
-    Visibility { handle: String, visible: bool },
+    ExtrasLookup {
+        handle: String,
+    },
+    Material {
+        handle: String,
+        material: String,
+    },
+    Transform {
+        handle: String,
+        transform: NativeGltfTransform,
+    },
+    Visibility {
+        handle: String,
+        visible: bool,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -69,11 +80,15 @@ pub fn apply_gltf_scene_handle_operations(
         })
         .collect();
     let mut sorted_operations = operations.to_vec();
-    sorted_operations.sort_by(|left, right| operation_sort_key(left).cmp(&operation_sort_key(right)));
+    sorted_operations
+        .sort_by(|left, right| operation_sort_key(left).cmp(&operation_sort_key(right)));
     let mut observations = Vec::new();
     for operation in sorted_operations {
         let handle_id = operation_handle(&operation);
-        let Some((_id, node, visible)) = states.iter_mut().find(|(id, _node, _visible)| id == handle_id) else {
+        let Some((_id, node, visible)) = states
+            .iter_mut()
+            .find(|(id, _node, _visible)| id == handle_id)
+        else {
             observations.push(NativeGltfSceneHandleObservation {
                 after: None,
                 before: None,
@@ -100,7 +115,8 @@ pub fn apply_gltf_scene_handle_operations(
         observations.push(apply_operation(node, visible, &operation));
     }
     observations.sort_by(|left, right| {
-        format!("{}:{}", left.handle, left.operation).cmp(&format!("{}:{}", right.handle, right.operation))
+        format!("{}:{}", left.handle, left.operation)
+            .cmp(&format!("{}:{}", right.handle, right.operation))
     });
     observations
 }
@@ -124,7 +140,10 @@ fn apply_operation(
                 status: "applied".to_owned(),
             }
         }
-        NativeGltfNodeOperation::Visibility { handle, visible: next } => {
+        NativeGltfNodeOperation::Visibility {
+            handle,
+            visible: next,
+        } => {
             let before = *visible;
             *visible = *next;
             NativeGltfSceneHandleObservation {
@@ -177,7 +196,11 @@ fn resolve_node<'a>(
                 .unwrap_or_else(|| node.name.as_ref() == handle.node_name.as_ref())
         })
         .collect();
-    if matches.len() == 1 { Some(matches[0]) } else { None }
+    if matches.len() == 1 {
+        Some(matches[0])
+    } else {
+        None
+    }
 }
 
 fn merge_transform(
@@ -211,5 +234,9 @@ fn operation_kind(operation: &NativeGltfNodeOperation) -> String {
 }
 
 fn operation_sort_key(operation: &NativeGltfNodeOperation) -> String {
-    format!("{}:{}", operation_handle(operation), operation_kind(operation))
+    format!(
+        "{}:{}",
+        operation_handle(operation),
+        operation_kind(operation)
+    )
 }

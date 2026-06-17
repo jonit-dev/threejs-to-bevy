@@ -28,6 +28,17 @@ export interface IThreeWorld {
   scene: THREE.Scene;
 }
 
+export interface IWebEmissiveBloomObservation {
+  contribution: number;
+  emissiveIntensity: number;
+  enabled: boolean;
+  entityId: string;
+  exceedsThreshold: boolean;
+  materialId: string;
+  materialIntensity: number;
+  threshold: number;
+}
+
 interface IGltfModel {
   animations?: THREE.AnimationClip[];
   scene: THREE.Object3D;
@@ -192,6 +203,23 @@ export async function loadWorldModelAssets(
       });
     }
   }
+}
+
+export function traceEmissiveBloomContributions(bundle: IWebBundle): IWebEmissiveBloomObservation[] {
+  const materialsById = new Map(bundle.materials.materials.map((material) => [material.id, material]));
+  return bundle.world.entities
+    .flatMap((entity) => {
+      const renderer = entity.components.MeshRenderer;
+      if (renderer === undefined) {
+        return [];
+      }
+      const material = materialsById.get(renderer.material);
+      if (material?.emissiveBloom === undefined) {
+        return [];
+      }
+      return [emissiveBloomObservation(entity.id, material)];
+    })
+    .sort((left, right) => left.entityId.localeCompare(right.entityId));
 }
 
 function mapEntity(
@@ -511,6 +539,9 @@ function mapMaterial(
   }
   const mapped = physical ? new THREE.MeshPhysicalMaterial(parameters) : new THREE.MeshStandardMaterial(parameters);
   applyMaterialPolicy(mapped, material);
+  if (material.emissiveBloom !== undefined) {
+    mapped.userData.threeNativeEmissiveBloom = emissiveBloomObservation("", material);
+  }
   mapped.userData.threeNativeAlphaMode = material.alphaMode ?? "opaque";
   mapped.needsUpdate = true;
   return mapped;
@@ -763,6 +794,28 @@ function colorToThree(color: IMaterialIr["color"]): THREE.Color {
     return new THREE.Color(color);
   }
   return new THREE.Color(color[0], color[1], color[2]);
+}
+
+function emissiveBloomObservation(entityId: string, material: IMaterialIr): IWebEmissiveBloomObservation {
+  const bloom = material.emissiveBloom ?? { enabled: false, intensity: 0, threshold: Number.POSITIVE_INFINITY };
+  const emissiveIntensity = material.emissiveIntensity ?? 1;
+  const luminance = material.emissive === undefined ? (material.emissiveTexture === undefined ? 0 : 1) : colorLuminance(material.emissive);
+  const contribution = bloom.enabled ? luminance * emissiveIntensity * bloom.intensity : 0;
+  return {
+    contribution: Number(contribution.toFixed(6)),
+    emissiveIntensity,
+    enabled: bloom.enabled,
+    entityId,
+    exceedsThreshold: contribution >= bloom.threshold,
+    materialId: material.id,
+    materialIntensity: bloom.intensity,
+    threshold: bloom.threshold,
+  };
+}
+
+function colorLuminance(color: IMaterialIr["color"]): number {
+  const three = colorToThree(color);
+  return three.r * 0.2126 + three.g * 0.7152 + three.b * 0.0722;
 }
 
 function readParentId(entity: IWorldEntity): string | undefined {

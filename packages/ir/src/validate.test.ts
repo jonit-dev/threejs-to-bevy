@@ -339,7 +339,7 @@ test("should accept promoted runtime renderer antialias modes", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-runtime-renderer-valid-"));
   try {
     await writeBundle(root, { current: 100, max: 100 });
-    await writeRuntimeConfig(root, { antialias: "msaa8", bloom: { enabled: true, intensity: 0.35, threshold: 0.8 } });
+    await writeRuntimeConfig(root, { antialias: "fxaa", bloom: { enabled: true, intensity: 0.35, threshold: 0.8 } });
 
     const result = await validateBundle(root);
 
@@ -357,6 +357,7 @@ test("should accept promoted runtime renderer quality metadata", async () => {
     await writeRuntimeConfig(root, {
       antialias: "msaa4",
       colorGrading: { contrast: 0.15, exposure: 1.1, saturation: 0.9, toneMapping: "aces" },
+      depthOfField: { aperture: 0.03, enabled: true, focusDistance: 12, maxBlur: 0.02 },
       renderPath: "forward",
     });
 
@@ -373,7 +374,7 @@ test("should reject invalid runtime renderer antialias modes", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-runtime-renderer-invalid-"));
   try {
     await writeBundle(root, { current: 100, max: 100 });
-    await writeRuntimeConfig(root, { antialias: "fxaa" });
+    await writeRuntimeConfig(root, { antialias: "ssaa" });
 
     const result = await validateBundle(root);
 
@@ -392,7 +393,6 @@ test("should reject unsupported advanced renderer requests with stable diagnosti
     await writeRuntimeConfig(root, {
       antialias: "msaa4",
       customPasses: [{ fragment: "frag.wgsl" }],
-      depthOfField: { enabled: true },
       motionVectors: true,
       renderPath: "deferred",
       screenSpaceReflections: true,
@@ -407,7 +407,6 @@ test("should reject unsupported advanced renderer requests with stable diagnosti
       result.diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.path]),
       [
         ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/customPasses"],
-        ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/depthOfField"],
         ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/motionVectors"],
         ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/screenSpaceReflections"],
         ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/virtualGeometry"],
@@ -415,6 +414,30 @@ test("should reject unsupported advanced renderer requests with stable diagnosti
         ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/renderPath"],
       ],
     );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject invalid runtime renderer depth of field settings", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-runtime-dof-invalid-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeRuntimeConfig(root, { antialias: "msaa4", depthOfField: { aperture: -0.1, enabled: "yes", focusDistance: 0, maxBlur: Number.NaN } });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => diagnostic.path),
+      [
+        "runtime.config.json/renderer/depthOfField/enabled",
+        "runtime.config.json/renderer/depthOfField/focusDistance",
+        "runtime.config.json/renderer/depthOfField/aperture",
+        "runtime.config.json/renderer/depthOfField/maxBlur",
+      ],
+    );
+    assert.equal(result.diagnostics.every((diagnostic) => diagnostic.code === "TN_IR_RUNTIME_RENDERER_DOF_INVALID"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -487,6 +510,54 @@ test("should reject invalid material emissive intensity", async () => {
     assert.equal(result.ok, false);
     assert.equal(result.diagnostics[0]?.code, "TN_IR_MATERIAL_EMISSIVE_INTENSITY_INVALID");
     assert.equal(result.diagnostics[0]?.path, "materials.ir.json/materials/0/emissiveIntensity");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should validate material emissive bloom metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-material-emissive-bloom-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "materials.ir.json", {
+      schema: "threenative.materials",
+      version: "0.1.0",
+      materials: [
+        { id: "mat.valid", kind: "standard", color: "#ffffff", emissive: "#33ccff", emissiveBloom: { enabled: true, intensity: 0.8, threshold: 1.1 }, emissiveIntensity: 2.5 },
+      ],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject invalid material emissive bloom metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-material-emissive-bloom-invalid-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "materials.ir.json", {
+      schema: "threenative.materials",
+      version: "0.1.0",
+      materials: [
+        { id: "mat.invalid", kind: "standard", color: "#ffffff", emissiveBloom: { enabled: true, intensity: -1, threshold: Number.NaN } },
+      ],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => diagnostic.code),
+      [
+        "TN_IR_MATERIAL_EMISSIVE_BLOOM_INVALID",
+        "TN_IR_MATERIAL_EMISSIVE_BLOOM_INVALID",
+        "TN_IR_MATERIAL_EMISSIVE_BLOOM_INVALID",
+      ],
+    );
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -708,6 +779,93 @@ test("should accept material alpha metadata", async () => {
 
     assert.deepEqual(result.diagnostics, []);
     assert.equal(result.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should accept bounded dynamic mesh collider CCD and suspension joint metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-physics-mesh-joint-valid-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "world.ir.json", {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [
+        {
+          id: "car.chassis",
+          components: {
+            Collider: { kind: "mesh", mesh: { bounds: { center: [0, 0.25, 0], size: [2, 0.5, 4] }, source: "mesh.car", triangleCount: 128 } },
+            RigidBody: { ccd: { enabled: true, maxSubsteps: 4, mode: "swept-aabb" }, kind: "dynamic", velocity: [0, -12, 0] },
+            Transform: { position: [0, 2, 0] },
+          },
+        },
+        {
+          id: "wheel.fl",
+          components: {
+            Collider: { kind: "sphere", radius: 0.35 },
+            PhysicsJoint: { axis: [0, 1, 0], connectedEntity: "car.chassis", damping: 0.6, kind: "suspension", stiffness: 12, travel: 0.4 },
+            RigidBody: { kind: "dynamic" },
+            Transform: { position: [-0.8, 1.2, 1.2] },
+          },
+        },
+      ],
+      resources: {},
+      events: {},
+      prefabs: [],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.deepEqual(result.diagnostics, []);
+    assert.equal(result.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject unbounded dynamic mesh collider and invalid joint metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-physics-mesh-joint-invalid-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "world.ir.json", {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [
+        {
+          id: "car.chassis",
+          components: {
+            Collider: { kind: "mesh" },
+            RigidBody: { ccd: { enabled: true, maxSubsteps: 32, mode: "teleport" }, kind: "dynamic" },
+          },
+        },
+        {
+          id: "wheel.fl",
+          components: {
+            PhysicsJoint: { connectedEntity: "missing", kind: "vehicle", limits: { max: -1, min: 1 } },
+          },
+        },
+      ],
+      resources: {},
+      events: {},
+      prefabs: [],
+    });
+
+    const result = await validateBundle(root);
+    const diagnostics = result.diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.path]);
+
+    assert.equal(result.ok, false);
+    for (const expected of [
+      ["TN_IR_PHYSICS_MESH_COLLIDER_INVALID", "world.ir.json/entities/0/components/Collider/mesh"],
+      ["TN_IR_PHYSICS_CCD_INVALID", "world.ir.json/entities/0/components/RigidBody/ccd/mode"],
+      ["TN_IR_PHYSICS_CCD_SUBSTEPS_INVALID", "world.ir.json/entities/0/components/RigidBody/ccd/maxSubsteps"],
+      ["TN_IR_PHYSICS_DYNAMIC_MESH_COLLIDER_INVALID", "world.ir.json/entities/0/components/Collider/mesh"],
+      ["TN_IR_PHYSICS_JOINT_UNSUPPORTED", "world.ir.json/entities/1/components/PhysicsJoint/kind"],
+      ["TN_IR_PHYSICS_JOINT_TARGET_INVALID", "world.ir.json/entities/1/components/PhysicsJoint/connectedEntity"],
+      ["TN_IR_PHYSICS_JOINT_LIMITS_INVALID", "world.ir.json/entities/1/components/PhysicsJoint/limits"],
+    ]) {
+      assert.equal(diagnostics.some(([code, path]) => code === expected[0] && path === expected[1]), true);
+    }
   } finally {
     await rm(root, { force: true, recursive: true });
   }

@@ -47,6 +47,13 @@ export interface IWebBloomSettings {
   threshold: number;
 }
 
+export interface IWebDepthOfFieldSettings {
+  aperture: number;
+  enabled: boolean;
+  focusDistance: number;
+  maxBlur: number;
+}
+
 interface IRenderPipeline {
   render(delta?: number): void;
   setSize(width: number, height: number): void;
@@ -173,8 +180,9 @@ function audioEvents(events: Record<string, unknown>): Array<{ event: string; pa
 }
 
 export function webRendererParameters(config?: IRuntimeConfigIr): THREE.WebGLRendererParameters {
+  const antialias = config?.renderer?.antialias;
   return {
-    antialias: config?.renderer?.antialias !== "none",
+    antialias: antialias === undefined || antialias === "msaa2" || antialias === "msaa4" || antialias === "msaa8",
     preserveDrawingBuffer: true,
   };
 }
@@ -185,6 +193,16 @@ export function webBloomSettings(config?: IRuntimeConfigIr): IWebBloomSettings {
     enabled: bloom?.enabled ?? false,
     intensity: bloom?.intensity ?? 0.15,
     threshold: bloom?.threshold ?? 0,
+  };
+}
+
+export function webDepthOfFieldSettings(config?: IRuntimeConfigIr): IWebDepthOfFieldSettings {
+  const depthOfField = config?.renderer?.depthOfField;
+  return {
+    aperture: depthOfField?.aperture ?? 0.02,
+    enabled: depthOfField?.enabled ?? false,
+    focusDistance: depthOfField?.focusDistance ?? 8,
+    maxBlur: depthOfField?.maxBlur ?? 0.01,
   };
 }
 

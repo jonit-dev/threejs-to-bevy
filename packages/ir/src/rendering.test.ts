@@ -108,11 +108,32 @@ test("rendering should reject broad shader fields until promoted", async () => {
     await writeJson(root, "materials.ir.json", {
       schema: "threenative.materials",
       version: "0.1.0",
-      materials: [{ id: "mat.shader", kind: "standard", color: "#ffffff", fragmentShader: "void main(){}" }],
+      materials: [
+        {
+          id: "mat.shader",
+          kind: "standard",
+          bindlessTextures: ["albedo"],
+          color: "#ffffff",
+          fragmentShader: "void main(){}",
+          renderPhase: "transparent-prepass",
+          shaderDefs: ["USE_WIND"],
+          storageBuffers: ["particles"],
+        },
+      ],
     });
     const result = await validateBundle(root);
     assert.equal(result.ok, false);
-    assert.equal(result.diagnostics[0]?.code, "TN_IR_MATERIAL_CAPABILITY_UNSUPPORTED");
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => diagnostic.code),
+      [
+        "TN_IR_SHADER_CUSTOM_UNSUPPORTED",
+        "TN_IR_SHADER_DEFS_UNSUPPORTED",
+        "TN_IR_SHADER_STORAGE_BUFFER_UNSUPPORTED",
+        "TN_IR_SHADER_RENDER_PHASE_UNSUPPORTED",
+        "TN_IR_SHADER_BINDLESS_UNSUPPORTED",
+      ],
+    );
+    assert.equal(result.diagnostics.every((diagnostic) => diagnostic.suggestion?.includes("constrained portable shader model")), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

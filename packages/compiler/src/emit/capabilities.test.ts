@@ -136,7 +136,11 @@ test("should derive ECS and runtime capabilities from schemas and runtime config
     materials: materialsIr([]),
     resourceSchemas: { schema: "threenative.resource-schemas", schemas: { GameState: { fields: {} } }, version: "0.1.0" },
     runtimeConfig: {
-      renderer: { antialias: "msaa4" },
+      renderer: {
+        antialias: "taa",
+        colorGrading: { toneMapping: "aces" },
+        depthOfField: { aperture: 0.03, enabled: true, focusDistance: 12, maxBlur: 0.02 },
+      },
       schema: "threenative.runtime-config",
       time: { fixedDelta: 1 / 60, paused: false },
       version: "0.1.0",
@@ -164,6 +168,9 @@ test("should derive ECS and runtime capabilities from schemas and runtime config
   });
 
   assert.deepEqual(capabilities.ecs, ["component-reflection", "component-schemas", "event-schemas", "resource-schemas"]);
+  assert.ok(capabilities.rendering?.includes("antialias.taa"));
+  assert.ok(capabilities.rendering?.includes("color-grading"));
+  assert.ok(capabilities.rendering?.includes("depth-of-field"));
   assert.deepEqual(capabilities.runtime, ["config", "fixed-timestep"]);
   assert.deepEqual(capabilities.scripting, ["component-reflection", "schedule.update", "systems"]);
 });

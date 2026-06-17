@@ -2783,6 +2783,39 @@ function validateMaterials(materials: IMaterialsIr, path: string, diagnostics: I
         suggestion: "Set emissiveIntensity to 0 or a positive finite value.",
       });
     }
+    if (material.emissiveBloom !== undefined) {
+      const bloom = material.emissiveBloom as unknown as Record<string, unknown>;
+      if (typeof bloom.enabled !== "boolean") {
+        diagnostics.push({
+          code: "TN_IR_MATERIAL_EMISSIVE_BLOOM_INVALID",
+          message: `Material '${material.id}' emissiveBloom.enabled must be a boolean.`,
+          path: `${path}/materials/${index}/emissiveBloom/enabled`,
+          severity: "error",
+          suggestion: "Set emissiveBloom.enabled to true or false.",
+        });
+      }
+      for (const key of ["intensity", "threshold"] as const) {
+        const value = bloom[key];
+        if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+          diagnostics.push({
+            code: "TN_IR_MATERIAL_EMISSIVE_BLOOM_INVALID",
+            message: `Material '${material.id}' emissiveBloom.${key} must be a non-negative finite number.`,
+            path: `${path}/materials/${index}/emissiveBloom/${key}`,
+            severity: "error",
+            suggestion: `Set emissiveBloom.${key} to 0 or a positive finite value.`,
+          });
+        }
+      }
+      if (bloom.enabled === true && material.emissive === undefined && material.emissiveTexture === undefined) {
+        diagnostics.push({
+          code: "TN_IR_MATERIAL_EMISSIVE_BLOOM_INVALID",
+          message: `Material '${material.id}' enables emissiveBloom but has no emissive color or emissive texture.`,
+          path: `${path}/materials/${index}/emissiveBloom`,
+          severity: "error",
+          suggestion: "Add emissive, emissiveTexture, or disable emissiveBloom.",
+        });
+      }
+    }
     for (const key of ["clearcoat", "clearcoatRoughness", "specularIntensity", "transmission"] as const) {
       const value = material[key];
       if (value !== undefined && (!Number.isFinite(value) || value < 0 || value > 1)) {
@@ -2795,12 +2828,28 @@ function validateMaterials(materials: IMaterialsIr, path: string, diagnostics: I
         });
       }
     }
-    for (const key of ["shader", "vertexShader", "fragmentShader", "nodeGraph", "postprocess"]) {
-      if (raw[key] !== undefined) {
+    const unsupportedShaderFields: Array<{ code: string; field: string; feature: string }> = [
+      { code: "TN_IR_SHADER_CUSTOM_UNSUPPORTED", field: "shader", feature: "custom shader payload" },
+      { code: "TN_IR_SHADER_CUSTOM_UNSUPPORTED", field: "vertexShader", feature: "custom vertex shader payload" },
+      { code: "TN_IR_SHADER_CUSTOM_UNSUPPORTED", field: "fragmentShader", feature: "custom fragment shader payload" },
+      { code: "TN_IR_SHADER_CUSTOM_UNSUPPORTED", field: "nodeGraph", feature: "custom shader node graph" },
+      { code: "TN_IR_SHADER_DEFS_UNSUPPORTED", field: "shaderDefs", feature: "shader definitions" },
+      { code: "TN_IR_SHADER_STORAGE_BUFFER_UNSUPPORTED", field: "storageBuffer", feature: "shader storage buffer" },
+      { code: "TN_IR_SHADER_STORAGE_BUFFER_UNSUPPORTED", field: "storageBuffers", feature: "shader storage buffers" },
+      { code: "TN_IR_SHADER_RENDER_PHASE_UNSUPPORTED", field: "renderPhase", feature: "custom render phase" },
+      { code: "TN_IR_SHADER_RENDER_PHASE_UNSUPPORTED", field: "renderPhases", feature: "custom render phases" },
+      { code: "TN_IR_SHADER_BINDLESS_UNSUPPORTED", field: "bindless", feature: "bindless shader resources" },
+      { code: "TN_IR_SHADER_BINDLESS_UNSUPPORTED", field: "bindlessTextures", feature: "bindless textures" },
+      { code: "TN_IR_SHADER_CUSTOM_UNSUPPORTED", field: "postprocess", feature: "material-owned postprocess shader" },
+    ];
+    for (const { code, feature, field } of unsupportedShaderFields) {
+      if (raw[field] !== undefined) {
         diagnostics.push({
-          code: "TN_IR_MATERIAL_CAPABILITY_UNSUPPORTED",
-          message: `Material '${material.id}' uses unsupported shader capability '${key}'.`,
-          path: `${path}/materials/${index}/${key}`,
+          code,
+          message: `Material '${material.id}' uses unsupported shader feature '${field}'.`,
+          path: `${path}/materials/${index}/${field}`,
+          severity: "error",
+          suggestion: `Do not author ${feature} until ThreeNative has a constrained portable shader model, deterministic web/native resource binding, rejected-fixture coverage, and visual evidence.`,
         });
       }
     }
@@ -3087,13 +3136,13 @@ function validateRuntimeConfig(config: unknown, path: string, diagnostics: IIrDi
   if (isRecord(renderer)) {
     validateUnsupportedRendererFields(renderer, `${path}/renderer`, diagnostics);
   }
-  if (isRecord(renderer) && !["none", "msaa2", "msaa4", "msaa8"].includes(renderer.antialias as string)) {
+  if (isRecord(renderer) && !["none", "msaa2", "msaa4", "msaa8", "fxaa", "taa", "smaa"].includes(renderer.antialias as string)) {
     diagnostics.push({
       code: "TN_IR_RUNTIME_RENDERER_ANTIALIAS_INVALID",
-      message: "Renderer antialias mode must be one of none, msaa2, msaa4, or msaa8. FXAA, TAA, and SMAA remain diagnostic-only until cross-runtime visual parity is proven.",
+      message: "Renderer antialias mode must be one of none, msaa2, msaa4, msaa8, fxaa, taa, or smaa.",
       path: `${path}/renderer/antialias`,
       severity: "error",
-      suggestion: "Use an MSAA mode for V9 or leave post-process antialiasing disabled.",
+      suggestion: "Use a promoted MSAA or post-process antialiasing mode.",
     });
   }
   const bloom = isRecord(renderer) ? renderer.bloom : undefined;
@@ -3142,6 +3191,10 @@ function validateRuntimeConfig(config: unknown, path: string, diagnostics: IIrDi
   if (colorGrading !== undefined) {
     validateColorGrading(colorGrading, `${path}/renderer/colorGrading`, diagnostics);
   }
+  const depthOfField = isRecord(renderer) ? renderer.depthOfField : undefined;
+  if (depthOfField !== undefined) {
+    validateDepthOfField(depthOfField, `${path}/renderer/depthOfField`, diagnostics);
+  }
 
   const window = config.window;
   if (!isRecord(window)) {
@@ -3176,13 +3229,12 @@ function validateRuntimeConfig(config: unknown, path: string, diagnostics: IIrDi
 }
 
 function validateUnsupportedRendererFields(renderer: Record<string, unknown>, path: string, diagnostics: IIrDiagnostic[]): void {
-  const supported = new Set(["antialias", "bloom", "colorGrading", "renderPath"]);
+  const supported = new Set(["antialias", "bloom", "colorGrading", "depthOfField", "renderPath"]);
   const advanced = new Map([
     ["autoExposure", "Auto exposure is explicitly deferred in V9."],
     ["customPasses", "Custom post-processing passes are explicitly deferred in V9."],
     ["decals", "Decals are diagnostic-only until both runtimes prove a portable mapping."],
     ["deferred", "Deferred rendering is explicitly deferred in V9; use renderPath: 'forward'."],
-    ["depthOfField", "Depth of field is diagnostic-only until both runtimes prove visual parity."],
     ["motionBlur", "Motion blur and motion vectors are explicitly deferred in V9."],
     ["motionVectors", "Motion blur and motion vectors are explicitly deferred in V9."],
     ["screenSpaceReflections", "Screen-space reflections and mirrors are explicitly deferred in V9."],
@@ -3258,6 +3310,49 @@ function validateColorGrading(value: unknown, path: string, diagnostics: IIrDiag
       path: `${path}/lut`,
       severity: "error",
     });
+  }
+}
+
+function validateDepthOfField(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (!isRecord(value)) {
+    diagnostics.push({
+      code: "TN_IR_RUNTIME_RENDERER_DOF_INVALID",
+      message: "Renderer depthOfField config must be an object.",
+      path,
+      severity: "error",
+      suggestion: "Use depthOfField with enabled, focusDistance, aperture, and maxBlur.",
+    });
+    return;
+  }
+  if (typeof value.enabled !== "boolean") {
+    diagnostics.push({
+      code: "TN_IR_RUNTIME_RENDERER_DOF_INVALID",
+      message: "Renderer depthOfField enabled must be a boolean.",
+      path: `${path}/enabled`,
+      severity: "error",
+      suggestion: "Set depthOfField.enabled to true or false.",
+    });
+  }
+  if (typeof value.focusDistance !== "number" || !Number.isFinite(value.focusDistance) || value.focusDistance <= 0) {
+    diagnostics.push({
+      code: "TN_IR_RUNTIME_RENDERER_DOF_INVALID",
+      message: "Renderer depthOfField focusDistance must be a positive finite number.",
+      path: `${path}/focusDistance`,
+      severity: "error",
+      suggestion: "Use a positive scene-space focus distance.",
+    });
+  }
+  for (const key of ["aperture", "maxBlur"] as const) {
+    const fieldValue = value[key];
+    if (typeof fieldValue !== "number" || !Number.isFinite(fieldValue) || fieldValue < 0) {
+      diagnostics.push({
+        code: "TN_IR_RUNTIME_RENDERER_DOF_INVALID",
+        message: `Renderer depthOfField ${key} must be a non-negative finite number.`,
+        path: `${path}/${key}`,
+        severity: "error",
+        suggestion: `Use a non-negative finite ${key} value.`,
+      });
+    }
   }
 }
 
@@ -4265,7 +4360,7 @@ function validateResources(
 }
 
 function isBuiltInComponent(componentName: string): boolean {
-  return ["Camera", "CharacterController", "Collider", "Hierarchy", "Light", "MeshRenderer", "RenderLayers", "RigidBody", "Transform", "Visibility"].includes(componentName);
+  return ["Camera", "CharacterController", "Collider", "Hierarchy", "Light", "MeshRenderer", "PhysicsJoint", "RenderLayers", "RigidBody", "Transform", "Visibility"].includes(componentName);
 }
 
 function isBuiltInResource(resourceName: string): boolean {
@@ -4694,7 +4789,8 @@ function validateWorld(world: IWorldIr, path: string, diagnostics: IIrDiagnostic
   validateNavigationResources(world, `${path}/resources`, diagnostics);
   validateRenderingLightBudget(world.resources?.RenderingLightBudget, `${path}/resources/RenderingLightBudget`, diagnostics, world.entities);
   world.entities.forEach((entity, index) => validateRenderComponents(entity, `${path}/entities/${index}`, diagnostics));
-  world.entities.forEach((entity, index) => validatePhysicsComponents(entity, `${path}/entities/${index}`, diagnostics));
+  const entityIds = new Set(world.entities.map((entity) => entity.id));
+  world.entities.forEach((entity, index) => validatePhysicsComponents(entity, `${path}/entities/${index}`, entityIds, diagnostics));
   world.entities.forEach((entity, index) => validateCharacterComponents(entity, `${path}/entities/${index}`, input, diagnostics));
 }
 
@@ -4920,10 +5016,11 @@ const V9_MAX_CHARACTER_PUSH_IMPULSE = 1000;
 const V9_MAX_NAV_AGENT_RADIUS = 100;
 const V9_MAX_NAV_AREA_COST = 1000;
 
-function validatePhysicsComponents(entity: IWorldIr["entities"][number], path: string, diagnostics: IIrDiagnostic[]): void {
+function validatePhysicsComponents(entity: IWorldIr["entities"][number], path: string, entityIds: Set<string>, diagnostics: IIrDiagnostic[]): void {
   const collider = entity.components.Collider as unknown;
   const body = entity.components.RigidBody as unknown;
-  if (collider === undefined && body === undefined) {
+  const joint = entity.components.PhysicsJoint as unknown;
+  if (collider === undefined && body === undefined && joint === undefined) {
     return;
   }
   if (collider !== undefined && !isRecord(collider)) {
@@ -4940,9 +5037,18 @@ function validatePhysicsComponents(entity: IWorldIr["entities"][number], path: s
       path: `${path}/components/RigidBody`,
     });
   }
+  if (joint !== undefined && !isRecord(joint)) {
+    diagnostics.push({
+      code: "TN_IR_PHYSICS_JOINT_INVALID",
+      message: `PhysicsJoint '${entity.id}' must be an object.`,
+      path: `${path}/components/PhysicsJoint`,
+      severity: "error",
+    });
+  }
 
   const colliderRecord = isRecord(collider) ? collider : undefined;
   const bodyRecord = isRecord(body) ? body : undefined;
+  const jointRecord = isRecord(joint) ? joint : undefined;
 
   if (colliderRecord !== undefined) {
     if (!["box", "capsule", "mesh", "sphere"].includes(colliderRecord.kind as string)) {
@@ -4996,9 +5102,20 @@ function validatePhysicsComponents(entity: IWorldIr["entities"][number], path: s
     if (colliderRecord.kind === "mesh" && colliderRecord.trigger === true) {
       diagnostics.push({
         code: "TN_IR_PHYSICS_MESH_TRIGGER_UNSUPPORTED",
-        message: "Mesh trigger colliders are not supported in the V6 portable physics contract.",
+        message: "Mesh trigger colliders are not supported in the portable physics contract.",
         path: `${path}/components/Collider/kind`,
         suggestion: "Use a primitive trigger collider or a static mesh collider without trigger semantics.",
+      });
+    }
+    if (colliderRecord.kind === "mesh") {
+      validateMeshColliderMetadata(colliderRecord.mesh, `${path}/components/Collider/mesh`, diagnostics);
+    } else if (colliderRecord.mesh !== undefined) {
+      diagnostics.push({
+        code: "TN_IR_PHYSICS_MESH_COLLIDER_INVALID",
+        message: "Collider.mesh metadata is supported only when Collider.kind is mesh.",
+        path: `${path}/components/Collider/mesh`,
+        severity: "error",
+        suggestion: "Set Collider.kind to mesh or remove Collider.mesh metadata.",
       });
     }
   }
@@ -5019,6 +5136,7 @@ function validatePhysicsComponents(entity: IWorldIr["entities"][number], path: s
   }
   if (bodyRecord !== undefined) {
     validateUnsupportedPhysicsSolverFields(bodyRecord, `${path}/components/RigidBody`, diagnostics);
+    validateCcd(bodyRecord.ccd, `${path}/components/RigidBody/ccd`, diagnostics);
   }
   if (bodyRecord?.mass !== undefined) {
     validateFiniteRange(bodyRecord.mass, Number.MIN_VALUE, V9_MAX_PHYSICS_MASS, `${path}/components/RigidBody/mass`, "TN_IR_PHYSICS_BODY_MASS_INVALID", diagnostics);
@@ -5044,12 +5162,13 @@ function validatePhysicsComponents(entity: IWorldIr["entities"][number], path: s
   if (bodyRecord?.inverseMass !== undefined) {
     validateInverseMass(bodyRecord, `${path}/components/RigidBody`, diagnostics);
   }
-  if (colliderRecord?.kind === "mesh" && bodyRecord?.kind !== undefined && bodyRecord.kind !== "static") {
+  if (colliderRecord?.kind === "mesh" && bodyRecord?.kind !== undefined && bodyRecord.kind !== "static" && colliderRecord.mesh === undefined) {
     diagnostics.push({
-      code: "TN_IR_PHYSICS_DYNAMIC_MESH_UNSUPPORTED",
-      message: "Non-static mesh colliders are not supported in the V6 portable physics contract.",
-      path: `${path}/components/Collider/kind`,
-      suggestion: "Use a static mesh collider or a primitive collider for dynamic or kinematic bodies.",
+      code: "TN_IR_PHYSICS_DYNAMIC_MESH_COLLIDER_INVALID",
+      message: "Dynamic and kinematic mesh colliders require explicit bounded Collider.mesh metadata.",
+      path: `${path}/components/Collider/mesh`,
+      severity: "error",
+      suggestion: "Author Collider.mesh.bounds and Collider.mesh.triangleCount so adapters can use deterministic bounded AABB behavior.",
     });
   }
   if (bodyRecord !== undefined && collider === undefined) {
@@ -5058,6 +5177,100 @@ function validatePhysicsComponents(entity: IWorldIr["entities"][number], path: s
       message: `RigidBody '${entity.id}' must have a Collider in the V6 portable physics contract.`,
       path: `${path}/components/Collider`,
     });
+  }
+  if (jointRecord !== undefined) {
+    validatePhysicsJoint(jointRecord, `${path}/components/PhysicsJoint`, entity.id, entityIds, diagnostics);
+  }
+}
+
+function validateMeshColliderMetadata(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (!isRecord(value)) {
+    diagnostics.push({
+      code: "TN_IR_PHYSICS_MESH_COLLIDER_INVALID",
+      message: "Mesh colliders require Collider.mesh metadata with bounds and triangleCount.",
+      path,
+      severity: "error",
+      suggestion: "Provide bounds.size, optional bounds.center, source asset id, and a bounded triangleCount.",
+    });
+    return;
+  }
+  for (const key of Object.keys(value)) {
+    if (!["bounds", "source", "triangleCount"].includes(key)) {
+      diagnostics.push({ code: "TN_IR_PHYSICS_MESH_COLLIDER_FIELD_UNSUPPORTED", message: `Collider.mesh uses unsupported field '${key}'.`, path: `${path}/${key}`, severity: "error" });
+    }
+  }
+  if (value.source !== undefined && (typeof value.source !== "string" || value.source.trim() === "")) {
+    diagnostics.push({ code: "TN_IR_PHYSICS_MESH_COLLIDER_INVALID", message: "Collider.mesh.source must be a non-empty asset id when authored.", path: `${path}/source`, severity: "error" });
+  }
+  validateIntegerRange(value.triangleCount, 1, 10000, `${path}/triangleCount`, "TN_IR_PHYSICS_MESH_COLLIDER_TRIANGLE_COUNT_INVALID", diagnostics);
+  if (!isRecord(value.bounds)) {
+    diagnostics.push({ code: "TN_IR_PHYSICS_MESH_COLLIDER_BOUNDS_INVALID", message: "Collider.mesh.bounds must be an object.", path: `${path}/bounds`, severity: "error" });
+    return;
+  }
+  validatePositiveVec3(value.bounds.size, `${path}/bounds/size`, "TN_IR_PHYSICS_MESH_COLLIDER_BOUNDS_INVALID", diagnostics);
+  if (value.bounds.center !== undefined) {
+    validateFiniteVec3(value.bounds.center, `${path}/bounds/center`, "TN_IR_PHYSICS_MESH_COLLIDER_BOUNDS_INVALID", diagnostics);
+  }
+}
+
+function validateCcd(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value)) {
+    diagnostics.push({ code: "TN_IR_PHYSICS_CCD_INVALID", message: "RigidBody.ccd must be an object.", path, severity: "error" });
+    return;
+  }
+  for (const key of Object.keys(value)) {
+    if (!["enabled", "maxSubsteps", "mode"].includes(key)) {
+      diagnostics.push({ code: "TN_IR_PHYSICS_CCD_FIELD_UNSUPPORTED", message: `RigidBody.ccd uses unsupported field '${key}'.`, path: `${path}/${key}`, severity: "error" });
+    }
+  }
+  if (typeof value.enabled !== "boolean") {
+    diagnostics.push({ code: "TN_IR_PHYSICS_CCD_INVALID", message: "RigidBody.ccd.enabled must be boolean.", path: `${path}/enabled`, severity: "error" });
+  }
+  if (value.mode !== "linear" && value.mode !== "swept-aabb") {
+    diagnostics.push({ code: "TN_IR_PHYSICS_CCD_INVALID", message: "RigidBody.ccd.mode must be linear or swept-aabb.", path: `${path}/mode`, severity: "error" });
+  }
+  if (value.maxSubsteps !== undefined) {
+    validateIntegerRange(value.maxSubsteps, 1, 16, `${path}/maxSubsteps`, "TN_IR_PHYSICS_CCD_SUBSTEPS_INVALID", diagnostics);
+  }
+}
+
+function validatePhysicsJoint(joint: Record<string, unknown>, path: string, entityId: string, entityIds: Set<string>, diagnostics: IIrDiagnostic[]): void {
+  for (const key of Object.keys(joint)) {
+    if (!["anchor", "axis", "connectedEntity", "damping", "kind", "limits", "stiffness", "travel"].includes(key)) {
+      diagnostics.push({ code: "TN_IR_PHYSICS_JOINT_FIELD_UNSUPPORTED", message: `PhysicsJoint uses unsupported field '${key}'.`, path: `${path}/${key}`, severity: "error" });
+    }
+  }
+  if (!["hinge", "slider", "suspension"].includes(joint.kind as string)) {
+    diagnostics.push({ code: "TN_IR_PHYSICS_JOINT_UNSUPPORTED", message: "PhysicsJoint.kind must be hinge, slider, or suspension.", path: `${path}/kind`, severity: "error" });
+  }
+  if (typeof joint.connectedEntity !== "string" || joint.connectedEntity.trim() === "" || joint.connectedEntity === entityId || !entityIds.has(joint.connectedEntity)) {
+    diagnostics.push({
+      code: "TN_IR_PHYSICS_JOINT_TARGET_INVALID",
+      message: "PhysicsJoint.connectedEntity must reference a different existing entity.",
+      path: `${path}/connectedEntity`,
+      severity: "error",
+      suggestion: "Connect suspension, hinge, or slider joints to another rigid-body entity in the same world.",
+    });
+  }
+  if (joint.anchor !== undefined) {
+    validateFiniteVec3(joint.anchor, `${path}/anchor`, "TN_IR_PHYSICS_JOINT_INVALID", diagnostics);
+  }
+  if (joint.axis !== undefined) {
+    validateFiniteVec3(joint.axis, `${path}/axis`, "TN_IR_PHYSICS_JOINT_INVALID", diagnostics);
+  }
+  for (const key of ["damping", "stiffness", "travel"]) {
+    const value = joint[key];
+    if (value !== undefined && (typeof value !== "number" || !Number.isFinite(value) || value < 0)) {
+      diagnostics.push({ code: "TN_IR_PHYSICS_JOINT_INVALID", message: `PhysicsJoint.${key} must be a non-negative finite number.`, path: `${path}/${key}`, severity: "error" });
+    }
+  }
+  if (joint.limits !== undefined) {
+    if (!isRecord(joint.limits) || typeof joint.limits.min !== "number" || typeof joint.limits.max !== "number" || !Number.isFinite(joint.limits.min) || !Number.isFinite(joint.limits.max) || joint.limits.min > joint.limits.max) {
+      diagnostics.push({ code: "TN_IR_PHYSICS_JOINT_LIMITS_INVALID", message: "PhysicsJoint.limits must have finite min <= max.", path: `${path}/limits`, severity: "error" });
+    }
   }
 }
 

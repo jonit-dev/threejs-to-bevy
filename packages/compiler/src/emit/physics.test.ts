@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { boxCollider, BoxGeometry, Mesh, MeshStandardMaterial, physics, rigidBody, Scene } from "@threenative/sdk";
+import { boxCollider, BoxGeometry, meshCollider, Mesh, MeshStandardMaterial, physics, physicsJoint, rigidBody, Scene } from "@threenative/sdk";
 
 import { sceneToWorld } from "./scene-to-world.js";
 
@@ -64,4 +64,39 @@ test("should emit solver material and sleep metadata when authored", () => {
     velocity: [0, -1, 0],
   });
   assert.deepEqual(entity?.components.Collider, { friction: 0.7, kind: "box", restitution: 0.2, size: [1, 1, 1] });
+});
+
+test("should emit bounded mesh collider CCD and suspension joint metadata", () => {
+  const scene = new Scene({ id: "scene" });
+  scene.add(
+    new Mesh({
+      geometry: new BoxGeometry(),
+      id: "car.chassis",
+      material: new MeshStandardMaterial(),
+      physics: physics({
+        body: rigidBody("dynamic", { ccd: { enabled: true, maxSubsteps: 4, mode: "swept-aabb" }, velocity: [0, -12, 0] }),
+        collider: meshCollider({ mesh: { bounds: { center: [0, 0.25, 0], size: [2, 0.5, 4] }, source: "mesh.car", triangleCount: 128 } }),
+      }),
+    }),
+  );
+  scene.add(
+    new Mesh({
+      geometry: new BoxGeometry(),
+      id: "wheel.fl",
+      material: new MeshStandardMaterial(),
+      physics: physics({
+        body: rigidBody("dynamic"),
+        collider: boxCollider([0.7, 0.7, 0.7]),
+        joint: physicsJoint("suspension", "car.chassis", { axis: [0, 1, 0], damping: 0.6, stiffness: 12, travel: 0.4 }),
+      }),
+    }),
+  );
+
+  const emitted = sceneToWorld(scene);
+  const chassis = emitted.world.entities.find((item) => item.id === "car.chassis");
+  const wheel = emitted.world.entities.find((item) => item.id === "wheel.fl");
+
+  assert.deepEqual(chassis?.components.RigidBody, { ccd: { enabled: true, maxSubsteps: 4, mode: "swept-aabb" }, kind: "dynamic", velocity: [0, -12, 0] });
+  assert.deepEqual(chassis?.components.Collider, { kind: "mesh", mesh: { bounds: { center: [0, 0.25, 0], size: [2, 0.5, 4] }, source: "mesh.car", triangleCount: 128 } });
+  assert.deepEqual(wheel?.components.PhysicsJoint, { axis: [0, 1, 0], connectedEntity: "car.chassis", damping: 0.6, kind: "suspension", stiffness: 12, travel: 0.4 });
 });

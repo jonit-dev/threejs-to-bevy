@@ -7,7 +7,7 @@ import test from "node:test";
 import { validateBundle } from "./validate.js";
 import { writeJson, writeTestBundle } from "./testFixtures.js";
 
-test("physics should reject unsupported dynamic mesh collider", async () => {
+test("physics should reject unbounded dynamic mesh collider", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-physics-dynamic-mesh-"));
   try {
     await writeTestBundle(root, { createAssetsDir: true });
@@ -25,7 +25,12 @@ test("physics should reject unsupported dynamic mesh collider", async () => {
     assert.equal(result.ok, false);
     assert.deepEqual(
       result.diagnostics.map((diagnostic) => diagnostic.code),
-      ["TN_IR_PHYSICS_DYNAMIC_MESH_UNSUPPORTED", "TN_IR_PHYSICS_DYNAMIC_MESH_UNSUPPORTED"],
+      [
+        "TN_IR_PHYSICS_MESH_COLLIDER_INVALID",
+        "TN_IR_PHYSICS_DYNAMIC_MESH_COLLIDER_INVALID",
+        "TN_IR_PHYSICS_MESH_COLLIDER_INVALID",
+        "TN_IR_PHYSICS_DYNAMIC_MESH_COLLIDER_INVALID",
+      ],
     );
   } finally {
     await rm(root, { force: true, recursive: true });
@@ -101,26 +106,28 @@ test("should accept primitive dynamic and kinematic bodies when fields are bound
   }
 });
 
-test("should reject dynamic mesh colliders when solver parity is requested", async () => {
-  const root = await mkdtemp(join(tmpdir(), "tn-physics-v9-dynamic-mesh-"));
+test("should accept bounded dynamic mesh colliders when solver parity is requested", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-physics-v10-dynamic-mesh-"));
   try {
     await writeTestBundle(root, {
       createAssetsDir: true,
       manifest: {
-        name: "v9-rejected-dynamic-mesh",
+        name: "v10-bounded-dynamic-mesh",
         requiredCapabilities: {
-          physics: ["collider.mesh", "primitive-solver-v2", "rigid-body.dynamic"],
+          physics: ["ccd.swept-aabb", "collider.mesh", "collider.mesh.bounds", "rigid-body.dynamic"],
         },
       },
     });
-    await writeJson(root, "world.ir.json", physicsWorld([{ Collider: { kind: "mesh" }, RigidBody: { kind: "dynamic", mass: 1 } }]));
+    await writeJson(
+      root,
+      "world.ir.json",
+      physicsWorld([{ Collider: { kind: "mesh", mesh: { bounds: { size: [2, 0.5, 4] }, source: "mesh.car", triangleCount: 128 } }, RigidBody: { ccd: { enabled: true, mode: "swept-aabb" }, kind: "dynamic", mass: 1 } }]),
+    );
 
     const result = await validateBundle(root);
-    const diagnostic = result.diagnostics.find((item) => item.code === "TN_IR_PHYSICS_DYNAMIC_MESH_UNSUPPORTED");
 
-    assert.equal(result.ok, false);
-    assert.equal(diagnostic?.path, "world.ir.json/entities/0/components/Collider/kind");
-    assert.equal(diagnostic?.suggestion, "Use a static mesh collider or a primitive collider for dynamic or kinematic bodies.");
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -253,6 +260,7 @@ test("physics should reject invalid body fields and backend-specific collider op
       result.diagnostics.map((diagnostic) => diagnostic.code),
       [
         "TN_IR_PHYSICS_MESH_TRIGGER_UNSUPPORTED",
+        "TN_IR_PHYSICS_MESH_COLLIDER_INVALID",
         "TN_IR_PHYSICS_BODY_MASS_INVALID",
         "TN_IR_PHYSICS_BODY_VELOCITY_INVALID",
         "TN_IR_PHYSICS_ENGINE_HANDLE_UNSUPPORTED",
@@ -356,7 +364,7 @@ test("physics should reject mesh sensors and unbounded occupant histories", asyn
     assert.equal(result.ok, false);
     assert.deepEqual(
       result.diagnostics.map((diagnostic) => diagnostic.code),
-      ["TN_IR_PHYSICS_SENSOR_MESH_UNSUPPORTED", "TN_IR_PHYSICS_SENSOR_OCCUPANT_LIMIT_INVALID"],
+      ["TN_IR_PHYSICS_SENSOR_MESH_UNSUPPORTED", "TN_IR_PHYSICS_SENSOR_OCCUPANT_LIMIT_INVALID", "TN_IR_PHYSICS_MESH_COLLIDER_INVALID"],
     );
   } finally {
     await rm(root, { force: true, recursive: true });

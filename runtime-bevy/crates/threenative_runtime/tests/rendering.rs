@@ -7,7 +7,10 @@ use std::{
 use bevy::{
     animation::{AnimationPlugin, RepeatAnimation, graph::AnimationGraph},
     asset::AssetPlugin,
-    core_pipeline::{bloom::BloomSettings, tonemapping::Tonemapping},
+    core_pipeline::{
+        bloom::BloomSettings, experimental::taa::TemporalAntiAliasSettings, fxaa::Fxaa,
+        smaa::SmaaSettings, tonemapping::Tonemapping,
+    },
     gltf::GltfPlugin,
     pbr::{NotShadowCaster, NotShadowReceiver},
     prelude::*,
@@ -24,7 +27,7 @@ use threenative_components::ThreeNativeId;
 use threenative_loader::load_bundle;
 use threenative_runtime::map_world::{
     NativeAnimationPlayback, advance_native_animation_playback, bind_native_animation_players,
-    map_bundle_into_world,
+    map_bundle_into_world, trace_native_emissive_bloom,
 };
 use threenative_runtime::rendering::{
     NativeParticleMaterialPolicy, NativeRenderedParticle, apply_environment_lighting_to_world,
@@ -55,6 +58,7 @@ fn rendering_should_map_visibility_and_v2_lights() {
         [2.0, 2.0, 2.0],
     );
     assert_material(app.world_mut(), "cube.visible");
+    assert_emissive_bloom_trace(app.world_mut());
     assert_extended_blend_material(app.world_mut(), "plane.glass");
     assert!(has_component::<NotShadowCaster>(
         app.world_mut(),
@@ -78,7 +82,10 @@ fn should_report_native_skybox_and_environment_map_observations() {
     let observation = observe_environment_lighting(&fixture.bundle);
 
     assert_eq!(
-        observation.skybox.as_ref().map(|skybox| skybox.mode.as_str()),
+        observation
+            .skybox
+            .as_ref()
+            .map(|skybox| skybox.mode.as_str()),
         Some("cubemap")
     );
     assert_eq!(
@@ -168,6 +175,33 @@ fn rendering_should_map_runtime_antialias_to_msaa_resource() {
 }
 
 #[test]
+fn rendering_should_map_post_antialias_modes_to_camera_components() {
+    for mode in ["fxaa", "taa", "smaa"] {
+        let root = write_post_antialias_bundle(mode);
+        let bundle = load_bundle(&root).expect("post antialias bundle should load");
+        let mut app = App::new();
+
+        map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map");
+
+        assert_eq!(app.world().resource::<Msaa>(), &Msaa::Off);
+        let camera = entity_for(app.world_mut(), "camera.ui");
+        assert_eq!(app.world().get::<Fxaa>(camera).is_some(), mode == "fxaa");
+        assert_eq!(
+            app.world()
+                .get::<TemporalAntiAliasSettings>(camera)
+                .is_some(),
+            mode == "taa"
+        );
+        assert_eq!(
+            app.world().get::<SmaaSettings>(camera).is_some(),
+            mode == "smaa"
+        );
+
+        fs::remove_dir_all(root).expect("temporary bundle should be removed");
+    }
+}
+
+#[test]
 fn rendering_should_map_runtime_bloom_to_camera() {
     let root = write_rendering_bundle();
     let bundle = load_bundle(&root).expect("rendering bundle should load");
@@ -246,9 +280,21 @@ fn should_spawn_rendered_particles_from_bounded_emitter_state() {
         .query::<(&NativeRenderedParticle, &NativeParticleMaterialPolicy)>();
     let rendered = query.iter(app.world()).collect::<Vec<_>>();
     assert_eq!(rendered.len(), 12);
-    assert!(rendered.iter().all(|(particle, _)| particle.emitter == "dust"));
-    assert!(rendered.iter().all(|(_, material)| material.base_color == "#f6c36a"));
-    assert!(rendered.iter().all(|(_, material)| (material.opacity - 0.82).abs() < 0.001));
+    assert!(
+        rendered
+            .iter()
+            .all(|(particle, _)| particle.emitter == "dust")
+    );
+    assert!(
+        rendered
+            .iter()
+            .all(|(_, material)| material.base_color == "#f6c36a")
+    );
+    assert!(
+        rendered
+            .iter()
+            .all(|(_, material)| (material.opacity - 0.82).abs() < 0.001)
+    );
 }
 
 #[test]
@@ -456,6 +502,21 @@ fn assert_material(world: &mut World, id: &str) {
     assert!((material.specular_transmission - 0.45).abs() < 0.01);
 }
 
+fn assert_emissive_bloom_trace(world: &mut World) {
+    let observations = trace_native_emissive_bloom(world);
+    assert_eq!(observations.len(), 2);
+    let observation = observations
+        .iter()
+        .find(|observation| observation.entity_id == "cube.visible")
+        .expect("cube should report emissive bloom");
+    assert_eq!(observation.material_id, "mat.main");
+    assert!(observation.enabled);
+    assert!((observation.material_intensity - 0.8).abs() < 0.01);
+    assert!((observation.threshold - 0.1).abs() < 0.01);
+    assert!((observation.contribution - 0.1444).abs() < 0.01);
+    assert!(observation.exceeds_threshold);
+}
+
 fn assert_extended_blend_material(world: &mut World, id: &str) {
     let material = material_for(world, id);
     let color = material.base_color.to_srgba();
@@ -603,6 +664,14 @@ fn visibility_for(world: &mut World, id: &str) -> Option<Visibility> {
     })
 }
 
+fn entity_for(world: &mut World, id: &str) -> Entity {
+    let mut query = world.query::<(Entity, &ThreeNativeId)>();
+    query
+        .iter(world)
+        .find_map(|(entity, stable_id)| (stable_id.0 == id).then_some(entity))
+        .expect("entity should exist")
+}
+
 fn write_rendering_bundle() -> PathBuf {
     let root = std::env::temp_dir().join(format!(
         "tn-rendering-{}",
@@ -718,6 +787,7 @@ fn write_rendering_bundle() -> PathBuf {
     "clearcoat": 0.8,
     "clearcoatRoughness": 0.25,
     "emissive": "#0000ff",
+    "emissiveBloom": { "enabled": true, "intensity": 0.8, "threshold": 0.1 },
     "emissiveIntensity": 2.5,
     "opacity": 0.65,
     "baseColorTexture": "tex.albedo",
@@ -746,6 +816,24 @@ fn write_rendering_bundle() -> PathBuf {
         &root,
         "target.profile.json",
         r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["desktop"] }"#,
+    );
+    root
+}
+
+fn write_post_antialias_bundle(mode: &str) -> PathBuf {
+    let root = write_rendering_bundle();
+    write(
+        &root,
+        "runtime.config.json",
+        &format!(
+            r#"{{
+  "schema": "threenative.runtime-config",
+  "version": "0.1.0",
+  "renderer": {{ "antialias": "{mode}" }},
+  "time": {{ "fixedDelta": 0.016666666666666666, "paused": false }},
+  "window": {{ "height": 720, "width": 1280 }}
+}}"#
+        ),
     );
     root
 }

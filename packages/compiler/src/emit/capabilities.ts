@@ -70,6 +70,13 @@ export function deriveRequiredCapabilities(source: ICapabilitySource): IBundleMa
     if (source.runtimeConfig.renderer?.colorGrading !== undefined) {
       add("rendering", "color-grading");
     }
+    if (source.runtimeConfig.renderer?.depthOfField !== undefined) {
+      add("rendering", "depth-of-field");
+    }
+    const antialias = source.runtimeConfig.renderer?.antialias;
+    if (antialias !== undefined) {
+      add("rendering", `antialias.${antialias}`);
+    }
     if (source.runtimeConfig.renderer?.renderPath === "forward") {
       add("rendering", "render-path.forward");
     }
@@ -189,12 +196,18 @@ function collectWorldCapabilities(world: IWorldIr | undefined, add: (domain: str
     }
     if (entity.components.RigidBody !== undefined) {
       add("physics", `rigid-body.${entity.components.RigidBody.kind}`);
+      if (entity.components.RigidBody.ccd?.enabled === true) {
+        add("physics", `ccd.${entity.components.RigidBody.ccd.mode}`);
+      }
       if (usesPrimitiveSolverV2(entity.components.RigidBody, entity.components.Collider)) {
         add("physics", "primitive-solver-v2");
       }
     }
     if (entity.components.Collider !== undefined) {
       add("physics", `collider.${entity.components.Collider.kind}`);
+      if (entity.components.Collider.kind === "mesh" && entity.components.Collider.mesh !== undefined) {
+        add("physics", "collider.mesh.bounds");
+      }
       if (entity.components.Collider.layer !== undefined || entity.components.Collider.mask !== undefined) {
         add("physics", "contact-filtering");
       }
@@ -208,6 +221,9 @@ function collectWorldCapabilities(world: IWorldIr | undefined, add: (domain: str
         add("physics", "sensors");
         add("physics", "interaction-volumes");
       }
+    }
+    if (entity.components.PhysicsJoint !== undefined) {
+      add("physics", `joint.${entity.components.PhysicsJoint.kind}`);
     }
     if (entity.components.CharacterController !== undefined) {
       add("character", "controller");
@@ -277,6 +293,9 @@ function collectMaterialCapabilities(materials: IMaterialsIr, add: (domain: stri
     }
     if (material.emissive !== undefined || material.emissiveIntensity !== undefined) {
       add("rendering", "material.emissive");
+    }
+    if (material.emissiveBloom !== undefined) {
+      add("rendering", "material.emissive-bloom");
     }
     if (material.specularIntensity !== undefined || material.specularTexture !== undefined) {
       add("rendering", "material.specular");

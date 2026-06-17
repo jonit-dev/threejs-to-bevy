@@ -205,6 +205,7 @@ pub struct EntityComponents {
     pub hierarchy: Option<HierarchyComponent>,
     pub light: Option<LightComponent>,
     pub mesh_renderer: Option<MeshRendererComponent>,
+    pub physics_joint: Option<PhysicsJointComponent>,
     pub render_layers: Option<RenderLayersComponent>,
     pub rigid_body: Option<RigidBodyComponent>,
     pub transform: Option<TransformComponent>,
@@ -387,6 +388,7 @@ pub struct HierarchyComponent {
 #[serde(rename_all = "camelCase")]
 pub struct RigidBodyComponent {
     pub angular_velocity: Option<[f32; 3]>,
+    pub ccd: Option<CcdComponent>,
     pub damping: Option<f32>,
     pub gravity_scale: Option<f32>,
     pub inverse_mass: Option<f32>,
@@ -398,12 +400,21 @@ pub struct RigidBodyComponent {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CcdComponent {
+    pub enabled: bool,
+    pub max_substeps: Option<u32>,
+    pub mode: String,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct ColliderComponent {
     pub friction: Option<f32>,
     pub kind: String,
     pub height: Option<f32>,
     pub layer: Option<String>,
     pub mask: Option<Vec<String>>,
+    pub mesh: Option<MeshColliderComponent>,
     pub radius: Option<f32>,
     pub restitution: Option<f32>,
     pub size: Option<[f32; 3]>,
@@ -413,11 +424,44 @@ pub struct ColliderComponent {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MeshColliderComponent {
+    pub bounds: MeshColliderBoundsComponent,
+    pub source: Option<String>,
+    pub triangle_count: u32,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MeshColliderBoundsComponent {
+    pub center: Option<[f32; 3]>,
+    pub size: [f32; 3],
+}
+
+#[derive(Debug, Deserialize)]
 pub struct ColliderSlopeComponent {
     pub axis: String,
     pub direction: i8,
     pub rise: f32,
     pub run: f32,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PhysicsJointComponent {
+    pub anchor: Option<[f32; 3]>,
+    pub axis: Option<[f32; 3]>,
+    pub connected_entity: String,
+    pub damping: Option<f32>,
+    pub kind: String,
+    pub limits: Option<PhysicsJointLimitsComponent>,
+    pub stiffness: Option<f32>,
+    pub travel: Option<f32>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PhysicsJointLimitsComponent {
+    pub max: f32,
+    pub min: f32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -448,6 +492,14 @@ pub struct MaterialExtensionIr {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct MaterialEmissiveBloomIr {
+    pub enabled: bool,
+    pub intensity: f32,
+    pub threshold: f32,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MaterialIr {
     pub alpha_cutoff: Option<f32>,
     pub alpha_mode: Option<String>,
@@ -464,6 +516,7 @@ pub struct MaterialIr {
     pub clearcoat_roughness_texture: Option<String>,
     pub clearcoat_texture: Option<String>,
     pub emissive: Option<ColorIr>,
+    pub emissive_bloom: Option<MaterialEmissiveBloomIr>,
     pub emissive_intensity: Option<f32>,
     pub emissive_texture: Option<String>,
     pub metalness: Option<f32>,
@@ -994,6 +1047,8 @@ pub struct RuntimeRendererConfig {
     pub bloom: Option<RuntimeRendererBloomConfig>,
     #[serde(rename = "colorGrading")]
     pub color_grading: Option<RuntimeRendererColorGradingConfig>,
+    #[serde(rename = "depthOfField")]
+    pub depth_of_field: Option<RuntimeRendererDepthOfFieldConfig>,
     #[serde(rename = "renderPath")]
     pub render_path: Option<String>,
 }
@@ -1004,6 +1059,15 @@ pub struct RuntimeRendererBloomConfig {
     pub enabled: bool,
     pub intensity: f32,
     pub threshold: f32,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeRendererDepthOfFieldConfig {
+    pub aperture: f32,
+    pub enabled: bool,
+    pub focus_distance: f32,
+    pub max_blur: f32,
 }
 
 #[derive(Debug, Deserialize)]

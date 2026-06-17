@@ -14,7 +14,8 @@ test("runtime renderer antialias requiredness should not drift across schema, Ty
   const loaderTypes = await readFile(resolve(repoRoot, "runtime-bevy/crates/threenative_loader/src/lib.rs"), "utf8");
 
   assert.deepEqual(schema.properties.renderer.required, ["antialias"]);
-  assert.match(runtimeConfigTypes, /antialias:\s*"none" \| "msaa2" \| "msaa4" \| "msaa8";/);
+  assert.match(runtimeConfigTypes, /RendererAntialiasMode = "none" \| "msaa2" \| "msaa4" \| "msaa8" \| "fxaa" \| "taa" \| "smaa";/);
+  assert.match(runtimeConfigTypes, /antialias:\s*RendererAntialiasMode;/);
   assert.match(runtimeConfigTypes, /colorGrading\?:/);
   assert.match(runtimeConfigTypes, /renderPath\?: "forward";/);
   assert.match(loaderTypes, /pub antialias: String,/);

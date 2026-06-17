@@ -26,6 +26,7 @@ interface IObjectLike {
     depthWrite?: boolean;
     doubleSided?: boolean;
     emissive?: unknown;
+    emissiveBloom?: { enabled: boolean; intensity: number; threshold: number };
     emissiveIntensity?: number;
     emissiveTexture?: string | IAssetReference;
     kind?: string;
@@ -214,6 +215,7 @@ function visitChildren(
         ...(child.material.depthTest === undefined ? {} : { depthTest: child.material.depthTest }),
         ...(child.material.depthWrite === undefined ? {} : { depthWrite: child.material.depthWrite }),
         ...(child.material.emissive === undefined ? {} : { emissive: child.material.emissive }),
+        ...(child.material.emissiveBloom === undefined ? {} : { emissiveBloom: child.material.emissiveBloom }),
         ...(child.material.emissiveIntensity === undefined || child.material.emissiveIntensity === 1 ? {} : { emissiveIntensity: child.material.emissiveIntensity }),
         ...(child.material.preset === undefined
           ? {}
@@ -328,6 +330,7 @@ function emitPhysics(physics: IPhysicsDeclaration | undefined, components: Recor
     components.RigidBody = {
       kind: physics.body.kind,
       ...(physics.body.angularVelocity === undefined ? {} : { angularVelocity: physics.body.angularVelocity }),
+      ...(physics.body.ccd === undefined ? {} : { ccd: physics.body.ccd }),
       ...(physics.body.damping === undefined ? {} : { damping: physics.body.damping }),
       ...(physics.body.gravityScale === undefined ? {} : { gravityScale: physics.body.gravityScale }),
       ...(physics.body.inverseMass === undefined ? {} : { inverseMass: physics.body.inverseMass }),
@@ -345,11 +348,15 @@ function emitPhysics(physics: IPhysicsDeclaration | undefined, components: Recor
       ...(physics.collider.height === undefined ? {} : { height: physics.collider.height }),
       ...(physics.collider.layer === undefined ? {} : { layer: physics.collider.layer }),
       ...(physics.collider.mask === undefined ? {} : { mask: physics.collider.mask }),
+      ...(physics.collider.mesh === undefined ? {} : { mesh: physics.collider.mesh }),
       ...(physics.collider.friction === undefined ? {} : { friction: physics.collider.friction }),
       ...(physics.collider.restitution === undefined ? {} : { restitution: physics.collider.restitution }),
       ...(physics.collider.slope === undefined ? {} : { slope: physics.collider.slope }),
       ...(physics.collider.trigger === undefined ? {} : { trigger: physics.collider.trigger }),
     };
+  }
+  if (physics?.joint !== undefined) {
+    components.PhysicsJoint = physics.joint;
   }
 }
 

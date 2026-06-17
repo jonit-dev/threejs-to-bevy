@@ -43,6 +43,16 @@
               { "type": "array", "minItems": 3, "maxItems": 4, "items": { "type": "number" } }
             ]
           },
+          "emissiveBloom": {
+            "type": "object",
+            "required": ["enabled", "intensity", "threshold"],
+            "additionalProperties": false,
+            "properties": {
+              "enabled": { "type": "boolean" },
+              "intensity": { "type": "number", "minimum": 0 },
+              "threshold": { "type": "number", "minimum": 0 }
+            }
+          },
           "emissiveIntensity": { "type": "number", "minimum": 0 },
           "clearcoat": { "type": "number", "minimum": 0, "maximum": 1 },
           "clearcoatRoughness": { "type": "number", "minimum": 0, "maximum": 1 },

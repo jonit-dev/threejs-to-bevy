@@ -9,8 +9,7 @@ use threenative_loader::{
 };
 
 use crate::audio::{
-    self, NativeAudioCommand, NativeAudioCommandKind, NativeAudioDiagnostic,
-    NativeAudioToneCommand,
+    self, NativeAudioCommand, NativeAudioCommandKind, NativeAudioDiagnostic, NativeAudioToneCommand,
 };
 use crate::cameras::{active_camera_ids, camera_order};
 use crate::physics::detect_physics_events;
@@ -110,6 +109,8 @@ pub struct RuntimeRendererReport {
     pub bloom: Option<RuntimeBloomReport>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub color_grading: Option<RuntimeColorGradingReport>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub depth_of_field: Option<RuntimeDepthOfFieldReport>,
     pub post_processing: RuntimePostProcessingReport,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub render_path: Option<String>,
@@ -121,6 +122,15 @@ pub struct RuntimeBloomReport {
     pub enabled: bool,
     pub intensity: f32,
     pub threshold: f32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeDepthOfFieldReport {
+    pub aperture: f32,
+    pub enabled: bool,
+    pub focus_distance: f32,
+    pub max_blur: f32,
 }
 
 #[derive(Debug, Serialize)]
@@ -644,13 +654,19 @@ fn report_profiler(bundle: &LoadedBundle) -> ConformanceProfilerReport {
         gpu_timing_available: false,
         gpu_timing_warning: Some(RuntimeDiagnostic {
             code: "TN_PROFILER_GPU_TIMING_UNAVAILABLE".to_owned(),
-            message: "Native GPU/render-pass timing is unavailable for this support capture.".to_owned(),
+            message: "Native GPU/render-pass timing is unavailable for this support capture."
+                .to_owned(),
             path: "target.profile.json/performance/profiler".to_owned(),
             severity: "warning".to_owned(),
         }),
-        memory_estimate_bytes: bundle.assets.assets.len() * 1024 + bundle.world.entities.len() * 256,
+        memory_estimate_bytes: bundle.assets.assets.len() * 1024
+            + bundle.world.entities.len() * 256,
         render_time_ms: 8.0,
-        save_latency_ms: bundle.local_data.as_ref().map(|data| data.save_slots.len() as f32).unwrap_or(0.0),
+        save_latency_ms: bundle
+            .local_data
+            .as_ref()
+            .map(|data| data.save_slots.len() as f32)
+            .unwrap_or(0.0),
         ui_node_count: bundle.ui.as_ref().map(count_ui_nodes).unwrap_or(0),
         update_time_ms: 4.0,
     }
@@ -678,7 +694,9 @@ fn report_camera_views(bundle: &LoadedBundle) -> Vec<ConformanceCameraViewReport
             let entity = entity_by_id.get(entity_id.as_str())?;
             let camera = entity.components.camera.as_ref()?;
             let target = camera.target.as_ref();
-            let target_kind = target.map(|value| value.kind.as_str()).unwrap_or("backbuffer");
+            let target_kind = target
+                .map(|value| value.kind.as_str())
+                .unwrap_or("backbuffer");
             Some(ConformanceCameraViewReport {
                 camera_id: entity_id.clone(),
                 clear_mode: camera.clear.as_ref().map(|clear| clear.mode.clone()),
@@ -691,7 +709,10 @@ fn report_camera_views(bundle: &LoadedBundle) -> Vec<ConformanceCameraViewReport
                     .clone()
                     .unwrap_or_else(|| vec!["default".to_owned()]),
                 order: camera_order(camera),
-                projection_kind: camera.projection.as_ref().map(|projection| projection.kind.clone()),
+                projection_kind: camera
+                    .projection
+                    .as_ref()
+                    .map(|projection| projection.kind.clone()),
                 projection_matrix_hash: camera
                     .projection
                     .as_ref()
@@ -705,10 +726,7 @@ fn report_camera_views(bundle: &LoadedBundle) -> Vec<ConformanceCameraViewReport
                     }),
                 target_asset: target.and_then(|value| value.asset.clone()),
                 target_kind: target_kind.to_owned(),
-                viewport: camera
-                    .viewport
-                    .as_ref()
-                    .map(|viewport| viewport.as_tuple()),
+                viewport: camera.viewport.as_ref().map(|viewport| viewport.as_tuple()),
             })
         })
         .collect::<Vec<_>>();
@@ -739,10 +757,8 @@ fn report_runtime_config(
                 intensity: bloom.intensity,
                 threshold: bloom.threshold,
             }),
-            color_grading: renderer
-                .color_grading
-                .as_ref()
-                .map(|color_grading| RuntimeColorGradingReport {
+            color_grading: renderer.color_grading.as_ref().map(|color_grading| {
+                RuntimeColorGradingReport {
                     contrast: color_grading.contrast,
                     exposure: color_grading.exposure,
                     lut: color_grading.lut.clone(),
@@ -750,6 +766,16 @@ fn report_runtime_config(
                     temperature: color_grading.temperature,
                     tint: color_grading.tint,
                     tone_mapping: color_grading.tone_mapping.clone(),
+                }
+            }),
+            depth_of_field: renderer
+                .depth_of_field
+                .as_ref()
+                .map(|depth_of_field| RuntimeDepthOfFieldReport {
+                    aperture: depth_of_field.aperture,
+                    enabled: depth_of_field.enabled,
+                    focus_distance: depth_of_field.focus_distance,
+                    max_blur: depth_of_field.max_blur,
                 }),
             post_processing: RuntimePostProcessingReport {
                 applied: [
@@ -761,34 +787,28 @@ fn report_runtime_config(
                         .color_grading
                         .as_ref()
                         .map(|_| "colorGrading".to_owned()),
+                    renderer.depth_of_field.as_ref().and_then(|depth_of_field| {
+                        depth_of_field
+                            .enabled
+                            .then(|| "depthOfField".to_owned())
+                    }),
+                    post_antialias_feature(renderer.antialias.as_str()),
                 ]
                 .into_iter()
                 .flatten()
                 .collect(),
-                skipped: vec![
-                    RuntimePostProcessingSkipReport {
-                        feature: "fxaa".to_owned(),
-                        reason:
-                            "diagnostic-only until native/web visual parity evidence is promoted"
-                                .to_owned(),
-                    },
-                    RuntimePostProcessingSkipReport {
-                        feature: "taa".to_owned(),
-                        reason: "unsupported in V9".to_owned(),
-                    },
-                    RuntimePostProcessingSkipReport {
-                        feature: "smaa".to_owned(),
-                        reason: "unsupported in V9".to_owned(),
-                    },
-                    RuntimePostProcessingSkipReport {
-                        feature: "depthOfField".to_owned(),
-                        reason: "unsupported in V9".to_owned(),
-                    },
-                ],
+                skipped: Vec::new(),
             },
             render_path: renderer.render_path.clone(),
         }),
     })
+}
+
+fn post_antialias_feature(mode: &str) -> Option<String> {
+    match mode {
+        "fxaa" | "taa" | "smaa" => Some(format!("antialias.{mode}")),
+        _ => None,
+    }
 }
 
 struct UiReportResult {
@@ -908,7 +928,11 @@ fn report_light_budget(bundle: &LoadedBundle) -> Option<ConformanceLightBudgetRe
         .iter()
         .filter(|entity| {
             matches!(
-                entity.components.light.as_ref().map(|light| light.kind.as_str()),
+                entity
+                    .components
+                    .light
+                    .as_ref()
+                    .map(|light| light.kind.as_str()),
                 Some("directional" | "point" | "spot")
             )
         })
@@ -1143,7 +1167,13 @@ fn report_environment(environment: &EnvironmentSceneIr) -> ConformanceEnvironmen
     let mut debug_gizmos = environment
         .source_assets
         .iter()
-        .filter(|asset| asset.debug.as_ref().and_then(|debug| debug.gizmo).unwrap_or(false))
+        .filter(|asset| {
+            asset
+                .debug
+                .as_ref()
+                .and_then(|debug| debug.gizmo)
+                .unwrap_or(false)
+        })
         .map(|asset| format!("sourceAsset:{}", asset.id))
         .chain(
             environment
@@ -1193,7 +1223,8 @@ fn report_environment(environment: &EnvironmentSceneIr) -> ConformanceEnvironmen
         .source_assets
         .iter()
         .filter_map(|asset| {
-            asset.visibility
+            asset
+                .visibility
                 .as_ref()
                 .map(|visibility| visibility_report(&asset.id, visibility))
         })
@@ -1216,12 +1247,14 @@ fn report_environment(environment: &EnvironmentSceneIr) -> ConformanceEnvironmen
         hlod_fades: (!hlod_fades.is_empty()).then_some(hlod_fades),
         instances,
         instance_visibility: (!instance_visibility.is_empty()).then_some(instance_visibility),
-        light_probes: (!environment.light_probes.is_empty()).then(|| environment.light_probes.clone()),
+        light_probes: (!environment.light_probes.is_empty())
+            .then(|| environment.light_probes.clone()),
         path: Some(environment.path.id.clone()),
         scatter,
         skybox: environment.skybox.clone(),
         source_assets,
-        source_asset_visibility: (!source_asset_visibility.is_empty()).then_some(source_asset_visibility),
+        source_asset_visibility: (!source_asset_visibility.is_empty())
+            .then_some(source_asset_visibility),
         terrain: environment
             .terrain
             .as_ref()
@@ -1229,7 +1262,10 @@ fn report_environment(environment: &EnvironmentSceneIr) -> ConformanceEnvironmen
     }
 }
 
-fn visibility_report(id: &str, visibility: &threenative_loader::VisibilityRangeIr) -> VisibilityRangeReport {
+fn visibility_report(
+    id: &str,
+    visibility: &threenative_loader::VisibilityRangeIr,
+) -> VisibilityRangeReport {
     VisibilityRangeReport {
         end_distance: visibility.fade.as_ref().map(|fade| fade.end_distance),
         id: id.to_owned(),
@@ -1364,19 +1400,26 @@ fn report_entity(
             intensity: light.intensity,
             kind: light.kind.clone(),
             range: light.range,
-            shadow_filter: light.shadow_filter.as_ref().map(|filter| ShadowFilterReport {
-                mode: filter.mode.clone(),
-                quality: filter.quality.clone(),
-            }),
+            shadow_filter: light
+                .shadow_filter
+                .as_ref()
+                .map(|filter| ShadowFilterReport {
+                    mode: filter.mode.clone(),
+                    quality: filter.quality.clone(),
+                }),
             shadow_bias: light.shadow_bias,
             shadow_normal_bias: light.shadow_normal_bias,
             runtime: runtime.and_then(|runtime| {
                 runtime.light.as_ref().map(|runtime_light| {
                     let mut runtime_light = runtime_light.clone();
-                    runtime_light.shadow_filter = light.shadow_filter.as_ref().map(|filter| ShadowFilterReport {
-                        mode: filter.mode.clone(),
-                        quality: filter.quality.clone(),
-                    });
+                    runtime_light.shadow_filter =
+                        light
+                            .shadow_filter
+                            .as_ref()
+                            .map(|filter| ShadowFilterReport {
+                                mode: filter.mode.clone(),
+                                quality: filter.quality.clone(),
+                            });
                     runtime_light
                 })
             }),

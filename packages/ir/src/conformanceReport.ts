@@ -37,6 +37,7 @@ export interface IConformanceMaterialReport {
   depthTest?: boolean;
   depthWrite?: boolean;
   emissive?: IMaterialIr["emissive"];
+  emissiveBloom?: IMaterialIr["emissiveBloom"];
   emissiveIntensity?: number;
   extension?: IMaterialIr["extension"];
   id: string;
@@ -137,6 +138,7 @@ export interface IConformanceRuntimeConfigReport {
     antialias?: NonNullable<IRuntimeConfigIr["renderer"]>["antialias"];
     bloom?: NonNullable<NonNullable<IRuntimeConfigIr["renderer"]>["bloom"]>;
     colorGrading?: NonNullable<NonNullable<IRuntimeConfigIr["renderer"]>["colorGrading"]>;
+    depthOfField?: NonNullable<NonNullable<IRuntimeConfigIr["renderer"]>["depthOfField"]>;
     postProcessing?: {
       applied: string[];
       skipped: Array<{ feature: string; reason: string }>;

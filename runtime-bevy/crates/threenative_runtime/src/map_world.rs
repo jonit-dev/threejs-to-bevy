@@ -4,6 +4,9 @@ use bevy::{
     animation::graph::AnimationGraph,
     core_pipeline::{
         bloom::{BloomPrefilterSettings, BloomSettings},
+        experimental::taa::TemporalAntiAliasBundle,
+        fxaa::Fxaa,
+        smaa::SmaaSettings,
         tonemapping::Tonemapping,
     },
     gltf::GltfAssetLabel,
@@ -32,12 +35,12 @@ use threenative_loader::{
 
 use crate::assets::texture_uv_transform;
 use crate::cameras::{
-    active_camera_ids, apply_camera_components, build_render_layer_map, camera_order,
-    render_layers_for_names, NativeRenderLayerMap,
+    NativeRenderLayerMap, active_camera_ids, apply_camera_components, build_render_layer_map,
+    camera_order, render_layers_for_names,
 };
 use crate::render_targets::{
-    allocate_render_targets, camera_render_target, NativeCustomProjection,
-    NativeRenderTargetRegistry,
+    NativeCustomProjection, NativeRenderTargetRegistry, allocate_render_targets,
+    camera_render_target,
 };
 use crate::rendering::spawn_rendered_particles;
 
@@ -48,8 +51,7 @@ use crate::rendering::spawn_rendered_particles;
 // Three.js r152+ directional lights use photometric lux; keep Bevy illuminance aligned.
 // Tuned against the v1 cube fixture so lit standard-material faces match web preview.
 const THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY: f32 = 90.0;
-const THREE_COMPAT_POINT_LUMENS_PER_CANDELA: f32 =
-    std::f32::consts::TAU * 2.0 * (90.0 / 1.7);
+const THREE_COMPAT_POINT_LUMENS_PER_CANDELA: f32 = std::f32::consts::TAU * 2.0 * (90.0 / 1.7);
 const THREE_COMPAT_DEFAULT_RANGE: f32 = 1_000.0;
 const THREE_COMPAT_DEFAULT_CAMERA_EV100: f32 = 7.55;
 
@@ -62,6 +64,26 @@ pub struct NativeMaterialPolicy {
     pub render_order: i32,
     pub specular_texture: Option<String>,
     pub unsupported_blend_diagnostic: Option<String>,
+}
+
+#[derive(Clone, Component, Debug, PartialEq)]
+pub struct NativeEmissiveBloomPolicy {
+    pub enabled: bool,
+    pub intensity: f32,
+    pub material_id: String,
+    pub threshold: f32,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct NativeEmissiveBloomObservation {
+    pub contribution: f32,
+    pub emissive_intensity: f32,
+    pub enabled: bool,
+    pub entity_id: String,
+    pub exceeds_threshold: bool,
+    pub material_id: String,
+    pub material_intensity: f32,
+    pub threshold: f32,
 }
 
 #[derive(Clone, Component, Debug, PartialEq)]
@@ -160,7 +182,9 @@ pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result
         .iter()
         .map(|material| (material.id.as_str(), material))
         .collect::<HashMap<_, _>>();
-    world.insert_resource(crate::assets::build_texture_controls_registry(&bundle.assets));
+    world.insert_resource(crate::assets::build_texture_controls_registry(
+        &bundle.assets,
+    ));
 
     let mut entities_by_id = HashMap::new();
     for entity in &bundle.world.entities {
@@ -175,6 +199,7 @@ pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result
             camera_color_management,
             camera_atmosphere,
             bloom_settings.as_ref(),
+            bundle.runtime_config.as_ref(),
             &render_target_registry,
         )?;
         entities_by_id.insert(entity.id.as_str(), bevy_entity);
@@ -209,9 +234,31 @@ fn apply_runtime_config(world: &mut World, config: Option<&RuntimeConfigIr>) {
         Some("none") => Msaa::Off,
         Some("msaa2") => Msaa::Sample2,
         Some("msaa8") => Msaa::Sample8,
+        Some("fxaa" | "taa" | "smaa") => Msaa::Off,
         _ => Msaa::Sample4,
     };
     world.insert_resource(msaa);
+}
+
+fn insert_camera_antialias(spawned: &mut EntityWorldMut, config: Option<&RuntimeConfigIr>) {
+    let Some(mode) = config
+        .and_then(|config| config.renderer.as_ref())
+        .map(|renderer| renderer.antialias.as_str())
+    else {
+        return;
+    };
+    match mode {
+        "fxaa" => {
+            spawned.insert(Fxaa::default());
+        }
+        "taa" => {
+            spawned.insert(TemporalAntiAliasBundle::default());
+        }
+        "smaa" => {
+            spawned.insert(SmaaSettings::default());
+        }
+        _ => {}
+    }
 }
 
 fn bloom_settings_for_runtime(config: Option<&RuntimeConfigIr>) -> Option<BloomSettings> {
@@ -248,6 +295,47 @@ pub fn advance_native_animation_playback(world: &mut World, fixed_delta: f32) {
     }
 }
 
+pub fn trace_native_emissive_bloom(world: &mut World) -> Vec<NativeEmissiveBloomObservation> {
+    let entries = {
+        let mut query = world.query::<(
+            &ThreeNativeId,
+            &Handle<StandardMaterial>,
+            &NativeEmissiveBloomPolicy,
+        )>();
+        query
+            .iter(world)
+            .map(|(id, handle, policy)| (id.0.clone(), handle.clone(), policy.clone()))
+            .collect::<Vec<_>>()
+    };
+    let Some(materials) = world.get_resource::<Assets<StandardMaterial>>() else {
+        return Vec::new();
+    };
+    let mut observations = entries
+        .into_iter()
+        .filter_map(|(entity_id, handle, policy)| {
+            let material = materials.get(&handle)?;
+            let luminance = emissive_luminance(material);
+            let contribution = if policy.enabled {
+                luminance * policy.intensity
+            } else {
+                0.0
+            };
+            Some(NativeEmissiveBloomObservation {
+                contribution: round_trace_value(contribution),
+                emissive_intensity: round_trace_value(luminance),
+                enabled: policy.enabled,
+                entity_id,
+                exceeds_threshold: contribution >= policy.threshold,
+                material_id: policy.material_id.clone(),
+                material_intensity: policy.intensity,
+                threshold: policy.threshold,
+            })
+        })
+        .collect::<Vec<_>>();
+    observations.sort_by(|left, right| left.entity_id.cmp(&right.entity_id));
+    observations
+}
+
 fn ensure_asset_resources(world: &mut World) {
     if !world.contains_resource::<Assets<Mesh>>() {
         world.init_resource::<Assets<Mesh>>();
@@ -274,6 +362,7 @@ fn spawn_entity(
     camera_color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
     camera_atmosphere: Option<&AtmosphereProfileIr>,
     bloom_settings: Option<&BloomSettings>,
+    runtime_config: Option<&RuntimeConfigIr>,
     render_target_registry: &NativeRenderTargetRegistry,
 ) -> Result<Entity, MapError> {
     let transform = map_transform(entity);
@@ -350,6 +439,9 @@ fn spawn_entity(
         });
         spawned.insert((stable_id, name));
         spawned.insert(policy);
+        if let Some(policy) = emissive_bloom_policy(material) {
+            spawned.insert(policy);
+        }
         insert_shadow_markers(&mut spawned, renderer);
         if let Some(layers) = entity.components.render_layers.as_ref() {
             spawned.insert(render_layers_for_names(layer_map, &layers.layers));
@@ -418,6 +510,7 @@ fn spawn_entity(
         if let Some(bloom_settings) = bloom_settings {
             spawned.insert(bloom_settings.clone());
         }
+        insert_camera_antialias(&mut spawned, runtime_config);
         return Ok(spawned.id());
     }
 
@@ -1118,7 +1211,9 @@ fn add_material(
         standard.perceptual_roughness = 1.0;
         standard.reflectance = 0.0;
     }
-    world.resource_mut::<Assets<StandardMaterial>>().add(standard)
+    world
+        .resource_mut::<Assets<StandardMaterial>>()
+        .add(standard)
 }
 
 fn material_policy(material: &MaterialIr) -> NativeMaterialPolicy {
@@ -1140,6 +1235,16 @@ fn material_policy(material: &MaterialIr) -> NativeMaterialPolicy {
         specular_texture: material.specular_texture.clone(),
         unsupported_blend_diagnostic,
     }
+}
+
+fn emissive_bloom_policy(material: &MaterialIr) -> Option<NativeEmissiveBloomPolicy> {
+    let bloom = material.emissive_bloom.as_ref()?;
+    Some(NativeEmissiveBloomPolicy {
+        enabled: bloom.enabled,
+        intensity: bloom.intensity,
+        material_id: material.id.clone(),
+        threshold: bloom.threshold,
+    })
 }
 
 fn alpha_mode(material: &MaterialIr) -> AlphaMode {
@@ -1168,6 +1273,7 @@ fn emissive_color(material: &MaterialIr) -> LinearRgba {
 
 fn uses_unlit_emissive_display(material: &MaterialIr) -> bool {
     material.emissive.is_some()
+        && material.emissive_bloom.is_none()
         && material.metalness.unwrap_or(0.0) <= 0.0
         && material.roughness.unwrap_or(1.0) >= 0.99
 }
@@ -1233,4 +1339,13 @@ fn color_to_bevy(color: &ColorIr) -> Color {
 fn color_with_opacity(color: &ColorIr, opacity: f32) -> Color {
     let srgba = color_to_bevy(color).to_srgba();
     Color::srgba(srgba.red, srgba.green, srgba.blue, opacity)
+}
+
+fn emissive_luminance(material: &StandardMaterial) -> f32 {
+    let color = material.emissive;
+    color.red * 0.2126 + color.green * 0.7152 + color.blue * 0.0722
+}
+
+fn round_trace_value(value: f32) -> f32 {
+    (value * 1_000_000.0).round() / 1_000_000.0
 }

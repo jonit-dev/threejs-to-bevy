@@ -5,16 +5,16 @@ import * as THREE from "three";
 import type { IRuntimeConfigIr } from "@threenative/ir";
 
 import { mapWorld } from "./mapWorld.js";
-import { applyRendererColorManagement, createRenderedParticleObjects, renderCameraViews, webBloomSettings, webRendererParameters } from "./render.js";
+import { applyRendererColorManagement, createRenderedParticleObjects, renderCameraViews, webBloomSettings, webDepthOfFieldSettings, webRendererParameters } from "./render.js";
 
 function runtimeConfig(
   antialias: NonNullable<IRuntimeConfigIr["renderer"]>["antialias"],
-  bloom?: NonNullable<NonNullable<IRuntimeConfigIr["renderer"]>["bloom"]>,
+  renderer?: Omit<NonNullable<IRuntimeConfigIr["renderer"]>, "antialias">,
 ): IRuntimeConfigIr {
   return {
     schema: "threenative.runtime-config",
     version: "0.1.0",
-    renderer: { antialias, ...(bloom === undefined ? {} : { bloom }) },
+    renderer: { antialias, ...(renderer ?? {}) },
     time: { fixedDelta: 1 / 60, paused: false },
     window: { height: 720, width: 1280 },
   };
@@ -86,6 +86,12 @@ test("should map runtime antialias modes to WebGL renderer parameters", () => {
     antialias: true,
     preserveDrawingBuffer: true,
   });
+  for (const mode of ["fxaa", "taa", "smaa"] as const) {
+    assert.deepEqual(webRendererParameters(runtimeConfig(mode)), {
+      antialias: false,
+      preserveDrawingBuffer: true,
+    });
+  }
 });
 
 test("should keep antialiasing enabled when runtime config is absent", () => {
@@ -101,10 +107,25 @@ test("should map runtime bloom settings to web post-processing settings", () => 
     intensity: 0.15,
     threshold: 0,
   });
-  assert.deepEqual(webBloomSettings(runtimeConfig("msaa4", { enabled: true, intensity: 0.35, threshold: 0.8 })), {
+  assert.deepEqual(webBloomSettings(runtimeConfig("msaa4", { bloom: { enabled: true, intensity: 0.35, threshold: 0.8 } })), {
     enabled: true,
     intensity: 0.35,
     threshold: 0.8,
+  });
+});
+
+test("should map runtime depth of field settings to web post-processing settings", () => {
+  assert.deepEqual(webDepthOfFieldSettings(runtimeConfig("msaa4")), {
+    aperture: 0.02,
+    enabled: false,
+    focusDistance: 8,
+    maxBlur: 0.01,
+  });
+  assert.deepEqual(webDepthOfFieldSettings(runtimeConfig("msaa4", { depthOfField: { aperture: 0.03, enabled: true, focusDistance: 12, maxBlur: 0.02 } })), {
+    aperture: 0.03,
+    enabled: true,
+    focusDistance: 12,
+    maxBlur: 0.02,
   });
 });
 

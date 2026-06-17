@@ -283,6 +283,11 @@ export interface IVisibilityComponent {
 
 export interface IRigidBodyComponent {
   angularVelocity?: Vec3;
+  ccd?: {
+    enabled: boolean;
+    maxSubsteps?: number;
+    mode: "linear" | "swept-aabb";
+  };
   damping?: number;
   gravityScale?: number;
   inverseMass?: number;
@@ -299,6 +304,14 @@ export interface IColliderComponent {
   kind: "box" | "capsule" | "cylinder" | "mesh" | "sphere";
   layer?: string;
   mask?: readonly string[];
+  mesh?: {
+    bounds: {
+      center?: Vec3;
+      size: Vec3;
+    };
+    source?: string;
+    triangleCount: number;
+  };
   radius?: number;
   restitution?: number;
   size?: Vec3;
@@ -315,6 +328,20 @@ export interface IColliderComponent {
     trackOccupants?: boolean;
   };
   trigger?: boolean;
+}
+
+export interface IPhysicsJointComponent {
+  anchor?: Vec3;
+  axis?: Vec3;
+  connectedEntity: string;
+  damping?: number;
+  kind: "hinge" | "slider" | "suspension";
+  limits?: {
+    max: number;
+    min: number;
+  };
+  stiffness?: number;
+  travel?: number;
 }
 
 export interface ICharacterPushPolicyComponent {
@@ -346,6 +373,7 @@ export interface IWorldEntity {
     MeshRenderer?: IMeshRendererComponent;
     Collider?: IColliderComponent;
     RenderLayers?: IRenderLayersComponent;
+    PhysicsJoint?: IPhysicsJointComponent;
     RigidBody?: IRigidBodyComponent;
     Transform?: ITransformComponent;
     Visibility?: IVisibilityComponent;
@@ -401,6 +429,12 @@ export interface IMaterialExtensionIr {
   preset: ExtendedMaterialPreset;
 }
 
+export interface IMaterialEmissiveBloomIr {
+  enabled: boolean;
+  intensity: number;
+  threshold: number;
+}
+
 export interface IMaterialIr {
   alphaCutoff?: number;
   alphaMode?: "blend" | "mask" | "opaque";
@@ -414,6 +448,7 @@ export interface IMaterialIr {
   depthTest?: boolean;
   depthWrite?: boolean;
   emissive?: string | readonly [number, number, number] | readonly [number, number, number, number];
+  emissiveBloom?: IMaterialEmissiveBloomIr;
   emissiveIntensity?: number;
   emissiveTexture?: string;
   extension?: IMaterialExtensionIr;

@@ -153,7 +153,11 @@ fn should_report_v9_environment_lighting_budgets_and_renderer_quality() {
     );
     assert_eq!(
         report_json["environment"]["debugGizmos"],
-        serde_json::json!(["instance:tree.hero", "lightProbe:probe.center", "sourceAsset:env.Tree"])
+        serde_json::json!([
+            "instance:tree.hero",
+            "lightProbe:probe.center",
+            "sourceAsset:env.Tree"
+        ])
     );
     assert_eq!(report_json["lightBudget"]["overBudget"], true);
     assert_eq!(
@@ -168,16 +172,22 @@ fn should_report_v9_environment_lighting_budgets_and_renderer_quality() {
         light["light"]["shadowFilter"],
         serde_json::json!({ "mode": "pcf", "quality": "high" })
     );
-    assert_eq!(report_json["runtimeConfig"]["renderer"]["renderPath"], "forward");
+    assert_eq!(
+        report_json["runtimeConfig"]["renderer"]["renderPath"],
+        "forward"
+    );
     assert_eq!(
         report_json["runtimeConfig"]["renderer"]["colorGrading"]["toneMapping"],
         "aces"
     );
-    assert!(report_json["runtimeConfig"]["renderer"]["postProcessing"]["skipped"]
-        .as_array()
-        .expect("skipped post-processing features should serialize")
-        .iter()
-        .any(|entry| entry["feature"] == "fxaa"));
+    assert_eq!(
+        report_json["runtimeConfig"]["renderer"]["postProcessing"]["applied"],
+        serde_json::json!(["colorGrading"])
+    );
+    assert_eq!(
+        report_json["runtimeConfig"]["renderer"]["postProcessing"]["skipped"],
+        serde_json::json!([])
+    );
 }
 
 #[test]

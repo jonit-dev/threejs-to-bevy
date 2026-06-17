@@ -215,5 +215,6 @@ test("should report V9 environment lighting, light budgets, and renderer quality
   assert.deepEqual(report.entities.find((entity) => entity.id === "light.point")?.light?.shadowFilter, { mode: "pcf", quality: "high" });
   assert.equal(report.runtimeConfig?.renderer?.renderPath, "forward");
   assert.deepEqual(report.runtimeConfig?.renderer?.colorGrading, { contrast: 0.1, exposure: 1.1, saturation: 0.9, toneMapping: "aces" });
-  assert.ok(report.runtimeConfig?.renderer?.postProcessing?.skipped.some((entry) => entry.feature === "fxaa"));
+  assert.deepEqual(report.runtimeConfig?.renderer?.postProcessing?.applied, ["colorGrading"]);
+  assert.deepEqual(report.runtimeConfig?.renderer?.postProcessing?.skipped, []);
 });

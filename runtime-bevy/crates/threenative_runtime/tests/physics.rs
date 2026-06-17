@@ -6,7 +6,8 @@ use std::{
 
 use threenative_loader::load_bundle;
 use threenative_runtime::physics::{
-    detect_physics_event_trace, detect_physics_events, trace_rigid_body_primitives,
+    detect_physics_event_trace, detect_physics_events, trace_physics_joints,
+    trace_rigid_body_primitives,
 };
 
 #[test]
@@ -98,6 +99,33 @@ fn physics_should_trace_dynamic_box_falling_onto_static_floor() {
     assert_eq!(observations[1].damping, 0.0);
     assert_eq!(observations[1].friction, 0.5);
     assert_eq!(observations[1].restitution, 0.0);
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn physics_should_trace_dynamic_mesh_ccd_against_track_collider() {
+    let root = write_mesh_ccd_bundle();
+    let bundle = load_bundle(&root).expect("physics mesh ccd bundle should load");
+
+    let observations = trace_rigid_body_primitives(&bundle, 1, 0.25);
+
+    assert_eq!(observations.len(), 2);
+    let car = observations
+        .iter()
+        .find(|observation| observation.entity == "car")
+        .expect("car observation should exist");
+    assert_eq!(car.ccd, Some(true));
+    assert_eq!(car.contact.as_deref(), Some("track"));
+    assert_eq!(car.position, [0.0, 0.35, 0.0]);
+    assert_eq!(car.velocity, [0.0, 0.0, 0.0]);
+
+    let joints = trace_physics_joints(&bundle);
+    assert_eq!(joints.len(), 1);
+    assert_eq!(joints[0].entity, "wheel.fl");
+    assert_eq!(joints[0].connected_entity, "car");
+    assert_eq!(joints[0].kind, "suspension");
+    assert_eq!(joints[0].axis, Some([0.0, 1.0, 0.0]));
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
@@ -415,6 +443,79 @@ fn write_physics_trace_bundle() -> PathBuf {
         "Collider": { "kind": "box", "size": [1, 1, 1] },
         "RigidBody": { "kind": "kinematic", "velocity": [0.75, 0, 0] },
         "Transform": { "position": [-0.5, 0, 0] }
+      }
+    }
+  ]
+}"#,
+    );
+    write(
+        &root,
+        "assets.manifest.json",
+        r#"{ "schema": "threenative.assets", "version": "0.1.0", "assets": [] }"#,
+    );
+    write(
+        &root,
+        "materials.ir.json",
+        r#"{ "schema": "threenative.materials", "version": "0.1.0", "materials": [] }"#,
+    );
+    write(
+        &root,
+        "target.profile.json",
+        r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["desktop"] }"#,
+    );
+    root
+}
+
+fn write_mesh_ccd_bundle() -> PathBuf {
+    let root = std::env::temp_dir().join(format!(
+        "tn-physics-mesh-ccd-{}",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system time should be after unix epoch")
+            .as_nanos()
+    ));
+    fs::create_dir_all(&root).expect("temporary bundle directory should be created");
+    write(
+        &root,
+        "manifest.json",
+        r#"{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "physics-mesh-ccd",
+  "entry": { "world": "world.ir.json" },
+  "files": { "assets": "assets.manifest.json", "materials": "materials.ir.json", "targetProfile": "target.profile.json" }
+}"#,
+    );
+    write(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "track",
+      "components": {
+        "Collider": { "friction": 0.4, "kind": "mesh", "mesh": { "bounds": { "size": [8, 0.2, 16] }, "source": "mesh.track", "triangleCount": 256 }, "restitution": 0 },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [0, 0, 0] }
+      }
+    },
+    {
+      "id": "car",
+      "components": {
+        "Collider": { "friction": 0.4, "kind": "mesh", "mesh": { "bounds": { "size": [2, 0.5, 4] }, "source": "mesh.car", "triangleCount": 128 }, "restitution": 0 },
+        "RigidBody": { "ccd": { "enabled": true, "maxSubsteps": 4, "mode": "swept-aabb" }, "gravityScale": 0, "kind": "dynamic", "velocity": [0, -20, 0] },
+        "Transform": { "position": [0, 3, 0] }
+      }
+    },
+    {
+      "id": "wheel.fl",
+      "components": {
+        "Collider": { "kind": "sphere", "radius": 0.35 },
+        "PhysicsJoint": { "axis": [0, 1, 0], "connectedEntity": "car", "damping": 0.6, "kind": "suspension", "stiffness": 12, "travel": 0.4 },
+        "RigidBody": { "kind": "dynamic" },
+        "Transform": { "position": [-0.8, 1.2, 1.2] }
       }
     }
   ]

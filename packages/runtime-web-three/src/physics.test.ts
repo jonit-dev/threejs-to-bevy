@@ -3,7 +3,7 @@ import test from "node:test";
 
 import type { IWorldIr } from "@threenative/ir";
 
-import { stepPhysics, traceRigidBodyPrimitive } from "./physics.js";
+import { stepPhysics, tracePhysicsJoints, traceRigidBodyPrimitive } from "./physics.js";
 
 test("physics should detect trigger overlap", () => {
   const world = makePhysicsWorld();
@@ -150,6 +150,42 @@ test("physics should settle stacked primitive bodies with deterministic contact 
   ]);
 });
 
+test("physics should use bounded mesh collider metadata and CCD for high-speed track contacts", () => {
+  const world = makeDynamicMeshCcdWorld();
+
+  const observations = traceRigidBodyPrimitive(world, { fixedDelta: 0.25, steps: 1 });
+
+  assert.deepEqual(observations, [
+    {
+      ccd: true,
+      contact: "track",
+      damping: 0,
+      entity: "car",
+      friction: 0.4,
+      gravityScale: 0,
+      position: [0, 0.35, 0],
+      restitution: 0,
+      step: 1,
+      velocity: [0, 0, 0],
+    },
+  ]);
+});
+
+test("physics should report portable suspension joint metadata", () => {
+  const world = makeDynamicMeshCcdWorld();
+  world.entities.push({
+    id: "wheel.fl",
+    components: {
+      Collider: { kind: "sphere" as const, radius: 0.35 },
+      PhysicsJoint: { axis: [0, 1, 0] as const, connectedEntity: "car", damping: 0.6, kind: "suspension" as const, stiffness: 12, travel: 0.4 },
+      RigidBody: { kind: "dynamic" as const },
+      Transform: { position: [-0.8, 1.2, 1.2] as const },
+    },
+  });
+
+  assert.deepEqual(tracePhysicsJoints(world), [{ axis: [0, 1, 0], connectedEntity: "car", entity: "wheel.fl", kind: "suspension" }]);
+});
+
 function makePhysicsWorld(): IWorldIr {
   return {
     schema: "threenative.world" as const,
@@ -268,6 +304,31 @@ function makeFallingBoxWorld(): IWorldIr {
           Collider: { friction: 0.5, kind: "box" as const, restitution: 0, size: [1, 1, 1] as const },
           RigidBody: { gravityScale: 1, kind: "dynamic" as const, velocity: [0, 0, 0] as const },
           Transform: { position: [0, 2, 0] as const },
+        },
+      },
+    ],
+  };
+}
+
+function makeDynamicMeshCcdWorld(): IWorldIr {
+  return {
+    schema: "threenative.world" as const,
+    version: "0.1.0" as const,
+    entities: [
+      {
+        id: "track",
+        components: {
+          Collider: { friction: 0.4, kind: "mesh" as const, mesh: { bounds: { size: [8, 0.2, 16] as const }, source: "mesh.track", triangleCount: 256 }, restitution: 0 },
+          RigidBody: { kind: "static" as const },
+          Transform: { position: [0, 0, 0] as const },
+        },
+      },
+      {
+        id: "car",
+        components: {
+          Collider: { friction: 0.4, kind: "mesh" as const, mesh: { bounds: { size: [2, 0.5, 4] as const }, source: "mesh.car", triangleCount: 128 }, restitution: 0 },
+          RigidBody: { ccd: { enabled: true, maxSubsteps: 4, mode: "swept-aabb" as const }, gravityScale: 0, kind: "dynamic" as const, velocity: [0, -20, 0] as const },
+          Transform: { position: [0, 3, 0] as const },
         },
       },
     ],

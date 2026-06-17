@@ -15,6 +15,8 @@ pub struct PhysicsEvent {
 #[serde(rename_all = "camelCase")]
 pub struct RigidBodyTraceObservation {
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub ccd: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub contact: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub contacts: Option<Vec<String>>,
@@ -26,6 +28,16 @@ pub struct RigidBodyTraceObservation {
     pub restitution: f32,
     pub step: usize,
     pub velocity: [f32; 3],
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PhysicsJointObservation {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub axis: Option<[f32; 3]>,
+    pub connected_entity: String,
+    pub entity: String,
+    pub kind: String,
 }
 
 struct Bounds<'a> {
@@ -97,12 +109,17 @@ pub fn trace_rigid_body_primitives(
             .filter(|entity| entity.body_kind.as_deref() == Some("dynamic"))
         {
             observations.push(RigidBodyTraceObservation {
+                ccd: if entity.ccd { Some(true) } else { None },
                 contact: contacts
                     .get(&entity.id)
                     .and_then(|contacts| contacts.first().cloned()),
-                contacts: contacts
-                    .get(&entity.id)
-                    .and_then(|contacts| if contacts.len() > 1 { Some(contacts.clone()) } else { None }),
+                contacts: contacts.get(&entity.id).and_then(|contacts| {
+                    if contacts.len() > 1 {
+                        Some(contacts.clone())
+                    } else {
+                        None
+                    }
+                }),
                 damping: round(entity.damping),
                 entity: entity.id.clone(),
                 friction: round(entity.friction),
@@ -114,7 +131,30 @@ pub fn trace_rigid_body_primitives(
             });
         }
     }
-    observations.sort_by(|left, right| left.step.cmp(&right.step).then(left.entity.cmp(&right.entity)));
+    observations.sort_by(|left, right| {
+        left.step
+            .cmp(&right.step)
+            .then(left.entity.cmp(&right.entity))
+    });
+    observations
+}
+
+pub fn trace_physics_joints(bundle: &LoadedBundle) -> Vec<PhysicsJointObservation> {
+    let mut observations = bundle
+        .world
+        .entities
+        .iter()
+        .filter_map(|entity| {
+            let joint = entity.components.physics_joint.as_ref()?;
+            Some(PhysicsJointObservation {
+                axis: joint.axis,
+                connected_entity: joint.connected_entity.clone(),
+                entity: entity.id.clone(),
+                kind: joint.kind.clone(),
+            })
+        })
+        .collect::<Vec<_>>();
+    observations.sort_by(|left, right| left.entity.cmp(&right.entity));
     observations
 }
 
@@ -169,6 +209,10 @@ fn step_primitive_bodies(
     fixed_delta: f32,
     gravity: [f32; 3],
 ) -> BTreeMap<String, Vec<String>> {
+    let previous_centers = entities
+        .iter()
+        .map(|entity| (entity.id.clone(), entity.center))
+        .collect::<BTreeMap<_, _>>();
     for entity in entities.iter_mut() {
         let Some(body_kind) = entity.body_kind.as_deref() else {
             continue;
@@ -232,8 +276,11 @@ fn step_primitive_bodies(
             if floor.id == entities[index].id {
                 continue;
             }
-            if resolve_vertical_contact(&mut entities[index], floor) {
-                let entry = contacts.entry(entities[index].id.clone()).or_insert_with(Vec::new);
+            let previous_center = previous_centers.get(&entities[index].id).copied();
+            if resolve_vertical_contact(&mut entities[index], floor, previous_center) {
+                let entry = contacts
+                    .entry(entities[index].id.clone())
+                    .or_insert_with(Vec::new);
                 entry.push(floor.id.clone());
                 entry.sort();
             }
@@ -247,10 +294,16 @@ fn entity_bottom(entity: &SimulatedEntity) -> f32 {
     entity.center[1] - entity.half_extents[1]
 }
 
-fn resolve_vertical_contact(entity: &mut SimulatedEntity, floor: &SimulatedEntity) -> bool {
+fn resolve_vertical_contact(
+    entity: &mut SimulatedEntity,
+    floor: &SimulatedEntity,
+    previous_center: Option<[f32; 3]>,
+) -> bool {
     let entity_bounds = simulated_entity_bounds(entity);
     let floor_bounds = simulated_entity_bounds(floor);
-    if !overlaps(&entity_bounds, &floor_bounds) {
+    if !overlaps(&entity_bounds, &floor_bounds)
+        && !swept_vertical_overlap(entity, &entity_bounds, &floor_bounds, previous_center)
+    {
         return false;
     }
     let floor_top = floor.center[1] + floor.half_extents[1];
@@ -272,9 +325,32 @@ fn resolve_vertical_contact(entity: &mut SimulatedEntity, floor: &SimulatedEntit
     true
 }
 
+fn swept_vertical_overlap(
+    entity: &SimulatedEntity,
+    bounds: &Bounds<'_>,
+    floor_bounds: &Bounds<'_>,
+    previous_center: Option<[f32; 3]>,
+) -> bool {
+    if !entity.ccd {
+        return false;
+    }
+    let Some(previous_center) = previous_center else {
+        return false;
+    };
+    let previous_bottom = previous_center[1] - bounds.half_extents[1];
+    let current_bottom = bounds.center[1] - bounds.half_extents[1];
+    let floor_top = floor_bounds.center[1] + floor_bounds.half_extents[1];
+    let x_overlaps = (bounds.center[0] - floor_bounds.center[0]).abs()
+        <= bounds.half_extents[0] + floor_bounds.half_extents[0];
+    let z_overlaps = (bounds.center[2] - floor_bounds.center[2]).abs()
+        <= bounds.half_extents[2] + floor_bounds.half_extents[2];
+    x_overlaps && z_overlaps && previous_bottom >= floor_top && current_bottom <= floor_top
+}
+
 #[derive(Clone)]
 struct SimulatedEntity {
     body_kind: Option<String>,
+    ccd: bool,
     center: [f32; 3],
     damping: f32,
     friction: f32,
@@ -296,12 +372,22 @@ fn simulated_entity(entity: &WorldEntity) -> Option<SimulatedEntity> {
             .rigid_body
             .as_ref()
             .map(|body| body.kind.clone()),
-        center: entity
+        ccd: entity
             .components
-            .transform
+            .rigid_body
             .as_ref()
-            .and_then(|transform| transform.position)
-            .unwrap_or([0.0, 0.0, 0.0]),
+            .and_then(|body| body.ccd.as_ref())
+            .map(|ccd| ccd.enabled)
+            .unwrap_or(false),
+        center: collider_center(
+            collider,
+            entity
+                .components
+                .transform
+                .as_ref()
+                .and_then(|transform| transform.position)
+                .unwrap_or([0.0, 0.0, 0.0]),
+        ),
         damping: entity
             .components
             .rigid_body
@@ -390,13 +476,14 @@ fn detect_pairs(bounds: Vec<Bounds<'_>>) -> BTreeMap<String, DetectedPair> {
 
 fn entity_bounds(entity: &WorldEntity) -> Option<Bounds<'_>> {
     let collider = entity.components.collider.as_ref()?;
+    let transform_position = entity
+        .components
+        .transform
+        .as_ref()
+        .and_then(|transform| transform.position)
+        .unwrap_or([0.0, 0.0, 0.0]);
     Some(Bounds {
-        center: entity
-            .components
-            .transform
-            .as_ref()
-            .and_then(|transform| transform.position)
-            .unwrap_or([0.0, 0.0, 0.0]),
+        center: collider_center(collider, transform_position),
         half_extents: half_extents(collider),
         id: &entity.id,
         layer: collider.layer.as_deref(),
@@ -407,6 +494,14 @@ fn entity_bounds(entity: &WorldEntity) -> Option<Bounds<'_>> {
 
 fn half_extents(collider: &ColliderComponent) -> [f32; 3] {
     match collider.kind.as_str() {
+        "mesh" => {
+            if let Some(mesh) = collider.mesh.as_ref() {
+                let size = mesh.bounds.size;
+                [size[0] / 2.0, size[1] / 2.0, size[2] / 2.0]
+            } else {
+                [0.5, 0.5, 0.5]
+            }
+        }
         "box" => {
             let size = collider.size.unwrap_or([1.0, 1.0, 1.0]);
             [size[0] / 2.0, size[1] / 2.0, size[2] / 2.0]
@@ -421,6 +516,20 @@ fn half_extents(collider: &ColliderComponent) -> [f32; 3] {
         }
         _ => [0.5, 0.5, 0.5],
     }
+}
+
+fn collider_center(collider: &ColliderComponent, transform_position: [f32; 3]) -> [f32; 3] {
+    let Some(mesh) = collider.mesh.as_ref() else {
+        return transform_position;
+    };
+    let Some(center) = mesh.bounds.center else {
+        return transform_position;
+    };
+    [
+        transform_position[0] + center[0],
+        transform_position[1] + center[1],
+        transform_position[2] + center[2],
+    ]
 }
 
 fn overlaps(left: &Bounds<'_>, right: &Bounds<'_>) -> bool {
