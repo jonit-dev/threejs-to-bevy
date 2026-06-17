@@ -1,4 +1,4 @@
-import { sortedPersistedBindingOverrides, type IInputIr, type IPersistedBindingOverrideIr, type InputBinding } from "@threenative/ir";
+import { sortedPersistedBindingOverrides, type IInputIr, type IPersistedBindingOverrideIr, type InputBinding } from "@threenative/ir/input";
 
 export interface IWebInputState {
   action(name: string): boolean;
