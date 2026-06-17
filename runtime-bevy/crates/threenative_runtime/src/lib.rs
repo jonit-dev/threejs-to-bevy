@@ -25,6 +25,7 @@ pub mod overlay_host;
 pub mod path_sampling;
 pub mod physics;
 pub mod physics_sensors;
+pub mod picking;
 pub mod rendering;
 pub mod render_targets;
 pub mod systems_context;

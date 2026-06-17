@@ -948,11 +948,16 @@ scripts can now declare `picking.mesh` and query generated mesh renderer bounds
 through matching web and Bevy service logs. The picking surface now also includes
 `picking.pointerRay`, which turns normalized screen/pointer coordinates plus
 portable camera IR into web/native service-logged rays that can feed
-`picking.mesh`. Basic UI Tab/arrow keyboard navigation now works through the web
-DOM overlay and matching web/native fixed traces, and basic UI control picking
-now dispatches portable action events from web clicks and Bevy button/touch
-interactions. Touch gestures, drag-and-drop picking, rebinding, and richer
-navigation diagnostics remain future input work.
+`picking.mesh`. V9-05 Phase 2 adds a promoted drag-picking metadata/schema
+slice, deterministic drag phases (`dragStart`, `dragMove`, `dragEnter`,
+`dragLeave`, `drop`, `dragCancel`, and `dragEnd`), UI-over-mesh ordering with
+`pointerEvents: "pass-through"`, web/native recognizer tests, and structured
+picking overlay observations for rays, target bounds, capture owner, hovered
+target, drag path, event log, and observed pointer devices. Basic UI Tab/arrow
+keyboard navigation now works through the web DOM overlay and matching web/native
+fixed traces, and basic UI control picking now dispatches portable action events
+from web clicks and Bevy button/touch interactions. Touch platform event stream
+wiring and richer navigation diagnostics remain future input work.
 
 Gamepad diagnostics now include a lightweight viewer-style capability report in
 web and Bevy. The report lists gamepad controls declared by `input.ir.json`,
@@ -976,8 +981,8 @@ for portable projects. V9-05 Phase 1 adds controls settings metadata for
 retained UI rebind rows, persisted logical binding override records with
 deterministic sorting and validation, web local storage helpers, and Bevy local
 JSON reload/apply before the first input snapshot. Full visual settings-screen
-UX polish, broader local settings APIs, and richer device overlays remain future
-work.
+UX polish, broader local settings APIs, and richer repair-oriented device
+overlays remain future work.
 
 The retained UI style surface now accepts portable `shadow` and linear
 `gradient` metadata with validation and capability flags. The web DOM overlay

@@ -58,6 +58,17 @@ export {
   type IPersistedBindingOverrideIr,
   type InputBinding,
 } from "./input.js";
+export {
+  validatePickingIr,
+  type IPickingDebugOverlayIr,
+  type IPickingDragTargetIr,
+  type IPickingIr,
+  type PickingAxisConstraint,
+  type PickingCancelPolicy,
+  type PickingDragPhase,
+  type PickingPointerEvents,
+  type PickingTargetKind,
+} from "./picking.js";
 export type { IRuntimeConfigIr } from "./runtimeConfig.js";
 export {
   buildComponentReflectionRegistry,

@@ -472,12 +472,17 @@ export function createDragPickingRecognizer(options: { moveThreshold?: number } 
             round(frame.pointer[1] - active.pointer[1]),
           ];
           const totalDistance = distance(frame.pointer, active.start);
+          let justStarted = false;
           if (!active.started && totalDistance >= moveThreshold) {
             active.started = true;
+            justStarted = true;
             events.push({ entity: active.entity, kind: "start", pointer: active.start, timeMs: frame.timeMs });
           }
-          if (active.started && (delta[0] !== 0 || delta[1] !== 0)) {
-            events.push({ delta, entity: active.entity, kind: "move", pointer: frame.pointer, timeMs: frame.timeMs });
+          const moveDelta: [number, number] = justStarted
+            ? [round(frame.pointer[0] - active.start[0]), round(frame.pointer[1] - active.start[1])]
+            : delta;
+          if (active.started && (moveDelta[0] !== 0 || moveDelta[1] !== 0)) {
+            events.push({ delta: moveDelta, entity: active.entity, kind: "move", pointer: frame.pointer, timeMs: frame.timeMs });
           }
           active.pointer = frame.pointer;
         }
