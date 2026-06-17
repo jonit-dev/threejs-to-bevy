@@ -1060,6 +1060,17 @@ and `artifacts/v9/animation-particles/`. Animation masks/layers, morph-target
 animation, retargeting, IK, UI/property animation, arbitrary blend trees, and
 GPU/external-shader particle systems remain deferred with explicit diagnostics.
 
+V9-06 local data now has a schema-backed Phase 2 slice: SDK persistence
+declarations lower through the compiler into `local-data.ir.json`, bundle
+manifests carry the optional local-data entry, IR validation rejects non-portable
+runtime/native/renderer/platform handles and missing migration metadata, the web
+runtime exposes deterministic save-slot/settings helpers that restore only
+declared resources/components, and Bevy loads the local-data document and reports
+native migration diagnostics for missing or forward-incompatible save versions.
+This proves local-only save/settings contracts and autosave checkpoint metadata;
+durable platform storage backends and cloud/account-bound saves remain later
+work.
+
 ## V3 Proves
 
 The V3 evidence loop is `pnpm verify:v3`, which regenerates the environment

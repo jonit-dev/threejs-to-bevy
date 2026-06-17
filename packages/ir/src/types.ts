@@ -5,6 +5,7 @@ export type MaterialsSchema = "threenative.materials";
 export type AssetsSchema = "threenative.assets";
 export type GltfSceneSchema = "threenative.gltf-scene";
 export type AudioSchema = "threenative.audio";
+export type LocalDataSchema = "threenative.local-data";
 export type TargetProfileSchema = "threenative.target-profile";
 export type RuntimeConfigSchema = "threenative.runtime-config";
 export type UiSchema = "threenative.ui";
@@ -22,6 +23,7 @@ export interface IBundleManifest {
     animations?: string;
     audio?: string;
     environmentScene?: string;
+    localData?: string;
     scripts?: string;
     systems?: string;
     overlays?: string;
@@ -36,10 +38,57 @@ export interface IBundleManifest {
     eventSchemas?: "schemas/events.schema.json";
     input?: string;
     gltfScene?: string;
+    localData?: string;
     resourceSchemas?: "schemas/resources.schema.json";
     runtimeConfig?: "runtime.config.json";
     scripts?: "scripts.bundle.js";
   };
+}
+
+export type LocalDataSettingGroup = "accessibility" | "audio" | "controls" | "video";
+export type LocalDataSettingKind = "boolean" | "number" | "string";
+
+export interface ILocalDataSchemaEntryIr {
+  id: string;
+  schema: Record<string, unknown>;
+}
+
+export interface ILocalDataSettingIr {
+  defaultValue: boolean | number | string;
+  enumValues?: readonly string[];
+  group: LocalDataSettingGroup;
+  key: string;
+  kind: LocalDataSettingKind;
+  max?: number;
+  min?: number;
+}
+
+export interface ILocalDataSaveSlotIr {
+  appVersion: string;
+  id: string;
+  schemaVersion: number;
+}
+
+export interface ILocalDataMigrationIr {
+  currentVersion: number;
+  migrators: readonly number[];
+}
+
+export interface ILocalDataAutosaveIr {
+  checkpointEvents?: readonly string[];
+  debounceMs: number;
+  intervalSeconds?: number;
+}
+
+export interface ILocalDataIr {
+  autosave?: ILocalDataAutosaveIr;
+  components: readonly ILocalDataSchemaEntryIr[];
+  migration?: ILocalDataMigrationIr;
+  resources: readonly ILocalDataSchemaEntryIr[];
+  saveSlots: readonly ILocalDataSaveSlotIr[];
+  schema: LocalDataSchema;
+  settings: readonly ILocalDataSettingIr[];
+  version: SchemaVersion;
 }
 
 export interface ITransformAnimationKeyframeIr {

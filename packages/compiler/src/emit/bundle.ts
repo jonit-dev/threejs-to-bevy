@@ -5,13 +5,14 @@ import {
   type IAnimationsIr,
   type IBundleManifest,
   type IGltfSceneMetadataIr,
+  type ILocalDataIr,
   type IMaterialIr,
   type IMaterialsIr,
   type ITargetProfile,
   type IUiIr,
   type IWorldIr,
 } from "@threenative/ir";
-import { type IAnimationsDeclaration, type IAssetGroupDeclaration, type IAssetReference, type IAudioDeclaration, type IInputMapDeclaration, type IOverlayDeclaration, type World } from "@threenative/sdk";
+import { type IAnimationsDeclaration, type IAssetGroupDeclaration, type IAssetReference, type IAudioDeclaration, type IInputMapDeclaration, type IOverlayDeclaration, type IPersistenceDeclaration, type World } from "@threenative/sdk";
 import { type IUiElement } from "@threenative/ui";
 
 import { type IProjectConfig } from "../config.js";
@@ -21,6 +22,7 @@ import { deriveRequiredCapabilities } from "./capabilities.js";
 import { ecsToIr } from "./ecs.js";
 import { emitEnvironment, type IEnvironmentDeclaration } from "./environment.js";
 import { inputToIr } from "./input.js";
+import { emitPersistence } from "./persistence.js";
 import { emitOverlays } from "../overlay/emit.js";
 import { sceneToWorld } from "./scene-to-world.js";
 import { stableJson } from "./stable-json.js";
@@ -38,6 +40,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
   const ecs = worldRoot === undefined ? undefined : ecsToIr(worldRoot as Parameters<typeof ecsToIr>[0]);
   const input = bundleRoot.input === undefined ? ecs?.input : inputToIr(bundleRoot.input);
   const audio = bundleRoot.audio === undefined ? undefined : emitAudio(bundleRoot.audio);
+  const localData = bundleRoot.persistence === undefined ? undefined : emitPersistence(bundleRoot.persistence);
   const animations = bundleRoot.animations === undefined ? undefined : emitAnimations(bundleRoot.animations);
   const environment = bundleRoot.environment === undefined ? undefined : await emitEnvironment(config.projectPath, bundleRoot.environment);
   const overlays = bundleRoot.overlay === undefined ? undefined : await emitOverlays(config.projectPath, bundleRoot.overlay);
@@ -78,6 +81,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
       environment: environment?.scene,
       eventSchemas: ecs?.eventSchemas,
       input,
+      localData,
       materials,
       overlays: overlays?.overlays,
       resourceSchemas: ecs?.resourceSchemas,
@@ -90,6 +94,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
       ...(audio === undefined ? {} : { audio: "audio.ir.json" }),
       ...(animations === undefined ? {} : { animations: "animations.ir.json" }),
       ...(environment === undefined ? {} : { environmentScene: "environment.scene.json" }),
+      ...(localData === undefined ? {} : { localData: "local-data.ir.json" }),
       ...(ecs?.scriptBundle === undefined ? {} : { scripts: "scripts.bundle.js" }),
       ...(ecs === undefined ? {} : { systems: "systems.ir.json" }),
       ...(overlays === undefined ? {} : { overlays: "overlays.ir.json" }),
@@ -100,6 +105,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
       assets: "assets.manifest.json",
       ...(animations === undefined ? {} : { animations: "animations.ir.json" }),
       ...(input === undefined ? {} : { input: "input.ir.json" }),
+      ...(localData === undefined ? {} : { localData: "local-data.ir.json" }),
       materials: "materials.ir.json",
       targetProfile: "target.profile.json",
       ...(gltfScene === undefined ? {} : { gltfScene: "gltf.scene.json" }),
@@ -138,6 +144,9 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
   if (audio !== undefined) {
     await writeFile(resolve(outDir, "audio.ir.json"), stableJson(audio));
   }
+  if (localData !== undefined) {
+    await writeFile(resolve(outDir, "local-data.ir.json"), stableJson(localData));
+  }
   if (animations !== undefined) {
     await writeFile(resolve(outDir, "animations.ir.json"), stableJson(animations));
   }
@@ -170,6 +179,7 @@ interface IBundleRoot {
   environment?: IEnvironmentDeclaration;
   input?: IInputMapDeclaration;
   overlay?: IOverlayDeclaration;
+  persistence?: IPersistenceDeclaration;
   scene?: unknown;
   ui?: IUiElement;
   world?: World;
@@ -186,7 +196,7 @@ function isBundleRoot(root: unknown): root is IBundleRoot {
   return (
     typeof root === "object"
     && root !== null
-    && ["assetGroups", "animations", "audio", "environment", "input", "overlay", "scene", "ui", "world"].some((key) => key in root)
+    && ["assetGroups", "animations", "audio", "environment", "input", "overlay", "persistence", "scene", "ui", "world"].some((key) => key in root)
   );
 }
 

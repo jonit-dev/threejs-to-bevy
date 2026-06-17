@@ -174,6 +174,24 @@ export {
   type ISkyboxDeclarationJson,
 } from "./environment.js";
 export {
+  autosave,
+  definePersistence,
+  persistenceMigration,
+  persistComponent,
+  persistResource,
+  persistSetting,
+  saveSlot,
+  type IAutosaveDeclaration,
+  type IPersistedComponentDeclaration,
+  type IPersistedResourceDeclaration,
+  type IPersistenceDeclaration,
+  type IPersistenceMigrationDeclaration,
+  type IPersistenceSettingDeclaration,
+  type ISaveSlotDeclaration,
+  type PersistenceSettingGroup,
+  type PersistenceSettingKind,
+} from "./persistence.js";
+export {
   action,
   axis,
   defineInputMap,

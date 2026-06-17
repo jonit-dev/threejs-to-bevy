@@ -16,7 +16,15 @@ export type SystemService =
   | "physics.sensor"
   | "physics.shapeCast"
   | "picking.mesh"
-  | "picking.pointerRay";
+  | "picking.pointerRay"
+  | "persistence.delete"
+  | "persistence.listSlots"
+  | "persistence.load"
+  | "persistence.save"
+  | "settings.export"
+  | "settings.get"
+  | "settings.import"
+  | "settings.set";
 export type PortableSystem<TContext = ISystemContext> = (context: TContext) => unknown;
 
 export interface ISystemOptions {

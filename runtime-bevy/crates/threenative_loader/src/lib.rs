@@ -41,6 +41,8 @@ pub struct BundleEntry {
     pub audio: Option<String>,
     #[serde(rename = "environmentScene")]
     pub environment_scene: Option<String>,
+    #[serde(rename = "localData")]
+    pub local_data: Option<String>,
     pub overlays: Option<String>,
     pub scripts: Option<String>,
     pub systems: Option<String>,
@@ -55,6 +57,7 @@ pub struct BundleFiles {
     pub assets: String,
     pub component_schemas: Option<String>,
     pub input: Option<String>,
+    pub local_data: Option<String>,
     pub materials: String,
     pub runtime_config: Option<String>,
     pub target_profile: String,
@@ -69,6 +72,7 @@ pub struct LoadedBundle {
     pub component_schemas: Option<SchemaFileIr>,
     pub environment_scene: Option<EnvironmentSceneIr>,
     pub input: Option<InputIr>,
+    pub local_data: Option<LocalDataIr>,
     pub manifest: BundleManifest,
     pub materials: MaterialsIr,
     pub overlays: Option<OverlaysIr>,
@@ -645,6 +649,72 @@ pub struct TargetProfile {
     pub schema: String,
     pub version: String,
     pub targets: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalDataIr {
+    pub schema: String,
+    pub version: String,
+    #[serde(default)]
+    pub autosave: Option<LocalDataAutosaveIr>,
+    #[serde(default)]
+    pub components: Vec<LocalDataSchemaEntryIr>,
+    #[serde(default)]
+    pub migration: Option<LocalDataMigrationIr>,
+    #[serde(default)]
+    pub resources: Vec<LocalDataSchemaEntryIr>,
+    #[serde(default)]
+    pub save_slots: Vec<LocalDataSaveSlotIr>,
+    #[serde(default)]
+    pub settings: Vec<LocalDataSettingIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct LocalDataSchemaEntryIr {
+    pub id: String,
+    pub schema: serde_json::Value,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalDataSettingIr {
+    pub default_value: serde_json::Value,
+    #[serde(default)]
+    pub enum_values: Vec<String>,
+    pub group: String,
+    pub key: String,
+    pub kind: String,
+    #[serde(default)]
+    pub max: Option<f64>,
+    #[serde(default)]
+    pub min: Option<f64>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalDataSaveSlotIr {
+    pub app_version: String,
+    pub id: String,
+    pub schema_version: u32,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalDataMigrationIr {
+    pub current_version: u32,
+    #[serde(default)]
+    pub migrators: Vec<u32>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalDataAutosaveIr {
+    #[serde(default)]
+    pub checkpoint_events: Vec<String>,
+    pub debounce_ms: f64,
+    #[serde(default)]
+    pub interval_seconds: Option<f64>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -1505,6 +1575,19 @@ pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadEr
         }
         None => None,
     };
+    let local_data_path = manifest
+        .entry
+        .local_data
+        .as_ref()
+        .or(manifest.files.local_data.as_ref());
+    let local_data = match local_data_path {
+        Some(file) => {
+            let local_data: LocalDataIr = read_json(bundle_path, file)?;
+            ensure_supported(&local_data.schema, &local_data.version)?;
+            Some(local_data)
+        }
+        None => None,
+    };
     let runtime_config = match manifest.files.runtime_config.as_ref() {
         Some(file) => {
             let config: RuntimeConfigIr = read_json(bundle_path, file)?;
@@ -1562,6 +1645,7 @@ pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadEr
         component_schemas,
         environment_scene,
         input,
+        local_data,
         manifest,
         materials,
         overlays,
