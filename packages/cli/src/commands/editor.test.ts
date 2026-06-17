@@ -6,6 +6,61 @@ import test from "node:test";
 
 import { editorCommand } from "./editor.js";
 
+test("editor inspect should write structured scene inspection json", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-editor-inspect-"));
+  try {
+    const bundlePath = join(root, "game.bundle");
+    const outPath = join(root, "inspection.json");
+    await writeBundleFixture(bundlePath, true);
+
+    const result = await editorCommand(["inspect", "--bundle", bundlePath, "--out", outPath, "--json"], { cwd: root });
+    const payload = JSON.parse(result.stdout) as { code: string; documents: string[]; path: string; schema: string; version: string };
+    const report = JSON.parse(await readFile(outPath, "utf8")) as { bundle: { documents: string[] }; gltfAssets: Array<{ assetId: string }>; schema: string; version: string };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.code, "TN_EDITOR_INSPECT_OK");
+    assert.equal(payload.path, outPath);
+    assert.equal(payload.schema, "threenative.scene-inspection");
+    assert.equal(payload.version, "0.1.0");
+    assert.equal(report.schema, "threenative.scene-inspection");
+    assert.equal(report.version, "0.1.0");
+    assert.deepEqual(report.bundle.documents, [
+      "assets.manifest.json",
+      "gltf.scene.json",
+      "manifest.json",
+      "materials.ir.json",
+      "target.profile.json",
+      "world.ir.json",
+    ]);
+    assert.deepEqual(report.gltfAssets.map((asset) => asset.assetId), ["model.level"]);
+    assert.deepEqual(payload.documents, report.bundle.documents);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("editor inspect should return diagnostics for invalid bundles", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-editor-inspect-invalid-"));
+  try {
+    const bundlePath = join(root, "game.bundle");
+    await writeBundleFixture(bundlePath);
+    await writeFixtureJson(bundlePath, "assets.manifest.json", {
+      assets: [{ format: "png", id: "tex.missing", kind: "texture", path: "assets/missing.png" }],
+      schema: "threenative.assets",
+      version: "0.1.0",
+    });
+
+    const result = await editorCommand(["inspect", "--bundle", bundlePath, "--json"], { cwd: root });
+    const payload = JSON.parse(result.stdout) as { code: string; diagnostics: Array<{ code: string }> };
+
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.code, "TN_EDITOR_INSPECT_BUNDLE_INVALID");
+    assert.equal(payload.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_ASSET_PATH_MISSING"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("editor snapshot should write structured bundle documents", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-editor-snapshot-"));
   try {
@@ -235,12 +290,13 @@ function editorSnapshot(entityName: string): unknown {
   };
 }
 
-async function writeBundleFixture(bundlePath: string): Promise<void> {
+async function writeBundleFixture(bundlePath: string, includeGltfScene = false): Promise<void> {
   await mkdir(bundlePath, { recursive: true });
   await writeFixtureJson(bundlePath, "manifest.json", {
     entry: { world: "world.ir.json" },
     files: {
       assets: "assets.manifest.json",
+      ...(includeGltfScene ? { gltfScene: "gltf.scene.json" } : {}),
       materials: "materials.ir.json",
       targetProfile: "target.profile.json",
     },
@@ -250,7 +306,28 @@ async function writeBundleFixture(bundlePath: string): Promise<void> {
     version: "0.1.0",
   });
   await writeFixtureJson(bundlePath, "world.ir.json", { entities: [], schema: "threenative.world", version: "0.1.0" });
-  await writeFixtureJson(bundlePath, "assets.manifest.json", { assets: [], schema: "threenative.assets", version: "0.1.0" });
+  await writeFixtureJson(bundlePath, "assets.manifest.json", {
+    assets: includeGltfScene
+      ? [{ format: "gltf", id: "model.level", kind: "model", path: "assets/level.gltf", sourceMode: "bundle" }]
+      : [],
+    schema: "threenative.assets",
+    version: "0.1.0",
+  });
+  if (includeGltfScene) {
+    await mkdir(join(bundlePath, "assets"), { recursive: true });
+    await writeFile(join(bundlePath, "assets/level.gltf"), "{}\n");
+    await writeFixtureJson(bundlePath, "gltf.scene.json", {
+      assets: [
+        {
+          assetId: "model.level",
+          customAttributes: [{ componentType: "f32", itemSize: 3, name: "_WIND", shaderConsumption: "inspectionOnly", targetMesh: "mesh:Door" }],
+          nodes: [{ extras: { gameplayTag: "door" }, name: "Door", path: "/Root/Door", spawnedHandleEligible: true }],
+        },
+      ],
+      schema: "threenative.gltf-scene",
+      version: "0.1.0",
+    });
+  }
   await writeFixtureJson(bundlePath, "materials.ir.json", { materials: [], schema: "threenative.materials", version: "0.1.0" });
   await writeFixtureJson(bundlePath, "target.profile.json", {
     schema: "threenative.target-profile",

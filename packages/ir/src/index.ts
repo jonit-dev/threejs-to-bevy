@@ -138,4 +138,10 @@ export {
   type EditorProjectDiffOperation,
   type IEditorProjectSnapshot,
 } from "./editorProject.js";
+export {
+  buildSceneInspectionReport,
+  type ISceneInspectionDocuments,
+  type ISceneInspectionReport,
+  type SceneInspectionSchema,
+} from "./sceneInspection.js";
 export { validatePerformanceProfile, type PerformanceMetricName } from "./performanceProfile.js";
