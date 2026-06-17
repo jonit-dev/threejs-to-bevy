@@ -350,6 +350,25 @@ test("should accept promoted runtime renderer antialias modes", async () => {
   }
 });
 
+test("should accept promoted runtime renderer quality metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-runtime-renderer-quality-valid-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeRuntimeConfig(root, {
+      antialias: "msaa4",
+      colorGrading: { contrast: 0.15, exposure: 1.1, saturation: 0.9, toneMapping: "aces" },
+      renderPath: "forward",
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject invalid runtime renderer antialias modes", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-runtime-renderer-invalid-"));
   try {
@@ -361,6 +380,39 @@ test("should reject invalid runtime renderer antialias modes", async () => {
     assert.equal(result.ok, false);
     assert.equal(result.diagnostics[0]?.code, "TN_IR_RUNTIME_RENDERER_ANTIALIAS_INVALID");
     assert.equal(result.diagnostics[0]?.path, "runtime.config.json/renderer/antialias");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject unsupported advanced renderer requests with stable diagnostics", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-runtime-renderer-advanced-invalid-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeRuntimeConfig(root, {
+      antialias: "msaa4",
+      depthOfField: { enabled: true },
+      motionVectors: true,
+      renderPath: "deferred",
+      screenSpaceReflections: true,
+      virtualGeometry: true,
+      volumetricFog: true,
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.path]),
+      [
+        ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/depthOfField"],
+        ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/motionVectors"],
+        ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/screenSpaceReflections"],
+        ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/virtualGeometry"],
+        ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/volumetricFog"],
+        ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/renderPath"],
+      ],
+    );
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -525,6 +577,70 @@ test("should reject invalid light shadow bias values", async () => {
     assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.code), [
       "TN_IR_LIGHT_SHADOW_BIAS_INVALID",
       "TN_IR_LIGHT_SHADOW_BIAS_INVALID",
+    ]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject unsupported shadow filter modes when authored", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-light-shadow-filter-invalid-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "world.ir.json", {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [
+        {
+          id: "lamp",
+          components: {
+            Light: { color: "#ffffff", intensity: 1, kind: "point", shadowFilter: { mode: "variance", quality: "medium" } },
+          },
+        },
+      ],
+      resources: {},
+      events: {},
+      prefabs: [],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics[0]?.code, "TN_IR_LIGHT_SHADOW_FILTER_UNSUPPORTED");
+    assert.equal(result.diagnostics[0]?.path, "world.ir.json/entities/0/components/Light/shadowFilter");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject invalid rendering light budget metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-light-budget-invalid-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "world.ir.json", {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [],
+      resources: {
+        RenderingLightBudget: {
+          cullingPolicy: "random",
+          maximumShadowedPointLights: -1,
+          maximumVisibleDynamicLights: 1.5,
+          overBudgetSeverity: "fatal",
+        },
+      },
+      events: {},
+      prefabs: [],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.code), [
+      "TN_IR_LIGHT_BUDGET_INVALID",
+      "TN_IR_LIGHT_BUDGET_INVALID",
+      "TN_IR_LIGHT_BUDGET_INVALID",
+      "TN_IR_LIGHT_BUDGET_INVALID",
     ]);
   } finally {
     await rm(root, { force: true, recursive: true });

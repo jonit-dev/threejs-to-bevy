@@ -214,10 +214,17 @@ export interface IMeshRendererComponent {
 export interface ILightComponent {
   angle?: number;
   color: string | readonly [number, number, number] | readonly [number, number, number, number];
+  debug?: {
+    gizmo?: boolean;
+  };
   intensity: number;
   kind: "ambient" | "directional" | "point" | "spot";
   range?: number;
   shadowBias?: number;
+  shadowFilter?: {
+    mode: "pcf";
+    quality: "high" | "low" | "medium";
+  };
   shadowNormalBias?: number;
 }
 
@@ -767,18 +774,38 @@ export interface IUiIr {
 export interface IEnvironmentSourceAssetIr {
   asset: string;
   category: "flower" | "grass" | "mushroom" | "pebble" | "rock" | "terrain" | "tree" | "vegetation";
+  debug?: {
+    gizmo?: boolean;
+  };
   id: string;
   lod?: IEnvironmentLodLevelIr[];
+  visibility?: IVisibilityRangeIr;
 }
 
 export interface IEnvironmentLodLevelIr {
   asset: string;
+  fade?: {
+    endDistance: number;
+    startDistance: number;
+  };
+  maxDistance: number;
+  minDistance: number;
+}
+
+export interface IVisibilityRangeIr {
+  fade?: {
+    endDistance: number;
+    startDistance: number;
+  };
   maxDistance: number;
   minDistance: number;
 }
 
 export interface IEnvironmentInstanceIr {
   collisionMode?: "blocking" | "none" | "walkable";
+  debug?: {
+    gizmo?: boolean;
+  };
   id: string;
   kind?: "hero" | "manual" | "scatter";
   renderGroup?: string;
@@ -789,6 +816,7 @@ export interface IEnvironmentInstanceIr {
   scatterExclusionRadius?: number;
   scatterSource?: string;
   tags?: string[];
+  visibility?: IVisibilityRangeIr;
 }
 
 export interface IEnvironmentTerrainIr {

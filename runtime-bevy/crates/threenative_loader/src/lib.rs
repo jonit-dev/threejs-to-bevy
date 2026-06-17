@@ -351,13 +351,27 @@ pub struct CameraComponent {
 pub struct LightComponent {
     pub kind: String,
     pub color: ColorIr,
+    pub debug: Option<DebugGizmoIr>,
     pub intensity: f32,
     pub range: Option<f32>,
     pub angle: Option<f32>,
     #[serde(rename = "shadowBias")]
     pub shadow_bias: Option<f32>,
+    #[serde(rename = "shadowFilter")]
+    pub shadow_filter: Option<ShadowFilterIr>,
     #[serde(rename = "shadowNormalBias")]
     pub shadow_normal_bias: Option<f32>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct DebugGizmoIr {
+    pub gizmo: Option<bool>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ShadowFilterIr {
+    pub mode: String,
+    pub quality: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -872,6 +886,10 @@ pub struct RuntimeConfigIr {
 pub struct RuntimeRendererConfig {
     pub antialias: String,
     pub bloom: Option<RuntimeRendererBloomConfig>,
+    #[serde(rename = "colorGrading")]
+    pub color_grading: Option<RuntimeRendererColorGradingConfig>,
+    #[serde(rename = "renderPath")]
+    pub render_path: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -880,6 +898,18 @@ pub struct RuntimeRendererBloomConfig {
     pub enabled: bool,
     pub intensity: f32,
     pub threshold: f32,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeRendererColorGradingConfig {
+    pub contrast: Option<f32>,
+    pub exposure: Option<f32>,
+    pub lut: Option<String>,
+    pub saturation: Option<f32>,
+    pub temperature: Option<f32>,
+    pub tint: Option<f32>,
+    pub tone_mapping: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -1103,6 +1133,11 @@ pub struct EnvironmentSceneIr {
     pub version: String,
     pub atmosphere: Option<AtmosphereProfileIr>,
     pub controller: Option<FirstPersonControllerIr>,
+    #[serde(rename = "environmentMap")]
+    pub environment_map: Option<EnvironmentMapIr>,
+    #[serde(default, rename = "lightProbes")]
+    pub light_probes: Vec<LightProbeIr>,
+    pub skybox: Option<SkyboxIr>,
     pub terrain: Option<EnvironmentTerrainIr>,
     pub path: EnvironmentPathIr,
     #[serde(default)]
@@ -1157,7 +1192,7 @@ pub struct EnvironmentTerrainIr {
     pub control_points: Vec<[f32; 3]>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct EnvironmentBoundsIr {
     pub min: [f32; 3],
     pub max: [f32; 3],
@@ -1178,14 +1213,17 @@ pub struct EnvironmentSourceAssetIr {
     pub id: String,
     pub asset: String,
     pub category: String,
+    pub debug: Option<DebugGizmoIr>,
     #[serde(default)]
     pub lod: Vec<EnvironmentLodLevelIr>,
+    pub visibility: Option<VisibilityRangeIr>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EnvironmentLodLevelIr {
     pub asset: String,
+    pub fade: Option<FadeRangeIr>,
     pub min_distance: f32,
     pub max_distance: f32,
 }
@@ -1199,8 +1237,75 @@ pub struct EnvironmentInstanceIr {
     pub rotation: Option<[f32; 4]>,
     pub scale: Option<[f32; 3]>,
     pub kind: Option<String>,
+    pub debug: Option<DebugGizmoIr>,
     #[serde(default)]
     pub tags: Vec<String>,
+    pub visibility: Option<VisibilityRangeIr>,
+}
+
+#[derive(Clone, Debug, Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VisibilityRangeIr {
+    pub fade: Option<FadeRangeIr>,
+    pub max_distance: f32,
+    pub min_distance: f32,
+}
+
+#[derive(Clone, Debug, Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FadeRangeIr {
+    pub end_distance: f32,
+    pub start_distance: f32,
+}
+
+#[derive(Clone, Debug, Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkyboxIr {
+    pub asset: Option<String>,
+    pub faces: Option<EnvironmentCubemapFacesIr>,
+    pub intensity: Option<f32>,
+    pub mode: String,
+    #[serde(rename = "rotationY")]
+    pub rotation_y: Option<f32>,
+}
+
+#[derive(Clone, Debug, Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EnvironmentMapIr {
+    pub asset: Option<String>,
+    pub faces: Option<EnvironmentCubemapFacesIr>,
+    pub intensity: Option<f32>,
+    pub intent: String,
+    pub mode: String,
+}
+
+#[derive(Clone, Debug, Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LightProbeIr {
+    pub bounds: EnvironmentBoundsIr,
+    pub id: String,
+    pub influence_radius: f32,
+    pub intent: String,
+    pub source: EnvironmentTextureSourceIr,
+}
+
+#[derive(Clone, Debug, Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EnvironmentTextureSourceIr {
+    pub asset: Option<String>,
+    pub faces: Option<EnvironmentCubemapFacesIr>,
+    pub mode: String,
+}
+
+#[derive(Clone, Debug, Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EnvironmentCubemapFacesIr {
+    pub negative_x: String,
+    pub negative_y: String,
+    pub negative_z: String,
+    pub positive_x: String,
+    pub positive_y: String,
+    pub positive_z: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]

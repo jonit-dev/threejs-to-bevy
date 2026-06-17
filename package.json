@@ -43,7 +43,8 @@
     "verify:v9:animation-blending": "node scripts/verify-v9-animation-blending.mjs",
     "verify:v9:animation-particles": "node scripts/verify-v9-animation-particles.mjs",
     "verify:v9:physics-character": "node scripts/verify-v9-physics-character.mjs",
-    "verify:v9:assets-gltf-scene-workflow": "pnpm --filter @threenative/cli build && pnpm --filter @threenative/ir build && pnpm --filter @threenative/runtime-web-three build && node scripts/verify-v9-assets-gltf-scene-workflow.mjs"
+    "verify:v9:assets-gltf-scene-workflow": "pnpm --filter @threenative/cli build && pnpm --filter @threenative/ir build && pnpm --filter @threenative/runtime-web-three build && node scripts/verify-v9-assets-gltf-scene-workflow.mjs",
+    "verify:v9:rendering-lights": "pnpm --filter @threenative/ir build && pnpm --filter @threenative/runtime-web-three build && node scripts/verify-v9-rendering-lights.mjs"
   },
   "devDependencies": {
     "react": "^19.2.7",

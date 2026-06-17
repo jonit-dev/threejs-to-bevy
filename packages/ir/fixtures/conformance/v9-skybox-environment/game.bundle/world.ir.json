@@ -1,5 +1,114 @@
 {
   "schema": "threenative.world",
   "version": "0.1.0",
-  "entities": []
+  "entities": [
+    {
+      "id": "light.key",
+      "components": {
+        "Light": {
+          "color": "#ffffff",
+          "debug": {
+            "gizmo": true
+          },
+          "intensity": 1,
+          "kind": "directional",
+          "shadowFilter": {
+            "mode": "pcf",
+            "quality": "medium"
+          }
+        },
+        "Transform": {
+          "position": [
+            0,
+            4,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      }
+    },
+    {
+      "id": "light.point",
+      "components": {
+        "Light": {
+          "color": "#88aaff",
+          "intensity": 2,
+          "kind": "point",
+          "range": 12,
+          "shadowFilter": {
+            "mode": "pcf",
+            "quality": "high"
+          }
+        },
+        "Transform": {
+          "position": [
+            2,
+            2,
+            1
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      }
+    },
+    {
+      "id": "light.spot",
+      "components": {
+        "Light": {
+          "angle": 0.6,
+          "color": "#ffaa88",
+          "intensity": 1.5,
+          "kind": "spot",
+          "range": 14
+        },
+        "Transform": {
+          "position": [
+            -2,
+            3,
+            1
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      }
+    }
+  ],
+  "resources": {
+    "RenderingLightBudget": {
+      "cullingPolicy": "nearest",
+      "maximumShadowedPointLights": 0,
+      "maximumVisibleDynamicLights": 2,
+      "overBudgetSeverity": "warning"
+    }
+  },
+  "events": {},
+  "prefabs": []
 }

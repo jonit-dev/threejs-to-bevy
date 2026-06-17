@@ -59,7 +59,7 @@ export function validateEnvironmentSceneIr(
   scene.sourceAssets.forEach((sourceAsset, index) => {
     validateUnsupportedFields(
       sourceAsset,
-      ["asset", "category", "id", "lod"],
+      ["asset", "category", "debug", "id", "lod", "visibility"],
       `${path}/sourceAssets/${index}`,
       `Environment source asset '${sourceAsset.id}'`,
       diagnostics,
@@ -72,13 +72,15 @@ export function validateEnvironmentSceneIr(
       });
     }
     validateSourceAssetLod(sourceAsset, index, modelAssets, `${path}/sourceAssets/${index}`, diagnostics);
+    validateVisibilityRange(sourceAsset.visibility, `${path}/sourceAssets/${index}/visibility`, "source asset", diagnostics);
+    validateDebugGizmo(sourceAsset.debug, `${path}/sourceAssets/${index}/debug`, diagnostics);
   });
 
   const sourceAssetIds = new Set(scene.sourceAssets.map((sourceAsset) => sourceAsset.id));
   scene.instances.forEach((instance, index) => {
     validateUnsupportedFields(
       instance,
-      ["collisionMode", "id", "kind", "position", "renderGroup", "rotation", "scale", "scatterExclusionRadius", "scatterSource", "sourceAsset", "tags"],
+      ["collisionMode", "debug", "id", "kind", "position", "renderGroup", "rotation", "scale", "scatterExclusionRadius", "scatterSource", "sourceAsset", "tags", "visibility"],
       `${path}/instances/${index}`,
       `Environment instance '${instance.id}'`,
       diagnostics,
@@ -94,6 +96,8 @@ export function validateEnvironmentSceneIr(
     if (instance.scale !== undefined) {
       validateVec3(instance.scale, `${path}/instances/${index}/scale`, diagnostics);
     }
+    validateVisibilityRange(instance.visibility, `${path}/instances/${index}/visibility`, "instance", diagnostics);
+    validateDebugGizmo(instance.debug, `${path}/instances/${index}/debug`, diagnostics);
   });
 
   validateTerrainAndPath(scene, path, diagnostics);
@@ -200,8 +204,61 @@ function validateSourceAssetLod(
         suggestion: "Sort LOD levels by distance and make each minDistance greater than or equal to the previous maxDistance.",
       });
     }
+    validateFadeBand(level.fade, `${levelPath}/fade`, diagnostics);
     previousMaxDistance = Math.max(previousMaxDistance, level.maxDistance);
   });
+}
+
+function validateVisibilityRange(
+  range: { fade?: { endDistance: number; startDistance: number }; maxDistance: number; minDistance: number } | undefined,
+  path: string,
+  label: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (range === undefined) {
+    return;
+  }
+  if (!Number.isFinite(range.minDistance) || !Number.isFinite(range.maxDistance) || range.minDistance < 0 || range.maxDistance <= range.minDistance) {
+    diagnostics.push({
+      code: "TN_IR_RENDERER_VISIBILITY_RANGE_INVALID",
+      message: `Environment ${label} visibility range must use finite ordered non-negative distances.`,
+      path,
+      severity: "error",
+      suggestion: "Use minDistance >= 0 and maxDistance greater than minDistance.",
+    });
+  }
+  validateFadeBand(range.fade, `${path}/fade`, diagnostics);
+}
+
+function validateFadeBand(
+  fade: { endDistance: number; startDistance: number } | undefined,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (fade === undefined) {
+    return;
+  }
+  if (!Number.isFinite(fade.startDistance) || !Number.isFinite(fade.endDistance) || fade.startDistance < 0 || fade.endDistance <= fade.startDistance) {
+    diagnostics.push({
+      code: "TN_IR_RENDERER_VISIBILITY_RANGE_INVALID",
+      message: "Environment fade metadata must use finite ordered non-negative distances.",
+      path,
+      severity: "error",
+      suggestion: "Use startDistance >= 0 and endDistance greater than startDistance.",
+    });
+  }
+}
+
+function validateDebugGizmo(debug: { gizmo?: boolean } | undefined, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (debug?.gizmo !== undefined && typeof debug.gizmo !== "boolean") {
+    diagnostics.push({
+      code: "TN_IR_RENDERER_DEBUG_GIZMO_INVALID",
+      message: "Debug gizmo metadata must be a boolean when declared.",
+      path: `${path}/gizmo`,
+      severity: "error",
+      suggestion: "Use debug: { gizmo: true } only for opt-in inspection helpers.",
+    });
+  }
 }
 
 function validateWalkability(scene: IEnvironmentSceneIr, path: string, diagnostics: IIrDiagnostic[]): void {

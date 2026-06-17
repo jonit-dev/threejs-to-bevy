@@ -43,6 +43,18 @@
       "id": "tex.sky.pz",
       "kind": "texture",
       "path": "assets/sky/pz.png"
+    },
+    {
+      "format": "glb",
+      "id": "model.env.Tree",
+      "kind": "model",
+      "path": "assets/env/tree.glb"
+    },
+    {
+      "format": "glb",
+      "id": "model.env.TreeLow",
+      "kind": "model",
+      "path": "assets/env/tree-low.glb"
     }
   ]
 }

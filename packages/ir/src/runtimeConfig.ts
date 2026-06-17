@@ -10,6 +10,16 @@ export interface IRuntimeConfigIr {
       intensity: number;
       threshold: number;
     };
+    colorGrading?: {
+      contrast?: number;
+      exposure?: number;
+      lut?: string;
+      saturation?: number;
+      temperature?: number;
+      tint?: number;
+      toneMapping?: "aces" | "linear" | "none" | "reinhard";
+    };
+    renderPath?: "forward";
   };
   time: {
     fixedDelta: number;

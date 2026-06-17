@@ -27,3 +27,20 @@ test("lights should reject invalid shadow bias controls", () => {
     (error: unknown) => error instanceof SdkError && error.code === "TN_SDK_LIGHT_INVALID_SHADOW_BIAS",
   );
 });
+
+test("lights should store portable shadow filter and debug gizmo controls", () => {
+  const point = new PointLight({
+    debug: { gizmo: true },
+    shadowFilter: { mode: "pcf", quality: "medium" },
+  });
+
+  assert.deepEqual(point.shadowFilter, { mode: "pcf", quality: "medium" });
+  assert.deepEqual(point.debug, { gizmo: true });
+});
+
+test("lights should reject invalid shadow filter controls", () => {
+  assert.throws(
+    () => new SpotLight({ shadowFilter: { mode: "variance", quality: "medium" } as never }),
+    (error: unknown) => error instanceof SdkError && error.code === "TN_SDK_LIGHT_INVALID_SHADOW_FILTER",
+  );
+});

@@ -22,7 +22,21 @@
             "intensity": { "type": "number", "minimum": 0 },
             "threshold": { "type": "number", "minimum": 0 }
           }
-        }
+        },
+        "colorGrading": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "contrast": { "type": "number" },
+            "exposure": { "type": "number", "exclusiveMinimum": 0 },
+            "lut": { "type": "string", "minLength": 1 },
+            "saturation": { "type": "number", "minimum": 0 },
+            "temperature": { "type": "number" },
+            "tint": { "type": "number" },
+            "toneMapping": { "enum": ["aces", "linear", "none", "reinhard"] }
+          }
+        },
+        "renderPath": { "const": "forward" }
       }
     },
     "time": {

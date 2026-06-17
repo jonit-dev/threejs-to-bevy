@@ -174,15 +174,20 @@ the authored fog color, and writes artifacts under
 surface; skybox/cubemap contracts, instancing/batching evidence, and broader
 post-processing controls remain tracked as open parity work.
 
-V9-04 Phase 1 adds the portable contract slice for bundle-local skyboxes,
-environment maps, and bounded light probes. `environment.scene.json` can now
-carry cubemap or equirect texture sources, intensity/rotation metadata,
-reflection/irradiance intent, and probe bounds; validation rejects missing,
-unsupported, or malformed texture/probe refs before runtime; compiler output
-emits `rendering:skybox`, `rendering:environment-map`, and
-`rendering:light-probes` capabilities. The conformance fixture is
-`packages/ir/fixtures/conformance/v9-skybox-environment/game.bundle`. Runtime
-web/Bevy visual mapping and screenshot evidence remain Phase 2 work.
+V9-04 adds the portable/reportable rendering-lights contract slice for
+bundle-local skyboxes, environment maps, bounded light probes, dynamic light
+budgets, PCF shadow-filter metadata, visibility ranges, HLOD fade metadata,
+debug gizmo observations, forward render-path metadata, and color-grading
+metadata. Validation rejects missing or malformed environment texture/probe refs,
+invalid budgets/fades/filters, and explicitly deferred advanced renderer
+requests before runtime. Web and Bevy conformance reports now expose matching
+observations through
+`packages/ir/fixtures/conformance/v9-skybox-environment/game.bundle`, and
+`pnpm verify:v9:rendering-lights` writes evidence under
+`artifacts/v9/rendering-lights/`. Visual FXAA/TAA/SMAA, depth of field,
+deferred rendering, motion vectors, screen-space reflections, volumetrics,
+virtual geometry, custom post passes, and full rendered point-shadow/skybox
+visual parity remain deferred until separately proven.
 
 ## V4 Proves
 

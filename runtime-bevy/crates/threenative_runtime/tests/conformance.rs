@@ -131,6 +131,56 @@ fn should_report_basic_scene_conformance_semantics() {
 }
 
 #[test]
+fn should_report_v9_environment_lighting_budgets_and_renderer_quality() {
+    let fixture = load_conformance_fixture("v9-skybox-environment");
+    let mut app = App::new();
+
+    map_bundle_into_world(app.world_mut(), &fixture.bundle).unwrap_or_else(|error| {
+        panic!(
+            "failed to map conformance fixture '{}' at '{}': {}",
+            fixture.name,
+            fixture.bundle_path.display(),
+            error
+        )
+    });
+    let report = report_bevy_conformance(app.world_mut(), &fixture.bundle, fixture.name);
+    let report_json = serde_json::to_value(&report).expect("report should serialize");
+
+    assert_eq!(report_json["environment"]["skybox"]["mode"], "cubemap");
+    assert_eq!(
+        report_json["environment"]["environmentMap"]["intent"],
+        "reflection-and-irradiance"
+    );
+    assert_eq!(
+        report_json["environment"]["debugGizmos"],
+        serde_json::json!(["instance:tree.hero", "lightProbe:probe.center", "sourceAsset:env.Tree"])
+    );
+    assert_eq!(report_json["lightBudget"]["overBudget"], true);
+    assert_eq!(
+        report_json["lightBudget"]["culledLights"],
+        serde_json::json!(["light.spot"])
+    );
+    let light = report_json["entities"]
+        .as_array()
+        .and_then(|entities| entities.iter().find(|entity| entity["id"] == "light.point"))
+        .expect("point light should be reported");
+    assert_eq!(
+        light["light"]["shadowFilter"],
+        serde_json::json!({ "mode": "pcf", "quality": "high" })
+    );
+    assert_eq!(report_json["runtimeConfig"]["renderer"]["renderPath"], "forward");
+    assert_eq!(
+        report_json["runtimeConfig"]["renderer"]["colorGrading"]["toneMapping"],
+        "aces"
+    );
+    assert!(report_json["runtimeConfig"]["renderer"]["postProcessing"]["skipped"]
+        .as_array()
+        .expect("skipped post-processing features should serialize")
+        .iter()
+        .any(|entry| entry["feature"] == "fxaa"));
+}
+
+#[test]
 fn should_report_promoted_generated_primitive_mapping_semantics() {
     let fixture = load_conformance_fixture("primitive-mapping");
     let mut app = App::new();

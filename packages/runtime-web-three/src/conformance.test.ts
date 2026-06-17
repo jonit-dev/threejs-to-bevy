@@ -190,3 +190,30 @@ test("should report audio playback conformance observations", async () => {
     ],
   });
 });
+
+test("should report V9 environment lighting, light budgets, and renderer quality observations", async () => {
+  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/v9-skybox-environment/game.bundle"));
+  const mapped = mapWorld(bundle);
+  const report = reportWebConformance(bundle, mapped, "v9-skybox-environment");
+
+  assert.equal(report.environment?.skybox?.mode, "cubemap");
+  assert.equal(report.environment?.environmentMap?.intent, "reflection-and-irradiance");
+  assert.deepEqual(report.environment?.debugGizmos, ["instance:tree.hero", "lightProbe:probe.center", "sourceAsset:env.Tree"]);
+  assert.deepEqual(report.environment?.hlodFades, [{ asset: "model.env.TreeLow", endDistance: 32, sourceAsset: "env.Tree", startDistance: 24 }]);
+  assert.deepEqual(report.environment?.sourceAssetVisibility, [{ endDistance: 96, id: "env.Tree", maxDistance: 120, minDistance: 0, startDistance: 72 }]);
+  assert.deepEqual(report.environment?.instanceVisibility, [{ id: "tree.hero", maxDistance: 90, minDistance: 0 }]);
+
+  assert.deepEqual(report.lightBudget, {
+    culledLights: ["light.spot"],
+    cullingPolicy: "nearest",
+    dynamicLights: ["light.key", "light.point", "light.spot"],
+    maximumShadowedPointLights: 0,
+    maximumVisibleDynamicLights: 2,
+    overBudget: true,
+    shadowedPointLights: ["light.point"],
+  });
+  assert.deepEqual(report.entities.find((entity) => entity.id === "light.point")?.light?.shadowFilter, { mode: "pcf", quality: "high" });
+  assert.equal(report.runtimeConfig?.renderer?.renderPath, "forward");
+  assert.deepEqual(report.runtimeConfig?.renderer?.colorGrading, { contrast: 0.1, exposure: 1.1, saturation: 0.9, toneMapping: "aces" });
+  assert.ok(report.runtimeConfig?.renderer?.postProcessing?.skipped.some((entry) => entry.feature === "fxaa"));
+});

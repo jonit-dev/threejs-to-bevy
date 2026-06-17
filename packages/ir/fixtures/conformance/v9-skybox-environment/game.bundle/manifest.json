@@ -12,7 +12,9 @@
     ],
     "rendering": [
       "environment-map",
+      "light-budget",
       "light-probes",
+      "light.shadow-filter.pcf",
       "skybox"
     ]
   },
@@ -23,6 +25,7 @@
   "files": {
     "assets": "assets.manifest.json",
     "materials": "materials.ir.json",
+    "runtimeConfig": "runtime.config.json",
     "targetProfile": "target.profile.json"
   }
 }

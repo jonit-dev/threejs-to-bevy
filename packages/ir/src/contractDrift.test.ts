@@ -15,7 +15,11 @@ test("runtime renderer antialias requiredness should not drift across schema, Ty
 
   assert.deepEqual(schema.properties.renderer.required, ["antialias"]);
   assert.match(runtimeConfigTypes, /antialias:\s*"none" \| "msaa2" \| "msaa4" \| "msaa8";/);
+  assert.match(runtimeConfigTypes, /colorGrading\?:/);
+  assert.match(runtimeConfigTypes, /renderPath\?: "forward";/);
   assert.match(loaderTypes, /pub antialias: String,/);
+  assert.match(loaderTypes, /pub color_grading: Option<RuntimeRendererColorGradingConfig>,/);
+  assert.match(loaderTypes, /pub render_path: Option<String>,/);
   assert.doesNotMatch(loaderTypes, /pub antialias: Option<String>,/);
 });
 

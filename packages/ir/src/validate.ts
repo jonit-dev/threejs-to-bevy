@@ -2437,11 +2437,16 @@ function validateRuntimeConfig(config: unknown, path: string, diagnostics: IIrDi
       path: `${path}/renderer`,
     });
   }
+  if (isRecord(renderer)) {
+    validateUnsupportedRendererFields(renderer, `${path}/renderer`, diagnostics);
+  }
   if (isRecord(renderer) && !["none", "msaa2", "msaa4", "msaa8"].includes(renderer.antialias as string)) {
     diagnostics.push({
       code: "TN_IR_RUNTIME_RENDERER_ANTIALIAS_INVALID",
-      message: "Renderer antialias mode must be one of none, msaa2, msaa4, or msaa8.",
+      message: "Renderer antialias mode must be one of none, msaa2, msaa4, or msaa8. FXAA, TAA, and SMAA remain diagnostic-only until cross-runtime visual parity is proven.",
       path: `${path}/renderer/antialias`,
+      severity: "error",
+      suggestion: "Use an MSAA mode for V9 or leave post-process antialiasing disabled.",
     });
   }
   const bloom = isRecord(renderer) ? renderer.bloom : undefined;
@@ -2476,6 +2481,20 @@ function validateRuntimeConfig(config: unknown, path: string, diagnostics: IIrDi
       }
     }
   }
+  const renderPath = isRecord(renderer) ? renderer.renderPath : undefined;
+  if (renderPath !== undefined && renderPath !== "forward") {
+    diagnostics.push({
+      code: "TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED",
+      message: "Runtime renderer renderPath only supports 'forward' in V9; deferred rendering is explicitly unsupported.",
+      path: `${path}/renderer/renderPath`,
+      severity: "error",
+      suggestion: "Use renderPath: 'forward' or omit renderPath.",
+    });
+  }
+  const colorGrading = isRecord(renderer) ? renderer.colorGrading : undefined;
+  if (colorGrading !== undefined) {
+    validateColorGrading(colorGrading, `${path}/renderer/colorGrading`, diagnostics);
+  }
 
   const window = config.window;
   if (!isRecord(window)) {
@@ -2506,6 +2525,138 @@ function validateRuntimeConfig(config: unknown, path: string, diagnostics: IIrDi
         path: `${path}/window/title`,
       });
     }
+  }
+}
+
+function validateUnsupportedRendererFields(renderer: Record<string, unknown>, path: string, diagnostics: IIrDiagnostic[]): void {
+  const supported = new Set(["antialias", "bloom", "colorGrading", "renderPath"]);
+  const advanced = new Map([
+    ["autoExposure", "Auto exposure is explicitly deferred in V9."],
+    ["customPasses", "Custom post-processing passes are explicitly deferred in V9."],
+    ["decals", "Decals are diagnostic-only until both runtimes prove a portable mapping."],
+    ["deferred", "Deferred rendering is explicitly deferred in V9; use renderPath: 'forward'."],
+    ["depthOfField", "Depth of field is diagnostic-only until both runtimes prove visual parity."],
+    ["motionBlur", "Motion blur and motion vectors are explicitly deferred in V9."],
+    ["motionVectors", "Motion blur and motion vectors are explicitly deferred in V9."],
+    ["screenSpaceReflections", "Screen-space reflections and mirrors are explicitly deferred in V9."],
+    ["ssr", "Screen-space reflections and mirrors are explicitly deferred in V9."],
+    ["virtualGeometry", "Virtual geometry and meshlets are explicitly deferred in V9."],
+    ["volumetricFog", "Volumetric fog and lighting are explicitly deferred in V9."],
+    ["volumetricLighting", "Volumetric fog and lighting are explicitly deferred in V9."],
+  ]);
+  for (const key of Object.keys(renderer)) {
+    if (supported.has(key)) {
+      continue;
+    }
+    diagnostics.push({
+      code: advanced.has(key) ? "TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED" : "TN_IR_RENDERER_POST_EFFECT_UNSUPPORTED",
+      message: advanced.get(key) ?? `Runtime renderer field '${key}' is not promoted in V9.`,
+      path: `${path}/${key}`,
+      severity: "error",
+      suggestion: "Remove the field or wait for a PRD that promotes it with cross-runtime evidence.",
+    });
+  }
+}
+
+function validateColorGrading(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (!isRecord(value)) {
+    diagnostics.push({
+      code: "TN_IR_RUNTIME_RENDERER_COLOR_GRADING_INVALID",
+      message: "Renderer colorGrading config must be an object.",
+      path,
+      severity: "error",
+      suggestion: "Use a colorGrading object with portable numeric controls.",
+    });
+    return;
+  }
+  const toneMapping = value.toneMapping;
+  if (toneMapping !== undefined && !["aces", "linear", "none", "reinhard"].includes(toneMapping as string)) {
+    diagnostics.push({
+      code: "TN_IR_RUNTIME_RENDERER_COLOR_GRADING_INVALID",
+      message: "Renderer toneMapping must be one of aces, linear, none, or reinhard.",
+      path: `${path}/toneMapping`,
+      severity: "error",
+    });
+  }
+  for (const key of ["contrast", "temperature", "tint"] as const) {
+    if (value[key] !== undefined && (typeof value[key] !== "number" || !Number.isFinite(value[key]))) {
+      diagnostics.push({
+        code: "TN_IR_RUNTIME_RENDERER_COLOR_GRADING_INVALID",
+        message: `Renderer colorGrading ${key} must be finite.`,
+        path: `${path}/${key}`,
+        severity: "error",
+      });
+    }
+  }
+  if (value.exposure !== undefined && (typeof value.exposure !== "number" || !Number.isFinite(value.exposure) || value.exposure <= 0)) {
+    diagnostics.push({
+      code: "TN_IR_RUNTIME_RENDERER_COLOR_GRADING_INVALID",
+      message: "Renderer colorGrading exposure must be positive and finite.",
+      path: `${path}/exposure`,
+      severity: "error",
+    });
+  }
+  if (value.saturation !== undefined && (typeof value.saturation !== "number" || !Number.isFinite(value.saturation) || value.saturation < 0)) {
+    diagnostics.push({
+      code: "TN_IR_RUNTIME_RENDERER_COLOR_GRADING_INVALID",
+      message: "Renderer colorGrading saturation must be non-negative and finite.",
+      path: `${path}/saturation`,
+      severity: "error",
+    });
+  }
+  if (value.lut !== undefined && (typeof value.lut !== "string" || value.lut.trim().length === 0)) {
+    diagnostics.push({
+      code: "TN_IR_RUNTIME_RENDERER_COLOR_GRADING_INVALID",
+      message: "Renderer colorGrading LUT must reference a non-empty bundle asset id.",
+      path: `${path}/lut`,
+      severity: "error",
+    });
+  }
+}
+
+function validateRenderingLightBudget(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value)) {
+    diagnostics.push({
+      code: "TN_IR_LIGHT_BUDGET_INVALID",
+      message: "RenderingLightBudget resource must be an object.",
+      path,
+      severity: "error",
+      suggestion: "Use maximumVisibleDynamicLights, maximumShadowedPointLights, cullingPolicy, and overBudgetSeverity.",
+    });
+    return;
+  }
+  validateNonNegativeInteger(value.maximumVisibleDynamicLights, `${path}/maximumVisibleDynamicLights`, diagnostics);
+  validateNonNegativeInteger(value.maximumShadowedPointLights, `${path}/maximumShadowedPointLights`, diagnostics);
+  if (value.cullingPolicy !== "nearest" && value.cullingPolicy !== "none") {
+    diagnostics.push({
+      code: "TN_IR_LIGHT_BUDGET_INVALID",
+      message: "RenderingLightBudget cullingPolicy must be 'nearest' or 'none'.",
+      path: `${path}/cullingPolicy`,
+      severity: "error",
+      suggestion: "Use nearest for deterministic culling, or none for diagnostics-only budget reporting.",
+    });
+  }
+  if (value.overBudgetSeverity !== "error" && value.overBudgetSeverity !== "warning") {
+    diagnostics.push({
+      code: "TN_IR_LIGHT_BUDGET_INVALID",
+      message: "RenderingLightBudget overBudgetSeverity must be 'warning' or 'error'.",
+      path: `${path}/overBudgetSeverity`,
+      severity: "error",
+    });
+  }
+}
+
+function validateNonNegativeInteger(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
+    diagnostics.push({
+      code: "TN_IR_LIGHT_BUDGET_INVALID",
+      message: "RenderingLightBudget counts must be non-negative integers.",
+      path,
+      severity: "error",
+    });
   }
 }
 
@@ -3631,6 +3782,7 @@ function validateWorld(world: IWorldIr, path: string, diagnostics: IIrDiagnostic
 
   validateUniqueIds(world.entities, `${path}/entities`, "TN_IR_DUPLICATE_ENTITY_ID", diagnostics);
   validateNavigationResources(world, `${path}/resources`, diagnostics);
+  validateRenderingLightBudget(world.resources?.RenderingLightBudget, `${path}/resources/RenderingLightBudget`, diagnostics);
   world.entities.forEach((entity, index) => validateRenderComponents(entity, `${path}/entities/${index}`, diagnostics));
   world.entities.forEach((entity, index) => validatePhysicsComponents(entity, `${path}/entities/${index}`, diagnostics));
   world.entities.forEach((entity, index) => validateCharacterComponents(entity, `${path}/entities/${index}`, input, diagnostics));
@@ -3772,6 +3924,25 @@ function validateRenderComponents(entity: IWorldIr["entities"][number], path: st
           suggestion: "Use finite portable shadow bias values or omit the field to use runtime defaults.",
         });
       }
+    }
+    const filter = light.shadowFilter;
+    if (filter !== undefined && (filter.mode !== "pcf" || !["low", "medium", "high"].includes(filter.quality))) {
+      diagnostics.push({
+        code: "TN_IR_LIGHT_SHADOW_FILTER_UNSUPPORTED",
+        message: `Light shadowFilter for '${entity.id}' must use portable PCF quality low, medium, or high.`,
+        path: `${path}/components/Light/shadowFilter`,
+        severity: "error",
+        suggestion: "Use { mode: 'pcf', quality: 'low' | 'medium' | 'high' } or omit the field.",
+      });
+    }
+    if (light.debug?.gizmo !== undefined && typeof light.debug.gizmo !== "boolean") {
+      diagnostics.push({
+        code: "TN_IR_LIGHT_DEBUG_GIZMO_INVALID",
+        message: `Light debug gizmo flag for '${entity.id}' must be boolean.`,
+        path: `${path}/components/Light/debug/gizmo`,
+        severity: "error",
+        suggestion: "Use debug: { gizmo: true } only for opt-in debug visualization.",
+      });
     }
   }
 
