@@ -1,5 +1,6 @@
 import { buildComponentReflectionRegistry, type IComponentReflectionRegistry, type IComponentReflectionType } from "@threenative/ir/reflection";
 import type { IAssetsManifest, IIrSchemaFile, IIrStateSource, IIrSystemQuery, ISystemsIr, IWorldEntity, IWorldIr } from "@threenative/ir";
+import { AnimationRuntimeController } from "../animation.js";
 import { traceCharacterControllers, type ICharacterTraceObservation } from "../character.js";
 import type { IWebInputState } from "../input.js";
 import { animationPlayPayload, animationQueryPayload, animationStopPayload } from "./services/animation.js";
@@ -36,7 +37,7 @@ export interface ISystemCommandBuffer {
 
 export interface ISystemContext {
   animation: {
-    play(entity: string | ISystemEntityView, clip: string, options?: Record<string, unknown>): void;
+    play(entity: string | ISystemEntityView, clip: string, options?: Record<string, unknown>): ReturnType<typeof animationPlayPayload>["result"];
     query(entity: string | ISystemEntityView, clip?: string): ReturnType<typeof animationQueryPayload>["result"];
     stop(entity: string | ISystemEntityView, clip?: string): ReturnType<typeof animationStopPayload>["result"];
   };
@@ -205,20 +206,28 @@ export function createSystemContext(
   const states = evaluateStates(world, options.systems);
   const componentTypes = buildComponentReflectionRegistry(options.componentSchemas);
   const random = createDeterministicRandom(randomSeed(world));
+  const animations = new AnimationRuntimeController();
   return {
     commands,
     context: {
       animation: {
         play(entity, clip, playOptions = {}) {
-          services.push({ payload: animationPlayPayload({ clip, entity: normalizeEntityRef(entity), options: cloneValue(playOptions) as Record<string, unknown> }), service: "animation.play" });
+          const entityId = normalizeEntityRef(entity);
+          const options = cloneValue(playOptions) as Record<string, unknown>;
+          const result = animations.play(entityId, clip, options);
+          const payload = animationPlayPayload({ clip, entity: entityId, options }, result);
+          services.push({ payload, service: "animation.play" });
+          return cloneValue(payload.result) as ReturnType<typeof animationPlayPayload>["result"];
         },
         query(entity, clip) {
-          const payload = animationQueryPayload({ ...(clip === undefined ? {} : { clip }), entity: normalizeEntityRef(entity) });
+          const entityId = normalizeEntityRef(entity);
+          const payload = animationQueryPayload({ ...(clip === undefined ? {} : { clip }), entity: entityId }, animations.query(entityId, clip));
           services.push({ payload, service: "animation.query" });
           return cloneValue(payload.result) as ReturnType<typeof animationQueryPayload>["result"];
         },
         stop(entity, clip) {
-          const payload = animationStopPayload({ ...(clip === undefined ? {} : { clip }), entity: normalizeEntityRef(entity) });
+          const entityId = normalizeEntityRef(entity);
+          const payload = animationStopPayload({ ...(clip === undefined ? {} : { clip }), entity: entityId }, animations.stop(entityId, clip));
           services.push({ payload, service: "animation.stop" });
           return cloneValue(payload.result) as ReturnType<typeof animationStopPayload>["result"];
         },

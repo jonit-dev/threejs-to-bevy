@@ -122,6 +122,20 @@ test("assets should create deterministic v7 animation graph and bounded particle
   ]);
 });
 
+test("should create renderable bounded particle emitter", () => {
+  const asset = modelAsset("model.hero", "assets/hero.glb", {
+    particleEmitters: [
+      boundedParticleEmitter("spark", { lifetimeSeconds: 0.75, maxParticles: 16, radius: 0.4, ratePerSecond: 12, shape: "sphere" }),
+      boundedParticleEmitter("dust", { lifetimeSeconds: 1, maxParticles: 8, ratePerSecond: 4, shape: "point" }),
+    ],
+  });
+
+  assert.deepEqual(asset.particleEmitters, [
+    { id: "dust", lifetimeSeconds: 1, maxParticles: 8, ratePerSecond: 4, shape: "point" },
+    { id: "spark", lifetimeSeconds: 0.75, maxParticles: 16, radius: 0.4, ratePerSecond: 12, shape: "sphere" },
+  ]);
+});
+
 test("assets should reject invalid v7 animation graph and particle metadata", () => {
   assert.throws(
     () => modelAsset("model.hero", "assets/hero.glb", {

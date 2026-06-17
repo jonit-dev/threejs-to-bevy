@@ -612,11 +612,84 @@ test("assets should reject invalid v7 animation graph and particle metadata", as
     const result = await validateBundle(root);
 
     assert.equal(result.ok, false);
-    assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_ANIMATION_FIELD_UNSUPPORTED"));
+    assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_IK_UNSUPPORTED"));
     assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_ANIMATION_GRAPH_CLIP_MISSING"));
     assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_ANIMATION_BLEND_INVALID"));
     assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_PARTICLE_FIELD_UNSUPPORTED"));
     assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_PARTICLE_MAX_INVALID"));
+    assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_PARTICLE_SHAPE_UNSUPPORTED"));
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject animation masks when authored", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-assets-animation-masks-"));
+  try {
+    await writeTestBundle(root, {
+      createAssetsDir: true,
+      assets: {
+        schema: "threenative.assets",
+        version: "0.1.0",
+        assets: [
+          {
+            id: "model.hero",
+            kind: "model",
+            format: "glb",
+            path: "assets/hero.glb",
+            animations: [{ id: "idle" }, { id: "wave" }],
+            animationGraph: {
+              initialState: "idle",
+              states: [
+                { id: "idle", clip: "idle" },
+                { id: "wave", clip: "wave" },
+              ],
+            },
+            masks: [{ id: "upperBody", joints: ["Spine", "Arm.L", "Arm.R"] }],
+          },
+        ],
+      } as any,
+    });
+    await writeFile(join(root, "assets/hero.glb"), "model");
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_ANIMATION_MASKS_UNSUPPORTED"));
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject unbounded rendered particle emitters", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-assets-unbounded-particles-"));
+  try {
+    await writeTestBundle(root, {
+      createAssetsDir: true,
+      assets: {
+        schema: "threenative.assets",
+        version: "0.1.0",
+        assets: [
+          {
+            id: "model.hero",
+            kind: "model",
+            format: "glb",
+            path: "assets/hero.glb",
+            particleEmitters: [
+              { id: "dust", lifetimeSeconds: 1, maxParticles: 0, ratePerSecond: Number.POSITIVE_INFINITY, shape: "gpu", shader: "dust.wgsl" },
+            ],
+          },
+        ],
+      } as any,
+    });
+    await writeFile(join(root, "assets/hero.glb"), "model");
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_PARTICLE_FIELD_UNSUPPORTED"));
+    assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_PARTICLE_MAX_INVALID"));
+    assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_PARTICLE_RATE_INVALID"));
     assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_PARTICLE_SHAPE_UNSUPPORTED"));
   } finally {
     await rm(root, { force: true, recursive: true });

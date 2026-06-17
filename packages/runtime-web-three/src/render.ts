@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
-import type { IAtmosphereProfileIr, ICameraClear, IMaterialsIr, IRuntimeConfigIr, IWorldIr } from "@threenative/ir";
+import type { IAssetsManifest, IAtmosphereProfileIr, ICameraClear, IMaterialsIr, IRuntimeConfigIr, IWorldIr } from "@threenative/ir";
 import { loadBundle, type IWebBundle } from "./loadBundle.js";
 import {
   updateCameraHelpers,
@@ -67,6 +67,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
     }
     mapped.diagnostics.push(...environment.instancingPlan.diagnostics);
   }
+  createRenderedParticleObjects(bundle.assets).forEach((particles) => mapped.scene.add(particles));
   if (options.bookmarkId !== undefined) {
     applyEnvironmentBookmark(bundle, mapped.camera, options.bookmarkId);
   }
@@ -182,6 +183,45 @@ export interface IRenderPassRecord {
   viewport?: { height: number; width: number; x: number; y: number };
 }
 
+export function createRenderedParticleObjects(assets: IAssetsManifest, elapsedSeconds = 1): THREE.Points[] {
+  const particles: THREE.Points[] = [];
+  for (const asset of assets.assets) {
+    if (asset.kind !== "model") {
+      continue;
+    }
+    for (const emitter of asset.particleEmitters ?? []) {
+      const count = renderedParticleCount(emitter.maxParticles, emitter.ratePerSecond, elapsedSeconds);
+      const geometry = new THREE.BufferGeometry();
+      const positions = new Float32Array(count * 3);
+      for (let index = 0; index < count; index += 1) {
+        const point = particlePosition(`${asset.id}:${emitter.id}`, index, emitter.shape, emitter.radius ?? 0.25);
+        positions[index * 3] = point[0];
+        positions[index * 3 + 1] = point[1];
+        positions[index * 3 + 2] = point[2];
+      }
+      geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+      const material = new THREE.PointsMaterial({
+        color: "#f6c36a",
+        opacity: 0.82,
+        size: 0.08,
+        transparent: true,
+      });
+      const object = new THREE.Points(geometry, material);
+      object.name = `particle.${asset.id}.${emitter.id}`;
+      object.userData.threeNativeParticleEmitter = {
+        asset: asset.id,
+        count,
+        id: emitter.id,
+        lifetimeSeconds: emitter.lifetimeSeconds,
+        maxParticles: emitter.maxParticles,
+        shape: emitter.shape,
+      };
+      particles.push(object);
+    }
+  }
+  return particles.sort((left, right) => left.name.localeCompare(right.name));
+}
+
 function sortCameraViews(views: readonly ICameraViewPlan[]): ICameraViewPlan[] {
   return [...views].sort((left, right) => {
     if (left.targetKind !== right.targetKind) {
@@ -294,6 +334,38 @@ function createRenderPipeline(
     render: () => composer.render(),
     setSize: (width, height) => composer.setSize(width, height),
   };
+}
+
+function renderedParticleCount(maxParticles: number, ratePerSecond: number, elapsedSeconds: number): number {
+  if (!Number.isFinite(maxParticles) || !Number.isFinite(ratePerSecond) || !Number.isFinite(elapsedSeconds) || maxParticles <= 0 || ratePerSecond <= 0 || elapsedSeconds <= 0) {
+    return 0;
+  }
+  return Math.min(Math.floor(maxParticles), Math.floor(ratePerSecond * elapsedSeconds));
+}
+
+function particlePosition(seed: string, index: number, shape: string, radius: number): [number, number, number] {
+  const x = seededUnit(seed, index, 0) * 2 - 1;
+  const y = seededUnit(seed, index, 1);
+  const z = seededUnit(seed, index, 2) * 2 - 1;
+  if (shape === "sphere") {
+    const length = Math.hypot(x, y, z) || 1;
+    return [
+      Number(((x / length) * radius).toFixed(6)),
+      Number(((y / length) * radius).toFixed(6)),
+      Number(((z / length) * radius).toFixed(6)),
+    ];
+  }
+  return [Number((x * 0.05).toFixed(6)), Number((y * 0.2).toFixed(6)), Number((z * 0.05).toFixed(6))];
+}
+
+function seededUnit(seed: string, index: number, channel: number): number {
+  let hash = 2166136261;
+  const input = `${seed}:${index}:${channel}`;
+  for (let offset = 0; offset < input.length; offset += 1) {
+    hash ^= input.charCodeAt(offset);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) / 0xffffffff;
 }
 
 function prepareRenderContainer(container: HTMLElement): void {

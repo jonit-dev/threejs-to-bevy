@@ -1,0 +1,27 @@
+{
+  "schema": "threenative.assets",
+  "version": "0.1.0",
+  "assets": [
+    {
+      "id": "model.hero",
+      "kind": "model",
+      "format": "glb",
+      "path": "assets/hero.glb",
+      "animations": [
+        { "id": "idle", "loop": true, "sourceClip": "Armature|Idle", "speed": 1 },
+        { "id": "run", "loop": true, "sourceClip": "Armature|Run", "speed": 1.25 }
+      ],
+      "animationGraph": {
+        "initialState": "idle",
+        "parameters": [{ "id": "moving", "kind": "boolean", "default": true }],
+        "states": [
+          { "id": "idle", "clip": "idle" },
+          { "id": "run", "clip": "run", "events": [{ "event": "Footstep", "atSeconds": 0.25 }] }
+        ],
+        "transitions": [
+          { "from": "idle", "to": "run", "blendSeconds": 0.4, "when": { "parameter": "moving", "equals": true } }
+        ]
+      }
+    }
+  ]
+}

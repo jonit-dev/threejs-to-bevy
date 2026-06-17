@@ -172,9 +172,11 @@ fn systems_host_should_expose_animation_query_and_stop_services() {
     assert_eq!(
         bundle.world.resources.get("AnimationReport"),
         Some(&serde_json::json!({
-            "active": false,
+            "active": true,
             "clip": "run",
             "entity": "player",
+            "postStopActive": false,
+            "postStopReason": "requested",
             "stopped": true
         }))
     );
@@ -184,7 +186,51 @@ fn systems_host_should_expose_animation_query_and_stop_services() {
         .filter_map(|entry| entry.service.as_deref())
         .collect();
     service_names.sort();
-    assert_eq!(service_names, vec!["animation.query", "animation.stop"]);
+    assert_eq!(
+        service_names,
+        vec![
+            "animation.play",
+            "animation.query",
+            "animation.query",
+            "animation.stop"
+        ]
+    );
+}
+
+#[test]
+fn should_stop_animation_state_when_stop_service_is_called() {
+    let root = write_animation_control_service_bundle("animation-control-stop-context");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+
+    let run = run_native_systems_once(&mut bundle, time()).expect("system should run");
+    let post_stop_query = run.logs[0]
+        .entries
+        .iter()
+        .filter(|entry| entry.kind == "service" && entry.service.as_deref() == Some("animation.query"))
+        .filter_map(|entry| entry.payload.as_ref())
+        .filter_map(|payload| payload.get("result"))
+        .find(|result| {
+            result.get("active") == Some(&serde_json::json!(false))
+                && result.get("stopReason") == Some(&serde_json::json!("requested"))
+        })
+        .expect("post-stop query result should be logged");
+
+    assert_eq!(
+        post_stop_query,
+        &serde_json::json!({
+            "active": false,
+            "activeState": "run",
+            "clip": "run",
+            "entity": "player",
+            "loop": true,
+            "normalizedTime": 0,
+            "sourceClip": "run",
+            "speed": 1.5,
+            "stopped": true,
+            "stopReason": "requested",
+            "timeSeconds": 0
+        })
+    );
 }
 
 #[test]
@@ -853,7 +899,7 @@ fn write_animation_control_service_bundle(name: &str) -> PathBuf {
       "eventWrites": [],
       "resourceReads": ["AnimationReport"],
       "resourceWrites": ["AnimationReport"],
-      "services": ["animation.query", "animation.stop"],
+      "services": ["animation.play", "animation.query", "animation.stop"],
       "script": { "bundle": "scripts.bundle.js", "exportName": "system_animationControls" }
     }
   ]
@@ -862,12 +908,16 @@ fn write_animation_control_service_bundle(name: &str) -> PathBuf {
     fs::write(
         root.join("scripts.bundle.js"),
         r#"const system_animationControls = (ctx) => {
+  ctx.animation.play("player", "run", { durationSeconds: 2, loop: true, speed: 1.5 });
   const query = ctx.animation.query("player", "run");
   const stop = ctx.animation.stop("player");
+  const postStop = ctx.animation.query("player", "run");
   ctx.resources.set("AnimationReport", {
     active: query.active,
     clip: query.clip,
     entity: query.entity,
+    postStopActive: postStop.active,
+    postStopReason: postStop.stopReason,
     stopped: stop.stopped
   });
 };

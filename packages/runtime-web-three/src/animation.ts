@@ -52,6 +52,41 @@ export interface IAnimationPlaybackState {
   timeSeconds: number;
 }
 
+export interface IAnimationRuntimeState {
+  active: boolean;
+  activeState: string;
+  blend?: IAnimationRuntimeBlendState;
+  clip: string;
+  entity: string;
+  loop: boolean;
+  normalizedTime: number;
+  sourceClip: string;
+  speed: number;
+  stopped: boolean;
+  stopReason?: string;
+  timeSeconds: number;
+}
+
+export interface IAnimationRuntimeBlendState {
+  complete: boolean;
+  durationSeconds: number;
+  elapsedSeconds: number;
+  fromClip: string;
+  fromWeight: number;
+  toClip: string;
+  toWeight: number;
+}
+
+export interface IAnimationRuntimePlayOptions {
+  activeState?: unknown;
+  blendElapsedSeconds?: unknown;
+  blendSeconds?: unknown;
+  durationSeconds?: unknown;
+  loop?: unknown;
+  sourceClip?: unknown;
+  speed?: unknown;
+}
+
 export interface ITransformAnimationSample {
   channel: "position" | "rotation" | "scale";
   clip: string;
@@ -97,6 +132,77 @@ export function advanceAnimationPlaybackState(playback: IAnimationPlaybackState,
     ...playback,
     timeSeconds: playback.timeSeconds + fixedDelta * playback.speed,
   };
+}
+
+export class AnimationRuntimeController {
+  readonly #states = new Map<string, AnimationRuntimeStateRecord>();
+
+  play(entity: string, clip: string, options: IAnimationRuntimePlayOptions = {}): IAnimationRuntimeState {
+    const durationSeconds = positiveNumber(options.durationSeconds, 1);
+    const previous = this.#states.get(entity);
+    const blendSeconds = positiveNumber(options.blendSeconds, 0);
+    const blendElapsedSeconds = nonNegativeNumber(options.blendElapsedSeconds, 0);
+    const blend = previous !== undefined && previous.active && previous.clip !== clip && blendSeconds > 0
+      ? createBlendState(previous.clip, clip, blendSeconds, blendElapsedSeconds)
+      : undefined;
+    const state: AnimationRuntimeStateRecord = {
+      active: true,
+      activeState: typeof options.activeState === "string" ? options.activeState : clip,
+      ...(blend === undefined ? {} : { blend }),
+      clip,
+      durationSeconds,
+      entity,
+      loop: typeof options.loop === "boolean" ? options.loop : true,
+      sourceClip: typeof options.sourceClip === "string" ? options.sourceClip : clip,
+      speed: positiveNumber(options.speed, 1),
+      stopped: false,
+      timeSeconds: 0,
+    };
+    this.#states.set(entity, state);
+    return serializeAnimationRuntimeState(state);
+  }
+
+  query(entity: string, clip?: string): IAnimationRuntimeState {
+    const state = this.#states.get(entity);
+    if (state === undefined || (clip !== undefined && state.clip !== clip)) {
+      return stoppedAnimationRuntimeState(entity, clip);
+    }
+    return serializeAnimationRuntimeState(state);
+  }
+
+  stop(entity: string, clip?: string): IAnimationRuntimeState {
+    const state = this.#states.get(entity);
+    if (state === undefined || (clip !== undefined && state.clip !== clip)) {
+      const stopped = stoppedAnimationRuntimeState(entity, clip);
+      this.#states.set(entity, { ...stopped, durationSeconds: 1, stopReason: "requested" });
+      return { ...stopped, stopReason: "requested" };
+    }
+    const stopped: AnimationRuntimeStateRecord = {
+      ...state,
+      active: false,
+      blend: undefined,
+      stopped: true,
+      stopReason: "requested",
+    };
+    this.#states.set(entity, stopped);
+    return serializeAnimationRuntimeState(stopped);
+  }
+
+  advance(deltaSeconds: number): void {
+    if (!Number.isFinite(deltaSeconds) || deltaSeconds <= 0) {
+      return;
+    }
+    for (const [entity, state] of this.#states) {
+      if (!state.active) {
+        continue;
+      }
+      this.#states.set(entity, {
+        ...state,
+        blend: advanceBlend(state.blend, deltaSeconds),
+        timeSeconds: state.timeSeconds + deltaSeconds * state.speed,
+      });
+    }
+  }
 }
 
 export function sampleTransformAnimations(
@@ -147,6 +253,79 @@ function sampleTrack(
 
 function round(value: number): number {
   return Number(value.toFixed(6));
+}
+
+type AnimationRuntimeStateRecord = Omit<IAnimationRuntimeState, "normalizedTime"> & { durationSeconds: number };
+
+function serializeAnimationRuntimeState(state: AnimationRuntimeStateRecord): IAnimationRuntimeState {
+  return {
+    active: state.active,
+    activeState: state.activeState,
+    ...(state.blend === undefined ? {} : { blend: state.blend }),
+    clip: state.clip,
+    entity: state.entity,
+    loop: state.loop,
+    normalizedTime: normalizedAnimationTime(state.timeSeconds, state.durationSeconds, state.loop),
+    sourceClip: state.sourceClip,
+    speed: round(state.speed),
+    stopped: state.stopped,
+    ...(state.stopReason === undefined ? {} : { stopReason: state.stopReason }),
+    timeSeconds: round(state.timeSeconds),
+  };
+}
+
+function createBlendState(fromClip: string, toClip: string, durationSeconds: number, elapsedSeconds: number): IAnimationRuntimeBlendState {
+  const elapsed = Math.min(durationSeconds, Math.max(0, elapsedSeconds));
+  const alpha = durationSeconds <= 0 ? 1 : elapsed / durationSeconds;
+  return {
+    complete: elapsed >= durationSeconds,
+    durationSeconds: round(durationSeconds),
+    elapsedSeconds: round(elapsed),
+    fromClip,
+    fromWeight: round(1 - alpha),
+    toClip,
+    toWeight: round(alpha),
+  };
+}
+
+function advanceBlend(blend: IAnimationRuntimeBlendState | undefined, deltaSeconds: number): IAnimationRuntimeBlendState | undefined {
+  if (blend === undefined) {
+    return undefined;
+  }
+  return createBlendState(blend.fromClip, blend.toClip, blend.durationSeconds, blend.elapsedSeconds + deltaSeconds);
+}
+
+function stoppedAnimationRuntimeState(entity: string, clip?: string): IAnimationRuntimeState {
+  const resolvedClip = clip ?? "";
+  return {
+    active: false,
+    activeState: resolvedClip,
+    clip: resolvedClip,
+    entity,
+    loop: false,
+    normalizedTime: 0,
+    sourceClip: resolvedClip,
+    speed: 0,
+    stopped: true,
+    stopReason: "not-found",
+    timeSeconds: 0,
+  };
+}
+
+function normalizedAnimationTime(timeSeconds: number, durationSeconds: number, loop: boolean): number {
+  if (durationSeconds <= 0) {
+    return 0;
+  }
+  const normalized = timeSeconds / durationSeconds;
+  return round(loop ? normalized % 1 : Math.min(1, normalized));
+}
+
+function positiveNumber(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function nonNegativeNumber(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : fallback;
 }
 
 function traceAssetAnimation(

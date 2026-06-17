@@ -1146,7 +1146,7 @@ function validateAssetMetadata(asset: IAssetsManifest["assets"][number], path: s
   for (const key of Object.keys(raw)) {
     if (!allowed.has(key)) {
       diagnostics.push({
-        code: key === "blendGraph" || key === "engineController" || key === "ik" || key === "particles" || key === "retargeting" || key === "stateMachine" ? "TN_IR_ANIMATION_FIELD_UNSUPPORTED" : "TN_IR_ASSET_FIELD_UNSUPPORTED",
+        code: unsupportedAssetFieldCode(key),
         message: `Asset '${asset.id}' uses unsupported field '${key}'.`,
         path: `${path}/${key}`,
         suggestion: "Use constrained animationGraph and particleEmitters metadata; keep engine controllers, IK, retargeting, and unbounded particles out of portable IR.",
@@ -1179,6 +1179,28 @@ function validateAssetMetadata(asset: IAssetsManifest["assets"][number], path: s
   if (asset.kind === "render-target") {
     validateRenderTargetAsset(asset, path, diagnostics);
   }
+}
+
+function unsupportedAssetFieldCode(key: string): string {
+  if (key === "mask" || key === "masks" || key === "boneMask" || key === "boneMasks" || key === "layers") {
+    return "TN_IR_ANIMATION_MASKS_UNSUPPORTED";
+  }
+  if (key === "morphTargets" || key === "morphTargetTracks" || key === "morphWeights") {
+    return "TN_IR_MORPH_TARGET_ANIMATION_UNSUPPORTED";
+  }
+  if (key === "retargeting" || key === "retargetMap") {
+    return "TN_IR_RETARGETING_UNSUPPORTED";
+  }
+  if (key === "ik" || key === "inverseKinematics") {
+    return "TN_IR_IK_UNSUPPORTED";
+  }
+  if (key === "propertyAnimations" || key === "propertyTracks" || key === "uiAnimations") {
+    return "TN_IR_PROPERTY_ANIMATION_UNSUPPORTED";
+  }
+  if (key === "blendGraph" || key === "engineController" || key === "particles" || key === "stateMachine") {
+    return "TN_IR_ANIMATION_FIELD_UNSUPPORTED";
+  }
+  return "TN_IR_ASSET_FIELD_UNSUPPORTED";
 }
 
 function validateRenderTargetAsset(

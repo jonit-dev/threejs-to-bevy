@@ -780,6 +780,101 @@ function __tnInvokeSystem(options) {
         origin: roundVec3(origin)
       };
     };
+    const animations = {};
+    const normalizeEntityRef = (entity) => typeof entity === "string" ? entity : entity.id;
+    const roundScalar = (value) => Number(Number(value).toFixed(6));
+    const positiveRuntimeNumber = (value, fallback) => Number.isFinite(Number(value)) && Number(value) > 0 ? Number(value) : fallback;
+    const nonNegativeRuntimeNumber = (value, fallback) => Number.isFinite(Number(value)) && Number(value) >= 0 ? Number(value) : fallback;
+    const normalizedAnimationTime = (timeSeconds, durationSeconds, loop) => {
+      if (durationSeconds <= 0) return 0;
+      const normalized = timeSeconds / durationSeconds;
+      return roundScalar(loop ? normalized % 1 : Math.min(1, normalized));
+    };
+    const createBlendState = (fromClip, toClip, durationSeconds, elapsedSeconds) => {
+      const elapsed = Math.min(durationSeconds, Math.max(0, elapsedSeconds));
+      const alpha = durationSeconds <= 0 ? 1 : elapsed / durationSeconds;
+      return {
+        complete: elapsed >= durationSeconds,
+        durationSeconds: roundScalar(durationSeconds),
+        elapsedSeconds: roundScalar(elapsed),
+        fromClip,
+        fromWeight: roundScalar(1 - alpha),
+        toClip,
+        toWeight: roundScalar(alpha)
+      };
+    };
+    const serializeAnimationState = (state) => ({
+      active: state.active,
+      activeState: state.activeState,
+      ...(state.blend === undefined ? {} : { blend: state.blend }),
+      clip: state.clip,
+      entity: state.entity,
+      loop: state.loop,
+      normalizedTime: normalizedAnimationTime(state.timeSeconds, state.durationSeconds, state.loop),
+      sourceClip: state.sourceClip,
+      speed: roundScalar(state.speed),
+      stopped: state.stopped,
+      ...(state.stopReason === undefined ? {} : { stopReason: state.stopReason }),
+      timeSeconds: roundScalar(state.timeSeconds)
+    });
+    const stoppedAnimationState = (entity, clip, stopReason) => ({
+      active: false,
+      activeState: clip || "",
+      clip: clip || "",
+      entity,
+      loop: false,
+      normalizedTime: 0,
+      sourceClip: clip || "",
+      speed: 0,
+      stopped: true,
+      stopReason,
+      timeSeconds: 0
+    });
+    const animationPlay = (entity, clip, options = {}) => {
+      const entityId = normalizeEntityRef(entity);
+      const previous = animations[entityId];
+      const blendSeconds = positiveRuntimeNumber(options.blendSeconds, 0);
+      const blendElapsedSeconds = nonNegativeRuntimeNumber(options.blendElapsedSeconds, 0);
+      const blend = previous && previous.active && previous.clip !== clip && blendSeconds > 0
+        ? createBlendState(previous.clip, clip, blendSeconds, blendElapsedSeconds)
+        : undefined;
+      const state = {
+        active: true,
+        activeState: typeof options.activeState === "string" ? options.activeState : clip,
+        ...(blend === undefined ? {} : { blend }),
+        clip,
+        durationSeconds: positiveRuntimeNumber(options.durationSeconds, 1),
+        entity: entityId,
+        loop: typeof options.loop === "boolean" ? options.loop : true,
+        sourceClip: typeof options.sourceClip === "string" ? options.sourceClip : clip,
+        speed: positiveRuntimeNumber(options.speed, 1),
+        stopped: false,
+        timeSeconds: 0
+      };
+      animations[entityId] = state;
+      return serializeAnimationState(state);
+    };
+    const animationQuery = (entity, clip) => {
+      const entityId = normalizeEntityRef(entity);
+      const state = animations[entityId];
+      if (!state || (clip !== undefined && state.clip !== clip)) return stoppedAnimationState(entityId, clip, "not-found");
+      return serializeAnimationState(state);
+    };
+    const animationStop = (entity, clip) => {
+      const entityId = normalizeEntityRef(entity);
+      const state = animations[entityId];
+      if (!state || (clip !== undefined && state.clip !== clip)) {
+        const stopped = stoppedAnimationState(entityId, clip, "requested");
+        animations[entityId] = { ...stopped, durationSeconds: 1 };
+        return stopped;
+      }
+      state.active = false;
+      state.blend = undefined;
+      state.stopped = true;
+      state.stopReason = "requested";
+      animations[entityId] = state;
+      return serializeAnimationState(state);
+    };
   const entities = data.entities.map((source) => ({
     id: source.id,
     components: clone(source.components),
@@ -957,21 +1052,24 @@ function __tnInvokeSystem(options) {
     },
     animation: {
       play(entity, clip, options = {}) {
-        effects.services.push({ service: "animation.play", payload: { request: { entity, clip, options: clone(options) }, result: { accepted: true } } });
+        const entityId = normalizeEntityRef(entity);
+        const result = { ...animationPlay(entityId, clip, options), accepted: true };
+        effects.services.push({ service: "animation.play", payload: { request: { entity: entityId, clip, options: clone(options) }, result } });
+        return clone(result);
       },
       query(entity, clip) {
-        const request = clip === undefined ? { entity } : { entity, clip };
-        const result = clip === undefined
-          ? { active: false, entity, paused: false, stopped: true, timeSeconds: 0 }
-          : { active: false, clip, entity, paused: false, stopped: true, timeSeconds: 0 };
+        const entityId = normalizeEntityRef(entity);
+        const request = clip === undefined ? { entity: entityId } : { entity: entityId, clip };
+        const result = animationQuery(entityId, clip);
         effects.services.push({ service: "animation.query", payload: { request, result } });
-        return result;
+        return clone(result);
       },
       stop(entity, clip) {
-        const request = clip === undefined ? { entity } : { entity, clip };
-        const result = { accepted: true, stopped: true };
+        const entityId = normalizeEntityRef(entity);
+        const request = clip === undefined ? { entity: entityId } : { entity: entityId, clip };
+        const result = { ...animationStop(entityId, clip), accepted: true };
         effects.services.push({ service: "animation.stop", payload: { request, result } });
-        return result;
+        return clone(result);
       }
     }
   };

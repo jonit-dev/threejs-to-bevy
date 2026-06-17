@@ -296,6 +296,25 @@ test("should include capability tags for each conformance fixture", async () => 
     "overlay:transparent",
     "overlay:webview",
   ]);
+  assertFixtureCapabilities(byName, "v9-animation-state", [
+    "scripting:schedule.update",
+    "scripting:script-bundle",
+    "scripting:service.animation.play",
+    "scripting:service.animation.query",
+    "scripting:service.animation.stop",
+    "scripting:systems",
+  ]);
+  assertFixtureCapabilities(byName, "v9-animation-blending", [
+    "animation:blend.crossfade",
+    "animation:clip-metadata",
+    "animation:graph",
+    "asset:model.glb",
+    "scripting:schedule.update",
+    "scripting:script-bundle",
+    "scripting:service.animation.play",
+    "scripting:service.animation.query",
+    "scripting:systems",
+  ]);
 });
 
 function assertFixtureCapabilities(

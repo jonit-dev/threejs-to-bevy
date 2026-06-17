@@ -69,9 +69,9 @@ test("should log declared service and reject undeclared service", () => {
       events: [],
       resources: [],
       services: [
-        { payload: { request: { clip: "run", entity: "player", options: {} }, result: { accepted: true } }, service: "animation.play" },
-        { payload: { request: { clip: "run", entity: "player" }, result: { active: false, clip: "run", entity: "player", paused: false, stopped: true, timeSeconds: 0 } }, service: "animation.query" },
-        { payload: { request: { entity: "player" }, result: { accepted: true, stopped: true } }, service: "animation.stop" },
+        { payload: { request: { clip: "run", entity: "player", options: {} }, result: { accepted: true, active: true, activeState: "run", clip: "run", entity: "player", loop: true, normalizedTime: 0, sourceClip: "run", speed: 1, stopped: false, timeSeconds: 0 } }, service: "animation.play" },
+        { payload: { request: { clip: "run", entity: "player" }, result: { active: true, activeState: "run", clip: "run", entity: "player", loop: true, normalizedTime: 0, sourceClip: "run", speed: 1, stopped: false, timeSeconds: 0 } }, service: "animation.query" },
+        { payload: { request: { entity: "player" }, result: { accepted: true, active: false, activeState: "run", clip: "run", entity: "player", loop: true, normalizedTime: 0, sourceClip: "run", speed: 1, stopped: true, stopReason: "requested", timeSeconds: 0 } }, service: "animation.stop" },
       ],
     },
     { frame: 1, tick: 2 },
@@ -81,7 +81,7 @@ test("should log declared service and reject undeclared service", () => {
   assert.deepEqual(allowed.entries[0], {
     frame: 1,
     kind: "service",
-    payload: { request: { clip: "run", entity: "player", options: {} }, result: { accepted: true } },
+    payload: { request: { clip: "run", entity: "player", options: {} }, result: { accepted: true, active: true, activeState: "run", clip: "run", entity: "player", loop: true, normalizedTime: 0, sourceClip: "run", speed: 1, stopped: false, timeSeconds: 0 } },
     schedule: "fixedUpdate",
     service: "animation.play",
     system: "move",

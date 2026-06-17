@@ -1,0 +1,26 @@
+{
+  "schema": "threenative.resource-schemas",
+  "version": "0.1.0",
+  "schemas": {
+    "AnimationReport": {
+      "fields": {
+        "play": {
+          "kind": "object",
+          "required": false
+        },
+        "blend": {
+          "kind": "object",
+          "required": false
+        },
+        "idle": {
+          "kind": "object",
+          "required": false
+        },
+        "query": {
+          "kind": "object",
+          "required": false
+        }
+      }
+    }
+  }
+}

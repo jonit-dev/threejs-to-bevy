@@ -4,67 +4,54 @@ export interface IAnimationPlayRequest {
   options: Record<string, unknown>;
 }
 
-export interface IAnimationPlayResult {
+import type { IAnimationRuntimeState } from "../../animation.js";
+
+export type IAnimationPlayResult = IAnimationRuntimeState & {
   accepted: true;
-}
+};
 
 export interface IAnimationStopRequest {
   clip?: string;
   entity: string;
 }
 
-export interface IAnimationStopResult {
+export type IAnimationStopResult = IAnimationRuntimeState & {
   accepted: true;
-  stopped: true;
-}
+};
 
 export interface IAnimationQueryRequest {
   clip?: string;
   entity: string;
 }
 
-export interface IAnimationQueryResult {
-  active: boolean;
-  clip?: string;
-  entity: string;
-  paused: boolean;
-  stopped: boolean;
-  timeSeconds: number;
-}
+export type IAnimationQueryResult = IAnimationRuntimeState;
 
-export function animationPlayPayload(request: IAnimationPlayRequest): {
+export function animationPlayPayload(request: IAnimationPlayRequest, result: IAnimationRuntimeState): {
   request: IAnimationPlayRequest;
   result: IAnimationPlayResult;
 } {
   return {
     request,
-    result: { accepted: true },
+    result: { ...result, accepted: true },
   };
 }
 
-export function animationStopPayload(request: IAnimationStopRequest): {
+export function animationStopPayload(request: IAnimationStopRequest, result: IAnimationRuntimeState): {
   request: IAnimationStopRequest;
   result: IAnimationStopResult;
 } {
   return {
     request,
-    result: { accepted: true, stopped: true },
+    result: { ...result, accepted: true },
   };
 }
 
-export function animationQueryPayload(request: IAnimationQueryRequest): {
+export function animationQueryPayload(request: IAnimationQueryRequest, result: IAnimationRuntimeState): {
   request: IAnimationQueryRequest;
   result: IAnimationQueryResult;
 } {
   return {
     request,
-    result: {
-      active: false,
-      ...(request.clip === undefined ? {} : { clip: request.clip }),
-      entity: request.entity,
-      paused: false,
-      stopped: true,
-      timeSeconds: 0,
-    },
+    result,
   };
 }

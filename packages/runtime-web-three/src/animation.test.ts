@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { resolve } from "node:path";
 import test from "node:test";
 
-import { animationPlaybackState, sampleTransformAnimations, traceAnimationGraphs } from "./animation.js";
+import { AnimationRuntimeController, animationPlaybackState, sampleTransformAnimations, traceAnimationGraphs } from "./animation.js";
 import { loadBundle } from "./loadBundle.js";
 
 test("animation trace should match V7 graph and particle fixture", async () => {
@@ -62,6 +62,62 @@ test("animation playback should resolve active visual clip metadata", async () =
     sourceClip: "Armature|Run",
     speed: 1.25,
     timeSeconds: 0.625,
+  });
+});
+
+test("should return active runtime state when animation is playing", () => {
+  const animation = new AnimationRuntimeController();
+
+  assert.deepEqual(animation.play("player", "run", {
+    activeState: "locomotion.run",
+    durationSeconds: 2,
+    loop: true,
+    sourceClip: "Armature|Run",
+    speed: 1.25,
+  }), {
+    active: true,
+    activeState: "locomotion.run",
+    clip: "run",
+    entity: "player",
+    loop: true,
+    normalizedTime: 0,
+    sourceClip: "Armature|Run",
+    speed: 1.25,
+    stopped: false,
+    timeSeconds: 0,
+  });
+
+  animation.advance(0.5);
+
+  assert.deepEqual(animation.query("player", "run"), {
+    active: true,
+    activeState: "locomotion.run",
+    clip: "run",
+    entity: "player",
+    loop: true,
+    normalizedTime: 0.3125,
+    sourceClip: "Armature|Run",
+    speed: 1.25,
+    stopped: false,
+    timeSeconds: 0.625,
+  });
+});
+
+test("should report blend weights during graph transition", () => {
+  const animation = new AnimationRuntimeController();
+
+  animation.play("player", "idle", { durationSeconds: 2 });
+  animation.play("player", "run", { blendSeconds: 0.4, durationSeconds: 1 });
+  animation.advance(0.2);
+
+  assert.deepEqual(animation.query("player", "run").blend, {
+    complete: false,
+    durationSeconds: 0.4,
+    elapsedSeconds: 0.2,
+    fromClip: "idle",
+    fromWeight: 0.5,
+    toClip: "run",
+    toWeight: 0.5,
   });
 });
 

@@ -2,7 +2,10 @@ use std::{collections::BTreeMap, path::PathBuf};
 
 use serde_json::Value;
 use threenative_loader::load_bundle;
-use threenative_runtime::animation::{AnimationTraceInput, trace_animation_graphs};
+use threenative_runtime::animation::{
+    AnimationRuntimeController, AnimationRuntimePlayOptions, AnimationTraceInput,
+    trace_animation_graphs,
+};
 
 mod support;
 
@@ -67,6 +70,76 @@ fn animation_trace_should_keep_initial_state_when_parameter_does_not_match() {
     assert!(trace[0].transition.is_none());
     assert!(trace[0].events.is_empty());
     assert!(trace[0].queued_events.is_empty());
+}
+
+#[test]
+fn should_return_active_runtime_state_when_animation_is_playing() {
+    let mut animation = AnimationRuntimeController::default();
+
+    let started = animation.play(
+        "player",
+        "run",
+        AnimationRuntimePlayOptions {
+            active_state: Some("locomotion.run".to_owned()),
+            blend_elapsed_seconds: None,
+            blend_seconds: None,
+            duration_seconds: Some(2.0),
+            loop_: Some(true),
+            source_clip: Some("Armature|Run".to_owned()),
+            speed: Some(1.25),
+        },
+    );
+
+    assert!(started.active);
+    assert_eq!(started.entity, "player");
+    assert_eq!(started.clip, "run");
+    assert_eq!(started.source_clip, "Armature|Run");
+    assert_eq!(started.loop_, true);
+    assert_eq!(started.speed, 1.25);
+    assert_eq!(started.normalized_time, 0.0);
+    animation.advance(0.5);
+
+    let queried = animation.query("player", Some("run"));
+    assert_eq!(queried.active_state, "locomotion.run");
+    assert_eq!(queried.time_seconds, 0.625);
+    assert_eq!(queried.normalized_time, 0.3125);
+    assert!(!queried.stopped);
+}
+
+#[test]
+fn should_report_blend_weights_during_graph_transition() {
+    let mut animation = AnimationRuntimeController::default();
+
+    animation.play(
+        "player",
+        "idle",
+        AnimationRuntimePlayOptions {
+            duration_seconds: Some(2.0),
+            ..AnimationRuntimePlayOptions::default()
+        },
+    );
+    animation.play(
+        "player",
+        "run",
+        AnimationRuntimePlayOptions {
+            blend_seconds: Some(0.4),
+            duration_seconds: Some(1.0),
+            ..AnimationRuntimePlayOptions::default()
+        },
+    );
+    animation.advance(0.2);
+
+    let blend = animation
+        .query("player", Some("run"))
+        .blend
+        .expect("blend state should be active");
+    assert_eq!(blend.from_clip, "idle");
+    assert_eq!(blend.to_clip, "run");
+    assert_eq!(blend.duration_seconds, 0.4);
+    assert_eq!(blend.elapsed_seconds, 0.2);
+    assert_eq!(blend.from_weight, 0.5);
+    assert_eq!(blend.to_weight, 0.5);
+    assert!(!blend.complete);
 }
 
 fn write_animation_bundle() -> PathBuf {

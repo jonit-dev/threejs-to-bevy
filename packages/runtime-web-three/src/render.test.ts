@@ -5,7 +5,7 @@ import * as THREE from "three";
 import type { IRuntimeConfigIr } from "@threenative/ir";
 
 import { mapWorld } from "./mapWorld.js";
-import { applyRendererColorManagement, renderCameraViews, webBloomSettings, webRendererParameters } from "./render.js";
+import { applyRendererColorManagement, createRenderedParticleObjects, renderCameraViews, webBloomSettings, webRendererParameters } from "./render.js";
 
 function runtimeConfig(
   antialias: NonNullable<IRuntimeConfigIr["renderer"]>["antialias"],
@@ -176,4 +176,29 @@ test("should render active cameras in order with viewport scissors", () => {
   assert.deepEqual(records[0]?.viewport, { x: 0, y: 0, width: 400, height: 600 });
   assert.deepEqual(records[1]?.viewport, { x: 400, y: 0, width: 400, height: 600 });
   assert.ok(viewportCalls.length >= 4);
+});
+
+test("should create rendered particles from bounded emitter state", () => {
+  const particles = createRenderedParticleObjects({
+    schema: "threenative.assets",
+    version: "0.1.0",
+    assets: [
+      {
+        id: "model.hero",
+        kind: "model",
+        format: "glb",
+        path: "assets/hero.glb",
+        particleEmitters: [
+          { id: "dust", lifetimeSeconds: 1, maxParticles: 8, ratePerSecond: 4, shape: "point" },
+          { id: "spark", lifetimeSeconds: 1, maxParticles: 16, radius: 0.5, ratePerSecond: 12, shape: "sphere" },
+        ],
+      },
+    ],
+  }, 1);
+
+  assert.equal(particles.length, 2);
+  assert.deepEqual(particles.map((particle) => particle.name), ["particle.model.hero.dust", "particle.model.hero.spark"]);
+  assert.equal(particles[0]?.geometry.getAttribute("position").count, 4);
+  assert.equal(particles[1]?.geometry.getAttribute("position").count, 12);
+  assert.equal(particles[0]?.userData.threeNativeParticleEmitter.count, 4);
 });

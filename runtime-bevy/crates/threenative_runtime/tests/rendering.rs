@@ -25,6 +25,9 @@ use threenative_runtime::map_world::{
     NativeAnimationPlayback, advance_native_animation_playback, bind_native_animation_players,
     map_bundle_into_world,
 };
+use threenative_runtime::rendering::{
+    NativeParticleMaterialPolicy, NativeRenderedParticle, observe_rendered_particles,
+};
 
 mod support;
 use support::load_conformance_fixture;
@@ -198,6 +201,28 @@ fn rendering_should_map_procedural_mesh_binary_attributes() {
     map_bundle_into_world(app.world_mut(), &fixture.bundle).expect("bundle should map");
 
     assert_procedural_mesh_attributes(app.world_mut(), "prop.tree.pine");
+}
+
+#[test]
+fn should_spawn_rendered_particles_from_bounded_emitter_state() {
+    let fixture = load_conformance_fixture("v7-animation-graphs-particles");
+    let observations = observe_rendered_particles(&fixture.bundle, 1.0);
+    let mut app = App::new();
+
+    map_bundle_into_world(app.world_mut(), &fixture.bundle).expect("bundle should map");
+
+    assert_eq!(observations.len(), 1);
+    assert_eq!(observations[0].asset, "model.hero");
+    assert_eq!(observations[0].emitter, "dust");
+    assert_eq!(observations[0].count, 12);
+    let mut query = app
+        .world_mut()
+        .query::<(&NativeRenderedParticle, &NativeParticleMaterialPolicy)>();
+    let rendered = query.iter(app.world()).collect::<Vec<_>>();
+    assert_eq!(rendered.len(), 12);
+    assert!(rendered.iter().all(|(particle, _)| particle.emitter == "dust"));
+    assert!(rendered.iter().all(|(_, material)| material.base_color == "#f6c36a"));
+    assert!(rendered.iter().all(|(_, material)| (material.opacity - 0.82).abs() < 0.001));
 }
 
 #[test]

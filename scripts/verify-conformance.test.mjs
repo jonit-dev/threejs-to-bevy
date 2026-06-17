@@ -156,7 +156,7 @@ test("should pass matching gate commands and save report path", async () => {
     });
 
     assert.equal(result.ok, true);
-    assert.equal(result.steps.length, 21);
+    assert.equal(result.steps.length, 23);
     assert.equal(result.reportPath.endsWith("artifacts/conformance/verification-report.json"), true);
     assert.equal(result.artifacts.nativeBasicSceneReportPath.endsWith("artifacts/conformance/basic-scene/bevy.report.json"), true);
     assert.equal(
@@ -259,9 +259,15 @@ test("should pass matching gate commands and save report path", async () => {
     assert.equal(result.artifacts.v7PerformanceWebReportPath.endsWith("artifacts/conformance/v7-performance-budgets/web.report.json"), true);
     assert.equal(result.artifacts.v7PerformanceNativeReportPath.endsWith("artifacts/conformance/v7-performance-budgets/bevy.report.json"), true);
     assert.equal(result.artifacts.v7PerformanceComparisonReportPath.endsWith("artifacts/conformance/v7-performance-budgets/comparison.report.json"), true);
+    assert.equal(result.artifacts.v9AnimationStateDiffPath.endsWith("artifacts/conformance/v9-animation-state/state-diff.json"), true);
+    assert.equal(result.artifacts.v9AnimationStateNativeTracePath.endsWith("artifacts/conformance/v9-animation-state/native-state.json"), true);
+    assert.equal(result.artifacts.v9AnimationStateWebTracePath.endsWith("artifacts/conformance/v9-animation-state/web-state.json"), true);
+    assert.equal(result.artifacts.v9AnimationBlendingReportPath.endsWith("artifacts/conformance/v9-animation-blending/blend-report.json"), true);
+    assert.equal(result.artifacts.v9AnimationBlendingNativeTracePath.endsWith("artifacts/conformance/v9-animation-blending/native-blend.json"), true);
+    assert.equal(result.artifacts.v9AnimationBlendingWebTracePath.endsWith("artifacts/conformance/v9-animation-blending/web-blend.json"), true);
     const report = JSON.parse(await readFile(result.reportPath, "utf8"));
     assert.equal(report.status, "pass");
-    assert.equal(report.steps.length, 21);
+    assert.equal(report.steps.length, 23);
     assert.equal(report.artifacts.nativeBasicSceneReportPath.endsWith("artifacts/conformance/basic-scene/bevy.report.json"), true);
     assert.equal(
       report.artifacts.nativePrimitiveMappingReportPath.endsWith("artifacts/conformance/primitive-mapping/bevy.report.json"),
@@ -363,6 +369,12 @@ test("should pass matching gate commands and save report path", async () => {
     assert.equal(report.artifacts.v7PerformanceWebReportPath.endsWith("artifacts/conformance/v7-performance-budgets/web.report.json"), true);
     assert.equal(report.artifacts.v7PerformanceNativeReportPath.endsWith("artifacts/conformance/v7-performance-budgets/bevy.report.json"), true);
     assert.equal(report.artifacts.v7PerformanceComparisonReportPath.endsWith("artifacts/conformance/v7-performance-budgets/comparison.report.json"), true);
+    assert.equal(report.artifacts.v9AnimationStateDiffPath.endsWith("artifacts/conformance/v9-animation-state/state-diff.json"), true);
+    assert.equal(report.artifacts.v9AnimationStateNativeTracePath.endsWith("artifacts/conformance/v9-animation-state/native-state.json"), true);
+    assert.equal(report.artifacts.v9AnimationStateWebTracePath.endsWith("artifacts/conformance/v9-animation-state/web-state.json"), true);
+    assert.equal(report.artifacts.v9AnimationBlendingReportPath.endsWith("artifacts/conformance/v9-animation-blending/blend-report.json"), true);
+    assert.equal(report.artifacts.v9AnimationBlendingNativeTracePath.endsWith("artifacts/conformance/v9-animation-blending/native-blend.json"), true);
+    assert.equal(report.artifacts.v9AnimationBlendingWebTracePath.endsWith("artifacts/conformance/v9-animation-blending/web-blend.json"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
