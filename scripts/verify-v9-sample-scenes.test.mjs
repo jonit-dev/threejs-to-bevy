@@ -1,0 +1,46 @@
+import assert from "node:assert/strict";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import test from "node:test";
+
+import { V9_SAMPLE_MATRIX, verifyV9SampleScenes } from "./verify-v9-sample-scenes.mjs";
+
+test("should require every V9 latest-merge domain to have a sample scene", () => {
+  const domains = new Set(V9_SAMPLE_MATRIX.map((sample) => sample.domain));
+  assert.ok(domains.has("animation"));
+  assert.ok(domains.has("physics-character"));
+  assert.ok(domains.has("assets-gltf-workflow"));
+  assert.ok(domains.has("rendering-lights"));
+});
+
+test("should fail when a sample scene bundle is missing required artifacts", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-v9-samples-"));
+  try {
+    const reportPath = join(root, "artifacts/v9/sample-scenes/verification-report.json");
+    const result = await verifyV9SampleScenes({
+      artifactDir: join(root, "artifacts/v9/sample-scenes"),
+      repoRoot: root,
+      reportPath,
+      run: async ({ name }) => ({
+        durationMs: 1,
+        exitCode: name.startsWith("build ") || name.startsWith("validate ") ? 0 : 0,
+        stderr: "",
+        stdout: "{}",
+      }),
+    });
+    const saved = JSON.parse(await readFile(reportPath, "utf8"));
+    assert.equal(result.ok, false);
+    assert.equal(saved.diagnostics[0]?.code, "TN_VERIFY_V9_SAMPLE_ARTIFACT_MISSING");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should require animated GLB provenance for skeletal animation samples", async () => {
+  const readme = await readFile("examples/v9-skeletal-animation/README.md", "utf8");
+  assert.match(readme, /source/i);
+  assert.match(readme, /license/i);
+  assert.match(readme.toLowerCase(), /sha256/);
+  assert.match(readme, /clip/i);
+});

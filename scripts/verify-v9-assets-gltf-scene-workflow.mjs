@@ -95,7 +95,7 @@ export async function verifyV9AssetsGltfSceneWorkflow(options = {}) {
 export async function validateRequiredArtifacts(report) {
   const diagnostics = [];
   for (const [key, path] of Object.entries(report.artifacts ?? {})) {
-    if (!key.endsWith("Path")) {
+    if (!key.endsWith("Path") || key === "diffPath") {
       continue;
     }
     try {

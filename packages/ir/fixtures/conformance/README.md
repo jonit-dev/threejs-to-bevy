@@ -43,6 +43,9 @@ only authored IR inputs and catalog documentation.
 | `v8-animation-controls` | `scripting:schedule.update`, `scripting:script-bundle`, `scripting:service.animation.query`, `scripting:service.animation.stop`, `scripting:systems` | V8 animation controls fixture for deterministic `animation.query` and `animation.stop` service effect-log parity across web and Bevy. |
 | `v9-animation-state` | `scripting:schedule.update`, `scripting:script-bundle`, `scripting:service.animation.play`, `scripting:service.animation.query`, `scripting:service.animation.stop`, `scripting:systems` | V9 animation state fixture for runtime-derived play, query, stop, and post-stop query service state parity across web and Bevy. |
 | `v9-animation-blending` | `animation:blend.crossfade`, `animation:clip-metadata`, `animation:graph`, `asset:model.glb`, `scripting:schedule.update`, `scripting:script-bundle`, `scripting:service.animation.play`, `scripting:service.animation.query`, `scripting:systems` | V9 animation blending fixture for service-triggered bounded crossfade state with portable source/target clips, weights, and elapsed blend time. |
+| `v9-physics-character` | `character:push-policy`, `navigation:static-regions`, `physics:broad-sensors`, `physics:primitive-solver-v2` | V9 physics/character fixture for primitive solver traces, broad sensors, character push policy, and static navigation queries. |
+| `v9-physics-character-solver` | `physics:collider.box`, `physics:collider.capsule`, `physics:primitive-solver-v2`, `physics:rigid-body.dynamic`, `physics:rigid-body.kinematic`, `physics:rigid-body.static` | V9 primitive solver fixture for bounded box/sphere/capsule rigid-body declarations. |
+| `v9-skybox-environment` | `environment:light-probes`, `environment:skybox`, `rendering:debug-gizmos`, `rendering:hlod-fades` | V9 rendering/lights fixture for skybox, probes, dense content budget metadata, and visual evidence. |
 | `v7-rich-ui-navigation` | `ui:action`, `ui:focus-order`, `ui:input-actions`, `ui:navigation`, `ui:node.button`, `ui:node.column`, `ui:node.stack`, `ui:runtime`, `ui:safe-area` | V7 UI fixture for portable focus order, navigation links, input action refs, safe-area metadata, and deterministic focus/activation trace evidence. |
 | `v7-spatial-audio-buses` | `asset:audio.ogg`, `asset:audio.wav`, `audio:autoplay`, `audio:bus`, `audio:listener`, `audio:loop`, `audio:music`, `audio:one-shot`, `audio:spatial-emitter`, `audio:volume`, `audio:volume-routing`, `ecs:events` | V7 audio fixture for portable bus routing, listener/emitter metadata, autoplay looping music, and event-triggered spatial one-shot observations. |
 | `v7-renderer-dense-content` | `asset:imported-transform`, `asset:model.gltf`, `environment:camera-bookmarks`, `environment:instances`, `environment:lod`, `environment:path`, `environment:scatter-instances`, `environment:scene`, `environment:source-assets`, `environment:terrain`, `rendering:instancing-observation`, `rendering:runtime-lod` | V7 renderer/content fixture for fixed runtime LOD selection, imported transform metadata, and model-backed repeated-instance observations. |
@@ -65,3 +68,15 @@ claim V7 runtime support. Instead, each category maps a V7 ticket to:
 
 This lets V7 feature tickets point at shared fixture and report paths before
 runtime support is promoted.
+
+## V9 Fixture Catalog
+
+`v9-fixture-catalog.json` is the machine-readable owner catalog for latest V9
+merge fixtures. Each entry records:
+
+- owner PRD path,
+- bundle path under `packages/ir/fixtures/conformance/`,
+- promoted capability tags,
+- expected report artifact paths,
+- whether visual evidence is required,
+- aggregate gate registration (`verify:v9`).

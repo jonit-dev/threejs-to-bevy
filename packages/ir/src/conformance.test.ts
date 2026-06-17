@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { access } from "node:fs/promises";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import test from "node:test";
@@ -323,6 +324,23 @@ test("should include capability tags for each conformance fixture", async () => 
     "physics:rigid-body.kinematic",
     "physics:rigid-body.static",
   ]);
+});
+
+test("should require every V9 catalog fixture to have a bundle and owner PRD", async () => {
+  const catalog = JSON.parse(await readFile(resolve(process.cwd(), "fixtures/conformance/v9-fixture-catalog.json"), "utf8"));
+
+  assert.equal(catalog.schema, "threenative.conformance.v9-fixture-catalog");
+  assert.equal(catalog.version, "0.1.0");
+  assert.ok(catalog.fixtures.length > 0);
+
+  for (const fixture of catalog.fixtures) {
+    assert.match(fixture.id, /^v9-/);
+    assert.ok(fixture.ownerPrd?.startsWith("docs/PRDs/v9/"), fixture.id);
+    assert.equal(fixture.aggregateGate, "verify:v9", fixture.id);
+    assert.ok(fixture.bundlePath.endsWith("/game.bundle"), fixture.id);
+    await access(resolve(process.cwd(), fixture.bundlePath));
+    assert.ok((fixture.promotedCapabilities ?? []).length > 0, fixture.id);
+  }
 });
 
 function assertFixtureCapabilities(

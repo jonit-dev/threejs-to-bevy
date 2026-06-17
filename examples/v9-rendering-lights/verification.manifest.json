@@ -1,0 +1,17 @@
+{
+  "schema": "threenative.verify.v9-sample",
+  "version": "0.1.0",
+  "domain": "rendering-lights",
+  "ownerPrd": "docs/PRDs/v9/V9-04-rendering-lights-post-processing-parity.md",
+  "promoted": [
+    "environment:skybox",
+    "environment:light-probes",
+    "rendering:directional-light",
+    "rendering:point-light"
+  ],
+  "deferred": [
+    "post-processing:taa",
+    "post-processing:fxaa",
+    "rendering:deferred-path"
+  ]
+}

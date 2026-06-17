@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
@@ -77,7 +78,7 @@ async function runNativeParticleTest(root, runner) {
       "--",
       "--nocapture",
     ],
-    { cwd: root },
+    { cwd: root, env: { ...process.env, PATH: `${resolve(homedir(), ".rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin")}:${process.env.PATH ?? ""}` } },
   );
 }
 

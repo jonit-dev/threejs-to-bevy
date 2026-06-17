@@ -11,7 +11,11 @@ import {
 } from "@threenative/sdk";
 
 const heroModel = modelAsset("model.hero", "assets/hero.glb", {
-  animations: [animationClip("run", { loop: true, sourceClip: "Run", speed: 1 })],
+  animations: [
+    animationClip("idle", { loop: true, sourceClip: "Armature|Idle", speed: 1 }),
+    animationClip("walk", { loop: true, sourceClip: "Armature|Walk", speed: 1 }),
+    animationClip("run", { loop: true, sourceClip: "Armature|Run", speed: 1 }),
+  ],
 });
 
 const scene = new Scene({ id: "v9.skeletal.animation.scene" });
