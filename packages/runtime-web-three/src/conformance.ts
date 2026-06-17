@@ -264,7 +264,7 @@ function reportAsset(asset: IAssetIr): IConformanceAssetReport {
     magFilter: "magFilter" in asset ? asset.magFilter : undefined,
     minFilter: "minFilter" in asset ? asset.minFilter : undefined,
     offset: "offset" in asset ? asset.offset : undefined,
-    path: "path" in asset ? asset.path : undefined,
+    ...("path" in asset && typeof asset.path === "string" ? { path: asset.path } : {}),
     primitive: "primitive" in asset ? asset.primitive : undefined,
     repeat: "repeat" in asset ? asset.repeat : undefined,
     rotation: "rotation" in asset ? asset.rotation : undefined,

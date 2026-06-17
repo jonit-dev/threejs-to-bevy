@@ -14,6 +14,9 @@ export async function copyAssetFiles(
   assets: ReadonlyArray<IInternalAsset>,
 ): Promise<void> {
   for (const asset of assets) {
+    if (asset.sourceMode !== undefined && asset.sourceMode !== "bundle") {
+      continue;
+    }
     if (typeof asset.path !== "string") {
       continue;
     }

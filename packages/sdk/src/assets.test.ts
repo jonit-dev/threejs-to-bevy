@@ -21,6 +21,7 @@ test("assets should create deterministic model animation metadata", () => {
     id: "model.hero",
     kind: "model",
     path: "assets/hero.glb",
+    sourceMode: "bundle",
   });
 });
 
@@ -66,6 +67,7 @@ test("assets should create texture sampler and transform metadata", () => {
     path: "assets/floor.png",
     repeat: [4, 2],
     rotation: 0.5,
+    sourceMode: "bundle",
     wrapS: "repeat",
     wrapT: "mirroredRepeat",
   });

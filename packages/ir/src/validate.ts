@@ -121,7 +121,7 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
   }
   if (assets !== undefined) {
     validateUniqueIds(assets.assets, `${manifest.files.assets}/assets`, "TN_IR_DUPLICATE_ASSET_ID", diagnostics);
-    await validateAssets(assets, bundlePath, manifest.files.assets, diagnostics);
+    await validateAssets(assets, targetProfile, bundlePath, manifest.files.assets, diagnostics);
   }
   if (environmentScene !== undefined) {
     diagnostics.push(...validateEnvironmentSceneIr(environmentScene, assets, manifest.entry.environmentScene ?? "environment.scene.json", input));
@@ -183,7 +183,7 @@ async function validateTargetBudgets(
   if (budgets === undefined || assets === undefined) {
     return;
   }
-  const files = assets.assets.filter((asset) => "path" in asset);
+  const files = assets.assets.filter((asset): asset is IAssetsManifest["assets"][number] & { path: string } => "path" in asset && typeof asset.path === "string");
   const sizes = await Promise.all(
     files.map(async (asset) => {
       try {
@@ -1030,14 +1030,38 @@ function validateUiNavigation(node: IUiNodeIr, path: string, diagnostics: IIrDia
   node.children?.forEach((child, index) => validateUiNavigation(child, `${path}/children/${index}`, diagnostics, ids, focusableIds));
 }
 
-async function validateAssets(assets: IAssetsManifest, bundlePath: string, path: string, diagnostics: IIrDiagnostic[]): Promise<void> {
+const MAX_EMBEDDED_ASSET_BYTES = 64 * 1024;
+
+async function validateAssets(
+  assets: IAssetsManifest,
+  targetProfile: ITargetProfile | undefined,
+  bundlePath: string,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+): Promise<void> {
   assets.assets.forEach((asset, index) => validateAssetMetadata(asset, `${path}/assets/${index}`, diagnostics));
+  validateAssetGroups(assets, `${path}/groups`, diagnostics);
   await Promise.all(
     assets.assets.map(async (asset, index) => {
       if (asset.kind === "mesh") {
         await validateMeshPayloadFiles(asset, bundlePath, `${path}/assets/${index}`, diagnostics);
       }
-      if (!("path" in asset)) {
+      const rawAsset = asset as unknown as Record<string, unknown>;
+      const sourceMode = rawAsset.sourceMode ?? ("path" in asset && typeof asset.path === "string" ? "bundle" : undefined);
+      validateAssetSource(asset, sourceMode, targetProfile, `${path}/assets/${index}`, diagnostics);
+      if (sourceMode !== "bundle") {
+        return;
+      }
+      if (!("path" in asset) || typeof asset.path !== "string") {
+        if (asset.kind !== "mesh" && asset.kind !== "render-target") {
+          diagnostics.push({
+            code: "TN_IR_ASSET_PATH_MISSING",
+            message: `Bundle asset '${asset.id}' must declare a bundle-relative path.`,
+            path: `${path}/assets/${index}/path`,
+            severity: "error",
+            suggestion: "Add a bundle-local path or use sourceMode 'embedded' or 'network'.",
+          });
+        }
         return;
       }
       const assetPath = `${path}/assets/${index}/path`;
@@ -1074,6 +1098,241 @@ async function validateAssets(assets: IAssetsManifest, bundlePath: string, path:
       }
     }),
   );
+}
+
+function validateAssetSource(
+  asset: IAssetsManifest["assets"][number],
+  sourceMode: unknown,
+  targetProfile: ITargetProfile | undefined,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (sourceMode !== undefined && sourceMode !== "bundle" && sourceMode !== "embedded" && sourceMode !== "network") {
+    diagnostics.push({
+      code: "TN_IR_ASSET_SOURCE_MODE_UNSUPPORTED",
+      message: `Asset '${asset.id}' uses unsupported sourceMode '${String(sourceMode)}'.`,
+      path: `${path}/sourceMode`,
+      severity: "error",
+      suggestion: "Use sourceMode 'bundle', 'embedded', or 'network'.",
+    });
+    return;
+  }
+  const raw = asset as unknown as Record<string, unknown>;
+  if (sourceMode === "bundle") {
+    if ("embedded" in raw || "network" in raw) {
+      diagnostics.push({
+        code: "TN_IR_ASSET_SOURCE_CONFLICT",
+        message: `Bundle asset '${asset.id}' must not declare embedded or network source metadata.`,
+        path,
+        severity: "error",
+        suggestion: "Remove embedded/network metadata or change sourceMode to the intended source.",
+      });
+    }
+    return;
+  }
+  if (sourceMode === "embedded") {
+    validateEmbeddedAssetSource(asset, raw.embedded, `${path}/embedded`, diagnostics);
+    if ("path" in asset && typeof asset.path === "string") {
+      diagnostics.push({
+        code: "TN_IR_ASSET_SOURCE_CONFLICT",
+        message: `Embedded asset '${asset.id}' must not declare a bundle path.`,
+        path: `${path}/path`,
+        severity: "error",
+        suggestion: "Remove path from embedded assets; embedded data is stored in assets.manifest.json.",
+      });
+    }
+    return;
+  }
+  if (sourceMode === "network") {
+    validateNetworkAssetSource(asset, raw.network, targetProfile, `${path}/network`, diagnostics);
+    if ("path" in asset && typeof asset.path === "string") {
+      diagnostics.push({
+        code: "TN_IR_ASSET_SOURCE_CONFLICT",
+        message: `Network asset '${asset.id}' must not declare a bundle path.`,
+        path: `${path}/path`,
+        severity: "error",
+        suggestion: "Use a bundle-local asset for offline/native targets or remove path for declared network assets.",
+      });
+    }
+  }
+}
+
+function validateEmbeddedAssetSource(
+  asset: IAssetsManifest["assets"][number],
+  value: unknown,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (!isRecord(value)) {
+    diagnostics.push({
+      code: "TN_IR_ASSET_EMBEDDED_SOURCE_INVALID",
+      message: `Embedded asset '${asset.id}' must declare embedded source metadata.`,
+      path,
+      severity: "error",
+      suggestion: "Declare embedded.data, embedded.encoding, embedded.byteLength, and embedded.mediaType.",
+    });
+    return;
+  }
+  for (const key of Object.keys(value)) {
+    if (!["byteLength", "data", "encoding", "hash", "mediaType"].includes(key)) {
+      diagnostics.push({ code: "TN_IR_ASSET_EMBEDDED_FIELD_UNSUPPORTED", message: `Embedded asset '${asset.id}' uses unsupported field '${key}'.`, path: `${path}/${key}`, severity: "error" });
+    }
+  }
+  if (value.encoding !== "base64") {
+    diagnostics.push({ code: "TN_IR_ASSET_EMBEDDED_ENCODING_UNSUPPORTED", message: "Embedded asset encoding must be base64.", path: `${path}/encoding`, severity: "error" });
+  }
+  if (typeof value.mediaType !== "string" || value.mediaType.trim() === "") {
+    diagnostics.push({ code: "TN_IR_ASSET_EMBEDDED_MEDIA_TYPE_INVALID", message: "Embedded asset mediaType must be a non-empty string.", path: `${path}/mediaType`, severity: "error" });
+  }
+  if (typeof value.data !== "string" || !/^[A-Za-z0-9+/]*={0,2}$/.test(value.data)) {
+    diagnostics.push({ code: "TN_IR_ASSET_EMBEDDED_DATA_INVALID", message: "Embedded asset data must be a base64 string.", path: `${path}/data`, severity: "error" });
+  }
+  if (!Number.isInteger(value.byteLength) || (value.byteLength as number) <= 0 || (value.byteLength as number) > MAX_EMBEDDED_ASSET_BYTES) {
+    diagnostics.push({
+      code: "TN_IR_ASSET_EMBEDDED_BYTES_INVALID",
+      limit: MAX_EMBEDDED_ASSET_BYTES,
+      message: `Embedded asset '${asset.id}' byteLength must be between 1 and ${MAX_EMBEDDED_ASSET_BYTES}.`,
+      path: `${path}/byteLength`,
+      severity: "error",
+      suggestion: "Keep embedded assets small or emit the asset as a bundle-local file.",
+      value: typeof value.byteLength === "number" ? value.byteLength : undefined,
+    });
+  }
+  if (value.hash !== undefined && (typeof value.hash !== "string" || value.hash.trim() === "")) {
+    diagnostics.push({ code: "TN_IR_ASSET_EMBEDDED_HASH_INVALID", message: "Embedded asset hash must be a non-empty string when provided.", path: `${path}/hash`, severity: "error" });
+  }
+}
+
+function validateNetworkAssetSource(
+  asset: IAssetsManifest["assets"][number],
+  value: unknown,
+  targetProfile: ITargetProfile | undefined,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (!isRecord(value)) {
+    diagnostics.push({
+      code: "TN_IR_ASSET_NETWORK_SOURCE_INVALID",
+      message: `Network asset '${asset.id}' must declare network source metadata.`,
+      path,
+      severity: "error",
+      suggestion: "Declare network.url and use HTTPS for web-hosted assets.",
+    });
+    return;
+  }
+  for (const key of Object.keys(value)) {
+    if (!["cachePolicy", "integrity", "url"].includes(key)) {
+      diagnostics.push({ code: "TN_IR_ASSET_NETWORK_FIELD_UNSUPPORTED", message: `Network asset '${asset.id}' uses unsupported field '${key}'.`, path: `${path}/${key}`, severity: "error" });
+    }
+  }
+  const url = value.url;
+  if (typeof url !== "string" || !isHttpsUrl(url)) {
+    diagnostics.push({
+      code: "TN_IR_ASSET_NETWORK_URL_INVALID",
+      message: `Network asset '${asset.id}' must use an HTTPS URL.`,
+      path: `${path}/url`,
+      severity: "error",
+      suggestion: "Use https:// URLs or bundle the asset locally.",
+      value: typeof url === "string" ? url : undefined,
+    });
+  }
+  if (value.integrity !== undefined && (typeof value.integrity !== "string" || value.integrity.trim() === "")) {
+    diagnostics.push({ code: "TN_IR_ASSET_NETWORK_INTEGRITY_INVALID", message: "Network asset integrity must be a non-empty string when provided.", path: `${path}/integrity`, severity: "error" });
+  }
+  if (value.cachePolicy !== undefined && !["immutable", "no-store", "revalidate"].includes(String(value.cachePolicy))) {
+    diagnostics.push({ code: "TN_IR_ASSET_NETWORK_CACHE_POLICY_INVALID", message: "Network asset cachePolicy must be immutable, no-store, or revalidate.", path: `${path}/cachePolicy`, severity: "error" });
+  }
+  const targets = targetProfile?.targets ?? [];
+  if (targets.length === 0 || targets.some((target) => target !== "web")) {
+    diagnostics.push({
+      code: "TN_IR_ASSET_NETWORK_TARGET_UNSUPPORTED",
+      message: `Asset '${asset.id}' uses network URL '${String(url)}' but target profile '${targets.join(",") || "unknown"}' disallows remote sources.`,
+      path,
+      severity: "error",
+      suggestion: "Bundle the asset locally with sourceMode 'bundle' for native/offline targets, or restrict the target profile to web.",
+      value: typeof url === "string" ? url : undefined,
+    });
+  }
+}
+
+function validateAssetGroups(assets: IAssetsManifest, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (assets.groups === undefined) {
+    return;
+  }
+  if (!Array.isArray(assets.groups)) {
+    diagnostics.push({ code: "TN_IR_ASSET_GROUPS_INVALID", message: "Asset manifest groups must be an array.", path, severity: "error" });
+    return;
+  }
+  validateUniqueIds(assets.groups, path, "TN_IR_ASSET_GROUP_DUPLICATE", diagnostics);
+  const assetIds = new Set(assets.assets.map((asset) => asset.id));
+  assets.groups.forEach((group, index) => {
+    const groupPath = `${path}/${index}`;
+    if (!isRecord(group)) {
+      diagnostics.push({ code: "TN_IR_ASSET_GROUP_INVALID", message: "Asset group must be an object.", path: groupPath, severity: "error" });
+      return;
+    }
+    for (const key of Object.keys(group)) {
+      if (!["failurePolicy", "id", "optional", "required", "timeoutMs"].includes(key)) {
+        diagnostics.push({ code: "TN_IR_ASSET_GROUP_FIELD_UNSUPPORTED", message: `Asset group '${String(group.id)}' uses unsupported field '${key}'.`, path: `${groupPath}/${key}`, severity: "error" });
+      }
+    }
+    if (typeof group.id !== "string" || group.id.trim() === "") {
+      diagnostics.push({ code: "TN_IR_ASSET_GROUP_ID_INVALID", message: "Asset group ID must be a non-empty string.", path: `${groupPath}/id`, severity: "error" });
+    }
+    validateAssetGroupRefs(group.required, assetIds, `${groupPath}/required`, diagnostics);
+    validateAssetGroupRefs(group.optional, assetIds, `${groupPath}/optional`, diagnostics, true);
+    if (group.failurePolicy !== undefined && group.failurePolicy !== "fail" && group.failurePolicy !== "warn") {
+      diagnostics.push({ code: "TN_IR_ASSET_GROUP_FAILURE_POLICY_INVALID", message: "Asset group failurePolicy must be fail or warn.", path: `${groupPath}/failurePolicy`, severity: "error" });
+    }
+    if (group.timeoutMs !== undefined && (!Number.isFinite(group.timeoutMs as number) || (group.timeoutMs as number) <= 0)) {
+      diagnostics.push({ code: "TN_IR_ASSET_GROUP_TIMEOUT_INVALID", message: "Asset group timeoutMs must be a positive finite number.", path: `${groupPath}/timeoutMs`, severity: "error" });
+    }
+  });
+}
+
+function validateAssetGroupRefs(
+  value: unknown,
+  assetIds: ReadonlySet<string>,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+  optional = false,
+): void {
+  if (value === undefined && optional) {
+    return;
+  }
+  if (!Array.isArray(value) || (!optional && value.length === 0)) {
+    diagnostics.push({ code: "TN_IR_ASSET_GROUP_REFS_INVALID", message: "Asset group references must be a non-empty string array.", path, severity: "error" });
+    return;
+  }
+  const seen = new Set<string>();
+  value.forEach((assetId, index) => {
+    const itemPath = `${path}/${index}`;
+    if (typeof assetId !== "string" || assetId.trim() === "") {
+      diagnostics.push({ code: "TN_IR_ASSET_GROUP_REF_INVALID", message: "Asset group references must be non-empty asset IDs.", path: itemPath, severity: "error" });
+      return;
+    }
+    if (seen.has(assetId)) {
+      diagnostics.push({ code: "TN_IR_ASSET_GROUP_REF_DUPLICATE", message: `Asset group references asset '${assetId}' more than once.`, path: itemPath, severity: "error" });
+    }
+    if (!assetIds.has(assetId)) {
+      diagnostics.push({
+        code: "TN_IR_ASSET_GROUP_ASSET_MISSING",
+        message: `Asset group references unknown asset '${assetId}'.`,
+        path: itemPath,
+        severity: "error",
+        suggestion: "Add the asset to assets.manifest.json or remove it from the group.",
+      });
+    }
+    seen.add(assetId);
+  });
+}
+
+function isHttpsUrl(value: string): boolean {
+  try {
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 async function validateMeshPayloadFiles(
@@ -1134,6 +1393,7 @@ async function validateMeshPayloadFiles(
 
 function validateAssetMetadata(asset: IAssetsManifest["assets"][number], path: string, diagnostics: IIrDiagnostic[]): void {
   const raw = asset as unknown as Record<string, unknown>;
+  const sourceFields = ["embedded", "network", "sourceMode"];
   const allowed = new Set(
     asset.kind === "mesh"
       ? ["attributes", "binaryAttributes", "binaryIndices", "bounds", "budget", "format", "generation", "id", "indices", "kind", "primitive", "size", "topology", "usage"]
@@ -1141,8 +1401,13 @@ function validateAssetMetadata(asset: IAssetsManifest["assets"][number], path: s
         ? ["center", "format", "id", "kind", "magFilter", "minFilter", "offset", "path", "repeat", "rotation", "wrapS", "wrapT"]
         : asset.kind === "render-target"
           ? ["format", "height", "id", "kind", "sampleCount", "usage", "width"]
-          : ["animationGraph", "animations", "bounds", "format", "id", "kind", "particleEmitters", "path"],
+          : asset.kind === "buffer"
+            ? ["format", "id", "kind", "path"]
+            : ["animationGraph", "animations", "bounds", "format", "id", "kind", "particleEmitters", "path"],
   );
+  if (asset.kind !== "mesh" && asset.kind !== "render-target") {
+    sourceFields.forEach((field) => allowed.add(field));
+  }
   for (const key of Object.keys(raw)) {
     if (!allowed.has(key)) {
       diagnostics.push({

@@ -413,6 +413,39 @@ export interface IGeneratedMeshBudgetIr {
   vertexCount: number;
 }
 
+export type AssetSourceMode = "bundle" | "embedded" | "network";
+export type AssetCachePolicy = "immutable" | "no-store" | "revalidate";
+
+export interface IEmbeddedAssetSourceIr {
+  byteLength: number;
+  data: string;
+  encoding: "base64";
+  hash?: string;
+  mediaType: string;
+}
+
+export interface INetworkAssetSourceIr {
+  cachePolicy?: AssetCachePolicy;
+  integrity?: string;
+  url: string;
+}
+
+export interface IAssetSourceIr {
+  embedded?: IEmbeddedAssetSourceIr;
+  network?: INetworkAssetSourceIr;
+  sourceMode?: AssetSourceMode;
+}
+
+export type AssetGroupFailurePolicy = "fail" | "warn";
+
+export interface IAssetGroupIr {
+  failurePolicy?: AssetGroupFailurePolicy;
+  id: string;
+  optional?: string[];
+  required: string[];
+  timeoutMs?: number;
+}
+
 export type IAssetIr =
   | {
       attributes?: readonly IMeshAttributeIr[];
@@ -450,8 +483,8 @@ export type IAssetIr =
       format: "bin";
       id: string;
       kind: "buffer";
-      path: string;
-    }
+      path?: string;
+    } & IAssetSourceIr
   | {
       animations?: Array<{
         id: string;
@@ -501,8 +534,8 @@ export type IAssetIr =
         ratePerSecond: number;
         shape: "point" | "sphere";
       }>;
-      path: string;
-    }
+      path?: string;
+    } & IAssetSourceIr
   | {
       center?: Vec2;
       format: "jpeg" | "png";
@@ -511,18 +544,18 @@ export type IAssetIr =
       magFilter?: TextureMagFilter;
       minFilter?: TextureMinFilter;
       offset?: Vec2;
-      path: string;
+      path?: string;
       repeat?: Vec2;
       rotation?: number;
       wrapS?: TextureWrapMode;
       wrapT?: TextureWrapMode;
-    }
+    } & IAssetSourceIr
   | {
       format: "mp3" | "ogg" | "wav";
       id: string;
       kind: "audio";
-      path: string;
-    }
+      path?: string;
+    } & IAssetSourceIr
   | {
       format: "depth24plus" | "rgba16f" | "rgba8";
       height: number;
@@ -537,6 +570,7 @@ export interface IAssetsManifest {
   schema: AssetsSchema;
   version: SchemaVersion;
   assets: IAssetIr[];
+  groups?: IAssetGroupIr[];
 }
 
 export interface IAudioOneShotIr {

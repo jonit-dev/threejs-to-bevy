@@ -255,6 +255,9 @@ async function resolveTargetReferenceEvidence(options: {
   if (asset === undefined || asset.kind !== "texture") {
     return { reason: `referenceImage '${referenceImage}' does not resolve to a texture asset.`, status: "missing" };
   }
+  if (asset.path === undefined) {
+    return { reason: `referenceImage '${referenceImage}' does not resolve to a bundle-local texture asset.`, status: "missing" };
+  }
 
   const sourcePath = resolve(options.bundlePath, asset.path);
   const screenshotDir = resolve(options.artifactDir, "screenshots");

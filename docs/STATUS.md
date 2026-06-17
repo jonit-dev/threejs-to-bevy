@@ -147,6 +147,16 @@ the rest of V8-10: public asset-group declarations, spawned glTF node
 query/update handles, material override handles, editor inspection commands,
 watch diagnostics, and state-preserving hot reload remain future work.
 
+V9-03 Phase 1 has started the declared asset workflow at the manifest contract
+layer: SDK declarations can now describe bundle-local, bounded embedded, and
+HTTPS network assets plus deterministic asset groups; compiler emission writes
+explicit `sourceMode` metadata and a default `bundle.requiredAssets` group; IR
+validation rejects oversized embedded payloads, unsupported network target
+profiles, unsafe bundle paths, duplicate groups, and group references to unknown
+assets. Runtime loading still only claims bundle-local path assets until later
+V9-03 phases promote remote/embedded loading behavior, glTF metadata, scene
+handles, inspection, and watch/reload policy.
+
 V8-11 now has a focused rendering-quality slice for fog and sky visual parity:
 `pnpm verify:v8:rendering-quality` builds `examples/v8-rendering-quality`,
 validates the bundle, captures web/native screenshots, checks nonblank output,
