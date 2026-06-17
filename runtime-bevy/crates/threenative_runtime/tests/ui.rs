@@ -5,15 +5,15 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use bevy::a11y::{AccessibilityNode, accesskit::Role};
+use bevy::a11y::{accesskit::Role, AccessibilityNode};
 use bevy::prelude::*;
 use bevy::text::BreakLineOn;
 use threenative_components::ThreeNativeId;
-use threenative_loader::{UiIr, UiNodeIr, load_bundle};
+use threenative_loader::{load_bundle, UiIr, UiNodeIr};
 use threenative_runtime::ui::{
+    build_native_ui, dispatch_native_ui_actions, map_ui_into_world, trace_ui_navigation,
     NativeUiAction, NativeUiActionEvent, NativeUiActionQueue, NativeUiBar, NativeUiGradient,
     NativeUiImageSrc, NativeUiKind, NativeUiScrollContainer, NativeUiShadow, NativeUiStyle,
-    build_native_ui, dispatch_native_ui_actions, map_ui_into_world, trace_ui_navigation,
 };
 
 mod support;
@@ -245,36 +245,50 @@ fn ui_should_dispatch_native_button_and_touch_actions() {
         root: UiNodeIr {
             action: None,
             accessibility_label: None,
+            anchor_id: None,
             children: vec![UiNodeIr {
                 action: Some("Jump".to_owned()),
                 accessibility_label: None,
+                anchor_id: None,
                 children: Vec::new(),
+                disabled: None,
                 focusable: None,
                 id: "jump".to_owned(),
+                image: None,
                 kind: "touchControl".to_owned(),
                 label: Some("Jump".to_owned()),
                 layout: None,
                 max: None,
+                min: None,
                 navigation: None,
+                orientation: None,
                 role: None,
                 spans: Vec::new(),
+                step: None,
                 src: None,
                 style: None,
                 text: None,
                 value: None,
+                value_text: None,
             }],
+            disabled: None,
             focusable: None,
             id: "hud".to_owned(),
+            image: None,
             kind: "column".to_owned(),
             label: None,
             layout: None,
             max: None,
+            min: None,
             navigation: None,
+            orientation: None,
             role: None,
             spans: Vec::new(),
+            step: None,
             src: None,
             text: None,
             value: None,
+            value_text: None,
             style: None,
         },
     };
@@ -293,12 +307,11 @@ fn ui_should_dispatch_native_button_and_touch_actions() {
     );
 
     app.update();
-    assert!(
-        app.world()
-            .resource::<NativeUiActionQueue>()
-            .events
-            .is_empty()
-    );
+    assert!(app
+        .world()
+        .resource::<NativeUiActionQueue>()
+        .events
+        .is_empty());
 
     app.world_mut()
         .entity_mut(jump)
@@ -326,19 +339,26 @@ fn ui_should_reject_unsupported_ui_node() {
         root: UiNodeIr {
             action: None,
             accessibility_label: None,
+            anchor_id: None,
             children: Vec::new(),
+            disabled: None,
             focusable: None,
             id: "bad".to_owned(),
+            image: None,
             kind: "html".to_owned(),
             label: None,
             layout: None,
             max: None,
+            min: None,
             navigation: None,
+            orientation: None,
             role: None,
             spans: Vec::new(),
+            step: None,
             src: None,
             text: None,
             value: None,
+            value_text: None,
             style: None,
         },
     };

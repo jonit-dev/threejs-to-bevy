@@ -548,6 +548,28 @@ function visitUiNode(node: IUiIr["root"], add: (domain: string, capability: stri
   if (node.kind === "image") {
     add("ui", "image");
   }
+  if (node.kind === "slider" || node.kind === "scrollbar" || node.kind === "contextMenu") {
+    add("ui", "widget");
+    add("ui", `widget.${node.kind}`);
+  }
+  if (node.disabled === true) {
+    add("ui", "disabled");
+  }
+  if (node.image !== undefined) {
+    add("ui", "image.metadata");
+    if (node.image.atlas !== undefined) {
+      add("ui", "image.atlas");
+    }
+    if (node.image.nineSlice !== undefined) {
+      add("ui", "image.nine-slice");
+    }
+    if (node.image.flipX === true || node.image.flipY === true) {
+      add("ui", "image.flip");
+    }
+    if (node.image.tileSize !== undefined) {
+      add("ui", "image.tile");
+    }
+  }
   if ((node.spans ?? []).length > 0) {
     add("ui", "rich-text");
   }

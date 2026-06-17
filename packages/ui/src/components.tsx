@@ -10,3 +10,6 @@ export const Row = (props: IUiNodeProps) => jsx("row", props);
 export const Column = (props: IUiNodeProps) => jsx("column", props);
 export const Stack = (props: IUiNodeProps) => jsx("stack", props);
 export const TouchControl = (props: IUiNodeProps) => jsx("touchControl", props);
+export const Slider = (props: IUiNodeProps) => jsx("slider", props);
+export const Scrollbar = (props: IUiNodeProps) => jsx("scrollbar", props);
+export const ContextMenu = (props: IUiNodeProps) => jsx("contextMenu", props);

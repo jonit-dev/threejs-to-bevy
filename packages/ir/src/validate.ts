@@ -948,7 +948,7 @@ function validateUi(ui: IUiIr, path: string, diagnostics: IIrDiagnostic[]): void
 function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[], ids: Set<string>, fontFamilies: Set<string>): void {
   const raw = node as unknown as Record<string, unknown>;
   for (const key of Object.keys(raw)) {
-    if (!["accessibilityLabel", "action", "binding", "children", "focusable", "id", "kind", "label", "layout", "max", "navigation", "role", "spans", "src", "style", "text", "value"].includes(key)) {
+    if (!["accessibilityLabel", "action", "anchorId", "binding", "children", "disabled", "focusable", "id", "image", "kind", "label", "layout", "max", "min", "navigation", "orientation", "role", "spans", "src", "step", "style", "text", "value", "valueText"].includes(key)) {
       diagnostics.push({
         code: "TN_IR_UI_FIELD_UNSUPPORTED",
         message: `UI node '${node.id}' uses unsupported field '${key}'.`,
@@ -959,8 +959,10 @@ function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnosti
   validateUiLayout(node.layout, `${path}/layout`, diagnostics);
   validateUiStyle(node.style, `${path}/style`, diagnostics);
   validateUiSpans(node, path, diagnostics, fontFamilies);
+  validateUiImageMetadata(node, path, diagnostics);
+  validateUiWidget(node, path, diagnostics);
   validateUiAccessibility(node, path, diagnostics);
-  if (!["bar", "button", "column", "image", "row", "stack", "text", "touchControl"].includes(node.kind)) {
+  if (!["bar", "button", "column", "contextMenu", "image", "row", "scrollbar", "slider", "stack", "text", "touchControl"].includes(node.kind)) {
     diagnostics.push({
       code: "TN_IR_UI_NODE_UNSUPPORTED",
       message: `Unsupported UI node kind '${String(node.kind)}'.`,
@@ -997,7 +999,133 @@ function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnosti
       });
     }
   }
+  if (raw.virtualKeyboard !== undefined) {
+    diagnostics.push({
+      code: "TN_IR_UI_WIDGET_VIRTUAL_KEYBOARD_UNSUPPORTED",
+      message: "Virtual keyboard widgets are deferred from the V9 retained UI widget set.",
+      path: `${path}/virtualKeyboard`,
+      severity: "error",
+      suggestion: "Use slider, scrollbar, or contextMenu widgets in V9; defer virtual keyboard UI until mobile packaging is promoted.",
+    });
+  }
   node.children?.forEach((child, index) => validateUiNode(child, `${path}/children/${index}`, diagnostics, ids, fontFamilies));
+}
+
+function validateUiImageMetadata(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[]): void {
+  const image = node.image;
+  if (image === undefined) {
+    return;
+  }
+  if (node.kind !== "image") {
+    diagnostics.push({ code: "TN_IR_UI_IMAGE_METADATA_INVALID", message: "UI image metadata is only supported on image nodes.", path: `${path}/image` });
+  }
+  if (image.scaleMode !== undefined && !["contain", "cover", "stretch"].includes(image.scaleMode)) {
+    diagnostics.push({ code: "TN_IR_UI_IMAGE_SCALE_MODE_INVALID", message: "UI image scaleMode must be contain, cover, or stretch.", path: `${path}/image/scaleMode` });
+  }
+  if (image.tint !== undefined && !/^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(image.tint)) {
+    diagnostics.push({ code: "TN_IR_UI_STYLE_COLOR_INVALID", message: "UI image tint must be #RRGGBB or #RRGGBBAA.", path: `${path}/image/tint` });
+  }
+  validatePositiveSize(image.sourceSize, `${path}/image/sourceSize`, diagnostics);
+  validatePositiveSize(image.tileSize, `${path}/image/tileSize`, diagnostics);
+  validateImageRect(image.atlas, image.sourceSize, `${path}/image/atlas`, diagnostics);
+  validateNineSlice(image.nineSlice, image.sourceSize, `${path}/image/nineSlice`, diagnostics);
+  if (image.nineSlice !== undefined && image.tileSize !== undefined) {
+    diagnostics.push({
+      code: "TN_IR_UI_IMAGE_MODE_INCOMPATIBLE",
+      message: "UI image nineSlice and tileSize cannot be combined in the V9 portable image metadata.",
+      path: `${path}/image`,
+      suggestion: "Use nineSlice for panel scaling or tileSize for repeated textures, not both.",
+    });
+  }
+}
+
+function validateUiWidget(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (node.kind !== "slider" && node.kind !== "scrollbar" && node.kind !== "contextMenu") {
+    return;
+  }
+  if (node.kind === "slider" || node.kind === "scrollbar") {
+    const min = node.min ?? 0;
+    const max = node.max ?? 1;
+    const value = node.value ?? min;
+    if (!Number.isFinite(min) || !Number.isFinite(max) || min >= max) {
+      diagnostics.push({ code: "TN_IR_UI_WIDGET_RANGE_INVALID", message: "UI slider/scrollbar min must be less than max.", path });
+    }
+    if (!Number.isFinite(value) || value < min || value > max) {
+      diagnostics.push({ code: "TN_IR_UI_WIDGET_VALUE_INVALID", message: "UI slider/scrollbar value must be inside min/max.", path: `${path}/value` });
+    }
+    if (node.step !== undefined && (!Number.isFinite(node.step) || node.step <= 0)) {
+      diagnostics.push({ code: "TN_IR_UI_WIDGET_STEP_INVALID", message: "UI slider/scrollbar step must be a finite positive number.", path: `${path}/step` });
+    }
+    if (node.orientation !== undefined && node.orientation !== "horizontal" && node.orientation !== "vertical") {
+      diagnostics.push({ code: "TN_IR_UI_WIDGET_ORIENTATION_INVALID", message: "UI slider/scrollbar orientation must be horizontal or vertical.", path: `${path}/orientation` });
+    }
+    if (node.kind === "slider" && node.action === undefined) {
+      diagnostics.push({ code: "TN_IR_UI_WIDGET_ACTION_MISSING", message: "UI slider must declare an action for portable value-change events.", path: `${path}/action` });
+    }
+  }
+  if (node.kind === "contextMenu") {
+    const children = node.children ?? [];
+    children.forEach((child, index) => {
+      if (child.kind !== "button") {
+        diagnostics.push({ code: "TN_IR_UI_CONTEXT_MENU_ITEM_INVALID", message: "UI contextMenu children must be button items.", path: `${path}/children/${index}/kind` });
+      }
+    });
+  }
+}
+
+function validatePositiveSize(value: { width: number; height: number } | undefined, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!Number.isFinite(value.width) || !Number.isFinite(value.height) || value.width <= 0 || value.height <= 0) {
+    diagnostics.push({ code: "TN_IR_UI_IMAGE_SIZE_INVALID", message: "UI image dimensions must be finite positive numbers.", path });
+  }
+}
+
+function validateImageRect(
+  rect: { x: number; y: number; width: number; height: number } | undefined,
+  sourceSize: { width: number; height: number } | undefined,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (rect === undefined) {
+    return;
+  }
+  if (![rect.x, rect.y, rect.width, rect.height].every(Number.isFinite) || rect.x < 0 || rect.y < 0 || rect.width <= 0 || rect.height <= 0) {
+    diagnostics.push({ code: "TN_IR_UI_IMAGE_ATLAS_INVALID", message: "UI image atlas rect must use finite non-negative origin and positive dimensions.", path });
+    return;
+  }
+  if (sourceSize !== undefined && (rect.x + rect.width > sourceSize.width || rect.y + rect.height > sourceSize.height)) {
+    diagnostics.push({
+      code: "TN_IR_UI_IMAGE_ATLAS_BOUNDS_INVALID",
+      message: "UI image atlas rect must fit inside sourceSize.",
+      path,
+      suggestion: "Adjust atlas x/y/width/height or update image.sourceSize to match the source texture.",
+    });
+  }
+}
+
+function validateNineSlice(
+  slice: { left: number; right: number; top: number; bottom: number } | undefined,
+  sourceSize: { width: number; height: number } | undefined,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (slice === undefined) {
+    return;
+  }
+  if (![slice.left, slice.right, slice.top, slice.bottom].every(Number.isFinite) || slice.left < 0 || slice.right < 0 || slice.top < 0 || slice.bottom < 0) {
+    diagnostics.push({ code: "TN_IR_UI_IMAGE_NINE_SLICE_INVALID", message: "UI image nineSlice insets must be finite non-negative numbers.", path });
+    return;
+  }
+  if (sourceSize !== undefined && (slice.left + slice.right >= sourceSize.width || slice.top + slice.bottom >= sourceSize.height)) {
+    diagnostics.push({
+      code: "TN_IR_UI_IMAGE_NINE_SLICE_BOUNDS_INVALID",
+      message: "UI image nineSlice insets must fit inside sourceSize without overlapping.",
+      path,
+      suggestion: "Reduce nineSlice insets or provide the correct sourceSize.",
+    });
+  }
 }
 
 function validateUiFonts(ui: IUiIr, path: string, diagnostics: IIrDiagnostic[]): Set<string> {
@@ -1072,14 +1200,14 @@ function validateUiAccessibility(node: IUiNodeIr, path: string, diagnostics: IIr
   const hasAccessibleName = typeof node.accessibilityLabel === "string" && node.accessibilityLabel.length > 0
     || typeof node.label === "string" && node.label.length > 0
     || typeof node.text === "string" && node.text.length > 0;
-  if (["bar", "button", "image", "touchControl"].includes(node.kind) && !hasAccessibleName) {
+  if (["bar", "button", "image", "scrollbar", "slider", "touchControl"].includes(node.kind) && !hasAccessibleName) {
     diagnostics.push({ code: "TN_IR_UI_ACCESSIBILITY_LABEL_MISSING", message: `UI ${node.kind} node '${node.id}' must declare label, text, or accessibilityLabel.`, path });
   }
   if (node.focusable === true && !hasAccessibleName) {
     diagnostics.push({ code: "TN_IR_UI_ACCESSIBILITY_FOCUSABLE_NAME_MISSING", message: `Focusable UI node '${node.id}' must declare label, text, or accessibilityLabel.`, path });
   }
-  if (node.role === "progressbar" && !hasAccessibleName) {
-    diagnostics.push({ code: "TN_IR_UI_ACCESSIBILITY_PROGRESS_NAME_MISSING", message: `UI progressbar node '${node.id}' must declare label, text, or accessibilityLabel.`, path });
+  if ((node.role === "progressbar" || node.kind === "slider" || node.kind === "scrollbar") && !hasAccessibleName) {
+    diagnostics.push({ code: "TN_IR_UI_ACCESSIBILITY_PROGRESS_NAME_MISSING", message: `UI range node '${node.id}' must declare label, text, or accessibilityLabel.`, path });
   }
   if (node.role === "list") {
     node.children?.forEach((child, index) => {

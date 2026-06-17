@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { IAssetsManifest, IMaterialsIr, IUiIr } from "@threenative/ir";
-import { Bar, Button, Column, Text, Ui } from "@threenative/ui";
+import { Bar, Button, Column, Image, Slider, Text, Ui } from "@threenative/ui";
 
 import { emitUi } from "./ui.js";
 import { deriveRequiredCapabilities } from "./capabilities.js";
@@ -51,6 +51,34 @@ test("should emit required font and native style capabilities", () => {
     "rich-text",
     "style.text",
   ]);
+});
+
+test("should emit image metadata and widget capabilities", () => {
+  const emitted = emitUi(
+    <Ui id="hud">
+      <Column id="settings">
+        <Image
+          id="panel"
+          accessibilityLabel="Settings panel"
+          src="assets/panel.png"
+          image={{
+            nineSlice: { left: 8, right: 8, top: 8, bottom: 8 },
+            scaleMode: "stretch",
+            sourceSize: { width: 64, height: 64 },
+          }}
+        />
+        <Slider id="volume" accessibilityLabel="Volume" action="SetVolume" min={0} max={1} value={0.5} step={0.05} />
+      </Column>
+    </Ui>,
+  );
+
+  const capabilities = deriveRequiredCapabilities({ assets: emptyAssets(), materials: emptyMaterials(), ui: emitted as IUiIr });
+
+  assert.equal(emitted.root.children?.[0]?.children?.[0]?.image?.nineSlice?.left, 8);
+  assert.deepEqual(
+    capabilities.ui?.filter((capability) => capability.startsWith("image.") || capability.startsWith("widget")),
+    ["image.metadata", "image.nine-slice", "widget", "widget.slider"],
+  );
 });
 
 function emptyAssets(): IAssetsManifest {

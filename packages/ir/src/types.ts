@@ -806,26 +806,44 @@ export type IUiAccessibilityRole = "button" | "group" | "image" | "list" | "list
 export interface IUiNodeIr {
   action?: string;
   accessibilityLabel?: string;
+  anchorId?: string;
   binding?: IUiBinding;
   children?: IUiNodeIr[];
+  disabled?: boolean;
   focusable?: boolean;
   id: string;
-  kind: "bar" | "button" | "column" | "image" | "row" | "stack" | "text" | "touchControl";
+  image?: IUiImageMetadataIr;
+  kind: "bar" | "button" | "column" | "contextMenu" | "image" | "row" | "scrollbar" | "slider" | "stack" | "text" | "touchControl";
   label?: string;
   layout?: IUiLayoutIr;
   max?: number;
+  min?: number;
   navigation?: {
     down?: string;
     left?: string;
     right?: string;
     up?: string;
   };
+  orientation?: "horizontal" | "vertical";
   role?: IUiAccessibilityRole;
   spans?: IUiRichTextSpanIr[];
+  step?: number;
   style?: IUiStyleIr;
   src?: string;
   text?: string;
   value?: number;
+  valueText?: string;
+}
+
+export interface IUiImageMetadataIr {
+  atlas?: { x: number; y: number; width: number; height: number };
+  flipX?: boolean;
+  flipY?: boolean;
+  nineSlice?: { left: number; right: number; top: number; bottom: number };
+  scaleMode?: "contain" | "cover" | "stretch";
+  sourceSize?: { width: number; height: number };
+  tileSize?: { width: number; height: number };
+  tint?: string;
 }
 
 export interface IUiFontAssetIr {

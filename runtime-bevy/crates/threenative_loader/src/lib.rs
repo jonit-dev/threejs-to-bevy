@@ -1066,26 +1066,68 @@ pub struct UiGlyphRangeIr {
 }
 
 #[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UiNodeIr {
-    #[serde(rename = "accessibilityLabel")]
     pub accessibility_label: Option<String>,
+    pub action: Option<String>,
+    pub anchor_id: Option<String>,
+    #[serde(default)]
+    pub children: Vec<UiNodeIr>,
+    pub disabled: Option<bool>,
+    pub focusable: Option<bool>,
     pub id: String,
+    pub image: Option<UiImageMetadataIr>,
     pub kind: String,
     pub label: Option<String>,
     pub layout: Option<UiLayoutIr>,
-    pub role: Option<String>,
-    pub src: Option<String>,
-    pub text: Option<String>,
-    pub action: Option<String>,
-    pub focusable: Option<bool>,
+    pub max: Option<f32>,
+    pub min: Option<f32>,
     pub navigation: Option<UiNavigationIr>,
+    pub orientation: Option<String>,
+    pub role: Option<String>,
     #[serde(default)]
     pub spans: Vec<UiRichTextSpanIr>,
+    pub step: Option<f32>,
     pub style: Option<UiStyleIr>,
+    pub src: Option<String>,
+    pub text: Option<String>,
     pub value: Option<f32>,
-    pub max: Option<f32>,
-    #[serde(default)]
-    pub children: Vec<UiNodeIr>,
+    pub value_text: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UiImageMetadataIr {
+    pub atlas: Option<UiAtlasRectIr>,
+    pub flip_x: Option<bool>,
+    pub flip_y: Option<bool>,
+    pub nine_slice: Option<UiNineSliceIr>,
+    pub scale_mode: Option<String>,
+    pub source_size: Option<UiImageSizeIr>,
+    pub tile_size: Option<UiImageSizeIr>,
+    pub tint: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct UiAtlasRectIr {
+    pub height: f32,
+    pub width: f32,
+    pub x: f32,
+    pub y: f32,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct UiImageSizeIr {
+    pub height: f32,
+    pub width: f32,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct UiNineSliceIr {
+    pub bottom: f32,
+    pub left: f32,
+    pub right: f32,
+    pub top: f32,
 }
 
 #[derive(Clone, Debug, Deserialize)]
