@@ -42,7 +42,12 @@ pub fn build_render_layer_map(bundle: &LoadedBundle) -> NativeRenderLayerMap {
         if let Some(layers) = entity.components.render_layers.as_ref() {
             names.extend(layers.layers.iter().cloned());
         }
-        if let Some(layers) = entity.components.camera.as_ref().and_then(|camera| camera.layers.as_ref()) {
+        if let Some(layers) = entity
+            .components
+            .camera
+            .as_ref()
+            .and_then(|camera| camera.layers.as_ref())
+        {
             names.extend(layers.iter().cloned());
         }
     }
@@ -90,15 +95,12 @@ pub fn active_camera_ids(bundle: &LoadedBundle) -> Vec<String> {
             return cameras
                 .iter()
                 .filter_map(|camera| {
-                    camera
-                        .as_str()
-                        .map(str::to_owned)
-                        .or_else(|| {
-                            camera
-                                .get("entity")
-                                .and_then(|entity| entity.as_str())
-                                .map(str::to_owned)
-                        })
+                    camera.as_str().map(str::to_owned).or_else(|| {
+                        camera
+                            .get("entity")
+                            .and_then(|entity| entity.as_str())
+                            .map(str::to_owned)
+                    })
                 })
                 .collect();
         }
@@ -117,18 +119,13 @@ pub fn active_camera_ids(bundle: &LoadedBundle) -> Vec<String> {
         .collect()
 }
 
-pub fn map_viewport(
-    viewport: [f32; 4],
-    physical_width: u32,
-    physical_height: u32,
-) -> Viewport {
+pub fn map_viewport(viewport: [f32; 4], physical_width: u32, physical_height: u32) -> Viewport {
     let width = physical_width.max(1);
     let height = physical_height.max(1);
     let physical_width = ((viewport[2] * width as f32).round() as u32).max(1);
     let physical_height = ((viewport[3] * height as f32).round() as u32).max(1);
     let physical_x = (viewport[0] * width as f32).round() as u32;
-    let physical_y =
-        ((1.0 - viewport[1] - viewport[3]) * height as f32).round() as u32;
+    let physical_y = ((1.0 - viewport[1] - viewport[3]) * height as f32).round() as u32;
     Viewport {
         physical_position: UVec2::new(physical_x, physical_y),
         physical_size: UVec2::new(physical_width, physical_height),
@@ -150,9 +147,7 @@ pub fn map_clear_color(clear: &threenative_loader::CameraClearIr) -> ClearColorC
 
 fn color_to_bevy(color: &threenative_loader::ColorIr) -> Color {
     match color {
-        threenative_loader::ColorIr::Hex(value) => {
-            parse_hex_color(value).unwrap_or(Color::BLACK)
-        }
+        threenative_loader::ColorIr::Hex(value) => parse_hex_color(value).unwrap_or(Color::BLACK),
         threenative_loader::ColorIr::Rgb(values) => Color::srgb(values[0], values[1], values[2]),
     }
 }
@@ -186,13 +181,10 @@ pub fn apply_camera_components(
             .map(map_clear_color)
             .unwrap_or_default(),
         target: render_target.unwrap_or(RenderTarget::Window(WindowRef::Primary)),
-        viewport: camera.viewport.as_ref().map(|viewport| {
-            map_viewport(
-                viewport.as_tuple(),
-                physical_size.x,
-                physical_size.y,
-            )
-        }),
+        viewport: camera
+            .viewport
+            .as_ref()
+            .map(|viewport| map_viewport(viewport.as_tuple(), physical_size.x, physical_size.y)),
         ..default()
     });
     let layer_names = camera
@@ -212,7 +204,11 @@ pub fn apply_camera_components(
 
 pub fn update_native_camera_helpers(
     mut queries: ParamSet<(
-        Query<(&mut Transform, &mut NativeCameraHelperState, &NativeCameraMetadata)>,
+        Query<(
+            &mut Transform,
+            &mut NativeCameraHelperState,
+            &NativeCameraMetadata,
+        )>,
         Query<(&ThreeNativeId, &Transform), Without<Camera>>,
     )>,
 ) {
@@ -274,10 +270,10 @@ fn apply_orbit_helper(
     };
     let offset = transform.translation - *target_position;
     let distance = offset.length();
-    let desired_distance = orbit
-        .distance
-        .unwrap_or(distance)
-        .clamp(orbit.min_distance.unwrap_or(0.0), orbit.max_distance.unwrap_or(f32::INFINITY));
+    let desired_distance = orbit.distance.unwrap_or(distance).clamp(
+        orbit.min_distance.unwrap_or(0.0),
+        orbit.max_distance.unwrap_or(f32::INFINITY),
+    );
     let offset = if distance > 0.0 {
         offset * (desired_distance / distance)
     } else {

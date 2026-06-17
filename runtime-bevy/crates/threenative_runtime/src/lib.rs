@@ -3,7 +3,7 @@ use std::path::Path;
 use bevy::prelude::*;
 use thiserror::Error;
 use threenative_components::ThreeNativeId;
-use threenative_loader::{load_bundle, LoadError, LoadedBundle, TransformComponent};
+use threenative_loader::{LoadError, LoadedBundle, TransformComponent, load_bundle};
 
 pub mod animation;
 pub mod asset_reload;
@@ -28,8 +28,8 @@ pub mod persistence;
 pub mod physics;
 pub mod physics_sensors;
 pub mod picking;
-pub mod rendering;
 pub mod render_targets;
+pub mod rendering;
 pub mod systems_context;
 pub mod systems_effects;
 pub mod systems_host;
@@ -104,7 +104,8 @@ pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeErro
             }),
     );
     rendering::apply_atmosphere_to_world(app.world_mut(), &bundle);
-    let environment_lighting = rendering::apply_environment_lighting_to_world(app.world_mut(), &bundle);
+    let environment_lighting =
+        rendering::apply_environment_lighting_to_world(app.world_mut(), &bundle);
     for diagnostic in environment_lighting.diagnostics {
         warn!("{diagnostic}");
     }

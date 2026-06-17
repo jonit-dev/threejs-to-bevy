@@ -4,6 +4,8 @@ import { basename, dirname, resolve } from "node:path";
 import {
   buildSceneInspectionReport,
   buildEditorInspectorSnapshot,
+  buildEditorToolSnapshot,
+  buildEditorVisualPanelSnapshot,
   diffEditorProjectSnapshots,
   validateEditorPropertyEdit,
   validateEditorProjectSnapshot,
@@ -124,6 +126,8 @@ async function inspectCommand(argv: readonly string[], cwd: string, json: boolea
     world: world.value,
   });
   const inspector = buildEditorInspectorSnapshot(documents.documents);
+  const visualPanels = buildEditorVisualPanelSnapshot(inspector);
+  const editorTools = buildEditorToolSnapshot(documents.documents);
   const outArg = flagValue(argv, "--out");
   if (outArg !== undefined) {
     const outPath = resolve(cwd, outArg);
@@ -157,6 +161,8 @@ async function inspectCommand(argv: readonly string[], cwd: string, json: boolea
       schema: report.schema,
       version: report.version,
     },
+    editorTools,
+    visualPanels,
   };
   if (json) {
     return { exitCode: 0, stdout: `${JSON.stringify(payload, null, 2)}\n` };

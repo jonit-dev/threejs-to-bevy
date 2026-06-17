@@ -75,7 +75,7 @@ export {
   type PickingPointerEvents,
   type PickingTargetKind,
 } from "./picking.js";
-export type { IRuntimeConfigIr } from "./runtimeConfig.js";
+export type { IRuntimeConfigIr, RendererAntialiasMode } from "./runtimeConfig.js";
 export { auditUiAccessibility, type IUiAccessibilityDiagnostic, type IUiAccessibilityReport } from "./uiAccessibility.js";
 export {
   buildComponentReflectionRegistry,
@@ -187,15 +187,25 @@ export {
 } from "./overlays.js";
 export {
   buildEditorInspectorSnapshot,
+  buildEditorToolSnapshot,
+  buildEditorVisualPanelSnapshot,
   diffEditorProjectSnapshots,
   validateEditorPropertyEdit,
   validateEditorProjectSnapshot,
   type EditorProjectDiffOperation,
+  type EditorVisualPanelKind,
   type IEditorEditableProperty,
   type IEditorHotReloadPolicy,
   type IEditorInspectorNode,
   type IEditorInspectorSnapshot,
   type IEditorProjectSnapshot,
+  type IEditorAssetPreview,
+  type IEditorGamepadViewerSnapshot,
+  type IEditorSceneViewerSnapshot,
+  type IEditorToolSnapshot,
+  type IEditorVisualPanel,
+  type IEditorVisualPanelRow,
+  type IEditorVisualPanelSnapshot,
 } from "./editorProject.js";
 export {
   buildSceneInspectionReport,

@@ -31,12 +31,12 @@ fn cube_fixture_directional_light_should_use_web_tuned_illuminance() {
     let mut app = App::new();
     map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map");
 
-    let mut query = app.world_mut().query::<(&ThreeNativeId, Option<&DirectionalLight>)>();
+    let mut query = app
+        .world_mut()
+        .query::<(&ThreeNativeId, Option<&DirectionalLight>)>();
     let light = query
         .iter(app.world())
-        .find_map(|(stable_id, light)| {
-            (stable_id.0 == "light.key").then_some(light).flatten()
-        })
+        .find_map(|(stable_id, light)| (stable_id.0 == "light.key").then_some(light).flatten())
         .expect("cube key light should be spawned");
 
     assert!(

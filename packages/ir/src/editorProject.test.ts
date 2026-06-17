@@ -3,6 +3,8 @@ import test from "node:test";
 
 import {
   buildEditorInspectorSnapshot,
+  buildEditorToolSnapshot,
+  buildEditorVisualPanelSnapshot,
   diffEditorProjectSnapshots,
   type IEditorProjectSnapshot,
   validateEditorPropertyEdit,
@@ -106,6 +108,71 @@ test("should build inspector metadata from structured bundle documents", () => {
   assert.equal(inspector.assetRefs[0], "model.player");
   assert.equal(inspector.editableProperties.some((property) => property.path.endsWith("/Transform/position/1")), true);
   assert.equal(inspector.hotReload.some((entry) => entry.policy === "reloadRejected"), true);
+});
+
+test("should build visual editor panel metadata from inspector data", () => {
+  const inspector = buildEditorInspectorSnapshot({
+    "assets.manifest.json": { assets: [{ id: "model.player" }] },
+    "world.ir.json": {
+      entities: [{ components: { MeshRenderer: { mesh: "model.player" }, Transform: { position: [0, 1, 0] } }, id: "player" }],
+    },
+  });
+  inspector.diagnostics.push({
+    code: "TN_TEST",
+    message: "Example diagnostic.",
+    path: "world.ir.json/entities/0",
+    severity: "warning",
+  });
+
+  const panels = buildEditorVisualPanelSnapshot(inspector);
+
+  assert.equal(panels.schema, "threenative.editor-visual-panels");
+  assert.equal(panels.selectedNode, "player");
+  assert.deepEqual(panels.summary, {
+    assets: 1,
+    diagnostics: 1,
+    editableProperties: inspector.editableProperties.length,
+    rootNodes: 1,
+  });
+  assert.equal(panels.panels.map((panel) => panel.id).join(","), "scene-hierarchy,properties,assets,diagnostics,hot-reload");
+  assert.equal(panels.panels[0]?.rows[0]?.label, "player");
+  assert.equal(panels.panels[1]?.rows.some((row) => row.path?.endsWith("/Transform/position/1")), true);
+  assert.equal(panels.panels[2]?.rows[0]?.label, "model.player");
+  assert.equal(panels.panels[3]?.rows[0]?.badge, "TN_TEST");
+  assert.equal(panels.panels[4]?.rows.some((row) => row.badge === "reloadRejected"), true);
+});
+
+test("should build scene viewer asset preview and gamepad tool metadata", () => {
+  const tools = buildEditorToolSnapshot({
+    "assets.manifest.json": {
+      assets: [
+        { format: "gltf", id: "model.player", kind: "model", path: "assets/player.gltf", sourceMode: "bundle" },
+        { format: "png", id: "tex.ui", kind: "texture", path: "assets/ui.png" },
+      ],
+    },
+    "input.ir.json": {
+      actions: [{ bindings: [{ control: "buttonSouth", device: "gamepad", required: false }], id: "Jump" }],
+      axes: [{ id: "MoveX", value: { control: "leftStickX", device: "gamepad", required: false } }],
+    },
+    "world.ir.json": {
+      entities: [
+        { components: { Camera: {}, Transform: { position: [0, 2, 6] } }, id: "camera" },
+        { components: { MeshRenderer: { mesh: "model.player" }, Transform: { position: [3, 0, -1] } }, id: "player" },
+      ],
+    },
+  });
+
+  assert.equal(tools.schema, "threenative.editor-tools");
+  assert.deepEqual(tools.sceneViewer.cameras, ["camera"]);
+  assert.deepEqual(tools.sceneViewer.renderables, ["player"]);
+  assert.deepEqual(tools.sceneViewer.bounds, { max: [3, 2, 6], min: [0, 0, -1] });
+  assert.equal(tools.assetPreview.selectedAsset, "model.player");
+  assert.deepEqual(tools.assetPreview.assets.map((asset) => asset.id), ["model.player", "tex.ui"]);
+  assert.deepEqual(
+    tools.gamepadViewer.controls.map((control) => `${control.owner}:${control.control}:${control.kind}`),
+    ["Jump:buttonSouth:button", "MoveX:leftStickX:axis"],
+  );
+  assert.deepEqual(tools.gamepadViewer.devices, [{ id: "declared-gamepad", status: "declared" }]);
 });
 
 function makeSnapshot(documents: Record<string, unknown>): IEditorProjectSnapshot {

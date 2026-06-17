@@ -1,14 +1,12 @@
+use ::threenative_runtime::{
+    cameras::{build_render_layer_map, render_layers_for_names, update_native_camera_helpers},
+    map_world::map_bundle_into_world,
+};
 use bevy::prelude::*;
 use bevy::render::camera::ClearColorConfig;
 use serde_json::json;
 use threenative_components::ThreeNativeId;
-use threenative_loader::{load_bundle, WorldEntity};
-use ::threenative_runtime::{
-    cameras::{
-        build_render_layer_map, render_layers_for_names, update_native_camera_helpers,
-    },
-    map_world::map_bundle_into_world,
-};
+use threenative_loader::{WorldEntity, load_bundle};
 
 #[test]
 fn should_map_ordered_cameras_to_bevy_camera_order_and_viewport() {
@@ -108,10 +106,10 @@ fn should_apply_follow_helper_before_rendering() {
         }))
         .expect("follow camera should deserialize"),
     });
-    bundle
-        .world
-        .resources
-        .insert("ActiveCamera".to_owned(), json!({ "entity": "camera.follow" }));
+    bundle.world.resources.insert(
+        "ActiveCamera".to_owned(),
+        json!({ "entity": "camera.follow" }),
+    );
 
     let mut app = App::new();
     map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map");
@@ -188,16 +186,18 @@ fn should_apply_a_custom_projection_matrix_to_a_native_camera() {
         }))
         .expect("custom projection camera should deserialize"),
     });
-    bundle
-        .world
-        .resources
-        .insert("ActiveCamera".to_owned(), json!({ "entity": "camera.custom" }));
+    bundle.world.resources.insert(
+        "ActiveCamera".to_owned(),
+        json!({ "entity": "camera.custom" }),
+    );
 
     let mut app = App::new();
     app.init_resource::<Assets<Image>>();
     map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map");
 
-    let mut query = app.world_mut().query::<&threenative_runtime::render_targets::NativeCustomProjection>();
+    let mut query = app
+        .world_mut()
+        .query::<&threenative_runtime::render_targets::NativeCustomProjection>();
     let projection = query
         .iter(app.world())
         .next()

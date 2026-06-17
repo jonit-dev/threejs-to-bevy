@@ -5,15 +5,18 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use bevy::a11y::{accesskit::Role, AccessibilityNode};
+use bevy::a11y::{AccessibilityNode, accesskit::Role};
 use bevy::prelude::*;
 use bevy::text::BreakLineOn;
 use threenative_components::ThreeNativeId;
-use threenative_loader::{load_bundle, UiIr, UiNodeIr};
+use threenative_loader::{UiIr, UiNodeIr, load_bundle};
 use threenative_runtime::ui::{
-    build_native_ui, dispatch_native_ui_actions, map_ui_into_world, trace_ui_navigation,
     NativeUiAction, NativeUiActionEvent, NativeUiActionQueue, NativeUiBar, NativeUiGradient,
-    NativeUiImageSrc, NativeUiKind, NativeUiScrollContainer, NativeUiShadow, NativeUiStyle,
+    NativeUiImageSrc, NativeUiKind, NativeUiRenderedGradient, NativeUiRenderedShadow,
+    NativeUiRenderedTextStyle, NativeUiScrollContainer, NativeUiShadow, NativeUiStyle,
+    build_native_ui, diagnose_native_ui_visual_support, dispatch_native_ui_actions,
+    map_ui_into_world, trace_native_ui_text_styles, trace_native_ui_visual_effects,
+    trace_ui_navigation,
 };
 
 mod support;
@@ -216,6 +219,61 @@ fn ui_should_spawn_bevy_entities_with_stable_ids_and_hierarchy() {
             .expect("hud should have z-index"),
         &ZIndex::Local(5)
     );
+    assert_eq!(
+        app.world()
+            .get::<NativeUiRenderedGradient>(hud)
+            .expect("hud should have a native gradient effect"),
+        &NativeUiRenderedGradient {
+            angle: Some(90.0),
+            from: "#101820".to_owned(),
+            kind: "linear".to_owned(),
+            to: "#203040".to_owned(),
+        }
+    );
+    assert_eq!(
+        app.world()
+            .get::<NativeUiRenderedShadow>(hud)
+            .expect("hud should have a native shadow effect"),
+        &NativeUiRenderedShadow {
+            blur: Some(12.0),
+            color: "#00000080".to_owned(),
+            offset_x: Some(0.0),
+            offset_y: Some(4.0),
+            spread: Some(1.0),
+        }
+    );
+    let visual_effects = trace_native_ui_visual_effects(app.world_mut());
+    assert_eq!(visual_effects.effects.len(), 1);
+    assert_eq!(visual_effects.effects[0].node, "hud");
+    assert!(visual_effects.effects[0].gradient.is_some());
+    assert!(visual_effects.effects[0].shadow.is_some());
+    assert_eq!(
+        app.world()
+            .get::<NativeUiRenderedTextStyle>(hud)
+            .expect("hud should promote native text style metadata"),
+        &NativeUiRenderedTextStyle {
+            font_family: None,
+            font_weight: Some("bold".to_owned()),
+            spans: Vec::new(),
+            text_decoration: Some("underline".to_owned()),
+        }
+    );
+    let text_styles = trace_native_ui_text_styles(app.world_mut());
+    assert_eq!(text_styles.styles.len(), 1);
+    assert_eq!(text_styles.styles[0].node, "hud");
+    assert_eq!(text_styles.styles[0].font_weight.as_deref(), Some("bold"));
+    assert_eq!(
+        text_styles.styles[0].text_decoration.as_deref(),
+        Some("underline")
+    );
+    let diagnostics = diagnose_native_ui_visual_support(ui);
+    assert_eq!(
+        diagnostics
+            .iter()
+            .map(|diagnostic| diagnostic.code.as_str())
+            .collect::<Vec<_>>(),
+        Vec::<&str>::new()
+    );
     let pause_style = app
         .world()
         .get::<Style>(pause)
@@ -307,11 +365,12 @@ fn ui_should_dispatch_native_button_and_touch_actions() {
     );
 
     app.update();
-    assert!(app
-        .world()
-        .resource::<NativeUiActionQueue>()
-        .events
-        .is_empty());
+    assert!(
+        app.world()
+            .resource::<NativeUiActionQueue>()
+            .events
+            .is_empty()
+    );
 
     app.world_mut()
         .entity_mut(jump)

@@ -439,12 +439,14 @@ fn normalized_animation_time(time_seconds: f32, duration_seconds: f32, loop_: bo
 }
 
 fn positive_number(value: Option<f32>, fallback: f32) -> f32 {
-    value.filter(|value| value.is_finite() && *value > 0.0)
+    value
+        .filter(|value| value.is_finite() && *value > 0.0)
         .unwrap_or(fallback)
 }
 
 fn non_negative_number(value: Option<f32>, fallback: f32) -> f32 {
-    value.filter(|value| value.is_finite() && *value >= 0.0)
+    value
+        .filter(|value| value.is_finite() && *value >= 0.0)
         .unwrap_or(fallback)
 }
 

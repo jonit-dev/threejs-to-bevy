@@ -7,8 +7,8 @@ use std::{
 use threenative_components::ThreeNativeId;
 use threenative_loader::load_bundle;
 use threenative_runtime::ui::{
-    dispatch_native_ui_actions, map_ui_into_world, NativeUiActionEvent, NativeUiActionQueue,
-    NativeUiImageMetadata,
+    NativeUiActionEvent, NativeUiActionQueue, NativeUiImageMetadata, dispatch_native_ui_actions,
+    map_ui_into_world, trace_native_ui_image_rendering,
 };
 
 #[test]
@@ -31,6 +31,35 @@ fn should_activate_context_menu_item_with_keyboard_focus() {
     assert_eq!(frame_image.nine_slice, Some((4.0, 4.0, 4.0, 4.0)));
     assert_eq!(frame_image.scale_mode, Some("stretch".to_owned()));
     assert!(frame_image.flip_x);
+    let tile = ui_entity(app.world_mut(), "tile");
+    let tile_image = app
+        .world()
+        .get::<NativeUiImageMetadata>(tile)
+        .expect("tiled image metadata should map to native component");
+    assert_eq!(tile_image.tile_size, Some((16.0, 16.0)));
+    assert_eq!(tile_image.tint.as_deref(), Some("#44aa88cc"));
+    assert!(tile_image.flip_y);
+    let image_trace = trace_native_ui_image_rendering(app.world_mut());
+    assert_eq!(image_trace.images.len(), 2);
+    assert_eq!(image_trace.images[0].node, "frame");
+    assert_eq!(
+        image_trace.images[0].src.as_deref(),
+        Some("assets/ui/frame.png")
+    );
+    assert_eq!(
+        image_trace.images[0].atlas.as_ref().map(|atlas| atlas.x),
+        Some(4.0)
+    );
+    assert!(image_trace.images[0].nine_slice.is_some());
+    assert_eq!(image_trace.images[1].node, "tile");
+    assert_eq!(
+        image_trace.images[1]
+            .tile_size
+            .as_ref()
+            .map(|size| size.width),
+        Some(16.0)
+    );
+    assert!(image_trace.images[1].flip_y);
 
     app.world_mut()
         .entity_mut(equip)
@@ -70,7 +99,7 @@ fn write_widget_bundle() -> PathBuf {
     write(
         &root,
         "ui.ir.json",
-        r#"{ "schema": "threenative.ui", "version": "0.1.0", "root": { "id": "menu", "kind": "contextMenu", "anchorId": "slot-1", "accessibilityLabel": "Item actions", "children": [{ "id": "equip", "kind": "button", "label": "Equip", "action": "Equip", "focusable": true }, { "id": "frame", "kind": "image", "src": "assets/ui/frame.png", "accessibilityLabel": "Inventory frame", "image": { "atlas": { "x": 4, "y": 8, "width": 32, "height": 16 }, "flipX": true, "nineSlice": { "top": 4, "right": 4, "bottom": 4, "left": 4 }, "scaleMode": "stretch", "sourceSize": { "width": 64, "height": 32 } } }] } }"#,
+        r##"{ "schema": "threenative.ui", "version": "0.1.0", "root": { "id": "menu", "kind": "contextMenu", "anchorId": "slot-1", "accessibilityLabel": "Item actions", "children": [{ "id": "equip", "kind": "button", "label": "Equip", "action": "Equip", "focusable": true }, { "id": "frame", "kind": "image", "src": "assets/ui/frame.png", "accessibilityLabel": "Inventory frame", "image": { "atlas": { "x": 4, "y": 8, "width": 32, "height": 16 }, "flipX": true, "nineSlice": { "top": 4, "right": 4, "bottom": 4, "left": 4 }, "scaleMode": "stretch", "sourceSize": { "width": 64, "height": 32 } } }, { "id": "tile", "kind": "image", "src": "assets/ui/pattern.png", "accessibilityLabel": "Inventory tile fill", "image": { "flipY": true, "scaleMode": "cover", "sourceSize": { "width": 32, "height": 32 }, "tileSize": { "width": 16, "height": 16 }, "tint": "#44aa88cc" } }] } }"##,
     );
     write(
         &root,

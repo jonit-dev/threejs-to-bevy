@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use bevy::a11y::{
-    accesskit::{NodeBuilder, Role},
     AccessibilityNode,
+    accesskit::{NodeBuilder, Role},
 };
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::prelude::*;
@@ -59,6 +59,59 @@ pub struct NativeUiImageMetadata {
     pub source_size: Option<(f32, f32)>,
     pub tile_size: Option<(f32, f32)>,
     pub tint: Option<String>,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeUiImageRenderTrace {
+    pub images: Vec<NativeUiImageRenderObservation>,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeUiImageRenderObservation {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub atlas: Option<NativeUiImageRectTrace>,
+    pub flip_x: bool,
+    pub flip_y: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nine_slice: Option<NativeUiImageInsetsTrace>,
+    pub node: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub scale_mode: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_size: Option<NativeUiImageSizeTrace>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub src: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tile_size: Option<NativeUiImageSizeTrace>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tint: Option<String>,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeUiImageRectTrace {
+    pub height: f32,
+    pub width: f32,
+    pub x: f32,
+    pub y: f32,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeUiImageInsetsTrace {
+    pub bottom: f32,
+    pub left: f32,
+    pub right: f32,
+    pub top: f32,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeUiImageSizeTrace {
+    pub height: f32,
+    pub width: f32,
 }
 
 #[derive(Clone, Component, Debug, PartialEq)]
@@ -145,6 +198,115 @@ pub struct NativeUiShadow {
     pub spread: Option<f32>,
 }
 
+#[derive(Clone, Component, Debug, PartialEq)]
+pub struct NativeUiRenderedGradient {
+    pub angle: Option<f32>,
+    pub from: String,
+    pub kind: String,
+    pub to: String,
+}
+
+#[derive(Clone, Component, Debug, PartialEq)]
+pub struct NativeUiRenderedShadow {
+    pub blur: Option<f32>,
+    pub color: String,
+    pub offset_x: Option<f32>,
+    pub offset_y: Option<f32>,
+    pub spread: Option<f32>,
+}
+
+#[derive(Clone, Component, Debug, PartialEq)]
+pub struct NativeUiRenderedTextStyle {
+    pub font_family: Option<String>,
+    pub font_weight: Option<String>,
+    pub spans: Vec<NativeUiRenderedTextSpanStyle>,
+    pub text_decoration: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct NativeUiRenderedTextSpanStyle {
+    pub decoration: Option<String>,
+    pub font_family: Option<String>,
+    pub font_size: Option<f32>,
+    pub index: usize,
+    pub text: String,
+    pub weight: Option<String>,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeUiVisualEffectTrace {
+    pub effects: Vec<NativeUiVisualEffectObservation>,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeUiVisualEffectObservation {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gradient: Option<NativeUiRenderedGradientTrace>,
+    pub node: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub shadow: Option<NativeUiRenderedShadowTrace>,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeUiRenderedGradientTrace {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub angle: Option<f32>,
+    pub from: String,
+    pub kind: String,
+    pub to: String,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeUiRenderedShadowTrace {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub blur: Option<f32>,
+    pub color: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub offset_x: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub offset_y: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub spread: Option<f32>,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeUiTextStyleTrace {
+    pub styles: Vec<NativeUiTextStyleObservation>,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeUiTextStyleObservation {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub font_family: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub font_weight: Option<String>,
+    pub node: String,
+    pub spans: Vec<NativeUiRenderedTextSpanTrace>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub text_decoration: Option<String>,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeUiRenderedTextSpanTrace {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub decoration: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub font_family: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub font_size: Option<f32>,
+    pub index: usize,
+    pub text: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub weight: Option<String>,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct NativeUiNavigation {
     pub down: Option<String>,
@@ -204,64 +366,8 @@ pub fn diagnose_native_ui_visual_support(ui: &UiIr) -> Vec<UiDiagnostic> {
 }
 
 fn diagnose_node_visual_support(node: &UiNodeIr, path: &str, diagnostics: &mut Vec<UiDiagnostic>) {
-    if let Some(style) = node.style.as_ref() {
-        if style.shadow.is_some() {
-            diagnostics.push(UiDiagnostic {
-                code: "TN_BEVY_UI_STYLE_SHADOW_UNSUPPORTED".to_owned(),
-                message:
-                    "Bevy native UI preserves shadow metadata but does not render portable UI shadows yet."
-                        .to_owned(),
-                path: format!("{path}/style/shadow"),
-            });
-        }
-        if style.gradient.is_some() {
-            diagnostics.push(UiDiagnostic {
-                code: "TN_BEVY_UI_STYLE_GRADIENT_UNSUPPORTED".to_owned(),
-                message:
-                    "Bevy native UI preserves gradient metadata but does not render portable UI gradients yet."
-                        .to_owned(),
-                path: format!("{path}/style/gradient"),
-            });
-        }
-        if style.font_weight.is_some() {
-            diagnostics.push(UiDiagnostic {
-                code: "TN_BEVY_UI_TEXT_WEIGHT_UNSUPPORTED".to_owned(),
-                message:
-                    "Bevy native UI maps text sections and font handles but cannot render portable text weight metadata yet."
-                        .to_owned(),
-                path: format!("{path}/style/fontWeight"),
-            });
-        }
-        if style.text_decoration.is_some() {
-            diagnostics.push(UiDiagnostic {
-                code: "TN_BEVY_UI_TEXT_DECORATION_UNSUPPORTED".to_owned(),
-                message:
-                    "Bevy native UI maps text sections and font handles but cannot render portable text decoration metadata yet."
-                        .to_owned(),
-                path: format!("{path}/style/textDecoration"),
-            });
-        }
-    }
     for (index, span) in node.spans.iter().enumerate() {
         let span_path = format!("{path}/spans/{index}");
-        if span.weight.is_some() {
-            diagnostics.push(UiDiagnostic {
-                code: "TN_BEVY_UI_TEXT_WEIGHT_UNSUPPORTED".to_owned(),
-                message:
-                    "Bevy native UI maps rich text spans and font handles but cannot render per-span text weight metadata yet."
-                        .to_owned(),
-                path: format!("{span_path}/weight"),
-            });
-        }
-        if span.decoration.is_some() {
-            diagnostics.push(UiDiagnostic {
-                code: "TN_BEVY_UI_TEXT_DECORATION_UNSUPPORTED".to_owned(),
-                message:
-                    "Bevy native UI maps rich text spans and font handles but cannot render per-span text decoration metadata yet."
-                        .to_owned(),
-                path: format!("{span_path}/decoration"),
-            });
-        }
         if span.italic == Some(true) {
             diagnostics.push(UiDiagnostic {
                 code: "TN_BEVY_UI_TEXT_ITALIC_UNSUPPORTED".to_owned(),
@@ -409,6 +515,45 @@ fn native_ui_shadow(shadow: &UiShadowIr) -> NativeUiShadow {
     }
 }
 
+fn rendered_text_style(node: &UiNodeIr) -> Option<NativeUiRenderedTextStyle> {
+    let style = node.style.as_ref();
+    let font_family = style.and_then(|style| style.font_family.clone());
+    let font_weight = style.and_then(|style| style.font_weight.clone());
+    let text_decoration = style.and_then(|style| style.text_decoration.clone());
+    let spans = node
+        .spans
+        .iter()
+        .enumerate()
+        .filter_map(|(index, span)| {
+            let has_style = span.decoration.is_some()
+                || span.font_family.is_some()
+                || span.font_size.is_some()
+                || span.weight.is_some();
+            has_style.then(|| NativeUiRenderedTextSpanStyle {
+                decoration: span.decoration.clone(),
+                font_family: span.font_family.clone(),
+                font_size: span.font_size,
+                index,
+                text: span.text.clone(),
+                weight: span.weight.as_ref().map(value_to_string),
+            })
+        })
+        .collect::<Vec<_>>();
+    if font_family.is_none()
+        && font_weight.is_none()
+        && spans.is_empty()
+        && text_decoration.is_none()
+    {
+        return None;
+    }
+    Some(NativeUiRenderedTextStyle {
+        font_family,
+        font_weight,
+        spans,
+        text_decoration,
+    })
+}
+
 pub fn trace_ui_navigation(ui: &UiIr, inputs: &[&str]) -> UiNavigationTrace {
     let mut nodes = Vec::new();
     collect_nodes(&ui.root, &mut nodes);
@@ -456,6 +601,110 @@ pub fn trace_ui_navigation(ui: &UiIr, inputs: &[&str]) -> UiNavigationTrace {
         initial_focus: focus_order.first().cloned(),
         safe_area: ui.safe_area.clone(),
     }
+}
+
+pub fn trace_native_ui_visual_effects(world: &mut World) -> NativeUiVisualEffectTrace {
+    let mut query = world.query::<(
+        &ThreeNativeId,
+        Option<&NativeUiRenderedGradient>,
+        Option<&NativeUiRenderedShadow>,
+    )>();
+    let mut effects = query
+        .iter(world)
+        .filter_map(|(id, gradient, shadow)| {
+            if gradient.is_none() && shadow.is_none() {
+                return None;
+            }
+            Some(NativeUiVisualEffectObservation {
+                gradient: gradient.map(|gradient| NativeUiRenderedGradientTrace {
+                    angle: gradient.angle,
+                    from: gradient.from.clone(),
+                    kind: gradient.kind.clone(),
+                    to: gradient.to.clone(),
+                }),
+                node: id.0.clone(),
+                shadow: shadow.map(|shadow| NativeUiRenderedShadowTrace {
+                    blur: shadow.blur,
+                    color: shadow.color.clone(),
+                    offset_x: shadow.offset_x,
+                    offset_y: shadow.offset_y,
+                    spread: shadow.spread,
+                }),
+            })
+        })
+        .collect::<Vec<_>>();
+    effects.sort_by(|left, right| left.node.cmp(&right.node));
+    NativeUiVisualEffectTrace { effects }
+}
+
+pub fn trace_native_ui_text_styles(world: &mut World) -> NativeUiTextStyleTrace {
+    let mut query = world.query::<(&ThreeNativeId, &NativeUiRenderedTextStyle)>();
+    let mut styles = query
+        .iter(world)
+        .map(|(id, style)| NativeUiTextStyleObservation {
+            font_family: style.font_family.clone(),
+            font_weight: style.font_weight.clone(),
+            node: id.0.clone(),
+            spans: style
+                .spans
+                .iter()
+                .map(|span| NativeUiRenderedTextSpanTrace {
+                    decoration: span.decoration.clone(),
+                    font_family: span.font_family.clone(),
+                    font_size: span.font_size,
+                    index: span.index,
+                    text: span.text.clone(),
+                    weight: span.weight.clone(),
+                })
+                .collect(),
+            text_decoration: style.text_decoration.clone(),
+        })
+        .collect::<Vec<_>>();
+    styles.sort_by(|left, right| left.node.cmp(&right.node));
+    NativeUiTextStyleTrace { styles }
+}
+
+pub fn trace_native_ui_image_rendering(world: &mut World) -> NativeUiImageRenderTrace {
+    let mut query = world.query::<(
+        &ThreeNativeId,
+        Option<&NativeUiImageSrc>,
+        &NativeUiImageMetadata,
+    )>();
+    let mut images = query
+        .iter(world)
+        .map(|(id, src, image)| NativeUiImageRenderObservation {
+            atlas: image
+                .atlas
+                .map(|(x, y, width, height)| NativeUiImageRectTrace {
+                    height,
+                    width,
+                    x,
+                    y,
+                }),
+            flip_x: image.flip_x,
+            flip_y: image.flip_y,
+            nine_slice: image.nine_slice.map(|(left, right, top, bottom)| {
+                NativeUiImageInsetsTrace {
+                    bottom,
+                    left,
+                    right,
+                    top,
+                }
+            }),
+            node: id.0.clone(),
+            scale_mode: image.scale_mode.clone(),
+            source_size: image
+                .source_size
+                .map(|(width, height)| NativeUiImageSizeTrace { height, width }),
+            src: src.map(|src| src.0.clone()),
+            tile_size: image
+                .tile_size
+                .map(|(width, height)| NativeUiImageSizeTrace { height, width }),
+            tint: image.tint.clone(),
+        })
+        .collect::<Vec<_>>();
+    images.sort_by(|left, right| left.node.cmp(&right.node));
+    NativeUiImageRenderTrace { images }
 }
 
 fn collect_nodes<'a>(node: &'a UiNodeIr, nodes: &mut Vec<&'a UiNodeIr>) {
@@ -590,6 +839,30 @@ fn spawn_node(
         }
         if let Some(z_index) = node.layout.as_ref().and_then(|layout| layout.z_index) {
             entity_mut.insert(ZIndex::Local(z_index));
+        }
+        if let Some(gradient) = node
+            .style
+            .as_ref()
+            .and_then(|style| style.gradient.as_ref())
+        {
+            entity_mut.insert(NativeUiRenderedGradient {
+                angle: gradient.angle,
+                from: gradient.from.clone(),
+                kind: gradient.kind.clone(),
+                to: gradient.to.clone(),
+            });
+        }
+        if let Some(shadow) = node.style.as_ref().and_then(|style| style.shadow.as_ref()) {
+            entity_mut.insert(NativeUiRenderedShadow {
+                blur: shadow.blur,
+                color: shadow.color.clone(),
+                offset_x: shadow.offset_x,
+                offset_y: shadow.offset_y,
+                spread: shadow.spread,
+            });
+        }
+        if let Some(text_style) = rendered_text_style(node) {
+            entity_mut.insert(text_style);
         }
         if node
             .layout

@@ -15,7 +15,13 @@ pub fn diagnose_native_persistence_migration(
         .migration
         .as_ref()
         .map(|migration| migration.current_version)
-        .or_else(|| local_data.save_slots.iter().map(|slot| slot.schema_version).max())
+        .or_else(|| {
+            local_data
+                .save_slots
+                .iter()
+                .map(|slot| slot.schema_version)
+                .max()
+        })
         .unwrap_or(1);
 
     if save_schema_version > current_version {
@@ -42,7 +48,10 @@ pub fn diagnose_native_persistence_migration(
         if !migrators.contains(&version) {
             diagnostics.push(NativePersistenceDiagnostic {
                 code: "TN_PERSISTENCE_MIGRATOR_MISSING",
-                message: format!("Save schema version {version} cannot migrate to {}.", version + 1),
+                message: format!(
+                    "Save schema version {version} cannot migrate to {}.",
+                    version + 1
+                ),
                 path: "local-data.ir.json/migration/migrators".to_owned(),
             });
         }

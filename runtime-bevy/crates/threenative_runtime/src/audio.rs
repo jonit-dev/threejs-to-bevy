@@ -229,7 +229,10 @@ pub fn trace_audio_support(
             .listeners
             .iter()
             .map(|listener| NativeAudioListenerBindingObservation {
-                entity: listener.binding.as_ref().and_then(|binding| binding.entity.clone()),
+                entity: listener
+                    .binding
+                    .as_ref()
+                    .and_then(|binding| binding.entity.clone()),
                 id: listener.id.clone(),
                 kind: listener
                     .binding
@@ -267,7 +270,8 @@ pub fn trace_audio_support(
 }
 
 fn distance(left: [f32; 3], right: [f32; 3]) -> f32 {
-    ((left[0] - right[0]).powi(2) + (left[1] - right[1]).powi(2) + (left[2] - right[2]).powi(2)).sqrt()
+    ((left[0] - right[0]).powi(2) + (left[1] - right[1]).powi(2) + (left[2] - right[2]).powi(2))
+        .sqrt()
 }
 
 fn attenuation_gain(distance: f32, attenuation: Option<(&str, f32, f32, f32)>) -> f32 {

@@ -49,11 +49,23 @@ pub fn trace_navigation_paths(bundle: &LoadedBundle) -> Vec<NavigationPathResult
         .queries
         .iter()
         .enumerate()
-        .map(|(index, request)| path_query(&navigation, request, request.id.clone().unwrap_or_else(|| format!("query-{index}"))))
+        .map(|(index, request)| {
+            path_query(
+                &navigation,
+                request,
+                request
+                    .id
+                    .clone()
+                    .unwrap_or_else(|| format!("query-{index}")),
+            )
+        })
         .collect()
 }
 
-pub fn query_navigation_path(bundle: &LoadedBundle, request: &NavigationPathRequest) -> NavigationPathResult {
+pub fn query_navigation_path(
+    bundle: &LoadedBundle,
+    request: &NavigationPathRequest,
+) -> NavigationPathResult {
     let Some(navigation) = navigation_resource(bundle) else {
         return NavigationPathResult {
             failure_reason: Some("no-route".to_owned()),
@@ -64,14 +76,22 @@ pub fn query_navigation_path(bundle: &LoadedBundle, request: &NavigationPathRequ
             visited_regions: Vec::new(),
         };
     };
-    path_query(&navigation, request, request.id.clone().unwrap_or_else(|| "query".to_owned()))
+    path_query(
+        &navigation,
+        request,
+        request.id.clone().unwrap_or_else(|| "query".to_owned()),
+    )
 }
 
 fn navigation_resource(bundle: &LoadedBundle) -> Option<NavigationResource> {
     serde_json::from_value(bundle.world.resources.get("Navigation")?.clone()).ok()
 }
 
-fn path_query(navigation: &NavigationResource, request: &NavigationPathRequest, query: String) -> NavigationPathResult {
+fn path_query(
+    navigation: &NavigationResource,
+    request: &NavigationPathRequest,
+    query: String,
+) -> NavigationPathResult {
     let start = region_for_point(&navigation.regions, request.start);
     let Some(start_region) = start else {
         return failed(query, "start-outside", Vec::new());
@@ -113,7 +133,11 @@ fn failed(query: String, reason: &str, visited_regions: Vec<String>) -> Navigati
 }
 
 fn shortest_route(navigation: &NavigationResource, start: &str, goal: &str) -> Vec<String> {
-    let regions = navigation.regions.iter().map(|region| (region.id.clone(), region)).collect::<std::collections::BTreeMap<_, _>>();
+    let regions = navigation
+        .regions
+        .iter()
+        .map(|region| (region.id.clone(), region))
+        .collect::<std::collections::BTreeMap<_, _>>();
     let mut costs = std::collections::BTreeMap::from([(start.to_owned(), 0.0)]);
     let mut previous = std::collections::BTreeMap::<String, String>::new();
     let mut queue = regions.keys().cloned().collect::<Vec<_>>();
@@ -170,13 +194,19 @@ fn route_cost(navigation: &NavigationResource, route: &[String]) -> f32 {
 }
 
 fn region_cost(navigation: &NavigationResource, region: &NavigationRegion) -> f32 {
-    navigation.area_costs.get(region.area.as_deref().unwrap_or("default")).copied().unwrap_or(1.0)
+    navigation
+        .area_costs
+        .get(region.area.as_deref().unwrap_or("default"))
+        .copied()
+        .unwrap_or(1.0)
 }
 
 fn region_for_point(regions: &[NavigationRegion], point: [f32; 3]) -> Option<&NavigationRegion> {
     let mut ordered = regions.iter().collect::<Vec<_>>();
     ordered.sort_by(|left, right| left.id.cmp(&right.id));
-    ordered.into_iter().find(|region| point_in_polygon([point[0], point[2]], &region.points))
+    ordered
+        .into_iter()
+        .find(|region| point_in_polygon([point[0], point[2]], &region.points))
 }
 
 fn point_in_polygon(point: [f32; 2], polygon: &[[f32; 2]]) -> bool {
@@ -186,7 +216,9 @@ fn point_in_polygon(point: [f32; 2], polygon: &[[f32; 2]]) -> bool {
         let current = polygon[index];
         let prior = polygon[previous];
         let intersects = ((current[1] > point[1]) != (prior[1] > point[1]))
-            && point[0] < (prior[0] - current[0]) * (point[1] - current[1]) / (prior[1] - current[1]) + current[0];
+            && point[0]
+                < (prior[0] - current[0]) * (point[1] - current[1]) / (prior[1] - current[1])
+                    + current[0];
         if intersects {
             inside = !inside;
         }

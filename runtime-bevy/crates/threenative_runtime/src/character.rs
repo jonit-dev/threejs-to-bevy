@@ -288,7 +288,11 @@ enum PushResolution {
     TooHeavy,
 }
 
-fn resolve_push(policy: Option<&CharacterPushPolicy>, blocker: &WorldEntity, movement: [f32; 3]) -> PushResolution {
+fn resolve_push(
+    policy: Option<&CharacterPushPolicy>,
+    blocker: &WorldEntity,
+    movement: [f32; 3],
+) -> PushResolution {
     let Some(policy) = policy else {
         return PushResolution::None;
     };
@@ -301,8 +305,14 @@ fn resolve_push(policy: Option<&CharacterPushPolicy>, blocker: &WorldEntity, mov
     if body.kind != "dynamic" {
         return PushResolution::None;
     }
-    let layer = blocker.components.collider.as_ref().and_then(|collider| collider.layer.as_ref());
-    if policy.allowed_layers.as_ref().is_some_and(|layers| layer.is_none_or(|value| !layers.iter().any(|candidate| candidate == value))) {
+    let layer = blocker
+        .components
+        .collider
+        .as_ref()
+        .and_then(|collider| collider.layer.as_ref());
+    if policy.allowed_layers.as_ref().is_some_and(|layers| {
+        layer.is_none_or(|value| !layers.iter().any(|candidate| candidate == value))
+    }) {
         return PushResolution::None;
     }
     let mass = body.mass.unwrap_or_else(|| match body.inverse_mass {

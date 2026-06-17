@@ -110,9 +110,12 @@ fn main() -> ExitCode {
         .iter()
         .map(|capture| capture.output_path.clone())
         .collect::<Vec<_>>();
-    app.insert_resource(CaptureConfig { captures, max_frame })
-        .insert_resource(TextureAssetsReady::default())
-        .add_systems(Update, (wait_for_texture_assets, request_screenshot));
+    app.insert_resource(CaptureConfig {
+        captures,
+        max_frame,
+    })
+    .insert_resource(TextureAssetsReady::default())
+    .add_systems(Update, (wait_for_texture_assets, request_screenshot));
     app.run();
     let missing = final_output_paths
         .iter()

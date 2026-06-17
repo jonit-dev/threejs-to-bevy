@@ -1,13 +1,10 @@
 use bevy::prelude::*;
-use bevy::render::{
-    camera::RenderTarget,
-    render_resource::TextureFormat,
-};
+use bevy::render::{camera::RenderTarget, render_resource::TextureFormat};
 use serde_json::json;
-use threenative_loader::{load_bundle, AssetIr, WorldEntity};
+use threenative_loader::{AssetIr, WorldEntity, load_bundle};
 use threenative_runtime::{
     map_world::map_bundle_into_world,
-    render_targets::{camera_render_target, render_target_descriptor, NativeRenderTargetRegistry},
+    render_targets::{NativeRenderTargetRegistry, camera_render_target, render_target_descriptor},
 };
 
 #[test]

@@ -4,8 +4,11 @@ use std::{
     path::PathBuf,
     time::{SystemTime, UNIX_EPOCH},
 };
-use threenative_loader::{load_bundle, UiIr, UiNodeIr};
-use threenative_runtime::ui::{diagnose_native_ui_visual_support, map_ui_into_world};
+use threenative_loader::{UiIr, UiNodeIr, load_bundle};
+use threenative_runtime::ui::{
+    NativeUiRenderedTextStyle, diagnose_native_ui_visual_support, map_ui_into_world,
+    trace_native_ui_text_styles,
+};
 
 #[test]
 fn should_map_rich_text_sections_to_bevy_text_bundles() {
@@ -24,19 +27,41 @@ fn should_map_rich_text_sections_to_bevy_text_bundles() {
     assert_eq!(text.sections[0].style.font_size, 24.0);
     assert_eq!(text.sections[1].value, "!");
     assert_eq!(text.sections[1].style.font_size, 18.0);
+    let title = entity_for(ui, app.world_mut(), "title");
+    let rendered_style = app
+        .world()
+        .get::<NativeUiRenderedTextStyle>(title)
+        .expect("rich text style metadata should be promoted");
+    assert_eq!(rendered_style.spans.len(), 2);
+    assert_eq!(rendered_style.spans[0].index, 0);
+    assert_eq!(rendered_style.spans[0].text, "Paused");
+    assert_eq!(rendered_style.spans[0].font_family.as_deref(), Some("menu"));
+    assert_eq!(rendered_style.spans[0].font_size, Some(24.0));
+    assert_eq!(rendered_style.spans[0].weight.as_deref(), Some("bold"));
+    assert_eq!(
+        rendered_style.spans[0].decoration.as_deref(),
+        Some("underline")
+    );
+    assert_eq!(rendered_style.spans[1].font_family.as_deref(), Some("menu"));
+    assert_eq!(rendered_style.spans[1].font_size, Some(18.0));
+    let trace = trace_native_ui_text_styles(app.world_mut());
+    assert_eq!(trace.styles.len(), 1);
+    assert_eq!(trace.styles[0].node, "title");
+    assert_eq!(trace.styles[0].spans.len(), 2);
+    assert_eq!(trace.styles[0].spans[0].weight.as_deref(), Some("bold"));
+    assert_eq!(
+        trace.styles[0].spans[0].decoration.as_deref(),
+        Some("underline")
+    );
     let diagnostics = diagnose_native_ui_visual_support(ui);
     assert_eq!(
         diagnostics
             .iter()
             .map(|diagnostic| diagnostic.code.as_str())
             .collect::<Vec<_>>(),
-        vec![
-            "TN_BEVY_UI_TEXT_WEIGHT_UNSUPPORTED",
-            "TN_BEVY_UI_TEXT_DECORATION_UNSUPPORTED",
-            "TN_BEVY_UI_TEXT_ITALIC_UNSUPPORTED",
-        ],
+        vec!["TN_BEVY_UI_TEXT_ITALIC_UNSUPPORTED"],
     );
-    assert_eq!(diagnostics[0].path, "ui.ir.json/root/spans/0/weight");
+    assert_eq!(diagnostics[0].path, "ui.ir.json/root/spans/1/italic");
 
     std::fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
@@ -88,12 +113,19 @@ fn write(root: &PathBuf, file: &str, contents: &str) {
 }
 
 fn text_for<'a>(ui: &UiIr, world: &'a mut World, id: &str) -> &'a Text {
+    let entity = entity_for(ui, world, id);
+    world
+        .get::<Text>(entity)
+        .expect("text entity should have a text component")
+}
+
+fn entity_for(ui: &UiIr, world: &mut World, id: &str) -> Entity {
     let root = find_node(&ui.root, id).expect("node should exist");
-    let mut query = world.query::<(&threenative_components::ThreeNativeId, &Text)>();
+    let mut query = world.query::<(Entity, &threenative_components::ThreeNativeId)>();
     query
         .iter(world)
-        .find_map(|(entity_id, text)| (entity_id.0 == root.id).then_some(text))
-        .expect("text entity should exist")
+        .find_map(|(entity, entity_id)| (entity_id.0 == root.id).then_some(entity))
+        .expect("entity should exist")
 }
 
 fn find_node<'a>(node: &'a UiNodeIr, id: &str) -> Option<&'a UiNodeIr> {

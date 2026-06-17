@@ -11,10 +11,8 @@ use threenative_runtime::input::{
 
 #[test]
 fn should_persist_and_reload_native_control_binding_overrides() {
-    let root = std::env::temp_dir().join(format!(
-        "tn-native-input-rebinding-{}",
-        std::process::id()
-    ));
+    let root =
+        std::env::temp_dir().join(format!("tn-native-input-rebinding-{}", std::process::id()));
     let settings_path = root.join("controls.json");
     let _ = fs::remove_dir_all(&root);
 

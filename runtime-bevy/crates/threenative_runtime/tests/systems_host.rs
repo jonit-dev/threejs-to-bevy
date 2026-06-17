@@ -5,7 +5,7 @@ use std::{
 
 use threenative_loader::load_bundle;
 use threenative_runtime::{
-    systems_context::{build_system_context_snapshot, NativeSystemTimeSnapshot},
+    systems_context::{NativeSystemTimeSnapshot, build_system_context_snapshot},
     systems_host::{
         diagnose_native_system_host, ensure_native_system_host_supported, run_native_systems_once,
         unsupported_native_system_host_diagnostic,
@@ -206,7 +206,9 @@ fn should_stop_animation_state_when_stop_service_is_called() {
     let post_stop_query = run.logs[0]
         .entries
         .iter()
-        .filter(|entry| entry.kind == "service" && entry.service.as_deref() == Some("animation.query"))
+        .filter(|entry| {
+            entry.kind == "service" && entry.service.as_deref() == Some("animation.query")
+        })
         .filter_map(|entry| entry.payload.as_ref())
         .filter_map(|payload| payload.get("result"))
         .find(|result| {
@@ -328,11 +330,13 @@ fn systems_host_should_reconcile_spawned_entities_events_and_resources_across_sc
 
     run_native_systems_once(&mut bundle, time()).expect("systems should run");
 
-    assert!(bundle
-        .world
-        .entities
-        .iter()
-        .all(|entity| entity.id != "marker"));
+    assert!(
+        bundle
+            .world
+            .entities
+            .iter()
+            .all(|entity| entity.id != "marker")
+    );
     assert_eq!(
         bundle.world.resources.get("Score"),
         Some(&serde_json::json!({ "events": 2, "health": 1 }))

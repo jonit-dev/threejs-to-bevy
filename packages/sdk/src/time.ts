@@ -1,8 +1,10 @@
 import { SdkError, assertPositiveNumber } from "./errors.js";
 
+export type RendererAntialiasMode = "none" | "msaa2" | "msaa4" | "msaa8" | "fxaa" | "taa" | "smaa";
+
 export interface IRuntimeConfigDeclaration {
   renderer: {
-    antialias: "none" | "msaa2" | "msaa4" | "msaa8";
+    antialias: RendererAntialiasMode;
     bloom?: {
       enabled: boolean;
       intensity: number;
@@ -16,6 +18,12 @@ export interface IRuntimeConfigDeclaration {
       temperature?: number;
       tint?: number;
       toneMapping?: "aces" | "linear" | "none" | "reinhard";
+    };
+    depthOfField?: {
+      aperture: number;
+      enabled: boolean;
+      focusDistance: number;
+      maxBlur: number;
     };
     renderPath?: "forward";
   };
@@ -34,7 +42,7 @@ export function defineRuntimeConfig(options: {
   fixedDelta?: number;
   paused?: boolean;
   renderer?: {
-    antialias?: "none" | "msaa2" | "msaa4" | "msaa8";
+    antialias?: RendererAntialiasMode;
     bloom?: { enabled?: boolean; intensity?: number; threshold?: number };
     colorGrading?: {
       contrast?: number;
@@ -45,6 +53,7 @@ export function defineRuntimeConfig(options: {
       tint?: number;
       toneMapping?: "aces" | "linear" | "none" | "reinhard";
     };
+    depthOfField?: { aperture?: number; enabled?: boolean; focusDistance?: number; maxBlur?: number };
     renderPath?: "forward";
   };
   window?: { height?: number; title?: string; width?: number };
@@ -54,6 +63,10 @@ export function defineRuntimeConfig(options: {
   const bloomIntensity = bloom?.intensity ?? 0.15;
   const bloomThreshold = bloom?.threshold ?? 0;
   const colorGrading = options.renderer?.colorGrading;
+  const depthOfField = options.renderer?.depthOfField;
+  const dofAperture = depthOfField?.aperture ?? 0.02;
+  const dofFocusDistance = depthOfField?.focusDistance ?? 8;
+  const dofMaxBlur = depthOfField?.maxBlur ?? 0.01;
   const windowHeight = options.window?.height ?? 720;
   const windowWidth = options.window?.width ?? 1280;
   const windowTitle = options.window?.title;
@@ -63,6 +76,9 @@ export function defineRuntimeConfig(options: {
   assertPositiveNumber(windowWidth, "TN_SDK_RUNTIME_WINDOW_INVALID", "Runtime window width");
   assertNonNegativeFinite(bloomIntensity, "TN_SDK_RUNTIME_BLOOM_INVALID", "Runtime bloom intensity");
   assertNonNegativeFinite(bloomThreshold, "TN_SDK_RUNTIME_BLOOM_INVALID", "Runtime bloom threshold");
+  assertNonNegativeFinite(dofAperture, "TN_SDK_RUNTIME_DOF_INVALID", "Runtime depthOfField aperture");
+  assertPositiveNumber(dofFocusDistance, "TN_SDK_RUNTIME_DOF_INVALID", "Runtime depthOfField focusDistance");
+  assertNonNegativeFinite(dofMaxBlur, "TN_SDK_RUNTIME_DOF_INVALID", "Runtime depthOfField maxBlur");
   if (colorGrading?.exposure !== undefined) {
     assertPositiveNumber(colorGrading.exposure, "TN_SDK_RUNTIME_COLOR_GRADING_INVALID", "Runtime color grading exposure");
   }
@@ -98,6 +114,16 @@ export function defineRuntimeConfig(options: {
             },
           }),
       ...(colorGrading === undefined ? {} : { colorGrading }),
+      ...(depthOfField === undefined
+        ? {}
+        : {
+            depthOfField: {
+              aperture: dofAperture,
+              enabled: depthOfField.enabled ?? true,
+              focusDistance: dofFocusDistance,
+              maxBlur: dofMaxBlur,
+            },
+          }),
       ...(options.renderer?.renderPath === undefined ? {} : { renderPath: options.renderer.renderPath }),
     },
     time: {

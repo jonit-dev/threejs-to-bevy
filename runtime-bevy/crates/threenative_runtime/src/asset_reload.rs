@@ -30,7 +30,10 @@ pub struct NativeAssetReloadDiagnostic {
     pub suggestion: String,
 }
 
-pub fn unsupported_native_network_asset_reload(asset_id: &str, url: &str) -> NativeAssetReloadReport {
+pub fn unsupported_native_network_asset_reload(
+    asset_id: &str,
+    url: &str,
+) -> NativeAssetReloadReport {
     NativeAssetReloadReport {
         changed_assets: vec![NativeAssetReloadChange {
             asset_id: asset_id.to_owned(),
@@ -40,10 +43,14 @@ pub fn unsupported_native_network_asset_reload(asset_id: &str, url: &str) -> Nat
         classification: "unsupported".to_owned(),
         diagnostics: vec![NativeAssetReloadDiagnostic {
             code: "TN_BEVY_ASSET_RELOAD_NETWORK_UNSUPPORTED".to_owned(),
-            message: format!("Native asset reload cannot fetch network asset '{asset_id}' from '{url}'."),
+            message: format!(
+                "Native asset reload cannot fetch network asset '{asset_id}' from '{url}'."
+            ),
             path: url.to_owned(),
             severity: "error".to_owned(),
-            suggestion: "Use bundle-local assets for native reloads or rebuild for a web-only target.".to_owned(),
+            suggestion:
+                "Use bundle-local assets for native reloads or rebuild for a web-only target."
+                    .to_owned(),
         }],
         impacted_handles: Vec::new(),
         schema: "threenative.asset-reload".to_owned(),

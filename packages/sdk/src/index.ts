@@ -237,7 +237,7 @@ export {
   type InputBinding,
 } from "./input.js";
 export { MeshExtendedMaterial, type ExtendedMaterialPreset, type IMeshExtendedMaterialOptions } from "./materials/MeshExtendedMaterial.js";
-export { MeshStandardMaterial, type ColorValue, type MaterialAlphaMode, type MaterialBlendMode, type TextureSlotReference } from "./materials/MeshStandardMaterial.js";
+export { MeshStandardMaterial, type ColorValue, type IMaterialEmissiveBloomOptions, type MaterialAlphaMode, type MaterialBlendMode, type TextureSlotReference } from "./materials/MeshStandardMaterial.js";
 export { Vector3, type Vector3Tuple } from "./math/Vector3.js";
 export {
   staticNavigation,
@@ -267,11 +267,15 @@ export {
   cylinderCollider,
   meshCollider,
   physics,
+  physicsJoint,
   rigidBody,
   sphereCollider,
   type IColliderSlopeDeclaration,
+  type ICcdDeclaration,
   type IColliderDeclaration,
+  type IMeshColliderDeclaration,
   type IPhysicsDeclaration,
+  type IPhysicsJointDeclaration,
   type IPhysicsMaterialOptions,
   type IRigidBodyDeclaration,
   type ISensorDeclaration,

@@ -37,6 +37,80 @@ export interface IEditorInspectorSnapshot {
   hotReload: IEditorHotReloadPolicy[];
 }
 
+export type EditorVisualPanelKind = "assets" | "diagnostics" | "hierarchy" | "hotReload" | "properties";
+
+export interface IEditorVisualPanelRow {
+  badge?: string;
+  id: string;
+  label: string;
+  path?: string;
+  severity?: IIrDiagnostic["severity"];
+  value?: string;
+}
+
+export interface IEditorVisualPanel {
+  id: string;
+  kind: EditorVisualPanelKind;
+  rows: IEditorVisualPanelRow[];
+  title: string;
+}
+
+export interface IEditorVisualPanelSnapshot {
+  panels: IEditorVisualPanel[];
+  schema: "threenative.editor-visual-panels";
+  selectedNode?: string;
+  summary: {
+    assets: number;
+    diagnostics: number;
+    editableProperties: number;
+    rootNodes: number;
+  };
+  version: "0.1.0";
+}
+
+export interface IEditorSceneViewerSnapshot {
+  bounds: {
+    max: [number, number, number];
+    min: [number, number, number];
+  };
+  cameras: string[];
+  entities: number;
+  renderables: string[];
+  selectedEntity?: string;
+}
+
+export interface IEditorAssetPreview {
+  format?: string;
+  id: string;
+  kind?: string;
+  path?: string;
+  sourceMode?: string;
+}
+
+export interface IEditorGamepadViewerSnapshot {
+  controls: Array<{
+    control: string;
+    kind: "axis" | "button" | "unknown";
+    owner: string;
+  }>;
+  devices: Array<{
+    id: string;
+    status: "declared" | "unavailable";
+  }>;
+  requiredControls: string[];
+}
+
+export interface IEditorToolSnapshot {
+  assetPreview: {
+    assets: IEditorAssetPreview[];
+    selectedAsset?: string;
+  };
+  gamepadViewer: IEditorGamepadViewerSnapshot;
+  sceneViewer: IEditorSceneViewerSnapshot;
+  schema: "threenative.editor-tools";
+  version: "0.1.0";
+}
+
 export type EditorProjectDiffOperation =
   | { after: unknown; op: "add"; path: string }
   | { before: unknown; op: "remove"; path: string }
@@ -136,6 +210,105 @@ export function buildEditorInspectorSnapshot(documents: Record<string, unknown>)
   };
 }
 
+export function buildEditorVisualPanelSnapshot(inspector: IEditorInspectorSnapshot): IEditorVisualPanelSnapshot {
+  const selectedHierarchyNode = inspector.hierarchy[0];
+  const selectedNode = selectedHierarchyNode?.id;
+  const selectedNodePath = selectedHierarchyNode?.path;
+  const prioritizedProperties =
+    selectedNodePath === undefined
+      ? inspector.editableProperties
+      : [
+          ...inspector.editableProperties.filter((property) => property.path.startsWith(selectedNodePath)),
+          ...inspector.editableProperties.filter((property) => !property.path.startsWith(selectedNodePath)),
+        ];
+  return {
+    panels: [
+      {
+        id: "scene-hierarchy",
+        kind: "hierarchy",
+        rows: inspector.hierarchy.map((node) => ({
+          badge: node.components.length.toString(),
+          id: node.id,
+          label: node.label,
+          path: node.path,
+          value: node.components.join(", "),
+        })),
+        title: "Scene Hierarchy",
+      },
+      {
+        id: "properties",
+        kind: "properties",
+        rows: prioritizedProperties.slice(0, 64).map((property) => ({
+          badge: property.kind,
+          id: property.path,
+          label: property.label,
+          path: property.path,
+          value: property.document,
+        })),
+        title: "Inspector",
+      },
+      {
+        id: "assets",
+        kind: "assets",
+        rows: inspector.assetRefs.map((asset) => ({
+          id: asset,
+          label: asset,
+          value: "bundle asset",
+        })),
+        title: "Assets",
+      },
+      {
+        id: "diagnostics",
+        kind: "diagnostics",
+        rows: inspector.diagnostics.map((diagnostic) => ({
+          badge: diagnostic.code,
+          id: `${diagnostic.path}:${diagnostic.code}`,
+          label: diagnostic.message,
+          path: diagnostic.path,
+          severity: diagnostic.severity,
+        })),
+        title: "Diagnostics",
+      },
+      {
+        id: "hot-reload",
+        kind: "hotReload",
+        rows: inspector.hotReload.map((policy) => ({
+          badge: policy.policy,
+          id: policy.policy,
+          label: policy.invalidationReasons[0] ?? policy.policy,
+          value: policy.invalidationReasons.join(" "),
+        })),
+        title: "Reload Policy",
+      },
+    ],
+    schema: "threenative.editor-visual-panels",
+    ...(selectedNode === undefined ? {} : { selectedNode }),
+    summary: {
+      assets: inspector.assetRefs.length,
+      diagnostics: inspector.diagnostics.length,
+      editableProperties: inspector.editableProperties.length,
+      rootNodes: inspector.hierarchy.length,
+    },
+    version: "0.1.0",
+  };
+}
+
+export function buildEditorToolSnapshot(documents: Record<string, unknown>): IEditorToolSnapshot {
+  const assets = collectAssetPreviews(documents);
+  const sceneViewer = buildSceneViewerSnapshot(documents["world.ir.json"]);
+  const gamepadViewer = buildGamepadViewerSnapshot(documents["input.ir.json"]);
+  return {
+    assetPreview: {
+      assets,
+      ...(assets[0] === undefined ? {} : { selectedAsset: assets[0].id }),
+    },
+    gamepadViewer,
+    sceneViewer,
+    schema: "threenative.editor-tools",
+    version: "0.1.0",
+  };
+}
+
 export function validateEditorPropertyEdit(path: string): IIrDiagnostic[] {
   if (!path.startsWith("/documents/")) {
     return [{
@@ -207,6 +380,136 @@ function collectAssetRefs(documents: Record<string, unknown>): string[] {
     .map((asset) => asset.id)
     .filter((id): id is string => typeof id === "string" && id.trim() !== "")
     .sort((left, right) => left.localeCompare(right));
+}
+
+function collectAssetPreviews(documents: Record<string, unknown>): IEditorAssetPreview[] {
+  const assets = documents["assets.manifest.json"];
+  if (!isRecord(assets) || !Array.isArray(assets.assets)) {
+    return [];
+  }
+  return assets.assets
+    .filter(isRecord)
+    .filter((asset): asset is Record<string, unknown> & { id: string } => typeof asset.id === "string" && asset.id.trim() !== "")
+    .map((asset) => ({
+      ...(typeof asset.format === "string" ? { format: asset.format } : {}),
+      id: asset.id,
+      ...(typeof asset.kind === "string" ? { kind: asset.kind } : {}),
+      ...(typeof asset.path === "string" ? { path: asset.path } : {}),
+      ...(typeof asset.sourceMode === "string" ? { sourceMode: asset.sourceMode } : {}),
+    }))
+    .sort((left, right) => left.id.localeCompare(right.id));
+}
+
+function buildSceneViewerSnapshot(world: unknown): IEditorSceneViewerSnapshot {
+  if (!isRecord(world) || !Array.isArray(world.entities)) {
+    return {
+      bounds: { max: [0, 0, 0], min: [0, 0, 0] },
+      cameras: [],
+      entities: 0,
+      renderables: [],
+    };
+  }
+  const entities = world.entities.filter(isRecord);
+  const cameras: string[] = [];
+  const renderables: string[] = [];
+  const positions: Array<[number, number, number]> = [];
+  for (const [index, entity] of entities.entries()) {
+    const id = typeof entity.id === "string" ? entity.id : `entity-${index}`;
+    const components = isRecord(entity.components) ? entity.components : {};
+    if ("Camera" in components || "PerspectiveCamera" in components || "OrthographicCamera" in components) {
+      cameras.push(id);
+    }
+    if ("MeshRenderer" in components || "ModelScene" in components || "SpriteRenderer" in components) {
+      renderables.push(id);
+    }
+    const transform = components.Transform;
+    if (isRecord(transform) && isFiniteVec3(transform.position)) {
+      positions.push(transform.position);
+    }
+  }
+  return {
+    bounds: boundsForPositions(positions),
+    cameras: cameras.sort((left, right) => left.localeCompare(right)),
+    entities: entities.length,
+    renderables: renderables.sort((left, right) => left.localeCompare(right)),
+    ...(entities[0]?.id === undefined || typeof entities[0].id !== "string" ? {} : { selectedEntity: entities[0].id }),
+  };
+}
+
+function buildGamepadViewerSnapshot(input: unknown): IEditorGamepadViewerSnapshot {
+  const controls: IEditorGamepadViewerSnapshot["controls"] = [];
+  const requiredControls: string[] = [];
+  if (isRecord(input)) {
+    collectGamepadBindings(input.actions, "action", controls, requiredControls);
+    collectGamepadBindings(input.axes, "axis", controls, requiredControls);
+  }
+  const sortedControls = controls.sort((left, right) => `${left.owner}:${left.control}`.localeCompare(`${right.owner}:${right.control}`));
+  return {
+    controls: sortedControls,
+    devices: sortedControls.length === 0 ? [] : [{ id: "declared-gamepad", status: "declared" }],
+    requiredControls: [...new Set(requiredControls)].sort((left, right) => left.localeCompare(right)),
+  };
+}
+
+function collectGamepadBindings(
+  value: unknown,
+  ownerPrefix: string,
+  controls: IEditorGamepadViewerSnapshot["controls"],
+  requiredControls: string[],
+): void {
+  if (!Array.isArray(value)) {
+    return;
+  }
+  for (const [index, entry] of value.entries()) {
+    if (!isRecord(entry)) {
+      continue;
+    }
+    const owner = typeof entry.id === "string" ? entry.id : `${ownerPrefix}-${index}`;
+    const bindingSources = [entry.bindings, entry.positive, entry.negative, entry.value];
+    for (const source of bindingSources) {
+      for (const binding of Array.isArray(source) ? source : [source]) {
+        if (!isRecord(binding) || binding.device !== "gamepad" || typeof binding.control !== "string") {
+          continue;
+        }
+        controls.push({ control: binding.control, kind: gamepadControlKind(binding.control), owner });
+        if (binding.required !== false) {
+          requiredControls.push(binding.control);
+        }
+      }
+    }
+  }
+}
+
+function gamepadControlKind(control: string): "axis" | "button" | "unknown" {
+  if (/^(?:leftStick|rightStick|trigger)(?:X|Y|Left|Right)?$/i.test(control) || /axis/i.test(control)) {
+    return "axis";
+  }
+  if (/^(?:button|dpad|shoulder|trigger|start|select|north|south|east|west)/i.test(control)) {
+    return "button";
+  }
+  return "unknown";
+}
+
+function boundsForPositions(positions: Array<[number, number, number]>): IEditorSceneViewerSnapshot["bounds"] {
+  if (positions.length === 0) {
+    return { max: [0, 0, 0], min: [0, 0, 0] };
+  }
+  return {
+    max: [
+      Math.max(...positions.map((position) => position[0])),
+      Math.max(...positions.map((position) => position[1])),
+      Math.max(...positions.map((position) => position[2])),
+    ],
+    min: [
+      Math.min(...positions.map((position) => position[0])),
+      Math.min(...positions.map((position) => position[1])),
+      Math.min(...positions.map((position) => position[2])),
+    ],
+  };
+}
+
+function isFiniteVec3(value: unknown): value is [number, number, number] {
+  return Array.isArray(value) && value.length === 3 && value.every((item) => typeof item === "number" && Number.isFinite(item));
 }
 
 function collectEditableProperties(documents: Record<string, unknown>): IEditorEditableProperty[] {

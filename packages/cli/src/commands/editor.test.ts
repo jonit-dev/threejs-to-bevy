@@ -27,6 +27,7 @@ test("editor inspect should write structured scene inspection json", async () =>
     assert.deepEqual(report.bundle.documents, [
       "assets.manifest.json",
       "gltf.scene.json",
+      "input.ir.json",
       "manifest.json",
       "materials.ir.json",
       "target.profile.json",
@@ -34,6 +35,77 @@ test("editor inspect should write structured scene inspection json", async () =>
     ]);
     assert.deepEqual(report.gltfAssets.map((asset) => asset.assetId), ["model.level"]);
     assert.deepEqual(payload.documents, report.bundle.documents);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("editor inspect should return visual editor panel metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-editor-inspect-panels-"));
+  try {
+    const bundlePath = join(root, "game.bundle");
+    await writeBundleFixture(bundlePath, true);
+
+    const result = await editorCommand(["inspect", "--bundle", bundlePath, "--json"], { cwd: root });
+    const payload = JSON.parse(result.stdout) as {
+      code: string;
+      visualPanels: {
+        panels: Array<{ id: string; rows: Array<{ label: string; path?: string }> }>;
+        schema: string;
+        summary: { assets: number; editableProperties: number; rootNodes: number };
+      };
+    };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.code, "TN_EDITOR_INSPECT_OK");
+    assert.equal(payload.visualPanels.schema, "threenative.editor-visual-panels");
+    assert.equal(payload.visualPanels.summary.assets, 1);
+    assert.equal(payload.visualPanels.summary.rootNodes, 2);
+    assert.equal(payload.visualPanels.summary.editableProperties > 0, true);
+    assert.deepEqual(payload.visualPanels.panels.map((panel) => panel.id), [
+      "scene-hierarchy",
+      "properties",
+      "assets",
+      "diagnostics",
+      "hot-reload",
+    ]);
+    assert.equal(payload.visualPanels.panels[0]?.rows[0]?.label, "entity.camera");
+    assert.equal(payload.visualPanels.panels[1]?.rows.some((row) => row.path?.includes("Transform")), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("editor inspect should return scene viewer asset preview and gamepad tools", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-editor-inspect-tools-"));
+  try {
+    const bundlePath = join(root, "game.bundle");
+    await writeBundleFixture(bundlePath, true);
+
+    const result = await editorCommand(["inspect", "--bundle", bundlePath, "--json"], { cwd: root });
+    const payload = JSON.parse(result.stdout) as {
+      code: string;
+      editorTools: {
+        assetPreview: { assets: Array<{ id: string }>; selectedAsset?: string };
+        gamepadViewer: { controls: Array<{ control: string; owner: string }>; devices: Array<{ id: string }> };
+        sceneViewer: { cameras: string[]; entities: number; renderables: string[] };
+        schema: string;
+      };
+    };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.code, "TN_EDITOR_INSPECT_OK");
+    assert.equal(payload.editorTools.schema, "threenative.editor-tools");
+    assert.deepEqual(payload.editorTools.sceneViewer.cameras, ["entity.camera"]);
+    assert.deepEqual(payload.editorTools.sceneViewer.renderables, ["entity.player"]);
+    assert.equal(payload.editorTools.sceneViewer.entities, 2);
+    assert.equal(payload.editorTools.assetPreview.selectedAsset, "model.level");
+    assert.deepEqual(payload.editorTools.assetPreview.assets.map((asset) => asset.id), ["model.level"]);
+    assert.deepEqual(
+      payload.editorTools.gamepadViewer.controls.map((control) => `${control.owner}:${control.control}`),
+      ["Interact:buttonSouth", "MoveX:leftStickX"],
+    );
+    assert.deepEqual(payload.editorTools.gamepadViewer.devices, [{ id: "declared-gamepad", status: "declared" }]);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -81,6 +153,7 @@ test("editor snapshot should write structured bundle documents", async () => {
     assert.equal(payload.path, outPath);
     assert.deepEqual(payload.documents, [
       "assets.manifest.json",
+      "input.ir.json",
       "manifest.json",
       "materials.ir.json",
       "target.profile.json",
@@ -120,6 +193,43 @@ test("editor diff should report deterministic structured operations", async () =
         path: "/documents/world.ir.json/entities/0/name",
       },
     ]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("editor set should update a validated scene hierarchy property", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-editor-set-property-"));
+  try {
+    const bundlePath = join(root, "game.bundle");
+    await writeBundleFixture(bundlePath);
+
+    const result = await editorCommand(
+      [
+        "set",
+        "--bundle",
+        bundlePath,
+        "--path",
+        "/documents/world.ir.json/entities/0/components/Transform/position/0",
+        "--value",
+        "4",
+        "--json",
+      ],
+      { cwd: root },
+    );
+    const payload = JSON.parse(result.stdout) as { code: string; document: string; path: string };
+    const world = JSON.parse(await readFile(join(bundlePath, "world.ir.json"), "utf8")) as {
+      entities: Array<{ components: { Transform: { position: number[] } }; id: string }>;
+    };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.code, "TN_EDITOR_SET_OK");
+    assert.equal(payload.document, "world.ir.json");
+    assert.equal(payload.path, "/documents/world.ir.json/entities/0/components/Transform/position/0");
+    assert.deepEqual(world.entities[0], {
+      components: { Camera: {}, Transform: { position: [4, 1, 2] } },
+      id: "entity.camera",
+    });
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -293,7 +403,7 @@ function editorSnapshot(entityName: string): unknown {
 async function writeBundleFixture(bundlePath: string, includeGltfScene = false): Promise<void> {
   await mkdir(bundlePath, { recursive: true });
   await writeFixtureJson(bundlePath, "manifest.json", {
-    entry: { world: "world.ir.json" },
+    entry: { input: "input.ir.json", world: "world.ir.json" },
     files: {
       assets: "assets.manifest.json",
       ...(includeGltfScene ? { gltfScene: "gltf.scene.json" } : {}),
@@ -305,7 +415,22 @@ async function writeBundleFixture(bundlePath: string, includeGltfScene = false):
     schema: "threenative.bundle",
     version: "0.1.0",
   });
-  await writeFixtureJson(bundlePath, "world.ir.json", { entities: [], schema: "threenative.world", version: "0.1.0" });
+  await writeFixtureJson(bundlePath, "world.ir.json", {
+    entities: [
+      { components: { Camera: {}, Transform: { position: [0, 1, 2] } }, id: "entity.camera" },
+      ...(includeGltfScene
+        ? [{ components: { MeshRenderer: { mesh: "model.level" }, Transform: { position: [3, 0, -1] } }, id: "entity.player" }]
+        : []),
+    ],
+    schema: "threenative.world",
+    version: "0.1.0",
+  });
+  await writeFixtureJson(bundlePath, "input.ir.json", {
+    actions: [{ bindings: [{ control: "buttonSouth", device: "gamepad", required: false }], id: "Interact" }],
+    axes: [{ id: "MoveX", value: { control: "leftStickX", device: "gamepad", required: false } }],
+    schema: "threenative.input",
+    version: "0.1.0",
+  });
   await writeFixtureJson(bundlePath, "assets.manifest.json", {
     assets: includeGltfScene
       ? [{ format: "gltf", id: "model.level", kind: "model", path: "assets/level.gltf", sourceMode: "bundle" }]

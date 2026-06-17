@@ -55,6 +55,9 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(parent) = output_path.parent() {
         fs::create_dir_all(parent)?;
     }
-    fs::write(output_path, format!("{}\n", serde_json::to_string_pretty(&report)?))?;
+    fs::write(
+        output_path,
+        format!("{}\n", serde_json::to_string_pretty(&report)?),
+    )?;
     Ok(())
 }
