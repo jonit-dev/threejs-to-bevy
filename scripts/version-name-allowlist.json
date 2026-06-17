@@ -1,0 +1,307 @@
+{
+  "targetNamingMap": {
+    "verify:v9": "verify:release",
+    "verify:v7": "verify:release",
+    "check:docs:v9": "check:docs",
+    "check:docs:v8": "check:docs",
+    "check:docs:v7": "check:docs",
+    "v7-functional": "starter-functional",
+    "v9-physics-character": "physics-character",
+    "v9-rendering-lights": "rendering-lights",
+    "v9-assets-gltf-scene-workflow": "assets-gltf-scene-workflow",
+    "docs/PRDs/v9": "docs/PRDs/archive/milestones/v9",
+    "docs/PRDs/v8": "docs/PRDs/archive/milestones/v8",
+    "docs/PRDs/v7": "docs/PRDs/archive/milestones/v7"
+  },
+  "validClassifications": [
+    "historical-archive",
+    "compat-alias",
+    "current-surface",
+    "fixture-id",
+    "artifact-path",
+    "schema-version",
+    "diagnostic-code",
+    "generated-output",
+    "package-metadata",
+    "external-compatibility",
+    "migration-evidence"
+  ],
+  "pathRules": [
+    {
+      "id": "cleanup-prd",
+      "pathPattern": "^docs/PRDs/cleanup-versioned-debt\\.md$",
+      "classification": "current-surface",
+      "owner": "cleanup-versioned-debt",
+      "rationale": "Source plan documenting the migration and retained legacy names.",
+      "policy": "Update as phases complete; shrink allowlist as surfaces migrate."
+    },
+    {
+      "id": "name-check-tooling",
+      "pathPattern": "^scripts/(check-current-names|version-name-allowlist)",
+      "classification": "current-surface",
+      "owner": "cleanup-versioned-debt",
+      "rationale": "Inventory scanner and allowlist define retained legacy references.",
+      "policy": "Keep until Phase 6 strict current-surface checks pass repo-wide."
+    },
+    {
+      "id": "historical-milestone-prds",
+      "pathPattern": "^docs/PRDs/v[0-9]+/",
+      "classification": "historical-archive",
+      "owner": "cleanup-versioned-debt",
+      "rationale": "Numbered milestone PRD batches are historical planning artifacts.",
+      "policy": "Move under docs/PRDs/archive/milestones/ in Phase 5 with link redirects."
+    },
+    {
+      "id": "historical-verify-docs",
+      "pathPattern": "^docs/verify-v[0-9]",
+      "classification": "historical-archive",
+      "owner": "cleanup-versioned-debt",
+      "rationale": "Standalone verify docs describe retired milestone gates.",
+      "policy": "Archive or replace with capability verification docs in Phase 5."
+    },
+    {
+      "id": "historical-release-checklists",
+      "pathPattern": "^docs/releases/",
+      "classification": "historical-archive",
+      "owner": "cleanup-versioned-debt",
+      "rationale": "Release checklists reference completed milestone gates.",
+      "policy": "Keep under archive index; do not use as current workflow entry points."
+    },
+    {
+      "id": "general-scripts",
+      "pathPattern": "^scripts/",
+      "classification": "compat-alias",
+      "owner": "cleanup-versioned-debt",
+      "rationale": "Repo scripts retain milestone gate names until typed tooling migration.",
+      "policy": "Migrate to tools/verify in Phase 2."
+    },
+    {
+      "id": "versioned-verify-scripts",
+      "pathPattern": "^scripts/(verify-v[0-9]|check-docs-v[0-9]|check-v[0-9])",
+      "classification": "compat-alias",
+      "owner": "cleanup-versioned-debt",
+      "rationale": "Legacy milestone verification scripts remain during deprecation.",
+      "policy": "Wrap with typed tools in Phase 2; remove aliases in Phase 6."
+    },
+    {
+      "id": "general-examples",
+      "pathPattern": "^examples/",
+      "classification": "package-metadata",
+      "owner": "cleanup-versioned-debt",
+      "rationale": "Examples retain milestone folder names and embedded paths during migration.",
+      "policy": "Rename maintained examples to capability names in Phase 3."
+    },
+    {
+      "id": "versioned-example-dirs",
+      "pathPattern": "^examples/v[0-9]+-",
+      "classification": "package-metadata",
+      "owner": "cleanup-versioned-debt",
+      "rationale": "Example folder names still carry milestone prefixes.",
+      "policy": "Rename to capability names in Phase 3 with CLI aliases."
+    },
+    {
+      "id": "general-templates",
+      "pathPattern": "^templates/",
+      "classification": "package-metadata",
+      "owner": "cleanup-versioned-debt",
+      "rationale": "Templates retain milestone folder names during migration.",
+      "policy": "Rename to capability template names in Phase 3."
+    },
+    {
+      "id": "versioned-template-dirs",
+      "pathPattern": "^templates/v[0-9]",
+      "classification": "package-metadata",
+      "owner": "cleanup-versioned-debt",
+      "rationale": "Template folder names still carry milestone prefixes.",
+      "policy": "Rename to capability names in Phase 3 with CLI aliases."
+    },
+    {
+      "id": "conformance-fixtures",
+      "pathPattern": "^packages/ir/fixtures/conformance/",
+      "classification": "fixture-id",
+      "owner": "cleanup-versioned-debt",
+      "rationale": "Conformance fixtures and catalogs retain milestone ids until catalog migration.",
+      "policy": "Resolve through canonical fixture-catalog.json in Phase 4."
+    },
+    {
+      "id": "runtime-bevy-artifacts",
+      "pathPattern": "^runtime-bevy/artifacts/v[0-9]",
+      "classification": "artifact-path",
+      "owner": "cleanup-versioned-debt",
+      "rationale": "Checked-in native evidence artifacts use milestone output paths.",
+      "policy": "New reports use capability paths; old paths remain read-compatible."
+    },
+    {
+      "id": "ir-schemas",
+      "pathPattern": "^packages/ir/schemas/",
+      "classification": "schema-version",
+      "owner": "ir",
+      "rationale": "JSON Schema $id paths encode real schema versions, not milestone labels.",
+      "policy": "Do not rename without a dedicated schema compatibility PRD."
+    },
+    {
+      "id": "cli-verify-modules",
+      "pathPattern": "^packages/cli/src/verify/v[0-9]",
+      "classification": "compat-alias",
+      "owner": "cleanup-versioned-debt",
+      "rationale": "CLI verification modules retain milestone filenames during migration.",
+      "policy": "Rename to capability modules in Phase 2/3."
+    },
+    {
+      "id": "cli-source",
+      "pathPattern": "^packages/cli/src/",
+      "classification": "compat-alias",
+      "owner": "cleanup-versioned-debt",
+      "rationale": "CLI commands, help text, and verification helpers retain legacy milestone labels.",
+      "policy": "Move user-facing output to capability language in Phases 2-3."
+    },
+    {
+      "id": "cli-create-command",
+      "pathPattern": "^packages/cli/src/commands/create",
+      "classification": "compat-alias",
+      "owner": "cleanup-versioned-debt",
+      "rationale": "Template registry exposes legacy v* template aliases.",
+      "policy": "Add canonical template names in Phase 3; tighten aliases in Phase 6."
+    },
+    {
+      "id": "cli-tests",
+      "pathPattern": "^packages/cli/src/.*\\.test\\.ts$",
+      "classification": "compat-alias",
+      "owner": "cleanup-versioned-debt",
+      "rationale": "CLI tests assert legacy template and verification behavior during migration.",
+      "policy": "Update to canonical names as templates and gates migrate."
+    },
+    {
+      "id": "root-package-scripts",
+      "pathPattern": "^package\\.json$",
+      "classification": "compat-alias",
+      "owner": "cleanup-versioned-debt",
+      "rationale": "Root package scripts expose verify:v* and check:docs:v* compatibility aliases.",
+      "policy": "Add verify:release and check:docs in Phase 2; remove legacy aliases in Phase 6."
+    },
+    {
+      "id": "root-readme",
+      "pathPattern": "^README\\.md$",
+      "classification": "migration-evidence",
+      "owner": "cleanup-versioned-debt",
+      "rationale": "Root README still references milestone examples during migration.",
+      "policy": "Update command examples to canonical names in Phase 2."
+    },
+    {
+      "id": "docs-readme-front-door",
+      "pathPattern": "^docs/README\\.md$",
+      "classification": "current-surface",
+      "owner": "cleanup-versioned-debt",
+      "rationale": "Docs index is a current entry point and must use capability language in active sections.",
+      "policy": "Keep milestone links only under historical archive sections; enforce with strict front-door checks."
+    },
+    {
+      "id": "status-evidence-doc",
+      "pathPattern": "^docs/STATUS\\.md$",
+      "classification": "migration-evidence",
+      "owner": "cleanup-versioned-debt",
+      "rationale": "Status doc lists capability evidence while legacy command names remain in use.",
+      "policy": "Rewrite front door to capability language in Phase 5; retain command aliases until Phase 6."
+    },
+    {
+      "id": "parity-evidence-doc",
+      "pathPattern": "^docs/bevy-feature-parity\\.md$",
+      "classification": "migration-evidence",
+      "owner": "cleanup-versioned-debt",
+      "rationale": "Parity tracker anchors evidence to legacy verify commands during migration.",
+      "policy": "Move evidence anchors to capability gates in Phase 5."
+    },
+    {
+      "id": "feature-maturity-doc",
+      "pathPattern": "^docs/feature-maturity\\.md$",
+      "classification": "migration-evidence",
+      "owner": "cleanup-versioned-debt",
+      "rationale": "Feature maturity matrix references milestone promotion history.",
+      "policy": "Reframe by capability in Phase 5."
+    },
+    {
+      "id": "developer-workflow-doc",
+      "pathPattern": "^docs/developer-workflow\\.md$",
+      "classification": "migration-evidence",
+      "owner": "cleanup-versioned-debt",
+      "rationale": "Workflow doc documents both legacy and target command names during migration.",
+      "policy": "Finalize canonical commands in Phase 6."
+    },
+    {
+      "id": "roadmap-and-concept-docs",
+      "pathPattern": "^docs/(ROADMAP|verify-v|environment-scene-ir|asset-pipeline|visual-parity-policy|diagnostics|architecture|runtime-adapters|audits/)",
+      "classification": "historical-archive",
+      "owner": "cleanup-versioned-debt",
+      "rationale": "Planning and historical verification docs reference milestone sequencing.",
+      "policy": "Point current readers to STATUS and capability docs; archive historical pages in Phase 5."
+    },
+    {
+      "id": "agents-guidance",
+      "pathPattern": "^AGENTS\\.md$",
+      "classification": "migration-evidence",
+      "owner": "cleanup-versioned-debt",
+      "rationale": "Agent guidance mentions milestone gates for historical release work.",
+      "policy": "Update current workflow guidance in Phase 5; keep archive context explicit."
+    },
+    {
+      "id": "runtime-bevy-source",
+      "pathPattern": "^runtime-bevy/",
+      "classification": "migration-evidence",
+      "owner": "runtime-bevy",
+      "rationale": "Native runtime tests and reports reference milestone fixture paths.",
+      "policy": "Update active labels to capability names in Phase 4."
+    },
+    {
+      "id": "runtime-web-packages",
+      "pathPattern": "^packages/(runtime-web-three|compiler|ir|sdk|r3f|ui)/",
+      "classification": "migration-evidence",
+      "owner": "cleanup-versioned-debt",
+      "rationale": "Runtime packages reference milestone examples, fixtures, and diagnostics.",
+      "policy": "Align references with canonical fixture and example names in Phases 3-4."
+    },
+    {
+      "id": "script-tests",
+      "pathPattern": "^scripts/.*\\.test\\.mjs$",
+      "classification": "compat-alias",
+      "owner": "cleanup-versioned-debt",
+      "rationale": "Script tests lock legacy verifier and docs gate behavior.",
+      "policy": "Migrate assertions to canonical tool names in Phase 2."
+    },
+    {
+      "id": "github-workflows",
+      "pathPattern": "^\\.github/",
+      "classification": "compat-alias",
+      "owner": "cleanup-versioned-debt",
+      "rationale": "CI workflows may invoke legacy verify commands until migration completes.",
+      "policy": "Update to verify:release and check:docs in Phase 2."
+    },
+    {
+      "id": "general-docs",
+      "pathPattern": "^docs/",
+      "classification": "migration-evidence",
+      "owner": "cleanup-versioned-debt",
+      "rationale": "Concept and contract docs retain milestone promotion history until archive rewrite.",
+      "policy": "Reframe by capability and archive historical pages in Phase 5."
+    }
+  ],
+  "strictFrontDoorPaths": [
+    "docs/README.md"
+  ],
+  "requiredFrontDoorPhrases": [
+    {
+      "path": "docs/README.md",
+      "phrase": "cleanup-versioned-debt.md",
+      "message": "docs/README.md must link the versioned-debt cleanup PRD."
+    },
+    {
+      "path": "docs/STATUS.md",
+      "phrase": "cleanup-versioned-debt.md",
+      "message": "docs/STATUS.md must link the versioned-debt cleanup PRD."
+    },
+    {
+      "path": "docs/STATUS.md",
+      "phrase": "legacy milestone",
+      "message": "docs/STATUS.md must state that version labels are legacy milestone names."
+    }
+  ]
+}

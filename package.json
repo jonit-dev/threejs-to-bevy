@@ -6,6 +6,7 @@
   "packageManager": "pnpm@10.25.0",
   "scripts": {
     "build": "pnpm -r --if-present build",
+    "check:names": "node scripts/check-current-names.mjs",
     "check:docs:v1": "node scripts/check-docs-v1.mjs",
     "check:docs:v2": "node scripts/check-docs-v2.mjs",
     "check:docs:v3": "node scripts/check-docs-v3.mjs",

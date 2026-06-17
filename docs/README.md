@@ -10,6 +10,12 @@ that concept into implementation contracts.
 For current implementation status, read [STATUS.md](STATUS.md) before the
 conceptual docs.
 
+Version labels such as `V7` or `verify:v9` are **legacy milestone names** kept
+during a staged cleanup. See the
+[cleanup PRD](PRDs/cleanup-versioned-debt.md) for the capability naming plan,
+canonical command targets, and the retained-reference allowlist enforced by
+`pnpm check:names`.
+
 ## Core Documents
 
 - [Status](STATUS.md): current active gate, proof scope, non-goals, and
@@ -71,25 +77,30 @@ conceptual docs.
 
 ## Current Status
 
-The active release gate is tracked in [STATUS.md](STATUS.md). As of the current
-status front door, the maintained release gate is V7.
+The active release and evidence gates are tracked in [STATUS.md](STATUS.md).
+Read that file for the authoritative supported surface grouped by product
+capability rather than milestone numbering.
 
-V7 proves the documented promoted slices for deep engine gap-closure,
-functional scene/template, packaging, performance, and aggregate release-gate
-evidence. See [STATUS.md](STATUS.md) for the authoritative current scope.
-
-Use:
+Current contributor checks:
 
 ```bash
-pnpm verify:v7
+pnpm check:names
+pnpm verify
+pnpm verify:conformance
 ```
 
-V1 and V2 docs remain useful historical and foundation references. The current
-truth for implementation status is:
+Legacy milestone script names such as `verify:v7` and `verify:v9` remain as
+compatibility aliases during the cleanup described in
+[PRDs/cleanup-versioned-debt.md](PRDs/cleanup-versioned-debt.md).
+
+Historical milestone docs remain linked below for archive context. They are not
+the current product front door.
+
+The current truth for implementation status is:
 
 - [STATUS.md](STATUS.md)
 - [bevy-feature-parity.md](bevy-feature-parity.md)
-- [releases/v3-completion.md](releases/v3-completion.md)
+- [PRDs/cleanup-versioned-debt.md](PRDs/cleanup-versioned-debt.md)
 
 ## Design Principles
 
