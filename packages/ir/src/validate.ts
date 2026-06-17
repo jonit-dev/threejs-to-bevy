@@ -35,6 +35,7 @@ export interface IIrDiagnostic {
   path: string;
   severity?: "error" | "warning";
   suggestion?: string;
+  target?: string;
   value?: number | string;
 }
 
@@ -54,6 +55,7 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
   if (!validateManifest(manifest, "manifest.json", diagnostics)) {
     return { diagnostics, ok: false };
   }
+  validateV10BoundaryCapabilities(manifest, "manifest.json/requiredCapabilities", diagnostics);
 
   const world = await readJson<IWorldIr>(resolve(bundlePath, manifest.entry.world), diagnostics);
   const audio =
@@ -4667,6 +4669,82 @@ function validateManifest(manifest: unknown, path: string, diagnostics: IIrDiagn
     (files.resourceSchemas === undefined || typeof files.resourceSchemas === "string") &&
     (files.runtimeConfig === undefined || typeof files.runtimeConfig === "string")
   );
+}
+
+const v10BoundaryCapabilities: Array<{
+  code: string;
+  match: RegExp;
+  message: string;
+  suggestion: string;
+}> = [
+  {
+    code: "TN_IR_NATIVE_AUTHORING_UNSUPPORTED",
+    match: /(?:^|[.:/-])(?:bevy|native-authoring)(?:$|[.:/-])/i,
+    message: "Direct Bevy/native authoring is outside the portable ThreeNative IR boundary.",
+    suggestion: "Author behavior through the TypeScript SDK and emit portable ECS/IR declarations instead of Bevy-specific code.",
+  },
+  {
+    code: "TN_IR_RAW_THREE_SOURCE_UNSUPPORTED",
+    match: /(?:^|[.:/-])(?:three|raw-three|threejs)(?:$|[.:/-])/i,
+    message: "Raw Three.js authoring cannot be the source of truth for a portable bundle.",
+    suggestion: "Represent scene data through SDK objects, ECS declarations, and versioned IR consumed by both runtimes.",
+  },
+  {
+    code: "TN_IR_RENDERER_PLUGIN_UNSUPPORTED",
+    match: /(?:renderer-plugin|runtime-plugin|plugin-escape|render-phase|storage-buffer)/i,
+    message: "Public renderer/runtime plugin escape hatches are not portable across web Three.js and native Bevy.",
+    suggestion: "Use promoted SDK/IR extension points or wait for a PRD that defines a portable plugin contract.",
+  },
+  {
+    code: "TN_IR_NETWORKING_UNSUPPORTED",
+    match: /(?:network|websocket|replication|collaboration|online-service|cloud-save)/i,
+    message: "Online services, networking, replication, and collaboration are outside the current portable runtime contract.",
+    suggestion: "Keep data local or model synchronization as deterministic resources/events until a networking PRD defines a portable contract.",
+  },
+  {
+    code: "TN_IR_2D_WORKFLOW_UNSUPPORTED",
+    match: /(?:sprite|tilemap|ldtk|tiled|2d-collision)/i,
+    message: "2D-only authoring workflows are outside the current ThreeNative 3D product scope.",
+    suggestion: "Use promoted 3D mesh, material, camera, and physics declarations, or wait for a dedicated 2D scope PRD.",
+  },
+  {
+    code: "TN_IR_PLATFORM_API_UNSUPPORTED",
+    match: /(?:npm|filesystem|worker|timer|platform-api|backend-only|node-api)/i,
+    message: "Arbitrary npm, filesystem, worker, timer, platform, and backend-only APIs cannot be represented in portable IR.",
+    suggestion: "Use portable scripts with declared resources, events, services, target profiles, and bundle-local assets.",
+  },
+];
+
+function validateV10BoundaryCapabilities(manifest: IBundleManifest, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (!isRecord(manifest.requiredCapabilities)) {
+    diagnostics.push({
+      code: "TN_IR_REQUIRED_CAPABILITIES_INVALID",
+      message: "Manifest requiredCapabilities must be an object.",
+      path,
+      severity: "error",
+      suggestion: "Regenerate the bundle so capability declarations are grouped by portable domain.",
+    });
+    return;
+  }
+  for (const [domain, values] of Object.entries(manifest.requiredCapabilities)) {
+    const candidates = [domain, ...(Array.isArray(values) ? values.filter((value): value is string => typeof value === "string") : [])];
+    for (const candidate of candidates) {
+      const boundary = v10BoundaryCapabilities.find((item) => item.match.test(candidate));
+      if (boundary === undefined) {
+        continue;
+      }
+      diagnostics.push({
+        code: boundary.code,
+        message: boundary.message,
+        path: `${path}/${domain}`,
+        severity: "error",
+        suggestion: boundary.suggestion,
+        target: "portable-web-native",
+        value: candidate,
+      });
+      break;
+    }
+  }
 }
 
 function validateManifestPath(value: unknown, path: string, expected: string | undefined, diagnostics: IIrDiagnostic[]): void {
