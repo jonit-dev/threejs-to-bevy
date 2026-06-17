@@ -17,13 +17,13 @@ export const V9_VISUAL_SCENES = [
     mode: "smoke-only",
   },
   {
-    bundlePath: "examples/v9-physics-character/dist/v9-physics-character.bundle",
+    bundlePath: "examples/physics-character/dist/physics-character.bundle",
     fallbackBundlePath: "packages/ir/fixtures/conformance/v9-physics-character/game.bundle",
     id: "physics-character",
     mode: "smoke-only",
   },
   {
-    bundlePath: "examples/v9-assets-gltf-workflow/dist/v9-assets-gltf-workflow.bundle",
+    bundlePath: "examples/assets-gltf-scene-workflow/dist/assets-gltf-scene-workflow.bundle",
     fallbackBundlePath: "packages/ir/fixtures/conformance/v5-drift-surface/game.bundle",
     id: "assets-gltf-workflow",
     mode: "smoke-only",

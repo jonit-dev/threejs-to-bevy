@@ -14,29 +14,54 @@ Bevy runtime where support is claimed.
 
 ## Current Active Gate
 
-V7: deep engine gap-closure, functional scene/template, packaging, performance,
-conformance, docs, diagnostics, and native evidence gate.
+ThreeNative groups current support by **product capability** (animation,
+physics, rendering, assets, packaging, conformance, and tooling). Version
+labels such as `V7`, `V8`, and `V9` are legacy milestone names retained in
+scripts, examples, and historical docs during a staged cleanup. See
+[PRDs/cleanup-versioned-debt.md](PRDs/cleanup-versioned-debt.md) for the naming
+contract, target command map, and allowlist enforced by `pnpm check:names`.
 
-Current release command:
+Current contributor entry points:
 
 ```bash
-pnpm verify:v7
+pnpm check:names
+pnpm verify
+pnpm verify:conformance
 ```
 
-`verify:v7` runs the V7 docs gate, docs/gate tests, selected TypeScript tests,
-the maintained V7 functional scene/template proof, rendered web evidence,
-shared conformance, Bevy native test evidence, desktop packaging checks,
-performance budget reports, and release-artifact presence checks. It writes the
-V7 aggregate report under `artifacts/v7/verification-report.json`.
+Aggregate parity evidence runs through the canonical release gate:
 
-V9 planning now exists under `docs/PRDs/v9/README.md`. The V9 PRDs are
-checklist-driven and aim to close the most remaining Bevy-feature parity checks
-per category without making any PRD too broad to verify. They cover
-animation/particles, physics/character, assets/glTF/scene workflow,
-rendering/lights/post-processing, input/UI/accessibility, and
-audio/persistence/tooling support. The V9 verifier commands named in those PRDs
-are future implementation gates; the current active release command remains
-`pnpm verify:v7`.
+```bash
+pnpm verify:release
+```
+
+Packaging, performance, and desktop distribution evidence still runs through
+`pnpm verify:v7`. Legacy milestone aliases such as `verify:v9` forward to
+`verify:release` with a deprecation diagnostic.
+
+`verify:v7` runs docs gates, selected TypeScript tests, the maintained
+functional scene/template proof, rendered web evidence, shared conformance,
+Bevy native test evidence, desktop packaging checks, performance budget
+reports, and release-artifact presence checks. It writes the aggregate report
+under `artifacts/v7/verification-report.json`.
+
+Capability planning and historical milestone PRDs live under `docs/PRDs/v9/`
+and earlier numbered folders. Those folders are historical archive context, not
+the current release front door.
+
+Distribution packaging is published and verified for the
+TypeScript packages: `@threenative/sdk`, `@threenative/ir`,
+`@threenative/ui`, `@threenative/r3f`, `@threenative/compiler`,
+`@threenative/runtime-web-three`, and `@threenative/cli` are public on npm at
+`0.1.0`. The published package metadata resolves from the registry, and a clean
+external npm project installed `@threenative/cli@0.1.0`, ran `tn create`, installed
+the generated game dependencies, built `dist/game.bundle`, served the web preview,
+and passed `tn verify` with nonblank 1280x720 frames. Run `pnpm
+verify:distribution` to reproduce the local packed-tarball proof from a clean
+temporary npm consumer project. Run `pnpm run deploy -- --dry-run` to execute the
+guarded release path: full repo verification, distribution proof, ordered pack,
+and npm publish dry-run. `pnpm run deploy -- --skip-tests` is available only as
+an explicit fast publish retry path.
 
 V10 planning now exists under `docs/PRDs/v10/README.md`. V10 is the current
 final-gap triage batch for remaining runtime/platform parity rows after the V9
@@ -931,7 +956,7 @@ or native profiler captures; richer frame capture and platform profilers remain
 later work.
 
 V7-10 has landed the first maintained functional V7 scene/template slice:
-`examples/v7-functional` and `templates/v7-functional` keep their placeholder
+`examples/v7-functional` and `templates/starter-functional` keep their placeholder
 model/audio assets local, build through the standard CLI, and combine the
 currently SDK-authored V7-facing gameplay surface: primitive 3D scene content,
 physics colliders, a character controller declaration, input, retained UI,

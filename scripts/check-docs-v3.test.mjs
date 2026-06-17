@@ -42,8 +42,7 @@ async function writeDocsFixture(root, options = {}) {
     "V3-01-scene-asset-bundling-and-budgets.md",
     "V3-02-threejs-performance-and-instancing.md",
   ];
-  await mkdir(join(root, "docs/releases"), { recursive: true });
-  await mkdir(join(root, "docs/v3"), { recursive: true });
+  await mkdir(join(root, "docs"), { recursive: true });
   await mkdir(join(root, "docs/PRDs/v3"), { recursive: true });
   await mkdir(join(root, "examples/v3-environment"), { recursive: true });
   const links = prds
@@ -60,7 +59,6 @@ async function writeDocsFixture(root, options = {}) {
       "# Docs",
       "",
       "[STATUS.md](STATUS.md)",
-      "[releases/v3-completion.md](releases/v3-completion.md)",
       "[conventions.md](conventions.md)",
       "[feature-maturity.md](feature-maturity.md)",
       "[verify-v3.md](verify-v3.md)",
@@ -68,14 +66,13 @@ async function writeDocsFixture(root, options = {}) {
     ].join("\n"),
   );
   await writeFile(join(root, "docs/STATUS.md"), "# Status\n\nV3\n\npnpm verify:v3\n\n## V3 Does Not Prove\n");
-  await writeFile(join(root, "docs/releases/v3-completion.md"), "# V3 Completion\n\nV3\n");
   await writeFile(join(root, "docs/conventions.md"), "# Conventions\n\nV3\n");
   await writeFile(join(root, "docs/feature-maturity.md"), "# Feature Maturity\n\nV3\n");
   await writeFile(join(root, "docs/verify-v3.md"), "# verify:v3\n\nV3\n");
   await writeFile(join(root, "docs/diagnostics.md"), "# Diagnostics\n\nV3\n");
-  await writeFile(join(root, "docs/v3/environment-scene-ir.md"), "# Environment Scene IR\n\nV3\n");
-  await writeFile(join(root, "docs/v3/asset-pipeline.md"), "# V3 Asset Pipeline\n\nV3\n");
-  await writeFile(join(root, "docs/v3/visual-parity-policy.md"), "# Visual Parity Policy\n\nV3\n");
+  await writeFile(join(root, "docs/environment-scene-ir.md"), "# Environment Scene IR\n\nV3\n");
+  await writeFile(join(root, "docs/asset-pipeline.md"), "# V3 Asset Pipeline\n\nV3\n");
+  await writeFile(join(root, "docs/visual-parity-policy.md"), "# Visual Parity Policy\n\nV3\n");
   for (const file of prds) {
     await writeFile(join(root, "docs/PRDs/v3", file), `# ${file}\n\nV3 performance\n`);
   }

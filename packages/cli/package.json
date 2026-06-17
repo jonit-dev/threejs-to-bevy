@@ -1,13 +1,20 @@
 {
   "name": "@threenative/cli",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
+  "types": "./dist/index.d.ts",
   "bin": {
     "tn": "./dist/index.js"
   },
+  "files": [
+    "dist",
+    "templates"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node scripts/copy-templates.mjs",
     "lint": "tsc -p tsconfig.json --noEmit",
     "test": "pnpm --filter @threenative/cli... build && node scripts/run-tests.mjs",
     "tn": "node dist/index.js",

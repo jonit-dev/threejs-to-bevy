@@ -13,12 +13,12 @@ Repo-wide guidance for AI coding agents working on ThreeNative.
 - Keep source ASCII unless the file already has a reason not to.
 - The worktree may contain user changes. Do not revert or overwrite them unless
   explicitly asked.
-- When version-scoped work is completed, especially V1/V2/V3/V4 milestone work or
-  release-gate changes, update `docs/STATUS.md` and
+- When capability or release-gate work is completed, update `docs/STATUS.md` and
   `docs/bevy-feature-parity.md` in the same change so the current gate and drift
   tracker reflect what is now implemented, inconsistent, or still missing.
-- When a new version is finished, update `docs/STATUS.md` before or with the
-  release-gate change so agents can treat it as the implementation front door.
+- Current contributor gates include `pnpm check:names`, `pnpm check:docs`, and
+  `pnpm verify:release`. Legacy milestone script names remain compatibility
+  aliases during the cleanup tracked in `docs/PRDs/cleanup-versioned-debt.md`.
 
 ## Product Boundary
 

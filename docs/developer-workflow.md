@@ -284,6 +284,32 @@ remain outside the V7 packaging contract. The first mobile milestone should
 target one known Android device and one known iPhone profile before broad device
 support.
 
+## Verification And Naming Conventions
+
+ThreeNative is migrating away from milestone-numbered command and folder names
+(`verify:v7`, `examples/physics-character`, `templates/starter-functional`) toward
+capability-based names (`verify:release`, `physics-character`,
+`starter-functional`). The migration plan lives in
+[PRDs/cleanup-versioned-debt.md](PRDs/cleanup-versioned-debt.md).
+
+Current contributor commands:
+
+```bash
+pnpm check:names
+pnpm verify
+pnpm verify:conformance
+```
+
+`pnpm check:names` scans the repo against
+`scripts/version-name-allowlist.json` and fails when a new unclassified milestone
+label appears outside the documented migration policy. Legacy script names such
+as `verify:v9` and `check:docs:v8` remain supported compatibility aliases until
+later cleanup phases replace them with canonical commands.
+
+When adding new examples, templates, docs, or package scripts, prefer capability
+names. If a legacy milestone label must remain temporarily, classify it in the
+allowlist with owner, rationale, and removal policy.
+
 ## Testing Expectations
 
 Testing should follow the architecture boundaries.

@@ -1,0 +1,13 @@
+{
+  "name": "physics-character",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tn build",
+    "validate": "tn validate"
+  },
+  "dependencies": {
+    "@threenative/sdk": "workspace:*"
+  }
+}

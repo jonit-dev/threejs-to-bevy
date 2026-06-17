@@ -1,0 +1,24 @@
+{
+  "name": "@threenative/verify-tools",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.js",
+    "./runner": "./dist/runner.js",
+    "./legacyAliases": "./dist/legacyAliases.js",
+    "./docs": "./dist/docs.js",
+    "./release": "./dist/release.js",
+    "./conformance": "./dist/conformance.js",
+    "./runTests": "./dist/runTests.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "pnpm build && node --test dist/runner.test.js dist/legacyAliases.test.js dist/docs.test.js dist/conformance.test.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.25"
+  }
+}
