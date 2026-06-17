@@ -81,7 +81,7 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
   const templateSourcePath = resolveTemplateSourcePath(templatesRoot, definition);
 
   await mkdir(projectPath, { recursive: true });
-  await cp(templateSourcePath, projectPath, { recursive: true, force: false, errorOnExist: true });
+  await cp(templateSourcePath, projectPath, { recursive: true, force: false });
   await rewriteProjectTemplateMetadata(projectPath, definition.canonical);
 
   if (sourceCheckout) {
