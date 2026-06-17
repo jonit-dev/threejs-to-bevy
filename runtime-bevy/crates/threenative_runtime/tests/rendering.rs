@@ -26,7 +26,8 @@ use threenative_runtime::map_world::{
     map_bundle_into_world,
 };
 use threenative_runtime::rendering::{
-    NativeParticleMaterialPolicy, NativeRenderedParticle, observe_rendered_particles,
+    NativeParticleMaterialPolicy, NativeRenderedParticle, apply_environment_lighting_to_world,
+    observe_environment_lighting, observe_rendered_particles,
 };
 
 mod support;
@@ -68,6 +69,30 @@ fn rendering_should_map_visibility_and_v2_lights() {
     );
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn should_report_native_skybox_and_environment_map_observations() {
+    let fixture = load_conformance_fixture("v9-skybox-environment");
+    let observation = observe_environment_lighting(&fixture.bundle);
+
+    assert_eq!(
+        observation.skybox.as_ref().map(|skybox| skybox.mode.as_str()),
+        Some("cubemap")
+    );
+    assert_eq!(
+        observation
+            .environment_map
+            .as_ref()
+            .map(|environment_map| environment_map.intent.as_str()),
+        Some("reflection-and-irradiance")
+    );
+    assert_eq!(observation.light_probes.len(), 1);
+
+    let mut app = App::new();
+    let applied = apply_environment_lighting_to_world(app.world_mut(), &fixture.bundle);
+    assert!(applied.skybox.as_ref().is_some_and(|skybox| skybox.applied));
+    assert!(app.world().contains_resource::<ClearColor>());
 }
 
 #[test]

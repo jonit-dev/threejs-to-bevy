@@ -8,6 +8,7 @@ import type {
   IConformanceEntityReport,
   IConformanceEnvironmentReport,
   IConformanceEventReport,
+  IConformanceLightBudgetReport,
   IConformanceMaterialReport,
   IConformanceReport,
   IConformanceResourceReport,
@@ -54,6 +55,7 @@ export function reportWebConformance(
     environment: bundle.environmentScene === undefined ? undefined : reportEnvironment(bundle.environmentScene),
     events: reportEvents(observedEvents(bundle.world)),
     fixture,
+    lightBudget: reportLightBudget(bundle.world),
     materials: bundle.materials.materials.map(reportMaterial).sort((left, right) => left.id.localeCompare(right.id)),
     resources: reportResources(bundle.world.resources ?? {}),
     runtime: "web-three",
@@ -111,6 +113,20 @@ function reportRuntimeConfig(config: IRuntimeConfigIr | undefined): IConformance
     renderer: {
       antialias: config.renderer.antialias,
       ...(config.renderer.bloom === undefined ? {} : { bloom: config.renderer.bloom }),
+      ...(config.renderer.colorGrading === undefined ? {} : { colorGrading: config.renderer.colorGrading }),
+      postProcessing: {
+        applied: [
+          ...(config.renderer.bloom?.enabled === true ? ["bloom"] : []),
+          ...(config.renderer.colorGrading === undefined ? [] : ["colorGrading"]),
+        ],
+        skipped: [
+          { feature: "fxaa", reason: "diagnostic-only until native/web visual parity evidence is promoted" },
+          { feature: "taa", reason: "unsupported in V9" },
+          { feature: "smaa", reason: "unsupported in V9" },
+          { feature: "depthOfField", reason: "unsupported in V9" },
+        ],
+      },
+      ...(config.renderer.renderPath === undefined ? {} : { renderPath: config.renderer.renderPath }),
     },
   };
 }
@@ -184,9 +200,10 @@ function reportEntity(
       intensity: entity.components.Light.intensity,
       kind: entity.components.Light.kind,
       range: entity.components.Light.range,
+      shadowFilter: entity.components.Light.shadowFilter,
       shadowBias: entity.components.Light.shadowBias,
       shadowNormalBias: entity.components.Light.shadowNormalBias,
-      runtime: object === undefined ? undefined : reportRuntimeLight(object),
+      runtime: object === undefined ? undefined : reportRuntimeLight(object, entity.components.Light.shadowFilter),
     };
   }
   if (entity.components.Visibility !== undefined || entity.components.MeshRenderer?.visible !== undefined || object !== undefined) {
@@ -220,9 +237,9 @@ function reportRuntimeCamera(object: THREE.Object3D): NonNullable<NonNullable<IC
   return undefined;
 }
 
-function reportRuntimeLight(object: THREE.Object3D): IRuntimeLightReport | undefined {
+function reportRuntimeLight(object: THREE.Object3D, shadowFilter?: NonNullable<IConformanceEntityReport["light"]>["shadowFilter"]): IRuntimeLightReport | undefined {
   if (object instanceof THREE.DirectionalLight) {
-    return { color: `#${object.color.getHexString()}`, intensity: object.intensity, kind: "directional", shadowBias: object.shadow.bias, shadowNormalBias: object.shadow.normalBias };
+    return { color: `#${object.color.getHexString()}`, intensity: object.intensity, kind: "directional", shadowFilter, shadowBias: object.shadow.bias, shadowNormalBias: object.shadow.normalBias };
   }
   if (object instanceof THREE.AmbientLight) {
     return undefined;
@@ -233,6 +250,7 @@ function reportRuntimeLight(object: THREE.Object3D): IRuntimeLightReport | undef
       intensity: object.intensity,
       kind: "point",
       range: object.distance,
+      shadowFilter,
       shadowBias: object.shadow.bias,
       shadowNormalBias: object.shadow.normalBias,
     };
@@ -244,6 +262,7 @@ function reportRuntimeLight(object: THREE.Object3D): IRuntimeLightReport | undef
       intensity: object.intensity,
       kind: "spot",
       range: object.distance,
+      shadowFilter,
       shadowBias: object.shadow.bias,
       shadowNormalBias: object.shadow.normalBias,
     };
@@ -323,11 +342,86 @@ function reportEnvironment(environment: IEnvironmentSceneIr): IConformanceEnviro
   return {
     atmosphere: environment.atmosphere?.id,
     bookmarks: (environment.bookmarks ?? []).map((bookmark) => bookmark.id).sort(),
+    debugGizmos: [
+      ...environment.sourceAssets.filter((asset) => asset.debug?.gizmo === true).map((asset) => `sourceAsset:${asset.id}`),
+      ...environment.instances.filter((instance) => instance.debug?.gizmo === true).map((instance) => `instance:${instance.id}`),
+      ...(environment.lightProbes ?? []).map((probe) => `lightProbe:${probe.id}`),
+    ].sort(),
+    environmentMap: environment.environmentMap,
+    hlodFades: environment.sourceAssets.flatMap((asset) =>
+      (asset.lod ?? []).flatMap((level) =>
+        level.fade === undefined
+          ? []
+          : [{ asset: level.asset, endDistance: level.fade.endDistance, sourceAsset: asset.id, startDistance: level.fade.startDistance }],
+      ),
+    ),
     instances: environment.instances.map((instance) => instance.id).sort(),
+    instanceVisibility: environment.instances.flatMap((instance) =>
+      instance.visibility === undefined
+        ? []
+        : [{
+            id: instance.id,
+            maxDistance: instance.visibility.maxDistance,
+            minDistance: instance.visibility.minDistance,
+            ...(instance.visibility.fade === undefined
+              ? {}
+              : { endDistance: instance.visibility.fade.endDistance, startDistance: instance.visibility.fade.startDistance }),
+          }],
+    ),
+    lightProbes: environment.lightProbes,
     path: environment.path.id,
     scatter: (environment.scatter ?? []).map((scatter) => scatter.id).sort(),
+    skybox: environment.skybox,
     sourceAssets: environment.sourceAssets.map((asset) => asset.id).sort(),
+    sourceAssetVisibility: environment.sourceAssets.flatMap((asset) =>
+      asset.visibility === undefined
+        ? []
+        : [{
+            id: asset.id,
+            maxDistance: asset.visibility.maxDistance,
+            minDistance: asset.visibility.minDistance,
+            ...(asset.visibility.fade === undefined
+              ? {}
+              : { endDistance: asset.visibility.fade.endDistance, startDistance: asset.visibility.fade.startDistance }),
+          }],
+    ),
     terrain: environment.terrain?.id,
+  };
+}
+
+function reportLightBudget(world: IWebBundle["world"]): IConformanceLightBudgetReport | undefined {
+  const budget = world.resources?.RenderingLightBudget as
+    | { cullingPolicy?: string; maximumShadowedPointLights?: number; maximumVisibleDynamicLights?: number }
+    | undefined;
+  const dynamicLights = world.entities
+    .filter((entity) => {
+      const kind = entity.components.Light?.kind;
+      return kind === "directional" || kind === "point" || kind === "spot";
+    })
+    .map((entity) => entity.id)
+    .sort();
+  const shadowedPointLights = world.entities
+    .filter((entity) => entity.components.Light?.kind === "point" && entity.components.Light.shadowFilter !== undefined)
+    .map((entity) => entity.id)
+    .sort();
+  if (budget === undefined && dynamicLights.length === 0 && shadowedPointLights.length === 0) {
+    return undefined;
+  }
+  const maximumVisibleDynamicLights = budget?.maximumVisibleDynamicLights;
+  const culledLights =
+    budget?.cullingPolicy === "nearest" && maximumVisibleDynamicLights !== undefined && dynamicLights.length > maximumVisibleDynamicLights
+      ? dynamicLights.slice(maximumVisibleDynamicLights)
+      : [];
+  return {
+    culledLights,
+    cullingPolicy: budget?.cullingPolicy,
+    dynamicLights,
+    maximumShadowedPointLights: budget?.maximumShadowedPointLights,
+    maximumVisibleDynamicLights,
+    overBudget:
+      (maximumVisibleDynamicLights !== undefined && dynamicLights.length > maximumVisibleDynamicLights) ||
+      (budget?.maximumShadowedPointLights !== undefined && shadowedPointLights.length > budget.maximumShadowedPointLights),
+    shadowedPointLights,
   };
 }
 

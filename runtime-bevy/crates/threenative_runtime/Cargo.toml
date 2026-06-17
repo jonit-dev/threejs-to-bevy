@@ -57,6 +57,7 @@ path = "src/v9_physics_character_trace.rs"
 
 [dependencies]
 bevy = { version = "=0.14.2", features = ["pbr_multi_layer_material_textures", "pbr_transmission_textures"] }
+image = "0.25.10"
 quickjs-rusty = "=0.12.0"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"

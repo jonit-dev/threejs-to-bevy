@@ -10,13 +10,16 @@ export interface IEnvironmentDeclaration {
   bookmarks?: IEnvironmentSceneIr["bookmarks"];
   budgets?: ITargetProfile["budgets"];
   controller?: IEnvironmentSceneIr["controller"];
+  environmentMap?: IEnvironmentSceneIr["environmentMap"];
   exclusionZones?: IEnvironmentSceneIr["exclusionZones"];
   instances: IEnvironmentSceneIr["instances"];
+  lightProbes?: IEnvironmentSceneIr["lightProbes"];
   lod?: Record<string, Array<{ assetName: string; maxDistance: number; minDistance: number }>>;
   path: IEnvironmentSceneIr["path"];
   performance?: ITargetProfile["performance"];
   previewImage?: string;
   scatter?: IEnvironmentSceneIr["scatter"];
+  skybox?: IEnvironmentSceneIr["skybox"];
   sourceDir: string;
   terrain?: IEnvironmentSceneIr["terrain"];
   walkability?: IEnvironmentSceneIr["walkability"];
@@ -103,6 +106,7 @@ export async function emitEnvironment(projectPath: string, declaration: IEnviron
   if (previewAsset !== undefined) {
     assets.push(previewAsset);
   }
+  assets.push(...collectEnvironmentLightingAssets(declaration));
 
   return {
     assets,
@@ -115,9 +119,14 @@ export async function emitEnvironment(projectPath: string, declaration: IEnviron
       ...(declaration.atmosphere === undefined ? {} : { atmosphere: declaration.atmosphere }),
       ...(declaration.bookmarks === undefined ? {} : { bookmarks: [...declaration.bookmarks].sort((left, right) => left.id.localeCompare(right.id)) }),
       ...(declaration.controller === undefined ? {} : { controller: declaration.controller }),
+      ...(declaration.environmentMap === undefined ? {} : { environmentMap: toJsonValue(declaration.environmentMap) as IEnvironmentSceneIr["environmentMap"] }),
       ...(declaration.exclusionZones === undefined ? {} : { exclusionZones: [...declaration.exclusionZones].sort((left, right) => left.id.localeCompare(right.id)) }),
+      ...(declaration.lightProbes === undefined
+        ? {}
+        : { lightProbes: [...declaration.lightProbes].map((probe) => toJsonValue(probe) as NonNullable<IEnvironmentSceneIr["lightProbes"]>[number]).sort((left, right) => left.id.localeCompare(right.id)) }),
       ...(previewAsset === undefined ? {} : { referenceImage: previewAsset.id }),
       ...(declaration.scatter === undefined ? {} : { scatter: [...declaration.scatter].sort((left, right) => left.id.localeCompare(right.id)) }),
+      ...(declaration.skybox === undefined ? {} : { skybox: toJsonValue(declaration.skybox) as IEnvironmentSceneIr["skybox"] }),
       sourceAssets,
       instances: emitEnvironmentInstances(declaration),
       path: declaration.path,
@@ -125,6 +134,50 @@ export async function emitEnvironment(projectPath: string, declaration: IEnviron
       ...(declaration.walkability === undefined ? {} : { walkability: declaration.walkability }),
     },
   };
+}
+
+function collectEnvironmentLightingAssets(declaration: IEnvironmentDeclaration): IInternalAsset[] {
+  const assetRefs = [
+    ...readAssetRefs(declaration.skybox),
+    ...readAssetRefs(declaration.environmentMap),
+    ...(declaration.lightProbes ?? []).flatMap((probe) => readAssetRefs(probe)),
+  ];
+  const byId = new Map<string, IInternalAsset>();
+  for (const assetRef of assetRefs) {
+    if (assetRef.kind !== "texture" || typeof assetRef.path !== "string") {
+      continue;
+    }
+    byId.set(assetRef.id, {
+      center: assetRef.center,
+      format: assetRef.format,
+      id: assetRef.id,
+      kind: "texture",
+      magFilter: assetRef.magFilter,
+      minFilter: assetRef.minFilter,
+      offset: assetRef.offset,
+      path: assetRef.path,
+      repeat: assetRef.repeat,
+      rotation: assetRef.rotation,
+      sourcePath: assetRef.path,
+      wrapS: assetRef.wrapS,
+      wrapT: assetRef.wrapT,
+    });
+  }
+  return [...byId.values()].sort((left, right) => left.id.localeCompare(right.id));
+}
+
+function readAssetRefs(value: unknown): Array<{ [key: string]: unknown; format: string; id: string; kind: string; path?: string }> {
+  if (typeof value !== "object" || value === null || !("assetRefs" in value) || !Array.isArray((value as { assetRefs?: unknown }).assetRefs)) {
+    return [];
+  }
+  return (value as { assetRefs: Array<{ [key: string]: unknown; format: string; id: string; kind: string; path?: string }> }).assetRefs;
+}
+
+function toJsonValue(value: unknown): unknown {
+  if (typeof value === "object" && value !== null && "toJSON" in value && typeof (value as { toJSON?: unknown }).toJSON === "function") {
+    return (value as { toJSON: () => unknown }).toJSON();
+  }
+  return value;
 }
 
 function collectEnvironmentModelAssetNames(declaration: IEnvironmentDeclaration): string[] {

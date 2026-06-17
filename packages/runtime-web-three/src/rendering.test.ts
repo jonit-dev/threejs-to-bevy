@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import * as THREE from "three";
 
-import { applyAtmosphereProfile } from "./rendering.js";
+import { applyAtmosphereProfile, observeEnvironmentLighting } from "./rendering.js";
 
 test("rendering should map atmosphere profile to three scene settings", () => {
   const scene = new THREE.Scene();
@@ -30,4 +30,52 @@ test("rendering should map atmosphere profile to three scene settings", () => {
   assert.equal(observation.skyHorizonColor, "#d6c39d");
   assert.equal(scene.children.some((child) => child instanceof THREE.DirectionalLight), true);
   assert.equal(scene.fog instanceof THREE.FogExp2, true);
+});
+
+test("should map skybox and environment map refs to renderer observations", () => {
+  const observation = observeEnvironmentLighting({
+    schema: "threenative.environment-scene",
+    version: "0.1.0",
+    skybox: {
+      faces: {
+        negativeX: "tex.nx",
+        negativeY: "tex.ny",
+        negativeZ: "tex.nz",
+        positiveX: "tex.px",
+        positiveY: "tex.py",
+        positiveZ: "tex.pz",
+      },
+      mode: "cubemap",
+    },
+    environmentMap: {
+      asset: "tex.env",
+      intent: "reflection-and-irradiance",
+      mode: "equirect",
+    },
+    lightProbes: [
+      {
+        bounds: { max: [1, 1, 1], min: [-1, -1, -1] },
+        id: "probe.center",
+        influenceRadius: 2,
+        intent: "irradiance",
+        source: { asset: "tex.env", mode: "equirect" },
+      },
+    ],
+    sourceAssets: [],
+    instances: [],
+    path: { id: "path", points: [[0, 0, 0], [1, 0, 0]], width: 1 },
+  });
+
+  assert.deepEqual(observation.skybox, {
+    applied: false,
+    assetIds: ["tex.px", "tex.nx", "tex.py", "tex.ny", "tex.pz", "tex.nz"],
+    mode: "cubemap",
+  });
+  assert.deepEqual(observation.environmentMap, {
+    applied: false,
+    assetIds: ["tex.env"],
+    intent: "reflection-and-irradiance",
+    mode: "equirect",
+  });
+  assert.deepEqual(observation.lightProbes, [{ applied: false, assetIds: ["tex.env"], id: "probe.center", intent: "irradiance" }]);
 });

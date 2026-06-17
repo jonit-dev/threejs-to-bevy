@@ -40,6 +40,31 @@ test("should map atmosphere color management to renderer tone mapping", () => {
   assert.equal(renderer.toneMappingExposure, 1.05);
 });
 
+test("should let runtime color grading drive renderer tone mapping and exposure", () => {
+  const renderer = {
+    outputColorSpace: THREE.NoColorSpace,
+    toneMapping: THREE.NoToneMapping,
+    toneMappingExposure: 1,
+  } as THREE.WebGLRenderer;
+  applyRendererColorManagement(
+    renderer,
+    {
+      exposure: 1.05,
+      outputColorSpace: "srgb",
+      textureColorSpace: "srgb",
+      toneMapping: "none",
+    },
+    {
+      contrast: 0.1,
+      exposure: 1.2,
+      saturation: 0.9,
+      toneMapping: "aces",
+    },
+  );
+  assert.equal(renderer.toneMapping, THREE.ACESFilmicToneMapping);
+  assert.equal(renderer.toneMappingExposure, 1.2);
+});
+
 test("should map runtime antialias modes to WebGL renderer parameters", () => {
   assert.deepEqual(webRendererParameters(runtimeConfig("none")), {
     antialias: false,

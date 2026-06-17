@@ -1,0 +1,109 @@
+{
+  "schema": "threenative.environment-scene",
+  "version": "0.1.0",
+  "skybox": {
+    "faces": {
+      "negativeX": "tex.sky.nx",
+      "negativeY": "tex.sky.ny",
+      "negativeZ": "tex.sky.nz",
+      "positiveX": "tex.sky.px",
+      "positiveY": "tex.sky.py",
+      "positiveZ": "tex.sky.pz"
+    },
+    "intensity": 0.8,
+    "mode": "cubemap",
+    "rotationY": 0.25
+  },
+  "environmentMap": {
+    "asset": "tex.env.studio",
+    "intent": "reflection-and-irradiance",
+    "mode": "equirect"
+  },
+  "lightProbes": [
+    {
+      "bounds": {
+        "min": [
+          -3,
+          0,
+          -3
+        ],
+        "max": [
+          3,
+          4,
+          3
+        ]
+      },
+      "id": "probe.center",
+      "influenceRadius": 5,
+      "intent": "irradiance",
+      "source": {
+        "asset": "tex.env.studio",
+        "mode": "equirect"
+      }
+    }
+  ],
+  "sourceAssets": [
+    {
+      "asset": "model.env.Tree",
+      "category": "tree",
+      "debug": {
+        "gizmo": true
+      },
+      "id": "env.Tree",
+      "lod": [
+        {
+          "asset": "model.env.TreeLow",
+          "fade": {
+            "endDistance": 32,
+            "startDistance": 24
+          },
+          "maxDistance": 80,
+          "minDistance": 20
+        }
+      ],
+      "visibility": {
+        "fade": {
+          "endDistance": 96,
+          "startDistance": 72
+        },
+        "maxDistance": 120,
+        "minDistance": 0
+      }
+    }
+  ],
+  "instances": [
+    {
+      "debug": {
+        "gizmo": true
+      },
+      "id": "tree.hero",
+      "kind": "hero",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "sourceAsset": "env.Tree",
+      "visibility": {
+        "maxDistance": 90,
+        "minDistance": 0
+      }
+    }
+  ],
+  "path": {
+    "id": "path.empty",
+    "points": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ]
+    ],
+    "width": 1
+  }
+}

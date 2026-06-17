@@ -8,6 +8,7 @@ interface IObjectLike {
   castShadow?: boolean;
   children: readonly IObjectLike[];
   clear?: { color?: string; mode: string };
+  debug?: { gizmo?: boolean };
   follow?: { offset?: readonly number[]; smoothing?: number; target: string };
   id?: string;
   layers?: readonly string[];
@@ -73,6 +74,7 @@ interface IObjectLike {
   projection?: { handedness?: string; kind: string; matrix?: readonly number[] };
   screenShake?: { amplitude: number; decay?: number; frequency?: number };
   shadowBias?: number;
+  shadowFilter?: { mode: "pcf"; quality: "high" | "low" | "medium" };
   shadowNormalBias?: number;
   target?: { asset?: string; kind: string };
   viewModel?: { fovScale?: number; offset?: readonly number[] };
@@ -247,7 +249,7 @@ function visitChildren(
         kind: "directional",
         color: "color" in child ? child.color : "#ffffff",
         intensity: "intensity" in child ? child.intensity : 1,
-        ...emitLightShadowBias(child),
+        ...emitLightMetadata(child),
       };
     }
 
@@ -256,6 +258,7 @@ function visitChildren(
         kind: "ambient",
         color: "color" in child ? child.color : "#ffffff",
         intensity: "intensity" in child ? child.intensity : 1,
+        ...emitLightMetadata(child),
       };
     }
 
@@ -265,7 +268,7 @@ function visitChildren(
         color: "color" in child ? child.color : "#ffffff",
         intensity: "intensity" in child ? child.intensity : 1,
         ...("range" in child && child.range !== undefined ? { range: child.range } : {}),
-        ...emitLightShadowBias(child),
+        ...emitLightMetadata(child),
       };
     }
 
@@ -276,7 +279,7 @@ function visitChildren(
         intensity: "intensity" in child ? child.intensity : 1,
         ...("angle" in child && child.angle !== undefined ? { angle: child.angle } : {}),
         ...("range" in child && child.range !== undefined ? { range: child.range } : {}),
-        ...emitLightShadowBias(child),
+        ...emitLightMetadata(child),
       };
     }
 
@@ -373,9 +376,11 @@ function geometrySize(geometry: NonNullable<IObjectLike["geometry"]>): readonly 
   return geometry.height === undefined ? [geometry.radius] : [geometry.radius, geometry.height];
 }
 
-function emitLightShadowBias(light: IObjectLike): Record<string, number> {
+function emitLightMetadata(light: IObjectLike): Record<string, unknown> {
   return {
+    ...(light.debug === undefined ? {} : { debug: light.debug }),
     ...(light.shadowBias === undefined ? {} : { shadowBias: light.shadowBias }),
+    ...(light.shadowFilter === undefined ? {} : { shadowFilter: light.shadowFilter }),
     ...(light.shadowNormalBias === undefined ? {} : { shadowNormalBias: light.shadowNormalBias }),
   };
 }

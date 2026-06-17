@@ -1,0 +1,80 @@
+{
+  "schema": "threenative.assets",
+  "version": "0.1.0",
+  "assets": [
+    {
+      "format": "png",
+      "id": "tex.env.studio",
+      "kind": "texture",
+      "path": "assets/sky/studio.png"
+    },
+    {
+      "format": "png",
+      "id": "tex.sky.nx",
+      "kind": "texture",
+      "path": "assets/sky/nx.png"
+    },
+    {
+      "format": "png",
+      "id": "tex.sky.ny",
+      "kind": "texture",
+      "path": "assets/sky/ny.png"
+    },
+    {
+      "format": "png",
+      "id": "tex.sky.nz",
+      "kind": "texture",
+      "path": "assets/sky/nz.png"
+    },
+    {
+      "format": "png",
+      "id": "tex.sky.px",
+      "kind": "texture",
+      "path": "assets/sky/px.png"
+    },
+    {
+      "format": "png",
+      "id": "tex.sky.py",
+      "kind": "texture",
+      "path": "assets/sky/py.png"
+    },
+    {
+      "format": "png",
+      "id": "tex.sky.pz",
+      "kind": "texture",
+      "path": "assets/sky/pz.png"
+    },
+    {
+      "format": "glb",
+      "id": "model.env.Tree",
+      "kind": "model",
+      "path": "assets/env/tree.glb"
+    },
+    {
+      "format": "glb",
+      "id": "model.env.TreeLow",
+      "kind": "model",
+      "path": "assets/env/tree-low.glb"
+    },
+    {
+      "format": "generated",
+      "id": "mesh.ground",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        8,
+        0.08,
+        8
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.reflector",
+      "kind": "mesh",
+      "primitive": "sphere",
+      "size": [
+        0.85
+      ]
+    }
+  ]
+}

@@ -64,6 +64,12 @@ export function deriveRequiredCapabilities(source: ICapabilitySource): IBundleMa
   if (source.runtimeConfig !== undefined) {
     add("runtime", "config");
     add("runtime", "fixed-timestep");
+    if (source.runtimeConfig.renderer?.colorGrading !== undefined) {
+      add("rendering", "color-grading");
+    }
+    if (source.runtimeConfig.renderer?.renderPath === "forward") {
+      add("rendering", "render-path.forward");
+    }
   }
 
   return Object.fromEntries(
@@ -106,6 +112,9 @@ function collectWorldCapabilities(world: IWorldIr | undefined, add: (domain: str
   if (world.resources?.Navigation !== undefined) {
     add("navigation", "static-regions");
     add("navigation", "path");
+  }
+  if (world.resources?.RenderingLightBudget !== undefined) {
+    add("rendering", "light-budget");
   }
   if (Object.keys(world.events ?? {}).length > 0) {
     add("ecs", "events");
@@ -167,6 +176,12 @@ function collectWorldCapabilities(world: IWorldIr | undefined, add: (domain: str
       }
       if (entity.components.Light.shadowBias !== undefined || entity.components.Light.shadowNormalBias !== undefined) {
         add("rendering", "light.shadow-bias");
+      }
+      if (entity.components.Light.shadowFilter !== undefined) {
+        add("rendering", "light.shadow-filter.pcf");
+      }
+      if (entity.components.Light.debug?.gizmo === true) {
+        add("rendering", "light.debug-gizmo");
       }
     }
     if (entity.components.RigidBody !== undefined) {
@@ -602,6 +617,15 @@ function collectEnvironmentCapabilities(
   if (environment.sourceAssets.some((asset) => asset.lod !== undefined && asset.lod.length > 0)) {
     add("environment", "lod");
   }
+  if (environment.sourceAssets.some((asset) => asset.lod?.some((level) => level.fade !== undefined))) {
+    add("environment", "hlod-fades");
+  }
+  if (environment.sourceAssets.some((asset) => asset.visibility !== undefined) || environment.instances.some((instance) => instance.visibility !== undefined)) {
+    add("environment", "visibility-ranges");
+  }
+  if (environment.sourceAssets.some((asset) => asset.debug?.gizmo === true) || environment.instances.some((instance) => instance.debug?.gizmo === true)) {
+    add("environment", "debug-gizmos");
+  }
   if (environment.scatter !== undefined && environment.scatter.length > 0) {
     add("environment", "scatter");
   }
@@ -620,6 +644,15 @@ function collectEnvironmentCapabilities(
     if (environment.atmosphere.shadows.enabled) {
       add("rendering", "shadows");
     }
+  }
+  if (environment.skybox !== undefined) {
+    add("rendering", "skybox");
+  }
+  if (environment.environmentMap !== undefined) {
+    add("rendering", "environment-map");
+  }
+  if (environment.lightProbes !== undefined && environment.lightProbes.length > 0) {
+    add("rendering", "light-probes");
   }
   if (environment.controller !== undefined) {
     add("environment", "first-person-controller");

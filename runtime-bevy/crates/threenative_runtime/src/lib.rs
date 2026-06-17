@@ -100,6 +100,10 @@ pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeErro
             }),
     );
     rendering::apply_atmosphere_to_world(app.world_mut(), &bundle);
+    let environment_lighting = rendering::apply_environment_lighting_to_world(app.world_mut(), &bundle);
+    for diagnostic in environment_lighting.diagnostics {
+        warn!("{diagnostic}");
+    }
     map_world::map_bundle_into_world(app.world_mut(), &bundle)?;
     environment::map_environment_into_world(app.world_mut(), &bundle);
     for diagnostic in audio::spawn_startup_audio(app.world_mut(), &bundle) {

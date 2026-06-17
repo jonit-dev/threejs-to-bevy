@@ -3,8 +3,9 @@ use bevy::{
     prelude::*,
     render::alpha::AlphaMode,
 };
+use image::ImageReader;
 use threenative_components::ThreeNativeId;
-use threenative_loader::{ColorIr, LoadedBundle};
+use threenative_loader::{ColorIr, EnvironmentTextureSourceIr, LoadedBundle};
 
 // Atmosphere sun is an additive environment light; keep it much lower than the
 // explicit world directional light so bundles that include both don't double the
@@ -61,6 +62,37 @@ pub struct AtmosphereObservation {
     pub output_color_space: Option<String>,
     pub texture_color_space: Option<String>,
     pub diagnostics: Vec<String>,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct EnvironmentLightingObservation {
+    pub skybox: Option<EnvironmentTextureObservation>,
+    pub environment_map: Option<EnvironmentMapObservation>,
+    pub light_probes: Vec<LightProbeObservation>,
+    pub diagnostics: Vec<String>,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct EnvironmentTextureObservation {
+    pub mode: String,
+    pub asset_ids: Vec<String>,
+    pub applied: bool,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct EnvironmentMapObservation {
+    pub mode: String,
+    pub intent: String,
+    pub asset_ids: Vec<String>,
+    pub applied: bool,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct LightProbeObservation {
+    pub id: String,
+    pub intent: String,
+    pub asset_ids: Vec<String>,
+    pub applied: bool,
 }
 
 pub fn observe_atmosphere(bundle: &LoadedBundle) -> AtmosphereObservation {
@@ -264,6 +296,101 @@ fn seeded_unit(seed: &str, index: u32, channel: u32) -> f32 {
     hash as f32 / u32::MAX as f32
 }
 
+pub fn observe_environment_lighting(bundle: &LoadedBundle) -> EnvironmentLightingObservation {
+    let Some(scene) = bundle.environment_scene.as_ref() else {
+        return EnvironmentLightingObservation {
+            skybox: None,
+            environment_map: None,
+            light_probes: Vec::new(),
+            diagnostics: Vec::new(),
+        };
+    };
+    EnvironmentLightingObservation {
+        skybox: scene.skybox.as_ref().map(|skybox| EnvironmentTextureObservation {
+            mode: skybox.mode.clone(),
+            asset_ids: texture_asset_ids(&EnvironmentTextureSourceIr {
+                asset: skybox.asset.clone(),
+                faces: skybox.faces.clone(),
+                mode: skybox.mode.clone(),
+            }),
+            applied: false,
+        }),
+        environment_map: scene.environment_map.as_ref().map(|environment_map| {
+            EnvironmentMapObservation {
+                mode: environment_map.mode.clone(),
+                intent: environment_map.intent.clone(),
+                asset_ids: texture_asset_ids(&EnvironmentTextureSourceIr {
+                    asset: environment_map.asset.clone(),
+                    faces: environment_map.faces.clone(),
+                    mode: environment_map.mode.clone(),
+                }),
+                applied: false,
+            }
+        }),
+        light_probes: scene
+            .light_probes
+            .iter()
+            .map(|probe| LightProbeObservation {
+                id: probe.id.clone(),
+                intent: probe.intent.clone(),
+                asset_ids: texture_asset_ids(&probe.source),
+                applied: false,
+            })
+            .collect(),
+        diagnostics: Vec::new(),
+    }
+}
+
+pub fn apply_environment_lighting_to_world(world: &mut World, bundle: &LoadedBundle) -> EnvironmentLightingObservation {
+    let mut observation = observe_environment_lighting(bundle);
+    let Some(scene) = bundle.environment_scene.as_ref() else {
+        return observation;
+    };
+    let asset_color = scene
+        .skybox
+        .as_ref()
+        .and_then(|skybox| {
+            average_texture_color(
+                bundle,
+                &EnvironmentTextureSourceIr {
+                    asset: skybox.asset.clone(),
+                    faces: skybox.faces.clone(),
+                    mode: skybox.mode.clone(),
+                },
+            )
+        })
+        .or_else(|| {
+            scene.environment_map.as_ref().and_then(|environment_map| {
+                average_texture_color(
+                    bundle,
+                    &EnvironmentTextureSourceIr {
+                        asset: environment_map.asset.clone(),
+                        faces: environment_map.faces.clone(),
+                        mode: environment_map.mode.clone(),
+                    },
+                )
+            })
+        });
+    if let Some(color) = asset_color {
+        world.insert_resource(ClearColor(color));
+        world.insert_resource(AmbientLight {
+            color,
+            brightness: 0.35,
+        });
+        if let Some(skybox) = observation.skybox.as_mut() {
+            skybox.applied = true;
+        }
+        if let Some(environment_map) = observation.environment_map.as_mut() {
+            environment_map.applied = true;
+        }
+    } else if scene.skybox.is_some() || scene.environment_map.is_some() {
+        observation
+            .diagnostics
+            .push("TN_BEVY_ENVIRONMENT_TEXTURE_UNRESOLVED".to_owned());
+    }
+    observation
+}
+
 pub fn normalize_loaded_gltf_materials(mut materials: ResMut<Assets<StandardMaterial>>) {
     for (_, material) in materials.iter_mut() {
         normalize_textured_material(material);
@@ -293,6 +420,51 @@ fn color_to_bevy(color: &ColorIr) -> Color {
         ColorIr::Hex(value) => hex_to_bevy(value).unwrap_or(Color::WHITE),
         ColorIr::Rgb(value) => Color::srgb(value[0], value[1], value[2]),
     }
+}
+
+fn average_texture_color(bundle: &LoadedBundle, source: &EnvironmentTextureSourceIr) -> Option<Color> {
+    let asset_id = texture_asset_ids(source).into_iter().next()?;
+    let asset = bundle
+        .assets
+        .assets
+        .iter()
+        .find(|asset| asset.id == asset_id && asset.kind == "texture")?;
+    let path = asset.path.as_ref()?;
+    let image = ImageReader::open(bundle.bundle_path.join(path))
+        .ok()?
+        .decode()
+        .ok()?
+        .to_rgba8();
+    let mut red = 0.0;
+    let mut green = 0.0;
+    let mut blue = 0.0;
+    let count = (image.width() * image.height()).max(1) as f32;
+    for pixel in image.pixels() {
+        red += pixel[0] as f32 / 255.0;
+        green += pixel[1] as f32 / 255.0;
+        blue += pixel[2] as f32 / 255.0;
+    }
+    Some(Color::srgb(red / count, green / count, blue / count))
+}
+
+fn texture_asset_ids(source: &EnvironmentTextureSourceIr) -> Vec<String> {
+    if source.mode == "equirect" {
+        return source.asset.iter().cloned().collect();
+    }
+    source
+        .faces
+        .as_ref()
+        .map(|faces| {
+            vec![
+                faces.positive_x.clone(),
+                faces.negative_x.clone(),
+                faces.positive_y.clone(),
+                faces.negative_y.clone(),
+                faces.positive_z.clone(),
+                faces.negative_z.clone(),
+            ]
+        })
+        .unwrap_or_default()
 }
 
 fn hex_to_bevy(value: &str) -> Option<Color> {

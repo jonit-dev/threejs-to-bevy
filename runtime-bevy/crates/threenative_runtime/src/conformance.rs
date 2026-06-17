@@ -4,8 +4,8 @@ use bevy::{prelude::*, render::camera::ScalingMode};
 use serde::Serialize;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{
-    AnimationClipIr, AssetIr, ColorIr, EnvironmentSceneIr, LoadedBundle, MaterialIr,
-    MeshGenerationIr, RuntimeConfigIr, UiIr, WorldEntity,
+    AnimationClipIr, AssetIr, ColorIr, EnvironmentMapIr, EnvironmentSceneIr, LoadedBundle,
+    MaterialIr, MeshGenerationIr, RuntimeConfigIr, SkyboxIr, UiIr, WorldEntity,
 };
 
 use crate::audio::{self, NativeAudioCommand, NativeAudioCommandKind, NativeAudioDiagnostic};
@@ -30,6 +30,8 @@ pub struct ConformanceReport {
     pub environment: Option<ConformanceEnvironmentReport>,
     pub events: Vec<ConformanceEventReport>,
     pub fixture: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub light_budget: Option<ConformanceLightBudgetReport>,
     pub materials: Vec<ConformanceMaterialReport>,
     pub resources: Vec<ConformanceResourceReport>,
     pub runtime: String,
@@ -84,6 +86,11 @@ pub struct RuntimeRendererReport {
     pub antialias: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bloom: Option<RuntimeBloomReport>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub color_grading: Option<RuntimeColorGradingReport>,
+    pub post_processing: RuntimePostProcessingReport,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub render_path: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -95,8 +102,55 @@ pub struct RuntimeBloomReport {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeColorGradingReport {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub contrast: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub exposure: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lut: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub saturation: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub temperature: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tint: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tone_mapping: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimePostProcessingReport {
+    pub applied: Vec<String>,
+    pub skipped: Vec<RuntimePostProcessingSkipReport>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct RuntimePostProcessingSkipReport {
+    pub feature: String,
+    pub reason: String,
+}
+
+#[derive(Debug, Serialize)]
 pub struct ConformanceAudioReport {
     pub commands: Vec<ConformanceAudioCommandReport>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConformanceLightBudgetReport {
+    pub culled_lights: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub culling_policy: Option<String>,
+    pub dynamic_lights: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub maximum_shadowed_point_lights: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub maximum_visible_dynamic_lights: Option<usize>,
+    pub over_budget: bool,
+    pub shadowed_point_lights: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -259,13 +313,48 @@ pub struct ConformanceEnvironmentReport {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub atmosphere: Option<String>,
     pub bookmarks: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub debug_gizmos: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub environment_map: Option<EnvironmentMapIr>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hlod_fades: Option<Vec<HlodFadeReport>>,
     pub instances: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub instance_visibility: Option<Vec<VisibilityRangeReport>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub light_probes: Option<Vec<threenative_loader::LightProbeIr>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
     pub scatter: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub skybox: Option<SkyboxIr>,
     pub source_assets: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_asset_visibility: Option<Vec<VisibilityRangeReport>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub terrain: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HlodFadeReport {
+    pub asset: String,
+    pub end_distance: f32,
+    pub source_asset: String,
+    pub start_distance: f32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VisibilityRangeReport {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub end_distance: Option<f32>,
+    pub id: String,
+    pub max_distance: f32,
+    pub min_distance: f32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub start_distance: Option<f32>,
 }
 
 #[derive(Debug, Serialize)]
@@ -395,6 +484,7 @@ pub struct RuntimeCameraReport {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LightReport {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub angle: Option<f32>,
@@ -404,6 +494,8 @@ pub struct LightReport {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub range: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub shadow_filter: Option<ShadowFilterReport>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub shadow_bias: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub shadow_normal_bias: Option<f32>,
@@ -412,6 +504,7 @@ pub struct LightReport {
 }
 
 #[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RuntimeLightReport {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub angle: Option<f32>,
@@ -423,9 +516,17 @@ pub struct RuntimeLightReport {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub range: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub shadow_filter: Option<ShadowFilterReport>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub shadow_bias: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub shadow_normal_bias: Option<f32>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct ShadowFilterReport {
+    pub mode: String,
+    pub quality: String,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -474,6 +575,7 @@ pub fn report_bevy_conformance(
         environment: bundle.environment_scene.as_ref().map(report_environment),
         events: report_events(bundle),
         fixture: fixture.into(),
+        light_budget: report_light_budget(bundle),
         materials: bundle
             .materials
             .materials
@@ -572,6 +674,54 @@ fn report_runtime_config(
                 intensity: bloom.intensity,
                 threshold: bloom.threshold,
             }),
+            color_grading: renderer
+                .color_grading
+                .as_ref()
+                .map(|color_grading| RuntimeColorGradingReport {
+                    contrast: color_grading.contrast,
+                    exposure: color_grading.exposure,
+                    lut: color_grading.lut.clone(),
+                    saturation: color_grading.saturation,
+                    temperature: color_grading.temperature,
+                    tint: color_grading.tint,
+                    tone_mapping: color_grading.tone_mapping.clone(),
+                }),
+            post_processing: RuntimePostProcessingReport {
+                applied: [
+                    renderer
+                        .bloom
+                        .as_ref()
+                        .and_then(|bloom| bloom.enabled.then(|| "bloom".to_owned())),
+                    renderer
+                        .color_grading
+                        .as_ref()
+                        .map(|_| "colorGrading".to_owned()),
+                ]
+                .into_iter()
+                .flatten()
+                .collect(),
+                skipped: vec![
+                    RuntimePostProcessingSkipReport {
+                        feature: "fxaa".to_owned(),
+                        reason:
+                            "diagnostic-only until native/web visual parity evidence is promoted"
+                                .to_owned(),
+                    },
+                    RuntimePostProcessingSkipReport {
+                        feature: "taa".to_owned(),
+                        reason: "unsupported in V9".to_owned(),
+                    },
+                    RuntimePostProcessingSkipReport {
+                        feature: "smaa".to_owned(),
+                        reason: "unsupported in V9".to_owned(),
+                    },
+                    RuntimePostProcessingSkipReport {
+                        feature: "depthOfField".to_owned(),
+                        reason: "unsupported in V9".to_owned(),
+                    },
+                ],
+            },
+            render_path: renderer.render_path.clone(),
         }),
     })
 }
@@ -676,6 +826,79 @@ fn report_resources(bundle: &LoadedBundle) -> Vec<ConformanceResourceReport> {
         .collect::<Vec<_>>();
     resources.sort_by(|left, right| left.id.cmp(&right.id));
     resources
+}
+
+fn report_light_budget(bundle: &LoadedBundle) -> Option<ConformanceLightBudgetReport> {
+    let budget = bundle
+        .world
+        .resources
+        .get("RenderingLightBudget")
+        .and_then(|value| value.as_object());
+    let mut dynamic_lights = bundle
+        .world
+        .entities
+        .iter()
+        .filter(|entity| {
+            matches!(
+                entity.components.light.as_ref().map(|light| light.kind.as_str()),
+                Some("directional" | "point" | "spot")
+            )
+        })
+        .map(|entity| entity.id.clone())
+        .collect::<Vec<_>>();
+    let mut shadowed_point_lights = bundle
+        .world
+        .entities
+        .iter()
+        .filter(|entity| {
+            entity
+                .components
+                .light
+                .as_ref()
+                .map(|light| light.kind == "point" && light.shadow_filter.is_some())
+                .unwrap_or(false)
+        })
+        .map(|entity| entity.id.clone())
+        .collect::<Vec<_>>();
+    dynamic_lights.sort();
+    shadowed_point_lights.sort();
+    if budget.is_none() && dynamic_lights.is_empty() && shadowed_point_lights.is_empty() {
+        return None;
+    }
+    let maximum_visible_dynamic_lights = budget
+        .and_then(|budget| budget.get("maximumVisibleDynamicLights"))
+        .and_then(|value| value.as_u64())
+        .map(|value| value as usize);
+    let maximum_shadowed_point_lights = budget
+        .and_then(|budget| budget.get("maximumShadowedPointLights"))
+        .and_then(|value| value.as_u64())
+        .map(|value| value as usize);
+    let culling_policy = budget
+        .and_then(|budget| budget.get("cullingPolicy"))
+        .and_then(|value| value.as_str())
+        .map(str::to_owned);
+    let culled_lights = if culling_policy.as_deref() == Some("nearest") {
+        maximum_visible_dynamic_lights
+            .filter(|maximum| dynamic_lights.len() > *maximum)
+            .map(|maximum| dynamic_lights.iter().skip(maximum).cloned().collect())
+            .unwrap_or_default()
+    } else {
+        Vec::new()
+    };
+    Some(ConformanceLightBudgetReport {
+        culled_lights,
+        culling_policy,
+        dynamic_lights: dynamic_lights.clone(),
+        maximum_shadowed_point_lights,
+        maximum_visible_dynamic_lights,
+        over_budget: maximum_visible_dynamic_lights
+            .map(|maximum| dynamic_lights.len() > maximum)
+            .unwrap_or(false)
+            || maximum_shadowed_point_lights
+                .map(|maximum| shadowed_point_lights.len() > maximum)
+                .unwrap_or(false),
+        shadowed_point_lights,
+    })
 }
 
 fn report_ui(ui: Option<&UiIr>) -> Option<UiReportResult> {
@@ -799,6 +1022,7 @@ fn runtime_light(
             intensity: Some(light.illuminance / 2_000.0),
             kind: "directional".to_owned(),
             range: None,
+            shadow_filter: None,
             shadow_bias: Some(light.shadow_depth_bias),
             shadow_normal_bias: Some(light.shadow_normal_bias),
         });
@@ -810,6 +1034,7 @@ fn runtime_light(
             intensity: Some(light.intensity / 800.0),
             kind: "point".to_owned(),
             range: Some(light.range),
+            shadow_filter: None,
             shadow_bias: Some(light.shadow_depth_bias),
             shadow_normal_bias: Some(light.shadow_normal_bias),
         });
@@ -820,6 +1045,7 @@ fn runtime_light(
         intensity: Some(light.intensity / 800.0),
         kind: "spot".to_owned(),
         range: Some(light.range),
+        shadow_filter: None,
         shadow_bias: Some(light.shadow_depth_bias),
         shadow_normal_bias: Some(light.shadow_normal_bias),
     })
@@ -846,8 +1072,67 @@ fn report_environment(environment: &EnvironmentSceneIr) -> ConformanceEnvironmen
         .iter()
         .map(|asset| asset.id.clone())
         .collect::<Vec<_>>();
+    let mut debug_gizmos = environment
+        .source_assets
+        .iter()
+        .filter(|asset| asset.debug.as_ref().and_then(|debug| debug.gizmo).unwrap_or(false))
+        .map(|asset| format!("sourceAsset:{}", asset.id))
+        .chain(
+            environment
+                .instances
+                .iter()
+                .filter(|instance| {
+                    instance
+                        .debug
+                        .as_ref()
+                        .and_then(|debug| debug.gizmo)
+                        .unwrap_or(false)
+                })
+                .map(|instance| format!("instance:{}", instance.id)),
+        )
+        .chain(
+            environment
+                .light_probes
+                .iter()
+                .map(|probe| format!("lightProbe:{}", probe.id)),
+        )
+        .collect::<Vec<_>>();
+    let hlod_fades = environment
+        .source_assets
+        .iter()
+        .flat_map(|asset| {
+            asset.lod.iter().filter_map(|level| {
+                level.fade.as_ref().map(|fade| HlodFadeReport {
+                    asset: level.asset.clone(),
+                    end_distance: fade.end_distance,
+                    source_asset: asset.id.clone(),
+                    start_distance: fade.start_distance,
+                })
+            })
+        })
+        .collect::<Vec<_>>();
+    let instance_visibility = environment
+        .instances
+        .iter()
+        .filter_map(|instance| {
+            instance
+                .visibility
+                .as_ref()
+                .map(|visibility| visibility_report(&instance.id, visibility))
+        })
+        .collect::<Vec<_>>();
+    let source_asset_visibility = environment
+        .source_assets
+        .iter()
+        .filter_map(|asset| {
+            asset.visibility
+                .as_ref()
+                .map(|visibility| visibility_report(&asset.id, visibility))
+        })
+        .collect::<Vec<_>>();
 
     bookmarks.sort();
+    debug_gizmos.sort();
     instances.sort();
     scatter.sort();
     source_assets.sort();
@@ -858,14 +1143,31 @@ fn report_environment(environment: &EnvironmentSceneIr) -> ConformanceEnvironmen
             .as_ref()
             .map(|atmosphere| atmosphere.id.clone()),
         bookmarks,
+        debug_gizmos: (!debug_gizmos.is_empty()).then_some(debug_gizmos),
+        environment_map: environment.environment_map.clone(),
+        hlod_fades: (!hlod_fades.is_empty()).then_some(hlod_fades),
         instances,
+        instance_visibility: (!instance_visibility.is_empty()).then_some(instance_visibility),
+        light_probes: (!environment.light_probes.is_empty()).then(|| environment.light_probes.clone()),
         path: Some(environment.path.id.clone()),
         scatter,
+        skybox: environment.skybox.clone(),
         source_assets,
+        source_asset_visibility: (!source_asset_visibility.is_empty()).then_some(source_asset_visibility),
         terrain: environment
             .terrain
             .as_ref()
             .map(|terrain| terrain.id.clone()),
+    }
+}
+
+fn visibility_report(id: &str, visibility: &threenative_loader::VisibilityRangeIr) -> VisibilityRangeReport {
+    VisibilityRangeReport {
+        end_distance: visibility.fade.as_ref().map(|fade| fade.end_distance),
+        id: id.to_owned(),
+        max_distance: visibility.max_distance,
+        min_distance: visibility.min_distance,
+        start_distance: visibility.fade.as_ref().map(|fade| fade.start_distance),
     }
 }
 
@@ -994,9 +1296,22 @@ fn report_entity(
             intensity: light.intensity,
             kind: light.kind.clone(),
             range: light.range,
+            shadow_filter: light.shadow_filter.as_ref().map(|filter| ShadowFilterReport {
+                mode: filter.mode.clone(),
+                quality: filter.quality.clone(),
+            }),
             shadow_bias: light.shadow_bias,
             shadow_normal_bias: light.shadow_normal_bias,
-            runtime: runtime.and_then(|runtime| runtime.light.clone()),
+            runtime: runtime.and_then(|runtime| {
+                runtime.light.as_ref().map(|runtime_light| {
+                    let mut runtime_light = runtime_light.clone();
+                    runtime_light.shadow_filter = light.shadow_filter.as_ref().map(|filter| ShadowFilterReport {
+                        mode: filter.mode.clone(),
+                        quality: filter.quality.clone(),
+                    });
+                    runtime_light
+                })
+            }),
         }),
         material: entity
             .components

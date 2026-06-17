@@ -59,6 +59,36 @@ test("environment should accept ordered LOD metadata for source assets", () => {
   assert.deepEqual(diagnostics, []);
 });
 
+test("environment should accept visibility range and fade metadata when ordered and finite", () => {
+  const scene = makeScene({
+    sourceAssets: [
+      {
+        asset: "model.env.Tree",
+        category: "tree",
+        debug: { gizmo: true },
+        id: "env.Tree",
+        lod: [{ asset: "model.env.TreeLow", fade: { startDistance: 18, endDistance: 28 }, minDistance: 18, maxDistance: 60 }],
+        visibility: { fade: { startDistance: 70, endDistance: 90 }, minDistance: 0, maxDistance: 100 },
+      },
+    ],
+    instances: [
+      {
+        debug: { gizmo: true },
+        id: "hero.tree",
+        kind: "hero",
+        position: [-3, 0, 2],
+        sourceAsset: "env.Tree",
+        tags: ["tree"],
+        visibility: { minDistance: 0, maxDistance: 75 },
+      },
+    ],
+  });
+
+  const diagnostics = validateEnvironmentSceneIr(scene, makeAssets({ includeLod: true }), "environment.scene.json");
+
+  assert.deepEqual(diagnostics, []);
+});
+
 test("environment should reject invalid LOD metadata", () => {
   const scene = makeScene({
     sourceAssets: [
@@ -81,6 +111,31 @@ test("environment should reject invalid LOD metadata", () => {
     ["TN_IR_ENVIRONMENT_LOD_CYCLE", "TN_IR_ENVIRONMENT_LOD_THRESHOLDS_UNSORTED"],
   );
   assert.equal(diagnostics[0]?.path, "environment.scene.json/sourceAssets/0/lod/1/asset");
+});
+
+test("environment should reject HLOD fade metadata when ranges overlap invalidly", () => {
+  const scene = makeScene({
+    sourceAssets: [
+      {
+        asset: "model.env.Tree",
+        category: "tree",
+        id: "env.Tree",
+        lod: [{ asset: "model.env.TreeLow", fade: { startDistance: 30, endDistance: 20 }, minDistance: 18, maxDistance: 60 }],
+        visibility: { fade: { startDistance: 10, endDistance: 5 }, minDistance: 20, maxDistance: 10 },
+      },
+    ],
+  });
+
+  const diagnostics = validateEnvironmentSceneIr(scene, makeAssets({ includeLod: true }), "environment.scene.json");
+
+  assert.deepEqual(
+    diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.path]),
+    [
+      ["TN_IR_RENDERER_VISIBILITY_RANGE_INVALID", "environment.scene.json/sourceAssets/0/lod/0/fade"],
+      ["TN_IR_RENDERER_VISIBILITY_RANGE_INVALID", "environment.scene.json/sourceAssets/0/visibility"],
+      ["TN_IR_RENDERER_VISIBILITY_RANGE_INVALID", "environment.scene.json/sourceAssets/0/visibility/fade"],
+    ],
+  );
 });
 
 test("environment should reject backend-specific renderer and content fields", () => {

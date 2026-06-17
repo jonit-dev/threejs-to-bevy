@@ -18,7 +18,7 @@ import {
 } from "./renderTargets.js";
 import { advanceAnimationPlayback, hasAnimationPlayback, loadPendingMaterialTextures, loadWorldModelAssets, mapWorld, type IRuntimeDiagnostic, type IThreeWorld } from "./mapWorld.js";
 import { applyEnvironmentBookmark, createEnvironmentRuntime, loadEnvironmentAssetInstances } from "./environment.js";
-import { applyAtmosphereProfile } from "./rendering.js";
+import { applyAtmosphereProfile, applyEnvironmentLighting } from "./rendering.js";
 import { createGameLoopState, runGameFrame } from "./gameLoop.js";
 import { attachInputListeners, createInputState } from "./input.js";
 import { loadSystemModule } from "./systems/runner.js";
@@ -60,10 +60,21 @@ export async function renderBundle(source: string, container: HTMLElement, optio
   const environment = createEnvironmentRuntime(bundle, { renderPlaceholders: false });
   if (environment !== undefined) {
     applyAtmosphereProfile(mapped.scene, bundle.environmentScene?.atmosphere);
+    const environmentLighting = await applyEnvironmentLighting(mapped.scene, bundle.environmentScene, bundle.assets, source);
+    mapped.diagnostics.push(...environmentLighting.diagnostics.map((diagnostic) => ({ ...diagnostic, path: "environment.scene.json" })));
     mapped.scene.add(environment.object);
-    const assets = await loadEnvironmentAssetInstances(bundle, source);
-    if (assets !== undefined) {
-      mapped.scene.add(assets);
+    try {
+      const assets = await loadEnvironmentAssetInstances(bundle, source);
+      if (assets !== undefined) {
+        mapped.scene.add(assets);
+      }
+    } catch (error) {
+      mapped.diagnostics.push({
+        code: "TN_WEB_ENVIRONMENT_MODEL_LOAD_FAILED",
+        message: `Environment model assets failed to load: ${error instanceof Error ? error.message : String(error)}.`,
+        path: "environment.scene.json/sourceAssets",
+        severity: "warning",
+      });
     }
     mapped.diagnostics.push(...environment.instancingPlan.diagnostics);
   }
@@ -76,7 +87,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
   const effectLog = createSystemEffectLog();
   const systemModule = await loadSystemModule(source, bundle.manifest);
   const renderer = new THREE.WebGLRenderer(webRendererParameters(bundle.runtimeConfig));
-  applyRendererColorManagement(renderer, bundle.environmentScene?.atmosphere?.colorManagement);
+  applyRendererColorManagement(renderer, bundle.environmentScene?.atmosphere?.colorManagement, bundle.runtimeConfig?.renderer?.colorGrading);
   const pipeline = createRenderPipeline(renderer, mapped, bundle.world, bundle.runtimeConfig, bundle.assets, bundle.materials);
   const canvas = renderer.domElement;
   const ui = bundle.ui === undefined ? undefined : renderUi(bundle.ui, bundle.world);
@@ -378,15 +389,18 @@ function prepareRenderContainer(container: HTMLElement): void {
 export function applyRendererColorManagement(
   renderer: THREE.WebGLRenderer,
   colorManagement: IAtmosphereProfileIr["colorManagement"] | undefined,
+  colorGrading?: NonNullable<NonNullable<IRuntimeConfigIr["renderer"]>["colorGrading"]>,
 ): void {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  if (colorManagement === undefined) {
+  const toneMapping = colorGrading?.toneMapping ?? colorManagement?.toneMapping;
+  const exposure = colorGrading?.exposure ?? colorManagement?.exposure;
+  if (toneMapping === undefined && exposure === undefined) {
     renderer.toneMapping = THREE.NoToneMapping;
     renderer.toneMappingExposure = 1;
     return;
   }
-  renderer.toneMapping = colorManagement.toneMapping === "aces" ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
-  renderer.toneMappingExposure = colorManagement.exposure;
+  renderer.toneMapping = toneMapping === "aces" ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
+  renderer.toneMappingExposure = exposure ?? 1;
 }
 
 function resizeRenderer(renderer: THREE.WebGLRenderer, pipeline: IRenderPipeline, mapped: IThreeWorld, container: HTMLElement): void {

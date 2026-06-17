@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
 
@@ -146,6 +146,85 @@ test("rendering should reject shadow profile when map size exceeds target budget
   assert.equal(diagnostics[0]?.code, "TN_IR_ATMOSPHERE_SHADOW_MAP_SIZE_EXCEEDED");
 });
 
+test("should accept skybox and environment probe refs when assets are bundle local", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-env-lighting-"));
+  try {
+    await writeEnvironmentLightingBundle(root, {
+      assets: [
+        ...["px", "nx", "py", "ny", "pz", "nz"].map((face) => ({ format: "png", id: `tex.sky.${face}`, kind: "texture", path: `assets/sky/${face}.png` })),
+        { format: "png", id: "tex.env.studio", kind: "texture", path: "assets/studio.png" },
+      ],
+      environment: {
+        skybox: {
+          faces: {
+            negativeX: "tex.sky.nx",
+            negativeY: "tex.sky.ny",
+            negativeZ: "tex.sky.nz",
+            positiveX: "tex.sky.px",
+            positiveY: "tex.sky.py",
+            positiveZ: "tex.sky.pz",
+          },
+          intensity: 0.9,
+          mode: "cubemap",
+          rotationY: 0.5,
+        },
+        environmentMap: { asset: "tex.env.studio", intent: "reflection-and-irradiance", mode: "equirect" },
+        lightProbes: [
+          {
+            bounds: { min: [-3, 0, -3], max: [3, 4, 3] },
+            id: "probe.center",
+            influenceRadius: 5,
+            intent: "irradiance",
+            source: { asset: "tex.env.studio", mode: "equirect" },
+          },
+        ],
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.deepEqual(result.diagnostics, []);
+    assert.equal(result.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject skybox refs when cubemap assets are missing or unsupported", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-env-lighting-invalid-"));
+  try {
+    await writeEnvironmentLightingBundle(root, {
+      assets: [
+        { format: "png", id: "tex.sky.px", kind: "texture", path: "assets/sky/px.png" },
+        { format: "ktx2", id: "tex.sky.nx", kind: "texture", path: "assets/sky/nx.ktx2" },
+      ],
+      environment: {
+        skybox: {
+          faces: {
+            negativeX: "tex.sky.nx",
+            negativeY: "tex.sky.missing.ny",
+            negativeZ: "tex.sky.missing.nz",
+            positiveX: "tex.sky.px",
+            positiveY: "tex.sky.missing.py",
+            positiveZ: "tex.sky.missing.pz",
+          },
+          mode: "cubemap",
+        },
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_RENDERER_SKYBOX_ASSET_FORMAT_UNSUPPORTED"));
+    assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_RENDERER_SKYBOX_ASSET_MISSING"));
+    assert.ok(result.diagnostics.some((diagnostic) => diagnostic.path === "environment.scene.json/skybox/faces/negativeX"));
+    assert.ok(result.diagnostics.some((diagnostic) => diagnostic.path === "environment.scene.json/skybox/faces/negativeY"));
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 function makeProfile(overrides: Partial<IAtmosphereProfileIr> = {}): IAtmosphereProfileIr {
   return {
     active: true,
@@ -158,4 +237,39 @@ function makeProfile(overrides: Partial<IAtmosphereProfileIr> = {}): IAtmosphere
     shadows: { bias: -0.0005, cascadeCount: 1, enabled: true, mapSize: 1024, maxDistance: 45, normalBias: 0.02, receiverPolicy: "terrain-and-path" },
     ...overrides,
   };
+}
+
+async function writeEnvironmentLightingBundle(
+  root: string,
+  options: {
+    assets: Array<Record<string, unknown> & { path?: string }>;
+    environment: Record<string, unknown>;
+  },
+): Promise<void> {
+  await writeJson(root, "manifest.json", {
+    schema: "threenative.bundle",
+    version: "0.1.0",
+    name: "environment-lighting",
+    requiredCapabilities: {},
+    entry: { environmentScene: "environment.scene.json", world: "world.ir.json" },
+    files: { assets: "assets.manifest.json", materials: "materials.ir.json", targetProfile: "target.profile.json" },
+  });
+  await writeJson(root, "target.profile.json", { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] });
+  await writeJson(root, "world.ir.json", { schema: "threenative.world", version: "0.1.0", entities: [] });
+  await writeJson(root, "materials.ir.json", { schema: "threenative.materials", version: "0.1.0", materials: [] });
+  await writeJson(root, "assets.manifest.json", { schema: "threenative.assets", version: "0.1.0", assets: options.assets });
+  await writeJson(root, "environment.scene.json", {
+    schema: "threenative.environment-scene",
+    version: "0.1.0",
+    sourceAssets: [],
+    instances: [],
+    path: { id: "path.empty", points: [[0, 0, 0], [1, 0, 0]], width: 1 },
+    ...options.environment,
+  });
+  for (const asset of options.assets) {
+    if (asset.path !== undefined && typeof asset.path === "string" && !asset.path.includes(".ktx2")) {
+      await mkdir(dirname(join(root, asset.path)), { recursive: true });
+      await writeFile(join(root, asset.path), "texture");
+    }
+  }
 }

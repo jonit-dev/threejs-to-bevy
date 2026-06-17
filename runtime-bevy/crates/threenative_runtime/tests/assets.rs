@@ -68,6 +68,9 @@ fn asset_load_trace_should_sort_assets_and_model_scene_refs_deterministically() 
         version: "0.1.0".to_owned(),
         atmosphere: None,
         controller: None,
+        environment_map: None,
+        light_probes: Vec::new(),
+        skybox: None,
         terrain: None,
         path: EnvironmentPathIr {
             id: "path.main".to_owned(),
@@ -79,11 +82,14 @@ fn asset_load_trace_should_sort_assets_and_model_scene_refs_deterministically() 
             id: "env.tree".to_owned(),
             asset: "model.tree".to_owned(),
             category: "tree".to_owned(),
+            debug: None,
             lod: vec![threenative_loader::EnvironmentLodLevelIr {
                 asset: "model.tree.low".to_owned(),
+                fade: None,
                 min_distance: 20.0,
                 max_distance: 80.0,
             }],
+            visibility: None,
         }],
         instances: vec![
             EnvironmentInstanceIr {
@@ -93,7 +99,9 @@ fn asset_load_trace_should_sort_assets_and_model_scene_refs_deterministically() 
                 rotation: None,
                 scale: None,
                 kind: Some("scatter".to_owned()),
+                debug: None,
                 tags: Vec::new(),
+                visibility: None,
             },
             EnvironmentInstanceIr {
                 id: "tree.a".to_owned(),
@@ -102,7 +110,9 @@ fn asset_load_trace_should_sort_assets_and_model_scene_refs_deterministically() 
                 rotation: None,
                 scale: None,
                 kind: Some("hero".to_owned()),
+                debug: None,
                 tags: Vec::new(),
+                visibility: None,
             },
         ],
         scatter: Vec::new(),

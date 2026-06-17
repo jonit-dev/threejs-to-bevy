@@ -1,4 +1,4 @@
-import type { IAtmosphereProfileIr } from "./types.js";
+import type { IAssetsManifest, IAtmosphereProfileIr, IEnvironmentSceneIr, IEnvironmentTextureSourceIr, Vec3 } from "./types.js";
 import type { IIrDiagnostic } from "./validate.js";
 
 export function validateAtmosphereProfile(profile: IAtmosphereProfileIr | undefined, path: string): IIrDiagnostic[] {
@@ -60,6 +60,167 @@ export function validateAtmosphereProfile(profile: IAtmosphereProfileIr | undefi
   return diagnostics;
 }
 
+export function validateEnvironmentLighting(
+  scene: Pick<IEnvironmentSceneIr, "environmentMap" | "lightProbes" | "skybox">,
+  assets: IAssetsManifest | undefined,
+  path: string,
+): IIrDiagnostic[] {
+  const diagnostics: IIrDiagnostic[] = [];
+  const bundleAssets = new Map((assets?.assets ?? []).map((asset) => [asset.id, asset]));
+
+  if (scene.skybox !== undefined) {
+    validateTextureSource(scene.skybox, bundleAssets, `${path}/skybox`, "TN_IR_RENDERER_SKYBOX", diagnostics);
+    validateOptionalNonNegativeFinite(scene.skybox.intensity, `${path}/skybox/intensity`, "TN_IR_RENDERER_SKYBOX_INTENSITY_INVALID", diagnostics);
+    validateOptionalFinite(scene.skybox.rotationY, `${path}/skybox/rotationY`, "TN_IR_RENDERER_SKYBOX_ROTATION_INVALID", diagnostics);
+  }
+
+  if (scene.environmentMap !== undefined) {
+    validateTextureSource(scene.environmentMap, bundleAssets, `${path}/environmentMap`, "TN_IR_RENDERER_ENVIRONMENT_MAP", diagnostics);
+    validateIntent(scene.environmentMap.intent, `${path}/environmentMap/intent`, "TN_IR_RENDERER_ENVIRONMENT_MAP_INTENT_INVALID", diagnostics);
+    validateOptionalNonNegativeFinite(scene.environmentMap.intensity, `${path}/environmentMap/intensity`, "TN_IR_RENDERER_ENVIRONMENT_MAP_INTENSITY_INVALID", diagnostics);
+  }
+
+  (scene.lightProbes ?? []).forEach((probe, index) => {
+    const probePath = `${path}/lightProbes/${index}`;
+    if (probe.id.trim().length === 0) {
+      diagnostics.push({
+        code: "TN_IR_RENDERER_LIGHT_PROBE_ID_EMPTY",
+        message: "Light probe id must be a non-empty string.",
+        path: `${probePath}/id`,
+        severity: "error",
+      });
+    }
+    validateTextureSource(probe.source, bundleAssets, `${probePath}/source`, "TN_IR_RENDERER_LIGHT_PROBE", diagnostics);
+    validateIntent(probe.intent, `${probePath}/intent`, "TN_IR_RENDERER_LIGHT_PROBE_INTENT_INVALID", diagnostics);
+    validateBounds(probe.bounds, `${probePath}/bounds`, diagnostics);
+    validatePositiveFinite(probe.influenceRadius, `${probePath}/influenceRadius`, "TN_IR_RENDERER_LIGHT_PROBE_RADIUS_INVALID", diagnostics);
+  });
+
+  return diagnostics;
+}
+
+function validateTextureSource(
+  source: IEnvironmentTextureSourceIr,
+  bundleAssets: ReadonlyMap<string, IAssetsManifest["assets"][number]>,
+  path: string,
+  codePrefix: "TN_IR_RENDERER_ENVIRONMENT_MAP" | "TN_IR_RENDERER_LIGHT_PROBE" | "TN_IR_RENDERER_SKYBOX",
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (source.mode === "equirect") {
+    if (typeof source.asset !== "string" || source.asset.trim().length === 0) {
+      diagnostics.push({
+        code: `${codePrefix}_ASSET_MISSING`,
+        message: "Equirect environment texture source must reference a non-empty texture asset id.",
+        path: `${path}/asset`,
+        severity: "error",
+        suggestion: "Reference a bundle-local PNG or JPEG texture asset.",
+      });
+      return;
+    }
+    validateTextureAssetRef(source.asset, bundleAssets, `${path}/asset`, codePrefix, diagnostics);
+    return;
+  }
+  if (source.mode === "cubemap") {
+    if (typeof source.faces !== "object" || source.faces === null || Array.isArray(source.faces)) {
+      diagnostics.push({
+        code: `${codePrefix}_FACES_MISSING`,
+        message: "Cubemap environment texture source must declare all six face asset ids.",
+        path: `${path}/faces`,
+        severity: "error",
+        suggestion: "Declare positiveX, negativeX, positiveY, negativeY, positiveZ, and negativeZ texture asset ids.",
+      });
+      return;
+    }
+    for (const face of ["positiveX", "negativeX", "positiveY", "negativeY", "positiveZ", "negativeZ"] as const) {
+      if (typeof source.faces[face] !== "string" || source.faces[face].trim().length === 0) {
+        diagnostics.push({
+          code: `${codePrefix}_FACE_MISSING`,
+          message: `Cubemap face '${face}' must reference a non-empty texture asset id.`,
+          path: `${path}/faces/${face}`,
+          severity: "error",
+          suggestion: "Reference a bundle-local PNG or JPEG texture asset for every cubemap face.",
+        });
+        continue;
+      }
+      validateTextureAssetRef(source.faces[face], bundleAssets, `${path}/faces/${face}`, codePrefix, diagnostics);
+    }
+    return;
+  }
+  diagnostics.push({
+    code: `${codePrefix}_MODE_UNSUPPORTED`,
+    message: `Environment texture source uses unsupported mode '${String((source as { mode?: unknown }).mode)}'.`,
+    path: `${path}/mode`,
+    severity: "error",
+    suggestion: "Use 'cubemap' with six bundle-local texture faces or 'equirect' with one bundle-local texture asset.",
+  });
+}
+
+function validateTextureAssetRef(
+  assetId: string,
+  bundleAssets: ReadonlyMap<string, IAssetsManifest["assets"][number]>,
+  path: string,
+  codePrefix: "TN_IR_RENDERER_ENVIRONMENT_MAP" | "TN_IR_RENDERER_LIGHT_PROBE" | "TN_IR_RENDERER_SKYBOX",
+  diagnostics: IIrDiagnostic[],
+): void {
+  const asset = bundleAssets.get(assetId);
+  if (asset === undefined) {
+    diagnostics.push({
+      code: `${codePrefix}_ASSET_MISSING`,
+      message: `Environment texture references unknown texture asset '${assetId}'.`,
+      path,
+      severity: "error",
+      suggestion: "Add the texture to assets.manifest.json and keep the referenced file inside the emitted bundle.",
+    });
+    return;
+  }
+  if (asset.kind !== "texture" || (asset.format !== "png" && asset.format !== "jpeg")) {
+    diagnostics.push({
+      code: `${codePrefix}_ASSET_FORMAT_UNSUPPORTED`,
+      message: `Environment texture '${assetId}' uses unsupported format '${"format" in asset ? String(asset.format) : "unknown"}'.`,
+      path,
+      severity: "error",
+      suggestion: "Use PNG or JPEG texture assets for V9 skyboxes, environment maps, and light probes.",
+    });
+  }
+}
+
+function validateIntent(value: unknown, path: string, code: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === "reflection" || value === "irradiance" || value === "reflection-and-irradiance") {
+    return;
+  }
+  diagnostics.push({
+    code,
+    message: "Environment lighting intent must be 'reflection', 'irradiance', or 'reflection-and-irradiance'.",
+    path,
+    severity: "error",
+  });
+}
+
+function validateBounds(bounds: { max: Vec3; min: Vec3 }, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (typeof bounds !== "object" || bounds === null || !("min" in bounds) || !("max" in bounds) || !Array.isArray(bounds.min) || !Array.isArray(bounds.max)) {
+    diagnostics.push({
+      code: "TN_IR_RENDERER_LIGHT_PROBE_BOUNDS_INVALID",
+      message: "Light probe bounds must declare finite min and max vec3 values.",
+      path,
+      severity: "error",
+      suggestion: "Use bounds: { min: [x, y, z], max: [x, y, z] } with max greater than min on every axis.",
+    });
+    return;
+  }
+  validateVec3(bounds.min, `${path}/min`, diagnostics);
+  validateVec3(bounds.max, `${path}/max`, diagnostics);
+  const hasInvalidAxis = bounds.max[0] <= bounds.min[0] || bounds.max[1] <= bounds.min[1] || bounds.max[2] <= bounds.min[2];
+  if (hasInvalidAxis) {
+    diagnostics.push({
+      code: "TN_IR_RENDERER_LIGHT_PROBE_BOUNDS_INVALID",
+      message: "Light probe bounds must use max values greater than min values on every axis.",
+      path,
+      severity: "error",
+      suggestion: "Use finite ordered bounds that enclose the probe influence volume.",
+    });
+  }
+}
+
 function validateColor(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
   if (typeof value === "string" && /^#[0-9a-fA-F]{6}$/.test(value)) {
     return;
@@ -79,5 +240,17 @@ function validateVec3(value: readonly number[], path: string, diagnostics: IIrDi
 function validatePositiveFinite(value: unknown, path: string, code: string, diagnostics: IIrDiagnostic[]): void {
   if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
     diagnostics.push({ code, message: "Expected a positive finite number.", path });
+  }
+}
+
+function validateOptionalFinite(value: unknown, path: string, code: string, diagnostics: IIrDiagnostic[]): void {
+  if (value !== undefined && (typeof value !== "number" || !Number.isFinite(value))) {
+    diagnostics.push({ code, message: "Expected a finite number when declared.", path, severity: "error" });
+  }
+}
+
+function validateOptionalNonNegativeFinite(value: unknown, path: string, code: string, diagnostics: IIrDiagnostic[]): void {
+  if (value !== undefined && (typeof value !== "number" || !Number.isFinite(value) || value < 0)) {
+    diagnostics.push({ code, message: "Expected a non-negative finite number when declared.", path, severity: "error" });
   }
 }

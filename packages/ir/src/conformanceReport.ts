@@ -1,6 +1,7 @@
 import type { IRuntimeDiagnostic } from "./runtimeDiagnostics.js";
 import type { IRuntimeConfigIr } from "./runtimeConfig.js";
 import type { IAssetIr, IMaterialIr, Quat, Vec3 } from "./types.js";
+import type { IEnvironmentMapIr, ILightProbeIr, ISkyboxIr } from "./types.js";
 
 export interface IConformanceAssetReport {
   animations?: Extract<IAssetIr, { animations?: unknown }>["animations"];
@@ -62,10 +63,17 @@ export interface IConformanceMaterialReport {
 export interface IConformanceEnvironmentReport {
   atmosphere?: string;
   bookmarks: string[];
+  debugGizmos?: string[];
+  environmentMap?: IEnvironmentMapIr;
+  hlodFades?: Array<{ asset: string; endDistance: number; sourceAsset: string; startDistance: number }>;
   instances: string[];
+  instanceVisibility?: Array<{ endDistance?: number; id: string; maxDistance: number; minDistance: number; startDistance?: number }>;
+  lightProbes?: ILightProbeIr[];
   path?: string;
   scatter: string[];
+  skybox?: ISkyboxIr;
   sourceAssets: string[];
+  sourceAssetVisibility?: Array<{ endDistance?: number; id: string; maxDistance: number; minDistance: number; startDistance?: number }>;
   terrain?: string;
 }
 
@@ -112,10 +120,26 @@ export interface IConformanceAudioReport {
   commands: IConformanceAudioCommandReport[];
 }
 
+export interface IConformanceLightBudgetReport {
+  culledLights: string[];
+  cullingPolicy?: string;
+  dynamicLights: string[];
+  maximumShadowedPointLights?: number;
+  maximumVisibleDynamicLights?: number;
+  overBudget: boolean;
+  shadowedPointLights: string[];
+}
+
 export interface IConformanceRuntimeConfigReport {
   renderer?: {
     antialias?: NonNullable<IRuntimeConfigIr["renderer"]>["antialias"];
     bloom?: NonNullable<NonNullable<IRuntimeConfigIr["renderer"]>["bloom"]>;
+    colorGrading?: NonNullable<NonNullable<IRuntimeConfigIr["renderer"]>["colorGrading"]>;
+    postProcessing?: {
+      applied: string[];
+      skipped: Array<{ feature: string; reason: string }>;
+    };
+    renderPath?: NonNullable<IRuntimeConfigIr["renderer"]>["renderPath"];
   };
 }
 
@@ -161,6 +185,10 @@ export interface IConformanceEntityReport {
     intensity: number;
     kind: string;
     range?: number;
+    shadowFilter?: {
+      mode: "pcf";
+      quality: "high" | "low" | "medium";
+    };
     shadowBias?: number;
     shadowNormalBias?: number;
     runtime?: {
@@ -169,6 +197,10 @@ export interface IConformanceEntityReport {
       intensity?: number;
       kind: string;
       range?: number;
+      shadowFilter?: {
+        mode: "pcf";
+        quality: "high" | "low" | "medium";
+      };
       shadowBias?: number;
       shadowNormalBias?: number;
     };
@@ -205,6 +237,7 @@ export interface IConformanceReport {
   environment?: IConformanceEnvironmentReport;
   events: IConformanceEventReport[];
   fixture: string;
+  lightBudget?: IConformanceLightBudgetReport;
   materials: IConformanceMaterialReport[];
   resources: IConformanceResourceReport[];
   runtime: "bevy" | "web-three";

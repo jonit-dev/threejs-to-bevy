@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { analyzeRenderingQualityParity } from "./renderingQuality.js";
+import { analyzeRenderingQualityParity, analyzeV9RenderingLightsParity } from "./renderingQuality.js";
 import type { IPixelFrame } from "./imageAnalysis.js";
 
 test("rendering quality parity accepts matching fog and sky regions", () => {
@@ -25,6 +25,39 @@ test("rendering quality parity rejects sky and fog region drift", () => {
   assert.equal(result.fogEvidence.bevy.ok, false);
 });
 
+test("V9 rendering lights parity requires skybox reflection shadow dense and gizmo regions", () => {
+  const web = v9FixtureFrame();
+  const bevy = v9FixtureFrame({
+    skybox: [76, 118, 164],
+    reflection: [190, 210, 235],
+    shadow: [56, 63, 76],
+  });
+
+  const result = analyzeV9RenderingLightsParity(web, bevy);
+
+  assert.deepEqual(result.regions.map((region) => region.name), [
+    "skybox",
+    "reflection-probe",
+    "point-shadow-pcf",
+    "dense-hlod",
+    "debug-gizmo",
+  ]);
+  assert.equal(result.regions.every((region) => region.ok), true);
+});
+
+test("V9 rendering lights parity rejects skybox and point-shadow drift", () => {
+  const web = v9FixtureFrame();
+  const bevy = v9FixtureFrame({
+    skybox: [4, 8, 14],
+    shadow: [245, 240, 232],
+  });
+
+  const result = analyzeV9RenderingLightsParity(web, bevy);
+
+  assert.equal(result.regions.find((region) => region.name === "skybox")?.ok, false);
+  assert.equal(result.regions.find((region) => region.name === "point-shadow-pcf")?.ok, false);
+});
+
 function fixtureFrame(overrides: Partial<Record<"fog" | "foreground" | "sky", [number, number, number]>> = {}): IPixelFrame {
   const width = 100;
   const height = 100;
@@ -33,6 +66,21 @@ function fixtureFrame(overrides: Partial<Record<"fog" | "foreground" | "sky", [n
   fillRect(data, width, 0, 0, width, 24, overrides.sky ?? [106, 174, 214]);
   fillRect(data, width, 24, 43, 20, 24, overrides.foreground ?? [36, 87, 214]);
   fillRect(data, width, 58, 42, 24, 24, overrides.fog ?? [201, 214, 199]);
+  return { data, height, width };
+}
+
+function v9FixtureFrame(
+  overrides: Partial<Record<"dense" | "gizmo" | "reflection" | "shadow" | "skybox", [number, number, number]>> = {},
+): IPixelFrame {
+  const width = 100;
+  const height = 100;
+  const data = new Uint8ClampedArray(width * height * 4);
+  fillRect(data, width, 0, 0, width, height, [98, 104, 94]);
+  fillRect(data, width, 18, 3, 64, 18, overrides.skybox ?? [76, 118, 164]);
+  fillRect(data, width, 40, 36, 20, 24, overrides.reflection ?? [190, 210, 235]);
+  fillRect(data, width, 33, 58, 34, 18, overrides.shadow ?? [56, 63, 76]);
+  fillRect(data, width, 8, 36, 22, 32, overrides.dense ?? [74, 118, 66]);
+  fillRect(data, width, 70, 20, 22, 32, overrides.gizmo ?? [230, 194, 48]);
   return { data, height, width };
 }
 

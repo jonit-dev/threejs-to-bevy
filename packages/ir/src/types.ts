@@ -214,10 +214,17 @@ export interface IMeshRendererComponent {
 export interface ILightComponent {
   angle?: number;
   color: string | readonly [number, number, number] | readonly [number, number, number, number];
+  debug?: {
+    gizmo?: boolean;
+  };
   intensity: number;
   kind: "ambient" | "directional" | "point" | "spot";
   range?: number;
   shadowBias?: number;
+  shadowFilter?: {
+    mode: "pcf";
+    quality: "high" | "low" | "medium";
+  };
   shadowNormalBias?: number;
 }
 
@@ -767,18 +774,38 @@ export interface IUiIr {
 export interface IEnvironmentSourceAssetIr {
   asset: string;
   category: "flower" | "grass" | "mushroom" | "pebble" | "rock" | "terrain" | "tree" | "vegetation";
+  debug?: {
+    gizmo?: boolean;
+  };
   id: string;
   lod?: IEnvironmentLodLevelIr[];
+  visibility?: IVisibilityRangeIr;
 }
 
 export interface IEnvironmentLodLevelIr {
   asset: string;
+  fade?: {
+    endDistance: number;
+    startDistance: number;
+  };
+  maxDistance: number;
+  minDistance: number;
+}
+
+export interface IVisibilityRangeIr {
+  fade?: {
+    endDistance: number;
+    startDistance: number;
+  };
   maxDistance: number;
   minDistance: number;
 }
 
 export interface IEnvironmentInstanceIr {
   collisionMode?: "blocking" | "none" | "walkable";
+  debug?: {
+    gizmo?: boolean;
+  };
   id: string;
   kind?: "hero" | "manual" | "scatter";
   renderGroup?: string;
@@ -789,6 +816,7 @@ export interface IEnvironmentInstanceIr {
   scatterExclusionRadius?: number;
   scatterSource?: string;
   tags?: string[];
+  visibility?: IVisibilityRangeIr;
 }
 
 export interface IEnvironmentTerrainIr {
@@ -947,16 +975,61 @@ export interface IAtmosphereProfileIr {
   };
 }
 
+export interface IEnvironmentCubemapFacesIr {
+  negativeX: string;
+  negativeY: string;
+  negativeZ: string;
+  positiveX: string;
+  positiveY: string;
+  positiveZ: string;
+}
+
+export type EnvironmentTextureIntent = "irradiance" | "reflection" | "reflection-and-irradiance";
+
+export type IEnvironmentTextureSourceIr =
+  | {
+      asset: string;
+      mode: "equirect";
+    }
+  | {
+      faces: IEnvironmentCubemapFacesIr;
+      mode: "cubemap";
+    };
+
+export type ISkyboxIr = IEnvironmentTextureSourceIr & {
+  intensity?: number;
+  rotationY?: number;
+};
+
+export type IEnvironmentMapIr = IEnvironmentTextureSourceIr & {
+  intensity?: number;
+  intent: EnvironmentTextureIntent;
+};
+
+export interface ILightProbeIr {
+  bounds: {
+    max: Vec3;
+    min: Vec3;
+  };
+  id: string;
+  influenceRadius: number;
+  intent: EnvironmentTextureIntent;
+  source: IEnvironmentTextureSourceIr;
+}
+
 export interface IEnvironmentSceneIr {
   schema: EnvironmentSceneSchema;
   version: SchemaVersion;
   atmosphere?: IAtmosphereProfileIr;
   bookmarks?: IEnvironmentCameraBookmarkIr[];
   controller?: IFirstPersonControllerIr;
+  environmentMap?: IEnvironmentMapIr;
   exclusionZones?: IEnvironmentExclusionZoneIr[];
   referenceImage?: string;
+  lightProbes?: ILightProbeIr[];
   scatter?: IEnvironmentScatterSpecIr[];
   sourceAssets: IEnvironmentSourceAssetIr[];
+  skybox?: ISkyboxIr;
   instances: IEnvironmentInstanceIr[];
   path: IEnvironmentPathIr;
   terrain?: IEnvironmentTerrainIr;

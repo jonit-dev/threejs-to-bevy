@@ -174,6 +174,23 @@ the authored fog color, and writes artifacts under
 surface; skybox/cubemap contracts, instancing/batching evidence, and broader
 post-processing controls remain tracked as open parity work.
 
+V9-04 adds the portable/reportable rendering-lights contract slice for
+bundle-local skyboxes, environment maps, bounded light probes, dynamic light
+budgets, PCF shadow-filter metadata, visibility ranges, HLOD fade metadata,
+debug gizmo observations, forward render-path metadata, and color-grading
+tone-mapping/exposure. Validation rejects missing or malformed environment
+texture/probe refs, invalid budgets/fades/filters, over-budget hard-error light
+policies, and explicitly deferred advanced renderer requests before runtime. Web
+and Bevy conformance reports now expose matching observations through
+`packages/ir/fixtures/conformance/v9-skybox-environment/game.bundle`, and
+`pnpm verify:v9:rendering-lights` writes evidence under
+`artifacts/v9/rendering-lights/`, including web/native/diff/contact-sheet
+screenshots plus sampled skybox, reflection-probe, point-shadow PCF, dense/HLOD,
+and debug-gizmo regions. Visual FXAA/TAA/SMAA, depth of field, deferred
+rendering, motion vectors, screen-space reflections, volumetrics, virtual
+geometry, custom post passes, compressed skybox formats, and broader editor
+debug overlay systems remain deferred until separately proven.
+
 ## V4 Proves
 
 V4 is complete for the primitive native scripting proof. It proves one
