@@ -1,7 +1,7 @@
 import type { IAssetsManifest, IIrSchemaFile, IRuntimeConfigIr, ISystemsIr, IWorldIr } from "@threenative/ir";
 import type { IWebInputState } from "./input.js";
 import type { IThreeWorld } from "./mapWorld.js";
-import { syncTransforms } from "./mapWorld.js";
+import { syncMeshRendererMaterials, syncTransforms } from "./mapWorld.js";
 import { stepPhysics } from "./physics.js";
 import { runSchedule, type ISystemModule } from "./systems/runner.js";
 import type { ISystemEffectLog } from "./systems/log.js";
@@ -75,6 +75,7 @@ export async function runGameFrame(options: {
     collectDiagnostics(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, schedule: "postUpdate", tick: 0 }));
   }
   syncTransforms(options.world, options.mapped.objectsById);
+  syncMeshRendererMaterials(options.world, options.mapped.objectsById);
   options.input?.beginFrame();
 }
 

@@ -26,7 +26,7 @@ export { traceCharacterControllers, type ICharacterTraceInput, type ICharacterTr
 export { queryNavigationPath, traceNavigationPaths, type INavigationPathRequest, type INavigationPathResult } from "./navigation.js";
 export { createFirstPersonState, updateFirstPersonController, type IFirstPersonControllerState } from "./firstPerson.js";
 export { resolveWebAssets, traceAssetLoadSynchronization, type IAssetLoadTrace, type IAssetLoadTraceAsset, type IAssetLoadTraceGltfScene, type IResolvedWebAsset } from "./assets.js";
-export { advanceAnimationPlayback, mapWorld, syncTransforms, traceEmissiveBloomContributions, type IRuntimeDiagnostic, type IThreeWorld, type IWebEmissiveBloomObservation } from "./mapWorld.js";
+export { advanceAnimationPlayback, mapWorld, syncMeshRendererMaterials, syncTransforms, traceEmissiveBloomContributions, type IRuntimeDiagnostic, type IThreeWorld, type IWebEmissiveBloomObservation } from "./mapWorld.js";
 export { aabbIntersectsAabb, meshAabb, meshBoundingSphere, sampleMeshPoints, sphereIntersectsSphere, type IAabb, type IBoundingSphere } from "./meshBounds.js";
 export { ease, sampleCatmullRom, sampleCubicBezier, sampleLine, sampleQuadraticBezier, type EasingKind } from "./pathSampling.js";
 export { stepPhysics, tracePhysicsJoints, traceRigidBodyPrimitive, type IPhysicsEventPayload, type IPhysicsJointObservation, type IRigidBodyTraceInput, type IRigidBodyTraceObservation } from "./physics.js";

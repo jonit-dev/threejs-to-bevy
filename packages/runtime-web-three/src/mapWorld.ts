@@ -108,12 +108,20 @@ export function mapWorld(bundle: IWebBundle): IThreeWorld {
   const cameraViews = planCameraViews(bundle.world, objectsById);
   const primaryCameraId = resolvePrimaryCameraId(cameraViews);
   let selectedCamera: THREE.Camera | undefined = primaryCameraId === undefined ? undefined : cameras.get(primaryCameraId);
+  const requestedActiveCamera = readActiveCamera(bundle);
 
   if (selectedCamera === undefined) {
-    const activeCameraEntity = readActiveCamera(bundle);
-    const activeCamera = activeCameraEntity === undefined ? undefined : objectsById.get(activeCameraEntity);
+    const activeCamera = requestedActiveCamera === undefined ? undefined : objectsById.get(requestedActiveCamera);
     if (activeCamera instanceof THREE.Camera) {
       selectedCamera = activeCamera;
+    } else if (requestedActiveCamera !== undefined) {
+      diagnostics.push({
+        code: "TN-WEB-ACTIVE-CAMERA-INVALID",
+        message: `ActiveCamera references '${requestedActiveCamera}', but that entity is missing or does not have a Camera component.`,
+        path: "world.ir.json/resources/ActiveCamera/entity",
+        severity: "error",
+        suggestion: "Point world.resources.ActiveCamera.entity at an entity with a Camera component.",
+      });
     }
   }
 
@@ -122,6 +130,15 @@ export function mapWorld(bundle: IWebBundle): IThreeWorld {
       selectedCamera = object;
       break;
     }
+    if (selectedCamera !== undefined && requestedActiveCamera === undefined && cameraViews.length === 0) {
+      diagnostics.push({
+        code: "TN-WEB-ACTIVE-CAMERA-MISSING",
+        message: "No ActiveCamera or ActiveCameras resource selects a camera; using the first camera entity.",
+        path: "world.ir.json/resources/ActiveCamera",
+        severity: "warning",
+        suggestion: "Set world.resources.ActiveCamera.entity to a Camera entity id.",
+      });
+    }
   }
 
   if (selectedCamera === undefined) {
@@ -129,11 +146,14 @@ export function mapWorld(bundle: IWebBundle): IThreeWorld {
     selectedCamera.position.set(0, 1.5, 4);
     diagnostics.push({
       code: "TN-WEB-CAMERA-MISSING",
-      message: "No camera entity was found; using fallback camera.",
-      path: "world.ir.json/resources/ActiveCamera",
-      severity: "warning",
+      message: "No camera entity was found; web preview cannot render this scene.",
+      path: "world.ir.json/entities",
+      severity: "error",
+      suggestion: "Add a Camera component and set world.resources.ActiveCamera.entity.",
     });
   }
+
+  diagnostics.push(...sceneStartupDiagnostics(bundle));
 
   return {
     camera: selectedCamera,
@@ -144,6 +164,41 @@ export function mapWorld(bundle: IWebBundle): IThreeWorld {
     objectsById,
     scene,
   };
+}
+
+export function sceneStartupDiagnostics(bundle: IWebBundle): IRuntimeDiagnostic[] {
+  const diagnostics: IRuntimeDiagnostic[] = [];
+  const visibleRenderers = bundle.world.entities
+    .map((entity) => entity.components.MeshRenderer)
+    .filter((renderer): renderer is NonNullable<IWorldEntity["components"]["MeshRenderer"]> => renderer !== undefined && renderer.visible !== false);
+  const hasLight = bundle.world.entities.some((entity) => entity.components.Light !== undefined);
+
+  if (visibleRenderers.length === 0) {
+    diagnostics.push({
+      code: "TN-WEB-SCENE-RENDERERS-MISSING",
+      message: "No visible MeshRenderer components were found; the scene has nothing renderable.",
+      path: "world.ir.json/entities",
+      severity: "error",
+      suggestion: "Add at least one visible MeshRenderer with a valid mesh and material.",
+    });
+  }
+
+  if (!hasLight && visibleRenderers.some((renderer) => isLitMaterial(bundle, renderer.material))) {
+    diagnostics.push({
+      code: "TN-WEB-LIGHT-MISSING",
+      message: "Visible lit materials are present but no Light component was found; the scene may render very dark.",
+      path: "world.ir.json/entities",
+      severity: "warning",
+      suggestion: "Add an ambient, directional, point, or spot Light entity, or use an unlit/basic material.",
+    });
+  }
+
+  return diagnostics;
+}
+
+function isLitMaterial(bundle: IWebBundle, materialId: string): boolean {
+  const material = bundle.materials.materials.find((entry) => entry.id === materialId);
+  return material?.extension?.preset !== "unlitMasked";
 }
 
 export function advanceAnimationPlayback(mapped: IThreeWorld, fixedDelta: number): void {
@@ -785,6 +840,31 @@ export function syncTransforms(world: IWorldIr, objectsById: Map<string, THREE.O
     if (object !== undefined) {
       applyTransform(object, entity);
       applyVisibility(object, entity);
+    }
+  }
+}
+
+export function syncMeshRendererMaterials(world: IWorldIr, objectsById: Map<string, THREE.Object3D>): void {
+  const materialsById = new Map<string, THREE.Material | THREE.Material[]>();
+  for (const object of objectsById.values()) {
+    if (object instanceof THREE.Mesh) {
+      const materialId = object.userData.threeNativeMaterialId as string | undefined;
+      if (materialId !== undefined) {
+        materialsById.set(materialId, object.material);
+      }
+    }
+  }
+
+  for (const entity of world.entities) {
+    const materialId = entity.components.MeshRenderer?.material;
+    if (materialId === undefined) {
+      continue;
+    }
+    const object = objectsById.get(entity.id);
+    const material = materialsById.get(materialId);
+    if (object instanceof THREE.Mesh && material !== undefined) {
+      object.material = material;
+      object.userData.threeNativeMaterialId = materialId;
     }
   }
 }

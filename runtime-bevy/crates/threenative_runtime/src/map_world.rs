@@ -66,6 +66,9 @@ pub struct NativeMaterialPolicy {
     pub unsupported_blend_diagnostic: Option<String>,
 }
 
+#[derive(Resource, Default)]
+pub struct NativeMaterialHandles(pub HashMap<String, Handle<StandardMaterial>>);
+
 #[derive(Clone, Component, Debug, PartialEq)]
 pub struct NativeEmissiveBloomPolicy {
     pub enabled: bool,
@@ -182,6 +185,7 @@ pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result
         .iter()
         .map(|material| (material.id.as_str(), material))
         .collect::<HashMap<_, _>>();
+    let mut material_handles = NativeMaterialHandles::default();
     world.insert_resource(crate::assets::build_texture_controls_registry(
         &bundle.assets,
     ));
@@ -201,9 +205,11 @@ pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result
             bloom_settings.as_ref(),
             bundle.runtime_config.as_ref(),
             &render_target_registry,
+            &mut material_handles,
         )?;
         entities_by_id.insert(entity.id.as_str(), bevy_entity);
     }
+    world.insert_resource(material_handles);
 
     for entity in &bundle.world.entities {
         let Some(parent_id) = entity
@@ -364,6 +370,7 @@ fn spawn_entity(
     bloom_settings: Option<&BloomSettings>,
     runtime_config: Option<&RuntimeConfigIr>,
     render_target_registry: &NativeRenderTargetRegistry,
+    material_handles: &mut NativeMaterialHandles,
 ) -> Result<Entity, MapError> {
     let transform = map_transform(entity);
     let name = Name::new(entity.id.clone());
@@ -430,6 +437,10 @@ fn spawn_entity(
             asset_server.as_ref(),
             render_target_registry,
         );
+        material_handles
+            .0
+            .entry(material.id.clone())
+            .or_insert_with(|| material_handle.clone());
         let mut spawned = world.spawn(PbrBundle {
             mesh,
             material: material_handle,
@@ -595,7 +606,12 @@ fn spawn_entity(
     }
 
     Ok(world
-        .spawn((stable_id, name, transform, map_visibility(entity)))
+        .spawn(SpatialBundle {
+            transform,
+            visibility: map_visibility(entity),
+            ..Default::default()
+        })
+        .insert((stable_id, name))
         .id())
 }
 

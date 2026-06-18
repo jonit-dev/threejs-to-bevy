@@ -234,10 +234,17 @@ fn should_report_v10_ecs_tags_and_scene_groups_conformance_observations() {
         report_json["systems"],
         serde_json::json!([
             {
-                "name": "enemyTransformProbe",
+                "name": "laneTagProbe",
                 "queries": [
-                    { "matchedEntities": ["enemy.goblin"], "with": ["Enemy", "Transform"], "without": [] },
-                    { "matchedEntities": ["enemy.goblin", "group.encounters"], "with": ["Transform"], "without": ["Interactable"] }
+                    {
+                        "matchedEntities": ["cube.gold.0", "cube.gold.1", "cube.gold.2", "cube.red.0", "cube.red.1", "cube.red.2", "cube.teal.0", "cube.teal.1", "cube.teal.2"],
+                        "with": ["ParallelMover", "Transform", "MotionLane"],
+                        "without": []
+                    },
+                    { "matchedEntities": ["cube.red.0", "cube.red.2"], "with": ["LaneRed", "ParallelMover"], "without": ["PhaseCooldown"] },
+                    { "matchedEntities": ["cube.teal.0", "cube.teal.2"], "with": ["LaneTeal", "ParallelMover", "PhaseCooldown"], "without": [] },
+                    { "matchedEntities": ["cube.gold.0", "cube.gold.2", "cube.red.0", "cube.red.2"], "with": ["PhaseActive", "ColorPhase"], "without": ["LaneTeal"] },
+                    { "matchedEntities": ["group.lane.gold", "group.lane.red", "group.lane.teal"], "with": ["SceneContainer", "Transform"], "without": ["ParallelMover"] }
                 ]
             }
         ])
@@ -246,7 +253,7 @@ fn should_report_v10_ecs_tags_and_scene_groups_conformance_observations() {
     let group = report
         .entities
         .iter()
-        .find(|entity| entity.id == "group.encounters")
+        .find(|entity| entity.id == "group.lane.red")
         .expect("group entity should be reported");
     assert_eq!(
         group.components,
@@ -256,35 +263,42 @@ fn should_report_v10_ecs_tags_and_scene_groups_conformance_observations() {
     assert!(group.camera.is_none());
     assert!(group.light.is_none());
 
-    let enemy = report
+    let red_active = report
         .entities
         .iter()
-        .find(|entity| entity.id == "enemy.goblin")
-        .expect("enemy entity should be reported");
-    assert_eq!(enemy.parent.as_deref(), Some("group.encounters"));
+        .find(|entity| entity.id == "cube.red.0")
+        .expect("red active cube entity should be reported");
+    assert_eq!(red_active.parent.as_deref(), Some("group.lane.red"));
     assert_eq!(
-        enemy.components,
+        red_active.components,
         vec![
-            "Damageable".to_owned(),
-            "Enemy".to_owned(),
+            "ColorPhase".to_owned(),
             "Hierarchy".to_owned(),
+            "LaneRed".to_owned(),
             "MeshRenderer".to_owned(),
+            "MotionLane".to_owned(),
+            "ParallelMover".to_owned(),
+            "PhaseActive".to_owned(),
             "Transform".to_owned()
         ]
     );
 
-    let interactable = report
+    let teal_cooldown = report
         .entities
         .iter()
-        .find(|entity| entity.id == "chest.interactable")
-        .expect("interactable entity should be reported");
-    assert_eq!(interactable.parent.as_deref(), Some("group.encounters"));
+        .find(|entity| entity.id == "cube.teal.0")
+        .expect("teal cooldown cube entity should be reported");
+    assert_eq!(teal_cooldown.parent.as_deref(), Some("group.lane.teal"));
     assert_eq!(
-        interactable.components,
+        teal_cooldown.components,
         vec![
+            "ColorPhase".to_owned(),
             "Hierarchy".to_owned(),
-            "Interactable".to_owned(),
+            "LaneTeal".to_owned(),
             "MeshRenderer".to_owned(),
+            "MotionLane".to_owned(),
+            "ParallelMover".to_owned(),
+            "PhaseCooldown".to_owned(),
             "Transform".to_owned()
         ]
     );

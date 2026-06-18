@@ -8,6 +8,9 @@
       "tags"
     ],
     "rendering": [
+      "camera.perspective",
+      "light.directional",
+      "material.emissive",
       "material.standard",
       "mesh-renderer",
       "mesh.primitive.box"

@@ -51,7 +51,8 @@ implementation:
   maturity, and release hardening.
 - `V10-05` now implements the grouping model: ECS tags as queryable zero-field
   marker components plus scene `Group` containers that lower to hierarchy-only
-  `SceneContainer` entities with web/Bevy conformance coverage.
+  `SceneContainer` entities with viewable multi-lane moving-cube web/Bevy
+  conformance coverage.
 - Broader authoring-tool UX remains outside this V10 batch except for bounded
   visual panel evidence explicitly promoted below.
 

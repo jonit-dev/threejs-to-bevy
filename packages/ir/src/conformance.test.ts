@@ -331,6 +331,9 @@ test("should include capability tags for each conformance fixture", async () => 
   assertFixtureCapabilities(byName, "v10-ecs-tags-groups", [
     "ecs:component-schemas",
     "ecs:tags",
+    "rendering:camera.perspective",
+    "rendering:light.directional",
+    "rendering:material.emissive",
     "rendering:material.standard",
     "rendering:mesh-renderer",
     "rendering:mesh.primitive.box",

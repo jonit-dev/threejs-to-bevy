@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use threenative_loader::{
-    EntityComponents, LoadedBundle, SystemCommandIr, SystemIr, TransformComponent, WorldEntity,
+    EntityComponents, LoadedBundle, MeshRendererComponent, SystemCommandIr, SystemIr,
+    TransformComponent, WorldEntity,
 };
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
@@ -383,6 +384,11 @@ fn apply_patch(bundle: &mut LoadedBundle, patch: &NativeSystemPatchEffect) {
         return;
     }
 
+    if patch.component == "MeshRenderer" {
+        entity.components.mesh_renderer = read_mesh_renderer(&patch.value);
+        return;
+    }
+
     entity
         .components
         .extra
@@ -518,7 +524,24 @@ fn apply_component_value(components: &mut EntityComponents, component: &str, val
         return;
     }
 
+    if component == "MeshRenderer" {
+        components.mesh_renderer = read_mesh_renderer(&value);
+        return;
+    }
+
     components.extra.insert(component.to_owned(), value);
+}
+
+fn read_mesh_renderer(value: &Value) -> Option<MeshRendererComponent> {
+    let mesh = value.get("mesh").and_then(Value::as_str)?;
+    let material = value.get("material").and_then(Value::as_str)?;
+    Some(MeshRendererComponent {
+        cast_shadow: value.get("castShadow").and_then(Value::as_bool),
+        mesh: mesh.to_owned(),
+        material: material.to_owned(),
+        receive_shadow: value.get("receiveShadow").and_then(Value::as_bool),
+        visible: value.get("visible").and_then(Value::as_bool),
+    })
 }
 
 fn remove_component(components: &mut EntityComponents, component: &str) {

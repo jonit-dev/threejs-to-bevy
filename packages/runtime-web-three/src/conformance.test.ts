@@ -100,33 +100,43 @@ test("should report V10 ECS tags and scene groups conformance observations", asy
   const report = reportWebConformance(bundle, mapped, "v10-ecs-tags-groups");
 
   assert.equal(report.fixture, "v10-ecs-tags-groups");
-  assert.deepEqual(report.diagnostics.map((diagnostic) => diagnostic.code), ["TN-WEB-CAMERA-MISSING"]);
+  assert.deepEqual(report.diagnostics.map((diagnostic) => diagnostic.code), []);
+  assert.equal(report.activeCamera, "camera.main");
   assert.deepEqual(report.systems, [
     {
-      name: "enemyTransformProbe",
+      name: "laneTagProbe",
       queries: [
-        { matchedEntities: ["enemy.goblin"], with: ["Enemy", "Transform"], without: [] },
-        { matchedEntities: ["enemy.goblin", "group.encounters"], with: ["Transform"], without: ["Interactable"] },
+        {
+          matchedEntities: ["cube.gold.0", "cube.gold.1", "cube.gold.2", "cube.red.0", "cube.red.1", "cube.red.2", "cube.teal.0", "cube.teal.1", "cube.teal.2"],
+          with: ["ParallelMover", "Transform", "MotionLane"],
+          without: [],
+        },
+        { matchedEntities: ["cube.red.0", "cube.red.2"], with: ["LaneRed", "ParallelMover"], without: ["PhaseCooldown"] },
+        { matchedEntities: ["cube.teal.0", "cube.teal.2"], with: ["LaneTeal", "ParallelMover", "PhaseCooldown"], without: [] },
+        { matchedEntities: ["cube.gold.0", "cube.gold.2", "cube.red.0", "cube.red.2"], with: ["PhaseActive", "ColorPhase"], without: ["LaneTeal"] },
+        { matchedEntities: ["group.lane.gold", "group.lane.red", "group.lane.teal"], with: ["SceneContainer", "Transform"], without: ["ParallelMover"] },
       ],
     },
   ]);
 
-  const group = report.entities.find((entity) => entity.id === "group.encounters");
+  const group = report.entities.find((entity) => entity.id === "group.lane.red");
   assert.ok(group);
   assert.deepEqual(group.components, ["SceneContainer", "Transform"]);
   assert.equal(group.meshRenderer, undefined);
   assert.equal(group.camera, undefined);
   assert.equal(group.light, undefined);
 
-  const enemy = report.entities.find((entity) => entity.id === "enemy.goblin");
-  assert.ok(enemy);
-  assert.equal(enemy.parent, "group.encounters");
-  assert.deepEqual(enemy.components, ["Damageable", "Enemy", "Hierarchy", "MeshRenderer", "Transform"]);
+  const redActive = report.entities.find((entity) => entity.id === "cube.red.0");
+  assert.ok(redActive);
+  assert.equal(redActive.parent, "group.lane.red");
+  assert.equal(redActive.material, "mat.red.active");
+  assert.deepEqual(redActive.components, ["ColorPhase", "Hierarchy", "LaneRed", "MeshRenderer", "MotionLane", "ParallelMover", "PhaseActive", "Transform"]);
 
-  const interactable = report.entities.find((entity) => entity.id === "chest.interactable");
-  assert.ok(interactable);
-  assert.equal(interactable.parent, "group.encounters");
-  assert.deepEqual(interactable.components, ["Hierarchy", "Interactable", "MeshRenderer", "Transform"]);
+  const tealCooldown = report.entities.find((entity) => entity.id === "cube.teal.0");
+  assert.ok(tealCooldown);
+  assert.equal(tealCooldown.parent, "group.lane.teal");
+  assert.equal(tealCooldown.material, "mat.teal.cooldown");
+  assert.deepEqual(tealCooldown.components, ["ColorPhase", "Hierarchy", "LaneTeal", "MeshRenderer", "MotionLane", "ParallelMover", "PhaseCooldown", "Transform"]);
 });
 
 function primitiveAssets(report: ReturnType<typeof reportWebConformance>): Array<[string, string | undefined]> {

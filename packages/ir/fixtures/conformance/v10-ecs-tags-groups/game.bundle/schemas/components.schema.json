@@ -2,13 +2,42 @@
   "schema": "threenative.component-schemas",
   "version": "0.1.0",
   "schemas": {
-    "Damageable": {
+    "ColorPhase": {
+      "fields": {
+        "phase": {
+          "kind": "string",
+          "required": true
+        }
+      }
+    },
+    "LaneGold": {
       "fields": {}
     },
-    "Enemy": {
+    "LaneRed": {
       "fields": {}
     },
-    "Interactable": {
+    "LaneTeal": {
+      "fields": {}
+    },
+    "MotionLane": {
+      "fields": {
+        "axis": {
+          "kind": "string",
+          "required": true
+        },
+        "speed": {
+          "kind": "number",
+          "required": true
+        }
+      }
+    },
+    "ParallelMover": {
+      "fields": {}
+    },
+    "PhaseActive": {
+      "fields": {}
+    },
+    "PhaseCooldown": {
       "fields": {}
     },
     "SceneContainer": {

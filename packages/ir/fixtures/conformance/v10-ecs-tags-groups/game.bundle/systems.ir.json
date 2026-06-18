@@ -3,18 +3,30 @@
   "version": "0.1.0",
   "systems": [
     {
-      "name": "enemyTransformProbe",
+      "name": "laneTagProbe",
       "schedule": "fixedUpdate",
-      "reads": ["Enemy", "Transform"],
+      "reads": ["LaneRed", "LaneTeal", "LaneGold", "ParallelMover", "PhaseActive", "PhaseCooldown", "Transform", "MotionLane", "ColorPhase"],
       "writes": [],
       "queries": [
         {
-          "with": ["Enemy", "Transform"],
+          "with": ["ParallelMover", "Transform", "MotionLane"],
           "without": []
         },
         {
-          "with": ["Transform"],
-          "without": ["Interactable"]
+          "with": ["LaneRed", "ParallelMover"],
+          "without": ["PhaseCooldown"]
+        },
+        {
+          "with": ["LaneTeal", "ParallelMover", "PhaseCooldown"],
+          "without": []
+        },
+        {
+          "with": ["PhaseActive", "ColorPhase"],
+          "without": ["LaneTeal"]
+        },
+        {
+          "with": ["SceneContainer", "Transform"],
+          "without": ["ParallelMover"]
         }
       ],
       "eventReads": [],

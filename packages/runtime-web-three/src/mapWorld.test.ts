@@ -5,7 +5,7 @@ import * as THREE from "three";
 
 import { loadBundle } from "./loadBundle.js";
 import type { IWebBundle } from "./loadBundle.js";
-import { advanceAnimationPlayback, hasAnimationPlayback, loadWorldModelAssets, mapWorld, traceEmissiveBloomContributions } from "./mapWorld.js";
+import { advanceAnimationPlayback, hasAnimationPlayback, loadWorldModelAssets, mapWorld, sceneStartupDiagnostics, traceEmissiveBloomContributions } from "./mapWorld.js";
 
 test("mapWorld should map cube fixture to three scene", async () => {
   const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/cube-scene/game.bundle"));
@@ -91,6 +91,73 @@ test("mapWorld should map v2 render fixture", () => {
   assert.equal(mapped.objectsById.get("cylinder.main") instanceof THREE.Mesh, true);
 });
 
+test("mapWorld should warn when a lit scene has no camera or light", () => {
+  const bundle = {
+    assets: {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [{ id: "mesh.cube", kind: "mesh", format: "generated", primitive: "box", size: [1, 1, 1] }],
+    },
+    manifest: {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "missing-view",
+      requiredCapabilities: {},
+      entry: { world: "world.ir.json" },
+      files: { assets: "assets.manifest.json", materials: "materials.ir.json", targetProfile: "target.profile.json" },
+    },
+    materials: {
+      schema: "threenative.materials",
+      version: "0.1.0",
+      materials: [{ id: "mat.main", kind: "standard", color: "#ffffff" }],
+    },
+    targetProfile: { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] },
+    world: {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [
+        {
+          id: "cube.main",
+          components: {
+            MeshRenderer: { mesh: "mesh.cube", material: "mat.main" },
+            Transform: { position: [0, 0, 0] },
+          },
+        },
+      ],
+      resources: {},
+    },
+  } satisfies IWebBundle;
+
+  const mapped = mapWorld(bundle);
+
+  assert.equal(mapped.diagnostics.some((diagnostic) => diagnostic.code === "TN-WEB-CAMERA-MISSING"), true);
+  assert.equal(mapped.diagnostics.some((diagnostic) => diagnostic.code === "TN-WEB-LIGHT-MISSING"), true);
+});
+
+test("sceneStartupDiagnostics should warn when no visible renderers exist", () => {
+  const diagnostics = sceneStartupDiagnostics({
+    assets: { schema: "threenative.assets", version: "0.1.0", assets: [] },
+    manifest: {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "empty",
+      requiredCapabilities: {},
+      entry: { world: "world.ir.json" },
+      files: { assets: "assets.manifest.json", materials: "materials.ir.json", targetProfile: "target.profile.json" },
+    },
+    materials: { schema: "threenative.materials", version: "0.1.0", materials: [] },
+    targetProfile: { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] },
+    world: {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [],
+      resources: {},
+    },
+  });
+
+  assert.deepEqual(diagnostics.map((diagnostic) => diagnostic.code), ["TN-WEB-SCENE-RENDERERS-MISSING"]);
+});
+
 test("mapWorld should map expanded generated primitive catalog", () => {
   const assets = [
     { id: "mesh.cone", kind: "mesh" as const, format: "generated" as const, primitive: "cone" as const, size: [0.5, 1] },
@@ -134,10 +201,17 @@ test("mapWorld should map expanded generated primitive catalog", () => {
     world: {
       schema: "threenative.world",
       version: "0.1.0",
-      entities: assets.map((asset) => ({
-        id: asset.id.replace("mesh.", "entity."),
-        components: { MeshRenderer: { mesh: asset.id, material: "mat.main" }, Transform: { position: [0, 0, 0] } },
-      })),
+      entities: [
+        ...assets.map((asset) => ({
+          id: asset.id.replace("mesh.", "entity."),
+          components: { MeshRenderer: { mesh: asset.id, material: "mat.main" }, Transform: { position: [0, 0, 0] as [number, number, number] } },
+        })),
+        {
+          id: "camera.main",
+          components: { Camera: { kind: "perspective", near: 0.1, far: 100, fovY: 60 } },
+        },
+      ],
+      resources: { ActiveCamera: { entity: "camera.main" } },
     },
   });
 
@@ -423,10 +497,15 @@ test("mapWorld should apply supported material texture slots", () => {
       version: "0.1.0",
       entities: [
         {
+          id: "camera.main",
+          components: { Camera: { kind: "perspective", near: 0.1, far: 100, fovY: 60 } },
+        },
+        {
           id: "cube.textured",
           components: { MeshRenderer: { mesh: "mesh.cube", material: "mat.textured" } },
         },
       ],
+      resources: { ActiveCamera: { entity: "camera.main" } },
     },
   });
 

@@ -3,7 +3,10 @@ use std::path::Path;
 use bevy::prelude::*;
 use thiserror::Error;
 use threenative_components::ThreeNativeId;
-use threenative_loader::{LoadError, LoadedBundle, TransformComponent, load_bundle};
+use threenative_loader::{
+    LoadError, LoadedBundle, MaterialsIr, MeshRendererComponent, TransformComponent, UiBindingIr,
+    UiNodeIr, WorldIr, load_bundle,
+};
 
 pub mod animation;
 pub mod asset_reload;
@@ -47,12 +50,54 @@ pub enum RuntimeError {
     Map(#[from] map_world::MapError),
     #[error(transparent)]
     SystemsHost(#[from] systems_host::SystemsHostError),
+    #[error("scene readiness failed: {0}")]
+    SceneReadiness(String),
     #[error(transparent)]
     Ui(#[from] ui::UiDiagnostic),
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum NativeSceneDiagnosticSeverity {
+    Error,
+    Warning,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NativeSceneStartupDiagnostic {
+    pub code: &'static str,
+    pub message: String,
+    pub path: &'static str,
+    pub severity: NativeSceneDiagnosticSeverity,
+}
+
 pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeError> {
     let mut bundle = load_bundle(bundle_path)?;
+    let scene_diagnostics = native_scene_startup_diagnostics(&bundle.world, &bundle.materials);
+    for diagnostic in &scene_diagnostics {
+        match diagnostic.severity {
+            NativeSceneDiagnosticSeverity::Error => {
+                error!(
+                    "{}: {} ({})",
+                    diagnostic.code, diagnostic.message, diagnostic.path
+                );
+            }
+            NativeSceneDiagnosticSeverity::Warning => {
+                warn!(
+                    "{}: {} ({})",
+                    diagnostic.code, diagnostic.message, diagnostic.path
+                );
+            }
+        }
+    }
+    if let Some(diagnostic) = scene_diagnostics
+        .iter()
+        .find(|diagnostic| diagnostic.severity == NativeSceneDiagnosticSeverity::Error)
+    {
+        return Err(RuntimeError::SceneReadiness(format!(
+            "{}: {} ({})",
+            diagnostic.code, diagnostic.message, diagnostic.path
+        )));
+    }
     systems_host::ensure_native_system_host_supported(&bundle)?;
     let has_scripts = bundle.manifest.entry.scripts.is_some();
     systems_host::run_native_systems_once(
@@ -60,7 +105,7 @@ pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeErro
         systems_context::NativeSystemTimeSnapshot {
             delta: 1.0 / 60.0,
             dt: 1.0 / 60.0,
-            elapsed: 1.0,
+            elapsed: 0.0,
             fixed_delta: 1.0 / 60.0,
             fixed_dt: 1.0 / 60.0,
             paused: false,
@@ -187,6 +232,140 @@ pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeErro
     Ok(app)
 }
 
+pub fn native_scene_startup_diagnostics(
+    world: &WorldIr,
+    materials: &MaterialsIr,
+) -> Vec<NativeSceneStartupDiagnostic> {
+    let mut diagnostics = Vec::new();
+    let camera_ids = world
+        .entities
+        .iter()
+        .filter(|entity| entity.components.camera.is_some())
+        .map(|entity| entity.id.as_str())
+        .collect::<Vec<_>>();
+    let visible_renderers = world
+        .entities
+        .iter()
+        .filter_map(|entity| entity.components.mesh_renderer.as_ref())
+        .filter(|renderer| renderer.visible != Some(false))
+        .collect::<Vec<_>>();
+    let has_light = world
+        .entities
+        .iter()
+        .any(|entity| entity.components.light.is_some());
+
+    if visible_renderers.is_empty() {
+        diagnostics.push(NativeSceneStartupDiagnostic {
+            code: "TN_BEVY_SCENE_RENDERERS_MISSING",
+            message:
+                "No visible MeshRenderer components were found; the scene has nothing renderable."
+                    .to_owned(),
+            path: "world.ir.json/entities",
+            severity: NativeSceneDiagnosticSeverity::Error,
+        });
+    }
+
+    if camera_ids.is_empty() {
+        diagnostics.push(NativeSceneStartupDiagnostic {
+            code: "TN_BEVY_CAMERA_MISSING",
+            message: "No Camera component was found; Bevy preview cannot render this scene."
+                .to_owned(),
+            path: "world.ir.json/entities",
+            severity: NativeSceneDiagnosticSeverity::Error,
+        });
+    } else {
+        match active_camera_status(world, &camera_ids) {
+            ActiveCameraStatus::Valid => {}
+            ActiveCameraStatus::Missing => diagnostics.push(NativeSceneStartupDiagnostic {
+                code: "TN_BEVY_ACTIVE_CAMERA_MISSING",
+                message: "No ActiveCamera or ActiveCameras resource selects a Camera entity; the runtime will fall back to the first camera.".to_owned(),
+                path: "world.ir.json/resources/ActiveCamera",
+                severity: NativeSceneDiagnosticSeverity::Warning,
+            }),
+            ActiveCameraStatus::Invalid => diagnostics.push(NativeSceneStartupDiagnostic {
+                code: "TN_BEVY_ACTIVE_CAMERA_INVALID",
+                message: "ActiveCamera or ActiveCameras references an entity that is missing or does not have a Camera component.".to_owned(),
+                path: "world.ir.json/resources/ActiveCamera",
+                severity: NativeSceneDiagnosticSeverity::Error,
+            }),
+        }
+    }
+
+    if !has_light
+        && visible_renderers
+            .iter()
+            .any(|renderer| is_lit_material(materials, &renderer.material))
+    {
+        diagnostics.push(NativeSceneStartupDiagnostic {
+            code: "TN_BEVY_LIGHT_MISSING",
+            message: "Visible lit materials are present but no Light component was found; the scene may render very dark.".to_owned(),
+            path: "world.ir.json/entities",
+            severity: NativeSceneDiagnosticSeverity::Warning,
+        });
+    }
+
+    diagnostics
+}
+
+pub fn native_scene_startup_warnings(
+    world: &WorldIr,
+    materials: &MaterialsIr,
+) -> Vec<NativeSceneStartupDiagnostic> {
+    native_scene_startup_diagnostics(world, materials)
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ActiveCameraStatus {
+    Invalid,
+    Missing,
+    Valid,
+}
+
+fn active_camera_status(world: &WorldIr, camera_ids: &[&str]) -> ActiveCameraStatus {
+    let active_camera = world
+        .resources
+        .get("ActiveCamera")
+        .and_then(|value| value.get("entity"))
+        .and_then(serde_json::Value::as_str);
+    if let Some(entity) = active_camera {
+        return if camera_ids.contains(&entity) {
+            ActiveCameraStatus::Valid
+        } else {
+            ActiveCameraStatus::Invalid
+        };
+    }
+
+    let active_cameras = world
+        .resources
+        .get("ActiveCameras")
+        .and_then(|value| value.get("cameras"))
+        .and_then(serde_json::Value::as_array);
+    let Some(cameras) = active_cameras else {
+        return ActiveCameraStatus::Missing;
+    };
+    if cameras.is_empty() {
+        return ActiveCameraStatus::Invalid;
+    }
+    if cameras.iter().any(|entry| {
+        let entity = entry
+            .as_str()
+            .or_else(|| entry.get("entity").and_then(serde_json::Value::as_str));
+        entity.is_some_and(|entity| camera_ids.contains(&entity))
+    }) {
+        ActiveCameraStatus::Valid
+    } else {
+        ActiveCameraStatus::Invalid
+    }
+}
+
+fn is_lit_material(materials: &MaterialsIr, material_id: &str) -> bool {
+    materials
+        .materials
+        .iter()
+        .find(|material| material.id == material_id)
+        .is_none_or(|material| material.kind != "basic")
+}
+
 #[derive(Resource)]
 struct ScriptedRuntimeBundle {
     bundle: LoadedBundle,
@@ -195,8 +374,11 @@ struct ScriptedRuntimeBundle {
 fn run_scripted_runtime_systems(
     mut runtime: Option<ResMut<ScriptedRuntimeBundle>>,
     input: Option<Res<input::NativeInputState>>,
+    material_handles: Option<Res<map_world::NativeMaterialHandles>>,
     time: Res<Time>,
     mut transforms: Query<(&ThreeNativeId, &mut Transform)>,
+    mut materials: Query<(&ThreeNativeId, &mut Handle<StandardMaterial>)>,
+    mut text_nodes: Query<(&ThreeNativeId, &mut Text)>,
 ) {
     let Some(ref mut runtime) = runtime else {
         return;
@@ -221,6 +403,8 @@ fn run_scripted_runtime_systems(
     }
 
     sync_scripted_transforms(&runtime.bundle, &mut transforms);
+    sync_scripted_materials(&runtime.bundle, material_handles.as_deref(), &mut materials);
+    sync_scripted_ui_text(&runtime.bundle, &mut text_nodes);
 }
 
 fn sync_scripted_transforms(
@@ -239,6 +423,129 @@ fn sync_scripted_transforms(
         };
         apply_transform_component(&mut target, source);
     }
+}
+
+fn sync_scripted_materials(
+    bundle: &LoadedBundle,
+    material_handles: Option<&map_world::NativeMaterialHandles>,
+    materials: &mut Query<(&ThreeNativeId, &mut Handle<StandardMaterial>)>,
+) {
+    let Some(material_handles) = material_handles else {
+        return;
+    };
+    for (stable_id, mut target) in materials.iter_mut() {
+        let Some(source) = bundle
+            .world
+            .entities
+            .iter()
+            .find(|entity| entity.id == stable_id.0)
+            .and_then(|entity| entity.components.mesh_renderer.as_ref())
+        else {
+            continue;
+        };
+        apply_mesh_renderer_component(&mut target, source, material_handles);
+    }
+}
+
+fn apply_mesh_renderer_component(
+    target: &mut Handle<StandardMaterial>,
+    source: &MeshRendererComponent,
+    material_handles: &map_world::NativeMaterialHandles,
+) {
+    if let Some(material) = material_handles.0.get(&source.material) {
+        *target = material.clone();
+    }
+}
+
+fn sync_scripted_ui_text(
+    bundle: &LoadedBundle,
+    text_nodes: &mut Query<(&ThreeNativeId, &mut Text)>,
+) {
+    let Some(ui) = bundle.ui.as_ref() else {
+        return;
+    };
+    for (stable_id, mut text) in text_nodes.iter_mut() {
+        let Some(node) = find_ui_node(&ui.root, &stable_id.0) else {
+            continue;
+        };
+        let Some(binding) = node.binding.as_ref() else {
+            continue;
+        };
+        let Some(value) = resolve_ui_binding(bundle, binding) else {
+            continue;
+        };
+        let rendered = value_to_ui_text(&value);
+        if let Some(section) = text.sections.first_mut() {
+            section.value = rendered;
+        }
+    }
+}
+
+fn find_ui_node<'a>(node: &'a UiNodeIr, id: &str) -> Option<&'a UiNodeIr> {
+    if node.id == id {
+        return Some(node);
+    }
+    node.children
+        .iter()
+        .find_map(|child| find_ui_node(child, id))
+}
+
+fn resolve_ui_binding<'a>(
+    bundle: &'a LoadedBundle,
+    binding: &UiBindingIr,
+) -> Option<serde_json::Value> {
+    match binding {
+        UiBindingIr::Resource { name, field } => {
+            let value = bundle.world.resources.get(name)?;
+            resolve_bound_field(value, field.as_deref()).cloned()
+        }
+        UiBindingIr::Component {
+            component,
+            entity,
+            field,
+        } => {
+            let entity = bundle
+                .world
+                .entities
+                .iter()
+                .find(|item| item.id == *entity)?;
+            let value = systems_context::component_value(&entity.components, component)?;
+            resolve_bound_field(&value, field.as_deref()).cloned()
+        }
+    }
+}
+
+fn resolve_bound_field<'a>(
+    value: &'a serde_json::Value,
+    field: Option<&str>,
+) -> Option<&'a serde_json::Value> {
+    match field {
+        Some(field) => value.get(field),
+        None => Some(value),
+    }
+}
+
+fn value_to_ui_text(value: &serde_json::Value) -> String {
+    if let Some(value) = value.as_str() {
+        return value.to_owned();
+    }
+    if let Some(value) = value.as_i64() {
+        return value.to_string();
+    }
+    if let Some(value) = value.as_u64() {
+        return value.to_string();
+    }
+    if let Some(value) = value.as_f64() {
+        return if value.fract() == 0.0 {
+            format!("{value:.0}")
+        } else {
+            value.to_string()
+        };
+    }
+    if let Some(value) = value.as_bool() {
+        return value.to_string();
+    }
+    value.to_string()
 }
 
 fn apply_transform_component(target: &mut Transform, source: &TransformComponent) {

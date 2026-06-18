@@ -3,18 +3,52 @@
   "version": "0.1.0",
   "materials": [
     {
-      "id": "mat.enemy",
+      "id": "mat.red.active",
       "kind": "standard",
       "color": "#e03131",
+      "emissive": "#7a1010",
+      "emissiveIntensity": 0.35,
       "metalness": 0,
-      "roughness": 0.8
+      "roughness": 0.72
     },
     {
-      "id": "mat.interactable",
+      "id": "mat.red.cooldown",
+      "kind": "standard",
+      "color": "#ffa8a8",
+      "metalness": 0,
+      "roughness": 0.9
+    },
+    {
+      "id": "mat.teal.active",
+      "kind": "standard",
+      "color": "#0ca678",
+      "emissive": "#064e3b",
+      "emissiveIntensity": 0.35,
+      "metalness": 0,
+      "roughness": 0.72
+    },
+    {
+      "id": "mat.teal.cooldown",
+      "kind": "standard",
+      "color": "#96f2d7",
+      "metalness": 0,
+      "roughness": 0.9
+    },
+    {
+      "id": "mat.gold.active",
       "kind": "standard",
       "color": "#f59f00",
+      "emissive": "#7c4a03",
+      "emissiveIntensity": 0.35,
       "metalness": 0,
-      "roughness": 0.8
+      "roughness": 0.72
+    },
+    {
+      "id": "mat.gold.cooldown",
+      "kind": "standard",
+      "color": "#ffe066",
+      "metalness": 0,
+      "roughness": 0.9
     }
   ]
 }

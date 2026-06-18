@@ -691,7 +691,10 @@ fn matched_entities(bundle: &LoadedBundle, query: &SystemQueryIr) -> Vec<String>
 fn matches_query(entity: &WorldEntity, query: &SystemQueryIr) -> bool {
     let names = component_names(entity);
     query.with.iter().all(|component| names.contains(component))
-        && query.without.iter().all(|component| !names.contains(component))
+        && query
+            .without
+            .iter()
+            .all(|component| !names.contains(component))
 }
 
 fn report_profiler(bundle: &LoadedBundle) -> ConformanceProfilerReport {
@@ -826,15 +829,14 @@ fn report_runtime_config(
                     tone_mapping: color_grading.tone_mapping.clone(),
                 }
             }),
-            depth_of_field: renderer
-                .depth_of_field
-                .as_ref()
-                .map(|depth_of_field| RuntimeDepthOfFieldReport {
+            depth_of_field: renderer.depth_of_field.as_ref().map(|depth_of_field| {
+                RuntimeDepthOfFieldReport {
                     aperture: depth_of_field.aperture,
                     enabled: depth_of_field.enabled,
                     focus_distance: depth_of_field.focus_distance,
                     max_blur: depth_of_field.max_blur,
-                }),
+                }
+            }),
             post_processing: RuntimePostProcessingReport {
                 applied: [
                     renderer
@@ -846,9 +848,7 @@ fn report_runtime_config(
                         .as_ref()
                         .map(|_| "colorGrading".to_owned()),
                     renderer.depth_of_field.as_ref().and_then(|depth_of_field| {
-                        depth_of_field
-                            .enabled
-                            .then(|| "depthOfField".to_owned())
+                        depth_of_field.enabled.then(|| "depthOfField".to_owned())
                     }),
                     post_antialias_feature(renderer.antialias.as_str()),
                 ]

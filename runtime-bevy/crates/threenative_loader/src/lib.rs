@@ -1135,6 +1135,7 @@ pub struct UiNodeIr {
     pub accessibility_label: Option<String>,
     pub action: Option<String>,
     pub anchor_id: Option<String>,
+    pub binding: Option<UiBindingIr>,
     #[serde(default)]
     pub children: Vec<UiNodeIr>,
     pub disabled: Option<bool>,
@@ -1157,6 +1158,19 @@ pub struct UiNodeIr {
     pub text: Option<String>,
     pub value: Option<f32>,
     pub value_text: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(tag = "kind")]
+pub enum UiBindingIr {
+    #[serde(rename = "resource")]
+    Resource { name: String, field: Option<String> },
+    #[serde(rename = "component")]
+    Component {
+        component: String,
+        entity: String,
+        field: Option<String>,
+    },
 }
 
 #[derive(Clone, Debug, Deserialize)]

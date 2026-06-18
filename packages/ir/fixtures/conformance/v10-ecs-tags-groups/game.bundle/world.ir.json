@@ -3,7 +3,21 @@
   "version": "0.1.0",
   "entities": [
     {
-      "id": "group.encounters",
+      "id": "group.lane.red",
+      "components": {
+        "Transform": {
+          "position": [-2.5, 0, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        },
+        "SceneContainer": {
+          "kind": "group",
+          "name": "Red Lane"
+        }
+      }
+    },
+    {
+      "id": "group.lane.teal",
       "components": {
         "Transform": {
           "position": [0, 0, 0],
@@ -12,49 +26,305 @@
         },
         "SceneContainer": {
           "kind": "group",
-          "name": "Encounters"
+          "name": "Teal Lane"
         }
       }
     },
     {
-      "id": "enemy.goblin",
+      "id": "group.lane.gold",
       "components": {
         "Transform": {
-          "position": [1, 0, 0],
+          "position": [2.5, 0, 0],
           "rotation": [0, 0, 0, 1],
           "scale": [1, 1, 1]
         },
-        "Hierarchy": {
-          "parent": "group.encounters"
-        },
-        "MeshRenderer": {
-          "mesh": "mesh.marker",
-          "material": "mat.enemy"
-        },
-        "Enemy": {},
-        "Damageable": {}
+        "SceneContainer": {
+          "kind": "group",
+          "name": "Gold Lane"
+        }
       }
     },
     {
-      "id": "chest.interactable",
+      "id": "cube.red.0",
       "components": {
         "Transform": {
-          "position": [-1, 0, 0],
+          "position": [0, 0.4, -1.5],
           "rotation": [0, 0, 0, 1],
-          "scale": [1, 1, 1]
+          "scale": [0.6, 0.6, 0.6]
         },
         "Hierarchy": {
-          "parent": "group.encounters"
+          "parent": "group.lane.red"
         },
         "MeshRenderer": {
           "mesh": "mesh.marker",
-          "material": "mat.interactable"
+          "material": "mat.red.active"
         },
-        "Interactable": {}
+        "MotionLane": {
+          "axis": "z",
+          "speed": 1.2
+        },
+        "ColorPhase": {
+          "phase": "active"
+        },
+        "LaneRed": {},
+        "ParallelMover": {},
+        "PhaseActive": {}
+      }
+    },
+    {
+      "id": "cube.red.1",
+      "components": {
+        "Transform": {
+          "position": [0, 0.4, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [0.6, 0.6, 0.6]
+        },
+        "Hierarchy": {
+          "parent": "group.lane.red"
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.marker",
+          "material": "mat.red.cooldown"
+        },
+        "MotionLane": {
+          "axis": "z",
+          "speed": 1.2
+        },
+        "ColorPhase": {
+          "phase": "cooldown"
+        },
+        "LaneRed": {},
+        "ParallelMover": {},
+        "PhaseCooldown": {}
+      }
+    },
+    {
+      "id": "cube.red.2",
+      "components": {
+        "Transform": {
+          "position": [0, 0.4, 1.5],
+          "rotation": [0, 0, 0, 1],
+          "scale": [0.6, 0.6, 0.6]
+        },
+        "Hierarchy": {
+          "parent": "group.lane.red"
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.marker",
+          "material": "mat.red.active"
+        },
+        "MotionLane": {
+          "axis": "z",
+          "speed": 1.2
+        },
+        "ColorPhase": {
+          "phase": "active"
+        },
+        "LaneRed": {},
+        "ParallelMover": {},
+        "PhaseActive": {}
+      }
+    },
+    {
+      "id": "cube.teal.0",
+      "components": {
+        "Transform": {
+          "position": [0, 0.4, -1.5],
+          "rotation": [0, 0, 0, 1],
+          "scale": [0.6, 0.6, 0.6]
+        },
+        "Hierarchy": {
+          "parent": "group.lane.teal"
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.marker",
+          "material": "mat.teal.cooldown"
+        },
+        "MotionLane": {
+          "axis": "z",
+          "speed": 1.2
+        },
+        "ColorPhase": {
+          "phase": "cooldown"
+        },
+        "LaneTeal": {},
+        "ParallelMover": {},
+        "PhaseCooldown": {}
+      }
+    },
+    {
+      "id": "cube.teal.1",
+      "components": {
+        "Transform": {
+          "position": [0, 0.4, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [0.6, 0.6, 0.6]
+        },
+        "Hierarchy": {
+          "parent": "group.lane.teal"
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.marker",
+          "material": "mat.teal.active"
+        },
+        "MotionLane": {
+          "axis": "z",
+          "speed": 1.2
+        },
+        "ColorPhase": {
+          "phase": "active"
+        },
+        "LaneTeal": {},
+        "ParallelMover": {},
+        "PhaseActive": {}
+      }
+    },
+    {
+      "id": "cube.teal.2",
+      "components": {
+        "Transform": {
+          "position": [0, 0.4, 1.5],
+          "rotation": [0, 0, 0, 1],
+          "scale": [0.6, 0.6, 0.6]
+        },
+        "Hierarchy": {
+          "parent": "group.lane.teal"
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.marker",
+          "material": "mat.teal.cooldown"
+        },
+        "MotionLane": {
+          "axis": "z",
+          "speed": 1.2
+        },
+        "ColorPhase": {
+          "phase": "cooldown"
+        },
+        "LaneTeal": {},
+        "ParallelMover": {},
+        "PhaseCooldown": {}
+      }
+    },
+    {
+      "id": "cube.gold.0",
+      "components": {
+        "Transform": {
+          "position": [0, 0.4, -1.5],
+          "rotation": [0, 0, 0, 1],
+          "scale": [0.6, 0.6, 0.6]
+        },
+        "Hierarchy": {
+          "parent": "group.lane.gold"
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.marker",
+          "material": "mat.gold.active"
+        },
+        "MotionLane": {
+          "axis": "z",
+          "speed": 1.2
+        },
+        "ColorPhase": {
+          "phase": "active"
+        },
+        "LaneGold": {},
+        "ParallelMover": {},
+        "PhaseActive": {}
+      }
+    },
+    {
+      "id": "cube.gold.1",
+      "components": {
+        "Transform": {
+          "position": [0, 0.4, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [0.6, 0.6, 0.6]
+        },
+        "Hierarchy": {
+          "parent": "group.lane.gold"
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.marker",
+          "material": "mat.gold.cooldown"
+        },
+        "MotionLane": {
+          "axis": "z",
+          "speed": 1.2
+        },
+        "ColorPhase": {
+          "phase": "cooldown"
+        },
+        "LaneGold": {},
+        "ParallelMover": {},
+        "PhaseCooldown": {}
+      }
+    },
+    {
+      "id": "cube.gold.2",
+      "components": {
+        "Transform": {
+          "position": [0, 0.4, 1.5],
+          "rotation": [0, 0, 0, 1],
+          "scale": [0.6, 0.6, 0.6]
+        },
+        "Hierarchy": {
+          "parent": "group.lane.gold"
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.marker",
+          "material": "mat.gold.active"
+        },
+        "MotionLane": {
+          "axis": "z",
+          "speed": 1.2
+        },
+        "ColorPhase": {
+          "phase": "active"
+        },
+        "LaneGold": {},
+        "ParallelMover": {},
+        "PhaseActive": {}
+      }
+    },
+    {
+      "id": "camera.main",
+      "components": {
+        "Transform": {
+          "position": [0, 2.6, 7],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        },
+        "Camera": {
+          "kind": "perspective",
+          "fovY": 55,
+          "near": 0.1,
+          "far": 100,
+          "priority": 0
+        }
+      }
+    },
+    {
+      "id": "light.key",
+      "components": {
+        "Transform": {
+          "position": [3, 5, 4],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        },
+        "Light": {
+          "kind": "directional",
+          "color": "#ffffff",
+          "intensity": 2.4
+        }
       }
     }
   ],
-  "resources": {},
+  "resources": {
+    "ActiveCamera": {
+      "entity": "camera.main"
+    }
+  },
   "events": {},
   "prefabs": []
 }

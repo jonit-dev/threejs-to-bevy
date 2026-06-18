@@ -62,6 +62,7 @@ interface IRenderPipeline {
 export async function renderBundle(source: string, container: HTMLElement, options: IRenderOptions = {}): Promise<IRenderResult> {
   const bundle = await loadBundle(source);
   const mapped = mapWorld(bundle);
+  assertSceneReady(mapped.diagnostics);
   await loadWorldModelAssets(mapped, bundle, source);
   await loadPendingMaterialTextures();
   const environment = createEnvironmentRuntime(bundle, { renderPlaceholders: false });
@@ -131,6 +132,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
   }
   advanceAnimationPlayback(mapped, 1 / 60);
   pipeline.render();
+  logStartupDiagnostics(mapped.diagnostics);
   if (bundle.systems !== undefined || hasAnimationPlayback(mapped)) {
     let lastTime = performance.now();
     const frame = (time: number) => {
@@ -169,6 +171,24 @@ export async function renderBundle(source: string, container: HTMLElement, optio
     renderer,
     ...(ui === undefined ? {} : { ui }),
   };
+}
+
+function logStartupDiagnostics(diagnostics: readonly IRuntimeDiagnostic[]): void {
+  for (const diagnostic of diagnostics) {
+    if (diagnostic.severity === "warning") {
+      console.warn(`${diagnostic.code}: ${diagnostic.message}`, {
+        path: diagnostic.path,
+        suggestion: diagnostic.suggestion,
+      });
+    }
+  }
+}
+
+function assertSceneReady(diagnostics: readonly IRuntimeDiagnostic[]): void {
+  const fatal = diagnostics.find((diagnostic) => diagnostic.severity === "error");
+  if (fatal !== undefined) {
+    throw new Error(`${fatal.code}: ${fatal.message}`);
+  }
 }
 
 function audioEvents(events: Record<string, unknown>): Array<{ event: string; payload: unknown }> {
