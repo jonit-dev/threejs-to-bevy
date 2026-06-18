@@ -45,6 +45,11 @@ export const V9_FOCUSED_GATES = [
     reportPath: "tools/verify/artifacts/animation-physics-residuals/verification-report.json",
     script: "verify:animation-physics-residuals",
   },
+  {
+    name: "verify input ui polish",
+    reportPath: "tools/verify/artifacts/input-ui-polish/verification-report.json",
+    script: "verify:input-ui-polish",
+  },
 ];
 
 export const V9_RELEASE_ARTIFACTS = [

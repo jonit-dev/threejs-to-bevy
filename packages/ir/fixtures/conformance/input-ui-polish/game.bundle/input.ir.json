@@ -1,0 +1,53 @@
+{
+  "schema": "threenative.input",
+  "version": "0.1.0",
+  "actions": [
+    {
+      "id": "UiConfirm",
+      "bindings": [
+        { "device": "keyboard", "code": "Enter" },
+        { "device": "touch", "control": "confirm" },
+        { "device": "gamepad", "control": "buttonSouth", "required": false }
+      ]
+    },
+    {
+      "id": "UiCancel",
+      "bindings": [
+        { "device": "keyboard", "code": "Escape" },
+        { "device": "gamepad", "control": "buttonEast", "required": false }
+      ]
+    }
+  ],
+  "axes": [
+    {
+      "id": "LookX",
+      "negative": [{ "device": "keyboard", "code": "ArrowLeft" }],
+      "positive": [{ "device": "keyboard", "code": "ArrowRight" }],
+      "value": { "device": "touch", "control": "look", "axis": "x" }
+    },
+    {
+      "id": "LookY",
+      "negative": [{ "device": "keyboard", "code": "ArrowUp" }],
+      "positive": [{ "device": "keyboard", "code": "ArrowDown" }],
+      "value": { "device": "touch", "control": "look", "axis": "y" }
+    }
+  ],
+  "controlsSettings": {
+    "profileId": "default",
+    "rows": [
+      {
+        "actionOrAxisId": "UiConfirm",
+        "defaultBindings": [{ "device": "keyboard", "code": "Enter" }],
+        "kind": "action",
+        "uiNodeId": "ui.apply"
+      },
+      {
+        "actionOrAxisId": "LookX",
+        "axisSlot": "value",
+        "defaultBindings": [{ "device": "touch", "control": "look", "axis": "x" }],
+        "kind": "axis",
+        "uiNodeId": "ui.lookX"
+      }
+    ]
+  }
+}

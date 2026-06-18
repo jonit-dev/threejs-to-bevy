@@ -22,6 +22,7 @@ pub mod first_person;
 pub mod gizmo_geometry;
 pub mod gltf_scene_handles;
 pub mod input;
+pub mod input_ui_polish;
 pub mod map_world;
 pub mod mesh_bounds;
 pub mod navigation;

@@ -24,6 +24,28 @@
       ]
     },
     {
+      "canonicalId": "input-ui-polish",
+      "owner": "ir-contract",
+      "sourceExample": "input-ui-polish",
+      "regenerateCommand": "pnpm verify:input-ui-polish",
+      "canonicalArtifactGate": "input-ui-polish",
+      "ownerDocs": "docs/PRDs/other/post-v10-input-ui-platform-polish.md",
+      "aggregateGate": "verify:release",
+      "bundlePath": "packages/ir/fixtures/conformance/input-ui-polish/game.bundle",
+      "promotedCapabilities": [
+        "input:touch-stream",
+        "input:gamepad-diagnostics",
+        "ui:disabled-runtime-update",
+        "ui:focus-narration",
+        "ui:nested-scroll",
+        "ui:spatial-navigation",
+        "ui:virtual-keyboard-diagnostic"
+      ],
+      "reportArtifacts": [
+        "tools/verify/artifacts/input-ui-polish/verification-report.json"
+      ]
+    },
+    {
       "canonicalId": "animation-state",
       "owner": "ir-contract",
       "sourceExample": "animation-state",

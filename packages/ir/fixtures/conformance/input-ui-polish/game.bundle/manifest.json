@@ -1,0 +1,29 @@
+{
+  "entry": {
+    "ui": "ui.ir.json",
+    "world": "world.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "input": "input.ir.json",
+    "materials": "materials.ir.json",
+    "targetProfile": "target.profile.json"
+  },
+  "name": "input-ui-polish",
+  "requiredCapabilities": {
+    "input": [
+      "controls-settings",
+      "gamepad-diagnostics",
+      "touch-stream"
+    ],
+    "ui": [
+      "disabled-runtime-update",
+      "focus-narration",
+      "nested-scroll",
+      "spatial-navigation",
+      "virtual-keyboard-diagnostic"
+    ]
+  },
+  "schema": "threenative.bundle",
+  "version": "0.1.0"
+}

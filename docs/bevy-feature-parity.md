@@ -4,7 +4,7 @@
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Contract         | Three.js-style TypeScript game engine -> validated IR bundle -> web Three.js + native Bevy                                                                                                                                                                                                                                                                                                                                                                                                             |
 | Native baseline  | Bevy and `bevy_ecs` pinned to `=0.14.2`                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| Evidence anchors | native test, visual scene, game-authoring ergonomics, modular compiler capture tests, scene lifecycle SDK declaration tests, scene lifecycle IR validation tests, scene lifecycle compiler emission tests, scene lifecycle web/Bevy runtime trace tests, scene lifecycle example build smoke, animation/physics/navigation residual traces, capability conformance fixtures, `pnpm verify:release`, `pnpm verify:conformance`, `pnpm verify:animation-physics-residuals`, `pnpm --filter @threenative/ir test` contract drift and bundle path coverage, web/Bevy generated-mesh payload rejection tests, starter-functional template, release artifacts under `tools/verify/artifacts/release/` and `packages/ir/artifacts/conformance/`, historical milestone archive under `docs/PRDs/archive/`, V10 PRDs, focused V10 evidence gates |
+| Evidence anchors | native test, visual scene, game-authoring ergonomics, modular compiler capture tests, scene lifecycle SDK declaration tests, scene lifecycle IR validation tests, scene lifecycle compiler emission tests, scene lifecycle web/Bevy runtime trace tests, scene lifecycle example build smoke, animation/physics/navigation residual traces, input/UI polish traces, capability conformance fixtures, `pnpm verify:release`, `pnpm verify:conformance`, `pnpm verify:animation-physics-residuals`, `pnpm verify:input-ui-polish`, `pnpm --filter @threenative/ir test` contract drift and bundle path coverage, web/Bevy generated-mesh payload rejection tests, starter-functional template, release artifacts under `tools/verify/artifacts/release/` and `packages/ir/artifacts/conformance/`, historical milestone archive under `docs/PRDs/archive/`, V10 PRDs, focused V10 evidence gates |
 
 ## Status
 
@@ -408,11 +408,11 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P2` Picking debug overlay
 - [x] `P1` Basic input rebinding helpers and device capability diagnostics
 - [x] `P1` Controls settings rebind metadata and local input override persistence
-- [ ] `P1` Platform touch event stream wiring beyond deterministic hooks
-- [ ] `P1` Full visual settings-screen UX polish
+- [x] `P1` Platform touch event stream wiring beyond deterministic hooks
+- [x] `P1` Full visual settings-screen UX polish
 - [ ] `P2` Richer touch/gamepad gestures beyond tap, swipe, and pinch
-- [ ] `P2` Richer device diagnostics overlays and repair hints (V10-04)
-- [ ] `P2` Richer navigation diagnostics for input/UI flows
+- [x] `P2` Richer device diagnostics overlays and repair hints (V10-04)
+- [x] `P2` Richer navigation diagnostics for input/UI flows
 
 ### 🧭 UI, Text, and Accessibility
 
@@ -443,10 +443,10 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P1` Broader screen-reader diagnostics for focusable names, progressbar names, and list/listitem structure
 - [x] `P1` Static disabled UI metadata for focus/action suppression and ARIA/AccessKit state
 - [x] `P2` UI debug overlay/gizmos
-- [ ] `P1` Runtime disabled-to-enabled UI updates
-- [ ] `P1` Nested and axis-specific scroll behavior
-- [ ] `P1` Spatial navigation heuristics
-- [ ] `P1` Focus narration
+- [x] `P1` Runtime disabled-to-enabled UI updates
+- [x] `P1` Nested and axis-specific scroll behavior
+- [x] `P1` Spatial navigation heuristics
+- [x] `P1` Focus narration
 - [ ] `P2` Native-rendered italic rich text
 - [ ] `P2` Arbitrary grid placement, named areas, and dense packing
 - [ ] `P2` Broad gamepad/touch UI coverage

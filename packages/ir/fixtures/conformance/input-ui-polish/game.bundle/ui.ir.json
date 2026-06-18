@@ -1,0 +1,77 @@
+{
+  "schema": "threenative.ui",
+  "version": "0.1.0",
+  "focusOrder": ["ui.name", "ui.lookX", "ui.apply", "ui.reset"],
+  "inputActions": {
+    "activate": "UiConfirm",
+    "cancel": "UiCancel",
+    "next": "UiConfirm",
+    "previous": "UiCancel"
+  },
+  "safeArea": {
+    "mode": "avoid",
+    "edges": ["top", "bottom"]
+  },
+  "root": {
+    "id": "ui.settings",
+    "kind": "column",
+    "accessibilityLabel": "Settings",
+    "layout": { "direction": "column", "height": 480, "overflow": "scroll", "width": 360 },
+    "children": [
+      {
+        "id": "ui.title",
+        "kind": "text",
+        "accessibilityLabel": "Settings title",
+        "spans": [
+          { "text": "Settings", "weight": "bold" },
+          { "accessibilityText": " beta", "italic": true, "text": " beta" }
+        ]
+      },
+      {
+        "id": "ui.name",
+        "kind": "button",
+        "label": "Player name",
+        "action": "UiConfirm",
+        "focusable": true,
+        "navigation": { "down": "ui.lookX", "right": "ui.apply" }
+      },
+      {
+        "id": "ui.controls",
+        "kind": "row",
+        "accessibilityLabel": "Controls",
+        "layout": { "direction": "row", "overflow": "scroll", "width": 240 },
+        "orientation": "horizontal",
+        "children": [
+          {
+            "id": "ui.lookX",
+            "kind": "slider",
+            "label": "Look sensitivity",
+            "action": "UiConfirm",
+            "focusable": true,
+            "min": 0,
+            "max": 10,
+            "value": 5,
+            "navigation": { "down": "ui.apply", "up": "ui.name", "right": "ui.reset" }
+          },
+          {
+            "id": "ui.reset",
+            "kind": "button",
+            "label": "Reset controls",
+            "action": "UiCancel",
+            "focusable": true,
+            "navigation": { "left": "ui.lookX", "up": "ui.name" }
+          }
+        ]
+      },
+      {
+        "id": "ui.apply",
+        "kind": "button",
+        "label": "Apply settings",
+        "action": "UiConfirm",
+        "disabled": true,
+        "focusable": true,
+        "navigation": { "up": "ui.lookX", "right": "ui.reset" }
+      }
+    ]
+  }
+}

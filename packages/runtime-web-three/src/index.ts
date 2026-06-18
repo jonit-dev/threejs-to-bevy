@@ -80,3 +80,15 @@ export {
   type IMorphTargetObservation,
   type IOffMeshLinkObservation,
 } from "./animationPhysicsResiduals.js";
+export {
+  traceInputUiPolish,
+  type IInputUiPolishDiagnostic,
+  type IInputUiPolishDisabledUpdate,
+  type IInputUiPolishGamepadReport,
+  type IInputUiPolishNarration,
+  type IInputUiPolishReport,
+  type IInputUiPolishRichText,
+  type IInputUiPolishScrollObservation,
+  type IInputUiPolishTouchEvent,
+  type IInputUiPolishVirtualKeyboard,
+} from "./inputUiPolish.js";

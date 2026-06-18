@@ -250,6 +250,18 @@ reports plus a visual contact sheet under
 `tools/verify/artifacts/animation-physics-residuals/`. The same gate is part of
 `pnpm verify:release`.
 
+Post-V10 input/UI/platform polish now has a focused evidence gate:
+`pnpm verify:input-ui-polish`. The gate validates
+`packages/ir/fixtures/conformance/input-ui-polish/game.bundle`, compares
+matching web/Bevy reports for platform touch stream snapshots, deterministic
+settings-screen input coverage, gamepad diagnostics with repair hints, disabled
+runtime reconciliation, nested and axis-specific scroll observations, spatial
+navigation, and focus narration, and writes JSON reports plus a contact sheet
+under `tools/verify/artifacts/input-ui-polish/`. Virtual keyboard behavior,
+native italic rendering, 3D/world UI, render-to-texture UI, and the broad
+packaged webview manual matrix remain diagnostic/deferred rather than promoted
+runtime behavior. The same gate is part of `pnpm verify:release`.
+
 The V10 advanced-physics pass now promotes a bounded racing-useful physics
 slice: SDK/IR/compiler contracts accept explicit `Collider.mesh.bounds` and
 `triangleCount` metadata for static and dynamic mesh colliders, `RigidBody.ccd`

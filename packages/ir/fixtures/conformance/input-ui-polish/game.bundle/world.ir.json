@@ -1,0 +1,18 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [],
+  "resources": {
+    "InputUiPolish": {
+      "disabledToggles": ["ui.apply"],
+      "navigationEvents": ["tab", "down", "right", "activate"],
+      "touchEvents": [
+        { "control": "confirm", "phase": "start", "value": 1 },
+        { "axis": "x", "control": "look", "phase": "move", "value": 0.5 },
+        { "axis": "y", "control": "look", "phase": "move", "value": -0.25 },
+        { "control": "confirm", "phase": "end", "value": 0 }
+      ],
+      "virtualKeyboardNode": "ui.name"
+    }
+  }
+}
