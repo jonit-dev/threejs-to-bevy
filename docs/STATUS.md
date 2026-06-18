@@ -1456,6 +1456,19 @@ verification. Raw native audio handles, custom executable decoders,
 streaming/network audio, online services, and signed artifact generation without
 release credentials remain diagnostic-only or external release boundaries.
 
+Post-V10 runtime gameplay host semantics now have focused release evidence
+through `pnpm verify:runtime-gameplay-host`. The `runtime-gameplay-host`
+conformance fixture declares live rendered gameplay entity spawn/despawn,
+event-window policy, state handoff, command-time/removal hook ordering,
+system-local state evidence, stoppable observer propagation, and bounded
+timer/channel semantics. The gate validates the fixture, compares matching web
+and Bevy reports, writes `web-report.json`, `native-report.json`, `diff.json`,
+and `verification-report.json` under
+`tools/verify/artifacts/runtime-gameplay-host/`, and is part of release
+verification. Dynamic runtime plugin loading, raw Bevy/renderer handles,
+arbitrary workers, unbounded promises, and arbitrary timer/platform APIs remain
+stable diagnostic boundaries rather than portable gameplay APIs.
+
 V9-06 aggregate support gate evidence now ties the support slices together.
 `examples/v9-support` builds to a validated bundle with `audio.ir.json` and
 `local-data.ir.json`, `check:docs:v9` guards the PRD/status/parity support

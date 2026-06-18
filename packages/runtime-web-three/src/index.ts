@@ -110,3 +110,7 @@ export {
   traceRenderingResiduals,
   type IRenderingResidualsReport,
 } from "./renderingResiduals.js";
+export {
+  traceRuntimeGameplayHost,
+  type IRuntimeGameplayHostReport,
+} from "./runtimeGameplayHost.js";

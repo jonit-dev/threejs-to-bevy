@@ -1,0 +1,139 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "lifecycle": {
+    "replay": "fixed-trace",
+    "state": "system-local-disallowed",
+    "hotReload": "invalidate",
+    "appStates": [
+      {
+        "id": "Game",
+        "initial": "boot",
+        "source": {
+          "resource": "GameState",
+          "field": "phase"
+        },
+        "values": ["boot", "playing", "settled"]
+      }
+    ],
+    "substates": [
+      {
+        "id": "Combat",
+        "parent": "Game",
+        "parentValue": "playing",
+        "fallback": "safe",
+        "source": {
+          "resource": "GameState",
+          "field": "combat"
+        },
+        "values": ["safe", "engaged"]
+      }
+    ]
+  },
+  "observers": [
+    {
+      "event": "DamageEvent",
+      "propagation": "target-ancestors",
+      "phases": ["target", "bubble"]
+    }
+  ],
+  "componentHooks": [
+    {
+      "component": "Health",
+      "hooks": ["onAdd", "onInsert"]
+    }
+  ],
+  "channels": [
+    {
+      "id": "timer",
+      "event": "TimerElapsed",
+      "delivery": "fixed-trace"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "boundedTimer",
+      "schedule": "fixedUpdate",
+      "mode": "fixed-trace",
+      "channel": "timer"
+    }
+  ],
+  "systems": [
+    {
+      "name": "spawnRenderable",
+      "schedule": "update",
+      "commands": [
+        {
+          "kind": "spawn",
+          "entity": "runtime.enemy",
+          "components": ["Transform", "MeshRenderer", "Health"]
+        },
+        {
+          "kind": "emitEvent",
+          "event": "Spawned"
+        }
+      ],
+      "eventReads": ["DamageEvent"],
+      "eventWrites": ["Spawned"],
+      "queries": [],
+      "reads": [],
+      "resourceReads": ["GameState", "LocalCounter"],
+      "resourceWrites": ["GameState", "LocalCounter"],
+      "services": [],
+      "script": {
+        "bundle": "scripts.bundle.js",
+        "exportName": "system_spawnRenderable"
+      },
+      "writes": ["Transform", "MeshRenderer", "Health"]
+    },
+    {
+      "name": "timerAndObserver",
+      "schedule": "fixedUpdate",
+      "commands": [
+        {
+          "kind": "emitEvent",
+          "event": "TimerElapsed"
+        }
+      ],
+      "eventReads": ["DamageEvent"],
+      "eventWrites": ["TimerElapsed"],
+      "queries": [],
+      "reads": [],
+      "resourceReads": ["GameState", "LocalCounter"],
+      "resourceWrites": ["LocalCounter"],
+      "services": [],
+      "script": {
+        "bundle": "scripts.bundle.js",
+        "exportName": "system_timerAndObserver"
+      },
+      "writes": []
+    },
+    {
+      "name": "removeRenderable",
+      "schedule": "postUpdate",
+      "commands": [
+        {
+          "kind": "removeComponent",
+          "entity": "runtime.enemy",
+          "component": "Health"
+        },
+        {
+          "kind": "despawn",
+          "entity": "runtime.enemy"
+        }
+      ],
+      "eventReads": ["Spawned"],
+      "eventWrites": [],
+      "queries": [],
+      "reads": ["Health"],
+      "resourceReads": ["GameState"],
+      "resourceWrites": ["GameState"],
+      "services": [],
+      "script": {
+        "bundle": "scripts.bundle.js",
+        "exportName": "system_removeRenderable"
+      },
+      "writes": ["Health"]
+    }
+  ]
+}

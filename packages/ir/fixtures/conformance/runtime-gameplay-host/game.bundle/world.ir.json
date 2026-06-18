@@ -1,0 +1,60 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "arena",
+      "components": {
+        "Transform": {
+          "position": [0, 0, 0]
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.box",
+          "material": "mat.arena"
+        }
+      }
+    },
+    {
+      "id": "player",
+      "components": {
+        "Transform": {
+          "position": [0, 1, 0]
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.capsule",
+          "material": "mat.hero"
+        },
+        "Health": {
+          "current": 10,
+          "max": 10
+        }
+      }
+    },
+    {
+      "id": "player.weapon",
+      "components": {
+        "Hierarchy": {
+          "parent": "player"
+        }
+      }
+    }
+  ],
+  "resources": {
+    "GameState": {
+      "phase": "boot",
+      "combat": "safe"
+    },
+    "LocalCounter": {
+      "value": 0
+    }
+  },
+  "events": {
+    "DamageEvent": [
+      {
+        "amount": 2,
+        "target": "player"
+      }
+    ]
+  },
+  "prefabs": []
+}

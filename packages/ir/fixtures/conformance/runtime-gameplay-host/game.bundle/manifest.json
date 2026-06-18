@@ -1,0 +1,38 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "conformance-runtime-gameplay-host",
+  "requiredCapabilities": {
+    "ecs": [
+      "component-hooks",
+      "events",
+      "observer-propagation",
+      "resources"
+    ],
+    "scripting": [
+      "bounded-async",
+      "command.despawn",
+      "command.spawn",
+      "event-windowing",
+      "live-rendered-entity-reconciliation",
+      "observer-stop-propagation",
+      "raw-runtime-handle-diagnostics",
+      "state-handoff",
+      "system-local-state"
+    ]
+  },
+  "entry": {
+    "world": "world.ir.json",
+    "systems": "systems.ir.json",
+    "scripts": "scripts.bundle.js"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "materials": "materials.ir.json",
+    "scripts": "scripts.bundle.js",
+    "targetProfile": "target.profile.json",
+    "componentSchemas": "schemas/components.schema.json",
+    "eventSchemas": "schemas/events.schema.json",
+    "resourceSchemas": "schemas/resources.schema.json"
+  }
+}

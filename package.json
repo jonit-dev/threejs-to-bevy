@@ -72,7 +72,8 @@
     "verify:input-ui-polish": "pnpm --filter @threenative/ir build && pnpm --filter @threenative/runtime-web-three build && node scripts/verify-input-ui-polish.mjs",
     "verify:persistence-reload": "pnpm --filter @threenative/ir build && pnpm --filter @threenative/runtime-web-three build && node scripts/verify-persistence-reload.mjs",
     "verify:production-hardening": "pnpm --filter @threenative/ir build && pnpm --filter @threenative/runtime-web-three build && pnpm --filter @threenative/cli build && node scripts/verify-production-hardening.mjs",
-    "verify:rendering-residuals": "pnpm --filter @threenative/ir build && pnpm --filter @threenative/runtime-web-three build && node scripts/verify-rendering-residuals.mjs"
+    "verify:rendering-residuals": "pnpm --filter @threenative/ir build && pnpm --filter @threenative/runtime-web-three build && node scripts/verify-rendering-residuals.mjs",
+    "verify:runtime-gameplay-host": "pnpm --filter @threenative/ir build && pnpm --filter @threenative/runtime-web-three build && node scripts/verify-runtime-gameplay-host.mjs"
   },
   "devDependencies": {
     "react": "^19.2.7",

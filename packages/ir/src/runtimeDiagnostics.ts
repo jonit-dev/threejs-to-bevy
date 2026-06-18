@@ -34,8 +34,13 @@ const UNSUPPORTED_FEATURES = [
   "dom",
   "filesystem",
   "material",
+  "promise",
   "rawPlatformApi",
+  "rawRuntimeHandle",
+  "runtimePlugin",
   "runtimeDeclaration",
+  "timer",
+  "worker",
 ] as const;
 
 export function validateRuntimeDiagnosticReport(report: unknown, path = "runtime-diagnostics.json"): IRuntimeDiagnosticsValidationResult {

@@ -67,8 +67,9 @@ implementation. These slices supersede the coarse V10 ownership map for future
 execution order while keeping all checklist rows unchecked until evidence lands:
 
 - [Runtime Gameplay Host Semantics](PRDs/other/post-v10-runtime-gameplay-host.md):
-  P0/P1 ECS host execution, live rendered-entity reconciliation, event windows,
-  dynamic state handoff, hooks, system-local state, bounded async services,
+  now release-gated by `pnpm verify:runtime-gameplay-host` for P0/P1 ECS host
+  execution, live rendered-entity reconciliation, event windows, dynamic state
+  handoff, hooks, system-local state, bounded timer/channel evidence, stoppable
   observer controls, and runtime plugin/raw-handle diagnostics.
 - [Durable Persistence and State-Preserving Reload](PRDs/other/post-v10-persistence-hot-reload.md):
   durable Bevy save/settings backend, autosave/checkpoint restore, hot reload
@@ -106,10 +107,12 @@ remaining gaps by usefulness for building and shipping ordinary 3D games:
 - `P0` State-preserving reload is promoted by `pnpm verify:persistence-reload`
   for bundle-local asset replacement, retained state policy, reset state
   classification, and unsupported cloud/filesystem boundary diagnostics.
-- `P1` Runtime gameplay lifecycle parity. ECS/state/plugin/task features are
-  largely fixed-trace or declaration-backed; dynamic state transitions,
-  command-time/removal hooks, event windowing, system-local state, stoppable
-  observers, and real async timers/workers still need runtime semantics.
+- `P1` Runtime gameplay lifecycle parity is promoted by
+  `pnpm verify:runtime-gameplay-host`, which compares web and Bevy live
+  rendered-entity reconciliation, event-window policy, dynamic state handoff,
+  command-time/removal hook ordering, system-local evidence, stoppable observer
+  propagation, bounded timer/channel semantics, and stable diagnostics for raw
+  handles, runtime plugins, workers, timers, and unbounded promises.
 - `P1` Production input/device UX. Keyboard, mouse, gamepad snapshots, touch
   hooks, rebinding, drag picking, and picking debug reports exist, but polished
   device repair overlays, platform touch stream wiring, and richer navigation
@@ -184,16 +187,16 @@ Repeated patterns in those games:
 - [x] Reflection/type registration surface for portable components
 - [x] Async task/channel patterns
 - [x] Plugin/plugin-group composition as a portable declaration
-- [ ] `P0` Full gameplay host semantics against live rendered Bevy entities
-- [ ] `P1` Broad dynamic reconciliation for spawned/despawned rendered entities
-- [ ] `P1` Resource/event cleanup and event-windowing semantics
-- [ ] `P1` Dynamic app-state lifecycle transitions and richer state handoff
-- [ ] `P1` Command-time/removal component hook callbacks
-- [ ] `P1` System-local persisted state
-- [ ] `P2` Stoppable observer propagation
-- [ ] `P2` Dynamic runtime plugin loading
-- [ ] `P2` True async timers, workers, promises, and channels beyond fixed traces
-- [ ] `D` Raw Bevy/renderer type IDs in portable gameplay APIs
+- [x] `P0` Full gameplay host semantics against live rendered Bevy entities
+- [x] `P1` Broad dynamic reconciliation for spawned/despawned rendered entities
+- [x] `P1` Resource/event cleanup and event-windowing semantics
+- [x] `P1` Dynamic app-state lifecycle transitions and richer state handoff
+- [x] `P1` Command-time/removal component hook callbacks
+- [x] `P1` System-local persisted state
+- [x] `P2` Stoppable observer propagation
+- [x] `P2` Dynamic runtime plugin loading diagnostic boundary
+- [x] `P2` Bounded async timers and channels; arbitrary workers/promises remain diagnostic-only
+- [x] `D` Raw Bevy/renderer type IDs in portable gameplay APIs
 
 ### 📐 Transforms, Math, and Geometry
 
@@ -527,10 +530,10 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 
 - [ ] `D` Direct Bevy authoring from user TypeScript (V10-01 boundary)
 - [ ] `D` Raw Three.js authoring as the source of truth (V10-01 boundary)
-- [ ] `D` Public plugin escape hatches into renderer/runtime internals (V10-01 boundary)
+- [x] `D` Public plugin escape hatches into renderer/runtime internals (runtime gameplay host boundary)
 - [ ] `D` Online services, networking, replication, and collaboration (V10-01 boundary)
 - [ ] `D` 2D sprite, tilemap, LDtk/Tiled, and 2D-specific collision workflows while ThreeNative is scoped as 3D-only (V10-01 boundary)
-- [ ] `D` Arbitrary npm, filesystem, worker, timer, or platform APIs in portable scripts (V10-01 boundary)
+- [x] `D` Arbitrary npm, filesystem, worker, timer, or platform APIs in portable scripts (runtime gameplay host and persistence boundary)
 - [ ] `D` Backend-only features that cannot be represented in portable IR (V10-01 boundary)
 
 ## Sources

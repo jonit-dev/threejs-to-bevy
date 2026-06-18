@@ -65,6 +65,11 @@ export const V9_FOCUSED_GATES = [
     reportPath: "tools/verify/artifacts/rendering-residuals/verification-report.json",
     script: "verify:rendering-residuals",
   },
+  {
+    name: "verify runtime gameplay host",
+    reportPath: "tools/verify/artifacts/runtime-gameplay-host/verification-report.json",
+    script: "verify:runtime-gameplay-host",
+  },
 ];
 
 export const V9_RELEASE_ARTIFACTS = [

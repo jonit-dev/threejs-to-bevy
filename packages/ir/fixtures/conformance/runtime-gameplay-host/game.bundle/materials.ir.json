@@ -1,0 +1,21 @@
+{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "materials": [
+    {
+      "id": "mat.arena",
+      "kind": "standard",
+      "color": "#2f6f73"
+    },
+    {
+      "id": "mat.hero",
+      "kind": "standard",
+      "color": "#f4d35e"
+    },
+    {
+      "id": "mat.spawned",
+      "kind": "standard",
+      "color": "#ee964b"
+    }
+  ]
+}

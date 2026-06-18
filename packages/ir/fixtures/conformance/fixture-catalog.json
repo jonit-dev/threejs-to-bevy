@@ -111,6 +111,29 @@
       ]
     },
     {
+      "canonicalId": "runtime-gameplay-host",
+      "owner": "ir-contract",
+      "sourceExample": "runtime-gameplay-host",
+      "regenerateCommand": "pnpm verify:runtime-gameplay-host",
+      "canonicalArtifactGate": "runtime-gameplay-host",
+      "ownerDocs": "docs/PRDs/other/post-v10-runtime-gameplay-host.md",
+      "aggregateGate": "verify:release",
+      "bundlePath": "packages/ir/fixtures/conformance/runtime-gameplay-host/game.bundle",
+      "promotedCapabilities": [
+        "scripting:bounded-async",
+        "scripting:event-windowing",
+        "scripting:live-rendered-entity-reconciliation",
+        "scripting:observer-stop-propagation",
+        "scripting:raw-runtime-handle-diagnostics",
+        "scripting:runtime-plugin-diagnostics",
+        "scripting:state-handoff",
+        "scripting:system-local-state"
+      ],
+      "reportArtifacts": [
+        "tools/verify/artifacts/runtime-gameplay-host/verification-report.json"
+      ]
+    },
+    {
       "canonicalId": "animation-state",
       "owner": "ir-contract",
       "sourceExample": "animation-state",

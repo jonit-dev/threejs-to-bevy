@@ -1,0 +1,20 @@
+{
+  "schema": "threenative.assets",
+  "version": "0.1.0",
+  "assets": [
+    {
+      "id": "mesh.box",
+      "kind": "mesh",
+      "format": "generated",
+      "primitive": "box",
+      "size": [1, 1, 1]
+    },
+    {
+      "id": "mesh.capsule",
+      "kind": "mesh",
+      "format": "generated",
+      "primitive": "capsule",
+      "size": [0.35, 1.1]
+    }
+  ]
+}

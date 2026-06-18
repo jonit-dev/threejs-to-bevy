@@ -35,3 +35,28 @@ test("runtime diagnostics report should validate shape", () => {
 
   assert.equal(result.ok, true);
 });
+
+test("should reject raw backend handles and dynamic gameplay host escape hatches", () => {
+  const diagnostics = diagnoseUnsupportedRuntimeDeclarations({
+    unsupportedFeatures: {
+      promise: { unbounded: true },
+      rawRuntimeHandle: "bevy::prelude::Entity",
+      runtimePlugin: "bevy_rapier3d",
+      timer: { kind: "setInterval" },
+      worker: "./worker.js",
+    },
+  }, "systems.ir.json/runtime");
+
+  assert.deepEqual(
+    diagnostics.map((diagnostic) => diagnostic.code),
+    [
+      "TN_UNSUPPORTED_FEATURE_PROMISE",
+      "TN_UNSUPPORTED_FEATURE_RAW_RUNTIME_HANDLE",
+      "TN_UNSUPPORTED_FEATURE_RUNTIME_PLUGIN",
+      "TN_UNSUPPORTED_FEATURE_TIMER",
+      "TN_UNSUPPORTED_FEATURE_WORKER",
+    ],
+  );
+  assert.equal(diagnostics[1]?.path, "systems.ir.json/runtime/unsupportedFeatures/rawRuntimeHandle");
+  assert.match(diagnostics[2]?.suggestion ?? "", /portable SDK\/IR declaration/);
+});
