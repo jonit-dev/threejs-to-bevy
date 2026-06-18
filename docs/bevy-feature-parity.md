@@ -1,19 +1,19 @@
 # Three.js Game Engine x Bevy Parity
 
-| Scope | Value |
-| --- | --- |
-| Contract | Three.js-style TypeScript game engine -> validated IR bundle -> web Three.js + native Bevy |
-| Native baseline | Bevy and `bevy_ecs` pinned to `=0.14.2` |
+| Scope            | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Contract         | Three.js-style TypeScript game engine -> validated IR bundle -> web Three.js + native Bevy                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Native baseline  | Bevy and `bevy_ecs` pinned to `=0.14.2`                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | Evidence anchors | native test, visual scene, game-authoring ergonomics, capability conformance fixtures, `pnpm verify:release`, `pnpm verify:conformance`, `pnpm --filter @threenative/ir test` contract drift and bundle path coverage, web/Bevy generated-mesh payload rejection tests, starter-functional template, release artifacts under `tools/verify/artifacts/release/` and `packages/ir/artifacts/conformance/`, historical milestone archive under `docs/PRDs/archive/`, V10 PRDs, focused V10 evidence gates |
 
 ## Status
 
-| Status | Meaning |
-| --- | --- |
-| ✅ | Works across the Three.js-style API, IR, web runtime, and Bevy where claimed. |
-| ⚠️ | Partly works, but web and Bevy are not fully aligned yet. |
-| ❌ | Not implemented in this repo. |
-| ⏭️ | Intentionally deferred or never portable. |
+| Status | Meaning                                                                       |
+| ------ | ----------------------------------------------------------------------------- |
+| ✅     | Works across the Three.js-style API, IR, web runtime, and Bevy where claimed. |
+| ⚠️     | Partly works, but web and Bevy are not fully aligned yet.                     |
+| ❌     | Not implemented in this repo.                                                 |
+| ⏭️     | Intentionally deferred or never portable.                                     |
 
 ## Bevy Feature Checklist
 
@@ -203,7 +203,7 @@ Repeated patterns in those games:
 - [ ] `P3` Lightmaps and mixed baked/dynamic lighting (V10-02)
 - [x] `P2` Light probes and environment maps
   - [x] V9-04 SDK/IR/compiler/runtime conformance contract and evidence for
-    bundle-local skybox, environment-map, and bounded light-probe declarations
+        bundle-local skybox, environment-map, and bounded light-probe declarations
 - [x] `P2` Light/probe gizmo debug observations
 
 ### 🎨 Materials, Textures, and Shaders
@@ -240,7 +240,7 @@ web/Bevy evidence exist.
 
 - [x] Basic 3D scene rendering through web Three.js and native Bevy
 - [x] Installed CLI package carries the Bevy runtime source and can compile the
-  native preview binary from a generated npm project
+      native preview binary from a generated npm project
 - [x] Fog, sky/horizon color, tone mapping, exposure, and color-space metadata
 - [x] Dense-content budget estimates and repeated-instance observations
 - [x] Source asset LOD metadata and fixed LOD-selection traces
@@ -250,10 +250,10 @@ web/Bevy evidence exist.
 - [ ] `P3` Volumetric fog and volumetric lighting (V10-02, V10-03 calibration)
 - [x] `P1` Skyboxes and cubemap/equirect texture handling
   - [x] V9-04 validates bundle-local cubemap/equirect texture refs, emits
-    rendering capabilities, reports web/native skybox observations, and writes
-    screenshot-level web/native/diff/contact-sheet evidence under
-    `examples/rendering-lights/artifacts/rendering-lights/skybox-environment/`; compressed texture
-    formats remain deferred
+        rendering capabilities, reports web/native skybox observations, and writes
+        screenshot-level web/native/diff/contact-sheet evidence under
+        `examples/rendering-lights/artifacts/rendering-lights/skybox-environment/`; compressed texture
+        formats remain deferred
 - [x] `P1` Bloom through runtime config in web and native camera runtime
 - [x] `P1` MSAA anti-aliasing modes through runtime config in web and native
 - [x] `P2` FXAA, TAA, and SMAA anti-aliasing modes
@@ -324,20 +324,20 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] Box, sphere, and capsule colliders
 - [x] Rigid-body metadata
 - [x] Primitive solver v2 contract metadata for bounded primitive multi-body
-  declarations, including mass, inverse mass, velocity, angular velocity,
-  sleep threshold, and solver iteration policy
+      declarations, including mass, inverse mass, velocity, angular velocity,
+      sleep threshold, and solver iteration policy
 - [x] Primitive rigid-body solver trace for gravityScale, damping, restitution,
-  friction, and a falling dynamic box against a static floor
+      friction, and a falling dynamic box against a static floor
 - [x] Trigger/contact event phases for fixed traces
 - [x] Collision layer/mask metadata
 - [x] Raycast-style grounding trace
 - [x] Overlap and shape-cast service traces
 - [x] Narrow character controller movement and blocking trace
 - [x] `P1` Full rigid-body solver parity beyond the current primitive
-  falling-box trace
+      falling-box trace
 - [x] `P2` Dynamic mesh colliders
   - [x] Bounded static/dynamic mesh collider AABB metadata for racing-style
-    track and chassis traces
+        track and chassis traces
   - [x] Swept-AABB CCD metadata and deterministic high-speed track contact trace
   - [x] Portable hinge, slider, and suspension joint metadata observations
 - [x] `P1` Broad sensors beyond current trigger/overlap scope
@@ -492,49 +492,19 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [ ] `D` Arbitrary npm, filesystem, worker, timer, or platform APIs in portable scripts (V10-01 boundary)
 - [ ] `D` Backend-only features that cannot be represented in portable IR (V10-01 boundary)
 
-V7 is complete for the promoted parity slices only when `pnpm verify:v7`
-passes. That report links docs and diagnostics inputs, conformance output,
-focused Rust tests, rendered web functional-scene evidence, packaged desktop
-artifacts, template smoke output, packaging diagnostics, and performance budget
-reports. Checklist items marked deferred or never portable remain outside the
-V7 support surface.
-
-V8 begins the local editor and inspector track through [V8 PRDs](PRDs/v8/README.md).
-That work is scoped to offline structured SDK/ECS/IR project data, local
-save/load, structured diffs, diagnostics, and bundle preview evidence. Online
-services, networking, replication, collaboration, public plugins, raw Three.js
-authoring, and direct Bevy authoring remain outside V8.
-
-The first V8 slices add IR-level editor project snapshot validation,
-deterministic structured diffs for bundle-relative JSON documents, validated
-save/load through structured snapshot application, and CLI entry points for
-`tn editor snapshot` / `tn editor apply` / `tn editor diff`. V8-06 through
-V8-12 plus the pending V8-15 PR are also treated as completed or partially
-promoted parity slices for camera views, material/texture parity, transform
-animation and animation service traces, primitive rigid-body traces, asset/glTF
-inspection, focused rendering-quality fog/sky evidence, lights/shadows trace
-evidence, and static disabled retained-UI behavior. Latest color-parity work
-adds focused web/native color and lighting-tone evidence.
-
-[V9 PRDs](PRDs/v9/README.md) convert the remaining unchecked checklist backlog
-into category PRDs that aim to complete the most checks per category without
-making any single PRD too broad to verify. V9 covers animation/particles,
-physics/character, assets/glTF/scene workflow, rendering/lights/post-processing,
-input/UI/accessibility, and audio/persistence/tooling support.
-
 ## Sources
 
-| Source | Link |
-| --- | --- |
-| Bevy feature overview | https://bevy.org/ |
-| Bevy examples catalog | https://bevy.org/examples/ |
-| Bevy 0.14 release notes | https://bevy.org/news/bevy-0-14/ |
-| Bevy crate documentation | https://docs.rs/bevy |
-| Open Bevy game: Jumpy | https://github.com/fishfolk/jumpy |
-| Open Bevy game: Ethertum | https://github.com/Dreamtowards/Ethertum |
-| Open Bevy game: Lost In Time | https://github.com/RaminKav/LostInTime |
-| Open Bevy game: gdclone | https://github.com/opstic/gdclone |
-| Open Bevy game: sokoban-rs | https://github.com/ShenMian/sokoban-rs |
-| Open Bevy game: Golab | https://github.com/NiiightmareXD/golab |
-| Open Bevy game: Tsumi | https://github.com/PraxTube/tsumi |
-| Open Bevy game: Flyconomy | https://github.com/chriamue/flyconomy |
+| Source                       | Link                                     |
+| ---------------------------- | ---------------------------------------- |
+| Bevy feature overview        | https://bevy.org/                        |
+| Bevy examples catalog        | https://bevy.org/examples/               |
+| Bevy 0.14 release notes      | https://bevy.org/news/bevy-0-14/         |
+| Bevy crate documentation     | https://docs.rs/bevy                     |
+| Open Bevy game: Jumpy        | https://github.com/fishfolk/jumpy        |
+| Open Bevy game: Ethertum     | https://github.com/Dreamtowards/Ethertum |
+| Open Bevy game: Lost In Time | https://github.com/RaminKav/LostInTime   |
+| Open Bevy game: gdclone      | https://github.com/opstic/gdclone        |
+| Open Bevy game: sokoban-rs   | https://github.com/ShenMian/sokoban-rs   |
+| Open Bevy game: Golab        | https://github.com/NiiightmareXD/golab   |
+| Open Bevy game: Tsumi        | https://github.com/PraxTube/tsumi        |
+| Open Bevy game: Flyconomy    | https://github.com/chriamue/flyconomy    |
