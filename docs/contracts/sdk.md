@@ -601,6 +601,31 @@ System rules:
 
 V1 supports TypeScript systems as bundled scripts called by runtime lifecycle hooks. Performance-critical native systems can be added later without changing the public component data contract.
 
+## Project Modules
+
+Projects can split portable authoring code into source-relative modules and
+import them from `src/game.ts`. Use NodeNext-style `.js` specifiers in source
+imports so TypeScript files resolve during capture and emitted JavaScript keeps
+valid ESM paths:
+
+```ts
+// src/game.ts
+import { scene } from "./scenes/main.js";
+
+export default scene;
+```
+
+```ts
+// src/scenes/main.ts
+import { Scene } from "@threenative/sdk";
+
+export const scene = new Scene({ id: "scene.main" });
+```
+
+Transitive modules are still checked against the portable boundary. Imports of
+`three`, runtime adapters, Node built-ins, browser globals, or unsupported R3F
+packages fail with diagnostics that point at the imported source file.
+
 ## Validation
 
 The compiler must validate SDK usage before emitting a bundle.

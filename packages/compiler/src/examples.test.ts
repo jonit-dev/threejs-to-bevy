@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import test from "node:test";
 import { promisify } from "node:util";
 
@@ -69,6 +70,49 @@ test("should build v5 game starter template", async () => {
     ["movePlayerToGoal"],
   );
   assert.equal(runtimeConfig.window.title, "ThreeNative V5 Game Starter");
+});
+
+test("should build modular game starter", async () => {
+  const projectPath = await mkdtemp(join(tmpdir(), "tn-modular-starter-"));
+  try {
+    await mkdir(join(projectPath, "src/scenes"), { recursive: true });
+    await writeFile(
+      join(projectPath, "threenative.config.json"),
+      JSON.stringify({
+        schema: "threenative.project",
+        version: "0.1.0",
+        entry: "src/game.ts",
+        outDir: "dist/game.bundle",
+      }),
+    );
+    await writeFile(join(projectPath, "src/game.ts"), `import { scene } from "./scenes/main.js";\nexport default scene;\n`);
+    await writeFile(
+      join(projectPath, "src/scenes/main.ts"),
+      `import { BoxGeometry, Mesh, MeshStandardMaterial, PerspectiveCamera, Scene } from "@threenative/sdk";
+
+const scene = new Scene({ id: "scene.modular" });
+scene.add(new Mesh({
+  id: "modular.cube",
+  geometry: new BoxGeometry({ size: [1, 1, 1] }),
+  material: new MeshStandardMaterial({ color: "#44aa88" }),
+}));
+const camera = new PerspectiveCamera({ id: "camera.main", fovY: 60, near: 0.1, far: 100 });
+scene.add(camera);
+scene.setActiveCamera(camera);
+
+export { scene };
+`,
+    );
+
+    const { bundlePath } = await buildProject(projectPath);
+    const report = await validateBundle(bundlePath);
+    const world = JSON.parse(await readFile(resolve(bundlePath, "world.ir.json"), "utf8"));
+
+    assert.equal(report.ok, true);
+    assert.ok(world.entities.some((entity: { id: string }) => entity.id === "modular.cube"));
+  } finally {
+    await rm(projectPath, { force: true, recursive: true });
+  }
 });
 
 test("should build v6 functional example", async () => {

@@ -48,6 +48,24 @@ test("should capture defineGame root through existing bundle path", async () => 
   }
 });
 
+test("should capture scene from valid relative module", async () => {
+  const root = await makeProject(`import { scene } from "./scene.js";\nexport default scene;\n`);
+  await writeFile(join(root, "src/scene.ts"), `import { Scene } from "@threenative/sdk";\nexport const scene = new Scene({ id: "scene.module" });\n`);
+  try {
+    const captured = await captureEntry({
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project",
+      version: "0.1.0",
+    });
+
+    assert.equal(captured.summary.rootType, "Scene");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject unsupported root", async () => {
   const root = await makeProject("export default {};\n");
   try {
@@ -67,7 +85,7 @@ test("should reject unsupported root", async () => {
   }
 });
 
-test("should reject unsupported side effect import in relative module", async () => {
+test("should preserve diagnostics for invalid transitive imports", async () => {
   const root = await makeProject(`import "./platform";\nimport { Scene } from "@threenative/sdk";\nexport default new Scene({ id: "scene" });\n`);
   await writeFile(join(root, "src/platform.ts"), `import "three";\n`);
   try {

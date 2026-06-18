@@ -46,6 +46,11 @@ Bundle safety hardening now rejects unsafe manifest-controlled paths before web
 or Bevy filesystem reads, and both runtimes reject malformed generated-mesh
 binary payload lengths with asset path context instead of decoding partial data.
 
+Compiler capture now mirrors source-relative project modules into the temporary
+capture directory, so `src/game.ts` can import local `.ts`/`.tsx` modules through
+NodeNext `.js` specifiers while transitive portable-boundary diagnostics still
+point at the source module.
+
 Packaging, performance, and desktop distribution evidence still runs through
 `pnpm verify:v7`. Legacy milestone aliases such as `verify:v9` forward to
 `verify:release` with a deprecation diagnostic.

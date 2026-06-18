@@ -1,5 +1,5 @@
 import { access, mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, extname, resolve } from "node:path";
+import { dirname, extname, isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { captureScene, isR3fElement, R3fCaptureError } from "@threenative/r3f";
 import ts from "typescript";
@@ -23,22 +23,10 @@ export async function captureEntry(config: IProjectConfig): Promise<ICapturedSce
 
   await assertPortableImports(entryPath, source, config.projectPath);
 
-  const transpiled = ts.transpileModule(source, {
-    compilerOptions: {
-      jsx: ts.JsxEmit.ReactJSX,
-      jsxImportSource: "@threenative/r3f",
-      module: ts.ModuleKind.ES2022,
-      moduleResolution: ts.ModuleResolutionKind.NodeNext,
-      target: ts.ScriptTarget.ES2022,
-      verbatimModuleSyntax: true,
-    },
-    fileName: entryPath,
-  });
-
   const tempDir = fileURLToPath(new URL("../.tn/", import.meta.url));
-  const tempFile = resolve(tempDir, `capture-${Date.now()}-${Math.random().toString(16).slice(2)}.mjs`);
-  await mkdir(tempDir, { recursive: true });
-  await writeFile(tempFile, transpiled.outputText);
+  const tempRoot = resolve(tempDir, `capture-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  await writeTranspiledProjectGraph(entryPath, config.projectPath, tempRoot);
+  const tempFile = outputPathForSource(entryPath, config.projectPath, tempRoot);
 
   const module = (await import(`${pathToFileURL(tempFile).href}?v=${Date.now()}`)) as { default?: unknown };
   const root = captureRoot(module.default, entryPath, config.projectPath);
@@ -53,6 +41,56 @@ export async function captureEntry(config: IProjectConfig): Promise<ICapturedSce
       rootType: isWorldRoot(root) || (isBundleRoot(root) && isWorldRoot(root.world)) ? "World" : "Scene",
     },
   };
+}
+
+async function writeTranspiledProjectGraph(entryPath: string, projectPath: string, tempRoot: string): Promise<void> {
+  const sources = await collectRelativeImportGraph(entryPath, projectPath);
+  for (const [sourcePath, source] of sources) {
+    const transpiled = ts.transpileModule(source, {
+      compilerOptions: {
+        jsx: ts.JsxEmit.ReactJSX,
+        jsxImportSource: "@threenative/r3f",
+        module: ts.ModuleKind.ES2022,
+        moduleResolution: ts.ModuleResolutionKind.NodeNext,
+        target: ts.ScriptTarget.ES2022,
+        verbatimModuleSyntax: true,
+      },
+      fileName: sourcePath,
+    });
+    const outputPath = outputPathForSource(sourcePath, projectPath, tempRoot);
+    await mkdir(dirname(outputPath), { recursive: true });
+    await writeFile(outputPath, transpiled.outputText);
+  }
+}
+
+async function collectRelativeImportGraph(entryPath: string, projectPath: string): Promise<Map<string, string>> {
+  const sources = new Map<string, string>();
+  const visit = async (filePath: string): Promise<void> => {
+    if (sources.has(filePath)) {
+      return;
+    }
+    const source = await readFile(filePath, "utf8");
+    sources.set(filePath, source);
+    for (const specifier of readImportSpecifiers(source, filePath).filter((item) => item.startsWith("."))) {
+      const importedPath = await resolveRelativeImport(filePath, specifier);
+      if (importedPath !== undefined && isInsideProject(projectPath, importedPath)) {
+        await visit(importedPath);
+      }
+    }
+  };
+  await visit(entryPath);
+  return sources;
+}
+
+function outputPathForSource(sourcePath: string, projectPath: string, tempRoot: string): string {
+  const relativeSource = relative(projectPath, sourcePath);
+  const withoutExtension = relativeSource.replace(/\.[^.]+$/, "");
+  return resolve(tempRoot, `${withoutExtension}.js`);
+}
+
+function isInsideProject(projectPath: string, filePath: string): boolean {
+  const relativeSource = relative(projectPath, filePath);
+  return relativeSource === "" || (!relativeSource.startsWith("..") && !isAbsolute(relativeSource));
 }
 
 function captureRoot(root: unknown, entryPath: string, projectPath: string): unknown {
