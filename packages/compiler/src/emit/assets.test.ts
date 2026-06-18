@@ -137,7 +137,12 @@ test("assets should emit deterministic model animation metadata", async () => {
             animations: [
               animationClip("run", { loop: true, sourceClip: "Armature|Run", speed: 1.2 }),
               animationClip("idle", { loop: true }),
+              animationClip("wave", { mask: "upperBody" }),
             ],
+            masks: [{ id: "upperBody", joints: ["Spine", "Arm.L", "Arm.R"] }],
+            morphClips: [{ id: "smile", target: "Smile", keyframes: [{ timeSeconds: 0, weight: 0 }, { timeSeconds: 1, weight: 1 }] }],
+            morphTargets: [{ defaultWeight: 0, id: "Smile" }],
+            skeleton: { joints: ["Root", "Spine", "Arm.L", "Arm.R"] },
           }),
         ],
         id: "hero.asset",
@@ -163,14 +168,21 @@ test("assets should emit deterministic model animation metadata", async () => {
       animations: [
         { id: "idle", loop: true },
         { id: "run", loop: true, sourceClip: "Armature|Run", speed: 1.2 },
+        { id: "wave", mask: "upperBody" },
       ],
       format: "glb",
       id: "model.hero",
       kind: "model",
+      masks: [{ id: "upperBody", joints: ["Spine", "Arm.L", "Arm.R"] }],
+      morphClips: [{ id: "smile", keyframes: [{ timeSeconds: 0, weight: 0 }, { timeSeconds: 1, weight: 1 }], target: "Smile" }],
+      morphTargets: [{ defaultWeight: 0, id: "Smile" }],
       path: "assets/hero.glb",
+      skeleton: { joints: ["Arm.L", "Arm.R", "Root", "Spine"] },
       sourceMode: "bundle",
     });
     assert.ok(manifest.requiredCapabilities.animation.includes("clip-metadata"));
+    assert.ok(manifest.requiredCapabilities.animation.includes("masks"));
+    assert.ok(manifest.requiredCapabilities.animation.includes("morph-targets"));
   } finally {
     await rm(root, { force: true, recursive: true });
   }

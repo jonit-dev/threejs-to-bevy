@@ -1,0 +1,39 @@
+{
+  "entry": {
+    "animations": "animations.ir.json",
+    "world": "world.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "input": "input.ir.json",
+    "materials": "materials.ir.json",
+    "targetProfile": "target.profile.json"
+  },
+  "name": "animation-physics-residuals",
+  "requiredCapabilities": {
+    "animation": [
+      "clip-metadata",
+      "masks",
+      "morph-targets",
+      "transform-tracks"
+    ],
+    "character": [
+      "grounding",
+      "slope-limit"
+    ],
+    "navigation": [
+      "crowd-steering",
+      "dynamic-rebake",
+      "off-mesh-links",
+      "path",
+      "static-regions"
+    ],
+    "physics": [
+      "collider.box",
+      "collider.slope",
+      "rigid-body.static"
+    ]
+  },
+  "schema": "threenative.bundle",
+  "version": "0.1.0"
+}

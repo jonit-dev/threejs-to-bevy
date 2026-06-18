@@ -99,6 +99,7 @@
                 "properties": {
                   "id": { "type": "string", "minLength": 1 },
                   "loop": { "type": "boolean" },
+                  "mask": { "type": "string", "minLength": 1 },
                   "sourceClip": { "type": "string", "minLength": 1 },
                   "speed": { "type": "number", "exclusiveMinimum": 0 }
                 }
@@ -174,6 +175,55 @@
                 }
               }
             },
+            "masks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["id", "joints"],
+                "additionalProperties": false,
+                "properties": {
+                  "id": { "type": "string", "minLength": 1 },
+                  "joints": { "type": "array", "items": { "type": "string", "minLength": 1 }, "minItems": 1 }
+                }
+              }
+            },
+            "morphClips": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["id", "target", "keyframes"],
+                "additionalProperties": false,
+                "properties": {
+                  "id": { "type": "string", "minLength": 1 },
+                  "target": { "type": "string", "minLength": 1 },
+                  "keyframes": {
+                    "type": "array",
+                    "minItems": 2,
+                    "items": {
+                      "type": "object",
+                      "required": ["timeSeconds", "weight"],
+                      "additionalProperties": false,
+                      "properties": {
+                        "timeSeconds": { "type": "number", "minimum": 0 },
+                        "weight": { "type": "number", "minimum": 0, "maximum": 1 }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "morphTargets": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["id"],
+                "additionalProperties": false,
+                "properties": {
+                  "id": { "type": "string", "minLength": 1 },
+                  "defaultWeight": { "type": "number", "minimum": 0, "maximum": 1 }
+                }
+              }
+            },
             "particleEmitters": {
               "type": "array",
               "items": {
@@ -188,6 +238,14 @@
                   "ratePerSecond": { "type": "number", "minimum": 0 },
                   "shape": { "enum": ["point", "sphere"] }
                 }
+              }
+            },
+            "skeleton": {
+              "type": "object",
+              "required": ["joints"],
+              "additionalProperties": false,
+              "properties": {
+                "joints": { "type": "array", "items": { "type": "string", "minLength": 1 }, "minItems": 1 }
               }
             }
           }

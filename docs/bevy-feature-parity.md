@@ -4,7 +4,7 @@
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Contract         | Three.js-style TypeScript game engine -> validated IR bundle -> web Three.js + native Bevy                                                                                                                                                                                                                                                                                                                                                                                                             |
 | Native baseline  | Bevy and `bevy_ecs` pinned to `=0.14.2`                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| Evidence anchors | native test, visual scene, game-authoring ergonomics, modular compiler capture tests, scene lifecycle SDK declaration tests, scene lifecycle IR validation tests, scene lifecycle compiler emission tests, scene lifecycle web/Bevy runtime trace tests, scene lifecycle example build smoke, capability conformance fixtures, `pnpm verify:release`, `pnpm verify:conformance`, `pnpm --filter @threenative/ir test` contract drift and bundle path coverage, web/Bevy generated-mesh payload rejection tests, starter-functional template, release artifacts under `tools/verify/artifacts/release/` and `packages/ir/artifacts/conformance/`, historical milestone archive under `docs/PRDs/archive/`, V10 PRDs, focused V10 evidence gates |
+| Evidence anchors | native test, visual scene, game-authoring ergonomics, modular compiler capture tests, scene lifecycle SDK declaration tests, scene lifecycle IR validation tests, scene lifecycle compiler emission tests, scene lifecycle web/Bevy runtime trace tests, scene lifecycle example build smoke, animation/physics/navigation residual traces, capability conformance fixtures, `pnpm verify:release`, `pnpm verify:conformance`, `pnpm verify:animation-physics-residuals`, `pnpm --filter @threenative/ir test` contract drift and bundle path coverage, web/Bevy generated-mesh payload rejection tests, starter-functional template, release artifacts under `tools/verify/artifacts/release/` and `packages/ir/artifacts/conformance/`, historical milestone archive under `docs/PRDs/archive/`, V10 PRDs, focused V10 evidence gates |
 
 ## Status
 
@@ -345,11 +345,11 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P1` Transform animation authored in code/IR
 - [x] `P1` `animation.query` / `animation.stop` declared command-shape/service-payload parity
 - [x] `P1` Animation blending beyond fixed graph traces
-- [ ] `P2` Animation masks (V10-02)
+- [x] `P2` Animation masks
 - [x] `P1` Stateful animation stop/state query runtime semantics
-- [ ] `P2` Morph-target animation (V10-02)
+- [x] `P2` Morph-target animation
 - [ ] `P3` Retargeting and inverse kinematics (V10-02)
-- [ ] `P2` UI/property animation (V10-02)
+- [x] `P2` UI/property animation
 - [ ] `P2` Arbitrary blend trees beyond bounded crossfade/graph traces
 - [x] `P1` Rendered particle systems
 
@@ -381,14 +381,14 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P1` Character interaction volumes and object pushing
 - [x] `P1` Navmesh/pathfinding behavior
 - [x] `P1` External physics backend integration strategy
-- [ ] `P1` Arbitrary sloped mesh terrain for character grounding
+- [x] `P1` Arbitrary sloped mesh terrain for character grounding
 - [ ] `P1` Full constraint solving beyond hinge/slider/suspension metadata
 - [ ] `P2` Arbitrary triangle narrow phase for mesh colliders
-- [ ] `P2` Dynamic navmesh rebakes
-- [ ] `P2` Crowd steering and off-mesh links
+- [x] `P2` Dynamic navmesh rebakes
+- [x] `P2` Crowd steering and off-mesh links
 - [ ] `P2` Vehicle drivetrain and tire/friction models
 - [ ] `P3` Soft bodies and ragdolls
-- [ ] `D` Public backend physics/navmesh handles in portable APIs
+- [x] `D` Public backend physics/navmesh handles in portable APIs
 
 ### 🎮 Input, Picking, and Controls
 

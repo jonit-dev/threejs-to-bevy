@@ -437,7 +437,11 @@ function emitTextureSlots(
         path: value.path,
         sourceMode: value.sourceMode ?? "bundle",
         ...(value.animations === undefined ? {} : { animations: value.animations }),
+        ...(value.masks === undefined ? {} : { masks: value.masks }),
+        ...(value.morphClips === undefined ? {} : { morphClips: value.morphClips }),
+        ...(value.morphTargets === undefined ? {} : { morphTargets: value.morphTargets }),
         ...(value.particleEmitters === undefined ? {} : { particleEmitters: value.particleEmitters }),
+        ...(value.skeleton === undefined ? {} : { skeleton: value.skeleton }),
         ...(value.repeat === undefined ? {} : { repeat: value.repeat }),
         ...(value.rotation === undefined ? {} : { rotation: value.rotation }),
         ...(value.wrapS === undefined ? {} : { wrapS: value.wrapS }),
@@ -464,7 +468,11 @@ function emitAssetRefs(refs: readonly IAssetReference[] | undefined, assets: ISc
       ...(ref.usage === undefined ? {} : { usage: ref.usage }),
       ...(ref.sampleCount === undefined ? {} : { sampleCount: ref.sampleCount }),
       ...(ref.animations === undefined ? {} : { animations: ref.animations }),
+      ...(ref.masks === undefined ? {} : { masks: ref.masks }),
+      ...(ref.morphClips === undefined ? {} : { morphClips: ref.morphClips }),
+      ...(ref.morphTargets === undefined ? {} : { morphTargets: ref.morphTargets }),
       ...(ref.particleEmitters === undefined ? {} : { particleEmitters: ref.particleEmitters }),
+      ...(ref.skeleton === undefined ? {} : { skeleton: ref.skeleton }),
     });
   }
 }

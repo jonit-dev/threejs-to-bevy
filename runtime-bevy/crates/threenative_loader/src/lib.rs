@@ -628,8 +628,13 @@ pub struct AssetIr {
     pub indices: Option<Vec<u32>>,
     #[serde(rename = "magFilter")]
     pub mag_filter: Option<String>,
+    pub masks: Option<Vec<AnimationMaskIr>>,
     #[serde(rename = "minFilter")]
     pub min_filter: Option<String>,
+    #[serde(rename = "morphClips")]
+    pub morph_clips: Option<Vec<MorphClipIr>>,
+    #[serde(rename = "morphTargets")]
+    pub morph_targets: Option<Vec<MorphTargetIr>>,
     pub offset: Option<[f32; 2]>,
     #[serde(rename = "particleEmitters")]
     pub particle_emitters: Option<Vec<ParticleEmitterIr>>,
@@ -639,6 +644,7 @@ pub struct AssetIr {
     pub rotation: Option<f32>,
     pub sample_count: Option<u32>,
     pub size: Option<Vec<f32>>,
+    pub skeleton: Option<ModelSkeletonIr>,
     pub topology: Option<String>,
     pub usage: Option<String>,
     pub width: Option<f32>,
@@ -664,6 +670,40 @@ pub struct MeshBudgetIr {
     pub classification: String,
     pub vertex_count: usize,
     pub limit: usize,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AnimationMaskIr {
+    pub id: String,
+    pub joints: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ModelSkeletonIr {
+    pub joints: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MorphTargetIr {
+    pub default_weight: Option<f32>,
+    pub id: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MorphClipIr {
+    pub id: String,
+    pub keyframes: Vec<MorphKeyframeIr>,
+    pub target: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MorphKeyframeIr {
+    pub time_seconds: f32,
+    pub weight: f32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -697,6 +737,7 @@ pub struct AnimationClipIr {
     pub id: String,
     #[serde(rename = "loop")]
     pub loop_: Option<bool>,
+    pub mask: Option<String>,
     pub source_clip: Option<String>,
     pub speed: Option<f32>,
 }

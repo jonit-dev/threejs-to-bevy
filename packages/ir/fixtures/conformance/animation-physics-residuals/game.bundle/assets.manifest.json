@@ -1,0 +1,58 @@
+{
+  "assets": [
+    {
+      "animations": [
+        {
+          "id": "wave",
+          "mask": "upperBody"
+        }
+      ],
+      "format": "glb",
+      "id": "model.hero",
+      "kind": "model",
+      "masks": [
+        {
+          "id": "upperBody",
+          "joints": [
+            "Spine",
+            "Arm.L",
+            "Arm.R"
+          ]
+        }
+      ],
+      "morphClips": [
+        {
+          "id": "smile",
+          "keyframes": [
+            {
+              "timeSeconds": 0,
+              "weight": 0
+            },
+            {
+              "timeSeconds": 1,
+              "weight": 1
+            }
+          ],
+          "target": "Smile"
+        }
+      ],
+      "morphTargets": [
+        {
+          "defaultWeight": 0,
+          "id": "Smile"
+        }
+      ],
+      "path": "assets/hero.glb",
+      "skeleton": {
+        "joints": [
+          "Root",
+          "Spine",
+          "Arm.L",
+          "Arm.R"
+        ]
+      }
+    }
+  ],
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}

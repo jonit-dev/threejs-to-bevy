@@ -625,6 +625,7 @@ export type IAssetIr =
       animations?: Array<{
         id: string;
         loop?: boolean;
+        mask?: string;
         sourceClip?: string;
         speed?: number;
       }>;
@@ -662,6 +663,22 @@ export type IAssetIr =
       format: "glb" | "gltf";
       id: string;
       kind: "model";
+      masks?: Array<{
+        id: string;
+        joints: string[];
+      }>;
+      morphClips?: Array<{
+        id: string;
+        keyframes: Array<{
+          timeSeconds: number;
+          weight: number;
+        }>;
+        target: string;
+      }>;
+      morphTargets?: Array<{
+        defaultWeight?: number;
+        id: string;
+      }>;
       particleEmitters?: Array<{
         id: string;
         lifetimeSeconds: number;
@@ -671,6 +688,9 @@ export type IAssetIr =
         shape: "point" | "sphere";
       }>;
       path?: string;
+      skeleton?: {
+        joints: string[];
+      };
     } & IAssetSourceIr
   | {
       center?: Vec2;

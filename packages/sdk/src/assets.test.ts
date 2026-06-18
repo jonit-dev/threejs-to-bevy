@@ -25,6 +25,21 @@ test("assets should create deterministic model animation metadata", () => {
   });
 });
 
+test("assets should create bounded animation mask and morph metadata", () => {
+  const asset = modelAsset("model.hero", "assets/hero.glb", {
+    animations: [animationClip("wave", { mask: "upperBody" })],
+    masks: [{ id: "upperBody", joints: ["Spine", "Arm.L"] }],
+    morphClips: [{ id: "smile", target: "Smile", keyframes: [{ timeSeconds: 0, weight: 0 }, { timeSeconds: 1, weight: 1 }] }],
+    morphTargets: [{ defaultWeight: 0, id: "Smile" }],
+    skeleton: { joints: ["Root", "Spine", "Arm.L"] },
+  });
+
+  assert.deepEqual(asset.animations, [{ id: "wave", mask: "upperBody" }]);
+  assert.deepEqual(asset.masks, [{ id: "upperBody", joints: ["Spine", "Arm.L"] }]);
+  assert.deepEqual(asset.morphTargets, [{ defaultWeight: 0, id: "Smile" }]);
+  assert.deepEqual(asset.skeleton, { joints: ["Arm.L", "Root", "Spine"] });
+});
+
 test("assets should reject unsupported advanced animation metadata", () => {
   assert.throws(
     () => animationClip("run", { speed: 0 }),

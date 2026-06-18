@@ -145,8 +145,10 @@ event ordering under `tools/verify/artifacts/animation-blending/` using the
 `animation-blending` fixture;
 `pnpm verify:v9:animation-particles` compares rendered bounded CPU particle
 emitter counts plus web/native SVG evidence under
-`tools/verify/artifacts/animation-particles/`. Masks, morph targets, IK, retargeting, and
-UI/property animation remain explicitly unsupported with stable diagnostics.
+`tools/verify/artifacts/animation-particles/`. The later animation/physics/
+navigation residual gate promotes bounded animation masks, morph-target
+animation, and UI/property transform-animation evidence; IK, retargeting, and
+arbitrary blend trees remain explicitly unsupported with stable diagnostics.
 
 Focused V8 evidence exists for the optional React webview overlay slice:
 `pnpm verify:v8:overlay` builds `examples/v8-overlay-webview`, bundles a
@@ -231,7 +233,22 @@ solver/sensor/push/navigation traces, compare drift, and write
 `packages/ir/artifacts/conformance/physics-character/verification-report.json`.
 Dynamic mesh colliders, joints/constraints, dynamic navmesh rebakes, crowd
 steering, off-mesh links, and public backend physics/navmesh handles remained
-deferred at V9 scope with promotion criteria in the V9-02 PRD.
+deferred at V9 scope with promotion criteria in the V9-02 PRD. The later
+animation/physics/navigation residual gate promotes bounded sloped mesh
+grounding, dynamic navmesh rebake policy observations, off-mesh link
+traversal, small crowd steering reports, and stable diagnostics for raw backend
+physics/navigation handles; full constraint solving, arbitrary triangle narrow
+phase, vehicle drivetrains, soft bodies, and ragdolls remain deferred.
+
+Post-V10 animation, physics, and navigation residuals are implemented through
+`pnpm verify:animation-physics-residuals`. The focused gate validates
+`packages/ir/fixtures/conformance/animation-physics-residuals/game.bundle`,
+compares matching web/Bevy residual reports for animation masks, morph target
+weights, UI/property transform samples, sloped character grounding, bounded
+dynamic navmesh rebakes, off-mesh links, and crowd steering, and writes JSON
+reports plus a visual contact sheet under
+`tools/verify/artifacts/animation-physics-residuals/`. The same gate is part of
+`pnpm verify:release`.
 
 The V10 advanced-physics pass now promotes a bounded racing-useful physics
 slice: SDK/IR/compiler contracts accept explicit `Collider.mesh.bounds` and

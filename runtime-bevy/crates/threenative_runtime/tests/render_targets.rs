@@ -28,7 +28,10 @@ fn should_map_camera_target_to_bevy_image_output() {
         generation: None,
         indices: None,
         mag_filter: None,
+        masks: None,
         min_filter: None,
+        morph_clips: None,
+        morph_targets: None,
         offset: None,
         particle_emitters: None,
         primitive: None,
@@ -40,6 +43,7 @@ fn should_map_camera_target_to_bevy_image_output() {
         wrap_s: None,
         wrap_t: None,
         sample_count: None,
+        skeleton: None,
     });
     bundle.world.entities.push(WorldEntity {
         id: "camera.monitor".to_owned(),

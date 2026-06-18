@@ -146,8 +146,18 @@ function collectWorldCapabilities(world: IWorldIr | undefined, add: (domain: str
     add("rendering", "camera.multiple");
   }
   if (world.resources?.Navigation !== undefined) {
+    const navigation = world.resources.Navigation as Record<string, unknown>;
     add("navigation", "static-regions");
     add("navigation", "path");
+    if (navigation.dynamicRebake !== undefined) {
+      add("navigation", "dynamic-rebake");
+    }
+    if (navigation.offMeshLinks !== undefined) {
+      add("navigation", "off-mesh-links");
+    }
+    if (navigation.crowd !== undefined) {
+      add("navigation", "crowd-steering");
+    }
   }
   if (world.resources?.RenderingLightBudget !== undefined) {
     add("rendering", "light-budget");
@@ -371,6 +381,12 @@ function collectAssetCapabilities(assets: IAssetsManifest, add: (domain: string,
       add("animation", "events");
       add("animation", "graph");
       add("animation", "state-machine");
+    }
+    if (asset.kind === "model" && "masks" in asset && Array.isArray(asset.masks) && asset.masks.length > 0) {
+      add("animation", "masks");
+    }
+    if (asset.kind === "model" && "morphTargets" in asset && Array.isArray(asset.morphTargets) && asset.morphTargets.length > 0) {
+      add("animation", "morph-targets");
     }
     if (asset.kind === "model" && asset.particleEmitters !== undefined && asset.particleEmitters.length > 0) {
       add("particles", "bounded-emitter");

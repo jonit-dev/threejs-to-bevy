@@ -40,6 +40,11 @@ export const V9_FOCUSED_GATES = [
     reportPath: "examples/rendering-lights/artifacts/rendering-lights/verification-report.json",
     script: "verify:v9:rendering-lights",
   },
+  {
+    name: "verify animation physics navigation residuals",
+    reportPath: "tools/verify/artifacts/animation-physics-residuals/verification-report.json",
+    script: "verify:animation-physics-residuals",
+  },
 ];
 
 export const V9_RELEASE_ARTIFACTS = [

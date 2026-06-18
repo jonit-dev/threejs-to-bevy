@@ -281,7 +281,8 @@ test("should create legacy v7-functional template files", async () => {
       dependencies: Record<string, string>;
       scripts: Record<string, string>;
     };
-    const source = await readFile(join(payload.path, "src/game.ts"), "utf8");
+    const gameSource = await readFile(join(payload.path, "src/game.ts"), "utf8");
+    const arenaSource = await readFile(join(payload.path, "src/scenes/arena.ts"), "utf8");
 
     assert.equal(config.entry, "src/game.ts");
     assert.equal(config.outDir, "dist/starter-functional.bundle");
@@ -292,8 +293,10 @@ test("should create legacy v7-functional template files", async () => {
     assert.equal(packageJson.scripts["package:desktop"], "tn package --bundle dist/starter-functional.bundle --target desktop --out artifacts/package --json");
     assert.match(packageJson.dependencies["@threenative/sdk"] ?? "", /^file:/);
     assert.match(packageJson.dependencies["@threenative/ui"] ?? "", /^file:/);
-    assert.match(source, /ThreeNative V7 Functional/);
-    assert.match(source, /v7ProofLoop/);
+    assert.match(gameSource, /defineGame/);
+    assert.match(gameSource, /defineScene/);
+    assert.match(arenaSource, /ThreeNative V7 Functional/);
+    assert.match(arenaSource, /v7ProofLoop/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

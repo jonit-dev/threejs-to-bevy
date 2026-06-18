@@ -49,6 +49,11 @@ export interface IBundleValidationResult {
   ok: boolean;
 }
 
+const MAX_RESIDUAL_ANIMATION_TIME_SECONDS = 600;
+const MAX_DYNAMIC_NAV_REGIONS = 64;
+const MAX_DYNAMIC_NAV_OBSTACLES = 32;
+const MAX_CROWD_AGENTS = 16;
+
 export async function validateBundle(bundlePath: string): Promise<IBundleValidationResult> {
   const diagnostics: IIrDiagnostic[] = [];
   const manifest = await readJson<unknown>(resolve(bundlePath, IR_DOCUMENTS.manifest.fileName), diagnostics);
@@ -1911,7 +1916,7 @@ function validateAssetMetadata(asset: IAssetsManifest["assets"][number], path: s
           ? ["format", "height", "id", "kind", "sampleCount", "usage", "width"]
           : asset.kind === "buffer"
             ? ["format", "id", "kind", "path"]
-            : ["animationGraph", "animations", "bounds", "format", "id", "kind", "particleEmitters", "path"],
+            : ["animationGraph", "animations", "bounds", "format", "id", "kind", "masks", "morphClips", "morphTargets", "particleEmitters", "path", "skeleton"],
   );
   if (asset.kind !== "mesh" && asset.kind !== "render-target") {
     sourceFields.forEach((field) => allowed.add(field));
@@ -1926,7 +1931,7 @@ function validateAssetMetadata(asset: IAssetsManifest["assets"][number], path: s
       });
     }
   }
-  if (("animations" in raw || "animationGraph" in raw || "particleEmitters" in raw) && asset.kind !== "model") {
+  if (("animations" in raw || "animationGraph" in raw || "particleEmitters" in raw || "masks" in raw || "morphClips" in raw || "morphTargets" in raw || "skeleton" in raw) && asset.kind !== "model") {
     diagnostics.push({
       code: "TN_IR_ANIMATION_MODEL_REQUIRED",
       message: `Asset '${asset.id}' can declare animation graph, particle, or clip metadata only when it is a model asset.`,
@@ -1937,11 +1942,16 @@ function validateAssetMetadata(asset: IAssetsManifest["assets"][number], path: s
   const clipIds = asset.kind === "model" && Array.isArray(raw.animations)
     ? new Set(raw.animations.flatMap((clip) => isRecord(clip) && typeof clip.id === "string" ? [clip.id] : []))
     : new Set<string>();
+  const maskIds = asset.kind === "model" ? validateAnimationMasks(raw.masks, raw.skeleton, `${path}/masks`, diagnostics) : new Set<string>();
+  const morphTargetIds = asset.kind === "model" ? validateMorphTargets(raw.morphTargets, `${path}/morphTargets`, diagnostics) : new Set<string>();
   if (asset.kind === "model" && "animations" in raw) {
-    validateAnimationClips(raw.animations, `${path}/animations`, diagnostics);
+    validateAnimationClips(raw.animations, `${path}/animations`, diagnostics, maskIds);
   }
   if (asset.kind === "model" && "animationGraph" in raw) {
     validateAnimationGraph(raw.animationGraph, clipIds, `${path}/animationGraph`, diagnostics);
+  }
+  if (asset.kind === "model" && "morphClips" in raw) {
+    validateMorphClips(raw.morphClips, morphTargetIds, `${path}/morphClips`, diagnostics);
   }
   if (asset.kind === "model" && "particleEmitters" in raw) {
     validateParticleEmitters(raw.particleEmitters, `${path}/particleEmitters`, diagnostics);
@@ -1955,10 +1965,10 @@ function validateAssetMetadata(asset: IAssetsManifest["assets"][number], path: s
 }
 
 function unsupportedAssetFieldCode(key: string): string {
-  if (key === "mask" || key === "masks" || key === "boneMask" || key === "boneMasks" || key === "layers") {
+  if (key === "mask" || key === "boneMask" || key === "boneMasks" || key === "layers") {
     return "TN_IR_ANIMATION_MASKS_UNSUPPORTED";
   }
-  if (key === "morphTargets" || key === "morphTargetTracks" || key === "morphWeights") {
+  if (key === "morphTargetTracks" || key === "morphWeights") {
     return "TN_IR_MORPH_TARGET_ANIMATION_UNSUPPORTED";
   }
   if (key === "retargeting" || key === "retargetMap") {
@@ -2316,7 +2326,130 @@ function expectedMeshAttributeItemSize(name: string): number | undefined {
   return undefined;
 }
 
-function validateAnimationClips(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+function validateAnimationMasks(value: unknown, skeleton: unknown, path: string, diagnostics: IIrDiagnostic[]): Set<string> {
+  const maskIds = new Set<string>();
+  if (value === undefined) {
+    return maskIds;
+  }
+  const joints = isRecord(skeleton) && Array.isArray(skeleton.joints)
+    ? new Set(skeleton.joints.filter((joint): joint is string => typeof joint === "string" && joint.trim() !== ""))
+    : new Set<string>();
+  if (joints.size === 0) {
+    diagnostics.push({
+      code: "TN_IR_ANIMATION_MASK_SKELETON_MISSING",
+      message: "Animation masks require model skeleton joint metadata.",
+      path,
+      severity: "error",
+      suggestion: "Add skeleton.joints to the model asset so mask paths can be validated.",
+    });
+  }
+  if (!Array.isArray(value)) {
+    diagnostics.push({ code: "TN_IR_ANIMATION_MASKS_INVALID", message: "Animation masks must be an array.", path, severity: "error" });
+    return maskIds;
+  }
+  value.forEach((mask, index) => {
+    const maskPath = `${path}/${index}`;
+    if (!isRecord(mask)) {
+      diagnostics.push({ code: "TN_IR_ANIMATION_MASK_INVALID", message: "Animation mask must be an object.", path: maskPath, severity: "error" });
+      return;
+    }
+    if (typeof mask.id !== "string" || mask.id.trim() === "") {
+      diagnostics.push({ code: "TN_IR_ANIMATION_MASK_ID_INVALID", message: "Animation mask id must be a non-empty string.", path: `${maskPath}/id`, severity: "error" });
+    } else if (maskIds.has(mask.id)) {
+      diagnostics.push({ code: "TN_IR_ANIMATION_MASK_ID_DUPLICATE", message: `Animation mask id '${mask.id}' is duplicated.`, path: `${maskPath}/id`, severity: "error" });
+    } else {
+      maskIds.add(mask.id);
+    }
+    if (!Array.isArray(mask.joints) || mask.joints.length === 0) {
+      diagnostics.push({ code: "TN_IR_ANIMATION_MASK_JOINTS_INVALID", message: "Animation mask joints must be a non-empty array.", path: `${maskPath}/joints`, severity: "error" });
+      return;
+    }
+    mask.joints.forEach((joint, jointIndex) => {
+      if (typeof joint !== "string" || joint.trim() === "" || !joints.has(joint)) {
+        diagnostics.push({
+          code: "TN_IR_ANIMATION_MASK_PATH_MISSING",
+          message: `Animation mask '${String(mask.id)}' references joint '${String(joint)}' that is not present in model skeleton metadata.`,
+          path: `${maskPath}/joints/${jointIndex}`,
+          severity: "error",
+          suggestion: "Use only skeleton joint names declared by the model asset.",
+          value: joint,
+        });
+      }
+    });
+  });
+  return maskIds;
+}
+
+function validateMorphTargets(value: unknown, path: string, diagnostics: IIrDiagnostic[]): Set<string> {
+  const targetIds = new Set<string>();
+  if (value === undefined) {
+    return targetIds;
+  }
+  if (!Array.isArray(value)) {
+    diagnostics.push({ code: "TN_IR_MORPH_TARGETS_INVALID", message: "Morph targets must be an array.", path, severity: "error" });
+    return targetIds;
+  }
+  value.forEach((target, index) => {
+    const targetPath = `${path}/${index}`;
+    if (!isRecord(target)) {
+      diagnostics.push({ code: "TN_IR_MORPH_TARGET_INVALID", message: "Morph target metadata must be an object.", path: targetPath, severity: "error" });
+      return;
+    }
+    if (typeof target.id !== "string" || target.id.trim() === "") {
+      diagnostics.push({ code: "TN_IR_MORPH_TARGET_ID_INVALID", message: "Morph target id must be a non-empty string.", path: `${targetPath}/id`, severity: "error" });
+    } else if (targetIds.has(target.id)) {
+      diagnostics.push({ code: "TN_IR_MORPH_TARGET_ID_DUPLICATE", message: `Morph target id '${target.id}' is duplicated.`, path: `${targetPath}/id`, severity: "error" });
+    } else {
+      targetIds.add(target.id);
+    }
+    if (target.defaultWeight !== undefined) {
+      validateFiniteRange(target.defaultWeight, 0, 1, `${targetPath}/defaultWeight`, "TN_IR_MORPH_TARGET_WEIGHT_INVALID", diagnostics);
+    }
+  });
+  return targetIds;
+}
+
+function validateMorphClips(value: unknown, targetIds: ReadonlySet<string>, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (!Array.isArray(value)) {
+    diagnostics.push({ code: "TN_IR_MORPH_CLIPS_INVALID", message: "Morph clips must be an array.", path, severity: "error" });
+    return;
+  }
+  value.forEach((clip, index) => {
+    const clipPath = `${path}/${index}`;
+    if (!isRecord(clip)) {
+      diagnostics.push({ code: "TN_IR_MORPH_CLIP_INVALID", message: "Morph clip must be an object.", path: clipPath, severity: "error" });
+      return;
+    }
+    if (typeof clip.id !== "string" || clip.id.trim() === "") {
+      diagnostics.push({ code: "TN_IR_MORPH_CLIP_ID_INVALID", message: "Morph clip id must be a non-empty string.", path: `${clipPath}/id`, severity: "error" });
+    }
+    if (typeof clip.target !== "string" || !targetIds.has(clip.target)) {
+      diagnostics.push({ code: "TN_IR_MORPH_TARGET_MISSING", message: `Morph clip '${String(clip.id)}' references an unknown morph target.`, path: `${clipPath}/target`, severity: "error" });
+    }
+    if (!Array.isArray(clip.keyframes) || clip.keyframes.length < 2) {
+      diagnostics.push({ code: "TN_IR_MORPH_KEYFRAMES_INVALID", message: "Morph clips require at least two keyframes.", path: `${clipPath}/keyframes`, severity: "error" });
+      return;
+    }
+    let previous = -Infinity;
+    clip.keyframes.forEach((keyframe, keyframeIndex) => {
+      const keyframePath = `${clipPath}/keyframes/${keyframeIndex}`;
+      if (!isRecord(keyframe)) {
+        diagnostics.push({ code: "TN_IR_MORPH_KEYFRAME_INVALID", message: "Morph keyframe must be an object.", path: keyframePath, severity: "error" });
+        return;
+      }
+      validateFiniteRange(keyframe.timeSeconds, 0, MAX_RESIDUAL_ANIMATION_TIME_SECONDS, `${keyframePath}/timeSeconds`, "TN_IR_MORPH_KEYFRAME_TIME_INVALID", diagnostics);
+      validateFiniteRange(keyframe.weight, 0, 1, `${keyframePath}/weight`, "TN_IR_MORPH_TARGET_WEIGHT_INVALID", diagnostics);
+      if (typeof keyframe.timeSeconds === "number" && keyframe.timeSeconds <= previous) {
+        diagnostics.push({ code: "TN_IR_MORPH_KEYFRAME_TIME_INVALID", message: "Morph keyframe times must be strictly increasing.", path: `${keyframePath}/timeSeconds`, severity: "error" });
+      }
+      if (typeof keyframe.timeSeconds === "number") {
+        previous = keyframe.timeSeconds;
+      }
+    });
+  });
+}
+
+function validateAnimationClips(value: unknown, path: string, diagnostics: IIrDiagnostic[], maskIds = new Set<string>()): void {
   if (!Array.isArray(value)) {
     diagnostics.push({
       code: "TN_IR_ANIMATION_CLIPS_INVALID",
@@ -2337,7 +2470,7 @@ function validateAnimationClips(value: unknown, path: string, diagnostics: IIrDi
       return;
     }
     for (const key of Object.keys(clip)) {
-      if (!["id", "loop", "sourceClip", "speed"].includes(key)) {
+      if (!["id", "loop", "mask", "sourceClip", "speed"].includes(key)) {
         diagnostics.push({
           code: "TN_IR_ANIMATION_FIELD_UNSUPPORTED",
           message: `Animation clip uses unsupported field '${key}'.`,
@@ -2366,6 +2499,16 @@ function validateAnimationClips(value: unknown, path: string, diagnostics: IIrDi
         code: "TN_IR_ANIMATION_LOOP_INVALID",
         message: "Animation clip loop must be boolean.",
         path: `${clipPath}/loop`,
+      });
+    }
+    if (clip.mask !== undefined && (typeof clip.mask !== "string" || !maskIds.has(clip.mask))) {
+      diagnostics.push({
+        code: "TN_IR_ANIMATION_MASK_PATH_MISSING",
+        message: `Animation clip '${String(clip.id)}' references mask '${String(clip.mask)}' that is not present in model skeleton metadata.`,
+        path: `${clipPath}/mask`,
+        severity: "error",
+        suggestion: "Declare masks with joints that all exist in the model skeleton, or remove the clip mask.",
+        ...(typeof clip.mask === "string" || typeof clip.mask === "number" ? { value: clip.mask } : {}),
       });
     }
     if (clip.sourceClip !== undefined && (typeof clip.sourceClip !== "string" || clip.sourceClip.trim() === "")) {
@@ -5159,13 +5302,13 @@ function validateNavigationResources(world: IWorldIr, path: string, diagnostics:
     return;
   }
   for (const key of Object.keys(navigation)) {
-    if (!["agentRadius", "areaCosts", "queries", "regions"].includes(key)) {
+    if (!["agentRadius", "areaCosts", "crowd", "dynamicRebake", "offMeshLinks", "queries", "regions"].includes(key)) {
       diagnostics.push({
-        code: hasNavigationBackendHandle(key) || key === "dynamicRebake" ? "TN_IR_NAVIGATION_BACKEND_UNSUPPORTED" : "TN_IR_NAVIGATION_FIELD_UNSUPPORTED",
+        code: hasNavigationBackendHandle(key) ? "TN_IR_NAVIGATION_BACKEND_UNSUPPORTED" : "TN_IR_NAVIGATION_FIELD_UNSUPPORTED",
         message: `Navigation uses unsupported field '${key}'.`,
         path: `${path}/Navigation/${key}`,
         severity: "error",
-        suggestion: "Use static portable navigation regions and keep backend navmesh handles, dynamic rebakes, crowd steering, and off-mesh links out of the IR.",
+        suggestion: "Use portable navigation regions, bounded rebake policies, off-mesh links, and small crowd fixtures; keep backend navmesh handles out of the IR.",
       });
     }
   }
@@ -5194,6 +5337,79 @@ function validateNavigationResources(world: IWorldIr, path: string, diagnostics:
     } else {
       navigation.queries.forEach((query, index) => validateNavigationQuery(query, `${path}/Navigation/queries/${index}`, diagnostics));
     }
+  }
+  validateDynamicNavigation(navigation.dynamicRebake, `${path}/Navigation/dynamicRebake`, diagnostics);
+  validateOffMeshLinks(navigation.offMeshLinks, `${path}/Navigation/offMeshLinks`, diagnostics);
+  validateCrowdNavigation(navigation.crowd, `${path}/Navigation/crowd`, diagnostics);
+}
+
+function validateDynamicNavigation(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value)) {
+    diagnostics.push({ code: "TN_IR_NAVIGATION_DYNAMIC_REBAKE_INVALID", message: "Navigation.dynamicRebake must be a bounded policy object.", path, severity: "error" });
+    return;
+  }
+  validateIntegerRange(value.maxRegions, 1, MAX_DYNAMIC_NAV_REGIONS, `${path}/maxRegions`, "TN_IR_NAVIGATION_DYNAMIC_REBAKE_BUDGET_INVALID", diagnostics);
+  validateIntegerRange(value.maxObstacles, 0, MAX_DYNAMIC_NAV_OBSTACLES, `${path}/maxObstacles`, "TN_IR_NAVIGATION_DYNAMIC_REBAKE_BUDGET_INVALID", diagnostics);
+  validateIntegerRange(value.intervalMs, 16, 10_000, `${path}/intervalMs`, "TN_IR_NAVIGATION_DYNAMIC_REBAKE_INTERVAL_INVALID", diagnostics);
+}
+
+function validateOffMeshLinks(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!Array.isArray(value)) {
+    diagnostics.push({ code: "TN_IR_NAVIGATION_OFF_MESH_LINKS_INVALID", message: "Navigation.offMeshLinks must be an array.", path, severity: "error" });
+    return;
+  }
+  value.forEach((link, index) => {
+    const linkPath = `${path}/${index}`;
+    if (!isRecord(link)) {
+      diagnostics.push({ code: "TN_IR_NAVIGATION_OFF_MESH_LINK_INVALID", message: "Off-mesh link must be an object.", path: linkPath, severity: "error" });
+      return;
+    }
+    if (typeof link.id !== "string" || link.id.trim() === "") {
+      diagnostics.push({ code: "TN_IR_NAVIGATION_OFF_MESH_LINK_ID_INVALID", message: "Off-mesh link id must be a non-empty string.", path: `${linkPath}/id`, severity: "error" });
+    }
+    if (typeof link.from !== "string" || link.from.trim() === "" || typeof link.to !== "string" || link.to.trim() === "") {
+      diagnostics.push({ code: "TN_IR_NAVIGATION_OFF_MESH_LINK_REGION_INVALID", message: "Off-mesh links must reference source and target region ids.", path: linkPath, severity: "error" });
+    }
+    validateFiniteRange(link.cost, 0, V9_MAX_NAV_AREA_COST, `${linkPath}/cost`, "TN_IR_NAVIGATION_OFF_MESH_LINK_COST_INVALID", diagnostics);
+  });
+}
+
+function validateCrowdNavigation(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value)) {
+    diagnostics.push({ code: "TN_IR_NAVIGATION_CROWD_INVALID", message: "Navigation.crowd must be an object.", path, severity: "error" });
+    return;
+  }
+  validateIntegerRange(value.maxAgents, 1, MAX_CROWD_AGENTS, `${path}/maxAgents`, "TN_IR_NAVIGATION_CROWD_BUDGET_INVALID", diagnostics);
+  validateFiniteRange(value.separationRadius, 0, V9_MAX_NAV_AGENT_RADIUS * 4, `${path}/separationRadius`, "TN_IR_NAVIGATION_CROWD_SEPARATION_INVALID", diagnostics);
+  if (value.agents !== undefined) {
+    if (!Array.isArray(value.agents)) {
+      diagnostics.push({ code: "TN_IR_NAVIGATION_CROWD_AGENTS_INVALID", message: "Navigation.crowd.agents must be an array.", path: `${path}/agents`, severity: "error" });
+      return;
+    }
+    if (typeof value.maxAgents === "number" && value.agents.length > value.maxAgents) {
+      diagnostics.push({ code: "TN_IR_NAVIGATION_CROWD_BUDGET_INVALID", message: "Navigation crowd agent count exceeds maxAgents.", path: `${path}/agents`, severity: "error" });
+    }
+    value.agents.forEach((agent, index) => {
+      const agentPath = `${path}/agents/${index}`;
+      if (!isRecord(agent)) {
+        diagnostics.push({ code: "TN_IR_NAVIGATION_CROWD_AGENT_INVALID", message: "Crowd agent must be an object.", path: agentPath, severity: "error" });
+        return;
+      }
+      if (typeof agent.id !== "string" || agent.id.trim() === "") {
+        diagnostics.push({ code: "TN_IR_NAVIGATION_CROWD_AGENT_ID_INVALID", message: "Crowd agent id must be a non-empty string.", path: `${agentPath}/id`, severity: "error" });
+      }
+      validateFiniteVec3(agent.position, `${agentPath}/position`, "TN_IR_NAVIGATION_CROWD_AGENT_POSITION_INVALID", diagnostics);
+      validateFiniteVec3(agent.goal, `${agentPath}/goal`, "TN_IR_NAVIGATION_CROWD_AGENT_GOAL_INVALID", diagnostics);
+    });
   }
 }
 

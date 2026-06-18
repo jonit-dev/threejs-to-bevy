@@ -28,6 +28,7 @@ export interface ITextureAssetOptions {
 export interface IAnimationClipReference {
   id: string;
   loop?: boolean;
+  mask?: string;
   sourceClip?: string;
   speed?: number;
 }
@@ -77,6 +78,22 @@ export interface IBoundedParticleEmitter {
   shape: "point" | "sphere";
 }
 
+export interface IAnimationMaskReference {
+  id: string;
+  joints: string[];
+}
+
+export interface IMorphTargetReference {
+  defaultWeight?: number;
+  id: string;
+}
+
+export interface IMorphClipReference {
+  id: string;
+  keyframes: Array<{ timeSeconds: number; weight: number }>;
+  target: string;
+}
+
 export interface IUnsupportedAnimationAssetOptions {
   blendGraph?: boolean;
   engineController?: boolean;
@@ -116,13 +133,17 @@ export interface IAssetReference {
   animations?: IAnimationClipReference[];
   center?: readonly [number, number];
   magFilter?: TextureMagFilter;
+  masks?: IAnimationMaskReference[];
   minFilter?: TextureMinFilter;
+  morphClips?: IMorphClipReference[];
+  morphTargets?: IMorphTargetReference[];
   offset?: readonly [number, number];
   particleEmitters?: IBoundedParticleEmitter[];
   repeat?: readonly [number, number];
   rotation?: number;
   wrapS?: TextureWrapMode;
   wrapT?: TextureWrapMode;
+  skeleton?: { joints: string[] };
 }
 
 export type AssetGroupFailurePolicy = "fail" | "warn";
@@ -152,12 +173,16 @@ export function animationClip(id: string, options: Omit<IAnimationClipReference,
   if (options.sourceClip !== undefined && options.sourceClip.trim() === "") {
     throw new SdkError("TN_SDK_ANIMATION_SOURCE_CLIP_EMPTY", "Animation source clip must not be empty.");
   }
+  if (options.mask !== undefined && options.mask.trim() === "") {
+    throw new SdkError("TN_SDK_ANIMATION_MASK_EMPTY", "Animation clip mask must not be empty.");
+  }
   if (options.speed !== undefined && (!Number.isFinite(options.speed) || options.speed <= 0)) {
     throw new SdkError("TN_SDK_ANIMATION_SPEED_INVALID", "Animation clip speed must be a positive finite number.");
   }
   return {
     id,
     ...(options.loop === undefined ? {} : { loop: options.loop }),
+    ...(options.mask === undefined ? {} : { mask: options.mask }),
     ...(options.sourceClip === undefined ? {} : { sourceClip: options.sourceClip }),
     ...(options.speed === undefined ? {} : { speed: options.speed }),
   };
@@ -169,7 +194,11 @@ export function modelAsset(
   options: {
     animationGraph?: IAnimationGraphDeclaration;
     animations?: readonly IAnimationClipReference[];
+    masks?: readonly IAnimationMaskReference[];
+    morphClips?: readonly IMorphClipReference[];
+    morphTargets?: readonly IMorphTargetReference[];
     particleEmitters?: readonly IBoundedParticleEmitter[];
+    skeleton?: { joints: readonly string[] };
     unsupported?: IUnsupportedAnimationAssetOptions;
   } = {},
 ): IAssetReference {
@@ -182,7 +211,11 @@ export function modelAsset(
     ...ref,
     ...(options.animationGraph === undefined ? {} : { animationGraph: normalizeAnimationGraph(options.animationGraph) }),
     ...(options.animations === undefined ? {} : { animations: [...options.animations].sort((left, right) => left.id.localeCompare(right.id)) }),
+    ...(options.masks === undefined ? {} : { masks: [...options.masks].map((mask) => ({ id: mask.id, joints: [...mask.joints] })).sort((left, right) => left.id.localeCompare(right.id)) }),
+    ...(options.morphClips === undefined ? {} : { morphClips: [...options.morphClips].map((clip) => ({ id: clip.id, keyframes: clip.keyframes.map((keyframe) => ({ timeSeconds: keyframe.timeSeconds, weight: keyframe.weight })), target: clip.target })).sort((left, right) => left.id.localeCompare(right.id)) }),
+    ...(options.morphTargets === undefined ? {} : { morphTargets: [...options.morphTargets].sort((left, right) => left.id.localeCompare(right.id)) }),
     ...(options.particleEmitters === undefined ? {} : { particleEmitters: [...options.particleEmitters].sort((left, right) => left.id.localeCompare(right.id)) }),
+    ...(options.skeleton === undefined ? {} : { skeleton: { joints: [...options.skeleton.joints].sort() } }),
   };
 }
 

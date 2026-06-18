@@ -32,6 +32,10 @@ name = "threenative_animation_trace"
 path = "src/animation_trace.rs"
 
 [[bin]]
+name = "threenative_animation_physics_residuals_trace"
+path = "src/animation_physics_residuals_trace.rs"
+
+[[bin]]
 name = "threenative_ui_navigation_trace"
 path = "src/ui_navigation_trace.rs"
 

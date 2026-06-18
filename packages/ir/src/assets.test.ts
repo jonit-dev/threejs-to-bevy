@@ -722,7 +722,7 @@ test("assets should reject invalid v7 animation graph and particle metadata", as
   }
 });
 
-test("should reject animation masks when authored", async () => {
+test("should reject animation masks without skeleton metadata", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-assets-animation-masks-"));
   try {
     await writeTestBundle(root, {
@@ -754,7 +754,7 @@ test("should reject animation masks when authored", async () => {
     const result = await validateBundle(root);
 
     assert.equal(result.ok, false);
-    assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_ANIMATION_MASKS_UNSUPPORTED"));
+    assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_ANIMATION_MASK_SKELETON_MISSING"));
   } finally {
     await rm(root, { force: true, recursive: true });
   }

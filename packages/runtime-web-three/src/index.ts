@@ -72,3 +72,11 @@ export {
   type IAnimationTraceObservation,
   type ITransformAnimationSample,
 } from "./animation.js";
+export {
+  traceAnimationPhysicsResiduals,
+  type IAnimationMaskObservation,
+  type IAnimationPhysicsResidualReport,
+  type ICrowdObservation,
+  type IMorphTargetObservation,
+  type IOffMeshLinkObservation,
+} from "./animationPhysicsResiduals.js";

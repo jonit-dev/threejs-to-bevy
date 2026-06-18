@@ -371,7 +371,7 @@ test("physics should reject mesh sensors and unbounded occupant histories", asyn
   }
 });
 
-test("physics should reject backend navigation handles and dynamic rebakes", async () => {
+test("physics should reject backend navigation handles and malformed dynamic rebakes", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-navigation-v9-invalid-"));
   try {
     await writeTestBundle(root, {
@@ -396,7 +396,7 @@ test("physics should reject backend navigation handles and dynamic rebakes", asy
     assert.equal(result.ok, false);
     assert.deepEqual(
       result.diagnostics.map((diagnostic) => diagnostic.code),
-      ["TN_IR_NAVIGATION_BACKEND_UNSUPPORTED", "TN_IR_NAVIGATION_BACKEND_UNSUPPORTED", "TN_IR_NAVIGATION_REGIONS_INVALID"],
+      ["TN_IR_NAVIGATION_BACKEND_UNSUPPORTED", "TN_IR_NAVIGATION_REGIONS_INVALID", "TN_IR_NAVIGATION_DYNAMIC_REBAKE_INVALID"],
     );
   } finally {
     await rm(root, { force: true, recursive: true });
