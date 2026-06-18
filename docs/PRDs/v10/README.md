@@ -46,11 +46,13 @@ dedicated editor/UI planning pass is requested.
 V10-01 implements the aggregate planning gate and drift guard:
 
 ```bash
+pnpm check:docs
 pnpm verify:v10
-pnpm check:quality:v10
 ```
 
-These commands prove V10 ownership, non-portable boundary diagnostics, and
-artifact/report wiring. V10-02, V10-03, and V10-04 must still add focused gates
-for promoted feature work, then wire those gates into the aggregate V10 verifier
-before claiming checklist completion.
+`pnpm check:docs` is the canonical docs and drift gate. `pnpm verify:v10` is a
+temporary planning-batch aggregate that proves V10 ownership, non-portable
+boundary diagnostics, and artifact/report wiring until those checks are folded
+into capability/release gates. V10-02, V10-03, and V10-04 must still add focused
+capability gates for promoted feature work, then wire those gates into the
+release verifier before claiming checklist completion.

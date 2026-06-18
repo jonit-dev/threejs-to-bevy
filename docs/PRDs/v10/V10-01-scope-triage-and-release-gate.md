@@ -54,7 +54,7 @@ covered by explicit diagnostic and documentation tests.
 **How will this feature be reached?**
 
 - [x] Entry point identified: `docs/PRDs/v10/README.md`, future
-  `pnpm verify:v10`, future `pnpm check:quality:v10`, V10 focused gates,
+  `pnpm verify:v10`, V10 focused gates,
   `docs/STATUS.md`, and `docs/bevy-feature-parity.md`.
 - [x] Caller file identified: root `package.json`, future
   `scripts/verify-v10.mjs`, future `scripts/check-quality-v10.mjs`,
@@ -76,7 +76,7 @@ covered by explicit diagnostic and documentation tests.
 3. Implementation promotes the item through the portable SDK/IR/runtime path or
    adds stable unsupported diagnostics with tests.
 4. Focused V10 verification writes evidence under `artifacts/v10/<slice>/`.
-5. `pnpm verify:v10` and `pnpm check:quality:v10` fail if the feature is not
+5. `pnpm check:docs` and `pnpm verify:v10` fail if the feature is not
    wired into aggregate evidence and docs.
 
 ## Solution
@@ -103,7 +103,7 @@ flowchart LR
     Triage --> Boundary[Non-portable policy]
     Promote --> Focused[Focused V10 gate]
     Diagnostics --> Focused
-    Boundary --> Quality[check:quality:v10]
+    Boundary --> Quality[check:docs]
     Focused --> Aggregate[pnpm verify:v10]
     Aggregate --> Docs[Status + parity drift guard]
 ```
@@ -139,7 +139,7 @@ sequenceDiagram
     Dev->>F: Run focused V10 verifier
     F-->>R: Slice evidence or diagnostics
     Dev->>A: pnpm verify:v10
-    A->>D: check:quality:v10
+    A->>D: check:docs
     D-->>R: PRD/status/parity alignment result
 ```
 
@@ -175,7 +175,7 @@ sequenceDiagram
 **Verification Plan:**
 
 1. **Unit Tests:** `node --test scripts/check-docs-v10.test.mjs`.
-2. **Docs Gate:** `pnpm check:docs:v10`.
+2. **Docs Gate:** `pnpm check:docs`.
 3. **Evidence Required:** docs guard output and updated parity/status pointers.
 
 **User Verification:**
@@ -190,11 +190,9 @@ sequenceDiagram
 
 **Files (max 5):**
 
-- `package.json` - register `verify:v10` and `check:quality:v10`.
+- `package.json` - register the temporary `verify:v10` aggregate while keeping docs drift under `check:docs`.
 - `scripts/verify-v10.mjs` - orchestrate focused V10 gates and write report.
 - `scripts/verify-v10.test.mjs` - test command aggregation and artifact checks.
-- `scripts/check-quality-v10.mjs` - verify PRD/status/parity/conformance drift.
-- `scripts/check-quality-v10.test.mjs` - test drift diagnostics.
 
 **Implementation:**
 
@@ -220,7 +218,6 @@ sequenceDiagram
 1. **Unit Tests:** `node --test scripts/verify-v10.test.mjs
    scripts/check-quality-v10.test.mjs`.
 2. **Integration Test:** `pnpm verify:v10`.
-3. **Quality Gate:** `pnpm check:quality:v10`.
 4. **Evidence Required:** `artifacts/v10/verification-report.json`.
 
 **User Verification:**
@@ -251,7 +248,7 @@ sequenceDiagram
   features, and 2D-only workflows while ThreeNative is scoped as 3D.
 - [x] Ensure diagnostics include severity, code, bundle path or source path,
   target profile when relevant, and a suggested portable alternative.
-- [x] Wire rejected fixtures into `verify:v10` and `check:quality:v10`.
+- [x] Wire rejected fixtures into `verify:v10` and `check:docs`.
 - [x] Document promotion criteria for features that are diagnostic-only rather
   than permanently non-portable.
 
@@ -287,6 +284,6 @@ sequenceDiagram
 - [x] Deferred and non-portable features have stable diagnostics or documented
   promotion criteria.
 - [x] `pnpm verify:v10` exists and writes an aggregate report.
-- [x] `pnpm check:quality:v10` prevents PRD/status/parity drift.
+- [x] `pnpm check:docs` prevents PRD/status/parity drift.
 - [x] V10 completion claims update `docs/STATUS.md` and
   `docs/bevy-feature-parity.md` in the same change.

@@ -7,8 +7,7 @@ import { checkDocsV10 } from "./check-docs-v10.mjs";
 const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 export const V10_REQUIRED_SCRIPTS = {
-  "check:docs:v10": "node scripts/check-docs-v10.mjs",
-  "check:quality:v10": "node scripts/check-quality-v10.mjs",
+  "check:docs": "tools/verify/dist/cli/check-docs.js",
   "verify:v10": "node scripts/verify-v10.mjs",
 };
 

@@ -59,9 +59,11 @@ lighting, atmosphere, post, geometry, dense-content, and combined-scene fixtures
 the current passing evidence is indexed under
 `docs/pr-evidence/v10-visual-calibration/`.
 Broader authoring-tool UX remains outside this V10 batch except for bounded
-visual panel evidence explicitly promoted in the status entries below. V10
-commands such as `pnpm verify:v10` and `pnpm check:quality:v10` are planned
-future gates, not current implemented release commands.
+visual panel evidence explicitly promoted in the status entries below. `pnpm
+check:docs` is the canonical docs and drift gate. Temporary V10 planning
+evidence may still run through `pnpm verify:v10`, but maintained release
+verification should move toward capability/release gates instead of new
+versioned command families.
 
 Distribution packaging is published and verified for the
 TypeScript packages: `@threenative/sdk`, `@threenative/ir`,
@@ -88,11 +90,11 @@ push: advanced renderer/material/physics features, production platform/audio/
 asset extension policy, packaging, cross-runtime visual calibration, and
 explicit non-portable diagnostics.
 Retained editor UI and visual inspector UX are intentionally outside this V10
-batch until a dedicated editor/UI planning pass is requested. V10-01 adds the
-implemented planning release gate: `pnpm check:docs:v10`,
-`pnpm check:quality:v10`, and `pnpm verify:v10`. These gates prove ownership,
-boundary diagnostics, and drift checks; they do not mark V10-02, V10-03, or
-V10-04 feature work complete.
+batch until a dedicated editor/UI planning pass is requested. V10-01 adds a
+temporary planning aggregate, `pnpm verify:v10`, while docs drift remains under
+the canonical `pnpm check:docs` gate. These checks prove ownership, boundary
+diagnostics, and report wiring; they do not mark V10-02, V10-03, or V10-04
+feature work complete.
 
 V9-01 animation and particles runtime parity is implemented with focused
 stateful animation, blending, and rendered particle evidence:

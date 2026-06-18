@@ -9,20 +9,17 @@ const requiredIndexPhrases = [
   ["V10-02-advanced-renderer-materials-and-physics.md", "V10 PRD index must link V10-02."],
   ["V10-03-cross-runtime-visual-calibration.md", "V10 PRD index must link V10-03."],
   ["V10-04-production-platform-audio-assets-and-release.md", "V10 PRD index must link V10-04."],
-  ["pnpm verify:v10", "V10 PRD index must document the aggregate verifier."],
-  ["pnpm check:quality:v10", "V10 PRD index must document the quality gate."],
+  ["pnpm verify:v10", "V10 PRD index must document the temporary aggregate verifier."],
 ];
 
 const requiredPrdPhrases = [
   ["scripts/check-docs-v10.mjs", "V10-01 PRD must name the docs ownership guard."],
   ["scripts/verify-v10.mjs", "V10-01 PRD must name the aggregate verifier."],
-  ["scripts/check-quality-v10.mjs", "V10-01 PRD must name the quality drift guard."],
   ["artifacts/v10/verification-report.json", "V10-01 PRD must name the aggregate report artifact."],
 ];
 
 const requiredStatusPhrases = [
-  ["pnpm check:docs:v10", "STATUS must document the V10 docs gate."],
-  ["pnpm check:quality:v10", "STATUS must document the V10 quality gate."],
+  ["pnpm check:docs", "STATUS must document the canonical docs gate."],
   ["pnpm verify:v10", "STATUS must document the V10 aggregate verifier."],
 ];
 
@@ -36,7 +33,7 @@ const requiredParityPhrases = [
 ];
 
 const ownerPattern = /\(.*V10-0[1-4].*\)/;
-const completionEvidencePattern = /(?:artifacts\/v10\/|pnpm verify:v10:|pnpm verify:v10\b|pnpm check:quality:v10\b)/;
+const completionEvidencePattern = /(?:artifacts\/v10\/|pnpm verify:v10:|pnpm verify:v10\b|pnpm check:docs\b)/;
 
 export async function checkDocsV10(root = repoRoot) {
   const diagnostics = [];

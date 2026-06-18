@@ -43,8 +43,7 @@ test("should pass V10 quality gate shape", async () => {
 async function makeRepo(options = {}) {
   const root = await mkdtemp(join(tmpdir(), "tn-check-v10-"));
   const scripts = {
-    "check:docs:v10": "node scripts/check-docs-v10.mjs",
-    "check:quality:v10": "node scripts/check-quality-v10.mjs",
+    "check:docs": "pnpm build:verify-tools && node tools/verify/dist/cli/check-docs.js",
     "verify:v10": "node scripts/verify-v10.mjs",
     ...options.scripts,
   };
@@ -75,16 +74,15 @@ function defaultIndex() {
     "V10-03-cross-runtime-visual-calibration.md",
     "V10-04-production-platform-audio-assets-and-release.md",
     "pnpm verify:v10",
-    "pnpm check:quality:v10",
   ].join("\n");
 }
 
 function defaultPrd() {
-  return ["scripts/check-docs-v10.mjs", "scripts/verify-v10.mjs", "scripts/check-quality-v10.mjs", "artifacts/v10/verification-report.json"].join("\n");
+  return ["scripts/check-docs-v10.mjs", "scripts/verify-v10.mjs", "artifacts/v10/verification-report.json"].join("\n");
 }
 
 function defaultStatus() {
-  return ["pnpm check:docs:v10", "pnpm check:quality:v10", "pnpm verify:v10"].join("\n");
+  return ["pnpm check:docs", "pnpm verify:v10"].join("\n");
 }
 
 function defaultParity() {

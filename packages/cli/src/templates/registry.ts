@@ -52,7 +52,7 @@ export function templateDeprecationMessage(legacyAlias: string, canonical: strin
 }
 
 export const templatesRootFromModule = (importMetaUrl: string): { packaged: string; source: string } => ({
-  packaged: fileURLToPath(new URL("../templates/", importMetaUrl)),
+  packaged: fileURLToPath(new URL("../template-files/", importMetaUrl)),
   source: fileURLToPath(new URL("../../../../templates/", importMetaUrl)),
 });
 

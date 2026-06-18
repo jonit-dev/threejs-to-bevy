@@ -29,10 +29,12 @@ export async function checkV9QualityGates(options = {}) {
   const verifyV9Script = scripts["verify:v9"] ?? "";
   const catalog = JSON.parse(await readFile(resolve(root, "packages/ir/fixtures/conformance/v9-fixture-catalog.json"), "utf8"));
 
-  if (!verifyV9Script.includes("verify-v9.mjs")) {
+  const verifyV9Registered = verifyV9Script.includes("verify-v9.mjs") || verifyV9Script.includes("legacy-script-alias.mjs verify:v9");
+
+  if (!verifyV9Registered) {
     diagnostics.push({
       code: "TN_DOCS_V9_VERIFIER_UNREGISTERED",
-      message: "Root package.json must register pnpm verify:v9 against scripts/verify-v9.mjs.",
+      message: "Root package.json must register pnpm verify:v9 as a direct gate or legacy compatibility alias.",
       path: "package.json",
       severity: "error",
     });
@@ -56,7 +58,7 @@ export async function checkV9QualityGates(options = {}) {
         severity: "error",
       });
     }
-    if (!verifyV9Script.includes("verify-v9.mjs") && scriptName !== "verify:v9:skeletal-animation") {
+    if (!verifyV9Registered && scriptName !== "verify:v9:skeletal-animation") {
       continue;
     }
   }
@@ -118,26 +120,26 @@ export async function checkV9QualityGates(options = {}) {
   const status = await readFile(resolve(root, "docs/STATUS.md"), "utf8");
   const parity = await readFile(resolve(root, "docs/bevy-feature-parity.md"), "utf8");
   const developerWorkflow = await readFile(resolve(root, "docs/developer-workflow.md"), "utf8");
-  if (!status.includes("pnpm verify:v9")) {
+  if (!status.includes("pnpm verify:release")) {
     diagnostics.push({
       code: "TN_DOCS_V9_RELEASE_COVERAGE_MISSING",
-      message: "docs/STATUS.md must document pnpm verify:v9.",
+      message: "docs/STATUS.md must document pnpm verify:release as the current release gate.",
       path: "docs/STATUS.md",
       severity: "error",
     });
   }
-  if (!parity.includes("pnpm verify:v9")) {
+  if (!parity.includes("pnpm verify:release")) {
     diagnostics.push({
       code: "TN_DOCS_V9_RELEASE_COVERAGE_MISSING",
-      message: "docs/bevy-feature-parity.md must reference pnpm verify:v9.",
+      message: "docs/bevy-feature-parity.md must reference pnpm verify:release.",
       path: "docs/bevy-feature-parity.md",
       severity: "error",
     });
   }
-  if (!developerWorkflow.includes("pnpm verify:v9")) {
+  if (!developerWorkflow.includes("pnpm verify:release")) {
     diagnostics.push({
       code: "TN_DOCS_V9_RELEASE_COVERAGE_MISSING",
-      message: "docs/developer-workflow.md must document pnpm verify:v9 command order.",
+      message: "docs/developer-workflow.md must document pnpm verify:release command order.",
       path: "docs/developer-workflow.md",
       severity: "error",
     });

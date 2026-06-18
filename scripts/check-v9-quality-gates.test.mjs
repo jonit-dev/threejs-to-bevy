@@ -56,7 +56,7 @@ test("should fail when a completed V9 PRD lacks sample or visual evidence", asyn
   }
 });
 
-test("should require CI or documented manual release coverage for verify:v9", async () => {
+test("should require CI or documented manual release coverage for verify:release", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-check-v9-"));
   try {
     await writeMinimalV9Repo(root);
@@ -85,9 +85,9 @@ export async function writeMinimalV9Repo(root, options = {}) {
   await mkdir(join(root, "docs/PRDs/v9"), { recursive: true });
   await mkdir(join(root, "packages/ir/fixtures/conformance/v9-animation-state/game.bundle"), { recursive: true });
   await writeFile(join(root, "package.json"), `${JSON.stringify({ scripts }, null, 2)}\n`);
-  await writeFile(join(root, "docs/STATUS.md"), "# status\n\nUse `pnpm verify:v9`.\n");
-  await writeFile(join(root, "docs/bevy-feature-parity.md"), "# parity\n\n`pnpm verify:v9`\n");
-  await writeFile(join(root, "docs/developer-workflow.md"), "# workflow\n\nRun focused gate, then `pnpm verify:v9`, then `pnpm verify:all`.\n");
+  await writeFile(join(root, "docs/STATUS.md"), "# status\n\nUse `pnpm verify:release`.\n");
+  await writeFile(join(root, "docs/bevy-feature-parity.md"), "# parity\n\n`pnpm verify:release`\n");
+  await writeFile(join(root, "docs/developer-workflow.md"), "# workflow\n\nRun focused gates, then `pnpm verify:release`, then `pnpm verify:all`.\n");
   for (const example of ["v9-skeletal-animation", "physics-character", "assets-gltf-scene-workflow", "rendering-lights"]) {
     await mkdir(join(root, "examples", example), { recursive: true });
     await writeFile(join(root, "examples", example, "package.json"), "{}\n");

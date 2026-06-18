@@ -296,7 +296,9 @@ Current contributor commands:
 
 ```bash
 pnpm check:names
+pnpm check:docs
 pnpm verify
+pnpm verify:release
 pnpm verify:conformance
 ```
 
@@ -378,7 +380,7 @@ then the aggregate quality gate:
 ```bash
 pnpm verify:v9:<area>
 pnpm check:quality:v9
-pnpm verify:v9
+pnpm verify:release
 ```
 
 Use `pnpm verify:all` when shared runtime contracts change outside the V9 slice.

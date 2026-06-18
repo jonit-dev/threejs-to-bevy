@@ -72,9 +72,10 @@ archived, or explicitly left alone with a reason.
 | Runtime Bevy code/tests/artifacts | `runtime-bevy/artifacts/v4`, Rust tests or report labels referencing old gates | Migrate active report labels/paths; archive static evidence artifacts or exclude generated artifacts from current-name checks. |
 | Runtime web/CLI visual helpers | comments and sample region helpers referencing `examples/v8-*` | Update with renamed example paths in the same phase as example migration. |
 | Artifact paths and reports | `artifacts/v9`, `artifacts/conformance/v7-*`, JSON `generatedBy` fields | New reports use canonical paths; old paths are readable compatibility inputs or archived generated output. |
+| Verification artifact layout | `artifacts/v10/native-ui-effects`, `artifacts/v9/rendering-lights`, one-off report names | Standardize maintained artifacts by capability and gate, for example `artifacts/verification/<capability>/<gate>/report.json`, with common metadata for capability, gate, runtime target, command, schema, source PRD, and generated files. Versioned directories remain legacy/archive inputs only. |
 | CI and automation references | any workflow, README, or agent instruction invoking `verify:v*` | Update to canonical scripts; keep explicit compatibility tests for old commands. |
 | AGENTS and skill references | repo guidance mentioning V1/V2/V3/V4 milestones | Update only current workflow guidance; preserve historical context where it describes past milestones. |
-| Active V10 planning and gates | `docs/PRDs/v10`, `verify:v10`, `check:quality:v10`, focused `verify:v10:*` scripts | Keep `docs/PRDs/v10` as a planning partition if useful, but migrate active scripts, generated reports, fixtures, examples, and maintained engine surfaces to capability/release names. Any retained `verify:v10`-style command must be a documented temporary alias to a canonical command. |
+| Active V10 planning and gates | `docs/PRDs/v10`, `verify:v10`, focused `verify:v10:*` scripts | Keep `docs/PRDs/v10` as a planning partition if useful, but migrate active scripts, generated reports, fixtures, examples, and maintained engine surfaces to capability/release names. Any retained `verify:v10`-style command must be a documented temporary alias to a canonical command; docs drift stays under `check:docs`, not a separate V10 quality command. |
 
 **Interpretation of Cleanup:**
 
@@ -130,6 +131,10 @@ archived, or explicitly left alone with a reason.
 - Replace version-numbered top-level scripts with stable names:
   `verify:release`, `verify:conformance`, `verify:visual`, `verify:examples`,
   `check:docs`, and focused capability checks.
+- Standardize verification artifacts around capability/gate identity instead of
+  milestone folders. Maintained gates should write a stable report path and
+  metadata envelope so docs, CI, and release tooling can find evidence without
+  knowing which planning batch introduced the feature.
 - Migrate hand-written repo scripts from `.mjs` to TypeScript under a typed tools
   folder, with one shared runner for command execution, JSON reports, diagnostics,
   and test discovery.
@@ -554,6 +559,9 @@ diagnostics, and identify canonical replacements.
   `docs/PRDs/v10` may remain as a PRD planning split, while package scripts,
   code modules, examples, fixtures, reports, and promoted engine surfaces use
   canonical capability/release names or documented temporary aliases.
+- [ ] Maintained verification artifacts use a standardized capability/gate
+  layout and metadata envelope; versioned artifact paths are retained only as
+  compatibility/archive inputs with documented migration policy.
 - [ ] `pnpm verify`, `pnpm verify:release`, `pnpm check:docs`, and
   `pnpm verify:conformance` pass.
 - [ ] Automated checkpoint reviews passed for every phase, with manual docs

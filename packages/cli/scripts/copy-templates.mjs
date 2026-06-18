@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 const packageRoot = fileURLToPath(new URL("../", import.meta.url));
 const repoRoot = resolve(packageRoot, "..", "..");
 const sourceTemplates = resolve(repoRoot, "templates");
-const outputTemplates = resolve(packageRoot, "dist", "templates");
+const outputTemplates = resolve(packageRoot, "dist", "template-files");
 const sourceBevyRuntime = resolve(repoRoot, "runtime-bevy");
 const outputBevyRuntime = resolve(packageRoot, "dist", "runtime-bevy");
 
