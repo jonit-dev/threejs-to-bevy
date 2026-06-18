@@ -1,0 +1,38 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "hero.lod",
+      "components": {
+        "Transform": { "position": [0, 1, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "MeshRenderer": { "mesh": "mesh.hero.high", "material": "mat.hero" }
+      }
+    },
+    {
+      "id": "terrain.chunk.0",
+      "components": {
+        "Transform": { "position": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "MeshRenderer": { "mesh": "mesh.terrain.chunk.0", "material": "mat.terrain" }
+      }
+    },
+    {
+      "id": "camera.main",
+      "components": {
+        "Transform": { "position": [0, 3, 8], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Camera": { "kind": "perspective", "fovY": 60, "near": 0.1, "far": 100 }
+      }
+    },
+    {
+      "id": "light.main",
+      "components": {
+        "Transform": { "position": [2, 4, 3], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "Light": { "kind": "directional", "color": "#ffffff", "intensity": 2 }
+      }
+    }
+  ],
+  "resources": {
+    "ActiveCamera": { "entity": "camera.main" }
+  },
+  "prefabs": []
+}

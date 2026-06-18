@@ -1,0 +1,11 @@
+{
+  "schema": "threenative.target-profile",
+  "version": "0.1.0",
+  "targets": ["web", "desktop"],
+  "budgets": {
+    "maxAssetBytes": 2000000,
+    "maxBundleBytes": 4000000,
+    "supportedModelFormats": ["glb", "gltf"],
+    "supportedTextureFormats": ["png"]
+  }
+}

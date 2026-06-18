@@ -38,6 +38,7 @@ pub mod picking;
 pub mod render_targets;
 pub mod render_transitions;
 pub mod rendering;
+pub mod rendering_residuals;
 pub mod scene_manager;
 pub mod systems_context;
 pub mod systems_effects;

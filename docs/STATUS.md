@@ -295,6 +295,19 @@ per-frame comparison metrics under `tools/verify/artifacts/native-instancing/`. 
 not a broad custom GPU instance-attribute API, and visual runtime LOD mesh
 swapping remains future work.
 
+Post-V10 rendering residuals now have a focused report-backed gate:
+`pnpm verify:rendering-residuals` validates the `rendering-residuals`
+conformance fixture and compares web/Bevy reports for runtime LOD selection,
+chunked terrain asset-group policy, optional streamed chunk timeout handling,
+bounded instancing policy, native specular texture proof, extended material
+preset proof, compressed environment texture diagnostics, and advanced renderer
+boundary diagnostics. The gate writes `web-report.json`, `native-report.json`,
+`diff.json`, `contact-sheet.png`, and `verification-report.json` under
+`tools/verify/artifacts/rendering-residuals/` and is part of release
+verification. Runtime vertex mutation, custom shaders, bindless resources, CSG,
+storage-buffer geometry, custom executable asset loaders, and arbitrary
+file/network streaming remain diagnostic-only boundaries.
+
 The V10 native-UI-effects pass promotes portable retained UI shadows and linear
 gradients beyond metadata preservation. Bevy now materializes authored shadow
 and gradient style entries as native rendered-effect components, exposes a

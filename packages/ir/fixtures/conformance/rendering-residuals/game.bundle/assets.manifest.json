@@ -1,0 +1,49 @@
+{
+  "schema": "threenative.assets",
+  "version": "0.1.0",
+  "groups": [
+    { "id": "terrain.visible", "required": ["mesh.terrain.chunk.0"], "optional": ["mesh.terrain.chunk.1"], "timeoutMs": 250, "failurePolicy": "warn" },
+    { "id": "lod.hero", "required": ["mesh.hero.high", "mesh.hero.low"], "timeoutMs": 100, "failurePolicy": "fail" }
+  ],
+  "assets": [
+    {
+      "id": "mesh.hero.high",
+      "kind": "mesh",
+      "format": "generated",
+      "primitive": "box",
+      "size": [2, 2, 2],
+      "usage": "static",
+      "budget": { "classification": "hero-prop", "vertexCount": 24, "limit": 256 }
+    },
+    {
+      "id": "mesh.hero.low",
+      "kind": "mesh",
+      "format": "generated",
+      "primitive": "box",
+      "size": [1.8, 1.8, 1.8],
+      "usage": "static",
+      "budget": { "classification": "standard-prop", "vertexCount": 8, "limit": 64 }
+    },
+    {
+      "id": "mesh.terrain.chunk.0",
+      "kind": "mesh",
+      "format": "generated",
+      "primitive": "plane",
+      "size": [8, 8],
+      "usage": "static",
+      "budget": { "classification": "standard-prop", "vertexCount": 32, "limit": 256 }
+    },
+    {
+      "id": "mesh.terrain.chunk.1",
+      "kind": "mesh",
+      "format": "generated",
+      "primitive": "plane",
+      "size": [8, 8],
+      "usage": "static",
+      "budget": { "classification": "standard-prop", "vertexCount": 32, "limit": 256 }
+    },
+    { "id": "texture.albedo", "kind": "texture", "format": "png", "path": "assets/albedo.png" },
+    { "id": "texture.specular", "kind": "texture", "format": "png", "path": "assets/specular.png" },
+    { "id": "texture.skybox", "kind": "texture", "format": "png", "path": "assets/skybox.png" }
+  ]
+}

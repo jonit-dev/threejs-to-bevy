@@ -60,6 +60,11 @@ export const V9_FOCUSED_GATES = [
     reportPath: "tools/verify/artifacts/production-hardening/verification-report.json",
     script: "verify:production-hardening",
   },
+  {
+    name: "verify rendering residuals",
+    reportPath: "tools/verify/artifacts/rendering-residuals/verification-report.json",
+    script: "verify:rendering-residuals",
+  },
 ];
 
 export const V9_RELEASE_ARTIFACTS = [

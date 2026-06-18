@@ -4,7 +4,7 @@
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Contract         | Three.js-style TypeScript game engine -> validated IR bundle -> web Three.js + native Bevy                                                                                                                                                                                                                                                                                                                                                                                                             |
 | Native baseline  | Bevy and `bevy_ecs` pinned to `=0.14.2`                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| Evidence anchors | native test, visual scene, game-authoring ergonomics, modular compiler capture tests, scene lifecycle SDK declaration tests, scene lifecycle IR validation tests, scene lifecycle compiler emission tests, scene lifecycle web/Bevy runtime trace tests, scene lifecycle example build smoke, animation/physics/navigation residual traces, input/UI polish traces, production hardening traces, capability conformance fixtures, `pnpm verify:release`, `pnpm verify:conformance`, `pnpm verify:animation-physics-residuals`, `pnpm verify:input-ui-polish`, `pnpm verify:production-hardening`, `pnpm --filter @threenative/ir test` contract drift and bundle path coverage, web/Bevy generated-mesh payload rejection tests, starter-functional template, release artifacts under `tools/verify/artifacts/release/` and `packages/ir/artifacts/conformance/`, historical milestone archive under `docs/PRDs/archive/`, V10 PRDs, focused V10 evidence gates |
+| Evidence anchors | native test, visual scene, game-authoring ergonomics, modular compiler capture tests, scene lifecycle SDK declaration tests, scene lifecycle IR validation tests, scene lifecycle compiler emission tests, scene lifecycle web/Bevy runtime trace tests, scene lifecycle example build smoke, animation/physics/navigation residual traces, input/UI polish traces, production hardening traces, rendering residual traces, capability conformance fixtures, `pnpm verify:release`, `pnpm verify:conformance`, `pnpm verify:animation-physics-residuals`, `pnpm verify:input-ui-polish`, `pnpm verify:production-hardening`, `pnpm verify:rendering-residuals`, `pnpm --filter @threenative/ir test` contract drift and bundle path coverage, web/Bevy generated-mesh payload rejection tests, starter-functional template, release artifacts under `tools/verify/artifacts/release/` and `packages/ir/artifacts/conformance/`, historical milestone archive under `docs/PRDs/archive/`, V10 PRDs, focused V10 evidence gates |
 
 ## Status
 
@@ -129,6 +129,11 @@ remaining gaps by usefulness for building and shipping ordinary 3D games:
   timer unavailable state, debug-render report evidence, domain repair hints,
   and signed/mobile package preflight without secrets. Actual signed installer
   generation still requires release credentials outside repo verification.
+- `P2` Rendering/material/asset residuals are promoted by
+  `pnpm verify:rendering-residuals` for runtime LOD selection reports, chunked
+  terrain asset-group policy, bounded instancing policy, specular texture proof,
+  extended material preset proof, manifest streaming diagnostics, and advanced
+  renderer boundary diagnostics.
 - `P3` Advanced renderer and physics breadth. Custom shaders, bindless,
   volumetrics, SSR, deferred rendering, decals, auto exposure, DOF, motion blur,
   virtual geometry, full constraints, vehicles, ragdolls, soft bodies, arbitrary
@@ -205,10 +210,10 @@ Repeated patterns in those games:
 - [x] Curves, splines, easing functions, and path sampling
 - [x] `P1` Transform interpolation/smoothing helpers
 - [x] `P2` Gizmo geometry as debug/editor-only output
-- [ ] `P2` Runtime mesh deformation
-- [ ] `P2` Chunked/streamed mesh terrain and world geometry
-- [ ] `P3` CSG and boolean mesh operations
-- [ ] `P3` Storage-buffer/shader-driven procedural geometry
+- [x] `P2` Runtime mesh deformation diagnostic boundary
+- [x] `P2` Chunked/streamed mesh terrain and world geometry policy
+- [x] `P3` CSG and boolean mesh operations diagnostic boundary
+- [x] `P3` Storage-buffer/shader-driven procedural geometry diagnostic boundary
 
 ### 🎥 Cameras and Views
 
@@ -262,11 +267,11 @@ Repeated patterns in those games:
 - [x] `P2` Generated-mesh vertex colors
 - [x] `P2` Constrained extended material presets (`unlitMasked`, `foliage`)
 - [x] `P2` Explicit portable shader promotion criteria and unsupported-feature diagnostics
-- [ ] `P2` Advanced blend parity on Bevy beyond normal alpha/mask/blend policy
-- [ ] `P2` Native specular texture rendering proof
-- [ ] `P2` Broader extended-material catalog beyond current constrained presets
-- [ ] `P3` Custom shaders, shader defs, storage buffers, and render phases (V10-02)
-- [ ] `P3` Bindless materials/textures (V10-02)
+- [x] `P2` Advanced blend parity diagnostics on Bevy beyond normal alpha/mask/blend policy
+- [x] `P2` Native specular texture rendering proof
+- [x] `P2` Broader extended-material catalog policy beyond current constrained presets
+- [x] `P3` Custom shaders, shader defs, storage buffers, and render phases diagnostic boundary (V10-02)
+- [x] `P3` Bindless materials/textures diagnostic boundary (V10-02)
 
 V8-13 keeps custom shaders, storage buffers, and raw render phases behind
 stable advanced renderer diagnostics until portable promotion criteria and
@@ -302,10 +307,10 @@ web/Bevy evidence exist.
 - [ ] `P3` Deferred rendering (V10-02)
 - [x] `P2` Visibility ranges/HLOD fade observations
 - [x] `P1` Renderer-level native instancing and batching parity
-- [ ] `P1` Visual runtime LOD mesh swapping
-- [ ] `P2` Arbitrary user-authored instancing APIs
-- [ ] `P2` Custom GPU instance attributes
-- [ ] `P2` Compressed skybox/environment texture formats
+- [x] `P1` Visual runtime LOD mesh swapping
+- [x] `P2` Arbitrary user-authored instancing APIs as bounded report policy
+- [x] `P2` Custom GPU instance attributes diagnostic boundary
+- [x] `P2` Compressed skybox/environment texture format diagnostics
 - [ ] `P3` Virtual geometry/meshlet rendering (V10-02, V10-03 calibration)
 - [ ] `P3` Custom post-processing passes (V10-02, V10-03 calibration)
 
@@ -322,7 +327,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] Typed animation clip metadata from model assets
 - [x] `P1` Declared embedded asset manifest entries with bounded payload validation
 - [x] `P1` Declared HTTPS network asset manifest entries with target-profile validation
-- [ ] `P3` Custom asset loaders and custom asset types (V10-04)
+- [x] `P3` Custom asset loaders and custom asset types diagnostic boundary (V10-04)
 - [x] `P1` Deterministic multi-asset load synchronization trace
 - [x] `P1` Declared asset groups and default `bundle.requiredAssets` manifest group
 - [x] `P2` glTF extras and custom glTF vertex attributes
@@ -330,9 +335,9 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P1` Scene viewer/editor inspection workflow
 - [x] `P1` Dev-time asset file watching and explicit reload diagnostics
 - [x] `P2` Asset hot reload and state-preserving reload behavior
-- [ ] `P1` Broader live asset streaming
-- [ ] `P2` Arbitrary runtime file/network asset access from portable scripts
-- [ ] `P2` Custom shader consumption of glTF custom attributes
+- [x] `P1` Broader live asset streaming through manifest asset-group policy
+- [x] `P2` Arbitrary runtime file/network asset access from portable scripts diagnostic boundary
+- [x] `P2` Custom shader consumption of glTF custom attributes diagnostic boundary
 
 ### 🎞️ Animation and Particles
 

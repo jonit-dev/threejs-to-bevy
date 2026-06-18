@@ -89,6 +89,28 @@
       ]
     },
     {
+      "canonicalId": "rendering-residuals",
+      "owner": "ir-contract",
+      "sourceExample": "rendering-residuals",
+      "regenerateCommand": "pnpm verify:rendering-residuals",
+      "canonicalArtifactGate": "rendering-residuals",
+      "ownerDocs": "docs/PRDs/other/post-v10-rendering-materials-geometry-residuals.md",
+      "aggregateGate": "verify:release",
+      "bundlePath": "packages/ir/fixtures/conformance/rendering-residuals/game.bundle",
+      "promotedCapabilities": [
+        "asset:manifest-streaming-policy",
+        "geometry:chunked-terrain-policy",
+        "geometry:runtime-lod-selection",
+        "instancing:bounded-policy",
+        "material:extended-preset-proof",
+        "material:specular-texture-proof",
+        "renderer:advanced-boundary-diagnostics"
+      ],
+      "reportArtifacts": [
+        "tools/verify/artifacts/rendering-residuals/verification-report.json"
+      ]
+    },
+    {
       "canonicalId": "animation-state",
       "owner": "ir-contract",
       "sourceExample": "animation-state",

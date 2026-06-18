@@ -106,3 +106,7 @@ export {
   traceProductionHardening,
   type IProductionHardeningReport,
 } from "./productionHardening.js";
+export {
+  traceRenderingResiduals,
+  type IRenderingResidualsReport,
+} from "./renderingResiduals.js";

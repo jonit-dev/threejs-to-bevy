@@ -1,0 +1,26 @@
+{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "materials": [
+    {
+      "id": "mat.hero",
+      "kind": "standard",
+      "color": "#d8e8ff",
+      "baseColorTexture": "texture.albedo",
+      "specularTexture": "texture.specular",
+      "specularIntensity": 0.8,
+      "roughness": 0.35,
+      "metalness": 0.1,
+      "alphaMode": "blend",
+      "blendMode": "normal"
+    },
+    {
+      "id": "mat.terrain",
+      "kind": "extended",
+      "color": "#7ba66a",
+      "extension": { "preset": "foliage", "doubleSided": true },
+      "alphaMode": "mask",
+      "alphaCutoff": 0.5
+    }
+  ]
+}
