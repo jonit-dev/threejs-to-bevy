@@ -1,0 +1,22 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "player",
+      "components": {
+        "Inventory": {
+          "items": "key"
+        }
+      }
+    }
+  ],
+  "resources": {
+    "Progress": {
+      "level": 3
+    },
+    "TransientEffects": {
+      "particles": 12
+    }
+  }
+}

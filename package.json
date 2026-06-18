@@ -69,7 +69,8 @@
     "verify:v10:ecs-tags-groups": "pnpm --filter @threenative/ir test -- --run conformance && pnpm --filter @threenative/runtime-web-three test -- --run conformance && cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime should_report_v10_ecs_tags",
     "verify:scene-lifecycle": "pnpm --filter @threenative/ir build && pnpm --filter @threenative/runtime-web-three build && node scripts/verify-scene-lifecycle.mjs",
     "verify:animation-physics-residuals": "pnpm --filter @threenative/ir build && pnpm --filter @threenative/runtime-web-three build && node scripts/verify-animation-physics-residuals.mjs",
-    "verify:input-ui-polish": "pnpm --filter @threenative/ir build && pnpm --filter @threenative/runtime-web-three build && node scripts/verify-input-ui-polish.mjs"
+    "verify:input-ui-polish": "pnpm --filter @threenative/ir build && pnpm --filter @threenative/runtime-web-three build && node scripts/verify-input-ui-polish.mjs",
+    "verify:persistence-reload": "pnpm --filter @threenative/ir build && pnpm --filter @threenative/runtime-web-three build && node scripts/verify-persistence-reload.mjs"
   },
   "devDependencies": {
     "react": "^19.2.7",

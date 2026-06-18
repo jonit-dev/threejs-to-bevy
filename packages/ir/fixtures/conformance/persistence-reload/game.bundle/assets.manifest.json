@@ -1,0 +1,12 @@
+{
+  "schema": "threenative.assets",
+  "version": "0.1.0",
+  "assets": [
+    {
+      "format": "png",
+      "id": "texture.hud",
+      "kind": "texture",
+      "path": "assets/hud.png"
+    }
+  ]
+}

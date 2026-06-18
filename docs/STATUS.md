@@ -1371,6 +1371,17 @@ This proves local-only save/settings contracts and autosave checkpoint metadata;
 durable platform storage backends and cloud/account-bound saves remain later
 work.
 
+Post-V10 persistence/reload now promotes the durable native slice through
+`pnpm verify:persistence-reload`: the `persistence-reload` conformance fixture
+emits matching web and Bevy reports for declared resource/component save
+records, native JSON storage policy, settings persistence, autosave checkpoint
+restore, forward-incompatible migration diagnostics, and state-preserving reload
+classification. The gate writes `web-report.json`, `native-report.json`,
+`diff.json`, `contact-sheet.png`, and `verification-report.json` under
+`tools/verify/artifacts/persistence-reload/` and is part of release
+verification. Cloud/account-bound save storage and arbitrary portable
+filesystem/worker/timer/platform APIs remain diagnostic-only boundaries.
+
 V9-06 diagnostics/debug draw now has a Phase 3 evidence slice:
 `packages/sdk/src/debug.ts` captures lines, rays, bounds, spheres, boxes, labels,
 transform axes, camera frustums, light volumes, UI node rectangles, FPS overlay

@@ -46,6 +46,26 @@
       ]
     },
     {
+      "canonicalId": "persistence-reload",
+      "owner": "ir-contract",
+      "sourceExample": "persistence-reload",
+      "regenerateCommand": "pnpm verify:persistence-reload",
+      "canonicalArtifactGate": "persistence-reload",
+      "ownerDocs": "docs/PRDs/other/post-v10-persistence-hot-reload.md",
+      "aggregateGate": "verify:release",
+      "bundlePath": "packages/ir/fixtures/conformance/persistence-reload/game.bundle",
+      "promotedCapabilities": [
+        "persistence:autosave",
+        "persistence:durable-native-storage",
+        "persistence:local-settings",
+        "persistence:migration-diagnostics",
+        "persistence:state-preserving-reload"
+      ],
+      "reportArtifacts": [
+        "tools/verify/artifacts/persistence-reload/verification-report.json"
+      ]
+    },
+    {
       "canonicalId": "animation-state",
       "owner": "ir-contract",
       "sourceExample": "animation-state",

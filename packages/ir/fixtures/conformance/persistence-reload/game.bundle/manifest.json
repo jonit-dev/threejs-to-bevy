@@ -1,0 +1,24 @@
+{
+  "entry": {
+    "localData": "local-data.ir.json",
+    "world": "world.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "localData": "local-data.ir.json",
+    "materials": "materials.ir.json",
+    "targetProfile": "target.profile.json"
+  },
+  "name": "persistence-reload",
+  "requiredCapabilities": {
+    "persistence": [
+      "autosave",
+      "durable-native-storage",
+      "local-settings",
+      "migration-diagnostics",
+      "state-preserving-reload"
+    ]
+  },
+  "schema": "threenative.bundle",
+  "version": "0.1.0"
+}

@@ -30,6 +30,7 @@ pub mod overlay;
 pub mod overlay_host;
 pub mod path_sampling;
 pub mod persistence;
+pub mod persistence_reload;
 pub mod physics;
 pub mod physics_sensors;
 pub mod picking;

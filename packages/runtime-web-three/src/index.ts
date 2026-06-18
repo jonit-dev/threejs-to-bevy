@@ -92,3 +92,13 @@ export {
   type IInputUiPolishTouchEvent,
   type IInputUiPolishVirtualKeyboard,
 } from "./inputUiPolish.js";
+export {
+  tracePersistenceReload,
+  type IPersistenceAutosaveObservation,
+  type IPersistenceReloadBoundary,
+  type IPersistenceReloadDiagnostic,
+  type IPersistenceReloadPolicyObservation,
+  type IPersistenceReloadReport,
+  type IPersistenceRestoreObservation,
+  type IPersistenceStorageObservation,
+} from "./persistenceReload.js";

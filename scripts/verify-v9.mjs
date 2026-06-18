@@ -50,6 +50,11 @@ export const V9_FOCUSED_GATES = [
     reportPath: "tools/verify/artifacts/input-ui-polish/verification-report.json",
     script: "verify:input-ui-polish",
   },
+  {
+    name: "verify persistence reload",
+    reportPath: "tools/verify/artifacts/persistence-reload/verification-report.json",
+    script: "verify:persistence-reload",
+  },
 ];
 
 export const V9_RELEASE_ARTIFACTS = [

@@ -99,14 +99,13 @@ execution order while keeping all checklist rows unchecked until evidence lands:
 This pass treats the Bevy runtime crate as the source of truth and ranks
 remaining gaps by usefulness for building and shipping ordinary 3D games:
 
-- `P0` Durable native save/settings storage. Bevy currently has local-data IR,
-  migration diagnostics, and controls override file helpers, but not a general
-  runtime save backend that persists declared resources/components through
-  autosave/checkpoint hooks.
-- `P0` Live state-preserving hot reload. The Bevy side exposes asset reload
-  diagnostics and restart/state-policy reports, but network reload is explicitly
-  unsupported and live bundle/asset replacement with state retention is not a
-  runtime capability yet.
+- `P0` Durable native save/settings storage is promoted by
+  `pnpm verify:persistence-reload`, which proves declared resource/component
+  save records, settings, autosave restore, and migration diagnostics across web
+  and Bevy.
+- `P0` State-preserving reload is promoted by `pnpm verify:persistence-reload`
+  for bundle-local asset replacement, retained state policy, reset state
+  classification, and unsupported cloud/filesystem boundary diagnostics.
 - `P1` Runtime gameplay lifecycle parity. ECS/state/plugin/task features are
   largely fixed-trace or declaration-backed; dynamic state transitions,
   command-time/removal hooks, event windowing, system-local state, stoppable
@@ -458,8 +457,8 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P1` Local settings/key-value persistence for controls, audio, video, and accessibility options
 - [x] `P2` Save migration/version metadata and diagnostics
 - [x] `P2` Checkpoint/autosave lifecycle hooks
-- [ ] `P0` Durable Bevy save/settings backend for declared resources/components
-- [ ] `P1` Runtime autosave/checkpoint execution and restore flow
+- [x] `P0` Durable Bevy save/settings backend for declared resources/components
+- [x] `P1` Runtime autosave/checkpoint execution and restore flow
 - [ ] `P3` Cloud save and account-bound storage integration (V10-04 boundary)
 
 ### 🔊 Audio
@@ -511,9 +510,9 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P1` Scene hierarchy inspector and property editing
 - [x] `P2` Gizmo overlays for transforms, lights, bounds, cameras, and UI nodes
 - [x] `P1` Gamepad, scene viewer, and asset preview tools
-- [ ] `P2` Hot reload with state policy
+- [x] `P2` Hot reload with state policy
 - [x] `P1` Debug draw APIs for gameplay systems
-- [ ] `P1` Live runtime scene mutation
+- [x] `P1` Live runtime scene mutation
 - [ ] `P2` Full native desktop visual editor shell
 - [ ] `P2` Connected-device gamepad inspection
 
