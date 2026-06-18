@@ -4,9 +4,22 @@ This index separates current cleanup work from historical milestone batches.
 
 ## Current Initiatives
 
-- [Versioned Debt Cleanup](cleanup-versioned-debt.md): capability naming, typed
+- [Versioned Debt Cleanup](archive/cleanup-versioned-debt.md): capability naming, typed
   verification tooling, template registry, fixture catalog, and docs front door
   migration.
+- [IR Contract Drift Hardening](other/ir-contract-drift-hardening.md): contract
+  source-of-truth policy, schema/type/Rust drift gates, validating runtime load
+  path, and shared validation cleanup.
+- [Example-Local Artifacts, Fixtures, and Docs Structure](other/artifact-fixture-layout-reorg.md):
+  canonical artifact roots, example-local verification evidence, aggregate
+  reports, shared IR fixture ownership, contextual docs grouping, and layout
+  drift checks.
+- [AI-Consumable Distribution Contract](other/ai-consumable-distribution-contract.md):
+  published declarations, schemas, capabilities, diagnostics, examples, and AI
+  docs that make installed packages understandable without repository source.
+- [Scene Lifecycle and Game Flow Contract](other/scene-lifecycle-and-flow-contract.md):
+  scene modules, lifecycle phases, transitions, loading, overlays, persistent
+  state, and cross-runtime scene manager parity.
 
 ## Historical Milestone Archive
 
