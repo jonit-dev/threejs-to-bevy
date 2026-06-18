@@ -114,6 +114,7 @@ export {
   defineComponent,
   defineEvent,
   defineResource,
+  defineTag,
   type EcsFactory,
   type IEcsDeclaration,
   type IEcsSchema,
@@ -296,6 +297,7 @@ export {
 } from "./prefab.js";
 export { OrthographicCamera, PerspectiveCamera } from "./scene/Camera.js";
 export { AmbientLight, DirectionalLight, PointLight, SpotLight } from "./scene/Light.js";
+export { Group, type IGroupOptions } from "./scene/Group.js";
 export { Mesh } from "./scene/Mesh.js";
 export { Object3D } from "./scene/Object3D.js";
 export { Scene } from "./scene/Scene.js";

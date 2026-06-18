@@ -74,7 +74,10 @@ export default function createScene() {
 
 ### ECS-First API
 
-Use this style for gameplay entities, reusable components, and systems.
+Use this style for gameplay entities, reusable components, and systems. Use
+`defineComponent(name, fields)` for dataful membership, and `defineTag(name)`
+for zero-field marker membership that should be queried through the normal
+component query path.
 
 ```ts
 import {
@@ -376,6 +379,9 @@ Rules:
 - `Object3D.add(child)` creates one parent-child relationship. Adding a child to
   a new parent removes the previous parent, matching the familiar Three.js
   authoring model.
+- `Group` is a non-rendering `Object3D` container for transform hierarchy and
+  editor organization. Use ECS tags/components, not scene groups, for gameplay
+  membership queries.
 - `name` is a debug label, not a stable reference. Use explicit IDs for stable
   references.
 - `userData` may be supported only when it is plain JSON-compatible data and

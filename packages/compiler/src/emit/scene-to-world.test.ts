@@ -10,6 +10,7 @@ import {
   CustomMeshGeometry,
   DirectionalLight,
   ExtrudedRectangleGeometry,
+  Group,
   Mesh,
   MeshStandardMaterial,
   MeshBuilder,
@@ -62,6 +63,30 @@ test("should preserve parent child hierarchy", () => {
   const childEntity = result.world.entities.find((entity) => entity.id === "child");
 
   assert.deepEqual(childEntity?.components.Hierarchy, { parent: "parent" });
+});
+
+test("should emit group as scene container without renderer camera or light", () => {
+  const scene = new Scene({ id: "scene" });
+  const room = new Group({ id: "room.entry", name: "Entry Room" });
+  const spawn = new Object3D({ id: "spawn.enemy" });
+  room.position.set(1, 2, 3);
+  room.add(spawn);
+  scene.add(room);
+
+  const result = sceneToWorld(scene);
+  const groupEntity = result.world.entities.find((entity) => entity.id === "room.entry");
+  const childEntity = result.world.entities.find((entity) => entity.id === "spawn.enemy");
+
+  assert.deepEqual(groupEntity?.components.SceneContainer, { kind: "group", name: "Entry Room" });
+  assert.deepEqual(groupEntity?.components.Transform, {
+    position: [1, 2, 3],
+    rotation: [0, 0, 0, 1],
+    scale: [1, 1, 1],
+  });
+  assert.equal(groupEntity?.components.MeshRenderer, undefined);
+  assert.equal(groupEntity?.components.Camera, undefined);
+  assert.equal(groupEntity?.components.Light, undefined);
+  assert.deepEqual(childEntity?.components.Hierarchy, { parent: "room.entry" });
 });
 
 test("should emit deterministic size tuples for expanded primitive catalog", () => {

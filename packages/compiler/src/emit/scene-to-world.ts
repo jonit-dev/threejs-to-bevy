@@ -12,6 +12,7 @@ interface IObjectLike {
   follow?: { offset?: readonly number[]; smoothing?: number; target: string };
   id?: string;
   layers?: readonly string[];
+  name?: string;
   material?: {
     alphaCutoff?: number;
     alphaMode?: string;
@@ -167,6 +168,13 @@ function visitChildren(
 
     if (parentId !== undefined) {
       components.Hierarchy = { parent: parentId };
+    }
+    if (child.constructor.name === "Group") {
+      const name = child.name ?? "";
+      components.SceneContainer = {
+        kind: "group",
+        ...(name.trim() === "" ? {} : { name }),
+      };
     }
     emitPhysics(child.physics, components);
     emitAssetRefs(child.assetRefs, output.assets);

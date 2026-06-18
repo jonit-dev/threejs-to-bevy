@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { SdkError } from "../errors.js";
+import { Group } from "./Group.js";
 import { Object3D } from "./Object3D.js";
 
 test("should reparent child when added to new parent", () => {
@@ -30,4 +31,19 @@ test("should reject hierarchy cycles", () => {
     },
     (error: unknown) => error instanceof SdkError && error.code === "TN_SDK_HIERARCHY_CYCLE",
   );
+});
+
+test("group should inherit object hierarchy behavior", () => {
+  const root = new Group({ id: "room.entry" });
+  const child = new Object3D({ id: "spawn.enemy" });
+  const visited: string[] = [];
+
+  root.add(child);
+  root.traverse((object) => visited.push(object.id ?? ""));
+  root.remove(child);
+
+  assert.equal(root.name, "room.entry");
+  assert.equal(child.parent, undefined);
+  assert.deepEqual(root.children, []);
+  assert.deepEqual(visited, ["room.entry", "spawn.enemy"]);
 });

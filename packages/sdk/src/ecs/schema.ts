@@ -41,6 +41,10 @@ export function defineComponent(name: string, fields: SchemaFields = {}): EcsFac
   return defineSchema("component", name, fields);
 }
 
+export function defineTag(name: string): EcsFactory {
+  return defineComponent(name);
+}
+
 export function defineResource(name: string, fields: SchemaFields = {}): EcsFactory {
   return defineSchema("resource", name, fields);
 }

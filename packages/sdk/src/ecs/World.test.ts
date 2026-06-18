@@ -5,7 +5,7 @@ import { SdkError } from "../errors.js";
 import { World } from "./World.js";
 import { defineQuery } from "./query.js";
 import { defineSystem, startup, update } from "./system.js";
-import { defineComponent, defineEvent, defineResource } from "./schema.js";
+import { defineComponent, defineEvent, defineResource, defineTag } from "./schema.js";
 
 test("should declare ecs entity components and resources", () => {
   const Player = defineComponent("Player");
@@ -90,6 +90,30 @@ test("should reject duplicate ecs component schema names", () => {
       new World().spawn("player", FirstHealth()).spawn("enemy", SecondHealth({ value: 50 }));
     },
     (error: unknown) => error instanceof SdkError && error.code === "TN_SDK_ECS_COMPONENT_SCHEMA_DUPLICATE",
+  );
+});
+
+test("should declare tag components as zero-field component factories", () => {
+  const Enemy = defineTag("Enemy");
+  const query = defineQuery({ with: [Enemy] });
+  const world = new World().spawn("enemy.1", Enemy());
+  const snapshot = world.toJSON();
+
+  assert.equal(Enemy.kind, "component");
+  assert.equal(Enemy.name, "Enemy");
+  assert.deepEqual(Enemy.fields, {});
+  assert.deepEqual(Enemy(), { data: {}, schema: { fields: {}, kind: "component", name: "Enemy" } });
+  assert.deepEqual(query.with, ["Enemy"]);
+  assert.deepEqual(snapshot.componentSchemas.Enemy?.fields, {});
+  assert.deepEqual(snapshot.entities[0]?.components.Enemy, {});
+});
+
+test("should reject empty tag schema names", () => {
+  assert.throws(
+    () => {
+      defineTag(" ");
+    },
+    (error: unknown) => error instanceof SdkError && error.code === "TN_SDK_ECS_SCHEMA_NAME_EMPTY",
   );
 });
 
