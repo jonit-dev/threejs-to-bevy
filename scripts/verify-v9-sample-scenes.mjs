@@ -2,6 +2,8 @@ import { access, mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import { resolveArtifactTargets } from "./artifact-paths.mjs";
+
 import { runCommand } from "./verify-conformance.mjs";
 import { summarize } from "./verify-v1.mjs";
 import { V9_SAMPLE_SCENES } from "./check-v9-quality-gates.mjs";
@@ -19,7 +21,9 @@ export const V9_SAMPLE_MATRIX = V9_SAMPLE_SCENES.map((sample) => ({
 export async function verifyV9SampleScenes(options = {}) {
   const root = options.repoRoot ?? repoRoot;
   const run = options.run ?? runCommand;
-  const artifactDir = options.artifactDir ?? resolve(root, "tools/verify/artifacts/sample-scenes");
+  const targets = resolveArtifactTargets({ gate: "sample-scenes", owner: { kind: "aggregate", name: "sample-scenes" }, root });
+
+  const artifactDir = options.artifactDir ?? targets.absoluteDir;
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
   const steps = [];
   const diagnostics = [];

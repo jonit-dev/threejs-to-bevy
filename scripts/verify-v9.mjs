@@ -2,6 +2,8 @@ import { access, mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { resolveArtifactTargets } from "./artifact-paths.mjs";
+
 import { runCommand } from "./verify-conformance.mjs";
 import { summarize } from "./verify-v1.mjs";
 
@@ -50,7 +52,11 @@ export const V9_RELEASE_ARTIFACTS = [
 export async function verifyV9(options = {}) {
   const root = options.repoRoot ?? repoRoot;
   const run = options.run ?? runCommand;
-  const artifactDir = options.artifactDir ?? resolve(root, "tools/verify/artifacts/release");
+  const targets = resolveArtifactTargets({ gate: "release", owner: { kind: "aggregate", name: "release" }, root });
+  const sampleScenesTargets = resolveArtifactTargets({ gate: "sample-scenes", owner: { kind: "aggregate", name: "sample-scenes" }, root });
+  const visualMatrixTargets = resolveArtifactTargets({ gate: "visual-matrix", owner: { kind: "aggregate", name: "visual-matrix" }, root });
+
+  const artifactDir = options.artifactDir ?? targets.absoluteDir;
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
   const startedAt = new Date();
   const startedAtMs = Date.now();
@@ -60,8 +66,8 @@ export async function verifyV9(options = {}) {
   const artifacts = {
     conformanceReportPath: resolve(root, "packages/ir/artifacts/conformance/verification-report.json"),
     reportPath,
-    sampleScenesReportPath: resolve(root, "tools/verify/artifacts/sample-scenes/verification-report.json"),
-    visualMatrixReportPath: resolve(root, "tools/verify/artifacts/visual-matrix/verification-report.json"),
+    sampleScenesReportPath: sampleScenesTargets.reportPath,
+    visualMatrixReportPath: visualMatrixTargets.reportPath,
   };
   const promoted = [];
   const deferred = [];

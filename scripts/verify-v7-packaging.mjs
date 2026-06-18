@@ -2,6 +2,8 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { resolveArtifactTargets } from "./artifact-paths.mjs";
+
 import { runCommand } from "./verify-conformance.mjs";
 import { summarize } from "./verify-v1.mjs";
 
@@ -12,7 +14,9 @@ export async function verifyV7Packaging(options = {}) {
   const run = options.run ?? runCommand;
   const startedAt = new Date();
   const startedAtMs = Date.now();
-  const artifactDir = options.artifactDir ?? resolve(root, "tools/verify/artifacts/milestones/v7/packaging");
+  const targets = resolveArtifactTargets({ gate: "milestones/v7/packaging", owner: { kind: "aggregate", name: "milestones/v7/packaging" }, root });
+
+  const artifactDir = options.artifactDir ?? targets.absoluteDir;
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
   const fixtureBundlePath =
     options.bundlePath ?? resolve(root, "packages/ir/fixtures/conformance/scripting-lifecycle/game.bundle");

@@ -2,6 +2,8 @@ import { access, mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import { resolveArtifactTargets } from "./artifact-paths.mjs";
+
 const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 export const V9_VISUAL_SCENES = [
@@ -54,7 +56,9 @@ export async function resolveSceneBundle(root, scene) {
 
 export async function verifyV9VisualMatrixGate(options = {}) {
   const root = options.repoRoot ?? repoRoot;
-  const artifactDir = options.artifactDir ?? resolve(root, "tools/verify/artifacts/visual-matrix");
+  const targets = resolveArtifactTargets({ gate: "visual-matrix", owner: { kind: "aggregate", name: "visual-matrix" }, root });
+
+  const artifactDir = options.artifactDir ?? targets.absoluteDir;
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
   const { verifyV9VisualMatrix } = await import(pathToFileURL(resolve(root, "packages/cli/dist/verify/v9VisualMatrix.js")).href);
   const scenes = [];

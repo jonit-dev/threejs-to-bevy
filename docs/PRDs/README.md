@@ -14,6 +14,9 @@ This index separates current cleanup work from historical milestone batches.
   canonical artifact roots, example-local verification evidence, aggregate
   reports, shared IR fixture ownership, contextual docs grouping, and layout
   drift checks.
+- [Verification Gates and Package Scripts Reorg](other/verification-gates-and-package-scripts-reorg.md):
+  typed verify-tool gate ownership, wrapper-only legacy scripts, root
+  `package.json` cleanup, recursive test ownership, and compatibility aliases.
 - [AI-Consumable Distribution Contract](other/ai-consumable-distribution-contract.md):
   published declarations, schemas, capabilities, diagnostics, examples, and AI
   docs that make installed packages understandable without repository source.

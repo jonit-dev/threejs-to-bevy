@@ -2,12 +2,16 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { resolveArtifactTargets } from "./artifact-paths.mjs";
+
 const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const requiredArtifacts = ["web-local-data.json", "native-local-data.json", "local-data-diff.json"];
 
 export async function verifyV9LocalDataSupport(options = {}) {
   const root = options.repoRoot ?? repoRoot;
-  const artifactDir = options.artifactDir ?? resolve(root, "tools/verify/artifacts/local-data-support");
+  const targets = resolveArtifactTargets({ gate: "local-data-support", owner: { kind: "aggregate", name: "local-data-support" }, root });
+
+  const artifactDir = options.artifactDir ?? targets.absoluteDir;
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
   if (options.writeArtifacts !== false) {
     await writeLocalDataArtifacts(artifactDir);

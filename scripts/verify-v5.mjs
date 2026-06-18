@@ -2,6 +2,8 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import { resolveArtifactTargets } from "./artifact-paths.mjs";
+
 import { runCommand } from "./verify-conformance.mjs";
 import { summarize } from "./verify-v1.mjs";
 
@@ -12,7 +14,9 @@ export async function verifyV5(options = {}) {
   const run = options.run ?? runCommand;
   const startedAt = new Date();
   const startedAtMs = Date.now();
-  const artifactDir = options.artifactDir ?? resolve(root, "tools/verify/artifacts/milestones/v5");
+  const targets = resolveArtifactTargets({ gate: "milestones/v5", owner: { kind: "aggregate", name: "milestones/v5" }, root });
+
+  const artifactDir = options.artifactDir ?? targets.absoluteDir;
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
   const projectPath = resolve(root, "examples/v5-functional");
   const bundlePath = resolve(projectPath, "dist/v5-functional.bundle");

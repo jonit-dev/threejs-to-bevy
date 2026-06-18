@@ -202,13 +202,13 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Document canonical paths:
+- [x] Document canonical paths:
   `examples/<name>/artifacts/<gate>/`, `examples/<name>/dist/*`,
   `tools/verify/artifacts/<gate>/`, `packages/ir/fixtures/*`, and
   `runtime-bevy/artifacts/<gate>/`.
-- [ ] Define what is checked in versus generated and ignored.
-- [ ] Document that fixtures are stable inputs and artifacts are outputs.
-- [ ] Document compatibility policy for old `artifacts/v*` paths.
+- [x] Define what is checked in versus generated and ignored.
+- [x] Document that fixtures are stable inputs and artifacts are outputs.
+- [x] Document compatibility policy for old `artifacts/v*` paths.
 
 **Tests Required:**
 
@@ -271,12 +271,12 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add `resolveArtifactTargets({ root, gate, owner })`.
-- [ ] Support owner kinds: `example`, `aggregate`, `runtime`, and `package`.
-- [ ] Return absolute paths for writers and repo-relative paths for reports.
-- [ ] Add report metadata fields: `artifactOwner`, `canonicalArtifactDir`,
+- [x] Add `resolveArtifactTargets({ root, gate, owner })`.
+- [x] Support owner kinds: `example`, `aggregate`, `runtime`, and `package`.
+- [x] Return absolute paths for writers and repo-relative paths for reports.
+- [x] Add report metadata fields: `artifactOwner`, `canonicalArtifactDir`,
   `legacyArtifactDirs`, and `linkedArtifacts`.
-- [ ] Update typed release/conformance tools first because they are current
+- [x] Update typed release/conformance tools first because they are current
   aggregate entry points.
 
 **Tests Required:**
@@ -308,15 +308,15 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Migrate one representative gate first and prove old report readers still
+- [x] Migrate one representative gate first and prove old report readers still
   work.
-- [ ] For each migrated script, replace hardcoded root example evidence paths
+- [x] For each migrated script, replace hardcoded root example evidence paths
   with the resolver.
-- [ ] Keep root aggregate report files for gates that summarize multiple
+- [x] Keep root aggregate report files for gates that summarize multiple
   examples.
-- [ ] Add compatibility reads for existing root evidence during one migration
-  window.
-- [ ] Update generated report JSON to list both canonical and legacy paths when
+- [x] Remove old root evidence instead of retaining compatibility reads; old
+  root evidence is regenerated from the owning gate when needed.
+- [x] Update generated report JSON to list both canonical and legacy paths when
   both exist.
 
 **Tests Required:**
@@ -349,12 +349,12 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add optional fixture metadata fields such as `owner`, `sourceExample`,
+- [x] Add optional fixture metadata fields such as `owner`, `sourceExample`,
   `regenerateCommand`, and `canonicalArtifactGate`.
-- [ ] Keep fixture paths stable under `packages/ir/fixtures`.
-- [ ] Update conformance reports to identify fixture owners without relocating
+- [x] Keep fixture paths stable under `packages/ir/fixtures`.
+- [x] Update conformance reports to identify fixture owners without relocating
   fixture bundles.
-- [ ] Add diagnostics for fixtures that claim an example source but reference a
+- [x] Add diagnostics for fixtures that claim an example source but reference a
   missing example.
 
 **Tests Required:**
@@ -383,14 +383,14 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add no more than 5-8 lines to root `AGENTS.md` covering canonical roots:
+- [x] Add no more than 5-8 lines to root `AGENTS.md` covering canonical roots:
   root aggregate artifacts, example-local artifacts, shared IR fixtures, and
   contextual docs groups.
-- [ ] Keep nested `AGENTS.md` updates local: examples mention
+- [x] Keep nested `AGENTS.md` updates local: examples mention
   `examples/<name>/artifacts/`; runtime-bevy mentions native-only evidence;
   packages mention fixtures only if package-local work needs it.
-- [ ] Do not paste PRD rationale into AGENTS.md files.
-- [ ] Prefer links to the PRD or developer workflow doc over duplicated policy.
+- [x] Do not paste PRD rationale into AGENTS.md files.
+- [x] Prefer links to the PRD or developer workflow doc over duplicated policy.
 
 **Tests Required:**
 
@@ -418,18 +418,19 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Reject new root `artifacts/<capability>` writes for gates that declare a
+- [x] Reject new root `artifacts/<capability>` writes for gates that declare a
   single example owner.
-- [ ] Allow root `tools/verify/artifacts/release`, `packages/ir/artifacts/conformance`, and explicitly
+- [x] Allow root `tools/verify/artifacts/release`, `packages/ir/artifacts/conformance`, and explicitly
   archived historical evidence.
-- [ ] Reject checked-in `tmp/**/artifacts/**`.
-- [ ] Reject template generated artifacts unless explicitly classified as
+- [x] Reject checked-in `tmp/**/artifacts/**`.
+- [x] Reject template generated artifacts unless explicitly classified as
   template fixtures.
-- [ ] Reject new flat root docs pages unless they are approved front-door or
+- [x] Reject new flat root docs pages unless they are approved front-door or
   compatibility pages.
-- [ ] Reject AGENTS.md changes that duplicate long policy blocks instead of
+- [x] Reject AGENTS.md changes that duplicate long policy blocks instead of
   linking to canonical docs.
-- [ ] Add a migration allowlist with removal notes for historical root evidence.
+- [x] Do not add a migration allowlist for historical root evidence; active root
+  evidence was removed and is regenerated from owning gates.
 
 **Tests Required:**
 

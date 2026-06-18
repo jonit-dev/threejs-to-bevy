@@ -4,13 +4,17 @@ import { resolve } from "node:path";
 import { promisify } from "node:util";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import { resolveArtifactTargets } from "./artifact-paths.mjs";
+
 const execFileAsync = promisify(execFile);
 const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 export async function verifyV8AnimationTransformTrace(options = {}) {
   const root = options.repoRoot ?? repoRoot;
   const bundlePath = options.bundlePath ?? resolve(root, "packages/ir/fixtures/conformance/v8-transform-animation/game.bundle");
-  const artifactDir = options.artifactDir ?? resolve(root, "tools/verify/artifacts/animation-transform");
+  const targets = resolveArtifactTargets({ gate: "animation-transform", owner: { kind: "aggregate", name: "animation-transform" }, root });
+
+  const artifactDir = options.artifactDir ?? targets.absoluteDir;
   const webTracePath = options.webTracePath ?? resolve(artifactDir, "web-transform-animation.json");
   const nativeTracePath = options.nativeTracePath ?? resolve(artifactDir, "native-transform-animation.json");
   const diffPath = options.diffPath ?? resolve(artifactDir, "transform-animation-diff.json");

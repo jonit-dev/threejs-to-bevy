@@ -3,6 +3,8 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { resolveArtifactTargets } from "./artifact-paths.mjs";
+
 import { verifyV9AudioSupport } from "./verify-v9-audio-support.mjs";
 import { verifyV9DiagnosticsSupport } from "./verify-v9-diagnostics-support.mjs";
 import { verifyV9EditorSupport } from "./verify-v9-editor-support.mjs";
@@ -13,7 +15,9 @@ const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 export async function verifyV9Support(options = {}) {
   const root = options.repoRoot ?? repoRoot;
-  const artifactDir = options.artifactDir ?? resolve(root, "tools/verify/artifacts/support");
+  const targets = resolveArtifactTargets({ gate: "support", owner: { kind: "aggregate", name: "support" }, root });
+
+  const artifactDir = options.artifactDir ?? targets.absoluteDir;
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
   const steps = options.steps ?? [
     () => verifyV9AudioSupport({ repoRoot: root }),

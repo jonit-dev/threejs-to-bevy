@@ -2,6 +2,8 @@ import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { resolveArtifactTargets } from "./artifact-paths.mjs";
+
 import { runCommand } from "./verify-conformance.mjs";
 import { summarize } from "./verify-v1.mjs";
 
@@ -12,7 +14,9 @@ export async function verifyV6(options = {}) {
   const run = options.run ?? runCommand;
   const startedAt = new Date();
   const startedAtMs = Date.now();
-  const artifactDir = options.artifactDir ?? resolve(root, "tools/verify/artifacts/milestones/v6");
+  const targets = resolveArtifactTargets({ gate: "milestones/v6", owner: { kind: "aggregate", name: "milestones/v6" }, root });
+
+  const artifactDir = options.artifactDir ?? targets.absoluteDir;
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
   const projectPath = resolve(root, "examples/v6-functional");
   const bundlePath = resolve(projectPath, "dist/v6-functional.bundle");

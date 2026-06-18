@@ -12,6 +12,9 @@ test("v10 advanced physics verifier writes sequential frame comparison artifacts
   const report = JSON.parse(await readFile("tools/verify/artifacts/advanced-physics/verification-report.json", "utf8"));
 
   assert.equal(report.ok, true);
+  assert.deepEqual(report.artifacts.artifactOwner, { kind: "aggregate", name: "advanced-physics" });
+  assert.equal(report.artifacts.canonicalArtifactDir, "tools/verify/artifacts/advanced-physics");
+  assert.deepEqual(report.artifacts.legacyArtifactDirs, []);
   assert.equal(report.artifacts.frames.length, 3);
   assert.equal(report.comparisons.every((comparison) => comparison.changedPixelRatio === 0), true);
   assert.equal(report.promoted.includes("swept-aabb CCD vertical track contact"), true);

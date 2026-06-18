@@ -2,6 +2,8 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { resolveArtifactTargets } from "./artifact-paths.mjs";
+
 import { runCommand, verifyConformance } from "./verify-conformance.mjs";
 import { runReadyCommand, summarize } from "./verify-v1.mjs";
 
@@ -11,7 +13,9 @@ export async function verifyV2(options = {}) {
   const root = options.repoRoot ?? repoRoot;
   const run = options.run ?? runCommand;
   const runReady = options.runReady ?? runReadyCommand;
-  const artifactDir = options.artifactDir ?? resolve(root, "tools/verify/artifacts/milestones/v2");
+  const targets = resolveArtifactTargets({ gate: "milestones/v2", owner: { kind: "aggregate", name: "milestones/v2" }, root });
+
+  const artifactDir = options.artifactDir ?? targets.absoluteDir;
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
   const arenaPath = resolve(root, "examples/v2-arena");
   const arenaBundlePath = resolve(arenaPath, "dist/game.bundle");

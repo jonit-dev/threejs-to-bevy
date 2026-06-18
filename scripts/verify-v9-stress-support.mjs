@@ -2,6 +2,8 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { resolveArtifactTargets } from "./artifact-paths.mjs";
+
 const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const requiredMetrics = [
   "animatedModelCount",
@@ -16,7 +18,9 @@ const requiredMetrics = [
 
 export async function verifyV9StressSupport(options = {}) {
   const root = options.repoRoot ?? repoRoot;
-  const artifactDir = options.artifactDir ?? resolve(root, "tools/verify/artifacts/stress-support");
+  const targets = resolveArtifactTargets({ gate: "stress-support", owner: { kind: "aggregate", name: "stress-support" }, root });
+
+  const artifactDir = options.artifactDir ?? targets.absoluteDir;
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
   const stressReportPath = options.stressReportPath ?? resolve(artifactDir, "stress-report.json");
   if (options.writeArtifacts !== false) {

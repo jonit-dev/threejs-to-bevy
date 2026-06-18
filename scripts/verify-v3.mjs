@@ -2,6 +2,8 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import { resolveArtifactTargets } from "./artifact-paths.mjs";
+
 import { runCommand } from "./verify-conformance.mjs";
 import { summarize } from "./verify-v1.mjs";
 
@@ -10,7 +12,9 @@ const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 export async function verifyV3(options = {}) {
   const root = options.repoRoot ?? repoRoot;
   const run = options.run ?? runCommand;
-  const artifactDir = options.artifactDir ?? resolve(root, "tools/verify/artifacts/milestones/v3");
+  const targets = resolveArtifactTargets({ gate: "milestones/v3", owner: { kind: "aggregate", name: "milestones/v3" }, root });
+
+  const artifactDir = options.artifactDir ?? targets.absoluteDir;
   const environmentVerifier = options.environmentVerifier;
   const atmosphereVerifier = options.atmosphereVerifier;
   const firstPersonVerifier = options.firstPersonVerifier;

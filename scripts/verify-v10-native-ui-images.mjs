@@ -1,10 +1,13 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
+import { resolveArtifactTargets } from "./artifact-paths.mjs";
+
 import { PNG } from "../packages/cli/node_modules/pngjs/lib/png.js";
 
 const root = process.cwd();
-const artifactDir = resolve(root, "tools/verify/artifacts/native-ui-images");
+const targets = resolveArtifactTargets({ gate: "native-ui-images", owner: { kind: "aggregate", name: "native-ui-images" }, root });
+const artifactDir = targets.absoluteDir;
 const framesDir = resolve(artifactDir, "frames");
 await mkdir(framesDir, { recursive: true });
 
@@ -33,10 +36,11 @@ await writeFile(contactSheetPath, PNG.sync.write(renderContactSheet(webTrace.fra
 
 const report = {
   artifacts: {
+    ...targets.metadata,
     contactSheet: relative(contactSheetPath),
     frames: frameArtifacts,
-    nativeTrace: "tools/verify/artifacts/native-ui-images/native-trace.json",
-    webTrace: "tools/verify/artifacts/native-ui-images/web-trace.json",
+    nativeTrace: `${targets.relativeDir}/native-trace.json`,
+    webTrace: `${targets.relativeDir}/web-trace.json`,
   },
   comparisons,
   generatedBy: "scripts/verify-v10-native-ui-images.mjs",

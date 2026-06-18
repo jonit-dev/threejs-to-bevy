@@ -3,6 +3,8 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import { resolveArtifactTargets } from "./artifact-paths.mjs";
+
 import { runCommand } from "./verify-conformance.mjs";
 import { summarize } from "./verify-v1.mjs";
 
@@ -17,7 +19,9 @@ export const V10_PLANNED_FOCUSED_GATES = [
 export async function verifyV10(options = {}) {
   const root = options.repoRoot ?? repoRoot;
   const run = options.run ?? runCommand;
-  const artifactDir = options.artifactDir ?? resolve(root, "tools/verify/artifacts/final-gap-planning");
+  const targets = resolveArtifactTargets({ gate: "final-gap-planning", owner: { kind: "aggregate", name: "final-gap-planning" }, root });
+
+  const artifactDir = options.artifactDir ?? targets.absoluteDir;
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
   const focusedGates = options.focusedGates ?? [];
   const startedAt = new Date();

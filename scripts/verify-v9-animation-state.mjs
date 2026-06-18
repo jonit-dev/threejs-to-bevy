@@ -4,13 +4,17 @@ import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
+import { resolveArtifactTargets } from "./artifact-paths.mjs";
+
 const execFileAsync = promisify(execFile);
 const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 export async function verifyV9AnimationState(options = {}) {
   const root = options.repoRoot ?? repoRoot;
   const bundlePath = options.bundlePath ?? resolve(root, "packages/ir/fixtures/conformance/animation-state/game.bundle");
-  const artifactDir = options.artifactDir ?? resolve(root, "tools/verify/artifacts/animation-state");
+  const targets = resolveArtifactTargets({ gate: "animation-state", owner: { kind: "aggregate", name: "animation-state" }, root });
+
+  const artifactDir = options.artifactDir ?? targets.absoluteDir;
   const webStatePath = options.webStatePath ?? resolve(artifactDir, "web-state.json");
   const nativeStatePath = options.nativeStatePath ?? resolve(artifactDir, "native-state.json");
   const diffPath = options.diffPath ?? resolve(artifactDir, "state-diff.json");

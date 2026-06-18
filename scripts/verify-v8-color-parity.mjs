@@ -2,6 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import { resolveArtifactTargets } from "./artifact-paths.mjs";
 import { runCommand } from "./verify-conformance.mjs";
 import { summarize } from "./verify-v1.mjs";
 
@@ -10,8 +11,10 @@ const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 export async function verifyV8ColorParity(options = {}) {
   const root = options.repoRoot ?? repoRoot;
   const run = options.run ?? runCommand;
-  const colorArtifactDir = options.artifactDir ?? resolve(root, "tools/verify/artifacts/color-parity");
-  const lightingArtifactDir = options.lightingArtifactDir ?? resolve(root, "tools/verify/artifacts/lighting-tone");
+  const colorTargets = resolveArtifactTargets({ gate: "color-parity", owner: { kind: "aggregate", name: "color-parity" }, root });
+  const lightingTargets = resolveArtifactTargets({ gate: "lighting-tone", owner: { kind: "aggregate", name: "lighting-tone" }, root });
+  const colorArtifactDir = options.artifactDir ?? colorTargets.absoluteDir;
+  const lightingArtifactDir = options.lightingArtifactDir ?? lightingTargets.absoluteDir;
   const reportPath = options.reportPath ?? resolve(colorArtifactDir, "verification-report.json");
   const colorProjectPath = resolve(root, "examples/v8-color-parity");
   const lightingProjectPath = resolve(root, "examples/v8-lighting-tone");

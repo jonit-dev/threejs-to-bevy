@@ -2,6 +2,8 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { checkArtifactLayout } from "./check-artifact-layout.mjs";
+
 const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const allowlistPath = resolve(repoRoot, "scripts/version-name-allowlist.json");
 
@@ -275,7 +277,7 @@ export async function checkCurrentNames(options = {}) {
   const diagnostics = validateAllowlistShape(allowlist);
   const inventory = [];
   const files = await walkFiles(root, root);
-  diagnostics.push(...(await collectArtifactLayoutDiagnostics(root, allowlist)));
+  diagnostics.push(...(await checkArtifactLayout({ root })).diagnostics);
 
   for (const relativePath of files) {
     const content = await readFile(join(root, relativePath), "utf8");

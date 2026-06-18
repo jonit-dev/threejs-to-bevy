@@ -1,10 +1,13 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
+import { resolveArtifactTargets } from "./artifact-paths.mjs";
+
 import { PNG } from "../packages/cli/node_modules/pngjs/lib/png.js";
 
 const root = process.cwd();
-const artifactDir = resolve(root, "tools/verify/artifacts/emissive-bloom");
+const targets = resolveArtifactTargets({ gate: "emissive-bloom", owner: { kind: "aggregate", name: "emissive-bloom" }, root });
+const artifactDir = targets.absoluteDir;
 const framesDir = resolve(artifactDir, "frames");
 await mkdir(framesDir, { recursive: true });
 
@@ -33,10 +36,11 @@ await writeFile(contactSheetPath, PNG.sync.write(renderContactSheet(webTrace.fra
 
 const report = {
   artifacts: {
+    ...targets.metadata,
     contactSheet: relative(contactSheetPath),
     frames: frameArtifacts,
-    nativeTrace: "tools/verify/artifacts/emissive-bloom/native-trace.json",
-    webTrace: "tools/verify/artifacts/emissive-bloom/web-trace.json",
+    nativeTrace: `${targets.relativeDir}/native-trace.json`,
+    webTrace: `${targets.relativeDir}/web-trace.json`,
   },
   comparisons,
   generatedBy: "scripts/verify-v10-emissive-bloom.mjs",

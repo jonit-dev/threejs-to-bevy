@@ -2,11 +2,15 @@ import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import { resolveArtifactTargets } from "./artifact-paths.mjs";
+
 const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 export async function verifyInputUiAccessibility(options = {}) {
   const root = options.repoRoot ?? repoRoot;
-  const artifactDir = options.artifactDir ?? resolve(root, "tools/verify/artifacts/input-ui-accessibility");
+  const targets = resolveArtifactTargets({ gate: "input-ui-accessibility", owner: { kind: "aggregate", name: "input-ui-accessibility" }, root });
+
+  const artifactDir = options.artifactDir ?? targets.absoluteDir;
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
   const accessibilityReportPath = options.accessibilityReportPath ?? resolve(artifactDir, "accessibility-report.json");
   const pickingOverlayDir = options.pickingOverlayDir ?? resolve(artifactDir, "picking-debug");

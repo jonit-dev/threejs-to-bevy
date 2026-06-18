@@ -5,13 +5,17 @@ import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
+import { resolveArtifactTargets } from "./artifact-paths.mjs";
+
 const execFileAsync = promisify(execFile);
 const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 export async function verifyV9AnimationParticles(options = {}) {
   const root = options.repoRoot ?? repoRoot;
   const bundlePath = options.bundlePath ?? resolve(root, "packages/ir/fixtures/conformance/animation-graphs-particles/game.bundle");
-  const artifactDir = options.artifactDir ?? resolve(root, "tools/verify/artifacts/animation-particles");
+  const targets = resolveArtifactTargets({ gate: "animation-particles", owner: { kind: "aggregate", name: "animation-particles" }, root });
+
+  const artifactDir = options.artifactDir ?? targets.absoluteDir;
   await mkdir(artifactDir, { recursive: true });
 
   const web = options.webParticleReport === undefined

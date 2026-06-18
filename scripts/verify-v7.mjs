@@ -2,6 +2,8 @@ import { access, mkdir, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { resolveArtifactTargets } from "./artifact-paths.mjs";
+
 import { runCommand } from "./verify-conformance.mjs";
 import { verifyV7Packaging } from "./verify-v7-packaging.mjs";
 import { verifyV7PerformanceBudgets } from "./verify-v7-performance-budgets.mjs";
@@ -12,7 +14,9 @@ const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 export async function verifyV7(options = {}) {
   const root = options.repoRoot ?? repoRoot;
   const run = options.run ?? runCommand;
-  const artifactDir = options.artifactDir ?? resolve(root, "tools/verify/artifacts/milestones/v7");
+  const targets = resolveArtifactTargets({ gate: "milestones/v7", owner: { kind: "aggregate", name: "milestones/v7" }, root });
+
+  const artifactDir = options.artifactDir ?? targets.absoluteDir;
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
   const startedAt = new Date();
   const startedAtMs = Date.now();
