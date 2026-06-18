@@ -4,7 +4,7 @@
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Contract         | Three.js-style TypeScript game engine -> validated IR bundle -> web Three.js + native Bevy                                                                                                                                                                                                                                                                                                                                                                                                             |
 | Native baseline  | Bevy and `bevy_ecs` pinned to `=0.14.2`                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| Evidence anchors | native test, visual scene, game-authoring ergonomics, modular compiler capture tests, capability conformance fixtures, `pnpm verify:release`, `pnpm verify:conformance`, `pnpm --filter @threenative/ir test` contract drift and bundle path coverage, web/Bevy generated-mesh payload rejection tests, starter-functional template, release artifacts under `tools/verify/artifacts/release/` and `packages/ir/artifacts/conformance/`, historical milestone archive under `docs/PRDs/archive/`, V10 PRDs, focused V10 evidence gates |
+| Evidence anchors | native test, visual scene, game-authoring ergonomics, modular compiler capture tests, scene lifecycle SDK declaration tests, capability conformance fixtures, `pnpm verify:release`, `pnpm verify:conformance`, `pnpm --filter @threenative/ir test` contract drift and bundle path coverage, web/Bevy generated-mesh payload rejection tests, starter-functional template, release artifacts under `tools/verify/artifacts/release/` and `packages/ir/artifacts/conformance/`, historical milestone archive under `docs/PRDs/archive/`, V10 PRDs, focused V10 evidence gates |
 
 ## Status
 
@@ -59,6 +59,40 @@ implementation:
 Unchecked rows below should remain unchecked until their V10 owner adds SDK/IR,
 validation, compiler, web, Bevy, conformance, docs, and artifact evidence, or
 adds stable diagnostics that make the feature explicitly unsupported.
+
+### Post-V10 PRD Slice Map
+
+The unchecked backlog is now split into current planning PRDs without claiming
+implementation. These slices supersede the coarse V10 ownership map for future
+execution order while keeping all checklist rows unchecked until evidence lands:
+
+- [Runtime Gameplay Host Semantics](PRDs/other/post-v10-runtime-gameplay-host.md):
+  P0/P1 ECS host execution, live rendered-entity reconciliation, event windows,
+  dynamic state handoff, hooks, system-local state, bounded async services,
+  observer controls, and runtime plugin/raw-handle diagnostics.
+- [Durable Persistence and State-Preserving Reload](PRDs/other/post-v10-persistence-hot-reload.md):
+  durable Bevy save/settings backend, autosave/checkpoint restore, hot reload
+  with state policy, live scene mutation needed for reload proof, and
+  cloud/filesystem boundary diagnostics.
+- [Input, UI, and Platform UX Polish](PRDs/other/post-v10-input-ui-platform-polish.md):
+  platform touch streams, settings-screen polish, richer gestures/device repair,
+  virtual keyboard behavior, runtime disabled-state updates, nested scrolling,
+  spatial navigation, focus narration, italic text, grid residuals, and desktop
+  webview inspection.
+- [Rendering, Materials, Geometry, and Asset Residuals](PRDs/other/post-v10-rendering-materials-geometry-residuals.md):
+  runtime LOD swapping, mesh deformation/terrain streaming, material/specular/
+  blend proof, instancing APIs, custom GPU attributes, compressed environment
+  formats, broader live asset streaming, glTF custom attribute consumption, and
+  advanced renderer/material/shader diagnostics.
+- [Animation, Physics, and Navigation Residuals](PRDs/other/post-v10-animation-physics-navigation-residuals.md):
+  animation masks, morph targets, UI/property animation, blend-tree residuals,
+  sloped mesh grounding, constraints, triangle narrow phase, dynamic navmesh,
+  crowd/off-mesh links, vehicle diagnostics, and advanced physics deferrals.
+- [Production Audio, Diagnostics, Profiling, and Packaging](PRDs/other/post-v10-production-audio-diagnostics-packaging.md):
+  live mixer/effects, audio routing diagnostics, UI/audio integration,
+  profiler/GPU timing reports, signed/mobile packaging preflight,
+  domain-specific repair hints, debug rendering, and production boundary
+  diagnostics.
 
 ### Prioritized Native Gap Backlog
 

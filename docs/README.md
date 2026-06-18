@@ -6,7 +6,7 @@ surface, portable IR contract, and web/native runtime adapters.
 For current implementation status, start with [STATUS.md](STATUS.md). Version
 labels such as `V7` or `verify:v9` are **legacy milestone names** kept during a
 staged cleanup. See the [cleanup PRD](PRDs/archive/cleanup-versioned-debt.md)
-and the [artifact layout PRD](PRDs/other/artifact-fixture-layout-reorg.md) for
+and the [artifact layout PRD](PRDs/done/artifact-fixture-layout-reorg.md) for
 the retained-reference policy enforced by `pnpm check:names`.
 
 ## Documentation Groups

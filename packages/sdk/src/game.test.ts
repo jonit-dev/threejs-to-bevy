@@ -5,6 +5,7 @@ import { World } from "./ecs/World.js";
 import { SdkError } from "./errors.js";
 import { defineGame } from "./game.js";
 import { action, defineInputMap, keyboard } from "./input.js";
+import { defineScene } from "./sceneLifecycle.js";
 import { Scene } from "./scene/Scene.js";
 import { defineRuntimeConfig } from "./time.js";
 
@@ -43,5 +44,42 @@ test("should reject runtime config without a world root", () => {
   assert.throws(
     () => defineGame({ runtimeConfig: defineRuntimeConfig(), scene: new Scene({ id: "scene.game" }) }),
     (error: unknown) => error instanceof SdkError && error.code === "TN_SDK_GAME_RUNTIME_CONFIG_WORLD_REQUIRED",
+  );
+});
+
+test("should serialize game root with lifecycle scenes", () => {
+  const menu = defineScene({ id: "menu", kind: "menu", visual: new Scene({ id: "scene.menu.visual" }) });
+  const level = defineScene({ id: "level.forest", kind: "level", visual: new Scene({ id: "scene.level.visual" }) });
+
+  const root = defineGame({ initialScene: "menu", scenes: [menu, level] });
+
+  assert.equal(root.initialScene, "menu");
+  assert.deepEqual(root.scenes, [menu, level]);
+});
+
+test("should require initialScene when scenes are declared", () => {
+  const menu = defineScene({ id: "menu", kind: "menu" });
+
+  assert.throws(
+    () => defineGame({ scenes: [menu] }),
+    (error: unknown) => error instanceof SdkError && error.code === "TN_SDK_GAME_INITIAL_SCENE_REQUIRED",
+  );
+});
+
+test("should reject unknown initialScene when scenes are declared", () => {
+  const menu = defineScene({ id: "menu", kind: "menu" });
+
+  assert.throws(
+    () => defineGame({ initialScene: "missing", scenes: [menu] }),
+    (error: unknown) => error instanceof SdkError && error.code === "TN_SDK_GAME_INITIAL_SCENE_UNKNOWN",
+  );
+});
+
+test("should reject duplicate lifecycle scene ids", () => {
+  const menu = defineScene({ id: "menu", kind: "menu" });
+
+  assert.throws(
+    () => defineGame({ initialScene: "menu", scenes: [menu, menu] }),
+    (error: unknown) => error instanceof SdkError && error.code === "TN_SDK_GAME_SCENE_DUPLICATE",
   );
 });

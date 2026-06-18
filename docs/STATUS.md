@@ -51,6 +51,12 @@ capture directory, so `src/game.ts` can import local `.ts`/`.tsx` modules throug
 NodeNext `.js` specifiers while transitive portable-boundary diagnostics still
 point at the source module.
 
+Scene lifecycle authoring has an SDK-only declaration slice: `defineScene()`,
+`sceneTransition.*`, and `defineGame({ scenes, initialScene })` validate named
+scene declarations, duplicate IDs, missing initial scenes, bounded transition
+durations, and unsupported lifecycle hooks before emit. IR emission, validation,
+and runtime scene-manager behavior remain pending.
+
 Packaging, performance, and desktop distribution evidence still runs through
 `pnpm verify:v7`. Legacy milestone aliases such as `verify:v9` forward to
 `verify:release` with a deprecation diagnostic.

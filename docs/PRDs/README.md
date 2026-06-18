@@ -10,7 +10,7 @@ This index separates current cleanup work from historical milestone batches.
 - [IR Contract Drift Hardening](other/ir-contract-drift-hardening.md): contract
   source-of-truth policy, schema/type/Rust drift gates, validating runtime load
   path, and shared validation cleanup.
-- [Example-Local Artifacts, Fixtures, and Docs Structure](other/artifact-fixture-layout-reorg.md):
+- [Example-Local Artifacts, Fixtures, and Docs Structure](done/artifact-fixture-layout-reorg.md):
   canonical artifact roots, example-local verification evidence, aggregate
   reports, shared IR fixture ownership, contextual docs grouping, and layout
   drift checks.
@@ -23,6 +23,29 @@ This index separates current cleanup work from historical milestone batches.
 - [Scene Lifecycle and Game Flow Contract](other/scene-lifecycle-and-flow-contract.md):
   scene modules, lifecycle phases, transitions, loading, overlays, persistent
   state, and cross-runtime scene manager parity.
+- [Bundle Safety and Runtime Robustness Hardening](other/bundle-safety-runtime-robustness-hardening.md):
+  bundle path containment, atomic emit, generated payload validation, runtime
+  teardown, scatter guardrails, and conformance-backed runtime parity.
+- [Post-V10 Runtime Gameplay Host Semantics](other/post-v10-runtime-gameplay-host.md):
+  live rendered-entity ECS host behavior, lifecycle semantics, event windows,
+  hooks, system locals, bounded async services, and runtime plugin diagnostics.
+- [Post-V10 Durable Persistence and State-Preserving Reload](other/post-v10-persistence-hot-reload.md):
+  durable Bevy save/settings backend, autosave/checkpoint restore, reload state
+  policy, and cloud/filesystem boundary diagnostics.
+- [Post-V10 Input, UI, and Platform UX Polish](other/post-v10-input-ui-platform-polish.md):
+  host touch streams, settings-screen polish, UI mutation, nested scrolling,
+  spatial navigation, focus narration, virtual keyboard behavior, and device
+  diagnostics.
+- [Post-V10 Rendering, Materials, Geometry, and Asset Residuals](other/post-v10-rendering-materials-geometry-residuals.md):
+  runtime LOD, streamed terrain, material proof, instancing, asset streaming,
+  glTF custom attribute policy, and advanced renderer diagnostics.
+- [Post-V10 Animation, Physics, and Navigation Residuals](other/post-v10-animation-physics-navigation-residuals.md):
+  animation masks, morph targets, UI animation, sloped mesh grounding,
+  constraints, mesh narrow phase, dynamic navmesh, crowd steering, and advanced
+  physics diagnostics.
+- [Post-V10 Production Audio, Diagnostics, Profiling, and Packaging](other/post-v10-production-audio-diagnostics-packaging.md):
+  live audio mixer/effects, audio device diagnostics, profiler/GPU timing
+  reports, signed/mobile packaging preflight, repair hints, and debug rendering.
 
 ## Historical Milestone Archive
 
