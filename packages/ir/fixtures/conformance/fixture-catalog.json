@@ -66,6 +66,29 @@
       ]
     },
     {
+      "canonicalId": "production-hardening",
+      "owner": "ir-contract",
+      "sourceExample": "production-hardening",
+      "regenerateCommand": "pnpm verify:production-hardening",
+      "canonicalArtifactGate": "production-hardening",
+      "ownerDocs": "docs/PRDs/other/post-v10-production-audio-diagnostics-packaging.md",
+      "aggregateGate": "verify:release",
+      "bundlePath": "packages/ir/fixtures/conformance/production-hardening/game.bundle",
+      "promotedCapabilities": [
+        "audio:device-routing-diagnostics",
+        "audio:mixer-effects",
+        "audio:ui-service-action",
+        "diagnostics:debug-render",
+        "diagnostics:domain-repair-hints",
+        "packaging:signed-mobile-preflight",
+        "profiler:gpu-timing-state",
+        "profiler:host-capture"
+      ],
+      "reportArtifacts": [
+        "tools/verify/artifacts/production-hardening/verification-report.json"
+      ]
+    },
+    {
       "canonicalId": "animation-state",
       "owner": "ir-contract",
       "sourceExample": "animation-state",

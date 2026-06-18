@@ -70,7 +70,8 @@
     "verify:scene-lifecycle": "pnpm --filter @threenative/ir build && pnpm --filter @threenative/runtime-web-three build && node scripts/verify-scene-lifecycle.mjs",
     "verify:animation-physics-residuals": "pnpm --filter @threenative/ir build && pnpm --filter @threenative/runtime-web-three build && node scripts/verify-animation-physics-residuals.mjs",
     "verify:input-ui-polish": "pnpm --filter @threenative/ir build && pnpm --filter @threenative/runtime-web-three build && node scripts/verify-input-ui-polish.mjs",
-    "verify:persistence-reload": "pnpm --filter @threenative/ir build && pnpm --filter @threenative/runtime-web-three build && node scripts/verify-persistence-reload.mjs"
+    "verify:persistence-reload": "pnpm --filter @threenative/ir build && pnpm --filter @threenative/runtime-web-three build && node scripts/verify-persistence-reload.mjs",
+    "verify:production-hardening": "pnpm --filter @threenative/ir build && pnpm --filter @threenative/runtime-web-three build && pnpm --filter @threenative/cli build && node scripts/verify-production-hardening.mjs"
   },
   "devDependencies": {
     "react": "^19.2.7",

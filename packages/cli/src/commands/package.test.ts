@@ -66,6 +66,24 @@ test("package should reject non-desktop command target", async () => {
   }
 });
 
+test("package preflight should report credential-required when signing identity is omitted", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-package-preflight-"));
+  try {
+    await writeBundle(root, ["web", "desktop"]);
+
+    const result = await packageCommand(["--bundle", "game.bundle", "--target", "mobile", "--preflight", "--json"], root);
+    const payload = JSON.parse(result.stdout);
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.schema, "threenative.package-preflight-report");
+    assert.equal(payload.credentials[0].code, "TN_PACKAGE_SIGNING_CREDENTIAL_REQUIRED");
+    assert.equal(payload.credentials[0].status, "missing");
+    assert.equal(payload.diagnostics[0].path, "package.signing.identity");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("package should reject invalid bundles before copying artifacts", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-package-invalid-"));
   try {

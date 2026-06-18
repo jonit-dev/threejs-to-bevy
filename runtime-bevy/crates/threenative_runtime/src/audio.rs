@@ -55,7 +55,8 @@ pub struct NativeAudioLifecycleTrace {
     pub paused_loops: Vec<String>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NativeAudioSupportTrace {
     pub attenuation: Vec<NativeAudioAttenuationObservation>,
     pub ducking: Vec<NativeAudioDuckingObservation>,
@@ -64,7 +65,8 @@ pub struct NativeAudioSupportTrace {
     pub tones: Vec<NativeAudioToneObservation>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NativeAudioAttenuationObservation {
     pub emitter: String,
     pub gain: f32,
@@ -72,7 +74,8 @@ pub struct NativeAudioAttenuationObservation {
     pub listener_position: [f32; 3],
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NativeAudioDuckingObservation {
     pub gain: f32,
     pub id: String,
@@ -80,14 +83,16 @@ pub struct NativeAudioDuckingObservation {
     pub target_bus: String,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NativeAudioListenerBindingObservation {
     pub entity: Option<String>,
     pub id: String,
     pub kind: String,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NativeAudioTransitionObservation {
     pub duration: Option<f32>,
     pub from: Option<String>,
@@ -98,7 +103,8 @@ pub struct NativeAudioTransitionObservation {
     pub to: String,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NativeAudioToneObservation {
     pub bus: Option<String>,
     pub duration: f32,

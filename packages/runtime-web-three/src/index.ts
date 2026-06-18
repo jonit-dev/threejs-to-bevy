@@ -102,3 +102,7 @@ export {
   type IPersistenceRestoreObservation,
   type IPersistenceStorageObservation,
 } from "./persistenceReload.js";
+export {
+  traceProductionHardening,
+  type IProductionHardeningReport,
+} from "./productionHardening.js";

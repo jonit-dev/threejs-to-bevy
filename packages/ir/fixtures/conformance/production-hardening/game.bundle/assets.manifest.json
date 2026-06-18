@@ -1,0 +1,8 @@
+{
+  "schema": "threenative.assets",
+  "version": "0.1.0",
+  "assets": [
+    { "id": "music.menu", "kind": "audio", "format": "ogg", "path": "assets/menu.ogg" },
+    { "id": "sound.confirm", "kind": "audio", "format": "wav", "path": "assets/confirm.wav" }
+  ]
+}

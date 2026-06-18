@@ -1,0 +1,61 @@
+{
+  "schema": "threenative.target-profile",
+  "version": "0.1.0",
+  "targets": ["web", "desktop"],
+  "performance": {
+    "requiredTarget": "web",
+    "averageFrameMs": { "max": 18, "warn": 16 },
+    "drawCalls": { "max": 600, "warn": 480 },
+    "instancedGroups": { "max": 96, "warn": 72 },
+    "instances": { "max": 5000, "warn": 4000 },
+    "loadMs": { "max": 3000, "warn": 2200 },
+    "p95FrameMs": { "max": 24, "warn": 20 },
+    "textureBytes": { "max": 32000000, "warn": 24000000 },
+    "triangles": { "max": 900000, "warn": 700000 },
+    "uninstancedRepeatedProps": { "max": 0 },
+    "worstFrameMs": { "max": 40, "warn": 32 },
+    "support": {
+      "requirements": [
+        {
+          "category": "audio",
+          "requiredCapabilities": ["audio.device", "audio.decoder.ogg", "audio.mixer.effects"],
+          "availableCapabilities": ["audio.device", "audio.decoder.ogg", "audio.mixer.effects"],
+          "repairHints": [
+            {
+              "code": "TN_SUPPORT_AUDIO_BACKEND_MISSING",
+              "target": "audio",
+              "missingCapability": "audio.decoder.ogg",
+              "suggestion": "Enable an OGG decoder backend for this target."
+            }
+          ]
+        },
+        {
+          "category": "diagnosticsOverlay",
+          "requiredCapabilities": ["profiler.capture", "debug.render"],
+          "availableCapabilities": ["profiler.capture", "debug.render"],
+          "repairHints": [
+            {
+              "code": "TN_SUPPORT_PROFILER_HOST_MISSING",
+              "target": "diagnosticsOverlay",
+              "missingCapability": "profiler.gpu.timer",
+              "suggestion": "Use CPU frame profiling when GPU timer queries are unavailable."
+            }
+          ]
+        }
+      ]
+    },
+    "profiler": {
+      "audioVoiceCount": 8,
+      "drawCount": 256,
+      "entityCount": 64,
+      "frameTimeMs": 16.67,
+      "gpuTimingUnavailable": true,
+      "memoryEstimateBytes": 1048576,
+      "renderPassMs": 0,
+      "renderTimeMs": 8,
+      "saveLatencyMs": 4,
+      "uiNodeCount": 12,
+      "updateTimeMs": 4
+    }
+  }
+}

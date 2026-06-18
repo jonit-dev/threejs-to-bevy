@@ -1429,6 +1429,20 @@ focused large-scene metrics, profiler summary, and repair-hint artifacts under
 `tools/verify/artifacts/stress-support/`. This does not claim full live browser or native
 platform profiler capture parity.
 
+Post-V10 production hardening now has focused release evidence through
+`pnpm verify:production-hardening`. The `production-hardening` conformance
+fixture declares mixer buses, bounded gain/ducking effect behavior, UI-triggered
+audio, device routing diagnostics, profiler metadata, GPU timing unavailable
+state, debug-render overlay primitives, and signed/mobile package preflight
+metadata. The gate compares matching web and Bevy production reports, runs
+`tn package --preflight --target mobile`, writes `web-report.json`,
+`native-report.json`, `package-preflight.json`, `diff.json`, `contact-sheet.png`,
+and `verification-report.json` under
+`tools/verify/artifacts/production-hardening/`, and is part of release
+verification. Raw native audio handles, custom executable decoders,
+streaming/network audio, online services, and signed artifact generation without
+release credentials remain diagnostic-only or external release boundaries.
+
 V9-06 aggregate support gate evidence now ties the support slices together.
 `examples/v9-support` builds to a validated bundle with `audio.ir.json` and
 `local-data.ir.json`, `check:docs:v9` guards the PRD/status/parity support

@@ -1,0 +1,38 @@
+{
+  "schema": "threenative.audio",
+  "version": "0.1.0",
+  "buses": [
+    { "id": "bus.master", "gain": 1 },
+    { "id": "bus.music", "parent": "bus.master", "gain": 0.8 },
+    { "id": "bus.sfx", "parent": "bus.master", "gain": 0.9 }
+  ],
+  "duckingRules": [
+    {
+      "id": "duck.music",
+      "sourceBus": "bus.sfx",
+      "targetBus": "bus.music",
+      "gain": 0.35,
+      "attack": 0.05,
+      "release": 0.2
+    }
+  ],
+  "listeners": [
+    { "id": "listener.main", "position": [0, 0, 0], "binding": { "kind": "activeCamera" } }
+  ],
+  "emitters": [
+    {
+      "id": "emitter.ui",
+      "position": [0, 0, 3],
+      "attenuation": { "curve": "linear", "minDistance": 1, "maxDistance": 8, "rolloffFactor": 1 }
+    }
+  ],
+  "music": [
+    { "id": "music.menu", "asset": "music.menu", "loop": true, "autoplay": true, "bus": "bus.music", "volume": 0.5 }
+  ],
+  "oneShots": [
+    { "id": "sound.confirm", "asset": "sound.confirm", "event": "UiConfirm", "bus": "bus.sfx", "emitter": "emitter.ui", "volume": 0.75 }
+  ],
+  "musicTransitions": [
+    { "id": "transition.menu", "kind": "crossfade", "playbackId": "music.menu", "state": "menu", "to": "music.menu", "duration": 0.2 }
+  ]
+}

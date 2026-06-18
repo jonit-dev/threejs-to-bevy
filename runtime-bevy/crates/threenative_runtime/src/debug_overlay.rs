@@ -1,4 +1,5 @@
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NativeDebugDrawPrimitive {
     pub id: String,
     pub kind: String,
@@ -6,7 +7,8 @@ pub struct NativeDebugDrawPrimitive {
     pub lifetime_seconds: Option<f32>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NativeDebugCounter {
     pub category: String,
     pub id: String,
@@ -15,7 +17,8 @@ pub struct NativeDebugCounter {
     pub value: f32,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NativeDebugOverlayReport {
     pub counters: Vec<NativeDebugCounter>,
     pub enabled: bool,

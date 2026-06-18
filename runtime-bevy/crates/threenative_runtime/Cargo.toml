@@ -44,6 +44,10 @@ name = "threenative_persistence_reload_trace"
 path = "src/persistence_reload_trace.rs"
 
 [[bin]]
+name = "threenative_production_hardening_trace"
+path = "src/production_hardening_trace.rs"
+
+[[bin]]
 name = "threenative_ui_navigation_trace"
 path = "src/ui_navigation_trace.rs"
 

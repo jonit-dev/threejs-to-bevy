@@ -4,7 +4,7 @@
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Contract         | Three.js-style TypeScript game engine -> validated IR bundle -> web Three.js + native Bevy                                                                                                                                                                                                                                                                                                                                                                                                             |
 | Native baseline  | Bevy and `bevy_ecs` pinned to `=0.14.2`                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| Evidence anchors | native test, visual scene, game-authoring ergonomics, modular compiler capture tests, scene lifecycle SDK declaration tests, scene lifecycle IR validation tests, scene lifecycle compiler emission tests, scene lifecycle web/Bevy runtime trace tests, scene lifecycle example build smoke, animation/physics/navigation residual traces, input/UI polish traces, capability conformance fixtures, `pnpm verify:release`, `pnpm verify:conformance`, `pnpm verify:animation-physics-residuals`, `pnpm verify:input-ui-polish`, `pnpm --filter @threenative/ir test` contract drift and bundle path coverage, web/Bevy generated-mesh payload rejection tests, starter-functional template, release artifacts under `tools/verify/artifacts/release/` and `packages/ir/artifacts/conformance/`, historical milestone archive under `docs/PRDs/archive/`, V10 PRDs, focused V10 evidence gates |
+| Evidence anchors | native test, visual scene, game-authoring ergonomics, modular compiler capture tests, scene lifecycle SDK declaration tests, scene lifecycle IR validation tests, scene lifecycle compiler emission tests, scene lifecycle web/Bevy runtime trace tests, scene lifecycle example build smoke, animation/physics/navigation residual traces, input/UI polish traces, production hardening traces, capability conformance fixtures, `pnpm verify:release`, `pnpm verify:conformance`, `pnpm verify:animation-physics-residuals`, `pnpm verify:input-ui-polish`, `pnpm verify:production-hardening`, `pnpm --filter @threenative/ir test` contract drift and bundle path coverage, web/Bevy generated-mesh payload rejection tests, starter-functional template, release artifacts under `tools/verify/artifacts/release/` and `packages/ir/artifacts/conformance/`, historical milestone archive under `docs/PRDs/archive/`, V10 PRDs, focused V10 evidence gates |
 
 ## Status
 
@@ -119,14 +119,16 @@ remaining gaps by usefulness for building and shipping ordinary 3D games:
   missing work is disabled-to-enabled updates, nested/axis-specific scrolling,
   virtual keyboard behavior, spatial navigation heuristics, focus narration, and
   native italic rich text.
-- `P2` Native audio runtime depth. Current Bevy support covers local assets,
-  autoplay/commands, lifecycle traces, attenuation, buses, ducking, pitch, tones,
-  and music-transition observations; live mixer/effect chains, device routing
-  diagnostics, custom decoders, and streaming/network audio remain unimplemented.
-- `P2` Real profiling and packaging hardening. Current profiler output is fixed
-  report data with GPU timing unavailable; signed installers, app-store/mobile
-  packaging, platform-native profiler integration, and production budget tuning
-  remain release-readiness gaps.
+- `P2` Native audio production depth is promoted by
+  `pnpm verify:production-hardening` for bounded mixer/effect-chain reports,
+  device routing diagnostics, internal-only native handle boundaries, and
+  UI-triggered audio actions. Custom decoders and streaming/network audio remain
+  diagnostic-only boundaries.
+- `P2` Profiling and packaging hardening is promoted by
+  `pnpm verify:production-hardening` for captured CPU profiler host state, GPU
+  timer unavailable state, debug-render report evidence, domain repair hints,
+  and signed/mobile package preflight without secrets. Actual signed installer
+  generation still requires release credentials outside repo verification.
 - `P3` Advanced renderer and physics breadth. Custom shaders, bindless,
   volumetrics, SSR, deferred rendering, decals, auto exposure, DOF, motion blur,
   virtual geometry, full constraints, vehicles, ragdolls, soft bodies, arbitrary
@@ -473,10 +475,10 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P1` Mixer buses, ducking, and routing observations
 - [x] `P2` Pitch control and generated tone playback metadata
 - [x] `P1` Soundtrack/state-driven music transitions
-- [ ] `P1` Live mixer/effect-chain behavior
-- [ ] `P2` Platform audio device routing diagnostics
-- [ ] `P2` Platform-native audio handles
-- [ ] `P2` Richer UI/audio service integration
+- [x] `P1` Live mixer/effect-chain behavior
+- [x] `P2` Platform audio device routing diagnostics
+- [x] `P2` Platform-native audio handles as internal-only diagnostics
+- [x] `P2` Richer UI/audio service integration
 - [ ] `P3` Custom audio source/decoder support (V10-04)
 - [ ] `P3` Streaming and network audio (V10-04 boundary)
 - [x] `P2` Platform-specific audio diagnostics
@@ -489,16 +491,16 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] Release verification gates and artifact presence checks
 - [x] Desktop package manifest and runtime args for V7 packaging
 - [x] Fixed metric reports for frame/load/draw/entity/package-size budgets
-- [ ] `P2` Live profiler captures and native platform profiler evidence
-- [ ] `P2` GPU profiling and render-pass timing breakdowns
+- [x] `P2` Live profiler captures and native platform profiler evidence
+- [x] `P2` GPU profiling and render-pass timing breakdowns
 - [x] `P1` In-app FPS overlay and custom diagnostics
-- [ ] `P3` Signed installers and app-store/mobile packaging (V10-04)
+- [x] `P3` Signed installers and app-store/mobile packaging preflight (V10-04)
 - [x] `P1` Broader platform target profiles and repair hints
 - [x] `P1` Large-scene stress-test fixtures for UI, text, lights, cubes, and animated models
 - [x] `P1` Stable unsupported-feature diagnostics for advanced renderer, material, and runtime declarations
 - [x] `P1` Stable unsupported-networking diagnostics for multiplayer/websocket/replication declarations
-- [ ] `P1` Better domain-specific asset/runtime failure codes and repair hints
-- [ ] `P2` Live engine-integrated debug rendering beyond current overlay/report helpers
+- [x] `P1` Better domain-specific asset/runtime failure codes and repair hints
+- [x] `P2` Live engine-integrated debug rendering beyond current overlay/report helpers
 
 ### 🛠️ Editor, Debugging, and Developer Tools
 

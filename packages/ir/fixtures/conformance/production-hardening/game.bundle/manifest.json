@@ -1,0 +1,28 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "conformance-production-hardening",
+  "requiredCapabilities": {
+    "audio": [
+      "mixer-effects",
+      "device-routing-diagnostics",
+      "ui-audio-actions"
+    ],
+    "diagnostics": [
+      "profiler",
+      "debug-render"
+    ],
+    "packaging": [
+      "signed-mobile-preflight"
+    ]
+  },
+  "entry": {
+    "world": "world.ir.json",
+    "audio": "audio.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "materials": "materials.ir.json",
+    "targetProfile": "target.profile.json"
+  }
+}

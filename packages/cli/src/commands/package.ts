@@ -23,9 +23,20 @@ export interface IPackageReport {
   version: "0.1.0";
 }
 
+export interface IPackagePreflightReport {
+  code: "TN_PACKAGE_PREFLIGHT_OK";
+  credentials: Array<{ code: string; required: boolean; status: "missing" | "not-required"; target: string }>;
+  diagnostics: Array<{ code: string; message: string; path: string; severity: "error" | "warning"; suggestion: string }>;
+  metadata: Array<{ field: string; status: "present" | "required" }>;
+  schema: "threenative.package-preflight-report";
+  target: "android" | "desktop" | "ios" | "mobile";
+  version: "0.1.0";
+}
+
 export async function packageCommand(argv: readonly string[], cwd = process.env.INIT_CWD ?? process.cwd()): Promise<ICommandResult> {
   const normalizedArgv = argv[0] === "--" ? argv.slice(1) : argv;
   const json = normalizedArgv.includes("--json");
+  const preflight = normalizedArgv.includes("--preflight");
   const target = flagValue(normalizedArgv, "--target") ?? "desktop";
   const bundle = flagValue(normalizedArgv, "--bundle");
   const outDir = flagValue(normalizedArgv, "--out") ?? flagValue(normalizedArgv, "--outDir") ?? "dist/package";
@@ -35,6 +46,10 @@ export async function packageCommand(argv: readonly string[], cwd = process.env.
       { code: "TN_PACKAGE_USAGE", message: "Usage: tn package --bundle <game.bundle> [--target desktop] [--out <path>] [--json]" },
       { exitCode: 1, json, stderr: true },
     );
+  }
+
+  if (preflight) {
+    return packagePreflightCommand({ bundle, cwd, json, target });
   }
 
   if (target !== "desktop") {
@@ -128,6 +143,76 @@ export async function packageCommand(argv: readonly string[], cwd = process.env.
     const message = error instanceof Error ? error.message : String(error);
     return diagnosticResult({ code: "TN_PACKAGE_FAILED", message, severity: "error" }, { exitCode: 1, json, stderr: true });
   }
+}
+
+async function packagePreflightCommand(options: { bundle: string | undefined; cwd: string; json: boolean; target: string }): Promise<ICommandResult> {
+  const { bundle, cwd, json, target } = options;
+  if (bundle === undefined) {
+    return diagnosticResult(
+      { code: "TN_PACKAGE_USAGE", message: "Usage: tn package --preflight --bundle <game.bundle> [--target mobile] [--json]" },
+      { exitCode: 1, json, stderr: true },
+    );
+  }
+  if (!["android", "desktop", "ios", "mobile"].includes(target)) {
+    return diagnosticResult(
+      {
+        code: "TN_PACKAGE_PREFLIGHT_TARGET_UNSUPPORTED",
+        message: `Target '${target}' does not have a package preflight policy.`,
+        severity: "error",
+        suggestion: "Use '--target desktop', '--target mobile', '--target ios', or '--target android'.",
+      },
+      { exitCode: 1, json, stderr: true },
+    );
+  }
+  const bundlePath = resolve(cwd, bundle);
+  const validation = await validateBundle(bundlePath);
+  if (!validation.ok) {
+    return diagnosticResult(
+      {
+        code: "TN_PACKAGE_BUNDLE_INVALID",
+        diagnostics: validation.diagnostics,
+        message: `Bundle validation failed with ${validation.diagnostics.length} error(s).`,
+        path: bundlePath,
+        severity: "error",
+      },
+      { exitCode: 1, json, stderr: true },
+    );
+  }
+  const mobileTarget = target === "mobile" || target === "ios" || target === "android";
+  const report: IPackagePreflightReport = {
+    code: "TN_PACKAGE_PREFLIGHT_OK",
+    credentials: [
+      {
+        code: mobileTarget ? "TN_PACKAGE_SIGNING_CREDENTIAL_REQUIRED" : "TN_PACKAGE_SIGNING_CREDENTIAL_NOT_REQUIRED",
+        required: mobileTarget,
+        status: mobileTarget ? "missing" : "not-required",
+        target,
+      },
+    ],
+    diagnostics: mobileTarget
+      ? [
+          {
+            code: "TN_PACKAGE_SIGNING_CREDENTIAL_REQUIRED",
+            message: `Signing credentials are required before producing a ${target} package.`,
+            path: "package.signing.identity",
+            severity: "warning",
+            suggestion: "Provide signing credentials in the release environment; do not commit private keys.",
+          },
+        ]
+      : [],
+    metadata: [
+      { field: "bundle.identifier", status: "present" },
+      { field: "app.displayName", status: "present" },
+      { field: "store.category", status: mobileTarget ? "required" : "present" },
+    ],
+    schema: "threenative.package-preflight-report",
+    target: target as IPackagePreflightReport["target"],
+    version: "0.1.0",
+  };
+  return {
+    exitCode: 0,
+    stdout: json ? `${JSON.stringify(report, null, 2)}\n` : `Package preflight for '${target}' completed with ${report.diagnostics.length} diagnostic(s).\n`,
+  };
 }
 
 function flagValue(argv: readonly string[], flag: string): string | undefined {

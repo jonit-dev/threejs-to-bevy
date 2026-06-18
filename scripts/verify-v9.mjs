@@ -55,6 +55,11 @@ export const V9_FOCUSED_GATES = [
     reportPath: "tools/verify/artifacts/persistence-reload/verification-report.json",
     script: "verify:persistence-reload",
   },
+  {
+    name: "verify production hardening",
+    reportPath: "tools/verify/artifacts/production-hardening/verification-report.json",
+    script: "verify:production-hardening",
+  },
 ];
 
 export const V9_RELEASE_ARTIFACTS = [
