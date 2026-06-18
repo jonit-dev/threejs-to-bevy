@@ -71,8 +71,8 @@ test("should include functional scene and conformance artifacts in v6 gate", asy
       ],
     );
     assert.match(saved.artifacts.bundlePath, /examples\/v6-functional\/dist\/v6-functional\.bundle/);
-    assert.match(saved.artifacts.conformanceReportPath, /artifacts\/conformance\/verification-report\.json/);
-    assert.match(saved.artifacts.webVisualReportPath, /artifacts\/v6\/web-visual\/verification-report\.json/);
+    assert.match(saved.artifacts.conformanceReportPath, /packages\/ir\/artifacts\/conformance\/verification-report\.json/);
+    assert.match(saved.artifacts.webVisualReportPath, /tools\/verify\/artifacts\/milestones\/v6\/web-visual\/verification-report\.json/);
     assert.deepEqual(saved.artifacts.webVisualScreenshots.map((path) => path.endsWith(".png")), [true, true]);
     assert.equal(saved.code, "TN_VERIFY_V6_OK");
     assert.equal(saved.diagnostics.length, 0);

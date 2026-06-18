@@ -99,15 +99,15 @@ test("should include aggregate v7 evidence in release report", async () => {
       ],
     );
     assert.match(saved.artifacts.bundlePath, /examples\/v7-functional\/dist\/v7-functional\.bundle/);
-    assert.match(saved.artifacts.conformanceReportPath, /artifacts\/conformance\/verification-report\.json/);
+    assert.match(saved.artifacts.conformanceReportPath, /packages\/ir\/artifacts\/conformance\/verification-report\.json/);
     assert.match(saved.artifacts.diagnosticsDocPath, /docs\/diagnostics\.md/);
     assert.match(saved.artifacts.docsCheckScriptPath, /scripts\/check-docs-v7\.mjs/);
-    assert.match(saved.artifacts.functionalPackageDir, /artifacts\/v7\/functional-package/);
+    assert.match(saved.artifacts.functionalPackageDir, /tools\/verify\/artifacts\/milestones\/v7\/functional-package/);
     assert.match(saved.artifacts.functionalWebReportPath, /examples\/v7-functional\/artifacts\/verify\/verification-report\.json/);
-    assert.match(saved.artifacts.packagingReportPath, /artifacts\/v7\/packaging\/verification-report\.json/);
-    assert.match(saved.artifacts.performanceReportPath, /artifacts\/v7\/performance\/comparison\.report\.json/);
-    assert.match(saved.artifacts.rustTestReportPath, /artifacts\/v7\/rust-test-report\.json/);
-    assert.match(saved.artifacts.templateProjectPath, /artifacts\/v7\/template-smoke\/v7-functional/);
+    assert.match(saved.artifacts.packagingReportPath, /tools\/verify\/artifacts\/milestones\/v7\/packaging\/verification-report\.json/);
+    assert.match(saved.artifacts.performanceReportPath, /tools\/verify\/artifacts\/milestones\/v7\/performance\/comparison\.report\.json/);
+    assert.match(saved.artifacts.rustTestReportPath, /tools\/verify\/artifacts\/milestones\/v7\/rust-test-report\.json/);
+    assert.match(saved.artifacts.templateProjectPath, /tools\/verify\/artifacts\/milestones\/v7\/template-smoke\/v7-functional/);
     assert.equal(saved.code, "TN_VERIFY_V7_OK");
     assert.equal(saved.diagnostics.length, 0);
     assert.equal(saved.schema, "threenative.verify.v7");

@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import { runCommand } from "./verify-conformance.mjs";
 import { verifyV7Packaging } from "./verify-v7-packaging.mjs";
-import { verifyV7PerformanceBudgets } from "./verify-performance-budgets.mjs";
+import { verifyV7PerformanceBudgets } from "./verify-v7-performance-budgets.mjs";
 import { summarize } from "./verify-v1.mjs";
 
 const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
@@ -26,6 +26,7 @@ export async function verifyV7(options = {}) {
   const packagingVerifier = options.packagingVerifier ?? verifyV7Packaging;
   const performanceVerifier = options.performanceVerifier ?? verifyV7PerformanceBudgets;
   const steps = [];
+  const writeReport = (args) => writeV7Report({ repoRoot: root, ...args });
 
   async function step(name, command, args, commandOptions = {}) {
     const result = await run({ args, command, cwd: commandOptions.cwd ?? root, name, timeoutMs: commandOptions.timeoutMs });
@@ -34,31 +35,31 @@ export async function verifyV7(options = {}) {
   }
 
   if (!(await step("check v7 docs", process.execPath, [resolve(root, "scripts/check-docs-v7.mjs"), "--json"]))) {
-    return writeV7Report({ artifactDir, ok: false, reportPath, startedAt, startedAtMs, steps });
+    return writeReport({ artifactDir, ok: false, reportPath, startedAt, startedAtMs, steps });
   }
   if (!(await step("test v7 docs and gate scripts", process.execPath, ["--test", resolve(root, "scripts/check-docs-v7.test.mjs"), resolve(root, "scripts/verify-v7.test.mjs")], { timeoutMs: 120000 }))) {
-    return writeV7Report({ artifactDir, ok: false, reportPath, startedAt, startedAtMs, steps });
+    return writeReport({ artifactDir, ok: false, reportPath, startedAt, startedAtMs, steps });
   }
   if (!(await step("build cli", "pnpm", ["--filter", "@threenative/cli", "build"], { timeoutMs: 120000 }))) {
-    return writeV7Report({ artifactDir, ok: false, reportPath, startedAt, startedAtMs, steps });
+    return writeReport({ artifactDir, ok: false, reportPath, startedAt, startedAtMs, steps });
   }
   if (!(await step("test v7 cli flows", "pnpm", ["--filter", "@threenative/cli", "test", "--", "--run", "v7 functional|package|performanceGate"], { timeoutMs: 120000 }))) {
-    return writeV7Report({ artifactDir, ok: false, reportPath, startedAt, startedAtMs, steps });
+    return writeReport({ artifactDir, ok: false, reportPath, startedAt, startedAtMs, steps });
   }
   if (!(await step("test v7 compiler examples", "pnpm", ["--filter", "@threenative/compiler", "test", "--", "--run", "v7 functional|examples"], { timeoutMs: 120000 }))) {
-    return writeV7Report({ artifactDir, ok: false, reportPath, startedAt, startedAtMs, steps });
+    return writeReport({ artifactDir, ok: false, reportPath, startedAt, startedAtMs, steps });
   }
   if (!(await step("test v7 diagnostics", "pnpm", ["--filter", "@threenative/compiler", "test", "--", "--run", "resource writes|undeclared|unsupported|diagnostic|validate should preserve"], { timeoutMs: 120000 }))) {
-    return writeV7Report({ artifactDir, ok: false, reportPath, startedAt, startedAtMs, steps });
+    return writeReport({ artifactDir, ok: false, reportPath, startedAt, startedAtMs, steps });
   }
   if (!(await step("build v7 functional scene", process.execPath, [resolve(root, "packages/cli/dist/index.js"), "build", "--project", projectPath, "--json"], { timeoutMs: 120000 }))) {
-    return writeV7Report({ artifactDir, bundlePath, ok: false, reportPath, startedAt, startedAtMs, steps });
+    return writeReport({ artifactDir, bundlePath, ok: false, reportPath, startedAt, startedAtMs, steps });
   }
   if (!(await step("validate v7 functional bundle", process.execPath, [resolve(root, "packages/cli/dist/index.js"), "validate", "--project", projectPath, "--json"], { timeoutMs: 120000 }))) {
-    return writeV7Report({ artifactDir, bundlePath, ok: false, reportPath, startedAt, startedAtMs, steps });
+    return writeReport({ artifactDir, bundlePath, ok: false, reportPath, startedAt, startedAtMs, steps });
   }
   if (!(await step("verify v7 functional web visual scene", process.execPath, [resolve(root, "packages/cli/dist/index.js"), "verify", "--project", projectPath, "--frames", "2", "--json"], { timeoutMs: 120000 }))) {
-    return writeV7Report({
+    return writeReport({
       artifactDir,
       bundlePath,
       functionalWebReportPath,
@@ -87,7 +88,7 @@ export async function verifyV7(options = {}) {
       { timeoutMs: 120000 },
     ))
   ) {
-    return writeV7Report({
+    return writeReport({
       artifactDir,
       bundlePath,
       functionalPackageDir,
@@ -108,7 +109,7 @@ export async function verifyV7(options = {}) {
       { timeoutMs: 120000 },
     ))
   ) {
-    return writeV7Report({
+    return writeReport({
       artifactDir,
       bundlePath,
       functionalPackageDir,
@@ -122,7 +123,7 @@ export async function verifyV7(options = {}) {
     });
   }
   if (!(await step("build v7 functional template", process.execPath, [resolve(root, "packages/cli/dist/index.js"), "build", "--project", templateProjectPath, "--json"], { timeoutMs: 120000 }))) {
-    return writeV7Report({
+    return writeReport({
       artifactDir,
       bundlePath,
       functionalPackageDir,
@@ -136,7 +137,7 @@ export async function verifyV7(options = {}) {
     });
   }
   if (!(await step("validate v7 functional template", process.execPath, [resolve(root, "packages/cli/dist/index.js"), "validate", "--project", templateProjectPath, "--json"], { timeoutMs: 120000 }))) {
-    return writeV7Report({
+    return writeReport({
       artifactDir,
       bundlePath,
       functionalPackageDir,
@@ -151,7 +152,7 @@ export async function verifyV7(options = {}) {
   }
 
   if (!(await step("verify conformance gate", process.execPath, [resolve(root, "scripts/verify-conformance.mjs"), "--json"], { timeoutMs: 180000 }))) {
-    return writeV7Report({
+    return writeReport({
       artifactDir,
       bundlePath,
       conformanceReportPath,
@@ -177,7 +178,7 @@ export async function verifyV7(options = {}) {
   steps.push(rustStep);
   await writeRustTestReport(rustTestReportPath, rustStep);
   if (rustTest.exitCode !== 0) {
-    return writeV7Report({
+    return writeReport({
       artifactDir,
       bundlePath,
       conformanceReportPath,
@@ -206,7 +207,7 @@ export async function verifyV7(options = {}) {
     stdout: packagingReport.reportPath,
   });
   if (!packagingReport.ok) {
-    return writeV7Report({
+    return writeReport({
       artifactDir,
       bundlePath,
       conformanceReportPath,
@@ -248,7 +249,7 @@ export async function verifyV7(options = {}) {
   });
   steps.push(artifactCheck);
 
-  return writeV7Report({
+  return writeReport({
     artifactDir,
     bundlePath,
     conformanceReportPath,
@@ -276,6 +277,7 @@ async function writeV7Report({
   packagingReportPath,
   performanceReportPath,
   reportPath,
+  repoRoot,
   rustTestReportPath,
   startedAt,
   startedAtMs,
@@ -298,12 +300,12 @@ async function writeV7Report({
         ];
   const report = {
     artifacts: {
-      bundlePath: bundlePath ?? resolve(artifactDir, "../../examples/v7-functional/dist/v7-functional.bundle"),
-      conformanceReportPath: conformanceReportPath ?? resolve(artifactDir, "../conformance/verification-report.json"),
-      diagnosticsDocPath: resolve(artifactDir, "../../docs/diagnostics.md"),
-      docsCheckScriptPath: resolve(artifactDir, "../../scripts/check-docs-v7.mjs"),
+      bundlePath: bundlePath ?? resolve(repoRoot, "examples/v7-functional/dist/v7-functional.bundle"),
+      conformanceReportPath: conformanceReportPath ?? resolve(repoRoot, "packages/ir/artifacts/conformance/verification-report.json"),
+      diagnosticsDocPath: resolve(repoRoot, "docs/diagnostics.md"),
+      docsCheckScriptPath: resolve(repoRoot, "scripts/check-docs-v7.mjs"),
       functionalPackageDir: functionalPackageDir ?? resolve(artifactDir, "functional-package"),
-      functionalWebReportPath: functionalWebReportPath ?? resolve(artifactDir, "../../examples/v7-functional/artifacts/verify/verification-report.json"),
+      functionalWebReportPath: functionalWebReportPath ?? resolve(repoRoot, "examples/v7-functional/artifacts/verify/verification-report.json"),
       packagingReportPath: packagingReportPath ?? resolve(artifactDir, "packaging/verification-report.json"),
       performanceReportPath: performanceReportPath ?? resolve(artifactDir, "performance/comparison.report.json"),
       reportPath,
