@@ -17,9 +17,25 @@ This index separates current cleanup work from historical milestone batches.
 - [Verification Gates and Package Scripts Reorg](done/other/verification-gates-and-package-scripts-reorg.md):
   typed verify-tool gate ownership, wrapper-only legacy scripts, root
   `package.json` cleanup, recursive test ownership, and compatibility aliases.
+- [Verification Strategy and Speed](other/verification-strategy-and-speed.md):
+  test-vs-gate ownership, verification script classification, build-once
+  release orchestration, gate profiles, and timing budgets.
 - [AI-Consumable Distribution Contract](other/ai-consumable-distribution-contract.md):
   published declarations, schemas, capabilities, diagnostics, examples, and AI
   docs that make installed packages understandable without repository source.
+- [Advanced Visual Effects, Lighting, and Material Depth](other/advanced-visual-effects-lighting-material-depth.md):
+  remaining advanced lighting, material, atmosphere, post-processing, deferred
+  renderer, virtual geometry, and custom post-processing gaps.
+- [Advanced Animation and Physics Depth](other/advanced-animation-physics-depth.md):
+  remaining retargeting, IK, arbitrary blend-tree, constraint, triangle
+  narrow-phase, vehicle, soft-body, and ragdoll gaps.
+- [UI Platform and Desktop Residuals](other/ui-platform-desktop-residuals.md):
+  remaining gesture, virtual keyboard, world UI, italic text, advanced grid,
+  broad gamepad/touch UI, and desktop webview packaging gaps.
+- [External Services, Media, and Non-Portable Boundaries](other/external-services-media-boundaries.md):
+  cloud/account storage, custom decoders, streaming/network audio, online
+  services, alternate authoring models, 2D workflows, and backend-only
+  diagnostic boundaries.
 - [Scene Lifecycle and Game Flow Contract](done/other/scene-lifecycle-and-flow-contract.md):
   scene modules, lifecycle phases, transitions, loading, overlays, persistent
   state, and cross-runtime scene manager parity.
