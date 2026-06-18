@@ -42,9 +42,14 @@ and `pnpm verify:release` runs the IR package tests before release evidence is
 accepted. See [contracts/ir-contract.md](contracts/ir-contract.md) for the
 contract update checklist.
 
-Bundle safety hardening now rejects unsafe manifest-controlled paths before web
-or Bevy filesystem reads, and both runtimes reject malformed generated-mesh
+Bundle safety hardening now rejects unsafe manifest-controlled paths before web,
+CLI/editor/package, or Bevy filesystem reads; the compiler emits bundles through
+a staged directory and preserves the previous bundle on copy/write failures;
+environment scatter generation rejects unbounded instance counts before
+expansion; web render loops expose a disposal handle and report rejected frame
+work as runtime diagnostics; and both runtimes reject malformed generated-mesh
 binary payload lengths with asset path context instead of decoding partial data.
+Run `pnpm verify:bundle-safety-hardening` for the focused evidence gate.
 
 Compiler capture now mirrors source-relative project modules into the temporary
 capture directory, so `src/game.ts` can import local `.ts`/`.tsx` modules through

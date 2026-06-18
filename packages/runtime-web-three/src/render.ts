@@ -31,6 +31,7 @@ import { createWebOverlayHost, type IWebOverlayHost } from "./overlay/host.js";
 export interface IRenderResult {
   canvas: HTMLCanvasElement;
   diagnostics: IRuntimeDiagnostic[];
+  dispose(): void;
   effectLog: ISystemEffectLog;
   renderer: THREE.WebGLRenderer;
   overlayHost?: IWebOverlayHost;
@@ -57,6 +58,19 @@ export interface IWebDepthOfFieldSettings {
 interface IRenderPipeline {
   render(delta?: number): void;
   setSize(width: number, height: number): void;
+}
+
+export interface IWebRenderLifecycle {
+  dispose(): void;
+  schedule(): void;
+}
+
+export interface IWebRenderLifecycleOptions {
+  cancelAnimationFrame?: (handle: number) => void;
+  diagnostics: IRuntimeDiagnostic[];
+  frame(time: number): Promise<void> | void;
+  onDispose?: () => void;
+  requestAnimationFrame?: (callback: FrameRequestCallback) => number;
 }
 
 export async function renderBundle(source: string, container: HTMLElement, options: IRenderOptions = {}): Promise<IRenderResult> {
@@ -112,7 +126,7 @@ export async function renderBundle(source: string, container: HTMLElement, optio
   prepareRenderContainer(container);
   canvas.style.display = "block";
   container.replaceChildren(...([canvas, uiOverlay?.element, overlayHost?.element].filter((child) => child !== undefined) as Node[]));
-  attachInputListeners(window, input);
+  const detachInputListeners = attachInputListeners(window, input);
   resizeRenderer(renderer, pipeline, mapped, container);
   if (bundle.systems !== undefined) {
     await runGameFrame({
@@ -133,14 +147,20 @@ export async function renderBundle(source: string, container: HTMLElement, optio
   advanceAnimationPlayback(mapped, 1 / 60);
   pipeline.render();
   logStartupDiagnostics(mapped.diagnostics);
+  let lifecycle: IWebRenderLifecycle | undefined;
   if (bundle.systems !== undefined || hasAnimationPlayback(mapped)) {
     let lastTime = performance.now();
-    const frame = (time: number) => {
+    lifecycle = createWebRenderLifecycle({
+      diagnostics: mapped.diagnostics,
+      onDispose: () => {
+        detachInputListeners();
+        renderer.dispose();
+      },
+      async frame(time: number) {
       const delta = Math.max(0, (time - lastTime) / 1000);
       lastTime = time;
-      const gameFrame = bundle.systems === undefined
-        ? Promise.resolve()
-        : runGameFrame({
+        if (bundle.systems !== undefined) {
+          await runGameFrame({
             assets: bundle.assets,
             componentSchemas: bundle.componentSchemas,
             delta,
@@ -153,23 +173,86 @@ export async function renderBundle(source: string, container: HTMLElement, optio
             systems: bundle.systems,
             world: bundle.world,
           });
-      void gameFrame.then(() => {
+        }
         advanceAnimationPlayback(mapped, delta);
         uiOverlay?.update();
         pipeline.render(delta);
-        requestAnimationFrame(frame);
-      });
-    };
-    requestAnimationFrame(frame);
+      },
+    });
+    lifecycle.schedule();
   }
 
   return {
     canvas,
     diagnostics: mapped.diagnostics,
+    dispose() {
+      lifecycle?.dispose();
+      if (lifecycle === undefined) {
+        detachInputListeners();
+        renderer.dispose();
+      }
+    },
     effectLog,
     ...(overlayHost === undefined ? {} : { overlayHost }),
     renderer,
     ...(ui === undefined ? {} : { ui }),
+  };
+}
+
+export function createWebRenderLifecycle(options: IWebRenderLifecycleOptions): IWebRenderLifecycle {
+  const requestFrame = options.requestAnimationFrame ?? globalThis.requestAnimationFrame.bind(globalThis);
+  const cancelFrame = options.cancelAnimationFrame ?? globalThis.cancelAnimationFrame.bind(globalThis);
+  let disposed = false;
+  let frameHandle: number | undefined;
+
+  const runFrame: FrameRequestCallback = (time) => {
+    frameHandle = undefined;
+    try {
+      const result = options.frame(time);
+      void Promise.resolve(result)
+        .catch((error: unknown) => {
+          options.diagnostics.push({
+            code: "TN_WEB_RENDER_FRAME_FAILED",
+            message: `Web render frame failed: ${error instanceof Error ? error.message : String(error)}.`,
+            path: "runtime.frame",
+            severity: "error",
+          });
+        })
+        .finally(() => {
+          if (!disposed) {
+            frameHandle = requestFrame(runFrame);
+          }
+        });
+    } catch (error) {
+      options.diagnostics.push({
+        code: "TN_WEB_RENDER_FRAME_FAILED",
+        message: `Web render frame failed: ${error instanceof Error ? error.message : String(error)}.`,
+        path: "runtime.frame",
+        severity: "error",
+      });
+      if (!disposed) {
+        frameHandle = requestFrame(runFrame);
+      }
+    }
+  };
+
+  return {
+    dispose() {
+      if (disposed) {
+        return;
+      }
+      disposed = true;
+      if (frameHandle !== undefined) {
+        cancelFrame(frameHandle);
+        frameHandle = undefined;
+      }
+      options.onDispose?.();
+    },
+    schedule() {
+      if (!disposed && frameHandle === undefined) {
+        frameHandle = requestFrame(runFrame);
+      }
+    },
   };
 }
 

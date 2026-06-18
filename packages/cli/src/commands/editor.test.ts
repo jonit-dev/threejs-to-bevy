@@ -167,6 +167,35 @@ test("editor snapshot should write structured bundle documents", async () => {
   }
 });
 
+test("editor snapshot should reject unsafe manifest-controlled document paths", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-editor-unsafe-path-"));
+  try {
+    const bundlePath = join(root, "game.bundle");
+    await writeBundleFixture(bundlePath);
+    await writeFixtureJson(bundlePath, "manifest.json", {
+      entry: { world: "../outside.json" },
+      files: {
+        assets: "assets.manifest.json",
+        materials: "materials.ir.json",
+        targetProfile: "target.profile.json",
+      },
+      name: "unsafe-bundle",
+      requiredCapabilities: {},
+      schema: "threenative.bundle",
+      version: "0.1.0",
+    });
+
+    const result = await editorCommand(["snapshot", "--bundle", bundlePath, "--json"], { cwd: root });
+    const payload = JSON.parse(result.stdout) as { code: string; path: string };
+
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.code, "TN_EDITOR_BUNDLE_PATH_INVALID");
+    assert.equal(payload.path, "../outside.json");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("editor diff should report deterministic structured operations", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-editor-diff-"));
   try {

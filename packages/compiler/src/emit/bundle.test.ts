@@ -74,6 +74,50 @@ test("should emit deterministic cube bundle", async () => {
   }
 });
 
+test("should preserve previous bundle when asset copy fails", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-preserve-"));
+  try {
+    await mkdir(join(root, "assets"), { recursive: true });
+    await writeFile(join(root, "assets/albedo.png"), "texture");
+    const config = {
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project" as const,
+      version: "0.1.0" as const,
+    };
+    const first = await emitBundle(config, texturedScene("assets/albedo.png"));
+    const originalManifest = await readFile(join(first, "manifest.json"), "utf8");
+
+    await assert.rejects(() => emitBundle(config, texturedScene("assets/missing.png")), /ENOENT|no such file/i);
+
+    assert.equal(await readFile(join(first, "manifest.json"), "utf8"), originalManifest);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should clean temporary emit directory after failure", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-clean-temp-"));
+  try {
+    await mkdir(join(root, "assets"), { recursive: true });
+    const config = {
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project" as const,
+      version: "0.1.0" as const,
+    };
+
+    await assert.rejects(() => emitBundle(config, texturedScene("assets/missing.png")), /ENOENT|no such file/i);
+    const distEntries = await readFileOrEmptyDir(join(root, "dist"));
+
+    assert.equal(distEntries.some((entry) => entry.startsWith(".tn-emit-")), false);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should omit scripts bundle when no systems exist", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-emit-no-scripts-"));
   try {
@@ -974,6 +1018,33 @@ function makeScene(): Scene {
   scene.add(camera);
   scene.setActiveCamera(camera);
   return scene;
+}
+
+function texturedScene(texturePath: string): Scene {
+  const scene = new Scene({ id: "scene" });
+  const mesh = new Mesh({
+    id: "cube.textured",
+    geometry: new BoxGeometry(),
+    material: new MeshStandardMaterial({
+      baseColorTexture: textureAsset("tex.albedo", texturePath),
+      color: "#ffffff",
+    }),
+  });
+  scene.add(mesh);
+  scene.add(new PerspectiveCamera({ id: "camera.main", fovY: 60, near: 0.1, far: 100 }));
+  return scene;
+}
+
+async function readFileOrEmptyDir(path: string): Promise<string[]> {
+  try {
+    const { readdir } = await import("node:fs/promises");
+    return await readdir(path);
+  } catch (error) {
+    if (typeof error === "object" && error !== null && "code" in error && (error as { code?: unknown }).code === "ENOENT") {
+      return [];
+    }
+    throw error;
+  }
 }
 
 async function writeEnvironmentAsset(root: string, name: string): Promise<void> {

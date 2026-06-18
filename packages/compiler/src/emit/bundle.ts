@@ -1,4 +1,4 @@
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import {
   IR_DOCUMENTS,
@@ -135,58 +135,104 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
     },
   };
 
-  await rm(outDir, { force: true, recursive: true });
-  await mkdir(outDir, { recursive: true });
-  await mkdir(resolve(outDir, "schemas"), { recursive: true });
-  await writeGeneratedMeshPayloads(outDir, generatedMeshPayloads.payloads);
-  await writeFile(resolve(outDir, IR_DOCUMENTS.manifest.fileName), stableJson(manifest));
-  await copyAssetFiles(config.projectPath, outDir, assets);
-  await copyExtraAssetFiles(config.projectPath, outDir, [...(environment?.extraFiles ?? []), ...(overlays?.extraFiles ?? [])]);
-  await writeFile(resolve(outDir, IR_DOCUMENTS.world.fileName), stableJson(world));
-  await writeFile(resolve(outDir, IR_DOCUMENTS.materials.fileName), stableJson(materials));
-  await writeFile(resolve(outDir, IR_DOCUMENTS.assets.fileName), stableJson(assetsManifest));
-  await writeFile(resolve(outDir, IR_DOCUMENTS.targetProfile.fileName), stableJson(targetProfile));
-  if (environment !== undefined) {
-    await writeFile(resolve(outDir, IR_DOCUMENTS.environmentScene.fileName), stableJson(environment.scene));
-  }
-  if (ui !== undefined) {
-    await writeFile(resolve(outDir, IR_DOCUMENTS.ui.fileName), stableJson(ui));
-  }
-  if (overlays !== undefined) {
-    await writeFile(resolve(outDir, IR_DOCUMENTS.overlays.fileName), stableJson(overlays.overlays));
-  }
-  if (audio !== undefined) {
-    await writeFile(resolve(outDir, IR_DOCUMENTS.audio.fileName), stableJson(audio));
-  }
-  if (localData !== undefined) {
-    await writeFile(resolve(outDir, IR_DOCUMENTS.localData.fileName), stableJson(localData));
-  }
-  if (lifecycleScenes.scenes !== undefined) {
-    await writeFile(resolve(outDir, IR_DOCUMENTS.scenes.fileName), stableJson(lifecycleScenes.scenes));
-  }
-  if (animations !== undefined) {
-    await writeFile(resolve(outDir, IR_DOCUMENTS.animations.fileName), stableJson(animations));
-  }
-  if (gltfScene !== undefined) {
-    await writeFile(resolve(outDir, IR_DOCUMENTS.gltfScene.fileName), stableJson(gltfScene));
-  }
-  if (input !== undefined) {
-    await writeFile(resolve(outDir, IR_DOCUMENTS.input.fileName), stableJson(input));
-  }
-  if (ecs !== undefined) {
-    await writeFile(resolve(outDir, IR_DOCUMENTS.componentSchemas.fileName), stableJson(ecs.componentSchemas));
-    await writeFile(resolve(outDir, IR_DOCUMENTS.resourceSchemas.fileName), stableJson(ecs.resourceSchemas));
-    await writeFile(resolve(outDir, IR_DOCUMENTS.eventSchemas.fileName), stableJson(ecs.eventSchemas));
-    await writeFile(resolve(outDir, IR_DOCUMENTS.systems.fileName), stableJson(ecs.systems));
-    if (ecs.runtimeConfig !== undefined) {
-      await writeFile(resolve(outDir, IR_DOCUMENTS.runtimeConfig.fileName), stableJson(ecs.runtimeConfig));
-    }
-    if (ecs.scriptBundle !== undefined) {
-      await writeFile(resolve(outDir, IR_DOCUMENTS.scripts.fileName), ecs.scriptBundle);
-    }
+  const stagingDir = await createEmitStagingDir(outDir);
+  try {
+    await writeBundleOutput(stagingDir);
+    await replaceOutputDirectory(stagingDir, outDir);
+  } catch (error) {
+    await rm(stagingDir, { force: true, recursive: true });
+    throw error;
   }
 
   return outDir;
+
+  async function writeBundleOutput(targetDir: string): Promise<void> {
+    await mkdir(targetDir, { recursive: true });
+    await mkdir(resolve(targetDir, "schemas"), { recursive: true });
+    await writeGeneratedMeshPayloads(targetDir, generatedMeshPayloads.payloads);
+    await writeFile(resolve(targetDir, IR_DOCUMENTS.manifest.fileName), stableJson(manifest));
+    await copyAssetFiles(config.projectPath, targetDir, assets);
+    await copyExtraAssetFiles(config.projectPath, targetDir, [...(environment?.extraFiles ?? []), ...(overlays?.extraFiles ?? [])]);
+    await writeFile(resolve(targetDir, IR_DOCUMENTS.world.fileName), stableJson(world));
+    await writeFile(resolve(targetDir, IR_DOCUMENTS.materials.fileName), stableJson(materials));
+    await writeFile(resolve(targetDir, IR_DOCUMENTS.assets.fileName), stableJson(assetsManifest));
+    await writeFile(resolve(targetDir, IR_DOCUMENTS.targetProfile.fileName), stableJson(targetProfile));
+    if (environment !== undefined) {
+      await writeFile(resolve(targetDir, IR_DOCUMENTS.environmentScene.fileName), stableJson(environment.scene));
+    }
+    if (ui !== undefined) {
+      await writeFile(resolve(targetDir, IR_DOCUMENTS.ui.fileName), stableJson(ui));
+    }
+    if (overlays !== undefined) {
+      await writeFile(resolve(targetDir, IR_DOCUMENTS.overlays.fileName), stableJson(overlays.overlays));
+    }
+    if (audio !== undefined) {
+      await writeFile(resolve(targetDir, IR_DOCUMENTS.audio.fileName), stableJson(audio));
+    }
+    if (localData !== undefined) {
+      await writeFile(resolve(targetDir, IR_DOCUMENTS.localData.fileName), stableJson(localData));
+    }
+    if (lifecycleScenes.scenes !== undefined) {
+      await writeFile(resolve(targetDir, IR_DOCUMENTS.scenes.fileName), stableJson(lifecycleScenes.scenes));
+    }
+    if (animations !== undefined) {
+      await writeFile(resolve(targetDir, IR_DOCUMENTS.animations.fileName), stableJson(animations));
+    }
+    if (gltfScene !== undefined) {
+      await writeFile(resolve(targetDir, IR_DOCUMENTS.gltfScene.fileName), stableJson(gltfScene));
+    }
+    if (input !== undefined) {
+      await writeFile(resolve(targetDir, IR_DOCUMENTS.input.fileName), stableJson(input));
+    }
+    if (ecs !== undefined) {
+      await writeFile(resolve(targetDir, IR_DOCUMENTS.componentSchemas.fileName), stableJson(ecs.componentSchemas));
+      await writeFile(resolve(targetDir, IR_DOCUMENTS.resourceSchemas.fileName), stableJson(ecs.resourceSchemas));
+      await writeFile(resolve(targetDir, IR_DOCUMENTS.eventSchemas.fileName), stableJson(ecs.eventSchemas));
+      await writeFile(resolve(targetDir, IR_DOCUMENTS.systems.fileName), stableJson(ecs.systems));
+      if (ecs.runtimeConfig !== undefined) {
+        await writeFile(resolve(targetDir, IR_DOCUMENTS.runtimeConfig.fileName), stableJson(ecs.runtimeConfig));
+      }
+      if (ecs.scriptBundle !== undefined) {
+        await writeFile(resolve(targetDir, IR_DOCUMENTS.scripts.fileName), ecs.scriptBundle);
+      }
+    }
+  }
+}
+
+async function createEmitStagingDir(outDir: string): Promise<string> {
+  const parent = dirname(outDir);
+  await mkdir(parent, { recursive: true });
+  return mkdtemp(resolve(parent, ".tn-emit-"));
+}
+
+async function replaceOutputDirectory(stagingDir: string, outDir: string): Promise<void> {
+  const backupDir = `${outDir}.previous-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  let backedUp = false;
+  try {
+    await rename(outDir, backupDir);
+    backedUp = true;
+  } catch (error) {
+    if (!isMissingPathError(error)) {
+      throw error;
+    }
+  }
+
+  try {
+    await rename(stagingDir, outDir);
+  } catch (error) {
+    if (backedUp) {
+      await rename(backupDir, outDir);
+    }
+    throw error;
+  }
+
+  if (backedUp) {
+    await rm(backupDir, { force: true, recursive: true });
+  }
+}
+
+function isMissingPathError(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && (error as { code?: unknown }).code === "ENOENT";
 }
 
 interface IBundleRoot {

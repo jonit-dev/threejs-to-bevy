@@ -1,6 +1,7 @@
 import { cp, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 import { validateBundle } from "@threenative/compiler";
+import { validateBundleRelativePath } from "@threenative/ir";
 
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
 
@@ -227,6 +228,10 @@ async function assertDesktopTarget(bundlePath: string): Promise<void> {
   const targetProfilePath = manifest.files?.targetProfile;
   if (targetProfilePath === undefined) {
     throw new Error("Bundle manifest does not reference target.profile.json.");
+  }
+  const targetProfileValidation = validateBundleRelativePath(targetProfilePath);
+  if (!targetProfileValidation.ok) {
+    throw new Error(targetProfileValidation.message ?? `Bundle target profile path '${targetProfilePath}' is invalid.`);
   }
   const profile = JSON.parse(await readFile(resolve(bundlePath, targetProfilePath), "utf8")) as { targets?: unknown };
   const targets = Array.isArray(profile.targets) ? profile.targets : [];

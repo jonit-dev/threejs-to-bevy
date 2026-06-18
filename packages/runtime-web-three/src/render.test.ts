@@ -5,7 +5,7 @@ import * as THREE from "three";
 import type { IRuntimeConfigIr } from "@threenative/ir";
 
 import { mapWorld } from "./mapWorld.js";
-import { applyRendererColorManagement, createRenderedParticleObjects, renderCameraViews, webBloomSettings, webDepthOfFieldSettings, webRendererParameters } from "./render.js";
+import { applyRendererColorManagement, createRenderedParticleObjects, createWebRenderLifecycle, renderCameraViews, webBloomSettings, webDepthOfFieldSettings, webRendererParameters } from "./render.js";
 
 function runtimeConfig(
   antialias: NonNullable<IRuntimeConfigIr["renderer"]>["antialias"],
@@ -92,6 +92,66 @@ test("should map runtime antialias modes to WebGL renderer parameters", () => {
       preserveDrawingBuffer: true,
     });
   }
+});
+
+test("should cancel pending animation frame on render lifecycle dispose", () => {
+  const cancelled: number[] = [];
+  const lifecycle = createWebRenderLifecycle({
+    cancelAnimationFrame: (handle) => cancelled.push(handle),
+    diagnostics: [],
+    frame: () => undefined,
+    requestAnimationFrame: () => 42,
+  });
+
+  lifecycle.schedule();
+  lifecycle.dispose();
+
+  assert.deepEqual(cancelled, [42]);
+});
+
+test("should detach render resources once on lifecycle dispose", () => {
+  let disposed = 0;
+  const lifecycle = createWebRenderLifecycle({
+    cancelAnimationFrame: () => undefined,
+    diagnostics: [],
+    frame: () => undefined,
+    onDispose: () => {
+      disposed += 1;
+    },
+    requestAnimationFrame: () => 7,
+  });
+
+  lifecycle.schedule();
+  lifecycle.dispose();
+  lifecycle.dispose();
+
+  assert.equal(disposed, 1);
+});
+
+test("should report rejected render frames as diagnostics", async () => {
+  let frame: FrameRequestCallback | undefined;
+  const diagnostics: Array<{ code: string; message: string; path: string; severity: "error" | "warning" }> = [];
+  const lifecycle = createWebRenderLifecycle({
+    cancelAnimationFrame: () => undefined,
+    diagnostics,
+    frame: async () => {
+      throw new Error("boom");
+    },
+    requestAnimationFrame: (callback) => {
+      frame = callback;
+      return 9;
+    },
+  });
+
+  lifecycle.schedule();
+  frame?.(16);
+  await Promise.resolve();
+  await Promise.resolve();
+  lifecycle.dispose();
+
+  assert.equal(diagnostics[0]?.code, "TN_WEB_RENDER_FRAME_FAILED");
+  assert.match(diagnostics[0]?.message ?? "", /boom/);
+  assert.equal(diagnostics[0]?.path, "runtime.frame");
 });
 
 test("should keep antialiasing enabled when runtime config is absent", () => {

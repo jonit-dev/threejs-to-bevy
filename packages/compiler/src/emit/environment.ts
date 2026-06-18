@@ -4,6 +4,9 @@ import type { IEnvironmentSceneIr, ITargetProfile } from "@threenative/ir";
 
 import type { IAssetCopy, IInternalAsset } from "./asset-copy.js";
 
+const MAX_SCATTER_INSTANCES = 10_000;
+const SCATTER_ATTEMPT_MULTIPLIER = 20;
+
 export interface IEnvironmentDeclaration {
   assetNames: string[];
   atmosphere?: IEnvironmentSceneIr["atmosphere"];
@@ -231,6 +234,7 @@ function expandScatterInstances(declaration: IEnvironmentDeclaration): IEnvironm
   const exclusionZones = declaration.exclusionZones ?? [];
   for (const scatter of [...(declaration.scatter ?? [])].sort((left, right) => left.id.localeCompare(right.id))) {
     const count = scatter.count ?? estimateScatterCount(scatter);
+    assertScatterBudget(scatter.id, count);
     const assetIds = [...scatter.assetIds].sort((left, right) => left.localeCompare(right));
     if (assetIds.length === 0) {
       continue;
@@ -238,7 +242,8 @@ function expandScatterInstances(declaration: IEnvironmentDeclaration): IEnvironm
     const random = seededRandom(scatter.seed);
     let emitted = 0;
     let attempts = 0;
-    while (emitted < count && attempts < count * 20) {
+    const maxAttempts = count * SCATTER_ATTEMPT_MULTIPLIER;
+    while (emitted < count && attempts < maxAttempts) {
       attempts += 1;
       const sourceAsset = assetIds[Math.floor(random() * assetIds.length)] ?? assetIds[0]!;
       const position = [
@@ -271,6 +276,17 @@ function expandScatterInstances(declaration: IEnvironmentDeclaration): IEnvironm
 function estimateScatterCount(scatter: NonNullable<IEnvironmentDeclaration["scatter"]>[number]): number {
   const area = Math.abs((scatter.bounds.max[0] - scatter.bounds.min[0]) * (scatter.bounds.max[2] - scatter.bounds.min[2]));
   return Math.floor(area * (scatter.density ?? 0));
+}
+
+function assertScatterBudget(id: string, count: number): void {
+  if (!Number.isFinite(count) || !Number.isInteger(count) || count < 0) {
+    throw new Error(`Environment scatter '${id}' must resolve to a finite non-negative integer instance count.`);
+  }
+  if (count > MAX_SCATTER_INSTANCES) {
+    throw new Error(
+      `Environment scatter '${id}' resolves to ${count} instances, exceeding the maximum of ${MAX_SCATTER_INSTANCES}. Lower the count or density before emitting the bundle.`,
+    );
+  }
 }
 
 function seededRandom(seed: number): () => number {

@@ -7,6 +7,7 @@ import { World, environmentMap, lightProbe, skybox, textureAsset } from "@threen
 import { validateBundle } from "@threenative/ir";
 
 import { emitBundle } from "./bundle.js";
+import type { IEnvironmentDeclaration } from "./environment.js";
 
 test("should emit rendering environment capabilities when skybox and probes are declared", async () => {
   const root = await mkdtemp(join(process.cwd(), "tmp-env-lighting-"));
@@ -85,6 +86,90 @@ test("should emit rendering environment capabilities when skybox and probes are 
   }
 });
 
+test("should reject explicit scatter counts beyond the emission budget", async () => {
+  const root = await mkdtemp(join(process.cwd(), "tmp-env-scatter-budget-"));
+  try {
+    await writeEnvironmentAsset(root);
+
+    await assert.rejects(
+      emitBundle(
+        {
+          entry: "src/game.ts",
+          outDir: "dist/game.bundle",
+          projectPath: root,
+          schema: "threenative.project",
+          version: "0.1.0",
+        },
+        {
+          world: new World(),
+          environment: environmentDeclaration({ count: 10_001, id: "scatter.too-many" }),
+        },
+      ),
+      /scatter\.too-many.*exceeding the maximum of 10000/i,
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject density-derived scatter counts beyond the emission budget", async () => {
+  const root = await mkdtemp(join(process.cwd(), "tmp-env-scatter-density-budget-"));
+  try {
+    await writeEnvironmentAsset(root);
+
+    await assert.rejects(
+      emitBundle(
+        {
+          entry: "src/game.ts",
+          outDir: "dist/game.bundle",
+          projectPath: root,
+          schema: "threenative.project",
+          version: "0.1.0",
+        },
+        {
+          world: new World(),
+          environment: environmentDeclaration({ bounds: { min: [0, 0, 0], max: [200, 0, 200] }, density: 1, id: "scatter.dense" }),
+        },
+      ),
+      /scatter\.dense.*exceeding the maximum of 10000/i,
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 function assertCapability(manifest: { requiredCapabilities: Record<string, string[]> }, domain: string, capability: string): void {
   assert.ok(manifest.requiredCapabilities[domain]?.includes(capability), `${domain}:${capability}`);
+}
+
+async function writeEnvironmentAsset(root: string): Promise<void> {
+  await mkdir(join(root, "assets-source/environment/glTF"), { recursive: true });
+  await writeFile(join(root, "assets-source/environment/glTF/Grass.gltf"), JSON.stringify({ asset: { version: "2.0" }, buffers: [{ uri: "Grass.bin" }] }));
+  await writeFile(join(root, "assets-source/environment/glTF/Grass.bin"), "grass");
+}
+
+function environmentDeclaration(scatter: {
+  bounds?: { min: [number, number, number]; max: [number, number, number] };
+  count?: number;
+  density?: number;
+  id: string;
+}): IEnvironmentDeclaration {
+  return {
+    sourceDir: "assets-source/environment/glTF",
+    assetNames: ["Grass.gltf"],
+    path: { id: "path.main", points: [[0, 0, 0], [1, 0, 0]], width: 1 },
+    instances: [],
+    scatter: [
+      {
+        assetIds: ["env.Grass"],
+        bounds: scatter.bounds ?? { min: [0, 0, 0], max: [10, 0, 10] },
+        id: scatter.id,
+        maxScale: 1,
+        minScale: 1,
+        seed: 1,
+        ...(scatter.count === undefined ? {} : { count: scatter.count }),
+        ...(scatter.density === undefined ? {} : { density: scatter.density }),
+      },
+    ],
+  };
 }

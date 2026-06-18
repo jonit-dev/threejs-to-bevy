@@ -70,6 +70,11 @@ export const V9_FOCUSED_GATES = [
     reportPath: "tools/verify/artifacts/runtime-gameplay-host/verification-report.json",
     script: "verify:runtime-gameplay-host",
   },
+  {
+    name: "verify bundle safety hardening",
+    reportPath: "tools/verify/artifacts/bundle-safety-hardening/verification-report.json",
+    script: "verify:bundle-safety-hardening",
+  },
 ];
 
 export const V9_RELEASE_ARTIFACTS = [

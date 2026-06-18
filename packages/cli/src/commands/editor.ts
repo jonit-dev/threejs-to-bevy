@@ -16,6 +16,7 @@ import {
   type IIrDiagnostic,
   type IMaterialsIr,
   type IWorldIr,
+  validateBundleRelativePath,
 } from "@threenative/ir";
 import { validateBundle } from "@threenative/compiler";
 
@@ -258,12 +259,18 @@ async function applyCommand(argv: readonly string[], cwd: string, json: boolean)
     tempRoot = await mkdtemp(resolve(tmpdir(), "tn-editor-apply-"));
     const tempBundle = resolve(tempRoot, "game.bundle");
     await cp(bundlePath, tempBundle, { recursive: true });
-    await writeSnapshotDocuments(snapshot.value, tempBundle);
+    const tempWrite = await writeSnapshotDocuments(snapshot.value, tempBundle);
+    if (tempWrite.ok === false) {
+      return diagnosticResult(editorDiagnosticPayload(tempWrite.diagnostic), { exitCode: 1, json, stderr: !json });
+    }
     const validation = await validateBundle(tempBundle);
     if (!validation.ok) {
       return diagnosticsResult("TN_EDITOR_APPLY_BUNDLE_INVALID", "Applied editor snapshot produced an invalid bundle.", validation.diagnostics, json);
     }
-    await writeSnapshotDocuments(snapshot.value, bundlePath);
+    const bundleWrite = await writeSnapshotDocuments(snapshot.value, bundlePath);
+    if (bundleWrite.ok === false) {
+      return diagnosticResult(editorDiagnosticPayload(bundleWrite.diagnostic), { exitCode: 1, json, stderr: !json });
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return diagnosticResult(
@@ -358,7 +365,11 @@ async function readBundleDocuments(bundlePath: string): Promise<
   const documentPaths = collectJsonDocuments(manifest.value);
   const documents: Record<string, unknown> = {};
   for (const documentPath of documentPaths) {
-    const document = await readJsonFile<unknown>(resolve(bundlePath, documentPath), documentPath);
+    const resolved = resolveBundleDocumentPath(bundlePath, documentPath);
+    if (resolved.ok === false) {
+      return { diagnostic: resolved.diagnostic, ok: false };
+    }
+    const document = await readJsonFile<unknown>(resolved.path, documentPath);
     if (document.ok === false) {
       return { diagnostic: document.diagnostic, ok: false };
     }
@@ -404,12 +415,17 @@ function applyDocumentEdit(documents: Record<string, unknown>, path: string, val
   return { diagnostic: { code: "TN_EDITOR_SET_PATH_MISSING", message: `Editor set path '${path}' does not exist.`, path, severity: "error" }, ok: false };
 }
 
-async function writeSnapshotDocuments(snapshot: IEditorProjectSnapshot, bundlePath: string): Promise<void> {
+async function writeSnapshotDocuments(snapshot: IEditorProjectSnapshot, bundlePath: string): Promise<{ ok: true } | { diagnostic: IIrDiagnostic; ok: false }> {
   for (const [documentPath, document] of Object.entries(snapshot.documents)) {
-    const outputPath = resolve(bundlePath, documentPath);
+    const resolved = resolveBundleDocumentPath(bundlePath, documentPath);
+    if (resolved.ok === false) {
+      return { diagnostic: resolved.diagnostic, ok: false };
+    }
+    const outputPath = resolved.path;
     await mkdir(dirname(outputPath), { recursive: true });
     await writeFile(outputPath, `${JSON.stringify(document, null, 2)}\n`);
   }
+  return { ok: true };
 }
 
 async function diffCommand(argv: readonly string[], cwd: string, json: boolean): Promise<ICommandResult> {
@@ -538,6 +554,23 @@ function collectManifestPaths(paths: Set<string>, record: JsonRecord): void {
       paths.add(value);
     }
   }
+}
+
+function resolveBundleDocumentPath(bundlePath: string, documentPath: string): { ok: true; path: string } | { diagnostic: IIrDiagnostic; ok: false } {
+  const validation = validateBundleRelativePath(documentPath);
+  if (!validation.ok) {
+    return {
+      diagnostic: {
+        code: "TN_EDITOR_BUNDLE_PATH_INVALID",
+        message: validation.message ?? `Bundle document path '${documentPath}' is invalid.`,
+        path: documentPath,
+        severity: "error",
+        suggestion: "Use a POSIX-style path inside the bundle without absolute, URL, or parent segments.",
+      },
+      ok: false,
+    };
+  }
+  return { ok: true, path: resolve(bundlePath, documentPath) };
 }
 
 function unescapePointer(value: string): string {
