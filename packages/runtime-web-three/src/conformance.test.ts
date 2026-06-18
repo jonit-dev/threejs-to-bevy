@@ -94,6 +94,41 @@ test("should report resource and event conformance observations", async () => {
   assert.deepEqual(report.events, [{ id: "DamageEvent", values: [{ amount: 2, target: "player" }] }]);
 });
 
+test("should report V10 ECS tags and scene groups conformance observations", async () => {
+  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/v10-ecs-tags-groups/game.bundle"));
+  const mapped = mapWorld(bundle);
+  const report = reportWebConformance(bundle, mapped, "v10-ecs-tags-groups");
+
+  assert.equal(report.fixture, "v10-ecs-tags-groups");
+  assert.deepEqual(report.diagnostics.map((diagnostic) => diagnostic.code), ["TN-WEB-CAMERA-MISSING"]);
+  assert.deepEqual(report.systems, [
+    {
+      name: "enemyTransformProbe",
+      queries: [
+        { matchedEntities: ["enemy.goblin"], with: ["Enemy", "Transform"], without: [] },
+        { matchedEntities: ["enemy.goblin", "group.encounters"], with: ["Transform"], without: ["Interactable"] },
+      ],
+    },
+  ]);
+
+  const group = report.entities.find((entity) => entity.id === "group.encounters");
+  assert.ok(group);
+  assert.deepEqual(group.components, ["SceneContainer", "Transform"]);
+  assert.equal(group.meshRenderer, undefined);
+  assert.equal(group.camera, undefined);
+  assert.equal(group.light, undefined);
+
+  const enemy = report.entities.find((entity) => entity.id === "enemy.goblin");
+  assert.ok(enemy);
+  assert.equal(enemy.parent, "group.encounters");
+  assert.deepEqual(enemy.components, ["Damageable", "Enemy", "Hierarchy", "MeshRenderer", "Transform"]);
+
+  const interactable = report.entities.find((entity) => entity.id === "chest.interactable");
+  assert.ok(interactable);
+  assert.equal(interactable.parent, "group.encounters");
+  assert.deepEqual(interactable.components, ["Hierarchy", "Interactable", "MeshRenderer", "Transform"]);
+});
+
 function primitiveAssets(report: ReturnType<typeof reportWebConformance>): Array<[string, string | undefined]> {
   return report.assets
     .filter((asset) => asset.kind === "mesh")

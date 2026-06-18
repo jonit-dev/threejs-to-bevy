@@ -13,6 +13,8 @@ export type {
   IConformanceResourceReport,
   IConformanceRuntimeConfigReport,
   IConformanceScreenshotExportReport,
+  IConformanceSystemReport,
+  IConformanceSystemQueryReport,
   IConformanceUiNodeReport,
   IConformanceUiReport,
 } from "./conformanceReport.js";

@@ -380,8 +380,12 @@ Rules:
   a new parent removes the previous parent, matching the familiar Three.js
   authoring model.
 - `Group` is a non-rendering `Object3D` container for transform hierarchy and
-  editor organization. Use ECS tags/components, not scene groups, for gameplay
-  membership queries.
+  editor organization. `sceneToWorld()` emits a normal transform/hierarchy entity
+  plus `SceneContainer` metadata for groups; it does not emit renderer, camera,
+  or light components for the group itself. Use ECS tags/components, not scene
+  groups, for gameplay membership queries.
+- Asset manifest groups are loading/readiness declarations only. They are not
+  ECS tags and are not scene containers.
 - `name` is a debug label, not a stable reference. Use explicit IDs for stable
   references.
 - `userData` may be supported only when it is plain JSON-compatible data and

@@ -212,6 +212,85 @@ fn should_preserve_support_profiler_fields_in_native_conformance_report() {
 }
 
 #[test]
+fn should_report_v10_ecs_tags_and_scene_groups_conformance_observations() {
+    let fixture = load_conformance_fixture("v10-ecs-tags-groups");
+    let mut app = App::new();
+
+    map_bundle_into_world(app.world_mut(), &fixture.bundle).unwrap_or_else(|error| {
+        panic!(
+            "failed to map conformance fixture '{}' at '{}': {}",
+            fixture.name,
+            fixture.bundle_path.display(),
+            error
+        )
+    });
+    let report = report_bevy_conformance(app.world_mut(), &fixture.bundle, fixture.name);
+    let report_json = serde_json::to_value(&report).expect("report should serialize");
+
+    assert_eq!(report.fixture, "v10-ecs-tags-groups");
+    assert_eq!(report.runtime, "bevy");
+    assert!(report.diagnostics.is_empty());
+    assert_eq!(
+        report_json["systems"],
+        serde_json::json!([
+            {
+                "name": "enemyTransformProbe",
+                "queries": [
+                    { "matchedEntities": ["enemy.goblin"], "with": ["Enemy", "Transform"], "without": [] },
+                    { "matchedEntities": ["enemy.goblin", "group.encounters"], "with": ["Transform"], "without": ["Interactable"] }
+                ]
+            }
+        ])
+    );
+
+    let group = report
+        .entities
+        .iter()
+        .find(|entity| entity.id == "group.encounters")
+        .expect("group entity should be reported");
+    assert_eq!(
+        group.components,
+        vec!["SceneContainer".to_owned(), "Transform".to_owned()]
+    );
+    assert!(group.mesh_renderer.is_none());
+    assert!(group.camera.is_none());
+    assert!(group.light.is_none());
+
+    let enemy = report
+        .entities
+        .iter()
+        .find(|entity| entity.id == "enemy.goblin")
+        .expect("enemy entity should be reported");
+    assert_eq!(enemy.parent.as_deref(), Some("group.encounters"));
+    assert_eq!(
+        enemy.components,
+        vec![
+            "Damageable".to_owned(),
+            "Enemy".to_owned(),
+            "Hierarchy".to_owned(),
+            "MeshRenderer".to_owned(),
+            "Transform".to_owned()
+        ]
+    );
+
+    let interactable = report
+        .entities
+        .iter()
+        .find(|entity| entity.id == "chest.interactable")
+        .expect("interactable entity should be reported");
+    assert_eq!(interactable.parent.as_deref(), Some("group.encounters"));
+    assert_eq!(
+        interactable.components,
+        vec![
+            "Hierarchy".to_owned(),
+            "Interactable".to_owned(),
+            "MeshRenderer".to_owned(),
+            "Transform".to_owned()
+        ]
+    );
+}
+
+#[test]
 fn should_report_promoted_generated_primitive_mapping_semantics() {
     let fixture = load_conformance_fixture("primitive-mapping");
     let mut app = App::new();

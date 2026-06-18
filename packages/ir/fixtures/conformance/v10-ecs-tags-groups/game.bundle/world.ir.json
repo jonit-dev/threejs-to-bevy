@@ -1,0 +1,60 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "group.encounters",
+      "components": {
+        "Transform": {
+          "position": [0, 0, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        },
+        "SceneContainer": {
+          "kind": "group",
+          "name": "Encounters"
+        }
+      }
+    },
+    {
+      "id": "enemy.goblin",
+      "components": {
+        "Transform": {
+          "position": [1, 0, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        },
+        "Hierarchy": {
+          "parent": "group.encounters"
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.marker",
+          "material": "mat.enemy"
+        },
+        "Enemy": {},
+        "Damageable": {}
+      }
+    },
+    {
+      "id": "chest.interactable",
+      "components": {
+        "Transform": {
+          "position": [-1, 0, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        },
+        "Hierarchy": {
+          "parent": "group.encounters"
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.marker",
+          "material": "mat.interactable"
+        },
+        "Interactable": {}
+      }
+    }
+  ],
+  "resources": {},
+  "events": {},
+  "prefabs": []
+}

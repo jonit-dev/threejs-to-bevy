@@ -1,0 +1,28 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "enemyTransformProbe",
+      "schedule": "fixedUpdate",
+      "reads": ["Enemy", "Transform"],
+      "writes": [],
+      "queries": [
+        {
+          "with": ["Enemy", "Transform"],
+          "without": []
+        },
+        {
+          "with": ["Transform"],
+          "without": ["Interactable"]
+        }
+      ],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": [],
+      "resourceWrites": [],
+      "commands": [],
+      "services": []
+    }
+  ]
+}

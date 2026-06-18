@@ -58,6 +58,12 @@ explicit non-portable diagnostics. `V10-03` is implemented as the
 lighting, atmosphere, post, geometry, dense-content, and combined-scene fixtures;
 the current passing evidence is indexed under
 `docs/pr-evidence/v10-visual-calibration/`.
+V10-05 ECS tags, scene groups, and scene containers are implemented as the
+recommended grouping model: `defineTag()` serializes queryable zero-field marker
+components, `Group` lowers as a transform hierarchy container with
+`SceneContainer` metadata and no renderer/camera/light components, and the shared
+`v10-ecs-tags-groups` conformance fixture verifies matching web/Bevy tag-query
+and hierarchy observations through `pnpm verify:conformance`.
 Broader authoring-tool UX remains outside this V10 batch except for bounded
 visual panel evidence explicitly promoted in the status entries below. `pnpm
 check:docs` is the canonical docs and drift gate. Temporary V10 planning

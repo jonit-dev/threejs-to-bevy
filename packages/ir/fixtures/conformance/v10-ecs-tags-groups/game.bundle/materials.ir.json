@@ -1,0 +1,20 @@
+{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "materials": [
+    {
+      "id": "mat.enemy",
+      "kind": "standard",
+      "color": "#e03131",
+      "metalness": 0,
+      "roughness": 0.8
+    },
+    {
+      "id": "mat.interactable",
+      "kind": "standard",
+      "color": "#f59f00",
+      "metalness": 0,
+      "roughness": 0.8
+    }
+  ]
+}

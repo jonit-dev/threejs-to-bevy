@@ -328,6 +328,18 @@ test("should include capability tags for each conformance fixture", async () => 
     "physics:rigid-body.kinematic",
     "physics:rigid-body.static",
   ]);
+  assertFixtureCapabilities(byName, "v10-ecs-tags-groups", [
+    "ecs:component-schemas",
+    "ecs:tags",
+    "rendering:material.standard",
+    "rendering:mesh-renderer",
+    "rendering:mesh.primitive.box",
+    "scripting:queries",
+    "scripting:schedule.fixedUpdate",
+    "scripting:systems",
+    "transform:hierarchy",
+    "transform:scene-container",
+  ]);
 });
 
 test("should require every V9 catalog fixture to have a bundle and owner PRD", async () => {

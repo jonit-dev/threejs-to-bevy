@@ -49,6 +49,9 @@ implementation:
 - `V10-04` owns production platform work: custom asset/audio extension policy,
   streaming diagnostics, cloud-save boundary, signed/mobile packaging, profiler
   maturity, and release hardening.
+- `V10-05` now implements the grouping model: ECS tags as queryable zero-field
+  marker components plus scene `Group` containers that lower to hierarchy-only
+  `SceneContainer` entities with web/Bevy conformance coverage.
 - Broader authoring-tool UX remains outside this V10 batch except for bounded
   visual panel evidence explicitly promoted below.
 
@@ -85,6 +88,8 @@ Repeated patterns in those games:
 ### 🧩 ECS, App, and Scheduling
 
 - [x] Entities, stable IDs, components, and component schemas
+- [x] ECS tags as queryable zero-field marker components
+- [x] Scene `Group` containers as hierarchy-only `SceneContainer` entities
 - [x] Parent/child hierarchy and local/global transform propagation
 - [x] Resources and typed game events
 - [x] Startup, fixed update, update, and post-update schedules

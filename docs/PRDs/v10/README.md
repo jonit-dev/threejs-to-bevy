@@ -36,10 +36,12 @@ Instead, it assigns the remaining unchecked backlog in
 | 2 | [V10-02 Advanced Renderer, Materials, and Physics](./V10-02-advanced-renderer-materials-and-physics.md) | Advanced lights/materials/shaders/post-processing/instancing plus dynamic mesh collider policy | High-end renderer and physics gaps either gain narrow portable contracts or stable unsupported diagnostics with promotion criteria. |
 | 3 | [V10-03 Cross-Runtime Visual Calibration](./V10-03-cross-runtime-visual-calibration.md) | Isolated and combined-scene color/material/lighting/atmosphere/post/geometry/dense visual calibration | Web Three.js and native Bevy must pass measurable calibration before advanced visual features can be promoted. |
 | 4 | [V10-04 Production Platform, Audio, Assets, and Release](./V10-04-production-platform-audio-assets-and-release.md) | Custom asset/audio extension policy, streaming diagnostics, cloud-save boundary, signed/mobile packaging, profiler/budget maturity | Production platform gaps are triaged into portable local workflows, target-profile diagnostics, or non-portable online/platform boundaries. |
+| 5 | [V10-05 ECS Tags, Groups, and Scene Containers](./V10-05-ecs-tags-groups-and-scene-containers.md) | Gameplay grouping, marker tags, scene hierarchy containers, and authoring guidance for Godot-style group expectations | Authors get a clear split: ECS tags for queryable gameplay membership, scene `Group` containers for transform/editor organization, and asset groups only for loading. |
 
 Editor UI, visual inspector panels, and broader authoring-tool UX remain outside
-this V10 batch. They should stay unchecked in the parity tracker until a
-dedicated editor/UI planning pass is requested.
+this V10 batch except for the narrow scene-container metadata described in
+V10-05. They should stay unchecked in the parity tracker until a dedicated
+editor/UI planning pass is requested.
 
 ## Release Gate
 

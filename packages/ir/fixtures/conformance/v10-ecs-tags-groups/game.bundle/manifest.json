@@ -1,0 +1,35 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "conformance-v10-ecs-tags-groups",
+  "requiredCapabilities": {
+    "ecs": [
+      "component-schemas",
+      "tags"
+    ],
+    "rendering": [
+      "material.standard",
+      "mesh-renderer",
+      "mesh.primitive.box"
+    ],
+    "scripting": [
+      "queries",
+      "schedule.fixedUpdate",
+      "systems"
+    ],
+    "transform": [
+      "hierarchy",
+      "scene-container"
+    ]
+  },
+  "entry": {
+    "systems": "systems.ir.json",
+    "world": "world.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "componentSchemas": "schemas/components.schema.json",
+    "materials": "materials.ir.json",
+    "targetProfile": "target.profile.json"
+  }
+}

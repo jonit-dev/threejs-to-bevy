@@ -231,6 +231,17 @@ export interface IConformanceEntityReport {
   };
 }
 
+export interface IConformanceSystemQueryReport {
+  matchedEntities: string[];
+  with: string[];
+  without: string[];
+}
+
+export interface IConformanceSystemReport {
+  name: string;
+  queries: IConformanceSystemQueryReport[];
+}
+
 export interface IConformanceReport {
   activeCamera?: string;
   audio?: IConformanceAudioReport;
@@ -247,5 +258,6 @@ export interface IConformanceReport {
   runtime: "bevy" | "web-three";
   runtimeConfig?: IConformanceRuntimeConfigReport;
   screenshotExports?: IConformanceScreenshotExportReport[];
+  systems?: IConformanceSystemReport[];
   ui?: IConformanceUiReport;
 }

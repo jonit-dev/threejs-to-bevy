@@ -14,6 +14,7 @@ import type {
   IConformanceResourceReport,
   IConformanceRuntimeConfigReport,
   IConformanceScreenshotExportReport,
+  IConformanceSystemReport,
   IConformanceUiNodeReport,
   IConformanceUiReport,
   IEnvironmentSceneIr,
@@ -61,8 +62,31 @@ export function reportWebConformance(
     runtime: "web-three",
     runtimeConfig: reportRuntimeConfig(bundle.runtimeConfig),
     screenshotExports: reportScreenshotExports(bundle.world),
+    systems: reportSystems(bundle),
     ui: bundle.ui === undefined ? undefined : reportUi(bundle.ui),
   };
+}
+
+function reportSystems(bundle: IWebBundle): IConformanceSystemReport[] | undefined {
+  if (bundle.systems === undefined) {
+    return undefined;
+  }
+  return bundle.systems.systems.map((system) => ({
+    name: system.name,
+    queries: system.queries.map((query) => ({
+      matchedEntities: bundle.world.entities
+        .filter((entity) => matchesQuery(entity, query.with, query.without))
+        .map((entity) => entity.id)
+        .sort((left, right) => left.localeCompare(right)),
+      with: [...query.with],
+      without: [...query.without],
+    })),
+  }));
+}
+
+function matchesQuery(entity: IWorldEntity, withComponents: string[], withoutComponents: string[]): boolean {
+  return withComponents.every((component) => entity.components[component] !== undefined)
+    && withoutComponents.every((component) => entity.components[component] === undefined);
 }
 
 function reportCameraViews(bundle: IWebBundle, mapped: IThreeWorld): IConformanceCameraViewReport[] {

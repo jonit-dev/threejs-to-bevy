@@ -67,16 +67,49 @@ Rules:
 
 ### Tag
 
-A tag is a shorthand for a zero-field marker component.
+A tag is a shorthand for a zero-field marker component. Prefer
+`defineTag("Enemy")` over `defineComponent("Enemy")` when membership is only a
+boolean category; keep `defineComponent()` for categories with data such as
+`Faction`, `Team`, or `SpawnZone`.
+
+```ts
+import { Transform, World, defineQuery, defineTag, fixedUpdate } from "@threenative/sdk";
+
+const Enemy = defineTag("Enemy");
+const Interactable = defineTag("Interactable");
+
+new World()
+  .spawn("goblin", Enemy(), Transform({ position: [0, 0, 0] }))
+  .spawn("chest", Interactable(), Transform({ position: [2, 0, 0] }))
+  .addSystem(fixedUpdate("enemyProbe", {
+    queries: [defineQuery({ with: [Enemy, Transform], without: [Interactable] })],
+    reads: [Enemy, Transform],
+    writes: [],
+  }));
+```
 
 Rules:
 
-- Tags compile to marker components in `world.ir.json`.
+- Tags compile to marker components in `world.ir.json`, for example
+  `"Enemy": {}`.
 - Tags are queryable with the same `with` and `without` filters as data
-  components.
+  components in the SDK, web runtime, and Bevy runtime.
+- Duplicate tags/components on one entity use the same duplicate-component
+  diagnostics as ordinary components.
 - Tags should not carry values. If values are needed, define a component.
+- Do not use `IWorldEntity.tags` for gameplay behavior; the supported authoring
+  and runtime path is the component map.
 - Tags are useful because Bevy commonly models entity classification with marker
   components, and the same pattern maps cleanly to the web runtime.
+
+### Scene containers vs asset groups
+
+Scene containers such as SDK `Group` objects are hierarchy/editor organization:
+they lower to entities with `Transform`, optional `Hierarchy`, and
+`SceneContainer` metadata. They do not imply gameplay membership. Asset groups in
+manifests are loading/readiness groupings and also must not be used as gameplay
+queries. Use tags/components for gameplay membership, scene containers for
+transform organization, and asset groups for loading behavior.
 
 ### System
 

@@ -5,7 +5,7 @@ use serde::Serialize;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{
     AnimationClipIr, AssetIr, ColorIr, EnvironmentMapIr, EnvironmentSceneIr, LoadedBundle,
-    MaterialIr, MeshGenerationIr, RuntimeConfigIr, SkyboxIr, UiIr, WorldEntity,
+    MaterialIr, MeshGenerationIr, RuntimeConfigIr, SkyboxIr, SystemQueryIr, UiIr, WorldEntity,
 };
 
 use crate::audio::{
@@ -44,7 +44,24 @@ pub struct ConformanceReport {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub screenshot_exports: Option<Vec<ConformanceScreenshotExportReport>>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub systems: Option<Vec<ConformanceSystemReport>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub ui: Option<ConformanceUiReport>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConformanceSystemReport {
+    pub name: String,
+    pub queries: Vec<ConformanceSystemQueryReport>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConformanceSystemQueryReport {
+    pub matched_entities: Vec<String>,
+    pub with: Vec<String>,
+    pub without: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -632,8 +649,49 @@ pub fn report_bevy_conformance(
                 })
                 .collect(),
         ),
+        systems: report_systems(bundle),
         ui: ui_report.and_then(|report| report.report),
     }
+}
+
+fn report_systems(bundle: &LoadedBundle) -> Option<Vec<ConformanceSystemReport>> {
+    let systems = bundle.systems.as_ref()?;
+    Some(
+        systems
+            .systems
+            .iter()
+            .map(|system| ConformanceSystemReport {
+                name: system.name.clone(),
+                queries: system
+                    .queries
+                    .iter()
+                    .map(|query| ConformanceSystemQueryReport {
+                        matched_entities: matched_entities(bundle, query),
+                        with: query.with.clone(),
+                        without: query.without.clone(),
+                    })
+                    .collect(),
+            })
+            .collect(),
+    )
+}
+
+fn matched_entities(bundle: &LoadedBundle, query: &SystemQueryIr) -> Vec<String> {
+    let mut matched = bundle
+        .world
+        .entities
+        .iter()
+        .filter(|entity| matches_query(entity, query))
+        .map(|entity| entity.id.clone())
+        .collect::<Vec<_>>();
+    matched.sort();
+    matched
+}
+
+fn matches_query(entity: &WorldEntity, query: &SystemQueryIr) -> bool {
+    let names = component_names(entity);
+    query.with.iter().all(|component| names.contains(component))
+        && query.without.iter().all(|component| !names.contains(component))
 }
 
 fn report_profiler(bundle: &LoadedBundle) -> ConformanceProfilerReport {
@@ -1512,6 +1570,7 @@ fn component_names(entity: &WorldEntity) -> Vec<String> {
     if entity.components.visibility.is_some() {
         names.push("Visibility".to_owned());
     }
+    names.extend(entity.components.extra.keys().cloned());
     names.sort();
     names
 }
