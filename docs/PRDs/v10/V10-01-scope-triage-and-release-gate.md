@@ -267,7 +267,7 @@ sequenceDiagram
 2. **Conformance:** `pnpm verify:conformance`.
 3. **Aggregate:** `pnpm verify:v10`.
 4. **Evidence Required:** rejected fixture diagnostics under
-   `artifacts/v10/boundaries/`.
+   `tools/verify/artifacts/boundaries/`.
 
 **User Verification:**
 

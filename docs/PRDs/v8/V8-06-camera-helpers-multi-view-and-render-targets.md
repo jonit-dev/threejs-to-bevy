@@ -536,7 +536,7 @@ sequenceDiagram
 3. **Native Evidence:** `cd runtime-bevy && cargo test cameras render_targets conformance`
 4. **Docs Gate:** `pnpm check:docs:v8`
 5. **Evidence Required:** Report JSON and screenshots under
-   `artifacts/v8/camera-views/`.
+   `examples/v8-camera-views/artifacts/camera-views/`.
 
 **User Verification:**
 
@@ -572,7 +572,7 @@ Populate after implementation:
 - Phase 5: Render target/depth target tests and screenshot/export artifacts.
 - Phase 6: Custom projection tests and web/native matrix-hash conformance.
 - Phase 7: `verify:conformance`, `verify-v8-camera-views`, native tests, docs
-  gate, and artifacts under `artifacts/v8/camera-views/`.
+  gate, and artifacts under `examples/v8-camera-views/artifacts/camera-views/`.
 
 ## Acceptance Criteria
 

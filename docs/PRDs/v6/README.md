@@ -33,7 +33,7 @@ V5 hardening and authoring foundation
   conformance observations, diagnostics, docs, and scene proof where practical.
 - V6 must include a maintained proof example under `examples/`, following the
   existing example folder patterns, and must write verification evidence under
-  `artifacts/v6`.
+  `tools/verify/artifacts/milestones/v6`.
 - V6 verification must not be "trust me" build/test evidence. Features with
   visible output must produce real rendered web artifacts and, where native
   support is claimed, Bevy rendered artifacts or explicitly documented native
@@ -71,7 +71,7 @@ V5 hardening and authoring foundation
 - The functional V6 scene is playable and uses promoted features together
   instead of proving only isolated fixtures.
 - `examples/v6-functional` or its final documented equivalent exists,
-  self-verifies, and writes artifacts under `artifacts/v6` that prove the V6
+  self-verifies, and writes artifacts under `tools/verify/artifacts/milestones/v6` that prove the V6
   slice is working.
 - Visible promoted features have screenshot, image-diff, side-by-side, or
   equivalent real-world rendering artifacts where practical, plus conformance
@@ -93,7 +93,7 @@ pnpm check:docs:v6
 cd runtime-bevy && cargo test
 ```
 
-`pnpm verify:v6` writes a machine-readable report under `artifacts/v6` with
+`pnpm verify:v6` writes a machine-readable report under `tools/verify/artifacts/milestones/v6` with
 ordered steps, diagnostics, TypeScript and Rust evidence, conformance links,
 functional scene artifacts, playable trace evidence, and the first failing
 step.

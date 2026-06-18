@@ -11,7 +11,7 @@ game-authoring ergonomics, and scope exclusions remain aligned.
 ## Solution
 
 Add `check:docs:v5`, `verify:v5`, `docs/verify-v5.md`, and deterministic
-artifact conventions under `artifacts/v5`.
+artifact conventions under `tools/verify/artifacts/milestones/v5`.
 
 ## Execution Phases
 
@@ -44,17 +44,17 @@ artifact conventions under `artifacts/v5`.
 - `scripts/verify-v5.test.mjs`
 - `package.json`
 - `docs/verify-v5.md`
-- `artifacts/v5/*`
+- `tools/verify/artifacts/milestones/v5/*`
 
 **Implementation:**
 
 - [x] Run docs V5, conformance, selected TypeScript tests, selected existing
   V3/V4 gates or documented sub-gates, focused Rust tests, V5 scene checks, and
   the required V5 game starter smoke.
-- [x] Write `artifacts/v5/verification-report.json`.
+- [x] Write `tools/verify/artifacts/milestones/v5/verification-report.json`.
 - [x] Include `schema`, `version`, `status`, `code`, `steps`, `diagnostics`,
   `artifacts`, `startedAt`, and `durationMs`.
-- [x] Capture Rust test evidence in `artifacts/v5/rust-test-report.json`.
+- [x] Capture Rust test evidence in `tools/verify/artifacts/milestones/v5/rust-test-report.json`.
 - [x] Surface first failing step and stable `TN_VERIFY_V5_*` diagnostic codes.
 
 ## Verification Strategy
@@ -83,8 +83,8 @@ artifact conventions under `artifacts/v5`.
   selected V5 script/SDK tests, CLI build, V5 scene build/validate/visual
   verify, dense-content budget verification, starter create/build/validate
   smoke, shared conformance, and Bevy native tests.
-- `artifacts/v5/verification-report.json` includes `schema`, `version`,
+- `tools/verify/artifacts/milestones/v5/verification-report.json` includes `schema`, `version`,
   `status`, `code`, `steps`, `diagnostics`, `artifacts`, `startedAt`, and
   `durationMs`.
-- `artifacts/v5/rust-test-report.json` captures the focused Rust test step, and
+- `tools/verify/artifacts/milestones/v5/rust-test-report.json` captures the focused Rust test step, and
   failing aggregate steps produce `TN_VERIFY_V5_STEP_FAILED`.

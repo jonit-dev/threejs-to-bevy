@@ -23,9 +23,9 @@ Current V6 aggregate checks:
 - shared conformance through `scripts/verify-conformance.mjs`.
 
 The aggregate report is written to
-`artifacts/v6/verification-report.json` with schema
+`tools/verify/artifacts/milestones/v6/verification-report.json` with schema
 `threenative.verify.v6`. Web visual artifacts from the CLI verifier are mirrored
-under `artifacts/v6/web-visual/`:
+under `tools/verify/artifacts/milestones/v6/web-visual/`:
 
 - `verification-report.json`
 - `frame-01.png`
@@ -38,20 +38,20 @@ runtime parity observations are still later V6-09 checkpoints.
 
 Current V6 trace evidence:
 
-- `pnpm verify:conformance` runs the `v6-resources-events` and
-  `v6-animation-clips` fixed traces.
+- `pnpm verify:conformance` runs the `resources-events` and
+  `animation-clips` fixed traces.
 - The trace executes the same `scripts.bundle.js` in web JavaScript and native
   QuickJS.
 - The ordered schedule is `startup`, `fixedUpdate`, `update`, then
   `postUpdate`.
 - Same-stage systems are ordered by system name.
 - The resource/event trace writes comparable effect-log artifacts under
-  `artifacts/conformance/v6-resources-events/`:
+  `packages/ir/artifacts/conformance/resources-events/`:
   - `web-effects.json`
   - `native-effects.json`
   - `effects-diff.json`
 - The animation trace writes the same artifact set under
-  `artifacts/conformance/v6-animation-clips/`.
+  `packages/ir/artifacts/conformance/animation-clips/`.
 
 Failures in the V6 fixed trace use
 `TN_VERIFY_V6_RESOURCE_EVENT_TRACE_MISMATCH` or

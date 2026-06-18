@@ -5,16 +5,18 @@ import { fileURLToPath } from "node:url";
 export interface FixtureCatalogEntry {
   aggregateGate: string;
   bundlePath: string;
+  canonicalArtifactGate?: string;
   canonicalId: string;
-  legacyAliases: string[];
+  owner?: string;
   ownerDocs: string;
   promotedCapabilities: string[];
   reportArtifacts: string[];
+  regenerateCommand?: string;
+  sourceExample?: string;
 }
 
 export interface FixtureCatalog {
   fixtures: FixtureCatalogEntry[];
-  legacyCatalogs: string[];
   schema: string;
   version: string;
 }
@@ -32,24 +34,12 @@ export async function loadFixtureCatalog(root?: string): Promise<FixtureCatalog>
 
 export function resolveFixtureId(catalog: FixtureCatalog, requestedId: string): {
   entry: FixtureCatalogEntry;
-  legacyAliasUsed: boolean;
-  message?: string;
 } | null {
   const direct = catalog.fixtures.find((entry) => entry.canonicalId === requestedId);
   if (direct) {
-    return { entry: direct, legacyAliasUsed: false };
+    return { entry: direct };
   }
-
-  const alias = catalog.fixtures.find((entry) => entry.legacyAliases.includes(requestedId));
-  if (!alias) {
-    return null;
-  }
-
-  return {
-    entry: alias,
-    legacyAliasUsed: true,
-    message: `Fixture id '${requestedId}' is a legacy alias for '${alias.canonicalId}'.`,
-  };
+  return null;
 }
 
 export function listCurrentFixtures(catalog: FixtureCatalog): FixtureCatalogEntry[] {

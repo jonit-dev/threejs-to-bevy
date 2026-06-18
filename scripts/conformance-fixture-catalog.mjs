@@ -16,19 +16,9 @@ export async function loadFixtureCatalog(root) {
 export function resolveFixtureEntry(catalog, requestedId) {
   const direct = catalog.fixtures.find((entry) => entry.canonicalId === requestedId);
   if (direct) {
-    return { entry: direct, legacyAliasUsed: false };
+    return { entry: direct };
   }
-
-  const alias = catalog.fixtures.find((entry) => entry.legacyAliases.includes(requestedId));
-  if (!alias) {
-    return null;
-  }
-
-  return {
-    entry: alias,
-    legacyAliasUsed: true,
-    message: `Fixture id '${requestedId}' is a legacy alias for '${alias.canonicalId}'.`,
-  };
+  return null;
 }
 
 export function resolveFixtureBundlePath(catalog, requestedId, root) {
@@ -39,8 +29,6 @@ export function resolveFixtureBundlePath(catalog, requestedId, root) {
   return {
     bundlePath: resolve(root, resolved.entry.bundlePath),
     canonicalId: resolved.entry.canonicalId,
-    legacyAliasUsed: resolved.legacyAliasUsed,
-    message: resolved.message,
   };
 }
 

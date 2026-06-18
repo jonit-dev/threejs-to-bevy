@@ -9,8 +9,8 @@ const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 export async function verifyV9AnimationBlending(options = {}) {
   const root = options.repoRoot ?? repoRoot;
-  const bundlePath = options.bundlePath ?? resolve(root, "packages/ir/fixtures/conformance/v9-animation-blending/game.bundle");
-  const artifactDir = options.artifactDir ?? resolve(root, "artifacts/v9/animation-blending");
+  const bundlePath = options.bundlePath ?? resolve(root, "packages/ir/fixtures/conformance/animation-blending/game.bundle");
+  const artifactDir = options.artifactDir ?? resolve(root, "tools/verify/artifacts/animation-blending");
   const webStatePath = options.webStatePath ?? resolve(artifactDir, "web-blend.json");
   const nativeStatePath = options.nativeStatePath ?? resolve(artifactDir, "native-blend.json");
   const diffPath = options.diffPath ?? resolve(artifactDir, "blend-report.json");

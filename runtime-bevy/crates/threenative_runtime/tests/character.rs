@@ -12,12 +12,12 @@ use support::load_conformance_fixture;
 
 #[test]
 fn character_trace_should_match_v7_conformance_fixture() {
-    let fixture = load_conformance_fixture("v7-advanced-physics-character");
-    assert_eq!(fixture.name, "v7-advanced-physics-character");
+    let fixture = load_conformance_fixture("advanced-physics-character");
+    assert_eq!(fixture.name, "advanced-physics-character");
     assert!(
         fixture
             .bundle_path
-            .ends_with("v7-advanced-physics-character/game.bundle")
+            .ends_with("advanced-physics-character/game.bundle")
     );
     let trace = trace_character_controllers(
         &fixture.bundle,

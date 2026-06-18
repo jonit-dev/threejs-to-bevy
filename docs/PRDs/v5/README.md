@@ -85,7 +85,7 @@ pnpm check:docs:v5
 cd runtime-bevy && cargo test
 ```
 
-`pnpm verify:v5` writes a machine-readable report under `artifacts/v5` with
+`pnpm verify:v5` writes a machine-readable report under `tools/verify/artifacts/milestones/v5` with
 ordered steps, diagnostics, Rust native test evidence, conformance links,
 visual scene artifacts, SDK ergonomics/starter evidence, and the first failing
 step.

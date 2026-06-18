@@ -9,5 +9,5 @@ test("v9 physics-character verification report records promoted and deferred che
     assert.match(verifier, new RegExp(`"${promoted}"`));
   }
   assert.match(verifier, /"dynamic-mesh-colliders"/);
-  assert.match(verifier, /artifacts\/conformance\/v9-physics-character\/diff-v9-physics-character\.json/);
+  assert.match(verifier, /artifacts\/conformance\/physics-character\/diff-physics-character\.json/);
 });

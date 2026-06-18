@@ -220,7 +220,7 @@ sequenceDiagram
 1. **Unit Tests:** `node --test scripts/verify-v10-visual-calibration.test.mjs`.
 2. **Smoke:** `pnpm verify:v10:visual-calibration -- --list`.
 3. **Evidence Required:** manifest validation report under
-   `artifacts/v10/visual-calibration/manifest-report.json`.
+   `tools/verify/artifacts/visual-calibration/manifest-report.json`.
 
 **User Verification:**
 
@@ -271,8 +271,8 @@ sequenceDiagram
 2. **Visual Proof:** web/native screenshots, diffs, histograms, and contact
    sheets for color and material fixtures.
 3. **Evidence Required:** reports under
-   `artifacts/v10/visual-calibration/color/` and
-   `artifacts/v10/visual-calibration/materials/`.
+   `tools/verify/artifacts/visual-calibration/color/` and
+   `tools/verify/artifacts/visual-calibration/materials/`.
 
 **User Verification:**
 
@@ -329,9 +329,9 @@ inspection after Phase 2.
 2. **Visual Proof:** lighting, atmosphere, and post screenshots plus
    contact-sheet/diff artifacts.
 3. **Evidence Required:** reports under
-   `artifacts/v10/visual-calibration/lighting/`,
-   `artifacts/v10/visual-calibration/atmosphere/`, and
-   `artifacts/v10/visual-calibration/post/`.
+   `tools/verify/artifacts/visual-calibration/lighting/`,
+   `tools/verify/artifacts/visual-calibration/atmosphere/`, and
+   `tools/verify/artifacts/visual-calibration/post/`.
 
 **User Verification:**
 
@@ -383,8 +383,8 @@ inspection after Phase 3.
    observation fixture.
 3. **Visual Proof:** geometry/dense screenshots and reports.
 4. **Evidence Required:** reports under
-   `artifacts/v10/visual-calibration/geometry/` and
-   `artifacts/v10/visual-calibration/dense/`.
+   `tools/verify/artifacts/visual-calibration/geometry/` and
+   `tools/verify/artifacts/visual-calibration/dense/`.
 
 **User Verification:**
 
@@ -438,7 +438,7 @@ inspection after Phase 4.
 2. **Integration Test:** `pnpm verify:v10:visual-calibration`.
 3. **Aggregate Gate:** `pnpm verify:v10` after the future aggregate exists.
 4. **Manual Verification:** inspect combined-scene contact sheet.
-5. **Evidence Required:** `artifacts/v10/visual-calibration/verification-report.json`,
+5. **Evidence Required:** `tools/verify/artifacts/visual-calibration/verification-report.json`,
    combined-scene screenshots, diffs, contact sheets, and region metrics.
 
 **User Verification:**
@@ -459,7 +459,7 @@ checkpoint after Phase 5.
   and dense content.
 - [ ] A combined calibration scene exercises representative factors together.
 - [ ] `pnpm verify:v10:visual-calibration` passes and writes an aggregate
-  report under `artifacts/v10/visual-calibration/`.
+  report under `tools/verify/artifacts/visual-calibration/`.
 - [ ] Calibration failures include factor, fixture, region, metric, threshold,
   observed value, suggestion, and artifact paths.
 - [ ] Contact sheets and diff images exist for all visual factor groups.

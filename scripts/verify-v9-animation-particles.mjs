@@ -10,8 +10,8 @@ const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 export async function verifyV9AnimationParticles(options = {}) {
   const root = options.repoRoot ?? repoRoot;
-  const bundlePath = options.bundlePath ?? resolve(root, "packages/ir/fixtures/conformance/v7-animation-graphs-particles/game.bundle");
-  const artifactDir = options.artifactDir ?? resolve(root, "artifacts/v9/animation-particles");
+  const bundlePath = options.bundlePath ?? resolve(root, "packages/ir/fixtures/conformance/animation-graphs-particles/game.bundle");
+  const artifactDir = options.artifactDir ?? resolve(root, "tools/verify/artifacts/animation-particles");
   await mkdir(artifactDir, { recursive: true });
 
   const web = options.webParticleReport === undefined

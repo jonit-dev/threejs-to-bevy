@@ -9,8 +9,8 @@ const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 export async function verifyV9AnimationState(options = {}) {
   const root = options.repoRoot ?? repoRoot;
-  const bundlePath = options.bundlePath ?? resolve(root, "packages/ir/fixtures/conformance/v9-animation-state/game.bundle");
-  const artifactDir = options.artifactDir ?? resolve(root, "artifacts/v9/animation-state");
+  const bundlePath = options.bundlePath ?? resolve(root, "packages/ir/fixtures/conformance/animation-state/game.bundle");
+  const artifactDir = options.artifactDir ?? resolve(root, "tools/verify/artifacts/animation-state");
   const webStatePath = options.webStatePath ?? resolve(artifactDir, "web-state.json");
   const nativeStatePath = options.nativeStatePath ?? resolve(artifactDir, "native-state.json");
   const diffPath = options.diffPath ?? resolve(artifactDir, "state-diff.json");

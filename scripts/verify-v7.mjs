@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import { runCommand } from "./verify-conformance.mjs";
 import { verifyV7Packaging } from "./verify-v7-packaging.mjs";
-import { verifyV7PerformanceBudgets } from "./verify-v7-performance-budgets.mjs";
+import { verifyV7PerformanceBudgets } from "./verify-performance-budgets.mjs";
 import { summarize } from "./verify-v1.mjs";
 
 const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
@@ -12,7 +12,7 @@ const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 export async function verifyV7(options = {}) {
   const root = options.repoRoot ?? repoRoot;
   const run = options.run ?? runCommand;
-  const artifactDir = options.artifactDir ?? resolve(root, "artifacts/v7");
+  const artifactDir = options.artifactDir ?? resolve(root, "tools/verify/artifacts/milestones/v7");
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
   const startedAt = new Date();
   const startedAtMs = Date.now();
@@ -21,7 +21,7 @@ export async function verifyV7(options = {}) {
   const functionalWebReportPath = resolve(projectPath, "artifacts/verify/verification-report.json");
   const functionalPackageDir = resolve(artifactDir, "functional-package");
   const templateProjectPath = resolve(artifactDir, "template-smoke/v7-functional");
-  const conformanceReportPath = resolve(root, "artifacts/conformance/verification-report.json");
+  const conformanceReportPath = resolve(root, "packages/ir/artifacts/conformance/verification-report.json");
   const rustTestReportPath = resolve(artifactDir, "rust-test-report.json");
   const packagingVerifier = options.packagingVerifier ?? verifyV7Packaging;
   const performanceVerifier = options.performanceVerifier ?? verifyV7PerformanceBudgets;

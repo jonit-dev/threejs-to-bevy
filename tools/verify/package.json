@@ -6,6 +6,7 @@
   "exports": {
     ".": "./dist/index.js",
     "./runner": "./dist/runner.js",
+    "./artifacts": "./dist/artifacts.js",
     "./legacyAliases": "./dist/legacyAliases.js",
     "./docs": "./dist/docs.js",
     "./release": "./dist/release.js",
@@ -15,7 +16,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "lint": "tsc -p tsconfig.json --noEmit",
-    "test": "pnpm build && node --test dist/runner.test.js dist/legacyAliases.test.js dist/docs.test.js dist/conformance.test.js",
+    "test": "pnpm build && node --test dist/runner.test.js dist/legacyAliases.test.js dist/docs.test.js dist/conformance.test.js dist/artifacts.test.js",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {

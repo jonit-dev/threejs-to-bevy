@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { PNG } from "../packages/cli/node_modules/pngjs/lib/png.js";
 
 const root = process.cwd();
-const artifactDir = resolve(root, "artifacts/v10/emissive-bloom");
+const artifactDir = resolve(root, "tools/verify/artifacts/emissive-bloom");
 const framesDir = resolve(artifactDir, "frames");
 await mkdir(framesDir, { recursive: true });
 
@@ -35,8 +35,8 @@ const report = {
   artifacts: {
     contactSheet: relative(contactSheetPath),
     frames: frameArtifacts,
-    nativeTrace: "artifacts/v10/emissive-bloom/native-trace.json",
-    webTrace: "artifacts/v10/emissive-bloom/web-trace.json",
+    nativeTrace: "tools/verify/artifacts/emissive-bloom/native-trace.json",
+    webTrace: "tools/verify/artifacts/emissive-bloom/web-trace.json",
   },
   comparisons,
   generatedBy: "scripts/verify-v10-emissive-bloom.mjs",

@@ -2,6 +2,8 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import { resolveArtifactTargets } from "./artifact-paths.mjs";
+
 const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const schemaVersion = "0.1.0";
 
@@ -17,7 +19,12 @@ export function requiredArtifactPaths(artifactDir) {
 
 export async function verifyV9AssetsGltfSceneWorkflow(options = {}) {
   const root = options.repoRoot ?? repoRoot;
-  const artifactDir = options.artifactDir ?? resolve(root, "artifacts/v9/assets-gltf-scene-workflow");
+  const targets = resolveArtifactTargets({
+    gate: "assets-gltf-scene-workflow",
+    owner: { kind: "example", exampleName: "assets-gltf-scene-workflow" },
+    root,
+  });
+  const artifactDir = options.artifactDir ?? targets.absoluteDir;
   const artifacts = requiredArtifactPaths(artifactDir);
   await mkdir(artifactDir, { recursive: true });
 
@@ -81,12 +88,16 @@ export async function verifyV9AssetsGltfSceneWorkflow(options = {}) {
   const ok = diagnostics.length === 0 && inspection.schema === "threenative.scene-inspection" && reloadReport.schema === "threenative.asset-reload";
   const report = {
     artifacts,
+    artifactOwner: targets.metadata.artifactOwner,
+    canonicalArtifactDir: targets.metadata.canonicalArtifactDir,
     code: ok ? "TN_VERIFY_V9_ASSETS_GLTF_SCENE_WORKFLOW_OK" : "TN_VERIFY_V9_ASSETS_GLTF_SCENE_WORKFLOW_FAILED",
     comparison: {
       diagnostics,
       status: ok ? "pass" : "fail",
     },
     status: ok ? "pass" : "fail",
+    legacyArtifactDirs: targets.metadata.legacyArtifactDirs,
+    linkedArtifacts: targets.metadata.linkedArtifacts,
   };
   await writeFile(artifacts.diffPath, `${JSON.stringify(report, null, 2)}\n`);
   return { ...report, ok, reportPath: artifacts.diffPath };

@@ -1,7 +1,8 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { resolveArtifactTargets } from "./artifacts.js";
 import type { VerificationDiagnostic } from "./runner.js";
 import type { StepSummary } from "./runner.js";
 
@@ -16,7 +17,12 @@ export interface ReleaseGateResult {
 
 export async function runReleaseGate(options: { repoRoot?: string } = {}): Promise<ReleaseGateResult> {
   const root = options.repoRoot ?? repoRoot;
-  const reportPath = resolve(root, "artifacts/release/verification-report.json");
+  const targets = resolveArtifactTargets({
+    gate: "release",
+    owner: { kind: "aggregate", name: "release" },
+    root,
+  });
+  const reportPath = targets.reportPath;
   // @ts-expect-error legacy mjs gate consumed during typed-tools migration
   const verifyModule = (await import("../../../scripts/verify-v9.mjs")) as {
     verifyV9: (options?: Record<string, unknown>) => Promise<{
@@ -42,9 +48,9 @@ export async function runReleaseGate(options: { repoRoot?: string } = {}): Promi
 
   await writeReleaseReport(root, reportPath, {
     artifacts: {
-      conformanceReportPath: resolve(root, "artifacts/conformance/verification-report.json"),
-      legacyReportPath: resolve(root, "artifacts/v9/verification-report.json"),
+      conformanceReportPath: resolve(root, "packages/ir/artifacts/conformance/verification-report.json"),
       reportPath,
+      ...targets.metadata,
     },
     diagnostics,
     ok,
@@ -59,7 +65,7 @@ async function writeReleaseReport(
   root: string,
   reportPath: string,
   input: {
-    artifacts: Record<string, string>;
+    artifacts: Record<string, unknown>;
     diagnostics: VerificationDiagnostic[];
     ok: boolean;
     promoted: string[];
@@ -81,14 +87,4 @@ async function writeReleaseReport(
     version: "0.1.0",
   };
   await writeFile(reportPath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
-
-  try {
-    const legacyPath = resolve(root, "artifacts/v9/verification-report.json");
-    const legacyReport = JSON.parse(await readFile(legacyPath, "utf8")) as Record<string, unknown>;
-    legacyReport.canonicalReleaseReportPath = reportPath;
-    legacyReport.generatedBy = "@threenative/verify-tools/release";
-    await writeFile(legacyPath, `${JSON.stringify(legacyReport, null, 2)}\n`, "utf8");
-  } catch {
-    // Legacy report is written by verify-v9 when the gate completes.
-  }
 }

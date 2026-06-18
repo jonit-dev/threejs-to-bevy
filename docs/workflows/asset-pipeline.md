@@ -55,4 +55,4 @@ pnpm verify:v3
 
 Relevant report:
 
-- `artifacts/v3/v3-environment-report.json`
+- `tools/verify/artifacts/milestones/v3/v3-environment-report.json`

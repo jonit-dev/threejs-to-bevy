@@ -74,7 +74,7 @@ const cameraMain = new PerspectiveCamera({
   id: "camera.main",
   near: 0.1,
   order: 1,
-  output: { format: "png", mode: "writeback", path: "artifacts/v8/camera-views/export-main.png" },
+  output: { format: "png", mode: "writeback", path: "examples/v8-camera-views/artifacts/camera-views/export-main.png" },
   viewport: [0, 0, 0.7, 1],
 });
 cameraMain.position.set(0, 2.5, 5);

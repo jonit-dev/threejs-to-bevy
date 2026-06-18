@@ -9,8 +9,8 @@ const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 export async function verifyV7CharacterTrace(options = {}) {
   const root = options.repoRoot ?? repoRoot;
-  const bundlePath = options.bundlePath ?? resolve(root, "packages/ir/fixtures/conformance/v7-advanced-physics-character/game.bundle");
-  const artifactDir = options.artifactDir ?? resolve(root, "artifacts/conformance/v7-advanced-physics-character");
+  const bundlePath = options.bundlePath ?? resolve(root, "packages/ir/fixtures/conformance/advanced-physics-character/game.bundle");
+  const artifactDir = options.artifactDir ?? resolve(root, "packages/ir/artifacts/conformance/advanced-physics-character");
   const webTracePath = options.webTracePath ?? resolve(artifactDir, "web-character.json");
   const nativeTracePath = options.nativeTracePath ?? resolve(artifactDir, "native-character.json");
   const diffPath = options.diffPath ?? resolve(artifactDir, "character-diff.json");

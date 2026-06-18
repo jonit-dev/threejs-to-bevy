@@ -9,7 +9,7 @@ import { checkDocsV9 } from "./check-docs-v9.mjs";
 test("should require support PRD links and artifact paths when V9 support gate is present", async () => {
   const root = await makeDocsRoot({
     index: defaultIndex().replace("verify:v9:support", "missing-support-gate"),
-    prd: defaultPrd().replace("artifacts/v9/support/verification-report.json", "missing-report.json"),
+    prd: defaultPrd().replace("tools/verify/artifacts/support/verification-report.json", "missing-report.json"),
   });
   try {
     const result = await checkDocsV9(root);
@@ -75,12 +75,12 @@ function defaultIndex() {
 function defaultPrd() {
   return [
     "examples/v9-support",
-    "artifacts/v9/audio-support/",
-    "artifacts/v9/local-data-support/",
-    "artifacts/v9/diagnostics-support/",
-    "artifacts/v9/editor-support/",
-    "artifacts/v9/stress-support/",
-    "artifacts/v9/support/verification-report.json",
+    "tools/verify/artifacts/audio-support/",
+    "tools/verify/artifacts/local-data-support/",
+    "tools/verify/artifacts/diagnostics-support/",
+    "tools/verify/artifacts/editor-support/",
+    "tools/verify/artifacts/stress-support/",
+    "tools/verify/artifacts/support/verification-report.json",
   ].join("\n");
 }
 
@@ -99,9 +99,9 @@ function defaultParity() {
   return [
     "V9-06 now carries schema-backed `local-data.ir.json`",
     "V9-06 Phase 1 adds bounded attenuation curves",
-    "focused web/native/script evidence under `artifacts/v9/diagnostics-support/`",
-    "focused evidence under `artifacts/v9/editor-support/`",
-    "large-scene stress artifacts under `artifacts/v9/stress-support/`",
+    "focused web/native/script evidence under `tools/verify/artifacts/diagnostics-support/`",
+    "focused evidence under `tools/verify/artifacts/editor-support/`",
+    "large-scene stress artifacts under `tools/verify/artifacts/stress-support/`",
     "Cloud save",
     "streaming/network audio",
     "runtime networking",

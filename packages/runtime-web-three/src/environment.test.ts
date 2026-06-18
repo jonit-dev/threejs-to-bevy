@@ -121,7 +121,7 @@ test("environment should instance loaded model geometry instead of cloning repea
 });
 
 test("environment content trace should report V7 LOD and instancing evidence", async () => {
-  const bundle = await loadBundle(resolve(process.cwd(), "../../packages/ir/fixtures/conformance/v7-renderer-dense-content/game.bundle"));
+  const bundle = await loadBundle(resolve(process.cwd(), "../../packages/ir/fixtures/conformance/renderer-dense-content/game.bundle"));
 
   const trace = traceEnvironmentContent(bundle);
 

@@ -248,7 +248,7 @@ fn should_report_attenuation_and_ducking_observations_when_listener_moves() {
 
 #[test]
 fn audio_should_report_fixture_playback_observations() {
-    let fixture = load_conformance_fixture("v6-audio-playback");
+    let fixture = load_conformance_fixture("audio-playback");
 
     let observation = observe_audio(&fixture.bundle).expect("audio observation should exist");
 
@@ -348,7 +348,7 @@ fn audio_lifecycle_trace_should_apply_playback_controls() {
 
 #[test]
 fn audio_lifecycle_trace_should_stop_active_loops() {
-    let fixture = load_conformance_fixture("v7-spatial-audio-buses");
+    let fixture = load_conformance_fixture("spatial-audio-buses");
     let audio = fixture
         .bundle
         .audio

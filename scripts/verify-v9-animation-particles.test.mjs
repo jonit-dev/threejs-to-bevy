@@ -10,7 +10,7 @@ test("should require all v9 animation particle artifacts", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-v9-animation-particles-"));
   try {
     const result = await verifyV9AnimationParticles({
-      artifactDir: join(root, "artifacts/v9/animation-particles"),
+      artifactDir: join(root, "tools/verify/artifacts/animation-particles"),
       repoRoot: root,
       runNativeParticleTest: async () => undefined,
       webParticleReport: async () => ({
@@ -41,7 +41,7 @@ test("should fail v9 animation particle verification when particles are blank", 
   const root = await mkdtemp(join(tmpdir(), "tn-v9-animation-particles-blank-"));
   try {
     const result = await verifyV9AnimationParticles({
-      artifactDir: join(root, "artifacts/v9/animation-particles"),
+      artifactDir: join(root, "tools/verify/artifacts/animation-particles"),
       repoRoot: root,
       runNativeParticleTest: async () => undefined,
       webParticleReport: async () => ({

@@ -42,8 +42,8 @@ diagnostics.
 - `packages/runtime-web-three/src/audio.ts`
 - `runtime-bevy/crates/threenative_runtime/src/audio.rs`
 - `scripts/verify-v7-audio-lifecycle-trace.mjs`
-- `scripts/verify-v7-packaging-target-profiles.mjs`
-- `scripts/verify-v7-performance-budgets.mjs`
+- `scripts/verify-packaging-target-profiles.mjs`
+- `scripts/verify-performance-budgets.mjs`
 
 No `.env*` files were found in the repo scan, and this PRD does not require
 environment-specific configuration.
@@ -269,7 +269,7 @@ sequenceDiagram
    moving listener, two emitters, one music transition, and one generated tone.
 3. **Runtime Proof:** Add `scripts/verify-v9-audio-support.mjs` to build the
    fixture, run web/native traces, compare observations, and write
-   `artifacts/v9/audio-support/verification-report.json`.
+   `tools/verify/artifacts/audio-support/verification-report.json`.
 4. **Evidence Required:** report contains listener movement, attenuation values,
    bus routing, ducking, pitch/tone metadata, transition lifecycle, and
    unsupported streaming/network diagnostics.
@@ -336,7 +336,7 @@ sequenceDiagram
    progress, audio/input settings, and accessibility settings, then reloads.
 3. **Runtime Proof:** Add `scripts/verify-v9-local-data-support.mjs` to run
    web/native save/load/migration traces and write
-   `artifacts/v9/local-data-support/verification-report.json`.
+   `tools/verify/artifacts/local-data-support/verification-report.json`.
 4. **Manual Verification:** In the support example, change audio volume and
    input binding, save a slot, reload preview, and confirm both settings and
    declared progress restore.
@@ -406,7 +406,7 @@ sequenceDiagram
    UI bounds, light volumes, and custom counters while also including rejected
    unsupported networking/material/runtime declarations.
 3. **Runtime Proof:** Run `pnpm verify:v9:diagnostics-support` to capture
-   screenshot/report artifacts under `artifacts/v9/diagnostics-support/`.
+   screenshot/report artifacts under `tools/verify/artifacts/diagnostics-support/`.
 4. **Evidence Required:** artifacts include FPS/custom counters, debug draw
    observations, platform audio diagnostics, unsupported-feature diagnostics,
    and unsupported-networking diagnostics.
@@ -477,7 +477,7 @@ sequenceDiagram
 3. **Runtime Proof:** Run `pnpm verify:v9:editor-support` to capture inspector
    JSON, structured before/after diff, panel screenshot, scene viewer
    screenshot, asset preview report, and gamepad viewer report under
-   `artifacts/v9/editor-support/`.
+   `tools/verify/artifacts/editor-support/`.
 4. **Evidence Required:** the edit round trip modifies only structured bundle
    data, validates before save, and emits repair hints for hot reload policy
    rejections.
@@ -507,7 +507,7 @@ sequenceDiagram
   for unsupported or incomplete target profiles
 - `scripts/verify-v9-stress-support.mjs` - generate large-scene stress reports
   and profiler artifacts
-- `packages/ir/fixtures/conformance/v9-support-stress/game.bundle/target.profile.json` - add stress target profile fixture
+- `packages/ir/fixtures/conformance/support-stress/game.bundle/target.profile.json` - add stress target profile fixture
 - `examples/v9-support/src/game.ts` - author the large-scene support fixture
 
 **Implementation:**
@@ -545,7 +545,7 @@ sequenceDiagram
 2. **Integration Test:** Build `examples/v9-support`, run the stress fixture,
    and collect web/native profiler-like metrics.
 3. **Runtime Proof:** Run `pnpm verify:v9:stress-support`; write reports under
-   `artifacts/v9/stress-support/` and include large-scene metrics plus repair
+   `tools/verify/artifacts/stress-support/` and include large-scene metrics plus repair
    hint coverage.
 4. **Evidence Required:** deterministic reports for UI, text, lights, cubes,
    animated models, audio emitters, save latency, debug draw volume, and target
@@ -583,7 +583,7 @@ sequenceDiagram
 - [ ] Add V9 docs guard that requires this PRD, support example, verify scripts,
   artifact paths, status updates, and parity checklist updates.
 - [ ] Add aggregate `pnpm verify:v9:support` that runs focused support gates and
-  writes `artifacts/v9/support/verification-report.json`.
+  writes `tools/verify/artifacts/support/verification-report.json`.
 - [ ] Update status/parity docs only when implementation proves each checklist
   item; do not check off planned-only items.
 - [ ] Record residual gaps, known target warnings, and explicit deferrals.
@@ -748,7 +748,7 @@ pnpm verify:v9:support
 - [ ] `pnpm test` passes.
 - [ ] `pnpm verify:conformance` passes with V9 support fixtures included.
 - [ ] `pnpm verify:v9:support` passes and writes
-  `artifacts/v9/support/verification-report.json`.
+  `tools/verify/artifacts/support/verification-report.json`.
 - [ ] Spatial audio, mixer routing, ducking, pitch/tone playback, music
   transitions, and unsupported audio diagnostics are proven across web/native
   reports.

@@ -569,7 +569,7 @@ sequenceDiagram
 - [ ] Compare web and Bevy observations for asset groups, glTF handle updates,
   and reload policy, while allowing target-specific network diagnostics where
   explicitly declared.
-- [ ] Write artifacts under `artifacts/v9/assets-gltf-scene-workflow/`:
+- [ ] Write artifacts under `examples/assets-gltf-scene-workflow/artifacts/assets-gltf-scene-workflow/`:
   inspection report, web report, native report, reload report, and diff JSON.
 - [ ] Add package script and tests that fail when required artifact paths,
   schema names, or diagnostics disappear.
@@ -607,11 +607,11 @@ sequenceDiagram
    this phase is implemented.
 
 4. **Evidence Required:**
-   - [ ] `artifacts/v9/assets-gltf-scene-workflow/inspection.json`
-   - [ ] `artifacts/v9/assets-gltf-scene-workflow/web-report.json`
-   - [ ] `artifacts/v9/assets-gltf-scene-workflow/native-report.json`
-   - [ ] `artifacts/v9/assets-gltf-scene-workflow/reload-report.json`
-   - [ ] `artifacts/v9/assets-gltf-scene-workflow/diff.json`
+   - [ ] `examples/assets-gltf-scene-workflow/artifacts/assets-gltf-scene-workflow/inspection.json`
+   - [ ] `examples/assets-gltf-scene-workflow/artifacts/assets-gltf-scene-workflow/web-report.json`
+   - [ ] `examples/assets-gltf-scene-workflow/artifacts/assets-gltf-scene-workflow/native-report.json`
+   - [ ] `examples/assets-gltf-scene-workflow/artifacts/assets-gltf-scene-workflow/reload-report.json`
+   - [ ] `examples/assets-gltf-scene-workflow/artifacts/assets-gltf-scene-workflow/diff.json`
 
 **User Verification:**
 

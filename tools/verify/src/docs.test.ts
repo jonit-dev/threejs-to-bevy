@@ -7,16 +7,84 @@ import test from "node:test";
 import { checkDocs } from "./docs.js";
 
 test("should validate current docs without milestone-specific scripts", async () => {
-  const root = await mkdtemp(join(tmpdir(), "tn-docs-gate-"));
-  await mkdir(join(root, "docs"), { recursive: true });
-  await mkdir(join(root, "scripts"), { recursive: true });
+  const root = await makeDocsRepo();
+
+  const result = await checkDocs(root);
+  assert.equal(result.ok, true, result.diagnostics.map((diagnostic) => diagnostic.message).join("\n"));
+});
+
+test("should require contextual docs group indexes", async () => {
+  const root = await makeDocsRepo();
   await writeFile(
     join(root, "docs/README.md"),
-    "# Docs\n\n[cleanup PRD](PRDs/cleanup-versioned-debt.md)\n\nRun `pnpm verify:release`.\n",
+    "# Docs\n\n[cleanup PRD](PRDs/archive/cleanup-versioned-debt.md)\n\nRun `pnpm verify:release`.\n",
+  );
+
+  const result = await checkDocs(root);
+
+  assert.equal(result.ok, false);
+  assert.equal(
+    result.diagnostics.some((diagnostic) => diagnostic.code === "TN_DOCS_GROUP_INDEX_UNLINKED"),
+    true,
+  );
+});
+
+test("should reject unclassified flat docs pages", async () => {
+  const root = await makeDocsRepo();
+  await writeFile(join(root, "docs/new-feature.md"), "# New Feature\n");
+
+  const result = await checkDocs(root);
+
+  assert.equal(result.ok, false);
+  assert.equal(
+    result.diagnostics.some((diagnostic) => diagnostic.code === "TN_DOCS_FLAT_PAGE_UNCLASSIFIED"),
+    true,
+  );
+});
+
+async function makeDocsRepo() {
+  const root = await mkdtemp(join(tmpdir(), "tn-docs-gate-"));
+  await mkdir(join(root, "docs/PRDs"), { recursive: true });
+  await mkdir(join(root, "scripts"), { recursive: true });
+  for (const group of ["architecture", "contracts", "runtime", "workflows", "status"]) {
+    await mkdir(join(root, "docs", group), { recursive: true });
+    await writeFile(join(root, "docs", group, "README.md"), `# ${group}\n`);
+  }
+  await writeFile(join(root, "docs/PRDs/README.md"), "# PRDs\n\n[cleanup](archive/cleanup-versioned-debt.md)\n");
+  await mkdir(join(root, "docs/PRDs/archive"), { recursive: true });
+  await writeFile(join(root, "docs/PRDs/archive/cleanup-versioned-debt.md"), "# cleanup\n");
+  await writeFile(
+    join(root, "docs/README.md"),
+    `# Docs
+
+[cleanup PRD](PRDs/archive/cleanup-versioned-debt.md)
+
+Run \`pnpm verify:release\`.
+
+- [Architecture](architecture/README.md)
+- [Contracts](contracts/README.md)
+- [Runtime](runtime/README.md)
+- [Workflows](workflows/README.md)
+- [Status](status/README.md)
+- [PRDs](PRDs/README.md)
+`,
   );
   await writeFile(
     join(root, "docs/STATUS.md"),
-    "# Status\n\nlegacy milestone names remain.\n\n[cleanup PRD](PRDs/cleanup-versioned-debt.md)\n\n`pnpm verify:release`\n",
+    "# Status\n\nlegacy milestone names remain.\n\n[cleanup PRD](PRDs/archive/cleanup-versioned-debt.md)\n\n`pnpm verify:release`\n",
+  );
+  await writeFile(
+    join(root, "docs/workflows/developer-workflow.md"),
+    [
+      "Generated artifacts are outputs.",
+      "Fixtures are stable inputs.",
+      "`examples/<name>/artifacts/<gate>/`",
+      "`examples/<name>/dist/*`",
+      "`tools/verify/artifacts/<gate>/`",
+      "`packages/ir/artifacts/conformance/`",
+      "`packages/ir/fixtures/*`",
+      "`runtime-bevy/artifacts/<gate>/`",
+    ].join("\n"),
   );
   await writeFile(
     join(root, "package.json"),
@@ -26,7 +94,5 @@ test("should validate current docs without milestone-specific scripts", async ()
     join(root, "scripts/version-name-allowlist.json"),
     JSON.stringify({ validClassifications: ["current-surface"], pathRules: [], requiredFrontDoorPhrases: [] }),
   );
-
-  const result = await checkDocs(root);
-  assert.equal(result.ok, true, result.diagnostics.map((diagnostic) => diagnostic.message).join("\n"));
-});
+  return root;
+}

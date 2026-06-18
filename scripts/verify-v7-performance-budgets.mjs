@@ -6,8 +6,8 @@ const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 export async function verifyV7PerformanceBudgets(options = {}) {
   const root = options.repoRoot ?? repoRoot;
-  const bundlePath = options.bundlePath ?? resolve(root, "packages/ir/fixtures/conformance/v7-performance-budgets/game.bundle");
-  const artifactDir = options.artifactDir ?? resolve(root, "artifacts/conformance/v7-performance-budgets");
+  const bundlePath = options.bundlePath ?? resolve(root, "packages/ir/fixtures/conformance/performance-budgets/game.bundle");
+  const artifactDir = options.artifactDir ?? resolve(root, "packages/ir/artifacts/conformance/performance-budgets");
   await mkdir(artifactDir, { recursive: true });
 
   const [world, assets, targetProfile] = await Promise.all([

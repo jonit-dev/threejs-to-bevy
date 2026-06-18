@@ -8,7 +8,7 @@ import { traceCharacterControllers } from "./character.js";
 import { loadBundle } from "./loadBundle.js";
 
 test("character trace should match V7 conformance fixture", async () => {
-  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/v7-advanced-physics-character/game.bundle"));
+  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/advanced-physics-character/game.bundle"));
   const trace = traceCharacterControllers(bundle.world, {
     axes: { MoveX: 1, MoveZ: 0 },
     fixedDelta: 1,

@@ -39,7 +39,7 @@ conformance, docs, examples, and release gates.
 - [ ] Add the V6 ticket order and release-gate expectations.
 - [ ] Link V6 PRDs from current truth sources.
 - [ ] State explicit V6 exclusions and V7 deferrals.
-- [ ] Require a maintained `examples/` proof and matching `artifacts/v6`
+- [ ] Require a maintained `examples/` proof and matching `tools/verify/artifacts/milestones/v6`
   evidence for the final V6 release gate.
 - [ ] Require rendered visual artifacts for promoted visible features where
   practical, using the repo visual verification workflow as guidance.
@@ -91,6 +91,6 @@ conformance, docs, examples, and release gates.
 - [ ] Status and parity docs agree on V6 scope and exclusions.
 - [ ] Docs checks can catch missing V6 PRD links and forbidden scope claims.
 - [ ] V6 instructions require an example under `examples/` and evidence under
-  `artifacts/v6`.
+  `tools/verify/artifacts/milestones/v6`.
 - [ ] V6 instructions require real rendered artifacts for visible features where
   practical.

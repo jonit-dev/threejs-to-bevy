@@ -60,7 +60,7 @@ pnpm verify:v8:material-parity
 
 The material parity proof builds `examples/v8-material-parity`, validates the
 bundle, runs conformance, captures web/native screenshots, and writes
-`artifacts/v8/material-parity/verification-report.json`.
+`tools/verify/artifacts/material-parity/verification-report.json`.
 
 Optional React webview overlay proof:
 
@@ -72,7 +72,7 @@ The overlay proof builds `examples/v8-overlay-webview`, emits
 `overlays.ir.json`, copies the React/CSS inventory overlay and item sprites into
 the bundle, validates bridge messages, checks input capture pass-through for
 non-pointer modes, runs native overlay diagnostics tests, and writes
-`artifacts/v8-overlay-webview/verification-report.json`.
+`tools/verify/artifacts/overlay-webview/verification-report.json`.
 
 Camera view proof:
 
@@ -82,7 +82,7 @@ pnpm verify:v8:camera-views
 
 The camera proof builds `examples/v8-camera-views`, validates the bundle,
 captures web/native screenshots with viewport-region checks, and writes
-artifacts under `artifacts/v8/camera-views/`.
+artifacts under `examples/v8-camera-views/artifacts/camera-views/`.
 
 Material parity proof:
 
@@ -92,7 +92,7 @@ pnpm verify:v8:material-parity
 
 The material parity proof builds `examples/v8-material-parity`, validates the
 bundle, runs conformance, captures web/native screenshots, and writes
-`artifacts/v8/material-parity/verification-report.json`.
+`tools/verify/artifacts/material-parity/verification-report.json`.
 
 Color, lighting, and tone parity proof:
 
@@ -104,8 +104,8 @@ pnpm test:color-parity
 The color parity proof builds `examples/v8-color-parity` and
 `examples/v8-lighting-tone`, validates both bundles, captures web/native
 screenshots, compares unlit swatch colors plus lit PBR sphere probes, and writes
-artifacts under `artifacts/v8/color-parity/` and
-`artifacts/v8/lighting-tone/`. `pnpm test:color-parity` runs the fast contract
+artifacts under `tools/verify/artifacts/color-parity/` and
+`tools/verify/artifacts/lighting-tone/`. `pnpm test:color-parity` runs the fast contract
 harness that locks thresholds, example alignment, and verifier wiring.
 
 Rendering-quality fog/sky proof:
@@ -117,4 +117,4 @@ pnpm verify:v8:rendering-quality
 The rendering-quality proof builds `examples/v8-rendering-quality`, validates
 the bundle, captures web/native screenshots, compares sky/foreground/fog-depth
 regions, verifies fog convergence, and writes artifacts under
-`artifacts/v8/rendering-quality/`.
+`tools/verify/artifacts/rendering-quality/`.

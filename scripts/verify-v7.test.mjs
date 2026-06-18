@@ -9,9 +9,9 @@ import { verifyV7 } from "./verify-v7.mjs";
 test("should report failing v7 gate step", async () => {
   const root = await mkdtempRoot();
   try {
-    const reportPath = join(root, "artifacts/v7/verification-report.json");
+    const reportPath = join(root, "tools/verify/artifacts/milestones/v7/verification-report.json");
     const result = await verifyV7({
-      artifactDir: join(root, "artifacts/v7"),
+      artifactDir: join(root, "tools/verify/artifacts/milestones/v7"),
       repoRoot: root,
       reportPath,
       run: async () => ({
@@ -39,7 +39,7 @@ test("should report failing v7 gate step", async () => {
 test("should include aggregate v7 evidence in release report", async () => {
   const root = await mkdtempRoot();
   try {
-    const artifactDir = join(root, "artifacts/v7");
+    const artifactDir = join(root, "tools/verify/artifacts/milestones/v7");
     const reportPath = join(artifactDir, "verification-report.json");
     await writeRequiredArtifacts(root);
 
@@ -61,7 +61,7 @@ test("should include aggregate v7 evidence in release report", async () => {
       reportPath,
       run: async ({ name }) => {
         if (name === "create v7 functional template") {
-          await mkdir(join(root, "artifacts/v7/template-smoke/v7-functional"), { recursive: true });
+          await mkdir(join(root, "tools/verify/artifacts/milestones/v7/template-smoke/v7-functional"), { recursive: true });
         }
         return {
           durationMs: 3,
@@ -120,7 +120,7 @@ test("should include aggregate v7 evidence in release report", async () => {
 test("should fail when required v7 release artifacts are missing", async () => {
   const root = await mkdtempRoot();
   try {
-    const artifactDir = join(root, "artifacts/v7");
+    const artifactDir = join(root, "tools/verify/artifacts/milestones/v7");
     const reportPath = join(artifactDir, "verification-report.json");
     const result = await verifyV7({
       artifactDir,
@@ -160,10 +160,10 @@ async function mkdtempRoot() {
 
 async function writeRequiredArtifacts(root) {
   const files = [
-    "artifacts/conformance/verification-report.json",
-    "artifacts/v7/functional-package/desktop/v7-functional.bundle",
-    "artifacts/v7/functional-package/desktop/package.manifest.json",
-    "artifacts/v7/functional-package/desktop/runtime.args.json",
+    "packages/ir/artifacts/conformance/verification-report.json",
+    "tools/verify/artifacts/milestones/v7/functional-package/desktop/v7-functional.bundle",
+    "tools/verify/artifacts/milestones/v7/functional-package/desktop/package.manifest.json",
+    "tools/verify/artifacts/milestones/v7/functional-package/desktop/runtime.args.json",
     "examples/v7-functional/artifacts/verify/frame-01.png",
     "examples/v7-functional/artifacts/verify/frame-02.png",
     "examples/v7-functional/artifacts/verify/verification-report.json",
@@ -174,5 +174,5 @@ async function writeRequiredArtifacts(root) {
     await mkdir(dirname(path), { recursive: true });
     await writeFile(path, "{}\n");
   }
-  await mkdir(join(root, "artifacts/v7/template-smoke/v7-functional"), { recursive: true });
+  await mkdir(join(root, "tools/verify/artifacts/milestones/v7/template-smoke/v7-functional"), { recursive: true });
 }

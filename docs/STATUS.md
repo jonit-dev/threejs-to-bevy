@@ -18,7 +18,7 @@ ThreeNative groups current support by **product capability** (animation,
 physics, rendering, assets, packaging, conformance, and tooling). Version
 labels such as `V7`, `V8`, and `V9` are legacy milestone names retained in
 scripts, examples, and historical docs during a staged cleanup. See
-[PRDs/cleanup-versioned-debt.md](PRDs/cleanup-versioned-debt.md) for the naming
+[PRDs/archive/cleanup-versioned-debt.md](PRDs/archive/cleanup-versioned-debt.md) for the naming
 contract, target command map, and allowlist enforced by `pnpm check:names`.
 
 Current contributor entry points:
@@ -43,7 +43,7 @@ Packaging, performance, and desktop distribution evidence still runs through
 functional scene/template proof, rendered web evidence, shared conformance,
 Bevy native test evidence, desktop packaging checks, performance budget
 reports, and release-artifact presence checks. It writes the aggregate report
-under `artifacts/v7/verification-report.json`.
+under `tools/verify/artifacts/milestones/v7/verification-report.json`.
 
 Capability planning and historical milestone PRDs live under `docs/PRDs/v9/`
 and earlier numbered folders. Those folders are historical archive context, not
@@ -106,14 +106,14 @@ feature work complete.
 V9-01 animation and particles runtime parity is implemented with focused
 stateful animation, blending, and rendered particle evidence:
 `pnpm verify:v9:animation-state` compares web/native `animation.play/query/stop`
-runtime service traces under `artifacts/v9/animation-state/` using the
-`v9-animation-state` conformance fixture;
+runtime service traces under `tools/verify/artifacts/animation-state/` using the
+`animation-state` conformance fixture;
 `pnpm verify:v9:animation-blending` compares bounded crossfade blend weights and
-event ordering under `artifacts/v9/animation-blending/` using the
-`v9-animation-blending` fixture;
+event ordering under `tools/verify/artifacts/animation-blending/` using the
+`animation-blending` fixture;
 `pnpm verify:v9:animation-particles` compares rendered bounded CPU particle
 emitter counts plus web/native SVG evidence under
-`artifacts/v9/animation-particles/`. Masks, morph targets, IK, retargeting, and
+`tools/verify/artifacts/animation-particles/`. Masks, morph targets, IK, retargeting, and
 UI/property animation remain explicitly unsupported with stable diagnostics.
 
 Focused V8 evidence exists for the optional React webview overlay slice:
@@ -123,7 +123,7 @@ React/CSS inventory overlay with local item sprites, validates
 `inventory:use-item` bridge messages, verifies non-pointer overlay modes do not
 capture game clicks, runs native overlay bridge/input diagnostics tests, checks
 the default native unsupported-host diagnostic path, and writes
-`artifacts/v8-overlay-webview/verification-report.json`. Retained `ui.ir.json`
+`tools/verify/artifacts/overlay-webview/verification-report.json`. Retained `ui.ir.json`
 remains the portable game UI contract; overlays are explicit, bundle-local,
 capability-gated, and optional. The desktop native webview host is
 adapter-private behind `runtime-bevy`'s optional `native-webview` feature, which
@@ -135,21 +135,21 @@ V8-06 camera helpers, multi-view rendering, render targets, custom projections,
 and screenshot export are implemented with shared conformance and visual evidence:
 `pnpm verify:v8:camera-views` builds `examples/v8-camera-views`, validates the
 bundle, captures web/native screenshots with viewport-region checks, and writes
-artifacts under `artifacts/v8/camera-views/`. The shared conformance fixture is
+artifacts under `examples/v8-camera-views/artifacts/camera-views/`. The shared conformance fixture is
 `packages/ir/fixtures/conformance/camera-multi-view/game.bundle`.
 
 V8-07 material parity is implemented with focused material/texture evidence:
 `pnpm verify:v8:material-parity` builds `examples/v8-material-parity`,
 validates the bundle, runs conformance, captures web/native screenshots, and
-writes `artifacts/v8/material-parity/verification-report.json`.
+writes `tools/verify/artifacts/material-parity/verification-report.json`.
 
 V8 color, lighting, and tone parity evidence is implemented with screenshot
 diff metrics and calibrated sample regions:
 `pnpm verify:v8:color-parity` builds `examples/v8-color-parity` and
 `examples/v8-lighting-tone`, validates both bundles, captures web/native
 screenshots, compares unlit swatch colors plus lit PBR sphere probes, and
-writes `artifacts/v8/color-parity/verification-report.json` plus
-`artifacts/v8/lighting-tone/lighting-tone-report.json`. Unlit swatch parity is
+writes `tools/verify/artifacts/color-parity/verification-report.json` plus
+`tools/verify/artifacts/lighting-tone/lighting-tone-report.json`. Unlit swatch parity is
 near-exact (full-frame changed pixel ratio `0`, max channel delta `~1/255`);
 lit scenes gate on full-frame average color/brightness deltas (`~1%`) with probe
 regions tolerating localized PBR gradient differences. Fast regression harness:
@@ -166,13 +166,13 @@ emits `animation:transform-*` capabilities, web and Bevy loaders consume the
 same bundle document, and `pnpm verify:v8:animation-transform` compares web and
 native transform samples through
 `packages/ir/fixtures/conformance/v8-transform-animation/game.bundle`, writing
-trace evidence under `artifacts/v8/animation-transform/`. The same slice now
+trace evidence under `tools/verify/artifacts/animation-transform/`. The same slice now
 also exposes `animation.query` and `animation.stop` as declared portable system
 services in SDK/IR, web, and Bevy QuickJS contexts; `pnpm
 verify:v8:animation-controls` compares their web/native command-shape and
 service-payload effect logs through
 `packages/ir/fixtures/conformance/v8-animation-controls/game.bundle` and writes
-evidence under `artifacts/v8/animation-controls/`. Stateful runtime playback
+evidence under `tools/verify/artifacts/animation-controls/`. Stateful runtime playback
 control semantics, broader blending, and rendered particles remain open V8-08
 work.
 
@@ -182,7 +182,7 @@ now carries portable `restitution` and `friction`, and the web/native primitive
 trace proves a dynamic box falling under gravity onto a static floor with
 deterministic position, velocity, material, and contact observations. Run
 `pnpm verify:v8:rigid-body-primitive` after building the web runtime; it writes
-`artifacts/conformance/v8-rigid-body-primitive/web-rigid-body.json`,
+`packages/ir/artifacts/conformance/rigid-body-primitive/web-rigid-body.json`,
 `native-rigid-body.json`, and `rigid-body-diff.json`. This does not complete
 full V8-09 rigid-body, character navigation, object pushing, or pathfinding
 acceptance.
@@ -192,11 +192,11 @@ SDK/IR/compiler contracts and web/native runtime traces now cover bounded
 primitive solver v2 declarations, deterministic multi-body primitive contact
 traces, broad primitive sensors, character object pushing, static navigation
 path queries, and backend-boundary diagnostics. The accepted fixture is
-`packages/ir/fixtures/conformance/v9-physics-character/game.bundle`; rejected
+`packages/ir/fixtures/conformance/physics-character/game.bundle`; rejected
 fixtures cover mesh sensors and backend/dynamic navigation handles. Run
 `pnpm verify:v9:physics-character` to validate the bundle, emit web/native
 solver/sensor/push/navigation traces, compare drift, and write
-`artifacts/conformance/v9-physics-character/verification-report.json`.
+`packages/ir/artifacts/conformance/physics-character/verification-report.json`.
 Dynamic mesh colliders, joints/constraints, dynamic navmesh rebakes, crowd
 steering, off-mesh links, and public backend physics/navmesh handles remained
 deferred at V9 scope with promotion criteria in the V9-02 PRD.
@@ -209,7 +209,7 @@ and suspension joints. Web and Bevy deterministic traces use mesh AABB bounds
 for high-speed track contact, preserve CCD observations, and report suspension
 joint metadata. `pnpm verify:v10:advanced-physics` writes sequential web/native
 frame PNGs, a contact sheet, JSON traces, and per-frame comparison metrics under
-`artifacts/v10/advanced-physics/`. Full constraint solving, tire/friction
+`tools/verify/artifacts/advanced-physics/`. Full constraint solving, tire/friction
 models, vehicle drivetrains, soft bodies, ragdolls, and public backend handles
 remain future physics work.
 
@@ -220,7 +220,7 @@ capability, maps to web material user data and Bevy `StandardMaterial.emissive`
 without the unlit color-card shortcut, and exposes deterministic web/native
 contribution observations. `pnpm verify:v10:emissive-bloom` writes sequential
 web/native frame PNGs, a contact sheet, JSON traces, and per-frame comparison
-metrics under `artifacts/v10/emissive-bloom/`. This does not claim full GPU
+metrics under `tools/verify/artifacts/emissive-bloom/`. This does not claim full GPU
 bloom pixel identity beyond the promoted contribution trace.
 
 The V10 native-instancing pass promotes renderer-level repeated-prop batching
@@ -230,7 +230,7 @@ evidence for environment scatter instances. Bevy now records
 placeholder scatter props, and reports model-scene handle grouping for
 bundle-local glTF/GLB source assets. `pnpm verify:v10:native-instancing` writes
 sequential web/native trace-frame PNGs, a contact sheet, JSON traces, and
-per-frame comparison metrics under `artifacts/v10/native-instancing/`. This is
+per-frame comparison metrics under `tools/verify/artifacts/native-instancing/`. This is
 not a broad custom GPU instance-attribute API, and visual runtime LOD mesh
 swapping remains future work.
 
@@ -240,7 +240,7 @@ and gradient style entries as native rendered-effect components, exposes a
 deterministic native visual-effect trace, and stops reporting those style fields
 as unsupported. `pnpm verify:v10:native-ui-effects`
 writes sequential web/native trace-frame PNGs, a contact sheet, JSON traces, and
-per-frame comparison metrics under `artifacts/v10/native-ui-effects/`. This is a
+per-frame comparison metrics under `tools/verify/artifacts/native-ui-effects/`. This is a
 bounded retained UI effect slice, not a full CSS filter/shader parity claim.
 
 The V10 native-rich-text pass promotes bounded rich text style observations for
@@ -251,7 +251,7 @@ font-weight, text-decoration, and per-span rich text style metadata as
 weight/decoration diagnostics while retaining the explicit per-span italic
 diagnostic. `pnpm verify:v10:native-rich-text` writes sequential web/native
 trace-frame PNGs, a contact sheet, JSON traces, and per-frame comparison metrics
-under `artifacts/v10/native-rich-text/`. This is a metadata/render-style
+under `tools/verify/artifacts/native-rich-text/`. This is a metadata/render-style
 promotion for retained UI text, not a claim that Bevy synthesizes missing font
 faces for every portable weight.
 
@@ -262,7 +262,7 @@ image render-plan observations. Bevy continues to preserve the authored
 `trace_native_ui_image_rendering` observations for atlas/nine-slice panels and
 tiled image fills. `pnpm verify:v10:native-ui-images` writes sequential
 web/native trace-frame PNGs, a contact sheet, JSON traces, and per-frame
-comparison metrics under `artifacts/v10/native-ui-images/`. This is a bounded
+comparison metrics under `tools/verify/artifacts/native-ui-images/`. This is a bounded
 retained-image metadata/render-plan proof, not a full custom Bevy nine-slice
 mesh or tiled-material renderer implementation.
 
@@ -273,7 +273,7 @@ post-antialiasing as applied without enabling canvas MSAA, and Bevy attaches the
 matching FXAA, TAA, or SMAA camera component while leaving the MSAA resource off.
 `pnpm verify:v10:post-antialiasing` writes sequential web/native trace-frame
 PNGs, a contact sheet, JSON traces, and per-frame comparison metrics under
-`artifacts/v10/post-antialiasing/`. This is not a full temporal history quality
+`tools/verify/artifacts/post-antialiasing/`. This is not a full temporal history quality
 or exact shader-output parity claim.
 
 The V10 editor-panels pass promotes a bounded visual editor/inspector panel
@@ -283,7 +283,7 @@ hierarchy, property inspector, assets, diagnostics, and reload-policy panels;
 `tn editor inspect --json` returns the same panel model alongside existing
 inspector metadata; and `pnpm verify:v10:editor-panels` writes sequential
 web/native trace-frame PNGs, a contact sheet, JSON traces, and per-frame
-comparison metrics under `artifacts/v10/editor-panels/`. This is a portable
+comparison metrics under `tools/verify/artifacts/editor-panels/`. This is a portable
 panel-data and visual evidence slice, not a full native desktop editor shell.
 
 The V10 editor-property-editing pass promotes bounded scene hierarchy property
@@ -292,7 +292,7 @@ editable property paths, `tn editor set` now has focused coverage for applying a
 validated `Transform.position` JSON-pointer edit back to `world.ir.json`, and
 `pnpm verify:v10:editor-property-editing` writes sequential web/native
 trace-frame PNGs, a contact sheet, JSON traces, and per-frame comparison
-metrics under `artifacts/v10/editor-property-editing/`. This remains structured
+metrics under `tools/verify/artifacts/editor-property-editing/`. This remains structured
 bundle editing rather than live runtime scene mutation.
 
 The V10 editor-tools pass promotes bounded scene viewer, asset preview, and
@@ -303,7 +303,7 @@ declared gamepad controls from `input.ir.json`; `tn editor inspect --json`
 returns that payload beside inspector and visual panel data. `pnpm
 verify:v10:editor-tools` writes sequential web/native trace-frame PNGs, a
 contact sheet, JSON traces, and per-frame comparison metrics under
-`artifacts/v10/editor-tools/`. This remains offline bundle inspection rather
+`tools/verify/artifacts/editor-tools/`. This remains offline bundle inspection rather
 than a connected-device gamepad monitor or full native desktop editor shell.
 
 V8-10 has a narrow asset/glTF inspection evidence slice: web and Bevy now emit a
@@ -312,7 +312,7 @@ and environment model scene references. The trace records sorted asset load
 order, a `bundle.requiredAssets` ready barrier, and bundle-declared glTF source
 asset to instance/LOD relationships, with focused comparison artifacts written
 by `pnpm verify:v8:asset-load-gltf-inspection` under
-`artifacts/conformance/v8-asset-load-gltf-inspection/`. This does not promote
+`packages/ir/artifacts/conformance/asset-load-gltf-inspection/`. This does not promote
 the rest of V8-10: public asset-group declarations, spawned glTF node
 query/update handles, material override handles, editor inspection commands,
 watch diagnostics, and state-preserving hot reload remain future work.
@@ -331,7 +331,7 @@ state-preserving, rebuild-required, and unsupported changes. The aggregate
 proof is `pnpm verify:v9:assets-gltf-scene-workflow`, which writes
 `inspection.json`, `web-report.json`, `native-report.json`,
 `reload-report.json`, and `diff.json` under
-`artifacts/v9/assets-gltf-scene-workflow/`. Custom asset loaders/custom asset
+`examples/assets-gltf-scene-workflow/artifacts/assets-gltf-scene-workflow/`. Custom asset loaders/custom asset
 types, arbitrary runtime file/network access from scripts, and custom shader
 consumption of glTF custom attributes remain deferred.
 
@@ -340,7 +340,7 @@ V8-11 now has a focused rendering-quality slice for fog and sky visual parity:
 validates the bundle, captures web/native screenshots, checks nonblank output,
 compares sky/foreground/fog-depth regions, verifies far fog convergence toward
 the authored fog color, and writes artifacts under
-`artifacts/v8/rendering-quality/`. This is not the full V8-11 post-processing
+`tools/verify/artifacts/rendering-quality/`. This is not the full V8-11 post-processing
 surface; skybox/cubemap contracts, instancing/batching evidence, and broader
 post-processing controls remain tracked as open parity work.
 
@@ -352,9 +352,9 @@ tone-mapping/exposure. Validation rejects missing or malformed environment
 texture/probe refs, invalid budgets/fades/filters, over-budget hard-error light
 policies, and explicitly deferred advanced renderer requests before runtime. Web
 and Bevy conformance reports now expose matching observations through
-`packages/ir/fixtures/conformance/v9-skybox-environment/game.bundle`, and
+`packages/ir/fixtures/conformance/rendering-lights/game.bundle`, and
 `pnpm verify:v9:rendering-lights` writes evidence under
-`artifacts/v9/rendering-lights/`, including web/native/diff/contact-sheet
+`examples/rendering-lights/artifacts/rendering-lights/`, including web/native/diff/contact-sheet
 screenshots plus sampled skybox, reflection-probe, point-shadow PCF, dense/HLOD,
 and debug-gizmo regions. Visual FXAA/TAA/SMAA, depth of field, deferred
 rendering, motion vectors, screen-space reflections, volumetrics, virtual
@@ -394,13 +394,13 @@ Current implemented V4 slice:
   checks and canonical service-call log entries.
 - `pnpm verify:v4` compares web and native QuickJS patch/event/command/service
   effect logs with stable numeric normalization and writes
-  `artifacts/v4/web-effects.json`, `native-effects.json`, and
+  `tools/verify/artifacts/milestones/v4/web-effects.json`, `native-effects.json`, and
   `effects-diff.json`.
 - `examples/v4-scripting` builds a primitive scripted scene covering rotation,
   movement, spawn/despawn, event handoff, `physics.raycast`, and
   `animation.play`; it passes web visual verification with expected motion,
   writes a web patch/event/command/service effect-log artifact, and captures a
-  native Bevy frame artifact at `artifacts/v4/native-bevy-frame-01.png`.
+  native Bevy frame artifact at `tools/verify/artifacts/milestones/v4/native-bevy-frame-01.png`.
 - `templates/v4-scripting` scaffolds the same primitive demo as a CLI template
   through `tn create --template v4-scripting`.
 
@@ -441,7 +441,7 @@ slot, visibility, mesh-renderer, runtime camera projection, environment-ID,
 diagnostic, and entity observations, while report mismatches carry
 JSON-path-like locations plus bundle/artifact paths. The Bevy runtime also provides a headless
 `threenative_conformance` command, and `pnpm verify:conformance` writes an
-inspectable native summary at `artifacts/conformance/basic-scene/bevy.report.json`.
+inspectable native summary at `packages/ir/artifacts/conformance/basic-scene/bevy.report.json`.
 The shared `basic-scene` fixture now also proves capsule and cylinder generated
 mesh assets and mesh-renderer entities across web and Bevy conformance reports.
 
@@ -485,7 +485,7 @@ mushroom, and rock recipes, and compiler-only BufferGeometry snapshots normalize
 into the same portable mesh contract. The focused gate
 `node scripts/verify-v8-procedural-mesh.mjs` builds the pine fixture, captures
 real web Three.js and native Bevy screenshots, and writes comparison artifacts
-under `artifacts/v8/procedural-mesh/`. This promotes static procedural mesh
+under `tools/verify/artifacts/procedural-mesh/`. This promotes static procedural mesh
 authoring only; runtime deformation, CSG, chunk streaming, and shader/storage
 buffer procedural geometry remain future work.
 
@@ -541,7 +541,7 @@ web maps it to Three.js texture wrapping, filtering, and transform properties;
 Bevy now applies sampler wrap/filter controls on loaded images and maps
 repeat/offset/center/rotation through `StandardMaterial.uv_transform`, with
 focused material-parity screenshot evidence under
-`artifacts/v8/material-parity/`.
+`tools/verify/artifacts/material-parity/`.
 
 V8-07 material parity now promotes transparency policy fields (`blendMode`,
 `renderOrder`, `depthWrite`, `depthTest`), `specularTexture`, constrained
@@ -616,8 +616,8 @@ pnpm verify:v9
 `pnpm check:quality:v9` guards PRD/script/fixture/sample/docs drift.
 `pnpm verify:v9` orchestrates focused V9-01..V9-04 gates, shared conformance,
 TypeScript-authored sample scenes under `examples/v9-*`, the visual matrix under
-`artifacts/v9/visual-matrix/`, and writes the aggregate report to
-`artifacts/v9/verification-report.json`.
+`tools/verify/artifacts/visual-matrix/`, and writes the aggregate report to
+`tools/verify/artifacts/release/verification-report.json`.
 
 Post-V7 camera parity now also pins Bevy render-camera activation to
 `world.resources.ActiveCamera` when present, matching the web runtime fallback
@@ -712,7 +712,7 @@ accessibility audit with stable repair hints, plus web/native UI debug reports
 that expose node IDs, roles, accessible names, focus index, bounds, clipping,
 z-index, disabled state, action binding, image source, font/widget state, and
 gizmo observations. The `pnpm verify:v9:input-ui-accessibility` gate writes the
-combined evidence under `artifacts/v9/input-ui-accessibility/`. Focus narration
+combined evidence under `tools/verify/artifacts/input-ui-accessibility/`. Focus narration
 and manually inspected target accessibility audits remain future work.
 
 V5-07 has landed the lighting, atmosphere, shadow, and color parity-evidence
@@ -738,8 +738,8 @@ asset LOD metadata, and environment-asset budget reports.
 V5-09 has landed the maintained visual-quality scene gate:
 `examples/v5-functional` is now the V5 functional scene for promoted visual
 contracts, and `pnpm verify:v5` builds, validates, visually verifies it in web,
-writes dense-content budget evidence under `artifacts/v5`, and records artifact
-links in `artifacts/v5/verification-report.json`. This is the current V5 visual
+writes dense-content budget evidence under `tools/verify/artifacts/milestones/v5`, and records artifact
+links in `tools/verify/artifacts/milestones/v5/verification-report.json`. This is the current V5 visual
 scene gate, not the final aggregate release gate planned for V5-10.
 
 V5-11 has landed the game-authoring ergonomics slice: `defineGame`,
@@ -749,14 +749,14 @@ existing bundle root, scene, world, input, mesh, ECS component, and model asset
 metadata shapes. `tn create --template v5-game-starter` scaffolds a small
 playable scene/world/input/system starter that uses those helpers, and
 `pnpm verify:v5` creates, builds, and validates that starter under
-`artifacts/v5/starter-smoke`. This does not add a new runtime contract, editor
+`tools/verify/artifacts/milestones/v5/starter-smoke`. This does not add a new runtime contract, editor
 workflow, networking, raw Three.js compatibility, plugin API, custom renderer
 support, or runtime model loading.
 
 V5-10 has landed the aggregate V5 release gate: `pnpm verify:v5` now produces a
 schema/versioned machine-readable report with ordered steps, diagnostics,
 startedAt/durationMs, first-failing-step diagnostics, conformance artifacts,
-Rust native test evidence at `artifacts/v5/rust-test-report.json`, visual scene
+Rust native test evidence at `tools/verify/artifacts/milestones/v5/rust-test-report.json`, visual scene
 artifacts, dense-content budget evidence, and game-authoring ergonomics starter
 smoke artifacts. V5 is complete for the documented scope of hardening,
 conformance, native tests, visual scene proof, diagnostics, and SDK/template
@@ -806,12 +806,12 @@ the canonical web system effect log. The native QuickJS host now queues
 `resourceWrites`, applies declared writes to bundle world resources, and records
 resource log entries. Shared web and Bevy conformance reports now also expose
 serialized resource values and queued event payloads through the
-`v6-resources-events` fixture, and `pnpm verify:conformance` writes a native
+`resources-events` fixture, and `pnpm verify:conformance` writes a native
 V6 observation artifact at
-`artifacts/conformance/v6-resources-events/bevy.report.json`. The same fixture
+`packages/ir/artifacts/conformance/resources-events/bevy.report.json`. The same fixture
 now runs an executable fixed trace in web and native, compares canonical event
 and resource effect logs, and writes
-`artifacts/conformance/v6-resources-events/web-effects.json`,
+`packages/ir/artifacts/conformance/resources-events/web-effects.json`,
 `native-effects.json`, and `effects-diff.json`. V6 scene evidence remains part
 of later V6 phases.
 
@@ -831,7 +831,7 @@ checks rigid-body mass and velocity fields, rejects cylinder colliders, dynamic
 mesh colliders, and mesh trigger colliders, and fails closed for V6 collider
 layer/mask fields that are deferred to V7. The web runtime and native Bevy
 adapter now emit deterministic collision and trigger event phases (`enter`,
-`stay`, `exit`) for fixed traces, and the shared `v6-physics-events` fixture
+`stay`, `exit`) for fixed traces, and the shared `physics-events` fixture
 exposes collision/trigger `enter` observations in web and Bevy conformance
 reports. Full rigid-body solver parity and contact filtering remain deferred to
 V7.
@@ -847,14 +847,14 @@ V6-05 has started with the animation clip contract: SDK model assets can now
 carry deterministic named clip metadata, emitted asset manifests preserve those
 clips, IR validation checks clip IDs, optional source clip names, loop flags,
 positive playback speeds, model-only placement, and V7-deferred graph/blend/IK/
-retargeting/particle fields, and the `v6-animation-clips` conformance fixture
+retargeting/particle fields, and the `animation-clips` conformance fixture
 tracks the contract. The fixture now also runs a fixed web/native
 `animation.play` service trace and both web and Bevy conformance observations
 report model clip metadata. Real model animation mixer/AnimationPlayer visual
 playback, stop/state queries, and graph behavior remain later work.
 
 V6-06 has started with the retained UI contract and observation layer: duplicate
-UI node IDs are rejected, the `v6-retained-ui` conformance fixture carries HUD
+UI node IDs are rejected, the `retained-ui` conformance fixture carries HUD
 text, a resource-bound bar, and a focusable action button, and web/Bevy
 conformance reports now expose the portable UI tree. The web runtime now mounts
 that retained tree as a DOM overlay whose resource bindings update with the
@@ -865,7 +865,7 @@ Bevy UI action queue that records `Interaction::Pressed` on buttons and touch
 controls. Broader focus heuristics and advanced widgets remain later UI work.
 
 V6-07 has started with bundle-local audio playback evidence: the shared
-`v6-audio-playback` conformance fixture declares local OGG/WAV assets,
+`audio-playback` conformance fixture declares local OGG/WAV assets,
 autoplay looping music, an event-triggered one-shot, and portable command
 volume. The web runtime now has a testable HTML audio-element sink for local
 asset playback and stable missing asset/playback diagnostics, while the Bevy
@@ -889,9 +889,9 @@ events, startup/update systems, primitive physics, a character controller,
 animation clip metadata, retained UI, input, audio, and runtime config.
 `pnpm verify:v6` now runs the V6 docs gate, V6 gate-script tests, CLI build,
 functional scene build/validation, web visual smoke verification, and shared
-conformance, then writes `artifacts/v6/verification-report.json`. Web
+conformance, then writes `tools/verify/artifacts/milestones/v6/verification-report.json`. Web
 screenshots and the web effect log are mirrored under
-`artifacts/v6/web-visual/`, and the aggregate report marks
+`tools/verify/artifacts/milestones/v6/web-visual/`, and the aggregate report marks
 `visualEvidenceStatus` as `web-captured` when that smoke passes. Native frame
 capture, richer playable traces, and final visual parity observations remain
 later V6-09 work before the scene can serve as final visual parity evidence.
@@ -903,7 +903,7 @@ determinism, packaging, and performance gaps. Remaining gaps should be
 explicitly deferred or marked never portable with stable diagnostics.
 
 The V7 ticket slice is tracked in [V7 PRDs](PRDs/v7/README.md). V7 starts from
-the [post-V6 gap triage](feature-maturity.md#post-v6-gap-triage) table and
+the [post-V6 gap triage](status/feature-maturity.md#post-v6-gap-triage) table and
 should promote deeper engine/runtime parity only when shared fixtures, runtime
 observations, native evidence where claimed, docs, diagnostics, functional
 scene/template proof, and `verify:v7` agree.
@@ -921,10 +921,10 @@ filters now validate with stable `layer`/`mask` metadata, backend-specific
 physics handles fail with `TN_IR_PHYSICS_ENGINE_HANDLE_UNSUPPORTED`, and
 systems may declare `physics.overlap` and `physics.shapeCast` service
 permissions beside `physics.raycast`. The first runtime phase now has a
-`v7-advanced-physics-character` conformance fixture and fixed web/native trace
+`advanced-physics-character` conformance fixture and fixed web/native trace
 for primitive overlap and swept box shape-cast queries with portable collider
 layer filters, writing web/native effect logs and a diff under
-`artifacts/conformance/v7-advanced-physics-character`. The fixture now carries
+`packages/ir/artifacts/conformance/advanced-physics-character`. The fixture now carries
 a grounded/blocking `CharacterController` and `input.ir.json` axes, and
 `pnpm verify:conformance` compares a fixed web/native character movement trace
 with deterministic stop-before-penetration behavior. Portable scripts may also
@@ -940,14 +940,14 @@ V7-03 has landed the first animation/effects parity slice: model assets can now
 carry a constrained `animationGraph` with states, transition conditions, blend
 durations, parameters, and animation event markers, plus bounded
 `particleEmitters` metadata. The SDK, IR schema/validator, compiler emission,
-capability manifest derivation, and `v7-animation-graphs-particles`
+capability manifest derivation, and `animation-graphs-particles`
 conformance fixture cover the accepted portable shape, while IK, retargeting,
 engine-specific controllers, and unbounded particle behavior remain rejected or
 unsupported. `pnpm verify:conformance` now compares a fixed web/native V7
 animation trace for parameter-driven graph transitions, active clip
 selection, queued animation event payloads, and bounded particle spawn counts,
 writing web/native trace artifacts and a diff under
-`artifacts/conformance/v7-animation-graphs-particles`. Full visual mixer
+`packages/ir/artifacts/conformance/animation-graphs-particles`. Full visual mixer
 playback, stop/state query APIs, richer event scheduling, and rendered particle
 systems remain later V7 work.
 
@@ -955,9 +955,9 @@ V7-04 has landed the first rich UI navigation parity slice: `ui.ir.json` now
 accepts portable `focusOrder`, per-node `navigation` links, `safeArea`
 metadata, and UI `inputActions`, with validation for duplicate or invalid focus
 targets, bad navigation links, invalid safe-area edges, and malformed action
-refs. The `v7-rich-ui-navigation` conformance fixture covers a small menu, and
+refs. The `rich-ui-navigation` conformance fixture covers a small menu, and
 `pnpm verify:conformance` compares a fixed web/native Tab focus and activation
-trace under `artifacts/conformance/v7-rich-ui-navigation`. The web DOM overlay
+trace under `packages/ir/artifacts/conformance/rich-ui-navigation`. The web DOM overlay
 now lowers Tab/Shift+Tab and arrow keys into the same focus model and activates
 focused controls with Enter/Space. Gamepad, pointer, and touch remain adapter
 inputs that lower into the same portable logical trace; spatial focus heuristics,
@@ -969,23 +969,23 @@ audio IR accepts validated buses, listener positions, spatial emitter
 positions/radii, and bus/emitter references on looping music and
 event-triggered one-shots while rejecting streaming/network/platform-only
 fields. The SDK, IR validator, compiler emitter, web runtime command log,
-native Bevy observation path, and `v7-spatial-audio-buses` conformance fixture
+native Bevy observation path, and `spatial-audio-buses` conformance fixture
 preserve the deterministic routed/spatial command shape. `pnpm
 verify:conformance` now compares a fixed web/native audio lifecycle trace for
 loop start/stop cleanup and writes web/native trace artifacts and a diff under
-`artifacts/conformance/v7-spatial-audio-buses`. Real spatial attenuation, mixer
+`packages/ir/artifacts/conformance/spatial-audio-buses`. Real spatial attenuation, mixer
 effects, streaming/network audio, and platform audio handles remain unsupported
 or later work.
 
 V7-06 has landed the first renderer/dense-content parity evidence slice: the
-`v7-renderer-dense-content` conformance fixture carries bounded environment LOD
+`renderer-dense-content` conformance fixture carries bounded environment LOD
 metadata, imported transform edge cases, and repeated model-backed scatter
 instances. The IR validator now rejects backend-specific renderer/content
 fields such as ad hoc post-processing, native instancing flags, and material
 overrides with `TN_IR_ENVIRONMENT_FIELD_UNSUPPORTED`. `pnpm
 verify:conformance` compares a fixed web/native environment content trace for
 runtime LOD selection and instancing observations, writing web/native trace
-artifacts and a diff under `artifacts/conformance/v7-renderer-dense-content`.
+artifacts and a diff under `packages/ir/artifacts/conformance/renderer-dense-content`.
 Actual renderer-level native instancing, visual LOD mesh swapping, and portable
 post-processing remain unclaimed.
 
@@ -1038,7 +1038,7 @@ scripts as `ctx.states.get()`, `ctx.components.hooks()`,
 read-only plugin composition through `ctx.plugins.*()`, while unsupported
 lifecycle fields, dynamic runtime plugins, and arbitrary async/timer/system-local
 state metadata fail with stable IR diagnostics. The
-`v7-scripting-lifecycle` fixture runs a script-heavy multi-schedule trace
+`scripting-lifecycle` fixture runs a script-heavy multi-schedule trace
 covering startup, fixedUpdate, update, and postUpdate resource handoff, queued
 events, spawn/despawn commands, `animation.play` service effects, derived
 state/substate reads, component-hook observations, component-reflection reads,
@@ -1063,7 +1063,7 @@ trace without exposing renderer or native runtime extension points.
 `pnpm verify:conformance`
 compares the canonical
 web/native effect logs and writes artifacts under
-`artifacts/conformance/v7-scripting-lifecycle`. Follow-up focused runtime tests
+`packages/ir/artifacts/conformance/scripting-lifecycle`. Follow-up focused runtime tests
 now prove command-buffer spawn/despawn reconciliation across later web/native
 schedules, native persistence for direct and command-buffer event writes, and
 native query filtering against dynamically spawned components. State-preserving
@@ -1080,18 +1080,18 @@ bundle, validates the bundle target profile, emits a predictable local artifact 
 under `dist/package/desktop` or the requested `--out` path, and writes
 `package.manifest.json` plus `runtime.args.json` for the Bevy runtime loader.
 `pnpm verify:v7` currently records this packaging evidence under
-`artifacts/v7/packaging` and fails with stable `TN_PACKAGE_*` /
+`tools/verify/artifacts/milestones/v7/packaging` and fails with stable `TN_PACKAGE_*` /
 `TN_VERIFY_V7_*` diagnostics for unsupported targets or broken artifact checks.
 Signed installers, mobile app stores, online publishing, and hosted services
 remain out of V7 scope.
 
 V7-09 has landed the first target-profile-aware performance evidence slice: the
-`v7-performance-budgets` conformance fixture declares frame, load, draw,
+`performance-budgets` conformance fixture declares frame, load, draw,
 instance, entity, texture, triangle, and package-size thresholds in
-`target.profile.json`. `scripts/verify-v7-performance-budgets.mjs` writes fixed
+`target.profile.json`. `scripts/verify-performance-budgets.mjs` writes fixed
 web and Bevy-style metric reports plus a comparison report under
-`artifacts/conformance/v7-performance-budgets`, and `pnpm verify:v7` mirrors the
-current performance evidence under `artifacts/v7/performance`. Budget failures
+`packages/ir/artifacts/conformance/performance-budgets`, and `pnpm verify:v7` mirrors the
+current performance evidence under `tools/verify/artifacts/milestones/v7/performance`. Budget failures
 use `TN_PERF_*` diagnostics with metric, measured value, threshold, and artifact
 path fields. These reports are deterministic budget evidence, not live browser
 or native profiler captures; richer frame capture and platform profilers remain
@@ -1105,8 +1105,8 @@ physics colliders, a character controller declaration, input, retained UI,
 audio, resources/events, scripted event writes, and `animation.play`
 service effects. `pnpm verify:v7` now builds, validates, captures web visual
 artifacts for the example, packages its desktop bundle under
-`artifacts/v7/functional-package`, and create/build/validates the V7 template
-under `artifacts/v7/template-smoke/v7-functional`. Deeper V7 feature parity is
+`tools/verify/artifacts/milestones/v7/functional-package`, and create/build/validates the V7 template
+under `tools/verify/artifacts/milestones/v7/template-smoke/v7-functional`. Deeper V7 feature parity is
 still proven by the focused conformance fixtures rather than by direct SDK
 authoring for every promoted IR shape.
 
@@ -1115,10 +1115,10 @@ V7-11 has landed the aggregate release gate and docs consistency slice:
 TypeScript checks, conformance, the functional scene/template smoke, Bevy
 workspace tests, desktop packaging checks, performance reports, diagnostics
 checks, and final artifact presence checks. The gate writes
-`artifacts/v7/verification-report.json` with links to docs/diagnostics inputs,
+`tools/verify/artifacts/milestones/v7/verification-report.json` with links to docs/diagnostics inputs,
 rendered web evidence, packaged desktop artifacts, template smoke output,
-`artifacts/conformance/verification-report.json`,
-`artifacts/v7/rust-test-report.json`, packaging, and performance reports. V7 is
+`packages/ir/artifacts/conformance/verification-report.json`,
+`tools/verify/artifacts/milestones/v7/rust-test-report.json`, packaging, and performance reports. V7 is
 complete for the documented promoted slices when `verify:v7` passes; editor,
 online, networking, replication, collaboration, public plugin, raw Three.js,
 direct Bevy authoring, mobile packaging, and broad shader graph scope remain
@@ -1285,7 +1285,7 @@ through a Three.js `AnimationMixer`, while Bevy attaches a one-clip
 selected clip with the authored loop and speed. `pnpm verify:v9:skeletal-animation`
 now proves cross-runtime skinned-mesh deformation from bundle-local glTF clips
 through `examples/v9-skeletal-animation`, web motion screenshots, and native
-Bevy dual-frame capture evidence under `artifacts/v9/skeletal-animation/`.
+Bevy dual-frame capture evidence under `tools/verify/artifacts/skeletal-animation/`.
 V8 transform animation also has exact trace parity for authored entity
 position/rotation/scale tracks through `pnpm verify:v8:animation-transform`,
 plus declared `animation.query` / `animation.stop` command-shape/service-payload
@@ -1294,8 +1294,8 @@ parity through `pnpm verify:v8:animation-controls`. V9-01 promotes stateful
 `pnpm verify:v9:animation-state`, bounded crossfade state through
 `pnpm verify:v9:animation-blending`, and rendered bounded CPU particle
 emitters through `pnpm verify:v9:animation-particles`; evidence is written
-under `artifacts/v9/animation-state/`, `artifacts/v9/animation-blending/`,
-and `artifacts/v9/animation-particles/`. Animation masks/layers, morph-target
+under `tools/verify/artifacts/animation-state/`, `tools/verify/artifacts/animation-blending/`,
+and `tools/verify/artifacts/animation-particles/`. Animation masks/layers, morph-target
 animation, retargeting, IK, UI/property animation, arbitrary blend trees, and
 GPU/external-shader particle systems remain deferred with explicit diagnostics.
 
@@ -1319,7 +1319,7 @@ validates report shape and emits stable networking/feature rejection diagnostics
 web exposes a deterministic debug overlay model for FPS/counters/diagnostic
 rows and draw primitives, Bevy exposes a matching native debug overlay
 observation report, and `pnpm verify:v9:diagnostics-support` writes the focused
-artifact set under `artifacts/v9/diagnostics-support/`. Runtime networking
+artifact set under `tools/verify/artifacts/diagnostics-support/`. Runtime networking
 services remain explicitly out of scope.
 
 The V10 debug-draw pass promotes that gameplay helper catalog with sequential
@@ -1327,7 +1327,7 @@ visual evidence. The SDK test now covers all promoted primitive helpers, web and
 native overlay tests preserve deterministic primitive ordering, and `pnpm
 verify:v10:debug-draw` writes matching web/native trace JSON, three sequential
 PNG frame pairs, a contact sheet, and zero-drift comparison metrics under
-`artifacts/v10/debug-draw/`. This remains a bounded overlay/report helper path,
+`tools/verify/artifacts/debug-draw/`. This remains a bounded overlay/report helper path,
 not a claim of arbitrary live engine-integrated debug rendering.
 
 V9-06 editor tooling now has a Phase 4 slice on top of the V8 structured editor
@@ -1341,7 +1341,7 @@ preview, and gamepad viewer; editor gizmo overlays compose existing
 debug/editor-only line geometry for transforms, lights, bounds, cameras, and UI
 nodes; and `pnpm verify:v9:editor-support` writes the focused inspector,
 structured-diff, panel, scene-viewer, asset-preview, and gamepad-viewer evidence
-under `artifacts/v9/editor-support/`. A full visual editor app and
+under `tools/verify/artifacts/editor-support/`. A full visual editor app and
 state-preserving hot reload remain later work.
 
 V9-06 target profiles and stress/profiler evidence now have a Phase 5 slice:
@@ -1354,7 +1354,7 @@ save latency, and memory estimate, and native conformance reports now include a
 deterministic support profiler summary plus a GPU timing unavailable warning
 when that capability is not present. `pnpm verify:v9:stress-support` writes the
 focused large-scene metrics, profiler summary, and repair-hint artifacts under
-`artifacts/v9/stress-support/`. This does not claim full live browser or native
+`tools/verify/artifacts/stress-support/`. This does not claim full live browser or native
 platform profiler capture parity.
 
 V9-06 aggregate support gate evidence now ties the support slices together.
@@ -1362,7 +1362,7 @@ V9-06 aggregate support gate evidence now ties the support slices together.
 `local-data.ir.json`, `check:docs:v9` guards the PRD/status/parity support
 claims and explicit deferrals, `pnpm verify:v9:support` runs the audio,
 local-data, diagnostics, editor, stress, and shared conformance checks, and the
-aggregate report is written to `artifacts/v9/support/verification-report.json`.
+aggregate report is written to `tools/verify/artifacts/support/verification-report.json`.
 Cloud save, streaming/network audio, runtime networking, signed installers,
 online publishing, collaboration, raw Three.js authoring, and direct Bevy
 authoring remain explicitly deferred.
@@ -1371,7 +1371,7 @@ authoring remain explicitly deferred.
 
 The V3 evidence loop is `pnpm verify:v3`, which regenerates the environment
 bundle, web screenshots, Bevy GLTF smoke captures, and side-by-side contact
-sheet under `artifacts/v3`.
+sheet under `tools/verify/artifacts/milestones/v3`.
 
 - deterministic environment scene IR for the forest proof scene
 - bundle-local glTF/GLB, `.bin`, and texture dependency copying
@@ -1413,10 +1413,10 @@ sheet under `artifacts/v3`.
 - [V6 PRDs](PRDs/v6/README.md)
 - [V5 PRDs](PRDs/v5/README.md)
 - [Bevy Feature Parity Drift](bevy-feature-parity.md)
-- [Feature Maturity Matrix](feature-maturity.md)
-- [verify:v7](verify-v7.md)
-- [verify:v6](verify-v6.md)
-- [verify:v4](verify-v4.md)
-- [verify:v5](verify-v5.md)
-- [verify:v3](verify-v3.md)
+- [Feature Maturity Matrix](status/feature-maturity.md)
+- [verify:v7](verification/verify-v7.md)
+- [verify:v6](verification/verify-v6.md)
+- [verify:v4](verification/verify-v4.md)
+- [verify:v5](verification/verify-v5.md)
+- [verify:v3](verification/verify-v3.md)
 - [Coordinate, Units, Rotation, and Color Conventions](conventions.md)

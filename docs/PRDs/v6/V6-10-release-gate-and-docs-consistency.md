@@ -17,7 +17,7 @@ evidence, diagnostics, docs, conformance, Rust tests, and scene artifacts agree.
 ## Solution
 
 Add V6 docs checks, aggregate verification, machine-readable reports under
-`artifacts/v6`, example proof requirements, and status/parity completion
+`tools/verify/artifacts/milestones/v6`, example proof requirements, and status/parity completion
 updates.
 
 ## Execution Phases
@@ -46,18 +46,18 @@ updates.
 - `scripts/verify-v6.test.mjs` - report/step tests.
 - `package.json` - script registration.
 - `docs/verify-v6.md` - command and artifact docs.
-- `artifacts/v6/*` - generated reports.
+- `tools/verify/artifacts/milestones/v6/*` - generated reports.
 
 **Implementation:**
 
 - [ ] Run docs checks, selected TypeScript tests, conformance, V6 scene build,
   web playable verification, focused Rust tests, and diagnostic checks.
 - [ ] Require the V6 proof example under `examples/` to produce inspectable
-  evidence under `artifacts/v6`, following existing folder conventions.
+  evidence under `tools/verify/artifacts/milestones/v6`, following existing folder conventions.
 - [ ] Require real rendered visual evidence for visible promoted features where
   practical, including web screenshots and Bevy rendered evidence or documented
   native visual drift where native support is claimed.
-- [ ] Write `artifacts/v6/verification-report.json` with schema, version,
+- [ ] Write `tools/verify/artifacts/milestones/v6/verification-report.json` with schema, version,
   status, code, steps, diagnostics, artifacts, startedAt, and durationMs.
 - [ ] Surface first failing step with stable `TN_VERIFY_V6_*` diagnostics.
 
@@ -75,7 +75,7 @@ updates.
 - [ ] `pnpm verify:v6` is the V6 aggregate release gate.
 - [ ] The V6 report links conformance, Rust, visual/playable, diagnostics, and
   docs artifacts.
-- [ ] The V6 gate fails if the example proof or `artifacts/v6` evidence is
+- [ ] The V6 gate fails if the example proof or `tools/verify/artifacts/milestones/v6` evidence is
   missing.
 - [ ] The V6 gate fails if visible promoted features have only build/log proof
   and no rendered artifact or explicit documented exception.

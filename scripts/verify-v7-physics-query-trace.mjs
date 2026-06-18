@@ -8,10 +8,10 @@ const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 export async function verifyV7PhysicsQueryTrace(options = {}) {
   return verifyV6ResourceEventTrace({
     ...options,
-    artifactDir: options.artifactDir ?? resolve(repoRoot, "artifacts/conformance/v7-advanced-physics-character"),
+    artifactDir: options.artifactDir ?? resolve(repoRoot, "packages/ir/artifacts/conformance/advanced-physics-character"),
     bundlePath:
       options.bundlePath ??
-      resolve(repoRoot, "packages/ir/fixtures/conformance/v7-advanced-physics-character/game.bundle"),
+      resolve(repoRoot, "packages/ir/fixtures/conformance/advanced-physics-character/game.bundle"),
     mismatchCode: "TN_VERIFY_V7_PHYSICS_QUERY_TRACE_MISMATCH",
     mismatchLabel: "V7 physics query trace",
   });

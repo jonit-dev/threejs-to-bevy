@@ -12,7 +12,7 @@ or that the two runtimes interpret the same environment metadata consistently.
 `examples/v3-environment/src/game.ts`,
 `templates/v3-environment/src/game.ts`,
 `examples/v3-environment/dist/forest.bundle/assets/environment/reference/Preview_2.jpg`,
-`artifacts/v3/verification-report.json`, `packages/sdk`,
+`tools/verify/artifacts/milestones/v3/verification-report.json`, `packages/sdk`,
 `packages/ir`, `packages/compiler`, `packages/cli`,
 `packages/runtime-web-three`, `runtime-bevy`,
 `docs/PRDs/v3/V3-07*`, `docs/PRDs/v3/V3-08*`,
@@ -353,7 +353,7 @@ sequenceDiagram
   comparisons.
 - [ ] Require target-vs-output contact sheet and `manual-visual-review.json` as
   hard gates.
-- [ ] Require native smoke report and log in `artifacts/v3`.
+- [ ] Require native smoke report and log in `tools/verify/artifacts/milestones/v3`.
 - [ ] Make `pnpm verify:v3` the final release gate for Preview_2 visual
   fidelity and runtime parity.
 

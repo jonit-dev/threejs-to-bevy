@@ -201,6 +201,45 @@ test("verify v10 visual calibration writes manifest report", async () => {
   }
 });
 
+test("should require focused reports from canonical example artifact paths", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-v10-visual-calibration-canonical-"));
+  try {
+    const report = await verifyV10VisualCalibration({
+      repoRoot: root,
+      args: { groups: ["color"], includePlanned: false, json: false, list: false, manifestOnly: false },
+      fixtures: [
+        {
+          id: "v10-color",
+          factorGroup: "color",
+          example: "examples/v10-visual-calibration-color",
+          bundleName: "v10-visual-calibration-color.bundle",
+          promoted: true,
+          implemented: true,
+          capture: { width: 1280, height: 720 },
+          camera: { id: "camera.calibration" },
+          requiredArtifacts: ["web.png", "bevy.png", "diff.png", "contact-sheet.png"],
+          regions: [{ id: "swatch-white", factor: "color", region: { x: 0.05, y: 0.05, width: 0.08, height: 0.1 } }],
+          thresholds: { changedPixelRatio: 0.02 },
+          failureHints: { color: "check color management" },
+        },
+      ],
+      skipBuildCli: true,
+      captureArtifacts: false,
+      run: async ({ name }) => ({ durationMs: 1, exitCode: 0, name, stderr: "", stdout: "" }),
+    });
+
+    const missing = report.diagnostics.filter((diagnostic) => diagnostic.code === "TN_VERIFY_VISUAL_CALIBRATION_ARTIFACT_MISSING");
+    assert.ok(missing.length > 0);
+    assert.ok(
+      missing.every((diagnostic) =>
+        diagnostic.artifactPath.includes("examples/v10-visual-calibration-color/artifacts/visual-calibration/"),
+      ),
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("parseVisualCalibrationArgs reads --group and --list", () => {
   assert.deepEqual(parseVisualCalibrationArgs(["--group", "color,materials", "--json"]), {
     analyzeOnly: false,

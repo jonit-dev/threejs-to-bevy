@@ -7,7 +7,7 @@ import test from "node:test";
 import { validateProject } from "./validate.js";
 
 const cubeFixture = resolve(process.cwd(), "../ir/fixtures/cube-scene/game.bundle");
-const audioFixture = resolve(process.cwd(), "../ir/fixtures/conformance/v6-audio-playback/game.bundle");
+const audioFixture = resolve(process.cwd(), "../ir/fixtures/conformance/audio-playback/game.bundle");
 
 test("should validate a scaffolded project config and entry", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-validate-"));

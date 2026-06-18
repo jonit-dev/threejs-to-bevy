@@ -1,0 +1,34 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "conformance-spatial-audio-buses",
+  "requiredCapabilities": {
+    "asset": [
+      "audio.ogg",
+      "audio.wav"
+    ],
+    "audio": [
+      "autoplay",
+      "bus",
+      "listener",
+      "loop",
+      "music",
+      "one-shot",
+      "spatial-emitter",
+      "volume",
+      "volume-routing"
+    ],
+    "ecs": [
+      "events"
+    ]
+  },
+  "entry": {
+    "world": "world.ir.json",
+    "audio": "audio.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "materials": "materials.ir.json",
+    "targetProfile": "target.profile.json"
+  }
+}

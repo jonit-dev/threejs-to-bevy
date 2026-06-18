@@ -142,7 +142,7 @@ artifacts.
 - [ ] Capture two web frames.
 - [ ] Assert nonblank output.
 - [ ] Assert visible frame diff from rotating/moving primitives.
-- [ ] Save screenshots under `artifacts/v4`.
+- [ ] Save screenshots under `tools/verify/artifacts/milestones/v4`.
 
 **Tests Required:**
 

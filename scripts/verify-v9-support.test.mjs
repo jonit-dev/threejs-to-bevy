@@ -10,15 +10,15 @@ test("should aggregate support phase reports into one verification report", asyn
   const root = await mkdtemp(join(tmpdir(), "tn-v9-support-"));
   try {
     const result = await verifyV9Support({
-      artifactDir: join(root, "artifacts/v9/support"),
+      artifactDir: join(root, "tools/verify/artifacts/support"),
       repoRoot: root,
       steps: [
-        () => phase("TN_VERIFY_V9_AUDIO_OK", "artifacts/v9/audio-support/verification-report.json"),
-        () => phase("TN_VERIFY_V9_LOCAL_DATA_OK", "artifacts/v9/local-data-support/verification-report.json"),
-        () => phase("TN_VERIFY_V9_DIAGNOSTICS_OK", "artifacts/v9/diagnostics-support/verification-report.json"),
-        () => phase("TN_VERIFY_V9_EDITOR_OK", "artifacts/v9/editor-support/verification-report.json"),
-        () => phase("TN_VERIFY_V9_STRESS_OK", "artifacts/v9/stress-support/verification-report.json"),
-        () => phase("TN_VERIFY_CONFORMANCE", "artifacts/conformance/verification-report.json"),
+        () => phase("TN_VERIFY_V9_AUDIO_OK", "tools/verify/artifacts/audio-support/verification-report.json"),
+        () => phase("TN_VERIFY_V9_LOCAL_DATA_OK", "tools/verify/artifacts/local-data-support/verification-report.json"),
+        () => phase("TN_VERIFY_V9_DIAGNOSTICS_OK", "tools/verify/artifacts/diagnostics-support/verification-report.json"),
+        () => phase("TN_VERIFY_V9_EDITOR_OK", "tools/verify/artifacts/editor-support/verification-report.json"),
+        () => phase("TN_VERIFY_V9_STRESS_OK", "tools/verify/artifacts/stress-support/verification-report.json"),
+        () => phase("TN_VERIFY_CONFORMANCE", "packages/ir/artifacts/conformance/verification-report.json"),
       ],
     });
     const saved = JSON.parse(await readFile(result.reportPath, "utf8"));
@@ -26,12 +26,12 @@ test("should aggregate support phase reports into one verification report", asyn
     assert.equal(result.ok, true);
     assert.equal(saved.status, "pass");
     assert.equal(saved.phases.length, 6);
-    assert.equal(saved.artifacts.phases.TN_VERIFY_V9_AUDIO_OK, "artifacts/v9/audio-support/verification-report.json");
-    assert.equal(saved.artifacts.phases.TN_VERIFY_V9_LOCAL_DATA_OK, "artifacts/v9/local-data-support/verification-report.json");
-    assert.equal(saved.artifacts.phases.TN_VERIFY_V9_DIAGNOSTICS_OK, "artifacts/v9/diagnostics-support/verification-report.json");
-    assert.equal(saved.artifacts.phases.TN_VERIFY_V9_EDITOR_OK, "artifacts/v9/editor-support/verification-report.json");
-    assert.equal(saved.artifacts.phases.TN_VERIFY_V9_STRESS_OK, "artifacts/v9/stress-support/verification-report.json");
-    assert.equal(saved.artifacts.phases.TN_VERIFY_CONFORMANCE, "artifacts/conformance/verification-report.json");
+    assert.equal(saved.artifacts.phases.TN_VERIFY_V9_AUDIO_OK, "tools/verify/artifacts/audio-support/verification-report.json");
+    assert.equal(saved.artifacts.phases.TN_VERIFY_V9_LOCAL_DATA_OK, "tools/verify/artifacts/local-data-support/verification-report.json");
+    assert.equal(saved.artifacts.phases.TN_VERIFY_V9_DIAGNOSTICS_OK, "tools/verify/artifacts/diagnostics-support/verification-report.json");
+    assert.equal(saved.artifacts.phases.TN_VERIFY_V9_EDITOR_OK, "tools/verify/artifacts/editor-support/verification-report.json");
+    assert.equal(saved.artifacts.phases.TN_VERIFY_V9_STRESS_OK, "tools/verify/artifacts/stress-support/verification-report.json");
+    assert.equal(saved.artifacts.phases.TN_VERIFY_CONFORMANCE, "packages/ir/artifacts/conformance/verification-report.json");
   } finally {
     await rm(root, { force: true, recursive: true });
   }

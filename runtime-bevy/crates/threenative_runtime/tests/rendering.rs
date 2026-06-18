@@ -78,7 +78,7 @@ fn rendering_should_map_visibility_and_v2_lights() {
 
 #[test]
 fn should_report_native_skybox_and_environment_map_observations() {
-    let fixture = load_conformance_fixture("v9-skybox-environment");
+    let fixture = load_conformance_fixture("rendering-lights");
     let observation = observe_environment_lighting(&fixture.bundle);
 
     assert_eq!(
@@ -265,7 +265,7 @@ fn rendering_should_map_procedural_mesh_binary_attributes() {
 
 #[test]
 fn should_spawn_rendered_particles_from_bounded_emitter_state() {
-    let fixture = load_conformance_fixture("v7-animation-graphs-particles");
+    let fixture = load_conformance_fixture("animation-graphs-particles");
     let observations = observe_rendered_particles(&fixture.bundle, 1.0);
     let mut app = App::new();
 

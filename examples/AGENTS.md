@@ -10,5 +10,11 @@ Guidance for runnable examples.
   and must not require runtime access to the source pack.
 - Keep generated outputs such as `dist/` and verification artifacts out of commits
   unless the repo explicitly tracks them.
+- Example-specific verification evidence should be generated under
+  `examples/<name>/artifacts/<gate>/`; do not write new one-example screenshots,
+  traces, or focused reports to root `artifacts/` paths.
+- Shared conformance fixtures stay under `packages/ir/fixtures/*`; examples may
+  be their source, but fixtures are stable contract inputs rather than example
+  output.
 - Examples should prove product workflows, not introduce runtime-specific source
   of truth. They should emit portable IR/bundles consumed by runtime adapters.

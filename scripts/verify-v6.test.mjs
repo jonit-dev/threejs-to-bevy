@@ -9,9 +9,9 @@ import { verifyV6 } from "./verify-v6.mjs";
 test("should report failing v6 gate step", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-verify-v6-"));
   try {
-    const reportPath = join(root, "artifacts/v6/verification-report.json");
+    const reportPath = join(root, "tools/verify/artifacts/milestones/v6/verification-report.json");
     const result = await verifyV6({
-      artifactDir: join(root, "artifacts/v6"),
+      artifactDir: join(root, "tools/verify/artifacts/milestones/v6"),
       copyEvidence: false,
       repoRoot: root,
       reportPath,
@@ -41,9 +41,9 @@ test("should report failing v6 gate step", async () => {
 test("should include functional scene and conformance artifacts in v6 gate", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-verify-v6-"));
   try {
-    const reportPath = join(root, "artifacts/v6/verification-report.json");
+    const reportPath = join(root, "tools/verify/artifacts/milestones/v6/verification-report.json");
     const result = await verifyV6({
-      artifactDir: join(root, "artifacts/v6"),
+      artifactDir: join(root, "tools/verify/artifacts/milestones/v6"),
       copyEvidence: false,
       repoRoot: root,
       reportPath,

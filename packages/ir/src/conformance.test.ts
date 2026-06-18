@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import test from "node:test";
 
-import { listConformanceFixtures } from "./conformance.js";
+import { listConformanceFixtures, loadConformanceFixtureCatalog } from "./conformance.js";
 import { validateBundle } from "./validate.js";
 
 const cwd = process.cwd();
@@ -32,18 +32,17 @@ test("should define V7 conformance fixture categories before runtime claims", as
 
   const tickets = new Set<string>();
   for (const category of catalog.categories) {
-    assert.match(category.id, /^v7-/);
     assert.match(category.ticket, /^V7-0[2-9]$/);
     assert.equal(typeof category.baselineBundlePath, "string", category.id);
     assert.ok(category.baselineBundlePath.endsWith("/game.bundle") || category.baselineBundlePath.includes("/dist/"), category.id);
     assert.ok(category.acceptedBundlePath.endsWith("/game.bundle"), category.id);
     assert.ok(category.rejectedBundlePath.endsWith("/game.bundle"), category.id);
-    assert.ok(category.acceptedFixtureId.startsWith("v7-"), category.id);
+    assert.equal(category.acceptedFixtureId, category.id, category.id);
     assert.ok(category.rejectedFixtureId.startsWith("v7-rejected-"), category.id);
     assert.ok(category.targetCapabilities.length > 0, category.id);
     assert.deepEqual(category.targetCapabilities, [...category.targetCapabilities].sort(), category.id);
     assert.equal(category.reportArtifacts.length >= 2, true, category.id);
-    assert.ok(category.reportArtifacts.every((path: string) => path.startsWith(`artifacts/conformance/${category.acceptedFixtureId}/`)), category.id);
+    assert.ok(category.reportArtifacts.every((path: string) => path.startsWith(`packages/ir/artifacts/conformance/${category.acceptedFixtureId}/`)), category.id);
     assert.ok(category.rejectedDiagnosticCodes.length > 0, category.id);
     assert.ok(category.rejectedDiagnosticCodes.every((code: string) => code.startsWith("TN_V7_")), category.id);
     tickets.add(category.ticket);
@@ -116,7 +115,7 @@ test("should include capability tags for each conformance fixture", async () => 
     "rendering:visibility",
     "scripting:script-bundle",
   ]);
-  assertFixtureCapabilities(byName, "v6-resources-events", [
+  assertFixtureCapabilities(byName, "resources-events", [
     "ecs:event-schemas",
     "ecs:events",
     "ecs:resource-schemas",
@@ -130,7 +129,7 @@ test("should include capability tags for each conformance fixture", async () => 
     "scripting:script-bundle",
     "scripting:systems",
   ]);
-  assertFixtureCapabilities(byName, "v6-physics-events", [
+  assertFixtureCapabilities(byName, "physics-events", [
     "physics:collider.box",
     "physics:collider.sphere",
     "physics:collision-events",
@@ -138,7 +137,7 @@ test("should include capability tags for each conformance fixture", async () => 
     "physics:rigid-body.static",
     "physics:trigger-collider",
   ]);
-  assertFixtureCapabilities(byName, "v6-animation-clips", [
+  assertFixtureCapabilities(byName, "animation-clips", [
     "animation:clip-metadata",
     "animation:playback-service",
     "asset:model.glb",
@@ -146,7 +145,7 @@ test("should include capability tags for each conformance fixture", async () => 
     "scripting:script-bundle",
     "scripting:systems",
   ]);
-  assertFixtureCapabilities(byName, "v6-audio-playback", [
+  assertFixtureCapabilities(byName, "audio-playback", [
     "asset:audio.ogg",
     "asset:audio.wav",
     "audio:autoplay",
@@ -155,7 +154,7 @@ test("should include capability tags for each conformance fixture", async () => 
     "audio:volume",
     "ecs:events",
   ]);
-  assertFixtureCapabilities(byName, "v6-retained-ui", [
+  assertFixtureCapabilities(byName, "retained-ui", [
     "ui:action",
     "ui:binding.resource",
     "ui:focusable",
@@ -166,7 +165,7 @@ test("should include capability tags for each conformance fixture", async () => 
     "ui:node.text",
     "ui:runtime",
   ]);
-  assertFixtureCapabilities(byName, "v7-advanced-physics-character", [
+  assertFixtureCapabilities(byName, "advanced-physics-character", [
     "character:blocking",
     "character:controller",
     "character:grounding",
@@ -184,7 +183,7 @@ test("should include capability tags for each conformance fixture", async () => 
     "scripting:service.physics.shapeCast",
     "scripting:systems",
   ]);
-  assertFixtureCapabilities(byName, "v7-animation-graphs-particles", [
+  assertFixtureCapabilities(byName, "animation-graphs-particles", [
     "animation:clip-metadata",
     "animation:events",
     "animation:graph",
@@ -192,7 +191,7 @@ test("should include capability tags for each conformance fixture", async () => 
     "asset:model.glb",
     "particles:bounded-emitter",
   ]);
-  assertFixtureCapabilities(byName, "v7-rich-ui-navigation", [
+  assertFixtureCapabilities(byName, "rich-ui-navigation", [
     "ui:action",
     "ui:focus-order",
     "ui:input-actions",
@@ -203,7 +202,7 @@ test("should include capability tags for each conformance fixture", async () => 
     "ui:runtime",
     "ui:safe-area",
   ]);
-  assertFixtureCapabilities(byName, "v7-spatial-audio-buses", [
+  assertFixtureCapabilities(byName, "spatial-audio-buses", [
     "asset:audio.ogg",
     "asset:audio.wav",
     "audio:autoplay",
@@ -217,7 +216,7 @@ test("should include capability tags for each conformance fixture", async () => 
     "audio:volume-routing",
     "ecs:events",
   ]);
-  assertFixtureCapabilities(byName, "v7-renderer-dense-content", [
+  assertFixtureCapabilities(byName, "renderer-dense-content", [
     "asset:imported-transform",
     "asset:model.gltf",
     "environment:camera-bookmarks",
@@ -231,7 +230,7 @@ test("should include capability tags for each conformance fixture", async () => 
     "rendering:instancing-observation",
     "rendering:runtime-lod",
   ]);
-  assertFixtureCapabilities(byName, "v7-scripting-lifecycle", [
+  assertFixtureCapabilities(byName, "scripting-lifecycle", [
     "ecs:component-hooks",
     "ecs:component-reflection",
     "ecs:component-schemas",
@@ -268,7 +267,7 @@ test("should include capability tags for each conformance fixture", async () => 
     "scripting:systems",
     "scripting:tasks",
   ]);
-  assertFixtureCapabilities(byName, "v7-packaging-target-profiles", [
+  assertFixtureCapabilities(byName, "packaging-target-profiles", [
     "diagnostics:platform",
     "packaging:bundle-loading",
     "packaging:desktop",
@@ -281,7 +280,7 @@ test("should include capability tags for each conformance fixture", async () => 
     "rendering:mesh.primitive.cylinder",
     "transform:hierarchy",
   ]);
-  assertFixtureCapabilities(byName, "v7-performance-budgets", [
+  assertFixtureCapabilities(byName, "performance-budgets", [
     "performance:asset-load-budget",
     "performance:draw-instance-budget",
     "performance:entity-budget",
@@ -301,7 +300,7 @@ test("should include capability tags for each conformance fixture", async () => 
     "overlay:transparent",
     "overlay:webview",
   ]);
-  assertFixtureCapabilities(byName, "v9-animation-state", [
+  assertFixtureCapabilities(byName, "animation-state", [
     "scripting:schedule.update",
     "scripting:script-bundle",
     "scripting:service.animation.play",
@@ -309,7 +308,7 @@ test("should include capability tags for each conformance fixture", async () => 
     "scripting:service.animation.stop",
     "scripting:systems",
   ]);
-  assertFixtureCapabilities(byName, "v9-animation-blending", [
+  assertFixtureCapabilities(byName, "animation-blending", [
     "animation:blend.crossfade",
     "animation:clip-metadata",
     "animation:graph",
@@ -320,7 +319,7 @@ test("should include capability tags for each conformance fixture", async () => 
     "scripting:service.animation.query",
     "scripting:systems",
   ]);
-  assertFixtureCapabilities(byName, "v9-physics-character-solver", [
+  assertFixtureCapabilities(byName, "physics-character-solver", [
     "physics:collider.box",
     "physics:collider.capsule",
     "physics:primitive-solver-v2",
@@ -345,6 +344,26 @@ test("should include capability tags for each conformance fixture", async () => 
   ]);
 });
 
+test("should expose fixture ownership metadata from the catalog", async () => {
+  const catalog = await loadConformanceFixtureCatalog(resolve(packageRoot, "fixtures/conformance/fixture-catalog.json"));
+  const renderingLights = catalog.fixtures.find((fixture) => fixture.canonicalId === "rendering-lights");
+
+  assert.ok(renderingLights);
+  assert.equal(renderingLights.owner, "ir-contract");
+  assert.equal(renderingLights.sourceExample, "rendering-lights");
+  assert.equal(renderingLights.canonicalArtifactGate, "rendering-lights");
+  assert.match(renderingLights.regenerateCommand ?? "", /verify:v9:rendering-lights/);
+});
+
+test("should keep conformance fixture paths rooted in packages/ir/fixtures", async () => {
+  const catalog = await loadConformanceFixtureCatalog(resolve(packageRoot, "fixtures/conformance/fixture-catalog.json"));
+
+  for (const fixture of catalog.fixtures) {
+    assert.match(fixture.bundlePath, /^packages\/ir\/fixtures\/conformance\//, fixture.canonicalId);
+    assert.equal(fixture.bundlePath.includes("/artifacts/"), false, fixture.canonicalId);
+  }
+});
+
 test("should require every V9 catalog fixture to have a bundle and owner PRD", async () => {
   const catalog = JSON.parse(await readFile(resolve(packageRoot, "fixtures/conformance/v9-fixture-catalog.json"), "utf8"));
 
@@ -353,10 +372,10 @@ test("should require every V9 catalog fixture to have a bundle and owner PRD", a
   assert.ok(catalog.fixtures.length > 0);
 
   for (const fixture of catalog.fixtures) {
-    assert.match(fixture.id, /^v9-/);
     assert.ok(fixture.ownerPrd?.startsWith("docs/PRDs/v9/"), fixture.id);
     assert.equal(fixture.aggregateGate, "verify:v9", fixture.id);
     assert.ok(fixture.bundlePath.endsWith("/game.bundle"), fixture.id);
+    assert.equal(fixture.bundlePath.includes("/v9-"), false, fixture.id);
     await access(resolve(repoRoot, fixture.bundlePath));
     assert.ok((fixture.promotedCapabilities ?? []).length > 0, fixture.id);
   }

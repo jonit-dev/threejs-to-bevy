@@ -36,7 +36,7 @@ V6 common feature parity
   catalog in the same change before claiming runtime support.
 - V7 must include a maintained proof example or template under `examples/` and,
   where promoted, `templates/`, following existing folder patterns, and must
-  write verification evidence under `artifacts/v7`.
+  write verification evidence under `tools/verify/artifacts/milestones/v7`.
 - V7 verification must not be "trust me" build/test evidence. Features with
   visible output must produce real rendered web artifacts and, where native
   support is claimed, Bevy rendered artifacts or explicitly documented native
@@ -72,7 +72,7 @@ V6 common feature parity
   shared evidence.
 - The functional V7 scene and template demonstrate promoted features together.
 - `examples/v7-functional` or its final documented equivalent exists,
-  self-verifies, and writes artifacts under `artifacts/v7` that prove the V7
+  self-verifies, and writes artifacts under `tools/verify/artifacts/milestones/v7` that prove the V7
   slice is working.
 - Visible promoted features have screenshot, image-diff, side-by-side, or
   equivalent real-world rendering artifacts where practical, plus conformance,
@@ -93,7 +93,7 @@ pnpm check:docs:v7
 cd runtime-bevy && cargo test
 ```
 
-`pnpm verify:v7` writes a machine-readable report under `artifacts/v7` with
+`pnpm verify:v7` writes a machine-readable report under `tools/verify/artifacts/milestones/v7` with
 ordered steps, diagnostics, conformance links, Rust evidence, functional scene
 artifacts, packaged target artifacts where applicable, performance reports, and
 the first failing step.

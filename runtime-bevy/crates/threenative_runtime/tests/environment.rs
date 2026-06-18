@@ -139,7 +139,7 @@ fn environment_should_map_scene_to_terrain_path_and_instances() {
 
 #[test]
 fn environment_content_trace_should_report_v7_lod_and_instancing_evidence() {
-    let fixture = load_conformance_fixture("v7-renderer-dense-content");
+    let fixture = load_conformance_fixture("renderer-dense-content");
     let observation = observe_environment(&fixture.bundle)
         .expect("v7 renderer dense content observation should exist");
 

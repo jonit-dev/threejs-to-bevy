@@ -9,8 +9,8 @@ const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 export async function verifyV7AudioLifecycleTrace(options = {}) {
   const root = options.repoRoot ?? repoRoot;
-  const bundlePath = options.bundlePath ?? resolve(root, "packages/ir/fixtures/conformance/v7-spatial-audio-buses/game.bundle");
-  const artifactDir = options.artifactDir ?? resolve(root, "artifacts/conformance/v7-spatial-audio-buses");
+  const bundlePath = options.bundlePath ?? resolve(root, "packages/ir/fixtures/conformance/spatial-audio-buses/game.bundle");
+  const artifactDir = options.artifactDir ?? resolve(root, "packages/ir/artifacts/conformance/spatial-audio-buses");
   const webTracePath = options.webTracePath ?? resolve(artifactDir, "web-audio-lifecycle.json");
   const nativeTracePath = options.nativeTracePath ?? resolve(artifactDir, "native-audio-lifecycle.json");
   const diffPath = options.diffPath ?? resolve(artifactDir, "audio-lifecycle-diff.json");

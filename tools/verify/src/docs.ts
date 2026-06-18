@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readdir, readFile, stat } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import type { VerificationDiagnostic } from "./runner.js";
@@ -86,6 +86,8 @@ export async function checkDocs(root: string): Promise<DocsCheckResult> {
     });
   }
 
+  diagnostics.push(...(await checkDocsLayout(root, readme, status)));
+
   // @ts-expect-error legacy mjs gate consumed during typed-tools migration
   const namesModule = (await import("../../../scripts/check-current-names.mjs")) as {
     checkCurrentNames: (options?: { root?: string }) => Promise<{
@@ -104,6 +106,136 @@ export async function checkDocs(root: string): Promise<DocsCheckResult> {
   }
 
   return { diagnostics, ok: diagnostics.length === 0 };
+}
+
+const REQUIRED_DOC_GROUPS = [
+  "architecture",
+  "contracts",
+  "runtime",
+  "workflows",
+  "status",
+  "PRDs",
+];
+
+const APPROVED_ROOT_DOCS = new Set([
+  "README.md",
+  "STATUS.md",
+  "bevy-feature-parity.md",
+  "verify-v3.md",
+  "verify-v4.md",
+  "verify-v5.md",
+  "verify-v6.md",
+  "verify-v7.md",
+  "verify-v8-procedural-mesh.md",
+  "visual-parity-policy.md",
+]);
+
+async function checkDocsLayout(root: string, readme: string, status: string): Promise<VerificationDiagnostic[]> {
+  const diagnostics: VerificationDiagnostic[] = [];
+
+  for (const group of REQUIRED_DOC_GROUPS) {
+    const groupReadme = `docs/${group}/README.md`;
+    if (!(await exists(resolve(root, groupReadme)))) {
+      diagnostics.push({
+        code: "TN_DOCS_GROUP_INDEX_MISSING",
+        message: `Required docs group index '${groupReadme}' is missing.`,
+        path: groupReadme,
+        severity: "error",
+      });
+    }
+    if (readme && !readme.includes(`${group}/README.md`)) {
+      diagnostics.push({
+        code: "TN_DOCS_GROUP_INDEX_UNLINKED",
+        message: `docs/README.md must link '${groupReadme}'.`,
+        path: "docs/README.md",
+        severity: "error",
+      });
+    }
+  }
+
+  const workflow = await readOptional(resolve(root, "docs/workflows/developer-workflow.md"));
+  for (const phrase of [
+    "examples/<name>/artifacts/<gate>/",
+    "examples/<name>/dist/*",
+    "tools/verify/artifacts/<gate>/",
+    "packages/ir/artifacts/conformance/",
+    "packages/ir/fixtures/*",
+    "runtime-bevy/artifacts/<gate>/",
+    "Fixtures are stable inputs",
+    "Generated artifacts are outputs",
+  ]) {
+    if (!workflow.includes(phrase)) {
+      diagnostics.push({
+        code: "TN_DOCS_ARTIFACT_POLICY_MISSING",
+        message: `docs/workflows/developer-workflow.md must document '${phrase}'.`,
+        path: "docs/workflows/developer-workflow.md",
+        severity: "error",
+      });
+    }
+  }
+
+  const rootDocEntries = await readdir(resolve(root, "docs"), { withFileTypes: true }).catch(() => []);
+  for (const entry of rootDocEntries) {
+    if (!entry.isFile() || !entry.name.endsWith(".md")) {
+      continue;
+    }
+    if (!APPROVED_ROOT_DOCS.has(entry.name)) {
+      diagnostics.push({
+        code: "TN_DOCS_FLAT_PAGE_UNCLASSIFIED",
+        message: `Root docs page 'docs/${entry.name}' must move into a contextual docs group or be added as an approved compatibility page.`,
+        path: `docs/${entry.name}`,
+        severity: "error",
+      });
+    }
+  }
+
+  const prdReadme = await readOptional(resolve(root, "docs/PRDs/README.md"));
+  for (const link of markdownLinks(prdReadme)) {
+    if (link.startsWith("http") || link.startsWith("#")) {
+      continue;
+    }
+    const target = resolve(root, "docs/PRDs", link.split("#")[0] ?? "");
+    if (!(await exists(target))) {
+      diagnostics.push({
+        code: "TN_DOCS_PRD_LINK_BROKEN",
+        message: `docs/PRDs/README.md links to missing '${link}'.`,
+        path: "docs/PRDs/README.md",
+        severity: "error",
+      });
+    }
+  }
+
+  if (status && /artifacts\/v(?:8|9|10)\/(?:camera-views|rendering-lights|assets-gltf-scene-workflow|visual-calibration)/.test(status)) {
+    diagnostics.push({
+      code: "TN_DOCS_ROOT_EXAMPLE_ARTIFACT_REFERENCE",
+      message: "docs/STATUS.md must use example-local paths for focused example evidence and root artifacts only for aggregate or legacy/archive evidence.",
+      path: "docs/STATUS.md",
+      severity: "error",
+    });
+  }
+
+  return diagnostics;
+}
+
+function markdownLinks(content: string): string[] {
+  return [...content.matchAll(/\[[^\]]+\]\(([^)]+)\)/g)].map((match) => match[1] ?? "");
+}
+
+async function readOptional(path: string): Promise<string> {
+  try {
+    return await readFile(path, "utf8");
+  } catch {
+    return "";
+  }
+}
+
+async function exists(path: string): Promise<boolean> {
+  try {
+    const result = await stat(path);
+    return result.isFile() || result.isDirectory();
+  } catch {
+    return false;
+  }
 }
 
 export function formatDocsReport(result: DocsCheckResult): string {

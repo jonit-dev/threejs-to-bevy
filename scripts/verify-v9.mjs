@@ -10,47 +10,47 @@ const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 export const V9_FOCUSED_GATES = [
   {
     name: "verify v9 animation state",
-    reportPath: "artifacts/v9/animation-state/state-diff.json",
+    reportPath: "tools/verify/artifacts/animation-state/state-diff.json",
     script: "verify:v9:animation-state",
   },
   {
     name: "verify v9 animation blending",
-    reportPath: "artifacts/v9/animation-blending/blend-report.json",
+    reportPath: "tools/verify/artifacts/animation-blending/blend-report.json",
     script: "verify:v9:animation-blending",
   },
   {
     name: "verify v9 animation particles",
-    reportPath: "artifacts/v9/animation-particles/verification-report.json",
+    reportPath: "tools/verify/artifacts/animation-particles/verification-report.json",
     script: "verify:v9:animation-particles",
   },
   {
     name: "verify v9 physics character",
-    reportPath: "artifacts/conformance/v9-physics-character/verification-report.json",
+    reportPath: "packages/ir/artifacts/conformance/physics-character/verification-report.json",
     script: "verify:v9:physics-character",
   },
   {
     name: "verify v9 assets gltf scene workflow",
-    reportPath: "artifacts/v9/assets-gltf-scene-workflow/diff.json",
+    reportPath: "examples/assets-gltf-scene-workflow/artifacts/assets-gltf-scene-workflow/diff.json",
     script: "verify:v9:assets-gltf-scene-workflow",
   },
   {
     name: "verify v9 rendering lights",
-    reportPath: "artifacts/v9/rendering-lights/verification-report.json",
+    reportPath: "examples/rendering-lights/artifacts/rendering-lights/verification-report.json",
     script: "verify:v9:rendering-lights",
   },
 ];
 
 export const V9_RELEASE_ARTIFACTS = [
-  "artifacts/v9/verification-report.json",
-  "artifacts/v9/sample-scenes/verification-report.json",
-  "artifacts/v9/visual-matrix/verification-report.json",
-  "artifacts/conformance/verification-report.json",
+  "tools/verify/artifacts/release/verification-report.json",
+  "tools/verify/artifacts/sample-scenes/verification-report.json",
+  "tools/verify/artifacts/visual-matrix/verification-report.json",
+  "packages/ir/artifacts/conformance/verification-report.json",
 ];
 
 export async function verifyV9(options = {}) {
   const root = options.repoRoot ?? repoRoot;
   const run = options.run ?? runCommand;
-  const artifactDir = options.artifactDir ?? resolve(root, "artifacts/v9");
+  const artifactDir = options.artifactDir ?? resolve(root, "tools/verify/artifacts/release");
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
   const startedAt = new Date();
   const startedAtMs = Date.now();
@@ -58,10 +58,10 @@ export async function verifyV9(options = {}) {
   const steps = [];
   const commands = [];
   const artifacts = {
-    conformanceReportPath: resolve(root, "artifacts/conformance/verification-report.json"),
+    conformanceReportPath: resolve(root, "packages/ir/artifacts/conformance/verification-report.json"),
     reportPath,
-    sampleScenesReportPath: resolve(artifactDir, "sample-scenes/verification-report.json"),
-    visualMatrixReportPath: resolve(artifactDir, "visual-matrix/verification-report.json"),
+    sampleScenesReportPath: resolve(root, "tools/verify/artifacts/sample-scenes/verification-report.json"),
+    visualMatrixReportPath: resolve(root, "tools/verify/artifacts/visual-matrix/verification-report.json"),
   };
   const promoted = [];
   const deferred = [];
@@ -167,7 +167,7 @@ export async function verifyV9(options = {}) {
   promoted.push(
     "aggregate-v9-gate",
     "focused-v9-gates",
-    "conformance-v9-latest-merge",
+    "conformance-latest-merge",
     "sample-scene-matrix",
     "visual-matrix-smoke",
     "merge-drift-guard",

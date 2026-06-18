@@ -97,7 +97,7 @@ screenshot evidence.
 - [ ] Add `pnpm verify:v8:rendering-quality` or equivalent.
 - [ ] Aggregate screenshots, conformance, budgets, and docs guard output.
 
-**Verification Plan:** Gate writes `artifacts/v8/rendering-quality/`.
+**Verification Plan:** Gate writes `tools/verify/artifacts/rendering-quality/`.
 
 ## Acceptance Criteria
 

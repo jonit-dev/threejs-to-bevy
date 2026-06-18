@@ -9,8 +9,8 @@ const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 export async function verifyV7EnvironmentContentTrace(options = {}) {
   const root = options.repoRoot ?? repoRoot;
-  const bundlePath = options.bundlePath ?? resolve(root, "packages/ir/fixtures/conformance/v7-renderer-dense-content/game.bundle");
-  const artifactDir = options.artifactDir ?? resolve(root, "artifacts/conformance/v7-renderer-dense-content");
+  const bundlePath = options.bundlePath ?? resolve(root, "packages/ir/fixtures/conformance/renderer-dense-content/game.bundle");
+  const artifactDir = options.artifactDir ?? resolve(root, "packages/ir/artifacts/conformance/renderer-dense-content");
   const webTracePath = options.webTracePath ?? resolve(artifactDir, "web-environment-content.json");
   const nativeTracePath = options.nativeTracePath ?? resolve(artifactDir, "native-environment-content.json");
   const diffPath = options.diffPath ?? resolve(artifactDir, "environment-content-diff.json");

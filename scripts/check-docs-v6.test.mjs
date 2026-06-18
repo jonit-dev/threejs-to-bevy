@@ -89,7 +89,7 @@ function defaultIndex() {
     "V6-09-functional-v6-game-scene.md",
     "V6-10-release-gate-and-docs-consistency.md",
     "gameplay physics animation UI audio conformance Rust functional V6 scene",
-    "examples/ artifacts/v6 rendered only builds",
+    "examples/ tools/verify/artifacts/milestones/v6 rendered only builds",
     "deeper physics animation graphs rich UI/audio packaging performance",
   ].join("\n");
 }

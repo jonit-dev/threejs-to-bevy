@@ -28,7 +28,7 @@ const requiredV6Phrases = [
   ["Rust", "V6 docs must mention Rust evidence."],
   ["functional V6 scene", "V6 docs must mention functional scene evidence."],
   ["examples/", "V6 docs must require examples to follow repo folder patterns."],
-  ["artifacts/v6", "V6 docs must require V6 artifact evidence."],
+  ["tools/verify/artifacts/milestones/v6", "V6 docs must require V6 artifact evidence."],
   ["rendered", "V6 docs must require rendered artifacts for visible features."],
   ["only builds", "V6 docs must reject build-only proof for visible features."],
 ];

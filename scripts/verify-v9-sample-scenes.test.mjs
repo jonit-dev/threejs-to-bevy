@@ -17,9 +17,9 @@ test("should require every V9 latest-merge domain to have a sample scene", () =>
 test("should fail when a sample scene bundle is missing required artifacts", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-v9-samples-"));
   try {
-    const reportPath = join(root, "artifacts/v9/sample-scenes/verification-report.json");
+    const reportPath = join(root, "tools/verify/artifacts/sample-scenes/verification-report.json");
     const result = await verifyV9SampleScenes({
-      artifactDir: join(root, "artifacts/v9/sample-scenes"),
+      artifactDir: join(root, "tools/verify/artifacts/sample-scenes"),
       repoRoot: root,
       reportPath,
       run: async ({ name }) => ({

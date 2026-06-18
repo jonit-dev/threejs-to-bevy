@@ -60,7 +60,7 @@ test("should require V7 status and parity pointers", async () => {
 });
 
 test("should require post-V6 maturity triage", async () => {
-  const root = await makeDocsRoot({ maturity: "V7-promoted Deferred Never portable artifacts/v7 verify:v7\n" });
+  const root = await makeDocsRoot({ maturity: "V7-promoted Deferred Never portable tools/verify/artifacts/milestones/v7 verify:v7\n" });
   try {
     const result = await checkDocsV7(root);
 
@@ -109,7 +109,7 @@ function defaultIndex() {
     "[V7-10 Scene](./V7-10-functional-v7-scene-and-template.md)",
     "[V7-11 Gate](./V7-11-release-gate-and-docs-consistency.md)",
     "post-V6 gap promoted, deferred, or never portable",
-    "examples/ templates/ artifacts/v7 rendered only builds backend-specific diagnostics",
+    "examples/ templates/ tools/verify/artifacts/milestones/v7 rendered only builds backend-specific diagnostics",
   ].join("\n");
 }
 
@@ -122,5 +122,5 @@ function defaultParity() {
 }
 
 function defaultMaturity() {
-  return "## Post-V6 Gap Triage\nV7-promoted Deferred Never portable V6 baseline artifacts/v7 verify:v7\n";
+  return "## Post-V6 Gap Triage\nV7-promoted Deferred Never portable V6 baseline tools/verify/artifacts/milestones/v7 verify:v7\n";
 }

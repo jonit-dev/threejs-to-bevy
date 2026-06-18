@@ -85,11 +85,11 @@ test("should report promoted generated primitive mapping semantics", async () =>
 });
 
 test("should report resource and event conformance observations", async () => {
-  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/v6-resources-events/game.bundle"));
+  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/resources-events/game.bundle"));
   const mapped = mapWorld(bundle);
-  const report = reportWebConformance(bundle, mapped, "v6-resources-events");
+  const report = reportWebConformance(bundle, mapped, "resources-events");
 
-  assert.equal(report.fixture, "v6-resources-events");
+  assert.equal(report.fixture, "resources-events");
   assert.deepEqual(report.resources, [{ id: "Score", value: { value: 3 } }]);
   assert.deepEqual(report.events, [{ id: "DamageEvent", values: [{ amount: 2, target: "player" }] }]);
 });
@@ -147,11 +147,11 @@ function primitiveAssets(report: ReturnType<typeof reportWebConformance>): Array
 }
 
 test("should report physics collision and trigger conformance observations", async () => {
-  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/v6-physics-events/game.bundle"));
+  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/physics-events/game.bundle"));
   const mapped = mapWorld(bundle);
-  const report = reportWebConformance(bundle, mapped, "v6-physics-events");
+  const report = reportWebConformance(bundle, mapped, "physics-events");
 
-  assert.equal(report.fixture, "v6-physics-events");
+  assert.equal(report.fixture, "physics-events");
   assert.deepEqual(report.events, [
     {
       id: "CollisionEvent",
@@ -186,11 +186,11 @@ test("should report runtime orthographic camera conformance observations", async
 });
 
 test("should report animation clip conformance observations", async () => {
-  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/v6-animation-clips/game.bundle"));
+  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/animation-clips/game.bundle"));
   const mapped = mapWorld(bundle);
-  const report = reportWebConformance(bundle, mapped, "v6-animation-clips");
+  const report = reportWebConformance(bundle, mapped, "animation-clips");
 
-  assert.equal(report.fixture, "v6-animation-clips");
+  assert.equal(report.fixture, "animation-clips");
   assert.deepEqual(report.assets.find((asset) => asset.id === "model.hero")?.animations, [
     { id: "idle", loop: true, speed: 1 },
     { id: "run", loop: true, sourceClip: "Armature|Run", speed: 1.25 },
@@ -198,11 +198,11 @@ test("should report animation clip conformance observations", async () => {
 });
 
 test("should report retained ui conformance observations", async () => {
-  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/v6-retained-ui/game.bundle"));
+  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/retained-ui/game.bundle"));
   const mapped = mapWorld(bundle);
-  const report = reportWebConformance(bundle, mapped, "v6-retained-ui");
+  const report = reportWebConformance(bundle, mapped, "retained-ui");
 
-  assert.equal(report.fixture, "v6-retained-ui");
+  assert.equal(report.fixture, "retained-ui");
   assert.deepEqual(report.ui, {
     root: {
       children: [
@@ -223,11 +223,11 @@ test("should report retained ui conformance observations", async () => {
 });
 
 test("should report audio playback conformance observations", async () => {
-  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/v6-audio-playback/game.bundle"));
+  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/audio-playback/game.bundle"));
   const mapped = mapWorld(bundle);
-  const report = reportWebConformance(bundle, mapped, "v6-audio-playback");
+  const report = reportWebConformance(bundle, mapped, "audio-playback");
 
-  assert.equal(report.fixture, "v6-audio-playback");
+  assert.equal(report.fixture, "audio-playback");
   assert.deepEqual(report.audio, {
     commands: [
       { asset: "arena.music", id: "music.arena", kind: "loop", volume: 0.4 },
@@ -237,9 +237,9 @@ test("should report audio playback conformance observations", async () => {
 });
 
 test("should report V9 environment lighting, light budgets, and renderer quality observations", async () => {
-  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/v9-skybox-environment/game.bundle"));
+  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/rendering-lights/game.bundle"));
   const mapped = mapWorld(bundle);
-  const report = reportWebConformance(bundle, mapped, "v9-skybox-environment");
+  const report = reportWebConformance(bundle, mapped, "rendering-lights");
 
   assert.equal(report.environment?.skybox?.mode, "cubemap");
   assert.equal(report.environment?.environmentMap?.intent, "reflection-and-irradiance");

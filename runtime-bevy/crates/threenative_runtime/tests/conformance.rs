@@ -132,7 +132,7 @@ fn should_report_basic_scene_conformance_semantics() {
 
 #[test]
 fn should_report_v9_environment_lighting_budgets_and_renderer_quality() {
-    let fixture = load_conformance_fixture("v9-skybox-environment");
+    let fixture = load_conformance_fixture("rendering-lights");
     let mut app = App::new();
 
     map_bundle_into_world(app.world_mut(), &fixture.bundle).unwrap_or_else(|error| {
@@ -373,7 +373,7 @@ fn should_report_promoted_generated_primitive_mapping_semantics() {
 
 #[test]
 fn should_report_resource_and_event_conformance_observations() {
-    let fixture = load_conformance_fixture("v6-resources-events");
+    let fixture = load_conformance_fixture("resources-events");
     let mut app = App::new();
 
     map_bundle_into_world(app.world_mut(), &fixture.bundle).unwrap_or_else(|error| {
@@ -386,7 +386,7 @@ fn should_report_resource_and_event_conformance_observations() {
     });
     let report = report_bevy_conformance(app.world_mut(), &fixture.bundle, fixture.name);
 
-    assert_eq!(report.fixture, "v6-resources-events");
+    assert_eq!(report.fixture, "resources-events");
     assert_eq!(report.resources.len(), 1);
     assert_eq!(report.resources[0].id, "Score");
     assert_eq!(report.resources[0].value, serde_json::json!({ "value": 3 }));
@@ -400,7 +400,7 @@ fn should_report_resource_and_event_conformance_observations() {
 
 #[test]
 fn should_report_physics_collision_and_trigger_conformance_observations() {
-    let fixture = load_conformance_fixture("v6-physics-events");
+    let fixture = load_conformance_fixture("physics-events");
     let mut app = App::new();
 
     map_bundle_into_world(app.world_mut(), &fixture.bundle).unwrap_or_else(|error| {
@@ -413,7 +413,7 @@ fn should_report_physics_collision_and_trigger_conformance_observations() {
     });
     let report = report_bevy_conformance(app.world_mut(), &fixture.bundle, fixture.name);
 
-    assert_eq!(report.fixture, "v6-physics-events");
+    assert_eq!(report.fixture, "physics-events");
     assert_eq!(report.events.len(), 2);
     assert_eq!(report.events[0].id, "CollisionEvent");
     assert_eq!(
@@ -465,7 +465,7 @@ fn should_report_runtime_orthographic_camera_conformance_observations() {
 
 #[test]
 fn should_report_animation_clip_conformance_observations() {
-    let fixture = load_conformance_fixture("v6-animation-clips");
+    let fixture = load_conformance_fixture("animation-clips");
     let mut app = App::new();
 
     map_bundle_into_world(app.world_mut(), &fixture.bundle).unwrap_or_else(|error| {
@@ -499,7 +499,7 @@ fn should_report_animation_clip_conformance_observations() {
 
 #[test]
 fn should_report_retained_ui_conformance_observations() {
-    let fixture = load_conformance_fixture("v6-retained-ui");
+    let fixture = load_conformance_fixture("retained-ui");
     let mut app = App::new();
 
     map_bundle_into_world(app.world_mut(), &fixture.bundle).unwrap_or_else(|error| {
@@ -535,7 +535,7 @@ fn should_report_retained_ui_conformance_observations() {
 
 #[test]
 fn should_report_audio_playback_conformance_observations() {
-    let fixture = load_conformance_fixture("v6-audio-playback");
+    let fixture = load_conformance_fixture("audio-playback");
     let mut app = App::new();
 
     map_bundle_into_world(app.world_mut(), &fixture.bundle).unwrap_or_else(|error| {
@@ -563,7 +563,7 @@ fn should_report_audio_playback_conformance_observations() {
 
 #[test]
 fn should_report_audio_diagnostics_in_conformance_observations() {
-    let mut fixture = load_conformance_fixture("v6-audio-playback");
+    let mut fixture = load_conformance_fixture("audio-playback");
     fixture.bundle.assets.assets.clear();
     let mut app = App::new();
 
@@ -586,7 +586,7 @@ fn should_report_audio_diagnostics_in_conformance_observations() {
 
 #[test]
 fn should_report_ui_diagnostics_in_conformance_observations() {
-    let mut fixture = load_conformance_fixture("v6-retained-ui");
+    let mut fixture = load_conformance_fixture("retained-ui");
     fixture
         .bundle
         .ui

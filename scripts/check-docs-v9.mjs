@@ -16,12 +16,12 @@ const requiredIndexPhrases = [
 
 const requiredPrdPhrases = [
   ["examples/v9-support", "V9-06 PRD must name the support example."],
-  ["artifacts/v9/audio-support/", "V9-06 PRD must name audio support artifact path."],
-  ["artifacts/v9/local-data-support/", "V9-06 PRD must name local-data support artifact path."],
-  ["artifacts/v9/diagnostics-support/", "V9-06 PRD must name diagnostics support artifact path."],
-  ["artifacts/v9/editor-support/", "V9-06 PRD must name editor support artifact path."],
-  ["artifacts/v9/stress-support/", "V9-06 PRD must name stress support artifact path."],
-  ["artifacts/v9/support/verification-report.json", "V9-06 PRD must name aggregate support report path."],
+  ["tools/verify/artifacts/audio-support/", "V9-06 PRD must name audio support artifact path."],
+  ["tools/verify/artifacts/local-data-support/", "V9-06 PRD must name local-data support artifact path."],
+  ["tools/verify/artifacts/diagnostics-support/", "V9-06 PRD must name diagnostics support artifact path."],
+  ["tools/verify/artifacts/editor-support/", "V9-06 PRD must name editor support artifact path."],
+  ["tools/verify/artifacts/stress-support/", "V9-06 PRD must name stress support artifact path."],
+  ["tools/verify/artifacts/support/verification-report.json", "V9-06 PRD must name aggregate support report path."],
 ];
 
 const requiredStatusPhrases = [
@@ -36,9 +36,9 @@ const requiredStatusPhrases = [
 const requiredParityPhrases = [
   ["V9-06 now carries schema-backed `local-data.ir.json`", "Parity docs must record local-data support."],
   ["V9-06 Phase 1 adds bounded attenuation curves", "Parity docs must record audio support."],
-  ["focused web/native/script evidence under `artifacts/v9/diagnostics-support/`", "Parity docs must record diagnostics support artifacts."],
-  ["focused evidence under `artifacts/v9/editor-support/`", "Parity docs must record editor support artifacts."],
-  ["large-scene stress artifacts under `artifacts/v9/stress-support/`", "Parity docs must record stress support artifacts."],
+  ["focused web/native/script evidence under `tools/verify/artifacts/diagnostics-support/`", "Parity docs must record diagnostics support artifacts."],
+  ["focused evidence under `tools/verify/artifacts/editor-support/`", "Parity docs must record editor support artifacts."],
+  ["large-scene stress artifacts under `tools/verify/artifacts/stress-support/`", "Parity docs must record stress support artifacts."],
   ["Cloud save", "Parity docs must keep cloud save deferred."],
   ["streaming/network audio", "Parity docs must keep streaming/network audio deferred."],
   ["runtime networking", "Parity docs must keep runtime networking deferred."],

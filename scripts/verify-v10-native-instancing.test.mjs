@@ -10,7 +10,7 @@ const execFileAsync = promisify(execFile);
 test("verify-v10-native-instancing should write sequential frame evidence", async () => {
   await execFileAsync(process.execPath, ["scripts/verify-v10-native-instancing.mjs"]);
 
-  const report = JSON.parse(await readFile("artifacts/v10/native-instancing/verification-report.json", "utf8"));
+  const report = JSON.parse(await readFile("tools/verify/artifacts/native-instancing/verification-report.json", "utf8"));
   assert.equal(report.ok, true);
   assert.equal(report.status, "pass");
   assert.equal(report.comparisons.length, 3);

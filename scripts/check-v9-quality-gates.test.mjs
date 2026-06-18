@@ -73,17 +73,17 @@ export async function writeMinimalV9Repo(root, options = {}) {
   const scripts = {
     "check:quality:v9": "node scripts/check-v9-quality-gates.mjs",
     "verify:v9": "node scripts/verify-v9.mjs",
-    "verify:v9:animation-state": "node scripts/verify-v9-animation-state.mjs",
-    "verify:v9:animation-blending": "node scripts/verify-v9-animation-blending.mjs",
+    "verify:v9:animation-state": "node scripts/verify-animation-state.mjs",
+    "verify:v9:animation-blending": "node scripts/verify-animation-blending.mjs",
     "verify:v9:animation-particles": "node scripts/verify-v9-animation-particles.mjs",
-    "verify:v9:physics-character": "node scripts/verify-v9-physics-character.mjs",
+    "verify:v9:physics-character": "node scripts/verify-physics-character.mjs",
     "verify:v9:assets-gltf-scene-workflow": "node scripts/verify-v9-assets-gltf-scene-workflow.mjs",
-    "verify:v9:rendering-lights": "node scripts/verify-v9-rendering-lights.mjs",
+    "verify:v9:rendering-lights": "node scripts/verify-rendering-lights.mjs",
     "verify:v9:skeletal-animation": "node scripts/verify-v9-skeletal-animation.mjs",
     ...options.scripts,
   };
   await mkdir(join(root, "docs/PRDs/v9"), { recursive: true });
-  await mkdir(join(root, "packages/ir/fixtures/conformance/v9-animation-state/game.bundle"), { recursive: true });
+  await mkdir(join(root, "packages/ir/fixtures/conformance/animation-state/game.bundle"), { recursive: true });
   await writeFile(join(root, "package.json"), `${JSON.stringify({ scripts }, null, 2)}\n`);
   await writeFile(join(root, "docs/STATUS.md"), "# status\n\nUse `pnpm verify:release`.\n");
   await writeFile(join(root, "docs/bevy-feature-parity.md"), "# parity\n\n`pnpm verify:release`\n");
@@ -104,8 +104,8 @@ export async function writeMinimalV9Repo(root, options = {}) {
         fixtures: [
           {
             aggregateGate: "verify:v9",
-            bundlePath: "packages/ir/fixtures/conformance/v9-animation-state/game.bundle",
-            id: "v9-animation-state",
+            bundlePath: "packages/ir/fixtures/conformance/animation-state/game.bundle",
+            id: "animation-state",
             ownerPrd: "docs/PRDs/v9/V9-01-animation-particles-runtime-parity.md",
             visualEvidenceRequired: false,
           },
@@ -117,5 +117,5 @@ export async function writeMinimalV9Repo(root, options = {}) {
       2,
     )}\n`,
   );
-  await writeFile(join(root, "packages/ir/fixtures/conformance/v9-animation-state/game.bundle/manifest.json"), "{}\n");
+  await writeFile(join(root, "packages/ir/fixtures/conformance/animation-state/game.bundle/manifest.json"), "{}\n");
 }

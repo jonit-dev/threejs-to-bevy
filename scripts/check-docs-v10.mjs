@@ -15,7 +15,7 @@ const requiredIndexPhrases = [
 const requiredPrdPhrases = [
   ["scripts/check-docs-v10.mjs", "V10-01 PRD must name the docs ownership guard."],
   ["scripts/verify-v10.mjs", "V10-01 PRD must name the aggregate verifier."],
-  ["artifacts/v10/verification-report.json", "V10-01 PRD must name the aggregate report artifact."],
+  ["tools/verify/artifacts/final-gap-planning/verification-report.json", "V10-01 PRD must name the aggregate report artifact."],
 ];
 
 const requiredStatusPhrases = [
@@ -33,7 +33,7 @@ const requiredParityPhrases = [
 ];
 
 const ownerPattern = /\(.*V10-0[1-4].*\)/;
-const completionEvidencePattern = /(?:artifacts\/v10\/|pnpm verify:v10:|pnpm verify:v10\b|pnpm check:docs\b)/;
+const completionEvidencePattern = /(?:artifacts\/final-gap-planning\/|pnpm verify:v10:|pnpm verify:v10\b|pnpm check:docs\b)/;
 
 export async function checkDocsV10(root = repoRoot) {
   const diagnostics = [];

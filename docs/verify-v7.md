@@ -4,7 +4,7 @@
 the V7 docs gate, docs/gate script tests, selected TypeScript tests,
 conformance, the functional scene/template smoke, Bevy workspace tests,
 desktop packaging checks, performance budget reports, diagnostics checks, and a
-final artifact-presence check before writing `artifacts/v7/verification-report.json`.
+final artifact-presence check before writing `tools/verify/artifacts/milestones/v7/verification-report.json`.
 V7-01 starts the evidence contract that later V7 feature tickets use, and
 V7-02 now adds the first runtime-specific fixed trace. V7-03 adds the first
 animation/effects contract fixture and fixed web/native graph/particle trace.
@@ -21,64 +21,64 @@ artifacts.
 Current V7 conformance evidence starts with:
 
 - `packages/ir/fixtures/conformance/v7-fixture-catalog.json`
-- `packages/ir/fixtures/conformance/v7-advanced-physics-character/game.bundle`
-- `packages/ir/fixtures/conformance/v7-animation-graphs-particles/game.bundle`
-- `packages/ir/fixtures/conformance/v7-spatial-audio-buses/game.bundle`
-- `packages/ir/fixtures/conformance/v7-renderer-dense-content/game.bundle`
-- `packages/ir/fixtures/conformance/v7-scripting-lifecycle/game.bundle`
+- `packages/ir/fixtures/conformance/advanced-physics-character/game.bundle`
+- `packages/ir/fixtures/conformance/animation-graphs-particles/game.bundle`
+- `packages/ir/fixtures/conformance/spatial-audio-buses/game.bundle`
+- `packages/ir/fixtures/conformance/renderer-dense-content/game.bundle`
+- `packages/ir/fixtures/conformance/scripting-lifecycle/game.bundle`
 - `pnpm verify:conformance`
-- `artifacts/conformance/verification-report.json`
-- `artifacts/conformance/v7-advanced-physics-character/web-effects.json`
-- `artifacts/conformance/v7-advanced-physics-character/native-effects.json`
-- `artifacts/conformance/v7-advanced-physics-character/effects-diff.json`
-- `artifacts/conformance/v7-advanced-physics-character/web-character.json`
-- `artifacts/conformance/v7-advanced-physics-character/native-character.json`
-- `artifacts/conformance/v7-advanced-physics-character/character-diff.json`
-- `artifacts/conformance/v7-animation-graphs-particles/web-animation.json`
-- `artifacts/conformance/v7-animation-graphs-particles/native-animation.json`
-- `artifacts/conformance/v7-animation-graphs-particles/animation-diff.json`
-- `artifacts/conformance/v7-rich-ui-navigation/web-ui-navigation.json`
-- `artifacts/conformance/v7-rich-ui-navigation/native-ui-navigation.json`
-- `artifacts/conformance/v7-rich-ui-navigation/ui-navigation-diff.json`
-- `artifacts/conformance/v7-spatial-audio-buses/web-audio-lifecycle.json`
-- `artifacts/conformance/v7-spatial-audio-buses/native-audio-lifecycle.json`
-- `artifacts/conformance/v7-spatial-audio-buses/audio-lifecycle-diff.json`
-- `artifacts/conformance/v7-renderer-dense-content/web-environment-content.json`
-- `artifacts/conformance/v7-renderer-dense-content/native-environment-content.json`
-- `artifacts/conformance/v7-renderer-dense-content/environment-content-diff.json`
-- `artifacts/conformance/v7-scripting-lifecycle/web-effects.json`
-- `artifacts/conformance/v7-scripting-lifecycle/native-effects.json`
-- `artifacts/conformance/v7-scripting-lifecycle/effects-diff.json`
+- `packages/ir/artifacts/conformance/verification-report.json`
+- `packages/ir/artifacts/conformance/advanced-physics-character/web-effects.json`
+- `packages/ir/artifacts/conformance/advanced-physics-character/native-effects.json`
+- `packages/ir/artifacts/conformance/advanced-physics-character/effects-diff.json`
+- `packages/ir/artifacts/conformance/advanced-physics-character/web-character.json`
+- `packages/ir/artifacts/conformance/advanced-physics-character/native-character.json`
+- `packages/ir/artifacts/conformance/advanced-physics-character/character-diff.json`
+- `packages/ir/artifacts/conformance/animation-graphs-particles/web-animation.json`
+- `packages/ir/artifacts/conformance/animation-graphs-particles/native-animation.json`
+- `packages/ir/artifacts/conformance/animation-graphs-particles/animation-diff.json`
+- `packages/ir/artifacts/conformance/rich-ui-navigation/web-ui-navigation.json`
+- `packages/ir/artifacts/conformance/rich-ui-navigation/native-ui-navigation.json`
+- `packages/ir/artifacts/conformance/rich-ui-navigation/ui-navigation-diff.json`
+- `packages/ir/artifacts/conformance/spatial-audio-buses/web-audio-lifecycle.json`
+- `packages/ir/artifacts/conformance/spatial-audio-buses/native-audio-lifecycle.json`
+- `packages/ir/artifacts/conformance/spatial-audio-buses/audio-lifecycle-diff.json`
+- `packages/ir/artifacts/conformance/renderer-dense-content/web-environment-content.json`
+- `packages/ir/artifacts/conformance/renderer-dense-content/native-environment-content.json`
+- `packages/ir/artifacts/conformance/renderer-dense-content/environment-content-diff.json`
+- `packages/ir/artifacts/conformance/scripting-lifecycle/web-effects.json`
+- `packages/ir/artifacts/conformance/scripting-lifecycle/native-effects.json`
+- `packages/ir/artifacts/conformance/scripting-lifecycle/effects-diff.json`
 - `pnpm verify:v7`
-- `artifacts/v7/verification-report.json`
-- `artifacts/v7/rust-test-report.json`
+- `tools/verify/artifacts/milestones/v7/verification-report.json`
+- `tools/verify/artifacts/milestones/v7/rust-test-report.json`
 - `scripts/check-docs-v7.mjs`
 - `docs/diagnostics.md`
-- `artifacts/v7/packaging/verification-report.json`
-- `artifacts/v7/packaging/desktop/game.bundle`
-- `artifacts/v7/packaging/desktop/package.manifest.json`
-- `artifacts/v7/packaging/desktop/runtime.args.json`
-- `packages/ir/fixtures/conformance/v7-performance-budgets/game.bundle`
-- `artifacts/conformance/v7-performance-budgets/web.report.json`
-- `artifacts/conformance/v7-performance-budgets/bevy.report.json`
-- `artifacts/conformance/v7-performance-budgets/comparison.report.json`
-- `artifacts/v7/performance/web.report.json`
-- `artifacts/v7/performance/bevy.report.json`
-- `artifacts/v7/performance/comparison.report.json`
+- `tools/verify/artifacts/milestones/v7/packaging/verification-report.json`
+- `tools/verify/artifacts/milestones/v7/packaging/desktop/game.bundle`
+- `tools/verify/artifacts/milestones/v7/packaging/desktop/package.manifest.json`
+- `tools/verify/artifacts/milestones/v7/packaging/desktop/runtime.args.json`
+- `packages/ir/fixtures/conformance/performance-budgets/game.bundle`
+- `packages/ir/artifacts/conformance/performance-budgets/web.report.json`
+- `packages/ir/artifacts/conformance/performance-budgets/bevy.report.json`
+- `packages/ir/artifacts/conformance/performance-budgets/comparison.report.json`
+- `tools/verify/artifacts/milestones/v7/performance/web.report.json`
+- `tools/verify/artifacts/milestones/v7/performance/bevy.report.json`
+- `tools/verify/artifacts/milestones/v7/performance/comparison.report.json`
 - `examples/v7-functional/dist/v7-functional.bundle`
 - `examples/v7-functional/artifacts/verify/verification-report.json`
 - `examples/v7-functional/artifacts/verify/frame-01.png`
 - `examples/v7-functional/artifacts/verify/frame-02.png`
-- `artifacts/v7/functional-package/desktop/v7-functional.bundle`
-- `artifacts/v7/functional-package/desktop/package.manifest.json`
-- `artifacts/v7/template-smoke/v7-functional`
+- `tools/verify/artifacts/milestones/v7/functional-package/desktop/v7-functional.bundle`
+- `tools/verify/artifacts/milestones/v7/functional-package/desktop/package.manifest.json`
+- `tools/verify/artifacts/milestones/v7/template-smoke/v7-functional`
 
 The V7 fixture catalog maps V7-02 through V7-09 to baseline bundles, planned
 accepted and rejected fixture bundle paths, expected target capabilities,
 report artifact paths, and rejected diagnostic code families.
 
 The current V7-03 fixture evidence is intentionally narrow: the
-`v7-animation-graphs-particles` bundle validates constrained animation graph
+`animation-graphs-particles` bundle validates constrained animation graph
 metadata, animation event markers, and bounded particle emitters and exposes the
 required `animation:graph`, `animation:state-machine`, `animation:events`, and
 `particles:bounded-emitter` capabilities. The fixed trace compares web and
@@ -89,7 +89,7 @@ scheduling beyond the fixed trace, IK, retargeting, or rendered particle
 systems.
 
 The current V7-04 fixture evidence is intentionally narrow: the
-`v7-rich-ui-navigation` bundle validates focus order, navigation links,
+`rich-ui-navigation` bundle validates focus order, navigation links,
 safe-area metadata, and UI input action refs, then compares a fixed web/native
 logical trace for focus movement and activation. Keyboard, gamepad, pointer,
 and touch are treated as adapter inputs that lower into the same portable
@@ -97,7 +97,7 @@ logical events; rich platform widgets, broad device coverage, and styling/layout
 parity remain later work.
 
 The current V7-05 fixture evidence is intentionally narrow: the
-`v7-spatial-audio-buses` bundle validates portable bus routing,
+`spatial-audio-buses` bundle validates portable bus routing,
 listener/emitter metadata, event-triggered one-shots, and looped music, then
 compares a fixed web/native lifecycle trace for loop start/stop cleanup and
 routed command reports. Real spatial attenuation, mixer effects,
@@ -105,7 +105,7 @@ streaming/network audio, platform handles, and richer audio services remain
 unsupported or later work.
 
 The current V7-06 fixture evidence is intentionally narrow: the
-`v7-renderer-dense-content` bundle validates environment source assets,
+`renderer-dense-content` bundle validates environment source assets,
 bounded LOD metadata, imported transforms, and repeated scatter placements,
 then compares a fixed web/native trace for runtime LOD selection and
 model-backed repeated-instance observations. Actual renderer-level native
@@ -113,7 +113,7 @@ instancing, visual LOD mesh swapping, portable post-processing, and arbitrary
 material overrides remain deferred or rejected.
 
 The current V7-07 fixture evidence is intentionally narrow: the
-`v7-scripting-lifecycle` bundle validates deterministic lifecycle metadata and
+`scripting-lifecycle` bundle validates deterministic lifecycle metadata and
 compares a fixed web/native effect log for startup, fixedUpdate, update, and
 postUpdate resource handoff, queued events, spawn/despawn commands, an
 `animation.play` service call, and resource-derived app/computed/substate reads
@@ -140,7 +140,7 @@ publishing, hosted services, and platform-specific entitlements remain out of
 scope.
 
 The current V7-09 performance evidence is intentionally narrow:
-`v7-performance-budgets` validates target-profile thresholds and compares fixed
+`performance-budgets` validates target-profile thresholds and compares fixed
 web/native-style metric reports for frame timing, load time, draw/entity counts,
 asset counts, and package size. Hard failures and warnings are separated, and
 `TN_PERF_*` diagnostics include metric, measured value, threshold, and artifact
@@ -161,11 +161,11 @@ content, lifecycle replay, packaging diagnostics, and performance budgets remain
 anchored in the focused V7 conformance fixtures.
 
 The final V7-11 gate links all required release evidence in
-`artifacts/v7/verification-report.json`: docs and diagnostics inputs,
+`tools/verify/artifacts/milestones/v7/verification-report.json`: docs and diagnostics inputs,
 functional bundle and rendered web screenshots, packaged desktop artifacts,
-template smoke output, `artifacts/conformance/verification-report.json`,
-`artifacts/v7/rust-test-report.json`, `artifacts/v7/packaging/verification-report.json`,
-and `artifacts/v7/performance/comparison.report.json`. A passing report uses
+template smoke output, `packages/ir/artifacts/conformance/verification-report.json`,
+`tools/verify/artifacts/milestones/v7/rust-test-report.json`, `tools/verify/artifacts/milestones/v7/packaging/verification-report.json`,
+and `tools/verify/artifacts/milestones/v7/performance/comparison.report.json`. A passing report uses
 `TN_VERIFY_V7_OK`; a failing report uses `TN_VERIFY_V7_FAILED` with the first
 failed step surfaced as `TN_VERIFY_V7_STEP_FAILED`.
 
@@ -188,7 +188,7 @@ for those slices and keeps deferred or never-portable scope out of V7 support
 claims.
 
 The current V7-02 runtime evidence is intentionally narrow: the
-`v7-advanced-physics-character` fixture compares web and native fixed traces for
+`advanced-physics-character` fixture compares web and native fixed traces for
 portable primitive overlap and swept box shape-cast queries with collider layer
 filters. Focused web and native runtime tests also pin deterministic ordering
 for simultaneous collision and trigger contacts. The same fixture now compares a

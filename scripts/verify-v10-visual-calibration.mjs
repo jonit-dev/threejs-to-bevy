@@ -1,6 +1,7 @@
 import { access, mkdir, writeFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveArtifactTargets } from "./artifact-paths.mjs";
 import { analyzeCalibrationFixture } from "./visual-calibration/analyze.mjs";
 import { captureCalibrationArtifacts, readCalibrationFrame } from "./visual-calibration/capture.mjs";
 import {
@@ -225,7 +226,12 @@ function stepFailureDiagnostic(fixture, steps) {
  */
 export async function verifyV10VisualCalibration(options = {}) {
   const root = options.repoRoot ?? repoRoot;
-  const artifactRoot = options.artifactDir ?? resolve(root, "artifacts/v10/visual-calibration");
+  const aggregateTargets = resolveArtifactTargets({
+    gate: "visual-calibration",
+    owner: { kind: "aggregate", name: "visual-calibration" },
+    root,
+  });
+  const artifactRoot = options.artifactDir ?? aggregateTargets.absoluteDir;
   const reportPath = options.reportPath ?? resolve(artifactRoot, "verification-report.json");
   const manifestReportPath = options.manifestReportPath ?? resolve(artifactRoot, "manifest-report.json");
   const args = options.args ?? parseVisualCalibrationArgs();
@@ -244,6 +250,7 @@ export async function verifyV10VisualCalibration(options = {}) {
     skippedFixtureCount: skippedFixtures.length,
   };
   const artifacts = {
+    ...aggregateTargets.metadata,
     artifactDir: artifactRoot,
     manifestReportPath,
     reportPath,
@@ -341,7 +348,7 @@ export async function verifyV10VisualCalibration(options = {}) {
 
     if (diagnostics.every((diagnostic) => diagnostic.severity !== "error")) {
       for (const fixture of runnableFixtures) {
-        const fixtureArtifactDir = resolve(artifactRoot, fixture.factorGroup, fixture.id);
+        const fixtureArtifactDir = resolveCalibrationFixtureArtifactDir(root, artifactRoot, fixture, options);
         await mkdir(fixtureArtifactDir, { recursive: true });
         const result = await runCalibrationFixture({
           accessFile: options.accessFile,
@@ -361,7 +368,7 @@ export async function verifyV10VisualCalibration(options = {}) {
     }
   } else {
     for (const fixture of runnableFixtures) {
-      const fixtureArtifactDir = resolve(artifactRoot, fixture.factorGroup, fixture.id);
+      const fixtureArtifactDir = resolveCalibrationFixtureArtifactDir(root, artifactRoot, fixture, options);
       await mkdir(fixtureArtifactDir, { recursive: true });
       fixtureDiagnosticsPush(diagnostics, await collectMissingArtifactDiagnostics(fixture, fixtureArtifactDir, options.accessFile));
     }
@@ -404,6 +411,17 @@ export async function verifyV10VisualCalibration(options = {}) {
     status,
     steps,
   });
+}
+
+function resolveCalibrationFixtureArtifactDir(root, artifactRoot, fixture, options) {
+  if (options.artifactDir) {
+    return resolve(artifactRoot, fixture.factorGroup, fixture.id);
+  }
+  return resolveArtifactTargets({
+    gate: "visual-calibration",
+    owner: { kind: "example", exampleName: basename(fixture.example) },
+    root,
+  }).absoluteDir;
 }
 
 function fixtureDiagnosticsPush(target, entries) {

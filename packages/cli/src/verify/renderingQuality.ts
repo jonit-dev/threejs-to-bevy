@@ -206,7 +206,7 @@ export async function verifyV9RenderingLightsVisual(options: {
   const diffPath = resolve(options.artifactDir, "diff.png");
   await writeContactSheet(contactSheetPath, capture.webScreenshotPath, capture.bevyScreenshotPath);
   await writeDiff(diffPath, web, bevy);
-  const reportPath = resolve(options.artifactDir, "v9-rendering-lights-visual-report.json");
+  const reportPath = resolve(options.artifactDir, "rendering-lights-visual-report.json");
   const report: IV9RenderingLightsVisualReport = {
     artifacts: {
       bevyScreenshotPath: capture.bevyScreenshotPath,

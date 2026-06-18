@@ -42,10 +42,8 @@ cleanup, and evidence discovery unclear.
   `examples/<name>/dist/<bundle>.bundle`.
 - Some visual/playable verification evidence is example-local, for example
   `examples/v7-functional/artifacts/verify/*`, while newer capability gates
-  write to root paths such as `artifacts/v10/<capability>/*`.
-- Root `artifacts/conformance/*`, `artifacts/release/*`, and
-  `artifacts/v*/*` mix aggregate gate reports, cross-runtime diffs, screenshots,
-  and historical evidence.
+  write to root paths such as `tools/verify/artifacts/<capability>/*`.
+- `packages/ir/artifacts/conformance/*` and `tools/verify/artifacts/release/*` are owned generated outputs for shared conformance and verifier reports. Old root milestone artifact folders are not canonical.
 - `packages/ir/fixtures/*` are not examples. They are shared IR contract inputs
   consumed by IR tests, conformance scripts, and Bevy runtime tests.
 - `runtime-bevy/artifacts/*`, `templates/*/artifacts/*`, and `tmp/*/artifacts/*`
@@ -60,11 +58,11 @@ cleanup, and evidence discovery unclear.
 | --- | --- | --- |
 | Example bundles | `examples/rendering-lights/dist/rendering-lights.bundle` | Keep in `examples/<name>/dist/*`; this already matches example ownership. |
 | Example verification evidence | `examples/v7-functional/artifacts/verify`, `examples/crystal-runner/artifacts/verify` | Standardize on `examples/<name>/artifacts/<gate>/...` for evidence produced by running or inspecting one example. |
-| Root aggregate reports | `artifacts/release/verification-report.json`, `artifacts/conformance/verification-report.json` | Keep only repo-level aggregate reports and manifests at root, under stable capability/gate names. |
-| Root example-specific evidence | `artifacts/v10/native-ui-effects/*`, `artifacts/v8/camera-views/*`, `artifacts/v9/rendering-lights/*` | Move new output to the owning example's `artifacts/<gate>/`; root reports may link to those paths. |
+| Verifier/package aggregate reports | `tools/verify/artifacts/release/verification-report.json`, `packages/ir/artifacts/conformance/verification-report.json` | Keep repo-level verifier reports under `tools/verify/artifacts/<gate>/` and conformance package reports under `packages/ir/artifacts/conformance/`. |
+| Example-specific evidence | `examples/v8-camera-views/artifacts/camera-views/*`, `examples/rendering-lights/artifacts/rendering-lights/*` | Move new output to the owning example.s `artifacts/<gate>/`; verifier reports may link to those paths. |
 | Shared IR fixtures | `packages/ir/fixtures/conformance/basic-scene/game.bundle` | Keep under `packages/ir/fixtures`; these are contract fixtures, not example output. Add catalog metadata that records canonical owner, source example when applicable, and regeneration command. |
 | Rejected fixtures | `packages/ir/fixtures/rejected/v10-boundaries/catalog.json` | Keep near IR validation because they test schema/validator behavior, not runnable examples. |
-| Runtime-native evidence | `runtime-bevy/artifacts/v4/*` | Classify as native adapter evidence. Either keep under `runtime-bevy/artifacts/<gate>/` when Bevy-only, or move under example artifacts when generated from an example bundle. |
+| Runtime-native evidence | `runtime-bevy/tools/verify/artifacts/milestones/v4/*` | Classify as native adapter evidence. Either keep under `runtime-bevy/artifacts/<gate>/` when Bevy-only, or move under example artifacts when generated from an example bundle. |
 | Templates | `templates/v5-game-starter/artifacts/*` | Generated template artifacts should not be committed unless they are intentional template fixtures. Prefer `templates/<name>/fixtures/*` for checked-in inputs and ignore generated `artifacts/*`. |
 | Temporary projects | `tmp/simple-game/artifacts/*` | Treat as scratch output; ensure ignored and never referenced by docs or release gates. |
 | Docs evidence indexes | `docs/pr-evidence/v10-visual-calibration/README.md` | Keep docs indexes, but link to canonical owner paths instead of copying or inventing separate evidence roots. |
@@ -72,7 +70,7 @@ cleanup, and evidence discovery unclear.
 | Docs contracts | `docs/sdk.md`, `docs/ir.md`, `docs/ecs.md`, `docs/ui.md`, `docs/scripting-api.md`, `docs/environment-scene-ir.md`, `docs/diagnostics.md` | Move SDK, IR, schema, diagnostics, and authoring contract docs under `docs/contracts/`. |
 | Docs runtime | `docs/runtime-adapters.md`, `docs/runtime-backends.md` | Move web/native runtime context under `docs/runtime/`. |
 | Docs workflows | `docs/developer-workflow.md`, `docs/ai-workflows.md`, `docs/conventions.md`, `docs/asset-pipeline.md` | Move contributor and asset workflow docs under `docs/workflows/`. |
-| Docs verification and evidence | `docs/verify-v*.md`, `docs/visual-parity-policy.md`, `docs/pr-evidence/*` | Move active verification guidance under `docs/verification/`; archive or label historical milestone verification pages. |
+| Docs verification and evidence | `docs/verify-v*.md`, `docs/visual-parity-policy.md`, `docs/pr-evidence/*` | Keep root verification pages as compatibility docs unless a later cleanup removes them. |
 | Docs status and roadmap | `docs/STATUS.md`, `docs/bevy-feature-parity.md`, `docs/ROADMAP.md`, `docs/feature-maturity.md`, `docs/advanced-features-roadmap.md` | Group under `docs/status/`, while keeping `docs/STATUS.md` as a small stable front-door page if needed. |
 | Agent instructions | root `AGENTS.md`, `examples/AGENTS.md`, package/runtime nested `AGENTS.md` | Add only short layout rules where they affect local work; avoid duplicating the PRD. |
 
@@ -107,14 +105,14 @@ cleanup, and evidence discovery unclear.
 2. The gate resolves its owning example or aggregate owner.
 3. Example-specific screenshots, traces, and reports are written under
    `examples/<name>/artifacts/<gate>/`.
-4. Root aggregate reports under `artifacts/<aggregate>/` record links to those
+4. Verifier/package aggregate reports under `tools/verify/artifacts/<gate>/` record links to those
    example-local artifacts.
 5. Docs and parity tables point to the aggregate report for gate status and to
    example-local paths for inspectable evidence.
 6. Contributor navigates docs through contextual indexes such as
    `docs/architecture/README.md`, `docs/contracts/README.md`,
    `docs/runtime/README.md`, `docs/workflows/README.md`, and
-   `docs/verification/README.md`.
+   [root verification pages](../verify-v7.md).
 
 ## 2. Solution
 
@@ -122,8 +120,7 @@ cleanup, and evidence discovery unclear.
 
 - Define a path ownership contract before moving files:
   example-specific output belongs to `examples/<name>/artifacts/<gate>/`,
-  repo-level gate summaries belong to `artifacts/<gate>/`, shared contract
-  fixtures belong to `packages/ir/fixtures`, and adapter-only evidence belongs
+  repo-level verifier summaries belong to `tools/verify/artifacts/<gate>/`, package conformance summaries belong to `packages/ir/artifacts/conformance/`, shared contract fixtures belong to `packages/ir/fixtures`, and adapter-only evidence belongs
   to the adapter package.
 - Add a shared artifact path resolver used by verification scripts and typed
   verify tools so new gates stop hardcoding root `artifacts/v*` paths.
@@ -131,8 +128,7 @@ cleanup, and evidence discovery unclear.
   ownership and regeneration metadata instead of moving fixtures into examples.
 - Update docs and reports to reference canonical paths while preserving
   temporary compatibility reads for old artifact locations during migration.
-- Reorganize docs by context: architecture, contracts, runtime, workflows,
-  verification/evidence, status/roadmap, and PRDs.
+- Reorganize docs by context: architecture, contracts, runtime, workflows, status/roadmap, and PRDs. Root verification pages remain compatibility docs for existing checks.
 - Add cleanup checks that reject new example-specific root artifact writes and
   reject checked-in generated artifacts in templates/tmp paths.
 - Update root and nested `AGENTS.md` files with short local rules only where
@@ -142,7 +138,7 @@ cleanup, and evidence discovery unclear.
 flowchart LR
     Gate[pnpm verify:*] --> Resolver[Artifact path resolver]
     Resolver --> Example[examples/<name>/artifacts/<gate>]
-    Resolver --> Aggregate[artifacts/<aggregate>]
+    Resolver --> Aggregate[tools/verify/artifacts/<gate>]
     Resolver --> Runtime[runtime-bevy/artifacts/<gate>]
     FixtureCatalog[packages/ir/fixtures/catalogs] --> Conformance[pnpm verify:conformance]
     Conformance --> Aggregate
@@ -156,13 +152,8 @@ flowchart LR
   contract fixtures, not generated example artifacts.
 - [x] Do not move `examples/<name>/dist/*` as part of this PRD. Build output is
   already example-local.
-- [x] Root `artifacts/*` remains valid for aggregate release/conformance
-  reports, but not for one-example screenshots, traces, or per-example
-  verification reports.
-- [x] Do not delete root `artifacts/`. The target is to shrink it to aggregate
-  reports, classified adapter evidence if needed, and archived legacy evidence.
-- [x] Historical root artifacts can remain as archive material until a cleanup
-  phase removes or relocates them with docs links updated.
+- [x] Root `artifacts/*` is not canonical. Release reports live under `tools/verify/artifacts/<gate>/`, conformance reports under `packages/ir/artifacts/conformance/`, and example evidence under `examples/<name>/artifacts/<gate>/`.
+- [x] Remove active root `artifacts/`. Historical generated evidence should be regenerated from the owning gate when needed instead of kept in a docs archive.
 - [x] New code should use structured path metadata in reports instead of
   constructing paths with string concatenation at call sites.
 - [x] Root docs should become a small front door plus compatibility pages;
@@ -179,7 +170,7 @@ sequenceDiagram
     participant Script as Verify script
     participant Paths as Artifact path resolver
     participant Ex as Example artifacts
-    participant Root as Root aggregate artifacts
+    participant Tools as verifier-owned artifacts
     participant Docs as Docs/evidence index
 
     Dev->>Script: pnpm verify:<capability>
@@ -187,12 +178,12 @@ sequenceDiagram
     alt Example-specific gate
         Paths-->>Script: examples/<name>/artifacts/<gate>
         Script->>Ex: write screenshots/traces/report
-        Script->>Root: update aggregate link when part of release
+        Script->>Tools: update aggregate link when part of release
     else Repo aggregate gate
-        Paths-->>Script: artifacts/<gate>
-        Script->>Root: write aggregate report
+        Paths-->>Script: tools/verify/artifacts/<gate>
+        Script->>Tools: write aggregate report
     end
-    Docs->>Root: read aggregate status
+    Docs->>Tools: read aggregate status
     Docs->>Ex: link inspectable evidence
 ```
 
@@ -213,7 +204,7 @@ sequenceDiagram
 
 - [ ] Document canonical paths:
   `examples/<name>/artifacts/<gate>/`, `examples/<name>/dist/*`,
-  `artifacts/<aggregate>/`, `packages/ir/fixtures/*`, and
+  `tools/verify/artifacts/<gate>/`, `packages/ir/fixtures/*`, and
   `runtime-bevy/artifacts/<gate>/`.
 - [ ] Define what is checked in versus generated and ignored.
 - [ ] Document that fixtures are stable inputs and artifacts are outputs.
@@ -239,18 +230,17 @@ sequenceDiagram
 - `docs/architecture/README.md` - architecture/concept index.
 - `docs/contracts/README.md` - SDK/IR/diagnostics contract index.
 - `docs/runtime/README.md` - web/native runtime index.
-- `docs/verification/README.md` - verification/evidence index.
 
 **Implementation:**
 
-- [ ] Create canonical docs groups: `docs/architecture/`,
+- [x] Create canonical docs groups: `docs/architecture/`,
   `docs/contracts/`, `docs/runtime/`, `docs/workflows/`,
-  `docs/verification/`, `docs/status/`, and `docs/PRDs/`.
-- [ ] Keep root `docs/README.md` as the main docs front door.
-- [ ] Decide whether root `docs/STATUS.md` remains a permanent compatibility
+`docs/status/`, and `docs/PRDs/`.
+- [x] Keep root `docs/README.md` as the main docs front door.
+- [x] Decide whether root `docs/STATUS.md` remains a permanent compatibility
   front door or becomes a forwarding stub to `docs/status/STATUS.md`.
-- [ ] Add a docs map that lists old flat paths and their target grouped paths.
-- [ ] Fix current PRD index links so grouped PRDs under `docs/PRDs/other/` and
+- [x] Add a docs map that lists old flat paths and their target grouped paths.
+- [x] Fix current PRD index links so grouped PRDs under `docs/PRDs/other/` and
   `docs/PRDs/archive/` resolve.
 
 **Tests Required:**
@@ -264,7 +254,7 @@ sequenceDiagram
 
 - Action: Open `docs/README.md`.
 - Expected: A contributor can jump directly to architecture, contracts,
-  runtime, workflows, verification, status, or PRDs without scanning the root
+  runtime, workflows, status, or PRDs without scanning the root
   docs folder.
 
 #### Phase 3: Shared Path Resolver - New gates write to the right owner by default.
@@ -294,7 +284,7 @@ sequenceDiagram
 | Test File | Test Name | Assertion |
 | --- | --- | --- |
 | `tools/verify/src/artifacts.test.ts` | `should resolve example artifact paths under examples when owner is example` | `examples/rendering-lights/artifacts/rendering-lights/verification-report.json` is returned. |
-| `tools/verify/src/artifacts.test.ts` | `should resolve aggregate artifact paths under root artifacts when owner is aggregate` | `artifacts/release/verification-report.json` is returned. |
+| `tools/verify/src/artifacts.test.ts` | `should resolve aggregate artifact paths under root artifacts when owner is aggregate` | `tools/verify/artifacts/release/verification-report.json` is returned. |
 | `tools/verify/src/artifacts.test.ts` | `should include repo-relative canonical paths in metadata` | Metadata never exposes machine-specific absolute paths. |
 
 **User Verification:**
@@ -308,7 +298,7 @@ sequenceDiagram
 **Files (max 5):**
 
 - `scripts/verify-v8-camera-views.mjs` - write example-local artifacts.
-- `scripts/verify-v9-rendering-lights.mjs` - write example-local artifacts.
+- `scripts/verify-rendering-lights.mjs` - write example-local artifacts.
 - `scripts/verify-v9-assets-gltf-scene-workflow.mjs` - write example-local
   artifacts.
 - `scripts/verify-v10-visual-calibration.mjs` - write per-example evidence
@@ -334,7 +324,7 @@ sequenceDiagram
 | Test File | Test Name | Assertion |
 | --- | --- | --- |
 | `scripts/verify-v10.test.mjs` | `should require focused reports from canonical example artifact paths` | Missing example-local report fails with actionable diagnostics. |
-| `scripts/verify-v9-rendering-lights.test.mjs` | `should write rendering lights evidence under the example artifact directory` | Report path starts with `examples/rendering-lights/artifacts/`. |
+| `scripts/verify-rendering-lights.test.mjs` | `should write rendering lights evidence under the example artifact directory` | Report path starts with `examples/rendering-lights/artifacts/`. |
 | `scripts/verify-v9-assets-gltf-scene-workflow.test.mjs` | `should preserve legacy artifact links during migration` | Report includes canonical and legacy path metadata. |
 
 **User Verification:**
@@ -430,7 +420,7 @@ sequenceDiagram
 
 - [ ] Reject new root `artifacts/<capability>` writes for gates that declare a
   single example owner.
-- [ ] Allow root `artifacts/release`, `artifacts/conformance`, and explicitly
+- [ ] Allow root `tools/verify/artifacts/release`, `packages/ir/artifacts/conformance`, and explicitly
   archived historical evidence.
 - [ ] Reject checked-in `tmp/**/artifacts/**`.
 - [ ] Reject template generated artifacts unless explicitly classified as
@@ -445,8 +435,8 @@ sequenceDiagram
 
 | Test File | Test Name | Assertion |
 | --- | --- | --- |
-| `scripts/check-artifact-layout.test.mjs` | `should reject example-specific root artifact paths` | `artifacts/v10/native-ui-effects/report.json` is rejected unless allowlisted. |
-| `scripts/check-artifact-layout.test.mjs` | `should allow aggregate release and conformance reports` | `artifacts/release/verification-report.json` and `artifacts/conformance/verification-report.json` pass. |
+| `scripts/check-artifact-layout.test.mjs` | `should reject example-specific root artifact paths` | `tools/verify/artifacts/native-ui-effects/report.json` is rejected unless allowlisted. |
+| `scripts/check-artifact-layout.test.mjs` | `should allow aggregate release and conformance reports` | `tools/verify/artifacts/release/verification-report.json` and `packages/ir/artifacts/conformance/verification-report.json` pass. |
 | `scripts/check-artifact-layout.test.mjs` | `should reject tmp artifact paths` | `tmp/simple-game/artifacts/report.json` fails. |
 | `scripts/check-docs-layout.test.mjs` | `should reject unclassified flat docs pages` | A new `docs/new-feature.md` fails unless assigned to a docs group or allowlisted. |
 
@@ -490,7 +480,7 @@ sequenceDiagram
 **User Verification:**
 
 - Action: Open `docs/STATUS.md` and follow one focused visual evidence link.
-- Expected: Aggregate status is rooted in `artifacts/<aggregate>/`; inspectable
+- Expected: Aggregate status is rooted in `tools/verify/artifacts/<gate>/`; inspectable
   per-example evidence is under `examples/<name>/artifacts/<gate>/`.
 
 ## 5. Checkpoint Protocol
@@ -561,17 +551,13 @@ PRD.
   `aggregate`, `runtime`, or `package`.
 - [ ] Example-specific screenshots, traces, visual diffs, and focused reports
   generated by current gates are written under `examples/<name>/artifacts/`.
-- [ ] Root `artifacts/*` contains only aggregate release/conformance reports,
-  explicitly classified adapter evidence, or archived legacy evidence.
-- [ ] Root `artifacts/` is not deleted; it is retained as the aggregate/archive
-  evidence root with stricter ownership.
+- [ ] Root `artifacts/` is removed as an active output surface.
+- [ ] Aggregate release and conformance reports are owned by `tools/verify/artifacts/<gate>/` and `packages/ir/artifacts/conformance/`.
 - [ ] `packages/ir/fixtures/*` remains the shared location for IR contract
   fixtures, with catalog metadata documenting ownership and regeneration.
-- [ ] Docs link to canonical artifact paths and label historical paths as
-  archive/legacy.
+- [ ] Docs link to canonical artifact paths and avoid root generated artifact archives.
 - [ ] Active docs are grouped under contextual folders for architecture,
-  contracts, runtime, workflows, verification/evidence, status/roadmap, and
-  PRDs.
+  contracts, runtime, workflows, status/roadmap, and PRDs; root verification pages remain compatibility docs.
 - [ ] Root `docs/` contains only approved front-door or compatibility pages.
 - [ ] Root and nested `AGENTS.md` files contain concise layout instructions
   where relevant, without duplicating this PRD.
@@ -585,9 +571,6 @@ PRD.
 
 ## Open Questions
 
-- Should old root `artifacts/v*` evidence be moved into an archive directory, or
-  should it remain in place but be classified as historical in the layout
-  allowlist?
 - Should example-local artifact folders be committed for promoted evidence, or
   should generated evidence be ignored and reproduced on demand except for docs
   evidence snapshots?

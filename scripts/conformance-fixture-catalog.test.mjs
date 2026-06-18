@@ -18,13 +18,10 @@ test("should resolve canonical fixture ids from the catalog", async () => {
   assert.equal(resolved.canonicalId, "physics-character");
 });
 
-test("should resolve legacy fixture ids with deprecation diagnostics", async () => {
+test("should reject old versioned fixture ids", async () => {
   const root = await makeCatalogRoot();
   const catalog = await loadFixtureCatalog(root);
-  const resolved = resolveFixtureEntry(catalog, "v9-physics-character");
-  assert.ok(resolved);
-  assert.equal(resolved.entry.canonicalId, "physics-character");
-  assert.equal(resolved.legacyAliasUsed, true);
+  assert.equal(resolveFixtureEntry(catalog, "v9-physics-character"), null);
 });
 
 async function makeCatalogRoot() {
@@ -37,8 +34,7 @@ async function makeCatalogRoot() {
       fixtures: [
         {
           canonicalId: "physics-character",
-          legacyAliases: ["v9-physics-character"],
-          bundlePath: "packages/ir/fixtures/conformance/v9-physics-character/game.bundle",
+          bundlePath: "packages/ir/fixtures/conformance/physics-character/game.bundle",
         },
       ],
     }),

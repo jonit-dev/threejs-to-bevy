@@ -7,7 +7,7 @@ const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 export const V9_VISUAL_SCENES = [
   {
     bundlePath: "examples/v9-skeletal-animation/dist/v9-skeletal-animation.bundle",
-    fallbackBundlePath: "packages/ir/fixtures/conformance/v9-animation-blending/game.bundle",
+    fallbackBundlePath: "packages/ir/fixtures/conformance/animation-blending/game.bundle",
     id: "skeletal-animation",
     mode: "motion-smoke",
   },
@@ -18,7 +18,7 @@ export const V9_VISUAL_SCENES = [
   },
   {
     bundlePath: "examples/physics-character/dist/physics-character.bundle",
-    fallbackBundlePath: "packages/ir/fixtures/conformance/v9-physics-character/game.bundle",
+    fallbackBundlePath: "packages/ir/fixtures/conformance/physics-character/game.bundle",
     id: "physics-character",
     mode: "smoke-only",
   },
@@ -29,7 +29,7 @@ export const V9_VISUAL_SCENES = [
     mode: "smoke-only",
   },
   {
-    bundlePath: "packages/ir/fixtures/conformance/v9-skybox-environment/game.bundle",
+    bundlePath: "packages/ir/fixtures/conformance/rendering-lights/game.bundle",
     id: "rendering-lights",
     mode: "region-parity",
     regions: [
@@ -54,7 +54,7 @@ export async function resolveSceneBundle(root, scene) {
 
 export async function verifyV9VisualMatrixGate(options = {}) {
   const root = options.repoRoot ?? repoRoot;
-  const artifactDir = options.artifactDir ?? resolve(root, "artifacts/v9/visual-matrix");
+  const artifactDir = options.artifactDir ?? resolve(root, "tools/verify/artifacts/visual-matrix");
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
   const { verifyV9VisualMatrix } = await import(pathToFileURL(resolve(root, "packages/cli/dist/verify/v9VisualMatrix.js")).href);
   const scenes = [];

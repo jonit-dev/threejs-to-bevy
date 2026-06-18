@@ -46,7 +46,7 @@ artifact conventions, and diagnostics. Mobile app-store scope remains out.
 - `scripts/verify-v7*.mjs` - packaging evidence.
 - `scripts/*.test.mjs` - packaging report tests.
 - `docs/verify-v7.md` - artifact docs.
-- `artifacts/v7/*` - generated report outputs.
+- `tools/verify/artifacts/milestones/v7/*` - generated report outputs.
 
 **Implementation:**
 

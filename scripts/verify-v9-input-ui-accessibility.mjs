@@ -6,7 +6,7 @@ const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 export async function verifyInputUiAccessibility(options = {}) {
   const root = options.repoRoot ?? repoRoot;
-  const artifactDir = options.artifactDir ?? resolve(root, "artifacts/v9/input-ui-accessibility");
+  const artifactDir = options.artifactDir ?? resolve(root, "tools/verify/artifacts/input-ui-accessibility");
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
   const accessibilityReportPath = options.accessibilityReportPath ?? resolve(artifactDir, "accessibility-report.json");
   const pickingOverlayDir = options.pickingOverlayDir ?? resolve(artifactDir, "picking-debug");
@@ -30,7 +30,7 @@ export async function verifyInputUiAccessibility(options = {}) {
       code: "TN_VERIFY_V9_PICKING_OVERLAY_MISSING",
       message: "V9 picking debug overlay report is missing.",
       path: overlayReportPath,
-      repairHint: "Write artifacts/v9/input-ui-accessibility/picking-debug/overlay-report.json from web and native overlay observations.",
+      repairHint: "Write tools/verify/artifacts/input-ui-accessibility/picking-debug/overlay-report.json from web and native overlay observations.",
       severity: "error",
     });
   } else {
@@ -45,7 +45,7 @@ export async function verifyInputUiAccessibility(options = {}) {
       code: "TN_VERIFY_V9_PICKING_DRAG_LOG_MISSING",
       message: "V9 drag picking event log is missing.",
       path: dragLogPath,
-      repairHint: "Write artifacts/v9/input-ui-accessibility/picking-debug/drag-log.json with shared web/native drag phase order.",
+      repairHint: "Write tools/verify/artifacts/input-ui-accessibility/picking-debug/drag-log.json with shared web/native drag phase order.",
       severity: "error",
     });
   } else if (!hasRequiredDragPhases(dragLog)) {
@@ -63,7 +63,7 @@ export async function verifyInputUiAccessibility(options = {}) {
       code: "TN_VERIFY_V9_ACCESSIBILITY_REPORT_MISSING",
       message: "V9 accessibility report is missing.",
       path: accessibilityReportPath,
-      repairHint: "Write artifacts/v9/input-ui-accessibility/accessibility-report.json with target diagnostics and repair hints.",
+      repairHint: "Write tools/verify/artifacts/input-ui-accessibility/accessibility-report.json with target diagnostics and repair hints.",
       severity: "error",
     });
   } else {
@@ -75,7 +75,7 @@ export async function verifyInputUiAccessibility(options = {}) {
       code: "TN_VERIFY_V9_UI_DEBUG_REPORT_MISSING",
       message: "V9 retained UI debug report is missing.",
       path: uiDebugReportPath,
-      repairHint: "Write artifacts/v9/input-ui-accessibility/ui-debug-report.json with node bounds, focus, widget, image, and accessibility metadata.",
+      repairHint: "Write tools/verify/artifacts/input-ui-accessibility/ui-debug-report.json with node bounds, focus, widget, image, and accessibility metadata.",
       severity: "error",
     });
   } else {

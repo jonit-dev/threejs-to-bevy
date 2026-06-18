@@ -7,7 +7,7 @@ const requiredArtifacts = ["web-audio-support.json", "native-audio-support.json"
 
 export async function verifyV9AudioSupport(options = {}) {
   const root = options.repoRoot ?? repoRoot;
-  const artifactDir = options.artifactDir ?? resolve(root, "artifacts/v9/audio-support");
+  const artifactDir = options.artifactDir ?? resolve(root, "tools/verify/artifacts/audio-support");
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
   if (options.writeArtifacts !== false) {
     await writeAudioArtifacts(artifactDir);

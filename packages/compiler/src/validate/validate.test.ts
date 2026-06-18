@@ -7,7 +7,7 @@ import { validateBundle } from "./index.js";
 import { copyFixtureBundle } from "../testFixtures.js";
 
 const cubeFixture = resolve(process.cwd(), "../ir/fixtures/cube-scene/game.bundle");
-const audioFixture = resolve(process.cwd(), "../ir/fixtures/conformance/v6-audio-playback/game.bundle");
+const audioFixture = resolve(process.cwd(), "../ir/fixtures/conformance/audio-playback/game.bundle");
 
 test("validate should return TN-IR-2104 when material is missing", async () => {
   const bundle = await copyCubeFixture();

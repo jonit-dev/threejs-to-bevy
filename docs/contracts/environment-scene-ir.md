@@ -61,10 +61,10 @@ pnpm verify:v3
 
 Relevant reports:
 
-- `artifacts/v3/v3-scene-report.json`
-- `artifacts/v3/v3-atmosphere-report.json`
-- `artifacts/v3/v3-first-person-report.json`
-- `artifacts/v3/v3-walkability-report.json`
-- `artifacts/conformance/v7-renderer-dense-content/web-environment-content.json`
-- `artifacts/conformance/v7-renderer-dense-content/native-environment-content.json`
-- `artifacts/conformance/v7-renderer-dense-content/environment-content-diff.json`
+- `tools/verify/artifacts/milestones/v3/v3-scene-report.json`
+- `tools/verify/artifacts/milestones/v3/v3-atmosphere-report.json`
+- `tools/verify/artifacts/milestones/v3/v3-first-person-report.json`
+- `tools/verify/artifacts/milestones/v3/v3-walkability-report.json`
+- `packages/ir/artifacts/conformance/renderer-dense-content/web-environment-content.json`
+- `packages/ir/artifacts/conformance/renderer-dense-content/native-environment-content.json`
+- `packages/ir/artifacts/conformance/renderer-dense-content/environment-content-diff.json`

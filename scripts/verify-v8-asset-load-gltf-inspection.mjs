@@ -9,8 +9,8 @@ const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 export async function verifyV8AssetLoadGltfInspection(options = {}) {
   const root = options.repoRoot ?? repoRoot;
-  const bundlePath = options.bundlePath ?? resolve(root, "packages/ir/fixtures/conformance/v7-renderer-dense-content/game.bundle");
-  const artifactDir = options.artifactDir ?? resolve(root, "artifacts/conformance/v8-asset-load-gltf-inspection");
+  const bundlePath = options.bundlePath ?? resolve(root, "packages/ir/fixtures/conformance/renderer-dense-content/game.bundle");
+  const artifactDir = options.artifactDir ?? resolve(root, "packages/ir/artifacts/conformance/asset-load-gltf-inspection");
   const webTracePath = options.webTracePath ?? resolve(artifactDir, "web-asset-load-trace.json");
   const nativeTracePath = options.nativeTracePath ?? resolve(artifactDir, "native-asset-load-trace.json");
   const diffPath = options.diffPath ?? resolve(artifactDir, "asset-load-trace-diff.json");

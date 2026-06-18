@@ -1,0 +1,44 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "conformance-advanced-physics-character",
+  "requiredCapabilities": {
+    "physics": [
+      "collider.box",
+      "collider.sphere",
+      "contact-filtering",
+      "query.overlap",
+      "query.shape-cast",
+      "rigid-body.kinematic",
+      "rigid-body.static",
+      "trigger-collider"
+    ],
+    "character": [
+      "blocking",
+      "controller",
+      "grounding"
+    ],
+    "input": [
+      "axes"
+    ],
+    "scripting": [
+      "schedule.fixedUpdate",
+      "script-bundle",
+      "service.physics.overlap",
+      "service.physics.shapeCast",
+      "systems"
+    ]
+  },
+  "entry": {
+    "world": "world.ir.json",
+    "systems": "systems.ir.json",
+    "scripts": "scripts.bundle.js"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "componentSchemas": "schemas/components.schema.json",
+    "input": "input.ir.json",
+    "materials": "materials.ir.json",
+    "targetProfile": "target.profile.json"
+  }
+}

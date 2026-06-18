@@ -32,7 +32,7 @@ pnpm verify:v3 -- --json
 Current artifacts are written under:
 
 ```txt
-artifacts/v3/
+tools/verify/artifacts/milestones/v3/
   verification-report.json
   v3-environment-report.json
   v3-scene-report.json
@@ -83,12 +83,12 @@ is recorded outside the automated gate.
 
 ## Debugging Order
 
-1. Open `artifacts/v3/verification-report.json`.
+1. Open `tools/verify/artifacts/milestones/v3/verification-report.json`.
 2. Find the first failed step.
 3. Open that step's linked report.
 4. If screenshots exist, inspect
-   `artifacts/v3/screenshots/threejs-bevy-side-by-side.png`.
-5. Inspect `artifacts/v3/screenshots/preview2-target-vs-output.png` to compare
+   `tools/verify/artifacts/milestones/v3/screenshots/threejs-bevy-side-by-side.png`.
+5. Inspect `tools/verify/artifacts/milestones/v3/screenshots/preview2-target-vs-output.png` to compare
    `Preview_2.jpg` against bookmarked Three.js and Bevy output.
 6. Use `pnpm tn -- compare-images <threejs.png> <bevy.png> --json` for
    objective brightness/color/image deltas.

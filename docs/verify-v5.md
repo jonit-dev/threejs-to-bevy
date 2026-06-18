@@ -20,12 +20,12 @@ The gate currently:
 - builds `examples/v5-functional`
 - validates the emitted `dist/v5-functional.bundle`
 - captures web visual verification screenshots and diagnostics
-- writes dense-content budget evidence under `artifacts/v5/dense-content`
+- writes dense-content budget evidence under `tools/verify/artifacts/milestones/v5/dense-content`
 - creates, builds, and validates `v5-game-starter` under
-  `artifacts/v5/starter-smoke`
-- runs shared conformance and links `artifacts/conformance/verification-report.json`
-- runs Bevy native tests and writes `artifacts/v5/rust-test-report.json`
-- writes `artifacts/v5/verification-report.json`
+  `tools/verify/artifacts/milestones/v5/starter-smoke`
+- runs shared conformance and links `packages/ir/artifacts/conformance/verification-report.json`
+- runs Bevy native tests and writes `tools/verify/artifacts/milestones/v5/rust-test-report.json`
+- writes `tools/verify/artifacts/milestones/v5/verification-report.json`
 
 The V5 report uses schema `threenative.verify.v5` version `0.1.0` and includes
 `status`, `code`, `steps`, `diagnostics`, `artifacts`, `startedAt`, and

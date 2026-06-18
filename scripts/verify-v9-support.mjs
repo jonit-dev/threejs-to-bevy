@@ -13,7 +13,7 @@ const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 export async function verifyV9Support(options = {}) {
   const root = options.repoRoot ?? repoRoot;
-  const artifactDir = options.artifactDir ?? resolve(root, "artifacts/v9/support");
+  const artifactDir = options.artifactDir ?? resolve(root, "tools/verify/artifacts/support");
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
   const steps = options.steps ?? [
     () => verifyV9AudioSupport({ repoRoot: root }),

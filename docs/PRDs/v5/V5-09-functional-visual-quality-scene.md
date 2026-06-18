@@ -73,7 +73,7 @@ observations, diagnostics, and artifacts.
   a self-contained portable bundle.
 - `pnpm verify:v5` builds and validates the scene, captures web visual evidence,
   writes dense-content budget evidence, and records artifact links under
-  `artifacts/v5/verification-report.json`.
+  `tools/verify/artifacts/milestones/v5/verification-report.json`.
 - Existing shared conformance and Rust runtime tests provide Bevy observations
   for the promoted V5 contracts used by the scene, while native renderer-level
   instancing and runtime mesh LOD swapping remain documented drift.

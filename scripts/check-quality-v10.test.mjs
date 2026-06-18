@@ -78,7 +78,7 @@ function defaultIndex() {
 }
 
 function defaultPrd() {
-  return ["scripts/check-docs-v10.mjs", "scripts/verify-v10.mjs", "artifacts/v10/verification-report.json"].join("\n");
+  return ["scripts/check-docs-v10.mjs", "scripts/verify-v10.mjs", "tools/verify/artifacts/final-gap-planning/verification-report.json"].join("\n");
 }
 
 function defaultStatus() {

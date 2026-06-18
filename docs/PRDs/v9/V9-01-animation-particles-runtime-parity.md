@@ -100,7 +100,7 @@ triggered by authored SDK declarations and scripts.
    renderer, advance time, honor stop/query semantics, apply bounded blend
    state, and render particles.
 4. User sees matching conformance traces and focused web/native visual evidence
-   under `artifacts/v9/animation-particles/`.
+   under `tools/verify/artifacts/animation-particles/`.
 
 ## Solution
 
@@ -207,7 +207,7 @@ sequenceDiagram
   `ctx.animation` services to the native runtime state model.
 - `runtime-bevy/crates/threenative_runtime/src/animation.rs` - mirror the
   state helper and trace serialization.
-- `packages/ir/fixtures/conformance/v9-animation-state/game.bundle` - fixture
+- `packages/ir/fixtures/conformance/animation-state/game.bundle` - fixture
   with play, query, stop, and post-stop query scripts.
 
 **Implementation:**
@@ -237,14 +237,14 @@ sequenceDiagram
 
 1. Unit tests: run package web animation/context tests and Bevy animation/host
    tests listed above.
-2. Integration test: add `scripts/verify-v9-animation-state.mjs` comparing web
+2. Integration test: add `scripts/verify-animation-state.mjs` comparing web
    and native service/state traces from the V9 fixture.
 3. API proof: not applicable; this is an internal script service contract.
 4. Playwright verification: not required for this state-only phase.
 5. Evidence required: `pnpm verify:v9:animation-state` writes
-   `artifacts/v9/animation-state/web-state.json`,
-   `artifacts/v9/animation-state/native-state.json`, and
-   `artifacts/v9/animation-state/state-diff.json`.
+   `tools/verify/artifacts/animation-state/web-state.json`,
+   `tools/verify/artifacts/animation-state/native-state.json`, and
+   `tools/verify/artifacts/animation-state/state-diff.json`.
 
 **User Verification:**
 
@@ -267,7 +267,7 @@ PASS.
   clips, weights, elapsed time, and event rules.
 - `runtime-bevy/crates/threenative_runtime/src/animation.rs` - mirror blend
   state and trace serialization.
-- `packages/ir/fixtures/conformance/v9-animation-blending/game.bundle` -
+- `packages/ir/fixtures/conformance/animation-blending/game.bundle` -
   fixture with graph transition, service-triggered crossfade, and events.
 
 **Implementation:**
@@ -289,7 +289,7 @@ PASS.
 | `packages/ir/src/assets.test.ts` | `should reject animation masks when authored` | Validator emits `TN_IR_ANIMATION_MASKS_UNSUPPORTED`. |
 | `packages/runtime-web-three/src/animation.test.ts` | `should report blend weights during graph transition` | At half duration, source and target weights are both `0.5`. |
 | `runtime-bevy/crates/threenative_runtime/tests/animation.rs` | `should report blend weights during graph transition` | Native blend trace equals web trace for the fixture. |
-| `scripts/verify-v9-animation-blending.test.mjs` | `should compare v9 animation blending reports` | Diff fails on changed clips, weights, or event ordering. |
+| `scripts/verify-animation-blending.test.mjs` | `should compare v9 animation blending reports` | Diff fails on changed clips, weights, or event ordering. |
 
 **Verification Plan:**
 
@@ -301,7 +301,7 @@ PASS.
    two frames showing motion continues during a transition; pixel thresholds
    only prove nonblank changing output, while JSON traces prove blend weights.
 5. Evidence required:
-   `artifacts/v9/animation-blending/blend-report.json` plus web/native trace
+   `tools/verify/artifacts/animation-blending/blend-report.json` plus web/native trace
    files.
 
 **User Verification:**
@@ -363,7 +363,7 @@ PASS.
 4. Playwright verification: web capture confirms nonblank animated model and
    particle regions at deterministic timestamps.
 5. Evidence required:
-   `artifacts/v9/animation-particles/verification-report.json`, web/native
+   `tools/verify/artifacts/animation-particles/verification-report.json`, web/native
    screenshots, sampled particle-region metrics, and runtime trace JSON.
 
 **User Verification:**
@@ -386,7 +386,7 @@ Tests passing: [yes/no]
 pnpm verify:v9:animation-particles: [pass/fail]
 
 Manual verification needed:
-1. [ ] Inspect web/native screenshots under `artifacts/v9/animation-particles/`
+1. [ ] Inspect web/native screenshots under `tools/verify/artifacts/animation-particles/`
        and confirm the animated model and particle plume are visible in the
        expected regions.
 ```
@@ -491,20 +491,20 @@ Fill this section during implementation.
 ### Phase 1: Stateful Animation Controls
 
 - Unit tests: pass (`pnpm --filter @threenative/runtime-web-three test -- --run "animation|context|effects"`, `cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime --test systems_host animation -- --nocapture`, `cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime animation -- --nocapture`).
-- `pnpm verify:v9:animation-state`: pass; artifacts under `artifacts/v9/animation-state/`.
+- `pnpm verify:v9:animation-state`: pass; artifacts under `tools/verify/artifacts/animation-state/`.
 - Checkpoint review: local verification pass; no external reviewer tool is available in this execution environment.
 
 ### Phase 2: Runtime Blending
 
 - Unit tests: pass (`pnpm --filter @threenative/runtime-web-three test -- --run "blend weights"`, `cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime should_report_blend_weights_during_graph_transition -- --nocapture`, and focused IR diagnostics tests).
-- `pnpm verify:v9:animation-blending`: pass; artifacts under `artifacts/v9/animation-blending/`.
+- `pnpm verify:v9:animation-blending`: pass; artifacts under `tools/verify/artifacts/animation-blending/`.
 - Checkpoint review: local verification pass; no external reviewer tool is available in this execution environment.
 
 ### Phase 3: Rendered Bounded Particles
 
 - Unit tests: pass (`pnpm --filter @threenative/sdk test -- --run "renderable bounded particle"`, `pnpm --filter @threenative/ir test -- --run "unbounded rendered particle|animation masks"`, `pnpm --filter @threenative/runtime-web-three test -- --run "rendered particles"`, and `cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime should_spawn_rendered_particles_from_bounded_emitter_state -- --nocapture`).
-- `pnpm verify:v9:animation-particles`: pass; artifacts under `artifacts/v9/animation-particles/`.
-- Manual screenshot inspection: generated web/native SVG visual artifacts are present at `artifacts/v9/animation-particles/web-particles.svg` and `artifacts/v9/animation-particles/native-particles.svg`.
+- `pnpm verify:v9:animation-particles`: pass; artifacts under `tools/verify/artifacts/animation-particles/`.
+- Manual screenshot inspection: generated web/native SVG visual artifacts are present at `tools/verify/artifacts/animation-particles/web-particles.svg` and `tools/verify/artifacts/animation-particles/native-particles.svg`.
 - Checkpoint review: local verification pass; no external reviewer tool is available in this execution environment.
 
 ### Phase 4: Release Gate and Documentation

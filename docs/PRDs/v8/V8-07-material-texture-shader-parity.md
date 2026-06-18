@@ -402,7 +402,7 @@ sequenceDiagram
 
 1. **Native Tests:** `cargo test --manifest-path runtime-bevy/Cargo.toml assets rendering`
 2. **Visual Proof:** Add a focused verifier that renders a tiled texture in web
-   and Bevy and stores artifacts under `artifacts/v8/material-parity/`.
+   and Bevy and stores artifacts under `tools/verify/artifacts/material-parity/`.
 3. **Evidence Required:** Native output visibly changes when repeat/offset
    values change; conformance report alone is insufficient.
 
@@ -555,13 +555,13 @@ sequenceDiagram
 2. **Material Gate:** `node scripts/verify-v8-material-parity.mjs`
 3. **Shared Conformance:** `pnpm verify:conformance`
 4. **Full Gate Before Release:** `pnpm verify`
-5. **Evidence Required:** `artifacts/v8/material-parity/verification-report.json`
+5. **Evidence Required:** `tools/verify/artifacts/material-parity/verification-report.json`
    includes test commands, web/native screenshots, conformance report paths, and
    any target-specific unsupported diagnostics.
 
 **User Verification:**
 
-- Action: Inspect `artifacts/v8/material-parity/verification-report.json`.
+- Action: Inspect `tools/verify/artifacts/material-parity/verification-report.json`.
 - Expected: The report names every promoted material feature, evidence artifact,
   passing command, and any still-deferred shader surface.
 
@@ -577,7 +577,7 @@ implementation notes, and do not advance on failing tests.
 
 For phases with visual evidence, also perform manual artifact review:
 
-- Open web/native screenshots from `artifacts/v8/material-parity/`.
+- Open web/native screenshots from `tools/verify/artifacts/material-parity/`.
 - Confirm transparent object order, texture transform intent, and extended
   preset output are visible.
 - Confirm unsupported shader surfaces fail with stable diagnostics rather than

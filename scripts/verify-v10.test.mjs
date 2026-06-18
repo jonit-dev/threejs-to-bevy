@@ -9,12 +9,12 @@ import { verifyV10 } from "./verify-v10.mjs";
 test("should report pass when all focused V10 gates pass", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-verify-v10-pass-"));
   try {
-    await mkdir(join(root, "artifacts/v10/focused"), { recursive: true });
-    await writeFile(join(root, "artifacts/v10/focused/report.json"), "{}\n");
+    await mkdir(join(root, "tools/verify/artifacts/final-gap-planning/focused"), { recursive: true });
+    await writeFile(join(root, "tools/verify/artifacts/final-gap-planning/focused/report.json"), "{}\n");
     const result = await verifyV10({
-      artifactDir: join(root, "artifacts/v10"),
+      artifactDir: join(root, "tools/verify/artifacts/final-gap-planning"),
       boundaryValidator: passBoundaryValidator,
-      focusedGates: [{ name: "verify v10 focused test", reportPath: "artifacts/v10/focused/report.json" }],
+      focusedGates: [{ name: "verify v10 focused test", reportPath: "tools/verify/artifacts/final-gap-planning/focused/report.json" }],
       repoRoot: root,
       run: passRun,
       skipIrBuild: true,
@@ -31,9 +31,9 @@ test("should fail when a focused report is missing", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-verify-v10-missing-"));
   try {
     const result = await verifyV10({
-      artifactDir: join(root, "artifacts/v10"),
+      artifactDir: join(root, "tools/verify/artifacts/final-gap-planning"),
       boundaryValidator: passBoundaryValidator,
-      focusedGates: [{ name: "verify v10 focused test", reportPath: "artifacts/v10/focused/missing.json" }],
+      focusedGates: [{ name: "verify v10 focused test", reportPath: "tools/verify/artifacts/final-gap-planning/focused/missing.json" }],
       repoRoot: root,
       run: passRun,
       skipIrBuild: true,
@@ -49,7 +49,7 @@ test("should write boundary diagnostics into the aggregate report", async () => 
   const root = await mkdtemp(join(tmpdir(), "tn-verify-v10-boundary-"));
   try {
     const result = await verifyV10({
-      artifactDir: join(root, "artifacts/v10"),
+      artifactDir: join(root, "tools/verify/artifacts/final-gap-planning"),
       boundaryValidator: failBoundaryValidator,
       repoRoot: root,
       run: passRun,

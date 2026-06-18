@@ -41,7 +41,7 @@ gate unless a verifier wrote a pass/fail result.
 ## V9 Visual Matrix
 
 `pnpm verify:v9` runs the compact V9 visual matrix after sample scenes build.
-Evidence is written under `artifacts/v9/visual-matrix/` per scene:
+Evidence is written under `tools/verify/artifacts/visual-matrix/` per scene:
 
 - `web.png`, `bevy.png`, `diff.png`, and `contact-sheet.png` for smoke/region scenes
 - motion screenshots and contact sheets for skeletal animation
@@ -78,7 +78,7 @@ pnpm verify:v10:visual-calibration -- --group color,materials
 pnpm verify:v10:visual-calibration -- --manifest-only
 ```
 
-Evidence is written under `artifacts/v10/visual-calibration/`, including
+Evidence is written under `tools/verify/artifacts/visual-calibration/`, including
 `manifest-report.json` and the aggregate `verification-report.json`. Calibration
 failures emit `TN_VERIFY_VISUAL_CALIBRATION_*` diagnostics with fixture, factor,
 region, metric, threshold, observed value, and artifact paths when available.

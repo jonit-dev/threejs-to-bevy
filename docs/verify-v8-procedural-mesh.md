@@ -12,12 +12,12 @@ runtime and native Bevy runtime, and compares the images.
 
 Artifacts are written to:
 
-- `artifacts/v8/procedural-mesh/web.png`
-- `artifacts/v8/procedural-mesh/bevy.png`
-- `artifacts/v8/procedural-mesh/contact-sheet.png`
-- `artifacts/v8/procedural-mesh/diff.png`
-- `artifacts/v8/procedural-mesh/procedural-mesh-report.json`
-- `artifacts/v8/procedural-mesh/verification-report.json`
+- `tools/verify/artifacts/procedural-mesh/web.png`
+- `tools/verify/artifacts/procedural-mesh/bevy.png`
+- `tools/verify/artifacts/procedural-mesh/contact-sheet.png`
+- `tools/verify/artifacts/procedural-mesh/diff.png`
+- `tools/verify/artifacts/procedural-mesh/procedural-mesh-report.json`
+- `tools/verify/artifacts/procedural-mesh/verification-report.json`
 
 The current fixture is a single generated pine tree authored with `pineTree()`.
 It is one static custom mesh with vertex colors for the brown trunk and green

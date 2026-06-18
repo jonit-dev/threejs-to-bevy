@@ -21,7 +21,7 @@ V7 starts from this post-V6 gap triage table. A V7-promoted row is not supported
 until its ticket has SDK/IR/compiler validation, web runtime evidence, Bevy
 evidence where claimed, conformance observations, docs, diagnostics,
 functional scene or template proof where applicable, artifacts under
-`artifacts/v7`, and `verify:v7` coverage. Deferred rows must stay out of V7
+`tools/verify/artifacts/milestones/v7`, and `verify:v7` coverage. Deferred rows must stay out of V7
 completion claims. Never-portable rows must fail with stable diagnostics when
 they appear in public authoring surfaces.
 
@@ -40,7 +40,7 @@ not promote the deferred or never-portable rows.
 | Runtime LOD swapping, native instancing parity, imported asset edge cases, and one narrow post-processing slice | V5/V6 renderer, asset, atmosphere, and dense-content evidence | V7-promoted | Renderer/content fixtures, screenshot or side-by-side artifacts, image metrics where practical, Bevy rendered artifacts or documented drift, and performance evidence. |
 | Scripting lifecycle, deterministic state handoff, larger script-heavy fixtures, and justified system-local persisted state | V6 resource/event schedules and native/web QuickJS traces | V7-promoted | Cross-runtime effect logs, lifecycle fixtures, diagnostics for unsupported async/hot-reload behavior, and `verify:v7` evidence. |
 | Desktop packaging, target-profile selection, packaged bundle loading, and platform diagnostics | V5/V6 CLI build/validate/verify gates | V7-promoted | Packaged artifact layout, target-profile diagnostics, desktop smoke evidence, and release-gate report links. |
-| Web and native performance budgets for V7-scale scenes | V5 dense-content budgets plus V6 conformance reports | V7-promoted | Frame, entity, draw/instance, asset-load, script, UI, audio, and package-size reports under `artifacts/v7`. |
+| Web and native performance budgets for V7-scale scenes | V5 dense-content budgets plus V6 conformance reports | V7-promoted | Frame, entity, draw/instance, asset-load, script, UI, audio, and package-size reports under `tools/verify/artifacts/milestones/v7`. |
 | Mobile packaging, broad shader graphs, arbitrary renderer plugins, editor workflows, online services, networking, replication, and collaboration | Outside the V6 product boundary | Deferred | Future PRDs only; V7 docs and gates must not imply support. |
 | Raw Three.js authoring, direct Bevy authoring, public plugin APIs for runtime escape hatches, arbitrary npm execution inside portable scripts, and backend-only features without portable IR | Explicitly outside the ThreeNative authoring contract | Never portable | Stable diagnostics and docs explaining the portable alternative or deferral path. |
 
@@ -79,11 +79,11 @@ not promote the deferred or never-portable rows.
 - Experimental: implementation may exist but is not a release promise.
 - Adapter-private: runtime-internal behavior that is not public API.
 - V3-critical: required by the V3 release gate documented in
-  [verify:v3](verify-v3.md).
+  [verify:v3](../verification/verify-v3.md).
 - Post-V3: intentionally outside the V3 release gate.
 - V4 supported: implemented and release-gated only for the primitive
-  TypeScript/QuickJS scripting MVP described in [verify:v4](verify-v4.md).
-- V5 supported: implemented and release-gated by [verify:v5](verify-v5.md) for
+  TypeScript/QuickJS scripting MVP described in [verify:v4](../verification/verify-v4.md).
+- V5 supported: implemented and release-gated by [verify:v5](../verification/verify-v5.md) for
   the stated scope. For SDK ergonomics rows, `n/a` under Bevy means there is no
   new native runtime surface; Bevy support follows the emitted existing
   contracts.

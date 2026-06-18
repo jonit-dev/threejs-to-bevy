@@ -62,17 +62,17 @@ archived, or explicitly left alone with a reason.
 | Docs front door | `docs/STATUS.md`, `docs/README.md`, `docs/bevy-feature-parity.md` | Current support and release gate use capability names; historical milestone references point to archive. |
 | Historical PRDs | `docs/PRDs/v1` through `docs/PRDs/v9`, `V9-04-...md` | Move/index under `docs/PRDs/archive/milestones/`; preserve links or add redirects/index entries. |
 | Standalone verification docs | `docs/verify-v3.md`, `docs/verify-v7.md`, `docs/verify-v8-procedural-mesh.md` | Replace with current verification docs plus archive pages for historical commands. |
-| Examples | `examples/v9-physics-character`, `examples/v8-color-parity`, `examples/v1-canonical` | Rename maintained examples to capability names; archive or clearly label historical examples. |
+| Examples | `examples/physics-character`, `examples/v8-color-parity`, `examples/v1-canonical` | Rename maintained examples to capability names; archive or clearly label historical examples. |
 | Templates | `templates/v1`, `templates/v2-arena`, `templates/v7-functional` | Canonical capability/product names with compatibility aliases in CLI. |
 | Example/template package metadata | package names, README titles, scripts, config `outDir` paths containing `v*` | Canonical names for maintained examples/templates; historical examples can keep old names only under archive policy. |
-| Conformance fixture directories | `packages/ir/fixtures/conformance/v9-physics-character` | Resolve active fixtures through a canonical capability catalog; retain legacy paths or aliases until all callers migrate. |
-| Fixture manifests and catalogs | `v7-fixture-catalog.json`, `v9-fixture-catalog.json`, manifest names like `conformance-v9-physics-character` | Canonical `fixture-catalog.json`; legacy catalogs map to canonical IDs with deprecation diagnostics. |
+| Conformance fixture directories | `packages/ir/fixtures/conformance/physics-character` | Resolve active fixtures through a canonical capability catalog; retain legacy paths or aliases until all callers migrate. |
+| Fixture manifests and catalogs | `v7-fixture-catalog.json`, `v9-fixture-catalog.json`, manifest names like `conformance-physics-character` | Canonical `fixture-catalog.json`; legacy catalogs map to canonical IDs with deprecation diagnostics. |
 | Bundle JSON content | fixture `manifest.json` names, `verification.manifest.json` owner PRD links, embedded artifact output paths | Update current fixture metadata and owner links; do not alter real schema/product `version` fields. |
 | IR schema `$id` paths | `https://schemas.threenative.local/v1/world.schema.json` | Classify separately as schema-versioning. Leave unchanged unless a schema-version migration PRD is written. |
-| Runtime Bevy code/tests/artifacts | `runtime-bevy/artifacts/v4`, Rust tests or report labels referencing old gates | Migrate active report labels/paths; archive static evidence artifacts or exclude generated artifacts from current-name checks. |
+| Runtime Bevy code/tests/artifacts | `runtime-bevy/tools/verify/artifacts/milestones/v4`, Rust tests or report labels referencing old gates | Migrate active report labels/paths; archive static evidence artifacts or exclude generated artifacts from current-name checks. |
 | Runtime web/CLI visual helpers | comments and sample region helpers referencing `examples/v8-*` | Update with renamed example paths in the same phase as example migration. |
-| Artifact paths and reports | `artifacts/v9`, `artifacts/conformance/v7-*`, JSON `generatedBy` fields | New reports use canonical paths; old paths are readable compatibility inputs or archived generated output. |
-| Verification artifact layout | `artifacts/v10/native-ui-effects`, `artifacts/v9/rendering-lights`, one-off report names | Standardize maintained artifacts by capability and gate, for example `artifacts/verification/<capability>/<gate>/report.json`, with common metadata for capability, gate, runtime target, command, schema, source PRD, and generated files. Versioned directories remain legacy/archive inputs only. |
+| Artifact paths and reports | `artifacts/v9`, `packages/ir/artifacts/conformance/v7-*`, JSON `generatedBy` fields | New reports use canonical paths; old paths are readable compatibility inputs or archived generated output. |
+| Verification artifact layout | `tools/verify/artifacts/native-ui-effects`, `examples/rendering-lights/artifacts/rendering-lights`, one-off report names | Standardize maintained artifacts by capability and gate, for example `artifacts/verification/<capability>/<gate>/report.json`, with common metadata for capability, gate, runtime target, command, schema, source PRD, and generated files. Versioned directories remain legacy/archive inputs only. |
 | CI and automation references | any workflow, README, or agent instruction invoking `verify:v*` | Update to canonical scripts; keep explicit compatibility tests for old commands. |
 | AGENTS and skill references | repo guidance mentioning V1/V2/V3/V4 milestones | Update only current workflow guidance; preserve historical context where it describes past milestones. |
 | Active V10 planning and gates | `docs/PRDs/v10`, `verify:v10`, focused `verify:v10:*` scripts | Keep `docs/PRDs/v10` as a planning partition if useful, but migrate active scripts, generated reports, fixtures, examples, and maintained engine surfaces to capability/release names. Any retained `verify:v10`-style command must be a documented temporary alias to a canonical command; docs drift stays under `check:docs`, not a separate V10 quality command. |
@@ -217,7 +217,7 @@ sequenceDiagram
   `external-compatibility`.
 - [x] Define the target naming map, including examples:
   `verify:v9` -> `verify:release`, `check:docs:v9` -> `check:docs`,
-  `v7-functional` -> `starter-functional`, `v9-physics-character` ->
+  `v7-functional` -> `starter-functional`, `physics-character` ->
   `physics-character`, `docs/PRDs/v9` -> `docs/PRDs/archive/milestones/v9`.
 - [x] Add an allowlist file that forces every retained version reference to carry
   a classification, owner, rationale, and removal/migration policy.
@@ -366,7 +366,7 @@ sequenceDiagram
 | Test File | Test Name | Assertion |
 | --- | --- | --- |
 | `tools/verify/src/conformance.test.ts` | `should resolve canonical fixture ids from the catalog` | Each current capability fixture has a bundle path and owner docs link. |
-| `tools/verify/src/conformance.test.ts` | `should resolve legacy fixture ids with deprecation diagnostics` | `v9-physics-character` maps to `physics-character`. |
+| `tools/verify/src/conformance.test.ts` | `should resolve legacy fixture ids with deprecation diagnostics` | `physics-character` maps to `physics-character`. |
 | `tools/verify/src/conformance.test.ts` | `should reject fixture manifests with unclassified version labels` | Current fixture metadata cannot introduce new milestone names. |
 | Runtime conformance tests | `should run current capability fixtures` | Web and Bevy consume the same canonical fixture set. |
 

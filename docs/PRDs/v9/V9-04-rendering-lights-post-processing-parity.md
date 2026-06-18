@@ -279,8 +279,8 @@ Review checkpoint for phase 1 of PRD at docs/PRDs/v9/V9-04-rendering-lights-post
   skybox/environment/probe data or emit native diagnostics.
 - `packages/ir/src/conformanceReport.ts` - add normalized environment-lighting
   observations.
-- `examples/v9-rendering-lights/src/game.ts` - author the focused visual scene.
-- `scripts/verify-v9-rendering-lights.mjs` - capture and aggregate web/native
+- `examples/rendering-lights/src/game.ts` - author the focused visual scene.
+- `scripts/verify-rendering-lights.mjs` - capture and aggregate web/native
   visual/conformance evidence.
 
 **Implementation:**
@@ -309,7 +309,7 @@ Review checkpoint for phase 1 of PRD at docs/PRDs/v9/V9-04-rendering-lights-post
 1. **Unit Tests:** runtime web rendering tests and Bevy focused Rust tests.
 2. **Integration Test:** `pnpm verify:conformance`.
 3. **Visual Proof:** `pnpm verify:v9:rendering-lights` writes
-   `artifacts/v9/rendering-lights/skybox-environment/verification-report.json`
+   `examples/rendering-lights/artifacts/rendering-lights/skybox-environment/verification-report.json`
    plus web/native/diff screenshots.
 4. **Manual Verification:** inspect the generated contact sheet for skybox
    orientation and reflection plausibility.
@@ -412,7 +412,7 @@ performance-sensitive.
   native visibility/fade, instancing/batching, and debug observations.
 - `scripts/verify-v7-environment-content-trace.mjs` or new V9 verifier module
   - extend dense-content evidence without breaking V7.
-- `examples/v9-rendering-lights/src/game.ts` - add dense content and light/probe
+- `examples/rendering-lights/src/game.ts` - add dense content and light/probe
   debug toggle fixtures.
 
 **Implementation:**
@@ -447,7 +447,7 @@ performance-sensitive.
 2. **Integration Test:** `pnpm verify:conformance` includes the V9 dense
    rendering fixture.
 3. **Performance/Budget Proof:** `pnpm verify:v9:rendering-lights` writes
-   `artifacts/v9/rendering-lights/dense-content-budget.json` with draw,
+   `examples/rendering-lights/artifacts/rendering-lights/dense-content-budget.json` with draw,
    instance, batch, visible-count, and fade observations.
 4. **Manual Verification:** inspect debug-gizmo screenshot/contact sheet with
    gizmos enabled and disabled.
@@ -547,7 +547,7 @@ Manual checkpoint is required only for any promoted visual post effect.
 **Files (max 5):**
 
 - `package.json` - register `verify:v9:rendering-lights`.
-- `scripts/verify-v9-rendering-lights.mjs` - aggregate build, validation,
+- `scripts/verify-rendering-lights.mjs` - aggregate build, validation,
   conformance, screenshots, budgets, and diagnostics.
 - `packages/cli/src/verify/renderingQuality.ts` - share reusable visual sample
   thresholds instead of duplicating V8 logic.
@@ -557,13 +557,13 @@ Manual checkpoint is required only for any promoted visual post effect.
 
 **Implementation:**
 
-- [ ] Build `examples/v9-rendering-lights`.
+- [ ] Build `examples/rendering-lights`.
 - [ ] Validate the emitted bundle and rejected advanced-renderer fixture.
 - [ ] Run conformance for the V9 fixtures and compare normalized web/native
   observations.
 - [ ] Capture web/native screenshots for skybox/environment, point shadows,
   dense instancing/HLOD, debug gizmos, and promoted post-processing effects.
-- [ ] Write `artifacts/v9/rendering-lights/verification-report.json` with paths
+- [ ] Write `examples/rendering-lights/artifacts/rendering-lights/verification-report.json` with paths
   to all generated evidence and checklist coverage states.
 - [ ] Update `docs/STATUS.md` and `docs/bevy-feature-parity.md` only for items
   actually proven by this gate.
@@ -572,7 +572,7 @@ Manual checkpoint is required only for any promoted visual post effect.
 
 | Test File | Test Name | Assertion |
 | --- | --- | --- |
-| `scripts/verify-v9-rendering-lights.test.mjs` | `should fail when required V9 rendering evidence is missing` | Verifier rejects incomplete reports. |
+| `scripts/verify-rendering-lights.test.mjs` | `should fail when required V9 rendering evidence is missing` | Verifier rejects incomplete reports. |
 | `packages/cli/src/verify/renderingQuality.test.ts` | `should validate V9 rendering sample regions and thresholds` | Required screenshot samples are enforced. |
 | `scripts/check-docs-v9.test.mjs` or docs guard update | `should require status and parity anchors for promoted V9 renderer items` | Docs cannot mark items complete without evidence anchors. |
 
@@ -627,15 +627,15 @@ report-only.
 **Focused Evidence:**
 
 - Skybox/environment visual report:
-  `artifacts/v9/rendering-lights/skybox-environment/verification-report.json`
+  `examples/rendering-lights/artifacts/rendering-lights/skybox-environment/verification-report.json`
 - Light/shadow visual and conformance report:
-  `artifacts/v9/rendering-lights/lights-shadows/verification-report.json`
+  `examples/rendering-lights/artifacts/rendering-lights/lights-shadows/verification-report.json`
 - Dense content budget:
-  `artifacts/v9/rendering-lights/dense-content-budget.json`
+  `examples/rendering-lights/artifacts/rendering-lights/dense-content-budget.json`
 - Post-processing report:
-  `artifacts/v9/rendering-lights/post-processing/verification-report.json`
+  `examples/rendering-lights/artifacts/rendering-lights/post-processing/verification-report.json`
 - Aggregate report:
-  `artifacts/v9/rendering-lights/verification-report.json`
+  `examples/rendering-lights/artifacts/rendering-lights/verification-report.json`
 
 **Diagnostics Required:**
 

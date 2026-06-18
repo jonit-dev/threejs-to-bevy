@@ -5,7 +5,7 @@ Complexity: 8 -> HIGH mode
 ## Context
 
 **Problem:** V7 needs one maintained proof under `examples/` plus artifacts
-under `artifacts/v7` showing that deeper parity features work together in a
+under `tools/verify/artifacts/milestones/v7` showing that deeper parity features work together in a
 real user-facing scene and project template.
 
 ## Integration Points
@@ -54,14 +54,14 @@ visual drift where native support is claimed.
 - `docs/verify-v7.md` - artifact docs.
 - `docs/STATUS.md` - V7 scene status.
 - `docs/bevy-feature-parity.md` - evidence notes.
-- `artifacts/v7/*` - generated outputs.
+- `tools/verify/artifacts/milestones/v7/*` - generated outputs.
 
 **Implementation:**
 
 - [x] Capture web visual/playable artifacts and fixed traces.
 - [x] Capture Bevy observations, Rust tests, screenshots, or packaged run
   artifacts where practical.
-- [x] Write all V7 proof outputs under `artifacts/v7` using the existing
+- [x] Write all V7 proof outputs under `tools/verify/artifacts/milestones/v7` using the existing
   artifact layout style.
 - [x] Capture screenshots, image diffs, side-by-side renders, or equivalent
   real-world rendering artifacts for visible promoted features where practical.
@@ -78,6 +78,6 @@ visual drift where native support is claimed.
 
 - [x] The V7 scene/template demonstrates promoted features together.
 - [x] The scene/template is self-contained and release-gated.
-- [x] Artifacts under `artifacts/v7` prove the example/template is working.
+- [x] Artifacts under `tools/verify/artifacts/milestones/v7` prove the example/template is working.
 - [x] Visible features are supported by rendered artifacts, not only logs or
   build success.

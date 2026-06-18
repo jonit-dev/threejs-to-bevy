@@ -357,8 +357,8 @@ sequenceDiagram
 - [ ] Render the same emitted bundle in web Three.js and native Bevy using a
   deterministic orthographic camera, neutral lighting, fixed material color,
   and no animation.
-- [ ] Capture `artifacts/v8/procedural-mesh/web.png` and
-  `artifacts/v8/procedural-mesh/bevy.png`.
+- [ ] Capture `tools/verify/artifacts/procedural-mesh/web.png` and
+  `tools/verify/artifacts/procedural-mesh/bevy.png`.
 - [ ] Produce a side-by-side contact sheet, a pixel-diff image, and a JSON
   report with screenshot paths, bundle hash, mesh hash, vertex/index counts,
   bounds, material color, changed-pixel ratio, average color delta, and
@@ -385,7 +385,7 @@ sequenceDiagram
 4. **Native Evidence:** `cd runtime-bevy && cargo test procedural_mesh`
 5. **Evidence Required:** Web screenshot, Bevy screenshot, contact sheet,
    diff image, JSON report, bundle hash, mesh hash, and matching runtime
-   observations under `artifacts/v8/procedural-mesh/`.
+   observations under `tools/verify/artifacts/procedural-mesh/`.
 
 **User Verification:**
 

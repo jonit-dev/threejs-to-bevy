@@ -10,7 +10,7 @@ const execFileAsync = promisify(execFile);
 test("verify-v10-editor-property-editing should write sequential frame evidence", async () => {
   await execFileAsync(process.execPath, ["scripts/verify-v10-editor-property-editing.mjs"]);
 
-  const report = JSON.parse(await readFile("artifacts/v10/editor-property-editing/verification-report.json", "utf8"));
+  const report = JSON.parse(await readFile("tools/verify/artifacts/editor-property-editing/verification-report.json", "utf8"));
   assert.equal(report.ok, true);
   assert.equal(report.status, "pass");
   assert.equal(report.comparisons.length, 3);

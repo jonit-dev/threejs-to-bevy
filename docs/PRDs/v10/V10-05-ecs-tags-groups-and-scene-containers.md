@@ -476,7 +476,7 @@ If a dedicated script is added, prefer:
 pnpm verify:v10:ecs-tags-groups
 ```
 
-The focused gate should write an artifact under `artifacts/v10/ecs-tags-groups/` or the existing conformance artifact structure.
+The focused gate should write an artifact under `tools/verify/artifacts/ecs-tags-groups/` or the existing conformance artifact structure.
 
 ## Migration Guidance
 

@@ -19,6 +19,13 @@ Repo-wide guidance for AI coding agents working on ThreeNative.
 - Current contributor gates include `pnpm check:names`, `pnpm check:docs`, and
   `pnpm verify:release`. Legacy milestone script names remain compatibility
   aliases during the cleanup tracked in `docs/PRDs/cleanup-versioned-debt.md`.
+- Artifact ownership: one-example evidence belongs under
+  `examples/<name>/artifacts/<gate>/`, aggregate reports under
+  `tools/verify/artifacts/<gate>/`, shared IR fixtures under `packages/ir/fixtures/*`,
+  and Bevy-only evidence under `runtime-bevy/artifacts/<gate>/`.
+- Active docs belong under `docs/architecture/`, `docs/contracts/`,
+  `docs/runtime/`, `docs/workflows/`, `docs/status/`, or
+  `docs/PRDs/`; see `docs/workflows/developer-workflow.md` for the full policy.
 
 ## Product Boundary
 

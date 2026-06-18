@@ -9,9 +9,9 @@ import { verifyV4 } from "./verify-v4.mjs";
 test("should report failing step", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-verify-v4-"));
   try {
-    const reportPath = join(root, "artifacts/v4/verification-report.json");
+    const reportPath = join(root, "tools/verify/artifacts/milestones/v4/verification-report.json");
     const result = await verifyV4({
-      artifactDir: join(root, "artifacts/v4"),
+      artifactDir: join(root, "tools/verify/artifacts/milestones/v4"),
       repoRoot: root,
       reportPath,
       run: async () => ({

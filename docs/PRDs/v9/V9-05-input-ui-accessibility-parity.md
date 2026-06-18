@@ -296,7 +296,7 @@ interactive.
      shared event log includes `dragStart`, at least one `dragMove`, `drop`,
      and `dragEnd`.
 4. **Evidence Required:**
-   - `artifacts/v9/input-ui-accessibility/picking-debug/` contains web/native
+   - `tools/verify/artifacts/input-ui-accessibility/picking-debug/` contains web/native
      overlay screenshots or structured overlay reports plus matching drag logs.
 
 **User Verification:**
@@ -366,7 +366,7 @@ need runtime inspection.
      presence, font asset load status, span counts, shadow/gradient regions,
      and diagnostics for intentionally unsupported native style cases.
 4. **Evidence Required:**
-   - `artifacts/v9/input-ui-accessibility/rich-text-style/verification-report.json`
+   - `tools/verify/artifacts/input-ui-accessibility/rich-text-style/verification-report.json`
      includes font loads, rich span observations, and visual probe results.
 
 **User Verification:**
@@ -501,7 +501,7 @@ checkpoint is required for visual image scaling and widget interaction.
    - Capture overlay screenshots/reports with focus movement, drag/drop,
      widget state, bounds, accessibility names, and repair hints visible.
 5. **Evidence Required:**
-   - `artifacts/v9/input-ui-accessibility/verification-report.json` lists all
+   - `tools/verify/artifacts/input-ui-accessibility/verification-report.json` lists all
      promoted checklist items, deferrals, diagnostics, and artifact paths.
 
 **User Verification:**
@@ -546,7 +546,7 @@ pnpm verify:v9:input-ui-accessibility
 
 Verification evidence required:
 
-- `artifacts/v9/input-ui-accessibility/verification-report.json` summarizing
+- `tools/verify/artifacts/input-ui-accessibility/verification-report.json` summarizing
   web/native parity, promoted checklist items, deferrals, diagnostics, and
   command results.
 - Web/native drag-picking logs with matching phase order.

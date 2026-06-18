@@ -304,10 +304,12 @@ fn ui_should_dispatch_native_button_and_touch_actions() {
             action: None,
             accessibility_label: None,
             anchor_id: None,
+            binding: None,
             children: vec![UiNodeIr {
                 action: Some("Jump".to_owned()),
                 accessibility_label: None,
                 anchor_id: None,
+                binding: None,
                 children: Vec::new(),
                 disabled: None,
                 focusable: None,
@@ -399,6 +401,7 @@ fn ui_should_reject_unsupported_ui_node() {
             action: None,
             accessibility_label: None,
             anchor_id: None,
+            binding: None,
             children: Vec::new(),
             disabled: None,
             focusable: None,
@@ -431,7 +434,7 @@ fn ui_should_reject_unsupported_ui_node() {
 
 #[test]
 fn ui_navigation_trace_should_match_v7_fixture() {
-    let fixture = support::load_conformance_fixture("v7-rich-ui-navigation");
+    let fixture = support::load_conformance_fixture("rich-ui-navigation");
     let ui = fixture.bundle.ui.as_ref().expect("ui fixture should load");
 
     let trace = trace_ui_navigation(ui, &["tab", "activate"]);
@@ -450,7 +453,7 @@ fn ui_navigation_trace_should_match_v7_fixture() {
 
 #[test]
 fn ui_navigation_trace_should_support_reverse_tab() {
-    let fixture = support::load_conformance_fixture("v7-rich-ui-navigation");
+    let fixture = support::load_conformance_fixture("rich-ui-navigation");
     let ui = fixture.bundle.ui.as_ref().expect("ui fixture should load");
 
     let trace = trace_ui_navigation(ui, &["tab", "shiftTab"]);

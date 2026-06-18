@@ -1,0 +1,21 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "conformance-physics-character",
+  "requiredCapabilities": {
+    "character": ["blocking", "controller", "grounding", "push"],
+    "input": ["axes"],
+    "navigation": ["path", "static-regions"],
+    "physics": ["collider.box", "collider.sphere", "contact-filtering", "interaction-volumes", "primitive-solver-v2", "rigid-body.dynamic", "rigid-body.kinematic", "rigid-body.static", "sensors"],
+    "scripting": ["service.character.move", "service.navigation.path", "service.physics.sensor"]
+  },
+  "entry": {
+    "world": "world.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "input": "input.ir.json",
+    "materials": "materials.ir.json",
+    "targetProfile": "target.profile.json"
+  }
+}

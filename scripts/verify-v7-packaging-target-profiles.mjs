@@ -10,8 +10,8 @@ const execFileAsync = promisify(execFile);
 
 export async function verifyV7PackagingTargetProfiles(options = {}) {
   const root = options.repoRoot ?? repoRoot;
-  const bundlePath = options.bundlePath ?? resolve(root, "packages/ir/fixtures/conformance/v7-packaging-target-profiles/game.bundle");
-  const artifactDir = options.artifactDir ?? resolve(root, "artifacts/conformance/v7-packaging-target-profiles");
+  const bundlePath = options.bundlePath ?? resolve(root, "packages/ir/fixtures/conformance/packaging-target-profiles/game.bundle");
+  const artifactDir = options.artifactDir ?? resolve(root, "packages/ir/artifacts/conformance/packaging-target-profiles");
   await execFileAsync("pnpm", ["--filter", "@threenative/cli", "build"], { cwd: root });
   const cli = await import(new URL("../packages/cli/dist/commands/package.js", import.meta.url));
   const result = await cli.packageCommand(["--bundle", bundlePath, "--out", artifactDir, "--json"], root);
@@ -56,7 +56,7 @@ async function runRejectedTargetCheck(root, packageCommand) {
   const temp = await mkdtemp(join(tmpdir(), "tn-v7-package-rejected-"));
   try {
     const result = await packageCommand(
-      ["--bundle", resolve(root, "packages/ir/fixtures/conformance/v7-packaging-target-profiles/game.bundle"), "--target", "ios", "--json"],
+      ["--bundle", resolve(root, "packages/ir/fixtures/conformance/packaging-target-profiles/game.bundle"), "--target", "ios", "--json"],
       temp,
     );
     return { exitCode: result.exitCode, stderr: result.stderr };

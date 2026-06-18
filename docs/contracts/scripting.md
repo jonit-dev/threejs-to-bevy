@@ -350,7 +350,7 @@ Bundles may also declare deterministic
 target-to-ancestor observer propagation for typed events; scripts read those
 routes with `ctx.observers.propagate(event, targetEntity)`, which returns
 ordered `{ phase, entity }` entries for the target and ancestor bubble phases.
-The narrow `v7-scripting-lifecycle` conformance fixture runs startup,
+The narrow `scripting-lifecycle` conformance fixture runs startup,
 fixedUpdate, update, and postUpdate systems, then compares web/native effect
 logs for deterministic resource handoff, queued event reads/writes,
 spawn/despawn commands, declared service calls, derived state reads, and

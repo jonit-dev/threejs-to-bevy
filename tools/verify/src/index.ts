@@ -1,6 +1,7 @@
 import { resolveScriptAlias, formatDeprecationDiagnostic } from "./legacyAliases.js";
 
 export { checkDocs, formatDocsReport } from "./docs.js";
+export { resolveArtifactTargets, toRepoRelative, type ArtifactOwner, type ArtifactTargets } from "./artifacts.js";
 export { loadFixtureCatalog, resolveFixtureId, listCurrentFixtures } from "./conformance.js";
 export { runLegacyScriptAlias, resolveScriptAlias, formatDeprecationDiagnostic, listDeprecatedScriptAliases } from "./legacyAliases.js";
 export { runReleaseGate } from "./release.js";

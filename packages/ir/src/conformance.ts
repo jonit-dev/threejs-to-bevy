@@ -9,6 +9,31 @@ export interface IConformanceFixture {
   name: string;
 }
 
+export interface IConformanceFixtureCatalogEntry {
+  aggregateGate: string;
+  bundlePath: string;
+  canonicalArtifactGate?: string;
+  canonicalId: string;
+  owner?: string;
+  ownerDocs: string;
+  promotedCapabilities: string[];
+  regenerateCommand?: string;
+  reportArtifacts: string[];
+  sourceExample?: string;
+}
+
+export interface IConformanceFixtureCatalog {
+  fixtures: IConformanceFixtureCatalogEntry[];
+  schema: string;
+  version: string;
+}
+
+export async function loadConformanceFixtureCatalog(
+  root = resolve(process.cwd(), "fixtures/conformance/fixture-catalog.json"),
+): Promise<IConformanceFixtureCatalog> {
+  return JSON.parse(await readFile(root, "utf8")) as IConformanceFixtureCatalog;
+}
+
 export async function listConformanceFixtures(root = resolve(process.cwd(), "fixtures/conformance")): Promise<IConformanceFixture[]> {
   const entries = await readdir(root, { withFileTypes: true });
   const fixtures: IConformanceFixture[] = [];

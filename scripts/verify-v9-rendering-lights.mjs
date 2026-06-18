@@ -6,11 +6,17 @@ import { verifyV9RenderingLightsVisual } from "../packages/cli/dist/verify/rende
 import { reportWebConformance } from "../packages/runtime-web-three/dist/conformance.js";
 import { loadBundle } from "../packages/runtime-web-three/dist/loadBundle.js";
 import { mapWorld } from "../packages/runtime-web-three/dist/mapWorld.js";
+import { resolveArtifactTargets, toRepoRelative } from "./artifact-paths.mjs";
 
 const repoRoot = resolve(import.meta.dirname, "..");
-const fixture = "v9-skybox-environment";
+const fixture = "rendering-lights";
 const bundlePath = resolve(repoRoot, "packages/ir/fixtures/conformance", fixture, "game.bundle");
-const artifactsRoot = resolve(repoRoot, "artifacts/v9/rendering-lights");
+const targets = resolveArtifactTargets({
+  gate: "rendering-lights",
+  owner: { kind: "example", exampleName: "rendering-lights" },
+  root: repoRoot,
+});
+const artifactsRoot = targets.absoluteDir;
 
 const validation = await validateBundle(bundlePath);
 if (!validation.ok) {
@@ -56,6 +62,7 @@ const postProcessing = {
   renderer: report.runtimeConfig?.renderer,
 };
 const aggregate = {
+  ...targets.metadata,
   fixture,
   generatedAt: new Date().toISOString(),
   status: "pass",
@@ -84,16 +91,16 @@ const aggregate = {
     "custom-post-passes",
   ],
   reports: {
-    denseContentBudget: "artifacts/v9/rendering-lights/dense-content-budget.json",
-    lightsShadows: "artifacts/v9/rendering-lights/lights-shadows/verification-report.json",
-    postProcessing: "artifacts/v9/rendering-lights/post-processing/verification-report.json",
-    skyboxEnvironment: "artifacts/v9/rendering-lights/skybox-environment/verification-report.json",
-    visualReport: "artifacts/v9/rendering-lights/skybox-environment/v9-rendering-lights-visual-report.json",
+    denseContentBudget: toRepoRelative(repoRoot, resolve(artifactsRoot, "dense-content-budget.json")),
+    lightsShadows: toRepoRelative(repoRoot, resolve(artifactsRoot, "lights-shadows/verification-report.json")),
+    postProcessing: toRepoRelative(repoRoot, resolve(artifactsRoot, "post-processing/verification-report.json")),
+    skyboxEnvironment: toRepoRelative(repoRoot, resolve(artifactsRoot, "skybox-environment/verification-report.json")),
+    visualReport: toRepoRelative(repoRoot, resolve(artifactsRoot, "skybox-environment/rendering-lights-visual-report.json")),
     visualScreenshots: {
-      bevy: "artifacts/v9/rendering-lights/skybox-environment/bevy.png",
-      contactSheet: "artifacts/v9/rendering-lights/skybox-environment/contact-sheet.png",
-      diff: "artifacts/v9/rendering-lights/skybox-environment/diff.png",
-      web: "artifacts/v9/rendering-lights/skybox-environment/web.png",
+      bevy: toRepoRelative(repoRoot, resolve(artifactsRoot, "skybox-environment/bevy.png")),
+      contactSheet: toRepoRelative(repoRoot, resolve(artifactsRoot, "skybox-environment/contact-sheet.png")),
+      diff: toRepoRelative(repoRoot, resolve(artifactsRoot, "skybox-environment/diff.png")),
+      web: toRepoRelative(repoRoot, resolve(artifactsRoot, "skybox-environment/web.png")),
     },
   },
 };

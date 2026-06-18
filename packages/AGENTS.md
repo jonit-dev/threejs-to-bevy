@@ -7,6 +7,8 @@ Guidance for TypeScript packages.
   orchestration, runtimes consuming bundles.
 - Do not make one package reach through another package's internals.
 - Preserve deterministic output for generated IR and bundle files.
+- Keep shared IR fixtures under `packages/ir/fixtures/*`; package-local
+  generated output belongs in package build/artifact folders, not in examples.
 - Prefer precise types over casts. Follow existing ESM `NodeNext` patterns.
 - Runtime packages should consume IR schemas and bundles; they should not invent
   parallel source formats for game state.

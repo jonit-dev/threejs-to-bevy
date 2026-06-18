@@ -1,0 +1,31 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "conformance-performance-budgets",
+  "requiredCapabilities": {
+    "performance": [
+      "asset-load-budget",
+      "draw-instance-budget",
+      "entity-budget",
+      "frame-budget",
+      "package-size-budget"
+    ],
+    "rendering": [
+      "camera.perspective",
+      "light.directional",
+      "material.standard",
+      "mesh.primitive.box"
+    ],
+    "transform": [
+      "hierarchy"
+    ]
+  },
+  "entry": {
+    "world": "world.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "materials": "materials.ir.json",
+    "targetProfile": "target.profile.json"
+  }
+}

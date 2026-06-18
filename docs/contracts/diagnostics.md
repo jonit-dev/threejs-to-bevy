@@ -63,7 +63,7 @@ bundle syntax outside the native loadability subset.
 V4 runtime and release-gate diagnostics also include adapter and verifier codes
 such as `TN_WEB_SYSTEM_*`, `TN_BEVY_SYSTEM_*`, and
 `TN_V4_EFFECT_LOG_*`. Effect-log mismatch diagnostics should identify the
-stage/system/effect path and point to `artifacts/v4/effects-diff.json`.
+stage/system/effect path and point to `tools/verify/artifacts/milestones/v4/effects-diff.json`.
 
 ## V5 Diagnostic Normalization
 

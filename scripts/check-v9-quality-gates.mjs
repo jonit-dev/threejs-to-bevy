@@ -119,7 +119,11 @@ export async function checkV9QualityGates(options = {}) {
 
   const status = await readFile(resolve(root, "docs/STATUS.md"), "utf8");
   const parity = await readFile(resolve(root, "docs/bevy-feature-parity.md"), "utf8");
-  const developerWorkflow = await readFile(resolve(root, "docs/developer-workflow.md"), "utf8");
+  const developerWorkflowPath = await firstExistingPath(root, [
+    "docs/workflows/developer-workflow.md",
+    "docs/developer-workflow.md",
+  ]);
+  const developerWorkflow = await readFile(resolve(root, developerWorkflowPath), "utf8");
   if (!status.includes("pnpm verify:release")) {
     diagnostics.push({
       code: "TN_DOCS_V9_RELEASE_COVERAGE_MISSING",
@@ -140,7 +144,7 @@ export async function checkV9QualityGates(options = {}) {
     diagnostics.push({
       code: "TN_DOCS_V9_RELEASE_COVERAGE_MISSING",
       message: "docs/developer-workflow.md must document pnpm verify:release command order.",
-      path: "docs/developer-workflow.md",
+      path: developerWorkflowPath,
       severity: "error",
     });
   }
@@ -194,6 +198,18 @@ export async function checkV9QualityGates(options = {}) {
     ok: diagnostics.length === 0,
     status: diagnostics.length === 0 ? "pass" : "fail",
   };
+}
+
+async function firstExistingPath(root, paths) {
+  for (const path of paths) {
+    try {
+      await readFile(resolve(root, path), "utf8");
+      return path;
+    } catch {
+      // Try the next compatibility path.
+    }
+  }
+  return paths[0];
 }
 
 const IMPLEMENTED_V9_PRD_FILES = new Set([

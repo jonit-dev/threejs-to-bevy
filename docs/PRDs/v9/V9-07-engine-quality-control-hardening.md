@@ -18,16 +18,16 @@ visual/sample-scene proof.
 - `package.json`
 - `scripts/verify-conformance.mjs`
 - `scripts/verify-v9-animation-particles.mjs`
-- `scripts/verify-v9-physics-character.mjs`
+- `scripts/verify-physics-character.mjs`
 - `scripts/verify-v9-assets-gltf-scene-workflow.mjs`
-- `scripts/verify-v9-rendering-lights.mjs`
+- `scripts/verify-rendering-lights.mjs`
 - `packages/cli/src/verify/renderingQuality.ts`
 - `packages/ir/fixtures/conformance/README.md`
-- `packages/ir/fixtures/conformance/v9-animation-state/game.bundle/`
-- `packages/ir/fixtures/conformance/v9-animation-blending/game.bundle/`
-- `packages/ir/fixtures/conformance/v9-physics-character/game.bundle/`
-- `packages/ir/fixtures/conformance/v9-physics-character-solver/game.bundle/`
-- `packages/ir/fixtures/conformance/v9-skybox-environment/game.bundle/`
+- `packages/ir/fixtures/conformance/animation-state/game.bundle/`
+- `packages/ir/fixtures/conformance/animation-blending/game.bundle/`
+- `packages/ir/fixtures/conformance/physics-character/game.bundle/`
+- `packages/ir/fixtures/conformance/physics-character-solver/game.bundle/`
+- `packages/ir/fixtures/conformance/rendering-lights/game.bundle/`
 - `examples/v9-skeletal-animation/`
 - Three.js `examples/models/gltf/Soldier.glb`
   (`https://github.com/mrdoob/three.js/blob/dev/examples/models/gltf/Soldier.glb`)
@@ -240,7 +240,7 @@ sequenceDiagram
 
 | Test File | Test Name | Assertion |
 | --- | --- | --- |
-| `scripts/verify-conformance.test.mjs` | `should map V9 physics failures to the V9 physics fixture` | Failure diagnostic includes `v9-physics-character`. |
+| `scripts/verify-conformance.test.mjs` | `should map V9 physics failures to the V9 physics fixture` | Failure diagnostic includes `physics-character`. |
 | `scripts/verify-conformance.test.mjs` | `should expose V9 artifact paths for latest PR gates` | Artifact paths include physics, assets, and rendering reports. |
 | `packages/ir/src/conformance.test.ts` | `should require every V9 catalog fixture to have a bundle and owner PRD` | Missing owner or bundle fails. |
 
@@ -250,7 +250,7 @@ sequenceDiagram
 2. **IR Tests:** `pnpm --filter @threenative/ir test -- --run conformance`.
 3. **Integration Test:** `pnpm verify:conformance`.
 4. **Evidence Required:**
-   - [ ] `artifacts/conformance/verification-report.json`.
+   - [ ] `packages/ir/artifacts/conformance/verification-report.json`.
    - [ ] V9 fixture catalog checked by tests.
 
 **User Verification:**
@@ -263,11 +263,11 @@ sequenceDiagram
 
 **Files (max 5):**
 
-- `examples/v9-physics-character/` - sample project for primitive solver,
+- `examples/physics-character/` - sample project for primitive solver,
   sensors, character push, and navigation.
 - `examples/v9-assets-gltf-workflow/` - sample project for bundled/embedded/
   network asset policy, glTF handles, and inspection.
-- `examples/v9-rendering-lights/` - sample project for skybox, probes, light
+- `examples/rendering-lights/` - sample project for skybox, probes, light
   budget, HLOD fade, color grading, and debug gizmos.
 - `examples/v9-skeletal-animation/` - upgrade existing sample to use a real
   skinned GLB with clips, using Three.js `Soldier.glb` as the preferred fixture
@@ -311,7 +311,7 @@ sequenceDiagram
 3. **Aggregate Test:** `pnpm verify:v9`.
 4. **Evidence Required:**
    - [ ] Valid emitted bundles for each V9 sample.
-   - [ ] Sample-scene report under `artifacts/v9/sample-scenes/`.
+   - [ ] Sample-scene report under `tools/verify/artifacts/sample-scenes/`.
 
 **User Verification:**
 
@@ -370,7 +370,7 @@ sequenceDiagram
 
 **User Verification:**
 
-- Action: open `artifacts/v9/visual-matrix/contact-sheet.png` after running the
+- Action: open `tools/verify/artifacts/visual-matrix/contact-sheet.png` after running the
   visual matrix.
 - Expected: every latest-merge sample is visible, nonblank, framed, and either
   region-gated or explicitly smoke-only.
@@ -436,7 +436,7 @@ sequenceDiagram
 **Implementation:**
 
 - [ ] Add CI execution for `pnpm verify:v9` with artifact upload for
-  `artifacts/v9/**` and relevant `artifacts/conformance/**`.
+  `artifacts/v9/**` and relevant `packages/ir/artifacts/conformance/**`.
 - [ ] Keep broad `pnpm verify:all` separate if runtime cost is too high, but
   document when release reviewers must run it.
 - [ ] Document local command order: focused gate first, `pnpm verify:v9`, then

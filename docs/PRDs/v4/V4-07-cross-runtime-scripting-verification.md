@@ -49,7 +49,7 @@ sequenceDiagram
 - [ ] Numeric fields may use documented precision normalization.
 - [ ] Any ignored field must be explicitly listed in the report.
 
-**Data Changes:** Adds V4 verification reports under `artifacts/v4`.
+**Data Changes:** Adds V4 verification reports under `tools/verify/artifacts/milestones/v4`.
 
 ## Integration Points
 
@@ -141,10 +141,10 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Write `artifacts/v4/web-effects.json`.
-- [ ] Write `artifacts/v4/native-effects.json`.
-- [ ] Write `artifacts/v4/effects-diff.json`.
-- [ ] Write `artifacts/v4/verification-report.json`.
+- [ ] Write `tools/verify/artifacts/milestones/v4/web-effects.json`.
+- [ ] Write `tools/verify/artifacts/milestones/v4/native-effects.json`.
+- [ ] Write `tools/verify/artifacts/milestones/v4/effects-diff.json`.
+- [ ] Write `tools/verify/artifacts/milestones/v4/verification-report.json`.
 - [ ] Include bundle path, input trace, runtime versions, and skipped fields.
 
 **Tests Required:**

@@ -11,11 +11,13 @@ fn should_report_native_accesskit_state_for_disabled_and_slider_nodes() {
             accessibility_label: Some("Settings".to_owned()),
             action: None,
             anchor_id: None,
+            binding: None,
             children: vec![
                 UiNodeIr {
                     accessibility_label: Some("Volume".to_owned()),
                     action: Some("SetVolume".to_owned()),
                     anchor_id: None,
+                    binding: None,
                     children: Vec::new(),
                     disabled: None,
                     focusable: None,
@@ -65,6 +67,7 @@ fn should_report_native_accesskit_state_for_disabled_and_slider_nodes() {
                     accessibility_label: Some("Apply".to_owned()),
                     action: Some("Apply".to_owned()),
                     anchor_id: None,
+                    binding: None,
                     children: Vec::new(),
                     disabled: Some(true),
                     focusable: Some(true),

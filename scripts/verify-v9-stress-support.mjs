@@ -16,7 +16,7 @@ const requiredMetrics = [
 
 export async function verifyV9StressSupport(options = {}) {
   const root = options.repoRoot ?? repoRoot;
-  const artifactDir = options.artifactDir ?? resolve(root, "artifacts/v9/stress-support");
+  const artifactDir = options.artifactDir ?? resolve(root, "tools/verify/artifacts/stress-support");
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
   const stressReportPath = options.stressReportPath ?? resolve(artifactDir, "stress-report.json");
   if (options.writeArtifacts !== false) {

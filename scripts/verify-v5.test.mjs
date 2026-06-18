@@ -9,9 +9,9 @@ import { verifyV5 } from "./verify-v5.mjs";
 test("should report failing v5 visual-quality step", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-verify-v5-"));
   try {
-    const reportPath = join(root, "artifacts/v5/verification-report.json");
+    const reportPath = join(root, "tools/verify/artifacts/milestones/v5/verification-report.json");
     const result = await verifyV5({
-      artifactDir: join(root, "artifacts/v5"),
+      artifactDir: join(root, "tools/verify/artifacts/milestones/v5"),
       repoRoot: root,
       reportPath,
       run: async () => ({
@@ -40,14 +40,14 @@ test("should report failing v5 visual-quality step", async () => {
 test("should include starter smoke in v5 gate", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-verify-v5-"));
   try {
-    const reportPath = join(root, "artifacts/v5/verification-report.json");
-    const denseReportPath = join(root, "artifacts/v5/dense-content/v3-environment-report.json");
+    const reportPath = join(root, "tools/verify/artifacts/milestones/v5/verification-report.json");
+    const denseReportPath = join(root, "tools/verify/artifacts/milestones/v5/dense-content/v3-environment-report.json");
     const result = await verifyV5({
-      artifactDir: join(root, "artifacts/v5"),
+      artifactDir: join(root, "tools/verify/artifacts/milestones/v5"),
       denseContentVerifier: async () => ({
         artifacts: {
-          metricsPath: join(root, "artifacts/v5/dense-content/v3-performance-summary.json"),
-          rawSamplesPath: join(root, "artifacts/v5/dense-content/v3-performance-samples.json"),
+          metricsPath: join(root, "tools/verify/artifacts/milestones/v5/dense-content/v3-performance-summary.json"),
+          rawSamplesPath: join(root, "tools/verify/artifacts/milestones/v5/dense-content/v3-performance-samples.json"),
           reportPath: denseReportPath,
         },
         diagnostics: [],

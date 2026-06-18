@@ -73,6 +73,34 @@ The package boundaries should stay strict:
 
 Runtimes should depend on IR schemas, not on each other's internals.
 
+## Artifact and Fixture Ownership
+
+Generated artifacts are outputs. Fixtures are stable inputs. Keep those roles
+separate when adding gates, examples, or runtime evidence.
+
+Canonical roots:
+
+- `examples/<name>/dist/*`: generated bundles for one example.
+- `examples/<name>/artifacts/<gate>/`: screenshots, traces, visual diffs, and
+  focused reports produced by running or inspecting one example.
+- `tools/verify/artifacts/<gate>/`: release and verifier-owned feature reports.
+- `packages/ir/artifacts/conformance/`: shared conformance reports and diffs.
+- `packages/ir/fixtures/*`: shared IR contract fixtures consumed by tests,
+  conformance gates, and runtimes.
+- `runtime-bevy/artifacts/<gate>/`: Bevy-only adapter evidence that is not
+  generated from a specific example bundle.
+
+Checked-in inputs belong under source, fixture, or template fixture paths.
+Generated outputs are ignored unless a PRD explicitly promotes them as evidence.
+Templates should use `templates/<name>/fixtures/*` for intentional checked-in
+inputs; generated `templates/<name>/artifacts/*` and `tmp/**/artifacts/*` are
+scratch output.
+
+Root `artifacts/*` paths are not canonical. New gates must write to the owning
+example, package, runtime, or verification-tool artifact directory listed above.
+Historical generated evidence should be regenerated from the owning gate when
+needed instead of being kept under a docs archive.
+
 ## Prerequisites
 
 The initial toolchain should assume:
@@ -290,7 +318,7 @@ ThreeNative is migrating away from milestone-numbered command and folder names
 (`verify:v7`, `examples/physics-character`, `templates/starter-functional`) toward
 capability-based names (`verify:release`, `physics-character`,
 `starter-functional`). The migration plan lives in
-[PRDs/cleanup-versioned-debt.md](PRDs/cleanup-versioned-debt.md).
+[PRDs/archive/cleanup-versioned-debt.md](../PRDs/archive/cleanup-versioned-debt.md).
 
 Current contributor commands:
 
@@ -384,8 +412,8 @@ pnpm verify:release
 ```
 
 Use `pnpm verify:all` when shared runtime contracts change outside the V9 slice.
-Release evidence is written under `artifacts/v9/verification-report.json`,
-`artifacts/v9/sample-scenes/`, `artifacts/v9/visual-matrix/`, and the focused
+Release evidence is written under `tools/verify/artifacts/release/verification-report.json`,
+`tools/verify/artifacts/sample-scenes/`, `tools/verify/artifacts/visual-matrix/`, and the focused
 gate directories referenced by `packages/ir/fixtures/conformance/v9-fixture-catalog.json`.
 
 ### V2 Arena Workflow
@@ -414,7 +442,7 @@ pnpm verify:v2
 
 `pnpm verify:v2` rebuilds `examples/v2-arena`, validates the emitted bundle,
 runs conformance before arena smoke checks, exercises the web and native paths,
-and writes a machine-readable report under `artifacts/v2`.
+and writes a machine-readable report under `tools/verify/artifacts/milestones/v2`.
 
 The equivalent raw CLI watch command is `tn dev --target web --watch`.
 

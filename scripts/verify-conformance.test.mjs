@@ -12,9 +12,9 @@ test("should fail when runtime reports differ", () => {
     report("bevy", { material: "mat.other" }),
     {
       artifactPaths: {
-        comparisonReport: "artifacts/conformance/basic-scene/comparison.report.json",
-        leftReport: "artifacts/conformance/basic-scene/web-three.report.json",
-        rightReport: "artifacts/conformance/basic-scene/bevy.report.json",
+        comparisonReport: "packages/ir/artifacts/conformance/basic-scene/comparison.report.json",
+        leftReport: "packages/ir/artifacts/conformance/basic-scene/web-three.report.json",
+        rightReport: "packages/ir/artifacts/conformance/basic-scene/bevy.report.json",
       },
       bundlePath: "packages/ir/fixtures/conformance/basic-scene/game.bundle",
     },
@@ -31,8 +31,8 @@ test("should fail when runtime reports differ", () => {
   assert.equal(result.diagnostics[0]?.actual, "mat.other");
   assert.equal(result.diagnostics[0]?.expectedRuntime, "web-three");
   assert.equal(result.diagnostics[0]?.actualRuntime, "bevy");
-  assert.equal(result.diagnostics[0]?.artifactPath, "artifacts/conformance/basic-scene/comparison.report.json");
-  assert.equal(result.diagnostics[0]?.artifactPaths.leftReport, "artifacts/conformance/basic-scene/web-three.report.json");
+  assert.equal(result.diagnostics[0]?.artifactPath, "packages/ir/artifacts/conformance/basic-scene/comparison.report.json");
+  assert.equal(result.diagnostics[0]?.artifactPaths.leftReport, "packages/ir/artifacts/conformance/basic-scene/web-three.report.json");
 });
 
 test("should localize material texture slot mismatches", () => {
@@ -111,11 +111,11 @@ test("should fail when required V7 observations are silently missing", () => {
 
   const result = compareConformanceReports(left, right, {
     artifactPaths: {
-      comparisonReport: "artifacts/conformance/v7-rich-ui-navigation/comparison.report.json",
-      leftReport: "artifacts/conformance/v7-rich-ui-navigation/web.report.json",
-      rightReport: "artifacts/conformance/v7-rich-ui-navigation/bevy.report.json",
+      comparisonReport: "packages/ir/artifacts/conformance/rich-ui-navigation/comparison.report.json",
+      leftReport: "packages/ir/artifacts/conformance/rich-ui-navigation/web.report.json",
+      rightReport: "packages/ir/artifacts/conformance/rich-ui-navigation/bevy.report.json",
     },
-    bundlePath: "packages/ir/fixtures/conformance/v7-rich-ui-navigation/game.bundle",
+    bundlePath: "packages/ir/fixtures/conformance/rich-ui-navigation/game.bundle",
     requiredPaths: [{ expected: "ui navigation observation", path: "$.ui" }],
   });
 
@@ -127,8 +127,8 @@ test("should fail when required V7 observations are silently missing", () => {
   assert.equal(result.diagnostics[0]?.actual, "missing");
   assert.equal(result.diagnostics[0]?.expectedRuntime, "catalog");
   assert.equal(result.diagnostics[0]?.actualRuntime, "bevy");
-  assert.equal(result.diagnostics[0]?.bundlePath, "packages/ir/fixtures/conformance/v7-rich-ui-navigation/game.bundle");
-  assert.equal(result.diagnostics[0]?.artifactPath, "artifacts/conformance/v7-rich-ui-navigation/comparison.report.json");
+  assert.equal(result.diagnostics[0]?.bundlePath, "packages/ir/fixtures/conformance/rich-ui-navigation/game.bundle");
+  assert.equal(result.diagnostics[0]?.artifactPath, "packages/ir/artifacts/conformance/rich-ui-navigation/comparison.report.json");
 });
 
 test("should pass matching reports", () => {
@@ -146,7 +146,7 @@ test("should pass matching gate commands and save report path", async () => {
   try {
     const result = await verifyConformance({
       repoRoot: root,
-      reportPath: join(root, "artifacts/conformance/verification-report.json"),
+      reportPath: join(root, "packages/ir/artifacts/conformance/verification-report.json"),
       run: async () => ({
         durationMs: 1,
         exitCode: 0,
@@ -157,245 +157,245 @@ test("should pass matching gate commands and save report path", async () => {
 
     assert.equal(result.ok, true);
     assert.equal(result.steps.length, 27);
-    assert.equal(result.reportPath.endsWith("artifacts/conformance/verification-report.json"), true);
-    assert.equal(result.artifacts.nativeBasicSceneReportPath.endsWith("artifacts/conformance/basic-scene/bevy.report.json"), true);
+    assert.equal(result.reportPath.endsWith("packages/ir/artifacts/conformance/verification-report.json"), true);
+    assert.equal(result.artifacts.nativeBasicSceneReportPath.endsWith("packages/ir/artifacts/conformance/basic-scene/bevy.report.json"), true);
     assert.equal(
-      result.artifacts.nativePrimitiveMappingReportPath.endsWith("artifacts/conformance/primitive-mapping/bevy.report.json"),
+      result.artifacts.nativePrimitiveMappingReportPath.endsWith("packages/ir/artifacts/conformance/primitive-mapping/bevy.report.json"),
       true,
     );
     assert.equal(
-      result.artifacts.nativeV6AnimationClipsReportPath.endsWith("artifacts/conformance/v6-animation-clips/bevy.report.json"),
+      result.artifacts.nativeV6AnimationClipsReportPath.endsWith("packages/ir/artifacts/conformance/animation-clips/bevy.report.json"),
       true,
     );
     assert.equal(
-      result.artifacts.nativeV6PhysicsEventsReportPath.endsWith("artifacts/conformance/v6-physics-events/bevy.report.json"),
+      result.artifacts.nativeV6PhysicsEventsReportPath.endsWith("packages/ir/artifacts/conformance/physics-events/bevy.report.json"),
       true,
     );
     assert.equal(
-      result.artifacts.nativeV6ResourcesEventsReportPath.endsWith("artifacts/conformance/v6-resources-events/bevy.report.json"),
+      result.artifacts.nativeV6ResourcesEventsReportPath.endsWith("packages/ir/artifacts/conformance/resources-events/bevy.report.json"),
       true,
     );
     assert.equal(
-      result.artifacts.nativeV6RetainedUiReportPath.endsWith("artifacts/conformance/v6-retained-ui/bevy.report.json"),
+      result.artifacts.nativeV6RetainedUiReportPath.endsWith("packages/ir/artifacts/conformance/retained-ui/bevy.report.json"),
       true,
     );
     assert.equal(
-      result.artifacts.nativeV6AudioPlaybackReportPath.endsWith("artifacts/conformance/v6-audio-playback/bevy.report.json"),
+      result.artifacts.nativeV6AudioPlaybackReportPath.endsWith("packages/ir/artifacts/conformance/audio-playback/bevy.report.json"),
       true,
     );
-    assert.equal(result.artifacts.v6AnimationDiffPath.endsWith("artifacts/conformance/v6-animation-clips/effects-diff.json"), true);
-    assert.equal(result.artifacts.v6AnimationNativeEffectsPath.endsWith("artifacts/conformance/v6-animation-clips/native-effects.json"), true);
-    assert.equal(result.artifacts.v6AnimationWebEffectsPath.endsWith("artifacts/conformance/v6-animation-clips/web-effects.json"), true);
-    assert.equal(result.artifacts.v6ResourceEventDiffPath.endsWith("artifacts/conformance/v6-resources-events/effects-diff.json"), true);
-    assert.equal(result.artifacts.v6ResourceEventNativeEffectsPath.endsWith("artifacts/conformance/v6-resources-events/native-effects.json"), true);
-    assert.equal(result.artifacts.v6ResourceEventWebEffectsPath.endsWith("artifacts/conformance/v6-resources-events/web-effects.json"), true);
-    assert.equal(result.artifacts.v7PhysicsQueryDiffPath.endsWith("artifacts/conformance/v7-advanced-physics-character/effects-diff.json"), true);
+    assert.equal(result.artifacts.v6AnimationDiffPath.endsWith("packages/ir/artifacts/conformance/animation-clips/effects-diff.json"), true);
+    assert.equal(result.artifacts.v6AnimationNativeEffectsPath.endsWith("packages/ir/artifacts/conformance/animation-clips/native-effects.json"), true);
+    assert.equal(result.artifacts.v6AnimationWebEffectsPath.endsWith("packages/ir/artifacts/conformance/animation-clips/web-effects.json"), true);
+    assert.equal(result.artifacts.v6ResourceEventDiffPath.endsWith("packages/ir/artifacts/conformance/resources-events/effects-diff.json"), true);
+    assert.equal(result.artifacts.v6ResourceEventNativeEffectsPath.endsWith("packages/ir/artifacts/conformance/resources-events/native-effects.json"), true);
+    assert.equal(result.artifacts.v6ResourceEventWebEffectsPath.endsWith("packages/ir/artifacts/conformance/resources-events/web-effects.json"), true);
+    assert.equal(result.artifacts.v7PhysicsQueryDiffPath.endsWith("packages/ir/artifacts/conformance/advanced-physics-character/effects-diff.json"), true);
     assert.equal(
       result.artifacts.v7PhysicsQueryNativeEffectsPath.endsWith(
-        "artifacts/conformance/v7-advanced-physics-character/native-effects.json",
+        "packages/ir/artifacts/conformance/advanced-physics-character/native-effects.json",
       ),
       true,
     );
     assert.equal(
       result.artifacts.v7PhysicsQueryWebEffectsPath.endsWith(
-        "artifacts/conformance/v7-advanced-physics-character/web-effects.json",
+        "packages/ir/artifacts/conformance/advanced-physics-character/web-effects.json",
       ),
       true,
     );
-    assert.equal(result.artifacts.v7CharacterDiffPath.endsWith("artifacts/conformance/v7-advanced-physics-character/character-diff.json"), true);
+    assert.equal(result.artifacts.v7CharacterDiffPath.endsWith("packages/ir/artifacts/conformance/advanced-physics-character/character-diff.json"), true);
     assert.equal(
-      result.artifacts.v7CharacterNativeTracePath.endsWith("artifacts/conformance/v7-advanced-physics-character/native-character.json"),
+      result.artifacts.v7CharacterNativeTracePath.endsWith("packages/ir/artifacts/conformance/advanced-physics-character/native-character.json"),
       true,
     );
     assert.equal(
-      result.artifacts.v7CharacterWebTracePath.endsWith("artifacts/conformance/v7-advanced-physics-character/web-character.json"),
+      result.artifacts.v7CharacterWebTracePath.endsWith("packages/ir/artifacts/conformance/advanced-physics-character/web-character.json"),
       true,
     );
-    assert.equal(result.artifacts.v7AnimationDiffPath.endsWith("artifacts/conformance/v7-animation-graphs-particles/animation-diff.json"), true);
+    assert.equal(result.artifacts.v7AnimationDiffPath.endsWith("packages/ir/artifacts/conformance/animation-graphs-particles/animation-diff.json"), true);
     assert.equal(
-      result.artifacts.v7AnimationNativeTracePath.endsWith("artifacts/conformance/v7-animation-graphs-particles/native-animation.json"),
-      true,
-    );
-    assert.equal(
-      result.artifacts.v7AnimationWebTracePath.endsWith("artifacts/conformance/v7-animation-graphs-particles/web-animation.json"),
-      true,
-    );
-    assert.equal(result.artifacts.v7UiNavigationDiffPath.endsWith("artifacts/conformance/v7-rich-ui-navigation/ui-navigation-diff.json"), true);
-    assert.equal(
-      result.artifacts.v7UiNavigationNativeTracePath.endsWith("artifacts/conformance/v7-rich-ui-navigation/native-ui-navigation.json"),
+      result.artifacts.v7AnimationNativeTracePath.endsWith("packages/ir/artifacts/conformance/animation-graphs-particles/native-animation.json"),
       true,
     );
     assert.equal(
-      result.artifacts.v7UiNavigationWebTracePath.endsWith("artifacts/conformance/v7-rich-ui-navigation/web-ui-navigation.json"),
+      result.artifacts.v7AnimationWebTracePath.endsWith("packages/ir/artifacts/conformance/animation-graphs-particles/web-animation.json"),
       true,
     );
-    assert.equal(result.artifacts.v7AudioLifecycleDiffPath.endsWith("artifacts/conformance/v7-spatial-audio-buses/audio-lifecycle-diff.json"), true);
+    assert.equal(result.artifacts.v7UiNavigationDiffPath.endsWith("packages/ir/artifacts/conformance/rich-ui-navigation/ui-navigation-diff.json"), true);
     assert.equal(
-      result.artifacts.v7AudioLifecycleNativeTracePath.endsWith("artifacts/conformance/v7-spatial-audio-buses/native-audio-lifecycle.json"),
-      true,
-    );
-    assert.equal(
-      result.artifacts.v7AudioLifecycleWebTracePath.endsWith("artifacts/conformance/v7-spatial-audio-buses/web-audio-lifecycle.json"),
-      true,
-    );
-    assert.equal(result.artifacts.v7EnvironmentContentDiffPath.endsWith("artifacts/conformance/v7-renderer-dense-content/environment-content-diff.json"), true);
-    assert.equal(
-      result.artifacts.v7EnvironmentContentNativeTracePath.endsWith("artifacts/conformance/v7-renderer-dense-content/native-environment-content.json"),
+      result.artifacts.v7UiNavigationNativeTracePath.endsWith("packages/ir/artifacts/conformance/rich-ui-navigation/native-ui-navigation.json"),
       true,
     );
     assert.equal(
-      result.artifacts.v7EnvironmentContentWebTracePath.endsWith("artifacts/conformance/v7-renderer-dense-content/web-environment-content.json"),
+      result.artifacts.v7UiNavigationWebTracePath.endsWith("packages/ir/artifacts/conformance/rich-ui-navigation/web-ui-navigation.json"),
       true,
     );
-    assert.equal(result.artifacts.v7ScriptingLifecycleDiffPath.endsWith("artifacts/conformance/v7-scripting-lifecycle/effects-diff.json"), true);
-    assert.equal(result.artifacts.v7ScriptingLifecycleNativeEffectsPath.endsWith("artifacts/conformance/v7-scripting-lifecycle/native-effects.json"), true);
-    assert.equal(result.artifacts.v7ScriptingLifecycleWebEffectsPath.endsWith("artifacts/conformance/v7-scripting-lifecycle/web-effects.json"), true);
-    assert.equal(result.artifacts.v7PackagingPackageReportPath.endsWith("artifacts/conformance/v7-packaging-target-profiles/package.report.json"), true);
+    assert.equal(result.artifacts.v7AudioLifecycleDiffPath.endsWith("packages/ir/artifacts/conformance/spatial-audio-buses/audio-lifecycle-diff.json"), true);
     assert.equal(
-      result.artifacts.v7PackagingDesktopSmokeReportPath.endsWith("artifacts/conformance/v7-packaging-target-profiles/desktop-smoke.report.json"),
+      result.artifacts.v7AudioLifecycleNativeTracePath.endsWith("packages/ir/artifacts/conformance/spatial-audio-buses/native-audio-lifecycle.json"),
       true,
     );
-    assert.equal(result.artifacts.v7PackagingComparisonReportPath.endsWith("artifacts/conformance/v7-packaging-target-profiles/comparison.report.json"), true);
-    assert.equal(result.artifacts.v7PerformanceWebReportPath.endsWith("artifacts/conformance/v7-performance-budgets/web.report.json"), true);
-    assert.equal(result.artifacts.v7PerformanceNativeReportPath.endsWith("artifacts/conformance/v7-performance-budgets/bevy.report.json"), true);
-    assert.equal(result.artifacts.v7PerformanceComparisonReportPath.endsWith("artifacts/conformance/v7-performance-budgets/comparison.report.json"), true);
-    assert.equal(result.artifacts.v9AnimationStateDiffPath.endsWith("artifacts/conformance/v9-animation-state/state-diff.json"), true);
-    assert.equal(result.artifacts.v9AnimationStateNativeTracePath.endsWith("artifacts/conformance/v9-animation-state/native-state.json"), true);
-    assert.equal(result.artifacts.v9AnimationStateWebTracePath.endsWith("artifacts/conformance/v9-animation-state/web-state.json"), true);
-    assert.equal(result.artifacts.v9AnimationBlendingReportPath.endsWith("artifacts/conformance/v9-animation-blending/blend-report.json"), true);
-    assert.equal(result.artifacts.v9AnimationBlendingNativeTracePath.endsWith("artifacts/conformance/v9-animation-blending/native-blend.json"), true);
-    assert.equal(result.artifacts.v9AnimationBlendingWebTracePath.endsWith("artifacts/conformance/v9-animation-blending/web-blend.json"), true);
-    assert.equal(result.artifacts.v9PhysicsCharacterDiffPath.endsWith("artifacts/conformance/v9-physics-character/diff-v9-physics-character.json"), true);
-    assert.equal(result.artifacts.v9PhysicsCharacterNativeTracePath.endsWith("artifacts/conformance/v9-physics-character/native-v9-physics-character.json"), true);
-    assert.equal(result.artifacts.v9PhysicsCharacterReportPath.endsWith("artifacts/conformance/v9-physics-character/verification-report.json"), true);
-    assert.equal(result.artifacts.v9PhysicsCharacterWebTracePath.endsWith("artifacts/conformance/v9-physics-character/web-v9-physics-character.json"), true);
-    assert.equal(result.artifacts.v9AssetsGltfReportPath.endsWith("artifacts/v9/assets-gltf-scene-workflow/diff.json"), true);
-    assert.equal(result.artifacts.v9RenderingLightsReportPath.endsWith("artifacts/v9/rendering-lights/verification-report.json"), true);
-    assert.equal(result.artifacts.nativeV9SupportStressReportPath.endsWith("artifacts/conformance/v9-support-stress/bevy.report.json"), true);
+    assert.equal(
+      result.artifacts.v7AudioLifecycleWebTracePath.endsWith("packages/ir/artifacts/conformance/spatial-audio-buses/web-audio-lifecycle.json"),
+      true,
+    );
+    assert.equal(result.artifacts.v7EnvironmentContentDiffPath.endsWith("packages/ir/artifacts/conformance/renderer-dense-content/environment-content-diff.json"), true);
+    assert.equal(
+      result.artifacts.v7EnvironmentContentNativeTracePath.endsWith("packages/ir/artifacts/conformance/renderer-dense-content/native-environment-content.json"),
+      true,
+    );
+    assert.equal(
+      result.artifacts.v7EnvironmentContentWebTracePath.endsWith("packages/ir/artifacts/conformance/renderer-dense-content/web-environment-content.json"),
+      true,
+    );
+    assert.equal(result.artifacts.v7ScriptingLifecycleDiffPath.endsWith("packages/ir/artifacts/conformance/scripting-lifecycle/effects-diff.json"), true);
+    assert.equal(result.artifacts.v7ScriptingLifecycleNativeEffectsPath.endsWith("packages/ir/artifacts/conformance/scripting-lifecycle/native-effects.json"), true);
+    assert.equal(result.artifacts.v7ScriptingLifecycleWebEffectsPath.endsWith("packages/ir/artifacts/conformance/scripting-lifecycle/web-effects.json"), true);
+    assert.equal(result.artifacts.v7PackagingPackageReportPath.endsWith("packages/ir/artifacts/conformance/packaging-target-profiles/package.report.json"), true);
+    assert.equal(
+      result.artifacts.v7PackagingDesktopSmokeReportPath.endsWith("packages/ir/artifacts/conformance/packaging-target-profiles/desktop-smoke.report.json"),
+      true,
+    );
+    assert.equal(result.artifacts.v7PackagingComparisonReportPath.endsWith("packages/ir/artifacts/conformance/packaging-target-profiles/comparison.report.json"), true);
+    assert.equal(result.artifacts.v7PerformanceWebReportPath.endsWith("packages/ir/artifacts/conformance/performance-budgets/web.report.json"), true);
+    assert.equal(result.artifacts.v7PerformanceNativeReportPath.endsWith("packages/ir/artifacts/conformance/performance-budgets/bevy.report.json"), true);
+    assert.equal(result.artifacts.v7PerformanceComparisonReportPath.endsWith("packages/ir/artifacts/conformance/performance-budgets/comparison.report.json"), true);
+    assert.equal(result.artifacts.v9AnimationStateDiffPath.endsWith("packages/ir/artifacts/conformance/animation-state/state-diff.json"), true);
+    assert.equal(result.artifacts.v9AnimationStateNativeTracePath.endsWith("packages/ir/artifacts/conformance/animation-state/native-state.json"), true);
+    assert.equal(result.artifacts.v9AnimationStateWebTracePath.endsWith("packages/ir/artifacts/conformance/animation-state/web-state.json"), true);
+    assert.equal(result.artifacts.v9AnimationBlendingReportPath.endsWith("packages/ir/artifacts/conformance/animation-blending/blend-report.json"), true);
+    assert.equal(result.artifacts.v9AnimationBlendingNativeTracePath.endsWith("packages/ir/artifacts/conformance/animation-blending/native-blend.json"), true);
+    assert.equal(result.artifacts.v9AnimationBlendingWebTracePath.endsWith("packages/ir/artifacts/conformance/animation-blending/web-blend.json"), true);
+    assert.equal(result.artifacts.v9PhysicsCharacterDiffPath.endsWith("packages/ir/artifacts/conformance/physics-character/diff-physics-character.json"), true);
+    assert.equal(result.artifacts.v9PhysicsCharacterNativeTracePath.endsWith("packages/ir/artifacts/conformance/physics-character/native-physics-character.json"), true);
+    assert.equal(result.artifacts.v9PhysicsCharacterReportPath.endsWith("packages/ir/artifacts/conformance/physics-character/verification-report.json"), true);
+    assert.equal(result.artifacts.v9PhysicsCharacterWebTracePath.endsWith("packages/ir/artifacts/conformance/physics-character/web-physics-character.json"), true);
+    assert.equal(result.artifacts.v9AssetsGltfReportPath.endsWith("examples/assets-gltf-scene-workflow/artifacts/assets-gltf-scene-workflow/diff.json"), true);
+    assert.equal(result.artifacts.v9RenderingLightsReportPath.endsWith("examples/rendering-lights/artifacts/rendering-lights/verification-report.json"), true);
+    assert.equal(result.artifacts.nativeV9SupportStressReportPath.endsWith("packages/ir/artifacts/conformance/support-stress/bevy.report.json"), true);
     const report = JSON.parse(await readFile(result.reportPath, "utf8"));
     assert.equal(report.status, "pass");
     assert.equal(report.steps.length, 27);
-    assert.equal(report.artifacts.nativeBasicSceneReportPath.endsWith("artifacts/conformance/basic-scene/bevy.report.json"), true);
+    assert.equal(report.artifacts.nativeBasicSceneReportPath.endsWith("packages/ir/artifacts/conformance/basic-scene/bevy.report.json"), true);
     assert.equal(
-      report.artifacts.nativePrimitiveMappingReportPath.endsWith("artifacts/conformance/primitive-mapping/bevy.report.json"),
+      report.artifacts.nativePrimitiveMappingReportPath.endsWith("packages/ir/artifacts/conformance/primitive-mapping/bevy.report.json"),
       true,
     );
     assert.equal(
-      report.artifacts.nativeV6AnimationClipsReportPath.endsWith("artifacts/conformance/v6-animation-clips/bevy.report.json"),
+      report.artifacts.nativeV6AnimationClipsReportPath.endsWith("packages/ir/artifacts/conformance/animation-clips/bevy.report.json"),
       true,
     );
     assert.equal(
-      report.artifacts.nativeV6PhysicsEventsReportPath.endsWith("artifacts/conformance/v6-physics-events/bevy.report.json"),
+      report.artifacts.nativeV6PhysicsEventsReportPath.endsWith("packages/ir/artifacts/conformance/physics-events/bevy.report.json"),
       true,
     );
     assert.equal(
-      report.artifacts.nativeV6ResourcesEventsReportPath.endsWith("artifacts/conformance/v6-resources-events/bevy.report.json"),
+      report.artifacts.nativeV6ResourcesEventsReportPath.endsWith("packages/ir/artifacts/conformance/resources-events/bevy.report.json"),
       true,
     );
     assert.equal(
-      report.artifacts.nativeV6RetainedUiReportPath.endsWith("artifacts/conformance/v6-retained-ui/bevy.report.json"),
+      report.artifacts.nativeV6RetainedUiReportPath.endsWith("packages/ir/artifacts/conformance/retained-ui/bevy.report.json"),
       true,
     );
     assert.equal(
-      report.artifacts.nativeV6AudioPlaybackReportPath.endsWith("artifacts/conformance/v6-audio-playback/bevy.report.json"),
+      report.artifacts.nativeV6AudioPlaybackReportPath.endsWith("packages/ir/artifacts/conformance/audio-playback/bevy.report.json"),
       true,
     );
-    assert.equal(report.artifacts.v6AnimationDiffPath.endsWith("artifacts/conformance/v6-animation-clips/effects-diff.json"), true);
-    assert.equal(report.artifacts.v6AnimationNativeEffectsPath.endsWith("artifacts/conformance/v6-animation-clips/native-effects.json"), true);
-    assert.equal(report.artifacts.v6AnimationWebEffectsPath.endsWith("artifacts/conformance/v6-animation-clips/web-effects.json"), true);
-    assert.equal(report.artifacts.v6ResourceEventDiffPath.endsWith("artifacts/conformance/v6-resources-events/effects-diff.json"), true);
-    assert.equal(report.artifacts.v6ResourceEventNativeEffectsPath.endsWith("artifacts/conformance/v6-resources-events/native-effects.json"), true);
-    assert.equal(report.artifacts.v6ResourceEventWebEffectsPath.endsWith("artifacts/conformance/v6-resources-events/web-effects.json"), true);
-    assert.equal(report.artifacts.v7PhysicsQueryDiffPath.endsWith("artifacts/conformance/v7-advanced-physics-character/effects-diff.json"), true);
+    assert.equal(report.artifacts.v6AnimationDiffPath.endsWith("packages/ir/artifacts/conformance/animation-clips/effects-diff.json"), true);
+    assert.equal(report.artifacts.v6AnimationNativeEffectsPath.endsWith("packages/ir/artifacts/conformance/animation-clips/native-effects.json"), true);
+    assert.equal(report.artifacts.v6AnimationWebEffectsPath.endsWith("packages/ir/artifacts/conformance/animation-clips/web-effects.json"), true);
+    assert.equal(report.artifacts.v6ResourceEventDiffPath.endsWith("packages/ir/artifacts/conformance/resources-events/effects-diff.json"), true);
+    assert.equal(report.artifacts.v6ResourceEventNativeEffectsPath.endsWith("packages/ir/artifacts/conformance/resources-events/native-effects.json"), true);
+    assert.equal(report.artifacts.v6ResourceEventWebEffectsPath.endsWith("packages/ir/artifacts/conformance/resources-events/web-effects.json"), true);
+    assert.equal(report.artifacts.v7PhysicsQueryDiffPath.endsWith("packages/ir/artifacts/conformance/advanced-physics-character/effects-diff.json"), true);
     assert.equal(
       report.artifacts.v7PhysicsQueryNativeEffectsPath.endsWith(
-        "artifacts/conformance/v7-advanced-physics-character/native-effects.json",
+        "packages/ir/artifacts/conformance/advanced-physics-character/native-effects.json",
       ),
       true,
     );
     assert.equal(
       report.artifacts.v7PhysicsQueryWebEffectsPath.endsWith(
-        "artifacts/conformance/v7-advanced-physics-character/web-effects.json",
+        "packages/ir/artifacts/conformance/advanced-physics-character/web-effects.json",
       ),
       true,
     );
-    assert.equal(report.artifacts.v7CharacterDiffPath.endsWith("artifacts/conformance/v7-advanced-physics-character/character-diff.json"), true);
+    assert.equal(report.artifacts.v7CharacterDiffPath.endsWith("packages/ir/artifacts/conformance/advanced-physics-character/character-diff.json"), true);
     assert.equal(
-      report.artifacts.v7CharacterNativeTracePath.endsWith("artifacts/conformance/v7-advanced-physics-character/native-character.json"),
+      report.artifacts.v7CharacterNativeTracePath.endsWith("packages/ir/artifacts/conformance/advanced-physics-character/native-character.json"),
       true,
     );
     assert.equal(
-      report.artifacts.v7CharacterWebTracePath.endsWith("artifacts/conformance/v7-advanced-physics-character/web-character.json"),
+      report.artifacts.v7CharacterWebTracePath.endsWith("packages/ir/artifacts/conformance/advanced-physics-character/web-character.json"),
       true,
     );
-    assert.equal(report.artifacts.v7AnimationDiffPath.endsWith("artifacts/conformance/v7-animation-graphs-particles/animation-diff.json"), true);
+    assert.equal(report.artifacts.v7AnimationDiffPath.endsWith("packages/ir/artifacts/conformance/animation-graphs-particles/animation-diff.json"), true);
     assert.equal(
-      report.artifacts.v7AnimationNativeTracePath.endsWith("artifacts/conformance/v7-animation-graphs-particles/native-animation.json"),
-      true,
-    );
-    assert.equal(
-      report.artifacts.v7AnimationWebTracePath.endsWith("artifacts/conformance/v7-animation-graphs-particles/web-animation.json"),
-      true,
-    );
-    assert.equal(report.artifacts.v7UiNavigationDiffPath.endsWith("artifacts/conformance/v7-rich-ui-navigation/ui-navigation-diff.json"), true);
-    assert.equal(
-      report.artifacts.v7UiNavigationNativeTracePath.endsWith("artifacts/conformance/v7-rich-ui-navigation/native-ui-navigation.json"),
+      report.artifacts.v7AnimationNativeTracePath.endsWith("packages/ir/artifacts/conformance/animation-graphs-particles/native-animation.json"),
       true,
     );
     assert.equal(
-      report.artifacts.v7UiNavigationWebTracePath.endsWith("artifacts/conformance/v7-rich-ui-navigation/web-ui-navigation.json"),
+      report.artifacts.v7AnimationWebTracePath.endsWith("packages/ir/artifacts/conformance/animation-graphs-particles/web-animation.json"),
       true,
     );
-    assert.equal(report.artifacts.v7AudioLifecycleDiffPath.endsWith("artifacts/conformance/v7-spatial-audio-buses/audio-lifecycle-diff.json"), true);
+    assert.equal(report.artifacts.v7UiNavigationDiffPath.endsWith("packages/ir/artifacts/conformance/rich-ui-navigation/ui-navigation-diff.json"), true);
     assert.equal(
-      report.artifacts.v7AudioLifecycleNativeTracePath.endsWith("artifacts/conformance/v7-spatial-audio-buses/native-audio-lifecycle.json"),
-      true,
-    );
-    assert.equal(
-      report.artifacts.v7AudioLifecycleWebTracePath.endsWith("artifacts/conformance/v7-spatial-audio-buses/web-audio-lifecycle.json"),
-      true,
-    );
-    assert.equal(report.artifacts.v7EnvironmentContentDiffPath.endsWith("artifacts/conformance/v7-renderer-dense-content/environment-content-diff.json"), true);
-    assert.equal(
-      report.artifacts.v7EnvironmentContentNativeTracePath.endsWith("artifacts/conformance/v7-renderer-dense-content/native-environment-content.json"),
+      report.artifacts.v7UiNavigationNativeTracePath.endsWith("packages/ir/artifacts/conformance/rich-ui-navigation/native-ui-navigation.json"),
       true,
     );
     assert.equal(
-      report.artifacts.v7EnvironmentContentWebTracePath.endsWith("artifacts/conformance/v7-renderer-dense-content/web-environment-content.json"),
+      report.artifacts.v7UiNavigationWebTracePath.endsWith("packages/ir/artifacts/conformance/rich-ui-navigation/web-ui-navigation.json"),
       true,
     );
-    assert.equal(report.artifacts.v7ScriptingLifecycleDiffPath.endsWith("artifacts/conformance/v7-scripting-lifecycle/effects-diff.json"), true);
-    assert.equal(report.artifacts.v7ScriptingLifecycleNativeEffectsPath.endsWith("artifacts/conformance/v7-scripting-lifecycle/native-effects.json"), true);
-    assert.equal(report.artifacts.v7ScriptingLifecycleWebEffectsPath.endsWith("artifacts/conformance/v7-scripting-lifecycle/web-effects.json"), true);
-    assert.equal(report.artifacts.v7PackagingPackageReportPath.endsWith("artifacts/conformance/v7-packaging-target-profiles/package.report.json"), true);
+    assert.equal(report.artifacts.v7AudioLifecycleDiffPath.endsWith("packages/ir/artifacts/conformance/spatial-audio-buses/audio-lifecycle-diff.json"), true);
     assert.equal(
-      report.artifacts.v7PackagingDesktopSmokeReportPath.endsWith("artifacts/conformance/v7-packaging-target-profiles/desktop-smoke.report.json"),
+      report.artifacts.v7AudioLifecycleNativeTracePath.endsWith("packages/ir/artifacts/conformance/spatial-audio-buses/native-audio-lifecycle.json"),
       true,
     );
-    assert.equal(report.artifacts.v7PackagingComparisonReportPath.endsWith("artifacts/conformance/v7-packaging-target-profiles/comparison.report.json"), true);
-    assert.equal(report.artifacts.v7PerformanceWebReportPath.endsWith("artifacts/conformance/v7-performance-budgets/web.report.json"), true);
-    assert.equal(report.artifacts.v7PerformanceNativeReportPath.endsWith("artifacts/conformance/v7-performance-budgets/bevy.report.json"), true);
-    assert.equal(report.artifacts.v7PerformanceComparisonReportPath.endsWith("artifacts/conformance/v7-performance-budgets/comparison.report.json"), true);
-    assert.equal(report.artifacts.v9AnimationStateDiffPath.endsWith("artifacts/conformance/v9-animation-state/state-diff.json"), true);
-    assert.equal(report.artifacts.v9AnimationStateNativeTracePath.endsWith("artifacts/conformance/v9-animation-state/native-state.json"), true);
-    assert.equal(report.artifacts.v9AnimationStateWebTracePath.endsWith("artifacts/conformance/v9-animation-state/web-state.json"), true);
-    assert.equal(report.artifacts.v9AnimationBlendingReportPath.endsWith("artifacts/conformance/v9-animation-blending/blend-report.json"), true);
-    assert.equal(report.artifacts.v9AnimationBlendingNativeTracePath.endsWith("artifacts/conformance/v9-animation-blending/native-blend.json"), true);
-    assert.equal(report.artifacts.v9AnimationBlendingWebTracePath.endsWith("artifacts/conformance/v9-animation-blending/web-blend.json"), true);
-    assert.equal(report.artifacts.v9PhysicsCharacterReportPath.endsWith("artifacts/conformance/v9-physics-character/verification-report.json"), true);
-    assert.equal(report.artifacts.v9AssetsGltfReportPath.endsWith("artifacts/v9/assets-gltf-scene-workflow/diff.json"), true);
-    assert.equal(report.artifacts.v9RenderingLightsReportPath.endsWith("artifacts/v9/rendering-lights/verification-report.json"), true);
+    assert.equal(
+      report.artifacts.v7AudioLifecycleWebTracePath.endsWith("packages/ir/artifacts/conformance/spatial-audio-buses/web-audio-lifecycle.json"),
+      true,
+    );
+    assert.equal(report.artifacts.v7EnvironmentContentDiffPath.endsWith("packages/ir/artifacts/conformance/renderer-dense-content/environment-content-diff.json"), true);
+    assert.equal(
+      report.artifacts.v7EnvironmentContentNativeTracePath.endsWith("packages/ir/artifacts/conformance/renderer-dense-content/native-environment-content.json"),
+      true,
+    );
+    assert.equal(
+      report.artifacts.v7EnvironmentContentWebTracePath.endsWith("packages/ir/artifacts/conformance/renderer-dense-content/web-environment-content.json"),
+      true,
+    );
+    assert.equal(report.artifacts.v7ScriptingLifecycleDiffPath.endsWith("packages/ir/artifacts/conformance/scripting-lifecycle/effects-diff.json"), true);
+    assert.equal(report.artifacts.v7ScriptingLifecycleNativeEffectsPath.endsWith("packages/ir/artifacts/conformance/scripting-lifecycle/native-effects.json"), true);
+    assert.equal(report.artifacts.v7ScriptingLifecycleWebEffectsPath.endsWith("packages/ir/artifacts/conformance/scripting-lifecycle/web-effects.json"), true);
+    assert.equal(report.artifacts.v7PackagingPackageReportPath.endsWith("packages/ir/artifacts/conformance/packaging-target-profiles/package.report.json"), true);
+    assert.equal(
+      report.artifacts.v7PackagingDesktopSmokeReportPath.endsWith("packages/ir/artifacts/conformance/packaging-target-profiles/desktop-smoke.report.json"),
+      true,
+    );
+    assert.equal(report.artifacts.v7PackagingComparisonReportPath.endsWith("packages/ir/artifacts/conformance/packaging-target-profiles/comparison.report.json"), true);
+    assert.equal(report.artifacts.v7PerformanceWebReportPath.endsWith("packages/ir/artifacts/conformance/performance-budgets/web.report.json"), true);
+    assert.equal(report.artifacts.v7PerformanceNativeReportPath.endsWith("packages/ir/artifacts/conformance/performance-budgets/bevy.report.json"), true);
+    assert.equal(report.artifacts.v7PerformanceComparisonReportPath.endsWith("packages/ir/artifacts/conformance/performance-budgets/comparison.report.json"), true);
+    assert.equal(report.artifacts.v9AnimationStateDiffPath.endsWith("packages/ir/artifacts/conformance/animation-state/state-diff.json"), true);
+    assert.equal(report.artifacts.v9AnimationStateNativeTracePath.endsWith("packages/ir/artifacts/conformance/animation-state/native-state.json"), true);
+    assert.equal(report.artifacts.v9AnimationStateWebTracePath.endsWith("packages/ir/artifacts/conformance/animation-state/web-state.json"), true);
+    assert.equal(report.artifacts.v9AnimationBlendingReportPath.endsWith("packages/ir/artifacts/conformance/animation-blending/blend-report.json"), true);
+    assert.equal(report.artifacts.v9AnimationBlendingNativeTracePath.endsWith("packages/ir/artifacts/conformance/animation-blending/native-blend.json"), true);
+    assert.equal(report.artifacts.v9AnimationBlendingWebTracePath.endsWith("packages/ir/artifacts/conformance/animation-blending/web-blend.json"), true);
+    assert.equal(report.artifacts.v9PhysicsCharacterReportPath.endsWith("packages/ir/artifacts/conformance/physics-character/verification-report.json"), true);
+    assert.equal(report.artifacts.v9AssetsGltfReportPath.endsWith("examples/assets-gltf-scene-workflow/artifacts/assets-gltf-scene-workflow/diff.json"), true);
+    assert.equal(report.artifacts.v9RenderingLightsReportPath.endsWith("examples/rendering-lights/artifacts/rendering-lights/verification-report.json"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
 });
 
 test("should map V9 physics failures to the V9 physics fixture", async () => {
-  const root = await mkdtemp(join(tmpdir(), "tn-conformance-v9-physics-"));
+  const root = await mkdtemp(join(tmpdir(), "tn-conformance-physics-"));
   try {
-    const reportPath = join(root, "artifacts/conformance/verification-report.json");
+    const reportPath = join(root, "packages/ir/artifacts/conformance/verification-report.json");
     const result = await verifyConformance({
-      artifactDir: join(root, "artifacts/conformance"),
+      artifactDir: join(root, "packages/ir/artifacts/conformance"),
       repoRoot: root,
       reportPath,
       run: async ({ name }) => ({
@@ -407,22 +407,22 @@ test("should map V9 physics failures to the V9 physics fixture", async () => {
     });
     const report = JSON.parse(await readFile(reportPath, "utf8"));
     assert.equal(result.ok, false);
-    assert.equal(report.diagnostics[0]?.fixture, "v9-physics-character");
-    assert.match(report.diagnostics[0]?.artifactPath ?? "", /v9-physics-character\/verification-report\.json/);
+    assert.equal(report.diagnostics[0]?.fixture, "physics-character");
+    assert.match(report.diagnostics[0]?.artifactPath ?? "", /physics-character\/verification-report\.json/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
 });
 
 test("should expose V9 artifact paths for latest PR gates", async () => {
-  const root = await mkdtemp(join(tmpdir(), "tn-conformance-v9-artifacts-"));
+  const root = await mkdtemp(join(tmpdir(), "tn-conformance-artifacts-"));
   try {
     const result = await verifyConformance({
-      artifactDir: join(root, "artifacts/conformance"),
+      artifactDir: join(root, "packages/ir/artifacts/conformance"),
       repoRoot: root,
       run: async () => ({ durationMs: 1, exitCode: 0, stderr: "", stdout: "" }),
     });
-    assert.match(result.artifacts.v9PhysicsCharacterReportPath, /v9-physics-character\/verification-report\.json/);
+    assert.match(result.artifacts.v9PhysicsCharacterReportPath, /physics-character\/verification-report\.json/);
     assert.match(result.artifacts.v9AssetsGltfReportPath, /assets-gltf-scene-workflow\/diff\.json/);
     assert.match(result.artifacts.v9RenderingLightsReportPath, /rendering-lights\/verification-report\.json/);
   } finally {

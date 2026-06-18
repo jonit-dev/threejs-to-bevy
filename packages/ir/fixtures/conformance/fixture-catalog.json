@@ -1,49 +1,54 @@
 {
   "schema": "threenative.conformance.fixture-catalog",
   "version": "0.1.0",
-  "legacyCatalogs": [
-    "packages/ir/fixtures/conformance/v7-fixture-catalog.json",
-    "packages/ir/fixtures/conformance/v9-fixture-catalog.json"
-  ],
   "fixtures": [
     {
       "canonicalId": "animation-state",
-      "legacyAliases": ["v9-animation-state"],
+      "owner": "ir-contract",
+      "sourceExample": "animation-state",
+      "regenerateCommand": "pnpm verify:v9:animation-state",
+      "canonicalArtifactGate": "animation-state",
       "ownerDocs": "docs/PRDs/v9/V9-01-animation-particles-runtime-parity.md",
       "aggregateGate": "verify:release",
-      "bundlePath": "packages/ir/fixtures/conformance/v9-animation-state/game.bundle",
+      "bundlePath": "packages/ir/fixtures/conformance/animation-state/game.bundle",
       "promotedCapabilities": [
         "scripting:service.animation.play",
         "scripting:service.animation.query",
         "scripting:service.animation.stop"
       ],
       "reportArtifacts": [
-        "artifacts/conformance/v9-animation-state/state-diff.json",
-        "artifacts/v9/animation-state/state-diff.json"
+        "packages/ir/artifacts/conformance/animation-state/state-diff.json",
+        "tools/verify/artifacts/animation-state/state-diff.json"
       ]
     },
     {
       "canonicalId": "animation-blending",
-      "legacyAliases": ["v9-animation-blending"],
+      "owner": "ir-contract",
+      "sourceExample": "animation-blending",
+      "regenerateCommand": "pnpm verify:v9:animation-blending",
+      "canonicalArtifactGate": "animation-blending",
       "ownerDocs": "docs/PRDs/v9/V9-01-animation-particles-runtime-parity.md",
       "aggregateGate": "verify:release",
-      "bundlePath": "packages/ir/fixtures/conformance/v9-animation-blending/game.bundle",
+      "bundlePath": "packages/ir/fixtures/conformance/animation-blending/game.bundle",
       "promotedCapabilities": [
         "animation:blend.crossfade",
         "scripting:service.animation.play",
         "scripting:service.animation.query"
       ],
       "reportArtifacts": [
-        "artifacts/conformance/v9-animation-blending/blend-report.json",
-        "artifacts/v9/animation-blending/blend-report.json"
+        "packages/ir/artifacts/conformance/animation-blending/blend-report.json",
+        "tools/verify/artifacts/animation-blending/blend-report.json"
       ]
     },
     {
       "canonicalId": "physics-character",
-      "legacyAliases": ["v9-physics-character"],
+      "owner": "ir-contract",
+      "sourceExample": "physics-character",
+      "regenerateCommand": "pnpm verify:v9:physics-character",
+      "canonicalArtifactGate": "physics-character",
       "ownerDocs": "docs/PRDs/v9/V9-02-physics-character-runtime-parity.md",
       "aggregateGate": "verify:release",
-      "bundlePath": "packages/ir/fixtures/conformance/v9-physics-character/game.bundle",
+      "bundlePath": "packages/ir/fixtures/conformance/physics-character/game.bundle",
       "promotedCapabilities": [
         "character:push-policy",
         "navigation:static-regions",
@@ -51,15 +56,18 @@
         "physics:primitive-solver-v2"
       ],
       "reportArtifacts": [
-        "artifacts/conformance/v9-physics-character/verification-report.json"
+        "packages/ir/artifacts/conformance/physics-character/verification-report.json"
       ]
     },
     {
       "canonicalId": "physics-character-solver",
-      "legacyAliases": ["v9-physics-character-solver"],
+      "owner": "ir-contract",
+      "sourceExample": "physics-character",
+      "regenerateCommand": "pnpm verify:v9:physics-character",
+      "canonicalArtifactGate": "physics-character",
       "ownerDocs": "docs/PRDs/v9/V9-02-physics-character-runtime-parity.md",
       "aggregateGate": "verify:release",
-      "bundlePath": "packages/ir/fixtures/conformance/v9-physics-character-solver/game.bundle",
+      "bundlePath": "packages/ir/fixtures/conformance/physics-character-solver/game.bundle",
       "promotedCapabilities": [
         "physics:primitive-solver-v2",
         "physics:rigid-body.dynamic"
@@ -68,10 +76,13 @@
     },
     {
       "canonicalId": "rendering-lights",
-      "legacyAliases": ["v9-skybox-environment", "v9-rendering-lights"],
+      "owner": "ir-contract",
+      "sourceExample": "rendering-lights",
+      "regenerateCommand": "pnpm verify:v9:rendering-lights",
+      "canonicalArtifactGate": "rendering-lights",
       "ownerDocs": "docs/PRDs/v9/V9-04-rendering-lights-post-processing-parity.md",
       "aggregateGate": "verify:release",
-      "bundlePath": "packages/ir/fixtures/conformance/v9-skybox-environment/game.bundle",
+      "bundlePath": "packages/ir/fixtures/conformance/rendering-lights/game.bundle",
       "promotedCapabilities": [
         "environment:light-probes",
         "environment:skybox",
@@ -79,7 +90,7 @@
         "rendering:hlod-fades"
       ],
       "reportArtifacts": [
-        "artifacts/v9/rendering-lights/verification-report.json"
+        "examples/rendering-lights/artifacts/rendering-lights/verification-report.json"
       ]
     }
   ]

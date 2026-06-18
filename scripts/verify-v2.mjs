@@ -11,7 +11,7 @@ export async function verifyV2(options = {}) {
   const root = options.repoRoot ?? repoRoot;
   const run = options.run ?? runCommand;
   const runReady = options.runReady ?? runReadyCommand;
-  const artifactDir = options.artifactDir ?? resolve(root, "artifacts/v2");
+  const artifactDir = options.artifactDir ?? resolve(root, "tools/verify/artifacts/milestones/v2");
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
   const arenaPath = resolve(root, "examples/v2-arena");
   const arenaBundlePath = resolve(arenaPath, "dist/game.bundle");
@@ -111,7 +111,7 @@ async function writeV2Report({ arenaBundlePath, arenaWebReportPath, ok, reportPa
 function capabilityStatuses(steps) {
   const passed = (name) => steps.some((step) => step.name === name && step.exitCode === 0);
   return [
-    { artifact: "artifacts/v2/conformance-report.json", capability: "cross-runtime conformance", status: passed("verify conformance") ? "pass" : "fail" },
+    { artifact: "tools/verify/artifacts/milestones/v2/conformance-report.json", capability: "cross-runtime conformance", status: passed("verify conformance") ? "pass" : "fail" },
     { artifact: "examples/v2-arena/dist/game.bundle", capability: "bundle validation", status: passed("validate v2 arena bundle") ? "pass" : "fail" },
     { artifact: "examples/v2-arena/artifacts/verify/verification-report.json", capability: "web visual", status: passed("verify v2 arena web") ? "pass" : "fail" },
     { artifact: "examples/v2-arena/dist/tests/examples/v2-arena/src/gameplay.test.js", capability: "input", status: passed("test v2 arena gameplay") ? "pass" : "fail" },

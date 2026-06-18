@@ -32,7 +32,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let output_path = PathBuf::from(args.next().ok_or("missing output path")?);
     let bundle = load_bundle(bundle_path)?;
     let report = V9PhysicsCharacterReport {
-        schema: "threenative.v9-physics-character-trace",
+        schema: "threenative.physics-character-trace",
         version: "0.1.0",
         character: trace_character_controllers(
             &bundle,

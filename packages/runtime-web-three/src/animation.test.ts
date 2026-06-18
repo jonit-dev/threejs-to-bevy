@@ -6,7 +6,7 @@ import { AnimationRuntimeController, animationPlaybackState, sampleTransformAnim
 import { loadBundle } from "./loadBundle.js";
 
 test("animation trace should match V7 graph and particle fixture", async () => {
-  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/v7-animation-graphs-particles/game.bundle"));
+  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/animation-graphs-particles/game.bundle"));
   const trace = traceAnimationGraphs(bundle.assets, {
     fixedDelta: 0.5,
     parameters: { moving: true },
@@ -50,7 +50,7 @@ test("animation trace should match V7 graph and particle fixture", async () => {
 });
 
 test("animation playback should resolve active visual clip metadata", async () => {
-  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/v7-animation-graphs-particles/game.bundle"));
+  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/animation-graphs-particles/game.bundle"));
   const asset = bundle.assets.assets.find((candidate) => candidate.id === "model.hero");
   assert.equal(asset?.kind, "model");
 

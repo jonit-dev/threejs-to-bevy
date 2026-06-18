@@ -13,7 +13,7 @@ use support::load_conformance_fixture;
 
 #[test]
 fn animation_trace_should_match_v7_graph_and_particle_fixture() {
-    let fixture = load_conformance_fixture("v7-animation-graphs-particles");
+    let fixture = load_conformance_fixture("animation-graphs-particles");
     let mut parameters = BTreeMap::new();
     parameters.insert("moving".to_owned(), Value::from(true));
 

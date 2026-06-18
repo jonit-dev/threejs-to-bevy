@@ -340,4 +340,4 @@ sequenceDiagram
   portable movement system.
 - `tn create --template v5-game-starter` is wired and covered by CLI tests.
 - `pnpm verify:v5` now creates, builds, and validates the starter under
-  `artifacts/v5/starter-smoke`.
+  `tools/verify/artifacts/milestones/v5/starter-smoke`.

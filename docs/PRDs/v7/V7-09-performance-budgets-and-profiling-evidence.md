@@ -45,7 +45,7 @@ entity, draw/instance, asset-load, script, UI, audio, and package size.
 - `runtime-bevy/crates/threenative_runtime/tests/*` - native report tests.
 - `scripts/verify-v7*.mjs` - report aggregation.
 - `examples/v7-functional/*` - profiled scene.
-- `artifacts/v7/*` - generated outputs.
+- `tools/verify/artifacts/milestones/v7/*` - generated outputs.
 
 **Implementation:**
 

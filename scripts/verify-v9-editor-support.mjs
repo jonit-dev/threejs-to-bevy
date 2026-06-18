@@ -15,7 +15,7 @@ const requiredArtifacts = [
 
 export async function verifyV9EditorSupport(options = {}) {
   const root = options.repoRoot ?? repoRoot;
-  const artifactDir = options.artifactDir ?? resolve(root, "artifacts/v9/editor-support");
+  const artifactDir = options.artifactDir ?? resolve(root, "tools/verify/artifacts/editor-support");
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
   if (options.writeArtifacts !== false) {
     await writeEditorArtifacts(artifactDir);

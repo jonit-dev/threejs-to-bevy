@@ -176,7 +176,7 @@ sequenceDiagram
   material, sleep, and solver-policy fields.
 - `packages/compiler/src/physics.ts` - emit new fields and manifest
   capabilities from SDK declarations.
-- `packages/ir/fixtures/conformance/v9-physics-character/` - add accepted and
+- `packages/ir/fixtures/conformance/physics-character/` - add accepted and
   rejected solver fixtures.
 - `docs/scripting-api.md` - document stable authoring and service semantics.
 
@@ -230,7 +230,7 @@ PASS.
   solver contract into native runtime behavior.
 - `runtime-bevy/crates/threenative_runtime/tests/physics_v9.rs` - cover native
   trace behavior.
-- `scripts/verify-v9-physics-character.mjs` - compare web/native solver traces
+- `scripts/verify-physics-character.mjs` - compare web/native solver traces
   and write artifacts.
 
 **Implementation:**
@@ -241,7 +241,7 @@ PASS.
 - [ ] Preserve deterministic contact ordering for simultaneous contacts using
   stable entity IDs and contact type ordering.
 - [ ] Emit web/native artifacts under
-  `artifacts/conformance/v9-physics-character/solver/`.
+  `packages/ir/artifacts/conformance/physics-character/solver/`.
 - [ ] Fail the verification script on drift outside documented numeric
   tolerances.
 
@@ -285,7 +285,7 @@ PASS.
   sensor observations.
 - `runtime-bevy/crates/threenative_runtime/src/physics_sensors.rs` - emit
   deterministic native sensor observations.
-- `packages/ir/fixtures/conformance/v9-physics-character/sensors/` - add
+- `packages/ir/fixtures/conformance/physics-character/sensors/` - add
   accepted/rejected sensor fixtures.
 
 **Implementation:**
@@ -340,7 +340,7 @@ PASS.
   push behavior and emit observations.
 - `runtime-bevy/crates/threenative_runtime/src/character.rs` - apply native
   push behavior and emit observations.
-- `examples/v9-physics-character/` - provide a playable crate-pushing and
+- `examples/physics-character/` - provide a playable crate-pushing and
   trigger-zone scene.
 
 **Implementation:**
@@ -368,10 +368,10 @@ PASS.
 
 1. **Unit Tests:** IR and web character-controller tests.
 2. **Integration Tests:** native character push tests and CLI build for
-   `examples/v9-physics-character`.
+   `examples/physics-character`.
 3. **Playtest Proof:** run web and Bevy preview for the example and compare
    effect logs captured by the verifier.
-4. **Evidence Required:** `artifacts/conformance/v9-physics-character/push/`
+4. **Evidence Required:** `packages/ir/artifacts/conformance/physics-character/push/`
    contains web/native/diff reports plus example bundle validation output.
 
 **User Verification:**
@@ -460,7 +460,7 @@ PASS and manual verification evidence is recorded.
   P2/P3 items explicit.
 - `docs/PRDs/v9/README.md` - register V9-02 and gate command if a V9 index now
   exists.
-- `artifacts/conformance/v9-physics-character/verification-report.json` -
+- `packages/ir/artifacts/conformance/physics-character/verification-report.json` -
   generated evidence output from the verifier.
 
 **Implementation:**
@@ -480,8 +480,8 @@ PASS and manual verification evidence is recorded.
 
 | Test File | Test Name | Assertion |
 |-----------|-----------|-----------|
-| `scripts/__tests__/verify-v9-physics-character.test.ts` | `should fail when any web native physics-character artifact drifts` | Non-zero exit and report include drift path. |
-| `scripts/__tests__/verify-v9-physics-character.test.ts` | `should record promoted and deferred checklist items in the report` | Report metadata lists exact checklist IDs. |
+| `scripts/__tests__/verify-physics-character.test.ts` | `should fail when any web native physics-character artifact drifts` | Non-zero exit and report include drift path. |
+| `scripts/__tests__/verify-physics-character.test.ts` | `should record promoted and deferred checklist items in the report` | Report metadata lists exact checklist IDs. |
 
 **Verification Plan:**
 
@@ -526,7 +526,7 @@ pnpm verify:v9:physics-character
 The gate must build the V9 physics-character fixture or example, validate
 accepted and rejected bundles, run web runtime tests, run native Rust tests,
 compare web/native conformance observations, and write a complete report under
-`artifacts/conformance/v9-physics-character/verification-report.json`.
+`packages/ir/artifacts/conformance/physics-character/verification-report.json`.
 
 **Narrow Commands:**
 

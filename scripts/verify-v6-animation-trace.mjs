@@ -8,8 +8,8 @@ const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 export async function verifyV6AnimationTrace(options = {}) {
   return verifyV6ResourceEventTrace({
     ...options,
-    artifactDir: options.artifactDir ?? resolve(repoRoot, "artifacts/conformance/v6-animation-clips"),
-    bundlePath: options.bundlePath ?? resolve(repoRoot, "packages/ir/fixtures/conformance/v6-animation-clips/game.bundle"),
+    artifactDir: options.artifactDir ?? resolve(repoRoot, "packages/ir/artifacts/conformance/animation-clips"),
+    bundlePath: options.bundlePath ?? resolve(repoRoot, "packages/ir/fixtures/conformance/animation-clips/game.bundle"),
     mismatchCode: "TN_VERIFY_V6_ANIMATION_TRACE_MISMATCH",
     mismatchLabel: "V6 animation trace",
   });

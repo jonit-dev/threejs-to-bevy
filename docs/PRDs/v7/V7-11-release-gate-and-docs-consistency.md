@@ -18,7 +18,7 @@ performance reports.
 
 ## Solution
 
-Add V7 docs checks, aggregate verification, report schema under `artifacts/v7`,
+Add V7 docs checks, aggregate verification, report schema under `tools/verify/artifacts/milestones/v7`,
 example/template proof requirements, and final status/parity/maturity updates.
 
 ## Execution Phases
@@ -48,7 +48,7 @@ example/template proof requirements, and final status/parity/maturity updates.
 - `scripts/verify-v7.test.mjs` - report/step tests.
 - `package.json` - script registration.
 - `docs/verify-v7.md` - command and artifact docs.
-- `artifacts/v7/*` - generated reports.
+- `tools/verify/artifacts/milestones/v7/*` - generated reports.
 
 **Implementation:**
 
@@ -56,11 +56,11 @@ example/template proof requirements, and final status/parity/maturity updates.
   verification, focused Rust tests, packaging checks, performance reports, and
   diagnostic checks.
 - [x] Require the V7 proof example/template to produce inspectable evidence
-  under `artifacts/v7`, following existing folder conventions.
+  under `tools/verify/artifacts/milestones/v7`, following existing folder conventions.
 - [x] Require real rendered visual evidence for visible promoted features where
   practical, including web screenshots and Bevy rendered evidence or documented
   native visual drift where native support is claimed.
-- [x] Write `artifacts/v7/verification-report.json` with schema, version,
+- [x] Write `tools/verify/artifacts/milestones/v7/verification-report.json` with schema, version,
   status, code, steps, diagnostics, artifacts, startedAt, and durationMs.
 - [x] Surface first failing step with stable `TN_VERIFY_V7_*` diagnostics.
 
@@ -78,7 +78,7 @@ example/template proof requirements, and final status/parity/maturity updates.
 - [x] `pnpm verify:v7` is the V7 aggregate release gate.
 - [x] The V7 report links conformance, Rust, visual/runtime, packaging,
   performance, diagnostics, and docs artifacts.
-- [x] The V7 gate fails if the example/template proof or `artifacts/v7`
+- [x] The V7 gate fails if the example/template proof or `tools/verify/artifacts/milestones/v7`
   evidence is missing.
 - [x] The V7 gate fails if visible promoted features have only build/log proof
   and no rendered artifact or explicit documented exception.

@@ -19,7 +19,7 @@ pnpm tn -- build --project examples/v3-environment
 ```
 
 V3 performance verification writes metrics and raw frame samples under
-`artifacts/v3`, including `v3-performance-summary.json` and
+`tools/verify/artifacts/milestones/v3`, including `v3-performance-summary.json` and
 `v3-performance-samples.json`. Scene authoring verification also writes
 `v3-scene-report.json` with the bundle hash, environment IR path, hero/scatter
 counts, path point count, and bookmark count. Atmosphere verification writes
@@ -29,7 +29,7 @@ color-management observation. First-person verification writes
 and deterministic camera movement. Walkability verification writes
 `v3-walkability-report.json` with path, boundary, and blocking-prop probes.
 Visual scene verification writes per-bookmark Three.js screenshots under
-`artifacts/v3/screenshots` and a side-by-side
+`tools/verify/artifacts/milestones/v3/screenshots` and a side-by-side
 `threejs-bevy-side-by-side.png` contact sheet. The Bevy column is a native load
 smoke panel for the same bookmark IDs; visual parity is not asserted until the
 native renderer supports V3 environment screenshots.

@@ -1,7 +1,7 @@
 {
   "schema": "threenative.bundle",
   "version": "0.1.0",
-  "name": "conformance-v9-input-ui-accessibility",
+  "name": "conformance-input-ui-accessibility",
   "requiredCapabilities": {
     "input": ["rebinding.persistence", "picking.drag"],
     "ui": [

@@ -9,8 +9,8 @@ const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 export async function verifyV6ResourceEventTrace(options = {}) {
   const root = options.repoRoot ?? repoRoot;
-  const bundlePath = options.bundlePath ?? resolve(root, "packages/ir/fixtures/conformance/v6-resources-events/game.bundle");
-  const artifactDir = options.artifactDir ?? resolve(root, "artifacts/conformance/v6-resources-events");
+  const bundlePath = options.bundlePath ?? resolve(root, "packages/ir/fixtures/conformance/resources-events/game.bundle");
+  const artifactDir = options.artifactDir ?? resolve(root, "packages/ir/artifacts/conformance/resources-events");
   const webEffectsPath = options.webEffectsPath ?? resolve(artifactDir, "web-effects.json");
   const nativeEffectsPath = options.nativeEffectsPath ?? resolve(artifactDir, "native-effects.json");
   const diffPath = options.diffPath ?? resolve(artifactDir, "effects-diff.json");

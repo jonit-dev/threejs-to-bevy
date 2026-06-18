@@ -39,7 +39,7 @@ never-portable categories before V7 feature work starts.
 - [x] Add promoted/deferred/never-portable categories for V7 candidates.
 - [x] Require V6 baseline references for every V7 feature ticket.
 - [x] Require a maintained `examples/` proof, optional matching template where
-  promoted, and matching `artifacts/v7` evidence for the final V7 release gate.
+  promoted, and matching `tools/verify/artifacts/milestones/v7` evidence for the final V7 release gate.
 - [x] Require rendered visual artifacts for promoted visible features where
   practical, using the repo visual verification workflow as guidance.
 - [x] State exclusions for editor, online, networking, collaboration, plugins,
@@ -76,6 +76,6 @@ never-portable categories before V7 feature work starts.
 - [x] V7 scope is discoverable, ordered, and tied to post-V6 gaps.
 - [x] Status, parity, and maturity docs agree before implementation starts.
 - [x] V7 instructions require an example under `examples/` and evidence under
-  `artifacts/v7`.
+  `tools/verify/artifacts/milestones/v7`.
 - [x] V7 instructions require real rendered artifacts for visible features where
   practical.

@@ -14,11 +14,11 @@ test("should classify legacy version names when scanning repo surfaces", async (
   const root = await makeRepoRoot({
     "docs/PRDs/v9/README.md": "# V9 PRDs\n\nHistorical milestone batch.\n",
     "scripts/verify-v9.mjs": "export const gate = 'verify:v9';\n",
-    "examples/v9-physics-character/package.json": '{"name":"physics-character"}\n',
+    "examples/physics-character/package.json": '{"name":"physics-character"}\n',
   });
 
   try {
-    const allowlist = await loadVersionNameAllowlist(root);
+    const allowlist = { ...(await loadVersionNameAllowlist(root)), requiredFrontDoorPhrases: [] };
     const result = await checkCurrentNames({ root, allowlist });
     const historical = result.inventory.filter((item) => item.classification === "historical-archive");
     const compat = result.inventory.filter((item) => item.classification === "compat-alias");
@@ -42,7 +42,7 @@ Current release gate: V10 release gate for all contributors.
   });
 
   try {
-    const allowlist = await loadVersionNameAllowlist(root);
+    const allowlist = { ...(await loadVersionNameAllowlist(root)), requiredFrontDoorPhrases: [] };
     const result = await checkCurrentNames({ root, allowlist });
     assert.equal(result.ok, false);
     assert.equal(
@@ -71,6 +71,58 @@ test("should require owner and policy for each retained version reference", asyn
       allowlist.validClassifications.includes(rule.classification),
       `invalid classification for ${rule.id}`,
     );
+  }
+});
+
+test("should reject versioned root artifact paths", async () => {
+  const root = await makeRepoRoot({
+    "artifacts/v10/native-ui-effects/report.json": "{}\n",
+  });
+
+  try {
+    const allowlist = await loadVersionNameAllowlist(root);
+    const result = await checkCurrentNames({ root, allowlist });
+    assert.equal(result.ok, false);
+    assert.equal(
+      result.diagnostics.some((diagnostic) => diagnostic.code === "TN_ARTIFACT_LAYOUT_VERSIONED_ROOT_ARTIFACT"),
+      true,
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should allow owned aggregate and feature-named artifact paths", async () => {
+  const root = await makeRepoRoot({
+    "tools/verify/artifacts/release/verification-report.json": "{}\n",
+    "packages/ir/artifacts/conformance/verification-report.json": "{}\n",
+    "tools/verify/artifacts/native-ui-effects/report.json": "{}\n",
+  });
+
+  try {
+    const allowlist = { ...(await loadVersionNameAllowlist(root)), requiredFrontDoorPhrases: [] };
+    const result = await checkCurrentNames({ root, allowlist });
+    assert.equal(result.ok, true, result.diagnostics.map((diagnostic) => diagnostic.message).join("\n"));
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject tmp artifact paths", async () => {
+  const root = await makeRepoRoot({
+    "tmp/simple-game/artifacts/report.json": "{}\n",
+  });
+
+  try {
+    const allowlist = await loadVersionNameAllowlist(root);
+    const result = await checkCurrentNames({ root, allowlist });
+    assert.equal(result.ok, false);
+    assert.equal(
+      result.diagnostics.some((diagnostic) => diagnostic.code === "TN_ARTIFACT_LAYOUT_TMP_ARTIFACT"),
+      true,
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
   }
 });
 

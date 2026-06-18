@@ -1,0 +1,29 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "conformance-physics-character-solver",
+  "requiredCapabilities": {
+    "physics": [
+      "collider.box",
+      "collider.capsule",
+      "collider.friction",
+      "collider.restitution",
+      "primitive-solver-v2",
+      "rigid-body.angular-velocity",
+      "rigid-body.dynamic",
+      "rigid-body.inverse-mass",
+      "rigid-body.kinematic",
+      "rigid-body.sleep-threshold",
+      "rigid-body.solver-iterations",
+      "rigid-body.static"
+    ]
+  },
+  "entry": {
+    "world": "world.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "materials": "materials.ir.json",
+    "targetProfile": "target.profile.json"
+  }
+}

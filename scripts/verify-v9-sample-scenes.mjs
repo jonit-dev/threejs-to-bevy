@@ -19,7 +19,7 @@ export const V9_SAMPLE_MATRIX = V9_SAMPLE_SCENES.map((sample) => ({
 export async function verifyV9SampleScenes(options = {}) {
   const root = options.repoRoot ?? repoRoot;
   const run = options.run ?? runCommand;
-  const artifactDir = options.artifactDir ?? resolve(root, "artifacts/v9/sample-scenes");
+  const artifactDir = options.artifactDir ?? resolve(root, "tools/verify/artifacts/sample-scenes");
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
   const steps = [];
   const diagnostics = [];

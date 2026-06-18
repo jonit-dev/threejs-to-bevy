@@ -24,7 +24,7 @@ const requiredV7Phrases = [
   ["promoted, deferred, or never portable", "V7 docs must classify candidates as promoted, deferred, or never portable."],
   ["examples/", "V7 docs must require examples to follow repo folder patterns."],
   ["templates/", "V7 docs must mention template evidence where promoted."],
-  ["artifacts/v7", "V7 docs must require V7 artifact evidence."],
+  ["tools/verify/artifacts/milestones/v7", "V7 docs must require V7 artifact evidence."],
   ["rendered", "V7 docs must require rendered artifacts for visible features."],
   ["only builds", "V7 docs must reject build-only proof for visible features."],
   ["backend-specific", "V7 docs must address backend-specific feature handling."],
@@ -37,7 +37,7 @@ const requiredMaturityPhrases = [
   ["Deferred", "Feature maturity docs must identify deferred candidates."],
   ["Never portable", "Feature maturity docs must identify never-portable candidates."],
   ["V6 baseline", "Feature maturity docs must tie V7 candidates to their V6 baseline."],
-  ["artifacts/v7", "Feature maturity docs must require V7 artifact evidence."],
+  ["tools/verify/artifacts/milestones/v7", "Feature maturity docs must require V7 artifact evidence."],
   ["verify:v7", "Feature maturity docs must require V7 release-gate evidence."],
 ];
 

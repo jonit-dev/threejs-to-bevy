@@ -10,7 +10,7 @@ import { writeMinimalV9Repo } from "./check-v9-quality-gates.test.mjs";
 test("should pass when all V9 commands and reports pass", async () => {
   const root = await mkdtempRoot();
   try {
-    const artifactDir = join(root, "artifacts/v9");
+    const artifactDir = join(root, "tools/verify/artifacts/release");
     const reportPath = join(artifactDir, "verification-report.json");
     await writePassingArtifacts(root);
 
@@ -35,8 +35,8 @@ test("should pass when all V9 commands and reports pass", async () => {
     assert.ok(saved.commands.length > 0);
     assert.ok(saved.promoted.includes("aggregate-v9-gate"));
     assert.equal(saved.artifacts.reportPath, reportPath);
-    assert.match(saved.artifacts.sampleScenesReportPath, /artifacts\/v9\/sample-scenes\/verification-report\.json/);
-    assert.match(saved.artifacts.visualMatrixReportPath, /artifacts\/v9\/visual-matrix\/verification-report\.json/);
+    assert.match(saved.artifacts.sampleScenesReportPath, /artifacts\/sample-scenes\/verification-report\.json/);
+    assert.match(saved.artifacts.visualMatrixReportPath, /artifacts\/visual-matrix\/verification-report\.json/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -46,7 +46,7 @@ test("should fail with artifact diagnostic when a focused report is missing", as
   const root = await mkdtempRoot();
   try {
     await writeMinimalV9Repo(root);
-    const artifactDir = join(root, "artifacts/v9");
+    const artifactDir = join(root, "tools/verify/artifacts/release");
     const reportPath = join(artifactDir, "verification-report.json");
     const gate = V9_FOCUSED_GATES[0];
     const result = await verifyV9({
@@ -75,7 +75,7 @@ test("should fail with artifact diagnostic when a focused report is missing", as
 test("should stop at first failing command and write report", async () => {
   const root = await mkdtempRoot();
   try {
-    const artifactDir = join(root, "artifacts/v9");
+    const artifactDir = join(root, "tools/verify/artifacts/release");
     const reportPath = join(artifactDir, "verification-report.json");
     const result = await verifyV9({
       artifactDir,
@@ -105,7 +105,7 @@ test("should stop at first failing command and write report", async () => {
 test("should include release evidence artifact paths in aggregate report", async () => {
   const root = await mkdtempRoot();
   try {
-    const artifactDir = join(root, "artifacts/v9");
+    const artifactDir = join(root, "tools/verify/artifacts/release");
     const reportPath = join(artifactDir, "verification-report.json");
     await writePassingArtifacts(root);
     const result = await verifyV9({
@@ -133,9 +133,9 @@ async function mkdtempRoot() {
 async function writePassingArtifacts(root) {
   await writeMinimalV9Repo(root);
   const files = [
-    "artifacts/conformance/verification-report.json",
-    "artifacts/v9/sample-scenes/verification-report.json",
-    "artifacts/v9/visual-matrix/verification-report.json",
+    "packages/ir/artifacts/conformance/verification-report.json",
+    "tools/verify/artifacts/sample-scenes/verification-report.json",
+    "tools/verify/artifacts/visual-matrix/verification-report.json",
     ...V9_FOCUSED_GATES.map((gate) => gate.reportPath),
   ];
   for (const file of files) {

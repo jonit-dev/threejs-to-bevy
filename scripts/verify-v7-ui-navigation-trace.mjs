@@ -9,8 +9,8 @@ const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 export async function verifyV7UiNavigationTrace(options = {}) {
   const root = options.repoRoot ?? repoRoot;
-  const bundlePath = options.bundlePath ?? resolve(root, "packages/ir/fixtures/conformance/v7-rich-ui-navigation/game.bundle");
-  const artifactDir = options.artifactDir ?? resolve(root, "artifacts/conformance/v7-rich-ui-navigation");
+  const bundlePath = options.bundlePath ?? resolve(root, "packages/ir/fixtures/conformance/rich-ui-navigation/game.bundle");
+  const artifactDir = options.artifactDir ?? resolve(root, "packages/ir/artifacts/conformance/rich-ui-navigation");
   const webTracePath = options.webTracePath ?? resolve(artifactDir, "web-ui-navigation.json");
   const nativeTracePath = options.nativeTracePath ?? resolve(artifactDir, "native-ui-navigation.json");
   const diffPath = options.diffPath ?? resolve(artifactDir, "ui-navigation-diff.json");

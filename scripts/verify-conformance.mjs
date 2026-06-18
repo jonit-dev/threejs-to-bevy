@@ -5,6 +5,7 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 import { summarize } from "./verify-v1.mjs";
+import { resolveArtifactTargets } from "./artifact-paths.mjs";
 import { loadFixtureCatalog, loadDefaultFixtureCatalog, resolveFixtureBundlePath } from "./conformance-fixture-catalog.mjs";
 
 const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
@@ -12,7 +13,8 @@ const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 export async function verifyConformance(options = {}) {
   const root = options.repoRoot ?? repoRoot;
   const run = options.run ?? runCommand;
-  const reportPath = options.reportPath ?? resolve(root, "artifacts/conformance/verification-report.json");
+  const targets = resolveArtifactTargets({ gate: "conformance", owner: { kind: "package", packagePath: "packages/ir" }, root });
+  const reportPath = options.reportPath ?? targets.reportPath;
   const artifactDir = options.artifactDir ?? resolve(reportPath, "..");
   let fixtureCatalog = options.fixtureCatalog;
   if (!fixtureCatalog) {
@@ -28,107 +30,110 @@ export async function verifyConformance(options = {}) {
   }
   const basicSceneBundlePath = resolve(root, "packages/ir/fixtures/conformance/basic-scene/game.bundle");
   const primitiveMappingBundlePath = resolve(root, "packages/ir/fixtures/conformance/primitive-mapping/game.bundle");
-  const v6PhysicsEventsBundlePath = resolve(root, "packages/ir/fixtures/conformance/v6-physics-events/game.bundle");
-  const v6AudioPlaybackBundlePath = resolve(root, "packages/ir/fixtures/conformance/v6-audio-playback/game.bundle");
-  const v6AnimationClipsBundlePath = resolve(root, "packages/ir/fixtures/conformance/v6-animation-clips/game.bundle");
-  const v6ResourcesEventsBundlePath = resolve(root, "packages/ir/fixtures/conformance/v6-resources-events/game.bundle");
-  const v6RetainedUiBundlePath = resolve(root, "packages/ir/fixtures/conformance/v6-retained-ui/game.bundle");
+  const v6PhysicsEventsBundlePath = resolve(root, "packages/ir/fixtures/conformance/physics-events/game.bundle");
+  const v6AudioPlaybackBundlePath = resolve(root, "packages/ir/fixtures/conformance/audio-playback/game.bundle");
+  const v6AnimationClipsBundlePath = resolve(root, "packages/ir/fixtures/conformance/animation-clips/game.bundle");
+  const v6ResourcesEventsBundlePath = resolve(root, "packages/ir/fixtures/conformance/resources-events/game.bundle");
+  const v6RetainedUiBundlePath = resolve(root, "packages/ir/fixtures/conformance/retained-ui/game.bundle");
   const v7AdvancedPhysicsCharacterBundlePath = resolve(
     root,
-    "packages/ir/fixtures/conformance/v7-advanced-physics-character/game.bundle",
+    "packages/ir/fixtures/conformance/advanced-physics-character/game.bundle",
   );
   const v7AnimationGraphsParticlesBundlePath = resolve(
     root,
-    "packages/ir/fixtures/conformance/v7-animation-graphs-particles/game.bundle",
+    "packages/ir/fixtures/conformance/animation-graphs-particles/game.bundle",
   );
-  const v7RichUiNavigationBundlePath = resolve(root, "packages/ir/fixtures/conformance/v7-rich-ui-navigation/game.bundle");
-  const v7SpatialAudioBusesBundlePath = resolve(root, "packages/ir/fixtures/conformance/v7-spatial-audio-buses/game.bundle");
-  const v7RendererDenseContentBundlePath = resolve(root, "packages/ir/fixtures/conformance/v7-renderer-dense-content/game.bundle");
-  const v7ScriptingLifecycleBundlePath = resolve(root, "packages/ir/fixtures/conformance/v7-scripting-lifecycle/game.bundle");
-  const v7PackagingTargetProfilesBundlePath = resolve(root, "packages/ir/fixtures/conformance/v7-packaging-target-profiles/game.bundle");
-  const v7PerformanceBudgetsBundlePath = resolve(root, "packages/ir/fixtures/conformance/v7-performance-budgets/game.bundle");
+  const v7RichUiNavigationBundlePath = resolve(root, "packages/ir/fixtures/conformance/rich-ui-navigation/game.bundle");
+  const v7SpatialAudioBusesBundlePath = resolve(root, "packages/ir/fixtures/conformance/spatial-audio-buses/game.bundle");
+  const v7RendererDenseContentBundlePath = resolve(root, "packages/ir/fixtures/conformance/renderer-dense-content/game.bundle");
+  const v7ScriptingLifecycleBundlePath = resolve(root, "packages/ir/fixtures/conformance/scripting-lifecycle/game.bundle");
+  const v7PackagingTargetProfilesBundlePath = resolve(root, "packages/ir/fixtures/conformance/packaging-target-profiles/game.bundle");
+  const v7PerformanceBudgetsBundlePath = resolve(root, "packages/ir/fixtures/conformance/performance-budgets/game.bundle");
   const v9AnimationStateBundlePath = resolveFixtureBundlePath(fixtureCatalog, "animation-state", root).bundlePath;
   const v9AnimationBlendingBundlePath = resolveFixtureBundlePath(fixtureCatalog, "animation-blending", root).bundlePath;
   const v9PhysicsCharacterBundlePath = resolveFixtureBundlePath(fixtureCatalog, "physics-character", root).bundlePath;
   const v9SkyboxEnvironmentBundlePath = resolveFixtureBundlePath(fixtureCatalog, "rendering-lights", root).bundlePath;
-  const v9SupportStressBundlePath = resolve(root, "packages/ir/fixtures/conformance/v9-support-stress/game.bundle");
+  const v9SupportStressBundlePath = resolve(root, "packages/ir/fixtures/conformance/support-stress/game.bundle");
   const nativeBasicSceneReportPath = options.nativeBasicSceneReportPath ?? resolve(artifactDir, "basic-scene/bevy.report.json");
   const nativePrimitiveMappingReportPath =
     options.nativePrimitiveMappingReportPath ?? resolve(artifactDir, "primitive-mapping/bevy.report.json");
   const nativeV6PhysicsEventsReportPath =
-    options.nativeV6PhysicsEventsReportPath ?? resolve(artifactDir, "v6-physics-events/bevy.report.json");
+    options.nativeV6PhysicsEventsReportPath ?? resolve(artifactDir, "physics-events/bevy.report.json");
   const nativeV6AnimationClipsReportPath =
-    options.nativeV6AnimationClipsReportPath ?? resolve(artifactDir, "v6-animation-clips/bevy.report.json");
+    options.nativeV6AnimationClipsReportPath ?? resolve(artifactDir, "animation-clips/bevy.report.json");
   const nativeV6AudioPlaybackReportPath =
-    options.nativeV6AudioPlaybackReportPath ?? resolve(artifactDir, "v6-audio-playback/bevy.report.json");
+    options.nativeV6AudioPlaybackReportPath ?? resolve(artifactDir, "audio-playback/bevy.report.json");
   const nativeV6ResourcesEventsReportPath =
-    options.nativeV6ResourcesEventsReportPath ?? resolve(artifactDir, "v6-resources-events/bevy.report.json");
+    options.nativeV6ResourcesEventsReportPath ?? resolve(artifactDir, "resources-events/bevy.report.json");
   const nativeV6RetainedUiReportPath =
-    options.nativeV6RetainedUiReportPath ?? resolve(artifactDir, "v6-retained-ui/bevy.report.json");
-  const v6AnimationDiffPath = options.v6AnimationDiffPath ?? resolve(artifactDir, "v6-animation-clips/effects-diff.json");
-  const v6AnimationNativeEffectsPath = options.v6AnimationNativeEffectsPath ?? resolve(artifactDir, "v6-animation-clips/native-effects.json");
-  const v6AnimationWebEffectsPath = options.v6AnimationWebEffectsPath ?? resolve(artifactDir, "v6-animation-clips/web-effects.json");
-  const v6ResourceEventDiffPath = options.v6ResourceEventDiffPath ?? resolve(artifactDir, "v6-resources-events/effects-diff.json");
-  const v6ResourceEventNativeEffectsPath = options.v6ResourceEventNativeEffectsPath ?? resolve(artifactDir, "v6-resources-events/native-effects.json");
-  const v6ResourceEventWebEffectsPath = options.v6ResourceEventWebEffectsPath ?? resolve(artifactDir, "v6-resources-events/web-effects.json");
-  const v7PhysicsQueryDiffPath = options.v7PhysicsQueryDiffPath ?? resolve(artifactDir, "v7-advanced-physics-character/effects-diff.json");
+    options.nativeV6RetainedUiReportPath ?? resolve(artifactDir, "retained-ui/bevy.report.json");
+  const v6AnimationDiffPath = options.v6AnimationDiffPath ?? resolve(artifactDir, "animation-clips/effects-diff.json");
+  const v6AnimationNativeEffectsPath = options.v6AnimationNativeEffectsPath ?? resolve(artifactDir, "animation-clips/native-effects.json");
+  const v6AnimationWebEffectsPath = options.v6AnimationWebEffectsPath ?? resolve(artifactDir, "animation-clips/web-effects.json");
+  const v6ResourceEventDiffPath = options.v6ResourceEventDiffPath ?? resolve(artifactDir, "resources-events/effects-diff.json");
+  const v6ResourceEventNativeEffectsPath = options.v6ResourceEventNativeEffectsPath ?? resolve(artifactDir, "resources-events/native-effects.json");
+  const v6ResourceEventWebEffectsPath = options.v6ResourceEventWebEffectsPath ?? resolve(artifactDir, "resources-events/web-effects.json");
+  const v7PhysicsQueryDiffPath = options.v7PhysicsQueryDiffPath ?? resolve(artifactDir, "advanced-physics-character/effects-diff.json");
   const v7PhysicsQueryNativeEffectsPath =
-    options.v7PhysicsQueryNativeEffectsPath ?? resolve(artifactDir, "v7-advanced-physics-character/native-effects.json");
+    options.v7PhysicsQueryNativeEffectsPath ?? resolve(artifactDir, "advanced-physics-character/native-effects.json");
   const v7PhysicsQueryWebEffectsPath =
-    options.v7PhysicsQueryWebEffectsPath ?? resolve(artifactDir, "v7-advanced-physics-character/web-effects.json");
-  const v7CharacterDiffPath = options.v7CharacterDiffPath ?? resolve(artifactDir, "v7-advanced-physics-character/character-diff.json");
+    options.v7PhysicsQueryWebEffectsPath ?? resolve(artifactDir, "advanced-physics-character/web-effects.json");
+  const v7CharacterDiffPath = options.v7CharacterDiffPath ?? resolve(artifactDir, "advanced-physics-character/character-diff.json");
   const v7CharacterNativeTracePath =
-    options.v7CharacterNativeTracePath ?? resolve(artifactDir, "v7-advanced-physics-character/native-character.json");
+    options.v7CharacterNativeTracePath ?? resolve(artifactDir, "advanced-physics-character/native-character.json");
   const v7CharacterWebTracePath =
-    options.v7CharacterWebTracePath ?? resolve(artifactDir, "v7-advanced-physics-character/web-character.json");
-  const v7AnimationDiffPath = options.v7AnimationDiffPath ?? resolve(artifactDir, "v7-animation-graphs-particles/animation-diff.json");
+    options.v7CharacterWebTracePath ?? resolve(artifactDir, "advanced-physics-character/web-character.json");
+  const v7AnimationDiffPath = options.v7AnimationDiffPath ?? resolve(artifactDir, "animation-graphs-particles/animation-diff.json");
   const v7AnimationNativeTracePath =
-    options.v7AnimationNativeTracePath ?? resolve(artifactDir, "v7-animation-graphs-particles/native-animation.json");
+    options.v7AnimationNativeTracePath ?? resolve(artifactDir, "animation-graphs-particles/native-animation.json");
   const v7AnimationWebTracePath =
-    options.v7AnimationWebTracePath ?? resolve(artifactDir, "v7-animation-graphs-particles/web-animation.json");
-  const v7UiNavigationDiffPath = options.v7UiNavigationDiffPath ?? resolve(artifactDir, "v7-rich-ui-navigation/ui-navigation-diff.json");
+    options.v7AnimationWebTracePath ?? resolve(artifactDir, "animation-graphs-particles/web-animation.json");
+  const v7UiNavigationDiffPath = options.v7UiNavigationDiffPath ?? resolve(artifactDir, "rich-ui-navigation/ui-navigation-diff.json");
   const v7UiNavigationNativeTracePath =
-    options.v7UiNavigationNativeTracePath ?? resolve(artifactDir, "v7-rich-ui-navigation/native-ui-navigation.json");
+    options.v7UiNavigationNativeTracePath ?? resolve(artifactDir, "rich-ui-navigation/native-ui-navigation.json");
   const v7UiNavigationWebTracePath =
-    options.v7UiNavigationWebTracePath ?? resolve(artifactDir, "v7-rich-ui-navigation/web-ui-navigation.json");
-  const v7AudioLifecycleDiffPath = options.v7AudioLifecycleDiffPath ?? resolve(artifactDir, "v7-spatial-audio-buses/audio-lifecycle-diff.json");
+    options.v7UiNavigationWebTracePath ?? resolve(artifactDir, "rich-ui-navigation/web-ui-navigation.json");
+  const v7AudioLifecycleDiffPath = options.v7AudioLifecycleDiffPath ?? resolve(artifactDir, "spatial-audio-buses/audio-lifecycle-diff.json");
   const v7AudioLifecycleNativeTracePath =
-    options.v7AudioLifecycleNativeTracePath ?? resolve(artifactDir, "v7-spatial-audio-buses/native-audio-lifecycle.json");
+    options.v7AudioLifecycleNativeTracePath ?? resolve(artifactDir, "spatial-audio-buses/native-audio-lifecycle.json");
   const v7AudioLifecycleWebTracePath =
-    options.v7AudioLifecycleWebTracePath ?? resolve(artifactDir, "v7-spatial-audio-buses/web-audio-lifecycle.json");
-  const v7EnvironmentContentDiffPath = options.v7EnvironmentContentDiffPath ?? resolve(artifactDir, "v7-renderer-dense-content/environment-content-diff.json");
+    options.v7AudioLifecycleWebTracePath ?? resolve(artifactDir, "spatial-audio-buses/web-audio-lifecycle.json");
+  const v7EnvironmentContentDiffPath = options.v7EnvironmentContentDiffPath ?? resolve(artifactDir, "renderer-dense-content/environment-content-diff.json");
   const v7EnvironmentContentNativeTracePath =
-    options.v7EnvironmentContentNativeTracePath ?? resolve(artifactDir, "v7-renderer-dense-content/native-environment-content.json");
+    options.v7EnvironmentContentNativeTracePath ?? resolve(artifactDir, "renderer-dense-content/native-environment-content.json");
   const v7EnvironmentContentWebTracePath =
-    options.v7EnvironmentContentWebTracePath ?? resolve(artifactDir, "v7-renderer-dense-content/web-environment-content.json");
-  const v7ScriptingLifecycleDiffPath = options.v7ScriptingLifecycleDiffPath ?? resolve(artifactDir, "v7-scripting-lifecycle/effects-diff.json");
+    options.v7EnvironmentContentWebTracePath ?? resolve(artifactDir, "renderer-dense-content/web-environment-content.json");
+  const v7ScriptingLifecycleDiffPath = options.v7ScriptingLifecycleDiffPath ?? resolve(artifactDir, "scripting-lifecycle/effects-diff.json");
   const v7ScriptingLifecycleNativeEffectsPath =
-    options.v7ScriptingLifecycleNativeEffectsPath ?? resolve(artifactDir, "v7-scripting-lifecycle/native-effects.json");
+    options.v7ScriptingLifecycleNativeEffectsPath ?? resolve(artifactDir, "scripting-lifecycle/native-effects.json");
   const v7ScriptingLifecycleWebEffectsPath =
-    options.v7ScriptingLifecycleWebEffectsPath ?? resolve(artifactDir, "v7-scripting-lifecycle/web-effects.json");
-  const v7PackagingPackageReportPath = options.v7PackagingPackageReportPath ?? resolve(artifactDir, "v7-packaging-target-profiles/package.report.json");
+    options.v7ScriptingLifecycleWebEffectsPath ?? resolve(artifactDir, "scripting-lifecycle/web-effects.json");
+  const v7PackagingPackageReportPath = options.v7PackagingPackageReportPath ?? resolve(artifactDir, "packaging-target-profiles/package.report.json");
   const v7PackagingDesktopSmokeReportPath =
-    options.v7PackagingDesktopSmokeReportPath ?? resolve(artifactDir, "v7-packaging-target-profiles/desktop-smoke.report.json");
+    options.v7PackagingDesktopSmokeReportPath ?? resolve(artifactDir, "packaging-target-profiles/desktop-smoke.report.json");
   const v7PackagingComparisonReportPath =
-    options.v7PackagingComparisonReportPath ?? resolve(artifactDir, "v7-packaging-target-profiles/comparison.report.json");
-  const v7PerformanceWebReportPath = options.v7PerformanceWebReportPath ?? resolve(artifactDir, "v7-performance-budgets/web.report.json");
-  const v7PerformanceNativeReportPath = options.v7PerformanceNativeReportPath ?? resolve(artifactDir, "v7-performance-budgets/bevy.report.json");
+    options.v7PackagingComparisonReportPath ?? resolve(artifactDir, "packaging-target-profiles/comparison.report.json");
+  const v7PerformanceWebReportPath = options.v7PerformanceWebReportPath ?? resolve(artifactDir, "performance-budgets/web.report.json");
+  const v7PerformanceNativeReportPath = options.v7PerformanceNativeReportPath ?? resolve(artifactDir, "performance-budgets/bevy.report.json");
   const v7PerformanceComparisonReportPath =
-    options.v7PerformanceComparisonReportPath ?? resolve(artifactDir, "v7-performance-budgets/comparison.report.json");
-  const v9AnimationStateDiffPath = options.v9AnimationStateDiffPath ?? resolve(artifactDir, "v9-animation-state/state-diff.json");
-  const v9AnimationStateNativeTracePath = options.v9AnimationStateNativeTracePath ?? resolve(artifactDir, "v9-animation-state/native-state.json");
-  const v9AnimationStateWebTracePath = options.v9AnimationStateWebTracePath ?? resolve(artifactDir, "v9-animation-state/web-state.json");
-  const v9AnimationBlendingReportPath = options.v9AnimationBlendingReportPath ?? resolve(artifactDir, "v9-animation-blending/blend-report.json");
-  const v9AnimationBlendingNativeTracePath = options.v9AnimationBlendingNativeTracePath ?? resolve(artifactDir, "v9-animation-blending/native-blend.json");
-  const v9AnimationBlendingWebTracePath = options.v9AnimationBlendingWebTracePath ?? resolve(artifactDir, "v9-animation-blending/web-blend.json");
-  const v9PhysicsCharacterDiffPath = options.v9PhysicsCharacterDiffPath ?? resolve(artifactDir, "v9-physics-character/diff-v9-physics-character.json");
-  const v9PhysicsCharacterNativeTracePath = options.v9PhysicsCharacterNativeTracePath ?? resolve(artifactDir, "v9-physics-character/native-v9-physics-character.json");
-  const v9PhysicsCharacterReportPath = options.v9PhysicsCharacterReportPath ?? resolve(artifactDir, "v9-physics-character/verification-report.json");
-  const v9PhysicsCharacterWebTracePath = options.v9PhysicsCharacterWebTracePath ?? resolve(artifactDir, "v9-physics-character/web-v9-physics-character.json");
-  const v9AssetsGltfReportPath = options.v9AssetsGltfReportPath ?? resolve(root, "artifacts/v9/assets-gltf-scene-workflow/diff.json");
-  const v9RenderingLightsReportPath = options.v9RenderingLightsReportPath ?? resolve(root, "artifacts/v9/rendering-lights/verification-report.json");
-  const nativeV9SupportStressReportPath = options.nativeV9SupportStressReportPath ?? resolve(artifactDir, "v9-support-stress/bevy.report.json");
+    options.v7PerformanceComparisonReportPath ?? resolve(artifactDir, "performance-budgets/comparison.report.json");
+  const v9AnimationStateDiffPath = options.v9AnimationStateDiffPath ?? resolve(artifactDir, "animation-state/state-diff.json");
+  const v9AnimationStateNativeTracePath = options.v9AnimationStateNativeTracePath ?? resolve(artifactDir, "animation-state/native-state.json");
+  const v9AnimationStateWebTracePath = options.v9AnimationStateWebTracePath ?? resolve(artifactDir, "animation-state/web-state.json");
+  const v9AnimationBlendingReportPath = options.v9AnimationBlendingReportPath ?? resolve(artifactDir, "animation-blending/blend-report.json");
+  const v9AnimationBlendingNativeTracePath = options.v9AnimationBlendingNativeTracePath ?? resolve(artifactDir, "animation-blending/native-blend.json");
+  const v9AnimationBlendingWebTracePath = options.v9AnimationBlendingWebTracePath ?? resolve(artifactDir, "animation-blending/web-blend.json");
+  const v9PhysicsCharacterDiffPath = options.v9PhysicsCharacterDiffPath ?? resolve(artifactDir, "physics-character/diff-physics-character.json");
+  const v9PhysicsCharacterNativeTracePath = options.v9PhysicsCharacterNativeTracePath ?? resolve(artifactDir, "physics-character/native-physics-character.json");
+  const v9PhysicsCharacterReportPath = options.v9PhysicsCharacterReportPath ?? resolve(artifactDir, "physics-character/verification-report.json");
+  const v9PhysicsCharacterWebTracePath = options.v9PhysicsCharacterWebTracePath ?? resolve(artifactDir, "physics-character/web-physics-character.json");
+  const v9AssetsGltfReportPath =
+    options.v9AssetsGltfReportPath ?? resolve(root, "examples/assets-gltf-scene-workflow/artifacts/assets-gltf-scene-workflow/diff.json");
+  const v9RenderingLightsReportPath =
+    options.v9RenderingLightsReportPath ?? resolve(root, "examples/rendering-lights/artifacts/rendering-lights/verification-report.json");
+  const nativeV9SupportStressReportPath = options.nativeV9SupportStressReportPath ?? resolve(artifactDir, "support-stress/bevy.report.json");
   const artifacts = {
+    ...targets.metadata,
     nativeBasicSceneReportPath,
     nativePrimitiveMappingReportPath,
     nativeV6AnimationClipsReportPath,
@@ -243,7 +248,7 @@ export async function verifyConformance(options = {}) {
         "threenative_conformance",
         "--",
         v6PhysicsEventsBundlePath,
-        "v6-physics-events",
+        "physics-events",
         nativeV6PhysicsEventsReportPath,
       ],
       { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
@@ -254,7 +259,7 @@ export async function verifyConformance(options = {}) {
       [
         resolve(root, "scripts/verify-v6-animation-trace.mjs"),
         v6AnimationClipsBundlePath,
-        resolve(artifactDir, "v6-animation-clips"),
+        resolve(artifactDir, "animation-clips"),
       ],
       { timeoutMs: 120000 },
     ],
@@ -269,7 +274,7 @@ export async function verifyConformance(options = {}) {
         "threenative_conformance",
         "--",
         v6AnimationClipsBundlePath,
-        "v6-animation-clips",
+        "animation-clips",
         nativeV6AnimationClipsReportPath,
       ],
       { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
@@ -280,7 +285,7 @@ export async function verifyConformance(options = {}) {
       [
         resolve(root, "scripts/verify-v6-resource-events-trace.mjs"),
         v6ResourcesEventsBundlePath,
-        resolve(artifactDir, "v6-resources-events"),
+        resolve(artifactDir, "resources-events"),
       ],
       { timeoutMs: 120000 },
     ],
@@ -295,7 +300,7 @@ export async function verifyConformance(options = {}) {
         "threenative_conformance",
         "--",
         v6ResourcesEventsBundlePath,
-        "v6-resources-events",
+        "resources-events",
         nativeV6ResourcesEventsReportPath,
       ],
       { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
@@ -311,7 +316,7 @@ export async function verifyConformance(options = {}) {
         "threenative_conformance",
         "--",
         v6RetainedUiBundlePath,
-        "v6-retained-ui",
+        "retained-ui",
         nativeV6RetainedUiReportPath,
       ],
       { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
@@ -327,7 +332,7 @@ export async function verifyConformance(options = {}) {
         "threenative_conformance",
         "--",
         v6AudioPlaybackBundlePath,
-        "v6-audio-playback",
+        "audio-playback",
         nativeV6AudioPlaybackReportPath,
       ],
       { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
@@ -338,7 +343,7 @@ export async function verifyConformance(options = {}) {
       [
         resolve(root, "scripts/verify-v7-physics-query-trace.mjs"),
         v7AdvancedPhysicsCharacterBundlePath,
-        resolve(artifactDir, "v7-advanced-physics-character"),
+        resolve(artifactDir, "advanced-physics-character"),
       ],
       { timeoutMs: 120000 },
     ],
@@ -348,7 +353,7 @@ export async function verifyConformance(options = {}) {
       [
         resolve(root, "scripts/verify-v7-character-trace.mjs"),
         v7AdvancedPhysicsCharacterBundlePath,
-        resolve(artifactDir, "v7-advanced-physics-character"),
+        resolve(artifactDir, "advanced-physics-character"),
       ],
       { timeoutMs: 120000 },
     ],
@@ -358,7 +363,7 @@ export async function verifyConformance(options = {}) {
       [
         resolve(root, "scripts/verify-v7-animation-trace.mjs"),
         v7AnimationGraphsParticlesBundlePath,
-        resolve(artifactDir, "v7-animation-graphs-particles"),
+        resolve(artifactDir, "animation-graphs-particles"),
       ],
       { timeoutMs: 120000 },
     ],
@@ -368,7 +373,7 @@ export async function verifyConformance(options = {}) {
       [
         resolve(root, "scripts/verify-v7-ui-navigation-trace.mjs"),
         v7RichUiNavigationBundlePath,
-        resolve(artifactDir, "v7-rich-ui-navigation"),
+        resolve(artifactDir, "rich-ui-navigation"),
       ],
       { timeoutMs: 120000 },
     ],
@@ -378,7 +383,7 @@ export async function verifyConformance(options = {}) {
       [
         resolve(root, "scripts/verify-v7-audio-lifecycle-trace.mjs"),
         v7SpatialAudioBusesBundlePath,
-        resolve(artifactDir, "v7-spatial-audio-buses"),
+        resolve(artifactDir, "spatial-audio-buses"),
       ],
       { timeoutMs: 120000 },
     ],
@@ -388,7 +393,7 @@ export async function verifyConformance(options = {}) {
       [
         resolve(root, "scripts/verify-v7-environment-content-trace.mjs"),
         v7RendererDenseContentBundlePath,
-        resolve(artifactDir, "v7-renderer-dense-content"),
+        resolve(artifactDir, "renderer-dense-content"),
       ],
       { timeoutMs: 120000 },
     ],
@@ -398,7 +403,7 @@ export async function verifyConformance(options = {}) {
       [
         resolve(root, "scripts/verify-v7-scripting-lifecycle-trace.mjs"),
         v7ScriptingLifecycleBundlePath,
-        resolve(artifactDir, "v7-scripting-lifecycle"),
+        resolve(artifactDir, "scripting-lifecycle"),
       ],
       { timeoutMs: 120000 },
     ],
@@ -408,7 +413,7 @@ export async function verifyConformance(options = {}) {
       [
         resolve(root, "scripts/verify-v7-packaging-target-profiles.mjs"),
         v7PackagingTargetProfilesBundlePath,
-        resolve(artifactDir, "v7-packaging-target-profiles"),
+        resolve(artifactDir, "packaging-target-profiles"),
       ],
       { timeoutMs: 120000 },
     ],
@@ -418,7 +423,7 @@ export async function verifyConformance(options = {}) {
       [
         resolve(root, "scripts/verify-v7-performance-budgets.mjs"),
         v7PerformanceBudgetsBundlePath,
-        resolve(artifactDir, "v7-performance-budgets"),
+        resolve(artifactDir, "performance-budgets"),
       ],
       { timeoutMs: 120000 },
     ],
@@ -428,7 +433,7 @@ export async function verifyConformance(options = {}) {
       [
         resolve(root, "scripts/verify-v9-animation-state.mjs"),
         v9AnimationStateBundlePath,
-        resolve(artifactDir, "v9-animation-state"),
+        resolve(artifactDir, "animation-state"),
       ],
       { timeoutMs: 120000 },
     ],
@@ -438,7 +443,7 @@ export async function verifyConformance(options = {}) {
       [
         resolve(root, "scripts/verify-v9-animation-blending.mjs"),
         v9AnimationBlendingBundlePath,
-        resolve(artifactDir, "v9-animation-blending"),
+        resolve(artifactDir, "animation-blending"),
       ],
       { timeoutMs: 120000 },
     ],
@@ -471,7 +476,7 @@ export async function verifyConformance(options = {}) {
         "threenative_conformance",
         "--",
         v9SupportStressBundlePath,
-        "v9-support-stress",
+        "support-stress",
         nativeV9SupportStressReportPath,
       ],
       { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
@@ -683,64 +688,64 @@ function fixtureForStep(stepName) {
     return "primitive-mapping";
   }
   if (stepName.includes("V6 physics")) {
-    return "v6-physics-events";
+    return "physics-events";
   }
   if (stepName.includes("V6 animation")) {
-    return "v6-animation-clips";
+    return "animation-clips";
   }
   if (stepName.includes("V6 resource/event")) {
-    return "v6-resources-events";
+    return "resources-events";
   }
   if (stepName.includes("V6 retained UI")) {
-    return "v6-retained-ui";
+    return "retained-ui";
   }
   if (stepName.includes("V6 audio")) {
-    return "v6-audio-playback";
+    return "audio-playback";
   }
   if (stepName.includes("V7 physics query")) {
-    return "v7-advanced-physics-character";
+    return "advanced-physics-character";
   }
   if (stepName.includes("V7 character")) {
-    return "v7-advanced-physics-character";
+    return "advanced-physics-character";
   }
   if (stepName.includes("V7 animation graph")) {
-    return "v7-animation-graphs-particles";
+    return "animation-graphs-particles";
   }
   if (stepName.includes("V7 UI navigation")) {
-    return "v7-rich-ui-navigation";
+    return "rich-ui-navigation";
   }
   if (stepName.includes("V7 audio lifecycle")) {
-    return "v7-spatial-audio-buses";
+    return "spatial-audio-buses";
   }
   if (stepName.includes("V7 environment content")) {
-    return "v7-renderer-dense-content";
+    return "renderer-dense-content";
   }
   if (stepName.includes("V7 scripting lifecycle")) {
-    return "v7-scripting-lifecycle";
+    return "scripting-lifecycle";
   }
   if (stepName.includes("V7 packaging")) {
-    return "v7-packaging-target-profiles";
+    return "packaging-target-profiles";
   }
   if (stepName.includes("V7 performance")) {
-    return "v7-performance-budgets";
+    return "performance-budgets";
   }
   if (stepName.includes("V9 animation state")) {
-    return "v9-animation-state";
+    return "animation-state";
   }
   if (stepName.includes("V9 animation blending")) {
-    return "v9-animation-blending";
+    return "animation-blending";
   }
   if (stepName.includes("V9 physics character")) {
-    return "v9-physics-character";
+    return "physics-character";
   }
   if (stepName.includes("V9 assets glTF")) {
     return "v9-assets-gltf-scene-workflow";
   }
   if (stepName.includes("V9 rendering lights")) {
-    return "v9-skybox-environment";
+    return "rendering-lights";
   }
   if (stepName.includes("V9 support stress")) {
-    return "v9-support-stress";
+    return "support-stress";
   }
   return "conformance";
 }
@@ -829,61 +834,61 @@ function bundlePathForStep(stepName) {
     return "packages/ir/fixtures/conformance/primitive-mapping/game.bundle";
   }
   if (stepName.includes("V6 physics")) {
-    return "packages/ir/fixtures/conformance/v6-physics-events/game.bundle";
+    return "packages/ir/fixtures/conformance/physics-events/game.bundle";
   }
   if (stepName.includes("V6 animation")) {
-    return "packages/ir/fixtures/conformance/v6-animation-clips/game.bundle";
+    return "packages/ir/fixtures/conformance/animation-clips/game.bundle";
   }
   if (stepName.includes("V6 resource/event")) {
-    return "packages/ir/fixtures/conformance/v6-resources-events/game.bundle";
+    return "packages/ir/fixtures/conformance/resources-events/game.bundle";
   }
   if (stepName.includes("V6 retained UI")) {
-    return "packages/ir/fixtures/conformance/v6-retained-ui/game.bundle";
+    return "packages/ir/fixtures/conformance/retained-ui/game.bundle";
   }
   if (stepName.includes("V6 audio")) {
-    return "packages/ir/fixtures/conformance/v6-audio-playback/game.bundle";
+    return "packages/ir/fixtures/conformance/audio-playback/game.bundle";
   }
   if (stepName.includes("V7 physics query")) {
-    return "packages/ir/fixtures/conformance/v7-advanced-physics-character/game.bundle";
+    return "packages/ir/fixtures/conformance/advanced-physics-character/game.bundle";
   }
   if (stepName.includes("V7 character")) {
-    return "packages/ir/fixtures/conformance/v7-advanced-physics-character/game.bundle";
+    return "packages/ir/fixtures/conformance/advanced-physics-character/game.bundle";
   }
   if (stepName.includes("V7 animation graph")) {
-    return "packages/ir/fixtures/conformance/v7-animation-graphs-particles/game.bundle";
+    return "packages/ir/fixtures/conformance/animation-graphs-particles/game.bundle";
   }
   if (stepName.includes("V7 UI navigation")) {
-    return "packages/ir/fixtures/conformance/v7-rich-ui-navigation/game.bundle";
+    return "packages/ir/fixtures/conformance/rich-ui-navigation/game.bundle";
   }
   if (stepName.includes("V7 audio lifecycle")) {
-    return "packages/ir/fixtures/conformance/v7-spatial-audio-buses/game.bundle";
+    return "packages/ir/fixtures/conformance/spatial-audio-buses/game.bundle";
   }
   if (stepName.includes("V7 environment content")) {
-    return "packages/ir/fixtures/conformance/v7-renderer-dense-content/game.bundle";
+    return "packages/ir/fixtures/conformance/renderer-dense-content/game.bundle";
   }
   if (stepName.includes("V7 scripting lifecycle")) {
-    return "packages/ir/fixtures/conformance/v7-scripting-lifecycle/game.bundle";
+    return "packages/ir/fixtures/conformance/scripting-lifecycle/game.bundle";
   }
   if (stepName.includes("V7 packaging")) {
-    return "packages/ir/fixtures/conformance/v7-packaging-target-profiles/game.bundle";
+    return "packages/ir/fixtures/conformance/packaging-target-profiles/game.bundle";
   }
   if (stepName.includes("V7 performance")) {
-    return "packages/ir/fixtures/conformance/v7-performance-budgets/game.bundle";
+    return "packages/ir/fixtures/conformance/performance-budgets/game.bundle";
   }
   if (stepName.includes("V9 animation state")) {
-    return "packages/ir/fixtures/conformance/v9-animation-state/game.bundle";
+    return "packages/ir/fixtures/conformance/animation-state/game.bundle";
   }
   if (stepName.includes("V9 animation blending")) {
-    return "packages/ir/fixtures/conformance/v9-animation-blending/game.bundle";
+    return "packages/ir/fixtures/conformance/animation-blending/game.bundle";
   }
   if (stepName.includes("V9 physics character")) {
-    return "packages/ir/fixtures/conformance/v9-physics-character/game.bundle";
+    return "packages/ir/fixtures/conformance/physics-character/game.bundle";
   }
   if (stepName.includes("V9 rendering lights")) {
-    return "packages/ir/fixtures/conformance/v9-skybox-environment/game.bundle";
+    return "packages/ir/fixtures/conformance/rendering-lights/game.bundle";
   }
   if (stepName.includes("V9 support stress")) {
-    return "packages/ir/fixtures/conformance/v9-support-stress/game.bundle";
+    return "packages/ir/fixtures/conformance/support-stress/game.bundle";
   }
   return undefined;
 }

@@ -9,7 +9,7 @@ import { validateVisualArtifacts, V9_VISUAL_SCENES } from "./verify-v9-visual-ma
 test("should require web bevy diff contact sheet and JSON report artifacts", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-v9-visual-"));
   try {
-    const artifactDir = join(root, "artifacts/v9/visual-matrix");
+    const artifactDir = join(root, "tools/verify/artifacts/visual-matrix");
     const scene = { artifactDir: join(artifactDir, "rendering-lights"), id: "rendering-lights", mode: "smoke-only" };
     const diagnostics = await validateVisualArtifacts(artifactDir, [scene]);
     assert.ok(diagnostics.length >= 4);

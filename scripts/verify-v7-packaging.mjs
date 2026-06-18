@@ -12,10 +12,10 @@ export async function verifyV7Packaging(options = {}) {
   const run = options.run ?? runCommand;
   const startedAt = new Date();
   const startedAtMs = Date.now();
-  const artifactDir = options.artifactDir ?? resolve(root, "artifacts/v7/packaging");
+  const artifactDir = options.artifactDir ?? resolve(root, "tools/verify/artifacts/milestones/v7/packaging");
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
   const fixtureBundlePath =
-    options.bundlePath ?? resolve(root, "packages/ir/fixtures/conformance/v7-scripting-lifecycle/game.bundle");
+    options.bundlePath ?? resolve(root, "packages/ir/fixtures/conformance/scripting-lifecycle/game.bundle");
   const cliBin = resolve(root, "packages/cli/dist/index.js");
   const steps = [];
 

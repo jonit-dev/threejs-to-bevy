@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { PNG } from "../packages/cli/node_modules/pngjs/lib/png.js";
 
 const root = process.cwd();
-const artifactDir = resolve(root, "artifacts/v10/advanced-physics");
+const artifactDir = resolve(root, "tools/verify/artifacts/advanced-physics");
 const framesDir = resolve(artifactDir, "frames");
 await mkdir(framesDir, { recursive: true });
 
@@ -38,8 +38,8 @@ const report = {
   artifacts: {
     contactSheet: relative(contactSheetPath),
     frames: frameArtifacts,
-    nativeTrace: "artifacts/v10/advanced-physics/native-trace.json",
-    webTrace: "artifacts/v10/advanced-physics/web-trace.json",
+    nativeTrace: "tools/verify/artifacts/advanced-physics/native-trace.json",
+    webTrace: "tools/verify/artifacts/advanced-physics/web-trace.json",
   },
   comparisons,
   generatedBy: "scripts/verify-v10-advanced-physics.mjs",

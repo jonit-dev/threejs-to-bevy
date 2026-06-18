@@ -72,5 +72,5 @@ artifacts that can be compared with web output.
 - The Bevy runtime exposes a headless `threenative_conformance` binary that
   writes inspectable native observation JSON without opening a Bevy window.
 - `pnpm verify:conformance` now writes
-  `artifacts/conformance/basic-scene/bevy.report.json` and records that path in
-  `artifacts/conformance/verification-report.json`.
+  `packages/ir/artifacts/conformance/basic-scene/bevy.report.json` and records that path in
+  `packages/ir/artifacts/conformance/verification-report.json`.

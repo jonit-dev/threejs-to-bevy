@@ -10,7 +10,7 @@ test("v4Scripting should include web patch log path", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-v4-scripting-"));
   try {
     const projectPath = join(root, "project");
-    const artifactDir = join(root, "artifacts/v4");
+    const artifactDir = join(root, "tools/verify/artifacts/milestones/v4");
     await writeProject(projectPath);
 
     const report = await verifyV4Scripting({
@@ -48,11 +48,11 @@ test("v4Scripting should include web patch log path", async () => {
     const saved = JSON.parse(await readFile(report.artifacts.reportPath, "utf8")) as typeof report;
     const webReport = JSON.parse(await readFile(report.artifacts.webReportPath, "utf8")) as { status: string };
     assert.equal(report.status, "pass");
-    assert.match(report.artifacts.reportPath, /artifacts\/v4\/v4-scripting-report\.json$/);
-    assert.match(report.artifacts.effectLogPath ?? "", /artifacts\/v4\/web-effect-log\.json$/);
-    assert.match(report.artifacts.webEffectsPath ?? "", /artifacts\/v4\/web-effects\.json$/);
-    assert.match(report.artifacts.nativeEffectsPath ?? "", /artifacts\/v4\/native-effects\.json$/);
-    assert.match(report.artifacts.diffPath ?? "", /artifacts\/v4\/effects-diff\.json$/);
+    assert.match(report.artifacts.reportPath, /tools\/verify\/artifacts\/milestones\/v4\/v4-scripting-report\.json$/);
+    assert.match(report.artifacts.effectLogPath ?? "", /tools\/verify\/artifacts\/milestones\/v4\/web-effect-log\.json$/);
+    assert.match(report.artifacts.webEffectsPath ?? "", /tools\/verify\/artifacts\/milestones\/v4\/web-effects\.json$/);
+    assert.match(report.artifacts.nativeEffectsPath ?? "", /tools\/verify\/artifacts\/milestones\/v4\/native-effects\.json$/);
+    assert.match(report.artifacts.diffPath ?? "", /tools\/verify\/artifacts\/milestones\/v4\/effects-diff\.json$/);
     assert.equal(saved.artifacts.effectLogPath, report.artifacts.effectLogPath);
     assert.equal(saved.effectComparison?.status, "pass");
     assert.equal(webReport.status, "pass");

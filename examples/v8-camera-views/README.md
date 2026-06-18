@@ -17,4 +17,4 @@ pnpm tn -- validate --project examples/v8-camera-views
 pnpm verify:v8:camera-views
 ```
 
-Artifacts are written to `artifacts/v8/camera-views/`.
+Artifacts are written to `examples/v8-camera-views/artifacts/camera-views/`.
