@@ -1,4 +1,4 @@
-import { access, mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, extname, isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { captureScene, isR3fElement, R3fCaptureError } from "@threenative/r3f";
@@ -16,6 +16,7 @@ export interface ICapturedScene {
 
 const unsupportedNodeImports = ["fs", "path", "net", "http", "https"];
 const unsupportedBrowserGlobals = ["document", "localStorage", "navigator", "window"];
+const dynamicRequireSpecifier = "node:dynamic-require";
 
 export async function captureEntry(config: IProjectConfig): Promise<ICapturedScene> {
   const entryPath = resolve(config.projectPath, config.entry);
@@ -23,24 +24,28 @@ export async function captureEntry(config: IProjectConfig): Promise<ICapturedSce
 
   await assertPortableImports(entryPath, source, config.projectPath);
 
-  const tempDir = fileURLToPath(new URL("../.tn/", import.meta.url));
-  const tempRoot = resolve(tempDir, `capture-${Date.now()}-${Math.random().toString(16).slice(2)}`);
-  await writeTranspiledProjectGraph(entryPath, config.projectPath, tempRoot);
-  const tempFile = outputPathForSource(entryPath, config.projectPath, tempRoot);
+  const packageRoot = fileURLToPath(new URL("..", import.meta.url));
+  const tempRoot = await mkdtemp(resolve(packageRoot, ".tn-capture-"));
+  try {
+    await writeTranspiledProjectGraph(entryPath, config.projectPath, tempRoot);
+    const tempFile = outputPathForSource(entryPath, config.projectPath, tempRoot);
 
-  const module = (await import(`${pathToFileURL(tempFile).href}?v=${Date.now()}`)) as { default?: unknown };
-  const root = captureRoot(module.default, entryPath, config.projectPath);
+    const module = (await import(`${pathToFileURL(tempFile).href}?v=${Date.now()}`)) as { default?: unknown };
+    const root = captureRoot(module.default, entryPath, config.projectPath);
 
-  if (!isSceneRoot(root) && !isWorldRoot(root) && !isBundleRoot(root)) {
-    throw new CompilerError("TN_COMPILER_UNSUPPORTED_ROOT", "Entry default export must be a supported SDK Scene or World root.");
+    if (!isSceneRoot(root) && !isWorldRoot(root) && !isBundleRoot(root)) {
+      throw new CompilerError("TN_COMPILER_UNSUPPORTED_ROOT", "Entry default export must be a supported SDK Scene or World root.");
+    }
+
+    return {
+      root,
+      summary: {
+        rootType: isWorldRoot(root) || (isBundleRoot(root) && (isWorldRoot(root.world) || "scenes" in root)) ? "World" : "Scene",
+      },
+    };
+  } finally {
+    await rm(tempRoot, { force: true, recursive: true });
   }
-
-  return {
-    root,
-    summary: {
-      rootType: isWorldRoot(root) || (isBundleRoot(root) && (isWorldRoot(root.world) || "scenes" in root)) ? "World" : "Scene",
-    },
-  };
 }
 
 async function writeTranspiledProjectGraph(entryPath: string, projectPath: string, tempRoot: string): Promise<void> {
@@ -171,6 +176,10 @@ function readImportSpecifiers(source: string, filePath: string): string[] {
       if (specifier !== undefined) {
         specifiers.push(specifier);
       }
+    }
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "require") {
+      const specifier = readLiteralSpecifier(node.arguments[0]);
+      specifiers.push(specifier ?? dynamicRequireSpecifier);
     }
     ts.forEachChild(node, visit);
   }

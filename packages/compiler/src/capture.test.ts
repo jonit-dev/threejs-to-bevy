@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 import { captureEntry } from "./capture.js";
@@ -61,6 +62,29 @@ test("should capture scene from valid relative module", async () => {
     });
 
     assert.equal(captured.summary.rootType, "Scene");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should clean capture temp output outside compiler source space", async () => {
+  const root = await makeProject(`import { scene } from "./scene.js";\nexport default scene;\n`);
+  await writeFile(join(root, "src/scene.ts"), `import { Scene } from "@threenative/sdk";\nexport const scene = new Scene({ id: "scene.clean" });\n`);
+  const packageRoot = dirname(dirname(fileURLToPath(import.meta.url)));
+  const legacySourceTemp = join(packageRoot, ".tn");
+  try {
+    await rm(legacySourceTemp, { force: true, recursive: true });
+    await captureEntry({
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project",
+      version: "0.1.0",
+    });
+
+    await assert.rejects(access(legacySourceTemp), { code: "ENOENT" });
+    const packageRootEntries = await readdir(packageRoot);
+    assert.equal(packageRootEntries.some((entry) => entry.startsWith(".tn-capture-")), false);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -160,6 +184,50 @@ test("should reject unsupported import behind nodenext js specifier", async () =
 
 test("should reject unsupported node subpath import", async () => {
   const root = await makeProject(`import { readFile } from "fs/promises";\nimport { Scene } from "@threenative/sdk";\nvoid readFile;\nexport default new Scene({ id: "scene" });\n`);
+  try {
+    await assert.rejects(
+      () =>
+        captureEntry({
+          entry: "src/game.ts",
+          outDir: "dist/game.bundle",
+          projectPath: root,
+          schema: "threenative.project",
+          version: "0.1.0",
+        }),
+      (error: unknown) =>
+        error instanceof CompilerError &&
+        error.code === "TN_COMPILER_UNSUPPORTED_IMPORT" &&
+        error.diagnostic?.path === "src/game.ts",
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject unsupported require imports", async () => {
+  const root = await makeProject(`const fs = require("fs");\nimport { Scene } from "@threenative/sdk";\nvoid fs;\nexport default new Scene({ id: "scene" });\n`);
+  try {
+    await assert.rejects(
+      () =>
+        captureEntry({
+          entry: "src/game.ts",
+          outDir: "dist/game.bundle",
+          projectPath: root,
+          schema: "threenative.project",
+          version: "0.1.0",
+        }),
+      (error: unknown) =>
+        error instanceof CompilerError &&
+        error.code === "TN_COMPILER_UNSUPPORTED_IMPORT" &&
+        error.diagnostic?.path === "src/game.ts",
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject unsupported dynamic require imports", async () => {
+  const root = await makeProject(`const specifier = "fs";\nconst fs = require(specifier);\nimport { Scene } from "@threenative/sdk";\nvoid fs;\nexport default new Scene({ id: "scene" });\n`);
   try {
     await assert.rejects(
       () =>

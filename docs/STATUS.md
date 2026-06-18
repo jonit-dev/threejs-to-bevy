@@ -54,7 +54,10 @@ Run `pnpm verify:bundle-safety-hardening` for the focused evidence gate.
 Compiler capture now mirrors source-relative project modules into the temporary
 capture directory, so `src/game.ts` can import local `.ts`/`.tsx` modules through
 NodeNext `.js` specifiers while transitive portable-boundary diagnostics still
-point at the source module.
+point at the source module. Capture output is staged in package-local
+`.tn-capture-*` directories that are removed after success or failure, and
+CommonJS `require()` calls now fail with the same unsupported-import diagnostic
+as non-portable ESM imports.
 
 Scene lifecycle authoring is implemented as a first portable slice:
 `defineScene()`, `sceneTransition.*`, and
