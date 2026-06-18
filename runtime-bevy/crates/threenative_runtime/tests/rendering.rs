@@ -688,6 +688,7 @@ fn write_rendering_bundle() -> PathBuf {
   "schema": "threenative.bundle",
   "version": "0.1.0",
   "name": "rendering",
+  "requiredCapabilities": {},
   "entry": { "world": "world.ir.json" },
   "files": { "assets": "assets.manifest.json", "materials": "materials.ir.json", "runtimeConfig": "runtime.config.json", "targetProfile": "target.profile.json" }
 }"#,
@@ -854,6 +855,7 @@ fn write_primitive_catalog_bundle() -> PathBuf {
   "schema": "threenative.bundle",
   "version": "0.1.0",
   "name": "primitive-catalog",
+  "requiredCapabilities": {},
   "entry": { "world": "world.ir.json" },
   "files": { "assets": "assets.manifest.json", "materials": "materials.ir.json", "targetProfile": "target.profile.json" }
 }"#,
@@ -925,6 +927,7 @@ fn write_custom_mesh_bundle() -> PathBuf {
   "schema": "threenative.bundle",
   "version": "0.1.0",
   "name": "custom-mesh",
+  "requiredCapabilities": {},
   "entry": { "world": "world.ir.json" },
   "files": { "assets": "assets.manifest.json", "materials": "materials.ir.json", "targetProfile": "target.profile.json" }
 }"#,
@@ -994,6 +997,7 @@ fn write_animated_model_bundle() -> PathBuf {
   "schema": "threenative.bundle",
   "version": "0.1.0",
   "name": "animated-model",
+  "requiredCapabilities": {},
   "entry": { "world": "world.ir.json" },
   "files": { "assets": "assets.manifest.json", "materials": "materials.ir.json", "targetProfile": "target.profile.json" }
 }"#,
@@ -1105,6 +1109,7 @@ fn write_color_parity_camera_bundle() -> PathBuf {
   "schema": "threenative.bundle",
   "version": "0.1.0",
   "name": "color-parity-camera",
+  "requiredCapabilities": {},
   "entry": { "world": "world.ir.json" },
   "files": { "assets": "assets.manifest.json", "materials": "materials.ir.json", "targetProfile": "target.profile.json" }
 }"#,
@@ -1161,6 +1166,7 @@ fn write_emissive_color_card_bundle() -> PathBuf {
   "schema": "threenative.bundle",
   "version": "0.1.0",
   "name": "emissive-color-card",
+  "requiredCapabilities": {},
   "entry": { "world": "world.ir.json" },
   "files": { "assets": "assets.manifest.json", "materials": "materials.ir.json", "targetProfile": "target.profile.json" }
 }"#,

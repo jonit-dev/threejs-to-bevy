@@ -485,6 +485,7 @@ fn write_ui_bundle() -> PathBuf {
   "schema": "threenative.bundle",
   "version": "0.1.0",
   "name": "ui",
+  "requiredCapabilities": {},
   "entry": { "world": "world.ir.json", "ui": "ui.ir.json" },
   "files": { "assets": "assets.manifest.json", "materials": "materials.ir.json", "targetProfile": "target.profile.json" }
 }"#,

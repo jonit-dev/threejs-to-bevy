@@ -26,6 +26,7 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
           "schema": "threenative.bundle",
           "version": "0.1.0",
           "name": "atmosphere",
+          "requiredCapabilities": {},
           "entry": { "world": "world.ir.json", "environmentScene": "environment.scene.json" },
           "files": {
             "assets": "assets.manifest.json",

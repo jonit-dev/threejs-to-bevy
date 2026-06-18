@@ -35,7 +35,7 @@ pub struct BundleManifest {
     pub schema: String,
     pub version: String,
     pub name: String,
-    #[serde(default)]
+    #[serde(rename = "requiredCapabilities")]
     pub required_capabilities: HashMap<String, Vec<String>>,
     pub entry: BundleEntry,
     pub files: BundleFiles,

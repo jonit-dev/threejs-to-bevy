@@ -1,5 +1,5 @@
 import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { dirname, extname, isAbsolute, relative, resolve } from "node:path";
+import { basename, dirname, extname, isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { captureScene, isR3fElement, R3fCaptureError } from "@threenative/r3f";
 import ts from "typescript";
@@ -25,7 +25,7 @@ export async function captureEntry(config: IProjectConfig): Promise<ICapturedSce
   await assertPortableImports(entryPath, source, config.projectPath);
 
   const packageRoot = fileURLToPath(new URL("..", import.meta.url));
-  const tempRoot = await mkdtemp(resolve(packageRoot, ".tn-capture-"));
+  const tempRoot = await mkdtemp(resolve(packageRoot, captureTempPrefix(config.projectPath)));
   try {
     await writeTranspiledProjectGraph(entryPath, config.projectPath, tempRoot);
     const tempFile = outputPathForSource(entryPath, config.projectPath, tempRoot);
@@ -46,6 +46,10 @@ export async function captureEntry(config: IProjectConfig): Promise<ICapturedSce
   } finally {
     await rm(tempRoot, { force: true, recursive: true });
   }
+}
+
+function captureTempPrefix(projectPath: string): string {
+  return `.tn-capture-${basename(projectPath).replace(/[^A-Za-z0-9._-]/g, "_")}-`;
 }
 
 async function writeTranspiledProjectGraph(entryPath: string, projectPath: string, tempRoot: string): Promise<void> {

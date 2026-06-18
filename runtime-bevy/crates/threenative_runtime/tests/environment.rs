@@ -25,6 +25,7 @@ fn environment_should_map_scene_to_terrain_path_and_instances() {
           "schema": "threenative.bundle",
           "version": "0.1.0",
           "name": "environment",
+          "requiredCapabilities": {},
           "entry": { "world": "world.ir.json", "environmentScene": "environment.scene.json" },
           "files": {
             "assets": "assets.manifest.json",

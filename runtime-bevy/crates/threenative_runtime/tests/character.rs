@@ -350,6 +350,7 @@ fn write_character_bundle() -> PathBuf {
   "schema": "threenative.bundle",
   "version": "0.1.0",
   "name": "character-trace",
+  "requiredCapabilities": {},
   "entry": { "world": "world.ir.json" },
   "files": { "assets": "assets.manifest.json", "input": "input.ir.json", "materials": "materials.ir.json", "targetProfile": "target.profile.json" }
 }"#,

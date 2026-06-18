@@ -40,9 +40,13 @@ export function requiredFieldsFromTypeScriptInterface(sourceText: string, interf
 export function requiredFieldsFromRustStruct(sourceText: string, structName: string, source: string): IContractSurface {
   const body = rustStructBody(sourceText, structName, source);
   const fields = new Set<string>();
+  let pendingDefault = false;
   let pendingRename: string | undefined;
   for (const rawLine of body.split("\n")) {
     const line = rawLine.trim();
+    if (line.startsWith("#[serde(") && /\bdefault\b/.test(line)) {
+      pendingDefault = true;
+    }
     const rename = line.match(/#\[serde\([^)]*rename\s*=\s*"([^"]+)"/);
     if (rename?.[1] !== undefined) {
       pendingRename = rename[1];
@@ -51,9 +55,10 @@ export function requiredFieldsFromRustStruct(sourceText: string, structName: str
     if (field?.[1] === undefined || field[2] === undefined) {
       continue;
     }
-    if (!field[2].includes("Option<")) {
+    if (!field[2].includes("Option<") && !pendingDefault) {
       fields.add(pendingRename ?? snakeToCamel(field[1]));
     }
+    pendingDefault = false;
     pendingRename = undefined;
   }
   return { fields, source };
@@ -72,6 +77,17 @@ export function compareRequiredFields(input: {
         document: input.document,
         field,
         message: `${input.document}: ${input.representation} is missing required field '${field}' from ${input.expected.source}.`,
+        representation: input.representation,
+        source: input.actual.source,
+      });
+    }
+  }
+  for (const field of [...input.actual.fields].sort()) {
+    if (!input.expected.fields.has(field)) {
+      diagnostics.push({
+        document: input.document,
+        field,
+        message: `${input.document}: ${input.representation} requires field '${field}' but ${input.expected.source} does not.`,
         representation: input.representation,
         source: input.actual.source,
       });

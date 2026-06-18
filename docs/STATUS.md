@@ -39,8 +39,13 @@ IR contract hardening is now part of the release path: `@threenative/ir`
 exports canonical document metadata for schema IDs, manifest keys, and bundle
 file names; `pnpm --filter @threenative/ir test` runs the contract drift gate;
 and `pnpm verify:release` runs the IR package tests before release evidence is
-accepted. See [contracts/ir-contract.md](contracts/ir-contract.md) for the
-contract update checklist.
+accepted. The focused `pnpm --filter @threenative/ir test -- --run
+contractDrift` slice now executes the drift subtests directly, verifies
+schema/version literals from parsed JSON Schema files, covers schema-backed
+`scenes.ir.json` and `overlays.ir.json` across TypeScript and Bevy DTOs, and
+keeps the native manifest loader aligned with required `requiredCapabilities`.
+See [contracts/ir-contract.md](contracts/ir-contract.md) for the contract update
+checklist.
 
 Bundle safety hardening now rejects unsafe manifest-controlled paths before web,
 CLI/editor/package, or Bevy filesystem reads; the compiler emits bundles through

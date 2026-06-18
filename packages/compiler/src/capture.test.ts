@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { access, mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
@@ -84,7 +84,7 @@ test("should clean capture temp output outside compiler source space", async () 
 
     await assert.rejects(access(legacySourceTemp), { code: "ENOENT" });
     const packageRootEntries = await readdir(packageRoot);
-    assert.equal(packageRootEntries.some((entry) => entry.startsWith(".tn-capture-")), false);
+    assert.equal(packageRootEntries.some((entry) => entry.startsWith(`.tn-capture-${basename(root)}-`)), false);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

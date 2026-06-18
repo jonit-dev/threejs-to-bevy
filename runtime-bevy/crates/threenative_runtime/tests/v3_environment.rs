@@ -22,6 +22,7 @@ fn v3_environment_should_load_bookmarked_bundle() {
           "schema": "threenative.bundle",
           "version": "0.1.0",
           "name": "v3-environment",
+          "requiredCapabilities": {},
           "entry": { "world": "world.ir.json", "environmentScene": "environment.scene.json" },
           "files": {
             "assets": "assets.manifest.json",
@@ -342,6 +343,7 @@ fn write_v3_bundle_with_model_asset(root: &Path) {
           "schema": "threenative.bundle",
           "version": "0.1.0",
           "name": "v3-environment",
+          "requiredCapabilities": {},
           "entry": { "world": "world.ir.json", "environmentScene": "environment.scene.json" },
           "files": {
             "assets": "assets.manifest.json",
@@ -398,6 +400,7 @@ fn write_v3_bundle_with_rock_and_pebble_assets(root: &Path) {
           "schema": "threenative.bundle",
           "version": "0.1.0",
           "name": "v3-environment",
+          "requiredCapabilities": {},
           "entry": { "world": "world.ir.json", "environmentScene": "environment.scene.json" },
           "files": {
             "assets": "assets.manifest.json",
@@ -483,6 +486,7 @@ fn write_v3_bundle_with_camera_bookmark(root: &Path) {
           "schema": "threenative.bundle",
           "version": "0.1.0",
           "name": "v3-environment",
+          "requiredCapabilities": {},
           "entry": { "world": "world.ir.json", "environmentScene": "environment.scene.json" },
           "files": {
             "assets": "assets.manifest.json",

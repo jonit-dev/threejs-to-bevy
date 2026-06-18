@@ -10,13 +10,35 @@ import {
   requiredFieldsFromRustStruct,
   requiredFieldsFromTypeScriptInterface,
 } from "./contractDrift.js";
-import { IR_DOCUMENTS, schemaBackedDocuments } from "./documents.js";
+import { IR_DOCUMENTS, IR_SCHEMA_IDS, IR_VERSION, schemaBackedDocuments } from "./documents.js";
 import { schemaUrls } from "./schemas.js";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = resolve(packageRoot, "../..");
+const schemaBackedTypeScriptCases = [
+  { document: "manifest", interfaceName: "IBundleManifest", schema: "manifest.schema.json", source: "src/types.ts" },
+  { document: "world", interfaceName: "IWorldIr", schema: "world.schema.json", source: "src/types.ts" },
+  { document: "materials", interfaceName: "IMaterialsIr", schema: "materials.schema.json", source: "src/types.ts" },
+  { document: "assets", interfaceName: "IAssetsManifest", schema: "assets.schema.json", source: "src/types.ts" },
+  { document: "targetProfile", interfaceName: "ITargetProfile", schema: "target-profile.schema.json", source: "src/types.ts" },
+  { document: "input", interfaceName: "IInputIr", schema: "input.schema.json", source: "src/input.ts" },
+  { document: "runtimeConfig", interfaceName: "IRuntimeConfigIr", schema: "runtime-config.schema.json", source: "src/runtimeConfig.ts" },
+  { document: "overlays", interfaceName: "IOverlaysIr", schema: "overlays.schema.json", source: "src/overlays.ts" },
+  { document: "scenes", interfaceName: "IScenesIr", schema: "scenes.schema.json", source: "src/types.ts" },
+];
+const bevyRuntimeDocumentCases = [
+  { document: "manifest", schema: "manifest.schema.json", structName: "BundleManifest" },
+  { document: "world", schema: "world.schema.json", structName: "WorldIr" },
+  { document: "materials", schema: "materials.schema.json", structName: "MaterialsIr" },
+  { document: "assets", schema: "assets.schema.json", structName: "AssetsManifest" },
+  { document: "targetProfile", schema: "target-profile.schema.json", structName: "TargetProfile" },
+  { document: "input", schema: "input.schema.json", structName: "InputIr" },
+  { document: "runtimeConfig", schema: "runtime-config.schema.json", structName: "RuntimeConfigIr" },
+  { document: "overlays", schema: "overlays.schema.json", structName: "OverlaysIr" },
+  { document: "scenes", schema: "scenes.schema.json", structName: "ScenesIr" },
+];
 
-test("should list every registered IR document when checking contract drift", async () => {
+test("contractDrift should list every registered IR document when checking contract drift", async () => {
   const expectedDocuments = [
     "manifest",
     "world",
@@ -65,11 +87,27 @@ test("should list every registered IR document when checking contract drift", as
   assertManifestDocument("files", "targetProfile", "target.profile.json");
 });
 
-test("should register schema urls only for schema-backed documents", () => {
+test("contractDrift should register schema urls only for schema-backed documents", () => {
   assert.deepEqual(Object.keys(schemaUrls).sort(), schemaBackedDocuments().map(([name]) => name).sort());
 });
 
-test("should keep runtime config antialias aligned across schema TypeScript and Rust", async () => {
+test("contractDrift should keep schema literals aligned with document metadata", async () => {
+  const diagnostics: string[] = [];
+  for (const [document, metadata] of schemaBackedDocuments()) {
+    const constants = await readSchemaConstants(resolve(packageRoot, "schemas", metadata.schemaFile));
+    if (constants.schema !== metadata.schema) {
+      diagnostics.push(`${document}: schema const ${constants.schema ?? "<missing>"} does not match ${metadata.schema}.`);
+    }
+    if (constants.version !== IR_VERSION) {
+      diagnostics.push(`${document}: version const ${constants.version ?? "<missing>"} does not match ${IR_VERSION}.`);
+    }
+  }
+
+  assert.deepEqual(diagnostics, []);
+  assert.equal(IR_SCHEMA_IDS.world, "threenative.world");
+});
+
+test("contractDrift should keep runtime config antialias aligned across schema TypeScript and Rust", async () => {
   const schema = await readJson<{ properties: { renderer: { required?: string[] } } }>(
     resolve(packageRoot, "schemas/runtime-config.schema.json"),
   );
@@ -87,7 +125,7 @@ test("should keep runtime config antialias aligned across schema TypeScript and 
   assert.doesNotMatch(loaderTypes, /pub antialias: Option<String>,/);
 });
 
-test("should keep world component extension point explicit across schema TypeScript and Rust", async () => {
+test("contractDrift should keep world component extension point explicit across schema TypeScript and Rust", async () => {
   const schema = await readJson<{
     properties: {
       entities: {
@@ -107,19 +145,10 @@ test("should keep world component extension point explicit across schema TypeScr
   assert.match(loaderTypes, /#\[serde\(flatten\)\]\s+pub extra: HashMap<String, serde_json::Value>,/);
 });
 
-test("should keep schema backed document required fields aligned with TypeScript interfaces", async () => {
-  const cases = [
-    { document: "manifest", interfaceName: "IBundleManifest", schema: "manifest.schema.json", source: "src/types.ts" },
-    { document: "world", interfaceName: "IWorldIr", schema: "world.schema.json", source: "src/types.ts" },
-    { document: "materials", interfaceName: "IMaterialsIr", schema: "materials.schema.json", source: "src/types.ts" },
-    { document: "assets", interfaceName: "IAssetsManifest", schema: "assets.schema.json", source: "src/types.ts" },
-    { document: "targetProfile", interfaceName: "ITargetProfile", schema: "target-profile.schema.json", source: "src/types.ts" },
-    { document: "input", interfaceName: "IInputIr", schema: "input.schema.json", source: "src/input.ts" },
-    { document: "runtimeConfig", interfaceName: "IRuntimeConfigIr", schema: "runtime-config.schema.json", source: "src/runtimeConfig.ts" },
-  ];
+test("contractDrift should keep schema backed document required fields aligned with TypeScript interfaces", async () => {
   const diagnostics = [];
 
-  for (const item of cases) {
+  for (const item of schemaBackedTypeScriptCases) {
     const schemaPath = resolve(packageRoot, "schemas", item.schema);
     const tsPath = resolve(packageRoot, item.source);
     diagnostics.push(
@@ -135,21 +164,12 @@ test("should keep schema backed document required fields aligned with TypeScript
   assert.deepEqual(diagnostics, []);
 });
 
-test("should keep Bevy loader required fields aligned for runtime consumed documents", async () => {
+test("contractDrift should keep Bevy loader required fields aligned for runtime consumed documents", async () => {
   const loaderPath = resolve(repoRoot, "runtime-bevy/crates/threenative_loader/src/lib.rs");
   const loaderTypes = await readFile(loaderPath, "utf8");
-  const cases = [
-    { document: "manifest", schema: "manifest.schema.json", structName: "BundleManifest" },
-    { document: "world", schema: "world.schema.json", structName: "WorldIr" },
-    { document: "materials", schema: "materials.schema.json", structName: "MaterialsIr" },
-    { document: "assets", schema: "assets.schema.json", structName: "AssetsManifest" },
-    { document: "targetProfile", schema: "target-profile.schema.json", structName: "TargetProfile" },
-    { document: "input", schema: "input.schema.json", structName: "InputIr" },
-    { document: "runtimeConfig", schema: "runtime-config.schema.json", structName: "RuntimeConfigIr" },
-  ];
   const diagnostics = [];
 
-  for (const item of cases) {
+  for (const item of bevyRuntimeDocumentCases) {
     diagnostics.push(
       ...compareRequiredFields({
         actual: requiredFieldsFromRustStruct(loaderTypes, item.structName, "runtime-bevy/crates/threenative_loader/src/lib.rs"),
@@ -163,7 +183,7 @@ test("should keep Bevy loader required fields aligned for runtime consumed docum
   assert.deepEqual(diagnostics, []);
 });
 
-test("should fail with a document path when a schema backed field is missing from an inspected surface", () => {
+test("contractDrift should fail with a document path when a schema backed field is missing from an inspected surface", () => {
   const diagnostics = compareRequiredFields({
     actual: { fields: new Set(["schema", "version"]), source: "fixture/types.ts" },
     document: "fixtureDoc",
@@ -177,7 +197,21 @@ test("should fail with a document path when a schema backed field is missing fro
   assert.match(diagnostics[0]?.message ?? "", /fixtureDoc.*entities.*fixture\.schema\.json/);
 });
 
-test("should reject unchecked support checklist drift when claimed in status", async () => {
+test("contractDrift should fail with a document path when an inspected surface adds a required field outside schema", () => {
+  const diagnostics = compareRequiredFields({
+    actual: { fields: new Set(["schema", "version", "entities", "runtimeOnly"]), source: "fixture/types.ts" },
+    document: "fixtureDoc",
+    expected: { fields: new Set(["schema", "version", "entities"]), source: "fixture.schema.json" },
+    representation: "TypeScript interface",
+  });
+
+  assert.equal(diagnostics[0]?.document, "fixtureDoc");
+  assert.equal(diagnostics[0]?.field, "runtimeOnly");
+  assert.equal(diagnostics[0]?.representation, "TypeScript interface");
+  assert.match(diagnostics[0]?.message ?? "", /fixtureDoc.*requires field 'runtimeOnly'.*fixture\.schema\.json/);
+});
+
+test("contractDrift should reject unchecked support checklist drift when claimed in status", async () => {
   const status = await readFile(resolve(repoRoot, "docs/STATUS.md"), "utf8");
   const parity = await readFile(resolve(repoRoot, "docs/bevy-feature-parity.md"), "utf8");
   const irTypes = await readFile(resolve(packageRoot, "src/types.ts"), "utf8");
@@ -221,6 +255,19 @@ function rejectSupportDrift(input: { irTypes: string; nativeConformance: string;
 
 async function readJson<T>(path: string): Promise<T> {
   return JSON.parse(await readFile(path, "utf8")) as T;
+}
+
+async function readSchemaConstants(path: string): Promise<{ schema?: string; version?: string }> {
+  const schema = await readJson<{
+    properties?: {
+      schema?: { const?: unknown };
+      version?: { const?: unknown };
+    };
+  }>(path);
+  return {
+    schema: typeof schema.properties?.schema?.const === "string" ? schema.properties.schema.const : undefined,
+    version: typeof schema.properties?.version?.const === "string" ? schema.properties.version.const : undefined,
+  };
 }
 
 function assertManifestDocument(section: "entry" | "files", key: string, fileName: string): void {

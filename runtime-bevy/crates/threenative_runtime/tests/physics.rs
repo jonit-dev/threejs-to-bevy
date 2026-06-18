@@ -146,6 +146,7 @@ fn write_physics_bundle() -> PathBuf {
   "schema": "threenative.bundle",
   "version": "0.1.0",
   "name": "physics",
+  "requiredCapabilities": {},
   "entry": { "world": "world.ir.json" },
   "files": { "assets": "assets.manifest.json", "materials": "materials.ir.json", "targetProfile": "target.profile.json" }
 }"#,
@@ -210,6 +211,7 @@ fn write_falling_box_bundle() -> PathBuf {
   "schema": "threenative.bundle",
   "version": "0.1.0",
   "name": "physics-falling-box",
+  "requiredCapabilities": {},
   "entry": { "world": "world.ir.json" },
   "files": { "assets": "assets.manifest.json", "materials": "materials.ir.json", "targetProfile": "target.profile.json" }
 }"#,
@@ -274,6 +276,7 @@ fn write_filtered_physics_bundle() -> PathBuf {
   "schema": "threenative.bundle",
   "version": "0.1.0",
   "name": "physics-filtered",
+  "requiredCapabilities": {},
   "entry": { "world": "world.ir.json" },
   "files": { "assets": "assets.manifest.json", "materials": "materials.ir.json", "targetProfile": "target.profile.json" }
 }"#,
@@ -338,6 +341,7 @@ fn write_unordered_contact_bundle() -> PathBuf {
   "schema": "threenative.bundle",
   "version": "0.1.0",
   "name": "physics-ordering",
+  "requiredCapabilities": {},
   "entry": { "world": "world.ir.json" },
   "files": { "assets": "assets.manifest.json", "materials": "materials.ir.json", "targetProfile": "target.profile.json" }
 }"#,
@@ -418,6 +422,7 @@ fn write_physics_trace_bundle() -> PathBuf {
   "schema": "threenative.bundle",
   "version": "0.1.0",
   "name": "physics-trace",
+  "requiredCapabilities": {},
   "entry": { "world": "world.ir.json" },
   "files": { "assets": "assets.manifest.json", "materials": "materials.ir.json", "targetProfile": "target.profile.json" }
 }"#,
@@ -482,6 +487,7 @@ fn write_mesh_ccd_bundle() -> PathBuf {
   "schema": "threenative.bundle",
   "version": "0.1.0",
   "name": "physics-mesh-ccd",
+  "requiredCapabilities": {},
   "entry": { "world": "world.ir.json" },
   "files": { "assets": "assets.manifest.json", "materials": "materials.ir.json", "targetProfile": "target.profile.json" }
 }"#,
