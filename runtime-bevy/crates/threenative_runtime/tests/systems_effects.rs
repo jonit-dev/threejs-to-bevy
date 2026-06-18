@@ -5,6 +5,7 @@ use std::{
 
 use serde_json::json;
 use threenative_loader::{SystemCommandIr, load_bundle};
+use threenative_runtime::scene_manager::apply_scene_service_effects;
 use threenative_runtime::systems_effects::{
     NativeSystemCommandEffect, NativeSystemEffects, NativeSystemEventEffect,
     NativeSystemPatchEffect, NativeSystemResourceEffect, NativeSystemServiceEffect,
@@ -207,6 +208,55 @@ fn systems_effects_should_reject_undeclared_service_call() {
     );
     assert!(diagnostics[0].message.contains("movePlayer"));
     assert!(diagnostics[0].message.contains("physics.raycast"));
+}
+
+#[test]
+fn systems_effects_should_apply_scene_change_effect() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../../packages/ir/fixtures/conformance/scene-lifecycle/game.bundle");
+    let mut bundle = load_bundle(&root).expect("bundle should load");
+    let scenes = bundle.scenes.as_ref().expect("scenes should load").clone();
+    let mut system = bundle
+        .systems
+        .take()
+        .and_then(|systems| systems.systems.into_iter().next())
+        .unwrap_or_else(|| threenative_loader::SystemIr {
+            after: Vec::new(),
+            before: Vec::new(),
+            commands: Vec::new(),
+            event_reads: Vec::new(),
+            event_writes: Vec::new(),
+            name: "menuActions".to_owned(),
+            queries: Vec::new(),
+            reads: Vec::new(),
+            resource_reads: Vec::new(),
+            resource_writes: Vec::new(),
+            schedule: "update".to_owned(),
+            script: None,
+            services: Vec::new(),
+            writes: Vec::new(),
+        });
+    system.services.push("scene.change".to_owned());
+    let effects = NativeSystemEffects {
+        services: vec![NativeSystemServiceEffect {
+            service: "scene.change".to_owned(),
+            payload: json!({
+                "request": { "scene": "level" },
+                "result": { "accepted": true, "operation": "change", "scene": "level" }
+            }),
+        }],
+        ..Default::default()
+    };
+
+    apply_system_effects(&mut bundle, &system, &effects, 1, 1)
+        .expect("declared scene service should validate");
+    let state = apply_scene_service_effects(&scenes, &effects);
+
+    assert_eq!(state.active_scene, "level");
+    assert_eq!(
+        state.trace.last().map(|event| event.scene.as_str()),
+        Some("level")
+    );
 }
 
 #[test]

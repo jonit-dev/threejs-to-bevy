@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.threenative.local/v1/scenes.schema.json",
+  "type": "object",
+  "required": ["schema", "version", "initialScene", "scenes"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "const": "threenative.scenes" },
+    "version": { "const": "0.1.0" },
+    "initialScene": { "type": "string", "minLength": 1 },
+    "scenes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "activation"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "kind": { "enum": ["credits", "cutscene", "level", "loading", "menu", "overlay", "system"] },
+          "activation": { "enum": ["additive", "exclusive", "loading", "overlay", "persistent"] },
+          "assetGroups": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "audio": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "music": { "type": "string", "minLength": 1 },
+              "transition": { "$ref": "#/$defs/transition" }
+            }
+          },
+          "entities": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "input": { "type": "string", "minLength": 1 },
+          "persistence": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "keepEntities": {
+                "type": "array",
+                "items": { "type": "string", "minLength": 1 }
+              },
+              "keepResources": {
+                "type": "array",
+                "items": { "type": "string", "minLength": 1 }
+              }
+            }
+          },
+          "systems": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "transitions": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "enter": { "$ref": "#/$defs/transition" },
+              "exit": { "$ref": "#/$defs/transition" }
+            }
+          },
+          "ui": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "transition": {
+      "type": "object",
+      "required": ["kind", "durationMs"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "enum": ["crossfade", "fade", "instant", "loadingScreen"] },
+        "durationMs": { "type": "number", "minimum": 0, "maximum": 60000 },
+        "color": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$" },
+        "loadingScene": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

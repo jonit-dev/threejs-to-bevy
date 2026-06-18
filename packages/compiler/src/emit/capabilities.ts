@@ -8,6 +8,7 @@ import type {
   ILocalDataIr,
   IMaterialsIr,
   IOverlaysIr,
+  IScenesIr,
   IUiIr,
   IWorldIr,
 } from "@threenative/ir";
@@ -26,6 +27,7 @@ export interface ICapabilitySource {
   overlays?: IOverlaysIr;
   resourceSchemas?: IIrSchemaFile;
   runtimeConfig?: IRuntimeConfigIr;
+  scenes?: IScenesIr;
   systems?: ISystemsIr;
   ui?: IUiIr;
   world?: IWorldIr;
@@ -49,6 +51,7 @@ export function deriveRequiredCapabilities(source: ICapabilitySource): IBundleMa
   collectLocalDataCapabilities(source.localData, add);
   collectUiCapabilities(source.ui, add);
   collectOverlayCapabilities(source.overlays, add);
+  collectSceneCapabilities(source.scenes, add);
   collectEnvironmentCapabilities(source.environment, add);
 
   if (source.componentSchemas !== undefined && Object.keys(source.componentSchemas.schemas).length > 0) {
@@ -87,6 +90,29 @@ export function deriveRequiredCapabilities(source: ICapabilitySource): IBundleMa
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([domain, domainCapabilities]) => [domain, [...domainCapabilities].sort((left, right) => left.localeCompare(right))]),
   );
+}
+
+function collectSceneCapabilities(scenes: IScenesIr | undefined, add: (domain: string, capability: string) => void): void {
+  if (scenes === undefined || scenes.scenes.length === 0) {
+    return;
+  }
+  add("scene", "lifecycle");
+  add("scene", "initial");
+  for (const scene of scenes.scenes) {
+    add("scene", `activation.${scene.activation}`);
+    add("scene", `kind.${scene.kind}`);
+    if ((scene.assetGroups ?? []).length > 0) {
+      add("scene", "asset-groups");
+    }
+    if (scene.transitions !== undefined) {
+      add("scene", "transitions");
+      for (const transition of [scene.transitions.enter, scene.transitions.exit]) {
+        if (transition !== undefined) {
+          add("scene", `transition.${transition.kind}`);
+        }
+      }
+    }
+  }
 }
 
 function collectOverlayCapabilities(overlays: IOverlaysIr | undefined, add: (domain: string, capability: string) => void): void {

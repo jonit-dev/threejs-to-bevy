@@ -116,6 +116,25 @@ test("should accept declared bundle-local asset load service", async () => {
   }
 });
 
+test("should accept declared scene lifecycle services", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-scene-services-"));
+  try {
+    await writeBundle(root, {
+      commands: [],
+      reads: [],
+      services: ["scene.change", "scene.current", "scene.loadAdditive", "scene.pop", "scene.push", "scene.unload"],
+      writes: [],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should accept query ordering pagination and changed filters", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-query-metadata-"));
   try {

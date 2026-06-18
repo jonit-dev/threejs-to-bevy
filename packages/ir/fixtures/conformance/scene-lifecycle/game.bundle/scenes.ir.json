@@ -1,0 +1,49 @@
+{
+  "schema": "threenative.scenes",
+  "version": "0.1.0",
+  "initialScene": "menu",
+  "scenes": [
+    {
+      "id": "menu",
+      "kind": "menu",
+      "activation": "exclusive",
+      "entities": [
+        "menu.logo"
+      ],
+      "transitions": {
+        "enter": {
+          "kind": "instant",
+          "durationMs": 0
+        },
+        "exit": {
+          "kind": "fade",
+          "durationMs": 150,
+          "color": "#000000"
+        }
+      }
+    },
+    {
+      "id": "level",
+      "kind": "level",
+      "activation": "exclusive",
+      "entities": [
+        "level.player"
+      ],
+      "transitions": {
+        "enter": {
+          "kind": "fade",
+          "durationMs": 150,
+          "color": "#000000"
+        }
+      }
+    },
+    {
+      "id": "pause",
+      "kind": "overlay",
+      "activation": "overlay",
+      "entities": [
+        "pause.panel"
+      ]
+    }
+  ]
+}

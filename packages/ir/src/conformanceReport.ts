@@ -242,6 +242,19 @@ export interface IConformanceSystemReport {
   queries: IConformanceSystemQueryReport[];
 }
 
+export interface IConformanceSceneLifecycleTraceEvent {
+  phase: "active" | "enter" | "exit" | "pause" | "preload" | "resume" | "unload";
+  reason: string;
+  scene: string;
+}
+
+export interface IConformanceSceneLifecycleReport {
+  activeScene: string;
+  additiveScenes: readonly string[];
+  stack: readonly string[];
+  trace: readonly IConformanceSceneLifecycleTraceEvent[];
+}
+
 export interface IConformanceReport {
   activeCamera?: string;
   audio?: IConformanceAudioReport;
@@ -257,6 +270,7 @@ export interface IConformanceReport {
   resources: IConformanceResourceReport[];
   runtime: "bevy" | "web-three";
   runtimeConfig?: IConformanceRuntimeConfigReport;
+  sceneLifecycle?: IConformanceSceneLifecycleReport;
   screenshotExports?: IConformanceScreenshotExportReport[];
   systems?: IConformanceSystemReport[];
   ui?: IConformanceUiReport;

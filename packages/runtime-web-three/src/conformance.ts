@@ -13,6 +13,7 @@ import type {
   IConformanceReport,
   IConformanceResourceReport,
   IConformanceRuntimeConfigReport,
+  IConformanceSceneLifecycleReport,
   IConformanceScreenshotExportReport,
   IConformanceSystemReport,
   IConformanceUiNodeReport,
@@ -31,6 +32,7 @@ import type { IWebBundle } from "./loadBundle.js";
 import type { IThreeWorld } from "./mapWorld.js";
 import { listScreenshotExportDeclarations } from "./renderTargets.js";
 import { detectPhysicsEvents } from "./physics.js";
+import { traceSceneLifecycle } from "./sceneManager.js";
 
 type IRuntimeLightReport = NonNullable<IConformanceEntityReport["light"]>["runtime"];
 
@@ -61,10 +63,22 @@ export function reportWebConformance(
     resources: reportResources(bundle.world.resources ?? {}),
     runtime: "web-three",
     runtimeConfig: reportRuntimeConfig(bundle.runtimeConfig),
+    sceneLifecycle: reportSceneLifecycle(bundle),
     screenshotExports: reportScreenshotExports(bundle.world),
     systems: reportSystems(bundle),
     ui: bundle.ui === undefined ? undefined : reportUi(bundle.ui),
   };
+}
+
+function reportSceneLifecycle(bundle: IWebBundle): IConformanceSceneLifecycleReport | undefined {
+  if (bundle.scenes === undefined) {
+    return undefined;
+  }
+  return traceSceneLifecycle(bundle.scenes, [
+    { kind: "change", scene: "level" },
+    { kind: "push", scene: "pause" },
+    { kind: "pop" },
+  ]);
 }
 
 function reportSystems(bundle: IWebBundle): IConformanceSystemReport[] | undefined {

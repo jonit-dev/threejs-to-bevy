@@ -139,6 +139,36 @@ test("should report V10 ECS tags and scene groups conformance observations", asy
   assert.deepEqual(tealCooldown.components, ["ColorPhase", "Hierarchy", "LaneTeal", "MeshRenderer", "MotionLane", "ParallelMover", "PhaseCooldown", "Transform"]);
 });
 
+test("should report scene lifecycle conformance trace", async () => {
+  const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/scene-lifecycle/game.bundle"));
+  const mapped = mapWorld(bundle);
+  const report = reportWebConformance(bundle, mapped, "scene-lifecycle");
+
+  assert.equal(report.fixture, "scene-lifecycle");
+  assert.equal(report.sceneLifecycle?.activeScene, "level");
+  assert.deepEqual(
+    report.sceneLifecycle?.trace.map((event) => `${event.scene}:${event.phase}:${event.reason}`),
+    [
+      "menu:preload:initial",
+      "menu:enter:initial",
+      "menu:active:initial",
+      "menu:exit:change",
+      "menu:unload:change",
+      "level:preload:change",
+      "level:enter:change",
+      "level:active:change",
+      "level:pause:push",
+      "pause:preload:push",
+      "pause:enter:push",
+      "pause:active:push",
+      "pause:exit:pop",
+      "pause:unload:pop",
+      "level:resume:pop",
+      "level:active:pop",
+    ],
+  );
+});
+
 function primitiveAssets(report: ReturnType<typeof reportWebConformance>): Array<[string, string | undefined]> {
   return report.assets
     .filter((asset) => asset.kind === "mesh")

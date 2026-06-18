@@ -38,7 +38,7 @@ export async function captureEntry(config: IProjectConfig): Promise<ICapturedSce
   return {
     root,
     summary: {
-      rootType: isWorldRoot(root) || (isBundleRoot(root) && isWorldRoot(root.world)) ? "World" : "Scene",
+      rootType: isWorldRoot(root) || (isBundleRoot(root) && (isWorldRoot(root.world) || "scenes" in root)) ? "World" : "Scene",
     },
   };
 }
@@ -307,6 +307,6 @@ export function isWorldRoot(value: unknown): boolean {
   return typeof value === "object" && value !== null && value.constructor.name === "World";
 }
 
-function isBundleRoot(value: unknown): value is { scene?: unknown; world?: unknown } {
-  return typeof value === "object" && value !== null && ("scene" in value || "world" in value);
+function isBundleRoot(value: unknown): value is { initialScene?: unknown; scene?: unknown; scenes?: unknown; world?: unknown } {
+  return typeof value === "object" && value !== null && ("scene" in value || "world" in value || "scenes" in value || "initialScene" in value);
 }

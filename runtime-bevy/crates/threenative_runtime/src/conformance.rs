@@ -14,6 +14,9 @@ use crate::audio::{
 use crate::cameras::{active_camera_ids, camera_order};
 use crate::physics::detect_physics_events;
 use crate::render_targets::list_screenshot_exports;
+use crate::scene_manager::{
+    SceneLifecycleOperation, SceneLifecycleRuntimeState, trace_scene_lifecycle,
+};
 use crate::ui::{UiDiagnostic, build_native_ui};
 
 #[derive(Debug, Serialize)]
@@ -41,6 +44,8 @@ pub struct ConformanceReport {
     pub runtime: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub runtime_config: Option<ConformanceRuntimeConfigReport>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub scene_lifecycle: Option<SceneLifecycleRuntimeState>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub screenshot_exports: Option<Vec<ConformanceScreenshotExportReport>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -639,6 +644,7 @@ pub fn report_bevy_conformance(
         resources: report_resources(bundle),
         runtime: "bevy".to_owned(),
         runtime_config: report_runtime_config(bundle.runtime_config.as_ref()),
+        scene_lifecycle: report_scene_lifecycle(bundle),
         screenshot_exports: Some(
             list_screenshot_exports(bundle)
                 .into_iter()
@@ -652,6 +658,18 @@ pub fn report_bevy_conformance(
         systems: report_systems(bundle),
         ui: ui_report.and_then(|report| report.report),
     }
+}
+
+fn report_scene_lifecycle(bundle: &LoadedBundle) -> Option<SceneLifecycleRuntimeState> {
+    let scenes = bundle.scenes.as_ref()?;
+    Some(trace_scene_lifecycle(
+        scenes,
+        &[
+            SceneLifecycleOperation::Change("level".to_owned()),
+            SceneLifecycleOperation::Push("pause".to_owned()),
+            SceneLifecycleOperation::Pop,
+        ],
+    ))
 }
 
 fn report_systems(bundle: &LoadedBundle) -> Option<Vec<ConformanceSystemReport>> {

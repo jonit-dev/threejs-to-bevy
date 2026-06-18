@@ -4,7 +4,7 @@
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Contract         | Three.js-style TypeScript game engine -> validated IR bundle -> web Three.js + native Bevy                                                                                                                                                                                                                                                                                                                                                                                                             |
 | Native baseline  | Bevy and `bevy_ecs` pinned to `=0.14.2`                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| Evidence anchors | native test, visual scene, game-authoring ergonomics, modular compiler capture tests, scene lifecycle SDK declaration tests, capability conformance fixtures, `pnpm verify:release`, `pnpm verify:conformance`, `pnpm --filter @threenative/ir test` contract drift and bundle path coverage, web/Bevy generated-mesh payload rejection tests, starter-functional template, release artifacts under `tools/verify/artifacts/release/` and `packages/ir/artifacts/conformance/`, historical milestone archive under `docs/PRDs/archive/`, V10 PRDs, focused V10 evidence gates |
+| Evidence anchors | native test, visual scene, game-authoring ergonomics, modular compiler capture tests, scene lifecycle SDK declaration tests, scene lifecycle IR validation tests, scene lifecycle compiler emission tests, scene lifecycle web/Bevy runtime trace tests, scene lifecycle example build smoke, capability conformance fixtures, `pnpm verify:release`, `pnpm verify:conformance`, `pnpm --filter @threenative/ir test` contract drift and bundle path coverage, web/Bevy generated-mesh payload rejection tests, starter-functional template, release artifacts under `tools/verify/artifacts/release/` and `packages/ir/artifacts/conformance/`, historical milestone archive under `docs/PRDs/archive/`, V10 PRDs, focused V10 evidence gates |
 
 ## Status
 
@@ -174,6 +174,7 @@ Repeated patterns in those games:
 - [x] Observer/event propagation model
 - [x] Component hooks and lifecycle hooks
 - [x] Scene serialization/deserialization as an authoring feature
+- [x] Named lifecycle scenes, stack/push/pop traces, and transition readiness
 - [x] Reflection/type registration surface for portable components
 - [x] Async task/channel patterns
 - [x] Plugin/plugin-group composition as a portable declaration

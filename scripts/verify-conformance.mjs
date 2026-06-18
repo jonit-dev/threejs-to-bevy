@@ -127,6 +127,9 @@ export async function verifyConformance(options = {}) {
   const v9PhysicsCharacterNativeTracePath = options.v9PhysicsCharacterNativeTracePath ?? resolve(artifactDir, "physics-character/native-physics-character.json");
   const v9PhysicsCharacterReportPath = options.v9PhysicsCharacterReportPath ?? resolve(artifactDir, "physics-character/verification-report.json");
   const v9PhysicsCharacterWebTracePath = options.v9PhysicsCharacterWebTracePath ?? resolve(artifactDir, "physics-character/web-physics-character.json");
+  const sceneLifecycleDiffPath = options.sceneLifecycleDiffPath ?? resolve(artifactDir, "scene-lifecycle/scene-lifecycle-diff.json");
+  const sceneLifecycleNativeTracePath = options.sceneLifecycleNativeTracePath ?? resolve(artifactDir, "scene-lifecycle/native-scene-lifecycle.json");
+  const sceneLifecycleWebTracePath = options.sceneLifecycleWebTracePath ?? resolve(artifactDir, "scene-lifecycle/web-scene-lifecycle.json");
   const v9AssetsGltfReportPath =
     options.v9AssetsGltfReportPath ?? resolve(root, "examples/assets-gltf-scene-workflow/artifacts/assets-gltf-scene-workflow/diff.json");
   const v9RenderingLightsReportPath =
@@ -185,6 +188,9 @@ export async function verifyConformance(options = {}) {
     v9PhysicsCharacterNativeTracePath,
     v9PhysicsCharacterReportPath,
     v9PhysicsCharacterWebTracePath,
+    sceneLifecycleDiffPath,
+    sceneLifecycleNativeTracePath,
+    sceneLifecycleWebTracePath,
     v9RenderingLightsReportPath,
     nativeV9SupportStressReportPath,
   };
@@ -454,6 +460,16 @@ export async function verifyConformance(options = {}) {
       { timeoutMs: 180000 },
     ],
     [
+      "scene lifecycle runtime trace parity",
+      process.execPath,
+      [
+        resolve(root, "scripts/verify-scene-lifecycle.mjs"),
+        resolve(root, "packages/ir/fixtures/conformance/scene-lifecycle/game.bundle"),
+        resolve(artifactDir, "scene-lifecycle"),
+      ],
+      { timeoutMs: 120000 },
+    ],
+    [
       "V9 assets glTF scene workflow artifact comparison",
       process.execPath,
       [resolve(root, "scripts/verify-v9-assets-gltf-scene-workflow.mjs")],
@@ -522,6 +538,7 @@ export function compareConformanceReports(left, right, options = {}) {
   compareValue(diagnostics, fixture, left.runtime, right.runtime, "$.activeCamera", left.activeCamera, right.activeCamera, { artifactPaths, bundlePath });
   compareValue(diagnostics, fixture, left.runtime, right.runtime, "$.audio", left.audio, right.audio, { artifactPaths, bundlePath });
   compareValue(diagnostics, fixture, left.runtime, right.runtime, "$.runtimeConfig", left.runtimeConfig, right.runtimeConfig, { artifactPaths, bundlePath });
+  compareValue(diagnostics, fixture, left.runtime, right.runtime, "$.sceneLifecycle", left.sceneLifecycle, right.sceneLifecycle, { artifactPaths, bundlePath });
   compareValue(diagnostics, fixture, left.runtime, right.runtime, "$.ui", left.ui, right.ui, { artifactPaths, bundlePath });
   compareValue(diagnostics, fixture, left.runtime, right.runtime, "$.diagnostics", left.diagnostics ?? [], right.diagnostics ?? [], { artifactPaths, bundlePath });
 

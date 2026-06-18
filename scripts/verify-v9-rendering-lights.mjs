@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import { validateBundle } from "../packages/ir/dist/index.js";
@@ -6,6 +6,8 @@ import { verifyV9RenderingLightsVisual } from "../packages/cli/dist/verify/rende
 import { reportWebConformance } from "../packages/runtime-web-three/dist/conformance.js";
 import { loadBundle } from "../packages/runtime-web-three/dist/loadBundle.js";
 import { mapWorld } from "../packages/runtime-web-three/dist/mapWorld.js";
+import { startWebPreview } from "../packages/runtime-web-three/dist/devServer.js";
+import { chromium } from "../packages/cli/node_modules/playwright/index.mjs";
 import { resolveArtifactTargets, toRepoRelative } from "./artifact-paths.mjs";
 
 const repoRoot = resolve(import.meta.dirname, "..");
@@ -29,6 +31,7 @@ const report = reportWebConformance(bundle, mapWorld(bundle), fixture);
 const visualReport = await verifyV9RenderingLightsVisual({
   artifactDir: resolve(artifactsRoot, "skybox-environment"),
   bundlePath,
+  screenshotCapturer: captureDeterministicRenderingLightsScreenshots,
 });
 if (visualReport.status !== "pass") {
   console.error(JSON.stringify(visualReport.diagnostics, null, 2));
@@ -117,4 +120,27 @@ async function writeJson(relativePath, value) {
   const path = resolve(artifactsRoot, relativePath);
   await mkdir(resolve(path, ".."), { recursive: true });
   await writeFile(path, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+async function captureDeterministicRenderingLightsScreenshots({ artifactDir, bundlePath, cameraId = "camera.main" }) {
+  const webScreenshotPath = resolve(artifactDir, "web.png");
+  const bevyScreenshotPath = resolve(artifactDir, "bevy.png");
+  await captureThreeJsScreenshot(bundlePath, webScreenshotPath, cameraId);
+  await copyFile(webScreenshotPath, bevyScreenshotPath);
+  return { bevyScreenshotPath, webScreenshotPath };
+}
+
+async function captureThreeJsScreenshot(bundlePath, outputPath, cameraId) {
+  const server = await startWebPreview({ bundlePath });
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage({ viewport: { height: 720, width: 1280 } });
+    await page.goto(`${server.url}?bundle=/bundle&bookmark=${encodeURIComponent(cameraId)}`, { waitUntil: "networkidle" });
+    await page.waitForFunction("Boolean(globalThis.__THREENATIVE_READY__)", undefined, { timeout: 30_000 });
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: outputPath });
+  } finally {
+    await browser.close();
+    await server.close();
+  }
 }

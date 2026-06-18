@@ -79,6 +79,39 @@ Use this style for gameplay entities, reusable components, and systems. Use
 for zero-field marker membership that should be queried through the normal
 component query path.
 
+### Lifecycle Scene Modules
+
+Use lifecycle scenes when a game needs menu, loading, level, pause overlay, or
+credits flow. Keep the visual `Scene` graph as the renderable root and wrap it
+with `defineScene()` for activation, transitions, optional scene-local `World`,
+and scene service declarations.
+
+```ts
+import { defineGame, defineScene, sceneTransition } from "@threenative/sdk";
+import { menuScene } from "./scenes/menu.js";
+import { levelScene } from "./scenes/level.js";
+
+export default defineGame({
+  initialScene: "menu",
+  scenes: [
+    menuScene,
+    defineScene({
+      id: "level",
+      kind: "level",
+      transitions: {
+        enter: sceneTransition.loadingScreen({ scene: "loading" }),
+      },
+      visual: levelScene,
+    }),
+  ],
+});
+```
+
+Portable systems may request scene changes only through declared services such
+as `scene.change`, `scene.push`, `scene.pop`, `scene.loadAdditive`, and
+`scene.unload`. Bundles emit `scenes.ir.json`, and web/Bevy runtimes expose
+matching deterministic lifecycle and transition/readiness traces.
+
 ```ts
 import {
   Material,

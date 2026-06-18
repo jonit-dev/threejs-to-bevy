@@ -115,6 +115,44 @@ export { scene };
   }
 });
 
+test("should build scene lifecycle example", async () => {
+  const projectPath = resolve(process.cwd(), "../../examples/scene-lifecycle");
+  const { bundlePath } = await buildProject(projectPath);
+  const report = await validateBundle(bundlePath);
+  const manifest = JSON.parse(await readFile(resolve(bundlePath, "manifest.json"), "utf8"));
+  const scenes = JSON.parse(await readFile(resolve(bundlePath, "scenes.ir.json"), "utf8"));
+  const systems = JSON.parse(await readFile(resolve(bundlePath, "systems.ir.json"), "utf8"));
+
+  assert.equal(bundlePath, resolve(projectPath, "dist/scene-lifecycle.bundle"));
+  assert.equal(report.ok, true);
+  assert.equal(manifest.entry.scenes, "scenes.ir.json");
+  assert.deepEqual(scenes.scenes.map((scene: { id: string }) => scene.id), ["credits", "level", "loading", "menu", "pause"]);
+  assert.ok(manifest.requiredCapabilities.scene.includes("transition.loadingScreen"));
+  assert.deepEqual(
+    systems.systems.map((system: { name: string; services: string[] }) => [system.name, system.services]).sort(),
+    [
+      ["levelActions", ["scene.change", "scene.push"]],
+      ["menuActions", ["scene.change"]],
+      ["pauseActions", ["scene.pop"]],
+    ],
+  );
+});
+
+test("should build modular scene lifecycle starter template", async () => {
+  const projectPath = resolve(process.cwd(), "../../templates/starter-functional");
+  const { bundlePath } = await buildProject(projectPath);
+  const report = await validateBundle(bundlePath);
+  const manifest = JSON.parse(await readFile(resolve(bundlePath, "manifest.json"), "utf8"));
+  const scenes = JSON.parse(await readFile(resolve(bundlePath, "scenes.ir.json"), "utf8"));
+  const world = JSON.parse(await readFile(resolve(bundlePath, "world.ir.json"), "utf8"));
+
+  assert.equal(bundlePath, resolve(projectPath, "dist/starter-functional.bundle"));
+  assert.equal(report.ok, true);
+  assert.equal(manifest.entry.scenes, "scenes.ir.json");
+  assert.deepEqual(scenes.scenes.map((scene: { id: string }) => scene.id), ["arena"]);
+  assert.ok(world.entities.some((entity: { id: string }) => entity.id === "player"));
+});
+
 test("should build v6 functional example", async () => {
   const projectPath = resolve(process.cwd(), "../../examples/v6-functional");
   const { bundlePath } = await buildProject(projectPath);

@@ -1,0 +1,25 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "scene-lifecycle",
+  "requiredCapabilities": {
+    "runtime": [
+      "scene:activation.exclusive",
+      "scene:activation.overlay",
+      "scene:initial",
+      "scene:kind.level",
+      "scene:kind.menu",
+      "scene:kind.overlay",
+      "scene:lifecycle"
+    ]
+  },
+  "entry": {
+    "world": "world.ir.json",
+    "scenes": "scenes.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "materials": "materials.ir.json",
+    "targetProfile": "target.profile.json"
+  }
+}

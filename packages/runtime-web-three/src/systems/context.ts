@@ -87,6 +87,14 @@ export interface ISystemContext {
     pick<T>(values: readonly T[]): T | undefined;
     range(min: number, max: number): number;
   };
+  scenes: {
+    change(scene: string, options?: Record<string, unknown>): ISceneServiceResult<"change">;
+    current(): string | null;
+    loadAdditive(scene: string, options?: Record<string, unknown>): ISceneServiceResult<"loadAdditive">;
+    pop(options?: Record<string, unknown>): { accepted: true; operation: "pop" };
+    push(scene: string, options?: Record<string, unknown>): ISceneServiceResult<"push">;
+    unload(scene: string, options?: Record<string, unknown>): ISceneServiceResult<"unload">;
+  };
   timers: {
     done(start: number, duration: number): boolean;
     elapsed(start: number): number;
@@ -180,7 +188,13 @@ export interface IQueuedResourceWrite {
 
 export interface IQueuedServiceCall {
   payload: unknown;
-  service: "animation.play" | "animation.query" | "animation.stop" | "assets.load" | "character.move" | "navigation.path" | "physics.overlap" | "physics.raycast" | "physics.sensor" | "physics.shapeCast" | "picking.mesh" | "picking.pointerRay";
+  service: "animation.play" | "animation.query" | "animation.stop" | "assets.load" | "character.move" | "navigation.path" | "physics.overlap" | "physics.raycast" | "physics.sensor" | "physics.shapeCast" | "picking.mesh" | "picking.pointerRay" | "scene.change" | "scene.current" | "scene.loadAdditive" | "scene.pop" | "scene.push" | "scene.unload";
+}
+
+export interface ISceneServiceResult<TOperation extends "change" | "loadAdditive" | "push" | "unload"> {
+  accepted: true;
+  operation: TOperation;
+  scene: string;
 }
 
 export interface IAssetLoadResult {
@@ -206,7 +220,7 @@ export interface IPhysicsSensorResult {
 
 export function createSystemContext(
   world: IWorldIr,
-  options: { assets?: IAssetsManifest; componentSchemas?: IIrSchemaFile; defaultQuery?: IIrSystemQuery; delta: number; elapsed?: number; fixedDelta: number; input?: IWebInputState; paused?: boolean; systems?: ISystemsIr },
+  options: { assets?: IAssetsManifest; componentSchemas?: IIrSchemaFile; currentScene?: string | null; defaultQuery?: IIrSystemQuery; delta: number; elapsed?: number; fixedDelta: number; input?: IWebInputState; paused?: boolean; systems?: ISystemsIr },
 ): {
   commands: IQueuedCommand[];
   context: ISystemContext;
@@ -370,6 +384,31 @@ export function createSystemContext(
           .map((entity) => createEntityView(entity, commands));
       },
       random,
+      scenes: {
+        change(scene, sceneOptions = {}) {
+          return queueSceneService(services, "change", scene, sceneOptions);
+        },
+        current() {
+          const result = options.currentScene ?? null;
+          services.push({ payload: { request: {}, result }, service: "scene.current" });
+          return result;
+        },
+        loadAdditive(scene, sceneOptions = {}) {
+          return queueSceneService(services, "loadAdditive", scene, sceneOptions);
+        },
+        pop(sceneOptions = {}) {
+          const request = { options: cloneValue(sceneOptions) as Record<string, unknown> };
+          const result = { accepted: true as const, operation: "pop" as const };
+          services.push({ payload: { request, result }, service: "scene.pop" });
+          return result;
+        },
+        push(scene, sceneOptions = {}) {
+          return queueSceneService(services, "push", scene, sceneOptions);
+        },
+        unload(scene, sceneOptions = {}) {
+          return queueSceneService(services, "unload", scene, sceneOptions);
+        },
+      },
       timers: createTimerHelpers(options.elapsed ?? 0),
       resources: {
         get(name) {
@@ -458,6 +497,18 @@ export function createSystemContext(
     resources,
     services,
   };
+}
+
+function queueSceneService<TOperation extends "change" | "loadAdditive" | "push" | "unload">(
+  services: IQueuedServiceCall[],
+  operation: TOperation,
+  scene: string,
+  options: Record<string, unknown>,
+): ISceneServiceResult<TOperation> {
+  const request = { options: cloneValue(options) as Record<string, unknown>, scene };
+  const result = { accepted: true as const, operation, scene };
+  services.push({ payload: { request, result }, service: `scene.${operation}` as IQueuedServiceCall["service"] });
+  return result;
 }
 
 export function channelEvent(systems: ISystemsIr | undefined, channel: string): string | undefined {

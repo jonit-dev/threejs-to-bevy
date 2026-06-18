@@ -12,6 +12,7 @@ export type UiSchema = "threenative.ui";
 export type EnvironmentSceneSchema = "threenative.environment-scene";
 export type OverlaysSchema = "threenative.overlays";
 export type AnimationsSchema = "threenative.animations";
+export type ScenesSchema = "threenative.scenes";
 
 export interface IBundleManifest {
   schema: BundleSchema;
@@ -25,6 +26,7 @@ export interface IBundleManifest {
     environmentScene?: string;
     localData?: string;
     scripts?: string;
+    scenes?: string;
     systems?: string;
     overlays?: string;
     ui?: string;
@@ -43,6 +45,47 @@ export interface IBundleManifest {
     runtimeConfig?: "runtime.config.json";
     scripts?: "scripts.bundle.js";
   };
+}
+
+export type SceneLifecycleKind = "credits" | "cutscene" | "level" | "loading" | "menu" | "overlay" | "system";
+export type SceneActivationPolicy = "additive" | "exclusive" | "loading" | "overlay" | "persistent";
+export type SceneTransitionKind = "crossfade" | "fade" | "instant" | "loadingScreen";
+
+export interface ISceneTransitionIr {
+  color?: string;
+  durationMs: number;
+  kind: SceneTransitionKind;
+  loadingScene?: string;
+}
+
+export interface ISceneLifecycleIr {
+  activation: SceneActivationPolicy;
+  assetGroups?: readonly string[];
+  audio?: {
+    music?: string;
+    transition?: ISceneTransitionIr;
+  };
+  entities?: readonly string[];
+  id: string;
+  input?: string;
+  kind: SceneLifecycleKind;
+  persistence?: {
+    keepEntities?: readonly string[];
+    keepResources?: readonly string[];
+  };
+  systems?: readonly string[];
+  transitions?: {
+    enter?: ISceneTransitionIr;
+    exit?: ISceneTransitionIr;
+  };
+  ui?: readonly string[];
+}
+
+export interface IScenesIr {
+  initialScene: string;
+  scenes: readonly ISceneLifecycleIr[];
+  schema: ScenesSchema;
+  version: SchemaVersion;
 }
 
 export type LocalDataSettingGroup = "accessibility" | "audio" | "controls" | "video";

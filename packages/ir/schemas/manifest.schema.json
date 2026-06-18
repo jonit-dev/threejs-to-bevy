@@ -24,6 +24,7 @@
         "audio": { "type": "string" },
         "environmentScene": { "type": "string" },
         "overlays": { "const": "overlays.ir.json" },
+        "scenes": { "const": "scenes.ir.json" },
         "ui": { "type": "string" },
         "systems": { "type": "string" },
         "animations": { "type": "string" },

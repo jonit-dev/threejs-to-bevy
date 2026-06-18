@@ -13,6 +13,7 @@ export {
   type IWebAudioSupportTrace,
 } from "./audio.js";
 export { loadBundle, validateAndLoadBundle, WebBundleValidationError, type IWebBundle } from "./loadBundle.js";
+export { reportWebConformance } from "./conformance.js";
 export { applyEnvironmentBookmark, createEnvironmentRuntime, loadEnvironmentAssetInstances, observeEnvironmentScene, traceEnvironmentContent, type IEnvironmentObservation, type IEnvironmentRuntime } from "./environment.js";
 export { buildInstancingPlan, type IInstancingGroup, type IInstancingPlan } from "./instancing.js";
 export { collectPerformanceSummary, summarizeFrameTimings, type IPerformanceMetricSummary } from "./performanceMetrics.js";
@@ -20,6 +21,8 @@ export { renderDebugOverlay, type IWebDebugCounter, type IWebDebugDrawPrimitive,
 export { renderEditorInspectorPanels, type IEditorInspectorPanelModel } from "./editor/inspector.js";
 export { applyAtmosphereProfile, observeAtmosphereProfile, type IAtmosphereObservation } from "./rendering.js";
 export { createGameLoopState, runGameFrame, setPaused, type IGameLoopState } from "./gameLoop.js";
+export { applySceneServiceEffects, createSceneLifecycleManager, traceSceneLifecycle, type ISceneLifecycleManager, type ISceneLifecycleOperation, type ISceneLifecycleRuntimeState, type ISceneLifecycleTraceEvent } from "./sceneManager.js";
+export { traceRenderTransition, type IRenderTransitionDiagnostic, type IRenderTransitionTrace, type IRenderTransitionTraceInput } from "./renderTransitions.js";
 export { buildEditorGizmoOverlay, createAxisGizmo, createWireBoxGizmo, createWireSphereGizmo, gizmoToBufferGeometry, type EditorGizmoKind, type IEditorGizmoOverlay, type IGizmoGeometry, type IGizmoLine } from "./gizmoGeometry.js";
 export { applyPersistedBindingOverrides, attachInputListeners, createInputState, createTouchGestureRecognizer, loadPersistedBindingOverrides, persistBindingOverride, rebindInput, reportGamepadCapabilities, savePersistedBindingOverrides, type IControlsSettingsStorage, type IGamepadCapabilityReport, type IInputRebindDiagnostic, type IInputRebindResult, type InputRebindTarget, type ITouchGestureEvent, type ITouchGestureFrame, type ITouchGesturePoint, type ITouchGestureRecognizer, type IWebInputState, type IWebInputStateOptions } from "./input.js";
 export { traceCharacterControllers, type ICharacterTraceInput, type ICharacterTraceObservation } from "./character.js";

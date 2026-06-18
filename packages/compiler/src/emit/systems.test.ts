@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { commands, defineComponent, defineEvent, defineQuery, defineResource, fixedUpdate, startup } from "@threenative/sdk";
+import { commands, defineComponent, defineEvent, defineQuery, defineResource, fixedUpdate, startup, update } from "@threenative/sdk";
 
 import { systemsToIr } from "./systems.js";
 
@@ -71,4 +71,10 @@ test("should emit system ordering constraints", () => {
     { after: undefined, before: ["second"], name: "first" },
     { after: ["first"], before: undefined, name: "second" },
   ]);
+});
+
+test("should emit scene service declaration", () => {
+  const system = update("menuActions", { services: ["scene.change", "scene.push", "scene.pop"] });
+
+  assert.deepEqual(systemsToIr([system]).systems[0]?.services, ["scene.change", "scene.pop", "scene.push"]);
 });

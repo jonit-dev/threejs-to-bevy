@@ -1,0 +1,19 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "menu.logo",
+      "components": {}
+    },
+    {
+      "id": "level.player",
+      "components": {}
+    },
+    {
+      "id": "pause.panel",
+      "components": {}
+    }
+  ],
+  "resources": {}
+}

@@ -29,6 +29,7 @@ import {
   defineComponent,
   defineEvent,
   defineQuery,
+  defineScene,
   fixedUpdate,
   gamepad,
   keyboard,
@@ -42,6 +43,7 @@ import {
   textureAsset,
   touchControl,
   transformAnimationClip,
+  sceneTransition,
   update,
 } from "@threenative/sdk";
 import { IR_DOCUMENTS, validateBundle } from "@threenative/ir";
@@ -219,6 +221,61 @@ test("should emit transform animation bundle document and capabilities", async (
     assertCapability(manifest, "animation", "transform-tracks");
     assertCapability(manifest, "animation", "transform.position");
     assertCapability(manifest, "animation", "loop-repeat");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should emit scene lifecycle document from composed game scenes", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-scenes-"));
+  try {
+    const menuVisual = new Scene({ id: "scene.menu.visual" });
+    menuVisual.add(
+      new Mesh({
+        geometry: new BoxGeometry({ size: [1, 1, 1] }),
+        id: "menu.logo",
+        material: new MeshStandardMaterial({ color: "#44aa88" }),
+      }),
+    );
+    const levelVisual = new Scene({ id: "scene.level.visual" });
+    levelVisual.add(
+      new Mesh({
+        geometry: new BoxGeometry({ size: [1, 1, 1] }),
+        id: "level.player",
+        material: new MeshStandardMaterial({ color: "#f4d35e" }),
+      }),
+    );
+    const menu = defineScene({
+      id: "menu",
+      kind: "menu",
+      preload: { assetGroups: ["bundle.requiredAssets"] },
+      transitions: { enter: sceneTransition.fade({ color: "#000000", durationMs: 250 }) },
+      visual: menuVisual,
+    });
+    const level = defineScene({ id: "level.forest", kind: "level", visual: levelVisual });
+
+    const bundlePath = await emitBundle(
+      {
+        entry: "src/game.ts",
+        outDir: "dist/game.bundle",
+        projectPath: root,
+        schema: "threenative.project" as const,
+        version: "0.1.0" as const,
+      },
+      { initialScene: "menu", scenes: [menu, level] },
+    );
+    const manifest = JSON.parse(await readFile(join(bundlePath, "manifest.json"), "utf8"));
+    const scenes = JSON.parse(await readFile(join(bundlePath, "scenes.ir.json"), "utf8"));
+    const world = JSON.parse(await readFile(join(bundlePath, "world.ir.json"), "utf8"));
+    const result = await validateBundle(bundlePath);
+
+    assert.equal(result.ok, true);
+    assert.equal(manifest.entry.scenes, "scenes.ir.json");
+    assert.deepEqual(scenes.scenes.map((scene: { id: string }) => scene.id), ["menu", "level.forest"]);
+    assert.deepEqual(scenes.scenes[0].entities, ["menu.logo"]);
+    assert.equal(scenes.scenes[0].transitions.enter.kind, "fade");
+    assert.ok(world.entities.some((entity: { id: string }) => entity.id === "level.player"));
+    assertCapability(manifest, "scene", "lifecycle");
   } finally {
     await rm(root, { force: true, recursive: true });
   }

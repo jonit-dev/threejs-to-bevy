@@ -15,6 +15,7 @@ export const IR_SCHEMA_IDS = {
   overlays: "threenative.overlays",
   resourceSchemas: "threenative.resource-schemas",
   runtimeConfig: "threenative.runtime-config",
+  scenes: "threenative.scenes",
   systems: "threenative.systems",
   targetProfile: "threenative.target-profile",
   ui: "threenative.ui",
@@ -115,6 +116,13 @@ export const IR_DOCUMENTS = {
     manifestSection: "files",
     schema: IR_SCHEMA_IDS.runtimeConfig,
     schemaFile: "runtime-config.schema.json",
+  },
+  scenes: {
+    fileName: "scenes.ir.json",
+    manifestKey: "scenes",
+    manifestSection: "entry",
+    schema: IR_SCHEMA_IDS.scenes,
+    schemaFile: "scenes.schema.json",
   },
   scripts: {
     fileName: "scripts.bundle.js",

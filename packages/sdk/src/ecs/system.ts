@@ -21,6 +21,12 @@ export type SystemService =
   | "persistence.listSlots"
   | "persistence.load"
   | "persistence.save"
+  | "scene.change"
+  | "scene.current"
+  | "scene.loadAdditive"
+  | "scene.pop"
+  | "scene.push"
+  | "scene.unload"
   | "settings.export"
   | "settings.get"
   | "settings.import"
@@ -222,6 +228,14 @@ export interface ISystemContext {
     int(min: number, max: number): number;
     pick<T>(values: readonly T[]): T | undefined;
     range(min: number, max: number): number;
+  };
+  scenes: {
+    change(scene: string, options?: Record<string, unknown>): { accepted: true; operation: "change"; scene: string };
+    current(): string | null;
+    loadAdditive(scene: string, options?: Record<string, unknown>): { accepted: true; operation: "loadAdditive"; scene: string };
+    pop(options?: Record<string, unknown>): { accepted: true; operation: "pop" };
+    push(scene: string, options?: Record<string, unknown>): { accepted: true; operation: "push"; scene: string };
+    unload(scene: string, options?: Record<string, unknown>): { accepted: true; operation: "unload"; scene: string };
   };
   timers: {
     done(start: number, duration: number): boolean;

@@ -132,6 +132,33 @@ test("should log declared asset load service", () => {
   assert.equal(result.entries[0]?.service, "assets.load");
 });
 
+test("should log declared scene service", () => {
+  const world = makeWorld();
+  const result = applySystemEffects(
+    world,
+    makeSystem({ services: ["scene.change"] }),
+    {
+      commands: [],
+      events: [],
+      resources: [],
+      services: [
+        {
+          payload: {
+            request: { scene: "level" },
+            result: { accepted: true, operation: "change", scene: "level" },
+          },
+          service: "scene.change",
+        },
+      ],
+    },
+    { frame: 1, tick: 2 },
+  );
+
+  assert.deepEqual(result.diagnostics, []);
+  assert.equal(result.entries[0]?.kind, "service");
+  assert.equal(result.entries[0]?.service, "scene.change");
+});
+
 test("should apply and log declared resource writes", () => {
   const world = makeWorld();
   world.resources = { Score: { value: 1 } };

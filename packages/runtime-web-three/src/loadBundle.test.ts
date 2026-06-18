@@ -60,6 +60,38 @@ test("loadBundle should load optional ui and audio ir", async () => {
   }
 });
 
+test("loadBundle should load optional scene lifecycle ir", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-web-scenes-bundle-"));
+  try {
+    await writeMinimalBundle(root);
+    await writeJson(root, "manifest.json", {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "scenes",
+      requiredCapabilities: {},
+      entry: { world: "world.ir.json", scenes: "scenes.ir.json" },
+      files: {
+        assets: "assets.manifest.json",
+        materials: "materials.ir.json",
+        targetProfile: "target.profile.json",
+      },
+    });
+    await writeJson(root, "scenes.ir.json", {
+      schema: "threenative.scenes",
+      version: "0.1.0",
+      initialScene: "menu",
+      scenes: [{ id: "menu", kind: "menu", activation: "exclusive" }],
+    });
+
+    const bundle = await loadBundle(root);
+
+    assert.equal(bundle.scenes?.initialScene, "menu");
+    assert.equal(bundle.scenes?.scenes[0]?.kind, "menu");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should validate and load a valid local bundle when validation is requested", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-web-validated-bundle-"));
   try {

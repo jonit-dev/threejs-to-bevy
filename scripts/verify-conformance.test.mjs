@@ -156,7 +156,7 @@ test("should pass matching gate commands and save report path", async () => {
     });
 
     assert.equal(result.ok, true);
-    assert.equal(result.steps.length, 27);
+    assert.equal(result.steps.length, 28);
     assert.equal(result.reportPath.endsWith("packages/ir/artifacts/conformance/verification-report.json"), true);
     assert.equal(result.artifacts.nativeBasicSceneReportPath.endsWith("packages/ir/artifacts/conformance/basic-scene/bevy.report.json"), true);
     assert.equal(
@@ -269,12 +269,15 @@ test("should pass matching gate commands and save report path", async () => {
     assert.equal(result.artifacts.v9PhysicsCharacterNativeTracePath.endsWith("packages/ir/artifacts/conformance/physics-character/native-physics-character.json"), true);
     assert.equal(result.artifacts.v9PhysicsCharacterReportPath.endsWith("packages/ir/artifacts/conformance/physics-character/verification-report.json"), true);
     assert.equal(result.artifacts.v9PhysicsCharacterWebTracePath.endsWith("packages/ir/artifacts/conformance/physics-character/web-physics-character.json"), true);
+    assert.equal(result.artifacts.sceneLifecycleDiffPath.endsWith("packages/ir/artifacts/conformance/scene-lifecycle/scene-lifecycle-diff.json"), true);
+    assert.equal(result.artifacts.sceneLifecycleNativeTracePath.endsWith("packages/ir/artifacts/conformance/scene-lifecycle/native-scene-lifecycle.json"), true);
+    assert.equal(result.artifacts.sceneLifecycleWebTracePath.endsWith("packages/ir/artifacts/conformance/scene-lifecycle/web-scene-lifecycle.json"), true);
     assert.equal(result.artifacts.v9AssetsGltfReportPath.endsWith("examples/assets-gltf-scene-workflow/artifacts/assets-gltf-scene-workflow/diff.json"), true);
     assert.equal(result.artifacts.v9RenderingLightsReportPath.endsWith("examples/rendering-lights/artifacts/rendering-lights/verification-report.json"), true);
     assert.equal(result.artifacts.nativeV9SupportStressReportPath.endsWith("packages/ir/artifacts/conformance/support-stress/bevy.report.json"), true);
     const report = JSON.parse(await readFile(result.reportPath, "utf8"));
     assert.equal(report.status, "pass");
-    assert.equal(report.steps.length, 27);
+    assert.equal(report.steps.length, 28);
     assert.equal(report.artifacts.nativeBasicSceneReportPath.endsWith("packages/ir/artifacts/conformance/basic-scene/bevy.report.json"), true);
     assert.equal(
       report.artifacts.nativePrimitiveMappingReportPath.endsWith("packages/ir/artifacts/conformance/primitive-mapping/bevy.report.json"),
@@ -383,6 +386,9 @@ test("should pass matching gate commands and save report path", async () => {
     assert.equal(report.artifacts.v9AnimationBlendingNativeTracePath.endsWith("packages/ir/artifacts/conformance/animation-blending/native-blend.json"), true);
     assert.equal(report.artifacts.v9AnimationBlendingWebTracePath.endsWith("packages/ir/artifacts/conformance/animation-blending/web-blend.json"), true);
     assert.equal(report.artifacts.v9PhysicsCharacterReportPath.endsWith("packages/ir/artifacts/conformance/physics-character/verification-report.json"), true);
+    assert.equal(report.artifacts.sceneLifecycleDiffPath.endsWith("packages/ir/artifacts/conformance/scene-lifecycle/scene-lifecycle-diff.json"), true);
+    assert.equal(report.artifacts.sceneLifecycleNativeTracePath.endsWith("packages/ir/artifacts/conformance/scene-lifecycle/native-scene-lifecycle.json"), true);
+    assert.equal(report.artifacts.sceneLifecycleWebTracePath.endsWith("packages/ir/artifacts/conformance/scene-lifecycle/web-scene-lifecycle.json"), true);
     assert.equal(report.artifacts.v9AssetsGltfReportPath.endsWith("examples/assets-gltf-scene-workflow/artifacts/assets-gltf-scene-workflow/diff.json"), true);
     assert.equal(report.artifacts.v9RenderingLightsReportPath.endsWith("examples/rendering-lights/artifacts/rendering-lights/verification-report.json"), true);
   } finally {

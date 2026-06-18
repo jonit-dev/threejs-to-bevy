@@ -66,6 +66,33 @@ test("should capture scene from valid relative module", async () => {
   }
 });
 
+test("should capture modular defineGame lifecycle scenes", async () => {
+  const root = await makeProject(`import { defineGame } from "@threenative/sdk";\nimport { menuScene } from "./scenes/menu.js";\nexport default defineGame({ initialScene: "menu", scenes: [menuScene] });\n`);
+  await mkdir(join(root, "src/scenes"), { recursive: true });
+  await writeFile(
+    join(root, "src/scenes/menu.ts"),
+    `import { Scene, defineScene } from "@threenative/sdk";\nconst visual = new Scene({ id: "menu.visual" });\nexport const menuScene = defineScene({ id: "menu", kind: "menu", visual });\n`,
+  );
+  try {
+    const captured = await captureEntry({
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project",
+      version: "0.1.0",
+    });
+
+    assert.equal(captured.summary.rootType, "World");
+    assert.equal(typeof captured.root, "object");
+    assert.notEqual(captured.root, null);
+    const rootObject = captured.root as Record<string, unknown>;
+    assert.equal(rootObject.initialScene, "menu");
+    assert.equal(Array.isArray(rootObject.scenes), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject unsupported root", async () => {
   const root = await makeProject("export default {};\n");
   try {

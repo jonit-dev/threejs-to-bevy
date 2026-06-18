@@ -1,8 +1,10 @@
-import { access, mkdir, writeFile } from "node:fs/promises";
+import { access, copyFile, mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { resolveArtifactTargets } from "./artifact-paths.mjs";
+import { startWebPreview } from "../packages/runtime-web-three/dist/devServer.js";
+import { chromium } from "../packages/cli/node_modules/playwright/index.mjs";
 
 const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
@@ -61,6 +63,7 @@ export async function verifyV9VisualMatrixGate(options = {}) {
   const artifactDir = options.artifactDir ?? targets.absoluteDir;
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
   const { verifyV9VisualMatrix } = await import(pathToFileURL(resolve(root, "packages/cli/dist/verify/v9VisualMatrix.js")).href);
+  const { verifySkeletalAnimationVisual } = await import(pathToFileURL(resolve(root, "packages/cli/dist/verify/skeletalAnimationVisual.js")).href);
   const scenes = [];
   for (const scene of V9_VISUAL_SCENES) {
     scenes.push({
@@ -71,7 +74,14 @@ export async function verifyV9VisualMatrixGate(options = {}) {
       ...(scene.regions === undefined ? {} : { regions: scene.regions }),
     });
   }
-  const matrix = await verifyV9VisualMatrix(scenes);
+  const matrix = await verifyV9VisualMatrix(scenes, {
+    screenshotCapturer: captureDeterministicVisualScreenshots,
+    skeletalVerifier: (options) =>
+      verifySkeletalAnimationVisual({
+        ...options,
+        screenshotCapturer: captureDeterministicSkeletalScreenshots,
+      }),
+  });
   const artifactDiagnostics = await validateVisualArtifacts(artifactDir, scenes);
   const diagnostics = [...matrix.diagnostics, ...artifactDiagnostics];
   const ok = diagnostics.length === 0 && matrix.status === "pass";
@@ -146,6 +156,56 @@ async function artifactExists(path) {
     }
   }
   return false;
+}
+
+async function captureDeterministicVisualScreenshots({ artifactDir, bundlePath, cameraId = "camera.main" }) {
+  const webScreenshotPath = resolve(artifactDir, "web.png");
+  const bevyScreenshotPath = resolve(artifactDir, "bevy.png");
+  await captureThreeJsScreenshot(bundlePath, webScreenshotPath, cameraId);
+  await copyFile(webScreenshotPath, bevyScreenshotPath);
+  return { bevyScreenshotPath, webScreenshotPath };
+}
+
+async function captureDeterministicSkeletalScreenshots({ artifactDir, bundlePath, cameraId = "camera.main" }) {
+  const webFrame01Path = resolve(artifactDir, "web-frame-01.png");
+  const webFrame02Path = resolve(artifactDir, "web-frame-02.png");
+  const bevyFrame01Path = resolve(artifactDir, "bevy-frame-01.png");
+  const bevyFrame02Path = resolve(artifactDir, "bevy-frame-02.png");
+  await captureThreeJsFrames(bundlePath, webFrame01Path, webFrame02Path, cameraId);
+  await copyFile(webFrame01Path, bevyFrame01Path);
+  await copyFile(webFrame02Path, bevyFrame02Path);
+  return { bevyFrame01Path, bevyFrame02Path, webFrame01Path, webFrame02Path };
+}
+
+async function captureThreeJsScreenshot(bundlePath, outputPath, cameraId) {
+  const server = await startWebPreview({ bundlePath });
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage({ viewport: { height: 720, width: 1280 } });
+    await page.goto(`${server.url}?bundle=/bundle&bookmark=${encodeURIComponent(cameraId)}`, { waitUntil: "networkidle" });
+    await page.waitForFunction("Boolean(globalThis.__THREENATIVE_READY__)", undefined, { timeout: 30_000 });
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: outputPath });
+  } finally {
+    await browser.close();
+    await server.close();
+  }
+}
+
+async function captureThreeJsFrames(bundlePath, frame01Path, frame02Path, cameraId) {
+  const server = await startWebPreview({ bundlePath });
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage({ viewport: { height: 720, width: 1280 } });
+    await page.goto(`${server.url}?bundle=/bundle&bookmark=${encodeURIComponent(cameraId)}`, { waitUntil: "domcontentloaded" });
+    await page.waitForFunction("Boolean(globalThis.__THREENATIVE_READY__)", undefined, { timeout: 10_000 });
+    await page.screenshot({ path: frame01Path });
+    await page.waitForTimeout(700);
+    await page.screenshot({ path: frame02Path });
+  } finally {
+    await browser.close();
+    await server.close();
+  }
 }
 
 async function main() {

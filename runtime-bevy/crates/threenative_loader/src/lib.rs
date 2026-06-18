@@ -50,6 +50,7 @@ pub struct BundleEntry {
     #[serde(rename = "localData")]
     pub local_data: Option<String>,
     pub overlays: Option<String>,
+    pub scenes: Option<String>,
     pub scripts: Option<String>,
     pub systems: Option<String>,
     pub ui: Option<String>,
@@ -83,10 +84,72 @@ pub struct LoadedBundle {
     pub materials: MaterialsIr,
     pub overlays: Option<OverlaysIr>,
     pub runtime_config: Option<RuntimeConfigIr>,
+    pub scenes: Option<ScenesIr>,
     pub systems: Option<SystemsIr>,
     pub target_profile: TargetProfile,
     pub ui: Option<UiIr>,
     pub world: WorldIr,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScenesIr {
+    pub schema: String,
+    pub version: String,
+    pub initial_scene: String,
+    pub scenes: Vec<SceneLifecycleIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SceneLifecycleIr {
+    pub id: String,
+    pub kind: String,
+    pub activation: String,
+    #[serde(default)]
+    pub asset_groups: Vec<String>,
+    pub audio: Option<SceneAudioIr>,
+    #[serde(default)]
+    pub entities: Vec<String>,
+    pub input: Option<String>,
+    pub persistence: Option<ScenePersistenceIr>,
+    #[serde(default)]
+    pub systems: Vec<String>,
+    pub transitions: Option<SceneTransitionsIr>,
+    #[serde(default)]
+    pub ui: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SceneAudioIr {
+    pub music: Option<String>,
+    pub transition: Option<SceneTransitionIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScenePersistenceIr {
+    #[serde(default)]
+    pub keep_entities: Vec<String>,
+    #[serde(default)]
+    pub keep_resources: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SceneTransitionsIr {
+    pub enter: Option<SceneTransitionIr>,
+    pub exit: Option<SceneTransitionIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SceneTransitionIr {
+    pub color: Option<String>,
+    pub duration_ms: u32,
+    pub kind: String,
+    pub loading_scene: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -1834,6 +1897,14 @@ pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadEr
         }
         None => None,
     };
+    let scenes = match manifest.entry.scenes.as_ref() {
+        Some(file) => {
+            let scenes: ScenesIr = read_json(bundle_path, file)?;
+            ensure_supported(&scenes.schema, &scenes.version)?;
+            Some(scenes)
+        }
+        None => None,
+    };
 
     Ok(LoadedBundle {
         animations,
@@ -1848,6 +1919,7 @@ pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadEr
         materials,
         overlays,
         runtime_config,
+        scenes,
         systems,
         target_profile,
         ui,
@@ -1897,7 +1969,10 @@ fn read_f32_payload(bundle_path: &Path, file: &str, count: usize) -> Result<Vec<
     if bytes.len() != expected {
         return Err(LoadError::InvalidGeneratedMeshPayload {
             path: file.to_owned(),
-            message: format!("expected {expected} bytes for float payload, found {}", bytes.len()),
+            message: format!(
+                "expected {expected} bytes for float payload, found {}",
+                bytes.len()
+            ),
         });
     }
     let mut values = Vec::with_capacity(count);

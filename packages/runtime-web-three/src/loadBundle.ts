@@ -10,6 +10,7 @@ import type {
   IMaterialsIr,
   IOverlaysIr,
   IRuntimeConfigIr,
+  IScenesIr,
   ISystemsIr,
   ITargetProfile,
   IUiIr,
@@ -29,6 +30,7 @@ export interface IWebBundle {
   manifest: IBundleManifest;
   materials: IMaterialsIr;
   runtimeConfig?: IRuntimeConfigIr;
+  scenes?: IScenesIr;
   source?: string;
   systems?: ISystemsIr;
   targetProfile: ITargetProfile;
@@ -95,6 +97,8 @@ export async function loadBundle(source: string): Promise<IWebBundle> {
   const ui = manifest.entry.ui === undefined ? undefined : await readBundleJson<IUiIr>(source, manifest.entry.ui);
   const overlays =
     manifest.entry.overlays === undefined ? undefined : await readBundleJson<IOverlaysIr>(source, manifest.entry.overlays);
+  const scenes =
+    manifest.entry.scenes === undefined ? undefined : await readBundleJson<IScenesIr>(source, manifest.entry.scenes);
   const assets = await hydrateGeneratedMeshAssets(await readBundleJson<IAssetsManifest>(source, manifest.files.assets), source);
   return {
     assets,
@@ -108,6 +112,7 @@ export async function loadBundle(source: string): Promise<IWebBundle> {
     materials: await readBundleJson<IMaterialsIr>(source, manifest.files.materials),
     runtimeConfig,
     overlays,
+    scenes,
     source,
     systems,
     targetProfile: await readBundleJson<ITargetProfile>(source, manifest.files.targetProfile),

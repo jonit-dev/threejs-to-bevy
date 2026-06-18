@@ -292,6 +292,26 @@ test("should expose bundle asset metadata and log asset load service calls", () 
   });
 });
 
+test("should request scene push from system", () => {
+  const { context, services } = createSystemContext(makeWorld(), { currentScene: "level", delta: 0.016, fixedDelta: 0.016 });
+
+  const current = context.scenes.current();
+  const result = context.scenes.push("pause", { transition: "default" });
+
+  assert.equal(current, "level");
+  assert.deepEqual(result, { accepted: true, operation: "push", scene: "pause" });
+  assert.deepEqual(services, [
+    { payload: { request: {}, result: "level" }, service: "scene.current" },
+    {
+      payload: {
+        request: { options: { transition: "default" }, scene: "pause" },
+        result: { accepted: true, operation: "push", scene: "pause" },
+      },
+      service: "scene.push",
+    },
+  ]);
+});
+
 test("should expose deterministic random helpers from world seed", () => {
   const seededWorld = makeWorld();
   seededWorld.resources = { Random: { seed: "arena-1" } };

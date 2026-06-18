@@ -27,6 +27,7 @@ test("should list every registered IR document when checking contract drift", as
     "runtimeConfig",
     "ui",
     "overlays",
+    "scenes",
     "systems",
     "animations",
     "audio",
@@ -46,6 +47,7 @@ test("should list every registered IR document when checking contract drift", as
   assertManifestDocument("entry", "environmentScene", "environment.scene.json");
   assertManifestDocument("entry", "localData", "local-data.ir.json");
   assertManifestDocument("entry", "overlays", "overlays.ir.json");
+  assertManifestDocument("entry", "scenes", "scenes.ir.json");
   assertManifestDocument("entry", "scripts", "scripts.bundle.js");
   assertManifestDocument("entry", "systems", "systems.ir.json");
   assertManifestDocument("entry", "ui", "ui.ir.json");

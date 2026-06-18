@@ -192,6 +192,83 @@ test("should reject mesh renderer mesh references missing from assets document",
   }
 });
 
+test("should accept valid scene lifecycle document", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-scenes-valid-"));
+  try {
+    await writeSceneBundle(root, {
+      initialScene: "menu",
+      scenes: [
+        {
+          activation: "exclusive",
+          assetGroups: ["bundle.requiredAssets"],
+          audio: { music: "music.menu" },
+          entities: ["player"],
+          id: "menu",
+          input: "Start",
+          kind: "menu",
+          systems: ["menuLoop"],
+          transitions: { enter: { durationMs: 250, kind: "fade", color: "#000000" } },
+          ui: ["ui.menu"],
+        },
+        {
+          activation: "loading",
+          id: "loading",
+          kind: "loading",
+          transitions: { enter: { durationMs: 0, kind: "instant" } },
+        },
+      ],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject unknown initial scene", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-scenes-initial-"));
+  try {
+    await writeSceneBundle(root, {
+      initialScene: "missing",
+      scenes: [{ activation: "exclusive", id: "menu", kind: "menu" }],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_SCENE_INITIAL_UNKNOWN"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject duplicate exclusive ownership", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-scenes-ownership-"));
+  try {
+    await writeSceneBundle(root, {
+      initialScene: "menu",
+      scenes: [
+        { activation: "exclusive", entities: ["player"], id: "menu", kind: "menu" },
+        { activation: "exclusive", entities: ["player"], id: "level", kind: "level" },
+      ],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(
+      result.diagnostics.some(
+        (diagnostic) => diagnostic.code === "TN_IR_SCENE_OWNERSHIP_CONFLICT" && diagnostic.path === "scenes.ir.json/scenes/1/entities",
+      ),
+      true,
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject non finite transform values", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-invalid-transform-"));
   try {
@@ -1120,6 +1197,79 @@ async function writeRuntimeConfig(root: string, renderer: Record<string, unknown
     renderer,
     time: { fixedDelta: 1 / 60, paused: false },
     window: { height: 720, width: 1280 },
+  });
+}
+
+async function writeSceneBundle(root: string, scenes: unknown): Promise<void> {
+  await writeBundle(root, { current: 100, max: 100 });
+  await mkdir(join(root, "assets"), { recursive: true });
+  await writeFile(join(root, "assets/music-menu.ogg"), "");
+  await writeJson(root, "manifest.json", {
+    schema: "threenative.bundle",
+    version: "0.1.0",
+    name: "schema-test",
+    requiredCapabilities: {},
+    entry: {
+      audio: "audio.ir.json",
+      scenes: "scenes.ir.json",
+      systems: "systems.ir.json",
+      ui: "ui.ir.json",
+      world: "world.ir.json",
+    },
+    files: {
+      assets: "assets.manifest.json",
+      componentSchemas: "schemas/components.schema.json",
+      input: "input.ir.json",
+      materials: "materials.ir.json",
+      targetProfile: "target.profile.json",
+    },
+  });
+  await writeJson(root, "scenes.ir.json", {
+    schema: "threenative.scenes",
+    version: "0.1.0",
+    ...(scenes as Record<string, unknown>),
+  });
+  await writeJson(root, "assets.manifest.json", {
+    schema: "threenative.assets",
+    version: "0.1.0",
+    assets: [{ format: "ogg", id: "music.menu.asset", kind: "audio", path: "assets/music-menu.ogg" }],
+    groups: [{ id: "bundle.requiredAssets", required: ["music.menu.asset"] }],
+  });
+  await writeJson(root, "input.ir.json", {
+    schema: "threenative.input",
+    version: "0.1.0",
+    actions: [{ id: "Start", bindings: [{ code: "Enter", device: "keyboard" }] }],
+    axes: [],
+  });
+  await writeJson(root, "audio.ir.json", {
+    schema: "threenative.audio",
+    version: "0.1.0",
+    music: [{ asset: "music.menu.asset", id: "music.menu", loop: true }],
+    oneShots: [],
+  });
+  await writeJson(root, "systems.ir.json", {
+    schema: "threenative.systems",
+    version: "0.1.0",
+    systems: [
+      {
+        commands: [],
+        eventReads: [],
+        eventWrites: [],
+        name: "menuLoop",
+        queries: [],
+        reads: [],
+        resourceReads: [],
+        resourceWrites: [],
+        schedule: "update",
+        services: [],
+        writes: [],
+      },
+    ],
+  });
+  await writeJson(root, "ui.ir.json", {
+    schema: "threenative.ui",
+    version: "0.1.0",
+    root: { children: [{ action: "Start", id: "ui.menu", kind: "button", label: "Start" }], id: "ui.root", kind: "column" },
   });
 }
 

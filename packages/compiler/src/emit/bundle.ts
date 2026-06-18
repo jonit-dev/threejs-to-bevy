@@ -11,18 +11,20 @@ import {
   type ILocalDataIr,
   type IMaterialIr,
   type IMaterialsIr,
+  type IScenesIr,
+  type ISceneTransitionIr,
   type ITargetProfile,
   type IUiIr,
   type IWorldIr,
 } from "@threenative/ir";
-import { type IAnimationsDeclaration, type IAssetGroupDeclaration, type IAssetReference, type IAudioDeclaration, type IInputMapDeclaration, type IOverlayDeclaration, type IPersistenceDeclaration, type World } from "@threenative/sdk";
+import { type IAnimationsDeclaration, type IAssetGroupDeclaration, type IAssetReference, type IAudioDeclaration, type IInputMapDeclaration, type IOverlayDeclaration, type IPersistenceDeclaration, type ISceneAudioDeclaration, type ISceneLifecycleDeclaration, type World } from "@threenative/sdk";
 import { type IUiElement } from "@threenative/ui";
 
 import { type IProjectConfig } from "../config.js";
 import { copyAssetFiles, copyExtraAssetFiles, type IInternalAsset } from "./asset-copy.js";
 import { emitAudio } from "./audio.js";
 import { deriveRequiredCapabilities } from "./capabilities.js";
-import { ecsToIr } from "./ecs.js";
+import { ecsToIr, type IEcsEmitResult } from "./ecs.js";
 import { emitEnvironment, type IEnvironmentDeclaration } from "./environment.js";
 import { inputToIr } from "./input.js";
 import { emitPersistence } from "./persistence.js";
@@ -39,8 +41,15 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
     typeof bundleRoot.scene === "object" && bundleRoot.scene !== null && bundleRoot.scene.constructor.name === "World";
   const worldRoot = bundleRoot.world ?? (isWorld ? bundleRoot.scene : undefined);
   const sceneRoot = isWorld ? undefined : bundleRoot.scene;
-  const emitted = sceneRoot === undefined ? undefined : sceneToWorld(sceneRoot as Parameters<typeof sceneToWorld>[0]);
-  const ecs = worldRoot === undefined ? undefined : ecsToIr(worldRoot as Parameters<typeof ecsToIr>[0]);
+  const lifecycleScenes = emitLifecycleScenes(bundleRoot.scenes, bundleRoot.initialScene);
+  const emitted = mergeSceneEmits([
+    ...(sceneRoot === undefined ? [] : [sceneToWorld(sceneRoot as Parameters<typeof sceneToWorld>[0])]),
+    ...lifecycleScenes.sceneEmits,
+  ]);
+  const ecs = mergeEcsEmits([
+    ...(worldRoot === undefined ? [] : [ecsToIr(worldRoot as Parameters<typeof ecsToIr>[0])]),
+    ...lifecycleScenes.ecsEmits,
+  ]);
   const input = bundleRoot.input === undefined ? ecs?.input : inputToIr(bundleRoot.input);
   const audio = bundleRoot.audio === undefined ? undefined : emitAudio(bundleRoot.audio);
   const localData = bundleRoot.persistence === undefined ? undefined : emitPersistence(bundleRoot.persistence);
@@ -89,6 +98,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
       overlays: overlays?.overlays,
       resourceSchemas: ecs?.resourceSchemas,
       runtimeConfig: ecs?.runtimeConfig,
+      scenes: lifecycleScenes.scenes,
       systems: ecs?.systems,
       ui,
       world,
@@ -98,6 +108,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
       ...(animations === undefined ? {} : { animations: IR_DOCUMENTS.animations.fileName }),
       ...(environment === undefined ? {} : { environmentScene: IR_DOCUMENTS.environmentScene.fileName }),
       ...(localData === undefined ? {} : { localData: IR_DOCUMENTS.localData.fileName }),
+      ...(lifecycleScenes.scenes === undefined ? {} : { scenes: IR_DOCUMENTS.scenes.fileName }),
       ...(ecs?.scriptBundle === undefined ? {} : { scripts: IR_DOCUMENTS.scripts.fileName }),
       ...(ecs === undefined ? {} : { systems: IR_DOCUMENTS.systems.fileName }),
       ...(overlays === undefined ? {} : { overlays: IR_DOCUMENTS.overlays.fileName }),
@@ -150,6 +161,9 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
   if (localData !== undefined) {
     await writeFile(resolve(outDir, IR_DOCUMENTS.localData.fileName), stableJson(localData));
   }
+  if (lifecycleScenes.scenes !== undefined) {
+    await writeFile(resolve(outDir, IR_DOCUMENTS.scenes.fileName), stableJson(lifecycleScenes.scenes));
+  }
   if (animations !== undefined) {
     await writeFile(resolve(outDir, IR_DOCUMENTS.animations.fileName), stableJson(animations));
   }
@@ -180,10 +194,12 @@ interface IBundleRoot {
   animations?: IAnimationsDeclaration;
   audio?: IAudioDeclaration;
   environment?: IEnvironmentDeclaration;
+  initialScene?: string;
   input?: IInputMapDeclaration;
   overlay?: IOverlayDeclaration;
   persistence?: IPersistenceDeclaration;
   scene?: unknown;
+  scenes?: readonly ISceneLifecycleDeclaration[];
   ui?: IUiElement;
   world?: World;
 }
@@ -199,8 +215,104 @@ function isBundleRoot(root: unknown): root is IBundleRoot {
   return (
     typeof root === "object"
     && root !== null
-    && ["assetGroups", "animations", "audio", "environment", "input", "overlay", "persistence", "scene", "ui", "world"].some((key) => key in root)
+    && ["assetGroups", "animations", "audio", "environment", "initialScene", "input", "overlay", "persistence", "scene", "scenes", "ui", "world"].some((key) => key in root)
   );
+}
+
+interface ILifecycleSceneEmitResult {
+  ecsEmits: IEcsEmitResult[];
+  sceneEmits: ReturnType<typeof sceneToWorld>[];
+  scenes?: IScenesIr;
+}
+
+function emitLifecycleScenes(scenes: readonly ISceneLifecycleDeclaration[] | undefined, initialScene: string | undefined): ILifecycleSceneEmitResult {
+  if (scenes === undefined) {
+    return { ecsEmits: [], sceneEmits: [] };
+  }
+  const sceneEmits: ReturnType<typeof sceneToWorld>[] = [];
+  const ecsEmits: IEcsEmitResult[] = [];
+  const sceneEntries = scenes.map((scene) => {
+    const visualEmit = scene.visual === undefined ? undefined : sceneToWorld(scene.visual);
+    const ecsEmit = scene.world === undefined ? undefined : ecsToIr(scene.world);
+    if (visualEmit !== undefined) {
+      sceneEmits.push(visualEmit);
+    }
+    if (ecsEmit !== undefined) {
+      ecsEmits.push(ecsEmit);
+    }
+    const sceneWorld = mergeWorlds(visualEmit?.world, ecsEmit?.world);
+    return {
+      activation: scene.activation,
+      ...(scene.preload?.assetGroups === undefined || scene.preload.assetGroups.length === 0
+        ? {}
+        : { assetGroups: [...scene.preload.assetGroups].sort((left, right) => left.localeCompare(right)) }),
+      ...emitSceneAudio(scene.audio),
+      ...(sceneWorld === undefined ? {} : { entities: sceneWorld.entities.map((entity) => entity.id).sort((left, right) => left.localeCompare(right)) }),
+      id: scene.id,
+      kind: scene.kind,
+      ...emitScenePersistence(scene.persistence),
+      ...emitSceneTransitions(scene.transitions),
+    };
+  });
+  return {
+    ecsEmits,
+    sceneEmits,
+    scenes: {
+      schema: IR_SCHEMA_IDS.scenes,
+      version: IR_VERSION,
+      initialScene: initialScene ?? scenes[0]?.id ?? "",
+      scenes: sceneEntries,
+    },
+  };
+}
+
+function emitSceneAudio(audio: ISceneLifecycleDeclaration["audio"]): Pick<IScenesIr["scenes"][number], "audio"> {
+  if (audio === undefined || !isSceneAudioMetadata(audio)) {
+    return {};
+  }
+  return {
+    audio: {
+      music: audio.music,
+      ...(audio.transition === undefined ? {} : { transition: emitSceneTransition(audio.transition) }),
+    },
+  };
+}
+
+function isSceneAudioMetadata(audio: ISceneLifecycleDeclaration["audio"]): audio is ISceneAudioDeclaration {
+  return typeof audio === "object" && audio !== null && "music" in audio && typeof audio.music === "string";
+}
+
+function emitScenePersistence(persistence: ISceneLifecycleDeclaration["persistence"]): Pick<IScenesIr["scenes"][number], "persistence"> {
+  if (persistence === undefined) {
+    return {};
+  }
+  return {
+    persistence: {
+      ...(persistence.keepEntities.length === 0 ? {} : { keepEntities: [...persistence.keepEntities].sort((left, right) => left.localeCompare(right)) }),
+      ...(persistence.keepResources.length === 0 ? {} : { keepResources: [...persistence.keepResources].sort((left, right) => left.localeCompare(right)) }),
+    },
+  };
+}
+
+function emitSceneTransitions(transitions: ISceneLifecycleDeclaration["transitions"]): Pick<IScenesIr["scenes"][number], "transitions"> {
+  if (transitions.enter === undefined && transitions.exit === undefined) {
+    return {};
+  }
+  return {
+    transitions: {
+      ...(transitions.enter === undefined ? {} : { enter: emitSceneTransition(transitions.enter) }),
+      ...(transitions.exit === undefined ? {} : { exit: emitSceneTransition(transitions.exit) }),
+    },
+  };
+}
+
+function emitSceneTransition(transition: NonNullable<ISceneLifecycleDeclaration["transitions"]["enter"]>): ISceneTransitionIr {
+  return {
+    durationMs: transition.durationMs,
+    kind: transition.kind,
+    ...(transition.color === undefined ? {} : { color: transition.color }),
+    ...(transition.loadingScene === undefined ? {} : { loadingScene: transition.loadingScene }),
+  };
 }
 
 function emitAnimations(animations: IAnimationsDeclaration): IAnimationsIr {
@@ -218,6 +330,74 @@ function emitAnimations(animations: IAnimationsDeclaration): IAnimationsIr {
       })),
     })),
   };
+}
+
+function mergeSceneEmits(emits: ReturnType<typeof sceneToWorld>[]): ReturnType<typeof sceneToWorld> | undefined {
+  if (emits.length === 0) {
+    return undefined;
+  }
+  return {
+    assets: mergeById(emits.flatMap((emit) => emit.assets)),
+    materials: mergeById(emits.flatMap((emit) => emit.materials)),
+    world: emits.map((emit) => emit.world).reduce((merged, world) => mergeWorlds(merged, world) ?? merged),
+  };
+}
+
+function mergeEcsEmits(emits: IEcsEmitResult[]): IEcsEmitResult | undefined {
+  if (emits.length === 0) {
+    return undefined;
+  }
+  const [first, ...rest] = emits;
+  if (first === undefined) {
+    return undefined;
+  }
+  return rest.reduce(
+    (merged, current) => ({
+      componentSchemas: mergeSchemaFiles(merged.componentSchemas, current.componentSchemas),
+      eventSchemas: mergeSchemaFiles(merged.eventSchemas, current.eventSchemas),
+      input: mergeInputs(merged.input, current.input),
+      resourceSchemas: mergeSchemaFiles(merged.resourceSchemas, current.resourceSchemas),
+      runtimeConfig: current.runtimeConfig ?? merged.runtimeConfig,
+      scriptBundle: [merged.scriptBundle, current.scriptBundle].filter((item): item is string => item !== undefined && item.trim() !== "").join("\n"),
+      systems: {
+        schema: "threenative.systems",
+        version: "0.1.0",
+        systems: mergeByName([...merged.systems.systems, ...current.systems.systems]),
+      },
+      world: mergeWorlds(merged.world, current.world) ?? merged.world,
+    }),
+    first,
+  );
+}
+
+function mergeSchemaFiles<T extends { schema: string; version: string; schemas: Record<string, unknown> }>(left: T, right: T): T {
+  return {
+    ...left,
+    schemas: Object.fromEntries([...Object.entries(left.schemas), ...Object.entries(right.schemas)].sort(([a], [b]) => a.localeCompare(b))),
+  };
+}
+
+function mergeInputs(left: IEcsEmitResult["input"], right: IEcsEmitResult["input"]): IEcsEmitResult["input"] {
+  if (left === undefined) {
+    return right;
+  }
+  if (right === undefined) {
+    return left;
+  }
+  return {
+    schema: "threenative.input",
+    version: "0.1.0",
+    actions: mergeById([...left.actions, ...right.actions]),
+    axes: mergeById([...left.axes, ...right.axes]),
+  };
+}
+
+function mergeById<T extends { id: string }>(items: T[]): T[] {
+  return [...new Map(items.map((item) => [item.id, item])).values()].sort((left, right) => left.id.localeCompare(right.id));
+}
+
+function mergeByName<T extends { name: string }>(items: T[]): T[] {
+  return [...new Map(items.map((item) => [item.name, item])).values()].sort((left, right) => left.name.localeCompare(right.name));
 }
 
 function mergeWorlds(scene: IWorldIr | undefined, ecs: IWorldIr | undefined): IWorldIr | undefined {
