@@ -164,6 +164,7 @@ async function checkDocsLayout(root: string, readme: string, status: string): Pr
     "Fixtures are stable inputs",
     "Generated artifacts are outputs",
     "tools/verify/src",
+    "tools/verify/src/cli/run.ts",
     "scripts/` is wrapper-only",
   ]) {
     if (!workflow.includes(phrase)) {

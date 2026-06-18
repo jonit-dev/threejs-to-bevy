@@ -42,6 +42,41 @@ test("should reject unclassified flat docs pages", async () => {
   );
 });
 
+test("should document canonical verify tool paths", async () => {
+  const root = await makeDocsRepo();
+
+  const result = await checkDocs(root);
+
+  assert.equal(result.ok, true, result.diagnostics.map((diagnostic) => diagnostic.message).join("\n"));
+});
+
+test("should require stable contributor gates", async () => {
+  const root = await makeDocsRepo();
+  await writeFile(
+    join(root, "docs/workflows/developer-workflow.md"),
+    [
+      "Generated artifacts are outputs.",
+      "Fixtures are stable inputs.",
+      "`examples/<name>/artifacts/<gate>/`",
+      "`examples/<name>/dist/*`",
+      "`tools/verify/artifacts/<gate>/`",
+      "`packages/ir/artifacts/conformance/`",
+      "`packages/ir/fixtures/*`",
+      "`runtime-bevy/artifacts/<gate>/`",
+      "`tools/verify/src`",
+      "`scripts/` is wrapper-only",
+    ].join("\n"),
+  );
+
+  const result = await checkDocs(root);
+
+  assert.equal(result.ok, false);
+  assert.equal(
+    result.diagnostics.some((diagnostic) => diagnostic.message.includes("tools/verify/src/cli/run.ts")),
+    true,
+  );
+});
+
 async function makeDocsRepo() {
   const root = await mkdtemp(join(tmpdir(), "tn-docs-gate-"));
   await mkdir(join(root, "docs/PRDs"), { recursive: true });
@@ -85,6 +120,7 @@ Run \`pnpm verify:release\`.
       "`packages/ir/fixtures/*`",
       "`runtime-bevy/artifacts/<gate>/`",
       "`tools/verify/src`",
+      "`tools/verify/src/cli/run.ts`",
       "`scripts/` is wrapper-only",
     ].join("\n"),
   );

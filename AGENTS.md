@@ -20,6 +20,7 @@ Repo-wide guidance for AI coding agents working on ThreeNative.
   `pnpm verify:release`. Legacy milestone script names remain compatibility
   aliases during the cleanup tracked in `docs/PRDs/cleanup-versioned-debt.md`.
 - New verification gate implementation belongs under `tools/verify/src`; use
+  `tools/verify/src/cli/run.ts` for focused gate command composition and
   `scripts/` only for temporary wrappers, compatibility shims, or non-gate repo
   maintenance.
 - Artifact ownership: one-example evidence belongs under
@@ -72,7 +73,8 @@ Respect these boundaries:
   each example can run independently.
 - `templates`: project templates used by CLI flows.
 - `docs`: architecture, SDK, workflow, roadmap, and PRDs.
-- `scripts`: top-level verification and documentation checks.
+- `scripts`: compatibility wrappers and repo maintenance shims; active
+  verification logic belongs in `tools/verify`.
 
 Nested `AGENTS.md` files may add more specific guidance for these areas.
 

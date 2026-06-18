@@ -8,9 +8,9 @@ import {
   detectCameraFramingDrift,
   histogramDelta,
   sampleEdgeEnergy,
-} from "./analyze.mjs";
+} from "./analyze.js";
 
-function solidFrame(width, height, color) {
+function solidFrame(width: number, height: number, color: readonly [number, number, number]) {
   const data = new Uint8ClampedArray(width * height * 4);
   for (let index = 0; index < data.length; index += 4) {
     data[index] = color[0];
@@ -23,7 +23,7 @@ function solidFrame(width, height, color) {
 
 function imageAnalysisStub() {
   return {
-    absoluteRegion(frame, region) {
+    absoluteRegion(frame: { height: number; width: number }, region: { height: number; width: number; x: number; y: number }) {
       return {
         height: Math.max(1, Math.floor(frame.height * region.height)),
         width: Math.max(1, Math.floor(frame.width * region.width)),
@@ -31,10 +31,13 @@ function imageAnalysisStub() {
         y: Math.floor(frame.height * region.y),
       };
     },
-    analyzeNonblank(frame) {
+    analyzeNonblank() {
       return { changedPixelRatio: 1, ok: true, threshold: 0.002 };
     },
-    compareFramesDetailed(first, second) {
+    compareFramesDetailed(
+      first: { data: ArrayLike<number>; height: number; width: number },
+      second: { data: ArrayLike<number>; height: number; width: number },
+    ) {
       let changedPixels = 0;
       let brightness = 0;
       let red = 0;
@@ -68,7 +71,10 @@ function imageAnalysisStub() {
         threshold: 0.001,
       };
     },
-    cropFrame(frame, region) {
+    cropFrame(
+      frame: { data: ArrayLike<number>; height: number; width: number },
+      region: { height: number; width: number; x: number; y: number },
+    ) {
       const data = new Uint8ClampedArray(region.width * region.height * 4);
       for (let row = 0; row < region.height; row += 1) {
         for (let column = 0; column < region.width; column += 1) {
@@ -85,7 +91,7 @@ function imageAnalysisStub() {
   };
 }
 
-test("should compute region color and luminance deltas deterministically", () => {
+test("visual calibration analyzer should compute region color and luminance deltas deterministically", () => {
   const web = solidFrame(100, 100, [200, 100, 50]);
   const bevy = solidFrame(100, 100, [200, 100, 50]);
   const shifted = solidFrame(100, 100, [220, 100, 50]);
@@ -114,7 +120,7 @@ test("should compute region color and luminance deltas deterministically", () =>
   assert.equal(histogramDelta(computeLuminanceHistogram(web), computeLuminanceHistogram(bevy)), 0);
 });
 
-test("should detect camera framing drift from edge samples", () => {
+test("visual calibration analyzer should detect camera framing drift from edge samples", () => {
   const web = solidFrame(120, 80, [20, 20, 20]);
   const bevy = solidFrame(120, 80, [20, 20, 20]);
   for (let x = 54; x < 66; x += 1) {

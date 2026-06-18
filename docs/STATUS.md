@@ -25,6 +25,7 @@ Current contributor entry points:
 
 ```bash
 pnpm check:names
+pnpm check:docs
 pnpm verify
 pnpm verify:conformance
 ```
@@ -34,6 +35,11 @@ Aggregate parity evidence runs through the canonical release gate:
 ```bash
 pnpm verify:release
 ```
+
+Focused capability gates now route through the typed `tools/verify` CLI
+dispatcher, so root `package.json` keeps stable public names while build
+composition lives under `tools/verify/src`. Legacy milestone aliases remain
+compatibility commands with deprecation diagnostics during the cleanup.
 
 IR contract hardening is now part of the release path: `@threenative/ir`
 exports canonical document metadata for schema IDs, manifest keys, and bundle

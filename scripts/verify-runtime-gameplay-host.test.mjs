@@ -13,5 +13,5 @@ test("runtime gameplay host verifier should declare native trace and promoted ev
 test("should include runtime gameplay host in package scripts", async () => {
   const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
 
-  assert.match(packageJson.scripts["verify:runtime-gameplay-host"], /verify-runtime-gameplay-host\.mjs/);
+  assert.match(packageJson.scripts["verify:runtime-gameplay-host"], /tools\/verify\/dist\/cli\/run\.js verify:runtime-gameplay-host/);
 });

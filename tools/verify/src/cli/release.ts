@@ -1,15 +1,10 @@
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { formatDeprecationDiagnostic, resolveScriptAlias } from "../legacyAliases.js";
 import { runReleaseGate } from "../release.js";
 
 const repoRoot = resolve(fileURLToPath(new URL("../../../../", import.meta.url)));
 const json = process.argv.includes("--json");
-const alias = resolveScriptAlias("verify:v9");
-if (alias.deprecated) {
-  process.stderr.write(formatDeprecationDiagnostic(alias));
-}
 
 const result = await runReleaseGate({ repoRoot });
 const payload = {

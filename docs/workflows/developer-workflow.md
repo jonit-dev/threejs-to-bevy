@@ -331,8 +331,10 @@ pnpm verify:conformance
 ```
 
 New verification gates live in `tools/verify/src` with package-owned tests.
-`scripts/` is wrapper-only for verification behavior: keep it to temporary
-compatibility shims, thin CLI bridges, or non-gate repo maintenance.
+Use `tools/verify/src/cli/run.ts` for focused gate command composition so root
+`package.json` names gates instead of repeating build chains. `scripts/` is wrapper-only
+for verification behavior: keep it to temporary compatibility shims, thin CLI
+bridges, or non-gate repo maintenance.
 
 `pnpm check:names` scans the repo against
 `scripts/version-name-allowlist.json` and fails when a new unclassified milestone
