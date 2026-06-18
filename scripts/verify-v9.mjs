@@ -99,6 +99,9 @@ export async function verifyV9(options = {}) {
   if (!(await step("build ir package", "pnpm", ["--filter", "@threenative/ir", "build"], { timeoutMs: 120000 }))) {
     return writeV9Report({ artifactDir, artifacts, commands, deferred, diagnostics: stepDiagnostics(steps), ok: false, promoted, reportPath, startedAt, startedAtMs, steps });
   }
+  if (!(await step("test ir package", "pnpm", ["--filter", "@threenative/ir", "test"], { timeoutMs: 120000 }))) {
+    return writeV9Report({ artifactDir, artifacts, commands, deferred, diagnostics: stepDiagnostics(steps), ok: false, promoted, reportPath, startedAt, startedAtMs, steps });
+  }
   if (!(await step("build sdk package", "pnpm", ["--filter", "@threenative/sdk", "build"], { timeoutMs: 120000 }))) {
     return writeV9Report({ artifactDir, artifacts, commands, deferred, diagnostics: stepDiagnostics(steps), ok: false, promoted, reportPath, startedAt, startedAtMs, steps });
   }

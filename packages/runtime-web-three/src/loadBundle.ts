@@ -14,6 +14,7 @@ import type {
   ITargetProfile,
   IUiIr,
   IWorldIr,
+  IIrDiagnostic,
 } from "@threenative/ir";
 
 export interface IWebBundle {
@@ -33,6 +34,30 @@ export interface IWebBundle {
   ui?: IUiIr;
   overlays?: IOverlaysIr;
   world: IWorldIr;
+}
+
+export class WebBundleValidationError extends Error {
+  constructor(public readonly diagnostics: readonly IIrDiagnostic[]) {
+    const first = diagnostics[0];
+    super(
+      first === undefined
+        ? "Bundle validation failed."
+        : `Bundle validation failed: ${first.code} at ${first.path}. ${first.message}`,
+    );
+    this.name = "WebBundleValidationError";
+  }
+}
+
+export async function validateAndLoadBundle(source: string): Promise<IWebBundle> {
+  if (isFetchable(source)) {
+    throw new Error("Bundle validation for fetchable sources is not supported yet; pass a local bundle path to validate before loading.");
+  }
+  const { validateBundle } = await import("@threenative/ir");
+  const result = await validateBundle(source);
+  if (!result.ok) {
+    throw new WebBundleValidationError(result.diagnostics);
+  }
+  return loadBundle(source);
 }
 
 export async function loadBundle(source: string): Promise<IWebBundle> {

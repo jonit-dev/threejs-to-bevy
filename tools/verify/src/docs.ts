@@ -163,6 +163,8 @@ async function checkDocsLayout(root: string, readme: string, status: string): Pr
     "runtime-bevy/artifacts/<gate>/",
     "Fixtures are stable inputs",
     "Generated artifacts are outputs",
+    "tools/verify/src",
+    "scripts/` is wrapper-only",
   ]) {
     if (!workflow.includes(phrase)) {
       diagnostics.push({

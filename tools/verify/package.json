@@ -11,12 +11,13 @@
     "./docs": "./dist/docs.js",
     "./release": "./dist/release.js",
     "./conformance": "./dist/conformance.js",
+    "./v9QualityGates": "./dist/v9QualityGates.js",
     "./runTests": "./dist/runTests.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "lint": "tsc -p tsconfig.json --noEmit",
-    "test": "pnpm build && node --test dist/runner.test.js dist/legacyAliases.test.js dist/docs.test.js dist/conformance.test.js dist/artifacts.test.js",
+    "test": "pnpm build && node dist/runTests.js",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {

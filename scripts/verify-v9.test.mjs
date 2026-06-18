@@ -33,6 +33,7 @@ test("should pass when all V9 commands and reports pass", async () => {
     assert.equal(saved.generatedBy, "scripts/verify-v9.mjs");
     assert.equal(saved.schema, "threenative.verify.v9");
     assert.ok(saved.commands.length > 0);
+    assert.equal(saved.commands.some((command) => command.name === "test ir package" && command.args.includes("test")), true);
     assert.ok(saved.promoted.includes("aggregate-v9-gate"));
     assert.equal(saved.artifacts.reportPath, reportPath);
     assert.match(saved.artifacts.sampleScenesReportPath, /artifacts\/sample-scenes\/verification-report\.json/);

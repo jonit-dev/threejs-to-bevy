@@ -1,12 +1,73 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
-const packageRoot = process.cwd();
+import {
+  compareRequiredFields,
+  requiredFieldsFromJsonSchema,
+  requiredFieldsFromRustStruct,
+  requiredFieldsFromTypeScriptInterface,
+} from "./contractDrift.js";
+import { IR_DOCUMENTS, schemaBackedDocuments } from "./documents.js";
+import { schemaUrls } from "./schemas.js";
+
+const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = resolve(packageRoot, "../..");
 
-test("runtime renderer antialias requiredness should not drift across schema, TypeScript, and Rust", async () => {
+test("should list every registered IR document when checking contract drift", async () => {
+  const expectedDocuments = [
+    "manifest",
+    "world",
+    "materials",
+    "assets",
+    "targetProfile",
+    "input",
+    "runtimeConfig",
+    "ui",
+    "overlays",
+    "systems",
+    "animations",
+    "audio",
+    "environmentScene",
+    "localData",
+    "gltfScene",
+    "componentSchemas",
+    "resourceSchemas",
+    "eventSchemas",
+    "scripts",
+  ];
+  assert.deepEqual(Object.keys(IR_DOCUMENTS).sort(), expectedDocuments.sort());
+
+  assertManifestDocument("entry", "world", "world.ir.json");
+  assertManifestDocument("entry", "animations", "animations.ir.json");
+  assertManifestDocument("entry", "audio", "audio.ir.json");
+  assertManifestDocument("entry", "environmentScene", "environment.scene.json");
+  assertManifestDocument("entry", "localData", "local-data.ir.json");
+  assertManifestDocument("entry", "overlays", "overlays.ir.json");
+  assertManifestDocument("entry", "scripts", "scripts.bundle.js");
+  assertManifestDocument("entry", "systems", "systems.ir.json");
+  assertManifestDocument("entry", "ui", "ui.ir.json");
+  assertManifestDocument("files", "animations", "animations.ir.json");
+  assertManifestDocument("files", "assets", "assets.manifest.json");
+  assertManifestDocument("files", "componentSchemas", "schemas/components.schema.json");
+  assertManifestDocument("files", "eventSchemas", "schemas/events.schema.json");
+  assertManifestDocument("files", "gltfScene", "gltf.scene.json");
+  assertManifestDocument("files", "input", "input.ir.json");
+  assertManifestDocument("files", "localData", "local-data.ir.json");
+  assertManifestDocument("files", "materials", "materials.ir.json");
+  assertManifestDocument("files", "resourceSchemas", "schemas/resources.schema.json");
+  assertManifestDocument("files", "runtimeConfig", "runtime.config.json");
+  assertManifestDocument("files", "scripts", "scripts.bundle.js");
+  assertManifestDocument("files", "targetProfile", "target.profile.json");
+});
+
+test("should register schema urls only for schema-backed documents", () => {
+  assert.deepEqual(Object.keys(schemaUrls).sort(), schemaBackedDocuments().map(([name]) => name).sort());
+});
+
+test("should keep runtime config antialias aligned across schema TypeScript and Rust", async () => {
   const schema = await readJson<{ properties: { renderer: { required?: string[] } } }>(
     resolve(packageRoot, "schemas/runtime-config.schema.json"),
   );
@@ -24,7 +85,7 @@ test("runtime renderer antialias requiredness should not drift across schema, Ty
   assert.doesNotMatch(loaderTypes, /pub antialias: Option<String>,/);
 });
 
-test("world component extension point should remain explicit across schema, TypeScript, and Rust", async () => {
+test("should keep world component extension point explicit across schema TypeScript and Rust", async () => {
   const schema = await readJson<{
     properties: {
       entities: {
@@ -42,6 +103,76 @@ test("world component extension point should remain explicit across schema, Type
   assert.equal(schema.properties.entities.items.properties.components.type, "object");
   assert.match(worldTypes, /components: Record<string, unknown> & \{/);
   assert.match(loaderTypes, /#\[serde\(flatten\)\]\s+pub extra: HashMap<String, serde_json::Value>,/);
+});
+
+test("should keep schema backed document required fields aligned with TypeScript interfaces", async () => {
+  const cases = [
+    { document: "manifest", interfaceName: "IBundleManifest", schema: "manifest.schema.json", source: "src/types.ts" },
+    { document: "world", interfaceName: "IWorldIr", schema: "world.schema.json", source: "src/types.ts" },
+    { document: "materials", interfaceName: "IMaterialsIr", schema: "materials.schema.json", source: "src/types.ts" },
+    { document: "assets", interfaceName: "IAssetsManifest", schema: "assets.schema.json", source: "src/types.ts" },
+    { document: "targetProfile", interfaceName: "ITargetProfile", schema: "target-profile.schema.json", source: "src/types.ts" },
+    { document: "input", interfaceName: "IInputIr", schema: "input.schema.json", source: "src/input.ts" },
+    { document: "runtimeConfig", interfaceName: "IRuntimeConfigIr", schema: "runtime-config.schema.json", source: "src/runtimeConfig.ts" },
+  ];
+  const diagnostics = [];
+
+  for (const item of cases) {
+    const schemaPath = resolve(packageRoot, "schemas", item.schema);
+    const tsPath = resolve(packageRoot, item.source);
+    diagnostics.push(
+      ...compareRequiredFields({
+        actual: requiredFieldsFromTypeScriptInterface(await readFile(tsPath, "utf8"), item.interfaceName, item.source),
+        document: item.document,
+        expected: requiredFieldsFromJsonSchema(await readJson(schemaPath), item.schema),
+        representation: "TypeScript interface",
+      }),
+    );
+  }
+
+  assert.deepEqual(diagnostics, []);
+});
+
+test("should keep Bevy loader required fields aligned for runtime consumed documents", async () => {
+  const loaderPath = resolve(repoRoot, "runtime-bevy/crates/threenative_loader/src/lib.rs");
+  const loaderTypes = await readFile(loaderPath, "utf8");
+  const cases = [
+    { document: "manifest", schema: "manifest.schema.json", structName: "BundleManifest" },
+    { document: "world", schema: "world.schema.json", structName: "WorldIr" },
+    { document: "materials", schema: "materials.schema.json", structName: "MaterialsIr" },
+    { document: "assets", schema: "assets.schema.json", structName: "AssetsManifest" },
+    { document: "targetProfile", schema: "target-profile.schema.json", structName: "TargetProfile" },
+    { document: "input", schema: "input.schema.json", structName: "InputIr" },
+    { document: "runtimeConfig", schema: "runtime-config.schema.json", structName: "RuntimeConfigIr" },
+  ];
+  const diagnostics = [];
+
+  for (const item of cases) {
+    diagnostics.push(
+      ...compareRequiredFields({
+        actual: requiredFieldsFromRustStruct(loaderTypes, item.structName, "runtime-bevy/crates/threenative_loader/src/lib.rs"),
+        document: item.document,
+        expected: requiredFieldsFromJsonSchema(await readJson(resolve(packageRoot, "schemas", item.schema)), item.schema),
+        representation: "Bevy loader struct",
+      }),
+    );
+  }
+
+  assert.deepEqual(diagnostics, []);
+});
+
+test("should fail with a document path when a schema backed field is missing from an inspected surface", () => {
+  const diagnostics = compareRequiredFields({
+    actual: { fields: new Set(["schema", "version"]), source: "fixture/types.ts" },
+    document: "fixtureDoc",
+    expected: { fields: new Set(["schema", "version", "entities"]), source: "fixture.schema.json" },
+    representation: "TypeScript interface",
+  });
+
+  assert.equal(diagnostics[0]?.document, "fixtureDoc");
+  assert.equal(diagnostics[0]?.field, "entities");
+  assert.equal(diagnostics[0]?.representation, "TypeScript interface");
+  assert.match(diagnostics[0]?.message ?? "", /fixtureDoc.*entities.*fixture\.schema\.json/);
 });
 
 test("should reject unchecked support checklist drift when claimed in status", async () => {
@@ -88,4 +219,20 @@ function rejectSupportDrift(input: { irTypes: string; nativeConformance: string;
 
 async function readJson<T>(path: string): Promise<T> {
   return JSON.parse(await readFile(path, "utf8")) as T;
+}
+
+function assertManifestDocument(section: "entry" | "files", key: string, fileName: string): void {
+  const match = Object.values(IR_DOCUMENTS).find((document) => {
+    if (document.fileName !== fileName) {
+      return false;
+    }
+    if ("manifestSection" in document) {
+      return document.manifestSection === section && document.manifestKey === key;
+    }
+    if ("manifestLocations" in document) {
+      return document.manifestLocations.some((location) => location.section === section && location.key === key);
+    }
+    return false;
+  });
+  assert.ok(match, `Missing IR document metadata for manifest.${section}.${key} -> ${fileName}`);
 }

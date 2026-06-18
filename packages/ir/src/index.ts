@@ -1,4 +1,12 @@
 export { schemaUrls, type SchemaName } from "./schemas.js";
+export {
+  IR_DOCUMENTS,
+  IR_SCHEMA_IDS,
+  IR_VERSION,
+  schemaBackedDocuments,
+  type IrDocumentName,
+  type SchemaBackedIrDocumentName,
+} from "./documents.js";
 export type {
   IConformanceAssetReport,
   IConformanceAudioCommandReport,

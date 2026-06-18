@@ -19,6 +19,9 @@ Repo-wide guidance for AI coding agents working on ThreeNative.
 - Current contributor gates include `pnpm check:names`, `pnpm check:docs`, and
   `pnpm verify:release`. Legacy milestone script names remain compatibility
   aliases during the cleanup tracked in `docs/PRDs/cleanup-versioned-debt.md`.
+- New verification gate implementation belongs under `tools/verify/src`; use
+  `scripts/` only for temporary wrappers, compatibility shims, or non-gate repo
+  maintenance.
 - Artifact ownership: one-example evidence belongs under
   `examples/<name>/artifacts/<gate>/`, aggregate reports under
   `tools/verify/artifacts/<gate>/`, shared IR fixtures under `packages/ir/fixtures/*`,

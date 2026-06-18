@@ -35,6 +35,13 @@ Aggregate parity evidence runs through the canonical release gate:
 pnpm verify:release
 ```
 
+IR contract hardening is now part of the release path: `@threenative/ir`
+exports canonical document metadata for schema IDs, manifest keys, and bundle
+file names; `pnpm --filter @threenative/ir test` runs the contract drift gate;
+and `pnpm verify:release` runs the IR package tests before release evidence is
+accepted. See [contracts/ir-contract.md](contracts/ir-contract.md) for the
+contract update checklist.
+
 Packaging, performance, and desktop distribution evidence still runs through
 `pnpm verify:v7`. Legacy milestone aliases such as `verify:v9` forward to
 `verify:release` with a deprecation diagnostic.

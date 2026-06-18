@@ -1,6 +1,7 @@
 import { readdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 export interface RunTestsOptions {
   buildCommand?: readonly string[];
@@ -55,7 +56,7 @@ function normalizeForwardedArgs(args: readonly string[]): string[] {
   return forwarded;
 }
 
-function collectTestFiles(directory: string, files: string[] = []): string[] {
+export function collectTestFiles(directory: string, files: string[] = []): string[] {
   for (const entry of readdirSyncSafe(directory)) {
     const path = join(directory, entry.name);
     if (entry.isDirectory()) {
@@ -71,4 +72,8 @@ function collectTestFiles(directory: string, files: string[] = []): string[] {
 
 function readdirSyncSafe(directory: string) {
   return readdirSync(directory, { withFileTypes: true });
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  process.exitCode = runPackageTests(resolve(fileURLToPath(new URL("..", import.meta.url))));
 }

@@ -1,6 +1,9 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import {
+  IR_DOCUMENTS,
+  IR_SCHEMA_IDS,
+  IR_VERSION,
   type IAssetsManifest,
   type IAnimationsIr,
   type IBundleManifest,
@@ -51,27 +54,27 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
   const ui = (bundleRoot.ui === undefined ? undefined : emitUi(bundleRoot.ui)) as IUiIr | undefined;
   const world = mergeWorlds(emitted?.world, ecs?.world);
   const materials: IMaterialsIr = {
-    schema: "threenative.materials",
-    version: "0.1.0",
+    schema: IR_SCHEMA_IDS.materials,
+    version: IR_VERSION,
     materials: (emitted?.materials ?? []) as unknown as IMaterialIr[],
   };
   const assetsManifest: IAssetsManifest = {
-    schema: "threenative.assets",
-    version: "0.1.0",
+    schema: IR_SCHEMA_IDS.assets,
+    version: IR_VERSION,
     assets: assets.map(stripInternalAssetFields) as IAssetsManifest["assets"],
     groups: assetGroups(assets, bundleRoot.assetGroups),
   };
   const gltfScene: IGltfSceneMetadataIr | undefined = await extractGltfSceneMetadata(config.projectPath, assets);
   const targetProfile: ITargetProfile = {
-    schema: "threenative.target-profile",
-    version: "0.1.0",
+    schema: IR_SCHEMA_IDS.targetProfile,
+    version: IR_VERSION,
     targets: ["web", "desktop"],
     ...(environment?.budgets === undefined ? {} : { budgets: environment.budgets }),
     ...(environment?.performance === undefined ? {} : { performance: environment.performance }),
   };
   const manifest: IBundleManifest = {
-    schema: "threenative.bundle",
-    version: "0.1.0",
+    schema: IR_SCHEMA_IDS.bundle,
+    version: IR_VERSION,
     name: "threenative-game",
     requiredCapabilities: deriveRequiredCapabilities({
       assets: assetsManifest,
@@ -91,32 +94,32 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
       world,
     }),
     entry: {
-      ...(audio === undefined ? {} : { audio: "audio.ir.json" }),
-      ...(animations === undefined ? {} : { animations: "animations.ir.json" }),
-      ...(environment === undefined ? {} : { environmentScene: "environment.scene.json" }),
-      ...(localData === undefined ? {} : { localData: "local-data.ir.json" }),
-      ...(ecs?.scriptBundle === undefined ? {} : { scripts: "scripts.bundle.js" }),
-      ...(ecs === undefined ? {} : { systems: "systems.ir.json" }),
-      ...(overlays === undefined ? {} : { overlays: "overlays.ir.json" }),
-      ...(ui === undefined ? {} : { ui: "ui.ir.json" }),
-      world: "world.ir.json",
+      ...(audio === undefined ? {} : { audio: IR_DOCUMENTS.audio.fileName }),
+      ...(animations === undefined ? {} : { animations: IR_DOCUMENTS.animations.fileName }),
+      ...(environment === undefined ? {} : { environmentScene: IR_DOCUMENTS.environmentScene.fileName }),
+      ...(localData === undefined ? {} : { localData: IR_DOCUMENTS.localData.fileName }),
+      ...(ecs?.scriptBundle === undefined ? {} : { scripts: IR_DOCUMENTS.scripts.fileName }),
+      ...(ecs === undefined ? {} : { systems: IR_DOCUMENTS.systems.fileName }),
+      ...(overlays === undefined ? {} : { overlays: IR_DOCUMENTS.overlays.fileName }),
+      ...(ui === undefined ? {} : { ui: IR_DOCUMENTS.ui.fileName }),
+      world: IR_DOCUMENTS.world.fileName,
     },
     files: {
-      assets: "assets.manifest.json",
-      ...(animations === undefined ? {} : { animations: "animations.ir.json" }),
-      ...(input === undefined ? {} : { input: "input.ir.json" }),
-      ...(localData === undefined ? {} : { localData: "local-data.ir.json" }),
-      materials: "materials.ir.json",
-      targetProfile: "target.profile.json",
-      ...(gltfScene === undefined ? {} : { gltfScene: "gltf.scene.json" }),
+      assets: IR_DOCUMENTS.assets.fileName,
+      ...(animations === undefined ? {} : { animations: IR_DOCUMENTS.animations.fileName }),
+      ...(input === undefined ? {} : { input: IR_DOCUMENTS.input.fileName }),
+      ...(localData === undefined ? {} : { localData: IR_DOCUMENTS.localData.fileName }),
+      materials: IR_DOCUMENTS.materials.fileName,
+      targetProfile: IR_DOCUMENTS.targetProfile.fileName,
+      ...(gltfScene === undefined ? {} : { gltfScene: IR_DOCUMENTS.gltfScene.fileName }),
       ...(ecs === undefined
         ? {}
         : {
-            componentSchemas: "schemas/components.schema.json" as const,
-            eventSchemas: "schemas/events.schema.json" as const,
-            resourceSchemas: "schemas/resources.schema.json" as const,
-            ...(ecs.runtimeConfig === undefined ? {} : { runtimeConfig: "runtime.config.json" as const }),
-            ...(ecs.scriptBundle === undefined ? {} : { scripts: "scripts.bundle.js" as const }),
+            componentSchemas: IR_DOCUMENTS.componentSchemas.fileName,
+            eventSchemas: IR_DOCUMENTS.eventSchemas.fileName,
+            resourceSchemas: IR_DOCUMENTS.resourceSchemas.fileName,
+            ...(ecs.runtimeConfig === undefined ? {} : { runtimeConfig: IR_DOCUMENTS.runtimeConfig.fileName }),
+            ...(ecs.scriptBundle === undefined ? {} : { scripts: IR_DOCUMENTS.scripts.fileName }),
           }),
     },
   };
@@ -125,47 +128,47 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
   await mkdir(outDir, { recursive: true });
   await mkdir(resolve(outDir, "schemas"), { recursive: true });
   await writeGeneratedMeshPayloads(outDir, generatedMeshPayloads.payloads);
-  await writeFile(resolve(outDir, "manifest.json"), stableJson(manifest));
+  await writeFile(resolve(outDir, IR_DOCUMENTS.manifest.fileName), stableJson(manifest));
   await copyAssetFiles(config.projectPath, outDir, assets);
   await copyExtraAssetFiles(config.projectPath, outDir, [...(environment?.extraFiles ?? []), ...(overlays?.extraFiles ?? [])]);
-  await writeFile(resolve(outDir, "world.ir.json"), stableJson(world));
-  await writeFile(resolve(outDir, "materials.ir.json"), stableJson(materials));
-  await writeFile(resolve(outDir, "assets.manifest.json"), stableJson(assetsManifest));
-  await writeFile(resolve(outDir, "target.profile.json"), stableJson(targetProfile));
+  await writeFile(resolve(outDir, IR_DOCUMENTS.world.fileName), stableJson(world));
+  await writeFile(resolve(outDir, IR_DOCUMENTS.materials.fileName), stableJson(materials));
+  await writeFile(resolve(outDir, IR_DOCUMENTS.assets.fileName), stableJson(assetsManifest));
+  await writeFile(resolve(outDir, IR_DOCUMENTS.targetProfile.fileName), stableJson(targetProfile));
   if (environment !== undefined) {
-    await writeFile(resolve(outDir, "environment.scene.json"), stableJson(environment.scene));
+    await writeFile(resolve(outDir, IR_DOCUMENTS.environmentScene.fileName), stableJson(environment.scene));
   }
   if (ui !== undefined) {
-    await writeFile(resolve(outDir, "ui.ir.json"), stableJson(ui));
+    await writeFile(resolve(outDir, IR_DOCUMENTS.ui.fileName), stableJson(ui));
   }
   if (overlays !== undefined) {
-    await writeFile(resolve(outDir, "overlays.ir.json"), stableJson(overlays.overlays));
+    await writeFile(resolve(outDir, IR_DOCUMENTS.overlays.fileName), stableJson(overlays.overlays));
   }
   if (audio !== undefined) {
-    await writeFile(resolve(outDir, "audio.ir.json"), stableJson(audio));
+    await writeFile(resolve(outDir, IR_DOCUMENTS.audio.fileName), stableJson(audio));
   }
   if (localData !== undefined) {
-    await writeFile(resolve(outDir, "local-data.ir.json"), stableJson(localData));
+    await writeFile(resolve(outDir, IR_DOCUMENTS.localData.fileName), stableJson(localData));
   }
   if (animations !== undefined) {
-    await writeFile(resolve(outDir, "animations.ir.json"), stableJson(animations));
+    await writeFile(resolve(outDir, IR_DOCUMENTS.animations.fileName), stableJson(animations));
   }
   if (gltfScene !== undefined) {
-    await writeFile(resolve(outDir, "gltf.scene.json"), stableJson(gltfScene));
+    await writeFile(resolve(outDir, IR_DOCUMENTS.gltfScene.fileName), stableJson(gltfScene));
   }
   if (input !== undefined) {
-    await writeFile(resolve(outDir, "input.ir.json"), stableJson(input));
+    await writeFile(resolve(outDir, IR_DOCUMENTS.input.fileName), stableJson(input));
   }
   if (ecs !== undefined) {
-    await writeFile(resolve(outDir, "schemas/components.schema.json"), stableJson(ecs.componentSchemas));
-    await writeFile(resolve(outDir, "schemas/resources.schema.json"), stableJson(ecs.resourceSchemas));
-    await writeFile(resolve(outDir, "schemas/events.schema.json"), stableJson(ecs.eventSchemas));
-    await writeFile(resolve(outDir, "systems.ir.json"), stableJson(ecs.systems));
+    await writeFile(resolve(outDir, IR_DOCUMENTS.componentSchemas.fileName), stableJson(ecs.componentSchemas));
+    await writeFile(resolve(outDir, IR_DOCUMENTS.resourceSchemas.fileName), stableJson(ecs.resourceSchemas));
+    await writeFile(resolve(outDir, IR_DOCUMENTS.eventSchemas.fileName), stableJson(ecs.eventSchemas));
+    await writeFile(resolve(outDir, IR_DOCUMENTS.systems.fileName), stableJson(ecs.systems));
     if (ecs.runtimeConfig !== undefined) {
-      await writeFile(resolve(outDir, "runtime.config.json"), stableJson(ecs.runtimeConfig));
+      await writeFile(resolve(outDir, IR_DOCUMENTS.runtimeConfig.fileName), stableJson(ecs.runtimeConfig));
     }
     if (ecs.scriptBundle !== undefined) {
-      await writeFile(resolve(outDir, "scripts.bundle.js"), ecs.scriptBundle);
+      await writeFile(resolve(outDir, IR_DOCUMENTS.scripts.fileName), ecs.scriptBundle);
     }
   }
 
@@ -202,8 +205,8 @@ function isBundleRoot(root: unknown): root is IBundleRoot {
 
 function emitAnimations(animations: IAnimationsDeclaration): IAnimationsIr {
   return {
-    schema: "threenative.animations",
-    version: "0.1.0",
+    schema: IR_SCHEMA_IDS.animations,
+    version: IR_VERSION,
     transformClips: animations.transformClips.map((clip) => ({
       id: clip.id,
       ...(clip.loop === undefined ? {} : { loop: clip.loop }),

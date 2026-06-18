@@ -44,7 +44,7 @@ import {
   transformAnimationClip,
   update,
 } from "@threenative/sdk";
-import { validateBundle } from "@threenative/ir";
+import { IR_DOCUMENTS, validateBundle } from "@threenative/ir";
 import { Bar, Button, Column, Image, Text, Ui } from "@threenative/ui";
 
 import { emitBundle } from "./bundle.js";
@@ -89,6 +89,29 @@ test("should omit scripts bundle when no systems exist", async () => {
     assert.equal(manifest.entry.scripts, undefined);
     assert.equal(manifest.files.scripts, undefined);
     await assert.rejects(() => readFile(join(bundlePath, "scripts.bundle.js"), "utf8"));
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should emit canonical manifest paths from IR document metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-metadata-paths-"));
+  try {
+    const config = {
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project" as const,
+      version: "0.1.0" as const,
+    };
+
+    const bundlePath = await emitBundle(config, makeScene());
+    const manifest = JSON.parse(await readFile(join(bundlePath, IR_DOCUMENTS.manifest.fileName), "utf8"));
+
+    assert.equal(manifest.entry.world, IR_DOCUMENTS.world.fileName);
+    assert.equal(manifest.files.assets, IR_DOCUMENTS.assets.fileName);
+    assert.equal(manifest.files.materials, IR_DOCUMENTS.materials.fileName);
+    assert.equal(manifest.files.targetProfile, IR_DOCUMENTS.targetProfile.fileName);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

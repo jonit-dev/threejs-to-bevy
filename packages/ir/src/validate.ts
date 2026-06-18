@@ -19,6 +19,7 @@ import {
   type IUiIr,
   type IUiNodeIr,
   type IWorldIr,
+  type IWorldEntity,
 } from "./types.js";
 import type { ISystemsIr } from "./systems.js";
 import { sortedPersistedBindingOverrides, type IInputIr, type IPersistedBindingOverrideIr, type InputBinding } from "./input.js";
@@ -26,6 +27,7 @@ import { validatePerformanceProfile } from "./performanceProfile.js";
 import { validateEnvironmentSceneIr } from "./environment.js";
 import { validateOverlaysIr, type IOverlaysIr } from "./overlays.js";
 import { validateCameraViews } from "./camera.js";
+import { IR_DOCUMENTS, IR_SCHEMA_IDS, IR_VERSION } from "./documents.js";
 import { validateGltfSceneMetadata, type IGltfSceneMetadataIr } from "./gltfScene.js";
 
 export interface IIrDiagnostic {
@@ -46,7 +48,7 @@ export interface IBundleValidationResult {
 
 export async function validateBundle(bundlePath: string): Promise<IBundleValidationResult> {
   const diagnostics: IIrDiagnostic[] = [];
-  const manifest = await readJson<unknown>(resolve(bundlePath, "manifest.json"), diagnostics);
+  const manifest = await readJson<unknown>(resolve(bundlePath, IR_DOCUMENTS.manifest.fileName), diagnostics);
 
   if (manifest === undefined) {
     return { diagnostics, ok: false };
@@ -112,17 +114,18 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
 
   if (world !== undefined) {
     validateWorld(world, manifest.entry.world, diagnostics, input);
+    validateMeshRendererReferences(world, materials, assets, manifest.entry.world, diagnostics);
     const entityIds = new Set(world.entities.map((entity) => entity.id));
     if (componentSchemas !== undefined) {
-      validateSchemaFile(componentSchemas, manifest.files.componentSchemas ?? "schemas/components.schema.json", "threenative.component-schemas", diagnostics);
+      validateSchemaFile(componentSchemas, manifest.files.componentSchemas ?? IR_DOCUMENTS.componentSchemas.fileName, IR_SCHEMA_IDS.componentSchemas, diagnostics);
       validateWorldComponents(world, componentSchemas.schemas, entityIds, diagnostics);
     }
     if (resourceSchemas !== undefined) {
-      validateSchemaFile(resourceSchemas, manifest.files.resourceSchemas ?? "schemas/resources.schema.json", "threenative.resource-schemas", diagnostics);
+      validateSchemaFile(resourceSchemas, manifest.files.resourceSchemas ?? IR_DOCUMENTS.resourceSchemas.fileName, IR_SCHEMA_IDS.resourceSchemas, diagnostics);
       validateResources(world, resourceSchemas.schemas, entityIds, diagnostics);
     }
     if (eventSchemas !== undefined) {
-      validateSchemaFile(eventSchemas, manifest.files.eventSchemas ?? "schemas/events.schema.json", "threenative.event-schemas", diagnostics);
+      validateSchemaFile(eventSchemas, manifest.files.eventSchemas ?? IR_DOCUMENTS.eventSchemas.fileName, IR_SCHEMA_IDS.eventSchemas, diagnostics);
       validateWorldEvents(world, eventSchemas.schemas, diagnostics);
     }
   }
@@ -136,19 +139,19 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
     await validateAssets(assets, targetProfile, bundlePath, manifest.files.assets, diagnostics);
   }
   if (environmentScene !== undefined) {
-    diagnostics.push(...validateEnvironmentSceneIr(environmentScene, assets, manifest.entry.environmentScene ?? "environment.scene.json", input));
+    diagnostics.push(...validateEnvironmentSceneIr(environmentScene, assets, manifest.entry.environmentScene ?? IR_DOCUMENTS.environmentScene.fileName, input));
   }
   if (audio !== undefined) {
-    validateAudio(audio, assets, manifest.entry.audio ?? "audio.ir.json", diagnostics);
+    validateAudio(audio, assets, manifest.entry.audio ?? IR_DOCUMENTS.audio.fileName, diagnostics);
   }
   if (animations !== undefined) {
-    validateAnimations(animations, world, manifest.entry.animations ?? "animations.ir.json", diagnostics);
+    validateAnimations(animations, world, manifest.entry.animations ?? IR_DOCUMENTS.animations.fileName, diagnostics);
   }
   if (gltfScene !== undefined) {
-    diagnostics.push(...validateGltfSceneMetadata(gltfScene, manifest.files.gltfScene ?? "gltf.scene.json"));
+    diagnostics.push(...validateGltfSceneMetadata(gltfScene, manifest.files.gltfScene ?? IR_DOCUMENTS.gltfScene.fileName));
   }
   if (localData !== undefined) {
-    validateLocalData(localData, manifest.entry.localData ?? "local-data.ir.json", diagnostics);
+    validateLocalData(localData, manifest.entry.localData ?? IR_DOCUMENTS.localData.fileName, diagnostics);
   }
   if (targetProfile !== undefined) {
     if (targetProfile.targets.length === 0) {
@@ -164,7 +167,7 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
   if (systems !== undefined) {
     validateSystems(
       systems,
-      manifest.entry.systems ?? "systems.ir.json",
+      manifest.entry.systems ?? IR_DOCUMENTS.systems.fileName,
       componentSchemas?.schemas ?? {},
       resourceSchemas?.schemas ?? {},
       eventSchemas?.schemas ?? {},
@@ -172,16 +175,16 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
     );
   }
   if (input !== undefined) {
-    validateInput(input, manifest.files.input ?? "input.ir.json", diagnostics);
+    validateInput(input, manifest.files.input ?? IR_DOCUMENTS.input.fileName, diagnostics);
   }
   if (runtimeConfig !== undefined) {
-    validateRuntimeConfig(runtimeConfig, manifest.files.runtimeConfig ?? "runtime.config.json", diagnostics);
+    validateRuntimeConfig(runtimeConfig, manifest.files.runtimeConfig ?? IR_DOCUMENTS.runtimeConfig.fileName, diagnostics);
   }
   if (ui !== undefined) {
-    validateUi(ui, manifest.entry.ui ?? "ui.ir.json", diagnostics);
+    validateUi(ui, manifest.entry.ui ?? IR_DOCUMENTS.ui.fileName, diagnostics);
   }
   if (overlays !== undefined) {
-    diagnostics.push(...validateOverlaysIr(overlays, manifest.entry.overlays ?? "overlays.ir.json"));
+    diagnostics.push(...validateOverlaysIr(overlays, manifest.entry.overlays ?? IR_DOCUMENTS.overlays.fileName));
   }
   if (world !== undefined) {
     validateCameraViews(world, materials, assets, manifest.entry.world, diagnostics);
@@ -4686,10 +4689,10 @@ function validateManifest(manifest: unknown, path: string, diagnostics: IIrDiagn
     return false;
   }
 
-  if (manifest.schema !== "threenative.bundle" || manifest.version !== "0.1.0") {
+  if (manifest.schema !== IR_SCHEMA_IDS.bundle || manifest.version !== IR_VERSION) {
     diagnostics.push({
       code: "TN_IR_MANIFEST_VERSION_UNSUPPORTED",
-      message: "Manifest must use threenative.bundle version 0.1.0.",
+      message: `Manifest must use ${IR_SCHEMA_IDS.bundle} version ${IR_VERSION}.`,
       path,
     });
   }
@@ -4701,23 +4704,23 @@ function validateManifest(manifest: unknown, path: string, diagnostics: IIrDiagn
       message: "Manifest entry must be an object with a world document path.",
       path: `${path}/entry`,
       severity: "error",
-      suggestion: "Regenerate the bundle or add entry.world: 'world.ir.json'.",
+      suggestion: `Regenerate the bundle or add entry.world: '${IR_DOCUMENTS.world.fileName}'.`,
     });
-  } else if (entry.world !== "world.ir.json") {
+  } else if (entry.world !== IR_DOCUMENTS.world.fileName) {
     diagnostics.push({
       code: "TN_IR_WORLD_ENTRY_INVALID",
-      message: "V1 manifest entry.world must be world.ir.json.",
+      message: `V1 manifest entry.world must be ${IR_DOCUMENTS.world.fileName}.`,
       path: "manifest.json/entry/world",
     });
   }
   if (isRecord(entry) && entry.overlays !== undefined) {
-    validateManifestPath(entry.overlays, `${path}/entry/overlays`, "overlays.ir.json", diagnostics);
+    validateManifestPath(entry.overlays, `${path}/entry/overlays`, IR_DOCUMENTS.overlays.fileName, diagnostics);
   }
   if (isRecord(entry) && entry.animations !== undefined) {
-    validateManifestPath(entry.animations, `${path}/entry/animations`, "animations.ir.json", diagnostics);
+    validateManifestPath(entry.animations, `${path}/entry/animations`, IR_DOCUMENTS.animations.fileName, diagnostics);
   }
   if (isRecord(entry) && entry.localData !== undefined) {
-    validateManifestPath(entry.localData, `${path}/entry/localData`, "local-data.ir.json", diagnostics);
+    validateManifestPath(entry.localData, `${path}/entry/localData`, IR_DOCUMENTS.localData.fileName, diagnostics);
   }
 
   const files = manifest.files;
@@ -4730,9 +4733,9 @@ function validateManifest(manifest: unknown, path: string, diagnostics: IIrDiagn
       suggestion: "Regenerate the bundle so manifest.json includes all required bundle file references.",
     });
   } else {
-    validateManifestPath(files.assets, `${path}/files/assets`, "assets.manifest.json", diagnostics);
-    validateManifestPath(files.materials, `${path}/files/materials`, "materials.ir.json", diagnostics);
-    validateManifestPath(files.targetProfile, `${path}/files/targetProfile`, "target.profile.json", diagnostics);
+    validateManifestPath(files.assets, `${path}/files/assets`, IR_DOCUMENTS.assets.fileName, diagnostics);
+    validateManifestPath(files.materials, `${path}/files/materials`, IR_DOCUMENTS.materials.fileName, diagnostics);
+    validateManifestPath(files.targetProfile, `${path}/files/targetProfile`, IR_DOCUMENTS.targetProfile.fileName, diagnostics);
     for (const key of ["animations", "componentSchemas", "eventSchemas", "gltfScene", "input", "localData", "resourceSchemas", "runtimeConfig"] as const) {
       if (files[key] !== undefined) {
         validateManifestPath(files[key], `${path}/files/${key}`, undefined, diagnostics);
@@ -4851,6 +4854,16 @@ function validateManifestPath(value: unknown, path: string, expected: string | u
       severity: "error",
       suggestion: expected === undefined ? "Regenerate the bundle or remove the optional manifest entry." : `Regenerate the bundle or set this path to '${expected}'.`,
     });
+    return;
+  }
+  if (expected !== undefined && value !== expected) {
+    diagnostics.push({
+      code: "TN_IR_MANIFEST_PATH_INVALID",
+      message: `Manifest file reference must be ${expected}.`,
+      path,
+      severity: "error",
+      suggestion: `Regenerate the bundle or set this path to '${expected}'.`,
+    });
   }
 }
 
@@ -4866,10 +4879,67 @@ function validateWorld(world: IWorldIr, path: string, diagnostics: IIrDiagnostic
   validateUniqueIds(world.entities, `${path}/entities`, "TN_IR_DUPLICATE_ENTITY_ID", diagnostics);
   validateNavigationResources(world, `${path}/resources`, diagnostics);
   validateRenderingLightBudget(world.resources?.RenderingLightBudget, `${path}/resources/RenderingLightBudget`, diagnostics, world.entities);
+  world.entities.forEach((entity, index) => validateTransformComponents(entity, `${path}/entities/${index}`, diagnostics));
   world.entities.forEach((entity, index) => validateRenderComponents(entity, `${path}/entities/${index}`, diagnostics));
   const entityIds = new Set(world.entities.map((entity) => entity.id));
   world.entities.forEach((entity, index) => validatePhysicsComponents(entity, `${path}/entities/${index}`, entityIds, diagnostics));
   world.entities.forEach((entity, index) => validateCharacterComponents(entity, `${path}/entities/${index}`, input, diagnostics));
+}
+
+function validateMeshRendererReferences(
+  world: IWorldIr,
+  materials: IMaterialsIr | undefined,
+  assets: IAssetsManifest | undefined,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  const materialIds = new Set((materials?.materials ?? []).map((material) => material.id));
+  const assetIds = new Set((assets?.assets ?? []).map((asset) => asset.id));
+  world.entities.forEach((entity, entityIndex) => {
+    const renderer = entity.components.MeshRenderer;
+    if (renderer === undefined) {
+      return;
+    }
+    if (renderer.material !== undefined && !materialIds.has(renderer.material)) {
+      diagnostics.push({
+        code: "TN_IR_MESH_RENDERER_MATERIAL_MISSING",
+        message: `Entity '${entity.id}' references missing material '${renderer.material}'.`,
+        path: `${path}/entities/${entityIndex}/components/MeshRenderer/material`,
+        severity: "error",
+        suggestion: "Add the material to materials.ir.json or update the MeshRenderer material reference.",
+        value: renderer.material,
+      });
+    }
+    if (renderer.mesh !== undefined && !assetIds.has(renderer.mesh)) {
+      diagnostics.push({
+        code: "TN_IR_MESH_RENDERER_MESH_MISSING",
+        message: `Entity '${entity.id}' references missing mesh '${renderer.mesh}'.`,
+        path: `${path}/entities/${entityIndex}/components/MeshRenderer/mesh`,
+        severity: "error",
+        suggestion: "Add the mesh to assets.manifest.json or update the MeshRenderer mesh reference.",
+        value: renderer.mesh,
+      });
+    }
+  });
+}
+
+function validateTransformComponents(entity: IWorldEntity, path: string, diagnostics: IIrDiagnostic[]): void {
+  const transform = entity.components.Transform;
+  if (transform === undefined) {
+    return;
+  }
+  for (const key of ["position", "rotation", "scale"] as const) {
+    const values = transform[key];
+    if (values !== undefined && (!Array.isArray(values) || values.some((value) => typeof value !== "number" || !Number.isFinite(value)))) {
+      diagnostics.push({
+        code: "TN_IR_TRANSFORM_VALUE_INVALID",
+        message: `Entity '${entity.id}' has an invalid Transform.${key} value.`,
+        path: `${path}/components/Transform/${key}`,
+        severity: "error",
+        suggestion: "Use only finite numeric transform values.",
+      });
+    }
+  }
 }
 
 function validateNavigationResources(world: IWorldIr, path: string, diagnostics: IIrDiagnostic[]): void {

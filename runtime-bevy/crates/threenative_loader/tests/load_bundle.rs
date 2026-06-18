@@ -64,6 +64,7 @@ fn should_load_optional_audio_ir() {
           "schema": "threenative.bundle",
           "version": "0.1.0",
           "name": "audio",
+          "requiredCapabilities": {},
           "entry": { "world": "world.ir.json", "audio": "audio.ir.json" },
           "files": {
             "assets": "assets.manifest.json",
@@ -116,6 +117,7 @@ fn should_load_optional_environment_scene_ir() {
           "schema": "threenative.bundle",
           "version": "0.1.0",
           "name": "environment",
+          "requiredCapabilities": {},
           "entry": { "world": "world.ir.json", "environmentScene": "environment.scene.json" },
           "files": {
             "assets": "assets.manifest.json",

@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
+import { IR_DOCUMENTS } from "./documents.js";
 import { validateBundle } from "./validate.js";
 
 test("should return diagnostics for malformed manifest shape", async () => {
@@ -21,6 +22,36 @@ test("should return diagnostics for malformed manifest shape", async () => {
     assert.equal(result.ok, false);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_WORLD_ENTRY_INVALID"), true);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_MANIFEST_PATH_INVALID"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject manifest paths that drift from canonical document metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-manifest-path-drift-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, IR_DOCUMENTS.manifest.fileName, {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "schema-test",
+      requiredCapabilities: {},
+      entry: { world: "scene/world.ir.json" },
+      files: {
+        assets: "manifests/assets.json",
+        materials: "materials.json",
+        targetProfile: "target.json",
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.filter((diagnostic) => diagnostic.code === "TN_IR_MANIFEST_PATH_INVALID").map((diagnostic) => diagnostic.path),
+      ["manifest.json/files/assets", "manifest.json/files/materials", "manifest.json/files/targetProfile"],
+    );
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_WORLD_ENTRY_INVALID"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -102,6 +133,92 @@ test("should reject schema unknown component fields", async () => {
     assert.equal(result.ok, false);
     assert.equal(result.diagnostics[0]?.code, "TN_IR_SCHEMA_FIELD_UNKNOWN");
     assert.equal(result.diagnostics[0]?.path, "world.ir.json/entities/0/components/Health/extra");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject mesh renderer material references missing from materials document", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-missing-material-ref-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "world.ir.json", {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [{ id: "mesh.entity", components: { MeshRenderer: { material: "mat.missing", mesh: "mesh.main" } } }],
+      resources: {},
+      events: {},
+      prefabs: [],
+    });
+    await writeJson(root, "assets.manifest.json", {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [{ id: "mesh.main", kind: "mesh", primitive: "box", size: [1, 1, 1] }],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.find((diagnostic) => diagnostic.code === "TN_IR_MESH_RENDERER_MATERIAL_MISSING")?.path, "world.ir.json/entities/0/components/MeshRenderer/material");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject mesh renderer mesh references missing from assets document", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-missing-mesh-ref-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "world.ir.json", {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [{ id: "mesh.entity", components: { MeshRenderer: { material: "mat.main", mesh: "mesh.missing" } } }],
+      resources: {},
+      events: {},
+      prefabs: [],
+    });
+    await writeJson(root, "materials.ir.json", {
+      schema: "threenative.materials",
+      version: "0.1.0",
+      materials: [{ id: "mat.main", kind: "standard", color: "#ffffff" }],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.find((diagnostic) => diagnostic.code === "TN_IR_MESH_RENDERER_MESH_MISSING")?.path, "world.ir.json/entities/0/components/MeshRenderer/mesh");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject non finite transform values", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-invalid-transform-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "world.ir.json", {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [{ id: "bad.transform", components: { Transform: { position: [0, null, 0] } } }],
+      resources: {},
+      events: {},
+      prefabs: [],
+    });
+    await writeJson(root, "materials.ir.json", {
+      schema: "threenative.materials",
+      version: "0.1.0",
+      materials: [{ id: "mat.main", kind: "standard", color: "#ffffff" }],
+    });
+    await writeJson(root, "assets.manifest.json", {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [{ id: "mesh.main", kind: "mesh", primitive: "box", size: [1, 1, 1] }],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.find((diagnostic) => diagnostic.code === "TN_IR_TRANSFORM_VALUE_INVALID")?.path, "world.ir.json/entities/0/components/Transform/position");
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -670,6 +787,16 @@ test("should reject invalid mesh renderer shadow flags", async () => {
       resources: {},
       events: {},
       prefabs: [],
+    });
+    await writeJson(root, "materials.ir.json", {
+      schema: "threenative.materials",
+      version: "0.1.0",
+      materials: [{ id: "mat.main", kind: "standard", color: "#ffffff" }],
+    });
+    await writeJson(root, "assets.manifest.json", {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [{ id: "mesh.main", kind: "mesh", primitive: "box", size: [1, 1, 1] }],
     });
 
     const result = await validateBundle(root);

@@ -29,6 +29,31 @@ test("validate should return TN-IR-2104 when material is missing", async () => {
   }
 });
 
+test("validate should wrap shared IR diagnostics with compiler report shape", async () => {
+  const bundle = await copyCubeFixture();
+  try {
+    const worldPath = join(bundle, "world.ir.json");
+    const world = JSON.parse(await readFile(worldPath, "utf8")) as {
+      entities: Array<{ components: { MeshRenderer?: { mesh?: string }; Transform?: { position?: unknown[] } } }>;
+    };
+    const meshEntity = world.entities.find((entity) => entity.components.MeshRenderer !== undefined);
+    if (meshEntity === undefined) {
+      throw new Error("Cube fixture must contain a mesh renderer.");
+    }
+    meshEntity.components.MeshRenderer = { ...meshEntity.components.MeshRenderer, mesh: "mesh.missing" };
+    meshEntity.components.Transform = { position: [0, null, 0] };
+    await writeFile(worldPath, `${JSON.stringify(world, null, 2)}\n`);
+
+    const report = await validateBundle(bundle);
+
+    assert.equal(report.ok, false);
+    assert.equal(report.diagnostics.find((diagnostic) => diagnostic.code === "TN-IR-2105")?.file, "world.ir.json");
+    assert.equal(report.diagnostics.find((diagnostic) => diagnostic.code === "TN-IR-2201")?.severity, "error");
+  } finally {
+    await rm(bundle, { force: true, recursive: true });
+  }
+});
+
 test("validate should reject duplicate entity ids", async () => {
   const bundle = await copyCubeFixture();
   try {

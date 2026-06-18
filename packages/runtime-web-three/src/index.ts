@@ -12,7 +12,7 @@ export {
   type IWebAudioSink,
   type IWebAudioSupportTrace,
 } from "./audio.js";
-export { loadBundle, type IWebBundle } from "./loadBundle.js";
+export { loadBundle, validateAndLoadBundle, WebBundleValidationError, type IWebBundle } from "./loadBundle.js";
 export { applyEnvironmentBookmark, createEnvironmentRuntime, loadEnvironmentAssetInstances, observeEnvironmentScene, traceEnvironmentContent, type IEnvironmentObservation, type IEnvironmentRuntime } from "./environment.js";
 export { buildInstancingPlan, type IInstancingGroup, type IInstancingPlan } from "./instancing.js";
 export { collectPerformanceSummary, summarizeFrameTimings, type IPerformanceMetricSummary } from "./performanceMetrics.js";

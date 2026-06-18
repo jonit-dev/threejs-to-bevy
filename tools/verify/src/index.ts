@@ -5,6 +5,7 @@ export { resolveArtifactTargets, toRepoRelative, type ArtifactOwner, type Artifa
 export { loadFixtureCatalog, resolveFixtureId, listCurrentFixtures } from "./conformance.js";
 export { runLegacyScriptAlias, resolveScriptAlias, formatDeprecationDiagnostic, listDeprecatedScriptAliases } from "./legacyAliases.js";
 export { runReleaseGate } from "./release.js";
+export { checkV9QualityGates, V9_FOCUSED_SCRIPT_NAMES, V9_SAMPLE_SCENES } from "./v9QualityGates.js";
 export {
   runCommand,
   runStep,

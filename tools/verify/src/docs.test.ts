@@ -84,6 +84,8 @@ Run \`pnpm verify:release\`.
       "`packages/ir/artifacts/conformance/`",
       "`packages/ir/fixtures/*`",
       "`runtime-bevy/artifacts/<gate>/`",
+      "`tools/verify/src`",
+      "`scripts/` is wrapper-only",
     ].join("\n"),
   );
   await writeFile(
