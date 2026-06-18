@@ -135,7 +135,7 @@ function sortKeys(value) {
 async function writeReport(report) {
   await writeJson(targets.reportPath, {
     generatedBy: "scripts/verify-rendering-residuals.mjs",
-    prd: "docs/PRDs/other/post-v10-rendering-materials-geometry-residuals.md",
+    prd: "docs/PRDs/done/other/post-v10-rendering-materials-geometry-residuals.md",
     schema: "threenative.rendering-residuals-verification",
     ...report,
   });

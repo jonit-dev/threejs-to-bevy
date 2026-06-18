@@ -66,30 +66,30 @@ The unchecked backlog is now split into current planning PRDs without claiming
 implementation. These slices supersede the coarse V10 ownership map for future
 execution order while keeping all checklist rows unchecked until evidence lands:
 
-- [Runtime Gameplay Host Semantics](PRDs/other/post-v10-runtime-gameplay-host.md):
+- [Runtime Gameplay Host Semantics](PRDs/done/other/post-v10-runtime-gameplay-host.md):
   now release-gated by `pnpm verify:runtime-gameplay-host` for P0/P1 ECS host
   execution, live rendered-entity reconciliation, event windows, dynamic state
   handoff, hooks, system-local state, bounded timer/channel evidence, stoppable
   observer controls, and runtime plugin/raw-handle diagnostics.
-- [Durable Persistence and State-Preserving Reload](PRDs/other/post-v10-persistence-hot-reload.md):
+- [Durable Persistence and State-Preserving Reload](PRDs/done/other/post-v10-persistence-hot-reload.md):
   durable Bevy save/settings backend, autosave/checkpoint restore, hot reload
   with state policy, live scene mutation needed for reload proof, and
   cloud/filesystem boundary diagnostics.
-- [Input, UI, and Platform UX Polish](PRDs/other/post-v10-input-ui-platform-polish.md):
+- [Input, UI, and Platform UX Polish](PRDs/done/other/post-v10-input-ui-platform-polish.md):
   platform touch streams, settings-screen polish, richer gestures/device repair,
   virtual keyboard behavior, runtime disabled-state updates, nested scrolling,
   spatial navigation, focus narration, italic text, grid residuals, and desktop
   webview inspection.
-- [Rendering, Materials, Geometry, and Asset Residuals](PRDs/other/post-v10-rendering-materials-geometry-residuals.md):
+- [Rendering, Materials, Geometry, and Asset Residuals](PRDs/done/other/post-v10-rendering-materials-geometry-residuals.md):
   runtime LOD swapping, mesh deformation/terrain streaming, material/specular/
   blend proof, instancing APIs, custom GPU attributes, compressed environment
   formats, broader live asset streaming, glTF custom attribute consumption, and
   advanced renderer/material/shader diagnostics.
-- [Animation, Physics, and Navigation Residuals](PRDs/other/post-v10-animation-physics-navigation-residuals.md):
+- [Animation, Physics, and Navigation Residuals](PRDs/done/other/post-v10-animation-physics-navigation-residuals.md):
   animation masks, morph targets, UI/property animation, blend-tree residuals,
   sloped mesh grounding, constraints, triangle narrow phase, dynamic navmesh,
   crowd/off-mesh links, vehicle diagnostics, and advanced physics deferrals.
-- [Production Audio, Diagnostics, Profiling, and Packaging](PRDs/other/post-v10-production-audio-diagnostics-packaging.md):
+- [Production Audio, Diagnostics, Profiling, and Packaging](PRDs/done/other/post-v10-production-audio-diagnostics-packaging.md):
   live mixer/effects, audio routing diagnostics, UI/audio integration,
   profiler/GPU timing reports, signed/mobile packaging preflight,
   domain-specific repair hints, debug rendering, and production boundary

@@ -95,7 +95,7 @@ function sortKeys(value) {
 async function writeReport(report) {
   await writeJson(targets.reportPath, {
     generatedBy: "scripts/verify-runtime-gameplay-host.mjs",
-    prd: "docs/PRDs/other/post-v10-runtime-gameplay-host.md",
+    prd: "docs/PRDs/done/other/post-v10-runtime-gameplay-host.md",
     schema: "threenative.runtime-gameplay-host-verification",
     ...report,
   });

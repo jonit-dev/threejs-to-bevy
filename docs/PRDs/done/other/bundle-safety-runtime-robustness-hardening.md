@@ -20,9 +20,9 @@ PRDs.
 
 **Pending PRDs Reviewed For Overlap:**
 
-- `docs/PRDs/other/ir-contract-drift-hardening.md`
-- `docs/PRDs/other/scene-lifecycle-and-flow-contract.md`
-- `docs/PRDs/other/verification-gates-and-package-scripts-reorg.md`
+- `docs/PRDs/done/other/ir-contract-drift-hardening.md`
+- `docs/PRDs/done/other/scene-lifecycle-and-flow-contract.md`
+- `docs/PRDs/done/other/verification-gates-and-package-scripts-reorg.md`
 - `docs/PRDs/other/ai-consumable-distribution-contract.md`
 
 **Files Analyzed:**
@@ -39,9 +39,9 @@ PRDs.
 - `runtime-bevy/crates/threenative_loader/src/lib.rs`
 - `runtime-bevy/crates/threenative_runtime/src/map_world.rs`
 - `runtime-bevy/crates/threenative_runtime/src/systems_effects.rs`
-- `docs/PRDs/other/ir-contract-drift-hardening.md`
-- `docs/PRDs/other/scene-lifecycle-and-flow-contract.md`
-- `docs/PRDs/other/verification-gates-and-package-scripts-reorg.md`
+- `docs/PRDs/done/other/ir-contract-drift-hardening.md`
+- `docs/PRDs/done/other/scene-lifecycle-and-flow-contract.md`
+- `docs/PRDs/done/other/verification-gates-and-package-scripts-reorg.md`
 
 **Current Behavior:**
 

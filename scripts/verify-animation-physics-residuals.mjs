@@ -133,7 +133,7 @@ function normalize(value) {
 async function writeReport(report) {
   await writeJson(targets.reportPath, {
     generatedBy: "scripts/verify-animation-physics-residuals.mjs",
-    prd: "docs/PRDs/other/post-v10-animation-physics-navigation-residuals.md",
+    prd: "docs/PRDs/done/other/post-v10-animation-physics-navigation-residuals.md",
     schema: "threenative.animation-physics-residuals-verification",
     ...report,
   });

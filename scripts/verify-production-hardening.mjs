@@ -151,7 +151,7 @@ function sortKeys(value) {
 async function writeReport(report) {
   await writeJson(targets.reportPath, {
     generatedBy: "scripts/verify-production-hardening.mjs",
-    prd: "docs/PRDs/other/post-v10-production-audio-diagnostics-packaging.md",
+    prd: "docs/PRDs/done/other/post-v10-production-audio-diagnostics-packaging.md",
     schema: "threenative.production-hardening-verification",
     ...report,
   });

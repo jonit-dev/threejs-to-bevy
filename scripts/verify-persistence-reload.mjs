@@ -137,7 +137,7 @@ function sortKeys(value) {
 async function writeReport(report) {
   await writeJson(targets.reportPath, {
     generatedBy: "scripts/verify-persistence-reload.mjs",
-    prd: "docs/PRDs/other/post-v10-persistence-hot-reload.md",
+    prd: "docs/PRDs/done/other/post-v10-persistence-hot-reload.md",
     schema: "threenative.persistence-reload-verification",
     ...report,
   });

@@ -144,7 +144,7 @@ function sortKeys(value) {
 async function writeReport(report) {
   await writeJson(targets.reportPath, {
     generatedBy: "scripts/verify-input-ui-polish.mjs",
-    prd: "docs/PRDs/other/post-v10-input-ui-platform-polish.md",
+    prd: "docs/PRDs/done/other/post-v10-input-ui-platform-polish.md",
     schema: "threenative.input-ui-polish-verification",
     ...report,
   });

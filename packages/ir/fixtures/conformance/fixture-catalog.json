@@ -8,7 +8,7 @@
       "sourceExample": "animation-physics-residuals",
       "regenerateCommand": "pnpm verify:animation-physics-residuals",
       "canonicalArtifactGate": "animation-physics-residuals",
-      "ownerDocs": "docs/PRDs/other/post-v10-animation-physics-navigation-residuals.md",
+      "ownerDocs": "docs/PRDs/done/other/post-v10-animation-physics-navigation-residuals.md",
       "aggregateGate": "verify:release",
       "bundlePath": "packages/ir/fixtures/conformance/animation-physics-residuals/game.bundle",
       "promotedCapabilities": [
@@ -29,7 +29,7 @@
       "sourceExample": "input-ui-polish",
       "regenerateCommand": "pnpm verify:input-ui-polish",
       "canonicalArtifactGate": "input-ui-polish",
-      "ownerDocs": "docs/PRDs/other/post-v10-input-ui-platform-polish.md",
+      "ownerDocs": "docs/PRDs/done/other/post-v10-input-ui-platform-polish.md",
       "aggregateGate": "verify:release",
       "bundlePath": "packages/ir/fixtures/conformance/input-ui-polish/game.bundle",
       "promotedCapabilities": [
@@ -51,7 +51,7 @@
       "sourceExample": "persistence-reload",
       "regenerateCommand": "pnpm verify:persistence-reload",
       "canonicalArtifactGate": "persistence-reload",
-      "ownerDocs": "docs/PRDs/other/post-v10-persistence-hot-reload.md",
+      "ownerDocs": "docs/PRDs/done/other/post-v10-persistence-hot-reload.md",
       "aggregateGate": "verify:release",
       "bundlePath": "packages/ir/fixtures/conformance/persistence-reload/game.bundle",
       "promotedCapabilities": [
@@ -71,7 +71,7 @@
       "sourceExample": "production-hardening",
       "regenerateCommand": "pnpm verify:production-hardening",
       "canonicalArtifactGate": "production-hardening",
-      "ownerDocs": "docs/PRDs/other/post-v10-production-audio-diagnostics-packaging.md",
+      "ownerDocs": "docs/PRDs/done/other/post-v10-production-audio-diagnostics-packaging.md",
       "aggregateGate": "verify:release",
       "bundlePath": "packages/ir/fixtures/conformance/production-hardening/game.bundle",
       "promotedCapabilities": [
@@ -94,7 +94,7 @@
       "sourceExample": "rendering-residuals",
       "regenerateCommand": "pnpm verify:rendering-residuals",
       "canonicalArtifactGate": "rendering-residuals",
-      "ownerDocs": "docs/PRDs/other/post-v10-rendering-materials-geometry-residuals.md",
+      "ownerDocs": "docs/PRDs/done/other/post-v10-rendering-materials-geometry-residuals.md",
       "aggregateGate": "verify:release",
       "bundlePath": "packages/ir/fixtures/conformance/rendering-residuals/game.bundle",
       "promotedCapabilities": [
@@ -116,7 +116,7 @@
       "sourceExample": "runtime-gameplay-host",
       "regenerateCommand": "pnpm verify:runtime-gameplay-host",
       "canonicalArtifactGate": "runtime-gameplay-host",
-      "ownerDocs": "docs/PRDs/other/post-v10-runtime-gameplay-host.md",
+      "ownerDocs": "docs/PRDs/done/other/post-v10-runtime-gameplay-host.md",
       "aggregateGate": "verify:release",
       "bundlePath": "packages/ir/fixtures/conformance/runtime-gameplay-host/game.bundle",
       "promotedCapabilities": [
