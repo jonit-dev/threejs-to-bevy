@@ -41,25 +41,20 @@ export function requiredFieldsFromRustStruct(sourceText: string, structName: str
   const body = rustStructBody(sourceText, structName, source);
   const fields = new Set<string>();
   let pendingRename: string | undefined;
-  let pendingDefault = false;
   for (const rawLine of body.split("\n")) {
     const line = rawLine.trim();
     const rename = line.match(/#\[serde\([^)]*rename\s*=\s*"([^"]+)"/);
     if (rename?.[1] !== undefined) {
       pendingRename = rename[1];
     }
-    if (line.includes("#[serde(") && line.includes("default")) {
-      pendingDefault = true;
-    }
     const field = line.match(/^pub\s+([A-Za-z_][A-Za-z0-9_]*):\s*([^,]+),/);
     if (field?.[1] === undefined || field[2] === undefined) {
       continue;
     }
-    if (!field[2].includes("Option<") && !pendingDefault) {
+    if (!field[2].includes("Option<")) {
       fields.add(pendingRename ?? snakeToCamel(field[1]));
     }
     pendingRename = undefined;
-    pendingDefault = false;
   }
   return { fields, source };
 }

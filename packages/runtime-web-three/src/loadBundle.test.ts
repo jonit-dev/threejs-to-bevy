@@ -129,9 +129,59 @@ test("should reject fetchable bundle validation explicitly", async () => {
   );
 });
 
+test("should reject malicious manifest document path", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-web-malicious-path-"));
+  try {
+    await writeMinimalBundle(root);
+    await writeJson(root, "manifest.json", {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "malicious",
+      requiredCapabilities: {},
+      entry: { world: "../outside.ir.json" },
+      files: {
+        assets: "assets.manifest.json",
+        materials: "materials.ir.json",
+        targetProfile: "target.profile.json",
+      },
+    });
+
+    await assert.rejects(() => loadBundle(root), /must not contain empty, current, or parent segments/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject short generated mesh attribute payload", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-web-short-mesh-payload-"));
+  try {
+    await writeGeneratedMeshBundle(root, { attributeBytes: new Uint8Array([0, 0, 0]) });
+
+    await assert.rejects(() => loadBundle(root), /Generated mesh float payload 'mesh.position.bin' has 3 bytes; expected 12/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject long generated mesh index payload", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-web-long-mesh-index-"));
+  try {
+    await writeGeneratedMeshBundle(root, { indexBytes: new Uint8Array([0, 0, 1, 0, 2, 0, 3, 0]) });
+
+    await assert.rejects(() => loadBundle(root), /Generated mesh index payload 'mesh.indices.bin' has 8 bytes; expected 6 for uint16/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 async function writeJson(root: string, path: string, value: unknown): Promise<void> {
   await mkdir(join(root, path, ".."), { recursive: true });
   await writeFile(join(root, path), `${JSON.stringify(value)}\n`);
+}
+
+async function writeBytes(root: string, path: string, value: Uint8Array): Promise<void> {
+  await mkdir(join(root, path, ".."), { recursive: true });
+  await writeFile(join(root, path), value);
 }
 
 async function writeMinimalBundle(root: string): Promise<void> {
@@ -159,4 +209,24 @@ async function writeMinimalBundle(root: string): Promise<void> {
     version: "0.1.0",
     targets: ["web"],
   });
+}
+
+async function writeGeneratedMeshBundle(
+  root: string,
+  options: { attributeBytes?: Uint8Array; indexBytes?: Uint8Array },
+): Promise<void> {
+  await writeMinimalBundle(root);
+  await writeJson(root, "assets.manifest.json", {
+    schema: "threenative.assets",
+    version: "0.1.0",
+    assets: [{
+      id: "mesh.custom",
+      kind: "mesh",
+      primitive: "custom",
+      binaryAttributes: [{ count: 1, itemSize: 3, name: "position", path: "mesh.position.bin" }],
+      binaryIndices: { count: 3, format: "uint16", path: "mesh.indices.bin" },
+    }],
+  });
+  await writeBytes(root, "mesh.position.bin", options.attributeBytes ?? new Uint8Array(12));
+  await writeBytes(root, "mesh.indices.bin", options.indexBytes ?? new Uint8Array(6));
 }

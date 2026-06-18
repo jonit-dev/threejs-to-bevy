@@ -5,6 +5,7 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": "./dist/index.js",
+    "./bundlePaths": "./dist/bundlePaths.js",
     "./conformance": "./dist/conformance.js",
     "./input": "./dist/input.js",
     "./reflection": "./dist/reflection.js",

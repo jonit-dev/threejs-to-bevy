@@ -16,6 +16,7 @@ import type {
   IWorldIr,
   IIrDiagnostic,
 } from "@threenative/ir";
+import { assertBundleRelativePath } from "@threenative/ir/bundlePaths";
 
 export interface IWebBundle {
   assets: IAssetsManifest;
@@ -141,6 +142,10 @@ async function hydrateGeneratedMeshAssets(assets: IAssetsManifest, source: strin
 
 async function readFloat32Payload(source: string, file: string, count: number): Promise<number[]> {
   const bytes = await readBundleBytes(source, file);
+  const expectedBytes = count * 4;
+  if (bytes.byteLength !== expectedBytes) {
+    throw new Error(`Generated mesh float payload '${file}' has ${bytes.byteLength} bytes; expected ${expectedBytes}.`);
+  }
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   return Array.from({ length: count }, (_, index) => view.getFloat32(index * 4, true));
 }
@@ -149,10 +154,15 @@ async function readIndexPayload(source: string, file: string, count: number, for
   const bytes = await readBundleBytes(source, file);
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const itemBytes = format === "uint16" ? 2 : 4;
+  const expectedBytes = count * itemBytes;
+  if (bytes.byteLength !== expectedBytes) {
+    throw new Error(`Generated mesh index payload '${file}' has ${bytes.byteLength} bytes; expected ${expectedBytes} for ${format}.`);
+  }
   return Array.from({ length: count }, (_, index) => format === "uint16" ? view.getUint16(index * itemBytes, true) : view.getUint32(index * itemBytes, true));
 }
 
 async function readBundleBytes(source: string, file: string): Promise<Uint8Array> {
+  assertBundleRelativePath(file);
   if (isFetchable(source)) {
     const response = await fetch(`${source.replace(/\/$/, "")}/${file}`);
     if (!response.ok) {
@@ -169,6 +179,7 @@ async function readBundleBytes(source: string, file: string): Promise<Uint8Array
 }
 
 async function readBundleJson<T>(source: string, file: string): Promise<T> {
+  assertBundleRelativePath(file);
   if (isFetchable(source)) {
     const response = await fetch(`${source.replace(/\/$/, "")}/${file}`);
     if (!response.ok) {

@@ -1,4 +1,5 @@
 export { schemaUrls, type SchemaName } from "./schemas.js";
+export { assertBundleRelativePath, validateBundleRelativePath, type BundlePathValidationResult } from "./bundlePaths.js";
 export {
   IR_DOCUMENTS,
   IR_SCHEMA_IDS,

@@ -55,6 +55,76 @@ fn should_report_missing_bundle_path_with_source_path() {
 }
 
 #[test]
+fn should_reject_malicious_manifest_document_path() {
+    let root = temp_bundle_dir();
+    write_minimal_bundle(&root);
+    write_json(
+        &root,
+        "manifest.json",
+        r#"{
+          "schema": "threenative.bundle",
+          "version": "0.1.0",
+          "name": "malicious",
+          "requiredCapabilities": {},
+          "entry": { "world": "../outside.ir.json" },
+          "files": {
+            "assets": "assets.manifest.json",
+            "materials": "materials.ir.json",
+            "targetProfile": "target.profile.json"
+          }
+        }"#,
+    );
+
+    let error = load_bundle(&root).expect_err("malicious bundle should fail");
+
+    match error {
+        LoadError::InvalidBundlePath { path, message } => {
+            assert_eq!(path, "../outside.ir.json");
+            assert!(message.contains("parent"));
+        }
+        other => panic!("expected invalid path error, got {other:?}"),
+    }
+    fs::remove_dir_all(root).expect("temp bundle should be removed");
+}
+
+#[test]
+fn should_reject_malformed_generated_mesh_payloads() {
+    let root = temp_bundle_dir();
+    write_generated_mesh_bundle(&root);
+    fs::write(root.join("mesh.position.bin"), [0_u8, 0, 0]).expect("short payload");
+
+    let error = load_bundle(&root).expect_err("short generated mesh payload should fail");
+
+    match error {
+        LoadError::InvalidGeneratedMeshPayload { path, message } => {
+            assert_eq!(path, "mesh.position.bin");
+            assert!(message.contains("expected 12 bytes"));
+        }
+        other => panic!("expected generated mesh payload error, got {other:?}"),
+    }
+    fs::remove_dir_all(root).expect("temp bundle should be removed");
+}
+
+#[test]
+fn should_reject_long_generated_mesh_index_payload() {
+    let root = temp_bundle_dir();
+    write_generated_mesh_bundle(&root);
+    fs::write(root.join("mesh.indices.bin"), [0_u8, 0, 1, 0, 2, 0, 3, 0])
+        .expect("long index payload");
+
+    let error = load_bundle(&root).expect_err("long generated mesh index payload should fail");
+
+    match error {
+        LoadError::InvalidGeneratedMeshPayload { path, message } => {
+            assert_eq!(path, "mesh.indices.bin");
+            assert!(message.contains("expected 6 bytes"));
+        }
+        other => panic!("expected generated mesh payload error, got {other:?}"),
+    }
+    fs::remove_dir_all(root).expect("temp bundle should be removed");
+}
+
+#[test]
 fn should_load_optional_audio_ir() {
     let root = temp_bundle_dir();
     write_json(
@@ -178,4 +248,65 @@ fn temp_bundle_dir() -> PathBuf {
 
 fn write_json(root: &Path, file: &str, contents: &str) {
     fs::write(root.join(file), contents).expect("bundle json should be written");
+}
+
+fn write_minimal_bundle(root: &Path) {
+    write_json(
+        root,
+        "manifest.json",
+        r#"{
+          "schema": "threenative.bundle",
+          "version": "0.1.0",
+          "name": "minimal",
+          "requiredCapabilities": {},
+          "entry": { "world": "world.ir.json" },
+          "files": {
+            "assets": "assets.manifest.json",
+            "materials": "materials.ir.json",
+            "targetProfile": "target.profile.json"
+          }
+        }"#,
+    );
+    write_json(
+        root,
+        "world.ir.json",
+        r#"{ "schema": "threenative.world", "version": "0.1.0", "entities": [] }"#,
+    );
+    write_json(
+        root,
+        "assets.manifest.json",
+        r#"{ "schema": "threenative.assets", "version": "0.1.0", "assets": [] }"#,
+    );
+    write_json(
+        root,
+        "materials.ir.json",
+        r#"{ "schema": "threenative.materials", "version": "0.1.0", "materials": [] }"#,
+    );
+    write_json(
+        root,
+        "target.profile.json",
+        r#"{ "schema": "threenative.target-profile", "version": "0.1.0", "targets": ["desktop"] }"#,
+    );
+}
+
+fn write_generated_mesh_bundle(root: &Path) {
+    write_minimal_bundle(root);
+    write_json(
+        root,
+        "assets.manifest.json",
+        r#"{
+          "schema": "threenative.assets",
+          "version": "0.1.0",
+          "assets": [{
+            "id": "mesh.custom",
+            "kind": "mesh",
+            "format": "generated",
+            "primitive": "custom",
+            "binaryAttributes": [{ "name": "position", "count": 1, "format": "float32", "itemSize": 3, "path": "mesh.position.bin" }],
+            "binaryIndices": { "count": 3, "format": "uint16", "path": "mesh.indices.bin" }
+          }]
+        }"#,
+    );
+    fs::write(root.join("mesh.position.bin"), [0_u8; 12]).expect("position payload");
+    fs::write(root.join("mesh.indices.bin"), [0_u8; 6]).expect("index payload");
 }

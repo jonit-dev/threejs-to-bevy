@@ -4,7 +4,7 @@
 | --- | --- |
 | Contract | Three.js-style TypeScript game engine -> validated IR bundle -> web Three.js + native Bevy |
 | Native baseline | Bevy and `bevy_ecs` pinned to `=0.14.2` |
-| Evidence anchors | native test, visual scene, game-authoring ergonomics, capability conformance fixtures, `pnpm verify:release`, `pnpm verify:conformance`, `pnpm --filter @threenative/ir test` contract drift coverage, starter-functional template, release artifacts under `tools/verify/artifacts/release/` and `packages/ir/artifacts/conformance/`, historical milestone archive under `docs/PRDs/archive/`, V10 PRDs, focused V10 evidence gates |
+| Evidence anchors | native test, visual scene, game-authoring ergonomics, capability conformance fixtures, `pnpm verify:release`, `pnpm verify:conformance`, `pnpm --filter @threenative/ir test` contract drift and bundle path coverage, web/Bevy generated-mesh payload rejection tests, starter-functional template, release artifacts under `tools/verify/artifacts/release/` and `packages/ir/artifacts/conformance/`, historical milestone archive under `docs/PRDs/archive/`, V10 PRDs, focused V10 evidence gates |
 
 ## Status
 

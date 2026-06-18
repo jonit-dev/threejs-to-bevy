@@ -21,6 +21,10 @@ pub enum LoadError {
         #[source]
         source: serde_json::Error,
     },
+    #[error("invalid bundle path '{path}': {message}")]
+    InvalidBundlePath { path: String, message: String },
+    #[error("invalid generated mesh payload '{path}': {message}")]
+    InvalidGeneratedMeshPayload { path: String, message: String },
     #[error("unsupported {schema} version '{version}'")]
     UnsupportedVersion { schema: String, version: String },
 }
@@ -1889,6 +1893,13 @@ fn hydrate_generated_mesh_assets(
 
 fn read_f32_payload(bundle_path: &Path, file: &str, count: usize) -> Result<Vec<f32>, LoadError> {
     let bytes = read_binary(bundle_path, file)?;
+    let expected = count * 4;
+    if bytes.len() != expected {
+        return Err(LoadError::InvalidGeneratedMeshPayload {
+            path: file.to_owned(),
+            message: format!("expected {expected} bytes for float payload, found {}", bytes.len()),
+        });
+    }
     let mut values = Vec::with_capacity(count);
     for chunk in bytes.chunks_exact(4).take(count) {
         values.push(f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]));
@@ -1904,12 +1915,32 @@ fn read_index_payload(
 ) -> Result<Vec<u32>, LoadError> {
     let bytes = read_binary(bundle_path, file)?;
     let mut values = Vec::with_capacity(count);
+    let item_size = match format {
+        "uint16" => 2,
+        "uint32" => 4,
+        other => {
+            return Err(LoadError::InvalidGeneratedMeshPayload {
+                path: file.to_owned(),
+                message: format!("unsupported index format '{other}'"),
+            });
+        }
+    };
+    let expected = count * item_size;
+    if bytes.len() != expected {
+        return Err(LoadError::InvalidGeneratedMeshPayload {
+            path: file.to_owned(),
+            message: format!(
+                "expected {expected} bytes for {format} index payload, found {}",
+                bytes.len()
+            ),
+        });
+    }
     if format == "uint16" {
-        for chunk in bytes.chunks_exact(2).take(count) {
+        for chunk in bytes.chunks_exact(item_size) {
             values.push(u16::from_le_bytes([chunk[0], chunk[1]]) as u32);
         }
     } else {
-        for chunk in bytes.chunks_exact(4).take(count) {
+        for chunk in bytes.chunks_exact(item_size) {
             values.push(u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]));
         }
     }
@@ -1917,7 +1948,7 @@ fn read_index_payload(
 }
 
 fn read_binary(bundle_path: &Path, file: &str) -> Result<Vec<u8>, LoadError> {
-    let path = bundle_path.join(file);
+    let path = resolve_bundle_file(bundle_path, file)?;
     fs::read(&path).map_err(|source| LoadError::Read {
         path: path.display().to_string(),
         source,
@@ -1925,7 +1956,7 @@ fn read_binary(bundle_path: &Path, file: &str) -> Result<Vec<u8>, LoadError> {
 }
 
 fn read_json<T: for<'de> Deserialize<'de>>(bundle_path: &Path, file: &str) -> Result<T, LoadError> {
-    let path = bundle_path.join(file);
+    let path = resolve_bundle_file(bundle_path, file)?;
     let contents = fs::read_to_string(&path).map_err(|source| LoadError::Read {
         path: path.display().to_string(),
         source,
@@ -1933,6 +1964,44 @@ fn read_json<T: for<'de> Deserialize<'de>>(bundle_path: &Path, file: &str) -> Re
     serde_json::from_str(&contents).map_err(|source| LoadError::Parse {
         path: path.display().to_string(),
         source,
+    })
+}
+
+fn resolve_bundle_file(bundle_path: &Path, file: &str) -> Result<PathBuf, LoadError> {
+    validate_bundle_relative_path(file)?;
+    Ok(bundle_path.join(file))
+}
+
+fn validate_bundle_relative_path(file: &str) -> Result<(), LoadError> {
+    if file.is_empty() {
+        return invalid_bundle_path(file, "path must be non-empty");
+    }
+    if file.starts_with('/') || file.starts_with('\\') {
+        return invalid_bundle_path(file, "path must be relative");
+    }
+    if file.contains('\\') {
+        return invalid_bundle_path(file, "path must use POSIX separators");
+    }
+    let first_segment = file.split('/').next().unwrap_or_default();
+    if first_segment.contains(':') {
+        return invalid_bundle_path(file, "path must not include a URL scheme or drive prefix");
+    }
+    if file
+        .split('/')
+        .any(|segment| segment.is_empty() || segment == "." || segment == "..")
+    {
+        return invalid_bundle_path(
+            file,
+            "path must not contain empty, current, or parent segments",
+        );
+    }
+    Ok(())
+}
+
+fn invalid_bundle_path(file: &str, message: &str) -> Result<(), LoadError> {
+    Err(LoadError::InvalidBundlePath {
+        path: file.to_owned(),
+        message: message.to_owned(),
     })
 }
 
