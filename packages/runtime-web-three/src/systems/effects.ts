@@ -1,4 +1,4 @@
-import type { IIrSystemDeclaration, IRuntimeDiagnostic, IWorldIr } from "@threenative/ir";
+import type { IIrSystemDeclaration, IPrefabsIr, IRuntimeDiagnostic, IWorldIr } from "@threenative/ir";
 
 import {
   applyCommands,
@@ -22,7 +22,7 @@ export function applySystemEffects(
   world: IWorldIr,
   system: IIrSystemDeclaration,
   effects: ISystemEffects,
-  options: { frame: number; tick: number },
+  options: { frame: number; prefabs?: IPrefabsIr; tick: number },
 ): { diagnostics: IRuntimeDiagnostic[]; entries: ISystemEffectLogEntry[] } {
   const diagnostics = validateSystemEffects(system, effects);
   const entries = systemEffectLogEntries(system, effects, options);
@@ -31,7 +31,7 @@ export function applySystemEffects(
   }
   applyEvents(world, effects.events);
   applyResourceWrites(world, effects.resources);
-  applyCommands(world, effects.commands);
+  applyCommands(world, effects.commands, options.prefabs);
   return { diagnostics, entries };
 }
 
@@ -136,6 +136,18 @@ function declaresCommand(system: IIrSystemDeclaration, command: IQueuedCommand):
     }
     if ("components" in declared) {
       return Object.keys(command.components ?? {}).every((component) => declared.components.includes(component));
+    }
+    if ("prefab" in declared && declared.prefab !== command.prefab) {
+      return false;
+    }
+    if ("prefix" in declared && declared.prefix !== command.prefix) {
+      return false;
+    }
+    if ("child" in declared && declared.child !== command.child) {
+      return false;
+    }
+    if ("parent" in declared && declared.parent !== command.parent) {
+      return false;
     }
     return true;
   });

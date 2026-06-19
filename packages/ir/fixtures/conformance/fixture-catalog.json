@@ -150,6 +150,24 @@
       ]
     },
     {
+      "canonicalId": "ui-persistence-settings-facades",
+      "owner": "ir-contract",
+      "sourceExample": "ui-persistence-settings-facades",
+      "regenerateCommand": "pnpm verify:ui-persistence-settings-facades",
+      "canonicalArtifactGate": "ui-persistence-settings-facades",
+      "ownerDocs": "docs/PRDs/done/other/portable-scripting-ui-persistence-settings-facades.md",
+      "aggregateGate": "verify:release",
+      "bundlePath": "packages/ir/fixtures/conformance/ui-persistence-settings-facades/game.bundle",
+      "promotedCapabilities": [
+        "scripting:service.persistence",
+        "scripting:service.settings",
+        "scripting:service.ui"
+      ],
+      "reportArtifacts": [
+        "tools/verify/artifacts/ui-persistence-settings-facades/verification-report.json"
+      ]
+    },
+    {
       "canonicalId": "animation-state",
       "owner": "ir-contract",
       "sourceExample": "animation-state",

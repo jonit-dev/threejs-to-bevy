@@ -185,6 +185,78 @@ fn systems_host_should_expose_audio_facade() {
 }
 
 #[test]
+fn systems_host_should_expose_persistence_and_settings_facades() {
+    let root = write_persistence_settings_bundle("persistence-settings-context");
+    let mut bundle = load_bundle(&root).expect("persistence settings bundle should load");
+
+    let run = run_native_systems_once(&mut bundle, time()).expect("system should run");
+
+    assert_eq!(
+        bundle.world.resources.get("PersistenceReport"),
+        Some(&serde_json::json!({
+            "difficulty": "hard",
+            "loadedScore": 7,
+            "saved": true,
+            "slots": ["slot.auto"],
+            "volume": 0.5
+        }))
+    );
+    let mut service_names: Vec<_> = run.logs[0]
+        .entries
+        .iter()
+        .filter_map(|entry| entry.service.as_deref())
+        .collect();
+    service_names.sort();
+    assert_eq!(
+        service_names,
+        vec![
+            "persistence.listSlots",
+            "persistence.load",
+            "persistence.save",
+            "settings.get",
+            "settings.get",
+            "settings.set",
+        ]
+    );
+}
+
+#[test]
+fn systems_host_should_expose_retained_ui_facade() {
+    let root = write_ui_facade_bundle("ui-facade-context");
+    let mut bundle = load_bundle(&root).expect("ui facade bundle should load");
+
+    let run = run_native_systems_once(&mut bundle, time()).expect("system should run");
+
+    assert_eq!(
+        bundle.world.resources.get("UiReport"),
+        Some(&serde_json::json!({
+            "action": "StartGame",
+            "disabled": true,
+            "focused": true,
+            "previousFocus": "play",
+            "value": 0.75
+        }))
+    );
+    let mut service_names: Vec<_> = run.logs[0]
+        .entries
+        .iter()
+        .filter_map(|entry| entry.service.as_deref())
+        .collect();
+    service_names.sort();
+    assert_eq!(
+        service_names,
+        vec![
+            "ui.activate",
+            "ui.focus",
+            "ui.read",
+            "ui.read",
+            "ui.setDisabled",
+            "ui.setValue",
+        ]
+    );
+}
+
+#[test]
 fn systems_host_should_expose_animation_query_and_stop_services() {
     let root = write_animation_control_service_bundle("animation-control-context");
     let mut bundle = load_bundle(&root).expect("scripted bundle should load");
@@ -1439,6 +1511,199 @@ fn write_plugin_bundle(name: &str) -> PathBuf {
 };
 export const systemIds = Object.freeze({ "system_reportPlugins": "reportPlugins" });
 export const systems = Object.freeze({ "system_reportPlugins": system_reportPlugins });
+"#,
+    )
+    .expect("script bundle should be written");
+    root
+}
+
+fn write_persistence_settings_bundle(name: &str) -> PathBuf {
+    let root = root(name);
+    write_base_bundle(&root, true);
+    write_json(
+        &root,
+        "manifest.json",
+        r#"{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "persistence-settings",
+  "requiredCapabilities": {},
+  "entry": {
+    "world": "world.ir.json",
+    "systems": "systems.ir.json",
+    "scripts": "scripts.bundle.js",
+    "localData": "local-data.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "localData": "local-data.ir.json",
+    "materials": "materials.ir.json",
+    "targetProfile": "target.profile.json"
+  }
+}"#,
+    );
+    write_json(
+        &root,
+        "local-data.ir.json",
+        r#"{
+  "schema": "threenative.local-data",
+  "version": "0.1.0",
+  "resources": [{ "id": "Score", "schema": { "kind": "object", "fields": { "value": "number" } } }],
+  "components": [],
+  "settings": [
+    { "key": "volume", "kind": "number", "group": "audio", "defaultValue": 0.5, "min": 0, "max": 1 },
+    { "key": "difficulty", "kind": "enum", "group": "game", "defaultValue": "normal", "enumValues": ["normal", "hard"] }
+  ],
+  "saveSlots": [{ "id": "slot.auto", "schemaVersion": 1, "appVersion": "0.1.0" }]
+}"#,
+    );
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "resources": { "Score": { "value": 7 } },
+  "entities": []
+}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "reportPersistence",
+      "schedule": "update",
+      "reads": [],
+      "writes": [],
+      "queries": [],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": ["Score"],
+      "resourceWrites": ["PersistenceReport"],
+      "services": ["persistence.listSlots", "persistence.save", "persistence.load", "settings.set", "settings.get"],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_reportPersistence" }
+    }
+  ]
+}"#,
+    );
+    fs::write(
+        root.join("scripts.bundle.js"),
+        r#"const system_reportPersistence = (ctx) => {
+  const slots = ctx.persistence.listSlots();
+  const saved = ctx.persistence.save("slot.auto");
+  const loaded = ctx.persistence.load("slot.auto");
+  ctx.settings.set("difficulty", "hard");
+  ctx.resources.set("PersistenceReport", {
+    difficulty: ctx.settings.get("difficulty"),
+    loadedScore: loaded.record.resources.Score.value,
+    saved: saved.accepted,
+    slots,
+    volume: ctx.settings.get("volume")
+  });
+};
+export const systemIds = Object.freeze({ "system_reportPersistence": "reportPersistence" });
+export const systems = Object.freeze({ "system_reportPersistence": system_reportPersistence });
+"#,
+    )
+    .expect("script bundle should be written");
+    root
+}
+
+fn write_ui_facade_bundle(name: &str) -> PathBuf {
+    let root = root(name);
+    write_base_bundle(&root, true);
+    write_json(
+        &root,
+        "manifest.json",
+        r#"{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "ui-facade",
+  "requiredCapabilities": {},
+  "entry": {
+    "world": "world.ir.json",
+    "systems": "systems.ir.json",
+    "scripts": "scripts.bundle.js",
+    "ui": "ui.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "materials": "materials.ir.json",
+    "targetProfile": "target.profile.json",
+    "ui": "ui.ir.json"
+  }
+}"#,
+    );
+    write_json(
+        &root,
+        "ui.ir.json",
+        r#"{
+  "schema": "threenative.ui",
+  "version": "0.1.0",
+  "focusOrder": ["play", "settings.volume"],
+  "root": {
+    "id": "root",
+    "kind": "column",
+    "children": [
+      { "id": "play", "kind": "button", "label": "Play", "action": "StartGame" },
+      { "id": "settings.volume", "kind": "bar", "value": 0.5, "focusable": true }
+    ]
+  }
+}"#,
+    );
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{"schema":"threenative.world","version":"0.1.0","entities":[]}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "reportUi",
+      "schedule": "update",
+      "reads": [],
+      "writes": [],
+      "queries": [],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": [],
+      "resourceWrites": ["UiReport"],
+      "services": ["ui.activate", "ui.focus", "ui.read", "ui.setDisabled", "ui.setValue"],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_reportUi" }
+    }
+  ]
+}"#,
+    );
+    fs::write(
+        root.join("scripts.bundle.js"),
+        r#"const system_reportUi = (ctx) => {
+  const focus = ctx.ui.focus("settings.volume");
+  const activated = ctx.ui.activate("play");
+  ctx.ui.setValue("settings.volume", 0.75);
+  const value = ctx.ui.read("settings.volume");
+  ctx.ui.setDisabled("settings.volume", true);
+  const disabled = ctx.ui.read("settings.volume");
+  ctx.resources.set("UiReport", {
+    action: activated.action,
+    disabled: disabled.disabled,
+    focused: value.focused,
+    previousFocus: focus.previous,
+    value: value.value
+  });
+};
+export const systemIds = Object.freeze({ "system_reportUi": "reportUi" });
+export const systems = Object.freeze({ "system_reportUi": system_reportUi });
 "#,
     )
     .expect("script bundle should be written");

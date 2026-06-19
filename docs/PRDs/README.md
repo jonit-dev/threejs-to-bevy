@@ -60,7 +60,7 @@ This index separates current cleanup work from historical milestone batches.
 - [Portable Scripting Audio Facade](other/portable-scripting-audio-facade.md):
   `ctx.audio` play/stop/query over declared audio IR with logical playback IDs,
   private runtime handles, and stable unsupported streaming/platform diagnostics.
-- [Portable Scripting UI, Persistence, and Settings Facades](other/portable-scripting-ui-persistence-settings-facades.md):
+- [Portable Scripting UI, Persistence, and Settings Facades](done/other/portable-scripting-ui-persistence-settings-facades.md):
   bounded `ctx.ui`, `ctx.persistence`, and `ctx.settings` APIs over retained UI
   and local-data IR without exposing DOM, native widget, filesystem, cloud, or
   platform handles.

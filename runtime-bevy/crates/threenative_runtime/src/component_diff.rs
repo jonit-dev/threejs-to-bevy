@@ -42,8 +42,7 @@ impl ComponentDiffCache {
                     .baseline
                     .get(entity_id)
                     .and_then(|row| row.get(component));
-                (current.as_deref() != previous.map(String::as_str))
-                    .then(|| component.clone())
+                (current.as_deref() != previous.map(String::as_str)).then(|| component.clone())
             })
             .collect()
     }
@@ -69,8 +68,14 @@ pub fn changed_components(
 ) -> Vec<String> {
     let explicit = read_changed(components.extra.get("__changed"), entity_id)
         .into_iter()
-        .chain(read_changed(bundle.world.resources.get("__changed"), entity_id))
-        .chain(read_changed(bundle.world.resources.get("Changed"), entity_id))
+        .chain(read_changed(
+            bundle.world.resources.get("__changed"),
+            entity_id,
+        ))
+        .chain(read_changed(
+            bundle.world.resources.get("Changed"),
+            entity_id,
+        ))
         .collect::<Vec<_>>();
     if !explicit.is_empty() {
         return explicit;

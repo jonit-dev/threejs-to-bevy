@@ -3,10 +3,11 @@ use std::collections::BTreeMap;
 use serde::Serialize;
 use serde_json::{Value, json};
 use threenative_loader::{
-    EntityComponents, LoadedBundle, SystemIr, SystemQueryIr, SystemStateSourceIr,
+    EntityComponents, LoadedBundle, LocalDataIr, SystemIr, SystemQueryIr, SystemStateSourceIr,
+    UiIr, UiNodeIr,
 };
 
-use crate::component_diff::{changed_components as resolve_changed_components, ComponentDiffCache};
+use crate::component_diff::{ComponentDiffCache, changed_components as resolve_changed_components};
 use crate::input::NativeInputState;
 use crate::mesh_bounds::mesh_aabb;
 
@@ -22,6 +23,7 @@ pub struct NativeSystemContextSnapshot {
     pub entities: Vec<NativeSystemEntitySnapshot>,
     pub events: BTreeMap<String, Vec<Value>>,
     pub input: NativeSystemInputSnapshot,
+    pub local_data: NativeLocalDataSnapshot,
     pub mesh_bounds: BTreeMap<String, NativeMeshBoundsSnapshot>,
     pub observer_routes: BTreeMap<String, BTreeMap<String, Vec<NativeObserverPropagationStep>>>,
     pub plugin_groups: Vec<NativePluginGroupDeclaration>,
@@ -32,6 +34,7 @@ pub struct NativeSystemContextSnapshot {
     pub states: BTreeMap<String, Option<String>>,
     pub tasks: Vec<NativeTaskDeclaration>,
     pub time: NativeSystemTimeSnapshot,
+    pub ui: Option<NativeUiSnapshot>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -143,6 +146,59 @@ pub struct NativeSystemInputSnapshot {
     pub axes: BTreeMap<String, f32>,
 }
 
+#[derive(Clone, Debug, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeLocalDataSnapshot {
+    pub components: Vec<NativeLocalDataSchemaEntry>,
+    pub resources: Vec<NativeLocalDataSchemaEntry>,
+    pub save_slots: Vec<NativeLocalDataSaveSlot>,
+    pub settings: Vec<NativeLocalDataSetting>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct NativeLocalDataSchemaEntry {
+    pub id: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeLocalDataSaveSlot {
+    pub app_version: String,
+    pub id: String,
+    pub schema_version: u32,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeLocalDataSetting {
+    pub default_value: Value,
+    pub enum_values: Vec<String>,
+    pub key: String,
+    pub kind: String,
+    pub max: Option<f64>,
+    pub min: Option<f64>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeUiSnapshot {
+    pub focus_order: Option<Vec<String>>,
+    pub nodes: Vec<NativeUiNodeSnapshot>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeUiNodeSnapshot {
+    pub action: Option<String>,
+    pub disabled: bool,
+    pub focusable: bool,
+    pub id: String,
+    pub kind: String,
+    pub label: Option<String>,
+    pub text: Option<String>,
+    pub value: Option<f32>,
+}
+
 pub fn build_system_context_snapshot(
     bundle: &LoadedBundle,
     system: &SystemIr,
@@ -167,7 +223,9 @@ pub fn build_system_context_snapshot_with_events_and_input(
     events: BTreeMap<String, Vec<Value>>,
     input: Option<&NativeInputState>,
 ) -> NativeSystemContextSnapshot {
-    build_system_context_snapshot_with_events_input_and_diff(bundle, system, time, events, input, None)
+    build_system_context_snapshot_with_events_input_and_diff(
+        bundle, system, time, events, input, None,
+    )
 }
 
 pub fn build_system_context_snapshot_with_events_input_and_diff(
@@ -215,6 +273,7 @@ pub fn build_system_context_snapshot_with_events_input_and_diff(
             NativeSystemInputSnapshot::fixed_trace,
             NativeSystemInputSnapshot::from_native_input,
         ),
+        local_data: local_data_snapshot(bundle.local_data.as_ref()),
         mesh_bounds: mesh_bounds(bundle),
         observer_routes: observer_routes(bundle),
         plugin_groups: plugin_group_declarations(bundle),
@@ -231,6 +290,78 @@ pub fn build_system_context_snapshot_with_events_input_and_diff(
         states: evaluate_states(bundle),
         tasks: task_declarations(bundle),
         time,
+        ui: bundle.ui.as_ref().map(ui_snapshot),
+    }
+}
+
+fn local_data_snapshot(local_data: Option<&LocalDataIr>) -> NativeLocalDataSnapshot {
+    let Some(local_data) = local_data else {
+        return NativeLocalDataSnapshot::default();
+    };
+
+    NativeLocalDataSnapshot {
+        components: local_data
+            .components
+            .iter()
+            .map(|entry| NativeLocalDataSchemaEntry {
+                id: entry.id.clone(),
+            })
+            .collect(),
+        resources: local_data
+            .resources
+            .iter()
+            .map(|entry| NativeLocalDataSchemaEntry {
+                id: entry.id.clone(),
+            })
+            .collect(),
+        save_slots: local_data
+            .save_slots
+            .iter()
+            .map(|slot| NativeLocalDataSaveSlot {
+                app_version: slot.app_version.clone(),
+                id: slot.id.clone(),
+                schema_version: slot.schema_version,
+            })
+            .collect(),
+        settings: local_data
+            .settings
+            .iter()
+            .map(|setting| NativeLocalDataSetting {
+                default_value: setting.default_value.clone(),
+                enum_values: setting.enum_values.clone(),
+                key: setting.key.clone(),
+                kind: setting.kind.clone(),
+                max: setting.max,
+                min: setting.min,
+            })
+            .collect(),
+    }
+}
+
+fn ui_snapshot(ui: &UiIr) -> NativeUiSnapshot {
+    let mut nodes = Vec::new();
+    collect_ui_nodes(&ui.root, &mut nodes);
+    NativeUiSnapshot {
+        focus_order: ui.focus_order.clone(),
+        nodes,
+    }
+}
+
+fn collect_ui_nodes(node: &UiNodeIr, nodes: &mut Vec<NativeUiNodeSnapshot>) {
+    let focusable =
+        node.focusable.unwrap_or(false) || node.kind == "button" || node.kind == "touchControl";
+    nodes.push(NativeUiNodeSnapshot {
+        action: node.action.clone(),
+        disabled: node.disabled.unwrap_or(false),
+        focusable,
+        id: node.id.clone(),
+        kind: node.kind.clone(),
+        label: node.label.clone(),
+        text: node.text.clone(),
+        value: node.value,
+    });
+    for child in &node.children {
+        collect_ui_nodes(child, nodes);
     }
 }
 
@@ -725,7 +856,8 @@ fn matches_query(
             .iter()
             .all(|component| component_value(components, component).is_none())
         && query.changed.iter().all(|component| {
-            resolve_changed_components(bundle, entity_id, components, diff_cache).contains(component)
+            resolve_changed_components(bundle, entity_id, components, diff_cache)
+                .contains(component)
         })
 }
 

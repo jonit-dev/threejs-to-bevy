@@ -128,3 +128,7 @@ export {
   traceRuntimeQueryDiffing,
   type IRuntimeQueryDiffingReport,
 } from "./runtimeQueryDiffing.js";
+export {
+  traceUiPersistenceSettingsFacades,
+  type IUiPersistenceSettingsFacadesReport,
+} from "./uiPersistenceSettingsFacades.js";

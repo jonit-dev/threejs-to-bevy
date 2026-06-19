@@ -9,16 +9,20 @@ fn should_reconcile_spawned_rendered_entities_when_command_buffer_flushes() {
     let report = trace_runtime_gameplay_host(&mut fixture.bundle);
 
     assert_eq!(report["schema"], "threenative.runtime-gameplay-host");
-    assert!(report["reconciliation"]["spawnedRendererHandles"]
-        .as_array()
-        .expect("spawned handles")
-        .iter()
-        .any(|handle| handle == "renderer:runtime.enemy"));
-    assert!(!report["reconciliation"]["finalRendererHandles"]
-        .as_array()
-        .expect("final handles")
-        .iter()
-        .any(|handle| handle == "renderer:runtime.enemy"));
+    assert!(
+        report["reconciliation"]["spawnedRendererHandles"]
+            .as_array()
+            .expect("spawned handles")
+            .iter()
+            .any(|handle| handle == "renderer:runtime.enemy")
+    );
+    assert!(
+        !report["reconciliation"]["finalRendererHandles"]
+            .as_array()
+            .expect("final handles")
+            .iter()
+            .any(|handle| handle == "renderer:runtime.enemy")
+    );
     assert_eq!(
         report["hooks"][2],
         serde_json::json!({

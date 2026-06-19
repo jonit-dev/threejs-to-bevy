@@ -6,7 +6,10 @@ use crate::audio::{trace_audio_lifecycle, trace_audio_support};
 pub fn trace_production_hardening(bundle: &LoadedBundle) -> Value {
     let audio = bundle.audio.as_ref().expect("bundle contains audio");
     let profiler = profiler();
-    let support = trace_audio_support(audio, &[("listener.main", vec![[0.0, 0.0, 0.0], [0.0, 0.0, 6.0]])]);
+    let support = trace_audio_support(
+        audio,
+        &[("listener.main", vec![[0.0, 0.0, 0.0], [0.0, 0.0, 6.0]])],
+    );
     json!({
         "audio": {
             "deviceRouting": [
@@ -48,26 +51,32 @@ pub fn trace_production_hardening(bundle: &LoadedBundle) -> Value {
 }
 
 fn buses(audio: &AudioIr) -> Value {
-    Value::Array(audio.buses.iter().map(|bus| {
-        let mut value = serde_json::Map::new();
-        if let Some(gain) = bus.gain {
-            value.insert("gain".to_owned(), json!(gain));
-        }
-        value.insert("id".to_owned(), json!(bus.id));
-        if let Some(mute) = bus.mute {
-            value.insert("mute".to_owned(), json!(mute));
-        }
-        if let Some(parent) = &bus.parent {
-            value.insert("parent".to_owned(), json!(parent));
-        }
-        if let Some(solo) = bus.solo {
-            value.insert("solo".to_owned(), json!(solo));
-        }
-        if let Some(volume) = bus.volume {
-            value.insert("volume".to_owned(), json!(volume));
-        }
-        Value::Object(value)
-    }).collect())
+    Value::Array(
+        audio
+            .buses
+            .iter()
+            .map(|bus| {
+                let mut value = serde_json::Map::new();
+                if let Some(gain) = bus.gain {
+                    value.insert("gain".to_owned(), json!(gain));
+                }
+                value.insert("id".to_owned(), json!(bus.id));
+                if let Some(mute) = bus.mute {
+                    value.insert("mute".to_owned(), json!(mute));
+                }
+                if let Some(parent) = &bus.parent {
+                    value.insert("parent".to_owned(), json!(parent));
+                }
+                if let Some(solo) = bus.solo {
+                    value.insert("solo".to_owned(), json!(solo));
+                }
+                if let Some(volume) = bus.volume {
+                    value.insert("volume".to_owned(), json!(volume));
+                }
+                Value::Object(value)
+            })
+            .collect(),
+    )
 }
 
 fn effects(audio: &AudioIr) -> Value {

@@ -1,0 +1,11 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [],
+  "resources": {
+    "FacadeReport": {},
+    "Score": {
+      "value": 7
+    }
+  }
+}

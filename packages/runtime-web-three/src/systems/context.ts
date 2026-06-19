@@ -1,5 +1,5 @@
 import { buildComponentReflectionRegistry, type IComponentReflectionRegistry, type IComponentReflectionType } from "@threenative/ir/reflection";
-import type { IAssetsManifest, IIrSchemaFile, IIrStateSource, IIrSystemQuery, ILocalDataIr, ISystemsIr, IUiIr, IUiNodeIr, IWorldEntity, IWorldIr } from "@threenative/ir";
+import type { IAssetsManifest, IIrSchemaFile, IIrStateSource, IIrSystemQuery, ILocalDataIr, IPrefabsIr, ISystemsIr, IUiIr, IUiNodeIr, IWorldEntity, IWorldIr } from "@threenative/ir";
 import { AnimationRuntimeController } from "../animation.js";
 import { ScriptAudioRuntimeController, type IScriptAudioPlayOptions } from "../audio.js";
 import { traceCharacterControllers, type ICharacterTraceObservation } from "../character.js";
@@ -34,10 +34,13 @@ export interface ISystemEntityView {
 
 export interface ISystemCommandBuffer {
   addComponent(entity: string, component: unknown, value?: unknown): void;
+  clearParent(child: string): void;
   despawn(entity: string): void;
   emitEvent(event: unknown, payload: unknown): void;
+  instantiate(prefab: string, prefix: string): IInstantiateResult;
   removeComponent(entity: string, component: unknown): void;
   setComponent(entity: string, component: unknown, value: unknown): void;
+  setParent(child: string, parent: string): void;
   spawn(entity: string, components?: Record<string, unknown>): void;
 }
 
@@ -194,14 +197,26 @@ export interface IPluginGroupView {
 }
 
 export interface IQueuedCommand {
+  child?: string;
   components?: Record<string, unknown>;
   component?: string;
   entity: string;
   event?: string;
-  kind: "addComponent" | "despawn" | "emitEvent" | "removeComponent" | "setComponent" | "spawn";
+  kind: "addComponent" | "clearParent" | "despawn" | "emitEvent" | "instantiate" | "removeComponent" | "setComponent" | "setParent" | "spawn";
+  parent?: string;
   payload?: unknown;
+  prefab?: string;
+  prefix?: string;
   source: "command" | "entity";
   value?: unknown;
+}
+
+export interface IInstantiateResult {
+  accepted: boolean;
+  entities: string[];
+  prefab: string;
+  root: string | null;
+  status: "enqueued" | "missing";
 }
 
 export interface IQueuedEvent {
@@ -287,7 +302,7 @@ export interface IPhysicsSensorResult {
 
 export function createSystemContext(
   world: IWorldIr,
-  options: { assets?: IAssetsManifest; audio?: import("@threenative/ir").IAudioIr; componentDiff?: IComponentDiffCache; componentSchemas?: IIrSchemaFile; currentScene?: string | null; defaultQuery?: IIrSystemQuery; delta: number; elapsed?: number; fixedDelta: number; input?: IWebInputState; localData?: ILocalDataIr; paused?: boolean; persistence?: IWebPersistenceService; systems?: ISystemsIr; ui?: IUiIr },
+  options: { assets?: IAssetsManifest; audio?: import("@threenative/ir").IAudioIr; componentDiff?: IComponentDiffCache; componentSchemas?: IIrSchemaFile; currentScene?: string | null; defaultQuery?: IIrSystemQuery; delta: number; elapsed?: number; fixedDelta: number; input?: IWebInputState; localData?: ILocalDataIr; paused?: boolean; persistence?: IWebPersistenceService; prefabs?: IPrefabsIr; systems?: ISystemsIr; ui?: IUiIr },
 ): {
   commands: IQueuedCommand[];
   context: ISystemContext;
@@ -386,17 +401,37 @@ export function createSystemContext(
         addComponent(entity, component, value = {}) {
           commands.push({ component: normalizeHandleName(component), entity, kind: "addComponent", source: "command", value: cloneValue(value) });
         },
+        clearParent(child) {
+          commands.push({ child, entity: child, kind: "clearParent", source: "command" });
+        },
         despawn(entity) {
           commands.push({ entity, kind: "despawn", source: "command" });
         },
         emitEvent(event, payload) {
           commands.push({ entity: "", event: normalizeHandleName(event), kind: "emitEvent", payload: cloneValue(payload), source: "command" });
         },
+        instantiate(prefab, prefix) {
+          const template = options.prefabs?.prefabs.find((candidate) => candidate.id === prefab);
+          const result: IInstantiateResult = template === undefined
+            ? { accepted: false, entities: [], prefab, root: null, status: "missing" }
+            : {
+                accepted: true,
+                entities: template.entities.map((entity) => `${prefix}.${entity.id}`),
+                prefab,
+                root: `${prefix}.${template.root}`,
+                status: "enqueued",
+              };
+          commands.push({ entity: result.root ?? "", kind: "instantiate", prefab, prefix, source: "command", value: cloneValue(result) });
+          return cloneValue(result) as IInstantiateResult;
+        },
         removeComponent(entity, component) {
           commands.push({ component: normalizeHandleName(component), entity, kind: "removeComponent", source: "command" });
         },
         setComponent(entity, component, value) {
           commands.push({ component: normalizeHandleName(component), entity, kind: "setComponent", source: "command", value: cloneValue(value) });
+        },
+        setParent(child, parent) {
+          commands.push({ child, entity: child, kind: "setParent", parent, source: "command" });
         },
         spawn(entity, components = {}) {
           commands.push({ components: cloneValue(components) as Record<string, unknown>, entity, kind: "spawn", source: "command" });
@@ -938,8 +973,27 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-export function applyCommands(world: IWorldIr, commands: ReadonlyArray<IQueuedCommand>): void {
+export function applyCommands(world: IWorldIr, commands: ReadonlyArray<IQueuedCommand>, prefabs?: IPrefabsIr): void {
   for (const command of commands) {
+    if (command.kind === "instantiate") {
+      const prefab = prefabs?.prefabs.find((candidate) => candidate.id === command.prefab);
+      if (prefab === undefined || command.prefix === undefined) {
+        continue;
+      }
+      for (const template of prefab.entities) {
+        const id = `${command.prefix}.${template.id}`;
+        if (world.entities.some((entity) => entity.id === id)) {
+          continue;
+        }
+        const components = cloneValue(template.components) as IWorldEntity["components"];
+        const hierarchy = components.Hierarchy;
+        if (isRecord(hierarchy) && typeof hierarchy.parent === "string" && hierarchy.parent.trim() !== "") {
+          components.Hierarchy = { ...hierarchy, parent: `${command.prefix}.${hierarchy.parent}` };
+        }
+        world.entities.push({ components, id });
+      }
+      continue;
+    }
     if (command.kind === "spawn") {
       if (world.entities.every((entity) => entity.id !== command.entity)) {
         world.entities.push({ components: cloneValue(command.components ?? {}) as IWorldEntity["components"], id: command.entity });
@@ -948,6 +1002,18 @@ export function applyCommands(world: IWorldIr, commands: ReadonlyArray<IQueuedCo
     }
     if (command.kind === "despawn") {
       world.entities = world.entities.filter((entity) => entity.id !== command.entity);
+      continue;
+    }
+    if (command.kind === "setParent") {
+      if (command.child !== undefined && command.parent !== undefined) {
+        setEntityParent(world, command.child, command.parent);
+      }
+      continue;
+    }
+    if (command.kind === "clearParent") {
+      if (command.child !== undefined) {
+        clearEntityParent(world, command.child);
+      }
       continue;
     }
     if (command.kind === "emitEvent") {
@@ -968,6 +1034,47 @@ export function applyCommands(world: IWorldIr, commands: ReadonlyArray<IQueuedCo
       entity.components[command.component] = cloneValue(command.value);
     }
   }
+}
+
+function setEntityParent(world: IWorldIr, childId: string, parentId: string): void {
+  if (childId === parentId || wouldCreateHierarchyCycle(world, childId, parentId)) {
+    return;
+  }
+  const child = world.entities.find((entity) => entity.id === childId);
+  const parent = world.entities.find((entity) => entity.id === parentId);
+  if (child === undefined || parent === undefined) {
+    return;
+  }
+  const current = isRecord(child.components.Hierarchy) ? child.components.Hierarchy : {};
+  child.components.Hierarchy = { ...current, parent: parentId };
+}
+
+function clearEntityParent(world: IWorldIr, childId: string): void {
+  const child = world.entities.find((entity) => entity.id === childId);
+  if (child === undefined) {
+    return;
+  }
+  const current = isRecord(child.components.Hierarchy) ? child.components.Hierarchy : {};
+  child.components.Hierarchy = { ...current };
+  delete (child.components.Hierarchy as Record<string, unknown>).parent;
+}
+
+function wouldCreateHierarchyCycle(world: IWorldIr, childId: string, parentId: string): boolean {
+  let current: string | undefined = parentId;
+  const visited = new Set<string>();
+  while (current !== undefined) {
+    if (current === childId) {
+      return true;
+    }
+    if (visited.has(current)) {
+      return true;
+    }
+    visited.add(current);
+    const entity = world.entities.find((candidate) => candidate.id === current);
+    const hierarchy = entity?.components.Hierarchy;
+    current = isRecord(hierarchy) && typeof hierarchy.parent === "string" ? hierarchy.parent : undefined;
+  }
+  return false;
 }
 
 export function applyEvents(world: IWorldIr, events: ReadonlyArray<IQueuedEvent>): void {

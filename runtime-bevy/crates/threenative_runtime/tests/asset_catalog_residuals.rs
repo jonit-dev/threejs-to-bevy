@@ -19,7 +19,8 @@ fn should_report_unsupported_gltf_executable_extension_processor() {
 
 #[test]
 fn should_report_generated_assets_as_bundle_artifacts() {
-    let report = report_generated_asset_policy("generated.navmesh", "threenative.generated.navmesh");
+    let report =
+        report_generated_asset_policy("generated.navmesh", "threenative.generated.navmesh");
 
     assert_eq!(report["assetId"], "generated.navmesh");
     assert_eq!(report["path"], "artifacts/generated/generated.navmesh.json");

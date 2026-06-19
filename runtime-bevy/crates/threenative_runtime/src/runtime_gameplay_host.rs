@@ -196,14 +196,26 @@ fn read_local_counter(bundle: &LoadedBundle) -> i64 {
 }
 
 fn channels(bundle: &LoadedBundle) -> Value {
-    Value::Array(bundle.systems.as_ref().map(|systems| {
-        systems.channels.iter().map(|channel| json!({
-            "delivery": channel.delivery,
-            "event": channel.event,
-            "id": channel.id,
-            "status": "ready"
-        })).collect::<Vec<_>>()
-    }).unwrap_or_default())
+    Value::Array(
+        bundle
+            .systems
+            .as_ref()
+            .map(|systems| {
+                systems
+                    .channels
+                    .iter()
+                    .map(|channel| {
+                        json!({
+                            "delivery": channel.delivery,
+                            "event": channel.event,
+                            "id": channel.id,
+                            "status": "ready"
+                        })
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default(),
+    )
 }
 
 fn timers(bundle: &LoadedBundle) -> Value {
@@ -220,11 +232,26 @@ fn timers(bundle: &LoadedBundle) -> Value {
 
 fn diagnostics() -> Value {
     json!([
-        diagnostic("TN_UNSUPPORTED_FEATURE_PROMISE", "systems.ir.json/runtime/unsupportedFeatures/promise"),
-        diagnostic("TN_UNSUPPORTED_FEATURE_RAW_RUNTIME_HANDLE", "systems.ir.json/runtime/unsupportedFeatures/rawRuntimeHandle"),
-        diagnostic("TN_UNSUPPORTED_FEATURE_RUNTIME_PLUGIN", "systems.ir.json/runtime/unsupportedFeatures/runtimePlugin"),
-        diagnostic("TN_UNSUPPORTED_FEATURE_TIMER", "systems.ir.json/runtime/unsupportedFeatures/timer"),
-        diagnostic("TN_UNSUPPORTED_FEATURE_WORKER", "systems.ir.json/runtime/unsupportedFeatures/worker")
+        diagnostic(
+            "TN_UNSUPPORTED_FEATURE_PROMISE",
+            "systems.ir.json/runtime/unsupportedFeatures/promise"
+        ),
+        diagnostic(
+            "TN_UNSUPPORTED_FEATURE_RAW_RUNTIME_HANDLE",
+            "systems.ir.json/runtime/unsupportedFeatures/rawRuntimeHandle"
+        ),
+        diagnostic(
+            "TN_UNSUPPORTED_FEATURE_RUNTIME_PLUGIN",
+            "systems.ir.json/runtime/unsupportedFeatures/runtimePlugin"
+        ),
+        diagnostic(
+            "TN_UNSUPPORTED_FEATURE_TIMER",
+            "systems.ir.json/runtime/unsupportedFeatures/timer"
+        ),
+        diagnostic(
+            "TN_UNSUPPORTED_FEATURE_WORKER",
+            "systems.ir.json/runtime/unsupportedFeatures/worker"
+        )
     ])
 }
 
@@ -239,8 +266,13 @@ fn diagnostic(code: &str, path: &str) -> Value {
 }
 
 fn unsupported_message(code: &str) -> String {
-    let feature = code.trim_start_matches("TN_UNSUPPORTED_FEATURE_").to_lowercase();
-    format!("Feature '{}' is outside the portable runtime scope.", feature.to_camel_case())
+    let feature = code
+        .trim_start_matches("TN_UNSUPPORTED_FEATURE_")
+        .to_lowercase();
+    format!(
+        "Feature '{}' is outside the portable runtime scope.",
+        feature.to_camel_case()
+    )
 }
 
 trait CamelCase {

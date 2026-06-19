@@ -10,10 +10,24 @@ fn should_report_durable_restore_and_reload_policy() {
 
     assert_eq!(report.schema, "threenative.persistence-reload");
     assert_eq!(report.persistence.autosave[0].event, "CheckpointReached");
-    assert_eq!(report.persistence.restore.resource_value, Some(serde_json::json!(3)));
-    assert_eq!(report.reload.retained, vec!["Progress", "Inventory", "settings"]);
-    assert_eq!(report.diagnostics[0].code, "TN_PERSISTENCE_SAVE_FORWARD_INCOMPATIBLE");
-    assert!(report.boundaries.iter().any(|boundary| boundary.code == "TN_PERSISTENCE_CLOUD_STORAGE_UNSUPPORTED"));
+    assert_eq!(
+        report.persistence.restore.resource_value,
+        Some(serde_json::json!(3))
+    );
+    assert_eq!(
+        report.reload.retained,
+        vec!["Progress", "Inventory", "settings"]
+    );
+    assert_eq!(
+        report.diagnostics[0].code,
+        "TN_PERSISTENCE_SAVE_FORWARD_INCOMPATIBLE"
+    );
+    assert!(
+        report
+            .boundaries
+            .iter()
+            .any(|boundary| boundary.code == "TN_PERSISTENCE_CLOUD_STORAGE_UNSUPPORTED")
+    );
 }
 
 fn fixture_path() -> PathBuf {

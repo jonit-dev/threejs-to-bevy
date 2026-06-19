@@ -53,6 +53,20 @@ export type IrSystemCommand =
       kind: "despawn";
     }
   | {
+      kind: "instantiate";
+      prefab: string;
+      prefix: string;
+    }
+  | {
+      child: string;
+      kind: "setParent";
+      parent: string;
+    }
+  | {
+      child: string;
+      kind: "clearParent";
+    }
+  | {
       event: string;
       kind: "emitEvent";
     };

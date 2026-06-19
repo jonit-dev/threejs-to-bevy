@@ -1,0 +1,40 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "ui-persistence-settings-facades",
+  "requiredCapabilities": {
+    "localData": [
+      "save-slots",
+      "settings"
+    ],
+    "scripting": [
+      "script-bundle",
+      "service.persistence",
+      "service.settings",
+      "service.ui",
+      "systems"
+    ],
+    "ui": [
+      "focusable",
+      "node.bar",
+      "node.button",
+      "node.column",
+      "runtime"
+    ]
+  },
+  "entry": {
+    "localData": "local-data.ir.json",
+    "scripts": "scripts.bundle.js",
+    "systems": "systems.ir.json",
+    "ui": "ui.ir.json",
+    "world": "world.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "localData": "local-data.ir.json",
+    "materials": "materials.ir.json",
+    "resourceSchemas": "schemas/resources.schema.json",
+    "targetProfile": "target.profile.json",
+    "ui": "ui.ir.json"
+  }
+}

@@ -632,7 +632,9 @@ pub struct ScriptAudioPlayOptions {
     pub volume: Option<f32>,
 }
 
-fn build_script_audio_catalog(audio: &AudioIr) -> std::collections::BTreeMap<String, ScriptAudioCatalogEntry> {
+fn build_script_audio_catalog(
+    audio: &AudioIr,
+) -> std::collections::BTreeMap<String, ScriptAudioCatalogEntry> {
     let mut catalog = std::collections::BTreeMap::new();
     for music in &audio.music {
         catalog.insert(
@@ -668,10 +670,24 @@ fn find_unsupported_script_audio_option(
     options: &std::collections::BTreeMap<String, serde_json::Value>,
 ) -> Option<String> {
     const EXTERNAL_KEYS: &[&str] = &[
-        "codec", "decoderPlugin", "device", "deviceId", "nativeHandle", "networkStream",
-        "networkUrl", "platformHandle", "src", "stream", "streaming", "streamingUrl", "url",
+        "codec",
+        "decoderPlugin",
+        "device",
+        "deviceId",
+        "nativeHandle",
+        "networkStream",
+        "networkUrl",
+        "platformHandle",
+        "src",
+        "stream",
+        "streaming",
+        "streamingUrl",
+        "url",
     ];
-    options.keys().find(|key| EXTERNAL_KEYS.contains(&key.as_str())).cloned()
+    options
+        .keys()
+        .find(|key| EXTERNAL_KEYS.contains(&key.as_str()))
+        .cloned()
 }
 
 fn reject_script_audio_play(
