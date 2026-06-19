@@ -158,6 +158,42 @@ test("sceneStartupDiagnostics should warn when no visible renderers exist", () =
   assert.deepEqual(diagnostics.map((diagnostic) => diagnostic.code), ["TN-WEB-SCENE-RENDERERS-MISSING"]);
 });
 
+test("sceneStartupDiagnostics should accept environment-only renderable content", () => {
+  const diagnostics = sceneStartupDiagnostics({
+    assets: { schema: "threenative.assets", version: "0.1.0", assets: [] },
+    environmentScene: {
+      schema: "threenative.environment-scene",
+      version: "0.1.0",
+      instances: [],
+      path: { id: "path.main", points: [], width: 1 },
+      sourceAssets: [],
+      terrain: {
+        bounds: { max: [64, 8, 64], min: [-64, 0, -64] },
+        heightMode: "flat",
+        id: "terrain.main",
+      },
+    },
+    manifest: {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "forest",
+      requiredCapabilities: {},
+      entry: { world: "world.ir.json", environmentScene: "environment.scene.json" },
+      files: { assets: "assets.manifest.json", materials: "materials.ir.json", targetProfile: "target.profile.json" },
+    },
+    materials: { schema: "threenative.materials", version: "0.1.0", materials: [] },
+    targetProfile: { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] },
+    world: {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [],
+      resources: {},
+    },
+  });
+
+  assert.deepEqual(diagnostics, []);
+});
+
 test("mapWorld should map expanded generated primitive catalog", () => {
   const assets = [
     { id: "mesh.cone", kind: "mesh" as const, format: "generated" as const, primitive: "cone" as const, size: [0.5, 1] },

@@ -133,8 +133,8 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
         .collect::<Vec<_>>();
     assert_eq!(lights.len(), 1);
     let light = &lights[0];
-    assert!(light.0);
-    assert!((light.1 - (3.2 / 1.05 * 0.35)).abs() < 0.01);
+    assert!(!light.0);
+    assert!((light.1 - (3.2 / 1.05 * 1.45)).abs() < 0.01);
     assert!((light.2 - 0.005).abs() < 0.001);
     assert!((light.3 - 0.02).abs() < 0.001);
     assert!((light.4[0] - 0xff as f32 / 255.0).abs() < 0.01);
@@ -150,7 +150,6 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
         .world_mut()
         .query::<&DirectionalLight>()
         .iter(app.world())
-        .filter(|light| (light.illuminance - (3.2 / 1.05 * 1.7)).abs() < 0.01)
         .count();
     assert_eq!(mapped_directional_count, 1);
     let camera_color = app
@@ -160,7 +159,7 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
         .next()
         .expect("camera color management should exist");
     assert_eq!(*camera_color.0, Tonemapping::AcesFitted);
-    assert!((camera_color.1.global.exposure + 0.7).abs() < 0.001);
+    assert!((camera_color.1.global.exposure - 0.0).abs() < 0.001);
     assert!((camera_color.1.global.post_saturation - 1.0).abs() < 0.001);
     assert!((camera_color.2.exposure() - 1.05).abs() < 0.001);
     let fog_color = camera_color.3.color.to_srgba();

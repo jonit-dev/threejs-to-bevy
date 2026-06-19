@@ -69,9 +69,10 @@ export function mapWorld(bundle: IWebBundle): IThreeWorld {
   const materialsById = new Map(bundle.materials.materials.map((material) => [material.id, material]));
 
   const layerAllocation = allocateRenderLayers(collectLayerNames(bundle.world), diagnostics);
+  const atmosphereProvidesWorldLighting = bundle.environmentScene?.atmosphere?.active === true;
   const entities = [...bundle.world.entities].sort((left, right) => left.id.localeCompare(right.id));
   for (const entity of entities) {
-    const object = mapEntity(entity, assetsById, materialsById, diagnostics, bundle.source);
+    const object = mapEntity(entity, assetsById, materialsById, diagnostics, bundle.source, atmosphereProvidesWorldLighting);
     applyTransform(object, entity);
     applyVisibility(object, entity);
     applyEntityRenderLayers(object, entity, layerAllocation);
@@ -172,8 +173,9 @@ export function sceneStartupDiagnostics(bundle: IWebBundle): IRuntimeDiagnostic[
     .map((entity) => entity.components.MeshRenderer)
     .filter((renderer): renderer is NonNullable<IWorldEntity["components"]["MeshRenderer"]> => renderer !== undefined && renderer.visible !== false);
   const hasLight = bundle.world.entities.some((entity) => entity.components.Light !== undefined);
+  const environmentHasRenderableContent = environmentSceneHasRenderableContent(bundle);
 
-  if (visibleRenderers.length === 0) {
+  if (visibleRenderers.length === 0 && !environmentHasRenderableContent) {
     diagnostics.push({
       code: "TN-WEB-SCENE-RENDERERS-MISSING",
       message: "No visible MeshRenderer components were found; the scene has nothing renderable.",
@@ -194,6 +196,22 @@ export function sceneStartupDiagnostics(bundle: IWebBundle): IRuntimeDiagnostic[
   }
 
   return diagnostics;
+}
+
+function environmentSceneHasRenderableContent(bundle: IWebBundle): boolean {
+  const scene = bundle.environmentScene;
+  if (scene === undefined) {
+    return false;
+  }
+  if (scene.terrain !== undefined) {
+    return true;
+  }
+  if ((scene.instances?.length ?? 0) > 0) {
+    return true;
+  }
+  return (scene.scatter ?? []).some(
+    (spec) => (spec.count ?? 0) > 0 || (spec.density !== undefined && spec.density > 0),
+  );
 }
 
 function isLitMaterial(bundle: IWebBundle, materialId: string): boolean {
@@ -283,6 +301,7 @@ function mapEntity(
   materialsById: Map<string, IMaterialIr>,
   diagnostics: IRuntimeDiagnostic[],
   source?: string,
+  atmosphereProvidesWorldLighting = false,
 ): THREE.Object3D {
   const renderer = entity.components.MeshRenderer;
   if (renderer !== undefined) {
@@ -332,11 +351,17 @@ function mapEntity(
 
   const light = entity.components.Light;
   if (light?.kind === "directional") {
+    if (atmosphereProvidesWorldLighting) {
+      return new THREE.Object3D();
+    }
     const mapped = new THREE.DirectionalLight(colorToThree(light.color), light.intensity);
     applyLightShadowBias(mapped, light);
     return mapped;
   }
   if (light?.kind === "ambient") {
+    if (atmosphereProvidesWorldLighting) {
+      return new THREE.Object3D();
+    }
     return new THREE.AmbientLight(colorToThree(light.color), light.intensity);
   }
   if (light?.kind === "point") {

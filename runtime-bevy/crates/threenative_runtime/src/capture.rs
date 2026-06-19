@@ -1,12 +1,20 @@
-use std::{env, fs, path::PathBuf, process::ExitCode};
+use std::{env, fs, path::Path, path::PathBuf, process::ExitCode};
 
 use bevy::{
     app::AppExit, prelude::*, render::view::screenshot::ScreenshotManager, window::PrimaryWindow,
 };
+use image::GenericImageView;
 use threenative_loader::load_bundle;
 use threenative_runtime::{
     app_from_bundle, assets::TextureAssetControlsRegistry, environment::apply_environment_bookmark,
 };
+
+const MIN_CAPTURE_FRAME: u32 = 90;
+const SCREENSHOT_VALIDATION_DELAY_FRAMES: u32 = 4;
+const SCREENSHOT_ATTEMPT_TIMEOUT_FRAMES: u32 = 30;
+const MAX_CAPTURE_RETRIES: u32 = 5;
+const MIN_SCREENSHOT_BYTES: u64 = 32_000;
+const MIN_SCREENSHOT_PEAK_LUMA: u8 = 35;
 
 #[derive(Resource)]
 struct CaptureConfig {
@@ -16,10 +24,12 @@ struct CaptureConfig {
 
 #[derive(Clone)]
 struct CaptureTarget {
-    captured: bool,
     output_path: PathBuf,
     request_frame: u32,
+    requested_at_frame: Option<u32>,
+    retry_count: u32,
     texture_grace_frames: u32,
+    validated: bool,
 }
 
 #[derive(Default, Resource)]
@@ -48,32 +58,38 @@ fn main() -> ExitCode {
         };
         vec![
             CaptureTarget {
-                captured: false,
                 output_path: first_output,
                 request_frame: first_frame,
+                requested_at_frame: None,
+                retry_count: 0,
                 texture_grace_frames: first_frame.saturating_add(120),
+                validated: false,
             },
             CaptureTarget {
-                captured: false,
                 output_path: PathBuf::from(&args[5]),
                 request_frame: second_frame,
+                requested_at_frame: None,
+                retry_count: 0,
                 texture_grace_frames: second_frame.saturating_add(120),
+                validated: false,
             },
         ]
     } else {
         vec![CaptureTarget {
-            captured: false,
             output_path: first_output,
             request_frame: first_frame,
+            requested_at_frame: None,
+            retry_count: 0,
             texture_grace_frames: first_frame.saturating_add(120),
+            validated: false,
         }]
     };
     let max_frame = captures
         .iter()
-        .map(|capture| capture.request_frame)
+        .map(|capture| capture.request_frame.max(MIN_CAPTURE_FRAME))
         .max()
-        .unwrap_or(first_frame)
-        .saturating_add(780);
+        .unwrap_or(first_frame.max(MIN_CAPTURE_FRAME))
+        .saturating_add(180);
 
     let bundle = match load_bundle(bundle_path) {
         Ok(bundle) => bundle,
@@ -119,11 +135,7 @@ fn main() -> ExitCode {
     app.run();
     let missing = final_output_paths
         .iter()
-        .filter(|path| {
-            fs::metadata(path)
-                .map(|metadata| metadata.len() == 0)
-                .unwrap_or(true)
-        })
+        .filter(|path| !screenshot_is_valid(path))
         .map(|path| path.display().to_string())
         .collect::<Vec<_>>();
     if missing.is_empty() {
@@ -201,8 +213,16 @@ fn request_screenshot(
     *frame += 1;
     if let Ok(window) = windows.get_single() {
         for capture in &mut config.captures {
+            if capture.validated {
+                continue;
+            }
             let should_capture = textures_ready.0 || *frame >= capture.texture_grace_frames;
-            if !capture.captured && *frame >= capture.request_frame && should_capture {
+            let trigger_frame = capture.request_frame.max(MIN_CAPTURE_FRAME);
+            if capture.requested_at_frame.is_none()
+                && *frame >= trigger_frame
+                && should_capture
+                && capture.retry_count <= MAX_CAPTURE_RETRIES
+            {
                 if let Err(error) =
                     screenshots.save_screenshot_to_disk(window, &capture.output_path)
                 {
@@ -210,29 +230,32 @@ fn request_screenshot(
                     exit.send(AppExit::error());
                     return;
                 }
-                capture.captured = true;
+                capture.requested_at_frame = Some(*frame);
+            }
+
+            if let Some(requested_at) = capture.requested_at_frame {
+                if *frame >= requested_at.saturating_add(SCREENSHOT_VALIDATION_DELAY_FRAMES)
+                    && screenshot_is_valid(&capture.output_path)
+                {
+                    capture.validated = true;
+                    continue;
+                }
+                if *frame >= requested_at.saturating_add(SCREENSHOT_ATTEMPT_TIMEOUT_FRAMES) {
+                    let _ = fs::remove_file(&capture.output_path);
+                    capture.requested_at_frame = None;
+                    capture.retry_count += 1;
+                }
             }
         }
     }
 
-    let all_written = config.captures.iter().all(|capture| {
-        capture.captured
-            && fs::metadata(&capture.output_path)
-                .map(|metadata| metadata.len() > 0)
-                .unwrap_or(false)
-    });
-    if all_written {
+    if config.captures.iter().all(|capture| capture.validated) {
         exit.send(AppExit::Success);
     } else if *frame >= config.max_frame {
         let pending = config
             .captures
             .iter()
-            .filter(|capture| {
-                !capture.captured
-                    || fs::metadata(&capture.output_path)
-                        .map(|metadata| metadata.len() == 0)
-                        .unwrap_or(true)
-            })
+            .filter(|capture| !capture.validated)
             .map(|capture| capture.output_path.display().to_string())
             .collect::<Vec<_>>()
             .join(", ");
@@ -242,4 +265,24 @@ fn request_screenshot(
         );
         exit.send(AppExit::error());
     }
+}
+
+fn screenshot_is_valid(path: &Path) -> bool {
+    let metadata = match fs::metadata(path) {
+        Ok(metadata) => metadata,
+        Err(_) => return false,
+    };
+    if metadata.len() < MIN_SCREENSHOT_BYTES {
+        return false;
+    }
+    let image = match image::open(path) {
+        Ok(image) => image,
+        Err(_) => return false,
+    };
+    let mut peak_luma = 0u8;
+    for (_, _, rgba) in image.pixels() {
+        let luma = ((rgba[0] as u16 + rgba[1] as u16 + rgba[2] as u16) / 3) as u8;
+        peak_luma = peak_luma.max(luma);
+    }
+    peak_luma >= MIN_SCREENSHOT_PEAK_LUMA
 }

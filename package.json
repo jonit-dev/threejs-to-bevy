@@ -30,6 +30,7 @@
     "verify:distribution": "node scripts/verify-distribution-release.mjs",
     "verify:v2": "node scripts/verify-v2.mjs",
     "verify:v3": "node scripts/verify-v3.mjs",
+    "verify:baseline:visual-parity": "node scripts/verify-baseline-visual-parity.mjs",
     "verify:v4": "pnpm --filter @threenative/cli build && node scripts/verify-v4.mjs",
     "verify:v5": "node scripts/verify-v5.mjs",
     "verify:v6": "node scripts/verify-v6.mjs",

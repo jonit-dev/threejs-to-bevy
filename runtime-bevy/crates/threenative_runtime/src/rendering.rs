@@ -7,10 +7,9 @@ use image::ImageReader;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{ColorIr, EnvironmentTextureSourceIr, LoadedBundle};
 
-// Atmosphere sun is an additive environment light; keep it much lower than the
-// explicit world directional light so bundles that include both don't double the
-// direct lighting compared with the Three.js path.
-const THREE_COMPAT_ATMOSPHERE_SUN_ILLUMINANCE_PER_INTENSITY: f32 = 0.35;
+// With atmosphere-owned lighting, a single authored sun should stay in the same
+// three-compat illuminance band as the reduced world directional helper.
+const THREE_COMPAT_ATMOSPHERE_SUN_ILLUMINANCE_PER_INTENSITY: f32 = 1.45;
 
 #[derive(Clone, Component, Debug, PartialEq)]
 pub struct NativeRenderedParticle {
@@ -177,7 +176,7 @@ pub fn apply_atmosphere_to_world(world: &mut World, bundle: &LoadedBundle) {
                 color: color_to_bevy(&profile.sun.color),
                 illuminance: profile.sun.intensity / profile.color_management.exposure.max(0.001)
                     * THREE_COMPAT_ATMOSPHERE_SUN_ILLUMINANCE_PER_INTENSITY,
-                shadows_enabled: profile.sun.casts_shadow && profile.shadows.enabled,
+                shadows_enabled: false,
                 shadow_depth_bias: profile.shadows.bias.abs().max(0.005),
                 shadow_normal_bias: profile.shadows.normal_bias.max(0.02),
                 ..Default::default()

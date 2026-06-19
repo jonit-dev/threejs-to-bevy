@@ -27,7 +27,7 @@ use threenative_components::ThreeNativeId;
 use threenative_loader::load_bundle;
 use threenative_runtime::map_world::{
     NativeAnimationPlayback, advance_native_animation_playback, bind_native_animation_players,
-    map_bundle_into_world, trace_native_emissive_bloom,
+    map_bundle_into_world, trace_native_emissive_bloom, THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY,
 };
 use threenative_runtime::rendering::{
     NativeParticleMaterialPolicy, NativeRenderedParticle, apply_environment_lighting_to_world,
@@ -424,7 +424,7 @@ fn assert_directional_light(world: &mut World, id: &str) {
         .find_map(|(stable_id, light)| (stable_id.0 == id).then_some(light).flatten())
         .expect("directional light should be spawned");
 
-    assert!((light.illuminance - 180.0).abs() < 0.01);
+    assert!((light.illuminance - (2.0 * THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY)).abs() < 0.01);
     let color = light.color.to_srgba();
     assert!((color.red - 1.0).abs() < 0.01);
     assert!((color.green - 0xcc as f32 / 255.0).abs() < 0.01);

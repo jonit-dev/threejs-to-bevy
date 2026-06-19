@@ -28,7 +28,16 @@ pnpm check:names
 pnpm check:docs
 pnpm verify
 pnpm verify:conformance
+pnpm verify:baseline:visual-parity
 ```
+
+Cross-runtime web↔Bevy visual parity is now guarded by
+`pnpm verify:baseline:visual-parity`. The gate builds seven checkpoint scenes
+(`v1-canonical`, `crystal-runner-static`, `v3-environment`, `v8-color-parity`,
+`v8-lighting-tone`, `physics-character`, `v10-visual-calibration-lighting`),
+captures matched web and Bevy screenshots, and fails on exposure drift,
+under/over-exposure, and per-checkpoint pixel thresholds. Evidence:
+`tools/verify/artifacts/baseline-visual-parity/baseline-visual-parity-report.json`.
 
 Aggregate parity evidence runs through the canonical release gate:
 
