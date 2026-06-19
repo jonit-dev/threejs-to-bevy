@@ -1,0 +1,57 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "moveEnemy",
+      "schedule": "update",
+      "reads": [],
+      "writes": ["Transform"],
+      "queries": [],
+      "commands": [
+        {
+          "kind": "setComponent",
+          "entity": "enemy.b",
+          "component": "Transform"
+        }
+      ],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": [],
+      "resourceWrites": [],
+      "services": [],
+      "before": ["reportChanged"],
+      "script": {
+        "bundle": "scripts.bundle.js",
+        "exportName": "system_moveEnemy"
+      }
+    },
+    {
+      "name": "reportChanged",
+      "schedule": "update",
+      "reads": ["Transform"],
+      "writes": [],
+      "queries": [
+        {
+          "changed": ["Transform"],
+          "limit": 1,
+          "offset": 0,
+          "orderBy": "id",
+          "with": ["Transform"],
+          "without": ["Visibility"]
+        }
+      ],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": ["QueryReport"],
+      "resourceWrites": ["QueryReport"],
+      "services": [],
+      "after": ["moveEnemy"],
+      "script": {
+        "bundle": "scripts.bundle.js",
+        "exportName": "system_reportChanged"
+      }
+    }
+  ]
+}

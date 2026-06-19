@@ -124,3 +124,7 @@ export {
   traceRuntimeGameplayHost,
   type IRuntimeGameplayHostReport,
 } from "./runtimeGameplayHost.js";
+export {
+  traceRuntimeQueryDiffing,
+  type IRuntimeQueryDiffingReport,
+} from "./runtimeQueryDiffing.js";

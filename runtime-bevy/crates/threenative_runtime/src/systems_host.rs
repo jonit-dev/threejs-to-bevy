@@ -9,9 +9,10 @@ use thiserror::Error;
 use threenative_loader::{LoadedBundle, SystemIr};
 
 use crate::{
+    component_diff::ComponentDiffCache,
     input::NativeInputState,
     systems_context::{
-        NativeSystemTimeSnapshot, build_system_context_snapshot_with_events_and_input,
+        NativeSystemTimeSnapshot, build_system_context_snapshot_with_events_input_and_diff,
     },
     systems_effects::{NativeSystemEffectLog, NativeSystemEffects, apply_system_effects},
 };
@@ -173,8 +174,16 @@ pub fn run_native_systems_once_with_input(
         })?;
 
     let mut logs = Vec::new();
+    let mut diff_cache = ComponentDiffCache::default();
     for schedule in ["startup", "fixedUpdate", "update", "postUpdate"] {
         let scheduled_systems = ordered_systems_for_schedule(&systems, schedule);
+        let tracked_components = scheduled_systems
+            .iter()
+            .flat_map(|system| system.queries.iter())
+            .flat_map(|query| query.changed.iter())
+            .cloned()
+            .collect::<Vec<_>>();
+        diff_cache.begin_schedule_stage(bundle, &tracked_components);
         for system in scheduled_systems {
             let effects = call_system_export(
                 &context,
@@ -183,6 +192,7 @@ pub fn run_native_systems_once_with_input(
                 time.clone(),
                 BTreeMap::new(),
                 input,
+                Some(&diff_cache),
             )?;
             let log =
                 apply_system_effects(bundle, system, &effects, 1, 1).map_err(|diagnostics| {
@@ -280,6 +290,7 @@ fn call_system_export(
     time: NativeSystemTimeSnapshot,
     events: BTreeMap<String, Vec<Value>>,
     input: Option<&NativeInputState>,
+    diff_cache: Option<&ComponentDiffCache>,
 ) -> Result<NativeSystemEffects, SystemsHostError> {
     let export_name = system
         .script
@@ -291,8 +302,14 @@ fn call_system_export(
                 format!("System '{}' does not declare a script export.", system.name),
             )
         })?;
-    let snapshot =
-        build_system_context_snapshot_with_events_and_input(bundle, system, time, events, input);
+    let snapshot = build_system_context_snapshot_with_events_input_and_diff(
+        bundle,
+        system,
+        time,
+        events,
+        input,
+        diff_cache,
+    );
     let snapshot_json = serde_json::to_string(&snapshot).map_err(|source| {
         host_error(
             "TN_BEVY_SYSTEM_CONTEXT_SERIALIZE_FAILED",
@@ -424,11 +441,17 @@ function __tnInvokeSystem(options) {
     if (value.entities && Array.isArray(value.entities[entityId])) return value.entities[entityId].filter((item) => typeof item === "string");
     return [];
   };
-  const changedComponents = (entity) => new Set([
-    ...changedValues(entity.components.__changed, entity.id),
-    ...changedValues(data.resources.__changed, entity.id),
-    ...changedValues(data.resources.Changed, entity.id)
-  ]);
+  const changedComponents = (entity) => {
+    const explicit = new Set([
+      ...changedValues(entity.components.__changed, entity.id),
+      ...changedValues(data.resources.__changed, entity.id),
+      ...changedValues(data.resources.Changed, entity.id)
+    ]);
+    if (explicit.size > 0) {
+      return explicit;
+    }
+    return new Set(changedValues(data.runtimeChanged, entity.id));
+  };
   const applyQuery = (source, query) => {
     const withComponents = Array.isArray(query.with) ? query.with.map(normalize) : [];
     const withoutComponents = Array.isArray(query.without) ? query.without.map(normalize) : [];

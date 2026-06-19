@@ -30,7 +30,12 @@ export type IrSystemService =
   | "settings.export"
   | "settings.get"
   | "settings.import"
-  | "settings.set";
+  | "settings.set"
+  | "ui.activate"
+  | "ui.focus"
+  | "ui.read"
+  | "ui.setDisabled"
+  | "ui.setValue";
 
 export type IrSystemCommand =
   | {

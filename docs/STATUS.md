@@ -1195,12 +1195,16 @@ wall-clock or platform RNG state. Deterministic timer/cooldown helpers are
 available as `ctx.timers.elapsed/remaining/progress/done/ready`, derived only
 from `ctx.time.elapsed` with no async scheduling or hidden timer state. Query
 declarations and `ctx.query(...)` now support deterministic entity-id ordering,
-offset/limit windows, and fixed-trace changed-component filters backed by
-structured change metadata instead of hidden runtime diffing. Systems can now
-declare same-stage `before`/`after` ordering constraints; SDK/IR/compiler,
-web, and Bevy QuickJS resolve them with deterministic topological ordering and
-system-name tie breaks, while validation rejects missing, cross-stage,
-self-referential, and cyclic constraints.
+offset/limit windows, fixed-trace changed-component filters backed by
+structured change metadata, and hidden runtime changed-query diffing from
+schedule-stage component snapshots when explicit metadata is absent. The
+`runtime-query-diffing` fixture and `pnpm verify:runtime-query-diffing` compare
+web and Bevy changed-query results after command-buffer mutation and before
+ordering/pagination windows. Systems can now declare same-stage
+`before`/`after` ordering constraints; SDK/IR/compiler, web, and Bevy QuickJS
+resolve them with deterministic topological ordering and system-name tie
+breaks, while validation rejects missing, cross-stage, self-referential, and
+cyclic constraints.
 It also records portable plugin/plugin-group composition metadata in the shared
 trace without exposing renderer or native runtime extension points.
 `pnpm verify:conformance`

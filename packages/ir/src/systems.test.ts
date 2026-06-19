@@ -154,6 +154,50 @@ test("should accept query ordering pagination and changed filters", async () => 
   }
 });
 
+test("should accept runtime changed query metadata without explicit change resources", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-runtime-changed-query-"));
+  try {
+    await writeBundle(root, {
+      commands: [],
+      queries: [{ changed: ["Transform"], with: ["Transform"], without: [] }],
+      reads: ["Transform"],
+      writes: ["Transform"],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject unsupported changed query selectors", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-invalid-changed-selectors-"));
+  try {
+    await writeBundle(root, {
+      commands: [],
+      queries: [{ changed: ["Transform.position", "Health*"], with: ["Transform"], without: [] }],
+      reads: ["Transform"],
+      writes: [],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => diagnostic.code),
+      [
+        "TN_IR_SYSTEM_QUERY_CHANGED_SELECTOR_UNSUPPORTED",
+        "TN_IR_SYSTEM_QUERY_CHANGED_SELECTOR_UNSUPPORTED",
+      ],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject invalid query metadata", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-systems-invalid-query-metadata-"));
   try {

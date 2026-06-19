@@ -58,7 +58,8 @@ unsupported.
 - [x] Query sorting by entity ID with `orderBy: "id"`.
 - [x] Query pagination with deterministic `offset` and `limit` windows.
 - [x] Changed-query filters from explicit fixed-trace change metadata.
-- [ ] Missing hidden runtime diffing for changed queries.
+- [x] Hidden runtime diffing for changed queries through schedule-stage
+  component snapshots.
 
 ### Time, Input, Randomness, and Timers
 
@@ -346,8 +347,10 @@ show the feature.
   ordering in SDK/IR/web/Bevy QuickJS.
 - [x] V5 changed-query filters for fixed-trace metadata. `changed: [...]`
   filters against structured change metadata from `world.resources.__changed`,
-  `world.resources.Changed`, or entity `__changed` markers; runtimes do not
-  infer diffs from hidden state.
+  `world.resources.Changed`, or entity `__changed` markers.
+- [x] Runtime changed-query diffing. When explicit fixed-trace metadata is
+  absent, web and Bevy compare deterministic schedule-stage component snapshots;
+  `changed: [...]` filtering runs before `orderBy`, `offset`, and `limit`.
 - [x] V5 same-stage system ordering constraints. SDK/IR/compiler/web/Bevy
   support deterministic topological `before`/`after` ordering with system-name
   tie breaks; validation rejects missing, cross-stage, self, and cyclic

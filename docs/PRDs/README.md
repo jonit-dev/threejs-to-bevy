@@ -41,7 +41,7 @@ This index separates current cleanup work from historical milestone batches.
   editable text/IME, UI viewport and drag behavior, window/cursor/power policy,
   runtime asset authoring/export, generated assets, and glTF extension
   processing.
-- [Portable Scripting Runtime Query Diffing](other/portable-scripting-runtime-query-diffing.md):
+- [Portable Scripting Runtime Query Diffing](done/other/portable-scripting-runtime-query-diffing.md):
   hidden runtime diffing for `changed` queries with deterministic web/Bevy
   component snapshots, explicit metadata compatibility, and conformance
   evidence.

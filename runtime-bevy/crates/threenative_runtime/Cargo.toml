@@ -68,6 +68,10 @@ name = "threenative_environment_content_trace"
 path = "src/environment_content_trace.rs"
 
 [[bin]]
+name = "threenative_runtime_query_diffing_trace"
+path = "src/runtime_query_diffing_trace.rs"
+
+[[bin]]
 name = "threenative_rigid_body_trace"
 path = "src/rigid_body_trace.rs"
 

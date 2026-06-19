@@ -130,6 +130,20 @@ export const FOCUSED_GATES: Record<string, FocusedGate> = {
       protects: "Live entity reconciliation, event windows, dynamic state handoff, and host diagnostic parity.",
     },
   },
+  "verify:runtime-query-diffing": {
+    commands: [
+      ["pnpm", "--filter", "@threenative/ir", "build"],
+      ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+      ["node", "scripts/verify-runtime-query-diffing.mjs"],
+    ],
+    description: "Runtime changed-query diffing gate.",
+    metadata: {
+      owner: "tools/verify runtime-query-diffing gate",
+      profile: "focused",
+      reason: "Compares web and Bevy component snapshot diffing for changed queries using a shared conformance fixture.",
+      protects: "Hidden runtime changed-query diffing, ordering/pagination semantics, and web/Bevy query parity.",
+    },
+  },
   "verify:scene-lifecycle": {
     commands: [
       ["pnpm", "--filter", "@threenative/ir", "build"],
@@ -211,6 +225,7 @@ const RELEASE_PROFILE_GATES = [
   "verify:production-hardening",
   "verify:rendering-residuals",
   "verify:runtime-gameplay-host",
+  "verify:runtime-query-diffing",
   "verify:v9:assets-gltf-scene-workflow",
   "verify:v9:rendering-lights",
 ] as const;

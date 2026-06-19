@@ -15,6 +15,7 @@ test("focused gate dispatcher should list current capability gates", () => {
     "verify:production-hardening",
     "verify:rendering-residuals",
     "verify:runtime-gameplay-host",
+    "verify:runtime-query-diffing",
     "verify:scene-lifecycle",
     "verify:v10:ecs-tags-groups",
     "verify:v10:visual-calibration",
@@ -86,6 +87,7 @@ test("should list gates by profile", () => {
     "verify:production-hardening",
     "verify:rendering-residuals",
     "verify:runtime-gameplay-host",
+    "verify:runtime-query-diffing",
     "verify:v9:assets-gltf-scene-workflow",
     "verify:v9:rendering-lights",
   ]);

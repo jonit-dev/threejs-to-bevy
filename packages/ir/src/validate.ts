@@ -3728,7 +3728,13 @@ function validateSystems(
         });
       }
       (query.changed ?? []).forEach((component, componentIndex) => {
-        if (!isBuiltInComponent(component) && componentSchemas[component] === undefined) {
+        if (!isValidChangedComponentSelector(component)) {
+          diagnostics.push({
+            code: "TN_IR_SYSTEM_QUERY_CHANGED_SELECTOR_UNSUPPORTED",
+            message: `System '${system.name}' changed-query filter '${component}' must reference a top-level component name without wildcards or deep paths.`,
+            path: `${path}/systems/${systemIndex}/queries/${queryIndex}/changed/${componentIndex}`,
+          });
+        } else if (!isBuiltInComponent(component) && componentSchemas[component] === undefined) {
           diagnostics.push({
             code: "TN_IR_SYSTEM_COMPONENT_SCHEMA_MISSING",
             message: `System '${system.name}' changed-query filter references component '${component}' without a schema.`,
@@ -3908,6 +3914,11 @@ const SUPPORTED_SYSTEM_SERVICES = [
   "settings.get",
   "settings.import",
   "settings.set",
+  "ui.activate",
+  "ui.focus",
+  "ui.read",
+  "ui.setDisabled",
+  "ui.setValue",
 ] as const;
 
 const AUDIO_SYSTEM_SERVICES = new Set<IrSystemService>(["audio.play", "audio.query", "audio.stop"]);
@@ -4635,6 +4646,10 @@ function validateResources(
     }
     validatePayload(value, schema, `world.ir.json/resources/${resourceName}`, entityIds, diagnostics);
   }
+}
+
+function isValidChangedComponentSelector(componentName: string): boolean {
+  return componentName.trim() !== "" && !componentName.includes(".") && !componentName.includes("*");
 }
 
 function isBuiltInComponent(componentName: string): boolean {

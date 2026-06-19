@@ -134,6 +134,22 @@
       ]
     },
     {
+      "canonicalId": "runtime-query-diffing",
+      "owner": "ir-contract",
+      "sourceExample": "runtime-query-diffing",
+      "regenerateCommand": "pnpm verify:runtime-query-diffing",
+      "canonicalArtifactGate": "runtime-query-diffing",
+      "ownerDocs": "docs/PRDs/done/other/portable-scripting-runtime-query-diffing.md",
+      "aggregateGate": "verify:release",
+      "bundlePath": "packages/ir/fixtures/conformance/runtime-query-diffing/game.bundle",
+      "promotedCapabilities": [
+        "scripting:queries.changed.runtime-diff"
+      ],
+      "reportArtifacts": [
+        "tools/verify/artifacts/runtime-query-diffing/verification-report.json"
+      ]
+    },
+    {
       "canonicalId": "animation-state",
       "owner": "ir-contract",
       "sourceExample": "animation-state",

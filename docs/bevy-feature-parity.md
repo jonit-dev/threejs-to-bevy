@@ -113,6 +113,10 @@ remaining gaps by usefulness for building and shipping ordinary 3D games:
   command-time/removal hook ordering, system-local evidence, stoppable observer
   propagation, bounded timer/channel semantics, and stable diagnostics for raw
   handles, runtime plugins, workers, timers, and unbounded promises.
+- `P1` Hidden runtime changed-query diffing is promoted by
+  `pnpm verify:runtime-query-diffing`, which compares web and Bevy component
+  snapshot diffing for `changed: [...]` queries after command-buffer mutation
+  and before deterministic ordering, offset, and limit windows.
 - `P1` Production input/device UX. Keyboard, mouse, gamepad snapshots, touch
   hooks, rebinding, drag picking, and picking debug reports exist, but polished
   device repair overlays, platform touch stream wiring, and richer navigation

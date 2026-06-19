@@ -1,5 +1,5 @@
 import { buildComponentReflectionRegistry, type IComponentReflectionRegistry, type IComponentReflectionType } from "@threenative/ir/reflection";
-import type { IAssetsManifest, IIrSchemaFile, IIrStateSource, IIrSystemQuery, ISystemsIr, IWorldEntity, IWorldIr } from "@threenative/ir";
+import type { IAssetsManifest, IIrSchemaFile, IIrStateSource, IIrSystemQuery, ILocalDataIr, ISystemsIr, IUiIr, IUiNodeIr, IWorldEntity, IWorldIr } from "@threenative/ir";
 import { AnimationRuntimeController } from "../animation.js";
 import { ScriptAudioRuntimeController, type IScriptAudioPlayOptions } from "../audio.js";
 import { traceCharacterControllers, type ICharacterTraceObservation } from "../character.js";
@@ -8,6 +8,7 @@ import { queryNavigationPath, type INavigationPathRequest, type INavigationPathR
 import { tracePhysicsSensors, type IPhysicsSensorEvent } from "../sensors.js";
 import { animationPlayPayload, animationQueryPayload, animationStopPayload } from "./services/animation.js";
 import { audioPlayPayload, audioQueryPayload, audioStopPayload } from "./services/audio.js";
+import { createWebPersistenceService, type IWebPersistenceService } from "./services/persistence.js";
 import { pickMesh, pointerRay, type IPickMeshRequest, type IPickMeshResult, type IPointerRayRequest, type IPointerRayResult } from "./services/picking.js";
 import {
   overlapPrimitive,
@@ -20,6 +21,7 @@ import {
   type IShapeCastRequest,
   type IShapeCastResult,
 } from "./services/physics.js";
+import type { IComponentDiffCache } from "./componentDiff.js";
 
 export interface ISystemEntityView {
   components: IWorldEntity["components"];
@@ -78,6 +80,19 @@ export interface ISystemContext {
     pressed(name: string): boolean;
     released(name: string): boolean;
   };
+  ui: {
+    activate(nodeId: string): IUiActivateResult;
+    focus(nodeId: string): IUiFocusResult;
+    read(nodeId: string): IUiReadResult;
+    setDisabled(nodeId: string, disabled: boolean): IUiDisabledResult;
+    setValue(nodeId: string, value: boolean | number | string): IUiValueResult;
+  };
+  persistence: {
+    delete(slot: string): { accepted: boolean; slot: string; status: "deleted" | "missing-save" };
+    listSlots(): string[];
+    load(slot: string): ReturnType<IWebPersistenceService["load"]>;
+    save(slot: string): ReturnType<IWebPersistenceService["save"]>;
+  };
   observers: {
     propagate(event: unknown, target: string): IObserverPropagationStep[];
   };
@@ -112,6 +127,12 @@ export interface ISystemContext {
   resources: {
     get(name: string): unknown;
     set(name: string, value: unknown): void;
+  };
+  settings: {
+    export(): Record<string, boolean | number | string>;
+    get(key: string): boolean | number | string | undefined;
+    import(values: Record<string, unknown>): Record<string, boolean | number | string>;
+    set(key: string, value: boolean | number | string): boolean;
   };
   states: {
     get(id: string): string | null;
@@ -195,7 +216,46 @@ export interface IQueuedResourceWrite {
 
 export interface IQueuedServiceCall {
   payload: unknown;
-  service: "animation.play" | "animation.query" | "animation.stop" | "audio.play" | "audio.query" | "audio.stop" | "assets.load" | "character.move" | "navigation.path" | "physics.overlap" | "physics.raycast" | "physics.sensor" | "physics.shapeCast" | "picking.mesh" | "picking.pointerRay" | "scene.change" | "scene.current" | "scene.loadAdditive" | "scene.pop" | "scene.push" | "scene.unload";
+  service: "animation.play" | "animation.query" | "animation.stop" | "audio.play" | "audio.query" | "audio.stop" | "assets.load" | "character.move" | "navigation.path" | "physics.overlap" | "physics.raycast" | "physics.sensor" | "physics.shapeCast" | "picking.mesh" | "picking.pointerRay" | "persistence.delete" | "persistence.listSlots" | "persistence.load" | "persistence.save" | "scene.change" | "scene.current" | "scene.loadAdditive" | "scene.pop" | "scene.push" | "scene.unload" | "settings.export" | "settings.get" | "settings.import" | "settings.set" | "ui.activate" | "ui.focus" | "ui.read" | "ui.setDisabled" | "ui.setValue";
+}
+
+export interface IUiFocusResult {
+  accepted: boolean;
+  current: string | null;
+  previous: string | null;
+  status: "focused" | "missing" | "not-focusable";
+}
+
+export interface IUiActivateResult {
+  accepted: boolean;
+  action?: string;
+  node: string;
+  status: "activated" | "disabled" | "missing" | "no-action";
+}
+
+export interface IUiDisabledResult {
+  accepted: boolean;
+  disabled: boolean;
+  node: string;
+  status: "missing" | "updated";
+}
+
+export interface IUiValueResult {
+  accepted: boolean;
+  node: string;
+  status: "missing" | "updated";
+  value: boolean | number | string;
+}
+
+export interface IUiReadResult {
+  action?: string;
+  disabled: boolean;
+  focusable: boolean;
+  focused: boolean;
+  kind?: string;
+  node: string;
+  status: "found" | "missing";
+  value?: boolean | number | string;
 }
 
 export interface ISceneServiceResult<TOperation extends "change" | "loadAdditive" | "push" | "unload"> {
@@ -227,7 +287,7 @@ export interface IPhysicsSensorResult {
 
 export function createSystemContext(
   world: IWorldIr,
-  options: { assets?: IAssetsManifest; audio?: import("@threenative/ir").IAudioIr; componentSchemas?: IIrSchemaFile; currentScene?: string | null; defaultQuery?: IIrSystemQuery; delta: number; elapsed?: number; fixedDelta: number; input?: IWebInputState; paused?: boolean; systems?: ISystemsIr },
+  options: { assets?: IAssetsManifest; audio?: import("@threenative/ir").IAudioIr; componentDiff?: IComponentDiffCache; componentSchemas?: IIrSchemaFile; currentScene?: string | null; defaultQuery?: IIrSystemQuery; delta: number; elapsed?: number; fixedDelta: number; input?: IWebInputState; localData?: ILocalDataIr; paused?: boolean; persistence?: IWebPersistenceService; systems?: ISystemsIr; ui?: IUiIr },
 ): {
   commands: IQueuedCommand[];
   context: ISystemContext;
@@ -244,6 +304,8 @@ export function createSystemContext(
   const random = createDeterministicRandom(randomSeed(world));
   const animations = new AnimationRuntimeController();
   const scriptAudio = new ScriptAudioRuntimeController(options.audio);
+  const persistence = options.persistence ?? createWebPersistenceService(options.localData ?? emptyLocalData());
+  const ui = createScriptUiState(options.ui);
   return {
     commands,
     context: {
@@ -390,6 +452,38 @@ export function createSystemContext(
           return options.input?.released(name) ?? false;
         },
       },
+      ui: {
+        activate(nodeId) {
+          const request = { node: nodeId };
+          const result = ui.activate(nodeId);
+          services.push({ payload: { request, result }, service: "ui.activate" });
+          return cloneValue(result) as IUiActivateResult;
+        },
+        focus(nodeId) {
+          const request = { node: nodeId };
+          const result = ui.focus(nodeId);
+          services.push({ payload: { request, result }, service: "ui.focus" });
+          return cloneValue(result) as IUiFocusResult;
+        },
+        read(nodeId) {
+          const request = { node: nodeId };
+          const result = ui.read(nodeId);
+          services.push({ payload: { request, result }, service: "ui.read" });
+          return cloneValue(result) as IUiReadResult;
+        },
+        setDisabled(nodeId, disabled) {
+          const request = { disabled, node: nodeId };
+          const result = ui.setDisabled(nodeId, disabled);
+          services.push({ payload: { request, result }, service: "ui.setDisabled" });
+          return cloneValue(result) as IUiDisabledResult;
+        },
+        setValue(nodeId, value) {
+          const request = { node: nodeId, value };
+          const result = ui.setValue(nodeId, value);
+          services.push({ payload: { request, result }, service: "ui.setValue" });
+          return cloneValue(result) as IUiValueResult;
+        },
+      },
       observers: {
         propagate(event, target) {
           return propagateObserverEvent(world, options.systems, normalizeHandleName(event), target);
@@ -406,8 +500,34 @@ export function createSystemContext(
           return cloneValue(options.systems?.plugins ?? []) as IPluginDeclarationView[];
         },
       },
+      persistence: {
+        delete(slot) {
+          const request = { slot };
+          const deleted = persistence.delete(slot);
+          const result = { accepted: deleted, slot, status: deleted ? "deleted" as const : "missing-save" as const };
+          services.push({ payload: { request, result }, service: "persistence.delete" });
+          return result;
+        },
+        listSlots() {
+          const result = persistence.listSlots();
+          services.push({ payload: { request: {}, result }, service: "persistence.listSlots" });
+          return cloneValue(result) as string[];
+        },
+        load(slot) {
+          const request = { slot };
+          const result = persistence.load(slot, world);
+          services.push({ payload: { request, result }, service: "persistence.load" });
+          return cloneValue(result) as ReturnType<IWebPersistenceService["load"]>;
+        },
+        save(slot) {
+          const request = { slot };
+          const result = persistence.save(slot, world);
+          services.push({ payload: { request, result }, service: "persistence.save" });
+          return cloneValue(result) as ReturnType<IWebPersistenceService["save"]>;
+        },
+      },
       query(query = options.defaultQuery ?? { with: [], without: [] }) {
-        return applyQueryWindow(world.entities.filter((entity) => matchesQuery(world, entity, query)), query)
+        return applyQueryWindow(world.entities.filter((entity) => matchesQuery(world, entity, query, options.componentDiff)), query)
           .map((entity) => createEntityView(entity, commands));
       },
       random,
@@ -443,6 +563,31 @@ export function createSystemContext(
         },
         set(name, value) {
           resources.push({ resource: normalizeHandleName(name), value: cloneValue(value) });
+        },
+      },
+      settings: {
+        export() {
+          const result = persistence.exportSettings();
+          services.push({ payload: { request: {}, result }, service: "settings.export" });
+          return cloneValue(result) as Record<string, boolean | number | string>;
+        },
+        get(key) {
+          const request = { key };
+          const result = persistence.getSetting(key);
+          services.push({ payload: { request, result: result ?? null }, service: "settings.get" });
+          return result;
+        },
+        import(values) {
+          const request = { values: cloneValue(values) as Record<string, unknown> };
+          const result = persistence.importSettings(values);
+          services.push({ payload: { request, result }, service: "settings.import" });
+          return cloneValue(result) as Record<string, boolean | number | string>;
+        },
+        set(key, value) {
+          const request = { key, value };
+          const result = persistence.setSetting(key, value);
+          services.push({ payload: { request, result }, service: "settings.set" });
+          return result;
         },
       },
       states: {
@@ -854,19 +999,22 @@ function applyQueryWindow(entities: IWorldEntity[], query: IIrSystemQuery): IWor
   return ordered.slice(offset, limit === undefined ? undefined : offset + limit);
 }
 
-function matchesQuery(world: IWorldIr, entity: IWorldEntity, query: IIrSystemQuery): boolean {
+function matchesQuery(world: IWorldIr, entity: IWorldEntity, query: IIrSystemQuery, componentDiff?: IComponentDiffCache): boolean {
   return (query.with ?? []).every((component) => entity.components[component] !== undefined)
     && (query.without ?? []).every((component) => entity.components[component] === undefined)
-    && (query.changed ?? []).every((component) => changedComponents(world, entity).has(component));
+    && (query.changed ?? []).every((component) => changedComponents(world, entity, componentDiff).has(component));
 }
 
-function changedComponents(world: IWorldIr, entity: IWorldEntity): Set<string> {
-  const values = [
+function changedComponents(world: IWorldIr, entity: IWorldEntity, componentDiff?: IComponentDiffCache): Set<string> {
+  const explicit = [
     readChangedValue(entity.components.__changed, entity.id),
     readChangedValue(world.resources?.__changed, entity.id),
     readChangedValue(world.resources?.Changed, entity.id),
   ].flat();
-  return new Set(values);
+  if (explicit.length > 0) {
+    return new Set(explicit);
+  }
+  return new Set(componentDiff?.runtimeChangedComponents(entity) ?? []);
 }
 
 function readChangedValue(value: unknown, entityId: string): string[] {
@@ -891,6 +1039,106 @@ function cloneValue<T>(value: T): T {
     return value;
   }
   return globalThis.structuredClone !== undefined ? globalThis.structuredClone(value) : JSON.parse(JSON.stringify(value)) as T;
+}
+
+function emptyLocalData(): ILocalDataIr {
+  return {
+    components: [],
+    resources: [],
+    saveSlots: [],
+    schema: "threenative.local-data",
+    settings: [],
+    version: "0.1.0",
+  };
+}
+
+function createScriptUiState(ui: IUiIr | undefined): {
+  activate(nodeId: string): IUiActivateResult;
+  focus(nodeId: string): IUiFocusResult;
+  read(nodeId: string): IUiReadResult;
+  setDisabled(nodeId: string, disabled: boolean): IUiDisabledResult;
+  setValue(nodeId: string, value: boolean | number | string): IUiValueResult;
+} {
+  const nodes = new Map<string, IUiNodeIr>();
+  if (ui !== undefined) {
+    collectUiNodes(ui.root, nodes);
+  }
+  const focusable = new Set((ui?.focusOrder ?? [...nodes.values()].filter(isUiFocusable).map((node) => node.id)).filter((id) => nodes.has(id) && isUiFocusable(nodes.get(id)!)));
+  const disabled = new Map<string, boolean>();
+  const values = new Map<string, boolean | number | string>();
+  let currentFocus = [...focusable].sort()[0] ?? null;
+
+  return {
+    activate(nodeId) {
+      const node = nodes.get(nodeId);
+      if (node === undefined) {
+        return { accepted: false, node: nodeId, status: "missing" };
+      }
+      if (disabled.get(nodeId) ?? node.disabled === true) {
+        return { accepted: false, node: nodeId, status: "disabled" };
+      }
+      if (typeof node.action !== "string" || node.action.trim() === "") {
+        return { accepted: false, node: nodeId, status: "no-action" };
+      }
+      return { accepted: true, action: node.action, node: nodeId, status: "activated" };
+    },
+    focus(nodeId) {
+      const previous = currentFocus;
+      if (!nodes.has(nodeId)) {
+        return { accepted: false, current: currentFocus, previous, status: "missing" };
+      }
+      if (!focusable.has(nodeId) || (disabled.get(nodeId) ?? nodes.get(nodeId)?.disabled) === true) {
+        return { accepted: false, current: currentFocus, previous, status: "not-focusable" };
+      }
+      currentFocus = nodeId;
+      return { accepted: true, current: currentFocus, previous, status: "focused" };
+    },
+    read(nodeId) {
+      const node = nodes.get(nodeId);
+      if (node === undefined) {
+        return { disabled: false, focusable: false, focused: false, node: nodeId, status: "missing" };
+      }
+      const value = values.get(nodeId) ?? node.value ?? node.text ?? node.label;
+      return {
+        ...(node.action === undefined ? {} : { action: node.action }),
+        disabled: disabled.get(nodeId) ?? node.disabled === true,
+        focusable: focusable.has(nodeId),
+        focused: currentFocus === nodeId,
+        kind: node.kind,
+        node: nodeId,
+        status: "found",
+        ...(value === undefined ? {} : { value }),
+      };
+    },
+    setDisabled(nodeId, nextDisabled) {
+      if (!nodes.has(nodeId)) {
+        return { accepted: false, disabled: nextDisabled, node: nodeId, status: "missing" };
+      }
+      disabled.set(nodeId, nextDisabled);
+      if (nextDisabled && currentFocus === nodeId) {
+        currentFocus = null;
+      }
+      return { accepted: true, disabled: nextDisabled, node: nodeId, status: "updated" };
+    },
+    setValue(nodeId, value) {
+      if (!nodes.has(nodeId)) {
+        return { accepted: false, node: nodeId, status: "missing", value };
+      }
+      values.set(nodeId, value);
+      return { accepted: true, node: nodeId, status: "updated", value };
+    },
+  };
+}
+
+function collectUiNodes(node: IUiNodeIr, nodes: Map<string, IUiNodeIr>): void {
+  nodes.set(node.id, node);
+  for (const child of node.children ?? []) {
+    collectUiNodes(child, nodes);
+  }
+}
+
+function isUiFocusable(node: IUiNodeIr): boolean {
+  return node.focusable === true || node.kind === "button" || node.kind === "touchControl";
 }
 
 function deepFreeze<T>(value: T): T {
