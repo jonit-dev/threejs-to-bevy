@@ -17,7 +17,7 @@ This index separates current cleanup work from historical milestone batches.
 - [Verification Gates and Package Scripts Reorg](done/other/verification-gates-and-package-scripts-reorg.md):
   typed verify-tool gate ownership, wrapper-only legacy scripts, root
   `package.json` cleanup, recursive test ownership, and compatibility aliases.
-- [Verification Strategy and Speed](other/verification-strategy-and-speed.md):
+- [Verification Strategy and Speed](done/verification-strategy-and-speed.md):
   test-vs-gate ownership, verification script classification, build-once
   release orchestration, gate profiles, and timing budgets.
 - [AI-Consumable Distribution Contract](other/ai-consumable-distribution-contract.md):

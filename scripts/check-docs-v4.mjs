@@ -74,18 +74,18 @@ export async function checkDocsV4(root = repoRoot) {
   }
 
   const packageJson = await readFile(resolve(root, "package.json"), "utf8");
-  if (!packageJson.includes('"check:docs:v4"')) {
+  if (!packageJson.includes('"verify:focused"')) {
     diagnostics.push({
       code: "TN_DOCS_V4_SCRIPT_MISSING",
       file: "package.json",
-      message: "package.json must define check:docs:v4.",
+      message: "package.json must define verify:focused for capability gate dispatch.",
     });
   }
-  if (!packageJson.includes('"verify:v4"')) {
+  if (!packageJson.includes('"verify:alias"')) {
     diagnostics.push({
       code: "TN_DOCS_V4_SCRIPT_MISSING",
       file: "package.json",
-      message: "package.json must define verify:v4.",
+      message: "package.json must define verify:alias for legacy milestone compatibility.",
     });
   }
 

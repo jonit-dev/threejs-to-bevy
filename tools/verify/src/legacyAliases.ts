@@ -2,6 +2,8 @@ import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { FOCUSED_GATES, runFocusedGate } from "./cli/run.js";
+
 export interface ScriptAliasResolution {
   canonical: string;
   deprecated: boolean;
@@ -9,7 +11,7 @@ export interface ScriptAliasResolution {
   message?: string;
 }
 
-const SCRIPT_ALIASES: Record<string, string> = {
+export const SCRIPT_ALIASES: Record<string, string> = {
   "check:docs:v1": "check:docs",
   "check:docs:v2": "check:docs",
   "check:docs:v3": "check:docs",
@@ -19,24 +21,20 @@ const SCRIPT_ALIASES: Record<string, string> = {
   "check:docs:v7": "check:docs",
   "check:docs:v8": "check:docs",
   "check:docs:v9": "check:docs",
-  "check:quality:v9": "check:quality",
+  "check:quality:v9": "check:quality:v9",
+  "verify:v2": "verify:release",
+  "verify:v3": "verify:release",
+  "verify:v4": "verify:release",
+  "verify:v5": "verify:release",
+  "verify:v6": "verify:release",
+  "verify:v7": "verify:release",
   "verify:v9": "verify:release",
+  "verify:v10": "verify:release",
 };
+
+export const LEGACY_SCRIPT_COMMANDS: Record<string, readonly [string, ...string[]]> = {};
 
 const repoRoot = resolve(fileURLToPath(new URL("../../..", import.meta.url)));
-
-export const LEGACY_SCRIPT_COMMANDS: Record<string, readonly [string, ...string[]]> = {
-  "check:docs:v1": ["node", "scripts/check-docs-v1.mjs"],
-  "check:docs:v2": ["node", "scripts/check-docs-v2.mjs"],
-  "check:docs:v3": ["node", "scripts/check-docs-v3.mjs"],
-  "check:docs:v4": ["node", "scripts/check-docs-v4.mjs"],
-  "check:docs:v5": ["node", "scripts/check-docs-v5.mjs"],
-  "check:docs:v6": ["node", "scripts/check-docs-v6.mjs"],
-  "check:docs:v7": ["node", "scripts/check-docs-v7.mjs"],
-  "check:docs:v8": ["node", "scripts/check-docs-v8.mjs"],
-  "check:quality:v9": ["node", "scripts/check-v9-quality-gates.mjs"],
-  "verify:v7": ["node", "scripts/verify-v7.mjs"],
-};
 
 export function resolveScriptAlias(scriptName: string): ScriptAliasResolution {
   const canonical = SCRIPT_ALIASES[scriptName] ?? scriptName;
@@ -62,17 +60,16 @@ export function listDeprecatedScriptAliases(): ScriptAliasResolution[] {
   return Object.keys(SCRIPT_ALIASES).map((legacy) => resolveScriptAlias(legacy)).filter((entry) => entry.deprecated);
 }
 
+export function isRegisteredGate(scriptName: string): boolean {
+  return FOCUSED_GATES[scriptName] !== undefined || LEGACY_SCRIPT_COMMANDS[scriptName] !== undefined;
+}
+
 export function runLegacyScriptAlias(scriptName: string, forwardedArgs: readonly string[] = []): number {
   const resolution = resolveScriptAlias(scriptName);
   process.stderr.write(formatDeprecationDiagnostic(resolution));
 
-  if (scriptName === "verify:v9") {
-    const result = spawnSync("pnpm", ["verify:release", ...forwardedArgs], {
-      cwd: repoRoot,
-      encoding: "utf8",
-      stdio: "inherit",
-    });
-    return result.status ?? 1;
+  if (FOCUSED_GATES[scriptName]) {
+    return runFocusedGate(scriptName, { forwardedArgs });
   }
 
   const legacyCommand = LEGACY_SCRIPT_COMMANDS[scriptName];

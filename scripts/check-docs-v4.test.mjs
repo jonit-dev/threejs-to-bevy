@@ -114,5 +114,5 @@ async function writeDocsFixture(root, options = {}) {
   for (const file of prds) {
     await writeFile(join(root, "docs/PRDs/v4", file), `# ${file}\n\n${scopeText}`);
   }
-  await writeFile(join(root, "package.json"), '{ "scripts": { "check:docs:v4": "node scripts/check-docs-v4.mjs", "verify:v4": "node scripts/verify-v4.mjs" } }\n');
+  await writeFile(join(root, "package.json"), '{ "scripts": { "verify:focused": "node tools/verify/dist/cli/run.js", "verify:alias": "node scripts/legacy-script-alias.mjs" } }\n');
 }

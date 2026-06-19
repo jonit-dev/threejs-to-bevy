@@ -29,15 +29,8 @@ test("should scan completed V9 PRDs from the current done layout", async () => {
 
 async function writeMinimalRepo(root: string): Promise<void> {
   const scripts = {
-    "check:quality:v9": "pnpm build:verify-tools && node scripts/check-v9-quality-gates.mjs",
-    "verify:v9": "node scripts/legacy-script-alias.mjs verify:v9",
-    "verify:v9:animation-state": "node scripts/verify-animation-state.mjs",
-    "verify:v9:animation-blending": "node scripts/verify-animation-blending.mjs",
-    "verify:v9:animation-particles": "node scripts/verify-v9-animation-particles.mjs",
-    "verify:v9:physics-character": "node scripts/verify-physics-character.mjs",
-    "verify:v9:assets-gltf-scene-workflow": "node scripts/verify-v9-assets-gltf-scene-workflow.mjs",
-    "verify:v9:rendering-lights": "node scripts/verify-rendering-lights.mjs",
-    "verify:v9:skeletal-animation": "node scripts/verify-v9-skeletal-animation.mjs",
+    "verify:alias": "node scripts/legacy-script-alias.mjs",
+    "verify:focused": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js",
   };
   await mkdir(join(root, "docs/PRDs/done/v9"), { recursive: true });
   await mkdir(join(root, "packages/ir/fixtures/conformance/animation-state/game.bundle"), { recursive: true });

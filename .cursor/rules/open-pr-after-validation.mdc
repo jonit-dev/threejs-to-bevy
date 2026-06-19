@@ -18,8 +18,8 @@ Finish only when verification proves it works, then open a PR against `main`.
 ## ThreeNative verification defaults
 
 - Package tests for touched areas (`pnpm --filter <pkg> test`)
-- Focused version gate when one exists (e.g. `pnpm verify:v8:camera-views`)
-- `pnpm check:docs:v8` (or relevant docs gate) for version-scoped work
+- Focused version gate when one exists (e.g. `pnpm verify:focused verify:v8:camera-views`)
+- `pnpm check:docs` for version-scoped work
 - `pnpm verify:conformance` when shared IR/runtime contracts change
 - Visual verification skill for rendering work: build example, run `tn verify` or version gate, inspect report JSON and screenshots
 

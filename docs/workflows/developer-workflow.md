@@ -329,6 +329,7 @@ pnpm verify
 pnpm verify:smoke
 pnpm verify:changed
 pnpm verify:focused <gate>
+pnpm verify:alias <legacy-command>
 pnpm verify:release
 pnpm verify:full
 pnpm verify:conformance
@@ -348,8 +349,9 @@ comparison, or durable artifacts consumed by status and release reports.
 `pnpm verify:conformance` owns shared IR fixture parity across web Three.js and
 native Bevy. `pnpm verify:release` owns aggregation: required focused gates,
 conformance, sample-scene/visual evidence, and artifact presence checks. Legacy
-milestone commands remain compatibility entry points only; prefer the canonical
-capability or release command in new docs and automation.
+milestone commands remain compatibility entry points only; use `pnpm verify:alias
+<legacy-command>` when an old script name is still referenced in docs or
+automation. Prefer the canonical capability or release command in new docs.
 
 Profile guidance:
 

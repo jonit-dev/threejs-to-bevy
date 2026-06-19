@@ -14,7 +14,7 @@ test("should pass color parity contract checks in the repository", async () => {
   assert.equal(result.ok, true, result.diagnostics.map((diagnostic) => diagnostic.message).join("\n"));
 });
 
-test("should fail when verify:v8:color-parity script is missing", async () => {
+test("should fail when verify:focused script is missing", async () => {
   const root = await makeBrokenRoot({ packageScripts: {} });
   try {
     const result = await checkColorParityContract({ repoRoot: root });
@@ -50,7 +50,7 @@ async function makeBrokenRoot(overrides = {}) {
   }
   const packageJson = {
     name: "threejs-to-bevy",
-    scripts: overrides.packageScripts ?? { "verify:v8:color-parity": "node scripts/verify-v8-color-parity.mjs" },
+    scripts: overrides.packageScripts ?? { "verify:focused": "node tools/verify/dist/cli/run.js" },
   };
   await writeFile(join(root, "package.json"), `${JSON.stringify(packageJson, null, 2)}\n`);
   return root;

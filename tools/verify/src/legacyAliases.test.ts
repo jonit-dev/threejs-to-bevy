@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-import { listDeprecatedScriptAliases, resolveScriptAlias } from "./legacyAliases.js";
+import { isRegisteredGate, listDeprecatedScriptAliases, resolveScriptAlias } from "./legacyAliases.js";
 
 test("should preserve verify:v9 as a compatibility alias", () => {
   const resolution = resolveScriptAlias("verify:v9");
@@ -30,14 +30,22 @@ test("should list deprecated milestone commands with replacements", () => {
   }
 });
 
-test("should preserve public legacy package scripts", async () => {
+test("should expose canonical gate dispatch scripts in package.json", async () => {
   const repoRoot = resolve(fileURLToPath(new URL("../../..", import.meta.url)));
   const packageJson = JSON.parse(await readFile(resolve(repoRoot, "package.json"), "utf8")) as {
     scripts: Record<string, string>;
   };
 
-  for (const scriptName of ["check:docs:v1", "check:docs:v8", "verify:v7", "verify:v9"]) {
-    assert.ok(packageJson.scripts[scriptName], `${scriptName} should remain a package script`);
-    assert.match(packageJson.scripts[scriptName], /legacy-script-alias|verify-v\d+\.mjs/);
+  assert.match(packageJson.scripts["verify:focused"] ?? "", /tools\/verify\/dist\/cli\/run\.js/);
+  assert.match(packageJson.scripts["verify:alias"] ?? "", /legacy-script-alias\.mjs/);
+});
+
+test("should register focused gates outside package.json", () => {
+  for (const scriptName of ["check:docs:v8", "verify:v7", "verify:v9:physics-character", "verify:v8:camera-views"]) {
+    assert.equal(
+      scriptName.startsWith("check:docs:") ? true : isRegisteredGate(scriptName) || resolveScriptAlias(scriptName).deprecated,
+      true,
+      `${scriptName} should resolve through the gate registry or legacy alias table`,
+    );
   }
 });

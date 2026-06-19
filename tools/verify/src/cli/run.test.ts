@@ -2,32 +2,41 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { FOCUSED_GATES, getFocusedGateCommands, listFocusedGateNames, listFocusedGateNamesByProfile } from "./run.js";
+import { listScriptGateNames } from "../scriptGates.js";
 
 test("focused gate dispatcher should list current capability gates", () => {
-  assert.deepEqual(
-    [
-      "verify:animation-physics-residuals",
-      "verify:bundle-safety-hardening",
-      "verify:input-ui-polish",
-      "verify:persistence-reload",
-      "verify:production-hardening",
-      "verify:rendering-residuals",
-      "verify:runtime-gameplay-host",
-      "verify:scene-lifecycle",
-      "verify:v10:ecs-tags-groups",
-      "verify:v10:visual-calibration",
-      "verify:v9:assets-gltf-scene-workflow",
-      "verify:v9:rendering-lights",
-    ],
-    listFocusedGateNames(),
-  );
+  const names = listFocusedGateNames();
+  assert.ok(names.length >= 12, "expected the typed focused gate registry to stay populated");
+  for (const name of [
+    "verify:animation-physics-residuals",
+    "verify:bundle-safety-hardening",
+    "verify:input-ui-polish",
+    "verify:persistence-reload",
+    "verify:production-hardening",
+    "verify:rendering-residuals",
+    "verify:runtime-gameplay-host",
+    "verify:scene-lifecycle",
+    "verify:v10:ecs-tags-groups",
+    "verify:v10:visual-calibration",
+    "verify:v9:assets-gltf-scene-workflow",
+    "verify:v9:rendering-lights",
+  ]) {
+    assert.ok(names.includes(name), `${name} should remain registered`);
+  }
+  assert.deepEqual(names, [...names].sort());
+});
+
+test("focused gate dispatcher should register script-backed gates outside package.json", () => {
+  for (const name of listScriptGateNames()) {
+    assert.ok(FOCUSED_GATES[name], `${name} should be merged into FOCUSED_GATES`);
+  }
 });
 
 test("focused gate dispatcher should keep command composition outside package.json", () => {
   for (const [name, gate] of Object.entries(FOCUSED_GATES)) {
     assert.ok(gate.description.length > 0, `${name} should explain the gate purpose`);
     assert.ok(gate.commands.length > 0, `${name} should define at least one command`);
-    assert.ok(["cargo", "node"].includes(gate.commands.at(-1)?.[0] ?? ""), `${name} should end at the gate command`);
+    assert.ok(["cargo", "node", "pnpm"].includes(gate.commands.at(-1)?.[0] ?? ""), `${name} should end at the gate command`);
   }
 });
 

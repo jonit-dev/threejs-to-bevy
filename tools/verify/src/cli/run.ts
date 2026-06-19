@@ -2,6 +2,8 @@ import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { SCRIPT_ONLY_GATES } from "../scriptGates.js";
+
 type CommandSpec = readonly [command: string, ...args: string[]];
 export type GateProfile = "smoke" | "changed" | "focused" | "release" | "full";
 
@@ -26,6 +28,7 @@ export interface FocusedGateRunOptions extends FocusedGateCommandOptions {
 }
 
 export const FOCUSED_GATES: Record<string, FocusedGate> = {
+  ...SCRIPT_ONLY_GATES,
   "verify:animation-physics-residuals": {
     commands: [
       ["pnpm", "--filter", "@threenative/ir", "build"],

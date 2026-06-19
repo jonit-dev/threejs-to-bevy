@@ -126,7 +126,13 @@ Run \`pnpm verify:release\`.
   );
   await writeFile(
     join(root, "package.json"),
-    JSON.stringify({ scripts: { "check:docs": "node tools/verify/dist/cli/check-docs.js", "verify:release": "node tools/verify/dist/cli/release.js" } }),
+    JSON.stringify({
+      scripts: {
+        "check:docs": "node tools/verify/dist/cli/check-docs.js",
+        "verify:focused": "node tools/verify/dist/cli/run.js",
+        "verify:release": "node tools/verify/dist/cli/release.js",
+      },
+    }),
   );
   await writeFile(
     join(root, "scripts/version-name-allowlist.json"),

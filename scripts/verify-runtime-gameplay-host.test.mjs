@@ -10,8 +10,9 @@ test("runtime gameplay host verifier should declare native trace and promoted ev
   assert.match(source, /live rendered-entity reconciliation/);
 });
 
-test("should include runtime gameplay host in package scripts", async () => {
-  const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+test("should register runtime gameplay host in the focused gate registry", async () => {
+  const tools = await import(new URL("../tools/verify/dist/cli/run.js", import.meta.url).href);
 
-  assert.match(packageJson.scripts["verify:runtime-gameplay-host"], /tools\/verify\/dist\/cli\/run\.js verify:runtime-gameplay-host/);
+  assert.ok(tools.FOCUSED_GATES["verify:runtime-gameplay-host"]);
+  assert.match(tools.FOCUSED_GATES["verify:runtime-gameplay-host"].commands.at(-1)?.[1] ?? "", /verify-runtime-gameplay-host\.mjs/);
 });

@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { VerificationDiagnostic } from "./runner.js";
+import { isRegisteredGate } from "./legacyAliases.js";
 
 const repoRoot = resolve(fileURLToPath(new URL("../../..", import.meta.url)));
 
@@ -43,37 +44,35 @@ export async function checkV9QualityGates(options: { repoRoot?: string } = {}): 
   const diagnostics: VerificationDiagnostic[] = [];
   const packageJson = JSON.parse(await readFile(resolve(root, "package.json"), "utf8")) as { scripts?: Record<string, string> };
   const scripts = packageJson.scripts ?? {};
-  const verifyV9Script = scripts["verify:v9"] ?? "";
+  const hasGateDispatcher = scripts["verify:focused"] !== undefined || scripts["verify:alias"] !== undefined;
   const catalog = JSON.parse(await readFile(resolve(root, "packages/ir/fixtures/conformance/v9-fixture-catalog.json"), "utf8")) as {
     fixtures?: Array<{ bundlePath: string; id: string; ownerPrd?: string }>;
   };
 
-  const verifyV9Registered = verifyV9Script.includes("verify-v9.mjs") || verifyV9Script.includes("legacy-script-alias.mjs verify:v9");
-
-  if (!verifyV9Registered) {
+  if (!hasGateDispatcher) {
     diagnostics.push({
       code: "TN_DOCS_V9_VERIFIER_UNREGISTERED",
-      message: "Root package.json must register pnpm verify:v9 as a direct gate or legacy compatibility alias.",
+      message: "Root package.json must define pnpm verify:focused or pnpm verify:alias for focused gate dispatch.",
       path: "package.json",
       severity: "error",
     });
   }
 
-  if (!scripts["check:quality:v9"]?.includes("check-v9-quality-gates.mjs")) {
+  if (!isRegisteredGate("check:quality:v9") && scripts["check:quality:v9"] === undefined) {
     diagnostics.push({
       code: "TN_DOCS_V9_VERIFIER_UNREGISTERED",
-      message: "Root package.json must register pnpm check:quality:v9.",
+      message: "Root package.json must register check:quality:v9 through the focused gate dispatcher.",
       path: "package.json",
       severity: "error",
     });
   }
 
   for (const scriptName of V9_FOCUSED_SCRIPT_NAMES) {
-    if (scripts[scriptName] === undefined) {
+    if (!isRegisteredGate(scriptName) && scripts[scriptName] === undefined) {
       diagnostics.push({
         code: "TN_DOCS_V9_VERIFIER_UNREGISTERED",
-        message: `Focused V9 verifier '${scriptName}' is missing from package.json scripts.`,
-        path: `package.json#scripts.${scriptName}`,
+        message: `Focused V9 verifier '${scriptName}' is missing from the focused gate registry.`,
+        path: `tools/verify/src/cli/run.ts#${scriptName}`,
         severity: "error",
       });
     }
@@ -166,10 +165,10 @@ export async function checkV9QualityGates(options: { repoRoot?: string } = {}): 
     const content = await readFile(prdPath, "utf8");
     const verifierMatches = [...content.matchAll(/pnpm verify:v9:[a-z0-9-]+/g)].map((match) => (match[0] ?? "").replace("pnpm ", ""));
     for (const scriptName of verifierMatches) {
-      if (scripts[scriptName] === undefined) {
+      if (!isRegisteredGate(scriptName) && scripts[scriptName] === undefined) {
         diagnostics.push({
           code: "TN_DOCS_V9_VERIFIER_UNREGISTERED",
-          message: `PRD '${prdPath.replace(`${root}/`, "")}' names '${scriptName}' but package.json does not register it.`,
+          message: `PRD '${prdPath.replace(`${root}/`, "")}' names '${scriptName}' but the focused gate registry does not register it.`,
           path: prdPath.replace(`${root}/`, ""),
           severity: "error",
         });

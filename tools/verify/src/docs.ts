@@ -86,6 +86,15 @@ export async function checkDocs(root: string): Promise<DocsCheckResult> {
     });
   }
 
+  if (packageJson && !packageJson.includes('"verify:focused"')) {
+    diagnostics.push({
+      code: "TN_DOCS_RELEASE_SCRIPT_MISSING",
+      message: "package.json must define verify:focused for capability gate dispatch.",
+      path: "package.json",
+      severity: "error",
+    });
+  }
+
   diagnostics.push(...(await checkDocsLayout(root, readme, status)));
 
   // @ts-expect-error legacy mjs gate consumed during typed-tools migration

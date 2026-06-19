@@ -9,10 +9,10 @@ export async function checkColorParityContract(options = {}) {
   const diagnostics = [];
 
   const packageJson = JSON.parse(await readFile(resolve(root, "package.json"), "utf8"));
-  if (packageJson.scripts?.["verify:v8:color-parity"] === undefined) {
+  if (packageJson.scripts?.["verify:focused"] === undefined) {
     diagnostics.push({
       code: "TN_COLOR_PARITY_SCRIPT_MISSING",
-      message: "Root package.json must expose verify:v8:color-parity.",
+      message: "Root package.json must expose verify:focused for color parity gate dispatch.",
       severity: "error",
     });
   }
