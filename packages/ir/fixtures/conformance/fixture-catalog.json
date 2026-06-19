@@ -153,6 +153,25 @@
       ]
     },
     {
+      "canonicalId": "script-audio-facade",
+      "owner": "ir-contract",
+      "sourceExample": "script-audio-facade",
+      "regenerateCommand": "pnpm verify:conformance",
+      "canonicalArtifactGate": "conformance",
+      "ownerDocs": "docs/PRDs/other/portable-scripting-audio-facade.md",
+      "aggregateGate": "verify:conformance",
+      "bundlePath": "packages/ir/fixtures/conformance/script-audio-facade/game.bundle",
+      "promotedCapabilities": [
+        "scripting:service.audio.play",
+        "scripting:service.audio.query",
+        "scripting:service.audio.stop"
+      ],
+      "reportArtifacts": [
+        "packages/ir/artifacts/conformance/conformance-report.json",
+        "tools/verify/artifacts/conformance/conformance-report.json"
+      ]
+    },
+    {
       "canonicalId": "animation-blending",
       "owner": "ir-contract",
       "sourceExample": "animation-blending",

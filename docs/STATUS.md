@@ -208,6 +208,10 @@ runtime service traces under `tools/verify/artifacts/animation-state/` using the
 `pnpm verify:v9:animation-blending` compares bounded crossfade blend weights and
 event ordering under `tools/verify/artifacts/animation-blending/` using the
 `animation-blending` fixture;
+Portable script audio facade evidence is validated through the
+`script-audio-facade` conformance fixture (`pnpm verify:conformance`), which
+checks declared `audio.play/query/stop` service contracts and bundle validation
+for script audio metadata;
 `pnpm verify:v9:animation-particles` compares rendered bounded CPU particle
 emitter counts plus web/native SVG evidence under
 `tools/verify/artifacts/animation-particles/`. The later animation/physics/

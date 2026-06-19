@@ -38,6 +38,13 @@ export {
   type IAudioOneShotDeclaration,
   type IAudioPlaybackControlDeclaration,
   type IAudioToneDeclaration,
+  type IScriptAudioPlayOptions,
+  type IScriptAudioPlayResult,
+  type IScriptAudioQueryResult,
+  type IScriptAudioRuntimeState,
+  type IScriptAudioStopResult,
+  type ScriptAudioPlaybackKind,
+  type ScriptAudioPlaybackStatus,
 } from "./audio.js";
 export {
   animationClip,

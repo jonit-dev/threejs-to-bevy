@@ -8,6 +8,9 @@ export type SystemService =
   | "animation.play"
   | "animation.query"
   | "animation.stop"
+  | "audio.play"
+  | "audio.query"
+  | "audio.stop"
   | "assets.load"
   | "character.move"
   | "navigation.path"
@@ -86,6 +89,11 @@ export interface ISystemContext {
     play(entity: ISystemEntity | string, clip: string, options?: Record<string, unknown>): void;
     query(entity: ISystemEntity | string, clip?: string): { active: boolean; clip?: string; entity: string; paused: boolean; stopped: boolean; timeSeconds: number };
     stop(entity: ISystemEntity | string, clip?: string): { accepted: true; stopped: true };
+  };
+  audio: {
+    play(soundId: string, options?: import("../audio.js").IScriptAudioPlayOptions): import("../audio.js").IScriptAudioPlayResult;
+    query(playbackId: string): import("../audio.js").IScriptAudioQueryResult;
+    stop(playbackId: string): import("../audio.js").IScriptAudioStopResult;
   };
   assets: {
     get(id: unknown): Record<string, unknown> | null;

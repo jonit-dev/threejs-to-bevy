@@ -503,3 +503,208 @@ fn resolve_audio_asset_path(
             severity: "error".to_owned(),
         })
 }
+
+#[derive(Clone, Debug, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScriptAudioRuntimeState {
+    pub accepted: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub entity: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
+    #[serde(rename = "loop", skip_serializing_if = "Option::is_none")]
+    pub loop_: Option<bool>,
+    pub playback_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+    pub sound_id: String,
+    pub status: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub volume: Option<f32>,
+}
+
+#[derive(Clone, Debug)]
+struct ScriptAudioCatalogEntry {
+    kind: String,
+    volume: Option<f32>,
+}
+
+#[derive(Clone, Debug)]
+struct ScriptAudioPlaybackRecord {
+    entity: Option<String>,
+    kind: String,
+    loop_: bool,
+    playback_id: String,
+    sound_id: String,
+    status: String,
+    volume: Option<f32>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct ScriptAudioRuntimeController {
+    catalog: std::collections::BTreeMap<String, ScriptAudioCatalogEntry>,
+    playbacks: std::collections::BTreeMap<String, ScriptAudioPlaybackRecord>,
+    sequence: u32,
+}
+
+impl ScriptAudioRuntimeController {
+    pub fn from_audio(audio: Option<&AudioIr>) -> Self {
+        let mut controller = Self::default();
+        if let Some(audio) = audio {
+            controller.catalog = build_script_audio_catalog(audio);
+        }
+        controller
+    }
+
+    pub fn play(
+        &mut self,
+        sound_id: impl Into<String>,
+        options: ScriptAudioPlayOptions,
+    ) -> ScriptAudioRuntimeState {
+        let sound_id = sound_id.into();
+        if let Some(key) = find_unsupported_script_audio_option(&options.raw) {
+            return reject_script_audio_play(&sound_id, "unsupported-option", Some(key));
+        }
+        let Some(declared) = self.catalog.get(&sound_id) else {
+            return reject_script_audio_play(&sound_id, "undeclared-sound", None);
+        };
+        self.sequence += 1;
+        let playback_id = format!("{sound_id}#{}", self.sequence);
+        let volume = options.volume.or(declared.volume);
+        let loop_ = options.loop_.unwrap_or(declared.kind == "loop");
+        let record = ScriptAudioPlaybackRecord {
+            entity: options.entity,
+            kind: declared.kind.clone(),
+            loop_,
+            playback_id: playback_id.clone(),
+            sound_id: sound_id.clone(),
+            status: "playing".to_owned(),
+            volume,
+        };
+        self.playbacks.insert(playback_id.clone(), record.clone());
+        serialize_script_audio_playback(&record, true)
+    }
+
+    pub fn query(&self, playback_id: &str) -> ScriptAudioRuntimeState {
+        let Some(record) = self.playbacks.get(playback_id) else {
+            return ScriptAudioRuntimeState {
+                accepted: false,
+                entity: None,
+                kind: None,
+                loop_: None,
+                playback_id: playback_id.to_owned(),
+                reason: Some("not-found".to_owned()),
+                sound_id: String::new(),
+                status: "stopped".to_owned(),
+                volume: None,
+            };
+        };
+        serialize_script_audio_playback(record, true)
+    }
+
+    pub fn stop(&mut self, playback_id: &str) -> ScriptAudioRuntimeState {
+        let Some(record) = self.playbacks.get(playback_id) else {
+            return ScriptAudioRuntimeState {
+                accepted: true,
+                entity: None,
+                kind: None,
+                loop_: None,
+                playback_id: playback_id.to_owned(),
+                reason: Some("not-found".to_owned()),
+                sound_id: String::new(),
+                status: "stopped".to_owned(),
+                volume: None,
+            };
+        };
+        let mut stopped = record.clone();
+        stopped.status = "stopped".to_owned();
+        self.playbacks
+            .insert(playback_id.to_owned(), stopped.clone());
+        serialize_script_audio_playback(&stopped, true)
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct ScriptAudioPlayOptions {
+    pub entity: Option<String>,
+    pub loop_: Option<bool>,
+    pub raw: std::collections::BTreeMap<String, serde_json::Value>,
+    pub volume: Option<f32>,
+}
+
+fn build_script_audio_catalog(audio: &AudioIr) -> std::collections::BTreeMap<String, ScriptAudioCatalogEntry> {
+    let mut catalog = std::collections::BTreeMap::new();
+    for music in &audio.music {
+        catalog.insert(
+            music.id.clone(),
+            ScriptAudioCatalogEntry {
+                kind: "loop".to_owned(),
+                volume: music.volume,
+            },
+        );
+    }
+    for one_shot in &audio.one_shots {
+        catalog.insert(
+            one_shot.id.clone(),
+            ScriptAudioCatalogEntry {
+                kind: "oneShot".to_owned(),
+                volume: one_shot.volume,
+            },
+        );
+    }
+    for tone in &audio.tones {
+        catalog.insert(
+            tone.id.clone(),
+            ScriptAudioCatalogEntry {
+                kind: "tone".to_owned(),
+                volume: tone.volume,
+            },
+        );
+    }
+    catalog
+}
+
+fn find_unsupported_script_audio_option(
+    options: &std::collections::BTreeMap<String, serde_json::Value>,
+) -> Option<String> {
+    const EXTERNAL_KEYS: &[&str] = &[
+        "codec", "decoderPlugin", "device", "deviceId", "nativeHandle", "networkStream",
+        "networkUrl", "platformHandle", "src", "stream", "streaming", "streamingUrl", "url",
+    ];
+    options.keys().find(|key| EXTERNAL_KEYS.contains(&key.as_str())).cloned()
+}
+
+fn reject_script_audio_play(
+    sound_id: &str,
+    reason: &str,
+    _field: Option<String>,
+) -> ScriptAudioRuntimeState {
+    ScriptAudioRuntimeState {
+        accepted: false,
+        entity: None,
+        kind: None,
+        loop_: None,
+        playback_id: String::new(),
+        reason: Some(reason.to_owned()),
+        sound_id: sound_id.to_owned(),
+        status: "rejected".to_owned(),
+        volume: None,
+    }
+}
+
+fn serialize_script_audio_playback(
+    record: &ScriptAudioPlaybackRecord,
+    accepted: bool,
+) -> ScriptAudioRuntimeState {
+    ScriptAudioRuntimeState {
+        accepted,
+        entity: record.entity.clone(),
+        kind: Some(record.kind.clone()),
+        loop_: Some(record.loop_),
+        playback_id: record.playback_id.clone(),
+        reason: None,
+        sound_id: record.sound_id.clone(),
+        status: record.status.clone(),
+        volume: record.volume,
+    }
+}

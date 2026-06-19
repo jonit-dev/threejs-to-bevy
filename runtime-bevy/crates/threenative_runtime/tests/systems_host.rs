@@ -163,6 +163,28 @@ fn systems_host_should_expose_character_move_service() {
 }
 
 #[test]
+fn systems_host_should_expose_audio_facade() {
+    let root = write_audio_facade_service_bundle("audio-facade-context");
+    let mut bundle = load_bundle(&root).expect("audio facade bundle should load");
+    let run = run_native_systems_once(&mut bundle, time()).expect("system should run");
+
+    assert_eq!(
+        bundle.world.resources.get("AudioReport"),
+        Some(&serde_json::json!({
+            "playbackId": "sound.hit#1",
+            "playStatus": "playing",
+            "stopStatus": "stopped"
+        }))
+    );
+    let service_names: Vec<_> = run.logs[0]
+        .entries
+        .iter()
+        .filter_map(|entry| entry.service.as_deref())
+        .collect();
+    assert_eq!(service_names, vec!["audio.play", "audio.stop"]);
+}
+
+#[test]
 fn systems_host_should_expose_animation_query_and_stop_services() {
     let root = write_animation_control_service_bundle("animation-control-context");
     let mut bundle = load_bundle(&root).expect("scripted bundle should load");
@@ -857,6 +879,107 @@ fn write_character_service_bundle(name: &str) -> PathBuf {
 };
 export const systemIds = Object.freeze({ "system_moveCharacter": "moveCharacter" });
 export const systems = Object.freeze({ "system_moveCharacter": system_moveCharacter });
+"#,
+    )
+    .expect("script bundle should be written");
+    root
+}
+
+fn write_audio_facade_service_bundle(name: &str) -> PathBuf {
+    let root = root(name);
+    write_base_bundle(&root, true);
+    write_json(
+        &root,
+        "manifest.json",
+        r#"{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "audio-facade",
+  "requiredCapabilities": {},
+  "entry": {
+    "world": "world.ir.json",
+    "systems": "systems.ir.json",
+    "scripts": "scripts.bundle.js",
+    "audio": "audio.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "materials": "materials.ir.json",
+    "targetProfile": "target.profile.json"
+  }
+}"#,
+    );
+    write_json(
+        &root,
+        "assets.manifest.json",
+        r#"{
+  "schema": "threenative.assets",
+  "version": "0.1.0",
+  "assets": [
+    { "id": "hit.sound", "kind": "audio", "format": "wav", "path": "assets/hit.wav" }
+  ]
+}"#,
+    );
+    fs::create_dir_all(root.join("assets")).expect("assets dir should exist");
+    fs::write(root.join("assets/hit.wav"), b"").expect("audio asset should exist");
+    write_json(
+        &root,
+        "audio.ir.json",
+        r#"{
+  "schema": "threenative.audio",
+  "version": "0.1.0",
+  "music": [],
+  "oneShots": [{ "id": "sound.hit", "asset": "hit.sound", "event": "DamageEvent", "volume": 0.75 }]
+}"#,
+    );
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [],
+  "resources": { "AudioReport": {} }
+}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "scriptAudio": [{ "id": "sound.hit" }],
+  "systems": [
+    {
+      "name": "audioFacade",
+      "schedule": "update",
+      "reads": [],
+      "writes": [],
+      "queries": [],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": ["AudioReport"],
+      "resourceWrites": ["AudioReport"],
+      "services": ["audio.play", "audio.stop"],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_audioFacade" }
+    }
+  ]
+}"#,
+    );
+    fs::write(
+        root.join("scripts.bundle.js"),
+        r#"const system_audioFacade = (ctx) => {
+  const play = ctx.audio.play("sound.hit", { entity: "player" });
+  const stop = ctx.audio.stop(play.playbackId);
+  ctx.resources.set("AudioReport", {
+    playbackId: play.playbackId,
+    playStatus: play.status,
+    stopStatus: stop.status
+  });
+};
+export const systemIds = Object.freeze({ "system_audioFacade": "audioFacade" });
+export const systems = Object.freeze({ "system_audioFacade": system_audioFacade });
 "#,
     )
     .expect("script bundle should be written");

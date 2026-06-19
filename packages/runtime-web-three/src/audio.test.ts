@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createWebAudioElementSink, createWebAudioRuntime, traceWebAudioLifecycle, traceWebAudioSupport, type IWebAudioElement } from "./audio.js";
+import { createWebAudioElementSink, createWebAudioRuntime, ScriptAudioRuntimeController, traceWebAudioLifecycle, traceWebAudioSupport, type IWebAudioElement } from "./audio.js";
 
 test("audio should play one shot on damage event", () => {
   const runtime = createWebAudioRuntime({
@@ -183,6 +183,41 @@ test("audio element sink should diagnose missing audio assets", () => {
 
   assert.equal(sink.diagnostics[0]?.code, "TN_AUDIO_ASSET_MISSING");
   assert.equal(sink.diagnostics[0]?.severity, "error");
+});
+
+test("should play and stop declared logical audio", () => {
+  const audio = new ScriptAudioRuntimeController({
+    schema: "threenative.audio",
+    version: "0.1.0",
+    music: [{ id: "music.arena", asset: "arena.music", autoplay: true, loop: true, volume: 0.4 }],
+    oneShots: [{ id: "sound.hit", asset: "hit.sound", event: "DamageEvent", volume: 0.75 }],
+  });
+
+  const play = audio.play("sound.hit", { entity: "player" });
+  const stop = audio.stop(play.playbackId);
+  const query = audio.query(play.playbackId);
+
+  assert.deepEqual(play, {
+    accepted: true,
+    entity: "player",
+    kind: "oneShot",
+    loop: false,
+    playbackId: "sound.hit#1",
+    soundId: "sound.hit",
+    status: "playing",
+    volume: 0.75,
+  });
+  assert.deepEqual(stop, {
+    accepted: true,
+    entity: "player",
+    kind: "oneShot",
+    loop: false,
+    playbackId: "sound.hit#1",
+    soundId: "sound.hit",
+    status: "stopped",
+    volume: 0.75,
+  });
+  assert.deepEqual(query, stop);
 });
 
 class FakeAudioElement implements IWebAudioElement {

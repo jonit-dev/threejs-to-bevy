@@ -92,6 +92,31 @@ export interface IAudioEmitterDeclaration {
   radius?: number;
 }
 
+export type ScriptAudioPlaybackKind = "loop" | "oneShot" | "tone";
+export type ScriptAudioPlaybackStatus = "playing" | "rejected" | "stopped";
+
+export interface IScriptAudioPlayOptions {
+  entity?: string;
+  loop?: boolean;
+  volume?: number;
+}
+
+export interface IScriptAudioRuntimeState {
+  accepted: boolean;
+  entity?: string;
+  kind?: ScriptAudioPlaybackKind;
+  loop?: boolean;
+  playbackId: string;
+  reason?: string;
+  soundId: string;
+  status: ScriptAudioPlaybackStatus;
+  volume?: number;
+}
+
+export type IScriptAudioPlayResult = IScriptAudioRuntimeState & { accepted: true };
+export type IScriptAudioStopResult = IScriptAudioRuntimeState & { accepted: true };
+export type IScriptAudioQueryResult = IScriptAudioRuntimeState;
+
 export type AudioPlaybackControlKind = "pause" | "query" | "resume" | "seek" | "stop";
 
 export interface IAudioPlaybackControlDeclaration {

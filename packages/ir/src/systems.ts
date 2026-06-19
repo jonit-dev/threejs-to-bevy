@@ -5,6 +5,9 @@ export type IrSystemService =
   | "animation.play"
   | "animation.query"
   | "animation.stop"
+  | "audio.play"
+  | "audio.query"
+  | "audio.stop"
   | "assets.load"
   | "character.move"
   | "physics.overlap"
@@ -78,6 +81,10 @@ export interface IIrSystemDeclaration {
   writes: string[];
 }
 
+export interface IIrScriptAudioDeclaration {
+  id: string;
+}
+
 export interface ISystemsIr {
   channels?: IIrSystemChannelDeclaration[];
   componentHooks?: IIrComponentHookDeclaration[];
@@ -92,6 +99,7 @@ export interface ISystemsIr {
   observers?: IIrObserverDeclaration[];
   pluginGroups?: IIrSystemPluginGroupDeclaration[];
   plugins?: IIrSystemPluginDeclaration[];
+  scriptAudio?: IIrScriptAudioDeclaration[];
   schema: "threenative.systems";
   tasks?: IIrSystemTaskDeclaration[];
   version: SchemaVersion;

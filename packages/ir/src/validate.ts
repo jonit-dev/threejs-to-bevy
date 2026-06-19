@@ -24,7 +24,7 @@ import {
   type IWorldIr,
   type IWorldEntity,
 } from "./types.js";
-import type { ISystemsIr } from "./systems.js";
+import type { IrSystemService, ISystemsIr } from "./systems.js";
 import { sortedPersistedBindingOverrides, type IInputIr, type IPersistedBindingOverrideIr, type InputBinding } from "./input.js";
 import { validatePerformanceProfile } from "./performanceProfile.js";
 import { validateEnvironmentSceneIr } from "./environment.js";
@@ -186,6 +186,12 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
       componentSchemas?.schemas ?? {},
       resourceSchemas?.schemas ?? {},
       eventSchemas?.schemas ?? {},
+      diagnostics,
+    );
+    validateSystemAudioContract(
+      systems,
+      audio,
+      manifest.entry.systems ?? IR_DOCUMENTS.systems.fileName,
       diagnostics,
     );
   }
@@ -3596,7 +3602,7 @@ function validateSystems(
 ): void {
   const rawSystems = systems as unknown as Record<string, unknown>;
   for (const key of Object.keys(rawSystems)) {
-    if (!["channels", "componentHooks", "lifecycle", "observers", "pluginGroups", "plugins", "schema", "systems", "tasks", "version"].includes(key)) {
+    if (!["channels", "componentHooks", "lifecycle", "observers", "pluginGroups", "plugins", "schema", "scriptAudio", "systems", "tasks", "version"].includes(key)) {
       diagnostics.push({
         code: "TN_IR_SYSTEMS_FIELD_UNSUPPORTED",
         message: `Systems IR uses unsupported field '${key}'.`,
@@ -3876,6 +3882,9 @@ const SUPPORTED_SYSTEM_SERVICES = [
   "animation.play",
   "animation.query",
   "animation.stop",
+  "audio.play",
+  "audio.query",
+  "audio.stop",
   "assets.load",
   "character.move",
   "navigation.path",
@@ -3900,6 +3909,111 @@ const SUPPORTED_SYSTEM_SERVICES = [
   "settings.import",
   "settings.set",
 ] as const;
+
+const AUDIO_SYSTEM_SERVICES = new Set<IrSystemService>(["audio.play", "audio.query", "audio.stop"]);
+const SCRIPT_AUDIO_EXTERNAL_FIELDS = new Set(["decoderPlugin", "device", "deviceId", "nativeHandle", "networkStream", "networkUrl", "platformHandle", "src", "stream", "streaming", "streamingUrl", "url"]);
+
+function validateSystemAudioContract(
+  systems: ISystemsIr,
+  audio: IAudioIr | undefined,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  const usesAudioServices = systems.systems.some((system) => (system.services ?? []).some((service) => AUDIO_SYSTEM_SERVICES.has(service)));
+  if (!usesAudioServices) {
+    return;
+  }
+  if (audio === undefined) {
+    diagnostics.push({
+      code: "TN_IR_SYSTEM_AUDIO_IR_REQUIRED",
+      message: "Systems that declare audio services require audio.ir.json in the bundle manifest.",
+      path: `${path}/services`,
+      severity: "error",
+      suggestion: "Add audio.ir.json to manifest.entry.audio and declare bundle-local one-shots, music, or tones.",
+    });
+    return;
+  }
+  validateScriptAudioMetadata(systems.scriptAudio, declaredAudioSoundIds(audio), `${path}/scriptAudio`, diagnostics);
+}
+
+function declaredAudioSoundIds(audio: IAudioIr): Set<string> {
+  return new Set([
+    ...audio.oneShots.map((oneShot) => oneShot.id),
+    ...audio.music.map((music) => music.id),
+    ...(audio.tones ?? []).map((tone) => tone.id),
+  ]);
+}
+
+function validateScriptAudioMetadata(
+  scriptAudio: ISystemsIr["scriptAudio"],
+  declaredSoundIds: Set<string>,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (scriptAudio === undefined) {
+    return;
+  }
+  if (!Array.isArray(scriptAudio)) {
+    diagnostics.push({
+      code: "TN_IR_SCRIPT_AUDIO_INVALID",
+      message: "Script audio metadata must be an array of declared sound IDs.",
+      path,
+      severity: "error",
+    });
+    return;
+  }
+  scriptAudio.forEach((entry, index) => {
+    const entryPath = `${path}/${index}`;
+    const raw = entry as unknown as Record<string, unknown>;
+    if (!isRecord(raw)) {
+      diagnostics.push({
+        code: "TN_IR_SCRIPT_AUDIO_INVALID",
+        message: "Script audio metadata entries must be objects.",
+        path: entryPath,
+        severity: "error",
+      });
+      return;
+    }
+    for (const key of Object.keys(raw)) {
+      if (key === "id") {
+        continue;
+      }
+      if (SCRIPT_AUDIO_EXTERNAL_FIELDS.has(key)) {
+        diagnostics.push({
+          code: "TN_IR_SCRIPT_AUDIO_EXTERNAL_UNSUPPORTED",
+          message: `Script audio metadata uses unsupported external source field '${key}'. Audio sources must be declared in audio.ir.json.`,
+          path: `${entryPath}/${key}`,
+          severity: "error",
+        });
+        continue;
+      }
+      diagnostics.push({
+        code: "TN_IR_SCRIPT_AUDIO_FIELD_UNSUPPORTED",
+        message: `Script audio metadata uses unsupported field '${key}'.`,
+        path: `${entryPath}/${key}`,
+        severity: "error",
+      });
+    }
+    if (typeof raw.id !== "string" || raw.id.trim() === "") {
+      diagnostics.push({
+        code: "TN_IR_SCRIPT_AUDIO_ID_INVALID",
+        message: "Script audio metadata ID must be a non-empty string.",
+        path: `${entryPath}/id`,
+        severity: "error",
+      });
+      return;
+    }
+    if (!declaredSoundIds.has(raw.id)) {
+      diagnostics.push({
+        code: "TN_IR_SCRIPT_AUDIO_SOUND_MISSING",
+        message: `Script audio metadata references undeclared sound '${raw.id}'.`,
+        path: `${entryPath}/id`,
+        severity: "error",
+        suggestion: "Declare the sound in audio.ir.json oneShots, music, or tones before referencing it from script audio metadata.",
+      });
+    }
+  });
+}
 
 function validateSystemOrderRefs(
   value: string[] | undefined,

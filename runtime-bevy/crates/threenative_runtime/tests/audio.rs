@@ -4,8 +4,8 @@ use threenative_loader::{
     AudioToneIr,
 };
 use threenative_runtime::audio::{
-    NativeAudioCommandKind, handle_audio_events, observe_audio, start_audio, trace_audio_lifecycle,
-    trace_audio_support,
+    NativeAudioCommandKind, ScriptAudioPlayOptions, ScriptAudioRuntimeController, handle_audio_events,
+    observe_audio, start_audio, trace_audio_lifecycle, trace_audio_support,
 };
 
 mod support;
@@ -364,4 +364,54 @@ fn audio_lifecycle_trace_should_stop_active_loops() {
     assert_eq!(trace.commands.len(), 2);
     assert_eq!(trace.commands[0].bus.as_deref(), Some("bus.music"));
     assert_eq!(trace.commands[1].emitter.as_deref(), Some("emitter.player"));
+}
+
+#[test]
+fn should_play_and_stop_declared_logical_audio() {
+    let mut audio = ScriptAudioRuntimeController::from_audio(Some(&AudioIr {
+        schema: "threenative.audio".to_owned(),
+        version: "0.1.0".to_owned(),
+        buses: vec![],
+        controls: vec![],
+        ducking_rules: vec![],
+        emitters: vec![],
+        listeners: vec![],
+        music: vec![AudioMusicIr {
+            id: "music.arena".to_owned(),
+            asset: "arena.music".to_owned(),
+            autoplay: Some(true),
+            bus: None,
+            looped: Some(true),
+            pitch: None,
+            volume: Some(0.4),
+        }],
+        music_transitions: vec![],
+        one_shots: vec![AudioOneShotIr {
+            id: "sound.hit".to_owned(),
+            asset: "hit.sound".to_owned(),
+            bus: None,
+            emitter: None,
+            event: "DamageEvent".to_owned(),
+            pitch: None,
+            volume: Some(0.75),
+        }],
+        tones: vec![],
+    }));
+
+    let play = audio.play(
+        "sound.hit",
+        ScriptAudioPlayOptions {
+            entity: Some("player".to_owned()),
+            loop_: None,
+            raw: Default::default(),
+            volume: None,
+        },
+    );
+    let stop = audio.stop(&play.playback_id);
+    let query = audio.query(&play.playback_id);
+
+    assert_eq!(play.playback_id, "sound.hit#1");
+    assert_eq!(play.status, "playing");
+    assert_eq!(stop.status, "stopped");
+    assert_eq!(query.status, "stopped");
 }

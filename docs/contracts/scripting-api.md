@@ -129,8 +129,9 @@ unsupported.
 - [x] Collision/trigger event phases for promoted primitive fixed traces.
 - [x] Bounded animation blending/state-machine, marker, and particle evidence
   through promoted animation fixtures and runtime observations.
+- [x] Script audio play/stop/query through `ctx.audio.play`, `ctx.audio.stop`,
+  and `ctx.audio.query` against declared audio IR.
 - [ ] Missing arbitrary particle commands beyond bounded portable emitter data.
-- [ ] Missing audio script commands such as `audio.play` and `audio.stop`.
 - [ ] Missing UI command/focus/input script APIs.
 - [ ] Partial persistence/settings service declarations; save/settings IR and
   reload evidence are promoted, but a general `ctx.persistence`/`ctx.settings`
@@ -437,7 +438,8 @@ show the feature.
 
 - [ ] Script-level audio commands. Structured audio IR, UI-triggered audio
   actions, mixer/effect reports, and native device diagnostics are promoted,
-  but `ctx.audio.play/stop` remains design-only.
+  through promoted audio IR and runtime observations, and scripts can call
+  `ctx.audio.play/stop/query` against declared bundle-local sounds.
 - [ ] UI commands/focus/input. Better aligned with editor/inspector and online
   workflows unless a visual-quality scene requires a narrow HUD.
 - [ ] General `ctx.persistence`/`ctx.settings` facades. Persistence and
@@ -524,7 +526,7 @@ validated against `systems.ir.json`.
 | `ctx.navigation` | Static path queries. | Reads portable `Navigation` resource data and returns stable success/failure path payloads. |
 | `ctx.picking` | Pointer ray and generated-mesh bounds picking. | Uses portable camera, transform, and generated bounds data; no renderer handles. |
 | `ctx.animation` | Playback commands, state queries, and stop commands. | Runtime service facade; graph/controller state is runtime-owned and serialized as plain data. |
-| `ctx.audio` | Structured audio IR observations. | No general script facade yet; audio handles, streaming, custom decoders, and platform mixer objects remain private. |
+| `ctx.audio` | Declared audio play/stop/query against bundle-local audio IR. | Returns logical playback IDs and status only; streaming, network URLs, custom decoders, and platform handles remain private or diagnostic-only. |
 | `ctx.assets` | Stable asset lookup by ID. | `get`/`list` return cloned manifest metadata; `load` is a declared `assets.load` service returning deterministic ready/missing metadata, not renderer or native handles. |
 | `ctx.scenes` | Scene lifecycle service effects. | Queues current/change/push/pop/load-additive/unload effects and drives deterministic scene lifecycle traces. |
 | `ctx.states` | Resource-derived app, computed, and substate reads. | Reads declared lifecycle state metadata; state values are plain strings or null. |
@@ -723,9 +725,11 @@ defineAudio({
 });
 ```
 
-Script `ctx.audio.play` and `ctx.audio.stop` are not portable APIs yet. Real
-streaming/network audio, custom decoders, platform audio handles, and broad
-runtime mixer mutation remain adapter-private or diagnostic-only.
+Script `ctx.audio.play`, `ctx.audio.stop`, and `ctx.audio.query` resolve
+declared one-shots, looping music, and tones from audio IR and return stable
+logical playback IDs. Real streaming/network audio, custom decoders, platform
+audio handles, and broad runtime mixer mutation remain adapter-private or
+diagnostic-only.
 
 ## Host Lifecycle And Metadata APIs
 

@@ -1,11 +1,13 @@
 import { buildComponentReflectionRegistry, type IComponentReflectionRegistry, type IComponentReflectionType } from "@threenative/ir/reflection";
 import type { IAssetsManifest, IIrSchemaFile, IIrStateSource, IIrSystemQuery, ISystemsIr, IWorldEntity, IWorldIr } from "@threenative/ir";
 import { AnimationRuntimeController } from "../animation.js";
+import { ScriptAudioRuntimeController, type IScriptAudioPlayOptions } from "../audio.js";
 import { traceCharacterControllers, type ICharacterTraceObservation } from "../character.js";
 import type { IWebInputState } from "../input.js";
 import { queryNavigationPath, type INavigationPathRequest, type INavigationPathResult } from "../navigation.js";
 import { tracePhysicsSensors, type IPhysicsSensorEvent } from "../sensors.js";
 import { animationPlayPayload, animationQueryPayload, animationStopPayload } from "./services/animation.js";
+import { audioPlayPayload, audioQueryPayload, audioStopPayload } from "./services/audio.js";
 import { pickMesh, pointerRay, type IPickMeshRequest, type IPickMeshResult, type IPointerRayRequest, type IPointerRayResult } from "./services/picking.js";
 import {
   overlapPrimitive,
@@ -42,6 +44,11 @@ export interface ISystemContext {
     play(entity: string | ISystemEntityView, clip: string, options?: Record<string, unknown>): ReturnType<typeof animationPlayPayload>["result"];
     query(entity: string | ISystemEntityView, clip?: string): ReturnType<typeof animationQueryPayload>["result"];
     stop(entity: string | ISystemEntityView, clip?: string): ReturnType<typeof animationStopPayload>["result"];
+  };
+  audio: {
+    play(soundId: string, options?: IScriptAudioPlayOptions): ReturnType<typeof audioPlayPayload>["result"];
+    query(playbackId: string): ReturnType<typeof audioQueryPayload>["result"];
+    stop(playbackId: string): ReturnType<typeof audioStopPayload>["result"];
   };
   assets: {
     get(id: unknown): IAssetsManifest["assets"][number] | null;
@@ -188,7 +195,7 @@ export interface IQueuedResourceWrite {
 
 export interface IQueuedServiceCall {
   payload: unknown;
-  service: "animation.play" | "animation.query" | "animation.stop" | "assets.load" | "character.move" | "navigation.path" | "physics.overlap" | "physics.raycast" | "physics.sensor" | "physics.shapeCast" | "picking.mesh" | "picking.pointerRay" | "scene.change" | "scene.current" | "scene.loadAdditive" | "scene.pop" | "scene.push" | "scene.unload";
+  service: "animation.play" | "animation.query" | "animation.stop" | "audio.play" | "audio.query" | "audio.stop" | "assets.load" | "character.move" | "navigation.path" | "physics.overlap" | "physics.raycast" | "physics.sensor" | "physics.shapeCast" | "picking.mesh" | "picking.pointerRay" | "scene.change" | "scene.current" | "scene.loadAdditive" | "scene.pop" | "scene.push" | "scene.unload";
 }
 
 export interface ISceneServiceResult<TOperation extends "change" | "loadAdditive" | "push" | "unload"> {
@@ -220,7 +227,7 @@ export interface IPhysicsSensorResult {
 
 export function createSystemContext(
   world: IWorldIr,
-  options: { assets?: IAssetsManifest; componentSchemas?: IIrSchemaFile; currentScene?: string | null; defaultQuery?: IIrSystemQuery; delta: number; elapsed?: number; fixedDelta: number; input?: IWebInputState; paused?: boolean; systems?: ISystemsIr },
+  options: { assets?: IAssetsManifest; audio?: import("@threenative/ir").IAudioIr; componentSchemas?: IIrSchemaFile; currentScene?: string | null; defaultQuery?: IIrSystemQuery; delta: number; elapsed?: number; fixedDelta: number; input?: IWebInputState; paused?: boolean; systems?: ISystemsIr },
 ): {
   commands: IQueuedCommand[];
   context: ISystemContext;
@@ -236,6 +243,7 @@ export function createSystemContext(
   const componentTypes = buildComponentReflectionRegistry(options.componentSchemas);
   const random = createDeterministicRandom(randomSeed(world));
   const animations = new AnimationRuntimeController();
+  const scriptAudio = new ScriptAudioRuntimeController(options.audio);
   return {
     commands,
     context: {
@@ -259,6 +267,25 @@ export function createSystemContext(
           const payload = animationStopPayload({ ...(clip === undefined ? {} : { clip }), entity: entityId }, animations.stop(entityId, clip));
           services.push({ payload, service: "animation.stop" });
           return cloneValue(payload.result) as ReturnType<typeof animationStopPayload>["result"];
+        },
+      },
+      audio: {
+        play(soundId, playOptions = {}) {
+          const options = cloneValue(playOptions) as IScriptAudioPlayOptions;
+          const result = scriptAudio.play(soundId, options);
+          const payload = audioPlayPayload({ options: options as Record<string, unknown>, soundId }, result);
+          services.push({ payload, service: "audio.play" });
+          return cloneValue(payload.result) as ReturnType<typeof audioPlayPayload>["result"];
+        },
+        query(playbackId) {
+          const payload = audioQueryPayload({ playbackId }, scriptAudio.query(playbackId));
+          services.push({ payload, service: "audio.query" });
+          return cloneValue(payload.result) as ReturnType<typeof audioQueryPayload>["result"];
+        },
+        stop(playbackId) {
+          const payload = audioStopPayload({ playbackId }, scriptAudio.stop(playbackId));
+          services.push({ payload, service: "audio.stop" });
+          return cloneValue(payload.result) as ReturnType<typeof audioStopPayload>["result"];
         },
       },
       assets: {

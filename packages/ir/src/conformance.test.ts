@@ -308,6 +308,19 @@ test("should include capability tags for each conformance fixture", async () => 
     "scripting:service.animation.stop",
     "scripting:systems",
   ]);
+  assertFixtureCapabilities(byName, "script-audio-facade", [
+    "asset:audio.ogg",
+    "asset:audio.wav",
+    "audio:loop",
+    "audio:one-shot",
+    "audio:volume",
+    "scripting:schedule.update",
+    "scripting:script-bundle",
+    "scripting:service.audio.play",
+    "scripting:service.audio.query",
+    "scripting:service.audio.stop",
+    "scripting:systems",
+  ]);
   assertFixtureCapabilities(byName, "animation-blending", [
     "animation:blend.crossfade",
     "animation:clip-metadata",

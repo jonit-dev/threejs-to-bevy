@@ -1,0 +1,29 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "script-audio-facade",
+  "requiredCapabilities": {
+    "asset": ["audio.ogg", "audio.wav"],
+    "audio": ["loop", "one-shot", "volume"],
+    "scripting": [
+      "schedule.update",
+      "script-bundle",
+      "service.audio.play",
+      "service.audio.query",
+      "service.audio.stop",
+      "systems"
+    ]
+  },
+  "entry": {
+    "scripts": "scripts.bundle.js",
+    "systems": "systems.ir.json",
+    "world": "world.ir.json",
+    "audio": "audio.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "materials": "materials.ir.json",
+    "resourceSchemas": "schemas/resources.schema.json",
+    "targetProfile": "target.profile.json"
+  }
+}

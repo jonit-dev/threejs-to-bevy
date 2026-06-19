@@ -1,0 +1,26 @@
+{
+  "schema": "threenative.resource-schemas",
+  "version": "0.1.0",
+  "schemas": {
+    "AudioReport": {
+      "fields": {
+        "play": {
+          "kind": "object",
+          "required": false
+        },
+        "postStopQuery": {
+          "kind": "object",
+          "required": false
+        },
+        "query": {
+          "kind": "object",
+          "required": false
+        },
+        "stop": {
+          "kind": "object",
+          "required": false
+        }
+      }
+    }
+  }
+}

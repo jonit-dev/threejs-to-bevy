@@ -240,3 +240,164 @@ function defaultAudioElement(): IWebAudioElement {
 function isPromiseLike(value: unknown): value is Promise<void> {
   return typeof value === "object" && value !== null && "catch" in value;
 }
+
+export type ScriptAudioPlaybackKind = "loop" | "oneShot" | "tone";
+export type ScriptAudioPlaybackStatus = "playing" | "rejected" | "stopped";
+
+export interface IScriptAudioPlayOptions {
+  entity?: string;
+  loop?: boolean;
+  volume?: number;
+}
+
+export interface IScriptAudioRuntimeState {
+  accepted: boolean;
+  entity?: string;
+  kind?: ScriptAudioPlaybackKind;
+  loop?: boolean;
+  playbackId: string;
+  reason?: string;
+  soundId: string;
+  status: ScriptAudioPlaybackStatus;
+  volume?: number;
+}
+
+interface IScriptAudioCatalogEntry {
+  kind: ScriptAudioPlaybackKind;
+  volume?: number;
+}
+
+interface IScriptAudioPlaybackRecord extends IScriptAudioRuntimeState {
+  accepted: true;
+}
+
+const SCRIPT_AUDIO_EXTERNAL_OPTION_KEYS = new Set([
+  "codec",
+  "decoderPlugin",
+  "device",
+  "deviceId",
+  "nativeHandle",
+  "networkStream",
+  "networkUrl",
+  "platformHandle",
+  "src",
+  "stream",
+  "streaming",
+  "streamingUrl",
+  "url",
+]);
+
+export class ScriptAudioRuntimeController {
+  readonly #catalog: Map<string, IScriptAudioCatalogEntry>;
+  readonly #playbacks = new Map<string, IScriptAudioPlaybackRecord>();
+  #sequence = 0;
+
+  constructor(audio?: IAudioIr) {
+    this.#catalog = buildScriptAudioCatalog(audio);
+  }
+
+  play(soundId: string, options: IScriptAudioPlayOptions = {}): IScriptAudioRuntimeState {
+    const unsupported = findUnsupportedScriptAudioOption(options as Record<string, unknown>);
+    if (unsupported !== undefined) {
+      return rejectScriptAudioPlay(soundId, "unsupported-option");
+    }
+    const declared = this.#catalog.get(soundId);
+    if (declared === undefined) {
+      return rejectScriptAudioPlay(soundId, "undeclared-sound");
+    }
+    this.#sequence += 1;
+    const playbackId = `${soundId}#${this.#sequence}`;
+    const volume = typeof options.volume === "number" && Number.isFinite(options.volume) ? options.volume : declared.volume;
+    const loop = typeof options.loop === "boolean" ? options.loop : declared.kind === "loop";
+    const record: IScriptAudioPlaybackRecord = {
+      accepted: true,
+      ...(typeof options.entity === "string" ? { entity: options.entity } : {}),
+      kind: declared.kind,
+      loop,
+      playbackId,
+      soundId,
+      status: "playing",
+      ...(volume === undefined ? {} : { volume }),
+    };
+    this.#playbacks.set(playbackId, record);
+    return serializeScriptAudioPlayback(record);
+  }
+
+  query(playbackId: string): IScriptAudioRuntimeState {
+    const record = this.#playbacks.get(playbackId);
+    if (record === undefined) {
+      return {
+        accepted: false,
+        playbackId,
+        reason: "not-found",
+        soundId: "",
+        status: "stopped",
+      };
+    }
+    return serializeScriptAudioPlayback(record);
+  }
+
+  stop(playbackId: string): IScriptAudioRuntimeState {
+    const record = this.#playbacks.get(playbackId);
+    if (record === undefined) {
+      return {
+        accepted: true,
+        playbackId,
+        reason: "not-found",
+        soundId: "",
+        status: "stopped",
+      };
+    }
+    const stopped: IScriptAudioPlaybackRecord = {
+      ...record,
+      status: "stopped",
+    };
+    this.#playbacks.set(playbackId, stopped);
+    return serializeScriptAudioPlayback(stopped);
+  }
+}
+
+function buildScriptAudioCatalog(audio: IAudioIr | undefined): Map<string, IScriptAudioCatalogEntry> {
+  const catalog = new Map<string, IScriptAudioCatalogEntry>();
+  if (audio === undefined) {
+    return catalog;
+  }
+  for (const music of audio.music) {
+    catalog.set(music.id, { kind: "loop", ...(music.volume === undefined ? {} : { volume: music.volume }) });
+  }
+  for (const oneShot of audio.oneShots) {
+    catalog.set(oneShot.id, { kind: "oneShot", ...(oneShot.volume === undefined ? {} : { volume: oneShot.volume }) });
+  }
+  for (const tone of audio.tones ?? []) {
+    catalog.set(tone.id, { kind: "tone", ...(tone.volume === undefined ? {} : { volume: tone.volume }) });
+  }
+  return catalog;
+}
+
+function findUnsupportedScriptAudioOption(options: Record<string, unknown>): string | undefined {
+  return Object.keys(options).find((key) => SCRIPT_AUDIO_EXTERNAL_OPTION_KEYS.has(key));
+}
+
+function rejectScriptAudioPlay(soundId: string, reason: string): IScriptAudioRuntimeState {
+  return {
+    accepted: false,
+    playbackId: "",
+    reason,
+    soundId,
+    status: "rejected",
+  };
+}
+
+function serializeScriptAudioPlayback(record: IScriptAudioPlaybackRecord): IScriptAudioRuntimeState {
+  return {
+    accepted: record.accepted,
+    ...(record.entity === undefined ? {} : { entity: record.entity }),
+    ...(record.kind === undefined ? {} : { kind: record.kind }),
+    ...(record.loop === undefined ? {} : { loop: record.loop }),
+    playbackId: record.playbackId,
+    ...(record.reason === undefined ? {} : { reason: record.reason }),
+    soundId: record.soundId,
+    status: record.status,
+    ...(record.volume === undefined ? {} : { volume: record.volume }),
+  };
+}

@@ -256,6 +256,104 @@ test("audio should reject invalid spatial and bus routing metadata", async () =>
   }
 });
 
+test("should accept declared script audio services", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-audio-script-services-"));
+  try {
+    await writeTestBundle(root, {
+      manifest: { entry: { audio: "audio.ir.json", systems: "systems.ir.json" } },
+      assets: {
+        schema: "threenative.assets",
+        version: "0.1.0",
+        assets: [{ id: "hit.sound", kind: "audio", format: "wav", path: "assets/hit.wav" }],
+      },
+    });
+    await mkdir(join(root, "assets"), { recursive: true });
+    await writeFile(join(root, "assets/hit.wav"), "");
+    await writeJson(root, "audio.ir.json", {
+      schema: "threenative.audio",
+      version: "0.1.0",
+      music: [],
+      oneShots: [{ id: "sound.hit", asset: "hit.sound", event: "DamageEvent" }],
+    });
+    await writeJson(root, "systems.ir.json", {
+      schema: "threenative.systems",
+      version: "0.1.0",
+      scriptAudio: [{ id: "sound.hit" }],
+      systems: [
+        {
+          name: "audioFacade",
+          schedule: "update",
+          reads: [],
+          writes: [],
+          queries: [],
+          commands: [],
+          eventReads: [],
+          eventWrites: [],
+          resourceReads: [],
+          resourceWrites: [],
+          services: ["audio.play", "audio.stop", "audio.query"],
+        },
+      ],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject script audio external source", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-audio-script-external-"));
+  try {
+    await writeTestBundle(root, {
+      manifest: { entry: { audio: "audio.ir.json", systems: "systems.ir.json" } },
+      assets: {
+        schema: "threenative.assets",
+        version: "0.1.0",
+        assets: [{ id: "hit.sound", kind: "audio", format: "wav", path: "assets/hit.wav" }],
+      },
+    });
+    await mkdir(join(root, "assets"), { recursive: true });
+    await writeFile(join(root, "assets/hit.wav"), "");
+    await writeJson(root, "audio.ir.json", {
+      schema: "threenative.audio",
+      version: "0.1.0",
+      music: [],
+      oneShots: [{ id: "sound.hit", asset: "hit.sound", event: "DamageEvent" }],
+    });
+    await writeJson(root, "systems.ir.json", {
+      schema: "threenative.systems",
+      version: "0.1.0",
+      scriptAudio: [{ id: "sound.hit", url: "https://example.invalid/hit.wav" }],
+      systems: [
+        {
+          name: "audioFacade",
+          schedule: "update",
+          reads: [],
+          writes: [],
+          queries: [],
+          commands: [],
+          eventReads: [],
+          eventWrites: [],
+          resourceReads: [],
+          resourceWrites: [],
+          services: ["audio.play"],
+        },
+      ],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_SCRIPT_AUDIO_EXTERNAL_UNSUPPORTED"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "systems.ir.json/scriptAudio/0/url"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject streaming audio when portable audio only allows bundle-local sources", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-audio-unsupported-"));
   try {

@@ -204,6 +204,41 @@ test("should log animation query and stop service calls", () => {
   ]);
 });
 
+test("should log script audio service calls", () => {
+  const { context, services } = createSystemContext(makeWorld(), {
+    audio: {
+      schema: "threenative.audio",
+      version: "0.1.0",
+      music: [],
+      oneShots: [{ id: "sound.hit", asset: "hit.sound", event: "DamageEvent", volume: 0.75 }],
+    },
+    delta: 0.016,
+    fixedDelta: 0.016,
+  });
+
+  const play = context.audio.play("sound.hit", { entity: "player" });
+  const stop = context.audio.stop(play.playbackId);
+
+  assert.equal(play.playbackId, "sound.hit#1");
+  assert.equal(stop.status, "stopped");
+  assert.deepEqual(services, [
+    {
+      payload: {
+        request: { options: { entity: "player" }, soundId: "sound.hit" },
+        result: play,
+      },
+      service: "audio.play",
+    },
+    {
+      payload: {
+        request: { playbackId: "sound.hit#1" },
+        result: stop,
+      },
+      service: "audio.stop",
+    },
+  ]);
+});
+
 test("should stop animation state when stop service is called", () => {
   const { context } = createSystemContext(makeWorld(), { delta: 0.016, fixedDelta: 0.016 });
 

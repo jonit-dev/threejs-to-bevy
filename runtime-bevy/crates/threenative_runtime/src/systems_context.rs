@@ -12,6 +12,7 @@ use crate::mesh_bounds::mesh_aabb;
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NativeSystemContextSnapshot {
+    pub audio_sounds: BTreeMap<String, NativeScriptAudioSound>,
     pub channel_events: BTreeMap<String, String>,
     pub assets: Vec<NativeAssetDeclaration>,
     pub component_hooks: BTreeMap<String, Vec<NativeComponentHookObservation>>,
@@ -28,6 +29,13 @@ pub struct NativeSystemContextSnapshot {
     pub states: BTreeMap<String, Option<String>>,
     pub tasks: Vec<NativeTaskDeclaration>,
     pub time: NativeSystemTimeSnapshot,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct NativeScriptAudioSound {
+    pub kind: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub volume: Option<f32>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -175,6 +183,7 @@ pub fn build_system_context_snapshot_with_events_and_input(
         .collect();
 
     NativeSystemContextSnapshot {
+        audio_sounds: audio_sounds(bundle),
         assets: asset_declarations(bundle),
         channel_events: channel_events(bundle),
         component_hooks: component_hook_observations(bundle),
@@ -204,6 +213,41 @@ pub fn build_system_context_snapshot_with_events_and_input(
         tasks: task_declarations(bundle),
         time,
     }
+}
+
+pub fn audio_sounds(bundle: &LoadedBundle) -> BTreeMap<String, NativeScriptAudioSound> {
+    let Some(audio) = bundle.audio.as_ref() else {
+        return BTreeMap::new();
+    };
+    let mut sounds = BTreeMap::new();
+    for music in &audio.music {
+        sounds.insert(
+            music.id.clone(),
+            NativeScriptAudioSound {
+                kind: "loop".to_owned(),
+                volume: music.volume,
+            },
+        );
+    }
+    for one_shot in &audio.one_shots {
+        sounds.insert(
+            one_shot.id.clone(),
+            NativeScriptAudioSound {
+                kind: "oneShot".to_owned(),
+                volume: one_shot.volume,
+            },
+        );
+    }
+    for tone in &audio.tones {
+        sounds.insert(
+            tone.id.clone(),
+            NativeScriptAudioSound {
+                kind: "tone".to_owned(),
+                volume: tone.volume,
+            },
+        );
+    }
+    sounds
 }
 
 pub fn asset_declarations(bundle: &LoadedBundle) -> Vec<NativeAssetDeclaration> {

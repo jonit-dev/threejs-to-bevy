@@ -939,6 +939,63 @@ function __tnInvokeSystem(options) {
       animations[entityId] = state;
       return serializeAnimationState(state);
     };
+    const audioCatalog = data.audioSounds || {};
+    const audioPlaybacks = {};
+    let audioSequence = 0;
+    const unsupportedAudioOption = (options) => Object.keys(options).find((key) => ["codec", "decoderPlugin", "device", "deviceId", "nativeHandle", "networkStream", "networkUrl", "platformHandle", "src", "stream", "streaming", "streamingUrl", "url"].includes(key));
+    const serializeAudioState = (state) => ({
+      accepted: state.accepted,
+      ...(state.entity === undefined ? {} : { entity: state.entity }),
+      ...(state.kind === undefined ? {} : { kind: state.kind }),
+      ...(state.loop === undefined ? {} : { loop: state.loop }),
+      playbackId: state.playbackId,
+      ...(state.reason === undefined ? {} : { reason: state.reason }),
+      soundId: state.soundId,
+      status: state.status,
+      ...(state.volume === undefined ? {} : { volume: state.volume })
+    });
+    const audioPlay = (soundId, options = {}) => {
+      const unsupported = unsupportedAudioOption(options);
+      if (unsupported !== undefined) {
+        return { accepted: false, playbackId: "", reason: "unsupported-option", soundId, status: "rejected" };
+      }
+      const declared = audioCatalog[soundId];
+      if (!declared) {
+        return { accepted: false, playbackId: "", reason: "undeclared-sound", soundId, status: "rejected" };
+      }
+      audioSequence += 1;
+      const playbackId = `${soundId}#${audioSequence}`;
+      const volume = Number.isFinite(Number(options.volume)) ? Number(options.volume) : declared.volume;
+      const loop = typeof options.loop === "boolean" ? options.loop : declared.kind === "loop";
+      const state = {
+        accepted: true,
+        ...(typeof options.entity === "string" ? { entity: options.entity } : {}),
+        kind: declared.kind,
+        loop,
+        playbackId,
+        soundId,
+        status: "playing",
+        ...(volume === undefined ? {} : { volume })
+      };
+      audioPlaybacks[playbackId] = state;
+      return serializeAudioState(state);
+    };
+    const audioQuery = (playbackId) => {
+      const state = audioPlaybacks[playbackId];
+      if (!state) {
+        return { accepted: false, playbackId, reason: "not-found", soundId: "", status: "stopped" };
+      }
+      return serializeAudioState(state);
+    };
+    const audioStop = (playbackId) => {
+      const state = audioPlaybacks[playbackId];
+      if (!state) {
+        return { accepted: true, playbackId, reason: "not-found", soundId: "", status: "stopped" };
+      }
+      const stopped = { ...state, status: "stopped" };
+      audioPlaybacks[playbackId] = stopped;
+      return serializeAudioState(stopped);
+    };
   const entities = data.entities.map((source) => ({
     id: source.id,
     components: clone(source.components),
@@ -1147,6 +1204,26 @@ function __tnInvokeSystem(options) {
         const request = clip === undefined ? { entity: entityId } : { entity: entityId, clip };
         const result = { ...animationStop(entityId, clip), accepted: true };
         effects.services.push({ service: "animation.stop", payload: { request, result } });
+        return clone(result);
+      }
+    },
+    audio: {
+      play(soundId, options = {}) {
+        const request = { options: clone(options), soundId };
+        const result = audioPlay(soundId, options);
+        effects.services.push({ service: "audio.play", payload: { request, result: clone(result) } });
+        return clone(result);
+      },
+      query(playbackId) {
+        const request = { playbackId };
+        const result = audioQuery(playbackId);
+        effects.services.push({ service: "audio.query", payload: { request, result: clone(result) } });
+        return clone(result);
+      },
+      stop(playbackId) {
+        const request = { playbackId };
+        const result = audioStop(playbackId);
+        effects.services.push({ service: "audio.stop", payload: { request, result: clone(result) } });
         return clone(result);
       }
     }

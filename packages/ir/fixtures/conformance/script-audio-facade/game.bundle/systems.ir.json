@@ -1,0 +1,27 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "scriptAudio": [
+    { "id": "sound.hit" },
+    { "id": "music.arena" }
+  ],
+  "systems": [
+    {
+      "name": "audioFacade",
+      "schedule": "update",
+      "reads": [],
+      "writes": [],
+      "queries": [],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": ["AudioReport"],
+      "resourceWrites": ["AudioReport"],
+      "services": ["audio.play", "audio.query", "audio.stop"],
+      "script": {
+        "bundle": "scripts.bundle.js",
+        "exportName": "system_audioFacade"
+      }
+    }
+  ]
+}
