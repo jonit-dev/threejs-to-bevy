@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import type { ISystemsIr, IWorldIr } from "@threenative/ir";
+import type { IPrefabsIr, ISystemsIr, IUiIr, IWorldIr } from "@threenative/ir";
 
 import { loadSystemModule, runSchedule } from "./runner.js";
 
@@ -174,6 +174,43 @@ test("should run systems apply full command buffer semantics", async () => {
   assert.deepEqual(world.events, { Spawned: [{ entity: "enemy" }] });
 });
 
+test("should instantiate prefab hierarchy at command flush", async () => {
+  const world = makeWorld();
+  world.entities[0]!.id = "anchor";
+  const systems = makeSystems("update", "spawnPrefab");
+  systems.systems[0]!.writes = ["Hierarchy", "Transform"];
+  systems.systems[0]!.commands = [
+    { kind: "instantiate", prefab: "prefab.crate", prefix: "runtime.crate" },
+    { child: "runtime.crate.root", kind: "setParent", parent: "anchor" },
+    { child: "runtime.crate.child", kind: "clearParent" },
+  ];
+
+  await runSchedule({
+    module: {
+      systems: {
+        spawnPrefab(context: any) {
+          context.commands.instantiate("prefab.crate", "runtime.crate");
+          context.commands.setParent("runtime.crate.root", "anchor");
+          context.commands.clearParent("runtime.crate.child");
+        },
+      },
+    },
+    prefabs: makePrefabs(),
+    schedule: "update",
+    systems,
+    world,
+  });
+
+  assert.deepEqual(
+    world.entities.map((entity) => ({ id: entity.id, parent: (entity.components.Hierarchy as { parent?: string } | undefined)?.parent ?? null })).sort((left, right) => left.id.localeCompare(right.id)),
+    [
+      { id: "anchor", parent: null },
+      { id: "runtime.crate.child", parent: null },
+      { id: "runtime.crate.root", parent: "anchor" },
+    ],
+  );
+});
+
 test("should reconcile spawned entities and events across later schedules", async () => {
   const world = makeWorld();
   world.resources = { Score: { value: 0 } };
@@ -279,6 +316,93 @@ test("should run systems using before and after ordering constraints", async () 
   assert.deepEqual(world.resources.Order, { values: ["collectInput", "applyDamage", "score"] });
 });
 
+test("should share persistence and settings facade state across scheduled systems", async () => {
+  const world = makeWorld();
+  world.resources = { Progress: { level: 7 }, Report: {} };
+  const systems = makeSystems("update", "saveProgress");
+  systems.systems.push({
+    ...systems.systems[0]!,
+    after: ["saveProgress"],
+    before: [],
+    name: "loadProgress",
+    resourceWrites: ["Report"],
+    services: ["persistence.load", "settings.get"],
+    script: { bundle: "scripts.bundle.js", exportName: "loadProgress" },
+  });
+  systems.systems[0] = {
+    ...systems.systems[0]!,
+    before: ["loadProgress"],
+    resourceWrites: [],
+    services: ["persistence.save", "settings.set"],
+    script: { bundle: "scripts.bundle.js", exportName: "saveProgress" },
+  };
+
+  await runSchedule({
+    localData: {
+      components: [],
+      resources: [{ id: "Progress", schema: { fields: { level: { kind: "integer" } } } }],
+      saveSlots: [{ appVersion: "1.0.0", id: "slot.auto", schemaVersion: 1 }],
+      schema: "threenative.local-data",
+      settings: [{ defaultValue: 0.5, group: "audio", key: "audio.master", kind: "number", max: 1, min: 0 }],
+      version: "0.1.0",
+    },
+    module: {
+      systems: {
+        saveProgress(context: any) {
+          context.settings.set("audio.master", 0.25);
+          context.persistence.save("slot.auto");
+        },
+        loadProgress(context: any) {
+          const loaded = context.persistence.load("slot.auto");
+          context.resources.set("Report", {
+            level: loaded.record.resources.Progress.level,
+            volume: context.settings.get("audio.master"),
+          });
+        },
+      },
+    },
+    schedule: "update",
+    systems,
+    world,
+  });
+
+  assert.deepEqual(world.resources?.Report, { level: 7, volume: 0.25 });
+});
+
+test("should expose retained UI facade to scheduled systems", async () => {
+  const world = makeWorld();
+  world.resources = { UiReport: {} };
+  const systems = makeSystems("update", "driveUi");
+  systems.systems[0] = {
+    ...systems.systems[0]!,
+    resourceWrites: ["UiReport"],
+    services: ["ui.activate", "ui.focus", "ui.read", "ui.setDisabled", "ui.setValue"],
+    script: { bundle: "scripts.bundle.js", exportName: "driveUi" },
+  };
+
+  await runSchedule({
+    module: {
+      systems: {
+        driveUi(context: any) {
+          context.ui.focus("settings.volume");
+          context.ui.setValue("settings.volume", 0.75);
+          context.ui.setDisabled("play", true);
+          context.resources.set("UiReport", {
+            play: context.ui.activate("play").status,
+            volume: context.ui.read("settings.volume").value,
+          });
+        },
+      },
+    },
+    schedule: "update",
+    systems,
+    ui: makeUi(),
+    world,
+  });
+
+  assert.deepEqual(world.resources?.UiReport, { play: "disabled", volume: 0.75 });
+});
+
 test("should run systems expose v4 entity patch context", async () => {
   const world = makeWorld();
   const systems = makeSystems("fixedUpdate", "patchPlayer");
@@ -347,6 +471,39 @@ function makeWorld(): IWorldIr {
         },
       },
     ],
+  };
+}
+
+function makeUi(): IUiIr {
+  return {
+    focusOrder: ["play", "settings.volume"],
+    root: {
+      children: [
+        { action: "StartGame", id: "play", kind: "button", label: "Play" },
+        { focusable: true, id: "settings.volume", kind: "bar", max: 1, min: 0, value: 0.5 },
+      ],
+      id: "menu",
+      kind: "column",
+    },
+    schema: "threenative.ui",
+    version: "0.1.0",
+  };
+}
+
+function makePrefabs(): IPrefabsIr {
+  return {
+    prefabs: [
+      {
+        entities: [
+          { components: { Transform: { position: [1, 0, 0] } }, id: "root" },
+          { components: { Hierarchy: { parent: "root" }, Transform: { position: [0, 1, 0] } }, id: "child" },
+        ],
+        id: "prefab.crate",
+        root: "root",
+      },
+    ],
+    schema: "threenative.prefabs",
+    version: "0.1.0",
   };
 }
 

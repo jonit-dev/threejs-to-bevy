@@ -16,6 +16,7 @@ pub mod audio;
 pub mod bevy_catalog_residuals;
 pub mod cameras;
 pub mod character;
+pub mod component_diff;
 pub mod conformance;
 pub mod debug_overlay;
 pub mod environment;
@@ -32,15 +33,17 @@ pub mod overlay_host;
 pub mod path_sampling;
 pub mod persistence;
 pub mod persistence_reload;
-pub mod production_hardening;
 pub mod physics;
 pub mod physics_sensors;
 pub mod picking;
+pub mod production_hardening;
 pub mod render_targets;
 pub mod render_transitions;
 pub mod rendering;
 pub mod rendering_residuals;
 pub mod runtime_gameplay_host;
+pub mod runtime_prefabs_hierarchy;
+pub mod runtime_query_diffing;
 pub mod scene_manager;
 pub mod systems_context;
 pub mod systems_effects;
@@ -49,6 +52,7 @@ pub mod systems_services;
 pub mod transform_interpolation;
 pub mod ui;
 pub mod ui_debug;
+pub mod ui_persistence_settings_facades;
 pub mod walkability;
 
 #[derive(Debug, Error)]
@@ -267,8 +271,8 @@ pub fn native_scene_startup_diagnostics(
         .entities
         .iter()
         .any(|entity| entity.components.light.is_some());
-    let environment_has_renderable_content = environment_scene
-        .is_some_and(environment_scene_has_renderable_content);
+    let environment_has_renderable_content =
+        environment_scene.is_some_and(environment_scene_has_renderable_content);
 
     if visible_renderers.is_empty() && !environment_has_renderable_content {
         diagnostics.push(NativeSceneStartupDiagnostic {
@@ -334,10 +338,9 @@ pub fn native_scene_startup_warnings(
 fn environment_scene_has_renderable_content(scene: &EnvironmentSceneIr) -> bool {
     scene.terrain.is_some()
         || !scene.instances.is_empty()
-        || scene
-            .scatter
-            .iter()
-            .any(|spec| spec.count.unwrap_or(0) > 0 || spec.density.is_some_and(|value| value > 0.0))
+        || scene.scatter.iter().any(|spec| {
+            spec.count.unwrap_or(0) > 0 || spec.density.is_some_and(|value| value > 0.0)
+        })
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

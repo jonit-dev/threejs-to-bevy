@@ -56,6 +56,7 @@ test("contractDrift should list every registered IR document when checking contr
     "environmentScene",
     "localData",
     "gltfScene",
+    "prefabs",
     "componentSchemas",
     "resourceSchemas",
     "eventSchemas",
@@ -69,6 +70,7 @@ test("contractDrift should list every registered IR document when checking contr
   assertManifestDocument("entry", "environmentScene", "environment.scene.json");
   assertManifestDocument("entry", "localData", "local-data.ir.json");
   assertManifestDocument("entry", "overlays", "overlays.ir.json");
+  assertManifestDocument("entry", "prefabs", "prefabs.ir.json");
   assertManifestDocument("entry", "scenes", "scenes.ir.json");
   assertManifestDocument("entry", "scripts", "scripts.bundle.js");
   assertManifestDocument("entry", "systems", "systems.ir.json");
@@ -81,6 +83,7 @@ test("contractDrift should list every registered IR document when checking contr
   assertManifestDocument("files", "input", "input.ir.json");
   assertManifestDocument("files", "localData", "local-data.ir.json");
   assertManifestDocument("files", "materials", "materials.ir.json");
+  assertManifestDocument("files", "prefabs", "prefabs.ir.json");
   assertManifestDocument("files", "resourceSchemas", "schemas/resources.schema.json");
   assertManifestDocument("files", "runtimeConfig", "runtime.config.json");
   assertManifestDocument("files", "scripts", "scripts.bundle.js");

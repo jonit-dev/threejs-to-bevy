@@ -321,6 +321,12 @@ test("should include capability tags for each conformance fixture", async () => 
     "scripting:service.audio.stop",
     "scripting:systems",
   ]);
+  assertFixtureCapabilities(byName, "runtime-query-diffing", [
+    "scripting:queries.changed.runtime-diff",
+    "scripting:schedule.update",
+    "scripting:script-bundle",
+    "scripting:systems",
+  ]);
   assertFixtureCapabilities(byName, "animation-blending", [
     "animation:blend.crossfade",
     "animation:clip-metadata",

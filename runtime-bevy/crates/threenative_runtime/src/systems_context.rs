@@ -3,9 +3,11 @@ use std::collections::BTreeMap;
 use serde::Serialize;
 use serde_json::{Value, json};
 use threenative_loader::{
-    EntityComponents, LoadedBundle, SystemIr, SystemQueryIr, SystemStateSourceIr,
+    EntityComponents, LoadedBundle, LocalDataIr, SystemIr, SystemQueryIr, SystemStateSourceIr,
+    UiIr, UiNodeIr,
 };
 
+use crate::component_diff::{ComponentDiffCache, changed_components as resolve_changed_components};
 use crate::input::NativeInputState;
 use crate::mesh_bounds::mesh_aabb;
 
@@ -21,14 +23,18 @@ pub struct NativeSystemContextSnapshot {
     pub entities: Vec<NativeSystemEntitySnapshot>,
     pub events: BTreeMap<String, Vec<Value>>,
     pub input: NativeSystemInputSnapshot,
+    pub local_data: NativeLocalDataSnapshot,
     pub mesh_bounds: BTreeMap<String, NativeMeshBoundsSnapshot>,
     pub observer_routes: BTreeMap<String, BTreeMap<String, Vec<NativeObserverPropagationStep>>>,
     pub plugin_groups: Vec<NativePluginGroupDeclaration>,
     pub plugins: Vec<NativePluginDeclaration>,
     pub resources: BTreeMap<String, Value>,
+    #[serde(rename = "runtimeChanged", skip_serializing_if = "BTreeMap::is_empty")]
+    pub runtime_changed: BTreeMap<String, Vec<String>>,
     pub states: BTreeMap<String, Option<String>>,
     pub tasks: Vec<NativeTaskDeclaration>,
     pub time: NativeSystemTimeSnapshot,
+    pub ui: Option<NativeUiSnapshot>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -140,6 +146,59 @@ pub struct NativeSystemInputSnapshot {
     pub axes: BTreeMap<String, f32>,
 }
 
+#[derive(Clone, Debug, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeLocalDataSnapshot {
+    pub components: Vec<NativeLocalDataSchemaEntry>,
+    pub resources: Vec<NativeLocalDataSchemaEntry>,
+    pub save_slots: Vec<NativeLocalDataSaveSlot>,
+    pub settings: Vec<NativeLocalDataSetting>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct NativeLocalDataSchemaEntry {
+    pub id: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeLocalDataSaveSlot {
+    pub app_version: String,
+    pub id: String,
+    pub schema_version: u32,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeLocalDataSetting {
+    pub default_value: Value,
+    pub enum_values: Vec<String>,
+    pub key: String,
+    pub kind: String,
+    pub max: Option<f64>,
+    pub min: Option<f64>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeUiSnapshot {
+    pub focus_order: Option<Vec<String>>,
+    pub nodes: Vec<NativeUiNodeSnapshot>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeUiNodeSnapshot {
+    pub action: Option<String>,
+    pub disabled: bool,
+    pub focusable: bool,
+    pub id: String,
+    pub kind: String,
+    pub label: Option<String>,
+    pub text: Option<String>,
+    pub value: Option<f32>,
+}
+
 pub fn build_system_context_snapshot(
     bundle: &LoadedBundle,
     system: &SystemIr,
@@ -164,12 +223,27 @@ pub fn build_system_context_snapshot_with_events_and_input(
     events: BTreeMap<String, Vec<Value>>,
     input: Option<&NativeInputState>,
 ) -> NativeSystemContextSnapshot {
+    build_system_context_snapshot_with_events_input_and_diff(
+        bundle, system, time, events, input, None,
+    )
+}
+
+pub fn build_system_context_snapshot_with_events_input_and_diff(
+    bundle: &LoadedBundle,
+    system: &SystemIr,
+    time: NativeSystemTimeSnapshot,
+    events: BTreeMap<String, Vec<Value>>,
+    input: Option<&NativeInputState>,
+    diff_cache: Option<&ComponentDiffCache>,
+) -> NativeSystemContextSnapshot {
     let readable_components = readable_components(system);
     let entities = bundle
         .world
         .entities
         .iter()
-        .filter(|entity| matches_declared_queries(bundle, &entity.id, &entity.components, system))
+        .filter(|entity| {
+            matches_declared_queries(bundle, &entity.id, &entity.components, system, diff_cache)
+        })
         .map(|entity| NativeSystemEntitySnapshot {
             id: entity.id.clone(),
             components: readable_components
@@ -199,6 +273,7 @@ pub fn build_system_context_snapshot_with_events_and_input(
             NativeSystemInputSnapshot::fixed_trace,
             NativeSystemInputSnapshot::from_native_input,
         ),
+        local_data: local_data_snapshot(bundle.local_data.as_ref()),
         mesh_bounds: mesh_bounds(bundle),
         observer_routes: observer_routes(bundle),
         plugin_groups: plugin_group_declarations(bundle),
@@ -209,9 +284,84 @@ pub fn build_system_context_snapshot_with_events_and_input(
             .iter()
             .map(|(key, value)| (key.clone(), value.clone()))
             .collect(),
+        runtime_changed: diff_cache
+            .map(|cache| cache.runtime_changed_map(bundle))
+            .unwrap_or_default(),
         states: evaluate_states(bundle),
         tasks: task_declarations(bundle),
         time,
+        ui: bundle.ui.as_ref().map(ui_snapshot),
+    }
+}
+
+fn local_data_snapshot(local_data: Option<&LocalDataIr>) -> NativeLocalDataSnapshot {
+    let Some(local_data) = local_data else {
+        return NativeLocalDataSnapshot::default();
+    };
+
+    NativeLocalDataSnapshot {
+        components: local_data
+            .components
+            .iter()
+            .map(|entry| NativeLocalDataSchemaEntry {
+                id: entry.id.clone(),
+            })
+            .collect(),
+        resources: local_data
+            .resources
+            .iter()
+            .map(|entry| NativeLocalDataSchemaEntry {
+                id: entry.id.clone(),
+            })
+            .collect(),
+        save_slots: local_data
+            .save_slots
+            .iter()
+            .map(|slot| NativeLocalDataSaveSlot {
+                app_version: slot.app_version.clone(),
+                id: slot.id.clone(),
+                schema_version: slot.schema_version,
+            })
+            .collect(),
+        settings: local_data
+            .settings
+            .iter()
+            .map(|setting| NativeLocalDataSetting {
+                default_value: setting.default_value.clone(),
+                enum_values: setting.enum_values.clone(),
+                key: setting.key.clone(),
+                kind: setting.kind.clone(),
+                max: setting.max,
+                min: setting.min,
+            })
+            .collect(),
+    }
+}
+
+fn ui_snapshot(ui: &UiIr) -> NativeUiSnapshot {
+    let mut nodes = Vec::new();
+    collect_ui_nodes(&ui.root, &mut nodes);
+    NativeUiSnapshot {
+        focus_order: ui.focus_order.clone(),
+        nodes,
+    }
+}
+
+fn collect_ui_nodes(node: &UiNodeIr, nodes: &mut Vec<NativeUiNodeSnapshot>) {
+    let focusable =
+        node.focusable.unwrap_or(false) || node.kind == "button" || node.kind == "touchControl";
+    nodes.push(NativeUiNodeSnapshot {
+        action: node.action.clone(),
+        disabled: node.disabled.unwrap_or(false),
+        focusable,
+        id: node.id.clone(),
+        kind: node.kind.clone(),
+        label: node.label.clone(),
+        text: node.text.clone(),
+        value: node.value,
+    });
+    for child in &node.children {
+        collect_ui_nodes(child, nodes);
     }
 }
 
@@ -681,12 +831,13 @@ fn matches_declared_queries(
     entity_id: &str,
     components: &EntityComponents,
     system: &SystemIr,
+    diff_cache: Option<&ComponentDiffCache>,
 ) -> bool {
     system.queries.is_empty()
         || system
             .queries
             .iter()
-            .any(|query| matches_query(bundle, entity_id, components, query))
+            .any(|query| matches_query(bundle, entity_id, components, query, diff_cache))
 }
 
 fn matches_query(
@@ -694,6 +845,7 @@ fn matches_query(
     entity_id: &str,
     components: &EntityComponents,
     query: &SystemQueryIr,
+    diff_cache: Option<&ComponentDiffCache>,
 ) -> bool {
     query
         .with
@@ -703,50 +855,12 @@ fn matches_query(
             .without
             .iter()
             .all(|component| component_value(components, component).is_none())
-        && query
-            .changed
-            .iter()
-            .all(|component| changed_components(bundle, entity_id, components).contains(component))
-}
-
-fn changed_components(
-    bundle: &LoadedBundle,
-    entity_id: &str,
-    components: &EntityComponents,
-) -> Vec<String> {
-    [
-        read_changed_value(components.extra.get("__changed"), entity_id),
-        read_changed_value(bundle.world.resources.get("__changed"), entity_id),
-        read_changed_value(bundle.world.resources.get("Changed"), entity_id),
-    ]
-    .concat()
-}
-
-fn read_changed_value(value: Option<&Value>, entity_id: &str) -> Vec<String> {
-    let Some(value) = value else {
-        return Vec::new();
-    };
-    if let Some(items) = value.as_array() {
-        return items
-            .iter()
-            .filter_map(|item| item.as_str().map(str::to_owned))
-            .collect();
-    }
-    if let Some(items) = value.get(entity_id).and_then(Value::as_array) {
-        return items
-            .iter()
-            .filter_map(|item| item.as_str().map(str::to_owned))
-            .collect();
-    }
-    value
-        .get("entities")
-        .and_then(|entities| entities.get(entity_id))
-        .and_then(Value::as_array)
-        .map(|items| {
-            items
-                .iter()
-                .filter_map(|item| item.as_str().map(str::to_owned))
-                .collect()
+        && query.changed.iter().all(|component| {
+            resolve_changed_components(bundle, entity_id, components, diff_cache)
+                .contains(component)
         })
-        .unwrap_or_default()
+}
+
+pub fn canonical_component_value(value: &Value) -> String {
+    serde_json::to_string(value).unwrap_or_else(|_| "null".to_owned())
 }

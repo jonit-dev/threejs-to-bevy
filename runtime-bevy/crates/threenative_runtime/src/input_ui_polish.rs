@@ -2,9 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use serde::Serialize;
 use serde_json::Value;
-use threenative_loader::{
-    InputBindingIr, InputIr, LoadedBundle, UiIr, UiNodeIr, WorldIr,
-};
+use threenative_loader::{InputBindingIr, InputIr, LoadedBundle, UiIr, UiNodeIr, WorldIr};
 
 use crate::ui::{UiNavigationTrace, trace_ui_navigation};
 
@@ -193,7 +191,14 @@ pub fn trace_input_ui_polish(bundle: &LoadedBundle) -> InputUiPolishReport {
         ui: UiPolishReport {
             disabled_update: disabled_updates(ui, &polish),
             focus_narration: focus_narration(ui),
-            navigation: trace_ui_navigation(ui, &polish.navigation_events.iter().map(String::as_str).collect::<Vec<_>>()),
+            navigation: trace_ui_navigation(
+                ui,
+                &polish
+                    .navigation_events
+                    .iter()
+                    .map(String::as_str)
+                    .collect::<Vec<_>>(),
+            ),
             rich_text: rich_text(ui),
             scroll: scroll_trace(ui),
             virtual_keyboard: virtual_keyboard(&polish),
@@ -205,22 +210,26 @@ pub fn trace_input_ui_polish(bundle: &LoadedBundle) -> InputUiPolishReport {
 fn touch_trace(input: Option<&InputIr>, polish: &PolishResource) -> Vec<TouchTraceEvent> {
     let mut controls = HashSet::<String>::new();
     let mut axes = HashMap::<String, f32>::new();
-    polish.touch_events.iter().map(|event| {
-        if let Some(axis) = &event.axis {
-            axes.insert(format!("{}:{axis}", event.control), event.value);
-        } else if event.phase == "end" {
-            controls.remove(&event.control);
-        } else {
-            controls.insert(event.control.clone());
-        }
-        TouchTraceEvent {
-            action_states: action_states(input, &controls),
-            axis_states: axis_states(input, &axes),
-            control: event.control.clone(),
-            phase: event.phase.clone(),
-            value: event.value,
-        }
-    }).collect()
+    polish
+        .touch_events
+        .iter()
+        .map(|event| {
+            if let Some(axis) = &event.axis {
+                axes.insert(format!("{}:{axis}", event.control), event.value);
+            } else if event.phase == "end" {
+                controls.remove(&event.control);
+            } else {
+                controls.insert(event.control.clone());
+            }
+            TouchTraceEvent {
+                action_states: action_states(input, &controls),
+                axis_states: axis_states(input, &axes),
+                control: event.control.clone(),
+                phase: event.phase.clone(),
+                value: event.value,
+            }
+        })
+        .collect()
 }
 
 fn action_states(input: Option<&InputIr>, controls: &HashSet<String>) -> Value {
@@ -235,10 +244,16 @@ fn action_states(input: Option<&InputIr>, controls: &HashSet<String>) -> Value {
 fn axis_states(input: Option<&InputIr>, touch_axes: &HashMap<String, f32>) -> Value {
     let mut map = serde_json::Map::new();
     for axis in input.map(|input| input.axes.as_slice()).unwrap_or(&[]) {
-        let value = axis.value.as_ref().and_then(|binding| match binding {
-            InputBindingIr::Touch { control, axis } => axis.as_ref().and_then(|axis| touch_axes.get(&format!("{control}:{axis}")).copied()),
-            _ => None,
-        }).unwrap_or(0.0);
+        let value = axis
+            .value
+            .as_ref()
+            .and_then(|binding| match binding {
+                InputBindingIr::Touch { control, axis } => axis
+                    .as_ref()
+                    .and_then(|axis| touch_axes.get(&format!("{control}:{axis}")).copied()),
+                _ => None,
+            })
+            .unwrap_or(0.0);
         map.insert(axis.id.clone(), Value::from(value));
     }
     Value::Object(map)
@@ -300,7 +315,10 @@ fn gamepad_report(input: Option<&InputIr>) -> GamepadReport {
         .filter(|control| control.kind == "unknown")
         .map(|control| GamepadDiagnostic {
             code: "TN_WEB_GAMEPAD_CONTROL_UNKNOWN",
-            message: format!("Gamepad control '{}' is not a recognized portable control.", control.control),
+            message: format!(
+                "Gamepad control '{}' is not a recognized portable control.",
+                control.control
+            ),
             severity: if control.required { "error" } else { "warning" },
         })
         .collect::<Vec<_>>();
@@ -328,7 +346,10 @@ fn gamepad_report(input: Option<&InputIr>) -> GamepadReport {
 
 fn gamepad_control_kind(control: &str) -> &'static str {
     match control {
-        "buttonSouth" | "south" | "buttonEast" | "east" | "buttonNorth" | "north" | "buttonWest" | "west" | "leftTrigger" | "leftTrigger2" | "rightTrigger" | "rightTrigger2" | "select" | "start" | "mode" | "leftThumb" | "rightThumb" | "dpadUp" | "dpadDown" | "dpadLeft" | "dpadRight" => "button",
+        "buttonSouth" | "south" | "buttonEast" | "east" | "buttonNorth" | "north"
+        | "buttonWest" | "west" | "leftTrigger" | "leftTrigger2" | "rightTrigger"
+        | "rightTrigger2" | "select" | "start" | "mode" | "leftThumb" | "rightThumb" | "dpadUp"
+        | "dpadDown" | "dpadLeft" | "dpadRight" => "button",
         "leftStickX" | "leftStickY" | "leftZ" | "rightStickX" | "rightStickY" | "rightZ" => "axis",
         _ => "unknown",
     }
@@ -374,10 +395,23 @@ fn disabled_updates(ui: &UiIr, polish: &PolishResource) -> Vec<DisabledUpdate> {
 fn scroll_trace(ui: &UiIr) -> Vec<ScrollObservation> {
     let mut rows = Vec::new();
     visit(&ui.root, &mut |node, parent| {
-        if node.layout.as_ref().and_then(|layout| layout.overflow.as_deref()) == Some("scroll") {
+        if node
+            .layout
+            .as_ref()
+            .and_then(|layout| layout.overflow.as_deref())
+            == Some("scroll")
+        {
             rows.push(ScrollObservation {
-                axis: if node.orientation.as_deref() == Some("horizontal") { "x" } else { "y" },
-                delta: if node.orientation.as_deref() == Some("horizontal") { 18 } else { 24 },
+                axis: if node.orientation.as_deref() == Some("horizontal") {
+                    "x"
+                } else {
+                    "y"
+                },
+                delta: if node.orientation.as_deref() == Some("horizontal") {
+                    18
+                } else {
+                    24
+                },
                 node: node.id.clone(),
                 parent: parent.map(|parent| parent.id.clone()),
             });
@@ -390,7 +424,11 @@ fn scroll_trace(ui: &UiIr) -> Vec<ScrollObservation> {
 fn rich_text(ui: &UiIr) -> Vec<RichTextObservation> {
     let mut rows = Vec::new();
     visit(&ui.root, &mut |node, _parent| {
-        let italic_spans = node.spans.iter().filter(|span| span.italic == Some(true)).count();
+        let italic_spans = node
+            .spans
+            .iter()
+            .filter(|span| span.italic == Some(true))
+            .count();
         if italic_spans > 0 {
             rows.push(RichTextObservation {
                 italic_spans,
@@ -406,7 +444,11 @@ fn rich_text(ui: &UiIr) -> Vec<RichTextObservation> {
 fn virtual_keyboard(polish: &PolishResource) -> VirtualKeyboard {
     VirtualKeyboard {
         node: polish.virtual_keyboard_node.clone(),
-        status: if polish.virtual_keyboard_node.is_some() { "diagnostic-only" } else { "not-requested" },
+        status: if polish.virtual_keyboard_node.is_some() {
+            "diagnostic-only"
+        } else {
+            "not-requested"
+        },
     }
 }
 
@@ -449,7 +491,11 @@ fn accessible_text(node: &UiNodeIr) -> String {
 }
 
 fn visit<'a>(node: &'a UiNodeIr, callback: &mut impl FnMut(&'a UiNodeIr, Option<&'a UiNodeIr>)) {
-    fn inner<'a>(node: &'a UiNodeIr, parent: Option<&'a UiNodeIr>, callback: &mut impl FnMut(&'a UiNodeIr, Option<&'a UiNodeIr>)) {
+    fn inner<'a>(
+        node: &'a UiNodeIr,
+        parent: Option<&'a UiNodeIr>,
+        callback: &mut impl FnMut(&'a UiNodeIr, Option<&'a UiNodeIr>),
+    ) {
         callback(node, parent);
         for child in &node.children {
             inner(child, Some(node), callback);
@@ -481,7 +527,14 @@ impl PolishResource {
             disabled_toggles: string_array(value.and_then(|value| value.get("disabledToggles")))
                 .unwrap_or_else(|| vec!["ui.apply".to_owned()]),
             navigation_events: string_array(value.and_then(|value| value.get("navigationEvents")))
-                .unwrap_or_else(|| vec!["tab".to_owned(), "down".to_owned(), "right".to_owned(), "activate".to_owned()]),
+                .unwrap_or_else(|| {
+                    vec![
+                        "tab".to_owned(),
+                        "down".to_owned(),
+                        "right".to_owned(),
+                        "activate".to_owned(),
+                    ]
+                }),
             touch_events: touch_events(value.and_then(|value| value.get("touchEvents"))),
             virtual_keyboard_node: value
                 .and_then(|value| value.get("virtualKeyboardNode"))
@@ -510,8 +563,16 @@ fn touch_events(value: Option<&Value>) -> Vec<TouchEvent> {
         .flatten()
         .map(|event| TouchEvent {
             axis: event.get("axis").and_then(Value::as_str).map(str::to_owned),
-            control: event.get("control").and_then(Value::as_str).unwrap_or("").to_owned(),
-            phase: event.get("phase").and_then(Value::as_str).unwrap_or("move").to_owned(),
+            control: event
+                .get("control")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_owned(),
+            phase: event
+                .get("phase")
+                .and_then(Value::as_str)
+                .unwrap_or("move")
+                .to_owned(),
             value: event.get("value").and_then(Value::as_f64).unwrap_or(0.0) as f32,
         })
         .collect::<Vec<_>>()

@@ -33,7 +33,12 @@ export type SystemService =
   | "settings.export"
   | "settings.get"
   | "settings.import"
-  | "settings.set";
+  | "settings.set"
+  | "ui.activate"
+  | "ui.focus"
+  | "ui.read"
+  | "ui.setDisabled"
+  | "ui.setValue";
 export type PortableSystem<TContext = ISystemContext> = (context: TContext) => unknown;
 
 export interface ISystemOptions {
@@ -120,9 +125,12 @@ export interface ISystemContext {
   };
   commands: {
     addComponent(entity: string, component: EcsFactory | IEcsSchema | string, value?: unknown): void;
+    clearParent(child: string): void;
     despawn(entity: string, policy?: { recursive?: boolean }): void;
+    instantiate(prefab: string, prefix: string): { accepted: boolean; entities: string[]; prefab: string; root: string | null; status: "enqueued" | "missing" };
     removeComponent(entity: string, component: EcsFactory | IEcsSchema | string): void;
     setComponent(entity: string, component: EcsFactory | IEcsSchema | string, value: unknown): void;
+    setParent(child: string, parent: string): void;
     spawn(entity: string, components: Record<string, unknown>): void;
   };
   events: {
@@ -132,6 +140,22 @@ export interface ISystemContext {
   input: {
     action(name: string): boolean;
     axis(name: string): number;
+  };
+  ui: {
+    activate(nodeId: string): { accepted: boolean; action?: string; node: string; status: "activated" | "disabled" | "missing" | "no-action" };
+    focus(nodeId: string): { accepted: boolean; current: string | null; previous: string | null; status: "focused" | "missing" | "not-focusable" };
+    read(nodeId: string): {
+      action?: string;
+      disabled: boolean;
+      focusable: boolean;
+      focused: boolean;
+      kind?: string;
+      node: string;
+      status: "found" | "missing";
+      value?: boolean | number | string;
+    };
+    setDisabled(nodeId: string, disabled: boolean): { accepted: boolean; disabled: boolean; node: string; status: "missing" | "updated" };
+    setValue(nodeId: string, value: boolean | number | string): { accepted: boolean; node: string; status: "missing" | "updated"; value: boolean | number | string };
   };
   physics: {
     overlap(options: {
@@ -229,6 +253,37 @@ export interface ISystemContext {
           origin: [number, number, number];
         };
   };
+  persistence: {
+    delete(slot: string): { accepted: boolean; slot: string; status: "deleted" | "missing-save" };
+    listSlots(): string[];
+    load(slot: string): {
+      accepted: boolean;
+      record?: {
+        appVersion: string;
+        components: Record<string, Record<string, unknown>>;
+        resources: Record<string, unknown>;
+        schemaVersion: number;
+        settings: Record<string, boolean | number | string>;
+        slot: string;
+      };
+      slot: string;
+      status: "loaded" | "missing-save" | "missing-slot";
+      world: unknown;
+    };
+    save(slot: string): {
+      accepted: boolean;
+      record?: {
+        appVersion: string;
+        components: Record<string, Record<string, unknown>>;
+        resources: Record<string, unknown>;
+        schemaVersion: number;
+        settings: Record<string, boolean | number | string>;
+        slot: string;
+      };
+      slot: string;
+      status: "missing-slot" | "saved";
+    };
+  };
   query(query?: IQueryDeclaration | IQueryOptions): ISystemEntity[];
   random: {
     bool(probability?: number): boolean;
@@ -244,6 +299,12 @@ export interface ISystemContext {
     pop(options?: Record<string, unknown>): { accepted: true; operation: "pop" };
     push(scene: string, options?: Record<string, unknown>): { accepted: true; operation: "push"; scene: string };
     unload(scene: string, options?: Record<string, unknown>): { accepted: true; operation: "unload"; scene: string };
+  };
+  settings: {
+    export(): Record<string, boolean | number | string>;
+    get(key: string): boolean | number | string | undefined;
+    import(values: Record<string, unknown>): Record<string, boolean | number | string>;
+    set(key: string, value: boolean | number | string): boolean;
   };
   timers: {
     done(start: number, duration: number): boolean;

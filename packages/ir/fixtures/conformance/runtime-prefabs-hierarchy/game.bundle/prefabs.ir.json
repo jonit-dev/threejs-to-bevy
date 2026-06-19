@@ -1,0 +1,35 @@
+{
+  "schema": "threenative.prefabs",
+  "version": "0.1.0",
+  "prefabs": [
+    {
+      "id": "prefab.crate",
+      "root": "root",
+      "entities": [
+        {
+          "id": "root",
+          "components": {
+            "Transform": {
+              "position": [1, 0, 0],
+              "rotation": [0, 0, 0, 1],
+              "scale": [1, 1, 1]
+            }
+          }
+        },
+        {
+          "id": "child",
+          "components": {
+            "Hierarchy": {
+              "parent": "root"
+            },
+            "Transform": {
+              "position": [0, 1, 0],
+              "rotation": [0, 0, 0, 1],
+              "scale": [1, 1, 1]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

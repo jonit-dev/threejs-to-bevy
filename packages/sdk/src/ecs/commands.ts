@@ -20,6 +20,20 @@ export type CommandDeclaration =
       kind: "despawn";
     }
   | {
+      kind: "instantiate";
+      prefab: string;
+      prefix: string;
+    }
+  | {
+      child: EntityRef;
+      kind: "setParent";
+      parent: EntityRef;
+    }
+  | {
+      child: EntityRef;
+      kind: "clearParent";
+    }
+  | {
       event: string;
       kind: "emitEvent";
       schema?: IEcsSchema;
@@ -39,6 +53,18 @@ export function despawn(entity: EntityRef): CommandDeclaration {
     entity,
     kind: "despawn",
   };
+}
+
+export function instantiate(prefab: string, prefix: string): CommandDeclaration {
+  return { kind: "instantiate", prefab, prefix };
+}
+
+export function setParent(child: EntityRef, parent: EntityRef): CommandDeclaration {
+  return { child, kind: "setParent", parent };
+}
+
+export function clearParent(child: EntityRef): CommandDeclaration {
+  return { child, kind: "clearParent" };
 }
 
 export function addComponent(entity: EntityRef, component: EcsFactory | IEcsSchema | string): CommandDeclaration {

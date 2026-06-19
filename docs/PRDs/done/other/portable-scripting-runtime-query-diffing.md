@@ -154,10 +154,10 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Specify whether changed queries always use runtime diff fallback or an
+- [x] Specify whether changed queries always use runtime diff fallback or an
   explicit `mode`.
-- [ ] Validate component names and reject deep-path/wildcard changed selectors.
-- [ ] Preserve existing explicit metadata behavior.
+- [x] Validate component names and reject deep-path/wildcard changed selectors.
+- [x] Preserve existing explicit metadata behavior.
 
 **Tests Required:**
 
@@ -183,9 +183,9 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Snapshot declared component values by entity ID and component name.
-- [ ] Update snapshots after command-buffer flush with stable ordering.
-- [ ] Ensure pagination/order are applied after changed filtering.
+- [x] Snapshot declared component values by entity ID and component name.
+- [x] Update snapshots after command-buffer flush with stable ordering.
+- [x] Ensure pagination/order are applied after changed filtering.
 
 **Tests Required:**
 
@@ -211,10 +211,10 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Implement equivalent snapshot comparison in native host data.
-- [ ] Add shared conformance fixture that mutates and then queries changed
+- [x] Implement equivalent snapshot comparison in native host data.
+- [x] Add shared conformance fixture that mutates and then queries changed
   components.
-- [ ] Compare canonical web/native query reports.
+- [x] Compare canonical web/native query reports.
 
 **Tests Required:**
 
@@ -240,9 +240,9 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add or wire a focused changed-query gate into release verification.
-- [ ] Update docs to mark hidden runtime diffing implemented.
-- [ ] Record artifact paths and residual limits.
+- [x] Add or wire a focused changed-query gate into release verification.
+- [x] Update docs to mark hidden runtime diffing implemented.
+- [x] Record artifact paths and residual limits.
 
 **Tests Required:**
 
@@ -260,7 +260,7 @@ sequenceDiagram
 After each phase, spawn the `prd-work-reviewer` agent with:
 
 ```txt
-Review checkpoint for phase [N] of PRD at docs/PRDs/other/portable-scripting-runtime-query-diffing.md
+Review checkpoint for phase [N] of PRD at docs/PRDs/done/other/portable-scripting-runtime-query-diffing.md
 ```
 
 Continue only after PASS. Manual verification is required after Phase 3 because

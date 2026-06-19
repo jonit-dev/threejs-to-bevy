@@ -4,8 +4,8 @@ use threenative_loader::{
     AudioToneIr,
 };
 use threenative_runtime::audio::{
-    NativeAudioCommandKind, ScriptAudioPlayOptions, ScriptAudioRuntimeController, handle_audio_events,
-    observe_audio, start_audio, trace_audio_lifecycle, trace_audio_support,
+    NativeAudioCommandKind, ScriptAudioPlayOptions, ScriptAudioRuntimeController,
+    handle_audio_events, observe_audio, start_audio, trace_audio_lifecycle, trace_audio_support,
 };
 
 mod support;

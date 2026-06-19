@@ -3,8 +3,9 @@
 > Status: V4 established the primitive portable scripting MVP. Later promoted
 > gates add game-root authoring, richer fixed-trace host services, animation
 > controls, sensors, navigation, scene lifecycle effects, runtime gameplay host
-> semantics, and persistence/reload evidence. The current maintained evidence
-> is the capability/release gate set (`pnpm verify:conformance`,
+> semantics, UI/persistence/settings facades, and persistence/reload evidence.
+> The current maintained evidence is the capability/release gate set
+> (`pnpm verify:conformance`,
 > `pnpm verify:runtime-gameplay-host`, `pnpm verify:persistence-reload`, and
 > `pnpm verify:release`), while legacy `verify:v*` commands remain historical
 > aliases or focused milestone proofs.
@@ -58,7 +59,8 @@ unsupported.
 - [x] Query sorting by entity ID with `orderBy: "id"`.
 - [x] Query pagination with deterministic `offset` and `limit` windows.
 - [x] Changed-query filters from explicit fixed-trace change metadata.
-- [ ] Missing hidden runtime diffing for changed queries.
+- [x] Hidden runtime diffing for changed queries through schedule-stage
+  component snapshots.
 
 ### Time, Input, Randomness, and Timers
 
@@ -132,10 +134,10 @@ unsupported.
 - [x] Script audio play/stop/query through `ctx.audio.play`, `ctx.audio.stop`,
   and `ctx.audio.query` against declared audio IR.
 - [ ] Missing arbitrary particle commands beyond bounded portable emitter data.
-- [ ] Missing UI command/focus/input script APIs.
-- [ ] Partial persistence/settings service declarations; save/settings IR and
-  reload evidence are promoted, but a general `ctx.persistence`/`ctx.settings`
-  facade is not yet the documented script API.
+- [x] UI command/focus/value/disabled/read script APIs through `ctx.ui.*`.
+- [x] Persistence save/load/list/delete script APIs through
+  `ctx.persistence.*`.
+- [x] Settings get/set/export/import script APIs through `ctx.settings.*`.
 
 ### Authoring Ergonomics
 
@@ -149,8 +151,9 @@ unsupported.
   `defineGame({ scenes, initialScene })` lifecycle scene composition.
 - [x] ECS tags as queryable zero-field marker components.
 - [x] Scene `Group` containers as hierarchy-only `SceneContainer` entities.
-- [ ] Missing runtime prefab instantiation.
-- [ ] Missing child hierarchy commands from scripts.
+- [x] Runtime prefab instantiation through `ctx.commands.instantiate(...)`.
+- [x] Child hierarchy commands through `ctx.commands.setParent(...)` and
+  `ctx.commands.clearParent(...)`.
 
 ### Intentionally Unsupported Or Non-Portable
 
@@ -346,8 +349,10 @@ show the feature.
   ordering in SDK/IR/web/Bevy QuickJS.
 - [x] V5 changed-query filters for fixed-trace metadata. `changed: [...]`
   filters against structured change metadata from `world.resources.__changed`,
-  `world.resources.Changed`, or entity `__changed` markers; runtimes do not
-  infer diffs from hidden state.
+  `world.resources.Changed`, or entity `__changed` markers.
+- [x] Runtime changed-query diffing. When explicit fixed-trace metadata is
+  absent, web and Bevy compare deterministic schedule-stage component snapshots;
+  `changed: [...]` filtering runs before `orderBy`, `offset`, and `limit`.
 - [x] V5 same-stage system ordering constraints. SDK/IR/compiler/web/Bevy
   support deterministic topological `before`/`after` ordering with system-name
   tie breaks; validation rejects missing, cross-stage, self, and cyclic
@@ -407,44 +412,44 @@ show the feature.
   diagnostics, and state-preserving reload are promoted through the
   persistence/reload evidence path without exposing filesystem, cloud-save, or
   platform storage handles to scripts.
+- [x] Script UI, persistence, and settings facades. Systems may declare
+  `ui.activate`, `ui.focus`, `ui.read`, `ui.setDisabled`, `ui.setValue`,
+  `persistence.save`, `persistence.load`, `persistence.listSlots`,
+  `persistence.delete`, `settings.get`, `settings.set`, `settings.export`, and
+  `settings.import` services and receive plain-data results without raw DOM,
+  filesystem, cloud-save, or platform handles.
+- [x] V7/V9 character movement beyond the narrow fixed-trace service. Slopes,
+  step-up, push policy, and ordered primitive contact observations are promoted
+  through `CharacterController`, collider metadata, and `ctx.character.move`
+  plain-data observations. Navmesh-backed controller behavior remains outside
+  this claim.
 - [x] V10 grouping ergonomics. `defineTag()` creates queryable zero-field ECS
   marker components, and scene `Group` lowers to hierarchy-only
   `SceneContainer` entities for transform/editor organization.
 
 ### Partial
 
-- [ ] V7 character movement beyond the narrow fixed-trace service. Full
-  solver-backed interaction, navmesh behavior, arbitrary sloped mesh terrain,
-  and object pushing remain incomplete.
 - [ ] Full physics solver contact filtering beyond promoted primitive
   collision/trigger/sensor observations remains intentionally narrow.
-- [ ] General persistence/settings script facades. Persistence/settings service
-  names are reserved as declared system services, and persistence/reload
-  evidence is promoted through structured IR, but `ctx.persistence` and
-  `ctx.settings` are not documented script facades yet.
 
 ### Missing
 
 - [ ] Arbitrary particle commands beyond bounded portable emitter data.
   Promote only when the command surface has deterministic web/native behavior
   and visual verification artifacts.
-- [ ] Runtime prefab instantiation. V5 authoring-time prefab helpers expand to
-  existing declarations; runtime instantiation remains future scope.
-- [ ] Child hierarchy commands. This needs scene-visible proof and deterministic
-  command application across web and Bevy.
+- [x] Runtime prefab instantiation. Bundle-local `prefabs.ir.json` catalogs
+  expand through caller-provided deterministic prefixes and are verified across
+  web and Bevy by `pnpm verify:runtime-prefabs-hierarchy`.
+- [x] Child hierarchy commands. `setParent` and `clearParent` mutate the
+  portable `Hierarchy` component with cycle checks and matching web/native
+  command application.
 - [ ] Delayed command scheduling beyond bounded timer/channel services.
 
 ### Design Only
 
-- [ ] Script-level audio commands. Structured audio IR, UI-triggered audio
-  actions, mixer/effect reports, and native device diagnostics are promoted,
-  through promoted audio IR and runtime observations, and scripts can call
-  `ctx.audio.play/stop/query` against declared bundle-local sounds.
-- [ ] UI commands/focus/input. Better aligned with editor/inspector and online
-  workflows unless a visual-quality scene requires a narrow HUD.
-- [ ] General `ctx.persistence`/`ctx.settings` facades. Persistence and
-  settings are promoted as structured IR/runtime evidence, not as direct
-  filesystem or platform storage access.
+- [ ] General cloud-save, platform storage, DOM-backed widget handles, and
+  broad runtime mixer mutation. The promoted script facades return bounded
+  plain data only.
 
 ### Unsupported
 
@@ -528,7 +533,10 @@ validated against `systems.ir.json`.
 | `ctx.animation` | Playback commands, state queries, and stop commands. | Runtime service facade; graph/controller state is runtime-owned and serialized as plain data. |
 | `ctx.audio` | Declared audio play/stop/query against bundle-local audio IR. | Returns logical playback IDs and status only; streaming, network URLs, custom decoders, and platform handles remain private or diagnostic-only. |
 | `ctx.assets` | Stable asset lookup by ID. | `get`/`list` return cloned manifest metadata; `load` is a declared `assets.load` service returning deterministic ready/missing metadata, not renderer or native handles. |
+| `ctx.ui` | Retained UI focus, activation, value, disabled-state, and read operations. | Operates on declared `ui.ir.json` node IDs and returns plain status payloads; no DOM, WebView, Bevy UI entity, or platform widget handle is exposed. |
 | `ctx.scenes` | Scene lifecycle service effects. | Queues current/change/push/pop/load-additive/unload effects and drives deterministic scene lifecycle traces. |
+| `ctx.persistence` | Declared save-slot operations. | `save`, `load`, `listSlots`, and `delete` operate on structured local-data declarations and runtime-owned stores; scripts never receive filesystem, cloud-save, or platform storage handles. |
+| `ctx.settings` | Declared setting reads and writes. | `get`, `set`, `export`, and `import` validate values against local-data setting specs and return booleans, numbers, strings, or plain records only. |
 | `ctx.states` | Resource-derived app, computed, and substate reads. | Reads declared lifecycle state metadata; state values are plain strings or null. |
 | `ctx.components` | Component reflection and hook observations. | Exposes declared component type metadata and hook observations, not backend component IDs. |
 | `ctx.observers` | Deterministic observer route reads. | Returns declared target/bubble propagation steps; raw callbacks are not exposed. |
@@ -645,7 +653,9 @@ Rules:
 - V9 character pushing is declared with `CharacterController.pushPolicy`.
   `ctx.character.move(...)` observations may include `pushed` for light dynamic
   primitive bodies or `tooHeavy` when policy blocks movement against a dynamic
-  primitive above the authored mass limit.
+  primitive above the authored mass limit. Extended observations may include
+  ordered contact, slope, and step data when primitive solver metadata resolves
+  ramps, step-up, or push interactions.
 - V9 static pathfinding uses a built-in `Navigation` world resource containing
   bounded static convex regions, area costs, and optional fixture queries.
   Scripts declare `navigation.path` and call `ctx.navigation.path({ start,
@@ -659,7 +669,7 @@ Rules:
   fixed-trace observation for one declared character controller. Scripts pass an
   entity id or entity view plus optional axis values and fixed delta; runtimes
   return plain data such as `desired`, `resolved`, `grounded`, `groundEntity`,
-  and `blockedBy`.
+  `blockedBy`, `contacts`, `slope`, `step`, and `pushed`.
 - Mesh picking uses the `picking.mesh` service permission and intersects rays
   with generated mesh renderer bounds. It does not expose Three.js or Bevy
   renderer handles.
@@ -749,9 +759,11 @@ Runtime host metadata is deliberately narrow and deterministic:
 - Scene lifecycle services (`ctx.scenes.current/change/push/pop/loadAdditive/
   unload`) queue service effects and drive deterministic scene lifecycle traces.
 - Persistence, save slots, settings, autosave restore, migrations, and
-  state-preserving reload are promoted through structured IR and runtime
-  evidence, but scripts do not receive filesystem, cloud-save, or platform
-  storage handles.
+  state-preserving reload are promoted through structured IR, script facades,
+  and runtime evidence, but scripts do not receive filesystem, cloud-save, or
+  platform storage handles.
+- UI services (`ctx.ui.focus/activate/read/setDisabled/setValue`) operate on
+  declared retained-UI node IDs and return deterministic plain-data statuses.
 
 ## Resources
 

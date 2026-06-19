@@ -4,7 +4,9 @@ use bevy::prelude::*;
 use serde_json::json;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{WorldEntity, load_bundle};
-use threenative_runtime::map_world::{map_bundle_into_world, THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY};
+use threenative_runtime::map_world::{
+    THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY, map_bundle_into_world,
+};
 
 #[test]
 fn should_spawn_stable_ids_for_cube_fixture() {
@@ -40,7 +42,8 @@ fn cube_fixture_directional_light_should_use_web_tuned_illuminance() {
         .expect("cube key light should be spawned");
 
     assert!(
-        (light.illuminance - (2.0 * THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY)).abs() < 0.01,
+        (light.illuminance - (2.0 * THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY)).abs()
+            < 0.01,
         "directional illuminance should match the web-tuned cube fixture constant"
     );
 }

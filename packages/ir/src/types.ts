@@ -13,6 +13,7 @@ export type EnvironmentSceneSchema = "threenative.environment-scene";
 export type OverlaysSchema = "threenative.overlays";
 export type AnimationsSchema = "threenative.animations";
 export type ScenesSchema = "threenative.scenes";
+export type PrefabsSchema = "threenative.prefabs";
 
 export interface IBundleManifest {
   schema: BundleSchema;
@@ -29,6 +30,7 @@ export interface IBundleManifest {
     scenes?: string;
     systems?: string;
     overlays?: string;
+    prefabs?: string;
     ui?: string;
   };
   files: {
@@ -39,12 +41,30 @@ export interface IBundleManifest {
     componentSchemas?: "schemas/components.schema.json";
     eventSchemas?: "schemas/events.schema.json";
     input?: string;
+    prefabs?: string;
     gltfScene?: string;
     localData?: string;
     resourceSchemas?: "schemas/resources.schema.json";
     runtimeConfig?: "runtime.config.json";
     scripts?: "scripts.bundle.js";
   };
+}
+
+export interface IPrefabEntityTemplateIr {
+  id: string;
+  components: IWorldEntity["components"];
+}
+
+export interface IPrefabDeclarationIr {
+  id: string;
+  root: string;
+  entities: readonly IPrefabEntityTemplateIr[];
+}
+
+export interface IPrefabsIr {
+  prefabs: readonly IPrefabDeclarationIr[];
+  schema: PrefabsSchema;
+  version: SchemaVersion;
 }
 
 export type SceneLifecycleKind = "credits" | "cutscene" | "level" | "loading" | "menu" | "overlay" | "system";

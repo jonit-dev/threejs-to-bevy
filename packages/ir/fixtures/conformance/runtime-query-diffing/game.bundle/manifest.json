@@ -1,0 +1,24 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "runtime-query-diffing",
+  "requiredCapabilities": {
+    "scripting": [
+      "queries.changed.runtime-diff",
+      "schedule.update",
+      "script-bundle",
+      "systems"
+    ]
+  },
+  "entry": {
+    "scripts": "scripts.bundle.js",
+    "systems": "systems.ir.json",
+    "world": "world.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "materials": "materials.ir.json",
+    "resourceSchemas": "schemas/resources.schema.json",
+    "targetProfile": "target.profile.json"
+  }
+}

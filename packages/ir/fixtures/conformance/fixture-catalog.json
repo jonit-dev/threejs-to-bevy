@@ -134,6 +134,58 @@
       ]
     },
     {
+      "canonicalId": "runtime-query-diffing",
+      "owner": "ir-contract",
+      "sourceExample": "runtime-query-diffing",
+      "regenerateCommand": "pnpm verify:runtime-query-diffing",
+      "canonicalArtifactGate": "runtime-query-diffing",
+      "ownerDocs": "docs/PRDs/done/other/portable-scripting-runtime-query-diffing.md",
+      "aggregateGate": "verify:release",
+      "bundlePath": "packages/ir/fixtures/conformance/runtime-query-diffing/game.bundle",
+      "promotedCapabilities": [
+        "scripting:queries.changed.runtime-diff"
+      ],
+      "reportArtifacts": [
+        "tools/verify/artifacts/runtime-query-diffing/verification-report.json"
+      ]
+    },
+    {
+      "canonicalId": "runtime-prefabs-hierarchy",
+      "owner": "ir-contract",
+      "sourceExample": "runtime-prefabs-hierarchy",
+      "regenerateCommand": "pnpm verify:runtime-prefabs-hierarchy",
+      "canonicalArtifactGate": "runtime-prefabs-hierarchy",
+      "ownerDocs": "docs/PRDs/done/other/portable-scripting-runtime-prefabs-hierarchy.md",
+      "aggregateGate": "verify:release",
+      "bundlePath": "packages/ir/fixtures/conformance/runtime-prefabs-hierarchy/game.bundle",
+      "promotedCapabilities": [
+        "scripting:command.clearParent",
+        "scripting:command.instantiate",
+        "scripting:command.setParent"
+      ],
+      "reportArtifacts": [
+        "tools/verify/artifacts/runtime-prefabs-hierarchy/verification-report.json"
+      ]
+    },
+    {
+      "canonicalId": "ui-persistence-settings-facades",
+      "owner": "ir-contract",
+      "sourceExample": "ui-persistence-settings-facades",
+      "regenerateCommand": "pnpm verify:ui-persistence-settings-facades",
+      "canonicalArtifactGate": "ui-persistence-settings-facades",
+      "ownerDocs": "docs/PRDs/done/other/portable-scripting-ui-persistence-settings-facades.md",
+      "aggregateGate": "verify:release",
+      "bundlePath": "packages/ir/fixtures/conformance/ui-persistence-settings-facades/game.bundle",
+      "promotedCapabilities": [
+        "scripting:service.persistence",
+        "scripting:service.settings",
+        "scripting:service.ui"
+      ],
+      "reportArtifacts": [
+        "tools/verify/artifacts/ui-persistence-settings-facades/verification-report.json"
+      ]
+    },
+    {
       "canonicalId": "animation-state",
       "owner": "ir-contract",
       "sourceExample": "animation-state",

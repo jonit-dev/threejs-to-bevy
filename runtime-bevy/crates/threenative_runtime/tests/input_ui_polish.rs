@@ -16,7 +16,12 @@ fn should_report_input_ui_polish_fixture() {
     assert_eq!(report.ui.scroll[0].node, "ui.controls");
     assert_eq!(report.ui.focus_narration[0].text, "Player name");
     assert_eq!(report.ui.virtual_keyboard.status, "diagnostic-only");
-    assert!(report.diagnostics.iter().any(|diagnostic| diagnostic.code == "TN_INPUT_UI_NATIVE_ITALIC_DIAGNOSTIC_ONLY"));
+    assert!(
+        report
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.code == "TN_INPUT_UI_NATIVE_ITALIC_DIAGNOSTIC_ONLY")
+    );
 }
 
 fn fixture_path() -> PathBuf {

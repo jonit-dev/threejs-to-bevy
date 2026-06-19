@@ -124,3 +124,15 @@ export {
   traceRuntimeGameplayHost,
   type IRuntimeGameplayHostReport,
 } from "./runtimeGameplayHost.js";
+export {
+  traceRuntimeQueryDiffing,
+  type IRuntimeQueryDiffingReport,
+} from "./runtimeQueryDiffing.js";
+export {
+  traceRuntimePrefabsHierarchy,
+  type IRuntimePrefabsHierarchyReport,
+} from "./runtimePrefabsHierarchy.js";
+export {
+  traceUiPersistenceSettingsFacades,
+  type IUiPersistenceSettingsFacadesReport,
+} from "./uiPersistenceSettingsFacades.js";

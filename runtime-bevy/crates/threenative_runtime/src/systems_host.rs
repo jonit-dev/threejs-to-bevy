@@ -9,9 +9,10 @@ use thiserror::Error;
 use threenative_loader::{LoadedBundle, SystemIr};
 
 use crate::{
+    component_diff::ComponentDiffCache,
     input::NativeInputState,
     systems_context::{
-        NativeSystemTimeSnapshot, build_system_context_snapshot_with_events_and_input,
+        NativeSystemTimeSnapshot, build_system_context_snapshot_with_events_input_and_diff,
     },
     systems_effects::{NativeSystemEffectLog, NativeSystemEffects, apply_system_effects},
 };
@@ -173,8 +174,16 @@ pub fn run_native_systems_once_with_input(
         })?;
 
     let mut logs = Vec::new();
+    let mut diff_cache = ComponentDiffCache::default();
     for schedule in ["startup", "fixedUpdate", "update", "postUpdate"] {
         let scheduled_systems = ordered_systems_for_schedule(&systems, schedule);
+        let tracked_components = scheduled_systems
+            .iter()
+            .flat_map(|system| system.queries.iter())
+            .flat_map(|query| query.changed.iter())
+            .cloned()
+            .collect::<Vec<_>>();
+        diff_cache.begin_schedule_stage(bundle, &tracked_components);
         for system in scheduled_systems {
             let effects = call_system_export(
                 &context,
@@ -183,6 +192,7 @@ pub fn run_native_systems_once_with_input(
                 time.clone(),
                 BTreeMap::new(),
                 input,
+                Some(&diff_cache),
             )?;
             let log =
                 apply_system_effects(bundle, system, &effects, 1, 1).map_err(|diagnostics| {
@@ -280,6 +290,7 @@ fn call_system_export(
     time: NativeSystemTimeSnapshot,
     events: BTreeMap<String, Vec<Value>>,
     input: Option<&NativeInputState>,
+    diff_cache: Option<&ComponentDiffCache>,
 ) -> Result<NativeSystemEffects, SystemsHostError> {
     let export_name = system
         .script
@@ -291,8 +302,9 @@ fn call_system_export(
                 format!("System '{}' does not declare a script export.", system.name),
             )
         })?;
-    let snapshot =
-        build_system_context_snapshot_with_events_and_input(bundle, system, time, events, input);
+    let snapshot = build_system_context_snapshot_with_events_input_and_diff(
+        bundle, system, time, events, input, diff_cache,
+    );
     let snapshot_json = serde_json::to_string(&snapshot).map_err(|source| {
         host_error(
             "TN_BEVY_SYSTEM_CONTEXT_SERIALIZE_FAILED",
@@ -424,11 +436,17 @@ function __tnInvokeSystem(options) {
     if (value.entities && Array.isArray(value.entities[entityId])) return value.entities[entityId].filter((item) => typeof item === "string");
     return [];
   };
-  const changedComponents = (entity) => new Set([
-    ...changedValues(entity.components.__changed, entity.id),
-    ...changedValues(data.resources.__changed, entity.id),
-    ...changedValues(data.resources.Changed, entity.id)
-  ]);
+  const changedComponents = (entity) => {
+    const explicit = new Set([
+      ...changedValues(entity.components.__changed, entity.id),
+      ...changedValues(data.resources.__changed, entity.id),
+      ...changedValues(data.resources.Changed, entity.id)
+    ]);
+    if (explicit.size > 0) {
+      return explicit;
+    }
+    return new Set(changedValues(data.runtimeChanged, entity.id));
+  };
   const applyQuery = (source, query) => {
     const withComponents = Array.isArray(query.with) ? query.with.map(normalize) : [];
     const withoutComponents = Array.isArray(query.without) ? query.without.map(normalize) : [];
@@ -996,6 +1014,208 @@ function __tnInvokeSystem(options) {
       audioPlaybacks[playbackId] = stopped;
       return serializeAudioState(stopped);
     };
+    const ensurePersistenceStore = () => {
+      if (!globalThis.__tnPersistenceStore) {
+        globalThis.__tnPersistenceStore = { saves: {}, settings: {} };
+      }
+      return globalThis.__tnPersistenceStore;
+    };
+    const settingByKey = (key) => (data.localData.settings || []).find((setting) => setting.key === key);
+    const defaultSettings = () => {
+      const defaults = {};
+      for (const setting of data.localData.settings || []) {
+        defaults[setting.key] = clone(setting.defaultValue);
+      }
+      return defaults;
+    };
+    const ensureSettings = () => {
+      const store = ensurePersistenceStore();
+      const defaults = defaultSettings();
+      store.settings = { ...defaults, ...(store.settings || {}) };
+      return store.settings;
+    };
+    const validateSetting = (setting, value) => {
+      if (!setting) return false;
+      if (setting.kind === "boolean") return typeof value === "boolean";
+      if (setting.kind === "number") {
+        const numeric = Number(value);
+        if (!Number.isFinite(numeric)) return false;
+        if (setting.min !== undefined && numeric < Number(setting.min)) return false;
+        if (setting.max !== undefined && numeric > Number(setting.max)) return false;
+        return true;
+      }
+      if (setting.kind === "string") return typeof value === "string";
+      if (setting.kind === "enum") return typeof value === "string" && Array.isArray(setting.enumValues) && setting.enumValues.includes(value);
+      return false;
+    };
+    const snapshotSaveRecord = (slot) => {
+      const resourceIds = new Set((data.localData.resources || []).map((entry) => entry.id));
+      const componentIds = new Set((data.localData.components || []).map((entry) => entry.id));
+      const resources = {};
+      const entities = [];
+      for (const id of resourceIds) {
+        if (data.resources[id] !== undefined) resources[id] = clone(data.resources[id]);
+      }
+      for (const entity of data.entities) {
+        const components = {};
+        for (const component of componentIds) {
+          if (entity.components[component] !== undefined) {
+            components[component] = clone(entity.components[component]);
+          }
+        }
+        if (Object.keys(components).length > 0) entities.push({ id: entity.id, components });
+      }
+      return { resources, world: { entities, resources }, slot };
+    };
+    const saveSlotDeclaration = (slot) => (data.localData.saveSlots || []).find((candidate) => candidate.id === slot);
+    const persistenceListSlots = () => {
+      const slots = (data.localData.saveSlots || []).map((slot) => slot.id).sort();
+      const request = {};
+      const result = clone(slots);
+      effects.services.push({ service: "persistence.listSlots", payload: { request, result } });
+      return result;
+    };
+    const persistenceSave = (slot) => {
+      const request = { slot };
+      const declaration = saveSlotDeclaration(slot);
+      const result = declaration
+        ? { accepted: true, record: snapshotSaveRecord(slot), slot, status: "saved" }
+        : { accepted: false, slot, status: "missing-slot" };
+      if (declaration) ensurePersistenceStore().saves[slot] = clone(result.record);
+      effects.services.push({ service: "persistence.save", payload: { request, result: clone(result) } });
+      return clone(result);
+    };
+    const persistenceLoad = (slot) => {
+      const request = { slot };
+      const declaration = saveSlotDeclaration(slot);
+      const record = ensurePersistenceStore().saves[slot];
+      const result = !declaration
+        ? { accepted: false, record: null, slot, status: "missing-slot" }
+        : (!record ? { accepted: false, record: null, slot, status: "missing-save" } : { accepted: true, record: clone(record), slot, status: "loaded" });
+      effects.services.push({ service: "persistence.load", payload: { request, result: clone(result) } });
+      return clone(result);
+    };
+    const persistenceDelete = (slot) => {
+      const request = { slot };
+      const store = ensurePersistenceStore();
+      const existed = store.saves[slot] !== undefined;
+      delete store.saves[slot];
+      const result = { accepted: existed, slot, status: existed ? "deleted" : "missing-save" };
+      effects.services.push({ service: "persistence.delete", payload: { request, result: clone(result) } });
+      return clone(result);
+    };
+    const settingsGet = (key) => {
+      const request = { key };
+      const result = clone(ensureSettings()[key]);
+      effects.services.push({ service: "settings.get", payload: { request, result } });
+      return result;
+    };
+    const settingsSet = (key, value) => {
+      const request = { key, value: clone(value) };
+      const setting = settingByKey(key);
+      const accepted = validateSetting(setting, value);
+      if (accepted) ensureSettings()[key] = clone(value);
+      const result = accepted;
+      effects.services.push({ service: "settings.set", payload: { request, result } });
+      return result;
+    };
+    const settingsExport = () => {
+      const request = {};
+      const result = clone(ensureSettings());
+      effects.services.push({ service: "settings.export", payload: { request, result } });
+      return result;
+    };
+    const settingsImport = (values) => {
+      const request = { values: clone(values || {}) };
+      const settings = ensureSettings();
+      for (const [key, value] of Object.entries(values || {})) {
+        const setting = settingByKey(key);
+        if (validateSetting(setting, value)) settings[key] = clone(value);
+      }
+      const result = clone(settings);
+      effects.services.push({ service: "settings.import", payload: { request, result } });
+      return result;
+    };
+    const ensureUiState = () => {
+      const ui = data.ui || { nodes: [], focusOrder: undefined };
+      const nodeIds = ui.nodes.map((node) => node.id).join("|");
+      if (!globalThis.__tnUiState || globalThis.__tnUiState.nodeIds !== nodeIds) {
+        const disabled = {};
+        const values = {};
+        const nodes = {};
+        for (const node of ui.nodes) {
+          nodes[node.id] = node;
+          disabled[node.id] = node.disabled === true;
+          if (node.value !== undefined) values[node.id] = node.value;
+          else if (node.text !== undefined) values[node.id] = node.text;
+          else if (node.label !== undefined) values[node.id] = node.label;
+        }
+        const fallbackOrder = ui.nodes.filter((node) => node.focusable).map((node) => node.id);
+        const focusOrder = Array.isArray(ui.focusOrder) ? ui.focusOrder.filter((id) => nodes[id] && nodes[id].focusable) : fallbackOrder;
+        const current = focusOrder.find((id) => disabled[id] !== true) || null;
+        globalThis.__tnUiState = { currentFocus: current, disabled, focusOrder, nodeIds, nodes, values };
+      }
+      return globalThis.__tnUiState;
+    };
+    const uiFocus = (nodeId) => {
+      const state = ensureUiState();
+      const previous = state.currentFocus || null;
+      const node = state.nodes[nodeId];
+      let result;
+      if (!node) result = { accepted: false, current: previous, previous, status: "missing" };
+      else if (!node.focusable || state.disabled[nodeId] === true) result = { accepted: false, current: previous, previous, status: "not-focusable" };
+      else {
+        state.currentFocus = nodeId;
+        result = { accepted: true, current: nodeId, previous, status: "focused" };
+      }
+      effects.services.push({ service: "ui.focus", payload: { request: { node: nodeId }, result: clone(result) } });
+      return clone(result);
+    };
+    const uiActivate = (nodeId) => {
+      const state = ensureUiState();
+      const node = state.nodes[nodeId];
+      const result = !node
+        ? { accepted: false, node: nodeId, status: "missing" }
+        : (state.disabled[nodeId] === true
+          ? { accepted: false, node: nodeId, status: "disabled" }
+          : (typeof node.action === "string"
+            ? { accepted: true, action: node.action, node: nodeId, status: "activated" }
+            : { accepted: false, node: nodeId, status: "no-action" }));
+      effects.services.push({ service: "ui.activate", payload: { request: { node: nodeId }, result: clone(result) } });
+      return clone(result);
+    };
+    const uiRead = (nodeId) => {
+      const state = ensureUiState();
+      const node = state.nodes[nodeId];
+      const result = !node
+        ? { accepted: false, node: nodeId, status: "missing", value: undefined }
+        : { accepted: true, disabled: state.disabled[nodeId] === true, focused: state.currentFocus === nodeId, node: nodeId, status: "read", value: clone(state.values[nodeId]) };
+      effects.services.push({ service: "ui.read", payload: { request: { node: nodeId }, result: clone(result) } });
+      return clone(result);
+    };
+    const uiSetDisabled = (nodeId, disabled) => {
+      const state = ensureUiState();
+      const node = state.nodes[nodeId];
+      const result = !node
+        ? { accepted: false, disabled: !!disabled, node: nodeId, status: "missing" }
+        : { accepted: true, disabled: !!disabled, node: nodeId, status: "updated" };
+      if (node) {
+        state.disabled[nodeId] = !!disabled;
+        if (disabled && state.currentFocus === nodeId) state.currentFocus = null;
+      }
+      effects.services.push({ service: "ui.setDisabled", payload: { request: { disabled: !!disabled, node: nodeId }, result: clone(result) } });
+      return clone(result);
+    };
+    const uiSetValue = (nodeId, value) => {
+      const state = ensureUiState();
+      const node = state.nodes[nodeId];
+      const result = !node
+        ? { accepted: false, node: nodeId, status: "missing", value: clone(value) }
+        : { accepted: true, node: nodeId, status: "updated", value: clone(value) };
+      if (node) state.values[nodeId] = clone(value);
+      effects.services.push({ service: "ui.setValue", payload: { request: { node: nodeId, value: clone(value) }, result: clone(result) } });
+      return clone(result);
+    };
   const entities = data.entities.map((source) => ({
     id: source.id,
     components: clone(source.components),
@@ -1045,6 +1265,25 @@ function __tnInvokeSystem(options) {
       axis(name) { return Number(data.input.axes[name] ?? 0); },
       pressed() { return false; },
       released() { return false; }
+    },
+    ui: {
+      activate(nodeId) { return uiActivate(String(nodeId)); },
+      focus(nodeId) { return uiFocus(String(nodeId)); },
+      read(nodeId) { return uiRead(String(nodeId)); },
+      setDisabled(nodeId, disabled) { return uiSetDisabled(String(nodeId), !!disabled); },
+      setValue(nodeId, value) { return uiSetValue(String(nodeId), value); }
+    },
+    persistence: {
+      delete(slot) { return persistenceDelete(String(slot)); },
+      listSlots() { return persistenceListSlots(); },
+      load(slot) { return persistenceLoad(String(slot)); },
+      save(slot) { return persistenceSave(String(slot)); }
+    },
+    settings: {
+      export() { return settingsExport(); },
+      get(key) { return settingsGet(String(key)); },
+      import(values) { return settingsImport(values || {}); },
+      set(key, value) { return settingsSet(String(key), value); }
     },
     observers: {
       propagate(event, target) {
@@ -1127,11 +1366,21 @@ function __tnInvokeSystem(options) {
       addComponent(entity, component, value = {}) {
         effects.commands.push({ command: "addComponent", entity, component: normalize(component), value: clone(value) });
       },
+      clearParent(child) {
+        effects.commands.push({ child, command: "clearParent", entity: child });
+      },
       removeComponent(entity, component) {
         effects.commands.push({ command: "removeComponent", entity, component: normalize(component) });
       },
       setComponent(entity, component, value) {
         effects.commands.push({ command: "setComponent", entity, component: normalize(component), value: clone(value) });
+      },
+      instantiate(prefab, prefix) {
+        effects.commands.push({ command: "instantiate", entity: `${prefix}`, prefab, prefix });
+        return { accepted: true, entities: [], prefab, root: null, status: "enqueued" };
+      },
+      setParent(child, parent) {
+        effects.commands.push({ child, command: "setParent", entity: child, parent });
       },
       emitEvent(event, payload) {
         effects.commands.push({ command: "emitEvent", event: normalize(event), payload: clone(payload) });

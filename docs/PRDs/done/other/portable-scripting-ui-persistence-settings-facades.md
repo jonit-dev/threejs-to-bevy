@@ -83,7 +83,7 @@ diagnostics, and release evidence.
 
 - [x] YES. Authors can drive HUD/menu focus and save/load/settings behavior
   from portable scripts.
-- [ ] NO -> Internal/background feature.
+- [x] NO -> Internal/background feature.
 
 **Full user flow:**
 
@@ -164,10 +164,10 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Define `ui.focus`, `ui.activate`, `ui.setDisabled`, `ui.setValue`, and
+- [x] Define `ui.focus`, `ui.activate`, `ui.setDisabled`, `ui.setValue`, and
   `ui.read` or equivalent bounded APIs.
-- [ ] Require node IDs and declared event/action schemas.
-- [ ] Reject DOM handles, native widget handles, webview selectors, and
+- [x] Require node IDs and declared event/action schemas.
+- [x] Reject DOM handles, native widget handles, webview selectors, and
   unsupported node mutation.
 
 **Tests Required:**
@@ -194,10 +194,10 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Apply focus/value/disabled commands using UI node IDs in both runtimes.
-- [ ] Emit deterministic focus/action/value observations.
-- [ ] Preserve accessibility metadata and stable event ordering.
-- [ ] Keep DOM elements and native widget references private.
+- [x] Apply focus/value/disabled commands using UI node IDs in both runtimes.
+- [x] Emit deterministic focus/action/value observations.
+- [x] Preserve accessibility metadata and stable event ordering.
+- [x] Keep DOM elements and native widget references private.
 
 **Tests Required:**
 
@@ -224,11 +224,11 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Define `persistence.save/load/listSlots/delete` and
+- [x] Define `persistence.save/load/listSlots/delete` and
   `settings.get/set/export/import` context APIs.
-- [ ] Validate slot IDs, setting keys, schema versions, and allowed value
+- [x] Validate slot IDs, setting keys, schema versions, and allowed value
   shapes.
-- [ ] Reject raw paths, URLs, platform handles, and undeclared keys.
+- [x] Reject raw paths, URLs, platform handles, and undeclared keys.
 
 **Tests Required:**
 
@@ -254,11 +254,11 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Implement save/load/list/delete and settings operations over declared
+- [x] Implement save/load/list/delete and settings operations over declared
   local data in both runtimes.
-- [ ] Return stable statuses for missing slots, migrations, and invalid values.
-- [ ] Log service calls in canonical effect logs.
-- [ ] Keep native file paths and web storage handles hidden.
+- [x] Return stable statuses for missing slots, migrations, and invalid values.
+- [x] Log service calls in canonical effect logs.
+- [x] Keep native file paths and web storage handles hidden.
 
 **Tests Required:**
 
@@ -285,11 +285,11 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add fixture with script-driven focus/action/value state plus
+- [x] Add fixture with script-driven focus/action/value state plus
   save/load/settings operations.
-- [ ] Compare web/native UI and logical storage observations.
-- [ ] Capture visual/accessibility UI evidence.
-- [ ] Update scripting API and status docs.
+- [x] Compare web/native UI and logical storage observations.
+- [x] Capture visual/accessibility UI evidence.
+- [x] Update scripting API and status docs.
 
 **Tests Required:**
 
@@ -309,7 +309,7 @@ sequenceDiagram
 After each phase, spawn the `prd-work-reviewer` agent with:
 
 ```txt
-Review checkpoint for phase [N] of PRD at docs/PRDs/other/portable-scripting-ui-persistence-settings-facades.md
+Review checkpoint for phase [N] of PRD at docs/PRDs/done/other/portable-scripting-ui-persistence-settings-facades.md
 ```
 
 Continue only after PASS. Manual verification is required after Phase 2 for UI

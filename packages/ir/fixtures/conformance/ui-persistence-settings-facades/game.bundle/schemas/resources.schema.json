@@ -1,0 +1,17 @@
+{
+  "schema": "threenative.resource-schemas",
+  "version": "0.1.0",
+  "schemas": {
+    "FacadeReport": {
+      "fields": {}
+    },
+    "Score": {
+      "fields": {
+        "value": {
+          "kind": "number",
+          "required": true
+        }
+      }
+    }
+  }
+}

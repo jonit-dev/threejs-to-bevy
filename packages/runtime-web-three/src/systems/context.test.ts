@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { ISystemsIr, IWorldIr } from "@threenative/ir";
+import type { ISystemsIr, IUiIr, IWorldIr } from "@threenative/ir";
 
 import { channelEvent, componentHookObservations, createSystemContext, evaluateStates, plugin, pluginGroup, propagateObserverEvent, taskChannel } from "./context.js";
 
@@ -398,6 +398,90 @@ test("should apply query ordering pagination and changed filters", () => {
   );
 });
 
+test("should expose persistence and settings facades over declared local data", () => {
+  const world = makeWorld();
+  world.resources = { Progress: { level: 2 } };
+  const { context, services } = createSystemContext(world, {
+    delta: 0.016,
+    fixedDelta: 0.016,
+    localData: {
+      components: [],
+      resources: [{ id: "Progress", schema: { fields: { level: { kind: "integer" } } } }],
+      saveSlots: [{ appVersion: "1.0.0", id: "slot.auto", schemaVersion: 1 }],
+      schema: "threenative.local-data",
+      settings: [{ defaultValue: 0.5, group: "audio", key: "audio.master", kind: "number", max: 1, min: 0 }],
+      version: "0.1.0",
+    },
+  });
+
+  assert.deepEqual(context.persistence.listSlots(), ["slot.auto"]);
+  assert.equal(context.settings.get("audio.master"), 0.5);
+  assert.equal(context.settings.set("audio.master", 0.25), true);
+  const saved = context.persistence.save("slot.auto");
+  assert.equal(saved.accepted, true);
+  assert.deepEqual(saved.record?.resources, { Progress: { level: 2 } });
+  assert.equal(context.persistence.load("slot.auto").status, "loaded");
+  assert.deepEqual(context.settings.export(), { "audio.master": 0.25 });
+
+  assert.deepEqual(services.map((service) => service.service), [
+    "persistence.listSlots",
+    "settings.get",
+    "settings.set",
+    "persistence.save",
+    "persistence.load",
+    "settings.export",
+  ]);
+});
+
+test("should expose retained UI facade over stable node IDs", () => {
+  const ui = makeUi();
+  const { context, services } = createSystemContext(makeWorld(), { delta: 0.016, fixedDelta: 0.016, ui });
+
+  assert.deepEqual(context.ui.focus("settings.volume"), {
+    accepted: true,
+    current: "settings.volume",
+    previous: "play",
+    status: "focused",
+  });
+  assert.deepEqual(context.ui.activate("play"), {
+    accepted: true,
+    action: "StartGame",
+    node: "play",
+    status: "activated",
+  });
+  assert.deepEqual(context.ui.setDisabled("play", true), {
+    accepted: true,
+    disabled: true,
+    node: "play",
+    status: "updated",
+  });
+  assert.equal(context.ui.activate("play").status, "disabled");
+  assert.deepEqual(context.ui.setValue("settings.volume", 0.75), {
+    accepted: true,
+    node: "settings.volume",
+    status: "updated",
+    value: 0.75,
+  });
+  assert.deepEqual(context.ui.read("settings.volume"), {
+    disabled: false,
+    focusable: true,
+    focused: true,
+    kind: "bar",
+    node: "settings.volume",
+    status: "found",
+    value: 0.75,
+  });
+
+  assert.deepEqual(services.map((service) => service.service), [
+    "ui.focus",
+    "ui.activate",
+    "ui.setDisabled",
+    "ui.activate",
+    "ui.setValue",
+    "ui.read",
+  ]);
+});
+
 test("should expose resource-derived app states, computed states, and substates", () => {
   const world: IWorldIr = {
     entities: [],
@@ -621,6 +705,22 @@ function makeWorld(): IWorldIr {
     ],
     resources: { ActiveCamera: { entity: "camera.main" } },
     schema: "threenative.world",
+    version: "0.1.0",
+  };
+}
+
+function makeUi(): IUiIr {
+  return {
+    focusOrder: ["play", "settings.volume"],
+    root: {
+      children: [
+        { action: "StartGame", id: "play", kind: "button", label: "Play" },
+        { focusable: true, id: "settings.volume", kind: "bar", max: 1, min: 0, value: 0.5 },
+      ],
+      id: "menu",
+      kind: "column",
+    },
+    schema: "threenative.ui",
     version: "0.1.0",
   };
 }

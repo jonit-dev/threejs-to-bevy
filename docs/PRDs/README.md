@@ -41,14 +41,14 @@ This index separates current cleanup work from historical milestone batches.
   editable text/IME, UI viewport and drag behavior, window/cursor/power policy,
   runtime asset authoring/export, generated assets, and glTF extension
   processing.
-- [Portable Scripting Runtime Query Diffing](other/portable-scripting-runtime-query-diffing.md):
+- [Portable Scripting Runtime Query Diffing](done/other/portable-scripting-runtime-query-diffing.md):
   hidden runtime diffing for `changed` queries with deterministic web/Bevy
   component snapshots, explicit metadata compatibility, and conformance
   evidence.
 - [Portable Scripting Character and Physics Contacts](other/portable-scripting-character-physics-contacts.md):
   richer primitive contact filtering, character movement observations, slope
   and push semantics, and stable diagnostics for unsupported physics breadth.
-- [Portable Scripting Runtime Prefabs and Hierarchy Commands](other/portable-scripting-runtime-prefabs-hierarchy.md):
+- [Portable Scripting Runtime Prefabs and Hierarchy Commands](done/other/portable-scripting-runtime-prefabs-hierarchy.md):
   bundle-local runtime prefab catalogs, deterministic instantiation, hierarchy
   mutation commands, and rendered entity ownership/teardown parity.
 - [Portable Scripting Delayed Commands and Bounded Scheduling](other/portable-scripting-delayed-commands-scheduling.md):
@@ -60,7 +60,7 @@ This index separates current cleanup work from historical milestone batches.
 - [Portable Scripting Audio Facade](other/portable-scripting-audio-facade.md):
   `ctx.audio` play/stop/query over declared audio IR with logical playback IDs,
   private runtime handles, and stable unsupported streaming/platform diagnostics.
-- [Portable Scripting UI, Persistence, and Settings Facades](other/portable-scripting-ui-persistence-settings-facades.md):
+- [Portable Scripting UI, Persistence, and Settings Facades](done/other/portable-scripting-ui-persistence-settings-facades.md):
   bounded `ctx.ui`, `ctx.persistence`, and `ctx.settings` APIs over retained UI
   and local-data IR without exposing DOM, native widget, filesystem, cloud, or
   platform handles.

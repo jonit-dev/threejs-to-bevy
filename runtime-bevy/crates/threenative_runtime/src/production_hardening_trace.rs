@@ -11,5 +11,12 @@ fn main() {
     }
     let bundle = load_bundle(Path::new(&args[1])).expect("load production hardening bundle");
     let report = trace_production_hardening(&bundle);
-    fs::write(&args[2], format!("{}\n", serde_json::to_string_pretty(&report).expect("serialize production hardening report"))).expect("write production hardening report");
+    fs::write(
+        &args[2],
+        format!(
+            "{}\n",
+            serde_json::to_string_pretty(&report).expect("serialize production hardening report")
+        ),
+    )
+    .expect("write production hardening report");
 }

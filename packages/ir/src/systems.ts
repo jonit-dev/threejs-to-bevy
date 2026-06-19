@@ -30,7 +30,12 @@ export type IrSystemService =
   | "settings.export"
   | "settings.get"
   | "settings.import"
-  | "settings.set";
+  | "settings.set"
+  | "ui.activate"
+  | "ui.focus"
+  | "ui.read"
+  | "ui.setDisabled"
+  | "ui.setValue";
 
 export type IrSystemCommand =
   | {
@@ -46,6 +51,20 @@ export type IrSystemCommand =
   | {
       entity: string;
       kind: "despawn";
+    }
+  | {
+      kind: "instantiate";
+      prefab: string;
+      prefix: string;
+    }
+  | {
+      child: string;
+      kind: "setParent";
+      parent: string;
+    }
+  | {
+      child: string;
+      kind: "clearParent";
     }
   | {
       event: string;

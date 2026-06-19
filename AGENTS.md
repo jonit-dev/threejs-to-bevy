@@ -30,6 +30,7 @@ Repo-wide guidance for AI coding agents working on ThreeNative.
 - Active docs belong under `docs/architecture/`, `docs/contracts/`,
   `docs/runtime/`, `docs/workflows/`, `docs/status/`, or
   `docs/PRDs/`; see `docs/workflows/developer-workflow.md` for the full policy.
+- When finishing PRDs, move them to done folder at docs/PRDs/done
 
 ## Product Boundary
 

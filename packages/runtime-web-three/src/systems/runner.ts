@@ -1,9 +1,11 @@
-import type { IAssetsManifest, IAudioIr, IBundleManifest, IIrSchemaFile, IIrSystemDeclaration, IRuntimeDiagnostic, IrSystemSchedule, ISystemsIr, IWorldIr } from "@threenative/ir";
+import type { IAssetsManifest, IAudioIr, IBundleManifest, IIrSchemaFile, IIrSystemDeclaration, ILocalDataIr, IPrefabsIr, IRuntimeDiagnostic, IUiIr, IrSystemSchedule, ISystemsIr, IWorldIr } from "@threenative/ir";
 import type { IWebInputState } from "../input.js";
 
+import { createComponentDiffCache } from "./componentDiff.js";
 import { createSystemContext } from "./context.js";
 import { applySystemEffects } from "./effects.js";
 import { appendSystemEffectLog, type ISystemEffectLog } from "./log.js";
+import { createWebPersistenceService, type IWebPersistenceService } from "./services/persistence.js";
 
 export type SystemFunction = (context: unknown) => unknown | Promise<unknown>;
 
@@ -44,18 +46,25 @@ export async function runSchedule(options: {
   fixedDelta?: number;
   input?: IWebInputState;
   elapsed?: number;
+  localData?: ILocalDataIr;
   componentSchemas?: IIrSchemaFile;
   module: ISystemModule;
   paused?: boolean;
+  prefabs?: IPrefabsIr;
   schedule: IrSystemSchedule;
   systems: ISystemsIr;
   tick?: number;
+  ui?: IUiIr;
   world: IWorldIr;
 }): Promise<ISystemRunResult> {
   const diagnostics: IRuntimeDiagnostic[] = [];
   const scheduledSystems = orderedSystemsForSchedule(options.systems.systems, options.schedule);
+  const componentDiff = createComponentDiffCache();
+  const persistence = options.localData === undefined ? undefined : createWebPersistenceService(options.localData);
+  const tracked = [...new Set(scheduledSystems.flatMap((system) => system.queries.flatMap((query) => query.changed ?? [])))].sort();
+  componentDiff.beginScheduleStage(options.world, tracked);
   for (const system of scheduledSystems) {
-    const result = await runSystem(system, options);
+    const result = await runSystem(system, { ...options, componentDiff, persistence });
     diagnostics.push(...result.diagnostics);
   }
   return { diagnostics };
@@ -66,6 +75,7 @@ async function runSystem(
   options: {
     assets?: IAssetsManifest;
     audio?: import("@threenative/ir").IAudioIr;
+    componentDiff?: ReturnType<typeof createComponentDiffCache>;
     delta?: number;
     elapsed?: number;
     componentSchemas?: IIrSchemaFile;
@@ -73,10 +83,14 @@ async function runSystem(
     frame?: number;
     fixedDelta?: number;
     input?: IWebInputState;
+    localData?: ILocalDataIr;
     module: ISystemModule;
     paused?: boolean;
+    persistence?: IWebPersistenceService;
+    prefabs?: IPrefabsIr;
     systems: ISystemsIr;
     tick?: number;
+    ui?: IUiIr;
     world: IWorldIr;
   },
 ): Promise<ISystemRunResult> {
@@ -87,17 +101,22 @@ async function runSystem(
   const { commands, context, events, resources, services } = createSystemContext(options.world, {
     assets: options.assets,
     audio: options.audio,
+    componentDiff: options.componentDiff,
     defaultQuery: system.queries[0],
     componentSchemas: options.componentSchemas,
     delta: options.delta ?? 0,
     elapsed: options.elapsed ?? 0,
     fixedDelta: options.fixedDelta ?? 1 / 60,
     input: options.input,
+    localData: options.localData,
     paused: options.paused ?? false,
+    persistence: options.persistence,
+    prefabs: options.prefabs,
     systems: options.systems,
+    ui: options.ui,
   });
   await fn(context);
-  const result = applySystemEffects(options.world, system, { commands, events, resources, services }, { frame: options.frame ?? 0, tick: options.tick ?? 0 });
+  const result = applySystemEffects(options.world, system, { commands, events, resources, services }, { frame: options.frame ?? 0, prefabs: options.prefabs, tick: options.tick ?? 0 });
   if (options.effectLog !== undefined) {
     appendSystemEffectLog(options.effectLog, result.entries);
   }

@@ -79,7 +79,10 @@ pub struct PersistenceReloadBoundary {
 }
 
 pub fn trace_persistence_reload(bundle: &LoadedBundle) -> PersistenceReloadReport {
-    let local_data = bundle.local_data.as_ref().expect("bundle contains local data");
+    let local_data = bundle
+        .local_data
+        .as_ref()
+        .expect("bundle contains local data");
     let slot = local_data
         .save_slots
         .first()
@@ -88,16 +91,47 @@ pub fn trace_persistence_reload(bundle: &LoadedBundle) -> PersistenceReloadRepor
     let saved_record = save_record(local_data, &bundle.world, &slot);
     PersistenceReloadReport {
         boundaries: vec![
-            PersistenceReloadBoundary { code: "TN_PERSISTENCE_CLOUD_STORAGE_UNSUPPORTED", status: "diagnostic-only" },
-            PersistenceReloadBoundary { code: "TN_SCRIPT_FILESYSTEM_API_UNSUPPORTED", status: "diagnostic-only" },
+            PersistenceReloadBoundary {
+                code: "TN_PERSISTENCE_CLOUD_STORAGE_UNSUPPORTED",
+                status: "diagnostic-only",
+            },
+            PersistenceReloadBoundary {
+                code: "TN_SCRIPT_FILESYSTEM_API_UNSUPPORTED",
+                status: "diagnostic-only",
+            },
         ],
-        diagnostics: migration_diagnostics(local_data, saved_record["schemaVersion"].as_u64().unwrap_or(1) as u32 + 1),
+        diagnostics: migration_diagnostics(
+            local_data,
+            saved_record["schemaVersion"].as_u64().unwrap_or(1) as u32 + 1,
+        ),
         persistence: PersistenceReport {
-            autosave: local_data.autosave.as_ref().map(|autosave| autosave.checkpoint_events.iter().map(|event| AutosaveObservation { event: event.clone(), slot: slot.clone(), status: "saved" }).collect()).unwrap_or_default(),
-            restore: RestoreObservation { resource_value: saved_record.pointer("/resources/Progress/level").cloned(), slot: slot.clone(), status: "loaded" },
+            autosave: local_data
+                .autosave
+                .as_ref()
+                .map(|autosave| {
+                    autosave
+                        .checkpoint_events
+                        .iter()
+                        .map(|event| AutosaveObservation {
+                            event: event.clone(),
+                            slot: slot.clone(),
+                            status: "saved",
+                        })
+                        .collect()
+                })
+                .unwrap_or_default(),
+            restore: RestoreObservation {
+                resource_value: saved_record.pointer("/resources/Progress/level").cloned(),
+                slot: slot.clone(),
+                status: "loaded",
+            },
             saved_record,
             settings: settings(local_data),
-            storage: StorageObservation { backend: "native-json", path_policy: "target-profile", slot },
+            storage: StorageObservation {
+                backend: "native-json",
+                path_policy: "target-profile",
+                slot,
+            },
         },
         reload: reload_policy(),
         schema: "threenative.persistence-reload",
@@ -148,7 +182,10 @@ fn settings(local_data: &LocalDataIr) -> Value {
     Value::Object(settings)
 }
 
-fn migration_diagnostics(local_data: &LocalDataIr, save_version: u32) -> Vec<PersistenceReloadDiagnostic> {
+fn migration_diagnostics(
+    local_data: &LocalDataIr,
+    save_version: u32,
+) -> Vec<PersistenceReloadDiagnostic> {
     diagnose_native_persistence_migration(local_data, save_version)
         .into_iter()
         .map(|diagnostic| PersistenceReloadDiagnostic {

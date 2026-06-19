@@ -9,6 +9,7 @@ import type {
   ILocalDataIr,
   IMaterialsIr,
   IOverlaysIr,
+  IPrefabsIr,
   IRuntimeConfigIr,
   IScenesIr,
   ISystemsIr,
@@ -36,6 +37,7 @@ export interface IWebBundle {
   targetProfile: ITargetProfile;
   ui?: IUiIr;
   overlays?: IOverlaysIr;
+  prefabs?: IPrefabsIr;
   world: IWorldIr;
 }
 
@@ -97,6 +99,12 @@ export async function loadBundle(source: string): Promise<IWebBundle> {
   const ui = manifest.entry.ui === undefined ? undefined : await readBundleJson<IUiIr>(source, manifest.entry.ui);
   const overlays =
     manifest.entry.overlays === undefined ? undefined : await readBundleJson<IOverlaysIr>(source, manifest.entry.overlays);
+  const prefabs =
+    manifest.entry.prefabs === undefined
+      ? manifest.files.prefabs === undefined
+        ? undefined
+        : await readBundleJson<IPrefabsIr>(source, manifest.files.prefabs)
+      : await readBundleJson<IPrefabsIr>(source, manifest.entry.prefabs);
   const scenes =
     manifest.entry.scenes === undefined ? undefined : await readBundleJson<IScenesIr>(source, manifest.entry.scenes);
   const assets = await hydrateGeneratedMeshAssets(await readBundleJson<IAssetsManifest>(source, manifest.files.assets), source);
@@ -112,6 +120,7 @@ export async function loadBundle(source: string): Promise<IWebBundle> {
     materials: await readBundleJson<IMaterialsIr>(source, manifest.files.materials),
     runtimeConfig,
     overlays,
+    prefabs,
     scenes,
     source,
     systems,
