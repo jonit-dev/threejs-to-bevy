@@ -74,8 +74,24 @@ export function applyAtmosphereProfile(scene: THREE.Scene, profile: IAtmosphereP
 const THREE_FOG_VIEW_DEPTH = "vFogDepth = - mvPosition.z;";
 const THREE_COMPAT_FOG_DEPTH = "vFogDepth = length( mvPosition.xyz );";
 
+let bevyFogDistanceShaderPatched = false;
+
+function patchThreeFogShaderChunk(): void {
+  if (bevyFogDistanceShaderPatched) {
+    return;
+  }
+  if (THREE.ShaderChunk.fog_vertex.includes(THREE_FOG_VIEW_DEPTH)) {
+    THREE.ShaderChunk.fog_vertex = THREE.ShaderChunk.fog_vertex.replace(
+      THREE_FOG_VIEW_DEPTH,
+      THREE_COMPAT_FOG_DEPTH,
+    );
+  }
+  bevyFogDistanceShaderPatched = true;
+}
+
 /** Match Bevy fog distance (`length(view_to_world)`) instead of Three.js view-axis depth. */
 export function applyThreeCompatFogDistance(root: THREE.Object3D): void {
+  patchThreeFogShaderChunk();
   root.traverse((object) => {
     if (!(object instanceof THREE.Mesh)) {
       return;
@@ -91,6 +107,7 @@ function patchMaterialForBevyFogDistance(material: THREE.Material): void {
   if (material.userData.tnBevyFogDistance === true) {
     return;
   }
+  patchThreeFogShaderChunk();
   const previous = material.onBeforeCompile;
   material.onBeforeCompile = (shader, renderer) => {
     previous?.(shader, renderer);

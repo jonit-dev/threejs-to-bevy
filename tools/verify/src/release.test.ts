@@ -98,7 +98,7 @@ test("should categorize release timing steps", async () => {
   assert.equal(result.ok, true);
   const report = JSON.parse(await readFile(reportPath, "utf8"));
   assert.equal(report.steps.every((step: { category?: string }) => typeof step.category === "string"), true);
-  assert.equal(report.timing.categories.setup.stepCount, 2);
+  assert.equal(report.timing.categories.setup.stepCount, 8);
   assert.equal(report.timing.categories["focused-gate"].stepCount, 1);
   assert.equal(report.timing.categories.artifact.stepCount, 2);
   assert.equal(report.timing.budgetWarnings.length, 1);

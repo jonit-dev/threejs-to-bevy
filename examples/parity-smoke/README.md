@@ -11,7 +11,7 @@ One capture exercises the main visually impacting runtime configs together:
 | **Lighting** | Atmosphere sun + ambient (point/spot on pre-push via `v10-visual-calibration-lighting`) |
 | **Fog** | Exponential fog (`FogExp2` / Bevy `ExponentialSquared`) with mid/far depth markers |
 | **Sky** | Atmosphere sky + horizon colors |
-| **Materials** | Rough matte, metal/rough, emissive cards |
+| **Materials** | Rough matte floor, metal/rough, emissive cards |
 
 The hook compares the **full frame** (no region crop). Thresholds guard signed
 brightness (Bevy must not underexpose vs web), average luminance, and p95 channel
