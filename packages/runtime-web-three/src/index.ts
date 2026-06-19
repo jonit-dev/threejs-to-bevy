@@ -111,6 +111,16 @@ export {
   type IRenderingResidualsReport,
 } from "./renderingResiduals.js";
 export {
+  reportWebWindowCatalogPolicy,
+  reportWebGeneratedAssetPolicy,
+  traceWebQueryCombinations,
+  traceWebTextInputEvents,
+  type IWebGeneratedAssetPolicyReport,
+  type IWebQueryCombinationObservation,
+  type IWebTextInputEvent,
+  type IWebWindowPolicyReport,
+} from "./bevyCatalogResiduals.js";
+export {
   traceRuntimeGameplayHost,
   type IRuntimeGameplayHostReport,
 } from "./runtimeGameplayHost.js";

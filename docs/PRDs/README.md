@@ -36,6 +36,11 @@ This index separates current cleanup work from historical milestone batches.
   cloud/account storage, custom decoders, streaming/network audio, online
   services, alternate authoring models, 2D workflows, and backend-only
   diagnostic boundaries.
+- [Bevy Catalog Watchlist Residuals](other/bevy-catalog-watchlist-residuals.md):
+  newly tracked upstream Bevy catalog gaps for ECS callbacks/query ergonomics,
+  editable text/IME, UI viewport and drag behavior, window/cursor/power policy,
+  runtime asset authoring/export, generated assets, and glTF extension
+  processing.
 - [Scene Lifecycle and Game Flow Contract](done/other/scene-lifecycle-and-flow-contract.md):
   scene modules, lifecycle phases, transitions, loading, overlays, persistent
   state, and cross-runtime scene manager parity.

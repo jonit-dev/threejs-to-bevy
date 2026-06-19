@@ -30,6 +30,21 @@ export type {
   IConformanceUiReport,
 } from "./conformanceReport.js";
 export {
+  BEVY_CATALOG_RESIDUAL_ROWS,
+  diagnoseBevyCatalogResidualDeclarations,
+  type BevyCatalogResidualArea,
+  type BevyCatalogResidualStatus,
+  type IBevyCatalogAssetExportDeclaration,
+  type IBevyCatalogCallbackComponentDeclaration,
+  type IBevyCatalogCustomUiMaterialDeclaration,
+  type IBevyCatalogGltfExtensionDeclaration,
+  type IBevyCatalogImeDeclaration,
+  type IBevyCatalogResidualDeclarations,
+  type IBevyCatalogResidualRow,
+  type IBevyCatalogUiRoutingDeclaration,
+  type IBevyCatalogWindowPolicyDeclaration,
+} from "./bevyCatalogResiduals.js";
+export {
   diagnoseUnsupportedRuntimeDeclarations,
   validateRuntimeDiagnosticReport,
   type IRuntimeDiagnostic,

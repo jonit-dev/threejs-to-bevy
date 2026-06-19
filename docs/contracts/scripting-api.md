@@ -1,17 +1,20 @@
 # Portable Scripting APIs
 
-> Status: V4-supported for the primitive portable scripting MVP verified by
-> `pnpm verify:v4`. V5 additionally verifies the `defineGame`/`v5-game-starter`
-> authoring path through `pnpm verify:v5`; that path is SDK composition over
-> existing portable scene, world, input, runtime config, and system contracts,
-> not a new script runtime surface.
+> Status: V4 established the primitive portable scripting MVP. Later promoted
+> gates add game-root authoring, richer fixed-trace host services, animation
+> controls, sensors, navigation, scene lifecycle effects, runtime gameplay host
+> semantics, and persistence/reload evidence. The current maintained evidence
+> is the capability/release gate set (`pnpm verify:conformance`,
+> `pnpm verify:runtime-gameplay-host`, `pnpm verify:persistence-reload`, and
+> `pnpm verify:release`), while legacy `verify:v*` commands remain historical
+> aliases or focused milestone proofs.
 
 This document tracks the TypeScript gameplay APIs that sit on top of the
 scripting model in [scripting.md](scripting.md). V4 is the completed primitive
-portable scripting baseline. V5 adds required game-authoring ergonomics through
-`defineGame` and `v5-game-starter`, but broader scripting APIs should still be
+portable scripting baseline. Later gates add required game-authoring ergonomics
+and bounded runtime-host features, but broader scripting APIs should still be
 promoted only when they preserve portable ECS reads, patches, events, commands,
-and service calls.
+service calls, and deterministic web/native observations.
 
 The public rule:
 
@@ -63,6 +66,9 @@ unsupported.
 - [x] Fixed timestep reads through `ctx.time.fixedDt`.
 - [x] Logical input axes through `ctx.input.axis(name)`.
 - [x] Logical input actions through `ctx.input.action(name)`.
+- [x] Logical input edge reads through `ctx.input.pressed(name)` and
+  `ctx.input.released(name)` where the runtime host exposes captured input
+  transitions.
 - [x] Deterministic seeded random helpers through
   `ctx.random.float/range/int/bool/pick`.
 - [x] Deterministic timer/cooldown helpers through
@@ -82,33 +88,53 @@ unsupported.
   `ctx.commands.addComponent(id, component)`.
 - [x] Command-buffer component removal through
   `ctx.commands.removeComponent(id, Component)`.
+- [x] Command-buffer component replacement through
+  `ctx.commands.setComponent(id, Component, value)`.
+- [x] Command-buffer event emission through
+  `ctx.commands.emitEvent(Event, payload)`.
 - [x] Fixed-trace replay and hot-reload invalidation metadata.
-- [ ] Missing state-preserving hot reload.
-- [ ] Missing system-local persisted state.
-- [ ] Partial component-hook observations; command-time/removal hook callbacks
-  remain incomplete.
-- [ ] Partial observer propagation; stoppable observers remain incomplete.
+- [x] Resource-derived app states, computed states, and substates through
+  `ctx.states.get(id)`.
+- [x] Component reflection and hook observations through
+  `ctx.components.types/type/hooks`.
+- [x] Target-to-ancestor observer propagation through
+  `ctx.observers.propagate(event, target)`.
+- [x] Fixed-trace task metadata and event-backed channels through
+  `ctx.tasks.*` and `ctx.channels.*`.
+- [x] Plugin and plugin-group declaration metadata through `ctx.plugins.*`.
+- [x] Runtime gameplay host evidence for live entity reconciliation,
+  event-windowing, state handoff, command-time/removal hooks, bounded
+  timer/channel behavior, and stoppable observer propagation.
+- [x] State-preserving hot reload policy and persistence/reload evidence.
 
 ### Services
 
 - [x] Animation command shape through `ctx.animation.play(entity, clip, options)`.
+- [x] Animation state reads and stop commands through
+  `ctx.animation.query(entity, clip?)` and
+  `ctx.animation.stop(entity, clip?)`.
 - [x] Primitive raycast service through `ctx.physics.raycast(options)`.
 - [x] Primitive overlap query service through `ctx.physics.overlap(options)`.
 - [x] Primitive shape-cast query service through
   `ctx.physics.shapeCast(options)`.
+- [x] Primitive sensor snapshots through `ctx.physics.sensor(options)`.
 - [x] Narrow fixed-trace character movement through
   `ctx.character.move(entity, options)`.
+- [x] Static navigation path queries through `ctx.navigation.path(options)`.
 - [x] Pointer ray generation through `ctx.picking.pointerRay(options)`.
 - [x] Generated mesh bounds picking through `ctx.picking.mesh(options)`.
 - [x] Asset manifest lookup through `ctx.assets.get(id)` and
   `ctx.assets.list()`.
 - [x] Declared bundle-local asset load service through `ctx.assets.load(id)`.
-- [ ] Partial collision/trigger event phases for fixed traces; full solver
-  behavior and contact filtering remain outside the current claim.
-- [ ] Missing full animation blending/state-machine scripting.
-- [ ] Missing particle commands.
+- [x] Collision/trigger event phases for promoted primitive fixed traces.
+- [x] Bounded animation blending/state-machine, marker, and particle evidence
+  through promoted animation fixtures and runtime observations.
+- [ ] Missing arbitrary particle commands beyond bounded portable emitter data.
 - [ ] Missing audio script commands such as `audio.play` and `audio.stop`.
 - [ ] Missing UI command/focus/input script APIs.
+- [ ] Partial persistence/settings service declarations; save/settings IR and
+  reload evidence are promoted, but a general `ctx.persistence`/`ctx.settings`
+  facade is not yet the documented script API.
 
 ### Authoring Ergonomics
 
@@ -118,6 +144,10 @@ unsupported.
 - [x] `primitiveActorPrefab(...)` primitive actor prefab helper.
 - [x] `modelActorPrefab(...)` model actor metadata helper.
 - [x] `tn create --template v5-game-starter` starter template.
+- [x] `defineScene()`, `sceneTransition.*`, and
+  `defineGame({ scenes, initialScene })` lifecycle scene composition.
+- [x] ECS tags as queryable zero-field marker components.
+- [x] Scene `Group` containers as hierarchy-only `SceneContainer` entities.
 - [ ] Missing runtime prefab instantiation.
 - [ ] Missing child hierarchy commands from scripts.
 
@@ -126,11 +156,15 @@ unsupported.
 - [ ] Unsupported direct Three.js, Bevy, renderer, DOM, filesystem, network,
   worker, or platform access.
 - [ ] Unsupported arbitrary npm dependencies in portable scripts.
-- [ ] Unsupported async/await, promises, workers, and unrestricted async timers
-  in systems.
+- [ ] Unsupported unbounded async/await, promises, workers, and unrestricted
+  async timers in systems; bounded fixed-trace tasks/channels and deterministic
+  timer helpers are the portable subset.
 - [ ] Unsupported runtime file/network asset loading, custom loaders, and raw
   runtime asset handles from scripts.
 - [ ] Unsupported dynamic runtime plugin loading.
+- [ ] Unsupported raw Bevy/renderer handles, workers, unbounded promises, and
+  arbitrary platform timers; use fixed schedules, deterministic helpers, and
+  declared services instead.
 
 ## V4 Completed Proof Scene
 
@@ -345,49 +379,83 @@ show the feature.
 - [x] V6 declared bundle-local asset loading from scripts. `ctx.assets.load(id)`
   is a declared `assets.load` service that returns deterministic ready/missing
   results for assets already present in `assets.manifest.json`.
+- [x] V8/V9 animation runtime controls. `ctx.animation.query` and
+  `ctx.animation.stop` are declared services with matching web/native effect
+  logs; promoted fixtures cover playback state, stop reason, bounded blend
+  observations, event markers, transform animation, and bounded particle
+  emitters.
+- [x] V9 primitive sensors and navigation. `ctx.physics.sensor` returns
+  deterministic primitive sensor snapshots, and `ctx.navigation.path` returns
+  stable static pathfinding success/failure payloads.
+- [x] Scene lifecycle service effects. Systems may declare `scene.current`,
+  `scene.change`, `scene.push`, `scene.pop`, `scene.loadAdditive`, and
+  `scene.unload`; web and Bevy record matching service effects and lifecycle
+  traces.
+- [x] Runtime gameplay host context surfaces. `ctx.states`, `ctx.components`,
+  `ctx.observers`, `ctx.tasks`, `ctx.channels`, and `ctx.plugins` expose
+  declared host metadata, fixed-trace handoff, resource-derived state,
+  reflection, hook, observer, task, channel, and plugin metadata.
+- [x] Runtime gameplay host semantics. The focused runtime gameplay host gate
+  covers live rendered-entity reconciliation, event-window cleanup, dynamic
+  state handoff, command-time/removal hook ordering, system-local evidence,
+  stoppable observer propagation, bounded timer/channel semantics, and
+  diagnostics for raw handles, runtime plugins, workers, unbounded promises,
+  and arbitrary platform timers.
+- [x] Persistence and reload evidence. `definePersistence`, scene persistence
+  policy, save slots, autosave/checkpoint restore, settings, migration
+  diagnostics, and state-preserving reload are promoted through the
+  persistence/reload evidence path without exposing filesystem, cloud-save, or
+  platform storage handles to scripts.
+- [x] V10 grouping ergonomics. `defineTag()` creates queryable zero-field ECS
+  marker components, and scene `Group` lowers to hierarchy-only
+  `SceneContainer` entities for transform/editor organization.
 
 ### Partial
 
-- [ ] V6 collision events from the physics backend. Primitive
-  collision/trigger events report deterministic `enter`, `stay`, and `exit`
-  phases in web and Bevy; full solver behavior and richer contact filtering are
-  still outside the current scripting claim.
 - [ ] V7 character movement beyond the narrow fixed-trace service. Full
   solver-backed interaction, navmesh behavior, arbitrary sloped mesh terrain,
   and object pushing remain incomplete.
-- [ ] V7 component hook and observer evidence. Read observations and fixed
-  traces exist, while command-time/removal hook callbacks and stoppable
-  observers remain incomplete.
+- [ ] Full physics solver contact filtering beyond promoted primitive
+  collision/trigger/sensor observations remains intentionally narrow.
+- [ ] General persistence/settings script facades. Persistence/settings service
+  names are reserved as declared system services, and persistence/reload
+  evidence is promoted through structured IR, but `ctx.persistence` and
+  `ctx.settings` are not documented script facades yet.
 
 ### Missing
 
-- [ ] Full animation blending/state-machine scripting. V4 only proved command
-  shape such as `animation.play`.
-- [ ] Particle commands. Promote only when particles are represented by
-  portable scene/runtime data and visual verification artifacts.
-- [ ] System-local persisted state. Prefer resources/components first;
-  state-preserving hot reload remains later.
+- [ ] Arbitrary particle commands beyond bounded portable emitter data.
+  Promote only when the command surface has deterministic web/native behavior
+  and visual verification artifacts.
 - [ ] Runtime prefab instantiation. V5 authoring-time prefab helpers expand to
   existing declarations; runtime instantiation remains future scope.
 - [ ] Child hierarchy commands. This needs scene-visible proof and deterministic
   command application across web and Bevy.
+- [ ] Delayed command scheduling beyond bounded timer/channel services.
 
 ### Design Only
 
-- [ ] Audio commands. Promote only with a maintained scene or gameplay fixture
-  that needs audible runtime behavior.
+- [ ] Script-level audio commands. Structured audio IR, UI-triggered audio
+  actions, mixer/effect reports, and native device diagnostics are promoted,
+  but `ctx.audio.play/stop` remains design-only.
 - [ ] UI commands/focus/input. Better aligned with editor/inspector and online
   workflows unless a visual-quality scene requires a narrow HUD.
+- [ ] General `ctx.persistence`/`ctx.settings` facades. Persistence and
+  settings are promoted as structured IR/runtime evidence, not as direct
+  filesystem or platform storage access.
 
 ### Unsupported
 
-- [ ] Async/await in systems. Avoid until scheduler, determinism, and QuickJS
-  behavior are specified.
+- [ ] Unbounded async/await in systems. Bounded fixed-trace task/channel and
+  timer semantics are promoted; arbitrary workers, promises, and platform
+  timers remain diagnostic-only.
 - [ ] Network/file/platform APIs. Network belongs behind explicit service
   boundaries; file/platform access should remain outside portable systems.
 - [ ] Arbitrary npm dependencies. Native QuickJS sandbox cannot assume them.
 - [ ] Direct Three.js/Bevy access. Use portable context and service facades
   only.
+- [ ] Dynamic runtime plugin loading. Portable plugin/group metadata is
+  declarative only.
 
 ## API Shape
 
@@ -403,12 +471,12 @@ export const playerMovement = defineSystem({
   },
   reads: [PlayerController, Transform, Input, Time],
   writes: [Transform, RigidBody],
-  services: ["physics.raycast", "animation.play", "assets.load"],
+  services: ["physics.raycast", "animation.play", "animation.query", "assets.load"],
   events: {
     reads: [],
     writes: [FootstepEvent],
   },
-  commands: ["spawn", "despawn", "addComponent", "removeComponent"],
+  commands: ["spawn", "despawn", "addComponent", "removeComponent", "setComponent", "emitEvent"],
 }, (ctx) => {
   for (const entity of ctx.query()) {
     const controller = entity.get(PlayerController);
@@ -445,17 +513,25 @@ validated against `systems.ir.json`.
 | Field | Purpose | Runtime Contract |
 | --- | --- | --- |
 | `ctx.query()` | Iterates matching entities. | Returns stable entity IDs and declared component snapshots only; supports `with`, `without`, `changed`, `orderBy: "id"`, `offset`, and `limit`. |
-| `ctx.time` | Fixed and variable timestep data. | Runtime-provided resource; no wall-clock access from scripts. |
+| `ctx.time` | Fixed and variable timestep data. | Runtime-provided resource with `dt`/`delta`, `fixedDt`/`fixedDelta`, `elapsed`, and paused state where available; no wall-clock access from scripts. |
 | `ctx.timers` | Deterministic timer and cooldown calculations. | Pure helpers over `ctx.time.elapsed`; no async scheduling, wall-clock access, or hidden timer state. |
-| `ctx.input` | Logical actions and axes. | Reads `input.ir.json` mappings and current input state. |
+| `ctx.input` | Logical actions, axes, and edge states. | Reads `input.ir.json` mappings and current input state; promoted host contexts expose `action`, `axis`, `pressed`, and `released`. |
 | `ctx.random` | Deterministic seeded random values. | Per-context PRNG seeded from a world resource; exposes `float`, `range`, `int`, `bool`, and `pick` without platform RNG access. |
 | `ctx.resources` | Reads and writes declared singleton world state. | Reads are cloned snapshots; writes are queued effects and apply only after `resourceWrites` validation. |
 | `ctx.events` | Reads and emits typed events. | Event schemas are declared and queues are runtime-owned. |
-| `ctx.commands` | Structural world changes. | Commands flush at schedule boundaries after validation. |
-| `ctx.physics` | Controlled physics queries and body commands. | Runtime service facade; no Rapier or Bevy physics handles. |
-| `ctx.animation` | Playback commands and simple state queries. | Runtime service facade; animation graph state is runtime-owned. |
-| `ctx.audio` | One-shot and looping audio commands. | Planned runtime service facade; V6 currently proves bundle-local playback through audio IR and event observations, not a general script API. |
+| `ctx.commands` | Structural world changes and command-buffer event emission. | Commands flush at schedule boundaries after validation; supports spawn, despawn, add/remove/set component, and emit event. |
+| `ctx.physics` | Controlled physics queries, sensors, and bounded character-facing observations. | Runtime service facade; no Rapier or Bevy physics handles. |
+| `ctx.navigation` | Static path queries. | Reads portable `Navigation` resource data and returns stable success/failure path payloads. |
+| `ctx.picking` | Pointer ray and generated-mesh bounds picking. | Uses portable camera, transform, and generated bounds data; no renderer handles. |
+| `ctx.animation` | Playback commands, state queries, and stop commands. | Runtime service facade; graph/controller state is runtime-owned and serialized as plain data. |
+| `ctx.audio` | Structured audio IR observations. | No general script facade yet; audio handles, streaming, custom decoders, and platform mixer objects remain private. |
 | `ctx.assets` | Stable asset lookup by ID. | `get`/`list` return cloned manifest metadata; `load` is a declared `assets.load` service returning deterministic ready/missing metadata, not renderer or native handles. |
+| `ctx.scenes` | Scene lifecycle service effects. | Queues current/change/push/pop/load-additive/unload effects and drives deterministic scene lifecycle traces. |
+| `ctx.states` | Resource-derived app, computed, and substate reads. | Reads declared lifecycle state metadata; state values are plain strings or null. |
+| `ctx.components` | Component reflection and hook observations. | Exposes declared component type metadata and hook observations, not backend component IDs. |
+| `ctx.observers` | Deterministic observer route reads. | Returns declared target/bubble propagation steps; raw callbacks are not exposed. |
+| `ctx.tasks` / `ctx.channels` | Fixed-trace task metadata and event-backed handoff. | Channels map to declared event queues; arbitrary async workers/promises remain unsupported. |
+| `ctx.plugins` | Portable plugin and plugin-group metadata. | Declaration metadata only; dynamic runtime plugin loading remains unsupported. |
 
 ## Entity API
 
@@ -489,6 +565,8 @@ ctx.commands.spawn("projectile.42", [
 ctx.commands.despawn("enemy.3", { recursive: true });
 ctx.commands.addComponent("enemy.3", Burning({ duration: 2 }));
 ctx.commands.removeComponent("enemy.3", Frozen);
+ctx.commands.setComponent("enemy.3", Health, { current: 0, max: 100 });
+ctx.commands.emitEvent(EnemyDefeated, { entity: "enemy.3" });
 ```
 
 Commands lower to serializable IR-level operations:
@@ -592,9 +670,9 @@ Rules:
 
 ## Animation API
 
-Animation should be commanded by stable clip and state IDs. In V6, named clip
-metadata is declared on model assets and validated before runtime playback is
-claimed:
+Animation is commanded and observed through stable clip, graph, state, and
+entity IDs. Named clip metadata is declared on model assets and validated
+before runtime playback is claimed:
 
 ```ts
 const heroModel = modelAsset("model.hero", "assets/hero.glb", {
@@ -605,12 +683,38 @@ const heroModel = modelAsset("model.hero", "assets/hero.glb", {
 });
 ```
 
+```ts
+ctx.animation.play(entity, "run", {
+  speed: 1.0,
+  loop: true,
+});
+
+const state = ctx.animation.query(entity, "run");
+if (state.normalizedTime > 0.95) {
+  ctx.animation.stop(entity, "run");
+}
+```
+
+Runtime effects:
+
+- Clip IDs, optional source clip names, loop flags, positive playback speeds,
+  animation graph state IDs, bounded blend weights, marker events, transform
+  animation tracks, and bounded particle emitters are represented as portable
+  data.
+- `ctx.animation.play`, `ctx.animation.query`, and `ctx.animation.stop` are
+  declared service calls with canonical web/native effect logs.
+- Scripts see only stable IDs, booleans, numbers, arrays, and plain data.
+- IK, retargeting, backend animation controllers, arbitrary blend trees, and
+  unbounded particle behavior must fail with stable diagnostics rather than
+  being ignored.
+
 ## Audio API
 
-V6 audio playback currently starts from structured audio IR and bundle-local
-assets. Autoplay looped music, event-matched one-shots, and command volume are
-reported in shared conformance observations, and adapters keep audio handles
-private:
+Audio playback currently starts from structured audio IR and bundle-local
+assets. Autoplay looped music, event-matched one-shots, bus routing,
+listener/emitter metadata, mixer/effect-chain reports, UI-triggered audio
+actions, and native device diagnostics are represented through promoted audio
+IR and runtime observations. Adapters keep audio handles private:
 
 ```ts
 defineAudio({
@@ -619,44 +723,31 @@ defineAudio({
 });
 ```
 
-Script/UI `audio.play` and `audio.stop` are not portable V6 APIs yet. V7
-promotes bus routing plus listener/emitter metadata as structured audio IR
-evidence, not as arbitrary platform audio handles.
+Script `ctx.audio.play` and `ctx.audio.stop` are not portable APIs yet. Real
+streaming/network audio, custom decoders, platform audio handles, and broad
+runtime mixer mutation remain adapter-private or diagnostic-only.
 
-```ts
-ctx.animation.play(entity, "run", {
-  speed: 1.0,
-  loop: true,
-});
-```
+## Host Lifecycle And Metadata APIs
 
-Runtime effects:
+Runtime host metadata is deliberately narrow and deterministic:
 
-- V6 validates clip IDs, optional source clip names, loop flags, and positive
-  playback speeds in model asset metadata.
-- V4/V5 expose `ctx.animation.play` as a declared service-call shape that
-  records deterministic effect logs.
-- V6 conformance observes model clip metadata and compares a fixed web/native
-  `animation.play` service trace for accepted playback commands.
-- Real runtime model playback, stop/state queries, and visual animation parity
-  remain later V6-05 work.
-- Scripts see only stable clip IDs, booleans, numbers, and plain data for the
-  currently promoted command shape.
-- V7 promotes constrained model `animationGraph` metadata, event markers, and
-  bounded particle emitters for fixed trace observations. IK, retargeting,
-  backend animation controllers, and unbounded particle behavior must fail with
-  stable diagnostics rather than being ignored.
-- V7 audio promotes portable bus routing plus listener/emitter metadata for
-  deterministic routed command observations and fixed loop start/stop lifecycle
-  traces. Real spatial attenuation, mixer effects, streaming/network audio, and
-  platform handles remain adapter-private or unsupported.
-- V7 scripting lifecycle evidence compares fixed web/native effect logs across
-  startup, fixedUpdate, update, and postUpdate systems, with explicit
-  `fixed-trace` replay, `invalidate` hot reload, and
-  `system-local-disallowed` state metadata. Resource handoff, queued event
-  reads/writes, spawn/despawn commands, and declared service calls are
-  portable; async, timers, arbitrary npm, platform APIs, hot reload state
-  preservation, and system-local persisted state remain unsupported or bounded.
+- `ctx.states.get(id)` reads resource-derived app states, computed states, and
+  substates.
+- `ctx.components.types()`, `ctx.components.type(Component)`, and
+  `ctx.components.hooks(Component)` expose component reflection and lifecycle
+  observations without exposing Bevy component IDs or renderer internals.
+- `ctx.observers.propagate(Event, target)` returns deterministic
+  target-to-ancestor propagation steps for declared observer routes.
+- `ctx.tasks.*` and `ctx.channels.*` expose fixed-trace task metadata and
+  event-backed channel handoff.
+- `ctx.plugins.*` exposes declared portable plugin and plugin-group metadata;
+  dynamic runtime plugin loading remains unsupported.
+- Scene lifecycle services (`ctx.scenes.current/change/push/pop/loadAdditive/
+  unload`) queue service effects and drive deterministic scene lifecycle traces.
+- Persistence, save slots, settings, autosave restore, migrations, and
+  state-preserving reload are promoted through structured IR and runtime
+  evidence, but scripts do not receive filesystem, cloud-save, or platform
+  storage handles.
 
 ## Resources
 

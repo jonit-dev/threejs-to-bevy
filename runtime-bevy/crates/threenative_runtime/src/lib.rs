@@ -13,6 +13,7 @@ pub mod animation_physics_residuals;
 pub mod asset_reload;
 pub mod assets;
 pub mod audio;
+pub mod bevy_catalog_residuals;
 pub mod cameras;
 pub mod character;
 pub mod conformance;

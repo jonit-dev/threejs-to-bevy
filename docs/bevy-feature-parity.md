@@ -169,6 +169,18 @@ Repeated patterns in those games:
   remains outside the portable contract for now. The priority is stable
   unsupported-networking diagnostics, not runtime networking parity.
 
+### Upstream Bevy Example Catalog Watchlist
+
+The current upstream Bevy examples catalog also exposes feature families that
+were previously missing or too coarsely represented in this tracker. Some of
+these rows may be beyond the pinned Bevy `=0.14.2` baseline, so they are tracked
+as watchlist items until a PRD either verifies baseline relevance, promotes a
+portable subset, or adds stable diagnostics. Newly added unchecked rows below
+cover editable text and IME, UI viewport nodes, UI drag and drop, custom UI
+materials, window/cursor/power behavior, runtime asset authoring/saving,
+generated asset export, glTF extension processing, and deeper ECS query/callback
+ergonomics. These rows are not implementation claims.
+
 ### 🧩 ECS, App, and Scheduling
 
 - [x] Entities, stable IDs, components, and component schemas
@@ -196,6 +208,10 @@ Repeated patterns in those games:
 - [x] `P2` Stoppable observer propagation
 - [x] `P2` Dynamic runtime plugin loading diagnostic boundary
 - [x] `P2` Bounded async timers and channels; arbitrary workers/promises remain diagnostic-only
+- [ ] `P2` ECS callback components and callable system handles as portable declarations (permission diagnostic triage exists)
+- [ ] `P2` Delayed command scheduling beyond bounded timer/channel services (bounded timer/channel alternative remains the promoted path)
+- [ ] `P2` Query combination helpers and pairwise iteration semantics with deterministic ordering (web report triage exists)
+- [ ] `P2` Entity disabling/suspended ECS participation separate from renderer visibility (native report triage exists)
 - [x] `D` Raw Bevy/renderer type IDs in portable gameplay APIs
 
 ### 📐 Transforms, Math, and Geometry
@@ -335,10 +351,13 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P1` Declared asset groups and default `bundle.requiredAssets` manifest group
 - [x] `P2` glTF extras and custom glTF vertex attributes
 - [x] `P1` Query/update spawned glTF scene entities
+- [ ] `P2` glTF extension processing policy for AnimationGraph and custom import transforms (executable processor diagnostic exists)
 - [x] `P1` Scene viewer/editor inspection workflow
 - [x] `P1` Dev-time asset file watching and explicit reload diagnostics
 - [x] `P2` Asset hot reload and state-preserving reload behavior
 - [x] `P1` Broader live asset streaming through manifest asset-group policy
+- [ ] `P2` Runtime asset saving/export with subasset manifest policy (artifact-root diagnostic exists)
+- [ ] `P2` Generated runtime assets that can be persisted or reloaded as bundle artifacts (compiler manifest-entry helper exists)
 - [x] `P2` Arbitrary runtime file/network asset access from portable scripts diagnostic boundary
 - [x] `P2` Custom shader consumption of glTF custom attributes diagnostic boundary
 
@@ -445,9 +464,12 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P1` Basic UI image nodes
 - [x] `P1` UI texture atlases, 9-slice scaling, flipping, and tiling
 - [x] `P2` Standard widgets: sliders, scrollbars, and context menus
+- [ ] `P1` Editable text input widgets with deterministic value/action events (web event-order report triage exists)
+- [ ] `P1` IME composition support and diagnostics for text input targets (target-profile diagnostic exists)
 - [ ] `P1` Platform virtual keyboard behavior (V10-04)
 - [x] `P1` Basic automatic tab/sequential directional navigation parity
 - [ ] `P2` UI transforms and render-to-texture/3D-world UI (V10-04)
+- [ ] `P2` UI viewport nodes with picking/input routing (promotion criteria tracked; no parity claim yet)
 - [x] `P1` Basic UI accessibility roles, labels, and missing-label diagnostics
 - [x] `P1` Broader screen-reader diagnostics for focusable names, progressbar names, and list/listitem structure
 - [x] `P1` Static disabled UI metadata for focus/action suppression and ARIA/AccessKit state
@@ -457,9 +479,21 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P1` Spatial navigation heuristics
 - [x] `P1` Focus narration
 - [ ] `P2` Native-rendered italic rich text
+- [ ] `P2` Letter spacing, generic/system font families, and OpenType font variation policy
 - [ ] `P2` Arbitrary grid placement, named areas, and dense packing
+- [ ] `P2` UI drag-and-drop node interactions distinct from world picking drag events (promotion criteria tracked; no parity claim yet)
+- [ ] `P2` Custom UI material/shader declarations as diagnostics or bounded presets (diagnostic-only triage exists)
 - [ ] `P2` Broad gamepad/touch UI coverage
 - [ ] `P2` Broad manually inspected desktop webview packaging
+
+### 🪟 Window and Platform Runtime
+
+- [x] Window title, resolution, and runtime configuration metadata
+- [ ] `P1` Window resize and scale-factor change observations in web and native runtimes (web/native report triage exists)
+- [ ] `P2` Custom cursor image and cursor animation policy (window policy diagnostic triage exists)
+- [ ] `P2` Low-power/present-mode and background throttling runtime policy (window policy diagnostic triage exists)
+- [ ] `P2` Clear-color/window background updates as runtime-observable configuration (window policy diagnostic triage exists)
+- [ ] `P2` Multi-window and per-window target diagnostics while portable runtime remains single-window (web/native diagnostic exists)
 
 ### 💾 Persistence, Settings, and Local Data
 

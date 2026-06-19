@@ -152,6 +152,16 @@ components, `Group` lowers as a transform hierarchy container with
 `v10-ecs-tags-groups` conformance fixture verifies matching web/Bevy tag-query
 observations across a viewable multi-lane moving-cube scene plus hierarchy
 observations through `pnpm verify:conformance`.
+The upstream Bevy catalog watchlist residuals now have a focused diagnostic and
+report evidence surface: `@threenative/ir` exposes
+`BEVY_CATALOG_RESIDUAL_ROWS` plus diagnostics for callback permissions, IME
+target-profile support, artifact-root bounded asset export, and executable glTF
+extension processors; the web runtime reports deterministic query combinations,
+ordered text-input value/action events, and window resize/scale observations;
+the Bevy runtime reports disabled entity query participation, window resize/
+scale observations, generated asset bundle-artifact policy, and stable glTF
+executable processor diagnostics. These checks keep the rows triaged and
+protected without marking broad catalog parity complete.
 Broader authoring-tool UX remains outside this V10 batch except for bounded
 visual panel evidence explicitly promoted in the status entries below. `pnpm
 check:docs` is the canonical docs and drift gate. Temporary V10 planning
