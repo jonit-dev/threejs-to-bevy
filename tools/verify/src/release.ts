@@ -164,12 +164,13 @@ export async function runReleaseGate(options: ReleaseGateOptions = {}): Promise<
   }
 
   const parallelFocusedGates = focusedGates.filter((gate) => !CONFORMANCE_ARTIFACT_CONFLICT_GATES.has(gate.script));
-  const proofResults = await Promise.all([
-    ...parallelFocusedGates.map((gate) => runFocusedGateStep(gate)),
-    step("verify conformance gate", process.execPath, [resolve(root, "tools/verify/dist/cli/conformance.js"), "--json"], { category: "conformance", timeoutMs: 900000 }),
-    step("verify v9 sample scenes", process.execPath, [resolve(root, "scripts/verify-v9-sample-scenes.mjs"), "--json"], { category: "visual-native", timeoutMs: 600000 }),
-    step("verify v9 visual matrix", process.execPath, [resolve(root, "scripts/verify-v9-visual-matrix.mjs"), "--json"], { category: "visual-native", timeoutMs: 1200000 }),
-  ]);
+  const proofResults: boolean[] = [];
+  for (const gate of parallelFocusedGates) {
+    proofResults.push(await runFocusedGateStep(gate));
+  }
+  proofResults.push(await step("verify conformance gate", process.execPath, [resolve(root, "tools/verify/dist/cli/conformance.js"), "--json"], { category: "conformance", timeoutMs: 900000 }));
+  proofResults.push(await step("verify v9 sample scenes", process.execPath, [resolve(root, "scripts/verify-v9-sample-scenes.mjs"), "--json"], { category: "visual-native", timeoutMs: 600000 }));
+  proofResults.push(await step("verify v9 visual matrix", process.execPath, [resolve(root, "scripts/verify-v9-visual-matrix.mjs"), "--json"], { category: "visual-native", timeoutMs: 1200000 }));
   if (proofResults.some((ok) => !ok)) {
     return fail();
   }
