@@ -10,8 +10,15 @@ import { loadFixtureCatalog, loadDefaultFixtureCatalog, resolveFixtureBundlePath
 
 const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
+const RUNTIME_UNIT_CONFORMANCE_STEPS = new Set([
+  "ir conformance fixtures",
+  "web runtime conformance",
+  "bevy runtime conformance",
+]);
+
 export async function verifyConformance(options = {}) {
   const root = options.repoRoot ?? repoRoot;
+  const skipDuplicateRuntimeTests = options.skipDuplicateRuntimeTests ?? false;
   const run = options.run ?? runCommand;
   const targets = resolveArtifactTargets({ gate: "conformance", owner: { kind: "package", packagePath: "packages/ir" }, root });
   const reportPath = options.reportPath ?? targets.reportPath;
@@ -202,7 +209,7 @@ export async function verifyConformance(options = {}) {
     return result.exitCode === 0;
   }
 
-  const commands = [
+  const allCommands = [
     ["ir conformance fixtures", "pnpm", ["--filter", "@threenative/ir", "test", "--", "--run", "conformance"]],
     [
       "web runtime conformance",
@@ -498,6 +505,10 @@ export async function verifyConformance(options = {}) {
       { cwd: resolve(root, "runtime-bevy"), timeoutMs: 120000 },
     ],
   ];
+
+  const commands = skipDuplicateRuntimeTests
+    ? allCommands.filter(([name]) => !RUNTIME_UNIT_CONFORMANCE_STEPS.has(name))
+    : allCommands;
 
   for (const [name, command, args, commandOptions] of commands) {
     if (!(await step(name, command, args, commandOptions))) {
@@ -915,7 +926,7 @@ function nativeCargoEnv() {
   return { PATH: `${toolchainBin}:${process.env.PATH ?? ""}` };
 }
 
-export function runCommand({ args, command, cwd, timeoutMs = 60000, env }) {
+export function runCommand({ args, command, cwd, env, name, timeoutMs = 60000 }) {
   return new Promise((resolveResult) => {
     const startedAt = Date.now();
     const childEnv = {
@@ -941,6 +952,7 @@ export function runCommand({ args, command, cwd, timeoutMs = 60000, env }) {
       resolveResult({
         durationMs: Date.now() - startedAt,
         exitCode: code ?? (signal === null ? 1 : 124),
+        name,
         stderr,
         stdout,
       });

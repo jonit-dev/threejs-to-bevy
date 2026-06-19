@@ -52,21 +52,26 @@ export async function verifyBaselineVisualParityGate(options = {}) {
   const buildResults = await Promise.all(
     projects.map(async (project) => {
       const label = project.split("/").at(-1);
+      const buildName = `build ${label}`;
+      const validateName = `validate ${label}`;
       const build = await run({
         args: [cliPath, "build", "--project", project, "--json"],
         command: process.execPath,
         cwd: root,
-        name: `build ${label}`,
+        name: buildName,
         timeoutMs: 300000,
       });
       const validate = await run({
         args: [cliPath, "validate", "--project", project, "--json"],
         command: process.execPath,
         cwd: root,
-        name: `validate ${label}`,
+        name: validateName,
         timeoutMs: 120000,
       });
-      return [build, validate];
+      return [
+        { ...build, name: buildName },
+        { ...validate, name: validateName },
+      ];
     }),
   );
   for (const [build, validate] of buildResults) {

@@ -40,11 +40,5 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Build, typecheck, lint, and test
-        run: pnpm verify
-
-      - name: Conformance gate
-        run: pnpm verify:conformance
-
-      - name: Baseline visual parity
-        run: pnpm verify:parity:push -- --no-setup
+      - name: Pre-push gate
+        run: pnpm verify:pre-push

@@ -376,7 +376,7 @@ After `pnpm install`, Husky installs local git hooks:
 | Hook | Command | Purpose |
 |------|---------|---------|
 | `pre-commit` | `pnpm verify:smoke` | Fast naming/docs drift check |
-| `pre-push` | `pnpm verify:pre-push` | Fast `v1-canonical` web↔Bevy capture (~1–2 min). Full workspace test, conformance, and seven-scene parity run in CI. |
+| `pre-push` | `pnpm verify:pre-push` | Orchestrated workspace verify + conformance + seven-scene visual parity (~2–3 min target). |
 
 Run `pnpm verify:parity:smoke` explicitly when you need the one-scene web↔Bevy
 screenshot proof before pushing. The smoke scene (`examples/parity-smoke`)

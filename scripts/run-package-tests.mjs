@@ -22,13 +22,15 @@ if (runIndex !== -1) {
 
 const packageRoot = process.cwd();
 
-const build =
-  buildMode === "pnpm"
-    ? spawnSync("pnpm", ["build"], { cwd: packageRoot, stdio: "inherit" })
-    : spawnSync("pnpm", ["exec", "tsc", "-p", "tsconfig.json"], { cwd: packageRoot, stdio: "inherit" });
+if (process.env.TN_SKIP_PACKAGE_TEST_BUILD !== "1") {
+  const build =
+    buildMode === "pnpm"
+      ? spawnSync("pnpm", ["build"], { cwd: packageRoot, stdio: "inherit" })
+      : spawnSync("pnpm", ["exec", "tsc", "-p", "tsconfig.json"], { cwd: packageRoot, stdio: "inherit" });
 
-if (build.status !== 0) {
-  process.exit(build.status ?? 1);
+  if (build.status !== 0) {
+    process.exit(build.status ?? 1);
+  }
 }
 
 function collectTestFiles(directory) {
