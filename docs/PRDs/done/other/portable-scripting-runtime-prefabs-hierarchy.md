@@ -141,9 +141,9 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Define prefab catalog file and manifest entry.
-- [ ] Require deterministic root ID, component templates, and child hierarchy.
-- [ ] Reject unsupported runtime asset loading or backend handles.
+- [x] Define prefab catalog file and manifest entry.
+- [x] Require deterministic root ID, component templates, and child hierarchy.
+- [x] Reject unsupported runtime asset loading or backend handles.
 
 **Tests Required:**
 
@@ -169,9 +169,9 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add instantiate/setParent/clearParent command declarations.
-- [ ] Serialize command permissions into `systems.ir.json`.
-- [ ] Validate command declarations against prefab catalog and world entities.
+- [x] Add instantiate/setParent/clearParent command declarations.
+- [x] Serialize command permissions into `systems.ir.json`.
+- [x] Validate command declarations against prefab catalog and world entities.
 
 **Tests Required:**
 
@@ -197,9 +197,9 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Expand prefabs into deterministic entity IDs using caller prefix.
-- [ ] Apply parent/child updates with cycle detection.
-- [ ] Reconcile rendered objects and recursive teardown.
+- [x] Expand prefabs into deterministic entity IDs using caller prefix.
+- [x] Apply parent/child updates with cycle detection.
+- [x] Reconcile rendered objects and recursive teardown.
 
 **Tests Required:**
 
@@ -225,9 +225,9 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add fixture instantiating and reparenting a renderable prefab.
-- [ ] Compare web/native command and hierarchy observations.
-- [ ] Update docs to mark runtime prefab and hierarchy commands implemented.
+- [x] Add fixture instantiating and reparenting a renderable prefab.
+- [x] Compare web/native command and hierarchy observations.
+- [x] Update docs to mark runtime prefab and hierarchy commands implemented.
 
 **Tests Required:**
 

@@ -79,6 +79,7 @@ fn timer_effects() -> NativeSystemEffects {
             event: Some("TimerElapsed".to_owned()),
             payload: Some(json!({ "id": "boundedTimer", "tick": 1 })),
             value: None,
+            ..Default::default()
         }],
         events: Vec::new(),
         patches: Vec::new(),
@@ -105,6 +106,7 @@ fn spawn_effects() -> NativeSystemEffects {
                 event: None,
                 payload: None,
                 value: None,
+                ..Default::default()
             },
             NativeSystemCommandEffect {
                 command: "emitEvent".to_owned(),
@@ -114,6 +116,7 @@ fn spawn_effects() -> NativeSystemEffects {
                 event: Some("Spawned".to_owned()),
                 payload: Some(json!({ "entity": "runtime.enemy" })),
                 value: None,
+                ..Default::default()
             },
         ],
         events: Vec::new(),
@@ -143,6 +146,7 @@ fn remove_effects() -> NativeSystemEffects {
                 event: None,
                 payload: None,
                 value: None,
+                ..Default::default()
             },
             NativeSystemCommandEffect {
                 command: "despawn".to_owned(),
@@ -152,6 +156,7 @@ fn remove_effects() -> NativeSystemEffects {
                 event: None,
                 payload: None,
                 value: None,
+                ..Default::default()
             },
         ],
         events: Vec::new(),

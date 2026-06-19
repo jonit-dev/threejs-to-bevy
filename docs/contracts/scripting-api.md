@@ -151,8 +151,9 @@ unsupported.
   `defineGame({ scenes, initialScene })` lifecycle scene composition.
 - [x] ECS tags as queryable zero-field marker components.
 - [x] Scene `Group` containers as hierarchy-only `SceneContainer` entities.
-- [ ] Missing runtime prefab instantiation.
-- [ ] Missing child hierarchy commands from scripts.
+- [x] Runtime prefab instantiation through `ctx.commands.instantiate(...)`.
+- [x] Child hierarchy commands through `ctx.commands.setParent(...)` and
+  `ctx.commands.clearParent(...)`.
 
 ### Intentionally Unsupported Or Non-Portable
 
@@ -436,10 +437,12 @@ show the feature.
 - [ ] Arbitrary particle commands beyond bounded portable emitter data.
   Promote only when the command surface has deterministic web/native behavior
   and visual verification artifacts.
-- [ ] Runtime prefab instantiation. V5 authoring-time prefab helpers expand to
-  existing declarations; runtime instantiation remains future scope.
-- [ ] Child hierarchy commands. This needs scene-visible proof and deterministic
-  command application across web and Bevy.
+- [x] Runtime prefab instantiation. Bundle-local `prefabs.ir.json` catalogs
+  expand through caller-provided deterministic prefixes and are verified across
+  web and Bevy by `pnpm verify:runtime-prefabs-hierarchy`.
+- [x] Child hierarchy commands. `setParent` and `clearParent` mutate the
+  portable `Hierarchy` component with cycle checks and matching web/native
+  command application.
 - [ ] Delayed command scheduling beyond bounded timer/channel services.
 
 ### Design Only

@@ -1,0 +1,38 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "spawnPrefab",
+      "schedule": "update",
+      "reads": [],
+      "writes": ["Hierarchy", "Transform"],
+      "queries": [],
+      "commands": [
+        {
+          "kind": "instantiate",
+          "prefab": "prefab.crate",
+          "prefix": "runtime.crate"
+        },
+        {
+          "kind": "setParent",
+          "child": "runtime.crate.root",
+          "parent": "anchor"
+        },
+        {
+          "kind": "clearParent",
+          "child": "runtime.crate.child"
+        }
+      ],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": [],
+      "resourceWrites": [],
+      "services": [],
+      "script": {
+        "bundle": "scripts.bundle.js",
+        "exportName": "system_spawnPrefab"
+      }
+    }
+  ]
+}

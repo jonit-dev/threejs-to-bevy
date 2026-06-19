@@ -125,9 +125,12 @@ export interface ISystemContext {
   };
   commands: {
     addComponent(entity: string, component: EcsFactory | IEcsSchema | string, value?: unknown): void;
+    clearParent(child: string): void;
     despawn(entity: string, policy?: { recursive?: boolean }): void;
+    instantiate(prefab: string, prefix: string): { accepted: boolean; entities: string[]; prefab: string; root: string | null; status: "enqueued" | "missing" };
     removeComponent(entity: string, component: EcsFactory | IEcsSchema | string): void;
     setComponent(entity: string, component: EcsFactory | IEcsSchema | string, value: unknown): void;
+    setParent(child: string, parent: string): void;
     spawn(entity: string, components: Record<string, unknown>): void;
   };
   events: {

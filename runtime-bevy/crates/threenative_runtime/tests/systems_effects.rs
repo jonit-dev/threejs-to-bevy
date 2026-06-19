@@ -164,6 +164,7 @@ fn systems_effects_should_apply_command_buffer_event_write() {
             event: Some("Spawned".to_owned()),
             payload: Some(json!({ "entity": "marker" })),
             value: None,
+            ..Default::default()
         }],
         ..Default::default()
     };
@@ -353,6 +354,7 @@ fn systems_effects_should_apply_declared_command() {
             event: None,
             payload: None,
             value: None,
+            ..Default::default()
         }],
         ..Default::default()
     };
@@ -361,6 +363,70 @@ fn systems_effects_should_apply_declared_command() {
         .expect("declared command should apply");
 
     assert!(bundle.world.entities.is_empty());
+}
+
+#[test]
+fn systems_effects_should_instantiate_prefab_hierarchy_at_command_flush() {
+    let root = write_prefab_bundle("prefab-hierarchy");
+    let mut bundle = load_bundle(&root).expect("bundle should load");
+    let system = bundle
+        .systems
+        .as_ref()
+        .expect("systems should load")
+        .systems[0]
+        .clone();
+    let effects = NativeSystemEffects {
+        commands: vec![
+            NativeSystemCommandEffect {
+                command: "instantiate".to_owned(),
+                prefab: Some("prefab.crate".to_owned()),
+                prefix: Some("runtime.crate".to_owned()),
+                ..Default::default()
+            },
+            NativeSystemCommandEffect {
+                child: Some("runtime.crate.root".to_owned()),
+                command: "setParent".to_owned(),
+                entity: Some("runtime.crate.root".to_owned()),
+                parent: Some("anchor".to_owned()),
+                ..Default::default()
+            },
+            NativeSystemCommandEffect {
+                child: Some("runtime.crate.child".to_owned()),
+                command: "clearParent".to_owned(),
+                entity: Some("runtime.crate.child".to_owned()),
+                ..Default::default()
+            },
+        ],
+        ..Default::default()
+    };
+
+    apply_system_effects(&mut bundle, &system, &effects, 1, 1)
+        .expect("prefab hierarchy commands should apply");
+
+    let mut hierarchy = bundle
+        .world
+        .entities
+        .iter()
+        .map(|entity| {
+            (
+                entity.id.as_str(),
+                entity
+                    .components
+                    .hierarchy
+                    .as_ref()
+                    .and_then(|component| component.parent.as_deref()),
+            )
+        })
+        .collect::<Vec<_>>();
+    hierarchy.sort_by(|left, right| left.0.cmp(right.0));
+    assert_eq!(
+        hierarchy,
+        vec![
+            ("anchor", None),
+            ("runtime.crate.child", None),
+            ("runtime.crate.root", Some("anchor"))
+        ]
+    );
 }
 
 fn write_bundle(name: &str) -> PathBuf {
@@ -414,6 +480,68 @@ fn write_bundle(name: &str) -> PathBuf {
       "resourceWrites": [],
       "services": [],
       "script": { "bundle": "scripts.bundle.js", "exportName": "system_movePlayer" }
+    }
+  ]
+}"#,
+    );
+    write_common(&root);
+    fs::write(
+        root.join("scripts.bundle.js"),
+        "export const systems = Object.freeze({});\n",
+    )
+    .expect("script bundle should be written");
+    root
+}
+
+fn write_prefab_bundle(name: &str) -> PathBuf {
+    let root = root(name);
+    fs::create_dir_all(&root).expect("temp bundle should be created");
+    write_json(
+        &root,
+        "manifest.json",
+        r#"{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "systems-effects-prefab",
+  "requiredCapabilities": {},
+  "entry": { "world": "world.ir.json", "systems": "systems.ir.json", "scripts": "scripts.bundle.js", "prefabs": "prefabs.ir.json" },
+  "files": { "assets": "assets.manifest.json", "materials": "materials.ir.json", "targetProfile": "target.profile.json", "prefabs": "prefabs.ir.json" }
+}"#,
+    );
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{"schema":"threenative.world","version":"0.1.0","entities":[{"id":"anchor","components":{"Transform":{"position":[0,0,0],"rotation":[0,0,0,1],"scale":[1,1,1]}}}]}"#,
+    );
+    write_json(
+        &root,
+        "prefabs.ir.json",
+        r#"{"schema":"threenative.prefabs","version":"0.1.0","prefabs":[{"id":"prefab.crate","root":"root","entities":[{"id":"root","components":{"Transform":{"position":[1,0,0],"rotation":[0,0,0,1],"scale":[1,1,1]}}},{"id":"child","components":{"Hierarchy":{"parent":"root"},"Transform":{"position":[0,1,0],"rotation":[0,0,0,1],"scale":[1,1,1]}}}]}]}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "spawnPrefab",
+      "schedule": "update",
+      "reads": [],
+      "writes": ["Hierarchy", "Transform"],
+      "queries": [],
+      "commands": [
+        { "kind": "instantiate", "prefab": "prefab.crate", "prefix": "runtime.crate" },
+        { "kind": "setParent", "child": "runtime.crate.root", "parent": "anchor" },
+        { "kind": "clearParent", "child": "runtime.crate.child" }
+      ],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": [],
+      "resourceWrites": [],
+      "services": [],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_spawnPrefab" }
     }
   ]
 }"#,

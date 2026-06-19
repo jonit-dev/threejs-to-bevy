@@ -130,6 +130,20 @@ export const FOCUSED_GATES: Record<string, FocusedGate> = {
       protects: "Live entity reconciliation, event windows, dynamic state handoff, and host diagnostic parity.",
     },
   },
+  "verify:runtime-prefabs-hierarchy": {
+    commands: [
+      ["pnpm", "--filter", "@threenative/ir", "build"],
+      ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+      ["node", "scripts/verify-runtime-prefabs-hierarchy.mjs"],
+    ],
+    description: "Runtime prefab and hierarchy command gate.",
+    metadata: {
+      owner: "tools/verify runtime-prefabs-hierarchy gate",
+      profile: "focused",
+      reason: "Compares web and Bevy runtime prefab expansion and hierarchy mutation using a shared conformance fixture.",
+      protects: "Deterministic prefab instantiation, hierarchy parent commands, and web/Bevy command parity.",
+    },
+  },
   "verify:runtime-query-diffing": {
     commands: [
       ["pnpm", "--filter", "@threenative/ir", "build"],
@@ -239,6 +253,7 @@ const RELEASE_PROFILE_GATES = [
   "verify:production-hardening",
   "verify:rendering-residuals",
   "verify:runtime-gameplay-host",
+  "verify:runtime-prefabs-hierarchy",
   "verify:runtime-query-diffing",
   "verify:ui-persistence-settings-facades",
   "verify:v9:assets-gltf-scene-workflow",

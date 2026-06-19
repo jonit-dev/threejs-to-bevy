@@ -1366,11 +1366,21 @@ function __tnInvokeSystem(options) {
       addComponent(entity, component, value = {}) {
         effects.commands.push({ command: "addComponent", entity, component: normalize(component), value: clone(value) });
       },
+      clearParent(child) {
+        effects.commands.push({ child, command: "clearParent", entity: child });
+      },
       removeComponent(entity, component) {
         effects.commands.push({ command: "removeComponent", entity, component: normalize(component) });
       },
       setComponent(entity, component, value) {
         effects.commands.push({ command: "setComponent", entity, component: normalize(component), value: clone(value) });
+      },
+      instantiate(prefab, prefix) {
+        effects.commands.push({ command: "instantiate", entity: `${prefix}`, prefab, prefix });
+        return { accepted: true, entities: [], prefab, root: null, status: "enqueued" };
+      },
+      setParent(child, parent) {
+        effects.commands.push({ child, command: "setParent", entity: child, parent });
       },
       emitEvent(event, payload) {
         effects.commands.push({ command: "emitEvent", event: normalize(event), payload: clone(payload) });

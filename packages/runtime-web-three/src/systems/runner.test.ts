@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import type { ISystemsIr, IUiIr, IWorldIr } from "@threenative/ir";
+import type { IPrefabsIr, ISystemsIr, IUiIr, IWorldIr } from "@threenative/ir";
 
 import { loadSystemModule, runSchedule } from "./runner.js";
 
@@ -172,6 +172,43 @@ test("should run systems apply full command buffer semantics", async () => {
     },
   ]);
   assert.deepEqual(world.events, { Spawned: [{ entity: "enemy" }] });
+});
+
+test("should instantiate prefab hierarchy at command flush", async () => {
+  const world = makeWorld();
+  world.entities[0]!.id = "anchor";
+  const systems = makeSystems("update", "spawnPrefab");
+  systems.systems[0]!.writes = ["Hierarchy", "Transform"];
+  systems.systems[0]!.commands = [
+    { kind: "instantiate", prefab: "prefab.crate", prefix: "runtime.crate" },
+    { child: "runtime.crate.root", kind: "setParent", parent: "anchor" },
+    { child: "runtime.crate.child", kind: "clearParent" },
+  ];
+
+  await runSchedule({
+    module: {
+      systems: {
+        spawnPrefab(context: any) {
+          context.commands.instantiate("prefab.crate", "runtime.crate");
+          context.commands.setParent("runtime.crate.root", "anchor");
+          context.commands.clearParent("runtime.crate.child");
+        },
+      },
+    },
+    prefabs: makePrefabs(),
+    schedule: "update",
+    systems,
+    world,
+  });
+
+  assert.deepEqual(
+    world.entities.map((entity) => ({ id: entity.id, parent: (entity.components.Hierarchy as { parent?: string } | undefined)?.parent ?? null })).sort((left, right) => left.id.localeCompare(right.id)),
+    [
+      { id: "anchor", parent: null },
+      { id: "runtime.crate.child", parent: null },
+      { id: "runtime.crate.root", parent: "anchor" },
+    ],
+  );
 });
 
 test("should reconcile spawned entities and events across later schedules", async () => {
@@ -449,6 +486,23 @@ function makeUi(): IUiIr {
       kind: "column",
     },
     schema: "threenative.ui",
+    version: "0.1.0",
+  };
+}
+
+function makePrefabs(): IPrefabsIr {
+  return {
+    prefabs: [
+      {
+        entities: [
+          { components: { Transform: { position: [1, 0, 0] } }, id: "root" },
+          { components: { Hierarchy: { parent: "root" }, Transform: { position: [0, 1, 0] } }, id: "child" },
+        ],
+        id: "prefab.crate",
+        root: "root",
+      },
+    ],
+    schema: "threenative.prefabs",
     version: "0.1.0",
   };
 }

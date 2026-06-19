@@ -38,6 +38,15 @@ export function systemsToIr(systems: ReadonlyArray<ISystemLike>): ISystemsIr {
           if (command.kind === "despawn") {
             return { entity: command.entity, kind: command.kind };
           }
+          if (command.kind === "instantiate") {
+            return { kind: command.kind, prefab: command.prefab, prefix: command.prefix };
+          }
+          if (command.kind === "setParent") {
+            return { child: command.child, kind: command.kind, parent: command.parent };
+          }
+          if (command.kind === "clearParent") {
+            return { child: command.child, kind: command.kind };
+          }
           return { component: command.component, entity: command.entity, kind: command.kind };
         }),
         eventReads: [...system.eventReads].sort(),

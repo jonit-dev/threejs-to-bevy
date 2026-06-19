@@ -1,4 +1,4 @@
-import type { IAssetsManifest, IAudioIr, IBundleManifest, IIrSchemaFile, IIrSystemDeclaration, ILocalDataIr, IRuntimeDiagnostic, IUiIr, IrSystemSchedule, ISystemsIr, IWorldIr } from "@threenative/ir";
+import type { IAssetsManifest, IAudioIr, IBundleManifest, IIrSchemaFile, IIrSystemDeclaration, ILocalDataIr, IPrefabsIr, IRuntimeDiagnostic, IUiIr, IrSystemSchedule, ISystemsIr, IWorldIr } from "@threenative/ir";
 import type { IWebInputState } from "../input.js";
 
 import { createComponentDiffCache } from "./componentDiff.js";
@@ -50,6 +50,7 @@ export async function runSchedule(options: {
   componentSchemas?: IIrSchemaFile;
   module: ISystemModule;
   paused?: boolean;
+  prefabs?: IPrefabsIr;
   schedule: IrSystemSchedule;
   systems: ISystemsIr;
   tick?: number;
@@ -86,6 +87,7 @@ async function runSystem(
     module: ISystemModule;
     paused?: boolean;
     persistence?: IWebPersistenceService;
+    prefabs?: IPrefabsIr;
     systems: ISystemsIr;
     tick?: number;
     ui?: IUiIr;
@@ -109,11 +111,12 @@ async function runSystem(
     localData: options.localData,
     paused: options.paused ?? false,
     persistence: options.persistence,
+    prefabs: options.prefabs,
     systems: options.systems,
     ui: options.ui,
   });
   await fn(context);
-  const result = applySystemEffects(options.world, system, { commands, events, resources, services }, { frame: options.frame ?? 0, tick: options.tick ?? 0 });
+  const result = applySystemEffects(options.world, system, { commands, events, resources, services }, { frame: options.frame ?? 0, prefabs: options.prefabs, tick: options.tick ?? 0 });
   if (options.effectLog !== undefined) {
     appendSystemEffectLog(options.effectLog, result.entries);
   }

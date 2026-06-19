@@ -25,7 +25,12 @@ const DEFAULT_TIMING_BUDGETS_MS: Record<ReleaseStepCategory, number> = {
   "visual-native": 1_200_000,
 };
 
-const CONFORMANCE_ARTIFACT_CONFLICT_GATES = new Set(["verify:v9:physics-character"]);
+const CONFORMANCE_ARTIFACT_CONFLICT_GATES = new Set([
+  "verify:v9:physics-character",
+  "verify:runtime-query-diffing",
+  "verify:ui-persistence-settings-facades",
+  "verify:runtime-prefabs-hierarchy",
+]);
 
 export const RELEASE_FOCUSED_GATES: readonly FocusedGate[] = [
   { name: "verify v9 animation state", reportPath: "tools/verify/artifacts/animation-state/state-diff.json", script: "verify:v9:animation-state" },
@@ -40,6 +45,9 @@ export const RELEASE_FOCUSED_GATES: readonly FocusedGate[] = [
   { name: "verify production hardening", reportPath: "tools/verify/artifacts/production-hardening/verification-report.json", script: "verify:production-hardening" },
   { name: "verify rendering residuals", reportPath: "tools/verify/artifacts/rendering-residuals/verification-report.json", script: "verify:rendering-residuals" },
   { name: "verify runtime gameplay host", reportPath: "tools/verify/artifacts/runtime-gameplay-host/verification-report.json", script: "verify:runtime-gameplay-host" },
+  { name: "verify runtime query diffing", reportPath: "tools/verify/artifacts/runtime-query-diffing/verification-report.json", script: "verify:runtime-query-diffing" },
+  { name: "verify ui persistence settings facades", reportPath: "tools/verify/artifacts/ui-persistence-settings-facades/verification-report.json", script: "verify:ui-persistence-settings-facades" },
+  { name: "verify runtime prefabs hierarchy", reportPath: "tools/verify/artifacts/runtime-prefabs-hierarchy/verification-report.json", script: "verify:runtime-prefabs-hierarchy" },
   { name: "verify bundle safety hardening", reportPath: "tools/verify/artifacts/bundle-safety-hardening/verification-report.json", script: "verify:bundle-safety-hardening" },
 ];
 

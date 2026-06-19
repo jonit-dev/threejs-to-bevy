@@ -27,6 +27,20 @@ export type IWorldCommandDeclaration =
       kind: "despawn";
     }
   | {
+      kind: "instantiate";
+      prefab: string;
+      prefix: string;
+    }
+  | {
+      child: string;
+      kind: "setParent";
+      parent: string;
+    }
+  | {
+      child: string;
+      kind: "clearParent";
+    }
+  | {
       event: string;
       kind: "emitEvent";
     };
@@ -255,6 +269,15 @@ function serializeCommand(command: CommandDeclaration): IWorldCommandDeclaration
   }
   if (command.kind === "despawn") {
     return { entity: command.entity, kind: command.kind };
+  }
+  if (command.kind === "instantiate") {
+    return { kind: command.kind, prefab: command.prefab, prefix: command.prefix };
+  }
+  if (command.kind === "setParent") {
+    return { child: command.child, kind: command.kind, parent: command.parent };
+  }
+  if (command.kind === "clearParent") {
+    return { child: command.child, kind: command.kind };
   }
   return { component: command.component, entity: command.entity, kind: command.kind };
 }

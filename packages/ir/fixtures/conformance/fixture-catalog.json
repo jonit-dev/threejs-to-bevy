@@ -150,6 +150,24 @@
       ]
     },
     {
+      "canonicalId": "runtime-prefabs-hierarchy",
+      "owner": "ir-contract",
+      "sourceExample": "runtime-prefabs-hierarchy",
+      "regenerateCommand": "pnpm verify:runtime-prefabs-hierarchy",
+      "canonicalArtifactGate": "runtime-prefabs-hierarchy",
+      "ownerDocs": "docs/PRDs/done/other/portable-scripting-runtime-prefabs-hierarchy.md",
+      "aggregateGate": "verify:release",
+      "bundlePath": "packages/ir/fixtures/conformance/runtime-prefabs-hierarchy/game.bundle",
+      "promotedCapabilities": [
+        "scripting:command.clearParent",
+        "scripting:command.instantiate",
+        "scripting:command.setParent"
+      ],
+      "reportArtifacts": [
+        "tools/verify/artifacts/runtime-prefabs-hierarchy/verification-report.json"
+      ]
+    },
+    {
       "canonicalId": "ui-persistence-settings-facades",
       "owner": "ir-contract",
       "sourceExample": "ui-persistence-settings-facades",

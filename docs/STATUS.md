@@ -1200,7 +1200,14 @@ structured change metadata, and hidden runtime changed-query diffing from
 schedule-stage component snapshots when explicit metadata is absent. The
 `runtime-query-diffing` fixture and `pnpm verify:runtime-query-diffing` compare
 web and Bevy changed-query results after command-buffer mutation and before
-ordering/pagination windows. Systems can now declare same-stage
+ordering/pagination windows. The `ui-persistence-settings-facades` fixture and
+`pnpm verify:ui-persistence-settings-facades` compare bounded `ctx.ui`,
+`ctx.persistence`, and `ctx.settings` behavior over retained UI and local-data
+IR without exposing DOM, filesystem, cloud, or platform handles. The
+`runtime-prefabs-hierarchy` fixture and `pnpm verify:runtime-prefabs-hierarchy`
+compare bundle-local prefab instantiation, deterministic instance prefixes, and
+`setParent`/`clearParent` hierarchy mutation across web and Bevy. Systems can
+now declare same-stage
 `before`/`after` ordering constraints; SDK/IR/compiler, web, and Bevy QuickJS
 resolve them with deterministic topological ordering and system-name tie
 breaks, while validation rejects missing, cross-stage, self-referential, and

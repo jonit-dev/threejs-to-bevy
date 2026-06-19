@@ -50,6 +50,7 @@ pub struct BundleEntry {
     #[serde(rename = "localData")]
     pub local_data: Option<String>,
     pub overlays: Option<String>,
+    pub prefabs: Option<String>,
     pub scenes: Option<String>,
     pub scripts: Option<String>,
     pub systems: Option<String>,
@@ -66,6 +67,7 @@ pub struct BundleFiles {
     pub input: Option<String>,
     pub local_data: Option<String>,
     pub materials: String,
+    pub prefabs: Option<String>,
     pub runtime_config: Option<String>,
     pub target_profile: String,
 }
@@ -83,6 +85,7 @@ pub struct LoadedBundle {
     pub manifest: BundleManifest,
     pub materials: MaterialsIr,
     pub overlays: Option<OverlaysIr>,
+    pub prefabs: Option<PrefabsIr>,
     pub runtime_config: Option<RuntimeConfigIr>,
     pub scenes: Option<ScenesIr>,
     pub systems: Option<SystemsIr>,
@@ -125,6 +128,28 @@ pub struct SceneLifecycleIr {
 pub struct SceneAudioIr {
     pub music: Option<String>,
     pub transition: Option<SceneTransitionIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct PrefabsIr {
+    pub schema: String,
+    pub version: String,
+    #[serde(default)]
+    pub prefabs: Vec<PrefabDeclarationIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct PrefabDeclarationIr {
+    pub id: String,
+    pub root: String,
+    #[serde(default)]
+    pub entities: Vec<PrefabEntityTemplateIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct PrefabEntityTemplateIr {
+    pub id: String,
+    pub components: EntityComponents,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -260,13 +285,13 @@ pub struct WorldIr {
     pub resources: HashMap<String, serde_json::Value>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct WorldEntity {
     pub id: String,
     pub components: EntityComponents,
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct EntityComponents {
     pub camera: Option<CameraComponent>,
@@ -283,14 +308,14 @@ pub struct EntityComponents {
     pub extra: HashMap<String, serde_json::Value>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct TransformComponent {
     pub position: Option<[f32; 3]>,
     pub rotation: Option<[f32; 4]>,
     pub scale: Option<[f32; 3]>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MeshRendererComponent {
     pub cast_shadow: Option<bool>,
@@ -421,7 +446,7 @@ pub struct CameraComponent {
     pub viewport: Option<CameraViewportIrValue>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct LightComponent {
     pub kind: String,
     pub color: ColorIr,
@@ -442,18 +467,18 @@ pub struct DebugGizmoIr {
     pub gizmo: Option<bool>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ShadowFilterIr {
     pub mode: String,
     pub quality: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct HierarchyComponent {
     pub parent: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RigidBodyComponent {
     pub angular_velocity: Option<[f32; 3]>,
@@ -468,7 +493,7 @@ pub struct RigidBodyComponent {
     pub velocity: Option<[f32; 3]>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CcdComponent {
     pub enabled: bool,
@@ -476,7 +501,7 @@ pub struct CcdComponent {
     pub mode: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct ColliderComponent {
     pub friction: Option<f32>,
     pub kind: String,
@@ -492,7 +517,7 @@ pub struct ColliderComponent {
     pub trigger: Option<bool>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MeshColliderComponent {
     pub bounds: MeshColliderBoundsComponent,
@@ -500,13 +525,13 @@ pub struct MeshColliderComponent {
     pub triangle_count: u32,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct MeshColliderBoundsComponent {
     pub center: Option<[f32; 3]>,
     pub size: [f32; 3],
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct ColliderSlopeComponent {
     pub axis: String,
     pub direction: i8,
@@ -514,7 +539,7 @@ pub struct ColliderSlopeComponent {
     pub run: f32,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PhysicsJointComponent {
     pub anchor: Option<[f32; 3]>,
@@ -527,13 +552,13 @@ pub struct PhysicsJointComponent {
     pub travel: Option<f32>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct PhysicsJointLimitsComponent {
     pub max: f32,
     pub min: f32,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct VisibilityComponent {
     pub visible: bool,
 }
@@ -1027,8 +1052,14 @@ pub enum SystemCommandIr {
     Despawn { entity: String },
     #[serde(rename = "emitEvent")]
     EmitEvent { event: String },
+    #[serde(rename = "instantiate")]
+    Instantiate { prefab: String, prefix: String },
     #[serde(rename = "removeComponent")]
     RemoveComponent { component: String, entity: String },
+    #[serde(rename = "setParent")]
+    SetParent { child: String, parent: String },
+    #[serde(rename = "clearParent")]
+    ClearParent { child: String },
     #[serde(rename = "setComponent")]
     SetComponent { component: String, entity: String },
     #[serde(rename = "spawn")]
@@ -1938,6 +1969,19 @@ pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadEr
         }
         None => None,
     };
+    let prefabs_path = manifest
+        .entry
+        .prefabs
+        .as_ref()
+        .or(manifest.files.prefabs.as_ref());
+    let prefabs = match prefabs_path {
+        Some(file) => {
+            let prefabs: PrefabsIr = read_json(bundle_path, file)?;
+            ensure_supported(&prefabs.schema, &prefabs.version)?;
+            Some(prefabs)
+        }
+        None => None,
+    };
     let scenes = match manifest.entry.scenes.as_ref() {
         Some(file) => {
             let scenes: ScenesIr = read_json(bundle_path, file)?;
@@ -1959,6 +2003,7 @@ pub fn load_bundle(bundle_path: impl AsRef<Path>) -> Result<LoadedBundle, LoadEr
         manifest,
         materials,
         overlays,
+        prefabs,
         runtime_config,
         scenes,
         systems,

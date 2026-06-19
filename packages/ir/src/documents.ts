@@ -13,6 +13,7 @@ export const IR_SCHEMA_IDS = {
   localData: "threenative.local-data",
   materials: "threenative.materials",
   overlays: "threenative.overlays",
+  prefabs: "threenative.prefabs",
   resourceSchemas: "threenative.resource-schemas",
   runtimeConfig: "threenative.runtime-config",
   scenes: "threenative.scenes",
@@ -103,6 +104,14 @@ export const IR_DOCUMENTS = {
     manifestSection: "entry",
     schema: IR_SCHEMA_IDS.overlays,
     schemaFile: "overlays.schema.json",
+  },
+  prefabs: {
+    fileName: "prefabs.ir.json",
+    manifestLocations: [
+      { key: "prefabs", section: "entry" },
+      { key: "prefabs", section: "files" },
+    ],
+    schema: IR_SCHEMA_IDS.prefabs,
   },
   resourceSchemas: {
     fileName: "schemas/resources.schema.json",

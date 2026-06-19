@@ -48,7 +48,7 @@ This index separates current cleanup work from historical milestone batches.
 - [Portable Scripting Character and Physics Contacts](other/portable-scripting-character-physics-contacts.md):
   richer primitive contact filtering, character movement observations, slope
   and push semantics, and stable diagnostics for unsupported physics breadth.
-- [Portable Scripting Runtime Prefabs and Hierarchy Commands](other/portable-scripting-runtime-prefabs-hierarchy.md):
+- [Portable Scripting Runtime Prefabs and Hierarchy Commands](done/other/portable-scripting-runtime-prefabs-hierarchy.md):
   bundle-local runtime prefab catalogs, deterministic instantiation, hierarchy
   mutation commands, and rendered entity ownership/teardown parity.
 - [Portable Scripting Delayed Commands and Bounded Scheduling](other/portable-scripting-delayed-commands-scheduling.md):

@@ -138,6 +138,59 @@ test("should reject schema unknown component fields", async () => {
   }
 });
 
+test("should accept runtime prefab catalog", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-runtime-prefab-valid-"));
+  try {
+    await writePrefabBundle(root, {
+      schema: "threenative.prefabs",
+      version: "0.1.0",
+      prefabs: [
+        {
+          id: "prefab.crate",
+          root: "root",
+          entities: [
+            { id: "root", components: { Transform: { position: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] } } },
+            { id: "child", components: { Hierarchy: { parent: "root" } } },
+          ],
+        },
+      ],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject cyclic prefab hierarchy", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-runtime-prefab-cycle-"));
+  try {
+    await writePrefabBundle(root, {
+      schema: "threenative.prefabs",
+      version: "0.1.0",
+      prefabs: [
+        {
+          id: "prefab.loop",
+          root: "a",
+          entities: [
+            { id: "a", components: { Hierarchy: { parent: "b" } } },
+            { id: "b", components: { Hierarchy: { parent: "a" } } },
+          ],
+        },
+      ],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_PREFAB_HIERARCHY_CYCLE"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject mesh renderer material references missing from materials document", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-missing-material-ref-"));
   try {
@@ -1198,6 +1251,25 @@ async function writeRuntimeConfig(root: string, renderer: Record<string, unknown
     time: { fixedDelta: 1 / 60, paused: false },
     window: { height: 720, width: 1280 },
   });
+}
+
+async function writePrefabBundle(root: string, prefabs: unknown): Promise<void> {
+  await writeBundle(root, { current: 100, max: 100 });
+  await writeJson(root, "manifest.json", {
+    schema: "threenative.bundle",
+    version: "0.1.0",
+    name: "prefab-test",
+    requiredCapabilities: {},
+    entry: { prefabs: "prefabs.ir.json", world: "world.ir.json" },
+    files: {
+      assets: "assets.manifest.json",
+      componentSchemas: "schemas/components.schema.json",
+      materials: "materials.ir.json",
+      prefabs: "prefabs.ir.json",
+      targetProfile: "target.profile.json",
+    },
+  });
+  await writeJson(root, "prefabs.ir.json", prefabs);
 }
 
 async function writeSceneBundle(root: string, scenes: unknown): Promise<void> {

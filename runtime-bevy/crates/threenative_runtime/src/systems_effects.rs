@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use threenative_loader::{
-    EntityComponents, LoadedBundle, MeshRendererComponent, SystemCommandIr, SystemIr,
-    TransformComponent, WorldEntity,
+    EntityComponents, HierarchyComponent, LoadedBundle, MeshRendererComponent, SystemCommandIr,
+    SystemIr, TransformComponent, WorldEntity,
 };
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
@@ -38,14 +38,18 @@ pub struct NativeSystemResourceEffect {
     pub value: Value,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
 pub struct NativeSystemCommandEffect {
+    pub child: Option<String>,
     pub command: String,
     pub component: Option<String>,
     pub components: Option<Value>,
     pub entity: Option<String>,
     pub event: Option<String>,
+    pub parent: Option<String>,
     pub payload: Option<Value>,
+    pub prefab: Option<String>,
+    pub prefix: Option<String>,
     pub value: Option<Value>,
 }
 
@@ -226,10 +230,23 @@ fn declares_command(system: &SystemIr, command: &NativeSystemCommandEffect) -> b
         SystemCommandIr::EmitEvent { event } => {
             command.command == "emitEvent" && command.event.as_ref() == Some(event)
         }
+        SystemCommandIr::Instantiate { prefab, prefix } => {
+            command.command == "instantiate"
+                && command.prefab.as_ref() == Some(prefab)
+                && command.prefix.as_ref() == Some(prefix)
+        }
         SystemCommandIr::RemoveComponent { component, entity } => {
             command.command == "removeComponent"
                 && command.component.as_ref() == Some(component)
                 && command.entity.as_ref() == Some(entity)
+        }
+        SystemCommandIr::SetParent { child, parent } => {
+            command.command == "setParent"
+                && command.child.as_ref() == Some(child)
+                && command.parent.as_ref() == Some(parent)
+        }
+        SystemCommandIr::ClearParent { child } => {
+            command.command == "clearParent" && command.child.as_ref() == Some(child)
         }
         SystemCommandIr::SetComponent { component, entity } => {
             command.command == "setComponent"
@@ -420,6 +437,36 @@ fn apply_command(bundle: &mut LoadedBundle, command: &NativeSystemCommandEffect)
                 components,
             });
         }
+        "instantiate" => {
+            let (Some(prefab_id), Some(prefix)) =
+                (command.prefab.as_ref(), command.prefix.as_ref())
+            else {
+                return;
+            };
+            let Some(prefabs) = bundle.prefabs.as_ref() else {
+                return;
+            };
+            let Some(prefab) = prefabs
+                .prefabs
+                .iter()
+                .find(|candidate| candidate.id == *prefab_id)
+            else {
+                return;
+            };
+            for template in &prefab.entities {
+                let id = format!("{prefix}.{}", template.id);
+                if bundle.world.entities.iter().any(|entity| entity.id == id) {
+                    continue;
+                }
+                let mut components = template.components.clone();
+                if let Some(hierarchy) = components.hierarchy.as_mut() {
+                    if let Some(parent) = hierarchy.parent.as_ref() {
+                        hierarchy.parent = Some(format!("{prefix}.{parent}"));
+                    }
+                }
+                bundle.world.entities.push(WorldEntity { id, components });
+            }
+        }
         "despawn" => {
             let Some(entity_id) = command.entity.as_ref() else {
                 return;
@@ -428,6 +475,19 @@ fn apply_command(bundle: &mut LoadedBundle, command: &NativeSystemCommandEffect)
                 .world
                 .entities
                 .retain(|entity| entity.id != *entity_id);
+        }
+        "setParent" => {
+            let (Some(child), Some(parent)) = (command.child.as_ref(), command.parent.as_ref())
+            else {
+                return;
+            };
+            set_parent(bundle, child, parent);
+        }
+        "clearParent" => {
+            let Some(child) = command.child.as_ref() else {
+                return;
+            };
+            clear_parent(bundle, child);
         }
         "addComponent" | "setComponent" => {
             let (Some(entity_id), Some(component), Some(value)) = (
@@ -529,7 +589,78 @@ fn apply_component_value(components: &mut EntityComponents, component: &str, val
         return;
     }
 
+    if component == "Hierarchy" {
+        components.hierarchy = Some(HierarchyComponent {
+            parent: value
+                .get("parent")
+                .and_then(Value::as_str)
+                .map(str::to_owned),
+        });
+        return;
+    }
+
     components.extra.insert(component.to_owned(), value);
+}
+
+fn set_parent(bundle: &mut LoadedBundle, child_id: &str, parent_id: &str) {
+    if child_id == parent_id || would_create_hierarchy_cycle(bundle, child_id, parent_id) {
+        return;
+    }
+    if !bundle
+        .world
+        .entities
+        .iter()
+        .any(|entity| entity.id == parent_id)
+    {
+        return;
+    }
+    let Some(child) = bundle
+        .world
+        .entities
+        .iter_mut()
+        .find(|entity| entity.id == child_id)
+    else {
+        return;
+    };
+    let hierarchy = child
+        .components
+        .hierarchy
+        .get_or_insert(HierarchyComponent { parent: None });
+    hierarchy.parent = Some(parent_id.to_owned());
+}
+
+fn clear_parent(bundle: &mut LoadedBundle, child_id: &str) {
+    let Some(child) = bundle
+        .world
+        .entities
+        .iter_mut()
+        .find(|entity| entity.id == child_id)
+    else {
+        return;
+    };
+    let hierarchy = child
+        .components
+        .hierarchy
+        .get_or_insert(HierarchyComponent { parent: None });
+    hierarchy.parent = None;
+}
+
+fn would_create_hierarchy_cycle(bundle: &LoadedBundle, child_id: &str, parent_id: &str) -> bool {
+    let mut current = Some(parent_id);
+    let mut visited = std::collections::BTreeSet::new();
+    while let Some(entity_id) = current {
+        if entity_id == child_id || !visited.insert(entity_id.to_owned()) {
+            return true;
+        }
+        current = bundle
+            .world
+            .entities
+            .iter()
+            .find(|entity| entity.id == entity_id)
+            .and_then(|entity| entity.components.hierarchy.as_ref())
+            .and_then(|hierarchy| hierarchy.parent.as_deref());
+    }
+    false
 }
 
 fn read_mesh_renderer(value: &Value) -> Option<MeshRendererComponent> {

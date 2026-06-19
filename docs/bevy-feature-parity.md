@@ -117,6 +117,14 @@ remaining gaps by usefulness for building and shipping ordinary 3D games:
   `pnpm verify:runtime-query-diffing`, which compares web and Bevy component
   snapshot diffing for `changed: [...]` queries after command-buffer mutation
   and before deterministic ordering, offset, and limit windows.
+- `P1` Portable UI, persistence, and settings script facades are promoted by
+  `pnpm verify:ui-persistence-settings-facades`, which compares web and Bevy
+  retained UI state reads/writes plus declared local-data save/settings
+  behavior without exposing DOM, filesystem, cloud, or native widget handles.
+- `P1` Runtime prefab instantiation and hierarchy commands are promoted by
+  `pnpm verify:runtime-prefabs-hierarchy`, which compares bundle-local prefab
+  expansion, deterministic instance prefixes, and `setParent`/`clearParent`
+  hierarchy mutation across web and Bevy.
 - `P1` Production input/device UX. Keyboard, mouse, gamepad snapshots, touch
   hooks, rebinding, drag picking, and picking debug reports exist, but polished
   device repair overlays, platform touch stream wiring, and richer navigation

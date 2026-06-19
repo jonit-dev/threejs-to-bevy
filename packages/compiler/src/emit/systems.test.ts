@@ -73,6 +73,22 @@ test("should emit system ordering constraints", () => {
   ]);
 });
 
+test("should emit prefab and hierarchy command declarations", () => {
+  const system = update("spawnCrate", {
+    commands: [
+      commands.instantiate("prefab.crate", "runtime.crate"),
+      commands.setParent("runtime.crate.root", "anchor"),
+      commands.clearParent("runtime.crate.child"),
+    ],
+  });
+
+  assert.deepEqual(systemsToIr([system]).systems[0]?.commands, [
+    { kind: "instantiate", prefab: "prefab.crate", prefix: "runtime.crate" },
+    { child: "runtime.crate.root", kind: "setParent", parent: "anchor" },
+    { child: "runtime.crate.child", kind: "clearParent" },
+  ]);
+});
+
 test("should emit scene service declaration", () => {
   const system = update("menuActions", { services: ["scene.change", "scene.push", "scene.pop"] });
 

@@ -42,6 +42,7 @@ pub mod render_transitions;
 pub mod rendering;
 pub mod rendering_residuals;
 pub mod runtime_gameplay_host;
+pub mod runtime_prefabs_hierarchy;
 pub mod runtime_query_diffing;
 pub mod scene_manager;
 pub mod systems_context;
