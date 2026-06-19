@@ -332,6 +332,21 @@ pnpm verify:parity:smoke
 pnpm verify:parity:push
 ```
 
+Verification ownership is tracked in
+[status/verification-script-classification.md](../status/verification-script-classification.md).
+Use package tests for assertions that can run against one package, in-memory
+data, or a small fixture: schema validation, diagnostics, compiler emission,
+runtime-local mapping, CLI argument behavior, artifact helper behavior, and
+verify-tool command selection. Use focused gates only when the proof needs a
+generated bundle, cross-package flow, runtime adapter evidence, visual/native
+comparison, or durable artifacts consumed by status and release reports.
+
+`pnpm verify:conformance` owns shared IR fixture parity across web Three.js and
+native Bevy. `pnpm verify:release` owns aggregation: required focused gates,
+conformance, sample-scene/visual evidence, and artifact presence checks. Legacy
+milestone commands remain compatibility entry points only; prefer the canonical
+capability or release command in new docs and automation.
+
 ### Git hooks (Husky)
 
 After `pnpm install`, Husky installs local git hooks:

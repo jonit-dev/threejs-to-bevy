@@ -192,13 +192,13 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Classify each root verification/check script as `test`, `focused-gate`,
+- [x] Classify each root verification/check script as `test`, `focused-gate`,
   `conformance-gate`, `release-gate`, `legacy-alias`, or `delete`.
-- [ ] Record replacement command or package test owner for each script.
-- [ ] Require every kept verifier to explain why it cannot be an ordinary test.
-- [ ] Record the accuracy or output-quality requirement each kept verifier
+- [x] Record replacement command or package test owner for each script.
+- [x] Require every kept verifier to explain why it cannot be an ordinary test.
+- [x] Record the accuracy or output-quality requirement each kept verifier
   protects.
-- [ ] Add profile metadata for all focused gates in `tools/verify`.
+- [x] Add profile metadata for all focused gates in `tools/verify`.
 
 **Tests Required:**
 
@@ -319,10 +319,10 @@ sequenceDiagram
 
 ## 6. Acceptance Criteria
 
-- [ ] Every root verification/check script has a documented owner and outcome.
+- [x] Every root verification/check script has a documented owner and outcome.
 - [ ] Pure assertions are covered by package tests, not release scripts.
-- [ ] Every remaining verifier gate documents why it is not an ordinary test.
-- [ ] Every remaining verifier gate documents the accuracy, parity, diagnostic,
+- [x] Every remaining verifier gate documents why it is not an ordinary test.
+- [x] Every remaining verifier gate documents the accuracy, parity, diagnostic,
   or artifact-quality requirement it protects.
 - [ ] `verify:release` does not rebuild shared packages inside focused gates
   after initial release setup.

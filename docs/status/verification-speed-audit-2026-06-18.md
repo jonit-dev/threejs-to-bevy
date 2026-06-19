@@ -98,6 +98,8 @@ verification ownership reorg. The goal should be to reduce repeated setup and
 make the narrowest useful verification path obvious.
 
 Implementation plan: [Verification Strategy and Speed](../PRDs/other/verification-strategy-and-speed.md).
+The Phase 1 command ownership inventory is tracked in
+[Verification Script Classification](verification-script-classification.md).
 
 **Approach:**
 
