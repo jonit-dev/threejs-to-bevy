@@ -26,7 +26,7 @@ fn should_diagnose_when_scene_has_renderers_but_no_camera_or_light() {
     }))
     .expect("materials should parse");
 
-    let diagnostics = native_scene_startup_diagnostics(&world, &materials);
+    let diagnostics = native_scene_startup_diagnostics(&world, &materials, None);
     let codes = diagnostics
         .iter()
         .map(|diagnostic| diagnostic.code)
@@ -85,7 +85,7 @@ fn should_warn_when_camera_exists_without_active_camera_resource() {
     }))
     .expect("materials should parse");
 
-    let warnings = native_scene_startup_diagnostics(&world, &materials);
+    let warnings = native_scene_startup_diagnostics(&world, &materials, None);
 
     assert_eq!(warnings.len(), 1);
     assert_eq!(warnings[0].code, "TN_BEVY_ACTIVE_CAMERA_MISSING");
@@ -128,7 +128,7 @@ fn should_error_when_active_camera_references_non_camera_entity() {
     }))
     .expect("materials should parse");
 
-    let diagnostics = native_scene_startup_diagnostics(&world, &materials);
+    let diagnostics = native_scene_startup_diagnostics(&world, &materials, None);
 
     assert_eq!(diagnostics.len(), 1);
     assert_eq!(diagnostics[0].code, "TN_BEVY_ACTIVE_CAMERA_INVALID");
@@ -174,5 +174,5 @@ fn should_not_warn_for_viewable_scene() {
     }))
     .expect("materials should parse");
 
-    assert!(native_scene_startup_diagnostics(&world, &materials).is_empty());
+    assert!(native_scene_startup_diagnostics(&world, &materials, None).is_empty());
 }

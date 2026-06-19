@@ -1,0 +1,119 @@
+diff --git a/packages/cli/package.json b/packages/cli/package.json
+index c8c7b08..14b8726 100644
+--- a/packages/cli/package.json
++++ b/packages/cli/package.json
+@@ -14,7 +14,7 @@
+     "access": "public"
+   },
+   "scripts": {
+-    "build": "tsc -p tsconfig.json && node scripts/copy-templates.mjs",
++    "build": "node scripts/copy-templates.mjs && tsc -p tsconfig.json",
+     "lint": "tsc -p tsconfig.json --noEmit",
+     "test": "pnpm --filter @threenative/cli... build && node scripts/run-tests.mjs",
+     "tn": "node dist/index.js",
+diff --git a/runtime-bevy/crates/threenative_runtime/src/lib.rs b/runtime-bevy/crates/threenative_runtime/src/lib.rs
+index 7aa09db..9aeb302 100644
+--- a/runtime-bevy/crates/threenative_runtime/src/lib.rs
++++ b/runtime-bevy/crates/threenative_runtime/src/lib.rs
+@@ -4,8 +4,8 @@ use bevy::prelude::*;
+ use thiserror::Error;
+ use threenative_components::ThreeNativeId;
+ use threenative_loader::{
+-    LoadError, LoadedBundle, MaterialsIr, MeshRendererComponent, TransformComponent, UiBindingIr,
+-    UiNodeIr, WorldIr, load_bundle,
++    EnvironmentSceneIr, LoadError, LoadedBundle, MaterialsIr, MeshRendererComponent,
++    TransformComponent, UiBindingIr, UiNodeIr, WorldIr, load_bundle,
+ };
+ 
+ pub mod animation;
+@@ -80,7 +80,11 @@ pub struct NativeSceneStartupDiagnostic {
+ 
+ pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeError> {
+     let mut bundle = load_bundle(bundle_path)?;
+-    let scene_diagnostics = native_scene_startup_diagnostics(&bundle.world, &bundle.materials);
++    let scene_diagnostics = native_scene_startup_diagnostics(
++        &bundle.world,
++        &bundle.materials,
++        bundle.environment_scene.as_ref(),
++    );
+     for diagnostic in &scene_diagnostics {
+         match diagnostic.severity {
+             NativeSceneDiagnosticSeverity::Error => {
+@@ -243,6 +247,7 @@ pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeErro
+ pub fn native_scene_startup_diagnostics(
+     world: &WorldIr,
+     materials: &MaterialsIr,
++    environment_scene: Option<&EnvironmentSceneIr>,
+ ) -> Vec<NativeSceneStartupDiagnostic> {
+     let mut diagnostics = Vec::new();
+     let camera_ids = world
+@@ -261,8 +266,10 @@ pub fn native_scene_startup_diagnostics(
+         .entities
+         .iter()
+         .any(|entity| entity.components.light.is_some());
++    let environment_has_renderable_content = environment_scene
++        .is_some_and(environment_scene_has_renderable_content);
+ 
+-    if visible_renderers.is_empty() {
++    if visible_renderers.is_empty() && !environment_has_renderable_content {
+         diagnostics.push(NativeSceneStartupDiagnostic {
+             code: "TN_BEVY_SCENE_RENDERERS_MISSING",
+             message:
+@@ -318,8 +325,18 @@ pub fn native_scene_startup_diagnostics(
+ pub fn native_scene_startup_warnings(
+     world: &WorldIr,
+     materials: &MaterialsIr,
++    environment_scene: Option<&EnvironmentSceneIr>,
+ ) -> Vec<NativeSceneStartupDiagnostic> {
+-    native_scene_startup_diagnostics(world, materials)
++    native_scene_startup_diagnostics(world, materials, environment_scene)
++}
++
++fn environment_scene_has_renderable_content(scene: &EnvironmentSceneIr) -> bool {
++    scene.terrain.is_some()
++        || !scene.instances.is_empty()
++        || scene
++            .scatter
++            .iter()
++            .any(|spec| spec.count.unwrap_or(0) > 0 || spec.density.is_some_and(|value| value > 0.0))
+ }
+ 
+ #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+diff --git a/runtime-bevy/crates/threenative_runtime/tests/startup_diagnostics.rs b/runtime-bevy/crates/threenative_runtime/tests/startup_diagnostics.rs
+index ac28486..40d09c3 100644
+--- a/runtime-bevy/crates/threenative_runtime/tests/startup_diagnostics.rs
++++ b/runtime-bevy/crates/threenative_runtime/tests/startup_diagnostics.rs
+@@ -26,7 +26,7 @@ fn should_diagnose_when_scene_has_renderers_but_no_camera_or_light() {
+     }))
+     .expect("materials should parse");
+ 
+-    let diagnostics = native_scene_startup_diagnostics(&world, &materials);
++    let diagnostics = native_scene_startup_diagnostics(&world, &materials, None);
+     let codes = diagnostics
+         .iter()
+         .map(|diagnostic| diagnostic.code)
+@@ -85,7 +85,7 @@ fn should_warn_when_camera_exists_without_active_camera_resource() {
+     }))
+     .expect("materials should parse");
+ 
+-    let warnings = native_scene_startup_diagnostics(&world, &materials);
++    let warnings = native_scene_startup_diagnostics(&world, &materials, None);
+ 
+     assert_eq!(warnings.len(), 1);
+     assert_eq!(warnings[0].code, "TN_BEVY_ACTIVE_CAMERA_MISSING");
+@@ -128,7 +128,7 @@ fn should_error_when_active_camera_references_non_camera_entity() {
+     }))
+     .expect("materials should parse");
+ 
+-    let diagnostics = native_scene_startup_diagnostics(&world, &materials);
++    let diagnostics = native_scene_startup_diagnostics(&world, &materials, None);
+ 
+     assert_eq!(diagnostics.len(), 1);
+     assert_eq!(diagnostics[0].code, "TN_BEVY_ACTIVE_CAMERA_INVALID");
+@@ -174,5 +174,5 @@ fn should_not_warn_for_viewable_scene() {
+     }))
+     .expect("materials should parse");
+ 
+-    assert!(native_scene_startup_diagnostics(&world, &materials).is_empty());
++    assert!(native_scene_startup_diagnostics(&world, &materials, None).is_empty());
+ }

@@ -4,8 +4,8 @@ use bevy::prelude::*;
 use thiserror::Error;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{
-    LoadError, LoadedBundle, MaterialsIr, MeshRendererComponent, TransformComponent, UiBindingIr,
-    UiNodeIr, WorldIr, load_bundle,
+    EnvironmentSceneIr, LoadError, LoadedBundle, MaterialsIr, MeshRendererComponent,
+    TransformComponent, UiBindingIr, UiNodeIr, WorldIr, load_bundle,
 };
 
 pub mod animation;
@@ -80,7 +80,11 @@ pub struct NativeSceneStartupDiagnostic {
 
 pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeError> {
     let mut bundle = load_bundle(bundle_path)?;
-    let scene_diagnostics = native_scene_startup_diagnostics(&bundle.world, &bundle.materials);
+    let scene_diagnostics = native_scene_startup_diagnostics(
+        &bundle.world,
+        &bundle.materials,
+        bundle.environment_scene.as_ref(),
+    );
     for diagnostic in &scene_diagnostics {
         match diagnostic.severity {
             NativeSceneDiagnosticSeverity::Error => {
@@ -243,6 +247,7 @@ pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeErro
 pub fn native_scene_startup_diagnostics(
     world: &WorldIr,
     materials: &MaterialsIr,
+    environment_scene: Option<&EnvironmentSceneIr>,
 ) -> Vec<NativeSceneStartupDiagnostic> {
     let mut diagnostics = Vec::new();
     let camera_ids = world
@@ -261,8 +266,10 @@ pub fn native_scene_startup_diagnostics(
         .entities
         .iter()
         .any(|entity| entity.components.light.is_some());
+    let environment_has_renderable_content = environment_scene
+        .is_some_and(environment_scene_has_renderable_content);
 
-    if visible_renderers.is_empty() {
+    if visible_renderers.is_empty() && !environment_has_renderable_content {
         diagnostics.push(NativeSceneStartupDiagnostic {
             code: "TN_BEVY_SCENE_RENDERERS_MISSING",
             message:
@@ -318,8 +325,18 @@ pub fn native_scene_startup_diagnostics(
 pub fn native_scene_startup_warnings(
     world: &WorldIr,
     materials: &MaterialsIr,
+    environment_scene: Option<&EnvironmentSceneIr>,
 ) -> Vec<NativeSceneStartupDiagnostic> {
-    native_scene_startup_diagnostics(world, materials)
+    native_scene_startup_diagnostics(world, materials, environment_scene)
+}
+
+fn environment_scene_has_renderable_content(scene: &EnvironmentSceneIr) -> bool {
+    scene.terrain.is_some()
+        || !scene.instances.is_empty()
+        || scene
+            .scatter
+            .iter()
+            .any(|spec| spec.count.unwrap_or(0) > 0 || spec.density.is_some_and(|value| value > 0.0))
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

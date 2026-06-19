@@ -51,6 +51,9 @@ use crate::rendering::spawn_rendered_particles;
 // Three.js r152+ directional lights use photometric lux; keep Bevy illuminance aligned.
 // Tuned against the v1 cube fixture so lit standard-material faces match web preview.
 const THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY: f32 = 90.0;
+// Environment bundles duplicate authored lights in world.ir.json and atmosphere;
+// keep the world directional contribution low so it stacks with atmosphere sun.
+const THREE_COMPAT_ENVIRONMENT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY: f32 = 1.7;
 const THREE_COMPAT_POINT_LUMENS_PER_CANDELA: f32 = std::f32::consts::TAU * 2.0 * (90.0 / 1.7);
 const THREE_COMPAT_DEFAULT_RANGE: f32 = 1_000.0;
 const THREE_COMPAT_DEFAULT_CAMERA_EV100: f32 = 7.55;
@@ -536,6 +539,7 @@ fn spawn_entity(
                         illuminance: directional_illuminance(
                             light.intensity,
                             camera_color_management,
+                            camera_atmosphere,
                         ),
                         shadow_depth_bias: light
                             .shadow_bias
@@ -741,9 +745,18 @@ fn camera_exposure_value(
 fn directional_illuminance(
     intensity: f32,
     color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
+    atmosphere: Option<&AtmosphereProfileIr>,
 ) -> f32 {
     intensity / camera_exposure_value(color_management)
-        * THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY
+        * directional_illuminance_per_intensity(atmosphere)
+}
+
+fn directional_illuminance_per_intensity(atmosphere: Option<&AtmosphereProfileIr>) -> f32 {
+    if atmosphere.is_some_and(|profile| profile.active) {
+        THREE_COMPAT_ENVIRONMENT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY
+    } else {
+        THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY
+    }
 }
 
 fn point_lumens(
