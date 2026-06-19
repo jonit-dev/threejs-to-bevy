@@ -122,6 +122,25 @@ The Phase 1 command ownership inventory is tracked in
   shared typed gate functions directly.
 - Timing budgets should warn at first, then fail only after baselines are stable.
 
+**Implementation Result - 2026-06-19:**
+
+- `pnpm verify:release` passed in 59.3 seconds after build reuse and concurrent
+  proof execution, down from the
+  previous checked-in baseline of about 200 seconds.
+- Release now records 39 steps instead of the previous 40-step report because
+  pure script test assertions were removed from release orchestration and remain
+  covered by the normal test path.
+- Nine typed focused gates in the release path now execute through
+  `tools/verify/dist/cli/run.js <gate> --no-setup`, so release reuses the shared
+  package builds completed earlier in the run.
+- Independent focused gates, conformance, sample-scene proof, and visual-matrix
+  proof run concurrently after shared setup. The physics-character focused gate
+  remains serialized before conformance to avoid racing on shared conformance
+  artifacts.
+- The generated release report includes timing categories for `test`, `setup`,
+  `focused-gate`, `artifact`, `conformance`, and `visual-native`, plus a
+  `timing.budgetWarnings` field for non-failing budget regressions.
+
 **Data Changes:** None.
 
 ## 4. Test vs Verification Ownership

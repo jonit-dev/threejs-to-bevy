@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 type CommandSpec = readonly [command: string, ...args: string[]];
-type GateProfile = "smoke" | "changed" | "focused" | "release" | "full";
+export type GateProfile = "smoke" | "changed" | "focused" | "release" | "full";
 
 export interface FocusedGate {
   commands: readonly CommandSpec[];
@@ -14,6 +14,15 @@ export interface FocusedGate {
     reason: string;
     protects: string;
   };
+}
+
+export interface FocusedGateCommandOptions {
+  forwardedArgs?: readonly string[];
+  skipSetup?: boolean;
+}
+
+export interface FocusedGateRunOptions extends FocusedGateCommandOptions {
+  root?: string;
 }
 
 export const FOCUSED_GATES: Record<string, FocusedGate> = {
@@ -191,23 +200,84 @@ export const FOCUSED_GATES: Record<string, FocusedGate> = {
   },
 };
 
+const RELEASE_PROFILE_GATES = [
+  "verify:animation-physics-residuals",
+  "verify:bundle-safety-hardening",
+  "verify:input-ui-polish",
+  "verify:persistence-reload",
+  "verify:production-hardening",
+  "verify:rendering-residuals",
+  "verify:runtime-gameplay-host",
+  "verify:v9:assets-gltf-scene-workflow",
+  "verify:v9:rendering-lights",
+] as const;
+
+export const GATE_PROFILES: Record<GateProfile, { description: string; gates: readonly string[] }> = {
+  changed: {
+    description: "Package-local build, typecheck, lint, and tests for ordinary changed-code review.",
+    gates: [],
+  },
+  focused: {
+    description: "All typed focused capability gates.",
+    gates: listFocusedGateNames(),
+  },
+  full: {
+    description: "Every typed focused gate known to the dispatcher.",
+    gates: listFocusedGateNames(),
+  },
+  release: {
+    description: "Typed focused gates consumed by verify:release after shared setup.",
+    gates: RELEASE_PROFILE_GATES,
+  },
+  smoke: {
+    description: "Fast local smoke path; currently implemented by package scripts rather than focused gates.",
+    gates: [],
+  },
+};
+
 const repoRoot = resolve(fileURLToPath(new URL("../../../../", import.meta.url)));
 
 export function listFocusedGateNames(): string[] {
   return Object.keys(FOCUSED_GATES).sort();
 }
 
-export function runFocusedGate(gateName: string, forwardedArgs: readonly string[] = [], root = repoRoot): number {
+export function listFocusedGateNamesByProfile(profile: GateProfile): string[] {
+  return [...GATE_PROFILES[profile].gates].sort();
+}
+
+export function getFocusedGateCommands(gateName: string, options: FocusedGateCommandOptions = {}): readonly CommandSpec[] {
   const gate = FOCUSED_GATES[gateName];
   if (!gate) {
+    return [];
+  }
+  const commands = options.skipSetup ? gate.commands.slice(-1) : gate.commands;
+  const forwardedArgs = options.forwardedArgs ?? [];
+  if (forwardedArgs.length === 0) {
+    return commands;
+  }
+  return commands.map((command, index) =>
+    index === commands.length - 1 ? ([...command, ...forwardedArgs] as CommandSpec) : command,
+  );
+}
+
+export function runFocusedGate(gateName: string, forwardedArgs: readonly string[], root?: string): number;
+export function runFocusedGate(gateName: string, options?: FocusedGateRunOptions): number;
+export function runFocusedGate(
+  gateName: string,
+  forwardedArgsOrOptions: readonly string[] | FocusedGateRunOptions = [],
+  legacyRoot = repoRoot,
+): number {
+  if (!FOCUSED_GATES[gateName]) {
     process.stderr.write(`Unknown verify gate '${gateName}'. Known gates: ${listFocusedGateNames().join(", ")}\n`);
     return 1;
   }
 
-  for (let index = 0; index < gate.commands.length; index += 1) {
-    const [command, ...args] = gate.commands[index]!;
-    const isFinalCommand = index === gate.commands.length - 1;
-    const result = spawnSync(command, isFinalCommand ? [...args, ...forwardedArgs] : args, {
+  const options: FocusedGateRunOptions = isForwardedArgs(forwardedArgsOrOptions)
+    ? { forwardedArgs: forwardedArgsOrOptions, root: legacyRoot }
+    : forwardedArgsOrOptions;
+  const root = options.root ?? repoRoot;
+  for (const [command, ...args] of getFocusedGateCommands(gateName, options)) {
+    const result = spawnSync(command, args, {
       cwd: root,
       encoding: "utf8",
       stdio: "inherit",
@@ -219,12 +289,18 @@ export function runFocusedGate(gateName: string, forwardedArgs: readonly string[
   return 0;
 }
 
+function isForwardedArgs(value: readonly string[] | FocusedGateRunOptions): value is readonly string[] {
+  return Array.isArray(value);
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const [gateName, ...forwardedArgs] = process.argv.slice(2);
+  const [gateName, ...rawForwardedArgs] = process.argv.slice(2);
+  const skipSetup = rawForwardedArgs.includes("--no-setup");
+  const forwardedArgs = rawForwardedArgs.filter((arg) => arg !== "--no-setup");
   if (!gateName) {
-    process.stderr.write(`Usage: node tools/verify/dist/cli/run.js <gate>\nKnown gates: ${listFocusedGateNames().join(", ")}\n`);
+    process.stderr.write(`Usage: node tools/verify/dist/cli/run.js <gate> [--no-setup] [...args]\nKnown gates: ${listFocusedGateNames().join(", ")}\n`);
     process.exitCode = 1;
   } else {
-    process.exitCode = runFocusedGate(gateName, forwardedArgs);
+    process.exitCode = runFocusedGate(gateName, { forwardedArgs, skipSetup });
   }
 }

@@ -707,7 +707,9 @@ fn fog_settings_for_profile(profile: Option<&AtmosphereProfileIr>) -> Option<Fog
                 end: fog.far.unwrap_or(1_000.0).max(start + 0.001),
             }
         }
-        "exponential" => FogFalloff::Exponential {
+        // Three.js `FogExp2` uses squared exponential falloff; match Bevy's
+        // `FogFalloff::ExponentialSquared`, not linear `Exponential`.
+        "exponential" => FogFalloff::ExponentialSquared {
             density: fog.density.unwrap_or(0.0).max(0.0),
         },
         _ => return None,

@@ -27,7 +27,12 @@ Current contributor entry points:
 pnpm check:names
 pnpm check:docs
 pnpm verify
+pnpm verify:smoke
+pnpm verify:changed
+pnpm verify:focused <gate>
 pnpm verify:conformance
+pnpm verify:release
+pnpm verify:full
 pnpm verify:baseline:visual-parity
 ```
 
@@ -64,7 +69,13 @@ Verification gate ownership is now classified in
 `docs/status/verification-script-classification.md`: package-local assertions
 belong in tests, focused gates must document their owner, profile, verifier
 reason, and protected quality requirement, `verify:conformance` owns shared IR
-runtime parity, and `verify:release` owns evidence aggregation.
+runtime parity, and `verify:release` owns evidence aggregation. The release gate
+builds shared packages once, invokes typed focused gates in no-setup mode where
+available, runs independent focused/conformance/visual proof concurrently after
+setup, keeps focused artifact checks after each gate, and writes step timing
+categories plus non-failing budget warnings into the release report. The current
+`pnpm verify:release` report passes in 59.3 seconds, down from the previous
+about-200-second checked-in baseline.
 
 IR contract hardening is now part of the release path: `@threenative/ir`
 exports canonical document metadata for schema IDs, manifest keys, and bundle

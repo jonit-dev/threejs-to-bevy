@@ -326,7 +326,11 @@ Current contributor commands:
 pnpm check:names
 pnpm check:docs
 pnpm verify
+pnpm verify:smoke
+pnpm verify:changed
+pnpm verify:focused <gate>
 pnpm verify:release
+pnpm verify:full
 pnpm verify:conformance
 pnpm verify:parity:smoke
 pnpm verify:parity:push
@@ -347,18 +351,37 @@ conformance, sample-scene/visual evidence, and artifact presence checks. Legacy
 milestone commands remain compatibility entry points only; prefer the canonical
 capability or release command in new docs and automation.
 
+Profile guidance:
+
+| Profile | Command | Use when |
+| --- | --- | --- |
+| `smoke` | `pnpm verify:smoke` | Fast local confidence for docs and naming drift before broader package or runtime gates. |
+| `changed` | `pnpm verify:changed` | Normal changed-code review when the change is package-local or covered by ordinary tests. |
+| `focused` | `pnpm verify:focused <gate>` | A capability slice changed and needs its durable focused evidence report. |
+| `release` | `pnpm verify:release` | Preparing release evidence, changing release orchestration, or validating required aggregate artifacts. |
+| `full` | `pnpm verify:full` | Full compatibility sweep before broad merges or release handoff. |
+
+Do not use `pnpm verify:release` as the default local loop. Start with
+`verify:smoke` or `verify:changed`, add `verify:conformance` for shared
+IR/runtime contract changes, use `verify:parity:smoke` when you need the
+web/Bevy screenshot hook proof, and run the narrowest focused gate for
+capability evidence before promoting to release aggregation.
+
 ### Git hooks (Husky)
 
 After `pnpm install`, Husky installs local git hooks:
 
 | Hook | Command | Purpose |
 |------|---------|---------|
-| `pre-commit` | `pnpm verify:parity:smoke` | Fast smoke: naming check, build/validate `examples/parity-smoke`, one web↔Bevy screenshot parity capture |
+| `pre-commit` | `pnpm verify:smoke` | Fast naming/docs drift check |
 | `pre-push` | `pnpm verify:parity:push` | Full baseline visual parity across seven checkpoint scenes |
 
-The smoke scene (`examples/parity-smoke`) combines v1-style primitives, ambient +
-directional lighting, emissive color probes, and a dark rough surface so a single
-capture exercises most cross-runtime rendering guardrails in ~20 seconds.
+Run `pnpm verify:parity:smoke` explicitly when you need the one-scene web↔Bevy
+screenshot proof before pushing. The smoke scene (`examples/parity-smoke`)
+combines color probes, ACES tone mapping, atmosphere sun/ambient, exponential
+fog with depth markers, sky colors, PBR material cards, and a point-light fill
+so one capture exercises most cross-runtime rendering guardrails in ~20–30
+seconds.
 
 Evidence:
 

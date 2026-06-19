@@ -84,6 +84,23 @@ flowchart LR
 
 **Data Changes:** None.
 
+**Measured Result:**
+
+- Before: the checked-in `verify:release` report passed in about 200 seconds
+  with 40 recorded steps.
+- After: `pnpm verify:release` passed on 2026-06-19 in 59.3 seconds with 39
+  recorded steps.
+- The release path now skips repeated focused-gate setup for 9 typed focused
+  gates by invoking `tools/verify/dist/cli/run.js <gate> --no-setup` after
+  shared package builds finish.
+- The release path runs independent focused, conformance, sample-scene, and
+  visual-matrix proof concurrently after setup. `verify:v9:physics-character`
+  stays ahead of the concurrent batch because it shares
+  `packages/ir/artifacts/conformance/physics-character` with conformance.
+- The release report now breaks duration down by `test`, `setup`,
+  `focused-gate`, `artifact`, `conformance`, and `visual-native` categories and
+  includes non-failing timing budget warnings.
+
 ## 3. Ownership Model
 
 ### Package Tests
@@ -228,12 +245,12 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Move pure validation, serialization, CLI, artifact-helper, and command
+- [x] Move pure validation, serialization, CLI, artifact-helper, and command
   selection assertions into package tests.
-- [ ] Keep cross-runtime/evidence behavior in verifier modules.
-- [ ] Remove or deprecate scripts whose behavior is fully covered by tests.
-- [ ] Preserve public commands that still have a contributor use case.
-- [ ] Prove migrated tests still catch the same failure modes as the old script.
+- [x] Keep cross-runtime/evidence behavior in verifier modules.
+- [x] Remove or deprecate scripts whose behavior is fully covered by tests.
+- [x] Preserve public commands that still have a contributor use case.
+- [x] Prove migrated tests still catch the same failure modes as the old script.
 
 **Tests Required:**
 
@@ -261,11 +278,11 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Keep standalone focused gates self-contained.
-- [ ] Add an internal release path that skips already-completed package builds.
-- [ ] Ensure release artifact checks still run after every focused gate.
-- [ ] Preserve existing release artifact paths.
-- [ ] Confirm release output quality is unchanged: same required reports, same
+- [x] Keep standalone focused gates self-contained.
+- [x] Add an internal release path that skips already-completed package builds.
+- [x] Ensure release artifact checks still run after every focused gate.
+- [x] Preserve existing release artifact paths.
+- [x] Confirm release output quality is unchanged: same required reports, same
   diagnostic shape, same artifact ownership.
 
 **Tests Required:**
@@ -295,12 +312,12 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Define `smoke`, `changed`, `focused`, `release`, and `full` profiles.
-- [ ] Document when each profile is required.
-- [ ] Add release report timing categories for setup, focused gate,
+- [x] Define `smoke`, `changed`, `focused`, `release`, and `full` profiles.
+- [x] Document when each profile is required.
+- [x] Add release report timing categories for setup, focused gate,
   conformance, visual/native, and artifact checks.
-- [ ] Start timing budgets as warnings until baselines stabilize.
-- [ ] Document which profiles are acceptable for local iteration, pre-PR review,
+- [x] Start timing budgets as warnings until baselines stabilize.
+- [x] Document which profiles are acceptable for local iteration, pre-PR review,
   release preparation, and full compatibility sweeps.
 
 **Tests Required:**
@@ -320,20 +337,20 @@ sequenceDiagram
 ## 6. Acceptance Criteria
 
 - [x] Every root verification/check script has a documented owner and outcome.
-- [ ] Pure assertions are covered by package tests, not release scripts.
+- [x] Pure assertions are covered by package tests, not release scripts.
 - [x] Every remaining verifier gate documents why it is not an ordinary test.
 - [x] Every remaining verifier gate documents the accuracy, parity, diagnostic,
   or artifact-quality requirement it protects.
-- [ ] `verify:release` does not rebuild shared packages inside focused gates
+- [x] `verify:release` does not rebuild shared packages inside focused gates
   after initial release setup.
-- [ ] Focused gates remain runnable standalone.
-- [ ] Release reports include timing categories and budget warnings.
-- [ ] Developer workflow docs identify the narrowest gate for common change
+- [x] Focused gates remain runnable standalone.
+- [x] Release reports include timing categories and budget warnings.
+- [x] Developer workflow docs identify the narrowest gate for common change
   categories.
-- [ ] Local iteration guidance avoids full release verification unless release
+- [x] Local iteration guidance avoids full release verification unless release
   evidence or broad cross-runtime proof is actually required.
-- [ ] Legacy aliases remain compatible or print stable deprecation diagnostics
+- [x] Legacy aliases remain compatible or print stable deprecation diagnostics
   with replacements.
-- [ ] The release artifact contract remains unchanged.
-- [ ] No optimization removes required conformance checks, focused evidence
+- [x] The release artifact contract remains unchanged.
+- [x] No optimization removes required conformance checks, focused evidence
   reports, diagnostic fields, or artifact ownership guarantees.

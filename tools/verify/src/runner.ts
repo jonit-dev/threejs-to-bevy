@@ -17,6 +17,9 @@ export interface CommandOptions {
 }
 
 export interface StepSummary {
+  budgetMs?: number;
+  budgetStatus?: "within-budget" | "over-budget";
+  category?: string;
   durationMs: number;
   exitCode: number;
   name: string;

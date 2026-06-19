@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { FOCUSED_GATES, listFocusedGateNames } from "./run.js";
+import { FOCUSED_GATES, getFocusedGateCommands, listFocusedGateNames, listFocusedGateNamesByProfile } from "./run.js";
 
 test("focused gate dispatcher should list current capability gates", () => {
   assert.deepEqual(
@@ -46,4 +46,39 @@ test("should reject unclassified focused gates", () => {
     assert.ok(gate.metadata.reason !== "unclassified", `${name} should not use a placeholder reason`);
     assert.ok(gate.metadata.protects !== "unclassified", `${name} should not use a placeholder quality requirement`);
   }
+});
+
+test("should run setup for standalone focused gate", () => {
+  assert.deepEqual(
+    getFocusedGateCommands("verify:input-ui-polish"),
+    [
+      ["pnpm", "--filter", "@threenative/ir", "build"],
+      ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+      ["node", "scripts/verify-input-ui-polish.mjs"],
+    ],
+  );
+});
+
+test("should skip setup when requested by release", () => {
+  assert.deepEqual(
+    getFocusedGateCommands("verify:input-ui-polish", { forwardedArgs: ["--json"], skipSetup: true }),
+    [["node", "scripts/verify-input-ui-polish.mjs", "--json"]],
+  );
+});
+
+test("should list gates by profile", () => {
+  assert.deepEqual(listFocusedGateNamesByProfile("smoke"), []);
+  assert.deepEqual(listFocusedGateNamesByProfile("changed"), []);
+  assert.deepEqual(listFocusedGateNamesByProfile("release"), [
+    "verify:animation-physics-residuals",
+    "verify:bundle-safety-hardening",
+    "verify:input-ui-polish",
+    "verify:persistence-reload",
+    "verify:production-hardening",
+    "verify:rendering-residuals",
+    "verify:runtime-gameplay-host",
+    "verify:v9:assets-gltf-scene-workflow",
+    "verify:v9:rendering-lights",
+  ]);
+  assert.deepEqual(listFocusedGateNamesByProfile("full"), listFocusedGateNames());
 });

@@ -7,9 +7,8 @@ use image::ImageReader;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{ColorIr, EnvironmentTextureSourceIr, LoadedBundle};
 
-// With atmosphere-owned lighting, a single authored sun should stay in the same
-// three-compat illuminance band as the reduced world directional helper.
-const THREE_COMPAT_ATMOSPHERE_SUN_ILLUMINANCE_PER_INTENSITY: f32 = 1.45;
+// Calibrated against atmosphere fog scenes (parity-smoke, v8-rendering-quality, v3 forest).
+const THREE_COMPAT_ATMOSPHERE_SUN_ILLUMINANCE_PER_INTENSITY: f32 = 1.388;
 
 #[derive(Clone, Component, Debug, PartialEq)]
 pub struct NativeRenderedParticle {

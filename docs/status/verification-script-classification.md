@@ -28,8 +28,12 @@ Classification values:
 | `check:docs:v7` | `scripts/legacy-script-alias.mjs` | legacy alias table | `legacy-alias` | `check:docs` | Compatibility alias with deprecation diagnostics. |
 | `check:docs:v8` | `scripts/legacy-script-alias.mjs` | legacy alias table | `legacy-alias` | `check:docs` | Compatibility alias with deprecation diagnostics. |
 | `verify` | root build/typecheck/lint/test chain | workspace packages | `test` | Keep | Ordinary workspace correctness gate; no verifier reason needed. |
+| `verify:smoke` | root profile command | repo naming/docs policy | `test` | Keep | Fast local proof for naming and docs drift before broader package or runtime verification. |
+| `verify:changed` | root profile command | workspace packages | `test` | Keep | Default changed-code profile for package build/typecheck/lint/test coverage. |
+| `verify:focused` | `tools/verify/dist/cli/run.js` | focused gate dispatcher | `focused-gate` | Keep | Stable entry point for one named capability gate with standalone setup. |
 | `verify:all` | `verify` plus `verify:conformance` | workspace plus conformance | `conformance-gate` | Keep as broad local proof | Adds shared web/native contract proof to package tests. |
 | `verify:release` | `tools/verify/dist/cli/release.js` | `tools/verify` release gate | `release-gate` | Keep | Aggregates required focused, conformance, visual, sample-scene, and artifact evidence. |
+| `verify:full` | root profile command | workspace plus release aggregation | `release-gate` | Keep | Full compatibility sweep: workspace proof, conformance, and release evidence. |
 | `verify:conformance` | `tools/verify/dist/cli/conformance.js` | shared IR conformance | `conformance-gate` | Keep | Compares the same IR fixtures across web Three.js and native Bevy. |
 | `verify:distribution` | `scripts/verify-distribution-release.mjs` | CLI/package distribution verifier | `focused-gate` | Move implementation under `tools/verify` | Proves packed package install, generated project build, and native runtime distribution artifacts. |
 | `verify:v2` | `scripts/verify-v2.mjs` | legacy milestone compatibility | `legacy-alias` | `verify:release` or `verify:conformance` plus relevant package tests | Historical aggregate; keep only while compatibility is required. |

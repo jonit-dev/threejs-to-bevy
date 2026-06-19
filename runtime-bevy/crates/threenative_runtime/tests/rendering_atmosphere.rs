@@ -134,7 +134,7 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
     assert_eq!(lights.len(), 1);
     let light = &lights[0];
     assert!(!light.0);
-    assert!((light.1 - (3.2 / 1.05 * 1.45)).abs() < 0.01);
+    assert!((light.1 - (3.2 / 1.05 * 1.388)).abs() < 0.01);
     assert!((light.2 - 0.005).abs() < 0.001);
     assert!((light.3 - 0.02).abs() < 0.001);
     assert!((light.4[0] - 0xff as f32 / 255.0).abs() < 0.01);
@@ -168,7 +168,7 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
     assert!((fog_color.blue - 0xaa as f32 / 255.0).abs() < 0.01);
     assert!(matches!(
         camera_color.3.falloff,
-        FogFalloff::Exponential { density } if (density - 0.028).abs() < 0.001
+        FogFalloff::ExponentialSquared { density } if (density - 0.028).abs() < 0.001
     ));
 
     fs::remove_dir_all(root).expect("temp bundle should be removed");

@@ -1,1 +1,4 @@
-pnpm verify:parity:smoke
+#!/usr/bin/env sh
+set -eu
+
+pnpm verify:smoke

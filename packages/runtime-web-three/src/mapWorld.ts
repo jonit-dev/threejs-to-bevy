@@ -12,6 +12,7 @@ import {
   type ICameraViewPlan,
 } from "./cameras.js";
 import type { IWebBundle } from "./loadBundle.js";
+import { atmosphereColorManagementExposure } from "./rendering.js";
 import type { IRenderTargetRegistry } from "./renderTargets.js";
 
 export type { IRuntimeDiagnostic } from "@threenative/ir";
@@ -70,9 +71,20 @@ export function mapWorld(bundle: IWebBundle): IThreeWorld {
 
   const layerAllocation = allocateRenderLayers(collectLayerNames(bundle.world), diagnostics);
   const atmosphereProvidesWorldLighting = bundle.environmentScene?.atmosphere?.active === true;
+  const atmosphereExposure = atmosphereProvidesWorldLighting
+    ? atmosphereColorManagementExposure(bundle.environmentScene?.atmosphere?.colorManagement)
+    : undefined;
   const entities = [...bundle.world.entities].sort((left, right) => left.id.localeCompare(right.id));
   for (const entity of entities) {
-    const object = mapEntity(entity, assetsById, materialsById, diagnostics, bundle.source, atmosphereProvidesWorldLighting);
+    const object = mapEntity(
+      entity,
+      assetsById,
+      materialsById,
+      diagnostics,
+      bundle.source,
+      atmosphereProvidesWorldLighting,
+      atmosphereExposure,
+    );
     applyTransform(object, entity);
     applyVisibility(object, entity);
     applyEntityRenderLayers(object, entity, layerAllocation);
@@ -302,6 +314,7 @@ function mapEntity(
   diagnostics: IRuntimeDiagnostic[],
   source?: string,
   atmosphereProvidesWorldLighting = false,
+  atmosphereExposure?: number,
 ): THREE.Object3D {
   const renderer = entity.components.MeshRenderer;
   if (renderer !== undefined) {
@@ -365,12 +378,14 @@ function mapEntity(
     return new THREE.AmbientLight(colorToThree(light.color), light.intensity);
   }
   if (light?.kind === "point") {
-    const mapped = new THREE.PointLight(colorToThree(light.color), light.intensity, light.range ?? 0);
+    const intensity = scaleWorldLightIntensity(light.intensity, atmosphereProvidesWorldLighting, atmosphereExposure);
+    const mapped = new THREE.PointLight(colorToThree(light.color), intensity, light.range ?? 0);
     applyLightShadowBias(mapped, light);
     return mapped;
   }
   if (light?.kind === "spot") {
-    const spot = new THREE.SpotLight(colorToThree(light.color), light.intensity, light.range ?? 0);
+    const intensity = scaleWorldLightIntensity(light.intensity, atmosphereProvidesWorldLighting, atmosphereExposure);
+    const spot = new THREE.SpotLight(colorToThree(light.color), intensity, light.range ?? 0);
     if (light.angle !== undefined) {
       spot.angle = light.angle;
     }
@@ -388,6 +403,17 @@ function applyLightShadowBias(light: THREE.Light & { shadow: THREE.LightShadow }
   if (source.shadowNormalBias !== undefined) {
     light.shadow.normalBias = source.shadowNormalBias;
   }
+}
+
+function scaleWorldLightIntensity(
+  intensity: number,
+  atmosphereProvidesWorldLighting: boolean,
+  atmosphereExposure: number | undefined,
+): number {
+  if (!atmosphereProvidesWorldLighting || atmosphereExposure === undefined) {
+    return intensity;
+  }
+  return intensity / atmosphereExposure;
 }
 
 function attachLoadedModel(object: THREE.Object3D, asset: Extract<IAssetIr, { kind: "model" }>, gltf: IGltfModel, shadowSettings: IShadowSettings): void {

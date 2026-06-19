@@ -18,7 +18,7 @@ import {
 } from "./renderTargets.js";
 import { advanceAnimationPlayback, hasAnimationPlayback, loadPendingMaterialTextures, loadWorldModelAssets, mapWorld, type IRuntimeDiagnostic, type IThreeWorld } from "./mapWorld.js";
 import { applyEnvironmentBookmark, createEnvironmentRuntime, loadEnvironmentAssetInstances } from "./environment.js";
-import { applyAtmosphereProfile, applyEnvironmentLighting } from "./rendering.js";
+import { applyAtmosphereProfile, applyEnvironmentLighting, applyThreeCompatFogDistance } from "./rendering.js";
 import { createGameLoopState, runGameFrame } from "./gameLoop.js";
 import { attachInputListeners, createInputState } from "./input.js";
 import { loadSystemModule } from "./systems/runner.js";
@@ -82,6 +82,12 @@ export async function renderBundle(source: string, container: HTMLElement, optio
   const environment = createEnvironmentRuntime(bundle, { renderPlaceholders: false });
   if (environment !== undefined) {
     applyAtmosphereProfile(mapped.scene, bundle.environmentScene?.atmosphere);
+    if (
+      bundle.environmentScene?.atmosphere?.fog?.enabled === true
+      && bundle.environmentScene.atmosphere.fog.mode === "exponential"
+    ) {
+      applyThreeCompatFogDistance(mapped.scene);
+    }
     const environmentLighting = await applyEnvironmentLighting(mapped.scene, bundle.environmentScene, bundle.assets, source);
     mapped.diagnostics.push(...environmentLighting.diagnostics.map((diagnostic) => ({ ...diagnostic, path: "environment.scene.json" })));
     mapped.scene.add(environment.object);

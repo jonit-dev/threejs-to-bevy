@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 export interface IPixelFrame {
   data: ArrayLike<number>;
   height: number;
@@ -41,6 +43,19 @@ export interface IDetailedFrameComparison extends IFrameComparison {
 
 export const defaultNonblankThreshold = 0.002;
 export const defaultDiffThreshold = 0.001;
+
+/** Stable SHA-256 of raw RGBA bytes for a frame (used for exact-match fast paths). */
+export function hashPixelFrame(frame: IPixelFrame): string {
+  const bytes = frame.data instanceof Uint8Array ? frame.data : Uint8Array.from(frame.data);
+  return createHash("sha256").update(bytes).digest("hex");
+}
+
+export function framesMatchExactly(first: IPixelFrame, second: IPixelFrame): boolean {
+  if (first.width !== second.width || first.height !== second.height) {
+    return false;
+  }
+  return hashPixelFrame(first) === hashPixelFrame(second);
+}
 
 export function analyzeNonblank(frame: IPixelFrame, threshold = defaultNonblankThreshold): IPixelCheck {
   const totalPixels = frame.width * frame.height;

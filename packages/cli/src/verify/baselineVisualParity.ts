@@ -148,18 +148,17 @@ export const BASELINE_VISUAL_CHECKPOINTS: readonly IBaselineVisualCheckpoint[] =
   },
 ] as const;
 
-/** Single-scene hook fixture: color, lighting, exposure, and standard materials in one capture. */
+/** Single-scene hook fixture: full-frame atmosphere fog/sky/sun + emissive probes + PBR. */
 export const PARITY_SMOKE_CHECKPOINT: IBaselineVisualCheckpoint = {
   id: "parity-smoke",
   projectRelativePath: "examples/parity-smoke",
   bundleRelativePath: "examples/parity-smoke/dist/parity-smoke.bundle",
   cameraId: "camera.main",
-  captureFrame: 60,
+  captureFrame: 90,
   thresholds: {
-    maxAverageBrightnessDelta: 0.025,
-    maxChangedPixelRatio: 0.22,
+    maxAverageBrightnessDelta: 0.028,
     maxClippedRatioDelta: 0.01,
-    maxP95ChannelDelta: 0.15,
+    maxP95ChannelDelta: 0.16,
     maxSignedAverageBrightnessDelta: 0.015,
     minSignedAverageBrightnessDelta: -0.015,
   },

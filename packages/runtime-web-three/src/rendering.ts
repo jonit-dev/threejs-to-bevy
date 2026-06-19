@@ -55,7 +55,7 @@ export function applyAtmosphereProfile(scene: THREE.Scene, profile: IAtmosphereP
     scene.fog =
       profile.fog.mode === "linear"
         ? new THREE.Fog(toThreeColor(profile.fog.color), profile.fog.near ?? 1, profile.fog.far ?? 100)
-        : new THREE.FogExp2(toThreeColor(profile.fog.color), profile.fog.density ?? 0.01);
+        : new THREE.FogExp2(toThreeColor(profile.fog.color), profile.fog.density ?? 0.01); // squared exponential (Bevy ExponentialSquared)
   }
   const sun = new THREE.DirectionalLight(toThreeColor(profile.sun.color), profile.sun.intensity);
   sun.name = profile.sun.id;
@@ -69,6 +69,45 @@ export function applyAtmosphereProfile(scene: THREE.Scene, profile: IAtmosphereP
   scene.add(new THREE.AmbientLight(toThreeColor(profile.ambient.color), profile.ambient.intensity));
 
   return observeAtmosphereProfile(profile);
+}
+
+const THREE_FOG_VIEW_DEPTH = "vFogDepth = - mvPosition.z;";
+const THREE_COMPAT_FOG_DEPTH = "vFogDepth = length( mvPosition.xyz );";
+
+/** Match Bevy fog distance (`length(view_to_world)`) instead of Three.js view-axis depth. */
+export function applyThreeCompatFogDistance(root: THREE.Object3D): void {
+  root.traverse((object) => {
+    if (!(object instanceof THREE.Mesh)) {
+      return;
+    }
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    for (const material of materials) {
+      patchMaterialForBevyFogDistance(material);
+    }
+  });
+}
+
+function patchMaterialForBevyFogDistance(material: THREE.Material): void {
+  if (material.userData.tnBevyFogDistance === true) {
+    return;
+  }
+  const previous = material.onBeforeCompile;
+  material.onBeforeCompile = (shader, renderer) => {
+    previous?.(shader, renderer);
+    if (shader.vertexShader.includes(THREE_FOG_VIEW_DEPTH)) {
+      shader.vertexShader = shader.vertexShader.replace(THREE_FOG_VIEW_DEPTH, THREE_COMPAT_FOG_DEPTH);
+    }
+  };
+  const previousCacheKey = material.customProgramCacheKey?.bind(material);
+  material.customProgramCacheKey = () => `${previousCacheKey?.() ?? ""}:tn-bevy-fog-distance`;
+  material.userData.tnBevyFogDistance = true;
+  material.needsUpdate = true;
+}
+
+export function atmosphereColorManagementExposure(
+  colorManagement: IAtmosphereProfileIr["colorManagement"] | undefined,
+): number {
+  return Math.max(0.001, colorManagement?.exposure ?? 1);
 }
 
 export function observeAtmosphereProfile(profile: IAtmosphereProfileIr | undefined): IAtmosphereObservation {
