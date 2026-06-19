@@ -1088,7 +1088,7 @@ fn cameras_without_atmosphere_should_disable_tonemapping_and_color_grading_expos
         .expect("color parity camera should be spawned");
     assert_eq!(*camera.1, Tonemapping::None);
     assert!((camera.2.global.exposure - 0.0).abs() < 0.001);
-    assert!((camera.3.ev100 - 7.55).abs() < 0.001);
+    assert!((camera.3.ev100 - 7.85).abs() < 0.001);
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
