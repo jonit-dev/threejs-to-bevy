@@ -41,6 +41,29 @@ This index separates current cleanup work from historical milestone batches.
   editable text/IME, UI viewport and drag behavior, window/cursor/power policy,
   runtime asset authoring/export, generated assets, and glTF extension
   processing.
+- [Portable Scripting Runtime Query Diffing](other/portable-scripting-runtime-query-diffing.md):
+  hidden runtime diffing for `changed` queries with deterministic web/Bevy
+  component snapshots, explicit metadata compatibility, and conformance
+  evidence.
+- [Portable Scripting Character and Physics Contacts](other/portable-scripting-character-physics-contacts.md):
+  richer primitive contact filtering, character movement observations, slope
+  and push semantics, and stable diagnostics for unsupported physics breadth.
+- [Portable Scripting Runtime Prefabs and Hierarchy Commands](other/portable-scripting-runtime-prefabs-hierarchy.md):
+  bundle-local runtime prefab catalogs, deterministic instantiation, hierarchy
+  mutation commands, and rendered entity ownership/teardown parity.
+- [Portable Scripting Delayed Commands and Bounded Scheduling](other/portable-scripting-delayed-commands-scheduling.md):
+  fixed-tick delayed command scheduling beyond timer helpers while keeping
+  promises, workers, wall-clock timers, and platform schedulers unsupported.
+- [Portable Scripting Particle Commands](other/portable-scripting-particle-commands.md):
+  bounded script particle commands over declared emitter data with web/Bevy
+  service logs and visual/runtime evidence.
+- [Portable Scripting Audio Facade](other/portable-scripting-audio-facade.md):
+  `ctx.audio` play/stop/query over declared audio IR with logical playback IDs,
+  private runtime handles, and stable unsupported streaming/platform diagnostics.
+- [Portable Scripting UI, Persistence, and Settings Facades](other/portable-scripting-ui-persistence-settings-facades.md):
+  bounded `ctx.ui`, `ctx.persistence`, and `ctx.settings` APIs over retained UI
+  and local-data IR without exposing DOM, native widget, filesystem, cloud, or
+  platform handles.
 - [Scene Lifecycle and Game Flow Contract](done/other/scene-lifecycle-and-flow-contract.md):
   scene modules, lifecycle phases, transitions, loading, overlays, persistent
   state, and cross-runtime scene manager parity.
