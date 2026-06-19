@@ -6,3 +6,11 @@ resolver = "3"
 edition = "2024"
 license = "UNLICENSED"
 version = "0.1.0"
+
+[profile.dev]
+debug = 1
+incremental = false
+
+[profile.test]
+debug = 1
+incremental = false
