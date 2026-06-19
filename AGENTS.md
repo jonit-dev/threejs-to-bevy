@@ -106,9 +106,10 @@ for pre-commit/local drift checks. Do not put visual screenshot gates such as
 `pnpm verify:parity:smoke` in pre-commit hooks; they launch browser/native
 capture with multi-minute timeouts and belong in explicit visual-runtime
 verification or pre-push/release flows.
-Pre-push hooks may be more complete: combine workspace correctness, shared
-IR/runtime conformance, and visual parity evidence when the added time is
-acceptable before pushing.
+Pre-push hooks should stay fast: use `pnpm verify:pre-push` (single-scene
+`v1-canonical` capture with parallel setup). Full workspace verification,
+conformance, and seven-scene baseline parity belong in CI or explicit release
+commands (`pnpm verify`, `pnpm verify:conformance`, `pnpm verify:parity:push`).
 
 For shared runtime contracts, keep `pnpm verify:conformance` in the
 self-verification loop and treat conformance failures as regressions unless the

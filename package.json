@@ -26,6 +26,7 @@
     "verify:full": "pnpm verify:all && pnpm verify:release",
     "verify:parity:push": "node scripts/verify-parity-push.mjs",
     "verify:parity:smoke": "node scripts/verify-parity-smoke.mjs",
+    "verify:pre-push": "node scripts/verify-pre-push.mjs",
     "verify:release": "pnpm build:verify-tools && node tools/verify/dist/cli/release.js",
     "verify:smoke": "pnpm check:names && pnpm check:docs",
     "prepare": "husky"

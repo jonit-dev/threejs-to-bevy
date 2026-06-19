@@ -40,7 +40,8 @@ Classification values:
 | `verify:v3` | `scripts/verify-v3.mjs` | legacy milestone compatibility | `legacy-alias` | `verify:release` or targeted focused gates | Historical aggregate; keep only while compatibility is required. |
 | `verify:baseline:visual-parity` | `scripts/verify-baseline-visual-parity.mjs` | baseline visual parity verifier | `focused-gate` | Keep; move implementation under `tools/verify` | Produces durable web/Bevy screenshot parity evidence across checkpoint scenes. |
 | `verify:parity:smoke` | `scripts/verify-parity-smoke.mjs` | parity smoke verifier | `focused-gate` | Keep | Fast cross-runtime screenshot smoke and hook evidence. |
-| `verify:parity:push` | `scripts/verify-parity-push.mjs` | parity push verifier | `focused-gate` | Keep | Pre-push visual parity aggregation; protects baseline screenshot evidence. |
+| `verify:parity:push` | `scripts/verify-parity-push.mjs` | parity push verifier | `focused-gate` | Keep | Full seven-scene baseline visual parity; run in CI or before release. |
+| `verify:pre-push` | `scripts/verify-pre-push.mjs` | pre-push hook verifier | `focused-gate` | Keep | Fast single-scene parity smoke used by the git pre-push hook. |
 | `verify:v4` | `scripts/verify-v4.mjs` | legacy milestone compatibility | `legacy-alias` | `verify:release` or targeted focused gates | Historical aggregate; keep only while compatibility is required. |
 | `verify:v5` | `scripts/verify-v5.mjs` | legacy milestone compatibility | `legacy-alias` | `verify:release` or targeted focused gates | Historical aggregate; keep only while compatibility is required. |
 | `verify:v6` | `scripts/verify-v6.mjs` | legacy milestone compatibility | `legacy-alias` | `verify:release` or targeted focused gates | Historical aggregate; keep only while compatibility is required. |

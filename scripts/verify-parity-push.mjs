@@ -4,7 +4,8 @@ import { verifyBaselineVisualParityGate } from "./verify-baseline-visual-parity.
 
 async function main() {
   const json = process.argv.includes("--json");
-  const result = await verifyBaselineVisualParityGate();
+  const skipSetup = process.argv.includes("--no-setup");
+  const result = await verifyBaselineVisualParityGate({ skipSetup });
   if (json) {
     process.stdout.write(
       `${JSON.stringify({ code: result.code, reportPath: result.reportPath, status: result.status, steps: result.steps }, null, 2)}\n`,

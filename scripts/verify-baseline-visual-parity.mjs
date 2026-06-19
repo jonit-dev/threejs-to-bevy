@@ -10,6 +10,7 @@ const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 export async function verifyBaselineVisualParityGate(options = {}) {
   const root = options.repoRoot ?? repoRoot;
+  const skipSetup = options.skipSetup ?? false;
   const run = options.run ?? runCommand;
   const targets = resolveArtifactTargets({
     gate: "baseline-visual-parity",
@@ -26,18 +27,20 @@ export async function verifyBaselineVisualParityGate(options = {}) {
     return result.exitCode === 0;
   }
 
-  if (!(await step("build cli", "pnpm", ["--filter", "@threenative/cli", "build"], { timeoutMs: 180000 }))) {
-    return writeGateReport({ artifactDir, ok: false, reportPath, steps, visualReportPath: undefined });
-  }
-  if (
-    !(await step(
-      "build bevy capture",
-      "cargo",
-      ["build", "--quiet", "-p", "threenative_runtime", "--bin", "threenative_capture"],
-      { cwd: resolve(root, "runtime-bevy"), timeoutMs: 600000 },
-    ))
-  ) {
-    return writeGateReport({ artifactDir, ok: false, reportPath, steps, visualReportPath: undefined });
+  if (!skipSetup) {
+    if (!(await step("build cli", "pnpm", ["--filter", "@threenative/cli", "build"], { timeoutMs: 180000 }))) {
+      return writeGateReport({ artifactDir, ok: false, reportPath, steps, visualReportPath: undefined });
+    }
+    if (
+      !(await step(
+        "build bevy capture",
+        "cargo",
+        ["build", "--quiet", "-p", "threenative_runtime", "--bin", "threenative_capture"],
+        { cwd: resolve(root, "runtime-bevy"), timeoutMs: 600000 },
+      ))
+    ) {
+      return writeGateReport({ artifactDir, ok: false, reportPath, steps, visualReportPath: undefined });
+    }
   }
 
   const { BASELINE_VISUAL_CHECKPOINTS, verifyBaselineVisualParity } =
@@ -45,26 +48,31 @@ export async function verifyBaselineVisualParityGate(options = {}) {
     (await import(pathToFileURL(resolve(root, "packages/cli/dist/verify/baselineVisualParity.js")).href));
 
   const projects = [...new Set(BASELINE_VISUAL_CHECKPOINTS.map((checkpoint) => checkpoint.projectRelativePath))];
-  for (const project of projects) {
-    const label = project.split("/").at(-1);
-    if (
-      !(await step(
-        `build ${label}`,
-        process.execPath,
-        [resolve(root, "packages/cli/dist/index.js"), "build", "--project", project, "--json"],
-        { timeoutMs: 300000 },
-      ))
-    ) {
-      return writeGateReport({ artifactDir, ok: false, reportPath, steps, visualReportPath: undefined });
-    }
-    if (
-      !(await step(
-        `validate ${label}`,
-        process.execPath,
-        [resolve(root, "packages/cli/dist/index.js"), "validate", "--project", project, "--json"],
-        { timeoutMs: 120000 },
-      ))
-    ) {
+  const cliPath = resolve(root, "packages/cli/dist/index.js");
+  const buildResults = await Promise.all(
+    projects.map(async (project) => {
+      const label = project.split("/").at(-1);
+      const build = await run({
+        args: [cliPath, "build", "--project", project, "--json"],
+        command: process.execPath,
+        cwd: root,
+        name: `build ${label}`,
+        timeoutMs: 300000,
+      });
+      const validate = await run({
+        args: [cliPath, "validate", "--project", project, "--json"],
+        command: process.execPath,
+        cwd: root,
+        name: `validate ${label}`,
+        timeoutMs: 120000,
+      });
+      return [build, validate];
+    }),
+  );
+  for (const [build, validate] of buildResults) {
+    steps.push({ ...summarize(build), name: build.name });
+    steps.push({ ...summarize(validate), name: validate.name });
+    if (build.exitCode !== 0 || validate.exitCode !== 0) {
       return writeGateReport({ artifactDir, ok: false, reportPath, steps, visualReportPath: undefined });
     }
   }
@@ -106,7 +114,8 @@ async function writeGateReport({ artifactDir, ok, reportPath, steps, visualRepor
 
 async function main() {
   const json = process.argv.includes("--json");
-  const result = await verifyBaselineVisualParityGate();
+  const skipSetup = process.argv.includes("--no-setup");
+  const result = await verifyBaselineVisualParityGate({ skipSetup });
   if (json) {
     process.stdout.write(
       `${JSON.stringify({ code: result.code, reportPath: result.reportPath, status: result.status, steps: result.steps }, null, 2)}\n`,

@@ -41,6 +41,40 @@ test("verify baseline visual parity records checkpoint evidence step", async () 
   }
 });
 
+test("verify baseline visual parity skips setup when requested", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-verify-baseline-visual-parity-skip-"));
+  const artifactDir = join(root, "artifacts");
+  try {
+    const report = await verifyBaselineVisualParityGate({
+      artifactDir,
+      repoRoot: root,
+      skipSetup: true,
+      run: async ({ name }) => ({
+        durationMs: 1,
+        exitCode: 0,
+        name,
+        stderr: "",
+        stdout: "",
+      }),
+      visualVerifierModule: {
+        BASELINE_VISUAL_CHECKPOINTS: [{ projectRelativePath: "examples/v1-canonical" }],
+        verifyBaselineVisualParity: async ({ artifactDir: outputDir }) => ({
+          artifacts: { artifactDir: outputDir, reportPath: join(outputDir, "baseline-visual-parity-report.json") },
+          checkpoints: [],
+          diagnostics: [],
+          status: "pass",
+        }),
+      },
+    });
+
+    assert.equal(report.status, "pass");
+    assert.equal(report.steps.some((step) => step.name === "build cli"), false);
+    assert.equal(report.steps.some((step) => step.name === "build bevy capture"), false);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("verify baseline visual parity fails when checkpoint evidence fails", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-verify-baseline-visual-parity-fail-"));
   const artifactDir = join(root, "artifacts");

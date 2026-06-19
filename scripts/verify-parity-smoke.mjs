@@ -10,6 +10,9 @@ const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 export async function verifyParitySmokeGate(options = {}) {
   const root = options.repoRoot ?? repoRoot;
+  const skipSetup = options.skipSetup ?? false;
+  const skipNamesCheck = options.skipNamesCheck ?? false;
+  const parallelSetup = options.parallelSetup ?? false;
   const run = options.run ?? runCommand;
   const targets = resolveArtifactTargets({
     gate: "parity-smoke",
@@ -26,23 +29,50 @@ export async function verifyParitySmokeGate(options = {}) {
     return result.exitCode === 0;
   }
 
-  if (!(await step("check names", "pnpm", ["check:names"], { timeoutMs: 120000 }))) {
-    return writeGateReport({ artifactDir, ok: false, reportPath, steps, visualReportPath: undefined });
+  if (!skipNamesCheck) {
+    if (!(await step("check names", "pnpm", ["check:names"], { timeoutMs: 120000 }))) {
+      return writeGateReport({ artifactDir, ok: false, reportPath, steps, visualReportPath: undefined });
+    }
   }
 
-  if (!(await step("build cli", "pnpm", ["--filter", "@threenative/cli", "build"], { timeoutMs: 180000 }))) {
-    return writeGateReport({ artifactDir, ok: false, reportPath, steps, visualReportPath: undefined });
-  }
-
-  if (
-    !(await step(
-      "build bevy capture",
-      "cargo",
-      ["build", "--quiet", "-p", "threenative_runtime", "--bin", "threenative_capture"],
-      { cwd: resolve(root, "runtime-bevy"), timeoutMs: 600000 },
-    ))
-  ) {
-    return writeGateReport({ artifactDir, ok: false, reportPath, steps, visualReportPath: undefined });
+  if (!skipSetup) {
+    if (parallelSetup) {
+      const [cliResult, captureResult] = await Promise.all([
+        run({
+          args: ["--filter", "@threenative/cli", "build"],
+          command: "pnpm",
+          cwd: root,
+          name: "build cli",
+          timeoutMs: 180000,
+        }),
+        run({
+          args: ["build", "--quiet", "-p", "threenative_runtime", "--bin", "threenative_capture"],
+          command: "cargo",
+          cwd: resolve(root, "runtime-bevy"),
+          name: "build bevy capture",
+          timeoutMs: 600000,
+        }),
+      ]);
+      steps.push({ ...summarize(cliResult), name: "build cli" });
+      steps.push({ ...summarize(captureResult), name: "build bevy capture" });
+      if (cliResult.exitCode !== 0 || captureResult.exitCode !== 0) {
+        return writeGateReport({ artifactDir, ok: false, reportPath, steps, visualReportPath: undefined });
+      }
+    } else {
+      if (!(await step("build cli", "pnpm", ["--filter", "@threenative/cli", "build"], { timeoutMs: 180000 }))) {
+        return writeGateReport({ artifactDir, ok: false, reportPath, steps, visualReportPath: undefined });
+      }
+      if (
+        !(await step(
+          "build bevy capture",
+          "cargo",
+          ["build", "--quiet", "-p", "threenative_runtime", "--bin", "threenative_capture"],
+          { cwd: resolve(root, "runtime-bevy"), timeoutMs: 600000 },
+        ))
+      ) {
+        return writeGateReport({ artifactDir, ok: false, reportPath, steps, visualReportPath: undefined });
+      }
+    }
   }
 
   const project = "examples/parity-smoke";
@@ -75,6 +105,7 @@ export async function verifyParitySmokeGate(options = {}) {
     artifactDir: resolve(artifactDir, PARITY_SMOKE_CHECKPOINT.id),
     bundlePath: resolve(root, PARITY_SMOKE_CHECKPOINT.bundleRelativePath),
     checkpoint: PARITY_SMOKE_CHECKPOINT,
+    repoRoot: root,
     screenshotCapturer: options.screenshotCapturer,
   });
 
@@ -121,7 +152,8 @@ async function writeGateReport({ artifactDir, ok, reportPath, steps, visualRepor
 
 async function main() {
   const json = process.argv.includes("--json");
-  const result = await verifyParitySmokeGate();
+  const skipSetup = process.argv.includes("--no-setup");
+  const result = await verifyParitySmokeGate({ skipSetup });
   if (json) {
     process.stdout.write(
       `${JSON.stringify({ code: result.code, reportPath: result.reportPath, status: result.status, steps: result.steps }, null, 2)}\n`,

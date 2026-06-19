@@ -1,6 +1,4 @@
 #!/usr/bin/env sh
 set -eu
 
-pnpm verify:changed
-pnpm verify:conformance
-pnpm verify:parity:push
+pnpm verify:pre-push

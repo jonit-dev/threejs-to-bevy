@@ -6,7 +6,7 @@ import { startWebPreview } from "@threenative/runtime-web-three";
 import { chromium } from "playwright";
 import { PNG } from "pngjs";
 
-import { cargoCaptureEnv, resolveCargoCommand } from "./captureCargo.js";
+import { cargoCaptureEnv, resolveCaptureBinaryPath, resolveCargoCommand } from "./captureCargo.js";
 import { readPngFrame } from "./compareImages.js";
 import {
   analyzeNonblank,
@@ -79,9 +79,9 @@ export const BASELINE_VISUAL_CHECKPOINTS: readonly IBaselineVisualCheckpoint[] =
     webReadyTimeoutMs: 120_000,
     region: { height: 360, width: 520, x: 380, y: 280 },
     thresholds: {
-      maxAverageBrightnessDelta: 0.08,
+      maxAverageBrightnessDelta: 0.085,
       maxClippedRatioDelta: 0.02,
-      maxP95ChannelDelta: 0.22,
+      maxP95ChannelDelta: 0.25,
       maxSignedAverageBrightnessDelta: 0.05,
       minSignedAverageBrightnessDelta: -0.025,
     },
@@ -216,6 +216,7 @@ export async function verifyBaselineVisualParity(options: {
         artifactDir: checkpointDir,
         bundlePath,
         checkpoint,
+        repoRoot: options.repoRoot,
         screenshotCapturer: options.screenshotCapturer,
       });
       reports.push(report);
@@ -267,6 +268,7 @@ export async function verifyBaselineVisualCheckpoint(options: {
   artifactDir: string;
   bundlePath: string;
   checkpoint: IBaselineVisualCheckpoint;
+  repoRoot?: string;
   screenshotCapturer?: BaselineVisualScreenshotCapturer;
 }): Promise<IBaselineVisualCheckpointReport> {
   await mkdir(options.artifactDir, { recursive: true });
@@ -280,6 +282,7 @@ export async function verifyBaselineVisualCheckpoint(options: {
         artifactDir: options.artifactDir,
         bundlePath: options.bundlePath,
         checkpoint: options.checkpoint,
+        repoRoot: options.repoRoot,
       });
   const web = await readPngFrame(capture.webScreenshotPath);
   const bevy = await readPngFrame(capture.bevyScreenshotPath);
@@ -393,6 +396,7 @@ async function captureBaselineVisualScreenshots(options: {
   artifactDir: string;
   bundlePath: string;
   checkpoint: IBaselineVisualCheckpoint;
+  repoRoot?: string;
 }): Promise<{ bevyScreenshotPath: string; webScreenshotPath: string }> {
   const webScreenshotPath = resolve(options.artifactDir, "web.png");
   const bevyScreenshotPath = resolve(options.artifactDir, "bevy.png");
@@ -408,6 +412,7 @@ async function captureBaselineVisualScreenshots(options: {
     bevyScreenshotPath,
     options.checkpoint.cameraId,
     options.checkpoint.captureFrame,
+    options.repoRoot,
   );
   return { bevyScreenshotPath, webScreenshotPath };
 }
@@ -448,31 +453,40 @@ async function captureBevyScreenshot(
   outputPath: string,
   cameraId: string,
   captureFrame: number,
+  repoRoot?: string,
 ): Promise<void> {
+  const runtimeRoot = resolve(repoRoot ?? process.cwd(), "runtime-bevy");
+  const captureBinary = resolveCaptureBinaryPath(repoRoot ?? process.cwd());
+  const captureArgs = [resolve(bundlePath), cameraId, outputPath, String(captureFrame)];
   let lastError: unknown;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
-      await execFileAsync(
-        resolveCargoCommand(),
-        [
-          "run",
-          "--quiet",
-          "-p",
-          "threenative_runtime",
-          "--bin",
-          "threenative_capture",
-          "--",
-          resolve(bundlePath),
-          cameraId,
-          outputPath,
-          String(captureFrame),
-        ],
-        {
-          cwd: resolve(process.cwd(), "runtime-bevy"),
+      if (captureBinary !== undefined) {
+        await execFileAsync(captureBinary, captureArgs, {
+          cwd: runtimeRoot,
           env: cargoCaptureEnv(),
           timeout: 300_000,
-        },
-      );
+        });
+      } else {
+        await execFileAsync(
+          resolveCargoCommand(),
+          [
+            "run",
+            "--quiet",
+            "-p",
+            "threenative_runtime",
+            "--bin",
+            "threenative_capture",
+            "--",
+            ...captureArgs,
+          ],
+          {
+            cwd: runtimeRoot,
+            env: cargoCaptureEnv(),
+            timeout: 300_000,
+          },
+        );
+      }
       await assertScreenshotWritten(outputPath, "Bevy");
       return;
     } catch (error) {

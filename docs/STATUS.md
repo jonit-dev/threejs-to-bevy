@@ -47,10 +47,10 @@ under/over-exposure, and per-checkpoint pixel thresholds. Evidence:
 Git hooks (via [husky](https://typicode.github.io/husky/)) run layered parity
 checks after `pnpm install`:
 
-- **pre-commit** — `pnpm verify:parity:smoke` (~20s): naming gate, build
-  `examples/parity-smoke`, validate bundle, single web↔Bevy screenshot parity.
-- **pre-push** — `pnpm verify:parity:push`: full seven-scene baseline visual
-  parity gate (`verify:baseline:visual-parity`).
+- **pre-commit** — `pnpm verify:smoke`: naming gate and docs drift check.
+- **pre-push** — `pnpm verify:pre-push`: fast single-scene visual parity on
+  `v1-canonical` with parallel CLI/capture setup (~1–2 min). Full workspace
+  test, conformance, and seven-scene parity run in CI.
 
 Skip hooks temporarily with `git commit --no-verify` or `git push --no-verify`
 when needed.

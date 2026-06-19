@@ -30,7 +30,7 @@ export async function startWebPreview(options: {
     server: {
       host: options.host ?? "127.0.0.1",
       middlewareMode: false,
-      port: options.port ?? 0,
+      ...(options.port === undefined ? {} : { port: options.port }),
       strictPort: false,
     },
   });
