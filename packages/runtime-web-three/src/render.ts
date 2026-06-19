@@ -82,12 +82,6 @@ export async function renderBundle(source: string, container: HTMLElement, optio
   const environment = createEnvironmentRuntime(bundle, { renderPlaceholders: false });
   if (environment !== undefined) {
     applyAtmosphereProfile(mapped.scene, bundle.environmentScene?.atmosphere);
-    if (
-      bundle.environmentScene?.atmosphere?.fog?.enabled === true
-      && bundle.environmentScene.atmosphere.fog.mode === "exponential"
-    ) {
-      applyThreeCompatFogDistance(mapped.scene);
-    }
     const environmentLighting = await applyEnvironmentLighting(mapped.scene, bundle.environmentScene, bundle.assets, source);
     mapped.diagnostics.push(...environmentLighting.diagnostics.map((diagnostic) => ({ ...diagnostic, path: "environment.scene.json" })));
     mapped.scene.add(environment.object);
@@ -107,6 +101,12 @@ export async function renderBundle(source: string, container: HTMLElement, optio
     mapped.diagnostics.push(...environment.instancingPlan.diagnostics);
   }
   createRenderedParticleObjects(bundle.assets).forEach((particles) => mapped.scene.add(particles));
+  if (
+    bundle.environmentScene?.atmosphere?.fog?.enabled === true
+    && bundle.environmentScene.atmosphere.fog.mode === "exponential"
+  ) {
+    applyThreeCompatFogDistance(mapped.scene);
+  }
   if (options.bookmarkId !== undefined) {
     applyEnvironmentBookmark(bundle, mapped.camera, options.bookmarkId);
   }

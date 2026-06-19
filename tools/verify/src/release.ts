@@ -131,18 +131,14 @@ export async function runReleaseGate(options: ReleaseGateOptions = {}): Promise<
   }
 
   for (const [name, command, args] of [
-    ["build release packages", "pnpm", [
-      "-r",
-      "--filter", "@threenative/ir",
-      "--filter", "@threenative/sdk",
-      "--filter", "@threenative/ui",
-      "--filter", "@threenative/r3f",
-      "--filter", "@threenative/compiler",
-      "--filter", "@threenative/runtime-web-three",
-      "--filter", "@threenative/cli",
-      "build",
-    ]],
+    ["build ir package", "pnpm", ["--filter", "@threenative/ir", "build"]],
     ["test ir package", "pnpm", ["--filter", "@threenative/ir", "test"]],
+    ["build sdk package", "pnpm", ["--filter", "@threenative/sdk", "build"]],
+    ["build ui package", "pnpm", ["--filter", "@threenative/ui", "build"]],
+    ["build r3f package", "pnpm", ["--filter", "@threenative/r3f", "build"]],
+    ["build compiler package", "pnpm", ["--filter", "@threenative/compiler", "build"]],
+    ["build web runtime package", "pnpm", ["--filter", "@threenative/runtime-web-three", "build"]],
+    ["build cli package", "pnpm", ["--filter", "@threenative/cli", "build"]],
   ] as const) {
     if (!(await step(name, command, args, { category: "setup", timeoutMs: 120000 }))) {
       return fail();

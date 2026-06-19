@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import type { IWebBundle } from "./loadBundle.js";
 import { buildInstancingPlan, type IInstancingPlan } from "./instancing.js";
-import { applyAtmosphereProfile, type IAtmosphereObservation } from "./rendering.js";
+import { observeAtmosphereProfile, type IAtmosphereObservation } from "./rendering.js";
 
 export interface IEnvironmentRuntime {
   atmosphere: IAtmosphereObservation;
@@ -47,7 +47,7 @@ export function createEnvironmentRuntime(bundle: IWebBundle, options: { renderPl
   const terrain = bundle.environmentScene.terrain;
   const object = new THREE.Group();
   object.name = "tn-environment";
-  const atmosphere = applyAtmosphereProfile(object as unknown as THREE.Scene, bundle.environmentScene.atmosphere);
+  const atmosphere = observeAtmosphereProfile(bundle.environmentScene.atmosphere);
 
   if (terrain !== undefined) {
     object.add(createTerrainMesh(terrain));

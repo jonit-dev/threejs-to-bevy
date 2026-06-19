@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -41,7 +41,27 @@ const commands = [
 await mkdir(artifactRoot, { recursive: true });
 
 const startedAt = new Date();
-const results = await Promise.all(commands.map((step) => runStep(step)));
+const results = [];
+for (const step of commands) {
+  const startedAtMs = Date.now();
+  const result = spawnSync(step.command, step.args, {
+    cwd: root,
+    encoding: "utf8",
+    timeout: 600_000,
+  });
+  results.push({
+    args: step.args,
+    command: step.command,
+    durationMs: Date.now() - startedAtMs,
+    exitCode: result.status ?? 1,
+    name: step.name,
+    stderr: trimOutput(result.stderr),
+    stdout: trimOutput(result.stdout),
+  });
+  if (result.status !== 0) {
+    break;
+  }
+}
 
 const ok = results.length === commands.length && results.every((result) => result.exitCode === 0);
 await writeFile(
@@ -76,38 +96,4 @@ if (!ok) {
 function trimOutput(value) {
   const text = value?.trim() ?? "";
   return text.length > 8000 ? `${text.slice(0, 8000)}\n... truncated ...` : text;
-}
-
-function runStep(step) {
-  return new Promise((resolveResult) => {
-    const startedAtMs = Date.now();
-    const child = spawn(step.command, step.args, {
-      cwd: root,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    let stdout = "";
-    let stderr = "";
-    const timer = setTimeout(() => {
-      child.kill("SIGTERM");
-    }, 600_000);
-
-    child.stdout.on("data", (chunk) => {
-      stdout += chunk.toString();
-    });
-    child.stderr.on("data", (chunk) => {
-      stderr += chunk.toString();
-    });
-    child.on("close", (code, signal) => {
-      clearTimeout(timer);
-      resolveResult({
-        args: step.args,
-        command: step.command,
-        durationMs: Date.now() - startedAtMs,
-        exitCode: code ?? (signal === null ? 1 : 124),
-        name: step.name,
-        stderr: trimOutput(stderr),
-        stdout: trimOutput(stdout),
-      });
-    });
-  });
 }

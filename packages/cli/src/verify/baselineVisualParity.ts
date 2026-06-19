@@ -156,11 +156,11 @@ export const PARITY_SMOKE_CHECKPOINT: IBaselineVisualCheckpoint = {
   cameraId: "camera.main",
   captureFrame: 90,
   thresholds: {
-    maxAverageBrightnessDelta: 0.028,
+    maxAverageBrightnessDelta: 0.012,
     maxClippedRatioDelta: 0.01,
-    maxP95ChannelDelta: 0.16,
-    maxSignedAverageBrightnessDelta: 0.015,
-    minSignedAverageBrightnessDelta: -0.015,
+    maxP95ChannelDelta: 0.06,
+    maxSignedAverageBrightnessDelta: 0.008,
+    minSignedAverageBrightnessDelta: -0.008,
   },
 };
 
