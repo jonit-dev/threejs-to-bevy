@@ -258,7 +258,7 @@ const ui = Ui({
     layout: { align: "stretch", rowGap: 8, width: 184 },
     children: [
       Text({ id: "hud.title", text: "Crystal Runner" }),
-      Bar({ id: "hud.health", accessibilityLabel: "Health", binding: { kind: "resource", resource: "RunnerState", field: "health" }, max: 100 }),
+      Bar({ id: "hud.health", accessibilityLabel: "Health", binding: { kind: "resource", name: "RunnerState", field: "health" }, max: 100 }),
       Button({ action: "Pause", focusable: true, id: "hud.pause", label: "Pause", layout: { width: 184 } }),
       TouchControl({ action: "Jump", id: "hud.jump", label: "Jump", layout: { width: 184 } }),
       TouchControl({ action: "LaneLeft", id: "hud.left", label: "Left", layout: { width: 184 } }),
