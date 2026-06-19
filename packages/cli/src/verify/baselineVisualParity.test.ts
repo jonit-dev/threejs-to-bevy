@@ -27,6 +27,12 @@ test("baseline visual checkpoints include canonical guard scenes", () => {
   ]);
 });
 
+test("parity smoke checkpoint targets the single-scene hook fixture", async () => {
+  const { PARITY_SMOKE_CHECKPOINT } = await import("./baselineVisualParity.js");
+  assert.equal(PARITY_SMOKE_CHECKPOINT.id, "parity-smoke");
+  assert.equal(PARITY_SMOKE_CHECKPOINT.projectRelativePath, "examples/parity-smoke");
+});
+
 test("should pass when web and bevy screenshots match", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-baseline-visual-"));
   try {

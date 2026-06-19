@@ -39,6 +39,17 @@ captures matched web and Bevy screenshots, and fails on exposure drift,
 under/over-exposure, and per-checkpoint pixel thresholds. Evidence:
 `tools/verify/artifacts/baseline-visual-parity/baseline-visual-parity-report.json`.
 
+Git hooks (via [husky](https://typicode.github.io/husky/)) run layered parity
+checks after `pnpm install`:
+
+- **pre-commit** — `pnpm verify:parity:smoke` (~20s): naming gate, build
+  `examples/parity-smoke`, validate bundle, single web↔Bevy screenshot parity.
+- **pre-push** — `pnpm verify:parity:push`: full seven-scene baseline visual
+  parity gate (`verify:baseline:visual-parity`).
+
+Skip hooks temporarily with `git commit --no-verify` or `git push --no-verify`
+when needed.
+
 Aggregate parity evidence runs through the canonical release gate:
 
 ```bash

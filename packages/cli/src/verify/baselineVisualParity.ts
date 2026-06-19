@@ -148,6 +148,26 @@ export const BASELINE_VISUAL_CHECKPOINTS: readonly IBaselineVisualCheckpoint[] =
   },
 ] as const;
 
+/** Single-scene hook fixture: color, lighting, exposure, and standard materials in one capture. */
+export const PARITY_SMOKE_CHECKPOINT: IBaselineVisualCheckpoint = {
+  id: "parity-smoke",
+  projectRelativePath: "examples/parity-smoke",
+  bundleRelativePath: "examples/parity-smoke/dist/parity-smoke.bundle",
+  cameraId: "camera.main",
+  captureFrame: 60,
+  thresholds: {
+    maxAverageBrightnessDelta: 0.025,
+    maxChangedPixelRatio: 0.22,
+    maxClippedRatioDelta: 0.01,
+    maxP95ChannelDelta: 0.15,
+    maxSignedAverageBrightnessDelta: 0.015,
+    minSignedAverageBrightnessDelta: -0.015,
+  },
+};
+
+/** Full web↔Bevy parity set exercised before push (see `pnpm verify:parity:push`). */
+export const PARITY_PUSH_CHECKPOINTS: readonly IBaselineVisualCheckpoint[] = BASELINE_VISUAL_CHECKPOINTS;
+
 export interface IBaselineVisualCheckpointReport {
   artifacts: {
     bevyScreenshotPath: string;

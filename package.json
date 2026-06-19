@@ -31,6 +31,8 @@
     "verify:v2": "node scripts/verify-v2.mjs",
     "verify:v3": "node scripts/verify-v3.mjs",
     "verify:baseline:visual-parity": "node scripts/verify-baseline-visual-parity.mjs",
+    "verify:parity:smoke": "node scripts/verify-parity-smoke.mjs",
+    "verify:parity:push": "node scripts/verify-parity-push.mjs",
     "verify:v4": "pnpm --filter @threenative/cli build && node scripts/verify-v4.mjs",
     "verify:v5": "node scripts/verify-v5.mjs",
     "verify:v6": "node scripts/verify-v6.mjs",
@@ -75,9 +77,11 @@
     "verify:production-hardening": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:production-hardening",
     "verify:rendering-residuals": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:rendering-residuals",
     "verify:runtime-gameplay-host": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:runtime-gameplay-host",
-    "verify:bundle-safety-hardening": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:bundle-safety-hardening"
+    "verify:bundle-safety-hardening": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:bundle-safety-hardening",
+    "prepare": "husky"
   },
   "devDependencies": {
+    "husky": "^9.1.7",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "typescript": "^5.9.3",

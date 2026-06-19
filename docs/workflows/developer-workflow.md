@@ -328,7 +328,30 @@ pnpm check:docs
 pnpm verify
 pnpm verify:release
 pnpm verify:conformance
+pnpm verify:parity:smoke
+pnpm verify:parity:push
 ```
+
+### Git hooks (Husky)
+
+After `pnpm install`, Husky installs local git hooks:
+
+| Hook | Command | Purpose |
+|------|---------|---------|
+| `pre-commit` | `pnpm verify:parity:smoke` | Fast smoke: naming check, build/validate `examples/parity-smoke`, one web↔Bevy screenshot parity capture |
+| `pre-push` | `pnpm verify:parity:push` | Full baseline visual parity across seven checkpoint scenes |
+
+The smoke scene (`examples/parity-smoke`) combines v1-style primitives, ambient +
+directional lighting, emissive color probes, and a dark rough surface so a single
+capture exercises most cross-runtime rendering guardrails in ~20 seconds.
+
+Evidence:
+
+- smoke: `tools/verify/artifacts/parity-smoke/verification-report.json`
+- push: `tools/verify/artifacts/baseline-visual-parity/verification-report.json`
+
+Use `git commit --no-verify` or `git push --no-verify` to bypass hooks when
+necessary.
 
 New verification gates live in `tools/verify/src` with package-owned tests.
 Use `tools/verify/src/cli/run.ts` for focused gate command composition so root
