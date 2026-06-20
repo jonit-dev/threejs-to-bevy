@@ -10,7 +10,7 @@ Score basis: +3 touches 10+ future files, +2 spans SDK/compiler/IR/CLI/web/Bevy/
 
 A future editor cannot safely edit generated ECS/IR and then reconstruct arbitrary TypeScript. It also cannot treat `scripts.bundle.js` or `world.ir.json` as durable source without creating build drift. The architecture needs an explicit modular authoring layer now, before editor work turns generated runtime artifacts into accidental source of truth.
 
-**Goal:** Refactor ThreeNative's authoring architecture so editor-owned scene/entity/prefab/resource data, TypeScript gameplay scripts, generated IR bundles, and live runtime state have strict boundaries. The same generated bundle must continue to run in both web Three.js and native Bevy.
+**Goal:** Refactor ThreeNative's authoring architecture so editor-owned scene/entity/prefab/resource data, TypeScript gameplay scripts, generated IR bundles, and live runtime state have strict boundaries. Add an agent-safe authoring surface so AIs do not freehand fragile scene JSON/TypeScript for common edits. The same generated bundle must continue to run in both web Three.js and native Bevy.
 
 **Non-goals:**
 
@@ -21,6 +21,7 @@ A future editor cannot safely edit generated ECS/IR and then reconstruct arbitra
 - Do not implement arbitrary TypeScript-to-Rust compilation.
 - Do not promise arbitrary Three.js project import/round-trip.
 - Do not introduce an editor-only runtime format that bypasses SDK/compiler/IR validation.
+- Do not make MCP the primary source of authoring behavior. MCP, if added, must wrap the same core/CLI operations and must not drift into a separate scene-authoring implementation.
 
 **Files analyzed:**
 
@@ -80,6 +81,22 @@ Runtime State in Web Three.js / Native Bevy
 
 Only the first layer is durable user/editor source. The second layer is compiler-owned. The third layer is generated and disposable. The fourth layer is live runtime state and never persisted as source unless converted into a validated source patch.
 
+### AI authoring decision
+
+AI scene authoring must not depend on unconstrained raw JSON or giant imperative TypeScript edits for common operations. The durable interface should be:
+
+```txt
+@threenative/authoring core library
+        ↓
+tn scene ... CLI commands       # canonical automation/human/CI interface
+        ↓
+optional MCP server wrapper     # agent-friendly adapter over the same operations
+```
+
+The CLI is the canonical external tool because it is reproducible in CI, shell scripts, Codex/Night Watch, and human debugging. MCP can improve interactive agent ergonomics, but it must call the same authoring core or shell out to `tn scene ... --json`. It must not own separate validation, mutation, or persistence logic.
+
+For common scene edits, AIs should perform typed operations such as `scene.add_entity`, `scene.set_transform`, `scene.set_camera`, `scene.attach_script`, `scene.bind_ui`, `scene.validate`, and `scene.preview/screenshot`, not hand-edit arbitrary document shapes. Raw source document edits remain an escape hatch, but every such edit must pass schema validation, semantic authoring graph validation, compiler validation, and runtime proof before it is accepted.
+
 ### Source-of-truth rules
 
 1. **Generated IR is not source.** `world.ir.json`, `systems.ir.json`, `scenes.ir.json`, `assets.manifest.json`, `scripts.bundle.js`, and generated assets are build artifacts.
@@ -87,6 +104,7 @@ Only the first layer is durable user/editor source. The second layer is compiler
 3. **Editor-owned data is structured source.** Scene/entity/prefab/resource/input/UI/asset import settings should be schema-versioned structured documents or constrained SDK data declarations that can round-trip deterministically.
 4. **Runtime state is session state.** Bevy `Entity`, Three.js object instances, GPU handles, asset loader handles, QuickJS values, computed `GlobalTransform`, and runtime object UUIDs must not appear in saved source documents.
 5. **Web and Bevy consume the same generated bundle.** The editor must not introduce a parallel Bevy scene format, raw Three.js serialization path, or editor-only runtime contract.
+6. **Authoring mutations must be validated operations.** CLI/MCP/editor mutations must go through one shared authoring core that rejects malformed IDs, missing references, invalid component names, wrong vector sizes, unsupported runtime fields, and web/Bevy-incompatible declarations before writing or compiling.
 
 ## 3. Product Model
 
