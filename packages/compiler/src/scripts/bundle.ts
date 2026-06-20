@@ -81,6 +81,8 @@ export function bundleSystemScripts(systems: ReadonlyArray<ISystemScriptSource>)
         : diagnosePortableSystem({
             commands: system.commands?.map((command) => command.kind),
             eventWrites: system.eventWrites,
+            exportName: system.script.sourceRef?.export,
+            file: system.script.sourceRef?.module,
             queries: system.queries,
             resourceWrites: system.resourceWrites,
             services: system.services,

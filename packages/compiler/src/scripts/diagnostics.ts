@@ -3,6 +3,7 @@ import type { ICompilerDiagnostic } from "../diagnostics.js";
 export interface IPortableSystemSource {
   commands?: ReadonlyArray<string>;
   eventWrites?: ReadonlyArray<string>;
+  exportName?: string;
   file?: string;
   queries?: ReadonlyArray<{ with: ReadonlyArray<string>; without: ReadonlyArray<string> }>;
   resourceWrites?: ReadonlyArray<string>;
@@ -30,6 +31,18 @@ const unsupportedPatterns: Array<{ code: string; label: string; pattern: RegExp;
     label: "Node.js APIs",
     pattern: /\b(?:Buffer|__dirname|__filename|process|require)\b|node:/,
     suggestion: "Portable systems cannot use filesystem, process, or Node runtime APIs.",
+  },
+  {
+    code: "TN_SCRIPT_DYNAMIC_CODE_UNSUPPORTED",
+    label: "dynamic code evaluation",
+    pattern: /\b(?:eval|Function)\s*\(|\bimport\s*\(/,
+    suggestion: "Use statically declared portable system modules without eval, Function constructors, or dynamic imports.",
+  },
+  {
+    code: "TN_SCRIPT_ASYNC_UNSUPPORTED",
+    label: "async or promise scheduling",
+    pattern: /\b(?:async|await|Promise)\b/,
+    suggestion: "Keep portable systems deterministic and frame-bounded; use resources, events, and fixed schedules instead of async work.",
   },
   {
     code: "TN_SCRIPT_TIMER_API_UNSUPPORTED",
@@ -64,6 +77,7 @@ export function diagnosePortableSystem(source: IPortableSystemSource): ICompiler
         path: `systems/${source.systemName}`,
         severity: "error" as const,
         suggestion: rule.suggestion,
+        target: source.exportName,
       },
     ];
   });

@@ -686,6 +686,24 @@ System rules:
 
 V1 supports TypeScript systems as bundled scripts called by runtime lifecycle hooks. Performance-critical native systems can be added later without changing the public component data contract.
 
+Systems can reference source modules directly when authored in SDK data:
+
+```ts
+world.addSystem(update("kartArcadePhysics", {
+  script: {
+    module: "src/scripts/kartArcadePhysics.ts",
+    export: "kartArcadePhysics",
+  },
+}));
+```
+
+The compiler resolves the named export relative to the project root, computes
+the module hash, emits the generated JavaScript in `scripts.bundle.js`, and
+writes `scripts.manifest.json` so tools can map source module/export/hash to
+the generated bundle/export. Inline function `run` scripts remain supported for
+existing projects, but structured source references are the editor- and
+agent-safe path.
+
 ## Project Modules
 
 Projects can split portable authoring code into source-relative modules and

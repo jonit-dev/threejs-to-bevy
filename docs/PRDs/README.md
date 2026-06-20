@@ -36,7 +36,7 @@ This index separates current cleanup work from historical milestone batches.
 - [Modular SDK Authoring Declarations](done/other/modular-sdk-authoring-declarations.md):
   data-first/module-first SDK declarations for scenes, entities, prefabs,
   resources, systems, input, UI, audio, and assets.
-- [Script Module References and Manifest](other/script-module-references-and-manifest.md):
+- [Script Module References and Manifest](done/other/script-module-references-and-manifest.md):
   source module/export script refs, generated script manifest, collision
   diagnostics, helper import policy, and generated-script source boundaries.
 - [Web and Bevy Scripting Host Conformance](other/web-bevy-scripting-host-conformance.md):

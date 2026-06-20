@@ -58,7 +58,38 @@ test("should reject source script helper imports deterministically", async () =>
     const result = resolveSystemScriptSources(systems, root);
 
     assert.equal(result.diagnostics[0]?.code, "TN_SCRIPT_HELPER_IMPORT_UNSUPPORTED");
+    assert.equal(result.diagnostics[0]?.target, "kartArcadePhysics");
     assert.equal(result.systems[0]?.script?.source, undefined);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject source script mutable module state", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-script-source-ref-state-"));
+  try {
+    await mkdir(join(root, "src/scripts"), { recursive: true });
+    await writeFile(join(root, "src/scripts/kart.ts"), `let cached = 0;\nexport function kartArcadePhysics(context: unknown) {\n  cached += 1;\n  return context;\n}\n`);
+    const systems: ISystemScriptSource[] = [
+      {
+        name: "kartArcadePhysics",
+        script: {
+          exportName: "system_kartArcadePhysics",
+          sourceRef: {
+            export: "kartArcadePhysics",
+            module: "src/scripts/kart.ts",
+            systemId: "kartArcadePhysics",
+          },
+        },
+      },
+    ];
+
+    const result = resolveSystemScriptSources(systems, root);
+
+    assert.equal(result.diagnostics[0]?.code, "TN_SCRIPT_MODULE_STATE_UNSUPPORTED");
+    assert.equal(result.diagnostics[0]?.file, "src/scripts/kart.ts");
+    assert.equal(result.diagnostics[0]?.target, "kartArcadePhysics");
+    assert.match(result.diagnostics[0]?.suggestion ?? "", /resources|components/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

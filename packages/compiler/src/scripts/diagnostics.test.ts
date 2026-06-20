@@ -17,6 +17,7 @@ test("should reject scripts browser api in portable system", () => {
 
 test("should preserve source path for non-portable platform API usage", () => {
   const diagnostics = diagnosePortableSystem({
+    exportName: "badPlatform",
     file: "src/systems/platform.ts",
     source: "() => fetch('/state').then(() => setTimeout(() => undefined, 1))",
     systemName: "badPlatform",
@@ -25,6 +26,7 @@ test("should preserve source path for non-portable platform API usage", () => {
   assert.equal(diagnostics.some((diagnostic) => diagnostic.code === "TN_SCRIPT_NETWORK_API_UNSUPPORTED"), true);
   assert.equal(diagnostics.some((diagnostic) => diagnostic.code === "TN_SCRIPT_TIMER_API_UNSUPPORTED"), true);
   assert.equal(diagnostics[0]?.file, "src/systems/platform.ts");
+  assert.equal(diagnostics[0]?.target, "badPlatform");
   assert.match(diagnostics[0]?.suggestion ?? "", /resources|events|schedule|timers/);
 });
 
@@ -204,4 +206,17 @@ test("should reject timer and worker APIs", () => {
     diagnostics.map((diagnostic) => diagnostic.code),
     ["TN_SCRIPT_DOM_API_UNSUPPORTED", "TN_SCRIPT_TIMER_API_UNSUPPORTED"],
   );
+});
+
+test("should reject async and dynamic script code", () => {
+  const diagnostics = diagnosePortableSystem({
+    source: "async (ctx) => { await Promise.resolve(); return eval('ctx'); }",
+    systemName: "badDynamic",
+  });
+
+  assert.deepEqual(
+    diagnostics.map((diagnostic) => diagnostic.code),
+    ["TN_SCRIPT_DYNAMIC_CODE_UNSUPPORTED", "TN_SCRIPT_ASYNC_UNSUPPORTED"],
+  );
+  assert.match(diagnostics[0]?.suggestion ?? "", /eval|Function|dynamic imports/);
 });

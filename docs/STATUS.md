@@ -53,6 +53,16 @@ remain unchanged.
 Modular SDK authoring has started with `defineSceneModule()`, `defineEntity()`, `definePrefabModule()`, `defineResourceModule()`, `defineInputModule()`, `defineUiModule()`, `defineAudioModule()`, `defineAssetModule()`, and `defineWorldModule()`. These source-metadata-aware wrappers validate logical source IDs and source-owned paths, reject runtime-handle-shaped authored data, keep asset refs bundle-local or embedded, lower to existing scene/world/prefab/input/UI/audio/asset declarations, and are visible to compiler authoring graph provenance capture.
 Existing one-file `Scene`, `World`, and `defineGame` authoring remains supported; modular declarations are optional authoring/provenance helpers.
 
+Script module references are implemented for SDK-authored systems. Systems can
+name a project-relative TypeScript module and named export instead of carrying
+inline function source; the compiler resolves the module, computes a source
+hash, emits `scripts.bundle.js`, and writes `scripts.manifest.json` mapping the
+source module/export/hash to the generated bundle/export. The compiler rejects
+missing exports, stale hashes, generated export-name collisions, helper imports
+until real script helper bundling exists, async/dynamic code, timer/network/DOM/
+Node/platform globals, and top-level mutable module state with `TN_SCRIPT_*`
+diagnostics that include source path and export context.
+
 Native Bevy UI now installs a dedicated overlay UI camera above authored scene cameras so retained UI stays visible over multi-camera/viewport scenes. The native `Minimap` widget preserves authored bounds/paths/static markers and syncs live resource-bound markers; focused proof lives in `examples/bevy-camera-minimap-verification/artifacts/bevy-camera-minimap-proof/`.
 
 `tn asset inspect <path> [--json]` is available for local glTF/GLB triage. It

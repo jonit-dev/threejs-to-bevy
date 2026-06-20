@@ -45,6 +45,10 @@ scripts.bundle.js
   contains compiled TypeScript system exports plus stable system ID metadata for
   web preview and native Bevy
 
+scripts.manifest.json
+  maps source module/export/hash metadata to generated bundle/export names and
+  marks `scripts.bundle.js` as a generated non-source artifact
+
 runtime-web-three
   runs JS systems against the portable context
 
@@ -164,12 +168,20 @@ execution.
 Validation rules:
 
 - `export` must exist in `scripts.bundle.js`.
+- Source script references must resolve to a project-relative TypeScript module
+  and named export; the compiler records the source hash in
+  `scripts.manifest.json`.
+- Generated script export names must be unique after sanitization.
 - `stage` must be a known portable schedule stage.
 - `reads` and `writes` must reference known components/resources.
 - Query filters must reference known components/tags.
 - Systems may only mutate components listed in `writes`.
 - Systems may only use command types listed in `commands`.
 - Systems may only emit events listed in `events.writes`.
+- Portable scripts must not use helper imports until script helper bundling is
+  promoted, async/dynamic code, timers, network APIs, DOM/worker globals,
+  Node/platform APIs, arbitrary npm dependencies, or top-level mutable module
+  state.
 
 ## Data Transfer Model
 

@@ -31,6 +31,7 @@ export function resolveSystemScriptSources<T extends ISystemScriptSource>(
           path: `systems/${system.name}/script/sourceRef`,
           severity: "error",
           suggestion: "Build the project through the compiler project pipeline so script modules resolve relative to the project root.",
+          target: script.sourceRef.export,
         });
         return system;
       }
@@ -70,6 +71,7 @@ function resolveScriptModule(system: ISystemScriptSource & { script: NonNullable
           path: `systems/${system.name}/script/sourceRef/module`,
           severity: "error",
           suggestion: "Use a project-relative script module path without parent traversal.",
+          target: sourceRef.export,
         },
       ],
     };
@@ -88,6 +90,7 @@ function resolveScriptModule(system: ISystemScriptSource & { script: NonNullable
           path: `systems/${system.name}/script/sourceRef/module`,
           severity: "error",
           suggestion: "Create the referenced script module or update the system script module path.",
+          target: sourceRef.export,
         },
       ],
     };
@@ -103,11 +106,13 @@ function resolveScriptModule(system: ISystemScriptSource & { script: NonNullable
       path: `systems/${system.name}/script/sourceRef/hash`,
       severity: "error",
       suggestion: `Refresh the source hash to '${hash}' after intentional script edits.`,
+      target: sourceRef.export,
     });
   }
 
   const sourceFile = ts.createSourceFile(sourceRef.module, moduleSource, ts.ScriptTarget.ES2023, true, ts.ScriptKind.TS);
-  diagnostics.push(...diagnoseHelperImports(system.name, sourceRef.module, sourceFile));
+  diagnostics.push(...diagnoseHelperImports(system.name, sourceRef.module, sourceRef.export, sourceFile));
+  diagnostics.push(...diagnoseMutableModuleState(system.name, sourceRef.module, sourceRef.export, sourceFile));
   const exported = extractNamedExport(sourceFile, sourceRef.export);
   if (exported === undefined) {
     diagnostics.push({
@@ -117,6 +122,7 @@ function resolveScriptModule(system: ISystemScriptSource & { script: NonNullable
       path: `systems/${system.name}/script/sourceRef/export`,
       severity: "error",
       suggestion: "Export the referenced portable system function or update the system script export name.",
+      target: sourceRef.export,
     });
   }
 
@@ -132,7 +138,7 @@ function isInsideProject(projectPath: string, filePath: string): boolean {
   return rel !== "" && !rel.startsWith("..") && !rel.startsWith(sep);
 }
 
-function diagnoseHelperImports(systemName: string, module: string, sourceFile: ts.SourceFile): ICompilerDiagnostic[] {
+function diagnoseHelperImports(systemName: string, module: string, exportName: string, sourceFile: ts.SourceFile): ICompilerDiagnostic[] {
   const diagnostics: ICompilerDiagnostic[] = [];
   for (const statement of sourceFile.statements) {
     if (ts.isImportDeclaration(statement) || ts.isImportEqualsDeclaration(statement) || (ts.isExportDeclaration(statement) && statement.moduleSpecifier !== undefined)) {
@@ -143,10 +149,34 @@ function diagnoseHelperImports(systemName: string, module: string, sourceFile: t
         path: `systems/${systemName}/script/sourceRef/module`,
         severity: "error",
         suggestion: "Inline portable helpers into the script module until script helper bundling is supported.",
+        target: exportName,
       });
     }
   }
   return diagnostics;
+}
+
+function diagnoseMutableModuleState(systemName: string, module: string, exportName: string, sourceFile: ts.SourceFile): ICompilerDiagnostic[] {
+  return sourceFile.statements.flatMap((statement): ICompilerDiagnostic[] => {
+    if (!ts.isVariableStatement(statement) || hasExportModifier(statement)) {
+      return [];
+    }
+    const flags = ts.getCombinedNodeFlags(statement.declarationList);
+    if ((flags & ts.NodeFlags.Let) === 0 && (flags & ts.NodeFlags.Const) !== 0) {
+      return [];
+    }
+    return [
+      {
+        code: "TN_SCRIPT_MODULE_STATE_UNSUPPORTED",
+        file: module,
+        message: `System '${systemName}' script module declares mutable module state.`,
+        path: `systems/${systemName}/script/sourceRef/moduleState`,
+        severity: "error",
+        suggestion: "Store gameplay state in declared resources or components instead of script module variables.",
+        target: exportName,
+      },
+    ];
+  });
 }
 
 function extractNamedExport(sourceFile: ts.SourceFile, exportName: string): string | undefined {
