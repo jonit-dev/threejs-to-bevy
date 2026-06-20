@@ -4,6 +4,16 @@ export { CompilerError } from "./errors.js";
 export { emitBundle } from "./emit/bundle.js";
 export { validateBundle } from "./validate/index.js";
 export type { ICompilerDiagnostic, IValidationReport } from "./diagnostics.js";
+export { normalizeAuthoringGraph } from "./authoring/normalize.js";
+export type {
+  AuthoringDeclarationKind,
+  IAuthoringDeclarationNode,
+  IAuthoringGraph,
+  IAuthoringModuleNode,
+  IAuthoringProvenance,
+  IAuthoringReference,
+  IAuthoringSourcePointer,
+} from "./authoring/graph.js";
 
 export async function buildProject(projectPath: string): Promise<{ bundlePath: string }> {
   const { loadProjectConfig } = await import("./config.js");

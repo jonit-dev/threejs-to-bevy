@@ -38,6 +38,12 @@ The focused smoke proof mutates and validates a source scene, then builds and
 validates the same project's normal bundle. The future MCP wrapper must build
 on the same authoring core.
 
+Compiler authoring graph source has started under
+`packages/compiler/src/authoring`: Phase 1 defines graph/provenance node types,
+deterministic normalization, and duplicate declaration diagnostics before IR
+flattening. Capture integration and provenance emission remain follow-up
+slices.
+
 Native Bevy UI now installs a dedicated overlay UI camera above authored scene cameras so retained UI stays visible over multi-camera/viewport scenes. The native `Minimap` widget preserves authored bounds/paths/static markers and syncs live resource-bound markers; focused proof lives in `examples/bevy-camera-minimap-verification/artifacts/bevy-camera-minimap-proof/`.
 
 `tn asset inspect <path> [--json]` is available for local glTF/GLB triage. It
