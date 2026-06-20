@@ -22,6 +22,7 @@ test("should print help when requested", async () => {
   assert.match(result.stdout, /dev/);
   assert.match(result.stdout, /editor/);
   assert.match(result.stdout, /package/);
+  assert.match(result.stdout, /scene/);
   assert.match(result.stdout, /model-test/);
   assert.match(result.stdout, /screenshot/);
   assert.match(result.stdout, /record/);
@@ -38,6 +39,8 @@ test("should tolerate a leading package script separator", async () => {
 test("should keep rendered help stable for the package bin", () => {
   assert.match(renderHelp(), /tn dev --target <web\|desktop>/);
   assert.match(renderHelp(), /tn package --target desktop/);
+  assert.match(renderHelp(), /tn scene validate \[scene-id\]/);
+  assert.match(renderHelp(), /tn scene inspect <scene-id>/);
   assert.match(renderHelp(), /tn editor snapshot --bundle <path>/);
   assert.match(renderHelp(), /tn editor inspect --bundle <path>/);
   assert.match(renderHelp(), /tn editor set --bundle <path> --path <json-pointer> --value <json>/);

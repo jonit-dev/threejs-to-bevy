@@ -13,6 +13,7 @@ import { editorCommand } from "./commands/editor.js";
 import { helpCommand } from "./commands/help.js";
 import { modelTestCommand } from "./commands/modelTest.js";
 import { packageCommand } from "./commands/package.js";
+import { sceneCommand } from "./commands/scene.js";
 import { validateProject } from "./commands/validate.js";
 import { recordCommand, screenshotCommand } from "./commands/visualProof.js";
 import { verifyCommand } from "./commands/verify.js";
@@ -84,6 +85,11 @@ const commands: Record<string, ICommandDefinition> = {
     description: "Create a local desktop package artifact from a bundle.",
     implemented: true,
     usage: "tn package --target desktop --bundle <path> [--runtime bevy|webview] [--format portable|archive|installer] [--out <path>] [--json]",
+  },
+  scene: {
+    description: "Inspect and validate structured source scene documents.",
+    implemented: true,
+    usage: "tn scene validate [scene-id] [--project <path>] [--json]\n              tn scene inspect <scene-id> [--project <path>] [--json]",
   },
   screenshot: {
     description: "Capture a PNG proof frame from a web preview URL.",
@@ -190,6 +196,10 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
 
   if (commandName === "package") {
     return packageCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "scene") {
+    return sceneCommand(normalizedArgv.slice(1));
   }
 
   if (commandName === "screenshot") {

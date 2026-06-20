@@ -32,6 +32,9 @@ importers:
 
   packages/cli:
     dependencies:
+      '@threenative/authoring':
+        specifier: workspace:*
+        version: link:../authoring
       '@threenative/compiler':
         specifier: workspace:*
         version: link:../compiler

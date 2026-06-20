@@ -72,6 +72,20 @@ export interface IValidateSceneOptions extends IAuthoringOperationContext {
   sceneId?: string;
 }
 
+export interface ISceneInspection {
+  id: string;
+  file: string;
+  entities: string[];
+  prefabs: string[];
+  resources: string[];
+  systems: string[];
+  uiNodes: string[];
+}
+
+export interface IInspectSceneResult extends IAuthoringOperationResult {
+  scene?: ISceneInspection;
+}
+
 export async function validateScene(options: IValidateSceneOptions): Promise<IAuthoringOperationResult> {
   const project = await loadAuthoringProject({ projectPath: options.projectPath });
   const diagnostics = [...project.diagnostics];
@@ -97,6 +111,34 @@ export async function validateScene(options: IValidateSceneOptions): Promise<IAu
     diagnostics,
     projectPath: project.projectPath,
   });
+}
+
+export async function inspectScene(options: IValidateSceneOptions & { sceneId: string }): Promise<IInspectSceneResult> {
+  const project = await loadAuthoringProject({ projectPath: options.projectPath });
+  const diagnostics = [...project.diagnostics];
+  const sceneDocuments = project.documents.filter((document) => document.kind === "scene");
+  const sceneDocument = sceneDocuments.find((document) => readSceneId(document.data) === options.sceneId);
+
+  if (sceneDocument === undefined) {
+    diagnostics.push(
+      authoringDiagnostic({
+        code: "TN_AUTHORING_SCENE_MISSING",
+        message: `No scene source document with id '${options.sceneId}' was found.`,
+        value: options.sceneId,
+        suggestion: closestIdSuggestion(options.sceneId, sceneDocuments.map((document) => readSceneId(document.data)).filter(isString)),
+      }),
+    );
+    return {
+      ...authoringOperationResult({ diagnostics, projectPath: project.projectPath }),
+    };
+  }
+
+  diagnostics.push(...(await validateSceneDocument(project.projectPath, sceneDocument.projectRelativePath, sceneDocument.data)));
+
+  return {
+    ...authoringOperationResult({ diagnostics, projectPath: project.projectPath }),
+    scene: inspectSceneDocument(sceneDocument.projectRelativePath, sceneDocument.data),
+  };
 }
 
 async function validateSceneDocument(projectPath: string, file: string, data: unknown): Promise<IAuthoringDiagnostic[]> {
@@ -469,6 +511,28 @@ function validateUi(diagnostics: IAuthoringDiagnostic[], file: string, value: un
       diagnostics.push(missingReferenceDiagnostic(file, `${path}/resource`, "resource", resource, resourceIds));
     }
   });
+}
+
+function inspectSceneDocument(file: string, data: unknown): ISceneInspection | undefined {
+  if (!isRecord(data)) {
+    return undefined;
+  }
+  return {
+    id: readString(data.id) ?? "",
+    file,
+    entities: idsFromArray(data.entities),
+    prefabs: idsFromArray(data.prefabs),
+    resources: idsFromArray(data.resources),
+    systems: idsFromArray(data.systems),
+    uiNodes: isRecord(data.ui) ? idsFromArray(data.ui.nodes) : [],
+  };
+}
+
+function idsFromArray(value: unknown): string[] {
+  return (readArray(value) ?? [])
+    .map((item) => (isRecord(item) ? readString(item.id) : undefined))
+    .filter(isString)
+    .sort();
 }
 
 function validateLogicalId(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, kind: string): string | undefined {

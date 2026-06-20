@@ -29,5 +29,11 @@ export type {
 export { logicalIdPattern, sceneDocumentSchema } from "./schemas.js";
 export type { IAuthoringProject, ILoadAuthoringProjectOptions } from "./project.js";
 export { discoverAuthoringFiles, loadAuthoringProject } from "./project.js";
-export type { IAuthoringOperationContext, IAuthoringOperationResult, IValidateSceneOptions } from "./operations.js";
-export { authoringOperationResult, loadProjectForOperation, validateScene, writeChangedProjectDocuments } from "./operations.js";
+export type {
+  IAuthoringOperationContext,
+  IAuthoringOperationResult,
+  IInspectSceneResult,
+  ISceneInspection,
+  IValidateSceneOptions,
+} from "./operations.js";
+export { authoringOperationResult, inspectScene, loadProjectForOperation, validateScene, writeChangedProjectDocuments } from "./operations.js";

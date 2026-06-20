@@ -1,0 +1,106 @@
+import assert from "node:assert/strict";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import test from "node:test";
+
+import { sceneCommand } from "./scene.js";
+
+test("scene-command validate returns stable JSON for valid source scenes", async () => {
+  const root = await createSceneProject();
+
+  try {
+    const result = await sceneCommand(["validate", "scene.arena", "--project", root, "--json"]);
+    const payload = JSON.parse(result.stdout) as { code: string; diagnostics: unknown[]; ok: boolean };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.code, "TN_SCENE_OK");
+    assert.equal(payload.ok, true);
+    assert.deepEqual(payload.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("scene-command validate exits nonzero for repair diagnostics", async () => {
+  const root = await createSceneProject({ invalidTarget: true });
+
+  try {
+    const result = await sceneCommand(["validate", "--project", root, "--json"]);
+    const payload = JSON.parse(result.stdout) as { code: string; diagnostics: Array<{ code: string; path: string; suggestion?: string }> };
+
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.code, "TN_SCENE_FAILED");
+    assert.equal(payload.diagnostics[0]?.code, "TN_AUTHORING_REF_MISSING");
+    assert.equal(payload.diagnostics[0]?.path, "/entities/1/components/camera/target");
+    assert.equal(payload.diagnostics[0]?.suggestion, "Did you mean 'player-kart'?");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("scene-command inspect returns source metadata for agents", async () => {
+  const root = await createSceneProject();
+
+  try {
+    const result = await sceneCommand(["inspect", "scene.arena", "--project", root, "--json"]);
+    const payload = JSON.parse(result.stdout) as {
+      code: string;
+      scene: { entities: string[]; file: string; id: string; resources: string[]; systems: string[]; uiNodes: string[] };
+    };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.code, "TN_SCENE_OK");
+    assert.equal(payload.scene.id, "scene.arena");
+    assert.equal(payload.scene.file, "content/scenes/arena.scene.json");
+    assert.deepEqual(payload.scene.entities, ["chase-camera", "player-kart"]);
+    assert.deepEqual(payload.scene.resources, ["hud.score"]);
+    assert.deepEqual(payload.scene.systems, ["race-controller"]);
+    assert.deepEqual(payload.scene.uiNodes, ["score-label"]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("scene-command inspect requires a scene id", async () => {
+  const result = await sceneCommand(["inspect", "--json"], { cwd: "/" });
+  const payload = JSON.parse(result.stdout) as { code: string; severity: string };
+
+  assert.equal(result.exitCode, 2);
+  assert.equal(payload.code, "TN_SCENE_INSPECT_ID_MISSING");
+  assert.equal(payload.severity, "error");
+});
+
+async function createSceneProject(options: { invalidTarget?: boolean } = {}): Promise<string> {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-scene-"));
+  await mkdir(join(root, "content", "scenes"), { recursive: true });
+  await mkdir(join(root, "src", "scripts"), { recursive: true });
+  await writeFile(join(root, "src", "scripts", "race.ts"), "export function raceController() {}\n");
+  await writeFile(
+    join(root, "content", "scenes", "arena.scene.json"),
+    `${JSON.stringify({
+      schema: "threenative.scene",
+      version: "0.1.0",
+      id: "scene.arena",
+      prefabs: [{ id: "kart" }],
+      resources: [{ id: "hud.score" }],
+      entities: [
+        {
+          id: "player-kart",
+          prefab: "kart",
+          transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+        },
+        {
+          id: "chase-camera",
+          components: { camera: { mode: "third-person-follow", target: options.invalidTarget === true ? "player-kartt" : "player-kart" } },
+        },
+      ],
+      systems: [{ id: "race-controller", script: { module: "src/scripts/race.ts", export: "raceController" } }],
+      ui: {
+        nodes: [{ id: "score-label" }],
+        bindings: [{ node: "score-label", resource: "hud.score.value" }],
+      },
+    }, null, 2)}\n`,
+  );
+  return root;
+}

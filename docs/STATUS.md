@@ -30,7 +30,10 @@ artifact rejection, reusable operation result shapes, and core structured
 `.scene.json` validation. The validator rejects malformed IDs, duplicate
 declarations, unknown fields, invalid transform vectors, missing prefab/entity/
 resource/UI/script references, generated source paths, inline script strings,
-and missing script exports before CLI or MCP wrappers mutate source.
+and missing script exports before source mutation. The CLI now exposes the
+initial canonical automation surface through `tn scene validate [scene-id]
+--json` and `tn scene inspect <scene-id> --json`; mutation commands and the
+future MCP wrapper build on the same authoring core.
 
 Native Bevy UI now installs a dedicated overlay UI camera above authored scene cameras so retained UI stays visible over multi-camera/viewport scenes. The native `Minimap` widget preserves authored bounds/paths/static markers and syncs live resource-bound markers; focused proof lives in `examples/bevy-camera-minimap-verification/artifacts/bevy-camera-minimap-proof/`.
 

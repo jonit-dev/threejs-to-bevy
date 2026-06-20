@@ -142,6 +142,8 @@ tn doctor --project my-game
 tn dev --target web
 tn dev --target desktop
 tn validate
+tn scene validate [scene-id] --json
+tn scene inspect <scene-id> --json
 tn build
 tn package --target desktop
 tn verify
@@ -158,6 +160,11 @@ Command expectations:
 - `tn create my-game --template v5-game-starter` creates the V5 game-first
   starter using `defineGame`, a portable scene, input, world, runtime config,
   and a small movement system.
+- `tn scene validate [scene-id] --json` validates structured source
+  `.scene.json` authoring documents with machine-readable diagnostics for AI
+  repair loops.
+- `tn scene inspect <scene-id> --json` returns source scene metadata such as the
+  owning file and declared entity, prefab, resource, system, and UI node IDs.
 - `tn dev` starts watch mode, IR generation, validation, and a runtime preview.
 - `tn validate` runs schema, semantic, asset, API, and target-profile checks.
 - `tn build` emits a versioned game bundle.
