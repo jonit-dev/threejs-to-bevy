@@ -49,6 +49,10 @@ export function unsupportedOperationDiagnostic(operation: string, suggestion?: s
   });
 }
 
+export function authoringSceneDiagnostic(input: Omit<IAuthoringDiagnosticInput, "severity"> & { severity?: AuthoringDiagnosticSeverity }): IAuthoringDiagnostic {
+  return authoringDiagnostic(input);
+}
+
 export function sortAuthoringDiagnostics(diagnostics: readonly IAuthoringDiagnostic[]): IAuthoringDiagnostic[] {
   return [...diagnostics].sort(
     (left, right) =>

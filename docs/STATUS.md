@@ -23,12 +23,14 @@ contract, target command map, and allowlist enforced by `pnpm check:names`.
 
 Current contributor entry points:
 
-The first agent-safe scene authoring slice now has a shared
+The first agent-safe scene authoring slices now have a shared
 `@threenative/authoring` package for stable AI-repair diagnostics,
 deterministic source JSON formatting, source-document discovery, generated
-artifact rejection, and reusable operation result shapes. The package is the
-foundation for `tn scene ... --json`; scene validation and mutation commands
-remain the next slices before MCP wrapping.
+artifact rejection, reusable operation result shapes, and core structured
+`.scene.json` validation. The validator rejects malformed IDs, duplicate
+declarations, unknown fields, invalid transform vectors, missing prefab/entity/
+resource/UI/script references, generated source paths, inline script strings,
+and missing script exports before CLI or MCP wrappers mutate source.
 
 Native Bevy UI now installs a dedicated overlay UI camera above authored scene cameras so retained UI stays visible over multi-camera/viewport scenes. The native `Minimap` widget preserves authored bounds/paths/static markers and syncs live resource-bound markers; focused proof lives in `examples/bevy-camera-minimap-verification/artifacts/bevy-camera-minimap-proof/`.
 
