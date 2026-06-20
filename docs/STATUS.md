@@ -58,6 +58,10 @@ The `starter-functional` template has started its modular migration. Its
 ECS/resource declarations, input, UI, audio, assets, and script behavior live in
 focused modules. The template systems use source module references that emit
 `scripts.manifest.json` provenance while preserving the normal build path.
+The `v4-scripting` template now uses the same source module reference path for
+portable behavior: `src/game.ts` owns declarations, `src/scripts/systems.ts`
+owns exported system bodies, and generated bundles carry script manifest
+provenance for each referenced system.
 
 Script module references are implemented for SDK-authored systems. Systems can
 name a project-relative TypeScript module and named export instead of carrying
@@ -619,7 +623,8 @@ Current implemented V4 slice:
   writes a web patch/event/command/service effect-log artifact, and captures a
   native Bevy frame artifact at `tools/verify/artifacts/milestones/v4/native-bevy-frame-01.png`.
 - `templates/v4-scripting` scaffolds the same primitive demo as a CLI template
-  through `tn create --template v4-scripting`.
+  through `tn create --template v4-scripting`, with portable system behavior
+  referenced from `src/scripts/systems.ts` instead of inline callbacks.
 
 ## V4 Does Not Prove
 

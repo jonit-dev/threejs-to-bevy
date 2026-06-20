@@ -129,19 +129,12 @@ world
         id: "rotatePrimitiveCubes",
         queries: [defineQuery({ with: [Transform, Rotator] })],
         reads: [Transform, Rotator],
+        script: {
+          export: "rotatePrimitiveCubes",
+          module: "src/scripts/systems.ts",
+        },
         stage: "fixedUpdate",
         writes: [Transform],
-      },
-      (context) => {
-        for (const entity of context.query()) {
-          const rotator = entity.get<{ radiansPerSecond?: number }>(Rotator);
-          const speed = typeof rotator.radiansPerSecond === "number" ? rotator.radiansPerSecond : 1;
-          const angle = context.time.elapsed * speed;
-          entity.patch(Transform, {
-            rotation: [0, Math.sin(angle / 2), 0, Math.cos(angle / 2)],
-          });
-        }
-        context.events.emit(HitEvent, { source: "cube.rotator.center", target: "floor.primitive" });
       },
     ),
   )
@@ -151,25 +144,12 @@ world
         id: "moveTargetPlatform",
         queries: [defineQuery({ with: [Transform, Velocity, Marker] })],
         reads: [Transform, Velocity, Marker],
+        script: {
+          export: "moveTargetPlatform",
+          module: "src/scripts/systems.ts",
+        },
         stage: "update",
         writes: [Transform],
-      },
-      (context) => {
-        const inputAxis = context.input.axis("MoveX");
-        const forwardBias = context.input.action("MoveForward") ? 0.1 : 0;
-        for (const entity of context.query()) {
-          const transform = entity.get<{ position?: [number, number, number] }>(Transform);
-          const velocity = entity.get<{ value?: [number, number, number] }>(Velocity);
-          const position = transform.position ?? [0, 0, 0];
-          const value = velocity.value ?? [0, 0, 0];
-          entity.patch(Transform, {
-            position: [
-              position[0] + (value[0] + inputAxis * 0.2) * context.time.dt,
-              position[1],
-              position[2] - forwardBias * context.time.dt,
-            ],
-          });
-        }
       },
     ),
   )
@@ -178,18 +158,12 @@ world
       {
         commands: [commands.spawn("projectile.spawned", [Transform, Velocity, Lifetime, Marker])],
         id: "spawnProjectileCommand",
+        script: {
+          export: "spawnProjectileCommand",
+          module: "src/scripts/systems.ts",
+        },
         stage: "fixedUpdate",
         writes: [Lifetime, Marker, Transform, Velocity],
-      },
-      (context) => {
-        if (context.time.elapsed >= 0 || context.input.action("SpawnProjectile")) {
-          context.commands.spawn("projectile.spawned", {
-            Lifetime: { remaining: 0.5 },
-            Marker: { label: "spawned-projectile" },
-            Transform: { position: [0, 0.35, 1.45], rotation: [0, 0, 0, 1], scale: [0.18, 0.18, 0.18] },
-            Velocity: { value: [0, 0, -1.5] },
-          });
-        }
       },
     ),
   )
@@ -200,18 +174,12 @@ world
         id: "expireProjectile",
         queries: [defineQuery({ with: [Lifetime, Marker] })],
         reads: [Lifetime, Marker],
+        script: {
+          export: "expireProjectile",
+          module: "src/scripts/systems.ts",
+        },
         stage: "postUpdate",
         writes: [Lifetime],
-      },
-      (context) => {
-        for (const entity of context.query()) {
-          const lifetime = entity.get<{ remaining?: number }>(Lifetime);
-          const remaining = Math.max(0, Number(((lifetime.remaining ?? 0) - context.time.dt).toFixed(6)));
-          entity.patch(Lifetime, { remaining });
-          if (entity.id === "projectile.expired" && remaining <= 0) {
-            context.commands.despawn("projectile.expired");
-          }
-        }
       },
     ),
   )
@@ -221,19 +189,12 @@ world
         eventWrites: [HitEvent],
         id: "raycastHitProbe",
         reads: [Collider, Transform],
+        script: {
+          export: "raycastHitProbe",
+          module: "src/scripts/systems.ts",
+        },
         services: ["physics.raycast"],
         stage: "fixedUpdate",
-      },
-      (context) => {
-        const hit = context.physics.raycast({
-          direction: [0, -1, 0],
-          ignore: ["cube.rotator.center"],
-          maxDistance: 3,
-          origin: [0, 1, 0],
-        });
-        if (hit.hit) {
-          context.events.emit(HitEvent, { source: "cube.rotator.center", target: hit.entity });
-        }
       },
     ),
   )
@@ -244,19 +205,12 @@ world
         id: "hitEventHandoff",
         queries: [defineQuery({ with: [Transform, Rotator] })],
         reads: [Transform, Rotator],
+        script: {
+          export: "hitEventHandoff",
+          module: "src/scripts/systems.ts",
+        },
         stage: "postUpdate",
         writes: [Transform],
-      },
-      (context) => {
-        const hits = context.events.read(HitEvent);
-        if (hits.length === 0) {
-          return;
-        }
-        for (const entity of context.query()) {
-          const transform = entity.get<{ scale?: [number, number, number] }>(Transform);
-          const scale = transform.scale ?? [1, 1, 1];
-          entity.patch(Transform, { scale: [scale[0], scale[1] + 0.02, scale[2]] });
-        }
       },
     ),
   )
@@ -264,11 +218,12 @@ world
     defineSystem(
       {
         id: "animationServiceProof",
+        script: {
+          export: "animationServiceProof",
+          module: "src/scripts/systems.ts",
+        },
         services: ["animation.play"],
         stage: "update",
-      },
-      (context) => {
-        context.animation.play("cube.rotator.center", "pulse", { loop: false, speed: 1 });
       },
     ),
   );
