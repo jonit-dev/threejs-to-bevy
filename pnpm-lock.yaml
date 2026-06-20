@@ -86,6 +86,16 @@ importers:
         specifier: ^20.19.25
         version: 20.19.43
 
+  packages/mcp-server:
+    dependencies:
+      '@threenative/cli':
+        specifier: workspace:*
+        version: link:../cli
+    devDependencies:
+      '@types/node':
+        specifier: ^20.19.25
+        version: 20.19.43
+
   packages/r3f:
     dependencies:
       '@threenative/sdk':

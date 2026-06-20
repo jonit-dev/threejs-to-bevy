@@ -1,0 +1,21 @@
+{
+  "name": "@threenative/mcp-server",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node scripts/run-tests.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@threenative/cli": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.25"
+  }
+}
