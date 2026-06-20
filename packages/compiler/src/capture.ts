@@ -6,8 +6,13 @@ import ts from "typescript";
 
 import { CompilerError } from "./errors.js";
 import { type IProjectConfig } from "./config.js";
+import type { ICompilerDiagnostic } from "./diagnostics.js";
+import type { IAuthoringGraph } from "./authoring/graph.js";
+import { normalizeAuthoringGraph } from "./authoring/normalize.js";
 
 export interface ICapturedScene {
+  diagnostics: ICompilerDiagnostic[];
+  graph: IAuthoringGraph;
   root: unknown;
   summary: {
     rootType: "Scene" | "World";
@@ -27,7 +32,8 @@ export async function captureEntry(config: IProjectConfig): Promise<ICapturedSce
   const packageRoot = fileURLToPath(new URL("..", import.meta.url));
   const tempRoot = await mkdtemp(resolve(packageRoot, captureTempPrefix(config.projectPath)));
   try {
-    await writeTranspiledProjectGraph(entryPath, config.projectPath, tempRoot);
+    const sources = await collectRelativeImportGraph(entryPath, config.projectPath);
+    await writeTranspiledProjectGraph(sources, config.projectPath, tempRoot);
     const tempFile = outputPathForSource(entryPath, config.projectPath, tempRoot);
 
     const module = (await import(`${pathToFileURL(tempFile).href}?v=${Date.now()}`)) as { default?: unknown };
@@ -37,7 +43,16 @@ export async function captureEntry(config: IProjectConfig): Promise<ICapturedSce
       throw new CompilerError("TN_COMPILER_UNSUPPORTED_ROOT", "Entry default export must be a supported SDK Scene or World root.");
     }
 
+    const graph = normalizeAuthoringGraph({
+      entryPath,
+      projectRoot: config.projectPath,
+      root,
+      sources: [...sources].map(([path, source]) => ({ path, source })),
+    });
+
     return {
+      diagnostics: graph.diagnostics,
+      graph,
       root,
       summary: {
         rootType: isWorldRoot(root) || (isBundleRoot(root) && (isWorldRoot(root.world) || "scenes" in root)) ? "World" : "Scene",
@@ -52,8 +67,7 @@ function captureTempPrefix(projectPath: string): string {
   return `.tn-capture-${basename(projectPath).replace(/[^A-Za-z0-9._-]/g, "_")}-`;
 }
 
-async function writeTranspiledProjectGraph(entryPath: string, projectPath: string, tempRoot: string): Promise<void> {
-  const sources = await collectRelativeImportGraph(entryPath, projectPath);
+async function writeTranspiledProjectGraph(sources: ReadonlyMap<string, string>, projectPath: string, tempRoot: string): Promise<void> {
   for (const [sourcePath, source] of sources) {
     const transpiled = ts.transpileModule(source, {
       compilerOptions: {

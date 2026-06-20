@@ -20,6 +20,10 @@ test("should capture starter scene root", async () => {
     });
 
     assert.equal(captured.summary.rootType, "Scene");
+    assert.equal(captured.graph.schema, "threenative.authoring-graph");
+    assert.equal(captured.graph.entryPath, "src/game.ts");
+    assert.equal(captured.graph.declarations.some((declaration) => declaration.kind === "scene" && declaration.id === "scene"), true);
+    assert.deepEqual(captured.diagnostics, []);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -62,6 +66,13 @@ test("should capture scene from valid relative module", async () => {
     });
 
     assert.equal(captured.summary.rootType, "Scene");
+    assert.deepEqual(captured.graph.modules.map((module) => module.path), ["src/game.ts", "src/scene.ts"]);
+    assert.equal(
+      captured.graph.declarations.some(
+        (declaration) => declaration.kind === "scene" && declaration.id === "scene.module" && declaration.provenance.source.modulePath === "src/scene.ts",
+      ),
+      true,
+    );
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -107,6 +118,8 @@ test("should capture modular defineGame lifecycle scenes", async () => {
     });
 
     assert.equal(captured.summary.rootType, "World");
+    assert.equal(captured.graph.declarations.some((declaration) => declaration.kind === "scene" && declaration.id === "menu"), true);
+    assert.equal(captured.graph.declarations.some((declaration) => declaration.kind === "scene" && declaration.id === "menu.visual"), true);
     assert.equal(typeof captured.root, "object");
     assert.notEqual(captured.root, null);
     const rootObject = captured.root as Record<string, unknown>;

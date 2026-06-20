@@ -41,8 +41,10 @@ on the same authoring core.
 Compiler authoring graph source has started under
 `packages/compiler/src/authoring`: Phase 1 defines graph/provenance node types,
 deterministic normalization, and duplicate declaration diagnostics before IR
-flattening. Capture integration and provenance emission remain follow-up
-slices.
+flattening. `captureEntry()` now also returns `{ graph, diagnostics }` alongside
+the existing root and summary fields, preserving compatibility for existing
+callers while exposing source modules and compatibility provenance for modular
+authoring. Conflict surfacing and provenance emission remain follow-up slices.
 
 Native Bevy UI now installs a dedicated overlay UI camera above authored scene cameras so retained UI stays visible over multi-camera/viewport scenes. The native `Minimap` widget preserves authored bounds/paths/static markers and syncs live resource-bound markers; focused proof lives in `examples/bevy-camera-minimap-verification/artifacts/bevy-camera-minimap-proof/`.
 
