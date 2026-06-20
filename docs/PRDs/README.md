@@ -27,6 +27,9 @@ This index separates current cleanup work from historical milestone batches.
   init/create front door, task-oriented help, doctor diagnostics, asset/model
   inspection, transform/camera guardrails, screenshot/video proof, runtime
   debug overlay, and racing template evidence.
+- [Editor-Ready Modular Authoring and Scripting Architecture](other/editor-ready-modular-authoring-and-scripting-architecture.md):
+  source-of-truth boundaries, modular authoring graph/provenance, script module
+  references, editor-safe source documents, and web/Bevy runtime parity.
 - [Advanced Visual Effects, Lighting, and Material Depth](other/advanced-visual-effects-lighting-material-depth.md):
   remaining advanced lighting, material, atmosphere, post-processing, deferred
   renderer, virtual geometry, and custom post-processing gaps.
