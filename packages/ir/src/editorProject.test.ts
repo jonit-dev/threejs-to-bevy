@@ -2,11 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  buildEditorDocumentClassifications,
   buildEditorInspectorSnapshot,
   buildEditorToolSnapshot,
   buildEditorVisualPanelSnapshot,
+  classifyEditorDocumentPath,
   diffEditorProjectSnapshots,
   type IEditorProjectSnapshot,
+  validateEditorDocumentKindTransition,
   validateEditorPropertyEdit,
   validateEditorProjectSnapshot,
 } from "./editorProject.js";
@@ -21,6 +24,75 @@ test("should validate structured editor project snapshots", () => {
   });
 
   assert.deepEqual(validateEditorProjectSnapshot(snapshot), []);
+});
+
+test("should classify editor documents by source generated runtime and derived kind", () => {
+  assert.deepEqual(buildEditorDocumentClassifications({
+    "authoring.provenance.json": {},
+    "preview/session.json": {},
+    "src/scenes/arena.scene.json": {},
+    "world.ir.json": {},
+  }), {
+    "authoring.provenance.json": { access: "derivedView", kind: "derived" },
+    "preview/session.json": { access: "runtimeOnly", kind: "runtime" },
+    "src/scenes/arena.scene.json": { access: "sourcePersistable", kind: "source", sourcePath: "src/scenes/arena.scene.json" },
+    "world.ir.json": { access: "inspectableOnly", kind: "generated" },
+  });
+  assert.deepEqual(classifyEditorDocumentPath("runtime/entity-state.json"), { access: "runtimeOnly", kind: "runtime" });
+});
+
+test("should validate editor document classification access policies", () => {
+  const snapshot = makeSnapshot({
+    "authoring.provenance.json": {},
+    "preview/session.json": {},
+    "src/scenes/arena.scene.json": {},
+    "world.ir.json": {},
+  });
+  snapshot.documentKinds = {
+    "authoring.provenance.json": { access: "sourcePersistable", kind: "derived" },
+    "missing.json": { access: "inspectableOnly", kind: "generated" },
+    "preview/session.json": { access: "inspectableOnly", kind: "runtime" },
+    "src/scenes/arena.scene.json": { access: "inspectableOnly", kind: "source" },
+    "world.ir.json": { access: "sourcePersistable", kind: "generated" },
+  };
+
+  assert.deepEqual(
+    validateEditorProjectSnapshot(snapshot).map((diagnostic) => diagnostic.code),
+    [
+      "TN_IR_EDITOR_DERIVED_DOCUMENT_ACCESS_INVALID",
+      "TN_IR_EDITOR_DOCUMENT_KIND_UNKNOWN_DOCUMENT",
+      "TN_IR_EDITOR_RUNTIME_DOCUMENT_ACCESS_INVALID",
+      "TN_IR_EDITOR_SOURCE_DOCUMENT_ACCESS_INVALID",
+      "TN_IR_EDITOR_GENERATED_DOCUMENT_ACCESS_INVALID",
+    ],
+  );
+});
+
+test("should reject unsafe editor document kind transitions", () => {
+  assert.deepEqual(
+    validateEditorDocumentKindTransition(
+      { access: "inspectableOnly", kind: "generated" },
+      { access: "sourcePersistable", kind: "source" },
+      "world.ir.json",
+    ).map((diagnostic) => diagnostic.code),
+    ["TN_IR_EDITOR_DOCUMENT_GENERATED_TO_SOURCE"],
+  );
+  assert.deepEqual(
+    validateEditorDocumentKindTransition(
+      { access: "runtimeOnly", kind: "runtime" },
+      { access: "derivedView", kind: "derived" },
+      "runtime/entity-state.json",
+    ).map((diagnostic) => diagnostic.code),
+    ["TN_IR_EDITOR_DOCUMENT_RUNTIME_TO_SOURCE"],
+  );
+  assert.deepEqual(
+    validateEditorDocumentKindTransition(
+      { access: "inspectableOnly", kind: "generated" },
+      { access: "sourcePersistable", bridgedFrom: "world.ir.json", kind: "source", sourcePath: "src/scenes/arena.scene.json" },
+      "world.ir.json",
+    ),
+    [],
+  );
 });
 
 test("should reject invalid editor snapshot shape", () => {

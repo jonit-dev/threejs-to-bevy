@@ -5,8 +5,19 @@ export interface IEditorProjectSnapshot {
   version: "0.1.0";
   name: string;
   documents: Record<string, unknown>;
+  documentKinds?: Record<string, IEditorDocumentClassification>;
   inspector?: IEditorInspectorSnapshot;
   metadata?: Record<string, unknown>;
+}
+
+export type EditorDocumentKind = "derived" | "generated" | "runtime" | "source";
+export type EditorDocumentAccess = "derivedView" | "inspectableOnly" | "runtimeOnly" | "sourcePersistable";
+
+export interface IEditorDocumentClassification {
+  access: EditorDocumentAccess;
+  bridgedFrom?: string;
+  kind: EditorDocumentKind;
+  sourcePath?: string;
 }
 
 export interface IEditorInspectorNode {
@@ -116,6 +127,9 @@ export type EditorProjectDiffOperation =
   | { before: unknown; op: "remove"; path: string }
   | { after: unknown; before: unknown; op: "replace"; path: string };
 
+const documentKinds = new Set<EditorDocumentKind>(["derived", "generated", "runtime", "source"]);
+const documentAccessModes = new Set<EditorDocumentAccess>(["derivedView", "inspectableOnly", "runtimeOnly", "sourcePersistable"]);
+
 export function validateEditorProjectSnapshot(snapshot: unknown, path = "editor.project.json"): IIrDiagnostic[] {
   const diagnostics: IIrDiagnostic[] = [];
   if (!isRecord(snapshot)) {
@@ -180,6 +194,9 @@ export function validateEditorProjectSnapshot(snapshot: unknown, path = "editor.
       }
     }
   }
+  if (snapshot.documentKinds !== undefined) {
+    diagnostics.push(...validateEditorDocumentClassifications(snapshot.documentKinds, isRecord(snapshot.documents) ? snapshot.documents : {}, `${path}/documentKinds`));
+  }
   if (snapshot.metadata !== undefined && !isRecord(snapshot.metadata)) {
     diagnostics.push({
       code: "TN_IR_EDITOR_PROJECT_METADATA_INVALID",
@@ -192,6 +209,151 @@ export function validateEditorProjectSnapshot(snapshot: unknown, path = "editor.
     diagnostics.push(...validateEditorInspectorSnapshot(snapshot.inspector, `${path}/inspector`));
   }
 
+  return diagnostics;
+}
+
+export function classifyEditorDocumentPath(documentPath: string): IEditorDocumentClassification {
+  if (documentPath.startsWith("runtime/") || documentPath.startsWith("preview/")) {
+    return { access: "runtimeOnly", kind: "runtime" };
+  }
+  if (documentPath.startsWith("src/") || documentPath.startsWith("scenes/")) {
+    return { access: "sourcePersistable", kind: "source", sourcePath: documentPath };
+  }
+  if (documentPath === "authoring.provenance.json" || documentPath.endsWith(".report.json") || documentPath.endsWith("verification-report.json")) {
+    return { access: "derivedView", kind: "derived" };
+  }
+  return { access: "inspectableOnly", kind: "generated" };
+}
+
+export function buildEditorDocumentClassifications(documents: Record<string, unknown>): Record<string, IEditorDocumentClassification> {
+  return Object.fromEntries(Object.keys(documents).sort((left, right) => left.localeCompare(right)).map((documentPath) => [documentPath, classifyEditorDocumentPath(documentPath)]));
+}
+
+export function validateEditorDocumentKindTransition(
+  before: IEditorDocumentClassification,
+  after: IEditorDocumentClassification,
+  path = "editor.project.json/documentKinds",
+): IIrDiagnostic[] {
+  if (before.kind === after.kind && before.access === after.access) {
+    return [];
+  }
+  if (before.kind === "generated" && after.kind === "source" && after.bridgedFrom !== path) {
+    return [{
+      code: "TN_IR_EDITOR_DOCUMENT_GENERATED_TO_SOURCE",
+      message: "Generated editor documents cannot become persisted source documents without an explicit source bridge.",
+      path,
+      severity: "error",
+      suggestion: "Create a source patch that targets the durable source document instead of reclassifying generated IR.",
+    }];
+  }
+  if (before.kind === "runtime" && after.kind !== "runtime") {
+    return [{
+      code: "TN_IR_EDITOR_DOCUMENT_RUNTIME_TO_SOURCE",
+      message: "Runtime editor documents cannot transition into source, generated, or derived documents.",
+      path,
+      severity: "error",
+      suggestion: "Map runtime state through provenance and emit a validated source patch instead.",
+    }];
+  }
+  return [];
+}
+
+function validateEditorDocumentClassifications(
+  classifications: unknown,
+  documents: Record<string, unknown>,
+  path: string,
+): IIrDiagnostic[] {
+  const diagnostics: IIrDiagnostic[] = [];
+  if (!isRecord(classifications)) {
+    return [{ code: "TN_IR_EDITOR_DOCUMENT_KINDS_INVALID", message: "Editor documentKinds must be an object keyed by document path.", path, severity: "error" }];
+  }
+  for (const [documentPath, classification] of Object.entries(classifications)) {
+    const classificationPath = `${path}/${escapePointer(documentPath)}`;
+    if (!(documentPath in documents)) {
+      diagnostics.push({
+        code: "TN_IR_EDITOR_DOCUMENT_KIND_UNKNOWN_DOCUMENT",
+        message: `Editor document kind '${documentPath}' must reference an existing document.`,
+        path: classificationPath,
+        severity: "error",
+      });
+    }
+    if (!isRecord(classification)) {
+      diagnostics.push({
+        code: "TN_IR_EDITOR_DOCUMENT_KIND_INVALID",
+        message: `Editor document kind '${documentPath}' must be an object.`,
+        path: classificationPath,
+        severity: "error",
+      });
+      continue;
+    }
+    const kind = classification.kind;
+    const access = classification.access;
+    if (typeof kind !== "string" || !documentKinds.has(kind as EditorDocumentKind)) {
+      diagnostics.push({
+        code: "TN_IR_EDITOR_DOCUMENT_KIND_INVALID",
+        message: `Editor document kind '${documentPath}' must be source, generated, runtime, or derived.`,
+        path: `${classificationPath}/kind`,
+        severity: "error",
+      });
+    }
+    if (typeof access !== "string" || !documentAccessModes.has(access as EditorDocumentAccess)) {
+      diagnostics.push({
+        code: "TN_IR_EDITOR_DOCUMENT_ACCESS_INVALID",
+        message: `Editor document access '${documentPath}' is invalid.`,
+        path: `${classificationPath}/access`,
+        severity: "error",
+      });
+    }
+    if (kind === "source" && access !== "sourcePersistable") {
+      diagnostics.push({
+        code: "TN_IR_EDITOR_SOURCE_DOCUMENT_ACCESS_INVALID",
+        message: `Source editor document '${documentPath}' must be source-persistable.`,
+        path: `${classificationPath}/access`,
+        severity: "error",
+      });
+    }
+    if (kind === "generated" && access !== "inspectableOnly") {
+      diagnostics.push({
+        code: "TN_IR_EDITOR_GENERATED_DOCUMENT_ACCESS_INVALID",
+        message: `Generated editor document '${documentPath}' must be inspectable-only.`,
+        path: `${classificationPath}/access`,
+        severity: "error",
+        suggestion: "Bridge edits to a source document instead of persisting generated bundle artifacts.",
+      });
+    }
+    if (kind === "runtime" && access !== "runtimeOnly") {
+      diagnostics.push({
+        code: "TN_IR_EDITOR_RUNTIME_DOCUMENT_ACCESS_INVALID",
+        message: `Runtime editor document '${documentPath}' must be runtime-only.`,
+        path: `${classificationPath}/access`,
+        severity: "error",
+      });
+    }
+    if (kind === "derived" && access === "sourcePersistable") {
+      diagnostics.push({
+        code: "TN_IR_EDITOR_DERIVED_DOCUMENT_ACCESS_INVALID",
+        message: `Derived editor document '${documentPath}' cannot be source-persistable.`,
+        path: `${classificationPath}/access`,
+        severity: "error",
+      });
+    }
+    if (classification.sourcePath !== undefined && (typeof classification.sourcePath !== "string" || classification.sourcePath.trim() === "")) {
+      diagnostics.push({
+        code: "TN_IR_EDITOR_DOCUMENT_SOURCE_PATH_INVALID",
+        message: `Editor document '${documentPath}' sourcePath must be a non-empty string when present.`,
+        path: `${classificationPath}/sourcePath`,
+        severity: "error",
+      });
+    }
+    if (classification.bridgedFrom !== undefined && (typeof classification.bridgedFrom !== "string" || classification.bridgedFrom.trim() === "")) {
+      diagnostics.push({
+        code: "TN_IR_EDITOR_DOCUMENT_BRIDGE_INVALID",
+        message: `Editor document '${documentPath}' bridgedFrom must be a non-empty string when present.`,
+        path: `${classificationPath}/bridgedFrom`,
+        severity: "error",
+      });
+    }
+  }
   return diagnostics;
 }
 

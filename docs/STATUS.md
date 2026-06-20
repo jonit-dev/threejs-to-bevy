@@ -1384,6 +1384,11 @@ and deterministic structured diffs over bundle-relative JSON documents. This is
 offline SDK/ECS/IR project data plumbing for future save/load, inspector, and
 bundle preview workflows; it does not add a visual editor UI, online services,
 collaboration, raw Three.js authoring, or direct Bevy authoring.
+The editor snapshot bridge now also classifies documents as `source`,
+`generated`, `runtime`, or `derived`, with explicit access policies. Generated
+bundle documents are inspectable-only, runtime documents stay runtime-only, and
+kind-transition validation rejects silently promoting generated or runtime state
+into persisted source without an explicit source bridge.
 
 The next V8 editor plumbing slice exposes those helpers through the CLI as
 `tn editor snapshot --bundle <path>`, `tn editor apply --snapshot <path>
