@@ -62,6 +62,11 @@ The `v4-scripting` template now uses the same source module reference path for
 portable behavior: `src/game.ts` owns declarations, `src/scripts/systems.ts`
 owns exported system bodies, and generated bundles carry script manifest
 provenance for each referenced system.
+The `v5-game-starter` template has moved to the modular declaration path as a
+small `defineGame()` composition root with focused scene, ECS/entity, input,
+visual, and script modules. Its movement system is now referenced from
+`src/scripts/player.ts`, so template builds emit `scripts.manifest.json`
+provenance instead of teaching inline callback scripts.
 
 Script module references are implemented for SDK-authored systems. Systems can
 name a project-relative TypeScript module and named export instead of carrying
