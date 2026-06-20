@@ -27,7 +27,7 @@ This index separates current cleanup work from historical milestone batches.
   init/create front door, task-oriented help, doctor diagnostics, asset/model
   inspection, transform/camera guardrails, screenshot/video proof, runtime
   debug overlay, and racing template evidence.
-- [Agent-Safe Scene Authoring CLI](other/agent-safe-scene-authoring-cli.md):
+- [Agent-Safe Scene Authoring CLI](done/other/agent-safe-scene-authoring-cli.md):
   shared authoring core, `tn scene ... --json` operations, schema/semantic
   validation, deterministic diagnostics, and AI-safe scene mutation workflow.
 - [Authoring Graph and Provenance Capture](other/authoring-graph-provenance-capture.md):

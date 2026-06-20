@@ -34,7 +34,9 @@ and missing script exports before source mutation. The CLI now exposes the
 initial canonical automation surface through `tn scene validate [scene-id]
 --json`, `tn scene inspect <scene-id> --json`, and bounded source mutations:
 `add-entity`, `set-transform`, `set-camera`, `attach-script`, and `bind-ui`.
-The future MCP wrapper must build on the same authoring core.
+The focused smoke proof mutates and validates a source scene, then builds and
+validates the same project's normal bundle. The future MCP wrapper must build
+on the same authoring core.
 
 Native Bevy UI now installs a dedicated overlay UI camera above authored scene cameras so retained UI stays visible over multi-camera/viewport scenes. The native `Minimap` widget preserves authored bounds/paths/static markers and syncs live resource-bound markers; focused proof lives in `examples/bevy-camera-minimap-verification/artifacts/bevy-camera-minimap-proof/`.
 
