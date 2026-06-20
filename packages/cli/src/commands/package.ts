@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { cp, chmod, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
-import { basename, resolve } from "node:path";
+import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateBundle } from "@threenative/compiler";
 import { validateBundleRelativePath } from "@threenative/ir";
@@ -10,6 +10,8 @@ import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
 export interface IPackageReport {
   artifactDir: string;
   artifacts: {
+    archivePath?: string;
+    installerPath?: string;
     manifestPath: string;
     packageReportPath: string;
     packagedBundlePath: string;
@@ -19,6 +21,7 @@ export interface IPackageReport {
   bundlePath: string;
   code: "TN_PACKAGE_OK";
   files: string[];
+  format: "archive" | "installer" | "portable";
   manifestPath: string;
   runtimeArgsPath: string;
   schema: "threenative.package-report";
@@ -52,12 +55,13 @@ export async function packageCommand(
   const json = normalizedArgv.includes("--json");
   const preflight = normalizedArgv.includes("--preflight");
   const target = flagValue(normalizedArgv, "--target") ?? "desktop";
+  const format = flagValue(normalizedArgv, "--format") ?? "portable";
   const bundle = flagValue(normalizedArgv, "--bundle");
   const outDir = flagValue(normalizedArgv, "--out") ?? flagValue(normalizedArgv, "--outDir") ?? "dist/package";
 
   if (bundle === undefined) {
     return diagnosticResult(
-      { code: "TN_PACKAGE_USAGE", message: "Usage: tn package --bundle <game.bundle> [--target desktop] [--out <path>] [--json]" },
+      { code: "TN_PACKAGE_USAGE", message: "Usage: tn package --bundle <game.bundle> [--target desktop] [--format portable|archive|installer] [--out <path>] [--json]" },
       { exitCode: 1, json, stderr: true },
     );
   }
@@ -73,6 +77,18 @@ export async function packageCommand(
         message: `Target '${target}' is not supported by V7 desktop packaging.`,
         severity: "error",
         suggestion: "Use '--target desktop'. Mobile stores, online publishing, and service deployment are outside V7 scope.",
+      },
+      { exitCode: 1, json, stderr: true },
+    );
+  }
+
+  if (!["portable", "archive", "installer"].includes(format)) {
+    return diagnosticResult(
+      {
+        code: "TN_PACKAGE_FORMAT_UNSUPPORTED",
+        message: `Desktop package format '${format}' is not supported.`,
+        severity: "error",
+        suggestion: "Use '--format portable', '--format archive', or '--format installer'.",
       },
       { exitCode: 1, json, stderr: true },
     );
@@ -94,7 +110,8 @@ export async function packageCommand(
       );
     }
     await assertDesktopTarget(bundlePath);
-    const packageRoot = resolve(cwd, outDir, "desktop");
+    const artifactRoot = resolve(cwd, outDir);
+    const packageRoot = resolve(artifactRoot, "desktop");
     const packagedBundlePath = resolve(packageRoot, basename(bundlePath));
     await mkdir(packageRoot, { recursive: true });
     await cp(bundlePath, packagedBundlePath, { force: true, recursive: true });
@@ -139,12 +156,18 @@ export async function packageCommand(
         2,
       )}\n`,
     );
+    const archivePath = format === "archive" || format === "installer" ? resolve(artifactRoot, `${packageSlug(bundlePath)}-${platformTag()}.tar.gz`) : undefined;
+    if (archivePath !== undefined) {
+      await createTarGz({ archivePath, cwd: artifactRoot, entry: "desktop" });
+    }
+    const installerPath = format === "installer" ? await createInstallerScript({ archivePath: archivePath!, bundleName: basename(bundlePath), outputDir: artifactRoot }) : undefined;
     const report: IPackageReport = {
       artifactDir: packageRoot,
-      artifacts: { manifestPath, packageReportPath, packagedBundlePath, runtimeArgsPath, runtimeExecutablePath: builtRuntimePath },
+      artifacts: { archivePath, installerPath, manifestPath, packageReportPath, packagedBundlePath, runtimeArgsPath, runtimeExecutablePath: builtRuntimePath },
       bundlePath: packagedBundlePath,
       code: "TN_PACKAGE_OK",
       files,
+      format: format as IPackageReport["format"],
       manifestPath,
       runtimeArgsPath,
       schema: "threenative.package-report",
@@ -155,7 +178,7 @@ export async function packageCommand(
     await writeFile(packageReportPath, `${JSON.stringify(report, null, 2)}\n`);
     return {
       exitCode: 0,
-      stdout: json ? `${JSON.stringify(report, null, 2)}\n` : `Packaged desktop bundle at '${packagedBundlePath}'.\n`,
+      stdout: json ? `${JSON.stringify(report, null, 2)}\n` : packageMessage(report),
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -269,6 +292,72 @@ async function listRelativeFiles(root: string, prefix = ""): Promise<string[]> {
     }),
   );
   return files.flat().sort();
+}
+
+
+function packageMessage(report: IPackageReport): string {
+  if (report.format === "installer" && report.artifacts.installerPath !== undefined) {
+    return `Packaged desktop installer at '${report.artifacts.installerPath}'.\n`;
+  }
+  if (report.format === "archive" && report.artifacts.archivePath !== undefined) {
+    return `Packaged desktop archive at '${report.artifacts.archivePath}'.\n`;
+  }
+  return `Packaged desktop bundle at '${report.bundlePath}'.\n`;
+}
+
+function packageSlug(bundlePath: string): string {
+  return basename(bundlePath).replace(/\.bundle$/u, "").replace(/[^a-zA-Z0-9._-]+/gu, "-").replace(/^-+|-+$/gu, "") || "threenative-game";
+}
+
+function platformTag(): string {
+  return `${process.platform}-${process.arch}`;
+}
+
+async function createTarGz(options: { archivePath: string; cwd: string; entry: string }): Promise<void> {
+  await mkdir(dirname(options.archivePath), { recursive: true });
+  await runCommand("tar", ["-czf", options.archivePath, "-C", options.cwd, options.entry]);
+}
+
+async function createInstallerScript(options: { archivePath: string; bundleName: string; outputDir: string }): Promise<string> {
+  if (process.platform === "win32") {
+    throw new Error("TN_PACKAGE_INSTALLER_UNSUPPORTED: '--format installer' currently creates a Unix .sh installer. Use '--format archive' on Windows until NSIS/WiX support lands.");
+  }
+  const appName = packageSlug(options.bundleName);
+  const runtimeName = runtimeExecutableName();
+  const installerPath = resolve(options.outputDir, `${appName}-${platformTag()}-installer.sh`);
+  const archiveBase64 = (await readFile(options.archivePath)).toString("base64");
+  const script = `#!/usr/bin/env sh
+set -eu
+APP_NAME=${JSON.stringify(appName)}
+DEFAULT_DIR="$HOME/.local/share/$APP_NAME"
+INSTALL_DIR="\${1:-$DEFAULT_DIR}"
+mkdir -p "$INSTALL_DIR"
+TMP_ARCHIVE="$(mktemp -t ${appName}.XXXXXX.tar.gz)"
+cleanup() { rm -f "$TMP_ARCHIVE"; }
+trap cleanup EXIT
+if sed '1,/^__THREENATIVE_ARCHIVE_BELOW__$/d' "$0" | base64 -d > "$TMP_ARCHIVE" 2>/dev/null; then
+  :
+else
+  sed '1,/^__THREENATIVE_ARCHIVE_BELOW__$/d' "$0" | base64 -D > "$TMP_ARCHIVE"
+fi
+tar -xzf "$TMP_ARCHIVE" -C "$INSTALL_DIR"
+chmod +x "$INSTALL_DIR/desktop/${runtimeName}"
+cat > "$INSTALL_DIR/run.sh" <<'RUNNER'
+#!/usr/bin/env sh
+set -eu
+HERE="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+cd "$HERE/desktop"
+exec ./${runtimeName} ${JSON.stringify(options.bundleName)}
+RUNNER
+chmod +x "$INSTALL_DIR/run.sh"
+printf 'Installed %s to %s\nRun: %s/run.sh\n' "$APP_NAME" "$INSTALL_DIR" "$INSTALL_DIR"
+exit 0
+__THREENATIVE_ARCHIVE_BELOW__
+${archiveBase64}
+`;
+  await writeFile(installerPath, script, { mode: 0o755 });
+  await chmod(installerPath, 0o755);
+  return installerPath;
 }
 
 async function buildDesktopRuntime(options: { outputPath: string }): Promise<string> {

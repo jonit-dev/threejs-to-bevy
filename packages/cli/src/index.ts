@@ -53,7 +53,7 @@ const commands: Record<string, ICommandDefinition> = {
   package: {
     description: "Create a local desktop package artifact from a bundle.",
     implemented: true,
-    usage: "tn package --target desktop --bundle <path> [--out <path>] [--json]",
+    usage: "tn package --target desktop --bundle <path> [--format portable|archive|installer] [--out <path>] [--json]",
   },
   verify: {
     description: "Run visual self-verification for the web preview.",

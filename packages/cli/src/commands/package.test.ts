@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { promisify } from "node:util";
 import test from "node:test";
 
 import { packageCommand } from "./package.js";
+
+const execFileAsync = promisify(execFile);
 
 test("package should copy a desktop bundle into stable artifact layout", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-package-"));
@@ -43,6 +47,42 @@ test("package should copy a desktop bundle into stable artifact layout", async (
   }
 });
 
+test("package should create archive and installer artifacts", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-package-installer-"));
+  try {
+    await writeBundle(root, ["web", "desktop"]);
+    const runtimeBuilder = async ({ outputPath }: { outputPath: string }): Promise<string> => {
+      await writeFile(outputPath, "#!/usr/bin/env sh\necho threenative runtime\n", { mode: 0o755 });
+      return outputPath;
+    };
+
+    const archiveResult = await packageCommand(["--bundle", "game.bundle", "--outDir", "artifacts/archive", "--format", "archive", "--json"], root, { runtimeBuilder });
+    const archivePayload = JSON.parse(archiveResult.stdout);
+    assert.equal(archiveResult.exitCode, 0);
+    assert.equal(archivePayload.format, "archive");
+    assert.match(archivePayload.artifacts.archivePath, /game-[^-]+-[^-]+\.tar\.gz$/);
+    const archiveListing = await execFileAsync("tar", ["-tzf", archivePayload.artifacts.archivePath]);
+    assert.match(archiveListing.stdout, /desktop\/threenative_runtime/);
+    assert.match(archiveListing.stdout, /desktop\/game\.bundle\/manifest\.json/);
+
+    const installerResult = await packageCommand(["--bundle", "game.bundle", "--outDir", "artifacts/installer", "--format", "installer", "--json"], root, { runtimeBuilder });
+    const installerPayload = JSON.parse(installerResult.stdout);
+    assert.equal(installerResult.exitCode, 0);
+    assert.equal(installerPayload.format, "installer");
+    assert.match(installerPayload.artifacts.installerPath, /game-[^-]+-[^-]+-installer\.sh$/);
+    const installerScript = await readFile(installerPayload.artifacts.installerPath, "utf8");
+    assert.match(installerScript, /^#!\/usr\/bin\/env sh/);
+    assert.match(installerScript, /__THREENATIVE_ARCHIVE_BELOW__/);
+
+    const installDir = join(root, "installed-game");
+    await execFileAsync("sh", [installerPayload.artifacts.installerPath, installDir]);
+    assert.match(await readFile(join(installDir, "run.sh"), "utf8"), /exec \.\/threenative_runtime "game\.bundle"/);
+    assert.equal(await readFile(join(installDir, "desktop", "game.bundle", "manifest.json"), "utf8").then((value) => value.length > 0), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("package should reject mobile and online targets", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-package-mobile-"));
   try {
@@ -69,6 +109,21 @@ test("package should reject non-desktop command target", async () => {
 
     assert.equal(result.exitCode, 1);
     assert.equal(payload.code, "TN_PACKAGE_TARGET_UNSUPPORTED");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("package should reject unsupported package formats", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-package-format-"));
+  try {
+    await writeBundle(root, ["web", "desktop"]);
+
+    const result = await packageCommand(["--bundle", "game.bundle", "--format", "msi", "--json"], root);
+    const payload = JSON.parse(result.stdout);
+
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.code, "TN_PACKAGE_FORMAT_UNSUPPORTED");
   } finally {
     await rm(root, { force: true, recursive: true });
   }
