@@ -1,5 +1,7 @@
-import { cp, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { spawn } from "node:child_process";
+import { cp, chmod, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { basename, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { validateBundle } from "@threenative/compiler";
 import { validateBundleRelativePath } from "@threenative/ir";
 
@@ -12,6 +14,7 @@ export interface IPackageReport {
     packageReportPath: string;
     packagedBundlePath: string;
     runtimeArgsPath: string;
+    runtimeExecutablePath: string;
   };
   bundlePath: string;
   code: "TN_PACKAGE_OK";
@@ -34,7 +37,17 @@ export interface IPackagePreflightReport {
   version: "0.1.0";
 }
 
-export async function packageCommand(argv: readonly string[], cwd = process.env.INIT_CWD ?? process.cwd()): Promise<ICommandResult> {
+export type DesktopRuntimeBuilder = (options: { outputPath: string }) => Promise<string>;
+
+export interface IPackageCommandOptions {
+  runtimeBuilder?: DesktopRuntimeBuilder;
+}
+
+export async function packageCommand(
+  argv: readonly string[],
+  cwd = process.env.INIT_CWD ?? process.cwd(),
+  options: IPackageCommandOptions = {},
+): Promise<ICommandResult> {
   const normalizedArgv = argv[0] === "--" ? argv.slice(1) : argv;
   const json = normalizedArgv.includes("--json");
   const preflight = normalizedArgv.includes("--preflight");
@@ -88,7 +101,10 @@ export async function packageCommand(argv: readonly string[], cwd = process.env.
     const files = await listRelativeFiles(packagedBundlePath);
     const manifestPath = resolve(packageRoot, "package.manifest.json");
     const runtimeArgsPath = resolve(packageRoot, "runtime.args.json");
+    const runtimeExecutablePath = resolve(packageRoot, runtimeExecutableName());
     const packageReportPath = resolve(packageRoot, "package.report.json");
+    const builtRuntimePath = await (options.runtimeBuilder ?? buildDesktopRuntime)({ outputPath: runtimeExecutablePath });
+    await chmod(builtRuntimePath, 0o755);
     await writeFile(
       manifestPath,
       `${JSON.stringify(
@@ -96,6 +112,7 @@ export async function packageCommand(argv: readonly string[], cwd = process.env.
           artifacts: {
             packagedBundlePath,
             runtimeArgsPath,
+            runtimeExecutablePath: builtRuntimePath,
           },
           bundle: basename(packagedBundlePath),
           code: "TN_PACKAGE_MANIFEST_OK",
@@ -113,7 +130,7 @@ export async function packageCommand(argv: readonly string[], cwd = process.env.
       `${JSON.stringify(
         {
           args: [basename(packagedBundlePath)],
-          command: "threenative_runtime",
+          command: `./${basename(builtRuntimePath)}`,
           schema: "threenative.runtime-args",
           target,
           version: "0.1.0",
@@ -124,7 +141,7 @@ export async function packageCommand(argv: readonly string[], cwd = process.env.
     );
     const report: IPackageReport = {
       artifactDir: packageRoot,
-      artifacts: { manifestPath, packageReportPath, packagedBundlePath, runtimeArgsPath },
+      artifacts: { manifestPath, packageReportPath, packagedBundlePath, runtimeArgsPath, runtimeExecutablePath: builtRuntimePath },
       bundlePath: packagedBundlePath,
       code: "TN_PACKAGE_OK",
       files,
@@ -252,4 +269,46 @@ async function listRelativeFiles(root: string, prefix = ""): Promise<string[]> {
     }),
   );
   return files.flat().sort();
+}
+
+async function buildDesktopRuntime(options: { outputPath: string }): Promise<string> {
+  const envBinary = process.env.THREENATIVE_RUNTIME_BINARY?.trim();
+  if (envBinary !== undefined && envBinary !== "") {
+    await cp(resolve(envBinary), options.outputPath, { force: true });
+    return options.outputPath;
+  }
+
+  const manifestPath = resolve(fileURLToPath(new URL("../runtime-bevy/Cargo.toml", import.meta.url)));
+  await runCommand("cargo", [
+    "build",
+    "--manifest-path",
+    manifestPath,
+    "-p",
+    "threenative_runtime",
+    "--bin",
+    "threenative_runtime",
+    "--release",
+  ]);
+
+  const builtBinary = resolve(fileURLToPath(new URL("../runtime-bevy/target/release/", import.meta.url)), runtimeExecutableName());
+  await cp(builtBinary, options.outputPath, { force: true });
+  return options.outputPath;
+}
+
+function runtimeExecutableName(): string {
+  return process.platform === "win32" ? "threenative_runtime.exe" : "threenative_runtime";
+}
+
+async function runCommand(command: string, args: readonly string[]): Promise<void> {
+  await new Promise<void>((resolvePromise, reject) => {
+    const child = spawn(command, args, { stdio: "inherit" });
+    child.on("error", reject);
+    child.on("exit", (code, signal) => {
+      if (code === 0) {
+        resolvePromise();
+        return;
+      }
+      reject(new Error(`${command} ${args.join(" ")} failed with ${signal ?? `exit code ${code}`}`));
+    });
+  });
 }

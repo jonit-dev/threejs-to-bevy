@@ -1077,7 +1077,7 @@ fn emissive_color_cards_should_map_to_unlit_base_color() {
 }
 
 #[test]
-fn cameras_without_atmosphere_should_disable_tonemapping_and_color_grading_exposure() {
+fn cameras_without_atmosphere_should_use_three_style_neutral_exposure() {
     let root = write_color_parity_camera_bundle();
     let bundle = load_bundle(&root).expect("color parity camera bundle should load");
     let mut app = App::new();
@@ -1092,7 +1092,7 @@ fn cameras_without_atmosphere_should_disable_tonemapping_and_color_grading_expos
         .expect("color parity camera should be spawned");
     assert_eq!(*camera.1, Tonemapping::None);
     assert!((camera.2.global.exposure - 0.0).abs() < 0.001);
-    assert!((camera.3.ev100 - 7.85).abs() < 0.001);
+    assert!((camera.3.ev100 - -0.2630344).abs() < 0.001);
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }

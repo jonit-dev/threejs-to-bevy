@@ -46,17 +46,15 @@ use crate::rendering::spawn_rendered_particles;
 
 // ThreeNative lights are authored in Three.js-style scalar units. Bevy stores
 // physically named units and multiplies lighting by camera Exposure, so the
-// native adapter converts through a small three-compat shim instead of exposing
-// raw Bevy light defaults to authored scenes.
-// Three.js r152+ directional lights use photometric lux; keep Bevy illuminance aligned.
-// Tuned against v1-canonical, crystal-runner-static, and the v8/v10 calibration scenes.
-pub const THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY: f32 = 280.0;
+// native adapter uses neutral camera exposure and keeps non-atmosphere
+// directional intensity close to Three's authored scalar.
+pub const THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY: f32 = 1.0;
 // Environment bundles duplicate authored lights in world.ir.json and atmosphere;
 // keep the world directional contribution low so it stacks with atmosphere sun.
 const THREE_COMPAT_ENVIRONMENT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY: f32 = 1.7;
 const THREE_COMPAT_POINT_LUMENS_PER_CANDELA: f32 = std::f32::consts::TAU * 2.0 * (90.0 / 1.7);
 const THREE_COMPAT_DEFAULT_RANGE: f32 = 1_000.0;
-const THREE_COMPAT_DEFAULT_CAMERA_EV100: f32 = 7.85;
+const THREE_COMPAT_DEFAULT_CAMERA_EV100: f32 = -0.263_034_4;
 
 #[derive(Clone, Component, Debug, PartialEq)]
 pub struct NativeMaterialPolicy {

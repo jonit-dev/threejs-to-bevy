@@ -11,24 +11,32 @@ test("package should copy a desktop bundle into stable artifact layout", async (
   try {
     await writeBundle(root, ["web", "desktop"]);
 
-    const result = await packageCommand(["--bundle", "game.bundle", "--outDir", "artifacts/package", "--json"], root);
+    const result = await packageCommand(["--bundle", "game.bundle", "--outDir", "artifacts/package", "--json"], root, {
+      runtimeBuilder: async ({ outputPath }) => {
+        await writeFile(outputPath, "#!/usr/bin/env sh\necho threenative runtime\n", { mode: 0o755 });
+        return outputPath;
+      },
+    });
     const payload = JSON.parse(result.stdout);
 
     assert.equal(result.exitCode, 0);
     assert.equal(payload.code, "TN_PACKAGE_OK");
     assert.equal(payload.target, "desktop");
     assert.equal(payload.artifacts.packagedBundlePath.endsWith("artifacts/package/desktop/game.bundle"), true);
+    assert.equal(payload.artifacts.runtimeExecutablePath.endsWith("artifacts/package/desktop/threenative_runtime"), true);
     assert.equal(payload.manifestPath.endsWith("artifacts/package/desktop/package.manifest.json"), true);
     assert.equal(payload.runtimeArgsPath.endsWith("artifacts/package/desktop/runtime.args.json"), true);
     assert.deepEqual(payload.files, ["assets.manifest.json", "manifest.json", "materials.ir.json", "target.profile.json", "world.ir.json"]);
 
     const report = JSON.parse(await readFile(join(root, "artifacts/package/desktop/package.report.json"), "utf8"));
     assert.equal(report.schema, "threenative.package-report");
+    assert.equal(report.artifacts.runtimeExecutablePath.endsWith("artifacts/package/desktop/threenative_runtime"), true);
     const manifest = JSON.parse(await readFile(join(root, "artifacts/package/desktop/package.manifest.json"), "utf8"));
     assert.equal(manifest.schema, "threenative.package");
     assert.equal(manifest.target, "desktop");
+    assert.equal(manifest.artifacts.runtimeExecutablePath.endsWith("artifacts/package/desktop/threenative_runtime"), true);
     const runtimeArgs = JSON.parse(await readFile(join(root, "artifacts/package/desktop/runtime.args.json"), "utf8"));
-    assert.equal(runtimeArgs.command, "threenative_runtime");
+    assert.equal(runtimeArgs.command, "./threenative_runtime");
     assert.deepEqual(runtimeArgs.args, ["game.bundle"]);
   } finally {
     await rm(root, { force: true, recursive: true });
