@@ -42,7 +42,7 @@ This index separates current cleanup work from historical milestone batches.
 - [Web and Bevy Scripting Host Conformance](done/other/web-bevy-scripting-host-conformance.md):
   shared scripting service matrix, effect validation parity, ambient API
   diagnostics, and web/native conformance fixtures.
-- [Modular Template Migration and Proof](other/modular-template-migration-and-proof.md):
+- [Modular Template Migration and Proof](done/other/modular-template-migration-and-proof.md):
   canonical template migration to modular authoring, CLI validation, web proof,
   and native proof where claimed.
 - [Editor Snapshot and Source Patch Bridge](other/editor-snapshot-source-patch-bridge.md):

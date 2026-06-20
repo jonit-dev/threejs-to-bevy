@@ -67,6 +67,13 @@ small `defineGame()` composition root with focused scene, ECS/entity, input,
 visual, and script modules. Its movement system is now referenced from
 `src/scripts/player.ts`, so template builds emit `scripts.manifest.json`
 provenance instead of teaching inline callback scripts.
+`tn create`/`tn init` now preserve that modular shape in generated projects.
+Source-checkout scaffolds install through a generated local `.threenative/cli`
+wrapper package instead of depending directly on the workspace CLI package, so
+fresh projects outside the repo can run `pnpm install`, `pnpm run build`,
+`pnpm run validate`, and `pnpm run verify`. A fresh `game-starter` scaffold was
+verified with web screenshots at `/tmp/tn-modular-template-proof-pHNDma/modular-proof/artifacts/verify/frame-01.png`
+and `frame-02.png`.
 
 Script module references are implemented for SDK-authored systems. Systems can
 name a project-relative TypeScript module and named export instead of carrying

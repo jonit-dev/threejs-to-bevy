@@ -1,6 +1,6 @@
 import { access, chmod, cp, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { isAbsolute, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
 import {
@@ -88,7 +88,7 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
 
   if (sourceCheckout) {
     await rewriteLocalWorkspaceDependencies(projectPath);
-    await writeLocalCliShim(projectPath);
+    await writeLocalCliWrapperPackage(projectPath);
   } else {
     await rewritePublishedDependencies(projectPath);
   }
@@ -158,7 +158,7 @@ async function rewriteLocalWorkspaceDependencies(projectPath: string): Promise<v
   });
   packageJson.devDependencies = {
     ...packageJson.devDependencies,
-    "@threenative/cli": `file:${resolve(repoRoot, "packages/cli")}`,
+    "@threenative/cli": "file:.threenative/cli",
   };
 
   await writeFile(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
@@ -217,13 +217,29 @@ function rewritePublishedDependency(
   };
 }
 
-async function writeLocalCliShim(projectPath: string): Promise<void> {
-  const binDir = resolve(projectPath, "node_modules/.bin");
-  const shimPath = resolve(binDir, "tn");
+async function writeLocalCliWrapperPackage(projectPath: string): Promise<void> {
+  const wrapperDir = resolve(projectPath, ".threenative/cli");
+  const wrapperPath = resolve(wrapperDir, "index.js");
+  const cliModuleUrl = pathToFileURL(cliBin).href;
 
-  await mkdir(binDir, { recursive: true });
-  await writeFile(shimPath, `#!/usr/bin/env sh\nexec node ${JSON.stringify(cliBin)} "$@"\n`);
-  await chmod(shimPath, 0o755);
+  await mkdir(wrapperDir, { recursive: true });
+  await writeFile(
+    resolve(wrapperDir, "package.json"),
+    `${JSON.stringify(
+      {
+        name: "@threenative/cli",
+        version: "0.0.0-local",
+        type: "module",
+        bin: {
+          tn: "./index.js",
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  await writeFile(wrapperPath, `#!/usr/bin/env node\nimport { main } from ${JSON.stringify(cliModuleUrl)};\n\nvoid main(process.argv.slice(2));\n`);
+  await chmod(wrapperPath, 0o755);
 }
 
 async function isSourceCheckout(): Promise<boolean> {

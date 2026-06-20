@@ -44,7 +44,7 @@ test("should create starter template files", async () => {
     assert.match(packageJson.dependencies["@threenative/sdk"] ?? "", /^file:/);
     assert.equal(packageJson.dependencies["@threenative/r3f"], undefined);
     assert.equal(packageJson.dependencies["@threenative/ui"], undefined);
-    assert.match(packageJson.devDependencies["@threenative/cli"] ?? "", /^file:/);
+    assert.equal(packageJson.devDependencies["@threenative/cli"], "file:.threenative/cli");
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -186,6 +186,7 @@ test("should create v4 scripting template", async () => {
     assert.equal(files.includes("gameplay.ts"), true);
     assert.equal(files.includes("gameplay.test.ts"), true);
     assert.equal(files.includes("node-test.d.ts"), true);
+    assert.equal(files.includes("scripts"), true);
 
     const config = JSON.parse(await readFile(join(payload.path, "threenative.config.json"), "utf8")) as {
       entry: string;
@@ -197,6 +198,7 @@ test("should create v4 scripting template", async () => {
       scripts: Record<string, string>;
     };
     const source = await readFile(join(payload.path, "src/game.ts"), "utf8");
+    const scriptSource = await readFile(join(payload.path, "src/scripts/systems.ts"), "utf8");
 
     assert.equal(config.entry, "src/game.ts");
     assert.equal(config.outDir, "dist/v4-scripting.bundle");
@@ -205,8 +207,9 @@ test("should create v4 scripting template", async () => {
     assert.equal(packageJson.scripts.verify, "tn verify --frames 3 --expect-motion --json");
     assert.equal(packageJson.scripts.test, "pnpm build && tsc -p tsconfig.test.json && node --test dist/tests/gameplay.test.js");
     assert.match(packageJson.dependencies["@threenative/sdk"] ?? "", /^file:/);
-    assert.match(source, /physics\.raycast/);
-    assert.match(source, /animation\.play/);
+    assert.match(source, /module: "src\/scripts\/systems\.ts"/);
+    assert.match(scriptSource, /physics\.raycast/);
+    assert.match(scriptSource, /animation\.play/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -226,6 +229,9 @@ test("should create v5 game starter template", async () => {
     assert.equal(files.includes("game.ts"), true);
     assert.equal(files.includes("gameplay.ts"), true);
     assert.equal(files.includes("gameplay.test.ts"), true);
+    assert.equal(files.includes("input"), true);
+    assert.equal(files.includes("scenes"), true);
+    assert.equal(files.includes("scripts"), true);
 
     const config = JSON.parse(await readFile(join(payload.path, "threenative.config.json"), "utf8")) as {
       entry: string;
@@ -237,6 +243,8 @@ test("should create v5 game starter template", async () => {
       scripts: Record<string, string>;
     };
     const source = await readFile(join(payload.path, "src/game.ts"), "utf8");
+    const sceneSource = await readFile(join(payload.path, "src/scenes/arena.ts"), "utf8");
+    const systemSource = await readFile(join(payload.path, "src/scenes/arena.systems.ts"), "utf8");
 
     assert.equal(config.entry, "src/game.ts");
     assert.equal(config.outDir, "dist/v5-game-starter.bundle");
@@ -245,10 +253,10 @@ test("should create v5 game starter template", async () => {
     assert.equal(packageJson.scripts.verify, "tn verify --frames 2 --json");
     assert.equal(packageJson.scripts.test, "pnpm build && tsc -p tsconfig.test.json && node --test dist/tests/gameplay.test.js");
     assert.match(packageJson.dependencies["@threenative/sdk"] ?? "", /^file:/);
-    assert.match(source, /defineControls/);
     assert.match(source, /defineGame/);
-    assert.match(source, /primitiveActorPrefab/);
-    assert.match(source, /movePlayerToGoal/);
+    assert.match(source, /scenes: \[arenaScene\]/);
+    assert.match(sceneSource, /defineSceneModule/);
+    assert.match(systemSource, /module: "src\/scripts\/player\.ts"/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -266,7 +274,14 @@ test("should create starter-functional template by canonical name", async () => 
     const config = JSON.parse(await readFile(join(payload.path, "threenative.config.json"), "utf8")) as {
       template: string;
     };
+    const files = await readdir(join(payload.path, "src"));
     assert.equal(config.template, "starter-functional");
+    assert.equal(files.includes("assets"), true);
+    assert.equal(files.includes("audio"), true);
+    assert.equal(files.includes("input"), true);
+    assert.equal(files.includes("scenes"), true);
+    assert.equal(files.includes("scripts"), true);
+    assert.equal(files.includes("ui"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
