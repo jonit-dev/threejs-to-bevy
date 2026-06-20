@@ -112,6 +112,58 @@ as `scene.change`, `scene.push`, `scene.pop`, `scene.loadAdditive`, and
 `scene.unload`. Bundles emit `scenes.ir.json`, and web/Bevy runtimes expose
 matching deterministic lifecycle and transition/readiness traces.
 
+### Modular Authoring Declarations
+
+One-file `Scene`, `World`, and `defineGame` authoring remains supported. For
+larger projects, prefer source-owned declarations that carry stable authoring
+metadata while lowering to the same SDK structures:
+
+```ts
+import {
+  action,
+  defineEntity,
+  defineGame,
+  defineInputMap,
+  defineInputModule,
+  defineSceneModule,
+  defineWorldModule,
+  keyboard,
+} from "@threenative/sdk";
+import { Health } from "./components/health.js";
+
+export const player = defineEntity({
+  components: [Health({ current: 100 })],
+  id: "player",
+  source: { sourcePath: "src/entities/player.ts" },
+  transform: { position: [0, 1, 0] },
+});
+
+export const arenaInput = defineInputModule({
+  id: "input.arena",
+  input: defineInputMap({
+    actions: [action("Jump", [keyboard("Space")])],
+  }),
+});
+
+export const arenaScene = defineSceneModule({
+  id: "arena",
+  input: arenaInput.input,
+  kind: "level",
+  world: defineWorldModule({ entities: [player] }),
+});
+
+export default defineGame({ initialScene: "arena", scenes: [arenaScene] });
+```
+
+`defineEntity`, `definePrefabModule`, `defineResourceModule`,
+`defineInputModule`, `defineUiModule`, `defineAudioModule`, and
+`defineAssetModule` are authoring helpers, not runtime handles. They validate
+logical source IDs and source-owned paths, reject runtime-handle-shaped source
+data, sort reusable declarations deterministically, and keep asset module refs
+bundle-local or embedded. The compiler captures these declarations in the
+authoring provenance graph, but web and Bevy still consume only the emitted IR
+bundle.
+
 ```ts
 import {
   Material,

@@ -173,6 +173,12 @@ Command expectations:
 - `tn scene add-entity`, `set-transform`, `set-camera`, `attach-script`, and
   `bind-ui` mutate supported structured source scenes only after preflight
   validation, then validate again before writing deterministic source JSON.
+- SDK projects may keep one-file `Scene`/`World` authoring or split source into
+  modular `defineSceneModule`, `defineEntity`, `definePrefabModule`,
+  `defineResourceModule`, `defineInputModule`, `defineUiModule`,
+  `defineAudioModule`, and `defineAssetModule` declarations. These helpers
+  lower to the existing portable bundle path and add source metadata for
+  authoring graph provenance.
 - `tn dev` starts watch mode, IR generation, validation, and a runtime preview.
 - `tn validate` runs schema, semantic, asset, API, and target-profile checks.
 - `tn build` emits a versioned game bundle.

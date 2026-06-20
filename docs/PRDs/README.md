@@ -33,7 +33,7 @@ This index separates current cleanup work from historical milestone batches.
 - [Authoring Graph and Provenance Capture](done/other/authoring-graph-provenance-capture.md):
   compiler-owned authoring graph, declaration provenance, source-path
   diagnostics, duplicate/conflict checks, and deterministic normalization.
-- [Modular SDK Authoring Declarations](other/modular-sdk-authoring-declarations.md):
+- [Modular SDK Authoring Declarations](done/other/modular-sdk-authoring-declarations.md):
   data-first/module-first SDK declarations for scenes, entities, prefabs,
   resources, systems, input, UI, audio, and assets.
 - [Script Module References and Manifest](other/script-module-references-and-manifest.md):
