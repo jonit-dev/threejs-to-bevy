@@ -10,7 +10,7 @@
     "check:docs": "pnpm build:verify-tools && node tools/verify/dist/cli/check-docs.js",
     "check:names": "node scripts/check-current-names.mjs",
     "lint": "pnpm -r --if-present lint",
-    "test": "pnpm -r --if-present test && node --test scripts/*.test.mjs && cargo test --manifest-path runtime-bevy/Cargo.toml",
+    "test": "node scripts/run-root-tests.mjs",
     "test:color-parity": "pnpm --filter @threenative/cli build && node scripts/check-color-parity-contract.mjs && node --test scripts/check-color-parity-contract.test.mjs scripts/verify-v8-color-parity.test.mjs",
     "tn": "pnpm --filter @threenative/sdk build && pnpm --filter @threenative/ir build && pnpm --filter @threenative/compiler build && pnpm --filter @threenative/runtime-web-three build && pnpm --filter @threenative/cli build && pnpm --filter @threenative/cli tn",
     "typecheck": "pnpm -r --if-present typecheck",

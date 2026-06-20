@@ -114,25 +114,33 @@ Agents should prefer the smallest target that proves the change. For most source
 
 ## MCP Role
 
-MCP should be introduced after the CLI, SDK, and validator have real behavior. It is an AI control plane, not the engine and not a replacement for the CLI.
+MCP is an optional AI control plane, not the engine and not a replacement for
+the CLI. The canonical automation surface remains `tn ... --json`; MCP tools
+must delegate to the same CLI/core behavior and return the same diagnostic
+shape where practical.
 
-Initial MCP tools:
+The first implemented authoring wrapper lives in `@threenative/mcp-server` and
+exposes bounded scene/project tools:
 
 ```txt
-search_docs(query)
-list_components()
-describe_component(name)
-list_examples()
-convert_threejs_snippet(code)
-validate_scene(code)
-build_game(target)
-run_preview(target)
-read_build_errors()
-profile_scene(target)
-suggest_mobile_optimizations(scene)
+scene.inspect(sceneId)
+scene.validate(sceneId?)
+scene.add_entity(sceneId, entityId, prefabId?)
+scene.set_transform(sceneId, entityId, transform)
+scene.set_camera(sceneId, cameraId, mode, targetId)
+scene.attach_script(sceneId, systemId, modulePath, exportName)
+scene.bind_ui(sceneId, uiNodeId, resourcePath)
+project.build()
+project.screenshot(url, out)
+project.verify(options?)
 ```
 
-Initial MCP resources:
+Use the CLI directly for scripts, CI, reproducible debugging, and commands not
+covered by the wrapper. Use MCP when an interactive agent benefits from a
+narrow tool schema and project-root allowlist. MCP must not expose arbitrary
+shell access, generated bundle editing, or runtime handles as source edits.
+
+Future MCP resources may include:
 
 ```txt
 threenative://docs

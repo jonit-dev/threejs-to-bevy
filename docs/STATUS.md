@@ -35,8 +35,10 @@ initial canonical automation surface through `tn scene validate [scene-id]
 --json`, `tn scene inspect <scene-id> --json`, and bounded source mutations:
 `add-entity`, `set-transform`, `set-camera`, `attach-script`, and `bind-ui`.
 The focused smoke proof mutates and validates a source scene, then builds and
-validates the same project's normal bundle. The future MCP wrapper must build
-on the same authoring core.
+validates the same project's normal bundle. `@threenative/mcp-server` now
+provides optional AI-facing wrappers for inspect/validate/mutate/build/
+screenshot/verify operations by delegating to the same `tn ... --json` command
+surface, with project-root and generated-artifact guardrails.
 
 Compiler authoring graph source has started under
 `packages/compiler/src/authoring`: Phase 1 defines graph/provenance node types,

@@ -118,7 +118,15 @@ function toolToCliArgv(name: AuthoringMcpToolName, args: Record<string, unknown>
   }
   if (name === "project.verify") {
     const frames = optionalNumberArg(args, "frames");
-    return ["verify", ...project, ...(frames === undefined ? [] : ["--frames", frames.toString()]), ...(args.expectMotion === true ? ["--expect-motion"] : []), "--json"];
+    const url = optionalStringArg(args, "url");
+    return [
+      "verify",
+      ...project,
+      ...(url === undefined ? [] : ["--url", url]),
+      ...(frames === undefined ? [] : ["--frames", frames.toString()]),
+      ...(args.expectMotion === true ? ["--expect-motion"] : []),
+      "--json",
+    ];
   }
   const out = stringArg(args, "out");
   const url = stringArg(args, "url");

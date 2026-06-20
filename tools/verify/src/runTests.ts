@@ -32,7 +32,7 @@ export function runPackageTests(packageRoot: string, options: RunTestsOptions = 
   }
 
   const forwardedArgs = normalizeForwardedArgs(options.forwardedArgs ?? process.argv.slice(2));
-  const test = spawnSync(process.execPath, ["--test", ...testFiles, ...forwardedArgs], {
+  const test = spawnSync(process.execPath, ["--test", ...forwardedArgs, ...testFiles], {
     cwd: packageRoot,
     encoding: "utf8",
     stdio: "inherit",
@@ -49,7 +49,7 @@ function normalizeForwardedArgs(args: readonly string[]): string[] {
       index += 1;
       continue;
     }
-    if (arg !== undefined) {
+    if (arg !== undefined && arg !== "--") {
       forwarded.push(arg);
     }
   }

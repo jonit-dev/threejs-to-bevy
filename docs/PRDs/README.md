@@ -48,7 +48,7 @@ This index separates current cleanup work from historical milestone batches.
 - [Editor Snapshot and Source Patch Bridge](done/other/editor-snapshot-source-patch-bridge.md):
   source/generated/runtime document classification, structured source patches,
   live edit policy, and deterministic editor diffs.
-- [Authoring MCP Wrapper](other/authoring-mcp-wrapper.md):
+- [Authoring MCP Wrapper](done/other/authoring-mcp-wrapper.md):
   optional MCP tools as thin wrappers over the same authoring core/CLI behavior.
 - [Editor-Ready Modular Authoring and Scripting Architecture](other/editor-ready-modular-authoring-and-scripting-architecture.md):
   source-of-truth boundaries, modular authoring graph/provenance, script module

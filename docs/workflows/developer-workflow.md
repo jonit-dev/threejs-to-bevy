@@ -68,8 +68,8 @@ The package boundaries should stay strict:
 - `cli` owns user-facing commands and orchestration.
 - `runtime-web-three` consumes IR and renders with Three.js.
 - `runtime-bevy` consumes IR and spawns native Bevy ECS state.
-- `mcp-server` will expose documented CLI-backed tools for AI agents after the
-  CLI, SDK, compiler, and validator have real behavior.
+- `mcp-server` exposes optional CLI-backed scene/project tools for AI agents.
+  It must stay a thin wrapper over `tn ... --json` behavior.
 
 Runtimes should depend on IR schemas, not on each other's internals.
 
@@ -130,7 +130,9 @@ pnpm test:rust
 
 ## CLI Contract
 
-The CLI is the backbone of local development, CI, and AI workflows. MCP tools should call the CLI instead of duplicating build logic.
+The CLI is the backbone of local development, CI, and AI workflows. MCP tools
+call the CLI instead of duplicating build logic, and they are optional for
+interactive agents.
 
 Expected commands:
 
@@ -664,6 +666,6 @@ Out of scope:
 - Keep TypeScript as the primary authoring and gameplay language.
 - Use IR as the contract between authoring and runtimes.
 - Prefer explicit validation over permissive runtime fallback.
-- Build MCP after the SDK, CLI, and validator have real behavior to expose.
+- Keep MCP as a thin wrapper over SDK/CLI/validator behavior.
 - Add examples only when they are covered by build or validation checks.
 - Treat mobile performance as a target profile with enforceable warnings, not as a late optimization pass.

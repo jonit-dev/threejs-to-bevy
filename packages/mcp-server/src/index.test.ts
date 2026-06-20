@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { type AddressInfo } from "node:net";
+import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -151,6 +153,32 @@ test("mcp wrapper does not persist invalid mutation results", async () => {
   }
 });
 
+test("mcp smoke performs inspect mutate validate build and verify", async () => {
+  const root = await createMcpSceneProject({ minimal: true });
+  const preview = await startReadyCanvasServer();
+
+  try {
+    const inspect = await callMcp(root, "scene.inspect", { sceneId: "scene.arena" });
+    const mutate = await callMcp(root, "scene.add_entity", { entityId: "smoke-kart", prefabId: "kart", sceneId: "scene.arena" });
+    const transform = await callMcp(root, "scene.set_transform", { entityId: "smoke-kart", sceneId: "scene.arena", transform: { position: [2, 0, 0] } });
+    const validate = await callMcp(root, "scene.validate", { sceneId: "scene.arena" });
+    const build = await callMcp(root, "project.build", {});
+    const verify = await callMcp(root, "project.verify", { frames: 1, url: preview.url });
+
+    assert.equal(inspect.isError, false);
+    assert.equal(mutate.isError, false);
+    assert.equal(transform.isError, false);
+    assert.equal(validate.isError, false);
+    assert.equal(build.isError, false);
+    assert.equal(verify.isError, false);
+    assert.equal((build.content as IJsonPayload).code, "TN_BUILD_OK");
+    assert.equal((verify.content as IJsonPayload).code, "TN_VERIFY_OK");
+  } finally {
+    await preview.close();
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 async function callMcp(root: string, name: Parameters<typeof callAuthoringMcpTool>[0]["name"], args: Record<string, unknown>): Promise<IAuthoringMcpResult> {
   return callAuthoringMcpTool({ arguments: args, name }, { allowedProjectRoots: [root], projectRoot: root });
 }
@@ -205,4 +233,49 @@ async function createMcpSceneProject(options: { invalidTarget?: boolean; minimal
     )}\n`,
   );
   return root;
+}
+
+async function startReadyCanvasServer(): Promise<{ close: () => Promise<void>; url: string }> {
+  const html = `<!doctype html>
+<html>
+  <body style="margin:0">
+    <canvas id="c" width="1280" height="720" style="width:1280px;height:720px"></canvas>
+    <script>
+      const ctx = document.getElementById("c").getContext("2d");
+      ctx.fillStyle = "#111111";
+      ctx.fillRect(0, 0, 1280, 720);
+      ctx.fillStyle = "#ff3333";
+      ctx.fillRect(140, 120, 520, 360);
+      globalThis.__THREENATIVE_READY__ = true;
+    </script>
+  </body>
+</html>`;
+  const server = createServer((_request, response) => {
+    response.writeHead(200, { "content-type": "text/html" });
+    response.end(html);
+  });
+  await new Promise<void>((resolvePromise, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => resolvePromise());
+  });
+  const address = server.address();
+  assert.equal(typeof address, "object");
+  assert.notEqual(address, null);
+  const listenAddress = address as AddressInfo;
+  return {
+    close: () => closeServer(server),
+    url: `http://127.0.0.1:${listenAddress.port}`,
+  };
+}
+
+async function closeServer(server: Server): Promise<void> {
+  await new Promise<void>((resolvePromise, reject) => {
+    server.close((error) => {
+      if (error !== undefined) {
+        reject(error);
+        return;
+      }
+      resolvePromise();
+    });
+  });
 }
