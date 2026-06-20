@@ -470,6 +470,8 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P2` Basic CSS grid-style layout for repeat-count rows/columns and auto-flow
 - [x] `P1` UI overflow clipping and z-index layering
 - [x] `P1` UI absolute anchors and inset positioning
+- [x] `P1` Native Bevy overlay UI camera renders retained UI above multi-camera/viewport scenes
+- [x] `P1` Native Bevy `Minimap` UI nodes render static paths and live resource-bound markers
 - [x] `P1` UI min/max size constraints
 - [x] `P1` Basic vertical UI scrolling containers
 - [x] `P1` UI background/text color, borders, rounded corners, and opacity

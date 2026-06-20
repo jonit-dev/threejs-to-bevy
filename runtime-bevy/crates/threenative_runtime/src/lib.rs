@@ -178,6 +178,7 @@ pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeErro
     }
     if let Some(ui) = bundle.ui.as_ref() {
         ui::map_ui_into_world(app.world_mut(), ui)?;
+        ui::install_native_ui_overlay_camera(app.world_mut());
         app.init_resource::<ui::NativeUiActionQueue>();
         app.add_systems(
             Update,

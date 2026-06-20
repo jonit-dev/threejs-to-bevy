@@ -8,13 +8,15 @@ use std::{
 use bevy::a11y::{AccessibilityNode, accesskit::Role};
 use bevy::prelude::*;
 use bevy::text::BreakLineOn;
+use bevy::ui::IsDefaultUiCamera;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{UiIr, UiNodeIr, load_bundle};
 use threenative_runtime::ui::{
     NativeUiAction, NativeUiActionEvent, NativeUiActionQueue, NativeUiBar, NativeUiGradient,
-    NativeUiImageSrc, NativeUiKind, NativeUiRenderedGradient, NativeUiRenderedShadow,
-    NativeUiRenderedTextStyle, NativeUiScrollContainer, NativeUiShadow, NativeUiStyle,
-    build_native_ui, diagnose_native_ui_visual_support, dispatch_native_ui_actions,
+    NativeUiImageSrc, NativeUiKind, NativeUiMinimapMarker, NativeUiMinimapPathPoint,
+    NativeUiRenderedGradient, NativeUiRenderedShadow, NativeUiRenderedTextStyle,
+    NativeUiScrollContainer, NativeUiShadow, NativeUiStyle, build_native_ui,
+    diagnose_native_ui_visual_support, dispatch_native_ui_actions, install_native_ui_overlay_camera,
     map_ui_into_world, trace_native_ui_text_styles, trace_native_ui_visual_effects,
     trace_ui_navigation,
 };
@@ -289,6 +291,75 @@ fn ui_should_spawn_bevy_entities_with_stable_ids_and_hierarchy() {
     assert_eq!(inventory_style.grid_template_rows.len(), 1);
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn ui_should_spawn_native_minimap_children() {
+    let ui: UiIr = serde_json::from_value(serde_json::json!({
+        "schema": "threenative.ui",
+        "version": "0.1.0",
+        "root": {
+            "id": "hud",
+            "kind": "stack",
+            "children": [{
+                "id": "hud.minimap",
+                "kind": "minimap",
+                "layout": { "width": 160, "height": 120 },
+                "minimap": {
+                    "backgroundColor": "#07111f",
+                    "bounds": { "minX": -10, "maxX": 10, "minZ": -8, "maxZ": 8 },
+                    "paths": [{ "color": "#38bdf8", "points": [[-8, -6], [0, 7], [8, -6]], "width": 4 }],
+                    "markers": [{ "color": "#f97316", "label": "P", "radius": 5, "x": 2, "z": -3 }]
+                }
+            }]
+        }
+    }))
+    .expect("minimap ui should deserialize");
+    let mut app = App::new();
+
+    map_ui_into_world(app.world_mut(), &ui).expect("minimap ui should map into world");
+
+    let entities_by_id = collect_ui_entities(app.world_mut());
+    assert!(entities_by_id.contains_key("hud.minimap"));
+    let path_points = app
+        .world_mut()
+        .query::<&NativeUiMinimapPathPoint>()
+        .iter(app.world())
+        .count();
+    assert_eq!(path_points, 1);
+    let markers = app
+        .world_mut()
+        .query::<(&NativeUiMinimapMarker, &Visibility)>()
+        .iter(app.world())
+        .collect::<Vec<_>>();
+    assert_eq!(markers.len(), 12);
+    assert_eq!(
+        markers
+            .iter()
+            .filter(|(_, visibility)| **visibility == Visibility::Visible)
+            .count(),
+        1
+    );
+}
+
+#[test]
+fn ui_should_install_dedicated_overlay_camera_above_scene_cameras() {
+    let mut app = App::new();
+    app.world_mut().spawn(Camera3dBundle {
+        camera: Camera { order: 4, ..Default::default() },
+        ..Default::default()
+    });
+
+    install_native_ui_overlay_camera(app.world_mut());
+
+    let mut query = app.world_mut().query::<(&Camera, Option<&IsDefaultUiCamera>)>();
+    let overlay = query
+        .iter(app.world())
+        .find(|(_, marker)| marker.is_some())
+        .map(|(camera, _)| camera)
+        .expect("overlay UI camera should be the default UI camera");
+    assert_eq!(overlay.order, 104);
+    assert!(matches!(overlay.clear_color, bevy::render::camera::ClearColorConfig::None));
 }
 
 #[test]

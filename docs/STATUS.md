@@ -23,6 +23,8 @@ contract, target command map, and allowlist enforced by `pnpm check:names`.
 
 Current contributor entry points:
 
+Native Bevy UI now installs a dedicated overlay UI camera above authored scene cameras so retained UI stays visible over multi-camera/viewport scenes. The native `Minimap` widget preserves authored bounds/paths/static markers and syncs live resource-bound markers; focused proof lives in `examples/bevy-camera-minimap-verification/artifacts/bevy-camera-minimap-proof/`.
+
 `tn asset inspect <path> [--json]` is available for local glTF/GLB triage. It
 reports accessor-derived bounds with node transforms, external/embedded image
 and buffer dependencies, missing-file diagnostics, and gameplay-scale

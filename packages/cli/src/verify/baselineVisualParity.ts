@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
 import { startWebPreview } from "@threenative/runtime-web-three";
@@ -506,9 +506,19 @@ async function captureBevyScreenshot(
 }
 
 async function assertScreenshotWritten(path: string, runtime: string): Promise<void> {
-  const fileStats = await stat(path);
-  if (fileStats.size <= 32_000) {
-    throw new Error(`${runtime} screenshot capture did not write a rendered PNG: ${path}`);
+  const png = PNG.sync.read(await readFile(path));
+  if (png.width <= 0 || png.height <= 0) {
+    throw new Error(`${runtime} screenshot capture wrote an invalid PNG: ${path}`);
+  }
+  let peakLuma = 0;
+  for (let index = 0; index < png.data.length; index += 4) {
+    const red = png.data[index] ?? 0;
+    const green = png.data[index + 1] ?? 0;
+    const blue = png.data[index + 2] ?? 0;
+    peakLuma = Math.max(peakLuma, Math.floor((red + green + blue) / 3));
+  }
+  if (peakLuma < 35) {
+    throw new Error(`${runtime} screenshot capture wrote a blank/dark PNG: ${path}`);
   }
 }
 

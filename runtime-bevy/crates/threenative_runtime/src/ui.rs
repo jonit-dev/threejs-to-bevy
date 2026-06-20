@@ -6,7 +6,9 @@ use bevy::a11y::{
 };
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::prelude::*;
+use bevy::render::camera::ClearColorConfig;
 use bevy::text::BreakLineOn;
+use bevy::ui::IsDefaultUiCamera;
 use serde::Serialize;
 use thiserror::Error;
 use threenative_components::ThreeNativeId;
@@ -369,6 +371,22 @@ pub fn map_ui_into_world(world: &mut World, ui: &UiIr) -> Result<(), UiDiagnosti
     attach_children(world, &ui.root, &entities_by_id);
 
     Ok(())
+}
+
+pub fn install_native_ui_overlay_camera(world: &mut World) {
+    let max_camera_order = world
+        .query::<&Camera>()
+        .iter(world)
+        .map(|camera| camera.order)
+        .max()
+        .unwrap_or(0);
+    let mut overlay_camera = Camera2dBundle::default();
+    overlay_camera.camera.order = max_camera_order + 100;
+    overlay_camera.camera.clear_color = ClearColorConfig::None;
+    world.spawn(overlay_camera).insert((
+        Name::new("threenative.ui.overlay.camera"),
+        IsDefaultUiCamera,
+    ));
 }
 
 pub fn diagnose_native_ui_visual_support(ui: &UiIr) -> Vec<UiDiagnostic> {
