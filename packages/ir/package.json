@@ -9,6 +9,7 @@
     "./conformance": "./dist/conformance.js",
     "./input": "./dist/input.js",
     "./reflection": "./dist/reflection.js",
+    "./runtimeDiagnostics": "./dist/runtimeDiagnostics.js",
     "./schemas/*": "./schemas/*"
   },
   "files": [

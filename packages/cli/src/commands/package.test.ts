@@ -60,7 +60,7 @@ test("package should create archive and installer artifacts", async () => {
     const archivePayload = JSON.parse(archiveResult.stdout);
     assert.equal(archiveResult.exitCode, 0);
     assert.equal(archivePayload.format, "archive");
-    assert.match(archivePayload.artifacts.archivePath, /game-[^-]+-[^-]+\.tar\.gz$/);
+    assert.match(archivePayload.artifacts.archivePath, /game-bevy-[^-]+-[^-]+\.tar\.gz$/);
     const archiveListing = await execFileAsync("tar", ["-tzf", archivePayload.artifacts.archivePath]);
     assert.match(archiveListing.stdout, /desktop\/threenative_runtime/);
     assert.match(archiveListing.stdout, /desktop\/game\.bundle\/manifest\.json/);
@@ -78,6 +78,38 @@ test("package should create archive and installer artifacts", async () => {
     await execFileAsync("sh", [installerPayload.artifacts.installerPath, installDir]);
     assert.match(await readFile(join(installDir, "run.sh"), "utf8"), /exec \.\/threenative_runtime "game\.bundle"/);
     assert.equal(await readFile(join(installDir, "desktop", "game.bundle", "manifest.json"), "utf8").then((value) => value.length > 0), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+
+test("package should create desktop-web runtime package artifacts", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-package-webview-"));
+  try {
+    await writeBundle(root, ["web", "desktop"]);
+
+    const result = await packageCommand(["--bundle", "game.bundle", "--outDir", "artifacts/webview", "--runtime", "webview", "--format", "installer", "--json"], root);
+    const payload = JSON.parse(result.stdout);
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.runtime, "webview");
+    assert.equal(payload.format, "installer");
+    assert.equal(payload.bundlePath.endsWith("artifacts/webview/desktop-web/app/bundle"), true);
+    assert.equal(payload.artifacts.runtimeExecutablePath.endsWith("artifacts/webview/desktop-web/threenative_webview_runtime"), true);
+    assert.match(payload.artifacts.archivePath, /game-webview-[^-]+-[^-]+\.tar\.gz$/);
+
+    const archiveListing = await execFileAsync("tar", ["-tzf", payload.artifacts.archivePath]);
+    assert.match(archiveListing.stdout, /desktop-web\/threenative_webview_runtime/);
+    assert.match(archiveListing.stdout, /desktop-web\/app\/index\.html/);
+    assert.match(archiveListing.stdout, /desktop-web\/app\/bundle\/manifest\.json/);
+
+    const installDir = join(root, "installed-webview-game");
+    await execFileAsync("sh", [payload.artifacts.installerPath, installDir]);
+    const runner = await readFile(join(installDir, "run.sh"), "utf8");
+    assert.match(runner, /cd "\$HERE\/desktop-web"/);
+    assert.match(runner, /exec \.\/threenative_webview_runtime "app"/);
+    assert.equal(await readFile(join(installDir, "desktop-web", "app", "bundle", "manifest.json"), "utf8").then((value) => value.length > 0), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

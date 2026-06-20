@@ -1,4 +1,5 @@
-import { diagnoseUnsupportedRuntimeDeclarations, type IRuntimeDiagnostic, type ISystemsIr, type IWorldEntity, type IWorldIr } from "@threenative/ir";
+import type { ISystemsIr, IWorldEntity, IWorldIr } from "@threenative/ir";
+import { diagnoseUnsupportedRuntimeDeclarations, type IRuntimeDiagnostic } from "@threenative/ir/runtimeDiagnostics";
 
 import { componentHookObservations, propagateObserverEvent } from "./systems/context.js";
 import { applySystemEffects, type ISystemEffects } from "./systems/effects.js";

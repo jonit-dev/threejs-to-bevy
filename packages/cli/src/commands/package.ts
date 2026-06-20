@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { cp, chmod, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { cp, chmod, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateBundle } from "@threenative/compiler";
@@ -26,6 +26,7 @@ export interface IPackageReport {
   runtimeArgsPath: string;
   schema: "threenative.package-report";
   sourceBundlePath: string;
+  runtime: "bevy" | "webview";
   target: "desktop";
   version: "0.1.0";
 }
@@ -56,12 +57,13 @@ export async function packageCommand(
   const preflight = normalizedArgv.includes("--preflight");
   const target = flagValue(normalizedArgv, "--target") ?? "desktop";
   const format = flagValue(normalizedArgv, "--format") ?? "portable";
+  const runtime = flagValue(normalizedArgv, "--runtime") ?? "bevy";
   const bundle = flagValue(normalizedArgv, "--bundle");
   const outDir = flagValue(normalizedArgv, "--out") ?? flagValue(normalizedArgv, "--outDir") ?? "dist/package";
 
   if (bundle === undefined) {
     return diagnosticResult(
-      { code: "TN_PACKAGE_USAGE", message: "Usage: tn package --bundle <game.bundle> [--target desktop] [--format portable|archive|installer] [--out <path>] [--json]" },
+      { code: "TN_PACKAGE_USAGE", message: "Usage: tn package --bundle <game.bundle> [--target desktop] [--runtime bevy|webview] [--format portable|archive|installer] [--out <path>] [--json]" },
       { exitCode: 1, json, stderr: true },
     );
   }
@@ -94,6 +96,18 @@ export async function packageCommand(
     );
   }
 
+  if (!["bevy", "webview"].includes(runtime)) {
+    return diagnosticResult(
+      {
+        code: "TN_PACKAGE_RUNTIME_UNSUPPORTED",
+        message: `Desktop runtime '${runtime}' is not supported.`,
+        severity: "error",
+        suggestion: "Use '--runtime bevy' or '--runtime webview'.",
+      },
+      { exitCode: 1, json, stderr: true },
+    );
+  }
+
   try {
     const bundlePath = resolve(cwd, bundle);
     const validation = await validateBundle(bundlePath);
@@ -111,16 +125,23 @@ export async function packageCommand(
     }
     await assertDesktopTarget(bundlePath);
     const artifactRoot = resolve(cwd, outDir);
-    const packageRoot = resolve(artifactRoot, "desktop");
-    const packagedBundlePath = resolve(packageRoot, basename(bundlePath));
+    const packageDirName = runtime === "webview" ? "desktop-web" : "desktop";
+    const packageRoot = resolve(artifactRoot, packageDirName);
+    const packagedBundlePath = resolve(packageRoot, runtime === "webview" ? "app/bundle" : basename(bundlePath));
     await mkdir(packageRoot, { recursive: true });
-    await cp(bundlePath, packagedBundlePath, { force: true, recursive: true });
-    const files = await listRelativeFiles(packagedBundlePath);
+    let builtRuntimePath: string;
+    let files: string[];
+    if (runtime === "webview") {
+      builtRuntimePath = await buildWebviewRuntime({ bundlePath, outputPath: resolve(packageRoot, "threenative_webview_runtime"), packageRoot });
+      files = await listRelativeFiles(resolve(packageRoot, "app"));
+    } else {
+      await cp(bundlePath, packagedBundlePath, { force: true, recursive: true });
+      files = await listRelativeFiles(packagedBundlePath);
+      builtRuntimePath = await (options.runtimeBuilder ?? buildDesktopRuntime)({ outputPath: resolve(packageRoot, runtimeExecutableName()) });
+    }
     const manifestPath = resolve(packageRoot, "package.manifest.json");
     const runtimeArgsPath = resolve(packageRoot, "runtime.args.json");
-    const runtimeExecutablePath = resolve(packageRoot, runtimeExecutableName());
     const packageReportPath = resolve(packageRoot, "package.report.json");
-    const builtRuntimePath = await (options.runtimeBuilder ?? buildDesktopRuntime)({ outputPath: runtimeExecutablePath });
     await chmod(builtRuntimePath, 0o755);
     await writeFile(
       manifestPath,
@@ -131,8 +152,9 @@ export async function packageCommand(
             runtimeArgsPath,
             runtimeExecutablePath: builtRuntimePath,
           },
-          bundle: basename(packagedBundlePath),
+          bundle: runtime === "webview" ? "app/bundle" : basename(packagedBundlePath),
           code: "TN_PACKAGE_MANIFEST_OK",
+          runtime,
           schema: "threenative.package",
           sourceBundlePath: bundlePath,
           target,
@@ -146,8 +168,9 @@ export async function packageCommand(
       runtimeArgsPath,
       `${JSON.stringify(
         {
-          args: [basename(packagedBundlePath)],
+          args: runtime === "webview" ? ["app"] : [basename(packagedBundlePath)],
           command: `./${basename(builtRuntimePath)}`,
+          runtime,
           schema: "threenative.runtime-args",
           target,
           version: "0.1.0",
@@ -156,11 +179,11 @@ export async function packageCommand(
         2,
       )}\n`,
     );
-    const archivePath = format === "archive" || format === "installer" ? resolve(artifactRoot, `${packageSlug(bundlePath)}-${platformTag()}.tar.gz`) : undefined;
+    const archivePath = format === "archive" || format === "installer" ? resolve(artifactRoot, `${packageSlug(bundlePath)}-${runtime}-${platformTag()}.tar.gz`) : undefined;
     if (archivePath !== undefined) {
-      await createTarGz({ archivePath, cwd: artifactRoot, entry: "desktop" });
+      await createTarGz({ archivePath, cwd: artifactRoot, entry: packageDirName });
     }
-    const installerPath = format === "installer" ? await createInstallerScript({ archivePath: archivePath!, bundleName: basename(bundlePath), outputDir: artifactRoot }) : undefined;
+    const installerPath = format === "installer" ? await createInstallerScript({ archivePath: archivePath!, bundleName: basename(bundlePath), outputDir: artifactRoot, packageDirName, runtimeExecutableName: basename(builtRuntimePath) }) : undefined;
     const report: IPackageReport = {
       artifactDir: packageRoot,
       artifacts: { archivePath, installerPath, manifestPath, packageReportPath, packagedBundlePath, runtimeArgsPath, runtimeExecutablePath: builtRuntimePath },
@@ -169,6 +192,7 @@ export async function packageCommand(
       files,
       format: format as IPackageReport["format"],
       manifestPath,
+      runtime: runtime as IPackageReport["runtime"],
       runtimeArgsPath,
       schema: "threenative.package-report",
       sourceBundlePath: bundlePath,
@@ -318,12 +342,12 @@ async function createTarGz(options: { archivePath: string; cwd: string; entry: s
   await runCommand("tar", ["-czf", options.archivePath, "-C", options.cwd, options.entry]);
 }
 
-async function createInstallerScript(options: { archivePath: string; bundleName: string; outputDir: string }): Promise<string> {
+async function createInstallerScript(options: { archivePath: string; bundleName: string; outputDir: string; packageDirName: string; runtimeExecutableName: string }): Promise<string> {
   if (process.platform === "win32") {
     throw new Error("TN_PACKAGE_INSTALLER_UNSUPPORTED: '--format installer' currently creates a Unix .sh installer. Use '--format archive' on Windows until NSIS/WiX support lands.");
   }
   const appName = packageSlug(options.bundleName);
-  const runtimeName = runtimeExecutableName();
+  const runtimeName = options.runtimeExecutableName;
   const installerPath = resolve(options.outputDir, `${appName}-${platformTag()}-installer.sh`);
   const archiveBase64 = (await readFile(options.archivePath)).toString("base64");
   const script = `#!/usr/bin/env sh
@@ -341,13 +365,13 @@ else
   sed '1,/^__THREENATIVE_ARCHIVE_BELOW__$/d' "$0" | base64 -D > "$TMP_ARCHIVE"
 fi
 tar -xzf "$TMP_ARCHIVE" -C "$INSTALL_DIR"
-chmod +x "$INSTALL_DIR/desktop/${runtimeName}"
+chmod +x "$INSTALL_DIR/${options.packageDirName}/${runtimeName}"
 cat > "$INSTALL_DIR/run.sh" <<'RUNNER'
 #!/usr/bin/env sh
 set -eu
 HERE="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
-cd "$HERE/desktop"
-exec ./${runtimeName} ${JSON.stringify(options.bundleName)}
+cd "$HERE/${options.packageDirName}"
+exec ./${runtimeName} ${JSON.stringify(options.packageDirName === "desktop-web" ? "app" : options.bundleName)}
 RUNNER
 chmod +x "$INSTALL_DIR/run.sh"
 printf 'Installed %s to %s\nRun: %s/run.sh\n' "$APP_NAME" "$INSTALL_DIR" "$INSTALL_DIR"
@@ -358,6 +382,95 @@ ${archiveBase64}
   await writeFile(installerPath, script, { mode: 0o755 });
   await chmod(installerPath, 0o755);
   return installerPath;
+}
+
+
+async function buildWebviewRuntime(options: { bundlePath: string; outputPath: string; packageRoot: string }): Promise<string> {
+  const appRoot = resolve(options.packageRoot, "app");
+  const sourceRoot = resolve(options.packageRoot, ".webview-src");
+  await rm(sourceRoot, { force: true, recursive: true });
+  await mkdir(resolve(sourceRoot, "src"), { recursive: true });
+  await writeFile(
+    resolve(sourceRoot, "index.html"),
+    `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ThreeNative Desktop WebView</title>
+    <style>
+      html, body, #app { width: 100%; height: 100%; margin: 0; }
+      body { background: #111318; overflow: hidden; }
+      canvas { display: block; width: 100%; height: 100%; }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
+`,
+  );
+  await writeFile(
+    resolve(sourceRoot, "src/main.js"),
+    `import { renderBundle } from "${fileURLToPath(new URL("../../../runtime-web-three/dist/render.js", import.meta.url))}";
+import { stableSystemEffectLog } from "${fileURLToPath(new URL("../../../runtime-web-three/dist/systems/log.js", import.meta.url))}";
+
+const container = document.getElementById("app");
+if (!container) throw new Error("Missing #app container.");
+const result = await renderBundle("/bundle", container);
+window.__THREENATIVE_READY__ = {
+  canvas: { height: result.canvas.height, width: result.canvas.width },
+  diagnostics: result.diagnostics,
+  ok: result.diagnostics.every((diagnostic) => diagnostic.severity !== "error"),
+};
+window.__THREENATIVE_EFFECT_LOG__ = stableSystemEffectLog(result.effectLog);
+setInterval(() => {
+  window.__THREENATIVE_EFFECT_LOG__ = stableSystemEffectLog(result.effectLog);
+}, 100);
+`,
+  );
+  await runNodeModule("vite", ["build", sourceRoot, "--outDir", appRoot, "--emptyOutDir"]);
+  await cp(options.bundlePath, resolve(appRoot, "bundle"), { force: true, recursive: true });
+  await rm(sourceRoot, { force: true, recursive: true });
+  await writeFile(
+    options.outputPath,
+    `#!/usr/bin/env sh
+set -eu
+HERE="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+APP_DIR="$HERE/${basename(appRoot)}"
+PORT="${"${THREENATIVE_WEBVIEW_PORT:-0}"}"
+PYTHON="${"${PYTHON:-python3}"}"
+URL_FILE="$(mktemp -t threenative-webview-url.XXXXXX)"
+SERVER_LOG="${"${THREENATIVE_WEBVIEW_LOG:-/tmp/threenative-webview-runtime.log}"}"
+cleanup() { rm -f "$URL_FILE"; if [ -n "${"${SERVER_PID:-}"}" ]; then kill "$SERVER_PID" 2>/dev/null || true; fi; }
+trap cleanup EXIT INT TERM
+"$PYTHON" - "$APP_DIR" "$PORT" "$URL_FILE" > "$SERVER_LOG" 2>&1 <<'PY' &
+import functools, http.server, pathlib, socketserver, sys
+root=pathlib.Path(sys.argv[1]).resolve()
+port=int(sys.argv[2])
+url_file=pathlib.Path(sys.argv[3])
+handler=functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(root))
+class Reuse(socketserver.TCPServer):
+    allow_reuse_address=True
+with Reuse(("127.0.0.1", port), handler) as httpd:
+    url_file.write_text(f"http://127.0.0.1:{httpd.server_address[1]}/index.html")
+    httpd.serve_forever()
+PY
+SERVER_PID=$!
+while [ ! -s "$URL_FILE" ]; do sleep 0.05; done
+URL="$(cat "$URL_FILE")"
+printf 'ThreeNative desktop-web runtime ready at %s\n' "$URL"
+if command -v xdg-open >/dev/null 2>&1; then xdg-open "$URL" >/dev/null 2>&1 || true; elif command -v open >/dev/null 2>&1; then open "$URL" >/dev/null 2>&1 || true; fi
+wait "$SERVER_PID"
+`,
+  );
+  return options.outputPath;
+}
+
+async function runNodeModule(binName: string, args: readonly string[]): Promise<void> {
+  const executable = process.platform === "win32" ? `${binName}.cmd` : binName;
+  await runCommand(executable, args);
 }
 
 async function buildDesktopRuntime(options: { outputPath: string }): Promise<string> {

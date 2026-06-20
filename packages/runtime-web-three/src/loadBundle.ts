@@ -57,7 +57,8 @@ export async function validateAndLoadBundle(source: string): Promise<IWebBundle>
   if (isFetchable(source)) {
     throw new Error("Bundle validation for fetchable sources is not supported yet; pass a local bundle path to validate before loading.");
   }
-  const { validateBundle } = await import("@threenative/ir");
+  const irPackage = "@threenative/ir";
+  const { validateBundle } = await import(irPackage);
   const result = await validateBundle(source);
   if (!result.ok) {
     throw new WebBundleValidationError(result.diagnostics);
