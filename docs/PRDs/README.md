@@ -30,7 +30,7 @@ This index separates current cleanup work from historical milestone batches.
 - [Agent-Safe Scene Authoring CLI](done/other/agent-safe-scene-authoring-cli.md):
   shared authoring core, `tn scene ... --json` operations, schema/semantic
   validation, deterministic diagnostics, and AI-safe scene mutation workflow.
-- [Authoring Graph and Provenance Capture](other/authoring-graph-provenance-capture.md):
+- [Authoring Graph and Provenance Capture](done/other/authoring-graph-provenance-capture.md):
   compiler-owned authoring graph, declaration provenance, source-path
   diagnostics, duplicate/conflict checks, and deterministic normalization.
 - [Modular SDK Authoring Declarations](other/modular-sdk-authoring-declarations.md):
