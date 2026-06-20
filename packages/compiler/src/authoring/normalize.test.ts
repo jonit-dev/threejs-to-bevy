@@ -26,6 +26,28 @@ test("authoring graph should preserve source paths for modular scene declaration
   );
 });
 
+test("authoring graph should capture scene module declarations", () => {
+  const graph = normalizeAuthoringGraph({
+    entryPath: "/project/src/game.ts",
+    projectRoot: "/project",
+    root: {},
+    sources: [
+      { path: "/project/src/game.ts", source: 'import { arenaScene } from "./scenes/arena.js";\nexport default arenaScene;\n' },
+      {
+        path: "/project/src/scenes/arena.ts",
+        source: 'import { defineSceneModule } from "@threenative/sdk";\nexport const arenaScene = defineSceneModule({ id: "arena", kind: "level" });\n',
+      },
+    ],
+  });
+
+  assert.equal(
+    graph.declarations.some(
+      (declaration) => declaration.kind === "scene" && declaration.id === "arena" && declaration.provenance.source.modulePath === "src/scenes/arena.ts",
+    ),
+    true,
+  );
+});
+
 test("authoring graph should diagnose duplicate declaration IDs before IR flattening", () => {
   const graph = normalizeAuthoringGraph({
     entryPath: "/project/src/game.ts",

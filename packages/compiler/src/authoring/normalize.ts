@@ -119,6 +119,12 @@ function sourceDeclarations(sources: ReadonlyArray<IAuthoringCaptureSource>, pro
         declarations.push(sourceDeclaration(modulePath, "scene", id, match.index));
       }
     }
+    for (const match of source.source.matchAll(/\bdefineSceneModule\s*\(\s*\{[^}]*\bid\s*:\s*["']([^"']+)["']/g)) {
+      const id = match[1];
+      if (id !== undefined) {
+        declarations.push(sourceDeclaration(modulePath, "scene", id, match.index));
+      }
+    }
     return declarations;
   });
 }

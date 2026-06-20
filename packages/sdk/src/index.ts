@@ -1,5 +1,11 @@
 export { SdkError } from "./errors.js";
 export {
+  defineSceneModule,
+  type IAuthoringSourceMetadata,
+  type ISceneModuleDeclaration,
+  type ISceneModuleOptions,
+} from "./authoring.js";
+export {
   defineAnimations,
   transformAnimationClip,
   type IAnimationsDeclaration,
