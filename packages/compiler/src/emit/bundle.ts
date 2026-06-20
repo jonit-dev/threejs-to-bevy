@@ -21,6 +21,8 @@ import { type IAnimationsDeclaration, type IAssetGroupDeclaration, type IAssetRe
 import { type IUiElement } from "@threenative/ui";
 
 import { type IProjectConfig } from "../config.js";
+import type { IAuthoringGraph } from "../authoring/graph.js";
+import { AUTHORING_PROVENANCE_FILE, authoringProvenanceDocument } from "../authoring/provenance.js";
 import { copyAssetFiles, copyExtraAssetFiles, type IInternalAsset } from "./asset-copy.js";
 import { emitAudio } from "./audio.js";
 import { deriveRequiredCapabilities } from "./capabilities.js";
@@ -34,7 +36,11 @@ import { stableJson } from "./stable-json.js";
 import { emitUi } from "./ui.js";
 import { extractGltfSceneMetadata } from "../gltf/metadata.js";
 
-export async function emitBundle(config: IProjectConfig, root: unknown): Promise<string> {
+export interface IEmitBundleOptions {
+  authoringGraph?: IAuthoringGraph;
+}
+
+export async function emitBundle(config: IProjectConfig, root: unknown, options: IEmitBundleOptions = {}): Promise<string> {
   const outDir = resolve(config.projectPath, config.outDir);
   const bundleRoot = normalizeBundleRoot(root);
   const isWorld =
@@ -157,6 +163,9 @@ export async function emitBundle(config: IProjectConfig, root: unknown): Promise
     await writeFile(resolve(targetDir, IR_DOCUMENTS.materials.fileName), stableJson(materials));
     await writeFile(resolve(targetDir, IR_DOCUMENTS.assets.fileName), stableJson(assetsManifest));
     await writeFile(resolve(targetDir, IR_DOCUMENTS.targetProfile.fileName), stableJson(targetProfile));
+    if (options.authoringGraph !== undefined) {
+      await writeFile(resolve(targetDir, AUTHORING_PROVENANCE_FILE), stableJson(authoringProvenanceDocument(options.authoringGraph)));
+    }
     if (environment !== undefined) {
       await writeFile(resolve(targetDir, IR_DOCUMENTS.environmentScene.fileName), stableJson(environment.scene));
     }

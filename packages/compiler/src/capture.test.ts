@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { access, mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -8,6 +8,7 @@ import test from "node:test";
 import { captureEntry } from "./capture.js";
 import { CompilerError } from "./errors.js";
 import { buildProject } from "./index.js";
+import { AUTHORING_PROVENANCE_FILE } from "./authoring/provenance.js";
 
 test("should capture starter scene root", async () => {
   const root = await makeProject(`import { Scene } from "@threenative/sdk";\nexport default new Scene({ id: "scene" });\n`);
@@ -172,6 +173,22 @@ test("capture should return duplicate graph diagnostics for repair tools", async
 
     assert.equal(captured.diagnostics[0]?.code, "TN_AUTHORING_DUPLICATE_SCENE_ID");
     assert.deepEqual(captured.diagnostics[0]?.limit, ["src/scenes/a.ts", "src/scenes/b.ts"]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("build should emit authoring provenance sidecar from capture graph", async () => {
+  const root = await makeProject(`import { Scene } from "@threenative/sdk";\nexport default new Scene({ id: "scene" });\n`);
+  await writeConfig(root);
+  try {
+    const { bundlePath } = await buildProject(root);
+    const provenance = JSON.parse(await readFile(join(bundlePath, AUTHORING_PROVENANCE_FILE), "utf8"));
+
+    assert.equal(provenance.schema, "threenative.authoring-provenance");
+    assert.equal(provenance.entryPath, "src/game.ts");
+    assert.equal(provenance.projectRoot, undefined);
+    assert.ok(provenance.declarations.some((declaration: { id?: string; kind?: string }) => declaration.kind === "scene" && declaration.id === "scene"));
   } finally {
     await rm(root, { force: true, recursive: true });
   }

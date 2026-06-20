@@ -49,6 +49,7 @@ import {
 import { IR_DOCUMENTS, validateBundle } from "@threenative/ir";
 import { Bar, Button, Column, Image, Text, Ui } from "@threenative/ui";
 
+import { AUTHORING_PROVENANCE_FILE } from "../authoring/provenance.js";
 import { emitBundle } from "./bundle.js";
 
 test("should emit deterministic cube bundle", async () => {
@@ -158,6 +159,53 @@ test("should emit canonical manifest paths from IR document metadata", async () 
     assert.equal(manifest.files.assets, IR_DOCUMENTS.assets.fileName);
     assert.equal(manifest.files.materials, IR_DOCUMENTS.materials.fileName);
     assert.equal(manifest.files.targetProfile, IR_DOCUMENTS.targetProfile.fileName);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should emit optional authoring provenance sidecar without changing runtime manifest", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-authoring-provenance-"));
+  try {
+    const config = {
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project" as const,
+      version: "0.1.0" as const,
+    };
+
+    const bundlePath = await emitBundle(config, makeScene(), {
+      authoringGraph: {
+        declarations: [
+          {
+            id: "scene",
+            kind: "scene",
+            provenance: {
+              declarationId: "scene",
+              kind: "scene",
+              source: { modulePath: "src/game.ts" },
+            },
+            references: [],
+          },
+        ],
+        diagnostics: [],
+        entryPath: "src/game.ts",
+        modules: [{ declarations: ["scene"], path: "src/game.ts" }],
+        projectRoot: root,
+        schema: "threenative.authoring-graph",
+        version: "0.1.0",
+      },
+    });
+    const manifest = JSON.parse(await readFile(join(bundlePath, IR_DOCUMENTS.manifest.fileName), "utf8"));
+    const provenance = JSON.parse(await readFile(join(bundlePath, AUTHORING_PROVENANCE_FILE), "utf8"));
+    const validation = await validateBundle(bundlePath);
+
+    assert.equal(manifest.files.authoringProvenance, undefined);
+    assert.equal(provenance.schema, "threenative.authoring-provenance");
+    assert.equal(provenance.projectRoot, undefined);
+    assert.equal(provenance.declarations[0].provenance.source.modulePath, "src/game.ts");
+    assert.equal(validation.ok, true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

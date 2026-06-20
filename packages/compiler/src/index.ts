@@ -26,7 +26,7 @@ export async function buildProject(projectPath: string): Promise<{ bundlePath: s
     const { CompilerError } = await import("./errors.js");
     throw new CompilerError(authoringError.code, authoringError.message, authoringError);
   }
-  const bundlePath = await emitBundle(config, captured.root);
+  const bundlePath = await emitBundle(config, captured.root, { authoringGraph: captured.graph });
   const { validateBundle } = await import("./validate/index.js");
   const report = await validateBundle(bundlePath);
   if (!report.ok) {
