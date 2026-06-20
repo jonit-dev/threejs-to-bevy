@@ -60,6 +60,9 @@ importers:
 
   packages/compiler:
     dependencies:
+      '@threenative/authoring':
+        specifier: workspace:*
+        version: link:../authoring
       '@threenative/ir':
         specifier: workspace:*
         version: link:../ir

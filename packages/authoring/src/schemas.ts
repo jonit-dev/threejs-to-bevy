@@ -9,7 +9,8 @@ export const uiKeys = new Set(["nodes", "bindings"]);
 export const uiNodeKeys = new Set(["id"]);
 export const uiBindingKeys = new Set(["node", "resource"]);
 export const resourceKeys = new Set(["id", "path"]);
-export const prefabKeys = new Set(["id"]);
+export const prefabKeys = new Set(["id", "primitive", "color"]);
+export const supportedPrefabPrimitives = new Set(["box", "capsule", "cone", "cylinder", "plane", "sphere"]);
 
 export const supportedComponentKinds = new Set(["camera"]);
 export const cameraComponentKeys = new Set(["mode", "target"]);
@@ -42,7 +43,9 @@ export interface ISceneTransform {
 }
 
 export interface IScenePrefab {
+  color?: string;
   id: string;
+  primitive?: "box" | "capsule" | "cone" | "cylinder" | "plane" | "sphere";
 }
 
 export interface ISceneResource {

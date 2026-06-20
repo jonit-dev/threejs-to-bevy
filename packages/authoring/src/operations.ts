@@ -15,6 +15,7 @@ import {
   sceneDocumentKeys,
   sceneDocumentSchema,
   scriptReferenceKeys,
+  supportedPrefabPrimitives,
   supportedCameraModes,
   supportedComponentKinds,
   systemKeys,
@@ -351,11 +352,41 @@ async function validateSceneDocument(projectPath: string, file: string, data: un
   const entities = collectEntityIds(diagnostics, file, data.entities);
 
   validateEntities(diagnostics, file, data.entities, entities, prefabs);
+  validatePrefabs(diagnostics, file, data.prefabs);
   validateResources(diagnostics, file, data.resources);
   await validateSystems(diagnostics, projectPath, file, data.systems, systems);
   validateUi(diagnostics, file, data.ui, uiNodes, resources);
 
   return sortAuthoringDiagnostics(diagnostics);
+}
+
+function validatePrefabs(diagnostics: IAuthoringDiagnostic[], file: string, value: unknown): void {
+  const prefabs = readArray(value);
+  if (value !== undefined && prefabs === undefined) {
+    diagnostics.push(typeDiagnostic(file, "/prefabs", "prefabs must be an array.", value));
+    return;
+  }
+  prefabs?.forEach((prefab, index) => {
+    if (!isRecord(prefab)) {
+      return;
+    }
+    const primitive = readString(prefab.primitive);
+    if (prefab.primitive !== undefined && (primitive === undefined || !supportedPrefabPrimitives.has(primitive))) {
+      diagnostics.push(
+        authoringDiagnostic({
+          code: "TN_AUTHORING_PREFAB_PRIMITIVE_UNKNOWN",
+          file,
+          message: `Unknown prefab primitive '${String(prefab.primitive)}'.`,
+          path: `/prefabs/${index}/primitive`,
+          value: prefab.primitive,
+          suggestion: "Use 'box', 'capsule', 'cone', 'cylinder', 'plane', or 'sphere'.",
+        }),
+      );
+    }
+    if (prefab.color !== undefined && readString(prefab.color) === undefined) {
+      diagnostics.push(typeDiagnostic(file, `/prefabs/${index}/color`, "prefab color must be a non-empty string.", prefab.color));
+    }
+  });
 }
 
 function collectEntityIds(diagnostics: IAuthoringDiagnostic[], file: string, value: unknown): string[] {

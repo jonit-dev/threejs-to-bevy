@@ -19,6 +19,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@threenative/authoring": "workspace:*",
     "@threenative/ir": "workspace:*",
     "@threenative/r3f": "workspace:*",
     "@threenative/sdk": "workspace:*",

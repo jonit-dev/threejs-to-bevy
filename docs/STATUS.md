@@ -40,6 +40,18 @@ provides optional AI-facing wrappers for inspect/validate/mutate/build/
 screenshot/verify operations by delegating to the same `tn ... --json` command
 surface, with project-root and generated-artifact guardrails.
 
+Structured `.scene.json` documents can now be used as a normal project build
+entry for the first runtime-backed CLI authoring slice. The compiler validates
+the source scene, lowers primitive prefab entities, camera components,
+transforms, and attached script module references into the existing SDK
+scene/world/system bundle path, and emits authoring provenance for the scene
+document. A CLI-authored proof project at
+`/home/joao/projects/threenative-cli-authoring-proof` validates and builds from
+`content/scenes/cli-proof.scene.json`, proves the emitted bundle is connected to
+the scene/script source, passes web `tn verify --expect-motion`, and captures a
+nonblank Bevy screenshot. Proof log:
+`/home/joao/projects/threenative-cli-authoring-proof/artifacts/final-proof/cli-authored-scene-proof.md`.
+
 Compiler authoring graph source has started under
 `packages/compiler/src/authoring`: Phase 1 defines graph/provenance node types,
 deterministic normalization, and duplicate declaration diagnostics before IR

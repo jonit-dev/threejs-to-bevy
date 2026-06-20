@@ -9,6 +9,7 @@ import { type IProjectConfig } from "./config.js";
 import type { ICompilerDiagnostic } from "./diagnostics.js";
 import type { IAuthoringGraph } from "./authoring/graph.js";
 import { normalizeAuthoringGraph } from "./authoring/normalize.js";
+import { captureSceneDocumentEntry } from "./scene-document.js";
 
 export interface ICapturedScene {
   diagnostics: ICompilerDiagnostic[];
@@ -25,6 +26,9 @@ const dynamicRequireSpecifier = "node:dynamic-require";
 
 export async function captureEntry(config: IProjectConfig): Promise<ICapturedScene> {
   const entryPath = resolve(config.projectPath, config.entry);
+  if (entryPath.endsWith(".scene.json")) {
+    return captureSceneDocumentEntry(config.projectPath, entryPath);
+  }
   const source = await readFile(entryPath, "utf8");
 
   await assertPortableImports(entryPath, source, config.projectPath);

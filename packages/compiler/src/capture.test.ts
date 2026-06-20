@@ -194,6 +194,47 @@ test("build should emit authoring provenance sidecar from capture graph", async 
   }
 });
 
+test("build should lower structured scene entry into runtime bundle with attached script", async () => {
+  const root = await makeProject("export default {};\n");
+  await mkdir(join(root, "content", "scenes"), { recursive: true });
+  await mkdir(join(root, "src", "scripts"), { recursive: true });
+  await writeConfig(root, "content/scenes/cli-proof.scene.json");
+  await writeFile(
+    join(root, "src", "scripts", "player.ts"),
+    `export function movePlayerToGoal(ctx: any): void {\n  for (const entity of ctx.query()) {\n    const transform = entity.get("Transform");\n    const position = transform.position ?? [0, 0, 0];\n    entity.patch("Transform", { position: [position[0] + ctx.time.dt, position[1], position[2]] });\n  }\n}\n`,
+  );
+  await writeFile(
+    join(root, "content", "scenes", "cli-proof.scene.json"),
+    `${JSON.stringify({
+      schema: "threenative.scene",
+      version: "0.1.0",
+      id: "cli-proof",
+      prefabs: [{ id: "cube-prefab", primitive: "box", color: "#2f80ed" }],
+      entities: [
+        { id: "player", prefab: "cube-prefab", transform: { position: [0, 0.35, 0], scale: [0.6, 0.6, 0.6] } },
+        { id: "chase-camera", components: { camera: { mode: "perspective", target: "player" } }, transform: { position: [0, 3.2, 5.8], rotation: [-0.48, 0, 0] } },
+      ],
+      systems: [{ id: "move-player-to-goal", script: { module: "src/scripts/player.ts", export: "movePlayerToGoal" } }],
+    }, null, 2)}\n`,
+  );
+
+  try {
+    const { bundlePath } = await buildProject(root);
+    const world = JSON.parse(await readFile(join(bundlePath, "world.ir.json"), "utf8")) as { entities: Array<{ id: string; components: Record<string, unknown> }> };
+    const systems = JSON.parse(await readFile(join(bundlePath, "systems.ir.json"), "utf8")) as { systems: Array<{ name: string; script?: { exportName: string } }> };
+    const scripts = await readFile(join(bundlePath, "scripts.bundle.js"), "utf8");
+    const provenance = JSON.parse(await readFile(join(bundlePath, AUTHORING_PROVENANCE_FILE), "utf8")) as { entryPath: string; declarations: Array<{ id: string; kind: string }> };
+
+    assert.equal(world.entities.some((entity) => entity.id === "player" && entity.components.Transform !== undefined && entity.components.MeshRenderer !== undefined), true);
+    assert.deepEqual(systems.systems.map((system) => [system.name, system.script?.exportName]), [["move-player-to-goal", "system_move_player_to_goal"]]);
+    assert.match(scripts, /movePlayerToGoal/);
+    assert.equal(provenance.entryPath, "content/scenes/cli-proof.scene.json");
+    assert.equal(provenance.declarations.some((declaration) => declaration.kind === "system" && declaration.id === "move-player-to-goal"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject unsupported root", async () => {
   const root = await makeProject("export default {};\n");
   try {
@@ -420,11 +461,11 @@ async function makeProject(source: string): Promise<string> {
   return root;
 }
 
-async function writeConfig(root: string): Promise<void> {
+async function writeConfig(root: string, entry = "src/game.ts"): Promise<void> {
   await writeFile(
     join(root, "threenative.config.json"),
     `${JSON.stringify({
-      entry: "src/game.ts",
+      entry,
       outDir: "dist/game.bundle",
       schema: "threenative.project",
       version: "0.1.0",
