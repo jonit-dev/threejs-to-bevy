@@ -23,6 +23,18 @@ test("ui dom overlay should sync resource bindings into text and bar elements", 
   assert.equal(findByFillId(overlay.element, "health")?.style.width, "25%");
 });
 
+test("ui dom overlay should render minimap canvas nodes", () => {
+  const rendered = renderUi(makeUi(), makeWorld());
+  const overlay = createUiDomOverlay(rendered, new FakeDocument() as unknown as Document);
+  const minimap = findByUiId(overlay.element, "minimap");
+
+  assert.equal(minimap?.tagName, "canvas");
+  assert.equal(minimap?.getAttribute("role"), "img");
+  assert.equal(minimap?.getAttribute("aria-label"), "Race minimap");
+  assert.equal(minimap?.style.width, "120px");
+  assert.equal(minimap?.style.height, "80px");
+});
+
 test("ui dom overlay should dispatch button and touch control clicks to rendered actions", () => {
   const rendered = renderUi(makeUi(), makeWorld());
   const overlay = createUiDomOverlay(rendered, new FakeDocument() as unknown as Document);
@@ -129,6 +141,17 @@ function makeUi(): IUiIr {
         { id: "score", kind: "text", binding: { kind: "resource", name: "Score" } },
         { id: "health", kind: "bar", max: 20, binding: { kind: "resource", name: "Health", field: "current" } },
         {
+          id: "minimap",
+          kind: "minimap",
+          accessibilityLabel: "Race minimap",
+          layout: { width: 120, height: 80 },
+          minimap: {
+            bounds: { minX: -10, maxX: 10, minZ: -5, maxZ: 5 },
+            paths: [{ points: [[-8, -3], [0, 4], [8, -3], [-8, -3]], color: "#94a3b8", width: 4 }],
+            markers: [{ x: 0, z: 0, color: "#f97316", label: "P" }],
+          },
+        },
+        {
           id: "controls",
           kind: "row",
           layout: { align: "center", columnGap: 12, direction: "row", height: 48, inset: { left: 24, top: 16 }, justify: "spaceBetween", maxWidth: 480, minHeight: 24, overflow: "scroll", padding: 6, position: "absolute", rowGap: 4, width: 320, zIndex: 5 },
@@ -209,6 +232,26 @@ class FakeElement {
 
   constructor(readonly tagName: string) {}
 
+  get width(): number {
+    return Number(this.attributes.get("width") ?? 0);
+  }
+
+  set width(value: number) {
+    this.attributes.set("width", String(value));
+  }
+
+  get height(): number {
+    return Number(this.attributes.get("height") ?? 0);
+  }
+
+  set height(value: number) {
+    this.attributes.set("height", String(value));
+  }
+
+  getContext(): FakeCanvasContext | null {
+    return this.tagName === "canvas" ? new FakeCanvasContext() : null;
+  }
+
   addEventListener(type: string, listener: (event?: FakeKeyboardEvent) => void): void {
     this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener]);
   }
@@ -248,6 +291,27 @@ class FakeElement {
   setAttribute(name: string, value: string): void {
     this.attributes.set(name, value);
   }
+}
+
+class FakeCanvasContext {
+  fillStyle = "";
+  font = "";
+  lineCap = "";
+  lineJoin = "";
+  lineWidth = 1;
+  strokeStyle = "";
+  arc(): void {}
+  beginPath(): void {}
+  clearRect(): void {}
+  fill(): void {}
+  fillRect(): void {}
+  fillText(): void {}
+  lineTo(): void {}
+  moveTo(): void {}
+  restore(): void {}
+  save(): void {}
+  scale(): void {}
+  stroke(): void {}
 }
 
 interface FakeKeyboardEvent {

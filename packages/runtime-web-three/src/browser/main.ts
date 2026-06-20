@@ -33,4 +33,4 @@ window.__THREENATIVE_EFFECT_LOG__ = stableSystemEffectLog(result.effectLog);
 
 setInterval(() => {
   window.__THREENATIVE_EFFECT_LOG__ = stableSystemEffectLog(result.effectLog);
-}, 100);
+}, 1000);

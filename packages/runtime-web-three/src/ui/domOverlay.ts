@@ -219,6 +219,9 @@ function createElementForKind(node: IRenderedUiNode, doc: Document): HTMLElement
     input.type = "range";
     return input;
   }
+  if (node.kind === "minimap") {
+    return doc.createElement("canvas");
+  }
   if (node.kind === "button" || node.kind === "touchControl") {
     const button = doc.createElement("button");
     button.type = "button";
@@ -289,6 +292,11 @@ function updateNodeElement(node: IRenderedUiNode, nodes: Map<string, HTMLElement
     }
     applyImageMetadata(element, node);
   }
+  if (node.kind === "minimap") {
+    drawMinimap(element as HTMLCanvasElement, node);
+    element.setAttribute("role", "img");
+    element.setAttribute("aria-label", accessibleName(node) ?? "Minimap");
+  }
   if (node.disabled === true) {
     element.setAttribute("aria-disabled", "true");
     (element as HTMLButtonElement | HTMLInputElement).disabled = true;
@@ -357,6 +365,9 @@ function baseStyle(node: IRenderedUiNode): Partial<CSSStyleDeclaration> {
     style.display = "block";
     style.maxWidth = "100%";
     style.objectFit = "contain";
+  }
+  if (node.kind === "minimap") {
+    style.display = "block";
   }
   applyLayoutStyle(style, node.layout);
   applyVisualStyle(style, node.style);
@@ -665,4 +676,57 @@ function applyLayoutStyle(style: Partial<CSSStyleDeclaration>, layout: IRendered
   if (layout.zIndex !== undefined) {
     style.zIndex = String(layout.zIndex);
   }
+}
+
+function drawMinimap(canvas: HTMLCanvasElement, node: IRenderedUiNode): void {
+  const metadata = node.minimap;
+  if (metadata === undefined) {
+    return;
+  }
+  const width = node.layout?.width ?? 160;
+  const height = node.layout?.height ?? 120;
+  const ratio = globalThis.devicePixelRatio ?? 1;
+  const pixelWidth = Math.max(1, Math.round(width * ratio));
+  const pixelHeight = Math.max(1, Math.round(height * ratio));
+  if (canvas.width !== pixelWidth) canvas.width = pixelWidth;
+  if (canvas.height !== pixelHeight) canvas.height = pixelHeight;
+  canvas.style.width = `${width}px`;
+  canvas.style.height = `${height}px`;
+  const context = canvas.getContext("2d");
+  if (context === null) return;
+  context.save();
+  context.scale(ratio, ratio);
+  context.clearRect(0, 0, width, height);
+  context.fillStyle = metadata.backgroundColor ?? "rgba(2, 6, 23, 0.78)";
+  context.fillRect(0, 0, width, height);
+  const pad = 12;
+  const mapX = (x: number) => pad + ((x - metadata.bounds.minX) / (metadata.bounds.maxX - metadata.bounds.minX)) * (width - pad * 2);
+  const mapY = (z: number) => pad + ((z - metadata.bounds.minZ) / (metadata.bounds.maxZ - metadata.bounds.minZ)) * (height - pad * 2);
+  context.lineCap = "round";
+  context.lineJoin = "round";
+  for (const path of metadata.paths) {
+    context.beginPath();
+    path.points.forEach(([x, z], index) => {
+      const px = mapX(x);
+      const py = mapY(z);
+      if (index === 0) context.moveTo(px, py);
+      else context.lineTo(px, py);
+    });
+    context.strokeStyle = path.color ?? "#94a3b8";
+    context.lineWidth = path.width ?? 5;
+    context.stroke();
+  }
+  for (const marker of metadata.markers ?? []) {
+    const x = mapX(marker.x);
+    const y = mapY(marker.z);
+    context.beginPath();
+    context.fillStyle = marker.color ?? "#f97316";
+    context.arc(x, y, marker.radius ?? 4, 0, Math.PI * 2);
+    context.fill();
+    if (marker.label !== undefined) {
+      context.font = "bold 10px monospace";
+      context.fillText(marker.label, x + 6, y - 5);
+    }
+  }
+  context.restore();
 }

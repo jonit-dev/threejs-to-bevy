@@ -32,7 +32,8 @@ export interface IUiNodeIr {
   focusable?: boolean;
   id: string;
   image?: IUiImageMetadataIr;
-  kind: "bar" | "button" | "column" | "contextMenu" | "image" | "row" | "scrollbar" | "slider" | "stack" | "text" | "touchControl";
+  kind: "bar" | "button" | "column" | "contextMenu" | "image" | "minimap" | "row" | "scrollbar" | "slider" | "stack" | "text" | "touchControl";
+  minimap?: IUiMinimapMetadataIr;
   label?: string;
   layout?: IUiLayoutIr;
   max?: number;
@@ -63,6 +64,13 @@ export interface IUiImageMetadataIr {
   sourceSize?: { width: number; height: number };
   tileSize?: { width: number; height: number };
   tint?: string;
+}
+
+export interface IUiMinimapMetadataIr {
+  backgroundColor?: string;
+  bounds: { minX: number; maxX: number; minZ: number; maxZ: number };
+  markers?: Array<{ color?: string; label?: string; radius?: number; x: number; z: number }>;
+  paths: Array<{ color?: string; points: Array<[number, number]>; width?: number }>;
 }
 
 export interface IUiFontAssetIr {
@@ -168,7 +176,7 @@ function captureNode(element: IUiElement, fallback: string): IUiNodeIr {
       ...(element.props.role === undefined ? {} : { role: element.props.role }),
     };
   }
-  if (!["bar", "button", "column", "contextMenu", "image", "row", "scrollbar", "slider", "stack", "text", "touchControl"].includes(element.type)) {
+  if (!["bar", "button", "column", "contextMenu", "image", "minimap", "row", "scrollbar", "slider", "stack", "text", "touchControl"].includes(element.type)) {
     throw new Error(`Unsupported portable UI node '${element.type}'.`);
   }
   return {
@@ -183,6 +191,7 @@ function captureNode(element: IUiElement, fallback: string): IUiNodeIr {
     ...(element.props.layout === undefined ? {} : { layout: element.props.layout }),
     ...(element.props.max === undefined ? {} : { max: element.props.max }),
     ...(element.props.min === undefined ? {} : { min: element.props.min }),
+    ...(element.props.minimap === undefined ? {} : { minimap: element.props.minimap }),
     ...(element.props.navigation === undefined ? {} : { navigation: element.props.navigation }),
     ...(element.props.orientation === undefined ? {} : { orientation: element.props.orientation }),
     ...(element.props.role === undefined ? {} : { role: element.props.role }),

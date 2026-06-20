@@ -931,7 +931,8 @@ export interface IUiNodeIr {
   focusable?: boolean;
   id: string;
   image?: IUiImageMetadataIr;
-  kind: "bar" | "button" | "column" | "contextMenu" | "image" | "row" | "scrollbar" | "slider" | "stack" | "text" | "touchControl";
+  kind: "bar" | "button" | "column" | "contextMenu" | "image" | "minimap" | "row" | "scrollbar" | "slider" | "stack" | "text" | "touchControl";
+  minimap?: IUiMinimapMetadataIr;
   label?: string;
   layout?: IUiLayoutIr;
   max?: number;
@@ -962,6 +963,13 @@ export interface IUiImageMetadataIr {
   sourceSize?: { width: number; height: number };
   tileSize?: { width: number; height: number };
   tint?: string;
+}
+
+export interface IUiMinimapMetadataIr {
+  backgroundColor?: string;
+  bounds: { minX: number; maxX: number; minZ: number; maxZ: number };
+  markers?: Array<{ color?: string; label?: string; radius?: number; x: number; z: number }>;
+  paths: Array<{ color?: string; points: Array<[number, number]>; width?: number }>;
 }
 
 export interface IUiFontAssetIr {

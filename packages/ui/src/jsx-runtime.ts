@@ -1,4 +1,4 @@
-export type UiElementType = "bar" | "button" | "column" | "contextMenu" | "image" | "row" | "scrollbar" | "slider" | "stack" | "text" | "touchControl" | "ui";
+export type UiElementType = "bar" | "button" | "column" | "contextMenu" | "image" | "minimap" | "row" | "scrollbar" | "slider" | "stack" | "text" | "touchControl" | "ui";
 export type UiAccessibilityRole = "button" | "group" | "image" | "list" | "listitem" | "none" | "progressbar" | "text";
 export type UiBinding =
   | { kind: "resource"; name: string; field?: string }
@@ -23,6 +23,7 @@ export interface IUiNodeProps {
   };
   image?: UiImageMetadata;
   label?: string;
+  minimap?: UiMinimapMetadata;
   layout?: {
     align?: "center" | "end" | "start" | "stretch";
     columnGap?: number;
@@ -103,6 +104,13 @@ export interface IUiNodeProps {
 
 export type UiChild = IUiElement | false | null | undefined;
 
+export interface UiMinimapMetadata {
+  backgroundColor?: string;
+  bounds: { minX: number; maxX: number; minZ: number; maxZ: number };
+  markers?: Array<{ color?: string; label?: string; radius?: number; x: number; z: number }>;
+  paths: Array<{ color?: string; points: Array<[number, number]>; width?: number }>;
+}
+
 export interface UiFontAsset {
   asset: string;
   fallbackFamily?: string;
@@ -158,6 +166,7 @@ export namespace JSX {
     column: IUiNodeProps;
     contextMenu: IUiNodeProps;
     image: IUiNodeProps;
+    minimap: IUiNodeProps;
     row: IUiNodeProps;
     scrollbar: IUiNodeProps;
     slider: IUiNodeProps;

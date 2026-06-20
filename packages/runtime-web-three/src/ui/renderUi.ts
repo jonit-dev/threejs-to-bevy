@@ -17,6 +17,7 @@ export interface IRenderedUiNode {
   layout?: IUiNodeIr["layout"];
   max?: number;
   min?: number;
+  minimap?: IUiNodeIr["minimap"];
   navigation?: IUiNodeIr["navigation"];
   orientation?: IUiNodeIr["orientation"];
   role?: IUiNodeIr["role"];
@@ -74,6 +75,7 @@ function renderNode(node: IUiNodeIr, world: IWorldIr): IRenderedUiNode {
     ...(node.layout === undefined ? {} : { layout: node.layout }),
     ...(node.max === undefined ? {} : { max: node.max }),
     ...(node.min === undefined ? {} : { min: node.min }),
+    ...(node.minimap === undefined ? {} : { minimap: node.minimap }),
     ...(node.navigation === undefined ? {} : { navigation: node.navigation }),
     ...(node.orientation === undefined ? {} : { orientation: node.orientation }),
     ...(node.role === undefined ? {} : { role: node.role }),

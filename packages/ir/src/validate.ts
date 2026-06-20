@@ -985,7 +985,7 @@ function validateUi(ui: IUiIr, path: string, diagnostics: IIrDiagnostic[]): void
 function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[], ids: Set<string>, fontFamilies: Set<string>): void {
   const raw = node as unknown as Record<string, unknown>;
   for (const key of Object.keys(raw)) {
-    if (!["accessibilityLabel", "action", "anchorId", "binding", "children", "disabled", "focusable", "id", "image", "kind", "label", "layout", "max", "min", "navigation", "orientation", "role", "spans", "src", "step", "style", "text", "value", "valueText"].includes(key)) {
+    if (!["accessibilityLabel", "action", "anchorId", "binding", "children", "disabled", "focusable", "id", "image", "kind", "label", "layout", "max", "min", "minimap", "navigation", "orientation", "role", "spans", "src", "step", "style", "text", "value", "valueText"].includes(key)) {
       diagnostics.push({
         code: "TN_IR_UI_FIELD_UNSUPPORTED",
         message: `UI node '${node.id}' uses unsupported field '${key}'.`,
@@ -998,9 +998,12 @@ function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnosti
   validateUiStyle(node.style, `${path}/style`, diagnostics);
   validateUiSpans(node, path, diagnostics, fontFamilies);
   validateUiImageMetadata(node, path, diagnostics);
+  if (node.kind === "minimap") {
+    validateUiMinimapMetadata(node, path, diagnostics);
+  }
   validateUiWidget(node, path, diagnostics);
   validateUiAccessibility(node, path, diagnostics);
-  if (!["bar", "button", "column", "contextMenu", "image", "row", "scrollbar", "slider", "stack", "text", "touchControl"].includes(node.kind)) {
+  if (!["bar", "button", "column", "contextMenu", "image", "minimap", "row", "scrollbar", "slider", "stack", "text", "touchControl"].includes(node.kind)) {
     diagnostics.push({
       code: "TN_IR_UI_NODE_UNSUPPORTED",
       message: `Unsupported UI node kind '${String(node.kind)}'.`,
@@ -1076,6 +1079,36 @@ function validateUnsupportedUiRequests(raw: Record<string, unknown>, path: strin
       severity: "error",
       suggestion: "Use screen-space retained UI and promoted picking metadata until 3D-world UI is promoted.",
     });
+  }
+}
+
+
+function validateUiMinimapMetadata(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (node.minimap === undefined) {
+    diagnostics.push({ code: "TN_UI_MINIMAP_METADATA_MISSING", message: "Minimap nodes require minimap metadata.", path, severity: "error" });
+    return;
+  }
+  const { bounds, paths, markers } = node.minimap;
+  if (bounds.maxX <= bounds.minX || bounds.maxZ <= bounds.minZ) {
+    diagnostics.push({ code: "TN_UI_MINIMAP_BOUNDS_INVALID", message: "Minimap bounds must have positive width and height.", path: `${path}/minimap/bounds`, severity: "error" });
+  }
+  if (!Array.isArray(paths) || paths.length === 0) {
+    diagnostics.push({ code: "TN_UI_MINIMAP_PATHS_EMPTY", message: "Minimap requires at least one path.", path: `${path}/minimap/paths`, severity: "error" });
+  }
+  for (const [pathIndex, item] of paths.entries()) {
+    if (!Array.isArray(item.points) || item.points.length < 2) {
+      diagnostics.push({ code: "TN_UI_MINIMAP_PATH_TOO_SHORT", message: "Minimap paths must contain at least two points.", path: `${path}/minimap/paths/${pathIndex}/points`, severity: "error" });
+    }
+    for (const [pointIndex, point] of item.points.entries()) {
+      if (!Array.isArray(point) || point.length !== 2 || point.some((value) => typeof value !== "number" || !Number.isFinite(value))) {
+        diagnostics.push({ code: "TN_UI_MINIMAP_POINT_INVALID", message: "Minimap path points must be finite [x, z] tuples.", path: `${path}/minimap/paths/${pathIndex}/points/${pointIndex}`, severity: "error" });
+      }
+    }
+  }
+  for (const [markerIndex, marker] of (markers ?? []).entries()) {
+    if (![marker.x, marker.z].every((value) => typeof value === "number" && Number.isFinite(value))) {
+      diagnostics.push({ code: "TN_UI_MINIMAP_MARKER_INVALID", message: "Minimap markers must have finite x/z coordinates.", path: `${path}/minimap/markers/${markerIndex}`, severity: "error" });
+    }
   }
 }
 

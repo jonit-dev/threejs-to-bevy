@@ -24,12 +24,17 @@ export interface ISystemEffectLog {
   version: 1;
 }
 
+const maxEffectLogEntries = 2000;
+
 export function createSystemEffectLog(): ISystemEffectLog {
   return { entries: [], schema: "threenative.web-system-effects", version: 1 };
 }
 
 export function appendSystemEffectLog(log: ISystemEffectLog, entries: ReadonlyArray<ISystemEffectLogEntry>): void {
   log.entries.push(...entries.map((entry) => normalizeEntry(entry)));
+  if (log.entries.length > maxEffectLogEntries) {
+    log.entries.splice(0, log.entries.length - maxEffectLogEntries);
+  }
 }
 
 export function stableSystemEffectLog(log: ISystemEffectLog): ISystemEffectLog {
