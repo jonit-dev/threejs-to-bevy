@@ -10,6 +10,21 @@ compiler diagnostics, web runtime behavior, Bevy host behavior, and conformance
 evidence. Portable scripts must not use DOM, worker, Node, filesystem, network,
 timer, dynamic import/eval, arbitrary npm, raw Three.js, or raw Bevy APIs.
 
+## State and Ambient API Policy
+
+Portable system state must be represented as declared resources, components,
+events, local-data records, or promoted services. Mutable module-local variables
+are not portable state because runtimes may recreate the script host during
+reload, validation, preview, or native scheduling. Source-referenced script
+modules therefore reject hidden mutable module state with
+`TN_SCRIPT_MODULE_STATE_UNSUPPORTED`; use declared resources or components for
+state that must survive between ticks or runtimes.
+
+Forbidden ambient APIs are rejected by compiler diagnostics and remain absent
+from the native QuickJS bridge as defense in depth. Portable scripts must not
+depend on `window`, `document`, workers, `fetch`, websockets, timers, `process`,
+`require`, dynamic imports, `eval`, or `Function`.
+
 | Service | Context API | Web | Bevy | Notes |
 | --- | --- | --- | --- | --- |
 | `animation.play` | `ctx.animation.play` | implemented | implemented | Playback command service. |

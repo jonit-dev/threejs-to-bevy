@@ -71,7 +71,11 @@ host service anchor, and docs so drift is caught by conformance and docs gates.
 Web and Bevy also now have focused effect-validation parity tests proving
 undeclared component writes, resource writes, events, commands, and service calls
 are rejected before any world mutation, with canonical effect-log ordering kept
-aligned across runtimes.
+aligned across runtimes. The same contract now documents module-local state
+lifetime policy: mutable module state is rejected for source-referenced scripts,
+portable state belongs in declared resources/components/services, and native
+QuickJS tests prove forbidden ambient APIs such as DOM, network, timers, Node,
+and workers are not exposed by the Bevy bridge.
 
 Native Bevy UI now installs a dedicated overlay UI camera above authored scene cameras so retained UI stays visible over multi-camera/viewport scenes. The native `Minimap` widget preserves authored bounds/paths/static markers and syncs live resource-bound markers; focused proof lives in `examples/bevy-camera-minimap-verification/artifacts/bevy-camera-minimap-proof/`.
 

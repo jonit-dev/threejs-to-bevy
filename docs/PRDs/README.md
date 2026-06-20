@@ -39,7 +39,7 @@ This index separates current cleanup work from historical milestone batches.
 - [Script Module References and Manifest](done/other/script-module-references-and-manifest.md):
   source module/export script refs, generated script manifest, collision
   diagnostics, helper import policy, and generated-script source boundaries.
-- [Web and Bevy Scripting Host Conformance](other/web-bevy-scripting-host-conformance.md):
+- [Web and Bevy Scripting Host Conformance](done/other/web-bevy-scripting-host-conformance.md):
   shared scripting service matrix, effect validation parity, ambient API
   diagnostics, and web/native conformance fixtures.
 - [Modular Template Migration and Proof](other/modular-template-migration-and-proof.md):

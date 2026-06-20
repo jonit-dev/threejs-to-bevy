@@ -104,6 +104,27 @@ fn systems_host_should_apply_declared_resource_write() {
 }
 
 #[test]
+fn systems_host_should_not_expose_forbidden_ambient_apis() {
+    let root = write_ambient_api_probe_bundle("ambient-api-probe");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+
+    run_native_systems_once(&mut bundle, time()).expect("system should run");
+
+    assert_eq!(
+        bundle.world.resources.get("AmbientReport"),
+        Some(&serde_json::json!({
+            "document": "undefined",
+            "fetch": "undefined",
+            "process": "undefined",
+            "require": "undefined",
+            "setTimeout": "undefined",
+            "window": "undefined",
+            "worker": "undefined"
+        }))
+    );
+}
+
+#[test]
 fn systems_host_should_expose_mesh_picking_service() {
     let root = write_picking_bundle("picking-context");
     let mut bundle = load_bundle(&root).expect("scripted bundle should load");
@@ -658,6 +679,64 @@ fn write_resource_bundle(name: &str) -> PathBuf {
 };
 export const systemIds = Object.freeze({ "system_score": "score" });
 export const systems = Object.freeze({ "system_score": system_score });
+"#,
+    )
+    .expect("script bundle should be written");
+    root
+}
+
+fn write_ambient_api_probe_bundle(name: &str) -> PathBuf {
+    let root = root(name);
+    write_base_bundle(&root, true);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [],
+  "resources": {}
+}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "ambientProbe",
+      "schedule": "update",
+      "reads": [],
+      "writes": [],
+      "queries": [],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": [],
+      "resourceWrites": ["AmbientReport"],
+      "services": [],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_ambientProbe" }
+    }
+  ]
+}"#,
+    );
+    fs::write(
+        root.join("scripts.bundle.js"),
+        r#"const system_ambientProbe = (ctx) => {
+  ctx.resources.set("AmbientReport", {
+    document: typeof globalThis.document,
+    fetch: typeof globalThis.fetch,
+    process: typeof globalThis.process,
+    require: typeof globalThis.require,
+    setTimeout: typeof globalThis.setTimeout,
+    window: typeof globalThis.window,
+    worker: typeof globalThis.Worker
+  });
+};
+export const systemIds = Object.freeze({ "system_ambientProbe": "ambientProbe" });
+export const systems = Object.freeze({ "system_ambientProbe": system_ambientProbe });
 "#,
     )
     .expect("script bundle should be written");

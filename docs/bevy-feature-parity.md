@@ -117,10 +117,11 @@ remaining gaps by usefulness for building and shipping ordinary 3D games:
   command-time/removal hook ordering, system-local evidence, stoppable observer
   propagation, bounded timer/channel semantics, and stable diagnostics for raw
   handles, runtime plugins, workers, timers, and unbounded promises.
-- `P1` Portable scripting host effect validation is backed by focused web and
-  Bevy tests that reject undeclared component/resource/event/command/service
-  effects before mutation and keep effect-log ordering canonical across
-  runtimes.
+- `P1` Portable scripting host conformance is backed by the service matrix,
+  focused web and Bevy effect-validation tests that reject undeclared
+  component/resource/event/command/service effects before mutation, canonical
+  effect-log ordering, compiler module-state diagnostics, and native QuickJS
+  ambient API isolation tests.
 - `P1` Hidden runtime changed-query diffing is promoted by
   `pnpm verify:runtime-query-diffing`, which compares web and Bevy component
   snapshot diffing for `changed: [...]` queries after command-buffer mutation
