@@ -23,6 +23,10 @@ This index separates current cleanup work from historical milestone batches.
 - [AI-Consumable Distribution Contract](other/ai-consumable-distribution-contract.md):
   published declarations, schemas, capabilities, diagnostics, examples, and AI
   docs that make installed packages understandable without repository source.
+- [Agent-Friendly Project Scaffolding and Visual Debugging Workflows](other/agent-friendly-project-and-visual-debugging-workflows.md):
+  init/create front door, task-oriented help, doctor diagnostics, asset/model
+  inspection, transform/camera guardrails, screenshot/video proof, runtime
+  debug overlay, and racing template evidence.
 - [Advanced Visual Effects, Lighting, and Material Depth](other/advanced-visual-effects-lighting-material-depth.md):
   remaining advanced lighting, material, atmosphere, post-processing, deferred
   renderer, virtual geometry, and custom post-processing gaps.
