@@ -53,6 +53,12 @@ remain unchanged.
 Modular SDK authoring has started with `defineSceneModule()`, `defineEntity()`, `definePrefabModule()`, `defineResourceModule()`, `defineInputModule()`, `defineUiModule()`, `defineAudioModule()`, `defineAssetModule()`, and `defineWorldModule()`. These source-metadata-aware wrappers validate logical source IDs and source-owned paths, reject runtime-handle-shaped authored data, keep asset refs bundle-local or embedded, lower to existing scene/world/prefab/input/UI/audio/asset declarations, and are visible to compiler authoring graph provenance capture.
 Existing one-file `Scene`, `World`, and `defineGame` authoring remains supported; modular declarations are optional authoring/provenance helpers.
 
+The `starter-functional` template has started its modular migration. Its
+`src/game.ts` is now only a composition root; scene assembly, visual entities,
+ECS/resource declarations, input, UI, audio, assets, and script behavior live in
+focused modules. The template systems use source module references that emit
+`scripts.manifest.json` provenance while preserving the normal build path.
+
 Script module references are implemented for SDK-authored systems. Systems can
 name a project-relative TypeScript module and named export instead of carrying
 inline function source; the compiler resolves the module, computes a source
