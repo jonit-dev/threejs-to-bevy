@@ -71,7 +71,9 @@ export function bundleSystemScripts(systems: ReadonlyArray<ISystemScriptSource>)
         ]
       : [],
   );
+  const exportCollisionDiagnostics = diagnoseExportNameCollisions(scriptedSystems);
   const diagnostics = [
+    ...exportCollisionDiagnostics,
     ...unresolvedSourceDiagnostics,
     ...scriptedSystems.flatMap((system) =>
       system.script.source === undefined
@@ -112,6 +114,24 @@ export function bundleSystemScripts(systems: ReadonlyArray<ISystemScriptSource>)
       "",
     ].join("\n"),
   };
+}
+
+function diagnoseExportNameCollisions(systems: ReadonlyArray<ISystemScriptSource & { script: NonNullable<ISystemScriptSource["script"]> }>): ICompilerDiagnostic[] {
+  const byExport = new Map<string, string[]>();
+  for (const system of systems) {
+    byExport.set(system.script.exportName, [...(byExport.get(system.script.exportName) ?? []), system.name].sort());
+  }
+  return [...byExport.entries()].flatMap(([exportName, systemNames]) =>
+    systemNames.length < 2
+      ? []
+      : systemNames.map((systemName) => ({
+          code: "TN_SCRIPT_EXPORT_COLLISION",
+          message: `System '${systemName}' generated script export '${exportName}' collides with another system.`,
+          path: `systems/${systemName}/script/exportName`,
+          severity: "error" as const,
+          suggestion: "Rename one of the systems so generated script export names are unique after sanitization.",
+        })),
+  );
 }
 
 function scriptsManifest(systems: ReadonlyArray<ISystemScriptSource & { script: NonNullable<ISystemScriptSource["script"]> }>): IScriptsManifest {

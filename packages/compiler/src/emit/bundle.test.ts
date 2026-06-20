@@ -458,6 +458,44 @@ test("should emit ecs schema files for world root", async () => {
   }
 });
 
+test("should emit resolved script module references and manifest provenance", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-script-source-"));
+  try {
+    await mkdir(join(root, "src/scripts"), { recursive: true });
+    await writeFile(join(root, "src/scripts/kart.ts"), `export function kartArcadePhysics(context: unknown) {\n  return context;\n}\n`);
+    const world = new World().addSystem(
+      update("kartArcadePhysics", {
+        script: {
+          export: "kartArcadePhysics",
+          module: "src/scripts/kart.ts",
+        },
+      }),
+    );
+    const config = {
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project" as const,
+      version: "0.1.0" as const,
+    };
+
+    const bundlePath = await emitBundle(config, world);
+    const report = await validateBundle(bundlePath);
+    const systems = JSON.parse(await readFile(join(bundlePath, "systems.ir.json"), "utf8"));
+    const scripts = await readFile(join(bundlePath, "scripts.bundle.js"), "utf8");
+    const scriptsManifest = JSON.parse(await readFile(join(bundlePath, "scripts.manifest.json"), "utf8"));
+
+    assert.equal(report.ok, true);
+    assert.deepEqual(systems.systems[0]?.script, { bundle: "scripts.bundle.js", exportName: "system_kartArcadePhysics" });
+    assert.match(scripts, /const system_kartArcadePhysics = function kartArcadePhysics\(context\)/);
+    assert.deepEqual(scriptsManifest.systems[0]?.source.module, "src/scripts/kart.ts");
+    assert.deepEqual(scriptsManifest.systems[0]?.source.export, "kartArcadePhysics");
+    assert.match(scriptsManifest.systems[0]?.source.hash, /^sha256-[0-9a-f]{64}$/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("emits overlay ir and manifest entry", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-emit-overlay-"));
   try {

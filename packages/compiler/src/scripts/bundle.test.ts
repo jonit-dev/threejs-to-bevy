@@ -123,3 +123,25 @@ test("should reject unresolved script source references before bundling", () => 
   assert.equal(result.diagnostics[0]?.code, "TN_SCRIPT_SOURCE_REFERENCE_UNRESOLVED");
   assert.equal(result.diagnostics[0]?.file, "src/scripts/kartArcadePhysics.ts");
 });
+
+test("should reject generated script export collisions", () => {
+  const result = bundleSystemScripts([
+    {
+      name: "kart-physics",
+      script: {
+        exportName: "system_kart_physics",
+        source: "(context) => context",
+      },
+    },
+    {
+      name: "kart_physics",
+      script: {
+        exportName: "system_kart_physics",
+        source: "(context) => context",
+      },
+    },
+  ]);
+
+  assert.equal(result.code, undefined);
+  assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.code), ["TN_SCRIPT_EXPORT_COLLISION", "TN_SCRIPT_EXPORT_COLLISION"]);
+});

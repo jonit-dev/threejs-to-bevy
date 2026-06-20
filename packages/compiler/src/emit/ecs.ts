@@ -3,6 +3,7 @@ import type { IrSystemCommand, IrSystemSchedule, IrSystemService, ISystemsIr } f
 
 import { CompilerError } from "../errors.js";
 import { bundleSystemScripts, type IScriptsManifest } from "../scripts/bundle.js";
+import { resolveSystemScriptSources } from "../scripts/sourceRefs.js";
 import { systemsToIr } from "./systems.js";
 
 interface IEcsWorldLike {
@@ -49,11 +50,17 @@ export interface IEcsEmitResult {
   world: IWorldIr;
 }
 
-export function ecsToIr(world: IEcsWorldLike): IEcsEmitResult {
+export interface IEcsEmitOptions {
+  projectPath?: string;
+}
+
+export function ecsToIr(world: IEcsWorldLike, options: IEcsEmitOptions = {}): IEcsEmitResult {
   const snapshot = world.toJSON();
-  const scriptBundle = bundleSystemScripts(snapshot.systems);
-  if (scriptBundle.diagnostics.length > 0) {
-    const diagnostic = scriptBundle.diagnostics[0];
+  const resolvedScripts = resolveSystemScriptSources(snapshot.systems, options.projectPath);
+  const scriptBundle = bundleSystemScripts(resolvedScripts.systems);
+  const scriptDiagnostics = [...resolvedScripts.diagnostics, ...scriptBundle.diagnostics];
+  if (scriptDiagnostics.length > 0) {
+    const diagnostic = scriptDiagnostics[0];
     throw new CompilerError(
       diagnostic?.code ?? "TN_SCRIPT_INVALID",
       diagnostic?.message ?? "Portable system script is invalid.",
@@ -85,7 +92,7 @@ export function ecsToIr(world: IEcsWorldLike): IEcsEmitResult {
           },
     scriptBundle: scriptBundle.code,
     scriptManifest: scriptBundle.manifest,
-    systems: systemsToIr(snapshot.systems),
+    systems: systemsToIr(resolvedScripts.systems),
     world: {
       schema: "threenative.world",
       version: "0.1.0",

@@ -49,13 +49,13 @@ export async function emitBundle(config: IProjectConfig, root: unknown, options:
     typeof bundleRoot.scene === "object" && bundleRoot.scene !== null && bundleRoot.scene.constructor.name === "World";
   const worldRoot = bundleRoot.world ?? (isWorld ? bundleRoot.scene : undefined);
   const sceneRoot = isWorld ? undefined : bundleRoot.scene;
-  const lifecycleScenes = emitLifecycleScenes(bundleRoot.scenes, bundleRoot.initialScene);
+  const lifecycleScenes = emitLifecycleScenes(config.projectPath, bundleRoot.scenes, bundleRoot.initialScene);
   const emitted = mergeSceneEmits([
     ...(sceneRoot === undefined ? [] : [sceneToWorld(sceneRoot as Parameters<typeof sceneToWorld>[0])]),
     ...lifecycleScenes.sceneEmits,
   ]);
   const ecs = mergeEcsEmits([
-    ...(worldRoot === undefined ? [] : [ecsToIr(worldRoot as Parameters<typeof ecsToIr>[0])]),
+    ...(worldRoot === undefined ? [] : [ecsToIr(worldRoot as Parameters<typeof ecsToIr>[0], { projectPath: config.projectPath })]),
     ...lifecycleScenes.ecsEmits,
   ]);
   const input = bundleRoot.input === undefined ? ecs?.input : inputToIr(bundleRoot.input);
@@ -285,7 +285,7 @@ interface ILifecycleSceneEmitResult {
   scenes?: IScenesIr;
 }
 
-function emitLifecycleScenes(scenes: readonly ISceneLifecycleDeclaration[] | undefined, initialScene: string | undefined): ILifecycleSceneEmitResult {
+function emitLifecycleScenes(projectPath: string, scenes: readonly ISceneLifecycleDeclaration[] | undefined, initialScene: string | undefined): ILifecycleSceneEmitResult {
   if (scenes === undefined) {
     return { ecsEmits: [], sceneEmits: [] };
   }
@@ -293,7 +293,7 @@ function emitLifecycleScenes(scenes: readonly ISceneLifecycleDeclaration[] | und
   const ecsEmits: IEcsEmitResult[] = [];
   const sceneEntries = scenes.map((scene) => {
     const visualEmit = scene.visual === undefined ? undefined : sceneToWorld(scene.visual);
-    const ecsEmit = scene.world === undefined ? undefined : ecsToIr(scene.world);
+    const ecsEmit = scene.world === undefined ? undefined : ecsToIr(scene.world, { projectPath });
     if (visualEmit !== undefined) {
       sceneEmits.push(visualEmit);
     }
