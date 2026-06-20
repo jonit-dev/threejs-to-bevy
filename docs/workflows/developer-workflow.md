@@ -144,6 +144,11 @@ tn dev --target desktop
 tn validate
 tn scene validate [scene-id] --json
 tn scene inspect <scene-id> --json
+tn scene add-entity <scene-id> <entity-id> --prefab <prefab-id> --json
+tn scene set-transform <scene-id> <entity-id> --position x,y,z --rotation x,y,z --scale x,y,z --json
+tn scene set-camera <scene-id> <camera-id> --mode third-person-follow --target <entity-id> --json
+tn scene attach-script <scene-id> <system-id> --module <path> --export <name> --json
+tn scene bind-ui <scene-id> <ui-node-id> --resource <resource.path> --json
 tn build
 tn package --target desktop
 tn verify
@@ -165,6 +170,9 @@ Command expectations:
   repair loops.
 - `tn scene inspect <scene-id> --json` returns source scene metadata such as the
   owning file and declared entity, prefab, resource, system, and UI node IDs.
+- `tn scene add-entity`, `set-transform`, `set-camera`, `attach-script`, and
+  `bind-ui` mutate supported structured source scenes only after preflight
+  validation, then validate again before writing deterministic source JSON.
 - `tn dev` starts watch mode, IR generation, validation, and a runtime preview.
 - `tn validate` runs schema, semantic, asset, API, and target-profile checks.
 - `tn build` emits a versioned game bundle.

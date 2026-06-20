@@ -32,8 +32,24 @@ export { discoverAuthoringFiles, loadAuthoringProject } from "./project.js";
 export type {
   IAuthoringOperationContext,
   IAuthoringOperationResult,
+  IAddEntityOptions,
+  IAttachScriptOptions,
+  IBindUiOptions,
   IInspectSceneResult,
   ISceneInspection,
+  ISetCameraOptions,
+  ISetTransformOptions,
   IValidateSceneOptions,
 } from "./operations.js";
-export { authoringOperationResult, inspectScene, loadProjectForOperation, validateScene, writeChangedProjectDocuments } from "./operations.js";
+export {
+  addEntity,
+  attachScript,
+  authoringOperationResult,
+  bindUi,
+  inspectScene,
+  loadProjectForOperation,
+  setCamera,
+  setTransform,
+  validateScene,
+  writeChangedProjectDocuments,
+} from "./operations.js";

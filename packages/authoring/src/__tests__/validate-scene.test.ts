@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { validateScene } from "../index.js";
+import { addEntity, attachScript, bindUi, setCamera, setTransform, validateScene } from "../index.js";
 
 test("validateScene accepts a valid structured scene document", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-scene-valid-"));
@@ -119,6 +119,60 @@ test("validateScene reports a missing requested scene with closest-id suggestion
     assert.equal(result.ok, false);
     assert.equal(result.diagnostics[0]?.code, "TN_AUTHORING_SCENE_MISSING");
     assert.equal(result.diagnostics[0]?.suggestion, "Did you mean 'scene.arena'?");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("scene mutations validate before writing deterministic source", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-scene-mutate-"));
+  try {
+    await writeScene(root, {
+      schema: "threenative.scene",
+      id: "scene.arena",
+      prefabs: [{ id: "kart" }],
+      resources: [{ id: "hud.score" }],
+      entities: [{ id: "player-kart" }, { id: "chase-camera" }],
+      systems: [],
+      ui: { nodes: [{ id: "score-label" }] },
+    });
+    await writeFile(join(root, "src", "scripts", "race.ts"), "export function raceController() {}\n");
+
+    assert.equal((await addEntity({ projectPath: root, sceneId: "scene.arena", entityId: "rival-kart", prefabId: "kart" })).ok, true);
+    assert.equal((await setTransform({ projectPath: root, sceneId: "scene.arena", entityId: "rival-kart", position: [1, 2, 3] })).ok, true);
+    assert.equal((await setCamera({ projectPath: root, sceneId: "scene.arena", cameraId: "chase-camera", mode: "third-person-follow", targetId: "player-kart" })).ok, true);
+    assert.equal((await attachScript({ projectPath: root, sceneId: "scene.arena", systemId: "race-controller", modulePath: "src/scripts/race.ts", exportName: "raceController" })).ok, true);
+    assert.equal((await bindUi({ projectPath: root, sceneId: "scene.arena", uiNodeId: "score-label", resourcePath: "hud.score.value" })).ok, true);
+
+    const validation = await validateScene({ projectPath: root, sceneId: "scene.arena" });
+    assert.equal(validation.ok, true);
+    assert.deepEqual(validation.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("scene mutations fail without partially writing invalid edits", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-scene-mutate-invalid-"));
+  try {
+    await writeScene(root, {
+      schema: "threenative.scene",
+      id: "scene.arena",
+      entities: [{ id: "player-kart" }],
+    });
+
+    const result = await setCamera({
+      projectPath: root,
+      sceneId: "scene.arena",
+      cameraId: "player-kart",
+      mode: "third-person-follow",
+      targetId: "missing-kart",
+    });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.changed, false);
+    assert.deepEqual(result.filesWritten, []);
+    assert.equal(result.diagnostics[0]?.code, "TN_AUTHORING_REF_MISSING");
   } finally {
     await rm(root, { force: true, recursive: true });
   }

@@ -72,6 +72,40 @@ export interface IValidateSceneOptions extends IAuthoringOperationContext {
   sceneId?: string;
 }
 
+export interface IAddEntityOptions extends IAuthoringOperationContext {
+  sceneId: string;
+  entityId: string;
+  prefabId?: string;
+}
+
+export interface ISetTransformOptions extends IAuthoringOperationContext {
+  sceneId: string;
+  entityId: string;
+  position?: [number, number, number];
+  rotation?: [number, number, number];
+  scale?: [number, number, number];
+}
+
+export interface ISetCameraOptions extends IAuthoringOperationContext {
+  sceneId: string;
+  cameraId: string;
+  mode: string;
+  targetId: string;
+}
+
+export interface IAttachScriptOptions extends IAuthoringOperationContext {
+  sceneId: string;
+  systemId: string;
+  modulePath: string;
+  exportName: string;
+}
+
+export interface IBindUiOptions extends IAuthoringOperationContext {
+  sceneId: string;
+  uiNodeId: string;
+  resourcePath: string;
+}
+
 export interface ISceneInspection {
   id: string;
   file: string;
@@ -139,6 +173,145 @@ export async function inspectScene(options: IValidateSceneOptions & { sceneId: s
     ...authoringOperationResult({ diagnostics, projectPath: project.projectPath }),
     scene: inspectSceneDocument(sceneDocument.projectRelativePath, sceneDocument.data),
   };
+}
+
+export async function addEntity(options: IAddEntityOptions): Promise<IAuthoringOperationResult> {
+  return mutateScene(options, (scene) => {
+    const entities = ensureArrayProperty(scene, "entities");
+    entities.push({
+      id: options.entityId,
+      ...(options.prefabId === undefined ? {} : { prefab: options.prefabId }),
+    });
+  });
+}
+
+export async function setTransform(options: ISetTransformOptions): Promise<IAuthoringOperationResult> {
+  return mutateScene(options, (scene, file) => {
+    const entity = findSceneItem(scene.entities, options.entityId);
+    if (entity === undefined) {
+      return [missingReferenceDiagnostic(file, "/entities", "entity", options.entityId, idsFromArray(scene.entities))];
+    }
+    entity.transform = {
+      ...(isRecord(entity.transform) ? entity.transform : {}),
+      ...(options.position === undefined ? {} : { position: options.position }),
+      ...(options.rotation === undefined ? {} : { rotation: options.rotation }),
+      ...(options.scale === undefined ? {} : { scale: options.scale }),
+    };
+    return [];
+  });
+}
+
+export async function setCamera(options: ISetCameraOptions): Promise<IAuthoringOperationResult> {
+  return mutateScene(options, (scene, file) => {
+    const entity = findSceneItem(scene.entities, options.cameraId);
+    if (entity === undefined) {
+      return [missingReferenceDiagnostic(file, "/entities", "entity", options.cameraId, idsFromArray(scene.entities))];
+    }
+    entity.components = {
+      ...(isRecord(entity.components) ? entity.components : {}),
+      camera: {
+        mode: options.mode,
+        target: options.targetId,
+      },
+    };
+    return [];
+  });
+}
+
+export async function attachScript(options: IAttachScriptOptions): Promise<IAuthoringOperationResult> {
+  return mutateScene(options, (scene) => {
+    const systems = ensureArrayProperty(scene, "systems");
+    const existing = findSceneItem(systems, options.systemId);
+    const system = existing ?? { id: options.systemId };
+    system.script = {
+      module: options.modulePath,
+      export: options.exportName,
+    };
+    if (existing === undefined) {
+      systems.push(system);
+    }
+  });
+}
+
+export async function bindUi(options: IBindUiOptions): Promise<IAuthoringOperationResult> {
+  return mutateScene(options, (scene) => {
+    const ui = isRecord(scene.ui) ? scene.ui : {};
+    const bindings = ensureArrayProperty(ui, "bindings");
+    scene.ui = ui;
+    bindings.push({
+      node: options.uiNodeId,
+      resource: options.resourcePath,
+    });
+  });
+}
+
+async function mutateScene(
+  options: IAuthoringOperationContext & { sceneId: string },
+  apply: (scene: Record<string, unknown>, file: string) => void | IAuthoringDiagnostic[],
+): Promise<IAuthoringOperationResult> {
+  const project = await loadAuthoringProject({ projectPath: options.projectPath });
+  const sceneDocuments = project.documents.filter((document) => document.kind === "scene");
+  const sceneDocument = sceneDocuments.find((document) => readSceneId(document.data) === options.sceneId);
+  const diagnostics = [...project.diagnostics];
+
+  if (sceneDocument === undefined) {
+    diagnostics.push(
+      authoringDiagnostic({
+        code: "TN_AUTHORING_SCENE_MISSING",
+        message: `No scene source document with id '${options.sceneId}' was found.`,
+        value: options.sceneId,
+        suggestion: closestIdSuggestion(options.sceneId, sceneDocuments.map((document) => readSceneId(document.data)).filter(isString)),
+      }),
+    );
+    return authoringOperationResult({ diagnostics, projectPath: project.projectPath });
+  }
+
+  const beforeDiagnostics = await validateSceneDocument(project.projectPath, sceneDocument.projectRelativePath, sceneDocument.data);
+  if (hasAuthoringErrors(beforeDiagnostics)) {
+    return authoringOperationResult({
+      diagnostics: beforeDiagnostics,
+      projectPath: project.projectPath,
+    });
+  }
+
+  const nextData = cloneJson(sceneDocument.data);
+  if (!isRecord(nextData)) {
+    return authoringOperationResult({
+      diagnostics: [
+        authoringDiagnostic({
+          code: "TN_AUTHORING_SCENE_SHAPE_INVALID",
+          file: sceneDocument.projectRelativePath,
+          message: "Scene source document must be a JSON object before mutation.",
+        }),
+      ],
+      projectPath: project.projectPath,
+    });
+  }
+
+  const applyDiagnostics = apply(nextData, sceneDocument.projectRelativePath) ?? [];
+  if (hasAuthoringErrors(applyDiagnostics)) {
+    return authoringOperationResult({
+      diagnostics: applyDiagnostics,
+      projectPath: project.projectPath,
+    });
+  }
+
+  const afterDiagnostics = await validateSceneDocument(project.projectPath, sceneDocument.projectRelativePath, nextData);
+  if (hasAuthoringErrors(afterDiagnostics)) {
+    return authoringOperationResult({
+      diagnostics: afterDiagnostics,
+      projectPath: project.projectPath,
+    });
+  }
+
+  sceneDocument.data = nextData;
+  await writeAuthoringJsonDocument(sceneDocument);
+  return authoringOperationResult({
+    changed: true,
+    diagnostics: afterDiagnostics,
+    filesWritten: [sceneDocument.projectRelativePath],
+    projectPath: project.projectPath,
+  });
 }
 
 async function validateSceneDocument(projectPath: string, file: string, data: unknown): Promise<IAuthoringDiagnostic[]> {
@@ -533,6 +706,24 @@ function idsFromArray(value: unknown): string[] {
     .map((item) => (isRecord(item) ? readString(item.id) : undefined))
     .filter(isString)
     .sort();
+}
+
+function ensureArrayProperty(record: Record<string, unknown>, key: string): Record<string, unknown>[] {
+  const existing = record[key];
+  if (Array.isArray(existing)) {
+    return existing as Record<string, unknown>[];
+  }
+  const created: Record<string, unknown>[] = [];
+  record[key] = created;
+  return created;
+}
+
+function findSceneItem(value: unknown, id: string): Record<string, unknown> | undefined {
+  return (readArray(value) ?? []).find((item): item is Record<string, unknown> => isRecord(item) && item.id === id);
+}
+
+function cloneJson(value: unknown): unknown {
+  return JSON.parse(JSON.stringify(value)) as unknown;
 }
 
 function validateLogicalId(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, kind: string): string | undefined {

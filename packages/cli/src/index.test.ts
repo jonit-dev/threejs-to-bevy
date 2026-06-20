@@ -41,6 +41,7 @@ test("should keep rendered help stable for the package bin", () => {
   assert.match(renderHelp(), /tn package --target desktop/);
   assert.match(renderHelp(), /tn scene validate \[scene-id\]/);
   assert.match(renderHelp(), /tn scene inspect <scene-id>/);
+  assert.match(renderHelp(), /tn scene add-entity <scene-id> <entity-id>/);
   assert.match(renderHelp(), /tn editor snapshot --bundle <path>/);
   assert.match(renderHelp(), /tn editor inspect --bundle <path>/);
   assert.match(renderHelp(), /tn editor set --bundle <path> --path <json-pointer> --value <json>/);

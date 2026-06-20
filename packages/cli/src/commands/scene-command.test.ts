@@ -71,7 +71,30 @@ test("scene-command inspect requires a scene id", async () => {
   assert.equal(payload.severity, "error");
 });
 
-async function createSceneProject(options: { invalidTarget?: boolean } = {}): Promise<string> {
+test("scene-command mutates structured scene documents deterministically", async () => {
+  const root = await createSceneProject({ minimal: true });
+
+  try {
+    const add = await sceneCommand(["add-entity", "scene.arena", "rival-kart", "--prefab", "kart", "--project", root, "--json"]);
+    const transform = await sceneCommand(["set-transform", "scene.arena", "rival-kart", "--position", "1,2,3", "--rotation", "0,0,0", "--scale", "1,1,1", "--project", root, "--json"]);
+    const camera = await sceneCommand(["set-camera", "scene.arena", "chase-camera", "--mode", "third-person-follow", "--target", "player-kart", "--project", root, "--json"]);
+    const script = await sceneCommand(["attach-script", "scene.arena", "race-controller", "--module", "src/scripts/race.ts", "--export", "raceController", "--project", root, "--json"]);
+    const binding = await sceneCommand(["bind-ui", "scene.arena", "score-label", "--resource", "hud.score.value", "--project", root, "--json"]);
+    const validate = await sceneCommand(["validate", "scene.arena", "--project", root, "--json"]);
+
+    assert.equal(add.exitCode, 0);
+    assert.equal(transform.exitCode, 0);
+    assert.equal(camera.exitCode, 0);
+    assert.equal(script.exitCode, 0);
+    assert.equal(binding.exitCode, 0);
+    assert.equal(validate.exitCode, 0);
+    assert.equal((JSON.parse(binding.stdout) as { filesWritten: string[] }).filesWritten[0], "content/scenes/arena.scene.json");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+async function createSceneProject(options: { invalidTarget?: boolean; minimal?: boolean } = {}): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), "tn-cli-scene-"));
   await mkdir(join(root, "content", "scenes"), { recursive: true });
   await mkdir(join(root, "src", "scripts"), { recursive: true });
@@ -98,7 +121,7 @@ async function createSceneProject(options: { invalidTarget?: boolean } = {}): Pr
       systems: [{ id: "race-controller", script: { module: "src/scripts/race.ts", export: "raceController" } }],
       ui: {
         nodes: [{ id: "score-label" }],
-        bindings: [{ node: "score-label", resource: "hud.score.value" }],
+        ...(options.minimal === true ? {} : { bindings: [{ node: "score-label", resource: "hud.score.value" }] }),
       },
     }, null, 2)}\n`,
   );
