@@ -1,9 +1,18 @@
 export { SdkError } from "./errors.js";
 export {
+  defineEntity,
+  definePrefabModule,
+  defineResourceModule,
   defineSceneModule,
+  defineWorldModule,
+  type IEntityModuleDeclaration,
+  type IEntityModuleOptions,
   type IAuthoringSourceMetadata,
+  type IPrefabModuleDeclaration,
+  type IResourceModuleDeclaration,
   type ISceneModuleDeclaration,
   type ISceneModuleOptions,
+  type IWorldModuleOptions,
 } from "./authoring.js";
 export {
   defineAnimations,

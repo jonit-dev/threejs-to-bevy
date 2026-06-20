@@ -48,6 +48,39 @@ test("authoring graph should capture scene module declarations", () => {
   );
 });
 
+test("authoring graph should capture modular entity prefab and resource declarations", () => {
+  const graph = normalizeAuthoringGraph({
+    entryPath: "/project/src/game.ts",
+    projectRoot: "/project",
+    root: {},
+    sources: [
+      {
+        path: "/project/src/entities/player.ts",
+        source: 'import { defineEntity } from "@threenative/sdk";\nexport const player = defineEntity({ id: "player" });\n',
+      },
+      {
+        path: "/project/src/prefabs/kart.ts",
+        source: 'import { definePrefabModule } from "@threenative/sdk";\nexport const kart = definePrefabModule({ id: "prefab.kart", prefab: baseKart });\n',
+      },
+      {
+        path: "/project/src/resources/progress.ts",
+        source: 'import { defineResourceModule } from "@threenative/sdk";\nexport const progress = defineResourceModule({ id: "Progress", resource: Progress({}) });\n',
+      },
+    ],
+  });
+
+  assert.deepEqual(
+    graph.declarations
+      .filter((declaration) => declaration.kind === "entity" || declaration.kind === "prefab" || declaration.kind === "resource")
+      .map((declaration) => [declaration.kind, declaration.id, declaration.provenance.source.modulePath]),
+    [
+      ["entity", "player", "src/entities/player.ts"],
+      ["prefab", "prefab.kart", "src/prefabs/kart.ts"],
+      ["resource", "Progress", "src/resources/progress.ts"],
+    ],
+  );
+});
+
 test("authoring graph should diagnose duplicate declaration IDs before IR flattening", () => {
   const graph = normalizeAuthoringGraph({
     entryPath: "/project/src/game.ts",

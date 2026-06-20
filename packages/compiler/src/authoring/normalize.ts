@@ -125,6 +125,24 @@ function sourceDeclarations(sources: ReadonlyArray<IAuthoringCaptureSource>, pro
         declarations.push(sourceDeclaration(modulePath, "scene", id, match.index));
       }
     }
+    for (const match of source.source.matchAll(/\bdefineEntity\s*\(\s*\{[^}]*\bid\s*:\s*["']([^"']+)["']/g)) {
+      const id = match[1];
+      if (id !== undefined) {
+        declarations.push(sourceDeclaration(modulePath, "entity", id, match.index));
+      }
+    }
+    for (const match of source.source.matchAll(/\bdefinePrefabModule\s*\(\s*\{[^}]*\bid\s*:\s*["']([^"']+)["']/g)) {
+      const id = match[1];
+      if (id !== undefined) {
+        declarations.push(sourceDeclaration(modulePath, "prefab", id, match.index));
+      }
+    }
+    for (const match of source.source.matchAll(/\bdefineResourceModule\s*\(\s*\{[^}]*\bid\s*:\s*["']([^"']+)["']/g)) {
+      const id = match[1];
+      if (id !== undefined) {
+        declarations.push(sourceDeclaration(modulePath, "resource", id, match.index));
+      }
+    }
     return declarations;
   });
 }

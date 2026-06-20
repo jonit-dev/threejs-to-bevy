@@ -1,5 +1,9 @@
 import { SdkError } from "./errors.js";
+import { World } from "./ecs/World.js";
+import type { IEcsDeclaration } from "./ecs/schema.js";
+import { definePrefab, PrefabTransform, type IPrefabDeclaration } from "./prefab.js";
 import { defineScene, type ISceneLifecycleDeclaration, type ISceneLifecycleOptions } from "./sceneLifecycle.js";
+import type { Vector3Tuple } from "./math/Vector3.js";
 
 export interface IAuthoringSourceMetadata {
   sourceId?: string;
@@ -14,6 +18,38 @@ export interface ISceneModuleDeclaration extends ISceneLifecycleDeclaration {
   authoring?: IAuthoringSourceMetadata;
 }
 
+export interface IEntityModuleDeclaration {
+  authoring?: IAuthoringSourceMetadata;
+  components: IEcsDeclaration[];
+  id: string;
+}
+
+export interface IEntityModuleOptions {
+  components?: readonly IEcsDeclaration[];
+  id: string;
+  source?: IAuthoringSourceMetadata;
+  transform?: {
+    position?: Vector3Tuple;
+    rotation?: readonly [number, number, number, number];
+    scale?: Vector3Tuple;
+  };
+}
+
+export interface IResourceModuleDeclaration {
+  authoring?: IAuthoringSourceMetadata;
+  id: string;
+  resource: IEcsDeclaration;
+}
+
+export interface IPrefabModuleDeclaration extends IPrefabDeclaration {
+  authoring?: IAuthoringSourceMetadata;
+}
+
+export interface IWorldModuleOptions {
+  entities?: readonly IEntityModuleDeclaration[];
+  resources?: readonly IResourceModuleDeclaration[];
+}
+
 export function defineSceneModule(options: ISceneModuleOptions): ISceneModuleDeclaration {
   const scene = defineScene(options);
   const source = normalizeSourceMetadata(options.source, scene.id);
@@ -21,6 +57,72 @@ export function defineSceneModule(options: ISceneModuleOptions): ISceneModuleDec
     ...scene,
     ...(source === undefined ? {} : { authoring: source }),
   };
+}
+
+export function defineEntity(options: IEntityModuleOptions): IEntityModuleDeclaration {
+  assertLogicalId(options.id);
+  const components = [
+    ...(options.components ?? []),
+    ...(options.transform === undefined ? [] : [PrefabTransform(transformData(options.transform))]),
+  ];
+  for (const component of components) {
+    assertPortableData(component.data, `Entity '${options.id}' component '${component.schema.name}'`);
+  }
+  return {
+    ...(options.source === undefined ? {} : { authoring: normalizeSourceMetadata(options.source, options.id) }),
+    components: sortComponents(components),
+    id: options.id,
+  };
+}
+
+export function defineResourceModule(options: { id: string; resource: IEcsDeclaration; source?: IAuthoringSourceMetadata }): IResourceModuleDeclaration {
+  assertLogicalId(options.id);
+  if (options.resource.schema.kind !== "resource") {
+    throw new SdkError("TN_SDK_AUTHORING_RESOURCE_KIND_INVALID", `Resource module '${options.id}' must wrap a resource declaration.`);
+  }
+  assertPortableData(options.resource.data, `Resource module '${options.id}'`);
+  return {
+    ...(options.source === undefined ? {} : { authoring: normalizeSourceMetadata(options.source, options.id) }),
+    id: options.id,
+    resource: {
+      data: { ...options.resource.data },
+      schema: options.resource.schema,
+    },
+  };
+}
+
+export function definePrefabModule(options: {
+  componentOverrides?: readonly IEcsDeclaration[];
+  id: string;
+  prefab: IPrefabDeclaration;
+  source?: IAuthoringSourceMetadata;
+}): IPrefabModuleDeclaration {
+  assertLogicalId(options.id);
+  const componentsByName = new Map(options.prefab.components.map((component) => [component.schema.name, component]));
+  for (const override of options.componentOverrides ?? []) {
+    assertPortableData(override.data, `Prefab module '${options.id}' override '${override.schema.name}'`);
+    componentsByName.set(override.schema.name, override);
+  }
+  const prefab = definePrefab({
+    components: sortComponents([...componentsByName.values()]),
+    id: options.id,
+    ...(options.prefab.mesh === undefined ? {} : { mesh: options.prefab.mesh }),
+  });
+  return {
+    ...prefab,
+    ...(options.source === undefined ? {} : { authoring: normalizeSourceMetadata(options.source, options.id) }),
+  };
+}
+
+export function defineWorldModule(options: IWorldModuleOptions): World {
+  const world = new World();
+  for (const entity of [...(options.entities ?? [])].sort((left, right) => left.id.localeCompare(right.id))) {
+    world.spawn(entity.id, ...entity.components);
+  }
+  for (const resource of [...(options.resources ?? [])].sort((left, right) => left.id.localeCompare(right.id))) {
+    world.addResource(resource.resource);
+  }
+  return world;
 }
 
 function normalizeSourceMetadata(source: IAuthoringSourceMetadata | undefined, fallbackId: string): IAuthoringSourceMetadata | undefined {
@@ -35,6 +137,48 @@ function normalizeSourceMetadata(source: IAuthoringSourceMetadata | undefined, f
     normalized.sourcePath = normalizeSourcePath(source.sourcePath);
   }
   return normalized;
+}
+
+function transformData(transform: NonNullable<IEntityModuleOptions["transform"]>): Record<string, unknown> {
+  return {
+    ...(transform.position === undefined ? {} : { position: [...transform.position] }),
+    ...(transform.rotation === undefined ? {} : { rotation: [...transform.rotation] }),
+    ...(transform.scale === undefined ? {} : { scale: [...transform.scale] }),
+  };
+}
+
+function sortComponents(components: readonly IEcsDeclaration[]): IEcsDeclaration[] {
+  return [...components]
+    .map((component) => ({
+      data: { ...component.data },
+      schema: component.schema,
+    }))
+    .sort((left, right) => left.schema.name.localeCompare(right.schema.name));
+}
+
+function assertPortableData(value: unknown, label: string): void {
+  if (containsRuntimeHandle(value)) {
+    throw new SdkError("TN_SDK_AUTHORING_RUNTIME_HANDLE_UNSUPPORTED", `${label} data must not include runtime handles.`);
+  }
+}
+
+function containsRuntimeHandle(value: unknown): boolean {
+  if (Array.isArray(value)) {
+    return value.some(containsRuntimeHandle);
+  }
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  for (const [key, item] of Object.entries(value)) {
+    const normalized = key.toLowerCase();
+    if (normalized === "runtimehandle" || normalized === "nativehandle" || normalized === "__nativehandle" || normalized === "threeobject" || normalized === "bevyentity") {
+      return true;
+    }
+    if (containsRuntimeHandle(item)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function assertLogicalId(value: string): void {
