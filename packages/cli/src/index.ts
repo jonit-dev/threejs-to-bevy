@@ -3,6 +3,7 @@
 import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
+import { assetCommand } from "./commands/asset.js";
 import { buildCommand } from "./commands/build.js";
 import { compareImagesCommand } from "./commands/compareImages.js";
 import { createProject, initProject } from "./commands/create.js";
@@ -22,6 +23,11 @@ interface ICommandDefinition {
 }
 
 const commands: Record<string, ICommandDefinition> = {
+  asset: {
+    description: "Inspect GLB/glTF bounds, dependencies, and scale calibration.",
+    implemented: true,
+    usage: "tn asset inspect <path> [--json]",
+  },
   create: {
     description: "Scaffold a ThreeNative project from a maintained template.",
     implemented: true,
@@ -123,6 +129,10 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
 
   if (commandName === "create") {
     return createProject(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "asset") {
+    return assetCommand(normalizedArgv.slice(1));
   }
 
   if (commandName === "init") {

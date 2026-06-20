@@ -29,6 +29,16 @@ test("should render known help topic with commands and docs", async () => {
   assert.equal(payload.docs.includes("docs/workflows/developer-workflow.md"), true);
 });
 
+test("should mention asset inspection in asset help", async () => {
+  const result = await helpCommand(["assets", "--json"]);
+  const payload = JSON.parse(result.stdout) as { commands: string[]; docs: string[]; examples: string[] };
+
+  assert.equal(result.exitCode, 0);
+  assert.equal(payload.commands.includes("tn asset inspect <path> [--json]"), true);
+  assert.equal(payload.docs.includes("docs/workflows/asset-pipeline.md"), true);
+  assert.equal(payload.examples.includes("tn asset inspect assets/kart.glb --json"), true);
+});
+
 test("should resolve aliases for topic help", async () => {
   const result = await helpCommand(["proof", "--json"]);
   const payload = JSON.parse(result.stdout) as { name: string; failureSymptoms: string[] };

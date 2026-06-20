@@ -23,6 +23,11 @@ contract, target command map, and allowlist enforced by `pnpm check:names`.
 
 Current contributor entry points:
 
+`tn asset inspect <path> [--json]` is available for local glTF/GLB triage. It
+reports accessor-derived bounds with node transforms, external/embedded image
+and buffer dependencies, missing-file diagnostics, and gameplay-scale
+calibration hints before a model is placed in a scene.
+
 ```bash
 pnpm check:names
 pnpm check:docs

@@ -11,6 +11,7 @@ test("should print help when requested", async () => {
 
   assert.equal(result.exitCode, 0);
   assert.match(result.stdout, /Commands:/);
+  assert.match(result.stdout, /asset/);
   assert.match(result.stdout, /create/);
   assert.match(result.stdout, /init/);
   assert.match(result.stdout, /help/);
@@ -39,6 +40,7 @@ test("should keep rendered help stable for the package bin", () => {
   assert.match(renderHelp(), /tn editor set --bundle <path> --path <json-pointer> --value <json>/);
   assert.match(renderHelp(), /tn editor apply --snapshot <path> --bundle <path>/);
   assert.match(renderHelp(), /tn compare-images <first\.png> <second\.png>/);
+  assert.match(renderHelp(), /tn asset inspect <path>/);
   assert.match(renderHelp(), /tn verify \[--project <path>\] \[--url <preview-url>\]/);
   assert.match(renderHelp(), /tn init <name>/);
   assert.match(renderHelp(), /tn help \[topic\]/);

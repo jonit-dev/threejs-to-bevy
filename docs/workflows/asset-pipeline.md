@@ -12,6 +12,32 @@ bundle-local, and inspectable.
 - JPEG textures
 - WebP textures when supported by the target runtime/profile
 
+## Inspecting Model Scale and Dependencies
+
+Use the CLI inspection workflow before placing a new model into gameplay space:
+
+```bash
+tn asset inspect assets/model.glb
+tn asset inspect assets/model.gltf --json
+```
+
+`tn asset inspect` reads `.glb` JSON chunks and `.gltf` files directly. It does
+not launch a browser. The report includes:
+
+- file type and byte size
+- scene/node/mesh/material/image counts
+- mesh bounds from `POSITION` accessor `min`/`max` values, including node
+  translation/rotation/scale transforms
+- external image and buffer dependencies plus missing-file diagnostics
+- embedded image/buffer dependency classification for GLB/data URI assets
+- scale calibration hints: model dimensions, camera distance, target-height /
+  target-length scales, collider dimensions, lane-width ratio, and a gameplay
+  verdict for likely too-small or too-large assets
+
+Bounds are reported only when the glTF accessors contain `min` and `max` values;
+otherwise the command emits `TN_ASSET_BOUNDS_MISSING` or
+`TN_ASSET_BOUNDS_UNAVAILABLE` instead of pretending to decode geometry.
+
 ## Bundle Behavior
 
 - Copy referenced model files into the emitted bundle.
