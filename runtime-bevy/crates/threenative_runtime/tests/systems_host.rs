@@ -43,6 +43,34 @@ fn systems_host_should_call_quickjs_system_export() {
 }
 
 #[test]
+fn systems_host_should_error_on_undeclared_explicit_query() {
+    let root = write_undeclared_query_bundle("undeclared-query");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+
+    let error = run_native_systems_once(&mut bundle, time())
+        .expect_err("undeclared explicit query should fail loudly");
+
+    assert_eq!(error.code, "TN_BEVY_SYSTEM_SCRIPT_EXECUTION_FAILED");
+    assert!(
+        error.message.contains("TN_SCRIPT_QUERY_UNDECLARED"),
+        "unexpected error message: {}",
+        error.message
+    );
+    assert!(
+        error
+            .message
+            .contains("context.query({\"with\":[\"Camera\"],\"without\":[]})"),
+        "error should name the undeclared query: {}",
+        error.message
+    );
+    assert!(
+        error.message.contains("Declared queries"),
+        "error should include the declared query set: {}",
+        error.message
+    );
+}
+
+#[test]
 fn systems_host_should_pass_time_resource_to_quickjs_system() {
     let root = write_bundle("time-context", "system_movePlayer");
     let mut bundle = load_bundle(&root).expect("scripted bundle should load");
@@ -1762,6 +1790,22 @@ const system_movePlayer = (ctx) => {
   const entity = ctx.query()[0];
   const transform = entity.get(Transform);
   entity.patch(Transform, { position: [transform.position[0] + ctx.time.fixedDt, 0, 0] });
+};
+export const systemIds = Object.freeze({ "system_movePlayer": "movePlayer" });
+export const systems = Object.freeze({ "system_movePlayer": system_movePlayer });
+"#,
+    )
+    .expect("script bundle should be written");
+    root
+}
+
+fn write_undeclared_query_bundle(name: &str) -> PathBuf {
+    let root = write_bundle(name, "system_movePlayer");
+    fs::write(
+        root.join("scripts.bundle.js"),
+        r#"const Transform = Object.freeze({ name: "Transform" });
+const system_movePlayer = (ctx) => {
+  ctx.query({ with: ["Camera"], without: [] });
 };
 export const systemIds = Object.freeze({ "system_movePlayer": "movePlayer" });
 export const systems = Object.freeze({ "system_movePlayer": system_movePlayer });

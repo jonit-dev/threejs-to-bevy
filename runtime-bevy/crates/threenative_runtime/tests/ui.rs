@@ -16,9 +16,9 @@ use threenative_runtime::ui::{
     NativeUiImageSrc, NativeUiKind, NativeUiMinimapMarker, NativeUiMinimapPathPoint,
     NativeUiRenderedGradient, NativeUiRenderedShadow, NativeUiRenderedTextStyle,
     NativeUiScrollContainer, NativeUiShadow, NativeUiStyle, build_native_ui,
-    diagnose_native_ui_visual_support, dispatch_native_ui_actions, install_native_ui_overlay_camera,
-    map_ui_into_world, trace_native_ui_text_styles, trace_native_ui_visual_effects,
-    trace_ui_navigation,
+    diagnose_native_ui_visual_support, dispatch_native_ui_actions,
+    install_native_ui_overlay_camera, map_ui_into_world, trace_native_ui_text_styles,
+    trace_native_ui_visual_effects, trace_ui_navigation,
 };
 
 mod support;
@@ -346,20 +346,28 @@ fn ui_should_spawn_native_minimap_children() {
 fn ui_should_install_dedicated_overlay_camera_above_scene_cameras() {
     let mut app = App::new();
     app.world_mut().spawn(Camera3dBundle {
-        camera: Camera { order: 4, ..Default::default() },
+        camera: Camera {
+            order: 4,
+            ..Default::default()
+        },
         ..Default::default()
     });
 
     install_native_ui_overlay_camera(app.world_mut());
 
-    let mut query = app.world_mut().query::<(&Camera, Option<&IsDefaultUiCamera>)>();
+    let mut query = app
+        .world_mut()
+        .query::<(&Camera, Option<&IsDefaultUiCamera>)>();
     let overlay = query
         .iter(app.world())
         .find(|(_, marker)| marker.is_some())
         .map(|(camera, _)| camera)
         .expect("overlay UI camera should be the default UI camera");
     assert_eq!(overlay.order, 104);
-    assert!(matches!(overlay.clear_color, bevy::render::camera::ClearColorConfig::None));
+    assert!(matches!(
+        overlay.clear_color,
+        bevy::render::camera::ClearColorConfig::None
+    ));
 }
 
 #[test]

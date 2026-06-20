@@ -87,6 +87,28 @@ test("should reject undeclared service command and event access", () => {
   );
 });
 
+test("should reject literal context query that is not declared", () => {
+  const diagnostics = diagnosePortableSystem({
+    queries: [{ with: ["VehiclePhysics"], without: [] }],
+    source: '(ctx) => ctx.query({ with: ["Transform"], without: ["VehiclePhysics"] })',
+    systemName: "badQuery",
+  });
+
+  assert.equal(diagnostics[0]?.code, "TN_SCRIPT_QUERY_UNDECLARED");
+  assert.equal(diagnostics[0]?.path, 'systems/badQuery/queries/{ with: ["Transform"], without: ["VehiclePhysics"] }');
+  assert.match(diagnostics[0]?.suggestion ?? "", /defineQuery/);
+});
+
+test("should allow declared literal context query and default query", () => {
+  const diagnostics = diagnosePortableSystem({
+    queries: [{ with: ["Transform"], without: ["VehiclePhysics"] }],
+    source: '(ctx) => { ctx.query(); ctx.query({ with: ["Transform"], without: ["VehiclePhysics"] }); }',
+    systemName: "goodQuery",
+  });
+
+  assert.deepEqual(diagnostics, []);
+});
+
 test("should reject undeclared v7 physics and picking query services", () => {
   const diagnostics = diagnosePortableSystem({
     services: ["physics.raycast"],

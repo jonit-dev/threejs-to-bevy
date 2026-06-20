@@ -447,6 +447,25 @@ function __tnInvokeSystem(options) {
     }
     return new Set(changedValues(data.runtimeChanged, entity.id));
   };
+  const queryKey = (query) => {
+    const normalized = {
+      changed: Array.isArray(query?.changed) ? query.changed.map(normalize).sort() : [],
+      limit: query?.limit ?? null,
+      offset: query?.offset ?? null,
+      orderBy: query?.orderBy ?? null,
+      with: Array.isArray(query?.with) ? query.with.map(normalize).sort() : [],
+      without: Array.isArray(query?.without) ? query.without.map(normalize).sort() : []
+    };
+    return JSON.stringify(normalized);
+  };
+  const declaredQueries = Array.isArray(data.declaredQueries) ? data.declaredQueries : [];
+  const declaredQueryKeys = new Set(declaredQueries.map(queryKey));
+  const assertDeclaredQuery = (query) => {
+    if (query === undefined || declaredQueryKeys.size === 0) return;
+    if (declaredQueryKeys.has(queryKey(query))) return;
+    const declared = declaredQueries.map((entry) => JSON.stringify(entry)).join(", ");
+    throw new Error(`TN_SCRIPT_QUERY_UNDECLARED: context.query(${JSON.stringify(query)}) was not declared in this system's queries list. Native runtimes only expose declared query results; add defineQuery(${JSON.stringify(query)}) to queries. Declared queries: [${declared}]`);
+  };
   const applyQuery = (source, query) => {
     const withComponents = Array.isArray(query.with) ? query.with.map(normalize) : [];
     const withoutComponents = Array.isArray(query.without) ? query.without.map(normalize) : [];
@@ -1346,6 +1365,7 @@ function __tnInvokeSystem(options) {
       }
     },
     query(query) {
+      assertDeclaredQuery(query);
       return applyQuery(entities, query === undefined ? (data.defaultQuery || { with: [], without: [] }) : query);
     },
     events: {

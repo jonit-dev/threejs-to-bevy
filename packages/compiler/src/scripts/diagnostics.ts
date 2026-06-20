@@ -4,6 +4,7 @@ export interface IPortableSystemSource {
   commands?: ReadonlyArray<string>;
   eventWrites?: ReadonlyArray<string>;
   file?: string;
+  queries?: ReadonlyArray<{ with: ReadonlyArray<string>; without: ReadonlyArray<string> }>;
   resourceWrites?: ReadonlyArray<string>;
   services?: ReadonlyArray<string>;
   source: string;
@@ -77,6 +78,7 @@ function diagnoseDeclaredAccess(source: IPortableSystemSource): ICompilerDiagnos
   const commands = new Set(source.commands ?? []);
   const eventWrites = new Set(source.eventWrites ?? []);
   const services = new Set(source.services ?? []);
+  const declaredQueries = new Set((source.queries ?? []).map(queryKey));
 
   for (const component of uniqueMatches(source.source, /(?<!resources\.)\b(?:patch|set|setComponent)\s*\(\s*([A-Z][A-Za-z0-9_]*)/g)) {
     if (!writes.has(component)) {
@@ -154,9 +156,41 @@ function diagnoseDeclaredAccess(source: IPortableSystemSource): ICompilerDiagnos
     }
   }
 
+  for (const query of literalQueries(source.source)) {
+    if (declaredQueries.size > 0 && !declaredQueries.has(queryKey(query))) {
+      diagnostics.push({
+        code: "TN_SCRIPT_QUERY_UNDECLARED",
+        file: source.file,
+        message: `System '${source.systemName}' calls context.query(${formatQuery(query)}) without declaring it in queries.`,
+        path: `systems/${source.systemName}/queries/${formatQuery(query)}`,
+        severity: "error",
+        suggestion: `Add defineQuery(${formatQuery(query)}) to the system queries list or use context.query() for the default query.`,
+      });
+    }
+  }
+
   return diagnostics;
 }
 
 function uniqueMatches(source: string, pattern: RegExp): string[] {
   return [...new Set([...source.matchAll(pattern)].map((match) => match[1] ?? match[0]))];
+}
+
+function literalQueries(source: string): Array<{ with: string[]; without: string[] }> {
+  return [...source.matchAll(/\b(?:context|ctx)\.query\s*\(\s*\{\s*with\s*:\s*\[([^\]]*)\]\s*,\s*without\s*:\s*\[([^\]]*)\]/g)].map((match) => ({
+    with: stringArrayValues(match[1] ?? ""),
+    without: stringArrayValues(match[2] ?? ""),
+  }));
+}
+
+function stringArrayValues(source: string): string[] {
+  return [...source.matchAll(/["']([^"']+)["']/g)].flatMap((match) => (match[1] === undefined ? [] : [match[1]])).sort();
+}
+
+function queryKey(query: { with: ReadonlyArray<string>; without: ReadonlyArray<string> }): string {
+  return JSON.stringify({ with: [...query.with].sort(), without: [...query.without].sort() });
+}
+
+function formatQuery(query: { with: ReadonlyArray<string>; without: ReadonlyArray<string> }): string {
+  return `{ with: ${JSON.stringify([...query.with].sort())}, without: ${JSON.stringify([...query.without].sort())} }`;
 }

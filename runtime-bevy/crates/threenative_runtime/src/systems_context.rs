@@ -18,6 +18,7 @@ pub struct NativeSystemContextSnapshot {
     pub channel_events: BTreeMap<String, String>,
     pub assets: Vec<NativeAssetDeclaration>,
     pub component_hooks: BTreeMap<String, Vec<NativeComponentHookObservation>>,
+    pub declared_queries: Vec<Value>,
     pub component_types: NativeComponentReflectionRegistry,
     pub default_query: Value,
     pub entities: Vec<NativeSystemEntitySnapshot>,
@@ -261,6 +262,7 @@ pub fn build_system_context_snapshot_with_events_input_and_diff(
         assets: asset_declarations(bundle),
         channel_events: channel_events(bundle),
         component_hooks: component_hook_observations(bundle),
+        declared_queries: system.queries.iter().map(query_value).collect(),
         component_types: component_reflection_registry(bundle),
         default_query: system
             .queries

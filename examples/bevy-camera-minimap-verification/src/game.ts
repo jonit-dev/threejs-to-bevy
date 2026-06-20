@@ -179,7 +179,7 @@ world.addSystem(
       commands.setComponent("camera.orbit.helper", Transform),
       commands.setComponent("minimap.player.dot3d", Transform),
     ],
-    queries: [defineQuery({ with: [RigState] })],
+    queries: [defineQuery({ with: [RigState] }), defineQuery({ with: [Transform], without: [RigState] })],
     reads: [RigState, Transform],
     resourceReads: [CameraHud, MinimapState],
     resourceWrites: [CameraHud, MinimapState],
