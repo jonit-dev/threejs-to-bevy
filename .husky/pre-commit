@@ -1,4 +1,4 @@
 #!/usr/bin/env sh
 set -eu
 
-pnpm verify:smoke
+"$(dirname "$0")/pnpm-run" verify:smoke

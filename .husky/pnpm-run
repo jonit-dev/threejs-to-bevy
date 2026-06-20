@@ -1,0 +1,25 @@
+#!/usr/bin/env sh
+set -eu
+
+PNPM_VERSION="10.25.0"
+if [ -f package.json ]; then
+  DETECTED_VERSION="$(node -e "const fs=require('fs'); const pkg=JSON.parse(fs.readFileSync('package.json','utf8')); const pm=String(pkg.packageManager||''); const m=pm.match(/^pnpm@(.+)$/); if (m) process.stdout.write(m[1]);" 2>/dev/null || true)"
+  if [ -n "$DETECTED_VERSION" ]; then
+    PNPM_VERSION="$DETECTED_VERSION"
+  fi
+fi
+
+if command -v pnpm >/dev/null 2>&1; then
+  exec pnpm "$@"
+fi
+
+if command -v corepack >/dev/null 2>&1; then
+  exec corepack pnpm "$@"
+fi
+
+if command -v npx >/dev/null 2>&1; then
+  exec npx --yes "pnpm@$PNPM_VERSION" "$@"
+fi
+
+printf '%s\n' "pnpm is required but was not found. Install pnpm or enable Corepack." >&2
+exit 127

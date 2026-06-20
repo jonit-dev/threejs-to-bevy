@@ -1,4 +1,4 @@
 #!/usr/bin/env sh
 set -eu
 
-pnpm verify:pre-push
+"$(dirname "$0")/pnpm-run" verify:pre-push
