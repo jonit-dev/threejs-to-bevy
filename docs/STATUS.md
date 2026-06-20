@@ -63,6 +63,12 @@ until real script helper bundling exists, async/dynamic code, timer/network/DOM/
 Node/platform globals, and top-level mutable module state with `TN_SCRIPT_*`
 diagnostics that include source path and export context.
 
+Scripting host conformance now has a documented source-of-truth service matrix
+in [contracts/scripting-host-matrix.md](contracts/scripting-host-matrix.md).
+The IR package exports the promoted service list and tests it against SDK
+`SystemService`, IR `IrSystemService`, web queued service calls, the Bevy native
+host service anchor, and docs so drift is caught by conformance and docs gates.
+
 Native Bevy UI now installs a dedicated overlay UI camera above authored scene cameras so retained UI stays visible over multi-camera/viewport scenes. The native `Minimap` widget preserves authored bounds/paths/static markers and syncs live resource-bound markers; focused proof lives in `examples/bevy-camera-minimap-verification/artifacts/bevy-camera-minimap-proof/`.
 
 `tn asset inspect <path> [--json]` is available for local glTF/GLB triage. It

@@ -124,6 +124,12 @@ export type {
   IrSystemService,
   ISystemsIr,
 } from "./systems.js";
+export {
+  PROMOTED_SCRIPT_SERVICES,
+  SCRIPT_HOST_SERVICE_MATRIX,
+  type IScriptHostServiceMatrixEntry,
+  type ScriptHostSupport,
+} from "./scriptingHost.js";
 export type {
   IAssetIr,
   IAssetsManifest,

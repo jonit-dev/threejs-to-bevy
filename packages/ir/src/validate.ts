@@ -33,6 +33,7 @@ import { validateOverlaysIr, type IOverlaysIr } from "./overlays.js";
 import { validateCameraViews } from "./camera.js";
 import { IR_DOCUMENTS, IR_SCHEMA_IDS, IR_VERSION } from "./documents.js";
 import { validateGltfSceneMetadata, type IGltfSceneMetadataIr } from "./gltfScene.js";
+import { PROMOTED_SCRIPT_SERVICES } from "./scriptingHost.js";
 
 export interface IIrDiagnostic {
   code: string;
@@ -4035,42 +4036,7 @@ function prefabHierarchyHasCycle(entityId: string, entities: IPrefabsIr["prefabs
   }
 }
 
-const SUPPORTED_SYSTEM_SERVICES = [
-  "animation.play",
-  "animation.query",
-  "animation.stop",
-  "audio.play",
-  "audio.query",
-  "audio.stop",
-  "assets.load",
-  "character.move",
-  "navigation.path",
-  "physics.overlap",
-  "physics.raycast",
-  "physics.sensor",
-  "physics.shapeCast",
-  "picking.mesh",
-  "picking.pointerRay",
-  "persistence.delete",
-  "persistence.listSlots",
-  "persistence.load",
-  "persistence.save",
-  "scene.change",
-  "scene.current",
-  "scene.loadAdditive",
-  "scene.pop",
-  "scene.push",
-  "scene.unload",
-  "settings.export",
-  "settings.get",
-  "settings.import",
-  "settings.set",
-  "ui.activate",
-  "ui.focus",
-  "ui.read",
-  "ui.setDisabled",
-  "ui.setValue",
-] as const;
+const SUPPORTED_SYSTEM_SERVICES = PROMOTED_SCRIPT_SERVICES;
 
 const AUDIO_SYSTEM_SERVICES = new Set<IrSystemService>(["audio.play", "audio.query", "audio.stop"]);
 const SCRIPT_AUDIO_EXTERNAL_FIELDS = new Set(["decoderPlugin", "device", "deviceId", "nativeHandle", "networkStream", "networkUrl", "platformHandle", "src", "stream", "streaming", "streamingUrl", "url"]);

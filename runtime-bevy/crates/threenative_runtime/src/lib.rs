@@ -45,6 +45,7 @@ pub mod runtime_gameplay_host;
 pub mod runtime_prefabs_hierarchy;
 pub mod runtime_query_diffing;
 pub mod scene_manager;
+pub mod scripting_host_matrix;
 pub mod systems_context;
 pub mod systems_effects;
 pub mod systems_host;

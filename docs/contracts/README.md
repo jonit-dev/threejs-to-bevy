@@ -6,6 +6,7 @@ CLI, and runtimes must honor.
 - [SDK](sdk.md)
 - [ECS](ecs.md)
 - [Scripting](scripting.md)
+- [Scripting Host Matrix](scripting-host-matrix.md)
 - [Portable Scripting APIs](scripting-api.md)
 - [UI](ui.md)
 - [IR](ir.md)
