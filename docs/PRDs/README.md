@@ -30,6 +30,26 @@ This index separates current cleanup work from historical milestone batches.
 - [Agent-Safe Scene Authoring CLI](other/agent-safe-scene-authoring-cli.md):
   shared authoring core, `tn scene ... --json` operations, schema/semantic
   validation, deterministic diagnostics, and AI-safe scene mutation workflow.
+- [Authoring Graph and Provenance Capture](other/authoring-graph-provenance-capture.md):
+  compiler-owned authoring graph, declaration provenance, source-path
+  diagnostics, duplicate/conflict checks, and deterministic normalization.
+- [Modular SDK Authoring Declarations](other/modular-sdk-authoring-declarations.md):
+  data-first/module-first SDK declarations for scenes, entities, prefabs,
+  resources, systems, input, UI, audio, and assets.
+- [Script Module References and Manifest](other/script-module-references-and-manifest.md):
+  source module/export script refs, generated script manifest, collision
+  diagnostics, helper import policy, and generated-script source boundaries.
+- [Web and Bevy Scripting Host Conformance](other/web-bevy-scripting-host-conformance.md):
+  shared scripting service matrix, effect validation parity, ambient API
+  diagnostics, and web/native conformance fixtures.
+- [Modular Template Migration and Proof](other/modular-template-migration-and-proof.md):
+  canonical template migration to modular authoring, CLI validation, web proof,
+  and native proof where claimed.
+- [Editor Snapshot and Source Patch Bridge](other/editor-snapshot-source-patch-bridge.md):
+  source/generated/runtime document classification, structured source patches,
+  live edit policy, and deterministic editor diffs.
+- [Authoring MCP Wrapper](other/authoring-mcp-wrapper.md):
+  optional MCP tools as thin wrappers over the same authoring core/CLI behavior.
 - [Editor-Ready Modular Authoring and Scripting Architecture](other/editor-ready-modular-authoring-and-scripting-architecture.md):
   source-of-truth boundaries, modular authoring graph/provenance, script module
   references, editor-safe source documents, and web/Bevy runtime parity.
