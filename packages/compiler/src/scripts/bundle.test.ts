@@ -68,3 +68,24 @@ test("should normalize method shorthand system functions", () => {
   assert.match(result.code ?? "", /const system_applyDamage = function run\(context\) \{ return context; \};/);
   assert.deepEqual(result.diagnostics, []);
 });
+
+test("should reject unresolved script source references before bundling", () => {
+  const result = bundleSystemScripts([
+    {
+      name: "kartArcadePhysics",
+      script: {
+        exportName: "system_kartArcadePhysics",
+        sourceRef: {
+          export: "kartArcadePhysics",
+          hash: "sha256-deadbeef",
+          module: "src/scripts/kartArcadePhysics.ts",
+          systemId: "kartArcadePhysics",
+        },
+      },
+    },
+  ]);
+
+  assert.equal(result.code, undefined);
+  assert.equal(result.diagnostics[0]?.code, "TN_SCRIPT_SOURCE_REFERENCE_UNRESOLVED");
+  assert.equal(result.diagnostics[0]?.file, "src/scripts/kartArcadePhysics.ts");
+});

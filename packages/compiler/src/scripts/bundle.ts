@@ -12,7 +12,13 @@ export interface ISystemScriptSource {
   resourceWrites?: ReadonlyArray<string>;
   script?: {
     exportName: string;
-    source: string;
+    source?: string;
+    sourceRef?: {
+      export: string;
+      hash?: string;
+      module: string;
+      systemId: string;
+    };
   };
   services?: ReadonlyArray<string>;
   writes?: ReadonlyArray<string>;
@@ -28,24 +34,43 @@ export function bundleSystemScripts(systems: ReadonlyArray<ISystemScriptSource>)
     .filter((system): system is ISystemScriptSource & { script: NonNullable<ISystemScriptSource["script"]> } => system.script !== undefined)
     .sort((left, right) => left.name.localeCompare(right.name));
 
-  const diagnostics = scriptedSystems.flatMap((system) =>
-    diagnosePortableSystem({
-      commands: system.commands?.map((command) => command.kind),
-      eventWrites: system.eventWrites,
-      queries: system.queries,
-      resourceWrites: system.resourceWrites,
-      services: system.services,
-      source: system.script.source,
-      systemName: system.name,
-      writes: system.writes,
-    }),
+  const unresolvedSourceDiagnostics = scriptedSystems.flatMap((system): ICompilerDiagnostic[] =>
+    system.script.source === undefined && system.script.sourceRef !== undefined
+      ? [
+          {
+            code: "TN_SCRIPT_SOURCE_REFERENCE_UNRESOLVED",
+            file: system.script.sourceRef.module,
+            message: `System '${system.name}' references script export '${system.script.sourceRef.export}' before it has been bundled.`,
+            path: `systems/${system.name}/script/sourceRef`,
+            severity: "error",
+            suggestion: "Resolve the referenced TypeScript module/export into the generated scripts bundle before emitting runtime IR.",
+          },
+        ]
+      : [],
   );
+  const diagnostics = [
+    ...unresolvedSourceDiagnostics,
+    ...scriptedSystems.flatMap((system) =>
+      system.script.source === undefined
+        ? []
+        : diagnosePortableSystem({
+            commands: system.commands?.map((command) => command.kind),
+            eventWrites: system.eventWrites,
+            queries: system.queries,
+            resourceWrites: system.resourceWrites,
+            services: system.services,
+            source: system.script.source,
+            systemName: system.name,
+            writes: system.writes,
+          }),
+    ),
+  ];
   if (diagnostics.length > 0 || scriptedSystems.length === 0) {
     return { diagnostics };
   }
 
   const handles = scriptHandleNames(scriptedSystems).map((name) => `const ${name} = Object.freeze({ name: ${JSON.stringify(name)} });`);
-  const declarations = scriptedSystems.map((system) => `const ${system.script.exportName} = ${normalizeSystemSource(system.script.source)};`);
+  const declarations = scriptedSystems.map((system) => `const ${system.script.exportName} = ${normalizeSystemSource(system.script.source ?? "")};`);
   const exports = scriptedSystems.map((system) => `  ${JSON.stringify(system.script.exportName)}: ${system.script.exportName},`);
   const systemIds = scriptedSystems.map((system) => `  ${JSON.stringify(system.script.exportName)}: ${JSON.stringify(system.name)},`);
   return {

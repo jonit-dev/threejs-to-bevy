@@ -224,3 +224,41 @@ test("should expose stable entity context API", () => {
   assert.equal(system.name, "moveTarget");
   assert.equal(typeof system.run, "function");
 });
+
+test("should serialize system script source metadata", () => {
+  const world = new World().addSystem(
+    update("kartArcadePhysics", {
+      script: {
+        export: "kartArcadePhysics",
+        hash: "sha256-deadbeef",
+        module: "src/scripts/kartArcadePhysics.ts",
+      },
+      services: ["ui.read", "audio.play"],
+    }),
+  );
+
+  assert.deepEqual(world.toJSON().systems[0]?.script, {
+    exportName: "system_kartArcadePhysics",
+    sourceRef: {
+      export: "kartArcadePhysics",
+      hash: "sha256-deadbeef",
+      module: "src/scripts/kartArcadePhysics.ts",
+      systemId: "kartArcadePhysics",
+    },
+  });
+});
+
+test("should reject ambiguous and invalid system script metadata", () => {
+  assert.throws(
+    () => update("ambiguous", { run: () => undefined, script: { export: "run", module: "src/run.ts" } }),
+    (error: unknown) => error instanceof SdkError && error.code === "TN_SDK_ECS_SYSTEM_SCRIPT_AMBIGUOUS",
+  );
+  assert.throws(
+    () => update("absolute", { script: { export: "run", module: "/tmp/run.ts" } }),
+    (error: unknown) => error instanceof SdkError && error.code === "TN_SDK_ECS_SYSTEM_SCRIPT_MODULE_INVALID",
+  );
+  assert.throws(
+    () => update("invalidExport", { script: { export: "not-valid", module: "src/run.ts" } }),
+    (error: unknown) => error instanceof SdkError && error.code === "TN_SDK_ECS_SYSTEM_SCRIPT_EXPORT_INVALID",
+  );
+});

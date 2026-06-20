@@ -4,7 +4,7 @@ import type { IRuntimeConfigDeclaration } from "../time.js";
 import type { CommandDeclaration } from "./commands.js";
 import type { IQueryDeclaration } from "./query.js";
 import type { EcsFactory, IEcsDeclaration, IEcsSchema } from "./schema.js";
-import type { ISystemDeclaration, SystemSchedule, SystemService } from "./system.js";
+import type { ISystemDeclaration, ISystemScriptSourceReference, SystemSchedule, SystemService } from "./system.js";
 
 export interface IWorldEntityDeclaration {
   components: Record<string, Record<string, unknown>>;
@@ -64,7 +64,8 @@ export interface IWorldSystemDeclaration {
 
 export interface IWorldSystemScriptDeclaration {
   exportName: string;
-  source: string;
+  source?: string;
+  sourceRef?: ISystemScriptSourceReference & { systemId: string };
 }
 
 export interface IWorldQueryDeclaration {
@@ -232,15 +233,20 @@ function serializeSystem(system: ISystemDeclaration): IWorldSystemDeclaration {
     resourceReads: [...system.resourceReads],
     resourceWrites: [...system.resourceWrites],
     services: [...system.services],
-    script:
-      system.run === undefined
-        ? undefined
-        : {
-            exportName: systemExportName(system.name),
-            source: system.run.toString(),
-          },
+    script: serializeSystemScript(system),
     schedule: system.schedule,
     writes: [...system.writes],
+  };
+}
+
+function serializeSystemScript(system: ISystemDeclaration): IWorldSystemScriptDeclaration | undefined {
+  if (system.run === undefined && system.script === undefined) {
+    return undefined;
+  }
+  return {
+    exportName: systemExportName(system.name),
+    ...(system.run === undefined ? {} : { source: system.run.toString() }),
+    ...(system.script === undefined ? {} : { sourceRef: { ...system.script, systemId: system.name } }),
   };
 }
 

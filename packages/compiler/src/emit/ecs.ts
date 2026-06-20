@@ -28,7 +28,11 @@ interface IEcsSystemSnapshot {
   resourceReads: string[];
   resourceWrites: string[];
   services: IrSystemService[];
-  script?: { exportName: string; source: string };
+  script?: {
+    exportName: string;
+    source?: string;
+    sourceRef?: { export: string; hash?: string; module: string; systemId: string };
+  };
   schedule: IrSystemSchedule;
   writes: string[];
 }

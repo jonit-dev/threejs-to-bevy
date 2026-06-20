@@ -138,6 +138,7 @@ export {
   type ISystemDeclaration,
   type ISystemEntity,
   type ISystemOptions,
+  type ISystemScriptSourceReference,
   type IV4SystemConfig,
   type PortableSystem,
   type SystemSchedule,
