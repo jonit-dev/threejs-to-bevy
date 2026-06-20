@@ -21,6 +21,11 @@ export async function buildProject(projectPath: string): Promise<{ bundlePath: s
   const { emitBundle } = await import("./emit/bundle.js");
   const config = await loadProjectConfig(projectPath);
   const captured = await captureEntry(config);
+  const authoringError = captured.diagnostics.find((diagnostic) => diagnostic.severity === "error");
+  if (authoringError !== undefined) {
+    const { CompilerError } = await import("./errors.js");
+    throw new CompilerError(authoringError.code, authoringError.message, authoringError);
+  }
   const bundlePath = await emitBundle(config, captured.root);
   const { validateBundle } = await import("./validate/index.js");
   const report = await validateBundle(bundlePath);

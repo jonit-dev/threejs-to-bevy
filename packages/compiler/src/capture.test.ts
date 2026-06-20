@@ -7,6 +7,7 @@ import test from "node:test";
 
 import { captureEntry } from "./capture.js";
 import { CompilerError } from "./errors.js";
+import { buildProject } from "./index.js";
 
 test("should capture starter scene root", async () => {
   const root = await makeProject(`import { Scene } from "@threenative/sdk";\nexport default new Scene({ id: "scene" });\n`);
@@ -125,6 +126,52 @@ test("should capture modular defineGame lifecycle scenes", async () => {
     const rootObject = captured.root as Record<string, unknown>;
     assert.equal(rootObject.initialScene, "menu");
     assert.equal(Array.isArray(rootObject.scenes), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject duplicate authoring graph declarations before emit", async () => {
+  const root = await makeProject(`import { sceneA } from "./scenes/a.js";\nimport { sceneB } from "./scenes/b.js";\nvoid sceneB;\nexport default sceneA;\n`);
+  await writeConfig(root);
+  await mkdir(join(root, "src/scenes"), { recursive: true });
+  await writeFile(
+    join(root, "src/scenes/a.ts"),
+    `import { Scene } from "@threenative/sdk";\nexport const sceneA = new Scene({ id: "arena" });\n`,
+  );
+  await writeFile(
+    join(root, "src/scenes/b.ts"),
+    `import { Scene } from "@threenative/sdk";\nexport const sceneB = new Scene({ id: "arena" });\n`,
+  );
+  try {
+    await assert.rejects(
+      () => buildProject(root),
+      (error) =>
+        error instanceof CompilerError &&
+        error.code === "TN_AUTHORING_DUPLICATE_SCENE_ID" &&
+        error.diagnostic?.path === "authoring/scene/arena",
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("capture should return duplicate graph diagnostics for repair tools", async () => {
+  const root = await makeProject(`import { sceneA } from "./scenes/a.js";\nimport { sceneB } from "./scenes/b.js";\nvoid sceneB;\nexport default sceneA;\n`);
+  await mkdir(join(root, "src/scenes"), { recursive: true });
+  await writeFile(join(root, "src/scenes/a.ts"), `import { Scene } from "@threenative/sdk";\nexport const sceneA = new Scene({ id: "arena" });\n`);
+  await writeFile(join(root, "src/scenes/b.ts"), `import { Scene } from "@threenative/sdk";\nexport const sceneB = new Scene({ id: "arena" });\n`);
+  try {
+    const captured = await captureEntry({
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project",
+      version: "0.1.0",
+    });
+
+    assert.equal(captured.diagnostics[0]?.code, "TN_AUTHORING_DUPLICATE_SCENE_ID");
+    assert.deepEqual(captured.diagnostics[0]?.limit, ["src/scenes/a.ts", "src/scenes/b.ts"]);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -354,4 +401,16 @@ async function makeProject(source: string): Promise<string> {
   await mkdir(join(root, "src"));
   await writeFile(join(root, "src/game.ts"), source);
   return root;
+}
+
+async function writeConfig(root: string): Promise<void> {
+  await writeFile(
+    join(root, "threenative.config.json"),
+    `${JSON.stringify({
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      schema: "threenative.project",
+      version: "0.1.0",
+    }, null, 2)}\n`,
+  );
 }

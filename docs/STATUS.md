@@ -44,7 +44,9 @@ deterministic normalization, and duplicate declaration diagnostics before IR
 flattening. `captureEntry()` now also returns `{ graph, diagnostics }` alongside
 the existing root and summary fields, preserving compatibility for existing
 callers while exposing source modules and compatibility provenance for modular
-authoring. Conflict surfacing and provenance emission remain follow-up slices.
+authoring. Build now fails on graph conflict diagnostics before emitting IR, so
+duplicate source declarations surface as structured compiler errors. Provenance
+emission remains a follow-up slice.
 
 Native Bevy UI now installs a dedicated overlay UI camera above authored scene cameras so retained UI stays visible over multi-camera/viewport scenes. The native `Minimap` widget preserves authored bounds/paths/static markers and syncs live resource-bound markers; focused proof lives in `examples/bevy-camera-minimap-verification/artifacts/bevy-camera-minimap-proof/`.
 
