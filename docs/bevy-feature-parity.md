@@ -54,7 +54,11 @@ implementation:
   `SceneContainer` entities with viewable multi-lane moving-cube web/Bevy
   conformance coverage.
 - Broader authoring-tool UX remains outside this V10 batch except for bounded
-  visual panel evidence explicitly promoted below.
+  visual panel evidence explicitly promoted below. Tooling now includes
+  `tn model-test` for one-model proof projects, `tn screenshot`/`tn record` for
+  direct Playwright proof artifacts, and `tn verify --json` projected nonblank
+  bounds diagnostics; these are CLI/runtime QA aids, not new portable Bevy
+  runtime capabilities.
 
 Unchecked rows below should remain unchecked until their V10 owner adds SDK/IR,
 validation, compiler, web, Bevy, conformance, docs, and artifact evidence, or

@@ -26,7 +26,14 @@ Current contributor entry points:
 `tn asset inspect <path> [--json]` is available for local glTF/GLB triage. It
 reports accessor-derived bounds with node transforms, external/embedded image
 and buffer dependencies, missing-file diagnostics, and gameplay-scale
-calibration hints before a model is placed in a scene.
+calibration hints before a model is placed in a scene. `tn model-test
+<asset-path> [--out <dir>] [--verify]` now turns those inspection hints into a
+one-model proof project with copied dependencies, ruler/grid/bounds reference,
+and optional build/validation. `tn screenshot --url <preview-url> --out
+<file.png>` and `tn record --url <preview-url> --out <file.webm|file.mp4>`
+provide direct Playwright still/video proof capture; MP4 conversion requires
+`ffmpeg`, while WebM is captured directly by Chromium. `tn verify --json` also
+reports projected nonblank bounds/occupancy for the first captured frame.
 
 ```bash
 pnpm check:names

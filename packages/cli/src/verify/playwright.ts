@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { chromium } from "playwright";
 
 import { readPngFrame } from "./compareImages.js";
-import { analyzeNonblank, compareFrames, defaultDiffThreshold, defaultNonblankThreshold, type IPixelFrame } from "./imageAnalysis.js";
+import { analyzeNonblank, analyzeProjectedBounds, compareFrames, defaultDiffThreshold, defaultNonblankThreshold, type IPixelFrame } from "./imageAnalysis.js";
 import { likelyDiagnostic } from "./diagnostics.js";
 import { reportStatus, type IVerificationDiagnostic, type IVerificationReport } from "./report.js";
 
@@ -105,6 +105,7 @@ export async function verifyWebPreview(options: IPlaywrightVerifyOptions): Promi
     } else {
       const nonblank = analyzeNonblank(firstFrame, defaultNonblankThreshold);
       checks.nonblank = nonblank;
+      checks.projectedBounds = analyzeProjectedBounds(firstFrame, defaultNonblankThreshold);
       if (!nonblank.ok) {
         diagnostics.push(likelyDiagnostic("TN_VERIFY_SCREENSHOT_BLANK", "Rendered canvas appears blank or near-blank.", "camera/framing"));
       }

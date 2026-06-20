@@ -145,6 +145,9 @@ tn validate
 tn build
 tn package --target desktop
 tn verify
+tn model-test assets/hero.glb --out artifacts/model-test --verify
+tn screenshot --url http://127.0.0.1:5173 --out artifacts/proof/frame.png
+tn record --url http://127.0.0.1:5173 --out artifacts/proof/clip.webm --seconds 5
 ```
 
 Command expectations:
@@ -161,6 +164,16 @@ Command expectations:
 - `tn package --target desktop` emits a local desktop artifact directory with a
   copied `game.bundle`, package manifest, and Bevy runtime argument file.
 - `tn verify` runs visual self-verification for the web preview.
+- `tn model-test <asset-path>` generates a one-model proof project with copied
+  GLB/glTF assets, dependency copies, a 1m ruler, translucent bounds marker,
+  and calibration-derived camera/scale hints. Add `--verify` to build and
+  validate the generated project.
+- `tn screenshot --url <preview-url> --out <file.png>` captures a PNG proof
+  frame from a running web preview using the same Playwright browser stack as
+  visual verification.
+- `tn record --url <preview-url> --out <file.webm|file.mp4> --seconds <n>`
+  records a short Chromium video. WebM is captured directly; MP4 requires
+  `ffmpeg` on `PATH` for conversion.
 - `tn help <topic>` gives task-oriented references for scaffolding, assets,
   camera, transform, visual QA, screenshot, and record workflows.
 - `tn doctor` inspects project setup, package scripts, source entrypoint, and
@@ -212,9 +225,10 @@ tn help record
 
 The help topics call out common visual failure modes such as black canvas,
 HUD-only frames, loaded-but-invisible models, missing external textures, camera
-clipping, and transform scale wipe risks. Dedicated `tn screenshot` and
-`tn record` commands are not implemented yet; their current help topics point
-agents to `tn verify` and `tn compare-images` as the available proof workflow.
+clipping, and transform scale wipe risks. Use `tn screenshot` for still proof,
+`tn record` for short motion proof, and `tn verify --json` when you need the
+runtime report fields including canvas, nonblank output, frame diff, and
+projected nonblank bounds/occupancy diagnostics.
 
 Post-V1 commands can add target-specific packaging, profiling, conversion, and
 environment doctor flows once the core loop is stable.

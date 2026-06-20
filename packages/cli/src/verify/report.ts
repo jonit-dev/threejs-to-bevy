@@ -38,6 +38,15 @@ export interface IFrameDiffCheck {
   threshold: number;
 }
 
+export interface IProjectedBoundsCheck {
+  height: number;
+  nonblankPixelRatio: number;
+  ok: boolean;
+  width: number;
+  x: number;
+  y: number;
+}
+
 export interface IVerificationReport {
   artifacts: {
     effectLogPath?: string;
@@ -48,6 +57,7 @@ export interface IVerificationReport {
     canvas?: ICanvasCheck;
     frameDiff?: IFrameDiffCheck;
     nonblank?: INonblankCheck;
+    projectedBounds?: IProjectedBoundsCheck;
   };
   debug: {
     browserLogs: string[];

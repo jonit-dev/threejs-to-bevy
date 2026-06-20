@@ -12,6 +12,15 @@ export interface IPixelCheck {
   threshold: number;
 }
 
+export interface IProjectedBoundsCheck {
+  height: number;
+  nonblankPixelRatio: number;
+  ok: boolean;
+  width: number;
+  x: number;
+  y: number;
+}
+
 export interface IFrameComparison extends IPixelCheck {
   averageBrightnessDelta: number;
   averageColorDelta: {
@@ -82,6 +91,45 @@ export function analyzeNonblank(frame: IPixelFrame, threshold = defaultNonblankT
     changedPixelRatio,
     ok: changedPixelRatio >= threshold,
     threshold,
+  };
+}
+
+export function analyzeProjectedBounds(frame: IPixelFrame, threshold = defaultNonblankThreshold): IProjectedBoundsCheck {
+  const totalPixels = frame.width * frame.height;
+  let minX = frame.width;
+  let minY = frame.height;
+  let maxX = -1;
+  let maxY = -1;
+  let visiblePixels = 0;
+
+  for (let y = 0; y < frame.height; y += 1) {
+    for (let x = 0; x < frame.width; x += 1) {
+      const index = (y * frame.width + x) * 4;
+      const red = frame.data[index] ?? 0;
+      const green = frame.data[index + 1] ?? 0;
+      const blue = frame.data[index + 2] ?? 0;
+      const alpha = frame.data[index + 3] ?? 0;
+      const brightest = Math.max(red, green, blue);
+      const darkest = Math.min(red, green, blue);
+      if (alpha > 0 && (brightest > 12 || brightest - darkest > 8)) {
+        visiblePixels += 1;
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+      }
+    }
+  }
+
+  const nonblankPixelRatio = totalPixels <= 0 ? 0 : visiblePixels / totalPixels;
+  const empty = maxX < minX || maxY < minY;
+  return {
+    height: empty ? 0 : maxY - minY + 1,
+    nonblankPixelRatio,
+    ok: nonblankPixelRatio >= threshold,
+    width: empty ? 0 : maxX - minX + 1,
+    x: empty ? 0 : minX,
+    y: empty ? 0 : minY,
   };
 }
 

@@ -11,8 +11,10 @@ import { devCommand } from "./commands/dev.js";
 import { doctorCommand } from "./commands/doctor.js";
 import { editorCommand } from "./commands/editor.js";
 import { helpCommand } from "./commands/help.js";
+import { modelTestCommand } from "./commands/modelTest.js";
 import { packageCommand } from "./commands/package.js";
 import { validateProject } from "./commands/validate.js";
+import { recordCommand, screenshotCommand } from "./commands/visualProof.js";
 import { verifyCommand } from "./commands/verify.js";
 import { type ICommandResult } from "./diagnostics.js";
 
@@ -42,6 +44,11 @@ const commands: Record<string, ICommandDefinition> = {
     description: "Show task-oriented help for scaffold, assets, camera, transform, visual QA, screenshot, and record workflows.",
     implemented: true,
     usage: "tn help [topic] [--json]",
+  },
+  "model-test": {
+    description: "Generate a one-model proof project with scale, bounds, ruler, and camera hints.",
+    implemented: true,
+    usage: "tn model-test <asset-path> [--out <dir>] [--verify] [--json]",
   },
   doctor: {
     description: "Inspect project setup, scripts, source entrypoint, and bundle files with actionable diagnostics.",
@@ -77,6 +84,16 @@ const commands: Record<string, ICommandDefinition> = {
     description: "Create a local desktop package artifact from a bundle.",
     implemented: true,
     usage: "tn package --target desktop --bundle <path> [--runtime bevy|webview] [--format portable|archive|installer] [--out <path>] [--json]",
+  },
+  screenshot: {
+    description: "Capture a PNG proof frame from a web preview URL.",
+    implemented: true,
+    usage: "tn screenshot --url <preview-url> --out <file.png> [--json]",
+  },
+  record: {
+    description: "Record a short WebM/MP4 proof clip from a web preview URL.",
+    implemented: true,
+    usage: "tn record --url <preview-url> --out <file.webm|file.mp4> [--seconds <n>] [--json]",
   },
   verify: {
     description: "Run visual self-verification for the web preview.",
@@ -143,6 +160,10 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
     return helpCommand(normalizedArgv.slice(1));
   }
 
+  if (commandName === "model-test") {
+    return modelTestCommand(normalizedArgv.slice(1));
+  }
+
   if (commandName === "doctor") {
     return doctorCommand(normalizedArgv.slice(1));
   }
@@ -169,6 +190,14 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
 
   if (commandName === "package") {
     return packageCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "screenshot") {
+    return screenshotCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "record") {
+    return recordCommand(normalizedArgv.slice(1));
   }
 
   if (commandName === "verify") {
