@@ -1389,6 +1389,11 @@ The editor snapshot bridge now also classifies documents as `source`,
 bundle documents are inspectable-only, runtime documents stay runtime-only, and
 kind-transition validation rejects silently promoting generated or runtime state
 into persisted source without an explicit source bridge.
+Structured editor source patches are now part of the IR editor contract. Patches
+carry stable patch/declaration IDs, durable source document paths, JSON pointer
+targets, operations, values, and reload policies; validation rejects generated
+bundle/cache paths, runtime handles, computed transform data, and generated
+script code so editor persistence routes through source-owned documents.
 
 The next V8 editor plumbing slice exposes those helpers through the CLI as
 `tn editor snapshot --bundle <path>`, `tn editor apply --snapshot <path>

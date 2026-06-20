@@ -572,6 +572,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 
 - [x] Local editor project snapshot validation
 - [x] Editor document classification for source, generated, runtime, and derived snapshots
+- [x] Structured editor source patch validation over durable source documents
 - [x] Deterministic structured bundle-relative JSON diffs
 - [x] CLI entry points for `tn editor snapshot`, `tn editor apply`, and `tn editor diff`
 - [x] `P1` Visual editor UI and inspector panels

@@ -20,6 +20,19 @@ export interface IEditorDocumentClassification {
   sourcePath?: string;
 }
 
+export type EditorSourcePatchOperation = "add" | "remove" | "replace";
+export type EditorSourcePatchReloadPolicy = "assetsOnly" | "fullReload" | "hotReload" | "reject";
+
+export interface IEditorSourcePatch {
+  declarationId: string;
+  id: string;
+  operation: EditorSourcePatchOperation;
+  reloadPolicy: EditorSourcePatchReloadPolicy;
+  sourceDocument: string;
+  targetPath: string;
+  value?: unknown;
+}
+
 export interface IEditorInspectorNode {
   children: IEditorInspectorNode[];
   components: string[];
@@ -129,6 +142,8 @@ export type EditorProjectDiffOperation =
 
 const documentKinds = new Set<EditorDocumentKind>(["derived", "generated", "runtime", "source"]);
 const documentAccessModes = new Set<EditorDocumentAccess>(["derivedView", "inspectableOnly", "runtimeOnly", "sourcePersistable"]);
+const sourcePatchOperations = new Set<EditorSourcePatchOperation>(["add", "remove", "replace"]);
+const sourcePatchReloadPolicies = new Set<EditorSourcePatchReloadPolicy>(["assetsOnly", "fullReload", "hotReload", "reject"]);
 
 export function validateEditorProjectSnapshot(snapshot: unknown, path = "editor.project.json"): IIrDiagnostic[] {
   const diagnostics: IIrDiagnostic[] = [];
@@ -256,6 +271,87 @@ export function validateEditorDocumentKindTransition(
     }];
   }
   return [];
+}
+
+export function validateEditorSourcePatch(patch: unknown, path = "editor.sourcePatch.json"): IIrDiagnostic[] {
+  const diagnostics: IIrDiagnostic[] = [];
+  if (!isRecord(patch)) {
+    return [{ code: "TN_IR_EDITOR_SOURCE_PATCH_INVALID", message: "Editor source patch must be a JSON object.", path, severity: "error" }];
+  }
+  if (!isLogicalId(patch.id)) {
+    diagnostics.push({ code: "TN_IR_EDITOR_SOURCE_PATCH_ID_INVALID", message: "Editor source patch id must be a stable logical id.", path: `${path}/id`, severity: "error" });
+  }
+  if (!isLogicalId(patch.declarationId)) {
+    diagnostics.push({
+      code: "TN_IR_EDITOR_SOURCE_PATCH_DECLARATION_INVALID",
+      message: "Editor source patch declarationId must be a stable logical id.",
+      path: `${path}/declarationId`,
+      severity: "error",
+    });
+  }
+  if (typeof patch.sourceDocument !== "string" || !isDurableSourceDocumentPath(patch.sourceDocument)) {
+    diagnostics.push({
+      code: "TN_IR_EDITOR_SOURCE_PATCH_DOCUMENT_INVALID",
+      message: "Editor source patch sourceDocument must target a durable source document path.",
+      path: `${path}/sourceDocument`,
+      severity: "error",
+      suggestion: "Patch source documents under src/ or scenes/ instead of generated bundles, caches, or runtime artifacts.",
+    });
+  }
+  if (typeof patch.targetPath !== "string" || !isJsonPointer(patch.targetPath)) {
+    diagnostics.push({
+      code: "TN_IR_EDITOR_SOURCE_PATCH_TARGET_INVALID",
+      message: "Editor source patch targetPath must be a JSON pointer/source path.",
+      path: `${path}/targetPath`,
+      severity: "error",
+    });
+  } else if (isGeneratedSourcePatchTarget(patch.targetPath)) {
+    diagnostics.push({
+      code: "TN_IR_EDITOR_SOURCE_PATCH_GENERATED_TARGET",
+      message: "Editor source patches must not target generated cache, computed transform, or generated script fields.",
+      path: `${path}/targetPath`,
+      severity: "error",
+    });
+  } else if (isRuntimeSourcePatchTarget(patch.targetPath)) {
+    diagnostics.push({
+      code: "TN_IR_EDITOR_SOURCE_PATCH_RUNTIME_TARGET",
+      message: "Editor source patches must not target runtime-only handle fields.",
+      path: `${path}/targetPath`,
+      severity: "error",
+    });
+  }
+  if (typeof patch.operation !== "string" || !sourcePatchOperations.has(patch.operation as EditorSourcePatchOperation)) {
+    diagnostics.push({ code: "TN_IR_EDITOR_SOURCE_PATCH_OPERATION_INVALID", message: "Editor source patch operation must be add, remove, or replace.", path: `${path}/operation`, severity: "error" });
+  }
+  if (typeof patch.reloadPolicy !== "string" || !sourcePatchReloadPolicies.has(patch.reloadPolicy as EditorSourcePatchReloadPolicy)) {
+    diagnostics.push({ code: "TN_IR_EDITOR_SOURCE_PATCH_RELOAD_INVALID", message: "Editor source patch reloadPolicy is invalid.", path: `${path}/reloadPolicy`, severity: "error" });
+  }
+  if (patch.operation !== "remove" && !("value" in patch)) {
+    diagnostics.push({ code: "TN_IR_EDITOR_SOURCE_PATCH_VALUE_REQUIRED", message: "Editor source patch add/replace operations require value.", path: `${path}/value`, severity: "error" });
+  }
+  if ("value" in patch) {
+    if (!isStructuredJson(patch.value)) {
+      diagnostics.push({ code: "TN_IR_EDITOR_SOURCE_PATCH_VALUE_INVALID", message: "Editor source patch value must be structured JSON data.", path: `${path}/value`, severity: "error" });
+    }
+    diagnostics.push(...validateSourcePatchValue(patch.value, `${path}/value`));
+  }
+  return diagnostics;
+}
+
+export function validateEditorSourcePatchSet(patches: unknown, path = "editor.sourcePatches.json"): IIrDiagnostic[] {
+  if (!Array.isArray(patches)) {
+    return [{ code: "TN_IR_EDITOR_SOURCE_PATCH_SET_INVALID", message: "Editor source patch set must be an array.", path, severity: "error" }];
+  }
+  return patches.flatMap((patch, index) => validateEditorSourcePatch(patch, `${path}/${index}`));
+}
+
+export function normalizeEditorSourcePatches(patches: readonly IEditorSourcePatch[]): IEditorSourcePatch[] {
+  return patches
+    .map((patch) => ({
+      ...patch,
+      ...("value" in patch ? { value: normalizeForDiff(patch.value) } : {}),
+    }))
+    .sort((left, right) => `${left.sourceDocument}:${left.declarationId}:${left.targetPath}:${left.id}`.localeCompare(`${right.sourceDocument}:${right.declarationId}:${right.targetPath}:${right.id}`));
 }
 
 function validateEditorDocumentClassifications(
@@ -771,6 +867,47 @@ function isStructuredJson(value: unknown): boolean {
   return false;
 }
 
+function validateSourcePatchValue(value: unknown, path: string): IIrDiagnostic[] {
+  const diagnostics: IIrDiagnostic[] = [];
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => diagnostics.push(...validateSourcePatchValue(item, `${path}/${index}`)));
+    return diagnostics;
+  }
+  if (!isRecord(value)) {
+    if (typeof value === "string" && /Generated by ThreeNative|scripts\.bundle\.js|system_[A-Za-z0-9_$]+/.test(value)) {
+      diagnostics.push({
+        code: "TN_IR_EDITOR_SOURCE_PATCH_GENERATED_SCRIPT",
+        message: "Editor source patches must not persist generated script code.",
+        path,
+        severity: "error",
+        suggestion: "Patch the source module/export referenced by scripts.manifest.json instead.",
+      });
+    }
+    return diagnostics;
+  }
+  for (const [key, child] of Object.entries(value)) {
+    const childPath = `${path}/${escapePointer(key)}`;
+    if (/^(?:runtimeHandle|nativeHandle|rendererObject|platformPath|runtimeOnly|threeObject|bevyEntity)$/.test(key)) {
+      diagnostics.push({
+        code: "TN_IR_EDITOR_SOURCE_PATCH_RUNTIME_HANDLE",
+        message: "Editor source patch values must not contain runtime-only handles.",
+        path: childPath,
+        severity: "error",
+      });
+    }
+    if (/^(?:computedTransform|computedWorldTransform|generatedScript|generatedSource)$/.test(key)) {
+      diagnostics.push({
+        code: "TN_IR_EDITOR_SOURCE_PATCH_GENERATED_VALUE",
+        message: "Editor source patch values must not contain computed transforms or generated script data.",
+        path: childPath,
+        severity: "error",
+      });
+    }
+    diagnostics.push(...validateSourcePatchValue(child, childPath));
+  }
+  return diagnostics;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -788,4 +925,34 @@ function isBundleRelativeJsonPath(value: string): boolean {
     !value.split("/").includes("..") &&
     !value.split("/").includes("")
   );
+}
+
+function isLogicalId(value: unknown): value is string {
+  return typeof value === "string" && /^[A-Za-z][A-Za-z0-9_.:-]*$/.test(value);
+}
+
+function isJsonPointer(value: string): boolean {
+  return value === "" || value.startsWith("/");
+}
+
+function isDurableSourceDocumentPath(value: string): boolean {
+  return (
+    (value.startsWith("src/") || value.startsWith("scenes/")) &&
+    !value.startsWith("/") &&
+    !value.includes("\\") &&
+    !value.split("/").includes("..") &&
+    !value.includes("/dist/") &&
+    !value.includes("/artifacts/") &&
+    !value.includes(".bundle/") &&
+    !value.endsWith("scripts.bundle.js") &&
+    !value.endsWith(".generated.json")
+  );
+}
+
+function isGeneratedSourcePatchTarget(value: string): boolean {
+  return /(?:^|\/)(?:dist|artifacts|cache|computed|computedTransform|generatedScript|generatedSource|scripts\.bundle\.js)(?:\/|$)/.test(value);
+}
+
+function isRuntimeSourcePatchTarget(value: string): boolean {
+  return /(?:^|\/)(?:runtimeHandle|nativeHandle|rendererObject|platformPath|runtimeOnly|threeObject|bevyEntity)(?:\/|$)/.test(value);
 }
