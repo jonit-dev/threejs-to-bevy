@@ -25,6 +25,19 @@ test("ui should dispatch pause action from button", () => {
   assert.deepEqual(rendered.actions, [{ action: "Pause", node: "pause" }]);
 });
 
+test("ui should update minimap markers from resource binding", () => {
+  const world = makeWorld();
+  world.resources = { ...world.resources, Minimap: { state: JSON.stringify({ markers: [{ x: 1, z: 2, color: "#f97316", label: "P" }] }) } };
+  const rendered = renderUi(makeUi(), world);
+
+  assert.deepEqual(rendered.root.children[2]?.minimap?.markers, [{ x: 1, z: 2, color: "#f97316", label: "P" }]);
+
+  world.resources = { ...world.resources, Minimap: { state: JSON.stringify({ markers: [{ x: 5, z: 6, color: "#22d3ee" }] }) } };
+  rendered.update();
+
+  assert.deepEqual(rendered.root.children[2]?.minimap?.markers, [{ x: 5, z: 6, color: "#22d3ee" }]);
+});
+
 function makeUi(): IUiIr {
   return {
     schema: "threenative.ui",
@@ -35,6 +48,16 @@ function makeUi(): IUiIr {
       children: [
         { id: "health", kind: "bar", max: 10, binding: { kind: "resource", name: "Health", field: "current" } },
         { id: "pause", kind: "button", label: "Pause", action: "Pause" },
+        {
+          id: "minimap",
+          kind: "minimap",
+          binding: { kind: "resource", name: "Minimap", field: "state" },
+          minimap: {
+            bounds: { minX: 0, maxX: 10, minZ: 0, maxZ: 10 },
+            paths: [{ points: [[0, 0], [10, 10]], color: "#ffffff" }],
+            markers: [],
+          },
+        },
       ],
     },
   };

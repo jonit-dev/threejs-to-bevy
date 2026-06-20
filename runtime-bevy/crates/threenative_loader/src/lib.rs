@@ -1284,6 +1284,7 @@ pub struct UiNodeIr {
     pub id: String,
     pub image: Option<UiImageMetadataIr>,
     pub kind: String,
+    pub minimap: Option<UiMinimapMetadataIr>,
     pub label: Option<String>,
     pub layout: Option<UiLayoutIr>,
     pub max: Option<f32>,
@@ -1312,6 +1313,43 @@ pub enum UiBindingIr {
         entity: String,
         field: Option<String>,
     },
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UiMinimapMetadataIr {
+    pub background_color: Option<String>,
+    pub bounds: UiMinimapBoundsIr,
+    #[serde(default)]
+    pub markers: Vec<UiMinimapMarkerIr>,
+    #[serde(default)]
+    pub paths: Vec<UiMinimapPathIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UiMinimapBoundsIr {
+    pub max_x: f32,
+    pub max_z: f32,
+    pub min_x: f32,
+    pub min_z: f32,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct UiMinimapMarkerIr {
+    pub color: Option<String>,
+    pub label: Option<String>,
+    pub radius: Option<f32>,
+    pub x: f32,
+    pub z: f32,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct UiMinimapPathIr {
+    pub color: Option<String>,
+    #[serde(default)]
+    pub points: Vec<[f32; 2]>,
+    pub width: Option<f32>,
 }
 
 #[derive(Clone, Debug, Deserialize)]

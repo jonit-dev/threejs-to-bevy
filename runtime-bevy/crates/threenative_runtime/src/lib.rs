@@ -408,6 +408,12 @@ fn run_scripted_runtime_systems(
     mut transforms: Query<(&ThreeNativeId, &mut Transform)>,
     mut materials: Query<(&ThreeNativeId, &mut Handle<StandardMaterial>)>,
     mut text_nodes: Query<(&ThreeNativeId, &mut Text)>,
+    mut minimap_markers: Query<(
+        &ui::NativeUiMinimapMarker,
+        &mut Style,
+        &mut BackgroundColor,
+        &mut Visibility,
+    )>,
 ) {
     let Some(ref mut runtime) = runtime else {
         return;
@@ -434,6 +440,7 @@ fn run_scripted_runtime_systems(
     sync_scripted_transforms(&runtime.bundle, &mut transforms);
     sync_scripted_materials(&runtime.bundle, material_handles.as_deref(), &mut materials);
     sync_scripted_ui_text(&runtime.bundle, &mut text_nodes);
+    ui::sync_native_minimap_markers(&runtime.bundle, &mut minimap_markers);
 }
 
 fn sync_scripted_transforms(

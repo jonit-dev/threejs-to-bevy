@@ -24,6 +24,7 @@ fn should_report_native_accesskit_state_for_disabled_and_slider_nodes() {
                     id: "volume".to_owned(),
                     image: None,
                     kind: "slider".to_owned(),
+                    minimap: None,
                     label: None,
                     layout: Some(UiLayoutIr {
                         align: None,
@@ -74,6 +75,7 @@ fn should_report_native_accesskit_state_for_disabled_and_slider_nodes() {
                     id: "apply".to_owned(),
                     image: None,
                     kind: "button".to_owned(),
+                    minimap: None,
                     label: Some("Apply".to_owned()),
                     layout: None,
                     max: None,
@@ -95,6 +97,7 @@ fn should_report_native_accesskit_state_for_disabled_and_slider_nodes() {
             id: "settings".to_owned(),
             image: None,
             kind: "column".to_owned(),
+            minimap: None,
             label: None,
             layout: None,
             max: None,

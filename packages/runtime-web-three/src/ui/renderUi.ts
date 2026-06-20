@@ -61,6 +61,10 @@ export function renderUi(ui: IUiIr, world: IWorldIr): IRenderedUi {
 
 function renderNode(node: IUiNodeIr, world: IWorldIr): IRenderedUiNode {
   const bindingValue = resolveUiBinding(node.binding, world);
+  const dynamicMinimap = node.kind === "minimap" ? readDynamicMinimap(bindingValue) : undefined;
+  const minimap = node.minimap === undefined && dynamicMinimap === undefined
+    ? undefined
+    : ({ ...(node.minimap ?? dynamicMinimap), ...(dynamicMinimap ?? {}) } as IUiNodeIr["minimap"]);
   return {
     ...(node.action === undefined ? {} : { action: node.action }),
     ...(node.accessibilityLabel === undefined ? {} : { accessibilityLabel: node.accessibilityLabel }),
@@ -75,7 +79,7 @@ function renderNode(node: IUiNodeIr, world: IWorldIr): IRenderedUiNode {
     ...(node.layout === undefined ? {} : { layout: node.layout }),
     ...(node.max === undefined ? {} : { max: node.max }),
     ...(node.min === undefined ? {} : { min: node.min }),
-    ...(node.minimap === undefined ? {} : { minimap: node.minimap }),
+    ...(minimap === undefined ? {} : { minimap }),
     ...(node.navigation === undefined ? {} : { navigation: node.navigation }),
     ...(node.orientation === undefined ? {} : { orientation: node.orientation }),
     ...(node.role === undefined ? {} : { role: node.role }),
@@ -87,6 +91,26 @@ function renderNode(node: IUiNodeIr, world: IWorldIr): IRenderedUiNode {
     value: typeof bindingValue === "number" ? bindingValue : node.value,
     ...(node.valueText === undefined ? {} : { valueText: node.valueText }),
   };
+}
+
+function readDynamicMinimap(value: unknown): IUiNodeIr["minimap"] | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  const parsed = typeof value === "string" ? parseJsonRecord(value) : value;
+  if (parsed === undefined || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return undefined;
+  }
+  return parsed as IUiNodeIr["minimap"];
+}
+
+function parseJsonRecord(value: string): Record<string, unknown> | undefined {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return parsed !== null && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, unknown> : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function findNode(node: IUiNodeIr, nodeId: string): IUiNodeIr | undefined {

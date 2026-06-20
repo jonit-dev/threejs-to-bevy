@@ -11,8 +11,9 @@ use serde::Serialize;
 use thiserror::Error;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{
-    UiFontAssetIr, UiGradientIr, UiImageMetadataIr, UiIr, UiNodeIr, UiRichTextSpanIr, UiShadowIr,
-    UiStyleIr,
+    UiFontAssetIr, UiGradientIr, UiImageMetadataIr, UiIr, UiMinimapBoundsIr,
+    UiMinimapMarkerIr, UiNodeIr, UiRichTextSpanIr, UiShadowIr, UiStyleIr, LoadedBundle,
+    UiBindingIr,
 };
 
 #[derive(Clone, Component, Debug, Eq, PartialEq)]
@@ -44,6 +45,17 @@ pub struct NativeUiFocusable(pub bool);
 #[derive(Clone, Component, Debug, PartialEq)]
 pub struct NativeUiScrollContainer {
     pub offset_y: f32,
+}
+
+#[derive(Clone, Component, Debug, PartialEq)]
+pub struct NativeUiMinimapMarker {
+    pub index: usize,
+    pub root_id: String,
+}
+
+#[derive(Clone, Component, Debug, PartialEq)]
+pub struct NativeUiMinimapPathPoint {
+    pub root_id: String,
 }
 
 #[derive(Clone, Component, Debug, Eq, PartialEq)]
@@ -391,6 +403,7 @@ fn build_node(node: &UiNodeIr, path: &str) -> Result<NativeUiNode, UiDiagnostic>
             | "column"
             | "contextMenu"
             | "image"
+            | "minimap"
             | "row"
             | "scrollbar"
             | "slider"
@@ -778,6 +791,15 @@ fn spawn_node(
                 ..Default::default()
             })
             .id(),
+        "minimap" => world
+            .spawn(NodeBundle {
+                style: minimap_style(node),
+                background_color: minimap_background_color(node),
+                border_color: border_color(node),
+                border_radius: border_radius(node),
+                ..Default::default()
+            })
+            .id(),
         "image" => world
             .spawn((
                 ImageBundle {
@@ -943,6 +965,25 @@ fn bar_style(node: &UiNodeIr) -> Style {
     apply_layout(&mut style, node.layout.as_ref());
     apply_visual_style(&mut style, node.style.as_ref());
     style
+}
+
+fn minimap_style(node: &UiNodeIr) -> Style {
+    let mut style = leaf_style(node);
+    style.position_type = PositionType::Relative;
+    style.overflow = Overflow::clip();
+    style.padding = UiRect::ZERO;
+    style
+}
+
+fn minimap_background_color(node: &UiNodeIr) -> BackgroundColor {
+    BackgroundColor(styled_color(
+        node.minimap
+            .as_ref()
+            .and_then(|minimap| minimap.background_color.as_ref())
+            .or_else(|| node.style.as_ref().and_then(|style| style.background_color.as_ref())),
+        (0.03, 0.07, 0.12, 0.94),
+        node.style.as_ref().and_then(|style| style.opacity),
+    ))
 }
 
 fn ui_image(world: &World, node: &UiNodeIr) -> UiImage {
@@ -1149,6 +1190,83 @@ pub fn dispatch_native_ui_actions(
     }
 }
 
+pub fn sync_native_minimap_markers(
+    bundle: &LoadedBundle,
+    markers: &mut Query<(
+        &NativeUiMinimapMarker,
+        &mut Style,
+        &mut BackgroundColor,
+        &mut Visibility,
+    )>,
+) {
+    let Some(ui) = bundle.ui.as_ref() else {
+        return;
+    };
+    for (marker, mut style, mut background, mut visibility) in markers.iter_mut() {
+        let Some(node) = find_node_by_id(&ui.root, &marker.root_id) else {
+            continue;
+        };
+        let Some(minimap) = node.minimap.as_ref() else {
+            continue;
+        };
+        let dynamic_markers = node
+            .binding
+            .as_ref()
+            .and_then(|binding| minimap_binding_value(bundle, binding))
+            .and_then(|value| minimap_markers_from_value(&value));
+        let marker_data = dynamic_markers
+            .as_ref()
+            .and_then(|markers| markers.get(marker.index))
+            .or_else(|| minimap.markers.get(marker.index));
+        let Some(marker_data) = marker_data else {
+            *visibility = Visibility::Hidden;
+            continue;
+        };
+        let width = layout_px(node.layout.as_ref().and_then(|layout| layout.width), 160.0);
+        let height = layout_px(node.layout.as_ref().and_then(|layout| layout.height), 120.0);
+        let radius = marker_data.radius.unwrap_or(3.0).max(2.0);
+        let (left, top) = minimap_point(marker_data.x, marker_data.z, &minimap.bounds, width, height);
+        style.left = Val::Px(left - radius);
+        style.top = Val::Px(top - radius);
+        style.width = Val::Px(radius * 2.0);
+        style.height = Val::Px(radius * 2.0);
+        *background = BackgroundColor(styled_color(marker_data.color.as_ref(), (1.0, 0.55, 0.16, 1.0), None));
+        *visibility = Visibility::Visible;
+    }
+}
+
+fn minimap_binding_value(bundle: &LoadedBundle, binding: &UiBindingIr) -> Option<serde_json::Value> {
+    match binding {
+        UiBindingIr::Resource { name, field } => {
+            let value = bundle.world.resources.get(name)?;
+            let value = match field {
+                Some(field) => value.get(field)?,
+                None => value,
+            };
+            if let Some(text) = value.as_str() {
+                serde_json::from_str(text).ok()
+            } else {
+                Some(value.clone())
+            }
+        }
+        UiBindingIr::Component { .. } => None,
+    }
+}
+
+fn minimap_markers_from_value(value: &serde_json::Value) -> Option<Vec<UiMinimapMarkerIr>> {
+    value
+        .get("markers")
+        .cloned()
+        .and_then(|markers| serde_json::from_value(markers).ok())
+}
+
+fn find_node_by_id<'a>(node: &'a UiNodeIr, id: &str) -> Option<&'a UiNodeIr> {
+    if node.id == id {
+        return Some(node);
+    }
+    node.children.iter().find_map(|child| find_node_by_id(child, id))
+}
+
 fn spawn_runtime_children(
     world: &mut World,
     parent: Entity,
@@ -1182,6 +1300,83 @@ fn spawn_runtime_children(
             .id();
         world.entity_mut(parent).push_children(&[fill]);
     }
+
+    if node.kind == "minimap" {
+        spawn_minimap_children(world, parent, node);
+    }
+}
+
+const NATIVE_MINIMAP_MARKER_CAPACITY: usize = 12;
+
+fn spawn_minimap_children(world: &mut World, parent: Entity, node: &UiNodeIr) {
+    let Some(minimap) = node.minimap.as_ref() else {
+        return;
+    };
+    let width = layout_px(node.layout.as_ref().and_then(|layout| layout.width), 160.0);
+    let height = layout_px(node.layout.as_ref().and_then(|layout| layout.height), 120.0);
+    let mut children = Vec::new();
+    for path in &minimap.paths {
+        for point in path.points.iter().step_by(4) {
+            let (left, top) = minimap_point(point[0], point[1], &minimap.bounds, width, height);
+            let dot = world
+                .spawn(NodeBundle {
+                    style: Style {
+                        position_type: PositionType::Absolute,
+                        left: Val::Px(left),
+                        top: Val::Px(top),
+                        width: Val::Px(path.width.unwrap_or(2.0).max(1.0)),
+                        height: Val::Px(path.width.unwrap_or(2.0).max(1.0)),
+                        ..Default::default()
+                    },
+                    background_color: BackgroundColor(styled_color(path.color.as_ref(), (0.75, 0.88, 1.0, 0.82), None)),
+                    border_radius: BorderRadius::all(Val::Px(4.0)),
+                    ..Default::default()
+                })
+                .insert((NativeUiMinimapPathPoint { root_id: node.id.clone() }, Name::new(format!("{}.path", node.id))))
+                .id();
+            children.push(dot);
+        }
+    }
+    let static_markers = minimap.markers.iter().cloned().collect::<Vec<_>>();
+    for index in 0..NATIVE_MINIMAP_MARKER_CAPACITY {
+        let marker = static_markers.get(index);
+        let radius = marker.and_then(|marker| marker.radius).unwrap_or(3.0).max(2.0);
+        let (left, top) = marker
+            .map(|marker| minimap_point(marker.x, marker.z, &minimap.bounds, width, height))
+            .unwrap_or((-1000.0, -1000.0));
+        let dot = world
+            .spawn(NodeBundle {
+                style: Style {
+                    position_type: PositionType::Absolute,
+                    left: Val::Px(left - radius),
+                    top: Val::Px(top - radius),
+                    width: Val::Px(radius * 2.0),
+                    height: Val::Px(radius * 2.0),
+                    ..Default::default()
+                },
+                background_color: BackgroundColor(styled_color(marker.and_then(|marker| marker.color.as_ref()), (1.0, 0.55, 0.16, 1.0), None)),
+                border_radius: BorderRadius::all(Val::Px(radius)),
+                visibility: if marker.is_some() { Visibility::Visible } else { Visibility::Hidden },
+                ..Default::default()
+            })
+            .insert((
+                NativeUiMinimapMarker { index, root_id: node.id.clone() },
+                Name::new(format!("{}.marker.{}", node.id, index)),
+            ))
+            .id();
+        children.push(dot);
+    }
+    world.entity_mut(parent).push_children(&children);
+}
+
+fn layout_px(value: Option<f32>, fallback: f32) -> f32 {
+    value.unwrap_or(fallback).max(1.0)
+}
+
+fn minimap_point(x: f32, z: f32, bounds: &UiMinimapBoundsIr, width: f32, height: f32) -> (f32, f32) {
+    let nx = ((x - bounds.min_x) / (bounds.max_x - bounds.min_x).max(f32::EPSILON)).clamp(0.0, 1.0);
+    let nz = ((z - bounds.min_z) / (bounds.max_z - bounds.min_z).max(f32::EPSILON)).clamp(0.0, 1.0);
+    (nx * width, (1.0 - nz) * height)
 }
 
 fn background_color(node: &UiNodeIr, fallback: (f32, f32, f32, f32)) -> BackgroundColor {
