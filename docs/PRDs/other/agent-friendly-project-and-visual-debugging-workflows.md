@@ -61,6 +61,10 @@ ThreeNative game without guessing or hand-building one-off harnesses.
 - glTF/GLB assets can load successfully while still being invisible due to
   scale, pivot, transform patch semantics, camera/frustum, texture dependency,
   or scene-composition issues.
+- Real asset scale is a repeated failure mode: a model can be technically loaded
+  and present in IR while being too tiny, too huge, clipped, hidden behind the
+  camera, or mismatched against lane width/colliders. Agents need a required
+  calibration loop before building the full scene.
 - Runtime `Transform` patch behavior is easy to misuse. Patching only position
   and rotation may wipe scale if semantics are replace-like instead of
   component-field merge-like. Camera rotation mutation can also create failure
@@ -110,8 +114,9 @@ with stable diagnostics instead of silently degrading.
    next commands plus reference links.
 3. Agent runs `tn doctor` to confirm package links, scripts, bundle output,
    browser preview, runtime readiness, and known diagnostics.
-4. If models are invisible, agent runs `tn asset inspect` and/or `tn model-test`
-   to prove asset bounds, texture dependencies, preview scale, and loader health.
+4. If models are invisible or visually wrong, agent runs `tn asset inspect` and/or
+   `tn model-test` to prove asset bounds, texture dependencies, preview scale,
+   screen occupancy, collider/lane-width ratio, and loader health.
 5. Agent uses documented camera/transform helpers instead of ad-hoc patching
    that can hide scale or black-screen the canvas.
 6. Agent runs `tn screenshot` or `tn record --duration <seconds>` to produce
@@ -132,6 +137,10 @@ with stable diagnostics instead of silently degrading.
 - Add asset/model inspection tools that answer the questions agents repeatedly
   need: bounds, pivot, external textures, bundle path, recommended scale, and
   isolated render proof.
+- Add a scale-calibration contract: every model-test and game template should
+  compute world-unit bounds, compare model dimensions to authored gameplay
+  units, and report whether the model is too small/large for the current camera,
+  lane width, collider, and target screen occupancy.
 - Make runtime diagnostics visible and machine-readable. Readiness must separate
   “the renderer started” from “the scene contains visible meshes, active camera,
   loaded assets, and no black canvas”.
@@ -342,6 +351,12 @@ sequenceDiagram
 - [ ] Report file type, byte size, scenes/nodes/meshes/materials, approximate
   bounds, origin/pivot, external texture/image dependencies, and missing files.
 - [ ] Report recommended preview scale and camera distance based on bounds.
+- [ ] Report calibration metrics for game use: unscaled dimensions, proposed
+  scale for a target world-unit height/length, lane-width ratio, collider ratio,
+  camera-distance range, and expected screen occupancy for common FOVs.
+- [ ] Emit warnings when a model is likely invisible or visually wrong: near-zero
+  bounds, extreme scale required, pivot far outside bounds, model behind/inside
+  the camera in bundle context, or transform/collider mismatch.
 - [ ] Detect asset paths that will not bundle correctly or whose external
   texture dependencies are outside project/bundle roots.
 
@@ -373,7 +388,12 @@ sequenceDiagram
 
 - [ ] Implement `tn model-test <asset> [--screenshot] [--out <dir>] [--json]`.
 - [ ] Generate an ephemeral scene using inspected bounds and recommended camera.
+- [ ] Include a visible world-unit ruler/grid, bounding box overlay, camera frustum
+  summary, and at least three scale presets: `1x`, `fit-target`, and
+  `gameplay-recommended`.
 - [ ] Render in web preview and save screenshot/report when capture is available.
+- [ ] Report a scale verdict (`too-small`, `ok`, `too-large`, `clipped`,
+  `unknown`) based on projected screen occupancy and bounds-vs-camera analysis.
 - [ ] Explicitly state: isolated model render proof does not prove full game
   composition, but it separates loader/asset issues from scene/camera issues.
 
@@ -511,6 +531,9 @@ sequenceDiagram
 - [ ] Expose machine-readable diagnostics for active camera, canvas size, loaded
   asset count, failed resources, visible mesh count, culled mesh count where
   practical, current scene id, and recent runtime errors.
+- [ ] Expose model visibility diagnostics where practical: per-rendered-entity
+  world-space bounds, final transform scale, projected screen-space bounds,
+  camera distance, frustum/clipping state, and material/texture load state.
 - [ ] Add optional debug overlay toggle for humans.
 - [ ] Ensure `tn doctor`, `tn screenshot`, and `tn verify` can consume the
   diagnostics without relying only on console output.
@@ -545,6 +568,10 @@ sequenceDiagram
 - [ ] Add `racing-kart` template covering the exact failure modes from the
   prototype: foreground player, visible rivals, curved track, HUD, camera helper,
   model scale, screenshot-ready composition.
+- [ ] Include an explicit scale-calibration fixture in the template: real asset
+  bounds, chosen scale rationale, lane width/collider dimensions, camera offset,
+  and before/after screenshot expectations. The template must fail visual QA if
+  the kart is tiny, clipped, hidden, or too large to read.
 - [ ] Add `tn examples list` or include example listing through `tn help
   examples` if a full examples command is too much for this PRD.
 - [ ] Include proof artifacts or fixture expectations so regressions are caught.
@@ -583,6 +610,9 @@ works end-to-end.
 - Scaffold a fresh project from source checkout.
 - Run doctor before and after build to confirm actionable findings.
 - Inspect a GLB model and run isolated model-test screenshot.
+- Confirm model scale calibration before full-scene work: asset bounds,
+  recommended scale, lane/collider ratio, camera distance, and screenshot screen
+  occupancy must be recorded.
 - Run a full game preview and capture screenshot proof.
 - Record a sub-one-minute clip with a default input script.
 - Confirm reports include artifact paths and exact unsupported/unavailable states
@@ -598,6 +628,9 @@ works end-to-end.
   readiness, resource failures, and known visual/runtime failure classes.
 - [ ] `tn asset inspect` reports GLB/glTF bounds, texture dependencies, and
   scale/camera hints.
+- [ ] `tn asset inspect` reports gameplay scale calibration: unscaled dimensions,
+  recommended scale, target world-unit size, lane/collider ratios, camera-distance
+  range, and warnings for extreme scale/pivot/visibility risks.
 - [ ] `tn model-test` can isolate a model into a generated preview scene and
   capture/report proof when the host supports it.
 - [ ] Transform patch semantics are documented and covered by tests or stable
@@ -610,6 +643,9 @@ works end-to-end.
 - [ ] Runtime debug diagnostics expose active camera, canvas, loaded assets,
   resource failures, visible mesh/scene information where practical, and recent
   runtime errors.
+- [ ] Runtime/model diagnostics expose final world bounds, final scale,
+  projected screen-space bounds, camera distance, and frustum/clipping state so
+  “asset loaded but wrong scale” is diagnosable without guessing.
 - [ ] A canonical racing/kart example or template demonstrates player kart,
   visible rivals, curved track, readable HUD, camera framing, and screenshot
   proof.
