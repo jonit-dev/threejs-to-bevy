@@ -81,6 +81,32 @@ test("authoring graph should capture modular entity prefab and resource declarat
   );
 });
 
+test("authoring graph should capture modular input ui audio and asset declarations", () => {
+  const graph = normalizeAuthoringGraph({
+    entryPath: "/project/src/game.ts",
+    projectRoot: "/project",
+    root: {},
+    sources: [
+      { path: "/project/src/assets.ts", source: 'export const hud = defineAssetModule({ id: "tex.hud", asset: textureAsset("tex.hud", "assets/hud.png") });\n' },
+      { path: "/project/src/audio.ts", source: 'export const audio = defineAudioModule({ id: "audio.arena", audio: defineAudio({}) });\n' },
+      { path: "/project/src/input.ts", source: 'export const input = defineInputModule({ id: "input.arena", input: defineInputMap({ actions: [] }) });\n' },
+      { path: "/project/src/ui.ts", source: 'export const hud = defineUiModule({ id: "ui.hud", ui: null });\n' },
+    ],
+  });
+
+  assert.deepEqual(
+    graph.declarations
+      .filter((declaration) => declaration.kind === "asset" || declaration.kind === "audio" || declaration.kind === "input" || declaration.kind === "ui")
+      .map((declaration) => [declaration.kind, declaration.id, declaration.provenance.source.modulePath]),
+    [
+      ["asset", "tex.hud", "src/assets.ts"],
+      ["audio", "audio.arena", "src/audio.ts"],
+      ["input", "input.arena", "src/input.ts"],
+      ["ui", "ui.hud", "src/ui.ts"],
+    ],
+  );
+});
+
 test("authoring graph should diagnose duplicate declaration IDs before IR flattening", () => {
   const graph = normalizeAuthoringGraph({
     entryPath: "/project/src/game.ts",

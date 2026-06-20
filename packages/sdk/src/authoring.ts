@@ -1,6 +1,9 @@
 import { SdkError } from "./errors.js";
+import type { IAssetReference } from "./assets.js";
+import type { IAudioDeclaration } from "./audio.js";
 import { World } from "./ecs/World.js";
 import type { IEcsDeclaration } from "./ecs/schema.js";
+import type { IInputMapDeclaration } from "./input.js";
 import { definePrefab, PrefabTransform, type IPrefabDeclaration } from "./prefab.js";
 import { defineScene, type ISceneLifecycleDeclaration, type ISceneLifecycleOptions } from "./sceneLifecycle.js";
 import type { Vector3Tuple } from "./math/Vector3.js";
@@ -50,12 +53,79 @@ export interface IWorldModuleOptions {
   resources?: readonly IResourceModuleDeclaration[];
 }
 
+export interface IInputModuleDeclaration {
+  authoring?: IAuthoringSourceMetadata;
+  id: string;
+  input: IInputMapDeclaration;
+}
+
+export interface IUiModuleDeclaration {
+  authoring?: IAuthoringSourceMetadata;
+  bindings: string[];
+  id: string;
+  ui: unknown;
+}
+
+export interface IAudioModuleDeclaration {
+  audio: IAudioDeclaration;
+  authoring?: IAuthoringSourceMetadata;
+  id: string;
+}
+
+export interface IAssetModuleDeclaration {
+  asset: IAssetReference;
+  authoring?: IAuthoringSourceMetadata;
+  id: string;
+}
+
 export function defineSceneModule(options: ISceneModuleOptions): ISceneModuleDeclaration {
   const scene = defineScene(options);
   const source = normalizeSourceMetadata(options.source, scene.id);
   return {
     ...scene,
     ...(source === undefined ? {} : { authoring: source }),
+  };
+}
+
+export function defineInputModule(options: { id: string; input: IInputMapDeclaration; source?: IAuthoringSourceMetadata }): IInputModuleDeclaration {
+  assertLogicalId(options.id);
+  return {
+    ...(options.source === undefined ? {} : { authoring: normalizeSourceMetadata(options.source, options.id) }),
+    id: options.id,
+    input: options.input,
+  };
+}
+
+export function defineUiModule(options: { bindings?: readonly string[]; id: string; source?: IAuthoringSourceMetadata; ui: unknown }): IUiModuleDeclaration {
+  assertLogicalId(options.id);
+  for (const binding of options.bindings ?? []) {
+    assertLogicalId(binding);
+  }
+  return {
+    ...(options.source === undefined ? {} : { authoring: normalizeSourceMetadata(options.source, options.id) }),
+    bindings: [...(options.bindings ?? [])].sort((left, right) => left.localeCompare(right)),
+    id: options.id,
+    ui: options.ui,
+  };
+}
+
+export function defineAudioModule(options: { audio: IAudioDeclaration; id: string; source?: IAuthoringSourceMetadata }): IAudioModuleDeclaration {
+  assertLogicalId(options.id);
+  return {
+    audio: options.audio,
+    ...(options.source === undefined ? {} : { authoring: normalizeSourceMetadata(options.source, options.id) }),
+    id: options.id,
+  };
+}
+
+export function defineAssetModule(options: { asset: IAssetReference; id?: string; source?: IAuthoringSourceMetadata }): IAssetModuleDeclaration {
+  const id = options.id ?? options.asset.id;
+  assertLogicalId(id);
+  assertBundleLocalAsset(options.asset, id);
+  return {
+    asset: { ...options.asset },
+    ...(options.source === undefined ? {} : { authoring: normalizeSourceMetadata(options.source, id) }),
+    id,
   };
 }
 
@@ -159,6 +229,18 @@ function sortComponents(components: readonly IEcsDeclaration[]): IEcsDeclaration
 function assertPortableData(value: unknown, label: string): void {
   if (containsRuntimeHandle(value)) {
     throw new SdkError("TN_SDK_AUTHORING_RUNTIME_HANDLE_UNSUPPORTED", `${label} data must not include runtime handles.`);
+  }
+}
+
+function assertBundleLocalAsset(asset: IAssetReference, id: string): void {
+  if (asset.sourceMode === "network" || asset.network !== undefined) {
+    throw new SdkError("TN_SDK_AUTHORING_ASSET_SOURCE_UNSUPPORTED", `Asset module '${id}' must reference bundle-local or embedded assets.`);
+  }
+  if (asset.sourceMode !== undefined && asset.sourceMode !== "bundle" && asset.sourceMode !== "embedded") {
+    throw new SdkError("TN_SDK_AUTHORING_ASSET_SOURCE_UNSUPPORTED", `Asset module '${id}' uses unsupported source mode '${asset.sourceMode}'.`);
+  }
+  if (asset.path !== undefined) {
+    normalizeSourcePath(asset.path);
   }
 }
 

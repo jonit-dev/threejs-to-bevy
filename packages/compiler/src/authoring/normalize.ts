@@ -143,6 +143,30 @@ function sourceDeclarations(sources: ReadonlyArray<IAuthoringCaptureSource>, pro
         declarations.push(sourceDeclaration(modulePath, "resource", id, match.index));
       }
     }
+    for (const match of source.source.matchAll(/\bdefineAssetModule\s*\(\s*\{[^}]*\bid\s*:\s*["']([^"']+)["']/g)) {
+      const id = match[1];
+      if (id !== undefined) {
+        declarations.push(sourceDeclaration(modulePath, "asset", id, match.index));
+      }
+    }
+    for (const match of source.source.matchAll(/\bdefineInputModule\s*\(\s*\{[^}]*\bid\s*:\s*["']([^"']+)["']/g)) {
+      const id = match[1];
+      if (id !== undefined) {
+        declarations.push(sourceDeclaration(modulePath, "input", id, match.index));
+      }
+    }
+    for (const match of source.source.matchAll(/\bdefineUiModule\s*\(\s*\{[^}]*\bid\s*:\s*["']([^"']+)["']/g)) {
+      const id = match[1];
+      if (id !== undefined) {
+        declarations.push(sourceDeclaration(modulePath, "ui", id, match.index));
+      }
+    }
+    for (const match of source.source.matchAll(/\bdefineAudioModule\s*\(\s*\{[^}]*\bid\s*:\s*["']([^"']+)["']/g)) {
+      const id = match[1];
+      if (id !== undefined) {
+        declarations.push(sourceDeclaration(modulePath, "audio", id, match.index));
+      }
+    }
     return declarations;
   });
 }

@@ -1,17 +1,25 @@
 export { SdkError } from "./errors.js";
 export {
+  defineAssetModule,
+  defineAudioModule,
   defineEntity,
+  defineInputModule,
   definePrefabModule,
   defineResourceModule,
   defineSceneModule,
+  defineUiModule,
   defineWorldModule,
+  type IAssetModuleDeclaration,
+  type IAudioModuleDeclaration,
   type IEntityModuleDeclaration,
   type IEntityModuleOptions,
+  type IInputModuleDeclaration,
   type IAuthoringSourceMetadata,
   type IPrefabModuleDeclaration,
   type IResourceModuleDeclaration,
   type ISceneModuleDeclaration,
   type ISceneModuleOptions,
+  type IUiModuleDeclaration,
   type IWorldModuleOptions,
 } from "./authoring.js";
 export {

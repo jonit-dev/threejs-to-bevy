@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { defineAudio, loopingMusic } from "./audio.js";
+import { audioAsset, networkAsset, textureAsset } from "./assets.js";
 import { BoxGeometry } from "./geometry/primitives.js";
 import { MeshStandardMaterial } from "./materials/MeshStandardMaterial.js";
-import { defineEntity, definePrefabModule, defineResourceModule, defineSceneModule, defineWorldModule } from "./authoring.js";
+import { action, defineInputMap, keyboard } from "./input.js";
+import { defineAssetModule, defineAudioModule, defineEntity, defineInputModule, definePrefabModule, defineResourceModule, defineSceneModule, defineUiModule, defineWorldModule } from "./authoring.js";
 import { defineComponent, defineResource } from "./ecs/schema.js";
 import { SdkError } from "./errors.js";
 import { primitiveActorPrefab } from "./prefab.js";
@@ -88,5 +91,38 @@ test("authoring declarations should reject runtime handles in source data", () =
   assert.throws(
     () => defineEntity({ components: [RuntimeBacked({ runtimeHandle: { id: 1 } })], id: "bad.entity" }),
     (error: unknown) => error instanceof SdkError && error.code === "TN_SDK_AUTHORING_RUNTIME_HANDLE_UNSUPPORTED",
+  );
+});
+
+test("authoring input ui audio and asset modules should wrap portable declarations", () => {
+  const input = defineInputModule({
+    id: "input.arena",
+    input: defineInputMap({ actions: [action("Jump", [keyboard("Space")])] }),
+  });
+  const ui = defineUiModule({
+    bindings: ["resource.Health", "action.Jump"],
+    id: "ui.hud",
+    ui: { id: "hud.label", kind: "Text", value: "Ready" },
+  });
+  const audio = defineAudioModule({
+    audio: defineAudio({
+      music: [loopingMusic("music.main", { asset: audioAsset("audio.music", "assets/music.ogg") })],
+    }),
+    id: "audio.arena",
+  });
+  const asset = defineAssetModule({
+    asset: textureAsset("tex.hud", "assets/hud.png"),
+  });
+
+  assert.equal(input.input.actions[0]?.id, "Jump");
+  assert.deepEqual(ui.bindings, ["action.Jump", "resource.Health"]);
+  assert.equal(audio.audio.music[0]?.id, "music.main");
+  assert.equal(asset.id, "tex.hud");
+});
+
+test("authoring asset modules should reject non-bundle-local assets", () => {
+  assert.throws(
+    () => defineAssetModule({ asset: networkAsset("tex.remote", "https://example.invalid/texture.png", { format: "png", kind: "texture" }) }),
+    (error: unknown) => error instanceof SdkError && error.code === "TN_SDK_AUTHORING_ASSET_SOURCE_UNSUPPORTED",
   );
 });
