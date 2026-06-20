@@ -68,6 +68,10 @@ in [contracts/scripting-host-matrix.md](contracts/scripting-host-matrix.md).
 The IR package exports the promoted service list and tests it against SDK
 `SystemService`, IR `IrSystemService`, web queued service calls, the Bevy native
 host service anchor, and docs so drift is caught by conformance and docs gates.
+Web and Bevy also now have focused effect-validation parity tests proving
+undeclared component writes, resource writes, events, commands, and service calls
+are rejected before any world mutation, with canonical effect-log ordering kept
+aligned across runtimes.
 
 Native Bevy UI now installs a dedicated overlay UI camera above authored scene cameras so retained UI stays visible over multi-camera/viewport scenes. The native `Minimap` widget preserves authored bounds/paths/static markers and syncs live resource-bound markers; focused proof lives in `examples/bevy-camera-minimap-verification/artifacts/bevy-camera-minimap-proof/`.
 

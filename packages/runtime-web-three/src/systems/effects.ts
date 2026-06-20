@@ -120,7 +120,7 @@ export function systemEffectLogEntries(
       system: system.name,
       tick: options.tick,
     })),
-  ];
+  ].sort((left, right) => effectLogKey(left).localeCompare(effectLogKey(right)));
 }
 
 function declaresCommand(system: IIrSystemDeclaration, command: IQueuedCommand): boolean {
@@ -160,4 +160,25 @@ function effectDiagnostic(code: string, system: IIrSystemDeclaration, path: stri
     path: `systems.ir.json/systems/${system.name}/${path}`,
     severity: "error",
   };
+}
+
+function effectLogKey(entry: ISystemEffectLogEntry): string {
+  return [
+    padNumber(entry.frame),
+    padNumber(entry.tick),
+    entry.schedule,
+    entry.system,
+    entry.kind,
+    entry.command ?? "",
+    entry.entity ?? "",
+    entry.component ?? "",
+    entry.event ?? "",
+    entry.resource ?? "",
+    entry.service ?? "",
+    JSON.stringify(entry.payload ?? entry.value ?? null),
+  ].join("\0");
+}
+
+function padNumber(value: number): string {
+  return String(value).padStart(12, "0");
 }

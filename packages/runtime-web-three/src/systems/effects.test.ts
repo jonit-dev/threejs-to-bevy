@@ -208,6 +208,67 @@ test("should reject undeclared resource writes before applying effects", () => {
   assert.deepEqual(world.resources.Score, { value: 1 });
 });
 
+test("should reject undeclared mixed effects before applying any mutation", () => {
+  const world = makeWorld();
+  world.resources = { Score: { value: 1 } };
+
+  const result = applySystemEffects(
+    world,
+    makeSystem(),
+    {
+      commands: [
+        { component: "Transform", entity: "player", kind: "setComponent", source: "entity", value: { position: [9, 0, 0] } },
+        { components: { Transform: { position: [0, 1, 0] } }, entity: "marker", kind: "spawn", source: "command" },
+      ],
+      events: [{ event: "DamageEvent", payload: { amount: 3 } }],
+      resources: [{ resource: "Score", value: { value: 2 } }],
+      services: [{ payload: { request: {}, result: { hit: false } }, service: "physics.raycast" }],
+    },
+    { frame: 0, tick: 0 },
+  );
+
+  assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.code).sort(), [
+    "TN_WEB_SYSTEM_COMMAND_UNDECLARED",
+    "TN_WEB_SYSTEM_EVENT_WRITE_UNDECLARED",
+    "TN_WEB_SYSTEM_RESOURCE_WRITE_UNDECLARED",
+    "TN_WEB_SYSTEM_SERVICE_UNDECLARED",
+    "TN_WEB_SYSTEM_WRITE_UNDECLARED",
+  ]);
+  assert.deepEqual(world.entities[0]?.components.Transform, { position: [0, 0, 0] });
+  assert.equal(world.entities.find((entity) => entity.id === "marker"), undefined);
+  assert.equal(world.events?.DamageEvent, undefined);
+  assert.deepEqual(world.resources.Score, { value: 1 });
+});
+
+test("should produce canonical effect log ordering", () => {
+  const world = makeWorld();
+  world.resources = { Score: { value: 1 } };
+
+  const result = applySystemEffects(
+    world,
+    makeSystem({
+      commands: [{ components: ["Transform"], entity: "marker", kind: "spawn" }],
+      eventWrites: ["DamageEvent"],
+      resourceWrites: ["Score"],
+      services: ["physics.raycast"],
+      writes: ["Transform"],
+    }),
+    {
+      commands: [
+        { component: "Transform", entity: "player", kind: "setComponent", source: "entity", value: { position: [1, 0, 0] } },
+        { components: { Transform: { position: [0, 1, 0] } }, entity: "marker", kind: "spawn", source: "command" },
+      ],
+      events: [{ event: "DamageEvent", payload: { amount: 3 } }],
+      resources: [{ resource: "Score", value: { value: 2 } }],
+      services: [{ payload: { request: {}, result: { hit: false } }, service: "physics.raycast" }],
+    },
+    { frame: 3, tick: 4 },
+  );
+
+  assert.deepEqual(result.diagnostics, []);
+  assert.deepEqual(result.entries.map((entry) => entry.kind), ["command", "event", "patch", "resource", "service"]);
+});
+
 function makeWorld(): IWorldIr {
   return {
     entities: [{ components: { Transform: { position: [0, 0, 0] } }, id: "player" }],

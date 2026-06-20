@@ -748,3 +748,152 @@ fn effect_diagnostic(
         severity: "error",
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use serde_json::json;
+    use threenative_loader::load_bundle;
+
+    use super::*;
+
+    #[test]
+    fn rejects_undeclared_mixed_effects_before_applying_any_mutation() {
+        let mut bundle = load_runtime_gameplay_host_bundle();
+        let system = system_by_name(&bundle, "spawnRenderable");
+
+        let result = apply_system_effects(
+            &mut bundle,
+            &system,
+            &NativeSystemEffects {
+                commands: vec![NativeSystemCommandEffect {
+                    command: "spawn".to_owned(),
+                    components: Some(json!({ "Transform": { "position": [0, 1, 0] } })),
+                    entity: Some("marker".to_owned()),
+                    ..Default::default()
+                }],
+                events: vec![NativeSystemEventEffect {
+                    event: "TimerElapsed".to_owned(),
+                    payload: json!({ "tick": 1 }),
+                }],
+                patches: vec![NativeSystemPatchEffect {
+                    component: "Visibility".to_owned(),
+                    entity: "player".to_owned(),
+                    value: json!({ "visible": false }),
+                }],
+                resources: vec![NativeSystemResourceEffect {
+                    resource: "Score".to_owned(),
+                    value: json!({ "value": 2 }),
+                }],
+                services: vec![NativeSystemServiceEffect {
+                    payload: json!({ "request": {}, "result": { "hit": false } }),
+                    service: "physics.raycast".to_owned(),
+                }],
+            },
+            0,
+            0,
+        );
+
+        let diagnostics = result.expect_err("undeclared effects should be rejected");
+        let mut codes = diagnostics
+            .iter()
+            .map(|diagnostic| diagnostic.code)
+            .collect::<Vec<_>>();
+        codes.sort();
+        assert_eq!(
+            codes,
+            vec![
+                "TN_BEVY_SYSTEM_COMMAND_UNDECLARED",
+                "TN_BEVY_SYSTEM_EVENT_WRITE_UNDECLARED",
+                "TN_BEVY_SYSTEM_RESOURCE_WRITE_UNDECLARED",
+                "TN_BEVY_SYSTEM_SERVICE_UNDECLARED",
+                "TN_BEVY_SYSTEM_WRITE_UNDECLARED",
+            ]
+        );
+        assert!(
+            bundle
+                .world
+                .entities
+                .iter()
+                .all(|entity| entity.id != "marker")
+        );
+        assert_eq!(
+            bundle
+                .world
+                .resources
+                .get("GameState")
+                .and_then(|value| value.get("phase"))
+                .and_then(Value::as_str),
+            Some("boot")
+        );
+        assert!(!bundle.world.resources.contains_key("Score"));
+        assert!(!bundle.world.events.contains_key("TimerElapsed"));
+        let player = bundle
+            .world
+            .entities
+            .iter()
+            .find(|entity| entity.id == "player")
+            .expect("fixture should include player");
+        assert!(!player.components.extra.contains_key("Visibility"));
+    }
+
+    #[test]
+    fn produces_canonical_effect_log_ordering() {
+        let mut bundle = load_runtime_gameplay_host_bundle();
+        let system = system_by_name(&bundle, "spawnRenderable");
+
+        let log = apply_system_effects(
+            &mut bundle,
+            &system,
+            &NativeSystemEffects {
+                commands: vec![NativeSystemCommandEffect {
+                    command: "spawn".to_owned(),
+                    components: Some(json!({ "Transform": { "position": [0, 1, 0] } })),
+                    entity: Some("runtime.enemy".to_owned()),
+                    ..Default::default()
+                }],
+                events: vec![NativeSystemEventEffect {
+                    event: "Spawned".to_owned(),
+                    payload: json!({ "entity": "runtime.enemy" }),
+                }],
+                patches: vec![NativeSystemPatchEffect {
+                    component: "Transform".to_owned(),
+                    entity: "player".to_owned(),
+                    value: json!({ "position": [1, 0, 0] }),
+                }],
+                resources: vec![NativeSystemResourceEffect {
+                    resource: "GameState".to_owned(),
+                    value: json!({ "combat": "engaged", "phase": "playing" }),
+                }],
+                services: Vec::new(),
+            },
+            3,
+            4,
+        )
+        .expect("declared effects should apply");
+
+        assert_eq!(
+            log.entries
+                .iter()
+                .map(|entry| entry.kind.as_str())
+                .collect::<Vec<_>>(),
+            vec!["command", "event", "patch", "resource"]
+        );
+    }
+
+    fn load_runtime_gameplay_host_bundle() -> threenative_loader::LoadedBundle {
+        let repo_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");
+        load_bundle(repo_root.join("packages/ir/fixtures/conformance/runtime-gameplay-host/game.bundle"))
+            .expect("runtime gameplay host fixture should load")
+    }
+
+    fn system_by_name(bundle: &threenative_loader::LoadedBundle, name: &str) -> SystemIr {
+        bundle
+            .systems
+            .as_ref()
+            .and_then(|systems| systems.systems.iter().find(|system| system.name == name))
+            .cloned()
+            .unwrap_or_else(|| panic!("missing fixture system '{name}'"))
+    }
+}
