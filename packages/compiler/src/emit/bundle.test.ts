@@ -424,6 +424,7 @@ test("should emit ecs schema files for world root", async () => {
     const input = JSON.parse(await readFile(join(bundlePath, "input.ir.json"), "utf8"));
     const runtimeConfig = JSON.parse(await readFile(join(bundlePath, "runtime.config.json"), "utf8"));
     const scripts = await readFile(join(bundlePath, "scripts.bundle.js"), "utf8");
+    const scriptsManifest = JSON.parse(await readFile(join(bundlePath, "scripts.manifest.json"), "utf8"));
 
     assert.equal(manifest.files.componentSchemas, "schemas/components.schema.json");
     assert.equal(manifest.files.scripts, "scripts.bundle.js");
@@ -445,6 +446,13 @@ test("should emit ecs schema files for world root", async () => {
     assert.deepEqual(runtimeConfig.renderer.bloom, { enabled: true, intensity: 0.35, threshold: 0.8 });
     assert.equal(runtimeConfig.time.fixedDelta, 1 / 30);
     assert.match(scripts, /system_applyDamage/);
+    assert.deepEqual(scriptsManifest.artifacts, [{ generated: true, path: "scripts.bundle.js", source: false }]);
+    assert.deepEqual(scriptsManifest.systems, [
+      {
+        generated: { bundle: "scripts.bundle.js", exportName: "system_applyDamage" },
+        systemId: "applyDamage",
+      },
+    ]);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

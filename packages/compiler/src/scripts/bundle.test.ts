@@ -23,6 +23,7 @@ test("should emit deterministic scripts movement system bundle", () => {
   assert.match(first.code ?? "", /const Transform = Object\.freeze/);
   assert.match(first.code ?? "", /system_movePlayer/);
   assert.deepEqual(first.diagnostics, []);
+  assert.deepEqual(first.manifest?.artifacts, [{ generated: true, path: "scripts.bundle.js", source: false }]);
 });
 
 test("should emit deterministic scripts bundle with stable system ids", () => {
@@ -52,6 +53,39 @@ test("should emit deterministic scripts bundle with stable system ids", () => {
   assert.match(first ?? "", /export const systemIds = Object\.freeze/);
   assert.match(first ?? "", /"system_aSystem": "aSystem"/);
   assert.match(first ?? "", /"system_zSystem": "zSystem"/);
+});
+
+test("should emit script manifest source provenance when available", () => {
+  const result = bundleSystemScripts([
+    {
+      name: "kartArcadePhysics",
+      script: {
+        exportName: "system_kartArcadePhysics",
+        source: "(context) => context",
+        sourceRef: {
+          export: "kartArcadePhysics",
+          hash: "sha256-deadbeef",
+          module: "src/scripts/kartArcadePhysics.ts",
+          systemId: "kartArcadePhysics",
+        },
+      },
+    },
+  ]);
+
+  assert.deepEqual(result.manifest?.systems, [
+    {
+      generated: {
+        bundle: "scripts.bundle.js",
+        exportName: "system_kartArcadePhysics",
+      },
+      source: {
+        export: "kartArcadePhysics",
+        hash: "sha256-deadbeef",
+        module: "src/scripts/kartArcadePhysics.ts",
+      },
+      systemId: "kartArcadePhysics",
+    },
+  ]);
 });
 
 test("should normalize method shorthand system functions", () => {

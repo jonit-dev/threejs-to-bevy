@@ -12,9 +12,7 @@ interface ISystemLike {
   resourceReads: string[];
   resourceWrites: string[];
   services: ISystemsIr["systems"][number]["services"];
-  script?: {
-    exportName: string;
-  };
+  script?: unknown;
   schedule: ISystemsIr["systems"][number]["schedule"];
   writes: string[];
 }
@@ -64,9 +62,16 @@ export function systemsToIr(systems: ReadonlyArray<ISystemLike>): ISystemsIr {
         resourceReads: [...system.resourceReads].sort(),
         resourceWrites: [...system.resourceWrites].sort(),
         services: [...system.services].sort(),
-        ...(system.script === undefined ? {} : { script: { bundle: "scripts.bundle.js" as const, exportName: system.script.exportName } }),
+        ...scriptIr(system.script),
         schedule: system.schedule,
         writes: [...system.writes].sort(),
       })),
   };
+}
+
+function scriptIr(script: unknown): Pick<ISystemsIr["systems"][number], "script"> {
+  if (typeof script !== "object" || script === null || !("exportName" in script) || typeof script.exportName !== "string") {
+    return {};
+  }
+  return { script: { bundle: "scripts.bundle.js", exportName: script.exportName } };
 }

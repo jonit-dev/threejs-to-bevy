@@ -2,7 +2,7 @@ import type { IIrSchemaFile, IInputIr, IRuntimeConfigIr, IWorldIr } from "@three
 import type { IrSystemCommand, IrSystemSchedule, IrSystemService, ISystemsIr } from "@threenative/ir";
 
 import { CompilerError } from "../errors.js";
-import { bundleSystemScripts } from "../scripts/bundle.js";
+import { bundleSystemScripts, type IScriptsManifest } from "../scripts/bundle.js";
 import { systemsToIr } from "./systems.js";
 
 interface IEcsWorldLike {
@@ -44,6 +44,7 @@ export interface IEcsEmitResult {
   resourceSchemas: IIrSchemaFile;
   runtimeConfig?: IRuntimeConfigIr;
   scriptBundle?: string;
+  scriptManifest?: IScriptsManifest;
   systems: ISystemsIr;
   world: IWorldIr;
 }
@@ -83,6 +84,7 @@ export function ecsToIr(world: IEcsWorldLike): IEcsEmitResult {
             window: snapshot.runtimeConfig.window,
           },
     scriptBundle: scriptBundle.code,
+    scriptManifest: scriptBundle.manifest,
     systems: systemsToIr(snapshot.systems),
     world: {
       schema: "threenative.world",

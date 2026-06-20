@@ -36,6 +36,8 @@ import { stableJson } from "./stable-json.js";
 import { emitUi } from "./ui.js";
 import { extractGltfSceneMetadata } from "../gltf/metadata.js";
 
+const SCRIPTS_MANIFEST_FILE = "scripts.manifest.json";
+
 export interface IEmitBundleOptions {
   authoringGraph?: IAuthoringGraph;
 }
@@ -203,6 +205,9 @@ export async function emitBundle(config: IProjectConfig, root: unknown, options:
       }
       if (ecs.scriptBundle !== undefined) {
         await writeFile(resolve(targetDir, IR_DOCUMENTS.scripts.fileName), ecs.scriptBundle);
+      }
+      if (ecs.scriptManifest !== undefined) {
+        await writeFile(resolve(targetDir, SCRIPTS_MANIFEST_FILE), stableJson(ecs.scriptManifest));
       }
     }
   }
@@ -414,6 +419,7 @@ function mergeEcsEmits(emits: IEcsEmitResult[]): IEcsEmitResult | undefined {
       resourceSchemas: mergeSchemaFiles(merged.resourceSchemas, current.resourceSchemas),
       runtimeConfig: current.runtimeConfig ?? merged.runtimeConfig,
       scriptBundle: [merged.scriptBundle, current.scriptBundle].filter((item): item is string => item !== undefined && item.trim() !== "").join("\n"),
+      scriptManifest: mergeScriptManifests(merged.scriptManifest, current.scriptManifest),
       systems: {
         schema: "threenative.systems",
         version: "0.1.0",
@@ -423,6 +429,21 @@ function mergeEcsEmits(emits: IEcsEmitResult[]): IEcsEmitResult | undefined {
     }),
     first,
   );
+}
+
+function mergeScriptManifests(left: IEcsEmitResult["scriptManifest"], right: IEcsEmitResult["scriptManifest"]): IEcsEmitResult["scriptManifest"] {
+  if (left === undefined) {
+    return right;
+  }
+  if (right === undefined) {
+    return left;
+  }
+  return {
+    schema: "threenative.scripts",
+    version: "0.1.0",
+    artifacts: [{ generated: true, path: "scripts.bundle.js", source: false }],
+    systems: [...left.systems, ...right.systems].sort((a, b) => a.systemId.localeCompare(b.systemId)),
+  };
 }
 
 function mergeSchemaFiles<T extends { schema: string; version: string; schemas: Record<string, unknown> }>(left: T, right: T): T {
