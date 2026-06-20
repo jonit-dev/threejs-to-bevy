@@ -5,9 +5,11 @@ import { fileURLToPath } from "node:url";
 
 import { buildCommand } from "./commands/build.js";
 import { compareImagesCommand } from "./commands/compareImages.js";
-import { createProject } from "./commands/create.js";
+import { createProject, initProject } from "./commands/create.js";
 import { devCommand } from "./commands/dev.js";
+import { doctorCommand } from "./commands/doctor.js";
 import { editorCommand } from "./commands/editor.js";
+import { helpCommand } from "./commands/help.js";
 import { packageCommand } from "./commands/package.js";
 import { validateProject } from "./commands/validate.js";
 import { verifyCommand } from "./commands/verify.js";
@@ -21,9 +23,24 @@ interface ICommandDefinition {
 
 const commands: Record<string, ICommandDefinition> = {
   create: {
-    description: "Scaffold a V1 starter project.",
+    description: "Scaffold a ThreeNative project from a maintained template.",
     implemented: true,
-    usage: "tn create <name>",
+    usage: "tn create <name> [--template <template>] [--json]",
+  },
+  init: {
+    description: "Alias for create with first-project next steps.",
+    implemented: true,
+    usage: "tn init <name> [--template <template>] [--json]",
+  },
+  help: {
+    description: "Show task-oriented help for scaffold, assets, camera, transform, visual QA, screenshot, and record workflows.",
+    implemented: true,
+    usage: "tn help [topic] [--json]",
+  },
+  doctor: {
+    description: "Inspect project setup, scripts, source entrypoint, and bundle files with actionable diagnostics.",
+    implemented: true,
+    usage: "tn doctor [--project <path>] [--json]",
   },
   validate: {
     description: "Validate a game bundle or project.",
@@ -62,7 +79,7 @@ const commands: Record<string, ICommandDefinition> = {
   },
 };
 
-const helpFlags = new Set(["--help", "-h", "help"]);
+const helpFlags = new Set(["--help", "-h"]);
 
 export function renderHelp(): string {
   const commandRows = Object.entries(commands)
@@ -74,7 +91,7 @@ export function renderHelp(): string {
 Usage:
   tn <command> [options]
 
-V1 commands:
+Commands:
 ${commandRows}
 
 Global options:
@@ -99,13 +116,25 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
   if (command === undefined) {
     return {
       exitCode: 1,
-      stderr: `Unknown command '${commandName}'. Run 'tn --help' for available V1 commands.\n`,
+      stderr: `Unknown command '${commandName}'. Run 'tn --help' for available commands or 'tn help' for task help.\n`,
       stdout: "",
     };
   }
 
   if (commandName === "create") {
     return createProject(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "init") {
+    return initProject(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "help") {
+    return helpCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "doctor") {
+    return doctorCommand(normalizedArgv.slice(1));
   }
 
   if (commandName === "validate") {
@@ -141,7 +170,7 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
     code: "TN_COMMAND_NOT_IMPLEMENTED",
     command: commandName,
     implemented: command.implemented,
-    message: `Command '${commandName}' is registered for V1 but is not implemented yet.`,
+    message: `Command '${commandName}' is registered but is not implemented yet.`,
     usage: command.usage,
   };
 

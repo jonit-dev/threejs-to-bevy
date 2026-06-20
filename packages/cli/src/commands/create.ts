@@ -12,6 +12,7 @@ import {
 } from "../templates/registry.js";
 
 interface ICreateOptions {
+  commandName?: "create" | "init";
   cwd?: string;
 }
 
@@ -22,6 +23,7 @@ const cliBin = resolve(repoRoot, "packages/cli/dist/index.js");
 const publishedPackageVersion = "0.1.0";
 
 export async function createProject(argv: readonly string[], options: ICreateOptions = {}): Promise<ICommandResult> {
+  const commandName = options.commandName ?? "create";
   const normalizedArgv = argv[0] === "--" ? argv.slice(1) : argv;
   const json = normalizedArgv.includes("--json");
   const templateFlagIndex = normalizedArgv.indexOf("--template");
@@ -35,7 +37,7 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
     return diagnosticResult(
       {
         code: "TN_CREATE_DESTINATION_REQUIRED",
-        message: `Usage: tn create <name> [${formatTemplateUsage()}] [--json]`,
+        message: `Usage: tn ${commandName} <name> [${formatTemplateUsage()}] [--json]`,
       },
       { exitCode: 1, json, stderr: true },
     );
@@ -93,11 +95,18 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
 
   const payload = {
     code: "TN_CREATE_OK",
+    command: commandName,
     legacyAliasUsed,
     legacyTemplate: legacyAliasUsed ? requestedTemplate : undefined,
     message: `Created ${definition.canonical} project at '${projectPath}'.`,
-    nextCommands: ["pnpm install", "pnpm run validate", "pnpm run build", "pnpm run verify"],
+    nextCommands: ["pnpm install", "pnpm run validate", "pnpm run build", "pnpm run dev:web", "pnpm run verify"],
     path: projectPath,
+    referenceDocs: [
+      "docs/workflows/developer-workflow.md",
+      "docs/workflows/ai-workflows.md",
+      "tn help scaffold",
+      "tn help visual-qa",
+    ],
     template: definition.canonical,
   };
 
@@ -114,8 +123,12 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
 
   return {
     exitCode: 0,
-    stdout: `${deprecation}${payload.message}\nNext: cd ${projectPath} && pnpm install && pnpm run validate\n`,
+    stdout: `${deprecation}${payload.message}\nNext commands:\n  cd ${projectPath}\n  pnpm install\n  pnpm run validate\n  pnpm run build\n  pnpm run dev:web\n  pnpm run verify\nDocs: tn help scaffold, tn help visual-qa\n`,
   };
+}
+
+export async function initProject(argv: readonly string[], options: Omit<ICreateOptions, "commandName"> = {}): Promise<ICommandResult> {
+  return createProject(argv, { ...options, commandName: "init" });
 }
 
 async function rewriteProjectTemplateMetadata(projectPath: string, canonicalTemplate: string): Promise<void> {

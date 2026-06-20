@@ -10,8 +10,11 @@ test("should print help when requested", async () => {
   const result = await dispatch(["--help"]);
 
   assert.equal(result.exitCode, 0);
-  assert.match(result.stdout, /V1 commands:/);
+  assert.match(result.stdout, /Commands:/);
   assert.match(result.stdout, /create/);
+  assert.match(result.stdout, /init/);
+  assert.match(result.stdout, /help/);
+  assert.match(result.stdout, /doctor/);
   assert.match(result.stdout, /validate/);
   assert.match(result.stdout, /build/);
   assert.match(result.stdout, /compare-images/);
@@ -25,7 +28,7 @@ test("should tolerate a leading package script separator", async () => {
   const result = await dispatch(["--", "--help"]);
 
   assert.equal(result.exitCode, 0);
-  assert.match(result.stdout, /V1 commands:/);
+  assert.match(result.stdout, /Commands:/);
 });
 
 test("should keep rendered help stable for the package bin", () => {
@@ -37,6 +40,9 @@ test("should keep rendered help stable for the package bin", () => {
   assert.match(renderHelp(), /tn editor apply --snapshot <path> --bundle <path>/);
   assert.match(renderHelp(), /tn compare-images <first\.png> <second\.png>/);
   assert.match(renderHelp(), /tn verify \[--project <path>\] \[--url <preview-url>\]/);
+  assert.match(renderHelp(), /tn init <name>/);
+  assert.match(renderHelp(), /tn help \[topic\]/);
+  assert.doesNotMatch(renderHelp(), /V1 commands:/);
 });
 
 test("should inspect scene hierarchy when bundle is valid", async () => {

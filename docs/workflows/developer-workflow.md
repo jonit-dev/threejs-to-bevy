@@ -135,7 +135,10 @@ The CLI is the backbone of local development, CI, and AI workflows. MCP tools sh
 Expected commands:
 
 ```bash
+tn init my-game
 tn create my-game
+tn help scaffold
+tn doctor --project my-game
 tn dev --target web
 tn dev --target desktop
 tn validate
@@ -146,6 +149,8 @@ tn verify
 
 Command expectations:
 
+- `tn init` is the first-project alias for `tn create`. It creates a project
+  from a maintained template and prints exact next commands.
 - `tn create` creates a project from a maintained template.
 - `tn create my-game --template v5-game-starter` creates the V5 game-first
   starter using `defineGame`, a portable scene, input, world, runtime config,
@@ -156,6 +161,60 @@ Command expectations:
 - `tn package --target desktop` emits a local desktop artifact directory with a
   copied `game.bundle`, package manifest, and Bevy runtime argument file.
 - `tn verify` runs visual self-verification for the web preview.
+- `tn help <topic>` gives task-oriented references for scaffolding, assets,
+  camera, transform, visual QA, screenshot, and record workflows.
+- `tn doctor` inspects project setup, package scripts, source entrypoint, and
+  emitted bundle files with stable diagnostics and next commands.
+
+## First Project Flow
+
+Use `tn init` when starting from an empty directory or when instructing an
+agent to create a reproducible prototype:
+
+```bash
+tn init my-game --template game-starter --json
+cd my-game
+pnpm install
+pnpm run validate
+pnpm run build
+pnpm run dev:web
+pnpm run verify
+```
+
+The JSON scaffold payload includes:
+
+- `template`: the canonical template name used.
+- `path`: the absolute project path created.
+- `nextCommands`: install, validate, build, web preview, and verify commands.
+- `referenceDocs`: workflow docs and `tn help` topics to inspect next.
+
+Run `tn doctor --project my-game --json` after scaffolding or after a failed
+build. The initial scaffold may report `TN_DOCTOR_BUNDLE_MISSING` as a warning
+until `pnpm run build` emits the configured bundle. Missing `package.json`,
+required scripts, config, source entrypoint, or bundle files are reported with
+stable diagnostic codes and exact follow-up commands.
+
+## Task Help For Visual Debugging
+
+Use `tn help` to discover agent-consumable workflows without guessing command
+names:
+
+```bash
+tn help
+tn help scaffold --json
+tn help assets
+tn help camera
+tn help transform
+tn help visual-qa
+tn help screenshot
+tn help record
+```
+
+The help topics call out common visual failure modes such as black canvas,
+HUD-only frames, loaded-but-invisible models, missing external textures, camera
+clipping, and transform scale wipe risks. Dedicated `tn screenshot` and
+`tn record` commands are not implemented yet; their current help topics point
+agents to `tn verify` and `tn compare-images` as the available proof workflow.
 
 Post-V1 commands can add target-specific packaging, profiling, conversion, and
 environment doctor flows once the core loop is stable.

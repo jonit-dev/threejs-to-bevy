@@ -4,17 +4,19 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { createProject } from "./create.js";
+import { createProject, initProject } from "./create.js";
 
 test("should create starter template files", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-create-"));
   try {
     const result = await createProject(["my-game", "--json"], { cwd: root });
-    const payload = JSON.parse(result.stdout) as { code: string; path: string; template: string };
+    const payload = JSON.parse(result.stdout) as { code: string; nextCommands: string[]; path: string; referenceDocs: string[]; template: string };
 
     assert.equal(result.exitCode, 0);
     assert.equal(payload.code, "TN_CREATE_OK");
     assert.equal(payload.template, "starter");
+    assert.equal(payload.nextCommands.includes("pnpm run dev:web"), true);
+    assert.equal(payload.referenceDocs.includes("tn help scaffold"), true);
 
     const files = await readdir(payload.path);
     assert.equal(files.includes(".gitignore"), true);
@@ -43,6 +45,51 @@ test("should create starter template files", async () => {
     assert.equal(packageJson.dependencies["@threenative/r3f"], undefined);
     assert.equal(packageJson.dependencies["@threenative/ui"], undefined);
     assert.match(packageJson.devDependencies["@threenative/cli"] ?? "", /^file:/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should initialize starter project through init alias with create payload shape", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-init-"));
+  try {
+    const result = await initProject(["my-game", "--json"], { cwd: root });
+    const payload = JSON.parse(result.stdout) as {
+      code: string;
+      command: string;
+      nextCommands: string[];
+      path: string;
+      referenceDocs: string[];
+      template: string;
+    };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.code, "TN_CREATE_OK");
+    assert.equal(payload.command, "init");
+    assert.equal(payload.template, "starter");
+    assert.deepEqual(payload.nextCommands, ["pnpm install", "pnpm run validate", "pnpm run build", "pnpm run dev:web", "pnpm run verify"]);
+    assert.equal(payload.referenceDocs.includes("docs/workflows/developer-workflow.md"), true);
+
+    const files = await readdir(payload.path);
+    assert.equal(files.includes("package.json"), true);
+    assert.equal(files.includes("threenative.config.json"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should print explicit first-project next commands in human output", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-create-human-"));
+  try {
+    const result = await createProject(["my-game"], { cwd: root });
+
+    assert.equal(result.exitCode, 0);
+    assert.match(result.stdout, /pnpm install/);
+    assert.match(result.stdout, /pnpm run validate/);
+    assert.match(result.stdout, /pnpm run build/);
+    assert.match(result.stdout, /pnpm run dev:web/);
+    assert.match(result.stdout, /pnpm run verify/);
+    assert.match(result.stdout, /tn help scaffold/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

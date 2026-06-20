@@ -59,6 +59,39 @@ The standard AI workflow is:
 7. Report changed files, validation status, and remaining risks.
 ```
 
+For a fresh project, prefer the scaffold/doctor/help loop before generating
+custom gameplay code:
+
+```bash
+tn init my-game --template game-starter --json
+cd my-game
+pnpm install
+pnpm run validate
+pnpm run build
+tn doctor --project . --json
+tn help visual-qa --json
+```
+
+`tn init` and `tn create` share the same scaffold implementation. Their JSON
+payload includes the canonical template, absolute path, exact next commands, and
+reference docs. Agents should report those commands rather than inventing a
+local setup sequence.
+
+Use task help when diagnosing a visual problem:
+
+- `tn help scaffold`: first project and template setup.
+- `tn help assets`: model paths, texture dependencies, and visibility triage.
+- `tn help camera`: camera framing, clipping, and black-canvas symptoms.
+- `tn help transform`: transform patch and scale preservation risks.
+- `tn help visual-qa`: proof workflow after preview readiness.
+- `tn help screenshot`: current still-frame proof path through `tn verify`.
+- `tn help record`: current motion proof path through multi-frame `tn verify`.
+
+`tn doctor` currently checks local project setup, required package scripts,
+source entrypoint, and bundle file presence. Runtime preview probing, dedicated
+screenshot capture, and video recording are future workflow surfaces and should
+not be claimed as implemented until their commands exist.
+
 For local CLI usage:
 
 ```bash
