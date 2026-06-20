@@ -1394,6 +1394,11 @@ carry stable patch/declaration IDs, durable source document paths, JSON pointer
 targets, operations, values, and reload policies; validation rejects generated
 bundle/cache paths, runtime handles, computed transform data, and generated
 script code so editor persistence routes through source-owned documents.
+Live preview edits are classified deterministically as source-persistable,
+runtime-only, full-reload-required, or rejected. When authoring provenance is
+present, generated/IR entities can map back to source module paths and
+declaration IDs for patch creation; unsupported live edit cases are documented
+in `docs/contracts/editor-snapshot-source-bridge.md`.
 
 The next V8 editor plumbing slice exposes those helpers through the CLI as
 `tn editor snapshot --bundle <path>`, `tn editor apply --snapshot <path>

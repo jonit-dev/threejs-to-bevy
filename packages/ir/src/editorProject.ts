@@ -33,6 +33,23 @@ export interface IEditorSourcePatch {
   value?: unknown;
 }
 
+export type EditorPreviewEditClassification = "fullReloadRequired" | "rejected" | "runtimeOnly" | "sourcePersistable";
+
+export interface IEditorPreviewEditRequest {
+  declarationId?: string;
+  document: string;
+  operation?: EditorSourcePatchOperation;
+  targetPath: string;
+  value?: unknown;
+}
+
+export interface IEditorPreviewEditResult {
+  classification: EditorPreviewEditClassification;
+  reasons: string[];
+  reloadPolicy: EditorSourcePatchReloadPolicy;
+  sourcePatch?: IEditorSourcePatch;
+}
+
 export interface IEditorInspectorNode {
   children: IEditorInspectorNode[];
   components: string[];
@@ -352,6 +369,87 @@ export function normalizeEditorSourcePatches(patches: readonly IEditorSourcePatc
       ...("value" in patch ? { value: normalizeForDiff(patch.value) } : {}),
     }))
     .sort((left, right) => `${left.sourceDocument}:${left.declarationId}:${left.targetPath}:${left.id}`.localeCompare(`${right.sourceDocument}:${right.declarationId}:${right.targetPath}:${right.id}`));
+}
+
+export function classifyEditorPreviewEdit(
+  edit: IEditorPreviewEditRequest,
+  options: { documentKinds?: Record<string, IEditorDocumentClassification>; provenance?: unknown } = {},
+): IEditorPreviewEditResult {
+  const documentKind = options.documentKinds?.[edit.document] ?? classifyEditorDocumentPath(edit.document);
+  if (!isJsonPointer(edit.targetPath) || isRuntimeSourcePatchTarget(edit.targetPath) || isGeneratedSourcePatchTarget(edit.targetPath)) {
+    return {
+      classification: "rejected",
+      reasons: ["Preview edit targets runtime-only, generated, computed, or invalid data."],
+      reloadPolicy: "reject",
+    };
+  }
+  if (documentKind.kind === "runtime") {
+    return {
+      classification: "runtimeOnly",
+      reasons: ["Preview edit targets live runtime state and is not persisted as source."],
+      reloadPolicy: "hotReload",
+    };
+  }
+  const sourceTarget = resolveEditorSourceTargetFromProvenance(options.provenance, edit.declarationId);
+  if (documentKind.kind === "source" || sourceTarget !== undefined) {
+    const sourceDocument = documentKind.kind === "source" ? documentKind.sourcePath ?? edit.document : sourceTarget?.sourceDocument;
+    const declarationId = edit.declarationId ?? sourceTarget?.declarationId;
+    if (sourceDocument !== undefined && declarationId !== undefined) {
+      const patch: IEditorSourcePatch = {
+        declarationId,
+        id: `preview.${declarationId}.${sanitizePatchId(edit.targetPath)}`,
+        operation: edit.operation ?? "replace",
+        reloadPolicy: previewReloadPolicy(edit.targetPath),
+        sourceDocument,
+        targetPath: edit.targetPath,
+        ...("value" in edit ? { value: edit.value } : {}),
+      };
+      const diagnostics = validateEditorSourcePatch(patch);
+      if (diagnostics.length === 0) {
+        return {
+          classification: "sourcePersistable",
+          reasons: ["Preview edit maps to a durable source patch."],
+          reloadPolicy: patch.reloadPolicy,
+          sourcePatch: patch,
+        };
+      }
+    }
+  }
+  if (documentKind.kind === "generated") {
+    return {
+      classification: "fullReloadRequired",
+      reasons: ["Generated bundle document edits require regeneration from source before persistence."],
+      reloadPolicy: "fullReload",
+    };
+  }
+  return {
+    classification: "rejected",
+    reasons: ["Derived editor documents are computed views and cannot be edited directly."],
+    reloadPolicy: "reject",
+  };
+}
+
+export function resolveEditorSourceTargetFromProvenance(
+  provenanceDocument: unknown,
+  declarationId: string | undefined,
+): { declarationId: string; sourceDocument: string } | undefined {
+  if (declarationId === undefined || !isRecord(provenanceDocument) || !Array.isArray(provenanceDocument.declarations)) {
+    return undefined;
+  }
+  for (const declaration of provenanceDocument.declarations) {
+    if (!isRecord(declaration) || declaration.id !== declarationId || !isRecord(declaration.provenance)) {
+      continue;
+    }
+    const provenance = declaration.provenance;
+    if (!isRecord(provenance.source) || typeof provenance.declarationId !== "string" || typeof provenance.source.modulePath !== "string") {
+      continue;
+    }
+    return {
+      declarationId: provenance.declarationId,
+      sourceDocument: provenance.source.modulePath,
+    };
+  }
+  return undefined;
 }
 
 function validateEditorDocumentClassifications(
@@ -955,4 +1053,19 @@ function isGeneratedSourcePatchTarget(value: string): boolean {
 
 function isRuntimeSourcePatchTarget(value: string): boolean {
   return /(?:^|\/)(?:runtimeHandle|nativeHandle|rendererObject|platformPath|runtimeOnly|threeObject|bevyEntity)(?:\/|$)/.test(value);
+}
+
+function sanitizePatchId(value: string): string {
+  const sanitized = value.replace(/^\/+/, "").replace(/[^A-Za-z0-9_.:-]+/g, ".").replace(/\.+/g, ".").replace(/^\.+|\.+$/g, "");
+  return sanitized === "" ? "root" : sanitized;
+}
+
+function previewReloadPolicy(targetPath: string): EditorSourcePatchReloadPolicy {
+  if (/\/assets?\//.test(targetPath)) {
+    return "assetsOnly";
+  }
+  if (/\/(?:systems|scripts|schemas)\//.test(targetPath)) {
+    return "fullReload";
+  }
+  return "hotReload";
 }

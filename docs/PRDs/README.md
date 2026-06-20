@@ -45,7 +45,7 @@ This index separates current cleanup work from historical milestone batches.
 - [Modular Template Migration and Proof](done/other/modular-template-migration-and-proof.md):
   canonical template migration to modular authoring, CLI validation, web proof,
   and native proof where claimed.
-- [Editor Snapshot and Source Patch Bridge](other/editor-snapshot-source-patch-bridge.md):
+- [Editor Snapshot and Source Patch Bridge](done/other/editor-snapshot-source-patch-bridge.md):
   source/generated/runtime document classification, structured source patches,
   live edit policy, and deterministic editor diffs.
 - [Authoring MCP Wrapper](other/authoring-mcp-wrapper.md):

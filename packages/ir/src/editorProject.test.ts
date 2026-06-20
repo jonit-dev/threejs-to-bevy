@@ -6,10 +6,12 @@ import {
   buildEditorInspectorSnapshot,
   buildEditorToolSnapshot,
   buildEditorVisualPanelSnapshot,
+  classifyEditorPreviewEdit,
   classifyEditorDocumentPath,
   diffEditorProjectSnapshots,
   type IEditorProjectSnapshot,
   normalizeEditorSourcePatches,
+  resolveEditorSourceTargetFromProvenance,
   validateEditorDocumentKindTransition,
   validateEditorPropertyEdit,
   validateEditorProjectSnapshot,
@@ -163,6 +165,92 @@ test("should reject unsafe editor source patches", () => {
     "TN_IR_EDITOR_SOURCE_PATCH_GENERATED_TARGET",
     "TN_IR_EDITOR_SOURCE_PATCH_GENERATED_SCRIPT",
   ]);
+});
+
+test("should classify preview edits and map generated entities through provenance", () => {
+  const provenance = {
+    declarations: [
+      {
+        id: "player",
+        kind: "entity",
+        provenance: {
+          declarationId: "player",
+          kind: "entity",
+          source: { modulePath: "src/scenes/arena.ecs.ts" },
+        },
+        references: [],
+      },
+    ],
+    schema: "threenative.authoring-provenance",
+  };
+
+  assert.deepEqual(resolveEditorSourceTargetFromProvenance(provenance, "player"), {
+    declarationId: "player",
+    sourceDocument: "src/scenes/arena.ecs.ts",
+  });
+
+  const generatedEdit = classifyEditorPreviewEdit(
+    {
+      declarationId: "player",
+      document: "world.ir.json",
+      targetPath: "/entities/0/components/Transform/position",
+      value: [2, 0, 0],
+    },
+    { provenance },
+  );
+
+  assert.equal(generatedEdit.classification, "sourcePersistable");
+  assert.deepEqual(generatedEdit.sourcePatch, {
+    declarationId: "player",
+    id: "preview.player.entities.0.components.Transform.position",
+    operation: "replace",
+    reloadPolicy: "hotReload",
+    sourceDocument: "src/scenes/arena.ecs.ts",
+    targetPath: "/entities/0/components/Transform/position",
+    value: [2, 0, 0],
+  });
+
+  assert.deepEqual(classifyEditorPreviewEdit({
+    document: "runtime/session.json",
+    targetPath: "/selection/entity",
+    value: "player",
+  }), {
+    classification: "runtimeOnly",
+    reasons: ["Preview edit targets live runtime state and is not persisted as source."],
+    reloadPolicy: "hotReload",
+  });
+
+  assert.deepEqual(classifyEditorPreviewEdit({
+    document: "authoring.provenance.json",
+    targetPath: "/declarations/0",
+    value: {},
+  }), {
+    classification: "rejected",
+    reasons: ["Derived editor documents are computed views and cannot be edited directly."],
+    reloadPolicy: "reject",
+  });
+});
+
+test("should classify unsupported preview edits deterministically", () => {
+  assert.deepEqual(classifyEditorPreviewEdit({
+    document: "world.ir.json",
+    targetPath: "/entities/0/components/Runtime/runtimeHandle",
+    value: "native",
+  }), {
+    classification: "rejected",
+    reasons: ["Preview edit targets runtime-only, generated, computed, or invalid data."],
+    reloadPolicy: "reject",
+  });
+
+  assert.deepEqual(classifyEditorPreviewEdit({
+    document: "world.ir.json",
+    targetPath: "/entities/0/components/Transform/position",
+    value: [1, 0, 0],
+  }), {
+    classification: "fullReloadRequired",
+    reasons: ["Generated bundle document edits require regeneration from source before persistence."],
+    reloadPolicy: "fullReload",
+  });
 });
 
 test("should reject invalid editor snapshot shape", () => {
