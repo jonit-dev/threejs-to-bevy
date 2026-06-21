@@ -255,6 +255,14 @@ export function resolveNativeCaptureInvocation(options: {
   const commandExists = options.commandExists ?? isCommandOnPath;
   if (commandExists("xvfb-run", options.env)) {
     const xvfbRun = options.commandExists === undefined ? resolveCommandOnPath("xvfb-run", options.env) ?? "xvfb-run" : "xvfb-run";
+    if (xvfbRun.startsWith("/")) {
+      return {
+        ...baseInvocation,
+        args: [xvfbRun, "-a", baseInvocation.command, ...baseInvocation.args],
+        command: "/bin/sh",
+        wrappedWithXvfb: true,
+      };
+    }
     return {
       ...baseInvocation,
       args: ["-a", baseInvocation.command, ...baseInvocation.args],
