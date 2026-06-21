@@ -241,6 +241,13 @@ lacks an explicit reason, and the Add Object modal reads the same metadata for
 disabled action explanations. `scene.set_camera` and `scene.attach_script` are
 also included in the editor operation name surface to match the authoring
 registry.
+The editor GLB authoring slice now promotes project-local model assets from
+`content/assets/*.assets.json` into concrete editor asset rows and Add Object
+Custom GLB choices. Selecting a model asset creates source-backed scene prefab,
+entity, and transform operations with the GLB/GLTF path persisted on the prefab;
+`/api/project` exposes the resulting `assetPath`, MeshRenderer inspector asset
+row, and info/error diagnostics for `/project-assets` viewport routing while
+remote model paths remain unsupported.
 The follow-up component mutation audit keeps Transform, Camera, material,
 input, system script, and UI binding rows source-editable while preserving
 explicit read-only reasons for unsupported Light and MeshRenderer prefab

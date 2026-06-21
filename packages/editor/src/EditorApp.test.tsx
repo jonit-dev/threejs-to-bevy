@@ -38,6 +38,7 @@ test("should render modal actions from modal view", () => {
   const html = renderToStaticMarkup(
     <EditorModalView
       addComponentDefinitions={[]}
+      assets={[]}
       attachedComponents={[]}
       modal="addObject"
       onAddComponent={() => {}}
@@ -60,6 +61,7 @@ test("should disable modal actions without source operations", () => {
   const html = renderToStaticMarkup(
     <EditorModalView
       addComponentDefinitions={[]}
+      assets={[]}
       attachedComponents={[]}
       modal="addObject"
       onAddComponent={() => {}}
@@ -77,6 +79,28 @@ test("should disable modal actions without source operations", () => {
   assert.match(html, /title="scene.add_entity"/);
   assert.match(html, /Terrain source operations are not promoted in this editor slice yet/);
   assert.match(html, /Custom GLB import needs a promoted asset and prefab operation before it can be enabled/);
+});
+
+test("should enable custom GLB modal actions for project model assets", () => {
+  useEditorStore.getState().reset();
+
+  const html = renderToStaticMarkup(
+    <EditorModalView
+      addComponentDefinitions={[]}
+      assets={[{ access: "sourcePersistable", id: "asset:model.house", kind: "model", label: "model.house", path: "assets/models/house.glb" }]}
+      attachedComponents={[]}
+      modal="addObject"
+      onAddComponent={() => {}}
+      onAddObject={() => {}}
+      onBuildPreview={() => {}}
+      onClose={() => {}}
+      onCreateScene={() => {}}
+      onSaveScene={() => {}}
+    />,
+  );
+
+  assert.match(html, /model.house/);
+  assert.match(html, /title="assets\/models\/house.glb"/);
 });
 
 test("should expose accessible gizmo mode controls", () => {

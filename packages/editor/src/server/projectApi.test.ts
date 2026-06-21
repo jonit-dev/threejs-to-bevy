@@ -241,6 +241,41 @@ test("should create, save, and reload default editor scene entities", async () =
   }
 });
 
+test("should load GLB prefab as scene object", async () => {
+  const root = await copyStarterProject();
+  try {
+    await mkdir(join(root, "content", "assets"), { recursive: true });
+    await writeFile(
+      join(root, "content", "assets", "models.assets.json"),
+      `${JSON.stringify({ schema: "threenative.assets", version: "0.1.0", id: "models", assets: [{ id: "model.house", path: "assets/models/house.glb", type: "model" }] }, null, 2)}\n`,
+    );
+    const addPrefab = await applyEditorOperationApi({
+      projectPath: root,
+      request: { args: { asset: "assets/models/house.glb", prefabId: "prefab.house", sceneId: "arena" }, name: "scene.add_prefab" },
+    });
+    assert.equal(addPrefab.ok, true);
+    const addEntity = await applyEditorOperationApi({
+      projectPath: root,
+      request: { args: { entityId: "house-0", prefabId: "prefab.house", sceneId: "arena" }, name: "scene.add_entity", projectRevision: addPrefab.projectRevision },
+    });
+    assert.equal(addEntity.ok, true);
+
+    const result = await loadEditorProjectApi({ projectPath: root });
+    const modelAsset = result.assets.find((asset) => asset.label === "model.house");
+    const object = result.sceneObjects.find((sceneObject) => sceneObject.id === "house-0");
+
+    assert.equal(modelAsset?.path, "assets/models/house.glb");
+    assert.equal(modelAsset?.kind, "model");
+    assert.equal(modelAsset?.access, "sourcePersistable");
+    assert.equal(object?.assetPath, "assets/models/house.glb");
+    assert.equal(object?.components?.includes("MeshRenderer"), true);
+    assert.equal(object?.inspectorRows?.some((row) => row.component === "MeshRenderer" && row.label === "Asset" && row.value === "assets/models/house.glb"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_EDITOR_MODEL_ASSET_PROJECT_ROUTE" && diagnostic.severity === "info"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should persist added component defaults through source operations", async () => {
   const root = await copyStarterProject();
   try {

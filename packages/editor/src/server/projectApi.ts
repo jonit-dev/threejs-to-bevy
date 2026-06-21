@@ -7,7 +7,8 @@ import {
   type IAuthoringDiagnostic,
   type IAuthoringDocument,
 } from "@threenative/authoring";
-import type { EditorInspectorFieldKind, EditorInspectorSourceFamily, IEditorLodStats, IEditorPropertyRow, IEditorSceneObject, EditorScenePrimitive } from "../adapters/editorModel.js";
+import type { EditorInspectorFieldKind, EditorInspectorSourceFamily, IEditorAssetRow, IEditorLodStats, IEditorPropertyRow, IEditorSceneObject, EditorScenePrimitive } from "../adapters/editorModel.js";
+import { buildCatalogModel } from "../workbench/catalogModel.js";
 import { buildSceneLifecycleModel, type ISceneLifecycleModel } from "../workbench/sceneModel.js";
 
 export interface IEditorProjectDocumentGroup {
@@ -21,6 +22,7 @@ export interface IEditorProjectDocumentGroup {
 }
 
 export interface IEditorProjectApiResult {
+  assets: IEditorAssetRow[];
   diagnostics: IAuthoringDiagnostic[];
   documents: IEditorProjectDocumentGroup[];
   ok: boolean;
@@ -39,11 +41,12 @@ export async function loadEditorProjectApi(options: { projectPath: string; rootP
 
   const project = await loadAuthoringProject({ projectPath: options.projectPath });
   const validation = await validateAuthoringProject({ projectPath: project.projectPath });
-  const diagnostics = [...project.diagnostics, ...validation.diagnostics];
   const sceneObjects = buildSceneObjects(project.documents);
+  const diagnostics = [...project.diagnostics, ...validation.diagnostics, ...modelAssetDiagnostics(sceneObjects)];
   const hasErrors = diagnostics.some((diagnostic) => diagnostic.severity === "error");
   return {
     diagnostics,
+    assets: buildProjectAssets(project.documents),
     documents: groupDocuments(project.documents),
     lod: buildLodStats(sceneObjects),
     ok: !hasErrors,
@@ -100,6 +103,7 @@ function groupDocuments(documents: readonly IAuthoringDocument[]): IEditorProjec
 function emptyProjectResult(projectPath: string, diagnostics: IAuthoringDiagnostic[]): IEditorProjectApiResult {
   return {
     diagnostics,
+    assets: [],
     documents: [],
     lod: { budget: 200_000, loadedTriangles: 0, loading: false, mode: "auto", selected: "original", triangleCount: 0 },
     ok: false,
@@ -108,6 +112,16 @@ function emptyProjectResult(projectPath: string, diagnostics: IAuthoringDiagnost
     sceneLifecycle: { scenes: [], state: "diagnostic" },
     sceneObjects: [],
   };
+}
+
+function buildProjectAssets(documents: readonly IAuthoringDocument[]): IEditorAssetRow[] {
+  return buildCatalogModel(documents).map((row) => ({
+    access: row.mutation === "enabled" ? "sourcePersistable" : "inspectableOnly",
+    id: `asset:${row.id}`,
+    kind: row.assetKind ?? row.kind,
+    label: row.id,
+    path: row.path ?? row.documentPath,
+  }));
 }
 
 function buildLodStats(sceneObjects: readonly IEditorSceneObject[]): IEditorLodStats {
@@ -120,6 +134,33 @@ function buildLodStats(sceneObjects: readonly IEditorSceneObject[]): IEditorLodS
     selected: "original",
     triangleCount,
   };
+}
+
+function modelAssetDiagnostics(sceneObjects: readonly IEditorSceneObject[]): IAuthoringDiagnostic[] {
+  return sceneObjects.flatMap((object) => {
+    const assetPath = object.assetPath;
+    if (assetPath === undefined || !(assetPath.endsWith(".glb") || assetPath.endsWith(".gltf"))) {
+      return [];
+    }
+    if (assetPath.startsWith("http://") || assetPath.startsWith("https://")) {
+      const diagnostic: IAuthoringDiagnostic = {
+        code: "TN_EDITOR_MODEL_ASSET_REMOTE_UNSUPPORTED",
+        message: `Editor model asset '${assetPath}' must be project-local to load in the viewport.`,
+        path: object.sourcePath,
+        severity: "error",
+        suggestion: "Copy the GLB/GLTF into the project and reference it through a project-relative asset path.",
+      };
+      return [diagnostic];
+    }
+    const diagnostic: IAuthoringDiagnostic = {
+      code: "TN_EDITOR_MODEL_ASSET_PROJECT_ROUTE",
+      message: `Editor model asset '${assetPath}' loads through /project-assets.`,
+      path: object.sourcePath,
+      severity: "info",
+      suggestion: "If the model does not appear in the viewport, verify the project-relative file exists under the opened project.",
+    };
+    return [diagnostic];
+  });
 }
 
 function triangleEstimate(object: IEditorSceneObject): number {

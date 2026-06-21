@@ -36,6 +36,26 @@ test("should mark asset mutations disabled", async () => {
   }
 });
 
+test("should expose GLB assets as add-object candidates", async () => {
+  const root = await createCatalogProject();
+  try {
+    await writeFile(
+      join(root, "content", "assets", "models.assets.json"),
+      `${JSON.stringify({ schema: "threenative.assets", version: "0.1.0", id: "models", assets: [{ id: "model.house", path: "assets/models/house.glb", type: "model" }] }, null, 2)}\n`,
+    );
+    const project = await loadAuthoringProject({ projectPath: root });
+    const model = buildCatalogModel(project.documents).find((row) => row.id === "model.house");
+
+    assert.equal(model?.kind, "asset");
+    assert.equal(model?.path, "assets/models/house.glb");
+    assert.equal(model?.assetKind, "model");
+    assert.equal(model?.mutation, "enabled");
+    assert.equal(model?.addObjectCandidate, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 async function createCatalogProject(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), "tn-editor-catalog-model-"));
   await mkdir(join(root, "content", "assets"), { recursive: true });

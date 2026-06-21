@@ -1,12 +1,13 @@
 import { create } from "zustand";
 
-import type { IEditorAddComponentDefinition, IEditorLodStats, IEditorModalActionDefinition, IEditorPropertyRow, IEditorSceneObject } from "../adapters/editorModel.js";
+import type { IEditorAddComponentDefinition, IEditorAssetRow, IEditorLodStats, IEditorModalActionDefinition, IEditorPropertyRow, IEditorSceneObject } from "../adapters/editorModel.js";
 import type { EditorViewportGizmoMode, IViewportTransform } from "../preview/EditorViewport3d.js";
 import type { ISceneLifecycleModel } from "../workbench/sceneModel.js";
 
 export type EditorModal = "addComponent" | "addObject" | "build" | "chat" | "delete" | "newScene" | "save" | "settings" | undefined;
 
 export interface IEditorProjectPayload {
+  assets?: IEditorAssetRow[];
   diagnostics?: Array<{ code?: string; file?: string; message: string; path?: string; severity?: "error" | "info" | "warning"; suggestion?: string }>;
   documents?: IEditorProjectDocumentGroup[];
   ok?: boolean;
@@ -123,7 +124,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     const sceneId = sceneIdFromDocumentPath(get().activeScenePath ?? get().project?.sceneLifecycle?.activeScene?.documentPath);
     try {
       const revision = get().project?.projectRevision;
-      const result = addObjectOperationPlan(action.id, suffix);
+      const result = addObjectOperationPlan(action, suffix);
       if (result === undefined) {
         set({ status: action.readOnlyReason ?? `${action.label} does not have a promoted add operation yet` });
         return;
@@ -373,8 +374,8 @@ interface IPlannedEditorOperation {
   name: string;
 }
 
-function addObjectOperationPlan(actionId: IEditorModalActionDefinition["id"], suffix: string): { entityId: string; operations: IPlannedEditorOperation[]; statusLabel: string } | undefined {
-  switch (actionId) {
+function addObjectOperationPlan(action: IEditorModalActionDefinition, suffix: string): { entityId: string; operations: IPlannedEditorOperation[]; statusLabel: string } | undefined {
+  switch (action.id) {
     case "add.primitive_sphere": {
       const prefabId = `prefab.editor-box-${suffix}`;
       const entityId = `editor-box-${suffix}`;
@@ -420,7 +421,22 @@ function addObjectOperationPlan(actionId: IEditorModalActionDefinition["id"], su
         statusLabel: "light",
       };
     }
-    case "add.custom_glb":
+    case "add.custom_glb": {
+      if (action.assetPath === undefined) {
+        return undefined;
+      }
+      const prefabId = `prefab.editor-model-${suffix}`;
+      const entityId = `editor-model-${suffix}`;
+      return {
+        entityId,
+        operations: [
+          { args: { asset: action.assetPath, prefabId }, name: "scene.add_prefab" },
+          { args: { entityId, prefabId }, name: "scene.add_entity" },
+          { args: { entityId, position: [0, 0, 0], scale: [1, 1, 1] }, name: "scene.set_transform" },
+        ],
+        statusLabel: `model ${action.assetPath}`,
+      };
+    }
     case "add.terrain":
     case "build.preview":
     case "delete.selection":

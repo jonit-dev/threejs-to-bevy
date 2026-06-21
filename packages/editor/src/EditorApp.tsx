@@ -1,7 +1,7 @@
 import { useEffect, type ReactNode } from "react";
 import { Box, Camera, FolderOpen, Image, Lightbulb, MessageSquare, Mountain, PackagePlus, Pause, Play, Save, Settings, Square, Trash2 } from "lucide-react";
 
-import type { IEditorAdapterInput, IEditorAddComponentDefinition, IEditorModalActionDefinition, IEditorPropertyRow, IEditorShellModel } from "./adapters/editorModel.js";
+import type { IEditorAdapterInput, IEditorAddComponentDefinition, IEditorAssetRow, IEditorModalActionDefinition, IEditorPropertyRow, IEditorShellModel } from "./adapters/editorModel.js";
 import { createEditorShellModel, EDITOR_MODAL_ACTION_DEFINITIONS } from "./adapters/editorModel.js";
 import { PanelShell } from "./components/layout/PanelShell.js";
 import { HierarchyPanel } from "./components/panels/HierarchyPanel.js";
@@ -157,8 +157,8 @@ export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPr
               <p className="tn-editor-empty">No diagnostics.</p>
             ) : (
               <ul className="tn-editor-list">
-                {model.diagnostics.map((diagnostic) => (
-                  <li key={`${diagnostic.code}:${diagnostic.path ?? diagnostic.file ?? diagnostic.message}`}>
+                {model.diagnostics.map((diagnostic, index) => (
+                  <li key={`${diagnostic.code}:${diagnostic.path ?? diagnostic.file ?? diagnostic.message}:${index}`}>
                     <span>{diagnostic.message}</span>
                     <small>{diagnostic.code}</small>
                   </li>
@@ -184,6 +184,7 @@ export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPr
       <EditorModalView
         addComponentDefinitions={model.addComponentDefinitions}
         attachedComponents={[...new Set(model.inspector.map((row) => row.component).filter((component): component is string => component !== undefined))]}
+        assets={model.assets}
         modal={modal}
         onAddObject={(action) => {
           closeModal();
@@ -233,6 +234,7 @@ function isTextInputTarget(target: EventTarget | null): boolean {
 
 export function EditorModalView({
   addComponentDefinitions,
+  assets,
   attachedComponents,
   modal,
   onAddComponent,
@@ -243,6 +245,7 @@ export function EditorModalView({
   onSaveScene,
 }: {
   addComponentDefinitions: IEditorShellModel["addComponentDefinitions"];
+  assets: readonly IEditorAssetRow[];
   attachedComponents: readonly string[];
   modal: EditorModal;
   onAddComponent: (definition: IEditorAddComponentDefinition) => void;
@@ -263,6 +266,7 @@ export function EditorModalView({
     const light = actionById.get("add.light");
     const terrain = actionById.get("add.terrain");
     const customGlb = actionById.get("add.custom_glb");
+    const modelAssets = assets.filter((asset) => asset.path !== undefined && (asset.path.endsWith(".glb") || asset.path.endsWith(".gltf") || asset.kind === "model"));
     return (
       <ModalFrame onClose={onClose} title="Add Object">
         <div className="tn-editor-modal-grid">
@@ -271,7 +275,20 @@ export function EditorModalView({
           {camera === undefined ? null : <button disabled={camera.readOnly} onClick={() => onAddObject(camera)} title={camera.readOnly ? camera.readOnlyReason : camera.operationName} type="button"><Camera size={16} /> Camera</button>}
           {light === undefined ? null : <button disabled={light.readOnly} onClick={() => onAddObject(light)} title={light.readOnly ? light.readOnlyReason : light.operationName} type="button"><Lightbulb size={16} /> Light</button>}
           {terrain === undefined ? null : <button disabled title={terrain.readOnlyReason} type="button"><Mountain size={16} /> Terrain</button>}
-          {customGlb === undefined ? null : <button disabled title={customGlb.readOnlyReason} type="button"><FolderOpen size={16} /> Custom GLB</button>}
+          {customGlb === undefined
+            ? null
+            : modelAssets.length === 0
+              ? <button disabled title={customGlb.readOnlyReason} type="button"><FolderOpen size={16} /> Custom GLB</button>
+              : modelAssets.map((asset) => (
+                  <button
+                    key={asset.id}
+                    onClick={() => onAddObject({ ...customGlb, assetPath: asset.path, label: asset.label, operationName: "scene.add_prefab", readOnly: false, readOnlyReason: undefined })}
+                    title={asset.path}
+                    type="button"
+                  >
+                    <FolderOpen size={16} /> {asset.label}
+                  </button>
+                ))}
         </div>
       </ModalFrame>
     );

@@ -92,6 +92,7 @@ export type EditorModalActionId =
   | "settings.editor";
 
 export interface IEditorModalActionDefinition {
+  assetPath?: string;
   handler?: "buildPreview" | "saveScene";
   id: EditorModalActionId;
   label: string;

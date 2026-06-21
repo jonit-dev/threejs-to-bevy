@@ -177,12 +177,12 @@ back as source.
 
 **Implementation:**
 
-- [ ] Replace disabled Custom GLB/Add Object entries with source-backed flows
+- [x] Replace disabled Custom GLB/Add Object entries with source-backed flows
   where operations exist.
-- [ ] Add asset picker rows that use project assets and manifests.
-- [ ] Create prefab/entity source data for selected model assets.
-- [ ] Show model load status and errors in diagnostics.
-- [ ] Keep project asset path containment through `/project-assets`.
+- [x] Add asset picker rows that use project assets and manifests.
+- [x] Create prefab/entity source data for selected model assets.
+- [x] Show model load status and errors in diagnostics.
+- [x] Keep project asset path containment through `/project-assets`.
 
 **Tests Required:**
 
@@ -195,6 +195,14 @@ back as source.
 
 - Action: add a custom GLB from the project assets panel.
 - Expected: model appears in hierarchy, viewport, source scene, and emitted IR.
+
+**Progress Evidence:**
+
+- `pnpm --filter @threenative/editor test` - 65 tests passing after the asset
+  catalog exposed GLB/GLTF assets as add-object candidates, `/api/project`
+  returned concrete asset rows and model route diagnostics, Add Object enabled
+  Custom GLB choices for project model assets, and the Zustand store wrote
+  selected models as source-backed prefab/entity/transform operations.
 
 #### Phase 3: Environment, Skybox, Terrain, and LOD - Scene context is visible and source-derived.
 

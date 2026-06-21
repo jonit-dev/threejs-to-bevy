@@ -234,6 +234,37 @@ test("should submit add object choices with correct operation payloads", async (
   }
 });
 
+test("should add custom GLB assets through a source prefab and entity", async () => {
+  useEditorStore.getState().reset({ project: { projectRevision: "rev:1", sceneLifecycle: { activeScene: { documentPath: "content/scenes/menu.scene.json", id: "menu", label: "menu", sourcePersistable: true }, scenes: [{ documentPath: "content/scenes/menu.scene.json", id: "menu", label: "menu", sourcePersistable: true }], state: "build-ready" } } });
+  const operations: Array<{ args: Record<string, unknown>; name: string; projectRevision?: string }> = [];
+  const restoreDateNow = mockDateNow(123456789);
+  const restoreFetch = mockFetch(async (input, init) => {
+    if (String(input) === "/api/operation") {
+      const body = JSON.parse(String(init?.body)) as { args: Record<string, unknown>; name: string; projectRevision?: string };
+      operations.push(body);
+      return jsonResponse({ filesWritten: ["content/scenes/menu.scene.json"], ok: true });
+    }
+    assert.equal(String(input), "/api/project");
+    return jsonResponse({
+      documents: [{ documents: [{ id: "menu", kind: "scene", path: "content/scenes/menu.scene.json" }], kind: "scene" }],
+      ok: true,
+      sceneObjects: [{ assetPath: "assets/models/house.glb", id: "editor-model-21i3v9", kind: "entity", label: "editor-model-21i3v9", primitive: "box", rowId: "entity:content/scenes/menu.scene.json:editor-model-21i3v9" }],
+    });
+  });
+  try {
+    await useEditorStore.getState().addObject({ assetPath: "assets/models/house.glb", id: "add.custom_glb", label: "model.house", operationName: "scene.add_prefab", readOnly: false });
+
+    assert.deepEqual(operations.map((operation) => operation.name), ["scene.add_prefab", "scene.add_entity", "scene.set_transform"]);
+    assert.equal(operations[0]?.args.asset, "assets/models/house.glb");
+    assert.equal(operations[0]?.args.sceneId, "menu");
+    assert.equal(operations[1]?.args.prefabId, "prefab.editor-model-21i3v9");
+    assert.match(useEditorStore.getState().status, /model assets\/models\/house\.glb/);
+  } finally {
+    restoreFetch();
+    restoreDateNow();
+  }
+});
+
 test("should report unsupported add object actions as disabled status", async () => {
   useEditorStore.getState().reset();
 

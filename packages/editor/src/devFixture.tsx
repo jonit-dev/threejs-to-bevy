@@ -90,7 +90,7 @@ function projectToEditorModel(
   const selectedDocument = selectedObject === undefined ? findDocument(project.documents ?? [], selectedRowId) : undefined;
   return {
     addComponentDefinitions: [...EDITOR_ADD_COMPONENT_DEFINITIONS],
-    assets: (project.documents ?? [])
+    assets: project.assets ?? (project.documents ?? [])
       .filter((group) => ["asset", "material", "mesh", "prefab"].includes(group.kind))
       .flatMap((group) => group.documents.map((document) => ({ access: "sourcePersistable" as const, id: `asset:${document.path}`, kind: group.kind, label: document.id, path: document.path }))),
     diagnostics: (project.diagnostics ?? []).map<IEditorDiagnosticView>((diagnostic) => ({
