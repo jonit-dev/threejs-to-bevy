@@ -111,6 +111,15 @@ and keeps TypeScript limited to `src/scripts/player.ts` behavior. `tn authoring
 inspect|validate --json` is now registered as the project-level source-document
 wrapper, and the template proof mutates the countdown UI through
 `tn ui set-layout` without touching TypeScript.
+The Phase 7 MCP adapter-contract slice keeps `@threenative/mcp-server` as a
+thin optional wrapper over the same `tn ... --json`/`@threenative/authoring`
+behavior. MCP now exposes representative structured operations for retained UI
+layout/binding, recoverable bundle import, material updates, and system script
+attachment. Parity tests compare MCP and CLI/core JSON results and source
+output, including the rule that `scripts.bundle.js` is reported as
+unrecoverable generated script body rather than persisted as source. The
+`docs/contracts/authoring-mcp.md` contract defines the same operation result,
+diagnostic, path guardrail, and persistence policy for future editor adapters.
 
 Structured `.scene.json` documents can now be used as a normal project build
 entry for the first runtime-backed CLI authoring slice. The compiler validates

@@ -3,6 +3,8 @@ import { resolve, sep } from "node:path";
 import { dispatch } from "@threenative/cli";
 
 export type AuthoringMcpToolName =
+  | "bundle.import"
+  | "material.set"
   | "project.build"
   | "project.screenshot"
   | "project.verify"
@@ -12,7 +14,10 @@ export type AuthoringMcpToolName =
   | "scene.inspect"
   | "scene.set_camera"
   | "scene.set_transform"
-  | "scene.validate";
+  | "scene.validate"
+  | "system.attach_script"
+  | "ui.bind"
+  | "ui.set_layout";
 
 export interface IAuthoringMcpToolCall {
   arguments?: Record<string, unknown>;
@@ -47,6 +52,11 @@ export const AUTHORING_MCP_TOOLS: Array<{ description: string; name: AuthoringMc
   { description: "Set scene camera metadata through tn scene set-camera --json.", name: "scene.set_camera" },
   { description: "Attach a script source module through tn scene attach-script --json.", name: "scene.attach_script" },
   { description: "Bind a UI node through tn scene bind-ui --json.", name: "scene.bind_ui" },
+  { description: "Set retained UI node layout through tn ui set-layout --json.", name: "ui.set_layout" },
+  { description: "Bind a retained UI node through tn ui bind --json.", name: "ui.bind" },
+  { description: "Import recoverable bundle catalogs through tn bundle import --json.", name: "bundle.import" },
+  { description: "Set material properties through tn material set --json.", name: "material.set" },
+  { description: "Attach a system script source module through tn system attach-script --json.", name: "system.attach_script" },
   { description: "Build the project through tn build --json.", name: "project.build" },
   { description: "Capture a screenshot through tn screenshot --json.", name: "project.screenshot" },
   { description: "Run visual verification through tn verify --json.", name: "project.verify" },
@@ -113,6 +123,36 @@ function toolToCliArgv(name: AuthoringMcpToolName, args: Record<string, unknown>
   if (name === "scene.bind_ui") {
     return ["scene", "bind-ui", stringArg(args, "sceneId"), stringArg(args, "uiNodeId"), "--resource", stringArg(args, "resourcePath"), ...project, "--json"];
   }
+  if (name === "ui.set_layout") {
+    const layout = recordArg(args, "layout");
+    return [
+      "ui",
+      "set-layout",
+      stringArg(args, "uiDocId"),
+      stringArg(args, "nodeId"),
+      ...optionalStringFlag("--justify", layout.justify),
+      ...optionalStringFlag("--align", layout.align),
+      ...optionalNumberFlag("--top", layout.top),
+      ...optionalNumberFlag("--height", layout.height),
+      ...optionalNumberFlag("--width", layout.width),
+      ...project,
+      "--json",
+    ];
+  }
+  if (name === "ui.bind") {
+    return ["ui", "bind", stringArg(args, "uiDocId"), stringArg(args, "nodeId"), "--resource", stringArg(args, "resourcePath"), ...project, "--json"];
+  }
+  if (name === "bundle.import") {
+    return ["bundle", "import", stringArg(args, "bundleDir"), ...project, "--mode", "source", ...(args.dryRun === true ? ["--dry-run"] : []), "--json"];
+  }
+  if (name === "material.set") {
+    const roughness = optionalNumberArg(args, "roughness");
+    const color = optionalStringArg(args, "color");
+    return ["material", "set", stringArg(args, "materialId"), ...(color === undefined ? [] : ["--color", color]), ...(roughness === undefined ? [] : ["--roughness", roughness.toString()]), ...project, "--json"];
+  }
+  if (name === "system.attach_script") {
+    return ["system", "attach-script", stringArg(args, "systemId"), "--module", stringArg(args, "modulePath"), "--export", stringArg(args, "exportName"), ...project, "--json"];
+  }
   if (name === "project.build") {
     return ["build", ...project, "--json"];
   }
@@ -163,6 +203,8 @@ function validateProjectRoot(projectRoot: string, allowedProjectRoots: readonly 
 function validateToolPaths(name: AuthoringMcpToolName, args: Record<string, unknown>, projectRoot: string): { code: string; message: string; path: string } | undefined {
   const pathArgs = [
     ...(name === "scene.attach_script" ? [["modulePath", stringArg(args, "modulePath")] as const] : []),
+    ...(name === "system.attach_script" ? [["modulePath", stringArg(args, "modulePath")] as const] : []),
+    ...(name === "bundle.import" ? [["bundleDir", stringArg(args, "bundleDir")] as const] : []),
     ...(name === "project.screenshot" ? [["out", stringArg(args, "out")] as const] : []),
   ];
   for (const [key, value] of pathArgs) {
@@ -170,7 +212,7 @@ function validateToolPaths(name: AuthoringMcpToolName, args: Record<string, unkn
     if (value.includes("..") || value.includes("\\") || (!resolved.startsWith(`${projectRoot}${sep}`) && resolved !== projectRoot)) {
       return { code: "TN_MCP_PATH_REJECTED", message: `MCP tool argument '${key}' must stay inside the project root.`, path: value };
     }
-    if (/(?:^|\/)(?:dist|artifacts|runtime|\.cache)(?:\/|$)|\.bundle\//.test(value)) {
+    if (key !== "bundleDir" && /(?:^|\/)(?:dist|artifacts|runtime|\.cache)(?:\/|$)|\.bundle\//.test(value)) {
       return { code: "TN_MCP_GENERATED_SOURCE_REJECTED", message: `MCP tool argument '${key}' must not target generated bundle, artifact, cache, or runtime paths.`, path: value };
     }
   }
@@ -206,6 +248,26 @@ function optionalStringArg(args: Record<string, unknown>, key: string): string |
 function optionalNumberArg(args: Record<string, unknown>, key: string): number | undefined {
   const value = args[key];
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function optionalNumberFlag(flag: string, value: unknown): string[] {
+  if (value === undefined) {
+    return [];
+  }
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new Error(`MCP argument '${flag}' must be a finite number.`);
+  }
+  return [flag, value.toString()];
+}
+
+function optionalStringFlag(flag: string, value: unknown): string[] {
+  if (value === undefined) {
+    return [];
+  }
+  if (typeof value !== "string" || value.trim() === "") {
+    throw new Error(`MCP argument '${flag}' must be a non-empty string.`);
+  }
+  return [flag, value];
 }
 
 function recordArg(args: Record<string, unknown>, key: string): Record<string, unknown> {

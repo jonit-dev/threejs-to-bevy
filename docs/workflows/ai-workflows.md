@@ -120,7 +120,7 @@ must delegate to the same CLI/core behavior and return the same diagnostic
 shape where practical.
 
 The first implemented authoring wrapper lives in `@threenative/mcp-server` and
-exposes bounded scene/project tools:
+exposes bounded source-authoring and project tools:
 
 ```txt
 scene.inspect(sceneId)
@@ -130,6 +130,11 @@ scene.set_transform(sceneId, entityId, transform)
 scene.set_camera(sceneId, cameraId, mode, targetId)
 scene.attach_script(sceneId, systemId, modulePath, exportName)
 scene.bind_ui(sceneId, uiNodeId, resourcePath)
+ui.set_layout(uiDocId, nodeId, layout)
+ui.bind(uiDocId, nodeId, resourcePath)
+bundle.import(bundleDir, dryRun?)
+material.set(materialId, color?, roughness?)
+system.attach_script(systemId, modulePath, exportName)
 project.build()
 project.screenshot(url, out)
 project.verify(options?)
@@ -139,6 +144,10 @@ Use the CLI directly for scripts, CI, reproducible debugging, and commands not
 covered by the wrapper. Use MCP when an interactive agent benefits from a
 narrow tool schema and project-root allowlist. MCP must not expose arbitrary
 shell access, generated bundle editing, or runtime handles as source edits.
+For bundle recovery, MCP may call `tn bundle import ... --mode source --json`,
+but generated bundle files and `scripts.bundle.js` remain non-source. The
+durable behavior source is the referenced TypeScript module/export, not the
+generated script bundle body.
 
 Future MCP resources may include:
 
@@ -155,7 +164,11 @@ threenative://mobile-performance-rules
 threenative://bevy-runtime-adapter
 ```
 
-MCP tools should call CLI and compiler APIs. They should not contain a separate implementation of build, validation, or conversion behavior.
+MCP tools should call CLI and compiler APIs. They should not contain a separate
+implementation of build, validation, conversion, or structured source mutation
+behavior. See
+[Authoring MCP and Editor Adapter](../contracts/authoring-mcp.md) for the
+shared adapter result contract that future editor tooling must also use.
 
 ## Project Context For Agents
 

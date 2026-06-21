@@ -14,11 +14,13 @@ interface IJsonPayload {
   code: string;
   diagnostics?: Array<{ code: string; path?: string; suggestion?: string }>;
   filesWritten?: string[];
+  imported?: Array<{ artifact: string; file: string; kind: string }>;
   ok?: boolean;
   scene?: {
     entities: string[];
     id: string;
   };
+  skipped?: Array<{ artifact: string; reason: string }>;
 }
 
 test("mcp wrapper exposes the authoring tool registry", () => {
@@ -32,6 +34,11 @@ test("mcp wrapper exposes the authoring tool registry", () => {
       "scene.set_camera",
       "scene.attach_script",
       "scene.bind_ui",
+      "ui.set_layout",
+      "ui.bind",
+      "bundle.import",
+      "material.set",
+      "system.attach_script",
       "project.build",
       "project.screenshot",
       "project.verify",
@@ -104,6 +111,83 @@ test("mcp wrapper runs scene mutations through CLI and returns changed files", a
   }
 });
 
+test("ui layout MCP matches CLI operation result and source output", async () => {
+  const mcpRoot = await createMcpUiProject();
+  const cliRoot = await createMcpUiProject();
+
+  try {
+    const mcp = await callMcp(mcpRoot, "ui.set_layout", { layout: { align: "center", justify: "center", top: 60, width: 320 }, nodeId: "countdown", uiDocId: "hud" });
+    const cli = await dispatch(["ui", "set-layout", "hud", "countdown", "--justify", "center", "--align", "center", "--top", "60", "--width", "320", "--project", cliRoot, "--json"]);
+
+    assert.equal(mcp.isError, false);
+    assert.equal(mcp.cli.argv[0], "ui");
+    assert.equal(mcp.cli.argv.includes("--json"), true);
+    assert.deepEqual(stripProjectPath(mcp.content), stripProjectPath(JSON.parse(cli.stdout)));
+
+    const mcpDoc = JSON.parse(await readFile(join(mcpRoot, "content", "ui", "hud.ui.json"), "utf8")) as { nodes: Array<{ id: string; layout?: Record<string, unknown> }> };
+    const cliDoc = JSON.parse(await readFile(join(cliRoot, "content", "ui", "hud.ui.json"), "utf8")) as { nodes: Array<{ id: string; layout?: Record<string, unknown> }> };
+    assert.deepEqual(mcpDoc, cliDoc);
+    assert.deepEqual(mcpDoc.nodes.find((node) => node.id === "countdown")?.layout, { align: "center", justify: "center", top: 60, width: 320 });
+  } finally {
+    await rm(mcpRoot, { force: true, recursive: true });
+    await rm(cliRoot, { force: true, recursive: true });
+  }
+});
+
+test("ui bind MCP matches CLI operation result", async () => {
+  const mcpRoot = await createMcpUiProject();
+  const cliRoot = await createMcpUiProject();
+
+  try {
+    const mcp = await callMcp(mcpRoot, "ui.bind", { nodeId: "countdown", resourcePath: "race.countdown.value", uiDocId: "hud" });
+    const cli = await dispatch(["ui", "bind", "hud", "countdown", "--resource", "race.countdown.value", "--project", cliRoot, "--json"]);
+
+    assert.equal(mcp.isError, false);
+    assert.deepEqual(stripProjectPath(mcp.content), stripProjectPath(JSON.parse(cli.stdout)));
+    assert.deepEqual((mcp.content as IJsonPayload).filesWritten, ["content/ui/hud.ui.json"]);
+  } finally {
+    await rm(mcpRoot, { force: true, recursive: true });
+    await rm(cliRoot, { force: true, recursive: true });
+  }
+});
+
+test("bundle import MCP wraps same authoring core behavior and keeps generated scripts non-source", async () => {
+  const mcpRoot = await createMcpBundleImportProject();
+  const cliRoot = await createMcpBundleImportProject();
+
+  try {
+    const mcp = await callMcp(mcpRoot, "bundle.import", { bundleDir: "dist/game.bundle" });
+    const cli = await dispatch(["bundle", "import", "dist/game.bundle", "--project", cliRoot, "--mode", "source", "--json"]);
+
+    assert.equal(mcp.isError, false);
+    assert.deepEqual(stripImportPaths(mcp.content), stripImportPaths(JSON.parse(cli.stdout)));
+    assert.deepEqual((mcp.content as IJsonPayload).filesWritten, ["content/scenes/imported.scene.json", "content/ui/imported.ui.json"]);
+    assert.equal((mcp.content as IJsonPayload).skipped?.some((item) => item.artifact === "scripts.bundle.js" && item.reason === "unrecoverable"), true);
+    assert.equal((mcp.content as IJsonPayload).diagnostics?.some((diagnostic) => diagnostic.code === "TN_AUTHORING_IMPORT_UNRECOVERABLE_SCRIPT_BODY"), true);
+    await assert.rejects(readFile(join(mcpRoot, "content", "scripts.bundle.js"), "utf8"));
+    await assert.rejects(readFile(join(mcpRoot, "src", "scripts.bundle.js"), "utf8"));
+  } finally {
+    await rm(mcpRoot, { force: true, recursive: true });
+    await rm(cliRoot, { force: true, recursive: true });
+  }
+});
+
+test("material and system MCP tools delegate to CLI JSON operation groups", async () => {
+  const root = await createMcpSourceGroupProject();
+
+  try {
+    const material = await callMcp(root, "material.set", { color: "#ffcc00", materialId: "kart", roughness: 0.35 });
+    const system = await callMcp(root, "system.attach_script", { exportName: "raceController", modulePath: "src/scripts/race.ts", systemId: "race" });
+
+    assert.equal(material.isError, false);
+    assert.equal(system.isError, false);
+    assert.deepEqual((material.content as IJsonPayload).filesWritten, ["content/materials/kart.materials.json"]);
+    assert.deepEqual((system.content as IJsonPayload).filesWritten, ["content/systems/race.systems.json"]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("mcp wrapper blocks project roots outside the allowlist", async () => {
   const root = await createMcpSceneProject();
   const allowed = await mkdtemp(join(tmpdir(), "tn-mcp-allowed-"));
@@ -126,11 +210,14 @@ test("mcp wrapper blocks paths outside source authoring space", async () => {
   try {
     const traversal = await callMcp(root, "scene.attach_script", { exportName: "raceController", modulePath: "../race.ts", sceneId: "scene.arena", systemId: "race-controller" });
     const generated = await callMcp(root, "scene.attach_script", { exportName: "raceController", modulePath: "dist/game.bundle/world.ir.json", sceneId: "scene.arena", systemId: "race-controller" });
+    const bundleTraversal = await callMcp(root, "bundle.import", { bundleDir: "../game.bundle" });
 
     assert.equal(traversal.isError, true);
     assert.equal((traversal.content as IJsonPayload).code, "TN_MCP_PATH_REJECTED");
     assert.equal(generated.isError, true);
     assert.equal((generated.content as IJsonPayload).code, "TN_MCP_GENERATED_SOURCE_REJECTED");
+    assert.equal(bundleTraversal.isError, true);
+    assert.equal((bundleTraversal.content as IJsonPayload).code, "TN_MCP_PATH_REJECTED");
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -233,6 +320,88 @@ async function createMcpSceneProject(options: { invalidTarget?: boolean; minimal
     )}\n`,
   );
   return root;
+}
+
+async function createMcpUiProject(): Promise<string> {
+  const root = await mkdtemp(join(tmpdir(), "tn-mcp-ui-"));
+  await mkdir(join(root, "content", "ui"), { recursive: true });
+  await writeFile(
+    join(root, "content", "ui", "hud.ui.json"),
+    `${JSON.stringify(
+      {
+        schema: "threenative.ui",
+        version: "0.1.0",
+        id: "hud",
+        nodes: [{ id: "countdown", text: "3", type: "text" }],
+        bindings: [],
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  return root;
+}
+
+async function createMcpBundleImportProject(): Promise<string> {
+  const root = await mkdtemp(join(tmpdir(), "tn-mcp-import-"));
+  await mkdir(join(root, "dist", "game.bundle"), { recursive: true });
+  await writeFile(
+    join(root, "dist", "game.bundle", "world.ir.json"),
+    `${JSON.stringify(
+      {
+        entities: [{ id: "player", transform: { position: [0, 0, 0] } }],
+        resources: { "race.score": { value: 0 } },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  await writeFile(
+    join(root, "dist", "game.bundle", "ui.ir.json"),
+    `${JSON.stringify(
+      {
+        root: { children: [{ id: "ui.score", kind: "text", text: "000" }], id: "ui.hud" },
+        schema: "threenative.ui",
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  await writeFile(join(root, "dist", "game.bundle", "scripts.bundle.js"), "export function generated() {}\n");
+  return root;
+}
+
+async function createMcpSourceGroupProject(): Promise<string> {
+  const root = await mkdtemp(join(tmpdir(), "tn-mcp-source-groups-"));
+  await mkdir(join(root, "content", "materials"), { recursive: true });
+  await mkdir(join(root, "content", "systems"), { recursive: true });
+  await mkdir(join(root, "src", "scripts"), { recursive: true });
+  await writeFile(join(root, "src", "scripts", "race.ts"), "export function raceController() {}\n");
+  await writeFile(
+    join(root, "content", "materials", "kart.materials.json"),
+    `${JSON.stringify({ schema: "threenative.materials", version: "0.1.0", id: "kart", materials: [{ id: "kart" }] }, null, 2)}\n`,
+  );
+  await writeFile(
+    join(root, "content", "systems", "race.systems.json"),
+    `${JSON.stringify({ schema: "threenative.systems", version: "0.1.0", id: "race", systems: [{ id: "race", schedule: "update" }] }, null, 2)}\n`,
+  );
+  return root;
+}
+
+function stripProjectPath(value: unknown): unknown {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return value;
+  }
+  const { projectPath: _projectPath, ...rest } = value as Record<string, unknown>;
+  return rest;
+}
+
+function stripImportPaths(value: unknown): unknown {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return value;
+  }
+  const { bundleDir: _bundleDir, projectPath: _projectPath, ...rest } = value as Record<string, unknown>;
+  return rest;
 }
 
 async function startReadyCanvasServer(): Promise<{ close: () => Promise<void>; url: string }> {

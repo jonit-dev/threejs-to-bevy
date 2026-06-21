@@ -41,7 +41,9 @@ durable source for optional one-way generators that emit structured documents.
 
 Structured source documents are the persistence layer for editor-owned data.
 The CLI, MCP wrapper, and future map editor must mutate these documents through
-the same `@threenative/authoring` operations.
+the same `@threenative/authoring` operations. The adapter rules for MCP and
+future editors are defined in
+[Authoring MCP and Editor Adapter](authoring-mcp.md).
 
 Generated bundle files are runtime/compiler artifacts, not durable source:
 
