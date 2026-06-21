@@ -53,6 +53,10 @@ This index separates current cleanup work from historical milestone batches.
 - [Editor-Ready Modular Authoring and Scripting Architecture](other/editor-ready-modular-authoring-and-scripting-architecture.md):
   source-of-truth boundaries, modular authoring graph/provenance, script module
   references, editor-safe source documents, and web/Bevy runtime parity.
+- [Complete Structured Authoring Parity](other/complete-structured-authoring-parity.md):
+  full structured source coverage for map/editor-owned data, CLI/MCP/editor
+  operation parity with TypeScript-era authoring, bundle import, provenance, and
+  round-trip proof without TypeScript reverse-generation.
 - [Advanced Visual Effects, Lighting, and Material Depth](other/advanced-visual-effects-lighting-material-depth.md):
   remaining advanced lighting, material, atmosphere, post-processing, deferred
   renderer, virtual geometry, and custom post-processing gaps.
