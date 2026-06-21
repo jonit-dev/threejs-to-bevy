@@ -6,6 +6,7 @@ import test from "node:test";
 
 import { buildCommand } from "./build.js";
 import { sceneCommand } from "./scene.js";
+import { resolveNativeCaptureInvocation } from "./sceneProof.js";
 import { validateProject } from "./validate.js";
 
 test("scene-command create writes a minimal source scene with next commands", async () => {
@@ -221,6 +222,71 @@ test("scene-command proof requires a scene id", async () => {
   assert.equal(result.exitCode, 2);
   assert.equal(payload.code, "TN_SCENE_PROOF_USAGE");
   assert.equal(payload.severity, "error");
+});
+
+test("scene-command proof native capture uses raw command when a display is available", () => {
+  const invocation = resolveNativeCaptureInvocation({
+    bundlePath: "/project/dist/game.bundle",
+    cameraId: "camera.main",
+    captureBinaryPath: "/repo/runtime-bevy/target/debug/threenative_capture",
+    cargoCommand: "cargo",
+    env: { DISPLAY: ":99", PATH: "/bin" },
+    frame: 120,
+    outPath: "/project/artifacts/proof/bevy.png",
+    repoRoot: "/repo",
+  });
+
+  assert.equal(invocation.command, "/repo/runtime-bevy/target/debug/threenative_capture");
+  assert.deepEqual(invocation.args, ["/project/dist/game.bundle", "camera.main", "/project/artifacts/proof/bevy.png", "120"]);
+  assert.equal(invocation.wrappedWithXvfb, false);
+});
+
+test("scene-command proof native capture wraps headless sessions with xvfb-run when available", () => {
+  const invocation = resolveNativeCaptureInvocation({
+    bundlePath: "/project/dist/game.bundle",
+    cameraId: "camera.main",
+    cargoCommand: "cargo",
+    commandExists: (command) => command === "xvfb-run",
+    env: { PATH: "/bin" },
+    frame: 120,
+    outPath: "/project/artifacts/proof/bevy.png",
+    repoRoot: "/repo",
+  });
+
+  assert.equal(invocation.command, "xvfb-run");
+  assert.deepEqual(invocation.args, [
+    "-a",
+    "cargo",
+    "run",
+    "--quiet",
+    "-p",
+    "threenative_runtime",
+    "--bin",
+    "threenative_capture",
+    "--",
+    "/project/dist/game.bundle",
+    "camera.main",
+    "/project/artifacts/proof/bevy.png",
+    "120",
+  ]);
+  assert.equal(invocation.cwd, "/repo/runtime-bevy");
+  assert.equal(invocation.wrappedWithXvfb, true);
+});
+
+test("scene-command proof native capture gives stable diagnostic when headless without xvfb-run", () => {
+  assert.throws(
+    () => resolveNativeCaptureInvocation({
+      bundlePath: "/project/dist/game.bundle",
+      cameraId: "camera.main",
+      cargoCommand: "cargo",
+      commandExists: () => false,
+      env: { PATH: "/bin" },
+      frame: 120,
+      outPath: "/project/artifacts/proof/bevy.png",
+      repoRoot: "/repo",
+    }),
+    /TN_SCENE_PROOF_NATIVE_HEADLESS_XVFB_MISSING.*Install Xvfb\/xvfb-run/,
+  );
 });
 
 async function createSceneProject(options: { invalidTarget?: boolean; minimal?: boolean } = {}): Promise<string> {

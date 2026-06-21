@@ -44,8 +44,12 @@ CLI-first proof handoff for authored scenes: it validates source, builds,
 checks authoring provenance and scene IR, captures web and optional Bevy native
 screenshots, and writes `proof-report.json` plus `proof.md` with exact commands,
 artifacts, capture frame/timing labels, and an explicit same-source/same-bundle
-not-pixel-parity caveat. The focused smoke proof mutates and validates a
-source scene, then builds and validates the same project's normal bundle.
+not-pixel-parity caveat. Headless native proof sessions automatically run Bevy
+capture through `xvfb-run -a` when no display is present and Xvfb is available,
+or fail with `TN_SCENE_PROOF_NATIVE_HEADLESS_XVFB_MISSING` when the user must
+install/use Xvfb or run in a graphical session. The focused smoke proof mutates
+and validates a source scene, then builds and validates the same project's
+normal bundle.
 `@threenative/mcp-server` now
 provides optional AI-facing wrappers for inspect/validate/mutate/build/
 screenshot/verify operations by delegating to the same `tn ... --json` command

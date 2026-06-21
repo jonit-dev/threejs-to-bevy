@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
+import { accessSync, constants, existsSync } from "node:fs";
 import { readFile, mkdir, stat, writeFile } from "node:fs/promises";
-import { dirname, isAbsolute, relative, resolve } from "node:path";
+import { delimiter, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { buildProject } from "@threenative/compiler";
@@ -11,6 +12,7 @@ import { cargoCaptureEnv, resolveCaptureBinaryPath, resolveCargoCommand } from "
 import { captureScreenshot } from "./visualProof.js";
 
 const execFileAsync = promisify(execFile);
+const nativeHeadlessDiagnosticCode = "TN_SCENE_PROOF_NATIVE_HEADLESS_XVFB_MISSING";
 
 interface ISceneProofOptions {
   cwd?: string;
@@ -48,6 +50,13 @@ interface IProofReport {
   schema: "threenative.scene-proof-report";
   status: "fail" | "pass" | "warning";
   version: "0.1.0";
+}
+
+interface INativeCaptureInvocation {
+  args: string[];
+  command: string;
+  cwd?: string;
+  wrappedWithXvfb: boolean;
 }
 
 export async function sceneProofCommand(argv: readonly string[], options: ISceneProofOptions = {}): Promise<ICommandResult> {
@@ -147,14 +156,21 @@ export async function sceneProofCommand(argv: readonly string[], options: IScene
   if (native) {
     const bevyPath = resolve(outDir, "bevy.png");
     const resolvedCameraId = cameraId ?? await readActiveCameraId(bundlePath) ?? "camera.main";
-    const nativeCommand = `threenative_capture ${bundlePath} ${resolvedCameraId} ${bevyPath} ${nativeFrame}`;
+    const repoRoot = options.repoRoot ?? resolve(fileURLToPath(new URL("../../../../", import.meta.url)));
+    const nativeCommand = formatNativeCaptureCommand({
+      bundlePath,
+      cameraId: resolvedCameraId,
+      env: process.env,
+      frame: nativeFrame,
+      outPath: bevyPath,
+    });
     try {
       await captureNativeScreenshot({
         bundlePath,
         cameraId: resolvedCameraId,
         frame: nativeFrame,
         outPath: bevyPath,
-        repoRoot: options.repoRoot ?? resolve(fileURLToPath(new URL("../../../../", import.meta.url))),
+        repoRoot,
       });
       commands.push({ command: nativeCommand, status: "pass" });
       artifacts.push({ captureFrame: nativeFrame, path: bevyPath, runtime: "bevy" });
@@ -194,21 +210,102 @@ export async function sceneProofCommand(argv: readonly string[], options: IScene
 
 async function captureNativeScreenshot(options: { bundlePath: string; cameraId: string; frame: number; outPath: string; repoRoot: string }): Promise<void> {
   await mkdir(dirname(options.outPath), { recursive: true });
-  const args = [options.bundlePath, options.cameraId, options.outPath, String(options.frame)];
-  const captureBinary = resolveCaptureBinaryPath(options.repoRoot);
-  if (captureBinary !== undefined) {
-    await execFileAsync(captureBinary, args, { env: cargoCaptureEnv(), timeout: 120_000 });
-  } else {
-    await execFileAsync(
-      resolveCargoCommand(),
-      ["run", "--quiet", "-p", "threenative_runtime", "--bin", "threenative_capture", "--", ...args],
-      { cwd: resolve(options.repoRoot, "runtime-bevy"), env: cargoCaptureEnv(), timeout: 180_000 },
-    );
-  }
+  const env = cargoCaptureEnv();
+  const invocation = resolveNativeCaptureInvocation({
+    bundlePath: options.bundlePath,
+    cameraId: options.cameraId,
+    captureBinaryPath: resolveCaptureBinaryPath(options.repoRoot),
+    cargoCommand: resolveCargoCommand(),
+    env,
+    frame: options.frame,
+    outPath: options.outPath,
+    repoRoot: options.repoRoot,
+  });
+  await execFileAsync(invocation.command, invocation.args, { cwd: invocation.cwd, env, timeout: nativeCaptureTimeout(invocation) });
   const info = await stat(options.outPath);
   if (info.size === 0) {
     throw new Error(`Native capture wrote an empty PNG: ${options.outPath}`);
   }
+}
+
+export function resolveNativeCaptureInvocation(options: {
+  bundlePath: string;
+  cameraId: string;
+  captureBinaryPath?: string;
+  cargoCommand: string;
+  commandExists?: (command: string, env: NodeJS.ProcessEnv) => boolean;
+  env: NodeJS.ProcessEnv;
+  frame: number;
+  outPath: string;
+  repoRoot: string;
+}): INativeCaptureInvocation {
+  const captureArgs = [options.bundlePath, options.cameraId, options.outPath, String(options.frame)];
+  const baseInvocation = options.captureBinaryPath !== undefined
+    ? { args: captureArgs, command: options.captureBinaryPath }
+    : {
+        args: ["run", "--quiet", "-p", "threenative_runtime", "--bin", "threenative_capture", "--", ...captureArgs],
+        command: options.cargoCommand,
+        cwd: resolve(options.repoRoot, "runtime-bevy"),
+      };
+
+  if (hasGraphicalDisplay(options.env)) {
+    return { ...baseInvocation, wrappedWithXvfb: false };
+  }
+
+  const commandExists = options.commandExists ?? isCommandOnPath;
+  if (commandExists("xvfb-run", options.env)) {
+    return {
+      ...baseInvocation,
+      args: ["-a", baseInvocation.command, ...baseInvocation.args],
+      command: "xvfb-run",
+      wrappedWithXvfb: true,
+    };
+  }
+
+  throw new Error(`${nativeHeadlessDiagnosticCode}: Native Bevy capture needs a graphical display. No DISPLAY, WAYLAND_DISPLAY, or WAYLAND_SOCKET is set, and xvfb-run was not found on PATH. Install Xvfb/xvfb-run or run tn scene proof --native in a graphical session.`);
+}
+
+function formatNativeCaptureCommand(options: { bundlePath: string; cameraId: string; env: NodeJS.ProcessEnv; frame: number; outPath: string }): string {
+  const captureArgs = [options.bundlePath, options.cameraId, options.outPath, String(options.frame)];
+  const baseCommand = `threenative_capture ${captureArgs.join(" ")}`;
+  if (hasGraphicalDisplay(options.env)) {
+    return baseCommand;
+  }
+  if (isCommandOnPath("xvfb-run", options.env)) {
+    return `xvfb-run -a ${baseCommand}`;
+  }
+  return baseCommand;
+}
+
+function nativeCaptureTimeout(invocation: INativeCaptureInvocation): number {
+  return invocation.cwd === undefined ? 120_000 : 180_000;
+}
+
+function hasGraphicalDisplay(env: NodeJS.ProcessEnv): boolean {
+  return [env.DISPLAY, env.WAYLAND_DISPLAY, env.WAYLAND_SOCKET].some((value) => value !== undefined && value.length > 0);
+}
+
+function isCommandOnPath(command: string, env: NodeJS.ProcessEnv): boolean {
+  const path = env.PATH ?? "";
+  if (path.length === 0) {
+    return false;
+  }
+  for (const pathEntry of path.split(delimiter)) {
+    if (pathEntry.length === 0) {
+      continue;
+    }
+    const candidate = join(pathEntry, command);
+    if (!existsSync(candidate)) {
+      continue;
+    }
+    try {
+      accessSync(candidate, constants.X_OK);
+      return true;
+    } catch {
+      // Keep searching PATH entries.
+    }
+  }
+  return false;
 }
 
 async function readProvenance(projectPath: string, bundlePath: string, sceneId: string, sceneSourceFile: string): Promise<IProofReport["provenance"]> {
