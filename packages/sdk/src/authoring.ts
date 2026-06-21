@@ -78,6 +78,14 @@ export interface IAssetModuleDeclaration {
   id: string;
 }
 
+/**
+ * Wraps a portable scene declaration with optional structured-source metadata.
+ *
+ * The compiler and editor use this metadata to preserve provenance between
+ * source documents and emitted IR. The returned declaration remains portable:
+ * users still author TypeScript and structured data, while Bevy remains an
+ * internal runtime adapter.
+ */
 export function defineSceneModule(options: ISceneModuleOptions): ISceneModuleDeclaration {
   const scene = defineScene(options);
   const source = normalizeSourceMetadata(options.source, scene.id);
@@ -129,6 +137,13 @@ export function defineAssetModule(options: { asset: IAssetReference; id?: string
   };
 }
 
+/**
+ * Creates a portable ECS entity declaration for modular authoring.
+ *
+ * Components must be serializable data produced by ThreeNative schema factories.
+ * Transform convenience fields are lowered to `PrefabTransform`, and invalid
+ * component data throws `SdkError` before the compiler emits a bundle.
+ */
 export function defineEntity(options: IEntityModuleOptions): IEntityModuleDeclaration {
   assertLogicalId(options.id);
   const components = [

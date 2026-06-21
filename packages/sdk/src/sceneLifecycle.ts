@@ -93,6 +93,14 @@ export const sceneTransition = {
   },
 } as const;
 
+/**
+ * Declares a scene lifecycle entry for `defineGame`.
+ *
+ * Scenes connect optional visual `Scene` objects, ECS worlds, input, audio, UI,
+ * preload groups, persistence rules, and transition metadata. The declaration
+ * is portable IR input; unsupported lifecycle hooks or invalid IDs throw
+ * `SdkError` diagnostics instead of being ignored.
+ */
 export function defineScene(options: ISceneLifecycleOptions): ISceneLifecycleDeclaration {
   assertNoUnsupportedOptions(options);
   assertId(options.id, "TN_SDK_SCENE_ID_EMPTY", "Scene lifecycle ID must not be empty.");

@@ -27,6 +27,23 @@ export interface IGameRootOptions extends IGameRoot {
   runtimeConfig?: IRuntimeConfigDeclaration;
 }
 
+/**
+ * Defines the portable game root consumed by the ThreeNative compiler.
+ *
+ * Use this for modular games that combine scene lifecycle declarations, ECS
+ * worlds, input, audio, UI, persistence, environment data, or other portable
+ * roots. `initialScene` is required when `scenes` is provided, and the ID must
+ * match one of those scene declarations. Unsupported or empty roots throw
+ * `SdkError` diagnostics before compilation.
+ *
+ * @example
+ * ```ts
+ * export default defineGame({
+ *   initialScene: "arena",
+ *   scenes: [defineScene({ id: "arena", kind: "level", visual: scene })],
+ * });
+ * ```
+ */
 export function defineGame(options: IGameRootOptions): IGameRoot {
   const world = options.world;
   const hasPortableRoot =

@@ -256,14 +256,14 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Audit public exports for missing or ambiguous declaration names.
-- [ ] Add JSDoc that explains intent, accepted values, failure behavior, and a
+- [x] Audit public exports for missing or ambiguous declaration names.
+- [x] Add JSDoc that explains intent, accepted values, failure behavior, and a
   minimal example for high-value APIs.
-- [ ] Replace public `any`/wide `unknown` surfaces where a stable exported type
+- [x] Replace public `any`/wide `unknown` surfaces where a stable exported type
   already exists.
-- [ ] Add conditional export maps with `"types"` entries for public package
+- [x] Add conditional export maps with `"types"` entries for public package
   root and subpath exports.
-- [ ] Preserve internal implementation boundaries; do not expose Bevy adapter
+- [x] Preserve internal implementation boundaries; do not expose Bevy adapter
   internals as authoring APIs.
 
 **Tests Required:**
@@ -286,6 +286,17 @@ sequenceDiagram
   `@threenative/sdk` and `@threenative/ir` in an editor.
 - Expected: completions show documented public APIs and do not require repo
   source to understand basic usage.
+
+**Progress Evidence:**
+
+- `pnpm --filter @threenative/sdk build`,
+  `pnpm --filter @threenative/ir build`, and
+  `pnpm --filter @threenative/compiler build` - touched public declaration
+  emitters compile after JSDoc additions.
+- `pnpm verify:distribution` - packed packages install into a clean consumer
+  project and now run `tsc --noEmit --project
+  tsconfig.threenative-contract.json` against installed declarations and public
+  subpaths before creating/building/verifying the sample game.
 
 **Checkpoint:**
 

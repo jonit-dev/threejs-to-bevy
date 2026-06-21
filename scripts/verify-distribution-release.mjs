@@ -53,6 +53,8 @@ try {
   await run("mkdir", ["-p", consumerDir], { cwd: repoRoot });
   await run("npm", ["init", "-y"], { cwd: consumerDir });
   await run("npm", ["install", ...[...tarballs.values()]], { cwd: consumerDir });
+  await writeConsumerTypecheckFixture(consumerDir);
+  await run("npx", ["tsc", "--noEmit", "--project", "tsconfig.threenative-contract.json"], { cwd: consumerDir });
   await run("npx", ["tn", "create", "simple-game", "--json"], { cwd: consumerDir });
 
   await rewriteGameDependencies(gameDir, tarballs);
@@ -160,6 +162,63 @@ async function rewriteGameDependencies(projectDir, packageTarballs) {
     "@threenative/cli": `file:${packageTarballs.get("@threenative/cli")}`,
   };
   await writeFile(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
+}
+
+async function writeConsumerTypecheckFixture(projectDir) {
+  await writeFile(
+    join(projectDir, "threenative-contract.mts"),
+    `import { BoxGeometry, Mesh, MeshStandardMaterial, Scene, defineGame, defineScene } from "@threenative/sdk";
+import { schemaUrls, validateBundle, validateBundleRelativePath } from "@threenative/ir";
+import { validateBundleRelativePath as validateBundleRelativePathSubpath } from "@threenative/ir/bundlePaths";
+import { diagnoseUnsupportedRuntimeDeclarations } from "@threenative/ir/runtimeDiagnostics";
+import { buildProject } from "@threenative/compiler";
+
+const scene = new Scene({ id: "arena" });
+scene.add(new Mesh({
+  geometry: new BoxGeometry({ size: [1, 1, 1] }),
+  id: "cube",
+  material: new MeshStandardMaterial({ color: "#44aa88" }),
+}));
+
+const game = defineGame({
+  initialScene: "arena",
+  scenes: [defineScene({ id: "arena", kind: "level", visual: scene })],
+});
+
+const pathCheck = validateBundleRelativePath("world.ir.json");
+const subpathCheck = validateBundleRelativePathSubpath("assets/hero.glb");
+const manifestSchema = schemaUrls.manifest;
+
+void game;
+void pathCheck;
+void subpathCheck;
+void manifestSchema;
+void validateBundle;
+void diagnoseUnsupportedRuntimeDeclarations;
+void buildProject;
+`,
+    "utf8",
+  );
+  await writeFile(
+    join(projectDir, "tsconfig.threenative-contract.json"),
+    `${JSON.stringify(
+      {
+        compilerOptions: {
+          module: "NodeNext",
+          moduleResolution: "NodeNext",
+          noEmit: true,
+          resolveJsonModule: true,
+          skipLibCheck: true,
+          strict: true,
+          target: "ES2023",
+        },
+        include: ["threenative-contract.mts"],
+      },
+      null,
+      2,
+    )}\n`,
+    "utf8",
+  );
 }
 
 async function fetchText(url) {

@@ -56,6 +56,13 @@ const MAX_DYNAMIC_NAV_REGIONS = 64;
 const MAX_DYNAMIC_NAV_OBSTACLES = 32;
 const MAX_CROWD_AGENTS = 16;
 
+/**
+ * Validates a generated ThreeNative bundle directory.
+ *
+ * The validator reads `manifest.json`, follows its bundle-relative document
+ * paths, and returns stable diagnostics with codes, paths, and suggestions when
+ * serialized IR is missing, malformed, or references unsupported features.
+ */
 export async function validateBundle(bundlePath: string): Promise<IBundleValidationResult> {
   const diagnostics: IIrDiagnostic[] = [];
   const manifest = await readJson<unknown>(resolve(bundlePath, IR_DOCUMENTS.manifest.fileName), diagnostics);

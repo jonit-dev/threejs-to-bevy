@@ -22,6 +22,15 @@ export type {
   IAuthoringSourcePointer,
 } from "./authoring/graph.js";
 
+/**
+ * Builds a ThreeNative project from its `threenative.config.json`.
+ *
+ * The compiler captures the configured TypeScript or structured source entry,
+ * emits a portable bundle, writes authoring provenance when source documents
+ * are available, and validates the emitted bundle before returning. Invalid
+ * authoring input or emitted IR throws `CompilerError` with a stable diagnostic
+ * code and source/path metadata where available.
+ */
 export async function buildProject(projectPath: string): Promise<{ bundlePath: string }> {
   const { loadProjectConfig } = await import("./config.js");
   const { captureEntry } = await import("./capture.js");
