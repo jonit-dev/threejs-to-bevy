@@ -21,7 +21,7 @@ Current package-specific requirements:
 | Package | Required files | Required exports |
 | --- | --- | --- |
 | `@threenative/sdk` | `dist` | `.` |
-| `@threenative/ir` | `dist`, `schemas` | `.`, `./bundlePaths`, `./conformance`, `./input`, `./reflection`, `./runtimeDiagnostics`, `./schemas/*` |
+| `@threenative/ir` | `capabilities`, `diagnostics`, `dist`, `schemas` | `.`, `./bundlePaths`, `./conformance`, `./input`, `./reflection`, `./runtimeDiagnostics`, `./capabilities/*`, `./diagnostics/*`, `./schemas/*` |
 | `@threenative/authoring` | `dist` | `.` |
 | `@threenative/ui` | `dist` | `.`, `./jsx-runtime` |
 | `@threenative/r3f` | `dist` | `.`, `./jsx-runtime` |
@@ -43,18 +43,18 @@ surface, not inside every package:
 
 ## Future Package Metadata
 
-Later phases of the PRD will promote additional package-local artifacts:
+Promoted package-local artifacts:
 
 - `@threenative/ir/capabilities/*` for a versioned feature manifest.
 - `@threenative/ir/diagnostics/*` for stable diagnostic code metadata.
-- Canonical AI examples included in the distribution surface where the release
-  verifier proves they can build without repository-only paths.
+- Canonical AI examples will be included in the distribution surface where the
+  release verifier proves they can build without repository-only paths.
 
-Until those files exist, `scripts/check-distribution-contract.mjs` enforces the
-current Phase 1 contract: declarations, declaration maps, `files` entries, and
-type-aware public exports. The checker has negative coverage for the planned
-capability, diagnostics, and examples exports so future phases can promote those
-requirements without changing diagnostic shape.
+`scripts/check-distribution-contract.mjs` enforces declarations, declaration
+maps, `files` entries, type-aware public exports, and the promoted IR
+capability/diagnostics metadata exports. The checker keeps negative coverage
+for planned examples exports so later phases can promote those requirements
+without changing diagnostic shape.
 
 ## Verification
 

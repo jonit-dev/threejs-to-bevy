@@ -549,6 +549,14 @@ verification, distribution proof, ordered pack, local desktop distributable
 creation/validation, installed native runtime build, and npm publish dry-run.
 `pnpm run deploy -- --skip-tests` is available only as an explicit fast publish
 retry path.
+The AI-consumable distribution contract now promotes package-local IR metadata:
+`@threenative/ir/capabilities/threenative.capabilities.json` describes
+supported, partial, diagnostic-only, and non-portable feature states with
+web/Bevy runtime support fields, while
+`@threenative/ir/diagnostics/diagnostics.catalog.json` documents exact
+high-value diagnostics plus public `TN_IR_*` diagnostic families. The IR test
+suite validates catalog shape, current diagnostic coverage, and every exported
+schema's `$id`, version, and package path.
 
 V10 planning now exists under `docs/PRDs/v10/README.md`. V10 is the current
 final-gap triage batch for remaining runtime/platform parity rows after the V9

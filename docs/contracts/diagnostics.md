@@ -14,6 +14,12 @@ Prefer diagnostics with:
 - affected entity, asset, material, system, or bookmark ID when available
 - suggested fix when the local diagnostic model supports it
 
+The distributed IR package also ships machine-readable diagnostic metadata at
+`@threenative/ir/diagnostics/diagnostics.catalog.json`. That catalog contains
+exact high-value diagnostics plus explicit public `TN_IR_*` family coverage so
+AI agents can map validation failures to surfaces and suggested fixes without
+reading repository source.
+
 ## CLI JSON Streams
 
 When a CLI command runs with `--json`, machine-readable success and failure

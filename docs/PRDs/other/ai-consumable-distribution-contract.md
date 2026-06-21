@@ -315,22 +315,51 @@ sequenceDiagram
   `./diagnostics/*` and include them in `files`.
 - `packages/ir/src/diagnosticsCatalog.test.ts` - validate catalog shape and
   coverage for known diagnostics.
-- `docs/diagnostics.md` - link generated or maintained diagnostic details.
+- `docs/contracts/diagnostics.md` - link generated or maintained diagnostic details.
 
 **Implementation:**
 
-- [ ] Define a versioned capability manifest with supported, partial,
+- [x] Define a versioned capability manifest with supported, partial,
   diagnostic-only, and non-portable feature states.
-- [ ] Include runtime support fields for web Three.js and native Bevy when a
+- [x] Include runtime support fields for web Three.js and native Bevy when a
   feature claim depends on both runtimes.
-- [ ] Build or maintain a diagnostics catalog containing code, severity,
+- [x] Build or maintain a diagnostics catalog containing code, severity,
   message summary, source surface, JSON/source path shape, suggested fix, and
   example rejected input where practical.
-- [ ] Ensure every exported schema has stable `$id`, version, and package path
+- [x] Ensure every exported schema has stable `$id`, version, and package path
   documentation.
-- [ ] Add validation that known diagnostic codes in tests/docs are present in
+- [x] Add validation that known diagnostic codes in tests/docs are present in
   the catalog, while allowing internal verifier-only codes to be explicitly
   classified.
+
+**Progress Evidence:**
+
+- `packages/ir/capabilities/threenative.capabilities.json` defines supported,
+  partial, diagnostic-only, and non-portable feature states plus web Three.js
+  and native Bevy runtime support fields.
+- `packages/ir/diagnostics/diagnostics.catalog.json` documents exact
+  high-value diagnostics and explicit public `TN_IR_*` families with severity,
+  surface, path shape, suggested fix, and representative rejected input where
+  practical.
+- `packages/ir/src/diagnosticsCatalog.test.ts` validates catalog shape,
+  current IR diagnostic coverage from source/docs, and every exported schema
+  document's `$id`, version, schema literal, and package path.
+- `scripts/check-distribution-contract.mjs` now requires IR capabilities and
+  diagnostics package exports and `files` entries.
+- `docs/contracts/diagnostics.md`, `docs/contracts/distribution-contract.md`,
+  `docs/STATUS.md`, and `docs/bevy-feature-parity.md` record the promoted
+  metadata surface.
+- `pnpm --filter @threenative/ir typecheck` - IR package typecheck passed.
+- `pnpm --filter @threenative/ir test` - 247 IR tests passed, including the new
+  diagnostics catalog and schema metadata tests.
+- `node --test scripts/check-distribution-contract.test.mjs` and
+  `node scripts/check-distribution-contract.mjs` - distribution contract tests
+  and current package manifest check passed.
+- `pnpm check:docs`, `pnpm check:names`, and `git diff --check` - docs,
+  naming, and whitespace checks passed.
+- `pnpm verify:distribution` - packed tarballs include the IR capabilities and
+  diagnostics metadata, clean consumer typecheck/build/verify passed, packaged
+  native runtime compiled, and desktop bundle validation passed.
 
 **Tests Required:**
 

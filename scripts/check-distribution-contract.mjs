@@ -14,9 +14,11 @@ export const packageContracts = [
       jsExport("./input", "./dist/input.d.ts"),
       jsExport("./reflection", "./dist/reflection.d.ts"),
       jsExport("./runtimeDiagnostics", "./dist/runtimeDiagnostics.d.ts"),
+      staticExport("./capabilities/*"),
+      staticExport("./diagnostics/*"),
       staticExport("./schemas/*"),
     ],
-    files: ["dist", "schemas"],
+    files: ["capabilities", "diagnostics", "dist", "schemas"],
   }),
   packageContract("@threenative/authoring", "packages/authoring"),
   packageContract("@threenative/ui", "packages/ui", {

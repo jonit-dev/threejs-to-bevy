@@ -28,9 +28,13 @@
       "types": "./dist/runtimeDiagnostics.d.ts",
       "default": "./dist/runtimeDiagnostics.js"
     },
+    "./capabilities/*": "./capabilities/*",
+    "./diagnostics/*": "./diagnostics/*",
     "./schemas/*": "./schemas/*"
   },
   "files": [
+    "capabilities",
+    "diagnostics",
     "dist",
     "schemas"
   ],

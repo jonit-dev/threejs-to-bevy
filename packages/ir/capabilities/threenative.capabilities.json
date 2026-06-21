@@ -1,0 +1,114 @@
+{
+  "schema": "threenative.capabilities",
+  "version": "0.1.0",
+  "package": "@threenative/ir",
+  "states": ["supported", "partial", "diagnostic-only", "non-portable"],
+  "runtimes": ["web-three", "bevy"],
+  "features": [
+    {
+      "id": "typescript-authoring-to-ir",
+      "state": "supported",
+      "summary": "ThreeNative games are authored through TypeScript SDK declarations and compiled into portable IR bundles.",
+      "surfaces": ["@threenative/sdk", "@threenative/compiler", "@threenative/ir"],
+      "runtimeSupport": { "web-three": "supported", "bevy": "supported" },
+      "diagnostics": ["TN_IR_SCHEMA_PAYLOAD_INVALID"]
+    },
+    {
+      "id": "schema-backed-ir-bundles",
+      "state": "supported",
+      "summary": "Schema-backed IR bundle documents are the stable contract consumed by CLI, web Three.js, and native Bevy runtimes.",
+      "surfaces": ["@threenative/ir/schemas/*", "@threenative/ir"],
+      "runtimeSupport": { "web-three": "supported", "bevy": "supported" },
+      "diagnostics": ["TN_IR_MANIFEST_INVALID", "TN_IR_WORLD_VERSION_UNSUPPORTED"]
+    },
+    {
+      "id": "editor-source-documents",
+      "state": "partial",
+      "summary": "Structured source documents are promoted for editor-owned scene data, with unsupported fields reported as diagnostics.",
+      "surfaces": ["editor-project", "authoring-source-documents"],
+      "runtimeSupport": { "web-three": "partial", "bevy": "partial" },
+      "diagnostics": ["TN_IR_EDITOR_PROJECT_INVALID", "TN_IR_EDITOR_SOURCE_PATCH_INVALID"]
+    },
+    {
+      "id": "portable-runtime-parity",
+      "state": "partial",
+      "summary": "Shared runtime behavior targets web Three.js and native Bevy parity, with advanced rendering, physics, UI, audio, and navigation breadth still gated by diagnostics.",
+      "surfaces": ["runtime-web-three", "runtime-bevy", "conformance"],
+      "runtimeSupport": { "web-three": "partial", "bevy": "partial" },
+      "diagnostics": ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "TN_IR_PHYSICS_JOINT_UNSUPPORTED"]
+    },
+    {
+      "id": "unsupported-raw-runtime-authoring",
+      "state": "non-portable",
+      "summary": "Raw Three.js source, raw Bevy source, native handles, browser/platform APIs, and generated runtime artifacts are not durable authoring sources.",
+      "surfaces": ["authoring-boundary", "runtime-boundary"],
+      "runtimeSupport": { "web-three": "diagnostic-only", "bevy": "diagnostic-only" },
+      "diagnostics": ["TN_IR_RAW_THREE_SOURCE_UNSUPPORTED", "TN_IR_NATIVE_AUTHORING_UNSUPPORTED", "TN_IR_PLATFORM_API_UNSUPPORTED"]
+    }
+  ],
+  "schemaDocuments": [
+    {
+      "name": "assets",
+      "packagePath": "schemas/assets.schema.json",
+      "schema": "threenative.assets",
+      "version": "0.1.0",
+      "$id": "https://schemas.threenative.local/v1/assets.schema.json"
+    },
+    {
+      "name": "input",
+      "packagePath": "schemas/input.schema.json",
+      "schema": "threenative.input",
+      "version": "0.1.0",
+      "$id": "https://schemas.threenative.local/v1/input.schema.json"
+    },
+    {
+      "name": "manifest",
+      "packagePath": "schemas/manifest.schema.json",
+      "schema": "threenative.bundle",
+      "version": "0.1.0",
+      "$id": "https://schemas.threenative.local/v1/manifest.schema.json"
+    },
+    {
+      "name": "materials",
+      "packagePath": "schemas/materials.schema.json",
+      "schema": "threenative.materials",
+      "version": "0.1.0",
+      "$id": "https://schemas.threenative.local/v1/materials.schema.json"
+    },
+    {
+      "name": "overlays",
+      "packagePath": "schemas/overlays.schema.json",
+      "schema": "threenative.overlays",
+      "version": "0.1.0",
+      "$id": "https://schemas.threenative.local/v1/overlays.schema.json"
+    },
+    {
+      "name": "runtime-config",
+      "packagePath": "schemas/runtime-config.schema.json",
+      "schema": "threenative.runtime-config",
+      "version": "0.1.0",
+      "$id": "https://schemas.threenative.local/v1/runtime-config.schema.json"
+    },
+    {
+      "name": "scenes",
+      "packagePath": "schemas/scenes.schema.json",
+      "schema": "threenative.scenes",
+      "version": "0.1.0",
+      "$id": "https://schemas.threenative.local/v1/scenes.schema.json"
+    },
+    {
+      "name": "target-profile",
+      "packagePath": "schemas/target-profile.schema.json",
+      "schema": "threenative.target-profile",
+      "version": "0.1.0",
+      "$id": "https://schemas.threenative.local/v1/target-profile.schema.json"
+    },
+    {
+      "name": "world",
+      "packagePath": "schemas/world.schema.json",
+      "schema": "threenative.world",
+      "version": "0.1.0",
+      "$id": "https://schemas.threenative.local/v1/world.schema.json"
+    }
+  ]
+}
