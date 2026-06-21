@@ -37,7 +37,11 @@ export const HELP_TOPICS: Record<string, HelpTopic> = {
     aliases: ["authoring", "scene-authoring"],
     commands: [
       "tn scene create <scene-id> [--file <path>] --json",
+      "tn scene add-prefab <scene-id> <prefab-id> [--primitive <primitive>] [--color <css-color>] --json",
+      "tn scene add-resource <scene-id> <resource-id> [--path <resource.path>] --json",
+      "tn scene add-ui-node <scene-id> <ui-node-id> --json",
       "tn scene add-entity <scene-id> <entity-id> [--prefab <prefab-id>] --json",
+      "tn scene set-prefab-color <scene-id> <prefab-id> --color <css-color> --json",
       "tn scene set-transform <scene-id> <entity-id> --position x,y,z --rotation x,y,z --scale x,y,z --json",
       "tn scene attach-script <scene-id> <system-id> --module <path> --export <name> --json",
       "tn scene validate <scene-id> --json",
@@ -48,7 +52,11 @@ export const HELP_TOPICS: Record<string, HelpTopic> = {
     docs: ["docs/workflows/developer-workflow.md", "docs/workflows/ai-workflows.md"],
     examples: [
       "tn scene create scene.arena --json",
+      "tn scene add-prefab scene.arena kart --primitive box --color '#ff2200' --json",
+      "tn scene add-resource scene.arena hud.score --path hud.score.value --json",
+      "tn scene add-ui-node scene.arena score-label --json",
       "tn scene add-entity scene.arena player-kart --prefab kart --json",
+      "tn scene set-prefab-color scene.arena kart --color '#00aaff' --json",
       "tn scene set-transform scene.arena player-kart --position 0,0,0 --rotation 0,0,0 --scale 1,1,1 --json",
       "tn scene attach-script scene.arena race-controller --module src/scripts/race.ts --export raceController --json",
       "tn scene proof scene.arena --project . --web-url http://127.0.0.1:5173 --out artifacts/proof --native --json",

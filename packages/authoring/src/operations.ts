@@ -84,6 +84,30 @@ export interface IAddEntityOptions extends IAuthoringOperationContext {
   prefabId?: string;
 }
 
+export interface IAddPrefabOptions extends IAuthoringOperationContext {
+  sceneId: string;
+  prefabId: string;
+  primitive?: string;
+  color?: string;
+}
+
+export interface ISetPrefabColorOptions extends IAuthoringOperationContext {
+  sceneId: string;
+  prefabId: string;
+  color: string;
+}
+
+export interface IAddResourceOptions extends IAuthoringOperationContext {
+  sceneId: string;
+  resourceId: string;
+  path?: string;
+}
+
+export interface IAddUiNodeOptions extends IAuthoringOperationContext {
+  sceneId: string;
+  uiNodeId: string;
+}
+
 export interface ISetTransformOptions extends IAuthoringOperationContext {
   sceneId: string;
   entityId: string;
@@ -315,6 +339,47 @@ export async function addEntity(options: IAddEntityOptions): Promise<IAuthoringO
       id: options.entityId,
       ...(options.prefabId === undefined ? {} : { prefab: options.prefabId }),
     });
+  });
+}
+
+export async function addPrefab(options: IAddPrefabOptions): Promise<IAuthoringOperationResult> {
+  return mutateScene(options, (scene) => {
+    const prefabs = ensureArrayProperty(scene, "prefabs");
+    prefabs.push({
+      id: options.prefabId,
+      ...(options.primitive === undefined ? {} : { primitive: options.primitive }),
+      ...(options.color === undefined ? {} : { color: options.color }),
+    });
+  });
+}
+
+export async function setPrefabColor(options: ISetPrefabColorOptions): Promise<IAuthoringOperationResult> {
+  return mutateScene(options, (scene, file) => {
+    const prefab = findSceneItem(scene.prefabs, options.prefabId);
+    if (prefab === undefined) {
+      return [missingReferenceDiagnostic(file, "/prefabs", "prefab", options.prefabId, idsFromArray(scene.prefabs))];
+    }
+    prefab.color = options.color;
+    return [];
+  });
+}
+
+export async function addResource(options: IAddResourceOptions): Promise<IAuthoringOperationResult> {
+  return mutateScene(options, (scene) => {
+    const resources = ensureArrayProperty(scene, "resources");
+    resources.push({
+      id: options.resourceId,
+      ...(options.path === undefined ? {} : { path: options.path }),
+    });
+  });
+}
+
+export async function addUiNode(options: IAddUiNodeOptions): Promise<IAuthoringOperationResult> {
+  return mutateScene(options, (scene) => {
+    const ui = isRecord(scene.ui) ? scene.ui : {};
+    const nodes = ensureArrayProperty(ui, "nodes");
+    scene.ui = ui;
+    nodes.push({ id: options.uiNodeId });
   });
 }
 

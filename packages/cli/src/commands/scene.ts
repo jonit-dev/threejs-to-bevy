@@ -1,10 +1,14 @@
 import {
   addEntity,
+  addPrefab,
+  addResource,
+  addUiNode,
   attachScript,
   bindUi,
   createScene,
   inspectScene,
   setCamera,
+  setPrefabColor,
   setTransform,
   validateScene,
   type IAuthoringOperationResult,
@@ -62,6 +66,47 @@ export async function sceneCommand(argv: readonly string[], options: ISceneComma
     }
     const result = await addEntity({ projectPath, sceneId, entityId, prefabId: readFlag(normalizedArgv, "--prefab") });
     return renderSceneResult(result, json, result.ok ? `Entity '${entityId}' added.` : `Entity '${entityId}' was not added.`);
+  }
+
+  if (subcommand === "add-prefab") {
+    const sceneId = readPositional(normalizedArgv, 1);
+    const prefabId = readPositional(normalizedArgv, 2);
+    if (sceneId === undefined || prefabId === undefined) {
+      return renderUsage(json, "TN_SCENE_ADD_PREFAB_ARGS_MISSING", "Usage: tn scene add-prefab <scene-id> <prefab-id> [--primitive <primitive>] [--color <css-color>] [--project <path>] [--json]");
+    }
+    const result = await addPrefab({ projectPath, sceneId, prefabId, primitive: readFlag(normalizedArgv, "--primitive"), color: readFlag(normalizedArgv, "--color") });
+    return renderSceneResult(result, json, result.ok ? `Prefab '${prefabId}' added.` : `Prefab '${prefabId}' was not added.`);
+  }
+
+  if (subcommand === "set-prefab-color") {
+    const sceneId = readPositional(normalizedArgv, 1);
+    const prefabId = readPositional(normalizedArgv, 2);
+    const color = readFlag(normalizedArgv, "--color");
+    if (sceneId === undefined || prefabId === undefined || color === undefined) {
+      return renderUsage(json, "TN_SCENE_SET_PREFAB_COLOR_ARGS_MISSING", "Usage: tn scene set-prefab-color <scene-id> <prefab-id> --color <css-color> [--project <path>] [--json]");
+    }
+    const result = await setPrefabColor({ projectPath, sceneId, prefabId, color });
+    return renderSceneResult(result, json, result.ok ? `Prefab '${prefabId}' color updated.` : `Prefab '${prefabId}' color was not updated.`);
+  }
+
+  if (subcommand === "add-resource") {
+    const sceneId = readPositional(normalizedArgv, 1);
+    const resourceId = readPositional(normalizedArgv, 2);
+    if (sceneId === undefined || resourceId === undefined) {
+      return renderUsage(json, "TN_SCENE_ADD_RESOURCE_ARGS_MISSING", "Usage: tn scene add-resource <scene-id> <resource-id> [--path <resource.path>] [--project <path>] [--json]");
+    }
+    const result = await addResource({ projectPath, sceneId, resourceId, path: readFlag(normalizedArgv, "--path") });
+    return renderSceneResult(result, json, result.ok ? `Resource '${resourceId}' added.` : `Resource '${resourceId}' was not added.`);
+  }
+
+  if (subcommand === "add-ui-node") {
+    const sceneId = readPositional(normalizedArgv, 1);
+    const uiNodeId = readPositional(normalizedArgv, 2);
+    if (sceneId === undefined || uiNodeId === undefined) {
+      return renderUsage(json, "TN_SCENE_ADD_UI_NODE_ARGS_MISSING", "Usage: tn scene add-ui-node <scene-id> <ui-node-id> [--project <path>] [--json]");
+    }
+    const result = await addUiNode({ projectPath, sceneId, uiNodeId });
+    return renderSceneResult(result, json, result.ok ? `UI node '${uiNodeId}' added.` : `UI node '${uiNodeId}' was not added.`);
   }
 
   if (subcommand === "set-transform") {
@@ -215,7 +260,7 @@ function readPositional(argv: readonly string[], index: number): string | undefi
   return positionals[index];
 }
 
-const flagsWithValues = new Set(["--project", "--file", "--prefab", "--position", "--rotation", "--scale", "--mode", "--target", "--module", "--export", "--resource", "--out", "--web-url", "--camera", "--native-frame"]);
+const flagsWithValues = new Set(["--project", "--file", "--prefab", "--primitive", "--color", "--path", "--position", "--rotation", "--scale", "--mode", "--target", "--module", "--export", "--resource", "--out", "--web-url", "--camera", "--native-frame"]);
 
 function sceneUsage(): string {
   return "Usage: tn scene create <scene-id> [--file <path>] [--project <path>] [--json]\n       tn scene validate [scene-id] [--project <path>] [--json]\n       tn scene inspect <scene-id> [--project <path>] [--json]\n       tn scene proof <scene-id> --project <path> --out <dir> [--web-url <url>] [--native] [--json]";

@@ -157,6 +157,43 @@ test("scene-command mutates structured scene documents deterministically", async
   }
 });
 
+test("scene-command can create prefabs resources and ui nodes without hand-editing JSON", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-scene-authoring-gap-"));
+
+  try {
+    const create = await sceneCommand(["create", "scene.gap", "--project", root, "--json"]);
+    const prefab = await sceneCommand(["add-prefab", "scene.gap", "kart", "--primitive", "box", "--color", "#ff2200", "--project", root, "--json"]);
+    const resource = await sceneCommand(["add-resource", "scene.gap", "hud.score", "--path", "hud.score.value", "--project", root, "--json"]);
+    const uiNode = await sceneCommand(["add-ui-node", "scene.gap", "score-label", "--project", root, "--json"]);
+    const recolor = await sceneCommand(["set-prefab-color", "scene.gap", "kart", "--color", "#00aaff", "--project", root, "--json"]);
+    const entity = await sceneCommand(["add-entity", "scene.gap", "player-kart", "--prefab", "kart", "--project", root, "--json"]);
+    const binding = await sceneCommand(["bind-ui", "scene.gap", "score-label", "--resource", "hud.score", "--project", root, "--json"]);
+    const validate = await sceneCommand(["validate", "scene.gap", "--project", root, "--json"]);
+    const scene = JSON.parse(await readFile(join(root, "content", "scenes", "scene.gap.scene.json"), "utf8")) as {
+      entities: Array<{ id: string; prefab?: string }>;
+      prefabs: Array<{ color?: string; id: string; primitive?: string }>;
+      resources: Array<{ id: string; path?: string }>;
+      ui: { bindings: Array<{ node: string; resource: string }>; nodes: Array<{ id: string }> };
+    };
+
+    assert.equal(create.exitCode, 0);
+    assert.equal(prefab.exitCode, 0);
+    assert.equal(resource.exitCode, 0);
+    assert.equal(uiNode.exitCode, 0);
+    assert.equal(recolor.exitCode, 0);
+    assert.equal(entity.exitCode, 0);
+    assert.equal(binding.exitCode, 0);
+    assert.equal(validate.exitCode, 0);
+    assert.deepEqual(scene.prefabs, [{ color: "#00aaff", id: "kart", primitive: "box" }]);
+    assert.deepEqual(scene.resources, [{ id: "hud.score", path: "hud.score.value" }]);
+    assert.deepEqual(scene.ui.nodes, [{ id: "score-label" }]);
+    assert.deepEqual(scene.ui.bindings, [{ node: "score-label", resource: "hud.score" }]);
+    assert.deepEqual(scene.entities, [{ id: "player-kart", prefab: "kart" }]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("scene-command smoke validates authored scene and preserves project build validation", async () => {
   const root = await createSceneProject({ minimal: true });
 
