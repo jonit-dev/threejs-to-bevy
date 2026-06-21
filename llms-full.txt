@@ -1,0 +1,83 @@
+# ThreeNative AI Reference
+
+ThreeNative is a TypeScript game SDK with a Three.js-like authoring surface,
+validated portable IR, and runtime adapters for web Three.js and native Bevy.
+The stable contract is:
+
+```txt
+TypeScript authoring / structured source documents
+  -> SDK object model and ECS declarations
+  -> compiler extraction and validation
+  -> versioned IR bundle
+  -> web Three.js preview or native Bevy runtime adapter
+```
+
+## Packages
+
+| Package | Role | Public entrypoints |
+| --- | --- | --- |
+| `@threenative/sdk` | TypeScript authoring API. | `.` |
+| `@threenative/ir` | Bundle schemas, validation, capabilities, diagnostics. | `.`, `./bundlePaths`, `./conformance`, `./input`, `./reflection`, `./runtimeDiagnostics`, `./schemas/*`, `./capabilities/*`, `./diagnostics/*` |
+| `@threenative/compiler` | Build project source into a portable bundle. | `.` |
+| `@threenative/cli` | User commands and generated project templates. | `tn` bin |
+| `@threenative/runtime-web-three` | Web runtime adapter. | `.` |
+| `@threenative/ui` | Portable retained UI authoring helpers. | `.`, `./jsx-runtime` |
+| `@threenative/r3f` | React/R3F capture helpers. | `.`, `./jsx-runtime` |
+
+## Core Commands
+
+```bash
+tn create simple-game --template starter
+tn build
+tn verify --json
+tn scene validate arena --json
+tn scene inspect arena --json
+tn scene proof arena --project . --web-url http://127.0.0.1:5173 --out artifacts/proof --json
+tn editor dev --project . --json
+```
+
+## Metadata For Agents
+
+- JSON Schemas: import or read files under
+  `@threenative/ir/schemas/*.schema.json`.
+- Capability manifest:
+  `@threenative/ir/capabilities/threenative.capabilities.json`.
+- Diagnostics catalog:
+  `@threenative/ir/diagnostics/diagnostics.catalog.json`.
+- Distribution contract: `docs/contracts/distribution-contract.md`.
+- Diagnostics guide: `docs/contracts/diagnostics.md`.
+- AI workflow guide: `docs/workflows/ai-distribution.md`.
+- Canonical example index: `examples/ai-reference/README.md`.
+
+Every schema-backed bundle document has `schema` and `version` fields. Use the
+capability manifest before generating advanced renderer, physics, UI, audio,
+navigation, scripting, or editor-source features. Use the diagnostics catalog to
+repair failures by code and surface.
+
+## Supported Authoring Pattern
+
+```ts
+import { BoxGeometry, Mesh, MeshStandardMaterial, Scene, defineGame, defineScene } from "@threenative/sdk";
+
+const scene = new Scene();
+scene.add(new Mesh(new BoxGeometry(1, 1, 1), new MeshStandardMaterial({ color: "#2f80ed" })));
+
+export default defineGame({
+  scenes: [defineScene("arena", scene)],
+});
+```
+
+Prefer package declarations and the exported metadata over repository source.
+When mutating scene data, prefer `tn scene ... --json` and structured source
+documents over hand-written generated bundle JSON.
+
+## Unsupported Boundaries
+
+- Raw Three.js source is not the durable source of truth.
+- Raw Bevy authoring is not public API.
+- Browser DOM, worker, timer, filesystem, native handles, renderer plugins, and
+  platform APIs are not portable unless a ThreeNative facade declares support.
+- Generated bundle files such as `world.ir.json`, `manifest.json`, and
+  `scripts.bundle.js` are build outputs, not editor-owned source.
+- Backend-only, multiplayer, online services, 2D tilemap/sprite, custom shader,
+  and arbitrary plugin workflows require explicit capability support before use.

@@ -395,25 +395,40 @@ sequenceDiagram
 - `llms.txt` - compact public AI entrypoint.
 - `llms-full.txt` - expanded AI reference index with package, schema,
   diagnostic, and example links.
-- `docs/ai/README.md` - maintained AI usage guide and boundary rules.
+- `docs/workflows/ai-distribution.md` - maintained AI usage guide and boundary
+  rules.
 - `examples/ai-reference/README.md` - index canonical distributed examples.
 - `packages/cli/package.json` or root packaging metadata - include examples and
   docs in the distributed surface that external users install or generate.
 
 **Implementation:**
 
-- [ ] Add `llms.txt` with the minimum stable map: package roles, product
+- [x] Add `llms.txt` with the minimum stable map: package roles, product
   boundary, authoring flow, schema locations, examples, and diagnostics.
-- [ ] Add `llms-full.txt` or generated equivalent for richer context that still
+- [x] Add `llms-full.txt` or generated equivalent for richer context that still
   avoids requiring full source access.
-- [ ] Create a small canonical AI example set:
+- [x] Create a small canonical AI example set:
   simple scene, material/light/camera, ECS component/system, asset manifest,
   validation failure, web preview, and native/distribution verification.
-- [ ] Ensure examples are runnable from a clean installed or generated project
+- [x] Ensure examples are runnable from a clean installed or generated project
   and do not depend on repository-only assets.
-- [ ] Document unsupported boundaries clearly: raw Three.js, raw Bevy authoring,
+- [x] Document unsupported boundaries clearly: raw Three.js, raw Bevy authoring,
   runtime-generated game source, and silent fallback behavior are not part of
   the supported authoring model.
+
+**Progress Evidence:**
+
+- `llms.txt`, `llms-full.txt`, `docs/workflows/ai-distribution.md`, and
+  `examples/ai-reference/README.md` document the package map, TypeScript-to-IR
+  flow, schema/capability/diagnostic metadata, CLI commands, examples, and
+  unsupported raw Three.js/raw Bevy/generated-bundle boundaries.
+- `packages/cli/scripts/copy-templates.mjs` copies those repo-level AI docs into
+  `@threenative/cli` `dist/ai/` during package build.
+- `scripts/verify-distribution-release.mjs` verifies the packed CLI install
+  contains readable `dist/ai` docs before the clean-consumer typecheck/build/
+  verify flow proceeds.
+- `node --test scripts/check-ai-docs.test.mjs` validates required public
+  package, schema, diagnostic, command, example, and boundary links.
 
 **Tests Required:**
 

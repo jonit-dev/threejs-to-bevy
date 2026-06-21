@@ -1,0 +1,35 @@
+# ThreeNative
+
+ThreeNative is a TypeScript game SDK with a Three.js-like authoring surface,
+validated portable IR, and runtime adapters for web Three.js and native Bevy.
+
+Use this flow:
+
+1. Author game data and behavior with `@threenative/sdk`.
+2. Build with `@threenative/compiler` or `tn build`.
+3. Validate emitted IR bundle JSON with `@threenative/ir` and `tn verify`.
+4. Run through web Three.js preview or the internal Bevy runtime adapter.
+
+Package map:
+
+- `@threenative/sdk`: public TypeScript authoring APIs.
+- `@threenative/ir`: schemas, validation helpers, capabilities, diagnostics.
+- `@threenative/compiler`: project build entrypoints.
+- `@threenative/cli`: `tn create`, `tn build`, `tn verify`, `tn scene`, `tn editor`.
+- `@threenative/runtime-web-three`: web preview runtime.
+
+Machine-readable metadata:
+
+- Schemas: `@threenative/ir/schemas/*`.
+- Capabilities: `@threenative/ir/capabilities/threenative.capabilities.json`.
+- Diagnostics: `@threenative/ir/diagnostics/diagnostics.catalog.json`.
+- Examples: `examples/ai-reference/README.md`.
+- Full guide: `llms-full.txt` and `docs/workflows/ai-distribution.md`.
+
+Boundary rules:
+
+- Do author TypeScript SDK declarations and structured source documents.
+- Do not generate raw Three.js source as durable source of truth.
+- Do not generate Bevy source; Bevy is an internal runtime adapter.
+- Do not patch generated bundle files as source.
+- Unsupported APIs should produce explicit diagnostics, not silent fallbacks.

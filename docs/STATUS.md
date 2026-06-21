@@ -557,6 +557,12 @@ web/Bevy runtime support fields, while
 high-value diagnostics plus public `TN_IR_*` diagnostic families. The IR test
 suite validates catalog shape, current diagnostic coverage, and every exported
 schema's `$id`, version, and package path.
+The AI docs front door now adds `llms.txt`, `llms-full.txt`,
+`docs/workflows/ai-distribution.md`, and `examples/ai-reference/README.md` for
+installed-package consumers and coding agents. The CLI package build copies
+those docs into `@threenative/cli` `dist/ai/`, and
+`pnpm verify:distribution` checks the packed CLI install can read the AI docs
+alongside exported capability and diagnostic metadata.
 
 V10 planning now exists under `docs/PRDs/v10/README.md`. V10 is the current
 final-gap triage batch for remaining runtime/platform parity rows after the V9

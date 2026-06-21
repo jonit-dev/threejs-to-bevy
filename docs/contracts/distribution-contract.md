@@ -34,11 +34,11 @@ Current package-specific requirements:
 Repo-level AI documentation belongs in the docs site and release verification
 surface, not inside every package:
 
-- `llms.txt` and `llms-full.txt` will be the compact and expanded AI entry
+- `llms.txt` and `llms-full.txt` are the compact and expanded AI entry
   points.
-- `docs/ai/README.md` will describe package roles, authoring flow, supported
-  boundaries, schemas, diagnostics, and examples.
-- `examples/ai-reference/` will hold canonical copy-paste examples that can run
+- `docs/workflows/ai-distribution.md` describes package roles, authoring flow,
+  supported boundaries, schemas, diagnostics, and examples.
+- `examples/ai-reference/` holds canonical copy-paste examples that can run
   from a clean installed project.
 
 ## Future Package Metadata
@@ -49,6 +49,9 @@ Promoted package-local artifacts:
 - `@threenative/ir/diagnostics/*` for stable diagnostic code metadata.
 - Canonical AI examples will be included in the distribution surface where the
   release verifier proves they can build without repository-only paths.
+- `@threenative/cli` copies the repo-level AI docs into `dist/ai/` during
+  package build so installed consumers can read the same front door without
+  repository source.
 
 `scripts/check-distribution-contract.mjs` enforces declarations, declaration
 maps, `files` entries, type-aware public exports, and the promoted IR
@@ -68,3 +71,6 @@ pnpm verify:distribution
 
 `pnpm verify:distribution` runs the contract checker before packing tarballs, so
 missing public type metadata fails before the slower clean-consumer proof.
+It also installs the packed CLI package and confirms the copied `dist/ai`
+front-door docs mention the SDK, IR capabilities, diagnostics, unsupported
+raw Bevy authoring, and generated-bundle boundary.

@@ -1,4 +1,4 @@
-import { cp, rm } from "node:fs/promises";
+import { cp, mkdir, rm } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -8,6 +8,7 @@ const sourceTemplates = resolve(repoRoot, "templates");
 const outputTemplates = resolve(packageRoot, "dist", "template-files");
 const sourceBevyRuntime = resolve(repoRoot, "runtime-bevy");
 const outputBevyRuntime = resolve(packageRoot, "dist", "runtime-bevy");
+const outputAiDocs = resolve(packageRoot, "dist", "ai");
 
 await rm(outputTemplates, { force: true, recursive: true });
 await cp(sourceTemplates, outputTemplates, {
@@ -28,3 +29,11 @@ await cp(sourceBevyRuntime, outputBevyRuntime, {
     return !parts.includes("target") && !parts.includes("artifacts") && !parts.includes("examples") && !parts.includes(".git");
   },
 });
+
+await rm(outputAiDocs, { force: true, recursive: true });
+await mkdir(resolve(outputAiDocs, "docs", "workflows"), { recursive: true });
+await mkdir(resolve(outputAiDocs, "examples", "ai-reference"), { recursive: true });
+await cp(resolve(repoRoot, "llms.txt"), resolve(outputAiDocs, "llms.txt"));
+await cp(resolve(repoRoot, "llms-full.txt"), resolve(outputAiDocs, "llms-full.txt"));
+await cp(resolve(repoRoot, "docs", "workflows", "ai-distribution.md"), resolve(outputAiDocs, "docs", "workflows", "ai-distribution.md"));
+await cp(resolve(repoRoot, "examples", "ai-reference", "README.md"), resolve(outputAiDocs, "examples", "ai-reference", "README.md"));

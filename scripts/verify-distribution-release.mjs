@@ -53,6 +53,7 @@ try {
   await run("mkdir", ["-p", consumerDir], { cwd: repoRoot });
   await run("npm", ["init", "-y"], { cwd: consumerDir });
   await run("npm", ["install", ...[...tarballs.values()]], { cwd: consumerDir });
+  await verifyInstalledAiDocs(consumerDir);
   await writeConsumerTypecheckFixture(consumerDir);
   await run("npx", ["tsc", "--noEmit", "--project", "tsconfig.threenative-contract.json"], { cwd: consumerDir });
   await run("npx", ["tn", "create", "simple-game", "--json"], { cwd: consumerDir });
@@ -162,6 +163,26 @@ async function rewriteGameDependencies(projectDir, packageTarballs) {
     "@threenative/cli": `file:${packageTarballs.get("@threenative/cli")}`,
   };
   await writeFile(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
+}
+
+async function verifyInstalledAiDocs(projectDir) {
+  const aiRoot = join(projectDir, "node_modules", "@threenative", "cli", "dist", "ai");
+  const requiredFiles = [
+    "llms.txt",
+    "llms-full.txt",
+    "docs/workflows/ai-distribution.md",
+    "examples/ai-reference/README.md",
+  ];
+  const combined = [];
+  for (const file of requiredFiles) {
+    combined.push(await readFile(join(aiRoot, file), "utf8"));
+  }
+  const text = combined.join("\n");
+  for (const phrase of ["@threenative/sdk", "@threenative/ir/capabilities/threenative.capabilities.json", "@threenative/ir/diagnostics/diagnostics.catalog.json", "raw Bevy", "generated bundle"]) {
+    if (!text.includes(phrase)) {
+      throw new Error(`Installed AI docs are missing required phrase '${phrase}'.`);
+    }
+  }
 }
 
 async function writeConsumerTypecheckFixture(projectDir) {
