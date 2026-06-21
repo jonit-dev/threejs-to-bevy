@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import { assetCommand } from "./commands/asset.js";
 import { buildCommand } from "./commands/build.js";
+import { bundleCommand } from "./commands/bundle.js";
 import { compareImagesCommand } from "./commands/compareImages.js";
 import { createProject, initProject } from "./commands/create.js";
 import { devCommand } from "./commands/dev.js";
@@ -65,6 +66,11 @@ const commands: Record<string, ICommandDefinition> = {
     description: "Compile supported TypeScript source into game.bundle.",
     implemented: true,
     usage: "tn build [--project <path>] [--json]",
+  },
+  bundle: {
+    description: "Import recoverable generated bundle catalogs into structured source documents.",
+    implemented: true,
+    usage: "tn bundle import <bundle-dir> --project <path> --mode source [--dry-run] [--json]",
   },
   "compare-images": {
     description: "Compare two PNG screenshots and report visual deltas.",
@@ -180,6 +186,10 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
 
   if (commandName === "build") {
     return buildCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "bundle") {
+    return bundleCommand(normalizedArgv.slice(1));
   }
 
   if (commandName === "compare-images") {

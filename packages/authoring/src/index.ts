@@ -52,6 +52,14 @@ export {
 export type { IAuthoringProject, ILoadAuthoringProjectOptions } from "./project.js";
 export { discoverAuthoringFiles, loadAuthoringProject } from "./project.js";
 export type {
+  BundleImportMode,
+  IImportBundleOptions,
+  IImportBundleResult,
+  IImportedBundleArtifact,
+  ISkippedBundleArtifact,
+} from "./importBundle.js";
+export { importBundle } from "./importBundle.js";
+export type {
   IAuthoringOperationContext,
   IAuthoringOperationResult,
   IAddEntityOptions,

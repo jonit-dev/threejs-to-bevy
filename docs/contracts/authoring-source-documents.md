@@ -58,6 +58,28 @@ enough recoverable information exists. They must not become the edited file of
 record, and unsupported recoveries must produce diagnostics instead of inferred
 source.
 
+`tn bundle import <bundle-dir> --project <path> --mode source --json` is a
+recovery operation, not a round-trip guarantee. The first supported import
+writes normalized source documents under `content/**/imported.*.json`:
+
+- `world.ir.json` -> `content/scenes/imported.scene.json`;
+- `materials.ir.json` -> `content/materials/imported.materials.json`;
+- `assets.manifest.json` -> `content/assets/imported.assets.json`;
+- `ui.ir.json` -> `content/ui/imported.ui.json`;
+- `input.ir.json` -> `content/input/imported.input.json`;
+- `systems.ir.json` -> `content/systems/imported.systems.json`;
+- `audio.ir.json` -> `content/audio/imported.audio.json` when present.
+
+The importer normalizes bundle catalogs into the current minimal source
+schemas and records root `provenance` pointing at the generated artifact. It
+does not copy generated bundle files directly into source, and it does not
+persist `scripts.bundle.js` as TypeScript. If only generated script code is
+available, the report includes
+`TN_AUTHORING_IMPORT_UNRECOVERABLE_SCRIPT_BODY`; script references are imported
+only when source-safe module/export provenance is available. Runtime config and
+target profile artifacts are skipped until their source document families are
+implemented.
+
 Runtime state is also not durable source unless it is explicitly represented in
 an editor-owned runtime or target profile source document. Runtime adapters load
 generated bundles; they do not generate project source.
@@ -101,13 +123,13 @@ source-document families for scenes, UI, materials, assets, input, systems,
 prefabs, and audio. The non-scene families intentionally use minimal
 schema-versioned contracts in this phase:
 
-- `threenative.ui`: `id`, `nodes`, and `bindings`;
-- `threenative.materials`: `id` and `materials`;
-- `threenative.assets`: `id` and `assets`;
-- `threenative.input`: `id` and `actions`;
-- `threenative.systems`: `id` and `systems`;
-- `threenative.prefab`: `id` and `entities`;
-- `threenative.audio`: `id` and `sounds`.
+- `threenative.ui`: `id`, `nodes`, `bindings`, and optional `provenance`;
+- `threenative.materials`: `id`, `materials`, and optional `provenance`;
+- `threenative.assets`: `id`, `assets`, and optional `provenance`;
+- `threenative.input`: `id`, `actions`, and optional `provenance`;
+- `threenative.systems`: `id`, `systems`, and optional `provenance`;
+- `threenative.prefab`: `id`, `entities`, and optional `provenance`;
+- `threenative.audio`: `id`, `sounds`, and optional `provenance`.
 
 Validation rejects malformed schemas, unknown fields, duplicate IDs within each
 document, generated bundle paths used as source paths, inline script strings,

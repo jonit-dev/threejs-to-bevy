@@ -74,6 +74,16 @@ stable IDs within each document, keeps TypeScript scene-map misuse out of the
 durable source model, and validates scene `MeshRenderer.material` references
 against material source documents. Broader UI/resource and runtime parity
 references remain future structured-authoring work.
+The Phase 3 bundle import slice adds `@threenative/authoring` `importBundle()`
+and `tn bundle import <bundle-dir> --project <path> --mode source --json`
+for recoverable generated catalog import. It normalizes `world.ir.json`,
+`materials.ir.json`, `assets.manifest.json`, `ui.ir.json`, `input.ir.json`,
+`systems.ir.json`, and optional `audio.ir.json` into `content/**/imported.*`
+structured source documents with import provenance, supports dry-run reports,
+and keeps generated bundle files out of durable source. `scripts.bundle.js`
+remains unrecoverable without source-safe manifest/provenance and reports
+`TN_AUTHORING_IMPORT_UNRECOVERABLE_SCRIPT_BODY`; runtime config and target
+profile import remain later source-document work.
 
 Structured `.scene.json` documents can now be used as a normal project build
 entry for the first runtime-backed CLI authoring slice. The compiler validates
