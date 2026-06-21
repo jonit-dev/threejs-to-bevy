@@ -5,6 +5,7 @@ use serde_json::json;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{WorldEntity, load_bundle};
 use threenative_runtime::map_world::{
+    THREE_COMPAT_AMBIENT_BRIGHTNESS_PER_INTENSITY,
     THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY, map_bundle_into_world,
 };
 
@@ -46,6 +47,47 @@ fn cube_fixture_directional_light_should_use_web_tuned_illuminance() {
             < 0.01,
         "directional illuminance should match the web-tuned cube fixture constant"
     );
+}
+
+#[test]
+fn cube_fixture_without_authored_ambient_should_disable_bevy_default_fill() {
+    let bundle = load_bundle(cube_fixture()).expect("cube fixture should load");
+    let mut app = App::new();
+    map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map");
+
+    let ambient = app.world().resource::<AmbientLight>();
+    assert_eq!(ambient.color, Color::WHITE);
+    assert!(
+        ambient.brightness.abs() < 0.001,
+        "missing ambient Light should not inherit Bevy default fill"
+    );
+}
+
+#[test]
+fn authored_ambient_light_should_drive_native_ambient_resource() {
+    let mut bundle = load_bundle(cube_fixture()).expect("cube fixture should load");
+    bundle.world.entities.push(WorldEntity {
+        id: "light.ambient".to_owned(),
+        components: serde_json::from_value(json!({
+            "Light": {
+                "kind": "ambient",
+                "color": "#88aaff",
+                "intensity": 0.42
+            }
+        }))
+        .expect("ambient light components should deserialize"),
+    });
+    let mut app = App::new();
+    map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map");
+
+    let ambient = app.world().resource::<AmbientLight>();
+    let color = ambient.color.to_srgba();
+    assert!(
+        (ambient.brightness - (0.42 * THREE_COMPAT_AMBIENT_BRIGHTNESS_PER_INTENSITY)).abs() < 0.001
+    );
+    assert!((color.red - 0x88 as f32 / 255.0).abs() < 0.01);
+    assert!((color.green - 0xaa as f32 / 255.0).abs() < 0.01);
+    assert!((color.blue - 1.0).abs() < 0.01);
 }
 
 #[test]

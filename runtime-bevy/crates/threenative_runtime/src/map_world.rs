@@ -49,6 +49,7 @@ use crate::rendering::spawn_rendered_particles;
 // native adapter uses neutral camera exposure and keeps non-atmosphere
 // directional intensity close to Three's authored scalar.
 pub const THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY: f32 = 1.0;
+pub const THREE_COMPAT_AMBIENT_BRIGHTNESS_PER_INTENSITY: f32 = 0.7;
 // Environment bundles duplicate authored lights in world.ir.json and atmosphere;
 // keep the world directional contribution low so it stacks with atmosphere sun.
 const THREE_COMPAT_ENVIRONMENT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY: f32 = 1.7;
@@ -162,6 +163,7 @@ pub fn map_bundle_into_world(world: &mut World, bundle: &LoadedBundle) -> Result
         .as_ref()
         .and_then(|scene| scene.atmosphere.as_ref())
         .filter(|profile| profile.active);
+    ensure_ambient_light_contract(world, bundle, camera_atmosphere);
     let camera_color_management = camera_atmosphere.map(|profile| &profile.color_management);
     let bloom_settings = bloom_settings_for_runtime(bundle.runtime_config.as_ref());
     let layer_map = build_render_layer_map(bundle);
@@ -245,6 +247,29 @@ fn apply_runtime_config(world: &mut World, config: Option<&RuntimeConfigIr>) {
         _ => Msaa::Sample4,
     };
     world.insert_resource(msaa);
+}
+
+fn ensure_ambient_light_contract(
+    world: &mut World,
+    bundle: &LoadedBundle,
+    camera_atmosphere: Option<&AtmosphereProfileIr>,
+) {
+    if camera_atmosphere.is_some() {
+        return;
+    }
+    let has_authored_ambient = bundle.world.entities.iter().any(|entity| {
+        entity
+            .components
+            .light
+            .as_ref()
+            .is_some_and(|light| light.kind == "ambient")
+    });
+    if !has_authored_ambient {
+        world.insert_resource(AmbientLight {
+            color: Color::WHITE,
+            brightness: 0.0,
+        });
+    }
 }
 
 fn insert_camera_antialias(spawned: &mut EntityWorldMut, config: Option<&RuntimeConfigIr>) {
@@ -613,7 +638,7 @@ fn spawn_entity(
         if light.kind == "ambient" {
             world.insert_resource(AmbientLight {
                 color: color_to_bevy(&light.color),
-                brightness: light.intensity,
+                brightness: light.intensity * THREE_COMPAT_AMBIENT_BRIGHTNESS_PER_INTENSITY,
             });
         }
     }

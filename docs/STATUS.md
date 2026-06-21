@@ -315,16 +315,20 @@ pnpm verify:focused <gate>
 pnpm verify:conformance
 pnpm verify:release
 pnpm verify:full
-pnpm verify:baseline:visual-parity
+pnpm verify:parity:push
 ```
 
 Cross-runtime web↔Bevy visual parity is now guarded by
-`pnpm verify:baseline:visual-parity`. The gate builds seven checkpoint scenes
+`pnpm verify:parity:push`. The gate builds seven checkpoint scenes
 (`v1-canonical`, `crystal-runner-static`, `v3-environment`, `v8-color-parity`,
 `v8-lighting-tone`, `physics-character`, `v10-visual-calibration-lighting`),
 captures matched web and Bevy screenshots, and fails on exposure drift,
 under/over-exposure, and per-checkpoint pixel thresholds. Evidence:
 `tools/verify/artifacts/baseline-visual-parity/baseline-visual-parity-report.json`.
+The native runtime now explicitly disables Bevy default ambient fill when an IR
+bundle has no authored ambient light, and applies a calibrated world-ambient
+scale for non-atmosphere scenes so the v1 canonical and crystal runner
+checkpoints stay within visual parity thresholds.
 
 Git hooks (via [husky](https://typicode.github.io/husky/)) run layered parity
 checks after `pnpm install`:

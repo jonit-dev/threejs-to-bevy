@@ -327,6 +327,8 @@ web/Bevy evidence exist.
 - [x] Source asset LOD metadata and fixed LOD-selection traces
 - [x] `P1` Focused visual fog/sky parity evidence in native output
 - [x] `P1` Focused unlit color swatch and lit PBR sphere parity evidence
+- [x] `P1` Seven-scene web/Bevy baseline visual parity gate, including v1
+      canonical no-ambient fill and crystal runner ambient calibration evidence
 - [ ] `P3` Atmospheric scattering and atmospheric fog (V10-02, V10-03 calibration)
 - [ ] `P3` Volumetric fog and volumetric lighting (V10-02, V10-03 calibration)
 - [x] `P1` Skyboxes and cubemap/equirect texture handling
