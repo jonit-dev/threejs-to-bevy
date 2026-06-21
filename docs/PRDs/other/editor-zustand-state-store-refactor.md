@@ -227,12 +227,23 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Centralize `/api/project`, `/api/operation`, and `/api/build` calls behind
+- [x] Centralize `/api/project`, `/api/operation`, and `/api/build` calls behind
   store actions.
-- [ ] Preserve existing status messages used by Playwright evidence.
-- [ ] Keep source mutation payload builders typed and testable.
-- [ ] Ensure failed actions leave source and selection state coherent.
-- [ ] Keep `EditorApp` callback props compatible for package consumers.
+- [x] Preserve existing status messages used by Playwright evidence.
+- [x] Keep source mutation payload builders typed and testable.
+- [x] Ensure failed actions leave source and selection state coherent.
+- [x] Keep `EditorApp` callback props compatible for package consumers.
+
+**Evidence:**
+
+- `packages/editor/src/state/editorStore.ts` owns async refresh, add primitive,
+  build, create scene, save, edit property, add component, transform commit, and
+  viewport transform workflows.
+- `packages/editor/src/devFixture.tsx` delegates editor mutation callbacks to
+  store actions and keeps model derivation/rendering only.
+- `packages/editor/src/state/editorStore.test.ts` covers project refresh,
+  primitive operation sequence, and operation failure status behavior.
+- `pnpm --filter @threenative/editor test` passes.
 
 **Tests Required:**
 

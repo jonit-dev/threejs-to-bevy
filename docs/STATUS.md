@@ -227,6 +227,12 @@ status text, hierarchy parent map, and viewport transform overrides into the
 same store. Store tests now cover project/selection coupling, recursive nesting
 rejection, and transform override apply/clear behavior while preserving the
 existing editor package render and server tests.
+The third Zustand slice centralizes editor dev async workflows behind store
+actions: project refresh, add primitive, build preview, create scene, save,
+property edit, add component, transform commit, and viewport transform
+dispatch. The dev fixture now delegates mutation callbacks to the store, and
+mock-fetch tests verify refresh selection, operation sequencing, and failure
+status behavior.
 
 Structured `.scene.json` documents can now be used as a normal project build
 entry for the first runtime-backed CLI authoring slice. The compiler validates

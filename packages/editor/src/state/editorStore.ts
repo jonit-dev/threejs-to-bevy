@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import type { IEditorLodStats, IEditorPropertyRow, IEditorSceneObject } from "../adapters/editorModel.js";
+import type { IEditorAddComponentDefinition, IEditorLodStats, IEditorPropertyRow, IEditorSceneObject } from "../adapters/editorModel.js";
 import type { IViewportTransform } from "../preview/EditorViewport3d.js";
 
 export type EditorModal = "addComponent" | "addObject" | "build" | "chat" | "delete" | "newScene" | "save" | "settings" | undefined;
@@ -30,18 +30,32 @@ export interface IEditorSessionState {
 }
 
 export interface IEditorSessionActions {
+  addComponent: (definition: IEditorAddComponentDefinition, sceneObjects: readonly IEditorSceneObject[]) => Promise<void>;
+  addPrimitive: () => Promise<void>;
+  buildPreview: () => Promise<void>;
   clearTransformOverride: (rowId: string) => void;
   closeModal: () => void;
+  commitTransform: (object: IEditorSceneObject, transform: IViewportTransform) => Promise<void>;
+  createDefaultScene: () => Promise<void>;
+  editProperty: (row: IEditorPropertyRow, value: unknown) => Promise<void>;
   openModal: (modal: Exclude<EditorModal, undefined>) => void;
+  refreshProject: (options?: IRefreshProjectOptions) => Promise<IEditorProjectPayload>;
   reset: (state?: Partial<IEditorSessionState>) => void;
+  saveScene: () => Promise<void>;
   selectRow: (rowId: string | undefined) => void;
   setParent: (rowId: string, parentId: string | undefined) => boolean;
   setProject: (project: IEditorProjectPayload | undefined) => void;
   setStatus: (status: string) => void;
   setTransformOverride: (rowId: string, transform: IViewportTransform) => void;
+  transformObject: (sceneObjects: readonly IEditorSceneObject[], rowId: string, transform: IViewportTransform) => void;
 }
 
 export type EditorStore = IEditorSessionState & IEditorSessionActions;
+
+export interface IRefreshProjectOptions {
+  selectFirstObject?: boolean;
+  updateLoadErrorStatus?: boolean;
+}
 
 export const defaultEditorSessionState: IEditorSessionState = {
   modal: undefined,
@@ -54,6 +68,78 @@ export const defaultEditorSessionState: IEditorSessionState = {
 
 export const useEditorStore = create<EditorStore>((set, get) => ({
   ...defaultEditorSessionState,
+  addComponent: async (definition, sceneObjects) => {
+    const state = get();
+    const object = sceneObjects.find((item) => item.rowId === state.selectedRowId);
+    if (object === undefined) {
+      set({ status: "Select a source entity before adding a component" });
+      return;
+    }
+    try {
+      if (definition.component === "Transform") {
+        await postOperation(
+          "scene.set_transform",
+          {
+            entityId: object.id,
+            position: vectorDefault(definition.defaults.position, [0, 0, 0]),
+            rotation: vectorDefault(definition.defaults.rotation, [0, 0, 0]),
+            scale: vectorDefault(definition.defaults.scale, [1, 1, 1]),
+            sceneId: sceneIdFromDocumentPath(object.documentPath),
+          },
+          state.project?.projectRevision,
+        );
+      } else if (definition.component === "Camera") {
+        await postOperation(
+          "scene.set_component",
+          { componentKind: "camera", entityId: object.id, sceneId: sceneIdFromDocumentPath(object.documentPath), value: definition.defaults },
+          state.project?.projectRevision,
+        );
+      } else if (definition.component === "Light") {
+        await postOperation(
+          "scene.set_component",
+          { componentKind: "Light", entityId: object.id, sceneId: sceneIdFromDocumentPath(object.documentPath), value: definition.defaults },
+          state.project?.projectRevision,
+        );
+      } else {
+        set({ status: definition.readOnlyReason ?? `${definition.component} does not have a promoted add operation yet` });
+        return;
+      }
+      await get().refreshProject();
+      set({ status: `Added ${definition.component} to ${object.label}` });
+    } catch (error) {
+      set({ status: error instanceof Error ? error.message : String(error) });
+    }
+  },
+  addPrimitive: async () => {
+    const suffix = Date.now().toString(36);
+    const prefabId = `prefab.editor-box-${suffix}`;
+    const entityId = `editor-box-${suffix}`;
+    const primitive = "sphere";
+    const color = "#9b59b6";
+    try {
+      set({ status: `Adding ${primitive}` });
+      await postOperation("scene.add_prefab", { color, prefabId, primitive, sceneId: "arena" }, get().project?.projectRevision);
+      await postOperation("scene.add_entity", { entityId, prefabId, sceneId: "arena" }, get().project?.projectRevision);
+      await postOperation("scene.set_transform", { entityId, position: [12, 0.5, 5], sceneId: "arena" }, get().project?.projectRevision);
+      const nextProject = await get().refreshProject();
+      set({
+        selectedRowId: nextProject.sceneObjects?.find((object) => object.id === entityId)?.rowId ?? `entity:content/scenes/arena.scene.json:${entityId}`,
+        status: `Added ${entityId}; primitive ${primitive}; documents ${countDocuments(nextProject)}`,
+      });
+    } catch (error) {
+      set({ status: error instanceof Error ? error.message : String(error) });
+    }
+  },
+  buildPreview: async () => {
+    try {
+      set({ status: "Building preview" });
+      const response = await fetch("/api/build", { method: "POST" });
+      const payload = await response.json() as { bundlePath?: string; diagnostics?: Array<{ message: string }>; ok: boolean };
+      set({ status: payload.ok ? `Built ${payload.bundlePath ?? "bundle"}` : `Build failed: ${payload.diagnostics?.[0]?.message ?? "unknown error"}` });
+    } catch (error) {
+      set({ status: error instanceof Error ? error.message : String(error) });
+    }
+  },
   clearTransformOverride: (rowId) =>
     set((state) => {
       const transformByRowId = { ...state.transformByRowId };
@@ -61,8 +147,66 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       return { transformByRowId };
     }),
   closeModal: () => set({ modal: undefined }),
+  commitTransform: async (object, transform) => {
+    try {
+      await postOperation(
+        "scene.set_transform",
+        { entityId: object.id, position: transform.position, rotation: transform.rotation, scale: transform.scale, sceneId: sceneIdFromDocumentPath(object.documentPath) },
+        get().project?.projectRevision,
+      );
+      await get().refreshProject();
+      get().clearTransformOverride(object.rowId);
+      set({ status: `Saved transform for ${object.label}` });
+    } catch (error) {
+      set({ status: error instanceof Error ? error.message : String(error) });
+    }
+  },
+  createDefaultScene: async () => {
+    const suffix = Date.now().toString(36);
+    const sceneId = `editor-scene-${suffix}`;
+    try {
+      set({ status: `Creating ${sceneId}` });
+      const response = await postOperation("scene.create_default", { sceneId }, get().project?.projectRevision);
+      const nextProject = await get().refreshProject({ selectFirstObject: true });
+      set({ status: `Created ${sceneId}; saved ${response.filesWritten.join(", ")}; documents ${countDocuments(nextProject)}` });
+    } catch (error) {
+      set({ status: error instanceof Error ? error.message : String(error) });
+    }
+  },
+  editProperty: async (row, value) => {
+    if (row.operation === undefined || row.readOnly) {
+      set({ status: row.readOnlyReason ?? `${row.label} is read-only` });
+      return;
+    }
+    try {
+      await postOperation(row.operation.name, buildOperationArgs(row, value), get().project?.projectRevision);
+      await get().refreshProject();
+      set({ status: `Saved ${row.label}` });
+    } catch (error) {
+      set({ status: error instanceof Error ? error.message : String(error) });
+    }
+  },
   openModal: (modal) => set({ modal }),
+  refreshProject: async (options = {}) => {
+    const response = await fetch("/api/project");
+    const payload = await response.json() as IEditorProjectPayload;
+    const firstObject = payload.sceneObjects?.[0]?.rowId;
+    set({
+      project: payload,
+      selectedRowId: options.selectFirstObject && firstObject !== undefined ? firstObject : get().selectedRowId,
+      status: options.updateLoadErrorStatus && payload.ok === false ? payload.diagnostics?.[0]?.message ?? "Project load failed" : get().status,
+    });
+    return payload;
+  },
   reset: (state) => set({ ...defaultEditorSessionState, ...state }),
+  saveScene: async () => {
+    try {
+      const nextProject = await get().refreshProject({ selectFirstObject: true, updateLoadErrorStatus: true });
+      set({ status: `Saved scene sources; revision ${nextProject.projectRevision ?? "unknown"}` });
+    } catch (error) {
+      set({ status: error instanceof Error ? error.message : String(error) });
+    }
+  },
   selectRow: (selectedRowId) => set({ selectedRowId }),
   setParent: (rowId, parentId) => {
     const current = get().parentByRowId;
@@ -78,6 +222,19 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     set((state) => ({
       transformByRowId: { ...state.transformByRowId, [rowId]: transform },
     })),
+  transformObject: (sceneObjects, rowId, transform) => {
+    set((state) => ({
+      selectedRowId: rowId,
+      transformByRowId: { ...state.transformByRowId, [rowId]: transform },
+    }));
+    const object = sceneObjects.find((item) => item.rowId === rowId);
+    if (object === undefined) {
+      set({ status: `Moved ${rowId} in viewport` });
+      return;
+    }
+    set({ status: `Moved ${object.label} in viewport` });
+    void get().commitTransform(object, transform);
+  },
 }));
 
 function isDescendant(candidateId: string, parentId: string, parentByRowId: Record<string, string | undefined>): boolean {
@@ -89,4 +246,55 @@ function isDescendant(candidateId: string, parentId: string, parentByRowId: Reco
     current = parentByRowId[current];
   }
   return false;
+}
+
+async function postOperation(name: string, args: Record<string, unknown>, projectRevision: string | undefined): Promise<{ filesWritten: string[] }> {
+  const response = await fetch("/api/operation", {
+    body: JSON.stringify({ args, name, projectRevision }),
+    headers: { "content-type": "application/json" },
+    method: "POST",
+  });
+  const payload = await response.json() as { diagnostics?: Array<{ message: string }>; filesWritten?: string[]; ok: boolean };
+  if (!payload.ok) {
+    throw new Error(payload.diagnostics?.[0]?.message ?? `Operation ${name} failed`);
+  }
+  return { filesWritten: payload.filesWritten ?? [] };
+}
+
+function buildOperationArgs(row: IEditorPropertyRow, value: unknown): Record<string, unknown> {
+  const args = { ...(row.operation?.args ?? {}) };
+  const valueArg = row.operation?.valueArg;
+  if (row.operation?.name === "input.add_action" && Array.isArray(value)) {
+    args[valueArg ?? "keys"] = value.map((item) => String(item).replace(/^keyboard\./, ""));
+    return args;
+  }
+  if (row.operation?.name === "system.attach_script" && isRecord(value)) {
+    args.modulePath = typeof value.modulePath === "string" ? value.modulePath : args.modulePath;
+    args.exportName = typeof value.exportName === "string" ? value.exportName : args.exportName;
+    return args;
+  }
+  if (valueArg !== undefined) {
+    args[valueArg] = value;
+  }
+  return args;
+}
+
+function vectorDefault(value: unknown, fallback: [number, number, number]): [number, number, number] {
+  if (!Array.isArray(value) || value.length !== 3 || value.some((item) => typeof item !== "number" || !Number.isFinite(item))) {
+    return fallback;
+  }
+  return [value[0], value[1], value[2]];
+}
+
+function sceneIdFromDocumentPath(documentPath: string | undefined): string {
+  const fileName = documentPath?.split("/").pop() ?? "arena.scene.json";
+  return fileName.endsWith(".scene.json") ? fileName.slice(0, -".scene.json".length) : fileName;
+}
+
+function countDocuments(project: IEditorProjectPayload): number {
+  return project.documents?.reduce((count, group) => count + group.documents.length, 0) ?? 0;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
