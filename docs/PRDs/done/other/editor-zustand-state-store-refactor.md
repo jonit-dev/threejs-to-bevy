@@ -275,11 +275,21 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Run package tests and `verify:editor-package`.
-- [ ] Ensure Playwright still proves selection, modal, source mutation, save,
+- [x] Run package tests and `verify:editor-package`.
+- [x] Ensure Playwright still proves selection, modal, source mutation, save,
   build, and artifact evidence.
-- [ ] Document Zustand as editor-session state only.
-- [ ] Confirm no durable source/generated/runtime boundary changed.
+- [x] Document Zustand as editor-session state only.
+- [x] Confirm no durable source/generated/runtime boundary changed.
+
+**Evidence:**
+
+- `pnpm --filter @threenative/editor test` passes.
+- `pnpm verify:focused verify:editor-package` passes with
+  `TN_VERIFY_EDITOR_PACKAGE` status `pass`.
+- The gate wrote `editor-package-report.json`,
+  `arena.scene.after-edit.json`, `world.after-edit.ir.json`,
+  `editor-package-smoke.png`, and `editor-package-edited.png` under
+  `tools/verify/artifacts/editor-package/`.
 
 **Tests Required:**
 
@@ -314,16 +324,16 @@ sequenceDiagram
 
 ## 7. Acceptance Criteria
 
-- [ ] Zustand is the single owner for editor-session state that crosses modal,
+- [x] Zustand is the single owner for editor-session state that crosses modal,
   hierarchy, inspector, viewport, and dev fixture operation workflows.
-- [ ] `EditorApp` no longer owns modal state with local `useState`.
-- [ ] `devFixture.tsx` no longer owns project payload, selected row, status,
+- [x] `EditorApp` no longer owns modal state with local `useState`.
+- [x] `devFixture.tsx` no longer owns project payload, selected row, status,
   hierarchy nesting, or transform override state with scattered local
   `useState`.
-- [ ] Store actions cover refresh, modal open/close, row selection, hierarchy
+- [x] Store actions cover refresh, modal open/close, row selection, hierarchy
   nesting, transform override, transform commit, property edit, add primitive,
   add component, create scene, save, and build.
-- [ ] Existing editor user flows continue to pass in
+- [x] Existing editor user flows continue to pass in
   `verify:editor-package`.
-- [ ] Docs describe Zustand as editor-session state only, not a durable source
+- [x] Docs describe Zustand as editor-session state only, not a durable source
   of truth.

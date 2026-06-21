@@ -233,6 +233,12 @@ property edit, add component, transform commit, and viewport transform
 dispatch. The dev fixture now delegates mutation callbacks to the store, and
 mock-fetch tests verify refresh selection, operation sequencing, and failure
 status behavior.
+The P0 Zustand refactor is now browser-gated by
+`pnpm verify:focused verify:editor-package`, which passes after the store
+migration and continues to prove editor selection, modal/source mutation,
+save/build, source scene, world IR, and screenshot artifacts. Zustand remains an
+editor-session state boundary only; durable source documents and generated
+bundles remain owned by the existing editor/project APIs.
 
 Structured `.scene.json` documents can now be used as a normal project build
 entry for the first runtime-backed CLI authoring slice. The compiler validates
