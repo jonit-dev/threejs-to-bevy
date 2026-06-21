@@ -21,6 +21,9 @@ import {
   materialDocumentKeys,
   materialDocumentSchema,
   materialKeys,
+  meshDocumentKeys,
+  meshDocumentSchema,
+  meshKeys,
   prefabDocumentKeys,
   prefabDocumentSchema,
   prefabKeys,
@@ -34,6 +37,7 @@ import {
   systemsDocumentKeys,
   systemsDocumentSchema,
   supportedPrefabPrimitives,
+  supportedMeshPrimitives,
   supportedCameraModes,
   supportedComponentKinds,
   uiDocumentKeys,
@@ -185,6 +189,74 @@ export interface IBindUiOptions extends IAuthoringOperationContext {
   sceneId: string;
   uiNodeId: string;
   resourcePath: string;
+}
+
+export interface ICreateUiDocumentOptions extends IAuthoringOperationContext {
+  uiDocId: string;
+}
+
+export interface IAddUiTextOptions extends IAuthoringOperationContext {
+  uiDocId: string;
+  nodeId: string;
+  text: string;
+}
+
+export interface ISetUiLayoutOptions extends IAuthoringOperationContext {
+  uiDocId: string;
+  nodeId: string;
+  align?: string;
+  height?: number;
+  justify?: string;
+  top?: number;
+  width?: number;
+}
+
+export interface IBindUiDocumentOptions extends IAuthoringOperationContext {
+  uiDocId: string;
+  nodeId: string;
+  resourcePath: string;
+}
+
+export interface ICreateMaterialOptions extends IAuthoringOperationContext {
+  materialId: string;
+}
+
+export interface ISetMaterialOptions extends IAuthoringOperationContext {
+  materialId: string;
+  color?: string;
+  roughness?: number;
+}
+
+export interface ICreateMeshPrimitiveOptions extends IAuthoringOperationContext {
+  meshId: string;
+  kind: string;
+}
+
+export interface ICreatePrefabDocumentOptions extends IAuthoringOperationContext {
+  prefabId: string;
+}
+
+export interface IAddPrefabComponentOptions extends IAuthoringOperationContext {
+  prefabId: string;
+  componentKind: string;
+  value: Record<string, unknown>;
+}
+
+export interface IAddInputActionOptions extends IAuthoringOperationContext {
+  inputDocId: string;
+  actionId: string;
+  keys: readonly string[];
+}
+
+export interface ICreateSystemOptions extends IAuthoringOperationContext {
+  systemId: string;
+  schedule: string;
+}
+
+export interface IAttachSystemScriptOptions extends IAuthoringOperationContext {
+  systemId: string;
+  modulePath: string;
+  exportName: string;
 }
 
 export interface ISceneInspection {
@@ -701,6 +773,370 @@ export async function bindUi(options: IBindUiOptions): Promise<IAuthoringOperati
   });
 }
 
+export async function createUiDocument(options: ICreateUiDocumentOptions): Promise<IAuthoringOperationResult> {
+  return createSourceDocument({
+    projectPath: options.projectPath,
+    kind: "ui",
+    id: options.uiDocId,
+    file: `content/ui/${options.uiDocId}.ui.json`,
+    data: { schema: uiDocumentSchema, version: "0.1.0", id: options.uiDocId, nodes: [], bindings: [] },
+  });
+}
+
+export async function addUiText(options: IAddUiTextOptions): Promise<IAuthoringOperationResult> {
+  return mutateSourceDocument(options, "ui", options.uiDocId, (data) => {
+    const nodes = ensureArrayProperty(data, "nodes");
+    const existing = findSceneItem(nodes, options.nodeId);
+    const node = existing ?? { id: options.nodeId };
+    node.type = "text";
+    node.text = options.text;
+    if (existing === undefined) {
+      nodes.push(node);
+    }
+  });
+}
+
+export async function setUiLayout(options: ISetUiLayoutOptions): Promise<IAuthoringOperationResult> {
+  return mutateSourceDocument(options, "ui", options.uiDocId, (data, file) => {
+    const nodes = ensureArrayProperty(data, "nodes");
+    const node = findSceneItem(nodes, options.nodeId);
+    if (node === undefined) {
+      return [missingReferenceDiagnostic(file, "/nodes", "ui-node", options.nodeId, idsFromArray(nodes))];
+    }
+    node.layout = {
+      ...(isRecord(node.layout) ? node.layout : {}),
+      ...(options.align === undefined ? {} : { align: options.align }),
+      ...(options.height === undefined ? {} : { height: options.height }),
+      ...(options.justify === undefined ? {} : { justify: options.justify }),
+      ...(options.top === undefined ? {} : { top: options.top }),
+      ...(options.width === undefined ? {} : { width: options.width }),
+    };
+    return [];
+  });
+}
+
+export async function bindUiDocument(options: IBindUiDocumentOptions): Promise<IAuthoringOperationResult> {
+  return mutateSourceDocument(options, "ui", options.uiDocId, (data) => {
+    const bindings = ensureArrayProperty(data, "bindings");
+    bindings.push({ node: options.nodeId, resource: options.resourcePath });
+  });
+}
+
+export async function createMaterial(options: ICreateMaterialOptions): Promise<IAuthoringOperationResult> {
+  return createSourceDocument({
+    projectPath: options.projectPath,
+    kind: "material",
+    id: options.materialId,
+    file: `content/materials/${options.materialId}.materials.json`,
+    data: { schema: materialDocumentSchema, version: "0.1.0", id: options.materialId, materials: [{ id: options.materialId }] },
+  });
+}
+
+export async function setMaterial(options: ISetMaterialOptions): Promise<IAuthoringOperationResult> {
+  return mutateSourceDocument(options, "material", options.materialId, (data, file) => {
+    const materials = ensureArrayProperty(data, "materials");
+    const material = findSceneItem(materials, options.materialId);
+    if (material === undefined) {
+      return [missingReferenceDiagnostic(file, "/materials", "material", options.materialId, idsFromArray(materials))];
+    }
+    if (options.color !== undefined) {
+      material.color = options.color;
+    }
+    if (options.roughness !== undefined) {
+      material.roughness = options.roughness;
+    }
+    return [];
+  });
+}
+
+export async function createMeshPrimitive(options: ICreateMeshPrimitiveOptions): Promise<IAuthoringOperationResult> {
+  return createSourceDocument({
+    projectPath: options.projectPath,
+    kind: "mesh",
+    id: options.meshId,
+    file: `content/meshes/${options.meshId}.meshes.json`,
+    data: { schema: meshDocumentSchema, version: "0.1.0", id: options.meshId, meshes: [{ id: options.meshId, kind: "primitive", primitive: options.kind }] },
+  });
+}
+
+export async function createPrefabDocument(options: ICreatePrefabDocumentOptions): Promise<IAuthoringOperationResult> {
+  return createSourceDocument({
+    projectPath: options.projectPath,
+    kind: "prefab",
+    id: options.prefabId,
+    file: `content/prefabs/${options.prefabId}.prefab.json`,
+    data: { schema: prefabDocumentSchema, version: "0.1.0", id: options.prefabId, entities: [{ id: options.prefabId, components: {} }] },
+  });
+}
+
+export async function addPrefabComponent(options: IAddPrefabComponentOptions): Promise<IAuthoringOperationResult> {
+  return mutateSourceDocument(options, "prefab", options.prefabId, (data, file) => {
+    const entities = ensureArrayProperty(data, "entities");
+    const entity = findSceneItem(entities, options.prefabId);
+    if (entity === undefined) {
+      return [missingReferenceDiagnostic(file, "/entities", "entity", options.prefabId, idsFromArray(entities))];
+    }
+    entity.components = {
+      ...(isRecord(entity.components) ? entity.components : {}),
+      [options.componentKind]: options.value,
+    };
+    return [];
+  });
+}
+
+export async function addInputAction(options: IAddInputActionOptions): Promise<IAuthoringOperationResult> {
+  const bindings = options.keys.map((key) => `keyboard.${key.length === 1 ? key.toLowerCase() : key}`);
+  return upsertSourceDocument({
+    projectPath: options.projectPath,
+    kind: "input",
+    id: options.inputDocId,
+    file: `content/input/${options.inputDocId}.input.json`,
+    emptyData: { schema: inputDocumentSchema, version: "0.1.0", id: options.inputDocId, actions: [] },
+    apply: (data) => {
+      const actions = ensureArrayProperty(data, "actions");
+      const existing = findSceneItem(actions, options.actionId);
+      const action = existing ?? { id: options.actionId };
+      action.bindings = bindings;
+      if (existing === undefined) {
+        actions.push(action);
+      }
+    },
+  });
+}
+
+export async function createSystem(options: ICreateSystemOptions): Promise<IAuthoringOperationResult> {
+  return createSourceDocument({
+    projectPath: options.projectPath,
+    kind: "systems",
+    id: options.systemId,
+    file: `content/systems/${options.systemId}.systems.json`,
+    data: { schema: systemsDocumentSchema, version: "0.1.0", id: options.systemId, systems: [{ id: options.systemId, schedule: options.schedule }] },
+  });
+}
+
+export async function attachSystemScript(options: IAttachSystemScriptOptions): Promise<IAuthoringOperationResult> {
+  return mutateSourceDocument(options, "systems", options.systemId, (data, file) => {
+    const systems = ensureArrayProperty(data, "systems");
+    const system = findSceneItem(systems, options.systemId);
+    if (system === undefined) {
+      return [missingReferenceDiagnostic(file, "/systems", "system", options.systemId, idsFromArray(systems))];
+    }
+    system.script = { module: options.modulePath, export: options.exportName };
+    return [];
+  });
+}
+
+async function createSourceDocument(options: {
+  projectPath: string;
+  kind: AuthoringDocumentKind;
+  id: string;
+  file: string;
+  data: Record<string, unknown>;
+}): Promise<IAuthoringOperationResult> {
+  const project = await loadAuthoringProject({ projectPath: options.projectPath });
+  const diagnostics = [...project.diagnostics];
+  validateLogicalId(diagnostics, "", "/id", options.id, `${options.kind} document`);
+  const absoluteFile = resolve(project.projectPath, options.file);
+  const projectRelativePath = normalizeRelativePath(relative(project.projectPath, absoluteFile));
+  validateNewSourcePath(diagnostics, projectRelativePath, options.file, sourceExtensionForKind(options.kind));
+
+  const duplicateDocument = project.documents.find((document) => document.kind === options.kind && readDocumentId(document.data) === options.id);
+  if (duplicateDocument !== undefined) {
+    diagnostics.push(
+      authoringDiagnostic({
+        code: "TN_AUTHORING_DUPLICATE_DOCUMENT_ID",
+        file: duplicateDocument.projectRelativePath,
+        message: `${options.kind} document id '${options.id}' already exists.`,
+        path: "/id",
+        value: options.id,
+        suggestion: "Use a new id or mutate the existing source document.",
+      }),
+    );
+  }
+
+  try {
+    await access(absoluteFile);
+    diagnostics.push(
+      authoringDiagnostic({
+        code: "TN_AUTHORING_SOURCE_FILE_EXISTS",
+        file: projectRelativePath,
+        message: `Authoring source document '${projectRelativePath}' already exists.`,
+        suggestion: "Use a different id or mutate the existing source document.",
+      }),
+    );
+  } catch {
+    // Missing is the successful create path.
+  }
+
+  diagnostics.push(...(await validateAuthoringDocument(project.projectPath, projectRelativePath, options.kind, options.data, { materialIds: collectMaterialIdsForProject(project) })));
+  if (hasAuthoringErrors(diagnostics)) {
+    return authoringOperationResult({ diagnostics, projectPath: project.projectPath });
+  }
+
+  const document: IAuthoringDocument = { data: options.data, file: absoluteFile, kind: options.kind, projectRelativePath };
+  await mkdir(dirname(absoluteFile), { recursive: true });
+  await writeAuthoringJsonDocument(document);
+  return authoringOperationResult({ changed: true, diagnostics, filesWritten: [projectRelativePath], projectPath: project.projectPath });
+}
+
+async function upsertSourceDocument(options: {
+  projectPath: string;
+  kind: AuthoringDocumentKind;
+  id: string;
+  file: string;
+  emptyData: Record<string, unknown>;
+  apply: (data: Record<string, unknown>, file: string) => void | IAuthoringDiagnostic[];
+}): Promise<IAuthoringOperationResult> {
+  const project = await loadAuthoringProject({ projectPath: options.projectPath });
+  const existing = project.documents.find((document) => document.kind === options.kind && readDocumentId(document.data) === options.id);
+  if (existing !== undefined) {
+    return mutateSourceDocument(options, options.kind, options.id, options.apply);
+  }
+
+  const diagnostics = [...project.diagnostics];
+  validateLogicalId(diagnostics, "", "/id", options.id, `${options.kind} document`);
+  const absoluteFile = resolve(project.projectPath, options.file);
+  const projectRelativePath = normalizeRelativePath(relative(project.projectPath, absoluteFile));
+  validateNewSourcePath(diagnostics, projectRelativePath, options.file, sourceExtensionForKind(options.kind));
+  try {
+    await access(absoluteFile);
+    diagnostics.push(
+      authoringDiagnostic({
+        code: "TN_AUTHORING_SOURCE_FILE_EXISTS",
+        file: projectRelativePath,
+        message: `Authoring source document '${projectRelativePath}' already exists.`,
+        suggestion: "Use a different id or mutate the existing source document.",
+      }),
+    );
+  } catch {
+    // Missing is the successful upsert-create path.
+  }
+
+  const nextData = cloneJson(options.emptyData);
+  if (!isRecord(nextData)) {
+    diagnostics.push(
+      authoringDiagnostic({
+        code: "TN_AUTHORING_DOCUMENT_SHAPE_INVALID",
+        file: projectRelativePath,
+        message: "Structured authoring source document must be a JSON object before mutation.",
+      }),
+    );
+  } else {
+    diagnostics.push(...(options.apply(nextData, projectRelativePath) ?? []));
+    diagnostics.push(...(await validateAuthoringDocument(project.projectPath, projectRelativePath, options.kind, nextData, { materialIds: collectMaterialIdsForProject(project) })));
+  }
+
+  if (hasAuthoringErrors(diagnostics)) {
+    return authoringOperationResult({ diagnostics, projectPath: project.projectPath });
+  }
+
+  const document: IAuthoringDocument = { data: nextData, file: absoluteFile, kind: options.kind, projectRelativePath };
+  await mkdir(dirname(absoluteFile), { recursive: true });
+  await writeAuthoringJsonDocument(document);
+  return authoringOperationResult({ changed: true, diagnostics, filesWritten: [projectRelativePath], projectPath: project.projectPath });
+}
+
+async function mutateSourceDocument(
+  options: IAuthoringOperationContext,
+  kind: AuthoringDocumentKind,
+  id: string,
+  apply: (data: Record<string, unknown>, file: string) => void | IAuthoringDiagnostic[],
+): Promise<IAuthoringOperationResult> {
+  const project = await loadAuthoringProject({ projectPath: options.projectPath });
+  const document = project.documents.find((candidate) => candidate.kind === kind && readDocumentId(candidate.data) === id);
+  const diagnostics = [...project.diagnostics];
+
+  if (document === undefined) {
+    diagnostics.push(
+      authoringDiagnostic({
+        code: "TN_AUTHORING_DOCUMENT_MISSING",
+        message: `No ${kind} source document with id '${id}' was found.`,
+        value: id,
+        suggestion: closestIdSuggestion(id, project.documents.filter((candidate) => candidate.kind === kind).map((candidate) => readDocumentId(candidate.data)).filter(isString)),
+      }),
+    );
+    return authoringOperationResult({ diagnostics, projectPath: project.projectPath });
+  }
+
+  const materialIds = collectMaterialIdsForProject(project);
+  const beforeDiagnostics = await validateAuthoringDocument(project.projectPath, document.projectRelativePath, document.kind, document.data, { materialIds });
+  if (hasAuthoringErrors(beforeDiagnostics)) {
+    return authoringOperationResult({ diagnostics: beforeDiagnostics, projectPath: project.projectPath });
+  }
+
+  const nextData = cloneJson(document.data);
+  if (!isRecord(nextData)) {
+    return authoringOperationResult({
+      diagnostics: [
+        authoringDiagnostic({
+          code: "TN_AUTHORING_DOCUMENT_SHAPE_INVALID",
+          file: document.projectRelativePath,
+          message: "Structured authoring source document must be a JSON object before mutation.",
+        }),
+      ],
+      projectPath: project.projectPath,
+    });
+  }
+
+  const applyDiagnostics = apply(nextData, document.projectRelativePath) ?? [];
+  if (hasAuthoringErrors(applyDiagnostics)) {
+    return authoringOperationResult({ diagnostics: applyDiagnostics, projectPath: project.projectPath });
+  }
+
+  const afterDiagnostics = await validateAuthoringDocument(project.projectPath, document.projectRelativePath, document.kind, nextData, { materialIds });
+  if (hasAuthoringErrors(afterDiagnostics)) {
+    return authoringOperationResult({ diagnostics: afterDiagnostics, projectPath: project.projectPath });
+  }
+
+  document.data = nextData;
+  await writeAuthoringJsonDocument(document);
+  return authoringOperationResult({ changed: true, diagnostics: afterDiagnostics, filesWritten: [document.projectRelativePath], projectPath: project.projectPath });
+}
+
+function validateNewSourcePath(diagnostics: IAuthoringDiagnostic[], projectRelativePath: string, requestedFile: string, extension: string): void {
+  if (projectRelativePath === "" || projectRelativePath.startsWith("../") || projectRelativePath === "..") {
+    diagnostics.push(
+      authoringDiagnostic({
+        code: "TN_AUTHORING_SOURCE_PATH_OUTSIDE_PROJECT",
+        file: requestedFile,
+        message: "Authoring source documents must be created inside the project root.",
+        value: requestedFile,
+        suggestion: "Use a path under content/ for structured source documents.",
+      }),
+    );
+  } else if (isGeneratedArtifactPath(projectRelativePath)) {
+    diagnostics.push(generatedPathDiagnostic(projectRelativePath, "", projectRelativePath));
+  } else if (!projectRelativePath.endsWith(extension)) {
+    diagnostics.push(
+      authoringDiagnostic({
+        code: "TN_AUTHORING_SOURCE_FILE_EXTENSION_INVALID",
+        file: projectRelativePath,
+        message: `Authoring source documents for this operation must use the ${extension} extension.`,
+        value: projectRelativePath,
+      }),
+    );
+  }
+}
+
+function sourceExtensionForKind(kind: AuthoringDocumentKind): string {
+  switch (kind) {
+    case "input":
+      return ".input.json";
+    case "material":
+      return ".materials.json";
+    case "mesh":
+      return ".meshes.json";
+    case "prefab":
+      return ".prefab.json";
+    case "systems":
+      return ".systems.json";
+    case "ui":
+      return ".ui.json";
+    default:
+      return ".json";
+  }
+}
+
 async function mutateScene(
   options: IAuthoringOperationContext & { sceneId: string },
   apply: (scene: Record<string, unknown>, file: string) => void | IAuthoringDiagnostic[],
@@ -820,7 +1256,42 @@ async function validateAuthoringDocument(
         idKind: "material document",
         listName: "materials",
         rootKeys: materialDocumentKeys,
-        validateItem: (diagnostics, path, item) => validateGeneratedPathString(diagnostics, file, `${path}/asset`, item.asset, "material asset must be a non-empty source path."),
+        validateItem: (diagnostics, path, item) => {
+          validateGeneratedPathString(diagnostics, file, `${path}/asset`, item.asset, "material asset must be a non-empty source path.");
+          if (item.color !== undefined && readString(item.color) === undefined) {
+            diagnostics.push(typeDiagnostic(file, `${path}/color`, "material color must be a non-empty string.", item.color));
+          }
+          if (item.roughness !== undefined && (typeof item.roughness !== "number" || !Number.isFinite(item.roughness))) {
+            diagnostics.push(typeDiagnostic(file, `${path}/roughness`, "material roughness must be a finite number.", item.roughness));
+          }
+        },
+      });
+    case "mesh":
+      return validateDeclarationDocument(file, data, {
+        declarationKeys: meshKeys,
+        duplicateKind: "mesh",
+        expectedSchema: meshDocumentSchema,
+        idKind: "mesh document",
+        listName: "meshes",
+        rootKeys: meshDocumentKeys,
+        validateItem: (diagnostics, path, item) => {
+          if (item.kind !== "primitive") {
+            diagnostics.push(typeDiagnostic(file, `${path}/kind`, "mesh kind must be 'primitive' in this authoring slice.", item.kind));
+          }
+          const primitive = readString(item.primitive);
+          if (primitive === undefined || !supportedMeshPrimitives.has(primitive)) {
+            diagnostics.push(
+              authoringDiagnostic({
+                code: "TN_AUTHORING_MESH_PRIMITIVE_UNKNOWN",
+                file,
+                message: `Unknown mesh primitive '${String(item.primitive)}'.`,
+                path: `${path}/primitive`,
+                value: item.primitive,
+                suggestion: "Use 'box', 'sphere', 'cylinder', 'cone', or 'plane'.",
+              }),
+            );
+          }
+        },
       });
     case "prefab":
       return validatePrefabDocument(file, data);
@@ -1240,7 +1711,7 @@ function validateMeshRendererComponent(diagnostics: IAuthoringDiagnostic[], file
   const material = readString(value.material);
   if (value.material !== undefined && material === undefined) {
     diagnostics.push(typeDiagnostic(file, `${path}/material`, "mesh renderer material must be a non-empty material id.", value.material));
-  } else if (material !== undefined && !materialIds.includes(material)) {
+  } else if (material !== undefined && materialIds.length > 0 && !materialIds.includes(material)) {
     diagnostics.push(missingReferenceDiagnostic(file, `${path}/material`, "material", material, materialIds));
   }
 }
@@ -1614,6 +2085,10 @@ function duplicateIdCode(kind: string): string {
 }
 
 function readSceneId(value: unknown): string | undefined {
+  return isRecord(value) ? readString(value.id) : undefined;
+}
+
+function readDocumentId(value: unknown): string | undefined {
   return isRecord(value) ? readString(value.id) : undefined;
 }
 

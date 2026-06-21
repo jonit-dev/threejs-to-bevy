@@ -119,12 +119,14 @@ classification for generated bundle artifacts.
 ## Current Authoring Package Coverage
 
 `@threenative/authoring` currently discovers and validates the first stable
-source-document families for scenes, UI, materials, assets, input, systems,
-prefabs, and audio. The non-scene families intentionally use minimal
+source-document families for scenes, UI, materials, meshes, assets, input,
+systems, prefabs, and audio. The non-scene families intentionally use minimal
 schema-versioned contracts in this phase:
 
 - `threenative.ui`: `id`, `nodes`, `bindings`, and optional `provenance`;
-- `threenative.materials`: `id`, `materials`, and optional `provenance`;
+- `threenative.materials`: `id`, `materials`, authored `color`,
+  `roughness`, and optional `provenance`;
+- `threenative.meshes`: `id`, primitive `meshes`, and optional `provenance`;
 - `threenative.assets`: `id`, `assets`, and optional `provenance`;
 - `threenative.input`: `id`, `actions`, and optional `provenance`;
 - `threenative.systems`: `id`, `systems`, and optional `provenance`;
@@ -138,3 +140,28 @@ The first cross-document reference check is scene `MeshRenderer.material`
 against material source document IDs. Standalone UI resource binding and broader
 runtime graph reference validation remain later structured-authoring work rather
 than implicit inference in this minimal source package slice.
+
+## Initial CLI Operation Conventions
+
+The first full-source CLI operation slice writes deterministic source documents
+under conventional paths:
+
+- `tn ui create <ui-doc-id>` writes `content/ui/<ui-doc-id>.ui.json`;
+- `tn material create <material-id>` writes
+  `content/materials/<material-id>.materials.json`;
+- `tn mesh primitive <mesh-id>` writes
+  `content/meshes/<mesh-id>.meshes.json`;
+- `tn prefab create <prefab-id>` writes
+  `content/prefabs/<prefab-id>.prefab.json`;
+- `tn input add-action <input-doc-id> ...` writes or updates
+  `content/input/<input-doc-id>.input.json`;
+- `tn system create <system-id>` writes
+  `content/systems/<system-id>.systems.json`.
+
+Every operation supports `--json` and returns the shared
+`ok`/`changed`/`filesWritten`/`diagnostics` operation shape. Invalid CLI JSON,
+unknown primitive kinds, missing source documents, missing system script
+modules/exports, and validation failures exit non-zero before writing the
+target document. Script commands store module/export references only; they do
+not generate TypeScript script source. Audio source documents are validated, but
+audio mutation commands remain a documented gap after this initial slice.

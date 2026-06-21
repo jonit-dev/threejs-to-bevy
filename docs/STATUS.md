@@ -84,6 +84,17 @@ and keeps generated bundle files out of durable source. `scripts.bundle.js`
 remains unrecoverable without source-safe manifest/provenance and reports
 `TN_AUTHORING_IMPORT_UNRECOVERABLE_SCRIPT_BODY`; runtime config and target
 profile import remain later source-document work.
+The Phase 4 CLI operation slice adds shared authoring operations and registered
+`tn ui`, `tn material`, `tn mesh`, `tn prefab`, `tn input`, and `tn system`
+commands for deterministic source-document mutation. The supported initial
+operations create retained UI docs, add text nodes, set centered layout fields,
+bind UI resources, create/update material color and roughness, declare primitive
+mesh source docs, create prefab docs and component values, add input actions
+from key lists, and create systems with module/export script references.
+Commands support `--json`, return the shared `ok`/`changed`/`filesWritten`/
+`diagnostics` shape, and fail before writing on invalid JSON or validation
+errors. Audio source documents remain validated but do not yet have mutation
+CLI commands.
 
 Structured `.scene.json` documents can now be used as a normal project build
 entry for the first runtime-backed CLI authoring slice. The compiler validates

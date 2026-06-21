@@ -22,6 +22,12 @@ test("loads mixed authoring source document family", async () => {
       id: "kart-materials",
       materials: [{ id: "mat.kart" }],
     });
+    await writeSourceDocument(root, "content/meshes/kart.meshes.json", {
+      schema: "threenative.meshes",
+      version: "0.1.0",
+      id: "kart-meshes",
+      meshes: [{ id: "mesh.kart", kind: "primitive", primitive: "box" }],
+    });
     await writeSourceDocument(root, "content/assets/kart.assets.json", {
       schema: "threenative.assets",
       version: "0.1.0",
@@ -57,7 +63,7 @@ test("loads mixed authoring source document family", async () => {
     const project = await loadAuthoringProject({ projectPath: root });
     assert.deepEqual(
       project.documents.map((document) => document.kind),
-      ["asset", "audio", "input", "material", "prefab", "scene", "systems", "ui"],
+      ["asset", "audio", "input", "material", "mesh", "prefab", "scene", "systems", "ui"],
     );
 
     const validation = await validateAuthoringProject({ projectPath: root });

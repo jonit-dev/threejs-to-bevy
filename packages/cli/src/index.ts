@@ -15,6 +15,7 @@ import { helpCommand } from "./commands/help.js";
 import { modelTestCommand } from "./commands/modelTest.js";
 import { packageCommand } from "./commands/package.js";
 import { sceneCommand } from "./commands/scene.js";
+import { inputCommand, materialCommand, meshCommand, prefabCommand, systemCommand, uiCommand } from "./commands/sourceDocuments.js";
 import { validateProject } from "./commands/validate.js";
 import { recordCommand, screenshotCommand } from "./commands/visualProof.js";
 import { verifyCommand } from "./commands/verify.js";
@@ -72,6 +73,21 @@ const commands: Record<string, ICommandDefinition> = {
     implemented: true,
     usage: "tn bundle import <bundle-dir> --project <path> --mode source [--dry-run] [--json]",
   },
+  input: {
+    description: "Create and mutate structured input source documents.",
+    implemented: true,
+    usage: "tn input add-action <input-doc-id> <action-id> --keys <key,key> [--project <path>] [--json]",
+  },
+  material: {
+    description: "Create and mutate structured material source documents.",
+    implemented: true,
+    usage: "tn material create <material-id> [--project <path>] [--json]\n              tn material set <material-id> [--color <css-color>] [--roughness <n>] [--project <path>] [--json]",
+  },
+  mesh: {
+    description: "Create structured mesh source documents.",
+    implemented: true,
+    usage: "tn mesh primitive <mesh-id> --kind <box|sphere|cylinder|cone|plane> [--project <path>] [--json]",
+  },
   "compare-images": {
     description: "Compare two PNG screenshots and report visual deltas.",
     implemented: true,
@@ -96,6 +112,21 @@ const commands: Record<string, ICommandDefinition> = {
     description: "Create, inspect, validate, mutate, and prove structured source scene documents.",
     implemented: true,
     usage: "tn scene create <scene-id> [--file <path>] [--json]\n              tn scene import-world <scene-id> --world <path/to/world.ir.json> [--file <path>] [--replace] [--json]\n              tn scene validate [scene-id] [--project <path>] [--json]\n              tn scene inspect <scene-id> [--project <path>] [--json]\n              tn scene add-prefab <scene-id> <prefab-id> [--primitive <primitive>] [--color <css-color>] [--json]\n              tn scene set-prefab-color <scene-id> <prefab-id> --color <css-color> [--json]\n              tn scene add-resource <scene-id> <resource-id> [--path <resource.path>] [--value <json>] [--json]\n              tn scene set-resource <scene-id> <resource-id> [--path <resource.path>] [--value <json>] [--json]\n              tn scene add-ui-node <scene-id> <ui-node-id> [--json]\n              tn scene add-entity <scene-id> <entity-id> [--prefab <prefab-id>] [--json]\n              tn scene set-component <scene-id> <entity-id> <component-kind> --value <json-object> [--json]\n              tn scene remove-component <scene-id> <entity-id> <component-kind> [--json]\n              tn scene set-transform <scene-id> <entity-id> [--position x,y,z] [--rotation x,y,z] [--scale x,y,z] [--json]\n              tn scene set-camera <scene-id> <camera-id> --mode <mode> --target <entity-id> [--json]\n              tn scene attach-script <scene-id> <system-id> --module <path> --export <name> [--json]\n              tn scene bind-ui <scene-id> <ui-node-id> --resource <resource.path> [--json]\n              tn scene proof <scene-id> --project <path> --web-url <url> --out <dir> [--native] [--json]",
+  },
+  prefab: {
+    description: "Create and mutate structured prefab source documents.",
+    implemented: true,
+    usage: "tn prefab create <prefab-id> [--project <path>] [--json]\n              tn prefab add-component <prefab-id> <component> --value <json-object> [--project <path>] [--json]",
+  },
+  system: {
+    description: "Create and mutate structured system source documents.",
+    implemented: true,
+    usage: "tn system create <system-id> --schedule <schedule> [--project <path>] [--json]\n              tn system attach-script <system-id> --module <path> --export <name> [--project <path>] [--json]",
+  },
+  ui: {
+    description: "Create and mutate structured retained UI source documents.",
+    implemented: true,
+    usage: "tn ui create <ui-doc-id> [--project <path>] [--json]\n              tn ui add-text <ui-doc-id> <node-id> --text <text> [--project <path>] [--json]\n              tn ui set-layout <ui-doc-id> <node-id> [--justify <value>] [--align <value>] [--top <n>] [--height <n>] [--width <n>] [--project <path>] [--json]\n              tn ui bind <ui-doc-id> <node-id> --resource <resource.path> [--project <path>] [--json]",
   },
   screenshot: {
     description: "Capture a PNG proof frame from a web preview URL.",
@@ -192,6 +223,18 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
     return bundleCommand(normalizedArgv.slice(1));
   }
 
+  if (commandName === "input") {
+    return inputCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "material") {
+    return materialCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "mesh") {
+    return meshCommand(normalizedArgv.slice(1));
+  }
+
   if (commandName === "compare-images") {
     return compareImagesCommand(normalizedArgv.slice(1));
   }
@@ -210,6 +253,18 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
 
   if (commandName === "scene") {
     return sceneCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "prefab") {
+    return prefabCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "system") {
+    return systemCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "ui") {
+    return uiCommand(normalizedArgv.slice(1));
   }
 
   if (commandName === "screenshot") {

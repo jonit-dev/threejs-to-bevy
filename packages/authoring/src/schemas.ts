@@ -6,6 +6,7 @@ export const inputDocumentSchema = "threenative.input";
 export const systemsDocumentSchema = "threenative.systems";
 export const prefabDocumentSchema = "threenative.prefab";
 export const audioDocumentSchema = "threenative.audio";
+export const meshDocumentSchema = "threenative.meshes";
 
 export const sceneDocumentKeys = new Set(["schema", "version", "id", "entities", "prefabs", "resources", "systems", "ui", "provenance"]);
 export const uiDocumentKeys = new Set(["schema", "version", "id", "nodes", "bindings", "provenance"]);
@@ -15,20 +16,23 @@ export const inputDocumentKeys = new Set(["schema", "version", "id", "actions", 
 export const systemsDocumentKeys = new Set(["schema", "version", "id", "systems", "provenance"]);
 export const prefabDocumentKeys = new Set(["schema", "version", "id", "entities", "provenance"]);
 export const audioDocumentKeys = new Set(["schema", "version", "id", "sounds", "provenance"]);
+export const meshDocumentKeys = new Set(["schema", "version", "id", "meshes", "provenance"]);
 export const entityKeys = new Set(["id", "prefab", "transform", "components"]);
 export const transformKeys = new Set(["position", "rotation", "scale"]);
 export const systemKeys = new Set(["id", "script", "schedule"]);
 export const scriptReferenceKeys = new Set(["module", "export"]);
 export const uiKeys = new Set(["nodes", "bindings"]);
-export const uiNodeKeys = new Set(["id"]);
+export const uiNodeKeys = new Set(["id", "layout", "text", "type"]);
 export const uiBindingKeys = new Set(["node", "resource"]);
 export const resourceKeys = new Set(["id", "path", "value"]);
 export const prefabKeys = new Set(["id", "primitive", "color", "asset"]);
-export const materialKeys = new Set(["id", "asset"]);
+export const materialKeys = new Set(["id", "asset", "color", "roughness"]);
 export const assetKeys = new Set(["id", "path", "type"]);
 export const inputActionKeys = new Set(["id", "bindings"]);
 export const audioSoundKeys = new Set(["id", "asset"]);
+export const meshKeys = new Set(["id", "kind", "primitive"]);
 export const supportedPrefabPrimitives = new Set(["box", "capsule", "cone", "cylinder", "plane", "sphere"]);
+export const supportedMeshPrimitives = new Set(["box", "cone", "cylinder", "plane", "sphere"]);
 
 export const supportedComponentKinds = new Set(["camera"]);
 export const cameraComponentKeys = new Set(["mode", "target"]);
@@ -118,6 +122,8 @@ export interface IMaterialDocument {
 export interface IMaterialDeclaration {
   id: string;
   asset?: string;
+  color?: string;
+  roughness?: number;
 }
 
 export interface IAssetDocument {
@@ -169,6 +175,19 @@ export interface IAudioDocument {
 export interface IAudioSoundDeclaration {
   id: string;
   asset?: string;
+}
+
+export interface IMeshDocument {
+  schema: typeof meshDocumentSchema;
+  version?: string;
+  id: string;
+  meshes?: IMeshDeclaration[];
+}
+
+export interface IMeshDeclaration {
+  id: string;
+  kind: "primitive";
+  primitive: "box" | "cone" | "cylinder" | "plane" | "sphere";
 }
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
