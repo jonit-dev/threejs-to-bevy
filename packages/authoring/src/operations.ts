@@ -1,14 +1,28 @@
 import { access, mkdir, readFile } from "node:fs/promises";
 import { dirname, relative, resolve } from "node:path";
 
-import { isGeneratedArtifactPath, normalizeRelativePath, writeAuthoringJsonDocument, type IAuthoringDocument } from "./documents.js";
+import { isGeneratedArtifactPath, normalizeRelativePath, writeAuthoringJsonDocument, type AuthoringDocumentKind, type IAuthoringDocument } from "./documents.js";
 import { authoringDiagnostic, hasAuthoringErrors, sortAuthoringDiagnostics, type IAuthoringDiagnostic } from "./diagnostics.js";
 import { loadAuthoringProject, type IAuthoringProject } from "./project.js";
 import {
   cameraComponentKeys,
   ecsIdPattern,
   entityKeys,
+  assetDocumentKeys,
+  assetDocumentSchema,
+  assetKeys,
+  audioDocumentKeys,
+  audioDocumentSchema,
+  audioSoundKeys,
+  inputActionKeys,
+  inputDocumentKeys,
+  inputDocumentSchema,
   logicalIdPattern,
+  materialDocumentKeys,
+  materialDocumentSchema,
+  materialKeys,
+  prefabDocumentKeys,
+  prefabDocumentSchema,
   prefabKeys,
   resourceIdPattern,
   readArray,
@@ -17,9 +31,13 @@ import {
   sceneDocumentKeys,
   sceneDocumentSchema,
   scriptReferenceKeys,
+  systemsDocumentKeys,
+  systemsDocumentSchema,
   supportedPrefabPrimitives,
   supportedCameraModes,
   supportedComponentKinds,
+  uiDocumentKeys,
+  uiDocumentSchema,
   systemKeys,
   transformKeys,
   uiBindingKeys,
@@ -74,6 +92,8 @@ export async function writeChangedProjectDocuments(project: IAuthoringProject): 
 export interface IValidateSceneOptions extends IAuthoringOperationContext {
   sceneId?: string;
 }
+
+export interface IValidateAuthoringProjectOptions extends IAuthoringOperationContext {}
 
 export interface ICreateSceneOptions extends IAuthoringOperationContext {
   sceneId: string;
@@ -403,6 +423,7 @@ export async function validateScene(options: IValidateSceneOptions): Promise<IAu
   const diagnostics = [...project.diagnostics];
   const sceneDocuments = project.documents.filter((document) => document.kind === "scene");
   const selectedScenes = options.sceneId === undefined ? sceneDocuments : sceneDocuments.filter((document) => readSceneId(document.data) === options.sceneId);
+  const materialIds = collectMaterialIdsForProject(project);
 
   if (options.sceneId !== undefined && selectedScenes.length === 0) {
     diagnostics.push(
@@ -416,7 +437,24 @@ export async function validateScene(options: IValidateSceneOptions): Promise<IAu
   }
 
   for (const document of selectedScenes) {
-    diagnostics.push(...(await validateSceneDocument(project.projectPath, document.projectRelativePath, document.data)));
+    diagnostics.push(...(await validateSceneDocument(project.projectPath, document.projectRelativePath, document.data, { materialIds })));
+  }
+
+  return authoringOperationResult({
+    diagnostics,
+    projectPath: project.projectPath,
+  });
+}
+
+export async function validateAuthoringProject(options: IValidateAuthoringProjectOptions): Promise<IAuthoringOperationResult> {
+  const project = await loadAuthoringProject({ projectPath: options.projectPath });
+  const diagnostics = [...project.diagnostics];
+  const materialIds = collectMaterialIdsForProject(project);
+
+  for (const document of project.documents) {
+    diagnostics.push(
+      ...(await validateAuthoringDocument(project.projectPath, document.projectRelativePath, document.kind, document.data, { materialIds })),
+    );
   }
 
   return authoringOperationResult({
@@ -482,6 +520,7 @@ export async function inspectScene(options: IValidateSceneOptions & { sceneId: s
   const diagnostics = [...project.diagnostics];
   const sceneDocuments = project.documents.filter((document) => document.kind === "scene");
   const sceneDocument = sceneDocuments.find((document) => readSceneId(document.data) === options.sceneId);
+  const materialIds = collectMaterialIdsForProject(project);
 
   if (sceneDocument === undefined) {
     diagnostics.push(
@@ -497,7 +536,7 @@ export async function inspectScene(options: IValidateSceneOptions & { sceneId: s
     };
   }
 
-  diagnostics.push(...(await validateSceneDocument(project.projectPath, sceneDocument.projectRelativePath, sceneDocument.data)));
+  diagnostics.push(...(await validateSceneDocument(project.projectPath, sceneDocument.projectRelativePath, sceneDocument.data, { materialIds })));
 
   return {
     ...authoringOperationResult({ diagnostics, projectPath: project.projectPath }),
@@ -669,6 +708,7 @@ async function mutateScene(
   const project = await loadAuthoringProject({ projectPath: options.projectPath });
   const sceneDocuments = project.documents.filter((document) => document.kind === "scene");
   const sceneDocument = sceneDocuments.find((document) => readSceneId(document.data) === options.sceneId);
+  const materialIds = collectMaterialIdsForProject(project);
   const diagnostics = [...project.diagnostics];
 
   if (sceneDocument === undefined) {
@@ -683,7 +723,7 @@ async function mutateScene(
     return authoringOperationResult({ diagnostics, projectPath: project.projectPath });
   }
 
-  const beforeDiagnostics = await validateSceneDocument(project.projectPath, sceneDocument.projectRelativePath, sceneDocument.data);
+  const beforeDiagnostics = await validateSceneDocument(project.projectPath, sceneDocument.projectRelativePath, sceneDocument.data, { materialIds });
   if (hasAuthoringErrors(beforeDiagnostics)) {
     return authoringOperationResult({
       diagnostics: beforeDiagnostics,
@@ -713,7 +753,7 @@ async function mutateScene(
     });
   }
 
-  const afterDiagnostics = await validateSceneDocument(project.projectPath, sceneDocument.projectRelativePath, nextData);
+  const afterDiagnostics = await validateSceneDocument(project.projectPath, sceneDocument.projectRelativePath, nextData, { materialIds });
   if (hasAuthoringErrors(afterDiagnostics)) {
     return authoringOperationResult({
       diagnostics: afterDiagnostics,
@@ -731,7 +771,85 @@ async function mutateScene(
   });
 }
 
-async function validateSceneDocument(projectPath: string, file: string, data: unknown): Promise<IAuthoringDiagnostic[]> {
+interface IAuthoringValidationContext {
+  materialIds: readonly string[];
+}
+
+async function validateAuthoringDocument(
+  projectPath: string,
+  file: string,
+  kind: AuthoringDocumentKind,
+  data: unknown,
+  context: IAuthoringValidationContext,
+): Promise<IAuthoringDiagnostic[]> {
+  switch (kind) {
+    case "asset":
+      return validateDeclarationDocument(file, data, {
+        declarationKeys: assetKeys,
+        duplicateKind: "asset",
+        expectedSchema: assetDocumentSchema,
+        idKind: "asset document",
+        listName: "assets",
+        rootKeys: assetDocumentKeys,
+        validateItem: (diagnostics, path, item) => validateGeneratedPathString(diagnostics, file, `${path}/path`, item.path, "asset path must be a non-empty source path."),
+      });
+    case "audio":
+      return validateDeclarationDocument(file, data, {
+        declarationKeys: audioSoundKeys,
+        duplicateKind: "audio",
+        expectedSchema: audioDocumentSchema,
+        idKind: "audio document",
+        listName: "sounds",
+        rootKeys: audioDocumentKeys,
+        validateItem: (diagnostics, path, item) => validateGeneratedPathString(diagnostics, file, `${path}/asset`, item.asset, "audio asset must be a non-empty source path."),
+      });
+    case "input":
+      return validateDeclarationDocument(file, data, {
+        declarationKeys: inputActionKeys,
+        duplicateKind: "input",
+        expectedSchema: inputDocumentSchema,
+        idKind: "input document",
+        listName: "actions",
+        rootKeys: inputDocumentKeys,
+      });
+    case "material":
+      return validateDeclarationDocument(file, data, {
+        declarationKeys: materialKeys,
+        duplicateKind: "material",
+        expectedSchema: materialDocumentSchema,
+        idKind: "material document",
+        listName: "materials",
+        rootKeys: materialDocumentKeys,
+        validateItem: (diagnostics, path, item) => validateGeneratedPathString(diagnostics, file, `${path}/asset`, item.asset, "material asset must be a non-empty source path."),
+      });
+    case "prefab":
+      return validatePrefabDocument(file, data);
+    case "scene":
+      return validateSceneDocument(projectPath, file, data, context);
+    case "systems":
+      return validateSystemsDocument(projectPath, file, data);
+    case "ui":
+      return validateUiDocument(file, data);
+    case "project":
+      return [];
+    case "unknown":
+      return [
+        authoringDiagnostic({
+          code: "TN_AUTHORING_DOCUMENT_KIND_UNKNOWN",
+          file,
+          message: "Authoring document kind could not be determined from its file extension or schema.",
+          suggestion: "Use a supported source extension such as .scene.json, .ui.json, or .materials.json.",
+        }),
+      ];
+  }
+}
+
+async function validateSceneDocument(
+  projectPath: string,
+  file: string,
+  data: unknown,
+  context: IAuthoringValidationContext = { materialIds: [] },
+): Promise<IAuthoringDiagnostic[]> {
   const diagnostics: IAuthoringDiagnostic[] = [];
   if (!isRecord(data)) {
     return [
@@ -767,13 +885,159 @@ async function validateSceneDocument(projectPath: string, file: string, data: un
   const uiNodes = collectUiNodeIds(diagnostics, file, data.ui);
   const entities = collectEntityIds(diagnostics, file, data.entities);
 
-  validateEntities(diagnostics, file, data.entities, entities, prefabs);
+  validateEntities(diagnostics, file, data.entities, entities, prefabs, context.materialIds);
   validatePrefabs(diagnostics, file, data.prefabs);
   validateResources(diagnostics, file, data.resources);
   await validateSystems(diagnostics, projectPath, file, data.systems, systems);
   validateUi(diagnostics, file, data.ui, uiNodes, resources);
 
   return sortAuthoringDiagnostics(diagnostics);
+}
+
+interface IDeclarationDocumentValidationOptions {
+  declarationKeys: ReadonlySet<string>;
+  duplicateKind: string;
+  expectedSchema: string;
+  idKind: string;
+  listName: string;
+  rootKeys: ReadonlySet<string>;
+  validateItem?: (diagnostics: IAuthoringDiagnostic[], path: string, item: Record<string, unknown>) => void | Promise<void>;
+}
+
+async function validateDeclarationDocument(
+  file: string,
+  data: unknown,
+  options: IDeclarationDocumentValidationOptions,
+): Promise<IAuthoringDiagnostic[]> {
+  const diagnostics: IAuthoringDiagnostic[] = [];
+  if (!isRecord(data)) {
+    return [
+      authoringDiagnostic({
+        code: "TN_AUTHORING_DOCUMENT_SHAPE_INVALID",
+        file,
+        message: "Structured authoring source document must be a JSON object.",
+        path: "",
+        value: data,
+      }),
+    ];
+  }
+
+  diagnostics.push(...unknownKeyDiagnostics(file, "", data, options.rootKeys));
+  validateDocumentHeader(diagnostics, file, data, options.expectedSchema, options.idKind);
+
+  const list = readArray(data[options.listName]);
+  if (data[options.listName] !== undefined && list === undefined) {
+    diagnostics.push(typeDiagnostic(file, `/${options.listName}`, `${options.listName} must be an array.`, data[options.listName]));
+    return sortAuthoringDiagnostics(diagnostics);
+  }
+  collectIds(diagnostics, file, `/${options.listName}`, list, options.duplicateKind, options.declarationKeys);
+  for (const [index, item] of list?.entries() ?? []) {
+    if (isRecord(item)) {
+      await options.validateItem?.(diagnostics, `/${options.listName}/${index}`, item);
+    }
+  }
+  return sortAuthoringDiagnostics(diagnostics);
+}
+
+async function validateUiDocument(file: string, data: unknown): Promise<IAuthoringDiagnostic[]> {
+  const diagnostics: IAuthoringDiagnostic[] = [];
+  if (!isRecord(data)) {
+    return [
+      authoringDiagnostic({
+        code: "TN_AUTHORING_DOCUMENT_SHAPE_INVALID",
+        file,
+        message: "UI authoring source document must be a JSON object.",
+        path: "",
+        value: data,
+      }),
+    ];
+  }
+  diagnostics.push(...unknownKeyDiagnostics(file, "", data, uiDocumentKeys));
+  validateDocumentHeader(diagnostics, file, data, uiDocumentSchema, "ui document");
+  const nodes = collectIds(diagnostics, file, "/nodes", readArray(data.nodes), "ui-node", uiNodeKeys);
+  const bindings = readArray(data.bindings);
+  if (data.bindings !== undefined && bindings === undefined) {
+    diagnostics.push(typeDiagnostic(file, "/bindings", "bindings must be an array.", data.bindings));
+  }
+  bindings?.forEach((binding, index) => {
+    const path = `/bindings/${index}`;
+    if (!isRecord(binding)) {
+      diagnostics.push(typeDiagnostic(file, path, "ui binding must be an object.", binding));
+      return;
+    }
+    diagnostics.push(...unknownKeyDiagnostics(file, path, binding, uiBindingKeys));
+    const node = readString(binding.node);
+    if (node === undefined) {
+      diagnostics.push(typeDiagnostic(file, `${path}/node`, "ui binding node must be a non-empty ui node id.", binding.node));
+    } else if (!nodes.includes(node)) {
+      diagnostics.push(missingReferenceDiagnostic(file, `${path}/node`, "ui-node", node, nodes));
+    }
+    if (binding.resource !== undefined && readString(binding.resource) === undefined) {
+      diagnostics.push(typeDiagnostic(file, `${path}/resource`, "ui binding resource must be a non-empty resource id.", binding.resource));
+    }
+  });
+  return sortAuthoringDiagnostics(diagnostics);
+}
+
+async function validatePrefabDocument(file: string, data: unknown): Promise<IAuthoringDiagnostic[]> {
+  const diagnostics: IAuthoringDiagnostic[] = [];
+  if (!isRecord(data)) {
+    return [
+      authoringDiagnostic({
+        code: "TN_AUTHORING_DOCUMENT_SHAPE_INVALID",
+        file,
+        message: "Prefab authoring source document must be a JSON object.",
+        path: "",
+        value: data,
+      }),
+    ];
+  }
+  diagnostics.push(...unknownKeyDiagnostics(file, "", data, prefabDocumentKeys));
+  validateDocumentHeader(diagnostics, file, data, prefabDocumentSchema, "prefab document");
+  const entities = collectEntityIds(diagnostics, file, data.entities);
+  validateEntities(diagnostics, file, data.entities, entities, [], []);
+  return sortAuthoringDiagnostics(diagnostics);
+}
+
+async function validateSystemsDocument(projectPath: string, file: string, data: unknown): Promise<IAuthoringDiagnostic[]> {
+  const diagnostics: IAuthoringDiagnostic[] = [];
+  if (!isRecord(data)) {
+    return [
+      authoringDiagnostic({
+        code: "TN_AUTHORING_DOCUMENT_SHAPE_INVALID",
+        file,
+        message: "Systems authoring source document must be a JSON object.",
+        path: "",
+        value: data,
+      }),
+    ];
+  }
+  diagnostics.push(...unknownKeyDiagnostics(file, "", data, systemsDocumentKeys));
+  validateDocumentHeader(diagnostics, file, data, systemsDocumentSchema, "systems document");
+  const systems = collectIds(diagnostics, file, "/systems", readArray(data.systems), "system", systemKeys);
+  await validateSystems(diagnostics, projectPath, file, data.systems, systems);
+  return sortAuthoringDiagnostics(diagnostics);
+}
+
+function validateDocumentHeader(
+  diagnostics: IAuthoringDiagnostic[],
+  file: string,
+  data: Record<string, unknown>,
+  expectedSchema: string,
+  idKind: string,
+): void {
+  if (data.schema !== expectedSchema) {
+    diagnostics.push(
+      authoringDiagnostic({
+        code: "TN_AUTHORING_DOCUMENT_SCHEMA_INVALID",
+        file,
+        message: `Structured authoring document must use schema '${expectedSchema}'.`,
+        path: "/schema",
+        value: data.schema,
+      }),
+    );
+  }
+  validateLogicalId(diagnostics, file, "/id", data.id, idKind);
 }
 
 function validatePrefabs(diagnostics: IAuthoringDiagnostic[], file: string, value: unknown): void {
@@ -884,7 +1148,14 @@ function collectIds(
   return ids;
 }
 
-function validateEntities(diagnostics: IAuthoringDiagnostic[], file: string, value: unknown, entityIds: readonly string[], prefabIds: readonly string[]): void {
+function validateEntities(
+  diagnostics: IAuthoringDiagnostic[],
+  file: string,
+  value: unknown,
+  entityIds: readonly string[],
+  prefabIds: readonly string[],
+  materialIds: readonly string[],
+): void {
   const entities = readArray(value);
   if (entities === undefined) {
     return;
@@ -903,7 +1174,7 @@ function validateEntities(diagnostics: IAuthoringDiagnostic[], file: string, val
     }
 
     validateTransform(diagnostics, file, `${path}/transform`, entity.transform);
-    validateComponents(diagnostics, file, `${path}/components`, entity.components, entityIds);
+    validateComponents(diagnostics, file, `${path}/components`, entity.components, entityIds, materialIds);
   });
 }
 
@@ -936,7 +1207,14 @@ function validateTransform(diagnostics: IAuthoringDiagnostic[], file: string, pa
   }
 }
 
-function validateComponents(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, entityIds: readonly string[]): void {
+function validateComponents(
+  diagnostics: IAuthoringDiagnostic[],
+  file: string,
+  path: string,
+  value: unknown,
+  entityIds: readonly string[],
+  materialIds: readonly string[],
+): void {
   if (value === undefined) {
     return;
   }
@@ -952,7 +1230,18 @@ function validateComponents(diagnostics: IAuthoringDiagnostic[], file: string, p
     }
     if (kind === "camera") {
       validateCameraComponent(diagnostics, file, `${path}/camera`, component, entityIds);
+    } else if (kind === "MeshRenderer" || kind === "meshRenderer") {
+      validateMeshRendererComponent(diagnostics, file, `${path}/${escapeJsonPointer(kind)}`, component, materialIds);
     }
+  }
+}
+
+function validateMeshRendererComponent(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: Record<string, unknown>, materialIds: readonly string[]): void {
+  const material = readString(value.material);
+  if (value.material !== undefined && material === undefined) {
+    diagnostics.push(typeDiagnostic(file, `${path}/material`, "mesh renderer material must be a non-empty material id.", value.material));
+  } else if (material !== undefined && !materialIds.includes(material)) {
+    diagnostics.push(missingReferenceDiagnostic(file, `${path}/material`, "material", material, materialIds));
   }
 }
 
@@ -1004,6 +1293,15 @@ function validateResources(diagnostics: IAuthoringDiagnostic[], file: string, va
       diagnostics.push(typeDiagnostic(file, `/resources/${index}/value`, "resource value must be portable JSON.", resource.value));
     }
   });
+}
+
+function validateGeneratedPathString(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, message: string): void {
+  const sourcePath = readString(value);
+  if (value !== undefined && sourcePath === undefined) {
+    diagnostics.push(typeDiagnostic(file, path, message, value));
+  } else if (sourcePath !== undefined && isGeneratedArtifactPath(sourcePath)) {
+    diagnostics.push(generatedPathDiagnostic(file, path, sourcePath));
+  }
 }
 
 function isPortableJson(value: unknown): boolean {
@@ -1169,6 +1467,16 @@ function idsFromArray(value: unknown): string[] {
     .map((item) => (isRecord(item) ? readString(item.id) : undefined))
     .filter(isString)
     .sort();
+}
+
+function collectMaterialIdsForProject(project: IAuthoringProject): string[] {
+  const ids: string[] = [];
+  for (const document of project.documents) {
+    if (document.kind === "material" && isRecord(document.data)) {
+      ids.push(...idsFromArray(document.data.materials));
+    }
+  }
+  return [...new Set(ids)].sort();
 }
 
 function ensureArrayProperty(record: Record<string, unknown>, key: string): Record<string, unknown>[] {

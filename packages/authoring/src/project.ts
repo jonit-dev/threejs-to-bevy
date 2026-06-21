@@ -1,7 +1,7 @@
 import { readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 
-import { readAuthoringJsonDocument, type IAuthoringDocument, normalizeRelativePath } from "./documents.js";
+import { classifyAuthoringDocumentPath, readAuthoringJsonDocument, type IAuthoringDocument, normalizeRelativePath } from "./documents.js";
 import { sortAuthoringDiagnostics, type IAuthoringDiagnostic } from "./diagnostics.js";
 
 export interface IAuthoringProject {
@@ -73,7 +73,7 @@ async function discoverJsonFiles(projectPath: string, absolutePath: string): Pro
     const child = resolve(absolutePath, entry.name);
     if (entry.isDirectory()) {
       files.push(...(await discoverJsonFiles(projectPath, child)));
-    } else if (entry.isFile() && entry.name.endsWith(".scene.json")) {
+    } else if (entry.isFile() && classifyAuthoringDocumentPath(entry.name) !== "unknown") {
       files.push(normalizeRelativePath(child.slice(projectPath.length + 1)));
     }
   }

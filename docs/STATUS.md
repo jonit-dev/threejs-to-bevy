@@ -63,6 +63,17 @@ TypeScript is limited to script references and optional one-way generators, and
 generated bundle files such as `world.ir.json`, `ui.ir.json`,
 `scripts.bundle.js`, `materials.ir.json`, `assets.manifest.json`, and
 `manifest.json` are classified as non-source artifacts.
+The authoring package now discovers, classifies, formats, and project-validates
+the first stable structured source document families beyond scene ECS:
+`content/ui/*.ui.json`, `content/materials/*.materials.json`,
+`content/assets/*.assets.json`, `content/input/*.input.json`,
+`content/systems/*.systems.json`, `content/prefabs/*.prefab.json`, and
+`content/audio/*.audio.json`. This Phase 2 slice uses minimal schema-versioned
+contracts, rejects generated bundle paths as source paths, validates duplicate
+stable IDs within each document, keeps TypeScript scene-map misuse out of the
+durable source model, and validates scene `MeshRenderer.material` references
+against material source documents. Broader UI/resource and runtime parity
+references remain future structured-authoring work.
 
 Structured `.scene.json` documents can now be used as a normal project build
 entry for the first runtime-backed CLI authoring slice. The compiler validates

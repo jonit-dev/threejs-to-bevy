@@ -8,6 +8,7 @@ export { authoringDiagnostic, hasAuthoringErrors, sortAuthoringDiagnostics, unsu
 export type { AuthoringDocumentKind, IAuthoringDocument, IReadAuthoringDocumentResult } from "./documents.js";
 export {
   classifyAuthoringDocument,
+  classifyAuthoringDocumentPath,
   isGeneratedArtifactPath,
   normalizeRelativePath,
   readAuthoringJsonDocument,
@@ -25,8 +26,29 @@ export type {
   ISceneUi,
   ISceneUiBinding,
   ISceneUiNode,
+  IAssetDeclaration,
+  IAssetDocument,
+  IAudioDocument,
+  IAudioSoundDeclaration,
+  IInputActionDeclaration,
+  IInputDocument,
+  IMaterialDeclaration,
+  IMaterialDocument,
+  IPrefabDocument,
+  ISystemsDocument,
+  IUiDocument,
 } from "./schemas.js";
-export { logicalIdPattern, sceneDocumentSchema } from "./schemas.js";
+export {
+  assetDocumentSchema,
+  audioDocumentSchema,
+  inputDocumentSchema,
+  logicalIdPattern,
+  materialDocumentSchema,
+  prefabDocumentSchema,
+  sceneDocumentSchema,
+  systemsDocumentSchema,
+  uiDocumentSchema,
+} from "./schemas.js";
 export type { IAuthoringProject, ILoadAuthoringProjectOptions } from "./project.js";
 export { discoverAuthoringFiles, loadAuthoringProject } from "./project.js";
 export type {
@@ -50,6 +72,7 @@ export type {
   ISetPrefabColorOptions,
   ISetResourceOptions,
   ISetTransformOptions,
+  IValidateAuthoringProjectOptions,
   IValidateSceneOptions,
 } from "./operations.js";
 export {
@@ -71,5 +94,6 @@ export {
   setResource,
   setTransform,
   validateScene,
+  validateAuthoringProject,
   writeChangedProjectDocuments,
 } from "./operations.js";

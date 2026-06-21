@@ -93,3 +93,26 @@ TypeScript or patching generated bundle files. That requirement implies:
 The testable inventory in `packages/authoring/src/sourceKinds.ts` records the
 current support status for each source family and the explicit non-source
 classification for generated bundle artifacts.
+
+## Current Authoring Package Coverage
+
+`@threenative/authoring` currently discovers and validates the first stable
+source-document families for scenes, UI, materials, assets, input, systems,
+prefabs, and audio. The non-scene families intentionally use minimal
+schema-versioned contracts in this phase:
+
+- `threenative.ui`: `id`, `nodes`, and `bindings`;
+- `threenative.materials`: `id` and `materials`;
+- `threenative.assets`: `id` and `assets`;
+- `threenative.input`: `id` and `actions`;
+- `threenative.systems`: `id` and `systems`;
+- `threenative.prefab`: `id` and `entities`;
+- `threenative.audio`: `id` and `sounds`.
+
+Validation rejects malformed schemas, unknown fields, duplicate IDs within each
+document, generated bundle paths used as source paths, inline script strings,
+and missing system script modules/exports where script references are declared.
+The first cross-document reference check is scene `MeshRenderer.material`
+against material source document IDs. Standalone UI resource binding and broader
+runtime graph reference validation remain later structured-authoring work rather
+than implicit inference in this minimal source package slice.

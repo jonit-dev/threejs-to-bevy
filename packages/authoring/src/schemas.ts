@@ -1,6 +1,20 @@
 export const sceneDocumentSchema = "threenative.scene";
+export const uiDocumentSchema = "threenative.ui";
+export const materialDocumentSchema = "threenative.materials";
+export const assetDocumentSchema = "threenative.assets";
+export const inputDocumentSchema = "threenative.input";
+export const systemsDocumentSchema = "threenative.systems";
+export const prefabDocumentSchema = "threenative.prefab";
+export const audioDocumentSchema = "threenative.audio";
 
 export const sceneDocumentKeys = new Set(["schema", "version", "id", "entities", "prefabs", "resources", "systems", "ui"]);
+export const uiDocumentKeys = new Set(["schema", "version", "id", "nodes", "bindings"]);
+export const materialDocumentKeys = new Set(["schema", "version", "id", "materials"]);
+export const assetDocumentKeys = new Set(["schema", "version", "id", "assets"]);
+export const inputDocumentKeys = new Set(["schema", "version", "id", "actions"]);
+export const systemsDocumentKeys = new Set(["schema", "version", "id", "systems"]);
+export const prefabDocumentKeys = new Set(["schema", "version", "id", "entities"]);
+export const audioDocumentKeys = new Set(["schema", "version", "id", "sounds"]);
 export const entityKeys = new Set(["id", "prefab", "transform", "components"]);
 export const transformKeys = new Set(["position", "rotation", "scale"]);
 export const systemKeys = new Set(["id", "script", "schedule"]);
@@ -10,6 +24,10 @@ export const uiNodeKeys = new Set(["id"]);
 export const uiBindingKeys = new Set(["node", "resource"]);
 export const resourceKeys = new Set(["id", "path", "value"]);
 export const prefabKeys = new Set(["id", "primitive", "color", "asset"]);
+export const materialKeys = new Set(["id", "asset"]);
+export const assetKeys = new Set(["id", "path", "type"]);
+export const inputActionKeys = new Set(["id", "bindings"]);
+export const audioSoundKeys = new Set(["id", "asset"]);
 export const supportedPrefabPrimitives = new Set(["box", "capsule", "cone", "cylinder", "plane", "sphere"]);
 
 export const supportedComponentKinds = new Set(["camera"]);
@@ -80,6 +98,77 @@ export interface ISceneUiNode {
 export interface ISceneUiBinding {
   node: string;
   resource: string;
+}
+
+export interface IUiDocument {
+  schema: typeof uiDocumentSchema;
+  version?: string;
+  id: string;
+  nodes?: ISceneUiNode[];
+  bindings?: ISceneUiBinding[];
+}
+
+export interface IMaterialDocument {
+  schema: typeof materialDocumentSchema;
+  version?: string;
+  id: string;
+  materials?: IMaterialDeclaration[];
+}
+
+export interface IMaterialDeclaration {
+  id: string;
+  asset?: string;
+}
+
+export interface IAssetDocument {
+  schema: typeof assetDocumentSchema;
+  version?: string;
+  id: string;
+  assets?: IAssetDeclaration[];
+}
+
+export interface IAssetDeclaration {
+  id: string;
+  path?: string;
+  type?: string;
+}
+
+export interface IInputDocument {
+  schema: typeof inputDocumentSchema;
+  version?: string;
+  id: string;
+  actions?: IInputActionDeclaration[];
+}
+
+export interface IInputActionDeclaration {
+  id: string;
+  bindings?: string[];
+}
+
+export interface ISystemsDocument {
+  schema: typeof systemsDocumentSchema;
+  version?: string;
+  id: string;
+  systems?: ISceneSystem[];
+}
+
+export interface IPrefabDocument {
+  schema: typeof prefabDocumentSchema;
+  version?: string;
+  id: string;
+  entities?: ISceneEntity[];
+}
+
+export interface IAudioDocument {
+  schema: typeof audioDocumentSchema;
+  version?: string;
+  id: string;
+  sounds?: IAudioSoundDeclaration[];
+}
+
+export interface IAudioSoundDeclaration {
+  id: string;
+  asset?: string;
 }
 
 export function isRecord(value: unknown): value is Record<string, unknown> {

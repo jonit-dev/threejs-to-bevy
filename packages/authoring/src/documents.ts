@@ -3,8 +3,9 @@ import { relative, resolve } from "node:path";
 
 import { authoringDiagnostic, type IAuthoringDiagnostic } from "./diagnostics.js";
 import { formatAuthoringDocument } from "./format.js";
+import { isGeneratedBundleArtifactFile } from "./sourceKinds.js";
 
-export type AuthoringDocumentKind = "scene" | "project" | "unknown";
+export type AuthoringDocumentKind = "asset" | "audio" | "input" | "material" | "prefab" | "project" | "scene" | "systems" | "ui" | "unknown";
 
 export interface IAuthoringDocument {
   file: string;
@@ -73,24 +74,75 @@ export function classifyAuthoringDocument(projectRelativePath: string, data: unk
     return "project";
   }
 
+  const suffixKind = classifyAuthoringDocumentPath(projectRelativePath);
+  if (suffixKind !== "unknown") {
+    return suffixKind;
+  }
+
   if (projectRelativePath.endsWith(".scene.json")) {
     return "scene";
   }
 
-  if (isRecord(data) && data.schema === "threenative.scene") {
-    return "scene";
-  }
-
-  if (isRecord(data) && data.schema === "threenative.authoring") {
-    return "project";
+  if (isRecord(data)) {
+    switch (data.schema) {
+      case "threenative.assets":
+        return "asset";
+      case "threenative.audio":
+        return "audio";
+      case "threenative.input":
+        return "input";
+      case "threenative.materials":
+        return "material";
+      case "threenative.prefab":
+        return "prefab";
+      case "threenative.authoring":
+        return "project";
+      case "threenative.scene":
+        return "scene";
+      case "threenative.systems":
+        return "systems";
+      case "threenative.ui":
+        return "ui";
+      default:
+        break;
+    }
   }
 
   return "unknown";
 }
 
+export function classifyAuthoringDocumentPath(projectRelativePath: string): AuthoringDocumentKind {
+  if (projectRelativePath.endsWith(".assets.json")) {
+    return "asset";
+  }
+  if (projectRelativePath.endsWith(".audio.json")) {
+    return "audio";
+  }
+  if (projectRelativePath.endsWith(".input.json")) {
+    return "input";
+  }
+  if (projectRelativePath.endsWith(".materials.json")) {
+    return "material";
+  }
+  if (projectRelativePath.endsWith(".prefab.json")) {
+    return "prefab";
+  }
+  if (projectRelativePath.endsWith(".scene.json")) {
+    return "scene";
+  }
+  if (projectRelativePath.endsWith(".systems.json")) {
+    return "systems";
+  }
+  if (projectRelativePath.endsWith(".ui.json")) {
+    return "ui";
+  }
+  return "unknown";
+}
+
 export function isGeneratedArtifactPath(projectRelativePath: string): boolean {
   const normalized = normalizeRelativePath(projectRelativePath);
-  return normalized === "scripts.bundle.js" || normalized.endsWith("/scripts.bundle.js") || normalized.split("/").some((segment) => generatedPathSegments.has(segment));
+  const basename = normalized.split("/").pop() ?? normalized;
+  return isGeneratedBundleArtifactFile(basename) || normalized.split("/").some((segment) => generatedPathSegments.has(segment));
 }
 
 export function normalizeRelativePath(path: string): string {
