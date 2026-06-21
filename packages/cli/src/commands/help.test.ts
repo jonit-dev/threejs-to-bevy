@@ -38,7 +38,7 @@ test("should describe the agent scene authoring loop", async () => {
   assert.equal(payload.name, "scene");
   assert.equal(payload.commands.includes("tn scene create <scene-id> [--file <path>] --json"), true);
   assert.equal(payload.commands.includes("tn build --json"), true);
-  assert.equal(payload.commands.includes("tn screenshot --url <preview-url> --out artifacts/proof/frame.png --json"), true);
+  assert.equal(payload.commands.includes("tn scene proof <scene-id> --project <path> --web-url <preview-url> --out artifacts/proof --native --json"), true);
   assert.equal(payload.examples.some((example) => example.includes("MCP tools wrap tn commands")), true);
   assert.equal(payload.failureSymptoms.some((symptom) => symptom.includes("missing first .scene.json")), true);
 });

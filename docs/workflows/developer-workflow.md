@@ -156,6 +156,7 @@ tn build
 tn package --target desktop
 tn verify
 tn model-test assets/hero.glb --out artifacts/model-test --verify
+tn scene proof <scene-id> --project . --web-url http://127.0.0.1:5173 --out artifacts/proof --native --json
 tn screenshot --url http://127.0.0.1:5173 --out artifacts/proof/frame.png
 tn record --url http://127.0.0.1:5173 --out artifacts/proof/clip.webm --seconds 5
 ```
@@ -180,6 +181,15 @@ Command expectations:
 - `tn scene add-entity`, `set-transform`, `set-camera`, `attach-script`, and
   `bind-ui` mutate supported structured source scenes only after preflight
   validation, then validate again before writing deterministic source JSON.
+- `tn scene proof <scene-id> --project <path> --web-url <preview-url> --out
+  <dir> [--native] --json` is the preferred final proof command after CLI
+  scene authoring. It validates the source scene, builds the bundle, verifies
+  authoring provenance connects the scene source to the emitted bundle, captures
+  a web screenshot from the explicit preview URL, optionally captures a Bevy
+  native screenshot with the requested native frame, and writes
+  `proof-report.json` plus `proof.md` with exact commands and artifacts. The
+  report is honest about semantics: it proves same source and same bundle
+  runtime evidence, not same-tick pixel parity.
 - Agent scene authoring loop:
 
   ```bash
@@ -189,8 +199,8 @@ Command expectations:
   tn scene attach-script scene.arena race-controller --module src/scripts/race.ts --export raceController --json
   tn scene validate scene.arena --json
   tn build --json
-  tn verify --frames 3 --json
-  tn screenshot --url http://127.0.0.1:5173 --out artifacts/proof/frame.png --json
+  tn dev --target web
+  tn scene proof scene.arena --project . --web-url http://127.0.0.1:5173 --out artifacts/proof --native --json
   ```
 
   The CLI is the canonical automation surface. MCP tools are wrappers around

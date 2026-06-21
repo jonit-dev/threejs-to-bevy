@@ -38,7 +38,13 @@ initial canonical automation surface through `tn scene validate [scene-id]
 manual first `.scene.json` seed step by writing a minimal valid scene source,
 rejecting invalid scene IDs, existing file collisions, generated artifact
 paths, and duplicate scene IDs, and returning JSON next-command guidance for
-the authoring/proof loop. The focused smoke proof mutates and validates a
+the authoring/proof loop. `tn scene proof <scene-id> --project <path>
+--web-url <preview-url> --out <dir> [--native] --json` now provides the
+CLI-first proof handoff for authored scenes: it validates source, builds,
+checks authoring provenance and scene IR, captures web and optional Bevy native
+screenshots, and writes `proof-report.json` plus `proof.md` with exact commands,
+artifacts, capture frame/timing labels, and an explicit same-source/same-bundle
+not-pixel-parity caveat. The focused smoke proof mutates and validates a
 source scene, then builds and validates the same project's normal bundle.
 `@threenative/mcp-server` now
 provides optional AI-facing wrappers for inspect/validate/mutate/build/

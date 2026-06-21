@@ -14,6 +14,7 @@ import {
 import { isAbsolute, resolve } from "node:path";
 
 import { type ICommandResult } from "../diagnostics.js";
+import { sceneProofCommand } from "./sceneProof.js";
 
 interface ISceneCommandOptions {
   cwd?: string;
@@ -47,6 +48,10 @@ export async function sceneCommand(argv: readonly string[], options: ISceneComma
     }
     const result = await inspectScene({ projectPath, sceneId });
     return renderSceneResult(result, json, result.ok ? `Scene '${sceneId}' inspected.` : `Scene '${sceneId}' inspection failed.`);
+  }
+
+  if (subcommand === "proof") {
+    return sceneProofCommand(normalizedArgv.slice(1), { cwd: options.cwd });
   }
 
   if (subcommand === "add-entity") {
@@ -210,10 +215,10 @@ function readPositional(argv: readonly string[], index: number): string | undefi
   return positionals[index];
 }
 
-const flagsWithValues = new Set(["--project", "--file", "--prefab", "--position", "--rotation", "--scale", "--mode", "--target", "--module", "--export", "--resource"]);
+const flagsWithValues = new Set(["--project", "--file", "--prefab", "--position", "--rotation", "--scale", "--mode", "--target", "--module", "--export", "--resource", "--out", "--web-url", "--camera", "--native-frame"]);
 
 function sceneUsage(): string {
-  return "Usage: tn scene create <scene-id> [--file <path>] [--project <path>] [--json]\n       tn scene validate [scene-id] [--project <path>] [--json]\n       tn scene inspect <scene-id> [--project <path>] [--json]";
+  return "Usage: tn scene create <scene-id> [--file <path>] [--project <path>] [--json]\n       tn scene validate [scene-id] [--project <path>] [--json]\n       tn scene inspect <scene-id> [--project <path>] [--json]\n       tn scene proof <scene-id> --project <path> --out <dir> [--web-url <url>] [--native] [--json]";
 }
 
 function parseTransformVectors(argv: readonly string[]): { diagnostic?: string; value?: { position?: [number, number, number]; rotation?: [number, number, number]; scale?: [number, number, number] } } {

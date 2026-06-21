@@ -42,8 +42,8 @@ export const HELP_TOPICS: Record<string, HelpTopic> = {
       "tn scene attach-script <scene-id> <system-id> --module <path> --export <name> --json",
       "tn scene validate <scene-id> --json",
       "tn build --json",
+      "tn scene proof <scene-id> --project <path> --web-url <preview-url> --out artifacts/proof --native --json",
       "tn verify --frames 3 --json",
-      "tn screenshot --url <preview-url> --out artifacts/proof/frame.png --json",
     ],
     docs: ["docs/workflows/developer-workflow.md", "docs/workflows/ai-workflows.md"],
     examples: [
@@ -51,6 +51,7 @@ export const HELP_TOPICS: Record<string, HelpTopic> = {
       "tn scene add-entity scene.arena player-kart --prefab kart --json",
       "tn scene set-transform scene.arena player-kart --position 0,0,0 --rotation 0,0,0 --scale 1,1,1 --json",
       "tn scene attach-script scene.arena race-controller --module src/scripts/race.ts --export raceController --json",
+      "tn scene proof scene.arena --project . --web-url http://127.0.0.1:5173 --out artifacts/proof --native --json",
       "The CLI is the canonical automation surface; MCP tools wrap tn commands instead of duplicating scene mutation logic.",
     ],
     failureSymptoms: ["missing first .scene.json seed file", "generated bundle path used as source", "duplicate scene id", "manual proof commands scattered across artifacts"],

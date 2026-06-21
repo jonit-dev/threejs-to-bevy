@@ -180,6 +180,49 @@ test("scene-command smoke validates authored scene and preserves project build v
   }
 });
 
+test("scene-command proof writes deterministic source and bundle report", async () => {
+  const root = await createSceneProject({ minimal: true });
+
+  try {
+    await writeBuildableProject(root);
+
+    const result = await sceneCommand(["proof", "scene.arena", "--project", root, "--out", "artifacts/proof", "--json"]);
+    const payload = JSON.parse(result.stdout) as {
+      artifacts: Array<{ path: string; runtime: string }>;
+      caveats: string[];
+      commands: Array<{ command: string; status: string }>;
+      provenance: { bundleContainsScene: boolean; sceneSourceFile: string; sourceConnectedToBundle: boolean };
+      status: string;
+    };
+    const report = JSON.parse(await readFile(join(root, "artifacts", "proof", "proof-report.json"), "utf8")) as typeof payload;
+    const markdown = await readFile(join(root, "artifacts", "proof", "proof.md"), "utf8");
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.status, "warning");
+    assert.equal(payload.provenance.sceneSourceFile, "content/scenes/arena.scene.json");
+    assert.equal(payload.provenance.sourceConnectedToBundle, true);
+    assert.equal(payload.provenance.bundleContainsScene, true);
+    assert.equal(payload.commands.some((command) => command.command.startsWith("tn scene validate scene.arena") && command.status === "pass"), true);
+    assert.equal(payload.commands.some((command) => command.command.startsWith("tn build --project") && command.status === "pass"), true);
+    assert.equal(payload.commands.some((command) => command.command.startsWith("tn screenshot") && command.status === "skipped"), true);
+    assert.equal(payload.caveats.some((caveat) => caveat.includes("does not claim same-tick pixel parity")), true);
+    assert.equal(report.provenance.sourceConnectedToBundle, true);
+    assert.match(markdown, /not a same-tick pixel parity report/);
+    assert.equal(payload.artifacts.some((artifact) => artifact.runtime === "report" && artifact.path.endsWith("proof-report.json")), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("scene-command proof requires a scene id", async () => {
+  const result = await sceneCommand(["proof", "--json"], { cwd: "/" });
+  const payload = JSON.parse(result.stdout) as { code: string; severity: string };
+
+  assert.equal(result.exitCode, 2);
+  assert.equal(payload.code, "TN_SCENE_PROOF_USAGE");
+  assert.equal(payload.severity, "error");
+});
+
 async function createSceneProject(options: { invalidTarget?: boolean; minimal?: boolean } = {}): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), "tn-cli-scene-"));
   await mkdir(join(root, "content", "scenes"), { recursive: true });
@@ -218,7 +261,7 @@ async function writeBuildableProject(root: string): Promise<void> {
   await writeFile(
     join(root, "threenative.config.json"),
     `${JSON.stringify({
-      entry: "src/game.ts",
+      entry: "content/scenes/arena.scene.json",
       outDir: "dist/game.bundle",
       schema: "threenative.project",
       version: "0.1.0",
