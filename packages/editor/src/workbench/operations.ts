@@ -8,6 +8,8 @@ export type EditorOperationName =
   | "prefab.add_component"
   | "prefab.create"
   | "scene.add_prefab"
+  | "scene.create_default"
+  | "scene.set_component"
   | "scene.set_transform"
   | "system.attach_script"
   | "system.create"

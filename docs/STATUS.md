@@ -168,6 +168,21 @@ The latest visual-fidelity pass keeps the editor proof primitive source-backed
 but moves it out of the main reference composition, restores visible viewport
 grid lines, and adds more detailed generated tree/house presentation meshes for
 the Vibe-like verification scene.
+The editor scene lifecycle slice adds source-backed new-scene creation seeded
+with `main-camera`, `directional-light`, and `ambient-light`, save/reload proof
+through the editor project API, and footer LOD/triangle status derived from the
+same structured scene object model. The editor package gate now verifies those
+default entities, scene source persistence, and LOD footer readiness alongside
+primitive creation, hierarchy selection, viewport picking, and bundle emission.
+The editor model-loading slice now serves project-local GLB/GLTF assets through
+guarded editor routes, configures Three.js `GLTFLoader` with the local Draco
+decoder, and proves Vibe Coder FarmHouse plus GreenTree GLBs load in the
+source-backed viewport before the e2e gate proceeds. Inspector component panels
+are now attached-component driven: Transform, MeshRenderer, Camera, and Light
+sections appear from source entity/prefab data instead of being unconditional.
+The current modal shell covers Add Object, Add Component, Save Scene, New Scene,
+Build Preview, Settings/Delete placeholders, and the AI chat entry point while
+future slices port the richer Vibe Coder modal data and mutation flows.
 
 Structured `.scene.json` documents can now be used as a normal project build
 entry for the first runtime-backed CLI authoring slice. The compiler validates

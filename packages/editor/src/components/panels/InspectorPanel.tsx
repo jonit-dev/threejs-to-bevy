@@ -3,15 +3,16 @@ import { Grip, Plus, RotateCcw, Settings, type LucideIcon } from "lucide-react";
 import type { IEditorPropertyRow } from "../../adapters/editorModel.js";
 
 export interface IInspectorPanelProps {
+  onAddComponent?: () => void;
   rows: readonly IEditorPropertyRow[];
 }
 
-export function InspectorPanel({ rows }: IInspectorPanelProps) {
+export function InspectorPanel({ onAddComponent, rows }: IInspectorPanelProps) {
   if (rows.length === 0) {
     return <p className="tn-editor-empty">Select a source document or inspected row to view properties.</p>;
   }
   if (rows.some((row) => row.label === "Position") && rows.some((row) => row.label === "Rotation") && rows.some((row) => row.label === "Scale")) {
-    return <ObjectInspector rows={rows} />;
+    return <ObjectInspector onAddComponent={onAddComponent} rows={rows} />;
   }
   return (
     <div className="tn-editor-fields">
@@ -20,27 +21,45 @@ export function InspectorPanel({ rows }: IInspectorPanelProps) {
   );
 }
 
-function ObjectInspector({ rows }: { rows: readonly IEditorPropertyRow[] }) {
+function ObjectInspector({ onAddComponent, rows }: { onAddComponent?: () => void; rows: readonly IEditorPropertyRow[] }) {
   const id = readRow(rows, "ID")?.value ?? "-";
+  const name = readRow(rows, "Name")?.value ?? id;
+  const componentNames = [...new Set(rows.map((row) => row.component).filter((component): component is string => component !== undefined))];
   return (
     <div className="tn-editor-object-inspector">
       <div className="tn-editor-inspector-identity">
         <span>ID:</span>
         <strong>{id.split("-").pop() ?? id}</strong>
         <span>Name:</span>
-        <input aria-label="Name" readOnly value={id} />
-        <button type="button"><Plus size={13} /> Add Component</button>
+        <input aria-label="Name" readOnly value={name} />
+        <button onClick={onAddComponent} type="button"><Plus size={13} /> Add Component</button>
       </div>
-      <section className="tn-editor-component">
-        <header>
-          <span><Plus size={12} /> Transform</span>
-          <button aria-label="Collapse Transform" type="button">v</button>
-        </header>
-        <TransformGroup label="Position" row={readRow(rows, "Position")} />
-        <TransformGroup label="Rotation" row={readRow(rows, "Rotation")} />
-        <TransformGroup label="Scale" row={readRow(rows, "Scale")} />
-      </section>
+      {componentNames.map((component) => (
+        <ComponentSection component={component} key={component} rows={rows.filter((row) => row.component === component)} />
+      ))}
     </div>
+  );
+}
+
+function ComponentSection({ component, rows }: { component: string; rows: readonly IEditorPropertyRow[] }) {
+  return (
+    <section className="tn-editor-component">
+      <header>
+        <span><Plus size={12} /> {component}</span>
+        <button aria-label={`Collapse ${component}`} type="button">v</button>
+      </header>
+      {component === "Transform" ? (
+        <>
+          <TransformGroup label="Position" row={readRow(rows, "Position")} />
+          <TransformGroup label="Rotation" row={readRow(rows, "Rotation")} />
+          <TransformGroup label="Scale" row={readRow(rows, "Scale")} />
+        </>
+      ) : (
+        <div className="tn-editor-fields">
+          {rows.map((row) => <InspectorField key={row.id} row={row} />)}
+        </div>
+      )}
+    </section>
   );
 }
 

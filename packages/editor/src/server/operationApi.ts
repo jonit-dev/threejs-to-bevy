@@ -1,11 +1,15 @@
 import {
   addInputAction,
+  addEntity,
   addPrefab,
   addPrefabComponent,
   addUiText,
   authoringOperationResult,
   createMeshPrimitive,
   createPrefabDocument,
+  createScene,
+  setComponent,
+  setTransform,
   createSystem,
   dispatchAuthoringOperation,
   validateAuthoringProject,
@@ -64,6 +68,20 @@ async function dispatchEditorOperation(projectPath: string, name: string, args: 
         projectPath,
         sceneId: stringArg(args, "sceneId"),
       });
+    case "scene.create_default":
+      return createDefaultScene({
+        file: optionalStringArg(args, "file"),
+        projectPath,
+        sceneId: stringArg(args, "sceneId"),
+      });
+    case "scene.set_component":
+      return setComponent({
+        componentKind: stringArg(args, "componentKind"),
+        entityId: stringArg(args, "entityId"),
+        projectPath,
+        sceneId: stringArg(args, "sceneId"),
+        value: recordArg(args, "value"),
+      });
     case "mesh.create_primitive":
       return createMeshPrimitive({ kind: stringArg(args, "kind"), meshId: stringArg(args, "meshId"), projectPath });
     case "prefab.create":
@@ -82,6 +100,31 @@ async function dispatchEditorOperation(projectPath: string, name: string, args: 
     default:
       return registryResult;
   }
+}
+
+async function createDefaultScene(options: { file?: string; projectPath: string; sceneId: string }): Promise<IAuthoringOperationResult> {
+  const create = await createScene({ file: options.file, projectPath: options.projectPath, sceneId: options.sceneId });
+  if (!create.ok) {
+    return create;
+  }
+  const operations = [
+    await addEntity({ entityId: "main-camera", projectPath: options.projectPath, sceneId: options.sceneId }),
+    await setTransform({ entityId: "main-camera", position: [0, 1.8, 6], projectPath: options.projectPath, rotation: [-0.25, 0, 0], sceneId: options.sceneId }),
+    await setComponent({ componentKind: "camera", entityId: "main-camera", projectPath: options.projectPath, sceneId: options.sceneId, value: { mode: "perspective" } }),
+    await addEntity({ entityId: "directional-light", projectPath: options.projectPath, sceneId: options.sceneId }),
+    await setTransform({ entityId: "directional-light", position: [2, 4, 3], projectPath: options.projectPath, sceneId: options.sceneId }),
+    await setComponent({ componentKind: "Light", entityId: "directional-light", projectPath: options.projectPath, sceneId: options.sceneId, value: { intensity: 1, kind: "directional" } }),
+    await addEntity({ entityId: "ambient-light", projectPath: options.projectPath, sceneId: options.sceneId }),
+    await setComponent({ componentKind: "Light", entityId: "ambient-light", projectPath: options.projectPath, sceneId: options.sceneId, value: { intensity: 0.4, kind: "ambient" } }),
+  ];
+  const diagnostics = [...create.diagnostics, ...operations.flatMap((operation) => operation.diagnostics)];
+  const filesWritten = [...new Set([create.file, ...operations.flatMap((operation) => operation.filesWritten)])];
+  return authoringOperationResult({
+    changed: operations.every((operation) => operation.ok),
+    diagnostics,
+    filesWritten,
+    projectPath: options.projectPath,
+  });
 }
 
 function withRevision(result: IAuthoringOperationResult, previousRevision: string | undefined): IEditorOperationApiResult {

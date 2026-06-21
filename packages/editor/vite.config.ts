@@ -1,4 +1,6 @@
 import { readFile } from "node:fs/promises";
+import { createRequire } from "node:module";
+import { dirname, extname, relative, resolve } from "node:path";
 import { defineConfig, type Plugin } from "vite";
 
 import { applyEditorOperationApi } from "./src/server/operationApi.js";
@@ -8,6 +10,9 @@ import { loadEditorProjectApi } from "./src/server/projectApi.js";
 interface IBootConfig {
   projectPath?: string;
 }
+
+const require = createRequire(import.meta.url);
+const dracoDecoderRoot = dirname(require.resolve("three/examples/jsm/libs/draco/draco_decoder.wasm"));
 
 export default defineConfig({
   plugins: [editorApiPlugin()],
@@ -35,6 +40,30 @@ function editorApiPlugin(): Plugin {
             const result = await buildEditorPreviewApi({ projectPath: boot.projectPath ?? process.cwd() });
             return json(response, result);
           }
+          if (request.url?.startsWith("/draco/") === true && request.method === "GET") {
+            const decoderFile = decodeURIComponent(request.url.slice("/draco/".length).split("?")[0] ?? "");
+            const decoderPath = resolve(dracoDecoderRoot, decoderFile);
+            const decoderRelative = relative(dracoDecoderRoot, decoderPath).split("\\").join("/");
+            if (decoderRelative.startsWith("../") || decoderRelative === ".." || decoderRelative.startsWith("/")) {
+              response.statusCode = 403;
+              return response.end("Forbidden");
+            }
+            response.setHeader("content-type", contentTypeForAsset(decoderPath));
+            return response.end(await readFile(decoderPath));
+          }
+          if (request.url?.startsWith("/project-assets/") === true && request.method === "GET") {
+            const boot = await readBootConfig();
+            const projectPath = resolve(boot.projectPath ?? process.cwd());
+            const assetRelative = decodeURIComponent(request.url.slice("/project-assets/".length).split("?")[0] ?? "");
+            const assetPath = resolve(projectPath, assetRelative);
+            const projectRelative = relative(projectPath, assetPath).split("\\").join("/");
+            if (projectRelative.startsWith("../") || projectRelative === ".." || projectRelative.startsWith("/")) {
+              response.statusCode = 403;
+              return response.end("Forbidden");
+            }
+            response.setHeader("content-type", contentTypeForAsset(assetPath));
+            return response.end(await readFile(assetPath));
+          }
         } catch (error) {
           response.statusCode = 500;
           return json(response, {
@@ -46,6 +75,21 @@ function editorApiPlugin(): Plugin {
       });
     },
   };
+}
+
+function contentTypeForAsset(path: string): string {
+  switch (extname(path).toLowerCase()) {
+    case ".glb":
+      return "model/gltf-binary";
+    case ".gltf":
+      return "model/gltf+json";
+    case ".js":
+      return "text/javascript; charset=utf-8";
+    case ".wasm":
+      return "application/wasm";
+    default:
+      return "application/octet-stream";
+  }
 }
 
 async function readBootConfig(): Promise<IBootConfig> {

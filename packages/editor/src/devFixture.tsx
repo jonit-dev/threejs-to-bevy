@@ -2,7 +2,7 @@ import { createRoot } from "react-dom/client";
 import { useEffect, useState } from "react";
 
 import { EditorApp } from "./EditorApp.js";
-import type { IEditorDiagnosticView, IEditorPropertyRow, IEditorSceneObject, IEditorShellModel, IEditorTreeRow } from "./adapters/editorModel.js";
+import type { IEditorDiagnosticView, IEditorLodStats, IEditorPropertyRow, IEditorSceneObject, IEditorShellModel, IEditorTreeRow } from "./adapters/editorModel.js";
 import { devFixtureModel } from "./devFixtureModel.js";
 import "./styles.css";
 
@@ -12,6 +12,7 @@ interface IProjectPayload {
   ok?: boolean;
   projectPath?: string;
   projectRevision?: string;
+  lod?: IEditorLodStats;
   sceneObjects?: IEditorSceneObject[];
 }
 
@@ -20,20 +21,16 @@ interface IProjectDocumentGroup {
   kind: string;
 }
 
-type PrimitiveKind = "box" | "capsule" | "cylinder" | "plane" | "sphere";
-
 export function renderDevFixture(root: Element) {
   createRoot(root).render(<EditorDevApp />);
 }
 
 function EditorDevApp() {
   const [project, setProject] = useState<IProjectPayload>();
-  const [primitive, setPrimitive] = useState<PrimitiveKind>("box");
-  const [color, setColor] = useState("#27ae60");
   const [parentByRowId, setParentByRowId] = useState<Record<string, string | undefined>>({});
   const [selectedRowId, setSelectedRowId] = useState<string | undefined>(devFixtureModel.selectedRowId);
   const [status, setStatus] = useState("Ready");
-  const model = project === undefined ? devFixtureModel : projectToEditorModel(project, selectedRowId, parentByRowId);
+  const model = project === undefined ? devFixtureModel : projectToEditorModel(project, selectedRowId, parentByRowId, status);
 
   useEffect(() => {
     void refreshProject(setProject, setStatus, setSelectedRowId);
@@ -43,6 +40,8 @@ function EditorDevApp() {
     const suffix = Date.now().toString(36);
     const prefabId = `prefab.editor-box-${suffix}`;
     const entityId = `editor-box-${suffix}`;
+    const primitive = "sphere";
+    const color = "#9b59b6";
     try {
       setStatus(`Adding ${primitive}`);
       await postOperation("scene.add_prefab", { color, prefabId, primitive, sceneId: "arena" }, project?.projectRevision);
@@ -67,6 +66,28 @@ function EditorDevApp() {
     }
   }
 
+  async function createDefaultScene() {
+    const suffix = Date.now().toString(36);
+    const sceneId = `editor-scene-${suffix}`;
+    try {
+      setStatus(`Creating ${sceneId}`);
+      const response = await postOperation("scene.create_default", { sceneId }, project?.projectRevision);
+      const nextProject = await refreshProject(setProject, setStatus, setSelectedRowId);
+      setStatus(`Created ${sceneId}; saved ${response.filesWritten.join(", ")}; documents ${countDocuments(nextProject)}`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async function saveScene() {
+    try {
+      const nextProject = await refreshProject(setProject, setStatus, setSelectedRowId);
+      setStatus(`Saved scene sources; revision ${nextProject.projectRevision ?? "unknown"}`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error));
+    }
+  }
+
   function moveRow(draggedId: string, targetId: string) {
     setParentByRowId((current) => {
       if (draggedId === targetId || isDescendant(targetId, draggedId, current)) {
@@ -75,40 +96,23 @@ function EditorDevApp() {
       return { ...current, [draggedId]: targetId };
     });
     setSelectedRowId(draggedId);
-    setStatus(`Nested ${draggedId} under ${targetId} in editor view`);
+    setStatus(`Nested ${findRowLabel(model.hierarchy, draggedId)} under ${findRowLabel(model.hierarchy, targetId)} in editor view`);
   }
 
   return (
     <EditorApp
       model={model}
+      onAddObject={addPrimitive}
+      onBuildPreview={buildPreview}
+      onCreateScene={createDefaultScene}
       onMoveRow={moveRow}
+      onSaveScene={saveScene}
       onSelectRow={setSelectedRowId}
-      toolbarSlot={
-        <div className="tn-editor-dev-controls" aria-label="Workbench controls">
-        <label>
-          Primitive
-          <select aria-label="Primitive" onChange={(event) => setPrimitive(event.currentTarget.value as PrimitiveKind)} value={primitive}>
-            <option value="box">Box</option>
-            <option value="sphere">Sphere</option>
-            <option value="capsule">Capsule</option>
-            <option value="cylinder">Cylinder</option>
-            <option value="plane">Plane</option>
-          </select>
-        </label>
-        <label>
-          Color
-          <input aria-label="Color" onChange={(event) => setColor(event.currentTarget.value)} type="color" value={color} />
-        </label>
-        <button onClick={addPrimitive} type="button">Add primitive</button>
-        <button onClick={buildPreview} type="button">Build preview</button>
-        <span role="status">{status}</span>
-      </div>
-      }
     />
   );
 }
 
-function projectToEditorModel(project: IProjectPayload, selectedRowId: string | undefined, parentByRowId: Record<string, string | undefined>): IEditorShellModel {
+function projectToEditorModel(project: IProjectPayload, selectedRowId: string | undefined, parentByRowId: Record<string, string | undefined>, status: string): IEditorShellModel {
   const sceneObjects = project.sceneObjects ?? [];
   const hierarchy = buildHierarchy(project.documents ?? [], sceneObjects, parentByRowId);
   const selectedObject = sceneObjects.find((object) => object.rowId === selectedRowId);
@@ -127,11 +131,13 @@ function projectToEditorModel(project: IProjectPayload, selectedRowId: string | 
     })),
     hierarchy,
     inspector: selectedObject === undefined ? documentInspectorRows(selectedDocument) : objectInspectorRows(selectedObject),
+    lod: project.lod ?? devFixtureModel.lod,
     projectName: project.projectPath?.split("/").pop() ?? "structured-source-starter",
     sceneObjects,
     selectedRowId,
     status: project.ok === false ? "error" : "ready",
     statusItems: [
+      { id: "editorStatus", label: "Editor", value: status },
       { id: "sourceDocuments", label: "Source docs", value: String(countDocuments(project)) },
       { id: "sceneEntities", label: "Scene entities", value: String(sceneObjects.length) },
       { id: "mode", label: "Mode", value: "Source-backed editor" },
@@ -186,16 +192,48 @@ function sceneChildren(documentPath: string | undefined, sceneObjects: readonly 
   return roots;
 }
 
+function findRowLabel(rows: readonly IEditorTreeRow[], id: string): string {
+  for (const row of rows) {
+    if (row.id === id) {
+      return row.label;
+    }
+    const childLabel = findRowLabel(row.children ?? [], id);
+    if (childLabel !== id) {
+      return childLabel;
+    }
+  }
+  return id;
+}
+
 function objectInspectorRows(object: IEditorSceneObject): IEditorPropertyRow[] {
   return [
     property("inspect:id", "ID", object.id, object),
-    property("inspect:primitive", "Primitive", object.primitive, object),
+    property("inspect:name", "Name", object.label, object),
     property("inspect:kind", "Kind", object.kind, object),
-    property("inspect:position", "Position", formatVector(object.position, [0, 0, 0]), object),
-    property("inspect:rotation", "Rotation", formatVector(object.rotation, [0, 0, 0]), object),
-    property("inspect:scale", "Scale", formatVector(object.scale, [1, 1, 1]), object),
-    property("inspect:color", "Color", object.color ?? "default", object),
+    ...componentRows(object),
     property("inspect:source", "Source", object.sourcePath ?? object.documentPath ?? "unknown", object),
+  ];
+}
+
+function componentRows(object: IEditorSceneObject): IEditorPropertyRow[] {
+  const components = new Set(object.components ?? []);
+  return [
+    ...(components.has("Transform")
+      ? [
+          property("inspect:position", "Position", formatVector(object.position, [0, 0, 0]), object, "Transform"),
+          property("inspect:rotation", "Rotation", formatVector(object.rotation, [0, 0, 0]), object, "Transform"),
+          property("inspect:scale", "Scale", formatVector(object.scale, [1, 1, 1]), object, "Transform"),
+        ]
+      : []),
+    ...(components.has("MeshRenderer")
+      ? [
+          property("inspect:primitive", "Primitive", object.primitive, object, "MeshRenderer"),
+          property("inspect:color", "Color", object.color ?? "default", object, "MeshRenderer"),
+          property("inspect:asset", "Asset", object.assetPath ?? "none", object, "MeshRenderer"),
+        ]
+      : []),
+    ...(components.has("Camera") ? [property("inspect:camera-mode", "Mode", "perspective", object, "Camera")] : []),
+    ...(components.has("Light") ? [property("inspect:light-kind", "Kind", object.kind, object, "Light")] : []),
   ];
 }
 
@@ -209,8 +247,8 @@ function documentInspectorRows(document: { kind: string; path: string } | undefi
   ];
 }
 
-function property(id: string, label: string, value: string, object: IEditorSceneObject): IEditorPropertyRow {
-  return { access: "sourcePersistable", documentPath: object.documentPath, id: `${id}:${object.id}`, label, readOnly: false, value };
+function property(id: string, label: string, value: string, object: IEditorSceneObject, component?: string): IEditorPropertyRow {
+  return { access: "sourcePersistable", component, documentPath: object.documentPath, id: `${id}:${object.rowId}`, label, readOnly: false, value };
 }
 
 function formatVector(value: readonly [number, number, number] | undefined, fallback: readonly [number, number, number]): string {
@@ -254,16 +292,17 @@ async function refreshProject(
   return payload;
 }
 
-async function postOperation(name: string, args: Record<string, unknown>, projectRevision: string | undefined): Promise<void> {
+async function postOperation(name: string, args: Record<string, unknown>, projectRevision: string | undefined): Promise<{ filesWritten: string[] }> {
   const response = await fetch("/api/operation", {
     body: JSON.stringify({ args, name, projectRevision }),
     headers: { "content-type": "application/json" },
     method: "POST",
   });
-  const payload = await response.json() as { diagnostics?: Array<{ message: string }>; ok: boolean };
+  const payload = await response.json() as { diagnostics?: Array<{ message: string }>; filesWritten?: string[]; ok: boolean };
   if (!payload.ok) {
     throw new Error(payload.diagnostics?.[0]?.message ?? `Operation ${name} failed`);
   }
+  return { filesWritten: payload.filesWritten ?? [] };
 }
 
 function countDocuments(project: IProjectPayload): number {

@@ -7,7 +7,7 @@ import {
   type IAuthoringDiagnostic,
   type IAuthoringDocument,
 } from "@threenative/authoring";
-import type { IEditorSceneObject, EditorScenePrimitive } from "../adapters/editorModel.js";
+import type { IEditorLodStats, IEditorSceneObject, EditorScenePrimitive } from "../adapters/editorModel.js";
 
 export interface IEditorProjectDocumentGroup {
   documents: Array<{
@@ -24,6 +24,7 @@ export interface IEditorProjectApiResult {
   ok: boolean;
   projectPath: string;
   projectRevision: string;
+  lod: IEditorLodStats;
   sceneObjects: IEditorSceneObject[];
 }
 
@@ -36,13 +37,15 @@ export async function loadEditorProjectApi(options: { projectPath: string; rootP
   const project = await loadAuthoringProject({ projectPath: options.projectPath });
   const validation = await validateAuthoringProject({ projectPath: project.projectPath });
   const diagnostics = [...project.diagnostics, ...validation.diagnostics];
+  const sceneObjects = buildSceneObjects(project.documents);
   return {
     diagnostics,
     documents: groupDocuments(project.documents),
+    lod: buildLodStats(sceneObjects),
     ok: !diagnostics.some((diagnostic) => diagnostic.severity === "error"),
     projectPath: project.projectPath,
     projectRevision: projectRevision(project.documents),
-    sceneObjects: buildSceneObjects(project.documents),
+    sceneObjects,
   };
 }
 
@@ -92,11 +95,33 @@ function emptyProjectResult(projectPath: string, diagnostics: IAuthoringDiagnost
   return {
     diagnostics,
     documents: [],
+    lod: { budget: 200_000, loadedTriangles: 0, loading: false, mode: "auto", selected: "original", triangleCount: 0 },
     ok: false,
     projectPath,
     projectRevision: "0:0",
     sceneObjects: [],
   };
+}
+
+function buildLodStats(sceneObjects: readonly IEditorSceneObject[]): IEditorLodStats {
+  const triangleCount = sceneObjects.reduce((total, object) => total + triangleEstimate(object), 0);
+  return {
+    budget: 200_000,
+    loadedTriangles: triangleCount,
+    loading: false,
+    mode: "auto",
+    selected: "original",
+    triangleCount,
+  };
+}
+
+function triangleEstimate(object: IEditorSceneObject): number {
+  if (object.kind === "camera" || object.kind === "light") {
+    return 0;
+  }
+  const scale = object.scale?.reduce((total, value) => total * Math.max(value, 0.1), 1) ?? 1;
+  const base = object.label.includes("farm_house") ? 238_132 : object.label.includes("base_basic") ? 163_902 : object.primitive === "plane" ? 768 : object.primitive === "sphere" ? 2_048 : 12;
+  return Math.round(base * scale);
 }
 
 function buildSceneObjects(documents: readonly IAuthoringDocument[]): IEditorSceneObject[] {
@@ -112,9 +137,19 @@ function buildSceneObjects(documents: readonly IAuthoringDocument[]): IEditorSce
       const prefabData = prefab === undefined ? undefined : prefabById.get(prefab);
       const components = isRecord(entity.components) ? entity.components : undefined;
       const isCamera = isRecord(components?.camera);
-      const isLight = isRecord(components?.Light) || isRecord(components?.light);
+      const lightData = isRecord(components?.Light) ? components.Light : components?.light;
+      const isLight = isRecord(lightData);
+      const hasTransform = isRecord(entity.transform);
+      const hasMeshRenderer = prefabData !== undefined && !isCamera && !isLight;
       return {
+        assetPath: readString(prefabData?.asset),
         color: readString(prefabData?.color),
+        components: [
+          ...(hasTransform ? ["Transform"] : []),
+          ...(hasMeshRenderer ? ["MeshRenderer"] : []),
+          ...(isCamera ? ["Camera"] : []),
+          ...(isLight ? ["Light"] : []),
+        ],
         documentPath: document.projectRelativePath,
         id,
         kind: isCamera ? "camera" : isLight ? "light" : "entity",
@@ -122,7 +157,7 @@ function buildSceneObjects(documents: readonly IAuthoringDocument[]): IEditorSce
         position: readVector3(isRecord(entity.transform) ? entity.transform.position : undefined),
         primitive: isCamera || isLight ? "camera" : readPrimitive(prefabData?.primitive),
         rotation: readVector3(isRecord(entity.transform) ? entity.transform.rotation : undefined),
-        rowId: `entity:${id}`,
+        rowId: `entity:${document.projectRelativePath}:${id}`,
         scale: readVector3(isRecord(entity.transform) ? entity.transform.scale : undefined),
         sourcePath: document.projectRelativePath,
       };

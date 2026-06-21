@@ -53,6 +53,14 @@ export const devFixtureModel: IEditorShellModel = {
       value: "inspect only",
     },
   ],
+  lod: {
+    budget: 200000,
+    loadedTriangles: 1036,
+    loading: false,
+    mode: "auto",
+    selected: "original",
+    triangleCount: 1036,
+  },
   projectName: "structured-source-starter",
   sceneObjects: [
     {

@@ -15,6 +15,10 @@ test("should load structured-source starter inventory", async () => {
     assert.equal(result.ok, true);
     assert.equal(result.documents.some((group) => group.kind === "scene" && group.documents[0]?.path === "content/scenes/arena.scene.json"), true);
     assert.equal(result.documents.some((group) => group.kind === "material"), true);
+    assert.equal(result.lod.selected, "original");
+    assert.equal(result.lod.loading, false);
+    assert.equal(result.lod.triangleCount > 0, true);
+    assert.equal(result.lod.loadedTriangles, result.lod.triangleCount);
     assert.deepEqual(
       result.sceneObjects.map((object) => [object.id, object.primitive, object.color, object.position?.join(",")]),
       [
@@ -53,6 +57,48 @@ test("should reject unsupported operations without writing source", async () => 
     assert.equal(result.ok, false);
     assert.equal(result.diagnostics[0]?.code, "TN_AUTHORING_OPERATION_UNSUPPORTED");
     assert.equal(after, before);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should create, save, and reload default editor scene entities", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-editor-default-scene-"));
+  try {
+    const create = await applyEditorOperationApi({
+      projectPath: root,
+      request: { args: { sceneId: "sample-scene" }, name: "scene.create_default" },
+    });
+    assert.equal(create.ok, true);
+
+    const scenePath = join(root, "content", "scenes", "sample-scene.scene.json");
+    const scene = JSON.parse(await readFile(scenePath, "utf8")) as {
+      entities: Array<{ components?: Record<string, unknown>; id: string; transform?: { position?: number[] } }>;
+      id: string;
+    };
+    assert.equal(scene.id, "sample-scene");
+    assert.deepEqual(scene.entities.map((entity) => entity.id), ["main-camera", "directional-light", "ambient-light"]);
+    assert.deepEqual(scene.entities.find((entity) => entity.id === "main-camera")?.components?.camera, { mode: "perspective" });
+    assert.deepEqual(scene.entities.find((entity) => entity.id === "directional-light")?.components?.Light, { intensity: 1, kind: "directional" });
+    assert.deepEqual(scene.entities.find((entity) => entity.id === "ambient-light")?.components?.Light, { intensity: 0.4, kind: "ambient" });
+
+    const save = await applyEditorOperationApi({
+      projectPath: root,
+      request: { args: { entityId: "main-camera", position: [1, 2, 3], sceneId: "sample-scene" }, name: "scene.set_transform", projectRevision: create.projectRevision },
+    });
+    assert.equal(save.ok, true);
+
+    const reloaded = await loadEditorProjectApi({ projectPath: root });
+    assert.equal(reloaded.ok, true);
+    assert.deepEqual(
+      reloaded.sceneObjects.map((object) => [object.id, object.kind, object.position?.join(",")]),
+      [
+        ["main-camera", "camera", "1,2,3"],
+        ["directional-light", "light", "2,4,3"],
+        ["ambient-light", "light", undefined],
+      ],
+    );
+    assert.equal(reloaded.lod.triangleCount, 0);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

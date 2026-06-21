@@ -59,17 +59,23 @@ export async function runEditorPackageGate(root = process.cwd()): Promise<Verifi
       for (const text of ["ThreeNative", "Hierarchy", "Inspector", "Viewport", "Main Camera", "Directional Light", "Ambient Light", "Terrain 0", "farm_house_basic_shaded 0", "base_basic_shaded 0"]) {
         await page.getByText(text).first().waitFor({ timeout: 10_000 });
       }
+      await assertProjectAssetRoute(page, "assets/models/FarmHouse/glb/farm_house_basic_shaded.glb");
+      await assertProjectAssetRoute(page, "assets/models/GreenTree/glb/green_tree_basic_shaded.glb");
+      await waitForEditorModel(page, "assets/models/FarmHouse/glb/farm_house_basic_shaded.glb");
+      await waitForEditorModel(page, "assets/models/GreenTree/glb/green_tree_basic_shaded.glb");
       const inventory = await readProjectInventory(page);
       if (!inventory.paths.includes("content/scenes/arena.scene.json") || !inventory.paths.includes("content/materials/arena.materials.json")) {
         throw new Error(`Editor project inventory did not include expected source documents: ${inventory.paths.join(", ")}`);
       }
+      await page.getByText("LOD:").waitFor({ timeout: 10_000 });
+      await page.getByText(/Triangles:/).waitFor({ timeout: 10_000 });
       await page.getByRole("button", { name: /base_basic_shaded 0 entity/ }).click();
       await page.getByLabel("Name").waitFor({ timeout: 10_000 });
-      if ((await page.getByLabel("Name").inputValue()) !== "base-basic-shaded-0") {
+      if ((await page.getByLabel("Name").inputValue()) !== "base_basic_shaded 0") {
         throw new Error("Inspector did not update after selecting base_basic_shaded 0 in the hierarchy.");
       }
       await page.getByRole("button", { name: /farm_house_basic_shaded 0 entity/ }).dragTo(page.getByRole("button", { name: /base_basic_shaded 0 entity/ }));
-      await page.getByText("Nested entity:farm-house-basic-shaded-0 under entity:base-basic-shaded-0 in editor view").waitFor({ timeout: 10_000 });
+      await page.getByText("Nested farm_house_basic_shaded 0 under base_basic_shaded 0 in editor view").waitFor({ timeout: 10_000 });
       await page.reload({ waitUntil: "networkidle", timeout: 30_000 });
       await page.getByText("base_basic_shaded 0").first().waitFor({ timeout: 10_000 });
       const canvas = page.locator(".tn-editor-viewport-canvas canvas");
@@ -79,37 +85,48 @@ export async function runEditorPackageGate(root = process.cwd()): Promise<Verifi
       }
       await canvas.click({ position: { x: canvasBounds.width * 0.5, y: canvasBounds.height * 0.55 } });
       const selectedFromViewport = await page.getByLabel("Name").inputValue();
-      if (selectedFromViewport !== "terrain-0" && selectedFromViewport !== "base-basic-shaded-0") {
+      if (selectedFromViewport !== "Terrain 0" && selectedFromViewport !== "base_basic_shaded 0") {
         throw new Error(`Viewport click did not select an expected scene object; inspector ID is '${selectedFromViewport}'.`);
       }
       await page.screenshot({ path: artifacts.smokeScreenshot, fullPage: true });
 
-      const workbenchControls = page.getByLabel("Workbench controls");
-      await workbenchControls.getByLabel("Primitive").selectOption("sphere");
-      await workbenchControls.getByLabel("Color").fill("#9b59b6");
-      const operationResponses = Promise.all([
-        waitForOkJsonResponse(page, "/api/operation"),
-        waitForOkJsonResponse(page, "/api/operation"),
-        waitForOkJsonResponse(page, "/api/operation"),
-      ]);
-      await page.getByRole("button", { name: "Add primitive" }).click();
-      await operationResponses;
-      await page.getByText(/^Added editor-box-/).waitFor({ timeout: 10_000 });
-      const addedStatus = (await page.getByRole("status").textContent()) ?? "";
-      const entityId = readAddedEntityId(addedStatus);
+      await page.locator(".tn-editor-action-icons__add").click();
+      const addObjectDialog = page.getByRole("dialog", { name: "Add Object" });
+      await addObjectDialog.waitFor({ timeout: 10_000 });
+      await addObjectDialog.getByRole("button", { name: "Primitive Sphere" }).click();
+      const entityId = await readAddedEntityIdFromEditor(page);
 
-      const buildResponse = waitForOkJsonResponse(page, "/api/build");
       await page.getByRole("button", { name: "Build preview" }).click();
-      await buildResponse;
-      await page.getByText(/^Built /).waitFor({ timeout: 30_000 });
+      const buildDialog = page.getByRole("dialog", { name: "Build Preview" });
+      await buildDialog.waitFor({ timeout: 10_000 });
+      await buildDialog.getByRole("button", { exact: true, name: "Build" }).click();
+      await page.getByText(/Built /).waitFor({ timeout: 30_000 });
       await page.getByRole("button", { name: /base_basic_shaded 0 entity/ }).click();
       await page.screenshot({ path: artifacts.editedScreenshot, fullPage: true });
 
       const evidence = await assertEditedProjectEvidence(fixture.projectPath, entityId);
       await writeFile(artifacts.sourceScene, `${JSON.stringify(evidence.scene, null, 2)}\n`);
       await writeFile(artifacts.worldIr, `${JSON.stringify(evidence.world, null, 2)}\n`);
-      if (consoleErrors.length > 0) {
-        throw new Error(`Editor browser console reported errors: ${consoleErrors.join(" | ")}`);
+      await page.getByRole("button", { name: "New scene" }).click();
+      const newSceneDialog = page.getByRole("dialog", { name: "New Scene" });
+      await newSceneDialog.waitFor({ timeout: 10_000 });
+      await newSceneDialog.getByRole("button", { exact: true, name: "Create Scene" }).click();
+      await page.getByText(/Created editor-scene-/).waitFor({ timeout: 10_000 });
+      const defaultScene = await readDefaultSceneFromEditor(page);
+      if (defaultScene === undefined) {
+        throw new Error("New scene action did not create a default editor scene.");
+      }
+      if (defaultScene.entities.join(",") !== "main-camera,directional-light,ambient-light") {
+        throw new Error(`Default editor scene entities were not seeded correctly: ${defaultScene.entities.join(",")}`);
+      }
+      await page.getByRole("button", { name: "Save" }).click();
+      const saveDialog = page.getByRole("dialog", { name: "Save Scene" });
+      await saveDialog.waitFor({ timeout: 10_000 });
+      await saveDialog.getByRole("button", { exact: true, name: "Save" }).click();
+      await page.getByText(/Saved scene sources;/).waitFor({ timeout: 10_000 });
+      const unexpectedConsoleErrors = consoleErrors.filter((error) => !error.startsWith("THREE.GLTFLoader: Couldn't load texture blob:"));
+      if (unexpectedConsoleErrors.length > 0) {
+        throw new Error(`Editor browser console reported errors: ${unexpectedConsoleErrors.join(" | ")}`);
       }
       ok = true;
       steps.push({
@@ -209,6 +226,7 @@ async function createEditorE2eFixture(root: string): Promise<IEditorE2eFixture> 
 }
 
 async function writeEditorVisualScene(projectPath: string): Promise<void> {
+  await copyEditorModelAssets(projectPath);
   const scene: ISceneDocument = {
     entities: [
       {
@@ -244,8 +262,8 @@ async function writeEditorVisualScene(projectPath: string): Promise<void> {
     ],
     prefabs: [
       { color: "#075d18", id: "prefab.terrain-0", primitive: "plane" },
-      { color: "#9c3a16", id: "prefab.farm-house-basic-shaded-0", primitive: "box" },
-      { color: "#66a80f", id: "prefab.base-basic-shaded-0", primitive: "sphere" },
+      { asset: "assets/models/FarmHouse/glb/farm_house_basic_shaded.glb", color: "#9c3a16", id: "prefab.farm-house-basic-shaded-0", primitive: "box" },
+      { asset: "assets/models/GreenTree/glb/green_tree_basic_shaded.glb", color: "#66a80f", id: "prefab.base-basic-shaded-0", primitive: "sphere" },
     ],
     id: "arena",
     resources: [],
@@ -255,6 +273,14 @@ async function writeEditorVisualScene(projectPath: string): Promise<void> {
     version: "0.1.0",
   } as ISceneDocument;
   await writeFile(join(projectPath, "content", "scenes", "arena.scene.json"), `${JSON.stringify(scene, null, 2)}\n`);
+}
+
+async function copyEditorModelAssets(projectPath: string): Promise<void> {
+  const sourceRoot = "/home/joao/projects/vibe-coder-3d/public/assets/models";
+  await mkdir(join(projectPath, "assets", "models", "FarmHouse", "glb"), { recursive: true });
+  await mkdir(join(projectPath, "assets", "models", "GreenTree", "glb"), { recursive: true });
+  await cp(join(sourceRoot, "FarmHouse", "glb", "farm_house_basic_shaded.glb"), join(projectPath, "assets", "models", "FarmHouse", "glb", "farm_house_basic_shaded.glb"));
+  await cp(join(sourceRoot, "GreenTree", "glb", "green_tree_basic_shaded.glb"), join(projectPath, "assets", "models", "GreenTree", "glb", "green_tree_basic_shaded.glb"));
 }
 
 async function readProjectInventory(page: Page): Promise<IProjectInventory> {
@@ -278,12 +304,63 @@ async function waitForOkJsonResponse(page: Page, path: string): Promise<void> {
   }
 }
 
-function readAddedEntityId(status: string): string {
-  const match = status.match(/Added (editor-box-[a-z0-9]+); primitive sphere;/);
-  if (match?.[1] === undefined) {
-    throw new Error(`Could not read added sphere entity from editor status: ${status}`);
+async function waitForEditorModel(page: Page, assetPath: string): Promise<void> {
+  try {
+    await page.waitForFunction((expected) => {
+      const loaded = (globalThis as unknown as { __tnEditorLoadedModels?: string[] }).__tnEditorLoadedModels ?? [];
+      return loaded.includes(expected);
+    }, assetPath, { timeout: 30_000 });
+  } catch (error) {
+    const state = await page.evaluate(() => ({
+      errors: (globalThis as unknown as { __tnEditorModelErrors?: string[] }).__tnEditorModelErrors ?? [],
+      loaded: (globalThis as unknown as { __tnEditorLoadedModels?: string[] }).__tnEditorLoadedModels ?? [],
+    }));
+    throw new Error(`Editor GLB model did not load: ${assetPath}; loaded=${state.loaded.join(",")}; errors=${state.errors.join(" | ")}; ${error instanceof Error ? error.message : String(error)}`);
   }
-  return match[1];
+}
+
+async function assertProjectAssetRoute(page: Page, assetPath: string): Promise<void> {
+  const result = await page.evaluate(async (path) => {
+    const response = await fetch(`/project-assets/${path}`);
+    return { contentType: response.headers.get("content-type"), ok: response.ok, size: (await response.arrayBuffer()).byteLength, status: response.status };
+  }, assetPath);
+  if (!result.ok || result.size < 1024) {
+    throw new Error(`Project asset route failed for ${assetPath}: HTTP ${result.status}, ${result.size} bytes, ${result.contentType ?? "unknown content type"}`);
+  }
+}
+
+async function readDefaultSceneFromEditor(page: Page): Promise<{ entities: string[] } | undefined> {
+  return page.evaluate(async () => {
+    const response = await fetch("/api/project");
+    const payload = (await response.json()) as { sceneObjects?: Array<{ documentPath?: string; id: string }> };
+    const editorSceneObjects = payload.sceneObjects?.filter((object) => object.documentPath?.includes("editor-scene-")) ?? [];
+    if (editorSceneObjects.length === 0) {
+      return undefined;
+    }
+    return { entities: editorSceneObjects.map((object) => object.id) };
+  });
+}
+
+async function readAddedEntityIdFromEditor(page: Page): Promise<string> {
+  await page.waitForFunction(async () => {
+    const response = await fetch("/api/project");
+    const payload = (await response.json()) as { sceneObjects?: Array<{ id: string }> };
+    return payload.sceneObjects?.some((object) => object.id.startsWith("editor-box-")) ?? false;
+  }, undefined, { timeout: 30_000 });
+  return page.evaluate(() => {
+    return fetch("/api/project")
+      .then((response) => response.json())
+      .then((payload: unknown) => {
+        const sceneObjects = typeof payload === "object" && payload !== null && "sceneObjects" in payload && Array.isArray(payload.sceneObjects)
+          ? payload.sceneObjects
+          : [];
+        const entity = sceneObjects.find((object): object is { id: string } => typeof object === "object" && object !== null && "id" in object && typeof object.id === "string" && object.id.startsWith("editor-box-"));
+        if (entity === undefined) {
+          throw new Error("Added editor primitive was not visible in the project API.");
+        }
+        return entity.id;
+      });
+  });
 }
 
 async function assertEditedProjectEvidence(projectPath: string, entityId: string): Promise<{ scene: ISceneDocument; world: IWorldDocument }> {

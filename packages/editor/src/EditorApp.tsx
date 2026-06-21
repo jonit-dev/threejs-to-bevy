@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { Box, FolderOpen, Image, MessageSquare, Pause, Play, Save, Settings, Square, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { Box, Camera, FolderOpen, Image, Lightbulb, MessageSquare, Mountain, PackagePlus, Pause, Play, Save, Settings, Square, Trash2 } from "lucide-react";
 
 import type { IEditorAdapterInput, IEditorShellModel } from "./adapters/editorModel.js";
 import { createEditorShellModel } from "./adapters/editorModel.js";
@@ -10,12 +11,19 @@ import { EditorViewport3d } from "./preview/EditorViewport3d.js";
 
 export interface IEditorAppProps {
   model?: IEditorAdapterInput | IEditorShellModel;
+  onAddObject?: () => void;
+  onBuildPreview?: () => void;
+  onCreateScene?: () => void;
   onMoveRow?: (draggedId: string, targetId: string) => void;
+  onSaveScene?: () => void;
   onSelectRow?: (id: string) => void;
   toolbarSlot?: ReactNode;
 }
 
-export function EditorApp({ model: input, onMoveRow, onSelectRow, toolbarSlot }: IEditorAppProps) {
+type EditorModal = "addComponent" | "addObject" | "build" | "chat" | "delete" | "newScene" | "save" | "settings" | undefined;
+
+export function EditorApp({ model: input, onAddObject, onBuildPreview, onCreateScene, onMoveRow, onSaveScene, onSelectRow, toolbarSlot }: IEditorAppProps) {
+  const [modal, setModal] = useState<EditorModal>();
   const model = createEditorShellModel(input);
   const objectCount = countTreeRows(model.hierarchy);
   const statusMessage = model.diagnostics.some((diagnostic) => diagnostic.severity === "error") ? "Needs attention" : "Ready";
@@ -49,11 +57,12 @@ export function EditorApp({ model: input, onMoveRow, onSelectRow, toolbarSlot }:
         <div className="tn-editor-topbar__actions">
           {toolbarSlot}
           <div className="tn-editor-action-icons" aria-label="Editor actions">
-            <button title="Save" type="button"><Save size={16} /></button>
-            <button title="Open" type="button"><FolderOpen size={16} /></button>
-            <button title="Delete" type="button"><Trash2 size={16} /></button>
-            <button title="Settings" type="button"><Settings size={16} /></button>
-            <button title="Image" type="button"><Image size={16} /></button>
+            <button className="tn-editor-action-icons__add" onClick={() => setModal("addObject")} title="Add" type="button"><Box size={15} /> <span>Add</span></button>
+            <button onClick={() => setModal("save")} title="Save" type="button"><Save size={16} /></button>
+            <button onClick={() => setModal("newScene")} title="New scene" type="button"><FolderOpen size={16} /></button>
+            <button onClick={() => setModal("delete")} title="Delete" type="button"><Trash2 size={16} /></button>
+            <button onClick={() => setModal("settings")} title="Settings" type="button"><Settings size={16} /></button>
+            <button onClick={() => setModal("build")} title="Build preview" type="button"><Image size={16} /></button>
           </div>
         </div>
       </header>
@@ -64,7 +73,7 @@ export function EditorApp({ model: input, onMoveRow, onSelectRow, toolbarSlot }:
             <HierarchyPanel rows={model.hierarchy} selectedRowId={model.selectedRowId} onMoveRow={onMoveRow} onSelectRow={onSelectRow} />
           </PanelShell>
           <PanelShell title="Inspector" meta={`${model.inspector.length}`}>
-            <InspectorPanel rows={model.inspector} />
+            <InspectorPanel onAddComponent={() => setModal("addComponent")} rows={model.inspector} />
           </PanelShell>
         </aside>
         <section className="tn-editor-preview" aria-label="Preview">
@@ -89,14 +98,10 @@ export function EditorApp({ model: input, onMoveRow, onSelectRow, toolbarSlot }:
         <aside className="tn-editor-right-rail">
           <div className="tn-editor-ai-channel" aria-label="AI chat channel">
             <button className="tn-editor-ai-channel__toggle" title="Collapse AI chat" type="button">&lt;</button>
-            <div className="tn-editor-ai-channel__tab">
+            <button className="tn-editor-ai-channel__tab" onClick={() => setModal("chat")} title="AI chat" type="button">
               <MessageSquare aria-hidden="true" size={16} />
               <span>AI</span>
-            </div>
-            <div className="tn-editor-ai-channel__tab">
-              <Box aria-hidden="true" size={16} />
-              <span>D</span>
-            </div>
+            </button>
           </div>
           <PanelShell title="Assets" meta={`${model.assets.length}`}>
             {model.assets.length === 0 ? (
@@ -134,16 +139,136 @@ export function EditorApp({ model: input, onMoveRow, onSelectRow, toolbarSlot }:
         <span>128MB</span>
         <span>WebGL</span>
         <span className="tn-editor-statusbar__spacer" />
-        <span>AUTO</span>
+        <span>{model.lod.mode.toUpperCase()}</span>
         <span>TERRAIN</span>
-        <span>LOD: original</span>
+        <span>LOD: <strong>{model.lod.selected}</strong></span>
+        <span>Triangles: <strong>{formatNumber(model.lod.loadedTriangles)}</strong> / {formatNumber(model.lod.triangleCount)} / {formatNumber(model.lod.budget)} {model.lod.loading ? "(Loading)" : "(Good)"}</span>
         <span>{objectCount} Entities</span>
         {model.statusItems.map((item) => <span key={item.id}>{item.label}: {item.value}</span>)}
       </footer>
+      <EditorModalView
+        modal={modal}
+        onAddObject={() => {
+          setModal(undefined);
+          onAddObject?.();
+        }}
+        onBuildPreview={() => {
+          setModal(undefined);
+          onBuildPreview?.();
+        }}
+        onClose={() => setModal(undefined)}
+        onCreateScene={() => {
+          setModal(undefined);
+          onCreateScene?.();
+        }}
+        onSaveScene={() => {
+          setModal(undefined);
+          onSaveScene?.();
+        }}
+      />
     </main>
+  );
+}
+
+function EditorModalView({
+  modal,
+  onAddObject,
+  onBuildPreview,
+  onClose,
+  onCreateScene,
+  onSaveScene,
+}: {
+  modal: EditorModal;
+  onAddObject: () => void;
+  onBuildPreview: () => void;
+  onClose: () => void;
+  onCreateScene: () => void;
+  onSaveScene: () => void;
+}) {
+  if (modal === undefined) {
+    return null;
+  }
+  if (modal === "addObject") {
+    return (
+      <ModalFrame onClose={onClose} title="Add Object">
+        <div className="tn-editor-modal-grid">
+          <button onClick={onAddObject} type="button"><PackagePlus size={16} /> Primitive Sphere</button>
+          <button disabled type="button"><Box size={16} /> Empty Entity</button>
+          <button disabled type="button"><Camera size={16} /> Camera</button>
+          <button disabled type="button"><Lightbulb size={16} /> Light</button>
+          <button disabled type="button"><Mountain size={16} /> Terrain</button>
+          <button disabled type="button"><FolderOpen size={16} /> Custom GLB</button>
+        </div>
+      </ModalFrame>
+    );
+  }
+  if (modal === "addComponent") {
+    return (
+      <ModalFrame onClose={onClose} title="Add Component">
+        <div className="tn-editor-modal-grid">
+          {["Transform", "MeshRenderer", "Camera", "Light", "Script", "Collider"].map((component) => (
+            <button disabled={component !== "Transform"} key={component} type="button"><PackagePlus size={16} /> {component}</button>
+          ))}
+        </div>
+      </ModalFrame>
+    );
+  }
+  if (modal === "save") {
+    return (
+      <ModalFrame onClose={onClose} title="Save Scene">
+        <p>Persist structured source documents for the current project.</p>
+        <button className="tn-editor-modal-primary" onClick={onSaveScene} type="button">Save</button>
+      </ModalFrame>
+    );
+  }
+  if (modal === "newScene") {
+    return (
+      <ModalFrame onClose={onClose} title="New Scene">
+        <p>Create a source-backed scene seeded with Main Camera, Directional Light, and Ambient Light.</p>
+        <button className="tn-editor-modal-primary" onClick={onCreateScene} type="button">Create Scene</button>
+      </ModalFrame>
+    );
+  }
+  if (modal === "build") {
+    return (
+      <ModalFrame onClose={onClose} title="Build Preview">
+        <p>Build the current source project into the editor preview bundle.</p>
+        <button className="tn-editor-modal-primary" onClick={onBuildPreview} type="button">Build</button>
+      </ModalFrame>
+    );
+  }
+  if (modal === "chat") {
+    return (
+      <ModalFrame onClose={onClose} title="AI Chat">
+        <textarea aria-label="AI chat message" placeholder="Ask the editor agent..." readOnly />
+      </ModalFrame>
+    );
+  }
+  return (
+    <ModalFrame onClose={onClose} title={modal === "settings" ? "Settings" : "Delete"}>
+      <p>{modal === "settings" ? "Editor settings are inspect-only in this slice." : "Delete requires a promoted source operation before it is enabled."}</p>
+    </ModalFrame>
+  );
+}
+
+function ModalFrame({ children, onClose, title }: { children: ReactNode; onClose: () => void; title: string }) {
+  return (
+    <div className="tn-editor-modal-backdrop" role="presentation">
+      <section aria-label={title} className="tn-editor-modal" role="dialog">
+        <header>
+          <strong>{title}</strong>
+          <button aria-label={`Close ${title}`} onClick={onClose} type="button">x</button>
+        </header>
+        <div className="tn-editor-modal__body">{children}</div>
+      </section>
+    </div>
   );
 }
 
 function countTreeRows(rows: readonly { children?: readonly unknown[] }[]): number {
   return rows.reduce((total, row) => total + 1 + countTreeRows((row.children ?? []) as readonly { children?: readonly unknown[] }[]), 0);
+}
+
+function formatNumber(value: number): string {
+  return new Intl.NumberFormat("en-US").format(value);
 }

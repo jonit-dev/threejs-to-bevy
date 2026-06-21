@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
+import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 import type { IEditorSceneObject } from "../adapters/editorModel.js";
 
@@ -54,21 +56,25 @@ export function EditorViewport3d({ objects, onSelectObject, selectedRowId }: IEd
 
     const root = new THREE.Group();
     scene.add(root);
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath("/draco/");
+    const gltfLoader = new GLTFLoader();
+    gltfLoader.setDRACOLoader(dracoLoader);
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
     const selectables: THREE.Object3D[] = [];
     const objectByRowId = new Map<string, THREE.Object3D>();
     let selection: THREE.BoxHelper | undefined;
-    const axes = new THREE.AxesHelper(1.2);
-    axes.visible = false;
-    scene.add(axes);
+    const gizmo = createTransformGizmo();
+    gizmo.visible = false;
+    scene.add(gizmo);
 
     const rebuildObjects = () => {
       root.clear();
       selectables.length = 0;
       objectByRowId.clear();
       for (const sourceObject of objects) {
-        const object = createSceneObject(sourceObject);
+        const object = createSceneObject(sourceObject, gltfLoader);
         object.userData.rowId = sourceObject.rowId;
         root.add(object);
         objectByRowId.set(sourceObject.rowId, object);
@@ -85,7 +91,7 @@ export function EditorViewport3d({ objects, onSelectObject, selectedRowId }: IEd
         selection = undefined;
       }
       const selected = selectedRowId === undefined ? undefined : objectByRowId.get(selectedRowId);
-      axes.visible = selected !== undefined;
+      gizmo.visible = selected !== undefined;
       if (selected === undefined) {
         return;
       }
@@ -93,7 +99,7 @@ export function EditorViewport3d({ objects, onSelectObject, selectedRowId }: IEd
       scene.add(selection);
       const worldPosition = new THREE.Vector3();
       selected.getWorldPosition(worldPosition);
-      axes.position.copy(worldPosition).add(new THREE.Vector3(0, 0.65, 0));
+      gizmo.position.copy(worldPosition).add(new THREE.Vector3(0, 0.55, 0));
     };
 
     const selectFromPointer = (event: PointerEvent) => {
@@ -144,6 +150,7 @@ export function EditorViewport3d({ objects, onSelectObject, selectedRowId }: IEd
       renderer.domElement.removeEventListener("pointerdown", selectFromPointer);
       host.removeChild(renderer.domElement);
       disposeScene(scene);
+      dracoLoader.dispose();
       renderer.dispose();
     };
   }, [objects, selectedRowId]);
@@ -151,8 +158,8 @@ export function EditorViewport3d({ objects, onSelectObject, selectedRowId }: IEd
   return <div className="tn-editor-viewport-canvas" ref={hostRef} />;
 }
 
-function createSceneObject(sourceObject: IEditorSceneObject): THREE.Object3D {
-  const object = createRenderableObject(sourceObject);
+function createSceneObject(sourceObject: IEditorSceneObject, loader: GLTFLoader): THREE.Object3D {
+  const object = createRenderableObject(sourceObject, loader);
   object.name = sourceObject.id;
   const [x, y, z] = sourceObject.position ?? [0, defaultY(sourceObject), 0];
   object.position.set(x, y, z);
@@ -170,13 +177,16 @@ function createSceneObject(sourceObject: IEditorSceneObject): THREE.Object3D {
   return object;
 }
 
-function createRenderableObject(sourceObject: IEditorSceneObject): THREE.Object3D {
+function createRenderableObject(sourceObject: IEditorSceneObject, loader: GLTFLoader): THREE.Object3D {
   const label = sourceObject.label.toLowerCase();
   if (sourceObject.kind === "camera") {
     return createCameraGlyph();
   }
   if (sourceObject.kind === "light") {
     return createLightGlyph();
+  }
+  if (sourceObject.assetPath?.endsWith(".glb") === true || sourceObject.assetPath?.endsWith(".gltf") === true) {
+    return createModelObject(sourceObject, loader);
   }
   if (label.includes("farm_house")) {
     return createHouse();
@@ -188,6 +198,65 @@ function createRenderableObject(sourceObject: IEditorSceneObject): THREE.Object3
     return new THREE.Mesh(new THREE.PlaneGeometry(24, 24), materialFor(sourceObject));
   }
   return new THREE.Mesh(geometryFor(sourceObject), materialFor(sourceObject));
+}
+
+function createModelObject(sourceObject: IEditorSceneObject, loader: GLTFLoader): THREE.Group {
+  const group = new THREE.Group();
+  group.add(createFallbackModelPlaceholder(sourceObject));
+  const assetPath = sourceObject.assetPath;
+  if (assetPath === undefined) {
+    return group;
+  }
+  loader.load(
+    `/project-assets/${encodeURIComponent(assetPath).replaceAll("%2F", "/")}`,
+    (gltf) => {
+      group.clear();
+      const model = gltf.scene;
+      model.traverse((child) => {
+        child.userData.rowId = sourceObject.rowId;
+        if (child instanceof THREE.Mesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+      normalizeModelForEditor(model, sourceObject);
+      group.add(model);
+      markLoadedModel(assetPath);
+    },
+    undefined,
+    (error) => markModelError(assetPath, error),
+  );
+  return group;
+}
+
+function createFallbackModelPlaceholder(sourceObject: IEditorSceneObject): THREE.Object3D {
+  return sourceObject.label.toLowerCase().includes("farm_house") ? createHouse() : createTree();
+}
+
+function normalizeModelForEditor(model: THREE.Object3D, sourceObject: IEditorSceneObject): void {
+  const bounds = new THREE.Box3().setFromObject(model);
+  const size = new THREE.Vector3();
+  bounds.getSize(size);
+  const targetHeight = sourceObject.label.toLowerCase().includes("farm_house") ? 1.9 : 2.1;
+  const longest = Math.max(size.x, size.y, size.z);
+  if (Number.isFinite(longest) && longest > 0) {
+    model.scale.multiplyScalar(targetHeight / longest);
+  }
+  const normalizedBounds = new THREE.Box3().setFromObject(model);
+  const center = new THREE.Vector3();
+  normalizedBounds.getCenter(center);
+  model.position.sub(center);
+  model.position.y -= normalizedBounds.min.y - center.y;
+}
+
+function markLoadedModel(assetPath: string): void {
+  const target = window as unknown as { __tnEditorLoadedModels?: string[] };
+  target.__tnEditorLoadedModels = [...(target.__tnEditorLoadedModels ?? []), assetPath];
+}
+
+function markModelError(assetPath: string, error: unknown): void {
+  const target = window as unknown as { __tnEditorModelErrors?: string[] };
+  target.__tnEditorModelErrors = [...(target.__tnEditorModelErrors ?? []), `${assetPath}: ${error instanceof Error ? error.message : String(error)}`];
 }
 
 function geometryFor(sourceObject: IEditorSceneObject): THREE.BufferGeometry {
@@ -216,26 +285,94 @@ function materialFor(sourceObject: IEditorSceneObject): THREE.Material {
 
 function createCameraGlyph(): THREE.Group {
   const group = new THREE.Group();
-  const material = new THREE.MeshBasicMaterial({ color: "#f5fbff" });
-  const body = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.26, 0.18), material);
-  const lens = new THREE.Mesh(new THREE.ConeGeometry(0.17, 0.32, 24), material);
-  lens.rotation.z = Math.PI / 2;
-  lens.position.x = 0.34;
-  const reelA = new THREE.Mesh(new THREE.SphereGeometry(0.13, 16, 8), material);
-  reelA.position.set(-0.12, 0.2, 0);
-  const reelB = new THREE.Mesh(new THREE.SphereGeometry(0.13, 16, 8), material);
-  reelB.position.set(0.16, 0.2, 0);
-  group.add(body, lens, reelA, reelB);
+  const sprite = createIconSprite("camera");
+  sprite.scale.set(0.72, 0.72, 1);
+  group.add(sprite);
   return group;
 }
 
 function createLightGlyph(): THREE.Group {
   const group = new THREE.Group();
-  const material = new THREE.MeshBasicMaterial({ color: "#f6fbff" });
-  const core = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 8), material);
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.23, 0.025, 8, 24), material);
-  ring.rotation.x = Math.PI / 2;
-  group.add(core, ring);
+  const sprite = createIconSprite("light");
+  sprite.scale.set(0.5, 0.5, 1);
+  group.add(sprite);
+  return group;
+}
+
+function createIconSprite(kind: "camera" | "light"): THREE.Sprite {
+  const canvas = document.createElement("canvas");
+  canvas.width = 96;
+  canvas.height = 96;
+  const context = canvas.getContext("2d");
+  if (context === null) {
+    throw new Error("Canvas 2D context unavailable for editor viewport icon.");
+  }
+  context.clearRect(0, 0, 96, 96);
+  context.fillStyle = "#f8fdff";
+  context.strokeStyle = "#f8fdff";
+  context.lineWidth = 8;
+  context.lineCap = "round";
+  context.lineJoin = "round";
+  if (kind === "camera") {
+    context.beginPath();
+    context.roundRect(18, 34, 42, 30, 6);
+    context.fill();
+    context.beginPath();
+    context.moveTo(61, 42);
+    context.lineTo(78, 32);
+    context.lineTo(78, 66);
+    context.lineTo(61, 56);
+    context.closePath();
+    context.fill();
+    context.beginPath();
+    context.arc(29, 25, 10, 0, Math.PI * 2);
+    context.arc(48, 25, 10, 0, Math.PI * 2);
+    context.fill();
+  } else {
+    context.beginPath();
+    context.arc(48, 48, 13, 0, Math.PI * 2);
+    context.fill();
+    for (let index = 0; index < 8; index += 1) {
+      const angle = (index / 8) * Math.PI * 2;
+      context.beginPath();
+      context.moveTo(48 + Math.cos(angle) * 25, 48 + Math.sin(angle) * 25);
+      context.lineTo(48 + Math.cos(angle) * 36, 48 + Math.sin(angle) * 36);
+      context.stroke();
+    }
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false, map: texture, transparent: true }));
+}
+
+function createTransformGizmo(): THREE.Group {
+  const group = new THREE.Group();
+  group.renderOrder = 10;
+  group.add(createGizmoArrow(new THREE.Vector3(1, 0, 0), "#ff1f35"));
+  group.add(createGizmoArrow(new THREE.Vector3(0, 1, 0), "#00ff66"));
+  group.add(createGizmoArrow(new THREE.Vector3(0, 0, 1), "#155cff"));
+  const center = new THREE.Mesh(
+    new THREE.SphereGeometry(0.08, 16, 8),
+    new THREE.MeshBasicMaterial({ color: "#ffffff", depthTest: false }),
+  );
+  center.renderOrder = 11;
+  group.add(center);
+  return group;
+}
+
+function createGizmoArrow(direction: THREE.Vector3, color: string): THREE.Group {
+  const group = new THREE.Group();
+  const material = new THREE.MeshBasicMaterial({ color, depthTest: false });
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1, 12), material);
+  shaft.position.y = 0.5;
+  const head = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.24, 16), material);
+  head.position.y = 1.12;
+  group.add(shaft, head);
+  const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
+  group.quaternion.copy(quaternion);
+  group.traverse((object) => {
+    object.renderOrder = 11;
+  });
   return group;
 }
 

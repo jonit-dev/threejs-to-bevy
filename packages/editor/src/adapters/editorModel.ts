@@ -31,6 +31,7 @@ export interface IEditorTreeRow {
 
 export interface IEditorPropertyRow {
   access: EditorDocumentAccess;
+  component?: string;
   documentPath?: string;
   id: string;
   label: string;
@@ -50,7 +51,9 @@ export interface IEditorAssetRow {
 export type EditorScenePrimitive = "box" | "camera" | "capsule" | "cylinder" | "plane" | "sphere";
 
 export interface IEditorSceneObject {
+  assetPath?: string;
   color?: string;
+  components?: readonly string[];
   documentPath?: string;
   id: string;
   kind: "camera" | "entity" | "light";
@@ -69,11 +72,21 @@ export interface IEditorStatusItem {
   value: string;
 }
 
+export interface IEditorLodStats {
+  budget: number;
+  loadedTriangles: number;
+  loading: boolean;
+  mode: "auto" | "manual";
+  selected: string;
+  triangleCount: number;
+}
+
 export interface IEditorShellModel {
   assets: IEditorAssetRow[];
   diagnostics: IEditorDiagnosticView[];
   hierarchy: IEditorTreeRow[];
   inspector: IEditorPropertyRow[];
+  lod: IEditorLodStats;
   projectName: string;
   sceneObjects: IEditorSceneObject[];
   selectedRowId?: string;
@@ -86,6 +99,7 @@ export interface IEditorAdapterInput {
   diagnostics?: readonly IEditorDiagnosticView[];
   hierarchy?: readonly IEditorTreeRow[];
   inspector?: readonly IEditorPropertyRow[];
+  lod?: IEditorLodStats;
   projectName?: string;
   sceneObjects?: readonly IEditorSceneObject[];
   selectedRowId?: string;
@@ -104,6 +118,7 @@ export function createEditorShellModel(input: IEditorAdapterInput = {}): IEditor
     diagnostics,
     hierarchy,
     inspector,
+    lod: input.lod ?? { budget: 200_000, loadedTriangles: 0, loading: false, mode: "auto", selected: "original", triangleCount: 0 },
     projectName: input.projectName ?? "Untitled ThreeNative Project",
     sceneObjects: [...(input.sceneObjects ?? [])],
     selectedRowId: input.selectedRowId,
