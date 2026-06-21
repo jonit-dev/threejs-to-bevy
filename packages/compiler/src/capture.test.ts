@@ -210,8 +210,9 @@ test("build should lower structured scene entry into runtime bundle with attache
       version: "0.1.0",
       id: "cli-proof",
       prefabs: [{ id: "cube-prefab", primitive: "box", color: "#2f80ed" }],
+      resources: [{ id: "race-state", value: { lap: 1, speed: 0, status: "READY" } }],
       entities: [
-        { id: "player", prefab: "cube-prefab", transform: { position: [0, 0.35, 0], rotation: [0, 1.57, 0], scale: [0.6, 0.6, 0.6] } },
+        { id: "player", prefab: "cube-prefab", components: { VehiclePhysics: { speed: 42, boost: 0.65, heading: 1.57 }, Team: { id: "orange" } }, transform: { position: [0, 0.35, 0], rotation: [0, 1.57, 0], scale: [0.6, 0.6, 0.6] } },
         { id: "chase-camera", components: { camera: { mode: "perspective", target: "player" } }, transform: { position: [0, 3.2, 5.8], rotation: [-0.48, 0, 0] } },
       ],
       systems: [{ id: "move-player-to-goal", script: { module: "src/scripts/player.ts", export: "movePlayerToGoal" } }],
@@ -220,12 +221,16 @@ test("build should lower structured scene entry into runtime bundle with attache
 
   try {
     const { bundlePath } = await buildProject(root);
-    const world = JSON.parse(await readFile(join(bundlePath, "world.ir.json"), "utf8")) as { entities: Array<{ id: string; components: Record<string, unknown> }> };
+    const world = JSON.parse(await readFile(join(bundlePath, "world.ir.json"), "utf8")) as { entities: Array<{ id: string; components: Record<string, unknown> }>; resources: Record<string, Record<string, unknown>> };
     const systems = JSON.parse(await readFile(join(bundlePath, "systems.ir.json"), "utf8")) as { systems: Array<{ name: string; script?: { exportName: string } }> };
     const scripts = await readFile(join(bundlePath, "scripts.bundle.js"), "utf8");
     const provenance = JSON.parse(await readFile(join(bundlePath, AUTHORING_PROVENANCE_FILE), "utf8")) as { entryPath: string; declarations: Array<{ id: string; kind: string }> };
 
     assert.equal(world.entities.some((entity) => entity.id === "player" && entity.components.Transform !== undefined && entity.components.MeshRenderer !== undefined), true);
+    const player = world.entities.find((entity) => entity.id === "player");
+    assert.deepEqual(player?.components.VehiclePhysics, { speed: 42, boost: 0.65, heading: 1.57 });
+    assert.deepEqual(player?.components.Team, { id: "orange" });
+    assert.deepEqual(world.resources["race-state"], { lap: 1, speed: 0, status: "READY" });
     const playerTransform = world.entities.find((entity) => entity.id === "player")?.components.Transform as { rotation?: unknown[] } | undefined;
     assert.equal(playerTransform?.rotation?.length, 4);
     assert.equal(playerTransform.rotation.every((value) => typeof value === "number" && Number.isFinite(value)), true);

@@ -8,8 +8,8 @@ export const scriptReferenceKeys = new Set(["module", "export"]);
 export const uiKeys = new Set(["nodes", "bindings"]);
 export const uiNodeKeys = new Set(["id"]);
 export const uiBindingKeys = new Set(["node", "resource"]);
-export const resourceKeys = new Set(["id", "path"]);
-export const prefabKeys = new Set(["id", "primitive", "color"]);
+export const resourceKeys = new Set(["id", "path", "value"]);
+export const prefabKeys = new Set(["id", "primitive", "color", "asset"]);
 export const supportedPrefabPrimitives = new Set(["box", "capsule", "cone", "cylinder", "plane", "sphere"]);
 
 export const supportedComponentKinds = new Set(["camera"]);
@@ -43,6 +43,7 @@ export interface ISceneTransform {
 }
 
 export interface IScenePrefab {
+  asset?: string;
   color?: string;
   id: string;
   primitive?: "box" | "capsule" | "cone" | "cylinder" | "plane" | "sphere";
@@ -51,6 +52,7 @@ export interface IScenePrefab {
 export interface ISceneResource {
   id: string;
   path?: string;
+  value?: unknown;
 }
 
 export interface ISceneSystem {

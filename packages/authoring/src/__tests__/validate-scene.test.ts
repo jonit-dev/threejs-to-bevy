@@ -81,7 +81,6 @@ test("validateScene reports deterministic repair diagnostics for invalid scenes"
     assert.equal(result.ok, false);
     assert.deepEqual(codes, [
       "TN_AUTHORING_REF_MISSING",
-      "TN_AUTHORING_COMPONENT_KIND_UNKNOWN",
       "TN_AUTHORING_REF_MISSING",
       "TN_AUTHORING_VECTOR3_INVALID",
       "TN_AUTHORING_VECTOR3_INVALID",

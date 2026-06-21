@@ -16,10 +16,15 @@ import {
   Scene,
   SphereGeometry,
   defineGame,
+  defineComponent,
   defineQuery,
+  defineResource,
+  defineResourceModule,
   defineScene,
   defineWorldModule,
   fixedUpdate,
+  modelAsset,
+  type IEcsDeclaration,
 } from "@threenative/sdk";
 
 import { CompilerError } from "./errors.js";
@@ -69,6 +74,13 @@ function lowerSceneDocument(sourcePath: string, scene: ISceneDocument): unknown 
   const prefabs = new Map((scene.prefabs ?? []).map((prefab) => [prefab.id, prefab]));
   const entities = [...(scene.entities ?? [])].sort((left, right) => left.id.localeCompare(right.id));
   const worldEntities = [];
+  const worldResources = [...(scene.resources ?? [])]
+    .filter((resource) => resource.value !== undefined)
+    .map((resource) => defineResourceModule({
+      id: resource.id,
+      resource: genericEcsDeclaration("resource", resource.id, readRecord(resource.value) ?? { value: resource.value }),
+      source: { sourcePath },
+    }));
 
   for (const entity of entities) {
     const transform = normalizeTransform(entity.transform);
@@ -83,7 +95,10 @@ function lowerSceneDocument(sourcePath: string, scene: ISceneDocument): unknown 
       visualScene.add(mesh);
 
       worldEntities.push({
-        components: [PrefabTransform(prefabTransform)],
+        components: [
+          PrefabTransform(prefabTransform),
+          ...genericComponents(entity.components),
+        ],
         id: entity.id,
         source: { sourcePath },
         transform: prefabTransform,
@@ -91,7 +106,7 @@ function lowerSceneDocument(sourcePath: string, scene: ISceneDocument): unknown 
     }
   }
 
-  const world = defineWorldModule({ entities: worldEntities });
+  const world = defineWorldModule({ entities: worldEntities, resources: worldResources });
   for (const system of [...(scene.systems ?? [])].sort((left, right) => left.id.localeCompare(right.id))) {
     if (system.script === undefined) {
       continue;
@@ -127,6 +142,55 @@ function lowerSceneDocument(sourcePath: string, scene: ISceneDocument): unknown 
   });
 }
 
+function genericComponents(components: unknown): IEcsDeclaration[] {
+  const record = readRecord(components);
+  if (record === undefined) {
+    return [];
+  }
+  return Object.entries(record)
+    .filter(([kind]) => kind !== "camera")
+    .map(([kind, value]) => genericEcsDeclaration("component", kind, readRecord(value) ?? {}));
+}
+
+function genericEcsDeclaration(kind: "component" | "resource", name: string, data: Record<string, unknown>): IEcsDeclaration {
+  const entries = Object.entries(data).map(([field, value]) => {
+    const fieldKind = inferSchemaFieldKind(value);
+    return [field, fieldKind, normalizeSchemaFieldValue(value, fieldKind)] as const;
+  });
+  const fields = Object.fromEntries(entries.map(([field, fieldKind]) => [field, fieldKind]));
+  const normalizedData = Object.fromEntries(entries.map(([field, , value]) => [field, value]));
+  const factory = kind === "component" ? defineComponent(name, fields) : defineResource(name, fields);
+  return factory(normalizedData);
+}
+
+function normalizeSchemaFieldValue(value: unknown, fieldKind: ReturnType<typeof inferSchemaFieldKind>): unknown {
+  if (fieldKind === "string" && typeof value !== "string") {
+    return JSON.stringify(value);
+  }
+  return value;
+}
+
+function inferSchemaFieldKind(value: unknown): "boolean" | "number" | "string" | "vec2" | "vec3" | "vec4" {
+  if (typeof value === "boolean") {
+    return "boolean";
+  }
+  if (typeof value === "number") {
+    return Number.isInteger(value) ? "number" : "number";
+  }
+  if (Array.isArray(value) && value.every((item) => typeof item === "number" && Number.isFinite(item))) {
+    if (value.length === 2) {
+      return "vec2";
+    }
+    if (value.length === 3) {
+      return "vec3";
+    }
+    if (value.length === 4) {
+      return "vec4";
+    }
+  }
+  return "string";
+}
+
 function normalizeTransform(transform: ISceneTransform | undefined): VisualTransform {
   return {
     ...(vector3(readRecord(transform)?.position) === undefined ? {} : { position: vector3(readRecord(transform)?.position) }),
@@ -146,6 +210,7 @@ function toWorldTransform(transform: VisualTransform): WorldTransform {
 function meshFromEntity(entityId: string, prefab: IScenePrefab | undefined, transform: ReturnType<typeof normalizeTransform>): Mesh {
   const primitive = prefab?.primitive ?? "box";
   const mesh = new Mesh({
+    ...(prefab?.asset === undefined ? {} : { assetRefs: [modelAsset(`scene.prefab.${prefab.id}`, prefab.asset)] }),
     geometry: geometryForPrimitive(primitive),
     id: entityId,
     material: new MeshStandardMaterial({ color: prefab?.color ?? "#2f80ed", roughness: 0.55 }),

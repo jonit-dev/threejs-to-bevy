@@ -7,8 +7,11 @@ import {
   bindUi,
   createScene,
   inspectScene,
+  removeComponent,
   setCamera,
+  setComponent,
   setPrefabColor,
+  setResource,
   setTransform,
   validateScene,
   type IAuthoringOperationResult,
@@ -72,9 +75,9 @@ export async function sceneCommand(argv: readonly string[], options: ISceneComma
     const sceneId = readPositional(normalizedArgv, 1);
     const prefabId = readPositional(normalizedArgv, 2);
     if (sceneId === undefined || prefabId === undefined) {
-      return renderUsage(json, "TN_SCENE_ADD_PREFAB_ARGS_MISSING", "Usage: tn scene add-prefab <scene-id> <prefab-id> [--primitive <primitive>] [--color <css-color>] [--project <path>] [--json]");
+      return renderUsage(json, "TN_SCENE_ADD_PREFAB_ARGS_MISSING", "Usage: tn scene add-prefab <scene-id> <prefab-id> [--primitive <primitive>] [--color <css-color>] [--asset <path.glb>] [--project <path>] [--json]");
     }
-    const result = await addPrefab({ projectPath, sceneId, prefabId, primitive: readFlag(normalizedArgv, "--primitive"), color: readFlag(normalizedArgv, "--color") });
+    const result = await addPrefab({ projectPath, sceneId, prefabId, primitive: readFlag(normalizedArgv, "--primitive"), color: readFlag(normalizedArgv, "--color"), asset: readFlag(normalizedArgv, "--asset") });
     return renderSceneResult(result, json, result.ok ? `Prefab '${prefabId}' added.` : `Prefab '${prefabId}' was not added.`);
   }
 
@@ -95,8 +98,26 @@ export async function sceneCommand(argv: readonly string[], options: ISceneComma
     if (sceneId === undefined || resourceId === undefined) {
       return renderUsage(json, "TN_SCENE_ADD_RESOURCE_ARGS_MISSING", "Usage: tn scene add-resource <scene-id> <resource-id> [--path <resource.path>] [--project <path>] [--json]");
     }
-    const result = await addResource({ projectPath, sceneId, resourceId, path: readFlag(normalizedArgv, "--path") });
+    const parsedValue = parseJsonFlag(normalizedArgv, "--value");
+    if (parsedValue.diagnostic !== undefined) {
+      return renderUsage(json, parsedValue.diagnostic, "Resource value must be valid JSON.");
+    }
+    const result = await addResource({ projectPath, sceneId, resourceId, path: readFlag(normalizedArgv, "--path"), value: parsedValue.value });
     return renderSceneResult(result, json, result.ok ? `Resource '${resourceId}' added.` : `Resource '${resourceId}' was not added.`);
+  }
+
+  if (subcommand === "set-resource") {
+    const sceneId = readPositional(normalizedArgv, 1);
+    const resourceId = readPositional(normalizedArgv, 2);
+    if (sceneId === undefined || resourceId === undefined) {
+      return renderUsage(json, "TN_SCENE_SET_RESOURCE_ARGS_MISSING", "Usage: tn scene set-resource <scene-id> <resource-id> [--path <resource.path>] [--value <json>] [--project <path>] [--json]");
+    }
+    const parsedValue = parseJsonFlag(normalizedArgv, "--value");
+    if (parsedValue.diagnostic !== undefined) {
+      return renderUsage(json, parsedValue.diagnostic, "Resource value must be valid JSON.");
+    }
+    const result = await setResource({ projectPath, sceneId, resourceId, path: readFlag(normalizedArgv, "--path"), value: parsedValue.value });
+    return renderSceneResult(result, json, result.ok ? `Resource '${resourceId}' updated.` : `Resource '${resourceId}' was not updated.`);
   }
 
   if (subcommand === "add-ui-node") {
@@ -133,6 +154,32 @@ export async function sceneCommand(argv: readonly string[], options: ISceneComma
     }
     const result = await setCamera({ projectPath, sceneId, cameraId, mode, targetId });
     return renderSceneResult(result, json, result.ok ? `Camera '${cameraId}' updated.` : `Camera '${cameraId}' was not updated.`);
+  }
+
+  if (subcommand === "set-component") {
+    const sceneId = readPositional(normalizedArgv, 1);
+    const entityId = readPositional(normalizedArgv, 2);
+    const componentKind = readPositional(normalizedArgv, 3);
+    const parsedValue = parseJsonFlag(normalizedArgv, "--value");
+    if (sceneId === undefined || entityId === undefined || componentKind === undefined || parsedValue.value === undefined) {
+      return renderUsage(json, "TN_SCENE_SET_COMPONENT_ARGS_MISSING", "Usage: tn scene set-component <scene-id> <entity-id> <component-kind> --value <json-object> [--project <path>] [--json]");
+    }
+    if (parsedValue.diagnostic !== undefined || !isRecord(parsedValue.value)) {
+      return renderUsage(json, parsedValue.diagnostic ?? "TN_SCENE_COMPONENT_VALUE_INVALID", "Component value must be a valid JSON object.");
+    }
+    const result = await setComponent({ projectPath, sceneId, entityId, componentKind, value: parsedValue.value });
+    return renderSceneResult(result, json, result.ok ? `Component '${componentKind}' set on '${entityId}'.` : `Component '${componentKind}' was not set on '${entityId}'.`);
+  }
+
+  if (subcommand === "remove-component") {
+    const sceneId = readPositional(normalizedArgv, 1);
+    const entityId = readPositional(normalizedArgv, 2);
+    const componentKind = readPositional(normalizedArgv, 3);
+    if (sceneId === undefined || entityId === undefined || componentKind === undefined) {
+      return renderUsage(json, "TN_SCENE_REMOVE_COMPONENT_ARGS_MISSING", "Usage: tn scene remove-component <scene-id> <entity-id> <component-kind> [--project <path>] [--json]");
+    }
+    const result = await removeComponent({ projectPath, sceneId, entityId, componentKind });
+    return renderSceneResult(result, json, result.ok ? `Component '${componentKind}' removed from '${entityId}'.` : `Component '${componentKind}' was not removed from '${entityId}'.`);
   }
 
   if (subcommand === "attach-script") {
@@ -249,6 +296,22 @@ function readFlag(argv: readonly string[], flag: string): string | undefined {
   return index === -1 ? undefined : argv[index + 1];
 }
 
+function parseJsonFlag(argv: readonly string[], flag: string): { diagnostic?: string; value?: unknown } {
+  const raw = readFlag(argv, flag);
+  if (raw === undefined) {
+    return {};
+  }
+  try {
+    return { value: JSON.parse(raw) };
+  } catch {
+    return { diagnostic: "TN_SCENE_JSON_VALUE_INVALID" };
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 function readPositional(argv: readonly string[], index: number): string | undefined {
   const positionals = argv.filter((arg, argIndex) => {
     if (arg.startsWith("--")) {
@@ -260,7 +323,7 @@ function readPositional(argv: readonly string[], index: number): string | undefi
   return positionals[index];
 }
 
-const flagsWithValues = new Set(["--project", "--file", "--prefab", "--primitive", "--color", "--path", "--position", "--rotation", "--scale", "--mode", "--target", "--module", "--export", "--resource", "--out", "--web-url", "--camera", "--native-frame"]);
+const flagsWithValues = new Set(["--project", "--file", "--prefab", "--primitive", "--color", "--asset", "--path", "--value", "--position", "--rotation", "--scale", "--mode", "--target", "--module", "--export", "--resource", "--out", "--web-url", "--camera", "--native-frame"]);
 
 function sceneUsage(): string {
   return "Usage: tn scene create <scene-id> [--file <path>] [--project <path>] [--json]\n       tn scene validate [scene-id] [--project <path>] [--json]\n       tn scene inspect <scene-id> [--project <path>] [--json]\n       tn scene proof <scene-id> --project <path> --out <dir> [--web-url <url>] [--native] [--json]";

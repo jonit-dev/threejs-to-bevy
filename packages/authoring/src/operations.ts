@@ -89,6 +89,7 @@ export interface IAddPrefabOptions extends IAuthoringOperationContext {
   prefabId: string;
   primitive?: string;
   color?: string;
+  asset?: string;
 }
 
 export interface ISetPrefabColorOptions extends IAuthoringOperationContext {
@@ -101,6 +102,27 @@ export interface IAddResourceOptions extends IAuthoringOperationContext {
   sceneId: string;
   resourceId: string;
   path?: string;
+  value?: unknown;
+}
+
+export interface ISetResourceOptions extends IAuthoringOperationContext {
+  sceneId: string;
+  resourceId: string;
+  path?: string;
+  value?: unknown;
+}
+
+export interface ISetComponentOptions extends IAuthoringOperationContext {
+  sceneId: string;
+  entityId: string;
+  componentKind: string;
+  value: Record<string, unknown>;
+}
+
+export interface IRemoveComponentOptions extends IAuthoringOperationContext {
+  sceneId: string;
+  entityId: string;
+  componentKind: string;
 }
 
 export interface IAddUiNodeOptions extends IAuthoringOperationContext {
@@ -349,6 +371,7 @@ export async function addPrefab(options: IAddPrefabOptions): Promise<IAuthoringO
       id: options.prefabId,
       ...(options.primitive === undefined ? {} : { primitive: options.primitive }),
       ...(options.color === undefined ? {} : { color: options.color }),
+      ...(options.asset === undefined ? {} : { asset: options.asset }),
     });
   });
 }
@@ -370,7 +393,52 @@ export async function addResource(options: IAddResourceOptions): Promise<IAuthor
     resources.push({
       id: options.resourceId,
       ...(options.path === undefined ? {} : { path: options.path }),
+      ...(options.value === undefined ? {} : { value: options.value }),
     });
+  });
+}
+
+export async function setResource(options: ISetResourceOptions): Promise<IAuthoringOperationResult> {
+  return mutateScene(options, (scene, file) => {
+    const resource = findSceneItem(scene.resources, options.resourceId);
+    if (resource === undefined) {
+      return [missingReferenceDiagnostic(file, "/resources", "resource", options.resourceId, idsFromArray(scene.resources))];
+    }
+    if (options.path !== undefined) {
+      resource.path = options.path;
+    }
+    if (options.value !== undefined) {
+      resource.value = options.value;
+    }
+    return [];
+  });
+}
+
+export async function setComponent(options: ISetComponentOptions): Promise<IAuthoringOperationResult> {
+  return mutateScene(options, (scene, file) => {
+    const entity = findSceneItem(scene.entities, options.entityId);
+    if (entity === undefined) {
+      return [missingReferenceDiagnostic(file, "/entities", "entity", options.entityId, idsFromArray(scene.entities))];
+    }
+    entity.components = {
+      ...(isRecord(entity.components) ? entity.components : {}),
+      [options.componentKind]: options.value,
+    };
+    return [];
+  });
+}
+
+export async function removeComponent(options: IRemoveComponentOptions): Promise<IAuthoringOperationResult> {
+  return mutateScene(options, (scene, file) => {
+    const entity = findSceneItem(scene.entities, options.entityId);
+    if (entity === undefined) {
+      return [missingReferenceDiagnostic(file, "/entities", "entity", options.entityId, idsFromArray(scene.entities))];
+    }
+    if (!isRecord(entity.components)) {
+      return [];
+    }
+    delete entity.components[options.componentKind];
+    return [];
   });
 }
 
@@ -583,6 +651,9 @@ function validatePrefabs(diagnostics: IAuthoringDiagnostic[], file: string, valu
     if (prefab.color !== undefined && readString(prefab.color) === undefined) {
       diagnostics.push(typeDiagnostic(file, `/prefabs/${index}/color`, "prefab color must be a non-empty string.", prefab.color));
     }
+    if (prefab.asset !== undefined && readString(prefab.asset) === undefined) {
+      diagnostics.push(typeDiagnostic(file, `/prefabs/${index}/asset`, "prefab asset must be a non-empty project-relative asset path.", prefab.asset));
+    }
   });
 }
 
@@ -720,20 +791,10 @@ function validateComponents(diagnostics: IAuthoringDiagnostic[], file: string, p
   }
 
   for (const [kind, component] of Object.entries(value)) {
-    if (!supportedComponentKinds.has(kind)) {
-      diagnostics.push(
-        authoringDiagnostic({
-          code: "TN_AUTHORING_COMPONENT_KIND_UNKNOWN",
-          file,
-          message: `Unknown component kind '${kind}'.`,
-          path: `${path}/${escapeJsonPointer(kind)}`,
-          value: kind,
-          suggestion: "Use a supported structured authoring component kind.",
-        }),
-      );
+    if (!isRecord(component)) {
+      diagnostics.push(typeDiagnostic(file, `${path}/${escapeJsonPointer(kind)}`, `component '${kind}' must be an object.`, component));
       continue;
     }
-
     if (kind === "camera") {
       validateCameraComponent(diagnostics, file, `${path}/camera`, component, entityIds);
     }
@@ -784,7 +845,26 @@ function validateResources(diagnostics: IAuthoringDiagnostic[], file: string, va
     } else if (sourcePath !== undefined && isGeneratedArtifactPath(sourcePath)) {
       diagnostics.push(generatedPathDiagnostic(file, path, sourcePath));
     }
+    if (resource.value !== undefined && !isPortableJson(resource.value)) {
+      diagnostics.push(typeDiagnostic(file, `/resources/${index}/value`, "resource value must be portable JSON.", resource.value));
+    }
   });
+}
+
+function isPortableJson(value: unknown): boolean {
+  if (value === null || typeof value === "string" || typeof value === "boolean") {
+    return true;
+  }
+  if (typeof value === "number") {
+    return Number.isFinite(value);
+  }
+  if (Array.isArray(value)) {
+    return value.every(isPortableJson);
+  }
+  if (isRecord(value)) {
+    return Object.values(value).every(isPortableJson);
+  }
+  return false;
 }
 
 async function validateSystems(
