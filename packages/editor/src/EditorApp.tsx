@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Box, Camera, FolderOpen, Image, Lightbulb, MessageSquare, Mountain, PackagePlus, Pause, Play, Save, Settings, Square, Trash2 } from "lucide-react";
 
 import type { IEditorAdapterInput, IEditorAddComponentDefinition, IEditorModalActionDefinition, IEditorPropertyRow, IEditorShellModel } from "./adapters/editorModel.js";
@@ -6,7 +6,7 @@ import { createEditorShellModel, EDITOR_MODAL_ACTION_DEFINITIONS } from "./adapt
 import { PanelShell } from "./components/layout/PanelShell.js";
 import { HierarchyPanel } from "./components/panels/HierarchyPanel.js";
 import { InspectorPanel } from "./components/panels/InspectorPanel.js";
-import { EditorViewport3d, type IViewportTransform } from "./preview/EditorViewport3d.js";
+import { EditorViewport3d, type EditorViewportGizmoMode, type IViewportTransform } from "./preview/EditorViewport3d.js";
 import { useEditorStore, type EditorModal } from "./state/editorStore.js";
 
 export interface IEditorAppProps {
@@ -23,13 +23,36 @@ export interface IEditorAppProps {
   toolbarSlot?: ReactNode;
 }
 
+const EDITOR_GIZMO_MODE_BUTTONS: Array<{ key: "E" | "R" | "W"; label: string; mode: EditorViewportGizmoMode }> = [
+  { key: "W", label: "Move", mode: "translate" },
+  { key: "E", label: "Rotate", mode: "rotate" },
+  { key: "R", label: "Scale", mode: "scale" },
+];
+
 export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPreview, onCreateScene, onEditProperty, onMoveRow, onSaveScene, onSelectRow, onTransformObject, toolbarSlot }: IEditorAppProps) {
   const modal = useEditorStore((state) => state.modal);
+  const gizmoMode = useEditorStore((state) => state.gizmoMode);
+  const setGizmoMode = useEditorStore((state) => state.setGizmoMode);
   const openModal = useEditorStore((state) => state.openModal);
   const closeModal = useEditorStore((state) => state.closeModal);
   const model = createEditorShellModel(input);
   const objectCount = countTreeRows(model.hierarchy);
   const statusMessage = model.diagnostics.some((diagnostic) => diagnostic.severity === "error") ? "Needs attention" : "Ready";
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (isTextInputTarget(event.target)) {
+        return;
+      }
+      const mode = gizmoModeFromKey(event.key);
+      if (mode === undefined) {
+        return;
+      }
+      event.preventDefault();
+      setGizmoMode(mode);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [setGizmoMode]);
   return (
     <main className="tn-editor-shell">
       <header className="tn-editor-menubar" aria-label="Main menu">
@@ -80,16 +103,25 @@ export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPr
           </PanelShell>
         </aside>
         <section className="tn-editor-preview" aria-label="Preview">
-          <EditorViewport3d objects={model.sceneObjects} selectedRowId={model.selectedRowId} onSelectObject={onSelectRow} onTransformObject={onTransformObject} />
+          <EditorViewport3d gizmoMode={gizmoMode} objects={model.sceneObjects} selectedRowId={model.selectedRowId} onSelectObject={onSelectRow} onTransformObject={onTransformObject} />
           <div className="tn-editor-viewport-label">
             <span />
             <strong>Viewport</strong>
             <small>Entity {model.selectedRowId === undefined ? "-" : model.selectedRowId.split(":").pop()}</small>
           </div>
           <div className="tn-editor-gizmo-switcher" aria-label="Gizmo mode">
-            <button className="tn-editor-gizmo-switcher__active" type="button">Move <kbd>W</kbd></button>
-            <button type="button">Rotate <kbd>E</kbd></button>
-            <button type="button">Scale <kbd>R</kbd></button>
+            {EDITOR_GIZMO_MODE_BUTTONS.map((button) => (
+              <button
+                aria-pressed={gizmoMode === button.mode}
+                className={gizmoMode === button.mode ? "tn-editor-gizmo-switcher__active" : undefined}
+                key={button.mode}
+                onClick={() => setGizmoMode(button.mode)}
+                title={`${button.label} gizmo mode`}
+                type="button"
+              >
+                {button.label} <kbd>{button.key}</kbd>
+              </button>
+            ))}
           </div>
           {model.status === "empty" ? (
             <div className="tn-editor-preview__message">
@@ -177,6 +209,26 @@ export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPr
       />
     </main>
   );
+}
+
+function gizmoModeFromKey(key: string): EditorViewportGizmoMode | undefined {
+  switch (key.toLowerCase()) {
+    case "e":
+      return "rotate";
+    case "r":
+      return "scale";
+    case "w":
+      return "translate";
+    default:
+      return undefined;
+  }
+}
+
+function isTextInputTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+  return target.isContentEditable || ["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName);
 }
 
 export function EditorModalView({

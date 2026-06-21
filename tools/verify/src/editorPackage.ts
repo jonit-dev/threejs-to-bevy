@@ -98,6 +98,7 @@ export async function runEditorPackageGate(root = process.cwd()): Promise<Verifi
       }
       await page.getByRole("button", { name: /base_basic_shaded 0 entity/ }).click();
       await assertViewportTransformSync(page);
+      await assertGizmoModeControls(page);
       await page.screenshot({ path: artifacts.smokeScreenshot, fullPage: true });
 
       await assertModalPlaceholderState(page);
@@ -525,6 +526,28 @@ async function assertViewportTransformSync(page: Page): Promise<void> {
     const object = payload.sceneObjects?.find((candidate) => candidate.id === "base-basic-shaded-0");
     return object?.position?.[0] === expected;
   }, after, { timeout: 10_000 });
+}
+
+async function assertGizmoModeControls(page: Page): Promise<void> {
+  await page.locator('button[title="Rotate gizmo mode"]').click();
+  await expectGizmoModePressed(page, "Rotate");
+  await page.locator('button[title="Scale gizmo mode"]').click();
+  await expectGizmoModePressed(page, "Scale");
+  await page.locator('button[title="Move gizmo mode"]').click();
+  await expectGizmoModePressed(page, "Move");
+}
+
+async function expectGizmoModePressed(page: Page, label: "Move" | "Rotate" | "Scale"): Promise<void> {
+  const button = page.locator(`button[title="${label} gizmo mode"]`);
+  await button.waitFor({ timeout: 10_000 });
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    if ((await button.getAttribute("aria-pressed")) === "true") {
+      return;
+    }
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
+  }
+  throw new Error(`${label} gizmo mode did not become active.`);
 }
 
 async function waitForPositionInputChange(input: Locator, previous: number): Promise<void> {

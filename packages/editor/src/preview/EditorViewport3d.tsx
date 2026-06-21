@@ -8,11 +8,14 @@ import type { IEditorSceneObject } from "../adapters/editorModel.js";
 import { markViewportSelectionOwner, resolveViewportSelectionOwnerRowId } from "./selectionBridge.js";
 
 export interface IEditorViewport3dProps {
+  gizmoMode?: EditorViewportGizmoMode;
   objects: readonly IEditorSceneObject[];
   onTransformObject?: (rowId: string, transform: IViewportTransform) => void;
   onSelectObject?: (rowId: string) => void;
   selectedRowId?: string;
 }
+
+export type EditorViewportGizmoMode = "rotate" | "scale" | "translate";
 
 export interface IViewportTransform {
   position: [number, number, number];
@@ -20,7 +23,7 @@ export interface IViewportTransform {
   scale: [number, number, number];
 }
 
-export function EditorViewport3d({ objects, onSelectObject, onTransformObject, selectedRowId }: IEditorViewport3dProps) {
+export function EditorViewport3d({ gizmoMode = "translate", objects, onSelectObject, onTransformObject, selectedRowId }: IEditorViewport3dProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const onSelectRef = useRef(onSelectObject);
   const onTransformRef = useRef(onTransformObject);
@@ -77,7 +80,7 @@ export function EditorViewport3d({ objects, onSelectObject, onTransformObject, s
     const objectByRowId = new Map<string, THREE.Object3D>();
     let selection: THREE.BoxHelper | undefined;
     const transformControls = new TransformControls(camera, renderer.domElement);
-    transformControls.setMode("translate");
+    transformControls.setMode(gizmoMode);
     transformControls.setSize(0.82);
     transformControls.setColors("#ff1f35", "#00ff66", "#155cff", "#ffffff");
     const transformHelper = transformControls.getHelper();
@@ -177,7 +180,7 @@ export function EditorViewport3d({ objects, onSelectObject, onTransformObject, s
       dracoLoader.dispose();
       renderer.dispose();
     };
-  }, [objects, selectedRowId]);
+  }, [gizmoMode, objects, selectedRowId]);
 
   return <div className="tn-editor-viewport-canvas" ref={hostRef} />;
 }

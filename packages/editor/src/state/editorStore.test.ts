@@ -59,6 +59,16 @@ test("should apply and clear viewport transform overrides", () => {
   assert.equal(useEditorStore.getState().transformByRowId["entity:player"], undefined);
 });
 
+test("should switch viewport gizmo mode through editor store", () => {
+  useEditorStore.getState().reset();
+
+  useEditorStore.getState().setGizmoMode("rotate");
+  assert.equal(useEditorStore.getState().gizmoMode, "rotate");
+
+  useEditorStore.getState().setGizmoMode("scale");
+  assert.equal(useEditorStore.getState().gizmoMode, "scale");
+});
+
 test("should store project payload and selected row together", () => {
   useEditorStore.getState().reset();
 

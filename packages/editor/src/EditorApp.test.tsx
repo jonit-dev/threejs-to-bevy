@@ -79,6 +79,17 @@ test("should disable modal actions without source operations", () => {
   assert.match(html, /Custom GLB import needs a promoted asset and prefab operation before it can be enabled/);
 });
 
+test("should expose accessible gizmo mode controls", () => {
+  useEditorStore.getState().reset();
+
+  const html = renderToStaticMarkup(<EditorApp model={modelFixture()} />);
+
+  assert.match(html, /aria-label="Gizmo mode"/);
+  assert.match(html, /aria-pressed="true"[^>]*title="Move gizmo mode"/);
+  assert.match(html, /title="Rotate gizmo mode"/);
+  assert.match(html, /title="Scale gizmo mode"/);
+});
+
 function modelFixture(): IEditorShellModel {
   return {
     addComponentDefinitions: [...EDITOR_ADD_COMPONENT_DEFINITIONS],

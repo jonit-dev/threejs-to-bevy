@@ -177,11 +177,11 @@ remains authoritative.
 
 **Implementation:**
 
-- [ ] Wire Move/Rotate/Scale buttons to real viewport modes.
-- [ ] Add W/E/R shortcuts scoped to the editor shell.
-- [ ] Persist translate, rotate, and scale values through `scene.set_transform`.
-- [ ] Refresh inspector values after successful mutation.
-- [ ] Render transform controls disabled when the selected object lacks a
+- [x] Wire Move/Rotate/Scale buttons to real viewport modes.
+- [x] Add W/E/R shortcuts scoped to the editor shell.
+- [x] Persist translate, rotate, and scale values through `scene.set_transform`.
+- [x] Refresh inspector values after successful mutation.
+- [x] Render transform controls disabled when the selected object lacks a
   source-persistable transform.
 
 **Tests Required:**
@@ -190,6 +190,14 @@ remains authoritative.
 |-----------|-----------|-----------|
 | `packages/editor/src/EditorApp.test.tsx` | `should switch gizmo mode when toolbar buttons are pressed` | active mode and viewport prop change |
 | `packages/editor/src/EditorApp.test.tsx` | `should dispatch transform edits through the selected row operation` | callback receives row id and transform |
+
+**Completion Evidence:**
+
+- `pnpm --filter @threenative/editor test` - 56 tests passing, including
+  accessible gizmo controls and editor store gizmo mode changes.
+- `pnpm verify:focused verify:editor-package` - pass; browser proof switches
+  Rotate, Scale, and Move mode buttons and continues to prove transform source
+  persistence through `scene.set_transform`.
 
 **User Verification:**
 

@@ -218,6 +218,10 @@ The viewport selection contract now lives in shared editor preview helpers:
 loaded GLB children and placeholder meshes resolve to their owning hierarchy row,
 nearest row ownership wins, and helper geometry can be marked non-selectable so
 viewport picking does not desynchronize hierarchy, inspector, and gizmo state.
+Viewport gizmo mode is now real editor state: Move/Rotate/Scale buttons update
+the Three.js `TransformControls` mode, W/E/R shortcuts change modes outside text
+inputs, and the focused editor gate asserts visible mode changes alongside
+source-backed transform persistence.
 The functional editor operation-coverage audit now exposes a shared coverage
 matrix for inspector fields and modal actions. Focused editor tests fail if an
 editable inspector row lacks an operation payload or if a read-only row/action

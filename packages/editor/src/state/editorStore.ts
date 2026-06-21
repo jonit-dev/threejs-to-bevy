@@ -1,7 +1,7 @@
 import { create } from "zustand";
 
 import type { IEditorAddComponentDefinition, IEditorLodStats, IEditorModalActionDefinition, IEditorPropertyRow, IEditorSceneObject } from "../adapters/editorModel.js";
-import type { IViewportTransform } from "../preview/EditorViewport3d.js";
+import type { EditorViewportGizmoMode, IViewportTransform } from "../preview/EditorViewport3d.js";
 
 export type EditorModal = "addComponent" | "addObject" | "build" | "chat" | "delete" | "newScene" | "save" | "settings" | undefined;
 
@@ -21,6 +21,7 @@ export interface IEditorProjectDocumentGroup {
 }
 
 export interface IEditorSessionState {
+  gizmoMode: EditorViewportGizmoMode;
   modal: EditorModal;
   parentByRowId: Record<string, string | undefined>;
   project?: IEditorProjectPayload;
@@ -43,6 +44,7 @@ export interface IEditorSessionActions {
   reset: (state?: Partial<IEditorSessionState>) => void;
   saveScene: () => Promise<void>;
   selectRow: (rowId: string | undefined) => void;
+  setGizmoMode: (mode: EditorViewportGizmoMode) => void;
   setParent: (rowId: string, parentId: string | undefined) => boolean;
   setProject: (project: IEditorProjectPayload | undefined) => void;
   setStatus: (status: string) => void;
@@ -58,6 +60,7 @@ export interface IRefreshProjectOptions {
 }
 
 export const defaultEditorSessionState: IEditorSessionState = {
+  gizmoMode: "translate",
   modal: undefined,
   parentByRowId: {},
   project: undefined,
@@ -211,6 +214,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     }
   },
   selectRow: (selectedRowId) => set({ selectedRowId }),
+  setGizmoMode: (gizmoMode) => set({ gizmoMode }),
   setParent: (rowId, parentId) => {
     const current = get().parentByRowId;
     if (rowId === parentId || (parentId !== undefined && isDescendant(parentId, rowId, current))) {
