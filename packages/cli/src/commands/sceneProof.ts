@@ -156,7 +156,7 @@ export async function sceneProofCommand(argv: readonly string[], options: IScene
   if (native) {
     const bevyPath = resolve(outDir, "bevy.png");
     const resolvedCameraId = cameraId ?? await readActiveCameraId(bundlePath) ?? "camera.main";
-    const repoRoot = options.repoRoot ?? resolve(fileURLToPath(new URL("../../../../", import.meta.url)));
+    const repoRoot = options.repoRoot ?? resolveDefaultNativeRepoRoot();
     const nativeCommand = formatNativeCaptureCommand({
       bundlePath,
       cameraId: resolvedCameraId,
@@ -288,6 +288,14 @@ function formatNativeCaptureCommand(options: { bundlePath: string; cameraId: str
 
 function nativeCaptureTimeout(invocation: INativeCaptureInvocation): number {
   return invocation.cwd === undefined ? 120_000 : 180_000;
+}
+
+function resolveDefaultNativeRepoRoot(): string {
+  const packagedDistRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
+  if (existsSync(resolve(packagedDistRoot, "runtime-bevy", "Cargo.toml"))) {
+    return packagedDistRoot;
+  }
+  return resolve(fileURLToPath(new URL("../../../../", import.meta.url)));
 }
 
 function hasGraphicalDisplay(env: NodeJS.ProcessEnv): boolean {
