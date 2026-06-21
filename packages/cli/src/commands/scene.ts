@@ -2,11 +2,13 @@ import {
   addEntity,
   attachScript,
   bindUi,
+  createScene,
   inspectScene,
   setCamera,
   setTransform,
   validateScene,
   type IAuthoringOperationResult,
+  type ICreateSceneResult,
   type IInspectSceneResult,
 } from "@threenative/authoring";
 import { isAbsolute, resolve } from "node:path";
@@ -22,6 +24,15 @@ export async function sceneCommand(argv: readonly string[], options: ISceneComma
   const [subcommand] = normalizedArgv;
   const json = normalizedArgv.includes("--json");
   const projectPath = resolveProjectPath(normalizedArgv, options.cwd);
+
+  if (subcommand === "create") {
+    const sceneId = readPositional(normalizedArgv, 1);
+    if (sceneId === undefined) {
+      return renderUsage(json, "TN_SCENE_CREATE_ID_MISSING", "Usage: tn scene create <scene-id> [--file <path>] [--project <path>] [--json]");
+    }
+    const result = await createScene({ projectPath, sceneId, file: readFlag(normalizedArgv, "--file") });
+    return renderCreateSceneResult(result, json);
+  }
 
   if (subcommand === "validate") {
     const sceneId = readPositional(normalizedArgv, 1);
@@ -97,7 +108,41 @@ export async function sceneCommand(argv: readonly string[], options: ISceneComma
     return renderSceneResult(result, json, result.ok ? `UI node '${uiNodeId}' bound.` : `UI node '${uiNodeId}' was not bound.`);
   }
 
-  return renderUsage(json, "TN_SCENE_COMMAND_UNKNOWN", "Usage: tn scene validate [scene-id] [--project <path>] [--json]\n       tn scene inspect <scene-id> [--project <path>] [--json]");
+  return renderUsage(json, "TN_SCENE_COMMAND_UNKNOWN", sceneUsage());
+}
+
+function renderCreateSceneResult(result: ICreateSceneResult, json: boolean): ICommandResult {
+  const message = result.ok ? `Scene '${result.sceneId}' created.` : `Scene '${result.sceneId}' was not created.`;
+  const payload = {
+    code: result.ok ? "TN_SCENE_OK" : "TN_SCENE_FAILED",
+    message,
+    sceneId: result.sceneId,
+    file: result.file,
+    changed: result.changed,
+    diagnostics: result.diagnostics,
+    nextCommands: result.nextCommands,
+  };
+
+  if (json) {
+    return {
+      exitCode: result.ok ? 0 : 1,
+      stdout: `${JSON.stringify(payload, null, 2)}\n`,
+    };
+  }
+
+  if (result.ok) {
+    return {
+      exitCode: 0,
+      stdout: `${message}\nFile: ${result.file}\nNext:\n${result.nextCommands.map((command) => `  ${command}`).join("\n")}\n`,
+    };
+  }
+
+  const diagnostics = result.diagnostics.map((diagnostic) => `${diagnostic.code} ${diagnostic.file ?? ""}${diagnostic.path ?? ""}: ${diagnostic.message}`).join("\n");
+  return {
+    exitCode: 1,
+    stderr: `${message}\n${diagnostics}\n`,
+    stdout: "",
+  };
 }
 
 function renderSceneResult(result: IAuthoringOperationResult | IInspectSceneResult, json: boolean, message: string): ICommandResult {
@@ -165,7 +210,11 @@ function readPositional(argv: readonly string[], index: number): string | undefi
   return positionals[index];
 }
 
-const flagsWithValues = new Set(["--project", "--prefab", "--position", "--rotation", "--scale", "--mode", "--target", "--module", "--export", "--resource"]);
+const flagsWithValues = new Set(["--project", "--file", "--prefab", "--position", "--rotation", "--scale", "--mode", "--target", "--module", "--export", "--resource"]);
+
+function sceneUsage(): string {
+  return "Usage: tn scene create <scene-id> [--file <path>] [--project <path>] [--json]\n       tn scene validate [scene-id] [--project <path>] [--json]\n       tn scene inspect <scene-id> [--project <path>] [--json]";
+}
 
 function parseTransformVectors(argv: readonly string[]): { diagnostic?: string; value?: { position?: [number, number, number]; rotation?: [number, number, number]; scale?: [number, number, number] } } {
   const value: { position?: [number, number, number]; rotation?: [number, number, number]; scale?: [number, number, number] } = {};

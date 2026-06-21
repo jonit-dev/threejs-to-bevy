@@ -1,7 +1,7 @@
-import { access, readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { access, mkdir, readFile } from "node:fs/promises";
+import { dirname, relative, resolve } from "node:path";
 
-import { isGeneratedArtifactPath, writeAuthoringJsonDocument } from "./documents.js";
+import { isGeneratedArtifactPath, normalizeRelativePath, writeAuthoringJsonDocument, type IAuthoringDocument } from "./documents.js";
 import { authoringDiagnostic, hasAuthoringErrors, sortAuthoringDiagnostics, type IAuthoringDiagnostic } from "./diagnostics.js";
 import { loadAuthoringProject, type IAuthoringProject } from "./project.js";
 import {
@@ -73,6 +73,11 @@ export interface IValidateSceneOptions extends IAuthoringOperationContext {
   sceneId?: string;
 }
 
+export interface ICreateSceneOptions extends IAuthoringOperationContext {
+  sceneId: string;
+  file?: string;
+}
+
 export interface IAddEntityOptions extends IAuthoringOperationContext {
   sceneId: string;
   entityId: string;
@@ -117,8 +122,124 @@ export interface ISceneInspection {
   uiNodes: string[];
 }
 
+export interface ICreateSceneResult extends IAuthoringOperationResult {
+  sceneId: string;
+  file: string;
+  nextCommands: string[];
+}
+
 export interface IInspectSceneResult extends IAuthoringOperationResult {
   scene?: ISceneInspection;
+}
+
+export async function createScene(options: ICreateSceneOptions): Promise<ICreateSceneResult> {
+  const project = await loadAuthoringProject({ projectPath: options.projectPath });
+  const projectPath = project.projectPath;
+  const diagnostics = [...project.diagnostics];
+  validateLogicalId(diagnostics, "", "/id", options.sceneId, "scene");
+
+  const requestedFile = options.file ?? `content/scenes/${options.sceneId}.scene.json`;
+  const absoluteFile = resolve(projectPath, requestedFile);
+  const projectRelativePath = normalizeRelativePath(relative(projectPath, absoluteFile));
+
+  if (projectRelativePath === "" || projectRelativePath.startsWith("../") || projectRelativePath === "..") {
+    diagnostics.push(
+      authoringDiagnostic({
+        code: "TN_AUTHORING_SOURCE_PATH_OUTSIDE_PROJECT",
+        file: requestedFile,
+        message: "Scene source documents must be created inside the project root.",
+        value: requestedFile,
+        suggestion: "Use a path under content/scenes/ such as content/scenes/main.scene.json.",
+      }),
+    );
+  } else if (isGeneratedArtifactPath(projectRelativePath)) {
+    diagnostics.push(
+      authoringDiagnostic({
+        code: "TN_AUTHORING_GENERATED_SOURCE_PATH",
+        file: projectRelativePath,
+        message: "Generated bundle artifacts cannot be used as authoring source documents.",
+        suggestion: "Create scene source documents under content/scenes/ instead.",
+      }),
+    );
+  } else if (!projectRelativePath.endsWith(".scene.json")) {
+    diagnostics.push(
+      authoringDiagnostic({
+        code: "TN_AUTHORING_SCENE_FILE_EXTENSION_INVALID",
+        file: projectRelativePath,
+        message: "Scene source documents must use the .scene.json extension.",
+        value: projectRelativePath,
+        suggestion: "Use a path such as content/scenes/main.scene.json.",
+      }),
+    );
+  }
+
+  const duplicateScene = project.documents.find((document) => document.kind === "scene" && readSceneId(document.data) === options.sceneId);
+  if (duplicateScene !== undefined) {
+    diagnostics.push(
+      authoringDiagnostic({
+        code: "TN_AUTHORING_DUPLICATE_SCENE_ID",
+        file: duplicateScene.projectRelativePath,
+        message: `Scene id '${options.sceneId}' already exists.`,
+        path: "/id",
+        value: options.sceneId,
+        suggestion: "Use a new scene id or mutate the existing scene document.",
+      }),
+    );
+  }
+
+  try {
+    await access(absoluteFile);
+    diagnostics.push(
+      authoringDiagnostic({
+        code: "TN_AUTHORING_SOURCE_FILE_EXISTS",
+        file: projectRelativePath,
+        message: `Scene source document '${projectRelativePath}' already exists.`,
+        suggestion: "Use a different --file path or mutate the existing scene document.",
+      }),
+    );
+  } catch {
+    // Missing is the only successful create path; other write errors surface when writing.
+  }
+
+  const scene: ISceneDocument = {
+    schema: sceneDocumentSchema,
+    version: "0.1.0",
+    id: options.sceneId,
+    entities: [],
+    prefabs: [],
+    resources: [],
+    systems: [],
+    ui: { nodes: [], bindings: [] },
+  };
+
+  if (!hasAuthoringErrors(diagnostics)) {
+    diagnostics.push(...(await validateSceneDocument(projectPath, projectRelativePath, scene)));
+  }
+
+  if (hasAuthoringErrors(diagnostics)) {
+    return {
+      ...authoringOperationResult({ diagnostics, projectPath }),
+      file: projectRelativePath,
+      nextCommands: nextSceneCommands(options.sceneId),
+      sceneId: options.sceneId,
+    };
+  }
+
+  const document: IAuthoringDocument = {
+    data: scene,
+    file: absoluteFile,
+    kind: "scene",
+    projectRelativePath,
+  };
+  await mkdir(dirname(absoluteFile), { recursive: true });
+  await writeAuthoringJsonDocument(document);
+
+  return {
+    ...authoringOperationResult({ changed: true, diagnostics, filesWritten: [projectRelativePath], projectPath }),
+    file: projectRelativePath,
+    nextCommands: nextSceneCommands(options.sceneId),
+    sceneId: options.sceneId,
+  };
 }
 
 export async function validateScene(options: IValidateSceneOptions): Promise<IAuthoringOperationResult> {
@@ -146,6 +267,17 @@ export async function validateScene(options: IValidateSceneOptions): Promise<IAu
     diagnostics,
     projectPath: project.projectPath,
   });
+}
+
+function nextSceneCommands(sceneId: string): string[] {
+  return [
+    `tn scene add-entity ${sceneId} <entity-id> --json`,
+    `tn scene set-transform ${sceneId} <entity-id> --position x,y,z --json`,
+    `tn scene attach-script ${sceneId} <system-id> --module src/scripts/<system>.ts --export <exportName> --json`,
+    `tn scene validate ${sceneId} --json`,
+    "tn build --json",
+    "tn verify --json",
+  ];
 }
 
 export async function inspectScene(options: IValidateSceneOptions & { sceneId: string }): Promise<IInspectSceneResult> {

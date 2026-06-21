@@ -11,6 +11,7 @@ test("should list task-oriented help topics", async () => {
   assert.equal(payload.code, "TN_HELP_TOPICS");
   assert.equal(payload.topics.some((topic) => topic.name === "scaffold"), true);
   assert.equal(payload.topics.some((topic) => topic.name === "assets"), true);
+  assert.equal(payload.topics.some((topic) => topic.name === "scene"), true);
   assert.equal(payload.topics.some((topic) => topic.name === "camera"), true);
   assert.equal(payload.topics.some((topic) => topic.name === "transform"), true);
   assert.equal(payload.topics.some((topic) => topic.name === "visual-qa"), true);
@@ -27,6 +28,19 @@ test("should render known help topic with commands and docs", async () => {
   assert.equal(payload.name, "scaffold");
   assert.equal(payload.commands.includes("tn init <name> [--template <template>]"), true);
   assert.equal(payload.docs.includes("docs/workflows/developer-workflow.md"), true);
+});
+
+test("should describe the agent scene authoring loop", async () => {
+  const result = await helpCommand(["scene", "--json"]);
+  const payload = JSON.parse(result.stdout) as { commands: string[]; examples: string[]; failureSymptoms: string[]; name: string };
+
+  assert.equal(result.exitCode, 0);
+  assert.equal(payload.name, "scene");
+  assert.equal(payload.commands.includes("tn scene create <scene-id> [--file <path>] --json"), true);
+  assert.equal(payload.commands.includes("tn build --json"), true);
+  assert.equal(payload.commands.includes("tn screenshot --url <preview-url> --out artifacts/proof/frame.png --json"), true);
+  assert.equal(payload.examples.some((example) => example.includes("MCP tools wrap tn commands")), true);
+  assert.equal(payload.failureSymptoms.some((symptom) => symptom.includes("missing first .scene.json")), true);
 });
 
 test("should mention asset inspection in asset help", async () => {

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -7,6 +7,66 @@ import test from "node:test";
 import { buildCommand } from "./build.js";
 import { sceneCommand } from "./scene.js";
 import { validateProject } from "./validate.js";
+
+test("scene-command create writes a minimal source scene with next commands", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-scene-create-"));
+
+  try {
+    const result = await sceneCommand(["create", "scene.arena", "--project", root, "--json"]);
+    const payload = JSON.parse(result.stdout) as { changed: boolean; diagnostics: unknown[]; file: string; nextCommands: string[]; sceneId: string };
+    const scene = JSON.parse(await readFile(join(root, "content", "scenes", "scene.arena.scene.json"), "utf8")) as { id: string; schema: string; entities: unknown[] };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.sceneId, "scene.arena");
+    assert.equal(payload.file, "content/scenes/scene.arena.scene.json");
+    assert.equal(payload.changed, true);
+    assert.deepEqual(payload.diagnostics, []);
+    assert.equal(payload.nextCommands.includes("tn scene validate scene.arena --json"), true);
+    assert.equal(scene.schema, "threenative.scene");
+    assert.equal(scene.id, "scene.arena");
+    assert.deepEqual(scene.entities, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("scene-command create honors explicit file paths", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-scene-create-file-"));
+
+  try {
+    const result = await sceneCommand(["create", "scene.menu", "--file", "content/scenes/menu.scene.json", "--project", root, "--json"]);
+    const payload = JSON.parse(result.stdout) as { file: string; sceneId: string };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.sceneId, "scene.menu");
+    assert.equal(payload.file, "content/scenes/menu.scene.json");
+    await readFile(join(root, "content", "scenes", "menu.scene.json"), "utf8");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("scene-command create rejects invalid ids, collisions, generated paths, and duplicate scene ids", async () => {
+  const root = await createSceneProject();
+
+  try {
+    const invalidId = await sceneCommand(["create", "Scene Arena", "--project", root, "--json"]);
+    const fileCollision = await sceneCommand(["create", "scene.menu", "--file", "content/scenes/arena.scene.json", "--project", root, "--json"]);
+    const generatedPath = await sceneCommand(["create", "scene.menu", "--file", "dist/game.bundle/menu.scene.json", "--project", root, "--json"]);
+    const duplicateId = await sceneCommand(["create", "scene.arena", "--file", "content/scenes/arena-copy.scene.json", "--project", root, "--json"]);
+
+    assert.equal(invalidId.exitCode, 1);
+    assert.equal((JSON.parse(invalidId.stdout) as { diagnostics: Array<{ code: string }> }).diagnostics[0]?.code, "TN_AUTHORING_ID_INVALID");
+    assert.equal(fileCollision.exitCode, 1);
+    assert.equal((JSON.parse(fileCollision.stdout) as { diagnostics: Array<{ code: string }> }).diagnostics[0]?.code, "TN_AUTHORING_SOURCE_FILE_EXISTS");
+    assert.equal(generatedPath.exitCode, 1);
+    assert.equal((JSON.parse(generatedPath.stdout) as { diagnostics: Array<{ code: string }> }).diagnostics[0]?.code, "TN_AUTHORING_GENERATED_SOURCE_PATH");
+    assert.equal(duplicateId.exitCode, 1);
+    assert.equal((JSON.parse(duplicateId.stdout) as { diagnostics: Array<{ code: string }> }).diagnostics[0]?.code, "TN_AUTHORING_DUPLICATE_SCENE_ID");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
 
 test("scene-command validate returns stable JSON for valid source scenes", async () => {
   const root = await createSceneProject();

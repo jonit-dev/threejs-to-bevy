@@ -32,10 +32,15 @@ declarations, unknown fields, invalid transform vectors, missing prefab/entity/
 resource/UI/script references, generated source paths, inline script strings,
 and missing script exports before source mutation. The CLI now exposes the
 initial canonical automation surface through `tn scene validate [scene-id]
---json`, `tn scene inspect <scene-id> --json`, and bounded source mutations:
-`add-entity`, `set-transform`, `set-camera`, `attach-script`, and `bind-ui`.
-The focused smoke proof mutates and validates a source scene, then builds and
-validates the same project's normal bundle. `@threenative/mcp-server` now
+--json`, `tn scene inspect <scene-id> --json`, `tn scene create <scene-id>
+--json`, and bounded source mutations: `add-entity`, `set-transform`,
+`set-camera`, `attach-script`, and `bind-ui`. `tn scene create` removes the
+manual first `.scene.json` seed step by writing a minimal valid scene source,
+rejecting invalid scene IDs, existing file collisions, generated artifact
+paths, and duplicate scene IDs, and returning JSON next-command guidance for
+the authoring/proof loop. The focused smoke proof mutates and validates a
+source scene, then builds and validates the same project's normal bundle.
+`@threenative/mcp-server` now
 provides optional AI-facing wrappers for inspect/validate/mutate/build/
 screenshot/verify operations by delegating to the same `tn ... --json` command
 surface, with project-root and generated-artifact guardrails.

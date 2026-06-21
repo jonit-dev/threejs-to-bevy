@@ -39,6 +39,7 @@ test("should tolerate a leading package script separator", async () => {
 test("should keep rendered help stable for the package bin", () => {
   assert.match(renderHelp(), /tn dev --target <web\|desktop>/);
   assert.match(renderHelp(), /tn package --target desktop/);
+  assert.match(renderHelp(), /tn scene create <scene-id>/);
   assert.match(renderHelp(), /tn scene validate \[scene-id\]/);
   assert.match(renderHelp(), /tn scene inspect <scene-id>/);
   assert.match(renderHelp(), /tn scene add-entity <scene-id> <entity-id>/);

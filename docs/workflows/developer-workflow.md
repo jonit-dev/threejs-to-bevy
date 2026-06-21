@@ -144,6 +144,7 @@ tn doctor --project my-game
 tn dev --target web
 tn dev --target desktop
 tn validate
+tn scene create <scene-id> --json
 tn scene validate [scene-id] --json
 tn scene inspect <scene-id> --json
 tn scene add-entity <scene-id> <entity-id> --prefab <prefab-id> --json
@@ -167,6 +168,10 @@ Command expectations:
 - `tn create my-game --template v5-game-starter` creates the V5 game-first
   starter using `defineGame`, a portable scene, input, world, runtime config,
   and a small movement system.
+- `tn scene create <scene-id> --json` creates a minimal valid
+  `threenative.scene` source document. By default it writes
+  `content/scenes/<scene-id>.scene.json`; use `--file <path>` for an explicit
+  `.scene.json` source path.
 - `tn scene validate [scene-id] --json` validates structured source
   `.scene.json` authoring documents with machine-readable diagnostics for AI
   repair loops.
@@ -175,6 +180,22 @@ Command expectations:
 - `tn scene add-entity`, `set-transform`, `set-camera`, `attach-script`, and
   `bind-ui` mutate supported structured source scenes only after preflight
   validation, then validate again before writing deterministic source JSON.
+- Agent scene authoring loop:
+
+  ```bash
+  tn scene create scene.arena --json
+  tn scene add-entity scene.arena player-kart --prefab kart --json
+  tn scene set-transform scene.arena player-kart --position 0,0,0 --rotation 0,0,0 --scale 1,1,1 --json
+  tn scene attach-script scene.arena race-controller --module src/scripts/race.ts --export raceController --json
+  tn scene validate scene.arena --json
+  tn build --json
+  tn verify --frames 3 --json
+  tn screenshot --url http://127.0.0.1:5173 --out artifacts/proof/frame.png --json
+  ```
+
+  The CLI is the canonical automation surface. MCP tools are wrappers around
+  the same `tn ... --json` commands and should not invent separate scene
+  mutation semantics.
 - SDK projects may keep one-file `Scene`/`World` authoring or split source into
   modular `defineSceneModule`, `defineEntity`, `definePrefabModule`,
   `defineResourceModule`, `defineInputModule`, `defineUiModule`,
