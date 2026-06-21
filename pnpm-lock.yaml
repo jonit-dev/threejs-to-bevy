@@ -98,6 +98,9 @@ importers:
         specifier: ^19.2.7
         version: 19.2.7(react@19.2.7)
     devDependencies:
+      '@threenative/cli':
+        specifier: workspace:*
+        version: link:../cli
       '@types/node':
         specifier: ^20.19.25
         version: 20.19.43

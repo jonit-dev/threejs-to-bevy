@@ -136,6 +136,13 @@ editor contract while keeping generated bundle/cache/runtime paths rejected.
 such as `scene.set_transform`, `ui.set_layout`, `material.set`, and
 `system.attach_script`; MCP derives its registry-backed tool names from that
 catalog while preserving CLI JSON transport behavior.
+The editor workbench slice adds server-side project load/validate and operation
+dispatch APIs in `@threenative/editor`, source-document inventory state, scene
+hierarchy, material, catalog, UI/input/system models, and guarded panel
+components. Workbench operations persist scene transforms, material values, UI
+text/layout, input actions, mesh/prefab/system edits through
+`@threenative/authoring`; asset rows remain inspect-only, and generated script
+bundle paths are rejected before source writes.
 
 Structured `.scene.json` documents can now be used as a normal project build
 entry for the first runtime-backed CLI authoring slice. The compiler validates

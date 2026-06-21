@@ -65,6 +65,9 @@ This index separates current cleanup work from historical milestone batches.
   prerequisite hardening for `content/**` editor source-path classification and
   shared `@threenative/authoring` operation metadata consumed by CLI, MCP, and
   editor adapters.
+- [Editor Source Document Workbench](done/other/editor-source-document-workbench.md):
+  editable project workbench over structured source documents using shared
+  `@threenative/authoring` operations, with CLI/MCP/editor operation parity.
 - [Advanced Visual Effects, Lighting, and Material Depth](other/advanced-visual-effects-lighting-material-depth.md):
   remaining advanced lighting, material, atmosphere, post-processing, deferred
   renderer, virtual geometry, and custom post-processing gaps.
