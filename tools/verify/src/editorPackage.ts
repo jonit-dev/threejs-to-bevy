@@ -9,7 +9,9 @@ import { chromium, type Locator, type Page } from "playwright";
 import { stopProcess, type VerificationReport } from "./runner.js";
 
 export interface IEditorPackageArtifacts extends Record<string, unknown> {
+  assetsManifest: string;
   editedScreenshot: string;
+  environmentScene: string;
   report: string;
   sourceScene: string;
   smokeScreenshot: string;
@@ -19,7 +21,9 @@ export interface IEditorPackageArtifacts extends Record<string, unknown> {
 export function editorPackageArtifactPaths(root = process.cwd()): IEditorPackageArtifacts {
   const artifactRoot = resolve(root, "tools/verify/artifacts/editor-package");
   return {
+    assetsManifest: resolve(artifactRoot, "assets.after-edit.manifest.json"),
     editedScreenshot: resolve(artifactRoot, "editor-package-edited.png"),
+    environmentScene: resolve(artifactRoot, "environment.after-edit.scene.json"),
     report: resolve(artifactRoot, "editor-package-report.json"),
     sourceScene: resolve(artifactRoot, "arena.scene.after-edit.json"),
     smokeScreenshot: resolve(artifactRoot, "editor-package-smoke.png"),
@@ -66,6 +70,8 @@ export async function runEditorPackageGate(root = process.cwd()): Promise<Verifi
       const inventory = await readProjectInventory(page);
       if (
         !inventory.paths.includes("content/scenes/arena.scene.json") ||
+        !inventory.paths.includes("content/assets/models.assets.json") ||
+        !inventory.paths.includes("content/environment/arena.environment.json") ||
         !inventory.paths.includes("content/materials/arena.materials.json") ||
         !inventory.paths.includes("content/input/arena.input.json") ||
         !inventory.paths.includes("content/systems/arena.systems.json")
@@ -107,6 +113,7 @@ export async function runEditorPackageGate(root = process.cwd()): Promise<Verifi
       const emptyEntityId = await addObjectThroughModal(page, "Empty Entity", "editor-entity-");
       const cameraEntityId = await addObjectThroughModal(page, "Camera", "editor-camera-");
       const lightEntityId = await addObjectThroughModal(page, "Light", "editor-light-");
+      const modelEntityId = await addObjectThroughModal(page, "model.base_basic", "editor-model-");
 
       await page.getByRole("button", { name: "Build preview" }).click();
       const buildDialog = page.getByRole("dialog", { name: "Build Preview" });
@@ -116,9 +123,11 @@ export async function runEditorPackageGate(root = process.cwd()): Promise<Verifi
       await page.getByRole("button", { name: /base_basic_shaded 0 entity/ }).click();
       await assertAddComponentModal(page);
 
-      const evidence = await assertEditedProjectEvidence(fixture.projectPath, { cameraEntityId, emptyEntityId, entityId, lightEntityId });
+      const evidence = await assertEditedProjectEvidence(fixture.projectPath, { cameraEntityId, emptyEntityId, entityId, lightEntityId, modelEntityId });
       await writeFile(artifacts.sourceScene, `${JSON.stringify(evidence.scene, null, 2)}\n`);
       await writeFile(artifacts.worldIr, `${JSON.stringify(evidence.world, null, 2)}\n`);
+      await writeFile(artifacts.environmentScene, `${JSON.stringify(evidence.environment, null, 2)}\n`);
+      await writeFile(artifacts.assetsManifest, `${JSON.stringify(evidence.assets, null, 2)}\n`);
       await page.getByRole("button", { name: "New scene" }).click();
       const newSceneDialog = page.getByRole("dialog", { name: "New Scene" });
       await newSceneDialog.waitFor({ timeout: 10_000 });
@@ -147,7 +156,7 @@ export async function runEditorPackageGate(root = process.cwd()): Promise<Verifi
         exitCode: 0,
         name: "editor-e2e",
         stderr: "",
-        stdout: `Editor shell rendered, project inventory loaded, added ${entityId}/${emptyEntityId}/${cameraEntityId}/${lightEntityId}, built preview, and persisted source/IR evidence.`,
+        stdout: `Editor shell rendered, project inventory loaded, added ${entityId}/${emptyEntityId}/${cameraEntityId}/${lightEntityId}/${modelEntityId}, built preview, and persisted source/IR/environment/assets evidence.`,
       });
     } finally {
       await browser.close();
@@ -194,7 +203,7 @@ interface IProjectInventory {
 interface ISceneDocument {
   entities: Array<{ components?: Record<string, unknown>; id: string; label?: string; prefab?: string; transform?: unknown }>;
   id?: string;
-  prefabs: Array<{ color?: string; id: string; primitive?: string }>;
+  prefabs: Array<{ asset?: string; color?: string; id: string; primitive?: string }>;
   resources?: unknown[];
   schema?: string;
   systems?: unknown[];
@@ -216,6 +225,18 @@ interface IWorldDocument {
 
 interface IMaterialsDocument {
   materials: Array<{ color?: string; id: string }>;
+}
+
+interface IAssetsManifestDocument {
+  assets: Array<{ id?: string; path?: string }>;
+}
+
+interface IEnvironmentSceneDocument {
+  id?: string;
+  path?: { id?: string };
+  skybox?: { asset?: string; mode?: string };
+  terrain?: { heightmap?: string; heightMode?: string; id?: string };
+  walkability?: unknown;
 }
 
 async function createEditorE2eFixture(root: string): Promise<IEditorE2eFixture> {
@@ -290,17 +311,38 @@ async function writeEditorVisualScene(projectPath: string): Promise<void> {
   await writeFile(join(projectPath, "content", "scenes", "arena.scene.json"), `${JSON.stringify(scene, null, 2)}\n`);
   await mkdir(join(projectPath, "content", "input"), { recursive: true });
   await mkdir(join(projectPath, "content", "systems"), { recursive: true });
+  await mkdir(join(projectPath, "content", "assets"), { recursive: true });
   await mkdir(join(projectPath, "content", "environment"), { recursive: true });
+  await writeFile(
+    join(projectPath, "content", "assets", "models.assets.json"),
+    `${JSON.stringify({
+      schema: "threenative.assets",
+      version: "0.1.0",
+      id: "models",
+      assets: [
+        { id: "model.farm_house", path: "assets/models/FarmHouse/glb/farm_house_basic_shaded.glb", type: "model" },
+        { id: "model.base_basic", path: "assets/models/base_basic_shaded/base_basic_shaded.glb", type: "model" },
+      ],
+    }, null, 2)}\n`,
+  );
   await writeFile(
     join(projectPath, "content", "environment", "arena.environment.json"),
     `${JSON.stringify({
       schema: "threenative.environment-scene",
       version: "0.1.0",
       id: "arena-environment",
-      sourceAssets: [],
+      environmentMap: { asset: "tex.sky" },
+      sourceAssets: [{ id: "env.Tree", lod: [{ asset: "model.base_basic", maxDistance: 48 }] }],
       instances: [],
-      path: { id: "path.main", points: [[0, 0, 0], [1, 0, 1]] },
+      path: { id: "path.main", points: [[0, 0, 0], [1, 0, 1]], width: 1 },
       skybox: { asset: "tex.sky", mode: "equirect" },
+      terrain: { bounds: { min: [-4, 0, -4], max: [4, 0, 4] }, heightMode: "flat", id: "terrain.editor" },
+      walkability: {
+        blockers: [],
+        movementProfile: { boundary: "block", eyeHeight: 1.7, height: 1.8, maxStep: 0.35, radius: 0.35 },
+        regions: [],
+        terrain: { height: 0, surface: "terrain.editor" },
+      },
     }, null, 2)}\n`,
   );
   await writeFile(
@@ -446,6 +488,14 @@ async function assertSourceDocumentInspectorRows(page: Page): Promise<void> {
   const systems = documents.find((document) => document.path === "content/systems/arena.systems.json");
   if (systems?.rows.some((row) => row.label === "spin Script" && row.fieldKind === "script" && row.value === "./spin.ts#spin") !== true) {
     throw new Error(`Systems document inspector rows did not expose script metadata: ${JSON.stringify(systems)}`);
+  }
+  const environment = documents.find((document) => document.path === "content/environment/arena.environment.json");
+  const environmentRows = environment?.rows ?? [];
+  if (environmentRows.some((row) => row.label === "Terrain Height Mode" && row.fieldKind === "enum" && row.value === "flat") !== true) {
+    throw new Error(`Environment document inspector rows did not expose terrain height mode: ${JSON.stringify(environment)}`);
+  }
+  if (environmentRows.some((row) => row.label === "env.Tree LOD" && row.fieldKind === "json") !== true) {
+    throw new Error(`Environment document inspector rows did not expose source asset LOD: ${JSON.stringify(environment)}`);
   }
 }
 
@@ -594,15 +644,18 @@ async function assertModalPlaceholderState(page: Page): Promise<void> {
   const addObjectDialog = page.getByRole("dialog", { name: "Add Object" });
   await addObjectDialog.waitFor({ timeout: 10_000 });
   const terrain = addObjectDialog.getByRole("button", { name: "Terrain" });
-  const customGlb = addObjectDialog.getByRole("button", { name: "Custom GLB" });
-  if (!(await terrain.isDisabled()) || !(await customGlb.isDisabled())) {
-    throw new Error("Add Object exposed unsupported Terrain or Custom GLB actions as enabled.");
+  const model = addObjectDialog.getByRole("button", { exact: true, name: "model.base_basic" });
+  if (!(await terrain.isDisabled())) {
+    throw new Error("Add Object exposed unsupported Terrain as enabled.");
+  }
+  if (await model.isDisabled()) {
+    throw new Error("Add Object did not enable project model asset actions.");
   }
   if ((await terrain.getAttribute("title"))?.includes("not promoted") !== true) {
     throw new Error("Terrain Add Object action did not expose a disabled reason.");
   }
-  if ((await customGlb.getAttribute("title"))?.includes("promoted asset and prefab operation") !== true) {
-    throw new Error("Custom GLB Add Object action did not expose a disabled reason.");
+  if ((await model.getAttribute("title")) !== "assets/models/base_basic_shaded/base_basic_shaded.glb") {
+    throw new Error("Custom GLB model action did not expose its project asset path.");
   }
   await page.getByRole("button", { name: "Close Add Object" }).click();
 
@@ -662,11 +715,16 @@ async function readNewEditorEntityId(page: Page, entityPrefix: string, before: r
   return entityId;
 }
 
-async function assertEditedProjectEvidence(projectPath: string, entityIds: { cameraEntityId: string; emptyEntityId: string; entityId: string; lightEntityId: string }): Promise<{ scene: ISceneDocument; world: IWorldDocument }> {
+async function assertEditedProjectEvidence(
+  projectPath: string,
+  entityIds: { cameraEntityId: string; emptyEntityId: string; entityId: string; lightEntityId: string; modelEntityId: string },
+): Promise<{ assets: IAssetsManifestDocument; environment: IEnvironmentSceneDocument; scene: ISceneDocument; world: IWorldDocument }> {
   const scene = JSON.parse(await readFile(join(projectPath, "content/scenes/arena.scene.json"), "utf8")) as ISceneDocument;
   const world = JSON.parse(await readFile(join(projectPath, "dist/structured-source-starter.bundle/world.ir.json"), "utf8")) as IWorldDocument;
   const materials = JSON.parse(await readFile(join(projectPath, "dist/structured-source-starter.bundle/materials.ir.json"), "utf8")) as IMaterialsDocument;
-  const { cameraEntityId, emptyEntityId, entityId, lightEntityId } = entityIds;
+  const environment = JSON.parse(await readFile(join(projectPath, "dist/structured-source-starter.bundle/environment.scene.json"), "utf8")) as IEnvironmentSceneDocument;
+  const assets = JSON.parse(await readFile(join(projectPath, "dist/structured-source-starter.bundle/assets.manifest.json"), "utf8")) as IAssetsManifestDocument;
+  const { cameraEntityId, emptyEntityId, entityId, lightEntityId, modelEntityId } = entityIds;
   const entity = scene.entities.find((candidate) => candidate.id === entityId);
   if (entity === undefined) {
     throw new Error(`Source scene did not persist added entity ${entityId}.`);
@@ -701,6 +759,11 @@ async function assertEditedProjectEvidence(projectPath: string, entityIds: { cam
   if (lightEntity?.components?.Light === undefined) {
     throw new Error(`Source scene did not persist added Light component: ${JSON.stringify(lightEntity)}`);
   }
+  const modelEntity = scene.entities.find((candidate) => candidate.id === modelEntityId);
+  const modelPrefab = scene.prefabs.find((candidate) => candidate.id === `prefab.${modelEntityId}`);
+  if (modelEntity?.prefab !== `prefab.${modelEntityId}` || modelPrefab?.asset !== "assets/models/base_basic_shaded/base_basic_shaded.glb") {
+    throw new Error(`Source scene did not persist added GLB entity/prefab: entity=${JSON.stringify(modelEntity)} prefab=${JSON.stringify(modelPrefab)}`);
+  }
   const irCamera = world.entities.find((candidate) => candidate.id === cameraEntityId);
   if (irCamera !== undefined && irCamera.components?.Camera?.kind !== "perspective") {
     throw new Error(`World IR emitted unexpected camera component for ${cameraEntityId}: ${JSON.stringify(irCamera)}`);
@@ -709,7 +772,16 @@ async function assertEditedProjectEvidence(projectPath: string, entityIds: { cam
   if (irLight !== undefined && (irLight.components?.Light?.kind !== "directional" || irLight.components.Light.intensity !== 1)) {
     throw new Error(`World IR emitted unexpected Light component for ${lightEntityId}: ${JSON.stringify(irLight)}`);
   }
-  return { scene, world };
+  if (environment.terrain?.id !== "terrain.editor" || environment.path?.id !== "path.main") {
+    throw new Error(`Environment artifact did not match source environment expectations: ${JSON.stringify(environment)}`);
+  }
+  const assetPaths = assets.assets.map((asset) => asset.path).filter((path): path is string => typeof path === "string");
+  for (const expected of ["assets/models/FarmHouse/glb/farm_house_basic_shaded.glb", "assets/models/base_basic_shaded/base_basic_shaded.glb"]) {
+    if (!assetPaths.includes(expected)) {
+      throw new Error(`Assets manifest did not include ${expected}: ${JSON.stringify(assets)}`);
+    }
+  }
+  return { assets, environment, scene, world };
 }
 
 function findOpenPort(): Promise<number> {

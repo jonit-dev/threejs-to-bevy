@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
@@ -180,6 +180,43 @@ test("should build structured source starter template with source document prove
         entry.source.pointer === "/nodes/0",
     ),
   );
+});
+
+test("should emit structured source environment documents", async () => {
+  const projectPath = await mkdtemp(join(tmpdir(), "tn-structured-environment-"));
+  try {
+    await cp(resolve(process.cwd(), "../../templates/structured-source-starter"), projectPath, { recursive: true });
+    await mkdir(join(projectPath, "content/environment"), { recursive: true });
+    await writeFile(
+      join(projectPath, "content/environment/arena.environment.json"),
+      `${JSON.stringify({
+        schema: "threenative.environment-scene",
+        version: "0.1.0",
+        id: "arena-environment",
+        environmentMap: { asset: "tex.sky" },
+        instances: [],
+        path: { id: "path.main", points: [[0, 0, 0], [1, 0, 1]], width: 1 },
+        skybox: { asset: "tex.sky", mode: "equirect" },
+        terrain: { bounds: { min: [-4, 0, -4], max: [4, 0, 4] }, heightMode: "flat", id: "terrain.editor" },
+        walkability: {
+          blockers: [],
+          movementProfile: { boundary: "block", eyeHeight: 1.7, height: 1.8, maxStep: 0.35, radius: 0.35 },
+          regions: [],
+          terrain: { height: 0, surface: "terrain.editor" },
+        },
+      }, null, 2)}\n`,
+    );
+
+    const { bundlePath } = await buildProject(projectPath);
+    const report = await validateBundle(bundlePath);
+    const environment = JSON.parse(await readFile(resolve(bundlePath, "environment.scene.json"), "utf8"));
+
+    assert.equal(report.ok, true);
+    assert.equal(environment.terrain.id, "terrain.editor");
+    assert.equal(environment.path.id, "path.main");
+  } finally {
+    await rm(projectPath, { force: true, recursive: true });
+  }
 });
 
 test("should build v6 functional example", async () => {

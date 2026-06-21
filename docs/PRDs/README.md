@@ -79,7 +79,7 @@ This index separates current cleanup work from historical milestone batches.
 - [Functional Editor Viewport, Gizmo, and Selection](done/other/functional-editor-viewport-gizmo-and-selection.md):
   source-backed hierarchy/viewport selection sync, real move/rotate/scale gizmo
   modes, transform persistence, viewport visual cues, and Playwright evidence.
-- [Functional Editor Scene, Assets, and Environment](other/functional-editor-scene-assets-and-environment.md):
+- [Functional Editor Scene, Assets, and Environment](done/other/functional-editor-scene-assets-and-environment.md):
   source-backed scene lifecycle, Add Object/model asset flows, environment
   skybox/terrain/LOD visibility, GLB loading proof, and build artifact evidence.
 - [Functional Editor Operations, Modals, and Inspector Completion](done/other/functional-editor-operations-modals-and-inspector-completion.md):

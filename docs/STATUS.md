@@ -255,6 +255,16 @@ walkability, path, and source-asset LOD data with explicit reasons for
 unsupported mutations. The editor viewport uses environment metadata for a
 visible sky/background and terrain cue, and the footer distinguishes estimated
 LOD triangle counts from exact loaded counts.
+The functional editor scene/assets/environment PRD is now complete. The
+compiler lowers companion structured environment source documents into emitted
+environment bundle evidence for terrain, path, and walkability, while simple
+source skybox/environment-map IDs remain editor-visible until texture asset
+source lowering is promoted. The focused editor package gate writes
+`arena.scene.after-edit.json`, `world.after-edit.ir.json`,
+`environment.after-edit.scene.json`, `assets.after-edit.manifest.json`, and
+smoke/edited screenshots after adding primitive, empty, camera, light, and
+project GLB objects, building preview, creating a default scene, and confirming
+GLB loading without unexpected browser console errors.
 The follow-up component mutation audit keeps Transform, Camera, material,
 input, system script, and UI binding rows source-editable while preserving
 explicit read-only reasons for unsupported Light and MeshRenderer prefab

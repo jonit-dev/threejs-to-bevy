@@ -264,12 +264,12 @@ back as source.
 
 **Implementation:**
 
-- [ ] Assert created/default scene source.
-- [ ] Assert added primitive and added GLB source.
-- [ ] Assert environment skybox/terrain rows.
-- [ ] Assert built `world.ir.json`, `environment.scene.json`, and
+- [x] Assert created/default scene source.
+- [x] Assert added primitive and added GLB source.
+- [x] Assert environment skybox/terrain rows.
+- [x] Assert built `world.ir.json`, `environment.scene.json`, and
   `assets.manifest.json` match editor source expectations.
-- [ ] Capture evidence artifacts under `tools/verify/artifacts/editor-package`.
+- [x] Capture evidence artifacts under `tools/verify/artifacts/editor-package`.
 
 **Tests Required:**
 
@@ -282,6 +282,17 @@ back as source.
 - Action: run `pnpm verify:focused verify:editor-package`.
 - Expected: report includes source scene, world IR, environment, asset manifest,
   screenshots, and no unexpected console errors.
+
+**Progress Evidence:**
+
+- `pnpm --filter @threenative/compiler test` - 147 tests passing, including
+  structured `.scene.json` builds with companion structured environment source
+  emission for terrain, path, and walkability bundle evidence.
+- `pnpm verify:focused verify:editor-package` - passing with source scene,
+  world IR, `environment.scene.json`, `assets.manifest.json`, smoke/edited
+  screenshots, Add Object primitive/empty/camera/light/model source writes,
+  default-scene creation, build preview, GLB loading, environment source rows,
+  and no unexpected browser console errors.
 
 ## 5. Verification Strategy
 
@@ -326,13 +337,13 @@ pnpm check:names
 
 ## 6. Acceptance Criteria
 
-- [ ] New/load/save scene workflows are source-backed and survive reload.
-- [ ] New scenes include Main Camera, Directional Light, and Ambient Light.
-- [ ] Add Object supports at least primitives and project GLB models through
+- [x] New/load/save scene workflows are source-backed and survive reload.
+- [x] New scenes include Main Camera, Directional Light, and Ambient Light.
+- [x] Add Object supports at least primitives and project GLB models through
   structured source operations.
-- [ ] Assets panel exposes usable project asset metadata and load diagnostics.
-- [ ] Environment skybox, terrain, heightmap/height mode, and LOD/triangle data
+- [x] Assets panel exposes usable project asset metadata and load diagnostics.
+- [x] Environment skybox, terrain, heightmap/height mode, and LOD/triangle data
   are visible with correct editability/read-only decisions.
-- [ ] Build preview proves source edits reached emitted IR/bundle artifacts.
-- [ ] `verify:editor-package` covers source JSON, IR, asset manifest,
+- [x] Build preview proves source edits reached emitted IR/bundle artifacts.
+- [x] `verify:editor-package` covers source JSON, IR, asset manifest,
   environment, GLB loading, and screenshot evidence.

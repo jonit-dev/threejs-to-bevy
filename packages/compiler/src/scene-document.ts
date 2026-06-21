@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { validateScene, type ISceneDocument, type IScenePrefab, type ISceneTransform } from "@threenative/authoring";
+import { loadAuthoringProject, validateScene, type ISceneDocument, type IScenePrefab, type ISceneTransform } from "@threenative/authoring";
 import {
   AmbientLight,
   BoxGeometry,
@@ -29,6 +29,7 @@ import {
 
 import { CompilerError } from "./errors.js";
 import type { ICapturedScene } from "./capture.js";
+import type { IEnvironmentDeclaration } from "./emit/environment.js";
 import type { IAuthoringDeclarationNode, IAuthoringGraph } from "./authoring/graph.js";
 import { compatibilityProvenance, relativeModulePath } from "./authoring/provenance.js";
 
@@ -60,7 +61,8 @@ export async function captureSceneDocumentEntry(projectPath: string, entryPath: 
   }
 
   const scene = JSON.parse(await readFile(entryPath, "utf8")) as ISceneDocument;
-  const root = lowerSceneDocument(entryRelativePath, scene);
+  const environment = await readStructuredEnvironmentDeclaration(projectPath);
+  const root = lowerSceneDocument(entryRelativePath, scene, environment);
   return {
     diagnostics: [],
     graph: sceneAuthoringGraph(projectPath, entryPath, scene),
@@ -69,7 +71,7 @@ export async function captureSceneDocumentEntry(projectPath: string, entryPath: 
   };
 }
 
-function lowerSceneDocument(sourcePath: string, scene: ISceneDocument): unknown {
+function lowerSceneDocument(sourcePath: string, scene: ISceneDocument, environment: IEnvironmentDeclaration | undefined): unknown {
   const visualScene = new Scene({ id: scene.id });
   const prefabs = new Map((scene.prefabs ?? []).map((prefab) => [prefab.id, prefab]));
   const entities = [...(scene.entities ?? [])].sort((left, right) => left.id.localeCompare(right.id));
@@ -137,6 +139,7 @@ function lowerSceneDocument(sourcePath: string, scene: ISceneDocument): unknown 
   }
 
   return defineGame({
+    ...(environment === undefined ? {} : { environment }),
     initialScene: scene.id,
     scenes: [
       defineScene({
@@ -147,6 +150,33 @@ function lowerSceneDocument(sourcePath: string, scene: ISceneDocument): unknown 
       }),
     ],
   });
+}
+
+async function readStructuredEnvironmentDeclaration(projectPath: string): Promise<IEnvironmentDeclaration | undefined> {
+  const project = await loadAuthoringProject({ projectPath });
+  const document = project.documents.find((item) => item.kind === "environment" && readRecord(item.data) !== undefined);
+  const data = readRecord(document?.data);
+  if (data === undefined) {
+    return undefined;
+  }
+
+  const declaration = {
+    assetNames: [],
+    instances: readRecordArray(data.instances),
+    path: readRecord(data.path) ?? { id: "path.editor", points: [], width: 1 },
+    sourceDir: ".",
+    ...(readRecord(data.atmosphere) === undefined ? {} : { atmosphere: readRecord(data.atmosphere) }),
+    ...(readRecordArray(data.bookmarks).length === 0 ? {} : { bookmarks: readRecordArray(data.bookmarks) }),
+    ...(readRecord(data.controller) === undefined ? {} : { controller: readRecord(data.controller) }),
+    ...(readAssetBackedRecord(data.environmentMap) === undefined ? {} : { environmentMap: readAssetBackedRecord(data.environmentMap) }),
+    ...(readRecordArray(data.exclusionZones).length === 0 ? {} : { exclusionZones: readRecordArray(data.exclusionZones) }),
+    ...(readRecordArray(data.lightProbes).length === 0 ? {} : { lightProbes: readRecordArray(data.lightProbes) }),
+    ...(readRecordArray(data.scatter).length === 0 ? {} : { scatter: readRecordArray(data.scatter) }),
+    ...(readAssetBackedRecord(data.skybox) === undefined ? {} : { skybox: readAssetBackedRecord(data.skybox) }),
+    ...(readRecord(data.terrain) === undefined ? {} : { terrain: readRecord(data.terrain) }),
+    ...(readRecord(data.walkability) === undefined ? {} : { walkability: readRecord(data.walkability) }),
+  };
+  return declaration as unknown as IEnvironmentDeclaration;
 }
 
 function hasAuthoredRuntimeVisual(components: Record<string, unknown> | undefined): boolean {
@@ -348,4 +378,23 @@ function vector3(value: unknown): [number, number, number] | undefined {
 
 function readRecord(value: unknown): SceneRecord | undefined {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? value as SceneRecord : undefined;
+}
+
+function readAssetBackedRecord(value: unknown): SceneRecord | undefined {
+  const record = readRecord(value);
+  return Array.isArray(record?.assetRefs) ? record : undefined;
+}
+
+function readRecordArray(value: unknown): SceneRecord[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const records: SceneRecord[] = [];
+  for (const item of value) {
+    const record = readRecord(item);
+    if (record !== undefined) {
+      records.push(record);
+    }
+  }
+  return records;
 }

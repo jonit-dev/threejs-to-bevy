@@ -584,6 +584,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] Source-schema-backed inspector field mapping and Add Component compatibility/default metadata
 - [x] Add Object source-backed Primitive/Empty/Camera/Light modal operations
 - [x] Environment source document classification and Camera inspector skybox rows
+- [x] Editor build-preview evidence for source scene, GLB assets, environment terrain/path/walkability, and asset manifest artifacts
 - [x] Save/load round trips through structured SDK/ECS/IR data
 - [x] `P1` Scene hierarchy inspector and property editing
 - [x] `P2` Gizmo overlays for transforms, lights, bounds, cameras, and UI nodes
