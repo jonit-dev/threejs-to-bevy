@@ -6,6 +6,58 @@ import test from "node:test";
 
 import { editorCommand } from "./editor.js";
 
+test("should report editor dev launch config in json mode", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-editor-dev-"));
+  try {
+    const projectPath = join(root, "project");
+    const launches: Array<{ args: string[]; command: string; cwd: string; env: NodeJS.ProcessEnv }> = [];
+    await mkdir(projectPath, { recursive: true });
+
+    const result = await editorCommand(["dev", "--project", "project", "--port", "5188", "--json"], {
+      cwd: root,
+      launchProcess: (command, args, options) => {
+        launches.push({ args, command, cwd: options.cwd, env: options.env });
+        return { pid: 12345, unref: () => undefined };
+      },
+    });
+    const payload = JSON.parse(result.stdout) as {
+      bootConfigPath: string;
+      code: string;
+      pid: number;
+      projectPath: string;
+      url: string;
+    };
+    const boot = JSON.parse(await readFile(payload.bootConfigPath, "utf8")) as { projectPath: string; schema: string };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.code, "TN_EDITOR_LAUNCH_OK");
+    assert.equal(payload.projectPath, projectPath);
+    assert.equal(payload.url, "http://127.0.0.1:5188/");
+    assert.equal(payload.pid, 12345);
+    assert.equal(launches[0]?.command, "pnpm");
+    assert.equal(launches[0]?.args.includes("vite"), true);
+    assert.equal(launches[0]?.env.THREENATIVE_EDITOR_BOOT, payload.bootConfigPath);
+    assert.equal(boot.schema, "threenative.editor-boot");
+    assert.equal(boot.projectPath, projectPath);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject unsafe editor project paths", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-editor-dev-unsafe-"));
+  try {
+    const result = await editorCommand(["dev", "--project", "dist/game.bundle", "--json"], { cwd: root });
+    const payload = JSON.parse(result.stdout) as { code: string; diagnostics: Array<{ code: string }> };
+
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.code, "TN_EDITOR_BOOT_PROJECT_UNSAFE");
+    assert.equal(payload.diagnostics[0]?.code, "TN_EDITOR_BOOT_PROJECT_UNSAFE");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("editor inspect should write structured scene inspection json", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-editor-inspect-"));
   try {

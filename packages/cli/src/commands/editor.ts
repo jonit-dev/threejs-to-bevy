@@ -1,6 +1,8 @@
+import { spawn, type ChildProcess } from "node:child_process";
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { basename, dirname, resolve } from "node:path";
+import { basename, dirname, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   buildSceneInspectionReport,
   buildEditorInspectorSnapshot,
@@ -24,12 +26,27 @@ import { diagnosticResult, type ICommandResult, type IDiagnosticPayload } from "
 
 interface IEditorOptions {
   cwd?: string;
+  launchProcess?: (command: string, args: string[], options: IEditorLaunchProcessOptions) => IEditorLaunchProcess;
 }
 
 type JsonRecord = Record<string, unknown>;
 type EditorDiagnostic = Omit<IIrDiagnostic, "value"> & { value?: unknown };
 
+interface IEditorLaunchProcess {
+  pid?: number;
+  unref?: () => void;
+}
+
+interface IEditorLaunchProcessOptions {
+  cwd: string;
+  detached: boolean;
+  env: NodeJS.ProcessEnv;
+  stdio: "ignore" | "inherit";
+}
+
 const usage = [
+  "tn editor dev --project <path> [--port <n>] [--json]",
+  "tn editor open --project <path> [--bundle <path>] [--port <n>] [--json]",
   "tn editor snapshot --bundle <path> [--out <path>] [--json]",
   "tn editor inspect --bundle <path> [--out <path>] [--json]",
   "tn editor set --bundle <path> --path <json-pointer> --value <json> [--json]",
@@ -43,6 +60,10 @@ export async function editorCommand(argv: readonly string[], options: IEditorOpt
   const commandArgv = normalizedArgv.slice(1);
   const json = normalizedArgv.includes("--json");
   const cwd = options.cwd ?? process.env.INIT_CWD ?? process.cwd();
+
+  if (subcommand === "dev" || subcommand === "open") {
+    return launchEditorCommand(subcommand, commandArgv, cwd, json, options.launchProcess);
+  }
 
   if (subcommand === "snapshot") {
     return snapshotCommand(commandArgv, cwd, json);
@@ -72,6 +93,84 @@ export async function editorCommand(argv: readonly string[], options: IEditorOpt
     },
     { exitCode: 1, json, stderr: !json },
   );
+}
+
+async function launchEditorCommand(
+  subcommand: string,
+  argv: readonly string[],
+  cwd: string,
+  json: boolean,
+  launchProcess: IEditorOptions["launchProcess"],
+): Promise<ICommandResult> {
+  const projectArg = flagValue(argv, "--project");
+  const portArg = flagValue(argv, "--port");
+  const bundleArg = flagValue(argv, "--bundle");
+  const validation = validateEditorLaunchConfig({ bundlePath: bundleArg, cwd, projectPath: projectArg });
+  if (validation.diagnostics.length > 0 || validation.config === undefined) {
+    return diagnosticResult(
+      {
+        code: validation.diagnostics[0]?.code ?? "TN_EDITOR_LAUNCH_INVALID",
+        diagnostics: validation.diagnostics,
+        message: validation.diagnostics[0]?.message ?? "Editor launch config is invalid.",
+        path: validation.diagnostics[0]?.path,
+      },
+      { exitCode: 1, json, stderr: !json },
+    );
+  }
+
+  const port = parsePort(portArg);
+  if (port.ok === false) {
+    return diagnosticResult(
+      {
+        code: "TN_EDITOR_LAUNCH_PORT_INVALID",
+        message: "Editor launch --port must be an integer between 1024 and 65535.",
+        path: portArg,
+      },
+      { exitCode: 1, json, stderr: !json },
+    );
+  }
+
+  const editorPackagePath = resolve(dirname(fileURLToPath(import.meta.url)), "../../../editor");
+  const bootConfigPath = resolve(validation.config.projectPath, ".threenative/editor-boot.json");
+  await mkdir(dirname(bootConfigPath), { recursive: true });
+  await writeFile(
+    bootConfigPath,
+    `${JSON.stringify(
+      {
+        bundlePath: validation.config.bundlePath,
+        projectPath: validation.config.projectPath,
+        schema: "threenative.editor-boot",
+        version: "0.1.0",
+      },
+      null,
+      2,
+    )}\n`,
+  );
+
+  const args = ["--dir", editorPackagePath, "exec", "vite", "--host", "127.0.0.1", "--port", String(port.value)];
+  const env = { ...process.env, THREENATIVE_EDITOR_BOOT: bootConfigPath };
+  const launched = (launchProcess ?? defaultLaunchProcess)("pnpm", args, {
+    cwd: editorPackagePath,
+    detached: true,
+    env,
+    stdio: json ? "ignore" : "inherit",
+  });
+  launched.unref?.();
+
+  const payload = {
+    bootConfigPath,
+    code: "TN_EDITOR_LAUNCH_OK",
+    command: subcommand,
+    message: `Editor ${subcommand} launch configured at http://127.0.0.1:${port.value}/.`,
+    pid: launched.pid,
+    projectPath: validation.config.projectPath,
+    url: `http://127.0.0.1:${port.value}/`,
+    ...(validation.config.bundlePath === undefined ? {} : { bundlePath: validation.config.bundlePath }),
+  };
+  return {
+    exitCode: 0,
+    stdout: json ? `${JSON.stringify(payload, null, 2)}\n` : `${payload.message}\n`,
+  };
 }
 
 async function inspectCommand(argv: readonly string[], cwd: string, json: boolean): Promise<ICommandResult> {
@@ -587,4 +686,81 @@ function flagValue(argv: readonly string[], flag: string): string | undefined {
     return undefined;
   }
   return argv[index + 1];
+}
+
+function defaultLaunchProcess(command: string, args: string[], options: IEditorLaunchProcessOptions): ChildProcess {
+  return spawn(command, args, options);
+}
+
+function parsePort(value: string | undefined): { ok: true; value: number } | { ok: false } {
+  if (value === undefined) {
+    return { ok: true, value: 5173 };
+  }
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1024 || parsed > 65535) {
+    return { ok: false };
+  }
+  return { ok: true, value: parsed };
+}
+
+function validateEditorLaunchConfig(input: { bundlePath?: string; cwd: string; projectPath?: string }): {
+  config?: { bundlePath?: string; projectPath: string };
+  diagnostics: Array<{ code: string; message: string; path?: string; severity: "error"; suggestion?: string }>;
+} {
+  if (input.projectPath === undefined || input.projectPath.trim() === "") {
+    return {
+      diagnostics: [
+        {
+          code: "TN_EDITOR_BOOT_PROJECT_MISSING",
+          message: "Editor launch requires --project <path>.",
+          severity: "error",
+        },
+      ],
+    };
+  }
+  const projectPath = resolve(input.cwd, input.projectPath);
+  const projectRelative = normalizeCliRelativePath(relative(input.cwd, projectPath));
+  if (isUnsafeEditorProjectPath(projectRelative)) {
+    return {
+      diagnostics: [
+        {
+          code: "TN_EDITOR_BOOT_PROJECT_UNSAFE",
+          message: "Editor project path must stay in a durable source project, not generated artifacts or caches.",
+          path: input.projectPath,
+          severity: "error",
+          suggestion: "Pass the project root that contains threenative.authoring.json or content/.",
+        },
+      ],
+    };
+  }
+  if (input.bundlePath === undefined) {
+    return { config: { projectPath }, diagnostics: [] };
+  }
+  const bundlePath = resolve(projectPath, input.bundlePath);
+  const bundleRelative = normalizeCliRelativePath(relative(projectPath, bundlePath));
+  if (bundleRelative === ".." || bundleRelative.startsWith("../") || !bundleRelative.includes("game.bundle")) {
+    return {
+      diagnostics: [
+        {
+          code: "TN_EDITOR_BOOT_BUNDLE_UNSAFE",
+          message: "Editor bundle path must stay inside the selected project and point at a generated game.bundle directory.",
+          path: input.bundlePath,
+          severity: "error",
+        },
+      ],
+    };
+  }
+  return { config: { bundlePath, projectPath }, diagnostics: [] };
+}
+
+function isUnsafeEditorProjectPath(projectRelative: string): boolean {
+  return (
+    projectRelative === ".." ||
+    projectRelative.startsWith("../") ||
+    projectRelative.split("/").some((segment) => segment === "dist" || segment === "game.bundle" || segment === ".tn-capture" || segment === "node_modules")
+  );
+}
+
+function normalizeCliRelativePath(path: string): string {
+  return path.split("\\").join("/");
 }

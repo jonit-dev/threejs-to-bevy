@@ -121,6 +121,14 @@ unrecoverable generated script body rather than persisted as source. The
 `docs/contracts/authoring-mcp.md` contract defines the same operation result,
 diagnostic, path guardrail, and persistence policy for future editor adapters.
 
+The first editor package slice adds `@threenative/editor` as a workspace
+package with a typed React shell, static Vite fixture, ThreeNative-shaped
+adapter model, generated/runtime row guard tests, and project launch wiring via
+`tn editor dev --project <path> [--port <n>] [--json]` plus `tn editor open`.
+This is a read-only shell over structured authoring/IR inspection data: it
+does not adopt Vibe Coder ECS/runtime state, persist source edits, or claim a
+runtime preview loop yet.
+
 Structured `.scene.json` documents can now be used as a normal project build
 entry for the first runtime-backed CLI authoring slice. The compiler validates
 the source scene, lowers primitive prefab entities, camera components,

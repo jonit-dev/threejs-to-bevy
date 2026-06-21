@@ -105,9 +105,9 @@ const commands: Record<string, ICommandDefinition> = {
     usage: "tn dev --target <web|desktop> [--project <path>] [--watch]",
   },
   editor: {
-    description: "Create, inspect, edit, apply, and diff local editor snapshots from bundle JSON.",
+    description: "Launch the editor shell and inspect, edit, apply, and diff local editor snapshots from bundle JSON.",
     implemented: true,
-    usage: "tn editor snapshot --bundle <path> [--out <path>] [--json]\n              tn editor inspect --bundle <path> [--out <path>] [--json]\n              tn editor set --bundle <path> --path <json-pointer> --value <json> [--json]\n              tn editor apply --snapshot <path> --bundle <path> [--json]",
+    usage: "tn editor dev --project <path> [--port <n>] [--json]\n              tn editor open --project <path> [--bundle <path>] [--json]\n              tn editor snapshot --bundle <path> [--out <path>] [--json]\n              tn editor inspect --bundle <path> [--out <path>] [--json]\n              tn editor set --bundle <path> --path <json-pointer> --value <json> [--json]\n              tn editor apply --snapshot <path> --bundle <path> [--json]",
   },
   package: {
     description: "Create a local desktop package artifact from a bundle.",

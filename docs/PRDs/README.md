@@ -57,6 +57,10 @@ This index separates current cleanup work from historical milestone batches.
   full structured source coverage for map/editor-owned data, CLI/MCP/editor
   operation parity with TypeScript-era authoring, bundle import, provenance, and
   round-trip proof without TypeScript reverse-generation.
+- [Editor Package Shell and Adapter Contract](done/other/editor-package-shell-and-adapter-contract.md):
+  first-class `@threenative/editor` package shell, CLI launch path, and
+  ThreeNative-shaped adapter models that can reuse Vibe Coder visual patterns
+  without adopting its ECS/runtime source model.
 - [Advanced Visual Effects, Lighting, and Material Depth](other/advanced-visual-effects-lighting-material-depth.md):
   remaining advanced lighting, material, atmosphere, post-processing, deferred
   renderer, virtual geometry, and custom post-processing gaps.
