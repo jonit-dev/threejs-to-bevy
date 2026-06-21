@@ -34,16 +34,49 @@ test("should validate structured editor project snapshots", () => {
 test("should classify editor documents by source generated runtime and derived kind", () => {
   assert.deepEqual(buildEditorDocumentClassifications({
     "authoring.provenance.json": {},
+    "content/scenes/arena.scene.json": {},
+    "content/ui/hud.ui.json": {},
+    "threenative.authoring.json": {},
     "preview/session.json": {},
     "src/scenes/arena.scene.json": {},
     "world.ir.json": {},
   }), {
     "authoring.provenance.json": { access: "derivedView", kind: "derived" },
+    "content/scenes/arena.scene.json": { access: "sourcePersistable", kind: "source", sourcePath: "content/scenes/arena.scene.json" },
+    "content/ui/hud.ui.json": { access: "sourcePersistable", kind: "source", sourcePath: "content/ui/hud.ui.json" },
     "preview/session.json": { access: "runtimeOnly", kind: "runtime" },
     "src/scenes/arena.scene.json": { access: "sourcePersistable", kind: "source", sourcePath: "src/scenes/arena.scene.json" },
+    "threenative.authoring.json": { access: "sourcePersistable", kind: "source", sourcePath: "threenative.authoring.json" },
     "world.ir.json": { access: "inspectableOnly", kind: "generated" },
   });
   assert.deepEqual(classifyEditorDocumentPath("runtime/entity-state.json"), { access: "runtimeOnly", kind: "runtime" });
+});
+
+test("should classify content source documents as source persistable", () => {
+  assert.deepEqual(
+    [
+      "content/scenes/arena.scene.json",
+      "content/ui/hud.ui.json",
+      "content/materials/kart.materials.json",
+      "content/meshes/kart.meshes.json",
+      "content/input/player.input.json",
+      "content/systems/race.systems.json",
+      "content/prefabs/kart.prefab.json",
+      "content/audio/race.audio.json",
+      "threenative.authoring.json",
+    ].map((path) => classifyEditorDocumentPath(path)),
+    [
+      { access: "sourcePersistable", kind: "source", sourcePath: "content/scenes/arena.scene.json" },
+      { access: "sourcePersistable", kind: "source", sourcePath: "content/ui/hud.ui.json" },
+      { access: "sourcePersistable", kind: "source", sourcePath: "content/materials/kart.materials.json" },
+      { access: "sourcePersistable", kind: "source", sourcePath: "content/meshes/kart.meshes.json" },
+      { access: "sourcePersistable", kind: "source", sourcePath: "content/input/player.input.json" },
+      { access: "sourcePersistable", kind: "source", sourcePath: "content/systems/race.systems.json" },
+      { access: "sourcePersistable", kind: "source", sourcePath: "content/prefabs/kart.prefab.json" },
+      { access: "sourcePersistable", kind: "source", sourcePath: "content/audio/race.audio.json" },
+      { access: "sourcePersistable", kind: "source", sourcePath: "threenative.authoring.json" },
+    ],
+  );
 });
 
 test("should validate editor document classification access policies", () => {
@@ -165,6 +198,35 @@ test("should reject unsafe editor source patches", () => {
     "TN_IR_EDITOR_SOURCE_PATCH_GENERATED_TARGET",
     "TN_IR_EDITOR_SOURCE_PATCH_GENERATED_SCRIPT",
   ]);
+});
+
+test("should reject generated bundle paths as source patches", () => {
+  const diagnostics = validateEditorSourcePatchSet([
+    {
+      declarationId: "player",
+      id: "patch.player.dist",
+      operation: "replace",
+      reloadPolicy: "hotReload",
+      sourceDocument: "dist/game.bundle/world.ir.json",
+      targetPath: "/entities/0/components/Transform/position",
+      value: [1, 0, 0],
+    },
+    {
+      declarationId: "player",
+      id: "patch.player.bundle",
+      operation: "replace",
+      reloadPolicy: "hotReload",
+      sourceDocument: "game.bundle/world.ir.json",
+      targetPath: "/entities/0/components/Transform/position",
+      value: [1, 0, 0],
+    },
+  ]);
+
+  assert.deepEqual(diagnostics.map((diagnostic) => diagnostic.code), [
+    "TN_IR_EDITOR_SOURCE_PATCH_DOCUMENT_INVALID",
+    "TN_IR_EDITOR_SOURCE_PATCH_DOCUMENT_INVALID",
+  ]);
+  assert.equal(diagnostics[0]?.suggestion?.includes("content/**"), true);
 });
 
 test("should classify preview edits and map generated entities through provenance", () => {

@@ -129,6 +129,14 @@ This is a read-only shell over structured authoring/IR inspection data: it
 does not adopt Vibe Coder ECS/runtime state, persist source edits, or claim a
 runtime preview loop yet.
 
+The editor source bridge now classifies supported `content/**` structured
+documents and `threenative.authoring.json` as source-persistable in the IR
+editor contract while keeping generated bundle/cache/runtime paths rejected.
+`@threenative/authoring` exports a shared promoted operation registry for names
+such as `scene.set_transform`, `ui.set_layout`, `material.set`, and
+`system.attach_script`; MCP derives its registry-backed tool names from that
+catalog while preserving CLI JSON transport behavior.
+
 Structured `.scene.json` documents can now be used as a normal project build
 entry for the first runtime-backed CLI authoring slice. The compiler validates
 the source scene, lowers primitive prefab entities, camera components,

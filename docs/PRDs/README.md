@@ -61,6 +61,10 @@ This index separates current cleanup work from historical milestone batches.
   first-class `@threenative/editor` package shell, CLI launch path, and
   ThreeNative-shaped adapter models that can reuse Vibe Coder visual patterns
   without adopting its ECS/runtime source model.
+- [Editor Source Path and Operation Bridge](done/other/editor-source-path-and-operation-bridge.md):
+  prerequisite hardening for `content/**` editor source-path classification and
+  shared `@threenative/authoring` operation metadata consumed by CLI, MCP, and
+  editor adapters.
 - [Advanced Visual Effects, Lighting, and Material Depth](other/advanced-visual-effects-lighting-material-depth.md):
   remaining advanced lighting, material, atmosphere, post-processing, deferred
   renderer, virtual geometry, and custom post-processing gaps.

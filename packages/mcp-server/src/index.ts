@@ -1,23 +1,16 @@
 import { resolve, sep } from "node:path";
 
+import { AUTHORING_OPERATION_NAMES, getAuthoringOperationDescriptor, type AuthoringOperationName } from "@threenative/authoring";
 import { dispatch } from "@threenative/cli";
 
 export type AuthoringMcpToolName =
+  | AuthoringOperationName
   | "bundle.import"
-  | "material.set"
   | "project.build"
   | "project.screenshot"
   | "project.verify"
-  | "scene.add_entity"
-  | "scene.attach_script"
-  | "scene.bind_ui"
   | "scene.inspect"
-  | "scene.set_camera"
-  | "scene.set_transform"
-  | "scene.validate"
-  | "system.attach_script"
-  | "ui.bind"
-  | "ui.set_layout";
+  | "scene.validate";
 
 export interface IAuthoringMcpToolCall {
   arguments?: Record<string, unknown>;
@@ -44,19 +37,19 @@ interface ICommandResult {
   stdout: string;
 }
 
+const registryBackedMcpTools: Array<{ description: string; name: AuthoringOperationName }> = AUTHORING_OPERATION_NAMES.map((name) => {
+  const descriptor = getAuthoringOperationDescriptor(name);
+  return {
+    description: descriptor?.description ?? `Dispatch ${name} through the shared authoring operation registry.`,
+    name,
+  };
+});
+
 export const AUTHORING_MCP_TOOLS: Array<{ description: string; name: AuthoringMcpToolName }> = [
   { description: "Inspect a source scene document through tn scene inspect --json.", name: "scene.inspect" },
   { description: "Validate source scene documents through tn scene validate --json.", name: "scene.validate" },
-  { description: "Add an entity through tn scene add-entity --json.", name: "scene.add_entity" },
-  { description: "Set an entity transform through tn scene set-transform --json.", name: "scene.set_transform" },
-  { description: "Set scene camera metadata through tn scene set-camera --json.", name: "scene.set_camera" },
-  { description: "Attach a script source module through tn scene attach-script --json.", name: "scene.attach_script" },
-  { description: "Bind a UI node through tn scene bind-ui --json.", name: "scene.bind_ui" },
-  { description: "Set retained UI node layout through tn ui set-layout --json.", name: "ui.set_layout" },
-  { description: "Bind a retained UI node through tn ui bind --json.", name: "ui.bind" },
+  ...registryBackedMcpTools,
   { description: "Import recoverable bundle catalogs through tn bundle import --json.", name: "bundle.import" },
-  { description: "Set material properties through tn material set --json.", name: "material.set" },
-  { description: "Attach a system script source module through tn system attach-script --json.", name: "system.attach_script" },
   { description: "Build the project through tn build --json.", name: "project.build" },
   { description: "Capture a screenshot through tn screenshot --json.", name: "project.screenshot" },
   { description: "Run visual verification through tn verify --json.", name: "project.verify" },

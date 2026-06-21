@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
+import { AUTHORING_OPERATION_NAMES } from "@threenative/authoring";
 import { dispatch } from "@threenative/cli";
 
 import { AUTHORING_MCP_TOOLS, callAuthoringMcpTool, type IAuthoringMcpResult } from "./index.js";
@@ -29,21 +30,21 @@ test("mcp wrapper exposes the authoring tool registry", () => {
     [
       "scene.inspect",
       "scene.validate",
-      "scene.add_entity",
-      "scene.set_transform",
-      "scene.set_camera",
-      "scene.attach_script",
-      "scene.bind_ui",
-      "ui.set_layout",
-      "ui.bind",
+      ...AUTHORING_OPERATION_NAMES,
       "bundle.import",
-      "material.set",
-      "system.attach_script",
       "project.build",
       "project.screenshot",
       "project.verify",
     ],
   );
+});
+
+test("should expose registry-backed tool names", () => {
+  const mcpOperationNames = AUTHORING_MCP_TOOLS.map((tool) => tool.name).filter((name) =>
+    AUTHORING_OPERATION_NAMES.includes(name as (typeof AUTHORING_OPERATION_NAMES)[number]),
+  );
+
+  assert.deepEqual(mcpOperationNames, AUTHORING_OPERATION_NAMES);
 });
 
 test("mcp wrapper delegates inspect and validate to CLI JSON output", async () => {

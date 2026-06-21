@@ -132,3 +132,19 @@ export {
   validateAuthoringProject,
   writeChangedProjectDocuments,
 } from "./operations.js";
+export type {
+  AuthoringOperationName,
+  AuthoringOperationPathPolicy,
+  AuthoringOperationResultShape,
+  AuthoringOperationSourceFamily,
+  IAuthoringOperationArgumentDescriptor,
+  IAuthoringOperationDescriptor,
+  IDispatchAuthoringOperationOptions,
+} from "./operationRegistry.js";
+export {
+  AUTHORING_OPERATION_NAMES,
+  AUTHORING_OPERATION_REGISTRY,
+  dispatchAuthoringOperation,
+  getAuthoringOperationDescriptor,
+  listAuthoringOperationDescriptors,
+} from "./operationRegistry.js";

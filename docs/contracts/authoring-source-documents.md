@@ -60,6 +60,15 @@ enough recoverable information exists. They must not become the edited file of
 record, and unsupported recoveries must produce diagnostics instead of inferred
 source.
 
+The IR editor patch contract treats structured documents under
+`content/**/*.scene.json`, `content/**/*.ui.json`,
+`content/**/*.materials.json`, `content/**/*.meshes.json`,
+`content/**/*.input.json`, `content/**/*.systems.json`,
+`content/**/*.prefab.json`, `content/**/*.audio.json`, and
+`threenative.authoring.json` as source-persistable. Generated bundle/cache
+paths such as `dist/**`, `game.bundle/**`, `scripts.bundle.js`, generated IR
+documents, and runtime handles remain rejected as source patch targets.
+
 `tn bundle import <bundle-dir> --project <path> --mode source --json` is a
 recovery operation, not a round-trip guarantee. The first supported import
 writes normalized source documents under `content/**/imported.*.json`:
@@ -209,6 +218,12 @@ validation and the focused operation groups such as `tn ui set-layout`,
 Generated bundle files under `dist/` and generated script bundles remain
 non-source. TypeScript under `src/scripts/` is for behavior bodies only, not
 scene/map persistence.
+
+Promoted editor-safe operation metadata lives in
+`@threenative/authoring`'s operation registry. CLI, MCP, and editor adapters
+should use registry names such as `scene.set_transform`, `ui.set_layout`,
+`material.set`, and `system.attach_script` instead of maintaining independent
+mutation catalogs.
 
 ## Current Authoring Package Coverage
 

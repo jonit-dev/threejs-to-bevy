@@ -248,7 +248,7 @@ export function classifyEditorDocumentPath(documentPath: string): IEditorDocumen
   if (documentPath.startsWith("runtime/") || documentPath.startsWith("preview/")) {
     return { access: "runtimeOnly", kind: "runtime" };
   }
-  if (documentPath.startsWith("src/") || documentPath.startsWith("scenes/")) {
+  if (isDurableSourceDocumentPath(documentPath)) {
     return { access: "sourcePersistable", kind: "source", sourcePath: documentPath };
   }
   if (documentPath === "authoring.provenance.json" || documentPath.endsWith(".report.json") || documentPath.endsWith("verification-report.json")) {
@@ -312,7 +312,7 @@ export function validateEditorSourcePatch(patch: unknown, path = "editor.sourceP
       message: "Editor source patch sourceDocument must target a durable source document path.",
       path: `${path}/sourceDocument`,
       severity: "error",
-      suggestion: "Patch source documents under src/ or scenes/ instead of generated bundles, caches, or runtime artifacts.",
+      suggestion: "Patch source documents under content/**, src/scripts/**, scenes/**, or threenative.authoring.json instead of generated bundles, caches, or runtime artifacts.",
     });
   }
   if (typeof patch.targetPath !== "string" || !isJsonPointer(patch.targetPath)) {
@@ -1034,16 +1034,21 @@ function isJsonPointer(value: string): boolean {
 }
 
 function isDurableSourceDocumentPath(value: string): boolean {
+  if (
+    value.startsWith("/") ||
+    value.includes("\\") ||
+    value.split("/").includes("..") ||
+    /(?:^|\/)(?:dist|artifacts|cache|\.cache|\.tn-capture|game\.bundle)(?:\/|$)/.test(value) ||
+    value.endsWith("scripts.bundle.js") ||
+    value.endsWith(".generated.json")
+  ) {
+    return false;
+  }
   return (
-    (value.startsWith("src/") || value.startsWith("scenes/")) &&
-    !value.startsWith("/") &&
-    !value.includes("\\") &&
-    !value.split("/").includes("..") &&
-    !value.includes("/dist/") &&
-    !value.includes("/artifacts/") &&
-    !value.includes(".bundle/") &&
-    !value.endsWith("scripts.bundle.js") &&
-    !value.endsWith(".generated.json")
+    value === "threenative.authoring.json" ||
+    value.startsWith("src/") ||
+    value.startsWith("scenes/") ||
+    /^content\/.+\.(?:scene|ui|materials|meshes|input|systems|prefab|audio)\.json$/.test(value)
   );
 }
 

@@ -119,6 +119,9 @@ importers:
 
   packages/mcp-server:
     dependencies:
+      '@threenative/authoring':
+        specifier: workspace:*
+        version: link:../authoring
       '@threenative/cli':
         specifier: workspace:*
         version: link:../cli
