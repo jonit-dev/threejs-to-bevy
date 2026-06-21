@@ -153,6 +153,35 @@ test("should build modular scene lifecycle starter template", async () => {
   assert.ok(world.entities.some((entity: { id: string }) => entity.id === "player"));
 });
 
+test("should build structured source starter template with source document provenance", async () => {
+  const projectPath = resolve(process.cwd(), "../../templates/structured-source-starter");
+  const { bundlePath } = await buildProject(projectPath);
+  const report = await validateBundle(bundlePath);
+  const provenance = JSON.parse(await readFile(resolve(bundlePath, "authoring.provenance.json"), "utf8")) as {
+    ownership: Array<{ emitted: { id?: string; path: string }; source?: { path: string; pointer: string } }>;
+  };
+
+  assert.equal(bundlePath, resolve(projectPath, "dist/structured-source-starter.bundle"));
+  assert.equal(report.ok, true);
+  assert.ok(
+    provenance.ownership.some(
+      (entry) =>
+        entry.emitted.path === "materials.ir.json" &&
+        entry.emitted.id === "mat.player" &&
+        entry.source?.path === "content/materials/arena.materials.json",
+    ),
+  );
+  assert.ok(
+    provenance.ownership.some(
+      (entry) =>
+        entry.emitted.path === "ui.ir.json" &&
+        entry.emitted.id === "countdown" &&
+        entry.source?.path === "content/ui/hud.ui.json" &&
+        entry.source.pointer === "/nodes/0",
+    ),
+  );
+});
+
 test("should build v6 functional example", async () => {
   const projectPath = resolve(process.cwd(), "../../examples/v6-functional");
   const { bundlePath } = await buildProject(projectPath);

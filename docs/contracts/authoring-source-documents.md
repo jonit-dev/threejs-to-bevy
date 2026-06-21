@@ -193,6 +193,21 @@ If two different structured source pointers claim the same emitted artifact ID,
 the report includes `TN_AUTHORING_DUPLICATE_EMITTED_OWNER` so editor patching
 can fail before writing an ambiguous source change.
 
+## Structured Source Template
+
+`tn create <name> --template structured-source-starter` scaffolds the first
+source-document-first starter. Its project entry is
+`content/scenes/arena.scene.json`; editor-owned scene, UI, material, asset,
+input, system, mesh, and prefab declarations live under `content/`, while
+gameplay behavior lives in `src/scripts/player.ts`.
+
+Agents and editor tools should patch `content/**/*.json` through `tn authoring`
+validation and the focused operation groups such as `tn ui set-layout`,
+`tn material set`, `tn input add-action`, and `tn system attach-script`.
+Generated bundle files under `dist/` and generated script bundles remain
+non-source. TypeScript under `src/scripts/` is for behavior bodies only, not
+scene/map persistence.
+
 ## Current Authoring Package Coverage
 
 `@threenative/authoring` currently discovers and validates the first stable

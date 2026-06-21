@@ -15,6 +15,7 @@ export const TEMPLATE_REGISTRY: readonly TemplateDefinition[] = [
   { canonical: "scripting", sourceDir: "v4-scripting", legacyAliases: ["v4-scripting"] },
   { canonical: "game-starter", sourceDir: "v5-game-starter", legacyAliases: ["v5-game-starter"] },
   { canonical: "starter-functional", sourceDir: "starter-functional", legacyAliases: ["v7-functional"] },
+  { canonical: "structured-source-starter", sourceDir: "structured-source-starter", legacyAliases: [] },
 ] as const;
 
 export function resolveTemplate(requested?: string): {

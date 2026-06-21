@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
+import { authoringCommand } from "./authoring.js";
 import { createProject, initProject } from "./create.js";
+import { uiCommand } from "./sourceDocuments.js";
 
 test("should create starter template files", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-create-"));
@@ -282,6 +284,54 @@ test("should create starter-functional template by canonical name", async () => 
     assert.equal(files.includes("scenes"), true);
     assert.equal(files.includes("scripts"), true);
     assert.equal(files.includes("ui"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should create structured-source starter template with editable content docs", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-create-structured-source-"));
+  try {
+    const result = await createProject(["structured", "--template", "structured-source-starter", "--json"], { cwd: root });
+    const payload = JSON.parse(result.stdout) as { code: string; path: string; template: string };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.code, "TN_CREATE_OK");
+    assert.equal(payload.template, "structured-source-starter");
+
+    const config = JSON.parse(await readFile(join(payload.path, "threenative.config.json"), "utf8")) as {
+      entry: string;
+      outDir: string;
+      template: string;
+    };
+    assert.equal(config.entry, "content/scenes/arena.scene.json");
+    assert.equal(config.outDir, "dist/structured-source-starter.bundle");
+    assert.equal(config.template, "structured-source-starter");
+
+    const sceneDoc = await readFile(join(payload.path, "content/scenes/arena.scene.json"), "utf8");
+    const uiDocPath = join(payload.path, "content/ui/hud.ui.json");
+    const systemDoc = await readFile(join(payload.path, "content/systems/arena.systems.json"), "utf8");
+    const scriptSource = await readFile(join(payload.path, "src/scripts/player.ts"), "utf8");
+
+    assert.match(sceneDoc, /"schema": "threenative.scene"/);
+    assert.match(sceneDoc, /"prefab": "prefab.player"/);
+    assert.match(systemDoc, /"module": "src\/scripts\/player.ts"/);
+    assert.match(scriptSource, /movePlayerToGoal/);
+    await assert.rejects(access(join(payload.path, "src/game.ts")));
+
+    const validate = await authoringCommand(["validate", "--project", payload.path, "--json"], { cwd: root });
+    const validationPayload = JSON.parse(validate.stdout) as { code: string; ok: boolean };
+    assert.equal(validate.exitCode, 0);
+    assert.equal(validationPayload.code, "TN_AUTHORING_VALIDATE_OK");
+    assert.equal(validationPayload.ok, true);
+
+    const layout = await uiCommand(["set-layout", "hud", "countdown", "--justify", "center", "--align", "center", "--top", "60", "--project", payload.path, "--json"], { cwd: root });
+    assert.equal(layout.exitCode, 0);
+
+    const uiDoc = JSON.parse(await readFile(uiDocPath, "utf8")) as { nodes: Array<{ id: string; layout?: { top?: number } }> };
+    const scriptAfter = await readFile(join(payload.path, "src/scripts/player.ts"), "utf8");
+    assert.equal(uiDoc.nodes.find((node) => node.id === "countdown")?.layout?.top, 60);
+    assert.equal(scriptAfter, scriptSource);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

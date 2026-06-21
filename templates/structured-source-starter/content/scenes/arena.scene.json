@@ -1,0 +1,119 @@
+{
+  "schema": "threenative.scene",
+  "version": "0.1.0",
+  "id": "arena",
+  "entities": [
+    {
+      "id": "arena.floor",
+      "prefab": "prefab.floor",
+      "transform": {
+        "position": [
+          0,
+          -0.05,
+          0
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "player",
+      "prefab": "prefab.player",
+      "transform": {
+        "position": [
+          0,
+          0.35,
+          0
+        ],
+        "scale": [
+          0.55,
+          0.55,
+          0.55
+        ]
+      }
+    },
+    {
+      "id": "goal",
+      "prefab": "prefab.goal",
+      "transform": {
+        "position": [
+          1.8,
+          0.3,
+          -1.6
+        ],
+        "scale": [
+          0.45,
+          0.45,
+          0.45
+        ]
+      }
+    },
+    {
+      "id": "camera.main",
+      "components": {
+        "camera": {
+          "mode": "perspective"
+        }
+      }
+    }
+  ],
+  "prefabs": [
+    {
+      "id": "prefab.floor",
+      "primitive": "plane",
+      "color": "#34373d"
+    },
+    {
+      "id": "prefab.player",
+      "primitive": "box",
+      "color": "#2f80ed"
+    },
+    {
+      "id": "prefab.goal",
+      "primitive": "box",
+      "color": "#f2c94c"
+    }
+  ],
+  "resources": [
+    {
+      "id": "GameState",
+      "value": {
+        "countdown": "Ready"
+      }
+    }
+  ],
+  "systems": [
+    {
+      "id": "move-player-to-goal",
+      "schedule": "fixedUpdate",
+      "script": {
+        "module": "src/scripts/player.ts",
+        "export": "movePlayerToGoal"
+      }
+    }
+  ],
+  "ui": {
+    "nodes": [
+      {
+        "id": "countdown",
+        "type": "text",
+        "text": "Ready",
+        "layout": {
+          "justify": "center",
+          "align": "center",
+          "top": 48,
+          "width": 1280
+        }
+      }
+    ],
+    "bindings": [
+      {
+        "node": "countdown",
+        "resource": "GameState.countdown"
+      }
+    ]
+  }
+}

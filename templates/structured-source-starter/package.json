@@ -1,0 +1,21 @@
+{
+  "name": "threenative-structured-source-starter",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tn build",
+    "dev:web": "tn dev --target web",
+    "validate": "tn validate",
+    "validate:authoring": "tn authoring validate --json",
+    "verify": "tn verify --frames 2 --json"
+  },
+  "dependencies": {
+    "@threenative/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@threenative/cli": "workspace:*",
+    "@types/node": "^20.19.25",
+    "typescript": "^5.9.3"
+  }
+}
+

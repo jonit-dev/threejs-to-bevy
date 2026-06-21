@@ -1,0 +1,23 @@
+{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "id": "arena-materials",
+  "materials": [
+    {
+      "id": "mat.floor",
+      "color": "#34373d",
+      "roughness": 0.85
+    },
+    {
+      "id": "mat.player",
+      "color": "#2f80ed",
+      "roughness": 0.55
+    },
+    {
+      "id": "mat.goal",
+      "color": "#f2c94c",
+      "roughness": 0.5
+    }
+  ]
+}
+

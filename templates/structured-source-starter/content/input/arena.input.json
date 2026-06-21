@@ -1,0 +1,22 @@
+{
+  "schema": "threenative.input",
+  "version": "0.1.0",
+  "id": "arena-input",
+  "actions": [
+    {
+      "id": "move-left",
+      "bindings": [
+        "keyboard.a",
+        "keyboard.arrow-left"
+      ]
+    },
+    {
+      "id": "move-right",
+      "bindings": [
+        "keyboard.d",
+        "keyboard.arrow-right"
+      ]
+    }
+  ]
+}
+

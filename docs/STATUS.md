@@ -104,6 +104,13 @@ classifies generated bundle files as non-durable output, and emits
 `TN_AUTHORING_DUPLICATE_EMITTED_OWNER` for obvious conflicting source owners.
 Generated `scripts.bundle.js` remains `rejected/not-source`; script source is
 the referenced TypeScript module/export.
+The Phase 6 template proof adds `structured-source-starter` to `tn create`.
+The template builds directly from `content/scenes/arena.scene.json`, keeps
+scene/UI/material/asset/input/system/mesh/prefab declarations under `content/`,
+and keeps TypeScript limited to `src/scripts/player.ts` behavior. `tn authoring
+inspect|validate --json` is now registered as the project-level source-document
+wrapper, and the template proof mutates the countdown UI through
+`tn ui set-layout` without touching TypeScript.
 
 Structured `.scene.json` documents can now be used as a normal project build
 entry for the first runtime-backed CLI authoring slice. The compiler validates

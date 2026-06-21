@@ -4,6 +4,7 @@ import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { assetCommand } from "./commands/asset.js";
+import { authoringCommand } from "./commands/authoring.js";
 import { buildCommand } from "./commands/build.js";
 import { bundleCommand } from "./commands/bundle.js";
 import { compareImagesCommand } from "./commands/compareImages.js";
@@ -32,6 +33,11 @@ const commands: Record<string, ICommandDefinition> = {
     description: "Inspect GLB/glTF bounds, dependencies, and scale calibration.",
     implemented: true,
     usage: "tn asset inspect <path> [--json]",
+  },
+  authoring: {
+    description: "Inspect and validate structured authoring source documents.",
+    implemented: true,
+    usage: "tn authoring inspect [--project <path>] [--json]\n              tn authoring validate [--project <path>] [--json]",
   },
   create: {
     description: "Scaffold a ThreeNative project from a maintained template.",
@@ -193,6 +199,10 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
 
   if (commandName === "asset") {
     return assetCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "authoring") {
+    return authoringCommand(normalizedArgv.slice(1));
   }
 
   if (commandName === "init") {
