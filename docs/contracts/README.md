@@ -14,3 +14,4 @@ CLI, and runtimes must honor.
 - [Diagnostics](diagnostics.md)
 - [Authoring Source Documents](authoring-source-documents.md)
 - [Authoring MCP and Editor Adapter](authoring-mcp.md)
+- [AI-Consumable Distribution Contract](distribution-contract.md)

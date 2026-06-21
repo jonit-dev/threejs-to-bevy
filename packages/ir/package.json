@@ -4,12 +4,30 @@
   "type": "module",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./dist/index.js",
-    "./bundlePaths": "./dist/bundlePaths.js",
-    "./conformance": "./dist/conformance.js",
-    "./input": "./dist/input.js",
-    "./reflection": "./dist/reflection.js",
-    "./runtimeDiagnostics": "./dist/runtimeDiagnostics.js",
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./bundlePaths": {
+      "types": "./dist/bundlePaths.d.ts",
+      "default": "./dist/bundlePaths.js"
+    },
+    "./conformance": {
+      "types": "./dist/conformance.d.ts",
+      "default": "./dist/conformance.js"
+    },
+    "./input": {
+      "types": "./dist/input.d.ts",
+      "default": "./dist/input.js"
+    },
+    "./reflection": {
+      "types": "./dist/reflection.d.ts",
+      "default": "./dist/reflection.js"
+    },
+    "./runtimeDiagnostics": {
+      "types": "./dist/runtimeDiagnostics.d.ts",
+      "default": "./dist/runtimeDiagnostics.js"
+    },
     "./schemas/*": "./schemas/*"
   },
   "files": [

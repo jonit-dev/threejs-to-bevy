@@ -176,7 +176,7 @@ sequenceDiagram
 
 **Files (max 5):**
 
-- `docs/distribution-contract.md` - document shipped AI/human support artifacts
+- `docs/contracts/distribution-contract.md` - document shipped AI/human support artifacts
   and package ownership.
 - `docs/PRDs/ai-consumable-distribution-contract.md` - keep phase checklist
   current.
@@ -188,14 +188,14 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Define required published artifacts by package:
+- [x] Define required published artifacts by package:
   `.d.ts`, `.d.ts.map`, source maps where produced, public schemas, AI docs,
   diagnostics catalog, capabilities manifest, and examples.
-- [ ] Document which artifacts are package-local versus repo-level docs-site
+- [x] Document which artifacts are package-local versus repo-level docs-site
   artifacts.
-- [ ] Add a package manifest checker that validates `types`, public `exports`
+- [x] Add a package manifest checker that validates `types`, public `exports`
   type conditions, `files`, and required subpath exports.
-- [ ] Wire the checker into `pnpm check:docs` or the distribution verifier
+- [x] Wire the checker into `pnpm check:docs` or the distribution verifier
   without making regular development builds depend on packed tarballs.
 
 **Tests Required:**
@@ -215,9 +215,24 @@ sequenceDiagram
 
 **User Verification:**
 
-- Action: read `docs/distribution-contract.md`.
+- Action: read `docs/contracts/distribution-contract.md`.
 - Expected: a contributor can determine exactly which files a package must ship
   for AI-assisted external usage.
+
+**Progress Evidence:**
+
+- `node --test scripts/check-distribution-contract.test.mjs` - 3 tests passing
+  for missing declaration-map/type metadata, planned schemas/capabilities/
+  diagnostics/examples export diagnostics, and the current package contract.
+- `node scripts/check-distribution-contract.mjs` - current package manifests
+  pass the Phase 1 contract after public exports gained explicit `types`
+  conditions.
+- `pnpm check:docs` - docs consistency passed with the maintained distribution
+  contract linked from `docs/contracts/README.md`.
+- `pnpm verify:distribution` - packed all public packages, installed them into
+  a clean consumer project, built and verified the generated game, built the
+  packaged Bevy runtime, and validated the desktop distributable after the
+  distribution contract checker passed at gate start.
 
 **Checkpoint:**
 
@@ -468,4 +483,3 @@ sequenceDiagram
   `pnpm run deploy -- --dry-run` pass after implementation.
 - [ ] `docs/STATUS.md` and `docs/bevy-feature-parity.md` are updated when the
   release-gate implementation is complete.
-

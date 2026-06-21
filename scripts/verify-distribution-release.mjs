@@ -3,6 +3,8 @@ import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { spawn } from "node:child_process";
 
+import { checkDistributionContract } from "./check-distribution-contract.mjs";
+
 const repoRoot = resolve(new URL("..", import.meta.url).pathname);
 const packageOrder = [
   ["@threenative/sdk", "packages/sdk"],
@@ -26,6 +28,14 @@ const distributableArchiveName = `threenative-simple-game-desktop-${releaseVersi
 const tarballs = new Map();
 
 try {
+  const contract = await checkDistributionContract({ root: repoRoot });
+  if (!contract.ok) {
+    throw new Error(
+      `Distribution contract check failed.\n${contract.diagnostics
+        .map((diagnostic) => `${diagnostic.code}: ${diagnostic.path}: ${diagnostic.message}`)
+        .join("\n")}`,
+    );
+  }
   await run("pnpm", [...workspaceFilters, "build"], { cwd: repoRoot });
   await run("mkdir", ["-p", packDir], { cwd: repoRoot });
 
