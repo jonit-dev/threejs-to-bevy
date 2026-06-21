@@ -236,6 +236,42 @@ test("should create, save, and reload default editor scene entities", async () =
   }
 });
 
+test("should persist added component defaults through source operations", async () => {
+  const root = await copyStarterProject();
+  try {
+    const camera = await applyEditorOperationApi({
+      projectPath: root,
+      request: {
+        args: { componentKind: "camera", entityId: "player", sceneId: "arena", value: { mode: "perspective" } },
+        name: "scene.set_component",
+      },
+    });
+    assert.equal(camera.ok, true);
+
+    const light = await applyEditorOperationApi({
+      projectPath: root,
+      request: {
+        args: { componentKind: "Light", entityId: "goal", sceneId: "arena", value: { intensity: 1, kind: "directional" } },
+        name: "scene.set_component",
+        projectRevision: camera.projectRevision,
+      },
+    });
+    assert.equal(light.ok, true);
+
+    const scene = JSON.parse(await readFile(join(root, "content", "scenes", "arena.scene.json"), "utf8")) as {
+      entities: Array<{ components?: Record<string, unknown>; id: string }>;
+    };
+    assert.deepEqual(scene.entities.find((entity) => entity.id === "player")?.components?.camera, { mode: "perspective" });
+    assert.deepEqual(scene.entities.find((entity) => entity.id === "goal")?.components?.Light, { intensity: 1, kind: "directional" });
+
+    const reloaded = await loadEditorProjectApi({ projectPath: root });
+    assert.equal(reloaded.sceneObjects.find((object) => object.id === "player")?.components?.includes("Camera"), true);
+    assert.equal(reloaded.sceneObjects.find((object) => object.id === "goal")?.components?.includes("Light"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 async function copyStarterProject(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), "tn-editor-project-api-"));
   await mkdir(root, { recursive: true });

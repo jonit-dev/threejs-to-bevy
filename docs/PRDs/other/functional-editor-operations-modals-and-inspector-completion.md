@@ -216,22 +216,30 @@ output.
 
 **Implementation:**
 
-- [ ] Add Object supports Empty Entity, Primitive, Camera, Light, Terrain, and
+- [x] Add Object supports Empty Entity, Primitive, Camera, Light, Terrain, and
   Custom GLB where source operations exist.
-- [ ] Add Component supports defaults/incompatibilities/packs and persists
+- [x] Add Component supports defaults/incompatibilities/packs and persists
   compatible components.
-- [ ] Delete supports source-backed entity/component deletion only after
+- [x] Delete supports source-backed entity/component deletion only after
   authoring operation exists; otherwise stays disabled with reason.
-- [ ] Settings exposes only implemented editor settings.
-- [ ] Save/Build modals show operation/build diagnostics and resulting status.
+- [x] Settings exposes only implemented editor settings.
+- [x] Save/Build modals show operation/build diagnostics and resulting status.
 
 **Tests Required:**
 
 | Test File | Test Name | Assertion |
 |-----------|-----------|-----------|
 | `packages/editor/src/EditorApp.test.tsx` | `should disable modal actions without source operations` | disabled action has explanation |
-| `packages/editor/src/EditorApp.test.tsx` | `should submit add object choices with correct operation payloads` | callback receives operation args |
-| `packages/editor/src/server/projectApi.test.ts` | `should persist add component defaults` | new component appears after reload |
+| `packages/editor/src/state/editorStore.test.ts` | `should submit add object choices with correct operation payloads` | store posts the expected operation args from modal action metadata |
+| `packages/editor/src/server/projectApi.test.ts` | `should persist added component defaults through source operations` | new component appears after reload |
+
+**Completion Evidence:**
+
+- `pnpm --filter @threenative/editor test` - 51 tests passing, including modal
+  disabled reasons, Add Object operation payloads, unsupported add-object
+  status, and source persistence for added component defaults.
+- `pnpm verify:focused verify:editor-package` - pass; report at
+  `tools/verify/artifacts/editor-package/editor-package-report.json`.
 
 **User Verification:**
 

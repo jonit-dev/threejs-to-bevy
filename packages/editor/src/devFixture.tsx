@@ -23,7 +23,7 @@ function EditorDevApp() {
   const setStatus = useEditorStore((state) => state.setStatus);
   const transformByRowId = useEditorStore((state) => state.transformByRowId);
   const refreshProject = useEditorStore((state) => state.refreshProject);
-  const addPrimitive = useEditorStore((state) => state.addPrimitive);
+  const addObject = useEditorStore((state) => state.addObject);
   const addComponent = useEditorStore((state) => state.addComponent);
   const buildPreview = useEditorStore((state) => state.buildPreview);
   const createDefaultScene = useEditorStore((state) => state.createDefaultScene);
@@ -50,7 +50,7 @@ function EditorDevApp() {
     <EditorApp
       model={model}
       onAddComponent={(definition) => void addComponent(definition, model.sceneObjects)}
-      onAddObject={addPrimitive}
+      onAddObject={(action) => void addObject(action)}
       onBuildPreview={buildPreview}
       onCreateScene={createDefaultScene}
       onEditProperty={editProperty}

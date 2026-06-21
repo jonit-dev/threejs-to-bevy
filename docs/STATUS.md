@@ -204,6 +204,12 @@ row from the running browser editor.
 The current modal shell covers Add Object, Add Component, Save Scene, New Scene,
 Build Preview, Settings/Delete placeholders, and the AI chat entry point while
 future slices port the richer Vibe Coder modal data and mutation flows.
+Add Object now routes enabled Primitive Sphere, Empty Entity, Camera, and Light
+choices through action metadata into source-backed editor operations, while
+Terrain and Custom GLB remain disabled with explicit reasons until their source
+operations exist. Add Component defaults for Camera and Light now have
+project-API persistence coverage, and the focused editor package gate still
+passes with source scene, world IR, and screenshot evidence.
 The functional editor operation-coverage audit now exposes a shared coverage
 matrix for inspector fields and modal actions. Focused editor tests fail if an
 editable inspector row lacks an operation payload or if a read-only row/action

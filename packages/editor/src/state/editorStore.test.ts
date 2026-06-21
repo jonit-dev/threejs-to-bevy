@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { EDITOR_MODAL_ACTION_DEFINITIONS, type IEditorModalActionDefinition } from "../adapters/editorModel.js";
 import { useEditorStore } from "./editorStore.js";
 
 test("should manage modal and selection state through editor store", () => {
@@ -112,7 +113,7 @@ test("should add primitive through operation sequence", async () => {
     });
   });
   try {
-    await useEditorStore.getState().addPrimitive();
+    await useEditorStore.getState().addObject(modalAction("add.primitive_sphere"));
 
     assert.deepEqual(operations.map((operation) => operation.name), ["scene.add_prefab", "scene.add_entity", "scene.set_transform"]);
     assert.equal(operations[0]?.args.prefabId, "prefab.editor-box-21i3v9");
@@ -123,6 +124,61 @@ test("should add primitive through operation sequence", async () => {
     restoreFetch();
     restoreDateNow();
   }
+});
+
+test("should submit add object choices with correct operation payloads", async () => {
+  const cases: Array<{
+    actionId: IEditorModalActionDefinition["id"];
+    expectedEntityId: string;
+    expectedNames: string[];
+    expectedPayload?: { index: number; key: string; value: unknown };
+  }> = [
+    { actionId: "add.empty_entity", expectedEntityId: "editor-entity-21i3v9", expectedNames: ["scene.add_entity"] },
+    { actionId: "add.camera", expectedEntityId: "editor-camera-21i3v9", expectedNames: ["scene.add_entity", "scene.set_component", "scene.set_transform"], expectedPayload: { index: 1, key: "componentKind", value: "camera" } },
+    { actionId: "add.light", expectedEntityId: "editor-light-21i3v9", expectedNames: ["scene.add_entity", "scene.set_component", "scene.set_transform"], expectedPayload: { index: 1, key: "componentKind", value: "Light" } },
+  ];
+
+  for (const item of cases) {
+    useEditorStore.getState().reset({ project: { projectRevision: "rev:1" } });
+    const operations: Array<{ args: Record<string, unknown>; name: string; projectRevision?: string }> = [];
+    const restoreDateNow = mockDateNow(123456789);
+    const restoreFetch = mockFetch(async (input, init) => {
+      if (String(input) === "/api/operation") {
+        const body = JSON.parse(String(init?.body)) as { args: Record<string, unknown>; name: string; projectRevision?: string };
+        operations.push(body);
+        return jsonResponse({ filesWritten: ["content/scenes/arena.scene.json"], ok: true });
+      }
+      assert.equal(String(input), "/api/project");
+      return jsonResponse({
+        documents: [{ documents: [{ id: "arena", kind: "scene", path: "content/scenes/arena.scene.json" }], kind: "scene" }],
+        ok: true,
+        sceneObjects: [{ id: item.expectedEntityId, kind: "entity", label: item.expectedEntityId, rowId: `entity:content/scenes/arena.scene.json:${item.expectedEntityId}` }],
+      });
+    });
+    try {
+      await useEditorStore.getState().addObject(modalAction(item.actionId));
+
+      assert.deepEqual(operations.map((operation) => operation.name), item.expectedNames);
+      assert.equal(operations[0]?.args.entityId, item.expectedEntityId);
+      assert.equal(operations[0]?.args.sceneId, "arena");
+      assert.equal(operations[0]?.projectRevision, "rev:1");
+      if (item.expectedPayload !== undefined) {
+        assert.equal(operations[item.expectedPayload.index]?.args[item.expectedPayload.key], item.expectedPayload.value);
+      }
+      assert.equal(useEditorStore.getState().selectedRowId, `entity:content/scenes/arena.scene.json:${item.expectedEntityId}`);
+    } finally {
+      restoreFetch();
+      restoreDateNow();
+    }
+  }
+});
+
+test("should report unsupported add object actions as disabled status", async () => {
+  useEditorStore.getState().reset();
+
+  await useEditorStore.getState().addObject(modalAction("add.custom_glb"));
+
+  assert.equal(useEditorStore.getState().status, "Custom GLB import needs a promoted asset and prefab operation before it can be enabled.");
 });
 
 test("should report operation failures as editor status", async () => {
@@ -167,4 +223,10 @@ function mockDateNow(value: number): () => void {
   return () => {
     Date.now = previous;
   };
+}
+
+function modalAction(id: IEditorModalActionDefinition["id"]): IEditorModalActionDefinition {
+  const action = EDITOR_MODAL_ACTION_DEFINITIONS.find((item) => item.id === id);
+  assert.ok(action, `Missing modal action fixture ${id}`);
+  return action;
 }

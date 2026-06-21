@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Box, Camera, FolderOpen, Image, Lightbulb, MessageSquare, Mountain, PackagePlus, Pause, Play, Save, Settings, Square, Trash2 } from "lucide-react";
 
-import type { IEditorAdapterInput, IEditorAddComponentDefinition, IEditorPropertyRow, IEditorShellModel } from "./adapters/editorModel.js";
+import type { IEditorAdapterInput, IEditorAddComponentDefinition, IEditorModalActionDefinition, IEditorPropertyRow, IEditorShellModel } from "./adapters/editorModel.js";
 import { createEditorShellModel, EDITOR_MODAL_ACTION_DEFINITIONS } from "./adapters/editorModel.js";
 import { PanelShell } from "./components/layout/PanelShell.js";
 import { HierarchyPanel } from "./components/panels/HierarchyPanel.js";
@@ -12,7 +12,7 @@ import { useEditorStore, type EditorModal } from "./state/editorStore.js";
 export interface IEditorAppProps {
   model?: IEditorAdapterInput | IEditorShellModel;
   onAddComponent?: (definition: IEditorAddComponentDefinition) => void;
-  onAddObject?: () => void;
+  onAddObject?: (action: IEditorModalActionDefinition) => void;
   onBuildPreview?: () => void;
   onCreateScene?: () => void;
   onEditProperty?: (row: IEditorPropertyRow, value: unknown) => void;
@@ -153,9 +153,9 @@ export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPr
         addComponentDefinitions={model.addComponentDefinitions}
         attachedComponents={[...new Set(model.inspector.map((row) => row.component).filter((component): component is string => component !== undefined))]}
         modal={modal}
-        onAddObject={() => {
+        onAddObject={(action) => {
           closeModal();
-          onAddObject?.();
+          onAddObject?.(action);
         }}
         onAddComponent={(definition) => {
           closeModal();
@@ -194,7 +194,7 @@ export function EditorModalView({
   attachedComponents: readonly string[];
   modal: EditorModal;
   onAddComponent: (definition: IEditorAddComponentDefinition) => void;
-  onAddObject: () => void;
+  onAddObject: (action: IEditorModalActionDefinition) => void;
   onBuildPreview: () => void;
   onClose: () => void;
   onCreateScene: () => void;
@@ -205,15 +205,21 @@ export function EditorModalView({
   }
   if (modal === "addObject") {
     const actionById = new Map(EDITOR_MODAL_ACTION_DEFINITIONS.map((action) => [action.id, action]));
+    const primitive = actionById.get("add.primitive_sphere");
+    const empty = actionById.get("add.empty_entity");
+    const camera = actionById.get("add.camera");
+    const light = actionById.get("add.light");
+    const terrain = actionById.get("add.terrain");
+    const customGlb = actionById.get("add.custom_glb");
     return (
       <ModalFrame onClose={onClose} title="Add Object">
         <div className="tn-editor-modal-grid">
-          <button onClick={onAddObject} title={actionById.get("add.primitive_sphere")?.operationName} type="button"><PackagePlus size={16} /> Primitive Sphere</button>
-          <button disabled title={actionById.get("add.empty_entity")?.readOnlyReason} type="button"><Box size={16} /> Empty Entity</button>
-          <button disabled title={actionById.get("add.camera")?.readOnlyReason} type="button"><Camera size={16} /> Camera</button>
-          <button disabled title={actionById.get("add.light")?.readOnlyReason} type="button"><Lightbulb size={16} /> Light</button>
-          <button disabled title={actionById.get("add.terrain")?.readOnlyReason} type="button"><Mountain size={16} /> Terrain</button>
-          <button disabled title={actionById.get("add.custom_glb")?.readOnlyReason} type="button"><FolderOpen size={16} /> Custom GLB</button>
+          {primitive === undefined ? null : <button onClick={() => onAddObject(primitive)} title={primitive.operationName} type="button"><PackagePlus size={16} /> Primitive Sphere</button>}
+          {empty === undefined ? null : <button disabled={empty.readOnly} onClick={() => onAddObject(empty)} title={empty.readOnly ? empty.readOnlyReason : empty.operationName} type="button"><Box size={16} /> Empty Entity</button>}
+          {camera === undefined ? null : <button disabled={camera.readOnly} onClick={() => onAddObject(camera)} title={camera.readOnly ? camera.readOnlyReason : camera.operationName} type="button"><Camera size={16} /> Camera</button>}
+          {light === undefined ? null : <button disabled={light.readOnly} onClick={() => onAddObject(light)} title={light.readOnly ? light.readOnlyReason : light.operationName} type="button"><Lightbulb size={16} /> Light</button>}
+          {terrain === undefined ? null : <button disabled title={terrain.readOnlyReason} type="button"><Mountain size={16} /> Terrain</button>}
+          {customGlb === undefined ? null : <button disabled title={customGlb.readOnlyReason} type="button"><FolderOpen size={16} /> Custom GLB</button>}
         </div>
       </ModalFrame>
     );

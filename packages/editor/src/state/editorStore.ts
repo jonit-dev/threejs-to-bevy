@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import type { IEditorAddComponentDefinition, IEditorLodStats, IEditorPropertyRow, IEditorSceneObject } from "../adapters/editorModel.js";
+import type { IEditorAddComponentDefinition, IEditorLodStats, IEditorModalActionDefinition, IEditorPropertyRow, IEditorSceneObject } from "../adapters/editorModel.js";
 import type { IViewportTransform } from "../preview/EditorViewport3d.js";
 
 export type EditorModal = "addComponent" | "addObject" | "build" | "chat" | "delete" | "newScene" | "save" | "settings" | undefined;
@@ -31,7 +31,7 @@ export interface IEditorSessionState {
 
 export interface IEditorSessionActions {
   addComponent: (definition: IEditorAddComponentDefinition, sceneObjects: readonly IEditorSceneObject[]) => Promise<void>;
-  addPrimitive: () => Promise<void>;
+  addObject: (action: IEditorModalActionDefinition) => Promise<void>;
   buildPreview: () => Promise<void>;
   clearTransformOverride: (rowId: string) => void;
   closeModal: () => void;
@@ -110,21 +110,24 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       set({ status: error instanceof Error ? error.message : String(error) });
     }
   },
-  addPrimitive: async () => {
+  addObject: async (action) => {
     const suffix = Date.now().toString(36);
-    const prefabId = `prefab.editor-box-${suffix}`;
-    const entityId = `editor-box-${suffix}`;
-    const primitive = "sphere";
-    const color = "#9b59b6";
+    const sceneId = "arena";
     try {
-      set({ status: `Adding ${primitive}` });
-      await postOperation("scene.add_prefab", { color, prefabId, primitive, sceneId: "arena" }, get().project?.projectRevision);
-      await postOperation("scene.add_entity", { entityId, prefabId, sceneId: "arena" }, get().project?.projectRevision);
-      await postOperation("scene.set_transform", { entityId, position: [12, 0.5, 5], sceneId: "arena" }, get().project?.projectRevision);
+      const revision = get().project?.projectRevision;
+      const result = addObjectOperationPlan(action.id, suffix);
+      if (result === undefined) {
+        set({ status: action.readOnlyReason ?? `${action.label} does not have a promoted add operation yet` });
+        return;
+      }
+      set({ status: `Adding ${result.statusLabel}` });
+      for (const operation of result.operations) {
+        await postOperation(operation.name, { ...operation.args, sceneId }, revision);
+      }
       const nextProject = await get().refreshProject();
       set({
-        selectedRowId: nextProject.sceneObjects?.find((object) => object.id === entityId)?.rowId ?? `entity:content/scenes/arena.scene.json:${entityId}`,
-        status: `Added ${entityId}; primitive ${primitive}; documents ${countDocuments(nextProject)}`,
+        selectedRowId: nextProject.sceneObjects?.find((object) => object.id === result.entityId)?.rowId ?? `entity:content/scenes/arena.scene.json:${result.entityId}`,
+        status: `Added ${result.entityId}; ${result.statusLabel}; documents ${countDocuments(nextProject)}`,
       });
     } catch (error) {
       set({ status: error instanceof Error ? error.message : String(error) });
@@ -297,4 +300,67 @@ function countDocuments(project: IEditorProjectPayload): number {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+interface IPlannedEditorOperation {
+  args: Record<string, unknown>;
+  name: string;
+}
+
+function addObjectOperationPlan(actionId: IEditorModalActionDefinition["id"], suffix: string): { entityId: string; operations: IPlannedEditorOperation[]; statusLabel: string } | undefined {
+  switch (actionId) {
+    case "add.primitive_sphere": {
+      const prefabId = `prefab.editor-box-${suffix}`;
+      const entityId = `editor-box-${suffix}`;
+      return {
+        entityId,
+        operations: [
+          { args: { color: "#9b59b6", prefabId, primitive: "sphere" }, name: "scene.add_prefab" },
+          { args: { entityId, prefabId }, name: "scene.add_entity" },
+          { args: { entityId, position: [12, 0.5, 5] }, name: "scene.set_transform" },
+        ],
+        statusLabel: "primitive sphere",
+      };
+    }
+    case "add.empty_entity": {
+      const entityId = `editor-entity-${suffix}`;
+      return {
+        entityId,
+        operations: [{ args: { entityId }, name: "scene.add_entity" }],
+        statusLabel: "empty entity",
+      };
+    }
+    case "add.camera": {
+      const entityId = `editor-camera-${suffix}`;
+      return {
+        entityId,
+        operations: [
+          { args: { entityId }, name: "scene.add_entity" },
+          { args: { componentKind: "camera", entityId, value: { mode: "perspective" } }, name: "scene.set_component" },
+          { args: { entityId, position: [0, 1.8, 6], rotation: [-0.25, 0, 0] }, name: "scene.set_transform" },
+        ],
+        statusLabel: "camera",
+      };
+    }
+    case "add.light": {
+      const entityId = `editor-light-${suffix}`;
+      return {
+        entityId,
+        operations: [
+          { args: { entityId }, name: "scene.add_entity" },
+          { args: { componentKind: "Light", entityId, value: { intensity: 1, kind: "directional" } }, name: "scene.set_component" },
+          { args: { entityId, position: [2, 4, 3] }, name: "scene.set_transform" },
+        ],
+        statusLabel: "light",
+      };
+    }
+    case "add.custom_glb":
+    case "add.terrain":
+    case "build.preview":
+    case "delete.selection":
+    case "scene.create_default":
+    case "scene.save":
+    case "settings.editor":
+      return undefined;
+  }
 }

@@ -54,6 +54,31 @@ test("should render modal actions from modal view", () => {
   assert.match(html, /Custom GLB/);
 });
 
+test("should disable modal actions without source operations", () => {
+  useEditorStore.getState().reset();
+
+  const html = renderToStaticMarkup(
+    <EditorModalView
+      addComponentDefinitions={[]}
+      attachedComponents={[]}
+      modal="addObject"
+      onAddComponent={() => {}}
+      onAddObject={() => {}}
+      onBuildPreview={() => {}}
+      onClose={() => {}}
+      onCreateScene={() => {}}
+      onSaveScene={() => {}}
+    />,
+  );
+
+  assert.match(html, /Empty Entity/);
+  assert.match(html, /Camera/);
+  assert.match(html, /Light/);
+  assert.match(html, /title="scene.add_entity"/);
+  assert.match(html, /Terrain source operations are not promoted in this editor slice yet/);
+  assert.match(html, /Custom GLB import needs a promoted asset and prefab operation before it can be enabled/);
+});
+
 function modelFixture(): IEditorShellModel {
   return {
     addComponentDefinitions: [...EDITOR_ADD_COMPONENT_DEFINITIONS],

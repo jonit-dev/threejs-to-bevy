@@ -282,9 +282,9 @@ export const EDITOR_INSPECTOR_FIELD_INVENTORY: readonly IEditorInspectorFieldInv
 
 export const EDITOR_MODAL_ACTION_DEFINITIONS: readonly IEditorModalActionDefinition[] = [
   { id: "add.primitive_sphere", label: "Primitive Sphere", operationName: "scene.add_prefab", readOnly: false },
-  { id: "add.empty_entity", label: "Empty Entity", readOnly: true, readOnlyReason: "Empty entity creation is not promoted through the editor operation API yet." },
-  { id: "add.camera", label: "Camera", readOnly: true, readOnlyReason: "Camera creation is currently available through New Scene defaults, not Add Object." },
-  { id: "add.light", label: "Light", readOnly: true, readOnlyReason: "Light creation is currently available through New Scene defaults, not Add Object." },
+  { id: "add.empty_entity", label: "Empty Entity", operationName: "scene.add_entity", readOnly: false },
+  { id: "add.camera", label: "Camera", operationName: "scene.add_entity", readOnly: false },
+  { id: "add.light", label: "Light", operationName: "scene.add_entity", readOnly: false },
   { id: "add.terrain", label: "Terrain", readOnly: true, readOnlyReason: "Terrain source operations are not promoted in this editor slice yet." },
   { id: "add.custom_glb", label: "Custom GLB", readOnly: true, readOnlyReason: "Custom GLB import needs a promoted asset and prefab operation before it can be enabled." },
   { handler: "saveScene", id: "scene.save", label: "Save", readOnly: false },
