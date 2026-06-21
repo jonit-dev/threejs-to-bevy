@@ -10,6 +10,8 @@ import {
   editorModelFromInspection,
   EDITOR_ADD_COMPONENT_DEFINITIONS,
   EDITOR_INSPECTOR_FIELD_INVENTORY,
+  EDITOR_MODAL_ACTION_DEFINITIONS,
+  EDITOR_OPERATION_COVERAGE_MATRIX,
 } from "./editorModel.js";
 
 test("should map authoring documents to project inventory", () => {
@@ -95,6 +97,16 @@ test("should keep an explicit inspector field inventory for promoted source fami
   assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => item.sourceFamily === "input" && item.field === "actions.bindings" && item.fieldKind === "stringList"), true);
   assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => item.sourceFamily === "system" && item.field === "systems.script" && item.fieldKind === "script"), true);
   assert.equal(EDITOR_ADD_COMPONENT_DEFINITIONS.some((definition) => definition.component === "MeshRenderer" && definition.incompatibleWith.includes("Camera")), true);
+});
+
+test("should classify unsupported fields as read-only with reasons", () => {
+  const readOnlyRows = EDITOR_OPERATION_COVERAGE_MATRIX.filter((row) => row.readOnly);
+  const editableRows = EDITOR_OPERATION_COVERAGE_MATRIX.filter((row) => !row.readOnly);
+
+  assert.equal(readOnlyRows.every((row) => typeof row.readOnlyReason === "string" && row.readOnlyReason.length > 0), true);
+  assert.equal(editableRows.every((row) => row.operationName !== undefined || row.handler !== undefined), true);
+  assert.equal(EDITOR_MODAL_ACTION_DEFINITIONS.some((action) => action.id === "delete.selection" && action.readOnlyReason !== undefined), true);
+  assert.equal(EDITOR_MODAL_ACTION_DEFINITIONS.some((action) => action.id === "add.custom_glb" && action.readOnlyReason !== undefined), true);
 });
 
 function visualSnapshotFixture(): IEditorVisualPanelSnapshot {

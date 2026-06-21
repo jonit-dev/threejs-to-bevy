@@ -49,6 +49,47 @@ test("should load structured-source starter inventory", async () => {
     assert.equal(environmentRows.some((row) => row.label === "Skybox" && row.sourceFamily === "environment" && row.value === "tex.sky"), true);
     const materialRows = result.documents.flatMap((group) => group.documents).find((document) => document.kind === "material")?.inspectorRows ?? [];
     assert.equal(materialRows.some((row) => row.fieldKind === "color" && row.operation?.name === "material.set"), true);
+    const allRows = [
+      ...result.sceneObjects.flatMap((object) => object.inspectorRows ?? []),
+      ...result.documents.flatMap((group) => group.documents.flatMap((document) => document.inspectorRows ?? [])),
+    ];
+    assert.equal(allRows.filter((row) => !row.readOnly).every((row) => row.operation?.name !== undefined && row.operation.valueArg !== undefined), true);
+    assert.equal(allRows.filter((row) => row.readOnly).every((row) => typeof row.readOnlyReason === "string" && row.readOnlyReason.length > 0), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should attach operations to every editable inspector row", async () => {
+  const root = await copyStarterProject();
+  try {
+    await mkdir(join(root, "content", "input"), { recursive: true });
+    await mkdir(join(root, "content", "systems"), { recursive: true });
+    await mkdir(join(root, "content", "ui"), { recursive: true });
+    await writeFile(join(root, "spin.ts"), "export function spin() {}\n");
+    await writeFile(
+      join(root, "content", "input", "arena.input.json"),
+      `${JSON.stringify({ schema: "threenative.input", version: "0.1.0", id: "arena", actions: [{ id: "jump", bindings: ["keyboard.Space"] }] }, null, 2)}\n`,
+    );
+    await writeFile(
+      join(root, "content", "systems", "arena.systems.json"),
+      `${JSON.stringify({ schema: "threenative.systems", version: "0.1.0", id: "arena", systems: [{ id: "spin", schedule: "update", script: { module: "./spin.ts", export: "spin" } }] }, null, 2)}\n`,
+    );
+    await writeFile(
+      join(root, "content", "ui", "hud.ui.json"),
+      `${JSON.stringify({ schema: "threenative.ui", version: "0.1.0", id: "hud", nodes: [{ id: "score-label", text: "Score", type: "text" }], bindings: [{ node: "score-label", resource: "score" }] }, null, 2)}\n`,
+    );
+
+    const result = await loadEditorProjectApi({ projectPath: root });
+    assert.equal(result.ok, true);
+    const rows = [
+      ...result.sceneObjects.flatMap((object) => object.inspectorRows ?? []),
+      ...result.documents.flatMap((group) => group.documents.flatMap((document) => document.inspectorRows ?? [])),
+    ];
+    const editableRows = rows.filter((row) => !row.readOnly);
+    assert.equal(editableRows.length > 0, true);
+    assert.deepEqual(editableRows.filter((row) => row.operation?.name === undefined).map((row) => row.id), []);
+    assert.deepEqual(rows.filter((row) => row.readOnly && row.readOnlyReason === undefined).map((row) => row.id), []);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

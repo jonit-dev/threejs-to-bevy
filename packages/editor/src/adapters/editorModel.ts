@@ -78,6 +78,28 @@ export interface IEditorAddComponentDefinition {
   sourceFamily: EditorInspectorSourceFamily;
 }
 
+export type EditorModalActionId =
+  | "add.camera"
+  | "add.custom_glb"
+  | "add.empty_entity"
+  | "add.primitive_sphere"
+  | "add.terrain"
+  | "add.light"
+  | "build.preview"
+  | "delete.selection"
+  | "scene.create_default"
+  | "scene.save"
+  | "settings.editor";
+
+export interface IEditorModalActionDefinition {
+  handler?: "buildPreview" | "saveScene";
+  id: EditorModalActionId;
+  label: string;
+  operationName?: string;
+  readOnly: boolean;
+  readOnlyReason?: string;
+}
+
 export interface IEditorAssetRow {
   access: EditorDocumentAccess;
   id: string;
@@ -223,7 +245,17 @@ export interface IEditorInspectorFieldInventoryItem {
   sourceFamily: EditorInspectorSourceFamily;
 }
 
-export const EDITOR_INSPECTOR_FIELD_INVENTORY = [
+export interface IEditorOperationCoverageRow {
+  control: string;
+  handler?: IEditorModalActionDefinition["handler"];
+  kind: "inspector-field" | "modal-action";
+  operationName?: string;
+  readOnly: boolean;
+  readOnlyReason?: string;
+  sourceFamily?: EditorInspectorSourceFamily;
+}
+
+export const EDITOR_INSPECTOR_FIELD_INVENTORY: readonly IEditorInspectorFieldInventoryItem[] = [
   { component: "Transform", defaultValue: [0, 0, 0], field: "position", fieldKind: "vector3", operationName: "scene.set_transform", readOnly: false, sourceFamily: "scene" },
   { component: "Transform", defaultValue: [0, 0, 0], field: "rotation", fieldKind: "vector3", operationName: "scene.set_transform", readOnly: false, sourceFamily: "scene" },
   { component: "Transform", defaultValue: [1, 1, 1], field: "scale", fieldKind: "vector3", operationName: "scene.set_transform", readOnly: false, sourceFamily: "scene" },
@@ -246,7 +278,40 @@ export const EDITOR_INSPECTOR_FIELD_INVENTORY = [
   { field: "assets.path", fieldKind: "asset", readOnly: true, readOnlyReason: "Asset catalog mutation is not exposed through the editor operation API yet.", sourceFamily: "asset" },
   { field: "meshes.primitive", fieldKind: "enum", operationName: "mesh.create_primitive", readOnly: true, readOnlyReason: "Mesh primitive declarations are edited through create flows in this slice.", sourceFamily: "mesh" },
   { field: "provenance", fieldKind: "generated", readOnly: true, readOnlyReason: "Generated provenance is inspectable evidence, not editor-owned source.", sourceFamily: "scene" },
-] as const satisfies readonly IEditorInspectorFieldInventoryItem[];
+] as const;
+
+export const EDITOR_MODAL_ACTION_DEFINITIONS: readonly IEditorModalActionDefinition[] = [
+  { id: "add.primitive_sphere", label: "Primitive Sphere", operationName: "scene.add_prefab", readOnly: false },
+  { id: "add.empty_entity", label: "Empty Entity", readOnly: true, readOnlyReason: "Empty entity creation is not promoted through the editor operation API yet." },
+  { id: "add.camera", label: "Camera", readOnly: true, readOnlyReason: "Camera creation is currently available through New Scene defaults, not Add Object." },
+  { id: "add.light", label: "Light", readOnly: true, readOnlyReason: "Light creation is currently available through New Scene defaults, not Add Object." },
+  { id: "add.terrain", label: "Terrain", readOnly: true, readOnlyReason: "Terrain source operations are not promoted in this editor slice yet." },
+  { id: "add.custom_glb", label: "Custom GLB", readOnly: true, readOnlyReason: "Custom GLB import needs a promoted asset and prefab operation before it can be enabled." },
+  { handler: "saveScene", id: "scene.save", label: "Save", readOnly: false },
+  { id: "scene.create_default", label: "Create Scene", operationName: "scene.create_default", readOnly: false },
+  { handler: "buildPreview", id: "build.preview", label: "Build", readOnly: false },
+  { id: "delete.selection", label: "Delete", readOnly: true, readOnlyReason: "Delete requires a promoted source operation before it is enabled." },
+  { id: "settings.editor", label: "Settings", readOnly: true, readOnlyReason: "Editor settings are inspect-only in this slice." },
+] as const;
+
+export const EDITOR_OPERATION_COVERAGE_MATRIX: readonly IEditorOperationCoverageRow[] = [
+  ...EDITOR_INSPECTOR_FIELD_INVENTORY.map((item) => ({
+    control: item.component === undefined ? item.field : `${item.component}.${item.field}`,
+    kind: "inspector-field" as const,
+    operationName: item.operationName,
+    readOnly: item.readOnly,
+    readOnlyReason: item.readOnlyReason,
+    sourceFamily: item.sourceFamily,
+  })),
+  ...EDITOR_MODAL_ACTION_DEFINITIONS.map((action) => ({
+    control: action.id,
+    handler: action.handler,
+    kind: "modal-action" as const,
+    operationName: action.operationName,
+    readOnly: action.readOnly,
+    readOnlyReason: action.readOnlyReason,
+  })),
+];
 
 export function editorModelFromAuthoringProject(project: IAuthoringProject): IEditorShellModel {
   const hierarchy = project.documents.map<IEditorTreeRow>((document) => ({

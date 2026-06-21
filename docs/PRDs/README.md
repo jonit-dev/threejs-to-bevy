@@ -72,6 +72,16 @@ This index separates current cleanup work from historical milestone batches.
   runtime-web-three preview host, selection correlation, catalog preview panels,
   and browser smoke evidence while keeping Vibe Coder's R3F/Rapier ECS out of
   the source-of-truth path.
+- [Functional Editor Viewport, Gizmo, and Selection](other/functional-editor-viewport-gizmo-and-selection.md):
+  source-backed hierarchy/viewport selection sync, real move/rotate/scale gizmo
+  modes, transform persistence, viewport visual cues, and Playwright evidence.
+- [Functional Editor Scene, Assets, and Environment](other/functional-editor-scene-assets-and-environment.md):
+  source-backed scene lifecycle, Add Object/model asset flows, environment
+  skybox/terrain/LOD visibility, GLB loading proof, and build artifact evidence.
+- [Functional Editor Operations, Modals, and Inspector Completion](other/functional-editor-operations-modals-and-inspector-completion.md):
+  source operation coverage for inspector fields and modal actions, add
+  component/default persistence, delete/settings/save/build behavior, and
+  functional editor e2e coverage.
 - [Advanced Visual Effects, Lighting, and Material Depth](other/advanced-visual-effects-lighting-material-depth.md):
   remaining advanced lighting, material, atmosphere, post-processing, deferred
   renderer, virtual geometry, and custom post-processing gaps.

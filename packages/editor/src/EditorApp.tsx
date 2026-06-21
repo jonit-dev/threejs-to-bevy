@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Box, Camera, FolderOpen, Image, Lightbulb, MessageSquare, Mountain, PackagePlus, Pause, Play, Save, Settings, Square, Trash2 } from "lucide-react";
 
 import type { IEditorAdapterInput, IEditorAddComponentDefinition, IEditorPropertyRow, IEditorShellModel } from "./adapters/editorModel.js";
-import { createEditorShellModel } from "./adapters/editorModel.js";
+import { createEditorShellModel, EDITOR_MODAL_ACTION_DEFINITIONS } from "./adapters/editorModel.js";
 import { PanelShell } from "./components/layout/PanelShell.js";
 import { HierarchyPanel } from "./components/panels/HierarchyPanel.js";
 import { InspectorPanel } from "./components/panels/InspectorPanel.js";
@@ -204,15 +204,16 @@ function EditorModalView({
     return null;
   }
   if (modal === "addObject") {
+    const actionById = new Map(EDITOR_MODAL_ACTION_DEFINITIONS.map((action) => [action.id, action]));
     return (
       <ModalFrame onClose={onClose} title="Add Object">
         <div className="tn-editor-modal-grid">
-          <button onClick={onAddObject} type="button"><PackagePlus size={16} /> Primitive Sphere</button>
-          <button disabled type="button"><Box size={16} /> Empty Entity</button>
-          <button disabled type="button"><Camera size={16} /> Camera</button>
-          <button disabled type="button"><Lightbulb size={16} /> Light</button>
-          <button disabled type="button"><Mountain size={16} /> Terrain</button>
-          <button disabled type="button"><FolderOpen size={16} /> Custom GLB</button>
+          <button onClick={onAddObject} title={actionById.get("add.primitive_sphere")?.operationName} type="button"><PackagePlus size={16} /> Primitive Sphere</button>
+          <button disabled title={actionById.get("add.empty_entity")?.readOnlyReason} type="button"><Box size={16} /> Empty Entity</button>
+          <button disabled title={actionById.get("add.camera")?.readOnlyReason} type="button"><Camera size={16} /> Camera</button>
+          <button disabled title={actionById.get("add.light")?.readOnlyReason} type="button"><Lightbulb size={16} /> Light</button>
+          <button disabled title={actionById.get("add.terrain")?.readOnlyReason} type="button"><Mountain size={16} /> Terrain</button>
+          <button disabled title={actionById.get("add.custom_glb")?.readOnlyReason} type="button"><FolderOpen size={16} /> Custom GLB</button>
         </div>
       </ModalFrame>
     );

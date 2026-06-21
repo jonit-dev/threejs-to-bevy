@@ -204,6 +204,13 @@ row from the running browser editor.
 The current modal shell covers Add Object, Add Component, Save Scene, New Scene,
 Build Preview, Settings/Delete placeholders, and the AI chat entry point while
 future slices port the richer Vibe Coder modal data and mutation flows.
+The functional editor operation-coverage audit now exposes a shared coverage
+matrix for inspector fields and modal actions. Focused editor tests fail if an
+editable inspector row lacks an operation payload or if a read-only row/action
+lacks an explicit reason, and the Add Object modal reads the same metadata for
+disabled action explanations. `scene.set_camera` and `scene.attach_script` are
+also included in the editor operation name surface to match the authoring
+registry.
 
 Structured `.scene.json` documents can now be used as a normal project build
 entry for the first runtime-backed CLI authoring slice. The compiler validates
