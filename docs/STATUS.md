@@ -55,6 +55,15 @@ provides optional AI-facing wrappers for inspect/validate/mutate/build/
 screenshot/verify operations by delegating to the same `tn ... --json` command
 surface, with project-root and generated-artifact guardrails.
 
+The structured authoring parity PRD has started with a source-document contract
+and testable inventory in `@threenative/authoring`. The inventory makes the
+durable source boundary explicit: editor-owned scene/map/UI/material/asset/
+input/system/audio/runtime-target data belongs in structured source documents,
+TypeScript is limited to script references and optional one-way generators, and
+generated bundle files such as `world.ir.json`, `ui.ir.json`,
+`scripts.bundle.js`, `materials.ir.json`, `assets.manifest.json`, and
+`manifest.json` are classified as non-source artifacts.
+
 Structured `.scene.json` documents can now be used as a normal project build
 entry for the first runtime-backed CLI authoring slice. The compiler validates
 the source scene, lowers primitive prefab entities, camera components,
