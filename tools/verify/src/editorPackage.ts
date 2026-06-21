@@ -60,9 +60,9 @@ export async function runEditorPackageGate(root = process.cwd()): Promise<Verifi
         await page.getByText(text).first().waitFor({ timeout: 10_000 });
       }
       await assertProjectAssetRoute(page, "assets/models/FarmHouse/glb/farm_house_basic_shaded.glb");
-      await assertProjectAssetRoute(page, "assets/models/GreenTree/glb/green_tree_basic_shaded.glb");
+      await assertProjectAssetRoute(page, "assets/models/base_basic_shaded/base_basic_shaded.glb");
       await waitForEditorModel(page, "assets/models/FarmHouse/glb/farm_house_basic_shaded.glb");
-      await waitForEditorModel(page, "assets/models/GreenTree/glb/green_tree_basic_shaded.glb");
+      await waitForEditorModel(page, "assets/models/base_basic_shaded/base_basic_shaded.glb");
       const inventory = await readProjectInventory(page);
       if (
         !inventory.paths.includes("content/scenes/arena.scene.json") ||
@@ -274,7 +274,7 @@ async function writeEditorVisualScene(projectPath: string): Promise<void> {
     prefabs: [
       { color: "#075d18", id: "prefab.terrain-0", primitive: "plane" },
       { asset: "assets/models/FarmHouse/glb/farm_house_basic_shaded.glb", color: "#9c3a16", id: "prefab.farm-house-basic-shaded-0", primitive: "box" },
-      { asset: "assets/models/GreenTree/glb/green_tree_basic_shaded.glb", color: "#66a80f", id: "prefab.base-basic-shaded-0", primitive: "sphere" },
+      { asset: "assets/models/base_basic_shaded/base_basic_shaded.glb", color: "#66a80f", id: "prefab.base-basic-shaded-0", primitive: "sphere" },
     ],
     id: "arena",
     resources: [],
@@ -286,6 +286,19 @@ async function writeEditorVisualScene(projectPath: string): Promise<void> {
   await writeFile(join(projectPath, "content", "scenes", "arena.scene.json"), `${JSON.stringify(scene, null, 2)}\n`);
   await mkdir(join(projectPath, "content", "input"), { recursive: true });
   await mkdir(join(projectPath, "content", "systems"), { recursive: true });
+  await mkdir(join(projectPath, "content", "environment"), { recursive: true });
+  await writeFile(
+    join(projectPath, "content", "environment", "arena.environment.json"),
+    `${JSON.stringify({
+      schema: "threenative.environment-scene",
+      version: "0.1.0",
+      id: "arena-environment",
+      sourceAssets: [],
+      instances: [],
+      path: { id: "path.main", points: [[0, 0, 0], [1, 0, 1]] },
+      skybox: { asset: "tex.sky", mode: "equirect" },
+    }, null, 2)}\n`,
+  );
   await writeFile(
     join(projectPath, "content", "input", "arena.input.json"),
     `${JSON.stringify({ schema: "threenative.input", version: "0.1.0", id: "arena", actions: [{ id: "jump", bindings: ["keyboard.Space"] }] }, null, 2)}\n`,
@@ -300,9 +313,9 @@ async function writeEditorVisualScene(projectPath: string): Promise<void> {
 async function copyEditorModelAssets(projectPath: string): Promise<void> {
   const sourceRoot = "/home/joao/projects/vibe-coder-3d/public/assets/models";
   await mkdir(join(projectPath, "assets", "models", "FarmHouse", "glb"), { recursive: true });
-  await mkdir(join(projectPath, "assets", "models", "GreenTree", "glb"), { recursive: true });
+  await mkdir(join(projectPath, "assets", "models", "base_basic_shaded"), { recursive: true });
   await cp(join(sourceRoot, "FarmHouse", "glb", "farm_house_basic_shaded.glb"), join(projectPath, "assets", "models", "FarmHouse", "glb", "farm_house_basic_shaded.glb"));
-  await cp(join(sourceRoot, "GreenTree", "glb", "green_tree_basic_shaded.glb"), join(projectPath, "assets", "models", "GreenTree", "glb", "green_tree_basic_shaded.glb"));
+  await cp(join(sourceRoot, "base_basic_shaded", "base_basic_shaded.glb"), join(projectPath, "assets", "models", "base_basic_shaded", "base_basic_shaded.glb"));
 }
 
 async function readProjectInventory(page: Page): Promise<IProjectInventory> {
@@ -357,7 +370,7 @@ async function captureCleanVisualState(page: Page, projectPath: string, screensh
   await page.reload({ waitUntil: "networkidle", timeout: 30_000 });
   await page.getByText("base_basic_shaded 0").first().waitFor({ timeout: 10_000 });
   await waitForEditorModel(page, "assets/models/FarmHouse/glb/farm_house_basic_shaded.glb");
-  await waitForEditorModel(page, "assets/models/GreenTree/glb/green_tree_basic_shaded.glb");
+  await waitForEditorModel(page, "assets/models/base_basic_shaded/base_basic_shaded.glb");
   await page.getByRole("button", { name: /base_basic_shaded 0 entity/ }).click();
   await page.screenshot({ path: screenshotPath, fullPage: true });
 }
@@ -376,16 +389,19 @@ async function assertTypedInspectorControls(page: Page): Promise<void> {
   if ((await page.getByRole("textbox", { name: "Color value" }).inputValue()) !== "#66a80f") {
     throw new Error("MeshRenderer color control did not render source-backed color value.");
   }
-  if ((await page.locator('input[aria-label="Asset"]').inputValue()) !== "assets/models/GreenTree/glb/green_tree_basic_shaded.glb") {
+  if ((await page.locator('input[aria-label="Asset"]').inputValue()) !== "assets/models/base_basic_shaded/base_basic_shaded.glb") {
     throw new Error("MeshRenderer asset picker field did not render source-backed asset reference.");
   }
 
   await page.getByRole("button", { name: /Main Camera camera/ }).click();
-  if ((await page.getByRole("combobox", { name: "Mode" }).inputValue()) !== "perspective") {
+  if ((await page.getByRole("combobox", { exact: true, name: "Mode" }).inputValue()) !== "perspective") {
     throw new Error("Camera mode enum did not render source-backed mode.");
   }
-  if ((await page.getByRole("textbox", { name: "Target" }).inputValue()) !== "terrain-0") {
+  if ((await page.getByRole("textbox", { exact: true, name: "Target" }).inputValue()) !== "terrain-0") {
     throw new Error("Camera target field did not render source-backed target.");
+  }
+  if ((await page.getByRole("textbox", { exact: true, name: "Skybox" }).inputValue()) !== "tex.sky") {
+    throw new Error("Camera inspector did not render source-backed environment skybox.");
   }
 
   await page.getByRole("button", { name: /Directional Light light/ }).click();

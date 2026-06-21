@@ -43,6 +43,7 @@ export type {
 export {
   assetDocumentSchema,
   audioDocumentSchema,
+  environmentDocumentSchema,
   inputDocumentSchema,
   logicalIdPattern,
   materialDocumentSchema,

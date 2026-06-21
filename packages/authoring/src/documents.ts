@@ -5,7 +5,7 @@ import { authoringDiagnostic, type IAuthoringDiagnostic } from "./diagnostics.js
 import { formatAuthoringDocument } from "./format.js";
 import { isGeneratedBundleArtifactFile } from "./sourceKinds.js";
 
-export type AuthoringDocumentKind = "asset" | "audio" | "input" | "material" | "mesh" | "prefab" | "project" | "scene" | "systems" | "ui" | "unknown";
+export type AuthoringDocumentKind = "asset" | "audio" | "environment" | "input" | "material" | "mesh" | "prefab" | "project" | "scene" | "systems" | "ui" | "unknown";
 
 export interface IAuthoringDocument {
   file: string;
@@ -89,6 +89,8 @@ export function classifyAuthoringDocument(projectRelativePath: string, data: unk
         return "asset";
       case "threenative.audio":
         return "audio";
+      case "threenative.environment-scene":
+        return "environment";
       case "threenative.input":
         return "input";
       case "threenative.materials":
@@ -119,6 +121,9 @@ export function classifyAuthoringDocumentPath(projectRelativePath: string): Auth
   }
   if (projectRelativePath.endsWith(".audio.json")) {
     return "audio";
+  }
+  if (projectRelativePath.endsWith(".environment.json")) {
+    return "environment";
   }
   if (projectRelativePath.endsWith(".input.json")) {
     return "input";

@@ -61,7 +61,7 @@ export type EditorInspectorFieldKind =
   | "stringList"
   | "vector3";
 
-export type EditorInspectorSourceFamily = "asset" | "audio" | "input" | "material" | "mesh" | "prefab" | "scene" | "system" | "ui";
+export type EditorInspectorSourceFamily = "asset" | "audio" | "environment" | "input" | "material" | "mesh" | "prefab" | "scene" | "system" | "ui";
 
 export interface IEditorPropertyOperation {
   args: Record<string, unknown>;
@@ -232,6 +232,7 @@ export const EDITOR_INSPECTOR_FIELD_INVENTORY = [
   { component: "MeshRenderer", field: "asset", fieldKind: "asset", readOnly: true, readOnlyReason: "Prefab asset reference updates do not have a promoted source operation yet.", sourceFamily: "scene" },
   { component: "Camera", defaultValue: "perspective", field: "mode", fieldKind: "enum", operationName: "scene.set_camera", readOnly: false, sourceFamily: "scene" },
   { component: "Camera", defaultValue: "", field: "target", fieldKind: "string", operationName: "scene.set_camera", readOnly: false, sourceFamily: "scene" },
+  { component: "Camera", defaultValue: "none", field: "skybox", fieldKind: "asset", readOnly: true, readOnlyReason: "Skybox is owned by environment.scene source and does not have a promoted editor mutation operation yet.", sourceFamily: "environment" },
   { component: "Light", defaultValue: "directional", field: "kind", fieldKind: "enum", readOnly: true, readOnlyReason: "Light is not part of supportedComponentKinds; source data is preserved read-only.", sourceFamily: "scene" },
   { component: "Light", defaultValue: 1, field: "intensity", fieldKind: "number", readOnly: true, readOnlyReason: "Light is not part of supportedComponentKinds; source data is preserved read-only.", sourceFamily: "scene" },
   { field: "materials.color", fieldKind: "color", operationName: "material.set", readOnly: false, sourceFamily: "material" },

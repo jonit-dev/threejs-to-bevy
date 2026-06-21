@@ -14,6 +14,8 @@ import {
   audioDocumentKeys,
   audioDocumentSchema,
   audioSoundKeys,
+  environmentDocumentKeys,
+  environmentDocumentSchema,
   inputActionKeys,
   inputDocumentKeys,
   inputDocumentSchema,
@@ -1120,6 +1122,8 @@ function validateNewSourcePath(diagnostics: IAuthoringDiagnostic[], projectRelat
 
 function sourceExtensionForKind(kind: AuthoringDocumentKind): string {
   switch (kind) {
+    case "environment":
+      return ".environment.json";
     case "input":
       return ".input.json";
     case "material":
@@ -1248,6 +1252,8 @@ async function validateAuthoringDocument(
         listName: "actions",
         rootKeys: inputDocumentKeys,
       });
+    case "environment":
+      return validateRootDocument(file, data, environmentDocumentSchema, "environment document", environmentDocumentKeys);
     case "material":
       return validateDeclarationDocument(file, data, {
         declarationKeys: materialKeys,
@@ -1407,6 +1413,30 @@ async function validateDeclarationDocument(
       await options.validateItem?.(diagnostics, `/${options.listName}/${index}`, item);
     }
   }
+  return sortAuthoringDiagnostics(diagnostics);
+}
+
+function validateRootDocument(
+  file: string,
+  data: unknown,
+  expectedSchema: string,
+  idKind: string,
+  rootKeys: ReadonlySet<string>,
+): IAuthoringDiagnostic[] {
+  const diagnostics: IAuthoringDiagnostic[] = [];
+  if (!isRecord(data)) {
+    return [
+      authoringDiagnostic({
+        code: "TN_AUTHORING_DOCUMENT_SHAPE_INVALID",
+        file,
+        message: "Structured authoring source document must be a JSON object.",
+        path: "",
+        value: data,
+      }),
+    ];
+  }
+  diagnostics.push(...unknownKeyDiagnostics(file, "", data, rootKeys));
+  validateDocumentHeader(diagnostics, file, data, expectedSchema, idKind);
   return sortAuthoringDiagnostics(diagnostics);
 }
 

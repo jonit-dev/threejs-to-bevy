@@ -332,11 +332,7 @@ function createCameraGlyph(): THREE.Group {
 }
 
 function createLightGlyph(): THREE.Group {
-  const group = new THREE.Group();
-  const sprite = createIconSprite("light");
-  sprite.scale.set(0.5, 0.5, 1);
-  group.add(sprite);
-  return group;
+  return new THREE.Group();
 }
 
 function createIconSprite(kind: "camera" | "light"): THREE.Sprite {

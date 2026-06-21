@@ -580,6 +580,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] CLI entry points for `tn editor snapshot`, `tn editor apply`, and `tn editor diff`
 - [x] `P1` Visual editor UI and inspector panels
 - [x] Source-schema-backed inspector field mapping and Add Component compatibility/default metadata
+- [x] Environment source document classification and Camera inspector skybox rows
 - [x] Save/load round trips through structured SDK/ECS/IR data
 - [x] `P1` Scene hierarchy inspector and property editing
 - [x] `P2` Gizmo overlays for transforms, lights, bounds, cameras, and UI nodes

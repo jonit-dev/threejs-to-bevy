@@ -10,6 +10,19 @@ import { loadEditorProjectApi } from "./projectApi.js";
 test("should load structured-source starter inventory", async () => {
   const root = await copyStarterProject();
   try {
+    await mkdir(join(root, "content", "environment"), { recursive: true });
+    await writeFile(
+      join(root, "content", "environment", "arena.environment.json"),
+      `${JSON.stringify({
+        schema: "threenative.environment-scene",
+        version: "0.1.0",
+        id: "arena-environment",
+        sourceAssets: [],
+        instances: [],
+        path: { id: "path.main", points: [[0, 0, 0], [1, 0, 1]] },
+        skybox: { asset: "tex.sky", mode: "equirect" },
+      }, null, 2)}\n`,
+    );
     const result = await loadEditorProjectApi({ projectPath: root });
 
     assert.equal(result.ok, true);
@@ -30,7 +43,10 @@ test("should load structured-source starter inventory", async () => {
     );
     const camera = result.sceneObjects.find((object) => object.id === "camera.main");
     assert.equal(camera?.inspectorRows?.some((row) => row.component === "Camera" && row.label === "Mode" && row.fieldKind === "enum" && row.operation?.name === "scene.set_camera"), true);
+    assert.equal(camera?.inspectorRows?.some((row) => row.component === "Camera" && row.label === "Skybox" && row.fieldKind === "asset" && row.sourceFamily === "environment" && row.value === "tex.sky"), true);
     assert.equal(result.sceneObjects.find((object) => object.id === "player")?.inspectorRows?.some((row) => row.component === "MeshRenderer" && row.label === "Asset" && row.fieldKind === "asset" && row.readOnlyReason !== undefined), true);
+    const environmentRows = result.documents.flatMap((group) => group.documents).find((document) => document.kind === "environment")?.inspectorRows ?? [];
+    assert.equal(environmentRows.some((row) => row.label === "Skybox" && row.sourceFamily === "environment" && row.value === "tex.sky"), true);
     const materialRows = result.documents.flatMap((group) => group.documents).find((document) => document.kind === "material")?.inspectorRows ?? [];
     assert.equal(materialRows.some((row) => row.fieldKind === "color" && row.operation?.name === "material.set"), true);
   } finally {

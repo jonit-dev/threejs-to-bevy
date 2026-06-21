@@ -126,7 +126,32 @@ function triangleEstimate(object: IEditorSceneObject): number {
   return Math.round(base * scale);
 }
 
+interface IEnvironmentSkyboxSummary {
+  documentPath: string;
+  mode: string;
+  value: string;
+}
+
+function readEnvironmentSkybox(documents: readonly IAuthoringDocument[]): IEnvironmentSkyboxSummary | undefined {
+  for (const document of documents) {
+    if (document.kind !== "environment" || !isRecord(document.data)) {
+      continue;
+    }
+    const skybox = isRecord(document.data.skybox) ? document.data.skybox : undefined;
+    if (skybox === undefined) {
+      continue;
+    }
+    return {
+      documentPath: document.projectRelativePath,
+      mode: readString(skybox.mode) ?? "configured",
+      value: summarizeSkybox(skybox),
+    };
+  }
+  return undefined;
+}
+
 function buildSceneObjects(documents: readonly IAuthoringDocument[]): IEditorSceneObject[] {
+  const environmentSkybox = readEnvironmentSkybox(documents);
   return documents.flatMap((document) => {
     if (document.kind !== "scene" || !isRecord(document.data)) {
       return [];
@@ -160,6 +185,7 @@ function buildSceneObjects(documents: readonly IAuthoringDocument[]): IEditorSce
           documentPath: document.projectRelativePath,
           entity,
           entityId: id,
+          environmentSkybox,
           lightData,
           prefabData,
           sceneId,
@@ -182,6 +208,7 @@ function objectInspectorRows(input: {
   documentPath: string;
   entity: Record<string, unknown>;
   entityId: string;
+  environmentSkybox: IEnvironmentSkyboxSummary | undefined;
   lightData: unknown;
   prefabData: Record<string, unknown> | undefined;
   sceneId: string;
@@ -270,6 +297,43 @@ function objectInspectorRows(input: {
         value: readString(camera.target) ?? "",
       }),
     );
+    if (input.environmentSkybox !== undefined) {
+      rows.push(
+        {
+          access: "sourcePersistable",
+          component: "Camera",
+          defaultValue: "none",
+          documentPath: input.environmentSkybox.documentPath,
+          fieldKind: "asset",
+          id: `inspect:camera-skybox:entity:${input.documentPath}:${input.entityId}`,
+          jsonPointer: "/skybox",
+          label: "Skybox",
+          path: `${input.environmentSkybox.documentPath}/skybox`,
+          readOnly: true,
+          readOnlyReason: "Skybox is owned by environment.scene source and does not have a promoted editor mutation operation yet.",
+          sourceFamily: "environment",
+          sourcePath: input.environmentSkybox.documentPath,
+          value: input.environmentSkybox.value,
+        },
+        {
+          access: "sourcePersistable",
+          component: "Camera",
+          defaultValue: "none",
+          documentPath: input.environmentSkybox.documentPath,
+          fieldKind: "enum",
+          id: `inspect:camera-skybox-mode:entity:${input.documentPath}:${input.entityId}`,
+          jsonPointer: "/skybox/mode",
+          label: "Skybox Mode",
+          options: ["equirect", "cubemap"],
+          path: `${input.environmentSkybox.documentPath}/skybox/mode`,
+          readOnly: true,
+          readOnlyReason: "Skybox is owned by environment.scene source and does not have a promoted editor mutation operation yet.",
+          sourceFamily: "environment",
+          sourcePath: input.environmentSkybox.documentPath,
+          value: input.environmentSkybox.mode,
+        },
+      );
+    }
   }
 
   if (isRecord(input.lightData)) {
@@ -331,6 +395,14 @@ function documentInspectorRows(document: IAuthoringDocument): IEditorPropertyRow
         rows.push(documentRow(document, `resource:${index}:path`, `${readString(resource.id) ?? `resource.${index}`} Path`, readString(resource.path) ?? summarizeValue(resource.value), "asset", true, `/resources/${index}/path`, "scene", undefined, undefined, undefined, "Scene resource mutation is not exposed through the editor operation API yet."));
       }
       break;
+    case "environment": {
+      const skybox = isRecord(document.data.skybox) ? document.data.skybox : undefined;
+      if (skybox !== undefined) {
+        rows.push(documentRow(document, "environment:skybox", "Skybox", summarizeSkybox(skybox), "asset", true, "/skybox", "environment", undefined, undefined, undefined, "Environment skybox mutation is not exposed through the editor operation API yet."));
+        rows.push(documentRow(document, "environment:skybox-mode", "Skybox Mode", readString(skybox.mode) ?? "", "enum", true, "/skybox/mode", "environment", undefined, undefined, undefined, "Environment skybox mutation is not exposed through the editor operation API yet."));
+      }
+      break;
+    }
     case "ui":
       for (const [index, binding] of readArray(document.data.bindings).filter(isRecord).entries()) {
         rows.push(documentRow(document, `ui:${index}:binding`, `${readString(binding.node) ?? `node.${index}`} Binding`, readString(binding.resource) ?? "", "string", false, `/bindings/${index}/resource`, "ui", "ui.bind", "resourcePath", { nodeId: readString(binding.node) ?? "", uiDocId: readDocumentId(document.data) ?? "" }));
@@ -443,6 +515,7 @@ function sourceFamilyForDocumentKind(kind: AuthoringDocumentKind): EditorInspect
   switch (kind) {
     case "asset":
     case "audio":
+    case "environment":
     case "input":
     case "material":
     case "mesh":
@@ -456,6 +529,19 @@ function sourceFamilyForDocumentKind(kind: AuthoringDocumentKind): EditorInspect
     case "unknown":
       return "scene";
   }
+}
+
+function summarizeSkybox(skybox: Record<string, unknown>): string {
+  const asset = readString(skybox.asset);
+  if (asset !== undefined) {
+    return asset;
+  }
+  const faces = isRecord(skybox.faces) ? Object.values(facesRecord(skybox.faces)).filter((value): value is string => typeof value === "string") : [];
+  return faces.length === 0 ? "configured" : faces.join(", ");
+}
+
+function facesRecord(value: Record<string, unknown>): Record<string, unknown> {
+  return value;
 }
 
 function readDocumentId(value: unknown): string | undefined {

@@ -195,6 +195,12 @@ behavior remain separate. The `verify:editor-package` Playwright proof now
 checks representative Transform/MeshRenderer/Camera/Light fields, input
 bindings, system script references, Add Component compatibility/default
 metadata, and the existing source/IR persistence evidence.
+Environment scene source documents are now classified by `@threenative/authoring`
+as `environment`, and the editor surfaces environment-owned skybox data under
+the selected Camera inspector as read-only `Skybox` and `Skybox Mode` rows until
+a promoted environment mutation operation exists. The editor package gate writes
+`content/environment/arena.environment.json` and verifies the Main Camera skybox
+row from the running browser editor.
 The current modal shell covers Add Object, Add Component, Save Scene, New Scene,
 Build Preview, Settings/Delete placeholders, and the AI chat entry point while
 future slices port the richer Vibe Coder modal data and mutation flows.
