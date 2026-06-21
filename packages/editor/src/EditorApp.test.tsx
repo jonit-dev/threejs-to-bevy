@@ -8,7 +8,8 @@ import type { IEditorShellModel } from "./adapters/editorModel.js";
 test("should render shell sections from adapter data", () => {
   const html = renderToStaticMarkup(<EditorApp model={modelFixture()} />);
 
-  assert.match(html, /ThreeNative Editor/);
+  assert.match(html, /VibeEngine/);
+  assert.match(html, /ThreeNative editor/);
   assert.match(html, /Hierarchy/);
   assert.match(html, /Inspector/);
   assert.match(html, /Assets/);
@@ -35,6 +36,7 @@ function modelFixture(): IEditorShellModel {
     hierarchy: [{ access: "sourcePersistable", badge: "entity", id: "entity:player", label: "player" }],
     inspector: [{ access: "sourcePersistable", id: "property:transform", label: "Transform", readOnly: false, value: "[0, 1, 0]" }],
     projectName: "fixture",
+    sceneObjects: [{ id: "player", kind: "entity", label: "player", primitive: "box", rowId: "entity:player" }],
     status: "ready",
     statusItems: [],
   };

@@ -56,17 +56,35 @@ export async function runEditorPackageGate(root = process.cwd()): Promise<Verifi
       });
       await waitForHttp(url, 30_000);
       await page.goto(url, { waitUntil: "networkidle", timeout: 30_000 });
-      for (const text of ["ThreeNative Editor", "Hierarchy", "Inspector", "Assets", "Diagnostics", "Preview", "arena.scene.json"]) {
+      for (const text of ["VibeEngine", "Hierarchy", "Inspector", "Viewport", "arena.scene.json", "arena.floor", "player", "goal"]) {
         await page.getByText(text).first().waitFor({ timeout: 10_000 });
       }
       const inventory = await readProjectInventory(page);
       if (!inventory.paths.includes("content/scenes/arena.scene.json") || !inventory.paths.includes("content/materials/arena.materials.json")) {
         throw new Error(`Editor project inventory did not include expected source documents: ${inventory.paths.join(", ")}`);
       }
+      await page.getByRole("button", { name: /goal entity/ }).click();
+      await page.getByLabel("ID").waitFor({ timeout: 10_000 });
+      if ((await page.getByLabel("ID").inputValue()) !== "goal") {
+        throw new Error("Inspector did not update after selecting goal in the hierarchy.");
+      }
+      await page.getByRole("button", { name: /goal entity/ }).dragTo(page.getByRole("button", { name: /player entity/ }));
+      await page.getByText("Nested entity:goal under entity:player in editor view").waitFor({ timeout: 10_000 });
+      const canvas = page.locator(".tn-editor-viewport-canvas canvas");
+      const canvasBounds = await canvas.boundingBox();
+      if (canvasBounds === null) {
+        throw new Error("Editor viewport canvas did not render.");
+      }
+      await canvas.click({ position: { x: canvasBounds.width * 0.5, y: canvasBounds.height * 0.55 } });
+      const selectedFromViewport = await page.getByLabel("ID").inputValue();
+      if (selectedFromViewport !== "arena.floor" && selectedFromViewport !== "player") {
+        throw new Error(`Viewport click did not select an expected scene object; inspector ID is '${selectedFromViewport}'.`);
+      }
       await page.screenshot({ path: artifacts.smokeScreenshot, fullPage: true });
 
-      await page.getByLabel("Primitive").selectOption("sphere");
-      await page.getByLabel("Color").fill("#9b59b6");
+      const workbenchControls = page.getByLabel("Workbench controls");
+      await workbenchControls.getByLabel("Primitive").selectOption("sphere");
+      await workbenchControls.getByLabel("Color").fill("#9b59b6");
       const operationResponses = Promise.all([
         waitForOkJsonResponse(page, "/api/operation"),
         waitForOkJsonResponse(page, "/api/operation"),

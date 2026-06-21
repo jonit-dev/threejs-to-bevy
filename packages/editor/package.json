@@ -27,13 +27,15 @@
     "@threenative/compiler": "workspace:*",
     "@threenative/ir": "workspace:*",
     "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "react-dom": "^19.2.7",
+    "three": "^0.181.2"
   },
   "devDependencies": {
     "@threenative/cli": "workspace:*",
     "@types/node": "^20.19.25",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
+    "@types/three": "^0.181.0",
     "vite": "^7.3.5"
   }
 }

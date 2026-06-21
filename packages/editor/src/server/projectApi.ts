@@ -7,6 +7,7 @@ import {
   type IAuthoringDiagnostic,
   type IAuthoringDocument,
 } from "@threenative/authoring";
+import type { IEditorSceneObject, EditorScenePrimitive } from "../adapters/editorModel.js";
 
 export interface IEditorProjectDocumentGroup {
   documents: Array<{
@@ -23,6 +24,7 @@ export interface IEditorProjectApiResult {
   ok: boolean;
   projectPath: string;
   projectRevision: string;
+  sceneObjects: IEditorSceneObject[];
 }
 
 export async function loadEditorProjectApi(options: { projectPath: string; rootPath?: string }): Promise<IEditorProjectApiResult> {
@@ -40,6 +42,7 @@ export async function loadEditorProjectApi(options: { projectPath: string; rootP
     ok: !diagnostics.some((diagnostic) => diagnostic.severity === "error"),
     projectPath: project.projectPath,
     projectRevision: projectRevision(project.documents),
+    sceneObjects: buildSceneObjects(project.documents),
   };
 }
 
@@ -92,7 +95,38 @@ function emptyProjectResult(projectPath: string, diagnostics: IAuthoringDiagnost
     ok: false,
     projectPath,
     projectRevision: "0:0",
+    sceneObjects: [],
   };
+}
+
+function buildSceneObjects(documents: readonly IAuthoringDocument[]): IEditorSceneObject[] {
+  return documents.flatMap((document) => {
+    if (document.kind !== "scene" || !isRecord(document.data)) {
+      return [];
+    }
+    const sceneId = readDocumentId(document.data) ?? document.projectRelativePath;
+    const prefabById = new Map(readArray(document.data.prefabs).filter(isRecord).map((prefab) => [readString(prefab.id), prefab]));
+    return readArray(document.data.entities).filter(isRecord).map((entity, index) => {
+      const id = readString(entity.id) ?? `${sceneId}.entity.${index}`;
+      const prefab = readString(entity.prefab);
+      const prefabData = prefab === undefined ? undefined : prefabById.get(prefab);
+      const components = isRecord(entity.components) ? entity.components : undefined;
+      const isCamera = isRecord(components?.camera);
+      return {
+        color: readString(prefabData?.color),
+        documentPath: document.projectRelativePath,
+        id,
+        kind: isCamera ? "camera" : "entity",
+        label: id,
+        position: readVector3(isRecord(entity.transform) ? entity.transform.position : undefined),
+        primitive: isCamera ? "camera" : readPrimitive(prefabData?.primitive),
+        rotation: readVector3(isRecord(entity.transform) ? entity.transform.rotation : undefined),
+        rowId: `entity:${id}`,
+        scale: readVector3(isRecord(entity.transform) ? entity.transform.scale : undefined),
+        sourcePath: document.projectRelativePath,
+      };
+    });
+  });
 }
 
 function projectRevision(documents: readonly IAuthoringDocument[]): string {
@@ -106,4 +140,36 @@ function readDocumentId(value: unknown): string | undefined {
 
 function normalizeRelativePath(path: string): string {
   return path.split("\\").join("/");
+}
+
+function readArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function readPrimitive(value: unknown): EditorScenePrimitive {
+  switch (value) {
+    case "box":
+    case "capsule":
+    case "cylinder":
+    case "plane":
+    case "sphere":
+      return value;
+    default:
+      return "box";
+  }
+}
+
+function readString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+function readVector3(value: unknown): [number, number, number] | undefined {
+  if (!Array.isArray(value) || value.length !== 3 || value.some((item) => typeof item !== "number" || !Number.isFinite(item))) {
+    return undefined;
+  }
+  return [value[0], value[1], value[2]];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

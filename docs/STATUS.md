@@ -149,7 +149,15 @@ catalog preview rows, and a focused Playwright-backed `verify:editor-package`
 gate. Browser self-verification now launches the editor against
 `structured-source-starter`, selects a primitive kind and color, adds it through
 the UI, builds the bundle, and confirms the new entity is persisted in
-`content/scenes/arena.scene.json` and emitted into `world.ir.json`.
+`content/scenes/arena.scene.json` and emitted into `world.ir.json`. The visible
+editor shell now follows the `jonit-dev/vibe-coder-3d` editor layout pattern:
+menu strip, neon top bar, dense hierarchy/inspector rail, viewport overlays,
+collapsed right rail, and bottom status bar. The center viewport renders actual
+Three.js objects derived from ThreeNative structured scene source, keeps
+hierarchy selection, 3D picking, selected-object inspector rows, visual
+selection bounds, and gizmo cues wired to the same source-backed scene object
+model, and exposes drag/drop hierarchy nesting as an editor-view affordance
+without treating Vibe Coder ECS state as authoritative source data.
 
 Structured `.scene.json` documents can now be used as a normal project build
 entry for the first runtime-backed CLI authoring slice. The compiler validates

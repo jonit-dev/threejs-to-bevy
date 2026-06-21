@@ -47,6 +47,22 @@ export interface IEditorAssetRow {
   path?: string;
 }
 
+export type EditorScenePrimitive = "box" | "camera" | "capsule" | "cylinder" | "plane" | "sphere";
+
+export interface IEditorSceneObject {
+  color?: string;
+  documentPath?: string;
+  id: string;
+  kind: "camera" | "entity";
+  label: string;
+  position?: readonly [number, number, number];
+  primitive: EditorScenePrimitive;
+  rotation?: readonly [number, number, number];
+  rowId: string;
+  scale?: readonly [number, number, number];
+  sourcePath?: string;
+}
+
 export interface IEditorStatusItem {
   id: string;
   label: string;
@@ -59,6 +75,7 @@ export interface IEditorShellModel {
   hierarchy: IEditorTreeRow[];
   inspector: IEditorPropertyRow[];
   projectName: string;
+  sceneObjects: IEditorSceneObject[];
   selectedRowId?: string;
   status: EditorShellStatus;
   statusItems: IEditorStatusItem[];
@@ -70,6 +87,7 @@ export interface IEditorAdapterInput {
   hierarchy?: readonly IEditorTreeRow[];
   inspector?: readonly IEditorPropertyRow[];
   projectName?: string;
+  sceneObjects?: readonly IEditorSceneObject[];
   selectedRowId?: string;
   status?: EditorShellStatus;
   statusItems?: readonly IEditorStatusItem[];
@@ -87,6 +105,7 @@ export function createEditorShellModel(input: IEditorAdapterInput = {}): IEditor
     hierarchy,
     inspector,
     projectName: input.projectName ?? "Untitled ThreeNative Project",
+    sceneObjects: [...(input.sceneObjects ?? [])],
     selectedRowId: input.selectedRowId,
     status,
     statusItems: [

@@ -15,6 +15,15 @@ test("should load structured-source starter inventory", async () => {
     assert.equal(result.ok, true);
     assert.equal(result.documents.some((group) => group.kind === "scene" && group.documents[0]?.path === "content/scenes/arena.scene.json"), true);
     assert.equal(result.documents.some((group) => group.kind === "material"), true);
+    assert.deepEqual(
+      result.sceneObjects.map((object) => [object.id, object.primitive, object.color, object.position?.join(",")]),
+      [
+        ["arena.floor", "plane", "#34373d", "0,-0.05,0"],
+        ["player", "box", "#2f80ed", "0,0.35,0"],
+        ["goal", "box", "#f2c94c", "1.8,0.3,-1.6"],
+        ["camera.main", "camera", undefined, undefined],
+      ],
+    );
   } finally {
     await rm(root, { force: true, recursive: true });
   }
