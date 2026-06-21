@@ -2,27 +2,30 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { Box, Camera, FolderOpen, Image, Lightbulb, MessageSquare, Mountain, PackagePlus, Pause, Play, Save, Settings, Square, Trash2 } from "lucide-react";
 
-import type { IEditorAdapterInput, IEditorShellModel } from "./adapters/editorModel.js";
+import type { IEditorAdapterInput, IEditorAddComponentDefinition, IEditorPropertyRow, IEditorShellModel } from "./adapters/editorModel.js";
 import { createEditorShellModel } from "./adapters/editorModel.js";
 import { PanelShell } from "./components/layout/PanelShell.js";
 import { HierarchyPanel } from "./components/panels/HierarchyPanel.js";
 import { InspectorPanel } from "./components/panels/InspectorPanel.js";
-import { EditorViewport3d } from "./preview/EditorViewport3d.js";
+import { EditorViewport3d, type IViewportTransform } from "./preview/EditorViewport3d.js";
 
 export interface IEditorAppProps {
   model?: IEditorAdapterInput | IEditorShellModel;
+  onAddComponent?: (definition: IEditorAddComponentDefinition) => void;
   onAddObject?: () => void;
   onBuildPreview?: () => void;
   onCreateScene?: () => void;
+  onEditProperty?: (row: IEditorPropertyRow, value: unknown) => void;
   onMoveRow?: (draggedId: string, targetId: string) => void;
   onSaveScene?: () => void;
   onSelectRow?: (id: string) => void;
+  onTransformObject?: (rowId: string, transform: IViewportTransform) => void;
   toolbarSlot?: ReactNode;
 }
 
 type EditorModal = "addComponent" | "addObject" | "build" | "chat" | "delete" | "newScene" | "save" | "settings" | undefined;
 
-export function EditorApp({ model: input, onAddObject, onBuildPreview, onCreateScene, onMoveRow, onSaveScene, onSelectRow, toolbarSlot }: IEditorAppProps) {
+export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPreview, onCreateScene, onEditProperty, onMoveRow, onSaveScene, onSelectRow, onTransformObject, toolbarSlot }: IEditorAppProps) {
   const [modal, setModal] = useState<EditorModal>();
   const model = createEditorShellModel(input);
   const objectCount = countTreeRows(model.hierarchy);
@@ -73,11 +76,11 @@ export function EditorApp({ model: input, onAddObject, onBuildPreview, onCreateS
             <HierarchyPanel rows={model.hierarchy} selectedRowId={model.selectedRowId} onMoveRow={onMoveRow} onSelectRow={onSelectRow} />
           </PanelShell>
           <PanelShell title="Inspector" meta={`${model.inspector.length}`}>
-            <InspectorPanel onAddComponent={() => setModal("addComponent")} rows={model.inspector} />
+            <InspectorPanel onAddComponent={() => setModal("addComponent")} onEditProperty={onEditProperty} rows={model.inspector} />
           </PanelShell>
         </aside>
         <section className="tn-editor-preview" aria-label="Preview">
-          <EditorViewport3d objects={model.sceneObjects} selectedRowId={model.selectedRowId} onSelectObject={onSelectRow} />
+          <EditorViewport3d objects={model.sceneObjects} selectedRowId={model.selectedRowId} onSelectObject={onSelectRow} onTransformObject={onTransformObject} />
           <div className="tn-editor-viewport-label">
             <span />
             <strong>Viewport</strong>
@@ -147,10 +150,16 @@ export function EditorApp({ model: input, onAddObject, onBuildPreview, onCreateS
         {model.statusItems.map((item) => <span key={item.id}>{item.label}: {item.value}</span>)}
       </footer>
       <EditorModalView
+        addComponentDefinitions={model.addComponentDefinitions}
+        attachedComponents={[...new Set(model.inspector.map((row) => row.component).filter((component): component is string => component !== undefined))]}
         modal={modal}
         onAddObject={() => {
           setModal(undefined);
           onAddObject?.();
+        }}
+        onAddComponent={(definition) => {
+          setModal(undefined);
+          onAddComponent?.(definition);
         }}
         onBuildPreview={() => {
           setModal(undefined);
@@ -171,14 +180,20 @@ export function EditorApp({ model: input, onAddObject, onBuildPreview, onCreateS
 }
 
 function EditorModalView({
+  addComponentDefinitions,
+  attachedComponents,
   modal,
+  onAddComponent,
   onAddObject,
   onBuildPreview,
   onClose,
   onCreateScene,
   onSaveScene,
 }: {
+  addComponentDefinitions: IEditorShellModel["addComponentDefinitions"];
+  attachedComponents: readonly string[];
   modal: EditorModal;
+  onAddComponent: (definition: IEditorAddComponentDefinition) => void;
   onAddObject: () => void;
   onBuildPreview: () => void;
   onClose: () => void;
@@ -206,8 +221,16 @@ function EditorModalView({
     return (
       <ModalFrame onClose={onClose} title="Add Component">
         <div className="tn-editor-modal-grid">
-          {["Transform", "MeshRenderer", "Camera", "Light", "Script", "Collider"].map((component) => (
-            <button disabled={component !== "Transform"} key={component} type="button"><PackagePlus size={16} /> {component}</button>
+          {addComponentDefinitions.map((definition) => (
+            <button
+              disabled={attachedComponents.includes(definition.component) || definition.incompatibleWith.some((component) => attachedComponents.includes(component))}
+              key={definition.component}
+              onClick={() => onAddComponent(definition)}
+              title={`Pack: ${definition.pack}; defaults: ${JSON.stringify(definition.defaults)}${definition.readOnlyReason === undefined ? "" : `; ${definition.readOnlyReason}`}`}
+              type="button"
+            >
+              <PackagePlus size={16} /> {definition.component}
+            </button>
           ))}
         </div>
       </ModalFrame>

@@ -1,10 +1,10 @@
 import { spawn } from "node:child_process";
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
-import { chromium, type Page } from "playwright";
+import { chromium, type Locator, type Page } from "playwright";
 
 import { stopProcess, type VerificationReport } from "./runner.js";
 
@@ -64,7 +64,12 @@ export async function runEditorPackageGate(root = process.cwd()): Promise<Verifi
       await waitForEditorModel(page, "assets/models/FarmHouse/glb/farm_house_basic_shaded.glb");
       await waitForEditorModel(page, "assets/models/GreenTree/glb/green_tree_basic_shaded.glb");
       const inventory = await readProjectInventory(page);
-      if (!inventory.paths.includes("content/scenes/arena.scene.json") || !inventory.paths.includes("content/materials/arena.materials.json")) {
+      if (
+        !inventory.paths.includes("content/scenes/arena.scene.json") ||
+        !inventory.paths.includes("content/materials/arena.materials.json") ||
+        !inventory.paths.includes("content/input/arena.input.json") ||
+        !inventory.paths.includes("content/systems/arena.systems.json")
+      ) {
         throw new Error(`Editor project inventory did not include expected source documents: ${inventory.paths.join(", ")}`);
       }
       await page.getByText("LOD:").waitFor({ timeout: 10_000 });
@@ -74,6 +79,9 @@ export async function runEditorPackageGate(root = process.cwd()): Promise<Verifi
       if ((await page.getByLabel("Name").inputValue()) !== "base_basic_shaded 0") {
         throw new Error("Inspector did not update after selecting base_basic_shaded 0 in the hierarchy.");
       }
+      await assertTypedInspectorControls(page);
+      await page.getByRole("button", { name: /base_basic_shaded 0 entity/ }).click();
+      await assertAddComponentDefaultPersistence(page);
       await page.getByRole("button", { name: /farm_house_basic_shaded 0 entity/ }).dragTo(page.getByRole("button", { name: /base_basic_shaded 0 entity/ }));
       await page.getByText("Nested farm_house_basic_shaded 0 under base_basic_shaded 0 in editor view").waitFor({ timeout: 10_000 });
       await page.reload({ waitUntil: "networkidle", timeout: 30_000 });
@@ -85,9 +93,11 @@ export async function runEditorPackageGate(root = process.cwd()): Promise<Verifi
       }
       await canvas.click({ position: { x: canvasBounds.width * 0.5, y: canvasBounds.height * 0.55 } });
       const selectedFromViewport = await page.getByLabel("Name").inputValue();
-      if (selectedFromViewport !== "Terrain 0" && selectedFromViewport !== "base_basic_shaded 0") {
+      if (selectedFromViewport !== "Terrain 0" && selectedFromViewport !== "base_basic_shaded 0" && selectedFromViewport !== "component-target") {
         throw new Error(`Viewport click did not select an expected scene object; inspector ID is '${selectedFromViewport}'.`);
       }
+      await page.getByRole("button", { name: /base_basic_shaded 0 entity/ }).click();
+      await assertViewportTransformSync(page);
       await page.screenshot({ path: artifacts.smokeScreenshot, fullPage: true });
 
       await page.locator(".tn-editor-action-icons__add").click();
@@ -102,7 +112,7 @@ export async function runEditorPackageGate(root = process.cwd()): Promise<Verifi
       await buildDialog.getByRole("button", { exact: true, name: "Build" }).click();
       await page.getByText(/Built /).waitFor({ timeout: 30_000 });
       await page.getByRole("button", { name: /base_basic_shaded 0 entity/ }).click();
-      await page.screenshot({ path: artifacts.editedScreenshot, fullPage: true });
+      await assertAddComponentModal(page);
 
       const evidence = await assertEditedProjectEvidence(fixture.projectPath, entityId);
       await writeFile(artifacts.sourceScene, `${JSON.stringify(evidence.scene, null, 2)}\n`);
@@ -124,6 +134,7 @@ export async function runEditorPackageGate(root = process.cwd()): Promise<Verifi
       await saveDialog.waitFor({ timeout: 10_000 });
       await saveDialog.getByRole("button", { exact: true, name: "Save" }).click();
       await page.getByText(/Saved scene sources;/).waitFor({ timeout: 10_000 });
+      await captureCleanVisualState(page, fixture.projectPath, artifacts.editedScreenshot);
       const unexpectedConsoleErrors = consoleErrors.filter((error) => !error.startsWith("THREE.GLTFLoader: Couldn't load texture blob:"));
       if (unexpectedConsoleErrors.length > 0) {
         throw new Error(`Editor browser console reported errors: ${unexpectedConsoleErrors.join(" | ")}`);
@@ -230,17 +241,17 @@ async function writeEditorVisualScene(projectPath: string): Promise<void> {
   const scene: ISceneDocument = {
     entities: [
       {
-        components: { camera: { mode: "perspective" } },
+        components: { camera: { mode: "perspective", target: "terrain-0" } },
         id: "main-camera",
         transform: { position: [2.8, 2.8, 1.1] },
       },
       {
-        components: { Light: { kind: "directional" } },
+        components: { Light: { intensity: 1, kind: "directional" } },
         id: "directional-light",
         transform: { position: [-2, 3, 2] },
       },
       {
-        components: { Light: { kind: "ambient" } },
+        components: { Light: { intensity: 0.4, kind: "ambient" } },
         id: "ambient-light",
         transform: { position: [-2.4, 2.4, -1.2] },
       },
@@ -252,12 +263,12 @@ async function writeEditorVisualScene(projectPath: string): Promise<void> {
       {
         id: "farm-house-basic-shaded-0",
         prefab: "prefab.farm-house-basic-shaded-0",
-        transform: { position: [4.6, 0, -2.1], rotation: [0, -0.45, 0], scale: [1, 1, 1] },
+        transform: { position: [9.8, 0, 1.2], rotation: [0, -0.45, 0], scale: [1.55, 1.55, 1.55] },
       },
       {
         id: "base-basic-shaded-0",
         prefab: "prefab.base-basic-shaded-0",
-        transform: { position: [-0.7, 0, 0.2], scale: [1, 1, 1] },
+        transform: { position: [-1.2, 0, -0.5], scale: [1.65, 1.65, 1.65] },
       },
     ],
     prefabs: [
@@ -273,6 +284,17 @@ async function writeEditorVisualScene(projectPath: string): Promise<void> {
     version: "0.1.0",
   } as ISceneDocument;
   await writeFile(join(projectPath, "content", "scenes", "arena.scene.json"), `${JSON.stringify(scene, null, 2)}\n`);
+  await mkdir(join(projectPath, "content", "input"), { recursive: true });
+  await mkdir(join(projectPath, "content", "systems"), { recursive: true });
+  await writeFile(
+    join(projectPath, "content", "input", "arena.input.json"),
+    `${JSON.stringify({ schema: "threenative.input", version: "0.1.0", id: "arena", actions: [{ id: "jump", bindings: ["keyboard.Space"] }] }, null, 2)}\n`,
+  );
+  await writeFile(
+    join(projectPath, "content", "systems", "arena.systems.json"),
+    `${JSON.stringify({ schema: "threenative.systems", version: "0.1.0", id: "arena", systems: [{ id: "spin", schedule: "update", script: { module: "./spin.ts", export: "spin" } }] }, null, 2)}\n`,
+  );
+  await writeFile(join(projectPath, "spin.ts"), "export function spin() {}\n");
 }
 
 async function copyEditorModelAssets(projectPath: string): Promise<void> {
@@ -327,6 +349,175 @@ async function assertProjectAssetRoute(page: Page, assetPath: string): Promise<v
   if (!result.ok || result.size < 1024) {
     throw new Error(`Project asset route failed for ${assetPath}: HTTP ${result.status}, ${result.size} bytes, ${result.contentType ?? "unknown content type"}`);
   }
+}
+
+async function captureCleanVisualState(page: Page, projectPath: string, screenshotPath: string): Promise<void> {
+  await writeEditorVisualScene(projectPath);
+  await removeGeneratedEditorScenes(projectPath);
+  await page.reload({ waitUntil: "networkidle", timeout: 30_000 });
+  await page.getByText("base_basic_shaded 0").first().waitFor({ timeout: 10_000 });
+  await waitForEditorModel(page, "assets/models/FarmHouse/glb/farm_house_basic_shaded.glb");
+  await waitForEditorModel(page, "assets/models/GreenTree/glb/green_tree_basic_shaded.glb");
+  await page.getByRole("button", { name: /base_basic_shaded 0 entity/ }).click();
+  await page.screenshot({ path: screenshotPath, fullPage: true });
+}
+
+async function removeGeneratedEditorScenes(projectPath: string): Promise<void> {
+  const scenesPath = join(projectPath, "content", "scenes");
+  const entries = await readdir(scenesPath);
+  await Promise.all(entries.filter((entry) => entry.startsWith("editor-scene-") && entry.endsWith(".scene.json")).map((entry) => rm(join(scenesPath, entry), { force: true })));
+}
+
+async function assertTypedInspectorControls(page: Page): Promise<void> {
+  await page.locator('input[aria-label="Position X"]').waitFor({ timeout: 10_000 });
+  if ((await page.getByRole("combobox", { name: "Primitive" }).inputValue()) !== "sphere") {
+    throw new Error("MeshRenderer primitive enum did not render source-backed sphere value.");
+  }
+  if ((await page.getByRole("textbox", { name: "Color value" }).inputValue()) !== "#66a80f") {
+    throw new Error("MeshRenderer color control did not render source-backed color value.");
+  }
+  if ((await page.locator('input[aria-label="Asset"]').inputValue()) !== "assets/models/GreenTree/glb/green_tree_basic_shaded.glb") {
+    throw new Error("MeshRenderer asset picker field did not render source-backed asset reference.");
+  }
+
+  await page.getByRole("button", { name: /Main Camera camera/ }).click();
+  if ((await page.getByRole("combobox", { name: "Mode" }).inputValue()) !== "perspective") {
+    throw new Error("Camera mode enum did not render source-backed mode.");
+  }
+  if ((await page.getByRole("textbox", { name: "Target" }).inputValue()) !== "terrain-0") {
+    throw new Error("Camera target field did not render source-backed target.");
+  }
+
+  await page.getByRole("button", { name: /Directional Light light/ }).click();
+  if ((await page.getByRole("spinbutton", { name: "Intensity" }).inputValue()) !== "1") {
+    throw new Error("Light intensity field did not render source-backed read-only data.");
+  }
+
+  await assertSourceDocumentInspectorRows(page);
+
+  await page.getByRole("button", { name: /base_basic_shaded 0 entity/ }).click();
+}
+
+async function assertSourceDocumentInspectorRows(page: Page): Promise<void> {
+  const documents = await page.evaluate(async () => {
+    const response = await fetch("/api/project");
+    const payload = (await response.json()) as { documents?: Array<{ documents: Array<{ inspectorRows?: Array<{ fieldKind?: string; label: string; value?: string }>; path: string }> }> };
+    return payload.documents?.flatMap((group) => group.documents.map((document) => ({ path: document.path, rows: document.inspectorRows ?? [] }))) ?? [];
+  });
+  const input = documents.find((document) => document.path === "content/input/arena.input.json");
+  if (input?.rows.some((row) => row.label === "Bindings" && row.fieldKind === "stringList" && row.value === "keyboard.Space") !== true) {
+    throw new Error(`Input document inspector rows did not expose bindings metadata: ${JSON.stringify(input)}`);
+  }
+  const systems = documents.find((document) => document.path === "content/systems/arena.systems.json");
+  if (systems?.rows.some((row) => row.label === "spin Script" && row.fieldKind === "script" && row.value === "./spin.ts#spin") !== true) {
+    throw new Error(`Systems document inspector rows did not expose script metadata: ${JSON.stringify(systems)}`);
+  }
+}
+
+async function assertAddComponentModal(page: Page): Promise<void> {
+  await page.getByText("Add Component").click();
+  const dialog = page.getByRole("dialog", { name: "Add Component" });
+  await dialog.waitFor({ timeout: 10_000 });
+  const transform = dialog.getByRole("button", { name: "Transform" });
+  const camera = dialog.getByRole("button", { name: "Camera" });
+  const script = dialog.getByRole("button", { name: "Script" });
+  if (!(await transform.isDisabled())) {
+    throw new Error("Add Component did not disable already-attached Transform.");
+  }
+  if (!(await camera.isDisabled())) {
+    throw new Error("Add Component did not disable Camera as incompatible with MeshRenderer.");
+  }
+  const scriptTitle = await script.getAttribute("title");
+  if (scriptTitle?.includes('"module":"./systems/update.ts"') !== true || scriptTitle.includes("Pack: scripting") !== true) {
+    throw new Error(`Add Component did not expose shared defaults/pack metadata for Script: ${scriptTitle ?? "<missing>"}`);
+  }
+  if (await script.isDisabled()) {
+    throw new Error("Add Component unexpectedly disabled compatible Script definition.");
+  }
+  await page.getByRole("button", { name: "Close Add Component" }).click();
+}
+
+async function assertAddComponentDefaultPersistence(page: Page): Promise<void> {
+  await createComponentTarget(page);
+  await page.getByRole("button", { name: /component-target entity/ }).click();
+  await page.getByText("Add Component").click();
+  const dialog = page.getByRole("dialog", { name: "Add Component" });
+  await dialog.waitFor({ timeout: 10_000 });
+  const transform = dialog.getByRole("button", { name: "Transform" });
+  if (await transform.isDisabled()) {
+    throw new Error("Add Component disabled Transform for an entity without Transform.");
+  }
+  await transform.click();
+  await page.getByText("Added Transform to component-target").waitFor({ timeout: 10_000 });
+  if ((await page.getByRole("spinbutton", { name: "Position X" }).inputValue()) !== "0") {
+    throw new Error("Default Transform did not reload into the inspector after Add Component.");
+  }
+  const persisted = await page.evaluate(async () => {
+    const response = await fetch("/api/project");
+    const payload = (await response.json()) as { sceneObjects?: Array<{ id: string; position?: number[]; scale?: number[] }> };
+    return payload.sceneObjects?.find((object) => object.id === "component-target");
+  });
+  if (persisted?.position?.join(",") !== "0,0,0" || persisted.scale?.join(",") !== "1,1,1") {
+    throw new Error(`Add Component defaults did not persist through structured source operations: ${JSON.stringify(persisted)}`);
+  }
+  await page.getByRole("button", { name: /base_basic_shaded 0 entity/ }).click();
+}
+
+async function createComponentTarget(page: Page): Promise<void> {
+  const response = await page.evaluate(async () => {
+    const projectResponse = await fetch("/api/project");
+    const project = (await projectResponse.json()) as { projectRevision?: string; sceneObjects?: Array<{ id: string }> };
+    if (project.sceneObjects?.some((object) => object.id === "component-target") === true) {
+      return { ok: true };
+    }
+    const operationResponse = await fetch("/api/operation", {
+      body: JSON.stringify({ args: { entityId: "component-target", sceneId: "arena" }, name: "scene.add_entity", projectRevision: project.projectRevision }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    });
+    return operationResponse.json() as Promise<{ diagnostics?: Array<{ message?: string }>; ok?: boolean }>;
+  });
+  if (response.ok !== true) {
+    throw new Error(`Could not create component-target for Add Component proof: ${response.diagnostics?.[0]?.message ?? "unknown error"}`);
+  }
+  await page.reload({ waitUntil: "networkidle", timeout: 30_000 });
+  await page.getByRole("button", { name: /component-target entity/ }).waitFor({ timeout: 10_000 });
+}
+
+async function assertViewportTransformSync(page: Page): Promise<void> {
+  const positionX = page.locator('input[aria-label="Position X"]');
+  const before = Number(await positionX.inputValue());
+  const canvas = page.locator(".tn-editor-viewport-canvas canvas");
+  const bounds = await canvas.boundingBox();
+  if (bounds === null) {
+    throw new Error("Editor viewport canvas did not render before transform sync check.");
+  }
+  await page.mouse.move(bounds.x + bounds.width * 0.47, bounds.y + bounds.height * 0.58);
+  await page.mouse.down();
+  await page.mouse.move(bounds.x + bounds.width * 0.52, bounds.y + bounds.height * 0.58, { steps: 8 });
+  await page.mouse.up();
+  await waitForPositionInputChange(positionX, before);
+  const after = Number(await positionX.inputValue());
+  if (!Number.isFinite(after) || after === before) {
+    throw new Error(`Viewport transform did not update inspector Position X; before=${before}, after=${after}.`);
+  }
+  await page.waitForFunction(async (expected) => {
+    const response = await fetch("/api/project");
+    const payload = (await response.json()) as { sceneObjects?: Array<{ id: string; position?: number[] }> };
+    const object = payload.sceneObjects?.find((candidate) => candidate.id === "base-basic-shaded-0");
+    return object?.position?.[0] === expected;
+  }, after, { timeout: 10_000 });
+}
+
+async function waitForPositionInputChange(input: Locator, previous: number): Promise<void> {
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    if (Number(await input.inputValue()) !== previous) {
+      return;
+    }
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
+  }
+  throw new Error(`Timed out waiting for Position X to change from ${previous}.`);
 }
 
 async function readDefaultSceneFromEditor(page: Page): Promise<{ entities: string[] } | undefined> {

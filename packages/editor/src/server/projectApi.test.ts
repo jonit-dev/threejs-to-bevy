@@ -28,6 +28,37 @@ test("should load structured-source starter inventory", async () => {
         ["camera.main", "camera", undefined, undefined],
       ],
     );
+    const camera = result.sceneObjects.find((object) => object.id === "camera.main");
+    assert.equal(camera?.inspectorRows?.some((row) => row.component === "Camera" && row.label === "Mode" && row.fieldKind === "enum" && row.operation?.name === "scene.set_camera"), true);
+    assert.equal(result.sceneObjects.find((object) => object.id === "player")?.inspectorRows?.some((row) => row.component === "MeshRenderer" && row.label === "Asset" && row.fieldKind === "asset" && row.readOnlyReason !== undefined), true);
+    const materialRows = result.documents.flatMap((group) => group.documents).find((document) => document.kind === "material")?.inspectorRows ?? [];
+    assert.equal(materialRows.some((row) => row.fieldKind === "color" && row.operation?.name === "material.set"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should expose source-backed input and system inspector rows", async () => {
+  const root = await copyStarterProject();
+  try {
+    await mkdir(join(root, "content", "input"), { recursive: true });
+    await mkdir(join(root, "content", "systems"), { recursive: true });
+    await writeFile(join(root, "spin.ts"), "export function spin() {}\n");
+    await writeFile(
+      join(root, "content", "input", "arena.input.json"),
+      `${JSON.stringify({ schema: "threenative.input", version: "0.1.0", id: "arena", actions: [{ id: "jump", bindings: ["keyboard.Space"] }] }, null, 2)}\n`,
+    );
+    await writeFile(
+      join(root, "content", "systems", "arena.systems.json"),
+      `${JSON.stringify({ schema: "threenative.systems", version: "0.1.0", id: "arena", systems: [{ id: "spin", schedule: "update", script: { module: "./spin.ts", export: "spin" } }] }, null, 2)}\n`,
+    );
+
+    const result = await loadEditorProjectApi({ projectPath: root });
+    assert.equal(result.ok, true);
+    const rows = result.documents.flatMap((group) => group.documents.flatMap((document) => document.inspectorRows ?? []));
+    assert.equal(rows.some((row) => row.sourceFamily === "input" && row.fieldKind === "stringList" && row.operation?.name === "input.add_action"), true);
+    assert.equal(rows.some((row) => row.sourceFamily === "system" && row.fieldKind === "script" && row.operation?.name === "system.attach_script"), true);
+    assert.equal(rows.some((row) => row.sourceFamily === "system" && row.label.includes("Schedule") && row.readOnlyReason !== undefined), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

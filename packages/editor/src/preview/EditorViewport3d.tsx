@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
+import { TransformControls } from "three/examples/jsm/controls/TransformControls.js";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
@@ -7,14 +8,23 @@ import type { IEditorSceneObject } from "../adapters/editorModel.js";
 
 export interface IEditorViewport3dProps {
   objects: readonly IEditorSceneObject[];
+  onTransformObject?: (rowId: string, transform: IViewportTransform) => void;
   onSelectObject?: (rowId: string) => void;
   selectedRowId?: string;
 }
 
-export function EditorViewport3d({ objects, onSelectObject, selectedRowId }: IEditorViewport3dProps) {
+export interface IViewportTransform {
+  position: [number, number, number];
+  rotation: [number, number, number];
+  scale: [number, number, number];
+}
+
+export function EditorViewport3d({ objects, onSelectObject, onTransformObject, selectedRowId }: IEditorViewport3dProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const onSelectRef = useRef(onSelectObject);
+  const onTransformRef = useRef(onTransformObject);
   onSelectRef.current = onSelectObject;
+  onTransformRef.current = onTransformObject;
 
   useEffect(() => {
     const host = hostRef.current;
@@ -23,7 +33,7 @@ export function EditorViewport3d({ objects, onSelectObject, selectedRowId }: IEd
     }
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color("#075015");
+    scene.background = new THREE.Color("#064812");
 
     const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
     camera.position.set(-5.8, 4.3, 6.2);
@@ -34,10 +44,10 @@ export function EditorViewport3d({ objects, onSelectObject, selectedRowId }: IEd
     renderer.shadowMap.enabled = true;
     host.appendChild(renderer.domElement);
 
-    const ambient = new THREE.HemisphereLight("#cbe8ff", "#244b18", 2.3);
+    const ambient = new THREE.HemisphereLight("#cbe8ff", "#244b18", 1.9);
     scene.add(ambient);
 
-    const sun = new THREE.DirectionalLight("#fff2dc", 3.2);
+    const sun = new THREE.DirectionalLight("#fff2dc", 2.7);
     sun.position.set(4, 7, 5);
     sun.castShadow = true;
     scene.add(sun);
@@ -48,7 +58,7 @@ export function EditorViewport3d({ objects, onSelectObject, selectedRowId }: IEd
 
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(24, 24),
-      new THREE.MeshStandardMaterial({ color: "#075d18", roughness: 0.95 }),
+      new THREE.MeshStandardMaterial({ color: "#065214", roughness: 0.95 }),
     );
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
@@ -65,9 +75,12 @@ export function EditorViewport3d({ objects, onSelectObject, selectedRowId }: IEd
     const selectables: THREE.Object3D[] = [];
     const objectByRowId = new Map<string, THREE.Object3D>();
     let selection: THREE.BoxHelper | undefined;
-    const gizmo = createTransformGizmo();
-    gizmo.visible = false;
-    scene.add(gizmo);
+    const transformControls = new TransformControls(camera, renderer.domElement);
+    transformControls.setMode("translate");
+    transformControls.setSize(0.82);
+    transformControls.setColors("#ff1f35", "#00ff66", "#155cff", "#ffffff");
+    const transformHelper = transformControls.getHelper();
+    scene.add(transformHelper);
 
     const rebuildObjects = () => {
       root.clear();
@@ -91,15 +104,13 @@ export function EditorViewport3d({ objects, onSelectObject, selectedRowId }: IEd
         selection = undefined;
       }
       const selected = selectedRowId === undefined ? undefined : objectByRowId.get(selectedRowId);
-      gizmo.visible = selected !== undefined;
       if (selected === undefined) {
+        transformControls.detach();
         return;
       }
       selection = new THREE.BoxHelper(selected, "#ff7a24");
       scene.add(selection);
-      const worldPosition = new THREE.Vector3();
-      selected.getWorldPosition(worldPosition);
-      gizmo.position.copy(worldPosition).add(new THREE.Vector3(0, 0.55, 0));
+      transformControls.attach(selected);
     };
 
     const selectFromPointer = (event: PointerEvent) => {
@@ -115,9 +126,18 @@ export function EditorViewport3d({ objects, onSelectObject, selectedRowId }: IEd
       }
     };
 
+    const commitTransform = () => {
+      const selected = selectedRowId === undefined ? undefined : objectByRowId.get(selectedRowId);
+      if (selected === undefined || selectedRowId === undefined) {
+        return;
+      }
+      onTransformRef.current?.(selectedRowId, readTransform(selected));
+    };
+
     rebuildObjects();
     updateSelection();
     renderer.domElement.addEventListener("pointerdown", selectFromPointer);
+    transformControls.addEventListener("mouseUp", commitTransform);
 
     let frame = 0;
     let animation = 0;
@@ -136,6 +156,7 @@ export function EditorViewport3d({ objects, onSelectObject, selectedRowId }: IEd
       if (selection !== undefined) {
         selection.update();
       }
+      transformControls.update(1 / 60);
       renderer.render(scene, camera);
       animation = window.requestAnimationFrame(render);
     };
@@ -148,6 +169,9 @@ export function EditorViewport3d({ objects, onSelectObject, selectedRowId }: IEd
       window.cancelAnimationFrame(animation);
       observer.disconnect();
       renderer.domElement.removeEventListener("pointerdown", selectFromPointer);
+      transformControls.removeEventListener("mouseUp", commitTransform);
+      transformControls.detach();
+      transformHelper.dispose();
       host.removeChild(renderer.domElement);
       disposeScene(scene);
       dracoLoader.dispose();
@@ -175,6 +199,22 @@ function createSceneObject(sourceObject: IEditorSceneObject, loader: GLTFLoader)
     }
   });
   return object;
+}
+
+function readTransform(object: THREE.Object3D): IViewportTransform {
+  return {
+    position: vectorTuple(object.position),
+    rotation: vectorTuple(object.rotation),
+    scale: vectorTuple(object.scale),
+  };
+}
+
+function vectorTuple(value: THREE.Euler | THREE.Vector3): [number, number, number] {
+  return [roundTransformValue(value.x), roundTransformValue(value.y), roundTransformValue(value.z)];
+}
+
+function roundTransformValue(value: number): number {
+  return Number(value.toFixed(4));
 }
 
 function createRenderableObject(sourceObject: IEditorSceneObject, loader: GLTFLoader): THREE.Object3D {
@@ -343,37 +383,6 @@ function createIconSprite(kind: "camera" | "light"): THREE.Sprite {
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   return new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false, map: texture, transparent: true }));
-}
-
-function createTransformGizmo(): THREE.Group {
-  const group = new THREE.Group();
-  group.renderOrder = 10;
-  group.add(createGizmoArrow(new THREE.Vector3(1, 0, 0), "#ff1f35"));
-  group.add(createGizmoArrow(new THREE.Vector3(0, 1, 0), "#00ff66"));
-  group.add(createGizmoArrow(new THREE.Vector3(0, 0, 1), "#155cff"));
-  const center = new THREE.Mesh(
-    new THREE.SphereGeometry(0.08, 16, 8),
-    new THREE.MeshBasicMaterial({ color: "#ffffff", depthTest: false }),
-  );
-  center.renderOrder = 11;
-  group.add(center);
-  return group;
-}
-
-function createGizmoArrow(direction: THREE.Vector3, color: string): THREE.Group {
-  const group = new THREE.Group();
-  const material = new THREE.MeshBasicMaterial({ color, depthTest: false });
-  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1, 12), material);
-  shaft.position.y = 0.5;
-  const head = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.24, 16), material);
-  head.position.y = 1.12;
-  group.add(shaft, head);
-  const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
-  group.quaternion.copy(quaternion);
-  group.traverse((object) => {
-    object.renderOrder = 11;
-  });
-  return group;
 }
 
 function createTree(): THREE.Group {

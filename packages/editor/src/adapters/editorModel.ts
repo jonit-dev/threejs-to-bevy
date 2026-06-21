@@ -32,12 +32,50 @@ export interface IEditorTreeRow {
 export interface IEditorPropertyRow {
   access: EditorDocumentAccess;
   component?: string;
+  defaultValue?: unknown;
   documentPath?: string;
+  fieldKind?: EditorInspectorFieldKind;
   id: string;
+  jsonPointer?: string;
   label: string;
+  operation?: IEditorPropertyOperation;
+  options?: readonly string[];
   path?: string;
   readOnly: boolean;
+  readOnlyReason?: string;
+  sourceFamily?: EditorInspectorSourceFamily;
+  sourcePath?: string;
   value?: string;
+}
+
+export type EditorInspectorFieldKind =
+  | "asset"
+  | "boolean"
+  | "color"
+  | "enum"
+  | "generated"
+  | "json"
+  | "number"
+  | "script"
+  | "string"
+  | "stringList"
+  | "vector3";
+
+export type EditorInspectorSourceFamily = "asset" | "audio" | "input" | "material" | "mesh" | "prefab" | "scene" | "system" | "ui";
+
+export interface IEditorPropertyOperation {
+  args: Record<string, unknown>;
+  name: string;
+  valueArg?: string;
+}
+
+export interface IEditorAddComponentDefinition {
+  component: string;
+  defaults: Record<string, unknown>;
+  incompatibleWith: readonly string[];
+  pack: "core" | "experimental" | "rendering" | "scripting";
+  readOnlyReason?: string;
+  sourceFamily: EditorInspectorSourceFamily;
 }
 
 export interface IEditorAssetRow {
@@ -48,7 +86,7 @@ export interface IEditorAssetRow {
   path?: string;
 }
 
-export type EditorScenePrimitive = "box" | "camera" | "capsule" | "cylinder" | "plane" | "sphere";
+export type EditorScenePrimitive = "box" | "camera" | "capsule" | "cone" | "cylinder" | "plane" | "sphere";
 
 export interface IEditorSceneObject {
   assetPath?: string;
@@ -56,6 +94,7 @@ export interface IEditorSceneObject {
   components?: readonly string[];
   documentPath?: string;
   id: string;
+  inspectorRows?: readonly IEditorPropertyRow[];
   kind: "camera" | "entity" | "light";
   label: string;
   position?: readonly [number, number, number];
@@ -82,6 +121,7 @@ export interface IEditorLodStats {
 }
 
 export interface IEditorShellModel {
+  addComponentDefinitions: IEditorAddComponentDefinition[];
   assets: IEditorAssetRow[];
   diagnostics: IEditorDiagnosticView[];
   hierarchy: IEditorTreeRow[];
@@ -95,6 +135,7 @@ export interface IEditorShellModel {
 }
 
 export interface IEditorAdapterInput {
+  addComponentDefinitions?: readonly IEditorAddComponentDefinition[];
   assets?: readonly IEditorAssetRow[];
   diagnostics?: readonly IEditorDiagnosticView[];
   hierarchy?: readonly IEditorTreeRow[];
@@ -114,6 +155,7 @@ export function createEditorShellModel(input: IEditorAdapterInput = {}): IEditor
   const diagnostics = [...(input.diagnostics ?? [])];
   const status = input.status ?? (hierarchy.length === 0 && inspector.length === 0 && assets.length === 0 ? "empty" : "ready");
   return {
+    addComponentDefinitions: [...(input.addComponentDefinitions ?? EDITOR_ADD_COMPONENT_DEFINITIONS)],
     assets,
     diagnostics,
     hierarchy,
@@ -130,6 +172,80 @@ export function createEditorShellModel(input: IEditorAdapterInput = {}): IEditor
     ],
   };
 }
+
+export const EDITOR_ADD_COMPONENT_DEFINITIONS = [
+  {
+    component: "Transform",
+    defaults: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+    incompatibleWith: [],
+    pack: "core",
+    sourceFamily: "scene",
+  },
+  {
+    component: "MeshRenderer",
+    defaults: { color: "#2f80ed", primitive: "box" },
+    incompatibleWith: ["Camera", "Light"],
+    pack: "rendering",
+    sourceFamily: "scene",
+  },
+  {
+    component: "Camera",
+    defaults: { mode: "perspective", target: "" },
+    incompatibleWith: ["MeshRenderer", "Light"],
+    pack: "core",
+    sourceFamily: "scene",
+  },
+  {
+    component: "Light",
+    defaults: { intensity: 1, kind: "directional" },
+    incompatibleWith: ["MeshRenderer", "Camera"],
+    pack: "core",
+    sourceFamily: "scene",
+  },
+  {
+    component: "Script",
+    defaults: { export: "default", module: "./systems/update.ts" },
+    incompatibleWith: [],
+    pack: "scripting",
+    readOnlyReason: "Scene and systems script references are edited through promoted script attach operations.",
+    sourceFamily: "system",
+  },
+] as const satisfies readonly IEditorAddComponentDefinition[];
+
+export interface IEditorInspectorFieldInventoryItem {
+  component?: string;
+  defaultValue?: unknown;
+  fieldKind: EditorInspectorFieldKind;
+  field: string;
+  operationName?: string;
+  readOnly: boolean;
+  readOnlyReason?: string;
+  sourceFamily: EditorInspectorSourceFamily;
+}
+
+export const EDITOR_INSPECTOR_FIELD_INVENTORY = [
+  { component: "Transform", defaultValue: [0, 0, 0], field: "position", fieldKind: "vector3", operationName: "scene.set_transform", readOnly: false, sourceFamily: "scene" },
+  { component: "Transform", defaultValue: [0, 0, 0], field: "rotation", fieldKind: "vector3", operationName: "scene.set_transform", readOnly: false, sourceFamily: "scene" },
+  { component: "Transform", defaultValue: [1, 1, 1], field: "scale", fieldKind: "vector3", operationName: "scene.set_transform", readOnly: false, sourceFamily: "scene" },
+  { component: "MeshRenderer", defaultValue: "box", field: "primitive", fieldKind: "enum", readOnly: true, readOnlyReason: "Prefab primitive updates do not have a promoted source operation yet.", sourceFamily: "scene" },
+  { component: "MeshRenderer", defaultValue: "#2f80ed", field: "color", fieldKind: "color", readOnly: true, readOnlyReason: "Scene prefab color updates do not have a promoted editor operation yet.", sourceFamily: "scene" },
+  { component: "MeshRenderer", field: "asset", fieldKind: "asset", readOnly: true, readOnlyReason: "Prefab asset reference updates do not have a promoted source operation yet.", sourceFamily: "scene" },
+  { component: "Camera", defaultValue: "perspective", field: "mode", fieldKind: "enum", operationName: "scene.set_camera", readOnly: false, sourceFamily: "scene" },
+  { component: "Camera", defaultValue: "", field: "target", fieldKind: "string", operationName: "scene.set_camera", readOnly: false, sourceFamily: "scene" },
+  { component: "Light", defaultValue: "directional", field: "kind", fieldKind: "enum", readOnly: true, readOnlyReason: "Light is not part of supportedComponentKinds; source data is preserved read-only.", sourceFamily: "scene" },
+  { component: "Light", defaultValue: 1, field: "intensity", fieldKind: "number", readOnly: true, readOnlyReason: "Light is not part of supportedComponentKinds; source data is preserved read-only.", sourceFamily: "scene" },
+  { field: "materials.color", fieldKind: "color", operationName: "material.set", readOnly: false, sourceFamily: "material" },
+  { field: "materials.roughness", fieldKind: "number", operationName: "material.set", readOnly: false, sourceFamily: "material" },
+  { field: "actions.id", fieldKind: "string", readOnly: true, readOnlyReason: "Input action ids are stable source identifiers after creation.", sourceFamily: "input" },
+  { field: "actions.bindings", fieldKind: "stringList", operationName: "input.add_action", readOnly: false, sourceFamily: "input" },
+  { field: "systems.schedule", fieldKind: "string", operationName: "system.create", readOnly: true, readOnlyReason: "System schedule mutation is not promoted after creation.", sourceFamily: "system" },
+  { field: "systems.script", fieldKind: "script", operationName: "system.attach_script", readOnly: false, sourceFamily: "system" },
+  { field: "ui.bindings.resource", fieldKind: "string", operationName: "ui.bind", readOnly: false, sourceFamily: "ui" },
+  { field: "resources.path", fieldKind: "asset", readOnly: true, readOnlyReason: "Scene resource mutation is not exposed through the editor operation API yet.", sourceFamily: "scene" },
+  { field: "assets.path", fieldKind: "asset", readOnly: true, readOnlyReason: "Asset catalog mutation is not exposed through the editor operation API yet.", sourceFamily: "asset" },
+  { field: "meshes.primitive", fieldKind: "enum", operationName: "mesh.create_primitive", readOnly: true, readOnlyReason: "Mesh primitive declarations are edited through create flows in this slice.", sourceFamily: "mesh" },
+  { field: "provenance", fieldKind: "generated", readOnly: true, readOnlyReason: "Generated provenance is inspectable evidence, not editor-owned source.", sourceFamily: "scene" },
+] as const satisfies readonly IEditorInspectorFieldInventoryItem[];
 
 export function editorModelFromAuthoringProject(project: IAuthoringProject): IEditorShellModel {
   const hierarchy = project.documents.map<IEditorTreeRow>((document) => ({

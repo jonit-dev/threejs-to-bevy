@@ -180,6 +180,21 @@ decoder, and proves Vibe Coder FarmHouse plus GreenTree GLBs load in the
 source-backed viewport before the e2e gate proceeds. Inspector component panels
 are now attached-component driven: Transform, MeshRenderer, Camera, and Light
 sections appear from source entity/prefab data instead of being unconditional.
+The inspector field-mapping slice adds an explicit source-schema-backed
+inventory for promoted editor-visible fields, typed inspector row metadata
+including JSON pointers, field kinds, defaults, source family, read-only
+reasons, and operation payload hints, and field-kind controls for vector3,
+number, color, enum, asset, script reference, string-list, generated, and
+nested JSON payloads. The editor project API now emits source-backed rows for
+scene object components plus material, input, systems, UI/resource, asset, and
+mesh catalog documents; unsupported or unpromoted mutations remain visible as
+read-only rows instead of being silently omitted. Add Component now reads shared
+definition/default/incompatibility/pack metadata, while Add Object,
+AssetLoader-style flows, Save/New/Build, and ScenePersistence modal-shell
+behavior remain separate. The `verify:editor-package` Playwright proof now
+checks representative Transform/MeshRenderer/Camera/Light fields, input
+bindings, system script references, Add Component compatibility/default
+metadata, and the existing source/IR persistence evidence.
 The current modal shell covers Add Object, Add Component, Save Scene, New Scene,
 Build Preview, Settings/Delete placeholders, and the AI chat entry point while
 future slices port the richer Vibe Coder modal data and mutation flows.

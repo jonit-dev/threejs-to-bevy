@@ -2,7 +2,8 @@ import { createRoot } from "react-dom/client";
 import { useEffect, useState } from "react";
 
 import { EditorApp } from "./EditorApp.js";
-import type { IEditorDiagnosticView, IEditorLodStats, IEditorPropertyRow, IEditorSceneObject, IEditorShellModel, IEditorTreeRow } from "./adapters/editorModel.js";
+import { EDITOR_ADD_COMPONENT_DEFINITIONS, type IEditorAddComponentDefinition, type IEditorDiagnosticView, type IEditorLodStats, type IEditorPropertyRow, type IEditorSceneObject, type IEditorShellModel, type IEditorTreeRow } from "./adapters/editorModel.js";
+import type { IViewportTransform } from "./preview/EditorViewport3d.js";
 import { devFixtureModel } from "./devFixtureModel.js";
 import "./styles.css";
 
@@ -17,7 +18,7 @@ interface IProjectPayload {
 }
 
 interface IProjectDocumentGroup {
-  documents: Array<{ id: string; kind: string; path: string }>;
+  documents: Array<{ id: string; inspectorRows?: IEditorPropertyRow[]; kind: string; path: string }>;
   kind: string;
 }
 
@@ -30,7 +31,8 @@ function EditorDevApp() {
   const [parentByRowId, setParentByRowId] = useState<Record<string, string | undefined>>({});
   const [selectedRowId, setSelectedRowId] = useState<string | undefined>(devFixtureModel.selectedRowId);
   const [status, setStatus] = useState("Ready");
-  const model = project === undefined ? devFixtureModel : projectToEditorModel(project, selectedRowId, parentByRowId, status);
+  const [transformByRowId, setTransformByRowId] = useState<Record<string, IViewportTransform>>({});
+  const model = project === undefined ? devFixtureModel : projectToEditorModel(project, selectedRowId, parentByRowId, status, transformByRowId);
 
   useEffect(() => {
     void refreshProject(setProject, setStatus, setSelectedRowId);
@@ -48,7 +50,7 @@ function EditorDevApp() {
       await postOperation("scene.add_entity", { entityId, prefabId, sceneId: "arena" }, project?.projectRevision);
       await postOperation("scene.set_transform", { entityId, position: [12, 0.5, 5], sceneId: "arena" }, project?.projectRevision);
       const nextProject = await refreshProject(setProject, setStatus, setSelectedRowId);
-      setSelectedRowId(`entity:${entityId}`);
+      setSelectedRowId(nextProject.sceneObjects?.find((object) => object.id === entityId)?.rowId ?? `entity:content/scenes/arena.scene.json:${entityId}`);
       setStatus(`Added ${entityId}; primitive ${primitive}; documents ${countDocuments(nextProject)}`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
@@ -99,25 +101,122 @@ function EditorDevApp() {
     setStatus(`Nested ${findRowLabel(model.hierarchy, draggedId)} under ${findRowLabel(model.hierarchy, targetId)} in editor view`);
   }
 
+  function transformObject(rowId: string, transform: IViewportTransform) {
+    setSelectedRowId(rowId);
+    setTransformByRowId((current) => ({ ...current, [rowId]: transform }));
+    const object = model.sceneObjects.find((item) => item.rowId === rowId);
+    if (object === undefined) {
+      setStatus(`Moved ${rowId} in viewport`);
+      return;
+    }
+    setStatus(`Moved ${object.label} in viewport`);
+    void commitTransform(object, transform);
+  }
+
+  async function commitTransform(object: IEditorSceneObject, transform: IViewportTransform) {
+    try {
+      await postOperation(
+        "scene.set_transform",
+        { entityId: object.id, position: transform.position, rotation: transform.rotation, scale: transform.scale, sceneId: sceneIdFromDocumentPath(object.documentPath) },
+        project?.projectRevision,
+      );
+      await refreshProject(setProject, undefined, undefined);
+      setTransformByRowId((current) => {
+        const remaining = { ...current };
+        delete remaining[object.rowId];
+        return remaining;
+      });
+      setStatus(`Saved transform for ${object.label}`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async function editProperty(row: IEditorPropertyRow, value: unknown) {
+    if (row.operation === undefined || row.readOnly) {
+      setStatus(row.readOnlyReason ?? `${row.label} is read-only`);
+      return;
+    }
+    try {
+      await postOperation(row.operation.name, buildOperationArgs(row, value), project?.projectRevision);
+      await refreshProject(setProject, undefined, undefined);
+      setStatus(`Saved ${row.label}`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async function addComponent(definition: IEditorAddComponentDefinition) {
+    const object = model.sceneObjects.find((item) => item.rowId === selectedRowId);
+    if (object === undefined) {
+      setStatus("Select a source entity before adding a component");
+      return;
+    }
+    try {
+      if (definition.component === "Transform") {
+        await postOperation(
+          "scene.set_transform",
+          {
+            entityId: object.id,
+            position: vectorDefault(definition.defaults.position, [0, 0, 0]),
+            rotation: vectorDefault(definition.defaults.rotation, [0, 0, 0]),
+            scale: vectorDefault(definition.defaults.scale, [1, 1, 1]),
+            sceneId: sceneIdFromDocumentPath(object.documentPath),
+          },
+          project?.projectRevision,
+        );
+      } else if (definition.component === "Camera") {
+        await postOperation(
+          "scene.set_component",
+          { componentKind: "camera", entityId: object.id, sceneId: sceneIdFromDocumentPath(object.documentPath), value: definition.defaults },
+          project?.projectRevision,
+        );
+      } else if (definition.component === "Light") {
+        await postOperation(
+          "scene.set_component",
+          { componentKind: "Light", entityId: object.id, sceneId: sceneIdFromDocumentPath(object.documentPath), value: definition.defaults },
+          project?.projectRevision,
+        );
+      } else {
+        setStatus(definition.readOnlyReason ?? `${definition.component} does not have a promoted add operation yet`);
+        return;
+      }
+      await refreshProject(setProject, undefined, undefined);
+      setStatus(`Added ${definition.component} to ${object.label}`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error));
+    }
+  }
+
   return (
     <EditorApp
       model={model}
+      onAddComponent={addComponent}
       onAddObject={addPrimitive}
       onBuildPreview={buildPreview}
       onCreateScene={createDefaultScene}
+      onEditProperty={editProperty}
       onMoveRow={moveRow}
       onSaveScene={saveScene}
       onSelectRow={setSelectedRowId}
+      onTransformObject={transformObject}
     />
   );
 }
 
-function projectToEditorModel(project: IProjectPayload, selectedRowId: string | undefined, parentByRowId: Record<string, string | undefined>, status: string): IEditorShellModel {
-  const sceneObjects = project.sceneObjects ?? [];
+function projectToEditorModel(
+  project: IProjectPayload,
+  selectedRowId: string | undefined,
+  parentByRowId: Record<string, string | undefined>,
+  status: string,
+  transformByRowId: Record<string, IViewportTransform>,
+): IEditorShellModel {
+  const sceneObjects = (project.sceneObjects ?? []).map((object) => applyTransformOverride(object, transformByRowId[object.rowId]));
   const hierarchy = buildHierarchy(project.documents ?? [], sceneObjects, parentByRowId);
   const selectedObject = sceneObjects.find((object) => object.rowId === selectedRowId);
   const selectedDocument = selectedObject === undefined ? findDocument(project.documents ?? [], selectedRowId) : undefined;
   return {
+    addComponentDefinitions: [...EDITOR_ADD_COMPONENT_DEFINITIONS],
     assets: (project.documents ?? [])
       .filter((group) => ["asset", "material", "mesh", "prefab"].includes(group.kind))
       .flatMap((group) => group.documents.map((document) => ({ access: "sourcePersistable" as const, id: `asset:${document.path}`, kind: group.kind, label: document.id, path: document.path }))),
@@ -142,6 +241,18 @@ function projectToEditorModel(project: IProjectPayload, selectedRowId: string | 
       { id: "sceneEntities", label: "Scene entities", value: String(sceneObjects.length) },
       { id: "mode", label: "Mode", value: "Source-backed editor" },
     ],
+  };
+}
+
+function applyTransformOverride(object: IEditorSceneObject, transform: IViewportTransform | undefined): IEditorSceneObject {
+  if (transform === undefined) {
+    return object;
+  }
+  return {
+    ...object,
+    position: transform.position,
+    rotation: transform.rotation,
+    scale: transform.scale,
   };
 }
 
@@ -206,6 +317,9 @@ function findRowLabel(rows: readonly IEditorTreeRow[], id: string): string {
 }
 
 function objectInspectorRows(object: IEditorSceneObject): IEditorPropertyRow[] {
+  if (object.inspectorRows !== undefined && object.inspectorRows.length > 0) {
+    return [...object.inspectorRows];
+  }
   return [
     property("inspect:id", "ID", object.id, object),
     property("inspect:name", "Name", object.label, object),
@@ -237,9 +351,12 @@ function componentRows(object: IEditorSceneObject): IEditorPropertyRow[] {
   ];
 }
 
-function documentInspectorRows(document: { kind: string; path: string } | undefined): IEditorPropertyRow[] {
+function documentInspectorRows(document: { inspectorRows?: IEditorPropertyRow[]; kind: string; path: string } | undefined): IEditorPropertyRow[] {
   if (document === undefined) {
     return [];
+  }
+  if (document.inspectorRows !== undefined && document.inspectorRows.length > 0) {
+    return [...document.inspectorRows];
   }
   return [
     { access: "sourcePersistable", documentPath: document.path, id: `document:${document.path}:path`, label: "Document", readOnly: false, value: document.path },
@@ -251,16 +368,50 @@ function property(id: string, label: string, value: string, object: IEditorScene
   return { access: "sourcePersistable", component, documentPath: object.documentPath, id: `${id}:${object.rowId}`, label, readOnly: false, value };
 }
 
+function buildOperationArgs(row: IEditorPropertyRow, value: unknown): Record<string, unknown> {
+  const args = { ...(row.operation?.args ?? {}) };
+  const valueArg = row.operation?.valueArg;
+  if (row.operation?.name === "input.add_action" && Array.isArray(value)) {
+    args[valueArg ?? "keys"] = value.map((item) => String(item).replace(/^keyboard\./, ""));
+    return args;
+  }
+  if (row.operation?.name === "system.attach_script" && isRecord(value)) {
+    args.modulePath = typeof value.modulePath === "string" ? value.modulePath : args.modulePath;
+    args.exportName = typeof value.exportName === "string" ? value.exportName : args.exportName;
+    return args;
+  }
+  if (valueArg !== undefined) {
+    args[valueArg] = value;
+  }
+  return args;
+}
+
+function vectorDefault(value: unknown, fallback: [number, number, number]): [number, number, number] {
+  if (!Array.isArray(value) || value.length !== 3 || value.some((item) => typeof item !== "number" || !Number.isFinite(item))) {
+    return fallback;
+  }
+  return [value[0], value[1], value[2]];
+}
+
 function formatVector(value: readonly [number, number, number] | undefined, fallback: readonly [number, number, number]): string {
   return `[${(value ?? fallback).join(", ")}]`;
 }
 
-function findDocument(documents: readonly IProjectDocumentGroup[], selectedRowId: string | undefined): { kind: string; path: string } | undefined {
+function findDocument(documents: readonly IProjectDocumentGroup[], selectedRowId: string | undefined): { inspectorRows?: IEditorPropertyRow[]; kind: string; path: string } | undefined {
   if (selectedRowId === undefined || !selectedRowId.startsWith("source:")) {
     return undefined;
   }
   const path = selectedRowId.slice("source:".length);
   return documents.flatMap((group) => group.documents).find((document) => document.path === path);
+}
+
+function sceneIdFromDocumentPath(documentPath: string | undefined): string {
+  const fileName = documentPath?.split("/").pop() ?? "arena.scene.json";
+  return fileName.endsWith(".scene.json") ? fileName.slice(0, -".scene.json".length) : fileName;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function isDescendant(candidateId: string, parentId: string, parentByRowId: Record<string, string | undefined>): boolean {

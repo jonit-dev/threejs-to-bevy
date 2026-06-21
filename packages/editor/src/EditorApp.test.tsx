@@ -3,7 +3,7 @@ import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { EditorApp } from "./EditorApp.js";
-import type { IEditorShellModel } from "./adapters/editorModel.js";
+import { EDITOR_ADD_COMPONENT_DEFINITIONS, type IEditorShellModel } from "./adapters/editorModel.js";
 
 test("should render shell sections from adapter data", () => {
   const html = renderToStaticMarkup(<EditorApp model={modelFixture()} />);
@@ -31,6 +31,7 @@ test("should render empty project state", () => {
 
 function modelFixture(): IEditorShellModel {
   return {
+    addComponentDefinitions: [...EDITOR_ADD_COMPONENT_DEFINITIONS],
     assets: [{ access: "inspectableOnly", id: "asset:material.player", kind: "material", label: "material.player" }],
     diagnostics: [{ code: "TN_TEST", message: "fixture diagnostic", severity: "info" }],
     hierarchy: [{ access: "sourcePersistable", badge: "entity", id: "entity:player", label: "player" }],

@@ -1,6 +1,7 @@
-import type { IEditorShellModel } from "./adapters/editorModel.js";
+import { EDITOR_ADD_COMPONENT_DEFINITIONS, type IEditorShellModel } from "./adapters/editorModel.js";
 
 export const devFixtureModel: IEditorShellModel = {
+  addComponentDefinitions: [...EDITOR_ADD_COMPONENT_DEFINITIONS],
   assets: [
     { access: "inspectableOnly", id: "asset:model.level", kind: "model", label: "model.level", path: "assets/level.glb" },
     { access: "inspectableOnly", id: "asset:material.player", kind: "material", label: "material.player" },
