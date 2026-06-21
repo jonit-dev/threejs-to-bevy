@@ -305,7 +305,7 @@ async function assertEditedProjectEvidence(projectPath: string, entityId: string
   if (irEntity?.components?.MeshRenderer?.mesh !== `mesh.${entityId}` || irEntity.components.MeshRenderer.material !== `mat.${entityId}`) {
     throw new Error(`World IR did not emit mesh/material renderer for ${entityId}: ${JSON.stringify(irEntity)}`);
   }
-  if (irEntity.components.Transform?.position?.join(",") !== "6.5,0.5,1.5") {
+  if (irEntity.components.Transform?.position?.join(",") !== "12,0.5,5") {
     throw new Error(`World IR did not emit expected transform for ${entityId}: ${JSON.stringify(irEntity.components.Transform)}`);
   }
   const material = materials.materials.find((candidate) => candidate.id === `mat.${entityId}`);

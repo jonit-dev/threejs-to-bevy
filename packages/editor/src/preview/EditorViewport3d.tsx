@@ -40,8 +40,8 @@ export function EditorViewport3d({ objects, onSelectObject, selectedRowId }: IEd
     sun.castShadow = true;
     scene.add(sun);
 
-    const grid = new THREE.GridHelper(22, 22, "#243226", "#18331c");
-    grid.position.y = -0.01;
+    const grid = new THREE.GridHelper(24, 24, "#1b251f", "#1c2e20");
+    grid.position.y = 0.015;
     scene.add(grid);
 
     const ground = new THREE.Mesh(
@@ -262,6 +262,17 @@ function createTree(): THREE.Group {
     leaf.scale.set(1, 0.78, 1);
     group.add(leaf);
   }
+  const petalMaterial = new THREE.MeshStandardMaterial({ color: "#72b716", roughness: 0.72 });
+  for (let index = 0; index < 70; index += 1) {
+    const ring = index % 4;
+    const angle = index * 2.399;
+    const radius = 0.25 + ring * 0.16 + (index % 5) * 0.018;
+    const petal = new THREE.Mesh(new THREE.SphereGeometry(0.105, 8, 6), petalMaterial);
+    petal.position.set(Math.cos(angle) * radius, 1.15 + (index % 11) * 0.065, Math.sin(angle) * radius);
+    petal.scale.set(1.35, 0.45, 0.75);
+    petal.rotation.set(index * 0.11, angle, index * 0.07);
+    group.add(petal);
+  }
   return group;
 }
 
@@ -283,12 +294,30 @@ function createHouse(): THREE.Group {
   roof.scale.z = 0.82;
   group.add(roof);
 
+  const tileMaterial = new THREE.MeshStandardMaterial({ color: "#f04a18", roughness: 0.66 });
+  for (let row = 0; row < 4; row += 1) {
+    for (let column = -3; column <= 3; column += 1) {
+      const tile = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.035, 0.42), tileMaterial);
+      tile.position.set(column * 0.2, 1.55 - row * 0.08, 0.22 - row * 0.16);
+      tile.rotation.x = -0.56;
+      group.add(tile);
+    }
+  }
+
   const door = new THREE.Mesh(
     new THREE.BoxGeometry(0.36, 0.62, 0.04),
     new THREE.MeshStandardMaterial({ color: "#301e12", roughness: 0.9 }),
   );
   door.position.set(0, 0.36, 0.75);
   group.add(door);
+
+  const chimney = new THREE.Mesh(
+    new THREE.BoxGeometry(0.28, 0.75, 0.28),
+    new THREE.MeshStandardMaterial({ color: "#b99166", roughness: 0.82 }),
+  );
+  chimney.position.set(0.54, 1.72, -0.22);
+  chimney.rotation.z = -0.08;
+  group.add(chimney);
   return group;
 }
 

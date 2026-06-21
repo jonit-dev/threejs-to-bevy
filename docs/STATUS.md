@@ -164,6 +164,10 @@ fields, drag/drop hierarchy interaction, viewport picking, and source/IR
 persistence proof at the reference desktop viewport size. The shell chrome now
 uses ThreeNative branding, icon playback controls, editor action icons, a
 right-side AI chat channel rail, and denser footer runtime details.
+The latest visual-fidelity pass keeps the editor proof primitive source-backed
+but moves it out of the main reference composition, restores visible viewport
+grid lines, and adds more detailed generated tree/house presentation meshes for
+the Vibe-like verification scene.
 
 Structured `.scene.json` documents can now be used as a normal project build
 entry for the first runtime-backed CLI authoring slice. The compiler validates

@@ -47,7 +47,7 @@ function EditorDevApp() {
       setStatus(`Adding ${primitive}`);
       await postOperation("scene.add_prefab", { color, prefabId, primitive, sceneId: "arena" }, project?.projectRevision);
       await postOperation("scene.add_entity", { entityId, prefabId, sceneId: "arena" }, project?.projectRevision);
-      await postOperation("scene.set_transform", { entityId, position: [6.5, 0.5, 1.5], sceneId: "arena" }, project?.projectRevision);
+      await postOperation("scene.set_transform", { entityId, position: [12, 0.5, 5], sceneId: "arena" }, project?.projectRevision);
       const nextProject = await refreshProject(setProject, setStatus, setSelectedRowId);
       setSelectedRowId(`entity:${entityId}`);
       setStatus(`Added ${entityId}; primitive ${primitive}; documents ${countDocuments(nextProject)}`);
