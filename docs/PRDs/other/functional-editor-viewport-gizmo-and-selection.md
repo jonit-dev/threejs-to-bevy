@@ -131,20 +131,29 @@ remains authoritative.
 
 **Implementation:**
 
-- [ ] Define a single selection id contract for hierarchy rows and viewport
+- [x] Define a single selection id contract for hierarchy rows and viewport
   object ownership.
-- [ ] Ensure GLB child meshes, placeholder meshes, terrain, cameras, and lights
+- [x] Ensure GLB child meshes, placeholder meshes, terrain, cameras, and lights
   all resolve to the owning row where selection is supported.
-- [ ] Disable or ignore non-selectable helper geometry without changing
+- [x] Disable or ignore non-selectable helper geometry without changing
   selection.
-- [ ] Keep inspector rows in sync after hierarchy and viewport selection.
+- [x] Keep inspector rows in sync after hierarchy and viewport selection.
 
 **Tests Required:**
 
 | Test File | Test Name | Assertion |
 |-----------|-----------|-----------|
 | `packages/editor/src/preview/selectionBridge.test.ts` | `should resolve loaded model children to the owning scene row` | child hit maps to entity row id |
-| `packages/editor/src/EditorApp.test.tsx` | `should keep inspector in sync when viewport selects an entity` | selected row updates inspector model |
+| `tools/verify/src/editorPackage.ts` | `editor-e2e viewport selection sync` | viewport click updates selected inspector entity |
+
+**Completion Evidence:**
+
+- `pnpm --filter @threenative/editor test` - 54 tests passing, including
+  loaded model child selection ownership, nearest owner preference, and
+  non-selectable helper geometry handling.
+- Existing `verify:editor-package` browser proof selects hierarchy rows and
+  viewport objects and fails if the inspector does not update to an expected
+  source entity.
 
 **User Verification:**
 

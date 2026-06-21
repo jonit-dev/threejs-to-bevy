@@ -214,6 +214,10 @@ The editor package gate now proves the functional modal flow end to end by
 opening unsupported placeholders, adding Primitive/Empty/Camera/Light variants,
 building the preview bundle, and validating the added source scene entities plus
 emitted world/material IR evidence.
+The viewport selection contract now lives in shared editor preview helpers:
+loaded GLB children and placeholder meshes resolve to their owning hierarchy row,
+nearest row ownership wins, and helper geometry can be marked non-selectable so
+viewport picking does not desynchronize hierarchy, inspector, and gizmo state.
 The functional editor operation-coverage audit now exposes a shared coverage
 matrix for inspector fields and modal actions. Focused editor tests fail if an
 editable inspector row lacks an operation payload or if a read-only row/action

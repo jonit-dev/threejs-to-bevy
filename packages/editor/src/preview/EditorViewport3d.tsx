@@ -5,6 +5,7 @@ import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 import type { IEditorSceneObject } from "../adapters/editorModel.js";
+import { markViewportSelectionOwner, resolveViewportSelectionOwnerRowId } from "./selectionBridge.js";
 
 export interface IEditorViewport3dProps {
   objects: readonly IEditorSceneObject[];
@@ -88,7 +89,7 @@ export function EditorViewport3d({ objects, onSelectObject, onTransformObject, s
       objectByRowId.clear();
       for (const sourceObject of objects) {
         const object = createSceneObject(sourceObject, gltfLoader);
-        object.userData.rowId = sourceObject.rowId;
+        markViewportSelectionOwner(object, sourceObject.rowId);
         root.add(object);
         objectByRowId.set(sourceObject.rowId, object);
         if (sourceObject.kind !== "camera" && sourceObject.kind !== "light") {
@@ -119,8 +120,7 @@ export function EditorViewport3d({ objects, onSelectObject, onTransformObject, s
       pointer.y = -(((event.clientY - bounds.top) / bounds.height) * 2 - 1);
       raycaster.setFromCamera(pointer, camera);
       const hit = raycaster.intersectObjects(selectables, true)[0]?.object;
-      const owner = hit === undefined ? undefined : findSelectableOwner(hit);
-      const rowId = owner?.userData.rowId;
+      const rowId = resolveViewportSelectionOwnerRowId(hit);
       if (typeof rowId === "string") {
         onSelectRef.current?.(rowId);
       }
@@ -192,7 +192,7 @@ function createSceneObject(sourceObject: IEditorSceneObject, loader: GLTFLoader)
   const [sx, sy, sz] = sourceObject.scale ?? [1, 1, 1];
   object.scale.set(sx, sy, sz);
   object.traverse((child) => {
-    child.userData.rowId = sourceObject.rowId;
+    markViewportSelectionOwner(child, sourceObject.rowId);
     if (child instanceof THREE.Mesh) {
       child.castShadow = true;
       child.receiveShadow = true;
@@ -253,7 +253,7 @@ function createModelObject(sourceObject: IEditorSceneObject, loader: GLTFLoader)
       group.clear();
       const model = gltf.scene;
       model.traverse((child) => {
-        child.userData.rowId = sourceObject.rowId;
+        markViewportSelectionOwner(child, sourceObject.rowId);
         if (child instanceof THREE.Mesh) {
           child.castShadow = true;
           child.receiveShadow = true;
@@ -465,17 +465,6 @@ function createHouse(): THREE.Group {
 
 function defaultY(sourceObject: IEditorSceneObject): number {
   return sourceObject.primitive === "plane" ? 0 : 0.45;
-}
-
-function findSelectableOwner(object: THREE.Object3D): THREE.Object3D | undefined {
-  let candidate: THREE.Object3D | null = object;
-  while (candidate !== null) {
-    if (typeof candidate.userData.rowId === "string") {
-      return candidate;
-    }
-    candidate = candidate.parent;
-  }
-  return undefined;
 }
 
 function disposeScene(scene: THREE.Scene): void {
