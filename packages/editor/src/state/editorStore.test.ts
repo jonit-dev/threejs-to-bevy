@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { EDITOR_MODAL_ACTION_DEFINITIONS, type IEditorModalActionDefinition } from "../adapters/editorModel.js";
-import { useEditorStore } from "./editorStore.js";
+import { createEditorSessionModel, useEditorStore } from "./editorStore.js";
 
 test("should manage modal and selection state through editor store", () => {
   useEditorStore.getState().reset();
@@ -133,6 +133,105 @@ test("should mark local transform overrides as dirty until cleared", () => {
   assert.equal(useEditorStore.getState().project?.sceneLifecycle?.state, "dirty");
   useEditorStore.getState().clearTransformOverride("entity:content/scenes/arena.scene.json:player");
   assert.equal(useEditorStore.getState().project?.sceneLifecycle?.state, "build-ready");
+});
+
+test("should derive the dev editor model from store state", () => {
+  useEditorStore.getState().reset();
+  useEditorStore.getState().setProject({
+    documents: [
+      {
+        documents: [{ id: "arena", kind: "scene", path: "content/scenes/arena.scene.json" }],
+        kind: "scene",
+      },
+    ],
+    ok: true,
+    projectPath: "/tmp/structured-source-starter",
+    sceneLifecycle: {
+      activeScene: { documentPath: "content/scenes/arena.scene.json", id: "arena", label: "arena", sourcePersistable: true },
+      scenes: [{ documentPath: "content/scenes/arena.scene.json", id: "arena", label: "arena", sourcePersistable: true }],
+      state: "build-ready",
+    },
+    sceneObjects: [
+      {
+        components: ["Transform", "MeshRenderer"],
+        documentPath: "content/scenes/arena.scene.json",
+        id: "player",
+        kind: "entity",
+        label: "player",
+        position: [1, 2, 3],
+        primitive: "box",
+        rowId: "entity:content/scenes/arena.scene.json:player",
+      },
+    ],
+  });
+  useEditorStore.getState().selectRow("entity:content/scenes/arena.scene.json:player");
+
+  const model = createEditorSessionModel(useEditorStore.getState());
+
+  assert.equal(model.projectName, "structured-source-starter");
+  assert.equal(model.selectedRowId, "entity:content/scenes/arena.scene.json:player");
+  assert.equal(model.sceneObjects[0]?.id, "player");
+  assert.equal(model.inspector.some((row) => row.label === "Position" && row.value === "[1, 2, 3]"), true);
+  assert.equal(model.statusItems.some((item) => item.id === "sourceDocuments" && item.value === "1"), true);
+});
+
+test("should route source document selection through the store", () => {
+  useEditorStore.getState().reset();
+  useEditorStore.getState().setProject({
+    ok: true,
+    projectPath: "/tmp/project",
+    sceneLifecycle: {
+      activeScene: { documentPath: "content/scenes/arena.scene.json", id: "arena", label: "arena", sourcePersistable: true },
+      scenes: [
+        { documentPath: "content/scenes/arena.scene.json", id: "arena", label: "arena", sourcePersistable: true },
+        { documentPath: "content/scenes/menu.scene.json", id: "menu", label: "menu", sourcePersistable: true },
+      ],
+      state: "build-ready",
+    },
+    sceneObjects: [
+      { documentPath: "content/scenes/arena.scene.json", id: "player", kind: "entity", label: "player", primitive: "box", rowId: "entity:content/scenes/arena.scene.json:player" },
+      { documentPath: "content/scenes/menu.scene.json", id: "start", kind: "entity", label: "start", primitive: "box", rowId: "entity:content/scenes/menu.scene.json:start" },
+    ],
+  });
+
+  useEditorStore.getState().selectEditorRow("source:content/scenes/menu.scene.json");
+
+  assert.equal(useEditorStore.getState().activeScenePath, "content/scenes/menu.scene.json");
+  assert.equal(useEditorStore.getState().selectedRowId, "entity:content/scenes/menu.scene.json:start");
+  assert.equal(useEditorStore.getState().status, "Loaded source scene menu");
+});
+
+test("should move hierarchy rows through the store", () => {
+  useEditorStore.getState().reset();
+  useEditorStore.getState().setProject({
+    documents: [
+      {
+        documents: [{ id: "arena", kind: "scene", path: "content/scenes/arena.scene.json" }],
+        kind: "scene",
+      },
+    ],
+    ok: true,
+    projectPath: "/tmp/project",
+    sceneLifecycle: {
+      activeScene: { documentPath: "content/scenes/arena.scene.json", id: "arena", label: "arena", sourcePersistable: true },
+      scenes: [{ documentPath: "content/scenes/arena.scene.json", id: "arena", label: "arena", sourcePersistable: true }],
+      state: "build-ready",
+    },
+    sceneObjects: [
+      { documentPath: "content/scenes/arena.scene.json", id: "parent", kind: "entity", label: "Parent", primitive: "box", rowId: "entity:parent" },
+      { documentPath: "content/scenes/arena.scene.json", id: "child", kind: "entity", label: "Child", primitive: "box", rowId: "entity:child" },
+    ],
+  });
+
+  useEditorStore.getState().moveEditorRow("entity:child", "entity:parent");
+
+  assert.equal(useEditorStore.getState().parentByRowId["entity:child"], "entity:parent");
+  assert.equal(useEditorStore.getState().selectedRowId, "entity:child");
+  assert.equal(useEditorStore.getState().status, "Nested Child under Parent in editor view");
+
+  useEditorStore.getState().moveEditorRow("entity:parent", "entity:child");
+  assert.equal(useEditorStore.getState().parentByRowId["entity:parent"], undefined);
+  assert.equal(useEditorStore.getState().status, "Cannot nest Parent under Child");
 });
 
 test("should refresh project and select the first source object", async () => {

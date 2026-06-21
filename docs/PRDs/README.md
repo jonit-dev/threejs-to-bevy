@@ -20,6 +20,10 @@ This index separates current cleanup work from historical milestone batches.
 - [Verification Strategy and Speed](done/verification-strategy-and-speed.md):
   test-vs-gate ownership, verification script classification, build-once
   release orchestration, gate profiles, and timing budgets.
+- [P0 Editor Zustand Store Completion and Guardrails](done/other/p0-editor-zustand-store-completion.md):
+  complete the editor-session state refactor by keeping derived editor models,
+  selection/move orchestration, and local-state regression guardrails behind the
+  Zustand store boundary before lower-priority editor/state work expands.
 - [AI-Consumable Distribution Contract](other/ai-consumable-distribution-contract.md):
   published declarations, schemas, capabilities, diagnostics, examples, and AI
   docs that make installed packages understandable without repository source.
