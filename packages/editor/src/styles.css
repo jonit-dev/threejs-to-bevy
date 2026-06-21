@@ -212,6 +212,37 @@ input {
   color: #98a3b1;
 }
 
+.tn-editor-dev-controls {
+  position: fixed;
+  right: 16px;
+  bottom: 44px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(520px, calc(100vw - 32px));
+  border: 1px solid #3a4654;
+  border-radius: 8px;
+  padding: 8px;
+  color: #dce5f1;
+  background: #1f252e;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+}
+
+.tn-editor-dev-controls button {
+  border: 1px solid #4b6fae;
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: #edf4ff;
+  background: #2a4c83;
+}
+
+.tn-editor-dev-controls span {
+  overflow-wrap: anywhere;
+  color: #aeb9c7;
+  font-size: 12px;
+}
+
 @media (max-width: 900px) {
   .tn-editor-workspace {
     grid-template-columns: 1fr;

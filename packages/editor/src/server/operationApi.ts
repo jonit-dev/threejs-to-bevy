@@ -1,8 +1,8 @@
 import {
   addInputAction,
+  addPrefab,
   addPrefabComponent,
   addUiText,
-  authoringDiagnostic,
   authoringOperationResult,
   createMeshPrimitive,
   createPrefabDocument,
@@ -55,6 +55,15 @@ async function dispatchEditorOperation(projectPath: string, name: string, args: 
   switch (name) {
     case "ui.add_text":
       return addUiText({ nodeId: stringArg(args, "nodeId"), projectPath, text: stringArg(args, "text"), uiDocId: stringArg(args, "uiDocId") });
+    case "scene.add_prefab":
+      return addPrefab({
+        asset: optionalStringArg(args, "asset"),
+        color: optionalStringArg(args, "color"),
+        prefabId: stringArg(args, "prefabId"),
+        primitive: optionalStringArg(args, "primitive"),
+        projectPath,
+        sceneId: stringArg(args, "sceneId"),
+      });
     case "mesh.create_primitive":
       return createMeshPrimitive({ kind: stringArg(args, "kind"), meshId: stringArg(args, "meshId"), projectPath });
     case "prefab.create":
@@ -88,6 +97,11 @@ function stringArg(args: Record<string, unknown>, key: string): string {
     throw new Error(`Editor operation argument '${key}' must be a non-empty string.`);
   }
   return value;
+}
+
+function optionalStringArg(args: Record<string, unknown>, key: string): string | undefined {
+  const value = args[key];
+  return typeof value === "string" && value.trim() !== "" ? value : undefined;
 }
 
 function stringArrayArg(args: Record<string, unknown>, key: string): string[] {

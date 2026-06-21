@@ -21,6 +21,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
-    "@types/node": "^20.19.25"
+    "@types/node": "^20.19.25",
+    "playwright": "^1.60.0"
   }
 }

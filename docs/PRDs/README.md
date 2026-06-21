@@ -68,6 +68,10 @@ This index separates current cleanup work from historical milestone batches.
 - [Editor Source Document Workbench](done/other/editor-source-document-workbench.md):
   editable project workbench over structured source documents using shared
   `@threenative/authoring` operations, with CLI/MCP/editor operation parity.
+- [Editor Runtime Preview and Vibe UI Port](done/other/editor-runtime-preview-and-vibe-ui-port.md):
+  runtime-web-three preview host, selection correlation, catalog preview panels,
+  and browser smoke evidence while keeping Vibe Coder's R3F/Rapier ECS out of
+  the source-of-truth path.
 - [Advanced Visual Effects, Lighting, and Material Depth](other/advanced-visual-effects-lighting-material-depth.md):
   remaining advanced lighting, material, atmosphere, post-processing, deferred
   renderer, virtual geometry, and custom post-processing gaps.

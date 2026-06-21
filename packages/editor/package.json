@@ -9,7 +9,8 @@
   "files": [
     "dist",
     "index.html",
-    "src/styles.css"
+    "src/styles.css",
+    "vite.config.ts"
   ],
   "publishConfig": {
     "access": "public"
@@ -23,6 +24,7 @@
   },
   "dependencies": {
     "@threenative/authoring": "workspace:*",
+    "@threenative/compiler": "workspace:*",
     "@threenative/ir": "workspace:*",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"

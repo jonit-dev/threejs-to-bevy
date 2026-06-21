@@ -88,6 +88,9 @@ importers:
       '@threenative/authoring':
         specifier: workspace:*
         version: link:../authoring
+      '@threenative/compiler':
+        specifier: workspace:*
+        version: link:../compiler
       '@threenative/ir':
         specifier: workspace:*
         version: link:../ir
@@ -178,6 +181,9 @@ importers:
       '@types/node':
         specifier: ^20.19.25
         version: 20.19.43
+      playwright:
+        specifier: ^1.60.0
+        version: 1.60.0
 
 packages:
 

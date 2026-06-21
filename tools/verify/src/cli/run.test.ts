@@ -17,6 +17,7 @@ test("focused gate dispatcher should list current capability gates", () => {
     "verify:runtime-gameplay-host",
     "verify:runtime-prefabs-hierarchy",
     "verify:runtime-query-diffing",
+    "verify:editor-package",
     "verify:ui-persistence-settings-facades",
     "verify:scene-lifecycle",
     "verify:v10:ecs-tags-groups",

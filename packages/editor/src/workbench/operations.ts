@@ -7,6 +7,7 @@ export type EditorOperationName =
   | "mesh.create_primitive"
   | "prefab.add_component"
   | "prefab.create"
+  | "scene.add_prefab"
   | "scene.set_transform"
   | "system.attach_script"
   | "system.create"

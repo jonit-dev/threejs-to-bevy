@@ -186,6 +186,19 @@ export const FOCUSED_GATES: Record<string, FocusedGate> = {
       protects: "Scene transition contracts, lifecycle diagnostics, and web/Bevy trace alignment.",
     },
   },
+  "verify:editor-package": {
+    commands: [
+      ["pnpm", "--filter", "@threenative/editor", "build"],
+      ["node", "tools/verify/dist/editorPackage.js"],
+    ],
+    description: "Editor package browser smoke gate.",
+    metadata: {
+      owner: "tools/verify editor-package gate",
+      profile: "focused",
+      reason: "Uses a real browser to prove the editor shell, source inventory fixture, and preview status render together.",
+      protects: "Editor package launchability, browser framing, and visual smoke artifacts.",
+    },
+  },
   "verify:v10:ecs-tags-groups": {
     commands: [
       ["pnpm", "--filter", "@threenative/ir", "test", "--", "--run", "conformance"],
