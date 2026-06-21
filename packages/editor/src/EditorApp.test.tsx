@@ -8,8 +8,8 @@ import type { IEditorShellModel } from "./adapters/editorModel.js";
 test("should render shell sections from adapter data", () => {
   const html = renderToStaticMarkup(<EditorApp model={modelFixture()} />);
 
-  assert.match(html, /VibeEngine/);
-  assert.match(html, /ThreeNative editor/);
+  assert.match(html, /ThreeNative/);
+  assert.match(html, /Editor v0.1.0/);
   assert.match(html, /Hierarchy/);
   assert.match(html, /Inspector/);
   assert.match(html, /Assets/);

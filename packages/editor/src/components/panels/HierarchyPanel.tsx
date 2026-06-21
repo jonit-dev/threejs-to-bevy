@@ -1,3 +1,5 @@
+import { Box, Camera, Circle, FileJson, GripVertical, Home, Layers3, Lightbulb, Mountain } from "lucide-react";
+
 import type { IEditorTreeRow } from "../../adapters/editorModel.js";
 
 export interface IHierarchyPanelProps {
@@ -47,7 +49,8 @@ function renderRow(
         onClick={() => onSelectRow?.(row.id)}
         type="button"
       >
-        <i aria-hidden="true" />
+        <GripVertical aria-hidden="true" className="tn-editor-tree__grip" size={13} />
+        <RowIcon badge={row.badge} label={row.label} />
         <span>{row.label}</span>
         <small>{row.badge ?? row.access}</small>
       </button>
@@ -56,4 +59,24 @@ function renderRow(
       )}
     </div>
   );
+}
+
+function RowIcon({ badge, label }: { badge?: string; label: string }) {
+  const normalized = `${badge ?? ""} ${label}`.toLowerCase();
+  const Icon = normalized.includes("camera")
+    ? Camera
+    : normalized.includes("light")
+      ? Lightbulb
+      : normalized.includes("terrain")
+        ? Mountain
+        : normalized.includes("farm_house")
+          ? Home
+          : normalized.includes("sphere") || normalized.includes("base_basic")
+            ? Circle
+            : badge === "scene" || badge === undefined
+              ? Layers3
+              : badge === "entity"
+                ? Box
+                : FileJson;
+  return <Icon aria-hidden="true" className="tn-editor-tree__icon" size={15} />;
 }

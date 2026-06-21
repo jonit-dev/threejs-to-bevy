@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Box, FolderOpen, Image, MessageSquare, Pause, Play, Save, Settings, Square, Trash2 } from "lucide-react";
 
 import type { IEditorAdapterInput, IEditorShellModel } from "./adapters/editorModel.js";
 import { createEditorShellModel } from "./adapters/editorModel.js";
@@ -28,25 +29,32 @@ export function EditorApp({ model: input, onMoveRow, onSelectRow, toolbarSlot }:
 
       <header className="tn-editor-topbar">
         <div className="tn-editor-brand">
-          <div className="tn-editor-brand__mark" aria-hidden="true">TN</div>
+          <div className="tn-editor-brand__mark" aria-hidden="true"><Box size={15} /></div>
           <div>
-            <strong>VibeEngine</strong>
-            <span>ThreeNative editor</span>
+            <strong>ThreeNative</strong>
+            <span>Editor v0.1.0</span>
           </div>
         </div>
         <div className="tn-editor-topbar__divider" />
         <div className="tn-editor-badges" aria-label="Project status">
-          <span className="tn-editor-badge tn-editor-badge--cyan">Objects: {objectCount}</span>
+          <span className="tn-editor-badge tn-editor-badge--cyan">{objectCount} Objects</span>
           <span className={`tn-editor-badge tn-editor-badge--${model.status === "error" ? "red" : "green"}`}>{statusMessage}</span>
           <span className="tn-editor-badge tn-editor-badge--purple">Scene: {model.projectName}</span>
         </div>
         <div className="tn-editor-playback" aria-label="Playback controls">
-          <button className="tn-editor-icon-button tn-editor-icon-button--play" title="Play" type="button">&gt;</button>
-          <button className="tn-editor-icon-button" title="Pause" type="button">||</button>
-          <button className="tn-editor-icon-button tn-editor-icon-button--stop" title="Stop" type="button">[]</button>
+          <button className="tn-editor-icon-button tn-editor-icon-button--play" title="Play" type="button"><Play size={16} /></button>
+          <button className="tn-editor-icon-button" title="Pause" type="button"><Pause size={15} /></button>
+          <button className="tn-editor-icon-button tn-editor-icon-button--stop" title="Stop" type="button"><Square size={14} /></button>
         </div>
         <div className="tn-editor-topbar__actions">
           {toolbarSlot}
+          <div className="tn-editor-action-icons" aria-label="Editor actions">
+            <button title="Save" type="button"><Save size={16} /></button>
+            <button title="Open" type="button"><FolderOpen size={16} /></button>
+            <button title="Delete" type="button"><Trash2 size={16} /></button>
+            <button title="Settings" type="button"><Settings size={16} /></button>
+            <button title="Image" type="button"><Image size={16} /></button>
+          </div>
         </div>
       </header>
 
@@ -79,6 +87,17 @@ export function EditorApp({ model: input, onMoveRow, onSelectRow, toolbarSlot }:
           ) : null}
         </section>
         <aside className="tn-editor-right-rail">
+          <div className="tn-editor-ai-channel" aria-label="AI chat channel">
+            <button className="tn-editor-ai-channel__toggle" title="Collapse AI chat" type="button">&lt;</button>
+            <div className="tn-editor-ai-channel__tab">
+              <MessageSquare aria-hidden="true" size={16} />
+              <span>AI</span>
+            </div>
+            <div className="tn-editor-ai-channel__tab">
+              <Box aria-hidden="true" size={16} />
+              <span>D</span>
+            </div>
+          </div>
           <PanelShell title="Assets" meta={`${model.assets.length}`}>
             {model.assets.length === 0 ? (
               <p className="tn-editor-empty">No assets loaded.</p>
@@ -112,9 +131,13 @@ export function EditorApp({ model: input, onMoveRow, onSelectRow, toolbarSlot }:
       <footer className="tn-editor-statusbar">
         <span><i className="tn-editor-status-dot" /> {statusMessage}</span>
         <span>60 FPS</span>
-        <span>{objectCount} Entities</span>
+        <span>128MB</span>
         <span>WebGL</span>
         <span className="tn-editor-statusbar__spacer" />
+        <span>AUTO</span>
+        <span>TERRAIN</span>
+        <span>LOD: original</span>
+        <span>{objectCount} Entities</span>
         {model.statusItems.map((item) => <span key={item.id}>{item.label}: {item.value}</span>)}
       </footer>
     </main>

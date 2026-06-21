@@ -47,7 +47,7 @@ function EditorDevApp() {
       setStatus(`Adding ${primitive}`);
       await postOperation("scene.add_prefab", { color, prefabId, primitive, sceneId: "arena" }, project?.projectRevision);
       await postOperation("scene.add_entity", { entityId, prefabId, sceneId: "arena" }, project?.projectRevision);
-      await postOperation("scene.set_transform", { entityId, position: [2, 0.5, 1], sceneId: "arena" }, project?.projectRevision);
+      await postOperation("scene.set_transform", { entityId, position: [6.5, 0.5, 1.5], sceneId: "arena" }, project?.projectRevision);
       const nextProject = await refreshProject(setProject, setStatus, setSelectedRowId);
       setSelectedRowId(`entity:${entityId}`);
       setStatus(`Added ${entityId}; primitive ${primitive}; documents ${countDocuments(nextProject)}`);
@@ -140,6 +140,9 @@ function projectToEditorModel(project: IProjectPayload, selectedRowId: string | 
 }
 
 function buildHierarchy(documents: readonly IProjectDocumentGroup[], sceneObjects: readonly IEditorSceneObject[], parentByRowId: Record<string, string | undefined>): IEditorTreeRow[] {
+  if (sceneObjects.length > 0) {
+    return sceneChildren(undefined, sceneObjects, parentByRowId);
+  }
   return documents.map((documentGroup) => ({
     access: "sourcePersistable",
     badge: documentGroup.kind,
@@ -157,9 +160,9 @@ function buildHierarchy(documents: readonly IProjectDocumentGroup[], sceneObject
   }));
 }
 
-function sceneChildren(documentPath: string, sceneObjects: readonly IEditorSceneObject[], parentByRowId: Record<string, string | undefined>): IEditorTreeRow[] {
+function sceneChildren(documentPath: string | undefined, sceneObjects: readonly IEditorSceneObject[], parentByRowId: Record<string, string | undefined>): IEditorTreeRow[] {
   const rows = sceneObjects
-    .filter((object) => object.documentPath === documentPath)
+    .filter((object) => documentPath === undefined || object.documentPath === documentPath)
     .map<IEditorTreeRow>((object) => ({
       access: "sourcePersistable",
       badge: object.kind,

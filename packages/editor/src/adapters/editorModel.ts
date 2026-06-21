@@ -53,7 +53,7 @@ export interface IEditorSceneObject {
   color?: string;
   documentPath?: string;
   id: string;
-  kind: "camera" | "entity";
+  kind: "camera" | "entity" | "light";
   label: string;
   position?: readonly [number, number, number];
   primitive: EditorScenePrimitive;

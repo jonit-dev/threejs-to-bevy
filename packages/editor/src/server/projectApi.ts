@@ -112,14 +112,15 @@ function buildSceneObjects(documents: readonly IAuthoringDocument[]): IEditorSce
       const prefabData = prefab === undefined ? undefined : prefabById.get(prefab);
       const components = isRecord(entity.components) ? entity.components : undefined;
       const isCamera = isRecord(components?.camera);
+      const isLight = isRecord(components?.Light) || isRecord(components?.light);
       return {
         color: readString(prefabData?.color),
         documentPath: document.projectRelativePath,
         id,
-        kind: isCamera ? "camera" : "entity",
-        label: id,
+        kind: isCamera ? "camera" : isLight ? "light" : "entity",
+        label: displayLabelForEntityId(id),
         position: readVector3(isRecord(entity.transform) ? entity.transform.position : undefined),
-        primitive: isCamera ? "camera" : readPrimitive(prefabData?.primitive),
+        primitive: isCamera || isLight ? "camera" : readPrimitive(prefabData?.primitive),
         rotation: readVector3(isRecord(entity.transform) ? entity.transform.rotation : undefined),
         rowId: `entity:${id}`,
         scale: readVector3(isRecord(entity.transform) ? entity.transform.scale : undefined),
@@ -136,6 +137,25 @@ function projectRevision(documents: readonly IAuthoringDocument[]): string {
 
 function readDocumentId(value: unknown): string | undefined {
   return typeof value === "object" && value !== null && "id" in value && typeof value.id === "string" ? value.id : undefined;
+}
+
+function displayLabelForEntityId(id: string): string {
+  switch (id) {
+    case "main-camera":
+      return "Main Camera";
+    case "directional-light":
+      return "Directional Light";
+    case "ambient-light":
+      return "Ambient Light";
+    case "terrain-0":
+      return "Terrain 0";
+    case "farm-house-basic-shaded-0":
+      return "farm_house_basic_shaded 0";
+    case "base-basic-shaded-0":
+      return "base_basic_shaded 0";
+    default:
+      return id;
+  }
 }
 
 function normalizeRelativePath(path: string): string {

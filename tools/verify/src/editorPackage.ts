@@ -47,7 +47,7 @@ export async function runEditorPackageGate(root = process.cwd()): Promise<Verifi
   try {
     const browser = await chromium.launch();
     try {
-      const page = await browser.newPage({ viewport: { height: 900, width: 1280 } });
+      const page = await browser.newPage({ viewport: { height: 924, width: 1913 } });
       const consoleErrors: string[] = [];
       page.on("console", (message) => {
         if (message.type() === "error") {
@@ -56,28 +56,30 @@ export async function runEditorPackageGate(root = process.cwd()): Promise<Verifi
       });
       await waitForHttp(url, 30_000);
       await page.goto(url, { waitUntil: "networkidle", timeout: 30_000 });
-      for (const text of ["VibeEngine", "Hierarchy", "Inspector", "Viewport", "arena.scene.json", "arena.floor", "player", "goal"]) {
+      for (const text of ["ThreeNative", "Hierarchy", "Inspector", "Viewport", "Main Camera", "Directional Light", "Ambient Light", "Terrain 0", "farm_house_basic_shaded 0", "base_basic_shaded 0"]) {
         await page.getByText(text).first().waitFor({ timeout: 10_000 });
       }
       const inventory = await readProjectInventory(page);
       if (!inventory.paths.includes("content/scenes/arena.scene.json") || !inventory.paths.includes("content/materials/arena.materials.json")) {
         throw new Error(`Editor project inventory did not include expected source documents: ${inventory.paths.join(", ")}`);
       }
-      await page.getByRole("button", { name: /goal entity/ }).click();
-      await page.getByLabel("ID").waitFor({ timeout: 10_000 });
-      if ((await page.getByLabel("ID").inputValue()) !== "goal") {
-        throw new Error("Inspector did not update after selecting goal in the hierarchy.");
+      await page.getByRole("button", { name: /base_basic_shaded 0 entity/ }).click();
+      await page.getByLabel("Name").waitFor({ timeout: 10_000 });
+      if ((await page.getByLabel("Name").inputValue()) !== "base-basic-shaded-0") {
+        throw new Error("Inspector did not update after selecting base_basic_shaded 0 in the hierarchy.");
       }
-      await page.getByRole("button", { name: /goal entity/ }).dragTo(page.getByRole("button", { name: /player entity/ }));
-      await page.getByText("Nested entity:goal under entity:player in editor view").waitFor({ timeout: 10_000 });
+      await page.getByRole("button", { name: /farm_house_basic_shaded 0 entity/ }).dragTo(page.getByRole("button", { name: /base_basic_shaded 0 entity/ }));
+      await page.getByText("Nested entity:farm-house-basic-shaded-0 under entity:base-basic-shaded-0 in editor view").waitFor({ timeout: 10_000 });
+      await page.reload({ waitUntil: "networkidle", timeout: 30_000 });
+      await page.getByText("base_basic_shaded 0").first().waitFor({ timeout: 10_000 });
       const canvas = page.locator(".tn-editor-viewport-canvas canvas");
       const canvasBounds = await canvas.boundingBox();
       if (canvasBounds === null) {
         throw new Error("Editor viewport canvas did not render.");
       }
       await canvas.click({ position: { x: canvasBounds.width * 0.5, y: canvasBounds.height * 0.55 } });
-      const selectedFromViewport = await page.getByLabel("ID").inputValue();
-      if (selectedFromViewport !== "arena.floor" && selectedFromViewport !== "player") {
+      const selectedFromViewport = await page.getByLabel("Name").inputValue();
+      if (selectedFromViewport !== "terrain-0" && selectedFromViewport !== "base-basic-shaded-0") {
         throw new Error(`Viewport click did not select an expected scene object; inspector ID is '${selectedFromViewport}'.`);
       }
       await page.screenshot({ path: artifacts.smokeScreenshot, fullPage: true });
@@ -100,6 +102,7 @@ export async function runEditorPackageGate(root = process.cwd()): Promise<Verifi
       await page.getByRole("button", { name: "Build preview" }).click();
       await buildResponse;
       await page.getByText(/^Built /).waitFor({ timeout: 30_000 });
+      await page.getByRole("button", { name: /base_basic_shaded 0 entity/ }).click();
       await page.screenshot({ path: artifacts.editedScreenshot, fullPage: true });
 
       const evidence = await assertEditedProjectEvidence(fixture.projectPath, entityId);
@@ -159,8 +162,14 @@ interface IProjectInventory {
 }
 
 interface ISceneDocument {
-  entities: Array<{ id: string; prefab?: string; transform?: unknown }>;
+  entities: Array<{ components?: Record<string, unknown>; id: string; label?: string; prefab?: string; transform?: unknown }>;
+  id?: string;
   prefabs: Array<{ color?: string; id: string; primitive?: string }>;
+  resources?: unknown[];
+  schema?: string;
+  systems?: unknown[];
+  ui?: unknown;
+  version?: string;
 }
 
 interface IWorldDocument {
@@ -181,6 +190,7 @@ async function createEditorE2eFixture(root: string): Promise<IEditorE2eFixture> 
   const tempRoot = await mkdtemp(join(tmpdir(), "tn-editor-e2e-"));
   const projectPath = join(tempRoot, "project");
   await cp(resolve(root, "templates/structured-source-starter"), projectPath, { recursive: true });
+  await writeEditorVisualScene(projectPath);
   const bootConfigPath = join(projectPath, ".threenative", "editor-boot.json");
   await mkdir(join(projectPath, ".threenative"), { recursive: true });
   await writeFile(
@@ -196,6 +206,55 @@ async function createEditorE2eFixture(root: string): Promise<IEditorE2eFixture> 
     )}\n`,
   );
   return { bootConfigPath, projectPath, tempRoot };
+}
+
+async function writeEditorVisualScene(projectPath: string): Promise<void> {
+  const scene: ISceneDocument = {
+    entities: [
+      {
+        components: { camera: { mode: "perspective" } },
+        id: "main-camera",
+        transform: { position: [2.8, 2.8, 1.1] },
+      },
+      {
+        components: { Light: { kind: "directional" } },
+        id: "directional-light",
+        transform: { position: [-2, 3, 2] },
+      },
+      {
+        components: { Light: { kind: "ambient" } },
+        id: "ambient-light",
+        transform: { position: [-2.4, 2.4, -1.2] },
+      },
+      {
+        id: "terrain-0",
+        prefab: "prefab.terrain-0",
+        transform: { position: [0, -0.05, 0], rotation: [-1.570796, 0, 0], scale: [1, 1, 1] },
+      },
+      {
+        id: "farm-house-basic-shaded-0",
+        prefab: "prefab.farm-house-basic-shaded-0",
+        transform: { position: [4.6, 0, -2.1], rotation: [0, -0.45, 0], scale: [1, 1, 1] },
+      },
+      {
+        id: "base-basic-shaded-0",
+        prefab: "prefab.base-basic-shaded-0",
+        transform: { position: [-0.7, 0, 0.2], scale: [1, 1, 1] },
+      },
+    ],
+    prefabs: [
+      { color: "#075d18", id: "prefab.terrain-0", primitive: "plane" },
+      { color: "#9c3a16", id: "prefab.farm-house-basic-shaded-0", primitive: "box" },
+      { color: "#66a80f", id: "prefab.base-basic-shaded-0", primitive: "sphere" },
+    ],
+    id: "arena",
+    resources: [],
+    schema: "threenative.scene",
+    systems: [],
+    ui: { nodes: [] },
+    version: "0.1.0",
+  } as ISceneDocument;
+  await writeFile(join(projectPath, "content", "scenes", "arena.scene.json"), `${JSON.stringify(scene, null, 2)}\n`);
 }
 
 async function readProjectInventory(page: Page): Promise<IProjectInventory> {
@@ -246,7 +305,7 @@ async function assertEditedProjectEvidence(projectPath: string, entityId: string
   if (irEntity?.components?.MeshRenderer?.mesh !== `mesh.${entityId}` || irEntity.components.MeshRenderer.material !== `mat.${entityId}`) {
     throw new Error(`World IR did not emit mesh/material renderer for ${entityId}: ${JSON.stringify(irEntity)}`);
   }
-  if (irEntity.components.Transform?.position?.join(",") !== "2,0.5,1") {
+  if (irEntity.components.Transform?.position?.join(",") !== "6.5,0.5,1.5") {
     throw new Error(`World IR did not emit expected transform for ${entityId}: ${JSON.stringify(irEntity.components.Transform)}`);
   }
   const material = materials.materials.find((candidate) => candidate.id === `mat.${entityId}`);

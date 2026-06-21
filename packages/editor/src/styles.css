@@ -92,6 +92,10 @@ select {
   box-shadow: 0 0 16px rgba(79, 203, 255, 0.38);
 }
 
+.tn-editor-brand__mark svg {
+  stroke-width: 2.4;
+}
+
 .tn-editor-brand strong {
   display: block;
   color: #5de4ff;
@@ -167,6 +171,8 @@ select {
 .tn-editor-icon-button {
   width: 24px;
   height: 24px;
+  display: grid;
+  place-items: center;
   border: 0;
   border-radius: 4px;
   color: #8b95a6;
@@ -194,6 +200,34 @@ select {
   margin-left: auto;
 }
 
+.tn-editor-action-icons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-left: 1px solid #293140;
+  padding-left: 8px;
+}
+
+.tn-editor-action-icons button {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #253044;
+  border-radius: 4px;
+  color: #10cfff;
+  background: #101923;
+}
+
+.tn-editor-action-icons button:nth-child(3) {
+  color: #ff4b5d;
+}
+
+.tn-editor-action-icons button:hover {
+  border-color: #34506a;
+  background: #162437;
+}
+
 .tn-editor-workspace {
   min-height: 0;
   display: grid;
@@ -210,7 +244,7 @@ select {
 }
 
 .tn-editor-left-rail {
-  grid-template-rows: minmax(0, 1fr) minmax(0, 1.35fr);
+  grid-template-rows: 260px minmax(0, 1fr);
   border-right: 1px solid rgba(56, 67, 82, 0.8);
   overflow: hidden;
 }
@@ -219,20 +253,51 @@ select {
   position: relative;
   width: 64px;
   border-left: 1px solid rgba(56, 67, 82, 0.8);
-  padding: 62px 8px 8px;
+  padding: 48px 8px 8px;
   gap: 8px;
 }
 
-.tn-editor-right-rail::before {
+.tn-editor-ai-channel {
   position: absolute;
-  top: 42px;
-  left: 50%;
+  top: 36px;
+  right: 8px;
+  left: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.tn-editor-ai-channel__toggle,
+.tn-editor-ai-channel__tab {
+  width: 48px;
+  min-height: 42px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #253044;
+  border-radius: 5px;
+  color: #12c9ff;
+  background: #101923;
+}
+
+.tn-editor-ai-channel__toggle {
+  min-height: 28px;
+  border: 0;
   color: #9da9b8;
-  content: "<";
-  transform: translateX(-50%);
+  background: transparent;
+}
+
+.tn-editor-ai-channel__tab {
+  grid-template-rows: auto auto;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.tn-editor-ai-channel__tab svg {
+  stroke-width: 2.4;
 }
 
 .tn-editor-right-rail .tn-editor-panel {
+  display: none;
   height: 42px;
   border: 0;
   overflow: visible;
@@ -427,6 +492,164 @@ select {
   font-size: 13px;
 }
 
+.tn-editor-object-inspector {
+  display: grid;
+  gap: 10px;
+}
+
+.tn-editor-inspector-identity {
+  display: grid;
+  grid-template-columns: auto 24px auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  color: #9dabbb;
+  font-size: 12px;
+}
+
+.tn-editor-inspector-identity strong {
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  color: #8de7ff;
+  background: #142538;
+  font-size: 12px;
+}
+
+.tn-editor-inspector-identity input {
+  min-width: 0;
+  height: 25px;
+  border: 1px solid #273242;
+  border-radius: 4px;
+  padding: 0 8px;
+  color: #e3edf8;
+  background: #0d1118;
+}
+
+.tn-editor-inspector-identity button {
+  height: 27px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #344253;
+  border-radius: 4px;
+  padding: 0 9px;
+  color: #d8e5f4;
+  background: #263446;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tn-editor-component {
+  border: 1px solid #263345;
+  border-radius: 5px;
+  overflow: hidden;
+  background: #151b24;
+}
+
+.tn-editor-component header {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #233143;
+  padding: 0 10px;
+  color: #11ff9a;
+  background: #203041;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.tn-editor-component header span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.tn-editor-component header button {
+  border: 0;
+  color: #11ff9a;
+  background: transparent;
+}
+
+.tn-editor-transform-group {
+  display: grid;
+  gap: 5px;
+  padding: 9px 9px 3px;
+}
+
+.tn-editor-transform-group__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #c8d3df;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.tn-editor-transform-group__header button {
+  height: 20px;
+  border: 0;
+  border-radius: 3px;
+  padding: 0 6px;
+  color: #aab6c5;
+  background: #232b37;
+  font-size: 10px;
+}
+
+.tn-editor-axis-row {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) 22px 22px;
+  align-items: center;
+  gap: 6px;
+}
+
+.tn-editor-axis-row > span {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.tn-editor-axis-row[data-axis="x"] > span {
+  color: #ff6f7d;
+  background: #351721;
+}
+
+.tn-editor-axis-row[data-axis="y"] > span {
+  color: #2af7cf;
+  background: #0d3438;
+}
+
+.tn-editor-axis-row[data-axis="z"] > span {
+  color: #57a7ff;
+  background: #132b4a;
+}
+
+.tn-editor-axis-row input {
+  min-width: 0;
+  height: 23px;
+  border: 1px solid #26303c;
+  border-radius: 4px;
+  padding: 0 8px;
+  color: #e7eff8;
+  background: #090d13;
+}
+
+.tn-editor-axis-row button {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #2a3543;
+  border-radius: 5px;
+  color: #8fa0b3;
+  background: #1e2a38;
+}
+
 .tn-editor-tree,
 .tn-editor-list,
 .tn-editor-fields {
@@ -454,16 +677,17 @@ select {
   text-align: left;
 }
 
-.tn-editor-tree__row i {
-  width: 14px;
-  height: 14px;
+.tn-editor-tree__grip {
   flex: 0 0 auto;
-  border: 1px solid #6f88a8;
-  border-radius: 4px;
-  background:
-    linear-gradient(90deg, transparent 43%, #6f88a8 43% 57%, transparent 57%),
-    linear-gradient(0deg, transparent 43%, #6f88a8 43% 57%, transparent 57%);
-  opacity: 0.85;
+  color: #596676;
+  opacity: 0;
+}
+
+.tn-editor-tree__icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  color: #89a8cf;
 }
 
 .tn-editor-tree__row span {
@@ -480,11 +704,13 @@ select {
   background: #263141;
 }
 
-.tn-editor-tree__row[data-selected="true"] i {
-  border-color: #31c9ff;
-  background:
-    linear-gradient(90deg, transparent 43%, #31c9ff 43% 57%, transparent 57%),
-    linear-gradient(0deg, transparent 43%, #31c9ff 43% 57%, transparent 57%);
+.tn-editor-tree__row[data-selected="true"] .tn-editor-tree__icon,
+.tn-editor-tree__row:hover .tn-editor-tree__icon {
+  color: #31c9ff;
+}
+
+.tn-editor-tree__row:hover .tn-editor-tree__grip {
+  opacity: 1;
 }
 
 .tn-editor-tree__row:active {
@@ -516,22 +742,45 @@ select {
 .tn-editor-field {
   position: relative;
   display: grid;
-  gap: 4px;
+  gap: 6px;
   border: 1px solid #26313f;
   border-radius: 5px;
-  padding: 7px;
+  padding: 8px;
   color: #aab4c1;
   font-size: 12px;
   background: #151b24;
 }
 
-.tn-editor-field span {
+.tn-editor-field--inline {
+  grid-template-columns: minmax(78px, 0.6fr) minmax(0, 1fr);
+  align-items: center;
+}
+
+.tn-editor-field--inline input[type="color"] {
+  width: 44px;
+  min-width: 44px;
+  padding: 2px;
+}
+
+.tn-editor-field--inline input[type="color"] + input {
+  grid-column: 2;
+}
+
+.tn-editor-field__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   color: #8ea0b4;
   font-size: 11px;
   text-transform: uppercase;
 }
 
-.tn-editor-field input {
+.tn-editor-field__label svg {
+  color: #13c8ff;
+}
+
+.tn-editor-field input,
+.tn-editor-field select {
   min-width: 0;
   border: 1px solid #333c48;
   border-radius: 6px;
@@ -540,8 +789,48 @@ select {
   background: #171b21;
 }
 
-.tn-editor-field[data-readonly="true"] input {
+.tn-editor-field select:disabled {
+  opacity: 1;
+}
+
+.tn-editor-field[data-readonly="true"] input,
+.tn-editor-field[data-readonly="true"] select {
   color: #98a3b1;
+}
+
+.tn-editor-field--vector {
+  margin: 0;
+  min-inline-size: 0;
+}
+
+.tn-editor-field--vector legend {
+  padding: 0;
+}
+
+.tn-editor-vector-inputs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.tn-editor-vector-inputs label {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 4px;
+}
+
+.tn-editor-vector-inputs label span {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid #24476a;
+  border-radius: 5px;
+  color: #39d6ff;
+  background: #0e2030;
+  font-size: 10px;
+  font-weight: 700;
 }
 
 .tn-editor-dev-controls {

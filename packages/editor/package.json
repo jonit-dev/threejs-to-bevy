@@ -26,6 +26,7 @@
     "@threenative/authoring": "workspace:*",
     "@threenative/compiler": "workspace:*",
     "@threenative/ir": "workspace:*",
+    "lucide-react": "^1.21.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "three": "^0.181.2"

@@ -157,7 +157,13 @@ Three.js objects derived from ThreeNative structured scene source, keeps
 hierarchy selection, 3D picking, selected-object inspector rows, visual
 selection bounds, and gizmo cues wired to the same source-backed scene object
 model, and exposes drag/drop hierarchy nesting as an editor-view affordance
-without treating Vibe Coder ECS state as authoritative source data.
+without treating Vibe Coder ECS state as authoritative source data. The
+Playwright editor package gate now exercises a Vibe-like source scene fixture,
+real hierarchy icons, typed inspector controls for primitive/color/transform
+fields, drag/drop hierarchy interaction, viewport picking, and source/IR
+persistence proof at the reference desktop viewport size. The shell chrome now
+uses ThreeNative branding, icon playback controls, editor action icons, a
+right-side AI chat channel rail, and denser footer runtime details.
 
 Structured `.scene.json` documents can now be used as a normal project build
 entry for the first runtime-backed CLI authoring slice. The compiler validates

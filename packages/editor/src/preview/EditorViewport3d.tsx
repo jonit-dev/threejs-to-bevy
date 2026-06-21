@@ -72,7 +72,7 @@ export function EditorViewport3d({ objects, onSelectObject, selectedRowId }: IEd
         object.userData.rowId = sourceObject.rowId;
         root.add(object);
         objectByRowId.set(sourceObject.rowId, object);
-        if (sourceObject.kind !== "camera") {
+        if (sourceObject.kind !== "camera" && sourceObject.kind !== "light") {
           selectables.push(object);
         }
       }
@@ -152,7 +152,7 @@ export function EditorViewport3d({ objects, onSelectObject, selectedRowId }: IEd
 }
 
 function createSceneObject(sourceObject: IEditorSceneObject): THREE.Object3D {
-  const object = sourceObject.primitive === "camera" ? createCameraGlyph() : new THREE.Mesh(geometryFor(sourceObject), materialFor(sourceObject));
+  const object = createRenderableObject(sourceObject);
   object.name = sourceObject.id;
   const [x, y, z] = sourceObject.position ?? [0, defaultY(sourceObject), 0];
   object.position.set(x, y, z);
@@ -168,6 +168,26 @@ function createSceneObject(sourceObject: IEditorSceneObject): THREE.Object3D {
     }
   });
   return object;
+}
+
+function createRenderableObject(sourceObject: IEditorSceneObject): THREE.Object3D {
+  const label = sourceObject.label.toLowerCase();
+  if (sourceObject.kind === "camera") {
+    return createCameraGlyph();
+  }
+  if (sourceObject.kind === "light") {
+    return createLightGlyph();
+  }
+  if (label.includes("farm_house")) {
+    return createHouse();
+  }
+  if (label.includes("base_basic") || label.includes("tree")) {
+    return createTree();
+  }
+  if (label.includes("terrain")) {
+    return new THREE.Mesh(new THREE.PlaneGeometry(24, 24), materialFor(sourceObject));
+  }
+  return new THREE.Mesh(geometryFor(sourceObject), materialFor(sourceObject));
 }
 
 function geometryFor(sourceObject: IEditorSceneObject): THREE.BufferGeometry {
@@ -206,6 +226,69 @@ function createCameraGlyph(): THREE.Group {
   const reelB = new THREE.Mesh(new THREE.SphereGeometry(0.13, 16, 8), material);
   reelB.position.set(0.16, 0.2, 0);
   group.add(body, lens, reelA, reelB);
+  return group;
+}
+
+function createLightGlyph(): THREE.Group {
+  const group = new THREE.Group();
+  const material = new THREE.MeshBasicMaterial({ color: "#f6fbff" });
+  const core = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 8), material);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.23, 0.025, 8, 24), material);
+  ring.rotation.x = Math.PI / 2;
+  group.add(core, ring);
+  return group;
+}
+
+function createTree(): THREE.Group {
+  const group = new THREE.Group();
+  const trunk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.22, 0.38, 1.25, 10),
+    new THREE.MeshStandardMaterial({ color: "#8a5523", roughness: 0.8 }),
+  );
+  trunk.position.y = 0.62;
+  group.add(trunk);
+
+  const leafMaterial = new THREE.MeshStandardMaterial({ color: "#66a80f", roughness: 0.68 });
+  const positions = [
+    [0, 1.45, 0],
+    [-0.45, 1.2, 0.14],
+    [0.42, 1.22, -0.12],
+    [-0.16, 1.78, -0.12],
+    [0.24, 1.64, 0.35],
+  ] as const;
+  for (const [x, y, z] of positions) {
+    const leaf = new THREE.Mesh(new THREE.DodecahedronGeometry(0.8, 1), leafMaterial);
+    leaf.position.set(x, y, z);
+    leaf.scale.set(1, 0.78, 1);
+    group.add(leaf);
+  }
+  return group;
+}
+
+function createHouse(): THREE.Group {
+  const group = new THREE.Group();
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(1.8, 1.15, 1.45),
+    new THREE.MeshStandardMaterial({ color: "#9c3a16", roughness: 0.72 }),
+  );
+  body.position.y = 0.58;
+  group.add(body);
+
+  const roof = new THREE.Mesh(
+    new THREE.ConeGeometry(1.42, 0.78, 4),
+    new THREE.MeshStandardMaterial({ color: "#d84412", roughness: 0.64 }),
+  );
+  roof.position.y = 1.46;
+  roof.rotation.y = Math.PI / 4;
+  roof.scale.z = 0.82;
+  group.add(roof);
+
+  const door = new THREE.Mesh(
+    new THREE.BoxGeometry(0.36, 0.62, 0.04),
+    new THREE.MeshStandardMaterial({ color: "#301e12", roughness: 0.9 }),
+  );
+  door.position.set(0, 0.36, 0.75);
+  group.add(door);
   return group;
 }
 
