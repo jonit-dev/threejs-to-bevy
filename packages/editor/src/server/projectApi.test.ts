@@ -28,7 +28,7 @@ test("should load structured-source starter inventory", async () => {
     assert.equal(result.ok, true);
     assert.equal(result.documents.some((group) => group.kind === "scene" && group.documents[0]?.path === "content/scenes/arena.scene.json"), true);
     assert.equal(result.sceneLifecycle.activeScene?.documentPath, "content/scenes/arena.scene.json");
-    assert.equal(result.sceneLifecycle.state, "saved");
+    assert.equal(result.sceneLifecycle.state, "build-ready");
     assert.equal(result.documents.some((group) => group.kind === "material"), true);
     assert.equal(result.lod.selected, "original");
     assert.equal(result.lod.loading, false);
@@ -225,6 +225,8 @@ test("should create, save, and reload default editor scene entities", async () =
 
     const reloaded = await loadEditorProjectApi({ projectPath: root });
     assert.equal(reloaded.ok, true);
+    assert.equal(reloaded.sceneLifecycle.activeScene?.documentPath, "content/scenes/sample-scene.scene.json");
+    assert.equal(reloaded.sceneLifecycle.state, "build-ready");
     assert.deepEqual(
       reloaded.sceneObjects.map((object) => [object.id, object.kind, object.position?.join(",")]),
       [

@@ -58,6 +58,18 @@ test("should report diagnostic lifecycle state when project has errors", async (
   }
 });
 
+test("should distinguish dirty and build-ready lifecycle states", async () => {
+  const root = await createSceneProject();
+  try {
+    const project = await loadAuthoringProject({ projectPath: root });
+
+    assert.equal(buildSceneLifecycleModel(project.documents, { buildReady: true }).state, "build-ready");
+    assert.equal(buildSceneLifecycleModel(project.documents, { buildReady: true, dirty: true }).state, "dirty");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should apply transform through authoring operation", async () => {
   const root = await createSceneProject();
   try {

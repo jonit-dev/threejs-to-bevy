@@ -49,7 +49,7 @@ export async function loadEditorProjectApi(options: { projectPath: string; rootP
     ok: !hasErrors,
     projectPath: project.projectPath,
     projectRevision: projectRevision(project.documents),
-    sceneLifecycle: buildSceneLifecycleModel(project.documents, { hasErrors }),
+    sceneLifecycle: buildSceneLifecycleModel(project.documents, { buildReady: !hasErrors && sceneObjects.length > 0, hasErrors }),
     sceneObjects,
   };
 }

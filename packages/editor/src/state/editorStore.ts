@@ -23,6 +23,7 @@ export interface IEditorProjectDocumentGroup {
 }
 
 export interface IEditorSessionState {
+  activeScenePath?: string;
   gizmoMode: EditorViewportGizmoMode;
   modal: EditorModal;
   parentByRowId: Record<string, string | undefined>;
@@ -41,6 +42,7 @@ export interface IEditorSessionActions {
   commitTransform: (object: IEditorSceneObject, transform: IViewportTransform) => Promise<void>;
   createDefaultScene: () => Promise<void>;
   editProperty: (row: IEditorPropertyRow, value: unknown) => Promise<void>;
+  loadScene: (documentPath: string) => void;
   openModal: (modal: Exclude<EditorModal, undefined>) => void;
   refreshProject: (options?: IRefreshProjectOptions) => Promise<IEditorProjectPayload>;
   reset: (state?: Partial<IEditorSessionState>) => void;
@@ -62,6 +64,7 @@ export interface IRefreshProjectOptions {
 }
 
 export const defaultEditorSessionState: IEditorSessionState = {
+  activeScenePath: undefined,
   gizmoMode: "translate",
   modal: undefined,
   parentByRowId: {},
@@ -117,7 +120,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   },
   addObject: async (action) => {
     const suffix = Date.now().toString(36);
-    const sceneId = "arena";
+    const sceneId = sceneIdFromDocumentPath(get().activeScenePath ?? get().project?.sceneLifecycle?.activeScene?.documentPath);
     try {
       const revision = get().project?.projectRevision;
       const result = addObjectOperationPlan(action.id, suffix);
@@ -152,7 +155,10 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     set((state) => {
       const transformByRowId = { ...state.transformByRowId };
       delete transformByRowId[rowId];
-      return { transformByRowId };
+      return {
+        project: state.project === undefined ? undefined : withClientSceneLifecycle(state.project, state.activeScenePath, hasTransformOverrides(transformByRowId)),
+        transformByRowId,
+      };
     }),
   closeModal: () => set({ modal: undefined }),
   commitTransform: async (object, transform) => {
@@ -175,6 +181,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     try {
       set({ status: `Creating ${sceneId}` });
       const response = await postOperation("scene.create_default", { sceneId }, get().project?.projectRevision);
+      set({ activeScenePath: `content/scenes/${sceneId}.scene.json` });
       const nextProject = await get().refreshProject({ selectFirstObject: true });
       set({ status: `Created ${sceneId}; saved ${response.filesWritten.join(", ")}; documents ${countDocuments(nextProject)}` });
     } catch (error) {
@@ -194,17 +201,35 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       set({ status: error instanceof Error ? error.message : String(error) });
     }
   },
+  loadScene: (documentPath) => {
+    const project = get().project;
+    const scene = project?.sceneLifecycle?.scenes.find((item) => item.documentPath === documentPath);
+    if (project === undefined || scene === undefined) {
+      set({ status: `Scene ${documentPath} is not available in the loaded source project` });
+      return;
+    }
+    const firstObject = project.sceneObjects?.find((object) => object.documentPath === documentPath)?.rowId;
+    set({
+      activeScenePath: documentPath,
+      project: withClientSceneLifecycle(project, documentPath, hasTransformOverrides(get().transformByRowId)),
+      selectedRowId: firstObject,
+      status: `Loaded source scene ${scene.label}`,
+    });
+  },
   openModal: (modal) => set({ modal }),
   refreshProject: async (options = {}) => {
     const response = await fetch("/api/project");
     const payload = await response.json() as IEditorProjectPayload;
-    const firstObject = payload.sceneObjects?.[0]?.rowId;
+    const activeScenePath = get().activeScenePath ?? payload.sceneLifecycle?.activeScene?.documentPath;
+    const nextProject = withClientSceneLifecycle(payload, activeScenePath, hasTransformOverrides(get().transformByRowId));
+    const firstObject = nextProject.sceneObjects?.find((object) => activeScenePath === undefined || object.documentPath === activeScenePath)?.rowId;
     set({
-      project: payload,
+      activeScenePath,
+      project: nextProject,
       selectedRowId: options.selectFirstObject && firstObject !== undefined ? firstObject : get().selectedRowId,
-      status: options.updateLoadErrorStatus && payload.ok === false ? payload.diagnostics?.[0]?.message ?? "Project load failed" : get().status,
+      status: options.updateLoadErrorStatus && nextProject.ok === false ? nextProject.diagnostics?.[0]?.message ?? "Project load failed" : get().status,
     });
-    return payload;
+    return nextProject;
   },
   reset: (state) => set({ ...defaultEditorSessionState, ...state }),
   saveScene: async () => {
@@ -225,10 +250,15 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     set({ parentByRowId: { ...current, [rowId]: parentId } });
     return true;
   },
-  setProject: (project) => set({ project }),
+  setProject: (project) =>
+    set((state) => ({
+      activeScenePath: state.activeScenePath ?? project?.sceneLifecycle?.activeScene?.documentPath,
+      project: project === undefined ? undefined : withClientSceneLifecycle(project, state.activeScenePath ?? project.sceneLifecycle?.activeScene?.documentPath, hasTransformOverrides(state.transformByRowId)),
+    })),
   setStatus: (status) => set({ status }),
   setTransformOverride: (rowId, transform) =>
     set((state) => ({
+      project: state.project === undefined ? undefined : withClientSceneLifecycle(state.project, state.activeScenePath, true),
       transformByRowId: { ...state.transformByRowId, [rowId]: transform },
     })),
   transformObject: (sceneObjects, rowId, transform) => {
@@ -302,6 +332,36 @@ function sceneIdFromDocumentPath(documentPath: string | undefined): string {
 
 function countDocuments(project: IEditorProjectPayload): number {
   return project.documents?.reduce((count, group) => count + group.documents.length, 0) ?? 0;
+}
+
+function hasTransformOverrides(transformByRowId: Record<string, IViewportTransform>): boolean {
+  return Object.keys(transformByRowId).length > 0;
+}
+
+function withClientSceneLifecycle(project: IEditorProjectPayload, activeScenePath: string | undefined, dirty: boolean): IEditorProjectPayload {
+  if (project.sceneLifecycle === undefined) {
+    return project;
+  }
+  const activeScene = project.sceneLifecycle.scenes.find((scene) => scene.documentPath === activeScenePath) ?? project.sceneLifecycle.activeScene;
+  const hasActiveSceneObjects = activeScene === undefined
+    ? (project.sceneObjects?.length ?? 0) > 0
+    : project.sceneObjects?.some((object) => object.documentPath === activeScene.documentPath) === true;
+  return {
+    ...project,
+    sceneLifecycle: {
+      ...project.sceneLifecycle,
+      activeScene,
+      state: project.ok === false || project.sceneLifecycle.state === "diagnostic"
+        ? "diagnostic"
+        : project.sceneLifecycle.scenes.length === 0
+          ? "empty"
+          : dirty
+            ? "dirty"
+            : hasActiveSceneObjects
+              ? "build-ready"
+              : "saved",
+    },
+  };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

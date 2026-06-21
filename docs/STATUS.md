@@ -228,9 +228,12 @@ and the editor package gate selects Camera/Light/Terrain rows before screenshot
 capture to prove inspector sync and cue stability.
 The scene lifecycle model now exposes deterministic source scene entries and an
 active scene selection helper for editor workbench flows. `/api/project` now
-returns that lifecycle metadata, including saved/empty/diagnostic scene state,
-and the editor footer surfaces the active scene and scene state. Load-scene UI
-remains future editor scene/assets work.
+returns that lifecycle metadata, including saved, dirty, build-ready, empty, and
+diagnostic scene states. The editor footer surfaces active scene/state values,
+New Scene remains source-backed with the default camera and light entities, Save
+continues to reload structured source from disk, and selecting a scene source
+row switches the active scene through the Zustand store without generating or
+rewriting source code.
 The functional editor operation-coverage audit now exposes a shared coverage
 matrix for inspector fields and modal actions. Focused editor tests fail if an
 editable inspector row lacks an operation payload or if a read-only row/action

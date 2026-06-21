@@ -128,11 +128,11 @@ back as source.
 **Implementation:**
 
 - [x] Represent active scene and available scene documents in the editor model.
-- [ ] Distinguish saved, dirty, build-ready, and diagnostic states.
-- [ ] Ensure New Scene seeds Main Camera, Directional Light, and Ambient Light
+- [x] Distinguish saved, dirty, build-ready, and diagnostic states.
+- [x] Ensure New Scene seeds Main Camera, Directional Light, and Ambient Light
   with source-backed IDs.
-- [ ] Ensure Save persists structured source and reloads from disk.
-- [ ] Ensure Load Scene switches active scene without generating source code.
+- [x] Ensure Save persists structured source and reloads from disk.
+- [x] Ensure Load Scene switches active scene without generating source code.
 
 **Tests Required:**
 
@@ -150,6 +150,11 @@ back as source.
   `/api/project` started returning `sceneLifecycle` metadata with saved,
   empty, and diagnostic lifecycle states, and after the editor status bar began
   surfacing active scene/state values.
+- `pnpm --filter @threenative/editor test` - 61 tests passing after
+  lifecycle metadata distinguished `saved`, `dirty`, `build-ready`,
+  `diagnostic`, and `empty`, source-backed New Scene/Save/Reload remained
+  covered, and the Zustand editor store switched active scene documents without
+  posting source operations.
 
 **User Verification:**
 

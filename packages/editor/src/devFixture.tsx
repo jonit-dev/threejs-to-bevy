@@ -28,6 +28,7 @@ function EditorDevApp() {
   const buildPreview = useEditorStore((state) => state.buildPreview);
   const createDefaultScene = useEditorStore((state) => state.createDefaultScene);
   const saveScene = useEditorStore((state) => state.saveScene);
+  const loadScene = useEditorStore((state) => state.loadScene);
   const editProperty = useEditorStore((state) => state.editProperty);
   const transformObject = useEditorStore((state) => state.transformObject);
   const model = project === undefined ? devFixtureModel : projectToEditorModel(project, selectedRowId, parentByRowId, status, transformByRowId);
@@ -46,6 +47,17 @@ function EditorDevApp() {
     );
   }
 
+  function selectRow(rowId: string | undefined) {
+    if (rowId?.startsWith("source:") === true) {
+      const documentPath = rowId.slice("source:".length);
+      if (project?.sceneLifecycle?.scenes.some((scene) => scene.documentPath === documentPath) === true) {
+        loadScene(documentPath);
+        return;
+      }
+    }
+    setSelectedRowId(rowId);
+  }
+
   return (
     <EditorApp
       model={model}
@@ -56,7 +68,7 @@ function EditorDevApp() {
       onEditProperty={editProperty}
       onMoveRow={moveRow}
       onSaveScene={saveScene}
-      onSelectRow={setSelectedRowId}
+      onSelectRow={selectRow}
       onTransformObject={(rowId, transform) => transformObject(model.sceneObjects, rowId, transform)}
     />
   );
@@ -69,7 +81,10 @@ function projectToEditorModel(
   status: string,
   transformByRowId: Record<string, IViewportTransform>,
 ): IEditorShellModel {
-  const sceneObjects = (project.sceneObjects ?? []).map((object) => applyTransformOverride(object, transformByRowId[object.rowId]));
+  const activeScenePath = project.sceneLifecycle?.activeScene?.documentPath;
+  const sceneObjects = (project.sceneObjects ?? [])
+    .filter((object) => activeScenePath === undefined || object.documentPath === activeScenePath)
+    .map((object) => applyTransformOverride(object, transformByRowId[object.rowId]));
   const hierarchy = buildHierarchy(project.documents ?? [], sceneObjects, parentByRowId);
   const selectedObject = sceneObjects.find((object) => object.rowId === selectedRowId);
   const selectedDocument = selectedObject === undefined ? findDocument(project.documents ?? [], selectedRowId) : undefined;
@@ -117,9 +132,6 @@ function applyTransformOverride(object: IEditorSceneObject, transform: IViewport
 }
 
 function buildHierarchy(documents: readonly IEditorProjectDocumentGroup[], sceneObjects: readonly IEditorSceneObject[], parentByRowId: Record<string, string | undefined>): IEditorTreeRow[] {
-  if (sceneObjects.length > 0) {
-    return sceneChildren(undefined, sceneObjects, parentByRowId);
-  }
   return documents.map((documentGroup) => ({
     access: "sourcePersistable",
     badge: documentGroup.kind,

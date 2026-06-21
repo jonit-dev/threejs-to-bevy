@@ -84,6 +84,57 @@ test("should store project payload and selected row together", () => {
   assert.equal(useEditorStore.getState().selectedRowId, "entity:player");
 });
 
+test("should switch active scene without posting source operations", () => {
+  useEditorStore.getState().reset();
+  useEditorStore.getState().setProject({
+    ok: true,
+    projectPath: "/tmp/project",
+    sceneLifecycle: {
+      activeScene: { documentPath: "content/scenes/arena.scene.json", id: "arena", label: "arena", sourcePersistable: true },
+      scenes: [
+        { documentPath: "content/scenes/arena.scene.json", id: "arena", label: "arena", sourcePersistable: true },
+        { documentPath: "content/scenes/menu.scene.json", id: "menu", label: "menu", sourcePersistable: true },
+      ],
+      state: "build-ready",
+    },
+    sceneObjects: [
+      { documentPath: "content/scenes/arena.scene.json", id: "player", kind: "entity", label: "player", primitive: "box", rowId: "entity:content/scenes/arena.scene.json:player" },
+      { documentPath: "content/scenes/menu.scene.json", id: "start", kind: "entity", label: "start", primitive: "box", rowId: "entity:content/scenes/menu.scene.json:start" },
+    ],
+  });
+
+  useEditorStore.getState().loadScene("content/scenes/menu.scene.json");
+
+  assert.equal(useEditorStore.getState().activeScenePath, "content/scenes/menu.scene.json");
+  assert.equal(useEditorStore.getState().project?.sceneLifecycle?.activeScene?.id, "menu");
+  assert.equal(useEditorStore.getState().selectedRowId, "entity:content/scenes/menu.scene.json:start");
+  assert.equal(useEditorStore.getState().status, "Loaded source scene menu");
+});
+
+test("should mark local transform overrides as dirty until cleared", () => {
+  useEditorStore.getState().reset();
+  useEditorStore.getState().setProject({
+    ok: true,
+    projectPath: "/tmp/project",
+    sceneLifecycle: {
+      activeScene: { documentPath: "content/scenes/arena.scene.json", id: "arena", label: "arena", sourcePersistable: true },
+      scenes: [{ documentPath: "content/scenes/arena.scene.json", id: "arena", label: "arena", sourcePersistable: true }],
+      state: "build-ready",
+    },
+    sceneObjects: [{ documentPath: "content/scenes/arena.scene.json", id: "player", kind: "entity", label: "player", primitive: "box", rowId: "entity:content/scenes/arena.scene.json:player" }],
+  });
+
+  useEditorStore.getState().setTransformOverride("entity:content/scenes/arena.scene.json:player", {
+    position: [1, 2, 3],
+    rotation: [0, 0, 0],
+    scale: [1, 1, 1],
+  });
+
+  assert.equal(useEditorStore.getState().project?.sceneLifecycle?.state, "dirty");
+  useEditorStore.getState().clearTransformOverride("entity:content/scenes/arena.scene.json:player");
+  assert.equal(useEditorStore.getState().project?.sceneLifecycle?.state, "build-ready");
+});
+
 test("should refresh project and select the first source object", async () => {
   useEditorStore.getState().reset();
   const restore = mockFetch(async (input) => {

@@ -8,7 +8,7 @@ export interface ISceneHierarchyRow {
   sourcePersistable: boolean;
 }
 
-export type EditorSceneLifecycleState = "diagnostic" | "empty" | "saved";
+export type EditorSceneLifecycleState = "build-ready" | "diagnostic" | "dirty" | "empty" | "saved";
 
 export interface ISceneLifecycleModel {
   activeScene?: ISceneLifecycleEntry;
@@ -40,7 +40,10 @@ export function buildSceneHierarchyModel(documents: readonly IAuthoringDocument[
   });
 }
 
-export function buildSceneLifecycleModel(documents: readonly IAuthoringDocument[], options: { activeScenePath?: string; hasErrors?: boolean } = {}): ISceneLifecycleModel {
+export function buildSceneLifecycleModel(
+  documents: readonly IAuthoringDocument[],
+  options: { activeScenePath?: string; buildReady?: boolean; dirty?: boolean; hasErrors?: boolean } = {},
+): ISceneLifecycleModel {
   const scenes: ISceneLifecycleEntry[] = [];
   for (const document of documents) {
     if (document.kind !== "scene" || !isRecord(document.data)) {
@@ -59,8 +62,24 @@ export function buildSceneLifecycleModel(documents: readonly IAuthoringDocument[
   return {
     activeScene,
     scenes,
-    state: options.hasErrors === true ? "diagnostic" : scenes.length === 0 ? "empty" : "saved",
+    state: lifecycleState({ buildReady: options.buildReady, dirty: options.dirty, hasErrors: options.hasErrors, scenes }),
   };
+}
+
+function lifecycleState(options: { buildReady?: boolean; dirty?: boolean; hasErrors?: boolean; scenes: readonly ISceneLifecycleEntry[] }): EditorSceneLifecycleState {
+  if (options.hasErrors === true) {
+    return "diagnostic";
+  }
+  if (options.scenes.length === 0) {
+    return "empty";
+  }
+  if (options.dirty === true) {
+    return "dirty";
+  }
+  if (options.buildReady === true) {
+    return "build-ready";
+  }
+  return "saved";
 }
 
 function readRows(value: unknown, documentPath: string, kind: "entity"): ISceneHierarchyRow[] {
