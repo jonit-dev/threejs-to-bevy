@@ -127,7 +127,7 @@ back as source.
 
 **Implementation:**
 
-- [ ] Represent active scene and available scene documents in the editor model.
+- [x] Represent active scene and available scene documents in the editor model.
 - [ ] Distinguish saved, dirty, build-ready, and diagnostic states.
 - [ ] Ensure New Scene seeds Main Camera, Directional Light, and Ambient Light
   with source-backed IDs.
@@ -140,6 +140,12 @@ back as source.
 |-----------|-----------|-----------|
 | `packages/editor/src/workbench/sceneModel.test.ts` | `should list source scenes and selected active scene` | active scene metadata is deterministic |
 | `packages/editor/src/server/projectApi.test.ts` | `should load default scene after create and save` | camera/light defaults survive reload |
+
+**Progress Evidence:**
+
+- `pnpm --filter @threenative/editor test` - 57 tests passing, including
+  deterministic source scene listing and active scene selection in
+  `buildSceneLifecycleModel`.
 
 **User Verification:**
 

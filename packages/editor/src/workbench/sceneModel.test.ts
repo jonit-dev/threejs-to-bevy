@@ -7,7 +7,7 @@ import test from "node:test";
 import { loadAuthoringProject } from "@threenative/authoring";
 
 import { runEditorOperation } from "./operations.js";
-import { buildSceneHierarchyModel } from "./sceneModel.js";
+import { buildSceneHierarchyModel, buildSceneLifecycleModel } from "./sceneModel.js";
 
 test("should build hierarchy from scene source documents", async () => {
   const root = await createSceneProject();
@@ -19,6 +19,27 @@ test("should build hierarchy from scene source documents", async () => {
       ["scene", "scene:scene.arena", "content/scenes/arena.scene.json"],
       ["entity", "entity:player", "content/scenes/arena.scene.json"],
     ]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should list source scenes and selected active scene", async () => {
+  const root = await createSceneProject();
+  try {
+    await writeFile(
+      join(root, "content", "scenes", "menu.scene.json"),
+      `${JSON.stringify({ schema: "threenative.scene", version: "0.1.0", id: "scene.menu", entities: [], prefabs: [], resources: [], systems: [], ui: { nodes: [] } }, null, 2)}\n`,
+    );
+    const project = await loadAuthoringProject({ projectPath: root });
+    const lifecycle = buildSceneLifecycleModel(project.documents, "content/scenes/menu.scene.json");
+
+    assert.equal(lifecycle.state, "saved");
+    assert.deepEqual(lifecycle.scenes.map((scene) => [scene.id, scene.documentPath]), [
+      ["scene.arena", "content/scenes/arena.scene.json"],
+      ["scene.menu", "content/scenes/menu.scene.json"],
+    ]);
+    assert.equal(lifecycle.activeScene?.id, "scene.menu");
   } finally {
     await rm(root, { force: true, recursive: true });
   }

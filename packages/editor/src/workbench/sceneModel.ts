@@ -8,6 +8,19 @@ export interface ISceneHierarchyRow {
   sourcePersistable: boolean;
 }
 
+export interface ISceneLifecycleModel {
+  activeScene?: ISceneLifecycleEntry;
+  scenes: ISceneLifecycleEntry[];
+  state: "diagnostic" | "empty" | "saved";
+}
+
+export interface ISceneLifecycleEntry {
+  documentPath: string;
+  id: string;
+  label: string;
+  sourcePersistable: boolean;
+}
+
 export function buildSceneHierarchyModel(documents: readonly IAuthoringDocument[]): ISceneHierarchyRow[] {
   return documents.flatMap((document) => {
     if (document.kind === "scene" && isRecord(document.data)) {
@@ -23,6 +36,29 @@ export function buildSceneHierarchyModel(documents: readonly IAuthoringDocument[
     }
     return [];
   });
+}
+
+export function buildSceneLifecycleModel(documents: readonly IAuthoringDocument[], activeScenePath?: string): ISceneLifecycleModel {
+  const scenes: ISceneLifecycleEntry[] = [];
+  for (const document of documents) {
+    if (document.kind !== "scene" || !isRecord(document.data)) {
+      continue;
+    }
+    const id = readString(document.data.id) ?? document.projectRelativePath;
+    scenes.push({
+      documentPath: document.projectRelativePath,
+      id,
+      label: id,
+      sourcePersistable: true,
+    });
+  }
+  scenes.sort((left, right) => left.documentPath.localeCompare(right.documentPath));
+  const activeScene = scenes.find((scene) => scene.documentPath === activeScenePath) ?? scenes[0];
+  return {
+    activeScene,
+    scenes,
+    state: scenes.length === 0 ? "empty" : "saved",
+  };
 }
 
 function readRows(value: unknown, documentPath: string, kind: "entity"): ISceneHierarchyRow[] {
