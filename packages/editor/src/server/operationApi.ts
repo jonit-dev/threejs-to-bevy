@@ -3,6 +3,7 @@ import {
   addEntity,
   addPrefab,
   addPrefabComponent,
+  authoringDiagnostic,
   addUiText,
   authoringOperationResult,
   createMeshPrimitive,
@@ -51,54 +52,69 @@ export async function applyEditorOperationApi(options: {
 }
 
 async function dispatchEditorOperation(projectPath: string, name: string, args: Record<string, unknown>): Promise<IAuthoringOperationResult> {
-  const registryResult = await dispatchAuthoringOperation({ args, name, projectPath });
-  if (registryResult.diagnostics[0]?.code !== "TN_AUTHORING_OPERATION_UNSUPPORTED") {
-    return registryResult;
-  }
-
-  switch (name) {
-    case "ui.add_text":
-      return addUiText({ nodeId: stringArg(args, "nodeId"), projectPath, text: stringArg(args, "text"), uiDocId: stringArg(args, "uiDocId") });
-    case "scene.add_prefab":
-      return addPrefab({
-        asset: optionalStringArg(args, "asset"),
-        color: optionalStringArg(args, "color"),
-        prefabId: stringArg(args, "prefabId"),
-        primitive: optionalStringArg(args, "primitive"),
-        projectPath,
-        sceneId: stringArg(args, "sceneId"),
-      });
-    case "scene.create_default":
-      return createDefaultScene({
-        file: optionalStringArg(args, "file"),
-        projectPath,
-        sceneId: stringArg(args, "sceneId"),
-      });
-    case "scene.set_component":
-      return setComponent({
-        componentKind: stringArg(args, "componentKind"),
-        entityId: stringArg(args, "entityId"),
-        projectPath,
-        sceneId: stringArg(args, "sceneId"),
-        value: recordArg(args, "value"),
-      });
-    case "mesh.create_primitive":
-      return createMeshPrimitive({ kind: stringArg(args, "kind"), meshId: stringArg(args, "meshId"), projectPath });
-    case "prefab.create":
-      return createPrefabDocument({ prefabId: stringArg(args, "prefabId"), projectPath });
-    case "prefab.add_component":
-      return addPrefabComponent({
-        componentKind: stringArg(args, "componentKind"),
-        prefabId: stringArg(args, "prefabId"),
-        projectPath,
-        value: recordArg(args, "value"),
-      });
-    case "input.add_action":
-      return addInputAction({ actionId: stringArg(args, "actionId"), inputDocId: stringArg(args, "inputDocId"), keys: stringArrayArg(args, "keys"), projectPath });
-    case "system.create":
-      return createSystem({ projectPath, schedule: stringArg(args, "schedule"), systemId: stringArg(args, "systemId") });
-    default:
+  try {
+    const registryResult = await dispatchAuthoringOperation({ args, name, projectPath });
+    if (registryResult.diagnostics[0]?.code !== "TN_AUTHORING_OPERATION_UNSUPPORTED") {
       return registryResult;
+    }
+
+    switch (name) {
+      case "ui.add_text":
+        return addUiText({ nodeId: stringArg(args, "nodeId"), projectPath, text: stringArg(args, "text"), uiDocId: stringArg(args, "uiDocId") });
+      case "scene.add_prefab":
+        return addPrefab({
+          asset: optionalStringArg(args, "asset"),
+          color: optionalStringArg(args, "color"),
+          prefabId: stringArg(args, "prefabId"),
+          primitive: optionalStringArg(args, "primitive"),
+          projectPath,
+          sceneId: stringArg(args, "sceneId"),
+        });
+      case "scene.create_default":
+        return createDefaultScene({
+          file: optionalStringArg(args, "file"),
+          projectPath,
+          sceneId: stringArg(args, "sceneId"),
+        });
+      case "scene.set_component":
+        return setComponent({
+          componentKind: stringArg(args, "componentKind"),
+          entityId: stringArg(args, "entityId"),
+          projectPath,
+          sceneId: stringArg(args, "sceneId"),
+          value: recordArg(args, "value"),
+        });
+      case "mesh.create_primitive":
+        return createMeshPrimitive({ kind: stringArg(args, "kind"), meshId: stringArg(args, "meshId"), projectPath });
+      case "prefab.create":
+        return createPrefabDocument({ prefabId: stringArg(args, "prefabId"), projectPath });
+      case "prefab.add_component":
+        return addPrefabComponent({
+          componentKind: stringArg(args, "componentKind"),
+          prefabId: stringArg(args, "prefabId"),
+          projectPath,
+          value: recordArg(args, "value"),
+        });
+      case "input.add_action":
+        return addInputAction({ actionId: stringArg(args, "actionId"), inputDocId: stringArg(args, "inputDocId"), keys: stringArrayArg(args, "keys"), projectPath });
+      case "system.create":
+        return createSystem({ projectPath, schedule: stringArg(args, "schedule"), systemId: stringArg(args, "systemId") });
+      default:
+        return registryResult;
+    }
+  } catch (error) {
+    return authoringOperationResult({
+      diagnostics: [
+        authoringDiagnostic({
+          code: "TN_EDITOR_OPERATION_ARG_INVALID",
+          message: error instanceof Error ? error.message : String(error),
+          path: "/args",
+          suggestion: "Send the operation arguments described by the editor row metadata.",
+          value: name,
+        }),
+      ],
+      projectPath,
+    });
   }
 }
 

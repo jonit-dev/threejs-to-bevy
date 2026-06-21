@@ -173,14 +173,22 @@ output.
 
 **Implementation:**
 
-- [ ] Keep Transform and Camera editable.
-- [ ] Promote Light kind/intensity editing if authoring supports it; otherwise
+- [x] Keep Transform and Camera editable.
+- [x] Promote Light kind/intensity editing if authoring supports it; otherwise
   preserve read-only reasons.
-- [ ] Promote MeshRenderer prefab primitive/color/asset editing if authoring
+- [x] Promote MeshRenderer prefab primitive/color/asset editing if authoring
   supports it; otherwise preserve read-only reasons.
-- [ ] Promote material color/roughness, input bindings, system script, and UI
+- [x] Promote material color/roughness, input bindings, system script, and UI
   binding edits through existing source operations.
-- [ ] Ensure operation validation rejects malformed payloads before writing.
+- [x] Ensure operation validation rejects malformed payloads before writing.
+
+**Evidence:**
+
+- `packages/editor/src/server/projectApi.test.ts` covers editable field
+  operation payloads, explicit Light/MeshRenderer read-only reasons, material,
+  input, system, and UI operation rows, plus malformed editor operation
+  diagnostics with unchanged source.
+- `pnpm --filter @threenative/editor test` passes.
 
 **Tests Required:**
 

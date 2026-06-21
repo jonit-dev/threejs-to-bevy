@@ -211,6 +211,12 @@ lacks an explicit reason, and the Add Object modal reads the same metadata for
 disabled action explanations. `scene.set_camera` and `scene.attach_script` are
 also included in the editor operation name surface to match the authoring
 registry.
+The follow-up component mutation audit keeps Transform, Camera, material,
+input, system script, and UI binding rows source-editable while preserving
+explicit read-only reasons for unsupported Light and MeshRenderer prefab
+mutations. Editor-only operation fallbacks now return stable
+`TN_EDITOR_OPERATION_ARG_INVALID` diagnostics for malformed payloads before any
+source write.
 
 Structured `.scene.json` documents can now be used as a normal project build
 entry for the first runtime-backed CLI authoring slice. The compiler validates

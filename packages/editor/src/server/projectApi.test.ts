@@ -150,6 +150,50 @@ test("should reject unsupported operations without writing source", async () => 
   }
 });
 
+test("should reject malformed editor operation payloads without writing source", async () => {
+  const root = await copyStarterProject();
+  try {
+    const scenePath = join(root, "content", "scenes", "arena.scene.json");
+    const before = await readFile(scenePath, "utf8");
+    const result = await applyEditorOperationApi({
+      projectPath: root,
+      request: { args: { prefabId: "bad-prefab", sceneId: "" }, name: "scene.add_prefab" },
+    });
+    const after = await readFile(scenePath, "utf8");
+
+    assert.equal(result.ok, false);
+    assert.equal(result.changed, false);
+    assert.equal(result.diagnostics[0]?.code, "TN_EDITOR_OPERATION_ARG_INVALID");
+    assert.equal(after, before);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should keep unsupported light and mesh renderer edits explicit", async () => {
+  const root = await copyStarterProject();
+  try {
+    const create = await applyEditorOperationApi({
+      projectPath: root,
+      request: { args: { sceneId: "lighting-scene" }, name: "scene.create_default" },
+    });
+    assert.equal(create.ok, true);
+
+    const result = await loadEditorProjectApi({ projectPath: root });
+    assert.equal(result.ok, true);
+    const playerRows = result.sceneObjects.find((object) => object.id === "player")?.inspectorRows ?? [];
+    assert.equal(playerRows.some((row) => row.component === "MeshRenderer" && row.label === "Primitive" && row.readOnlyReason !== undefined), true);
+    assert.equal(playerRows.some((row) => row.component === "MeshRenderer" && row.label === "Color" && row.readOnlyReason !== undefined), true);
+    assert.equal(playerRows.some((row) => row.component === "MeshRenderer" && row.label === "Asset" && row.readOnlyReason !== undefined), true);
+
+    const lightRows = result.sceneObjects.find((object) => object.id === "directional-light")?.inspectorRows ?? [];
+    assert.equal(lightRows.some((row) => row.component === "Light" && row.label === "Kind" && row.readOnlyReason !== undefined), true);
+    assert.equal(lightRows.some((row) => row.component === "Light" && row.label === "Intensity" && row.readOnlyReason !== undefined), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should create, save, and reload default editor scene entities", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-editor-default-scene-"));
   try {
