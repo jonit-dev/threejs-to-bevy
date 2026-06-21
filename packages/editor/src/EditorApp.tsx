@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { useState } from "react";
 import { Box, Camera, FolderOpen, Image, Lightbulb, MessageSquare, Mountain, PackagePlus, Pause, Play, Save, Settings, Square, Trash2 } from "lucide-react";
 
 import type { IEditorAdapterInput, IEditorAddComponentDefinition, IEditorPropertyRow, IEditorShellModel } from "./adapters/editorModel.js";
@@ -8,6 +7,7 @@ import { PanelShell } from "./components/layout/PanelShell.js";
 import { HierarchyPanel } from "./components/panels/HierarchyPanel.js";
 import { InspectorPanel } from "./components/panels/InspectorPanel.js";
 import { EditorViewport3d, type IViewportTransform } from "./preview/EditorViewport3d.js";
+import { useEditorStore, type EditorModal } from "./state/editorStore.js";
 
 export interface IEditorAppProps {
   model?: IEditorAdapterInput | IEditorShellModel;
@@ -23,10 +23,10 @@ export interface IEditorAppProps {
   toolbarSlot?: ReactNode;
 }
 
-type EditorModal = "addComponent" | "addObject" | "build" | "chat" | "delete" | "newScene" | "save" | "settings" | undefined;
-
 export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPreview, onCreateScene, onEditProperty, onMoveRow, onSaveScene, onSelectRow, onTransformObject, toolbarSlot }: IEditorAppProps) {
-  const [modal, setModal] = useState<EditorModal>();
+  const modal = useEditorStore((state) => state.modal);
+  const openModal = useEditorStore((state) => state.openModal);
+  const closeModal = useEditorStore((state) => state.closeModal);
   const model = createEditorShellModel(input);
   const objectCount = countTreeRows(model.hierarchy);
   const statusMessage = model.diagnostics.some((diagnostic) => diagnostic.severity === "error") ? "Needs attention" : "Ready";
@@ -60,12 +60,12 @@ export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPr
         <div className="tn-editor-topbar__actions">
           {toolbarSlot}
           <div className="tn-editor-action-icons" aria-label="Editor actions">
-            <button className="tn-editor-action-icons__add" onClick={() => setModal("addObject")} title="Add" type="button"><Box size={15} /> <span>Add</span></button>
-            <button onClick={() => setModal("save")} title="Save" type="button"><Save size={16} /></button>
-            <button onClick={() => setModal("newScene")} title="New scene" type="button"><FolderOpen size={16} /></button>
-            <button onClick={() => setModal("delete")} title="Delete" type="button"><Trash2 size={16} /></button>
-            <button onClick={() => setModal("settings")} title="Settings" type="button"><Settings size={16} /></button>
-            <button onClick={() => setModal("build")} title="Build preview" type="button"><Image size={16} /></button>
+            <button className="tn-editor-action-icons__add" onClick={() => openModal("addObject")} title="Add" type="button"><Box size={15} /> <span>Add</span></button>
+            <button onClick={() => openModal("save")} title="Save" type="button"><Save size={16} /></button>
+            <button onClick={() => openModal("newScene")} title="New scene" type="button"><FolderOpen size={16} /></button>
+            <button onClick={() => openModal("delete")} title="Delete" type="button"><Trash2 size={16} /></button>
+            <button onClick={() => openModal("settings")} title="Settings" type="button"><Settings size={16} /></button>
+            <button onClick={() => openModal("build")} title="Build preview" type="button"><Image size={16} /></button>
           </div>
         </div>
       </header>
@@ -76,7 +76,7 @@ export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPr
             <HierarchyPanel rows={model.hierarchy} selectedRowId={model.selectedRowId} onMoveRow={onMoveRow} onSelectRow={onSelectRow} />
           </PanelShell>
           <PanelShell title="Inspector" meta={`${model.inspector.length}`}>
-            <InspectorPanel onAddComponent={() => setModal("addComponent")} onEditProperty={onEditProperty} rows={model.inspector} />
+            <InspectorPanel onAddComponent={() => openModal("addComponent")} onEditProperty={onEditProperty} rows={model.inspector} />
           </PanelShell>
         </aside>
         <section className="tn-editor-preview" aria-label="Preview">
@@ -101,7 +101,7 @@ export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPr
         <aside className="tn-editor-right-rail">
           <div className="tn-editor-ai-channel" aria-label="AI chat channel">
             <button className="tn-editor-ai-channel__toggle" title="Collapse AI chat" type="button">&lt;</button>
-            <button className="tn-editor-ai-channel__tab" onClick={() => setModal("chat")} title="AI chat" type="button">
+            <button className="tn-editor-ai-channel__tab" onClick={() => openModal("chat")} title="AI chat" type="button">
               <MessageSquare aria-hidden="true" size={16} />
               <span>AI</span>
             </button>
@@ -154,24 +154,24 @@ export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPr
         attachedComponents={[...new Set(model.inspector.map((row) => row.component).filter((component): component is string => component !== undefined))]}
         modal={modal}
         onAddObject={() => {
-          setModal(undefined);
+          closeModal();
           onAddObject?.();
         }}
         onAddComponent={(definition) => {
-          setModal(undefined);
+          closeModal();
           onAddComponent?.(definition);
         }}
         onBuildPreview={() => {
-          setModal(undefined);
+          closeModal();
           onBuildPreview?.();
         }}
-        onClose={() => setModal(undefined)}
+        onClose={closeModal}
         onCreateScene={() => {
-          setModal(undefined);
+          closeModal();
           onCreateScene?.();
         }}
         onSaveScene={() => {
-          setModal(undefined);
+          closeModal();
           onSaveScene?.();
         }}
       />
@@ -179,7 +179,7 @@ export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPr
   );
 }
 
-function EditorModalView({
+export function EditorModalView({
   addComponentDefinitions,
   attachedComponents,
   modal,

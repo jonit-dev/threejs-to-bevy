@@ -2,10 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { EditorApp } from "./EditorApp.js";
+import { EditorApp, EditorModalView } from "./EditorApp.js";
 import { EDITOR_ADD_COMPONENT_DEFINITIONS, type IEditorShellModel } from "./adapters/editorModel.js";
+import { useEditorStore } from "./state/editorStore.js";
 
 test("should render shell sections from adapter data", () => {
+  useEditorStore.getState().reset();
   const html = renderToStaticMarkup(<EditorApp model={modelFixture()} />);
 
   assert.match(html, /ThreeNative/);
@@ -20,6 +22,7 @@ test("should render shell sections from adapter data", () => {
 });
 
 test("should render empty project state", () => {
+  useEditorStore.getState().reset();
   const html = renderToStaticMarkup(<EditorApp model={{ projectName: "empty" }} />);
 
   assert.match(html, /No source or inspection hierarchy loaded/);
@@ -27,6 +30,28 @@ test("should render empty project state", () => {
   assert.match(html, /No assets loaded/);
   assert.match(html, /No diagnostics/);
   assert.match(html, /No project data loaded/);
+});
+
+test("should render modal actions from modal view", () => {
+  useEditorStore.getState().reset();
+
+  const html = renderToStaticMarkup(
+    <EditorModalView
+      addComponentDefinitions={[]}
+      attachedComponents={[]}
+      modal="addObject"
+      onAddComponent={() => {}}
+      onAddObject={() => {}}
+      onBuildPreview={() => {}}
+      onClose={() => {}}
+      onCreateScene={() => {}}
+      onSaveScene={() => {}}
+    />,
+  );
+
+  assert.match(html, /Add Object/);
+  assert.match(html, /Primitive Sphere/);
+  assert.match(html, /Custom GLB/);
 });
 
 function modelFixture(): IEditorShellModel {

@@ -217,6 +217,11 @@ explicit read-only reasons for unsupported Light and MeshRenderer prefab
 mutations. Editor-only operation fallbacks now return stable
 `TN_EDITOR_OPERATION_ARG_INVALID` diagnostics for malformed payloads before any
 source write.
+The P0 editor state refactor has started by adding Zustand to
+`@threenative/editor` and moving modal/session primitives into a typed
+editor-session store. `EditorApp` now reads modal state from the store while
+keeping its public props stable; store tests cover modal, selection, status, and
+reset behavior before the larger dev-fixture project/operation state migration.
 
 Structured `.scene.json` documents can now be used as a normal project build
 entry for the first runtime-backed CLI authoring slice. The compiler validates

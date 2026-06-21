@@ -72,6 +72,10 @@ This index separates current cleanup work from historical milestone batches.
   runtime-web-three preview host, selection correlation, catalog preview panels,
   and browser smoke evidence while keeping Vibe Coder's R3F/Rapier ECS out of
   the source-of-truth path.
+- [P0 Editor Zustand State Store Refactor](other/editor-zustand-state-store-refactor.md):
+  centralize editor-session state for modal, selection, project payload,
+  hierarchy nesting, viewport transforms, async operations, and dev fixture
+  workflows before functional editor state expands further.
 - [Functional Editor Viewport, Gizmo, and Selection](other/functional-editor-viewport-gizmo-and-selection.md):
   source-backed hierarchy/viewport selection sync, real move/rotate/scale gizmo
   modes, transform persistence, viewport visual cues, and Playwright evidence.
