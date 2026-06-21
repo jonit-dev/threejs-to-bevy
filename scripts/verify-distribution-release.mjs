@@ -7,6 +7,7 @@ const repoRoot = resolve(new URL("..", import.meta.url).pathname);
 const packageOrder = [
   ["@threenative/sdk", "packages/sdk"],
   ["@threenative/ir", "packages/ir"],
+  ["@threenative/authoring", "packages/authoring"],
   ["@threenative/ui", "packages/ui"],
   ["@threenative/r3f", "packages/r3f"],
   ["@threenative/compiler", "packages/compiler"],
@@ -138,6 +139,7 @@ async function rewriteGameDependencies(projectDir, packageTarballs) {
     ...packageJson.dependencies,
     "@threenative/sdk": `file:${packageTarballs.get("@threenative/sdk")}`,
     "@threenative/ir": `file:${packageTarballs.get("@threenative/ir")}`,
+    "@threenative/authoring": `file:${packageTarballs.get("@threenative/authoring")}`,
     "@threenative/ui": `file:${packageTarballs.get("@threenative/ui")}`,
     "@threenative/r3f": `file:${packageTarballs.get("@threenative/r3f")}`,
     "@threenative/compiler": `file:${packageTarballs.get("@threenative/compiler")}`,

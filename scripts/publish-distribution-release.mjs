@@ -8,6 +8,7 @@ const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const packageOrder = [
   ["@threenative/sdk", "packages/sdk"],
   ["@threenative/ir", "packages/ir"],
+  ["@threenative/authoring", "packages/authoring"],
   ["@threenative/ui", "packages/ui"],
   ["@threenative/r3f", "packages/r3f"],
   ["@threenative/compiler", "packages/compiler"],
