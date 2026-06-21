@@ -85,23 +85,27 @@ function lowerSceneDocument(sourcePath: string, scene: ISceneDocument): unknown 
   for (const entity of entities) {
     const transform = normalizeTransform(entity.transform);
     const prefabTransform = toWorldTransform(transform);
-    const camera = readRecord(entity.components)?.camera;
+    const componentRecord = readRecord(entity.components);
+    const camera = componentRecord?.camera;
     if (readRecord(camera) !== undefined) {
       const cameraObject = cameraObjectFromEntity(entity.id, camera, transform);
       visualScene.add(cameraObject);
       visualScene.setActiveCamera(cameraObject);
     } else {
-      const mesh = meshFromEntity(entity.id, prefabs.get(entity.prefab ?? ""), transform);
-      visualScene.add(mesh);
+      const authoredRuntimeVisual = hasAuthoredRuntimeVisual(componentRecord);
+      if (entity.prefab !== undefined || !authoredRuntimeVisual) {
+        const mesh = meshFromEntity(entity.id, prefabs.get(entity.prefab ?? ""), transform);
+        visualScene.add(mesh);
+      }
 
       worldEntities.push({
         components: [
-          PrefabTransform(prefabTransform),
+          ...(entity.transform === undefined ? [] : [PrefabTransform(prefabTransform)]),
           ...genericComponents(entity.components),
         ],
         id: entity.id,
         source: { sourcePath },
-        transform: prefabTransform,
+        ...(entity.transform === undefined ? {} : { transform: prefabTransform }),
       });
     }
   }
@@ -124,10 +128,13 @@ function lowerSceneDocument(sourcePath: string, scene: ISceneDocument): unknown 
     );
   }
 
-  const keyLight = new DirectionalLight({ color: "#ffffff", id: "light.key", intensity: 2.2 });
-  keyLight.position.set(3, 5, 4);
-  visualScene.add(keyLight);
-  visualScene.add(new AmbientLight({ color: "#dce8ff", id: "light.ambient", intensity: 0.65 }));
+  const hasAuthoredLights = entities.some((entity) => readRecord(entity.components)?.Light !== undefined);
+  if (!hasAuthoredLights) {
+    const keyLight = new DirectionalLight({ color: "#ffffff", id: "light.key", intensity: 2.2 });
+    keyLight.position.set(3, 5, 4);
+    visualScene.add(keyLight);
+    visualScene.add(new AmbientLight({ color: "#dce8ff", id: "light.ambient", intensity: 0.65 }));
+  }
 
   return defineGame({
     initialScene: scene.id,
@@ -140,6 +147,10 @@ function lowerSceneDocument(sourcePath: string, scene: ISceneDocument): unknown 
       }),
     ],
   });
+}
+
+function hasAuthoredRuntimeVisual(components: Record<string, unknown> | undefined): boolean {
+  return components !== undefined && (components.MeshRenderer !== undefined || components.Camera !== undefined || components.Light !== undefined);
 }
 
 function genericComponents(components: unknown): IEcsDeclaration[] {

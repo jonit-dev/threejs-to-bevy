@@ -6,9 +6,11 @@ import { authoringDiagnostic, hasAuthoringErrors, sortAuthoringDiagnostics, type
 import { loadAuthoringProject, type IAuthoringProject } from "./project.js";
 import {
   cameraComponentKeys,
+  ecsIdPattern,
   entityKeys,
   logicalIdPattern,
   prefabKeys,
+  resourceIdPattern,
   readArray,
   readString,
   resourceKeys,
@@ -76,6 +78,13 @@ export interface IValidateSceneOptions extends IAuthoringOperationContext {
 export interface ICreateSceneOptions extends IAuthoringOperationContext {
   sceneId: string;
   file?: string;
+}
+
+export interface IImportWorldOptions extends IAuthoringOperationContext {
+  sceneId: string;
+  worldFile: string;
+  file?: string;
+  replace?: boolean;
 }
 
 export interface IAddEntityOptions extends IAuthoringOperationContext {
@@ -172,6 +181,13 @@ export interface ICreateSceneResult extends IAuthoringOperationResult {
   sceneId: string;
   file: string;
   nextCommands: string[];
+}
+
+export interface IImportWorldResult extends IAuthoringOperationResult {
+  sceneId: string;
+  file: string;
+  entityCount: number;
+  resourceCount: number;
 }
 
 export interface IInspectSceneResult extends IAuthoringOperationResult {
@@ -288,6 +304,100 @@ export async function createScene(options: ICreateSceneOptions): Promise<ICreate
   };
 }
 
+export async function importWorld(options: IImportWorldOptions): Promise<IImportWorldResult> {
+  const project = await loadAuthoringProject({ projectPath: options.projectPath });
+  const projectPath = project.projectPath;
+  const diagnostics = [...project.diagnostics];
+  validateLogicalId(diagnostics, "", "/id", options.sceneId, "scene");
+
+  const requestedFile = options.file ?? `content/scenes/${options.sceneId}.scene.json`;
+  const absoluteFile = resolve(projectPath, requestedFile);
+  const projectRelativePath = normalizeRelativePath(relative(projectPath, absoluteFile));
+  if (projectRelativePath === "" || projectRelativePath.startsWith("../") || projectRelativePath === "..") {
+    diagnostics.push(
+      authoringDiagnostic({
+        code: "TN_AUTHORING_SOURCE_PATH_OUTSIDE_PROJECT",
+        file: requestedFile,
+        message: "Imported scene source documents must be written inside the project root.",
+        value: requestedFile,
+        suggestion: "Use a path under content/scenes/ such as content/scenes/imported.scene.json.",
+      }),
+    );
+  } else if (isGeneratedArtifactPath(projectRelativePath)) {
+    diagnostics.push(generatedPathDiagnostic(projectRelativePath, "", projectRelativePath));
+  } else if (!projectRelativePath.endsWith(".scene.json")) {
+    diagnostics.push(
+      authoringDiagnostic({
+        code: "TN_AUTHORING_SCENE_FILE_EXTENSION_INVALID",
+        file: projectRelativePath,
+        message: "Imported scene source documents must use the .scene.json extension.",
+        value: projectRelativePath,
+        suggestion: "Use a path such as content/scenes/imported.scene.json.",
+      }),
+    );
+  }
+
+  if (!options.replace) {
+    try {
+      await access(absoluteFile);
+      diagnostics.push(
+        authoringDiagnostic({
+          code: "TN_AUTHORING_SOURCE_FILE_EXISTS",
+          file: projectRelativePath,
+          message: `Scene source document '${projectRelativePath}' already exists.`,
+          suggestion: "Pass --replace or use a different --file path.",
+        }),
+      );
+    } catch {
+      // Missing is OK.
+    }
+  }
+
+  const worldPath = resolve(projectPath, options.worldFile);
+  let world: unknown;
+  try {
+    world = JSON.parse(await readFile(worldPath, "utf8"));
+  } catch (error) {
+    diagnostics.push(
+      authoringDiagnostic({
+        code: "TN_AUTHORING_WORLD_IMPORT_FAILED",
+        file: options.worldFile,
+        message: `Could not read world IR JSON: ${error instanceof Error ? error.message : String(error)}`,
+        value: options.worldFile,
+      }),
+    );
+  }
+
+  const scene = world === undefined ? emptyScene(options.sceneId) : sceneFromWorld(options.sceneId, world);
+  diagnostics.push(...(await validateSceneDocument(projectPath, projectRelativePath, scene)));
+  if (hasAuthoringErrors(diagnostics)) {
+    return {
+      ...authoringOperationResult({ diagnostics, projectPath }),
+      entityCount: scene.entities?.length ?? 0,
+      file: projectRelativePath,
+      resourceCount: scene.resources?.length ?? 0,
+      sceneId: options.sceneId,
+    };
+  }
+
+  const document: IAuthoringDocument = {
+    data: scene,
+    file: absoluteFile,
+    kind: "scene",
+    projectRelativePath,
+  };
+  await mkdir(dirname(absoluteFile), { recursive: true });
+  await writeAuthoringJsonDocument(document);
+
+  return {
+    ...authoringOperationResult({ changed: true, diagnostics, filesWritten: [projectRelativePath], projectPath }),
+    entityCount: scene.entities?.length ?? 0,
+    file: projectRelativePath,
+    resourceCount: scene.resources?.length ?? 0,
+    sceneId: options.sceneId,
+  };
+}
+
 export async function validateScene(options: IValidateSceneOptions): Promise<IAuthoringOperationResult> {
   const project = await loadAuthoringProject({ projectPath: options.projectPath });
   const diagnostics = [...project.diagnostics];
@@ -313,6 +423,47 @@ export async function validateScene(options: IValidateSceneOptions): Promise<IAu
     diagnostics,
     projectPath: project.projectPath,
   });
+}
+
+function emptyScene(sceneId: string): ISceneDocument {
+  return {
+    schema: sceneDocumentSchema,
+    version: "0.1.0",
+    id: sceneId,
+    entities: [],
+    prefabs: [],
+    resources: [],
+    systems: [],
+    ui: { nodes: [], bindings: [] },
+  };
+}
+
+function sceneFromWorld(sceneId: string, world: unknown): ISceneDocument {
+  const worldRecord = isRecord(world) ? world : {};
+  const worldEntities = readArray(worldRecord.entities) ?? [];
+  const entities = worldEntities
+    .filter(isRecord)
+    .map((entity) => ({
+      id: readString(entity.id) ?? "invalid-entity-id",
+      ...(isRecord(entity.components) ? { components: cloneJson(entity.components) as Record<string, unknown> } : {}),
+    }))
+    .sort((left, right) => String(left.id).localeCompare(String(right.id)));
+
+  const resourcesRecord = isRecord(worldRecord.resources) ? worldRecord.resources : {};
+  const resources = Object.entries(resourcesRecord)
+    .map(([id, value]) => ({ id, value: cloneJson(value) }))
+    .sort((left, right) => left.id.localeCompare(right.id));
+
+  return {
+    schema: sceneDocumentSchema,
+    version: "0.1.0",
+    id: sceneId,
+    entities,
+    prefabs: [],
+    resources,
+    systems: [],
+    ui: { nodes: [], bindings: [] },
+  };
 }
 
 function nextSceneCommands(sceneId: string): string[] {
@@ -704,7 +855,11 @@ function collectIds(
       return;
     }
     diagnostics.push(...unknownKeyDiagnostics(file, path, value, allowedKeys));
-    const id = validateLogicalId(diagnostics, file, `${path}/id`, value.id, kind);
+    const id = kind === "resource"
+      ? validateResourceId(diagnostics, file, `${path}/id`, value.id)
+      : kind === "entity"
+        ? validateEcsId(diagnostics, file, `${path}/id`, value.id, kind)
+        : validateLogicalId(diagnostics, file, `${path}/id`, value.id, kind);
     if (id === undefined) {
       return;
     }
@@ -1032,6 +1187,42 @@ function findSceneItem(value: unknown, id: string): Record<string, unknown> | un
 
 function cloneJson(value: unknown): unknown {
   return JSON.parse(JSON.stringify(value)) as unknown;
+}
+
+function validateEcsId(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, kind: string): string | undefined {
+  const id = readString(value);
+  if (id === undefined || !ecsIdPattern.test(id)) {
+    diagnostics.push(
+      authoringDiagnostic({
+        code: "TN_AUTHORING_ID_INVALID",
+        file,
+        message: `${kind} id must be a non-empty ECS id using letters, numbers, '.', '_' or '-'.`,
+        path,
+        value,
+        suggestion: "Use a stable id such as 'kart.player.oobi' or 'track.arrow.-1.1'.",
+      }),
+    );
+    return undefined;
+  }
+  return id;
+}
+
+function validateResourceId(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown): string | undefined {
+  const id = readString(value);
+  if (id === undefined || !resourceIdPattern.test(id)) {
+    diagnostics.push(
+      authoringDiagnostic({
+        code: "TN_AUTHORING_ID_INVALID",
+        file,
+        message: "resource id must be a non-empty ECS resource id using letters, numbers, '.', '_' or '-'.",
+        path,
+        value,
+        suggestion: "Use a stable id such as 'RaceState', 'MinimapState', or 'hud.score'.",
+      }),
+    );
+    return undefined;
+  }
+  return id;
 }
 
 function validateLogicalId(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, kind: string): string | undefined {

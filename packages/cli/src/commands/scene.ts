@@ -6,6 +6,7 @@ import {
   attachScript,
   bindUi,
   createScene,
+  importWorld,
   inspectScene,
   removeComponent,
   setCamera,
@@ -40,6 +41,16 @@ export async function sceneCommand(argv: readonly string[], options: ISceneComma
     }
     const result = await createScene({ projectPath, sceneId, file: readFlag(normalizedArgv, "--file") });
     return renderCreateSceneResult(result, json);
+  }
+
+  if (subcommand === "import-world") {
+    const sceneId = readPositional(normalizedArgv, 1);
+    const worldFile = readFlag(normalizedArgv, "--world");
+    if (sceneId === undefined || worldFile === undefined) {
+      return renderUsage(json, "TN_SCENE_IMPORT_WORLD_ARGS_MISSING", "Usage: tn scene import-world <scene-id> --world <path/to/world.ir.json> [--file <path>] [--replace] [--project <path>] [--json]");
+    }
+    const result = await importWorld({ projectPath, sceneId, worldFile, file: readFlag(normalizedArgv, "--file"), replace: normalizedArgv.includes("--replace") });
+    return renderSceneResult(result, json, result.ok ? `World imported into scene '${sceneId}'.` : `World was not imported into scene '${sceneId}'.`);
   }
 
   if (subcommand === "validate") {
@@ -323,7 +334,7 @@ function readPositional(argv: readonly string[], index: number): string | undefi
   return positionals[index];
 }
 
-const flagsWithValues = new Set(["--project", "--file", "--prefab", "--primitive", "--color", "--asset", "--path", "--value", "--position", "--rotation", "--scale", "--mode", "--target", "--module", "--export", "--resource", "--out", "--web-url", "--camera", "--native-frame"]);
+const flagsWithValues = new Set(["--project", "--file", "--world", "--prefab", "--primitive", "--color", "--asset", "--path", "--value", "--position", "--rotation", "--scale", "--mode", "--target", "--module", "--export", "--resource", "--out", "--web-url", "--camera", "--native-frame"]);
 
 function sceneUsage(): string {
   return "Usage: tn scene create <scene-id> [--file <path>] [--project <path>] [--json]\n       tn scene validate [scene-id] [--project <path>] [--json]\n       tn scene inspect <scene-id> [--project <path>] [--json]\n       tn scene proof <scene-id> --project <path> --out <dir> [--web-url <url>] [--native] [--json]";

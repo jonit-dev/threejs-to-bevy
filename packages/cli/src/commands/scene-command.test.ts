@@ -47,6 +47,59 @@ test("scene-command create honors explicit file paths", async () => {
   }
 });
 
+test("scene-command import-world lifts emitted ECS into editable scene source", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-scene-import-world-"));
+
+  try {
+    await mkdir(join(root, "dist", "game.bundle"), { recursive: true });
+    await writeFile(
+      join(root, "dist", "game.bundle", "world.ir.json"),
+      `${JSON.stringify({
+        schema: "threenative.world",
+        entities: [
+          {
+            id: "track.arrow.-1.1",
+            components: {
+              MeshRenderer: { mesh: "mesh.track.arrow.-1.1", material: "mat.track.arrow.-1.1" },
+              Transform: { position: [1, 0.2, 3], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+              TrackItem: { kind: "arrow", lane: -1 },
+            },
+          },
+        ],
+        resources: {
+          RaceState: { speed: 0, lap: 1, status: "READY" },
+          MinimapState: { state: "{\"markers\":[]}" },
+        },
+      }, null, 2)}\n`,
+    );
+
+    const result = await sceneCommand([
+      "import-world",
+      "scene.imported",
+      "--world",
+      "dist/game.bundle/world.ir.json",
+      "--project",
+      root,
+      "--json",
+    ]);
+    const payload = JSON.parse(result.stdout) as { entityCount: number; resourceCount: number; file: string };
+    const scene = JSON.parse(await readFile(join(root, "content", "scenes", "scene.imported.scene.json"), "utf8")) as {
+      entities: Array<{ components: Record<string, unknown>; id: string }>;
+      resources: Array<{ id: string; value: unknown }>;
+    };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.entityCount, 1);
+    assert.equal(payload.resourceCount, 2);
+    assert.equal(payload.file, "content/scenes/scene.imported.scene.json");
+    assert.equal(scene.entities[0]?.id, "track.arrow.-1.1");
+    assert.deepEqual(scene.entities[0]?.components.TrackItem, { kind: "arrow", lane: -1 });
+    assert.deepEqual(scene.resources.map((resource) => resource.id), ["MinimapState", "RaceState"]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("scene-command create rejects invalid ids, collisions, generated paths, and duplicate scene ids", async () => {
   const root = await createSceneProject();
 

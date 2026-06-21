@@ -17,6 +17,8 @@ export const cameraComponentKeys = new Set(["mode", "target"]);
 export const supportedCameraModes = new Set(["third-person-follow", "perspective", "orthographic"]);
 
 export const logicalIdPattern = /^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/;
+export const ecsIdPattern = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+export const resourceIdPattern = /^[A-Za-z][A-Za-z0-9]*(?:[._-][A-Za-z0-9]+)*$/;
 
 export interface ISceneDocument {
   schema: typeof sceneDocumentSchema;
