@@ -95,6 +95,15 @@ Commands support `--json`, return the shared `ok`/`changed`/`filesWritten`/
 `diagnostics` shape, and fail before writing on invalid JSON or validation
 errors. Audio source documents remain validated but do not yet have mutation
 CLI commands.
+The Phase 5 compiler provenance slice extends `authoring.provenance.json` with
+structured source ownership entries when source documents are available during
+normal build. The report maps scene entities/components to source JSON
+pointers, resolves scene `MeshRenderer.material` references to material source
+documents, maps UI nodes and system script refs with module/export metadata,
+classifies generated bundle files as non-durable output, and emits
+`TN_AUTHORING_DUPLICATE_EMITTED_OWNER` for obvious conflicting source owners.
+Generated `scripts.bundle.js` remains `rejected/not-source`; script source is
+the referenced TypeScript module/export.
 
 Structured `.scene.json` documents can now be used as a normal project build
 entry for the first runtime-backed CLI authoring slice. The compiler validates

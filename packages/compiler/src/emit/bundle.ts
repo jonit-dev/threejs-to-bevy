@@ -17,12 +17,13 @@ import {
   type IUiIr,
   type IWorldIr,
 } from "@threenative/ir";
+import type { IAuthoringDocument } from "@threenative/authoring";
 import { type IAnimationsDeclaration, type IAssetGroupDeclaration, type IAssetReference, type IAudioDeclaration, type IInputMapDeclaration, type IOverlayDeclaration, type IPersistenceDeclaration, type ISceneAudioDeclaration, type ISceneLifecycleDeclaration, type World } from "@threenative/sdk";
 import { type IUiElement } from "@threenative/ui";
 
 import { type IProjectConfig } from "../config.js";
 import type { IAuthoringGraph } from "../authoring/graph.js";
-import { AUTHORING_PROVENANCE_FILE, authoringProvenanceDocument } from "../authoring/provenance.js";
+import { AUTHORING_PROVENANCE_FILE, authoringProvenanceDocument, buildAuthoringProvenanceDocument, type IAuthoringEmittedDocument } from "../authoring/provenance.js";
 import { copyAssetFiles, copyExtraAssetFiles, type IInternalAsset } from "./asset-copy.js";
 import { emitAudio } from "./audio.js";
 import { deriveRequiredCapabilities } from "./capabilities.js";
@@ -39,6 +40,7 @@ import { extractGltfSceneMetadata } from "../gltf/metadata.js";
 const SCRIPTS_MANIFEST_FILE = "scripts.manifest.json";
 
 export interface IEmitBundleOptions {
+  authoringDocuments?: readonly IAuthoringDocument[];
   authoringGraph?: IAuthoringGraph;
 }
 
@@ -166,7 +168,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown, options:
     await writeFile(resolve(targetDir, IR_DOCUMENTS.assets.fileName), stableJson(assetsManifest));
     await writeFile(resolve(targetDir, IR_DOCUMENTS.targetProfile.fileName), stableJson(targetProfile));
     if (options.authoringGraph !== undefined) {
-      await writeFile(resolve(targetDir, AUTHORING_PROVENANCE_FILE), stableJson(authoringProvenanceDocument(options.authoringGraph)));
+      await writeFile(resolve(targetDir, AUTHORING_PROVENANCE_FILE), stableJson(authoringProvenanceForEmit()));
     }
     if (environment !== undefined) {
       await writeFile(resolve(targetDir, IR_DOCUMENTS.environmentScene.fileName), stableJson(environment.scene));
@@ -210,6 +212,32 @@ export async function emitBundle(config: IProjectConfig, root: unknown, options:
         await writeFile(resolve(targetDir, SCRIPTS_MANIFEST_FILE), stableJson(ecs.scriptManifest));
       }
     }
+  }
+
+  function authoringProvenanceForEmit(): ReturnType<typeof authoringProvenanceDocument> {
+    if (options.authoringGraph === undefined) {
+      throw new Error("authoringGraph is required to emit authoring provenance.");
+    }
+    if (options.authoringDocuments === undefined || options.authoringDocuments.length === 0) {
+      return authoringProvenanceDocument(options.authoringGraph);
+    }
+    return buildAuthoringProvenanceDocument(options.authoringGraph, {
+      documents: options.authoringDocuments,
+      emitted: emittedDocumentsForProvenance(),
+    });
+  }
+
+  function emittedDocumentsForProvenance(): IAuthoringEmittedDocument[] {
+    return [
+      { data: manifest, kind: "unknown", path: IR_DOCUMENTS.manifest.fileName },
+      { data: world, kind: "entity", path: IR_DOCUMENTS.world.fileName },
+      { data: materials, kind: "material", path: IR_DOCUMENTS.materials.fileName },
+      { data: assetsManifest, kind: "assets", path: IR_DOCUMENTS.assets.fileName },
+      ...(ui === undefined ? [] : [{ data: ui, kind: "ui" as const, path: IR_DOCUMENTS.ui.fileName }]),
+      ...(input === undefined ? [] : [{ data: input, kind: "input" as const, path: IR_DOCUMENTS.input.fileName }]),
+      ...(ecs?.systems === undefined ? [] : [{ data: ecs.systems, kind: "system" as const, path: IR_DOCUMENTS.systems.fileName }]),
+      ...(ecs?.scriptBundle === undefined ? [] : [{ data: ecs.scriptBundle, kind: "generated-script" as const, path: IR_DOCUMENTS.scripts.fileName }]),
+    ];
   }
 }
 

@@ -224,7 +224,15 @@ test("build should lower structured scene entry into runtime bundle with attache
     const world = JSON.parse(await readFile(join(bundlePath, "world.ir.json"), "utf8")) as { entities: Array<{ id: string; components: Record<string, unknown> }>; resources: Record<string, Record<string, unknown>> };
     const systems = JSON.parse(await readFile(join(bundlePath, "systems.ir.json"), "utf8")) as { systems: Array<{ name: string; script?: { exportName: string } }> };
     const scripts = await readFile(join(bundlePath, "scripts.bundle.js"), "utf8");
-    const provenance = JSON.parse(await readFile(join(bundlePath, AUTHORING_PROVENANCE_FILE), "utf8")) as { entryPath: string; declarations: Array<{ id: string; kind: string }> };
+    const provenance = JSON.parse(await readFile(join(bundlePath, AUTHORING_PROVENANCE_FILE), "utf8")) as {
+      declarations: Array<{ id: string; kind: string }>;
+      entryPath: string;
+      ownership: Array<{
+        emitted: { artifactKind: string; id?: string; path: string };
+        ownership: string;
+        source?: { exportName?: string; modulePath?: string; path: string; pointer: string };
+      }>;
+    };
 
     assert.equal(world.entities.some((entity) => entity.id === "player" && entity.components.Transform !== undefined && entity.components.MeshRenderer !== undefined), true);
     const player = world.entities.find((entity) => entity.id === "player");
@@ -238,6 +246,12 @@ test("build should lower structured scene entry into runtime bundle with attache
     assert.match(scripts, /movePlayerToGoal/);
     assert.equal(provenance.entryPath, "content/scenes/cli-proof.scene.json");
     assert.equal(provenance.declarations.some((declaration) => declaration.kind === "system" && declaration.id === "move-player-to-goal"), true);
+    assert.equal(provenance.ownership.some((entry) => entry.emitted.artifactKind === "entity" && entry.emitted.id === "player" && entry.source?.pointer === "/entities/0"), true);
+    const systemOwner = provenance.ownership.find((entry) => entry.emitted.artifactKind === "system" && entry.emitted.id === "move-player-to-goal");
+    assert.equal(systemOwner?.source?.path, "content/scenes/cli-proof.scene.json");
+    assert.equal(systemOwner?.source?.modulePath, "src/scripts/player.ts");
+    assert.equal(systemOwner?.source?.exportName, "movePlayerToGoal");
+    assert.equal(provenance.ownership.find((entry) => entry.emitted.path === "scripts.bundle.js")?.ownership, "rejected/not-source");
   } finally {
     await rm(root, { force: true, recursive: true });
   }

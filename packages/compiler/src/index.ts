@@ -3,15 +3,22 @@ export { loadProjectConfig, type IProjectConfig } from "./config.js";
 export { CompilerError } from "./errors.js";
 export { emitBundle } from "./emit/bundle.js";
 export { validateBundle } from "./validate/index.js";
+export { AUTHORING_PROVENANCE_FILE, authoringProvenanceDocument, buildAuthoringProvenanceDocument } from "./authoring/provenance.js";
 export type { ICompilerDiagnostic, IValidationReport } from "./diagnostics.js";
+export type { IAuthoringEmittedDocument, IAuthoringProvenanceDocument, IBuildAuthoringProvenanceOptions } from "./authoring/provenance.js";
 export { normalizeAuthoringGraph } from "./authoring/normalize.js";
 export type {
   AuthoringDeclarationKind,
+  AuthoringEmittedArtifactKind,
+  AuthoringOwnershipClassification,
   IAuthoringDeclarationNode,
+  IAuthoringEmittedPointer,
   IAuthoringGraph,
   IAuthoringModuleNode,
+  IAuthoringOwnershipEntry,
   IAuthoringProvenance,
   IAuthoringReference,
+  IAuthoringStructuredSourcePointer,
   IAuthoringSourcePointer,
 } from "./authoring/graph.js";
 
@@ -26,7 +33,12 @@ export async function buildProject(projectPath: string): Promise<{ bundlePath: s
     const { CompilerError } = await import("./errors.js");
     throw new CompilerError(authoringError.code, authoringError.message, authoringError);
   }
-  const bundlePath = await emitBundle(config, captured.root, { authoringGraph: captured.graph });
+  const { loadAuthoringProject } = await import("@threenative/authoring");
+  const authoringProject = await loadAuthoringProject({ projectPath });
+  const bundlePath = await emitBundle(config, captured.root, {
+    authoringDocuments: authoringProject.documents,
+    authoringGraph: captured.graph,
+  });
   const { validateBundle } = await import("./validate/index.js");
   const report = await validateBundle(bundlePath);
   if (!report.ok) {

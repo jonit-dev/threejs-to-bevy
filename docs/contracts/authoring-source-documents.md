@@ -116,6 +116,83 @@ The testable inventory in `packages/authoring/src/sourceKinds.ts` records the
 current support status for each source family and the explicit non-source
 classification for generated bundle artifacts.
 
+## Authoring Provenance Report
+
+Normal project builds may write `dist/game.bundle/authoring.provenance.json` as
+a compiler/debug sidecar. The runtime manifest does not reference this file,
+and runtimes must not require it. The sidecar is for CLI/editor/MCP tooling that
+needs to classify whether an emitted bundle patch can be persisted back to
+structured source.
+
+Current report shape:
+
+```json
+{
+  "schema": "threenative.authoring-provenance",
+  "version": "0.1.0",
+  "entryPath": "content/scenes/level.scene.json",
+  "modules": [],
+  "declarations": [],
+  "diagnostics": [],
+  "ownership": [
+    {
+      "ownership": "source-persistable",
+      "source": {
+        "path": "content/scenes/level.scene.json",
+        "pointer": "/entities/0/components/MeshRenderer",
+        "kind": "component",
+        "category": "scene"
+      },
+      "emitted": {
+        "path": "world.ir.json",
+        "artifactKind": "component",
+        "id": "player.MeshRenderer",
+        "pointer": "/entities/player/components/MeshRenderer"
+      }
+    }
+  ]
+}
+```
+
+The report preserves the legacy compiler authoring graph fields
+`declarations`, `modules`, and `diagnostics`, then adds `ownership` entries.
+Each ownership entry contains:
+
+- `source.path`: project-relative structured source document path when known.
+- `source.pointer`: JSON Pointer into the source document.
+- `source.kind`: source declaration kind such as `entity`, `component`,
+  `material`, `ui`, or `system`.
+- `source.category`: source document family such as `scene`, `material`, `ui`,
+  or `systems`.
+- `source.modulePath` and `source.exportName`: TypeScript module/export
+  metadata when the source pointer is a script reference.
+- `emitted.path`: generated bundle artifact path.
+- `emitted.artifactKind`: emitted artifact category.
+- `emitted.id` and `emitted.pointer`: stable emitted ID/path where available.
+- `ownership`: patch classification.
+
+Patch classifications:
+
+- `source-persistable`: the emitted entry traces to a structured source
+  document pointer. Editors may patch the source document through
+  `@threenative/authoring`, then rebuild.
+- `generator-owned`: reserved for one-way generator outputs that carry
+  generator provenance. Reverse patches to the generator remain unsupported.
+- `full-reload-required`: generated bundle/catalog file output that can be
+  reloaded after source changes but is not itself a durable source target.
+- `runtime-only`: runtime state with no durable source mapping.
+- `rejected/not-source`: direct persistence must be rejected. Generated
+  `scripts.bundle.js` is always classified this way; script source is the
+  referenced TypeScript module/export, not the generated bundle body.
+
+The current compiler slice emits source ownership for structured scene
+entities and components, scene `MeshRenderer.material` references resolved to
+material source documents, standalone UI nodes, scene/system script references
+with module/export metadata, and generated bundle artifact classifications.
+If two different structured source pointers claim the same emitted artifact ID,
+the report includes `TN_AUTHORING_DUPLICATE_EMITTED_OWNER` so editor patching
+can fail before writing an ambiguous source change.
+
 ## Current Authoring Package Coverage
 
 `@threenative/authoring` currently discovers and validates the first stable
