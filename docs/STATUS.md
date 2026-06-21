@@ -147,9 +147,9 @@ The editor runtime preview slice adds build/status APIs, preview host state,
 source-to-runtime selection correlation helpers, read-only overlay models,
 catalog preview rows, and a focused Playwright-backed `verify:editor-package`
 gate. Browser self-verification now launches the editor against
-`structured-source-starter`, adds a primitive through the UI, builds the bundle,
-and confirms the new entity is persisted in `content/scenes/arena.scene.json`
-and emitted into `world.ir.json`.
+`structured-source-starter`, selects a primitive kind and color, adds it through
+the UI, builds the bundle, and confirms the new entity is persisted in
+`content/scenes/arena.scene.json` and emitted into `world.ir.json`.
 
 Structured `.scene.json` documents can now be used as a normal project build
 entry for the first runtime-backed CLI authoring slice. The compiler validates

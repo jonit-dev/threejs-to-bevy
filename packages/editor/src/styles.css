@@ -229,6 +229,32 @@ input {
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
 }
 
+.tn-editor-dev-controls label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #aeb9c7;
+  font-size: 12px;
+}
+
+.tn-editor-dev-controls select,
+.tn-editor-dev-controls input[type="color"] {
+  height: 30px;
+  border: 1px solid #3a4654;
+  border-radius: 6px;
+  color: #edf4ff;
+  background: #171b21;
+}
+
+.tn-editor-dev-controls select {
+  padding: 0 8px;
+}
+
+.tn-editor-dev-controls input[type="color"] {
+  width: 38px;
+  padding: 2px;
+}
+
 .tn-editor-dev-controls button {
   border: 1px solid #4b6fae;
   border-radius: 6px;
