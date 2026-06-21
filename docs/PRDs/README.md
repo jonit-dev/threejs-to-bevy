@@ -82,7 +82,7 @@ This index separates current cleanup work from historical milestone batches.
 - [Functional Editor Scene, Assets, and Environment](other/functional-editor-scene-assets-and-environment.md):
   source-backed scene lifecycle, Add Object/model asset flows, environment
   skybox/terrain/LOD visibility, GLB loading proof, and build artifact evidence.
-- [Functional Editor Operations, Modals, and Inspector Completion](other/functional-editor-operations-modals-and-inspector-completion.md):
+- [Functional Editor Operations, Modals, and Inspector Completion](done/other/functional-editor-operations-modals-and-inspector-completion.md):
   source operation coverage for inspector fields and modal actions, add
   component/default persistence, delete/settings/save/build behavior, and
   functional editor e2e coverage.

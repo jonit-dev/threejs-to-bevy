@@ -100,11 +100,11 @@ export async function runEditorPackageGate(root = process.cwd()): Promise<Verifi
       await assertViewportTransformSync(page);
       await page.screenshot({ path: artifacts.smokeScreenshot, fullPage: true });
 
-      await page.locator(".tn-editor-action-icons__add").click();
-      const addObjectDialog = page.getByRole("dialog", { name: "Add Object" });
-      await addObjectDialog.waitFor({ timeout: 10_000 });
-      await addObjectDialog.getByRole("button", { name: "Primitive Sphere" }).click();
-      const entityId = await readAddedEntityIdFromEditor(page);
+      await assertModalPlaceholderState(page);
+      const entityId = await addObjectThroughModal(page, "Primitive Sphere", "editor-box-");
+      const emptyEntityId = await addObjectThroughModal(page, "Empty Entity", "editor-entity-");
+      const cameraEntityId = await addObjectThroughModal(page, "Camera", "editor-camera-");
+      const lightEntityId = await addObjectThroughModal(page, "Light", "editor-light-");
 
       await page.getByRole("button", { name: "Build preview" }).click();
       const buildDialog = page.getByRole("dialog", { name: "Build Preview" });
@@ -114,7 +114,7 @@ export async function runEditorPackageGate(root = process.cwd()): Promise<Verifi
       await page.getByRole("button", { name: /base_basic_shaded 0 entity/ }).click();
       await assertAddComponentModal(page);
 
-      const evidence = await assertEditedProjectEvidence(fixture.projectPath, entityId);
+      const evidence = await assertEditedProjectEvidence(fixture.projectPath, { cameraEntityId, emptyEntityId, entityId, lightEntityId });
       await writeFile(artifacts.sourceScene, `${JSON.stringify(evidence.scene, null, 2)}\n`);
       await writeFile(artifacts.worldIr, `${JSON.stringify(evidence.world, null, 2)}\n`);
       await page.getByRole("button", { name: "New scene" }).click();
@@ -145,7 +145,7 @@ export async function runEditorPackageGate(root = process.cwd()): Promise<Verifi
         exitCode: 0,
         name: "editor-e2e",
         stderr: "",
-        stdout: `Editor shell rendered, project inventory loaded, added ${entityId}, built preview, and persisted source/IR evidence.`,
+        stdout: `Editor shell rendered, project inventory loaded, added ${entityId}/${emptyEntityId}/${cameraEntityId}/${lightEntityId}, built preview, and persisted source/IR evidence.`,
       });
     } finally {
       await browser.close();
@@ -203,6 +203,8 @@ interface ISceneDocument {
 interface IWorldDocument {
   entities: Array<{
     components?: {
+      Camera?: { kind?: string };
+      Light?: { intensity?: number; kind?: string };
       MeshRenderer?: { material?: string; mesh?: string };
       Transform?: { position?: number[] };
     };
@@ -548,32 +550,84 @@ async function readDefaultSceneFromEditor(page: Page): Promise<{ entities: strin
   });
 }
 
-async function readAddedEntityIdFromEditor(page: Page): Promise<string> {
-  await page.waitForFunction(async () => {
-    const response = await fetch("/api/project");
-    const payload = (await response.json()) as { sceneObjects?: Array<{ id: string }> };
-    return payload.sceneObjects?.some((object) => object.id.startsWith("editor-box-")) ?? false;
-  }, undefined, { timeout: 30_000 });
-  return page.evaluate(() => {
-    return fetch("/api/project")
-      .then((response) => response.json())
-      .then((payload: unknown) => {
-        const sceneObjects = typeof payload === "object" && payload !== null && "sceneObjects" in payload && Array.isArray(payload.sceneObjects)
-          ? payload.sceneObjects
-          : [];
-        const entity = sceneObjects.find((object): object is { id: string } => typeof object === "object" && object !== null && "id" in object && typeof object.id === "string" && object.id.startsWith("editor-box-"));
-        if (entity === undefined) {
-          throw new Error("Added editor primitive was not visible in the project API.");
-        }
-        return entity.id;
-      });
-  });
+async function assertModalPlaceholderState(page: Page): Promise<void> {
+  await page.locator(".tn-editor-action-icons__add").click();
+  const addObjectDialog = page.getByRole("dialog", { name: "Add Object" });
+  await addObjectDialog.waitFor({ timeout: 10_000 });
+  const terrain = addObjectDialog.getByRole("button", { name: "Terrain" });
+  const customGlb = addObjectDialog.getByRole("button", { name: "Custom GLB" });
+  if (!(await terrain.isDisabled()) || !(await customGlb.isDisabled())) {
+    throw new Error("Add Object exposed unsupported Terrain or Custom GLB actions as enabled.");
+  }
+  if ((await terrain.getAttribute("title"))?.includes("not promoted") !== true) {
+    throw new Error("Terrain Add Object action did not expose a disabled reason.");
+  }
+  if ((await customGlb.getAttribute("title"))?.includes("promoted asset and prefab operation") !== true) {
+    throw new Error("Custom GLB Add Object action did not expose a disabled reason.");
+  }
+  await page.getByRole("button", { name: "Close Add Object" }).click();
+
+  await page.locator('.tn-editor-action-icons button[title="Delete"]').click();
+  const deleteDialog = page.getByRole("dialog", { name: "Delete" });
+  await deleteDialog.waitFor({ timeout: 10_000 });
+  await deleteDialog.getByText("Delete requires a promoted source operation before it is enabled.").waitFor({ timeout: 10_000 });
+  await page.getByRole("button", { name: "Close Delete" }).click();
+
+  await page.locator('.tn-editor-action-icons button[title="Settings"]').click();
+  const settingsDialog = page.getByRole("dialog", { name: "Settings" });
+  await settingsDialog.waitFor({ timeout: 10_000 });
+  await settingsDialog.getByText("Editor settings are inspect-only in this slice.").waitFor({ timeout: 10_000 });
+  await page.getByRole("button", { name: "Close Settings" }).click();
+
+  await page.locator('button[title="AI chat"]').click();
+  const chatDialog = page.getByRole("dialog", { name: "AI Chat" });
+  await chatDialog.waitFor({ timeout: 10_000 });
+  if (await chatDialog.getByLabel("AI chat message").isEditable()) {
+    throw new Error("AI Chat placeholder textarea should be read-only.");
+  }
+  await page.getByRole("button", { name: "Close AI Chat" }).click();
 }
 
-async function assertEditedProjectEvidence(projectPath: string, entityId: string): Promise<{ scene: ISceneDocument; world: IWorldDocument }> {
+async function addObjectThroughModal(page: Page, buttonName: string, entityPrefix: string): Promise<string> {
+  const before = await readEditorEntityIds(page, entityPrefix);
+  await page.locator(".tn-editor-action-icons__add").click();
+  const addObjectDialog = page.getByRole("dialog", { name: "Add Object" });
+  await addObjectDialog.waitFor({ timeout: 10_000 });
+  const button = addObjectDialog.getByRole("button", { exact: true, name: buttonName });
+  if (await button.isDisabled()) {
+    throw new Error(`Add Object action ${buttonName} was unexpectedly disabled.`);
+  }
+  await button.click();
+  return readNewEditorEntityId(page, entityPrefix, before);
+}
+
+async function readEditorEntityIds(page: Page, entityPrefix: string): Promise<string[]> {
+  return page.evaluate(async (prefix) => {
+    const response = await fetch("/api/project");
+    const payload = (await response.json()) as { sceneObjects?: Array<{ id: string }> };
+    return payload.sceneObjects?.map((object) => object.id).filter((id) => id.startsWith(prefix)) ?? [];
+  }, entityPrefix);
+}
+
+async function readNewEditorEntityId(page: Page, entityPrefix: string, before: readonly string[]): Promise<string> {
+  await page.waitForFunction(async ({ existing, prefix }) => {
+    const response = await fetch("/api/project");
+    const payload = (await response.json()) as { sceneObjects?: Array<{ id: string }> };
+    return payload.sceneObjects?.some((object) => object.id.startsWith(prefix) && !existing.includes(object.id)) ?? false;
+  }, { existing: before, prefix: entityPrefix }, { timeout: 30_000 });
+  const ids = await readEditorEntityIds(page, entityPrefix);
+  const entityId = ids.find((id) => !before.includes(id));
+  if (entityId === undefined) {
+    throw new Error(`Added editor entity with prefix ${entityPrefix} was not visible in the project API.`);
+  }
+  return entityId;
+}
+
+async function assertEditedProjectEvidence(projectPath: string, entityIds: { cameraEntityId: string; emptyEntityId: string; entityId: string; lightEntityId: string }): Promise<{ scene: ISceneDocument; world: IWorldDocument }> {
   const scene = JSON.parse(await readFile(join(projectPath, "content/scenes/arena.scene.json"), "utf8")) as ISceneDocument;
   const world = JSON.parse(await readFile(join(projectPath, "dist/structured-source-starter.bundle/world.ir.json"), "utf8")) as IWorldDocument;
   const materials = JSON.parse(await readFile(join(projectPath, "dist/structured-source-starter.bundle/materials.ir.json"), "utf8")) as IMaterialsDocument;
+  const { cameraEntityId, emptyEntityId, entityId, lightEntityId } = entityIds;
   const entity = scene.entities.find((candidate) => candidate.id === entityId);
   if (entity === undefined) {
     throw new Error(`Source scene did not persist added entity ${entityId}.`);
@@ -595,6 +649,26 @@ async function assertEditedProjectEvidence(projectPath: string, entityId: string
   const material = materials.materials.find((candidate) => candidate.id === `mat.${entityId}`);
   if (material?.color !== "#9b59b6") {
     throw new Error(`Materials IR did not emit selected color for ${entityId}: ${JSON.stringify(material)}`);
+  }
+  const emptyEntity = scene.entities.find((candidate) => candidate.id === emptyEntityId);
+  if (emptyEntity === undefined || emptyEntity.prefab !== undefined || emptyEntity.components !== undefined) {
+    throw new Error(`Source scene did not persist empty entity as a source-backed entity: ${JSON.stringify(emptyEntity)}`);
+  }
+  const cameraEntity = scene.entities.find((candidate) => candidate.id === cameraEntityId);
+  if (cameraEntity?.components?.camera === undefined) {
+    throw new Error(`Source scene did not persist added camera component: ${JSON.stringify(cameraEntity)}`);
+  }
+  const lightEntity = scene.entities.find((candidate) => candidate.id === lightEntityId);
+  if (lightEntity?.components?.Light === undefined) {
+    throw new Error(`Source scene did not persist added Light component: ${JSON.stringify(lightEntity)}`);
+  }
+  const irCamera = world.entities.find((candidate) => candidate.id === cameraEntityId);
+  if (irCamera !== undefined && irCamera.components?.Camera?.kind !== "perspective") {
+    throw new Error(`World IR emitted unexpected camera component for ${cameraEntityId}: ${JSON.stringify(irCamera)}`);
+  }
+  const irLight = world.entities.find((candidate) => candidate.id === lightEntityId);
+  if (irLight !== undefined && (irLight.components?.Light?.kind !== "directional" || irLight.components.Light.intensity !== 1)) {
+    throw new Error(`World IR emitted unexpected Light component for ${lightEntityId}: ${JSON.stringify(irLight)}`);
   }
   return { scene, world };
 }

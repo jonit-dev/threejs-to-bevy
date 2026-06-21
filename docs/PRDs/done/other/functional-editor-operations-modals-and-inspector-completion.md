@@ -259,12 +259,12 @@ output.
 
 **Implementation:**
 
-- [ ] Select entities and documents.
-- [ ] Edit representative fields and assert source JSON changes.
-- [ ] Add compatible and incompatible components.
-- [ ] Add object variants covered by source operations.
-- [ ] Save, reload, build, and assert IR/bundle artifacts.
-- [ ] Assert all modal placeholders are either implemented or explicitly
+- [x] Select entities and documents.
+- [x] Edit representative fields and assert source JSON changes.
+- [x] Add compatible and incompatible components.
+- [x] Add object variants covered by source operations.
+- [x] Save, reload, build, and assert IR/bundle artifacts.
+- [x] Assert all modal placeholders are either implemented or explicitly
   disabled/read-only.
 
 **Tests Required:**
@@ -272,6 +272,16 @@ output.
 | Test File | Test Name | Assertion |
 |-----------|-----------|-----------|
 | `tools/verify/src/editorPackage.ts` | `editor-e2e functional editor operations` | inspector/modals/source/IR evidence all pass |
+
+**Completion Evidence:**
+
+- `pnpm verify:focused verify:editor-package` - pass; browser proof selected
+  source entities, verified source document inventory/inspector rows, exercised
+  typed inspector controls, added compatible/default components, asserted
+  incompatible Add Component and unsupported modal placeholders, added
+  Primitive/Empty/Camera/Light Add Object variants, built preview output, and
+  wrote source/IR/screenshot artifacts under
+  `tools/verify/artifacts/editor-package/`.
 
 **User Verification:**
 
@@ -324,16 +334,16 @@ pnpm check:names
 
 ## 6. Acceptance Criteria
 
-- [ ] Every enabled inspector control has a source operation and verification.
-- [ ] Every read-only inspector field has a stable reason.
-- [ ] Common component fields persist or are explicitly deferred: Transform,
+- [x] Every enabled inspector control has a source operation and verification.
+- [x] Every read-only inspector field has a stable reason.
+- [x] Common component fields persist or are explicitly deferred: Transform,
   MeshRenderer, Camera, Light, Material, Input, Systems, UI, Asset, Environment,
   Terrain.
-- [ ] Add Component uses shared definitions/defaults/incompatibilities/packs and
+- [x] Add Component uses shared definitions/defaults/incompatibilities/packs and
   persists compatible additions.
-- [ ] Add Object, Delete, Settings, Save, New Scene, Build Preview, Asset Loader,
+- [x] Add Object, Delete, Settings, Save, New Scene, Build Preview, Asset Loader,
   and AI Chat are either implemented or intentionally disabled/read-only with
   user-visible reasons.
-- [ ] Source JSON and emitted IR evidence prove the editor is not editing
+- [x] Source JSON and emitted IR evidence prove the editor is not editing
   generated/runtime state as source.
-- [ ] `verify:editor-package` passes with functional editor operation coverage.
+- [x] `verify:editor-package` passes with functional editor operation coverage.

@@ -210,6 +210,10 @@ Terrain and Custom GLB remain disabled with explicit reasons until their source
 operations exist. Add Component defaults for Camera and Light now have
 project-API persistence coverage, and the focused editor package gate still
 passes with source scene, world IR, and screenshot evidence.
+The editor package gate now proves the functional modal flow end to end by
+opening unsupported placeholders, adding Primitive/Empty/Camera/Light variants,
+building the preview bundle, and validating the added source scene entities plus
+emitted world/material IR evidence.
 The functional editor operation-coverage audit now exposes a shared coverage
 matrix for inspector fields and modal actions. Focused editor tests fail if an
 editable inspector row lacks an operation payload or if a read-only row/action
