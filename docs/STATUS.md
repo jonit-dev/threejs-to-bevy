@@ -222,6 +222,11 @@ The P0 editor state refactor has started by adding Zustand to
 editor-session store. `EditorApp` now reads modal state from the store while
 keeping its public props stable; store tests cover modal, selection, status, and
 reset behavior before the larger dev-fixture project/operation state migration.
+The second Zustand slice moves the dev fixture's project payload, selected row,
+status text, hierarchy parent map, and viewport transform overrides into the
+same store. Store tests now cover project/selection coupling, recursive nesting
+rejection, and transform override apply/clear behavior while preserving the
+existing editor package render and server tests.
 
 Structured `.scene.json` documents can now be used as a normal project build
 entry for the first runtime-backed CLI authoring slice. The compiler validates

@@ -180,12 +180,21 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Move project payload and derived model input state into the store.
-- [ ] Move selected row, hierarchy nesting, and transform override state into
+- [x] Move project payload and derived model input state into the store.
+- [x] Move selected row, hierarchy nesting, and transform override state into
   store actions.
-- [ ] Keep existing project-to-editor model behavior deterministic.
-- [ ] Preserve selected-row defaults after project refresh.
-- [ ] Avoid stale closure bugs in async dev fixture actions.
+- [x] Keep existing project-to-editor model behavior deterministic.
+- [x] Preserve selected-row defaults after project refresh.
+- [x] Avoid stale closure bugs in async dev fixture actions.
+
+**Evidence:**
+
+- `packages/editor/src/devFixture.tsx` now reads project payload, selected row,
+  status, parent map, and viewport transform overrides from the Zustand store.
+- `packages/editor/src/state/editorStore.test.ts` covers project payload,
+  selection, recursive hierarchy nesting rejection, and transform override
+  apply/clear behavior.
+- `pnpm --filter @threenative/editor test` passes.
 
 **Tests Required:**
 

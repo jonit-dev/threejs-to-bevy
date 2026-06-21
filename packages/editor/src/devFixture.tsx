@@ -1,37 +1,29 @@
 import { createRoot } from "react-dom/client";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 import { EditorApp } from "./EditorApp.js";
-import { EDITOR_ADD_COMPONENT_DEFINITIONS, type IEditorAddComponentDefinition, type IEditorDiagnosticView, type IEditorLodStats, type IEditorPropertyRow, type IEditorSceneObject, type IEditorShellModel, type IEditorTreeRow } from "./adapters/editorModel.js";
+import { EDITOR_ADD_COMPONENT_DEFINITIONS, type IEditorAddComponentDefinition, type IEditorDiagnosticView, type IEditorPropertyRow, type IEditorSceneObject, type IEditorShellModel, type IEditorTreeRow } from "./adapters/editorModel.js";
 import type { IViewportTransform } from "./preview/EditorViewport3d.js";
 import { devFixtureModel } from "./devFixtureModel.js";
+import { useEditorStore, type IEditorProjectDocumentGroup, type IEditorProjectPayload } from "./state/editorStore.js";
 import "./styles.css";
-
-interface IProjectPayload {
-  diagnostics?: Array<{ code?: string; file?: string; message: string; path?: string; severity?: "error" | "info" | "warning"; suggestion?: string }>;
-  documents?: IProjectDocumentGroup[];
-  ok?: boolean;
-  projectPath?: string;
-  projectRevision?: string;
-  lod?: IEditorLodStats;
-  sceneObjects?: IEditorSceneObject[];
-}
-
-interface IProjectDocumentGroup {
-  documents: Array<{ id: string; inspectorRows?: IEditorPropertyRow[]; kind: string; path: string }>;
-  kind: string;
-}
 
 export function renderDevFixture(root: Element) {
   createRoot(root).render(<EditorDevApp />);
 }
 
 function EditorDevApp() {
-  const [project, setProject] = useState<IProjectPayload>();
-  const [parentByRowId, setParentByRowId] = useState<Record<string, string | undefined>>({});
-  const [selectedRowId, setSelectedRowId] = useState<string | undefined>(devFixtureModel.selectedRowId);
-  const [status, setStatus] = useState("Ready");
-  const [transformByRowId, setTransformByRowId] = useState<Record<string, IViewportTransform>>({});
+  const project = useEditorStore((state) => state.project);
+  const setProject = useEditorStore((state) => state.setProject);
+  const parentByRowId = useEditorStore((state) => state.parentByRowId);
+  const setParent = useEditorStore((state) => state.setParent);
+  const selectedRowId = useEditorStore((state) => state.selectedRowId ?? devFixtureModel.selectedRowId);
+  const setSelectedRowId = useEditorStore((state) => state.selectRow);
+  const status = useEditorStore((state) => state.status);
+  const setStatus = useEditorStore((state) => state.setStatus);
+  const transformByRowId = useEditorStore((state) => state.transformByRowId);
+  const setTransformOverride = useEditorStore((state) => state.setTransformOverride);
+  const clearTransformOverride = useEditorStore((state) => state.clearTransformOverride);
   const model = project === undefined ? devFixtureModel : projectToEditorModel(project, selectedRowId, parentByRowId, status, transformByRowId);
 
   useEffect(() => {
@@ -91,19 +83,18 @@ function EditorDevApp() {
   }
 
   function moveRow(draggedId: string, targetId: string) {
-    setParentByRowId((current) => {
-      if (draggedId === targetId || isDescendant(targetId, draggedId, current)) {
-        return current;
-      }
-      return { ...current, [draggedId]: targetId };
-    });
+    const nested = setParent(draggedId, targetId);
     setSelectedRowId(draggedId);
-    setStatus(`Nested ${findRowLabel(model.hierarchy, draggedId)} under ${findRowLabel(model.hierarchy, targetId)} in editor view`);
+    setStatus(
+      nested
+        ? `Nested ${findRowLabel(model.hierarchy, draggedId)} under ${findRowLabel(model.hierarchy, targetId)} in editor view`
+        : `Cannot nest ${findRowLabel(model.hierarchy, draggedId)} under ${findRowLabel(model.hierarchy, targetId)}`,
+    );
   }
 
   function transformObject(rowId: string, transform: IViewportTransform) {
     setSelectedRowId(rowId);
-    setTransformByRowId((current) => ({ ...current, [rowId]: transform }));
+    setTransformOverride(rowId, transform);
     const object = model.sceneObjects.find((item) => item.rowId === rowId);
     if (object === undefined) {
       setStatus(`Moved ${rowId} in viewport`);
@@ -121,11 +112,7 @@ function EditorDevApp() {
         project?.projectRevision,
       );
       await refreshProject(setProject, undefined, undefined);
-      setTransformByRowId((current) => {
-        const remaining = { ...current };
-        delete remaining[object.rowId];
-        return remaining;
-      });
+      clearTransformOverride(object.rowId);
       setStatus(`Saved transform for ${object.label}`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
@@ -205,7 +192,7 @@ function EditorDevApp() {
 }
 
 function projectToEditorModel(
-  project: IProjectPayload,
+  project: IEditorProjectPayload,
   selectedRowId: string | undefined,
   parentByRowId: Record<string, string | undefined>,
   status: string,
@@ -256,7 +243,7 @@ function applyTransformOverride(object: IEditorSceneObject, transform: IViewport
   };
 }
 
-function buildHierarchy(documents: readonly IProjectDocumentGroup[], sceneObjects: readonly IEditorSceneObject[], parentByRowId: Record<string, string | undefined>): IEditorTreeRow[] {
+function buildHierarchy(documents: readonly IEditorProjectDocumentGroup[], sceneObjects: readonly IEditorSceneObject[], parentByRowId: Record<string, string | undefined>): IEditorTreeRow[] {
   if (sceneObjects.length > 0) {
     return sceneChildren(undefined, sceneObjects, parentByRowId);
   }
@@ -397,7 +384,7 @@ function formatVector(value: readonly [number, number, number] | undefined, fall
   return `[${(value ?? fallback).join(", ")}]`;
 }
 
-function findDocument(documents: readonly IProjectDocumentGroup[], selectedRowId: string | undefined): { inspectorRows?: IEditorPropertyRow[]; kind: string; path: string } | undefined {
+function findDocument(documents: readonly IEditorProjectDocumentGroup[], selectedRowId: string | undefined): { inspectorRows?: IEditorPropertyRow[]; kind: string; path: string } | undefined {
   if (selectedRowId === undefined || !selectedRowId.startsWith("source:")) {
     return undefined;
   }
@@ -414,24 +401,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function isDescendant(candidateId: string, parentId: string, parentByRowId: Record<string, string | undefined>): boolean {
-  let current = parentByRowId[candidateId];
-  while (current !== undefined) {
-    if (current === parentId) {
-      return true;
-    }
-    current = parentByRowId[current];
-  }
-  return false;
-}
-
 async function refreshProject(
-  setProject: (project: IProjectPayload) => void,
+  setProject: (project: IEditorProjectPayload) => void,
   setStatus?: (status: string) => void,
   setSelectedRowId?: (selectedRowId: string) => void,
-): Promise<IProjectPayload> {
+): Promise<IEditorProjectPayload> {
   const response = await fetch("/api/project");
-  const payload = await response.json() as IProjectPayload;
+  const payload = await response.json() as IEditorProjectPayload;
   setProject(payload);
   const firstObject = payload.sceneObjects?.[0]?.rowId;
   if (firstObject !== undefined) {
@@ -456,7 +432,7 @@ async function postOperation(name: string, args: Record<string, unknown>, projec
   return { filesWritten: payload.filesWritten ?? [] };
 }
 
-function countDocuments(project: IProjectPayload): number {
+function countDocuments(project: IEditorProjectPayload): number {
   return project.documents?.reduce((count, group) => count + group.documents.length, 0) ?? 0;
 }
 
