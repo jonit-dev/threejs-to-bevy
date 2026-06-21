@@ -219,10 +219,10 @@ remains authoritative.
 
 **Implementation:**
 
-- [ ] Replace confusing helper icons with consistent camera/light/terrain cues.
-- [ ] Keep selection outline and transform controls visible over loaded GLBs.
-- [ ] Avoid helper objects intercepting picking.
-- [ ] Prove no stray right-side debug buttons or nonfunctional viewport controls
+- [x] Replace confusing helper icons with consistent camera/light/terrain cues.
+- [x] Keep selection outline and transform controls visible over loaded GLBs.
+- [x] Avoid helper objects intercepting picking.
+- [x] Prove no stray right-side debug buttons or nonfunctional viewport controls
   remain.
 
 **Tests Required:**
@@ -231,6 +231,13 @@ remains authoritative.
 |-----------|-----------|-----------|
 | `packages/editor/src/EditorApp.test.tsx` | `should expose accessible gizmo mode controls` | buttons have mode labels and active state |
 | `tools/verify/src/editorPackage.ts` | `editor-e2e viewport visual cues` | selected object has inspector sync and no unexpected controls |
+
+**Completion Evidence:**
+
+- `pnpm --filter @threenative/editor test` - 56 tests passing.
+- `pnpm verify:focused verify:editor-package` - pass; browser proof selects
+  Camera, Light, and Terrain rows, verifies inspector sync, keeps GLB selection
+  proof intact, and screenshots the resulting viewport state.
 
 **User Verification:**
 

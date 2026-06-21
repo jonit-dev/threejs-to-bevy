@@ -80,6 +80,7 @@ export async function runEditorPackageGate(root = process.cwd()): Promise<Verifi
         throw new Error("Inspector did not update after selecting base_basic_shaded 0 in the hierarchy.");
       }
       await assertTypedInspectorControls(page);
+      await assertViewportVisualCueSelections(page);
       await page.getByRole("button", { name: /base_basic_shaded 0 entity/ }).click();
       await assertAddComponentDefaultPersistence(page);
       await page.getByRole("button", { name: /farm_house_basic_shaded 0 entity/ }).dragTo(page.getByRole("button", { name: /base_basic_shaded 0 entity/ }));
@@ -415,6 +416,21 @@ async function assertTypedInspectorControls(page: Page): Promise<void> {
   await assertSourceDocumentInspectorRows(page);
 
   await page.getByRole("button", { name: /base_basic_shaded 0 entity/ }).click();
+}
+
+async function assertViewportVisualCueSelections(page: Page): Promise<void> {
+  await page.getByRole("button", { name: /Main Camera camera/ }).click();
+  if ((await page.getByLabel("Name").inputValue()) !== "Main Camera") {
+    throw new Error("Camera selection did not update the inspector before viewport visual cue proof.");
+  }
+  await page.getByRole("button", { name: /Directional Light light/ }).click();
+  if ((await page.getByLabel("Name").inputValue()) !== "Directional Light") {
+    throw new Error("Light selection did not update the inspector before viewport visual cue proof.");
+  }
+  await page.getByRole("button", { name: /Terrain 0 entity/ }).click();
+  if ((await page.getByLabel("Name").inputValue()) !== "Terrain 0") {
+    throw new Error("Terrain selection did not update the inspector before viewport visual cue proof.");
+  }
 }
 
 async function assertSourceDocumentInspectorRows(page: Page): Promise<void> {

@@ -335,7 +335,17 @@ function createCameraGlyph(): THREE.Group {
 }
 
 function createLightGlyph(): THREE.Group {
-  return new THREE.Group();
+  const group = new THREE.Group();
+  const sprite = createIconSprite("light");
+  sprite.scale.set(0.62, 0.62, 1);
+  group.add(sprite);
+  group.add(
+    new THREE.Mesh(
+      new THREE.SphereGeometry(0.14, 16, 8),
+      new THREE.MeshBasicMaterial({ color: "#fff7a8" }),
+    ),
+  );
+  return group;
 }
 
 function createIconSprite(kind: "camera" | "light"): THREE.Sprite {
