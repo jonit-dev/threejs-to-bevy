@@ -78,6 +78,7 @@ export function EditorViewport3d({ gizmoMode = "translate", objects, onSelectObj
     const pointer = new THREE.Vector2();
     const selectables: THREE.Object3D[] = [];
     const objectByRowId = new Map<string, THREE.Object3D>();
+    const transformPersistableRowIds = new Set<string>();
     let selection: THREE.BoxHelper | undefined;
     const transformControls = new TransformControls(camera, renderer.domElement);
     transformControls.setMode(gizmoMode);
@@ -90,11 +91,15 @@ export function EditorViewport3d({ gizmoMode = "translate", objects, onSelectObj
       root.clear();
       selectables.length = 0;
       objectByRowId.clear();
+      transformPersistableRowIds.clear();
       for (const sourceObject of objects) {
         const object = createSceneObject(sourceObject, gltfLoader);
         markViewportSelectionOwner(object, sourceObject.rowId);
         root.add(object);
         objectByRowId.set(sourceObject.rowId, object);
+        if (isTransformPersistable(sourceObject)) {
+          transformPersistableRowIds.add(sourceObject.rowId);
+        }
         if (sourceObject.kind !== "camera" && sourceObject.kind !== "light") {
           selectables.push(object);
         }
@@ -107,14 +112,19 @@ export function EditorViewport3d({ gizmoMode = "translate", objects, onSelectObj
         selection.dispose();
         selection = undefined;
       }
-      const selected = selectedRowId === undefined ? undefined : objectByRowId.get(selectedRowId);
-      if (selected === undefined) {
+      const selectedId = selectedRowId;
+      const selected = selectedId === undefined ? undefined : objectByRowId.get(selectedId);
+      if (selected === undefined || selectedId === undefined) {
         transformControls.detach();
         return;
       }
       selection = new THREE.BoxHelper(selected, "#ff7a24");
       scene.add(selection);
-      transformControls.attach(selected);
+      if (transformPersistableRowIds.has(selectedId)) {
+        transformControls.attach(selected);
+      } else {
+        transformControls.detach();
+      }
     };
 
     const selectFromPointer = (event: PointerEvent) => {
@@ -131,7 +141,7 @@ export function EditorViewport3d({ gizmoMode = "translate", objects, onSelectObj
 
     const commitTransform = () => {
       const selected = selectedRowId === undefined ? undefined : objectByRowId.get(selectedRowId);
-      if (selected === undefined || selectedRowId === undefined) {
+      if (selected === undefined || selectedRowId === undefined || !transformPersistableRowIds.has(selectedRowId)) {
         return;
       }
       onTransformRef.current?.(selectedRowId, readTransform(selected));
@@ -202,6 +212,10 @@ function createSceneObject(sourceObject: IEditorSceneObject, loader: GLTFLoader)
     }
   });
   return object;
+}
+
+function isTransformPersistable(sourceObject: IEditorSceneObject): boolean {
+  return sourceObject.documentPath !== undefined || sourceObject.sourcePath !== undefined;
 }
 
 function readTransform(object: THREE.Object3D): IViewportTransform {

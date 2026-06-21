@@ -76,7 +76,7 @@ This index separates current cleanup work from historical milestone batches.
   centralize editor-session state for modal, selection, project payload,
   hierarchy nesting, viewport transforms, async operations, and dev fixture
   workflows before functional editor state expands further.
-- [Functional Editor Viewport, Gizmo, and Selection](other/functional-editor-viewport-gizmo-and-selection.md):
+- [Functional Editor Viewport, Gizmo, and Selection](done/other/functional-editor-viewport-gizmo-and-selection.md):
   source-backed hierarchy/viewport selection sync, real move/rotate/scale gizmo
   modes, transform persistence, viewport visual cues, and Playwright evidence.
 - [Functional Editor Scene, Assets, and Environment](other/functional-editor-scene-assets-and-environment.md):

@@ -258,11 +258,11 @@ remains authoritative.
 
 **Implementation:**
 
-- [ ] Assert hierarchy-to-viewport selection sync.
-- [ ] Assert viewport-to-hierarchy/inspector selection sync.
-- [ ] Assert move/rotate/scale mode changes.
-- [ ] Assert transform persistence into source JSON.
-- [ ] Capture screenshots/artifacts under `tools/verify/artifacts/editor-package`.
+- [x] Assert hierarchy-to-viewport selection sync.
+- [x] Assert viewport-to-hierarchy/inspector selection sync.
+- [x] Assert move/rotate/scale mode changes.
+- [x] Assert transform persistence into source JSON.
+- [x] Capture screenshots/artifacts under `tools/verify/artifacts/editor-package`.
 
 **Tests Required:**
 
@@ -270,6 +270,13 @@ remains authoritative.
 |-----------|-----------|-----------|
 | `tools/verify/src/editorPackage.ts` | `editor-e2e viewport selection sync` | viewport click changes selected inspector entity |
 | `tools/verify/src/editorPackage.ts` | `editor-e2e gizmo transform persistence` | source scene transform changes after gizmo commit |
+
+**Completion Evidence:**
+
+- `pnpm --filter @threenative/editor test` - 56 tests passing.
+- `pnpm verify:focused verify:editor-package` - pass; report at
+  `tools/verify/artifacts/editor-package/editor-package-report.json`, with
+  screenshot, source scene, and world IR artifacts.
 
 **User Verification:**
 
@@ -319,12 +326,12 @@ pnpm check:names
 
 ## 6. Acceptance Criteria
 
-- [ ] Hierarchy and viewport selection share one source-backed selected row.
-- [ ] Viewport clicks on primitives, GLB children, terrain, camera glyphs, and
+- [x] Hierarchy and viewport selection share one source-backed selected row.
+- [x] Viewport clicks on primitives, GLB children, terrain, camera glyphs, and
   light glyphs behave intentionally and update inspector state when selectable.
-- [ ] Move, rotate, and scale modes are real, keyboard-accessible, and reflected
+- [x] Move, rotate, and scale modes are real, keyboard-accessible, and reflected
   in `TransformControls`.
-- [ ] Transform commits persist through structured source operations.
-- [ ] Read-only or unsupported transform targets are visibly disabled.
-- [ ] `verify:editor-package` proves selection sync, gizmo mode, transform
+- [x] Transform commits persist through structured source operations.
+- [x] Read-only or unsupported transform targets are visibly disabled.
+- [x] `verify:editor-package` proves selection sync, gizmo mode, transform
   persistence, and clean viewport visual controls.
