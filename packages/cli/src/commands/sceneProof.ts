@@ -254,10 +254,11 @@ export function resolveNativeCaptureInvocation(options: {
 
   const commandExists = options.commandExists ?? isCommandOnPath;
   if (commandExists("xvfb-run", options.env)) {
+    const xvfbRun = options.commandExists === undefined ? resolveCommandOnPath("xvfb-run", options.env) ?? "xvfb-run" : "xvfb-run";
     return {
       ...baseInvocation,
       args: ["-a", baseInvocation.command, ...baseInvocation.args],
-      command: "xvfb-run",
+      command: xvfbRun,
       wrappedWithXvfb: true,
     };
   }
@@ -286,9 +287,13 @@ function hasGraphicalDisplay(env: NodeJS.ProcessEnv): boolean {
 }
 
 function isCommandOnPath(command: string, env: NodeJS.ProcessEnv): boolean {
+  return resolveCommandOnPath(command, env) !== undefined;
+}
+
+function resolveCommandOnPath(command: string, env: NodeJS.ProcessEnv): string | undefined {
   const path = env.PATH ?? "";
   if (path.length === 0) {
-    return false;
+    return undefined;
   }
   for (const pathEntry of path.split(delimiter)) {
     if (pathEntry.length === 0) {
@@ -300,12 +305,12 @@ function isCommandOnPath(command: string, env: NodeJS.ProcessEnv): boolean {
     }
     try {
       accessSync(candidate, constants.X_OK);
-      return true;
+      return candidate;
     } catch {
       // Keep searching PATH entries.
     }
   }
-  return false;
+  return undefined;
 }
 
 async function readProvenance(projectPath: string, bundlePath: string, sceneId: string, sceneSourceFile: string): Promise<IProofReport["provenance"]> {

@@ -28,6 +28,16 @@ import type { IAuthoringDeclarationNode, IAuthoringGraph } from "./authoring/gra
 import { compatibilityProvenance, relativeModulePath } from "./authoring/provenance.js";
 
 type SceneRecord = Record<string, unknown>;
+type VisualTransform = {
+  position?: [number, number, number];
+  rotation?: [number, number, number];
+  scale?: [number, number, number];
+};
+type WorldTransform = {
+  position?: [number, number, number];
+  rotation?: [number, number, number, number];
+  scale?: [number, number, number];
+};
 
 export async function captureSceneDocumentEntry(projectPath: string, entryPath: string): Promise<ICapturedScene> {
   const entryRelativePath = relativeModulePath(projectPath, entryPath);
@@ -62,6 +72,7 @@ function lowerSceneDocument(sourcePath: string, scene: ISceneDocument): unknown 
 
   for (const entity of entities) {
     const transform = normalizeTransform(entity.transform);
+    const prefabTransform = toWorldTransform(transform);
     const camera = readRecord(entity.components)?.camera;
     if (readRecord(camera) !== undefined) {
       const cameraObject = cameraObjectFromEntity(entity.id, camera, transform);
@@ -72,10 +83,10 @@ function lowerSceneDocument(sourcePath: string, scene: ISceneDocument): unknown 
       visualScene.add(mesh);
 
       worldEntities.push({
-        components: [PrefabTransform(transform)],
+        components: [PrefabTransform(prefabTransform)],
         id: entity.id,
         source: { sourcePath },
-        transform,
+        transform: prefabTransform,
       });
     }
   }
@@ -116,15 +127,19 @@ function lowerSceneDocument(sourcePath: string, scene: ISceneDocument): unknown 
   });
 }
 
-function normalizeTransform(transform: ISceneTransform | undefined): {
-  position?: [number, number, number];
-  rotation?: [number, number, number];
-  scale?: [number, number, number];
-} {
+function normalizeTransform(transform: ISceneTransform | undefined): VisualTransform {
   return {
     ...(vector3(readRecord(transform)?.position) === undefined ? {} : { position: vector3(readRecord(transform)?.position) }),
     ...(vector3(readRecord(transform)?.rotation) === undefined ? {} : { rotation: vector3(readRecord(transform)?.rotation) }),
     ...(vector3(readRecord(transform)?.scale) === undefined ? {} : { scale: vector3(readRecord(transform)?.scale) }),
+  };
+}
+
+function toWorldTransform(transform: VisualTransform): WorldTransform {
+  return {
+    ...(transform.position === undefined ? {} : { position: transform.position }),
+    ...(transform.rotation === undefined ? {} : { rotation: eulerXyzToQuaternion(transform.rotation) }),
+    ...(transform.scale === undefined ? {} : { scale: transform.scale }),
   };
 }
 
@@ -193,6 +208,22 @@ function applyTransform(object: { position: { set(x: number, y: number, z: numbe
   if (transform.scale !== undefined) {
     object.scale.set(...transform.scale);
   }
+}
+
+function eulerXyzToQuaternion(rotation: [number, number, number]): [number, number, number, number] {
+  const [x, y, z] = rotation;
+  const c1 = Math.cos(x / 2);
+  const c2 = Math.cos(y / 2);
+  const c3 = Math.cos(z / 2);
+  const s1 = Math.sin(x / 2);
+  const s2 = Math.sin(y / 2);
+  const s3 = Math.sin(z / 2);
+  return [
+    s1 * c2 * c3 + c1 * s2 * s3,
+    c1 * s2 * c3 - s1 * c2 * s3,
+    c1 * c2 * s3 + s1 * s2 * c3,
+    c1 * c2 * c3 - s1 * s2 * s3,
+  ];
 }
 
 function sceneAuthoringGraph(projectRoot: string, entryPath: string, scene: ISceneDocument): IAuthoringGraph {
