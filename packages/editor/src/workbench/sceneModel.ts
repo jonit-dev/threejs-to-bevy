@@ -8,10 +8,12 @@ export interface ISceneHierarchyRow {
   sourcePersistable: boolean;
 }
 
+export type EditorSceneLifecycleState = "diagnostic" | "empty" | "saved";
+
 export interface ISceneLifecycleModel {
   activeScene?: ISceneLifecycleEntry;
   scenes: ISceneLifecycleEntry[];
-  state: "diagnostic" | "empty" | "saved";
+  state: EditorSceneLifecycleState;
 }
 
 export interface ISceneLifecycleEntry {
@@ -38,7 +40,7 @@ export function buildSceneHierarchyModel(documents: readonly IAuthoringDocument[
   });
 }
 
-export function buildSceneLifecycleModel(documents: readonly IAuthoringDocument[], activeScenePath?: string): ISceneLifecycleModel {
+export function buildSceneLifecycleModel(documents: readonly IAuthoringDocument[], options: { activeScenePath?: string; hasErrors?: boolean } = {}): ISceneLifecycleModel {
   const scenes: ISceneLifecycleEntry[] = [];
   for (const document of documents) {
     if (document.kind !== "scene" || !isRecord(document.data)) {
@@ -53,11 +55,11 @@ export function buildSceneLifecycleModel(documents: readonly IAuthoringDocument[
     });
   }
   scenes.sort((left, right) => left.documentPath.localeCompare(right.documentPath));
-  const activeScene = scenes.find((scene) => scene.documentPath === activeScenePath) ?? scenes[0];
+  const activeScene = scenes.find((scene) => scene.documentPath === options.activeScenePath) ?? scenes[0];
   return {
     activeScene,
     scenes,
-    state: scenes.length === 0 ? "empty" : "saved",
+    state: options.hasErrors === true ? "diagnostic" : scenes.length === 0 ? "empty" : "saved",
   };
 }
 

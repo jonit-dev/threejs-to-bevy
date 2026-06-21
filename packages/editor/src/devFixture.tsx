@@ -96,6 +96,8 @@ function projectToEditorModel(
     statusItems: [
       { id: "editorStatus", label: "Editor", value: status },
       { id: "sourceDocuments", label: "Source docs", value: String(countDocuments(project)) },
+      { id: "activeScene", label: "Active scene", value: project.sceneLifecycle?.activeScene?.label ?? "none" },
+      { id: "sceneState", label: "Scene state", value: project.sceneLifecycle?.state ?? "empty" },
       { id: "sceneEntities", label: "Scene entities", value: String(sceneObjects.length) },
       { id: "mode", label: "Mode", value: "Source-backed editor" },
     ],

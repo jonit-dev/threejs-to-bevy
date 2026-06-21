@@ -146,6 +146,10 @@ back as source.
 - `pnpm --filter @threenative/editor test` - 57 tests passing, including
   deterministic source scene listing and active scene selection in
   `buildSceneLifecycleModel`.
+- `pnpm --filter @threenative/editor test` - 58 tests passing after
+  `/api/project` started returning `sceneLifecycle` metadata with saved,
+  empty, and diagnostic lifecycle states, and after the editor status bar began
+  surfacing active scene/state values.
 
 **User Verification:**
 

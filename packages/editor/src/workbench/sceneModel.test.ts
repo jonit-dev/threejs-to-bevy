@@ -32,7 +32,7 @@ test("should list source scenes and selected active scene", async () => {
       `${JSON.stringify({ schema: "threenative.scene", version: "0.1.0", id: "scene.menu", entities: [], prefabs: [], resources: [], systems: [], ui: { nodes: [] } }, null, 2)}\n`,
     );
     const project = await loadAuthoringProject({ projectPath: root });
-    const lifecycle = buildSceneLifecycleModel(project.documents, "content/scenes/menu.scene.json");
+    const lifecycle = buildSceneLifecycleModel(project.documents, { activeScenePath: "content/scenes/menu.scene.json" });
 
     assert.equal(lifecycle.state, "saved");
     assert.deepEqual(lifecycle.scenes.map((scene) => [scene.id, scene.documentPath]), [
@@ -40,6 +40,19 @@ test("should list source scenes and selected active scene", async () => {
       ["scene.menu", "content/scenes/menu.scene.json"],
     ]);
     assert.equal(lifecycle.activeScene?.id, "scene.menu");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should report diagnostic lifecycle state when project has errors", async () => {
+  const root = await createSceneProject();
+  try {
+    const project = await loadAuthoringProject({ projectPath: root });
+    const lifecycle = buildSceneLifecycleModel(project.documents, { hasErrors: true });
+
+    assert.equal(lifecycle.state, "diagnostic");
+    assert.equal(lifecycle.activeScene?.id, "scene.arena");
   } finally {
     await rm(root, { force: true, recursive: true });
   }

@@ -27,6 +27,8 @@ test("should load structured-source starter inventory", async () => {
 
     assert.equal(result.ok, true);
     assert.equal(result.documents.some((group) => group.kind === "scene" && group.documents[0]?.path === "content/scenes/arena.scene.json"), true);
+    assert.equal(result.sceneLifecycle.activeScene?.documentPath, "content/scenes/arena.scene.json");
+    assert.equal(result.sceneLifecycle.state, "saved");
     assert.equal(result.documents.some((group) => group.kind === "material"), true);
     assert.equal(result.lod.selected, "original");
     assert.equal(result.lod.loading, false);
@@ -128,6 +130,7 @@ test("should surface validation diagnostics", async () => {
     const result = await loadEditorProjectApi({ projectPath: root });
 
     assert.equal(result.ok, false);
+    assert.equal(result.sceneLifecycle.state, "diagnostic");
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_AUTHORING_DOCUMENT_READ_FAILED"), true);
   } finally {
     await rm(root, { force: true, recursive: true });

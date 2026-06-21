@@ -227,8 +227,10 @@ classes: lights render an explicit icon/core glyph instead of an empty group,
 and the editor package gate selects Camera/Light/Terrain rows before screenshot
 capture to prove inspector sync and cue stability.
 The scene lifecycle model now exposes deterministic source scene entries and an
-active scene selection helper for editor workbench flows. This is model-level
-metadata only; load-scene UI remains future editor scene/assets work.
+active scene selection helper for editor workbench flows. `/api/project` now
+returns that lifecycle metadata, including saved/empty/diagnostic scene state,
+and the editor footer surfaces the active scene and scene state. Load-scene UI
+remains future editor scene/assets work.
 The functional editor operation-coverage audit now exposes a shared coverage
 matrix for inspector fields and modal actions. Focused editor tests fail if an
 editable inspector row lacks an operation payload or if a read-only row/action

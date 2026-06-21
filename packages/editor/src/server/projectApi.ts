@@ -8,6 +8,7 @@ import {
   type IAuthoringDocument,
 } from "@threenative/authoring";
 import type { EditorInspectorFieldKind, EditorInspectorSourceFamily, IEditorLodStats, IEditorPropertyRow, IEditorSceneObject, EditorScenePrimitive } from "../adapters/editorModel.js";
+import { buildSceneLifecycleModel, type ISceneLifecycleModel } from "../workbench/sceneModel.js";
 
 export interface IEditorProjectDocumentGroup {
   documents: Array<{
@@ -26,6 +27,7 @@ export interface IEditorProjectApiResult {
   projectPath: string;
   projectRevision: string;
   lod: IEditorLodStats;
+  sceneLifecycle: ISceneLifecycleModel;
   sceneObjects: IEditorSceneObject[];
 }
 
@@ -39,13 +41,15 @@ export async function loadEditorProjectApi(options: { projectPath: string; rootP
   const validation = await validateAuthoringProject({ projectPath: project.projectPath });
   const diagnostics = [...project.diagnostics, ...validation.diagnostics];
   const sceneObjects = buildSceneObjects(project.documents);
+  const hasErrors = diagnostics.some((diagnostic) => diagnostic.severity === "error");
   return {
     diagnostics,
     documents: groupDocuments(project.documents),
     lod: buildLodStats(sceneObjects),
-    ok: !diagnostics.some((diagnostic) => diagnostic.severity === "error"),
+    ok: !hasErrors,
     projectPath: project.projectPath,
     projectRevision: projectRevision(project.documents),
+    sceneLifecycle: buildSceneLifecycleModel(project.documents, { hasErrors }),
     sceneObjects,
   };
 }
@@ -101,6 +105,7 @@ function emptyProjectResult(projectPath: string, diagnostics: IAuthoringDiagnost
     ok: false,
     projectPath,
     projectRevision: "0:0",
+    sceneLifecycle: { scenes: [], state: "diagnostic" },
     sceneObjects: [],
   };
 }

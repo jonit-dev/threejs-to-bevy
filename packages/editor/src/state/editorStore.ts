@@ -2,6 +2,7 @@ import { create } from "zustand";
 
 import type { IEditorAddComponentDefinition, IEditorLodStats, IEditorModalActionDefinition, IEditorPropertyRow, IEditorSceneObject } from "../adapters/editorModel.js";
 import type { EditorViewportGizmoMode, IViewportTransform } from "../preview/EditorViewport3d.js";
+import type { ISceneLifecycleModel } from "../workbench/sceneModel.js";
 
 export type EditorModal = "addComponent" | "addObject" | "build" | "chat" | "delete" | "newScene" | "save" | "settings" | undefined;
 
@@ -12,6 +13,7 @@ export interface IEditorProjectPayload {
   projectPath?: string;
   projectRevision?: string;
   lod?: IEditorLodStats;
+  sceneLifecycle?: ISceneLifecycleModel;
   sceneObjects?: IEditorSceneObject[];
 }
 
