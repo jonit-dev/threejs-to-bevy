@@ -103,7 +103,7 @@ export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPr
           </PanelShell>
         </aside>
         <section className="tn-editor-preview" aria-label="Preview">
-          <EditorViewport3d gizmoMode={gizmoMode} objects={model.sceneObjects} selectedRowId={model.selectedRowId} onSelectObject={onSelectRow} onTransformObject={onTransformObject} />
+          <EditorViewport3d environment={model.environment} gizmoMode={gizmoMode} objects={model.sceneObjects} selectedRowId={model.selectedRowId} onSelectObject={onSelectRow} onTransformObject={onTransformObject} />
           <div className="tn-editor-viewport-label">
             <span />
             <strong>Viewport</strong>
@@ -174,7 +174,7 @@ export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPr
         <span>128MB</span>
         <span>WebGL</span>
         <span className="tn-editor-statusbar__spacer" />
-        <span>{model.lod.mode.toUpperCase()}</span>
+        <span>{model.lod.mode.toUpperCase()} {model.lod.precision.toUpperCase()}</span>
         <span>TERRAIN</span>
         <span>LOD: <strong>{model.lod.selected}</strong></span>
         <span>Triangles: <strong>{formatNumber(model.lod.loadedTriangles)}</strong> / {formatNumber(model.lod.triangleCount)} / {formatNumber(model.lod.budget)} {model.lod.loading ? "(Loading)" : "(Good)"}</span>

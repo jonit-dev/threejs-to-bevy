@@ -7,7 +7,7 @@ import {
   type IAuthoringDiagnostic,
   type IAuthoringDocument,
 } from "@threenative/authoring";
-import type { EditorInspectorFieldKind, EditorInspectorSourceFamily, IEditorAssetRow, IEditorLodStats, IEditorPropertyRow, IEditorSceneObject, EditorScenePrimitive } from "../adapters/editorModel.js";
+import type { EditorInspectorFieldKind, EditorInspectorSourceFamily, IEditorAssetRow, IEditorEnvironmentSummary, IEditorLodStats, IEditorPropertyRow, IEditorSceneObject, EditorScenePrimitive } from "../adapters/editorModel.js";
 import { buildCatalogModel } from "../workbench/catalogModel.js";
 import { buildSceneLifecycleModel, type ISceneLifecycleModel } from "../workbench/sceneModel.js";
 
@@ -25,6 +25,7 @@ export interface IEditorProjectApiResult {
   assets: IEditorAssetRow[];
   diagnostics: IAuthoringDiagnostic[];
   documents: IEditorProjectDocumentGroup[];
+  environment?: IEditorEnvironmentSummary;
   ok: boolean;
   projectPath: string;
   projectRevision: string;
@@ -48,6 +49,7 @@ export async function loadEditorProjectApi(options: { projectPath: string; rootP
     diagnostics,
     assets: buildProjectAssets(project.documents),
     documents: groupDocuments(project.documents),
+    environment: buildEnvironmentSummary(project.documents),
     lod: buildLodStats(sceneObjects),
     ok: !hasErrors,
     projectPath: project.projectPath,
@@ -105,7 +107,7 @@ function emptyProjectResult(projectPath: string, diagnostics: IAuthoringDiagnost
     diagnostics,
     assets: [],
     documents: [],
-    lod: { budget: 200_000, loadedTriangles: 0, loading: false, mode: "auto", selected: "original", triangleCount: 0 },
+    lod: { budget: 200_000, loadedTriangles: 0, loading: false, mode: "auto", precision: "estimate", selected: "original", triangleCount: 0 },
     ok: false,
     projectPath,
     projectRevision: "0:0",
@@ -131,6 +133,7 @@ function buildLodStats(sceneObjects: readonly IEditorSceneObject[]): IEditorLodS
     loadedTriangles: triangleCount,
     loading: false,
     mode: "auto",
+    precision: "estimate",
     selected: "original",
     triangleCount,
   };
@@ -191,6 +194,29 @@ function readEnvironmentSkybox(documents: readonly IAuthoringDocument[]): IEnvir
       documentPath: document.projectRelativePath,
       mode: readString(skybox.mode) ?? "configured",
       value: summarizeSkybox(skybox),
+    };
+  }
+  return undefined;
+}
+
+function buildEnvironmentSummary(documents: readonly IAuthoringDocument[]): IEditorEnvironmentSummary | undefined {
+  for (const document of documents) {
+    if (document.kind !== "environment" || !isRecord(document.data)) {
+      continue;
+    }
+    const skybox = isRecord(document.data.skybox) ? document.data.skybox : undefined;
+    const terrain = isRecord(document.data.terrain) ? document.data.terrain : undefined;
+    return {
+      ...(skybox === undefined ? {} : { skybox: { mode: readString(skybox.mode) ?? "configured", value: summarizeSkybox(skybox) } }),
+      ...(terrain === undefined
+        ? {}
+        : {
+            terrain: {
+              heightMode: readString(terrain.heightMode),
+              id: readString(terrain.id),
+              sourceAsset: readString(terrain.heightmap) ?? readString(terrain.sourceAsset),
+            },
+          }),
     };
   }
   return undefined;
@@ -446,6 +472,26 @@ function documentInspectorRows(document: IAuthoringDocument): IEditorPropertyRow
       if (skybox !== undefined) {
         rows.push(documentRow(document, "environment:skybox", "Skybox", summarizeSkybox(skybox), "asset", true, "/skybox", "environment", undefined, undefined, undefined, "Environment skybox mutation is not exposed through the editor operation API yet."));
         rows.push(documentRow(document, "environment:skybox-mode", "Skybox Mode", readString(skybox.mode) ?? "", "enum", true, "/skybox/mode", "environment", undefined, undefined, undefined, "Environment skybox mutation is not exposed through the editor operation API yet."));
+      }
+      if (document.data.environmentMap !== undefined) {
+        rows.push(documentRow(document, "environment:environment-map", "Environment Map", summarizeValue(document.data.environmentMap), "asset", true, "/environmentMap", "environment", undefined, undefined, undefined, "Environment map mutation is not exposed through the editor operation API yet."));
+      }
+      const terrain = isRecord(document.data.terrain) ? document.data.terrain : undefined;
+      if (terrain !== undefined) {
+        rows.push(documentRow(document, "environment:terrain-id", "Terrain", readString(terrain.id) ?? "configured", "string", true, "/terrain/id", "environment", undefined, undefined, undefined, "Terrain source mutation is not exposed through the editor operation API yet."));
+        rows.push(documentRow(document, "environment:terrain-height-mode", "Terrain Height Mode", readString(terrain.heightMode) ?? "unknown", "enum", true, "/terrain/heightMode", "environment", undefined, undefined, undefined, "Terrain height mode mutation is not exposed through the editor operation API yet."));
+        rows.push(documentRow(document, "environment:terrain-heightmap", "Terrain Heightmap", readString(terrain.heightmap) ?? readString(terrain.sourceAsset) ?? "flat fallback", "asset", true, "/terrain/heightmap", "environment", undefined, undefined, undefined, "Terrain heightmap rendering and editing are inspect-only in this editor slice."));
+      }
+      if (document.data.walkability !== undefined) {
+        rows.push(documentRow(document, "environment:walkability", "Walkability", summarizeValue(document.data.walkability), "json", true, "/walkability", "environment", undefined, undefined, undefined, "Walkability mutation is not exposed through the editor operation API yet."));
+      }
+      if (document.data.path !== undefined) {
+        rows.push(documentRow(document, "environment:path", "Path", summarizeValue(document.data.path), "json", true, "/path", "environment", undefined, undefined, undefined, "Path mutation is not exposed through the editor operation API yet."));
+      }
+      for (const [index, asset] of readArray(document.data.sourceAssets).filter(isRecord).entries()) {
+        if (asset.lod !== undefined) {
+          rows.push(documentRow(document, `environment:source-asset:${index}:lod`, `${readString(asset.id) ?? `sourceAsset.${index}`} LOD`, summarizeValue(asset.lod), "json", true, `/sourceAssets/${index}/lod`, "environment", undefined, undefined, undefined, "LOD source asset mutation is not exposed through the editor operation API yet."));
+        }
       }
       break;
     }

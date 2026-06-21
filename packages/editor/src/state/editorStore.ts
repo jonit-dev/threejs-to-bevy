@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import type { IEditorAddComponentDefinition, IEditorAssetRow, IEditorLodStats, IEditorModalActionDefinition, IEditorPropertyRow, IEditorSceneObject } from "../adapters/editorModel.js";
+import type { IEditorAddComponentDefinition, IEditorAssetRow, IEditorEnvironmentSummary, IEditorLodStats, IEditorModalActionDefinition, IEditorPropertyRow, IEditorSceneObject } from "../adapters/editorModel.js";
 import type { EditorViewportGizmoMode, IViewportTransform } from "../preview/EditorViewport3d.js";
 import type { ISceneLifecycleModel } from "../workbench/sceneModel.js";
 
@@ -10,6 +10,7 @@ export interface IEditorProjectPayload {
   assets?: IEditorAssetRow[];
   diagnostics?: Array<{ code?: string; file?: string; message: string; path?: string; severity?: "error" | "info" | "warning"; suggestion?: string }>;
   documents?: IEditorProjectDocumentGroup[];
+  environment?: IEditorEnvironmentSummary;
   ok?: boolean;
   projectPath?: string;
   projectRevision?: string;

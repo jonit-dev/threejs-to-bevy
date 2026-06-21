@@ -109,6 +109,11 @@ export interface IEditorAssetRow {
   path?: string;
 }
 
+export interface IEditorEnvironmentSummary {
+  skybox?: { mode: string; value: string };
+  terrain?: { heightMode?: string; id?: string; sourceAsset?: string };
+}
+
 export type EditorScenePrimitive = "box" | "camera" | "capsule" | "cone" | "cylinder" | "plane" | "sphere";
 
 export interface IEditorSceneObject {
@@ -139,6 +144,7 @@ export interface IEditorLodStats {
   loadedTriangles: number;
   loading: boolean;
   mode: "auto" | "manual";
+  precision: "estimate" | "exact";
   selected: string;
   triangleCount: number;
 }
@@ -147,6 +153,7 @@ export interface IEditorShellModel {
   addComponentDefinitions: IEditorAddComponentDefinition[];
   assets: IEditorAssetRow[];
   diagnostics: IEditorDiagnosticView[];
+  environment?: IEditorEnvironmentSummary;
   hierarchy: IEditorTreeRow[];
   inspector: IEditorPropertyRow[];
   lod: IEditorLodStats;
@@ -161,6 +168,7 @@ export interface IEditorAdapterInput {
   addComponentDefinitions?: readonly IEditorAddComponentDefinition[];
   assets?: readonly IEditorAssetRow[];
   diagnostics?: readonly IEditorDiagnosticView[];
+  environment?: IEditorEnvironmentSummary;
   hierarchy?: readonly IEditorTreeRow[];
   inspector?: readonly IEditorPropertyRow[];
   lod?: IEditorLodStats;
@@ -181,9 +189,10 @@ export function createEditorShellModel(input: IEditorAdapterInput = {}): IEditor
     addComponentDefinitions: [...(input.addComponentDefinitions ?? EDITOR_ADD_COMPONENT_DEFINITIONS)],
     assets,
     diagnostics,
+    environment: input.environment,
     hierarchy,
     inspector,
-    lod: input.lod ?? { budget: 200_000, loadedTriangles: 0, loading: false, mode: "auto", selected: "original", triangleCount: 0 },
+    lod: input.lod ?? { budget: 200_000, loadedTriangles: 0, loading: false, mode: "auto", precision: "estimate", selected: "original", triangleCount: 0 },
     projectName: input.projectName ?? "Untitled ThreeNative Project",
     sceneObjects: [...(input.sceneObjects ?? [])],
     selectedRowId: input.selectedRowId,
@@ -266,6 +275,13 @@ export const EDITOR_INSPECTOR_FIELD_INVENTORY: readonly IEditorInspectorFieldInv
   { component: "Camera", defaultValue: "perspective", field: "mode", fieldKind: "enum", operationName: "scene.set_camera", readOnly: false, sourceFamily: "scene" },
   { component: "Camera", defaultValue: "", field: "target", fieldKind: "string", operationName: "scene.set_camera", readOnly: false, sourceFamily: "scene" },
   { component: "Camera", defaultValue: "none", field: "skybox", fieldKind: "asset", readOnly: true, readOnlyReason: "Skybox is owned by environment.scene source and does not have a promoted editor mutation operation yet.", sourceFamily: "environment" },
+  { field: "environment.environmentMap", fieldKind: "asset", readOnly: true, readOnlyReason: "Environment map mutation is not exposed through the editor operation API yet.", sourceFamily: "environment" },
+  { field: "environment.terrain.id", fieldKind: "string", readOnly: true, readOnlyReason: "Terrain source mutation is not exposed through the editor operation API yet.", sourceFamily: "environment" },
+  { field: "environment.terrain.heightMode", fieldKind: "enum", readOnly: true, readOnlyReason: "Terrain height mode mutation is not exposed through the editor operation API yet.", sourceFamily: "environment" },
+  { field: "environment.terrain.heightmap", fieldKind: "asset", readOnly: true, readOnlyReason: "Terrain heightmap rendering and editing are inspect-only in this editor slice.", sourceFamily: "environment" },
+  { field: "environment.walkability", fieldKind: "json", readOnly: true, readOnlyReason: "Walkability mutation is not exposed through the editor operation API yet.", sourceFamily: "environment" },
+  { field: "environment.path", fieldKind: "json", readOnly: true, readOnlyReason: "Path mutation is not exposed through the editor operation API yet.", sourceFamily: "environment" },
+  { field: "environment.sourceAssets.lod", fieldKind: "json", readOnly: true, readOnlyReason: "LOD source asset mutation is not exposed through the editor operation API yet.", sourceFamily: "environment" },
   { component: "Light", defaultValue: "directional", field: "kind", fieldKind: "enum", readOnly: true, readOnlyReason: "Light is not part of supportedComponentKinds; source data is preserved read-only.", sourceFamily: "scene" },
   { component: "Light", defaultValue: 1, field: "intensity", fieldKind: "number", readOnly: true, readOnlyReason: "Light is not part of supportedComponentKinds; source data is preserved read-only.", sourceFamily: "scene" },
   { field: "materials.color", fieldKind: "color", operationName: "material.set", readOnly: false, sourceFamily: "material" },

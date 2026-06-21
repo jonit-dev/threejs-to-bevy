@@ -7,7 +7,7 @@ import test from "node:test";
 import { applyEditorOperationApi } from "./operationApi.js";
 import { loadEditorProjectApi } from "./projectApi.js";
 
-test("should load structured-source starter inventory", async () => {
+test("should expose environment skybox and terrain rows", async () => {
   const root = await copyStarterProject();
   try {
     await mkdir(join(root, "content", "environment"), { recursive: true });
@@ -17,10 +17,13 @@ test("should load structured-source starter inventory", async () => {
         schema: "threenative.environment-scene",
         version: "0.1.0",
         id: "arena-environment",
-        sourceAssets: [],
         instances: [],
+        environmentMap: { asset: "tex.env" },
         path: { id: "path.main", points: [[0, 0, 0], [1, 0, 1]] },
         skybox: { asset: "tex.sky", mode: "equirect" },
+        sourceAssets: [{ id: "env.Tree", lod: [{ asset: "env.Tree.low", maxDistance: 60 }] }],
+        terrain: { heightMode: "heightmap", heightmap: "assets/height/arena.png", id: "terrain.arena" },
+        walkability: { terrain: { height: 0, surface: "terrain.arena" } },
       }, null, 2)}\n`,
     );
     const result = await loadEditorProjectApi({ projectPath: root });
@@ -34,6 +37,11 @@ test("should load structured-source starter inventory", async () => {
     assert.equal(result.lod.loading, false);
     assert.equal(result.lod.triangleCount > 0, true);
     assert.equal(result.lod.loadedTriangles, result.lod.triangleCount);
+    assert.equal(result.lod.precision, "estimate");
+    assert.equal(result.environment?.skybox?.value, "tex.sky");
+    assert.equal(result.environment?.terrain?.id, "terrain.arena");
+    assert.equal(result.environment?.terrain?.heightMode, "heightmap");
+    assert.equal(result.environment?.terrain?.sourceAsset, "assets/height/arena.png");
     assert.deepEqual(
       result.sceneObjects.map((object) => [object.id, object.primitive, object.color, object.position?.join(",")]),
       [
@@ -49,6 +57,12 @@ test("should load structured-source starter inventory", async () => {
     assert.equal(result.sceneObjects.find((object) => object.id === "player")?.inspectorRows?.some((row) => row.component === "MeshRenderer" && row.label === "Asset" && row.fieldKind === "asset" && row.readOnlyReason !== undefined), true);
     const environmentRows = result.documents.flatMap((group) => group.documents).find((document) => document.kind === "environment")?.inspectorRows ?? [];
     assert.equal(environmentRows.some((row) => row.label === "Skybox" && row.sourceFamily === "environment" && row.value === "tex.sky"), true);
+    assert.equal(environmentRows.some((row) => row.label === "Environment Map" && row.fieldKind === "asset" && row.readOnlyReason !== undefined), true);
+    assert.equal(environmentRows.some((row) => row.label === "Terrain Height Mode" && row.fieldKind === "enum" && row.value === "heightmap"), true);
+    assert.equal(environmentRows.some((row) => row.label === "Terrain Heightmap" && row.fieldKind === "asset" && row.value === "assets/height/arena.png"), true);
+    assert.equal(environmentRows.some((row) => row.label === "Walkability" && row.fieldKind === "json" && row.readOnlyReason !== undefined), true);
+    assert.equal(environmentRows.some((row) => row.label === "Path" && row.fieldKind === "json" && row.readOnlyReason !== undefined), true);
+    assert.equal(environmentRows.some((row) => row.label === "env.Tree LOD" && row.fieldKind === "json" && row.readOnlyReason !== undefined), true);
     const materialRows = result.documents.flatMap((group) => group.documents).find((document) => document.kind === "material")?.inspectorRows ?? [];
     assert.equal(materialRows.some((row) => row.fieldKind === "color" && row.operation?.name === "material.set"), true);
     const allRows = [

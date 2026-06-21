@@ -101,6 +101,7 @@ function projectToEditorModel(
       severity: diagnostic.severity ?? "info",
       suggestion: diagnostic.suggestion,
     })),
+    environment: project.environment,
     hierarchy,
     inspector: selectedObject === undefined ? documentInspectorRows(selectedDocument) : objectInspectorRows(selectedObject),
     lod: project.lod ?? devFixtureModel.lod,

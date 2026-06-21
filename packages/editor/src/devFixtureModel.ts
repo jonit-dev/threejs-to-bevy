@@ -59,6 +59,7 @@ export const devFixtureModel: IEditorShellModel = {
     loadedTriangles: 1036,
     loading: false,
     mode: "auto",
+    precision: "estimate",
     selected: "original",
     triangleCount: 1036,
   },

@@ -219,14 +219,14 @@ back as source.
 
 **Implementation:**
 
-- [ ] Surface skybox, environment map, terrain, height mode, heightmap/source
+- [x] Surface skybox, environment map, terrain, height mode, heightmap/source
   asset, walkability/path, and LOD rows with explicit control/read-only status.
-- [ ] Render visible skybox/background cue in the editor viewport when an
+- [x] Render visible skybox/background cue in the editor viewport when an
   environment skybox exists.
-- [ ] Render terrain from source data where supported; show flat fallback when
+- [x] Render terrain from source data where supported; show flat fallback when
   heightmap editing/rendering is not promoted.
-- [ ] Distinguish exact loaded triangles from estimates in footer data.
-- [ ] Keep terrain heightmap unsupported/editability gaps visible as read-only
+- [x] Distinguish exact loaded triangles from estimates in footer data.
+- [x] Keep terrain heightmap unsupported/editability gaps visible as read-only
   with reasons.
 
 **Tests Required:**
@@ -241,6 +241,15 @@ back as source.
 - Action: open an environment scene with skybox and terrain.
 - Expected: Camera inspector and environment document rows show skybox/terrain,
   viewport reflects scene context, footer reports LOD/triangles.
+
+**Progress Evidence:**
+
+- `pnpm --filter @threenative/editor test` - 66 tests passing after
+  `/api/project` exposed environment skybox, environment map, terrain,
+  heightmap, walkability, path, and source-asset LOD rows with read-only
+  reasons; editor model inventory covered terrain heightmap/skybox fields; the
+  viewport received environment metadata for background/terrain cues; and the
+  footer reported LOD precision as estimated.
 
 #### Phase 4: Build Preview and Artifact Proof - Scene/source edits prove generated IR consistency.
 

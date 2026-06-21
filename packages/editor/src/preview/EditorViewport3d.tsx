@@ -4,10 +4,11 @@ import { TransformControls } from "three/examples/jsm/controls/TransformControls
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
-import type { IEditorSceneObject } from "../adapters/editorModel.js";
+import type { IEditorEnvironmentSummary, IEditorSceneObject } from "../adapters/editorModel.js";
 import { markViewportSelectionOwner, resolveViewportSelectionOwnerRowId } from "./selectionBridge.js";
 
 export interface IEditorViewport3dProps {
+  environment?: IEditorEnvironmentSummary;
   gizmoMode?: EditorViewportGizmoMode;
   objects: readonly IEditorSceneObject[];
   onTransformObject?: (rowId: string, transform: IViewportTransform) => void;
@@ -23,7 +24,7 @@ export interface IViewportTransform {
   scale: [number, number, number];
 }
 
-export function EditorViewport3d({ gizmoMode = "translate", objects, onSelectObject, onTransformObject, selectedRowId }: IEditorViewport3dProps) {
+export function EditorViewport3d({ environment, gizmoMode = "translate", objects, onSelectObject, onTransformObject, selectedRowId }: IEditorViewport3dProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const onSelectRef = useRef(onSelectObject);
   const onTransformRef = useRef(onTransformObject);
@@ -37,7 +38,7 @@ export function EditorViewport3d({ gizmoMode = "translate", objects, onSelectObj
     }
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color("#064812");
+    scene.background = new THREE.Color(environment?.skybox === undefined ? "#064812" : "#496d8b");
 
     const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
     camera.position.set(-5.8, 4.3, 6.2);
@@ -62,7 +63,7 @@ export function EditorViewport3d({ gizmoMode = "translate", objects, onSelectObj
 
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(24, 24),
-      new THREE.MeshStandardMaterial({ color: "#065214", roughness: 0.95 }),
+      new THREE.MeshStandardMaterial({ color: environment?.terrain === undefined ? "#065214" : "#284f32", roughness: 0.95 }),
     );
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
@@ -190,7 +191,7 @@ export function EditorViewport3d({ gizmoMode = "translate", objects, onSelectObj
       dracoLoader.dispose();
       renderer.dispose();
     };
-  }, [gizmoMode, objects, selectedRowId]);
+  }, [environment, gizmoMode, objects, selectedRowId]);
 
   return <div className="tn-editor-viewport-canvas" ref={hostRef} />;
 }

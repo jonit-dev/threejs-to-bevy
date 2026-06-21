@@ -248,6 +248,13 @@ entity, and transform operations with the GLB/GLTF path persisted on the prefab;
 `/api/project` exposes the resulting `assetPath`, MeshRenderer inspector asset
 row, and info/error diagnostics for `/project-assets` viewport routing while
 remote model paths remain unsupported.
+The editor environment/terrain slice now exposes source-derived environment
+summary metadata to the viewport and inspector. `/api/project` emits read-only
+rows for skybox, environment map, terrain id/height mode/heightmap,
+walkability, path, and source-asset LOD data with explicit reasons for
+unsupported mutations. The editor viewport uses environment metadata for a
+visible sky/background and terrain cue, and the footer distinguishes estimated
+LOD triangle counts from exact loaded counts.
 The follow-up component mutation audit keeps Transform, Camera, material,
 input, system script, and UI binding rows source-editable while preserving
 explicit read-only reasons for unsupported Light and MeshRenderer prefab

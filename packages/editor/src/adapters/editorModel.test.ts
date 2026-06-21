@@ -109,6 +109,18 @@ test("should classify unsupported fields as read-only with reasons", () => {
   assert.equal(EDITOR_MODAL_ACTION_DEFINITIONS.some((action) => action.id === "add.custom_glb" && action.readOnlyReason !== undefined), true);
 });
 
+test("should inventory terrain heightmap and skybox fields", () => {
+  const environmentRows = EDITOR_INSPECTOR_FIELD_INVENTORY.filter((item) => item.sourceFamily === "environment");
+  const fields = new Set(environmentRows.map((item) => item.field));
+
+  assert.equal(fields.has("environment.terrain.heightmap"), true);
+  assert.equal(fields.has("environment.terrain.heightMode"), true);
+  assert.equal(fields.has("environment.walkability"), true);
+  assert.equal(fields.has("environment.path"), true);
+  assert.equal(environmentRows.every((item) => item.readOnly && item.readOnlyReason !== undefined), true);
+  assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => "component" in item && item.component === "Camera" && item.field === "skybox"), true);
+});
+
 function visualSnapshotFixture(): IEditorVisualPanelSnapshot {
   return {
     panels: [

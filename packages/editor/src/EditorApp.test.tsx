@@ -121,7 +121,7 @@ function modelFixture(): IEditorShellModel {
     diagnostics: [{ code: "TN_TEST", message: "fixture diagnostic", severity: "info" }],
     hierarchy: [{ access: "sourcePersistable", badge: "entity", id: "entity:player", label: "player" }],
     inspector: [{ access: "sourcePersistable", id: "property:transform", label: "Transform", readOnly: false, value: "[0, 1, 0]" }],
-    lod: { budget: 200000, loadedTriangles: 12, loading: false, mode: "auto", selected: "original", triangleCount: 12 },
+    lod: { budget: 200000, loadedTriangles: 12, loading: false, mode: "auto", precision: "estimate", selected: "original", triangleCount: 12 },
     projectName: "fixture",
     sceneObjects: [{ id: "player", kind: "entity", label: "player", primitive: "box", rowId: "entity:player" }],
     status: "ready",
