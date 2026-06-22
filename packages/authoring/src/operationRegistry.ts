@@ -276,6 +276,10 @@ const descriptors = [
     stringArg("cameraId"),
     stringArg("mode"),
     stringArg("targetId"),
+    numberArg("fovY", false),
+    numberArg("near", false),
+    numberArg("far", false),
+    numberArg("size", false),
   ]),
   descriptor("scene.set_component", "Set a scene entity component through structured source.", "scene", "source-document", [
     stringArg("sceneId"),
@@ -288,6 +292,10 @@ const descriptors = [
     stringArg("entityId"),
     stringArg("mode", false),
     stringArg("targetId", false),
+    numberArg("fovY", false),
+    numberArg("near", false),
+    numberArg("far", false),
+    numberArg("size", false),
   ]),
   descriptor("scene.set_light", "Set a typed Light component with defaults.", "scene", "source-document", [
     stringArg("sceneId"),
@@ -513,9 +521,9 @@ const dispatchers: Record<AuthoringOperationName, OperationDispatcher> = {
   "scene.remove_component": async ({ args, projectPath }) =>
     removeComponent({ componentKind: requiredString(args, "componentKind"), entityId: requiredString(args, "entityId"), projectPath, sceneId: requiredString(args, "sceneId") }),
   "scene.set_camera": async ({ args, projectPath }) =>
-    setCamera({ cameraId: requiredString(args, "cameraId"), mode: requiredString(args, "mode"), projectPath, sceneId: requiredString(args, "sceneId"), targetId: requiredString(args, "targetId") }),
+    setCamera({ cameraId: requiredString(args, "cameraId"), far: optionalNumber(args, "far"), fovY: optionalNumber(args, "fovY"), mode: requiredString(args, "mode"), near: optionalNumber(args, "near"), projectPath, sceneId: requiredString(args, "sceneId"), size: optionalNumber(args, "size"), targetId: requiredString(args, "targetId") }),
   "scene.set_camera_component": async ({ args, projectPath }) =>
-    setCameraComponent({ entityId: requiredString(args, "entityId"), mode: optionalString(args, "mode"), projectPath, sceneId: requiredString(args, "sceneId"), targetId: optionalString(args, "targetId") }),
+    setCameraComponent({ entityId: requiredString(args, "entityId"), far: optionalNumber(args, "far"), fovY: optionalNumber(args, "fovY"), mode: optionalString(args, "mode"), near: optionalNumber(args, "near"), projectPath, sceneId: requiredString(args, "sceneId"), size: optionalNumber(args, "size"), targetId: optionalString(args, "targetId") }),
   "scene.set_character_controller": async ({ args, projectPath }) =>
     setCharacterControllerComponent({ blocking: optionalBoolean(args, "blocking"), grounding: optionalString(args, "grounding"), entityId: requiredString(args, "entityId"), moveXAxis: optionalString(args, "moveXAxis"), moveZAxis: optionalString(args, "moveZAxis"), projectPath, sceneId: requiredString(args, "sceneId"), slopeLimit: optionalNumber(args, "slopeLimit"), speed: optionalNumber(args, "speed"), stepOffset: optionalNumber(args, "stepOffset") }),
   "scene.set_collider": async ({ args, projectPath }) =>

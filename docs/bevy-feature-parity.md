@@ -293,6 +293,7 @@ ergonomics. These rows are not implementation claims.
 
 - [x] Perspective camera and active camera selection
 - [x] Orthographic projection metadata and conformance observation
+- [x] Source-authored camera projection/frustum fields lower into promoted IR camera components
 - [x] First-person camera/controller metadata
 - [x] `P1` Multiple active cameras, camera ordering, and split-screen
 - [x] `P1` Viewports, sub-views, and render layers
@@ -621,7 +622,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] Shared authoring operation registry for CLI/MCP/editor mutation adapters
 - [x] Registry-backed CLI source mutation for asset catalogs and audio sound documents
 - [x] Registry-backed CLI/editor source mutation for project metadata documents
-- [x] Typed CLI/source operations for common ECS components (`camera`, `light`, `mesh-renderer`, `rigid-body`, `collider`, `character-controller`)
+- [x] Typed CLI/source operations for common ECS components (`camera`, `light`, `mesh-renderer`, `rigid-body`, `collider`, `character-controller`), including camera projection/frustum fields
 - [x] Editor workbench source inventory and structured operation dispatch
 - [x] Live preview edit classification with provenance-backed source mapping
 - [x] Deterministic structured bundle-relative JSON diffs

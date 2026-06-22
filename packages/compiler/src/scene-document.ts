@@ -389,17 +389,23 @@ function cameraObjectFromEntity(entityId: string, camera: unknown, transform: Re
   const cameraRecord = readRecord(camera);
   const mode = typeof cameraRecord?.mode === "string" ? cameraRecord.mode : "perspective";
   const target = typeof cameraRecord?.target === "string" ? cameraRecord.target : undefined;
+  const far = readPositiveNumber(cameraRecord?.far) ?? 100;
+  const near = readPositiveNumber(cameraRecord?.near) ?? 0.1;
   const cameraObject = mode === "orthographic"
-    ? new OrthographicCamera({ far: 100, id: entityId, near: 0.1, size: 5 })
+    ? new OrthographicCamera({ far, id: entityId, near, size: readPositiveNumber(cameraRecord?.size) ?? 5 })
     : new PerspectiveCamera({
-        far: 100,
-        fovY: 52,
+        far,
+        fovY: readPositiveNumber(cameraRecord?.fovY) ?? 52,
         ...(mode === "third-person-follow" && target !== undefined ? { follow: { offset: [0, 2.4, 5.5], smoothing: 0.2, target } } : {}),
         id: entityId,
-        near: 0.1,
+        near,
       });
   applyTransform(cameraObject, defaultCameraTransform(transform));
   return cameraObject;
+}
+
+function readPositiveNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : undefined;
 }
 
 function defaultCameraTransform(transform: ReturnType<typeof normalizeTransform>): ReturnType<typeof normalizeTransform> {

@@ -201,7 +201,11 @@ export interface ISetSceneLifecycleOptions extends IAuthoringOperationContext {
 export interface ISetCameraComponentOptions extends IAuthoringOperationContext {
   sceneId: string;
   entityId: string;
+  far?: number;
+  fovY?: number;
   mode?: string;
+  near?: number;
+  size?: number;
   targetId?: string;
 }
 
@@ -278,7 +282,11 @@ export interface ISetTransformOptions extends IAuthoringOperationContext {
 export interface ISetCameraOptions extends IAuthoringOperationContext {
   sceneId: string;
   cameraId: string;
+  far?: number;
+  fovY?: number;
   mode: string;
+  near?: number;
+  size?: number;
   targetId: string;
 }
 
@@ -1090,7 +1098,11 @@ export async function setCameraComponent(options: ISetCameraComponentOptions): P
     entityId: options.entityId,
     componentKind: "camera",
     value: {
+      ...(options.far === undefined ? {} : { far: options.far }),
+      ...(options.fovY === undefined ? {} : { fovY: options.fovY }),
       mode: options.mode ?? "perspective",
+      ...(options.near === undefined ? {} : { near: options.near }),
+      ...(options.size === undefined ? {} : { size: options.size }),
       ...(options.targetId === undefined ? {} : { target: options.targetId }),
     },
   });
@@ -1225,7 +1237,11 @@ export async function setCamera(options: ISetCameraOptions): Promise<IAuthoringO
     entity.components = {
       ...(isRecord(entity.components) ? entity.components : {}),
       camera: {
+        ...(options.far === undefined ? {} : { far: options.far }),
+        ...(options.fovY === undefined ? {} : { fovY: options.fovY }),
         mode: options.mode,
+        ...(options.near === undefined ? {} : { near: options.near }),
+        ...(options.size === undefined ? {} : { size: options.size }),
         target: options.targetId,
       },
     };
@@ -2918,6 +2934,11 @@ function validateCameraComponent(diagnostics: IAuthoringDiagnostic[], file: stri
     diagnostics.push(typeDiagnostic(file, `${path}/target`, "camera target must be a non-empty entity id.", value.target));
   } else if (target !== undefined && !entityIds.includes(target)) {
     diagnostics.push(missingReferenceDiagnostic(file, `${path}/target`, "entity", target, entityIds));
+  }
+  for (const key of ["far", "fovY", "near", "size"] as const) {
+    if (value[key] !== undefined && (typeof value[key] !== "number" || !Number.isFinite(value[key]) || value[key] <= 0)) {
+      diagnostics.push(typeDiagnostic(file, `${path}/${key}`, `camera ${key} must be a positive finite number.`, value[key]));
+    }
   }
 }
 

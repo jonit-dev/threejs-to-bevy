@@ -213,7 +213,7 @@ test("build should lower structured scene entry into runtime bundle with attache
       resources: [{ id: "race-state", value: { lap: 1, speed: 0, status: "READY" } }],
       entities: [
         { id: "player", prefab: "cube-prefab", components: { VehiclePhysics: { speed: 42, boost: 0.65, heading: 1.57 }, Team: { id: "orange" } }, transform: { position: [0, 0.35, 0], rotation: [0, 1.57, 0], scale: [0.6, 0.6, 0.6] } },
-        { id: "chase-camera", components: { camera: { mode: "perspective", target: "player" } }, transform: { position: [0, 3.2, 5.8], rotation: [-0.48, 0, 0] } },
+        { id: "chase-camera", components: { camera: { far: 250, fovY: 58, mode: "perspective", near: 0.2, target: "player" } }, transform: { position: [0, 3.2, 5.8], rotation: [-0.48, 0, 0] } },
       ],
       systems: [{ id: "move-player-to-goal", script: { module: "src/scripts/player.ts", export: "movePlayerToGoal" } }],
     }, null, 2)}\n`,
@@ -238,6 +238,13 @@ test("build should lower structured scene entry into runtime bundle with attache
     const player = world.entities.find((entity) => entity.id === "player");
     assert.deepEqual(player?.components.VehiclePhysics, { speed: 42, boost: 0.65, heading: 1.57 });
     assert.deepEqual(player?.components.Team, { id: "orange" });
+    assert.deepEqual(world.entities.find((entity) => entity.id === "chase-camera")?.components.Camera, {
+      far: 250,
+      fovY: 58,
+      kind: "perspective",
+      near: 0.2,
+      priority: 0,
+    });
     assert.deepEqual(world.resources["race-state"], { lap: 1, speed: 0, status: "READY" });
     const playerTransform = world.entities.find((entity) => entity.id === "player")?.components.Transform as { rotation?: unknown[] } | undefined;
     assert.equal(playerTransform?.rotation?.length, 4);

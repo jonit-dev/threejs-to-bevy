@@ -211,9 +211,23 @@ export async function sceneCommand(argv: readonly string[], options: ISceneComma
     const mode = readFlag(normalizedArgv, "--mode");
     const targetId = readFlag(normalizedArgv, "--target");
     if (sceneId === undefined || cameraId === undefined || mode === undefined || targetId === undefined) {
-      return renderUsage(json, "TN_SCENE_SET_CAMERA_ARGS_MISSING", "Usage: tn scene set-camera <scene-id> <camera-id> --mode <mode> --target <entity-id> [--project <path>] [--json]");
+      return renderUsage(json, "TN_SCENE_SET_CAMERA_ARGS_MISSING", "Usage: tn scene set-camera <scene-id> <camera-id> --mode <mode> --target <entity-id> [--fov-y <n>] [--near <n>] [--far <n>] [--size <n>] [--project <path>] [--json]");
     }
-    const result = await setCamera({ projectPath, sceneId, cameraId, mode, targetId });
+    const numbers = parseNumberFlags(normalizedArgv, ["--fov-y", "--near", "--far", "--size"]);
+    if (numbers.diagnostic !== undefined) {
+      return renderUsage(json, numbers.diagnostic, "Camera numeric flags must be finite numbers.");
+    }
+    const result = await setCamera({
+      cameraId,
+      far: numbers.values["--far"],
+      fovY: numbers.values["--fov-y"],
+      mode,
+      near: numbers.values["--near"],
+      projectPath,
+      sceneId,
+      size: numbers.values["--size"],
+      targetId,
+    });
     return renderSceneResult(result, json, result.ok ? `Camera '${cameraId}' updated.` : `Camera '${cameraId}' was not updated.`);
   }
 
@@ -410,7 +424,7 @@ function sceneLifecycleUsage(): string {
 }
 
 function sceneAddComponentUsage(): string {
-  return "Usage: tn scene add-component <scene-id> <entity-id> light [--kind <ambient|directional|point|spot>] [--intensity <n>] [--color <css-color>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> mesh-renderer --mesh <mesh-id> --material <material-id> [--visible <true|false>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> rigid-body [--kind <dynamic|kinematic|static>] [--mass <n>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> collider [--kind <box|sphere|capsule|cylinder|mesh>] [--size x,y,z] [--radius <n>] [--height <n>] [--trigger <true|false>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> character-controller [--move-x <axis>] [--move-z <axis>] [--speed <n>] [--project <path>] [--json]";
+  return "Usage: tn scene add-component <scene-id> <entity-id> camera [--mode <perspective|orthographic|third-person-follow>] [--target <entity-id>] [--fov-y <n>] [--near <n>] [--far <n>] [--size <n>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> light [--kind <ambient|directional|point|spot>] [--intensity <n>] [--color <css-color>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> mesh-renderer --mesh <mesh-id> --material <material-id> [--visible <true|false>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> rigid-body [--kind <dynamic|kinematic|static>] [--mass <n>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> collider [--kind <box|sphere|capsule|cylinder|mesh>] [--size x,y,z] [--radius <n>] [--height <n>] [--trigger <true|false>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> character-controller [--move-x <axis>] [--move-z <axis>] [--speed <n>] [--project <path>] [--json]";
 }
 
 function parseTypedComponent(
@@ -421,9 +435,23 @@ function parseTypedComponent(
 ): { apply: (projectPath: string) => Promise<IAuthoringOperationResult>; componentKind: string; diagnostic?: string; usage?: string } {
   const normalized = component.toLowerCase();
   if (normalized === "camera") {
+    const numbers = parseNumberFlags(argv, ["--fov-y", "--near", "--far", "--size"]);
+    if (numbers.diagnostic !== undefined) {
+      return { apply: neverApply, componentKind: "camera", diagnostic: numbers.diagnostic, usage: "Camera numeric flags must be finite numbers." };
+    }
     return {
       componentKind: "camera",
-      apply: (projectPath) => setCameraComponent({ entityId, mode: readFlag(argv, "--mode"), projectPath, sceneId, targetId: readFlag(argv, "--target") }),
+      apply: (projectPath) => setCameraComponent({
+        entityId,
+        far: numbers.values["--far"],
+        fovY: numbers.values["--fov-y"],
+        mode: readFlag(argv, "--mode"),
+        near: numbers.values["--near"],
+        projectPath,
+        sceneId,
+        size: numbers.values["--size"],
+        targetId: readFlag(argv, "--target"),
+      }),
     };
   }
   if (normalized === "light") {

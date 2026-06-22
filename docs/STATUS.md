@@ -155,7 +155,9 @@ preserves those promoted portable material fields back into
 API exposes matching editable `material.set` rows. `tn scene add-component` now gives agents a
 typed scene-component path for camera, light, mesh-renderer, rigid-body,
 collider, and character-controller payloads without hand-written component
-JSON; the shared registry exposes the matching `scene.set_*` operations.
+JSON; camera operations now preserve promoted projection/frustum fields
+(`fovY`, `near`, `far`, and orthographic `size`) through source builds, and the
+shared registry exposes the matching `scene.set_*` operations.
 Commands support `--json`, return the shared `ok`/`changed`/`filesWritten`/
 `diagnostics` shape, and fail before writing on invalid JSON or validation
 errors. Broader asset import settings, material sampler/import policy, input
@@ -371,9 +373,9 @@ bundles remain owned by the existing editor/project APIs.
 
 Structured `.scene.json` documents can now be used as a normal project build
 entry for the first runtime-backed CLI authoring slice. The compiler validates
-the source scene, lowers primitive prefab entities, camera components,
-transforms, and attached script module references into the existing SDK
-scene/world/system bundle path, and emits authoring provenance for the scene
+the source scene, lowers primitive prefab entities, promoted camera
+projection/frustum fields, transforms, and attached script module references
+into the existing SDK scene/world/system bundle path, and emits authoring provenance for the scene
 document. A CLI-authored proof project at
 `/home/joao/projects/threenative-cli-authoring-proof` validates and builds from
 `content/scenes/cli-proof.scene.json`, proves the emitted bundle is connected to

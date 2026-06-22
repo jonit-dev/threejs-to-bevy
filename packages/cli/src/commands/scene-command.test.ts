@@ -193,7 +193,24 @@ test("scene-command mutates structured scene documents deterministically", async
   try {
     const add = await sceneCommand(["add-entity", "scene.arena", "rival-kart", "--prefab", "kart", "--project", root, "--json"]);
     const transform = await sceneCommand(["set-transform", "scene.arena", "rival-kart", "--position", "1,2,3", "--rotation", "0,0,0", "--scale", "1,1,1", "--project", root, "--json"]);
-    const camera = await sceneCommand(["set-camera", "scene.arena", "chase-camera", "--mode", "third-person-follow", "--target", "player-kart", "--project", root, "--json"]);
+    const camera = await sceneCommand([
+      "set-camera",
+      "scene.arena",
+      "chase-camera",
+      "--mode",
+      "third-person-follow",
+      "--target",
+      "player-kart",
+      "--fov-y",
+      "58",
+      "--near",
+      "0.2",
+      "--far",
+      "240",
+      "--project",
+      root,
+      "--json",
+    ]);
     const script = await sceneCommand(["attach-script", "scene.arena", "race-controller", "--module", "src/scripts/race.ts", "--export", "raceController", "--project", root, "--json"]);
     const binding = await sceneCommand(["bind-ui", "scene.arena", "score-label", "--resource", "hud.score.value", "--project", root, "--json"]);
     const validate = await sceneCommand(["validate", "scene.arena", "--project", root, "--json"]);
@@ -205,6 +222,57 @@ test("scene-command mutates structured scene documents deterministically", async
     assert.equal(binding.exitCode, 0);
     assert.equal(validate.exitCode, 0);
     assert.equal((JSON.parse(binding.stdout) as { filesWritten: string[] }).filesWritten[0], "content/scenes/arena.scene.json");
+    const scene = JSON.parse(await readFile(join(root, "content", "scenes", "arena.scene.json"), "utf8")) as {
+      entities: Array<{ components?: Record<string, unknown>; id: string }>;
+    };
+    assert.deepEqual(scene.entities.find((entity) => entity.id === "chase-camera")?.components?.camera, {
+      far: 240,
+      fovY: 58,
+      mode: "third-person-follow",
+      near: 0.2,
+      target: "player-kart",
+    });
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("scene-command adds camera components with promoted projection fields", async () => {
+  const root = await createSceneProject({ minimal: true });
+
+  try {
+    const add = await sceneCommand(["add-entity", "scene.arena", "map-camera", "--project", root, "--json"]);
+    const camera = await sceneCommand([
+      "add-component",
+      "scene.arena",
+      "map-camera",
+      "camera",
+      "--mode",
+      "orthographic",
+      "--size",
+      "24",
+      "--near",
+      "0.05",
+      "--far",
+      "500",
+      "--project",
+      root,
+      "--json",
+    ]);
+    const validate = await sceneCommand(["validate", "scene.arena", "--project", root, "--json"]);
+    const scene = JSON.parse(await readFile(join(root, "content", "scenes", "arena.scene.json"), "utf8")) as {
+      entities: Array<{ components?: Record<string, unknown>; id: string }>;
+    };
+
+    assert.equal(add.exitCode, 0);
+    assert.equal(camera.exitCode, 0);
+    assert.equal(validate.exitCode, 0);
+    assert.deepEqual(scene.entities.find((entity) => entity.id === "map-camera")?.components?.camera, {
+      far: 500,
+      mode: "orthographic",
+      near: 0.05,
+      size: 24,
+    });
   } finally {
     await rm(root, { force: true, recursive: true });
   }

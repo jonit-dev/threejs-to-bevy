@@ -82,7 +82,7 @@ export const supportedPrefabPrimitives = new Set(["box", "capsule", "cone", "cyl
 export const supportedMeshPrimitives = new Set(["box", "cone", "cylinder", "plane", "sphere"]);
 
 export const supportedComponentKinds = new Set(["camera", "CharacterController", "Collider", "Light", "MeshRenderer", "RigidBody"]);
-export const cameraComponentKeys = new Set(["mode", "target"]);
+export const cameraComponentKeys = new Set(["far", "fovY", "mode", "near", "size", "target"]);
 export const characterControllerComponentKeys = new Set(["blocking", "grounding", "interactAction", "moveXAxis", "moveZAxis", "slopeLimit", "speed", "stepOffset"]);
 export const colliderComponentKeys = new Set(["friction", "height", "kind", "layer", "mask", "radius", "restitution", "sensor", "size", "trigger"]);
 export const lightComponentKeys = new Set(["angle", "color", "intensity", "kind", "range", "shadowBias", "shadowNormalBias"]);
