@@ -24,7 +24,7 @@ This index separates current cleanup work from historical milestone batches.
   complete the editor-session state refactor by keeping derived editor models,
   selection/move orchestration, and local-state regression guardrails behind the
   Zustand store boundary before lower-priority editor/state work expands.
-- [AI-Consumable Distribution Contract](other/ai-consumable-distribution-contract.md):
+- [AI-Consumable Distribution Contract](done/other/ai-consumable-distribution-contract.md):
   published declarations, schemas, capabilities, diagnostics, examples, and AI
   docs that make installed packages understandable without repository source.
 - [Agent-Friendly Project Scaffolding and Visual Debugging Workflows](other/agent-friendly-project-and-visual-debugging-workflows.md):

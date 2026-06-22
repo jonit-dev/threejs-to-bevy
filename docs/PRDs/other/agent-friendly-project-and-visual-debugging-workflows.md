@@ -31,7 +31,7 @@ ThreeNative game without guessing or hand-building one-off harnesses.
 - `AGENTS.md`
 - `package.json`
 - `docs/PRDs/README.md`
-- `docs/PRDs/other/ai-consumable-distribution-contract.md`
+- `docs/PRDs/done/other/ai-consumable-distribution-contract.md`
 - `docs/PRDs/other/ui-platform-desktop-residuals.md`
 - `packages/cli/src/index.ts`
 - `packages/cli/src/commands/create.ts`

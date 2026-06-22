@@ -1,12 +1,13 @@
 import { access, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 
 import { checkDistributionContract } from "./check-distribution-contract.mjs";
 
 const repoRoot = resolve(new URL("..", import.meta.url).pathname);
-const packageOrder = [
+export const packageOrder = [
   ["@threenative/sdk", "packages/sdk"],
   ["@threenative/ir", "packages/ir"],
   ["@threenative/authoring", "packages/authoring"],
@@ -17,18 +18,39 @@ const packageOrder = [
   ["@threenative/cli", "packages/cli"],
 ];
 
-const workspaceFilters = packageOrder.flatMap(([name]) => ["--filter", name]);
-const workRoot = await mkdtemp(join(tmpdir(), "threenative-distribution-"));
-const packDir = join(workRoot, "packs");
-const consumerDir = join(workRoot, "consumer");
-const gameDir = join(consumerDir, "simple-game");
-const releaseVersion = JSON.parse(await readFile(join(repoRoot, "package.json"), "utf8")).version;
-const distributableArchiveName = `threenative-simple-game-desktop-${releaseVersion}.tar.gz`;
+export const requiredAiDocFiles = [
+  "llms.txt",
+  "llms-full.txt",
+  "docs/workflows/ai-distribution.md",
+  "examples/ai-reference/README.md",
+];
 
-const tarballs = new Map();
+export const requiredIrMetadataFiles = [
+  "schemas/assets.schema.json",
+  "schemas/input.schema.json",
+  "schemas/manifest.schema.json",
+  "schemas/materials.schema.json",
+  "schemas/overlays.schema.json",
+  "schemas/runtime-config.schema.json",
+  "schemas/scenes.schema.json",
+  "schemas/target-profile.schema.json",
+  "schemas/world.schema.json",
+  "capabilities/threenative.capabilities.json",
+  "diagnostics/diagnostics.catalog.json",
+];
 
-try {
-  const contract = await checkDistributionContract({ root: repoRoot });
+export async function runDistributionVerification(options = {}) {
+  const root = options.repoRoot ?? repoRoot;
+  const workspaceFilters = packageOrder.flatMap(([name]) => ["--filter", name]);
+  const workRoot = options.workRoot ?? await mkdtemp(join(tmpdir(), "threenative-distribution-"));
+  const packDir = join(workRoot, "packs");
+  const consumerDir = join(workRoot, "consumer");
+  const gameDir = join(consumerDir, "simple-game");
+  const releaseVersion = JSON.parse(await readFile(join(root, "package.json"), "utf8")).version;
+  const distributableArchiveName = `threenative-simple-game-desktop-${releaseVersion}.tar.gz`;
+  const tarballs = new Map();
+
+  const contract = await checkDistributionContract({ root });
   if (!contract.ok) {
     throw new Error(
       `Distribution contract check failed.\n${contract.diagnostics
@@ -36,12 +58,12 @@ try {
         .join("\n")}`,
     );
   }
-  await run("pnpm", [...workspaceFilters, "build"], { cwd: repoRoot });
-  await run("mkdir", ["-p", packDir], { cwd: repoRoot });
+  await run("pnpm", [...workspaceFilters, "build"], { cwd: root });
+  await run("mkdir", ["-p", packDir], { cwd: root });
 
   for (const [name, packagePath] of packageOrder) {
     const before = new Set(await listTgz(packDir));
-    await run("pnpm", ["--dir", packagePath, "pack", "--pack-destination", packDir], { cwd: repoRoot });
+    await run("pnpm", ["--dir", packagePath, "pack", "--pack-destination", packDir], { cwd: root });
     const after = await listTgz(packDir);
     const created = after.find((file) => !before.has(file));
     if (created === undefined) {
@@ -50,10 +72,10 @@ try {
     tarballs.set(name, join(packDir, created));
   }
 
-  await run("mkdir", ["-p", consumerDir], { cwd: repoRoot });
+  await run("mkdir", ["-p", consumerDir], { cwd: root });
   await run("npm", ["init", "-y"], { cwd: consumerDir });
   await run("npm", ["install", ...[...tarballs.values()]], { cwd: consumerDir });
-  await verifyInstalledAiDocs(consumerDir);
+  await verifyInstalledDistributionArtifacts(consumerDir);
   await writeConsumerTypecheckFixture(consumerDir);
   await run("npx", ["tsc", "--noEmit", "--project", "tsconfig.threenative-contract.json"], { cwd: consumerDir });
   await run("npx", ["tn", "create", "simple-game", "--json"], { cwd: consumerDir });
@@ -119,8 +141,11 @@ try {
   const reportPath = join(gameDir, "artifacts", "verify", "verification-report.json");
   const report = JSON.parse(await readFile(reportPath, "utf8"));
   const result = {
+    aiDocsPath: join(consumerDir, "node_modules", "@threenative", "cli", "dist", "ai"),
     bundlePath: join(gameDir, "dist", "game.bundle"),
+    capabilitiesPath: join(consumerDir, "node_modules", "@threenative", "ir", "capabilities", "threenative.capabilities.json"),
     consumerDir,
+    diagnosticsCatalogPath: join(consumerDir, "node_modules", "@threenative", "ir", "diagnostics", "diagnostics.catalog.json"),
     distributableArchive: join(gameDir, "dist", "local-distributable", distributableArchiveName),
     distributablePath: join(gameDir, "dist", "local-distributable", "desktop"),
     nativeRuntimeVerified: true,
@@ -130,11 +155,7 @@ try {
     tarballs: Object.fromEntries([...tarballs].map(([name, path]) => [name, basename(path)])),
   };
 
-  console.log(JSON.stringify(result, null, 2));
-} catch (error) {
-  console.error(error instanceof Error ? error.message : String(error));
-  console.error(`Work directory preserved for inspection: ${workRoot}`);
-  process.exitCode = 1;
+  return { result, workRoot };
 }
 
 async function listTgz(dir) {
@@ -165,16 +186,41 @@ async function rewriteGameDependencies(projectDir, packageTarballs) {
   await writeFile(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
 }
 
-async function verifyInstalledAiDocs(projectDir) {
+export async function validateInstalledDistributionArtifacts(projectDir) {
+  const diagnostics = [];
+  for (const [name] of packageOrder) {
+    const packageRoot = join(projectDir, "node_modules", ...name.split("/"));
+    for (const file of ["package.json", "dist/index.d.ts", "dist/index.d.ts.map", "dist/index.js"]) {
+      await requireInstalledFile(diagnostics, packageRoot, file, "TN_DISTRIBUTION_PACKED_ARTIFACT_MISSING", `${name} packed package must include ${file}.`);
+    }
+  }
+
+  const irRoot = join(projectDir, "node_modules", "@threenative", "ir");
+  for (const file of requiredIrMetadataFiles) {
+    await requireInstalledFile(diagnostics, irRoot, file, "TN_DISTRIBUTION_PACKED_METADATA_MISSING", `@threenative/ir packed package must include ${file}.`);
+  }
+
   const aiRoot = join(projectDir, "node_modules", "@threenative", "cli", "dist", "ai");
-  const requiredFiles = [
-    "llms.txt",
-    "llms-full.txt",
-    "docs/workflows/ai-distribution.md",
-    "examples/ai-reference/README.md",
-  ];
+  for (const file of requiredAiDocFiles) {
+    await requireInstalledFile(diagnostics, aiRoot, file, "TN_DISTRIBUTION_AI_DOC_MISSING", `@threenative/cli packed AI docs must include ${file}.`);
+  }
+
+  return diagnostics;
+}
+
+export async function verifyInstalledDistributionArtifacts(projectDir) {
+  const diagnostics = await validateInstalledDistributionArtifacts(projectDir);
+  if (diagnostics.length > 0) {
+    throw new Error(
+      `Installed distribution artifact check failed.\n${diagnostics
+        .map((diagnostic) => `${diagnostic.code}: ${diagnostic.path}: ${diagnostic.message}`)
+        .join("\n")}`,
+    );
+  }
+
+  const aiRoot = join(projectDir, "node_modules", "@threenative", "cli", "dist", "ai");
   const combined = [];
-  for (const file of requiredFiles) {
+  for (const file of requiredAiDocFiles) {
     combined.push(await readFile(join(aiRoot, file), "utf8"));
   }
   const text = combined.join("\n");
@@ -185,11 +231,28 @@ async function verifyInstalledAiDocs(projectDir) {
   }
 }
 
-async function writeConsumerTypecheckFixture(projectDir) {
+async function requireInstalledFile(diagnostics, root, file, code, message) {
+  const path = join(root, file);
+  try {
+    await access(path);
+  } catch {
+    diagnostics.push({
+      code,
+      message,
+      path,
+      severity: "error",
+      suggestedFix: "Rebuild the package and update package.json files/build copy steps so the artifact is included in the packed tarball.",
+    });
+  }
+}
+
+export async function writeConsumerTypecheckFixture(projectDir) {
   await writeFile(
     join(projectDir, "threenative-contract.mts"),
     `import { BoxGeometry, Mesh, MeshStandardMaterial, Scene, defineGame, defineScene } from "@threenative/sdk";
 import { schemaUrls, validateBundle, validateBundleRelativePath } from "@threenative/ir";
+import capabilities from "@threenative/ir/capabilities/threenative.capabilities.json" with { type: "json" };
+import diagnosticsCatalog from "@threenative/ir/diagnostics/diagnostics.catalog.json" with { type: "json" };
 import { validateBundleRelativePath as validateBundleRelativePathSubpath } from "@threenative/ir/bundlePaths";
 import { diagnoseUnsupportedRuntimeDeclarations } from "@threenative/ir/runtimeDiagnostics";
 import { buildProject } from "@threenative/compiler";
@@ -217,6 +280,8 @@ void manifestSchema;
 void validateBundle;
 void diagnoseUnsupportedRuntimeDeclarations;
 void buildProject;
+void capabilities;
+void diagnosticsCatalog;
 `,
     "utf8",
   );
@@ -316,4 +381,20 @@ async function run(command, args, options) {
 
 async function sleep(ms) {
   await new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
+}
+
+async function main() {
+  const workRoot = await mkdtemp(join(tmpdir(), "threenative-distribution-"));
+  try {
+    const run = await runDistributionVerification({ workRoot });
+    console.log(JSON.stringify(run.result, null, 2));
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    console.error(`Work directory preserved for inspection: ${workRoot}`);
+    process.exitCode = 1;
+  }
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  await main();
 }

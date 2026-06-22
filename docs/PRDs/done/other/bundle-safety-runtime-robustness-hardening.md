@@ -23,7 +23,7 @@ PRDs.
 - `docs/PRDs/done/other/ir-contract-drift-hardening.md`
 - `docs/PRDs/done/other/scene-lifecycle-and-flow-contract.md`
 - `docs/PRDs/done/other/verification-gates-and-package-scripts-reorg.md`
-- `docs/PRDs/other/ai-consumable-distribution-contract.md`
+- `docs/PRDs/done/other/ai-consumable-distribution-contract.md`
 
 **Files Analyzed:**
 
@@ -647,4 +647,3 @@ single-package slices, start with the narrow package command.
 - Treat generated payload byte-length mismatches as load failures, not warnings.
 - Do not update docs claiming improved capability support until runtime tests
   and conformance evidence exist.
-

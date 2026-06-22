@@ -54,7 +54,7 @@ No relevant `.env` or runtime configuration files are required for this PRD.
   - IDE/type-server inspection of published `.d.ts` and `.d.ts.map` files.
   - package subpath imports such as `@threenative/ir/schemas/*`.
   - docs entrypoints such as `llms.txt`, `llms-full.txt`, and
-    `docs/ai/README.md`.
+    `docs/workflows/ai-distribution.md`.
   - distribution verification through `pnpm verify:distribution` and the guarded
     publish dry run.
 - [x] Caller file identified:
@@ -100,7 +100,7 @@ No relevant `.env` or runtime configuration files are required for this PRD.
   examples, diagnostics, and capabilities over source maps. Source maps and
   declaration maps remain useful debugging aids but are not the primary contract.
 - Add an AI docs front door using `llms.txt`, `llms-full.txt`, and a concise
-  `docs/ai/` reference that points to package entrypoints, schema IDs, CLI
+  `docs/workflows/ai-distribution.md` reference that points to package entrypoints, schema IDs, CLI
   commands, diagnostics, and examples.
 - Add a versioned capability manifest so agents can generate only supported
   SDK/IR/runtime features and avoid unsupported Three.js, Bevy, or platform
@@ -116,7 +116,7 @@ flowchart LR
     Npm --> Caps[capabilities manifest]
     Npm --> Diags[diagnostics catalog]
     Npm --> Examples[canonical examples]
-    Docs[llms.txt / docs/ai] --> Types
+    Docs[llms.txt / docs/workflows/ai-distribution.md] --> Types
     Docs --> Schemas
     Docs --> Caps
     Agent[AI coding agent] --> Docs
@@ -178,7 +178,7 @@ sequenceDiagram
 
 - `docs/contracts/distribution-contract.md` - document shipped AI/human support artifacts
   and package ownership.
-- `docs/PRDs/ai-consumable-distribution-contract.md` - keep phase checklist
+- `docs/PRDs/done/other/ai-consumable-distribution-contract.md` - keep phase checklist
   current.
 - `docs/PRDs/README.md` - index this current initiative.
 - `scripts/check-distribution-contract.mjs` - assert required files/exports in
@@ -471,16 +471,34 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Extend packed-tarball verification to assert declarations,
+- [x] Extend packed-tarball verification to assert declarations,
   declaration maps, source maps where expected, schemas, capabilities,
   diagnostics, AI docs, and examples are present.
-- [ ] Validate that clean consumers can import public APIs and read exported
+- [x] Validate that clean consumers can import public APIs and read exported
   JSON metadata using package subpaths, not repository-relative paths.
-- [ ] Fail release dry runs when any public package omits required AI support
+- [x] Fail release dry runs when any public package omits required AI support
   artifacts.
-- [ ] Update `docs/STATUS.md` and `docs/bevy-feature-parity.md` in the same
+- [x] Update `docs/STATUS.md` and `docs/bevy-feature-parity.md` in the same
   implementation change once the release gate is complete.
-- [ ] Record evidence paths in the distribution verification report.
+- [x] Record evidence paths in the distribution verification report.
+
+**Progress Evidence:**
+
+- `scripts/verify-distribution-release.mjs` now exports focused artifact
+  validation helpers and fails packed installs when public packages omit root
+  declarations, declaration maps, runtime JavaScript, IR schemas, capabilities,
+  diagnostics, or CLI `dist/ai` docs/examples.
+- `scripts/verify-distribution-release.test.mjs` covers missing AI docs and IR
+  metadata with stable `TN_DISTRIBUTION_*` diagnostics and confirms the clean
+  consumer fixture imports capabilities and diagnostics through package
+  subpaths.
+- `pnpm verify:distribution` passed after the release-gate extension and
+  reported `aiDocsPath`, `capabilitiesPath`, `diagnosticsCatalogPath`,
+  `reportPath`, and desktop distributable evidence paths.
+- `pnpm verify:release` passed after the release-gate extension.
+- `pnpm run deploy -- --dry-run` passed after the release-gate extension:
+  full repo verification, distribution proof, ordered packing, and npm dry-run
+  skip checks for already-published `0.1.9` package versions completed.
 
 **Tests Required:**
 
@@ -523,18 +541,18 @@ sequenceDiagram
 
 ## 6. Acceptance Criteria
 
-- [ ] All public packages expose accurate `.d.ts` files and declaration maps.
-- [ ] Public export maps include resolvable `types` conditions for root and
+- [x] All public packages expose accurate `.d.ts` files and declaration maps.
+- [x] Public export maps include resolvable `types` conditions for root and
   supported subpath exports.
-- [ ] Public JSON Schemas, capability manifests, diagnostics catalogs, AI docs,
+- [x] Public JSON Schemas, capability manifests, diagnostics catalogs, AI docs,
   and canonical examples are included in packed tarballs where promised.
-- [ ] `llms.txt`, `llms-full.txt`, and `docs/ai/README.md` explain the
+- [x] `llms.txt`, `llms-full.txt`, and `docs/workflows/ai-distribution.md` explain the
   TypeScript-to-IR-to-runtime flow, package map, supported capabilities,
   schemas, diagnostics, examples, and unsupported boundaries.
-- [ ] A clean external consumer can typecheck ThreeNative authoring code and
+- [x] A clean external consumer can typecheck ThreeNative authoring code and
   read exported schema/capability/diagnostic metadata without repository source.
-- [ ] Canonical AI examples build and verify from the distributed surface.
-- [ ] `pnpm check:docs`, `pnpm verify:distribution`, `pnpm verify:release`, and
+- [x] Canonical AI examples build and verify from the distributed surface.
+- [x] `pnpm check:docs`, `pnpm verify:distribution`, `pnpm verify:release`, and
   `pnpm run deploy -- --dry-run` pass after implementation.
-- [ ] `docs/STATUS.md` and `docs/bevy-feature-parity.md` are updated when the
+- [x] `docs/STATUS.md` and `docs/bevy-feature-parity.md` are updated when the
   release-gate implementation is complete.

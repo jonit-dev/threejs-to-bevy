@@ -563,6 +563,14 @@ installed-package consumers and coding agents. The CLI package build copies
 those docs into `@threenative/cli` `dist/ai/`, and
 `pnpm verify:distribution` checks the packed CLI install can read the AI docs
 alongside exported capability and diagnostic metadata.
+The distribution release gate now treats those AI-consumable artifacts as
+publish blockers: every public packed package must include root declarations,
+declaration maps, and runtime entrypoint JavaScript; `@threenative/ir` must
+ship every exported schema plus capability and diagnostic JSON metadata; and
+`@threenative/cli` must ship the AI docs/examples under `dist/ai`. The clean
+consumer fixture imports the public TypeScript APIs and reads capabilities and
+diagnostics through package subpaths, and the distribution report records
+`aiDocsPath`, `capabilitiesPath`, and `diagnosticsCatalogPath` evidence paths.
 
 V10 planning now exists under `docs/PRDs/v10/README.md`. V10 is the current
 final-gap triage batch for remaining runtime/platform parity rows after the V9

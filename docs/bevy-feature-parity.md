@@ -556,6 +556,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] Stable IR/compiler/CLI/native diagnostic shapes
 - [x] JSON severity, suggestions, paths, and metadata preservation
 - [x] IR distribution capability manifest and diagnostics catalog metadata
+- [x] AI-consumable packed artifacts and clean-consumer metadata access are release-gated
 - [x] Conformance reports for web and Bevy observations
 - [x] Release verification gates and artifact presence checks
 - [x] Desktop package manifest and runtime args for V7 packaging
