@@ -694,6 +694,7 @@ function sourceFamilyForDocumentKind(kind: AuthoringDocumentKind): EditorInspect
     case "mesh":
     case "prefab":
     case "project":
+    case "resources":
     case "runtime":
     case "scene":
     case "ui":
