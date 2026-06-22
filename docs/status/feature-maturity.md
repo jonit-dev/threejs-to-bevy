@@ -4,6 +4,12 @@ A feature is supported only when the public API, IR, validator, web runtime,
 native runtime if claimed, and release gate agree. Schema existence alone does
 not mean support.
 
+This matrix preserves the historical milestone progression, but its current
+rows are reconciled with [Current Status](../STATUS.md) and
+[Three.js to Bevy Feature Parity](../bevy-feature-parity.md). Later promoted
+slices supersede older "schema-only" or "post-V*" labels only for the stated
+bounded scope; residuals stay partial or deferred in the parity tracker.
+
 V4 is scoped to a primitive scripting proof: one `scripts.bundle.js` running in
 web JavaScript and native QuickJS with equivalent patch, event, command, and
 service-call logs. `pnpm verify:v4` is the release gate for that scope. The
@@ -59,15 +65,15 @@ not promote the deferred or never-portable rows.
 | V3 atmosphere metadata | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ✅ | Partial rendering parity |
 | V3 first-person walkthrough | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | V3 web-supported |
 | V3 walkability probes | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | V3 scoped support |
-| UI IR | 🧪 | ✅ | ⚠️ | ❌ | ❌ | ❌ | Schema-only/post-V3 |
-| Audio IR | 🧪 | ✅ | ⚠️ | ❌ | ❌ | ❌ | Schema-only/post-V3 |
+| UI IR | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Promoted for retained UI tree, layout/style/image/accessibility, source mutation, and current web/Bevy slices; editable text, IME, world/render-target UI, drag/drop, custom UI materials, and broad gamepad/touch UI remain partial/deferred. |
+| Audio IR | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Promoted for bundle-local playback, deterministic commands, buses/routing metadata, lifecycle observations, source mutation, and current web/Bevy slices; custom decoders, streaming/network audio, real mixer effects, and platform-native handles remain deferred or diagnostic-only. |
 | V4 portable scripting MVP | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | V4 supported for primitive patch/event/command/service logs under `verify:v4` |
 | V5 game root composition (`defineGame`) | ✅ | ✅ | ✅ | ✅ | n/a | ✅ | V5 supported as authoring sugar over existing scene/world/input/runtime-config contracts |
 | V5 game starter template | ✅ | ✅ | ✅ | ✅ | n/a | ✅ | V5 supported through `tn create --template v5-game-starter` and starter smoke in `verify:v5` |
-| General gameplay systems | 🧪 | ✅ | ⚠️ | ⚠️ | ⚠️ | ❌ | Partial/post-V4 beyond the primitive scripting proof |
+| General gameplay systems | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Promoted for declared portable ECS/system host, resources, events, scene services, prefab/hierarchy commands, and bounded runtime services; callback components, arbitrary callable handles, and delayed commands beyond bounded timers/channels remain partial. |
 | Native QuickJS scripts | ⚠️ | ✅ | ✅ | n/a | ✅ | ✅ | V4 supported only for the declared portable context and primitive demo trace |
 | Mobile packaging | ❌ | ❌ | ❌ | n/a | ❌ | ❌ | Future |
-| Custom shaders/render graph | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | Future |
+| Custom shaders/render graph | ❌ | ❌ | ✅ | ❌ | ❌ | ✅ | Diagnostic-only boundary: unsupported shader payloads, shader defs, storage buffers, render phases, and raw render graph/plugin hooks are rejected; no portable shader/render-graph support is claimed. |
 
 ## Glossary
 
