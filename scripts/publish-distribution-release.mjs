@@ -1,8 +1,10 @@
-import { access, mkdtemp, readFile, rm } from "node:fs/promises";
+import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
+
+import { resolvePublishVersions } from "./publish-versioning.mjs";
 
 const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const packageOrder = [
@@ -18,6 +20,7 @@ const packageOrder = [
 
 const args = new Set(process.argv.slice(2));
 const dryRun = args.has("--dry-run");
+const noAutoBump = args.has("--no-auto-bump");
 const skipBuild = args.has("--skip-build");
 const skipTests = args.has("--skip-tests");
 const userConfig = readValueFlag("--userconfig");
@@ -25,8 +28,16 @@ const otp = readValueFlag("--otp");
 const packDir = readValueFlag("--pack-dir") ?? await mkdtemp(join(tmpdir(), "threenative-publish-"));
 const workspaceFilters = packageOrder.flatMap(([name]) => ["--filter", name]);
 const tarballs = [];
+const env = { ...process.env };
+if (userConfig !== undefined) {
+  env.NPM_CONFIG_USERCONFIG = userConfig;
+}
 
 try {
+  if (!dryRun && !noAutoBump) {
+    await autoBumpPublishedVersions(env);
+  }
+
   if (!skipTests) {
     await run("pnpm", ["verify"], { cwd: repoRoot });
     await run("pnpm", ["verify:distribution"], { cwd: repoRoot });
@@ -47,11 +58,6 @@ try {
     }
     const packageJson = await readPackageJson(packagePath);
     tarballs.push([name, join(packDir, expectedTarball), packageJson.version]);
-  }
-
-  const env = { ...process.env };
-  if (userConfig !== undefined) {
-    env.NPM_CONFIG_USERCONFIG = userConfig;
   }
 
   for (const [name, tarball, version] of tarballs) {
@@ -104,6 +110,38 @@ async function readExpectedTarball(packagePath) {
 
 async function readPackageJson(packagePath) {
   return JSON.parse(await readFile(join(repoRoot, packagePath, "package.json"), "utf8"));
+}
+
+async function writePackageJson(packagePath, packageJson) {
+  await writeFile(join(repoRoot, packagePath, "package.json"), `${JSON.stringify(packageJson, null, 2)}\n`, "utf8");
+}
+
+async function autoBumpPublishedVersions(env) {
+  const packageManifests = [];
+  for (const [name, packagePath] of packageOrder) {
+    const packageJson = await readPackageJson(packagePath);
+    packageManifests.push({ name, packageJson, packagePath, version: packageJson.version });
+  }
+
+  const plan = await resolvePublishVersions(
+    packageManifests.map(({ name, version }) => ({ name, version })),
+    async (name, version) => await isPublishedVersion(name, version, env),
+  );
+
+  if (!plan.bumped) {
+    return;
+  }
+
+  console.log(`Auto-bumping publishable packages to ${plan.targetVersion}; current version is already published or package versions are not aligned.`);
+  for (const manifest of packageManifests) {
+    const nextVersion = plan.versions.get(manifest.name);
+    if (nextVersion === undefined || manifest.packageJson.version === nextVersion) {
+      continue;
+    }
+    manifest.packageJson.version = nextVersion;
+    await writePackageJson(manifest.packagePath, manifest.packageJson);
+    console.log(`Updated ${manifest.name} to ${nextVersion}.`);
+  }
 }
 
 async function isPublishedVersion(name, version, env) {
