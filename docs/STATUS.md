@@ -381,6 +381,11 @@ the bundle is built from captured source; the runtime manifest and IR contract
 remain unchanged.
 
 Modular SDK authoring has started with `defineSceneModule()`, `defineEntity()`, `definePrefabModule()`, `defineResourceModule()`, `defineInputModule()`, `defineUiModule()`, `defineAudioModule()`, `defineAssetModule()`, and `defineWorldModule()`. These source-metadata-aware wrappers validate logical source IDs and source-owned paths, reject runtime-handle-shaped authored data, keep asset refs bundle-local or embedded, lower to existing scene/world/prefab/input/UI/audio/asset declarations, and are visible to compiler authoring graph provenance capture.
+Bundle roots now accept standalone SDK asset refs/modules through an `assets`
+field, and structured asset source documents lower supported model, texture,
+audio, and buffer file-backed declarations into `assets.manifest.json` with
+source ownership. Custom/generated mesh asset source remains later work because
+the current IR mesh asset contract is not a path-backed catalog entry.
 Existing one-file `Scene`, `World`, and `defineGame` authoring remains supported; modular declarations are optional authoring/provenance helpers.
 
 The `starter-functional` template has started its modular migration. Its

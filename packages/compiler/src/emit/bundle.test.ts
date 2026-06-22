@@ -23,6 +23,7 @@ import {
   boxCollider,
   characterController,
   commands,
+  defineAssetModule,
   defineAudio,
   defineInputMap,
   defineRuntimeConfig,
@@ -778,6 +779,37 @@ test("should emit root input map for scene bundle", async () => {
     assert.equal(manifest.files.input, "input.ir.json");
     assert.deepEqual(input.actions, [{ bindings: [{ code: "KeyW", device: "keyboard" }], id: "MoveForward" }]);
     assert.deepEqual(input.axes, [{ id: "LookX", negative: [], positive: [], value: { axis: "deltaX", device: "pointer" } }]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should emit standalone SDK asset modules in bundle manifest", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-root-assets-"));
+  try {
+    await mkdir(join(root, "assets"), { recursive: true });
+    await writeFile(join(root, "assets/logo.png"), "texture");
+    const scene = makeScene();
+    const config = {
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project" as const,
+      version: "0.1.0" as const,
+    };
+
+    const bundlePath = await emitBundle(config, {
+      assets: [defineAssetModule({ asset: textureAsset("tex.logo", "assets/logo.png") })],
+      scene,
+    });
+    const assets = JSON.parse(await readFile(join(bundlePath, "assets.manifest.json"), "utf8"));
+    const result = await validateBundle(bundlePath);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(
+      assets.assets.find((asset: { id: string }) => asset.id === "tex.logo"),
+      { format: "png", id: "tex.logo", kind: "texture", path: "assets/logo.png", sourceMode: "bundle" },
+    );
   } finally {
     await rm(root, { force: true, recursive: true });
   }

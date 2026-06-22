@@ -106,6 +106,8 @@ function sourceOwnershipEntries(documents: readonly IAuthoringDocument[]): IAuth
     }
     if (document.kind === "scene") {
       entries.push(...sceneOwnershipEntries(document, data, materialSources));
+    } else if (document.kind === "asset") {
+      entries.push(...assetOwnershipEntries(document, data.assets));
     } else if (document.kind === "material") {
       entries.push(...collectionOwnershipEntries(document, data.materials, "material", "materials.ir.json"));
     } else if (document.kind === "ui") {
@@ -118,6 +120,23 @@ function sourceOwnershipEntries(documents: readonly IAuthoringDocument[]): IAuth
   }
 
   return entries;
+}
+
+function assetOwnershipEntries(document: IAuthoringDocument, assets: unknown): IAuthoringOwnershipEntry[] {
+  return readArray(assets).flatMap((asset, index) => {
+    const id = readString(readRecord(asset)?.id);
+    if (id === undefined) {
+      return [];
+    }
+    return [
+      sourceEntry(document, `/assets/${index}`, "asset", {
+        artifactKind: "assets",
+        id,
+        path: "assets.manifest.json",
+        pointer: `/assets/${escapePointer(id)}`,
+      }),
+    ];
+  });
 }
 
 function sceneOwnershipEntries(

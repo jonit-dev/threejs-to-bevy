@@ -180,15 +180,35 @@ test("should build structured source starter template with source document prove
         entry.source.pointer === "/nodes/0",
     ),
   );
+  assert.ok(
+    provenance.ownership.some(
+      (entry) =>
+        entry.emitted.path === "assets.manifest.json" &&
+        entry.emitted.id === "asset.goal-ping" &&
+        entry.source?.path === "content/assets/arena.assets.json",
+    ),
+  );
 });
 
 test("should emit structured source environment documents", async () => {
   const projectPath = await mkdtemp(join(tmpdir(), "tn-structured-environment-"));
   try {
     await cp(resolve(process.cwd(), "../../templates/structured-source-starter"), projectPath, { recursive: true });
+    await mkdir(join(projectPath, "assets"), { recursive: true });
+    await mkdir(join(projectPath, "content/assets"), { recursive: true });
     await mkdir(join(projectPath, "content/environment"), { recursive: true });
     await mkdir(join(projectPath, "content/prefabs"), { recursive: true });
     await mkdir(join(projectPath, "content/runtime"), { recursive: true });
+    await writeFile(join(projectPath, "assets/bonus.png"), "texture");
+    await writeFile(
+      join(projectPath, "content/assets/bonus.assets.json"),
+      `${JSON.stringify({
+        schema: "threenative.assets",
+        version: "0.1.0",
+        id: "bonus-assets",
+        assets: [{ id: "tex.bonus", path: "assets/bonus.png", type: "texture" }],
+      }, null, 2)}\n`,
+    );
     await writeFile(
       join(projectPath, "content/environment/arena.environment.json"),
       `${JSON.stringify({
@@ -239,6 +259,7 @@ test("should emit structured source environment documents", async () => {
     const { bundlePath } = await buildProject(projectPath);
     const report = await validateBundle(bundlePath);
     const manifest = JSON.parse(await readFile(resolve(bundlePath, "manifest.json"), "utf8"));
+    const assets = JSON.parse(await readFile(resolve(bundlePath, "assets.manifest.json"), "utf8"));
     const environment = JSON.parse(await readFile(resolve(bundlePath, "environment.scene.json"), "utf8"));
     const prefabs = JSON.parse(await readFile(resolve(bundlePath, "prefabs.ir.json"), "utf8"));
     const runtimeConfig = JSON.parse(await readFile(resolve(bundlePath, "runtime.config.json"), "utf8"));
@@ -247,6 +268,10 @@ test("should emit structured source environment documents", async () => {
     assert.equal(manifest.entry.prefabs, "prefabs.ir.json");
     assert.equal(manifest.files.prefabs, "prefabs.ir.json");
     assert.equal(manifest.files.runtimeConfig, "runtime.config.json");
+    assert.deepEqual(
+      assets.assets.find((asset: { id: string }) => asset.id === "tex.bonus"),
+      { format: "png", id: "tex.bonus", kind: "texture", path: "assets/bonus.png", sourceMode: "bundle" },
+    );
     assert.equal(environment.terrain.id, "terrain.editor");
     assert.equal(environment.path.id, "path.main");
     assert.equal(prefabs.prefabs[0].id, "prefab.crate");

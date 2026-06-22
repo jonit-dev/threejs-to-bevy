@@ -1,5 +1,5 @@
 import { mkdir, mkdtemp, rename, rm, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { dirname, extname, resolve } from "node:path";
 import {
   IR_DOCUMENTS,
   IR_SCHEMA_IDS,
@@ -20,7 +20,7 @@ import {
   type IWorldIr,
 } from "@threenative/ir";
 import type { IAuthoringDocument } from "@threenative/authoring";
-import { type IAnimationsDeclaration, type IAssetGroupDeclaration, type IAssetReference, type IAudioDeclaration, type IInputMapDeclaration, type IOverlayDeclaration, type IPersistenceDeclaration, type ISceneAudioDeclaration, type ISceneLifecycleDeclaration, type World } from "@threenative/sdk";
+import { type IAnimationsDeclaration, type IAssetGroupDeclaration, type IAssetModuleDeclaration, type IAssetReference, type IAudioDeclaration, type IInputMapDeclaration, type IOverlayDeclaration, type IPersistenceDeclaration, type ISceneAudioDeclaration, type ISceneLifecycleDeclaration, type World } from "@threenative/sdk";
 import { type IUiElement } from "@threenative/ui";
 
 import { type IProjectConfig } from "../config.js";
@@ -68,9 +68,11 @@ export async function emitBundle(config: IProjectConfig, root: unknown, options:
   const animations = bundleRoot.animations === undefined ? undefined : emitAnimations(bundleRoot.animations);
   const environment = bundleRoot.environment === undefined ? undefined : await emitEnvironment(config.projectPath, bundleRoot.environment);
   const overlays = bundleRoot.overlay === undefined ? undefined : await emitOverlays(config.projectPath, bundleRoot.overlay);
-  const generatedMeshPayloads = prepareGeneratedMeshPayloads(
-    mergeEnvironmentAssets(mergeAudioAssets(emitted?.assets ?? [], bundleRoot.audio), environment?.assets ?? []),
-  );
+  const generatedMeshPayloads = prepareGeneratedMeshPayloads(mergeById([
+    ...readBundleRootAssets(bundleRoot.assets),
+    ...readStructuredAssets(options.authoringDocuments),
+    ...mergeEnvironmentAssets(mergeAudioAssets(emitted?.assets ?? [], bundleRoot.audio), environment?.assets ?? []),
+  ]));
   const assets = generatedMeshPayloads.assets;
   const ui = (bundleRoot.ui === undefined ? undefined : emitUi(bundleRoot.ui)) as IUiIr | undefined;
   const world = mergeWorlds(emitted?.world, ecs?.world);
@@ -290,6 +292,7 @@ function isMissingPathError(error: unknown): boolean {
 
 interface IBundleRoot {
   assetGroups?: readonly IAssetGroupDeclaration[];
+  assets?: readonly (IAssetReference | IAssetModuleDeclaration)[];
   animations?: IAnimationsDeclaration;
   audio?: IAudioDeclaration;
   environment?: IEnvironmentDeclaration;
@@ -314,7 +317,7 @@ function isBundleRoot(root: unknown): root is IBundleRoot {
   return (
     typeof root === "object"
     && root !== null
-    && ["assetGroups", "animations", "audio", "environment", "initialScene", "input", "overlay", "persistence", "scene", "scenes", "ui", "world"].some((key) => key in root)
+    && ["assetGroups", "assets", "animations", "audio", "environment", "initialScene", "input", "overlay", "persistence", "scene", "scenes", "ui", "world"].some((key) => key in root)
   );
 }
 
@@ -330,6 +333,80 @@ function readStructuredRuntimeConfig(documents: readonly IAuthoringDocument[] | 
     time: cloneRecord(data.time) as IRuntimeConfigIr["time"],
     window: cloneRecord(data.window) as IRuntimeConfigIr["window"],
   };
+}
+
+function readBundleRootAssets(assets: IBundleRoot["assets"]): IInternalAsset[] {
+  return (assets ?? []).map((item) => {
+    const ref = isAssetModuleDeclaration(item) ? item.asset : item;
+    return cloneAssetReference(ref);
+  });
+}
+
+function readStructuredAssets(documents: readonly IAuthoringDocument[] | undefined): IInternalAsset[] {
+  return (documents ?? [])
+    .filter((document) => document.kind === "asset" && isRecord(document.data))
+    .flatMap((document) => {
+      const data = document.data as Record<string, unknown>;
+      if (!Array.isArray(data.assets)) {
+        return [];
+      }
+      return data.assets.flatMap((item) => structuredAsset(item));
+    });
+}
+
+function structuredAsset(item: unknown): IInternalAsset[] {
+  if (!isRecord(item)) {
+    return [];
+  }
+  const id = readString(item.id);
+  const path = readString(item.path);
+  const kind = assetKindFromSourceType(readString(item.type));
+  if (id === undefined || path === undefined || kind === undefined) {
+    return [];
+  }
+  const format = inferAssetFormat(kind, path);
+  if (format === undefined) {
+    return [];
+  }
+  return [{
+    format,
+    id,
+    kind,
+    path,
+    sourceMode: "bundle",
+  }];
+}
+
+function assetKindFromSourceType(type: string | undefined): string | undefined {
+  if (type === "model" || type === "texture" || type === "audio" || type === "buffer") {
+    return type;
+  }
+  return undefined;
+}
+
+function inferAssetFormat(kind: string, path: string): string | undefined {
+  const extension = extname(path).slice(1).toLowerCase();
+  if (kind === "model" && (extension === "glb" || extension === "gltf")) {
+    return extension;
+  }
+  if (kind === "texture" && (extension === "png" || extension === "jpeg" || extension === "jpg")) {
+    return extension === "jpg" ? "jpeg" : extension;
+  }
+  if (kind === "audio" && (extension === "mp3" || extension === "ogg" || extension === "wav")) {
+    return extension;
+  }
+  if (kind === "buffer" && extension === "bin") {
+    return extension;
+  }
+  return undefined;
+}
+
+function isAssetModuleDeclaration(value: IAssetReference | IAssetModuleDeclaration): value is IAssetModuleDeclaration {
+  return isRecord(value) && isRecord(value.asset);
+}
+
+function cloneAssetReference(ref: IAssetReference): IInternalAsset {
+  return JSON.parse(JSON.stringify(ref)) as IInternalAsset;
 }
 
 function readStructuredPrefabs(documents: readonly IAuthoringDocument[] | undefined): IPrefabsIr | undefined {
