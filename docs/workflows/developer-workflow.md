@@ -271,8 +271,12 @@ The JSON scaffold payload includes:
 Run `tn doctor --project my-game --json` after scaffolding or after a failed
 build. The initial scaffold may report `TN_DOCTOR_BUNDLE_MISSING` as a warning
 until `pnpm run build` emits the configured bundle. Missing `package.json`,
-required scripts, config, source entrypoint, or bundle files are reported with
-stable diagnostic codes and exact follow-up commands.
+package manager state, CLI dependency/local shim, required scripts, config,
+source entrypoint, template metadata, or bundle files are reported with stable
+diagnostic codes and follow-up commands. After starting the web preview, rerun
+`tn doctor --project my-game --url http://127.0.0.1:5173 --json` to probe the
+preview canvas, runtime readiness payload, resource failures, visible mesh
+count, browser console logs, page errors, and failed requests.
 
 ## Task Help For Visual Debugging
 

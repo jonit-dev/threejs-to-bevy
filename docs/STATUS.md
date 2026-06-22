@@ -55,6 +55,15 @@ provides optional AI-facing wrappers for inspect/validate/mutate/build/
 screenshot/verify operations by delegating to the same `tn ... --json` command
 surface, with project-root and generated-artifact guardrails.
 
+The agent debugging workflow now has a stronger `tn doctor` gate. It checks
+package manager state, CLI dependency/local shim setup, required scripts,
+template metadata, source entrypoint, required bundle files, and
+manifest-declared optional bundle files. When passed `--url`, it probes a
+running web preview for canvas presence, `window.__THREENATIVE_READY__`,
+runtime error diagnostics, resource failures, visible mesh count, browser
+console logs, page errors, and failed requests, returning stable severities and
+JSON diagnostics for setup, bundle, and preview-readiness failures.
+
 The structured authoring parity PRD has started with a source-document contract
 and testable inventory in `@threenative/authoring`. The inventory makes the
 durable source boundary explicit: editor-owned scene/map/UI/material/asset/

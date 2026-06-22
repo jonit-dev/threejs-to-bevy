@@ -312,14 +312,14 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Check `package.json`, package manager, required scripts, local CLI shim,
+- [x] Check `package.json`, package manager, required scripts, local CLI shim,
   config file, source entrypoint, bundle output, and template metadata.
 - [ ] Check bundle files: `manifest.json`, `world.ir.json`, `assets.manifest.json`,
   `runtime.config.json`, schemas, and script bundle.
-- [ ] Optionally probe a running preview URL: canvas exists, ready flag, runtime
+- [x] Optionally probe a running preview URL: canvas exists, ready flag, runtime
   diagnostics, console errors, loaded asset statuses, visible mesh count if
   runtime exposes it.
-- [ ] Output severity levels: `ok`, `warning`, `error`, `unavailable`.
+- [x] Output severity levels: `ok`, `warning`, `error`, `unavailable`.
 - [ ] Include exact next command for each failure.
 
 **Tests required:**
@@ -332,6 +332,17 @@ sequenceDiagram
 
 - Command: `pnpm --filter @threenative/cli test -- commands/doctor.test.ts`
 - Expected result: doctor diagnostics are deterministic and JSON-serializable.
+
+**Progress Evidence:**
+
+- `tn doctor` now checks package manager state, CLI dependency/local shim,
+  template metadata, configured source entrypoint, required bundle files, and
+  manifest-declared optional bundle files.
+- `tn doctor --url <preview-url>` now probes a running web preview for canvas
+  presence, `window.__THREENATIVE_READY__`, runtime error diagnostics, resource
+  failures, visible mesh count, browser console logs, page errors, and failed
+  requests.
+- Verified with `pnpm --filter @threenative/cli test` on 2026-06-21.
 
 #### Phase 4: Add `tn asset inspect` — GLB/glTF visibility triage
 
@@ -655,7 +666,7 @@ works end-to-end.
   project with next commands and machine-readable output.
 - [x] `tn help <topic>` gives agent-consumable references for scaffolding,
   assets, camera, transform, visual QA, screenshot, and record workflows.
-- [ ] `tn doctor` diagnoses missing setup, missing bundle output, runtime preview
+- [x] `tn doctor` diagnoses missing setup, missing bundle output, runtime preview
   readiness, resource failures, and known visual/runtime failure classes.
 - [x] `tn asset inspect` reports GLB/glTF bounds, texture dependencies, and
   scale/camera hints.

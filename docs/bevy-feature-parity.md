@@ -573,6 +573,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P1` Stable unsupported-feature diagnostics for advanced renderer, material, and runtime declarations
 - [x] `P1` Stable unsupported-networking diagnostics for multiplayer/websocket/replication declarations
 - [x] `P1` Better domain-specific asset/runtime failure codes and repair hints
+- [x] `P1` `tn doctor --url` preview-readiness diagnostics for canvas, runtime errors, resource failures, visible meshes, page errors, and failed requests
 - [x] `P2` Live engine-integrated debug rendering beyond current overlay/report helpers
 
 ### 🛠️ Editor, Debugging, and Developer Tools
