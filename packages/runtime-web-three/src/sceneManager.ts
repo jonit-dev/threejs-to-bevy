@@ -25,8 +25,16 @@ export interface ISceneLifecycleTraceEvent {
 export interface ISceneLifecycleRuntimeState {
   additiveScenes: readonly string[];
   activeScene: string;
+  activeScopes: ISceneLifecycleActiveScopes;
   stack: readonly string[];
   trace: readonly ISceneLifecycleTraceEvent[];
+}
+
+export interface ISceneLifecycleActiveScopes {
+  input: readonly string[];
+  scenes: readonly string[];
+  systems: readonly string[];
+  ui: readonly string[];
 }
 
 export interface ISceneLifecycleManager {
@@ -78,7 +86,7 @@ export function createSceneLifecycleManager(scenes: IScenesIr): ISceneLifecycleM
 
   return {
     get state() {
-      return snapshot(mutable);
+      return snapshot(sceneById, mutable);
     },
     change(scene: string) {
       const target = requireScene(sceneById, scene);
@@ -89,7 +97,7 @@ export function createSceneLifecycleManager(scenes: IScenesIr): ISceneLifecycleM
       mutable.stack = [target.id];
       mutable.activeScene = target.id;
       enterScene(mutable, target.id, "change");
-      return snapshot(mutable);
+      return snapshot(sceneById, mutable);
     },
     loadAdditive(scene: string) {
       const target = requireScene(sceneById, scene);
@@ -97,11 +105,11 @@ export function createSceneLifecycleManager(scenes: IScenesIr): ISceneLifecycleM
         mutable.additiveScenes.push(target.id);
         enterScene(mutable, target.id, "loadAdditive");
       }
-      return snapshot(mutable);
+      return snapshot(sceneById, mutable);
     },
     pop() {
       if (mutable.stack.length <= 1) {
-        return snapshot(mutable);
+        return snapshot(sceneById, mutable);
       }
       const current = mutable.stack.pop();
       if (current !== undefined) {
@@ -113,7 +121,7 @@ export function createSceneLifecycleManager(scenes: IScenesIr): ISceneLifecycleM
         pushTrace(mutable, resumed, "resume", "pop");
         pushTrace(mutable, resumed, "active", "pop");
       }
-      return snapshot(mutable);
+      return snapshot(sceneById, mutable);
     },
     push(scene: string) {
       const target = requireScene(sceneById, scene);
@@ -124,7 +132,7 @@ export function createSceneLifecycleManager(scenes: IScenesIr): ISceneLifecycleM
       mutable.stack.push(target.id);
       mutable.activeScene = target.id;
       enterScene(mutable, target.id, "push");
-      return snapshot(mutable);
+      return snapshot(sceneById, mutable);
     },
     unload(scene: string) {
       requireScene(sceneById, scene);
@@ -134,7 +142,7 @@ export function createSceneLifecycleManager(scenes: IScenesIr): ISceneLifecycleM
         mutable.activeScene = mutable.stack.at(-1) ?? scenes.initialScene;
       }
       exitScene(mutable, scene, "unload");
-      return snapshot(mutable);
+      return snapshot(sceneById, mutable);
     },
   };
 }
@@ -219,16 +227,38 @@ function pushTrace(
   state.trace.push({ phase, reason, scene });
 }
 
-function snapshot(state: {
-  additiveScenes: string[];
-  activeScene: string;
-  stack: string[];
-  trace: ISceneLifecycleTraceEvent[];
-}): ISceneLifecycleRuntimeState {
+function snapshot(
+  sceneById: ReadonlyMap<string, ISceneLifecycleIr>,
+  state: {
+    additiveScenes: string[];
+    activeScene: string;
+    stack: string[];
+    trace: ISceneLifecycleTraceEvent[];
+  },
+): ISceneLifecycleRuntimeState {
   return {
     additiveScenes: [...state.additiveScenes],
     activeScene: state.activeScene,
+    activeScopes: activeScopes(sceneById, state),
     stack: [...state.stack],
     trace: [...state.trace],
   };
+}
+
+function activeScopes(
+  sceneById: ReadonlyMap<string, ISceneLifecycleIr>,
+  state: { activeScene: string; additiveScenes: string[] },
+): ISceneLifecycleActiveScopes {
+  const sceneIds = [state.activeScene, ...state.additiveScenes].filter((scene, index, scenes) => scenes.indexOf(scene) === index);
+  const scenes = sceneIds.map((id) => requireScene(sceneById, id));
+  return {
+    input: sortedUnique(scenes.flatMap((scene) => scene.input === undefined ? [] : [scene.input])),
+    scenes: sceneIds,
+    systems: sortedUnique(scenes.flatMap((scene) => [...(scene.systems ?? [])])),
+    ui: sortedUnique(scenes.flatMap((scene) => [...(scene.ui ?? [])])),
+  };
+}
+
+function sortedUnique(values: readonly string[]): string[] {
+  return [...new Set(values)].sort((left, right) => left.localeCompare(right));
 }

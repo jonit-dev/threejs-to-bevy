@@ -136,10 +136,13 @@ authoring provenance ownership.
 Scene lifecycle source commands now set
 scene kind, activation policy, and initial-scene metadata through
 `tn scene lifecycle add`, with matching editor rows and `scenes.ir.json` bundle
-lowering from structured `.scene.json` entries. Material bundle import also preserves
-those promoted portable material fields back into `content/materials/*.materials.json`
-source documents, and the editor project API exposes matching editable
-`material.set` rows. `tn scene add-component` now gives agents a
+lowering from structured `.scene.json` entries. Scene-local input maps, system
+schedules, and UI roots now lower into scoped scene references plus merged
+`input.ir.json`, `systems.ir.json`, and `ui.ir.json` bundle documents, and
+web/Bevy scene managers expose active runtime scope snapshots. Material bundle
+import also preserves those promoted portable material fields back into
+`content/materials/*.materials.json` source documents, and the editor project
+API exposes matching editable `material.set` rows. `tn scene add-component` now gives agents a
 typed scene-component path for camera, light, mesh-renderer, rigid-body,
 collider, and character-controller payloads without hand-written component
 JSON; the shared registry exposes the matching `scene.set_*` operations.
@@ -568,11 +571,12 @@ scene IDs, scene-owned entity/input/UI/audio/asset/system references,
 activation values, transition bounds, loading scene references, and duplicate
 exclusive entity ownership. The compiler emits `scenes.ir.json`, includes the
 canonical manifest entry, merges scene-local visual/world entities into
-`world.ir.json`, derives scene lifecycle and transition capabilities, and
-supports modular scene imports through NodeNext `.js` specifiers. Web and Bevy
-now expose matching deterministic scene lifecycle traces, scene service effects,
-and transition/readiness traces; visible rendered transition overlays and full
-live entity activation remain future runtime depth.
+`world.ir.json`, lowers scene-local input/system/UI scopes into scoped scene
+references, derives scene lifecycle and transition capabilities, and supports
+modular scene imports through NodeNext `.js` specifiers. Web and Bevy now expose
+matching deterministic scene lifecycle traces, active scene scope snapshots,
+scene service effects, and transition/readiness traces; visible rendered
+transition overlays and full live entity activation remain future runtime depth.
 
 Packaging, performance, and desktop distribution evidence still runs through
 `pnpm verify:v7`. Legacy milestone aliases such as `verify:v9` forward to

@@ -374,6 +374,51 @@ test("should emit scene lifecycle document from composed game scenes", async () 
   }
 });
 
+test("should emit scene-scoped lifecycle input systems and ui", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-scene-scopes-"));
+  try {
+    const menuWorld = new World().addSystem(update("menuLoop", { run: (context) => context }));
+    const menuInput = defineInputMap({ actions: [action("Start", [keyboard("Enter")])] });
+    const menuUi = Ui({
+      children: [Button({ action: "Start", id: "ui.menu.start", label: "Start" })],
+      id: "ui.menu",
+    });
+    const menu = defineScene({
+      id: "menu",
+      input: menuInput,
+      kind: "menu",
+      ui: menuUi,
+      world: menuWorld,
+    });
+
+    const bundlePath = await emitBundle(
+      {
+        entry: "src/game.ts",
+        outDir: "dist/game.bundle",
+        projectPath: root,
+        schema: "threenative.project" as const,
+        version: "0.1.0" as const,
+      },
+      { initialScene: "menu", scenes: [menu] },
+    );
+    const scenes = JSON.parse(await readFile(join(bundlePath, "scenes.ir.json"), "utf8"));
+    const input = JSON.parse(await readFile(join(bundlePath, "input.ir.json"), "utf8"));
+    const systems = JSON.parse(await readFile(join(bundlePath, "systems.ir.json"), "utf8"));
+    const ui = JSON.parse(await readFile(join(bundlePath, "ui.ir.json"), "utf8"));
+    const result = await validateBundle(bundlePath);
+
+    assert.equal(result.ok, true);
+    assert.equal(scenes.scenes[0].input, "Start");
+    assert.deepEqual(scenes.scenes[0].systems, ["menuLoop"]);
+    assert.deepEqual(scenes.scenes[0].ui, ["ui.menu"]);
+    assert.deepEqual(input.actions.map((item: { id: string }) => item.id), ["Start"]);
+    assert.deepEqual(systems.systems.map((item: { name: string }) => item.name), ["menuLoop"]);
+    assert.equal(ui.root.id, "ui.menu");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should emit ecs schema files for world root", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-emit-ecs-"));
   try {

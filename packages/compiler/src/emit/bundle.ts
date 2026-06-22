@@ -8,6 +8,7 @@ import {
   type IAnimationsIr,
   type IBundleManifest,
   type IGltfSceneMetadataIr,
+  type IInputIr,
   type ILocalDataIr,
   type IMaterialIr,
   type IMaterialsIr,
@@ -62,7 +63,8 @@ export async function emitBundle(config: IProjectConfig, root: unknown, options:
     ...(worldRoot === undefined ? [] : [ecsToIr(worldRoot as Parameters<typeof ecsToIr>[0], { projectPath: config.projectPath })]),
     ...lifecycleScenes.ecsEmits,
   ]);
-  const input = bundleRoot.input === undefined ? ecs?.input : inputToIr(bundleRoot.input);
+  const rootInput = bundleRoot.input === undefined ? ecs?.input : inputToIr(bundleRoot.input);
+  const input = mergeInputs(rootInput, lifecycleScenes.input);
   const audio = bundleRoot.audio === undefined ? undefined : emitAudio(bundleRoot.audio);
   const localData = bundleRoot.persistence === undefined ? undefined : emitPersistence(bundleRoot.persistence);
   const animations = bundleRoot.animations === undefined ? undefined : emitAnimations(bundleRoot.animations);
@@ -74,7 +76,8 @@ export async function emitBundle(config: IProjectConfig, root: unknown, options:
     ...mergeEnvironmentAssets(mergeAudioAssets(emitted?.assets ?? [], bundleRoot.audio), environment?.assets ?? []),
   ]));
   const assets = generatedMeshPayloads.assets;
-  const ui = (bundleRoot.ui === undefined ? undefined : emitUi(bundleRoot.ui)) as IUiIr | undefined;
+  const rootUi = (bundleRoot.ui === undefined ? undefined : emitUi(bundleRoot.ui)) as IUiIr | undefined;
+  const ui = mergeUis(rootUi, lifecycleScenes.ui);
   const world = mergeWorlds(emitted?.world, ecs?.world);
   const materials: IMaterialsIr = {
     schema: IR_SCHEMA_IDS.materials,
@@ -468,8 +471,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 interface ILifecycleSceneEmitResult {
   ecsEmits: IEcsEmitResult[];
+  input?: IInputIr;
   sceneEmits: ReturnType<typeof sceneToWorld>[];
   scenes?: IScenesIr;
+  ui?: IUiIr;
 }
 
 function emitLifecycleScenes(projectPath: string, scenes: readonly ISceneLifecycleDeclaration[] | undefined, initialScene: string | undefined): ILifecycleSceneEmitResult {
@@ -478,14 +483,24 @@ function emitLifecycleScenes(projectPath: string, scenes: readonly ISceneLifecyc
   }
   const sceneEmits: ReturnType<typeof sceneToWorld>[] = [];
   const ecsEmits: IEcsEmitResult[] = [];
+  const inputEmits: IInputIr[] = [];
+  const uiEmits: IUiIr[] = [];
   const sceneEntries = scenes.map((scene) => {
     const visualEmit = scene.visual === undefined ? undefined : sceneToWorld(scene.visual);
     const ecsEmit = scene.world === undefined ? undefined : ecsToIr(scene.world, { projectPath });
+    const inputEmit = scene.input === undefined ? undefined : inputToIr(scene.input);
+    const uiEmit = scene.ui === undefined ? undefined : emitUi(scene.ui as IUiElement) as IUiIr;
     if (visualEmit !== undefined) {
       sceneEmits.push(visualEmit);
     }
     if (ecsEmit !== undefined) {
       ecsEmits.push(ecsEmit);
+    }
+    if (inputEmit !== undefined) {
+      inputEmits.push(inputEmit);
+    }
+    if (uiEmit !== undefined) {
+      uiEmits.push(uiEmit);
     }
     const sceneWorld = mergeWorlds(visualEmit?.world, ecsEmit?.world);
     return {
@@ -497,12 +512,14 @@ function emitLifecycleScenes(projectPath: string, scenes: readonly ISceneLifecyc
       ...(sceneWorld === undefined ? {} : { entities: sceneWorld.entities.map((entity) => entity.id).sort((left, right) => left.localeCompare(right)) }),
       id: scene.id,
       kind: scene.kind,
+      ...emitSceneScopes(inputEmit, ecsEmit, uiEmit),
       ...emitScenePersistence(scene.persistence),
       ...emitSceneTransitions(scene.transitions),
     };
   });
   return {
     ecsEmits,
+    input: inputEmits.reduce((merged, current) => mergeInputs(merged, current), undefined as IInputIr | undefined),
     sceneEmits,
     scenes: {
       schema: IR_SCHEMA_IDS.scenes,
@@ -510,7 +527,31 @@ function emitLifecycleScenes(projectPath: string, scenes: readonly ISceneLifecyc
       initialScene: initialScene ?? scenes[0]?.id ?? "",
       scenes: sceneEntries,
     },
+    ui: uiEmits.reduce((merged, current) => mergeUis(merged, current), undefined as IUiIr | undefined),
   };
+}
+
+function emitSceneScopes(
+  input: IInputIr | undefined,
+  ecs: IEcsEmitResult | undefined,
+  ui: IUiIr | undefined,
+): Pick<IScenesIr["scenes"][number], "input" | "systems" | "ui"> {
+  const inputId = input === undefined ? undefined : scopedInputId(input);
+  return {
+    ...(inputId === undefined ? {} : { input: inputId }),
+    ...(ecs === undefined || ecs.systems.systems.length === 0
+      ? {}
+      : { systems: ecs.systems.systems.map((system) => system.name).sort((left, right) => left.localeCompare(right)) }),
+    ...(ui === undefined ? {} : { ui: [ui.root.id] }),
+  };
+}
+
+function scopedInputId(input: IInputIr): string | undefined {
+  const ids = [
+    ...input.actions.map((action) => action.id),
+    ...input.axes.map((axis) => axis.id),
+  ].sort((left, right) => left.localeCompare(right));
+  return ids[0];
 }
 
 function emitSceneAudio(audio: ISceneLifecycleDeclaration["audio"]): Pick<IScenesIr["scenes"][number], "audio"> {
@@ -652,7 +693,106 @@ function mergeInputs(left: IEcsEmitResult["input"], right: IEcsEmitResult["input
     version: "0.1.0",
     actions: mergeById([...left.actions, ...right.actions]),
     axes: mergeById([...left.axes, ...right.axes]),
+    ...mergeControlsSettings(left, right),
+    ...mergePersistedBindingOverrides(left, right),
   };
+}
+
+function mergeUis(left: IUiIr | undefined, right: IUiIr | undefined): IUiIr | undefined {
+  if (left === undefined) {
+    return right;
+  }
+  if (right === undefined) {
+    return left;
+  }
+  const wrapperId = uniqueUiId([left.root, right.root], "ui.scope.root");
+  return {
+    schema: "threenative.ui",
+    version: "0.1.0",
+    ...mergeUiMetadata(left, right),
+    root: {
+      children: [left.root, right.root].sort((a, b) => a.id.localeCompare(b.id)),
+      id: wrapperId,
+      kind: "stack",
+    },
+  };
+}
+
+function uniqueUiId(nodes: readonly IUiIr["root"][], preferred: string): string {
+  const used = new Set(nodes.flatMap((node) => collectUiNodeIds(node)));
+  if (!used.has(preferred)) {
+    return preferred;
+  }
+  let index = 1;
+  while (used.has(`${preferred}.${index}`)) {
+    index += 1;
+  }
+  return `${preferred}.${index}`;
+}
+
+function collectUiNodeIds(node: IUiIr["root"]): string[] {
+  return [node.id, ...(node.children ?? []).flatMap((child) => collectUiNodeIds(child))];
+}
+
+function mergePersistedBindingOverrides(left: IInputIr, right: IInputIr): Pick<IInputIr, "persistedBindingOverrides"> {
+  const persistedBindingOverrides = mergeByInputOverrideKey([...(left.persistedBindingOverrides ?? []), ...(right.persistedBindingOverrides ?? [])]);
+  return persistedBindingOverrides.length === 0 ? {} : { persistedBindingOverrides };
+}
+
+function mergeControlsSettings(left: IInputIr, right: IInputIr): Pick<IInputIr, "controlsSettings"> {
+  const controlsSettings = right.controlsSettings ?? left.controlsSettings;
+  return controlsSettings === undefined ? {} : { controlsSettings };
+}
+
+function mergeByInputOverrideKey<T extends { actionOrAxisId: string; axisSlot?: string; control: string; device: string; profileId: string }>(items: T[]): T[] {
+  return [...new Map(items.map((item) => [inputOverrideKey(item), item])).values()].sort((left, right) =>
+    inputOverrideKey(left).localeCompare(inputOverrideKey(right)),
+  );
+}
+
+function inputOverrideKey(item: { actionOrAxisId: string; axisSlot?: string; control: string; device: string; profileId: string }): string {
+  return `${item.profileId}\0${item.actionOrAxisId}\0${item.axisSlot ?? ""}\0${item.device}\0${item.control}`;
+}
+
+function mergeUiMetadata(left: IUiIr, right: IUiIr): Omit<IUiIr, "root" | "schema" | "version"> {
+  return {
+    ...mergeUiFonts(left, right),
+    ...mergeUiFocusOrder(left, right),
+    ...mergeUiInputActions(left, right),
+    ...mergeUiSafeArea(left, right),
+  };
+}
+
+function mergeUiFonts(left: IUiIr, right: IUiIr): Pick<IUiIr, "fonts"> {
+  const fonts = mergeByUiFontKey([...(left.fonts ?? []), ...(right.fonts ?? [])]);
+  return fonts.length === 0 ? {} : { fonts };
+}
+
+function mergeByUiFontKey<T extends { asset: string; family: string; style?: string; weight?: number | string }>(items: T[]): T[] {
+  return [...new Map(items.map((item) => [uiFontKey(item), item])).values()].sort((left, right) => uiFontKey(left).localeCompare(uiFontKey(right)));
+}
+
+function uiFontKey(item: { asset: string; family: string; style?: string; weight?: number | string }): string {
+  return `${item.family}\0${item.weight ?? ""}\0${item.style ?? ""}\0${item.asset}`;
+}
+
+function mergeUiFocusOrder(left: IUiIr, right: IUiIr): Pick<IUiIr, "focusOrder"> {
+  const focusOrder = sortUnique([...(left.focusOrder ?? []), ...(right.focusOrder ?? [])]);
+  return focusOrder.length === 0 ? {} : { focusOrder };
+}
+
+function mergeUiInputActions(left: IUiIr, right: IUiIr): Pick<IUiIr, "inputActions"> {
+  const inputActions = right.inputActions ?? left.inputActions;
+  return inputActions === undefined ? {} : { inputActions };
+}
+
+function mergeUiSafeArea(left: IUiIr, right: IUiIr): Pick<IUiIr, "safeArea"> {
+  const safeArea = right.safeArea ?? left.safeArea;
+  return safeArea === undefined ? {} : { safeArea };
+}
+
+function sortUnique(values: readonly string[]): string[] {
+  return [...new Set(values)].sort((left, right) => left.localeCompare(right));
 }
 
 function mergeById<T extends { id: string }>(items: T[]): T[] {

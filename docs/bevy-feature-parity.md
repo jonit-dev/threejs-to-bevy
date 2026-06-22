@@ -128,6 +128,10 @@ remaining gaps by usefulness for building and shipping ordinary 3D games:
   command-time/removal hook ordering, system-local evidence, stoppable observer
   propagation, bounded timer/channel semantics, and stable diagnostics for raw
   handles, runtime plugins, workers, timers, and unbounded promises.
+- `P1` Scene-scoped lifecycle fields are promoted for compiler/runtime scope
+  evidence: scene-local input maps, system schedules, and UI roots lower into
+  bundle documents with scoped scene references, and web/Bevy scene managers
+  expose matching active/additive `activeScopes` snapshots.
 - `P1` Portable scripting host conformance is backed by the service matrix,
   focused web and Bevy effect-validation tests that reject undeclared
   component/resource/event/command/service effects before mutation, canonical
@@ -237,6 +241,7 @@ ergonomics. These rows are not implementation claims.
 - [x] Scene serialization/deserialization as an authoring feature
 - [x] Named lifecycle scenes, stack/push/pop traces, and transition readiness
 - [x] Structured source/CLI/editor mutation for scene lifecycle kind, activation, and initial-scene metadata
+- [x] Scene-local input, system, and UI scope references with web/Bevy active-scope snapshots
 - [x] Reflection/type registration surface for portable components
 - [x] Async task/channel patterns
 - [x] Plugin/plugin-group composition as a portable declaration
