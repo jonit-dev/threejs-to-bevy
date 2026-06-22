@@ -625,6 +625,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] Registry-backed CLI/editor source mutation for project metadata documents
 - [x] Registry-backed CLI/editor source mutation for reusable resources documents
 - [x] Typed CLI/source operations for common ECS components (`camera`, `light`, `mesh-renderer`, `rigid-body`, `collider`, `character-controller`), including camera projection/frustum fields
+- [x] Discoverable `tn physics add-rigid-body`, `tn physics add-collider`, and `tn nav add-agent` CLI aliases over promoted source components
 - [x] Editor workbench source inventory and structured operation dispatch
 - [x] Live preview edit classification with provenance-backed source mapping
 - [x] Deterministic structured bundle-relative JSON diffs

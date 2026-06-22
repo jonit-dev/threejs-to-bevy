@@ -278,6 +278,11 @@ under conventional paths:
 - `tn system create <system-id>` writes
   `content/systems/<system-id>.systems.json`.
 
+Scene component commands such as `tn physics add-rigid-body`, `tn physics
+add-collider`, and `tn nav add-agent` mutate existing
+`content/scenes/*.scene.json` documents through the same typed source
+validators as `tn scene add-component`.
+
 Every operation supports `--json` and returns the shared
 `ok`/`changed`/`filesWritten`/`diagnostics` operation shape. Invalid CLI JSON,
 unknown primitive kinds, missing source documents, missing system script

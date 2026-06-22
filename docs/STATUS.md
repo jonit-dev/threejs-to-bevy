@@ -155,7 +155,9 @@ preserves those promoted portable material fields back into
 API exposes matching editable `material.set` rows. `tn scene add-component` now gives agents a
 typed scene-component path for camera, light, mesh-renderer, rigid-body,
 collider, and character-controller payloads without hand-written component
-JSON; camera operations now preserve promoted projection/frustum fields
+JSON, while `tn physics add-rigid-body`, `tn physics add-collider`, and
+`tn nav add-agent` provide discoverable aliases for the promoted
+physics/navigation source components; camera operations now preserve promoted projection/frustum fields
 (`fovY`, `near`, `far`, and orthographic `size`) through source builds, and the
 shared registry exposes the matching `scene.set_*` operations.
 Reusable `threenative.resources` source documents now give shared gameplay

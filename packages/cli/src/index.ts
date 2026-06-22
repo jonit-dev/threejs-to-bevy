@@ -15,6 +15,7 @@ import { editorCommand } from "./commands/editor.js";
 import { helpCommand } from "./commands/help.js";
 import { modelTestCommand } from "./commands/modelTest.js";
 import { packageCommand } from "./commands/package.js";
+import { navCommand, physicsCommand } from "./commands/physicsNav.js";
 import { sceneCommand } from "./commands/scene.js";
 import { audioCommand, environmentCommand, inputCommand, materialCommand, meshCommand, prefabCommand, projectCommand, resourcesCommand, runtimeCommand, systemCommand, uiCommand } from "./commands/sourceDocuments.js";
 import { validateProject } from "./commands/validate.js";
@@ -123,6 +124,16 @@ const commands: Record<string, ICommandDefinition> = {
     description: "Create a local desktop package artifact from a bundle.",
     implemented: true,
     usage: "tn package --target desktop --bundle <path> [--runtime bevy|webview] [--format portable|archive|installer] [--out <path>] [--json]",
+  },
+  physics: {
+    description: "Add typed physics components to structured scene source.",
+    implemented: true,
+    usage: "tn physics add-rigid-body <scene-id> <entity-id> [--kind <dynamic|kinematic|static>] [--mass <n>] [--damping <n>] [--gravity-scale <n>] [--project <path>] [--json]\n              tn physics add-collider <scene-id> <entity-id> [--kind <box|sphere|capsule|cylinder|mesh>] [--size x,y,z] [--radius <n>] [--height <n>] [--trigger <true|false>] [--project <path>] [--json]",
+  },
+  nav: {
+    description: "Add typed navigation/character-agent components to structured scene source.",
+    implemented: true,
+    usage: "tn nav add-agent <scene-id> <entity-id> [--move-x <axis>] [--move-z <axis>] [--speed <n>] [--slope-limit <n>] [--step-offset <n>] [--grounding <mode>] [--blocking <true|false>] [--project <path>] [--json]",
   },
   runtime: {
     description: "Create and mutate structured runtime config source documents.",
@@ -292,6 +303,14 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
 
   if (commandName === "package") {
     return packageCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "physics") {
+    return physicsCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "nav") {
+    return navCommand(normalizedArgv.slice(1));
   }
 
   if (commandName === "scene") {

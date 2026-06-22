@@ -159,7 +159,7 @@ IR/runtime surfaces, but only some have typed editor/CLI helpers.
 | ✅ P1 | Runtime/window/target source docs | Resolved for source-backed runtime config creation, primary window metadata, and promoted renderer fields; target profile source docs and host window policies remain open. | `tn runtime create`, `tn runtime set-window`, `tn runtime set-rendering`; future `tn target set` |
 | ✅ P1 | System query/effect metadata commands | Resolved for source-backed system access lists, ordering, queries, service declarations, command declarations, bundle import, and structured `.systems.json` lowering. | `tn system set-metadata <system-id> --reads ... --writes ... --queries ... --commands ... --services ...` |
 | P2 | Animation graph and particle authoring commands | Runtime support exists, but authoring is not first-class. | `tn animation add-clip`, `tn animation graph add-state`, `tn particle add-emitter` |
-| P2 | Physics/nav typed commands | Physics runtime support is broad; authoring remains raw component JSON. | `tn physics add-rigid-body`, `tn physics add-collider`, `tn nav add-agent` |
+| ✅ P2 | Physics/nav typed commands | Resolved for discoverable CLI aliases over the existing typed source validators for rigid bodies, colliders, and character controllers; broader nav setup and physics runtime residuals remain tracked separately. | `tn physics add-rigid-body`, `tn physics add-collider`, `tn nav add-agent` |
 
 ## Subagent Findings
 

@@ -26,6 +26,8 @@ test("should print help when requested", async () => {
   assert.match(result.stdout, /dev/);
   assert.match(result.stdout, /editor/);
   assert.match(result.stdout, /package/);
+  assert.match(result.stdout, /physics/);
+  assert.match(result.stdout, /nav/);
   assert.match(result.stdout, /scene/);
   assert.match(result.stdout, /system/);
   assert.match(result.stdout, /ui/);
@@ -45,6 +47,9 @@ test("should tolerate a leading package script separator", async () => {
 test("should keep rendered help stable for the package bin", () => {
   assert.match(renderHelp(), /tn dev --target <web\|desktop>/);
   assert.match(renderHelp(), /tn package --target desktop/);
+  assert.match(renderHelp(), /tn physics add-rigid-body <scene-id> <entity-id>/);
+  assert.match(renderHelp(), /tn physics add-collider <scene-id> <entity-id>/);
+  assert.match(renderHelp(), /tn nav add-agent <scene-id> <entity-id>/);
   assert.match(renderHelp(), /tn scene create <scene-id>/);
   assert.match(renderHelp(), /tn scene validate \[scene-id\]/);
   assert.match(renderHelp(), /tn scene inspect <scene-id>/);
@@ -68,6 +73,32 @@ test("should keep rendered help stable for the package bin", () => {
   assert.match(renderHelp(), /tn init <name>/);
   assert.match(renderHelp(), /tn help \[topic\]/);
   assert.doesNotMatch(renderHelp(), /V1 commands:/);
+});
+
+test("dispatch registers physics and nav typed source commands", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-physics-nav-"));
+  try {
+    const create = await dispatch(["scene", "create", "scene.physics", "--project", root, "--json"]);
+    const entity = await dispatch(["scene", "add-entity", "scene.physics", "player", "--project", root, "--json"]);
+    const body = await dispatch(["physics", "add-rigid-body", "scene.physics", "player", "--kind", "dynamic", "--mass", "3", "--project", root, "--json"]);
+    const collider = await dispatch(["physics", "add-collider", "scene.physics", "player", "--kind", "capsule", "--radius", "0.4", "--height", "1.8", "--project", root, "--json"]);
+    const agent = await dispatch(["nav", "add-agent", "scene.physics", "player", "--move-x", "move.x", "--move-z", "move.z", "--speed", "5", "--project", root, "--json"]);
+    const scene = JSON.parse(await readFile(join(root, "content", "scenes", "scene.physics.scene.json"), "utf8")) as {
+      entities: Array<{ components?: Record<string, unknown>; id: string }>;
+    };
+    const components = scene.entities.find((item) => item.id === "player")?.components;
+
+    assert.equal(create.exitCode, 0);
+    assert.equal(entity.exitCode, 0);
+    assert.equal(body.exitCode, 0);
+    assert.equal(collider.exitCode, 0);
+    assert.equal(agent.exitCode, 0);
+    assert.deepEqual(components?.RigidBody, { kind: "dynamic", mass: 3 });
+    assert.deepEqual(components?.Collider, { height: 1.8, kind: "capsule", radius: 0.4, size: [1, 1, 1] });
+    assert.deepEqual(components?.CharacterController, { blocking: true, grounding: "raycast", moveXAxis: "move.x", moveZAxis: "move.z", speed: 5 });
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
 });
 
 test("should inspect scene hierarchy when bundle is valid", async () => {
