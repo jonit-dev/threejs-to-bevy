@@ -26,5 +26,7 @@ resource failures, visible mesh count, browser console logs, page errors, and
 failed requests. Web previews expose `window.__THREENATIVE_READY__` with canvas
 size, runtime diagnostics, active camera ID, visible mesh count, final visible
 world bounds, asset counts, resource failures, and camera distance/clip-range
-hints. Use `tn screenshot` and `tn record` for direct proof artifacts, or
-`tn verify` for automated visual checks.
+hints. Use `tn screenshot --wait-ready --json` for a PNG proof report with the
+invoked command, canvas dimensions, nonblank analysis, runtime diagnostics,
+browser logs, page errors, and failed requests; use `tn record` for video proof
+or `tn verify` for automated visual checks.

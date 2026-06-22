@@ -225,9 +225,14 @@ Command expectations:
   generated project. Add `--screenshot --url <preview-url>` to capture proof
   from a running preview; without a URL, screenshot proof is reported as
   unavailable with a next command.
-- `tn screenshot --url <preview-url> --out <file.png>` captures a PNG proof
-  frame from a running web preview using the same Playwright browser stack as
-  visual verification.
+- `tn screenshot [--project <path>] --url <preview-url> --out <file.png>
+  [--wait-ready] [--json]` captures a PNG proof frame from a running web
+  preview using the same Playwright browser stack as visual verification. JSON
+  output includes the invoked command, URL, timestamp, viewport, canvas
+  dimensions, runtime readiness payload, nonblank check, visible mesh count,
+  resource failures, browser logs, page errors, failed requests, and stable
+  diagnostics for missing canvas, missing runtime readiness, runtime errors,
+  zero visible meshes, and blank captures.
 - `tn record --url <preview-url> --out <file.webm|file.mp4> --seconds <n>`
   records a short Chromium video. WebM is captured directly; MP4 requires
   `ffmpeg` on `PATH` for conversion.

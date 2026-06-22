@@ -495,12 +495,12 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Implement `tn screenshot [--project <path>] [--url <url>] [--out <path>]
+- [x] Implement `tn screenshot [--project <path>] [--url <url>] [--out <path>]
   [--wait-ready] [--json]`.
-- [ ] Wait for canvas and runtime readiness; fail separately for no canvas,
+- [x] Wait for canvas and runtime readiness; fail separately for no canvas,
   runtime error, black frame, and HUD-only/low-visible-mesh frame where
   detectable.
-- [ ] Save screenshot plus JSON metadata: URL, dimensions, readiness,
+- [x] Save screenshot plus JSON metadata: URL, dimensions, readiness,
   diagnostics, console errors, resource failures, timestamp, and command.
 - [ ] Reuse the same capture path inside `tn verify` where possible.
 
@@ -521,6 +521,12 @@ sequenceDiagram
 - `tn screenshot` and `tn record` JSON reports now include capture timestamp,
   viewport, URL, byte size, and the runtime ready payload when a ThreeNative
   preview exposes it.
+- `tn screenshot --wait-ready --json` now records the invoked command, canvas
+  dimensions, nonblank analysis, visible mesh count, runtime diagnostics,
+  resource failures, browser logs, page errors, failed requests, and stable
+  failure codes for missing canvas, missing runtime readiness, runtime errors,
+  failed resources, zero visible meshes, and blank captures. Verified with
+  `pnpm --filter @threenative/cli test` on 2026-06-21.
 
 #### Phase 8: Add `tn record` — short gameplay video proof
 
@@ -770,7 +776,9 @@ Files changed: screenshot command/tests/verify helpers/docs.
 Automated verification: screenshot command tests and capture smoke where
 available.
 Manual verification needed: yes, sendable screenshot artifact path.
-Drift from PRD: record black-frame/HUD-only detection limitations.
+Drift from PRD: screenshot capture lives in `visualProof.ts` with the existing
+visual proof helpers instead of a standalone command file; verify capture reuse
+remains open.
 Decision: continue only when screenshot proof is scriptable.
 
 ## PHASE 8 CHECKPOINT

@@ -63,6 +63,13 @@ running web preview for canvas presence, `window.__THREENATIVE_READY__`,
 runtime error diagnostics, resource failures, visible mesh count, browser
 console logs, page errors, and failed requests, returning stable severities and
 JSON diagnostics for setup, bundle, and preview-readiness failures.
+`tn screenshot [--project <path>] --url <preview-url> --out <file.png>
+[--wait-ready] --json` now writes a PNG plus machine-readable proof metadata:
+the invoked command, URL, timestamp, viewport, canvas dimensions, runtime
+readiness payload, nonblank analysis, visible mesh count, resource failures,
+browser logs, page errors, failed requests, and stable errors for missing
+canvas, missing readiness, runtime errors, zero visible meshes, and blank
+captures.
 
 The structured authoring parity PRD has started with a source-document contract
 and testable inventory in `@threenative/authoring`. The inventory makes the

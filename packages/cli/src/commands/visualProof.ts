@@ -5,17 +5,42 @@ import { promisify } from "node:util";
 import { chromium } from "playwright";
 
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
+import { readPngFrame } from "../verify/compareImages.js";
+import { analyzeNonblank, defaultNonblankThreshold } from "../verify/imageAnalysis.js";
 
 const execFileAsync = promisify(execFile);
 const defaultViewport = { height: 720, width: 1280 };
 
+interface IVisualProofDiagnostic {
+  code: string;
+  message: string;
+  severity: "error" | "warning";
+}
+
 interface IVisualProofReport {
   byteSize: number;
   capturedAt: string;
+  command?: readonly string[];
+  diagnostics?: IVisualProofDiagnostic[];
+  page?: {
+    browserLogs: string[];
+    errors: string[];
+    requestFailures: string[];
+  };
   outPath: string;
   runtimeReady: unknown;
   url: string;
   viewport: typeof defaultViewport;
+}
+
+interface IScreenshotProofReport extends IVisualProofReport {
+  checks: {
+    canvas?: { height: number; ok: boolean; width: number };
+    nonblank?: ReturnType<typeof analyzeNonblank>;
+    resourceFailures?: unknown[];
+    visibleMeshCount?: number;
+  };
+  dimensions?: { height: number; width: number };
 }
 
 export async function screenshotCommand(argv: readonly string[], cwd = process.env.INIT_CWD ?? process.cwd()): Promise<ICommandResult> {
@@ -23,15 +48,18 @@ export async function screenshotCommand(argv: readonly string[], cwd = process.e
   const json = normalizedArgv.includes("--json");
   const url = flagValue(normalizedArgv, "--url");
   const outArg = flagValue(normalizedArgv, "--out");
+  const waitReady = normalizedArgv.includes("--wait-ready");
+  const project = flagValue(normalizedArgv, "--project");
+  const baseCwd = project === undefined ? cwd : resolvePath(cwd, project);
 
   if (url === undefined || outArg === undefined) {
     return diagnosticResult(
-      { code: "TN_SCREENSHOT_USAGE", message: "Usage: tn screenshot --url <preview-url> --out <file.png> [--json]" },
+      { code: "TN_SCREENSHOT_USAGE", message: "Usage: tn screenshot [--project <path>] --url <preview-url> --out <file.png> [--wait-ready] [--json]" },
       { exitCode: 1, json, stderr: !json },
     );
   }
 
-  const outPath = resolvePath(cwd, outArg);
+  const outPath = resolvePath(baseCwd, outArg);
   if (extname(outPath).toLowerCase() !== ".png") {
     return diagnosticResult(
       { code: "TN_SCREENSHOT_OUT_EXTENSION", message: "Screenshot output must use a .png extension.", out: outPath },
@@ -40,11 +68,12 @@ export async function screenshotCommand(argv: readonly string[], cwd = process.e
   }
 
   try {
-    const report = await captureScreenshot({ outPath, url });
+    const report = await captureScreenshot({ command: normalizedArgv, outPath, url, waitReady });
+    const hasErrors = report.diagnostics?.some((diagnostic) => diagnostic.severity === "error") ?? false;
     return {
-      exitCode: 0,
+      exitCode: hasErrors ? 1 : 0,
       stdout: json
-        ? `${JSON.stringify({ code: "TN_SCREENSHOT_OK", ...report }, null, 2)}\n`
+        ? `${JSON.stringify({ code: hasErrors ? "TN_SCREENSHOT_FAILED" : "TN_SCREENSHOT_OK", ...report }, null, 2)}\n`
         : `Screenshot captured.\nOutput: ${report.outPath}\nBytes: ${report.byteSize}\n`,
     };
   } catch (error) {
@@ -88,24 +117,78 @@ export async function recordCommand(argv: readonly string[], cwd = process.env.I
   }
 }
 
-export async function captureScreenshot(options: { outPath: string; url: string }): Promise<IVisualProofReport> {
+export async function captureScreenshot(options: { command?: readonly string[]; outPath: string; url: string; waitReady?: boolean }): Promise<IScreenshotProofReport> {
   await mkdir(dirname(options.outPath), { recursive: true });
   const browser = await chromium.launch({ headless: true });
   let runtimeReady: unknown = null;
+  const diagnostics: IVisualProofDiagnostic[] = [];
+  const browserLogs: string[] = [];
+  const pageErrors: string[] = [];
+  const requestFailures: string[] = [];
+  let canvasInfo: { height: number; width: number } | null = null;
   try {
     const page = await browser.newPage({ viewport: defaultViewport });
+    page.on("console", (message) => browserLogs.push(`${message.type()}: ${message.text()}`));
+    page.on("pageerror", (error) => pageErrors.push(error.message));
+    page.on("requestfailed", (request) => requestFailures.push(`${request.method()} ${request.url()} ${request.failure()?.errorText ?? "failed"}`));
+    page.on("response", (response) => {
+      if (response.status() >= 400) {
+        requestFailures.push(`${response.status()} ${response.url()}`);
+      }
+    });
     await page.goto(options.url, { waitUntil: "domcontentloaded" });
-    await waitForVisualReadiness(page);
+    if (options.waitReady === true) {
+      try {
+        await page.waitForFunction("Boolean(globalThis.__THREENATIVE_READY__)", undefined, { timeout: 10000 });
+      } catch (error) {
+        diagnostics.push({ code: "TN_SCREENSHOT_RUNTIME_READY_MISSING", message: `Runtime readiness was not exposed: ${errorMessage(error)}.`, severity: "error" });
+      }
+    } else {
+      await waitForVisualReadiness(page);
+    }
     runtimeReady = await readRuntimeReady(page);
+    collectRuntimeReadyDiagnostics(runtimeReady, diagnostics);
+    canvasInfo = await readCanvasInfo(page);
+    if (canvasInfo === null) {
+      diagnostics.push({ code: "TN_SCREENSHOT_CANVAS_MISSING", message: "No canvas element was found in the preview page.", severity: "error" });
+    } else if (canvasInfo.width <= 0 || canvasInfo.height <= 0) {
+      diagnostics.push({ code: "TN_SCREENSHOT_CANVAS_EMPTY", message: `Canvas has non-renderable size ${canvasInfo.width}x${canvasInfo.height}.`, severity: "error" });
+    }
     await page.screenshot({ fullPage: false, path: options.outPath });
   } finally {
     await browser.close();
   }
   const info = await stat(options.outPath);
+  const checks: IScreenshotProofReport["checks"] = {};
+  if (canvasInfo !== null) {
+    checks.canvas = { ...canvasInfo, ok: canvasInfo.width > 0 && canvasInfo.height > 0 };
+  }
+  try {
+    const frame = await readPngFrame(options.outPath);
+    const nonblank = analyzeNonblank(frame, defaultNonblankThreshold);
+    checks.nonblank = nonblank;
+    if (!nonblank.ok) {
+      diagnostics.push({ code: "TN_SCREENSHOT_BLANK", message: "Captured screenshot appears blank or near-blank.", severity: "error" });
+    }
+  } catch (error) {
+    diagnostics.push({ code: "TN_SCREENSHOT_PIXELS_UNREADABLE", message: `Could not inspect captured screenshot pixels: ${errorMessage(error)}.`, severity: "warning" });
+  }
+  const runtimeDiagnostics = runtimeReadyDiagnostics(runtimeReady);
+  if (runtimeDiagnostics.visibleMeshCount !== undefined) {
+    checks.visibleMeshCount = runtimeDiagnostics.visibleMeshCount;
+  }
+  if (runtimeDiagnostics.resourceFailures.length > 0) {
+    checks.resourceFailures = runtimeDiagnostics.resourceFailures;
+  }
   return {
     byteSize: info.size,
     capturedAt: new Date().toISOString(),
+    command: options.command,
+    checks,
+    diagnostics,
+    dimensions: canvasInfo ?? defaultViewport,
     outPath: options.outPath,
+    page: { browserLogs, errors: pageErrors, requestFailures },
     runtimeReady,
     url: options.url,
     viewport: defaultViewport,
@@ -183,9 +266,52 @@ async function readRuntimeReady(page: { evaluate: (expression: string) => Promis
   }
 }
 
+async function readCanvasInfo(page: { evaluate: (expression: string) => Promise<unknown> }): Promise<{ height: number; width: number } | null> {
+  return await page.evaluate(`(() => {
+    const canvas = document.querySelector("canvas");
+    if (canvas === null) return null;
+    const rect = canvas.getBoundingClientRect();
+    return { height: Math.round(rect.height), width: Math.round(rect.width) };
+  })()`) as { height: number; width: number } | null;
+}
+
+function collectRuntimeReadyDiagnostics(runtimeReady: unknown, diagnostics: IVisualProofDiagnostic[]): void {
+  const ready = isRecord(runtimeReady) ? runtimeReady : {};
+  if (ready.ok === false) {
+    diagnostics.push({ code: "TN_SCREENSHOT_RUNTIME_ERROR", message: "Runtime readiness payload reports ok=false.", severity: "error" });
+  }
+  const embeddedDiagnostics = Array.isArray(ready.diagnostics) ? ready.diagnostics : [];
+  for (const diagnostic of embeddedDiagnostics) {
+    if (isRecord(diagnostic) && diagnostic.severity === "error") {
+      diagnostics.push({ code: "TN_SCREENSHOT_RUNTIME_ERROR", message: String(diagnostic.message ?? diagnostic.code ?? "Runtime diagnostic reported an error."), severity: "error" });
+    }
+  }
+  const runtime = runtimeReadyDiagnostics(runtimeReady);
+  if (runtime.resourceFailures.length > 0) {
+    diagnostics.push({ code: "TN_SCREENSHOT_RESOURCE_FAILURES", message: `Runtime reported ${runtime.resourceFailures.length} failed resources.`, severity: "error" });
+  }
+  if (runtime.visibleMeshCount !== undefined && runtime.visibleMeshCount <= 0) {
+    diagnostics.push({ code: "TN_SCREENSHOT_VISIBLE_MESH_MISSING", message: "Runtime reports zero visible meshes.", severity: "error" });
+  }
+}
+
+function runtimeReadyDiagnostics(runtimeReady: unknown): { resourceFailures: unknown[]; visibleMeshCount?: number } {
+  const ready = isRecord(runtimeReady) ? runtimeReady : {};
+  const runtimeDiagnostics = isRecord(ready.runtimeDiagnostics) ? ready.runtimeDiagnostics : undefined;
+  const assets = isRecord(runtimeDiagnostics?.assets) ? runtimeDiagnostics.assets : undefined;
+  const scene = isRecord(runtimeDiagnostics?.scene) ? runtimeDiagnostics.scene : undefined;
+  const resourceFailures = Array.isArray(assets?.resourceFailures) ? assets.resourceFailures : [];
+  const visibleMeshCount = typeof scene?.visibleMeshCount === "number" ? scene.visibleMeshCount : undefined;
+  return { resourceFailures, visibleMeshCount };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 async function waitForVisualReadiness(page: { waitForFunction: (expression: string, arg?: unknown, options?: { timeout?: number }) => Promise<unknown>; waitForTimeout: (milliseconds: number) => Promise<void> }): Promise<void> {
   try {
-    await page.waitForFunction("Boolean(globalThis.__THREENATIVE_READY__) || document.querySelector('canvas') !== null", undefined, { timeout: 10000 });
+    await page.waitForFunction("Boolean(globalThis.__THREENATIVE_READY__) || document.querySelector('canvas') !== null", undefined, { timeout: 2000 });
   } catch {
     // Plain web pages may not expose the ThreeNative ready flag or a canvas. Capture the loaded page anyway.
   }
