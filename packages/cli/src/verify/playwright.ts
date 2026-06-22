@@ -2,6 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { chromium } from "playwright";
 
+import { captureScreenshot, type IVisualProofDiagnostic } from "../commands/visualProof.js";
 import { readPngFrame } from "./compareImages.js";
 import { analyzeNonblank, analyzeProjectedBounds, compareFrames, defaultDiffThreshold, defaultNonblankThreshold, type IPixelFrame } from "./imageAnalysis.js";
 import { likelyDiagnostic } from "./diagnostics.js";
@@ -16,6 +17,10 @@ export interface IPlaywrightVerifyOptions {
 
 export async function verifyWebPreview(options: IPlaywrightVerifyOptions): Promise<IVerificationReport> {
   await mkdir(options.artifactDir, { recursive: true });
+
+  if (options.frames <= 1 && !options.expectedMotion) {
+    return verifySingleFrameWithSharedCapture(options);
+  }
 
   const diagnostics: IVerificationDiagnostic[] = [];
   const browserLogs: string[] = [];
@@ -134,6 +139,57 @@ export async function verifyWebPreview(options: IPlaywrightVerifyOptions): Promi
   } finally {
     await browser.close();
   }
+}
+
+async function verifySingleFrameWithSharedCapture(options: IPlaywrightVerifyOptions): Promise<IVerificationReport> {
+  const screenshotPath = join(options.artifactDir, "frame-01.png");
+  const capture = await captureScreenshot({
+    command: ["tn", "verify", "--url", options.previewUrl, "--frames", "1"],
+    outPath: screenshotPath,
+    url: options.previewUrl,
+    waitReady: true,
+  });
+  const diagnostics = capture.diagnostics?.map(verificationDiagnosticFromScreenshot) ?? [];
+  const checks: IVerificationReport["checks"] = {};
+  if (capture.checks.canvas !== undefined) {
+    checks.canvas = capture.checks.canvas;
+  }
+  if (capture.checks.nonblank !== undefined) {
+    checks.nonblank = capture.checks.nonblank;
+    try {
+      checks.projectedBounds = analyzeProjectedBounds(await readPngFrame(screenshotPath), defaultNonblankThreshold);
+    } catch {
+      diagnostics.push(likelyDiagnostic("TN_VERIFY_PIXELS_UNREADABLE", "Could not read canvas pixels for projected bounds analysis.", "runtime-web"));
+    }
+  }
+
+  return buildReport(
+    options,
+    diagnostics,
+    [screenshotPath],
+    {
+      browserLogs: capture.page?.browserLogs ?? [],
+      pageErrors: capture.page?.errors ?? [],
+      requestFailures: capture.page?.requestFailures ?? [],
+      runtimeReady: capture.runtimeReady,
+    },
+    checks,
+  );
+}
+
+function verificationDiagnosticFromScreenshot(diagnostic: IVisualProofDiagnostic): IVerificationDiagnostic {
+  const codeMap: Record<string, string> = {
+    TN_SCREENSHOT_BLANK: "TN_VERIFY_SCREENSHOT_BLANK",
+    TN_SCREENSHOT_CANVAS_EMPTY: "TN_VERIFY_CANVAS_EMPTY",
+    TN_SCREENSHOT_CANVAS_MISSING: "TN_VERIFY_CANVAS_MISSING",
+    TN_SCREENSHOT_PIXELS_UNREADABLE: "TN_VERIFY_PIXELS_UNREADABLE",
+    TN_SCREENSHOT_RESOURCE_FAILURES: "TN_VERIFY_RESOURCE_FAILURES",
+    TN_SCREENSHOT_RUNTIME_ERROR: "TN_VERIFY_RUNTIME_ERROR",
+    TN_SCREENSHOT_RUNTIME_READY_MISSING: "TN_VERIFY_PREVIEW_NOT_READY",
+    TN_SCREENSHOT_VISIBLE_MESH_MISSING: "TN_VERIFY_VISIBLE_MESH_MISSING",
+  };
+  const area = diagnostic.code.includes("CANVAS") || diagnostic.code.includes("BLANK") ? "camera/framing" : "runtime-web";
+  return likelyDiagnostic(codeMap[diagnostic.code] ?? diagnostic.code.replace("TN_SCREENSHOT_", "TN_VERIFY_"), diagnostic.message, area);
 }
 
 function buildReport(

@@ -69,7 +69,9 @@ the invoked command, URL, timestamp, viewport, canvas dimensions, runtime
 readiness payload, nonblank analysis, visible mesh count, resource failures,
 browser logs, page errors, failed requests, and stable errors for missing
 canvas, missing readiness, runtime errors, zero visible meshes, and blank
-captures.
+captures. `tn verify --frames 1` reuses the same screenshot capture path and
+maps those diagnostics into the verification report; multi-frame motion checks
+keep their continuous browser session.
 
 The structured authoring parity PRD has started with a source-document contract
 and testable inventory in `@threenative/authoring`. The inventory makes the

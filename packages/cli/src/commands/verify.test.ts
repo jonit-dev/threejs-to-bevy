@@ -103,6 +103,42 @@ test("should emit machine readable report", async () => {
   }
 });
 
+test("should reuse screenshot capture path for single-frame proof", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-verify-shared-screenshot-"));
+  try {
+    const html = encodeURIComponent(`<!doctype html>
+      <canvas width="320" height="180" style="width:320px;height:180px"></canvas>
+      <script>
+        const canvas = document.querySelector("canvas");
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#22c55e";
+        ctx.fillRect(0, 0, 320, 180);
+        globalThis.__THREENATIVE_READY__ = {
+          ok: true,
+          diagnostics: [],
+          runtimeDiagnostics: { assets: { resourceFailures: [] }, scene: { visibleMeshCount: 1 } }
+        };
+      </script>`);
+
+    const result = await verifyCommand(["--url", `data:text/html,${html}`, "--frames", "1", "--json"], root);
+    const payload = JSON.parse(result.stdout) as IVerificationReport & { code: string };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.code, "TN_VERIFY_OK");
+    assert.equal(payload.artifacts.screenshots.length, 1);
+    assert.match(payload.artifacts.screenshots[0] ?? "", /frame-01\.png$/);
+    assert.equal(payload.checks.canvas?.ok, true);
+    assert.equal(payload.checks.nonblank?.ok, true);
+    assert.equal(payload.debug.requestFailures.length, 0);
+
+    const saved = JSON.parse(await readFile(join(root, "artifacts/verify/verification-report.json"), "utf8")) as IVerificationReport;
+    assert.equal(saved.status, "pass");
+    assert.equal(saved.artifacts.screenshots.length, 1);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should write reports under the project path when a URL is reused", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-verify-project-url-"));
   try {

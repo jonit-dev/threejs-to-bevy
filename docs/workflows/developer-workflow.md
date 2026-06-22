@@ -232,7 +232,10 @@ Command expectations:
   dimensions, runtime readiness payload, nonblank check, visible mesh count,
   resource failures, browser logs, page errors, failed requests, and stable
   diagnostics for missing canvas, missing runtime readiness, runtime errors,
-  zero visible meshes, and blank captures.
+  zero visible meshes, and blank captures. `tn verify --frames 1 --json` reuses
+  the same screenshot capture path for single-frame proof reports; multi-frame
+  motion checks keep one browser session so animation state is preserved between
+  frames.
 - `tn record --url <preview-url> --out <file.webm|file.mp4> --seconds <n>`
   records a short Chromium video. WebM is captured directly; MP4 requires
   `ffmpeg` on `PATH` for conversion.

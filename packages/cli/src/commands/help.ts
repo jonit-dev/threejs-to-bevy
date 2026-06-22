@@ -91,7 +91,7 @@ export const HELP_TOPICS: Record<string, HelpTopic> = {
   },
   "visual-qa": {
     aliases: ["visual", "qa", "proof"],
-    commands: ["tn dev --target web", "tn verify [--project <path>] [--frames <count>] [--json]", "tn screenshot --url <preview-url> --out <file.png>", "tn record --url <preview-url> --out <file.webm|file.mp4> --seconds <n>", "tn help screenshot", "tn help record"],
+    commands: ["tn dev --target web", "tn verify [--project <path>] [--frames <count>] [--json]", "tn screenshot [--project <path>] --url <preview-url> --out <file.png> [--wait-ready] [--json]", "tn record --url <preview-url> --out <file.webm|file.mp4> --seconds <n>", "tn help screenshot", "tn help record"],
     docs: ["docs/workflows/developer-workflow.md", "docs/workflows/ai-workflows.md"],
     examples: ["Run focused validation/build first, then capture visual proof and report exact artifact paths.", "tn screenshot --url http://127.0.0.1:5173 --out artifacts/proof/frame.png", "tn record --url http://127.0.0.1:5173 --out artifacts/proof/clip.webm --seconds 5"],
     failureSymptoms: ["ready flag true but frame is black", "HUD visible but world missing", "low visible mesh count", "resource load failure"],
@@ -99,7 +99,7 @@ export const HELP_TOPICS: Record<string, HelpTopic> = {
     title: "Visual QA and proof",
   },
   screenshot: {
-    commands: ["tn screenshot --url <preview-url> --out <file.png> [--json]", "tn verify --frames 1 --json", "tn compare-images <first.png> <second.png> [--json]"],
+    commands: ["tn screenshot [--project <path>] --url <preview-url> --out <file.png> [--wait-ready] [--json]", "tn verify --frames 1 --json", "tn compare-images <first.png> <second.png> [--json]"],
     docs: ["docs/workflows/developer-workflow.md", "docs/runtime/README.md"],
     examples: ["tn screenshot --url http://127.0.0.1:5173 --out artifacts/proof/frame.png --json"],
     failureSymptoms: ["no canvas", "runtime readiness timeout", "black frame"],

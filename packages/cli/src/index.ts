@@ -137,7 +137,7 @@ const commands: Record<string, ICommandDefinition> = {
   screenshot: {
     description: "Capture a PNG proof frame from a web preview URL.",
     implemented: true,
-    usage: "tn screenshot --url <preview-url> --out <file.png> [--json]",
+    usage: "tn screenshot [--project <path>] --url <preview-url> --out <file.png> [--wait-ready] [--json]",
   },
   record: {
     description: "Record a short WebM/MP4 proof clip from a web preview URL.",

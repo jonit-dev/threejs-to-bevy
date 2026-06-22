@@ -11,13 +11,13 @@ import { analyzeNonblank, defaultNonblankThreshold } from "../verify/imageAnalys
 const execFileAsync = promisify(execFile);
 const defaultViewport = { height: 720, width: 1280 };
 
-interface IVisualProofDiagnostic {
+export interface IVisualProofDiagnostic {
   code: string;
   message: string;
   severity: "error" | "warning";
 }
 
-interface IVisualProofReport {
+export interface IVisualProofReport {
   byteSize: number;
   capturedAt: string;
   command?: readonly string[];
@@ -33,7 +33,7 @@ interface IVisualProofReport {
   viewport: typeof defaultViewport;
 }
 
-interface IScreenshotProofReport extends IVisualProofReport {
+export interface IScreenshotProofReport extends IVisualProofReport {
   checks: {
     canvas?: { height: number; ok: boolean; width: number };
     nonblank?: ReturnType<typeof analyzeNonblank>;

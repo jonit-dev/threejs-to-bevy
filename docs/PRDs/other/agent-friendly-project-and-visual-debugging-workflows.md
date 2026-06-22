@@ -502,7 +502,7 @@ sequenceDiagram
   detectable.
 - [x] Save screenshot plus JSON metadata: URL, dimensions, readiness,
   diagnostics, console errors, resource failures, timestamp, and command.
-- [ ] Reuse the same capture path inside `tn verify` where possible.
+- [x] Reuse the same capture path inside `tn verify` where possible.
 
 **Tests required:**
 
@@ -527,6 +527,12 @@ sequenceDiagram
   failure codes for missing canvas, missing runtime readiness, runtime errors,
   failed resources, zero visible meshes, and blank captures. Verified with
   `pnpm --filter @threenative/cli test` on 2026-06-21.
+- `tn verify --frames 1` now delegates its proof frame capture to the same
+  `captureScreenshot` path as `tn screenshot`, then maps screenshot diagnostics
+  into the verify report. Multi-frame and `--expect-motion` verification keep
+  the existing continuous-browser capture path so animation state is not reset
+  between frames. Verified with `pnpm --filter @threenative/cli test` on
+  2026-06-21.
 
 #### Phase 8: Add `tn record` — short gameplay video proof
 
@@ -777,8 +783,9 @@ Automated verification: screenshot command tests and capture smoke where
 available.
 Manual verification needed: yes, sendable screenshot artifact path.
 Drift from PRD: screenshot capture lives in `visualProof.ts` with the existing
-visual proof helpers instead of a standalone command file; verify capture reuse
-remains open.
+visual proof helpers instead of a standalone command file; verify reuse is
+limited to single-frame proof captures because multi-frame motion checks must
+preserve one browser/session timeline.
 Decision: continue only when screenshot proof is scriptable.
 
 ## PHASE 8 CHECKPOINT
