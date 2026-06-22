@@ -533,6 +533,16 @@ function documentInspectorRows(document: IAuthoringDocument): IEditorPropertyRow
       break;
     }
     case "ui":
+      for (const [index, node] of readArray(document.data.nodes).filter(isRecord).entries()) {
+        const nodeId = readString(node.id) ?? "";
+        const nodeType = readString(node.type) ?? "text";
+        const style = isRecord(node.style) ? node.style : {};
+        rows.push(documentRow(document, `ui-node:${index}:type`, `${nodeId || `node.${index}`} Type`, nodeType, "enum", false, `/nodes/${index}/type`, "ui", "ui.add_node", "type", { action: readString(node.action), label: readString(node.label), nodeId, src: readString(node.src), text: readString(node.text), uiDocId: readDocumentId(document.data) ?? "" }));
+        rows.push(documentRow(document, `ui-node:${index}:label`, `${nodeId || `node.${index}`} Label`, readString(node.label) ?? readString(node.text) ?? "", "string", false, `/nodes/${index}/label`, "ui", "ui.add_node", "label", { action: readString(node.action), nodeId, src: readString(node.src), text: readString(node.text), type: nodeType, uiDocId: readDocumentId(document.data) ?? "" }));
+        rows.push(documentRow(document, `ui-node:${index}:color`, `${nodeId || `node.${index}`} Color`, readString(style.color) ?? "", "color", false, `/nodes/${index}/style/color`, "ui", "ui.set_style", "color", { nodeId, uiDocId: readDocumentId(document.data) ?? "" }));
+        rows.push(documentRow(document, `ui-node:${index}:background`, `${nodeId || `node.${index}`} Background`, readString(style.backgroundColor) ?? "", "color", false, `/nodes/${index}/style/backgroundColor`, "ui", "ui.set_style", "backgroundColor", { nodeId, uiDocId: readDocumentId(document.data) ?? "" }));
+        rows.push(documentRow(document, `ui-node:${index}:font-size`, `${nodeId || `node.${index}`} Font Size`, formatScalar(style.fontSize, ""), "number", false, `/nodes/${index}/style/fontSize`, "ui", "ui.set_style", "fontSize", { nodeId, uiDocId: readDocumentId(document.data) ?? "" }));
+      }
       for (const [index, binding] of readArray(document.data.bindings).filter(isRecord).entries()) {
         rows.push(documentRow(document, `ui:${index}:binding`, `${readString(binding.node) ?? `node.${index}`} Binding`, readString(binding.resource) ?? "", "string", false, `/bindings/${index}/resource`, "ui", "ui.bind", "resourcePath", { nodeId: readString(binding.node) ?? "", uiDocId: readDocumentId(document.data) ?? "" }));
       }

@@ -229,7 +229,7 @@ export const authoringSourceMatrix = [
     cliOperationSupport: "partial",
     typescriptRole: "none",
     editorRoundTrip: "required",
-    notes: "Scene-local UI plus standalone UI create/add-text/set-layout/bind CLI operations exist; full style/widget coverage remains later work.",
+    notes: "Scene-local UI plus standalone UI create/add-text/add-node/set-layout/set-style/bind CLI/editor operations exist; advanced widgets, rich layout, input, and runtime UI behaviors remain later work.",
   },
   {
     id: "asset-document",

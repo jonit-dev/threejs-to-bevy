@@ -505,6 +505,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P1` Basic UI image nodes
 - [x] `P1` UI texture atlases, 9-slice scaling, flipping, and tiling
 - [x] `P2` Standard widgets: sliders, scrollbars, and context menus
+- [x] Structured source/CLI/editor mutation for retained UI node type, label, and promoted style fields
 - [ ] `P1` Editable text input widgets with deterministic value/action events (web event-order report triage exists)
 - [ ] `P1` IME composition support and diagnostics for text input targets (target-profile diagnostic exists)
 - [ ] `P1` Platform virtual keyboard behavior (V10-04)

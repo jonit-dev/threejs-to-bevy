@@ -9,6 +9,7 @@ import {
   addPrefabComponent,
   addResource,
   addUiNode,
+  addUiNodeDocument,
   addUiText,
   attachScript,
   attachSystemScript,
@@ -34,6 +35,7 @@ import {
   setSceneLifecycle,
   setTransform,
   setUiLayout,
+  setUiStyle,
   type IAuthoringOperationContext,
   type IAuthoringOperationResult,
 } from "./operations.js";
@@ -70,9 +72,11 @@ export type AuthoringOperationName =
   | "system.attach_script"
   | "system.create"
   | "ui.add_text"
+  | "ui.add_node"
   | "ui.bind"
   | "ui.create"
-  | "ui.set_layout";
+  | "ui.set_layout"
+  | "ui.set_style";
 
 export type AuthoringOperationPathPolicy = "source-document" | "source-script";
 export type AuthoringOperationSourceFamily = "asset" | "audio" | "input" | "material" | "mesh" | "prefab" | "scene" | "system" | "ui";
@@ -292,6 +296,16 @@ const descriptors = [
     stringArg("nodeId"),
     stringArg("text"),
   ]),
+  descriptor("ui.add_node", "Add or update a retained UI widget node in structured source.", "ui", "source-document", [
+    stringArg("uiDocId"),
+    stringArg("nodeId"),
+    stringArg("type"),
+    stringArg("action", false),
+    stringArg("label", false),
+    stringArg("src", false),
+    stringArg("text", false),
+    numberArg("value", false),
+  ]),
   descriptor("ui.set_layout", "Set retained UI layout fields in a structured UI document.", "ui", "source-document", [
     stringArg("uiDocId"),
     stringArg("nodeId"),
@@ -305,6 +319,21 @@ const descriptors = [
     stringArg("uiDocId"),
     stringArg("nodeId"),
     stringArg("resourcePath"),
+  ]),
+  descriptor("ui.set_style", "Set retained UI style fields in a structured UI document.", "ui", "source-document", [
+    stringArg("uiDocId"),
+    stringArg("nodeId"),
+    stringArg("backgroundColor", false),
+    stringArg("borderColor", false),
+    numberArg("borderRadius", false),
+    numberArg("borderWidth", false),
+    stringArg("color", false),
+    numberArg("fontSize", false),
+    stringArg("fontWeight", false),
+    numberArg("opacity", false),
+    stringArg("textAlign", false),
+    stringArg("textDecoration", false),
+    booleanArg("wrap", false),
   ]),
   descriptor("system.create", "Create a structured system source document.", "system", "source-document", [
     stringArg("systemId"),
@@ -402,12 +431,16 @@ const dispatchers: Record<AuthoringOperationName, OperationDispatcher> = {
     createSystem({ projectPath, schedule: requiredString(args, "schedule"), systemId: requiredString(args, "systemId") }),
   "ui.add_text": async ({ args, projectPath }) =>
     addUiText({ nodeId: requiredString(args, "nodeId"), projectPath, text: requiredString(args, "text"), uiDocId: requiredString(args, "uiDocId") }),
+  "ui.add_node": async ({ args, projectPath }) =>
+    addUiNodeDocument({ action: optionalString(args, "action"), label: optionalString(args, "label"), nodeId: requiredString(args, "nodeId"), projectPath, src: optionalString(args, "src"), text: optionalString(args, "text"), type: requiredString(args, "type"), uiDocId: requiredString(args, "uiDocId"), value: optionalNumber(args, "value") }),
   "ui.bind": async ({ args, projectPath }) =>
     bindUiDocument({ nodeId: requiredString(args, "nodeId"), projectPath, resourcePath: requiredString(args, "resourcePath"), uiDocId: requiredString(args, "uiDocId") }),
   "ui.create": async ({ args, projectPath }) =>
     createUiDocument({ projectPath, uiDocId: requiredString(args, "uiDocId") }),
   "ui.set_layout": async ({ args, projectPath }) =>
     setUiLayout({ align: optionalString(args, "align"), height: optionalNumber(args, "height"), justify: optionalString(args, "justify"), nodeId: requiredString(args, "nodeId"), projectPath, top: optionalNumber(args, "top"), uiDocId: requiredString(args, "uiDocId"), width: optionalNumber(args, "width") }),
+  "ui.set_style": async ({ args, projectPath }) =>
+    setUiStyle({ backgroundColor: optionalString(args, "backgroundColor"), borderColor: optionalString(args, "borderColor"), borderRadius: optionalNumber(args, "borderRadius"), borderWidth: optionalNumber(args, "borderWidth"), color: optionalString(args, "color"), fontSize: optionalNumber(args, "fontSize"), fontWeight: optionalString(args, "fontWeight"), nodeId: requiredString(args, "nodeId"), opacity: optionalNumber(args, "opacity"), projectPath, textAlign: optionalString(args, "textAlign"), textDecoration: optionalString(args, "textDecoration"), uiDocId: requiredString(args, "uiDocId"), wrap: optionalBoolean(args, "wrap") }),
 };
 
 export const AUTHORING_OPERATION_NAMES: readonly AuthoringOperationName[] = descriptors.map((operation) => operation.name);

@@ -117,8 +117,9 @@ The Phase 4 CLI operation slice adds shared authoring operations and registered
 `tn ui`, `tn material`, `tn mesh`, `tn prefab`, `tn input`, `tn asset`,
 `tn audio`, and `tn system` commands for deterministic source-document
 mutation. The supported initial operations create retained UI docs, add text
-nodes, set centered layout fields, bind UI resources, create/update material
-color, roughness, metalness, emissive, alpha, promoted texture-slot, clearcoat,
+nodes, add/update retained UI widget nodes, set centered layout and promoted
+style fields, bind UI resources, create/update material color, roughness,
+metalness, emissive, alpha, promoted texture-slot, clearcoat,
 and transmission fields, declare primitive mesh source docs, create prefab docs
 and component values, add input actions and axes from key lists, add asset catalog
 entries, create audio docs, add audio sound declarations, and create systems
@@ -135,8 +136,8 @@ JSON; the shared registry exposes the matching `scene.set_*` operations.
 Commands support `--json`, return the shared `ok`/`changed`/`filesWritten`/
 `diagnostics` shape, and fail before writing on invalid JSON or validation
 errors. Broader asset import settings, material sampler/import policy, input
-controls-settings/rebinding metadata, and audio playback defaults remain later
-source-operation work.
+controls-settings/rebinding metadata, advanced UI input/rich-layout behavior,
+and audio playback defaults remain later source-operation work.
 The Phase 5 compiler provenance slice extends `authoring.provenance.json` with
 structured source ownership entries when source documents are available during
 normal build. The report maps scene entities/components to source JSON
@@ -177,7 +178,8 @@ editor contract while keeping generated bundle/cache/runtime paths rejected.
 `@threenative/authoring` exports a shared promoted operation registry for names
 such as `scene.set_transform`, `scene.set_component`, `ui.add_text`,
 `ui.set_layout`, `material.create`, `material.set`, `mesh.create_primitive`,
-`prefab.add_component`, `input.add_action`, `asset.add`, `audio.create`,
+`ui.add_node`, `ui.set_style`, `prefab.add_component`, `input.add_action`,
+`asset.add`, `audio.create`,
 `audio.add_sound`, `scene.set_light`, `scene.set_mesh_renderer`,
 `scene.set_rigid_body`, `scene.set_collider`,
 `scene.set_character_controller`, `scene.set_lifecycle`, `system.create`, and

@@ -60,6 +60,8 @@ test("should dispatch existing structured source operations through the registry
       }),
       await dispatchAuthoringOperation({ args: { uiDocId: "hud" }, name: "ui.create", projectPath: root }),
       await dispatchAuthoringOperation({ args: { text: "Score", nodeId: "score", uiDocId: "hud" }, name: "ui.add_text", projectPath: root }),
+      await dispatchAuthoringOperation({ args: { action: "pause", label: "Pause", nodeId: "pause", type: "button", uiDocId: "hud" }, name: "ui.add_node", projectPath: root }),
+      await dispatchAuthoringOperation({ args: { backgroundColor: "#101820", color: "#ffffff", fontSize: 18, nodeId: "pause", uiDocId: "hud", wrap: true }, name: "ui.set_style", projectPath: root }),
       await dispatchAuthoringOperation({ args: { keys: ["Space"], actionId: "jump", inputDocId: "arena" }, name: "input.add_action", projectPath: root }),
       await dispatchAuthoringOperation({ args: { axisId: "MoveX", inputDocId: "arena", negativeKeys: ["A"], positiveKeys: ["D"], value: "gamepad.leftStickX" }, name: "input.add_axis", projectPath: root }),
       await dispatchAuthoringOperation({ args: { kind: "box", meshId: "mesh.player" }, name: "mesh.create_primitive", projectPath: root }),
@@ -79,7 +81,7 @@ test("should dispatch existing structured source operations through the registry
       sounds: Array<{ asset: string; id: string }>;
     };
     const ui = JSON.parse(await readFile(join(root, "content", "ui", "hud.ui.json"), "utf8")) as {
-      nodes: Array<{ id: string; text: string; type: string }>;
+      nodes: Array<{ action?: string; id: string; label?: string; style?: Record<string, unknown>; text?: string; type: string }>;
     };
     const input = JSON.parse(await readFile(join(root, "content", "input", "arena.input.json"), "utf8")) as {
       actions: Array<{ bindings: string[]; id: string }>;
@@ -99,7 +101,10 @@ test("should dispatch existing structured source operations through the registry
     assert.deepEqual(asset.assets, [{ id: "model.player", path: "assets/player.glb", type: "model" }]);
     assert.deepEqual(audio.sounds, [{ asset: "sound.hit", id: "hit" }]);
     assert.deepEqual(material.materials, [{ alphaMode: "mask", baseColorTexture: "tex.player.albedo", color: "#fff", emissive: "#33ccff", id: "mat.player", metalness: 0.2, normalTexture: "tex.player.normal", roughness: 0.4 }]);
-    assert.deepEqual(ui.nodes, [{ id: "score", text: "Score", type: "text" }]);
+    assert.deepEqual(ui.nodes, [
+      { id: "score", text: "Score", type: "text" },
+      { action: "pause", id: "pause", label: "Pause", style: { backgroundColor: "#101820", color: "#ffffff", fontSize: 18, wrap: true }, type: "button" },
+    ]);
     assert.deepEqual(input.actions, [{ bindings: ["keyboard.Space"], id: "jump" }]);
     assert.deepEqual(input.axes, [{ id: "MoveX", negative: ["keyboard.a"], positive: ["keyboard.d"], value: "gamepad.leftStickX" }]);
     assert.deepEqual(prefab.entities[0]?.components, { RigidBody: { kind: "dynamic" } });
@@ -149,8 +154,10 @@ test("should expose operation metadata and registry diagnostics", async () => {
     "scene.bind_ui",
     "ui.create",
     "ui.add_text",
+    "ui.add_node",
     "ui.set_layout",
     "ui.bind",
+    "ui.set_style",
     "system.create",
     "system.attach_script",
   ]);

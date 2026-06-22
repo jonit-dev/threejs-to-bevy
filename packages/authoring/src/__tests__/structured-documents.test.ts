@@ -151,6 +151,33 @@ test("validates duplicate IDs for structured authoring document families", async
   }
 });
 
+test("validates retained UI widget and style source fields", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-authoring-ui-fields-"));
+  try {
+    await writeSourceDocument(root, "content/ui/hud.ui.json", {
+      schema: "threenative.ui",
+      version: "0.1.0",
+      id: "hud",
+      nodes: [
+        { id: "pause", type: "button", label: "Pause", action: "pause.toggle", style: { backgroundColor: "#101820", color: "#fff", fontSize: 18, textAlign: "center", wrap: true } },
+        { id: "bad", type: "textfield", label: "", value: "high", style: { color: "", fontSize: "large", textAlign: "middle", wrap: "yes" } },
+      ],
+    });
+
+    const result = await validateAuthoringProject({ projectPath: root });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "/nodes/1/type" && diagnostic.code === "TN_AUTHORING_COMPONENT_VALUE_INVALID"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "/nodes/1/label" && diagnostic.code === "TN_AUTHORING_SHAPE_INVALID"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "/nodes/1/value" && diagnostic.code === "TN_AUTHORING_SHAPE_INVALID"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "/nodes/1/style/fontSize" && diagnostic.code === "TN_AUTHORING_SHAPE_INVALID"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "/nodes/1/style/textAlign" && diagnostic.code === "TN_AUTHORING_COMPONENT_VALUE_INVALID"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "/nodes/1/style/wrap" && diagnostic.code === "TN_AUTHORING_SHAPE_INVALID"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("validates input axis source fields", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-authoring-input-axis-invalid-"));
   try {

@@ -56,12 +56,16 @@ import {
   supportedRigidBodyKinds,
   supportedSceneActivationPolicies,
   supportedSceneLifecycleKinds,
+  supportedUiNodeTypes,
+  supportedUiTextAlignments,
+  supportedUiTextDecorations,
   uiDocumentSchema,
   systemKeys,
   transformKeys,
   uiBindingKeys,
   uiKeys,
   uiNodeKeys,
+  uiStyleKeys,
   type IScriptReference,
   type ISceneDocument,
   isRecord,
@@ -281,6 +285,17 @@ export interface IAddUiTextOptions extends IAuthoringOperationContext {
   text: string;
 }
 
+export interface IAddUiNodeDocumentOptions extends IAuthoringOperationContext {
+  uiDocId: string;
+  nodeId: string;
+  type: string;
+  action?: string;
+  label?: string;
+  src?: string;
+  text?: string;
+  value?: number;
+}
+
 export interface ISetUiLayoutOptions extends IAuthoringOperationContext {
   uiDocId: string;
   nodeId: string;
@@ -289,6 +304,22 @@ export interface ISetUiLayoutOptions extends IAuthoringOperationContext {
   justify?: string;
   top?: number;
   width?: number;
+}
+
+export interface ISetUiStyleOptions extends IAuthoringOperationContext {
+  uiDocId: string;
+  nodeId: string;
+  backgroundColor?: string;
+  borderColor?: string;
+  borderRadius?: number;
+  borderWidth?: number;
+  color?: string;
+  fontSize?: number;
+  fontWeight?: string;
+  opacity?: number;
+  textAlign?: string;
+  textDecoration?: string;
+  wrap?: boolean;
 }
 
 export interface IBindUiDocumentOptions extends IAuthoringOperationContext {
@@ -1123,6 +1154,33 @@ export async function addUiText(options: IAddUiTextOptions): Promise<IAuthoringO
   });
 }
 
+export async function addUiNodeDocument(options: IAddUiNodeDocumentOptions): Promise<IAuthoringOperationResult> {
+  return mutateSourceDocument(options, "ui", options.uiDocId, (data) => {
+    const nodes = ensureArrayProperty(data, "nodes");
+    const existing = findSceneItem(nodes, options.nodeId);
+    const node = existing ?? { id: options.nodeId };
+    node.type = options.type;
+    if (options.action !== undefined) {
+      node.action = options.action;
+    }
+    if (options.label !== undefined) {
+      node.label = options.label;
+    }
+    if (options.src !== undefined) {
+      node.src = options.src;
+    }
+    if (options.text !== undefined) {
+      node.text = options.text;
+    }
+    if (options.value !== undefined) {
+      node.value = options.value;
+    }
+    if (existing === undefined) {
+      nodes.push(node);
+    }
+  });
+}
+
 export async function setUiLayout(options: ISetUiLayoutOptions): Promise<IAuthoringOperationResult> {
   return mutateSourceDocument(options, "ui", options.uiDocId, (data, file) => {
     const nodes = ensureArrayProperty(data, "nodes");
@@ -1137,6 +1195,31 @@ export async function setUiLayout(options: ISetUiLayoutOptions): Promise<IAuthor
       ...(options.justify === undefined ? {} : { justify: options.justify }),
       ...(options.top === undefined ? {} : { top: options.top }),
       ...(options.width === undefined ? {} : { width: options.width }),
+    };
+    return [];
+  });
+}
+
+export async function setUiStyle(options: ISetUiStyleOptions): Promise<IAuthoringOperationResult> {
+  return mutateSourceDocument(options, "ui", options.uiDocId, (data, file) => {
+    const nodes = ensureArrayProperty(data, "nodes");
+    const node = findSceneItem(nodes, options.nodeId);
+    if (node === undefined) {
+      return [missingReferenceDiagnostic(file, "/nodes", "ui-node", options.nodeId, idsFromArray(nodes))];
+    }
+    node.style = {
+      ...(isRecord(node.style) ? node.style : {}),
+      ...(options.backgroundColor === undefined ? {} : { backgroundColor: options.backgroundColor }),
+      ...(options.borderColor === undefined ? {} : { borderColor: options.borderColor }),
+      ...(options.borderRadius === undefined ? {} : { borderRadius: options.borderRadius }),
+      ...(options.borderWidth === undefined ? {} : { borderWidth: options.borderWidth }),
+      ...(options.color === undefined ? {} : { color: options.color }),
+      ...(options.fontSize === undefined ? {} : { fontSize: options.fontSize }),
+      ...(options.fontWeight === undefined ? {} : { fontWeight: options.fontWeight }),
+      ...(options.opacity === undefined ? {} : { opacity: options.opacity }),
+      ...(options.textAlign === undefined ? {} : { textAlign: options.textAlign }),
+      ...(options.textDecoration === undefined ? {} : { textDecoration: options.textDecoration }),
+      ...(options.wrap === undefined ? {} : { wrap: options.wrap }),
     };
     return [];
   });
@@ -1919,6 +2002,7 @@ async function validateUiDocument(file: string, data: unknown): Promise<IAuthori
   diagnostics.push(...unknownKeyDiagnostics(file, "", data, uiDocumentKeys));
   validateDocumentHeader(diagnostics, file, data, uiDocumentSchema, "ui document");
   const nodes = collectIds(diagnostics, file, "/nodes", readArray(data.nodes), "ui-node", uiNodeKeys);
+  validateUiNodes(diagnostics, file, data.nodes);
   const bindings = readArray(data.bindings);
   if (data.bindings !== undefined && bindings === undefined) {
     diagnostics.push(typeDiagnostic(file, "/bindings", "bindings must be an array.", data.bindings));
@@ -1981,6 +2065,50 @@ async function validateSystemsDocument(projectPath: string, file: string, data: 
   const systems = collectIds(diagnostics, file, "/systems", readArray(data.systems), "system", systemKeys);
   await validateSystems(diagnostics, projectPath, file, data.systems, systems);
   return sortAuthoringDiagnostics(diagnostics);
+}
+
+function validateUiNodes(diagnostics: IAuthoringDiagnostic[], file: string, value: unknown): void {
+  for (const [index, node] of readArray(value)?.entries() ?? []) {
+    if (!isRecord(node)) {
+      continue;
+    }
+    const path = `/nodes/${index}`;
+    const type = readString(node.type);
+    if (node.type !== undefined && (type === undefined || !supportedUiNodeTypes.has(type))) {
+      validateEnumString(diagnostics, file, `${path}/type`, node.type, supportedUiNodeTypes, "UI node type", "Use 'text', 'button', 'image', 'bar', 'slider', 'row', 'column', or 'stack'.");
+    }
+    validateOptionalString(diagnostics, file, `${path}/text`, node.text, "UI node text must be a non-empty string.");
+    validateOptionalString(diagnostics, file, `${path}/label`, node.label, "UI node label must be a non-empty string.");
+    validateOptionalString(diagnostics, file, `${path}/action`, node.action, "UI node action must be a non-empty action id.");
+    validateOptionalString(diagnostics, file, `${path}/src`, node.src, "UI image src must be a non-empty asset id or source path.");
+    validateOptionalNumber(diagnostics, file, `${path}/value`, node.value, "UI node value must be a finite number.");
+    validateUiStyle(diagnostics, file, `${path}/style`, node.style);
+  }
+}
+
+function validateUiStyle(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value)) {
+    diagnostics.push(typeDiagnostic(file, path, "UI style must be an object.", value));
+    return;
+  }
+  diagnostics.push(...unknownKeyDiagnostics(file, path, value, uiStyleKeys));
+  for (const key of ["backgroundColor", "borderColor", "color"] as const) {
+    validateOptionalString(diagnostics, file, `${path}/${key}`, value[key], `UI style ${key} must be a non-empty color string.`);
+  }
+  for (const key of ["borderRadius", "borderWidth", "fontSize", "opacity"] as const) {
+    validateOptionalNumber(diagnostics, file, `${path}/${key}`, value[key], `UI style ${key} must be a finite number.`);
+  }
+  if (value.textAlign !== undefined) {
+    validateEnumString(diagnostics, file, `${path}/textAlign`, value.textAlign, supportedUiTextAlignments, "UI text alignment", "Use 'left', 'center', or 'right'.");
+  }
+  if (value.textDecoration !== undefined) {
+    validateEnumString(diagnostics, file, `${path}/textDecoration`, value.textDecoration, supportedUiTextDecorations, "UI text decoration", "Use 'none', 'underline', or 'lineThrough'.");
+  }
+  validateOptionalString(diagnostics, file, `${path}/fontWeight`, value.fontWeight, "UI style fontWeight must be a non-empty string.");
+  validateOptionalBoolean(diagnostics, file, `${path}/wrap`, value.wrap, "UI style wrap must be a boolean.");
 }
 
 function validateDocumentHeader(

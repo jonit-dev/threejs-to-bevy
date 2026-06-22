@@ -97,7 +97,7 @@ test("should attach operations to every editable inspector row", async () => {
     );
     await writeFile(
       join(root, "content", "ui", "hud.ui.json"),
-      `${JSON.stringify({ schema: "threenative.ui", version: "0.1.0", id: "hud", nodes: [{ id: "score-label", text: "Score", type: "text" }], bindings: [{ node: "score-label", resource: "score" }] }, null, 2)}\n`,
+      `${JSON.stringify({ schema: "threenative.ui", version: "0.1.0", id: "hud", nodes: [{ id: "score-label", text: "Score", type: "text", style: { color: "#ffffff", backgroundColor: "#101820", fontSize: 18 } }], bindings: [{ node: "score-label", resource: "score" }] }, null, 2)}\n`,
     );
 
     const result = await loadEditorProjectApi({ projectPath: root });
@@ -110,6 +110,8 @@ test("should attach operations to every editable inspector row", async () => {
     assert.equal(editableRows.length > 0, true);
     assert.deepEqual(editableRows.filter((row) => row.operation?.name === undefined).map((row) => row.id), []);
     assert.deepEqual(rows.filter((row) => row.readOnly && row.readOnlyReason === undefined).map((row) => row.id), []);
+    assert.equal(rows.some((row) => row.sourceFamily === "ui" && row.label === "score-label Type" && row.operation?.name === "ui.add_node"), true);
+    assert.equal(rows.some((row) => row.sourceFamily === "ui" && row.label === "score-label Color" && row.operation?.name === "ui.set_style"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

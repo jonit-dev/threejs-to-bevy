@@ -24,7 +24,8 @@ export const transformKeys = new Set(["position", "rotation", "scale"]);
 export const systemKeys = new Set(["id", "script", "schedule"]);
 export const scriptReferenceKeys = new Set(["module", "export"]);
 export const uiKeys = new Set(["nodes", "bindings"]);
-export const uiNodeKeys = new Set(["id", "layout", "text", "type"]);
+export const uiNodeKeys = new Set(["id", "action", "label", "layout", "src", "style", "text", "type", "value"]);
+export const uiStyleKeys = new Set(["backgroundColor", "borderColor", "borderRadius", "borderWidth", "color", "fontSize", "fontWeight", "opacity", "textAlign", "textDecoration", "wrap"]);
 export const uiBindingKeys = new Set(["node", "resource"]);
 export const resourceKeys = new Set(["id", "path", "value"]);
 export const prefabKeys = new Set(["id", "primitive", "color", "asset"]);
@@ -74,6 +75,9 @@ export const supportedRigidBodyKinds = new Set(["dynamic", "kinematic", "static"
 export const supportedMaterialAlphaModes = new Set(["blend", "mask", "opaque"]);
 export const supportedSceneActivationPolicies = new Set(["additive", "exclusive", "loading", "overlay", "persistent"]);
 export const supportedSceneLifecycleKinds = new Set(["credits", "cutscene", "level", "loading", "menu", "overlay", "system"]);
+export const supportedUiNodeTypes = new Set(["bar", "button", "column", "image", "row", "slider", "stack", "text"]);
+export const supportedUiTextAlignments = new Set(["center", "left", "right"]);
+export const supportedUiTextDecorations = new Set(["lineThrough", "none", "underline"]);
 
 export const logicalIdPattern = /^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/;
 export const ecsIdPattern = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
@@ -137,6 +141,28 @@ export interface ISceneUi {
 
 export interface ISceneUiNode {
   id: string;
+  action?: string;
+  label?: string;
+  layout?: Record<string, unknown>;
+  src?: string;
+  style?: ISceneUiStyle;
+  text?: string;
+  type?: "bar" | "button" | "column" | "image" | "row" | "slider" | "stack" | "text";
+  value?: number;
+}
+
+export interface ISceneUiStyle {
+  backgroundColor?: string;
+  borderColor?: string;
+  borderRadius?: number;
+  borderWidth?: number;
+  color?: string;
+  fontSize?: number;
+  fontWeight?: string;
+  opacity?: number;
+  textAlign?: "center" | "left" | "right";
+  textDecoration?: "lineThrough" | "none" | "underline";
+  wrap?: boolean;
 }
 
 export interface ISceneUiBinding {

@@ -41,6 +41,14 @@ Date: 2026-06-21
   `.scene.json` bundle lowering into `scenes.ir.json`. Transition graphs,
   stack operations, scene-local input/UI/system scopes, and project-level scene
   ordering remain separate lifecycle gaps.
+- ✅ 2026-06-21: Retained UI source mutation now has
+  `tn ui add-node <ui-doc-id> <node-id> --type ...` and
+  `tn ui set-style <ui-doc-id> <node-id> ...`, registry-backed
+  `ui.add_node` and `ui.set_style`, validation for promoted widget/style fields,
+  and editor rows for UI node type, label, color, background, and font size.
+  Editable text input, IME, virtual keyboard, world/viewport UI, arbitrary grid
+  placement, drag/drop, custom UI materials, and broad touch/gamepad UI remain
+  separate residual gaps.
 
 ## Scope
 
@@ -101,7 +109,7 @@ IR/runtime surfaces, but only some have typed editor/CLI helpers.
 | ✅ Physics: rigid bodies, colliders, joints | Broad IR/runtime support for rigid bodies, colliders, sensors, character traces, joints metadata | Broad promoted support with residual limits | Partial | `tn scene add-component <scene> <entity> rigid-body|collider|character-controller ...`, generic `set-component` | EDITOR, WEB-BEVY | Typed rigid body/collider/character-controller commands exist; `PhysicsJoint` and remaining runtime parity gaps include full constraints, arbitrary triangle narrow phase, vehicle drivetrain, soft bodies/ragdolls. |
 | ✅ Character controller and navigation | IR/runtime support for character movement, pathfinding, dynamic navmesh, steering | Promoted for current scope | Partial | `tn scene add-component <scene> <entity> character-controller ...` plus scripts/services | EDITOR | Typed character-controller command exists; broader nav setup commands remain partial. |
 | ✅ Input maps | Runtime supports keyboard/mouse/gamepad/touch snapshots and rebinding metadata | Promoted for current scope | Partial | `tn input add-action <input-doc-id> <action-id> --keys ...`; `tn input add-axis <input-doc-id> <axis-id> --negative-keys ... --positive-keys ...` | EDITOR | Keyboard actions and axes now have typed commands/editor rows; richer controls-settings/rebinding metadata and touch/gamepad gesture commands remain gaps. |
-| UI tree and widgets | Broad retained UI IR/runtime support | Broad promoted Bevy UI support | Partial | `ui create`, `ui add-text`, `ui set-layout`, `ui bind`, plus scene UI helpers | ECS-CMD, EDITOR, WEB-BEVY | CLI supports text/layout/bind only; editable text, IME, virtual keyboard, world/viewport UI, arbitrary grid placement, drag/drop UI nodes remain gaps. |
+| ✅ UI tree and widgets | Broad retained UI IR/runtime support | Broad promoted Bevy UI support | Partial | `ui create`, `ui add-text`, `ui add-node`, `ui set-layout`, `ui set-style`, `ui bind`, plus scene UI helpers | EDITOR, WEB-BEVY | CLI/editor now cover promoted retained node type/label/style fields; editable text, IME, virtual keyboard, world/viewport UI, arbitrary grid placement, drag/drop UI nodes remain gaps. |
 | ✅ Audio | Broad audio IR/runtime services and Bevy/web playback support | Promoted for current scope | Partial source discovery/validation | `tn audio create`, `tn audio add-sound` | EDITOR | Audio source mutation exists for documents and sound declarations. Custom decoder, streaming/network audio, and broader editor controls remain deferred. |
 | ✅ Assets and glTF | Bundle-local assets, GLB/GLTF, dependency bundling, inspection, hot reload | Promoted for current scope | Partial | `tn asset add`, `tn asset inspect`, `tn model-test` | EDITOR | Durable asset catalog source mutation exists for id/type/path declarations. Import settings, runtime asset saving/export, and generated runtime asset persistence remain gaps. |
 | Environment scene data | Environment IR supports atmosphere, terrain, path, skybox, environment maps, light probes, LOD, walkability | Promoted for selected runtime slices | Read-only/partial | No typed environment mutation command | SOURCE, ECS-CMD, EDITOR | Source schemas accept environment documents, but editor rows are inspection-oriented and CLI has no skybox/environment/terrain/path mutation commands. |
@@ -127,7 +135,7 @@ IR/runtime surfaces, but only some have typed editor/CLI helpers.
 | ✅ P0 | Audio source mutation | Resolved for audio documents and sound declarations. | `tn audio create <audio-doc-id>`, `tn audio add-sound <audio-doc-id> <sound-id> --asset ...` |
 | ✅ P1 | Material texture/PBR commands | Resolved for promoted PBR and texture-slot fields; sampler/import policy remains outside this slice. | `tn material set <id> --base-color-texture ... --normal-texture ... --emissive ... --alpha-mode ...` |
 | ✅ P1 | Scene lifecycle commands | Resolved for source-backed kind, activation, and initial-scene metadata; transitions, stack operations, scene-local scopes, and project-level scene ordering remain open. | `tn scene lifecycle add <scene-id> --kind level --activation exclusive --initial` |
-| P1 | UI widget/style commands | UI runtime is broad, but source commands only cover text/layout/bind basics. | `tn ui add-node`, `tn ui set-style`, `tn ui add-widget slider|button|image|bar` |
+| ✅ P1 | UI widget/style commands | Resolved for promoted retained UI node type/label/style fields; advanced widgets, text input, rich layout, and broad interaction support remain open. | `tn ui add-node`, `tn ui set-style` |
 | ✅ P1 | Input axes/rebinding metadata | Resolved for keyboard action bindings and axes; controls-settings/rebinding metadata remains open. | `tn input add-axis`; future `tn input set-rebinding`, `tn input add-gamepad-binding` |
 | P1 | Runtime/window/target source docs | Target/profile policy is runtime-visible but not editor-owned. | `tn target set`, `tn runtime set-window`, `tn runtime set-rendering` |
 | P2 | Animation graph and particle authoring commands | Runtime support exists, but authoring is not first-class. | `tn animation add-clip`, `tn animation graph add-state`, `tn particle add-emitter` |

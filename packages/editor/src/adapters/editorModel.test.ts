@@ -96,6 +96,8 @@ test("should keep an explicit inspector field inventory for promoted source fami
   assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => "component" in item && item.component === "Light" && item.field === "intensity" && item.operationName === "scene.set_light" && item.readOnly === false), true);
   assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => item.sourceFamily === "input" && item.field === "actions.bindings" && item.fieldKind === "stringList"), true);
   assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => item.sourceFamily === "system" && item.field === "systems.script" && item.fieldKind === "script"), true);
+  assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => item.sourceFamily === "ui" && item.field === "ui.nodes.type" && item.operationName === "ui.add_node"), true);
+  assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => item.sourceFamily === "ui" && item.field === "ui.nodes.style.color" && item.operationName === "ui.set_style"), true);
   assert.equal(EDITOR_ADD_COMPONENT_DEFINITIONS.some((definition) => definition.component === "MeshRenderer" && definition.incompatibleWith.includes("Camera")), true);
 });
 

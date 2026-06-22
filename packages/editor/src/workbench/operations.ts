@@ -17,9 +17,11 @@ export type EditorOperationName =
   | "scene.set_transform"
   | "system.attach_script"
   | "system.create"
+  | "ui.add_node"
   | "ui.add_text"
   | "ui.bind"
-  | "ui.set_layout";
+  | "ui.set_layout"
+  | "ui.set_style";
 
 export async function runEditorOperation(options: {
   args: Record<string, unknown>;

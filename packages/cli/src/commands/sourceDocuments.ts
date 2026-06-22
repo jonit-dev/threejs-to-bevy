@@ -3,6 +3,7 @@ import {
   addInputAction,
   addInputAxis,
   addPrefabComponent,
+  addUiNodeDocument,
   addUiText,
   attachSystemScript,
   bindUiDocument,
@@ -14,6 +15,7 @@ import {
   createUiDocument,
   setMaterial,
   setUiLayout,
+  setUiStyle,
   type IAuthoringOperationResult,
 } from "@threenative/authoring";
 import { isAbsolute, resolve } from "node:path";
@@ -48,6 +50,35 @@ export async function uiCommand(argv: readonly string[], options: ISourceCommand
     return renderAuthoringResult("ui", await addUiText({ projectPath, uiDocId, nodeId, text }), json, `UI text node '${nodeId}' added.`);
   }
 
+  if (subcommand === "add-node") {
+    const uiDocId = readPositional(normalizedArgv, 1);
+    const nodeId = readPositional(normalizedArgv, 2);
+    const type = readFlag(normalizedArgv, "--type");
+    const value = parseOptionalNumber(normalizedArgv, "--value");
+    if (value.diagnostic !== undefined) {
+      return renderUsage(json, value.diagnostic, "UI node value must be a finite number.");
+    }
+    if (uiDocId === undefined || nodeId === undefined || type === undefined) {
+      return renderUsage(json, "TN_UI_ADD_NODE_ARGS_MISSING", "Usage: tn ui add-node <ui-doc-id> <node-id> --type <text|button|image|bar|slider|row|column|stack> [--label <label>] [--text <text>] [--action <action-id>] [--src <asset-id-or-path>] [--value <n>] [--project <path>] [--json]");
+    }
+    return renderAuthoringResult(
+      "ui",
+      await addUiNodeDocument({
+        action: readFlag(normalizedArgv, "--action"),
+        label: readFlag(normalizedArgv, "--label"),
+        nodeId,
+        projectPath,
+        src: readFlag(normalizedArgv, "--src"),
+        text: readFlag(normalizedArgv, "--text"),
+        type,
+        uiDocId,
+        value: value.value,
+      }),
+      json,
+      `UI node '${nodeId}' added.`,
+    );
+  }
+
   if (subcommand === "set-layout") {
     const uiDocId = readPositional(normalizedArgv, 1);
     const nodeId = readPositional(normalizedArgv, 2);
@@ -75,6 +106,43 @@ export async function uiCommand(argv: readonly string[], options: ISourceCommand
     );
   }
 
+  if (subcommand === "set-style") {
+    const uiDocId = readPositional(normalizedArgv, 1);
+    const nodeId = readPositional(normalizedArgv, 2);
+    if (uiDocId === undefined || nodeId === undefined) {
+      return renderUsage(json, "TN_UI_SET_STYLE_ARGS_MISSING", uiSetStyleUsage());
+    }
+    const numbers = parseNumberFlags(normalizedArgv, ["--border-radius", "--border-width", "--font-size", "--opacity"]);
+    if (numbers.diagnostic !== undefined) {
+      return renderUsage(json, numbers.diagnostic, "Style numeric flags must be finite numbers.");
+    }
+    const wrap = parseOptionalBoolean(normalizedArgv, "--wrap");
+    if (wrap.diagnostic !== undefined) {
+      return renderUsage(json, wrap.diagnostic, "Style --wrap must be true or false.");
+    }
+    return renderAuthoringResult(
+      "ui",
+      await setUiStyle({
+        backgroundColor: readFlag(normalizedArgv, "--background-color"),
+        borderColor: readFlag(normalizedArgv, "--border-color"),
+        borderRadius: numbers.values["--border-radius"],
+        borderWidth: numbers.values["--border-width"],
+        color: readFlag(normalizedArgv, "--color"),
+        fontSize: numbers.values["--font-size"],
+        fontWeight: readFlag(normalizedArgv, "--font-weight"),
+        nodeId,
+        opacity: numbers.values["--opacity"],
+        projectPath,
+        textAlign: readFlag(normalizedArgv, "--text-align"),
+        textDecoration: readFlag(normalizedArgv, "--text-decoration"),
+        uiDocId,
+        wrap: wrap.value,
+      }),
+      json,
+      `UI style for '${nodeId}' updated.`,
+    );
+  }
+
   if (subcommand === "bind") {
     const uiDocId = readPositional(normalizedArgv, 1);
     const nodeId = readPositional(normalizedArgv, 2);
@@ -85,7 +153,7 @@ export async function uiCommand(argv: readonly string[], options: ISourceCommand
     return renderAuthoringResult("ui", await bindUiDocument({ projectPath, uiDocId, nodeId, resourcePath }), json, `UI node '${nodeId}' bound.`);
   }
 
-  return renderUsage(json, "TN_UI_COMMAND_UNKNOWN", "Usage: tn ui create|add-text|set-layout|bind ... [--json]");
+  return renderUsage(json, "TN_UI_COMMAND_UNKNOWN", "Usage: tn ui create|add-text|add-node|set-layout|set-style|bind ... [--json]");
 }
 
 export async function materialCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {
@@ -303,6 +371,10 @@ function materialSetUsage(): string {
   return "Usage: tn material set <material-id> [--color <css-color>] [--roughness <n>] [--metalness <n>] [--emissive <css-color>] [--emissive-intensity <n>] [--alpha-mode opaque|mask|blend] [--alpha-cutoff <n>] [--opacity <n>] [--base-color-texture <asset-id>] [--normal-texture <asset-id>] [--metallic-roughness-texture <asset-id>] [--emissive-texture <asset-id>] [--occlusion-texture <asset-id>] [--clearcoat <n>] [--clearcoat-roughness <n>] [--clearcoat-texture <asset-id>] [--clearcoat-roughness-texture <asset-id>] [--transmission <n>] [--transmission-texture <asset-id>] [--project <path>] [--json]";
 }
 
+function uiSetStyleUsage(): string {
+  return "Usage: tn ui set-style <ui-doc-id> <node-id> [--color <css-color>] [--background-color <css-color>] [--font-size <n>] [--font-weight <value>] [--text-align left|center|right] [--opacity <n>] [--border-radius <n>] [--border-width <n>] [--border-color <css-color>] [--wrap true|false] [--project <path>] [--json]";
+}
+
 function normalizeArgv(argv: readonly string[]): readonly string[] {
   return argv[0] === "--" ? argv.slice(1) : argv;
 }
@@ -365,6 +437,17 @@ function parseNumberFlags(argv: readonly string[], flags: readonly string[]): { 
   return { values };
 }
 
+function parseOptionalBoolean(argv: readonly string[], flag: string): { diagnostic?: string; value?: boolean } {
+  const raw = readFlag(argv, flag);
+  if (raw === undefined) {
+    return {};
+  }
+  if (raw !== "true" && raw !== "false") {
+    return { diagnostic: "TN_AUTHORING_BOOLEAN_INVALID" };
+  }
+  return { value: raw === "true" };
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -374,7 +457,12 @@ const flagsWithValues = new Set([
   "--alpha-cutoff",
   "--alpha-mode",
   "--asset",
+  "--action",
+  "--background-color",
   "--base-color-texture",
+  "--border-color",
+  "--border-radius",
+  "--border-width",
   "--clearcoat",
   "--clearcoat-roughness",
   "--clearcoat-roughness-texture",
@@ -387,6 +475,7 @@ const flagsWithValues = new Set([
   "--height",
   "--keys",
   "--kind",
+  "--label",
   "--metallic-roughness-texture",
   "--metalness",
   "--module",
@@ -399,11 +488,16 @@ const flagsWithValues = new Set([
   "--resource",
   "--roughness",
   "--schedule",
+  "--src",
+  "--type",
+  "--text-align",
+  "--text-decoration",
   "--text",
   "--top",
   "--transmission",
   "--transmission-texture",
   "--value",
   "--width",
+  "--wrap",
   "--justify",
 ]);
