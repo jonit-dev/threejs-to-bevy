@@ -860,6 +860,55 @@ test("should emit standalone SDK asset modules in bundle manifest", async () => 
   }
 });
 
+test("should emit structured model animation and particle source metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-source-animation-particles-"));
+  try {
+    await mkdir(join(root, "assets"), { recursive: true });
+    await writeFile(join(root, "assets/hero.glb"), "model");
+    const scene = new Scene({ id: "scene" });
+    const config = {
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project" as const,
+      version: "0.1.0" as const,
+    };
+
+    const bundlePath = await emitBundle(config, { scene }, {
+      authoringDocuments: [{
+        data: {
+          schema: "threenative.assets",
+          version: "0.1.0",
+          id: "model.hero",
+          assets: [{
+            animationGraph: { initialState: "run", states: [{ clip: "run", id: "run" }] },
+            animations: [{ id: "run", loop: true, sourceClip: "Armature|Run", speed: 1.25 }],
+            id: "model.hero",
+            particleEmitters: [{ id: "dust", lifetimeSeconds: 0.5, maxParticles: 64, ratePerSecond: 12, shape: "point" }],
+            path: "assets/hero.glb",
+            type: "model",
+          }],
+        },
+        file: join(root, "content/assets/model.hero.assets.json"),
+        kind: "asset",
+        projectRelativePath: "content/assets/model.hero.assets.json",
+      }],
+    });
+    const assets = JSON.parse(await readFile(join(bundlePath, "assets.manifest.json"), "utf8")) as {
+      assets: Array<Record<string, unknown>>;
+    };
+    const result = await validateBundle(bundlePath);
+    const model = assets.assets.find((asset) => asset.id === "model.hero");
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(model?.animations, [{ id: "run", loop: true, sourceClip: "Armature|Run", speed: 1.25 }]);
+    assert.deepEqual(model?.animationGraph, { initialState: "run", states: [{ clip: "run", id: "run" }] });
+    assert.deepEqual(model?.particleEmitters, [{ id: "dust", lifetimeSeconds: 0.5, maxParticles: 64, ratePerSecond: 12, shape: "point" }]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should emit structured mesh source documents into asset manifest", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-emit-source-meshes-"));
   try {

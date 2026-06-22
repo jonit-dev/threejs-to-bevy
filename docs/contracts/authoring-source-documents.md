@@ -243,7 +243,8 @@ schema-versioned contracts in this phase:
   `roughness`, and optional `provenance`;
 - `threenative.meshes`: `id`, primitive/custom `meshes`, and optional
   `provenance`;
-- `threenative.assets`: `id`, `assets`, and optional `provenance`;
+- `threenative.assets`: `id`, `assets`, promoted model animation/particle
+  metadata, and optional `provenance`;
 - `threenative.input`: `id`, `actions`, and optional `provenance`;
 - `threenative.systems`: `id`, `systems`, and optional `provenance`;
 - `threenative.prefab`: `id`, `entities`, and optional `provenance`;
@@ -282,6 +283,10 @@ Scene component commands such as `tn physics add-rigid-body`, `tn physics
 add-collider`, and `tn nav add-agent` mutate existing
 `content/scenes/*.scene.json` documents through the same typed source
 validators as `tn scene add-component`.
+Model metadata commands such as `tn animation add-clip`, `tn animation graph
+add-state`, and `tn particle add-emitter` mutate existing
+`content/assets/*.assets.json` model declarations and lower into
+`assets.manifest.json`.
 
 Every operation supports `--json` and returns the shared
 `ok`/`changed`/`filesWritten`/`diagnostics` operation shape. Invalid CLI JSON,

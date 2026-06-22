@@ -373,10 +373,13 @@ function structuredAsset(item: unknown): IInternalAsset[] {
     return [];
   }
   return [{
+    ...(kind === "model" && Array.isArray(item.animations) ? { animations: item.animations.map((entry) => cloneRecord(entry as Record<string, unknown>)) } : {}),
+    ...(kind === "model" && isRecord(item.animationGraph) ? { animationGraph: cloneRecord(item.animationGraph) } : {}),
     format,
     id,
     kind,
     path,
+    ...(kind === "model" && Array.isArray(item.particleEmitters) ? { particleEmitters: item.particleEmitters.map((entry) => cloneRecord(entry as Record<string, unknown>)) } : {}),
     sourceMode: "bundle",
   }];
 }

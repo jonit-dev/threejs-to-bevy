@@ -17,7 +17,7 @@ import { modelTestCommand } from "./commands/modelTest.js";
 import { packageCommand } from "./commands/package.js";
 import { navCommand, physicsCommand } from "./commands/physicsNav.js";
 import { sceneCommand } from "./commands/scene.js";
-import { audioCommand, environmentCommand, inputCommand, materialCommand, meshCommand, prefabCommand, projectCommand, resourcesCommand, runtimeCommand, systemCommand, uiCommand } from "./commands/sourceDocuments.js";
+import { animationCommand, audioCommand, environmentCommand, inputCommand, materialCommand, meshCommand, particleCommand, prefabCommand, projectCommand, resourcesCommand, runtimeCommand, systemCommand, uiCommand } from "./commands/sourceDocuments.js";
 import { validateProject } from "./commands/validate.js";
 import { recordCommand, screenshotCommand } from "./commands/visualProof.js";
 import { verifyCommand } from "./commands/verify.js";
@@ -39,6 +39,11 @@ const commands: Record<string, ICommandDefinition> = {
     description: "Create and mutate structured audio source documents.",
     implemented: true,
     usage: "tn audio create <audio-doc-id> [--project <path>] [--json]\n              tn audio add-sound <audio-doc-id> <sound-id> --asset <asset-id-or-path> [--project <path>] [--json]",
+  },
+  animation: {
+    description: "Add model animation clip and graph metadata to structured asset source.",
+    implemented: true,
+    usage: "tn animation add-clip <asset-id> <clip-id> [--source-clip <name>] [--loop true|false] [--speed <n>] [--project <path>] [--json]\n              tn animation graph add-state <asset-id> <state-id> --clip <clip-id> [--initial] [--project <path>] [--json]",
   },
   environment: {
     description: "Create and mutate structured environment source documents.",
@@ -124,6 +129,11 @@ const commands: Record<string, ICommandDefinition> = {
     description: "Create a local desktop package artifact from a bundle.",
     implemented: true,
     usage: "tn package --target desktop --bundle <path> [--runtime bevy|webview] [--format portable|archive|installer] [--out <path>] [--json]",
+  },
+  particle: {
+    description: "Add bounded particle emitter metadata to structured model asset source.",
+    implemented: true,
+    usage: "tn particle add-emitter <asset-id> <emitter-id> --rate <n> --max <n> --lifetime <seconds> [--shape point|sphere] [--radius <n>] [--project <path>] [--json]",
   },
   physics: {
     description: "Add typed physics components to structured scene source.",
@@ -241,6 +251,10 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
     return audioCommand(normalizedArgv.slice(1));
   }
 
+  if (commandName === "animation") {
+    return animationCommand(normalizedArgv.slice(1));
+  }
+
   if (commandName === "environment") {
     return environmentCommand(normalizedArgv.slice(1));
   }
@@ -303,6 +317,10 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
 
   if (commandName === "package") {
     return packageCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "particle") {
+    return particleCommand(normalizedArgv.slice(1));
   }
 
   if (commandName === "physics") {

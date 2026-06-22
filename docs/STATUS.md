@@ -164,6 +164,10 @@ Reusable `threenative.resources` source documents now give shared gameplay
 state/defaults their own durable source family through `tn resources
 create|add|set` and registry-backed `resources.*` operations; full reusable
 component/resource schema authoring remains separate residual work.
+Structured asset source documents now also carry promoted model animation
+metadata through `tn animation add-clip`, `tn animation graph add-state`, and
+bounded particle metadata through `tn particle add-emitter`, and compiler
+lowering preserves those fields in `assets.manifest.json`.
 Commands support `--json`, return the shared `ok`/`changed`/`filesWritten`/
 `diagnostics` shape, and fail before writing on invalid JSON or validation
 errors. Broader asset import settings, material sampler/import policy, input

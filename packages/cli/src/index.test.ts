@@ -12,6 +12,7 @@ test("should print help when requested", async () => {
   assert.equal(result.exitCode, 0);
   assert.match(result.stdout, /Commands:/);
   assert.match(result.stdout, /asset/);
+  assert.match(result.stdout, /animation/);
   assert.match(result.stdout, /create/);
   assert.match(result.stdout, /init/);
   assert.match(result.stdout, /help/);
@@ -26,6 +27,7 @@ test("should print help when requested", async () => {
   assert.match(result.stdout, /dev/);
   assert.match(result.stdout, /editor/);
   assert.match(result.stdout, /package/);
+  assert.match(result.stdout, /particle/);
   assert.match(result.stdout, /physics/);
   assert.match(result.stdout, /nav/);
   assert.match(result.stdout, /scene/);
@@ -47,6 +49,9 @@ test("should tolerate a leading package script separator", async () => {
 test("should keep rendered help stable for the package bin", () => {
   assert.match(renderHelp(), /tn dev --target <web\|desktop>/);
   assert.match(renderHelp(), /tn package --target desktop/);
+  assert.match(renderHelp(), /tn animation add-clip <asset-id> <clip-id>/);
+  assert.match(renderHelp(), /tn animation graph add-state <asset-id> <state-id>/);
+  assert.match(renderHelp(), /tn particle add-emitter <asset-id> <emitter-id>/);
   assert.match(renderHelp(), /tn physics add-rigid-body <scene-id> <entity-id>/);
   assert.match(renderHelp(), /tn physics add-collider <scene-id> <entity-id>/);
   assert.match(renderHelp(), /tn nav add-agent <scene-id> <entity-id>/);

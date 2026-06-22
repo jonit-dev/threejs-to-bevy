@@ -1,7 +1,10 @@
 import {
+  addAnimationClip,
+  addAnimationGraphState,
   addAudioSound,
   addInputAction,
   addInputAxis,
+  addParticleEmitter,
   addPrefabComponent,
   addUiNodeDocument,
   addUiText,
@@ -260,6 +263,73 @@ export async function materialCommand(argv: readonly string[], options: ISourceC
   }
 
   return renderUsage(json, "TN_MATERIAL_COMMAND_UNKNOWN", "Usage: tn material create|set ... [--json]");
+}
+
+export async function animationCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {
+  const normalizedArgv = normalizeArgv(argv);
+  const [subcommand, group] = normalizedArgv;
+  const json = normalizedArgv.includes("--json");
+  const projectPath = resolveProjectPath(normalizedArgv, options.cwd);
+
+  if (subcommand === "add-clip") {
+    const assetId = readPositional(normalizedArgv, 1);
+    const clipId = readPositional(normalizedArgv, 2);
+    const loop = parseOptionalBoolean(normalizedArgv, "--loop");
+    const speed = parseOptionalNumber(normalizedArgv, "--speed");
+    if (loop.diagnostic !== undefined) {
+      return renderUsage(json, loop.diagnostic, "Animation --loop must be true or false.");
+    }
+    if (speed.diagnostic !== undefined) {
+      return renderUsage(json, speed.diagnostic, "Animation --speed must be a finite number.");
+    }
+    if (assetId === undefined || clipId === undefined) {
+      return renderUsage(json, "TN_ANIMATION_ADD_CLIP_ARGS_MISSING", "Usage: tn animation add-clip <asset-id> <clip-id> [--source-clip <name>] [--loop true|false] [--speed <n>] [--project <path>] [--json]");
+    }
+    return renderAuthoringResult("animation", await addAnimationClip({ assetId, clipId, loop: loop.value, projectPath, sourceClip: readFlag(normalizedArgv, "--source-clip"), speed: speed.value }), json, `Animation clip '${clipId}' added.`);
+  }
+
+  if (subcommand === "graph" && group === "add-state") {
+    const assetId = readPositional(normalizedArgv, 2);
+    const stateId = readPositional(normalizedArgv, 3);
+    const clipId = readFlag(normalizedArgv, "--clip");
+    if (assetId === undefined || stateId === undefined || clipId === undefined) {
+      return renderUsage(json, "TN_ANIMATION_GRAPH_ADD_STATE_ARGS_MISSING", "Usage: tn animation graph add-state <asset-id> <state-id> --clip <clip-id> [--initial] [--project <path>] [--json]");
+    }
+    return renderAuthoringResult("animation", await addAnimationGraphState({ assetId, clipId, initial: normalizedArgv.includes("--initial"), projectPath, stateId }), json, `Animation graph state '${stateId}' added.`);
+  }
+
+  return renderUsage(json, "TN_ANIMATION_COMMAND_UNKNOWN", "Usage: tn animation add-clip ...\n       tn animation graph add-state ...");
+}
+
+export async function particleCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {
+  const normalizedArgv = normalizeArgv(argv);
+  const [subcommand] = normalizedArgv;
+  const json = normalizedArgv.includes("--json");
+  const projectPath = resolveProjectPath(normalizedArgv, options.cwd);
+
+  if (subcommand === "add-emitter") {
+    const assetId = readPositional(normalizedArgv, 1);
+    const emitterId = readPositional(normalizedArgv, 2);
+    const numbers = parseNumberFlags(normalizedArgv, ["--lifetime", "--max", "--radius", "--rate"]);
+    if (numbers.diagnostic !== undefined) {
+      return renderUsage(json, numbers.diagnostic, "Particle numeric flags must be finite numbers.");
+    }
+    if (assetId === undefined || emitterId === undefined || numbers.values["--lifetime"] === undefined || numbers.values["--max"] === undefined || numbers.values["--rate"] === undefined) {
+      return renderUsage(json, "TN_PARTICLE_ADD_EMITTER_ARGS_MISSING", "Usage: tn particle add-emitter <asset-id> <emitter-id> --rate <n> --max <n> --lifetime <seconds> [--shape point|sphere] [--radius <n>] [--project <path>] [--json]");
+    }
+    return renderAuthoringResult("particle", await addParticleEmitter({
+      assetId,
+      emitterId,
+      lifetimeSeconds: numbers.values["--lifetime"],
+      maxParticles: numbers.values["--max"],
+      projectPath,
+      radius: numbers.values["--radius"],
+      ratePerSecond: numbers.values["--rate"],
+      shape: readFlag(normalizedArgv, "--shape"),
+    }), json, `Particle emitter '${emitterId}' added.`);
+  }
+
+  return renderUsage(json, "TN_PARTICLE_COMMAND_UNKNOWN", "Usage: tn particle add-emitter <asset-id> <emitter-id> --rate <n> --max <n> --lifetime <seconds> [--shape point|sphere] [--radius <n>] [--project <path>] [--json]");
 }
 
 export async function meshCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {
@@ -763,6 +833,7 @@ const flagsWithValues = new Set([
   "--clearcoat-roughness",
   "--clearcoat-roughness-texture",
   "--clearcoat-texture",
+  "--clip",
   "--color",
   "--emissive",
   "--emissive-intensity",
@@ -776,6 +847,9 @@ const flagsWithValues = new Set([
   "--keys",
   "--kind",
   "--label",
+  "--lifetime",
+  "--loop",
+  "--max",
   "--metallic-roughness-texture",
   "--metalness",
   "--module",
@@ -786,12 +860,15 @@ const flagsWithValues = new Set([
   "--opacity",
   "--positive-keys",
   "--project",
+  "--rate",
   "--build-targets",
   "--resource",
   "--roughness",
   "--schedule",
+  "--shape",
   "--render-path",
   "--src",
+  "--source-clip",
   "--source-roots",
   "--storage",
   "--type",

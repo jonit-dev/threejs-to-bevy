@@ -4,7 +4,8 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
 
-import { audioCommand, environmentCommand, inputCommand, materialCommand, meshCommand, prefabCommand, projectCommand, resourcesCommand, runtimeCommand, systemCommand, uiCommand } from "./sourceDocuments.js";
+import { assetCommand } from "./asset.js";
+import { animationCommand, audioCommand, environmentCommand, inputCommand, materialCommand, meshCommand, particleCommand, prefabCommand, projectCommand, resourcesCommand, runtimeCommand, systemCommand, uiCommand } from "./sourceDocuments.js";
 
 test("countdown UI can be created centered and bound without manual JSON editing", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-cli-ui-doc-"));
@@ -129,6 +130,34 @@ test("material command rejects invalid numeric PBR flags", async () => {
 
     assert.equal(result.exitCode, 2);
     assert.equal(payload.code, "TN_AUTHORING_NUMBER_INVALID");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("animation and particle commands mutate model asset source metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-animation-particle-doc-"));
+  try {
+    const asset = await assetCommand(["add", "model.hero", "--type", "model", "--path", "assets/hero.glb", "--project", root, "--json"]);
+    const clip = await animationCommand(["add-clip", "model.hero", "run", "--source-clip", "Armature|Run", "--loop", "true", "--speed", "1.25", "--project", root, "--json"]);
+    const state = await animationCommand(["graph", "add-state", "model.hero", "running", "--clip", "run", "--initial", "--project", root, "--json"]);
+    const emitter = await particleCommand(["add-emitter", "model.hero", "dust", "--rate", "12", "--max", "64", "--lifetime", "0.5", "--shape", "sphere", "--radius", "0.75", "--project", root, "--json"]);
+    const doc = JSON.parse(await readFile(join(root, "content", "assets", "model.hero.assets.json"), "utf8")) as {
+      assets: Array<Record<string, unknown>>;
+    };
+
+    assert.equal(asset.exitCode, 0);
+    assert.equal(clip.exitCode, 0);
+    assert.equal(state.exitCode, 0);
+    assert.equal(emitter.exitCode, 0);
+    assert.deepEqual(doc.assets, [{
+      animationGraph: { initialState: "running", states: [{ clip: "run", id: "running" }] },
+      animations: [{ id: "run", loop: true, sourceClip: "Armature|Run", speed: 1.25 }],
+      id: "model.hero",
+      particleEmitters: [{ id: "dust", lifetimeSeconds: 0.5, maxParticles: 64, radius: 0.75, ratePerSecond: 12, shape: "sphere" }],
+      path: "assets/hero.glb",
+      type: "model",
+    }]);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

@@ -527,6 +527,31 @@ export interface IAddAssetOptions extends IAuthoringOperationContext {
   type: string;
 }
 
+export interface IAddAnimationClipOptions extends IAuthoringOperationContext {
+  assetId: string;
+  clipId: string;
+  loop?: boolean;
+  sourceClip?: string;
+  speed?: number;
+}
+
+export interface IAddAnimationGraphStateOptions extends IAuthoringOperationContext {
+  assetId: string;
+  clipId: string;
+  initial?: boolean;
+  stateId: string;
+}
+
+export interface IAddParticleEmitterOptions extends IAuthoringOperationContext {
+  assetId: string;
+  emitterId: string;
+  lifetimeSeconds: number;
+  maxParticles: number;
+  radius?: number;
+  ratePerSecond: number;
+  shape?: string;
+}
+
 export interface ICreateAudioDocumentOptions extends IAuthoringOperationContext {
   audioDocId: string;
 }
@@ -1759,6 +1784,62 @@ export async function addAsset(options: IAddAssetOptions): Promise<IAuthoringOpe
   });
 }
 
+export async function addAnimationClip(options: IAddAnimationClipOptions): Promise<IAuthoringOperationResult> {
+  return mutateAsset(options.projectPath, options.assetId, (asset) => {
+    const animations = ensureArrayProperty(asset, "animations");
+    const existing = findSceneItem(animations, options.clipId);
+    const clip = existing ?? { id: options.clipId };
+    if (options.loop === undefined) {
+      delete clip.loop;
+    } else {
+      clip.loop = options.loop;
+    }
+    setOptionalString(clip, "sourceClip", options.sourceClip);
+    setOptionalNumber(clip, "speed", options.speed);
+    if (existing === undefined) {
+      animations.push(clip);
+    }
+  });
+}
+
+export async function addAnimationGraphState(options: IAddAnimationGraphStateOptions): Promise<IAuthoringOperationResult> {
+  return mutateAsset(options.projectPath, options.assetId, (asset) => {
+    const graph = isRecord(asset.animationGraph) ? asset.animationGraph : {};
+    const states = Array.isArray(graph.states) ? graph.states : [];
+    const existing = findSceneItem(states, options.stateId);
+    const state = existing ?? { id: options.stateId };
+    state.clip = options.clipId;
+    if (existing === undefined) {
+      states.push(state);
+    }
+    asset.animationGraph = {
+      ...graph,
+      initialState: options.initial === true || typeof graph.initialState !== "string" ? options.stateId : graph.initialState,
+      states,
+    };
+  });
+}
+
+export async function addParticleEmitter(options: IAddParticleEmitterOptions): Promise<IAuthoringOperationResult> {
+  return mutateAsset(options.projectPath, options.assetId, (asset) => {
+    const particleEmitters = ensureArrayProperty(asset, "particleEmitters");
+    const existing = findSceneItem(particleEmitters, options.emitterId);
+    const emitter = existing ?? { id: options.emitterId };
+    emitter.lifetimeSeconds = options.lifetimeSeconds;
+    emitter.maxParticles = options.maxParticles;
+    emitter.ratePerSecond = options.ratePerSecond;
+    emitter.shape = options.shape ?? "point";
+    if (options.radius === undefined) {
+      delete emitter.radius;
+    } else {
+      emitter.radius = options.radius;
+    }
+    if (existing === undefined) {
+      particleEmitters.push(emitter);
+    }
+  });
+}
+
 export async function createAudioDocument(options: ICreateAudioDocumentOptions): Promise<IAuthoringOperationResult> {
   return createSourceDocument({
     projectPath: options.projectPath,
@@ -1766,6 +1847,24 @@ export async function createAudioDocument(options: ICreateAudioDocumentOptions):
     id: options.audioDocId,
     file: `content/audio/${options.audioDocId}.audio.json`,
     data: { schema: audioDocumentSchema, version: "0.1.0", id: options.audioDocId, sounds: [] },
+  });
+}
+
+function mutateAsset(
+  projectPath: string,
+  assetId: string,
+  apply: (asset: Record<string, unknown>) => void | IAuthoringDiagnostic[],
+): Promise<IAuthoringOperationResult> {
+  return mutateSourceDocument({ projectPath }, "asset", assetId, (data, file) => {
+    const assets = ensureArrayProperty(data, "assets");
+    const asset = findSceneItem(assets, assetId);
+    if (asset === undefined) {
+      return [missingReferenceDiagnostic(file, "/assets", "asset", assetId, idsFromArray(assets))];
+    }
+    if (asset.type !== "model") {
+      return [typeDiagnostic(file, `/assets/${assets.indexOf(asset)}/type`, "animation and particle metadata require a model asset.", asset.type)];
+    }
+    return apply(asset);
   });
 }
 
