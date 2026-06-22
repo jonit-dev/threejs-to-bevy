@@ -4,6 +4,7 @@ import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { buildProject, loadProjectConfig, validateBundle } from "@threenative/compiler";
 
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
+import { captureScreenshot } from "./visualProof.js";
 import { inspectAsset } from "./asset.js";
 
 interface ModelTestFile {
@@ -11,25 +12,56 @@ interface ModelTestFile {
   role: string;
 }
 
+interface ScalePreset {
+  name: "1x" | "fit-target" | "gameplay-recommended";
+  scale: number;
+}
+
+interface ModelTestAnalysis {
+  cameraFrustum: {
+    far: number;
+    fovDegrees: number;
+    near: number;
+    recommendedDistance: number;
+  };
+  isolationCaveat: string;
+  projectedScreenOccupancy?: number;
+  scalePresets: ScalePreset[];
+  scaleVerdict: "too-small" | "ok" | "too-large" | "clipped" | "unknown";
+}
+
+interface ModelTestScreenshotUnavailable {
+  code: "TN_MODEL_TEST_SCREENSHOT_UNAVAILABLE";
+  message: string;
+  nextCommand: string;
+  status: "unavailable";
+}
+
+type ModelTestScreenshot = (Awaited<ReturnType<typeof captureScreenshot>> & { status: "captured" }) | ModelTestScreenshotUnavailable;
+
 export async function modelTestCommand(argv: readonly string[], cwd = process.env.INIT_CWD ?? process.cwd()): Promise<ICommandResult> {
   const normalizedArgv = argv[0] === "--" ? argv.slice(1) : argv;
   const json = normalizedArgv.includes("--json");
   const verify = normalizedArgv.includes("--verify");
+  const screenshot = normalizedArgv.includes("--screenshot");
   const assetArg = normalizedArgv.find((arg) => !arg.startsWith("-"));
   const outArg = flagValue(normalizedArgv, "--out") ?? flagValue(normalizedArgv, "--project") ?? "artifacts/model-test";
+  const screenshotUrl = flagValue(normalizedArgv, "--url");
+  const screenshotOutArg = flagValue(normalizedArgv, "--screenshot-out");
 
   if (assetArg === undefined) {
     return diagnosticResult(
-      { code: "TN_MODEL_TEST_USAGE", message: "Usage: tn model-test <asset-path> [--out <dir>] [--verify] [--json]" },
+      { code: "TN_MODEL_TEST_USAGE", message: "Usage: tn model-test <asset-path> [--out <dir>] [--verify] [--screenshot] [--url <preview-url>] [--json]" },
       { exitCode: 1, json, stderr: !json },
     );
   }
 
   const assetPath = resolvePath(cwd, assetArg);
   const outDir = resolvePath(cwd, outArg);
+  const screenshotOutPath = screenshotOutArg === undefined ? join(outDir, "artifacts", "model-test.png") : resolvePath(cwd, screenshotOutArg);
 
   try {
-    const report = await createModelTestProject({ assetPath, outDir, verify });
+    const report = await createModelTestProject({ assetPath, outDir, screenshot, screenshotOutPath, screenshotUrl, verify });
     return {
       exitCode: report.verified?.ok === false ? 1 : 0,
       stdout: json
@@ -44,12 +76,21 @@ export async function modelTestCommand(argv: readonly string[], cwd = process.en
   }
 }
 
-export async function createModelTestProject(options: { assetPath: string; outDir: string; verify?: boolean }): Promise<{
+export async function createModelTestProject(options: {
+  assetPath: string;
+  outDir: string;
+  screenshot?: boolean;
+  screenshotOutPath?: string;
+  screenshotUrl?: string;
+  verify?: boolean;
+}): Promise<{
+  analysis: ModelTestAnalysis;
   asset: string;
   bounds?: unknown;
   calibration?: unknown;
   files: ModelTestFile[];
   outDir: string;
+  screenshot?: ModelTestScreenshot;
   verified?: { bundlePath?: string; diagnostics?: unknown[]; ok: boolean };
 }> {
   const inspection = await inspectAsset(options.assetPath);
@@ -103,6 +144,7 @@ export async function createModelTestProject(options: { assetPath: string; outDi
   }, null, 2)}\n`);
   await writeFile(readmePath, renderReadme(options.assetPath, inspection));
   files.push({ path: sourcePath, role: "source" }, { path: configPath, role: "config" }, { path: packagePath, role: "package" }, { path: readmePath, role: "docs" });
+  const analysis = modelTestAnalysis(inspection);
 
   let verified: { bundlePath?: string; diagnostics?: unknown[]; ok: boolean } | undefined;
   if (options.verify === true) {
@@ -113,12 +155,29 @@ export async function createModelTestProject(options: { assetPath: string; outDi
     verified = { bundlePath, diagnostics: validation.diagnostics, ok: validation.ok };
   }
 
+  let screenshot: ModelTestScreenshot | undefined;
+  if (options.screenshot === true) {
+    if (options.screenshotUrl === undefined) {
+      screenshot = {
+        code: "TN_MODEL_TEST_SCREENSHOT_UNAVAILABLE",
+        message: "Screenshot capture was requested, but no --url was provided for a running model-test preview.",
+        nextCommand: "Run the generated project with pnpm run dev:web, then rerun tn model-test <asset> --screenshot --url <preview-url> --json.",
+        status: "unavailable",
+      };
+    } else {
+      const captured = await captureScreenshot({ outPath: options.screenshotOutPath ?? join(options.outDir, "artifacts", "model-test.png"), url: options.screenshotUrl });
+      screenshot = { ...captured, status: "captured" };
+    }
+  }
+
   return {
+    analysis,
     asset: options.assetPath,
     bounds: inspection.bounds,
     calibration: inspection.calibration,
     files,
     outDir: options.outDir,
+    screenshot,
     verified,
   };
 }
@@ -141,12 +200,66 @@ function renderGameSource(options: { assetFileName: string; inspection: Awaited<
 }
 
 function renderReadme(assetPath: string, inspection: Awaited<ReturnType<typeof inspectAsset>>): string {
-  return `# ThreeNative model test\n\nGenerated by \`tn model-test\` for:\n\n\`${assetPath}\`\n\n## What this scene contains\n\n- The inspected model copied into \`assets/\`.\n- A 1 meter orange ruler and floor plane for scale checks.\n- A translucent bounds marker sized from glTF accessor min/max bounds.\n- Camera/light defaults from asset calibration hints.\n\n## Inspection summary\n\n- Bounds: ${inspection.bounds === undefined ? "unavailable" : JSON.stringify(inspection.bounds.size)}\n- Calibration: ${inspection.calibration === undefined ? "unavailable" : JSON.stringify(inspection.calibration.fitScales)}\n\nRun \`pnpm run build\`, \`pnpm run validate\`, then \`pnpm run verify\` after installing workspace dependencies.\n`;
+  const analysis = modelTestAnalysis(inspection);
+  return `# ThreeNative model test\n\nGenerated by \`tn model-test\` for:\n\n\`${assetPath}\`\n\n## What this scene contains\n\n- The inspected model copied into \`assets/\`.\n- A 1 meter orange ruler and floor plane for scale checks.\n- A translucent bounds marker sized from glTF accessor min/max bounds.\n- Camera/light defaults from asset calibration hints.\n- Scale presets: ${analysis.scalePresets.map((preset) => `${preset.name}=${preset.scale}`).join(", ")}.\n- Camera frustum: ${analysis.cameraFrustum.fovDegrees}deg FOV, near ${analysis.cameraFrustum.near}, far ${analysis.cameraFrustum.far}, recommended distance ${analysis.cameraFrustum.recommendedDistance}m.\n\n## Inspection summary\n\n- Bounds: ${inspection.bounds === undefined ? "unavailable" : JSON.stringify(inspection.bounds.size)}\n- Calibration: ${inspection.calibration === undefined ? "unavailable" : JSON.stringify(inspection.calibration.fitScales)}\n- Scale verdict: ${analysis.scaleVerdict}\n- Projected screen occupancy: ${analysis.projectedScreenOccupancy ?? "unknown"}\n\n${analysis.isolationCaveat}\n\nRun \`pnpm run build\`, \`pnpm run validate\`, then \`pnpm run verify\` after installing workspace dependencies.\n`;
 }
 
 function renderModelTestReport(report: Awaited<ReturnType<typeof createModelTestProject>>): string {
   const verified = report.verified === undefined ? "Verification: not requested" : `Verification: ${report.verified.ok ? "passed" : "failed"}${report.verified.bundlePath === undefined ? "" : ` (${report.verified.bundlePath})`}`;
-  return `Model test project generated.\nOutput: ${report.outDir}\nAsset: ${report.asset}\nFiles:\n${report.files.map((file) => `  - ${file.role}: ${file.path}`).join("\n")}\n${verified}\n`;
+  const screenshot = report.screenshot === undefined
+    ? "Screenshot: not requested"
+    : report.screenshot.status === "captured"
+      ? `Screenshot: captured (${report.screenshot.outPath})`
+      : `Screenshot: unavailable (${report.screenshot.message})`;
+  return `Model test project generated.\nOutput: ${report.outDir}\nAsset: ${report.asset}\nScale verdict: ${report.analysis.scaleVerdict}\nScale presets: ${report.analysis.scalePresets.map((preset) => `${preset.name}=${preset.scale}`).join(", ")}\nFiles:\n${report.files.map((file) => `  - ${file.role}: ${file.path}`).join("\n")}\n${verified}\n${screenshot}\n${report.analysis.isolationCaveat}\n`;
+}
+
+function modelTestAnalysis(inspection: Awaited<ReturnType<typeof inspectAsset>>): ModelTestAnalysis {
+  const bounds = inspection.bounds;
+  const calibration = inspection.calibration;
+  const fitTarget = calibration?.fitScales?.targetHeight2m ?? calibration?.fitScales?.targetLength4m ?? calibration?.fitScales?.targetWidth1m ?? 1;
+  const gameplayRecommended = calibration?.fitScales?.targetLength4m ?? calibration?.fitScales?.targetHeight2m ?? fitTarget;
+  const camera = calibration?.camera ?? { far: 100, fovDegrees: 50, near: 0.01, recommendedDistance: 5 };
+  const projectedScreenOccupancy = bounds === undefined ? undefined : projectedOccupancy(bounds.size[1] * fitTarget, camera.recommendedDistance, camera.fovDegrees);
+  const scaleVerdict = scaleVerdictFor({ calibrationVerdict: calibration?.gameplay.verdict, projectedScreenOccupancy });
+  return {
+    cameraFrustum: camera,
+    isolationCaveat: "Isolated model render proof only separates loader, asset, bounds, and scale issues from full scene composition; it does not prove the model is framed correctly in the final game.",
+    projectedScreenOccupancy,
+    scalePresets: [
+      { name: "1x", scale: 1 },
+      { name: "fit-target", scale: round(fitTarget) },
+      { name: "gameplay-recommended", scale: round(gameplayRecommended) },
+    ],
+    scaleVerdict,
+  };
+}
+
+function projectedOccupancy(height: number, distance: number, fovDegrees: number): number {
+  if (height <= 0 || distance <= 0 || fovDegrees <= 0) {
+    return 0;
+  }
+  const viewHeight = 2 * distance * Math.tan((fovDegrees * Math.PI) / 360);
+  return round(height / viewHeight);
+}
+
+function scaleVerdictFor(options: {
+  calibrationVerdict?: "ok" | "too-small" | "too-large" | "unknown";
+  projectedScreenOccupancy?: number;
+}): ModelTestAnalysis["scaleVerdict"] {
+  if (options.projectedScreenOccupancy === undefined) {
+    return options.calibrationVerdict ?? "unknown";
+  }
+  if (options.projectedScreenOccupancy > 0.95) {
+    return "clipped";
+  }
+  if (options.projectedScreenOccupancy < 0.05) {
+    return "too-small";
+  }
+  if (options.projectedScreenOccupancy > 0.85) {
+    return "too-large";
+  }
+  return options.calibrationVerdict ?? "ok";
 }
 
 function flagValue(argv: readonly string[], flag: string): string | undefined {

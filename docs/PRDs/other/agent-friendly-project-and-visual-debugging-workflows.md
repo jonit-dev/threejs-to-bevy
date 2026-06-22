@@ -397,15 +397,15 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Implement `tn model-test <asset> [--screenshot] [--out <dir>] [--json]`.
-- [ ] Generate an ephemeral scene using inspected bounds and recommended camera.
-- [ ] Include a visible world-unit ruler/grid, bounding box overlay, camera frustum
+- [x] Implement `tn model-test <asset> [--screenshot] [--out <dir>] [--json]`.
+- [x] Generate an ephemeral scene using inspected bounds and recommended camera.
+- [x] Include a visible world-unit ruler/grid, bounding box overlay, camera frustum
   summary, and at least three scale presets: `1x`, `fit-target`, and
   `gameplay-recommended`.
-- [ ] Render in web preview and save screenshot/report when capture is available.
-- [ ] Report a scale verdict (`too-small`, `ok`, `too-large`, `clipped`,
+- [x] Render in web preview and save screenshot/report when capture is available.
+- [x] Report a scale verdict (`too-small`, `ok`, `too-large`, `clipped`,
   `unknown`) based on projected screen occupancy and bounds-vs-camera analysis.
-- [ ] Explicitly state: isolated model render proof does not prove full game
+- [x] Explicitly state: isolated model render proof does not prove full game
   composition, but it separates loader/asset issues from scene/camera issues.
 
 **Tests required:**
@@ -419,6 +419,15 @@ sequenceDiagram
 
 - Command: `pnpm --filter @threenative/cli test -- commands/modelTest.test.ts`
 - Expected result: model-test generation and JSON report pass.
+
+**Progress Evidence:**
+
+- `tn model-test` JSON now reports camera frustum, scale presets,
+  projected screen occupancy, a scale verdict, and the isolated-proof caveat.
+- `tn model-test --screenshot --url <preview-url>` captures a screenshot with
+  the existing Playwright proof helper; `--screenshot` without `--url` returns a
+  stable unavailable state and next command.
+- Verified with `pnpm --filter @threenative/cli test` on 2026-06-21.
 
 #### Phase 6: Clarify Transform patching and add camera helpers
 
@@ -673,7 +682,7 @@ works end-to-end.
 - [x] `tn asset inspect` reports gameplay scale calibration: unscaled dimensions,
   recommended scale, target world-unit size, lane/collider ratios, camera-distance
   range, and warnings for extreme scale/pivot/visibility risks.
-- [ ] `tn model-test` can isolate a model into a generated preview scene and
+- [x] `tn model-test` can isolate a model into a generated preview scene and
   capture/report proof when the host supports it.
 - [x] Transform patch semantics are documented and covered by tests or stable
   diagnostics; scale-wipe-prone updates are no longer silent footguns.

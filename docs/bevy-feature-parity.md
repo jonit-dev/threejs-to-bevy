@@ -380,6 +380,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [ ] `P2` glTF extension processing policy for AnimationGraph and custom import transforms (executable processor diagnostic exists)
 - [x] `P1` Scene viewer/editor inspection workflow
 - [x] `P1` CLI glTF/GLB asset inspection for bounds, dependency checks, and scale calibration (`tn asset inspect`)
+- [x] `P1` CLI one-model proof reports with scale presets, screen occupancy verdicts, isolated-proof caveats, and screenshot captured/unavailable states (`tn model-test`)
 - [x] `P1` Dev-time asset file watching and explicit reload diagnostics
 - [x] `P2` Asset hot reload and state-preserving reload behavior
 - [x] `P1` Broader live asset streaming through manifest asset-group policy

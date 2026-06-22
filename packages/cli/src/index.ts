@@ -57,7 +57,7 @@ const commands: Record<string, ICommandDefinition> = {
   "model-test": {
     description: "Generate a one-model proof project with scale, bounds, ruler, and camera hints.",
     implemented: true,
-    usage: "tn model-test <asset-path> [--out <dir>] [--verify] [--json]",
+    usage: "tn model-test <asset-path> [--out <dir>] [--verify] [--screenshot] [--url <preview-url>] [--json]",
   },
   doctor: {
     description: "Inspect project setup, scripts, source entrypoint, and bundle files with actionable diagnostics.",

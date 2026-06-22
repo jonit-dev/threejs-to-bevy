@@ -38,6 +38,24 @@ Bounds are reported only when the glTF accessors contain `min` and `max` values;
 otherwise the command emits `TN_ASSET_BOUNDS_MISSING` or
 `TN_ASSET_BOUNDS_UNAVAILABLE` instead of pretending to decode geometry.
 
+Use `tn model-test` when inspection succeeds but the model still needs isolated
+render proof:
+
+```bash
+tn model-test assets/model.glb --out artifacts/model-test --verify --json
+tn model-test assets/model.glb --out artifacts/model-test --screenshot --url http://127.0.0.1:5173 --json
+```
+
+The generated project copies the model and external dependencies, adds a 1m
+ruler/floor, translucent bounds marker, and camera/light defaults from the
+inspection calibration. The JSON report includes camera frustum metadata, `1x`,
+`fit-target`, and `gameplay-recommended` scale presets, projected screen
+occupancy, a scale verdict (`too-small`, `ok`, `too-large`, `clipped`, or
+`unknown`), and an explicit caveat that isolated proof separates loader/asset
+issues from full-scene composition issues. `--screenshot` captures a PNG from
+the supplied preview URL; without `--url`, the report returns a stable
+unavailable state and next command instead of failing silently.
+
 ## Bundle Behavior
 
 - Copy referenced model files into the emitted bundle.

@@ -155,7 +155,7 @@ tn scene bind-ui <scene-id> <ui-node-id> --resource <resource.path> --json
 tn build
 tn package --target desktop
 tn verify
-tn model-test assets/hero.glb --out artifacts/model-test --verify
+tn model-test assets/hero.glb --out artifacts/model-test --verify --screenshot --url http://127.0.0.1:5173
 tn scene proof <scene-id> --project . --web-url http://127.0.0.1:5173 --out artifacts/proof --native --json
 tn screenshot --url http://127.0.0.1:5173 --out artifacts/proof/frame.png
 tn record --url http://127.0.0.1:5173 --out artifacts/proof/clip.webm --seconds 5
@@ -220,8 +220,11 @@ Command expectations:
 - `tn verify` runs visual self-verification for the web preview.
 - `tn model-test <asset-path>` generates a one-model proof project with copied
   GLB/glTF assets, dependency copies, a 1m ruler, translucent bounds marker,
-  and calibration-derived camera/scale hints. Add `--verify` to build and
-  validate the generated project.
+  calibration-derived camera/scale hints, scale presets, projected screen
+  occupancy, and a scale verdict. Add `--verify` to build and validate the
+  generated project. Add `--screenshot --url <preview-url>` to capture proof
+  from a running preview; without a URL, screenshot proof is reported as
+  unavailable with a next command.
 - `tn screenshot --url <preview-url> --out <file.png>` captures a PNG proof
   frame from a running web preview using the same Playwright browser stack as
   visual verification.

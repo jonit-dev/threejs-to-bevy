@@ -381,11 +381,13 @@ Native Bevy UI now installs a dedicated overlay UI camera above authored scene c
 `tn asset inspect <path> [--json]` is available for local glTF/GLB triage. It
 reports accessor-derived bounds with node transforms, external/embedded image
 and buffer dependencies, missing-file diagnostics, and gameplay-scale
-calibration hints before a model is placed in a scene. `tn model-test
-<asset-path> [--out <dir>] [--verify]` now turns those inspection hints into a
-one-model proof project with copied dependencies, ruler/grid/bounds reference,
-and optional build/validation. `tn screenshot --url <preview-url> --out
-<file.png>` and `tn record --url <preview-url> --out <file.webm|file.mp4>`
+calibration hints before a model is placed in a scene. `tn model-test` now turns
+those inspection hints into a one-model proof project with copied dependencies,
+ruler/grid/bounds reference, camera frustum metadata, `1x`/`fit-target`/
+`gameplay-recommended` scale presets, projected screen occupancy, scale verdict,
+the isolated-proof caveat, optional build/validation, and optional screenshot
+capture from a supplied preview URL or a stable unavailable state. `tn screenshot`
+and `tn record`
 provide direct Playwright still/video proof capture; MP4 conversion requires
 `ffmpeg`, while WebM is captured directly by Chromium. Their JSON reports now
 include timestamp, viewport, URL, and the web runtime ready payload when

@@ -26,9 +26,9 @@ export const HELP_TOPICS: Record<string, HelpTopic> = {
   },
   assets: {
     aliases: ["asset", "model", "glb", "gltf"],
-    commands: ["tn asset inspect <path> [--json]", "tn model-test <asset-path> [--out <dir>] [--verify]", "tn validate", "tn build", "tn help visual-qa"],
+    commands: ["tn asset inspect <path> [--json]", "tn model-test <asset-path> [--out <dir>] [--verify] [--screenshot] [--url <preview-url>]", "tn validate", "tn build", "tn help visual-qa"],
     docs: ["docs/workflows/asset-pipeline.md", "docs/workflows/ai-workflows.md", "docs/runtime/README.md"],
-    examples: ["tn asset inspect assets/kart.glb --json", "tn model-test assets/kart.glb --out artifacts/model-test --verify", "Keep glTF/GLB files and external textures inside the project assets directory before building."],
+    examples: ["tn asset inspect assets/kart.glb --json", "tn model-test assets/kart.glb --out artifacts/model-test --verify --screenshot --url http://127.0.0.1:5173 --json", "Keep glTF/GLB files and external textures inside the project assets directory before building."],
     failureSymptoms: ["model loaded but invisible", "missing external texture", "asset path outside project root"],
     summary: "Debug asset paths, texture dependencies, and model visibility before runtime capture.",
     title: "Asset and model triage",
