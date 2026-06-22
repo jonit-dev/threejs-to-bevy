@@ -54,7 +54,7 @@ export default function createScene() {
     new MeshStandardMaterial({ color: "#ff3b30" }),
   );
   player.name = "player";
-  player.position.set(0, 1, 0);
+  player.setPosition(0, 1, 0);
   scene.add(player);
 
   const camera = new PerspectiveCamera({
@@ -62,7 +62,7 @@ export default function createScene() {
     near: 0.1,
     far: 200,
   });
-  camera.position.set(0, 4, 8);
+  camera.setPosition(0, 4, 8);
   camera.lookAt(player.position);
   scene.add(camera);
 
@@ -71,6 +71,12 @@ export default function createScene() {
   return scene;
 }
 ```
+
+Object transforms expose chainable helpers that preserve omitted fields:
+`setPosition(x, y, z)`, `setRotation(x, y, z)`, `setScale(x, y, z)`, and
+`patchTransform({ position, rotation, scale })`. A partial
+`patchTransform({ position })` keeps the existing rotation and scale, matching
+runtime `Transform` component patch semantics.
 
 ### ECS-First API
 

@@ -385,6 +385,13 @@ final visible world bounds, declared/model asset counts, resource-failure
 diagnostics, and camera distance/clip-range hints. `tn verify --json` also
 reports projected nonblank bounds/occupancy for the first captured frame.
 
+SDK object transforms now have chainable `setPosition`, `setRotation`,
+`setScale`, and `patchTransform` helpers. Runtime component patches remain
+field-merge operations: patching only `Transform.position` preserves existing
+rotation and scale, while explicit component `set` replaces the whole component.
+Portable follow/chase cameras should use Camera `follow` metadata applied by
+runtime post-update systems instead of direct runtime camera rotation mutation.
+
 ```bash
 pnpm check:names
 pnpm check:docs

@@ -204,6 +204,12 @@ Script systems should declare their read/write component access in the IR. The
 Bevy adapter can use that metadata for validation, diagnostics, and later
 parallel scheduling. Structural script commands should be buffered and applied
 at schedule boundaries instead of mutating the world during query iteration.
+Component patches are field-merge operations. A script patch such as
+`entity.patch(Transform, { position })` must preserve the entity's existing
+`rotation` and `scale`; full replacement is reserved for explicit component
+`set` operations. Follow/chase cameras should be authored with the portable
+Camera `follow` metadata and applied during `postUpdate`, instead of mutating
+runtime camera rotations directly from gameplay scripts.
 
 ### Scene Loading Strategy
 

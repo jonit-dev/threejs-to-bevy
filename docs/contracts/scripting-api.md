@@ -558,8 +558,17 @@ Rules:
 
 - `get` is allowed only for declared query/read components.
 - `patch` and `set` are allowed only for declared writes.
+- `patch` merges the supplied top-level component fields with the current
+  component value. For `Transform`, `entity.patch(Transform, { position })`
+  preserves existing `rotation` and `scale`; use `entity.set(Transform, value)`
+  only when replacing the whole transform intentionally.
 - Component values are plain structured data.
 - Entity identity is a stable string, not a Bevy `Entity` or Three.js object.
+
+For SDK-authored object transforms, prefer the chainable helpers
+`object.setPosition(x, y, z)`, `object.setRotation(x, y, z)`,
+`object.setScale(x, y, z)`, or `object.patchTransform({ position })`. Omitted
+fields are preserved, matching runtime component patch semantics.
 
 ## Commands
 

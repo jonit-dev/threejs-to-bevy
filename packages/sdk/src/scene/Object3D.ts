@@ -1,5 +1,5 @@
 import { SdkError } from "../errors.js";
-import { Vector3 } from "../math/Vector3.js";
+import { Vector3, type Vector3Tuple } from "../math/Vector3.js";
 import type { IAssetReference } from "../assets.js";
 import type { IPhysicsDeclaration } from "../physics.js";
 
@@ -9,6 +9,12 @@ export interface IObject3DOptions {
   name?: string;
   physics?: IPhysicsDeclaration;
   visible?: boolean;
+}
+
+export interface ITransformPatch {
+  position?: Vector3Tuple;
+  rotation?: Vector3Tuple;
+  scale?: Vector3Tuple;
 }
 
 export class Object3D {
@@ -69,6 +75,34 @@ export class Object3D {
     for (const child of this.#children) {
       child.traverse(visitor);
     }
+  }
+
+  public setPosition(x: number, y: number, z: number): this {
+    this.position.set(x, y, z);
+    return this;
+  }
+
+  public setRotation(x: number, y: number, z: number): this {
+    this.rotation.set(x, y, z);
+    return this;
+  }
+
+  public setScale(x: number, y: number, z: number): this {
+    this.scale.set(x, y, z);
+    return this;
+  }
+
+  public patchTransform(patch: ITransformPatch): this {
+    if (patch.position !== undefined) {
+      this.position.set(...patch.position);
+    }
+    if (patch.rotation !== undefined) {
+      this.rotation.set(...patch.rotation);
+    }
+    if (patch.scale !== undefined) {
+      this.scale.set(...patch.scale);
+    }
+    return this;
   }
 
   private hasAncestor(candidate: Object3D): boolean {

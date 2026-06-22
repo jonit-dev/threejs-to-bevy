@@ -58,7 +58,9 @@ implementation:
   `tn model-test` for one-model proof projects, `tn screenshot`/`tn record` for
   direct Playwright proof artifacts with web runtime ready metadata, and
   `tn verify --json` projected nonblank bounds diagnostics; these are CLI/runtime
-  QA aids, not new portable Bevy runtime capabilities.
+  QA aids, not new portable Bevy runtime capabilities. SDK transform helper
+  methods and runtime Transform patch merge semantics are documented and tested
+  so partial position patches preserve authored scale.
 
 Unchecked rows below should remain unchecked until their V10 owner adds SDK/IR,
 validation, compiler, web, Bevy, conformance, docs, and artifact evidence, or

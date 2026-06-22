@@ -47,3 +47,18 @@ test("group should inherit object hierarchy behavior", () => {
   assert.deepEqual(root.children, []);
   assert.deepEqual(visited, ["room.entry", "spawn.enemy"]);
 });
+
+test("transform helpers should be chainable and preserve omitted fields", () => {
+  const object = new Object3D({ id: "kart.player" });
+
+  const result = object
+    .setPosition(1, 2, 3)
+    .setRotation(0, 0.5, 0)
+    .setScale(2, 2, 2)
+    .patchTransform({ position: [4, 5, 6] });
+
+  assert.equal(result, object);
+  assert.deepEqual(object.position.toArray(), [4, 5, 6]);
+  assert.deepEqual(object.rotation.toArray(), [0, 0.5, 0]);
+  assert.deepEqual(object.scale.toArray(), [2, 2, 2]);
+});

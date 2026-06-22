@@ -424,11 +424,11 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Document exact `Transform` patch semantics: merge vs replace, scale
+- [x] Document exact `Transform` patch semantics: merge vs replace, scale
   preservation, and recommended helper APIs.
-- [ ] Add helper APIs where appropriate: `setPosition`, `setRotation`,
+- [x] Add helper APIs where appropriate: `setPosition`, `setRotation`,
   `setScale`, or `patchTransform` with explicit merge behavior.
-- [ ] Add `followCamera` / `chaseCamera` helper or documented pattern that avoids
+- [x] Add `followCamera` / `chaseCamera` helper or documented pattern that avoids
   unsafe runtime camera rotation mutation.
 - [ ] Add diagnostics when a runtime patch updates only part of `Transform` in a
   way likely to drop scale or when camera mutation fails.
@@ -445,6 +445,15 @@ sequenceDiagram
 - Command: `pnpm verify:conformance`
 - Expected result: shared transform/camera semantics are covered by conformance
   or documented as capability-gated.
+
+**Progress Evidence:**
+
+- SDK `Object3D` now exposes chainable `setPosition`, `setRotation`,
+  `setScale`, and `patchTransform` helpers. Runtime web tests prove
+  `entity.patch("Transform", { position })` preserves existing rotation and
+  scale. `docs/contracts/scripting-api.md`, `docs/contracts/sdk.md`, and
+  `docs/runtime/runtime-adapters.md` document merge-vs-replace behavior and
+  recommend portable Camera `follow` metadata for chase/follow cameras.
 
 #### Phase 7: Add `tn screenshot` and improve `tn verify` proof artifacts
 

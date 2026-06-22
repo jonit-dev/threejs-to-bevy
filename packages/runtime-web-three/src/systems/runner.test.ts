@@ -30,6 +30,39 @@ test("should run systems move entity during fixed update", async () => {
   assert.deepEqual(world.entities[0]?.components.Transform, { position: [2, 0, 0] });
 });
 
+test("should preserve transform scale when a system patches only position", async () => {
+  const world: IWorldIr = {
+    schema: "threenative.world",
+    version: "0.1.0",
+    entities: [
+      {
+        id: "player",
+        components: {
+          Transform: { position: [0, 0, 0], rotation: [0, 0.25, 0, 0.968912], scale: [2, 2, 2] },
+        },
+      },
+    ],
+  };
+  const systems = makeSystems("fixedUpdate", "movePlayer");
+
+  await runSchedule({
+    module: {
+      systems: {
+        movePlayer(context: any) {
+          for (const entity of context.query({ with: ["Transform"], without: [] })) {
+            entity.patch("Transform", { position: [1, 0, 0] });
+          }
+        },
+      },
+    },
+    schedule: "fixedUpdate",
+    systems,
+    world,
+  });
+
+  assert.deepEqual(world.entities[0]?.components.Transform, { position: [1, 0, 0], rotation: [0, 0.25, 0, 0.968912], scale: [2, 2, 2] });
+});
+
 test("should provide declared query snapshots", async () => {
   const world = makeWorld();
   world.entities.push({ id: "hidden", components: { Health: { value: 1 } } });
