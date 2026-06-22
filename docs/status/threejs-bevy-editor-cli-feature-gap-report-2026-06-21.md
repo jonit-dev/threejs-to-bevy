@@ -72,6 +72,23 @@ Date: 2026-06-21
   --layers ...` and `tn scene add-component ... visibility --visible ...` write
   validated source components, and the shared operation registry exposes
   `scene.set_render_layers` and `scene.set_visibility`.
+- ✅ 2026-06-22: Intentional non-portable boundaries are marked complete in the
+  integration matrix where the expected state is "no command": platform online
+  services and direct Bevy/raw Three.js/2D authoring remain explicit non-goals,
+  not parity backlog.
+
+## Final Status for 2026-06-22
+
+The original report is now the current progress ledger: rows with ✅ have either
+implemented source/editor/CLI support or a documented intentional non-goal
+boundary. The remaining unchecked matrix/subagent rows are still open for later
+work and should not be treated as complete:
+
+- Render targets and render-target depth allocation/sampling proof.
+- Generator provenance workflows beyond one-way classification and provenance
+  sidecar metadata.
+- Advanced rendering and advanced light/material residuals.
+- Read-only editor rows that still need safe source-persistable operations.
 
 ## Scope
 
@@ -146,8 +163,8 @@ IR/runtime surfaces, but only some have typed editor/CLI helpers.
 | Generator provenance | Concept exists in source matrix | Not runtime-specific | Missing | No command | SOURCE, ECS-CMD, EDITOR | One-way generators are identified, but reverse editor patching is not supported. |
 | Advanced rendering: volumetrics, DOF, SSR, decals, deferred, meshlets, custom post passes | Mostly diagnostic/deferred | Mostly diagnostic/deferred | Missing | No command | WEB-BEVY, EDITOR, ECS-CMD | Tracked as P2/P3 residuals in parity docs, not integrated end-to-end. |
 | Advanced lights/materials | Spherical/area lights, lightmaps, parallax, anisotropy/specular tint are open | Not promoted | Missing | No command | WEB-BEVY, EDITOR, ECS-CMD | Custom shaders/bindless/render phases are diagnostic boundaries, not portable authoring features. |
-| Platform services: cloud saves, online/networking/replication/collaboration | Deferred/non-portable | Deferred/non-portable | Missing | No command | INTENTIONAL | Product boundary keeps these out of portable IR/runtime for now. |
-| Direct Bevy authoring / raw Three.js source of truth / 2D workflows | Non-goal | Non-goal | Non-goal | No command | INTENTIONAL | Explicitly outside the current ThreeNative product boundary. |
+| ✅ Platform services: cloud saves, online/networking/replication/collaboration | Deferred/non-portable | Deferred/non-portable | Missing | No command | INTENTIONAL | Product boundary keeps these out of portable IR/runtime for now; no command is the intended state. |
+| ✅ Direct Bevy authoring / raw Three.js source of truth / 2D workflows | Non-goal | Non-goal | Non-goal | No command | INTENTIONAL | Explicitly outside the current ThreeNative product boundary; no command is the intended state. |
 
 ## Highest Priority Gaps
 
