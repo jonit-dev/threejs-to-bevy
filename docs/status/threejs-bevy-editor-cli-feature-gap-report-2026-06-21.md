@@ -67,6 +67,11 @@ Date: 2026-06-21
   operation registry exposes matching `scene.add_tag` and `scene.add_group`
   operations, and structured scene builds lower them into `world.ir.json` plus
   component schemas.
+- ✅ 2026-06-22: Typed ECS component source mutation now also covers
+  `RenderLayers` and `Visibility`: `tn scene add-component ... render-layers
+  --layers ...` and `tn scene add-component ... visibility --visible ...` write
+  validated source components, and the shared operation registry exposes
+  `scene.set_render_layers` and `scene.set_visibility`.
 
 ## Scope
 
@@ -118,7 +123,7 @@ IR/runtime surfaces, but only some have typed editor/CLI helpers.
 | Feature family | Three.js-style SDK / IR / web | Bevy runtime | Editor structured source | CLI / ECS add command | Gap flags | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | ✅ Entities, transforms, resources | Supported | Supported | Partial | Typed commands exist: `scene add-entity`, `scene set-transform`, `scene add-resource`, `scene set-resource`, `resources create/add/set` | EDITOR | Core scene mutation exists, and reusable `threenative.resources` source docs now persist resource declarations/defaults; reusable schema document authoring remains residual. |
-| Generic ECS components | IR supports arbitrary component records plus typed known components | Bevy maps known components; script host can read component values | Partial | Generic `scene set-component` and `prefab add-component` | ECS-CMD, EDITOR | No typed per-component command/defaults for most runtime components. |
+| ✅ Generic ECS components | IR supports arbitrary component records plus typed known components | Bevy maps known components; script host can read component values | Partial | Generic `scene set-component` and `prefab add-component`, plus typed scene operations for promoted components | ECS-CMD, EDITOR | Typed source/CLI/default coverage now includes camera, light, mesh-renderer, render-layers, visibility, rigid-body, collider, character-controller, tags, and groups; raw JSON remains for custom or unpromoted components. |
 | ✅ Tags and group containers | Supported in parity docs / compiler path | Supported as marker/query and hierarchy containers | Partial | `tn scene add-tag`, `tn scene add-group` plus registry `scene.add_tag` / `scene.add_group` | EDITOR | Typed source/CLI operations now write zero-field tag components and `SceneContainer` group entities that lower through structured scene builds; broader editor hierarchy/group controls remain partial. |
 | ✅ MeshRenderer and primitive meshes | Supported | Supported | Partial | `mesh primitive`, `mesh custom`, `scene add-prefab`, generic `set-component` | ECS-CMD, EDITOR | Source mesh docs now cover primitive and custom attribute/index declarations, and compiler lowering emits generated mesh assets/binary payloads; generator provenance/import settings and richer editor mesh controls remain partial. |
 | ✅ Materials and textures | Broad IR/runtime support for PBR fields and texture slots | Broad promoted support | Partial | `material create`, `material set` with promoted PBR/texture flags | EDITOR | CLI/editor now cover promoted texture slots, alpha, emissive, clearcoat, and transmission fields; sampler/import policy and broader material inspector UX remain partial. |
@@ -148,7 +153,7 @@ IR/runtime surfaces, but only some have typed editor/CLI helpers.
 
 | Priority | Gap | Why it matters | Candidate command surface |
 | --- | --- | --- | --- |
-| ✅ P0 | Typed component commands for common ECS features | Resolved for camera, light, mesh-renderer, rigid-body, collider, and character-controller; other runtime components remain backlog. | `tn scene add-component <scene> <entity> camera|light|mesh-renderer|rigid-body|collider|character-controller ...` |
+| ✅ P0 | Typed component commands for common ECS features | Resolved for camera, light, mesh-renderer, render-layers, visibility, rigid-body, collider, and character-controller; other runtime components remain backlog. | `tn scene add-component <scene> <entity> camera|light|mesh-renderer|render-layers|visibility|rigid-body|collider|character-controller ...` |
 | ✅ P0 | Asset source document mutation | Resolved for durable asset id/type/path declarations. | `tn asset add <asset-id> --type model|texture|audio|mesh --path ... --json` |
 | ✅ P0 | Audio source mutation | Resolved for audio documents and sound declarations. | `tn audio create <audio-doc-id>`, `tn audio add-sound <audio-doc-id> <sound-id> --asset ...` |
 | ✅ P1 | Material texture/PBR commands | Resolved for promoted PBR and texture-slot fields; sampler/import policy remains outside this slice. | `tn material set <id> --base-color-texture ... --normal-texture ... --emissive ... --alpha-mode ...` |
@@ -169,7 +174,7 @@ and docs/contracts. Their additional findings sharpen the gaps above:
 | Area | Finding | Impact |
 | --- | --- | --- |
 | ✅ Operation registry drift | `AUTHORING_OPERATION_REGISTRY` now includes existing structured source operations for asset/audio/input/material/mesh/prefab/scene/system/UI plus typed common ECS component setters. | Keep using the registry as the shared source for new promoted operations. |
-| ✅ Generic vs typed ECS writes | Typed common ECS setters and validators now cover `camera`, `Light`, `MeshRenderer`, `RigidBody`, `Collider`, and `CharacterController`. | Raw JSON remains available for unsupported/custom components; other runtime components still need promotion before they are first-class. |
+| ✅ Generic vs typed ECS writes | Typed common ECS setters and validators now cover `camera`, `Light`, `MeshRenderer`, `RenderLayers`, `Visibility`, `RigidBody`, `Collider`, and `CharacterController`. | Raw JSON remains available for unsupported/custom components; other runtime components still need promotion before they are first-class. |
 | Read-only editor rows | Editor/server model code exposes several runtime-supported families as read-only, including asset catalog fields, environment path/walkability/LOD rows, existing mesh primitive details, richer system inspector rows, light/custom component rows, and scene-local prefab primitive/color/asset edits. | Users can inspect more than the editor UI can safely persist back to durable source, even where shared source operations now exist. |
 | ✅ Asset and audio source gaps | Asset and audio source schemas now have durable mutation commands and registry operations for asset declarations, audio docs, and sound declarations. | Broader import/playback policy remains separate backlog. |
 | ✅ Environment mutation gap | Environment documents are classified/validated, and typed editor/CLI operations now cover skybox, environment map, and terrain source fields. | Path, walkability, light probes, and LOD remain inspect-only residuals. |

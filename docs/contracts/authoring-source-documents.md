@@ -279,8 +279,9 @@ under conventional paths:
 - `tn system create <system-id>` writes
   `content/systems/<system-id>.systems.json`.
 
-Scene component commands such as `tn physics add-rigid-body`, `tn physics
-add-collider`, and `tn nav add-agent` mutate existing
+Scene component commands such as `tn scene add-component ... render-layers`,
+`tn scene add-component ... visibility`, `tn physics add-rigid-body`,
+`tn physics add-collider`, and `tn nav add-agent` mutate existing
 `content/scenes/*.scene.json` documents through the same typed source
 validators as `tn scene add-component`.
 Model metadata commands such as `tn animation add-clip`, `tn animation graph

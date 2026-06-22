@@ -153,8 +153,8 @@ import also
 preserves those promoted portable material fields back into
 `content/materials/*.materials.json` source documents, and the editor project
 API exposes matching editable `material.set` rows. `tn scene add-component` now gives agents a
-typed scene-component path for camera, light, mesh-renderer, rigid-body,
-collider, and character-controller payloads without hand-written component
+typed scene-component path for camera, light, mesh-renderer, render-layers,
+visibility, rigid-body, collider, and character-controller payloads without hand-written component
 JSON, while `tn physics add-rigid-body`, `tn physics add-collider`, and
 `tn nav add-agent` provide discoverable aliases for the promoted
 physics/navigation source components; camera operations now preserve promoted projection/frustum fields

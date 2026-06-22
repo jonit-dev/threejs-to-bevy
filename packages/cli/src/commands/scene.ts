@@ -18,11 +18,13 @@ import {
   setComponent,
   setLightComponent,
   setMeshRendererComponent,
+  setRenderLayersComponent,
   setPrefabColor,
   setRigidBodyComponent,
   setResource,
   setSceneLifecycle,
   setTransform,
+  setVisibilityComponent,
   validateScene,
   type IAuthoringOperationResult,
   type ICreateSceneResult,
@@ -424,7 +426,7 @@ function sceneLifecycleUsage(): string {
 }
 
 function sceneAddComponentUsage(): string {
-  return "Usage: tn scene add-component <scene-id> <entity-id> camera [--mode <perspective|orthographic|third-person-follow>] [--target <entity-id>] [--fov-y <n>] [--near <n>] [--far <n>] [--size <n>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> light [--kind <ambient|directional|point|spot>] [--intensity <n>] [--color <css-color>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> mesh-renderer --mesh <mesh-id> --material <material-id> [--visible <true|false>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> rigid-body [--kind <dynamic|kinematic|static>] [--mass <n>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> collider [--kind <box|sphere|capsule|cylinder|mesh>] [--size x,y,z] [--radius <n>] [--height <n>] [--trigger <true|false>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> character-controller [--move-x <axis>] [--move-z <axis>] [--speed <n>] [--project <path>] [--json]";
+  return "Usage: tn scene add-component <scene-id> <entity-id> camera [--mode <perspective|orthographic|third-person-follow>] [--target <entity-id>] [--fov-y <n>] [--near <n>] [--far <n>] [--size <n>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> light [--kind <ambient|directional|point|spot>] [--intensity <n>] [--color <css-color>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> mesh-renderer --mesh <mesh-id> --material <material-id> [--visible <true|false>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> render-layers --layers <layer-a,layer-b> [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> visibility [--visible <true|false>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> rigid-body [--kind <dynamic|kinematic|static>] [--mass <n>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> collider [--kind <box|sphere|capsule|cylinder|mesh>] [--size x,y,z] [--radius <n>] [--height <n>] [--trigger <true|false>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> character-controller [--move-x <axis>] [--move-z <axis>] [--speed <n>] [--project <path>] [--json]";
 }
 
 function parseTypedComponent(
@@ -512,6 +514,37 @@ function parseTypedComponent(
         mass: numbers.values["--mass"],
         projectPath,
         sceneId,
+      }),
+    };
+  }
+  if (normalized === "render-layers" || normalized === "renderlayers") {
+    const layers = parseStringListFlag(argv, "--layers");
+    if (layers.diagnostic !== undefined || layers.value === undefined) {
+      return { apply: neverApply, componentKind: "RenderLayers", diagnostic: layers.diagnostic ?? "TN_SCENE_ADD_COMPONENT_RENDER_LAYERS_ARGS_MISSING", usage: "Usage: tn scene add-component <scene-id> <entity-id> render-layers --layers <layer-a,layer-b> [--project <path>] [--json]" };
+    }
+    const parsedLayers = layers.value;
+    return {
+      componentKind: "RenderLayers",
+      apply: (projectPath) => setRenderLayersComponent({
+        entityId,
+        layers: parsedLayers,
+        projectPath,
+        sceneId,
+      }),
+    };
+  }
+  if (normalized === "visibility") {
+    const booleans = parseBooleanFlags(argv, ["--visible"]);
+    if (booleans.diagnostic !== undefined) {
+      return { apply: neverApply, componentKind: "Visibility", diagnostic: booleans.diagnostic, usage: "Visibility boolean flags must be true or false." };
+    }
+    return {
+      componentKind: "Visibility",
+      apply: (projectPath) => setVisibilityComponent({
+        entityId,
+        projectPath,
+        sceneId,
+        visible: booleans.values["--visible"],
       }),
     };
   }
@@ -608,6 +641,15 @@ function parseOptionalVectorFlag(argv: readonly string[], flag: string): { diagn
   }
   const vector = parseVector3(raw);
   return vector === undefined ? { diagnostic: "TN_SCENE_VECTOR_INVALID" } : { value: vector };
+}
+
+function parseStringListFlag(argv: readonly string[], flag: string): { diagnostic?: string; value?: string[] } {
+  const raw = readFlag(argv, flag);
+  if (raw === undefined) {
+    return {};
+  }
+  const values = raw.split(",").map((part) => part.trim()).filter((part) => part.length > 0);
+  return values.length === 0 ? { diagnostic: "TN_SCENE_STRING_LIST_INVALID" } : { value: values };
 }
 
 async function neverApply(): Promise<IAuthoringOperationResult> {

@@ -39,6 +39,7 @@ import {
   resourceIdPattern,
   resourcesDocumentKeys,
   resourcesDocumentSchema,
+  renderLayersComponentKeys,
   rigidBodyComponentKeys,
   readArray,
   readString,
@@ -67,6 +68,7 @@ import {
   supportedUiTextAlignments,
   supportedUiTextDecorations,
   uiDocumentSchema,
+  visibilityComponentKeys,
   systemCommandKeys,
   systemKeys,
   systemQueryKeys,
@@ -249,6 +251,12 @@ export interface ISetMeshRendererComponentOptions extends IAuthoringOperationCon
   receiveShadow?: boolean;
 }
 
+export interface ISetRenderLayersComponentOptions extends IAuthoringOperationContext {
+  sceneId: string;
+  entityId: string;
+  layers: readonly string[];
+}
+
 export interface ISetRigidBodyComponentOptions extends IAuthoringOperationContext {
   sceneId: string;
   entityId: string;
@@ -278,6 +286,12 @@ export interface ISetCharacterControllerComponentOptions extends IAuthoringOpera
   grounding?: string;
   slopeLimit?: number;
   stepOffset?: number;
+}
+
+export interface ISetVisibilityComponentOptions extends IAuthoringOperationContext {
+  sceneId: string;
+  entityId: string;
+  visible?: boolean;
 }
 
 export interface IRemoveComponentOptions extends IAuthoringOperationContext {
@@ -1192,6 +1206,18 @@ export async function setMeshRendererComponent(options: ISetMeshRendererComponen
   });
 }
 
+export async function setRenderLayersComponent(options: ISetRenderLayersComponentOptions): Promise<IAuthoringOperationResult> {
+  return setComponent({
+    projectPath: options.projectPath,
+    sceneId: options.sceneId,
+    entityId: options.entityId,
+    componentKind: "RenderLayers",
+    value: {
+      layers: [...options.layers],
+    },
+  });
+}
+
 export async function setRigidBodyComponent(options: ISetRigidBodyComponentOptions): Promise<IAuthoringOperationResult> {
   return setComponent({
     projectPath: options.projectPath,
@@ -1237,6 +1263,18 @@ export async function setCharacterControllerComponent(options: ISetCharacterCont
       speed: options.speed ?? 4,
       ...(options.slopeLimit === undefined ? {} : { slopeLimit: options.slopeLimit }),
       ...(options.stepOffset === undefined ? {} : { stepOffset: options.stepOffset }),
+    },
+  });
+}
+
+export async function setVisibilityComponent(options: ISetVisibilityComponentOptions): Promise<IAuthoringOperationResult> {
+  return setComponent({
+    projectPath: options.projectPath,
+    sceneId: options.sceneId,
+    entityId: options.entityId,
+    componentKind: "Visibility",
+    value: {
+      visible: options.visible ?? true,
     },
   });
 }
@@ -2988,12 +3026,16 @@ function validateComponents(
       validateMeshRendererComponent(diagnostics, file, `${path}/${escapeJsonPointer(kind)}`, component, materialIds);
     } else if (kind === "Light" || kind === "light") {
       validateLightComponent(diagnostics, file, `${path}/${escapeJsonPointer(kind)}`, component);
+    } else if (kind === "RenderLayers") {
+      validateRenderLayersComponent(diagnostics, file, `${path}/RenderLayers`, component);
     } else if (kind === "RigidBody") {
       validateRigidBodyComponent(diagnostics, file, `${path}/RigidBody`, component);
     } else if (kind === "Collider") {
       validateColliderComponent(diagnostics, file, `${path}/Collider`, component);
     } else if (kind === "CharacterController") {
       validateCharacterControllerComponent(diagnostics, file, `${path}/CharacterController`, component);
+    } else if (kind === "Visibility") {
+      validateVisibilityComponent(diagnostics, file, `${path}/Visibility`, component);
     }
   }
 }
@@ -3030,6 +3072,13 @@ function validateLightComponent(diagnostics: IAuthoringDiagnostic[], file: strin
   validateOptionalNumber(diagnostics, file, `${path}/shadowNormalBias`, value.shadowNormalBias, "light shadowNormalBias must be a finite number.");
 }
 
+function validateRenderLayersComponent(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: Record<string, unknown>): void {
+  diagnostics.push(...unknownKeyDiagnostics(file, path, value, renderLayersComponentKeys));
+  if (!Array.isArray(value.layers) || value.layers.length === 0 || value.layers.some((layer) => readString(layer) === undefined)) {
+    diagnostics.push(typeDiagnostic(file, `${path}/layers`, "render layers must be a non-empty string array.", value.layers));
+  }
+}
+
 function validateRigidBodyComponent(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: Record<string, unknown>): void {
   diagnostics.push(...unknownKeyDiagnostics(file, path, value, rigidBodyComponentKeys));
   validateEnumString(diagnostics, file, `${path}/kind`, value.kind, supportedRigidBodyKinds, "rigid body kind", "Use 'dynamic', 'kinematic', or 'static'.");
@@ -3063,6 +3112,13 @@ function validateCharacterControllerComponent(diagnostics: IAuthoringDiagnostic[
   validateOptionalNumber(diagnostics, file, `${path}/slopeLimit`, value.slopeLimit, "character controller slopeLimit must be a finite number.");
   validateOptionalNumber(diagnostics, file, `${path}/stepOffset`, value.stepOffset, "character controller stepOffset must be a finite number.");
   validateOptionalString(diagnostics, file, `${path}/interactAction`, value.interactAction, "character controller interactAction must be a non-empty input action id.");
+}
+
+function validateVisibilityComponent(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: Record<string, unknown>): void {
+  diagnostics.push(...unknownKeyDiagnostics(file, path, value, visibilityComponentKeys));
+  if (typeof value.visible !== "boolean") {
+    diagnostics.push(typeDiagnostic(file, `${path}/visible`, "visibility visible must be a boolean.", value.visible));
+  }
 }
 
 function validateEnumString(

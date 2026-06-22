@@ -83,13 +83,15 @@ export const meshKeys = new Set(["attributes", "id", "indices", "kind", "primiti
 export const supportedPrefabPrimitives = new Set(["box", "capsule", "cone", "cylinder", "plane", "sphere"]);
 export const supportedMeshPrimitives = new Set(["box", "cone", "cylinder", "plane", "sphere"]);
 
-export const supportedComponentKinds = new Set(["camera", "CharacterController", "Collider", "Light", "MeshRenderer", "RigidBody"]);
+export const supportedComponentKinds = new Set(["camera", "CharacterController", "Collider", "Light", "MeshRenderer", "RenderLayers", "RigidBody", "Visibility"]);
 export const cameraComponentKeys = new Set(["far", "fovY", "mode", "near", "size", "target"]);
 export const characterControllerComponentKeys = new Set(["blocking", "grounding", "interactAction", "moveXAxis", "moveZAxis", "slopeLimit", "speed", "stepOffset"]);
 export const colliderComponentKeys = new Set(["friction", "height", "kind", "layer", "mask", "radius", "restitution", "sensor", "size", "trigger"]);
 export const lightComponentKeys = new Set(["angle", "color", "intensity", "kind", "range", "shadowBias", "shadowNormalBias"]);
 export const meshRendererComponentKeys = new Set(["castShadow", "material", "mesh", "receiveShadow", "visible"]);
+export const renderLayersComponentKeys = new Set(["layers"]);
 export const rigidBodyComponentKeys = new Set(["damping", "gravityScale", "kind", "mass", "sleepThreshold", "solverIterations"]);
+export const visibilityComponentKeys = new Set(["visible"]);
 export const supportedCameraModes = new Set(["third-person-follow", "perspective", "orthographic"]);
 export const supportedCharacterControllerGrounding = new Set(["none", "raycast"]);
 export const supportedColliderKinds = new Set(["box", "capsule", "cylinder", "mesh", "sphere"]);

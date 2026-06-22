@@ -41,6 +41,7 @@ import {
   setLightComponent,
   setMaterial,
   setMeshRendererComponent,
+  setRenderLayersComponent,
   setResource,
   setResourceDocumentEntry,
   setRuntimeRendering,
@@ -51,6 +52,7 @@ import {
   setTransform,
   setUiLayout,
   setUiStyle,
+  setVisibilityComponent,
   type IAuthoringOperationContext,
   type IAuthoringOperationResult,
 } from "./operations.js";
@@ -95,9 +97,11 @@ export type AuthoringOperationName =
   | "scene.set_light"
   | "scene.set_lifecycle"
   | "scene.set_mesh_renderer"
+  | "scene.set_render_layers"
   | "scene.set_rigid_body"
   | "scene.set_resource"
   | "scene.set_transform"
+  | "scene.set_visibility"
   | "system.attach_script"
   | "system.create"
   | "system.set_metadata"
@@ -350,6 +354,11 @@ const descriptors = [
     booleanArg("castShadow", false),
     booleanArg("receiveShadow", false),
   ]),
+  descriptor("scene.set_render_layers", "Set a typed RenderLayers component.", "scene", "source-document", [
+    stringArg("sceneId"),
+    stringArg("entityId"),
+    stringArrayArg("layers"),
+  ]),
   descriptor("scene.set_rigid_body", "Set a typed RigidBody component with defaults.", "scene", "source-document", [
     stringArg("sceneId"),
     stringArg("entityId"),
@@ -377,6 +386,11 @@ const descriptors = [
     stringArg("grounding", false),
     numberArg("slopeLimit", false),
     numberArg("stepOffset", false),
+  ]),
+  descriptor("scene.set_visibility", "Set a typed Visibility component.", "scene", "source-document", [
+    stringArg("sceneId"),
+    stringArg("entityId"),
+    booleanArg("visible", false),
   ]),
   descriptor("scene.remove_component", "Remove a scene entity component through structured source.", "scene", "source-document", [
     stringArg("sceneId"),
@@ -573,12 +587,16 @@ const dispatchers: Record<AuthoringOperationName, OperationDispatcher> = {
     setSceneLifecycle({ activation: optionalString(args, "activation"), initial: optionalBoolean(args, "initial"), kind: optionalString(args, "kind"), projectPath, sceneId: requiredString(args, "sceneId") }),
   "scene.set_mesh_renderer": async ({ args, projectPath }) =>
     setMeshRendererComponent({ castShadow: optionalBoolean(args, "castShadow"), entityId: requiredString(args, "entityId"), material: requiredString(args, "material"), mesh: requiredString(args, "mesh"), projectPath, receiveShadow: optionalBoolean(args, "receiveShadow"), sceneId: requiredString(args, "sceneId"), visible: optionalBoolean(args, "visible") }),
+  "scene.set_render_layers": async ({ args, projectPath }) =>
+    setRenderLayersComponent({ entityId: requiredString(args, "entityId"), layers: requiredStringArray(args, "layers"), projectPath, sceneId: requiredString(args, "sceneId") }),
   "scene.set_rigid_body": async ({ args, projectPath }) =>
     setRigidBodyComponent({ damping: optionalNumber(args, "damping"), entityId: requiredString(args, "entityId"), gravityScale: optionalNumber(args, "gravityScale"), kind: optionalString(args, "kind"), mass: optionalNumber(args, "mass"), projectPath, sceneId: requiredString(args, "sceneId") }),
   "scene.set_resource": async ({ args, projectPath }) =>
     setResource({ path: optionalString(args, "path"), projectPath, resourceId: requiredString(args, "resourceId"), sceneId: requiredString(args, "sceneId"), value: optionalJson(args, "value") }),
   "scene.set_transform": async ({ args, projectPath }) =>
     setTransform({ entityId: requiredString(args, "entityId"), position: optionalVector3(args, "position"), projectPath, rotation: optionalVector3(args, "rotation"), scale: optionalVector3(args, "scale"), sceneId: requiredString(args, "sceneId") }),
+  "scene.set_visibility": async ({ args, projectPath }) =>
+    setVisibilityComponent({ entityId: requiredString(args, "entityId"), projectPath, sceneId: requiredString(args, "sceneId"), visible: optionalBoolean(args, "visible") }),
   "system.attach_script": async ({ args, projectPath }) =>
     attachSystemScript({ exportName: requiredString(args, "exportName"), modulePath: requiredString(args, "modulePath"), projectPath, systemId: requiredString(args, "systemId") }),
   "system.create": async ({ args, projectPath }) =>

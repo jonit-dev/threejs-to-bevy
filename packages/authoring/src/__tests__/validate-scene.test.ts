@@ -170,9 +170,11 @@ test("validateScene reports typed component diagnostics", async () => {
           id: "player",
           components: {
             Light: { color: "", intensity: "bright", kind: "sun" },
+            RenderLayers: { layers: ["gameplay", ""] },
             RigidBody: { kind: "moving", mass: "heavy" },
             Collider: { kind: "pyramid", size: [1, 2] },
             CharacterController: { blocking: "yes", grounding: "floor", moveXAxis: "", speed: Number.NaN },
+            Visibility: { visible: "no" },
           },
         },
       ],
@@ -183,9 +185,11 @@ test("validateScene reports typed component diagnostics", async () => {
     assert.equal(result.ok, false);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "/entities/0/components/Light/kind" && diagnostic.code === "TN_AUTHORING_COMPONENT_VALUE_INVALID"), true);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "/entities/0/components/Light/intensity" && diagnostic.code === "TN_AUTHORING_SHAPE_INVALID"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "/entities/0/components/RenderLayers/layers" && diagnostic.code === "TN_AUTHORING_SHAPE_INVALID"), true);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "/entities/0/components/RigidBody/kind" && diagnostic.code === "TN_AUTHORING_COMPONENT_VALUE_INVALID"), true);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "/entities/0/components/Collider/size" && diagnostic.code === "TN_AUTHORING_SHAPE_INVALID"), true);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "/entities/0/components/CharacterController/grounding" && diagnostic.code === "TN_AUTHORING_COMPONENT_VALUE_INVALID"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "/entities/0/components/Visibility/visible" && diagnostic.code === "TN_AUTHORING_SHAPE_INVALID"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
