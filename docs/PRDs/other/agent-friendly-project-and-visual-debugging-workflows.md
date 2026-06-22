@@ -242,13 +242,13 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add `init` as a documented alias for `create`, or a wrapper that calls the
+- [x] Add `init` as a documented alias for `create`, or a wrapper that calls the
   same implementation with friendlier output.
-- [ ] Update command descriptions from “V1 starter” language to current
+- [x] Update command descriptions from “V1 starter” language to current
   ThreeNative terminology.
-- [ ] Ensure output includes exact next commands: install, validate, build, dev,
+- [x] Ensure output includes exact next commands: install, validate, build, dev,
   screenshot/verify once those exist.
-- [ ] Add `--json` fields for `template`, `path`, `nextCommands`, and
+- [x] Add `--json` fields for `template`, `path`, `nextCommands`, and
   `referenceDocs`.
 
 **Tests required:**
@@ -282,10 +282,10 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add `tn help` and `tn help <topic>` with topics such as `scaffold`,
+- [x] Add `tn help` and `tn help <topic>` with topics such as `scaffold`,
   `assets`, `camera`, `transform`, `visual-qa`, `screenshot`, and `record`.
-- [ ] Support `--json` output listing topics, commands, examples, and docs.
-- [ ] Document common failure symptoms: black canvas, HUD-only, model loaded but
+- [x] Support `--json` output listing topics, commands, examples, and docs.
+- [x] Document common failure symptoms: black canvas, HUD-only, model loaded but
   invisible, missing texture, camera clipping, transform scale wipe.
 
 **Tests required:**
@@ -347,17 +347,17 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Implement `tn asset inspect <path> [--json]`.
-- [ ] Report file type, byte size, scenes/nodes/meshes/materials, approximate
+- [x] Implement `tn asset inspect <path> [--json]`.
+- [x] Report file type, byte size, scenes/nodes/meshes/materials, approximate
   bounds, origin/pivot, external texture/image dependencies, and missing files.
-- [ ] Report recommended preview scale and camera distance based on bounds.
-- [ ] Report calibration metrics for game use: unscaled dimensions, proposed
+- [x] Report recommended preview scale and camera distance based on bounds.
+- [x] Report calibration metrics for game use: unscaled dimensions, proposed
   scale for a target world-unit height/length, lane-width ratio, collider ratio,
   camera-distance range, and expected screen occupancy for common FOVs.
-- [ ] Emit warnings when a model is likely invisible or visually wrong: near-zero
+- [x] Emit warnings when a model is likely invisible or visually wrong: near-zero
   bounds, extreme scale required, pivot far outside bounds, model behind/inside
   the camera in bundle context, or transform/collider mismatch.
-- [ ] Detect asset paths that will not bundle correctly or whose external
+- [x] Detect asset paths that will not bundle correctly or whose external
   texture dependencies are outside project/bundle roots.
 
 **Tests required:**
@@ -651,25 +651,25 @@ works end-to-end.
 
 ## Acceptance Criteria
 
-- [ ] `tn init` or an explicitly documented `tn create` path scaffolds a basic
+- [x] `tn init` or an explicitly documented `tn create` path scaffolds a basic
   project with next commands and machine-readable output.
-- [ ] `tn help <topic>` gives agent-consumable references for scaffolding,
+- [x] `tn help <topic>` gives agent-consumable references for scaffolding,
   assets, camera, transform, visual QA, screenshot, and record workflows.
 - [ ] `tn doctor` diagnoses missing setup, missing bundle output, runtime preview
   readiness, resource failures, and known visual/runtime failure classes.
-- [ ] `tn asset inspect` reports GLB/glTF bounds, texture dependencies, and
+- [x] `tn asset inspect` reports GLB/glTF bounds, texture dependencies, and
   scale/camera hints.
-- [ ] `tn asset inspect` reports gameplay scale calibration: unscaled dimensions,
+- [x] `tn asset inspect` reports gameplay scale calibration: unscaled dimensions,
   recommended scale, target world-unit size, lane/collider ratios, camera-distance
   range, and warnings for extreme scale/pivot/visibility risks.
 - [ ] `tn model-test` can isolate a model into a generated preview scene and
   capture/report proof when the host supports it.
-- [ ] Transform patch semantics are documented and covered by tests or stable
+- [x] Transform patch semantics are documented and covered by tests or stable
   diagnostics; scale-wipe-prone updates are no longer silent footguns.
-- [ ] Camera follow/chase helpers or documented safe patterns prevent common
+- [x] Camera follow/chase helpers or documented safe patterns prevent common
   black-canvas/camera-mutation failures.
-- [ ] `tn screenshot` captures a ready preview frame plus JSON metadata.
-- [ ] `tn record` captures a short gameplay video with optional scripted input or
+- [x] `tn screenshot` captures a ready preview frame plus JSON metadata.
+- [x] `tn record` captures a short gameplay video with optional scripted input or
   reports a stable unavailable state.
 - [ ] Runtime debug diagnostics expose active camera, canvas, loaded assets,
   resource failures, visible mesh/scene information where practical, and recent
@@ -677,14 +677,14 @@ works end-to-end.
 - [ ] Runtime/model diagnostics expose final world bounds, final scale,
   projected screen-space bounds, camera distance, and frustum/clipping state so
   “asset loaded but wrong scale” is diagnosable without guessing.
-- [ ] A canonical racing/kart example or template demonstrates player kart,
+- [x] A canonical racing/kart example or template demonstrates player kart,
   visible rivals, curved track, readable HUD, camera framing, and screenshot
   proof.
-- [ ] Existing behavior is preserved for `tn create`, `tn dev`, `tn verify`, and
+- [x] Existing behavior is preserved for `tn create`, `tn dev`, `tn verify`, and
   package/build commands.
-- [ ] Relevant tests pass: focused CLI tests, `pnpm check:docs`, and broader
+- [x] Relevant tests pass: focused CLI tests, `pnpm check:docs`, and broader
   gates appropriate to touched runtime/contract surfaces.
-- [ ] Documentation updated for user-facing behavior changes.
+- [x] Documentation updated for user-facing behavior changes.
 
 ## PHASE 1 CHECKPOINT
 
