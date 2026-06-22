@@ -1,9 +1,12 @@
 import {
+  addAudioSound,
   addInputAction,
+  addInputAxis,
   addPrefabComponent,
   addUiText,
   attachSystemScript,
   bindUiDocument,
+  createAudioDocument,
   createMaterial,
   createMeshPrimitive,
   createPrefabDocument,
@@ -101,13 +104,49 @@ export async function materialCommand(argv: readonly string[], options: ISourceC
 
   if (subcommand === "set") {
     if (materialId === undefined) {
-      return renderUsage(json, "TN_MATERIAL_SET_ARGS_MISSING", "Usage: tn material set <material-id> [--color <css-color>] [--roughness <n>] [--project <path>] [--json]");
+      return renderUsage(json, "TN_MATERIAL_SET_ARGS_MISSING", materialSetUsage());
     }
-    const roughness = parseOptionalNumber(normalizedArgv, "--roughness");
-    if (roughness.diagnostic !== undefined) {
-      return renderUsage(json, roughness.diagnostic, "Material roughness must be a finite number.");
+    const numbers = parseNumberFlags(normalizedArgv, [
+      "--alpha-cutoff",
+      "--clearcoat",
+      "--clearcoat-roughness",
+      "--emissive-intensity",
+      "--metalness",
+      "--opacity",
+      "--roughness",
+      "--transmission",
+    ]);
+    if (numbers.diagnostic !== undefined) {
+      return renderUsage(json, numbers.diagnostic, "Material numeric flags must be finite numbers.");
     }
-    return renderAuthoringResult("material", await setMaterial({ projectPath, materialId, color: readFlag(normalizedArgv, "--color"), roughness: roughness.value }), json, `Material '${materialId}' updated.`);
+    return renderAuthoringResult(
+      "material",
+      await setMaterial({
+        alphaCutoff: numbers.values["--alpha-cutoff"],
+        alphaMode: readFlag(normalizedArgv, "--alpha-mode"),
+        baseColorTexture: readFlag(normalizedArgv, "--base-color-texture"),
+        clearcoat: numbers.values["--clearcoat"],
+        clearcoatRoughness: numbers.values["--clearcoat-roughness"],
+        clearcoatRoughnessTexture: readFlag(normalizedArgv, "--clearcoat-roughness-texture"),
+        clearcoatTexture: readFlag(normalizedArgv, "--clearcoat-texture"),
+        color: readFlag(normalizedArgv, "--color"),
+        emissive: readFlag(normalizedArgv, "--emissive"),
+        emissiveIntensity: numbers.values["--emissive-intensity"],
+        emissiveTexture: readFlag(normalizedArgv, "--emissive-texture"),
+        materialId,
+        metallicRoughnessTexture: readFlag(normalizedArgv, "--metallic-roughness-texture"),
+        metalness: numbers.values["--metalness"],
+        normalTexture: readFlag(normalizedArgv, "--normal-texture"),
+        occlusionTexture: readFlag(normalizedArgv, "--occlusion-texture"),
+        opacity: numbers.values["--opacity"],
+        projectPath,
+        roughness: numbers.values["--roughness"],
+        transmission: numbers.values["--transmission"],
+        transmissionTexture: readFlag(normalizedArgv, "--transmission-texture"),
+      }),
+      json,
+      `Material '${materialId}' updated.`,
+    );
   }
 
   return renderUsage(json, "TN_MATERIAL_COMMAND_UNKNOWN", "Usage: tn material create|set ... [--json]");
@@ -159,15 +198,57 @@ export async function prefabCommand(argv: readonly string[], options: ISourceCom
 
 export async function inputCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {
   const normalizedArgv = normalizeArgv(argv);
+  const [subcommand] = normalizedArgv;
   const json = normalizedArgv.includes("--json");
   const projectPath = resolveProjectPath(normalizedArgv, options.cwd);
   const inputDocId = readPositional(normalizedArgv, 1);
-  const actionId = readPositional(normalizedArgv, 2);
-  const keys = readFlag(normalizedArgv, "--keys")?.split(",").map((key) => key.trim()).filter((key) => key.length > 0);
-  if (normalizedArgv[0] !== "add-action" || inputDocId === undefined || actionId === undefined || keys === undefined || keys.length === 0) {
-    return renderUsage(json, "TN_INPUT_ADD_ACTION_ARGS_MISSING", "Usage: tn input add-action <input-doc-id> <action-id> --keys <key,key> [--project <path>] [--json]");
+
+  if (subcommand === "add-action") {
+    const actionId = readPositional(normalizedArgv, 2);
+    const keys = readCsvFlag(normalizedArgv, "--keys");
+    if (inputDocId === undefined || actionId === undefined || keys === undefined || keys.length === 0) {
+      return renderUsage(json, "TN_INPUT_ADD_ACTION_ARGS_MISSING", "Usage: tn input add-action <input-doc-id> <action-id> --keys <key,key> [--project <path>] [--json]");
+    }
+    return renderAuthoringResult("input", await addInputAction({ projectPath, inputDocId, actionId, keys }), json, `Input action '${actionId}' added.`);
   }
-  return renderAuthoringResult("input", await addInputAction({ projectPath, inputDocId, actionId, keys }), json, `Input action '${actionId}' added.`);
+
+  if (subcommand === "add-axis") {
+    const axisId = readPositional(normalizedArgv, 2);
+    const negativeKeys = readCsvFlag(normalizedArgv, "--negative-keys");
+    const positiveKeys = readCsvFlag(normalizedArgv, "--positive-keys");
+    if (inputDocId === undefined || axisId === undefined || negativeKeys === undefined || negativeKeys.length === 0 || positiveKeys === undefined || positiveKeys.length === 0) {
+      return renderUsage(json, "TN_INPUT_ADD_AXIS_ARGS_MISSING", "Usage: tn input add-axis <input-doc-id> <axis-id> --negative-keys <key,key> --positive-keys <key,key> [--value <binding>] [--project <path>] [--json]");
+    }
+    return renderAuthoringResult("input", await addInputAxis({ axisId, inputDocId, negativeKeys, positiveKeys, projectPath, value: readFlag(normalizedArgv, "--value") }), json, `Input axis '${axisId}' added.`);
+  }
+
+  return renderUsage(json, "TN_INPUT_COMMAND_UNKNOWN", "Usage: tn input add-action|add-axis ... [--json]");
+}
+
+export async function audioCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {
+  const normalizedArgv = normalizeArgv(argv);
+  const [subcommand] = normalizedArgv;
+  const json = normalizedArgv.includes("--json");
+  const projectPath = resolveProjectPath(normalizedArgv, options.cwd);
+  const audioDocId = readPositional(normalizedArgv, 1);
+
+  if (subcommand === "create") {
+    if (audioDocId === undefined) {
+      return renderUsage(json, "TN_AUDIO_CREATE_ARGS_MISSING", "Usage: tn audio create <audio-doc-id> [--project <path>] [--json]");
+    }
+    return renderAuthoringResult("audio", await createAudioDocument({ audioDocId, projectPath }), json, `Audio document '${audioDocId}' created.`);
+  }
+
+  if (subcommand === "add-sound") {
+    const soundId = readPositional(normalizedArgv, 2);
+    const asset = readFlag(normalizedArgv, "--asset");
+    if (audioDocId === undefined || soundId === undefined || asset === undefined) {
+      return renderUsage(json, "TN_AUDIO_ADD_SOUND_ARGS_MISSING", "Usage: tn audio add-sound <audio-doc-id> <sound-id> --asset <asset-id-or-path> [--project <path>] [--json]");
+    }
+    return renderAuthoringResult("audio", await addAudioSound({ asset, audioDocId, projectPath, soundId }), json, `Audio sound '${soundId}' added.`);
+  }
+
+  return renderUsage(json, "TN_AUDIO_COMMAND_UNKNOWN", "Usage: tn audio create|add-sound ... [--json]");
 }
 
 export async function systemCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {
@@ -218,6 +299,10 @@ function renderUsage(json: boolean, code: string, usage: string): ICommandResult
   return { exitCode: 2, stdout: json ? `${JSON.stringify(payload, null, 2)}\n` : `${usage}\n` };
 }
 
+function materialSetUsage(): string {
+  return "Usage: tn material set <material-id> [--color <css-color>] [--roughness <n>] [--metalness <n>] [--emissive <css-color>] [--emissive-intensity <n>] [--alpha-mode opaque|mask|blend] [--alpha-cutoff <n>] [--opacity <n>] [--base-color-texture <asset-id>] [--normal-texture <asset-id>] [--metallic-roughness-texture <asset-id>] [--emissive-texture <asset-id>] [--occlusion-texture <asset-id>] [--clearcoat <n>] [--clearcoat-roughness <n>] [--clearcoat-texture <asset-id>] [--clearcoat-roughness-texture <asset-id>] [--transmission <n>] [--transmission-texture <asset-id>] [--project <path>] [--json]";
+}
+
 function normalizeArgv(argv: readonly string[]): readonly string[] {
   return argv[0] === "--" ? argv.slice(1) : argv;
 }
@@ -230,6 +315,10 @@ function resolveProjectPath(argv: readonly string[], cwd = process.env.INIT_CWD 
 function readFlag(argv: readonly string[], flag: string): string | undefined {
   const index = argv.indexOf(flag);
   return index === -1 ? undefined : argv[index + 1];
+}
+
+function readCsvFlag(argv: readonly string[], flag: string): string[] | undefined {
+  return readFlag(argv, flag)?.split(",").map((item) => item.trim()).filter((item) => item.length > 0);
 }
 
 function readPositional(argv: readonly string[], index: number): string | undefined {
@@ -282,18 +371,38 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 const flagsWithValues = new Set([
   "--align",
+  "--alpha-cutoff",
+  "--alpha-mode",
+  "--asset",
+  "--base-color-texture",
+  "--clearcoat",
+  "--clearcoat-roughness",
+  "--clearcoat-roughness-texture",
+  "--clearcoat-texture",
   "--color",
+  "--emissive",
+  "--emissive-intensity",
+  "--emissive-texture",
   "--export",
   "--height",
   "--keys",
   "--kind",
+  "--metallic-roughness-texture",
+  "--metalness",
   "--module",
+  "--negative-keys",
+  "--normal-texture",
+  "--occlusion-texture",
+  "--opacity",
+  "--positive-keys",
   "--project",
   "--resource",
   "--roughness",
   "--schedule",
   "--text",
   "--top",
+  "--transmission",
+  "--transmission-texture",
   "--value",
   "--width",
   "--justify",

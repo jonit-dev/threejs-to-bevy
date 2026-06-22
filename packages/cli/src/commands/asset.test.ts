@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -107,6 +107,23 @@ test("should report missing external texture with stable diagnostic", async () =
     assert.equal(payload.code, "TN_ASSET_INSPECT_FAILED");
     assert.equal(payload.dependencies.some((dependency) => dependency.kind === "image" && dependency.uri === "textures/kart.png" && dependency.missing === true), true);
     assert.equal(payload.diagnostics.some((diagnostic) => diagnostic.code === "TN_ASSET_IMAGE_MISSING" && diagnostic.severity === "error"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should add structured asset source document", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-asset-add-source-"));
+  try {
+    const result = await assetCommand(["add", "model.kart", "--type", "model", "--path", "assets/kart.glb", "--project", root, "--json"]);
+    const payload = JSON.parse(result.stdout) as { filesWritten: string[] };
+    const doc = JSON.parse(await readFile(join(root, "content", "assets", "model.kart.assets.json"), "utf8")) as {
+      assets: Array<{ id: string; path: string; type: string }>;
+    };
+
+    assert.equal(result.exitCode, 0);
+    assert.deepEqual(payload.filesWritten, ["content/assets/model.kart.assets.json"]);
+    assert.deepEqual(doc.assets, [{ id: "model.kart", path: "assets/kart.glb", type: "model" }]);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

@@ -13,7 +13,7 @@ export const sceneDocumentKeys = new Set(["schema", "version", "id", "entities",
 export const uiDocumentKeys = new Set(["schema", "version", "id", "nodes", "bindings", "provenance"]);
 export const materialDocumentKeys = new Set(["schema", "version", "id", "materials", "provenance"]);
 export const assetDocumentKeys = new Set(["schema", "version", "id", "assets", "provenance"]);
-export const inputDocumentKeys = new Set(["schema", "version", "id", "actions", "provenance"]);
+export const inputDocumentKeys = new Set(["schema", "version", "id", "actions", "axes", "provenance"]);
 export const environmentDocumentKeys = new Set(["schema", "version", "id", "atmosphere", "bookmarks", "controller", "environmentMap", "exclusionZones", "instances", "lightProbes", "path", "referenceImage", "scatter", "skybox", "sourceAssets", "terrain", "walkability", "provenance"]);
 export const systemsDocumentKeys = new Set(["schema", "version", "id", "systems", "provenance"]);
 export const prefabDocumentKeys = new Set(["schema", "version", "id", "entities", "provenance"]);
@@ -28,17 +28,50 @@ export const uiNodeKeys = new Set(["id", "layout", "text", "type"]);
 export const uiBindingKeys = new Set(["node", "resource"]);
 export const resourceKeys = new Set(["id", "path", "value"]);
 export const prefabKeys = new Set(["id", "primitive", "color", "asset"]);
-export const materialKeys = new Set(["id", "asset", "color", "roughness"]);
+export const materialKeys = new Set([
+  "id",
+  "asset",
+  "alphaCutoff",
+  "alphaMode",
+  "baseColorTexture",
+  "clearcoat",
+  "clearcoatRoughness",
+  "clearcoatRoughnessTexture",
+  "clearcoatTexture",
+  "color",
+  "emissive",
+  "emissiveIntensity",
+  "emissiveTexture",
+  "metallicRoughnessTexture",
+  "metalness",
+  "normalTexture",
+  "occlusionTexture",
+  "opacity",
+  "roughness",
+  "transmission",
+  "transmissionTexture",
+]);
 export const assetKeys = new Set(["id", "path", "type"]);
 export const inputActionKeys = new Set(["id", "bindings"]);
+export const inputAxisKeys = new Set(["id", "negative", "positive", "value"]);
 export const audioSoundKeys = new Set(["id", "asset"]);
 export const meshKeys = new Set(["id", "kind", "primitive"]);
 export const supportedPrefabPrimitives = new Set(["box", "capsule", "cone", "cylinder", "plane", "sphere"]);
 export const supportedMeshPrimitives = new Set(["box", "cone", "cylinder", "plane", "sphere"]);
 
-export const supportedComponentKinds = new Set(["camera"]);
+export const supportedComponentKinds = new Set(["camera", "CharacterController", "Collider", "Light", "MeshRenderer", "RigidBody"]);
 export const cameraComponentKeys = new Set(["mode", "target"]);
+export const characterControllerComponentKeys = new Set(["blocking", "grounding", "interactAction", "moveXAxis", "moveZAxis", "slopeLimit", "speed", "stepOffset"]);
+export const colliderComponentKeys = new Set(["friction", "height", "kind", "layer", "mask", "radius", "restitution", "sensor", "size", "trigger"]);
+export const lightComponentKeys = new Set(["angle", "color", "intensity", "kind", "range", "shadowBias", "shadowNormalBias"]);
+export const meshRendererComponentKeys = new Set(["castShadow", "material", "mesh", "receiveShadow", "visible"]);
+export const rigidBodyComponentKeys = new Set(["damping", "gravityScale", "kind", "mass", "sleepThreshold", "solverIterations"]);
 export const supportedCameraModes = new Set(["third-person-follow", "perspective", "orthographic"]);
+export const supportedCharacterControllerGrounding = new Set(["none", "raycast"]);
+export const supportedColliderKinds = new Set(["box", "capsule", "cylinder", "mesh", "sphere"]);
+export const supportedLightKinds = new Set(["ambient", "directional", "point", "spot"]);
+export const supportedRigidBodyKinds = new Set(["dynamic", "kinematic", "static"]);
+export const supportedMaterialAlphaModes = new Set(["blend", "mask", "opaque"]);
 
 export const logicalIdPattern = /^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/;
 export const ecsIdPattern = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
@@ -123,9 +156,26 @@ export interface IMaterialDocument {
 
 export interface IMaterialDeclaration {
   id: string;
+  alphaCutoff?: number;
+  alphaMode?: "blend" | "mask" | "opaque";
   asset?: string;
+  baseColorTexture?: string;
+  clearcoat?: number;
+  clearcoatRoughness?: number;
+  clearcoatRoughnessTexture?: string;
+  clearcoatTexture?: string;
   color?: string;
+  emissive?: string;
+  emissiveIntensity?: number;
+  emissiveTexture?: string;
+  metallicRoughnessTexture?: string;
+  metalness?: number;
+  normalTexture?: string;
+  occlusionTexture?: string;
+  opacity?: number;
   roughness?: number;
+  transmission?: number;
+  transmissionTexture?: string;
 }
 
 export interface IAssetDocument {
@@ -146,11 +196,19 @@ export interface IInputDocument {
   version?: string;
   id: string;
   actions?: IInputActionDeclaration[];
+  axes?: IInputAxisDeclaration[];
 }
 
 export interface IInputActionDeclaration {
   id: string;
   bindings?: string[];
+}
+
+export interface IInputAxisDeclaration {
+  id: string;
+  negative?: string[];
+  positive?: string[];
+  value?: string;
 }
 
 export interface ISystemsDocument {

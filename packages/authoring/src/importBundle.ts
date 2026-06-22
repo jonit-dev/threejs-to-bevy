@@ -19,6 +19,7 @@ import {
   type IAudioDocument,
   type IAudioSoundDeclaration,
   type IInputActionDeclaration,
+  type IInputAxisDeclaration,
   type IInputDocument,
   type IMaterialDeclaration,
   type IMaterialDocument,
@@ -267,7 +268,26 @@ function materialsFromBundle(data: unknown): IMaterialDocument & { provenance: R
     .filter(isRecord)
     .map((material): IMaterialDeclaration => ({
       id: readString(material.id) ?? "invalid-material-id",
+      ...(readNumber(material.alphaCutoff) === undefined ? {} : { alphaCutoff: readNumber(material.alphaCutoff) }),
+      ...(readMaterialAlphaMode(material.alphaMode) === undefined ? {} : { alphaMode: readMaterialAlphaMode(material.alphaMode) }),
       ...(readString(material.asset) === undefined ? {} : { asset: readString(material.asset) }),
+      ...(readString(material.baseColorTexture) === undefined ? {} : { baseColorTexture: readString(material.baseColorTexture) }),
+      ...(readNumber(material.clearcoat) === undefined ? {} : { clearcoat: readNumber(material.clearcoat) }),
+      ...(readNumber(material.clearcoatRoughness) === undefined ? {} : { clearcoatRoughness: readNumber(material.clearcoatRoughness) }),
+      ...(readString(material.clearcoatRoughnessTexture) === undefined ? {} : { clearcoatRoughnessTexture: readString(material.clearcoatRoughnessTexture) }),
+      ...(readString(material.clearcoatTexture) === undefined ? {} : { clearcoatTexture: readString(material.clearcoatTexture) }),
+      ...(readString(material.color) === undefined ? {} : { color: readString(material.color) }),
+      ...(readString(material.emissive) === undefined ? {} : { emissive: readString(material.emissive) }),
+      ...(readNumber(material.emissiveIntensity) === undefined ? {} : { emissiveIntensity: readNumber(material.emissiveIntensity) }),
+      ...(readString(material.emissiveTexture) === undefined ? {} : { emissiveTexture: readString(material.emissiveTexture) }),
+      ...(readString(material.metallicRoughnessTexture) === undefined ? {} : { metallicRoughnessTexture: readString(material.metallicRoughnessTexture) }),
+      ...(readNumber(material.metalness) === undefined ? {} : { metalness: readNumber(material.metalness) }),
+      ...(readString(material.normalTexture) === undefined ? {} : { normalTexture: readString(material.normalTexture) }),
+      ...(readString(material.occlusionTexture) === undefined ? {} : { occlusionTexture: readString(material.occlusionTexture) }),
+      ...(readNumber(material.opacity) === undefined ? {} : { opacity: readNumber(material.opacity) }),
+      ...(readNumber(material.roughness) === undefined ? {} : { roughness: readNumber(material.roughness) }),
+      ...(readNumber(material.transmission) === undefined ? {} : { transmission: readNumber(material.transmission) }),
+      ...(readString(material.transmissionTexture) === undefined ? {} : { transmissionTexture: readString(material.transmissionTexture) }),
     }))
     .sort((left, right) => left.id.localeCompare(right.id));
 
@@ -322,12 +342,22 @@ function inputFromBundle(data: unknown): IInputDocument & { provenance: Record<s
       bindings: readArray(action.bindings)?.map(formatInputBinding).sort(),
     }))
     .sort((left, right) => left.id.localeCompare(right.id));
+  const axes = (readArray(isRecord(data) ? data.axes : undefined) ?? [])
+    .filter(isRecord)
+    .map((axis): IInputAxisDeclaration => ({
+      id: readString(axis.id) ?? "invalid-input-axis-id",
+      negative: readArray(axis.negative)?.map(formatInputBinding).sort() ?? [],
+      positive: readArray(axis.positive)?.map(formatInputBinding).sort() ?? [],
+      ...(axis.value === undefined ? {} : { value: formatInputBinding(axis.value) }),
+    }))
+    .sort((left, right) => left.id.localeCompare(right.id));
 
   return {
     schema: inputDocumentSchema,
     version: "0.1.0",
     id: "input.imported",
     actions,
+    axes,
     provenance: importProvenance("input.ir.json"),
   };
 }
@@ -408,6 +438,14 @@ function formatInputBinding(value: unknown): string {
   const control = readString(value.control);
   const axis = readString(value.axis);
   return [device, code ?? control, axis].filter((item): item is string => item !== undefined).join(".");
+}
+
+function readNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function readMaterialAlphaMode(value: unknown): IMaterialDeclaration["alphaMode"] | undefined {
+  return value === "blend" || value === "mask" || value === "opaque" ? value : undefined;
 }
 
 function countDocumentItems(data: unknown): number {

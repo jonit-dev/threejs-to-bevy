@@ -6,6 +6,8 @@ import { authoringDiagnostic, hasAuthoringErrors, sortAuthoringDiagnostics, type
 import { loadAuthoringProject, type IAuthoringProject } from "./project.js";
 import {
   cameraComponentKeys,
+  characterControllerComponentKeys,
+  colliderComponentKeys,
   ecsIdPattern,
   entityKeys,
   assetDocumentKeys,
@@ -16,20 +18,24 @@ import {
   audioSoundKeys,
   environmentDocumentKeys,
   environmentDocumentSchema,
+  inputAxisKeys,
   inputActionKeys,
   inputDocumentKeys,
   inputDocumentSchema,
+  lightComponentKeys,
   logicalIdPattern,
   materialDocumentKeys,
   materialDocumentSchema,
   materialKeys,
   meshDocumentKeys,
   meshDocumentSchema,
+  meshRendererComponentKeys,
   meshKeys,
   prefabDocumentKeys,
   prefabDocumentSchema,
   prefabKeys,
   resourceIdPattern,
+  rigidBodyComponentKeys,
   readArray,
   readString,
   resourceKeys,
@@ -41,8 +47,13 @@ import {
   supportedPrefabPrimitives,
   supportedMeshPrimitives,
   supportedCameraModes,
+  supportedCharacterControllerGrounding,
+  supportedColliderKinds,
   supportedComponentKinds,
+  supportedLightKinds,
+  supportedMaterialAlphaModes,
   uiDocumentKeys,
+  supportedRigidBodyKinds,
   uiDocumentSchema,
   systemKeys,
   transformKeys,
@@ -154,6 +165,64 @@ export interface ISetComponentOptions extends IAuthoringOperationContext {
   value: Record<string, unknown>;
 }
 
+export interface ISetCameraComponentOptions extends IAuthoringOperationContext {
+  sceneId: string;
+  entityId: string;
+  mode?: string;
+  targetId?: string;
+}
+
+export interface ISetLightComponentOptions extends IAuthoringOperationContext {
+  sceneId: string;
+  entityId: string;
+  kind?: string;
+  intensity?: number;
+  color?: string;
+  range?: number;
+  angle?: number;
+}
+
+export interface ISetMeshRendererComponentOptions extends IAuthoringOperationContext {
+  sceneId: string;
+  entityId: string;
+  mesh: string;
+  material: string;
+  visible?: boolean;
+  castShadow?: boolean;
+  receiveShadow?: boolean;
+}
+
+export interface ISetRigidBodyComponentOptions extends IAuthoringOperationContext {
+  sceneId: string;
+  entityId: string;
+  kind?: string;
+  mass?: number;
+  damping?: number;
+  gravityScale?: number;
+}
+
+export interface ISetColliderComponentOptions extends IAuthoringOperationContext {
+  sceneId: string;
+  entityId: string;
+  kind?: string;
+  size?: [number, number, number];
+  radius?: number;
+  height?: number;
+  trigger?: boolean;
+}
+
+export interface ISetCharacterControllerComponentOptions extends IAuthoringOperationContext {
+  sceneId: string;
+  entityId: string;
+  moveXAxis?: string;
+  moveZAxis?: string;
+  speed?: number;
+  blocking?: boolean;
+  grounding?: string;
+  slopeLimit?: number;
+  stepOffset?: number;
+}
+
 export interface IRemoveComponentOptions extends IAuthoringOperationContext {
   sceneId: string;
   entityId: string;
@@ -225,9 +294,58 @@ export interface ICreateMaterialOptions extends IAuthoringOperationContext {
 
 export interface ISetMaterialOptions extends IAuthoringOperationContext {
   materialId: string;
+  alphaCutoff?: number;
+  alphaMode?: string;
+  baseColorTexture?: string;
+  clearcoat?: number;
+  clearcoatRoughness?: number;
+  clearcoatRoughnessTexture?: string;
+  clearcoatTexture?: string;
   color?: string;
+  emissive?: string;
+  emissiveIntensity?: number;
+  emissiveTexture?: string;
+  metallicRoughnessTexture?: string;
+  metalness?: number;
+  normalTexture?: string;
+  occlusionTexture?: string;
+  opacity?: number;
   roughness?: number;
+  transmission?: number;
+  transmissionTexture?: string;
 }
+
+const materialTextureKeys = [
+  "baseColorTexture",
+  "clearcoatRoughnessTexture",
+  "clearcoatTexture",
+  "emissiveTexture",
+  "metallicRoughnessTexture",
+  "normalTexture",
+  "occlusionTexture",
+  "transmissionTexture",
+] as const;
+
+const materialFiniteNumberKeys = [
+  "alphaCutoff",
+  "clearcoat",
+  "clearcoatRoughness",
+  "emissiveIntensity",
+  "metalness",
+  "opacity",
+  "roughness",
+  "transmission",
+] as const;
+
+const materialNormalizedNumberKeys = [
+  "alphaCutoff",
+  "clearcoat",
+  "clearcoatRoughness",
+  "metalness",
+  "opacity",
+  "roughness",
+  "transmission",
+] as const;
 
 export interface ICreateMeshPrimitiveOptions extends IAuthoringOperationContext {
   meshId: string;
@@ -248,6 +366,30 @@ export interface IAddInputActionOptions extends IAuthoringOperationContext {
   inputDocId: string;
   actionId: string;
   keys: readonly string[];
+}
+
+export interface IAddInputAxisOptions extends IAuthoringOperationContext {
+  inputDocId: string;
+  axisId: string;
+  negativeKeys: readonly string[];
+  positiveKeys: readonly string[];
+  value?: string;
+}
+
+export interface IAddAssetOptions extends IAuthoringOperationContext {
+  assetId: string;
+  path: string;
+  type: string;
+}
+
+export interface ICreateAudioDocumentOptions extends IAuthoringOperationContext {
+  audioDocId: string;
+}
+
+export interface IAddAudioSoundOptions extends IAuthoringOperationContext {
+  audioDocId: string;
+  soundId: string;
+  asset: string;
 }
 
 export interface ICreateSystemOptions extends IAuthoringOperationContext {
@@ -692,6 +834,100 @@ export async function setComponent(options: ISetComponentOptions): Promise<IAuth
   });
 }
 
+export async function setCameraComponent(options: ISetCameraComponentOptions): Promise<IAuthoringOperationResult> {
+  return setComponent({
+    projectPath: options.projectPath,
+    sceneId: options.sceneId,
+    entityId: options.entityId,
+    componentKind: "camera",
+    value: {
+      mode: options.mode ?? "perspective",
+      ...(options.targetId === undefined ? {} : { target: options.targetId }),
+    },
+  });
+}
+
+export async function setLightComponent(options: ISetLightComponentOptions): Promise<IAuthoringOperationResult> {
+  return setComponent({
+    projectPath: options.projectPath,
+    sceneId: options.sceneId,
+    entityId: options.entityId,
+    componentKind: "Light",
+    value: {
+      color: options.color ?? "#ffffff",
+      intensity: options.intensity ?? 1,
+      kind: options.kind ?? "directional",
+      ...(options.range === undefined ? {} : { range: options.range }),
+      ...(options.angle === undefined ? {} : { angle: options.angle }),
+    },
+  });
+}
+
+export async function setMeshRendererComponent(options: ISetMeshRendererComponentOptions): Promise<IAuthoringOperationResult> {
+  return setComponent({
+    projectPath: options.projectPath,
+    sceneId: options.sceneId,
+    entityId: options.entityId,
+    componentKind: "MeshRenderer",
+    value: {
+      material: options.material,
+      mesh: options.mesh,
+      ...(options.visible === undefined ? {} : { visible: options.visible }),
+      ...(options.castShadow === undefined ? {} : { castShadow: options.castShadow }),
+      ...(options.receiveShadow === undefined ? {} : { receiveShadow: options.receiveShadow }),
+    },
+  });
+}
+
+export async function setRigidBodyComponent(options: ISetRigidBodyComponentOptions): Promise<IAuthoringOperationResult> {
+  return setComponent({
+    projectPath: options.projectPath,
+    sceneId: options.sceneId,
+    entityId: options.entityId,
+    componentKind: "RigidBody",
+    value: {
+      kind: options.kind ?? "dynamic",
+      ...(options.mass === undefined ? {} : { mass: options.mass }),
+      ...(options.damping === undefined ? {} : { damping: options.damping }),
+      ...(options.gravityScale === undefined ? {} : { gravityScale: options.gravityScale }),
+    },
+  });
+}
+
+export async function setColliderComponent(options: ISetColliderComponentOptions): Promise<IAuthoringOperationResult> {
+  return setComponent({
+    projectPath: options.projectPath,
+    sceneId: options.sceneId,
+    entityId: options.entityId,
+    componentKind: "Collider",
+    value: {
+      kind: options.kind ?? "box",
+      ...(options.size === undefined ? { size: [1, 1, 1] } : { size: options.size }),
+      ...(options.radius === undefined ? {} : { radius: options.radius }),
+      ...(options.height === undefined ? {} : { height: options.height }),
+      ...(options.trigger === undefined ? {} : { trigger: options.trigger }),
+    },
+  });
+}
+
+export async function setCharacterControllerComponent(options: ISetCharacterControllerComponentOptions): Promise<IAuthoringOperationResult> {
+  return setComponent({
+    projectPath: options.projectPath,
+    sceneId: options.sceneId,
+    entityId: options.entityId,
+    componentKind: "CharacterController",
+    value: {
+      blocking: options.blocking ?? true,
+      grounding: options.grounding ?? "raycast",
+      moveXAxis: options.moveXAxis ?? "move.x",
+      moveZAxis: options.moveZAxis ?? "move.z",
+      speed: options.speed ?? 4,
+      ...(options.slopeLimit === undefined ? {} : { slopeLimit: options.slopeLimit }),
+      ...(options.stepOffset === undefined ? {} : { stepOffset: options.stepOffset }),
+    },
+  });
+}
+
 export async function removeComponent(options: IRemoveComponentOptions): Promise<IAuthoringOperationResult> {
   return mutateScene(options, (scene, file) => {
     const entity = findSceneItem(scene.entities, options.entityId);
@@ -841,12 +1077,27 @@ export async function setMaterial(options: ISetMaterialOptions): Promise<IAuthor
     if (material === undefined) {
       return [missingReferenceDiagnostic(file, "/materials", "material", options.materialId, idsFromArray(materials))];
     }
+    setOptionalString(material, "alphaMode", options.alphaMode);
+    setOptionalString(material, "baseColorTexture", options.baseColorTexture);
+    setOptionalString(material, "clearcoatRoughnessTexture", options.clearcoatRoughnessTexture);
+    setOptionalString(material, "clearcoatTexture", options.clearcoatTexture);
     if (options.color !== undefined) {
       material.color = options.color;
     }
-    if (options.roughness !== undefined) {
-      material.roughness = options.roughness;
-    }
+    setOptionalString(material, "emissive", options.emissive);
+    setOptionalString(material, "emissiveTexture", options.emissiveTexture);
+    setOptionalString(material, "metallicRoughnessTexture", options.metallicRoughnessTexture);
+    setOptionalString(material, "normalTexture", options.normalTexture);
+    setOptionalString(material, "occlusionTexture", options.occlusionTexture);
+    setOptionalString(material, "transmissionTexture", options.transmissionTexture);
+    setOptionalNumber(material, "alphaCutoff", options.alphaCutoff);
+    setOptionalNumber(material, "clearcoat", options.clearcoat);
+    setOptionalNumber(material, "clearcoatRoughness", options.clearcoatRoughness);
+    setOptionalNumber(material, "emissiveIntensity", options.emissiveIntensity);
+    setOptionalNumber(material, "metalness", options.metalness);
+    setOptionalNumber(material, "opacity", options.opacity);
+    setOptionalNumber(material, "roughness", options.roughness);
+    setOptionalNumber(material, "transmission", options.transmission);
     return [];
   });
 }
@@ -887,7 +1138,7 @@ export async function addPrefabComponent(options: IAddPrefabComponentOptions): P
 }
 
 export async function addInputAction(options: IAddInputActionOptions): Promise<IAuthoringOperationResult> {
-  const bindings = options.keys.map((key) => `keyboard.${key.length === 1 ? key.toLowerCase() : key}`);
+  const bindings = options.keys.map(formatKeyboardBinding);
   return upsertSourceDocument({
     projectPath: options.projectPath,
     kind: "input",
@@ -903,6 +1154,75 @@ export async function addInputAction(options: IAddInputActionOptions): Promise<I
         actions.push(action);
       }
     },
+  });
+}
+
+export async function addInputAxis(options: IAddInputAxisOptions): Promise<IAuthoringOperationResult> {
+  const negative = options.negativeKeys.map(formatKeyboardBinding);
+  const positive = options.positiveKeys.map(formatKeyboardBinding);
+  return upsertSourceDocument({
+    projectPath: options.projectPath,
+    kind: "input",
+    id: options.inputDocId,
+    file: `content/input/${options.inputDocId}.input.json`,
+    emptyData: { schema: inputDocumentSchema, version: "0.1.0", id: options.inputDocId, actions: [], axes: [] },
+    apply: (data) => {
+      const axes = ensureArrayProperty(data, "axes");
+      const existing = findSceneItem(axes, options.axisId);
+      const axis = existing ?? { id: options.axisId };
+      axis.negative = negative;
+      axis.positive = positive;
+      if (options.value === undefined) {
+        delete axis.value;
+      } else {
+        axis.value = options.value;
+      }
+      if (existing === undefined) {
+        axes.push(axis);
+      }
+    },
+  });
+}
+
+export async function addAsset(options: IAddAssetOptions): Promise<IAuthoringOperationResult> {
+  return upsertSourceDocument({
+    projectPath: options.projectPath,
+    kind: "asset",
+    id: options.assetId,
+    file: `content/assets/${options.assetId}.assets.json`,
+    emptyData: { schema: assetDocumentSchema, version: "0.1.0", id: options.assetId, assets: [] },
+    apply: (data) => {
+      const assets = ensureArrayProperty(data, "assets");
+      const existing = findSceneItem(assets, options.assetId);
+      const asset = existing ?? { id: options.assetId };
+      asset.path = options.path;
+      asset.type = options.type;
+      if (existing === undefined) {
+        assets.push(asset);
+      }
+    },
+  });
+}
+
+export async function createAudioDocument(options: ICreateAudioDocumentOptions): Promise<IAuthoringOperationResult> {
+  return createSourceDocument({
+    projectPath: options.projectPath,
+    kind: "audio",
+    id: options.audioDocId,
+    file: `content/audio/${options.audioDocId}.audio.json`,
+    data: { schema: audioDocumentSchema, version: "0.1.0", id: options.audioDocId, sounds: [] },
+  });
+}
+
+export async function addAudioSound(options: IAddAudioSoundOptions): Promise<IAuthoringOperationResult> {
+  return mutateSourceDocument(options, "audio", options.audioDocId, (data) => {
+    const sounds = ensureArrayProperty(data, "sounds");
+    const existing = findSceneItem(sounds, options.soundId);
+    const sound = existing ?? { id: options.soundId };
+    sound.asset = options.asset;
+    if (existing === undefined) {
+      sounds.push(sound);
+    }
   });
 }
 
@@ -1122,6 +1442,10 @@ function validateNewSourcePath(diagnostics: IAuthoringDiagnostic[], projectRelat
 
 function sourceExtensionForKind(kind: AuthoringDocumentKind): string {
   switch (kind) {
+    case "asset":
+      return ".assets.json";
+    case "audio":
+      return ".audio.json";
     case "environment":
       return ".environment.json";
     case "input":
@@ -1244,14 +1568,34 @@ async function validateAuthoringDocument(
         validateItem: (diagnostics, path, item) => validateGeneratedPathString(diagnostics, file, `${path}/asset`, item.asset, "audio asset must be a non-empty source path."),
       });
     case "input":
-      return validateDeclarationDocument(file, data, {
-        declarationKeys: inputActionKeys,
-        duplicateKind: "input",
-        expectedSchema: inputDocumentSchema,
-        idKind: "input document",
-        listName: "actions",
-        rootKeys: inputDocumentKeys,
-      });
+      return [
+        ...(await validateDeclarationDocument(file, data, {
+          declarationKeys: inputActionKeys,
+          duplicateKind: "input",
+          expectedSchema: inputDocumentSchema,
+          idKind: "input document",
+          listName: "actions",
+          rootKeys: inputDocumentKeys,
+          validateItem: (diagnostics, path, item) => {
+            validateStringList(diagnostics, file, `${path}/bindings`, item.bindings, "input action bindings must be non-empty strings.");
+          },
+        })),
+        ...(await validateDeclarationDocument(file, data, {
+          declarationKeys: inputAxisKeys,
+          duplicateKind: "input axis",
+          expectedSchema: inputDocumentSchema,
+          idKind: "input document",
+          listName: "axes",
+          rootKeys: inputDocumentKeys,
+          validateItem: (diagnostics, path, item) => {
+            validateStringList(diagnostics, file, `${path}/negative`, item.negative, "input axis negative bindings must be non-empty strings.");
+            validateStringList(diagnostics, file, `${path}/positive`, item.positive, "input axis positive bindings must be non-empty strings.");
+            if (item.value !== undefined && readString(item.value) === undefined) {
+              diagnostics.push(typeDiagnostic(file, `${path}/value`, "input axis value binding must be a non-empty string.", item.value));
+            }
+          },
+        })),
+      ];
     case "environment":
       return validateRootDocument(file, data, environmentDocumentSchema, "environment document", environmentDocumentKeys);
     case "material":
@@ -1267,8 +1611,31 @@ async function validateAuthoringDocument(
           if (item.color !== undefined && readString(item.color) === undefined) {
             diagnostics.push(typeDiagnostic(file, `${path}/color`, "material color must be a non-empty string.", item.color));
           }
-          if (item.roughness !== undefined && (typeof item.roughness !== "number" || !Number.isFinite(item.roughness))) {
-            diagnostics.push(typeDiagnostic(file, `${path}/roughness`, "material roughness must be a finite number.", item.roughness));
+          if (item.emissive !== undefined && readString(item.emissive) === undefined) {
+            diagnostics.push(typeDiagnostic(file, `${path}/emissive`, "material emissive color must be a non-empty string.", item.emissive));
+          }
+          const alphaMode = readString(item.alphaMode);
+          if (item.alphaMode !== undefined && (alphaMode === undefined || !supportedMaterialAlphaModes.has(alphaMode))) {
+            diagnostics.push(typeDiagnostic(file, `${path}/alphaMode`, "material alphaMode must be 'opaque', 'mask', or 'blend'.", item.alphaMode));
+          }
+          for (const key of materialTextureKeys) {
+            if (item[key] !== undefined && readString(item[key]) === undefined) {
+              diagnostics.push(typeDiagnostic(file, `${path}/${key}`, `material ${key} must be a non-empty asset id string.`, item[key]));
+            }
+          }
+          for (const key of materialFiniteNumberKeys) {
+            if (item[key] !== undefined && (typeof item[key] !== "number" || !Number.isFinite(item[key]))) {
+              diagnostics.push(typeDiagnostic(file, `${path}/${key}`, `material ${key} must be a finite number.`, item[key]));
+            }
+          }
+          for (const key of materialNormalizedNumberKeys) {
+            const value = item[key];
+            if (typeof value === "number" && Number.isFinite(value) && (value < 0 || value > 1)) {
+              diagnostics.push(typeDiagnostic(file, `${path}/${key}`, `material ${key} must be between 0 and 1.`, value));
+            }
+          }
+          if (typeof item.emissiveIntensity === "number" && Number.isFinite(item.emissiveIntensity) && item.emissiveIntensity < 0) {
+            diagnostics.push(typeDiagnostic(file, `${path}/emissiveIntensity`, "material emissiveIntensity must be non-negative.", item.emissiveIntensity));
           }
         },
       });
@@ -1624,7 +1991,9 @@ function collectIds(
       ? validateResourceId(diagnostics, file, `${path}/id`, value.id)
       : kind === "entity"
         ? validateEcsId(diagnostics, file, `${path}/id`, value.id, kind)
-        : validateLogicalId(diagnostics, file, `${path}/id`, value.id, kind);
+        : kind === "input axis"
+          ? validateEcsId(diagnostics, file, `${path}/id`, value.id, kind)
+          : validateLogicalId(diagnostics, file, `${path}/id`, value.id, kind);
     if (id === undefined) {
       return;
     }
@@ -1733,17 +2102,148 @@ function validateComponents(
       validateCameraComponent(diagnostics, file, `${path}/camera`, component, entityIds);
     } else if (kind === "MeshRenderer" || kind === "meshRenderer") {
       validateMeshRendererComponent(diagnostics, file, `${path}/${escapeJsonPointer(kind)}`, component, materialIds);
+    } else if (kind === "Light" || kind === "light") {
+      validateLightComponent(diagnostics, file, `${path}/${escapeJsonPointer(kind)}`, component);
+    } else if (kind === "RigidBody") {
+      validateRigidBodyComponent(diagnostics, file, `${path}/RigidBody`, component);
+    } else if (kind === "Collider") {
+      validateColliderComponent(diagnostics, file, `${path}/Collider`, component);
+    } else if (kind === "CharacterController") {
+      validateCharacterControllerComponent(diagnostics, file, `${path}/CharacterController`, component);
     }
   }
 }
 
 function validateMeshRendererComponent(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: Record<string, unknown>, materialIds: readonly string[]): void {
+  diagnostics.push(...unknownKeyDiagnostics(file, path, value, meshRendererComponentKeys));
+  const mesh = readString(value.mesh);
+  if (value.mesh !== undefined && mesh === undefined) {
+    diagnostics.push(typeDiagnostic(file, `${path}/mesh`, "mesh renderer mesh must be a non-empty mesh id.", value.mesh));
+  }
   const material = readString(value.material);
   if (value.material !== undefined && material === undefined) {
     diagnostics.push(typeDiagnostic(file, `${path}/material`, "mesh renderer material must be a non-empty material id.", value.material));
   } else if (material !== undefined && materialIds.length > 0 && !materialIds.includes(material)) {
     diagnostics.push(missingReferenceDiagnostic(file, `${path}/material`, "material", material, materialIds));
   }
+  validateOptionalBoolean(diagnostics, file, `${path}/visible`, value.visible, "mesh renderer visible must be a boolean.");
+  validateOptionalBoolean(diagnostics, file, `${path}/castShadow`, value.castShadow, "mesh renderer castShadow must be a boolean.");
+  validateOptionalBoolean(diagnostics, file, `${path}/receiveShadow`, value.receiveShadow, "mesh renderer receiveShadow must be a boolean.");
+}
+
+function validateLightComponent(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: Record<string, unknown>): void {
+  diagnostics.push(...unknownKeyDiagnostics(file, path, value, lightComponentKeys));
+  validateEnumString(diagnostics, file, `${path}/kind`, value.kind, supportedLightKinds, "light kind", "Use 'ambient', 'directional', 'point', or 'spot'.");
+  validateRequiredNumber(diagnostics, file, `${path}/intensity`, value.intensity, "light intensity must be a finite number.");
+  if (value.color === undefined) {
+    diagnostics.push(typeDiagnostic(file, `${path}/color`, "light color must be a non-empty string or RGB/RGBA number array.", value.color));
+  } else if (readString(value.color) === undefined && !isNumberTuple(value.color, 3, 4)) {
+    diagnostics.push(typeDiagnostic(file, `${path}/color`, "light color must be a non-empty string or RGB/RGBA number array.", value.color));
+  }
+  validateOptionalNumber(diagnostics, file, `${path}/range`, value.range, "light range must be a finite number.");
+  validateOptionalNumber(diagnostics, file, `${path}/angle`, value.angle, "light angle must be a finite number.");
+  validateOptionalNumber(diagnostics, file, `${path}/shadowBias`, value.shadowBias, "light shadowBias must be a finite number.");
+  validateOptionalNumber(diagnostics, file, `${path}/shadowNormalBias`, value.shadowNormalBias, "light shadowNormalBias must be a finite number.");
+}
+
+function validateRigidBodyComponent(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: Record<string, unknown>): void {
+  diagnostics.push(...unknownKeyDiagnostics(file, path, value, rigidBodyComponentKeys));
+  validateEnumString(diagnostics, file, `${path}/kind`, value.kind, supportedRigidBodyKinds, "rigid body kind", "Use 'dynamic', 'kinematic', or 'static'.");
+  validateOptionalNumber(diagnostics, file, `${path}/mass`, value.mass, "rigid body mass must be a finite number.");
+  validateOptionalNumber(diagnostics, file, `${path}/damping`, value.damping, "rigid body damping must be a finite number.");
+  validateOptionalNumber(diagnostics, file, `${path}/gravityScale`, value.gravityScale, "rigid body gravityScale must be a finite number.");
+  validateOptionalNumber(diagnostics, file, `${path}/sleepThreshold`, value.sleepThreshold, "rigid body sleepThreshold must be a finite number.");
+  validateOptionalNumber(diagnostics, file, `${path}/solverIterations`, value.solverIterations, "rigid body solverIterations must be a finite number.");
+}
+
+function validateColliderComponent(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: Record<string, unknown>): void {
+  diagnostics.push(...unknownKeyDiagnostics(file, path, value, colliderComponentKeys));
+  validateEnumString(diagnostics, file, `${path}/kind`, value.kind, supportedColliderKinds, "collider kind", "Use 'box', 'capsule', 'cylinder', 'mesh', or 'sphere'.");
+  if (value.size !== undefined && !isVector3(value.size)) {
+    diagnostics.push(typeDiagnostic(file, `${path}/size`, "collider size must be a three-number vector.", value.size));
+  }
+  validateOptionalNumber(diagnostics, file, `${path}/radius`, value.radius, "collider radius must be a finite number.");
+  validateOptionalNumber(diagnostics, file, `${path}/height`, value.height, "collider height must be a finite number.");
+  validateOptionalNumber(diagnostics, file, `${path}/friction`, value.friction, "collider friction must be a finite number.");
+  validateOptionalNumber(diagnostics, file, `${path}/restitution`, value.restitution, "collider restitution must be a finite number.");
+  validateOptionalBoolean(diagnostics, file, `${path}/trigger`, value.trigger, "collider trigger must be a boolean.");
+}
+
+function validateCharacterControllerComponent(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: Record<string, unknown>): void {
+  diagnostics.push(...unknownKeyDiagnostics(file, path, value, characterControllerComponentKeys));
+  validateRequiredString(diagnostics, file, `${path}/moveXAxis`, value.moveXAxis, "character controller moveXAxis must be a non-empty input axis id.");
+  validateRequiredString(diagnostics, file, `${path}/moveZAxis`, value.moveZAxis, "character controller moveZAxis must be a non-empty input axis id.");
+  validateRequiredNumber(diagnostics, file, `${path}/speed`, value.speed, "character controller speed must be a finite number.");
+  validateEnumString(diagnostics, file, `${path}/grounding`, value.grounding, supportedCharacterControllerGrounding, "character controller grounding", "Use 'none' or 'raycast'.");
+  validateOptionalBoolean(diagnostics, file, `${path}/blocking`, value.blocking, "character controller blocking must be a boolean.");
+  validateOptionalNumber(diagnostics, file, `${path}/slopeLimit`, value.slopeLimit, "character controller slopeLimit must be a finite number.");
+  validateOptionalNumber(diagnostics, file, `${path}/stepOffset`, value.stepOffset, "character controller stepOffset must be a finite number.");
+  validateOptionalString(diagnostics, file, `${path}/interactAction`, value.interactAction, "character controller interactAction must be a non-empty input action id.");
+}
+
+function validateEnumString(
+  diagnostics: IAuthoringDiagnostic[],
+  file: string,
+  path: string,
+  value: unknown,
+  allowed: ReadonlySet<string>,
+  label: string,
+  suggestion: string,
+): void {
+  const text = readString(value);
+  if (text === undefined || !allowed.has(text)) {
+    diagnostics.push(
+      authoringDiagnostic({
+        code: "TN_AUTHORING_COMPONENT_VALUE_INVALID",
+        file,
+        message: `Unknown ${label} '${String(value)}'.`,
+        path,
+        value,
+        suggestion,
+      }),
+    );
+  }
+}
+
+function validateRequiredNumber(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, message: string): void {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    diagnostics.push(typeDiagnostic(file, path, message, value));
+  }
+}
+
+function validateOptionalNumber(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, message: string): void {
+  if (value !== undefined && (typeof value !== "number" || !Number.isFinite(value))) {
+    diagnostics.push(typeDiagnostic(file, path, message, value));
+  }
+}
+
+function validateRequiredString(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, message: string): void {
+  if (readString(value) === undefined) {
+    diagnostics.push(typeDiagnostic(file, path, message, value));
+  }
+}
+
+function validateOptionalString(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, message: string): void {
+  if (value !== undefined && readString(value) === undefined) {
+    diagnostics.push(typeDiagnostic(file, path, message, value));
+  }
+}
+
+function validateOptionalBoolean(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, message: string): void {
+  if (value !== undefined && typeof value !== "boolean") {
+    diagnostics.push(typeDiagnostic(file, path, message, value));
+  }
+}
+
+function isVector3(value: unknown): value is [number, number, number] {
+  return isNumberTuple(value, 3, 3);
+}
+
+function isNumberTuple(value: unknown, minLength: number, maxLength: number): boolean {
+  return Array.isArray(value)
+    && value.length >= minLength
+    && value.length <= maxLength
+    && value.every((entry) => typeof entry === "number" && Number.isFinite(entry));
 }
 
 function validateCameraComponent(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, entityIds: readonly string[]): void {
@@ -1992,6 +2492,35 @@ function ensureArrayProperty(record: Record<string, unknown>, key: string): Reco
 
 function findSceneItem(value: unknown, id: string): Record<string, unknown> | undefined {
   return (readArray(value) ?? []).find((item): item is Record<string, unknown> => isRecord(item) && item.id === id);
+}
+
+function setOptionalString(target: Record<string, unknown>, key: string, value: string | undefined): void {
+  if (value !== undefined) {
+    target[key] = value;
+  }
+}
+
+function setOptionalNumber(target: Record<string, unknown>, key: string, value: number | undefined): void {
+  if (value !== undefined) {
+    target[key] = value;
+  }
+}
+
+function formatKeyboardBinding(key: string): string {
+  return `keyboard.${key.length === 1 ? key.toLowerCase() : key}`;
+}
+
+function validateStringList(
+  diagnostics: IAuthoringDiagnostic[],
+  file: string,
+  path: string,
+  value: unknown,
+  message: string,
+): void {
+  const items = readArray(value);
+  if (value !== undefined && (items === undefined || items.some((item) => readString(item) === undefined))) {
+    diagnostics.push(typeDiagnostic(file, path, message, value));
+  }
 }
 
 function cloneJson(value: unknown): unknown {

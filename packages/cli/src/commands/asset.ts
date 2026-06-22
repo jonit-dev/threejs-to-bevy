@@ -1,6 +1,8 @@
 import { access, readFile, stat } from "node:fs/promises";
 import { dirname, extname, isAbsolute, resolve } from "node:path";
 
+import { addAsset, type IAuthoringOperationResult } from "@threenative/authoring";
+
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
 
 type Severity = "info" | "warning" | "error";
@@ -105,20 +107,38 @@ const identity: Mat4 = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 export async function assetCommand(argv: readonly string[]): Promise<ICommandResult> {
   const normalizedArgv = argv[0] === "--" ? argv.slice(1) : argv;
   const json = normalizedArgv.includes("--json");
-  const [subcommand] = normalizedArgv.filter((arg) => !arg.startsWith("-"));
+  const positionals = normalizedArgv.filter((arg, index) => !arg.startsWith("-") && !assetFlagsWithValues.has(normalizedArgv[index - 1] ?? ""));
+  const [subcommand] = positionals;
+
+  if (subcommand === "add") {
+    const assetId = positionals[1];
+    const type = readFlag(normalizedArgv, "--type");
+    const path = readFlag(normalizedArgv, "--path");
+    if (assetId === undefined || type === undefined || path === undefined) {
+      return diagnosticResult(
+        {
+          code: "TN_ASSET_ADD_ARGS_MISSING",
+          message: "Usage: tn asset add <asset-id> --type <model|texture|audio|mesh> --path <source-path> [--project <path>] [--json].",
+        },
+        { exitCode: 2, json, stderr: !json },
+      );
+    }
+    const projectPath = resolveProjectPath(normalizedArgv);
+    return renderAuthoringResult("asset", await addAsset({ assetId, path, projectPath, type }), json, `Asset '${assetId}' added.`);
+  }
 
   if (subcommand !== "inspect") {
     return diagnosticResult(
       {
         code: "TN_ASSET_COMMAND_UNKNOWN",
-        message: subcommand === undefined ? "Missing asset subcommand. Usage: tn asset inspect <path> [--json]." : `Unknown asset subcommand '${subcommand}'. Usage: tn asset inspect <path> [--json].`,
+        message: subcommand === undefined ? "Missing asset subcommand. Usage: tn asset inspect <path> [--json] or tn asset add <asset-id> --type <type> --path <source-path> [--json]." : `Unknown asset subcommand '${subcommand}'. Usage: tn asset inspect <path> [--json] or tn asset add <asset-id> --type <type> --path <source-path> [--json].`,
         subcommand,
       },
       { exitCode: 1, json, stderr: !json },
     );
   }
 
-  const assetPathArg = normalizedArgv.filter((arg) => !arg.startsWith("-"))[1];
+  const assetPathArg = positionals[1];
   if (assetPathArg === undefined) {
     return diagnosticResult(
       {
@@ -139,6 +159,34 @@ export async function assetCommand(argv: readonly string[]): Promise<ICommandRes
     stdout: json ? `${JSON.stringify(report, null, 2)}\n` : renderInspectReport(report),
   };
 }
+
+function renderAuthoringResult(group: string, result: IAuthoringOperationResult, json: boolean, successMessage: string): ICommandResult {
+  const payload = {
+    code: result.ok ? `TN_${group.toUpperCase()}_OK` : `TN_${group.toUpperCase()}_FAILED`,
+    message: result.ok ? successMessage : `${group} operation failed.`,
+    ...result,
+  };
+  if (json) {
+    return { exitCode: result.ok ? 0 : 1, stdout: `${JSON.stringify(payload, null, 2)}\n` };
+  }
+  if (result.ok) {
+    return { exitCode: 0, stdout: `${successMessage}\n` };
+  }
+  const diagnostics = result.diagnostics.map((diagnostic) => `${diagnostic.code} ${diagnostic.file ?? ""}${diagnostic.path ?? ""}: ${diagnostic.message}`).join("\n");
+  return { exitCode: 1, stderr: `${payload.message}\n${diagnostics}\n`, stdout: "" };
+}
+
+function resolveProjectPath(argv: readonly string[], cwd = process.env.INIT_CWD ?? process.cwd()): string {
+  const project = readFlag(argv, "--project") ?? ".";
+  return isAbsolute(project) ? project : resolve(cwd, project);
+}
+
+function readFlag(argv: readonly string[], flag: string): string | undefined {
+  const index = argv.indexOf(flag);
+  return index === -1 ? undefined : argv[index + 1];
+}
+
+const assetFlagsWithValues = new Set(["--path", "--project", "--type"]);
 
 export async function inspectAsset(assetPath: string): Promise<InspectReport> {
   const extension = extname(assetPath).toLowerCase();

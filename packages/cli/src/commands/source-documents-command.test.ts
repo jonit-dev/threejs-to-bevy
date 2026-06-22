@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
 
-import { inputCommand, materialCommand, meshCommand, prefabCommand, systemCommand, uiCommand } from "./sourceDocuments.js";
+import { audioCommand, inputCommand, materialCommand, meshCommand, prefabCommand, systemCommand, uiCommand } from "./sourceDocuments.js";
 
 test("countdown UI can be created centered and bound without manual JSON editing", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-cli-ui-doc-"));
@@ -34,14 +34,111 @@ test("material command creates and updates source doc", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-cli-material-doc-"));
   try {
     const create = await materialCommand(["create", "mat.kart", "--project", root, "--json"]);
-    const set = await materialCommand(["set", "mat.kart", "--color", "#fff", "--roughness", "0.5", "--project", root, "--json"]);
+    const set = await materialCommand([
+      "set",
+      "mat.kart",
+      "--color",
+      "#fff",
+      "--roughness",
+      "0.5",
+      "--metalness",
+      "0.2",
+      "--base-color-texture",
+      "tex.kart.albedo",
+      "--normal-texture",
+      "tex.kart.normal",
+      "--metallic-roughness-texture",
+      "tex.kart.mr",
+      "--emissive",
+      "#33ccff",
+      "--emissive-intensity",
+      "1.25",
+      "--emissive-texture",
+      "tex.kart.emissive",
+      "--alpha-mode",
+      "blend",
+      "--alpha-cutoff",
+      "0.4",
+      "--opacity",
+      "0.8",
+      "--clearcoat",
+      "0.7",
+      "--clearcoat-roughness",
+      "0.15",
+      "--clearcoat-texture",
+      "tex.kart.clearcoat",
+      "--clearcoat-roughness-texture",
+      "tex.kart.clearcoatRoughness",
+      "--transmission",
+      "0.1",
+      "--transmission-texture",
+      "tex.kart.transmission",
+      "--occlusion-texture",
+      "tex.kart.occlusion",
+      "--project",
+      root,
+      "--json",
+    ]);
     const doc = JSON.parse(await readFile(join(root, "content", "materials", "mat.kart.materials.json"), "utf8")) as {
-      materials: Array<{ color: string; id: string; roughness: number }>;
+      materials: Array<Record<string, unknown>>;
     };
 
     assert.equal(create.exitCode, 0);
     assert.equal(set.exitCode, 0);
-    assert.deepEqual(doc.materials, [{ color: "#fff", id: "mat.kart", roughness: 0.5 }]);
+    assert.deepEqual(doc.materials, [
+      {
+        alphaCutoff: 0.4,
+        alphaMode: "blend",
+        baseColorTexture: "tex.kart.albedo",
+        clearcoat: 0.7,
+        clearcoatRoughness: 0.15,
+        clearcoatRoughnessTexture: "tex.kart.clearcoatRoughness",
+        clearcoatTexture: "tex.kart.clearcoat",
+        color: "#fff",
+        emissive: "#33ccff",
+        emissiveIntensity: 1.25,
+        emissiveTexture: "tex.kart.emissive",
+        id: "mat.kart",
+        metallicRoughnessTexture: "tex.kart.mr",
+        metalness: 0.2,
+        normalTexture: "tex.kart.normal",
+        occlusionTexture: "tex.kart.occlusion",
+        opacity: 0.8,
+        roughness: 0.5,
+        transmission: 0.1,
+        transmissionTexture: "tex.kart.transmission",
+      },
+    ]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("material command rejects invalid numeric PBR flags", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-material-invalid-"));
+  try {
+    const result = await materialCommand(["set", "mat.kart", "--metalness", "not-a-number", "--project", root, "--json"]);
+    const payload = JSON.parse(result.stdout) as { code: string };
+
+    assert.equal(result.exitCode, 2);
+    assert.equal(payload.code, "TN_AUTHORING_NUMBER_INVALID");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("audio command creates document and adds sounds", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-audio-doc-"));
+  try {
+    const create = await audioCommand(["create", "arena", "--project", root, "--json"]);
+    const addSound = await audioCommand(["add-sound", "arena", "hit", "--asset", "sound.hit", "--project", root, "--json"]);
+    const doc = JSON.parse(await readFile(join(root, "content", "audio", "arena.audio.json"), "utf8")) as {
+      sounds: Array<{ asset: string; id: string }>;
+    };
+
+    assert.equal(create.exitCode, 0);
+    assert.equal(addSound.exitCode, 0);
+    assert.deepEqual(doc.sounds, [{ asset: "sound.hit", id: "hit" }]);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -72,6 +169,7 @@ test("prefab input and mesh operations write deterministic structured docs", asy
     const prefabCreate = await prefabCommand(["create", "kart", "--project", root, "--json"]);
     const prefabComponent = await prefabCommand(["add-component", "kart", "VehiclePhysics", "--value", "{\"maxSpeed\":42}", "--project", root, "--json"]);
     const input = await inputCommand(["add-action", "kart", "accelerate", "--keys", "W,ArrowUp", "--project", root, "--json"]);
+    const inputAxis = await inputCommand(["add-axis", "kart", "MoveX", "--negative-keys", "A,ArrowLeft", "--positive-keys", "D,ArrowRight", "--value", "gamepad.leftStickX", "--project", root, "--json"]);
     const mesh = await meshCommand(["primitive", "mesh.kart.body", "--kind", "box", "--project", root, "--json"]);
 
     const prefabDoc = JSON.parse(await readFile(join(root, "content", "prefabs", "kart.prefab.json"), "utf8"));
@@ -81,9 +179,11 @@ test("prefab input and mesh operations write deterministic structured docs", asy
     assert.equal(prefabCreate.exitCode, 0);
     assert.equal(prefabComponent.exitCode, 0);
     assert.equal(input.exitCode, 0);
+    assert.equal(inputAxis.exitCode, 0);
     assert.equal(mesh.exitCode, 0);
     assert.deepEqual(prefabDoc.entities, [{ components: { VehiclePhysics: { maxSpeed: 42 } }, id: "kart" }]);
     assert.deepEqual(inputDoc.actions, [{ bindings: ["keyboard.w", "keyboard.ArrowUp"], id: "accelerate" }]);
+    assert.deepEqual(inputDoc.axes, [{ id: "MoveX", negative: ["keyboard.a", "keyboard.ArrowLeft"], positive: ["keyboard.d", "keyboard.ArrowRight"], value: "gamepad.leftStickX" }]);
     assert.deepEqual(meshDoc.meshes, [{ id: "mesh.kart.body", kind: "primitive", primitive: "box" }]);
   } finally {
     await rm(root, { force: true, recursive: true });

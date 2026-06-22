@@ -251,6 +251,44 @@ test("scene-command can create prefabs resources and ui nodes without hand-editi
   }
 });
 
+test("scene-command adds typed ECS components without raw JSON", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-scene-typed-components-"));
+
+  try {
+    const create = await sceneCommand(["create", "scene.components", "--project", root, "--json"]);
+    const entity = await sceneCommand(["add-entity", "scene.components", "player", "--project", root, "--json"]);
+    await mkdir(join(root, "content", "materials"), { recursive: true });
+    const material = await writeFile(join(root, "content", "materials", "mat.player.materials.json"), `${JSON.stringify({ schema: "threenative.materials", version: "0.1.0", id: "mat.player", materials: [{ id: "mat.player" }] }, null, 2)}\n`).then(() => ({ exitCode: 0 }));
+    const mesh = await sceneCommand(["add-component", "scene.components", "player", "mesh-renderer", "--mesh", "mesh.player", "--material", "mat.player", "--visible", "true", "--project", root, "--json"]);
+    const light = await sceneCommand(["add-component", "scene.components", "player", "light", "--kind", "point", "--intensity", "2", "--color", "#ffeeaa", "--range", "12", "--project", root, "--json"]);
+    const rigidBody = await sceneCommand(["add-component", "scene.components", "player", "rigid-body", "--kind", "dynamic", "--mass", "4", "--project", root, "--json"]);
+    const collider = await sceneCommand(["add-component", "scene.components", "player", "collider", "--kind", "box", "--size", "1,2,3", "--trigger", "false", "--project", root, "--json"]);
+    const controller = await sceneCommand(["add-component", "scene.components", "player", "character-controller", "--move-x", "move.x", "--move-z", "move.z", "--speed", "6", "--project", root, "--json"]);
+    const validate = await sceneCommand(["validate", "scene.components", "--project", root, "--json"]);
+    const scene = JSON.parse(await readFile(join(root, "content", "scenes", "scene.components.scene.json"), "utf8")) as {
+      entities: Array<{ components?: Record<string, unknown>; id: string }>;
+    };
+    const components = scene.entities.find((item) => item.id === "player")?.components;
+
+    assert.equal(create.exitCode, 0);
+    assert.equal(entity.exitCode, 0);
+    assert.equal(material.exitCode, 0);
+    assert.equal(mesh.exitCode, 0);
+    assert.equal(light.exitCode, 0);
+    assert.equal(rigidBody.exitCode, 0);
+    assert.equal(collider.exitCode, 0);
+    assert.equal(controller.exitCode, 0);
+    assert.equal(validate.exitCode, 0);
+    assert.deepEqual(components?.MeshRenderer, { material: "mat.player", mesh: "mesh.player", visible: true });
+    assert.deepEqual(components?.Light, { color: "#ffeeaa", intensity: 2, kind: "point", range: 12 });
+    assert.deepEqual(components?.RigidBody, { kind: "dynamic", mass: 4 });
+    assert.deepEqual(components?.Collider, { kind: "box", size: [1, 2, 3], trigger: false });
+    assert.deepEqual(components?.CharacterController, { blocking: true, grounding: "raycast", moveXAxis: "move.x", moveZAxis: "move.z", speed: 6 });
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("scene-command smoke validates authored scene and preserves project build validation", async () => {
   const root = await createSceneProject({ minimal: true });
 

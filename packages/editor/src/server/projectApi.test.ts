@@ -180,14 +180,14 @@ test("should reject malformed editor operation payloads without writing source",
 
     assert.equal(result.ok, false);
     assert.equal(result.changed, false);
-    assert.equal(result.diagnostics[0]?.code, "TN_EDITOR_OPERATION_ARG_INVALID");
+    assert.equal(result.diagnostics[0]?.code, "TN_AUTHORING_OPERATION_ARG_INVALID");
     assert.equal(after, before);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
 });
 
-test("should keep unsupported light and mesh renderer edits explicit", async () => {
+test("should keep mesh renderer edits explicit and expose typed light operations", async () => {
   const root = await copyStarterProject();
   try {
     const create = await applyEditorOperationApi({
@@ -204,8 +204,8 @@ test("should keep unsupported light and mesh renderer edits explicit", async () 
     assert.equal(playerRows.some((row) => row.component === "MeshRenderer" && row.label === "Asset" && row.readOnlyReason !== undefined), true);
 
     const lightRows = result.sceneObjects.find((object) => object.id === "directional-light")?.inspectorRows ?? [];
-    assert.equal(lightRows.some((row) => row.component === "Light" && row.label === "Kind" && row.readOnlyReason !== undefined), true);
-    assert.equal(lightRows.some((row) => row.component === "Light" && row.label === "Intensity" && row.readOnlyReason !== undefined), true);
+    assert.equal(lightRows.some((row) => row.component === "Light" && row.label === "Kind" && row.operation?.name === "scene.set_light" && row.readOnly === false), true);
+    assert.equal(lightRows.some((row) => row.component === "Light" && row.label === "Intensity" && row.operation?.name === "scene.set_light" && row.readOnly === false), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -228,8 +228,8 @@ test("should create, save, and reload default editor scene entities", async () =
     assert.equal(scene.id, "sample-scene");
     assert.deepEqual(scene.entities.map((entity) => entity.id), ["main-camera", "directional-light", "ambient-light"]);
     assert.deepEqual(scene.entities.find((entity) => entity.id === "main-camera")?.components?.camera, { mode: "perspective" });
-    assert.deepEqual(scene.entities.find((entity) => entity.id === "directional-light")?.components?.Light, { intensity: 1, kind: "directional" });
-    assert.deepEqual(scene.entities.find((entity) => entity.id === "ambient-light")?.components?.Light, { intensity: 0.4, kind: "ambient" });
+    assert.deepEqual(scene.entities.find((entity) => entity.id === "directional-light")?.components?.Light, { color: "#ffffff", intensity: 1, kind: "directional" });
+    assert.deepEqual(scene.entities.find((entity) => entity.id === "ambient-light")?.components?.Light, { color: "#ffffff", intensity: 0.4, kind: "ambient" });
 
     const save = await applyEditorOperationApi({
       projectPath: root,
@@ -305,7 +305,7 @@ test("should persist added component defaults through source operations", async 
     const light = await applyEditorOperationApi({
       projectPath: root,
       request: {
-        args: { componentKind: "Light", entityId: "goal", sceneId: "arena", value: { intensity: 1, kind: "directional" } },
+        args: { componentKind: "Light", entityId: "goal", sceneId: "arena", value: { color: "#ffffff", intensity: 1, kind: "directional" } },
         name: "scene.set_component",
         projectRevision: camera.projectRevision,
       },
@@ -316,7 +316,7 @@ test("should persist added component defaults through source operations", async 
       entities: Array<{ components?: Record<string, unknown>; id: string }>;
     };
     assert.deepEqual(scene.entities.find((entity) => entity.id === "player")?.components?.camera, { mode: "perspective" });
-    assert.deepEqual(scene.entities.find((entity) => entity.id === "goal")?.components?.Light, { intensity: 1, kind: "directional" });
+    assert.deepEqual(scene.entities.find((entity) => entity.id === "goal")?.components?.Light, { color: "#ffffff", intensity: 1, kind: "directional" });
 
     const reloaded = await loadEditorProjectApi({ projectPath: root });
     assert.equal(reloaded.sceneObjects.find((object) => object.id === "player")?.components?.includes("Camera"), true);

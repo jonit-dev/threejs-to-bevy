@@ -295,7 +295,7 @@ test("should submit add object choices with correct operation payloads", async (
   }> = [
     { actionId: "add.empty_entity", expectedEntityId: "editor-entity-21i3v9", expectedNames: ["scene.add_entity"] },
     { actionId: "add.camera", expectedEntityId: "editor-camera-21i3v9", expectedNames: ["scene.add_entity", "scene.set_component", "scene.set_transform"], expectedPayload: { index: 1, key: "componentKind", value: "camera" } },
-    { actionId: "add.light", expectedEntityId: "editor-light-21i3v9", expectedNames: ["scene.add_entity", "scene.set_component", "scene.set_transform"], expectedPayload: { index: 1, key: "componentKind", value: "Light" } },
+    { actionId: "add.light", expectedEntityId: "editor-light-21i3v9", expectedNames: ["scene.add_entity", "scene.set_light", "scene.set_transform"], expectedPayload: { index: 1, key: "kind", value: "directional" } },
   ];
 
   for (const item of cases) {

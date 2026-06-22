@@ -16,7 +16,7 @@ import { helpCommand } from "./commands/help.js";
 import { modelTestCommand } from "./commands/modelTest.js";
 import { packageCommand } from "./commands/package.js";
 import { sceneCommand } from "./commands/scene.js";
-import { inputCommand, materialCommand, meshCommand, prefabCommand, systemCommand, uiCommand } from "./commands/sourceDocuments.js";
+import { audioCommand, inputCommand, materialCommand, meshCommand, prefabCommand, systemCommand, uiCommand } from "./commands/sourceDocuments.js";
 import { validateProject } from "./commands/validate.js";
 import { recordCommand, screenshotCommand } from "./commands/visualProof.js";
 import { verifyCommand } from "./commands/verify.js";
@@ -30,9 +30,14 @@ interface ICommandDefinition {
 
 const commands: Record<string, ICommandDefinition> = {
   asset: {
-    description: "Inspect GLB/glTF bounds, dependencies, and scale calibration.",
+    description: "Inspect GLB/glTF assets and mutate structured asset source documents.",
     implemented: true,
-    usage: "tn asset inspect <path> [--json]",
+    usage: "tn asset inspect <path> [--json]\n              tn asset add <asset-id> --type <model|texture|audio|mesh> --path <source-path> [--project <path>] [--json]",
+  },
+  audio: {
+    description: "Create and mutate structured audio source documents.",
+    implemented: true,
+    usage: "tn audio create <audio-doc-id> [--project <path>] [--json]\n              tn audio add-sound <audio-doc-id> <sound-id> --asset <asset-id-or-path> [--project <path>] [--json]",
   },
   authoring: {
     description: "Inspect and validate structured authoring source documents.",
@@ -82,12 +87,12 @@ const commands: Record<string, ICommandDefinition> = {
   input: {
     description: "Create and mutate structured input source documents.",
     implemented: true,
-    usage: "tn input add-action <input-doc-id> <action-id> --keys <key,key> [--project <path>] [--json]",
+    usage: "tn input add-action <input-doc-id> <action-id> --keys <key,key> [--project <path>] [--json]\n              tn input add-axis <input-doc-id> <axis-id> --negative-keys <key,key> --positive-keys <key,key> [--value <binding>] [--project <path>] [--json]",
   },
   material: {
     description: "Create and mutate structured material source documents.",
     implemented: true,
-    usage: "tn material create <material-id> [--project <path>] [--json]\n              tn material set <material-id> [--color <css-color>] [--roughness <n>] [--project <path>] [--json]",
+    usage: "tn material create <material-id> [--project <path>] [--json]\n              tn material set <material-id> [--color <css-color>] [--roughness <n>] [--metalness <n>] [--base-color-texture <asset-id>] [--normal-texture <asset-id>] [--emissive <css-color>] [--alpha-mode opaque|mask|blend] [--project <path>] [--json]",
   },
   mesh: {
     description: "Create structured mesh source documents.",
@@ -117,7 +122,7 @@ const commands: Record<string, ICommandDefinition> = {
   scene: {
     description: "Create, inspect, validate, mutate, and prove structured source scene documents.",
     implemented: true,
-    usage: "tn scene create <scene-id> [--file <path>] [--json]\n              tn scene import-world <scene-id> --world <path/to/world.ir.json> [--file <path>] [--replace] [--json]\n              tn scene validate [scene-id] [--project <path>] [--json]\n              tn scene inspect <scene-id> [--project <path>] [--json]\n              tn scene add-prefab <scene-id> <prefab-id> [--primitive <primitive>] [--color <css-color>] [--json]\n              tn scene set-prefab-color <scene-id> <prefab-id> --color <css-color> [--json]\n              tn scene add-resource <scene-id> <resource-id> [--path <resource.path>] [--value <json>] [--json]\n              tn scene set-resource <scene-id> <resource-id> [--path <resource.path>] [--value <json>] [--json]\n              tn scene add-ui-node <scene-id> <ui-node-id> [--json]\n              tn scene add-entity <scene-id> <entity-id> [--prefab <prefab-id>] [--json]\n              tn scene set-component <scene-id> <entity-id> <component-kind> --value <json-object> [--json]\n              tn scene remove-component <scene-id> <entity-id> <component-kind> [--json]\n              tn scene set-transform <scene-id> <entity-id> [--position x,y,z] [--rotation x,y,z] [--scale x,y,z] [--json]\n              tn scene set-camera <scene-id> <camera-id> --mode <mode> --target <entity-id> [--json]\n              tn scene attach-script <scene-id> <system-id> --module <path> --export <name> [--json]\n              tn scene bind-ui <scene-id> <ui-node-id> --resource <resource.path> [--json]\n              tn scene proof <scene-id> --project <path> --web-url <url> --out <dir> [--native] [--json]",
+    usage: "tn scene create <scene-id> [--file <path>] [--json]\n              tn scene import-world <scene-id> --world <path/to/world.ir.json> [--file <path>] [--replace] [--json]\n              tn scene validate [scene-id] [--project <path>] [--json]\n              tn scene inspect <scene-id> [--project <path>] [--json]\n              tn scene add-prefab <scene-id> <prefab-id> [--primitive <primitive>] [--color <css-color>] [--json]\n              tn scene set-prefab-color <scene-id> <prefab-id> --color <css-color> [--json]\n              tn scene add-resource <scene-id> <resource-id> [--path <resource.path>] [--value <json>] [--json]\n              tn scene set-resource <scene-id> <resource-id> [--path <resource.path>] [--value <json>] [--json]\n              tn scene add-ui-node <scene-id> <ui-node-id> [--json]\n              tn scene add-entity <scene-id> <entity-id> [--prefab <prefab-id>] [--json]\n              tn scene add-component <scene-id> <entity-id> light|mesh-renderer|rigid-body|collider|character-controller [typed flags] [--json]\n              tn scene set-component <scene-id> <entity-id> <component-kind> --value <json-object> [--json]\n              tn scene remove-component <scene-id> <entity-id> <component-kind> [--json]\n              tn scene set-transform <scene-id> <entity-id> [--position x,y,z] [--rotation x,y,z] [--scale x,y,z] [--json]\n              tn scene set-camera <scene-id> <camera-id> --mode <mode> --target <entity-id> [--json]\n              tn scene attach-script <scene-id> <system-id> --module <path> --export <name> [--json]\n              tn scene bind-ui <scene-id> <ui-node-id> --resource <resource.path> [--json]\n              tn scene proof <scene-id> --project <path> --web-url <url> --out <dir> [--native] [--json]",
   },
   prefab: {
     description: "Create and mutate structured prefab source documents.",
@@ -199,6 +204,10 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
 
   if (commandName === "asset") {
     return assetCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "audio") {
+    return audioCommand(normalizedArgv.slice(1));
   }
 
   if (commandName === "authoring") {

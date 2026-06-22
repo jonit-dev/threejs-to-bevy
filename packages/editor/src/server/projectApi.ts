@@ -409,9 +409,12 @@ function objectInspectorRows(input: {
   }
 
   if (isRecord(input.lightData)) {
+    const lightKind = readString(input.lightData.kind) ?? "directional";
+    const lightIntensity = typeof input.lightData.intensity === "number" && Number.isFinite(input.lightData.intensity) ? input.lightData.intensity : 1;
+    const lightColor = readString(input.lightData.color) ?? "#ffffff";
     rows.push(
-      inspectorRow({ component: "Light", defaultValue: "directional", fieldKind: "enum", id: "inspect:light-kind", input, label: "Kind", options: ["ambient", "directional", "point", "spot"], readOnly: true, readOnlyReason: "Light is not part of supportedComponentKinds; source data is preserved read-only.", value: readString(input.lightData.kind) ?? "directional" }),
-      inspectorRow({ component: "Light", defaultValue: 1, fieldKind: "number", id: "inspect:light-intensity", input, label: "Intensity", readOnly: true, readOnlyReason: "Light is not part of supportedComponentKinds; source data is preserved read-only.", value: formatScalar(input.lightData.intensity, "1") }),
+      inspectorRow({ component: "Light", defaultValue: "directional", fieldKind: "enum", id: "inspect:light-kind", input, jsonPointer: `/entities/${input.entityId}/components/Light/kind`, label: "Kind", operation: { args: { color: lightColor, entityId: input.entityId, intensity: lightIntensity, sceneId: input.sceneId }, name: "scene.set_light", valueArg: "kind" }, options: ["ambient", "directional", "point", "spot"], readOnly: false, value: lightKind }),
+      inspectorRow({ component: "Light", defaultValue: 1, fieldKind: "number", id: "inspect:light-intensity", input, jsonPointer: `/entities/${input.entityId}/components/Light/intensity`, label: "Intensity", operation: { args: { color: lightColor, entityId: input.entityId, kind: lightKind, sceneId: input.sceneId }, name: "scene.set_light", valueArg: "intensity" }, readOnly: false, value: formatScalar(input.lightData.intensity, "1") }),
     );
   }
 
@@ -438,12 +441,43 @@ function documentInspectorRows(document: IAuthoringDocument): IEditorPropertyRow
       for (const [index, material] of readArray(document.data.materials).filter(isRecord).entries()) {
         rows.push(documentRow(document, `material:${index}:color`, `${readString(material.id) ?? `material.${index}`} Color`, readString(material.color) ?? "", "color", false, `/materials/${index}/color`, "material", "material.set", "color", { materialId: readString(material.id) ?? "" }));
         rows.push(documentRow(document, `material:${index}:roughness`, `${readString(material.id) ?? `material.${index}`} Roughness`, formatScalar(material.roughness, ""), "number", false, `/materials/${index}/roughness`, "material", "material.set", "roughness", { materialId: readString(material.id) ?? "" }));
+        rows.push(documentRow(document, `material:${index}:metalness`, `${readString(material.id) ?? `material.${index}`} Metalness`, formatScalar(material.metalness, ""), "number", false, `/materials/${index}/metalness`, "material", "material.set", "metalness", { materialId: readString(material.id) ?? "" }));
+        rows.push(documentRow(document, `material:${index}:emissive`, `${readString(material.id) ?? `material.${index}`} Emissive`, readString(material.emissive) ?? "", "color", false, `/materials/${index}/emissive`, "material", "material.set", "emissive", { materialId: readString(material.id) ?? "" }));
+        rows.push(documentRow(document, `material:${index}:emissiveIntensity`, `${readString(material.id) ?? `material.${index}`} Emissive Intensity`, formatScalar(material.emissiveIntensity, ""), "number", false, `/materials/${index}/emissiveIntensity`, "material", "material.set", "emissiveIntensity", { materialId: readString(material.id) ?? "" }));
+        rows.push(documentRow(document, `material:${index}:alphaMode`, `${readString(material.id) ?? `material.${index}`} Alpha Mode`, readString(material.alphaMode) ?? "", "enum", false, `/materials/${index}/alphaMode`, "material", "material.set", "alphaMode", { materialId: readString(material.id) ?? "" }));
+        rows.push(documentRow(document, `material:${index}:alphaCutoff`, `${readString(material.id) ?? `material.${index}`} Alpha Cutoff`, formatScalar(material.alphaCutoff, ""), "number", false, `/materials/${index}/alphaCutoff`, "material", "material.set", "alphaCutoff", { materialId: readString(material.id) ?? "" }));
+        rows.push(documentRow(document, `material:${index}:opacity`, `${readString(material.id) ?? `material.${index}`} Opacity`, formatScalar(material.opacity, ""), "number", false, `/materials/${index}/opacity`, "material", "material.set", "opacity", { materialId: readString(material.id) ?? "" }));
+        rows.push(documentRow(document, `material:${index}:baseColorTexture`, `${readString(material.id) ?? `material.${index}`} Base Color Texture`, readString(material.baseColorTexture) ?? "", "asset", false, `/materials/${index}/baseColorTexture`, "material", "material.set", "baseColorTexture", { materialId: readString(material.id) ?? "" }));
+        rows.push(documentRow(document, `material:${index}:normalTexture`, `${readString(material.id) ?? `material.${index}`} Normal Texture`, readString(material.normalTexture) ?? "", "asset", false, `/materials/${index}/normalTexture`, "material", "material.set", "normalTexture", { materialId: readString(material.id) ?? "" }));
+        rows.push(documentRow(document, `material:${index}:metallicRoughnessTexture`, `${readString(material.id) ?? `material.${index}`} Metallic Roughness Texture`, readString(material.metallicRoughnessTexture) ?? "", "asset", false, `/materials/${index}/metallicRoughnessTexture`, "material", "material.set", "metallicRoughnessTexture", { materialId: readString(material.id) ?? "" }));
+        rows.push(documentRow(document, `material:${index}:emissiveTexture`, `${readString(material.id) ?? `material.${index}`} Emissive Texture`, readString(material.emissiveTexture) ?? "", "asset", false, `/materials/${index}/emissiveTexture`, "material", "material.set", "emissiveTexture", { materialId: readString(material.id) ?? "" }));
+        rows.push(documentRow(document, `material:${index}:occlusionTexture`, `${readString(material.id) ?? `material.${index}`} Occlusion Texture`, readString(material.occlusionTexture) ?? "", "asset", false, `/materials/${index}/occlusionTexture`, "material", "material.set", "occlusionTexture", { materialId: readString(material.id) ?? "" }));
+        rows.push(documentRow(document, `material:${index}:clearcoat`, `${readString(material.id) ?? `material.${index}`} Clearcoat`, formatScalar(material.clearcoat, ""), "number", false, `/materials/${index}/clearcoat`, "material", "material.set", "clearcoat", { materialId: readString(material.id) ?? "" }));
+        rows.push(documentRow(document, `material:${index}:clearcoatRoughness`, `${readString(material.id) ?? `material.${index}`} Clearcoat Roughness`, formatScalar(material.clearcoatRoughness, ""), "number", false, `/materials/${index}/clearcoatRoughness`, "material", "material.set", "clearcoatRoughness", { materialId: readString(material.id) ?? "" }));
+        rows.push(documentRow(document, `material:${index}:clearcoatTexture`, `${readString(material.id) ?? `material.${index}`} Clearcoat Texture`, readString(material.clearcoatTexture) ?? "", "asset", false, `/materials/${index}/clearcoatTexture`, "material", "material.set", "clearcoatTexture", { materialId: readString(material.id) ?? "" }));
+        rows.push(documentRow(document, `material:${index}:clearcoatRoughnessTexture`, `${readString(material.id) ?? `material.${index}`} Clearcoat Roughness Texture`, readString(material.clearcoatRoughnessTexture) ?? "", "asset", false, `/materials/${index}/clearcoatRoughnessTexture`, "material", "material.set", "clearcoatRoughnessTexture", { materialId: readString(material.id) ?? "" }));
+        rows.push(documentRow(document, `material:${index}:transmission`, `${readString(material.id) ?? `material.${index}`} Transmission`, formatScalar(material.transmission, ""), "number", false, `/materials/${index}/transmission`, "material", "material.set", "transmission", { materialId: readString(material.id) ?? "" }));
+        rows.push(documentRow(document, `material:${index}:transmissionTexture`, `${readString(material.id) ?? `material.${index}`} Transmission Texture`, readString(material.transmissionTexture) ?? "", "asset", false, `/materials/${index}/transmissionTexture`, "material", "material.set", "transmissionTexture", { materialId: readString(material.id) ?? "" }));
       }
       break;
     case "input":
       for (const [index, action] of readArray(document.data.actions).filter(isRecord).entries()) {
         rows.push(documentRow(document, `input:${index}:id`, "Action ID", readString(action.id) ?? "", "string", true, `/actions/${index}/id`, "input", undefined, undefined, undefined, "Input action ids are stable source identifiers after creation."));
         rows.push(documentRow(document, `input:${index}:bindings`, "Bindings", readArray(action.bindings).filter((binding): binding is string => typeof binding === "string").join(", "), "stringList", false, `/actions/${index}/bindings`, "input", "input.add_action", "keys", { actionId: readString(action.id) ?? "", inputDocId: readDocumentId(document.data) ?? "" }));
+      }
+      for (const [index, axis] of readArray(document.data.axes).filter(isRecord).entries()) {
+        const axisId = readString(axis.id) ?? "";
+        const baseArgs = {
+          axisId,
+          inputDocId: readDocumentId(document.data) ?? "",
+          negativeKeys: readStringArray(axis.negative).map(stripKeyboardBinding),
+          positiveKeys: readStringArray(axis.positive).map(stripKeyboardBinding),
+          ...(readString(axis.value) === undefined ? {} : { value: readString(axis.value) }),
+        };
+        rows.push(documentRow(document, `input-axis:${index}:id`, "Axis ID", axisId, "string", true, `/axes/${index}/id`, "input", undefined, undefined, undefined, "Input axis ids are stable source identifiers after creation."));
+        rows.push(documentRow(document, `input-axis:${index}:negative`, `${axisId || `axis.${index}`} Negative`, readStringArray(axis.negative).join(", "), "stringList", false, `/axes/${index}/negative`, "input", "input.add_axis", "negativeKeys", baseArgs));
+        rows.push(documentRow(document, `input-axis:${index}:positive`, `${axisId || `axis.${index}`} Positive`, readStringArray(axis.positive).join(", "), "stringList", false, `/axes/${index}/positive`, "input", "input.add_axis", "positiveKeys", baseArgs));
+        rows.push(documentRow(document, `input-axis:${index}:value`, `${axisId || `axis.${index}`} Value`, readString(axis.value) ?? "", "string", false, `/axes/${index}/value`, "input", "input.add_axis", "value", baseArgs));
       }
       break;
     case "systems":
@@ -683,6 +717,14 @@ function readPrimitive(value: unknown): EditorScenePrimitive {
 
 function readString(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
+}
+
+function readStringArray(value: unknown): string[] {
+  return readArray(value).filter((item): item is string => typeof item === "string");
+}
+
+function stripKeyboardBinding(value: string): string {
+  return value.replace(/^keyboard\./, "");
 }
 
 function formatScalar(value: unknown, fallback: string): string {

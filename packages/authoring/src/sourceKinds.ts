@@ -185,7 +185,7 @@ export const authoringSourceMatrix = [
     cliOperationSupport: "partial",
     typescriptRole: "none",
     editorRoundTrip: "required",
-    notes: "Current scene source covers core ECS mutations, but full visual scene and hierarchy coverage is incomplete.",
+    notes: "Current scene source covers core ECS mutations plus typed camera/light/mesh-renderer/rigid-body/collider/character-controller component operations; full visual scene and hierarchy coverage is incomplete.",
   },
   {
     id: "prefab-document",
@@ -218,7 +218,7 @@ export const authoringSourceMatrix = [
     cliOperationSupport: "partial",
     typescriptRole: "none",
     editorRoundTrip: "required",
-    notes: "Input source documents and initial add-action CLI operations exist; axes and richer rebinding metadata remain later work.",
+    notes: "Input source documents and add-action/add-axis CLI/editor operations exist; richer controls-settings and rebinding metadata remain later work.",
   },
   {
     id: "ui-document",
@@ -236,11 +236,11 @@ export const authoringSourceMatrix = [
     categoryId: "assets-import-settings",
     capability: "Assets, import settings, and dependency copy policy",
     sourceDocuments: ["content/assets/*.assets.json"],
-    structuredSourceSupport: "missing",
+    structuredSourceSupport: "partial",
     cliOperationSupport: "partial",
     typescriptRole: "none",
     editorRoundTrip: "required",
-    notes: "Asset inspection exists, but durable asset catalog source documents and mutation operations are missing.",
+    notes: "Asset source documents and initial add CLI/registry operations exist; import settings and dependency copy policy remain later work.",
   },
   {
     id: "material-document",
@@ -251,7 +251,7 @@ export const authoringSourceMatrix = [
     cliOperationSupport: "partial",
     typescriptRole: "none",
     editorRoundTrip: "required",
-    notes: "Material source documents and initial create/set CLI operations exist for color and roughness; texture slots and broader PBR fields remain later work.",
+    notes: "Material source documents and create/set CLI/editor operations cover color, roughness, metalness, emissive, alpha, promoted texture slots, clearcoat, and transmission fields; sampler/import policy remains later work.",
   },
   {
     id: "mesh-document",
@@ -270,10 +270,10 @@ export const authoringSourceMatrix = [
     capability: "Audio declarations",
     sourceDocuments: ["content/audio/*.audio.json"],
     structuredSourceSupport: "partial",
-    cliOperationSupport: "missing",
+    cliOperationSupport: "partial",
     typescriptRole: "none",
     editorRoundTrip: "required",
-    notes: "Audio source documents are discovered and validated, but Phase 4 did not add audio mutation commands.",
+    notes: "Audio source documents and initial create/add-sound CLI/registry operations exist; richer playback defaults remain later work.",
   },
   {
     id: "systems-document",

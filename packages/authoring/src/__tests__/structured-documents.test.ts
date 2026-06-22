@@ -20,7 +20,29 @@ test("loads mixed authoring source document family", async () => {
       schema: "threenative.materials",
       version: "0.1.0",
       id: "kart-materials",
-      materials: [{ id: "mat.kart" }],
+      materials: [
+        {
+          alphaCutoff: 0.4,
+          alphaMode: "mask",
+          baseColorTexture: "tex.kart.albedo",
+          clearcoat: 0.3,
+          clearcoatRoughness: 0.2,
+          clearcoatRoughnessTexture: "tex.kart.clearcoatRoughness",
+          clearcoatTexture: "tex.kart.clearcoat",
+          emissive: "#33ccff",
+          emissiveIntensity: 1.4,
+          emissiveTexture: "tex.kart.emissive",
+          id: "mat.kart",
+          metallicRoughnessTexture: "tex.kart.mr",
+          metalness: 0.2,
+          normalTexture: "tex.kart.normal",
+          occlusionTexture: "tex.kart.occlusion",
+          opacity: 0.85,
+          roughness: 0.5,
+          transmission: 0.1,
+          transmissionTexture: "tex.kart.transmission",
+        },
+      ],
     });
     await writeSourceDocument(root, "content/meshes/kart.meshes.json", {
       schema: "threenative.meshes",
@@ -39,6 +61,7 @@ test("loads mixed authoring source document family", async () => {
       version: "0.1.0",
       id: "kart-input",
       actions: [{ id: "accelerate", bindings: ["keyboard.w"] }],
+      axes: [{ id: "MoveX", negative: ["keyboard.a"], positive: ["keyboard.d"], value: "gamepad.leftStickX" }],
     });
     await writeSourceDocument(root, "content/environment/kart.environment.json", {
       schema: "threenative.environment-scene",
@@ -128,6 +151,28 @@ test("validates duplicate IDs for structured authoring document families", async
   }
 });
 
+test("validates input axis source fields", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-authoring-input-axis-invalid-"));
+  try {
+    await writeSourceDocument(root, "content/input/kart.input.json", {
+      schema: "threenative.input",
+      version: "0.1.0",
+      id: "kart-input",
+      axes: [{ id: "MoveX", negative: ["keyboard.a"], positive: [42], value: "" }],
+    });
+
+    const result = await validateAuthoringProject({ projectPath: root });
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => diagnostic.path),
+      ["/axes/0/positive", "/axes/0/value"],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("validates scene material references against material documents", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-authoring-material-ref-"));
   try {
@@ -145,6 +190,36 @@ test("validates scene material references against material documents", async () 
     assert.equal(result.diagnostics[0]?.code, "TN_AUTHORING_REF_MISSING");
     assert.equal(result.diagnostics[0]?.path, "/entities/0/components/MeshRenderer/material");
     assert.equal(result.diagnostics[0]?.suggestion, "Did you mean 'mat.kart'?");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("validates material PBR and texture source fields", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-authoring-material-pbr-invalid-"));
+  try {
+    await writeSourceDocument(root, "content/materials/kart.materials.json", {
+      schema: "threenative.materials",
+      version: "0.1.0",
+      id: "kart-materials",
+      materials: [
+        {
+          alphaMode: "screen",
+          baseColorTexture: 42,
+          id: "mat.kart",
+          metalness: 1.5,
+          roughness: Number.NaN,
+        },
+      ],
+    });
+
+    const result = await validateAuthoringProject({ projectPath: root });
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => diagnostic.path),
+      ["/materials/0/alphaMode", "/materials/0/baseColorTexture", "/materials/0/metalness", "/materials/0/roughness"],
+    );
   } finally {
     await rm(root, { force: true, recursive: true });
   }

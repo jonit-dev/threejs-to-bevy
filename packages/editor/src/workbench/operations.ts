@@ -3,6 +3,7 @@ import { applyEditorOperationApi } from "../server/operationApi.js";
 
 export type EditorOperationName =
   | "input.add_action"
+  | "input.add_axis"
   | "material.set"
   | "mesh.create_primitive"
   | "prefab.add_component"

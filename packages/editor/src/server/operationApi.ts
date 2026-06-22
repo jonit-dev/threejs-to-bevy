@@ -129,9 +129,9 @@ async function createDefaultScene(options: { file?: string; projectPath: string;
     await setComponent({ componentKind: "camera", entityId: "main-camera", projectPath: options.projectPath, sceneId: options.sceneId, value: { mode: "perspective" } }),
     await addEntity({ entityId: "directional-light", projectPath: options.projectPath, sceneId: options.sceneId }),
     await setTransform({ entityId: "directional-light", position: [2, 4, 3], projectPath: options.projectPath, sceneId: options.sceneId }),
-    await setComponent({ componentKind: "Light", entityId: "directional-light", projectPath: options.projectPath, sceneId: options.sceneId, value: { intensity: 1, kind: "directional" } }),
+    await setComponent({ componentKind: "Light", entityId: "directional-light", projectPath: options.projectPath, sceneId: options.sceneId, value: { color: "#ffffff", intensity: 1, kind: "directional" } }),
     await addEntity({ entityId: "ambient-light", projectPath: options.projectPath, sceneId: options.sceneId }),
-    await setComponent({ componentKind: "Light", entityId: "ambient-light", projectPath: options.projectPath, sceneId: options.sceneId, value: { intensity: 0.4, kind: "ambient" } }),
+    await setComponent({ componentKind: "Light", entityId: "ambient-light", projectPath: options.projectPath, sceneId: options.sceneId, value: { color: "#ffffff", intensity: 0.4, kind: "ambient" } }),
   ];
   const diagnostics = [...create.diagnostics, ...operations.flatMap((operation) => operation.diagnostics)];
   const filesWritten = [...new Set([create.file, ...operations.flatMap((operation) => operation.filesWritten)])];

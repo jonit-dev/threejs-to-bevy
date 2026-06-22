@@ -10,8 +10,14 @@ import {
   inspectScene,
   removeComponent,
   setCamera,
+  setCameraComponent,
+  setCharacterControllerComponent,
+  setColliderComponent,
   setComponent,
+  setLightComponent,
+  setMeshRendererComponent,
   setPrefabColor,
+  setRigidBodyComponent,
   setResource,
   setTransform,
   validateScene,
@@ -165,6 +171,21 @@ export async function sceneCommand(argv: readonly string[], options: ISceneComma
     }
     const result = await setCamera({ projectPath, sceneId, cameraId, mode, targetId });
     return renderSceneResult(result, json, result.ok ? `Camera '${cameraId}' updated.` : `Camera '${cameraId}' was not updated.`);
+  }
+
+  if (subcommand === "add-component") {
+    const sceneId = readPositional(normalizedArgv, 1);
+    const entityId = readPositional(normalizedArgv, 2);
+    const component = readPositional(normalizedArgv, 3);
+    if (sceneId === undefined || entityId === undefined || component === undefined) {
+      return renderUsage(json, "TN_SCENE_ADD_COMPONENT_ARGS_MISSING", sceneAddComponentUsage());
+    }
+    const typed = parseTypedComponent(normalizedArgv, sceneId, entityId, component);
+    if (typed.diagnostic !== undefined) {
+      return renderUsage(json, typed.diagnostic, typed.usage ?? sceneAddComponentUsage());
+    }
+    const result = await typed.apply(projectPath);
+    return renderSceneResult(result, json, result.ok ? `Component '${typed.componentKind}' set on '${entityId}'.` : `Component '${typed.componentKind}' was not set on '${entityId}'.`);
   }
 
   if (subcommand === "set-component") {
@@ -334,10 +355,187 @@ function readPositional(argv: readonly string[], index: number): string | undefi
   return positionals[index];
 }
 
-const flagsWithValues = new Set(["--project", "--file", "--world", "--prefab", "--primitive", "--color", "--asset", "--path", "--value", "--position", "--rotation", "--scale", "--mode", "--target", "--module", "--export", "--resource", "--out", "--web-url", "--camera", "--native-frame"]);
+const flagsWithValues = new Set(["--project", "--file", "--world", "--prefab", "--primitive", "--color", "--asset", "--path", "--value", "--position", "--rotation", "--scale", "--mode", "--target", "--module", "--export", "--resource", "--out", "--web-url", "--camera", "--native-frame", "--kind", "--intensity", "--range", "--angle", "--mesh", "--material", "--mass", "--damping", "--gravity-scale", "--size", "--radius", "--height", "--speed", "--move-x", "--move-z", "--grounding", "--slope-limit", "--step-offset", "--visible", "--cast-shadow", "--receive-shadow", "--trigger", "--blocking"]);
 
 function sceneUsage(): string {
   return "Usage: tn scene create <scene-id> [--file <path>] [--project <path>] [--json]\n       tn scene validate [scene-id] [--project <path>] [--json]\n       tn scene inspect <scene-id> [--project <path>] [--json]\n       tn scene proof <scene-id> --project <path> --out <dir> [--web-url <url>] [--native] [--json]";
+}
+
+function sceneAddComponentUsage(): string {
+  return "Usage: tn scene add-component <scene-id> <entity-id> light [--kind <ambient|directional|point|spot>] [--intensity <n>] [--color <css-color>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> mesh-renderer --mesh <mesh-id> --material <material-id> [--visible <true|false>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> rigid-body [--kind <dynamic|kinematic|static>] [--mass <n>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> collider [--kind <box|sphere|capsule|cylinder|mesh>] [--size x,y,z] [--radius <n>] [--height <n>] [--trigger <true|false>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> character-controller [--move-x <axis>] [--move-z <axis>] [--speed <n>] [--project <path>] [--json]";
+}
+
+function parseTypedComponent(
+  argv: readonly string[],
+  sceneId: string,
+  entityId: string,
+  component: string,
+): { apply: (projectPath: string) => Promise<IAuthoringOperationResult>; componentKind: string; diagnostic?: string; usage?: string } {
+  const normalized = component.toLowerCase();
+  if (normalized === "camera") {
+    return {
+      componentKind: "camera",
+      apply: (projectPath) => setCameraComponent({ entityId, mode: readFlag(argv, "--mode"), projectPath, sceneId, targetId: readFlag(argv, "--target") }),
+    };
+  }
+  if (normalized === "light") {
+    const numbers = parseNumberFlags(argv, ["--intensity", "--range", "--angle"]);
+    if (numbers.diagnostic !== undefined) {
+      return { apply: neverApply, componentKind: "Light", diagnostic: numbers.diagnostic, usage: "Light numeric flags must be finite numbers." };
+    }
+    return {
+      componentKind: "Light",
+      apply: (projectPath) => setLightComponent({
+        angle: numbers.values["--angle"],
+        color: readFlag(argv, "--color"),
+        entityId,
+        intensity: numbers.values["--intensity"],
+        kind: readFlag(argv, "--kind"),
+        projectPath,
+        range: numbers.values["--range"],
+        sceneId,
+      }),
+    };
+  }
+  if (normalized === "mesh-renderer" || normalized === "meshrenderer") {
+    const mesh = readFlag(argv, "--mesh");
+    const material = readFlag(argv, "--material");
+    if (mesh === undefined || material === undefined) {
+      return { apply: neverApply, componentKind: "MeshRenderer", diagnostic: "TN_SCENE_ADD_COMPONENT_MESH_RENDERER_ARGS_MISSING", usage: "Usage: tn scene add-component <scene-id> <entity-id> mesh-renderer --mesh <mesh-id> --material <material-id> [--visible <true|false>] [--project <path>] [--json]" };
+    }
+    const booleans = parseBooleanFlags(argv, ["--visible", "--cast-shadow", "--receive-shadow"]);
+    if (booleans.diagnostic !== undefined) {
+      return { apply: neverApply, componentKind: "MeshRenderer", diagnostic: booleans.diagnostic, usage: "MeshRenderer boolean flags must be true or false." };
+    }
+    return {
+      componentKind: "MeshRenderer",
+      apply: (projectPath) => setMeshRendererComponent({
+        castShadow: booleans.values["--cast-shadow"],
+        entityId,
+        material,
+        mesh,
+        projectPath,
+        receiveShadow: booleans.values["--receive-shadow"],
+        sceneId,
+        visible: booleans.values["--visible"],
+      }),
+    };
+  }
+  if (normalized === "rigid-body" || normalized === "rigidbody") {
+    const numbers = parseNumberFlags(argv, ["--mass", "--damping", "--gravity-scale"]);
+    if (numbers.diagnostic !== undefined) {
+      return { apply: neverApply, componentKind: "RigidBody", diagnostic: numbers.diagnostic, usage: "RigidBody numeric flags must be finite numbers." };
+    }
+    return {
+      componentKind: "RigidBody",
+      apply: (projectPath) => setRigidBodyComponent({
+        damping: numbers.values["--damping"],
+        entityId,
+        gravityScale: numbers.values["--gravity-scale"],
+        kind: readFlag(argv, "--kind"),
+        mass: numbers.values["--mass"],
+        projectPath,
+        sceneId,
+      }),
+    };
+  }
+  if (normalized === "collider") {
+    const numbers = parseNumberFlags(argv, ["--radius", "--height"]);
+    if (numbers.diagnostic !== undefined) {
+      return { apply: neverApply, componentKind: "Collider", diagnostic: numbers.diagnostic, usage: "Collider numeric flags must be finite numbers." };
+    }
+    const size = parseOptionalVectorFlag(argv, "--size");
+    if (size.diagnostic !== undefined) {
+      return { apply: neverApply, componentKind: "Collider", diagnostic: size.diagnostic, usage: "Collider --size must use x,y,z numeric values." };
+    }
+    const booleans = parseBooleanFlags(argv, ["--trigger"]);
+    if (booleans.diagnostic !== undefined) {
+      return { apply: neverApply, componentKind: "Collider", diagnostic: booleans.diagnostic, usage: "Collider boolean flags must be true or false." };
+    }
+    return {
+      componentKind: "Collider",
+      apply: (projectPath) => setColliderComponent({
+        entityId,
+        height: numbers.values["--height"],
+        kind: readFlag(argv, "--kind"),
+        projectPath,
+        radius: numbers.values["--radius"],
+        sceneId,
+        size: size.value,
+        trigger: booleans.values["--trigger"],
+      }),
+    };
+  }
+  if (normalized === "character-controller" || normalized === "charactercontroller") {
+    const numbers = parseNumberFlags(argv, ["--speed", "--slope-limit", "--step-offset"]);
+    if (numbers.diagnostic !== undefined) {
+      return { apply: neverApply, componentKind: "CharacterController", diagnostic: numbers.diagnostic, usage: "CharacterController numeric flags must be finite numbers." };
+    }
+    const booleans = parseBooleanFlags(argv, ["--blocking"]);
+    if (booleans.diagnostic !== undefined) {
+      return { apply: neverApply, componentKind: "CharacterController", diagnostic: booleans.diagnostic, usage: "CharacterController boolean flags must be true or false." };
+    }
+    return {
+      componentKind: "CharacterController",
+      apply: (projectPath) => setCharacterControllerComponent({
+        blocking: booleans.values["--blocking"],
+        entityId,
+        grounding: readFlag(argv, "--grounding"),
+        moveXAxis: readFlag(argv, "--move-x"),
+        moveZAxis: readFlag(argv, "--move-z"),
+        projectPath,
+        sceneId,
+        slopeLimit: numbers.values["--slope-limit"],
+        speed: numbers.values["--speed"],
+        stepOffset: numbers.values["--step-offset"],
+      }),
+    };
+  }
+  return { apply: neverApply, componentKind: component, diagnostic: "TN_SCENE_ADD_COMPONENT_KIND_UNSUPPORTED", usage: sceneAddComponentUsage() };
+}
+
+function parseNumberFlags(argv: readonly string[], flags: readonly string[]): { diagnostic?: string; values: Record<string, number | undefined> } {
+  const values: Record<string, number | undefined> = {};
+  for (const flag of flags) {
+    const raw = readFlag(argv, flag);
+    if (raw === undefined) {
+      continue;
+    }
+    const value = Number(raw);
+    if (!Number.isFinite(value)) {
+      return { diagnostic: "TN_SCENE_NUMBER_INVALID", values };
+    }
+    values[flag] = value;
+  }
+  return { values };
+}
+
+function parseBooleanFlags(argv: readonly string[], flags: readonly string[]): { diagnostic?: string; values: Record<string, boolean | undefined> } {
+  const values: Record<string, boolean | undefined> = {};
+  for (const flag of flags) {
+    const raw = readFlag(argv, flag);
+    if (raw === undefined) {
+      continue;
+    }
+    if (raw !== "true" && raw !== "false") {
+      return { diagnostic: "TN_SCENE_BOOLEAN_INVALID", values };
+    }
+    values[flag] = raw === "true";
+  }
+  return { values };
+}
+
+function parseOptionalVectorFlag(argv: readonly string[], flag: string): { diagnostic?: string; value?: [number, number, number] } {
+  const raw = readFlag(argv, flag);
+  if (raw === undefined) {
+    return {};
+  }
+  const vector = parseVector3(raw);
+  return vector === undefined ? { diagnostic: "TN_SCENE_VECTOR_INVALID" } : { value: vector };
+}
+
+async function neverApply(): Promise<IAuthoringOperationResult> {
+  throw new Error("Invalid typed component command should not be applied.");
 }
 
 function parseTransformVectors(argv: readonly string[]): { diagnostic?: string; value?: { position?: [number, number, number]; rotation?: [number, number, number]; scale?: [number, number, number] } } {

@@ -521,6 +521,10 @@ function buildOperationArgs(row: IEditorPropertyRow, value: unknown): Record<str
     args[valueArg ?? "keys"] = value.map((item) => String(item).replace(/^keyboard\./, ""));
     return args;
   }
+  if (row.operation?.name === "input.add_axis" && Array.isArray(value)) {
+    args[valueArg ?? "positiveKeys"] = value.map((item) => String(item).replace(/^keyboard\./, ""));
+    return args;
+  }
   if (row.operation?.name === "system.attach_script" && isRecord(value)) {
     args.modulePath = typeof value.modulePath === "string" ? value.modulePath : args.modulePath;
     args.exportName = typeof value.exportName === "string" ? value.exportName : args.exportName;
@@ -628,7 +632,7 @@ function addObjectOperationPlan(action: IEditorModalActionDefinition, suffix: st
         entityId,
         operations: [
           { args: { entityId }, name: "scene.add_entity" },
-          { args: { componentKind: "Light", entityId, value: { intensity: 1, kind: "directional" } }, name: "scene.set_component" },
+          { args: { entityId, intensity: 1, kind: "directional" }, name: "scene.set_light" },
           { args: { entityId, position: [2, 4, 3] }, name: "scene.set_transform" },
         ],
         statusLabel: "light",

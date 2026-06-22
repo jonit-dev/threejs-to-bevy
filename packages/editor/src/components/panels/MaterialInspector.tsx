@@ -15,6 +15,26 @@ export function MaterialInspector({ row }: IMaterialInspectorProps) {
         <span>Roughness</span>
         <input readOnly value={row?.roughness?.toString() ?? ""} />
       </label>
+      <label className="tn-editor-field">
+        <span>Metalness</span>
+        <input readOnly value={row?.metalness?.toString() ?? ""} />
+      </label>
+      <label className="tn-editor-field">
+        <span>Base Color Texture</span>
+        <input readOnly value={row?.baseColorTexture ?? ""} />
+      </label>
+      <label className="tn-editor-field">
+        <span>Normal Texture</span>
+        <input readOnly value={row?.normalTexture ?? ""} />
+      </label>
+      <label className="tn-editor-field">
+        <span>Emissive</span>
+        <input readOnly value={row?.emissive ?? ""} />
+      </label>
+      <label className="tn-editor-field">
+        <span>Alpha Mode</span>
+        <input readOnly value={row?.alphaMode ?? ""} />
+      </label>
     </div>
   );
 }

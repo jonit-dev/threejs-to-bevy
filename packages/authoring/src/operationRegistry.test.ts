@@ -36,6 +36,75 @@ test("should dispatch promoted editor-safe operations", async () => {
   }
 });
 
+test("should dispatch existing structured source operations through the registry", async () => {
+  const root = await createRegistryProject();
+  try {
+    const operations = [
+      await dispatchAuthoringOperation({ args: { assetId: "model.player", path: "assets/player.glb", type: "model" }, name: "asset.add", projectPath: root }),
+      await dispatchAuthoringOperation({ args: { audioDocId: "arena" }, name: "audio.create", projectPath: root }),
+      await dispatchAuthoringOperation({ args: { asset: "sound.hit", audioDocId: "arena", soundId: "hit" }, name: "audio.add_sound", projectPath: root }),
+      await dispatchAuthoringOperation({ args: { materialId: "mat.player" }, name: "material.create", projectPath: root }),
+      await dispatchAuthoringOperation({
+        args: {
+          alphaMode: "mask",
+          baseColorTexture: "tex.player.albedo",
+          color: "#fff",
+          emissive: "#33ccff",
+          materialId: "mat.player",
+          metalness: 0.2,
+          normalTexture: "tex.player.normal",
+          roughness: 0.4,
+        },
+        name: "material.set",
+        projectPath: root,
+      }),
+      await dispatchAuthoringOperation({ args: { uiDocId: "hud" }, name: "ui.create", projectPath: root }),
+      await dispatchAuthoringOperation({ args: { text: "Score", nodeId: "score", uiDocId: "hud" }, name: "ui.add_text", projectPath: root }),
+      await dispatchAuthoringOperation({ args: { keys: ["Space"], actionId: "jump", inputDocId: "arena" }, name: "input.add_action", projectPath: root }),
+      await dispatchAuthoringOperation({ args: { axisId: "MoveX", inputDocId: "arena", negativeKeys: ["A"], positiveKeys: ["D"], value: "gamepad.leftStickX" }, name: "input.add_axis", projectPath: root }),
+      await dispatchAuthoringOperation({ args: { kind: "box", meshId: "mesh.player" }, name: "mesh.create_primitive", projectPath: root }),
+      await dispatchAuthoringOperation({ args: { prefabId: "player" }, name: "prefab.create", projectPath: root }),
+      await dispatchAuthoringOperation({ args: { componentKind: "RigidBody", prefabId: "player", value: { kind: "dynamic" } }, name: "prefab.add_component", projectPath: root }),
+      await dispatchAuthoringOperation({ args: { componentKind: "Light", entityId: "player", sceneId: "scene.arena", value: { color: "#ffffff", intensity: 1, kind: "point" } }, name: "scene.set_component", projectPath: root }),
+      await dispatchAuthoringOperation({ args: { entityId: "player", sceneId: "scene.arena", kind: "dynamic", mass: 3 }, name: "scene.set_rigid_body", projectPath: root }),
+    ];
+    const material = JSON.parse(await readFile(join(root, "content", "materials", "mat.player.materials.json"), "utf8")) as {
+      materials: Array<Record<string, unknown>>;
+    };
+    const asset = JSON.parse(await readFile(join(root, "content", "assets", "model.player.assets.json"), "utf8")) as {
+      assets: Array<{ id: string; path: string; type: string }>;
+    };
+    const audio = JSON.parse(await readFile(join(root, "content", "audio", "arena.audio.json"), "utf8")) as {
+      sounds: Array<{ asset: string; id: string }>;
+    };
+    const ui = JSON.parse(await readFile(join(root, "content", "ui", "hud.ui.json"), "utf8")) as {
+      nodes: Array<{ id: string; text: string; type: string }>;
+    };
+    const input = JSON.parse(await readFile(join(root, "content", "input", "arena.input.json"), "utf8")) as {
+      actions: Array<{ bindings: string[]; id: string }>;
+      axes: Array<{ id: string; negative: string[]; positive: string[]; value?: string }>;
+    };
+    const prefab = JSON.parse(await readFile(join(root, "content", "prefabs", "player.prefab.json"), "utf8")) as {
+      entities: Array<{ components?: Record<string, unknown>; id: string }>;
+    };
+    const scene = JSON.parse(await readFile(join(root, "content", "scenes", "arena.scene.json"), "utf8")) as {
+      entities: Array<{ components?: Record<string, unknown>; id: string }>;
+    };
+
+    assert.deepEqual(operations.map((operation) => operation.ok), Array.from({ length: operations.length }, () => true));
+    assert.deepEqual(asset.assets, [{ id: "model.player", path: "assets/player.glb", type: "model" }]);
+    assert.deepEqual(audio.sounds, [{ asset: "sound.hit", id: "hit" }]);
+    assert.deepEqual(material.materials, [{ alphaMode: "mask", baseColorTexture: "tex.player.albedo", color: "#fff", emissive: "#33ccff", id: "mat.player", metalness: 0.2, normalTexture: "tex.player.normal", roughness: 0.4 }]);
+    assert.deepEqual(ui.nodes, [{ id: "score", text: "Score", type: "text" }]);
+    assert.deepEqual(input.actions, [{ bindings: ["keyboard.Space"], id: "jump" }]);
+    assert.deepEqual(input.axes, [{ id: "MoveX", negative: ["keyboard.a"], positive: ["keyboard.d"], value: "gamepad.leftStickX" }]);
+    assert.deepEqual(prefab.entities[0]?.components, { RigidBody: { kind: "dynamic" } });
+    assert.deepEqual(scene.entities.find((entity) => entity.id === "player")?.components?.RigidBody, { kind: "dynamic", mass: 3 });
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should expose operation metadata and registry diagnostics", async () => {
   const descriptors = listAuthoringOperationDescriptors();
   const transform = getAuthoringOperationDescriptor("scene.set_transform");
@@ -43,14 +112,38 @@ test("should expose operation metadata and registry diagnostics", async () => {
   const unsupported = await dispatchAuthoringOperation({ args: {}, name: "scene.delete_entity", projectPath: "/project" });
 
   assert.deepEqual(AUTHORING_OPERATION_NAMES, [
+    "asset.add",
+    "audio.create",
+    "audio.add_sound",
+    "input.add_action",
+    "input.add_axis",
+    "material.create",
+    "material.set",
+    "mesh.create_primitive",
+    "prefab.create",
+    "prefab.add_component",
     "scene.add_entity",
+    "scene.add_prefab",
+    "scene.add_resource",
+    "scene.add_ui_node",
     "scene.set_transform",
     "scene.set_camera",
+    "scene.set_component",
+    "scene.set_camera_component",
+    "scene.set_light",
+    "scene.set_mesh_renderer",
+    "scene.set_rigid_body",
+    "scene.set_collider",
+    "scene.set_character_controller",
+    "scene.remove_component",
+    "scene.set_resource",
     "scene.attach_script",
     "scene.bind_ui",
+    "ui.create",
+    "ui.add_text",
     "ui.set_layout",
     "ui.bind",
-    "material.set",
+    "system.create",
     "system.attach_script",
   ]);
   assert.equal(descriptors.length, AUTHORING_OPERATION_NAMES.length);

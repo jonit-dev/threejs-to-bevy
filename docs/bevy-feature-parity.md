@@ -311,6 +311,7 @@ ergonomics. These rows are not implementation claims.
 - [x] `P1` Normal/occlusion texture refs plus authored specular, clearcoat, and transmission scalar factors
 - [x] `P1` Clearcoat, clearcoat-roughness, and transmission texture maps
 - [x] `P1` Specular texture maps
+- [x] `P1` Structured source/CLI/editor mutation for promoted material PBR fields and texture slots
 - [ ] `P3` Parallax mapping and depth maps (V10-02)
 - [ ] `P3` Anisotropy, specular tint, and advanced PBR fields (V10-02)
 - [x] `P1` Authored texture repeat/wrap/filter/UV transform controls in IR, web runtime mapping, native sampler/UV application, and conformance observations
@@ -468,6 +469,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P1` Mesh picking service for generated mesh renderer bounds in web and Bevy scripts
 - [x] `P1` Mouse/screen pointer ray generation for picking workflows
 - [x] `P1` Basic UI picking/action dispatch for web and Bevy buttons/touch controls
+- [x] `P1` Structured source/CLI/editor mutation for input actions and keyboard axes
 - [x] `P2` Drag-and-drop picking events
 - [x] `P2` Picking debug overlay
 - [x] `P1` Basic input rebinding helpers and device capability diagnostics
@@ -593,6 +595,8 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] Editor document classification for source, generated, runtime, and derived snapshots
 - [x] Structured editor source patch validation over durable source documents
 - [x] Shared authoring operation registry for CLI/MCP/editor mutation adapters
+- [x] Registry-backed CLI source mutation for asset catalogs and audio sound documents
+- [x] Typed CLI/source operations for common ECS components (`camera`, `light`, `mesh-renderer`, `rigid-body`, `collider`, `character-controller`)
 - [x] Editor workbench source inventory and structured operation dispatch
 - [x] Live preview edit classification with provenance-backed source mapping
 - [x] Deterministic structured bundle-relative JSON diffs

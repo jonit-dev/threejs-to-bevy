@@ -123,6 +123,38 @@ test("validateScene reports a missing requested scene with closest-id suggestion
   }
 });
 
+test("validateScene reports typed component diagnostics", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-scene-component-invalid-"));
+  try {
+    await writeScene(root, {
+      schema: "threenative.scene",
+      id: "scene.components",
+      entities: [
+        {
+          id: "player",
+          components: {
+            Light: { color: "", intensity: "bright", kind: "sun" },
+            RigidBody: { kind: "moving", mass: "heavy" },
+            Collider: { kind: "pyramid", size: [1, 2] },
+            CharacterController: { blocking: "yes", grounding: "floor", moveXAxis: "", speed: Number.NaN },
+          },
+        },
+      ],
+    });
+
+    const result = await validateScene({ projectPath: root, sceneId: "scene.components" });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "/entities/0/components/Light/kind" && diagnostic.code === "TN_AUTHORING_COMPONENT_VALUE_INVALID"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "/entities/0/components/Light/intensity" && diagnostic.code === "TN_AUTHORING_SHAPE_INVALID"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "/entities/0/components/RigidBody/kind" && diagnostic.code === "TN_AUTHORING_COMPONENT_VALUE_INVALID"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "/entities/0/components/Collider/size" && diagnostic.code === "TN_AUTHORING_SHAPE_INVALID"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "/entities/0/components/CharacterController/grounding" && diagnostic.code === "TN_AUTHORING_COMPONENT_VALUE_INVALID"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("scene mutations validate before writing deterministic source", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-scene-mutate-"));
   try {
