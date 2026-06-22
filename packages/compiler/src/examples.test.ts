@@ -284,6 +284,50 @@ test("should emit structured source environment documents", async () => {
   }
 });
 
+test("should emit structured source system metadata", async () => {
+  const projectPath = await mkdtemp(join(tmpdir(), "tn-structured-systems-"));
+  try {
+    await cp(resolve(process.cwd(), "../../templates/structured-source-starter"), projectPath, { recursive: true });
+    await writeFile(
+      join(projectPath, "content/systems/arena.systems.json"),
+      `${JSON.stringify({
+        schema: "threenative.systems",
+        version: "0.1.0",
+        id: "arena-systems",
+        systems: [
+          {
+            id: "move-player-to-goal",
+            schedule: "update",
+            script: {
+              module: "src/scripts/player.ts",
+              export: "movePlayerToGoal",
+            },
+            commands: [{ kind: "setComponent", entity: "player", component: "Transform" }],
+            queries: [{ with: ["Transform"], changed: ["Transform"], orderBy: "id", limit: 4 }],
+            reads: ["Transform"],
+            resourceReads: ["GameState"],
+            services: ["scene.change"],
+            writes: ["Transform"],
+          },
+        ],
+      }, null, 2)}\n`,
+    );
+
+    const { bundlePath } = await buildProject(projectPath);
+    const report = await validateBundle(bundlePath);
+    const systems = JSON.parse(await readFile(resolve(bundlePath, "systems.ir.json"), "utf8"));
+
+    assert.equal(report.ok, true);
+    assert.deepEqual(systems.systems[0].commands, [{ component: "Transform", entity: "player", kind: "setComponent" }]);
+    assert.deepEqual(systems.systems[0].queries, [{ changed: ["Transform"], limit: 4, orderBy: "id", with: ["Transform"], without: [] }]);
+    assert.equal(systems.systems[0].schedule, "fixedUpdate");
+    assert.deepEqual(systems.systems[0].resourceReads, ["GameState"]);
+    assert.deepEqual(systems.systems[0].services, ["scene.change"]);
+  } finally {
+    await rm(projectPath, { force: true, recursive: true });
+  }
+});
+
 test("should build v6 functional example", async () => {
   const projectPath = resolve(process.cwd(), "../../examples/v6-functional");
   const { bundlePath } = await buildProject(projectPath);

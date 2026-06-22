@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { loadAuthoringProject, validateScene, type ISceneDocument, type IScenePrefab, type ISceneTransform } from "@threenative/authoring";
+import { loadAuthoringProject, validateAuthoringProject, validateScene, type ISceneDocument, type IScenePrefab, type ISceneTransform } from "@threenative/authoring";
 import {
   AmbientLight,
   BoxGeometry,
@@ -23,8 +23,14 @@ import {
   defineScene,
   defineWorldModule,
   fixedUpdate,
+  postUpdate,
+  startup,
   modelAsset,
+  update,
+  type CommandDeclaration,
   type IEcsDeclaration,
+  type IQueryDeclaration,
+  type SystemService,
 } from "@threenative/sdk";
 
 import { CompilerError } from "./errors.js";
@@ -62,7 +68,8 @@ export async function captureSceneDocumentEntry(projectPath: string, entryPath: 
 
   const scene = JSON.parse(await readFile(entryPath, "utf8")) as ISceneDocument;
   const environment = await readStructuredEnvironmentDeclaration(projectPath);
-  const root = lowerSceneDocument(entryRelativePath, scene, environment);
+  const systems = await readStructuredSystems(projectPath);
+  const root = lowerSceneDocument(entryRelativePath, scene, environment, systems);
   return {
     diagnostics: [],
     graph: sceneAuthoringGraph(projectPath, entryPath, scene),
@@ -71,7 +78,12 @@ export async function captureSceneDocumentEntry(projectPath: string, entryPath: 
   };
 }
 
-function lowerSceneDocument(sourcePath: string, scene: ISceneDocument, environment: IEnvironmentDeclaration | undefined): unknown {
+function lowerSceneDocument(
+  sourcePath: string,
+  scene: ISceneDocument,
+  environment: IEnvironmentDeclaration | undefined,
+  systemsMetadata: readonly SourceSystem[],
+): unknown {
   const visualScene = new Scene({ id: scene.id });
   const prefabs = new Map((scene.prefabs ?? []).map((prefab) => [prefab.id, prefab]));
   const entities = [...(scene.entities ?? [])].sort((left, right) => left.id.localeCompare(right.id));
@@ -113,19 +125,27 @@ function lowerSceneDocument(sourcePath: string, scene: ISceneDocument, environme
   }
 
   const world = defineWorldModule({ entities: worldEntities, resources: worldResources });
-  for (const system of [...(scene.systems ?? [])].sort((left, right) => left.id.localeCompare(right.id))) {
+  for (const system of mergedSceneSystems(scene.systems ?? [], systemsMetadata)) {
     if (system.script === undefined) {
       continue;
     }
     world.addSystem(
-      fixedUpdate(system.id, {
-        queries: [defineQuery({ with: [PrefabTransform] })],
-        reads: [PrefabTransform],
+      systemDeclaration(system.schedule, system.id, {
+        after: system.after,
+        before: system.before,
+        commands: systemCommands(system.commands),
+        eventReads: system.eventReads,
+        eventWrites: system.eventWrites,
+        queries: systemQueries(system.queries),
+        reads: system.reads ?? [PrefabTransform],
+        resourceReads: system.resourceReads,
+        resourceWrites: system.resourceWrites,
         script: {
           export: system.script.export,
           module: system.script.module,
         },
-        writes: [PrefabTransform],
+        services: system.services as SystemService[] | undefined,
+        writes: system.writes ?? [PrefabTransform],
       }),
     );
   }
@@ -150,6 +170,71 @@ function lowerSceneDocument(sourcePath: string, scene: ISceneDocument, environme
         world,
       }),
     ],
+  });
+}
+
+function mergedSceneSystems(sceneSystems: readonly SourceSystem[], systemsMetadata: readonly SourceSystem[]): SourceSystem[] {
+  const systems = new Map<string, SourceSystem>();
+  for (const system of systemsMetadata) {
+    systems.set(system.id, system);
+  }
+  for (const system of sceneSystems) {
+    systems.set(system.id, { ...(systems.get(system.id) ?? {}), ...system });
+  }
+  return [...systems.values()].sort((left, right) => left.id.localeCompare(right.id));
+}
+
+function systemDeclaration(schedule: string | undefined, id: string, options: Parameters<typeof fixedUpdate>[1]): ReturnType<typeof fixedUpdate> {
+  if (schedule === "startup") {
+    return startup(id, options);
+  }
+  if (schedule === "update") {
+    return update(id, options);
+  }
+  if (schedule === "postUpdate") {
+    return postUpdate(id, options);
+  }
+  return fixedUpdate(id, options);
+}
+
+type SourceSystem = NonNullable<ISceneDocument["systems"]>[number];
+
+function systemQueries(queries: SourceSystem["queries"]): IQueryDeclaration[] {
+  const sourceQueries: NonNullable<SourceSystem["queries"]> = queries ?? [{ with: ["Transform"] }];
+  return sourceQueries.map((query) => defineQuery({
+    changed: query.changed,
+    limit: query.limit,
+    offset: query.offset,
+    orderBy: query.orderBy,
+    with: query.with ?? [],
+    without: query.without ?? [],
+  }));
+}
+
+function systemCommands(commands: SourceSystem["commands"]): CommandDeclaration[] {
+  return (commands ?? []).flatMap((command): CommandDeclaration[] => {
+    if (command.kind === "spawn" && command.entity !== undefined) {
+      return [{ components: command.components ?? [], entity: command.entity, kind: "spawn", schemas: [] }];
+    }
+    if (command.kind === "despawn" && command.entity !== undefined) {
+      return [{ entity: command.entity, kind: "despawn" }];
+    }
+    if ((command.kind === "addComponent" || command.kind === "removeComponent" || command.kind === "setComponent") && command.entity !== undefined && command.component !== undefined) {
+      return [{ component: command.component, entity: command.entity, kind: command.kind }];
+    }
+    if (command.kind === "emitEvent" && command.event !== undefined) {
+      return [{ event: command.event, kind: "emitEvent" }];
+    }
+    if (command.kind === "instantiate" && command.prefab !== undefined && command.prefix !== undefined) {
+      return [{ kind: "instantiate", prefab: command.prefab, prefix: command.prefix }];
+    }
+    if (command.kind === "setParent" && command.child !== undefined && command.parent !== undefined) {
+      return [{ child: command.child, kind: "setParent", parent: command.parent }];
+    }
+    if (command.kind === "clearParent" && command.child !== undefined) {
+      return [{ child: command.child, kind: "clearParent" }];
+    }
+    return [];
   });
 }
 
@@ -178,6 +263,26 @@ async function readStructuredEnvironmentDeclaration(projectPath: string): Promis
     ...(readRecord(data.walkability) === undefined ? {} : { walkability: readRecord(data.walkability) }),
   };
   return declaration as unknown as IEnvironmentDeclaration;
+}
+
+async function readStructuredSystems(projectPath: string): Promise<SourceSystem[]> {
+  const validation = await validateAuthoringProject({ projectPath });
+  const validationError = validation.diagnostics.find((diagnostic) => diagnostic.severity === "error");
+  if (validationError !== undefined) {
+    throw new CompilerError(validationError.code, validationError.message, {
+      code: validationError.code,
+      file: validationError.file,
+      message: validationError.message,
+      path: validationError.path ?? "",
+      severity: "error",
+      suggestion: validationError.suggestion,
+    });
+  }
+  const project = await loadAuthoringProject({ projectPath });
+  return project.documents
+    .filter((document) => document.kind === "systems" && readRecord(document.data) !== undefined)
+    .flatMap((document) => readRecordArray(readRecord(document.data)?.systems) as unknown as SourceSystem[])
+    .sort((left, right) => left.id.localeCompare(right.id));
 }
 
 function hasAuthoredRuntimeVisual(components: Record<string, unknown> | undefined): boolean {

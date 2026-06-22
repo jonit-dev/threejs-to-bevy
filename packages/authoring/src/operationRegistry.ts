@@ -41,6 +41,7 @@ import {
   setRuntimeWindow,
   setRigidBodyComponent,
   setSceneLifecycle,
+  setSystemMetadata,
   setTransform,
   setUiLayout,
   setUiStyle,
@@ -87,6 +88,7 @@ export type AuthoringOperationName =
   | "scene.set_transform"
   | "system.attach_script"
   | "system.create"
+  | "system.set_metadata"
   | "ui.add_text"
   | "ui.add_node"
   | "ui.bind"
@@ -101,7 +103,7 @@ export type AuthoringOperationResultShape = "authoring-operation-result";
 export interface IAuthoringOperationArgumentDescriptor {
   name: string;
   required: boolean;
-  type: "boolean" | "json-object" | "json-value" | "number" | "string" | "string-array" | "vector3";
+  type: "boolean" | "json-object" | "json-object-array" | "json-value" | "number" | "string" | "string-array" | "vector3";
 }
 
 export interface IAuthoringOperationDescriptor {
@@ -402,6 +404,20 @@ const descriptors = [
     stringArg("modulePath"),
     stringArg("exportName"),
   ]),
+  descriptor("system.set_metadata", "Set system access, query, command, service, and ordering metadata.", "system", "source-document", [
+    stringArg("systemId"),
+    stringArrayArg("after", false),
+    stringArrayArg("before", false),
+    objectArrayArg("commands", false),
+    stringArrayArg("eventReads", false),
+    stringArrayArg("eventWrites", false),
+    objectArrayArg("queries", false),
+    stringArrayArg("reads", false),
+    stringArrayArg("resourceReads", false),
+    stringArrayArg("resourceWrites", false),
+    stringArrayArg("services", false),
+    stringArrayArg("writes", false),
+  ]),
 ] as const satisfies readonly IAuthoringOperationDescriptor[];
 
 const dispatchers: Record<AuthoringOperationName, OperationDispatcher> = {
@@ -503,6 +519,22 @@ const dispatchers: Record<AuthoringOperationName, OperationDispatcher> = {
     attachSystemScript({ exportName: requiredString(args, "exportName"), modulePath: requiredString(args, "modulePath"), projectPath, systemId: requiredString(args, "systemId") }),
   "system.create": async ({ args, projectPath }) =>
     createSystem({ projectPath, schedule: requiredString(args, "schedule"), systemId: requiredString(args, "systemId") }),
+  "system.set_metadata": async ({ args, projectPath }) =>
+    setSystemMetadata({
+      after: optionalStringArray(args, "after"),
+      before: optionalStringArray(args, "before"),
+      commands: optionalObjectArray(args, "commands"),
+      eventReads: optionalStringArray(args, "eventReads"),
+      eventWrites: optionalStringArray(args, "eventWrites"),
+      projectPath,
+      queries: optionalObjectArray(args, "queries"),
+      reads: optionalStringArray(args, "reads"),
+      resourceReads: optionalStringArray(args, "resourceReads"),
+      resourceWrites: optionalStringArray(args, "resourceWrites"),
+      services: optionalStringArray(args, "services"),
+      systemId: requiredString(args, "systemId"),
+      writes: optionalStringArray(args, "writes"),
+    }),
   "ui.add_text": async ({ args, projectPath }) =>
     addUiText({ nodeId: requiredString(args, "nodeId"), projectPath, text: requiredString(args, "text"), uiDocId: requiredString(args, "uiDocId") }),
   "ui.add_node": async ({ args, projectPath }) =>
@@ -592,6 +624,9 @@ function validateRegistryArguments(operation: IAuthoringOperationDescriptor, arg
     if (argument.type === "json-object" && !isObject(value)) {
       return [invalidArgumentDiagnostic(operation.name, argument.name, "a JSON object")];
     }
+    if (argument.type === "json-object-array" && (!Array.isArray(value) || !value.every(isObject))) {
+      return [invalidArgumentDiagnostic(operation.name, argument.name, "an array of JSON objects")];
+    }
     if (argument.type === "string-array" && !isStringArray(value)) {
       return [invalidArgumentDiagnostic(operation.name, argument.name, "an array of non-empty strings")];
     }
@@ -644,6 +679,10 @@ function objectArg(name: string, required = true): IAuthoringOperationArgumentDe
   return { name, required, type: "json-object" };
 }
 
+function objectArrayArg(name: string, required = true): IAuthoringOperationArgumentDescriptor {
+  return { name, required, type: "json-object-array" };
+}
+
 function stringArg(name: string, required = true): IAuthoringOperationArgumentDescriptor {
   return { name, required, type: "string" };
 }
@@ -688,6 +727,11 @@ function optionalString(args: Record<string, unknown>, key: string): string | un
 function optionalStringArray(args: Record<string, unknown>, key: string): string[] | undefined {
   const value = args[key];
   return isStringArray(value) ? value : undefined;
+}
+
+function optionalObjectArray(args: Record<string, unknown>, key: string): Record<string, unknown>[] | undefined {
+  const value = args[key];
+  return Array.isArray(value) && value.every(isObject) ? value : undefined;
 }
 
 function optionalNumber(args: Record<string, unknown>, key: string): number | undefined {

@@ -65,7 +65,9 @@ import {
   supportedUiTextAlignments,
   supportedUiTextDecorations,
   uiDocumentSchema,
+  systemCommandKeys,
   systemKeys,
+  systemQueryKeys,
   transformKeys,
   uiBindingKeys,
   uiKeys,
@@ -496,6 +498,21 @@ export interface IAttachSystemScriptOptions extends IAuthoringOperationContext {
   systemId: string;
   modulePath: string;
   exportName: string;
+}
+
+export interface ISetSystemMetadataOptions extends IAuthoringOperationContext {
+  after?: readonly string[];
+  before?: readonly string[];
+  commands?: readonly Record<string, unknown>[];
+  eventReads?: readonly string[];
+  eventWrites?: readonly string[];
+  queries?: readonly Record<string, unknown>[];
+  reads?: readonly string[];
+  resourceReads?: readonly string[];
+  resourceWrites?: readonly string[];
+  services?: readonly string[];
+  systemId: string;
+  writes?: readonly string[];
 }
 
 export interface ISceneInspection {
@@ -1604,6 +1621,41 @@ export async function attachSystemScript(options: IAttachSystemScriptOptions): P
     return [];
   });
 }
+
+export async function setSystemMetadata(options: ISetSystemMetadataOptions): Promise<IAuthoringOperationResult> {
+  return mutateSourceDocument(options, "systems", options.systemId, (data, file) => {
+    const systems = ensureArrayProperty(data, "systems");
+    const system = findSceneItem(systems, options.systemId);
+    if (system === undefined) {
+      return [missingReferenceDiagnostic(file, "/systems", "system", options.systemId, idsFromArray(systems))];
+    }
+    for (const key of systemStringListMetadataKeys) {
+      const value = options[key];
+      if (value !== undefined) {
+        system[key] = sortedStringList(value);
+      }
+    }
+    if (options.queries !== undefined) {
+      system.queries = options.queries.map((query) => cloneJson(query));
+    }
+    if (options.commands !== undefined) {
+      system.commands = options.commands.map((command) => cloneJson(command));
+    }
+    return [];
+  });
+}
+
+const systemStringListMetadataKeys = [
+  "after",
+  "before",
+  "eventReads",
+  "eventWrites",
+  "reads",
+  "resourceReads",
+  "resourceWrites",
+  "services",
+  "writes",
+] as const;
 
 function defaultRuntimeConfigData(runtimeId: string): Record<string, unknown> {
   return {
@@ -2750,6 +2802,12 @@ function validateOptionalNumber(diagnostics: IAuthoringDiagnostic[], file: strin
   }
 }
 
+function validateOptionalNonNegativeInteger(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, message: string): void {
+  if (value !== undefined && (!Number.isInteger(value) || Number(value) < 0)) {
+    diagnostics.push(typeDiagnostic(file, path, message, value));
+  }
+}
+
 function validateRequiredString(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, message: string): void {
   if (readString(value) === undefined) {
     diagnostics.push(typeDiagnostic(file, path, message, value));
@@ -2887,7 +2945,94 @@ async function validateSystems(
     if (system.script !== undefined) {
       await validateScriptReference(diagnostics, projectPath, file, `${path}/script`, system.script);
     }
+    for (const key of systemStringListMetadataKeys) {
+      validateStringList(diagnostics, file, `${path}/${key}`, system[key], `system ${key} must be an array of non-empty strings.`);
+    }
+    validateSystemQueries(diagnostics, file, `${path}/queries`, system.queries);
+    validateSystemCommands(diagnostics, file, `${path}/commands`, system.commands);
   }
+}
+
+function validateSystemQueries(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown): void {
+  const queries = readArray(value);
+  if (value !== undefined && queries === undefined) {
+    diagnostics.push(typeDiagnostic(file, path, "system queries must be an array.", value));
+    return;
+  }
+  for (const [index, query] of queries?.entries() ?? []) {
+    const queryPath = `${path}/${index}`;
+    if (!isRecord(query)) {
+      diagnostics.push(typeDiagnostic(file, queryPath, "system query must be an object.", query));
+      continue;
+    }
+    diagnostics.push(...unknownKeyDiagnostics(file, queryPath, query, systemQueryKeys));
+    validateStringList(diagnostics, file, `${queryPath}/with`, query.with, "system query with must be an array of non-empty component names.");
+    validateStringList(diagnostics, file, `${queryPath}/without`, query.without, "system query without must be an array of non-empty component names.");
+    validateStringList(diagnostics, file, `${queryPath}/changed`, query.changed, "system query changed must be an array of non-empty component names.");
+    validateOptionalNonNegativeInteger(diagnostics, file, `${queryPath}/limit`, query.limit, "system query limit must be a non-negative integer.");
+    validateOptionalNonNegativeInteger(diagnostics, file, `${queryPath}/offset`, query.offset, "system query offset must be a non-negative integer.");
+    if (query.orderBy !== undefined && query.orderBy !== "id") {
+      diagnostics.push(typeDiagnostic(file, `${queryPath}/orderBy`, "system query orderBy must be 'id'.", query.orderBy));
+    }
+  }
+}
+
+function validateSystemCommands(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown): void {
+  const commands = readArray(value);
+  if (value !== undefined && commands === undefined) {
+    diagnostics.push(typeDiagnostic(file, path, "system commands must be an array.", value));
+    return;
+  }
+  for (const [index, command] of commands?.entries() ?? []) {
+    const commandPath = `${path}/${index}`;
+    if (!isRecord(command)) {
+      diagnostics.push(typeDiagnostic(file, commandPath, "system command must be an object.", command));
+      continue;
+    }
+    diagnostics.push(...unknownKeyDiagnostics(file, commandPath, command, systemCommandKeys));
+    const kind = readString(command.kind);
+    if (kind === undefined) {
+      diagnostics.push(typeDiagnostic(file, `${commandPath}/kind`, "system command kind must be a non-empty string.", command.kind));
+      continue;
+    }
+    validateSystemCommandShape(diagnostics, file, commandPath, kind, command);
+  }
+}
+
+function validateSystemCommandShape(diagnostics: IAuthoringDiagnostic[], file: string, path: string, kind: string, command: Record<string, unknown>): void {
+  if (kind === "spawn") {
+    validateRequiredString(diagnostics, file, `${path}/entity`, command.entity, "spawn command entity must be a non-empty entity id.");
+    validateStringList(diagnostics, file, `${path}/components`, command.components, "spawn command components must be an array of non-empty component names.");
+    return;
+  }
+  if (kind === "despawn") {
+    validateRequiredString(diagnostics, file, `${path}/entity`, command.entity, "despawn command entity must be a non-empty entity id.");
+    return;
+  }
+  if (kind === "addComponent" || kind === "removeComponent" || kind === "setComponent") {
+    validateRequiredString(diagnostics, file, `${path}/entity`, command.entity, `${kind} command entity must be a non-empty entity id.`);
+    validateRequiredString(diagnostics, file, `${path}/component`, command.component, `${kind} command component must be a non-empty component name.`);
+    return;
+  }
+  if (kind === "emitEvent") {
+    validateRequiredString(diagnostics, file, `${path}/event`, command.event, "emitEvent command event must be a non-empty event name.");
+    return;
+  }
+  if (kind === "instantiate") {
+    validateRequiredString(diagnostics, file, `${path}/prefab`, command.prefab, "instantiate command prefab must be a non-empty prefab id.");
+    validateRequiredString(diagnostics, file, `${path}/prefix`, command.prefix, "instantiate command prefix must be a non-empty entity id prefix.");
+    return;
+  }
+  if (kind === "setParent") {
+    validateRequiredString(diagnostics, file, `${path}/child`, command.child, "setParent command child must be a non-empty entity id.");
+    validateRequiredString(diagnostics, file, `${path}/parent`, command.parent, "setParent command parent must be a non-empty entity id.");
+    return;
+  }
+  if (kind === "clearParent") {
+    validateRequiredString(diagnostics, file, `${path}/child`, command.child, "clearParent command child must be a non-empty entity id.");
+    return;
+  }
+  diagnostics.push(typeDiagnostic(file, `${path}/kind`, "system command kind must be one of spawn, despawn, addComponent, removeComponent, setComponent, emitEvent, instantiate, setParent, or clearParent.", kind));
 }
 
 async function validateScriptReference(
@@ -3001,6 +3146,10 @@ function idsFromArray(value: unknown): string[] {
     .map((item) => (isRecord(item) ? readString(item.id) : undefined))
     .filter(isString)
     .sort();
+}
+
+function sortedStringList(value: readonly string[]): string[] {
+  return [...new Set(value)].sort((left, right) => left.localeCompare(right));
 }
 
 function collectMaterialIdsForProject(project: IAuthoringProject): string[] {

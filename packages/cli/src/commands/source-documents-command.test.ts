@@ -244,6 +244,57 @@ test("system command attaches script ref without generating script source", asyn
   }
 });
 
+test("system command sets access query command and service metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-system-metadata-"));
+  try {
+    await writeProjectFile(root, "src/scripts/kart.ts", "export function kartArcadePhysics() {}\n");
+    const create = await systemCommand(["create", "kart-physics", "--schedule", "update", "--project", root, "--json"]);
+    const attach = await systemCommand(["attach-script", "kart-physics", "--module", "src/scripts/kart.ts", "--export", "kartArcadePhysics", "--project", root, "--json"]);
+    const metadata = await systemCommand([
+      "set-metadata",
+      "kart-physics",
+      "--reads",
+      "Transform,Velocity",
+      "--writes",
+      "Transform",
+      "--resource-reads",
+      "RaceState",
+      "--event-writes",
+      "LapCompleted",
+      "--services",
+      "physics.raycast,scene.change",
+      "--queries",
+      "[{\"with\":[\"Transform\"],\"without\":[\"Sleeping\"],\"changed\":[\"Velocity\"],\"orderBy\":\"id\",\"limit\":4}]",
+      "--commands",
+      "[{\"kind\":\"emitEvent\",\"event\":\"LapCompleted\"}]",
+      "--project",
+      root,
+      "--json",
+    ]);
+    const doc = JSON.parse(await readFile(join(root, "content", "systems", "kart-physics.systems.json"), "utf8")) as {
+      systems: Array<Record<string, unknown>>;
+    };
+
+    assert.equal(create.exitCode, 0);
+    assert.equal(attach.exitCode, 0);
+    assert.equal(metadata.exitCode, 0);
+    assert.deepEqual(doc.systems[0], {
+      id: "kart-physics",
+      schedule: "update",
+      script: { export: "kartArcadePhysics", module: "src/scripts/kart.ts" },
+      commands: [{ kind: "emitEvent", event: "LapCompleted" }],
+      eventWrites: ["LapCompleted"],
+      queries: [{ with: ["Transform"], without: ["Sleeping"], changed: ["Velocity"], orderBy: "id", limit: 4 }],
+      reads: ["Transform", "Velocity"],
+      resourceReads: ["RaceState"],
+      services: ["physics.raycast", "scene.change"],
+      writes: ["Transform"],
+    });
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("prefab input and mesh operations write deterministic structured docs", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-cli-source-docs-"));
   try {

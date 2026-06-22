@@ -22,6 +22,7 @@ import {
   setEnvironmentTerrain,
   setRuntimeRendering,
   setRuntimeWindow,
+  setSystemMetadata,
   setUiLayout,
   setUiStyle,
   type IAuthoringOperationResult,
@@ -498,7 +499,41 @@ export async function systemCommand(argv: readonly string[], options: ISourceCom
     return renderAuthoringResult("system", await attachSystemScript({ projectPath, systemId, modulePath, exportName }), json, `Script attached to system '${systemId}'.`);
   }
 
-  return renderUsage(json, "TN_SYSTEM_COMMAND_UNKNOWN", "Usage: tn system create|attach-script ... [--json]");
+  if (subcommand === "set-metadata") {
+    if (systemId === undefined) {
+      return renderUsage(json, "TN_SYSTEM_SET_METADATA_ARGS_MISSING", systemSetMetadataUsage());
+    }
+    const queries = parseJsonArrayFlag(normalizedArgv, "--queries", "TN_SYSTEM_QUERIES_INVALID");
+    if (queries.diagnostic !== undefined) {
+      return renderUsage(json, queries.diagnostic, "System --queries must be a JSON array of query objects.");
+    }
+    const commands = parseJsonArrayFlag(normalizedArgv, "--commands", "TN_SYSTEM_COMMANDS_INVALID");
+    if (commands.diagnostic !== undefined) {
+      return renderUsage(json, commands.diagnostic, "System --commands must be a JSON array of command objects.");
+    }
+    return renderAuthoringResult(
+      "system",
+      await setSystemMetadata({
+        after: readCsvFlag(normalizedArgv, "--after"),
+        before: readCsvFlag(normalizedArgv, "--before"),
+        commands: commands.value,
+        eventReads: readCsvFlag(normalizedArgv, "--event-reads"),
+        eventWrites: readCsvFlag(normalizedArgv, "--event-writes"),
+        projectPath,
+        queries: queries.value,
+        reads: readCsvFlag(normalizedArgv, "--reads"),
+        resourceReads: readCsvFlag(normalizedArgv, "--resource-reads"),
+        resourceWrites: readCsvFlag(normalizedArgv, "--resource-writes"),
+        services: readCsvFlag(normalizedArgv, "--services"),
+        systemId,
+        writes: readCsvFlag(normalizedArgv, "--writes"),
+      }),
+      json,
+      `System metadata '${systemId}' updated.`,
+    );
+  }
+
+  return renderUsage(json, "TN_SYSTEM_COMMAND_UNKNOWN", "Usage: tn system create|attach-script|set-metadata ... [--json]");
 }
 
 function renderAuthoringResult(group: string, result: IAuthoringOperationResult, json: boolean, successMessage: string): ICommandResult {
@@ -585,6 +620,21 @@ function parseJsonFlag(argv: readonly string[], flag: string): { diagnostic?: st
   } catch {
     return { diagnostic: "TN_AUTHORING_JSON_VALUE_INVALID" };
   }
+}
+
+function parseJsonArrayFlag(argv: readonly string[], flag: string, diagnosticCode: string): { diagnostic?: string; value?: Record<string, unknown>[] } {
+  const parsed = parseJsonFlag(argv, flag);
+  if (parsed.diagnostic !== undefined || parsed.value === undefined) {
+    return parsed as { diagnostic?: string; value?: Record<string, unknown>[] };
+  }
+  if (!Array.isArray(parsed.value) || !parsed.value.every(isRecord)) {
+    return { diagnostic: diagnosticCode };
+  }
+  return { value: parsed.value };
+}
+
+function systemSetMetadataUsage(): string {
+  return "Usage: tn system set-metadata <system-id> [--reads A,B] [--writes A,B] [--resource-reads R] [--resource-writes R] [--event-reads E] [--event-writes E] [--services service.name] [--queries '<json-array>'] [--commands '<json-array>'] [--after system] [--before system] [--project <path>] [--json]";
 }
 
 function parseOptionalNumber(argv: readonly string[], flag: string): { diagnostic?: string; value?: number } {

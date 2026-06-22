@@ -367,7 +367,18 @@ function systemsFromBundle(data: unknown): ISystemsDocument & { provenance: Reco
     .filter(isRecord)
     .map((system): ISceneSystem => ({
       id: readString(system.id) ?? readString(system.name) ?? "invalid-system-id",
+      ...copyStringList(system.after, "after"),
+      ...copyStringList(system.before, "before"),
+      ...copyRecordArray(system.commands, "commands"),
+      ...copyStringList(system.eventReads, "eventReads"),
+      ...copyStringList(system.eventWrites, "eventWrites"),
+      ...copyRecordArray(system.queries, "queries"),
+      ...copyStringList(system.reads, "reads"),
+      ...copyStringList(system.resourceReads, "resourceReads"),
+      ...copyStringList(system.resourceWrites, "resourceWrites"),
+      ...copyStringList(system.services, "services"),
       ...(readString(system.schedule) === undefined ? {} : { schedule: readString(system.schedule) }),
+      ...copyStringList(system.writes, "writes"),
     }))
     .sort((left, right) => left.id.localeCompare(right.id));
 
@@ -378,6 +389,16 @@ function systemsFromBundle(data: unknown): ISystemsDocument & { provenance: Reco
     systems,
     provenance: importProvenance("systems.ir.json"),
   };
+}
+
+function copyStringList(value: unknown, key: string): Record<string, string[]> {
+  const items = readArray(value)?.map(readString).filter(isString).sort() ?? [];
+  return items.length === 0 ? {} : { [key]: items };
+}
+
+function copyRecordArray(value: unknown, key: string): Record<string, Record<string, unknown>[]> {
+  const items = readArray(value)?.filter(isRecord).map((item) => JSON.parse(JSON.stringify(item)) as Record<string, unknown>) ?? [];
+  return items.length === 0 ? {} : { [key]: items };
 }
 
 function audioFromBundle(data: unknown): IAudioDocument & { provenance: Record<string, unknown> } {
@@ -442,6 +463,10 @@ function formatInputBinding(value: unknown): string {
 
 function readNumber(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function isString(value: unknown): value is string {
+  return typeof value === "string";
 }
 
 function readMaterialAlphaMode(value: unknown): IMaterialDeclaration["alphaMode"] | undefined {

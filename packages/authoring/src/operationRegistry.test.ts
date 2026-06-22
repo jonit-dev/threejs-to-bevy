@@ -167,9 +167,10 @@ test("should expose operation metadata and registry diagnostics", async () => {
     "ui.set_layout",
     "ui.bind",
     "ui.set_style",
-    "system.create",
-    "system.attach_script",
-  ]);
+	    "system.create",
+	    "system.attach_script",
+	    "system.set_metadata",
+	  ]);
   assert.equal(descriptors.length, AUTHORING_OPERATION_NAMES.length);
   assert.equal(transform?.pathPolicy, "source-document");
   assert.equal(transform?.sourceFamily, "scene");

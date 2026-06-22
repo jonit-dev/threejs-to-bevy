@@ -31,7 +31,7 @@ test("bundle-command imports rich bundle catalogs into structured source", async
     const scene = JSON.parse(await readFile(join(root, "content/scenes/imported.scene.json"), "utf8")) as { entities: Array<{ id: string }> };
     const systems = JSON.parse(await readFile(join(root, "content/systems/imported.systems.json"), "utf8")) as { systems: Array<{ script?: unknown }> };
     assert.equal(scene.entities[0]?.id, "player");
-    assert.deepEqual(systems.systems, [{ id: "raceController", schedule: "update" }]);
+    assert.deepEqual(systems.systems, [{ id: "raceController", queries: [{ with: ["Transform"], without: [] }], reads: ["Transform"], schedule: "update", services: ["scene.change"], writes: ["Transform"] }]);
     await assert.rejects(readFile(join(root, "content/scenes/world.ir.json"), "utf8"));
     await assert.rejects(readFile(join(root, "src/scripts/imported.ts"), "utf8"));
   } finally {
@@ -98,7 +98,17 @@ async function writeRichBundle(root: string): Promise<void> {
   });
   await writeBundleJson(root, "systems.ir.json", {
     schema: "threenative.systems",
-    systems: [{ name: "raceController", schedule: "update", script: { bundle: "scripts.bundle.js", exportName: "system_raceController" } }],
+    systems: [
+      {
+        name: "raceController",
+        queries: [{ with: ["Transform"], without: [] }],
+        reads: ["Transform"],
+        schedule: "update",
+        script: { bundle: "scripts.bundle.js", exportName: "system_raceController" },
+        services: ["scene.change"],
+        writes: ["Transform"],
+      },
+    ],
   });
   await writeBundleText(root, "scripts.bundle.js", "export function system_raceController() {}\n");
 }

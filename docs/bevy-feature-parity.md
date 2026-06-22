@@ -132,6 +132,11 @@ remaining gaps by usefulness for building and shipping ordinary 3D games:
   evidence: scene-local input maps, system schedules, and UI roots lower into
   bundle documents with scoped scene references, and web/Bevy scene managers
   expose matching active/additive `activeScopes` snapshots.
+- `P1` Source-authored system metadata now persists through structured
+  `content/systems/*.systems.json` documents and `tn system set-metadata`,
+  imports generated bundle metadata back to source, and lowers access lists,
+  ordering, query declarations, service declarations, and command declarations
+  into `systems.ir.json`.
 - `P1` Portable scripting host conformance is backed by the service matrix,
   focused web and Bevy effect-validation tests that reject undeclared
   component/resource/event/command/service effects before mutation, canonical

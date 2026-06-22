@@ -147,7 +147,7 @@ const commands: Record<string, ICommandDefinition> = {
   system: {
     description: "Create and mutate structured system source documents.",
     implemented: true,
-    usage: "tn system create <system-id> --schedule <schedule> [--project <path>] [--json]\n              tn system attach-script <system-id> --module <path> --export <name> [--project <path>] [--json]",
+    usage: "tn system create <system-id> --schedule <schedule> [--project <path>] [--json]\n              tn system attach-script <system-id> --module <path> --export <name> [--project <path>] [--json]\n              tn system set-metadata <system-id> [--reads A,B] [--writes A,B] [--queries <json-array>] [--commands <json-array>] [--services service.name] [--project <path>] [--json]",
   },
   ui: {
     description: "Create and mutate structured retained UI source documents.",

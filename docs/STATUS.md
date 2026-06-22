@@ -123,8 +123,12 @@ metalness, emissive, alpha, promoted texture-slot, clearcoat,
 and transmission fields, declare primitive mesh source docs, create prefab docs
 and component values, add input actions and axes from key lists, add asset catalog
 entries, create audio docs, add audio sound declarations, and create systems
-with module/export script references. Environment source commands now create
-environment docs and set promoted skybox, environment-map, and terrain fields.
+with module/export script references. Systems source commands now set promoted
+access lists, ordering, query metadata, service declarations, and command
+declarations, and bundle import preserves those fields back into
+`content/systems/*.systems.json` source documents. Environment source commands
+now create environment docs and set promoted skybox, environment-map, and
+terrain fields.
 Project metadata source commands now create or update `content/project.authoring.json`
 for project id, authoring version, source roots, and build targets, with matching
 editor rows.
@@ -138,9 +142,11 @@ scene kind, activation policy, and initial-scene metadata through
 `tn scene lifecycle add`, with matching editor rows and `scenes.ir.json` bundle
 lowering from structured `.scene.json` entries. Scene-local input maps, system
 schedules, and UI roots now lower into scoped scene references plus merged
-`input.ir.json`, `systems.ir.json`, and `ui.ir.json` bundle documents, and
-web/Bevy scene managers expose active runtime scope snapshots. Material bundle
-import also preserves those promoted portable material fields back into
+`input.ir.json`, `systems.ir.json`, and `ui.ir.json` bundle documents; companion
+structured systems documents merge into the emitted system declarations for
+source-authored query/access/service/command metadata, and web/Bevy scene
+managers expose active runtime scope snapshots. Material bundle import also
+preserves those promoted portable material fields back into
 `content/materials/*.materials.json` source documents, and the editor project
 API exposes matching editable `material.set` rows. `tn scene add-component` now gives agents a
 typed scene-component path for camera, light, mesh-renderer, rigid-body,

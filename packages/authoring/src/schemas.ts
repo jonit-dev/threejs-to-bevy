@@ -25,7 +25,24 @@ export const audioDocumentKeys = new Set(["schema", "version", "id", "sounds", "
 export const meshDocumentKeys = new Set(["schema", "version", "id", "meshes", "provenance"]);
 export const entityKeys = new Set(["id", "prefab", "transform", "components"]);
 export const transformKeys = new Set(["position", "rotation", "scale"]);
-export const systemKeys = new Set(["id", "script", "schedule"]);
+export const systemKeys = new Set([
+  "after",
+  "before",
+  "commands",
+  "eventReads",
+  "eventWrites",
+  "id",
+  "queries",
+  "reads",
+  "resourceReads",
+  "resourceWrites",
+  "script",
+  "services",
+  "schedule",
+  "writes",
+]);
+export const systemQueryKeys = new Set(["changed", "limit", "offset", "orderBy", "with", "without"]);
+export const systemCommandKeys = new Set(["child", "component", "components", "entity", "event", "kind", "parent", "prefab", "prefix"]);
 export const scriptReferenceKeys = new Set(["module", "export"]);
 export const uiKeys = new Set(["nodes", "bindings"]);
 export const uiNodeKeys = new Set(["id", "action", "label", "layout", "src", "style", "text", "type", "value"]);
@@ -129,14 +146,46 @@ export interface ISceneResource {
 }
 
 export interface ISceneSystem {
+  after?: string[];
+  before?: string[];
+  commands?: ISceneSystemCommand[];
+  eventReads?: string[];
+  eventWrites?: string[];
   id: string;
+  queries?: ISceneSystemQuery[];
+  reads?: string[];
+  resourceReads?: string[];
+  resourceWrites?: string[];
   script?: IScriptReference;
+  services?: string[];
   schedule?: string;
+  writes?: string[];
 }
 
 export interface IScriptReference {
   module: string;
   export: string;
+}
+
+export interface ISceneSystemQuery {
+  changed?: string[];
+  limit?: number;
+  offset?: number;
+  orderBy?: "id";
+  with?: string[];
+  without?: string[];
+}
+
+export interface ISceneSystemCommand {
+  child?: string;
+  component?: string;
+  components?: string[];
+  entity?: string;
+  event?: string;
+  kind: string;
+  parent?: string;
+  prefab?: string;
+  prefix?: string;
 }
 
 export interface ISceneUi {
