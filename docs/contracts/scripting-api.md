@@ -672,10 +672,13 @@ Rules:
   Scripts declare `navigation.path` and call `ctx.navigation.path({ start,
   goal, id? })`; results include `status`, `path`, `visitedRegions`,
   `totalCost`, and a stable failure reason for invalid start/goal or no route.
-- Dynamic mesh and cylinder solver bodies, joints, constraints, backend solver
-  handles, random seeds, and nondeterministic solver settings are rejected
-  before runtime. Mesh colliders remain static-only until a later promoted
-  contract proves matching web/native behavior.
+- Bounded mesh colliders are promoted for static collision and dynamic or
+  kinematic racing-style AABB traces when `Collider.mesh` includes explicit
+  bounds and `triangleCount` metadata. Unbounded mesh colliders, mesh triggers,
+  cylinder solver bodies, backend solver handles, random seeds, and
+  nondeterministic solver settings are rejected before runtime. Joint metadata
+  is portable for hinge, slider, and suspension observations; full constraint
+  solving and arbitrary triangle narrow phase remain deferred.
 - Character movement uses the `character.move` service permission and returns a
   fixed-trace observation for one declared character controller. Scripts pass an
   entity id or entity view plus optional axis values and fixed delta; runtimes

@@ -297,18 +297,29 @@ type Collider =
   | { kind: "box"; size: [number, number, number]; trigger?: boolean }
   | { kind: "sphere"; radius: number; trigger?: boolean }
   | { kind: "capsule"; radius: number; height: number; trigger?: boolean }
-  | { kind: "mesh"; trigger?: false };
+  | {
+      kind: "mesh";
+      mesh: {
+        bounds: { center?: [number, number, number]; size: [number, number, number] };
+        source?: string;
+        triangleCount: number;
+      };
+      trigger?: false;
+    };
 ```
 
 Rules:
 
 - V6 portable collision supports primitive box, sphere, and capsule colliders
   for static, dynamic, and kinematic bodies.
-- Mesh colliders are accepted only for static collision. Dynamic mesh colliders
-  and mesh trigger colliders fail validation.
+- Current promoted physics accepts bounded mesh colliders for static collision
+  and for dynamic or kinematic racing-style AABB traces when `Collider.mesh`
+  provides positive bounds and a bounded `triangleCount`. Mesh trigger
+  colliders and unbounded mesh colliders fail validation.
 - Collider dimensions are required local-space dimensions and must be positive
   finite numbers.
-- Cylinder colliders and deeper contact filtering are deferred to V7.
+- Cylinder colliders and arbitrary triangle narrow-phase mesh collision remain
+  deferred.
 - Layer and mask filtering is deferred to the V7 physics contract; V6 bundles
   that include collider layer or mask fields fail validation.
 - Primitive collision and trigger observations are delivered as
