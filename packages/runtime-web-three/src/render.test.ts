@@ -210,6 +210,12 @@ test("should collect runtime visibility, camera, bounds, and asset diagnostics",
       version: "0.1.0",
       materials: [{ id: "mat.main", kind: "standard", color: "#ffffff", extension: { preset: "unlitMasked" } }],
     },
+    scenes: {
+      schema: "threenative.scenes",
+      version: "0.1.0",
+      initialScene: "arena",
+      scenes: [{ activation: "exclusive", id: "arena", kind: "level" }],
+    },
     targetProfile: { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] },
     world: {
       schema: "threenative.world",
@@ -247,6 +253,12 @@ test("should collect runtime visibility, camera, bounds, and asset diagnostics",
     path: "assets.manifest.json/assets/kart/path",
     severity: "warning",
   });
+  mapped.diagnostics.push({
+    code: "TN_WEB_RENDER_FRAME_FAILED",
+    message: "Frame failed.",
+    path: "runtime.frame",
+    severity: "error",
+  });
 
   const diagnostics = collectWebRuntimeDiagnostics(mapped, bundle);
 
@@ -255,11 +267,20 @@ test("should collect runtime visibility, camera, bounds, and asset diagnostics",
   assert.equal(diagnostics.assets.resourceFailures.length, 1);
   assert.equal(diagnostics.scene.entityCount, 3);
   assert.equal(diagnostics.scene.objectCount, 3);
+  assert.equal(diagnostics.scene.currentSceneId, "arena");
+  assert.equal(diagnostics.scene.culledMeshCount, 1);
   assert.equal(diagnostics.scene.visibleMeshCount, 1);
+  assert.equal(diagnostics.scene.renderedEntities.length, 2);
+  assert.equal(diagnostics.scene.renderedEntities.find((entity) => entity.id === "cube.visible")?.visible, true);
+  assert.equal(diagnostics.scene.renderedEntities.find((entity) => entity.id === "cube.visible")?.clipping, "in-range");
+  assert.deepEqual(diagnostics.scene.renderedEntities.find((entity) => entity.id === "cube.visible")?.finalScale, [1, 1, 1]);
+  assert.equal(diagnostics.scene.renderedEntities.find((entity) => entity.id === "cube.visible")?.material?.type, "MeshStandardMaterial");
+  assert.equal(diagnostics.scene.renderedEntities.find((entity) => entity.id === "cube.hidden")?.visible, false);
   assert.deepEqual(diagnostics.scene.worldBounds?.center, [0, 0, 0]);
   assert.deepEqual(diagnostics.scene.worldBounds?.size, [1, 1, 1]);
   assert.deepEqual(diagnostics.camera?.worldPosition, [0, 0, 5]);
   assert.equal(diagnostics.camera?.worldRadiusWithinClipRange, true);
+  assert.equal(diagnostics.recentRuntimeErrors[0]?.code, "TN_WEB_RENDER_FRAME_FAILED");
 });
 
 test("should render active cameras in order with viewport scissors", () => {

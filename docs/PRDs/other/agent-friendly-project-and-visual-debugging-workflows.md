@@ -593,13 +593,13 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Expose machine-readable diagnostics for active camera, canvas size, loaded
+- [x] Expose machine-readable diagnostics for active camera, canvas size, loaded
   asset count, failed resources, visible mesh count, culled mesh count where
   practical, current scene id, and recent runtime errors.
-- [ ] Expose model visibility diagnostics where practical: per-rendered-entity
+- [x] Expose model visibility diagnostics where practical: per-rendered-entity
   world-space bounds, final transform scale, projected screen-space bounds,
   camera distance, frustum/clipping state, and material/texture load state.
-- [ ] Add optional debug overlay toggle for humans.
+- [x] Add optional debug overlay toggle for humans.
 - [ ] Ensure `tn doctor`, `tn screenshot`, and `tn verify` can consume the
   diagnostics without relying only on console output.
 
@@ -623,6 +623,13 @@ sequenceDiagram
   clip-range risk. Focused tests pass with
   `pnpm --filter @threenative/runtime-web-three test` and
   `pnpm --filter @threenative/cli test`.
+- The web runtime diagnostics now also report current scene ID, culled mesh
+  count, recent runtime errors, and per-rendered-entity visibility evidence:
+  final world scale, world bounds, projected screen-space bounds, camera
+  distance, clipping range state, and material/texture load state. Human preview
+  sessions can append `?debugOverlay=1` to expose a read-only debug overlay
+  model and DOM overlay. Verified with
+  `pnpm --filter @threenative/runtime-web-three test` on 2026-06-21.
 
 #### Phase 10: Add richer starter templates and example gallery
 

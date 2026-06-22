@@ -290,6 +290,10 @@ behavior controlled by the adapter and target profile.
 - Render portable `ui.ir.json` with React DOM or a small web UI renderer.
 - Provide fast refresh or hot reload during development.
 - Surface validation and runtime errors in a developer overlay and CLI logs.
+- Expose `window.__THREENATIVE_READY__.runtimeDiagnostics` for preview and proof
+  tooling, including active camera, canvas readiness, asset/resource failures,
+  visible and culled mesh counts, current scene ID, recent runtime errors, and
+  per-rendered-entity visibility evidence.
 - Support V2 web input sources: keyboard, pointer, and touch. Gamepad is V3
   unless declared as optional, non-blocking capability data.
 
@@ -307,6 +311,7 @@ Allowed adapter-private behavior:
 - Three.js loader configuration.
 - WebGPU/WebGL fallback policy.
 - Browser-specific diagnostics.
+- Read-only browser debug overlay via `?debugOverlay=1`.
 
 Not allowed as portable user behavior:
 

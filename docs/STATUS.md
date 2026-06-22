@@ -77,7 +77,12 @@ keep their continuous browser session. `tn record [--project <path>] --url
 artifacts relative to the project, clamps video proof to 1-59 seconds, reports
 seconds/FPS/path/input-script metadata, runs a default W/steer/boost input
 sequence, and returns `TN_RECORD_UNAVAILABLE` for browser video or codec
-failures.
+failures. Web preview `runtimeDiagnostics` now also reports current scene ID,
+culled mesh count, recent runtime errors, and per-rendered-entity visibility
+evidence: final scale, world bounds, projected screen-space bounds, camera
+distance, clipping state, and material/texture load state. Appending
+`?debugOverlay=1` enables a read-only browser debug overlay for humans without
+changing the CLI JSON proof contract.
 
 The structured authoring parity PRD has started with a source-document contract
 and testable inventory in `@threenative/authoring`. The inventory makes the

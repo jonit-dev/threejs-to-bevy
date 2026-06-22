@@ -69,6 +69,33 @@ export interface IWebRuntimeDiagnostics {
       radius: number;
       size: [number, number, number];
     };
+    culledMeshCount: number;
+    currentSceneId?: string;
+    renderedEntities: IWebRenderedEntityDiagnostics[];
+  };
+  recentRuntimeErrors: IRuntimeDiagnostic[];
+}
+
+export interface IWebRenderedEntityDiagnostics {
+  cameraDistance?: number;
+  clipping?: "behind-camera" | "beyond-far" | "before-near" | "in-range";
+  finalScale: [number, number, number];
+  id: string;
+  material?: {
+    textureLoaded?: boolean;
+    transparent?: boolean;
+    type: string;
+  };
+  projectedBounds?: {
+    max: [number, number];
+    min: [number, number];
+  };
+  visible: boolean;
+  worldBounds?: {
+    center: [number, number, number];
+    max: [number, number, number];
+    min: [number, number, number];
+    size: [number, number, number];
   };
 }
 
@@ -263,11 +290,15 @@ export function collectWebRuntimeDiagnostics(mapped: IThreeWorld, bundle: IWebBu
         : { worldRadiusWithinClipRange: distanceToWorldCenter + radius >= near && distanceToWorldCenter - radius <= far }),
     },
     scene: {
+      culledMeshCount: culledMeshCount(mapped.scene),
+      ...(bundle.scenes?.initialScene === undefined ? {} : { currentSceneId: bundle.scenes.initialScene }),
       entityCount: bundle.world.entities.length,
       objectCount: mapped.objectsById.size,
+      renderedEntities: renderedEntityDiagnostics(mapped),
       visibleMeshCount: visibleMeshCount(mapped.scene),
       ...(worldBounds === undefined ? {} : { worldBounds }),
     },
+    recentRuntimeErrors: mapped.diagnostics.filter((diagnostic) => diagnostic.severity === "error").slice(-10),
   };
 }
 
@@ -356,6 +387,105 @@ function visibleMeshCount(scene: THREE.Scene): number {
     }
   });
   return count;
+}
+
+function culledMeshCount(scene: THREE.Scene): number {
+  let count = 0;
+  scene.traverse((object) => {
+    if (object instanceof THREE.Mesh && !visibleInHierarchy(object)) {
+      count += 1;
+    }
+  });
+  return count;
+}
+
+function renderedEntityDiagnostics(mapped: IThreeWorld): IWebRenderedEntityDiagnostics[] {
+  const cameraPosition = new THREE.Vector3();
+  mapped.camera.getWorldPosition(cameraPosition);
+  const near = cameraNear(mapped.camera);
+  const far = cameraFar(mapped.camera);
+  return [...mapped.objectsById.entries()]
+    .flatMap(([id, object]) => {
+      const mesh = firstMesh(object);
+      if (mesh === undefined) {
+        return [];
+      }
+      const scale = new THREE.Vector3();
+      object.getWorldScale(scale);
+      const bounds = new THREE.Box3().setFromObject(object);
+      const center = new THREE.Vector3();
+      const size = new THREE.Vector3();
+      const hasBounds = !bounds.isEmpty();
+      if (hasBounds) {
+        bounds.getCenter(center);
+        bounds.getSize(size);
+      }
+      const cameraDistance = hasBounds ? cameraPosition.distanceTo(center) : undefined;
+      return [{
+        ...(cameraDistance === undefined ? {} : { cameraDistance: roundMetric(cameraDistance) }),
+        ...(cameraDistance === undefined || near === undefined || far === undefined ? {} : { clipping: clippingState(cameraDistance, near, far) }),
+        finalScale: vectorToTuple(scale),
+        id,
+        material: materialDiagnostics(mesh.material),
+        ...(hasBounds ? { projectedBounds: projectedBounds(bounds, mapped.camera) } : {}),
+        visible: visibleInHierarchy(mesh),
+        ...(hasBounds ? { worldBounds: { center: vectorToTuple(center), max: vectorToTuple(bounds.max), min: vectorToTuple(bounds.min), size: vectorToTuple(size) } } : {}),
+      }];
+    })
+    .sort((left, right) => left.id.localeCompare(right.id));
+}
+
+function firstMesh(object: THREE.Object3D): THREE.Mesh | undefined {
+  if (object instanceof THREE.Mesh) {
+    return object;
+  }
+  let mesh: THREE.Mesh | undefined;
+  object.traverse((child) => {
+    if (mesh === undefined && child instanceof THREE.Mesh) {
+      mesh = child;
+    }
+  });
+  return mesh;
+}
+
+function materialDiagnostics(material: THREE.Material | THREE.Material[]): IWebRenderedEntityDiagnostics["material"] {
+  const first = Array.isArray(material) ? material[0] : material;
+  if (first === undefined) {
+    return undefined;
+  }
+  const maybeTextured = first as THREE.Material & { map?: { image?: unknown } | null };
+  return {
+    ...(maybeTextured.map === undefined || maybeTextured.map === null ? {} : { textureLoaded: maybeTextured.map.image !== undefined }),
+    transparent: first.transparent,
+    type: first.type,
+  };
+}
+
+function projectedBounds(bounds: THREE.Box3, camera: THREE.Camera): IWebRenderedEntityDiagnostics["projectedBounds"] {
+  const corners = [
+    new THREE.Vector3(bounds.min.x, bounds.min.y, bounds.min.z),
+    new THREE.Vector3(bounds.min.x, bounds.min.y, bounds.max.z),
+    new THREE.Vector3(bounds.min.x, bounds.max.y, bounds.min.z),
+    new THREE.Vector3(bounds.min.x, bounds.max.y, bounds.max.z),
+    new THREE.Vector3(bounds.max.x, bounds.min.y, bounds.min.z),
+    new THREE.Vector3(bounds.max.x, bounds.min.y, bounds.max.z),
+    new THREE.Vector3(bounds.max.x, bounds.max.y, bounds.min.z),
+    new THREE.Vector3(bounds.max.x, bounds.max.y, bounds.max.z),
+  ].map((corner) => corner.project(camera));
+  return {
+    max: [roundMetric(Math.max(...corners.map((corner) => corner.x))), roundMetric(Math.max(...corners.map((corner) => corner.y)))],
+    min: [roundMetric(Math.min(...corners.map((corner) => corner.x))), roundMetric(Math.min(...corners.map((corner) => corner.y)))],
+  };
+}
+
+function clippingState(distance: number, near: number, far: number): IWebRenderedEntityDiagnostics["clipping"] {
+  if (distance < near) {
+    return "before-near";
+  }
+  if (distance > far) {
+    return "beyond-far";
+  }
+  return "in-range";
 }
 
 function visibleWorldBounds(scene: THREE.Scene): IWebRuntimeDiagnostics["scene"]["worldBounds"] | undefined {

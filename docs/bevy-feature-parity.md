@@ -60,7 +60,11 @@ implementation:
   canvas/nonblank/visible-mesh/resource-failure diagnostics, project-relative
   short video proof with input-script metadata and unavailable-state diagnostics,
   and shared single-frame `tn verify --frames 1` screenshot diagnostics plus
-  `tn verify --json` projected nonblank bounds diagnostics; these are
+  `tn verify --json` projected nonblank bounds diagnostics. Web preview
+  readiness also exposes current scene ID, culled mesh count, recent runtime
+  errors, per-rendered-entity bounds/scale/projected-bounds/camera-distance/
+  clipping/material evidence, and an optional `?debugOverlay=1` human overlay;
+  these are
   CLI/runtime QA aids, not new portable Bevy runtime capabilities. SDK transform
   helper methods and runtime Transform patch merge semantics are documented and
   tested so partial position patches preserve authored scale. `racing-kart` is
@@ -580,6 +584,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P1` Stable unsupported-networking diagnostics for multiplayer/websocket/replication declarations
 - [x] `P1` Better domain-specific asset/runtime failure codes and repair hints
 - [x] `P1` `tn doctor --url` preview-readiness diagnostics for canvas, runtime errors, resource failures, visible meshes, page errors, and failed requests
+- [x] `P1` Web preview runtime diagnostics for scene visibility, rendered-entity bounds, clipping state, material/texture state, and optional human debug overlay
 - [x] `P2` Live engine-integrated debug rendering beyond current overlay/report helpers
 
 ### 🛠️ Editor, Debugging, and Developer Tools
