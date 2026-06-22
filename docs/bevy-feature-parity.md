@@ -145,6 +145,10 @@ remaining gaps by usefulness for building and shipping ordinary 3D games:
   `pnpm verify:runtime-prefabs-hierarchy`, which compares bundle-local prefab
   expansion, deterministic instance prefixes, and `setParent`/`clearParent`
   hierarchy mutation across web and Bevy.
+- `P1` Source-authored prefab catalogs now lower from
+  `content/prefabs/*.prefab.json` into bundle `prefabs.ir.json` with manifest
+  entries, so runtime prefab proofs can use compiler-emitted catalogs instead
+  of hand-authored bundle roots.
 - `P1` Production input/device UX. Keyboard, mouse, gamepad snapshots, touch
   hooks, rebinding, drag picking, and picking debug reports exist, but polished
   device repair overlays, platform touch stream wiring, and richer navigation

@@ -11,6 +11,7 @@ import {
   type ILocalDataIr,
   type IMaterialIr,
   type IMaterialsIr,
+  type IPrefabsIr,
   type IRuntimeConfigIr,
   type IScenesIr,
   type ISceneTransitionIr,
@@ -86,6 +87,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown, options:
   };
   const gltfScene: IGltfSceneMetadataIr | undefined = await extractGltfSceneMetadata(config.projectPath, assets);
   const runtimeConfig = ecs?.runtimeConfig ?? readStructuredRuntimeConfig(options.authoringDocuments);
+  const prefabs = readStructuredPrefabs(options.authoringDocuments);
   const targetProfile: ITargetProfile = {
     schema: IR_SCHEMA_IDS.targetProfile,
     version: IR_VERSION,
@@ -120,6 +122,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown, options:
       ...(animations === undefined ? {} : { animations: IR_DOCUMENTS.animations.fileName }),
       ...(environment === undefined ? {} : { environmentScene: IR_DOCUMENTS.environmentScene.fileName }),
       ...(localData === undefined ? {} : { localData: IR_DOCUMENTS.localData.fileName }),
+      ...(prefabs === undefined ? {} : { prefabs: IR_DOCUMENTS.prefabs.fileName }),
       ...(lifecycleScenes.scenes === undefined ? {} : { scenes: IR_DOCUMENTS.scenes.fileName }),
       ...(ecs?.scriptBundle === undefined ? {} : { scripts: IR_DOCUMENTS.scripts.fileName }),
       ...(ecs === undefined ? {} : { systems: IR_DOCUMENTS.systems.fileName }),
@@ -133,6 +136,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown, options:
       ...(input === undefined ? {} : { input: IR_DOCUMENTS.input.fileName }),
       ...(localData === undefined ? {} : { localData: IR_DOCUMENTS.localData.fileName }),
       materials: IR_DOCUMENTS.materials.fileName,
+      ...(prefabs === undefined ? {} : { prefabs: IR_DOCUMENTS.prefabs.fileName }),
       ...(runtimeConfig === undefined ? {} : { runtimeConfig: IR_DOCUMENTS.runtimeConfig.fileName }),
       targetProfile: IR_DOCUMENTS.targetProfile.fileName,
       ...(gltfScene === undefined ? {} : { gltfScene: IR_DOCUMENTS.gltfScene.fileName }),
@@ -214,6 +218,9 @@ export async function emitBundle(config: IProjectConfig, root: unknown, options:
     if (runtimeConfig !== undefined) {
       await writeFile(resolve(targetDir, IR_DOCUMENTS.runtimeConfig.fileName), stableJson(runtimeConfig));
     }
+    if (prefabs !== undefined) {
+      await writeFile(resolve(targetDir, IR_DOCUMENTS.prefabs.fileName), stableJson(prefabs));
+    }
   }
 
   function authoringProvenanceForEmit(): ReturnType<typeof authoringProvenanceDocument> {
@@ -237,6 +244,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown, options:
       { data: assetsManifest, kind: "assets", path: IR_DOCUMENTS.assets.fileName },
       ...(ui === undefined ? [] : [{ data: ui, kind: "ui" as const, path: IR_DOCUMENTS.ui.fileName }]),
       ...(input === undefined ? [] : [{ data: input, kind: "input" as const, path: IR_DOCUMENTS.input.fileName }]),
+      ...(prefabs === undefined ? [] : [{ data: prefabs, kind: "prefab" as const, path: IR_DOCUMENTS.prefabs.fileName }]),
       ...(runtimeConfig === undefined ? [] : [{ data: runtimeConfig, kind: "unknown" as const, path: IR_DOCUMENTS.runtimeConfig.fileName }]),
       ...(ecs?.systems === undefined ? [] : [{ data: ecs.systems, kind: "system" as const, path: IR_DOCUMENTS.systems.fileName }]),
       ...(ecs?.scriptBundle === undefined ? [] : [{ data: ecs.scriptBundle, kind: "generated-script" as const, path: IR_DOCUMENTS.scripts.fileName }]),
@@ -322,6 +330,55 @@ function readStructuredRuntimeConfig(documents: readonly IAuthoringDocument[] | 
     time: cloneRecord(data.time) as IRuntimeConfigIr["time"],
     window: cloneRecord(data.window) as IRuntimeConfigIr["window"],
   };
+}
+
+function readStructuredPrefabs(documents: readonly IAuthoringDocument[] | undefined): IPrefabsIr | undefined {
+  const prefabs = (documents ?? [])
+    .filter((document) => document.kind === "prefab" && isRecord(document.data))
+    .flatMap((document) => {
+      const data = document.data as Record<string, unknown>;
+      const id = readString(data.id);
+      const entities = readPrefabEntities(data.entities);
+      if (id === undefined || entities.length === 0) {
+        return [];
+      }
+      return [{
+        id,
+        entities,
+        root: entities[0]!.id,
+      }];
+    })
+    .sort((left, right) => left.id.localeCompare(right.id));
+
+  if (prefabs.length === 0) {
+    return undefined;
+  }
+  return {
+    schema: IR_SCHEMA_IDS.prefabs,
+    version: IR_VERSION,
+    prefabs,
+  };
+}
+
+function readPrefabEntities(value: unknown): IPrefabsIr["prefabs"][number]["entities"] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.flatMap((item) => {
+    if (!isRecord(item)) {
+      return [];
+    }
+    const id = readString(item.id);
+    if (id === undefined) {
+      return [];
+    }
+    const components = isRecord(item.components) ? cloneRecord(item.components) : {};
+    return [{ id, components }];
+  });
+}
+
+function readString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() !== "" ? value : undefined;
 }
 
 function cloneRecord(value: Record<string, unknown>): Record<string, unknown> {

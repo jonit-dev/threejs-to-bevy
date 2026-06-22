@@ -20,6 +20,7 @@ const generatedBundleArtifactFiles = new Set([
   "scripts.bundle.js",
   "materials.ir.json",
   "assets.manifest.json",
+  "prefabs.ir.json",
   "manifest.json",
 ]);
 
@@ -109,6 +110,8 @@ function sourceOwnershipEntries(documents: readonly IAuthoringDocument[]): IAuth
       entries.push(...collectionOwnershipEntries(document, data.materials, "material", "materials.ir.json"));
     } else if (document.kind === "ui") {
       entries.push(...collectionOwnershipEntries(document, data.nodes, "ui", "ui.ir.json"));
+    } else if (document.kind === "prefab") {
+      entries.push(...prefabOwnershipEntries(document, data));
     } else if (document.kind === "systems") {
       entries.push(...systemOwnershipEntries(document, data.systems));
     }
@@ -195,6 +198,44 @@ function collectionOwnershipEntries(
       }),
     ];
   });
+}
+
+function prefabOwnershipEntries(document: IAuthoringDocument, data: Record<string, unknown>): IAuthoringOwnershipEntry[] {
+  const entries: IAuthoringOwnershipEntry[] = [];
+  const prefabId = readString(data.id);
+  if (prefabId === undefined) {
+    return entries;
+  }
+  entries.push(sourceEntry(document, "/id", "prefab", {
+    artifactKind: "prefab",
+    id: prefabId,
+    path: "prefabs.ir.json",
+    pointer: `/prefabs/${escapePointer(prefabId)}`,
+  }));
+  for (const [index, entity] of readArray(data.entities).entries()) {
+    const entityRecord = readRecord(entity);
+    const entityId = readString(entityRecord?.id);
+    if (entityId === undefined) {
+      continue;
+    }
+    const entityPointer = `/prefabs/${escapePointer(prefabId)}/entities/${escapePointer(entityId)}`;
+    entries.push(sourceEntry(document, `/entities/${index}`, "entity", {
+      artifactKind: "entity",
+      id: `${prefabId}.${entityId}`,
+      path: "prefabs.ir.json",
+      pointer: entityPointer,
+    }));
+    const components = readRecord(entityRecord?.components);
+    for (const componentKind of Object.keys(components ?? {}).sort()) {
+      entries.push(sourceEntry(document, `/entities/${index}/components/${escapePointer(componentKind)}`, "component", {
+        artifactKind: "component",
+        id: `${prefabId}.${entityId}.${componentKind}`,
+        path: "prefabs.ir.json",
+        pointer: `${entityPointer}/components/${escapePointer(componentKind)}`,
+      }));
+    }
+  }
+  return entries;
 }
 
 function systemOwnershipEntries(document: IAuthoringDocument, systems: unknown): IAuthoringOwnershipEntry[] {

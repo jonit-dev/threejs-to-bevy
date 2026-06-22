@@ -73,6 +73,7 @@ export type AuthoringEmittedArtifactKind =
   | "input"
   | "material"
   | "mesh-renderer-material-ref"
+  | "prefab"
   | "scene"
   | "system"
   | "ui"

@@ -150,6 +150,7 @@ export const generatedBundleArtifactFiles = [
   "scripts.bundle.js",
   "materials.ir.json",
   "assets.manifest.json",
+  "prefabs.ir.json",
   "runtime.config.json",
   "target.profile.json",
   "manifest.json",

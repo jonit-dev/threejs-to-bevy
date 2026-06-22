@@ -187,6 +187,7 @@ test("should emit structured source environment documents", async () => {
   try {
     await cp(resolve(process.cwd(), "../../templates/structured-source-starter"), projectPath, { recursive: true });
     await mkdir(join(projectPath, "content/environment"), { recursive: true });
+    await mkdir(join(projectPath, "content/prefabs"), { recursive: true });
     await mkdir(join(projectPath, "content/runtime"), { recursive: true });
     await writeFile(
       join(projectPath, "content/environment/arena.environment.json"),
@@ -218,17 +219,39 @@ test("should emit structured source environment documents", async () => {
         window: { height: 900, title: "Structured Runtime", width: 1600 },
       }, null, 2)}\n`,
     );
+    await writeFile(
+      join(projectPath, "content/prefabs/crate.prefab.json"),
+      `${JSON.stringify({
+        schema: "threenative.prefab",
+        version: "0.1.0",
+        id: "prefab.crate",
+        entities: [
+          {
+            id: "crate.root",
+            components: {
+              MeshRenderer: { material: "mat.player", mesh: "mesh.cube" },
+            },
+          },
+        ],
+      }, null, 2)}\n`,
+    );
 
     const { bundlePath } = await buildProject(projectPath);
     const report = await validateBundle(bundlePath);
     const manifest = JSON.parse(await readFile(resolve(bundlePath, "manifest.json"), "utf8"));
     const environment = JSON.parse(await readFile(resolve(bundlePath, "environment.scene.json"), "utf8"));
+    const prefabs = JSON.parse(await readFile(resolve(bundlePath, "prefabs.ir.json"), "utf8"));
     const runtimeConfig = JSON.parse(await readFile(resolve(bundlePath, "runtime.config.json"), "utf8"));
 
     assert.equal(report.ok, true);
+    assert.equal(manifest.entry.prefabs, "prefabs.ir.json");
+    assert.equal(manifest.files.prefabs, "prefabs.ir.json");
     assert.equal(manifest.files.runtimeConfig, "runtime.config.json");
     assert.equal(environment.terrain.id, "terrain.editor");
     assert.equal(environment.path.id, "path.main");
+    assert.equal(prefabs.prefabs[0].id, "prefab.crate");
+    assert.equal(prefabs.prefabs[0].root, "crate.root");
+    assert.deepEqual(prefabs.prefabs[0].entities[0].components.MeshRenderer, { material: "mat.player", mesh: "mesh.cube" });
     assert.equal(runtimeConfig.renderer.antialias, "msaa8");
     assert.equal(runtimeConfig.window.title, "Structured Runtime");
   } finally {

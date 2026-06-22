@@ -90,8 +90,8 @@ durable source boundary explicit: editor-owned scene/map/UI/material/asset/
 input/system/audio/runtime-target data belongs in structured source documents,
 TypeScript is limited to script references and optional one-way generators, and
 generated bundle files such as `world.ir.json`, `ui.ir.json`,
-`scripts.bundle.js`, `materials.ir.json`, `assets.manifest.json`, and
-`manifest.json` are classified as non-source artifacts.
+`scripts.bundle.js`, `materials.ir.json`, `assets.manifest.json`,
+`prefabs.ir.json`, and `manifest.json` are classified as non-source artifacts.
 The authoring package now discovers, classifies, formats, and project-validates
 the first stable structured source document families beyond scene ECS:
 `content/ui/*.ui.json`, `content/materials/*.materials.json`,
@@ -130,6 +130,9 @@ for project id, authoring version, source roots, and build targets, with matchin
 editor rows.
 Runtime config source commands now create runtime docs and set promoted primary
 window plus renderer quality fields that lower into `runtime.config.json`.
+Structured prefab source documents with entity templates now lower into
+standalone bundle `prefabs.ir.json` catalogs with manifest entries and
+authoring provenance ownership.
 Scene lifecycle source commands now set
 scene kind, activation policy, and initial-scene metadata through
 `tn scene lifecycle add`, with matching editor rows and `scenes.ir.json` bundle

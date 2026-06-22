@@ -53,6 +53,7 @@ Generated bundle files are runtime/compiler artifacts, not durable source:
 - `scripts.bundle.js`
 - `materials.ir.json`
 - `assets.manifest.json`
+- `prefabs.ir.json`
 - `runtime.config.json`
 - `target.profile.json`
 - `manifest.json`
