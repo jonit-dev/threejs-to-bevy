@@ -400,6 +400,10 @@ SDK object transforms now have chainable `setPosition`, `setRotation`,
 `setScale`, and `patchTransform` helpers. Runtime component patches remain
 field-merge operations: patching only `Transform.position` preserves existing
 rotation and scale, while explicit component `set` replaces the whole component.
+The web runtime also emits `TN_WEB_TRANSFORM_PARTIAL_PATCH_MERGED` when a
+lower-level system effect carries only part of a `Transform`, so scale-preserving
+merge behavior is visible in machine-readable diagnostics instead of silently
+looking like a replace operation.
 Portable follow/chase cameras should use Camera `follow` metadata applied by
 runtime post-update systems instead of direct runtime camera rotation mutation.
 

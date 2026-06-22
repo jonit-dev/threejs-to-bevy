@@ -207,9 +207,12 @@ at schedule boundaries instead of mutating the world during query iteration.
 Component patches are field-merge operations. A script patch such as
 `entity.patch(Transform, { position })` must preserve the entity's existing
 `rotation` and `scale`; full replacement is reserved for explicit component
-`set` operations. Follow/chase cameras should be authored with the portable
-Camera `follow` metadata and applied during `postUpdate`, instead of mutating
-runtime camera rotations directly from gameplay scripts.
+`set` operations. Web emits `TN_WEB_TRANSFORM_PARTIAL_PATCH_MERGED` when a
+lower-level partial transform effect is merged so debugging tools can
+distinguish merge semantics from replace semantics. Follow/chase cameras should
+be authored with the portable Camera `follow` metadata and applied during
+`postUpdate`, instead of mutating runtime camera rotations directly from
+gameplay scripts.
 
 ### Scene Loading Strategy
 

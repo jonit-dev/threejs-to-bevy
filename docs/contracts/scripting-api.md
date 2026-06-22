@@ -561,7 +561,9 @@ Rules:
 - `patch` merges the supplied top-level component fields with the current
   component value. For `Transform`, `entity.patch(Transform, { position })`
   preserves existing `rotation` and `scale`; use `entity.set(Transform, value)`
-  only when replacing the whole transform intentionally.
+  only when replacing the whole transform intentionally. Web runtime diagnostics
+  may include `TN_WEB_TRANSFORM_PARTIAL_PATCH_MERGED` to make that merge
+  behavior explicit for lower-level partial transform effects.
 - Component values are plain structured data.
 - Entity identity is a stable string, not a Bevy `Entity` or Three.js object.
 

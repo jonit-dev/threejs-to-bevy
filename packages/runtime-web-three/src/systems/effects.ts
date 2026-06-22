@@ -26,7 +26,7 @@ export function applySystemEffects(
 ): { diagnostics: IRuntimeDiagnostic[]; entries: ISystemEffectLogEntry[] } {
   const diagnostics = validateSystemEffects(system, effects);
   const entries = systemEffectLogEntries(system, effects, options);
-  if (diagnostics.length > 0) {
+  if (diagnostics.some((diagnostic) => diagnostic.severity === "error")) {
     return { diagnostics, entries };
   }
   applyEvents(world, effects.events);
@@ -46,6 +46,15 @@ export function validateSystemEffects(system: IIrSystemDeclaration, effects: ISy
     if (command.source === "entity") {
       if (command.component !== undefined && !writableComponents.has(command.component)) {
         diagnostics.push(effectDiagnostic("TN_WEB_SYSTEM_WRITE_UNDECLARED", system, `writes/${command.component}`, `System '${system.name}' patched undeclared component '${command.component}'.`));
+      } else if (command.component === "Transform" && isPartialTransformPatch(command.value)) {
+        diagnostics.push(effectDiagnostic(
+          "TN_WEB_TRANSFORM_PARTIAL_PATCH_MERGED",
+          system,
+          `writes/${command.component}`,
+          `System '${system.name}' patched only part of Transform; runtime will merge omitted fields to preserve existing rotation and scale.`,
+          "warning",
+          "Prefer entity.patch(Transform, { position|rotation|scale }) or Object3D patchTransform helpers for intentional merge semantics.",
+        ));
       }
       continue;
     }
@@ -153,12 +162,25 @@ function declaresCommand(system: IIrSystemDeclaration, command: IQueuedCommand):
   });
 }
 
-function effectDiagnostic(code: string, system: IIrSystemDeclaration, path: string, message: string): IRuntimeDiagnostic {
+function isPartialTransformPatch(value: unknown): boolean {
+  if (!isRecord(value)) {
+    return false;
+  }
+  const fields = ["position", "rotation", "scale"].filter((field) => value[field] !== undefined);
+  return fields.length > 0 && fields.length < 3;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function effectDiagnostic(code: string, system: IIrSystemDeclaration, path: string, message: string, severity: IRuntimeDiagnostic["severity"] = "error", suggestion?: string): IRuntimeDiagnostic {
   return {
     code,
     message,
     path: `systems.ir.json/systems/${system.name}/${path}`,
-    severity: "error",
+    severity,
+    ...(suggestion === undefined ? {} : { suggestion }),
   };
 }
 

@@ -1031,6 +1031,10 @@ export function applyCommands(world: IWorldIr, commands: ReadonlyArray<IQueuedCo
       continue;
     }
     if (command.kind === "addComponent" || command.kind === "setComponent") {
+      if (command.source === "entity" && command.component === "Transform" && isRecord(command.value) && isRecord(entity.components.Transform)) {
+        entity.components.Transform = { ...entity.components.Transform, ...cloneValue(command.value) };
+        continue;
+      }
       entity.components[command.component] = cloneValue(command.value);
     }
   }

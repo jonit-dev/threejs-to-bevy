@@ -6,6 +6,7 @@ import { applySystemEffects } from "./effects.js";
 
 test("should apply transform patch after system", () => {
   const world = makeWorld();
+  world.entities[0]!.components.Transform = { position: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [2, 2, 2] };
   const result = applySystemEffects(
     world,
     makeSystem({ writes: ["Transform"] }),
@@ -18,8 +19,9 @@ test("should apply transform patch after system", () => {
     { frame: 0, tick: 0 },
   );
 
-  assert.deepEqual(result.diagnostics, []);
-  assert.deepEqual(world.entities[0]?.components.Transform, { position: [1, 0, 0] });
+  assert.equal(result.diagnostics[0]?.code, "TN_WEB_TRANSFORM_PARTIAL_PATCH_MERGED");
+  assert.equal(result.diagnostics[0]?.severity, "warning");
+  assert.deepEqual(world.entities[0]?.components.Transform, { position: [1, 0, 0], rotation: [0, 0, 0, 1], scale: [2, 2, 2] });
   assert.equal(result.entries[0]?.kind, "patch");
 });
 
@@ -255,7 +257,7 @@ test("should produce canonical effect log ordering", () => {
     }),
     {
       commands: [
-        { component: "Transform", entity: "player", kind: "setComponent", source: "entity", value: { position: [1, 0, 0] } },
+        { component: "Transform", entity: "player", kind: "setComponent", source: "entity", value: { position: [1, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] } },
         { components: { Transform: { position: [0, 1, 0] } }, entity: "marker", kind: "spawn", source: "command" },
       ],
       events: [{ event: "DamageEvent", payload: { amount: 3 } }],

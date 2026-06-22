@@ -450,7 +450,7 @@ sequenceDiagram
   `setScale`, or `patchTransform` with explicit merge behavior.
 - [x] Add `followCamera` / `chaseCamera` helper or documented pattern that avoids
   unsafe runtime camera rotation mutation.
-- [ ] Add diagnostics when a runtime patch updates only part of `Transform` in a
+- [x] Add diagnostics when a runtime patch updates only part of `Transform` in a
   way likely to drop scale or when camera mutation fails.
 
 **Tests required:**
@@ -474,6 +474,12 @@ sequenceDiagram
   scale. `docs/contracts/scripting-api.md`, `docs/contracts/sdk.md`, and
   `docs/runtime/runtime-adapters.md` document merge-vs-replace behavior and
   recommend portable Camera `follow` metadata for chase/follow cameras.
+- Web runtime effect application now preserves existing `Transform.rotation` and
+  `Transform.scale` even when a lower-level system effect receives only
+  `position`, and emits the advisory warning
+  `TN_WEB_TRANSFORM_PARTIAL_PATCH_MERGED` for machine-readable debugging.
+  Verified with `pnpm --filter @threenative/runtime-web-three test` on
+  2026-06-21.
 
 #### Phase 7: Add `tn screenshot` and improve `tn verify` proof artifacts
 

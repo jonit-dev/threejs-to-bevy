@@ -559,6 +559,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 
 - [x] Stable IR/compiler/CLI/native diagnostic shapes
 - [x] JSON severity, suggestions, paths, and metadata preservation
+- [x] Web runtime advisory diagnostics for partial `Transform` patches that merge omitted rotation/scale fields
 - [x] IR distribution capability manifest and diagnostics catalog metadata
 - [x] AI-consumable packed artifacts and clean-consumer metadata access are release-gated
 - [x] Conformance reports for web and Bevy observations
