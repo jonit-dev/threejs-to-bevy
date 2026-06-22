@@ -13,6 +13,17 @@ test("should expose environment skybox and terrain rows", async () => {
     await mkdir(join(root, "content", "environment"), { recursive: true });
     await mkdir(join(root, "content", "runtime"), { recursive: true });
     await writeFile(
+      join(root, "content", "project.authoring.json"),
+      `${JSON.stringify({
+        schema: "threenative.authoring",
+        version: "0.1.0",
+        id: "arena-project",
+        authoringVersion: "0.1.0",
+        buildTargets: ["web", "desktop"],
+        sourceRoots: ["content", "src"],
+      }, null, 2)}\n`,
+    );
+    await writeFile(
       join(root, "content", "environment", "arena.environment.json"),
       `${JSON.stringify({
         schema: "threenative.environment-scene",
@@ -78,6 +89,9 @@ test("should expose environment skybox and terrain rows", async () => {
     const runtimeRows = result.documents.flatMap((group) => group.documents).find((document) => document.kind === "runtime")?.inspectorRows ?? [];
     assert.equal(runtimeRows.some((row) => row.label === "Window Width" && row.operation?.name === "runtime.set_window" && row.operation.valueArg === "width"), true);
     assert.equal(runtimeRows.some((row) => row.label === "Renderer Antialias" && row.operation?.name === "runtime.set_rendering" && row.operation.valueArg === "antialias"), true);
+    const projectRows = result.documents.flatMap((group) => group.documents).find((document) => document.kind === "project")?.inspectorRows ?? [];
+    assert.equal(projectRows.some((row) => row.label === "Source Roots" && row.sourceFamily === "project" && row.operation?.name === "project.create" && row.operation.valueArg === "sourceRoots"), true);
+    assert.equal(projectRows.some((row) => row.label === "Build Targets" && row.fieldKind === "stringList" && row.operation?.name === "project.create"), true);
     const sceneRows = result.documents.flatMap((group) => group.documents).find((document) => document.kind === "scene")?.inspectorRows ?? [];
     assert.equal(sceneRows.some((row) => row.label === "Scene Kind" && row.fieldKind === "enum" && row.operation?.name === "scene.set_lifecycle" && row.operation.valueArg === "kind"), true);
     assert.equal(sceneRows.some((row) => row.label === "Activation" && row.fieldKind === "enum" && row.operation?.name === "scene.set_lifecycle" && row.operation.valueArg === "activation"), true);

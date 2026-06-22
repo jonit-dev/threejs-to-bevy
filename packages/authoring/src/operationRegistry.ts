@@ -20,6 +20,7 @@ import {
   createMaterial,
   createMeshPrimitive,
   createPrefabDocument,
+  createProjectMetadata,
   createRuntimeConfig,
   createSystem,
   createUiDocument,
@@ -62,6 +63,7 @@ export type AuthoringOperationName =
   | "mesh.create_primitive"
   | "prefab.add_component"
   | "prefab.create"
+  | "project.create"
   | "runtime.create"
   | "runtime.set_rendering"
   | "runtime.set_window"
@@ -93,7 +95,7 @@ export type AuthoringOperationName =
   | "ui.set_style";
 
 export type AuthoringOperationPathPolicy = "source-document" | "source-script";
-export type AuthoringOperationSourceFamily = "asset" | "audio" | "environment" | "input" | "material" | "mesh" | "prefab" | "runtime" | "scene" | "system" | "ui";
+export type AuthoringOperationSourceFamily = "asset" | "audio" | "environment" | "input" | "material" | "mesh" | "prefab" | "project" | "runtime" | "scene" | "system" | "ui";
 export type AuthoringOperationResultShape = "authoring-operation-result";
 
 export interface IAuthoringOperationArgumentDescriptor {
@@ -198,6 +200,13 @@ const descriptors = [
     stringArg("prefabId"),
     stringArg("componentKind"),
     objectArg("value"),
+  ]),
+  descriptor("project.create", "Create or update structured project metadata.", "project", "source-document", [
+    stringArg("projectId"),
+    stringArg("authoringVersion", false),
+    stringArrayArg("sourceRoots", false),
+    stringArrayArg("buildTargets", false),
+    stringArg("file", false),
   ]),
   descriptor("runtime.create", "Create a structured runtime config source document.", "runtime", "source-document", [
     stringArg("runtimeId"),
@@ -446,6 +455,8 @@ const dispatchers: Record<AuthoringOperationName, OperationDispatcher> = {
     addPrefabComponent({ componentKind: requiredString(args, "componentKind"), prefabId: requiredString(args, "prefabId"), projectPath, value: requiredObject(args, "value") }),
   "prefab.create": async ({ args, projectPath }) =>
     createPrefabDocument({ prefabId: requiredString(args, "prefabId"), projectPath }),
+  "project.create": async ({ args, projectPath }) =>
+    createProjectMetadata({ authoringVersion: optionalString(args, "authoringVersion"), buildTargets: optionalStringArray(args, "buildTargets"), file: optionalString(args, "file"), projectId: requiredString(args, "projectId"), projectPath, sourceRoots: optionalStringArray(args, "sourceRoots") }),
   "runtime.create": async ({ args, projectPath }) =>
     createRuntimeConfig({ projectPath, runtimeId: requiredString(args, "runtimeId") }),
   "runtime.set_rendering": async ({ args, projectPath }) =>
@@ -672,6 +683,11 @@ function requiredStringArray(args: Record<string, unknown>, key: string): string
 function optionalString(args: Record<string, unknown>, key: string): string | undefined {
   const value = args[key];
   return typeof value === "string" && value.trim() !== "" ? value : undefined;
+}
+
+function optionalStringArray(args: Record<string, unknown>, key: string): string[] | undefined {
+  const value = args[key];
+  return isStringArray(value) ? value : undefined;
 }
 
 function optionalNumber(args: Record<string, unknown>, key: string): number | undefined {

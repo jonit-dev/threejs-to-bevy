@@ -115,7 +115,7 @@ remains unrecoverable without source-safe manifest/provenance and reports
 profile import remain later source-document work.
 The Phase 4 CLI operation slice adds shared authoring operations and registered
 `tn ui`, `tn material`, `tn mesh`, `tn prefab`, `tn input`, `tn asset`,
-`tn audio`, `tn environment`, `tn runtime`, and `tn system` commands for deterministic source-document
+`tn audio`, `tn environment`, `tn project`, `tn runtime`, and `tn system` commands for deterministic source-document
 mutation. The supported initial operations create retained UI docs, add text
 nodes, add/update retained UI widget nodes, set centered layout and promoted
 style fields, bind UI resources, create/update material color, roughness,
@@ -125,6 +125,9 @@ and component values, add input actions and axes from key lists, add asset catal
 entries, create audio docs, add audio sound declarations, and create systems
 with module/export script references. Environment source commands now create
 environment docs and set promoted skybox, environment-map, and terrain fields.
+Project metadata source commands now create or update `content/project.authoring.json`
+for project id, authoring version, source roots, and build targets, with matching
+editor rows.
 Runtime config source commands now create runtime docs and set promoted primary
 window plus renderer quality fields that lower into `runtime.config.json`.
 Scene lifecycle source commands now set
@@ -142,7 +145,8 @@ Commands support `--json`, return the shared `ok`/`changed`/`filesWritten`/
 errors. Broader asset import settings, material sampler/import policy, input
 controls-settings/rebinding metadata, advanced UI input/rich-layout behavior,
 audio playback defaults, target profile source docs, and host window policy
-fields remain later source-operation work.
+fields, plus project-level scene ordering/build orchestration, remain later
+source-operation work.
 The Phase 5 compiler provenance slice extends `authoring.provenance.json` with
 structured source ownership entries when source documents are available during
 normal build. The report maps scene entities/components to source JSON

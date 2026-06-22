@@ -12,6 +12,7 @@ import {
   createMaterial,
   createMeshPrimitive,
   createPrefabDocument,
+  createProjectMetadata,
   createRuntimeConfig,
   createSystem,
   createUiDocument,
@@ -161,6 +162,35 @@ export async function uiCommand(argv: readonly string[], options: ISourceCommand
   }
 
   return renderUsage(json, "TN_UI_COMMAND_UNKNOWN", "Usage: tn ui create|add-text|add-node|set-layout|set-style|bind ... [--json]");
+}
+
+export async function projectCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {
+  const normalizedArgv = normalizeArgv(argv);
+  const [subcommand] = normalizedArgv;
+  const json = normalizedArgv.includes("--json");
+  const projectPath = resolveProjectPath(normalizedArgv, options.cwd);
+
+  if (subcommand === "init-source") {
+    const projectId = readPositional(normalizedArgv, 1);
+    if (projectId === undefined) {
+      return renderUsage(json, "TN_PROJECT_INIT_SOURCE_ARGS_MISSING", projectInitSourceUsage());
+    }
+    return renderAuthoringResult(
+      "project",
+      await createProjectMetadata({
+        authoringVersion: readFlag(normalizedArgv, "--authoring-version"),
+        buildTargets: readCsvFlag(normalizedArgv, "--build-targets"),
+        file: readFlag(normalizedArgv, "--file"),
+        projectId,
+        projectPath,
+        sourceRoots: readCsvFlag(normalizedArgv, "--source-roots"),
+      }),
+      json,
+      `Project metadata '${projectId}' initialized.`,
+    );
+  }
+
+  return renderUsage(json, "TN_PROJECT_COMMAND_UNKNOWN", projectInitSourceUsage());
 }
 
 export async function materialCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {
@@ -512,6 +542,10 @@ function runtimeSetRenderingUsage(): string {
   return "Usage: tn runtime set-rendering <runtime-id> [--antialias none|msaa2|msaa4|msaa8|fxaa|taa|smaa] [--bloom true|false] [--bloom-intensity <n>] [--bloom-threshold <n>] [--render-path forward] [--project <path>] [--json]";
 }
 
+function projectInitSourceUsage(): string {
+  return "Usage: tn project init-source <project-id> [--source-roots content,src] [--build-targets web,desktop] [--authoring-version <version>] [--file <path>] [--project <path>] [--json]";
+}
+
 function normalizeArgv(argv: readonly string[]): readonly string[] {
   return argv[0] === "--" ? argv.slice(1) : argv;
 }
@@ -594,6 +628,7 @@ const flagsWithValues = new Set([
   "--alpha-cutoff",
   "--alpha-mode",
   "--asset",
+  "--authoring-version",
   "--action",
   "--antialias",
   "--background-color",
@@ -613,6 +648,7 @@ const flagsWithValues = new Set([
   "--emissive-intensity",
   "--emissive-texture",
   "--export",
+  "--file",
   "--height",
   "--height-mode",
   "--heightmap",
@@ -630,11 +666,13 @@ const flagsWithValues = new Set([
   "--opacity",
   "--positive-keys",
   "--project",
+  "--build-targets",
   "--resource",
   "--roughness",
   "--schedule",
   "--render-path",
   "--src",
+  "--source-roots",
   "--type",
   "--text-align",
   "--text-decoration",

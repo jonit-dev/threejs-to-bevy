@@ -16,7 +16,7 @@ import { helpCommand } from "./commands/help.js";
 import { modelTestCommand } from "./commands/modelTest.js";
 import { packageCommand } from "./commands/package.js";
 import { sceneCommand } from "./commands/scene.js";
-import { audioCommand, environmentCommand, inputCommand, materialCommand, meshCommand, prefabCommand, runtimeCommand, systemCommand, uiCommand } from "./commands/sourceDocuments.js";
+import { audioCommand, environmentCommand, inputCommand, materialCommand, meshCommand, prefabCommand, projectCommand, runtimeCommand, systemCommand, uiCommand } from "./commands/sourceDocuments.js";
 import { validateProject } from "./commands/validate.js";
 import { recordCommand, screenshotCommand } from "./commands/visualProof.js";
 import { verifyCommand } from "./commands/verify.js";
@@ -138,6 +138,11 @@ const commands: Record<string, ICommandDefinition> = {
     description: "Create and mutate structured prefab source documents.",
     implemented: true,
     usage: "tn prefab create <prefab-id> [--project <path>] [--json]\n              tn prefab add-component <prefab-id> <component> --value <json-object> [--project <path>] [--json]",
+  },
+  project: {
+    description: "Create and mutate structured project metadata source documents.",
+    implemented: true,
+    usage: "tn project init-source <project-id> [--source-roots content,src] [--build-targets web,desktop] [--authoring-version <version>] [--file <path>] [--project <path>] [--json]",
   },
   system: {
     description: "Create and mutate structured system source documents.",
@@ -290,6 +295,10 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
 
   if (commandName === "prefab") {
     return prefabCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "project") {
+    return projectCommand(normalizedArgv.slice(1));
   }
 
   if (commandName === "runtime") {

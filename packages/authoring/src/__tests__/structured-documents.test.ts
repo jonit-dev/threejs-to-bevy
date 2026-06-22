@@ -90,6 +90,14 @@ test("loads mixed authoring source document family", async () => {
       id: "kart-audio",
       sounds: [{ id: "engine-loop", asset: "assets/audio/engine.ogg" }],
     });
+    await writeSourceDocument(root, "content/project.authoring.json", {
+      schema: "threenative.authoring",
+      version: "0.1.0",
+      id: "kart-project",
+      authoringVersion: "0.1.0",
+      buildTargets: ["web", "desktop"],
+      sourceRoots: ["content", "src"],
+    });
     await writeSourceDocument(root, "content/runtime/kart.runtime.json", {
       schema: "threenative.runtime-config",
       version: "0.1.0",
@@ -103,7 +111,7 @@ test("loads mixed authoring source document family", async () => {
     const project = await loadAuthoringProject({ projectPath: root });
     assert.deepEqual(
       project.documents.map((document) => document.kind),
-      ["asset", "audio", "environment", "input", "material", "mesh", "prefab", "runtime", "scene", "systems", "ui"],
+      ["asset", "audio", "environment", "input", "material", "mesh", "prefab", "project", "runtime", "scene", "systems", "ui"],
     );
 
     const validation = await validateAuthoringProject({ projectPath: root });

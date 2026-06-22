@@ -34,6 +34,8 @@ import {
   prefabDocumentKeys,
   prefabDocumentSchema,
   prefabKeys,
+  projectDocumentKeys,
+  projectDocumentSchema,
   resourceIdPattern,
   rigidBodyComponentKeys,
   readArray,
@@ -439,6 +441,14 @@ export interface ICreateMeshPrimitiveOptions extends IAuthoringOperationContext 
 
 export interface ICreatePrefabDocumentOptions extends IAuthoringOperationContext {
   prefabId: string;
+}
+
+export interface ICreateProjectMetadataOptions extends IAuthoringOperationContext {
+  projectId: string;
+  authoringVersion?: string;
+  buildTargets?: readonly string[];
+  file?: string;
+  sourceRoots?: readonly string[];
 }
 
 export interface IAddPrefabComponentOptions extends IAuthoringOperationContext {
@@ -1342,6 +1352,23 @@ export async function createRuntimeConfig(options: ICreateRuntimeConfigOptions):
   });
 }
 
+export async function createProjectMetadata(options: ICreateProjectMetadataOptions): Promise<IAuthoringOperationResult> {
+  const projectId = options.projectId;
+  return upsertSourceDocument({
+    projectPath: options.projectPath,
+    kind: "project",
+    id: projectId,
+    file: options.file ?? "content/project.authoring.json",
+    emptyData: defaultProjectMetadataData(projectId),
+    apply: (data) => {
+      data.id = projectId;
+      data.authoringVersion = options.authoringVersion ?? "0.1.0";
+      data.sourceRoots = [...(options.sourceRoots ?? ["content", "src"])];
+      data.buildTargets = [...(options.buildTargets ?? ["web", "desktop"])];
+    },
+  });
+}
+
 export async function setRuntimeWindow(options: ISetRuntimeWindowOptions): Promise<IAuthoringOperationResult> {
   return upsertSourceDocument({
     projectPath: options.projectPath,
@@ -1589,6 +1616,17 @@ function defaultRuntimeConfigData(runtimeId: string): Record<string, unknown> {
   };
 }
 
+function defaultProjectMetadataData(projectId: string): Record<string, unknown> {
+  return {
+    schema: projectDocumentSchema,
+    version: "0.1.0",
+    id: projectId,
+    authoringVersion: "0.1.0",
+    buildTargets: ["web", "desktop"],
+    sourceRoots: ["content", "src"],
+  };
+}
+
 async function createSourceDocument(options: {
   projectPath: string;
   kind: AuthoringDocumentKind;
@@ -1797,6 +1835,8 @@ function sourceExtensionForKind(kind: AuthoringDocumentKind): string {
       return ".meshes.json";
     case "prefab":
       return ".prefab.json";
+    case "project":
+      return ".authoring.json";
     case "runtime":
       return ".runtime.json";
     case "systems":
@@ -2011,6 +2051,8 @@ async function validateAuthoringDocument(
       });
     case "prefab":
       return validatePrefabDocument(file, data);
+    case "project":
+      return validateProjectDocument(file, data);
     case "runtime":
       return validateRuntimeDocument(file, data);
     case "scene":
@@ -2019,8 +2061,6 @@ async function validateAuthoringDocument(
       return validateSystemsDocument(projectPath, file, data);
     case "ui":
       return validateUiDocument(file, data);
-    case "project":
-      return [];
     case "unknown":
       return [
         authoringDiagnostic({
@@ -2031,6 +2071,17 @@ async function validateAuthoringDocument(
         }),
       ];
   }
+}
+
+async function validateProjectDocument(file: string, data: unknown): Promise<IAuthoringDiagnostic[]> {
+  const diagnostics = validateRootDocument(file, data, projectDocumentSchema, "project authoring document", projectDocumentKeys);
+  if (!isRecord(data)) {
+    return diagnostics;
+  }
+  validateOptionalString(diagnostics, file, "/authoringVersion", data.authoringVersion, "authoringVersion must be a non-empty string.");
+  validateStringList(diagnostics, file, "/sourceRoots", data.sourceRoots, "sourceRoots must be an array of non-empty project-relative paths.");
+  validateStringList(diagnostics, file, "/buildTargets", data.buildTargets, "buildTargets must be an array of non-empty target ids.");
+  return sortAuthoringDiagnostics(diagnostics);
 }
 
 async function validateRuntimeDocument(file: string, data: unknown): Promise<IAuthoringDiagnostic[]> {

@@ -11,6 +11,7 @@ export type EditorOperationName =
   | "mesh.create_primitive"
   | "prefab.add_component"
   | "prefab.create"
+  | "project.create"
   | "runtime.set_rendering"
   | "runtime.set_window"
   | "scene.add_prefab"

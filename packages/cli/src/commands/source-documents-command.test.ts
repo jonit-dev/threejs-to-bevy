@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
 
-import { audioCommand, environmentCommand, inputCommand, materialCommand, meshCommand, prefabCommand, runtimeCommand, systemCommand, uiCommand } from "./sourceDocuments.js";
+import { audioCommand, environmentCommand, inputCommand, materialCommand, meshCommand, prefabCommand, projectCommand, runtimeCommand, systemCommand, uiCommand } from "./sourceDocuments.js";
 
 test("countdown UI can be created centered and bound without manual JSON editing", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-cli-ui-doc-"));
@@ -194,6 +194,32 @@ test("runtime command creates and updates promoted source fields", async () => {
     assert.deepEqual(doc.window, { height: 1080, title: "Arena", width: 1920 });
     assert.deepEqual(doc.time, { fixedDelta: 1 / 60, paused: false });
     assert.deepEqual(doc.renderer, { antialias: "msaa8", bloom: { enabled: true, intensity: 0.4, threshold: 0.85 }, renderPath: "forward" });
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("project command initializes source metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-project-doc-"));
+  try {
+    const create = await projectCommand(["init-source", "kart", "--source-roots", "content,src", "--build-targets", "web,desktop", "--authoring-version", "0.1.0", "--project", root, "--json"]);
+    const project = JSON.parse(await readFile(join(root, "content", "project.authoring.json"), "utf8")) as {
+      authoringVersion: string;
+      buildTargets: string[];
+      id: string;
+      sourceRoots: string[];
+    };
+
+    assert.equal(create.exitCode, 0);
+    assert.deepEqual(project, {
+      schema: "threenative.authoring",
+      version: "0.1.0",
+      id: "kart",
+      authoringVersion: "0.1.0",
+      buildTargets: ["web", "desktop"],
+      sourceRoots: ["content", "src"],
+    });
+    assert.deepEqual((JSON.parse(create.stdout) as { filesWritten: string[] }).filesWritten, ["content/project.authoring.json"]);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

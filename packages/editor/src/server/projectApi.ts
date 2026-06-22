@@ -493,6 +493,21 @@ function documentInspectorRows(document: IAuthoringDocument): IEditorPropertyRow
         rows.push(documentRow(document, `asset:${index}:path`, `${readString(asset.id) ?? `asset.${index}`} Path`, readString(asset.path) ?? "", "asset", true, `/assets/${index}/path`, "asset", undefined, undefined, undefined, "Asset catalog mutation is not exposed through the editor operation API yet."));
       }
       break;
+    case "project": {
+      const projectId = readDocumentId(document.data) ?? "";
+      const baseArgs = {
+        authoringVersion: readString(document.data.authoringVersion),
+        buildTargets: readStringArray(document.data.buildTargets),
+        file: document.projectRelativePath,
+        projectId,
+        sourceRoots: readStringArray(document.data.sourceRoots),
+      };
+      rows.push(documentRow(document, "project:id", "Project", projectId, "string", false, "/id", "project", "project.create", "projectId", baseArgs));
+      rows.push(documentRow(document, "project:authoring-version", "Authoring Version", readString(document.data.authoringVersion) ?? "", "string", false, "/authoringVersion", "project", "project.create", "authoringVersion", baseArgs));
+      rows.push(documentRow(document, "project:source-roots", "Source Roots", readStringArray(document.data.sourceRoots).join(", "), "stringList", false, "/sourceRoots", "project", "project.create", "sourceRoots", baseArgs));
+      rows.push(documentRow(document, "project:build-targets", "Build Targets", readStringArray(document.data.buildTargets).join(", "), "stringList", false, "/buildTargets", "project", "project.create", "buildTargets", baseArgs));
+      break;
+    }
     case "mesh":
       for (const [index, mesh] of readArray(document.data.meshes).filter(isRecord).entries()) {
         rows.push(documentRow(document, `mesh:${index}:primitive`, `${readString(mesh.id) ?? `mesh.${index}`} Primitive`, readString(mesh.primitive) ?? "", "enum", true, `/meshes/${index}/primitive`, "mesh", undefined, undefined, undefined, "Mesh primitive declarations are edited through create flows in this slice."));
@@ -678,13 +693,13 @@ function sourceFamilyForDocumentKind(kind: AuthoringDocumentKind): EditorInspect
     case "material":
     case "mesh":
     case "prefab":
+    case "project":
     case "runtime":
     case "scene":
     case "ui":
       return kind;
     case "systems":
       return "system";
-    case "project":
     case "unknown":
       return "scene";
   }

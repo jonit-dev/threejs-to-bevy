@@ -118,6 +118,9 @@ export function classifyAuthoringDocument(projectRelativePath: string, data: unk
 }
 
 export function classifyAuthoringDocumentPath(projectRelativePath: string): AuthoringDocumentKind {
+  if (projectRelativePath === "threenative.authoring.json" || projectRelativePath === "project.authoring.json" || projectRelativePath.endsWith("/project.authoring.json")) {
+    return "project";
+  }
   if (projectRelativePath.endsWith(".assets.json")) {
     return "asset";
   }
