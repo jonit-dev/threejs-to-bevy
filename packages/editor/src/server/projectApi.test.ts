@@ -53,13 +53,13 @@ test("should expose environment skybox and terrain rows", async () => {
     );
     const camera = result.sceneObjects.find((object) => object.id === "camera.main");
     assert.equal(camera?.inspectorRows?.some((row) => row.component === "Camera" && row.label === "Mode" && row.fieldKind === "enum" && row.operation?.name === "scene.set_camera"), true);
-    assert.equal(camera?.inspectorRows?.some((row) => row.component === "Camera" && row.label === "Skybox" && row.fieldKind === "asset" && row.sourceFamily === "environment" && row.value === "tex.sky"), true);
+    assert.equal(camera?.inspectorRows?.some((row) => row.component === "Camera" && row.label === "Skybox" && row.fieldKind === "asset" && row.sourceFamily === "environment" && row.value === "tex.sky" && row.operation?.name === "environment.set_skybox"), true);
     assert.equal(result.sceneObjects.find((object) => object.id === "player")?.inspectorRows?.some((row) => row.component === "MeshRenderer" && row.label === "Asset" && row.fieldKind === "asset" && row.readOnlyReason !== undefined), true);
     const environmentRows = result.documents.flatMap((group) => group.documents).find((document) => document.kind === "environment")?.inspectorRows ?? [];
     assert.equal(environmentRows.some((row) => row.label === "Skybox" && row.sourceFamily === "environment" && row.value === "tex.sky"), true);
-    assert.equal(environmentRows.some((row) => row.label === "Environment Map" && row.fieldKind === "asset" && row.readOnlyReason !== undefined), true);
-    assert.equal(environmentRows.some((row) => row.label === "Terrain Height Mode" && row.fieldKind === "enum" && row.value === "heightmap"), true);
-    assert.equal(environmentRows.some((row) => row.label === "Terrain Heightmap" && row.fieldKind === "asset" && row.value === "assets/height/arena.png"), true);
+    assert.equal(environmentRows.some((row) => row.label === "Environment Map" && row.fieldKind === "asset" && row.operation?.name === "environment.set_map"), true);
+    assert.equal(environmentRows.some((row) => row.label === "Terrain Height Mode" && row.fieldKind === "enum" && row.value === "heightmap" && row.operation?.name === "environment.set_terrain"), true);
+    assert.equal(environmentRows.some((row) => row.label === "Terrain Heightmap" && row.fieldKind === "asset" && row.value === "assets/height/arena.png" && row.operation?.name === "environment.set_terrain"), true);
     assert.equal(environmentRows.some((row) => row.label === "Walkability" && row.fieldKind === "json" && row.readOnlyReason !== undefined), true);
     assert.equal(environmentRows.some((row) => row.label === "Path" && row.fieldKind === "json" && row.readOnlyReason !== undefined), true);
     assert.equal(environmentRows.some((row) => row.label === "env.Tree LOD" && row.fieldKind === "json" && row.readOnlyReason !== undefined), true);

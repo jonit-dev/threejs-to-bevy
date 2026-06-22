@@ -8,12 +8,16 @@ import {
   attachSystemScript,
   bindUiDocument,
   createAudioDocument,
+  createEnvironmentDocument,
   createMaterial,
   createMeshPrimitive,
   createPrefabDocument,
   createSystem,
   createUiDocument,
   setMaterial,
+  setEnvironmentMap,
+  setEnvironmentSkybox,
+  setEnvironmentTerrain,
   setUiLayout,
   setUiStyle,
   type IAuthoringOperationResult,
@@ -319,6 +323,57 @@ export async function audioCommand(argv: readonly string[], options: ISourceComm
   return renderUsage(json, "TN_AUDIO_COMMAND_UNKNOWN", "Usage: tn audio create|add-sound ... [--json]");
 }
 
+export async function environmentCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {
+  const normalizedArgv = normalizeArgv(argv);
+  const [subcommand] = normalizedArgv;
+  const json = normalizedArgv.includes("--json");
+  const projectPath = resolveProjectPath(normalizedArgv, options.cwd);
+  const environmentId = readPositional(normalizedArgv, 1);
+
+  if (subcommand === "create") {
+    if (environmentId === undefined) {
+      return renderUsage(json, "TN_ENVIRONMENT_CREATE_ARGS_MISSING", "Usage: tn environment create <environment-id> [--project <path>] [--json]");
+    }
+    return renderAuthoringResult("environment", await createEnvironmentDocument({ environmentId, projectPath }), json, `Environment document '${environmentId}' created.`);
+  }
+
+  if (subcommand === "set-skybox") {
+    const asset = readFlag(normalizedArgv, "--asset");
+    if (environmentId === undefined || asset === undefined) {
+      return renderUsage(json, "TN_ENVIRONMENT_SET_SKYBOX_ARGS_MISSING", "Usage: tn environment set-skybox <environment-id> --asset <asset-id-or-path> [--mode equirect|cube|color] [--project <path>] [--json]");
+    }
+    return renderAuthoringResult("environment", await setEnvironmentSkybox({ asset, environmentId, mode: readFlag(normalizedArgv, "--mode"), projectPath }), json, `Environment skybox '${environmentId}' updated.`);
+  }
+
+  if (subcommand === "set-map") {
+    const asset = readFlag(normalizedArgv, "--asset");
+    if (environmentId === undefined || asset === undefined) {
+      return renderUsage(json, "TN_ENVIRONMENT_SET_MAP_ARGS_MISSING", "Usage: tn environment set-map <environment-id> --asset <asset-id-or-path> [--project <path>] [--json]");
+    }
+    return renderAuthoringResult("environment", await setEnvironmentMap({ asset, environmentId, projectPath }), json, `Environment map '${environmentId}' updated.`);
+  }
+
+  if (subcommand === "set-terrain") {
+    if (environmentId === undefined) {
+      return renderUsage(json, "TN_ENVIRONMENT_SET_TERRAIN_ARGS_MISSING", environmentSetTerrainUsage());
+    }
+    return renderAuthoringResult(
+      "environment",
+      await setEnvironmentTerrain({
+        environmentId,
+        heightmap: readFlag(normalizedArgv, "--heightmap"),
+        heightMode: readFlag(normalizedArgv, "--height-mode"),
+        projectPath,
+        terrainId: readFlag(normalizedArgv, "--id"),
+      }),
+      json,
+      `Environment terrain '${environmentId}' updated.`,
+    );
+  }
+
+  return renderUsage(json, "TN_ENVIRONMENT_COMMAND_UNKNOWN", "Usage: tn environment create|set-skybox|set-map|set-terrain ... [--json]");
+}
+
 export async function systemCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {
   const normalizedArgv = normalizeArgv(argv);
   const [subcommand] = normalizedArgv;
@@ -373,6 +428,10 @@ function materialSetUsage(): string {
 
 function uiSetStyleUsage(): string {
   return "Usage: tn ui set-style <ui-doc-id> <node-id> [--color <css-color>] [--background-color <css-color>] [--font-size <n>] [--font-weight <value>] [--text-align left|center|right] [--opacity <n>] [--border-radius <n>] [--border-width <n>] [--border-color <css-color>] [--wrap true|false] [--project <path>] [--json]";
+}
+
+function environmentSetTerrainUsage(): string {
+  return "Usage: tn environment set-terrain <environment-id> [--id <terrain-id>] [--height-mode flat|heightmap] [--heightmap <asset-id-or-path>] [--project <path>] [--json]";
 }
 
 function normalizeArgv(argv: readonly string[]): readonly string[] {
@@ -473,12 +532,16 @@ const flagsWithValues = new Set([
   "--emissive-texture",
   "--export",
   "--height",
+  "--height-mode",
+  "--heightmap",
+  "--id",
   "--keys",
   "--kind",
   "--label",
   "--metallic-roughness-texture",
   "--metalness",
   "--module",
+  "--mode",
   "--negative-keys",
   "--normal-texture",
   "--occlusion-texture",

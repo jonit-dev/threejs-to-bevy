@@ -606,7 +606,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P1` Visual editor UI and inspector panels
 - [x] Source-schema-backed inspector field mapping and Add Component compatibility/default metadata
 - [x] Add Object source-backed Primitive/Empty/Camera/Light modal operations
-- [x] Environment source document classification and Camera inspector skybox rows
+- [x] Environment source document classification plus CLI/editor skybox, environment-map, and terrain mutation rows
 - [x] Editor build-preview evidence for source scene, GLB assets, environment terrain/path/walkability, and asset manifest artifacts
 - [x] Save/load round trips through structured SDK/ECS/IR data
 - [x] `P1` Scene hierarchy inspector and property editing

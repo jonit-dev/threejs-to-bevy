@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
 
-import { audioCommand, inputCommand, materialCommand, meshCommand, prefabCommand, systemCommand, uiCommand } from "./sourceDocuments.js";
+import { audioCommand, environmentCommand, inputCommand, materialCommand, meshCommand, prefabCommand, systemCommand, uiCommand } from "./sourceDocuments.js";
 
 test("countdown UI can be created centered and bound without manual JSON editing", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-cli-ui-doc-"));
@@ -146,6 +146,31 @@ test("audio command creates document and adds sounds", async () => {
     assert.equal(create.exitCode, 0);
     assert.equal(addSound.exitCode, 0);
     assert.deepEqual(doc.sounds, [{ asset: "sound.hit", id: "hit" }]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("environment command creates and updates promoted source fields", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-environment-doc-"));
+  try {
+    const create = await environmentCommand(["create", "arena", "--project", root, "--json"]);
+    const skybox = await environmentCommand(["set-skybox", "arena", "--asset", "tex.sky", "--mode", "equirect", "--project", root, "--json"]);
+    const map = await environmentCommand(["set-map", "arena", "--asset", "tex.env", "--project", root, "--json"]);
+    const terrain = await environmentCommand(["set-terrain", "arena", "--id", "terrain.arena", "--height-mode", "heightmap", "--heightmap", "tex.height", "--project", root, "--json"]);
+    const doc = JSON.parse(await readFile(join(root, "content", "environment", "arena.environment.json"), "utf8")) as {
+      environmentMap?: Record<string, unknown>;
+      skybox?: Record<string, unknown>;
+      terrain?: Record<string, unknown>;
+    };
+
+    assert.equal(create.exitCode, 0);
+    assert.equal(skybox.exitCode, 0);
+    assert.equal(map.exitCode, 0);
+    assert.equal(terrain.exitCode, 0);
+    assert.deepEqual(doc.skybox, { asset: "tex.sky", mode: "equirect" });
+    assert.deepEqual(doc.environmentMap, { asset: "tex.env" });
+    assert.deepEqual(doc.terrain, { heightMode: "heightmap", heightmap: "tex.height", id: "terrain.arena" });
   } finally {
     await rm(root, { force: true, recursive: true });
   }

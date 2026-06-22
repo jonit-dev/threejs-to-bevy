@@ -16,6 +16,7 @@ import {
   bindUi,
   bindUiDocument,
   createAudioDocument,
+  createEnvironmentDocument,
   createMaterial,
   createMeshPrimitive,
   createPrefabDocument,
@@ -27,6 +28,9 @@ import {
   setCharacterControllerComponent,
   setColliderComponent,
   setComponent,
+  setEnvironmentMap,
+  setEnvironmentSkybox,
+  setEnvironmentTerrain,
   setLightComponent,
   setMaterial,
   setMeshRendererComponent,
@@ -44,6 +48,10 @@ export type AuthoringOperationName =
   | "asset.add"
   | "audio.add_sound"
   | "audio.create"
+  | "environment.create"
+  | "environment.set_map"
+  | "environment.set_skybox"
+  | "environment.set_terrain"
   | "input.add_action"
   | "input.add_axis"
   | "material.create"
@@ -79,7 +87,7 @@ export type AuthoringOperationName =
   | "ui.set_style";
 
 export type AuthoringOperationPathPolicy = "source-document" | "source-script";
-export type AuthoringOperationSourceFamily = "asset" | "audio" | "input" | "material" | "mesh" | "prefab" | "scene" | "system" | "ui";
+export type AuthoringOperationSourceFamily = "asset" | "audio" | "environment" | "input" | "material" | "mesh" | "prefab" | "scene" | "system" | "ui";
 export type AuthoringOperationResultShape = "authoring-operation-result";
 
 export interface IAuthoringOperationArgumentDescriptor {
@@ -117,6 +125,24 @@ const descriptors = [
     stringArg("audioDocId"),
     stringArg("soundId"),
     stringArg("asset"),
+  ]),
+  descriptor("environment.create", "Create a structured environment source document.", "environment", "source-document", [
+    stringArg("environmentId"),
+  ]),
+  descriptor("environment.set_skybox", "Set environment skybox source fields.", "environment", "source-document", [
+    stringArg("environmentId"),
+    stringArg("asset"),
+    stringArg("mode", false),
+  ]),
+  descriptor("environment.set_map", "Set environment map source fields.", "environment", "source-document", [
+    stringArg("environmentId"),
+    stringArg("asset"),
+  ]),
+  descriptor("environment.set_terrain", "Set promoted environment terrain source fields.", "environment", "source-document", [
+    stringArg("environmentId"),
+    stringArg("terrainId", false),
+    stringArg("heightMode", false),
+    stringArg("heightmap", false),
   ]),
   descriptor("input.add_action", "Add or replace an input action in a structured input document.", "input", "source-document", [
     stringArg("inputDocId"),
@@ -353,6 +379,14 @@ const dispatchers: Record<AuthoringOperationName, OperationDispatcher> = {
     addAudioSound({ asset: requiredString(args, "asset"), audioDocId: requiredString(args, "audioDocId"), projectPath, soundId: requiredString(args, "soundId") }),
   "audio.create": async ({ args, projectPath }) =>
     createAudioDocument({ audioDocId: requiredString(args, "audioDocId"), projectPath }),
+  "environment.create": async ({ args, projectPath }) =>
+    createEnvironmentDocument({ environmentId: requiredString(args, "environmentId"), projectPath }),
+  "environment.set_map": async ({ args, projectPath }) =>
+    setEnvironmentMap({ asset: requiredString(args, "asset"), environmentId: requiredString(args, "environmentId"), projectPath }),
+  "environment.set_skybox": async ({ args, projectPath }) =>
+    setEnvironmentSkybox({ asset: requiredString(args, "asset"), environmentId: requiredString(args, "environmentId"), mode: optionalString(args, "mode"), projectPath }),
+  "environment.set_terrain": async ({ args, projectPath }) =>
+    setEnvironmentTerrain({ environmentId: requiredString(args, "environmentId"), heightmap: optionalString(args, "heightmap"), heightMode: optionalString(args, "heightMode"), projectPath, terrainId: optionalString(args, "terrainId") }),
   "input.add_action": async ({ args, projectPath }) =>
     addInputAction({ actionId: requiredString(args, "actionId"), inputDocId: requiredString(args, "inputDocId"), keys: requiredStringArray(args, "keys"), projectPath }),
   "input.add_axis": async ({ args, projectPath }) =>

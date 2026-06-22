@@ -115,7 +115,7 @@ remains unrecoverable without source-safe manifest/provenance and reports
 profile import remain later source-document work.
 The Phase 4 CLI operation slice adds shared authoring operations and registered
 `tn ui`, `tn material`, `tn mesh`, `tn prefab`, `tn input`, `tn asset`,
-`tn audio`, and `tn system` commands for deterministic source-document
+`tn audio`, `tn environment`, and `tn system` commands for deterministic source-document
 mutation. The supported initial operations create retained UI docs, add text
 nodes, add/update retained UI widget nodes, set centered layout and promoted
 style fields, bind UI resources, create/update material color, roughness,
@@ -123,7 +123,9 @@ metalness, emissive, alpha, promoted texture-slot, clearcoat,
 and transmission fields, declare primitive mesh source docs, create prefab docs
 and component values, add input actions and axes from key lists, add asset catalog
 entries, create audio docs, add audio sound declarations, and create systems
-with module/export script references. Scene lifecycle source commands now set
+with module/export script references. Environment source commands now create
+environment docs and set promoted skybox, environment-map, and terrain fields.
+Scene lifecycle source commands now set
 scene kind, activation policy, and initial-scene metadata through
 `tn scene lifecycle add`, with matching editor rows and `scenes.ir.json` bundle
 lowering from structured `.scene.json` entries. Material bundle import also preserves
@@ -246,8 +248,8 @@ bindings, system script references, Add Component compatibility/default
 metadata, and the existing source/IR persistence evidence.
 Environment scene source documents are now classified by `@threenative/authoring`
 as `environment`, and the editor surfaces environment-owned skybox data under
-the selected Camera inspector as read-only `Skybox` and `Skybox Mode` rows until
-a promoted environment mutation operation exists. The editor package gate writes
+the selected Camera inspector as editable `Skybox` and `Skybox Mode` rows backed
+by promoted environment mutation operations. The editor package gate writes
 `content/environment/arena.environment.json` and verifies the Main Camera skybox
 row from the running browser editor.
 The current modal shell covers Add Object, Add Component, Save Scene, New Scene,
@@ -298,12 +300,13 @@ entity, and transform operations with the GLB/GLTF path persisted on the prefab;
 row, and info/error diagnostics for `/project-assets` viewport routing while
 remote model paths remain unsupported.
 The editor environment/terrain slice now exposes source-derived environment
-summary metadata to the viewport and inspector. `/api/project` emits read-only
-rows for skybox, environment map, terrain id/height mode/heightmap,
-walkability, path, and source-asset LOD data with explicit reasons for
-unsupported mutations. The editor viewport uses environment metadata for a
-visible sky/background and terrain cue, and the footer distinguishes estimated
-LOD triangle counts from exact loaded counts.
+summary metadata to the viewport and inspector. `/api/project` emits editable
+operation-backed rows for skybox, environment map, and terrain
+id/height mode/heightmap, while walkability, path, and source-asset LOD data
+remain read-only with explicit reasons for unsupported mutations. The editor
+viewport uses environment metadata for a visible sky/background and terrain
+cue, and the footer distinguishes estimated LOD triangle counts from exact
+loaded counts.
 The functional editor scene/assets/environment PRD is now complete. The
 compiler lowers companion structured environment source documents into emitted
 environment bundle evidence for terrain, path, and walkability, while simple

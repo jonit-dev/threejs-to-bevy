@@ -16,7 +16,7 @@ import { helpCommand } from "./commands/help.js";
 import { modelTestCommand } from "./commands/modelTest.js";
 import { packageCommand } from "./commands/package.js";
 import { sceneCommand } from "./commands/scene.js";
-import { audioCommand, inputCommand, materialCommand, meshCommand, prefabCommand, systemCommand, uiCommand } from "./commands/sourceDocuments.js";
+import { audioCommand, environmentCommand, inputCommand, materialCommand, meshCommand, prefabCommand, systemCommand, uiCommand } from "./commands/sourceDocuments.js";
 import { validateProject } from "./commands/validate.js";
 import { recordCommand, screenshotCommand } from "./commands/visualProof.js";
 import { verifyCommand } from "./commands/verify.js";
@@ -38,6 +38,11 @@ const commands: Record<string, ICommandDefinition> = {
     description: "Create and mutate structured audio source documents.",
     implemented: true,
     usage: "tn audio create <audio-doc-id> [--project <path>] [--json]\n              tn audio add-sound <audio-doc-id> <sound-id> --asset <asset-id-or-path> [--project <path>] [--json]",
+  },
+  environment: {
+    description: "Create and mutate structured environment source documents.",
+    implemented: true,
+    usage: "tn environment create <environment-id> [--project <path>] [--json]\n              tn environment set-skybox <environment-id> --asset <asset-id-or-path> [--mode equirect|cube|color] [--project <path>] [--json]\n              tn environment set-map <environment-id> --asset <asset-id-or-path> [--project <path>] [--json]\n              tn environment set-terrain <environment-id> [--id <terrain-id>] [--height-mode flat|heightmap] [--heightmap <asset-id-or-path>] [--project <path>] [--json]",
   },
   authoring: {
     description: "Inspect and validate structured authoring source documents.",
@@ -208,6 +213,10 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
 
   if (commandName === "audio") {
     return audioCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "environment") {
+    return environmentCommand(normalizedArgv.slice(1));
   }
 
   if (commandName === "authoring") {

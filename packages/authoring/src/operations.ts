@@ -328,6 +328,28 @@ export interface IBindUiDocumentOptions extends IAuthoringOperationContext {
   resourcePath: string;
 }
 
+export interface ICreateEnvironmentDocumentOptions extends IAuthoringOperationContext {
+  environmentId: string;
+}
+
+export interface ISetEnvironmentSkyboxOptions extends IAuthoringOperationContext {
+  environmentId: string;
+  asset: string;
+  mode?: string;
+}
+
+export interface ISetEnvironmentMapOptions extends IAuthoringOperationContext {
+  environmentId: string;
+  asset: string;
+}
+
+export interface ISetEnvironmentTerrainOptions extends IAuthoringOperationContext {
+  environmentId: string;
+  terrainId?: string;
+  heightMode?: string;
+  heightmap?: string;
+}
+
 export interface ICreateMaterialOptions extends IAuthoringOperationContext {
   materialId: string;
 }
@@ -1229,6 +1251,61 @@ export async function bindUiDocument(options: IBindUiDocumentOptions): Promise<I
   return mutateSourceDocument(options, "ui", options.uiDocId, (data) => {
     const bindings = ensureArrayProperty(data, "bindings");
     bindings.push({ node: options.nodeId, resource: options.resourcePath });
+  });
+}
+
+export async function createEnvironmentDocument(options: ICreateEnvironmentDocumentOptions): Promise<IAuthoringOperationResult> {
+  return createSourceDocument({
+    projectPath: options.projectPath,
+    kind: "environment",
+    id: options.environmentId,
+    file: `content/environment/${options.environmentId}.environment.json`,
+    data: { schema: environmentDocumentSchema, version: "0.1.0", id: options.environmentId, instances: [], sourceAssets: [] },
+  });
+}
+
+export async function setEnvironmentSkybox(options: ISetEnvironmentSkyboxOptions): Promise<IAuthoringOperationResult> {
+  return upsertSourceDocument({
+    projectPath: options.projectPath,
+    kind: "environment",
+    id: options.environmentId,
+    file: `content/environment/${options.environmentId}.environment.json`,
+    emptyData: { schema: environmentDocumentSchema, version: "0.1.0", id: options.environmentId, instances: [], sourceAssets: [] },
+    apply: (data) => {
+      data.skybox = { asset: options.asset, ...(options.mode === undefined ? {} : { mode: options.mode }) };
+    },
+  });
+}
+
+export async function setEnvironmentMap(options: ISetEnvironmentMapOptions): Promise<IAuthoringOperationResult> {
+  return upsertSourceDocument({
+    projectPath: options.projectPath,
+    kind: "environment",
+    id: options.environmentId,
+    file: `content/environment/${options.environmentId}.environment.json`,
+    emptyData: { schema: environmentDocumentSchema, version: "0.1.0", id: options.environmentId, instances: [], sourceAssets: [] },
+    apply: (data) => {
+      data.environmentMap = { asset: options.asset };
+    },
+  });
+}
+
+export async function setEnvironmentTerrain(options: ISetEnvironmentTerrainOptions): Promise<IAuthoringOperationResult> {
+  return upsertSourceDocument({
+    projectPath: options.projectPath,
+    kind: "environment",
+    id: options.environmentId,
+    file: `content/environment/${options.environmentId}.environment.json`,
+    emptyData: { schema: environmentDocumentSchema, version: "0.1.0", id: options.environmentId, instances: [], sourceAssets: [] },
+    apply: (data) => {
+      const terrain = isRecord(data.terrain) ? data.terrain : {};
+      data.terrain = {
+        ...terrain,
+        ...(options.heightmap === undefined ? {} : { heightmap: options.heightmap }),
+        ...(options.heightMode === undefined ? {} : { heightMode: options.heightMode }),
+        ...(options.terrainId === undefined ? {} : { id: options.terrainId }),
+      };
+    },
   });
 }
 

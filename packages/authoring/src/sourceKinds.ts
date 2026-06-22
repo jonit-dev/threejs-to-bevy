@@ -265,6 +265,17 @@ export const authoringSourceMatrix = [
     notes: "Mesh source documents and initial primitive CLI operations exist; custom/generated mesh declarations and provenance remain later work.",
   },
   {
+    id: "environment-document",
+    categoryId: "visual-scene-graph",
+    capability: "Environment skybox, environment map, terrain, path, walkability, light probes, and LOD metadata",
+    sourceDocuments: ["content/environment/*.environment.json"],
+    structuredSourceSupport: "partial",
+    cliOperationSupport: "partial",
+    typescriptRole: "none",
+    editorRoundTrip: "required",
+    notes: "Environment source documents and create/set-skybox/set-map/set-terrain CLI/editor operations cover promoted visual fields; path, walkability, light probes, and LOD metadata remain inspect-only.",
+  },
+  {
     id: "audio-document",
     categoryId: "audio-declarations",
     capability: "Audio declarations",

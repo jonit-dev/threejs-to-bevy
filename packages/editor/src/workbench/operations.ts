@@ -2,6 +2,9 @@ import type { IEditorOperationApiResult, IEditorOperationRequest } from "../serv
 import { applyEditorOperationApi } from "../server/operationApi.js";
 
 export type EditorOperationName =
+  | "environment.set_map"
+  | "environment.set_skybox"
+  | "environment.set_terrain"
   | "input.add_action"
   | "input.add_axis"
   | "material.set"

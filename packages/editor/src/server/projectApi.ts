@@ -177,6 +177,7 @@ function triangleEstimate(object: IEditorSceneObject): number {
 
 interface IEnvironmentSkyboxSummary {
   documentPath: string;
+  environmentId: string;
   mode: string;
   value: string;
 }
@@ -192,6 +193,7 @@ function readEnvironmentSkybox(documents: readonly IAuthoringDocument[]): IEnvir
     }
     return {
       documentPath: document.projectRelativePath,
+      environmentId: readDocumentId(document.data) ?? "",
       mode: readString(skybox.mode) ?? "configured",
       value: summarizeSkybox(skybox),
     };
@@ -380,9 +382,9 @@ function objectInspectorRows(input: {
           id: `inspect:camera-skybox:entity:${input.documentPath}:${input.entityId}`,
           jsonPointer: "/skybox",
           label: "Skybox",
+          operation: { args: { environmentId: input.environmentSkybox.environmentId, mode: input.environmentSkybox.mode }, name: "environment.set_skybox", valueArg: "asset" },
           path: `${input.environmentSkybox.documentPath}/skybox`,
-          readOnly: true,
-          readOnlyReason: "Skybox is owned by environment.scene source and does not have a promoted editor mutation operation yet.",
+          readOnly: false,
           sourceFamily: "environment",
           sourcePath: input.environmentSkybox.documentPath,
           value: input.environmentSkybox.value,
@@ -397,9 +399,9 @@ function objectInspectorRows(input: {
           jsonPointer: "/skybox/mode",
           label: "Skybox Mode",
           options: ["equirect", "cubemap"],
+          operation: { args: { asset: input.environmentSkybox.value, environmentId: input.environmentSkybox.environmentId }, name: "environment.set_skybox", valueArg: "mode" },
           path: `${input.environmentSkybox.documentPath}/skybox/mode`,
-          readOnly: true,
-          readOnlyReason: "Skybox is owned by environment.scene source and does not have a promoted editor mutation operation yet.",
+          readOnly: false,
           sourceFamily: "environment",
           sourcePath: input.environmentSkybox.documentPath,
           value: input.environmentSkybox.mode,
@@ -505,19 +507,21 @@ function documentInspectorRows(document: IAuthoringDocument): IEditorPropertyRow
       }
       break;
     case "environment": {
+      const environmentId = readDocumentId(document.data) ?? "";
       const skybox = isRecord(document.data.skybox) ? document.data.skybox : undefined;
       if (skybox !== undefined) {
-        rows.push(documentRow(document, "environment:skybox", "Skybox", summarizeSkybox(skybox), "asset", true, "/skybox", "environment", undefined, undefined, undefined, "Environment skybox mutation is not exposed through the editor operation API yet."));
-        rows.push(documentRow(document, "environment:skybox-mode", "Skybox Mode", readString(skybox.mode) ?? "", "enum", true, "/skybox/mode", "environment", undefined, undefined, undefined, "Environment skybox mutation is not exposed through the editor operation API yet."));
+        rows.push(documentRow(document, "environment:skybox", "Skybox", summarizeSkybox(skybox), "asset", false, "/skybox", "environment", "environment.set_skybox", "asset", { environmentId, mode: readString(skybox.mode) }));
+        rows.push(documentRow(document, "environment:skybox-mode", "Skybox Mode", readString(skybox.mode) ?? "", "enum", false, "/skybox/mode", "environment", "environment.set_skybox", "mode", { asset: summarizeSkybox(skybox), environmentId }));
       }
       if (document.data.environmentMap !== undefined) {
-        rows.push(documentRow(document, "environment:environment-map", "Environment Map", summarizeValue(document.data.environmentMap), "asset", true, "/environmentMap", "environment", undefined, undefined, undefined, "Environment map mutation is not exposed through the editor operation API yet."));
+        rows.push(documentRow(document, "environment:environment-map", "Environment Map", summarizeAssetBackedValue(document.data.environmentMap), "asset", false, "/environmentMap", "environment", "environment.set_map", "asset", { environmentId }));
       }
       const terrain = isRecord(document.data.terrain) ? document.data.terrain : undefined;
       if (terrain !== undefined) {
-        rows.push(documentRow(document, "environment:terrain-id", "Terrain", readString(terrain.id) ?? "configured", "string", true, "/terrain/id", "environment", undefined, undefined, undefined, "Terrain source mutation is not exposed through the editor operation API yet."));
-        rows.push(documentRow(document, "environment:terrain-height-mode", "Terrain Height Mode", readString(terrain.heightMode) ?? "unknown", "enum", true, "/terrain/heightMode", "environment", undefined, undefined, undefined, "Terrain height mode mutation is not exposed through the editor operation API yet."));
-        rows.push(documentRow(document, "environment:terrain-heightmap", "Terrain Heightmap", readString(terrain.heightmap) ?? readString(terrain.sourceAsset) ?? "flat fallback", "asset", true, "/terrain/heightmap", "environment", undefined, undefined, undefined, "Terrain heightmap rendering and editing are inspect-only in this editor slice."));
+        const terrainArgs = { environmentId, heightmap: readString(terrain.heightmap) ?? readString(terrain.sourceAsset), heightMode: readString(terrain.heightMode), terrainId: readString(terrain.id) };
+        rows.push(documentRow(document, "environment:terrain-id", "Terrain", readString(terrain.id) ?? "configured", "string", false, "/terrain/id", "environment", "environment.set_terrain", "terrainId", terrainArgs));
+        rows.push(documentRow(document, "environment:terrain-height-mode", "Terrain Height Mode", readString(terrain.heightMode) ?? "unknown", "enum", false, "/terrain/heightMode", "environment", "environment.set_terrain", "heightMode", terrainArgs));
+        rows.push(documentRow(document, "environment:terrain-heightmap", "Terrain Heightmap", readString(terrain.heightmap) ?? readString(terrain.sourceAsset) ?? "flat fallback", "asset", false, "/terrain/heightmap", "environment", "environment.set_terrain", "heightmap", terrainArgs));
       }
       if (document.data.walkability !== undefined) {
         rows.push(documentRow(document, "environment:walkability", "Walkability", summarizeValue(document.data.walkability), "json", true, "/walkability", "environment", undefined, undefined, undefined, "Walkability mutation is not exposed through the editor operation API yet."));
@@ -677,6 +681,16 @@ function summarizeSkybox(skybox: Record<string, unknown>): string {
   }
   const faces = isRecord(skybox.faces) ? Object.values(facesRecord(skybox.faces)).filter((value): value is string => typeof value === "string") : [];
   return faces.length === 0 ? "configured" : faces.join(", ");
+}
+
+function summarizeAssetBackedValue(value: unknown): string {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (isRecord(value)) {
+    return readString(value.asset) ?? readString(value.path) ?? summarizeValue(value);
+  }
+  return summarizeValue(value);
 }
 
 function facesRecord(value: Record<string, unknown>): Record<string, unknown> {
