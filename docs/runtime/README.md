@@ -18,6 +18,8 @@ tn doctor --project . --json
 ```
 
 The current `tn doctor` implementation checks project setup and bundle file
-presence. Runtime preview diagnostics, dedicated screenshots, and recording are
-tracked follow-up workflows; use `tn verify` for available web preview proof
-until `tn screenshot` and `tn record` are implemented.
+presence. Web previews expose `window.__THREENATIVE_READY__` with canvas size,
+runtime diagnostics, active camera ID, visible mesh count, final visible world
+bounds, asset counts, resource failures, and camera distance/clip-range hints.
+Use `tn screenshot` and `tn record` for direct proof artifacts, or `tn verify`
+for automated visual checks.

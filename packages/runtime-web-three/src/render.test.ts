@@ -4,8 +4,9 @@ import * as THREE from "three";
 
 import type { IRuntimeConfigIr } from "@threenative/ir";
 
+import type { IWebBundle } from "./loadBundle.js";
 import { mapWorld } from "./mapWorld.js";
-import { applyRendererColorManagement, createRenderedParticleObjects, createWebRenderLifecycle, renderCameraViews, webBloomSettings, webDepthOfFieldSettings, webRendererParameters } from "./render.js";
+import { applyRendererColorManagement, collectWebRuntimeDiagnostics, createRenderedParticleObjects, createWebRenderLifecycle, renderCameraViews, webBloomSettings, webDepthOfFieldSettings, webRendererParameters } from "./render.js";
 
 function runtimeConfig(
   antialias: NonNullable<IRuntimeConfigIr["renderer"]>["antialias"],
@@ -187,6 +188,78 @@ test("should map runtime depth of field settings to web post-processing settings
     focusDistance: 12,
     maxBlur: 0.02,
   });
+});
+
+test("should collect runtime visibility, camera, bounds, and asset diagnostics", () => {
+  const bundle = {
+    assets: {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [{ id: "mesh.cube", kind: "mesh", format: "generated", primitive: "box", size: [1, 1, 1] }],
+    },
+    manifest: {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "runtime-diagnostics",
+      requiredCapabilities: {},
+      entry: { world: "world.ir.json" },
+      files: { assets: "assets.manifest.json", materials: "materials.ir.json", targetProfile: "target.profile.json" },
+    },
+    materials: {
+      schema: "threenative.materials",
+      version: "0.1.0",
+      materials: [{ id: "mat.main", kind: "standard", color: "#ffffff", extension: { preset: "unlitMasked" } }],
+    },
+    targetProfile: { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] },
+    world: {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [
+        {
+          id: "camera.main",
+          components: {
+            Camera: { far: 100, fovY: 60, kind: "perspective", near: 0.1 },
+            Transform: { position: [0, 0, 5] },
+          },
+        },
+        {
+          id: "cube.visible",
+          components: {
+            MeshRenderer: { material: "mat.main", mesh: "mesh.cube" },
+            Transform: { position: [0, 0, 0] },
+          },
+        },
+        {
+          id: "cube.hidden",
+          components: {
+            MeshRenderer: { material: "mat.main", mesh: "mesh.cube", visible: false },
+            Transform: { position: [10, 0, 0] },
+          },
+        },
+      ],
+      resources: { ActiveCamera: { entity: "camera.main" } },
+    },
+  } satisfies IWebBundle;
+  const mapped = mapWorld(bundle);
+  mapped.diagnostics.push({
+    code: "TN-WEB-MODEL-LOAD-FAILED",
+    message: "Failed to load model.",
+    path: "assets.manifest.json/assets/kart/path",
+    severity: "warning",
+  });
+
+  const diagnostics = collectWebRuntimeDiagnostics(mapped, bundle);
+
+  assert.equal(diagnostics.activeCameraId, "camera.main");
+  assert.equal(diagnostics.assets.declared, 1);
+  assert.equal(diagnostics.assets.resourceFailures.length, 1);
+  assert.equal(diagnostics.scene.entityCount, 3);
+  assert.equal(diagnostics.scene.objectCount, 3);
+  assert.equal(diagnostics.scene.visibleMeshCount, 1);
+  assert.deepEqual(diagnostics.scene.worldBounds?.center, [0, 0, 0]);
+  assert.deepEqual(diagnostics.scene.worldBounds?.size, [1, 1, 1]);
+  assert.deepEqual(diagnostics.camera?.worldPosition, [0, 0, 5]);
+  assert.equal(diagnostics.camera?.worldRadiusWithinClipRange, true);
 });
 
 test("should render active cameras in order with viewport scissors", () => {

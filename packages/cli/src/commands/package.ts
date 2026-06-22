@@ -423,6 +423,7 @@ window.__THREENATIVE_READY__ = {
   canvas: { height: result.canvas.height, width: result.canvas.width },
   diagnostics: result.diagnostics,
   ok: result.diagnostics.every((diagnostic) => diagnostic.severity !== "error"),
+  runtimeDiagnostics: result.runtimeDiagnostics,
 };
 window.__THREENATIVE_EFFECT_LOG__ = stableSystemEffectLog(result.effectLog);
 setInterval(() => {

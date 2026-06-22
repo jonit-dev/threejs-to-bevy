@@ -481,6 +481,12 @@ sequenceDiagram
 - Command: `pnpm --filter @threenative/cli test -- commands/screenshot.test.ts`
 - Expected result: screenshot command is deterministic and scriptable.
 
+**Progress Evidence:**
+
+- `tn screenshot` and `tn record` JSON reports now include capture timestamp,
+  viewport, URL, byte size, and the runtime ready payload when a ThreeNative
+  preview exposes it.
+
 #### Phase 8: Add `tn record` — short gameplay video proof
 
 **Dependencies:** Phase 7.
@@ -549,6 +555,15 @@ sequenceDiagram
   gate once registered.
 - Expected result: diagnostics are available in web preview and explicitly
   unavailable/unsupported elsewhere.
+
+**Progress Evidence:**
+
+- Web preview readiness now includes `runtimeDiagnostics` with active camera ID,
+  declared/model asset counts, resource-failure diagnostics, visible mesh count,
+  final visible world bounds, camera position, distance-to-bounds center, and
+  clip-range risk. Focused tests pass with
+  `pnpm --filter @threenative/runtime-web-three test` and
+  `pnpm --filter @threenative/cli test`.
 
 #### Phase 10: Add richer starter templates and example gallery
 

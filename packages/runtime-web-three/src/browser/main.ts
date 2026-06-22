@@ -7,6 +7,7 @@ declare global {
       canvas: { height: number; width: number };
       diagnostics: unknown[];
       ok: boolean;
+      runtimeDiagnostics: unknown;
     };
     __THREENATIVE_EFFECT_LOG__?: ISystemEffectLog;
   }
@@ -28,6 +29,7 @@ window.__THREENATIVE_READY__ = {
   },
   diagnostics: result.diagnostics,
   ok: result.diagnostics.every((diagnostic) => diagnostic.severity !== "error"),
+  runtimeDiagnostics: result.runtimeDiagnostics,
 };
 window.__THREENATIVE_EFFECT_LOG__ = stableSystemEffectLog(result.effectLog);
 

@@ -378,7 +378,11 @@ one-model proof project with copied dependencies, ruler/grid/bounds reference,
 and optional build/validation. `tn screenshot --url <preview-url> --out
 <file.png>` and `tn record --url <preview-url> --out <file.webm|file.mp4>`
 provide direct Playwright still/video proof capture; MP4 conversion requires
-`ffmpeg`, while WebM is captured directly by Chromium. `tn verify --json` also
+`ffmpeg`, while WebM is captured directly by Chromium. Their JSON reports now
+include timestamp, viewport, URL, and the web runtime ready payload when
+available. Web preview readiness includes active camera ID, visible mesh count,
+final visible world bounds, declared/model asset counts, resource-failure
+diagnostics, and camera distance/clip-range hints. `tn verify --json` also
 reports projected nonblank bounds/occupancy for the first captured frame.
 
 ```bash

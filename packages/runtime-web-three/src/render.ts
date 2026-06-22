@@ -34,12 +34,42 @@ export interface IRenderResult {
   dispose(): void;
   effectLog: ISystemEffectLog;
   renderer: THREE.WebGLRenderer;
+  runtimeDiagnostics: IWebRuntimeDiagnostics;
   overlayHost?: IWebOverlayHost;
   ui?: IRenderedUi;
 }
 
 export interface IRenderOptions {
   bookmarkId?: string;
+}
+
+export interface IWebRuntimeDiagnostics {
+  activeCameraId?: string;
+  assets: {
+    declared: number;
+    models: number;
+    resourceFailures: IRuntimeDiagnostic[];
+  };
+  camera?: {
+    distanceToWorldCenter?: number;
+    far?: number;
+    near?: number;
+    type: "orthographic" | "perspective" | "unknown";
+    worldPosition: [number, number, number];
+    worldRadiusWithinClipRange?: boolean;
+  };
+  scene: {
+    entityCount: number;
+    objectCount: number;
+    visibleMeshCount: number;
+    worldBounds?: {
+      center: [number, number, number];
+      max: [number, number, number];
+      min: [number, number, number];
+      radius: number;
+      size: [number, number, number];
+    };
+  };
 }
 
 export interface IWebBloomSettings {
@@ -201,7 +231,43 @@ export async function renderBundle(source: string, container: HTMLElement, optio
     effectLog,
     ...(overlayHost === undefined ? {} : { overlayHost }),
     renderer,
+    runtimeDiagnostics: collectWebRuntimeDiagnostics(mapped, bundle),
     ...(ui === undefined ? {} : { ui }),
+  };
+}
+
+export function collectWebRuntimeDiagnostics(mapped: IThreeWorld, bundle: IWebBundle): IWebRuntimeDiagnostics {
+  const activeCameraId = cameraIdFor(mapped);
+  const worldBounds = visibleWorldBounds(mapped.scene);
+  const cameraPosition = new THREE.Vector3();
+  mapped.camera.getWorldPosition(cameraPosition);
+  const radius = worldBounds === undefined ? undefined : worldBounds.radius;
+  const distanceToWorldCenter = worldBounds === undefined ? undefined : cameraPosition.distanceTo(new THREE.Vector3(...worldBounds.center));
+  const near = cameraNear(mapped.camera);
+  const far = cameraFar(mapped.camera);
+  return {
+    ...(activeCameraId === undefined ? {} : { activeCameraId }),
+    assets: {
+      declared: bundle.assets.assets.length,
+      models: bundle.assets.assets.filter((asset) => asset.kind === "model").length,
+      resourceFailures: mapped.diagnostics.filter((diagnostic) => isResourceFailureDiagnostic(diagnostic)),
+    },
+    camera: {
+      ...(distanceToWorldCenter === undefined ? {} : { distanceToWorldCenter: roundMetric(distanceToWorldCenter) }),
+      ...(far === undefined ? {} : { far }),
+      ...(near === undefined ? {} : { near }),
+      type: cameraType(mapped.camera),
+      worldPosition: vectorToTuple(cameraPosition),
+      ...(distanceToWorldCenter === undefined || radius === undefined || near === undefined || far === undefined
+        ? {}
+        : { worldRadiusWithinClipRange: distanceToWorldCenter + radius >= near && distanceToWorldCenter - radius <= far }),
+    },
+    scene: {
+      entityCount: bundle.world.entities.length,
+      objectCount: mapped.objectsById.size,
+      visibleMeshCount: visibleMeshCount(mapped.scene),
+      ...(worldBounds === undefined ? {} : { worldBounds }),
+    },
   };
 }
 
@@ -271,6 +337,102 @@ function logStartupDiagnostics(diagnostics: readonly IRuntimeDiagnostic[]): void
       });
     }
   }
+}
+
+function cameraIdFor(mapped: IThreeWorld): string | undefined {
+  for (const [id, camera] of mapped.cameras.entries()) {
+    if (camera === mapped.camera) {
+      return id;
+    }
+  }
+  return undefined;
+}
+
+function visibleMeshCount(scene: THREE.Scene): number {
+  let count = 0;
+  scene.traverse((object) => {
+    if (object instanceof THREE.Mesh && visibleInHierarchy(object)) {
+      count += 1;
+    }
+  });
+  return count;
+}
+
+function visibleWorldBounds(scene: THREE.Scene): IWebRuntimeDiagnostics["scene"]["worldBounds"] | undefined {
+  const bounds = new THREE.Box3();
+  let hasBounds = false;
+  scene.traverse((object) => {
+    if (!(object instanceof THREE.Mesh) || !visibleInHierarchy(object)) {
+      return;
+    }
+    const meshBounds = new THREE.Box3().setFromObject(object);
+    if (meshBounds.isEmpty()) {
+      return;
+    }
+    bounds.union(meshBounds);
+    hasBounds = true;
+  });
+  if (!hasBounds || bounds.isEmpty()) {
+    return undefined;
+  }
+  const center = new THREE.Vector3();
+  const size = new THREE.Vector3();
+  bounds.getCenter(center);
+  bounds.getSize(size);
+  return {
+    center: vectorToTuple(center),
+    max: vectorToTuple(bounds.max),
+    min: vectorToTuple(bounds.min),
+    radius: roundMetric(size.length() / 2),
+    size: vectorToTuple(size),
+  };
+}
+
+function visibleInHierarchy(object: THREE.Object3D): boolean {
+  let current: THREE.Object3D | null = object;
+  while (current !== null) {
+    if (!current.visible) {
+      return false;
+    }
+    current = current.parent;
+  }
+  return true;
+}
+
+function cameraType(camera: THREE.Camera): "orthographic" | "perspective" | "unknown" {
+  if (camera instanceof THREE.PerspectiveCamera) {
+    return "perspective";
+  }
+  if (camera instanceof THREE.OrthographicCamera) {
+    return "orthographic";
+  }
+  return "unknown";
+}
+
+function cameraNear(camera: THREE.Camera): number | undefined {
+  if (camera instanceof THREE.PerspectiveCamera || camera instanceof THREE.OrthographicCamera) {
+    return camera.near;
+  }
+  return undefined;
+}
+
+function cameraFar(camera: THREE.Camera): number | undefined {
+  if (camera instanceof THREE.PerspectiveCamera || camera instanceof THREE.OrthographicCamera) {
+    return camera.far;
+  }
+  return undefined;
+}
+
+function isResourceFailureDiagnostic(diagnostic: IRuntimeDiagnostic): boolean {
+  return /ASSET|LOAD|RESOURCE|REFERENCE/.test(diagnostic.code);
+}
+
+function vectorToTuple(vector: THREE.Vector3): [number, number, number] {
+  return [roundMetric(vector.x), roundMetric(vector.y), roundMetric(vector.z)];
+}
+
+function roundMetric(value: number): number {
+  return Number(value.toFixed(6));
 }
 
 function assertSceneReady(diagnostics: readonly IRuntimeDiagnostic[]): void {

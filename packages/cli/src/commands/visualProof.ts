@@ -9,6 +9,15 @@ import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
 const execFileAsync = promisify(execFile);
 const defaultViewport = { height: 720, width: 1280 };
 
+interface IVisualProofReport {
+  byteSize: number;
+  capturedAt: string;
+  outPath: string;
+  runtimeReady: unknown;
+  url: string;
+  viewport: typeof defaultViewport;
+}
+
 export async function screenshotCommand(argv: readonly string[], cwd = process.env.INIT_CWD ?? process.cwd()): Promise<ICommandResult> {
   const normalizedArgv = argv[0] === "--" ? argv.slice(1) : argv;
   const json = normalizedArgv.includes("--json");
@@ -79,33 +88,44 @@ export async function recordCommand(argv: readonly string[], cwd = process.env.I
   }
 }
 
-export async function captureScreenshot(options: { outPath: string; url: string }): Promise<{ byteSize: number; outPath: string; url: string }> {
+export async function captureScreenshot(options: { outPath: string; url: string }): Promise<IVisualProofReport> {
   await mkdir(dirname(options.outPath), { recursive: true });
   const browser = await chromium.launch({ headless: true });
+  let runtimeReady: unknown = null;
   try {
     const page = await browser.newPage({ viewport: defaultViewport });
     await page.goto(options.url, { waitUntil: "domcontentloaded" });
     await waitForVisualReadiness(page);
+    runtimeReady = await readRuntimeReady(page);
     await page.screenshot({ fullPage: false, path: options.outPath });
   } finally {
     await browser.close();
   }
   const info = await stat(options.outPath);
-  return { byteSize: info.size, outPath: options.outPath, url: options.url };
+  return {
+    byteSize: info.size,
+    capturedAt: new Date().toISOString(),
+    outPath: options.outPath,
+    runtimeReady,
+    url: options.url,
+    viewport: defaultViewport,
+  };
 }
 
-export async function recordPreview(options: { outPath: string; seconds: number; url: string }): Promise<{ byteSize: number; format: "mp4" | "webm"; outPath: string; seconds: number; url: string }> {
+export async function recordPreview(options: { outPath: string; seconds: number; url: string }): Promise<IVisualProofReport & { format: "mp4" | "webm"; seconds: number }> {
   const seconds = Math.max(1, Math.min(60, Math.round(options.seconds)));
   await mkdir(dirname(options.outPath), { recursive: true });
   const videoDir = resolve(dirname(options.outPath), `.tn-record-${Date.now()}`);
   await mkdir(videoDir, { recursive: true });
   const browser = await chromium.launch({ headless: true });
   let rawVideoPath: string | undefined;
+  let runtimeReady: unknown = null;
   try {
     const context = await browser.newContext({ recordVideo: { dir: videoDir, size: defaultViewport }, viewport: defaultViewport });
     const page = await context.newPage();
     await page.goto(options.url, { waitUntil: "domcontentloaded" });
     await waitForVisualReadiness(page);
+    runtimeReady = await readRuntimeReady(page);
     await page.waitForTimeout(seconds * 1000);
     rawVideoPath = await page.video()?.path();
     await context.close();
@@ -121,7 +141,7 @@ export async function recordPreview(options: { outPath: string; seconds: number;
     await replaceFile(rawVideoPath, options.outPath);
     await rm(videoDir, { force: true, recursive: true });
     const info = await stat(options.outPath);
-    return { byteSize: info.size, format: "webm", outPath: options.outPath, seconds, url: options.url };
+    return visualProofReport({ byteSize: info.size, format: "webm", outPath: options.outPath, runtimeReady, seconds, url: options.url });
   }
 
   if (!(await commandExists("ffmpeg"))) {
@@ -132,7 +152,35 @@ export async function recordPreview(options: { outPath: string; seconds: number;
   await execFileAsync("ffmpeg", ["-y", "-i", rawVideoPath, "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart", options.outPath]);
   await rm(videoDir, { force: true, recursive: true });
   const info = await stat(options.outPath);
-  return { byteSize: info.size, format: "mp4", outPath: options.outPath, seconds, url: options.url };
+  return visualProofReport({ byteSize: info.size, format: "mp4", outPath: options.outPath, runtimeReady, seconds, url: options.url });
+}
+
+function visualProofReport(options: {
+  byteSize: number;
+  format: "mp4" | "webm";
+  outPath: string;
+  runtimeReady: unknown;
+  seconds: number;
+  url: string;
+}): IVisualProofReport & { format: "mp4" | "webm"; seconds: number } {
+  return {
+    byteSize: options.byteSize,
+    capturedAt: new Date().toISOString(),
+    format: options.format,
+    outPath: options.outPath,
+    runtimeReady: options.runtimeReady,
+    seconds: options.seconds,
+    url: options.url,
+    viewport: defaultViewport,
+  };
+}
+
+async function readRuntimeReady(page: { evaluate: (expression: string) => Promise<unknown> }): Promise<unknown> {
+  try {
+    return await page.evaluate("globalThis.__THREENATIVE_READY__ ?? null");
+  } catch {
+    return null;
+  }
 }
 
 async function waitForVisualReadiness(page: { waitForFunction: (expression: string, arg?: unknown, options?: { timeout?: number }) => Promise<unknown>; waitForTimeout: (milliseconds: number) => Promise<void> }): Promise<void> {
