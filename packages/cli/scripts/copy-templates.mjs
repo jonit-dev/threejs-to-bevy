@@ -10,7 +10,11 @@ const sourceBevyRuntime = resolve(repoRoot, "runtime-bevy");
 const outputBevyRuntime = resolve(packageRoot, "dist", "runtime-bevy");
 const outputAiDocs = resolve(packageRoot, "dist", "ai");
 
-await rm(outputTemplates, { force: true, recursive: true });
+const cleanGeneratedDirectory = async (path) => {
+  await rm(path, { force: true, maxRetries: 5, recursive: true, retryDelay: 100 });
+};
+
+await cleanGeneratedDirectory(outputTemplates);
 await cp(sourceTemplates, outputTemplates, {
   recursive: true,
   filter: (source) => {
@@ -20,7 +24,7 @@ await cp(sourceTemplates, outputTemplates, {
   },
 });
 
-await rm(outputBevyRuntime, { force: true, recursive: true });
+await cleanGeneratedDirectory(outputBevyRuntime);
 await cp(sourceBevyRuntime, outputBevyRuntime, {
   recursive: true,
   filter: (source) => {
@@ -30,7 +34,7 @@ await cp(sourceBevyRuntime, outputBevyRuntime, {
   },
 });
 
-await rm(outputAiDocs, { force: true, recursive: true });
+await cleanGeneratedDirectory(outputAiDocs);
 await mkdir(resolve(outputAiDocs, "docs", "workflows"), { recursive: true });
 await mkdir(resolve(outputAiDocs, "examples", "ai-reference"), { recursive: true });
 await cp(resolve(repoRoot, "llms.txt"), resolve(outputAiDocs, "llms.txt"));
