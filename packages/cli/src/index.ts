@@ -142,7 +142,7 @@ const commands: Record<string, ICommandDefinition> = {
   record: {
     description: "Record a short WebM/MP4 proof clip from a web preview URL.",
     implemented: true,
-    usage: "tn record --url <preview-url> --out <file.webm|file.mp4> [--seconds <n>] [--json]",
+    usage: "tn record [--project <path>] --url <preview-url> --out <file.webm|file.mp4> [--duration <seconds>|--seconds <seconds>] [--input-script <path|default|none>] [--json]",
   },
   verify: {
     description: "Run visual self-verification for the web preview.",

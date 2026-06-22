@@ -71,7 +71,13 @@ browser logs, page errors, failed requests, and stable errors for missing
 canvas, missing readiness, runtime errors, zero visible meshes, and blank
 captures. `tn verify --frames 1` reuses the same screenshot capture path and
 maps those diagnostics into the verification report; multi-frame motion checks
-keep their continuous browser session.
+keep their continuous browser session. `tn record [--project <path>] --url
+<preview-url> --out <file.webm|file.mp4> [--duration <seconds>|--seconds
+<seconds>] [--input-script <path|default|none>] --json` now resolves proof
+artifacts relative to the project, clamps video proof to 1-59 seconds, reports
+seconds/FPS/path/input-script metadata, runs a default W/steer/boost input
+sequence, and returns `TN_RECORD_UNAVAILABLE` for browser video or codec
+failures.
 
 The structured authoring parity PRD has started with a source-document contract
 and testable inventory in `@threenative/authoring`. The inventory makes the

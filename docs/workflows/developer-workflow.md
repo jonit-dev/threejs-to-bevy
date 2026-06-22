@@ -158,7 +158,7 @@ tn verify
 tn model-test assets/hero.glb --out artifacts/model-test --verify --screenshot --url http://127.0.0.1:5173
 tn scene proof <scene-id> --project . --web-url http://127.0.0.1:5173 --out artifacts/proof --native --json
 tn screenshot --url http://127.0.0.1:5173 --out artifacts/proof/frame.png
-tn record --url http://127.0.0.1:5173 --out artifacts/proof/clip.webm --seconds 5
+tn record --url http://127.0.0.1:5173 --out artifacts/proof/clip.webm --duration 5
 ```
 
 Command expectations:
@@ -236,9 +236,13 @@ Command expectations:
   the same screenshot capture path for single-frame proof reports; multi-frame
   motion checks keep one browser session so animation state is preserved between
   frames.
-- `tn record --url <preview-url> --out <file.webm|file.mp4> --seconds <n>`
-  records a short Chromium video. WebM is captured directly; MP4 requires
-  `ffmpeg` on `PATH` for conversion.
+- `tn record [--project <path>] --url <preview-url> --out <file.webm|file.mp4>
+  [--duration <seconds>|--seconds <seconds>] [--input-script <path|default|none>]
+  [--json]` records a short Chromium video. Durations default to 10 seconds and
+  clamp to 1-59 seconds. JSON output includes the artifact path, exact recorded
+  seconds, target FPS, runtime readiness payload, and input-script metadata. The
+  default input script holds `W`, steers left/right, and taps `Space`; `.webm` is
+  captured directly, while `.mp4` requires `ffmpeg` on `PATH`.
 - `tn help <topic>` gives task-oriented references for scaffolding, assets,
   camera, transform, visual QA, screenshot, record, and example/template
   workflows.

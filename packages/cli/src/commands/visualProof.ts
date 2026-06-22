@@ -1,4 +1,4 @@
-import { access, copyFile, mkdir, rename, rm, stat } from "node:fs/promises";
+import { access, copyFile, mkdir, readFile, rename, rm, stat } from "node:fs/promises";
 import { dirname, extname, isAbsolute, resolve } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -10,6 +10,8 @@ import { analyzeNonblank, defaultNonblankThreshold } from "../verify/imageAnalys
 
 const execFileAsync = promisify(execFile);
 const defaultViewport = { height: 720, width: 1280 };
+const defaultRecordSeconds = 10;
+const maxRecordSeconds = 59;
 
 export interface IVisualProofDiagnostic {
   code: string;
@@ -41,6 +43,12 @@ export interface IScreenshotProofReport extends IVisualProofReport {
     visibleMeshCount?: number;
   };
   dimensions?: { height: number; width: number };
+}
+
+type RecordPreviewReport = Awaited<ReturnType<typeof recordPreview>>;
+
+export interface IRecordCommandOptions {
+  recorder?: (options: { inputScript?: IRecordInputScript; outPath: string; seconds: number; url: string }) => Promise<RecordPreviewReport>;
 }
 
 export async function screenshotCommand(argv: readonly string[], cwd = process.env.INIT_CWD ?? process.cwd()): Promise<ICommandResult> {
@@ -81,21 +89,24 @@ export async function screenshotCommand(argv: readonly string[], cwd = process.e
   }
 }
 
-export async function recordCommand(argv: readonly string[], cwd = process.env.INIT_CWD ?? process.cwd()): Promise<ICommandResult> {
+export async function recordCommand(argv: readonly string[], cwd = process.env.INIT_CWD ?? process.cwd(), options: IRecordCommandOptions = {}): Promise<ICommandResult> {
   const normalizedArgv = argv[0] === "--" ? argv.slice(1) : argv;
   const json = normalizedArgv.includes("--json");
   const url = flagValue(normalizedArgv, "--url");
   const outArg = flagValue(normalizedArgv, "--out");
-  const seconds = readNumberFlag(normalizedArgv, "--seconds", 3);
+  const seconds = readDurationFlag(normalizedArgv, defaultRecordSeconds);
+  const inputScriptArg = flagValue(normalizedArgv, "--input-script");
+  const project = flagValue(normalizedArgv, "--project");
+  const baseCwd = project === undefined ? cwd : resolvePath(cwd, project);
 
   if (url === undefined || outArg === undefined) {
     return diagnosticResult(
-      { code: "TN_RECORD_USAGE", message: "Usage: tn record --url <preview-url> --out <file.webm|file.mp4> [--seconds <n>] [--json]" },
+      { code: "TN_RECORD_USAGE", message: "Usage: tn record [--project <path>] --url <preview-url> --out <file.webm|file.mp4> [--duration <seconds>|--seconds <seconds>] [--input-script <path|default|none>] [--json]" },
       { exitCode: 1, json, stderr: !json },
     );
   }
 
-  const outPath = resolvePath(cwd, outArg);
+  const outPath = resolvePath(baseCwd, outArg);
   const extension = extname(outPath).toLowerCase();
   if (extension !== ".webm" && extension !== ".mp4") {
     return diagnosticResult(
@@ -105,15 +116,17 @@ export async function recordCommand(argv: readonly string[], cwd = process.env.I
   }
 
   try {
-    const report = await recordPreview({ outPath, seconds, url });
+    const inputScript = await resolveRecordInputScript(inputScriptArg, baseCwd);
+    const recorder = options.recorder ?? recordPreview;
+    const report = await recorder({ inputScript, outPath, seconds, url });
     return {
       exitCode: 0,
       stdout: json
         ? `${JSON.stringify({ code: "TN_RECORD_OK", ...report }, null, 2)}\n`
-        : `Recording captured.\nOutput: ${report.outPath}\nFormat: ${report.format}\nSeconds: ${report.seconds}\nBytes: ${report.byteSize}\n`,
+        : `Recording captured.\nOutput: ${report.outPath}\nFormat: ${report.format}\nSeconds: ${report.seconds}\nFPS: ${report.fps}\nBytes: ${report.byteSize}\n`,
     };
   } catch (error) {
-    return diagnosticResult({ code: "TN_RECORD_FAILED", message: errorMessage(error) }, { exitCode: 1, json, stderr: !json });
+    return diagnosticResult({ code: "TN_RECORD_UNAVAILABLE", message: errorMessage(error) }, { exitCode: 1, json, stderr: !json });
   }
 }
 
@@ -195,8 +208,14 @@ export async function captureScreenshot(options: { command?: readonly string[]; 
   };
 }
 
-export async function recordPreview(options: { outPath: string; seconds: number; url: string }): Promise<IVisualProofReport & { format: "mp4" | "webm"; seconds: number }> {
-  const seconds = Math.max(1, Math.min(60, Math.round(options.seconds)));
+export interface IRecordInputScript {
+  kind: "default" | "file" | "none";
+  path?: string;
+  source?: string;
+}
+
+export async function recordPreview(options: { inputScript?: IRecordInputScript; outPath: string; seconds: number; url: string }): Promise<IVisualProofReport & { format: "mp4" | "webm"; fps: number; inputScript: { kind: IRecordInputScript["kind"]; path?: string }; seconds: number }> {
+  const seconds = clampRecordSeconds(options.seconds);
   await mkdir(dirname(options.outPath), { recursive: true });
   const videoDir = resolve(dirname(options.outPath), `.tn-record-${Date.now()}`);
   await mkdir(videoDir, { recursive: true });
@@ -209,6 +228,7 @@ export async function recordPreview(options: { outPath: string; seconds: number;
     await page.goto(options.url, { waitUntil: "domcontentloaded" });
     await waitForVisualReadiness(page);
     runtimeReady = await readRuntimeReady(page);
+    await applyRecordInputScript(page, options.inputScript ?? { kind: "default" }, seconds);
     await page.waitForTimeout(seconds * 1000);
     rawVideoPath = await page.video()?.path();
     await context.close();
@@ -224,7 +244,7 @@ export async function recordPreview(options: { outPath: string; seconds: number;
     await replaceFile(rawVideoPath, options.outPath);
     await rm(videoDir, { force: true, recursive: true });
     const info = await stat(options.outPath);
-    return visualProofReport({ byteSize: info.size, format: "webm", outPath: options.outPath, runtimeReady, seconds, url: options.url });
+    return visualProofReport({ byteSize: info.size, format: "webm", inputScript: options.inputScript ?? { kind: "default" }, outPath: options.outPath, runtimeReady, seconds, url: options.url });
   }
 
   if (!(await commandExists("ffmpeg"))) {
@@ -235,21 +255,25 @@ export async function recordPreview(options: { outPath: string; seconds: number;
   await execFileAsync("ffmpeg", ["-y", "-i", rawVideoPath, "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart", options.outPath]);
   await rm(videoDir, { force: true, recursive: true });
   const info = await stat(options.outPath);
-  return visualProofReport({ byteSize: info.size, format: "mp4", outPath: options.outPath, runtimeReady, seconds, url: options.url });
+  return visualProofReport({ byteSize: info.size, format: "mp4", inputScript: options.inputScript ?? { kind: "default" }, outPath: options.outPath, runtimeReady, seconds, url: options.url });
 }
 
 function visualProofReport(options: {
   byteSize: number;
   format: "mp4" | "webm";
+  inputScript: IRecordInputScript;
   outPath: string;
   runtimeReady: unknown;
   seconds: number;
   url: string;
-}): IVisualProofReport & { format: "mp4" | "webm"; seconds: number } {
+}): IVisualProofReport & { format: "mp4" | "webm"; fps: number; inputScript: { kind: IRecordInputScript["kind"]; path?: string }; seconds: number } {
   return {
     byteSize: options.byteSize,
     capturedAt: new Date().toISOString(),
+    command: ["tn", "record", "--url", options.url, "--out", options.outPath, "--duration", String(options.seconds)],
+    fps: 30,
     format: options.format,
+    inputScript: { kind: options.inputScript.kind, ...(options.inputScript.path === undefined ? {} : { path: options.inputScript.path }) },
     outPath: options.outPath,
     runtimeReady: options.runtimeReady,
     seconds: options.seconds,
@@ -309,6 +333,51 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+async function resolveRecordInputScript(inputScriptArg: string | undefined, cwd: string): Promise<IRecordInputScript> {
+  if (inputScriptArg === undefined || inputScriptArg === "default") {
+    return { kind: "default" };
+  }
+  if (inputScriptArg === "none") {
+    return { kind: "none" };
+  }
+  const path = resolvePath(cwd, inputScriptArg);
+  return { kind: "file", path, source: await readFile(path, "utf8") };
+}
+
+async function applyRecordInputScript(
+  page: {
+    evaluate: (expression: string, arg?: unknown) => Promise<unknown>;
+    keyboard: {
+      down: (key: string) => Promise<void>;
+      press: (key: string) => Promise<void>;
+      up: (key: string) => Promise<void>;
+    };
+    waitForTimeout: (milliseconds: number) => Promise<void>;
+  },
+  inputScript: IRecordInputScript,
+  seconds: number,
+): Promise<void> {
+  if (inputScript.kind === "none") {
+    return;
+  }
+  if (inputScript.kind === "file") {
+    await page.evaluate("(source) => { const fn = new Function(source); fn(); }", inputScript.source ?? "");
+    return;
+  }
+
+  const firstLegMs = Math.max(250, Math.min(1500, Math.floor(seconds * 250)));
+  await page.keyboard.down("w");
+  await page.waitForTimeout(firstLegMs);
+  await page.keyboard.down("ArrowLeft");
+  await page.waitForTimeout(150);
+  await page.keyboard.up("ArrowLeft");
+  await page.keyboard.down("ArrowRight");
+  await page.waitForTimeout(150);
+  await page.keyboard.up("ArrowRight");
+  await page.keyboard.press("Space");
+  await page.keyboard.up("w");
+}
+
 async function waitForVisualReadiness(page: { waitForFunction: (expression: string, arg?: unknown, options?: { timeout?: number }) => Promise<unknown>; waitForTimeout: (milliseconds: number) => Promise<void> }): Promise<void> {
   try {
     await page.waitForFunction("Boolean(globalThis.__THREENATIVE_READY__) || document.querySelector('canvas') !== null", undefined, { timeout: 2000 });
@@ -346,13 +415,17 @@ function flagValue(argv: readonly string[], flag: string): string | undefined {
   return index === -1 ? undefined : argv[index + 1];
 }
 
-function readNumberFlag(argv: readonly string[], flag: string, fallback: number): number {
-  const raw = flagValue(argv, flag);
+function readDurationFlag(argv: readonly string[], fallback: number): number {
+  const raw = flagValue(argv, "--duration") ?? flagValue(argv, "--seconds");
   if (raw === undefined) {
     return fallback;
   }
   const parsed = Number.parseFloat(raw);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+  return Number.isFinite(parsed) && parsed > 0 ? clampRecordSeconds(parsed) : fallback;
+}
+
+function clampRecordSeconds(seconds: number): number {
+  return Math.max(1, Math.min(maxRecordSeconds, Math.round(seconds)));
 }
 
 function resolvePath(cwd: string, path: string): string {

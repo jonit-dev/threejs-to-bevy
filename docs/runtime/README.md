@@ -31,4 +31,7 @@ invoked command, canvas dimensions, nonblank analysis, runtime diagnostics,
 browser logs, page errors, and failed requests; use `tn record` for video proof
 or `tn verify` for automated visual checks. Single-frame `tn verify --frames 1`
 reports reuse the screenshot capture diagnostics, while multi-frame verification
-keeps one continuous browser session for motion checks.
+keeps one continuous browser session for motion checks. `tn record --duration
+<seconds> --json` captures short proof clips with a 1-59 second cap, target FPS,
+input-script metadata, and stable unavailable diagnostics when browser video or
+MP4 conversion is not available.

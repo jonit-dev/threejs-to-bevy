@@ -91,9 +91,9 @@ export const HELP_TOPICS: Record<string, HelpTopic> = {
   },
   "visual-qa": {
     aliases: ["visual", "qa", "proof"],
-    commands: ["tn dev --target web", "tn verify [--project <path>] [--frames <count>] [--json]", "tn screenshot [--project <path>] --url <preview-url> --out <file.png> [--wait-ready] [--json]", "tn record --url <preview-url> --out <file.webm|file.mp4> --seconds <n>", "tn help screenshot", "tn help record"],
+    commands: ["tn dev --target web", "tn verify [--project <path>] [--frames <count>] [--json]", "tn screenshot [--project <path>] --url <preview-url> --out <file.png> [--wait-ready] [--json]", "tn record [--project <path>] --url <preview-url> --out <file.webm|file.mp4> [--duration <seconds>] [--input-script <path|default|none>] [--json]", "tn help screenshot", "tn help record"],
     docs: ["docs/workflows/developer-workflow.md", "docs/workflows/ai-workflows.md"],
-    examples: ["Run focused validation/build first, then capture visual proof and report exact artifact paths.", "tn screenshot --url http://127.0.0.1:5173 --out artifacts/proof/frame.png", "tn record --url http://127.0.0.1:5173 --out artifacts/proof/clip.webm --seconds 5"],
+    examples: ["Run focused validation/build first, then capture visual proof and report exact artifact paths.", "tn screenshot --url http://127.0.0.1:5173 --out artifacts/proof/frame.png", "tn record --url http://127.0.0.1:5173 --out artifacts/proof/clip.webm --duration 5"],
     failureSymptoms: ["ready flag true but frame is black", "HUD visible but world missing", "low visible mesh count", "resource load failure"],
     summary: "Collect visual proof that the scene is actually visible, not just technically ready.",
     title: "Visual QA and proof",
@@ -107,9 +107,9 @@ export const HELP_TOPICS: Record<string, HelpTopic> = {
     title: "Screenshot proof",
   },
   record: {
-    commands: ["tn record --url <preview-url> --out <file.webm|file.mp4> [--seconds <n>] [--json]", "tn dev --target web", "tn verify --frames <count> --expect-motion --json"],
+    commands: ["tn record [--project <path>] --url <preview-url> --out <file.webm|file.mp4> [--duration <seconds>|--seconds <seconds>] [--input-script <path|default|none>] [--json]", "tn dev --target web", "tn verify --frames <count> --expect-motion --json"],
     docs: ["docs/workflows/developer-workflow.md", "docs/runtime/README.md"],
-    examples: ["tn record --url http://127.0.0.1:5173 --out artifacts/proof/clip.webm --seconds 5 --json", "Use .mp4 only when ffmpeg is installed; .webm is captured directly from Chromium."],
+    examples: ["tn record --url http://127.0.0.1:5173 --out artifacts/proof/clip.webm --duration 5 --json", "Use .mp4 only when ffmpeg is installed; .webm is captured directly from Chromium."],
     failureSymptoms: ["browser/video codec unavailable", "no visible motion", "runtime readiness timeout"],
     summary: "Collect short motion proof or an explicit unavailable state for video workflows.",
     title: "Recording proof",

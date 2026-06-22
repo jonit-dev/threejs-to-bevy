@@ -63,7 +63,7 @@ test("should keep rendered help stable for the package bin", () => {
   assert.match(renderHelp(), /tn asset inspect <path>/);
   assert.match(renderHelp(), /tn model-test <asset-path>/);
   assert.match(renderHelp(), /tn screenshot \[--project <path>\] --url <preview-url> --out <file\.png>/);
-  assert.match(renderHelp(), /tn record --url <preview-url> --out <file\.webm\|file\.mp4>/);
+  assert.match(renderHelp(), /tn record \[--project <path>\] --url <preview-url> --out <file\.webm\|file\.mp4>/);
   assert.match(renderHelp(), /tn verify \[--project <path>\] \[--url <preview-url>\]/);
   assert.match(renderHelp(), /tn init <name>/);
   assert.match(renderHelp(), /tn help \[topic\]/);

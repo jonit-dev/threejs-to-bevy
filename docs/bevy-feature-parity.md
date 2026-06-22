@@ -57,12 +57,14 @@ implementation:
   visual panel evidence explicitly promoted below. Tooling now includes
   `tn model-test` for one-model proof projects, `tn screenshot`/`tn record` for
   direct Playwright proof artifacts with web runtime ready metadata, screenshot
-  canvas/nonblank/visible-mesh/resource-failure diagnostics, and shared
-  single-frame `tn verify --frames 1` screenshot diagnostics plus `tn verify
-  --json` projected nonblank bounds diagnostics; these are CLI/runtime QA aids,
-  not new portable Bevy runtime capabilities. SDK transform helper methods and
-  runtime Transform patch merge semantics are documented and tested so partial
-  position patches preserve authored scale. `racing-kart` is now a
+  canvas/nonblank/visible-mesh/resource-failure diagnostics, project-relative
+  short video proof with input-script metadata and unavailable-state diagnostics,
+  and shared single-frame `tn verify --frames 1` screenshot diagnostics plus
+  `tn verify --json` projected nonblank bounds diagnostics; these are
+  CLI/runtime QA aids, not new portable Bevy runtime capabilities. SDK transform
+  helper methods and runtime Transform patch merge semantics are documented and
+  tested so partial position patches preserve authored scale. `racing-kart` is
+  now a
   CLI starter template for visible-kart visual QA and scale calibration.
 
 Unchecked rows below should remain unchecked until their V10 owner adds SDK/IR,

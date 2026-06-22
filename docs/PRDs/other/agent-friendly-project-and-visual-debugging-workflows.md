@@ -547,12 +547,12 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Implement `tn record [--project <path>] [--url <url>] [--duration 10]
+- [x] Implement `tn record [--project <path>] [--url <url>] [--duration 10]
   [--input-script <path>] [--out <path>] [--json]`.
-- [ ] Support a simple inline/default input script for common proof: hold `W`,
+- [x] Support a simple inline/default input script for common proof: hold `W`,
   steer left/right, tap boost.
-- [ ] Cap default recordings below one minute and report exact duration/fps/path.
-- [ ] Degrade gracefully when browser/video codecs are unavailable.
+- [x] Cap default recordings below one minute and report exact duration/fps/path.
+- [x] Degrade gracefully when browser/video codecs are unavailable.
 
 **Tests required:**
 
@@ -565,6 +565,18 @@ sequenceDiagram
 - Command: `pnpm --filter @threenative/cli test -- commands/record.test.ts`
 - Expected result: record command rejects unsafe/too-long durations and emits a
   stable report.
+
+**Progress Evidence:**
+
+- `tn record [--project <path>] --url <preview-url> --out <file.webm|file.mp4>
+  [--duration <seconds>|--seconds <seconds>] [--input-script <path|default|none>]
+  [--json]` resolves output and input-script paths relative to `--project`,
+  defaults to 10 seconds, clamps recordings to 1-59 seconds, reports `seconds`,
+  `fps`, `outPath`, and input-script metadata, and returns
+  `TN_RECORD_UNAVAILABLE` for browser/video/codec failures. The default input
+  script briefly holds `W`, steers left/right, and taps `Space`; file scripts are
+  evaluated in the preview page before capture. Verified with
+  `pnpm --filter @threenative/cli test` on 2026-06-21.
 
 #### Phase 9: Add runtime debug overlay and scene visibility diagnostics
 
@@ -793,7 +805,8 @@ Decision: continue only when screenshot proof is scriptable.
 Files changed: record command/tests/docs.
 Automated verification: record command tests and duration cap checks.
 Manual verification needed: yes, short video artifact on a supported host.
-Drift from PRD: record codec/browser limitations.
+Drift from PRD: `--seconds` remains as a compatibility alias for `--duration`;
+recorded FPS is reported as the Chromium target FPS used by the proof helper.
 Decision: continue only when unavailable states are explicit.
 
 ## PHASE 9 CHECKPOINT
