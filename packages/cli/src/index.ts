@@ -16,7 +16,7 @@ import { helpCommand } from "./commands/help.js";
 import { modelTestCommand } from "./commands/modelTest.js";
 import { packageCommand } from "./commands/package.js";
 import { sceneCommand } from "./commands/scene.js";
-import { audioCommand, environmentCommand, inputCommand, materialCommand, meshCommand, prefabCommand, systemCommand, uiCommand } from "./commands/sourceDocuments.js";
+import { audioCommand, environmentCommand, inputCommand, materialCommand, meshCommand, prefabCommand, runtimeCommand, systemCommand, uiCommand } from "./commands/sourceDocuments.js";
 import { validateProject } from "./commands/validate.js";
 import { recordCommand, screenshotCommand } from "./commands/visualProof.js";
 import { verifyCommand } from "./commands/verify.js";
@@ -123,6 +123,11 @@ const commands: Record<string, ICommandDefinition> = {
     description: "Create a local desktop package artifact from a bundle.",
     implemented: true,
     usage: "tn package --target desktop --bundle <path> [--runtime bevy|webview] [--format portable|archive|installer] [--out <path>] [--json]",
+  },
+  runtime: {
+    description: "Create and mutate structured runtime config source documents.",
+    implemented: true,
+    usage: "tn runtime create <runtime-id> [--project <path>] [--json]\n              tn runtime set-window <runtime-id> [--width <n>] [--height <n>] [--title <title>] [--project <path>] [--json]\n              tn runtime set-rendering <runtime-id> [--antialias none|msaa2|msaa4|msaa8|fxaa|taa|smaa] [--bloom true|false] [--bloom-intensity <n>] [--bloom-threshold <n>] [--render-path forward] [--project <path>] [--json]",
   },
   scene: {
     description: "Create, inspect, validate, mutate, and prove structured source scene documents.",
@@ -285,6 +290,10 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
 
   if (commandName === "prefab") {
     return prefabCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "runtime") {
+    return runtimeCommand(normalizedArgv.slice(1));
   }
 
   if (commandName === "system") {

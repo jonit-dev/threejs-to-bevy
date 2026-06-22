@@ -187,6 +187,7 @@ test("should emit structured source environment documents", async () => {
   try {
     await cp(resolve(process.cwd(), "../../templates/structured-source-starter"), projectPath, { recursive: true });
     await mkdir(join(projectPath, "content/environment"), { recursive: true });
+    await mkdir(join(projectPath, "content/runtime"), { recursive: true });
     await writeFile(
       join(projectPath, "content/environment/arena.environment.json"),
       `${JSON.stringify({
@@ -206,14 +207,30 @@ test("should emit structured source environment documents", async () => {
         },
       }, null, 2)}\n`,
     );
+    await writeFile(
+      join(projectPath, "content/runtime/desktop.runtime.json"),
+      `${JSON.stringify({
+        schema: "threenative.runtime-config",
+        version: "0.1.0",
+        id: "desktop",
+        renderer: { antialias: "msaa8", renderPath: "forward" },
+        time: { fixedDelta: 1 / 30, paused: false },
+        window: { height: 900, title: "Structured Runtime", width: 1600 },
+      }, null, 2)}\n`,
+    );
 
     const { bundlePath } = await buildProject(projectPath);
     const report = await validateBundle(bundlePath);
+    const manifest = JSON.parse(await readFile(resolve(bundlePath, "manifest.json"), "utf8"));
     const environment = JSON.parse(await readFile(resolve(bundlePath, "environment.scene.json"), "utf8"));
+    const runtimeConfig = JSON.parse(await readFile(resolve(bundlePath, "runtime.config.json"), "utf8"));
 
     assert.equal(report.ok, true);
+    assert.equal(manifest.files.runtimeConfig, "runtime.config.json");
     assert.equal(environment.terrain.id, "terrain.editor");
     assert.equal(environment.path.id, "path.main");
+    assert.equal(runtimeConfig.renderer.antialias, "msaa8");
+    assert.equal(runtimeConfig.window.title, "Structured Runtime");
   } finally {
     await rm(projectPath, { force: true, recursive: true });
   }

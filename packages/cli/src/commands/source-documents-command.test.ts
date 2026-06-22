@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
 
-import { audioCommand, environmentCommand, inputCommand, materialCommand, meshCommand, prefabCommand, systemCommand, uiCommand } from "./sourceDocuments.js";
+import { audioCommand, environmentCommand, inputCommand, materialCommand, meshCommand, prefabCommand, runtimeCommand, systemCommand, uiCommand } from "./sourceDocuments.js";
 
 test("countdown UI can be created centered and bound without manual JSON editing", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-cli-ui-doc-"));
@@ -171,6 +171,29 @@ test("environment command creates and updates promoted source fields", async () 
     assert.deepEqual(doc.skybox, { asset: "tex.sky", mode: "equirect" });
     assert.deepEqual(doc.environmentMap, { asset: "tex.env" });
     assert.deepEqual(doc.terrain, { heightMode: "heightmap", heightmap: "tex.height", id: "terrain.arena" });
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("runtime command creates and updates promoted source fields", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-runtime-doc-"));
+  try {
+    const create = await runtimeCommand(["create", "desktop", "--project", root, "--json"]);
+    const window = await runtimeCommand(["set-window", "desktop", "--width", "1920", "--height", "1080", "--title", "Arena", "--project", root, "--json"]);
+    const rendering = await runtimeCommand(["set-rendering", "desktop", "--antialias", "msaa8", "--bloom", "true", "--bloom-intensity", "0.4", "--bloom-threshold", "0.85", "--render-path", "forward", "--project", root, "--json"]);
+    const doc = JSON.parse(await readFile(join(root, "content", "runtime", "desktop.runtime.json"), "utf8")) as {
+      renderer?: { antialias?: string; bloom?: Record<string, unknown>; renderPath?: string };
+      time?: Record<string, unknown>;
+      window?: Record<string, unknown>;
+    };
+
+    assert.equal(create.exitCode, 0);
+    assert.equal(window.exitCode, 0);
+    assert.equal(rendering.exitCode, 0);
+    assert.deepEqual(doc.window, { height: 1080, title: "Arena", width: 1920 });
+    assert.deepEqual(doc.time, { fixedDelta: 1 / 60, paused: false });
+    assert.deepEqual(doc.renderer, { antialias: "msaa8", bloom: { enabled: true, intensity: 0.4, threshold: 0.85 }, renderPath: "forward" });
   } finally {
     await rm(root, { force: true, recursive: true });
   }

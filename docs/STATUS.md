@@ -115,7 +115,7 @@ remains unrecoverable without source-safe manifest/provenance and reports
 profile import remain later source-document work.
 The Phase 4 CLI operation slice adds shared authoring operations and registered
 `tn ui`, `tn material`, `tn mesh`, `tn prefab`, `tn input`, `tn asset`,
-`tn audio`, `tn environment`, and `tn system` commands for deterministic source-document
+`tn audio`, `tn environment`, `tn runtime`, and `tn system` commands for deterministic source-document
 mutation. The supported initial operations create retained UI docs, add text
 nodes, add/update retained UI widget nodes, set centered layout and promoted
 style fields, bind UI resources, create/update material color, roughness,
@@ -125,6 +125,8 @@ and component values, add input actions and axes from key lists, add asset catal
 entries, create audio docs, add audio sound declarations, and create systems
 with module/export script references. Environment source commands now create
 environment docs and set promoted skybox, environment-map, and terrain fields.
+Runtime config source commands now create runtime docs and set promoted primary
+window plus renderer quality fields that lower into `runtime.config.json`.
 Scene lifecycle source commands now set
 scene kind, activation policy, and initial-scene metadata through
 `tn scene lifecycle add`, with matching editor rows and `scenes.ir.json` bundle
@@ -139,7 +141,8 @@ Commands support `--json`, return the shared `ok`/`changed`/`filesWritten`/
 `diagnostics` shape, and fail before writing on invalid JSON or validation
 errors. Broader asset import settings, material sampler/import policy, input
 controls-settings/rebinding metadata, advanced UI input/rich-layout behavior,
-and audio playback defaults remain later source-operation work.
+audio playback defaults, target profile source docs, and host window policy
+fields remain later source-operation work.
 The Phase 5 compiler provenance slice extends `authoring.provenance.json` with
 structured source ownership entries when source documents are available during
 normal build. The report maps scene entities/components to source JSON

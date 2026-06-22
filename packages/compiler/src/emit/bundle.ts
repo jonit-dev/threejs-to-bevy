@@ -11,6 +11,7 @@ import {
   type ILocalDataIr,
   type IMaterialIr,
   type IMaterialsIr,
+  type IRuntimeConfigIr,
   type IScenesIr,
   type ISceneTransitionIr,
   type ITargetProfile,
@@ -84,6 +85,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown, options:
     groups: assetGroups(assets, bundleRoot.assetGroups),
   };
   const gltfScene: IGltfSceneMetadataIr | undefined = await extractGltfSceneMetadata(config.projectPath, assets);
+  const runtimeConfig = ecs?.runtimeConfig ?? readStructuredRuntimeConfig(options.authoringDocuments);
   const targetProfile: ITargetProfile = {
     schema: IR_SCHEMA_IDS.targetProfile,
     version: IR_VERSION,
@@ -107,7 +109,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown, options:
       materials,
       overlays: overlays?.overlays,
       resourceSchemas: ecs?.resourceSchemas,
-      runtimeConfig: ecs?.runtimeConfig,
+      runtimeConfig,
       scenes: lifecycleScenes.scenes,
       systems: ecs?.systems,
       ui,
@@ -131,6 +133,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown, options:
       ...(input === undefined ? {} : { input: IR_DOCUMENTS.input.fileName }),
       ...(localData === undefined ? {} : { localData: IR_DOCUMENTS.localData.fileName }),
       materials: IR_DOCUMENTS.materials.fileName,
+      ...(runtimeConfig === undefined ? {} : { runtimeConfig: IR_DOCUMENTS.runtimeConfig.fileName }),
       targetProfile: IR_DOCUMENTS.targetProfile.fileName,
       ...(gltfScene === undefined ? {} : { gltfScene: IR_DOCUMENTS.gltfScene.fileName }),
       ...(ecs === undefined
@@ -139,7 +142,6 @@ export async function emitBundle(config: IProjectConfig, root: unknown, options:
             componentSchemas: IR_DOCUMENTS.componentSchemas.fileName,
             eventSchemas: IR_DOCUMENTS.eventSchemas.fileName,
             resourceSchemas: IR_DOCUMENTS.resourceSchemas.fileName,
-            ...(ecs.runtimeConfig === undefined ? {} : { runtimeConfig: IR_DOCUMENTS.runtimeConfig.fileName }),
             ...(ecs.scriptBundle === undefined ? {} : { scripts: IR_DOCUMENTS.scripts.fileName }),
           }),
     },
@@ -202,15 +204,15 @@ export async function emitBundle(config: IProjectConfig, root: unknown, options:
       await writeFile(resolve(targetDir, IR_DOCUMENTS.resourceSchemas.fileName), stableJson(ecs.resourceSchemas));
       await writeFile(resolve(targetDir, IR_DOCUMENTS.eventSchemas.fileName), stableJson(ecs.eventSchemas));
       await writeFile(resolve(targetDir, IR_DOCUMENTS.systems.fileName), stableJson(ecs.systems));
-      if (ecs.runtimeConfig !== undefined) {
-        await writeFile(resolve(targetDir, IR_DOCUMENTS.runtimeConfig.fileName), stableJson(ecs.runtimeConfig));
-      }
       if (ecs.scriptBundle !== undefined) {
         await writeFile(resolve(targetDir, IR_DOCUMENTS.scripts.fileName), ecs.scriptBundle);
       }
       if (ecs.scriptManifest !== undefined) {
         await writeFile(resolve(targetDir, SCRIPTS_MANIFEST_FILE), stableJson(ecs.scriptManifest));
       }
+    }
+    if (runtimeConfig !== undefined) {
+      await writeFile(resolve(targetDir, IR_DOCUMENTS.runtimeConfig.fileName), stableJson(runtimeConfig));
     }
   }
 
@@ -235,6 +237,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown, options:
       { data: assetsManifest, kind: "assets", path: IR_DOCUMENTS.assets.fileName },
       ...(ui === undefined ? [] : [{ data: ui, kind: "ui" as const, path: IR_DOCUMENTS.ui.fileName }]),
       ...(input === undefined ? [] : [{ data: input, kind: "input" as const, path: IR_DOCUMENTS.input.fileName }]),
+      ...(runtimeConfig === undefined ? [] : [{ data: runtimeConfig, kind: "unknown" as const, path: IR_DOCUMENTS.runtimeConfig.fileName }]),
       ...(ecs?.systems === undefined ? [] : [{ data: ecs.systems, kind: "system" as const, path: IR_DOCUMENTS.systems.fileName }]),
       ...(ecs?.scriptBundle === undefined ? [] : [{ data: ecs.scriptBundle, kind: "generated-script" as const, path: IR_DOCUMENTS.scripts.fileName }]),
     ];
@@ -305,6 +308,28 @@ function isBundleRoot(root: unknown): root is IBundleRoot {
     && root !== null
     && ["assetGroups", "animations", "audio", "environment", "initialScene", "input", "overlay", "persistence", "scene", "scenes", "ui", "world"].some((key) => key in root)
   );
+}
+
+function readStructuredRuntimeConfig(documents: readonly IAuthoringDocument[] | undefined): IRuntimeConfigIr | undefined {
+  const data = documents?.find((document) => document.kind === "runtime" && isRecord(document.data))?.data;
+  if (!isRecord(data) || !isRecord(data.time) || !isRecord(data.window)) {
+    return undefined;
+  }
+  return {
+    schema: IR_SCHEMA_IDS.runtimeConfig,
+    version: IR_VERSION,
+    ...(isRecord(data.renderer) ? { renderer: cloneRecord(data.renderer) as IRuntimeConfigIr["renderer"] } : {}),
+    time: cloneRecord(data.time) as IRuntimeConfigIr["time"],
+    window: cloneRecord(data.window) as IRuntimeConfigIr["window"],
+  };
+}
+
+function cloneRecord(value: Record<string, unknown>): Record<string, unknown> {
+  return JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 interface ILifecycleSceneEmitResult {

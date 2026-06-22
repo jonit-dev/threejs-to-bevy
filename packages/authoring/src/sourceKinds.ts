@@ -150,6 +150,8 @@ export const generatedBundleArtifactFiles = [
   "scripts.bundle.js",
   "materials.ir.json",
   "assets.manifest.json",
+  "runtime.config.json",
+  "target.profile.json",
   "manifest.json",
 ] as const;
 
@@ -324,11 +326,11 @@ export const authoringSourceMatrix = [
     categoryId: "runtime-target-profile",
     capability: "Runtime config and target profile where editor-owned",
     sourceDocuments: ["content/runtime/*.runtime.json", "content/targets/*.target.json"],
-    structuredSourceSupport: "missing",
-    cliOperationSupport: "missing",
+    structuredSourceSupport: "partial",
+    cliOperationSupport: "partial",
     typescriptRole: "none",
     editorRoundTrip: "required",
-    notes: "Editor-owned runtime defaults need source documents; runtime-only process state remains outside source.",
+    notes: "Runtime config source documents and create/set-window/set-rendering CLI/editor operations cover primary window and promoted renderer fields; target profile source documents and host process state remain open.",
   },
   {
     id: "generated-bundle-artifacts",

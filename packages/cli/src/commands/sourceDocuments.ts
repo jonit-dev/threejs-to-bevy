@@ -12,12 +12,15 @@ import {
   createMaterial,
   createMeshPrimitive,
   createPrefabDocument,
+  createRuntimeConfig,
   createSystem,
   createUiDocument,
   setMaterial,
   setEnvironmentMap,
   setEnvironmentSkybox,
   setEnvironmentTerrain,
+  setRuntimeRendering,
+  setRuntimeWindow,
   setUiLayout,
   setUiStyle,
   type IAuthoringOperationResult,
@@ -374,6 +377,73 @@ export async function environmentCommand(argv: readonly string[], options: ISour
   return renderUsage(json, "TN_ENVIRONMENT_COMMAND_UNKNOWN", "Usage: tn environment create|set-skybox|set-map|set-terrain ... [--json]");
 }
 
+export async function runtimeCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {
+  const normalizedArgv = normalizeArgv(argv);
+  const [subcommand] = normalizedArgv;
+  const json = normalizedArgv.includes("--json");
+  const projectPath = resolveProjectPath(normalizedArgv, options.cwd);
+  const runtimeId = readPositional(normalizedArgv, 1);
+
+  if (subcommand === "create") {
+    if (runtimeId === undefined) {
+      return renderUsage(json, "TN_RUNTIME_CREATE_ARGS_MISSING", "Usage: tn runtime create <runtime-id> [--project <path>] [--json]");
+    }
+    return renderAuthoringResult("runtime", await createRuntimeConfig({ projectPath, runtimeId }), json, `Runtime config '${runtimeId}' created.`);
+  }
+
+  if (subcommand === "set-window") {
+    if (runtimeId === undefined) {
+      return renderUsage(json, "TN_RUNTIME_SET_WINDOW_ARGS_MISSING", runtimeSetWindowUsage());
+    }
+    const numbers = parseNumberFlags(normalizedArgv, ["--height", "--width"]);
+    if (numbers.diagnostic !== undefined) {
+      return renderUsage(json, numbers.diagnostic, "Runtime window numeric flags must be finite numbers.");
+    }
+    return renderAuthoringResult(
+      "runtime",
+      await setRuntimeWindow({
+        height: numbers.values["--height"],
+        projectPath,
+        runtimeId,
+        title: readFlag(normalizedArgv, "--title"),
+        width: numbers.values["--width"],
+      }),
+      json,
+      `Runtime window '${runtimeId}' updated.`,
+    );
+  }
+
+  if (subcommand === "set-rendering") {
+    if (runtimeId === undefined) {
+      return renderUsage(json, "TN_RUNTIME_SET_RENDERING_ARGS_MISSING", runtimeSetRenderingUsage());
+    }
+    const numbers = parseNumberFlags(normalizedArgv, ["--bloom-intensity", "--bloom-threshold"]);
+    if (numbers.diagnostic !== undefined) {
+      return renderUsage(json, numbers.diagnostic, "Runtime rendering numeric flags must be finite numbers.");
+    }
+    const bloom = parseOptionalBoolean(normalizedArgv, "--bloom");
+    if (bloom.diagnostic !== undefined) {
+      return renderUsage(json, bloom.diagnostic, "Runtime --bloom must be true or false.");
+    }
+    return renderAuthoringResult(
+      "runtime",
+      await setRuntimeRendering({
+        antialias: readFlag(normalizedArgv, "--antialias"),
+        bloomEnabled: bloom.value,
+        bloomIntensity: numbers.values["--bloom-intensity"],
+        bloomThreshold: numbers.values["--bloom-threshold"],
+        projectPath,
+        renderPath: readFlag(normalizedArgv, "--render-path"),
+        runtimeId,
+      }),
+      json,
+      `Runtime rendering '${runtimeId}' updated.`,
+    );
+  }
+
+  return renderUsage(json, "TN_RUNTIME_COMMAND_UNKNOWN", "Usage: tn runtime create|set-window|set-rendering ... [--json]");
+}
+
 export async function systemCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {
   const normalizedArgv = normalizeArgv(argv);
   const [subcommand] = normalizedArgv;
@@ -432,6 +502,14 @@ function uiSetStyleUsage(): string {
 
 function environmentSetTerrainUsage(): string {
   return "Usage: tn environment set-terrain <environment-id> [--id <terrain-id>] [--height-mode flat|heightmap] [--heightmap <asset-id-or-path>] [--project <path>] [--json]";
+}
+
+function runtimeSetWindowUsage(): string {
+  return "Usage: tn runtime set-window <runtime-id> [--width <n>] [--height <n>] [--title <title>] [--project <path>] [--json]";
+}
+
+function runtimeSetRenderingUsage(): string {
+  return "Usage: tn runtime set-rendering <runtime-id> [--antialias none|msaa2|msaa4|msaa8|fxaa|taa|smaa] [--bloom true|false] [--bloom-intensity <n>] [--bloom-threshold <n>] [--render-path forward] [--project <path>] [--json]";
 }
 
 function normalizeArgv(argv: readonly string[]): readonly string[] {
@@ -517,11 +595,15 @@ const flagsWithValues = new Set([
   "--alpha-mode",
   "--asset",
   "--action",
+  "--antialias",
   "--background-color",
   "--base-color-texture",
   "--border-color",
   "--border-radius",
   "--border-width",
+  "--bloom",
+  "--bloom-intensity",
+  "--bloom-threshold",
   "--clearcoat",
   "--clearcoat-roughness",
   "--clearcoat-roughness-texture",
@@ -551,12 +633,14 @@ const flagsWithValues = new Set([
   "--resource",
   "--roughness",
   "--schedule",
+  "--render-path",
   "--src",
   "--type",
   "--text-align",
   "--text-decoration",
   "--text",
   "--top",
+  "--title",
   "--transmission",
   "--transmission-texture",
   "--value",

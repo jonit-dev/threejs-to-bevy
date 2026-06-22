@@ -39,6 +39,8 @@ import {
   readArray,
   readString,
   resourceKeys,
+  runtimeDocumentKeys,
+  runtimeDocumentSchema,
   sceneDocumentKeys,
   sceneDocumentSchema,
   scriptReferenceKeys,
@@ -52,6 +54,7 @@ import {
   supportedComponentKinds,
   supportedLightKinds,
   supportedMaterialAlphaModes,
+  supportedRendererAntialiasModes,
   uiDocumentKeys,
   supportedRigidBodyKinds,
   supportedSceneActivationPolicies,
@@ -348,6 +351,26 @@ export interface ISetEnvironmentTerrainOptions extends IAuthoringOperationContex
   terrainId?: string;
   heightMode?: string;
   heightmap?: string;
+}
+
+export interface ICreateRuntimeConfigOptions extends IAuthoringOperationContext {
+  runtimeId: string;
+}
+
+export interface ISetRuntimeWindowOptions extends IAuthoringOperationContext {
+  runtimeId: string;
+  width?: number;
+  height?: number;
+  title?: string;
+}
+
+export interface ISetRuntimeRenderingOptions extends IAuthoringOperationContext {
+  runtimeId: string;
+  antialias?: string;
+  bloomEnabled?: boolean;
+  bloomIntensity?: number;
+  bloomThreshold?: number;
+  renderPath?: string;
 }
 
 export interface ICreateMaterialOptions extends IAuthoringOperationContext {
@@ -1309,6 +1332,64 @@ export async function setEnvironmentTerrain(options: ISetEnvironmentTerrainOptio
   });
 }
 
+export async function createRuntimeConfig(options: ICreateRuntimeConfigOptions): Promise<IAuthoringOperationResult> {
+  return createSourceDocument({
+    projectPath: options.projectPath,
+    kind: "runtime",
+    id: options.runtimeId,
+    file: `content/runtime/${options.runtimeId}.runtime.json`,
+    data: defaultRuntimeConfigData(options.runtimeId),
+  });
+}
+
+export async function setRuntimeWindow(options: ISetRuntimeWindowOptions): Promise<IAuthoringOperationResult> {
+  return upsertSourceDocument({
+    projectPath: options.projectPath,
+    kind: "runtime",
+    id: options.runtimeId,
+    file: `content/runtime/${options.runtimeId}.runtime.json`,
+    emptyData: defaultRuntimeConfigData(options.runtimeId),
+    apply: (data) => {
+      const window = isRecord(data.window) ? data.window : {};
+      data.window = {
+        ...window,
+        ...(options.height === undefined ? {} : { height: options.height }),
+        ...(options.title === undefined ? {} : { title: options.title }),
+        ...(options.width === undefined ? {} : { width: options.width }),
+      };
+    },
+  });
+}
+
+export async function setRuntimeRendering(options: ISetRuntimeRenderingOptions): Promise<IAuthoringOperationResult> {
+  return upsertSourceDocument({
+    projectPath: options.projectPath,
+    kind: "runtime",
+    id: options.runtimeId,
+    file: `content/runtime/${options.runtimeId}.runtime.json`,
+    emptyData: defaultRuntimeConfigData(options.runtimeId),
+    apply: (data) => {
+      const renderer = isRecord(data.renderer) ? data.renderer : {};
+      const bloom = isRecord(renderer.bloom) ? renderer.bloom : {};
+      data.renderer = {
+        ...renderer,
+        ...(options.antialias === undefined ? {} : { antialias: options.antialias }),
+        ...(options.renderPath === undefined ? {} : { renderPath: options.renderPath }),
+        ...(options.bloomEnabled === undefined && options.bloomIntensity === undefined && options.bloomThreshold === undefined
+          ? {}
+          : {
+              bloom: {
+                ...bloom,
+                ...(options.bloomEnabled === undefined ? {} : { enabled: options.bloomEnabled }),
+                ...(options.bloomIntensity === undefined ? {} : { intensity: options.bloomIntensity }),
+                ...(options.bloomThreshold === undefined ? {} : { threshold: options.bloomThreshold }),
+              },
+            }),
+      };
+    },
+  });
+}
+
 export async function createMaterial(options: ICreateMaterialOptions): Promise<IAuthoringOperationResult> {
   return createSourceDocument({
     projectPath: options.projectPath,
@@ -1495,6 +1576,17 @@ export async function attachSystemScript(options: IAttachSystemScriptOptions): P
     system.script = { module: options.modulePath, export: options.exportName };
     return [];
   });
+}
+
+function defaultRuntimeConfigData(runtimeId: string): Record<string, unknown> {
+  return {
+    schema: runtimeDocumentSchema,
+    version: "0.1.0",
+    id: runtimeId,
+    renderer: { antialias: "msaa4" },
+    time: { fixedDelta: 1 / 60, paused: false },
+    window: { height: 720, width: 1280 },
+  };
 }
 
 async function createSourceDocument(options: {
@@ -1705,6 +1797,8 @@ function sourceExtensionForKind(kind: AuthoringDocumentKind): string {
       return ".meshes.json";
     case "prefab":
       return ".prefab.json";
+    case "runtime":
+      return ".runtime.json";
     case "systems":
       return ".systems.json";
     case "ui":
@@ -1917,6 +2011,8 @@ async function validateAuthoringDocument(
       });
     case "prefab":
       return validatePrefabDocument(file, data);
+    case "runtime":
+      return validateRuntimeDocument(file, data);
     case "scene":
       return validateSceneDocument(projectPath, file, data, context);
     case "systems":
@@ -1935,6 +2031,91 @@ async function validateAuthoringDocument(
         }),
       ];
   }
+}
+
+async function validateRuntimeDocument(file: string, data: unknown): Promise<IAuthoringDiagnostic[]> {
+  const diagnostics: IAuthoringDiagnostic[] = [];
+  if (!isRecord(data)) {
+    return [typeDiagnostic(file, "", "Runtime config source document must be a JSON object.", data)];
+  }
+  diagnostics.push(...unknownKeyDiagnostics(file, "", data, runtimeDocumentKeys));
+  if (data.schema !== runtimeDocumentSchema) {
+    diagnostics.push(
+      authoringDiagnostic({
+        code: "TN_AUTHORING_RUNTIME_SCHEMA_INVALID",
+        file,
+        message: `Runtime config source document must use schema '${runtimeDocumentSchema}'.`,
+        path: "/schema",
+        value: data.schema,
+      }),
+    );
+  }
+  validateLogicalId(diagnostics, file, "/id", data.id, "runtime config document");
+
+  const time = isRecord(data.time) ? data.time : undefined;
+  if (time === undefined) {
+    diagnostics.push(typeDiagnostic(file, "/time", "Runtime config time must define fixedDelta and paused.", data.time));
+  } else {
+    diagnostics.push(...unknownKeyDiagnostics(file, "/time", time, new Set(["fixedDelta", "paused"])));
+    validateRequiredNumber(diagnostics, file, "/time/fixedDelta", time.fixedDelta, "runtime fixedDelta must be a finite number.");
+    if (typeof time.fixedDelta === "number" && Number.isFinite(time.fixedDelta) && time.fixedDelta <= 0) {
+      diagnostics.push(typeDiagnostic(file, "/time/fixedDelta", "runtime fixedDelta must be positive.", time.fixedDelta));
+    }
+    if (typeof time.paused !== "boolean") {
+      diagnostics.push(typeDiagnostic(file, "/time/paused", "runtime paused must be a boolean.", time.paused));
+    }
+  }
+
+  const window = isRecord(data.window) ? data.window : undefined;
+  if (window === undefined) {
+    diagnostics.push(typeDiagnostic(file, "/window", "Runtime config window must define width and height.", data.window));
+  } else {
+    diagnostics.push(...unknownKeyDiagnostics(file, "/window", window, new Set(["height", "title", "width"])));
+    validateRequiredNumber(diagnostics, file, "/window/height", window.height, "runtime window height must be a finite number.");
+    validateRequiredNumber(diagnostics, file, "/window/width", window.width, "runtime window width must be a finite number.");
+    if (typeof window.height === "number" && Number.isFinite(window.height) && window.height <= 0) {
+      diagnostics.push(typeDiagnostic(file, "/window/height", "runtime window height must be positive.", window.height));
+    }
+    if (typeof window.width === "number" && Number.isFinite(window.width) && window.width <= 0) {
+      diagnostics.push(typeDiagnostic(file, "/window/width", "runtime window width must be positive.", window.width));
+    }
+    validateOptionalString(diagnostics, file, "/window/title", window.title, "runtime window title must be a non-empty string.");
+  }
+
+  const renderer = isRecord(data.renderer) ? data.renderer : undefined;
+  if (data.renderer !== undefined && renderer === undefined) {
+    diagnostics.push(typeDiagnostic(file, "/renderer", "Runtime renderer config must be a JSON object.", data.renderer));
+  }
+  if (renderer !== undefined) {
+    diagnostics.push(...unknownKeyDiagnostics(file, "/renderer", renderer, new Set(["antialias", "bloom", "renderPath"])));
+    const antialias = readString(renderer.antialias);
+    if (renderer.antialias !== undefined && (antialias === undefined || !supportedRendererAntialiasModes.has(antialias))) {
+      diagnostics.push(typeDiagnostic(file, "/renderer/antialias", "runtime renderer antialias must be one of none, msaa2, msaa4, msaa8, fxaa, taa, or smaa.", renderer.antialias));
+    }
+    if (renderer.renderPath !== undefined && renderer.renderPath !== "forward") {
+      diagnostics.push(typeDiagnostic(file, "/renderer/renderPath", "runtime renderer renderPath must be 'forward'.", renderer.renderPath));
+    }
+    const bloom = isRecord(renderer.bloom) ? renderer.bloom : undefined;
+    if (renderer.bloom !== undefined && bloom === undefined) {
+      diagnostics.push(typeDiagnostic(file, "/renderer/bloom", "runtime renderer bloom must be a JSON object.", renderer.bloom));
+    }
+    if (bloom !== undefined) {
+      diagnostics.push(...unknownKeyDiagnostics(file, "/renderer/bloom", bloom, new Set(["enabled", "intensity", "threshold"])));
+      if (typeof bloom.enabled !== "boolean") {
+        diagnostics.push(typeDiagnostic(file, "/renderer/bloom/enabled", "runtime renderer bloom enabled must be a boolean.", bloom.enabled));
+      }
+      validateRequiredNumber(diagnostics, file, "/renderer/bloom/intensity", bloom.intensity, "runtime renderer bloom intensity must be a finite number.");
+      validateRequiredNumber(diagnostics, file, "/renderer/bloom/threshold", bloom.threshold, "runtime renderer bloom threshold must be a finite number.");
+      if (typeof bloom.intensity === "number" && Number.isFinite(bloom.intensity) && bloom.intensity < 0) {
+        diagnostics.push(typeDiagnostic(file, "/renderer/bloom/intensity", "runtime renderer bloom intensity must be non-negative.", bloom.intensity));
+      }
+      if (typeof bloom.threshold === "number" && Number.isFinite(bloom.threshold) && bloom.threshold < 0) {
+        diagnostics.push(typeDiagnostic(file, "/renderer/bloom/threshold", "runtime renderer bloom threshold must be non-negative.", bloom.threshold));
+      }
+    }
+  }
+
+  return diagnostics;
 }
 
 async function validateSceneDocument(

@@ -53,6 +53,8 @@ Generated bundle files are runtime/compiler artifacts, not durable source:
 - `scripts.bundle.js`
 - `materials.ir.json`
 - `assets.manifest.json`
+- `runtime.config.json`
+- `target.profile.json`
 - `manifest.json`
 
 Generated artifacts may be inspected or imported into structured source when
@@ -64,8 +66,9 @@ The IR editor patch contract treats structured documents under
 `content/**/*.scene.json`, `content/**/*.ui.json`,
 `content/**/*.materials.json`, `content/**/*.meshes.json`,
 `content/**/*.input.json`, `content/**/*.systems.json`,
-`content/**/*.prefab.json`, `content/**/*.audio.json`, and
-`threenative.authoring.json` as source-persistable. Generated bundle/cache
+`content/**/*.prefab.json`, `content/**/*.audio.json`,
+`content/**/*.runtime.json`, and `threenative.authoring.json` as
+source-persistable. Generated bundle/cache
 paths such as `dist/**`, `game.bundle/**`, `scripts.bundle.js`, generated IR
 documents, and runtime handles remain rejected as source patch targets.
 
@@ -87,9 +90,10 @@ does not copy generated bundle files directly into source, and it does not
 persist `scripts.bundle.js` as TypeScript. If only generated script code is
 available, the report includes
 `TN_AUTHORING_IMPORT_UNRECOVERABLE_SCRIPT_BODY`; script references are imported
-only when source-safe module/export provenance is available. Runtime config and
-target profile artifacts are skipped until their source document families are
-implemented.
+only when source-safe module/export provenance is available. Runtime config
+source documents are now first-class for new authoring operations, but bundle
+import still skips generated `runtime.config.json` and `target.profile.json`
+until recovery semantics for those artifacts are defined.
 
 Runtime state is also not durable source unless it is explicitly represented in
 an editor-owned runtime or target profile source document. Runtime adapters load

@@ -20,6 +20,7 @@ import {
   createMaterial,
   createMeshPrimitive,
   createPrefabDocument,
+  createRuntimeConfig,
   createSystem,
   createUiDocument,
   removeComponent,
@@ -35,6 +36,8 @@ import {
   setMaterial,
   setMeshRendererComponent,
   setResource,
+  setRuntimeRendering,
+  setRuntimeWindow,
   setRigidBodyComponent,
   setSceneLifecycle,
   setTransform,
@@ -59,6 +62,9 @@ export type AuthoringOperationName =
   | "mesh.create_primitive"
   | "prefab.add_component"
   | "prefab.create"
+  | "runtime.create"
+  | "runtime.set_rendering"
+  | "runtime.set_window"
   | "scene.add_entity"
   | "scene.add_prefab"
   | "scene.add_resource"
@@ -87,7 +93,7 @@ export type AuthoringOperationName =
   | "ui.set_style";
 
 export type AuthoringOperationPathPolicy = "source-document" | "source-script";
-export type AuthoringOperationSourceFamily = "asset" | "audio" | "environment" | "input" | "material" | "mesh" | "prefab" | "scene" | "system" | "ui";
+export type AuthoringOperationSourceFamily = "asset" | "audio" | "environment" | "input" | "material" | "mesh" | "prefab" | "runtime" | "scene" | "system" | "ui";
 export type AuthoringOperationResultShape = "authoring-operation-result";
 
 export interface IAuthoringOperationArgumentDescriptor {
@@ -192,6 +198,23 @@ const descriptors = [
     stringArg("prefabId"),
     stringArg("componentKind"),
     objectArg("value"),
+  ]),
+  descriptor("runtime.create", "Create a structured runtime config source document.", "runtime", "source-document", [
+    stringArg("runtimeId"),
+  ]),
+  descriptor("runtime.set_window", "Set primary runtime window source fields.", "runtime", "source-document", [
+    stringArg("runtimeId"),
+    numberArg("height", false),
+    stringArg("title", false),
+    numberArg("width", false),
+  ]),
+  descriptor("runtime.set_rendering", "Set promoted runtime renderer source fields.", "runtime", "source-document", [
+    stringArg("runtimeId"),
+    stringArg("antialias", false),
+    booleanArg("bloomEnabled", false),
+    numberArg("bloomIntensity", false),
+    numberArg("bloomThreshold", false),
+    stringArg("renderPath", false),
   ]),
   descriptor("scene.add_entity", "Add an entity to a structured scene document.", "scene", "source-document", [
     stringArg("sceneId"),
@@ -423,6 +446,12 @@ const dispatchers: Record<AuthoringOperationName, OperationDispatcher> = {
     addPrefabComponent({ componentKind: requiredString(args, "componentKind"), prefabId: requiredString(args, "prefabId"), projectPath, value: requiredObject(args, "value") }),
   "prefab.create": async ({ args, projectPath }) =>
     createPrefabDocument({ prefabId: requiredString(args, "prefabId"), projectPath }),
+  "runtime.create": async ({ args, projectPath }) =>
+    createRuntimeConfig({ projectPath, runtimeId: requiredString(args, "runtimeId") }),
+  "runtime.set_rendering": async ({ args, projectPath }) =>
+    setRuntimeRendering({ antialias: optionalString(args, "antialias"), bloomEnabled: optionalBoolean(args, "bloomEnabled"), bloomIntensity: optionalNumber(args, "bloomIntensity"), bloomThreshold: optionalNumber(args, "bloomThreshold"), projectPath, renderPath: optionalString(args, "renderPath"), runtimeId: requiredString(args, "runtimeId") }),
+  "runtime.set_window": async ({ args, projectPath }) =>
+    setRuntimeWindow({ height: optionalNumber(args, "height"), projectPath, runtimeId: requiredString(args, "runtimeId"), title: optionalString(args, "title"), width: optionalNumber(args, "width") }),
   "scene.add_entity": async ({ args, projectPath }) =>
     addEntity({ entityId: requiredString(args, "entityId"), prefabId: optionalString(args, "prefabId"), projectPath, sceneId: requiredString(args, "sceneId") }),
   "scene.add_prefab": async ({ args, projectPath }) =>

@@ -11,6 +11,7 @@ test("should expose environment skybox and terrain rows", async () => {
   const root = await copyStarterProject();
   try {
     await mkdir(join(root, "content", "environment"), { recursive: true });
+    await mkdir(join(root, "content", "runtime"), { recursive: true });
     await writeFile(
       join(root, "content", "environment", "arena.environment.json"),
       `${JSON.stringify({
@@ -24,6 +25,17 @@ test("should expose environment skybox and terrain rows", async () => {
         sourceAssets: [{ id: "env.Tree", lod: [{ asset: "env.Tree.low", maxDistance: 60 }] }],
         terrain: { heightMode: "heightmap", heightmap: "assets/height/arena.png", id: "terrain.arena" },
         walkability: { terrain: { height: 0, surface: "terrain.arena" } },
+      }, null, 2)}\n`,
+    );
+    await writeFile(
+      join(root, "content", "runtime", "desktop.runtime.json"),
+      `${JSON.stringify({
+        schema: "threenative.runtime-config",
+        version: "0.1.0",
+        id: "desktop",
+        renderer: { antialias: "msaa4", bloom: { enabled: true, intensity: 0.3, threshold: 0.8 }, renderPath: "forward" },
+        time: { fixedDelta: 1 / 60, paused: false },
+        window: { height: 720, title: "Arena", width: 1280 },
       }, null, 2)}\n`,
     );
     const result = await loadEditorProjectApi({ projectPath: root });
@@ -63,6 +75,9 @@ test("should expose environment skybox and terrain rows", async () => {
     assert.equal(environmentRows.some((row) => row.label === "Walkability" && row.fieldKind === "json" && row.readOnlyReason !== undefined), true);
     assert.equal(environmentRows.some((row) => row.label === "Path" && row.fieldKind === "json" && row.readOnlyReason !== undefined), true);
     assert.equal(environmentRows.some((row) => row.label === "env.Tree LOD" && row.fieldKind === "json" && row.readOnlyReason !== undefined), true);
+    const runtimeRows = result.documents.flatMap((group) => group.documents).find((document) => document.kind === "runtime")?.inspectorRows ?? [];
+    assert.equal(runtimeRows.some((row) => row.label === "Window Width" && row.operation?.name === "runtime.set_window" && row.operation.valueArg === "width"), true);
+    assert.equal(runtimeRows.some((row) => row.label === "Renderer Antialias" && row.operation?.name === "runtime.set_rendering" && row.operation.valueArg === "antialias"), true);
     const sceneRows = result.documents.flatMap((group) => group.documents).find((document) => document.kind === "scene")?.inspectorRows ?? [];
     assert.equal(sceneRows.some((row) => row.label === "Scene Kind" && row.fieldKind === "enum" && row.operation?.name === "scene.set_lifecycle" && row.operation.valueArg === "kind"), true);
     assert.equal(sceneRows.some((row) => row.label === "Activation" && row.fieldKind === "enum" && row.operation?.name === "scene.set_lifecycle" && row.operation.valueArg === "activation"), true);

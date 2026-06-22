@@ -498,6 +498,21 @@ function documentInspectorRows(document: IAuthoringDocument): IEditorPropertyRow
         rows.push(documentRow(document, `mesh:${index}:primitive`, `${readString(mesh.id) ?? `mesh.${index}`} Primitive`, readString(mesh.primitive) ?? "", "enum", true, `/meshes/${index}/primitive`, "mesh", undefined, undefined, undefined, "Mesh primitive declarations are edited through create flows in this slice."));
       }
       break;
+    case "runtime": {
+      const runtimeId = readDocumentId(document.data) ?? "";
+      const window = isRecord(document.data.window) ? document.data.window : {};
+      const renderer = isRecord(document.data.renderer) ? document.data.renderer : {};
+      const bloom = isRecord(renderer.bloom) ? renderer.bloom : {};
+      rows.push(documentRow(document, "runtime:window-width", "Window Width", formatScalar(window.width, ""), "number", false, "/window/width", "runtime", "runtime.set_window", "width", { height: readNumber(window.height), runtimeId, title: readString(window.title) }));
+      rows.push(documentRow(document, "runtime:window-height", "Window Height", formatScalar(window.height, ""), "number", false, "/window/height", "runtime", "runtime.set_window", "height", { runtimeId, title: readString(window.title), width: readNumber(window.width) }));
+      rows.push(documentRow(document, "runtime:window-title", "Window Title", readString(window.title) ?? "", "string", false, "/window/title", "runtime", "runtime.set_window", "title", { height: readNumber(window.height), runtimeId, width: readNumber(window.width) }));
+      rows.push(documentRow(document, "runtime:renderer-antialias", "Renderer Antialias", readString(renderer.antialias) ?? "", "enum", false, "/renderer/antialias", "runtime", "runtime.set_rendering", "antialias", { bloomEnabled: readBoolean(bloom.enabled), bloomIntensity: readNumber(bloom.intensity), bloomThreshold: readNumber(bloom.threshold), renderPath: readString(renderer.renderPath), runtimeId }));
+      rows.push(documentRow(document, "runtime:renderer-bloom", "Bloom", formatBoolean(bloom.enabled), "boolean", false, "/renderer/bloom/enabled", "runtime", "runtime.set_rendering", "bloomEnabled", { antialias: readString(renderer.antialias), bloomIntensity: readNumber(bloom.intensity), bloomThreshold: readNumber(bloom.threshold), renderPath: readString(renderer.renderPath), runtimeId }));
+      rows.push(documentRow(document, "runtime:renderer-bloom-intensity", "Bloom Intensity", formatScalar(bloom.intensity, ""), "number", false, "/renderer/bloom/intensity", "runtime", "runtime.set_rendering", "bloomIntensity", { antialias: readString(renderer.antialias), bloomEnabled: readBoolean(bloom.enabled), bloomThreshold: readNumber(bloom.threshold), renderPath: readString(renderer.renderPath), runtimeId }));
+      rows.push(documentRow(document, "runtime:renderer-bloom-threshold", "Bloom Threshold", formatScalar(bloom.threshold, ""), "number", false, "/renderer/bloom/threshold", "runtime", "runtime.set_rendering", "bloomThreshold", { antialias: readString(renderer.antialias), bloomEnabled: readBoolean(bloom.enabled), bloomIntensity: readNumber(bloom.intensity), renderPath: readString(renderer.renderPath), runtimeId }));
+      rows.push(documentRow(document, "runtime:renderer-render-path", "Render Path", readString(renderer.renderPath) ?? "", "enum", false, "/renderer/renderPath", "runtime", "runtime.set_rendering", "renderPath", { antialias: readString(renderer.antialias), bloomEnabled: readBoolean(bloom.enabled), bloomIntensity: readNumber(bloom.intensity), bloomThreshold: readNumber(bloom.threshold), runtimeId }));
+      break;
+    }
     case "scene":
       rows.push(documentRow(document, "scene:lifecycle:kind", "Scene Kind", readString(document.data.kind) ?? "level", "enum", false, "/kind", "scene", "scene.set_lifecycle", "kind", { activation: readString(document.data.activation), initial: document.data.initial === true, sceneId: readDocumentId(document.data) ?? "" }));
       rows.push(documentRow(document, "scene:lifecycle:activation", "Activation", readString(document.data.activation) ?? "", "enum", false, "/activation", "scene", "scene.set_lifecycle", "activation", { initial: document.data.initial === true, kind: readString(document.data.kind), sceneId: readDocumentId(document.data) ?? "" }));
@@ -663,6 +678,7 @@ function sourceFamilyForDocumentKind(kind: AuthoringDocumentKind): EditorInspect
     case "material":
     case "mesh":
     case "prefab":
+    case "runtime":
     case "scene":
     case "ui":
       return kind;
@@ -746,6 +762,14 @@ function readString(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
+function readNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function readBoolean(value: unknown): boolean | undefined {
+  return typeof value === "boolean" ? value : undefined;
+}
+
 function readStringArray(value: unknown): string[] {
   return readArray(value).filter((item): item is string => typeof item === "string");
 }
@@ -756,6 +780,10 @@ function stripKeyboardBinding(value: string): string {
 
 function formatScalar(value: unknown, fallback: string): string {
   return typeof value === "number" && Number.isFinite(value) ? String(value) : readString(value) ?? fallback;
+}
+
+function formatBoolean(value: unknown): string {
+  return typeof value === "boolean" ? String(value) : "";
 }
 
 function formatScript(value: unknown): string {
