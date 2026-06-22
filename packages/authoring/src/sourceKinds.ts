@@ -265,7 +265,7 @@ export const authoringSourceMatrix = [
     cliOperationSupport: "partial",
     typescriptRole: "none",
     editorRoundTrip: "required",
-    notes: "Mesh source documents and initial primitive CLI operations exist; custom/generated mesh declarations and provenance remain later work.",
+    notes: "Mesh source documents and CLI/registry operations cover primitive and custom attribute/index declarations; generated mesh provenance, import settings, and broader editor controls remain later work.",
   },
   {
     id: "environment-document",

@@ -48,7 +48,16 @@ test("loads mixed authoring source document family", async () => {
       schema: "threenative.meshes",
       version: "0.1.0",
       id: "kart-meshes",
-      meshes: [{ id: "mesh.kart", kind: "primitive", primitive: "box" }],
+      meshes: [
+        { id: "mesh.kart", kind: "primitive", primitive: "box" },
+        {
+          attributes: [{ itemSize: 3, name: "position", values: [0, 0, 0, 1, 0, 0, 0, 1, 0] }],
+          id: "mesh.kart.triangle",
+          indices: [0, 1, 2],
+          kind: "custom",
+          primitive: "custom",
+        },
+      ],
     });
     await writeSourceDocument(root, "content/assets/kart.assets.json", {
       schema: "threenative.assets",

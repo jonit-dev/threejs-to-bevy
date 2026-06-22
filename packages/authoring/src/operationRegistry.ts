@@ -21,6 +21,7 @@ import {
   createAudioDocument,
   createEnvironmentDocument,
   createMaterial,
+  createMeshCustom,
   createMeshPrimitive,
   createPrefabDocument,
   createProjectMetadata,
@@ -66,6 +67,7 @@ export type AuthoringOperationName =
   | "input.add_axis"
   | "material.create"
   | "material.set"
+  | "mesh.create_custom"
   | "mesh.create_primitive"
   | "prefab.add_component"
   | "prefab.create"
@@ -113,7 +115,7 @@ export type AuthoringOperationResultShape = "authoring-operation-result";
 export interface IAuthoringOperationArgumentDescriptor {
   name: string;
   required: boolean;
-  type: "boolean" | "json-object" | "json-object-array" | "json-value" | "number" | "string" | "string-array" | "vector3";
+  type: "boolean" | "json-object" | "json-object-array" | "json-value" | "number" | "number-array" | "string" | "string-array" | "vector3";
 }
 
 export interface IAuthoringOperationDescriptor {
@@ -204,6 +206,12 @@ const descriptors = [
   descriptor("mesh.create_primitive", "Create a primitive mesh source document.", "mesh", "source-document", [
     stringArg("meshId"),
     stringArg("kind"),
+  ]),
+  descriptor("mesh.create_custom", "Create a custom mesh source document with attributes and indices.", "mesh", "source-document", [
+    stringArg("meshId"),
+    objectArrayArg("attributes"),
+    numberArrayArg("indices", false),
+    stringArg("storage", false),
   ]),
   descriptor("prefab.create", "Create a structured prefab source document.", "prefab", "source-document", [
     stringArg("prefabId"),
@@ -511,6 +519,8 @@ const dispatchers: Record<AuthoringOperationName, OperationDispatcher> = {
     }),
   "mesh.create_primitive": async ({ args, projectPath }) =>
     createMeshPrimitive({ kind: requiredString(args, "kind"), meshId: requiredString(args, "meshId"), projectPath }),
+  "mesh.create_custom": async ({ args, projectPath }) =>
+    createMeshCustom({ attributes: requiredObjectArray(args, "attributes") as Array<{ itemSize: number; name: string; values: number[] }>, indices: optionalNumberArray(args, "indices"), meshId: requiredString(args, "meshId"), projectPath, storage: optionalString(args, "storage") }),
   "prefab.add_component": async ({ args, projectPath }) =>
     addPrefabComponent({ componentKind: requiredString(args, "componentKind"), prefabId: requiredString(args, "prefabId"), projectPath, value: requiredObject(args, "value") }),
   "prefab.create": async ({ args, projectPath }) =>
@@ -672,6 +682,9 @@ function validateRegistryArguments(operation: IAuthoringOperationDescriptor, arg
     if (argument.type === "number" && (typeof value !== "number" || !Number.isFinite(value))) {
       return [invalidArgumentDiagnostic(operation.name, argument.name, "a finite number")];
     }
+    if (argument.type === "number-array" && (!Array.isArray(value) || !value.every((entry) => typeof entry === "number" && Number.isFinite(entry)))) {
+      return [invalidArgumentDiagnostic(operation.name, argument.name, "an array of finite numbers")];
+    }
     if (argument.type === "boolean" && typeof value !== "boolean") {
       return [invalidArgumentDiagnostic(operation.name, argument.name, "a boolean")];
     }
@@ -729,6 +742,10 @@ function numberArg(name: string, required = true): IAuthoringOperationArgumentDe
   return { name, required, type: "number" };
 }
 
+function numberArrayArg(name: string, required = true): IAuthoringOperationArgumentDescriptor {
+  return { name, required, type: "number-array" };
+}
+
 function objectArg(name: string, required = true): IAuthoringOperationArgumentDescriptor {
   return { name, required, type: "json-object" };
 }
@@ -765,6 +782,14 @@ function requiredObject(args: Record<string, unknown>, key: string): Record<stri
   return value;
 }
 
+function requiredObjectArray(args: Record<string, unknown>, key: string): Record<string, unknown>[] {
+  const value = args[key];
+  if (!Array.isArray(value) || !value.every(isObject)) {
+    throw new Error(`Operation argument '${key}' was not validated.`);
+  }
+  return value;
+}
+
 function requiredStringArray(args: Record<string, unknown>, key: string): string[] {
   const value = args[key];
   if (!isStringArray(value)) {
@@ -791,6 +816,11 @@ function optionalObjectArray(args: Record<string, unknown>, key: string): Record
 function optionalNumber(args: Record<string, unknown>, key: string): number | undefined {
   const value = args[key];
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function optionalNumberArray(args: Record<string, unknown>, key: string): number[] | undefined {
+  const value = args[key];
+  return Array.isArray(value) && value.every((entry) => typeof entry === "number" && Number.isFinite(entry)) ? value : undefined;
 }
 
 function optionalBoolean(args: Record<string, unknown>, key: string): boolean | undefined {

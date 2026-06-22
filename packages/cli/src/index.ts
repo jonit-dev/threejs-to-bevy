@@ -100,9 +100,9 @@ const commands: Record<string, ICommandDefinition> = {
     usage: "tn material create <material-id> [--project <path>] [--json]\n              tn material set <material-id> [--color <css-color>] [--roughness <n>] [--metalness <n>] [--base-color-texture <asset-id>] [--normal-texture <asset-id>] [--emissive <css-color>] [--alpha-mode opaque|mask|blend] [--project <path>] [--json]",
   },
   mesh: {
-    description: "Create structured mesh source documents.",
+    description: "Create structured primitive and custom mesh source documents.",
     implemented: true,
-    usage: "tn mesh primitive <mesh-id> --kind <box|sphere|cylinder|cone|plane> [--project <path>] [--json]",
+    usage: "tn mesh primitive <mesh-id> --kind <box|sphere|cylinder|cone|plane> [--project <path>] [--json]\n              tn mesh custom <mesh-id> --attributes '<json-array>' [--indices '<json-array>'] [--storage binary] [--project <path>] [--json]",
   },
   "compare-images": {
     description: "Compare two PNG screenshots and report visual deltas.",

@@ -276,6 +276,7 @@ ergonomics. These rows are not implementation claims.
 - [x] Bounding/raycast-style queries for promoted physics traces
 - [x] Full Bevy primitive catalog and extrusions
 - [x] Custom mesh generation and custom vertex attributes
+- [x] Structured source/CLI custom mesh declarations with binary bundle payloads
 - [x] `P1` Portable procedural mesh authoring
   - [x] MeshBuilder API for generated static meshes
   - [x] Primitive composition helpers for organic props

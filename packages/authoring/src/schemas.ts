@@ -79,7 +79,7 @@ export const assetKeys = new Set(["id", "path", "type"]);
 export const inputActionKeys = new Set(["id", "bindings"]);
 export const inputAxisKeys = new Set(["id", "negative", "positive", "value"]);
 export const audioSoundKeys = new Set(["id", "asset"]);
-export const meshKeys = new Set(["id", "kind", "primitive"]);
+export const meshKeys = new Set(["attributes", "id", "indices", "kind", "primitive", "storage"]);
 export const supportedPrefabPrimitives = new Set(["box", "capsule", "cone", "cylinder", "plane", "sphere"]);
 export const supportedMeshPrimitives = new Set(["box", "cone", "cylinder", "plane", "sphere"]);
 
@@ -332,9 +332,12 @@ export interface IMeshDocument {
 }
 
 export interface IMeshDeclaration {
+  attributes?: Array<{ itemSize: 1 | 2 | 3 | 4; name: string; values: number[] }>;
   id: string;
-  kind: "primitive";
-  primitive: "box" | "cone" | "cylinder" | "plane" | "sphere";
+  indices?: number[];
+  kind: "custom" | "primitive";
+  primitive?: "box" | "cone" | "custom" | "cylinder" | "plane" | "sphere";
+  storage?: "binary";
 }
 
 export function isRecord(value: unknown): value is Record<string, unknown> {

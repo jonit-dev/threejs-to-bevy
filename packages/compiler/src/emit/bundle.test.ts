@@ -860,6 +860,63 @@ test("should emit standalone SDK asset modules in bundle manifest", async () => 
   }
 });
 
+test("should emit structured mesh source documents into asset manifest", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-source-meshes-"));
+  try {
+    const scene = new Scene({ id: "scene" });
+    const config = {
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project" as const,
+      version: "0.1.0" as const,
+    };
+
+    const bundlePath = await emitBundle(config, { scene }, {
+      authoringDocuments: [{
+        data: {
+          schema: "threenative.meshes",
+          version: "0.1.0",
+          id: "meshes",
+          meshes: [
+            { id: "mesh.source.box", kind: "primitive", primitive: "box" },
+            {
+              attributes: [{ itemSize: 3, name: "position", values: [0, 0, 0, 1, 0, 0, 0, 1, 0] }],
+              id: "mesh.source.triangle",
+              indices: [0, 1, 2],
+              kind: "custom",
+              primitive: "custom",
+              storage: "binary",
+            },
+          ],
+        },
+        file: join(root, "content/meshes/meshes.meshes.json"),
+        kind: "mesh",
+        projectRelativePath: "content/meshes/meshes.meshes.json",
+      }],
+    });
+    const assets = JSON.parse(await readFile(join(bundlePath, "assets.manifest.json"), "utf8")) as {
+      assets: Array<{ binaryAttributes?: Array<{ name: string; path: string }>; binaryIndices?: { path: string }; id: string; primitive: string }>;
+    };
+    const result = await validateBundle(bundlePath);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(assets.assets.find((asset) => asset.id === "mesh.source.box"), {
+      format: "generated",
+      id: "mesh.source.box",
+      kind: "mesh",
+      primitive: "box",
+    });
+    const custom = assets.assets.find((asset) => asset.id === "mesh.source.triangle");
+    assert.equal(custom?.primitive, "custom");
+    assert.deepEqual(custom?.binaryAttributes?.map((attribute) => attribute.name), ["position"]);
+    assert.match(custom?.binaryAttributes?.[0]?.path ?? "", /^generated\/meshes\/mesh\.source\.triangle\.00\.position\.bin$/);
+    assert.match(custom?.binaryIndices?.path ?? "", /^generated\/meshes\/mesh\.source\.triangle\.indices\.uint16\.bin$/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should emit ecs schemas for query-only system", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-emit-ecs-query-"));
   try {

@@ -145,6 +145,7 @@ test("should expose operation metadata and registry diagnostics", async () => {
     "material.create",
     "material.set",
     "mesh.create_primitive",
+    "mesh.create_custom",
     "prefab.create",
     "prefab.add_component",
     "project.create",

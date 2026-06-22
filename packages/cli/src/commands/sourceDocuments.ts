@@ -10,6 +10,7 @@ import {
   createAudioDocument,
   createEnvironmentDocument,
   createMaterial,
+  createMeshCustom,
   createMeshPrimitive,
   createPrefabDocument,
   createProjectMetadata,
@@ -266,9 +267,23 @@ export async function meshCommand(argv: readonly string[], options: ISourceComma
   const json = normalizedArgv.includes("--json");
   const projectPath = resolveProjectPath(normalizedArgv, options.cwd);
   const meshId = readPositional(normalizedArgv, 1);
+  if (normalizedArgv[0] === "custom") {
+    const attributes = parseJsonArrayFlag(normalizedArgv, "--attributes", "TN_MESH_ATTRIBUTES_INVALID");
+    const indices = parseJsonNumberArrayFlag(normalizedArgv, "--indices", "TN_MESH_INDICES_INVALID");
+    if (attributes.diagnostic !== undefined) {
+      return renderUsage(json, attributes.diagnostic, "Mesh --attributes must be a JSON array of attribute objects.");
+    }
+    if (indices.diagnostic !== undefined) {
+      return renderUsage(json, indices.diagnostic, "Mesh --indices must be a JSON array of numbers.");
+    }
+    if (meshId === undefined || attributes.value === undefined) {
+      return renderUsage(json, "TN_MESH_CUSTOM_ARGS_MISSING", "Usage: tn mesh custom <mesh-id> --attributes '<json-array>' [--indices '<json-array>'] [--storage binary] [--project <path>] [--json]");
+    }
+    return renderAuthoringResult("mesh", await createMeshCustom({ attributes: attributes.value as Array<{ itemSize: number; name: string; values: number[] }>, indices: indices.value, meshId, projectPath, storage: readFlag(normalizedArgv, "--storage") }), json, `Custom mesh '${meshId}' created.`);
+  }
   const kind = readFlag(normalizedArgv, "--kind");
   if (normalizedArgv[0] !== "primitive" || meshId === undefined || kind === undefined) {
-    return renderUsage(json, "TN_MESH_PRIMITIVE_ARGS_MISSING", "Usage: tn mesh primitive <mesh-id> --kind <box|sphere|cylinder|cone|plane> [--project <path>] [--json]");
+    return renderUsage(json, "TN_MESH_PRIMITIVE_ARGS_MISSING", "Usage: tn mesh primitive <mesh-id> --kind <box|sphere|cylinder|cone|plane> [--project <path>] [--json]\n       tn mesh custom <mesh-id> --attributes '<json-array>' [--indices '<json-array>'] [--storage binary] [--project <path>] [--json]");
   }
   return renderAuthoringResult("mesh", await createMeshPrimitive({ projectPath, meshId, kind }), json, `Mesh '${meshId}' created.`);
 }
@@ -677,6 +692,17 @@ function parseJsonArrayFlag(argv: readonly string[], flag: string, diagnosticCod
   return { value: parsed.value };
 }
 
+function parseJsonNumberArrayFlag(argv: readonly string[], flag: string, diagnosticCode: string): { diagnostic?: string; value?: number[] } {
+  const parsed = parseJsonFlag(argv, flag);
+  if (parsed.diagnostic !== undefined || parsed.value === undefined) {
+    return parsed as { diagnostic?: string; value?: number[] };
+  }
+  if (!Array.isArray(parsed.value) || !parsed.value.every((entry) => typeof entry === "number" && Number.isFinite(entry))) {
+    return { diagnostic: diagnosticCode };
+  }
+  return { value: parsed.value };
+}
+
 function systemSetMetadataUsage(): string {
   return "Usage: tn system set-metadata <system-id> [--reads A,B] [--writes A,B] [--resource-reads R] [--resource-writes R] [--event-reads E] [--event-writes E] [--services service.name] [--queries '<json-array>'] [--commands '<json-array>'] [--after system] [--before system] [--project <path>] [--json]";
 }
@@ -767,6 +793,7 @@ const flagsWithValues = new Set([
   "--render-path",
   "--src",
   "--source-roots",
+  "--storage",
   "--type",
   "--text-align",
   "--text-decoration",

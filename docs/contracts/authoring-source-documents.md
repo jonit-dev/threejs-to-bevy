@@ -241,7 +241,8 @@ schema-versioned contracts in this phase:
 - `threenative.ui`: `id`, `nodes`, `bindings`, and optional `provenance`;
 - `threenative.materials`: `id`, `materials`, authored `color`,
   `roughness`, and optional `provenance`;
-- `threenative.meshes`: `id`, primitive `meshes`, and optional `provenance`;
+- `threenative.meshes`: `id`, primitive/custom `meshes`, and optional
+  `provenance`;
 - `threenative.assets`: `id`, `assets`, and optional `provenance`;
 - `threenative.input`: `id`, `actions`, and optional `provenance`;
 - `threenative.systems`: `id`, `systems`, and optional `provenance`;
@@ -268,6 +269,8 @@ under conventional paths:
   `content/materials/<material-id>.materials.json`;
 - `tn mesh primitive <mesh-id>` writes
   `content/meshes/<mesh-id>.meshes.json`;
+- `tn mesh custom <mesh-id> --attributes '<json-array>' [--indices '<json-array>'] [--storage binary]`
+  writes `content/meshes/<mesh-id>.meshes.json`;
 - `tn prefab create <prefab-id>` writes
   `content/prefabs/<prefab-id>.prefab.json`;
 - `tn input add-action <input-doc-id> ...` writes or updates

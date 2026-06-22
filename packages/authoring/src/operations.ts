@@ -482,6 +482,13 @@ export interface ICreateMeshPrimitiveOptions extends IAuthoringOperationContext 
   kind: string;
 }
 
+export interface ICreateMeshCustomOptions extends IAuthoringOperationContext {
+  meshId: string;
+  attributes: Array<{ itemSize: number; name: string; values: number[] }>;
+  indices?: number[];
+  storage?: string;
+}
+
 export interface ICreatePrefabDocumentOptions extends IAuthoringOperationContext {
   prefabId: string;
 }
@@ -1638,6 +1645,28 @@ export async function createMeshPrimitive(options: ICreateMeshPrimitiveOptions):
   });
 }
 
+export async function createMeshCustom(options: ICreateMeshCustomOptions): Promise<IAuthoringOperationResult> {
+  return createSourceDocument({
+    projectPath: options.projectPath,
+    kind: "mesh",
+    id: options.meshId,
+    file: `content/meshes/${options.meshId}.meshes.json`,
+    data: {
+      schema: meshDocumentSchema,
+      version: "0.1.0",
+      id: options.meshId,
+      meshes: [{
+        attributes: options.attributes.map((attribute) => ({ itemSize: attribute.itemSize, name: attribute.name, values: [...attribute.values] })),
+        id: options.meshId,
+        ...(options.indices === undefined ? {} : { indices: [...options.indices] }),
+        kind: "custom",
+        primitive: "custom",
+        ...(options.storage === undefined ? {} : { storage: options.storage }),
+      }],
+    },
+  });
+}
+
 export async function createPrefabDocument(options: ICreatePrefabDocumentOptions): Promise<IAuthoringOperationResult> {
   return createSourceDocument({
     projectPath: options.projectPath,
@@ -2237,8 +2266,13 @@ async function validateAuthoringDocument(
         listName: "meshes",
         rootKeys: meshDocumentKeys,
         validateItem: (diagnostics, path, item) => {
-          if (item.kind !== "primitive") {
-            diagnostics.push(typeDiagnostic(file, `${path}/kind`, "mesh kind must be 'primitive' in this authoring slice.", item.kind));
+          if (item.kind !== "primitive" && item.kind !== "custom") {
+            diagnostics.push(typeDiagnostic(file, `${path}/kind`, "mesh kind must be 'primitive' or 'custom'.", item.kind));
+            return;
+          }
+          if (item.kind === "custom") {
+            validateCustomMeshSource(diagnostics, file, path, item);
+            return;
           }
           const primitive = readString(item.primitive);
           if (primitive === undefined || !supportedMeshPrimitives.has(primitive)) {
@@ -2959,6 +2993,77 @@ function validateEnumString(
 function validateRequiredNumber(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, message: string): void {
   if (typeof value !== "number" || !Number.isFinite(value)) {
     diagnostics.push(typeDiagnostic(file, path, message, value));
+  }
+}
+
+function validateCustomMeshSource(diagnostics: IAuthoringDiagnostic[], file: string, path: string, item: Record<string, unknown>): void {
+  if (item.primitive !== undefined && item.primitive !== "custom") {
+    diagnostics.push(typeDiagnostic(file, `${path}/primitive`, "custom mesh primitive must be 'custom' when present.", item.primitive));
+  }
+  if (item.storage !== undefined && item.storage !== "binary") {
+    diagnostics.push(typeDiagnostic(file, `${path}/storage`, "custom mesh storage must be 'binary' when present.", item.storage));
+  }
+  if (!Array.isArray(item.attributes) || item.attributes.length === 0) {
+    diagnostics.push(typeDiagnostic(file, `${path}/attributes`, "custom mesh attributes must be a non-empty array.", item.attributes));
+    return;
+  }
+  let hasPosition = false;
+  let vertexCount: number | undefined;
+  let positionVertexCount: number | undefined;
+  const seenAttributes = new Set<string>();
+  for (const [index, attribute] of item.attributes.entries()) {
+    const attributePath = `${path}/attributes/${index}`;
+    if (!isRecord(attribute)) {
+      diagnostics.push(typeDiagnostic(file, attributePath, "custom mesh attribute must be an object.", attribute));
+      continue;
+    }
+    validateRequiredString(diagnostics, file, `${attributePath}/name`, attribute.name, "custom mesh attribute name must be a non-empty string.");
+    if (typeof attribute.name === "string") {
+      if (seenAttributes.has(attribute.name)) {
+        diagnostics.push(typeDiagnostic(file, `${attributePath}/name`, "custom mesh attribute names must be unique.", attribute.name));
+      }
+      seenAttributes.add(attribute.name);
+    }
+    if (attribute.name === "position") {
+      hasPosition = true;
+    }
+    if (![1, 2, 3, 4].includes(Number(attribute.itemSize))) {
+      diagnostics.push(typeDiagnostic(file, `${attributePath}/itemSize`, "custom mesh attribute itemSize must be 1, 2, 3, or 4.", attribute.itemSize));
+    } else if ((attribute.name === "position" || attribute.name === "normal") && attribute.itemSize !== 3) {
+      diagnostics.push(typeDiagnostic(file, `${attributePath}/itemSize`, `custom mesh ${String(attribute.name)} attribute itemSize must be 3.`, attribute.itemSize));
+    } else if ((attribute.name === "uv" || attribute.name === "uv1") && attribute.itemSize !== 2) {
+      diagnostics.push(typeDiagnostic(file, `${attributePath}/itemSize`, `custom mesh ${String(attribute.name)} attribute itemSize must be 2.`, attribute.itemSize));
+    } else if (attribute.name === "color" && attribute.itemSize !== 4) {
+      diagnostics.push(typeDiagnostic(file, `${attributePath}/itemSize`, "custom mesh color attribute itemSize must be 4.", attribute.itemSize));
+    }
+    if (!Array.isArray(attribute.values) || attribute.values.length === 0 || attribute.values.some((value) => typeof value !== "number" || !Number.isFinite(value))) {
+      diagnostics.push(typeDiagnostic(file, `${attributePath}/values`, "custom mesh attribute values must be non-empty finite numbers.", attribute.values));
+    } else if (typeof attribute.itemSize === "number" && Number.isInteger(attribute.itemSize) && attribute.values.length % attribute.itemSize !== 0) {
+      diagnostics.push(typeDiagnostic(file, `${attributePath}/values`, "custom mesh attribute values length must be divisible by itemSize.", attribute.values));
+    } else if (typeof attribute.itemSize === "number" && Number.isInteger(attribute.itemSize)) {
+      const count = attribute.values.length / attribute.itemSize;
+      vertexCount ??= count;
+      if (count !== vertexCount) {
+        diagnostics.push(typeDiagnostic(file, `${attributePath}/values`, "custom mesh attributes must have matching vertex counts.", attribute.values));
+      }
+      if (attribute.name === "position") {
+        positionVertexCount = count;
+      }
+    }
+  }
+  if (!hasPosition) {
+    diagnostics.push(typeDiagnostic(file, `${path}/attributes`, "custom mesh attributes must include a position attribute.", item.attributes));
+  }
+  if (item.indices !== undefined) {
+    if (!Array.isArray(item.indices) || item.indices.length === 0 || item.indices.length % 3 !== 0 || item.indices.some((value) => !Number.isInteger(value) || Number(value) < 0)) {
+      diagnostics.push(typeDiagnostic(file, `${path}/indices`, "custom mesh indices must be non-negative integers in complete triangles.", item.indices));
+    } else if (positionVertexCount !== undefined) {
+      for (const [index, value] of item.indices.entries()) {
+        if (Number(value) >= positionVertexCount) {
+          diagnostics.push(typeDiagnostic(file, `${path}/indices/${index}`, "custom mesh indices must be within the position vertex count.", value));
+        }
+      }
+    }
   }
 }
 

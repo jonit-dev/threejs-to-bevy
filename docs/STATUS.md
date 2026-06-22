@@ -209,6 +209,7 @@ editor contract while keeping generated bundle/cache/runtime paths rejected.
 `@threenative/authoring` exports a shared promoted operation registry for names
 such as `scene.set_transform`, `scene.set_component`, `ui.add_text`,
 `ui.set_layout`, `material.create`, `material.set`, `mesh.create_primitive`,
+`mesh.create_custom`,
 `ui.add_node`, `ui.set_style`, `prefab.add_component`, `input.add_action`,
 `asset.add`, `audio.create`,
 `audio.add_sound`, `scene.set_light`, `scene.set_mesh_renderer`,
@@ -220,7 +221,7 @@ The editor workbench slice adds server-side project load/validate and operation
 dispatch APIs in `@threenative/editor`, source-document inventory state, scene
 hierarchy, material, catalog, UI/input/system models, and guarded panel
 components. Workbench operations persist scene transforms, material values, UI
-text/layout, input actions, mesh/prefab/system edits through
+text/layout, input actions, primitive/custom mesh, prefab, and system edits through
 `@threenative/authoring`; asset rows remain inspect-only, and generated script
 bundle paths are rejected before source writes.
 The editor runtime preview slice adds build/status APIs, preview host state,

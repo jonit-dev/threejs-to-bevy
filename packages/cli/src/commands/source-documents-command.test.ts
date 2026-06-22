@@ -322,20 +322,43 @@ test("prefab input and mesh operations write deterministic structured docs", asy
     const input = await inputCommand(["add-action", "kart", "accelerate", "--keys", "W,ArrowUp", "--project", root, "--json"]);
     const inputAxis = await inputCommand(["add-axis", "kart", "MoveX", "--negative-keys", "A,ArrowLeft", "--positive-keys", "D,ArrowRight", "--value", "gamepad.leftStickX", "--project", root, "--json"]);
     const mesh = await meshCommand(["primitive", "mesh.kart.body", "--kind", "box", "--project", root, "--json"]);
+    const customMesh = await meshCommand([
+      "custom",
+      "mesh.kart.triangle",
+      "--attributes",
+      "[{\"name\":\"position\",\"itemSize\":3,\"values\":[0,0,0,1,0,0,0,1,0]}]",
+      "--indices",
+      "[0,1,2]",
+      "--storage",
+      "binary",
+      "--project",
+      root,
+      "--json",
+    ]);
 
     const prefabDoc = JSON.parse(await readFile(join(root, "content", "prefabs", "kart.prefab.json"), "utf8"));
     const inputDoc = JSON.parse(await readFile(join(root, "content", "input", "kart.input.json"), "utf8"));
     const meshDoc = JSON.parse(await readFile(join(root, "content", "meshes", "mesh.kart.body.meshes.json"), "utf8"));
+    const customMeshDoc = JSON.parse(await readFile(join(root, "content", "meshes", "mesh.kart.triangle.meshes.json"), "utf8"));
 
     assert.equal(prefabCreate.exitCode, 0);
     assert.equal(prefabComponent.exitCode, 0);
     assert.equal(input.exitCode, 0);
     assert.equal(inputAxis.exitCode, 0);
     assert.equal(mesh.exitCode, 0);
+    assert.equal(customMesh.exitCode, 0);
     assert.deepEqual(prefabDoc.entities, [{ components: { VehiclePhysics: { maxSpeed: 42 } }, id: "kart" }]);
     assert.deepEqual(inputDoc.actions, [{ bindings: ["keyboard.w", "keyboard.ArrowUp"], id: "accelerate" }]);
     assert.deepEqual(inputDoc.axes, [{ id: "MoveX", negative: ["keyboard.a", "keyboard.ArrowLeft"], positive: ["keyboard.d", "keyboard.ArrowRight"], value: "gamepad.leftStickX" }]);
     assert.deepEqual(meshDoc.meshes, [{ id: "mesh.kart.body", kind: "primitive", primitive: "box" }]);
+    assert.deepEqual(customMeshDoc.meshes, [{
+      attributes: [{ itemSize: 3, name: "position", values: [0, 0, 0, 1, 0, 0, 0, 1, 0] }],
+      id: "mesh.kart.triangle",
+      indices: [0, 1, 2],
+      kind: "custom",
+      primitive: "custom",
+      storage: "binary",
+    }]);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

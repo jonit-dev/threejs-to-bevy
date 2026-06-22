@@ -73,6 +73,7 @@ export async function emitBundle(config: IProjectConfig, root: unknown, options:
   const generatedMeshPayloads = prepareGeneratedMeshPayloads(mergeById([
     ...readBundleRootAssets(bundleRoot.assets),
     ...readStructuredAssets(options.authoringDocuments),
+    ...readStructuredMeshes(options.authoringDocuments),
     ...mergeEnvironmentAssets(mergeAudioAssets(emitted?.assets ?? [], bundleRoot.audio), environment?.assets ?? []),
   ]));
   const assets = generatedMeshPayloads.assets;
@@ -377,6 +378,45 @@ function structuredAsset(item: unknown): IInternalAsset[] {
     kind,
     path,
     sourceMode: "bundle",
+  }];
+}
+
+function readStructuredMeshes(documents: readonly IAuthoringDocument[] | undefined): IInternalAsset[] {
+  return (documents ?? [])
+    .filter((document) => document.kind === "mesh" && isRecord(document.data))
+    .flatMap((document) => {
+      const data = document.data as Record<string, unknown>;
+      if (!Array.isArray(data.meshes)) {
+        return [];
+      }
+      return data.meshes.flatMap((item) => structuredMeshAsset(item));
+    });
+}
+
+function structuredMeshAsset(item: unknown): IInternalAsset[] {
+  if (!isRecord(item)) {
+    return [];
+  }
+  const id = readString(item.id);
+  const kind = readString(item.kind);
+  if (id === undefined) {
+    return [];
+  }
+  if (kind === "primitive") {
+    const primitive = readString(item.primitive);
+    return primitive === undefined ? [] : [{ format: "generated", id, kind: "mesh", primitive }];
+  }
+  if (kind !== "custom" || !Array.isArray(item.attributes)) {
+    return [];
+  }
+  return [{
+    attributes: item.attributes.map((attribute) => cloneRecord(attribute as Record<string, unknown>)),
+    format: "generated",
+    id,
+    ...(Array.isArray(item.indices) ? { indices: [...item.indices] } : {}),
+    kind: "mesh",
+    primitive: "custom",
+    ...(item.storage === "binary" ? { storage: "binary" } : {}),
   }];
 }
 
