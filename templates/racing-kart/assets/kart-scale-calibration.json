@@ -1,0 +1,35 @@
+{
+  "schema": "threenative.scale-calibration",
+  "version": "0.1.0",
+  "asset": {
+    "id": "primitive.kart",
+    "source": "generated-primitives"
+  },
+  "boundsMeters": {
+    "width": 1.2,
+    "height": 0.55,
+    "length": 1.8
+  },
+  "gameplay": {
+    "laneWidthMeters": 3.6,
+    "collider": {
+      "width": 1.15,
+      "height": 0.55,
+      "length": 1.7
+    },
+    "widthToLaneRatio": 0.333333
+  },
+  "camera": {
+    "fovYDegrees": 54,
+    "near": 0.1,
+    "far": 120,
+    "offset": [0, 3.4, 6.2],
+    "expectedDistanceMeters": 7.1
+  },
+  "visualQa": {
+    "playerReadable": true,
+    "rivalsVisible": true,
+    "trackCurveVisible": true,
+    "failureModes": ["tiny", "clipped", "hidden", "too-large-for-lane"]
+  }
+}

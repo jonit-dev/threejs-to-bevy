@@ -589,16 +589,16 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add `racing-kart` template covering the exact failure modes from the
+- [x] Add `racing-kart` template covering the exact failure modes from the
   prototype: foreground player, visible rivals, curved track, HUD, camera helper,
   model scale, screenshot-ready composition.
-- [ ] Include an explicit scale-calibration fixture in the template: real asset
+- [x] Include an explicit scale-calibration fixture in the template: real asset
   bounds, chosen scale rationale, lane width/collider dimensions, camera offset,
   and before/after screenshot expectations. The template must fail visual QA if
   the kart is tiny, clipped, hidden, or too large to read.
-- [ ] Add `tn examples list` or include example listing through `tn help
+- [x] Add `tn examples list` or include example listing through `tn help
   examples` if a full examples command is too much for this PRD.
-- [ ] Include proof artifacts or fixture expectations so regressions are caught.
+- [x] Include proof artifacts or fixture expectations so regressions are caught.
 
 **Tests required:**
 
@@ -612,6 +612,13 @@ sequenceDiagram
   /tmp/tn-racing && pnpm install && pnpm run validate && pnpm run build`
 - Expected result: scaffolded racing template validates/builds and produces
   screenshot-ready output.
+
+**Progress Evidence:**
+
+- `templates/racing-kart` is registered as canonical `racing-kart` with legacy
+  alias `racing`. It includes player/rival primitive karts, a curved track, HUD,
+  Camera `follow` metadata, `assets/kart-scale-calibration.json`, gameplay
+  tests, and `tn help examples` discoverability.
 
 ## 5. Verification Strategy
 

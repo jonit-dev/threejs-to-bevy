@@ -60,7 +60,8 @@ implementation:
   `tn verify --json` projected nonblank bounds diagnostics; these are CLI/runtime
   QA aids, not new portable Bevy runtime capabilities. SDK transform helper
   methods and runtime Transform patch merge semantics are documented and tested
-  so partial position patches preserve authored scale.
+  so partial position patches preserve authored scale. `racing-kart` is now a
+  CLI starter template for visible-kart visual QA and scale calibration.
 
 Unchecked rows below should remain unchecked until their V10 owner adds SDK/IR,
 validation, compiler, web, Bevy, conformance, docs, and artifact evidence, or

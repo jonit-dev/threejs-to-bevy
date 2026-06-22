@@ -229,11 +229,24 @@ Command expectations:
   records a short Chromium video. WebM is captured directly; MP4 requires
   `ffmpeg` on `PATH` for conversion.
 - `tn help <topic>` gives task-oriented references for scaffolding, assets,
-  camera, transform, visual QA, screenshot, and record workflows.
+  camera, transform, visual QA, screenshot, record, and example/template
+  workflows.
 - `tn doctor` inspects project setup, package scripts, source entrypoint, and
   emitted bundle files with stable diagnostics and next commands.
 
 ## First Project Flow
+
+For a screenshot-ready racing starter with visible rivals, a curved track, HUD,
+chase camera, and scale calibration fixture:
+
+```bash
+tn create kart-racer --template racing-kart --json
+cd kart-racer
+pnpm install
+pnpm run build
+pnpm run validate
+pnpm run verify
+```
 
 Use `tn init` when starting from an empty directory or when instructing an
 agent to create a reproducible prototype:

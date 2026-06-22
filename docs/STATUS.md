@@ -392,6 +392,12 @@ rotation and scale, while explicit component `set` replaces the whole component.
 Portable follow/chase cameras should use Camera `follow` metadata applied by
 runtime post-update systems instead of direct runtime camera rotation mutation.
 
+`tn create <name> --template racing-kart` now scaffolds a screenshot-ready racing
+starter with a foreground player kart, visible rivals, curved track markers,
+retained HUD, Camera `follow` metadata, and an explicit scale-calibration
+fixture at `assets/kart-scale-calibration.json`. `tn help examples` lists the
+template alongside other starters.
+
 ```bash
 pnpm check:names
 pnpm check:docs

@@ -114,6 +114,14 @@ export const HELP_TOPICS: Record<string, HelpTopic> = {
     summary: "Collect short motion proof or an explicit unavailable state for video workflows.",
     title: "Recording proof",
   },
+  examples: {
+    aliases: ["templates", "gallery"],
+    commands: ["tn create kart-racer --template racing-kart --json", "tn create prototype --template game-starter --json", "tn help scaffold"],
+    docs: ["docs/workflows/developer-workflow.md", "templates/racing-kart/README.md"],
+    examples: ["racing-kart: player kart, visible rivals, curved track, HUD, chase camera, and scale calibration fixture.", "game-starter: minimal modular scene with ECS and scripts.", "structured-source-starter: JSON source documents for editor/agent workflows."],
+    summary: "Choose a template or gallery starter with known visual proof expectations.",
+    title: "Templates and examples",
+  },
 };
 
 export function listHelpTopics(): string[] {

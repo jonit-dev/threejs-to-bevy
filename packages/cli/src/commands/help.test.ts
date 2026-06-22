@@ -17,6 +17,7 @@ test("should list task-oriented help topics", async () => {
   assert.equal(payload.topics.some((topic) => topic.name === "visual-qa"), true);
   assert.equal(payload.topics.some((topic) => topic.name === "screenshot"), true);
   assert.equal(payload.topics.some((topic) => topic.name === "record"), true);
+  assert.equal(payload.topics.some((topic) => topic.name === "examples"), true);
 });
 
 test("should render known help topic with commands and docs", async () => {
@@ -60,6 +61,17 @@ test("should resolve aliases for topic help", async () => {
   assert.equal(result.exitCode, 0);
   assert.equal(payload.name, "visual-qa");
   assert.equal(payload.failureSymptoms.some((symptom) => symptom.includes("black")), true);
+});
+
+test("should describe racing-kart from examples help", async () => {
+  const result = await helpCommand(["examples", "--json"]);
+  const payload = JSON.parse(result.stdout) as { commands: string[]; docs: string[]; examples: string[]; name: string };
+
+  assert.equal(result.exitCode, 0);
+  assert.equal(payload.name, "examples");
+  assert.equal(payload.commands.includes("tn create kart-racer --template racing-kart --json"), true);
+  assert.equal(payload.docs.includes("templates/racing-kart/README.md"), true);
+  assert.equal(payload.examples.some((example) => example.includes("visible rivals")), true);
 });
 
 test("should reject unknown help topic with stable diagnostic", async () => {

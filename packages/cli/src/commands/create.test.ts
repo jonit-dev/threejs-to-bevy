@@ -264,6 +264,49 @@ test("should create v5 game starter template", async () => {
   }
 });
 
+test("should create racing-kart template with scale calibration fixture", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-create-racing-kart-"));
+  try {
+    const result = await createProject(["racer", "--template", "racing-kart", "--json"], { cwd: root });
+    const payload = JSON.parse(result.stdout) as { code: string; path: string; template: string };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.code, "TN_CREATE_OK");
+    assert.equal(payload.template, "racing-kart");
+
+    const config = JSON.parse(await readFile(join(payload.path, "threenative.config.json"), "utf8")) as {
+      outDir: string;
+      template: string;
+    };
+    const packageJson = JSON.parse(await readFile(join(payload.path, "package.json"), "utf8")) as {
+      dependencies: Record<string, string>;
+      scripts: Record<string, string>;
+    };
+    const sceneSource = await readFile(join(payload.path, "src/scenes/arena.entities.ts"), "utf8");
+    const hudSource = await readFile(join(payload.path, "src/scenes/arena.ts"), "utf8");
+    const calibration = JSON.parse(await readFile(join(payload.path, "assets/kart-scale-calibration.json"), "utf8")) as {
+      gameplay: { laneWidthMeters: number };
+      visualQa: { rivalsVisible: boolean; trackCurveVisible: boolean };
+    };
+
+    assert.equal(config.outDir, "dist/racing-kart.bundle");
+    assert.equal(config.template, "racing-kart");
+    assert.equal(packageJson.scripts.build, "tn build");
+    assert.equal(packageJson.scripts.verify, "tn verify --frames 2 --json");
+    assert.match(packageJson.dependencies["@threenative/sdk"] ?? "", /^file:/);
+    assert.match(sceneSource, /kart\.player/);
+    assert.match(sceneSource, /kart\.rival\.red/);
+    assert.match(sceneSource, /track\.curve\.marker/);
+    assert.match(sceneSource, /follow: \{ offset: \[0, 3\.4, 6\.2\]/);
+    assert.match(hudSource, /RACING KART/);
+    assert.equal(calibration.gameplay.laneWidthMeters, 3.6);
+    assert.equal(calibration.visualQa.rivalsVisible, true);
+    assert.equal(calibration.visualQa.trackCurveVisible, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should create starter-functional template by canonical name", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-create-starter-functional-"));
   try {
