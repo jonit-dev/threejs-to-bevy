@@ -210,6 +210,33 @@ test("scene-command mutates structured scene documents deterministically", async
   }
 });
 
+test("scene-command adds ECS tags and scene groups without raw component JSON", async () => {
+  const root = await createSceneProject({ minimal: true });
+
+  try {
+    const entity = await sceneCommand(["add-entity", "scene.arena", "cube.red.0", "--project", root, "--json"]);
+    const tag = await sceneCommand(["add-tag", "scene.arena", "cube.red.0", "LaneRed", "--project", root, "--json"]);
+    const group = await sceneCommand(["add-group", "scene.arena", "group.lane.red", "--name", "Red Lane", "--position", "-2.5,0,0", "--project", root, "--json"]);
+    const validate = await sceneCommand(["validate", "scene.arena", "--project", root, "--json"]);
+    const scene = JSON.parse(await readFile(join(root, "content", "scenes", "arena.scene.json"), "utf8")) as {
+      entities: Array<{ components?: Record<string, unknown>; id: string; transform?: { position?: number[] } }>;
+    };
+
+    assert.equal(entity.exitCode, 0);
+    assert.equal(tag.exitCode, 0);
+    assert.equal(group.exitCode, 0);
+    assert.equal(validate.exitCode, 0);
+    assert.deepEqual(scene.entities.find((item) => item.id === "cube.red.0")?.components?.LaneRed, {});
+    assert.deepEqual(scene.entities.find((item) => item.id === "group.lane.red"), {
+      components: { SceneContainer: { kind: "group", name: "Red Lane" } },
+      id: "group.lane.red",
+      transform: { position: [-2.5, 0, 0] },
+    });
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("scene-command sets lifecycle metadata and clears previous initial scene", async () => {
   const root = await createSceneProject({ minimal: true });
 

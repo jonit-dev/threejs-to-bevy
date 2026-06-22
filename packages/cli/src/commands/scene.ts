@@ -1,7 +1,9 @@
 import {
   addEntity,
+  addGroup,
   addPrefab,
   addResource,
+  addTag,
   addUiNode,
   attachScript,
   bindUi,
@@ -103,6 +105,31 @@ export async function sceneCommand(argv: readonly string[], options: ISceneComma
     }
     const result = await addEntity({ projectPath, sceneId, entityId, prefabId: readFlag(normalizedArgv, "--prefab") });
     return renderSceneResult(result, json, result.ok ? `Entity '${entityId}' added.` : `Entity '${entityId}' was not added.`);
+  }
+
+  if (subcommand === "add-tag") {
+    const sceneId = readPositional(normalizedArgv, 1);
+    const entityId = readPositional(normalizedArgv, 2);
+    const tag = readPositional(normalizedArgv, 3);
+    if (sceneId === undefined || entityId === undefined || tag === undefined) {
+      return renderUsage(json, "TN_SCENE_ADD_TAG_ARGS_MISSING", "Usage: tn scene add-tag <scene-id> <entity-id> <tag> [--project <path>] [--json]");
+    }
+    const result = await addTag({ projectPath, sceneId, entityId, tag });
+    return renderSceneResult(result, json, result.ok ? `Tag '${tag}' added to '${entityId}'.` : `Tag '${tag}' was not added to '${entityId}'.`);
+  }
+
+  if (subcommand === "add-group") {
+    const sceneId = readPositional(normalizedArgv, 1);
+    const groupId = readPositional(normalizedArgv, 2);
+    if (sceneId === undefined || groupId === undefined) {
+      return renderUsage(json, "TN_SCENE_ADD_GROUP_ARGS_MISSING", "Usage: tn scene add-group <scene-id> <group-id> [--name <label>] [--position x,y,z] [--project <path>] [--json]");
+    }
+    const position = parseOptionalVectorFlag(normalizedArgv, "--position");
+    if (position.diagnostic !== undefined) {
+      return renderUsage(json, position.diagnostic, "Group --position must use x,y,z numeric values.");
+    }
+    const result = await addGroup({ projectPath, sceneId, groupId, name: readFlag(normalizedArgv, "--name"), position: position.value });
+    return renderSceneResult(result, json, result.ok ? `Group '${groupId}' added.` : `Group '${groupId}' was not added.`);
   }
 
   if (subcommand === "add-prefab") {
@@ -372,10 +399,10 @@ function readPositional(argv: readonly string[], index: number): string | undefi
   return positionals[index];
 }
 
-const flagsWithValues = new Set(["--project", "--file", "--world", "--prefab", "--primitive", "--color", "--asset", "--path", "--value", "--position", "--rotation", "--scale", "--mode", "--target", "--module", "--export", "--resource", "--out", "--web-url", "--camera", "--native-frame", "--kind", "--activation", "--intensity", "--range", "--angle", "--mesh", "--material", "--mass", "--damping", "--gravity-scale", "--size", "--radius", "--height", "--speed", "--move-x", "--move-z", "--grounding", "--slope-limit", "--step-offset", "--visible", "--cast-shadow", "--receive-shadow", "--trigger", "--blocking"]);
+const flagsWithValues = new Set(["--project", "--file", "--world", "--prefab", "--primitive", "--color", "--asset", "--path", "--value", "--position", "--rotation", "--scale", "--mode", "--target", "--module", "--export", "--resource", "--out", "--web-url", "--camera", "--native-frame", "--kind", "--activation", "--name", "--intensity", "--range", "--angle", "--mesh", "--material", "--mass", "--damping", "--gravity-scale", "--size", "--radius", "--height", "--speed", "--move-x", "--move-z", "--grounding", "--slope-limit", "--step-offset", "--visible", "--cast-shadow", "--receive-shadow", "--trigger", "--blocking"]);
 
 function sceneUsage(): string {
-  return "Usage: tn scene create <scene-id> [--file <path>] [--project <path>] [--json]\n       tn scene lifecycle add <scene-id> [--kind <kind>] [--activation <policy>] [--initial] [--project <path>] [--json]\n       tn scene validate [scene-id] [--project <path>] [--json]\n       tn scene inspect <scene-id> [--project <path>] [--json]\n       tn scene proof <scene-id> --project <path> --out <dir> [--web-url <url>] [--native] [--json]";
+  return "Usage: tn scene create <scene-id> [--file <path>] [--project <path>] [--json]\n       tn scene add-tag <scene-id> <entity-id> <tag> [--project <path>] [--json]\n       tn scene add-group <scene-id> <group-id> [--name <label>] [--position x,y,z] [--project <path>] [--json]\n       tn scene lifecycle add <scene-id> [--kind <kind>] [--activation <policy>] [--initial] [--project <path>] [--json]\n       tn scene validate [scene-id] [--project <path>] [--json]\n       tn scene inspect <scene-id> [--project <path>] [--json]\n       tn scene proof <scene-id> --project <path> --out <dir> [--web-url <url>] [--native] [--json]";
 }
 
 function sceneLifecycleUsage(): string {

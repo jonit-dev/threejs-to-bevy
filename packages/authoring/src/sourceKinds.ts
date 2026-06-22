@@ -188,7 +188,7 @@ export const authoringSourceMatrix = [
     cliOperationSupport: "partial",
     typescriptRole: "none",
     editorRoundTrip: "required",
-    notes: "Current scene source covers core ECS mutations plus typed camera/light/mesh-renderer/rigid-body/collider/character-controller component operations; full visual scene and hierarchy coverage is incomplete.",
+    notes: "Current scene source covers core ECS mutations plus typed camera/light/mesh-renderer/rigid-body/collider/character-controller component operations, zero-field tag components, and SceneContainer group entities; full visual scene and hierarchy coverage is incomplete.",
   },
   {
     id: "prefab-document",

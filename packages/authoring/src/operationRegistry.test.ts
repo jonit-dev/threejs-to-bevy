@@ -68,6 +68,8 @@ test("should dispatch existing structured source operations through the registry
       await dispatchAuthoringOperation({ args: { prefabId: "player" }, name: "prefab.create", projectPath: root }),
       await dispatchAuthoringOperation({ args: { componentKind: "RigidBody", prefabId: "player", value: { kind: "dynamic" } }, name: "prefab.add_component", projectPath: root }),
       await dispatchAuthoringOperation({ args: { buildTargets: ["web"], projectId: "kart", sourceRoots: ["content", "src"] }, name: "project.create", projectPath: root }),
+      await dispatchAuthoringOperation({ args: { groupId: "group.lane.red", name: "Red Lane", position: [-2, 0, 0], sceneId: "scene.arena" }, name: "scene.add_group", projectPath: root }),
+      await dispatchAuthoringOperation({ args: { entityId: "player", sceneId: "scene.arena", tag: "LaneRed" }, name: "scene.add_tag", projectPath: root }),
       await dispatchAuthoringOperation({ args: { componentKind: "Light", entityId: "player", sceneId: "scene.arena", value: { color: "#ffffff", intensity: 1, kind: "point" } }, name: "scene.set_component", projectPath: root }),
       await dispatchAuthoringOperation({ args: { entityId: "player", sceneId: "scene.arena", kind: "dynamic", mass: 3 }, name: "scene.set_rigid_body", projectPath: root }),
       await dispatchAuthoringOperation({ args: { activation: "exclusive", initial: true, kind: "level", sceneId: "scene.arena" }, name: "scene.set_lifecycle", projectPath: root }),
@@ -93,7 +95,7 @@ test("should dispatch existing structured source operations through the registry
     };
     const scene = JSON.parse(await readFile(join(root, "content", "scenes", "arena.scene.json"), "utf8")) as {
       activation?: string;
-      entities: Array<{ components?: Record<string, unknown>; id: string }>;
+      entities: Array<{ components?: Record<string, unknown>; id: string; transform?: { position?: number[] } }>;
       initial?: boolean;
       kind?: string;
     };
@@ -109,6 +111,12 @@ test("should dispatch existing structured source operations through the registry
     assert.deepEqual(input.actions, [{ bindings: ["keyboard.Space"], id: "jump" }]);
     assert.deepEqual(input.axes, [{ id: "MoveX", negative: ["keyboard.a"], positive: ["keyboard.d"], value: "gamepad.leftStickX" }]);
     assert.deepEqual(prefab.entities[0]?.components, { RigidBody: { kind: "dynamic" } });
+    assert.deepEqual(scene.entities.find((entity) => entity.id === "group.lane.red"), {
+      components: { SceneContainer: { kind: "group", name: "Red Lane" } },
+      id: "group.lane.red",
+      transform: { position: [-2, 0, 0] },
+    });
+    assert.deepEqual(scene.entities.find((entity) => entity.id === "player")?.components?.LaneRed, {});
     assert.deepEqual(scene.entities.find((entity) => entity.id === "player")?.components?.RigidBody, { kind: "dynamic", mass: 3 });
     assert.equal(scene.kind, "level");
     assert.equal(scene.activation, "exclusive");
@@ -144,7 +152,9 @@ test("should expose operation metadata and registry diagnostics", async () => {
     "runtime.set_window",
     "runtime.set_rendering",
     "scene.add_entity",
+    "scene.add_group",
     "scene.add_prefab",
+    "scene.add_tag",
     "scene.add_resource",
     "scene.add_ui_node",
     "scene.set_transform",
@@ -167,10 +177,10 @@ test("should expose operation metadata and registry diagnostics", async () => {
     "ui.set_layout",
     "ui.bind",
     "ui.set_style",
-	    "system.create",
-	    "system.attach_script",
-	    "system.set_metadata",
-	  ]);
+    "system.create",
+    "system.attach_script",
+    "system.set_metadata",
+  ]);
   assert.equal(descriptors.length, AUTHORING_OPERATION_NAMES.length);
   assert.equal(transform?.pathPolicy, "source-document");
   assert.equal(transform?.sourceFamily, "scene");

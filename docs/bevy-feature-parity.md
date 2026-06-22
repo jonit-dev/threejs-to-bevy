@@ -137,6 +137,10 @@ remaining gaps by usefulness for building and shipping ordinary 3D games:
   imports generated bundle metadata back to source, and lowers access lists,
   ordering, query declarations, service declarations, and command declarations
   into `systems.ir.json`.
+- `P1` Source-authored ECS tags and scene groups now have typed CLI/source
+  mutation via `tn scene add-tag` and `tn scene add-group`; structured scene
+  builds lower zero-field marker components and `SceneContainer` group entities
+  into `world.ir.json` plus component schemas.
 - `P1` Portable scripting host conformance is backed by the service matrix,
   focused web and Bevy effect-validation tests that reject undeclared
   component/resource/event/command/service effects before mutation, canonical

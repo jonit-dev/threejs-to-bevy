@@ -3,11 +3,13 @@ import {
   addEntity,
   addAsset,
   addAudioSound,
+  addGroup,
   addInputAction,
   addInputAxis,
   addPrefab,
   addPrefabComponent,
   addResource,
+  addTag,
   addUiNode,
   addUiNodeDocument,
   addUiText,
@@ -69,8 +71,10 @@ export type AuthoringOperationName =
   | "runtime.set_rendering"
   | "runtime.set_window"
   | "scene.add_entity"
+  | "scene.add_group"
   | "scene.add_prefab"
   | "scene.add_resource"
+  | "scene.add_tag"
   | "scene.add_ui_node"
   | "scene.attach_script"
   | "scene.bind_ui"
@@ -232,12 +236,23 @@ const descriptors = [
     stringArg("entityId"),
     stringArg("prefabId", false),
   ]),
+  descriptor("scene.add_group", "Add a scene container group entity to structured source.", "scene", "source-document", [
+    stringArg("sceneId"),
+    stringArg("groupId"),
+    stringArg("name", false),
+    vectorArg("position", false),
+  ]),
   descriptor("scene.add_prefab", "Add a scene-local prefab declaration to structured source.", "scene", "source-document", [
     stringArg("sceneId"),
     stringArg("prefabId"),
     stringArg("primitive", false),
     stringArg("color", false),
     stringArg("asset", false),
+  ]),
+  descriptor("scene.add_tag", "Add a zero-field ECS tag component to a scene entity.", "scene", "source-document", [
+    stringArg("sceneId"),
+    stringArg("entityId"),
+    stringArg("tag"),
   ]),
   descriptor("scene.add_resource", "Add a scene resource declaration to structured source.", "scene", "source-document", [
     stringArg("sceneId"),
@@ -481,10 +496,14 @@ const dispatchers: Record<AuthoringOperationName, OperationDispatcher> = {
     setRuntimeWindow({ height: optionalNumber(args, "height"), projectPath, runtimeId: requiredString(args, "runtimeId"), title: optionalString(args, "title"), width: optionalNumber(args, "width") }),
   "scene.add_entity": async ({ args, projectPath }) =>
     addEntity({ entityId: requiredString(args, "entityId"), prefabId: optionalString(args, "prefabId"), projectPath, sceneId: requiredString(args, "sceneId") }),
+  "scene.add_group": async ({ args, projectPath }) =>
+    addGroup({ groupId: requiredString(args, "groupId"), name: optionalString(args, "name"), position: optionalVector3(args, "position"), projectPath, sceneId: requiredString(args, "sceneId") }),
   "scene.add_prefab": async ({ args, projectPath }) =>
     addPrefab({ asset: optionalString(args, "asset"), color: optionalString(args, "color"), prefabId: requiredString(args, "prefabId"), primitive: optionalString(args, "primitive"), projectPath, sceneId: requiredString(args, "sceneId") }),
   "scene.add_resource": async ({ args, projectPath }) =>
     addResource({ path: optionalString(args, "path"), projectPath, resourceId: requiredString(args, "resourceId"), sceneId: requiredString(args, "sceneId"), value: optionalJson(args, "value") }),
+  "scene.add_tag": async ({ args, projectPath }) =>
+    addTag({ entityId: requiredString(args, "entityId"), projectPath, sceneId: requiredString(args, "sceneId"), tag: requiredString(args, "tag") }),
   "scene.add_ui_node": async ({ args, projectPath }) =>
     addUiNode({ projectPath, sceneId: requiredString(args, "sceneId"), uiNodeId: requiredString(args, "uiNodeId") }),
   "scene.attach_script": async ({ args, projectPath }) =>

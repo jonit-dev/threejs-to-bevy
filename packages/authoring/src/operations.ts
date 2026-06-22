@@ -143,6 +143,19 @@ export interface IAddEntityOptions extends IAuthoringOperationContext {
   prefabId?: string;
 }
 
+export interface IAddTagOptions extends IAuthoringOperationContext {
+  sceneId: string;
+  entityId: string;
+  tag: string;
+}
+
+export interface IAddGroupOptions extends IAuthoringOperationContext {
+  sceneId: string;
+  groupId: string;
+  name?: string;
+  position?: [number, number, number];
+}
+
 export interface IAddPrefabOptions extends IAuthoringOperationContext {
   sceneId: string;
   prefabId: string;
@@ -879,6 +892,50 @@ export async function addEntity(options: IAddEntityOptions): Promise<IAuthoringO
       id: options.entityId,
       ...(options.prefabId === undefined ? {} : { prefab: options.prefabId }),
     });
+  });
+}
+
+export async function addTag(options: IAddTagOptions): Promise<IAuthoringOperationResult> {
+  return mutateScene(options, (scene, file) => {
+    const diagnostics: IAuthoringDiagnostic[] = [];
+    validateEcsId(diagnostics, file, "/tag", options.tag, "tag component");
+    if (diagnostics.length > 0) {
+      return diagnostics;
+    }
+    const entity = findSceneItem(scene.entities, options.entityId);
+    if (entity === undefined) {
+      return [missingReferenceDiagnostic(file, "/entities", "entity", options.entityId, idsFromArray(scene.entities))];
+    }
+    entity.components = {
+      ...(isRecord(entity.components) ? entity.components : {}),
+      [options.tag]: {},
+    };
+    return [];
+  });
+}
+
+export async function addGroup(options: IAddGroupOptions): Promise<IAuthoringOperationResult> {
+  return mutateScene(options, (scene, file) => {
+    const diagnostics: IAuthoringDiagnostic[] = [];
+    validateEcsId(diagnostics, file, "/groupId", options.groupId, "group");
+    if (options.name !== undefined && readString(options.name) === undefined) {
+      diagnostics.push(typeDiagnostic(file, "/name", "group name must be a non-empty string.", options.name));
+    }
+    if (diagnostics.length > 0) {
+      return diagnostics;
+    }
+    const entities = ensureArrayProperty(scene, "entities");
+    entities.push({
+      id: options.groupId,
+      ...(options.position === undefined ? {} : { transform: { position: options.position } }),
+      components: {
+        SceneContainer: {
+          kind: "group",
+          ...(options.name === undefined ? {} : { name: options.name }),
+        },
+      },
+    });
+    return [];
   });
 }
 

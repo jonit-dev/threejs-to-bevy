@@ -328,6 +328,45 @@ test("should emit structured source system metadata", async () => {
   }
 });
 
+test("should emit structured source tags and groups", async () => {
+  const projectPath = await mkdtemp(join(tmpdir(), "tn-structured-tags-groups-"));
+  try {
+    await cp(resolve(process.cwd(), "../../templates/structured-source-starter"), projectPath, { recursive: true });
+    const scenePath = join(projectPath, "content/scenes/arena.scene.json");
+    const scene = JSON.parse(await readFile(scenePath, "utf8")) as {
+      entities: Array<{ components?: Record<string, unknown>; id: string; transform?: { position?: number[] } }>;
+    };
+    scene.entities.push({
+      id: "group.lane.red",
+      transform: { position: [-2.5, 0, 0] },
+      components: { SceneContainer: { kind: "group", name: "Red Lane" } },
+    });
+    const player = scene.entities.find((entity) => entity.id === "player");
+    if (player === undefined) {
+      throw new Error("structured-source-starter fixture must include player entity");
+    }
+    player.components = { ...(player.components ?? {}), LaneRed: {} };
+    await writeFile(scenePath, `${JSON.stringify(scene, null, 2)}\n`);
+
+    const { bundlePath } = await buildProject(projectPath);
+    const report = await validateBundle(bundlePath);
+    const world = JSON.parse(await readFile(resolve(bundlePath, "world.ir.json"), "utf8")) as {
+      entities: Array<{ components: Record<string, unknown>; id: string }>;
+    };
+    const schemas = JSON.parse(await readFile(resolve(bundlePath, "schemas/components.schema.json"), "utf8")) as {
+      schemas: Record<string, { fields: Record<string, unknown> }>;
+    };
+
+    assert.equal(report.ok, true);
+    assert.deepEqual(world.entities.find((entity) => entity.id === "player")?.components.LaneRed, {});
+    assert.deepEqual(world.entities.find((entity) => entity.id === "group.lane.red")?.components.SceneContainer, { kind: "group", name: "Red Lane" });
+    assert.deepEqual(schemas.schemas.LaneRed?.fields, {});
+    assert.deepEqual(Object.keys(schemas.schemas.SceneContainer?.fields ?? {}).sort(), ["kind", "name"]);
+  } finally {
+    await rm(projectPath, { force: true, recursive: true });
+  }
+});
+
 test("should build v6 functional example", async () => {
   const projectPath = resolve(process.cwd(), "../../examples/v6-functional");
   const { bundlePath } = await buildProject(projectPath);

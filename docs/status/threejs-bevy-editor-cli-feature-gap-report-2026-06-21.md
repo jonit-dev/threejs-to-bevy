@@ -60,6 +60,13 @@ Date: 2026-06-21
   `.systems.json` lowering into `systems.ir.json`. Callback components/callable
   handles and delayed commands beyond bounded timers remain residual runtime
   gaps.
+- ✅ 2026-06-21: Tags and group containers now have typed scene source
+  operations: `tn scene add-tag <scene-id> <entity-id> <tag>` writes zero-field
+  ECS marker components, and `tn scene add-group <scene-id> <group-id>` writes
+  `SceneContainer` group entities with optional name and position. The shared
+  operation registry exposes matching `scene.add_tag` and `scene.add_group`
+  operations, and structured scene builds lower them into `world.ir.json` plus
+  component schemas.
 
 ## Scope
 
@@ -112,7 +119,7 @@ IR/runtime surfaces, but only some have typed editor/CLI helpers.
 | --- | --- | --- | --- | --- | --- | --- |
 | Entities, transforms, resources | Supported | Supported | Partial | Typed commands exist: `scene add-entity`, `scene set-transform`, `scene add-resource`, `scene set-resource` | EDITOR | Core mutation exists, but reusable resource/schema source docs are incomplete. |
 | Generic ECS components | IR supports arbitrary component records plus typed known components | Bevy maps known components; script host can read component values | Partial | Generic `scene set-component` and `prefab add-component` | ECS-CMD, EDITOR | No typed per-component command/defaults for most runtime components. |
-| Tags and group containers | Supported in parity docs / compiler path | Supported as marker/query and hierarchy containers | Partial | No typed `scene add-tag` or `scene add-group`; generic component/source edit only | ECS-CMD, EDITOR | V10 grouping is implemented, but the CLI command surface does not expose it cleanly. |
+| ✅ Tags and group containers | Supported in parity docs / compiler path | Supported as marker/query and hierarchy containers | Partial | `tn scene add-tag`, `tn scene add-group` plus registry `scene.add_tag` / `scene.add_group` | EDITOR | Typed source/CLI operations now write zero-field tag components and `SceneContainer` group entities that lower through structured scene builds; broader editor hierarchy/group controls remain partial. |
 | MeshRenderer and primitive meshes | Supported | Supported | Partial | `mesh primitive`, `scene add-prefab`, generic `set-component` | ECS-CMD, EDITOR | Source mesh docs only cover primitive basics; generated/custom mesh source is partial. |
 | ✅ Materials and textures | Broad IR/runtime support for PBR fields and texture slots | Broad promoted support | Partial | `material create`, `material set` with promoted PBR/texture flags | EDITOR | CLI/editor now cover promoted texture slots, alpha, emissive, clearcoat, and transmission fields; sampler/import policy and broader material inspector UX remain partial. |
 | Cameras and views | Broad camera IR/runtime support | Broad promoted support | Partial | `scene set-camera`, generic `set-component` | ECS-CMD, EDITOR | `scene set-camera` writes a small lower-case `camera` source shape, while IR typed `Camera` has many fields. |
