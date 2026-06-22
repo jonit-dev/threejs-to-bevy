@@ -228,6 +228,7 @@ ergonomics. These rows are not implementation claims.
 - [x] Component hooks and lifecycle hooks
 - [x] Scene serialization/deserialization as an authoring feature
 - [x] Named lifecycle scenes, stack/push/pop traces, and transition readiness
+- [x] Structured source/CLI/editor mutation for scene lifecycle kind, activation, and initial-scene metadata
 - [x] Reflection/type registration surface for portable components
 - [x] Async task/channel patterns
 - [x] Plugin/plugin-group composition as a portable declaration

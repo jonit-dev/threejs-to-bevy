@@ -45,6 +45,42 @@ test("validateScene accepts a valid structured scene document", async () => {
   }
 });
 
+test("validateScene validates lifecycle source metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-scene-lifecycle-"));
+  try {
+    await writeScene(root, {
+      schema: "threenative.scene",
+      version: "0.1.0",
+      id: "scene.menu",
+      kind: "menu",
+      activation: "exclusive",
+      initial: true,
+      entities: [],
+    });
+
+    const valid = await validateScene({ projectPath: root, sceneId: "scene.menu" });
+    assert.equal(valid.ok, true);
+
+    await writeScene(root, {
+      schema: "threenative.scene",
+      version: "0.1.0",
+      id: "scene.menu",
+      kind: "splash",
+      activation: "modal",
+      initial: "yes",
+      entities: [],
+    });
+
+    const invalid = await validateScene({ projectPath: root, sceneId: "scene.menu" });
+    assert.equal(invalid.ok, false);
+    assert.equal(invalid.diagnostics.some((diagnostic) => diagnostic.path === "/kind" && diagnostic.code === "TN_AUTHORING_COMPONENT_VALUE_INVALID"), true);
+    assert.equal(invalid.diagnostics.some((diagnostic) => diagnostic.path === "/activation" && diagnostic.code === "TN_AUTHORING_COMPONENT_VALUE_INVALID"), true);
+    assert.equal(invalid.diagnostics.some((diagnostic) => diagnostic.path === "/initial" && diagnostic.code === "TN_AUTHORING_SHAPE_INVALID"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("validateScene reports deterministic repair diagnostics for invalid scenes", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-scene-invalid-"));
   try {

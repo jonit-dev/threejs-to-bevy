@@ -67,6 +67,7 @@ test("should dispatch existing structured source operations through the registry
       await dispatchAuthoringOperation({ args: { componentKind: "RigidBody", prefabId: "player", value: { kind: "dynamic" } }, name: "prefab.add_component", projectPath: root }),
       await dispatchAuthoringOperation({ args: { componentKind: "Light", entityId: "player", sceneId: "scene.arena", value: { color: "#ffffff", intensity: 1, kind: "point" } }, name: "scene.set_component", projectPath: root }),
       await dispatchAuthoringOperation({ args: { entityId: "player", sceneId: "scene.arena", kind: "dynamic", mass: 3 }, name: "scene.set_rigid_body", projectPath: root }),
+      await dispatchAuthoringOperation({ args: { activation: "exclusive", initial: true, kind: "level", sceneId: "scene.arena" }, name: "scene.set_lifecycle", projectPath: root }),
     ];
     const material = JSON.parse(await readFile(join(root, "content", "materials", "mat.player.materials.json"), "utf8")) as {
       materials: Array<Record<string, unknown>>;
@@ -88,7 +89,10 @@ test("should dispatch existing structured source operations through the registry
       entities: Array<{ components?: Record<string, unknown>; id: string }>;
     };
     const scene = JSON.parse(await readFile(join(root, "content", "scenes", "arena.scene.json"), "utf8")) as {
+      activation?: string;
       entities: Array<{ components?: Record<string, unknown>; id: string }>;
+      initial?: boolean;
+      kind?: string;
     };
 
     assert.deepEqual(operations.map((operation) => operation.ok), Array.from({ length: operations.length }, () => true));
@@ -100,6 +104,9 @@ test("should dispatch existing structured source operations through the registry
     assert.deepEqual(input.axes, [{ id: "MoveX", negative: ["keyboard.a"], positive: ["keyboard.d"], value: "gamepad.leftStickX" }]);
     assert.deepEqual(prefab.entities[0]?.components, { RigidBody: { kind: "dynamic" } });
     assert.deepEqual(scene.entities.find((entity) => entity.id === "player")?.components?.RigidBody, { kind: "dynamic", mass: 3 });
+    assert.equal(scene.kind, "level");
+    assert.equal(scene.activation, "exclusive");
+    assert.equal(scene.initial, true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -131,6 +138,7 @@ test("should expose operation metadata and registry diagnostics", async () => {
     "scene.set_component",
     "scene.set_camera_component",
     "scene.set_light",
+    "scene.set_lifecycle",
     "scene.set_mesh_renderer",
     "scene.set_rigid_body",
     "scene.set_collider",

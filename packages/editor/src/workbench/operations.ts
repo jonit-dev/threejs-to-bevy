@@ -13,6 +13,7 @@ export type EditorOperationName =
   | "scene.create_default"
   | "scene.set_camera"
   | "scene.set_component"
+  | "scene.set_lifecycle"
   | "scene.set_transform"
   | "system.attach_script"
   | "system.create"

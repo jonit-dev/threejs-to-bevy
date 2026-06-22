@@ -210,6 +210,31 @@ test("scene-command mutates structured scene documents deterministically", async
   }
 });
 
+test("scene-command sets lifecycle metadata and clears previous initial scene", async () => {
+  const root = await createSceneProject({ minimal: true });
+
+  try {
+    await writeFile(
+      join(root, "content", "scenes", "menu.scene.json"),
+      `${JSON.stringify({ schema: "threenative.scene", version: "0.1.0", id: "scene.menu", kind: "menu", activation: "exclusive", initial: true, entities: [], prefabs: [], resources: [], systems: [], ui: { nodes: [] } }, null, 2)}\n`,
+    );
+
+    const result = await sceneCommand(["lifecycle", "add", "scene.arena", "--kind", "level", "--activation", "exclusive", "--initial", "--project", root, "--json"]);
+    const payload = JSON.parse(result.stdout) as { filesWritten: string[] };
+    const arena = JSON.parse(await readFile(join(root, "content", "scenes", "arena.scene.json"), "utf8")) as { activation?: string; initial?: boolean; kind?: string };
+    const menu = JSON.parse(await readFile(join(root, "content", "scenes", "menu.scene.json"), "utf8")) as { initial?: boolean };
+
+    assert.equal(result.exitCode, 0);
+    assert.deepEqual(payload.filesWritten, ["content/scenes/arena.scene.json", "content/scenes/menu.scene.json"]);
+    assert.equal(arena.kind, "level");
+    assert.equal(arena.activation, "exclusive");
+    assert.equal(arena.initial, true);
+    assert.equal(menu.initial, false);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("scene-command can create prefabs resources and ui nodes without hand-editing JSON", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-cli-scene-authoring-gap-"));
 
@@ -294,12 +319,17 @@ test("scene-command smoke validates authored scene and preserves project build v
 
   try {
     await writeBuildableProject(root);
+    await sceneCommand(["lifecycle", "add", "scene.arena", "--kind", "menu", "--activation", "persistent", "--initial", "--project", root, "--json"]);
 
     const add = await sceneCommand(["add-entity", "scene.arena", "rival-kart", "--prefab", "kart", "--project", root, "--json"]);
     const transform = await sceneCommand(["set-transform", "scene.arena", "rival-kart", "--position", "1,2,3", "--project", root, "--json"]);
     const sceneValidation = await sceneCommand(["validate", "scene.arena", "--project", root, "--json"]);
     const build = await buildCommand(["--project", root, "--json"]);
     const bundleValidation = await validateProject(["--project", root, "--json"]);
+    const scenes = JSON.parse(await readFile(join(root, "dist", "game.bundle", "scenes.ir.json"), "utf8")) as {
+      initialScene: string;
+      scenes: Array<{ activation?: string; id: string; kind: string }>;
+    };
 
     assert.equal(add.exitCode, 0);
     assert.equal(transform.exitCode, 0);
@@ -308,6 +338,10 @@ test("scene-command smoke validates authored scene and preserves project build v
     assert.equal(bundleValidation.exitCode, 0);
     assert.equal((JSON.parse(build.stdout) as { code: string }).code, "TN_BUILD_OK");
     assert.equal((JSON.parse(bundleValidation.stdout) as { code: string }).code, "TN_VALIDATE_OK");
+    assert.equal(scenes.initialScene, "scene.arena");
+    assert.deepEqual(scenes.scenes.map((scene) => ({ activation: scene.activation, id: scene.id, kind: scene.kind })), [
+      { activation: "persistent", id: "scene.arena", kind: "menu" },
+    ]);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

@@ -34,6 +34,13 @@ Date: 2026-06-21
   import for `input.ir.json` axes, and editor rows for negative/positive/value
   axis fields. Controls-settings/rebinding rows and touch/gamepad gesture
   commands remain separate input source gaps.
+- ✅ 2026-06-21: Scene lifecycle source mutation now has
+  `tn scene lifecycle add <scene-id> --kind ... --activation ... --initial`,
+  registry-backed `scene.set_lifecycle`, source validation for lifecycle
+  kind/activation/initial metadata, editor scene-document rows, and structured
+  `.scene.json` bundle lowering into `scenes.ir.json`. Transition graphs,
+  stack operations, scene-local input/UI/system scopes, and project-level scene
+  ordering remain separate lifecycle gaps.
 
 ## Scope
 
@@ -103,7 +110,7 @@ IR/runtime surfaces, but only some have typed editor/CLI helpers.
 | Prefab catalogs | IR/runtime can load prefab catalogs | Web/Bevy can consume bundle prefabs | Partial | `prefab create`, `prefab add-component`, scene-local `add-prefab` | SOURCE, ECS-CMD, EDITOR | Runtime support exists, but compiler root emission for standalone prefab catalogs is not first-class; bundles may need hand-authored prefabs. |
 | Render targets | IR has color/depth render targets and camera targets | Color target support only observed | Missing | No typed command | WEB-BEVY, ECS-CMD, EDITOR | Depth render targets/camera depth sampling are represented in IR but runtime allocation paths are color-only. |
 | Runtime config / target profile / window policy | Runtime config IR exists | Partial policy support | Missing | No source mutation command | SOURCE, ECS-CMD, EDITOR, WEB-BEVY | Resize/scale-factor observations, custom cursor policy, present/background policy, clear-color updates, and multi-window diagnostics are not integrated as authoring commands. |
-| Scene lifecycle | IR/docs claim named scenes, transitions, stack traces | Runtime traces exist | Missing/partial | No lifecycle-specific source command | SOURCE, ECS-CMD, EDITOR | Source matrix marks lifecycle policy missing despite scene documents existing. |
+| ✅ Scene lifecycle | IR/docs claim named scenes, transitions, stack traces | Runtime traces exist | Partial | `tn scene lifecycle add <scene-id> --kind ... --activation ... --initial` | SOURCE, EDITOR | Scene docs now persist kind, activation, and initial metadata through CLI/editor operations and bundle lowering; transitions, stack operations, and scene-local scopes remain partial. |
 | Editor project metadata | Authoring source matrix defines need | Not runtime-specific | Missing | No command | SOURCE, ECS-CMD, EDITOR | `content/project.authoring.json` / `threenative.authoring.json` are identified but not implemented beyond discovery. |
 | Generator provenance | Concept exists in source matrix | Not runtime-specific | Missing | No command | SOURCE, ECS-CMD, EDITOR | One-way generators are identified, but reverse editor patching is not supported. |
 | Advanced rendering: volumetrics, DOF, SSR, decals, deferred, meshlets, custom post passes | Mostly diagnostic/deferred | Mostly diagnostic/deferred | Missing | No command | WEB-BEVY, EDITOR, ECS-CMD | Tracked as P2/P3 residuals in parity docs, not integrated end-to-end. |
@@ -119,7 +126,7 @@ IR/runtime surfaces, but only some have typed editor/CLI helpers.
 | ✅ P0 | Asset source document mutation | Resolved for durable asset id/type/path declarations. | `tn asset add <asset-id> --type model|texture|audio|mesh --path ... --json` |
 | ✅ P0 | Audio source mutation | Resolved for audio documents and sound declarations. | `tn audio create <audio-doc-id>`, `tn audio add-sound <audio-doc-id> <sound-id> --asset ...` |
 | ✅ P1 | Material texture/PBR commands | Resolved for promoted PBR and texture-slot fields; sampler/import policy remains outside this slice. | `tn material set <id> --base-color-texture ... --normal-texture ... --emissive ... --alpha-mode ...` |
-| P1 | Scene lifecycle commands | Scene lifecycle support is not first-class in source documents/CLI. | `tn scene lifecycle add <scene-id> --kind level --activation exclusive --initial` |
+| ✅ P1 | Scene lifecycle commands | Resolved for source-backed kind, activation, and initial-scene metadata; transitions, stack operations, scene-local scopes, and project-level scene ordering remain open. | `tn scene lifecycle add <scene-id> --kind level --activation exclusive --initial` |
 | P1 | UI widget/style commands | UI runtime is broad, but source commands only cover text/layout/bind basics. | `tn ui add-node`, `tn ui set-style`, `tn ui add-widget slider|button|image|bar` |
 | ✅ P1 | Input axes/rebinding metadata | Resolved for keyboard action bindings and axes; controls-settings/rebinding metadata remains open. | `tn input add-axis`; future `tn input set-rebinding`, `tn input add-gamepad-binding` |
 | P1 | Runtime/window/target source docs | Target/profile policy is runtime-visible but not editor-owned. | `tn target set`, `tn runtime set-window`, `tn runtime set-rendering` |

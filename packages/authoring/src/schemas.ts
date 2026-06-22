@@ -9,7 +9,7 @@ export const prefabDocumentSchema = "threenative.prefab";
 export const audioDocumentSchema = "threenative.audio";
 export const meshDocumentSchema = "threenative.meshes";
 
-export const sceneDocumentKeys = new Set(["schema", "version", "id", "entities", "prefabs", "resources", "systems", "ui", "provenance"]);
+export const sceneDocumentKeys = new Set(["schema", "version", "id", "kind", "activation", "initial", "entities", "prefabs", "resources", "systems", "ui", "provenance"]);
 export const uiDocumentKeys = new Set(["schema", "version", "id", "nodes", "bindings", "provenance"]);
 export const materialDocumentKeys = new Set(["schema", "version", "id", "materials", "provenance"]);
 export const assetDocumentKeys = new Set(["schema", "version", "id", "assets", "provenance"]);
@@ -72,6 +72,8 @@ export const supportedColliderKinds = new Set(["box", "capsule", "cylinder", "me
 export const supportedLightKinds = new Set(["ambient", "directional", "point", "spot"]);
 export const supportedRigidBodyKinds = new Set(["dynamic", "kinematic", "static"]);
 export const supportedMaterialAlphaModes = new Set(["blend", "mask", "opaque"]);
+export const supportedSceneActivationPolicies = new Set(["additive", "exclusive", "loading", "overlay", "persistent"]);
+export const supportedSceneLifecycleKinds = new Set(["credits", "cutscene", "level", "loading", "menu", "overlay", "system"]);
 
 export const logicalIdPattern = /^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/;
 export const ecsIdPattern = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
@@ -81,7 +83,10 @@ export interface ISceneDocument {
   schema: typeof sceneDocumentSchema;
   version?: string;
   id: string;
+  activation?: "additive" | "exclusive" | "loading" | "overlay" | "persistent";
   entities?: ISceneEntity[];
+  initial?: boolean;
+  kind?: "credits" | "cutscene" | "level" | "loading" | "menu" | "overlay" | "system";
   prefabs?: IScenePrefab[];
   resources?: ISceneResource[];
   systems?: ISceneSystem[];

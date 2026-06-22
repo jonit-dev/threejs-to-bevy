@@ -63,6 +63,10 @@ test("should expose environment skybox and terrain rows", async () => {
     assert.equal(environmentRows.some((row) => row.label === "Walkability" && row.fieldKind === "json" && row.readOnlyReason !== undefined), true);
     assert.equal(environmentRows.some((row) => row.label === "Path" && row.fieldKind === "json" && row.readOnlyReason !== undefined), true);
     assert.equal(environmentRows.some((row) => row.label === "env.Tree LOD" && row.fieldKind === "json" && row.readOnlyReason !== undefined), true);
+    const sceneRows = result.documents.flatMap((group) => group.documents).find((document) => document.kind === "scene")?.inspectorRows ?? [];
+    assert.equal(sceneRows.some((row) => row.label === "Scene Kind" && row.fieldKind === "enum" && row.operation?.name === "scene.set_lifecycle" && row.operation.valueArg === "kind"), true);
+    assert.equal(sceneRows.some((row) => row.label === "Activation" && row.fieldKind === "enum" && row.operation?.name === "scene.set_lifecycle" && row.operation.valueArg === "activation"), true);
+    assert.equal(sceneRows.some((row) => row.label === "Initial Scene" && row.fieldKind === "boolean" && row.operation?.name === "scene.set_lifecycle" && row.operation.valueArg === "initial"), true);
     const materialRows = result.documents.flatMap((group) => group.documents).find((document) => document.kind === "material")?.inspectorRows ?? [];
     assert.equal(materialRows.some((row) => row.fieldKind === "color" && row.operation?.name === "material.set"), true);
     const allRows = [

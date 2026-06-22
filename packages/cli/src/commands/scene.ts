@@ -19,6 +19,7 @@ import {
   setPrefabColor,
   setRigidBodyComponent,
   setResource,
+  setSceneLifecycle,
   setTransform,
   validateScene,
   type IAuthoringOperationResult,
@@ -76,6 +77,22 @@ export async function sceneCommand(argv: readonly string[], options: ISceneComma
 
   if (subcommand === "proof") {
     return sceneProofCommand(normalizedArgv.slice(1), { cwd: options.cwd });
+  }
+
+  if (subcommand === "lifecycle") {
+    const action = readPositional(normalizedArgv, 1);
+    const sceneId = readPositional(normalizedArgv, 2);
+    if (action !== "add" || sceneId === undefined) {
+      return renderUsage(json, "TN_SCENE_LIFECYCLE_ARGS_MISSING", sceneLifecycleUsage());
+    }
+    const result = await setSceneLifecycle({
+      activation: readFlag(normalizedArgv, "--activation"),
+      initial: normalizedArgv.includes("--initial") ? true : undefined,
+      kind: readFlag(normalizedArgv, "--kind"),
+      projectPath,
+      sceneId,
+    });
+    return renderSceneResult(result, json, result.ok ? `Lifecycle metadata for '${sceneId}' updated.` : `Lifecycle metadata for '${sceneId}' was not updated.`);
   }
 
   if (subcommand === "add-entity") {
@@ -355,10 +372,14 @@ function readPositional(argv: readonly string[], index: number): string | undefi
   return positionals[index];
 }
 
-const flagsWithValues = new Set(["--project", "--file", "--world", "--prefab", "--primitive", "--color", "--asset", "--path", "--value", "--position", "--rotation", "--scale", "--mode", "--target", "--module", "--export", "--resource", "--out", "--web-url", "--camera", "--native-frame", "--kind", "--intensity", "--range", "--angle", "--mesh", "--material", "--mass", "--damping", "--gravity-scale", "--size", "--radius", "--height", "--speed", "--move-x", "--move-z", "--grounding", "--slope-limit", "--step-offset", "--visible", "--cast-shadow", "--receive-shadow", "--trigger", "--blocking"]);
+const flagsWithValues = new Set(["--project", "--file", "--world", "--prefab", "--primitive", "--color", "--asset", "--path", "--value", "--position", "--rotation", "--scale", "--mode", "--target", "--module", "--export", "--resource", "--out", "--web-url", "--camera", "--native-frame", "--kind", "--activation", "--intensity", "--range", "--angle", "--mesh", "--material", "--mass", "--damping", "--gravity-scale", "--size", "--radius", "--height", "--speed", "--move-x", "--move-z", "--grounding", "--slope-limit", "--step-offset", "--visible", "--cast-shadow", "--receive-shadow", "--trigger", "--blocking"]);
 
 function sceneUsage(): string {
-  return "Usage: tn scene create <scene-id> [--file <path>] [--project <path>] [--json]\n       tn scene validate [scene-id] [--project <path>] [--json]\n       tn scene inspect <scene-id> [--project <path>] [--json]\n       tn scene proof <scene-id> --project <path> --out <dir> [--web-url <url>] [--native] [--json]";
+  return "Usage: tn scene create <scene-id> [--file <path>] [--project <path>] [--json]\n       tn scene lifecycle add <scene-id> [--kind <kind>] [--activation <policy>] [--initial] [--project <path>] [--json]\n       tn scene validate [scene-id] [--project <path>] [--json]\n       tn scene inspect <scene-id> [--project <path>] [--json]\n       tn scene proof <scene-id> --project <path> --out <dir> [--web-url <url>] [--native] [--json]";
+}
+
+function sceneLifecycleUsage(): string {
+  return "Usage: tn scene lifecycle add <scene-id> [--kind <credits|cutscene|level|loading|menu|overlay|system>] [--activation <additive|exclusive|loading|overlay|persistent>] [--initial] [--project <path>] [--json]";
 }
 
 function sceneAddComponentUsage(): string {

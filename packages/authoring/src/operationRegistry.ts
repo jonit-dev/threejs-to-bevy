@@ -31,6 +31,7 @@ import {
   setMeshRendererComponent,
   setResource,
   setRigidBodyComponent,
+  setSceneLifecycle,
   setTransform,
   setUiLayout,
   type IAuthoringOperationContext,
@@ -61,6 +62,7 @@ export type AuthoringOperationName =
   | "scene.set_collider"
   | "scene.set_component"
   | "scene.set_light"
+  | "scene.set_lifecycle"
   | "scene.set_mesh_renderer"
   | "scene.set_rigid_body"
   | "scene.set_resource"
@@ -216,6 +218,12 @@ const descriptors = [
     stringArg("color", false),
     numberArg("range", false),
     numberArg("angle", false),
+  ]),
+  descriptor("scene.set_lifecycle", "Set scene lifecycle source metadata.", "scene", "source-document", [
+    stringArg("sceneId"),
+    stringArg("kind", false),
+    stringArg("activation", false),
+    booleanArg("initial", false),
   ]),
   descriptor("scene.set_mesh_renderer", "Set a typed MeshRenderer component.", "scene", "source-document", [
     stringArg("sceneId"),
@@ -378,6 +386,8 @@ const dispatchers: Record<AuthoringOperationName, OperationDispatcher> = {
     setComponent({ componentKind: requiredString(args, "componentKind"), entityId: requiredString(args, "entityId"), projectPath, sceneId: requiredString(args, "sceneId"), value: requiredObject(args, "value") }),
   "scene.set_light": async ({ args, projectPath }) =>
     setLightComponent({ angle: optionalNumber(args, "angle"), color: optionalString(args, "color"), entityId: requiredString(args, "entityId"), intensity: optionalNumber(args, "intensity"), kind: optionalString(args, "kind"), projectPath, range: optionalNumber(args, "range"), sceneId: requiredString(args, "sceneId") }),
+  "scene.set_lifecycle": async ({ args, projectPath }) =>
+    setSceneLifecycle({ activation: optionalString(args, "activation"), initial: optionalBoolean(args, "initial"), kind: optionalString(args, "kind"), projectPath, sceneId: requiredString(args, "sceneId") }),
   "scene.set_mesh_renderer": async ({ args, projectPath }) =>
     setMeshRendererComponent({ castShadow: optionalBoolean(args, "castShadow"), entityId: requiredString(args, "entityId"), material: requiredString(args, "material"), mesh: requiredString(args, "mesh"), projectPath, receiveShadow: optionalBoolean(args, "receiveShadow"), sceneId: requiredString(args, "sceneId"), visible: optionalBoolean(args, "visible") }),
   "scene.set_rigid_body": async ({ args, projectPath }) =>

@@ -54,6 +54,8 @@ import {
   supportedMaterialAlphaModes,
   uiDocumentKeys,
   supportedRigidBodyKinds,
+  supportedSceneActivationPolicies,
+  supportedSceneLifecycleKinds,
   uiDocumentSchema,
   systemKeys,
   transformKeys,
@@ -163,6 +165,13 @@ export interface ISetComponentOptions extends IAuthoringOperationContext {
   entityId: string;
   componentKind: string;
   value: Record<string, unknown>;
+}
+
+export interface ISetSceneLifecycleOptions extends IAuthoringOperationContext {
+  sceneId: string;
+  kind?: string;
+  activation?: string;
+  initial?: boolean;
 }
 
 export interface ISetCameraComponentOptions extends IAuthoringOperationContext {
@@ -817,6 +826,86 @@ export async function setResource(options: ISetResourceOptions): Promise<IAuthor
       resource.value = options.value;
     }
     return [];
+  });
+}
+
+export async function setSceneLifecycle(options: ISetSceneLifecycleOptions): Promise<IAuthoringOperationResult> {
+  const project = await loadAuthoringProject({ projectPath: options.projectPath });
+  const sceneDocuments = project.documents.filter((document) => document.kind === "scene");
+  const sceneDocument = sceneDocuments.find((document) => readSceneId(document.data) === options.sceneId);
+  const materialIds = collectMaterialIdsForProject(project);
+  const diagnostics = [...project.diagnostics];
+
+  if (sceneDocument === undefined) {
+    diagnostics.push(
+      authoringDiagnostic({
+        code: "TN_AUTHORING_SCENE_MISSING",
+        message: `No scene source document with id '${options.sceneId}' was found.`,
+        value: options.sceneId,
+        suggestion: closestIdSuggestion(options.sceneId, sceneDocuments.map((document) => readSceneId(document.data)).filter(isString)),
+      }),
+    );
+    return authoringOperationResult({ diagnostics, projectPath: project.projectPath });
+  }
+
+  for (const document of sceneDocuments) {
+    const documentDiagnostics = await validateSceneDocument(project.projectPath, document.projectRelativePath, document.data, { materialIds });
+    if (hasAuthoringErrors(documentDiagnostics)) {
+      return authoringOperationResult({ diagnostics: documentDiagnostics, projectPath: project.projectPath });
+    }
+  }
+
+  const changedDocuments: IAuthoringDocument[] = [];
+  for (const document of sceneDocuments) {
+    const nextData = cloneJson(document.data);
+    if (!isRecord(nextData)) {
+      return authoringOperationResult({
+        diagnostics: [
+          authoringDiagnostic({
+            code: "TN_AUTHORING_SCENE_SHAPE_INVALID",
+            file: document.projectRelativePath,
+            message: "Scene source document must be a JSON object before mutation.",
+          }),
+        ],
+        projectPath: project.projectPath,
+      });
+    }
+
+    const isTarget = document === sceneDocument;
+    if (isTarget) {
+      if (options.kind !== undefined) {
+        nextData.kind = options.kind;
+      }
+      if (options.activation !== undefined) {
+        nextData.activation = options.activation;
+      }
+      if (options.initial !== undefined) {
+        nextData.initial = options.initial;
+      }
+    } else if (options.initial === true && nextData.initial === true) {
+      nextData.initial = false;
+    }
+
+    const afterDiagnostics = await validateSceneDocument(project.projectPath, document.projectRelativePath, nextData, { materialIds });
+    if (hasAuthoringErrors(afterDiagnostics)) {
+      return authoringOperationResult({ diagnostics: afterDiagnostics, projectPath: project.projectPath });
+    }
+    if (JSON.stringify(nextData) !== JSON.stringify(document.data)) {
+      document.data = nextData;
+      changedDocuments.push(document);
+    }
+  }
+
+  const filesWritten: string[] = [];
+  for (const document of changedDocuments) {
+    await writeAuthoringJsonDocument(document);
+    filesWritten.push(document.projectRelativePath);
+  }
+
+  return authoringOperationResult({
+    changed: changedDocuments.length > 0,
+    filesWritten,
+    projectPath: project.projectPath,
   });
 }
 
@@ -1722,6 +1811,13 @@ async function validateSceneDocument(
   }
 
   validateLogicalId(diagnostics, file, "/id", data.id, "scene");
+  if (data.kind !== undefined) {
+    validateEnumString(diagnostics, file, "/kind", data.kind, supportedSceneLifecycleKinds, "scene lifecycle kind", "Use 'credits', 'cutscene', 'level', 'loading', 'menu', 'overlay', or 'system'.");
+  }
+  if (data.activation !== undefined) {
+    validateEnumString(diagnostics, file, "/activation", data.activation, supportedSceneActivationPolicies, "scene activation policy", "Use 'additive', 'exclusive', 'loading', 'overlay', or 'persistent'.");
+  }
+  validateOptionalBoolean(diagnostics, file, "/initial", data.initial, "scene initial flag must be a boolean.");
 
   const prefabs = collectIds(diagnostics, file, "/prefabs", readArray(data.prefabs), "prefab", prefabKeys);
   const resources = collectIds(diagnostics, file, "/resources", readArray(data.resources), "resource", resourceKeys);

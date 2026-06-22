@@ -122,7 +122,10 @@ color, roughness, metalness, emissive, alpha, promoted texture-slot, clearcoat,
 and transmission fields, declare primitive mesh source docs, create prefab docs
 and component values, add input actions and axes from key lists, add asset catalog
 entries, create audio docs, add audio sound declarations, and create systems
-with module/export script references. Material bundle import also preserves
+with module/export script references. Scene lifecycle source commands now set
+scene kind, activation policy, and initial-scene metadata through
+`tn scene lifecycle add`, with matching editor rows and `scenes.ir.json` bundle
+lowering from structured `.scene.json` entries. Material bundle import also preserves
 those promoted portable material fields back into `content/materials/*.materials.json`
 source documents, and the editor project API exposes matching editable
 `material.set` rows. `tn scene add-component` now gives agents a
@@ -177,7 +180,7 @@ such as `scene.set_transform`, `scene.set_component`, `ui.add_text`,
 `prefab.add_component`, `input.add_action`, `asset.add`, `audio.create`,
 `audio.add_sound`, `scene.set_light`, `scene.set_mesh_renderer`,
 `scene.set_rigid_body`, `scene.set_collider`,
-`scene.set_character_controller`, `system.create`, and
+`scene.set_character_controller`, `scene.set_lifecycle`, `system.create`, and
 `system.attach_script`; MCP derives its registry-backed tool names from that
 catalog while preserving CLI JSON transport behavior.
 The editor workbench slice adds server-side project load/validate and operation

@@ -497,6 +497,9 @@ function documentInspectorRows(document: IAuthoringDocument): IEditorPropertyRow
       }
       break;
     case "scene":
+      rows.push(documentRow(document, "scene:lifecycle:kind", "Scene Kind", readString(document.data.kind) ?? "level", "enum", false, "/kind", "scene", "scene.set_lifecycle", "kind", { activation: readString(document.data.activation), initial: document.data.initial === true, sceneId: readDocumentId(document.data) ?? "" }));
+      rows.push(documentRow(document, "scene:lifecycle:activation", "Activation", readString(document.data.activation) ?? "", "enum", false, "/activation", "scene", "scene.set_lifecycle", "activation", { initial: document.data.initial === true, kind: readString(document.data.kind), sceneId: readDocumentId(document.data) ?? "" }));
+      rows.push(documentRow(document, "scene:lifecycle:initial", "Initial Scene", document.data.initial === true ? "true" : "false", "boolean", false, "/initial", "scene", "scene.set_lifecycle", "initial", { activation: readString(document.data.activation), kind: readString(document.data.kind), sceneId: readDocumentId(document.data) ?? "" }));
       for (const [index, resource] of readArray(document.data.resources).filter(isRecord).entries()) {
         rows.push(documentRow(document, `resource:${index}:path`, `${readString(resource.id) ?? `resource.${index}`} Path`, readString(resource.path) ?? summarizeValue(resource.value), "asset", true, `/resources/${index}/path`, "scene", undefined, undefined, undefined, "Scene resource mutation is not exposed through the editor operation API yet."));
       }

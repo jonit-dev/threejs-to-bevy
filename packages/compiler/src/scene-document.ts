@@ -143,8 +143,9 @@ function lowerSceneDocument(sourcePath: string, scene: ISceneDocument, environme
     initialScene: scene.id,
     scenes: [
       defineScene({
+        ...(scene.activation === undefined ? {} : { activation: scene.activation }),
         id: scene.id,
-        kind: "level",
+        kind: scene.kind ?? "level",
         visual: visualScene,
         world,
       }),
