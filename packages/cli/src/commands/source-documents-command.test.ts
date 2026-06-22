@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
 
-import { audioCommand, environmentCommand, inputCommand, materialCommand, meshCommand, prefabCommand, projectCommand, runtimeCommand, systemCommand, uiCommand } from "./sourceDocuments.js";
+import { audioCommand, environmentCommand, inputCommand, materialCommand, meshCommand, prefabCommand, projectCommand, resourcesCommand, runtimeCommand, systemCommand, uiCommand } from "./sourceDocuments.js";
 
 test("countdown UI can be created centered and bound without manual JSON editing", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-cli-ui-doc-"));
@@ -146,6 +146,25 @@ test("audio command creates document and adds sounds", async () => {
     assert.equal(create.exitCode, 0);
     assert.equal(addSound.exitCode, 0);
     assert.deepEqual(doc.sounds, [{ asset: "sound.hit", id: "hit" }]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("resources command creates and updates reusable resource source documents", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-resources-doc-"));
+  try {
+    const create = await resourcesCommand(["create", "gameplay", "--project", root, "--json"]);
+    const add = await resourcesCommand(["add", "gameplay", "RaceState", "--path", "race.state", "--value", "{\"lap\":1,\"status\":\"READY\"}", "--project", root, "--json"]);
+    const set = await resourcesCommand(["set", "gameplay", "RaceState", "--value", "{\"lap\":2,\"status\":\"GREEN\"}", "--project", root, "--json"]);
+    const doc = JSON.parse(await readFile(join(root, "content", "resources", "gameplay.resources.json"), "utf8")) as {
+      resources: Array<{ id: string; path?: string; value?: unknown }>;
+    };
+
+    assert.equal(create.exitCode, 0);
+    assert.equal(add.exitCode, 0);
+    assert.equal(set.exitCode, 0);
+    assert.deepEqual(doc.resources, [{ id: "RaceState", path: "race.state", value: { lap: 2, status: "GREEN" } }]);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

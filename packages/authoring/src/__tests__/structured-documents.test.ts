@@ -106,12 +106,18 @@ test("loads mixed authoring source document family", async () => {
       time: { fixedDelta: 1 / 60, paused: false },
       window: { height: 720, title: "Kart", width: 1280 },
     });
+    await writeSourceDocument(root, "content/resources/kart.resources.json", {
+      schema: "threenative.resources",
+      version: "0.1.0",
+      id: "kart-resources",
+      resources: [{ id: "RaceState", path: "race.state", value: { lap: 1, status: "READY" } }],
+    });
     await writeSourceDocument(root, "src/scripts/race.ts", "export function raceController() {}\n");
 
     const project = await loadAuthoringProject({ projectPath: root });
     assert.deepEqual(
       project.documents.map((document) => document.kind),
-      ["asset", "audio", "environment", "input", "material", "mesh", "prefab", "project", "runtime", "scene", "systems", "ui"],
+      ["asset", "audio", "environment", "input", "material", "mesh", "prefab", "project", "resources", "runtime", "scene", "systems", "ui"],
     );
 
     const validation = await validateAuthoringProject({ projectPath: root });
@@ -149,6 +155,7 @@ test("validates duplicate IDs for structured authoring document families", async
     await writeSourceDocument(root, "content/systems/kart.systems.json", duplicateDoc("threenative.systems", "systems", "systems", "race-controller"));
     await writeSourceDocument(root, "content/prefabs/kart.prefab.json", duplicateDoc("threenative.prefab", "prefab", "entities", "kart-root"));
     await writeSourceDocument(root, "content/audio/kart.audio.json", duplicateDoc("threenative.audio", "audio", "sounds", "engine-loop"));
+    await writeSourceDocument(root, "content/resources/kart.resources.json", duplicateDoc("threenative.resources", "resources", "resources", "RaceState"));
 
     const result = await validateAuthoringProject({ projectPath: root });
 
@@ -159,6 +166,7 @@ test("validates duplicate IDs for structured authoring document families", async
       "TN_AUTHORING_DUPLICATE_INPUT_ID",
       "TN_AUTHORING_DUPLICATE_MATERIAL_ID",
       "TN_AUTHORING_DUPLICATE_ENTITY_ID",
+      "TN_AUTHORING_DUPLICATE_RESOURCE_ID",
       "TN_AUTHORING_DUPLICATE_SYSTEM_ID",
       "TN_AUTHORING_DUPLICATE_UI_NODE_ID",
     ]);

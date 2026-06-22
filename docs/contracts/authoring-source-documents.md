@@ -235,7 +235,7 @@ mutation catalogs.
 
 `@threenative/authoring` currently discovers and validates the first stable
 source-document families for scenes, UI, materials, meshes, assets, input,
-systems, prefabs, and audio. The non-scene families intentionally use minimal
+systems, prefabs, resources, and audio. The non-scene families intentionally use minimal
 schema-versioned contracts in this phase:
 
 - `threenative.ui`: `id`, `nodes`, `bindings`, and optional `provenance`;
@@ -246,6 +246,8 @@ schema-versioned contracts in this phase:
 - `threenative.input`: `id`, `actions`, and optional `provenance`;
 - `threenative.systems`: `id`, `systems`, and optional `provenance`;
 - `threenative.prefab`: `id`, `entities`, and optional `provenance`;
+- `threenative.resources`: `id`, reusable `resources`, and optional
+  `provenance`;
 - `threenative.audio`: `id`, `sounds`, and optional `provenance`.
 
 Validation rejects malformed schemas, unknown fields, duplicate IDs within each

@@ -158,6 +158,10 @@ collider, and character-controller payloads without hand-written component
 JSON; camera operations now preserve promoted projection/frustum fields
 (`fovY`, `near`, `far`, and orthographic `size`) through source builds, and the
 shared registry exposes the matching `scene.set_*` operations.
+Reusable `threenative.resources` source documents now give shared gameplay
+state/defaults their own durable source family through `tn resources
+create|add|set` and registry-backed `resources.*` operations; full reusable
+component/resource schema authoring remains separate residual work.
 Commands support `--json`, return the shared `ok`/`changed`/`filesWritten`/
 `diagnostics` shape, and fail before writing on invalid JSON or validation
 errors. Broader asset import settings, material sampler/import policy, input

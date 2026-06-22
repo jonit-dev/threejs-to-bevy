@@ -622,6 +622,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] Shared authoring operation registry for CLI/MCP/editor mutation adapters
 - [x] Registry-backed CLI source mutation for asset catalogs and audio sound documents
 - [x] Registry-backed CLI/editor source mutation for project metadata documents
+- [x] Registry-backed CLI/editor source mutation for reusable resources documents
 - [x] Typed CLI/source operations for common ECS components (`camera`, `light`, `mesh-renderer`, `rigid-body`, `collider`, `character-controller`), including camera projection/frustum fields
 - [x] Editor workbench source inventory and structured operation dispatch
 - [x] Live preview edit classification with provenance-backed source mapping

@@ -13,6 +13,7 @@ import {
   createMeshPrimitive,
   createPrefabDocument,
   createProjectMetadata,
+  createResourcesDocument,
   createRuntimeConfig,
   createSystem,
   createUiDocument,
@@ -20,8 +21,10 @@ import {
   setEnvironmentMap,
   setEnvironmentSkybox,
   setEnvironmentTerrain,
+  addResourceDocumentEntry,
   setRuntimeRendering,
   setRuntimeWindow,
+  setResourceDocumentEntry,
   setSystemMetadata,
   setUiLayout,
   setUiStyle,
@@ -355,6 +358,47 @@ export async function audioCommand(argv: readonly string[], options: ISourceComm
   }
 
   return renderUsage(json, "TN_AUDIO_COMMAND_UNKNOWN", "Usage: tn audio create|add-sound ... [--json]");
+}
+
+export async function resourcesCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {
+  const normalizedArgv = normalizeArgv(argv);
+  const [subcommand] = normalizedArgv;
+  const json = normalizedArgv.includes("--json");
+  const projectPath = resolveProjectPath(normalizedArgv, options.cwd);
+  const resourcesDocId = readPositional(normalizedArgv, 1);
+
+  if (subcommand === "create") {
+    if (resourcesDocId === undefined) {
+      return renderUsage(json, "TN_RESOURCES_CREATE_ARGS_MISSING", "Usage: tn resources create <resources-doc-id> [--project <path>] [--json]");
+    }
+    return renderAuthoringResult("resources", await createResourcesDocument({ projectPath, resourcesDocId }), json, `Resources document '${resourcesDocId}' created.`);
+  }
+
+  if (subcommand === "add") {
+    const resourceId = readPositional(normalizedArgv, 2);
+    const value = parseJsonFlag(normalizedArgv, "--value");
+    if (value.diagnostic !== undefined) {
+      return renderUsage(json, value.diagnostic, "Resource --value must be valid JSON.");
+    }
+    if (resourcesDocId === undefined || resourceId === undefined) {
+      return renderUsage(json, "TN_RESOURCES_ADD_ARGS_MISSING", "Usage: tn resources add <resources-doc-id> <resource-id> [--path <resource.path>] [--value <json>] [--project <path>] [--json]");
+    }
+    return renderAuthoringResult("resources", await addResourceDocumentEntry({ path: readFlag(normalizedArgv, "--path"), projectPath, resourceId, resourcesDocId, value: value.value }), json, `Resource '${resourceId}' added.`);
+  }
+
+  if (subcommand === "set") {
+    const resourceId = readPositional(normalizedArgv, 2);
+    const value = parseJsonFlag(normalizedArgv, "--value");
+    if (value.diagnostic !== undefined) {
+      return renderUsage(json, value.diagnostic, "Resource --value must be valid JSON.");
+    }
+    if (resourcesDocId === undefined || resourceId === undefined) {
+      return renderUsage(json, "TN_RESOURCES_SET_ARGS_MISSING", "Usage: tn resources set <resources-doc-id> <resource-id> [--path <resource.path>] [--value <json>] [--project <path>] [--json]");
+    }
+    return renderAuthoringResult("resources", await setResourceDocumentEntry({ path: readFlag(normalizedArgv, "--path"), projectPath, resourceId, resourcesDocId, value: value.value }), json, `Resource '${resourceId}' updated.`);
+  }
+
+  return renderUsage(json, "TN_RESOURCES_COMMAND_UNKNOWN", "Usage: tn resources create|add|set ... [--json]");
 }
 
 export async function environmentCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {

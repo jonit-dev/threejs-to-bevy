@@ -5,7 +5,7 @@ import { authoringDiagnostic, type IAuthoringDiagnostic } from "./diagnostics.js
 import { formatAuthoringDocument } from "./format.js";
 import { isGeneratedBundleArtifactFile } from "./sourceKinds.js";
 
-export type AuthoringDocumentKind = "asset" | "audio" | "environment" | "input" | "material" | "mesh" | "prefab" | "project" | "runtime" | "scene" | "systems" | "ui" | "unknown";
+export type AuthoringDocumentKind = "asset" | "audio" | "environment" | "input" | "material" | "mesh" | "prefab" | "project" | "resources" | "runtime" | "scene" | "systems" | "ui" | "unknown";
 
 export interface IAuthoringDocument {
   file: string;
@@ -103,6 +103,8 @@ export function classifyAuthoringDocument(projectRelativePath: string, data: unk
         return "project";
       case "threenative.runtime-config":
         return "runtime";
+      case "threenative.resources":
+        return "resources";
       case "threenative.scene":
         return "scene";
       case "threenative.systems":
@@ -144,6 +146,9 @@ export function classifyAuthoringDocumentPath(projectRelativePath: string): Auth
   }
   if (projectRelativePath.endsWith(".runtime.json")) {
     return "runtime";
+  }
+  if (projectRelativePath.endsWith(".resources.json")) {
+    return "resources";
   }
   if (projectRelativePath.endsWith(".scene.json")) {
     return "scene";

@@ -37,6 +37,8 @@ import {
   projectDocumentKeys,
   projectDocumentSchema,
   resourceIdPattern,
+  resourcesDocumentKeys,
+  resourcesDocumentSchema,
   rigidBodyComponentKeys,
   readArray,
   readString,
@@ -179,6 +181,24 @@ export interface IAddResourceOptions extends IAuthoringOperationContext {
 
 export interface ISetResourceOptions extends IAuthoringOperationContext {
   sceneId: string;
+  resourceId: string;
+  path?: string;
+  value?: unknown;
+}
+
+export interface ICreateResourcesDocumentOptions extends IAuthoringOperationContext {
+  resourcesDocId: string;
+}
+
+export interface IAddResourceDocumentEntryOptions extends IAuthoringOperationContext {
+  resourcesDocId: string;
+  resourceId: string;
+  path?: string;
+  value?: unknown;
+}
+
+export interface ISetResourceDocumentEntryOptions extends IAuthoringOperationContext {
+  resourcesDocId: string;
   resourceId: string;
   path?: string;
   value?: unknown;
@@ -1442,6 +1462,65 @@ export async function createRuntimeConfig(options: ICreateRuntimeConfigOptions):
   });
 }
 
+export async function createResourcesDocument(options: ICreateResourcesDocumentOptions): Promise<IAuthoringOperationResult> {
+  return createSourceDocument({
+    projectPath: options.projectPath,
+    kind: "resources",
+    id: options.resourcesDocId,
+    file: `content/resources/${options.resourcesDocId}.resources.json`,
+    data: { schema: resourcesDocumentSchema, version: "0.1.0", id: options.resourcesDocId, resources: [] },
+  });
+}
+
+export async function addResourceDocumentEntry(options: IAddResourceDocumentEntryOptions): Promise<IAuthoringOperationResult> {
+  return upsertSourceDocument({
+    projectPath: options.projectPath,
+    kind: "resources",
+    id: options.resourcesDocId,
+    file: `content/resources/${options.resourcesDocId}.resources.json`,
+    emptyData: { schema: resourcesDocumentSchema, version: "0.1.0", id: options.resourcesDocId, resources: [] },
+    apply: (data, file) => {
+      const resources = ensureArrayProperty(data, "resources");
+      if (findSceneItem(resources, options.resourceId) !== undefined) {
+        return [
+          authoringDiagnostic({
+            code: duplicateIdCode("resource"),
+            file,
+            message: `Duplicate resource id '${options.resourceId}'.`,
+            path: "/resources",
+            value: options.resourceId,
+            suggestion: "Use a new resource id or update the existing resource.",
+          }),
+        ];
+      }
+      resources.push({
+        id: options.resourceId,
+        ...(options.path === undefined ? {} : { path: options.path }),
+        ...(options.value === undefined ? {} : { value: options.value }),
+      });
+      resources.sort((left, right) => String(isRecord(left) ? left.id : "").localeCompare(String(isRecord(right) ? right.id : "")));
+      return [];
+    },
+  });
+}
+
+export async function setResourceDocumentEntry(options: ISetResourceDocumentEntryOptions): Promise<IAuthoringOperationResult> {
+  return mutateSourceDocument(options, "resources", options.resourcesDocId, (data, file) => {
+    const resources = ensureArrayProperty(data, "resources");
+    const resource = findSceneItem(resources, options.resourceId);
+    if (resource === undefined) {
+      return [missingReferenceDiagnostic(file, "/resources", "resource", options.resourceId, idsFromArray(resources))];
+    }
+    if (options.path !== undefined) {
+      resource.path = options.path;
+    }
+    if (options.value !== undefined) {
+      resource.value = options.value;
+    }
+    return [];
+  });
+}
+
 export async function createProjectMetadata(options: ICreateProjectMetadataOptions): Promise<IAuthoringOperationResult> {
   const projectId = options.projectId;
   return upsertSourceDocument({
@@ -1964,6 +2043,8 @@ function sourceExtensionForKind(kind: AuthoringDocumentKind): string {
       return ".authoring.json";
     case "runtime":
       return ".runtime.json";
+    case "resources":
+      return ".resources.json";
     case "systems":
       return ".systems.json";
     case "ui":
@@ -2180,6 +2261,18 @@ async function validateAuthoringDocument(
       return validateProjectDocument(file, data);
     case "runtime":
       return validateRuntimeDocument(file, data);
+    case "resources":
+      return validateDeclarationDocument(file, data, {
+        declarationKeys: resourceKeys,
+        duplicateKind: "resource",
+        expectedSchema: resourcesDocumentSchema,
+        idKind: "resources document",
+        listName: "resources",
+        rootKeys: resourcesDocumentKeys,
+        validateItem: (diagnostics, path, item) => {
+          validateOptionalString(diagnostics, file, `${path}/path`, item.path, "resource path must be a non-empty string.");
+        },
+      });
     case "scene":
       return validateSceneDocument(projectPath, file, data, context);
     case "systems":

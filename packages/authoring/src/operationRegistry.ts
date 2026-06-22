@@ -8,6 +8,7 @@ import {
   addInputAxis,
   addPrefab,
   addPrefabComponent,
+  addResourceDocumentEntry,
   addResource,
   addTag,
   addUiNode,
@@ -24,6 +25,7 @@ import {
   createPrefabDocument,
   createProjectMetadata,
   createRuntimeConfig,
+  createResourcesDocument,
   createSystem,
   createUiDocument,
   removeComponent,
@@ -39,6 +41,7 @@ import {
   setMaterial,
   setMeshRendererComponent,
   setResource,
+  setResourceDocumentEntry,
   setRuntimeRendering,
   setRuntimeWindow,
   setRigidBodyComponent,
@@ -67,6 +70,9 @@ export type AuthoringOperationName =
   | "prefab.add_component"
   | "prefab.create"
   | "project.create"
+  | "resources.add"
+  | "resources.create"
+  | "resources.set"
   | "runtime.create"
   | "runtime.set_rendering"
   | "runtime.set_window"
@@ -101,7 +107,7 @@ export type AuthoringOperationName =
   | "ui.set_style";
 
 export type AuthoringOperationPathPolicy = "source-document" | "source-script";
-export type AuthoringOperationSourceFamily = "asset" | "audio" | "environment" | "input" | "material" | "mesh" | "prefab" | "project" | "runtime" | "scene" | "system" | "ui";
+export type AuthoringOperationSourceFamily = "asset" | "audio" | "environment" | "input" | "material" | "mesh" | "prefab" | "project" | "resources" | "runtime" | "scene" | "system" | "ui";
 export type AuthoringOperationResultShape = "authoring-operation-result";
 
 export interface IAuthoringOperationArgumentDescriptor {
@@ -213,6 +219,21 @@ const descriptors = [
     stringArrayArg("sourceRoots", false),
     stringArrayArg("buildTargets", false),
     stringArg("file", false),
+  ]),
+  descriptor("resources.create", "Create a reusable resources source document.", "resources", "source-document", [
+    stringArg("resourcesDocId"),
+  ]),
+  descriptor("resources.add", "Add a resource declaration to a reusable resources source document.", "resources", "source-document", [
+    stringArg("resourcesDocId"),
+    stringArg("resourceId"),
+    stringArg("path", false),
+    anyJsonArg("value", false),
+  ]),
+  descriptor("resources.set", "Update a resource declaration in a reusable resources source document.", "resources", "source-document", [
+    stringArg("resourcesDocId"),
+    stringArg("resourceId"),
+    stringArg("path", false),
+    anyJsonArg("value", false),
   ]),
   descriptor("runtime.create", "Create a structured runtime config source document.", "runtime", "source-document", [
     stringArg("runtimeId"),
@@ -496,6 +517,12 @@ const dispatchers: Record<AuthoringOperationName, OperationDispatcher> = {
     createPrefabDocument({ prefabId: requiredString(args, "prefabId"), projectPath }),
   "project.create": async ({ args, projectPath }) =>
     createProjectMetadata({ authoringVersion: optionalString(args, "authoringVersion"), buildTargets: optionalStringArray(args, "buildTargets"), file: optionalString(args, "file"), projectId: requiredString(args, "projectId"), projectPath, sourceRoots: optionalStringArray(args, "sourceRoots") }),
+  "resources.add": async ({ args, projectPath }) =>
+    addResourceDocumentEntry({ path: optionalString(args, "path"), projectPath, resourceId: requiredString(args, "resourceId"), resourcesDocId: requiredString(args, "resourcesDocId"), value: optionalJson(args, "value") }),
+  "resources.create": async ({ args, projectPath }) =>
+    createResourcesDocument({ projectPath, resourcesDocId: requiredString(args, "resourcesDocId") }),
+  "resources.set": async ({ args, projectPath }) =>
+    setResourceDocumentEntry({ path: optionalString(args, "path"), projectPath, resourceId: requiredString(args, "resourceId"), resourcesDocId: requiredString(args, "resourcesDocId"), value: optionalJson(args, "value") }),
   "runtime.create": async ({ args, projectPath }) =>
     createRuntimeConfig({ projectPath, runtimeId: requiredString(args, "runtimeId") }),
   "runtime.set_rendering": async ({ args, projectPath }) =>
