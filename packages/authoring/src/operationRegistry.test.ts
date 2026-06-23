@@ -51,6 +51,7 @@ test("should dispatch existing structured source operations through the registry
       await dispatchAuthoringOperation({ args: { environmentId: "arena", path: { id: "path.main", points: [[0, 0, 0], [1, 0, 1]] } }, name: "environment.set_path", projectPath: root }),
       await dispatchAuthoringOperation({ args: { environmentId: "arena", walkability: { terrain: { height: 0, surface: "terrain.arena" } } }, name: "environment.set_walkability", projectPath: root }),
       await dispatchAuthoringOperation({ args: { environmentId: "arena", probe: { bounds: { max: [3, 4, 3], min: [-3, 0, -3] }, influenceRadius: 5, source: { asset: "tex.env", mode: "equirect" } }, probeId: "probe.center" }, name: "environment.set_light_probe", projectPath: root }),
+      await dispatchAuthoringOperation({ args: { exportName: "generateArena", generatorId: "arena.layout", inputHash: "sha256:inputs", modulePath: "src/generators/arena.ts", outputHash: "sha256:outputs", outputs: ["content/scenes/arena.scene.json"], overwritePolicy: "manual" }, name: "generator.record", projectPath: root }),
       await dispatchAuthoringOperation({ args: { materialId: "mat.player" }, name: "material.create", projectPath: root }),
       await dispatchAuthoringOperation({
         args: {
@@ -109,6 +110,7 @@ test("should dispatch existing structured source operations through the registry
       terrain?: Record<string, unknown>;
       walkability?: unknown;
     };
+    const generator = JSON.parse(await readFile(join(root, "content", "generators", "arena.layout.generator.json"), "utf8")) as Record<string, unknown>;
     const ui = JSON.parse(await readFile(join(root, "content", "ui", "hud.ui.json"), "utf8")) as {
       nodes: Array<{ action?: string; id: string; label?: string; style?: Record<string, unknown>; text?: string; type: string }>;
     };
@@ -144,6 +146,7 @@ test("should dispatch existing structured source operations through the registry
     assert.deepEqual(environment.path, { id: "path.main", points: [[0, 0, 0], [1, 0, 1]] });
     assert.deepEqual(environment.walkability, { terrain: { height: 0, surface: "terrain.arena" } });
     assert.deepEqual(environment.lightProbes, [{ bounds: { max: [3, 4, 3], min: [-3, 0, -3] }, id: "probe.center", influenceRadius: 5, source: { asset: "tex.env", mode: "equirect" } }]);
+    assert.deepEqual(generator, { export: "generateArena", id: "arena.layout", inputHash: "sha256:inputs", module: "src/generators/arena.ts", outputHash: "sha256:outputs", outputs: ["content/scenes/arena.scene.json"], overwritePolicy: "manual", schema: "threenative.generator-provenance", version: "0.1.0" });
     assert.deepEqual(material.materials, [{ alphaMode: "mask", baseColorTexture: "tex.player.albedo", color: "#fff", emissive: "#33ccff", id: "mat.player", metalness: 0.2, normalTexture: "tex.player.normal", roughness: 0.4 }]);
     assert.deepEqual(ui.nodes, [
       { id: "score", text: "Score", type: "text" },
@@ -227,6 +230,7 @@ test("should expose operation metadata and registry diagnostics", async () => {
     "environment.set_terrain",
     "environment.set_walkability",
     "environment.set_source_asset_lod",
+    "generator.record",
     "input.add_action",
     "input.add_axis",
     "material.create",

@@ -29,6 +29,7 @@ import {
   createResourcesDocument,
   createSystem,
   createUiDocument,
+  recordGeneratorProvenance,
   removeComponent,
   setCamera,
   setCameraComponent,
@@ -75,6 +76,7 @@ export type AuthoringOperationName =
   | "environment.set_source_asset_lod"
   | "environment.set_terrain"
   | "environment.set_walkability"
+  | "generator.record"
   | "input.add_action"
   | "input.add_axis"
   | "material.create"
@@ -125,7 +127,7 @@ export type AuthoringOperationName =
   | "ui.set_style";
 
 export type AuthoringOperationPathPolicy = "source-document" | "source-script";
-export type AuthoringOperationSourceFamily = "asset" | "audio" | "environment" | "input" | "material" | "mesh" | "prefab" | "project" | "resources" | "runtime" | "scene" | "system" | "target" | "ui";
+export type AuthoringOperationSourceFamily = "asset" | "audio" | "environment" | "generator" | "input" | "material" | "mesh" | "prefab" | "project" | "resources" | "runtime" | "scene" | "system" | "target" | "ui";
 export type AuthoringOperationResultShape = "authoring-operation-result";
 
 export interface IAuthoringOperationArgumentDescriptor {
@@ -205,6 +207,15 @@ const descriptors = [
     stringArg("environmentId"),
     stringArg("sourceAssetId"),
     anyJsonArg("lod"),
+  ]),
+  descriptor("generator.record", "Create or update one-way generator provenance metadata.", "generator", "source-document", [
+    stringArg("generatorId"),
+    stringArg("modulePath"),
+    stringArg("exportName"),
+    stringArrayArg("outputs"),
+    stringArg("overwritePolicy", false),
+    stringArg("inputHash", false),
+    stringArg("outputHash", false),
   ]),
   descriptor("input.add_action", "Add or replace an input action in a structured input document.", "input", "source-document", [
     stringArg("inputDocId"),
@@ -563,6 +574,8 @@ const dispatchers: Record<AuthoringOperationName, OperationDispatcher> = {
     setEnvironmentTerrain({ environmentId: requiredString(args, "environmentId"), heightmap: optionalString(args, "heightmap"), heightMode: optionalString(args, "heightMode"), projectPath, terrainId: optionalString(args, "terrainId") }),
   "environment.set_walkability": async ({ args, projectPath }) =>
     setEnvironmentWalkability({ environmentId: requiredString(args, "environmentId"), projectPath, walkability: optionalJson(args, "walkability") }),
+  "generator.record": async ({ args, projectPath }) =>
+    recordGeneratorProvenance({ exportName: requiredString(args, "exportName"), generatorId: requiredString(args, "generatorId"), inputHash: optionalString(args, "inputHash"), modulePath: requiredString(args, "modulePath"), outputHash: optionalString(args, "outputHash"), outputs: requiredStringArray(args, "outputs"), overwritePolicy: optionalString(args, "overwritePolicy"), projectPath }),
   "input.add_action": async ({ args, projectPath }) =>
     addInputAction({ actionId: requiredString(args, "actionId"), inputDocId: requiredString(args, "inputDocId"), keys: requiredStringArray(args, "keys"), projectPath }),
   "input.add_axis": async ({ args, projectPath }) =>

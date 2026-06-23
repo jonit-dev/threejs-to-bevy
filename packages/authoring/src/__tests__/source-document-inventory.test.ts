@@ -51,4 +51,6 @@ test("TypeScript is classified as script or generator source only", () => {
 
   const generatorReference = authoringSourceMatrix.find((entry) => entry.id === "generator-provenance-document");
   assert.equal(generatorReference?.editorRoundTrip, "one-way-generator-output");
+  assert.equal(generatorReference?.structuredSourceSupport, "partial");
+  assert.equal(generatorReference?.cliOperationSupport, "partial");
 });

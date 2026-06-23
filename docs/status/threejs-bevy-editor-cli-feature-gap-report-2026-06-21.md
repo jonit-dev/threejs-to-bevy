@@ -119,17 +119,22 @@ Date: 2026-06-21
   `system.set_metadata` for access lists, ordering, services, queries, and
   commands. System schedules remain create-time rows, but the richer source
   metadata no longer requires CLI-only mutation.
+- ✅ 2026-06-23: Generator provenance now has a structured
+  `content/generators/*.generator.json` source document and registry-backed
+  `generator.record` / `tn generator record` command for module/export,
+  outputs, hashes, and overwrite policy. Editor rows inspect generator
+  provenance as read-only one-way metadata; generated outputs still do not
+  receive reverse editor patches.
 
 ## Final Status for 2026-06-22
 
 The original report is now the current progress ledger: rows with ✅ have either
-implemented source/editor/CLI support or a documented intentional non-goal
-boundary. The remaining unchecked matrix/subagent rows are still open for later
-work and should not be treated as complete:
+implemented source/editor/CLI support or a documented intentional non-goal or
+diagnostic boundary. The remaining residual matrix/subagent rows are still open
+for later work and should not be treated as complete:
 
-- Generator provenance workflows beyond one-way classification and provenance
-  sidecar metadata.
-- Advanced rendering and advanced light/material residuals.
+- Advanced rendering and advanced light/material residuals remain explicit
+  diagnostic-only boundaries backed by rendering residual evidence.
 - Remaining read-only editor rows that still need safe source-persistable
   operations, excluding asset catalog type/path and scene resource path/value
   rows, scene-local prefab primitive/color/asset rows, environment
@@ -189,7 +194,7 @@ IR/runtime surfaces, but only some have typed editor/CLI helpers.
 | ✅ Entities, transforms, resources | Supported | Supported | Partial | Typed commands exist: `scene add-entity`, `scene set-transform`, `scene add-resource`, `scene set-resource`, `resources create/add/set` | EDITOR | Core scene mutation exists, and reusable `threenative.resources` source docs now persist resource declarations/defaults; reusable schema document authoring remains residual. |
 | ✅ Generic ECS components | IR supports arbitrary component records plus typed known components | Bevy maps known components; script host can read component values | Partial | Generic `scene set-component` and `prefab add-component`, plus typed scene operations for promoted components | ECS-CMD, EDITOR | Typed source/CLI/default coverage now includes camera, light, mesh-renderer, render-layers, visibility, rigid-body, collider, character-controller, tags, and groups; raw JSON remains for custom or unpromoted components. |
 | ✅ Tags and group containers | Supported in parity docs / compiler path | Supported as marker/query and hierarchy containers | Partial | `tn scene add-tag`, `tn scene add-group` plus registry `scene.add_tag` / `scene.add_group` | EDITOR | Typed source/CLI operations now write zero-field tag components and `SceneContainer` group entities that lower through structured scene builds; broader editor hierarchy/group controls remain partial. |
-| ✅ MeshRenderer and primitive meshes | Supported | Supported | Partial | `mesh primitive`, `mesh custom`, `scene add-prefab`, `scene set-prefab`, generic `set-component` | ECS-CMD, EDITOR | Source mesh docs now cover primitive and custom attribute/index declarations, scene-local prefab primitive/color/asset edits, and compiler lowering emits generated mesh assets/binary payloads; generator provenance/import settings and richer editor mesh controls remain partial. |
+| ✅ MeshRenderer and primitive meshes | Supported | Supported | Partial | `mesh primitive`, `mesh custom`, `scene add-prefab`, `scene set-prefab`, generic `set-component` | ECS-CMD, EDITOR | Source mesh docs now cover primitive and custom attribute/index declarations, scene-local prefab primitive/color/asset edits, and compiler lowering emits generated mesh assets/binary payloads; import settings and richer editor mesh controls remain partial. |
 | ✅ Materials and textures | Broad IR/runtime support for PBR fields and texture slots | Broad promoted support | Partial | `material create`, `material set` with promoted PBR/texture flags | EDITOR | CLI/editor now cover promoted texture slots, alpha, emissive, clearcoat, and transmission fields; sampler/import policy and broader material inspector UX remain partial. |
 | ✅ Cameras and views | Broad camera IR/runtime support | Broad promoted support | Partial | `scene set-camera`, `scene add-component ... camera`, registry `scene.set_camera_component` | EDITOR | Typed source/CLI camera operations now persist promoted projection/frustum fields (`fovY`, `near`, `far`, `size`) and structured scene builds lower them into IR `Camera` components; multi-view ordering, render targets, helpers, and richer editor controls remain residual. |
 | ✅ Lights and shadows | Broad IR/runtime support for ambient/directional/point/spot and shadow metadata | Broad promoted support | Partial via default scene/editor UI | `tn scene add-component <scene> <entity> light ...`, registry `scene.set_light`; `tn environment set-light-probe` | EDITOR | Typed light command and editor rows now cover kind, intensity, color, range, angle, shadowBias, and shadowNormalBias; environment light probes have JSON-backed source/editor/CLI mutation, while broader lighting UX remains partial. |
@@ -207,9 +212,9 @@ IR/runtime surfaces, but only some have typed editor/CLI helpers.
 | ✅ Runtime config / target profile / window policy | Runtime config IR exists | Partial policy support | Partial | `runtime create`, `runtime set-window`, `runtime set-rendering`, `target set` | SOURCE, EDITOR, WEB-BEVY | CLI/editor now cover source-backed runtime config creation, primary window size/title, promoted renderer quality fields, and target profile source documents for targets/budgets/performance JSON that lower to `runtime.config.json` and `target.profile.json`; resize/scale-factor observations, cursor/present/background policy, clear-color updates, and multi-window diagnostics remain residual. |
 | ✅ Scene lifecycle | IR/docs claim named scenes, transitions, stack traces | Runtime traces exist | Partial | `tn scene lifecycle add <scene-id> --kind ... --activation ... --initial` | SOURCE, EDITOR | Scene docs now persist kind, activation, and initial metadata through CLI/editor operations and bundle lowering; scene-scoped input/system/UI references now emit and surface as active runtime scopes. Transition graph commands, stack operations, and project-level scene ordering remain partial. |
 | ✅ Editor project metadata | Authoring source matrix defines need | Not runtime-specific | Partial | `tn project init-source` / registry `project.create` | SOURCE, ECS-CMD, EDITOR | Project metadata docs are now classified, validated, and editable for id, authoring version, source roots, and build targets; project-level scene ordering/build orchestration remains residual. |
-| Generator provenance | Concept exists in source matrix | Not runtime-specific | Missing | No command | SOURCE, ECS-CMD, EDITOR | One-way generators are identified, but reverse editor patching is not supported. |
-| Advanced rendering: volumetrics, DOF, SSR, decals, deferred, meshlets, custom post passes | Mostly diagnostic/deferred | Mostly diagnostic/deferred | Missing | No command | WEB-BEVY, EDITOR, ECS-CMD | Tracked as P2/P3 residuals in parity docs, not integrated end-to-end. |
-| Advanced lights/materials | Spherical/area lights, lightmaps, parallax, anisotropy/specular tint are open | Not promoted | Missing | No command | WEB-BEVY, EDITOR, ECS-CMD | Custom shaders/bindless/render phases are diagnostic boundaries, not portable authoring features. |
+| ✅ Generator provenance | Structured generator provenance document exists | Not runtime-specific | Partial one-way source metadata | `tn generator record` / registry `generator.record` | SOURCE, ECS-CMD, EDITOR | Generator source docs capture module/export, outputs, hashes, and overwrite policy, and editor rows inspect them as read-only. Reverse patching generated outputs remains intentionally unsupported. |
+| ✅ Advanced rendering: volumetrics, DOF, SSR, decals, deferred, meshlets, custom post passes | Diagnostic/deferred boundary | Diagnostic/deferred boundary | Diagnostic-only | No command | INTENTIONAL | `pnpm verify:rendering-residuals` plus IR validation keep these as stable unsupported-feature diagnostics until a future promotion slice. |
+| ✅ Advanced lights/materials | Spherical/area lights, lightmaps, parallax, anisotropy/specular tint are open | Not promoted | Diagnostic-only | No command | INTENTIONAL | Custom shaders, bindless resources, raw render phases, and broader advanced material/light requests remain portable diagnostic boundaries, not current CLI/editor source features. |
 | ✅ Platform services: cloud saves, online/networking/replication/collaboration | Deferred/non-portable | Deferred/non-portable | Missing | No command | INTENTIONAL | Product boundary keeps these out of portable IR/runtime for now; no command is the intended state. |
 | ✅ Direct Bevy authoring / raw Three.js source of truth / 2D workflows | Non-goal | Non-goal | Non-goal | No command | INTENTIONAL | Explicitly outside the current ThreeNative product boundary; no command is the intended state. |
 
@@ -260,7 +265,7 @@ and docs/contracts. Their additional findings sharpen the gaps above:
 | Rendering/materials | Area lights, lightmaps, parallax/depth maps, anisotropy/specular tint, atmospheric/volumetric effects, auto exposure, depth of field, motion blur, SSR/mirrors, decals, deferred rendering, virtual geometry, and custom post-processing. |
 | Assets/animation | glTF extension processing, runtime asset saving/export, generated runtime assets that persist/reload, retargeting/IK, and arbitrary blend trees. |
 | Physics/input/platform | Full constraint solving, arbitrary triangle narrow phase, vehicle drivetrain/tire models, soft bodies/ragdolls, richer gestures beyond tap/swipe/pinch, window resize/scale-factor observations, cursor/present/background/window background policies, and multi-window diagnostics. |
-| Tooling/editor | Full native desktop visual editor shell, connected-device gamepad inspection, and generator provenance. |
+| Tooling/editor | Full native desktop visual editor shell and connected-device gamepad inspection. |
 
 ## Source Evidence
 

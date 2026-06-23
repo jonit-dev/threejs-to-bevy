@@ -378,6 +378,13 @@ inspector rows. Editor-only
 operation fallbacks now return stable
 `TN_EDITOR_OPERATION_ARG_INVALID` diagnostics for malformed payloads before any
 source write.
+Generator provenance has a structured one-way source surface:
+`content/generators/*.generator.json` validates module/export, generated output
+paths, optional input/output hashes, and overwrite policy. The registry-backed
+`generator.record` operation and `tn generator record` CLI command create or
+update those documents, while editor project rows expose generator provenance as
+read-only evidence because generated outputs do not receive automatic reverse
+patches from editor edits.
 The P0 editor state refactor has started by adding Zustand to
 `@threenative/editor` and moving modal/session primitives into a typed
 editor-session store. `EditorApp` now reads modal state from the store while

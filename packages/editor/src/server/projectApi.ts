@@ -670,6 +670,13 @@ function documentInspectorRows(document: IAuthoringDocument): IEditorPropertyRow
       }
       break;
     }
+    case "generator": {
+      rows.push(documentRow(document, "generator:module", "Generator Module", readString(document.data.module) ?? "", "string", true, "/module", "generator", undefined, undefined, undefined, "Generator provenance is one-way metadata; edit the generator source or rerun generator.record."));
+      rows.push(documentRow(document, "generator:export", "Generator Export", readString(document.data.export) ?? "", "string", true, "/export", "generator", undefined, undefined, undefined, "Generator provenance is one-way metadata; edit the generator source or rerun generator.record."));
+      rows.push(documentRow(document, "generator:outputs", "Generated Outputs", readStringArray(document.data.outputs).join(", "), "stringList", true, "/outputs", "generator", undefined, undefined, undefined, "Generator outputs are one-way provenance and do not receive reverse editor patches."));
+      rows.push(documentRow(document, "generator:overwrite-policy", "Overwrite Policy", readString(document.data.overwritePolicy) ?? "", "enum", true, "/overwritePolicy", "generator", undefined, undefined, undefined, "Generator overwrite policy is controlled by generator.record."));
+      break;
+    }
     case "ui":
       for (const [index, node] of readArray(document.data.nodes).filter(isRecord).entries()) {
         const nodeId = readString(node.id) ?? "";
@@ -797,6 +804,7 @@ function sourceFamilyForDocumentKind(kind: AuthoringDocumentKind): EditorInspect
     case "asset":
     case "audio":
     case "environment":
+    case "generator":
     case "input":
     case "material":
     case "mesh":

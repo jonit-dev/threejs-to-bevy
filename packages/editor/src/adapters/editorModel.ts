@@ -61,7 +61,7 @@ export type EditorInspectorFieldKind =
   | "stringList"
   | "vector3";
 
-export type EditorInspectorSourceFamily = "asset" | "audio" | "environment" | "input" | "material" | "mesh" | "prefab" | "project" | "resources" | "runtime" | "scene" | "system" | "target" | "ui";
+export type EditorInspectorSourceFamily = "asset" | "audio" | "environment" | "generator" | "input" | "material" | "mesh" | "prefab" | "project" | "resources" | "runtime" | "scene" | "system" | "target" | "ui";
 
 export interface IEditorPropertyOperation {
   args: Record<string, unknown>;
@@ -351,6 +351,9 @@ export const EDITOR_INSPECTOR_FIELD_INVENTORY: readonly IEditorInspectorFieldInv
   { field: "assets.renderTarget.format", fieldKind: "enum", operationName: "asset.add", readOnly: false, sourceFamily: "asset" },
   { field: "components.custom", fieldKind: "json", operationName: "scene.set_component", readOnly: false, sourceFamily: "scene" },
   { field: "meshes.primitive", fieldKind: "enum", operationName: "mesh.create_primitive", readOnly: false, sourceFamily: "mesh" },
+  { field: "generator.module", fieldKind: "string", readOnly: true, readOnlyReason: "Generator provenance is one-way metadata; edit the generator source or rerun generator.record.", sourceFamily: "generator" },
+  { field: "generator.outputs", fieldKind: "stringList", readOnly: true, readOnlyReason: "Generator outputs are one-way provenance and do not receive reverse editor patches.", sourceFamily: "generator" },
+  { field: "generator.overwritePolicy", fieldKind: "enum", readOnly: true, readOnlyReason: "Generator overwrite policy is controlled by generator.record.", sourceFamily: "generator" },
   { field: "provenance", fieldKind: "generated", readOnly: true, readOnlyReason: "Generated provenance is inspectable evidence, not editor-owned source.", sourceFamily: "scene" },
 ] as const;
 

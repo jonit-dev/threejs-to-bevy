@@ -631,6 +631,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] Typed CLI/source operations for common ECS components (`camera`, `light`, `mesh-renderer`, `render-layers`, `visibility`, `rigid-body`, `collider`, `character-controller`), including camera projection/frustum fields
 - [x] Discoverable `tn physics add-rigid-body`, `tn physics add-collider`, and `tn nav add-agent` CLI aliases over promoted source components
 - [x] CLI/source operations for promoted model animation clips, graph states, and bounded particle emitters
+- [x] One-way generator provenance source documents plus `generator.record` / `tn generator record`
 - [x] Editor workbench source inventory and structured operation dispatch
 - [x] Live preview edit classification with provenance-backed source mapping
 - [x] Deterministic structured bundle-relative JSON diffs

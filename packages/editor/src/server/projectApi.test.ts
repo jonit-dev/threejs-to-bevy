@@ -11,6 +11,7 @@ test("should expose environment skybox and terrain rows", async () => {
   const root = await copyStarterProject();
   try {
     await mkdir(join(root, "content", "environment"), { recursive: true });
+    await mkdir(join(root, "content", "generators"), { recursive: true });
     await mkdir(join(root, "content", "runtime"), { recursive: true });
     await mkdir(join(root, "content", "targets"), { recursive: true });
     await writeFile(
@@ -59,6 +60,18 @@ test("should expose environment skybox and terrain rows", async () => {
         id: "desktop",
         targets: ["desktop"],
         budgets: { maxBundleBytes: 1048576, supportedTextureFormats: ["png"] },
+      }, null, 2)}\n`,
+    );
+    await writeFile(
+      join(root, "content", "generators", "arena.layout.generator.json"),
+      `${JSON.stringify({
+        schema: "threenative.generator-provenance",
+        version: "0.1.0",
+        id: "arena.layout",
+        module: "src/generators/arena.ts",
+        export: "generateArena",
+        outputs: ["content/scenes/arena.scene.json"],
+        overwritePolicy: "manual",
       }, null, 2)}\n`,
     );
     const result = await loadEditorProjectApi({ projectPath: root });
@@ -151,6 +164,9 @@ test("should expose environment skybox and terrain rows", async () => {
     const targetRows = result.documents.flatMap((group) => group.documents).find((document) => document.kind === "target")?.inspectorRows ?? [];
     assert.equal(targetRows.some((row) => row.label === "Targets" && row.sourceFamily === "target" && row.operation?.name === "target.set_profile" && row.operation.valueArg === "targets"), true);
     assert.equal(targetRows.some((row) => row.label === "Budgets" && row.fieldKind === "json" && row.operation?.name === "target.set_profile" && row.operation.valueArg === "budgets"), true);
+    const generatorRows = result.documents.flatMap((group) => group.documents).find((document) => document.kind === "generator")?.inspectorRows ?? [];
+    assert.equal(generatorRows.some((row) => row.label === "Generator Module" && row.sourceFamily === "generator" && row.readOnly), true);
+    assert.equal(generatorRows.some((row) => row.label === "Generated Outputs" && row.fieldKind === "stringList" && row.readOnly), true);
     const projectRows = result.documents.flatMap((group) => group.documents).find((document) => document.kind === "project")?.inspectorRows ?? [];
     assert.equal(projectRows.some((row) => row.label === "Source Roots" && row.sourceFamily === "project" && row.operation?.name === "project.create" && row.operation.valueArg === "sourceRoots"), true);
     assert.equal(projectRows.some((row) => row.label === "Build Targets" && row.fieldKind === "stringList" && row.operation?.name === "project.create"), true);

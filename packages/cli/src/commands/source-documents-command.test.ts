@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import test from "node:test";
 
 import { assetCommand } from "./asset.js";
-import { animationCommand, audioCommand, environmentCommand, inputCommand, materialCommand, meshCommand, particleCommand, prefabCommand, projectCommand, resourcesCommand, runtimeCommand, systemCommand, targetCommand, uiCommand } from "./sourceDocuments.js";
+import { animationCommand, audioCommand, environmentCommand, generatorCommand, inputCommand, materialCommand, meshCommand, particleCommand, prefabCommand, projectCommand, resourcesCommand, runtimeCommand, systemCommand, targetCommand, uiCommand } from "./sourceDocuments.js";
 
 test("countdown UI can be created centered and bound without manual JSON editing", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-cli-ui-doc-"));
@@ -299,6 +299,47 @@ test("target command creates and updates target profile source fields", async ()
     assert.deepEqual(doc.targets, ["desktop"]);
     assert.deepEqual(doc.budgets, { maxBundleBytes: 1048576, supportedTextureFormats: ["png"] });
     assert.deepEqual((JSON.parse(result.stdout) as { filesWritten: string[] }).filesWritten, ["content/targets/desktop.target.json"]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("generator command records one-way provenance source fields", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-generator-doc-"));
+  try {
+    const result = await generatorCommand([
+      "record",
+      "arena.layout",
+      "--module",
+      "src/generators/arena.ts",
+      "--export",
+      "generateArena",
+      "--outputs",
+      "content/scenes/arena.scene.json,content/assets/arena.assets.json",
+      "--overwrite-policy",
+      "manual",
+      "--input-hash",
+      "sha256:inputs",
+      "--output-hash",
+      "sha256:outputs",
+      "--project",
+      root,
+      "--json",
+    ]);
+    const doc = JSON.parse(await readFile(join(root, "content", "generators", "arena.layout.generator.json"), "utf8")) as Record<string, unknown>;
+
+    assert.equal(result.exitCode, 0);
+    assert.deepEqual(doc, {
+      export: "generateArena",
+      id: "arena.layout",
+      inputHash: "sha256:inputs",
+      module: "src/generators/arena.ts",
+      outputHash: "sha256:outputs",
+      outputs: ["content/scenes/arena.scene.json", "content/assets/arena.assets.json"],
+      overwritePolicy: "manual",
+      schema: "threenative.generator-provenance",
+      version: "0.1.0",
+    });
   } finally {
     await rm(root, { force: true, recursive: true });
   }

@@ -17,7 +17,7 @@ import { modelTestCommand } from "./commands/modelTest.js";
 import { packageCommand } from "./commands/package.js";
 import { navCommand, physicsCommand } from "./commands/physicsNav.js";
 import { sceneCommand } from "./commands/scene.js";
-import { animationCommand, audioCommand, environmentCommand, inputCommand, materialCommand, meshCommand, particleCommand, prefabCommand, projectCommand, resourcesCommand, runtimeCommand, systemCommand, targetCommand, uiCommand } from "./commands/sourceDocuments.js";
+import { animationCommand, audioCommand, environmentCommand, generatorCommand, inputCommand, materialCommand, meshCommand, particleCommand, prefabCommand, projectCommand, resourcesCommand, runtimeCommand, systemCommand, targetCommand, uiCommand } from "./commands/sourceDocuments.js";
 import { validateProject } from "./commands/validate.js";
 import { recordCommand, screenshotCommand } from "./commands/visualProof.js";
 import { verifyCommand } from "./commands/verify.js";
@@ -69,6 +69,11 @@ const commands: Record<string, ICommandDefinition> = {
     description: "Show task-oriented help for scaffold, assets, camera, transform, visual QA, screenshot, and record workflows.",
     implemented: true,
     usage: "tn help [topic] [--json]",
+  },
+  generator: {
+    description: "Record one-way generator provenance for structured source outputs.",
+    implemented: true,
+    usage: "tn generator record <generator-id> --module <path> --export <name> --outputs <path,path> [--overwrite-policy skip|replace|manual] [--input-hash <hash>] [--output-hash <hash>] [--project <path>] [--json]",
   },
   "model-test": {
     description: "Generate a one-model proof project with scale, bounds, ruler, and camera hints.",
@@ -274,6 +279,10 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
 
   if (commandName === "help") {
     return helpCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "generator") {
+    return generatorCommand(normalizedArgv.slice(1));
   }
 
   if (commandName === "model-test") {

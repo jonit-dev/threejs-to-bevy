@@ -21,6 +21,7 @@ import {
   createRuntimeConfig,
   createSystem,
   createUiDocument,
+  recordGeneratorProvenance,
   setMaterial,
   setEnvironmentLightProbe,
   setEnvironmentMap,
@@ -686,6 +687,40 @@ export async function targetCommand(argv: readonly string[], options: ISourceCom
   return renderUsage(json, "TN_TARGET_COMMAND_UNKNOWN", targetSetUsage());
 }
 
+export async function generatorCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {
+  const normalizedArgv = normalizeArgv(argv);
+  const [subcommand] = normalizedArgv;
+  const json = normalizedArgv.includes("--json");
+  const projectPath = resolveProjectPath(normalizedArgv, options.cwd);
+  const generatorId = readPositional(normalizedArgv, 1);
+
+  if (subcommand === "record") {
+    const modulePath = readFlag(normalizedArgv, "--module");
+    const exportName = readFlag(normalizedArgv, "--export");
+    const outputs = readCsvFlag(normalizedArgv, "--outputs");
+    if (generatorId === undefined || modulePath === undefined || exportName === undefined || outputs === undefined || outputs.length === 0) {
+      return renderUsage(json, "TN_GENERATOR_RECORD_ARGS_MISSING", generatorRecordUsage());
+    }
+    return renderAuthoringResult(
+      "generator",
+      await recordGeneratorProvenance({
+        exportName,
+        generatorId,
+        inputHash: readFlag(normalizedArgv, "--input-hash"),
+        modulePath,
+        outputHash: readFlag(normalizedArgv, "--output-hash"),
+        outputs,
+        overwritePolicy: readFlag(normalizedArgv, "--overwrite-policy"),
+        projectPath,
+      }),
+      json,
+      `Generator provenance '${generatorId}' recorded.`,
+    );
+  }
+
+  return renderUsage(json, "TN_GENERATOR_COMMAND_UNKNOWN", generatorRecordUsage());
+}
+
 export async function systemCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {
   const normalizedArgv = normalizeArgv(argv);
   const [subcommand] = normalizedArgv;
@@ -790,6 +825,10 @@ function runtimeSetRenderingUsage(): string {
 
 function targetSetUsage(): string {
   return "Usage: tn target set <target-profile-id> --targets web,desktop [--budgets '<json-object>'] [--performance '<json-object>'] [--project <path>] [--json]";
+}
+
+function generatorRecordUsage(): string {
+  return "Usage: tn generator record <generator-id> --module <path> --export <name> --outputs <path,path> [--overwrite-policy skip|replace|manual] [--input-hash <hash>] [--output-hash <hash>] [--project <path>] [--json]";
 }
 
 function projectInitSourceUsage(): string {

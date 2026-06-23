@@ -18,6 +18,8 @@ import {
   audioSoundKeys,
   environmentDocumentKeys,
   environmentDocumentSchema,
+  generatorDocumentKeys,
+  generatorDocumentSchema,
   inputAxisKeys,
   inputActionKeys,
   inputDocumentKeys,
@@ -59,6 +61,7 @@ import {
   supportedCharacterControllerGrounding,
   supportedColliderKinds,
   supportedComponentKinds,
+  supportedGeneratorOverwritePolicies,
   supportedLightKinds,
   supportedMaterialAlphaModes,
   supportedRendererAntialiasModes,
@@ -471,6 +474,16 @@ export interface ISetTargetProfileOptions extends IAuthoringOperationContext {
   targets: readonly string[];
   budgets?: Record<string, unknown>;
   performance?: Record<string, unknown>;
+}
+
+export interface IRecordGeneratorProvenanceOptions extends IAuthoringOperationContext {
+  generatorId: string;
+  modulePath: string;
+  exportName: string;
+  outputs: readonly string[];
+  overwritePolicy?: string;
+  inputHash?: string;
+  outputHash?: string;
 }
 
 export interface ICreateMaterialOptions extends IAuthoringOperationContext {
@@ -1806,6 +1819,30 @@ export async function setTargetProfile(options: ISetTargetProfileOptions): Promi
   });
 }
 
+export async function recordGeneratorProvenance(options: IRecordGeneratorProvenanceOptions): Promise<IAuthoringOperationResult> {
+  return upsertSourceDocument({
+    projectPath: options.projectPath,
+    kind: "generator",
+    id: options.generatorId,
+    file: `content/generators/${options.generatorId}.generator.json`,
+    emptyData: { schema: generatorDocumentSchema, version: "0.1.0", id: options.generatorId, module: options.modulePath, export: options.exportName, outputs: [] },
+    apply: (data) => {
+      data.module = options.modulePath;
+      data.export = options.exportName;
+      data.outputs = [...options.outputs];
+      if (options.overwritePolicy !== undefined) {
+        data.overwritePolicy = options.overwritePolicy;
+      }
+      if (options.inputHash !== undefined) {
+        data.inputHash = options.inputHash;
+      }
+      if (options.outputHash !== undefined) {
+        data.outputHash = options.outputHash;
+      }
+    },
+  });
+}
+
 export async function createMaterial(options: ICreateMaterialOptions): Promise<IAuthoringOperationResult> {
   return createSourceDocument({
     projectPath: options.projectPath,
@@ -2387,6 +2424,8 @@ function sourceExtensionForKind(kind: AuthoringDocumentKind): string {
       return ".audio.json";
     case "environment":
       return ".environment.json";
+    case "generator":
+      return ".generator.json";
     case "input":
       return ".input.json";
     case "material":
@@ -2545,6 +2584,8 @@ async function validateAuthoringDocument(
       ];
     case "environment":
       return validateRootDocument(file, data, environmentDocumentSchema, "environment document", environmentDocumentKeys);
+    case "generator":
+      return validateGeneratorDocument(file, data);
     case "material":
       return validateDeclarationDocument(file, data, {
         declarationKeys: materialKeys,
@@ -2654,6 +2695,35 @@ async function validateAuthoringDocument(
         }),
       ];
   }
+}
+
+async function validateGeneratorDocument(file: string, data: unknown): Promise<IAuthoringDiagnostic[]> {
+  const diagnostics: IAuthoringDiagnostic[] = [];
+  if (!isRecord(data)) {
+    return [typeDiagnostic(file, "", "Generator provenance source document must be a JSON object.", data)];
+  }
+  diagnostics.push(...unknownKeyDiagnostics(file, "", data, generatorDocumentKeys));
+  if (data.schema !== generatorDocumentSchema) {
+    diagnostics.push(
+      authoringDiagnostic({
+        code: "TN_AUTHORING_GENERATOR_SCHEMA_INVALID",
+        file,
+        message: `Generator provenance source document must use schema '${generatorDocumentSchema}'.`,
+        path: "/schema",
+        value: data.schema,
+      }),
+    );
+  }
+  validateLogicalId(diagnostics, file, "/id", data.id, "generator provenance document");
+  validateGeneratedPathString(diagnostics, file, "/module", data.module, "generator module must be a non-empty source path.");
+  validateOptionalString(diagnostics, file, "/export", data.export, "generator export must be a non-empty string.");
+  validateStringList(diagnostics, file, "/outputs", data.outputs, "generator outputs must be an array of non-empty project-relative paths.");
+  if (data.overwritePolicy !== undefined) {
+    validateEnumString(diagnostics, file, "/overwritePolicy", data.overwritePolicy, supportedGeneratorOverwritePolicies, "generator overwrite policy", "Use 'skip', 'replace', or 'manual'.");
+  }
+  validateOptionalString(diagnostics, file, "/inputHash", data.inputHash, "generator inputHash must be a non-empty string.");
+  validateOptionalString(diagnostics, file, "/outputHash", data.outputHash, "generator outputHash must be a non-empty string.");
+  return sortAuthoringDiagnostics(diagnostics);
 }
 
 async function validateProjectDocument(file: string, data: unknown): Promise<IAuthoringDiagnostic[]> {

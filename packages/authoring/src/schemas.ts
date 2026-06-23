@@ -12,6 +12,7 @@ export const systemsDocumentSchema = "threenative.systems";
 export const prefabDocumentSchema = "threenative.prefab";
 export const audioDocumentSchema = "threenative.audio";
 export const meshDocumentSchema = "threenative.meshes";
+export const generatorDocumentSchema = "threenative.generator-provenance";
 
 export const sceneDocumentKeys = new Set(["schema", "version", "id", "kind", "activation", "initial", "entities", "prefabs", "resources", "systems", "ui", "provenance"]);
 export const uiDocumentKeys = new Set(["schema", "version", "id", "nodes", "bindings", "provenance"]);
@@ -27,6 +28,7 @@ export const systemsDocumentKeys = new Set(["schema", "version", "id", "systems"
 export const prefabDocumentKeys = new Set(["schema", "version", "id", "entities", "provenance"]);
 export const audioDocumentKeys = new Set(["schema", "version", "id", "sounds", "provenance"]);
 export const meshDocumentKeys = new Set(["schema", "version", "id", "meshes", "provenance"]);
+export const generatorDocumentKeys = new Set(["schema", "version", "id", "module", "export", "outputs", "overwritePolicy", "inputHash", "outputHash", "provenance"]);
 export const entityKeys = new Set(["id", "prefab", "transform", "components"]);
 export const transformKeys = new Set(["position", "rotation", "scale"]);
 export const systemKeys = new Set([
@@ -82,6 +84,7 @@ export const inputActionKeys = new Set(["id", "bindings"]);
 export const inputAxisKeys = new Set(["id", "negative", "positive", "value"]);
 export const audioSoundKeys = new Set(["id", "asset"]);
 export const meshKeys = new Set(["attributes", "id", "indices", "kind", "primitive", "storage"]);
+export const supportedGeneratorOverwritePolicies = new Set(["manual", "replace", "skip"]);
 export const supportedPrefabPrimitives = new Set(["box", "capsule", "cone", "cylinder", "plane", "sphere"]);
 export const supportedMeshPrimitives = new Set(["box", "cone", "cylinder", "plane", "sphere"]);
 
