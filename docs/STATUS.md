@@ -358,9 +358,10 @@ smoke/edited screenshots after adding primitive, empty, camera, light, and
 project GLB objects, building preview, creating a default scene, and confirming
 GLB loading without unexpected browser console errors.
 The follow-up component mutation audit keeps Transform, Camera, Light,
-material, input, system script, and UI binding rows source-editable while
-preserving explicit read-only reasons for unsupported custom component
-mutations. Editor-only operation fallbacks now return stable
+material, input, system script, UI binding, and custom component JSON payload
+rows source-editable while preserving explicit read-only reasons for remaining
+unpromoted generated/provenance, mesh, and system inspector rows. Editor-only
+operation fallbacks now return stable
 `TN_EDITOR_OPERATION_ARG_INVALID` diagnostics for malformed payloads before any
 source write.
 The P0 editor state refactor has started by adding Zustand to

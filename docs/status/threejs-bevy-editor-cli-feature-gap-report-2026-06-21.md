@@ -94,6 +94,10 @@ Date: 2026-06-21
   registry-backed `scene.set_light`. The typed CLI light command accepts
   `--range`, `--angle`, `--shadow-bias`, and `--shadow-normal-bias`, so
   promoted light metadata no longer requires raw component JSON.
+- ✅ 2026-06-23: Custom component JSON payload rows now dispatch the existing
+  registry-backed `scene.set_component` operation from the editor inspector,
+  so source-authored custom object component data can round trip without a
+  typed component-specific operation.
 
 ## Final Status for 2026-06-22
 
@@ -109,8 +113,9 @@ work and should not be treated as complete:
 - Remaining read-only editor rows that still need safe source-persistable
   operations, excluding asset catalog type/path and scene resource path/value
   rows, scene-local prefab primitive/color/asset rows, and environment
-  path/walkability/source-asset LOD rows plus promoted Light rows, which are
-  now editable through registry-backed operations.
+  path/walkability/source-asset LOD rows plus promoted Light and custom
+  component payload rows, which are now editable through registry-backed
+  operations.
 
 ## Scope
 
@@ -213,8 +218,8 @@ and docs/contracts. Their additional findings sharpen the gaps above:
 | Area | Finding | Impact |
 | --- | --- | --- |
 | ✅ Operation registry drift | `AUTHORING_OPERATION_REGISTRY` now includes existing structured source operations for asset/audio/input/material/mesh/prefab/scene/system/UI plus typed common ECS component setters. | Keep using the registry as the shared source for new promoted operations. |
-| ✅ Generic vs typed ECS writes | Typed common ECS setters and validators now cover `camera`, `Light`, `MeshRenderer`, `RenderLayers`, `Visibility`, `RigidBody`, `Collider`, and `CharacterController`. | Raw JSON remains available for unsupported/custom components; other runtime components still need promotion before they are first-class. |
-| Read-only editor rows | Asset catalog type/path, scene resource path/value, scene-local prefab primitive/color/asset, environment path/walkability/source-asset LOD, and promoted Light rows now persist through registry-backed editor operations. Remaining read-only families include light probes, existing mesh source primitive details, richer system inspector rows, and custom component rows. | Users can still inspect more than the editor UI can safely persist back to durable source, but the rows that already have shared operations no longer drift from the editor surface. |
+| ✅ Generic vs typed ECS writes | Typed common ECS setters and validators now cover `camera`, `Light`, `MeshRenderer`, `RenderLayers`, `Visibility`, `RigidBody`, `Collider`, and `CharacterController`, while custom component JSON rows can persist whole payloads through `scene.set_component`. | Other runtime components still need typed promotion before they are first-class. |
+| Read-only editor rows | Asset catalog type/path, scene resource path/value, scene-local prefab primitive/color/asset, environment path/walkability/source-asset LOD, promoted Light rows, and custom component payload rows now persist through registry-backed editor operations. Remaining read-only families include light probes, existing mesh source primitive details, and richer system inspector rows. | Users can still inspect more than the editor UI can safely persist back to durable source, but the rows that already have shared operations no longer drift from the editor surface. |
 | ✅ Asset and audio source gaps | Asset and audio source schemas now have durable mutation commands and registry operations for asset declarations, audio docs, and sound declarations. | Broader import/playback policy remains separate backlog. |
 | ✅ Environment mutation gap | Environment documents are classified/validated, and typed editor/CLI operations now cover skybox, environment map, terrain, path, walkability, and source-asset LOD fields. | Light probes remain inspect-only residuals. |
 | ✅ Prefab catalog emission | Structured prefab source documents now lower into bundle `prefabs.ir.json` with manifest `entry.prefabs`/`files.prefabs` entries and provenance ownership. | Web/Bevy prefab runtime support no longer requires hand-authored catalog bundle entries for source-authored prefabs. |

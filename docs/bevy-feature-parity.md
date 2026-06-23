@@ -635,6 +635,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] Source-schema-backed inspector field mapping and Add Component compatibility/default metadata
 - [x] Add Object source-backed Primitive/Empty/Camera/Light modal operations
 - [x] Editor/CLI Light kind, intensity, color, range, angle, shadow bias, and shadow normal bias rows persist through `scene.set_light`
+- [x] Editor custom component JSON payload rows persist through `scene.set_component`
 - [x] Environment source document classification plus CLI/editor skybox, environment-map, terrain, path, walkability, and source-asset LOD mutation rows
 - [x] Editor prefab primitive/color/asset, asset catalog type/path, scene resource path/value, and environment path/walkability/source-asset LOD rows persist through registry-backed source operations
 - [x] Editor build-preview evidence for source scene, GLB assets, environment terrain/path/walkability, and asset manifest artifacts

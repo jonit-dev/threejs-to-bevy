@@ -477,15 +477,44 @@ test("should persist added component defaults through source operations", async 
     });
     assert.equal(light.ok, true);
 
+    const custom = await applyEditorOperationApi({
+      projectPath: root,
+      request: {
+        args: { componentKind: "RaceCheckpoint", entityId: "goal", sceneId: "arena", value: { index: 1, radius: 2 } },
+        name: "scene.set_component",
+        projectRevision: light.projectRevision,
+      },
+    });
+    assert.equal(custom.ok, true);
+
+    const loaded = await loadEditorProjectApi({ projectPath: root });
+    const customRow = loaded.sceneObjects.find((object) => object.id === "goal")?.inspectorRows?.find((row) => row.component === "RaceCheckpoint");
+    assert.equal(customRow?.readOnly, false);
+    assert.equal(customRow?.operation?.name, "scene.set_component");
+    assert.equal(customRow?.operation?.valueArg, "value");
+    const customOperation = customRow?.operation;
+    assert.ok(customOperation);
+    const customSave = await applyEditorOperationApi({
+      projectPath: root,
+      request: {
+        args: { ...customOperation.args, [customOperation.valueArg ?? "value"]: { index: 2, radius: 3, state: "armed" } },
+        name: customOperation.name,
+        projectRevision: custom.projectRevision,
+      },
+    });
+    assert.equal(customSave.ok, true);
+
     const scene = JSON.parse(await readFile(join(root, "content", "scenes", "arena.scene.json"), "utf8")) as {
       entities: Array<{ components?: Record<string, unknown>; id: string }>;
     };
     assert.deepEqual(scene.entities.find((entity) => entity.id === "player")?.components?.camera, { mode: "perspective" });
     assert.deepEqual(scene.entities.find((entity) => entity.id === "goal")?.components?.Light, { color: "#ffffff", intensity: 1, kind: "directional" });
+    assert.deepEqual(scene.entities.find((entity) => entity.id === "goal")?.components?.RaceCheckpoint, { index: 2, radius: 3, state: "armed" });
 
     const reloaded = await loadEditorProjectApi({ projectPath: root });
     assert.equal(reloaded.sceneObjects.find((object) => object.id === "player")?.components?.includes("Camera"), true);
     assert.equal(reloaded.sceneObjects.find((object) => object.id === "goal")?.components?.includes("Light"), true);
+    assert.equal(reloaded.sceneObjects.find((object) => object.id === "goal")?.components?.includes("RaceCheckpoint"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

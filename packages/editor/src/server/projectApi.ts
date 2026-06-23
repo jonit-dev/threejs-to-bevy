@@ -445,7 +445,9 @@ function objectInspectorRows(input: {
     if (["camera", "Light", "light"].includes(component)) {
       continue;
     }
-    rows.push(inspectorRow({ component, fieldKind: "json", id: `inspect:component:${component}`, input, label: component, readOnly: true, readOnlyReason: "Custom component payloads remain read-only until schema and operation coverage is promoted.", value: summarizeValue(value) }));
+    if (isRecord(value)) {
+      rows.push(inspectorRow({ component, fieldKind: "json", id: `inspect:component:${component}`, input, jsonPointer: `/entities/${input.entityId}/components/${escapeJsonPointer(component)}`, label: component, operation: { args: { componentKind: component, entityId: input.entityId, sceneId: input.sceneId }, name: "scene.set_component", valueArg: "value" }, readOnly: false, value: summarizeValue(value) }));
+    }
   }
 
   return rows;
@@ -628,6 +630,10 @@ function documentInspectorRows(document: IAuthoringDocument): IEditorPropertyRow
 function projectRevision(documents: readonly IAuthoringDocument[]): string {
   const signature = documents.map((document) => `${document.kind}:${document.projectRelativePath}`).join("|");
   return `${documents.length}:${signature.length}`;
+}
+
+function escapeJsonPointer(value: string): string {
+  return value.replaceAll("~", "~0").replaceAll("/", "~1");
 }
 
 function inspectorRow(options: {
