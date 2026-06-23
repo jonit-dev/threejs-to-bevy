@@ -129,7 +129,7 @@ metadata rows now set promoted access lists, ordering, query metadata, service
 declarations, and command declarations, and bundle import preserves those fields
 back into `content/systems/*.systems.json` source documents. Environment source commands
 now create environment docs and set promoted skybox, environment-map, terrain,
-path, walkability, and source-asset LOD fields.
+path, walkability, light-probe, and source-asset LOD fields.
 Project metadata source commands now create or update `content/project.authoring.json`
 for project id, authoring version, source roots, and build targets, with matching
 editor rows.
@@ -351,7 +351,7 @@ remote model paths remain unsupported.
 The editor environment/terrain slice now exposes source-derived environment
 summary metadata to the viewport and inspector. `/api/project` emits editable
 operation-backed rows for skybox, environment map, and terrain
-id/height mode/heightmap plus path, walkability, and source-asset LOD data. The editor
+id/height mode/heightmap plus path, walkability, light-probe, and source-asset LOD data. The editor
 viewport uses environment metadata for a visible sky/background and terrain
 cue, and the footer distinguishes estimated LOD triangle counts from exact
 loaded counts.
@@ -368,8 +368,8 @@ GLB loading without unexpected browser console errors.
 The follow-up component mutation audit keeps Transform, Camera, Light,
 material, input, system script/metadata, UI binding, and custom component JSON
 payload rows source-editable while preserving explicit read-only reasons for
-remaining unpromoted generated/provenance, light-probe, create-time schedule/id,
-and advanced inspector rows. Editor-only
+remaining unpromoted generated/provenance, create-time schedule/id, and advanced
+inspector rows. Editor-only
 operation fallbacks now return stable
 `TN_EDITOR_OPERATION_ARG_INVALID` diagnostics for malformed payloads before any
 source write.

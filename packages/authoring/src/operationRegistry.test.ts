@@ -50,6 +50,7 @@ test("should dispatch existing structured source operations through the registry
       await dispatchAuthoringOperation({ args: { environmentId: "arena", heightmap: "tex.height", heightMode: "heightmap", terrainId: "terrain.arena" }, name: "environment.set_terrain", projectPath: root }),
       await dispatchAuthoringOperation({ args: { environmentId: "arena", path: { id: "path.main", points: [[0, 0, 0], [1, 0, 1]] } }, name: "environment.set_path", projectPath: root }),
       await dispatchAuthoringOperation({ args: { environmentId: "arena", walkability: { terrain: { height: 0, surface: "terrain.arena" } } }, name: "environment.set_walkability", projectPath: root }),
+      await dispatchAuthoringOperation({ args: { environmentId: "arena", probe: { bounds: { max: [3, 4, 3], min: [-3, 0, -3] }, influenceRadius: 5, source: { asset: "tex.env", mode: "equirect" } }, probeId: "probe.center" }, name: "environment.set_light_probe", projectPath: root }),
       await dispatchAuthoringOperation({ args: { materialId: "mat.player" }, name: "material.create", projectPath: root }),
       await dispatchAuthoringOperation({
         args: {
@@ -102,6 +103,7 @@ test("should dispatch existing structured source operations through the registry
     const environment = JSON.parse(await readFile(join(root, "content", "environment", "arena.environment.json"), "utf8")) as {
       environmentMap?: Record<string, unknown>;
       path?: unknown;
+      lightProbes?: Array<Record<string, unknown>>;
       skybox?: Record<string, unknown>;
       terrain?: Record<string, unknown>;
       walkability?: unknown;
@@ -136,6 +138,7 @@ test("should dispatch existing structured source operations through the registry
     assert.deepEqual(environment.terrain, { heightMode: "heightmap", heightmap: "tex.height", id: "terrain.arena" });
     assert.deepEqual(environment.path, { id: "path.main", points: [[0, 0, 0], [1, 0, 1]] });
     assert.deepEqual(environment.walkability, { terrain: { height: 0, surface: "terrain.arena" } });
+    assert.deepEqual(environment.lightProbes, [{ bounds: { max: [3, 4, 3], min: [-3, 0, -3] }, id: "probe.center", influenceRadius: 5, source: { asset: "tex.env", mode: "equirect" } }]);
     assert.deepEqual(material.materials, [{ alphaMode: "mask", baseColorTexture: "tex.player.albedo", color: "#fff", emissive: "#33ccff", id: "mat.player", metalness: 0.2, normalTexture: "tex.player.normal", roughness: 0.4 }]);
     assert.deepEqual(ui.nodes, [
       { id: "score", text: "Score", type: "text" },
@@ -212,6 +215,7 @@ test("should expose operation metadata and registry diagnostics", async () => {
     "environment.create",
     "environment.set_skybox",
     "environment.set_map",
+    "environment.set_light_probe",
     "environment.set_path",
     "environment.set_terrain",
     "environment.set_walkability",

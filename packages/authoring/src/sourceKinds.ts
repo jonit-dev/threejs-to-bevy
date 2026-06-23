@@ -276,7 +276,7 @@ export const authoringSourceMatrix = [
     cliOperationSupport: "partial",
     typescriptRole: "none",
     editorRoundTrip: "required",
-    notes: "Environment source documents and create/set-skybox/set-map/set-terrain/set-path/set-walkability/set-source-asset-lod CLI/editor operations cover promoted visual fields plus path, walkability, and source-asset LOD metadata; light probes remain inspect-only.",
+    notes: "Environment source documents and create/set-skybox/set-map/set-terrain/set-path/set-walkability/set-light-probe/set-source-asset-lod CLI/editor operations cover promoted visual fields plus path, walkability, light-probe, and source-asset LOD metadata.",
   },
   {
     id: "audio-document",

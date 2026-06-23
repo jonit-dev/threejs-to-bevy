@@ -36,6 +36,7 @@ import {
   setColliderComponent,
   setComponent,
   setEnvironmentMap,
+  setEnvironmentLightProbe,
   setEnvironmentPath,
   setEnvironmentSkybox,
   setEnvironmentSourceAssetLod,
@@ -67,6 +68,7 @@ export type AuthoringOperationName =
   | "audio.create"
   | "environment.create"
   | "environment.set_map"
+  | "environment.set_light_probe"
   | "environment.set_path"
   | "environment.set_skybox"
   | "environment.set_source_asset_lod"
@@ -177,6 +179,11 @@ const descriptors = [
   descriptor("environment.set_map", "Set environment map source fields.", "environment", "source-document", [
     stringArg("environmentId"),
     stringArg("asset"),
+  ]),
+  descriptor("environment.set_light_probe", "Add or replace environment light probe metadata.", "environment", "source-document", [
+    stringArg("environmentId"),
+    stringArg("probeId"),
+    objectArg("probe"),
   ]),
   descriptor("environment.set_path", "Set environment path metadata.", "environment", "source-document", [
     stringArg("environmentId"),
@@ -536,6 +543,8 @@ const dispatchers: Record<AuthoringOperationName, OperationDispatcher> = {
     createEnvironmentDocument({ environmentId: requiredString(args, "environmentId"), projectPath }),
   "environment.set_map": async ({ args, projectPath }) =>
     setEnvironmentMap({ asset: requiredString(args, "asset"), environmentId: requiredString(args, "environmentId"), projectPath }),
+  "environment.set_light_probe": async ({ args, projectPath }) =>
+    setEnvironmentLightProbe({ environmentId: requiredString(args, "environmentId"), probe: requiredObject(args, "probe"), probeId: requiredString(args, "probeId"), projectPath }),
   "environment.set_path": async ({ args, projectPath }) =>
     setEnvironmentPath({ environmentId: requiredString(args, "environmentId"), path: optionalJson(args, "path"), projectPath }),
   "environment.set_skybox": async ({ args, projectPath }) =>

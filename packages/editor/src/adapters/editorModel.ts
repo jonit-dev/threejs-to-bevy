@@ -281,6 +281,7 @@ export const EDITOR_INSPECTOR_FIELD_INVENTORY: readonly IEditorInspectorFieldInv
   { field: "environment.terrain.heightmap", fieldKind: "asset", operationName: "environment.set_terrain", readOnly: false, sourceFamily: "environment" },
   { field: "environment.walkability", fieldKind: "json", operationName: "environment.set_walkability", readOnly: false, sourceFamily: "environment" },
   { field: "environment.path", fieldKind: "json", operationName: "environment.set_path", readOnly: false, sourceFamily: "environment" },
+  { field: "environment.lightProbes", fieldKind: "json", operationName: "environment.set_light_probe", readOnly: false, sourceFamily: "environment" },
   { field: "environment.sourceAssets.lod", fieldKind: "json", operationName: "environment.set_source_asset_lod", readOnly: false, sourceFamily: "environment" },
   { component: "Light", defaultValue: "directional", field: "kind", fieldKind: "enum", operationName: "scene.set_light", readOnly: false, sourceFamily: "scene" },
   { component: "Light", defaultValue: 1, field: "intensity", fieldKind: "number", operationName: "scene.set_light", readOnly: false, sourceFamily: "scene" },

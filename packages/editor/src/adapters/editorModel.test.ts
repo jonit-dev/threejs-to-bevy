@@ -125,6 +125,7 @@ test("should inventory terrain heightmap and skybox fields", () => {
   assert.equal(fields.has("environment.terrain.heightMode"), true);
   assert.equal(fields.has("environment.walkability"), true);
   assert.equal(fields.has("environment.path"), true);
+  assert.equal(fields.has("environment.lightProbes"), true);
   assert.equal(environmentRows.every((item) => item.readOnly === false && item.operationName !== undefined), true);
   assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => "component" in item && item.component === "Camera" && item.field === "skybox"), true);
   assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => item.sourceFamily === "scene" && item.field === "scene.kind" && item.operationName === "scene.set_lifecycle" && item.readOnly === false), true);

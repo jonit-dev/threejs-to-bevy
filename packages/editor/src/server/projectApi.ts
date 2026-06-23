@@ -645,6 +645,10 @@ function documentInspectorRows(document: IAuthoringDocument): IEditorPropertyRow
       if (document.data.path !== undefined) {
         rows.push(documentRow(document, "environment:path", "Path", summarizeValue(document.data.path), "json", false, "/path", "environment", "environment.set_path", "path", { environmentId }));
       }
+      for (const [index, probe] of readArray(document.data.lightProbes).filter(isRecord).entries()) {
+        const probeId = readString(probe.id) ?? "";
+        rows.push(documentRow(document, `environment:light-probe:${index}`, `${probeId || `lightProbe.${index}`} Light Probe`, summarizeValue(probe), "json", false, `/lightProbes/${index}`, "environment", "environment.set_light_probe", "probe", { environmentId, probe: { ...probe }, probeId }));
+      }
       for (const [index, asset] of readArray(document.data.sourceAssets).filter(isRecord).entries()) {
         if (asset.lod !== undefined) {
           const sourceAssetId = readString(asset.id) ?? "";

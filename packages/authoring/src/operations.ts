@@ -432,6 +432,12 @@ export interface ISetEnvironmentWalkabilityOptions extends IAuthoringOperationCo
   walkability: unknown;
 }
 
+export interface ISetEnvironmentLightProbeOptions extends IAuthoringOperationContext {
+  environmentId: string;
+  probe: Record<string, unknown>;
+  probeId: string;
+}
+
 export interface ISetEnvironmentSourceAssetLodOptions extends IAuthoringOperationContext {
   environmentId: string;
   sourceAssetId: string;
@@ -1593,6 +1599,29 @@ export async function setEnvironmentWalkability(options: ISetEnvironmentWalkabil
     emptyData: { schema: environmentDocumentSchema, version: "0.1.0", id: options.environmentId, instances: [], sourceAssets: [] },
     apply: (data) => {
       data.walkability = options.walkability;
+    },
+  });
+}
+
+export async function setEnvironmentLightProbe(options: ISetEnvironmentLightProbeOptions): Promise<IAuthoringOperationResult> {
+  return upsertSourceDocument({
+    projectPath: options.projectPath,
+    kind: "environment",
+    id: options.environmentId,
+    file: `content/environment/${options.environmentId}.environment.json`,
+    emptyData: { schema: environmentDocumentSchema, version: "0.1.0", id: options.environmentId, instances: [], sourceAssets: [] },
+    apply: (data) => {
+      const lightProbes = ensureArrayProperty(data, "lightProbes");
+      const existing = findSceneItem(lightProbes, options.probeId);
+      const probe = { ...(cloneJson(options.probe) as Record<string, unknown>), id: options.probeId };
+      if (existing === undefined) {
+        lightProbes.push(probe);
+      } else {
+        Object.keys(existing).forEach((key) => {
+          delete existing[key];
+        });
+        Object.assign(existing, probe);
+      }
     },
   });
 }

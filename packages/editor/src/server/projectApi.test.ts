@@ -31,6 +31,7 @@ test("should expose environment skybox and terrain rows", async () => {
         id: "arena-environment",
         instances: [],
         environmentMap: { asset: "tex.env" },
+        lightProbes: [{ bounds: { max: [3, 4, 3], min: [-3, 0, -3] }, id: "probe.center", influenceRadius: 5, source: { asset: "tex.env", mode: "equirect" } }],
         path: { id: "path.main", points: [[0, 0, 0], [1, 0, 1]] },
         skybox: { asset: "tex.sky", mode: "equirect" },
         sourceAssets: [{ id: "env.Tree", lod: [{ asset: "env.Tree.low", maxDistance: 60 }] }],
@@ -85,18 +86,23 @@ test("should expose environment skybox and terrain rows", async () => {
     assert.equal(environmentRows.some((row) => row.label === "Terrain Heightmap" && row.fieldKind === "asset" && row.value === "assets/height/arena.png" && row.operation?.name === "environment.set_terrain"), true);
     const walkability = environmentRows.find((row) => row.label === "Walkability" && row.fieldKind === "json");
     const path = environmentRows.find((row) => row.label === "Path" && row.fieldKind === "json");
+    const lightProbe = environmentRows.find((row) => row.label === "probe.center Light Probe" && row.fieldKind === "json");
     const lod = environmentRows.find((row) => row.label === "env.Tree LOD" && row.fieldKind === "json");
     assert.equal(walkability?.operation?.name, "environment.set_walkability");
     assert.equal(walkability?.readOnly, false);
     assert.equal(path?.operation?.name, "environment.set_path");
     assert.equal(path?.readOnly, false);
+    assert.equal(lightProbe?.operation?.name, "environment.set_light_probe");
+    assert.equal(lightProbe?.readOnly, false);
     assert.equal(lod?.operation?.name, "environment.set_source_asset_lod");
     assert.equal(lod?.readOnly, false);
     const pathOperation = path?.operation;
     const walkabilityOperation = walkability?.operation;
+    const lightProbeOperation = lightProbe?.operation;
     const lodOperation = lod?.operation;
     assert.ok(pathOperation);
     assert.ok(walkabilityOperation);
+    assert.ok(lightProbeOperation);
     assert.ok(lodOperation);
     const pathSave = await applyEditorOperationApi({
       projectPath: root,
@@ -108,18 +114,25 @@ test("should expose environment skybox and terrain rows", async () => {
       request: { args: { ...walkabilityOperation.args, [walkabilityOperation.valueArg ?? "walkability"]: { terrain: { height: 1, surface: "terrain.alt" } } }, name: walkabilityOperation.name, projectRevision: pathSave.projectRevision },
     });
     assert.equal(walkabilitySave.ok, true);
+    const lightProbeSave = await applyEditorOperationApi({
+      projectPath: root,
+      request: { args: { ...lightProbeOperation.args, [lightProbeOperation.valueArg ?? "probe"]: { bounds: { max: [4, 5, 4], min: [-4, 0, -4] }, influenceRadius: 6, source: { asset: "tex.env.alt", mode: "equirect" } } }, name: lightProbeOperation.name, projectRevision: walkabilitySave.projectRevision },
+    });
+    assert.equal(lightProbeSave.ok, true);
     const lodSave = await applyEditorOperationApi({
       projectPath: root,
-      request: { args: { ...lodOperation.args, [lodOperation.valueArg ?? "lod"]: [{ asset: "env.Tree.mid", maxDistance: 30 }] }, name: lodOperation.name, projectRevision: walkabilitySave.projectRevision },
+      request: { args: { ...lodOperation.args, [lodOperation.valueArg ?? "lod"]: [{ asset: "env.Tree.mid", maxDistance: 30 }] }, name: lodOperation.name, projectRevision: lightProbeSave.projectRevision },
     });
     assert.equal(lodSave.ok, true);
     const environmentDoc = JSON.parse(await readFile(join(root, "content", "environment", "arena.environment.json"), "utf8")) as {
+      lightProbes?: Array<Record<string, unknown>>;
       path?: unknown;
       sourceAssets?: Array<{ id: string; lod?: unknown }>;
       walkability?: unknown;
     };
     assert.deepEqual(environmentDoc.path, { id: "path.alt", points: [[2, 0, 2]] });
     assert.deepEqual(environmentDoc.walkability, { terrain: { height: 1, surface: "terrain.alt" } });
+    assert.deepEqual(environmentDoc.lightProbes?.find((probe) => probe.id === "probe.center"), { bounds: { max: [4, 5, 4], min: [-4, 0, -4] }, id: "probe.center", influenceRadius: 6, source: { asset: "tex.env.alt", mode: "equirect" } });
     assert.deepEqual(environmentDoc.sourceAssets?.find((asset) => asset.id === "env.Tree")?.lod, [{ asset: "env.Tree.mid", maxDistance: 30 }]);
     const runtimeRows = result.documents.flatMap((group) => group.documents).find((document) => document.kind === "runtime")?.inspectorRows ?? [];
     assert.equal(runtimeRows.some((row) => row.label === "Window Width" && row.operation?.name === "runtime.set_window" && row.operation.valueArg === "width"), true);

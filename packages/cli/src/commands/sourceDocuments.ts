@@ -22,6 +22,7 @@ import {
   createSystem,
   createUiDocument,
   setMaterial,
+  setEnvironmentLightProbe,
   setEnvironmentMap,
   setEnvironmentPath,
   setEnvironmentSkybox,
@@ -559,6 +560,18 @@ export async function environmentCommand(argv: readonly string[], options: ISour
     return renderAuthoringResult("environment", await setEnvironmentWalkability({ environmentId, projectPath, walkability: walkability.value }), json, `Environment walkability '${environmentId}' updated.`);
   }
 
+  if (subcommand === "set-light-probe") {
+    const probeId = readPositional(normalizedArgv, 2);
+    const probe = parseJsonObjectFlag(normalizedArgv, "--probe", "TN_ENVIRONMENT_SET_LIGHT_PROBE_VALUE_INVALID");
+    if (probe.diagnostic !== undefined) {
+      return renderUsage(json, probe.diagnostic, "Environment --probe must be a JSON object.");
+    }
+    if (environmentId === undefined || probeId === undefined || probe.value === undefined) {
+      return renderUsage(json, "TN_ENVIRONMENT_SET_LIGHT_PROBE_ARGS_MISSING", "Usage: tn environment set-light-probe <environment-id> <probe-id> --probe '<json-object>' [--project <path>] [--json]");
+    }
+    return renderAuthoringResult("environment", await setEnvironmentLightProbe({ environmentId, probe: probe.value, probeId, projectPath }), json, `Environment light probe '${probeId}' updated.`);
+  }
+
   if (subcommand === "set-source-asset-lod") {
     const sourceAssetId = readPositional(normalizedArgv, 2);
     const lod = parseJsonFlag(normalizedArgv, "--lod");
@@ -571,7 +584,7 @@ export async function environmentCommand(argv: readonly string[], options: ISour
     return renderAuthoringResult("environment", await setEnvironmentSourceAssetLod({ environmentId, lod: lod.value, projectPath, sourceAssetId }), json, `Environment source asset '${sourceAssetId}' LOD updated.`);
   }
 
-  return renderUsage(json, "TN_ENVIRONMENT_COMMAND_UNKNOWN", "Usage: tn environment create|set-skybox|set-map|set-terrain|set-path|set-walkability|set-source-asset-lod ... [--json]");
+  return renderUsage(json, "TN_ENVIRONMENT_COMMAND_UNKNOWN", "Usage: tn environment create|set-skybox|set-map|set-terrain|set-path|set-walkability|set-light-probe|set-source-asset-lod ... [--json]");
 }
 
 export async function runtimeCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {
@@ -794,6 +807,17 @@ function parseJsonArrayFlag(argv: readonly string[], flag: string, diagnosticCod
     return parsed as { diagnostic?: string; value?: Record<string, unknown>[] };
   }
   if (!Array.isArray(parsed.value) || !parsed.value.every(isRecord)) {
+    return { diagnostic: diagnosticCode };
+  }
+  return { value: parsed.value };
+}
+
+function parseJsonObjectFlag(argv: readonly string[], flag: string, diagnosticCode: string): { diagnostic?: string; value?: Record<string, unknown> } {
+  const parsed = parseJsonFlag(argv, flag);
+  if (parsed.diagnostic !== undefined || parsed.value === undefined) {
+    return parsed as { diagnostic?: string; value?: Record<string, unknown> };
+  }
+  if (!isRecord(parsed.value)) {
     return { diagnostic: diagnosticCode };
   }
   return { value: parsed.value };
