@@ -260,7 +260,7 @@ and docs/contracts. Their additional findings sharpen the gaps above:
 | Rendering/materials | Area lights, lightmaps, parallax/depth maps, anisotropy/specular tint, atmospheric/volumetric effects, auto exposure, depth of field, motion blur, SSR/mirrors, decals, deferred rendering, virtual geometry, and custom post-processing. |
 | Assets/animation | glTF extension processing, runtime asset saving/export, generated runtime assets that persist/reload, retargeting/IK, and arbitrary blend trees. |
 | Physics/input/platform | Full constraint solving, arbitrary triangle narrow phase, vehicle drivetrain/tire models, soft bodies/ragdolls, richer gestures beyond tap/swipe/pinch, window resize/scale-factor observations, cursor/present/background/window background policies, and multi-window diagnostics. |
-| Tooling/editor | Full native desktop visual editor shell, connected-device gamepad inspection, generator provenance, and generated runtime/target bundle reverse-import. |
+| Tooling/editor | Full native desktop visual editor shell, connected-device gamepad inspection, and generator provenance. |
 
 ## Source Evidence
 

@@ -25,13 +25,19 @@ test("bundle-command imports rich bundle catalogs into structured source", async
     assert.equal(payload.code, "TN_BUNDLE_IMPORT_OK");
     assert.equal(payload.ok, true);
     assert.equal(payload.imported.some((artifact) => artifact.artifact === "world.ir.json"), true);
+    assert.equal(payload.imported.some((artifact) => artifact.artifact === "runtime.config.json"), true);
+    assert.equal(payload.imported.some((artifact) => artifact.artifact === "target.profile.json"), true);
     assert.equal(payload.diagnostics.some((diagnostic) => diagnostic.code === "TN_AUTHORING_IMPORT_UNRECOVERABLE_SCRIPT_BODY"), true);
     assert.equal(payload.filesWritten.includes("content/ui/imported.ui.json"), true);
+    assert.equal(payload.filesWritten.includes("content/runtime/imported.runtime.json"), true);
+    assert.equal(payload.filesWritten.includes("content/targets/imported.target.json"), true);
 
     const scene = JSON.parse(await readFile(join(root, "content/scenes/imported.scene.json"), "utf8")) as { entities: Array<{ id: string }> };
     const systems = JSON.parse(await readFile(join(root, "content/systems/imported.systems.json"), "utf8")) as { systems: Array<{ script?: unknown }> };
+    const target = JSON.parse(await readFile(join(root, "content/targets/imported.target.json"), "utf8")) as { targets: string[] };
     assert.equal(scene.entities[0]?.id, "player");
     assert.deepEqual(systems.systems, [{ id: "raceController", queries: [{ with: ["Transform"], without: [] }], reads: ["Transform"], schedule: "update", services: ["scene.change"], writes: ["Transform"] }]);
+    assert.deepEqual(target.targets, ["desktop"]);
     await assert.rejects(readFile(join(root, "content/scenes/world.ir.json"), "utf8"));
     await assert.rejects(readFile(join(root, "src/scripts/imported.ts"), "utf8"));
   } finally {
@@ -109,6 +115,15 @@ async function writeRichBundle(root: string): Promise<void> {
         writes: ["Transform"],
       },
     ],
+  });
+  await writeBundleJson(root, "runtime.config.json", {
+    schema: "threenative.runtime-config",
+    time: { fixedDelta: 1 / 60, paused: false },
+    window: { height: 720, width: 1280 },
+  });
+  await writeBundleJson(root, "target.profile.json", {
+    schema: "threenative.target-profile",
+    targets: ["desktop"],
   });
   await writeBundleText(root, "scripts.bundle.js", "export function system_raceController() {}\n");
 }

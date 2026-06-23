@@ -108,11 +108,12 @@ and `tn bundle import <bundle-dir> --project <path> --mode source --json`
 for recoverable generated catalog import. It normalizes `world.ir.json`,
 `materials.ir.json`, `assets.manifest.json`, `ui.ir.json`, `input.ir.json`,
 `systems.ir.json`, and optional `audio.ir.json` into `content/**/imported.*`
-structured source documents with import provenance, supports dry-run reports,
-and keeps generated bundle files out of durable source. `scripts.bundle.js`
+structured source documents with import provenance, and now also recovers
+`runtime.config.json` and `target.profile.json` into structured runtime and
+target source documents. It supports dry-run reports and keeps generated bundle
+files out of durable source. `scripts.bundle.js`
 remains unrecoverable without source-safe manifest/provenance and reports
-`TN_AUTHORING_IMPORT_UNRECOVERABLE_SCRIPT_BODY`; runtime config and target
-profile bundle reverse-import remain later source-document work.
+`TN_AUTHORING_IMPORT_UNRECOVERABLE_SCRIPT_BODY`.
 The Phase 4 CLI operation slice adds shared authoring operations and registered
 `tn ui`, `tn material`, `tn mesh`, `tn prefab`, `tn input`, `tn asset`,
 `tn audio`, `tn environment`, `tn project`, `tn runtime`, `tn target`, and

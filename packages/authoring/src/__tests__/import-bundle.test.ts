@@ -23,8 +23,10 @@ test("import-bundle imports rich bundle catalogs into structured source document
       "content/assets/imported.assets.json",
       "content/input/imported.input.json",
       "content/materials/imported.materials.json",
+      "content/runtime/imported.runtime.json",
       "content/scenes/imported.scene.json",
       "content/systems/imported.systems.json",
+      "content/targets/imported.target.json",
       "content/ui/imported.ui.json",
     ]);
     assert.deepEqual(result.imported.map((artifact) => artifact.artifact), [
@@ -34,6 +36,8 @@ test("import-bundle imports rich bundle catalogs into structured source document
       "ui.ir.json",
       "input.ir.json",
       "systems.ir.json",
+      "runtime.config.json",
+      "target.profile.json",
     ]);
 
     const scene = JSON.parse(await readFile(join(root, "content/scenes/imported.scene.json"), "utf8")) as {
@@ -49,6 +53,8 @@ test("import-bundle imports rich bundle catalogs into structured source document
       axes: Array<{ id: string; negative: string[]; positive: string[]; value?: string }>;
     };
     const systems = JSON.parse(await readFile(join(root, "content/systems/imported.systems.json"), "utf8")) as { systems: Array<{ id: string; schedule: string; script?: unknown }> };
+    const runtime = JSON.parse(await readFile(join(root, "content/runtime/imported.runtime.json"), "utf8")) as { window?: Record<string, unknown> };
+    const target = JSON.parse(await readFile(join(root, "content/targets/imported.target.json"), "utf8")) as { targets: string[]; budgets?: Record<string, unknown> };
 
     assert.equal(scene.provenance.importedFromBundleArtifact, "world.ir.json");
     assert.equal(scene.entities[0]?.id, "player");
@@ -83,6 +89,9 @@ test("import-bundle imports rich bundle catalogs into structured source document
     assert.deepEqual(input.actions, [{ id: "Accelerate", bindings: ["keyboard.KeyW"] }]);
     assert.deepEqual(input.axes, [{ id: "MoveX", negative: ["keyboard.KeyA"], positive: ["keyboard.KeyD"], value: "gamepad.leftStickX" }]);
     assert.deepEqual(systems.systems, [{ id: "raceController", schedule: "update" }]);
+    assert.deepEqual(runtime.window, { height: 720, title: "Imported", width: 1280 });
+    assert.deepEqual(target.targets, ["desktop"]);
+    assert.deepEqual(target.budgets, { maxBundleBytes: 1048576 });
 
     await assert.rejects(readFile(join(root, "content/systems/scripts.bundle.js"), "utf8"));
     await assert.rejects(readFile(join(root, "content/scenes/world.ir.json"), "utf8"));
@@ -208,6 +217,18 @@ async function writeRichBundle(root: string): Promise<void> {
         script: { bundle: "scripts.bundle.js", exportName: "system_raceController" },
       },
     ],
+  });
+  await writeBundleJson(root, "runtime.config.json", {
+    schema: "threenative.runtime-config",
+    version: "0.1.0",
+    time: { fixedDelta: 1 / 60, paused: false },
+    window: { height: 720, title: "Imported", width: 1280 },
+  });
+  await writeBundleJson(root, "target.profile.json", {
+    schema: "threenative.target-profile",
+    version: "0.1.0",
+    targets: ["desktop"],
+    budgets: { maxBundleBytes: 1048576 },
   });
   await writeBundleText(root, "scripts.bundle.js", "export function system_raceController() {}\n");
 }

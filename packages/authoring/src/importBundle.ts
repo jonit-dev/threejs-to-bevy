@@ -11,8 +11,10 @@ import {
   materialDocumentSchema,
   readArray,
   readString,
+  runtimeDocumentSchema,
   sceneDocumentSchema,
   systemsDocumentSchema,
+  targetProfileDocumentSchema,
   uiDocumentSchema,
   type IAssetDeclaration,
   type IAssetDocument,
@@ -126,20 +128,6 @@ export async function importBundle(options: IImportBundleOptions): Promise<IImpo
       continue;
     }
 
-    if (artifact === "runtime.config.json" || artifact === "target.profile.json") {
-      skipped.push({ artifact, reason: "unsupported" });
-      diagnostics.push(
-        authoringDiagnostic({
-          code: "TN_AUTHORING_IMPORT_ARTIFACT_UNSUPPORTED",
-          severity: "warning",
-          file: normalizeRelativePath(relative(projectPath, artifactPath)),
-          message: `Bundle artifact '${artifact}' does not yet have a structured source import target.`,
-          suggestion: "Keep this generated artifact out of source until runtime/target source documents are implemented.",
-        }),
-      );
-      continue;
-    }
-
     const parsed = await readBundleJson(projectPath, artifactPath, artifact, diagnostics);
     if (parsed === undefined) {
       skipped.push({ artifact, reason: "unsupported" });
@@ -215,6 +203,10 @@ function documentFromArtifact(projectPath: string, artifact: string, data: unkno
       return plannedDocument(projectPath, artifact, "content/systems/imported.systems.json", systemsFromBundle(data), "systems");
     case "audio.ir.json":
       return plannedDocument(projectPath, artifact, "content/audio/imported.audio.json", audioFromBundle(data), "audio");
+    case "runtime.config.json":
+      return plannedDocument(projectPath, artifact, "content/runtime/imported.runtime.json", runtimeFromBundle(data), "runtime");
+    case "target.profile.json":
+      return plannedDocument(projectPath, artifact, "content/targets/imported.target.json", targetProfileFromBundle(data), "target");
     default:
       throw new Error(`Unsupported bundle artifact '${artifact}'.`);
   }
@@ -419,6 +411,32 @@ function audioFromBundle(data: unknown): IAudioDocument & { provenance: Record<s
   };
 }
 
+function runtimeFromBundle(data: unknown): Record<string, unknown> {
+  const record = isRecord(data) ? data : {};
+  return {
+    schema: runtimeDocumentSchema,
+    version: "0.1.0",
+    id: "runtime.imported",
+    ...(isRecord(record.renderer) ? { renderer: cloneJson(record.renderer) } : {}),
+    time: isRecord(record.time) ? cloneJson(record.time) : { fixedDelta: 1 / 60, paused: false },
+    window: isRecord(record.window) ? cloneJson(record.window) : { height: 720, width: 1280 },
+    provenance: importProvenance("runtime.config.json"),
+  };
+}
+
+function targetProfileFromBundle(data: unknown): Record<string, unknown> {
+  const record = isRecord(data) ? data : {};
+  return {
+    schema: targetProfileDocumentSchema,
+    version: "0.1.0",
+    id: "target.imported",
+    targets: readArray(record.targets)?.map(readString).filter(isString) ?? ["web", "desktop"],
+    ...(isRecord(record.budgets) ? { budgets: cloneJson(record.budgets) } : {}),
+    ...(isRecord(record.performance) ? { performance: cloneJson(record.performance) } : {}),
+    provenance: importProvenance("target.profile.json"),
+  };
+}
+
 function collectUiNodes(data: unknown): ISceneUiNode[] {
   const discovered = new Set<string>();
   const root = isRecord(data) ? data.root : undefined;
@@ -477,13 +495,13 @@ function countDocumentItems(data: unknown): number {
   if (!isRecord(data)) {
     return 0;
   }
-  for (const key of ["entities", "materials", "assets", "nodes", "actions", "systems", "sounds"]) {
+  for (const key of ["entities", "materials", "assets", "nodes", "actions", "systems", "sounds", "targets"]) {
     const value = readArray(data[key]);
     if (value !== undefined) {
       return value.length;
     }
   }
-  return 0;
+  return data.id === undefined ? 0 : 1;
 }
 
 function importProvenance(artifact: string): Record<string, unknown> {
