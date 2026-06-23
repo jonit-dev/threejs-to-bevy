@@ -150,7 +150,12 @@ const descriptors = [
   descriptor("asset.add", "Add or replace an asset declaration in a structured asset document.", "asset", "source-document", [
     stringArg("assetId"),
     stringArg("type"),
-    stringArg("path"),
+    stringArg("path", false),
+    numberArg("width", false),
+    numberArg("height", false),
+    stringArg("usage", false),
+    stringArg("format", false),
+    numberArg("sampleCount", false),
     stringArg("file", false),
   ]),
   descriptor("audio.create", "Create a structured audio source document.", "audio", "source-document", [
@@ -519,7 +524,7 @@ const descriptors = [
 
 const dispatchers: Record<AuthoringOperationName, OperationDispatcher> = {
   "asset.add": async ({ args, projectPath }) =>
-    addAsset({ assetId: requiredString(args, "assetId"), file: optionalString(args, "file"), path: requiredString(args, "path"), projectPath, type: requiredString(args, "type") }),
+    addAsset({ assetId: requiredString(args, "assetId"), file: optionalString(args, "file"), format: optionalString(args, "format"), height: optionalNumber(args, "height"), path: optionalString(args, "path"), projectPath, sampleCount: optionalNumber(args, "sampleCount"), type: requiredString(args, "type"), usage: optionalString(args, "usage"), width: optionalNumber(args, "width") }),
   "audio.add_sound": async ({ args, projectPath }) =>
     addAudioSound({ asset: requiredString(args, "asset"), audioDocId: requiredString(args, "audioDocId"), projectPath, soundId: requiredString(args, "soundId") }),
   "audio.create": async ({ args, projectPath }) =>

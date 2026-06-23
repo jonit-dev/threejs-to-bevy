@@ -102,6 +102,11 @@ Date: 2026-06-21
   declared color and write-only depth render targets. Depth cameras resolve to
   native/web offscreen targets, while depth target material sampling remains an
   explicit IR validation error.
+- ✅ 2026-06-23: Render-target source/editor/CLI authoring now has first-class
+  structured asset declarations. `tn asset add <asset-id> --type render-target
+  --width <n> --height <n>` writes durable source, editor asset rows dispatch
+  `asset.add` for width/height/usage/format, and compiler lowering emits
+  manifest render-target entries.
 
 ## Final Status for 2026-06-22
 
@@ -110,9 +115,6 @@ implemented source/editor/CLI support or a documented intentional non-goal
 boundary. The remaining unchecked matrix/subagent rows are still open for later
 work and should not be treated as complete:
 
-- Render-target source/editor/CLI authoring for first-class target creation;
-  runtime color and write-only depth allocation now has web/Bevy proof, while
-  depth sampling remains intentionally rejected.
 - Generator provenance workflows beyond one-way classification and provenance
   sidecar metadata.
 - Advanced rendering and advanced light/material residuals.
@@ -189,7 +191,7 @@ IR/runtime surfaces, but only some have typed editor/CLI helpers.
 | ✅ Animation and particles | Broad animation metadata/playback/services and rendered particles | Promoted for current scope | Partial through assets/scripts | `tn animation add-clip`, `tn animation graph add-state`, `tn particle add-emitter` | EDITOR, WEB-BEVY | Source asset docs now carry promoted model clip, graph-state, and bounded particle emitter metadata that lowers into `assets.manifest.json`; retargeting/IK, arbitrary blend trees, and broader editor controls remain open. |
 | ✅ Systems and scripts | Portable system metadata, script refs, effect validation | Web/Bevy host parity for promoted services | Partial | `system create`, `system attach-script`, `system set-metadata`, `scene attach-script` | EDITOR | Structured systems docs now persist/import/lower access lists, ordering, query metadata, service declarations, and command declarations; callback components/callable handles, richer editor inspector controls, and delayed commands beyond bounded timers remain residual gaps. |
 | ✅ Prefab catalogs | IR/runtime can load prefab catalogs | Web/Bevy can consume bundle prefabs | Partial | `prefab create`, `prefab add-component`, scene-local `add-prefab` | SOURCE, ECS-CMD, EDITOR | Structured prefab source documents now emit standalone `prefabs.ir.json` bundle catalogs; instance overrides and broader prefab editor/runtime breadth remain residual. |
-| Render targets | IR has color/depth render targets and camera targets | Color and write-only depth target allocation now have runtime proof | Missing | No typed command | ECS-CMD, EDITOR | Web/Bevy runtime allocation now covers declared color targets and write-only depth targets; depth target material sampling remains rejected by IR validation, and first-class source/editor/CLI target creation remains open. |
+| ✅ Render targets | IR has color/depth render targets and camera targets | Color and write-only depth target allocation now have runtime proof | Partial | `tn asset add --type render-target` plus registry `asset.add` | EDITOR | Web/Bevy runtime allocation now covers declared color targets and write-only depth targets, and source/editor/CLI creation now persists width/height/usage/format render-target declarations into `assets.manifest.json`; depth target material sampling remains rejected by IR validation. |
 | ✅ Runtime config / target profile / window policy | Runtime config IR exists | Partial policy support | Partial | `runtime create`, `runtime set-window`, `runtime set-rendering` | SOURCE, EDITOR, WEB-BEVY | CLI/editor now cover source-backed runtime config creation, primary window size/title, and promoted renderer quality fields that lower to `runtime.config.json`; target profile source docs, resize/scale-factor observations, cursor/present/background policy, clear-color updates, and multi-window diagnostics remain residual. |
 | ✅ Scene lifecycle | IR/docs claim named scenes, transitions, stack traces | Runtime traces exist | Partial | `tn scene lifecycle add <scene-id> --kind ... --activation ... --initial` | SOURCE, EDITOR | Scene docs now persist kind, activation, and initial metadata through CLI/editor operations and bundle lowering; scene-scoped input/system/UI references now emit and surface as active runtime scopes. Transition graph commands, stack operations, and project-level scene ordering remain partial. |
 | ✅ Editor project metadata | Authoring source matrix defines need | Not runtime-specific | Partial | `tn project init-source` / registry `project.create` | SOURCE, ECS-CMD, EDITOR | Project metadata docs are now classified, validated, and editable for id, authoring version, source roots, and build targets; project-level scene ordering/build orchestration remains residual. |
@@ -204,7 +206,7 @@ IR/runtime surfaces, but only some have typed editor/CLI helpers.
 | Priority | Gap | Why it matters | Candidate command surface |
 | --- | --- | --- | --- |
 | ✅ P0 | Typed component commands for common ECS features | Resolved for camera, light, mesh-renderer, render-layers, visibility, rigid-body, collider, and character-controller; other runtime components remain backlog. | `tn scene add-component <scene> <entity> camera|light|mesh-renderer|render-layers|visibility|rigid-body|collider|character-controller ...` |
-| ✅ P0 | Asset source document mutation | Resolved for durable asset id/type/path declarations. | `tn asset add <asset-id> --type model|texture|audio|mesh --path ... --json` |
+| ✅ P0 | Asset source document mutation | Resolved for durable file-backed asset id/type/path declarations and structured render-target declarations. | `tn asset add <asset-id> --type model|texture|audio|mesh --path ... --json`; `tn asset add <asset-id> --type render-target --width <n> --height <n> --json` |
 | ✅ P0 | Audio source mutation | Resolved for audio documents and sound declarations. | `tn audio create <audio-doc-id>`, `tn audio add-sound <audio-doc-id> <sound-id> --asset ...` |
 | ✅ P1 | Material texture/PBR commands | Resolved for promoted PBR and texture-slot fields; sampler/import policy remains outside this slice. | `tn material set <id> --base-color-texture ... --normal-texture ... --emissive ... --alpha-mode ...` |
 | ✅ P1 | Scene lifecycle commands | Resolved for source-backed kind, activation, initial-scene metadata, and scene-local input/system/UI scope emission; transitions, stack operations, and project-level scene ordering remain open. | `tn scene lifecycle add <scene-id> --kind level --activation exclusive --initial` |
@@ -232,7 +234,7 @@ and docs/contracts. Their additional findings sharpen the gaps above:
 | ✅ Scene-scoped lifecycle fields | SDK scene definitions with scene-local `input`, `systems`, and `ui` now emit merged bundle documents plus scoped `scenes.ir.json` references. | Web and Bevy lifecycle managers expose matching active/additive `activeScopes` snapshots for scene-local input maps, UI roots, and system scopes. |
 | ✅ Standalone asset modules | SDK bundle roots now accept standalone asset refs/modules, and structured asset source docs lower supported model/texture/audio/buffer entries into `assets.manifest.json` with provenance ownership. | Rich catalog entries no longer need scene refs, environment, or audio paths for supported file-backed assets; custom/generated mesh asset source remains residual. |
 | ✅ Camera source projection fields | Typed camera source operations now cover promoted projection/frustum fields on top of mode/target. | Advanced camera view stacks, render targets, helpers, and editor UI affordances remain tracked as residual camera/editing work. |
-| ✅ Render target depth path | IR supports depth render targets and camera targets, and web/Bevy render-target allocation now handles color and write-only depth usage with focused runtime tests. | Depth material sampling/writeback remains explicitly unsupported by IR validation; first-class source/editor/CLI render-target authoring remains tracked by the matrix row. |
+| ✅ Render target depth path | IR supports depth render targets and camera targets, web/Bevy render-target allocation handles color and write-only depth usage, and source/editor/CLI authoring can create structured render-target declarations. | Depth material sampling/writeback remains explicitly unsupported by IR validation. |
 | ✅ Docs drift | `docs/status/feature-maturity.md` now reconciles UI/audio/general gameplay rows with later promoted slices and marks custom shaders/render graph as a diagnostic-only boundary instead of stale future-only work. | Current status, parity, and maturity docs now agree on promoted scope versus residual/deferred work. |
 | ✅ Physics contract conflict | ECS and scripting contracts now match the parity claim: bounded static/dynamic mesh collider AABB metadata is promoted, while unbounded mesh colliders, mesh triggers, cylinder solver bodies, full constraint solving, and arbitrary triangle narrow phase remain rejected or deferred. | The physics docs now describe the same bounded collider scope instead of mixing static-only and dynamic-mesh claims. |
 | ✅ Non-portable boundaries | Raw Three.js/Bevy authoring, online services/networking/replication/collaboration, 2D workflows, backend-only features, arbitrary npm/filesystem/worker/timer/platform APIs, and renderer/runtime escape hatches are explicitly classified as intentional boundaries. | These remain diagnostics/non-goals rather than backlog items for Bevy parity. |

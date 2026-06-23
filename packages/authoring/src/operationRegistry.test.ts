@@ -41,6 +41,7 @@ test("should dispatch existing structured source operations through the registry
   try {
     const operations = [
       await dispatchAuthoringOperation({ args: { assetId: "model.player", path: "assets/player.glb", type: "model" }, name: "asset.add", projectPath: root }),
+      await dispatchAuthoringOperation({ args: { assetId: "rt.minimap", format: "rgba16f", height: 256, type: "render-target", usage: "color", width: 512 }, name: "asset.add", projectPath: root }),
       await dispatchAuthoringOperation({ args: { audioDocId: "arena" }, name: "audio.create", projectPath: root }),
       await dispatchAuthoringOperation({ args: { asset: "sound.hit", audioDocId: "arena", soundId: "hit" }, name: "audio.add_sound", projectPath: root }),
       await dispatchAuthoringOperation({ args: { environmentId: "arena" }, name: "environment.create", projectPath: root }),
@@ -91,6 +92,9 @@ test("should dispatch existing structured source operations through the registry
     const asset = JSON.parse(await readFile(join(root, "content", "assets", "model.player.assets.json"), "utf8")) as {
       assets: Array<{ id: string; path: string; type: string }>;
     };
+    const renderTargetAsset = JSON.parse(await readFile(join(root, "content", "assets", "rt.minimap.assets.json"), "utf8")) as {
+      assets: Array<{ format: string; height: number; id: string; type: string; usage: string; width: number }>;
+    };
     const audio = JSON.parse(await readFile(join(root, "content", "audio", "arena.audio.json"), "utf8")) as {
       sounds: Array<{ asset: string; id: string }>;
     };
@@ -121,6 +125,7 @@ test("should dispatch existing structured source operations through the registry
 
     assert.deepEqual(operations.map((operation) => operation.ok), Array.from({ length: operations.length }, () => true));
     assert.deepEqual(asset.assets, [{ id: "model.player", path: "assets/player.glb", type: "model" }]);
+    assert.deepEqual(renderTargetAsset.assets, [{ format: "rgba16f", height: 256, id: "rt.minimap", type: "render-target", usage: "color", width: 512 }]);
     assert.deepEqual(audio.sounds, [{ asset: "sound.hit", id: "hit" }]);
     assert.deepEqual(environment.skybox, { asset: "tex.sky", mode: "equirect" });
     assert.deepEqual(environment.environmentMap, { asset: "tex.env" });

@@ -75,7 +75,7 @@ export const materialKeys = new Set([
   "transmission",
   "transmissionTexture",
 ]);
-export const assetKeys = new Set(["animationGraph", "animations", "id", "particleEmitters", "path", "type"]);
+export const assetKeys = new Set(["animationGraph", "animations", "format", "height", "id", "particleEmitters", "path", "sampleCount", "type", "usage", "width"]);
 export const inputActionKeys = new Set(["id", "bindings"]);
 export const inputAxisKeys = new Set(["id", "negative", "positive", "value"]);
 export const audioSoundKeys = new Set(["id", "asset"]);
@@ -280,10 +280,15 @@ export interface IAssetDeclaration {
     states: Array<{ clip: string; id: string }>;
   };
   animations?: Array<{ id: string; loop?: boolean; sourceClip?: string; speed?: number }>;
+  format?: "depth24plus" | "rgba16f" | "rgba8";
+  height?: number;
   id: string;
   particleEmitters?: Array<{ id: string; lifetimeSeconds: number; maxParticles: number; radius?: number; ratePerSecond: number; shape: "point" | "sphere" }>;
   path?: string;
+  sampleCount?: number;
   type?: string;
+  usage?: "color" | "depth";
+  width?: number;
 }
 
 export interface IInputDocument {

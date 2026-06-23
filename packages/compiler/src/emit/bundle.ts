@@ -363,9 +363,31 @@ function structuredAsset(item: unknown): IInternalAsset[] {
     return [];
   }
   const id = readString(item.id);
+  const type = readString(item.type);
+  if (id === undefined) {
+    return [];
+  }
+  if (type === "render-target") {
+    const width = readNumber(item.width);
+    const height = readNumber(item.height);
+    if (width === undefined || height === undefined) {
+      return [];
+    }
+    const usage = readString(item.usage) === "depth" ? "depth" : "color";
+    const format = renderTargetFormat(readString(item.format), usage);
+    return [{
+      format,
+      height,
+      id,
+      kind: "render-target",
+      ...(readNumber(item.sampleCount) === undefined ? {} : { sampleCount: readNumber(item.sampleCount) }),
+      usage,
+      width,
+    }];
+  }
   const path = readString(item.path);
-  const kind = assetKindFromSourceType(readString(item.type));
-  if (id === undefined || path === undefined || kind === undefined) {
+  const kind = assetKindFromSourceType(type);
+  if (path === undefined || kind === undefined) {
     return [];
   }
   const format = inferAssetFormat(kind, path);
@@ -421,6 +443,13 @@ function structuredMeshAsset(item: unknown): IInternalAsset[] {
     primitive: "custom",
     ...(item.storage === "binary" ? { storage: "binary" } : {}),
   }];
+}
+
+function renderTargetFormat(format: string | undefined, usage: "color" | "depth"): "depth24plus" | "rgba16f" | "rgba8" {
+  if (format === "rgba16f" || format === "rgba8" || format === "depth24plus") {
+    return format;
+  }
+  return usage === "depth" ? "depth24plus" : "rgba8";
 }
 
 function assetKindFromSourceType(type: string | undefined): string | undefined {
@@ -502,6 +531,10 @@ function readPrefabEntities(value: unknown): IPrefabsIr["prefabs"][number]["enti
 
 function readString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() !== "" ? value : undefined;
+}
+
+function readNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
 
 function cloneRecord(value: Record<string, unknown>): Record<string, unknown> {

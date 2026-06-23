@@ -129,6 +129,23 @@ test("should add structured asset source document", async () => {
   }
 });
 
+test("should add structured render target asset source document", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-asset-add-render-target-"));
+  try {
+    const result = await assetCommand(["add", "rt.minimap", "--type", "render-target", "--width", "512", "--height", "256", "--usage", "depth", "--format", "depth24plus", "--project", root, "--json"]);
+    const payload = JSON.parse(result.stdout) as { filesWritten: string[] };
+    const doc = JSON.parse(await readFile(join(root, "content", "assets", "rt.minimap.assets.json"), "utf8")) as {
+      assets: Array<{ format: string; height: number; id: string; type: string; usage: string; width: number }>;
+    };
+
+    assert.equal(result.exitCode, 0);
+    assert.deepEqual(payload.filesWritten, ["content/assets/rt.minimap.assets.json"]);
+    assert.deepEqual(doc.assets, [{ format: "depth24plus", height: 256, id: "rt.minimap", type: "render-target", usage: "depth", width: 512 }]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject missing inspect path", async () => {
   const result = await assetCommand(["inspect", "--json"]);
   const payload = JSON.parse(result.stdout) as { code: string; severity: string };

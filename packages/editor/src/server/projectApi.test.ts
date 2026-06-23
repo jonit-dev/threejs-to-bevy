@@ -328,7 +328,7 @@ test("should persist asset catalog and scene resource rows through editor operat
     await mkdir(join(root, "content", "assets"), { recursive: true });
     await writeFile(
       join(root, "content", "assets", "catalog.assets.json"),
-      `${JSON.stringify({ schema: "threenative.assets", version: "0.1.0", id: "catalog", assets: [{ id: "tex.logo", path: "assets/logo.png", type: "texture" }] }, null, 2)}\n`,
+      `${JSON.stringify({ schema: "threenative.assets", version: "0.1.0", id: "catalog", assets: [{ id: "tex.logo", path: "assets/logo.png", type: "texture" }, { format: "rgba8", height: 256, id: "rt.minimap", type: "render-target", usage: "color", width: 256 }] }, null, 2)}\n`,
     );
     const scenePath = join(root, "content", "scenes", "arena.scene.json");
     const scene = JSON.parse(await readFile(scenePath, "utf8")) as { resources?: Array<{ id: string; path?: string; value?: unknown }> };
@@ -344,6 +344,8 @@ test("should persist asset catalog and scene resource rows through editor operat
     const rows = result.documents.flatMap((group) => group.documents.flatMap((document) => document.inspectorRows ?? []));
     const assetPath = rows.find((row) => row.label === "tex.logo Path");
     const assetType = rows.find((row) => row.label === "tex.logo Type");
+    const renderTargetWidth = rows.find((row) => row.label === "rt.minimap Width");
+    const renderTargetUsage = rows.find((row) => row.label === "rt.minimap Usage");
     const resourcePath = rows.find((row) => row.label === "config.theme Path");
     const resourceValue = rows.find((row) => row.label === "score.default Value");
 
@@ -351,6 +353,11 @@ test("should persist asset catalog and scene resource rows through editor operat
     assert.equal(assetPath?.operation?.name, "asset.add");
     assert.equal(assetPath.operation.valueArg, "path");
     assert.equal(assetType?.operation?.name, "asset.add");
+    assert.equal(renderTargetWidth?.readOnly, false);
+    assert.equal(renderTargetWidth?.operation?.name, "asset.add");
+    assert.equal(renderTargetWidth?.operation?.valueArg, "width");
+    assert.equal(renderTargetUsage?.readOnly, false);
+    assert.equal(renderTargetUsage?.operation?.name, "asset.add");
     assert.equal(resourcePath?.readOnly, false);
     assert.equal(resourcePath?.operation?.name, "scene.set_resource");
     assert.equal(resourceValue?.readOnly, false);
@@ -361,15 +368,23 @@ test("should persist asset catalog and scene resource rows through editor operat
       request: { args: { ...assetPath.operation.args, [assetPath.operation.valueArg ?? "path"]: "assets/logo-2.png" }, name: assetPath.operation.name },
     });
     assert.equal(assetSave.ok, true);
+    assert.ok(renderTargetWidth?.operation);
+    const renderTargetSave = await applyEditorOperationApi({
+      projectPath: root,
+      request: { args: { ...renderTargetWidth.operation.args, [renderTargetWidth.operation.valueArg ?? "width"]: 512 }, name: renderTargetWidth.operation.name, projectRevision: assetSave.projectRevision },
+    });
+    assert.equal(renderTargetSave.ok, true);
     const resourceSave = await applyEditorOperationApi({
       projectPath: root,
-      request: { args: { ...resourceValue.operation.args, [resourceValue.operation.valueArg ?? "value"]: { points: 42 } }, name: resourceValue.operation.name, projectRevision: assetSave.projectRevision },
+      request: { args: { ...resourceValue.operation.args, [resourceValue.operation.valueArg ?? "value"]: { points: 42 } }, name: resourceValue.operation.name, projectRevision: renderTargetSave.projectRevision },
     });
     assert.equal(resourceSave.ok, true);
 
-    const assetDoc = JSON.parse(await readFile(join(root, "content", "assets", "catalog.assets.json"), "utf8")) as { assets: Array<{ id: string; path?: string; type?: string }> };
+    const assetDoc = JSON.parse(await readFile(join(root, "content", "assets", "catalog.assets.json"), "utf8")) as { assets: Array<{ height?: number; id: string; path?: string; type?: string; width?: number }> };
     const sceneDoc = JSON.parse(await readFile(scenePath, "utf8")) as { resources?: Array<{ id: string; path?: string; value?: unknown }> };
     assert.deepEqual(assetDoc.assets[0], { id: "tex.logo", path: "assets/logo-2.png", type: "texture" });
+    assert.equal(assetDoc.assets.find((asset) => asset.id === "rt.minimap")?.width, 512);
+    assert.equal(assetDoc.assets.find((asset) => asset.id === "rt.minimap")?.height, 256);
     assert.deepEqual(sceneDoc.resources?.find((resource) => resource.id === "score.default")?.value, { points: 42 });
   } finally {
     await rm(root, { force: true, recursive: true });

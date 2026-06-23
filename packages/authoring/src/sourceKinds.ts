@@ -243,7 +243,7 @@ export const authoringSourceMatrix = [
     cliOperationSupport: "partial",
     typescriptRole: "none",
     editorRoundTrip: "required",
-    notes: "Asset source documents and CLI operations cover id/type/path plus promoted model animation clips, graph states, and bounded particle emitters; import settings and dependency copy policy remain later work.",
+    notes: "Asset source documents and CLI operations cover id/type/path, render-target width/height/usage/format declarations, promoted model animation clips, graph states, and bounded particle emitters; import settings and dependency copy policy remain later work.",
   },
   {
     id: "material-document",

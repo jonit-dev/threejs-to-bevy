@@ -909,6 +909,47 @@ test("should emit structured model animation and particle source metadata", asyn
   }
 });
 
+test("should emit structured render target asset source documents", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-source-render-target-"));
+  try {
+    const scene = new Scene({ id: "scene" });
+    const config = {
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project" as const,
+      version: "0.1.0" as const,
+    };
+
+    const bundlePath = await emitBundle(config, { scene }, {
+      authoringDocuments: [{
+        data: {
+          schema: "threenative.assets",
+          version: "0.1.0",
+          id: "render-targets",
+          assets: [
+            { format: "rgba16f", height: 256, id: "rt.minimap", type: "render-target", usage: "color", width: 512 },
+            { height: 128, id: "rt.depth", type: "render-target", usage: "depth", width: 128 },
+          ],
+        },
+        file: join(root, "content/assets/render-targets.assets.json"),
+        kind: "asset",
+        projectRelativePath: "content/assets/render-targets.assets.json",
+      }],
+    });
+    const assets = JSON.parse(await readFile(join(bundlePath, "assets.manifest.json"), "utf8")) as {
+      assets: Array<Record<string, unknown>>;
+    };
+    const result = await validateBundle(bundlePath);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(assets.assets.find((asset) => asset.id === "rt.minimap"), { format: "rgba16f", height: 256, id: "rt.minimap", kind: "render-target", usage: "color", width: 512 });
+    assert.deepEqual(assets.assets.find((asset) => asset.id === "rt.depth"), { format: "depth24plus", height: 128, id: "rt.depth", kind: "render-target", usage: "depth", width: 128 });
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should emit structured mesh source documents into asset manifest", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-emit-source-meshes-"));
   try {

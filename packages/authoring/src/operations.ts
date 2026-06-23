@@ -564,8 +564,13 @@ export interface IAddInputAxisOptions extends IAuthoringOperationContext {
 export interface IAddAssetOptions extends IAuthoringOperationContext {
   assetId: string;
   file?: string;
-  path: string;
+  format?: string;
+  height?: number;
+  path?: string;
+  sampleCount?: number;
   type: string;
+  usage?: string;
+  width?: number;
 }
 
 export interface IAddAnimationClipOptions extends IAuthoringOperationContext {
@@ -1898,8 +1903,22 @@ export async function addAsset(options: IAddAssetOptions): Promise<IAuthoringOpe
       const assets = ensureArrayProperty(data, "assets");
       const existing = findSceneItem(assets, options.assetId);
       const asset = existing ?? { id: options.assetId };
-      asset.path = options.path;
       asset.type = options.type;
+      if (options.type === "render-target") {
+        delete asset.path;
+        asset.width = options.width;
+        asset.height = options.height;
+        asset.usage = options.usage ?? "color";
+        asset.format = options.format ?? (asset.usage === "depth" ? "depth24plus" : "rgba8");
+        setOptionalNumber(asset, "sampleCount", options.sampleCount);
+      } else {
+        asset.path = options.path;
+        delete asset.width;
+        delete asset.height;
+        delete asset.usage;
+        delete asset.format;
+        delete asset.sampleCount;
+      }
       if (existing === undefined) {
         assets.push(asset);
       }
@@ -2407,7 +2426,7 @@ async function validateAuthoringDocument(
         idKind: "asset document",
         listName: "assets",
         rootKeys: assetDocumentKeys,
-        validateItem: (diagnostics, path, item) => validateGeneratedPathString(diagnostics, file, `${path}/path`, item.path, "asset path must be a non-empty source path."),
+        validateItem: (diagnostics, path, item) => validateAssetDeclaration(diagnostics, path, item, file),
       });
     case "audio":
       return validateDeclarationDocument(file, data, {
@@ -3421,6 +3440,42 @@ function validateGeneratedPathString(diagnostics: IAuthoringDiagnostic[], file: 
     diagnostics.push(typeDiagnostic(file, path, message, value));
   } else if (sourcePath !== undefined && isGeneratedArtifactPath(sourcePath)) {
     diagnostics.push(generatedPathDiagnostic(file, path, sourcePath));
+  }
+}
+
+function validateAssetDeclaration(diagnostics: IAuthoringDiagnostic[], path: string, item: Record<string, unknown>, file: string): void {
+  const type = readString(item.type);
+  if (type === "render-target") {
+    validateRenderTargetAssetDeclaration(diagnostics, file, path, item);
+    return;
+  }
+  const sourcePath = readString(item.path);
+  if (sourcePath === undefined) {
+    diagnostics.push(typeDiagnostic(file, `${path}/path`, "asset path must be a non-empty source path.", item.path));
+    return;
+  }
+  validateGeneratedPathString(diagnostics, file, `${path}/path`, item.path, "asset path must be a non-empty source path.");
+}
+
+function validateRenderTargetAssetDeclaration(diagnostics: IAuthoringDiagnostic[], file: string, path: string, item: Record<string, unknown>): void {
+  validatePositiveNumber(diagnostics, file, `${path}/width`, item.width, "render target width must be a positive finite number.");
+  validatePositiveNumber(diagnostics, file, `${path}/height`, item.height, "render target height must be a positive finite number.");
+  const usage = readString(item.usage);
+  if (usage !== undefined && usage !== "color" && usage !== "depth") {
+    diagnostics.push(typeDiagnostic(file, `${path}/usage`, "render target usage must be 'color' or 'depth'.", item.usage));
+  }
+  const format = readString(item.format);
+  if (format !== undefined && format !== "rgba8" && format !== "rgba16f" && format !== "depth24plus") {
+    diagnostics.push(typeDiagnostic(file, `${path}/format`, "render target format must be 'rgba8', 'rgba16f', or 'depth24plus'.", item.format));
+  }
+  if (item.sampleCount !== undefined && (typeof item.sampleCount !== "number" || !Number.isInteger(item.sampleCount) || item.sampleCount < 1)) {
+    diagnostics.push(typeDiagnostic(file, `${path}/sampleCount`, "render target sampleCount must be a positive integer.", item.sampleCount));
+  }
+}
+
+function validatePositiveNumber(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, message: string): void {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    diagnostics.push(typeDiagnostic(file, path, message, value));
   }
 }
 

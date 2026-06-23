@@ -96,6 +96,7 @@ test("should keep an explicit inspector field inventory for promoted source fami
   assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => "component" in item && item.component === "Light" && item.field === "intensity" && item.operationName === "scene.set_light" && item.readOnly === false), true);
   assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => "component" in item && item.component === "Light" && item.field === "shadowBias" && item.operationName === "scene.set_light" && item.readOnly === false), true);
   assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => item.field === "components.custom" && item.operationName === "scene.set_component" && item.readOnly === false), true);
+  assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => item.field === "assets.renderTarget.width" && item.operationName === "asset.add" && item.readOnly === false), true);
   assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => item.sourceFamily === "input" && item.field === "actions.bindings" && item.fieldKind === "stringList"), true);
   assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => item.sourceFamily === "system" && item.field === "systems.script" && item.fieldKind === "script"), true);
   assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => item.sourceFamily === "ui" && item.field === "ui.nodes.type" && item.operationName === "ui.add_node"), true);

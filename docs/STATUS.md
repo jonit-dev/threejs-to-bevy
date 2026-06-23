@@ -167,7 +167,11 @@ component/resource schema authoring remains separate residual work.
 Structured asset source documents now also carry promoted model animation
 metadata through `tn animation add-clip`, `tn animation graph add-state`, and
 bounded particle metadata through `tn particle add-emitter`, and compiler
-lowering preserves those fields in `assets.manifest.json`.
+lowering preserves those fields in `assets.manifest.json`. Render-target asset
+source declarations now have a first-class CLI/editor path through
+`tn asset add --type render-target --width <n> --height <n>` and editable
+asset rows for width, height, usage, and format; compiler lowering emits those
+structured declarations as `assets.manifest.json` render-target entries.
 Commands support `--json`, return the shared `ok`/`changed`/`filesWritten`/
 `diagnostics` shape, and fail before writing on invalid JSON or validation
 errors. Broader asset import settings, material sampler/import policy, input
@@ -745,7 +749,9 @@ and screenshot export are implemented with shared conformance and visual evidenc
 Runtime render-target allocation now covers declared color targets and write-only
 depth targets in both web and Bevy adapters; depth target material sampling
 remains rejected by IR validation until a portable sampling/writeback contract is
-promoted. The camera-view gate
+promoted. Structured asset source documents, `tn asset add --type render-target`,
+and editor asset rows now author those target declarations without hand-editing
+generated manifests. The camera-view gate
 `pnpm verify:v8:camera-views` builds `examples/v8-camera-views`, validates the
 bundle, captures web/native screenshots with viewport-region checks, and writes
 artifacts under `examples/v8-camera-views/artifacts/camera-views/`. The shared conformance fixture is

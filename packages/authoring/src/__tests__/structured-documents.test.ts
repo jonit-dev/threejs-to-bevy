@@ -159,7 +159,15 @@ test("validates duplicate IDs for structured authoring document families", async
   try {
     await writeSourceDocument(root, "content/ui/hud.ui.json", duplicateDoc("threenative.ui", "hud", "nodes", "score-label"));
     await writeSourceDocument(root, "content/materials/kart.materials.json", duplicateDoc("threenative.materials", "materials", "materials", "mat.kart"));
-    await writeSourceDocument(root, "content/assets/kart.assets.json", duplicateDoc("threenative.assets", "assets", "assets", "asset.kart"));
+    await writeSourceDocument(root, "content/assets/kart.assets.json", {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      id: "assets",
+      assets: [
+        { id: "asset.kart", path: "assets/kart.glb", type: "model" },
+        { id: "asset.kart", path: "assets/kart-lod.glb", type: "model" },
+      ],
+    });
     await writeSourceDocument(root, "content/input/kart.input.json", duplicateDoc("threenative.input", "input", "actions", "accelerate"));
     await writeSourceDocument(root, "content/systems/kart.systems.json", duplicateDoc("threenative.systems", "systems", "systems", "race-controller"));
     await writeSourceDocument(root, "content/prefabs/kart.prefab.json", duplicateDoc("threenative.prefab", "prefab", "entities", "kart-root"));

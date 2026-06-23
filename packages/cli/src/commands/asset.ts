@@ -114,17 +114,46 @@ export async function assetCommand(argv: readonly string[]): Promise<ICommandRes
     const assetId = positionals[1];
     const type = readFlag(normalizedArgv, "--type");
     const path = readFlag(normalizedArgv, "--path");
-    if (assetId === undefined || type === undefined || path === undefined) {
+    const width = readNumberFlag(normalizedArgv, "--width");
+    const height = readNumberFlag(normalizedArgv, "--height");
+    const sampleCount = readNumberFlag(normalizedArgv, "--sample-count");
+    if (width.diagnostic !== undefined || height.diagnostic !== undefined || sampleCount.diagnostic !== undefined) {
+      return diagnosticResult(
+        {
+          code: "TN_ASSET_ADD_NUMERIC_FLAG_INVALID",
+          message: width.diagnostic ?? height.diagnostic ?? sampleCount.diagnostic ?? "Asset numeric flags must be finite numbers.",
+        },
+        { exitCode: 2, json, stderr: !json },
+      );
+    }
+    const missingPath = type !== "render-target" && path === undefined;
+    const missingRenderTargetSize = type === "render-target" && (width.value === undefined || height.value === undefined);
+    if (assetId === undefined || type === undefined || missingPath || missingRenderTargetSize) {
       return diagnosticResult(
         {
           code: "TN_ASSET_ADD_ARGS_MISSING",
-          message: "Usage: tn asset add <asset-id> --type <model|texture|audio|mesh> --path <source-path> [--project <path>] [--json].",
+          message: "Usage: tn asset add <asset-id> --type <model|texture|audio|mesh|render-target> --path <source-path> [--project <path>] [--json] or tn asset add <asset-id> --type render-target --width <n> --height <n> [--usage color|depth] [--format rgba8|rgba16f|depth24plus] [--sample-count <n>] [--project <path>] [--json].",
         },
         { exitCode: 2, json, stderr: !json },
       );
     }
     const projectPath = resolveProjectPath(normalizedArgv);
-    return renderAuthoringResult("asset", await addAsset({ assetId, path, projectPath, type }), json, `Asset '${assetId}' added.`);
+    return renderAuthoringResult(
+      "asset",
+      await addAsset({
+        assetId,
+        format: readFlag(normalizedArgv, "--format"),
+        height: height.value,
+        ...(path === undefined ? {} : { path }),
+        projectPath,
+        sampleCount: sampleCount.value,
+        type,
+        usage: readFlag(normalizedArgv, "--usage"),
+        width: width.value,
+      }),
+      json,
+      `Asset '${assetId}' added.`,
+    );
   }
 
   if (subcommand !== "inspect") {
@@ -186,7 +215,19 @@ function readFlag(argv: readonly string[], flag: string): string | undefined {
   return index === -1 ? undefined : argv[index + 1];
 }
 
-const assetFlagsWithValues = new Set(["--path", "--project", "--type"]);
+function readNumberFlag(argv: readonly string[], flag: string): { diagnostic?: string; value?: number } {
+  const value = readFlag(argv, flag);
+  if (value === undefined) {
+    return {};
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return { diagnostic: `Asset ${flag} must be a finite number.` };
+  }
+  return { value: parsed };
+}
+
+const assetFlagsWithValues = new Set(["--format", "--height", "--path", "--project", "--sample-count", "--type", "--usage", "--width"]);
 
 export async function inspectAsset(assetPath: string): Promise<InspectReport> {
   const extension = extname(assetPath).toLowerCase();

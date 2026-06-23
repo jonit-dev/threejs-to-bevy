@@ -516,8 +516,26 @@ function documentInspectorRows(document: IAuthoringDocument): IEditorPropertyRow
         const assetId = readString(asset.id) ?? "";
         const assetType = readString(asset.type) ?? "model";
         const assetPath = readString(asset.path) ?? "";
-        rows.push(documentRow(document, `asset:${index}:type`, `${assetId || `asset.${index}`} Type`, assetType, "enum", false, `/assets/${index}/type`, "asset", "asset.add", "type", { assetId, file: document.projectRelativePath, path: assetPath }));
-        rows.push(documentRow(document, `asset:${index}:path`, `${assetId || `asset.${index}`} Path`, assetPath, "asset", false, `/assets/${index}/path`, "asset", "asset.add", "path", { assetId, file: document.projectRelativePath, type: assetType }));
+        const baseArgs = {
+          assetId,
+          file: document.projectRelativePath,
+          format: readString(asset.format),
+          height: readNumber(asset.height),
+          ...(assetType === "render-target" ? {} : { path: assetPath }),
+          sampleCount: readNumber(asset.sampleCount),
+          type: assetType,
+          usage: readString(asset.usage),
+          width: readNumber(asset.width),
+        };
+        rows.push(documentRow(document, `asset:${index}:type`, `${assetId || `asset.${index}`} Type`, assetType, "enum", false, `/assets/${index}/type`, "asset", "asset.add", "type", baseArgs));
+        if (assetType === "render-target") {
+          rows.push(documentRow(document, `asset:${index}:width`, `${assetId || `asset.${index}`} Width`, formatScalar(asset.width, ""), "number", false, `/assets/${index}/width`, "asset", "asset.add", "width", baseArgs));
+          rows.push(documentRow(document, `asset:${index}:height`, `${assetId || `asset.${index}`} Height`, formatScalar(asset.height, ""), "number", false, `/assets/${index}/height`, "asset", "asset.add", "height", baseArgs));
+          rows.push(documentRow(document, `asset:${index}:usage`, `${assetId || `asset.${index}`} Usage`, readString(asset.usage) ?? "color", "enum", false, `/assets/${index}/usage`, "asset", "asset.add", "usage", baseArgs));
+          rows.push(documentRow(document, `asset:${index}:format`, `${assetId || `asset.${index}`} Format`, readString(asset.format) ?? "", "enum", false, `/assets/${index}/format`, "asset", "asset.add", "format", baseArgs));
+        } else {
+          rows.push(documentRow(document, `asset:${index}:path`, `${assetId || `asset.${index}`} Path`, assetPath, "asset", false, `/assets/${index}/path`, "asset", "asset.add", "path", baseArgs));
+        }
       }
       break;
     case "project": {
