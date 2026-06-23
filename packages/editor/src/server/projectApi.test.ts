@@ -295,13 +295,28 @@ test("should persist scene prefab rows and expose typed light operations", async
     });
     assert.equal(assetSave.ok, true);
     const scene = JSON.parse(await readFile(join(root, "content", "scenes", "arena.scene.json"), "utf8")) as {
+      entities?: Array<{ components?: Record<string, unknown>; id: string }>;
       prefabs?: Array<{ asset?: string; color?: string; id: string; primitive?: string }>;
     };
     assert.deepEqual(scene.prefabs?.find((prefab) => prefab.id === "prefab.player"), { asset: "assets/models/player.glb", color: "#00ffaa", id: "prefab.player", primitive: "sphere" });
 
     const lightRows = result.sceneObjects.find((object) => object.id === "directional-light")?.inspectorRows ?? [];
-    assert.equal(lightRows.some((row) => row.component === "Light" && row.label === "Kind" && row.operation?.name === "scene.set_light" && row.readOnly === false), true);
-    assert.equal(lightRows.some((row) => row.component === "Light" && row.label === "Intensity" && row.operation?.name === "scene.set_light" && row.readOnly === false), true);
+    for (const label of ["Kind", "Intensity", "Color", "Range", "Angle", "Shadow Bias", "Shadow Normal Bias"]) {
+      assert.equal(lightRows.some((row) => row.component === "Light" && row.label === label && row.operation?.name === "scene.set_light" && row.readOnly === false), true);
+    }
+    const shadowBias = lightRows.find((row) => row.component === "Light" && row.label === "Shadow Bias");
+    const shadowBiasOperation = shadowBias?.operation;
+    assert.ok(shadowBiasOperation);
+    const shadowBiasSave = await applyEditorOperationApi({
+      projectPath: root,
+      request: { args: { ...shadowBiasOperation.args, [shadowBiasOperation.valueArg ?? "shadowBias"]: -0.001 }, name: shadowBiasOperation.name, projectRevision: assetSave.projectRevision },
+    });
+    assert.equal(shadowBiasSave.ok, true);
+    assert.equal(shadowBiasSave.filesWritten.length, 1);
+    const sceneAfterLight = JSON.parse(await readFile(join(root, shadowBiasSave.filesWritten[0] ?? ""), "utf8")) as {
+      entities?: Array<{ components?: Record<string, unknown>; id: string }>;
+    };
+    assert.deepEqual(sceneAfterLight.entities?.find((entity) => entity.id === "directional-light")?.components?.Light, { color: "#ffffff", intensity: 1, kind: "directional", shadowBias: -0.001 });
   } finally {
     await rm(root, { force: true, recursive: true });
   }

@@ -218,7 +218,8 @@ such as `scene.set_transform`, `scene.set_component`, `ui.add_text`,
 `mesh.create_custom`,
 `ui.add_node`, `ui.set_style`, `prefab.add_component`, `input.add_action`,
 `asset.add`, `audio.create`,
-`audio.add_sound`, `scene.set_light`, `scene.set_mesh_renderer`,
+`audio.add_sound`, `scene.set_light` for kind/intensity/color/range/angle and
+shadow bias fields, `scene.set_mesh_renderer`,
 `scene.set_rigid_body`, `scene.set_collider`,
 `scene.set_character_controller`, `scene.set_lifecycle`, `scene.set_prefab`,
 `environment.set_path`, `environment.set_walkability`,
@@ -356,9 +357,9 @@ source lowering is promoted. The focused editor package gate writes
 smoke/edited screenshots after adding primitive, empty, camera, light, and
 project GLB objects, building preview, creating a default scene, and confirming
 GLB loading without unexpected browser console errors.
-The follow-up component mutation audit keeps Transform, Camera, material,
-input, system script, and UI binding rows source-editable while preserving
-explicit read-only reasons for unsupported Light and MeshRenderer prefab
+The follow-up component mutation audit keeps Transform, Camera, Light,
+material, input, system script, and UI binding rows source-editable while
+preserving explicit read-only reasons for unsupported custom component
 mutations. Editor-only operation fallbacks now return stable
 `TN_EDITOR_OPERATION_ARG_INVALID` diagnostics for malformed payloads before any
 source write.

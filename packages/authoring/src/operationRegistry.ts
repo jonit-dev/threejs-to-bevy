@@ -360,6 +360,8 @@ const descriptors = [
     stringArg("color", false),
     numberArg("range", false),
     numberArg("angle", false),
+    numberArg("shadowBias", false),
+    numberArg("shadowNormalBias", false),
   ]),
   descriptor("scene.set_lifecycle", "Set scene lifecycle source metadata.", "scene", "source-document", [
     stringArg("sceneId"),
@@ -617,7 +619,7 @@ const dispatchers: Record<AuthoringOperationName, OperationDispatcher> = {
   "scene.set_component": async ({ args, projectPath }) =>
     setComponent({ componentKind: requiredString(args, "componentKind"), entityId: requiredString(args, "entityId"), projectPath, sceneId: requiredString(args, "sceneId"), value: requiredObject(args, "value") }),
   "scene.set_light": async ({ args, projectPath }) =>
-    setLightComponent({ angle: optionalNumber(args, "angle"), color: optionalString(args, "color"), entityId: requiredString(args, "entityId"), intensity: optionalNumber(args, "intensity"), kind: optionalString(args, "kind"), projectPath, range: optionalNumber(args, "range"), sceneId: requiredString(args, "sceneId") }),
+    setLightComponent({ angle: optionalNumber(args, "angle"), color: optionalString(args, "color"), entityId: requiredString(args, "entityId"), intensity: optionalNumber(args, "intensity"), kind: optionalString(args, "kind"), projectPath, range: optionalNumber(args, "range"), sceneId: requiredString(args, "sceneId"), shadowBias: optionalNumber(args, "shadowBias"), shadowNormalBias: optionalNumber(args, "shadowNormalBias") }),
   "scene.set_lifecycle": async ({ args, projectPath }) =>
     setSceneLifecycle({ activation: optionalString(args, "activation"), initial: optionalBoolean(args, "initial"), kind: optionalString(args, "kind"), projectPath, sceneId: requiredString(args, "sceneId") }),
   "scene.set_prefab": async ({ args, projectPath }) =>

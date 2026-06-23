@@ -79,6 +79,7 @@ test("should dispatch existing structured source operations through the registry
       await dispatchAuthoringOperation({ args: { groupId: "group.lane.red", name: "Red Lane", position: [-2, 0, 0], sceneId: "scene.arena" }, name: "scene.add_group", projectPath: root }),
       await dispatchAuthoringOperation({ args: { entityId: "player", sceneId: "scene.arena", tag: "LaneRed" }, name: "scene.add_tag", projectPath: root }),
       await dispatchAuthoringOperation({ args: { componentKind: "Light", entityId: "player", sceneId: "scene.arena", value: { color: "#ffffff", intensity: 1, kind: "point" } }, name: "scene.set_component", projectPath: root }),
+      await dispatchAuthoringOperation({ args: { color: "#ffeeaa", entityId: "player", intensity: 2, kind: "spot", range: 12, angle: 0.6, sceneId: "scene.arena", shadowBias: -0.001, shadowNormalBias: 0.02 }, name: "scene.set_light", projectPath: root }),
       await dispatchAuthoringOperation({ args: { entityId: "player", layers: ["gameplay", "minimap"], sceneId: "scene.arena" }, name: "scene.set_render_layers", projectPath: root }),
       await dispatchAuthoringOperation({ args: { entityId: "player", sceneId: "scene.arena", kind: "dynamic", mass: 3 }, name: "scene.set_rigid_body", projectPath: root }),
       await dispatchAuthoringOperation({ args: { entityId: "player", sceneId: "scene.arena", visible: false }, name: "scene.set_visibility", projectPath: root }),
@@ -141,6 +142,7 @@ test("should dispatch existing structured source operations through the registry
       transform: { position: [-2, 0, 0] },
     });
     assert.deepEqual(scene.entities.find((entity) => entity.id === "player")?.components?.LaneRed, {});
+    assert.deepEqual(scene.entities.find((entity) => entity.id === "player")?.components?.Light, { angle: 0.6, color: "#ffeeaa", intensity: 2, kind: "spot", range: 12, shadowBias: -0.001, shadowNormalBias: 0.02 });
     assert.deepEqual(scene.entities.find((entity) => entity.id === "player")?.components?.RenderLayers, { layers: ["gameplay", "minimap"] });
     assert.deepEqual(scene.entities.find((entity) => entity.id === "player")?.components?.RigidBody, { kind: "dynamic", mass: 3 });
     assert.deepEqual(scene.entities.find((entity) => entity.id === "player")?.components?.Visibility, { visible: false });

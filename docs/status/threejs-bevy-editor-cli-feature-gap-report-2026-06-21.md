@@ -18,9 +18,9 @@ Date: 2026-06-21
 - ✅ 2026-06-21: Typed ECS component mutation now has `tn scene add-component`
   for `camera`, `light`, `mesh-renderer`, `rigid-body`, `collider`, and
   `character-controller`, plus registry-backed `scene.set_*` operations and
-  source validators for the corresponding component payloads. Light kind and
-  intensity are editor-editable through `scene.set_light`; broader component
-  inspector controls remain partial.
+  source validators for the corresponding component payloads. Promoted Light
+  fields are editor-editable through `scene.set_light`; broader custom
+  component inspector controls remain partial.
 - ✅ 2026-06-21: Material texture/PBR mutation now extends `tn material set`,
   registry-backed `material.set`, source validation, bundle import recovery,
   and editor material rows for promoted fields: metalness, emissive,
@@ -90,6 +90,10 @@ Date: 2026-06-21
   `environment.set_walkability`, and `environment.set_source_asset_lod`.
   Matching `tn environment set-path`, `set-walkability`, and
   `set-source-asset-lod` commands persist the same structured JSON metadata.
+- ✅ 2026-06-23: Light color/range/angle plus shadow bias rows now dispatch
+  registry-backed `scene.set_light`. The typed CLI light command accepts
+  `--range`, `--angle`, `--shadow-bias`, and `--shadow-normal-bias`, so
+  promoted light metadata no longer requires raw component JSON.
 
 ## Final Status for 2026-06-22
 
@@ -105,8 +109,8 @@ work and should not be treated as complete:
 - Remaining read-only editor rows that still need safe source-persistable
   operations, excluding asset catalog type/path and scene resource path/value
   rows, scene-local prefab primitive/color/asset rows, and environment
-  path/walkability/source-asset LOD rows, which are now editable through
-  registry-backed operations.
+  path/walkability/source-asset LOD rows plus promoted Light rows, which are
+  now editable through registry-backed operations.
 
 ## Scope
 
@@ -163,7 +167,7 @@ IR/runtime surfaces, but only some have typed editor/CLI helpers.
 | ✅ MeshRenderer and primitive meshes | Supported | Supported | Partial | `mesh primitive`, `mesh custom`, `scene add-prefab`, `scene set-prefab`, generic `set-component` | ECS-CMD, EDITOR | Source mesh docs now cover primitive and custom attribute/index declarations, scene-local prefab primitive/color/asset edits, and compiler lowering emits generated mesh assets/binary payloads; generator provenance/import settings and richer editor mesh controls remain partial. |
 | ✅ Materials and textures | Broad IR/runtime support for PBR fields and texture slots | Broad promoted support | Partial | `material create`, `material set` with promoted PBR/texture flags | EDITOR | CLI/editor now cover promoted texture slots, alpha, emissive, clearcoat, and transmission fields; sampler/import policy and broader material inspector UX remain partial. |
 | ✅ Cameras and views | Broad camera IR/runtime support | Broad promoted support | Partial | `scene set-camera`, `scene add-component ... camera`, registry `scene.set_camera_component` | EDITOR | Typed source/CLI camera operations now persist promoted projection/frustum fields (`fovY`, `near`, `far`, `size`) and structured scene builds lower them into IR `Camera` components; multi-view ordering, render targets, helpers, and richer editor controls remain residual. |
-| ✅ Lights and shadows | Broad IR/runtime support for ambient/directional/point/spot and shadow metadata | Broad promoted support | Partial via default scene/editor UI | `tn scene add-component <scene> <entity> light ...`, registry `scene.set_light` | EDITOR | Typed light command and editor kind/intensity rows exist; broader shadow metadata controls remain partial. |
+| ✅ Lights and shadows | Broad IR/runtime support for ambient/directional/point/spot and shadow metadata | Broad promoted support | Partial via default scene/editor UI | `tn scene add-component <scene> <entity> light ...`, registry `scene.set_light` | EDITOR | Typed light command and editor rows now cover kind, intensity, color, range, angle, shadowBias, and shadowNormalBias; light probes and broader lighting UX remain partial. |
 | ✅ Physics: rigid bodies, colliders, joints | Broad IR/runtime support for rigid bodies, colliders, sensors, character traces, joints metadata | Broad promoted support with residual limits | Partial | `tn scene add-component <scene> <entity> rigid-body|collider|character-controller ...`, generic `set-component` | EDITOR, WEB-BEVY | Typed rigid body/collider/character-controller commands exist; `PhysicsJoint` and remaining runtime parity gaps include full constraints, arbitrary triangle narrow phase, vehicle drivetrain, soft bodies/ragdolls. |
 | ✅ Character controller and navigation | IR/runtime support for character movement, pathfinding, dynamic navmesh, steering | Promoted for current scope | Partial | `tn scene add-component <scene> <entity> character-controller ...` plus scripts/services | EDITOR | Typed character-controller command exists; broader nav setup commands remain partial. |
 | ✅ Input maps | Runtime supports keyboard/mouse/gamepad/touch snapshots and rebinding metadata | Promoted for current scope | Partial | `tn input add-action <input-doc-id> <action-id> --keys ...`; `tn input add-axis <input-doc-id> <axis-id> --negative-keys ... --positive-keys ...` | EDITOR | Keyboard actions and axes now have typed commands/editor rows; richer controls-settings/rebinding metadata and touch/gamepad gesture commands remain gaps. |
@@ -210,7 +214,7 @@ and docs/contracts. Their additional findings sharpen the gaps above:
 | --- | --- | --- |
 | ✅ Operation registry drift | `AUTHORING_OPERATION_REGISTRY` now includes existing structured source operations for asset/audio/input/material/mesh/prefab/scene/system/UI plus typed common ECS component setters. | Keep using the registry as the shared source for new promoted operations. |
 | ✅ Generic vs typed ECS writes | Typed common ECS setters and validators now cover `camera`, `Light`, `MeshRenderer`, `RenderLayers`, `Visibility`, `RigidBody`, `Collider`, and `CharacterController`. | Raw JSON remains available for unsupported/custom components; other runtime components still need promotion before they are first-class. |
-| Read-only editor rows | Asset catalog type/path, scene resource path/value, scene-local prefab primitive/color/asset, and environment path/walkability/source-asset LOD rows now persist through registry-backed editor operations. Remaining read-only families include light probes, existing mesh source primitive details, richer system inspector rows, and light/custom component rows. | Users can still inspect more than the editor UI can safely persist back to durable source, but the rows that already have shared operations no longer drift from the editor surface. |
+| Read-only editor rows | Asset catalog type/path, scene resource path/value, scene-local prefab primitive/color/asset, environment path/walkability/source-asset LOD, and promoted Light rows now persist through registry-backed editor operations. Remaining read-only families include light probes, existing mesh source primitive details, richer system inspector rows, and custom component rows. | Users can still inspect more than the editor UI can safely persist back to durable source, but the rows that already have shared operations no longer drift from the editor surface. |
 | ✅ Asset and audio source gaps | Asset and audio source schemas now have durable mutation commands and registry operations for asset declarations, audio docs, and sound declarations. | Broader import/playback policy remains separate backlog. |
 | ✅ Environment mutation gap | Environment documents are classified/validated, and typed editor/CLI operations now cover skybox, environment map, terrain, path, walkability, and source-asset LOD fields. | Light probes remain inspect-only residuals. |
 | ✅ Prefab catalog emission | Structured prefab source documents now lower into bundle `prefabs.ir.json` with manifest `entry.prefabs`/`files.prefabs` entries and provenance ownership. | Web/Bevy prefab runtime support no longer requires hand-authored catalog bundle entries for source-authored prefabs. |

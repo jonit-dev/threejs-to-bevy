@@ -382,7 +382,7 @@ test("scene-command adds typed ECS components without raw JSON", async () => {
     await mkdir(join(root, "content", "materials"), { recursive: true });
     const material = await writeFile(join(root, "content", "materials", "mat.player.materials.json"), `${JSON.stringify({ schema: "threenative.materials", version: "0.1.0", id: "mat.player", materials: [{ id: "mat.player" }] }, null, 2)}\n`).then(() => ({ exitCode: 0 }));
     const mesh = await sceneCommand(["add-component", "scene.components", "player", "mesh-renderer", "--mesh", "mesh.player", "--material", "mat.player", "--visible", "true", "--project", root, "--json"]);
-    const light = await sceneCommand(["add-component", "scene.components", "player", "light", "--kind", "point", "--intensity", "2", "--color", "#ffeeaa", "--range", "12", "--project", root, "--json"]);
+    const light = await sceneCommand(["add-component", "scene.components", "player", "light", "--kind", "point", "--intensity", "2", "--color", "#ffeeaa", "--range", "12", "--angle", "0.6", "--shadow-bias", "-0.001", "--shadow-normal-bias", "0.02", "--project", root, "--json"]);
     const renderLayers = await sceneCommand(["add-component", "scene.components", "player", "render-layers", "--layers", "gameplay,minimap", "--project", root, "--json"]);
     const rigidBody = await sceneCommand(["add-component", "scene.components", "player", "rigid-body", "--kind", "dynamic", "--mass", "4", "--project", root, "--json"]);
     const visibility = await sceneCommand(["add-component", "scene.components", "player", "visibility", "--visible", "false", "--project", root, "--json"]);
@@ -406,7 +406,7 @@ test("scene-command adds typed ECS components without raw JSON", async () => {
     assert.equal(controller.exitCode, 0);
     assert.equal(validate.exitCode, 0);
     assert.deepEqual(components?.MeshRenderer, { material: "mat.player", mesh: "mesh.player", visible: true });
-    assert.deepEqual(components?.Light, { color: "#ffeeaa", intensity: 2, kind: "point", range: 12 });
+    assert.deepEqual(components?.Light, { angle: 0.6, color: "#ffeeaa", intensity: 2, kind: "point", range: 12, shadowBias: -0.001, shadowNormalBias: 0.02 });
     assert.deepEqual(components?.RenderLayers, { layers: ["gameplay", "minimap"] });
     assert.deepEqual(components?.RigidBody, { kind: "dynamic", mass: 4 });
     assert.deepEqual(components?.Visibility, { visible: false });

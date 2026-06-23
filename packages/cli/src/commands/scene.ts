@@ -440,7 +440,7 @@ function sceneLifecycleUsage(): string {
 }
 
 function sceneAddComponentUsage(): string {
-  return "Usage: tn scene add-component <scene-id> <entity-id> camera [--mode <perspective|orthographic|third-person-follow>] [--target <entity-id>] [--fov-y <n>] [--near <n>] [--far <n>] [--size <n>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> light [--kind <ambient|directional|point|spot>] [--intensity <n>] [--color <css-color>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> mesh-renderer --mesh <mesh-id> --material <material-id> [--visible <true|false>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> render-layers --layers <layer-a,layer-b> [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> visibility [--visible <true|false>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> rigid-body [--kind <dynamic|kinematic|static>] [--mass <n>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> collider [--kind <box|sphere|capsule|cylinder|mesh>] [--size x,y,z] [--radius <n>] [--height <n>] [--trigger <true|false>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> character-controller [--move-x <axis>] [--move-z <axis>] [--speed <n>] [--project <path>] [--json]";
+  return "Usage: tn scene add-component <scene-id> <entity-id> camera [--mode <perspective|orthographic|third-person-follow>] [--target <entity-id>] [--fov-y <n>] [--near <n>] [--far <n>] [--size <n>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> light [--kind <ambient|directional|point|spot>] [--intensity <n>] [--color <css-color>] [--range <n>] [--angle <n>] [--shadow-bias <n>] [--shadow-normal-bias <n>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> mesh-renderer --mesh <mesh-id> --material <material-id> [--visible <true|false>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> render-layers --layers <layer-a,layer-b> [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> visibility [--visible <true|false>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> rigid-body [--kind <dynamic|kinematic|static>] [--mass <n>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> collider [--kind <box|sphere|capsule|cylinder|mesh>] [--size x,y,z] [--radius <n>] [--height <n>] [--trigger <true|false>] [--project <path>] [--json]\n       tn scene add-component <scene-id> <entity-id> character-controller [--move-x <axis>] [--move-z <axis>] [--speed <n>] [--project <path>] [--json]";
 }
 
 function parseTypedComponent(
@@ -471,7 +471,7 @@ function parseTypedComponent(
     };
   }
   if (normalized === "light") {
-    const numbers = parseNumberFlags(argv, ["--intensity", "--range", "--angle"]);
+    const numbers = parseNumberFlags(argv, ["--intensity", "--range", "--angle", "--shadow-bias", "--shadow-normal-bias"]);
     if (numbers.diagnostic !== undefined) {
       return { apply: neverApply, componentKind: "Light", diagnostic: numbers.diagnostic, usage: "Light numeric flags must be finite numbers." };
     }
@@ -486,6 +486,8 @@ function parseTypedComponent(
         projectPath,
         range: numbers.values["--range"],
         sceneId,
+        shadowBias: numbers.values["--shadow-bias"],
+        shadowNormalBias: numbers.values["--shadow-normal-bias"],
       }),
     };
   }

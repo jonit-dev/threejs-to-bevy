@@ -247,6 +247,8 @@ export interface ISetLightComponentOptions extends IAuthoringOperationContext {
   color?: string;
   range?: number;
   angle?: number;
+  shadowBias?: number;
+  shadowNormalBias?: number;
 }
 
 export interface ISetMeshRendererComponentOptions extends IAuthoringOperationContext {
@@ -1223,6 +1225,8 @@ export async function setLightComponent(options: ISetLightComponentOptions): Pro
       kind: options.kind ?? "directional",
       ...(options.range === undefined ? {} : { range: options.range }),
       ...(options.angle === undefined ? {} : { angle: options.angle }),
+      ...(options.shadowBias === undefined ? {} : { shadowBias: options.shadowBias }),
+      ...(options.shadowNormalBias === undefined ? {} : { shadowNormalBias: options.shadowNormalBias }),
     },
   });
 }

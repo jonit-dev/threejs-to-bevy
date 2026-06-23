@@ -419,9 +419,25 @@ function objectInspectorRows(input: {
     const lightKind = readString(input.lightData.kind) ?? "directional";
     const lightIntensity = typeof input.lightData.intensity === "number" && Number.isFinite(input.lightData.intensity) ? input.lightData.intensity : 1;
     const lightColor = readString(input.lightData.color) ?? "#ffffff";
+    const lightArgs = {
+      angle: readNumber(input.lightData.angle),
+      color: lightColor,
+      entityId: input.entityId,
+      intensity: lightIntensity,
+      kind: lightKind,
+      range: readNumber(input.lightData.range),
+      sceneId: input.sceneId,
+      shadowBias: readNumber(input.lightData.shadowBias),
+      shadowNormalBias: readNumber(input.lightData.shadowNormalBias),
+    };
     rows.push(
-      inspectorRow({ component: "Light", defaultValue: "directional", fieldKind: "enum", id: "inspect:light-kind", input, jsonPointer: `/entities/${input.entityId}/components/Light/kind`, label: "Kind", operation: { args: { color: lightColor, entityId: input.entityId, intensity: lightIntensity, sceneId: input.sceneId }, name: "scene.set_light", valueArg: "kind" }, options: ["ambient", "directional", "point", "spot"], readOnly: false, value: lightKind }),
-      inspectorRow({ component: "Light", defaultValue: 1, fieldKind: "number", id: "inspect:light-intensity", input, jsonPointer: `/entities/${input.entityId}/components/Light/intensity`, label: "Intensity", operation: { args: { color: lightColor, entityId: input.entityId, kind: lightKind, sceneId: input.sceneId }, name: "scene.set_light", valueArg: "intensity" }, readOnly: false, value: formatScalar(input.lightData.intensity, "1") }),
+      inspectorRow({ component: "Light", defaultValue: "directional", fieldKind: "enum", id: "inspect:light-kind", input, jsonPointer: `/entities/${input.entityId}/components/Light/kind`, label: "Kind", operation: { args: lightArgs, name: "scene.set_light", valueArg: "kind" }, options: ["ambient", "directional", "point", "spot"], readOnly: false, value: lightKind }),
+      inspectorRow({ component: "Light", defaultValue: 1, fieldKind: "number", id: "inspect:light-intensity", input, jsonPointer: `/entities/${input.entityId}/components/Light/intensity`, label: "Intensity", operation: { args: lightArgs, name: "scene.set_light", valueArg: "intensity" }, readOnly: false, value: formatScalar(input.lightData.intensity, "1") }),
+      inspectorRow({ component: "Light", defaultValue: "#ffffff", fieldKind: "color", id: "inspect:light-color", input, jsonPointer: `/entities/${input.entityId}/components/Light/color`, label: "Color", operation: { args: lightArgs, name: "scene.set_light", valueArg: "color" }, readOnly: false, value: lightColor }),
+      inspectorRow({ component: "Light", fieldKind: "number", id: "inspect:light-range", input, jsonPointer: `/entities/${input.entityId}/components/Light/range`, label: "Range", operation: { args: lightArgs, name: "scene.set_light", valueArg: "range" }, readOnly: false, value: formatScalar(input.lightData.range, "") }),
+      inspectorRow({ component: "Light", fieldKind: "number", id: "inspect:light-angle", input, jsonPointer: `/entities/${input.entityId}/components/Light/angle`, label: "Angle", operation: { args: lightArgs, name: "scene.set_light", valueArg: "angle" }, readOnly: false, value: formatScalar(input.lightData.angle, "") }),
+      inspectorRow({ component: "Light", fieldKind: "number", id: "inspect:light-shadow-bias", input, jsonPointer: `/entities/${input.entityId}/components/Light/shadowBias`, label: "Shadow Bias", operation: { args: lightArgs, name: "scene.set_light", valueArg: "shadowBias" }, readOnly: false, value: formatScalar(input.lightData.shadowBias, "") }),
+      inspectorRow({ component: "Light", fieldKind: "number", id: "inspect:light-shadow-normal-bias", input, jsonPointer: `/entities/${input.entityId}/components/Light/shadowNormalBias`, label: "Shadow Normal Bias", operation: { args: lightArgs, name: "scene.set_light", valueArg: "shadowNormalBias" }, readOnly: false, value: formatScalar(input.lightData.shadowNormalBias, "") }),
     );
   }
 
