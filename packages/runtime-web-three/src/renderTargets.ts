@@ -9,6 +9,7 @@ export interface IRenderTargetEntry {
   height: number;
   target: THREE.WebGLRenderTarget;
   texture: THREE.Texture;
+  usage: "color" | "depth";
   width: number;
 }
 
@@ -35,30 +36,57 @@ export function createRenderTargetRegistry(
   const entries = new Map<string, IRenderTargetEntry>();
   const diagnostics: IRuntimeDiagnostic[] = [];
   for (const asset of assets.assets) {
-    if (asset.kind !== "render-target" || asset.usage !== "color") {
+    if (asset.kind !== "render-target") {
       continue;
     }
-    const target = new THREE.WebGLRenderTarget(asset.width, asset.height, {
-      format: THREE.RGBAFormat,
-      magFilter: THREE.LinearFilter,
-      minFilter: THREE.LinearFilter,
-      type: THREE.UnsignedByteType,
-    });
-    target.texture.name = asset.id;
-    target.texture.userData = {
-      ...target.texture.userData,
-      threenativeAssetId: asset.id,
-      threenativeRenderTarget: true,
-    };
+    const target = asset.usage === "depth" ? createDepthRenderTarget(asset) : createColorRenderTarget(asset);
     entries.set(asset.id, {
       assetId: asset.id,
       height: asset.height,
       target,
-      texture: target.texture,
+      texture: asset.usage === "depth" && target.depthTexture !== null ? target.depthTexture : target.texture,
+      usage: asset.usage,
       width: asset.width,
     });
   }
   return { diagnostics, entries };
+}
+
+function createColorRenderTarget(asset: Extract<IAssetIr, { kind: "render-target" }>): THREE.WebGLRenderTarget {
+  const target = new THREE.WebGLRenderTarget(asset.width, asset.height, {
+    format: THREE.RGBAFormat,
+    magFilter: THREE.LinearFilter,
+    minFilter: THREE.LinearFilter,
+    type: THREE.UnsignedByteType,
+  });
+  target.texture.name = asset.id;
+  target.texture.userData = {
+    ...target.texture.userData,
+    threenativeAssetId: asset.id,
+    threenativeRenderTarget: true,
+  };
+  return target;
+}
+
+function createDepthRenderTarget(asset: Extract<IAssetIr, { kind: "render-target" }>): THREE.WebGLRenderTarget {
+  const depthTexture = new THREE.DepthTexture(asset.width, asset.height, THREE.UnsignedIntType);
+  depthTexture.format = THREE.DepthFormat;
+  depthTexture.name = asset.id;
+  depthTexture.userData = {
+    ...depthTexture.userData,
+    threenativeAssetId: asset.id,
+    threenativeRenderTarget: true,
+    threenativeRenderTargetUsage: "depth",
+  };
+  const target = new THREE.WebGLRenderTarget(asset.width, asset.height, {
+    format: THREE.RGBAFormat,
+    magFilter: THREE.LinearFilter,
+    minFilter: THREE.LinearFilter,
+    type: THREE.UnsignedByteType,
+  });
+  target.depthTexture = depthTexture;
+  target.texture.name = `${asset.id}:color`;
+  return target;
 }
 
 export function bindRenderTargetTextures(
@@ -97,7 +125,7 @@ export function bindRenderTargetTextures(
       }
       for (const [slot, assetId] of slots.entries()) {
         const entry = registry.entries.get(assetId);
-        if (entry === undefined) {
+        if (entry === undefined || entry.usage !== "color") {
           continue;
         }
         if (slot === "baseColorTexture") {
@@ -127,8 +155,8 @@ export function renderTargetCameraPasses(
 ): string[] {
   updateCameraHelpers(world, mapped.objectsById, delta);
   const rendered: string[] = [];
-  const textureViews = mapped.cameraViews
-    .filter((view) => view.targetKind === "texture")
+  const targetViews = mapped.cameraViews
+    .filter((view) => view.targetKind === "texture" || view.targetKind === "depth")
     .sort((left, right) => {
       if (left.order !== right.order) {
         return left.order - right.order;
@@ -140,7 +168,7 @@ export function renderTargetCameraPasses(
   const previousAutoClear = renderer.autoClear;
   const sceneBackground = mapped.scene.background instanceof THREE.Color ? mapped.scene.background : new THREE.Color("#111318");
 
-  for (const view of textureViews) {
+  for (const view of targetViews) {
     const assetId = view.targetAsset;
     if (assetId === undefined) {
       continue;

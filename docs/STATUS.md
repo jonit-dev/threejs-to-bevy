@@ -741,7 +741,11 @@ selects the `wry` backend; default builds fail fast with
 host.
 
 V8-06 camera helpers, multi-view rendering, render targets, custom projections,
-and screenshot export are implemented with shared conformance and visual evidence:
+and screenshot export are implemented with shared conformance and visual evidence.
+Runtime render-target allocation now covers declared color targets and write-only
+depth targets in both web and Bevy adapters; depth target material sampling
+remains rejected by IR validation until a portable sampling/writeback contract is
+promoted. The camera-view gate
 `pnpm verify:v8:camera-views` builds `examples/v8-camera-views`, validates the
 bundle, captures web/native screenshots with viewport-region checks, and writes
 artifacts under `examples/v8-camera-views/artifacts/camera-views/`. The shared conformance fixture is

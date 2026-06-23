@@ -13,6 +13,17 @@ test("should render a target camera before material sampling", () => {
     version: "0.1.0",
     entities: [
       {
+        id: "camera.depth",
+        components: {
+          Camera: {
+            far: 100,
+            kind: "perspective",
+            near: 0.1,
+            target: { asset: "rt.depth", kind: "depth" },
+          },
+        },
+      },
+      {
         id: "camera.monitor",
         components: {
           Camera: {
@@ -45,7 +56,7 @@ test("should render a target camera before material sampling", () => {
     ],
     resources: {
       ActiveCameras: {
-        cameras: [{ entity: "camera.monitor" }, { entity: "camera.main" }],
+        cameras: [{ entity: "camera.depth" }, { entity: "camera.monitor" }, { entity: "camera.main" }],
       },
     },
   };
@@ -55,6 +66,7 @@ test("should render a target camera before material sampling", () => {
       schema: "threenative.assets",
       version: "0.1.0",
       assets: [
+        { format: "depth24plus", height: 96, id: "rt.depth", kind: "render-target", usage: "depth", width: 128 },
         { format: "rgba8", height: 128, id: "rt.monitor", kind: "render-target", usage: "color", width: 128 },
         { id: "mesh.box", kind: "mesh", format: "generated", primitive: "box" },
       ],
@@ -89,10 +101,17 @@ test("should render a target camera before material sampling", () => {
     {
       schema: "threenative.assets",
       version: "0.1.0",
-      assets: [{ format: "rgba8", height: 128, id: "rt.monitor", kind: "render-target", usage: "color", width: 128 }],
+      assets: [
+        { format: "depth24plus", height: 96, id: "rt.depth", kind: "render-target", usage: "depth", width: 128 },
+        { format: "rgba8", height: 128, id: "rt.monitor", kind: "render-target", usage: "color", width: 128 },
+      ],
     },
     renderer,
   );
+  const depthEntry = registry.entries.get("rt.depth");
+  assert.equal(depthEntry?.usage, "depth");
+  assert.equal(depthEntry?.target.depthTexture?.name, "rt.depth");
+  assert.equal(depthEntry?.texture, depthEntry?.target.depthTexture);
 
   const renderTargets: Array<THREE.WebGLRenderTarget | null> = [];
   const backbufferCalls: string[] = [];
@@ -108,7 +127,8 @@ test("should render a target camera before material sampling", () => {
   }) as typeof renderer.render;
 
   const targetCameras = renderTargetCameraPasses(renderer, mapped, world, registry);
-  assert.deepEqual(targetCameras, ["camera.monitor"]);
-  assert.equal(renderTargets[0]?.texture.name, "rt.monitor");
+  assert.deepEqual(targetCameras, ["camera.depth", "camera.monitor"]);
+  assert.equal(renderTargets[0]?.depthTexture?.name, "rt.depth");
+  assert.equal(renderTargets[1]?.texture.name, "rt.monitor");
   assert.equal(backbufferCalls.length, 0);
 });

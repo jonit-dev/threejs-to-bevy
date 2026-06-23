@@ -34,30 +34,19 @@ pub fn allocate_render_targets(
     let mut images = world.resource_mut::<Assets<Image>>();
     let mut registry = NativeRenderTargetRegistry::default();
     for asset in &bundle.assets.assets {
-        if asset.kind != "render-target" || asset.usage.as_deref() != Some("color") {
+        if asset.kind != "render-target" {
             continue;
         }
         let width = asset.width.unwrap_or(256.0).max(1.0) as u32;
         let height = asset.height.unwrap_or(256.0).max(1.0) as u32;
-        let format = match asset.format.as_str() {
-            "rgba16f" => TextureFormat::Rgba16Float,
-            _ => TextureFormat::Rgba8UnormSrgb,
-        };
+        let format = render_target_format(asset);
         let size = Extent3d {
             width,
             height,
             depth_or_array_layers: 1,
         };
-        let mut image = Image::new_fill(
-            size,
-            TextureDimension::D2,
-            &[0, 0, 0, 255],
-            format,
-            RenderAssetUsages::RENDER_WORLD | RenderAssetUsages::MAIN_WORLD,
-        );
-        image.texture_descriptor.usage = TextureUsages::RENDER_ATTACHMENT
-            | TextureUsages::TEXTURE_BINDING
-            | TextureUsages::COPY_SRC;
+        let mut image = render_target_image(asset, size, format);
+        image.texture_descriptor.usage = render_target_texture_usages(asset);
         let handle = images.add(image);
         registry.images.insert(asset.id.clone(), handle);
     }
@@ -70,7 +59,7 @@ pub fn camera_render_target(
     registry: &NativeRenderTargetRegistry,
 ) -> Option<RenderTarget> {
     let target = camera.target.as_ref()?;
-    if target.kind != "texture" {
+    if target.kind != "texture" && target.kind != "depth" {
         return None;
     }
     let asset_id = target.asset.as_ref()?;
@@ -86,11 +75,46 @@ pub fn render_target_descriptor(asset: &AssetIr) -> Option<(u32, u32, TextureFor
     }
     let width = asset.width.unwrap_or(256.0).max(1.0) as u32;
     let height = asset.height.unwrap_or(256.0).max(1.0) as u32;
-    let format = match asset.format.as_str() {
-        "rgba16f" => TextureFormat::Rgba16Float,
-        _ => TextureFormat::Rgba8UnormSrgb,
-    };
+    let format = render_target_format(asset);
     Some((width, height, format))
+}
+
+fn render_target_format(asset: &AssetIr) -> TextureFormat {
+    match asset.usage.as_deref() {
+        Some("depth") => TextureFormat::Depth24Plus,
+        _ => match asset.format.as_str() {
+            "rgba16f" => TextureFormat::Rgba16Float,
+            _ => TextureFormat::Rgba8UnormSrgb,
+        },
+    }
+}
+
+fn render_target_texture_usages(asset: &AssetIr) -> TextureUsages {
+    let base = TextureUsages::RENDER_ATTACHMENT | TextureUsages::COPY_SRC;
+    if asset.usage.as_deref() == Some("depth") {
+        base
+    } else {
+        base | TextureUsages::TEXTURE_BINDING
+    }
+}
+
+fn render_target_image(asset: &AssetIr, size: Extent3d, format: TextureFormat) -> Image {
+    if asset.usage.as_deref() == Some("depth") {
+        let mut image = Image::default();
+        image.data = vec![0; (size.width * size.height * size.depth_or_array_layers * 4) as usize];
+        image.texture_descriptor.dimension = TextureDimension::D2;
+        image.texture_descriptor.size = size;
+        image.texture_descriptor.format = format;
+        image.asset_usage = RenderAssetUsages::RENDER_WORLD | RenderAssetUsages::MAIN_WORLD;
+        return image;
+    }
+    Image::new_fill(
+        size,
+        TextureDimension::D2,
+        &[0, 0, 0, 255],
+        format,
+        RenderAssetUsages::RENDER_WORLD | RenderAssetUsages::MAIN_WORLD,
+    )
 }
 
 pub fn list_screenshot_exports(bundle: &LoadedBundle) -> Vec<ScreenshotExportDeclaration> {

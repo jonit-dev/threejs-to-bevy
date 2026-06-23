@@ -299,6 +299,7 @@ ergonomics. These rows are not implementation claims.
 - [x] `P1` Multiple active cameras, camera ordering, and split-screen
 - [x] `P1` Viewports, sub-views, and render layers
 - [x] `P2` Render-to-texture and depth-only camera targets
+- [x] Web/Bevy runtime allocation for declared color and write-only depth render targets
 - [x] `P3` Custom projections
 - [x] `P1` Camera effects: screen shake, orbit, pan, zoom, and view models
 - [x] `P2` Screenshot/export camera workflows
