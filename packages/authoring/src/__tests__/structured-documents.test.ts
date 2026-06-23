@@ -71,6 +71,11 @@ test("loads mixed authoring source document family", async () => {
       id: "kart-input",
       actions: [{ id: "accelerate", bindings: ["keyboard.w"] }],
       axes: [{ id: "MoveX", negative: ["keyboard.a"], positive: ["keyboard.d"], value: "gamepad.leftStickX" }],
+      controlsSettings: {
+        profileId: "default",
+        rows: [{ actionOrAxisId: "accelerate", defaultBindings: ["keyboard.w"], kind: "action", uiNodeId: "settings.accelerate" }],
+      },
+      persistedBindingOverrides: [{ actionOrAxisId: "accelerate", control: "KeyUp", device: "keyboard", profileId: "default", updatedAt: "2026-06-23T00:00:00.000Z" }],
     });
     await writeSourceDocument(root, "content/environment/kart.environment.json", {
       schema: "threenative.environment-scene",
@@ -254,6 +259,33 @@ test("validates input axis source fields", async () => {
       result.diagnostics.map((diagnostic) => diagnostic.path),
       ["/axes/0/positive", "/axes/0/value"],
     );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("validates input controls and override source metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-authoring-input-controls-invalid-"));
+  try {
+    await writeSourceDocument(root, "content/input/kart.input.json", {
+      schema: "threenative.input",
+      version: "0.1.0",
+      id: "kart-input",
+      actions: [{ id: "accelerate", bindings: ["keyboard.w"] }],
+      controlsSettings: {
+        profileId: "default",
+        rows: [{ actionOrAxisId: "Missing", defaultBindings: ["keyboard.w"], kind: "axis" }],
+      },
+      persistedBindingOverrides: [{ actionOrAxisId: "accelerate", control: "", device: "keyboard", profileId: "default", updatedAt: "" }],
+    });
+
+    const result = await validateAuthoringProject({ projectPath: root });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "/controlsSettings/rows/0/axisSlot"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "/controlsSettings/rows/0/actionOrAxisId"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "/persistedBindingOverrides/0/control"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.path === "/persistedBindingOverrides/0/updatedAt"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

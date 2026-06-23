@@ -19,7 +19,7 @@ export const sceneDocumentKeys = new Set(["schema", "version", "id", "kind", "ac
 export const uiDocumentKeys = new Set(["schema", "version", "id", "nodes", "bindings", "provenance"]);
 export const materialDocumentKeys = new Set(["schema", "version", "id", "materials", "provenance"]);
 export const assetDocumentKeys = new Set(["schema", "version", "id", "assets", "provenance"]);
-export const inputDocumentKeys = new Set(["schema", "version", "id", "actions", "axes", "provenance"]);
+export const inputDocumentKeys = new Set(["schema", "version", "id", "actions", "axes", "controlsSettings", "persistedBindingOverrides", "provenance"]);
 export const environmentDocumentKeys = new Set(["schema", "version", "id", "atmosphere", "bookmarks", "controller", "environmentMap", "exclusionZones", "instances", "lightProbes", "path", "referenceImage", "scatter", "skybox", "sourceAssets", "terrain", "walkability", "provenance"]);
 export const projectDocumentKeys = new Set(["schema", "version", "id", "authoringVersion", "buildTargets", "sourceRoots", "provenance"]);
 export const runtimeDocumentKeys = new Set(["schema", "version", "id", "renderer", "time", "window", "provenance"]);
@@ -85,6 +85,9 @@ export const materialKeys = new Set([
 export const assetKeys = new Set(["animationGraph", "animations", "format", "height", "id", "particleEmitters", "path", "sampleCount", "type", "usage", "width"]);
 export const inputActionKeys = new Set(["id", "bindings"]);
 export const inputAxisKeys = new Set(["id", "negative", "positive", "value"]);
+export const inputControlsSettingsKeys = new Set(["profileId", "rows"]);
+export const inputControlsSettingsRowKeys = new Set(["actionOrAxisId", "axisSlot", "captureState", "defaultBindings", "kind", "uiNodeId"]);
+export const inputPersistedBindingOverrideKeys = new Set(["actionOrAxisId", "axisSlot", "control", "deadzone", "device", "modifiers", "profileId", "scale", "updatedAt"]);
 export const audioSoundKeys = new Set(["id", "asset"]);
 export const meshKeys = new Set(["attributes", "id", "indices", "kind", "primitive", "storage"]);
 export const supportedGeneratorOverwritePolicies = new Set(["manual", "replace", "skip"]);
@@ -112,6 +115,10 @@ export const supportedSceneLifecycleKinds = new Set(["credits", "cutscene", "lev
 export const supportedUiNodeTypes = new Set(["bar", "button", "column", "image", "row", "slider", "stack", "text"]);
 export const supportedUiTextAlignments = new Set(["center", "left", "right"]);
 export const supportedUiTextDecorations = new Set(["lineThrough", "none", "underline"]);
+export const supportedInputCaptureStates = new Set(["applied", "conflict-confirmation", "idle", "rejected", "reset-to-default", "waiting-for-input"]);
+export const supportedInputOverrideDevices = new Set(["gamepad", "keyboard", "pointer", "touch"]);
+export const supportedInputRebindKinds = new Set(["action", "axis"]);
+export const supportedInputAxisSlots = new Set(["negative", "positive", "value"]);
 
 export const logicalIdPattern = /^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/;
 export const ecsIdPattern = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
@@ -326,6 +333,8 @@ export interface IInputDocument {
   id: string;
   actions?: IInputActionDeclaration[];
   axes?: IInputAxisDeclaration[];
+  controlsSettings?: IInputControlsSettings;
+  persistedBindingOverrides?: IInputPersistedBindingOverride[];
 }
 
 export interface IInputActionDeclaration {
@@ -338,6 +347,32 @@ export interface IInputAxisDeclaration {
   negative?: string[];
   positive?: string[];
   value?: string;
+}
+
+export interface IInputControlsSettings {
+  profileId: string;
+  rows: IInputControlsSettingsRow[];
+}
+
+export interface IInputControlsSettingsRow {
+  actionOrAxisId: string;
+  axisSlot?: "negative" | "positive" | "value";
+  captureState?: "applied" | "conflict-confirmation" | "idle" | "rejected" | "reset-to-default" | "waiting-for-input";
+  defaultBindings: string[];
+  kind: "action" | "axis";
+  uiNodeId?: string;
+}
+
+export interface IInputPersistedBindingOverride {
+  actionOrAxisId: string;
+  axisSlot?: "negative" | "positive" | "value";
+  control: string;
+  deadzone?: number;
+  device: "gamepad" | "keyboard" | "pointer" | "touch";
+  modifiers?: string[];
+  profileId: string;
+  scale?: number;
+  updatedAt: string;
 }
 
 export interface ISystemsDocument {

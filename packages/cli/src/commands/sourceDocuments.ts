@@ -31,6 +31,8 @@ import {
   setEnvironmentSourceAssetLod,
   setEnvironmentTerrain,
   setEnvironmentWalkability,
+  setInputBindingOverride,
+  setInputControls,
   addResourceDocumentEntry,
   setRuntimeRendering,
   setRuntimeWindow,
@@ -424,7 +426,55 @@ export async function inputCommand(argv: readonly string[], options: ISourceComm
     return renderAuthoringResult("input", await addInputAxis({ axisId, inputDocId, negativeKeys, positiveKeys, projectPath, value: readFlag(normalizedArgv, "--value") }), json, `Input axis '${axisId}' added.`);
   }
 
-  return renderUsage(json, "TN_INPUT_COMMAND_UNKNOWN", "Usage: tn input add-action|add-axis ... [--json]");
+  if (subcommand === "set-controls") {
+    const profileId = readFlag(normalizedArgv, "--profile");
+    const rows = parseJsonFlag(normalizedArgv, "--rows");
+    if (rows.diagnostic !== undefined) {
+      return renderUsage(json, rows.diagnostic, "Input --rows must be valid JSON.");
+    }
+    if (inputDocId === undefined || profileId === undefined || !Array.isArray(rows.value) || !rows.value.every(isRecord)) {
+      return renderUsage(json, "TN_INPUT_SET_CONTROLS_ARGS_MISSING", "Usage: tn input set-controls <input-doc-id> --profile <profile-id> --rows <json-array> [--project <path>] [--json]");
+    }
+    return renderAuthoringResult("input", await setInputControls({ inputDocId, profileId, projectPath, rows: rows.value }), json, `Input controls metadata '${profileId}' updated.`);
+  }
+
+  if (subcommand === "set-override") {
+    const actionOrAxisId = readPositional(normalizedArgv, 2);
+    const profileId = readFlag(normalizedArgv, "--profile");
+    const device = readFlag(normalizedArgv, "--device");
+    const control = readFlag(normalizedArgv, "--control");
+    const deadzone = parseOptionalNumber(normalizedArgv, "--deadzone");
+    const scale = parseOptionalNumber(normalizedArgv, "--scale");
+    if (deadzone.diagnostic !== undefined) {
+      return renderUsage(json, deadzone.diagnostic, "Input --deadzone must be a finite number.");
+    }
+    if (scale.diagnostic !== undefined) {
+      return renderUsage(json, scale.diagnostic, "Input --scale must be a finite number.");
+    }
+    if (inputDocId === undefined || actionOrAxisId === undefined || profileId === undefined || device === undefined || control === undefined) {
+      return renderUsage(json, "TN_INPUT_SET_OVERRIDE_ARGS_MISSING", "Usage: tn input set-override <input-doc-id> <action-or-axis-id> --profile <profile-id> --device <keyboard|gamepad|pointer|touch> --control <control> [--axis-slot <negative|positive|value>] [--updated-at <iso>] [--deadzone <n>] [--scale <n>] [--modifiers <a,b>] [--project <path>] [--json]");
+    }
+    return renderAuthoringResult(
+      "input",
+      await setInputBindingOverride({
+        actionOrAxisId,
+        axisSlot: readFlag(normalizedArgv, "--axis-slot"),
+        control,
+        deadzone: deadzone.value,
+        device,
+        inputDocId,
+        modifiers: readCsvFlag(normalizedArgv, "--modifiers"),
+        profileId,
+        projectPath,
+        scale: scale.value,
+        updatedAt: readFlag(normalizedArgv, "--updated-at"),
+      }),
+      json,
+      `Input override '${actionOrAxisId}' updated.`,
+    );
+  }
+
+  return renderUsage(json, "TN_INPUT_COMMAND_UNKNOWN", "Usage: tn input add-action|add-axis|set-controls|set-override ... [--json]");
 }
 
 export async function audioCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {

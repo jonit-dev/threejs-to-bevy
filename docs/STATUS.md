@@ -123,7 +123,8 @@ nodes, add/update retained UI widget nodes, set centered layout and promoted
 style fields, bind UI resources, create/update material color, roughness,
 metalness, emissive, alpha, promoted texture-slot, clearcoat,
 and transmission fields, declare primitive mesh source docs, create prefab docs
-and component values, add input actions and axes from key lists, add asset catalog
+and component values, add input actions and axes from key lists, set input
+controls-settings rows and persisted binding overrides, add asset catalog
 entries, create audio docs, add audio sound declarations, add zero-field ECS tag
 components and `SceneContainer` group entities to scene source, and create
 systems with module/export script references. Systems source commands and editor
@@ -169,6 +170,10 @@ JSON, while `tn physics add-rigid-body`, `tn physics add-collider`, and
 physics/navigation source components; camera operations now preserve promoted projection/frustum fields
 (`fovY`, `near`, `far`, and orthographic `size`) through source builds, and the
 shared registry exposes the matching `scene.set_*` operations.
+Structured input documents now lower controls-settings metadata and persisted
+binding overrides into `input.ir.json` through `tn input set-controls`,
+`tn input set-override`, and registry-backed `input.set_controls` /
+`input.set_override`, alongside the existing action and axis source rows.
 Reusable `threenative.resources` source documents now give shared gameplay
 state/defaults their own durable source family through `tn resources
 create|add|set` and registry-backed `resources.*` operations. Reusable

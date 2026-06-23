@@ -44,6 +44,8 @@ import {
   setEnvironmentSourceAssetLod,
   setEnvironmentTerrain,
   setEnvironmentWalkability,
+  setInputBindingOverride,
+  setInputControls,
   setLightComponent,
   setMaterial,
   setMeshRendererComponent,
@@ -81,6 +83,8 @@ export type AuthoringOperationName =
   | "generator.record"
   | "input.add_action"
   | "input.add_axis"
+  | "input.set_controls"
+  | "input.set_override"
   | "material.create"
   | "material.set"
   | "mesh.create_custom"
@@ -232,6 +236,23 @@ const descriptors = [
     stringArrayArg("negativeKeys"),
     stringArrayArg("positiveKeys"),
     stringArg("value", false),
+  ]),
+  descriptor("input.set_controls", "Set input controls/rebinding metadata rows in a structured input document.", "input", "source-document", [
+    stringArg("inputDocId"),
+    stringArg("profileId"),
+    objectArrayArg("rows"),
+  ]),
+  descriptor("input.set_override", "Add or replace a persisted input binding override.", "input", "source-document", [
+    stringArg("inputDocId"),
+    stringArg("actionOrAxisId"),
+    stringArg("axisSlot", false),
+    stringArg("control"),
+    numberArg("deadzone", false),
+    stringArg("device"),
+    stringArrayArg("modifiers", false),
+    stringArg("profileId"),
+    numberArg("scale", false),
+    stringArg("updatedAt", false),
   ]),
   descriptor("material.create", "Create a structured material source document.", "material", "source-document", [
     stringArg("materialId"),
@@ -595,6 +616,10 @@ const dispatchers: Record<AuthoringOperationName, OperationDispatcher> = {
     addInputAction({ actionId: requiredString(args, "actionId"), inputDocId: requiredString(args, "inputDocId"), keys: requiredStringArray(args, "keys"), projectPath }),
   "input.add_axis": async ({ args, projectPath }) =>
     addInputAxis({ axisId: requiredString(args, "axisId"), inputDocId: requiredString(args, "inputDocId"), negativeKeys: requiredStringArray(args, "negativeKeys"), positiveKeys: requiredStringArray(args, "positiveKeys"), projectPath, value: optionalString(args, "value") }),
+  "input.set_controls": async ({ args, projectPath }) =>
+    setInputControls({ inputDocId: requiredString(args, "inputDocId"), profileId: requiredString(args, "profileId"), projectPath, rows: requiredObjectArray(args, "rows") }),
+  "input.set_override": async ({ args, projectPath }) =>
+    setInputBindingOverride({ actionOrAxisId: requiredString(args, "actionOrAxisId"), axisSlot: optionalString(args, "axisSlot"), control: requiredString(args, "control"), deadzone: optionalNumber(args, "deadzone"), device: requiredString(args, "device"), inputDocId: requiredString(args, "inputDocId"), modifiers: optionalStringArray(args, "modifiers"), profileId: requiredString(args, "profileId"), projectPath, scale: optionalNumber(args, "scale"), updatedAt: optionalString(args, "updatedAt") }),
   "material.create": async ({ args, projectPath }) =>
     createMaterial({ materialId: requiredString(args, "materialId"), projectPath }),
   "material.set": async ({ args, projectPath }) =>

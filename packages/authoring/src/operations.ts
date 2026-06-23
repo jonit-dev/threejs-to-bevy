@@ -22,8 +22,11 @@ import {
   generatorDocumentSchema,
   inputAxisKeys,
   inputActionKeys,
+  inputControlsSettingsKeys,
+  inputControlsSettingsRowKeys,
   inputDocumentKeys,
   inputDocumentSchema,
+  inputPersistedBindingOverrideKeys,
   lightComponentKeys,
   logicalIdPattern,
   materialDocumentKeys,
@@ -65,6 +68,10 @@ import {
   supportedColliderKinds,
   supportedComponentKinds,
   supportedGeneratorOverwritePolicies,
+  supportedInputAxisSlots,
+  supportedInputCaptureStates,
+  supportedInputOverrideDevices,
+  supportedInputRebindKinds,
   supportedLightKinds,
   supportedMaterialAlphaModes,
   supportedRendererAntialiasModes,
@@ -605,6 +612,25 @@ export interface IAddInputAxisOptions extends IAuthoringOperationContext {
   negativeKeys: readonly string[];
   positiveKeys: readonly string[];
   value?: string;
+}
+
+export interface ISetInputControlsOptions extends IAuthoringOperationContext {
+  inputDocId: string;
+  profileId: string;
+  rows: Record<string, unknown>[];
+}
+
+export interface ISetInputBindingOverrideOptions extends IAuthoringOperationContext {
+  inputDocId: string;
+  actionOrAxisId: string;
+  axisSlot?: string;
+  control: string;
+  deadzone?: number;
+  device: string;
+  modifiers?: readonly string[];
+  profileId: string;
+  scale?: number;
+  updatedAt?: string;
 }
 
 export interface IAddAssetOptions extends IAuthoringOperationContext {
@@ -2052,6 +2078,60 @@ export async function addInputAxis(options: IAddInputAxisOptions): Promise<IAuth
   });
 }
 
+export async function setInputControls(options: ISetInputControlsOptions): Promise<IAuthoringOperationResult> {
+  return upsertSourceDocument({
+    projectPath: options.projectPath,
+    kind: "input",
+    id: options.inputDocId,
+    file: `content/input/${options.inputDocId}.input.json`,
+    emptyData: { schema: inputDocumentSchema, version: "0.1.0", id: options.inputDocId, actions: [], axes: [] },
+    apply: (data) => {
+      data.controlsSettings = {
+        profileId: options.profileId,
+        rows: [...options.rows].sort((left, right) => inputControlsRowSortKey(left).localeCompare(inputControlsRowSortKey(right))),
+      };
+    },
+  });
+}
+
+export async function setInputBindingOverride(options: ISetInputBindingOverrideOptions): Promise<IAuthoringOperationResult> {
+  return upsertSourceDocument({
+    projectPath: options.projectPath,
+    kind: "input",
+    id: options.inputDocId,
+    file: `content/input/${options.inputDocId}.input.json`,
+    emptyData: { schema: inputDocumentSchema, version: "0.1.0", id: options.inputDocId, actions: [], axes: [] },
+    apply: (data) => {
+      const overrides = ensureArrayProperty(data, "persistedBindingOverrides");
+      const next = {
+        actionOrAxisId: options.actionOrAxisId,
+        ...(options.axisSlot === undefined ? {} : { axisSlot: options.axisSlot }),
+        control: options.control,
+        ...(options.deadzone === undefined ? {} : { deadzone: options.deadzone }),
+        device: options.device,
+        ...(options.modifiers === undefined ? {} : { modifiers: [...options.modifiers].sort() }),
+        profileId: options.profileId,
+        ...(options.scale === undefined ? {} : { scale: options.scale }),
+        updatedAt: options.updatedAt ?? new Date(0).toISOString(),
+      };
+      const existingIndex = overrides.findIndex((override) =>
+        isRecord(override)
+        && override.profileId === next.profileId
+        && override.actionOrAxisId === next.actionOrAxisId
+        && override.axisSlot === next.axisSlot
+        && override.device === next.device
+        && override.control === next.control
+      );
+      if (existingIndex === -1) {
+        overrides.push(next);
+      } else {
+        overrides[existingIndex] = next;
+      }
+      overrides.sort((left, right) => inputOverrideSortKey(left).localeCompare(inputOverrideSortKey(right)));
+    },
+  });
+}
+
 export async function addAsset(options: IAddAssetOptions): Promise<IAuthoringOperationResult> {
   return upsertSourceDocument({
     projectPath: options.projectPath,
@@ -2636,6 +2716,7 @@ async function validateAuthoringDocument(
             }
           },
         })),
+        ...validateInputMetadata(file, data),
       ];
     case "environment":
       return validateRootDocument(file, data, environmentDocumentSchema, "environment document", environmentDocumentKeys);
@@ -4038,6 +4119,17 @@ function setOptionalNumber(target: Record<string, unknown>, key: string, value: 
   }
 }
 
+function inputControlsRowSortKey(value: Record<string, unknown>): string {
+  return `${String(value.kind ?? "")}\0${String(value.actionOrAxisId ?? "")}\0${String(value.axisSlot ?? "")}`;
+}
+
+function inputOverrideSortKey(value: unknown): string {
+  if (!isRecord(value)) {
+    return "";
+  }
+  return `${String(value.profileId ?? "")}\0${String(value.actionOrAxisId ?? "")}\0${String(value.axisSlot ?? "")}\0${String(value.device ?? "")}\0${String(value.control ?? "")}`;
+}
+
 const schemaFieldKeys = new Set(["default", "kind", "required"]);
 
 function validateSchemaDocumentKind(file: string, value: unknown): IAuthoringDiagnostic[] {
@@ -4069,6 +4161,100 @@ function validateSchemaFields(diagnostics: IAuthoringDiagnostic[], file: string,
 
 function formatKeyboardBinding(key: string): string {
   return `keyboard.${key.length === 1 ? key.toLowerCase() : key}`;
+}
+
+function validateInputMetadata(file: string, data: unknown): IAuthoringDiagnostic[] {
+  const diagnostics: IAuthoringDiagnostic[] = [];
+  if (!isRecord(data)) {
+    return diagnostics;
+  }
+  const actionIds = new Set(idsFromArray(data.actions));
+  const axisIds = new Set(idsFromArray(data.axes));
+  validateInputControlsSettings(diagnostics, file, data.controlsSettings, actionIds, axisIds);
+  validateInputBindingOverrides(diagnostics, file, data.persistedBindingOverrides, actionIds, axisIds);
+  return diagnostics;
+}
+
+function validateInputControlsSettings(diagnostics: IAuthoringDiagnostic[], file: string, value: unknown, actionIds: ReadonlySet<string>, axisIds: ReadonlySet<string>): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isRecord(value)) {
+    diagnostics.push(typeDiagnostic(file, "/controlsSettings", "controlsSettings must be an object.", value));
+    return;
+  }
+  diagnostics.push(...unknownKeyDiagnostics(file, "/controlsSettings", value, inputControlsSettingsKeys));
+  validateRequiredString(diagnostics, file, "/controlsSettings/profileId", value.profileId, "controls settings profileId must be a non-empty string.");
+  const rows = readArray(value.rows);
+  if (!Array.isArray(value.rows)) {
+    diagnostics.push(typeDiagnostic(file, "/controlsSettings/rows", "controls settings rows must be an array.", value.rows));
+    return;
+  }
+  const seenRows = new Set<string>();
+  rows?.forEach((row, index) => {
+    const path = `/controlsSettings/rows/${index}`;
+    if (!isRecord(row)) {
+      diagnostics.push(typeDiagnostic(file, path, "controls settings row must be an object.", row));
+      return;
+    }
+    diagnostics.push(...unknownKeyDiagnostics(file, path, row, inputControlsSettingsRowKeys));
+    validateEnumString(diagnostics, file, `${path}/kind`, row.kind, supportedInputRebindKinds, "controls settings row kind", "Use 'action' or 'axis'.");
+    const target = validateEcsId(diagnostics, file, `${path}/actionOrAxisId`, row.actionOrAxisId, "input rebind target");
+    if (row.kind === "action" && row.axisSlot !== undefined) {
+      diagnostics.push(typeDiagnostic(file, `${path}/axisSlot`, "action controls rows cannot declare axisSlot.", row.axisSlot));
+    } else if (row.kind === "axis") {
+      validateEnumString(diagnostics, file, `${path}/axisSlot`, row.axisSlot, supportedInputAxisSlots, "controls settings axis slot", "Use 'negative', 'positive', or 'value'.");
+    }
+    if (target !== undefined && row.kind === "action" && !actionIds.has(target)) {
+      diagnostics.push(missingReferenceDiagnostic(file, `${path}/actionOrAxisId`, "input action", target, [...actionIds].sort()));
+    }
+    if (target !== undefined && row.kind === "axis" && !axisIds.has(target)) {
+      diagnostics.push(missingReferenceDiagnostic(file, `${path}/actionOrAxisId`, "input axis", target, [...axisIds].sort()));
+    }
+    validateStringList(diagnostics, file, `${path}/defaultBindings`, row.defaultBindings, "controls settings defaultBindings must be non-empty binding strings.");
+    validateOptionalString(diagnostics, file, `${path}/uiNodeId`, row.uiNodeId, "controls settings uiNodeId must be a non-empty UI node id.");
+    if (row.captureState !== undefined) {
+      validateEnumString(diagnostics, file, `${path}/captureState`, row.captureState, supportedInputCaptureStates, "controls settings capture state", "Use a supported capture state such as 'idle' or 'waiting-for-input'.");
+    }
+    const key = inputControlsRowSortKey(row);
+    if (seenRows.has(key)) {
+      diagnostics.push(typeDiagnostic(file, path, "controls settings rows must be unique by kind, actionOrAxisId, and axisSlot.", row));
+    }
+    seenRows.add(key);
+  });
+}
+
+function validateInputBindingOverrides(diagnostics: IAuthoringDiagnostic[], file: string, value: unknown, actionIds: ReadonlySet<string>, axisIds: ReadonlySet<string>): void {
+  if (value === undefined) {
+    return;
+  }
+  const overrides = readArray(value);
+  if (overrides === undefined) {
+    diagnostics.push(typeDiagnostic(file, "/persistedBindingOverrides", "persistedBindingOverrides must be an array.", value));
+    return;
+  }
+  overrides.forEach((override, index) => {
+    const path = `/persistedBindingOverrides/${index}`;
+    if (!isRecord(override)) {
+      diagnostics.push(typeDiagnostic(file, path, "persisted binding override must be an object.", override));
+      return;
+    }
+    diagnostics.push(...unknownKeyDiagnostics(file, path, override, inputPersistedBindingOverrideKeys));
+    validateRequiredString(diagnostics, file, `${path}/profileId`, override.profileId, "persisted binding override profileId must be a non-empty string.");
+    const target = validateEcsId(diagnostics, file, `${path}/actionOrAxisId`, override.actionOrAxisId, "input override target");
+    if (target !== undefined && !actionIds.has(target) && !axisIds.has(target)) {
+      diagnostics.push(missingReferenceDiagnostic(file, `${path}/actionOrAxisId`, "input action or axis", target, [...actionIds, ...axisIds].sort()));
+    }
+    validateEnumString(diagnostics, file, `${path}/device`, override.device, supportedInputOverrideDevices, "input override device", "Use 'keyboard', 'gamepad', 'pointer', or 'touch'.");
+    validateRequiredString(diagnostics, file, `${path}/control`, override.control, "persisted binding override control must be a non-empty string.");
+    if (override.axisSlot !== undefined) {
+      validateEnumString(diagnostics, file, `${path}/axisSlot`, override.axisSlot, supportedInputAxisSlots, "input override axis slot", "Use 'negative', 'positive', or 'value'.");
+    }
+    validateOptionalNumber(diagnostics, file, `${path}/deadzone`, override.deadzone, "persisted binding override deadzone must be a finite number.");
+    validateOptionalNumber(diagnostics, file, `${path}/scale`, override.scale, "persisted binding override scale must be a finite number.");
+    validateOptionalString(diagnostics, file, `${path}/updatedAt`, override.updatedAt, "persisted binding override updatedAt must be a non-empty timestamp string.");
+    validateStringList(diagnostics, file, `${path}/modifiers`, override.modifiers, "persisted binding override modifiers must be non-empty strings.");
+  });
 }
 
 function validateStringList(

@@ -65,7 +65,8 @@ export async function emitBundle(config: IProjectConfig, root: unknown, options:
     ...lifecycleScenes.ecsEmits,
   ]);
   const rootInput = bundleRoot.input === undefined ? ecs?.input : inputToIr(bundleRoot.input);
-  const input = mergeInputs(rootInput, lifecycleScenes.input);
+  const structuredInput = readStructuredInput(options.authoringDocuments);
+  const input = mergeInputs(mergeInputs(rootInput, structuredInput), lifecycleScenes.input);
   const audio = bundleRoot.audio === undefined ? undefined : emitAudio(bundleRoot.audio);
   const localData = bundleRoot.persistence === undefined ? undefined : emitPersistence(bundleRoot.persistence);
   const animations = bundleRoot.animations === undefined ? undefined : emitAnimations(bundleRoot.animations);
@@ -364,6 +365,85 @@ function readStructuredTargetProfile(documents: readonly IAuthoringDocument[] | 
   };
 }
 
+function readStructuredInput(documents: readonly IAuthoringDocument[] | undefined): IInputIr | undefined {
+  const inputDocuments = (documents ?? []).filter((document) => document.kind === "input" && isRecord(document.data));
+  if (inputDocuments.length === 0) {
+    return undefined;
+  }
+  const actions = mergeById(inputDocuments.flatMap((document) => readStructuredInputActions(document.data as Record<string, unknown>)));
+  const axes = mergeById(inputDocuments.flatMap((document) => readStructuredInputAxes(document.data as Record<string, unknown>)));
+  const controlsSettings = inputDocuments.map((document) => readStructuredControlsSettings(document.data as Record<string, unknown>)).find((settings): settings is NonNullable<IInputIr["controlsSettings"]> => settings !== undefined);
+  const persistedBindingOverrides = inputDocuments.flatMap((document) => readStructuredInputOverrides(document.data as Record<string, unknown>));
+  return {
+    schema: IR_SCHEMA_IDS.input,
+    version: IR_VERSION,
+    actions,
+    axes,
+    ...(controlsSettings === undefined ? {} : { controlsSettings }),
+    ...(persistedBindingOverrides.length === 0 ? {} : { persistedBindingOverrides: persistedBindingOverrides.sort((left, right) => inputOverrideSortKey(left).localeCompare(inputOverrideSortKey(right))) }),
+  };
+}
+
+function readStructuredInputActions(data: Record<string, unknown>): IInputIr["actions"] {
+  return readRecordList(data.actions)
+    .map((action) => ({
+      id: readString(action.id) ?? "",
+      bindings: readStringList(action.bindings).map(parseSourceInputBinding),
+    }))
+    .filter((action) => action.id !== "");
+}
+
+function readStructuredInputAxes(data: Record<string, unknown>): IInputIr["axes"] {
+  return readRecordList(data.axes)
+    .map((axis) => ({
+      id: readString(axis.id) ?? "",
+      negative: readStringList(axis.negative).map(parseSourceInputBinding),
+      positive: readStringList(axis.positive).map(parseSourceInputBinding),
+      ...(readString(axis.value) === undefined ? {} : { value: parseSourceInputBinding(readString(axis.value) ?? "") }),
+    }))
+    .filter((axis) => axis.id !== "");
+}
+
+function readStructuredControlsSettings(data: Record<string, unknown>): IInputIr["controlsSettings"] | undefined {
+  if (!isRecord(data.controlsSettings)) {
+    return undefined;
+  }
+  const profileId = readString(data.controlsSettings.profileId);
+  if (profileId === undefined) {
+    return undefined;
+  }
+  return {
+    profileId,
+    rows: readRecordList(data.controlsSettings.rows)
+      .map((row) => ({
+        actionOrAxisId: readString(row.actionOrAxisId) ?? "",
+        ...(readString(row.axisSlot) === undefined ? {} : { axisSlot: readString(row.axisSlot) as NonNullable<IInputIr["controlsSettings"]>["rows"][number]["axisSlot"] }),
+        ...(readString(row.captureState) === undefined ? {} : { captureState: readString(row.captureState) as NonNullable<IInputIr["controlsSettings"]>["rows"][number]["captureState"] }),
+        defaultBindings: readStringList(row.defaultBindings).map(parseSourceInputBinding),
+        kind: readString(row.kind) as NonNullable<IInputIr["controlsSettings"]>["rows"][number]["kind"],
+        ...(readString(row.uiNodeId) === undefined ? {} : { uiNodeId: readString(row.uiNodeId) }),
+      }))
+      .filter((row) => row.actionOrAxisId !== "" && (row.kind === "action" || row.kind === "axis"))
+      .sort((left, right) => `${left.kind}:${left.actionOrAxisId}:${left.axisSlot ?? ""}`.localeCompare(`${right.kind}:${right.actionOrAxisId}:${right.axisSlot ?? ""}`)),
+  };
+}
+
+function readStructuredInputOverrides(data: Record<string, unknown>): NonNullable<IInputIr["persistedBindingOverrides"]> {
+  return readRecordList(data.persistedBindingOverrides)
+    .map((override) => ({
+      actionOrAxisId: readString(override.actionOrAxisId) ?? "",
+      ...(readString(override.axisSlot) === undefined ? {} : { axisSlot: readString(override.axisSlot) as NonNullable<IInputIr["persistedBindingOverrides"]>[number]["axisSlot"] }),
+      control: readString(override.control) ?? "",
+      ...(readNumber(override.deadzone) === undefined ? {} : { deadzone: readNumber(override.deadzone) }),
+      device: readString(override.device) as NonNullable<IInputIr["persistedBindingOverrides"]>[number]["device"],
+      ...(readStringList(override.modifiers).length === 0 ? {} : { modifiers: readStringList(override.modifiers).sort() }),
+      profileId: readString(override.profileId) ?? "",
+      ...(readNumber(override.scale) === undefined ? {} : { scale: readNumber(override.scale) }),
+      updatedAt: readString(override.updatedAt) ?? "",
+    }))
+    .filter((override) => override.actionOrAxisId !== "" && override.control !== "" && override.profileId !== "" && override.updatedAt !== "" && ["gamepad", "keyboard", "pointer", "touch"].includes(override.device));
+}
+
 function readStructuredSchemaFiles(documents: readonly IAuthoringDocument[] | undefined): {
   componentSchemas?: IIrSchemaFile;
   resourceSchemas?: IIrSchemaFile;
@@ -599,6 +679,38 @@ function readString(value: unknown): string | undefined {
 
 function readNumber(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function readRecordList(value: unknown): Record<string, unknown>[] {
+  return Array.isArray(value) ? value.filter(isRecord) : [];
+}
+
+function readStringList(value: unknown): string[] {
+  return Array.isArray(value) ? value.map(readString).filter((item): item is string => item !== undefined).sort() : [];
+}
+
+function parseSourceInputBinding(value: string): IInputIr["actions"][number]["bindings"][number] {
+  const [device, first, second] = value.split(".");
+  if (device === "keyboard" && first !== undefined) {
+    return { code: first, device };
+  }
+  if (device === "gamepad" && first !== undefined) {
+    return { control: first, device };
+  }
+  if (device === "touch" && first !== undefined) {
+    return { ...(second === undefined ? {} : { axis: second as "x" | "y" }), control: first, device };
+  }
+  if (device === "pointer" && first !== undefined && ["deltaX", "deltaY", "x", "y"].includes(first)) {
+    return { axis: first as "deltaX" | "deltaY" | "x" | "y", device };
+  }
+  if (device === "pointer" && first !== undefined && Number.isInteger(Number(first))) {
+    return { button: Number(first), device };
+  }
+  return { code: value, device: "keyboard" };
+}
+
+function inputOverrideSortKey(value: NonNullable<IInputIr["persistedBindingOverrides"]>[number]): string {
+  return `${value.profileId}\0${value.actionOrAxisId}\0${value.axisSlot ?? ""}\0${value.device}\0${value.control}`;
 }
 
 function cloneRecord(value: Record<string, unknown>): Record<string, unknown> {

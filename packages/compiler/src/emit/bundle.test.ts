@@ -884,6 +884,52 @@ test("should emit root input map for scene bundle", async () => {
   }
 });
 
+test("should emit structured input source documents with rebinding metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-source-input-"));
+  try {
+    const config = {
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project" as const,
+      version: "0.1.0" as const,
+    };
+
+    const bundlePath = await emitBundle(config, makeScene(), {
+      authoringDocuments: [{
+        data: {
+          schema: "threenative.input",
+          version: "0.1.0",
+          id: "kart-input",
+          actions: [{ id: "accelerate", bindings: ["keyboard.KeyW"] }],
+          axes: [{ id: "MoveX", negative: ["keyboard.KeyA"], positive: ["keyboard.KeyD"], value: "pointer.deltaX" }],
+          controlsSettings: {
+            profileId: "default",
+            rows: [{ actionOrAxisId: "accelerate", defaultBindings: ["keyboard.KeyW"], kind: "action", uiNodeId: "settings.accelerate" }],
+          },
+          persistedBindingOverrides: [{ actionOrAxisId: "accelerate", control: "KeyUp", device: "keyboard", profileId: "default", updatedAt: "2026-06-23T00:00:00.000Z" }],
+        },
+        file: join(root, "content", "input", "kart.input.json"),
+        kind: "input",
+        projectRelativePath: "content/input/kart.input.json",
+      }],
+    });
+
+    const manifest = JSON.parse(await readFile(join(bundlePath, "manifest.json"), "utf8"));
+    const input = JSON.parse(await readFile(join(bundlePath, "input.ir.json"), "utf8"));
+    const validation = await validateBundle(bundlePath);
+
+    assert.equal(manifest.files.input, "input.ir.json");
+    assert.equal(validation.ok, true);
+    assert.deepEqual(input.actions, [{ bindings: [{ code: "KeyW", device: "keyboard" }], id: "accelerate" }]);
+    assert.deepEqual(input.axes, [{ id: "MoveX", negative: [{ code: "KeyA", device: "keyboard" }], positive: [{ code: "KeyD", device: "keyboard" }], value: { axis: "deltaX", device: "pointer" } }]);
+    assert.deepEqual(input.controlsSettings.rows, [{ actionOrAxisId: "accelerate", defaultBindings: [{ code: "KeyW", device: "keyboard" }], kind: "action", uiNodeId: "settings.accelerate" }]);
+    assert.deepEqual(input.persistedBindingOverrides, [{ actionOrAxisId: "accelerate", control: "KeyUp", device: "keyboard", profileId: "default", updatedAt: "2026-06-23T00:00:00.000Z" }]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should emit standalone SDK asset modules in bundle manifest", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-emit-root-assets-"));
   try {

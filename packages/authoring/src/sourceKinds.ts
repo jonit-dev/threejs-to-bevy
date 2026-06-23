@@ -221,7 +221,7 @@ export const authoringSourceMatrix = [
     cliOperationSupport: "partial",
     typescriptRole: "none",
     editorRoundTrip: "required",
-    notes: "Input source documents and add-action/add-axis CLI/editor operations exist; richer controls-settings and rebinding metadata remain later work.",
+    notes: "Input source documents and add-action/add-axis plus controls-settings/override CLI operations exist; touch/gamepad gesture command breadth remains later work.",
   },
   {
     id: "ui-document",
