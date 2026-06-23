@@ -193,12 +193,12 @@ test("should dispatch file-targeted system metadata operations through the regis
       projectPath: root,
     });
     const metadata = await dispatchAuthoringOperation({
-      args: { file: "content/systems/arena.systems.json", reads: ["Transform"], systemId: "spin", writes: ["Velocity", "AngularVelocity"] },
+      args: { file: "content/systems/arena.systems.json", reads: ["Transform"], schedule: "fixedUpdate", systemId: "spin", writes: ["Velocity", "AngularVelocity"] },
       name: "system.set_metadata",
       projectPath: root,
     });
     const systems = JSON.parse(await readFile(join(root, "content", "systems", "arena.systems.json"), "utf8")) as {
-      systems: Array<{ id: string; reads?: string[]; script?: Record<string, unknown>; writes?: string[] }>;
+      systems: Array<{ id: string; reads?: string[]; schedule?: string; script?: Record<string, unknown>; writes?: string[] }>;
     };
     const spin = systems.systems.find((system) => system.id === "spin");
 
@@ -206,6 +206,7 @@ test("should dispatch file-targeted system metadata operations through the regis
     assert.equal(metadata.ok, true);
     assert.deepEqual(spin?.script, { export: "spin", module: "spin.ts" });
     assert.deepEqual(spin?.reads, ["Transform"]);
+    assert.equal(spin?.schedule, "fixedUpdate");
     assert.deepEqual(spin?.writes, ["AngularVelocity", "Velocity"]);
   } finally {
     await rm(root, { force: true, recursive: true });

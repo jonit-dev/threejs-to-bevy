@@ -247,14 +247,24 @@ test("should expose source-backed input and system inspector rows", async () => 
     assert.equal(rows.some((row) => row.sourceFamily === "system" && row.fieldKind === "script" && row.operation?.name === "system.attach_script"), true);
     assert.equal(rows.some((row) => row.sourceFamily === "system" && row.label === "spin Reads" && row.fieldKind === "stringList" && row.operation?.name === "system.set_metadata"), true);
     assert.equal(rows.some((row) => row.sourceFamily === "system" && row.label === "spin Queries" && row.fieldKind === "json" && row.operation?.name === "system.set_metadata"), true);
-    assert.equal(rows.some((row) => row.sourceFamily === "system" && row.label.includes("Schedule") && row.readOnlyReason !== undefined), true);
     assert.ok(systemWrites?.operation);
     const save = await applyEditorOperationApi({
       projectPath: root,
       request: { args: { ...systemWrites.operation.args, [systemWrites.operation.valueArg ?? "writes"]: ["Velocity", "AngularVelocity"] }, name: systemWrites.operation.name, projectRevision: result.projectRevision },
     });
     assert.equal(save.ok, true);
-    const systemsDoc = JSON.parse(await readFile(join(root, "content", "systems", "arena.systems.json"), "utf8")) as { systems: Array<{ id: string; writes?: string[] }> };
+    const refreshed = await loadEditorProjectApi({ projectPath: root });
+    const refreshedRows = refreshed.documents.flatMap((group) => group.documents.flatMap((document) => document.inspectorRows ?? []));
+    const systemSchedule = refreshedRows.find((row) => row.sourceFamily === "system" && row.label === "spin Schedule");
+    assert.equal(systemSchedule?.operation?.name, "system.set_metadata");
+    assert.equal(systemSchedule.operation.valueArg, "schedule");
+    const scheduleSave = await applyEditorOperationApi({
+      projectPath: root,
+      request: { args: { ...systemSchedule.operation.args, [systemSchedule.operation.valueArg ?? "schedule"]: "fixedUpdate" }, name: systemSchedule.operation.name, projectRevision: refreshed.projectRevision },
+    });
+    assert.equal(scheduleSave.ok, true);
+    const systemsDoc = JSON.parse(await readFile(join(root, "content", "systems", "arena.systems.json"), "utf8")) as { systems: Array<{ id: string; schedule?: string; writes?: string[] }> };
+    assert.equal(systemsDoc.systems.find((system) => system.id === "spin")?.schedule, "fixedUpdate");
     assert.deepEqual(systemsDoc.systems.find((system) => system.id === "spin")?.writes, ["AngularVelocity", "Velocity"]);
   } finally {
     await rm(root, { force: true, recursive: true });

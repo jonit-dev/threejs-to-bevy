@@ -298,7 +298,7 @@ export const authoringSourceMatrix = [
     cliOperationSupport: "partial",
     typescriptRole: "script-ref",
     editorRoundTrip: "required",
-    notes: "Standalone system documents and create/attach-script/set-metadata CLI, registry, and editor operations cover script refs plus promoted query/effect metadata; schedule edits after creation and advanced runtime callbacks remain later work.",
+    notes: "Standalone system documents and create/attach-script/set-metadata CLI, registry, and editor operations cover schedules, script refs, and promoted query/effect metadata; advanced runtime callbacks remain later work.",
   },
   {
     id: "typescript-script-reference",

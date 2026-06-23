@@ -628,6 +628,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] Registry-backed CLI source mutation for asset catalogs and audio sound documents
 - [x] Registry-backed CLI/editor source mutation for project metadata documents
 - [x] Registry-backed CLI/editor source mutation for reusable resources documents
+- [x] Registry-backed CLI/editor source mutation for system schedules after creation
 - [x] Typed CLI/source operations for common ECS components (`camera`, `light`, `mesh-renderer`, `render-layers`, `visibility`, `rigid-body`, `collider`, `character-controller`), including camera projection/frustum fields
 - [x] Discoverable `tn physics add-rigid-body`, `tn physics add-collider`, and `tn nav add-agent` CLI aliases over promoted source components
 - [x] CLI/source operations for promoted model animation clips, graph states, and bounded particle emitters

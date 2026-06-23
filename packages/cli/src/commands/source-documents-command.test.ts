@@ -399,6 +399,8 @@ test("system command sets access query command and service metadata", async () =
     const metadata = await systemCommand([
       "set-metadata",
       "kart-physics",
+      "--schedule",
+      "fixedUpdate",
       "--reads",
       "Transform,Velocity",
       "--writes",
@@ -426,7 +428,7 @@ test("system command sets access query command and service metadata", async () =
     assert.equal(metadata.exitCode, 0);
     assert.deepEqual(doc.systems[0], {
       id: "kart-physics",
-      schedule: "update",
+      schedule: "fixedUpdate",
       script: { export: "kartArcadePhysics", module: "src/scripts/kart.ts" },
       commands: [{ kind: "emitEvent", event: "LapCompleted" }],
       eventWrites: ["LapCompleted"],

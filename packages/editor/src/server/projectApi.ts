@@ -536,7 +536,7 @@ function documentInspectorRows(document: IAuthoringDocument): IEditorPropertyRow
         const systemId = readString(system.id) ?? "";
         const labelPrefix = systemId || `system.${index}`;
         const metadataArgs = systemMetadataArgs(systemId, system, document.projectRelativePath);
-        rows.push(documentRow(document, `system:${index}:schedule`, `${labelPrefix} Schedule`, readString(system.schedule) ?? "", "string", true, `/systems/${index}/schedule`, "system", undefined, undefined, undefined, "System schedule mutation is not promoted after creation."));
+        rows.push(documentRow(document, `system:${index}:schedule`, `${labelPrefix} Schedule`, readString(system.schedule) ?? "", "string", false, `/systems/${index}/schedule`, "system", "system.set_metadata", "schedule", metadataArgs));
         rows.push(documentRow(document, `system:${index}:script`, `${labelPrefix} Script`, formatScript(system.script), "script", false, `/systems/${index}/script`, "system", "system.attach_script", "modulePath", { exportName: readString(isRecord(system.script) ? system.script.export : undefined) ?? "default", file: document.projectRelativePath, systemId }));
         for (const key of systemStringListRowKeys) {
           rows.push(documentRow(document, `system:${index}:${key}`, `${labelPrefix} ${systemMetadataLabels[key]}`, readStringArray(system[key]).join(", "), "stringList", false, `/systems/${index}/${key}`, "system", "system.set_metadata", key, metadataArgs));
@@ -884,6 +884,7 @@ function systemMetadataArgs(systemId: string, system: Record<string, unknown>, f
     reads: readStringArray(system.reads),
     resourceReads: readStringArray(system.resourceReads),
     resourceWrites: readStringArray(system.resourceWrites),
+    schedule: readString(system.schedule),
     services: readStringArray(system.services),
     file,
     systemId,

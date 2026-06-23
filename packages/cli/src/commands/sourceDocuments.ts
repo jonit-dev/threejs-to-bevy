@@ -770,6 +770,7 @@ export async function systemCommand(argv: readonly string[], options: ISourceCom
         reads: readCsvFlag(normalizedArgv, "--reads"),
         resourceReads: readCsvFlag(normalizedArgv, "--resource-reads"),
         resourceWrites: readCsvFlag(normalizedArgv, "--resource-writes"),
+        schedule: readFlag(normalizedArgv, "--schedule"),
         services: readCsvFlag(normalizedArgv, "--services"),
         systemId,
         writes: readCsvFlag(normalizedArgv, "--writes"),
@@ -910,7 +911,7 @@ function parseJsonNumberArrayFlag(argv: readonly string[], flag: string, diagnos
 }
 
 function systemSetMetadataUsage(): string {
-  return "Usage: tn system set-metadata <system-id> [--reads A,B] [--writes A,B] [--resource-reads R] [--resource-writes R] [--event-reads E] [--event-writes E] [--services service.name] [--queries '<json-array>'] [--commands '<json-array>'] [--after system] [--before system] [--project <path>] [--json]";
+  return "Usage: tn system set-metadata <system-id> [--schedule update|fixedUpdate|startup|postUpdate] [--reads A,B] [--writes A,B] [--resource-reads R] [--resource-writes R] [--event-reads E] [--event-writes E] [--services service.name] [--queries '<json-array>'] [--commands '<json-array>'] [--after system] [--before system] [--project <path>] [--json]";
 }
 
 function parseOptionalNumber(argv: readonly string[], flag: string): { diagnostic?: string; value?: number } {

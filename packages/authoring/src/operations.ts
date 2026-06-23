@@ -660,6 +660,7 @@ export interface ISetSystemMetadataOptions extends IAuthoringOperationContext {
   reads?: readonly string[];
   resourceReads?: readonly string[];
   resourceWrites?: readonly string[];
+  schedule?: string;
   services?: readonly string[];
   systemId: string;
   writes?: readonly string[];
@@ -2172,6 +2173,9 @@ export async function setSystemMetadata(options: ISetSystemMetadataOptions): Pro
     }
     if (options.commands !== undefined) {
       system.commands = options.commands.map((command) => cloneJson(command));
+    }
+    if (options.schedule !== undefined) {
+      system.schedule = options.schedule;
     }
     return [];
   }, options.file);
@@ -3720,6 +3724,7 @@ async function validateSystems(
     if (system.script !== undefined) {
       await validateScriptReference(diagnostics, projectPath, file, `${path}/script`, system.script);
     }
+    validateOptionalString(diagnostics, file, `${path}/schedule`, system.schedule, "system schedule must be a non-empty string.");
     for (const key of systemStringListMetadataKeys) {
       validateStringList(diagnostics, file, `${path}/${key}`, system[key], `system ${key} must be an array of non-empty strings.`);
     }

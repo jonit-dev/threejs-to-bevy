@@ -317,7 +317,7 @@ export const EDITOR_INSPECTOR_FIELD_INVENTORY: readonly IEditorInspectorFieldInv
   { field: "axes.negative", fieldKind: "stringList", operationName: "input.add_axis", readOnly: false, sourceFamily: "input" },
   { field: "axes.positive", fieldKind: "stringList", operationName: "input.add_axis", readOnly: false, sourceFamily: "input" },
   { field: "axes.value", fieldKind: "string", operationName: "input.add_axis", readOnly: false, sourceFamily: "input" },
-  { field: "systems.schedule", fieldKind: "string", operationName: "system.create", readOnly: true, readOnlyReason: "System schedule mutation is not promoted after creation.", sourceFamily: "system" },
+  { field: "systems.schedule", fieldKind: "string", operationName: "system.set_metadata", readOnly: false, sourceFamily: "system" },
   { field: "systems.script", fieldKind: "script", operationName: "system.attach_script", readOnly: false, sourceFamily: "system" },
   { field: "systems.reads", fieldKind: "stringList", operationName: "system.set_metadata", readOnly: false, sourceFamily: "system" },
   { field: "systems.writes", fieldKind: "stringList", operationName: "system.set_metadata", readOnly: false, sourceFamily: "system" },
