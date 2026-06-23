@@ -72,6 +72,7 @@ test("should dispatch existing structured source operations through the registry
       await dispatchAuthoringOperation({ args: { keys: ["Space"], actionId: "jump", inputDocId: "arena" }, name: "input.add_action", projectPath: root }),
       await dispatchAuthoringOperation({ args: { axisId: "MoveX", inputDocId: "arena", negativeKeys: ["A"], positiveKeys: ["D"], value: "gamepad.leftStickX" }, name: "input.add_axis", projectPath: root }),
       await dispatchAuthoringOperation({ args: { kind: "box", meshId: "mesh.player" }, name: "mesh.create_primitive", projectPath: root }),
+      await dispatchAuthoringOperation({ args: { file: "content/meshes/mesh.player.meshes.json", kind: "sphere", meshId: "mesh.player" }, name: "mesh.create_primitive", projectPath: root }),
       await dispatchAuthoringOperation({ args: { prefabId: "player" }, name: "prefab.create", projectPath: root }),
       await dispatchAuthoringOperation({ args: { componentKind: "RigidBody", prefabId: "player", value: { kind: "dynamic" } }, name: "prefab.add_component", projectPath: root }),
       await dispatchAuthoringOperation({ args: { buildTargets: ["web"], projectId: "kart", sourceRoots: ["content", "src"] }, name: "project.create", projectPath: root }),
@@ -112,6 +113,9 @@ test("should dispatch existing structured source operations through the registry
       actions: Array<{ bindings: string[]; id: string }>;
       axes: Array<{ id: string; negative: string[]; positive: string[]; value?: string }>;
     };
+    const mesh = JSON.parse(await readFile(join(root, "content", "meshes", "mesh.player.meshes.json"), "utf8")) as {
+      meshes: Array<Record<string, unknown>>;
+    };
     const prefab = JSON.parse(await readFile(join(root, "content", "prefabs", "player.prefab.json"), "utf8")) as {
       entities: Array<{ components?: Record<string, unknown>; id: string }>;
     };
@@ -139,6 +143,7 @@ test("should dispatch existing structured source operations through the registry
     ]);
     assert.deepEqual(input.actions, [{ bindings: ["keyboard.Space"], id: "jump" }]);
     assert.deepEqual(input.axes, [{ id: "MoveX", negative: ["keyboard.a"], positive: ["keyboard.d"], value: "gamepad.leftStickX" }]);
+    assert.deepEqual(mesh.meshes, [{ id: "mesh.player", kind: "primitive", primitive: "sphere" }]);
     assert.deepEqual(prefab.entities[0]?.components, { RigidBody: { kind: "dynamic" } });
     assert.deepEqual(scene.prefabs, [{ asset: "assets/player.glb", color: "#00ffaa", id: "prefab.player", primitive: "sphere" }]);
     assert.deepEqual(scene.entities.find((entity) => entity.id === "group.lane.red"), {

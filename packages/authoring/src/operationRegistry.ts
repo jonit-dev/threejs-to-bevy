@@ -234,9 +234,10 @@ const descriptors = [
     numberArg("transmission", false),
     stringArg("transmissionTexture", false),
   ]),
-  descriptor("mesh.create_primitive", "Create a primitive mesh source document.", "mesh", "source-document", [
+  descriptor("mesh.create_primitive", "Create or update a primitive mesh source declaration.", "mesh", "source-document", [
     stringArg("meshId"),
     stringArg("kind"),
+    stringArg("file", false),
   ]),
   descriptor("mesh.create_custom", "Create a custom mesh source document with attributes and indices.", "mesh", "source-document", [
     stringArg("meshId"),
@@ -574,7 +575,7 @@ const dispatchers: Record<AuthoringOperationName, OperationDispatcher> = {
       transmissionTexture: optionalString(args, "transmissionTexture"),
     }),
   "mesh.create_primitive": async ({ args, projectPath }) =>
-    createMeshPrimitive({ kind: requiredString(args, "kind"), meshId: requiredString(args, "meshId"), projectPath }),
+    createMeshPrimitive({ file: optionalString(args, "file"), kind: requiredString(args, "kind"), meshId: requiredString(args, "meshId"), projectPath }),
   "mesh.create_custom": async ({ args, projectPath }) =>
     createMeshCustom({ attributes: requiredObjectArray(args, "attributes") as Array<{ itemSize: number; name: string; values: number[] }>, indices: optionalNumberArray(args, "indices"), meshId: requiredString(args, "meshId"), projectPath, storage: optionalString(args, "storage") }),
   "prefab.add_component": async ({ args, projectPath }) =>

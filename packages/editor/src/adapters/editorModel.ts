@@ -335,7 +335,7 @@ export const EDITOR_INSPECTOR_FIELD_INVENTORY: readonly IEditorInspectorFieldInv
   { field: "assets.renderTarget.usage", fieldKind: "enum", operationName: "asset.add", readOnly: false, sourceFamily: "asset" },
   { field: "assets.renderTarget.format", fieldKind: "enum", operationName: "asset.add", readOnly: false, sourceFamily: "asset" },
   { field: "components.custom", fieldKind: "json", operationName: "scene.set_component", readOnly: false, sourceFamily: "scene" },
-  { field: "meshes.primitive", fieldKind: "enum", operationName: "mesh.create_primitive", readOnly: true, readOnlyReason: "Mesh primitive declarations are edited through create flows in this slice.", sourceFamily: "mesh" },
+  { field: "meshes.primitive", fieldKind: "enum", operationName: "mesh.create_primitive", readOnly: false, sourceFamily: "mesh" },
   { field: "provenance", fieldKind: "generated", readOnly: true, readOnlyReason: "Generated provenance is inspectable evidence, not editor-owned source.", sourceFamily: "scene" },
 ] as const;
 

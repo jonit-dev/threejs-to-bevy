@@ -555,7 +555,8 @@ function documentInspectorRows(document: IAuthoringDocument): IEditorPropertyRow
     }
     case "mesh":
       for (const [index, mesh] of readArray(document.data.meshes).filter(isRecord).entries()) {
-        rows.push(documentRow(document, `mesh:${index}:primitive`, `${readString(mesh.id) ?? `mesh.${index}`} Primitive`, readString(mesh.primitive) ?? "", "enum", true, `/meshes/${index}/primitive`, "mesh", undefined, undefined, undefined, "Mesh primitive declarations are edited through create flows in this slice."));
+        const meshId = readString(mesh.id) ?? "";
+        rows.push(documentRow(document, `mesh:${index}:primitive`, `${meshId || `mesh.${index}`} Primitive`, readString(mesh.primitive) ?? "", "enum", false, `/meshes/${index}/primitive`, "mesh", "mesh.create_primitive", "kind", { file: document.projectRelativePath, kind: readString(mesh.primitive) ?? "", meshId }));
       }
       break;
     case "runtime": {

@@ -518,6 +518,7 @@ const materialNormalizedNumberKeys = [
 ] as const;
 
 export interface ICreateMeshPrimitiveOptions extends IAuthoringOperationContext {
+  file?: string;
   meshId: string;
   kind: string;
 }
@@ -1789,12 +1790,25 @@ export async function setMaterial(options: ISetMaterialOptions): Promise<IAuthor
 }
 
 export async function createMeshPrimitive(options: ICreateMeshPrimitiveOptions): Promise<IAuthoringOperationResult> {
-  return createSourceDocument({
+  return upsertSourceDocument({
     projectPath: options.projectPath,
     kind: "mesh",
     id: options.meshId,
-    file: `content/meshes/${options.meshId}.meshes.json`,
-    data: { schema: meshDocumentSchema, version: "0.1.0", id: options.meshId, meshes: [{ id: options.meshId, kind: "primitive", primitive: options.kind }] },
+    file: options.file ?? `content/meshes/${options.meshId}.meshes.json`,
+    emptyData: { schema: meshDocumentSchema, version: "0.1.0", id: options.meshId, meshes: [] },
+    apply: (data) => {
+      const meshes = ensureArrayProperty(data, "meshes");
+      const existing = findSceneItem(meshes, options.meshId);
+      const mesh = existing ?? { id: options.meshId };
+      mesh.kind = "primitive";
+      mesh.primitive = options.kind;
+      delete mesh.attributes;
+      delete mesh.indices;
+      delete mesh.storage;
+      if (existing === undefined) {
+        meshes.push(mesh);
+      }
+    },
   });
 }
 

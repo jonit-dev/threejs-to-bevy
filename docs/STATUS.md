@@ -138,6 +138,10 @@ window plus renderer quality fields that lower into `runtime.config.json`.
 Structured prefab source documents with entity templates now lower into
 standalone bundle `prefabs.ir.json` catalogs with manifest entries and
 authoring provenance ownership.
+Mesh primitive source rows in the editor now dispatch registry-backed
+`mesh.create_primitive` with document-file targeting, so existing
+`content/meshes/*.meshes.json` primitive declarations can be edited in place
+instead of remaining create-only rows.
 Scene lifecycle source commands now set
 scene kind, activation policy, and initial-scene metadata through
 `tn scene lifecycle add`, with matching editor rows and `scenes.ir.json` bundle

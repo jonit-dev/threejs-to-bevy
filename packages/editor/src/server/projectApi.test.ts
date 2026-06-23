@@ -326,9 +326,14 @@ test("should persist asset catalog and scene resource rows through editor operat
   const root = await copyStarterProject();
   try {
     await mkdir(join(root, "content", "assets"), { recursive: true });
+    await mkdir(join(root, "content", "meshes"), { recursive: true });
     await writeFile(
       join(root, "content", "assets", "catalog.assets.json"),
       `${JSON.stringify({ schema: "threenative.assets", version: "0.1.0", id: "catalog", assets: [{ id: "tex.logo", path: "assets/logo.png", type: "texture" }, { format: "rgba8", height: 256, id: "rt.minimap", type: "render-target", usage: "color", width: 256 }] }, null, 2)}\n`,
+    );
+    await writeFile(
+      join(root, "content", "meshes", "catalog.meshes.json"),
+      `${JSON.stringify({ schema: "threenative.meshes", version: "0.1.0", id: "catalog", meshes: [{ id: "mesh.catalog.floor", kind: "primitive", primitive: "plane" }] }, null, 2)}\n`,
     );
     const scenePath = join(root, "content", "scenes", "arena.scene.json");
     const scene = JSON.parse(await readFile(scenePath, "utf8")) as { resources?: Array<{ id: string; path?: string; value?: unknown }> };
@@ -346,6 +351,7 @@ test("should persist asset catalog and scene resource rows through editor operat
     const assetType = rows.find((row) => row.label === "tex.logo Type");
     const renderTargetWidth = rows.find((row) => row.label === "rt.minimap Width");
     const renderTargetUsage = rows.find((row) => row.label === "rt.minimap Usage");
+    const meshPrimitive = rows.find((row) => row.label === "mesh.catalog.floor Primitive");
     const resourcePath = rows.find((row) => row.label === "config.theme Path");
     const resourceValue = rows.find((row) => row.label === "score.default Value");
 
@@ -358,6 +364,9 @@ test("should persist asset catalog and scene resource rows through editor operat
     assert.equal(renderTargetWidth?.operation?.valueArg, "width");
     assert.equal(renderTargetUsage?.readOnly, false);
     assert.equal(renderTargetUsage?.operation?.name, "asset.add");
+    assert.equal(meshPrimitive?.readOnly, false);
+    assert.equal(meshPrimitive?.operation?.name, "mesh.create_primitive");
+    assert.equal(meshPrimitive?.operation?.valueArg, "kind");
     assert.equal(resourcePath?.readOnly, false);
     assert.equal(resourcePath?.operation?.name, "scene.set_resource");
     assert.equal(resourceValue?.readOnly, false);
@@ -374,17 +383,25 @@ test("should persist asset catalog and scene resource rows through editor operat
       request: { args: { ...renderTargetWidth.operation.args, [renderTargetWidth.operation.valueArg ?? "width"]: 512 }, name: renderTargetWidth.operation.name, projectRevision: assetSave.projectRevision },
     });
     assert.equal(renderTargetSave.ok, true);
+    assert.ok(meshPrimitive?.operation);
+    const meshSave = await applyEditorOperationApi({
+      projectPath: root,
+      request: { args: { ...meshPrimitive.operation.args, [meshPrimitive.operation.valueArg ?? "kind"]: "box" }, name: meshPrimitive.operation.name, projectRevision: renderTargetSave.projectRevision },
+    });
+    assert.equal(meshSave.ok, true);
     const resourceSave = await applyEditorOperationApi({
       projectPath: root,
-      request: { args: { ...resourceValue.operation.args, [resourceValue.operation.valueArg ?? "value"]: { points: 42 } }, name: resourceValue.operation.name, projectRevision: renderTargetSave.projectRevision },
+      request: { args: { ...resourceValue.operation.args, [resourceValue.operation.valueArg ?? "value"]: { points: 42 } }, name: resourceValue.operation.name, projectRevision: meshSave.projectRevision },
     });
     assert.equal(resourceSave.ok, true);
 
     const assetDoc = JSON.parse(await readFile(join(root, "content", "assets", "catalog.assets.json"), "utf8")) as { assets: Array<{ height?: number; id: string; path?: string; type?: string; width?: number }> };
+    const meshDoc = JSON.parse(await readFile(join(root, "content", "meshes", "catalog.meshes.json"), "utf8")) as { meshes: Array<{ id: string; kind?: string; primitive?: string }> };
     const sceneDoc = JSON.parse(await readFile(scenePath, "utf8")) as { resources?: Array<{ id: string; path?: string; value?: unknown }> };
     assert.deepEqual(assetDoc.assets[0], { id: "tex.logo", path: "assets/logo-2.png", type: "texture" });
     assert.equal(assetDoc.assets.find((asset) => asset.id === "rt.minimap")?.width, 512);
     assert.equal(assetDoc.assets.find((asset) => asset.id === "rt.minimap")?.height, 256);
+    assert.deepEqual(meshDoc.meshes.find((mesh) => mesh.id === "mesh.catalog.floor"), { id: "mesh.catalog.floor", kind: "primitive", primitive: "box" });
     assert.deepEqual(sceneDoc.resources?.find((resource) => resource.id === "score.default")?.value, { points: 42 });
   } finally {
     await rm(root, { force: true, recursive: true });

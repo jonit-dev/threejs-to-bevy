@@ -107,6 +107,10 @@ Date: 2026-06-21
   --width <n> --height <n>` writes durable source, editor asset rows dispatch
   `asset.add` for width/height/usage/format, and compiler lowering emits
   manifest render-target entries.
+- ✅ 2026-06-23: Existing mesh source primitive rows now dispatch
+  registry-backed `mesh.create_primitive` with document-file targeting, so the
+  editor can mutate primitive mesh declarations in place instead of treating
+  them as create-only rows.
 
 ## Final Status for 2026-06-22
 
@@ -122,8 +126,8 @@ work and should not be treated as complete:
   operations, excluding asset catalog type/path and scene resource path/value
   rows, scene-local prefab primitive/color/asset rows, and environment
   path/walkability/source-asset LOD rows plus promoted Light and custom
-  component payload rows, which are now editable through registry-backed
-  operations.
+  component payload rows, plus mesh source primitive rows, which are now
+  editable through registry-backed operations.
 
 ## Scope
 
@@ -227,7 +231,7 @@ and docs/contracts. Their additional findings sharpen the gaps above:
 | --- | --- | --- |
 | ✅ Operation registry drift | `AUTHORING_OPERATION_REGISTRY` now includes existing structured source operations for asset/audio/input/material/mesh/prefab/scene/system/UI plus typed common ECS component setters. | Keep using the registry as the shared source for new promoted operations. |
 | ✅ Generic vs typed ECS writes | Typed common ECS setters and validators now cover `camera`, `Light`, `MeshRenderer`, `RenderLayers`, `Visibility`, `RigidBody`, `Collider`, and `CharacterController`, while custom component JSON rows can persist whole payloads through `scene.set_component`. | Other runtime components still need typed promotion before they are first-class. |
-| Read-only editor rows | Asset catalog type/path, scene resource path/value, scene-local prefab primitive/color/asset, environment path/walkability/source-asset LOD, promoted Light rows, and custom component payload rows now persist through registry-backed editor operations. Remaining read-only families include light probes, existing mesh source primitive details, and richer system inspector rows. | Users can still inspect more than the editor UI can safely persist back to durable source, but the rows that already have shared operations no longer drift from the editor surface. |
+| Read-only editor rows | Asset catalog type/path, scene resource path/value, scene-local prefab primitive/color/asset, environment path/walkability/source-asset LOD, promoted Light rows, custom component payload rows, and mesh source primitive rows now persist through registry-backed editor operations. Remaining read-only families include light probes and richer system inspector rows. | Users can still inspect more than the editor UI can safely persist back to durable source, but the rows that already have shared operations no longer drift from the editor surface. |
 | ✅ Asset and audio source gaps | Asset and audio source schemas now have durable mutation commands and registry operations for asset declarations, audio docs, and sound declarations. | Broader import/playback policy remains separate backlog. |
 | ✅ Environment mutation gap | Environment documents are classified/validated, and typed editor/CLI operations now cover skybox, environment map, terrain, path, walkability, and source-asset LOD fields. | Light probes remain inspect-only residuals. |
 | ✅ Prefab catalog emission | Structured prefab source documents now lower into bundle `prefabs.ir.json` with manifest `entry.prefabs`/`files.prefabs` entries and provenance ownership. | Web/Bevy prefab runtime support no longer requires hand-authored catalog bundle entries for source-authored prefabs. |

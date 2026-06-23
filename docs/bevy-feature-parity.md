@@ -273,6 +273,7 @@ ergonomics. These rows are not implementation claims.
 
 - [x] Translation, rotation, scale, and nested transforms
 - [x] Basic 3D mesh primitives: box, sphere, plane, capsule, cylinder
+- [x] Source/editor primitive mesh declaration edits
 - [x] Bounding/raycast-style queries for promoted physics traces
 - [x] Full Bevy primitive catalog and extrusions
 - [x] Custom mesh generation and custom vertex attributes
