@@ -950,6 +950,43 @@ test("should emit structured render target asset source documents", async () => 
   }
 });
 
+test("should emit structured target profile source documents", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-source-target-profile-"));
+  try {
+    const scene = new Scene({ id: "scene" });
+    const config = {
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project" as const,
+      version: "0.1.0" as const,
+    };
+
+    const bundlePath = await emitBundle(config, { scene }, {
+      authoringDocuments: [{
+        data: {
+          schema: "threenative.target-profile",
+          version: "0.1.0",
+          id: "desktop",
+          targets: ["desktop"],
+          budgets: { maxBundleBytes: 1048576, supportedTextureFormats: ["png"] },
+        },
+        file: join(root, "content/targets/desktop.target.json"),
+        kind: "target",
+        projectRelativePath: "content/targets/desktop.target.json",
+      }],
+    });
+    const targetProfile = JSON.parse(await readFile(join(bundlePath, "target.profile.json"), "utf8")) as Record<string, unknown>;
+    const result = await validateBundle(bundlePath);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(targetProfile.targets, ["desktop"]);
+    assert.deepEqual(targetProfile.budgets, { maxBundleBytes: 1048576, supportedTextureFormats: ["png"] });
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should emit structured mesh source documents into asset manifest", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-emit-source-meshes-"));
   try {

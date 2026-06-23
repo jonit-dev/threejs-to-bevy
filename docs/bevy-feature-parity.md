@@ -558,6 +558,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 ### 🪟 Window and Platform Runtime
 
 - [x] Source-backed window title, resolution, and runtime configuration metadata
+- [x] Source-backed target profile documents for targets, budgets, and performance JSON
 - [ ] `P1` Window resize and scale-factor change observations in web and native runtimes (web/native report triage exists)
 - [ ] `P2` Custom cursor image and cursor animation policy (window policy diagnostic triage exists)
 - [ ] `P2` Low-power/present-mode and background throttling runtime policy (window policy diagnostic triage exists)

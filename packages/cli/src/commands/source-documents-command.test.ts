@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import test from "node:test";
 
 import { assetCommand } from "./asset.js";
-import { animationCommand, audioCommand, environmentCommand, inputCommand, materialCommand, meshCommand, particleCommand, prefabCommand, projectCommand, resourcesCommand, runtimeCommand, systemCommand, uiCommand } from "./sourceDocuments.js";
+import { animationCommand, audioCommand, environmentCommand, inputCommand, materialCommand, meshCommand, particleCommand, prefabCommand, projectCommand, resourcesCommand, runtimeCommand, systemCommand, targetCommand, uiCommand } from "./sourceDocuments.js";
 
 test("countdown UI can be created centered and bound without manual JSON editing", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-cli-ui-doc-"));
@@ -271,6 +271,34 @@ test("runtime command creates and updates promoted source fields", async () => {
     assert.deepEqual(doc.window, { height: 1080, title: "Arena", width: 1920 });
     assert.deepEqual(doc.time, { fixedDelta: 1 / 60, paused: false });
     assert.deepEqual(doc.renderer, { antialias: "msaa8", bloom: { enabled: true, intensity: 0.4, threshold: 0.85 }, renderPath: "forward" });
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("target command creates and updates target profile source fields", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-target-doc-"));
+  try {
+    const result = await targetCommand([
+      "set",
+      "desktop",
+      "--targets",
+      "desktop",
+      "--budgets",
+      "{\"maxBundleBytes\":1048576,\"supportedTextureFormats\":[\"png\"]}",
+      "--project",
+      root,
+      "--json",
+    ]);
+    const doc = JSON.parse(await readFile(join(root, "content", "targets", "desktop.target.json"), "utf8")) as {
+      budgets?: Record<string, unknown>;
+      targets: string[];
+    };
+
+    assert.equal(result.exitCode, 0);
+    assert.deepEqual(doc.targets, ["desktop"]);
+    assert.deepEqual(doc.budgets, { maxBundleBytes: 1048576, supportedTextureFormats: ["png"] });
+    assert.deepEqual((JSON.parse(result.stdout) as { filesWritten: string[] }).filesWritten, ["content/targets/desktop.target.json"]);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

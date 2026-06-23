@@ -51,6 +51,8 @@ import {
   scriptReferenceKeys,
   systemsDocumentKeys,
   systemsDocumentSchema,
+  targetProfileDocumentKeys,
+  targetProfileDocumentSchema,
   supportedPrefabPrimitives,
   supportedMeshPrimitives,
   supportedCameraModes,
@@ -462,6 +464,13 @@ export interface ISetRuntimeRenderingOptions extends IAuthoringOperationContext 
   bloomIntensity?: number;
   bloomThreshold?: number;
   renderPath?: string;
+}
+
+export interface ISetTargetProfileOptions extends IAuthoringOperationContext {
+  targetProfileId: string;
+  targets: readonly string[];
+  budgets?: Record<string, unknown>;
+  performance?: Record<string, unknown>;
 }
 
 export interface ICreateMaterialOptions extends IAuthoringOperationContext {
@@ -1778,6 +1787,25 @@ export async function setRuntimeRendering(options: ISetRuntimeRenderingOptions):
   });
 }
 
+export async function setTargetProfile(options: ISetTargetProfileOptions): Promise<IAuthoringOperationResult> {
+  return upsertSourceDocument({
+    projectPath: options.projectPath,
+    kind: "target",
+    id: options.targetProfileId,
+    file: `content/targets/${options.targetProfileId}.target.json`,
+    emptyData: { schema: targetProfileDocumentSchema, version: "0.1.0", id: options.targetProfileId, targets: ["web", "desktop"] },
+    apply: (data) => {
+      data.targets = [...options.targets];
+      if (options.budgets !== undefined) {
+        data.budgets = cloneJson(options.budgets);
+      }
+      if (options.performance !== undefined) {
+        data.performance = cloneJson(options.performance);
+      }
+    },
+  });
+}
+
 export async function createMaterial(options: ICreateMaterialOptions): Promise<IAuthoringOperationResult> {
   return createSourceDocument({
     projectPath: options.projectPath,
@@ -2375,6 +2403,8 @@ function sourceExtensionForKind(kind: AuthoringDocumentKind): string {
       return ".resources.json";
     case "systems":
       return ".systems.json";
+    case "target":
+      return ".target.json";
     case "ui":
       return ".ui.json";
     default:
@@ -2610,6 +2640,8 @@ async function validateAuthoringDocument(
       return validateSceneDocument(projectPath, file, data, context);
     case "systems":
       return validateSystemsDocument(projectPath, file, data);
+    case "target":
+      return validateTargetProfileDocument(file, data);
     case "ui":
       return validateUiDocument(file, data);
     case "unknown":
@@ -2715,6 +2747,50 @@ async function validateRuntimeDocument(file: string, data: unknown): Promise<IAu
         diagnostics.push(typeDiagnostic(file, "/renderer/bloom/threshold", "runtime renderer bloom threshold must be non-negative.", bloom.threshold));
       }
     }
+  }
+
+  return diagnostics;
+}
+
+async function validateTargetProfileDocument(file: string, data: unknown): Promise<IAuthoringDiagnostic[]> {
+  const diagnostics: IAuthoringDiagnostic[] = [];
+  if (!isRecord(data)) {
+    return [typeDiagnostic(file, "", "Target profile source document must be a JSON object.", data)];
+  }
+  diagnostics.push(...unknownKeyDiagnostics(file, "", data, targetProfileDocumentKeys));
+  if (data.schema !== targetProfileDocumentSchema) {
+    diagnostics.push(
+      authoringDiagnostic({
+        code: "TN_AUTHORING_TARGET_PROFILE_SCHEMA_INVALID",
+        file,
+        message: `Target profile source document must use schema '${targetProfileDocumentSchema}'.`,
+        path: "/schema",
+        value: data.schema,
+      }),
+    );
+  }
+  validateLogicalId(diagnostics, file, "/id", data.id, "target profile document");
+
+  const targets = readArray(data.targets);
+  const supportedTargets = new Set(["web", "desktop"]);
+  if (targets === undefined || targets.length === 0 || targets.some((target) => readString(target) === undefined || !supportedTargets.has(readString(target) ?? ""))) {
+    diagnostics.push(typeDiagnostic(file, "/targets", "target profile targets must be a non-empty array of 'web' or 'desktop'.", data.targets));
+  }
+
+  const budgets = isRecord(data.budgets) ? data.budgets : undefined;
+  if (data.budgets !== undefined && budgets === undefined) {
+    diagnostics.push(typeDiagnostic(file, "/budgets", "target profile budgets must be a JSON object.", data.budgets));
+  }
+  if (budgets !== undefined) {
+    diagnostics.push(...unknownKeyDiagnostics(file, "/budgets", budgets, new Set(["maxAssetBytes", "maxBundleBytes", "supportedModelFormats", "supportedTextureFormats"])));
+    validateOptionalPositiveNumber(diagnostics, file, "/budgets/maxAssetBytes", budgets.maxAssetBytes, "target profile maxAssetBytes must be a positive finite number.");
+    validateOptionalPositiveNumber(diagnostics, file, "/budgets/maxBundleBytes", budgets.maxBundleBytes, "target profile maxBundleBytes must be a positive finite number.");
+    validateSupportedStringList(diagnostics, file, "/budgets/supportedModelFormats", budgets.supportedModelFormats, new Set(["glb", "gltf"]), "target profile supportedModelFormats must only include 'glb' or 'gltf'.");
+    validateSupportedStringList(diagnostics, file, "/budgets/supportedTextureFormats", budgets.supportedTextureFormats, new Set(["jpeg", "png"]), "target profile supportedTextureFormats must only include 'jpeg' or 'png'.");
+  }
+
+  if (data.performance !== undefined && !isRecord(data.performance)) {
+    diagnostics.push(typeDiagnostic(file, "/performance", "target profile performance must be a JSON object.", data.performance));
   }
 
   return diagnostics;
@@ -3830,6 +3906,26 @@ function validateStringList(
 ): void {
   const items = readArray(value);
   if (value !== undefined && (items === undefined || items.some((item) => readString(item) === undefined))) {
+    diagnostics.push(typeDiagnostic(file, path, message, value));
+  }
+}
+
+function validateSupportedStringList(
+  diagnostics: IAuthoringDiagnostic[],
+  file: string,
+  path: string,
+  value: unknown,
+  allowed: ReadonlySet<string>,
+  message: string,
+): void {
+  const items = readArray(value);
+  if (value !== undefined && (items === undefined || items.some((item) => readString(item) === undefined || !allowed.has(readString(item) ?? "")))) {
+    diagnostics.push(typeDiagnostic(file, path, message, value));
+  }
+}
+
+function validateOptionalPositiveNumber(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, message: string): void {
+  if (value !== undefined && (typeof value !== "number" || !Number.isFinite(value) || value <= 0)) {
     diagnostics.push(typeDiagnostic(file, path, message, value));
   }
 }

@@ -94,12 +94,15 @@ export async function emitBundle(config: IProjectConfig, root: unknown, options:
   const gltfScene: IGltfSceneMetadataIr | undefined = await extractGltfSceneMetadata(config.projectPath, assets);
   const runtimeConfig = ecs?.runtimeConfig ?? readStructuredRuntimeConfig(options.authoringDocuments);
   const prefabs = readStructuredPrefabs(options.authoringDocuments);
+  const structuredTargetProfile = readStructuredTargetProfile(options.authoringDocuments);
+  const targetBudgets = structuredTargetProfile?.budgets ?? environment?.budgets;
+  const targetPerformance = structuredTargetProfile?.performance ?? environment?.performance;
   const targetProfile: ITargetProfile = {
     schema: IR_SCHEMA_IDS.targetProfile,
     version: IR_VERSION,
-    targets: ["web", "desktop"],
-    ...(environment?.budgets === undefined ? {} : { budgets: environment.budgets }),
-    ...(environment?.performance === undefined ? {} : { performance: environment.performance }),
+    targets: structuredTargetProfile?.targets ?? ["web", "desktop"],
+    ...(targetBudgets === undefined ? {} : { budgets: targetBudgets }),
+    ...(targetPerformance === undefined ? {} : { performance: targetPerformance }),
   };
   const manifest: IBundleManifest = {
     schema: IR_SCHEMA_IDS.bundle,
@@ -336,6 +339,20 @@ function readStructuredRuntimeConfig(documents: readonly IAuthoringDocument[] | 
     ...(isRecord(data.renderer) ? { renderer: cloneRecord(data.renderer) as IRuntimeConfigIr["renderer"] } : {}),
     time: cloneRecord(data.time) as IRuntimeConfigIr["time"],
     window: cloneRecord(data.window) as IRuntimeConfigIr["window"],
+  };
+}
+
+function readStructuredTargetProfile(documents: readonly IAuthoringDocument[] | undefined): ITargetProfile | undefined {
+  const data = documents?.find((document) => document.kind === "target" && isRecord(document.data))?.data;
+  if (!isRecord(data) || !Array.isArray(data.targets) || data.targets.some((target) => target !== "web" && target !== "desktop")) {
+    return undefined;
+  }
+  return {
+    schema: IR_SCHEMA_IDS.targetProfile,
+    version: IR_VERSION,
+    targets: [...data.targets] as ITargetProfile["targets"],
+    ...(isRecord(data.budgets) ? { budgets: cloneRecord(data.budgets) as ITargetProfile["budgets"] } : {}),
+    ...(isRecord(data.performance) ? { performance: cloneRecord(data.performance) as unknown as ITargetProfile["performance"] } : {}),
   };
 }
 

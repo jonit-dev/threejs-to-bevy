@@ -54,6 +54,7 @@ import {
   setRigidBodyComponent,
   setSceneLifecycle,
   setSystemMetadata,
+  setTargetProfile,
   setTransform,
   setUiLayout,
   setUiStyle,
@@ -115,6 +116,7 @@ export type AuthoringOperationName =
   | "system.attach_script"
   | "system.create"
   | "system.set_metadata"
+  | "target.set_profile"
   | "ui.add_text"
   | "ui.add_node"
   | "ui.bind"
@@ -123,7 +125,7 @@ export type AuthoringOperationName =
   | "ui.set_style";
 
 export type AuthoringOperationPathPolicy = "source-document" | "source-script";
-export type AuthoringOperationSourceFamily = "asset" | "audio" | "environment" | "input" | "material" | "mesh" | "prefab" | "project" | "resources" | "runtime" | "scene" | "system" | "ui";
+export type AuthoringOperationSourceFamily = "asset" | "audio" | "environment" | "input" | "material" | "mesh" | "prefab" | "project" | "resources" | "runtime" | "scene" | "system" | "target" | "ui";
 export type AuthoringOperationResultShape = "authoring-operation-result";
 
 export interface IAuthoringOperationArgumentDescriptor {
@@ -298,6 +300,12 @@ const descriptors = [
     numberArg("bloomIntensity", false),
     numberArg("bloomThreshold", false),
     stringArg("renderPath", false),
+  ]),
+  descriptor("target.set_profile", "Create or update a structured target profile source document.", "target", "source-document", [
+    stringArg("targetProfileId"),
+    stringArrayArg("targets"),
+    objectArg("budgets", false),
+    objectArg("performance", false),
   ]),
   descriptor("scene.add_entity", "Add an entity to a structured scene document.", "scene", "source-document", [
     stringArg("sceneId"),
@@ -607,6 +615,8 @@ const dispatchers: Record<AuthoringOperationName, OperationDispatcher> = {
     setRuntimeRendering({ antialias: optionalString(args, "antialias"), bloomEnabled: optionalBoolean(args, "bloomEnabled"), bloomIntensity: optionalNumber(args, "bloomIntensity"), bloomThreshold: optionalNumber(args, "bloomThreshold"), projectPath, renderPath: optionalString(args, "renderPath"), runtimeId: requiredString(args, "runtimeId") }),
   "runtime.set_window": async ({ args, projectPath }) =>
     setRuntimeWindow({ height: optionalNumber(args, "height"), projectPath, runtimeId: requiredString(args, "runtimeId"), title: optionalString(args, "title"), width: optionalNumber(args, "width") }),
+  "target.set_profile": async ({ args, projectPath }) =>
+    setTargetProfile({ budgets: optionalObject(args, "budgets"), performance: optionalObject(args, "performance"), projectPath, targetProfileId: requiredString(args, "targetProfileId"), targets: requiredStringArray(args, "targets") }),
   "scene.add_entity": async ({ args, projectPath }) =>
     addEntity({ entityId: requiredString(args, "entityId"), prefabId: optionalString(args, "prefabId"), projectPath, sceneId: requiredString(args, "sceneId") }),
   "scene.add_group": async ({ args, projectPath }) =>
@@ -881,6 +891,11 @@ function optionalString(args: Record<string, unknown>, key: string): string | un
 function optionalStringArray(args: Record<string, unknown>, key: string): string[] | undefined {
   const value = args[key];
   return isStringArray(value) ? value : undefined;
+}
+
+function optionalObject(args: Record<string, unknown>, key: string): Record<string, unknown> | undefined {
+  const value = args[key];
+  return isObject(value) ? value : undefined;
 }
 
 function optionalObjectArray(args: Record<string, unknown>, key: string): Record<string, unknown>[] | undefined {

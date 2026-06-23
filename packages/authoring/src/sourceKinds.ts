@@ -331,7 +331,7 @@ export const authoringSourceMatrix = [
     cliOperationSupport: "partial",
     typescriptRole: "none",
     editorRoundTrip: "required",
-    notes: "Runtime config source documents and create/set-window/set-rendering CLI/editor operations cover primary window and promoted renderer fields; target profile source documents and host process state remain open.",
+    notes: "Runtime config source documents and create/set-window/set-rendering CLI/editor operations cover primary window and promoted renderer fields; target profile source documents and target.set_profile / tn target set cover targets, budgets, and performance JSON; host process state remains open.",
   },
   {
     id: "generated-bundle-artifacts",

@@ -34,6 +34,7 @@ import {
   setRuntimeWindow,
   setResourceDocumentEntry,
   setSystemMetadata,
+  setTargetProfile,
   setUiLayout,
   setUiStyle,
   type IAuthoringOperationResult,
@@ -654,6 +655,37 @@ export async function runtimeCommand(argv: readonly string[], options: ISourceCo
   return renderUsage(json, "TN_RUNTIME_COMMAND_UNKNOWN", "Usage: tn runtime create|set-window|set-rendering ... [--json]");
 }
 
+export async function targetCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {
+  const normalizedArgv = normalizeArgv(argv);
+  const [subcommand] = normalizedArgv;
+  const json = normalizedArgv.includes("--json");
+  const projectPath = resolveProjectPath(normalizedArgv, options.cwd);
+  const targetProfileId = readPositional(normalizedArgv, 1);
+
+  if (subcommand === "set") {
+    const targets = readCsvFlag(normalizedArgv, "--targets");
+    const budgets = parseJsonObjectFlag(normalizedArgv, "--budgets", "TN_TARGET_BUDGETS_INVALID");
+    const performance = parseJsonObjectFlag(normalizedArgv, "--performance", "TN_TARGET_PERFORMANCE_INVALID");
+    if (budgets.diagnostic !== undefined) {
+      return renderUsage(json, budgets.diagnostic, "Target --budgets must be a JSON object.");
+    }
+    if (performance.diagnostic !== undefined) {
+      return renderUsage(json, performance.diagnostic, "Target --performance must be a JSON object.");
+    }
+    if (targetProfileId === undefined || targets === undefined || targets.length === 0) {
+      return renderUsage(json, "TN_TARGET_SET_ARGS_MISSING", targetSetUsage());
+    }
+    return renderAuthoringResult(
+      "target",
+      await setTargetProfile({ budgets: budgets.value, performance: performance.value, projectPath, targetProfileId, targets }),
+      json,
+      `Target profile '${targetProfileId}' updated.`,
+    );
+  }
+
+  return renderUsage(json, "TN_TARGET_COMMAND_UNKNOWN", targetSetUsage());
+}
+
 export async function systemCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {
   const normalizedArgv = normalizeArgv(argv);
   const [subcommand] = normalizedArgv;
@@ -754,6 +786,10 @@ function runtimeSetWindowUsage(): string {
 
 function runtimeSetRenderingUsage(): string {
   return "Usage: tn runtime set-rendering <runtime-id> [--antialias none|msaa2|msaa4|msaa8|fxaa|taa|smaa] [--bloom true|false] [--bloom-intensity <n>] [--bloom-threshold <n>] [--render-path forward] [--project <path>] [--json]";
+}
+
+function targetSetUsage(): string {
+  return "Usage: tn target set <target-profile-id> --targets web,desktop [--budgets '<json-object>'] [--performance '<json-object>'] [--project <path>] [--json]";
 }
 
 function projectInitSourceUsage(): string {
@@ -890,6 +926,7 @@ const flagsWithValues = new Set([
   "--bloom",
   "--bloom-intensity",
   "--bloom-threshold",
+  "--budgets",
   "--clearcoat",
   "--clearcoat-roughness",
   "--clearcoat-roughness-texture",
@@ -938,10 +975,12 @@ const flagsWithValues = new Set([
   "--text",
   "--top",
   "--title",
+  "--targets",
   "--transmission",
   "--transmission-texture",
   "--value",
   "--width",
   "--wrap",
   "--justify",
+  "--performance",
 ]);

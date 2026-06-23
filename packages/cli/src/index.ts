@@ -17,7 +17,7 @@ import { modelTestCommand } from "./commands/modelTest.js";
 import { packageCommand } from "./commands/package.js";
 import { navCommand, physicsCommand } from "./commands/physicsNav.js";
 import { sceneCommand } from "./commands/scene.js";
-import { animationCommand, audioCommand, environmentCommand, inputCommand, materialCommand, meshCommand, particleCommand, prefabCommand, projectCommand, resourcesCommand, runtimeCommand, systemCommand, uiCommand } from "./commands/sourceDocuments.js";
+import { animationCommand, audioCommand, environmentCommand, inputCommand, materialCommand, meshCommand, particleCommand, prefabCommand, projectCommand, resourcesCommand, runtimeCommand, systemCommand, targetCommand, uiCommand } from "./commands/sourceDocuments.js";
 import { validateProject } from "./commands/validate.js";
 import { recordCommand, screenshotCommand } from "./commands/visualProof.js";
 import { verifyCommand } from "./commands/verify.js";
@@ -149,6 +149,11 @@ const commands: Record<string, ICommandDefinition> = {
     description: "Create and mutate structured runtime config source documents.",
     implemented: true,
     usage: "tn runtime create <runtime-id> [--project <path>] [--json]\n              tn runtime set-window <runtime-id> [--width <n>] [--height <n>] [--title <title>] [--project <path>] [--json]\n              tn runtime set-rendering <runtime-id> [--antialias none|msaa2|msaa4|msaa8|fxaa|taa|smaa] [--bloom true|false] [--bloom-intensity <n>] [--bloom-threshold <n>] [--render-path forward] [--project <path>] [--json]",
+  },
+  target: {
+    description: "Create and mutate structured target profile source documents.",
+    implemented: true,
+    usage: "tn target set <target-profile-id> --targets web,desktop [--budgets '<json-object>'] [--performance '<json-object>'] [--project <path>] [--json]",
   },
   resources: {
     description: "Create and mutate reusable resource source documents.",
@@ -353,6 +358,10 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
 
   if (commandName === "system") {
     return systemCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "target") {
+    return targetCommand(normalizedArgv.slice(1));
   }
 
   if (commandName === "ui") {

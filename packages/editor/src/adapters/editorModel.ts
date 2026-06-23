@@ -61,7 +61,7 @@ export type EditorInspectorFieldKind =
   | "stringList"
   | "vector3";
 
-export type EditorInspectorSourceFamily = "asset" | "audio" | "environment" | "input" | "material" | "mesh" | "prefab" | "project" | "resources" | "runtime" | "scene" | "system" | "ui";
+export type EditorInspectorSourceFamily = "asset" | "audio" | "environment" | "input" | "material" | "mesh" | "prefab" | "project" | "resources" | "runtime" | "scene" | "system" | "target" | "ui";
 
 export interface IEditorPropertyOperation {
   args: Record<string, unknown>;
@@ -334,6 +334,9 @@ export const EDITOR_INSPECTOR_FIELD_INVENTORY: readonly IEditorInspectorFieldInv
   { field: "project.authoringVersion", fieldKind: "string", operationName: "project.create", readOnly: false, sourceFamily: "project" },
   { field: "project.sourceRoots", fieldKind: "stringList", operationName: "project.create", readOnly: false, sourceFamily: "project" },
   { field: "project.buildTargets", fieldKind: "stringList", operationName: "project.create", readOnly: false, sourceFamily: "project" },
+  { field: "target.targets", fieldKind: "stringList", operationName: "target.set_profile", readOnly: false, sourceFamily: "target" },
+  { field: "target.budgets", fieldKind: "json", operationName: "target.set_profile", readOnly: false, sourceFamily: "target" },
+  { field: "target.performance", fieldKind: "json", operationName: "target.set_profile", readOnly: false, sourceFamily: "target" },
   { field: "ui.nodes.type", fieldKind: "enum", operationName: "ui.add_node", readOnly: false, sourceFamily: "ui" },
   { field: "ui.nodes.label", fieldKind: "string", operationName: "ui.add_node", readOnly: false, sourceFamily: "ui" },
   { field: "ui.nodes.style.color", fieldKind: "color", operationName: "ui.set_style", readOnly: false, sourceFamily: "ui" },

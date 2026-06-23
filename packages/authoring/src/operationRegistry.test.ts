@@ -77,6 +77,7 @@ test("should dispatch existing structured source operations through the registry
       await dispatchAuthoringOperation({ args: { prefabId: "player" }, name: "prefab.create", projectPath: root }),
       await dispatchAuthoringOperation({ args: { componentKind: "RigidBody", prefabId: "player", value: { kind: "dynamic" } }, name: "prefab.add_component", projectPath: root }),
       await dispatchAuthoringOperation({ args: { buildTargets: ["web"], projectId: "kart", sourceRoots: ["content", "src"] }, name: "project.create", projectPath: root }),
+      await dispatchAuthoringOperation({ args: { budgets: { maxBundleBytes: 1048576, supportedTextureFormats: ["png"] }, targetProfileId: "desktop", targets: ["desktop"] }, name: "target.set_profile", projectPath: root }),
       await dispatchAuthoringOperation({ args: { color: "#2f80ed", prefabId: "prefab.player", primitive: "box", sceneId: "scene.arena" }, name: "scene.add_prefab", projectPath: root }),
       await dispatchAuthoringOperation({ args: { asset: "assets/player.glb", color: "#00ffaa", prefabId: "prefab.player", primitive: "sphere", sceneId: "scene.arena" }, name: "scene.set_prefab", projectPath: root }),
       await dispatchAuthoringOperation({ args: { groupId: "group.lane.red", name: "Red Lane", position: [-2, 0, 0], sceneId: "scene.arena" }, name: "scene.add_group", projectPath: root }),
@@ -121,6 +122,10 @@ test("should dispatch existing structured source operations through the registry
     const prefab = JSON.parse(await readFile(join(root, "content", "prefabs", "player.prefab.json"), "utf8")) as {
       entities: Array<{ components?: Record<string, unknown>; id: string }>;
     };
+    const target = JSON.parse(await readFile(join(root, "content", "targets", "desktop.target.json"), "utf8")) as {
+      budgets?: Record<string, unknown>;
+      targets: string[];
+    };
     const scene = JSON.parse(await readFile(join(root, "content", "scenes", "arena.scene.json"), "utf8")) as {
       activation?: string;
       entities: Array<{ components?: Record<string, unknown>; id: string; transform?: { position?: number[] } }>;
@@ -148,6 +153,8 @@ test("should dispatch existing structured source operations through the registry
     assert.deepEqual(input.axes, [{ id: "MoveX", negative: ["keyboard.a"], positive: ["keyboard.d"], value: "gamepad.leftStickX" }]);
     assert.deepEqual(mesh.meshes, [{ id: "mesh.player", kind: "primitive", primitive: "sphere" }]);
     assert.deepEqual(prefab.entities[0]?.components, { RigidBody: { kind: "dynamic" } });
+    assert.deepEqual(target.targets, ["desktop"]);
+    assert.deepEqual(target.budgets, { maxBundleBytes: 1048576, supportedTextureFormats: ["png"] });
     assert.deepEqual(scene.prefabs, [{ asset: "assets/player.glb", color: "#00ffaa", id: "prefab.player", primitive: "sphere" }]);
     assert.deepEqual(scene.entities.find((entity) => entity.id === "group.lane.red"), {
       components: { SceneContainer: { kind: "group", name: "Red Lane" } },
@@ -235,6 +242,7 @@ test("should expose operation metadata and registry diagnostics", async () => {
     "runtime.create",
     "runtime.set_window",
     "runtime.set_rendering",
+    "target.set_profile",
     "scene.add_entity",
     "scene.add_group",
     "scene.add_prefab",

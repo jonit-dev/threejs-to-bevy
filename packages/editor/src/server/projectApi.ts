@@ -608,6 +608,19 @@ function documentInspectorRows(document: IAuthoringDocument): IEditorPropertyRow
       rows.push(documentRow(document, "runtime:renderer-render-path", "Render Path", readString(renderer.renderPath) ?? "", "enum", false, "/renderer/renderPath", "runtime", "runtime.set_rendering", "renderPath", { antialias: readString(renderer.antialias), bloomEnabled: readBoolean(bloom.enabled), bloomIntensity: readNumber(bloom.intensity), bloomThreshold: readNumber(bloom.threshold), runtimeId }));
       break;
     }
+    case "target": {
+      const targetProfileId = readDocumentId(document.data) ?? "";
+      const baseArgs = {
+        budgets: isRecord(document.data.budgets) ? { ...document.data.budgets } : undefined,
+        performance: isRecord(document.data.performance) ? { ...document.data.performance } : undefined,
+        targetProfileId,
+        targets: readStringArray(document.data.targets),
+      };
+      rows.push(documentRow(document, "target:targets", "Targets", readStringArray(document.data.targets).join(", "), "stringList", false, "/targets", "target", "target.set_profile", "targets", baseArgs));
+      rows.push(documentRow(document, "target:budgets", "Budgets", summarizeValue(document.data.budgets), "json", false, "/budgets", "target", "target.set_profile", "budgets", baseArgs));
+      rows.push(documentRow(document, "target:performance", "Performance", summarizeValue(document.data.performance), "json", false, "/performance", "target", "target.set_profile", "performance", baseArgs));
+      break;
+    }
     case "scene":
       rows.push(documentRow(document, "scene:lifecycle:kind", "Scene Kind", readString(document.data.kind) ?? "level", "enum", false, "/kind", "scene", "scene.set_lifecycle", "kind", { activation: readString(document.data.activation), initial: document.data.initial === true, sceneId: readDocumentId(document.data) ?? "" }));
       rows.push(documentRow(document, "scene:lifecycle:activation", "Activation", readString(document.data.activation) ?? "", "enum", false, "/activation", "scene", "scene.set_lifecycle", "activation", { initial: document.data.initial === true, kind: readString(document.data.kind), sceneId: readDocumentId(document.data) ?? "" }));
@@ -791,6 +804,7 @@ function sourceFamilyForDocumentKind(kind: AuthoringDocumentKind): EditorInspect
     case "project":
     case "resources":
     case "runtime":
+    case "target":
     case "scene":
     case "ui":
       return kind;

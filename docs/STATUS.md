@@ -112,10 +112,11 @@ structured source documents with import provenance, supports dry-run reports,
 and keeps generated bundle files out of durable source. `scripts.bundle.js`
 remains unrecoverable without source-safe manifest/provenance and reports
 `TN_AUTHORING_IMPORT_UNRECOVERABLE_SCRIPT_BODY`; runtime config and target
-profile import remain later source-document work.
+profile bundle reverse-import remain later source-document work.
 The Phase 4 CLI operation slice adds shared authoring operations and registered
 `tn ui`, `tn material`, `tn mesh`, `tn prefab`, `tn input`, `tn asset`,
-`tn audio`, `tn environment`, `tn project`, `tn runtime`, and `tn system` commands for deterministic source-document
+`tn audio`, `tn environment`, `tn project`, `tn runtime`, `tn target`, and
+`tn system` commands for deterministic source-document
 mutation. The supported initial operations create retained UI docs, add text
 nodes, add/update retained UI widget nodes, set centered layout and promoted
 style fields, bind UI resources, create/update material color, roughness,
@@ -135,6 +136,9 @@ for project id, authoring version, source roots, and build targets, with matchin
 editor rows.
 Runtime config source commands now create runtime docs and set promoted primary
 window plus renderer quality fields that lower into `runtime.config.json`.
+Target profile source commands now create/update `content/targets/*.target.json`
+for targets, budgets, and performance JSON, and compiler lowering uses those
+documents for `target.profile.json`.
 Structured prefab source documents with entity templates now lower into
 standalone bundle `prefabs.ir.json` catalogs with manifest entries and
 authoring provenance ownership.
@@ -180,8 +184,8 @@ Commands support `--json`, return the shared `ok`/`changed`/`filesWritten`/
 `diagnostics` shape, and fail before writing on invalid JSON or validation
 errors. Broader asset import settings, material sampler/import policy, input
 controls-settings/rebinding metadata, advanced UI input/rich-layout behavior,
-audio playback defaults, target profile source docs, and host window policy
-fields, plus project-level scene ordering/build orchestration, remain later
+audio playback defaults and host window policy fields, plus project-level
+scene ordering/build orchestration, remain later
 source-operation work.
 The Phase 5 compiler provenance slice extends `authoring.provenance.json` with
 structured source ownership entries when source documents are available during

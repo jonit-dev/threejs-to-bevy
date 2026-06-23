@@ -53,6 +53,7 @@ export {
   runtimeDocumentSchema,
   sceneDocumentSchema,
   systemsDocumentSchema,
+  targetProfileDocumentSchema,
   uiDocumentSchema,
 } from "./schemas.js";
 export type { IAuthoringProject, ILoadAuthoringProjectOptions } from "./project.js";
@@ -131,6 +132,7 @@ export type {
   ISetRuntimeWindowOptions,
   ISetSceneLifecycleOptions,
   ISetSystemMetadataOptions,
+  ISetTargetProfileOptions,
   ISetTransformOptions,
   ISetUiLayoutOptions,
   ISetUiStyleOptions,
@@ -202,6 +204,7 @@ export {
   setRuntimeWindow,
   setSceneLifecycle,
   setSystemMetadata,
+  setTargetProfile,
   setTransform,
   setUiLayout,
   setUiStyle,

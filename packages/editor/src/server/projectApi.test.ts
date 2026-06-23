@@ -12,6 +12,7 @@ test("should expose environment skybox and terrain rows", async () => {
   try {
     await mkdir(join(root, "content", "environment"), { recursive: true });
     await mkdir(join(root, "content", "runtime"), { recursive: true });
+    await mkdir(join(root, "content", "targets"), { recursive: true });
     await writeFile(
       join(root, "content", "project.authoring.json"),
       `${JSON.stringify({
@@ -48,6 +49,16 @@ test("should expose environment skybox and terrain rows", async () => {
         renderer: { antialias: "msaa4", bloom: { enabled: true, intensity: 0.3, threshold: 0.8 }, renderPath: "forward" },
         time: { fixedDelta: 1 / 60, paused: false },
         window: { height: 720, title: "Arena", width: 1280 },
+      }, null, 2)}\n`,
+    );
+    await writeFile(
+      join(root, "content", "targets", "desktop.target.json"),
+      `${JSON.stringify({
+        schema: "threenative.target-profile",
+        version: "0.1.0",
+        id: "desktop",
+        targets: ["desktop"],
+        budgets: { maxBundleBytes: 1048576, supportedTextureFormats: ["png"] },
       }, null, 2)}\n`,
     );
     const result = await loadEditorProjectApi({ projectPath: root });
@@ -137,6 +148,9 @@ test("should expose environment skybox and terrain rows", async () => {
     const runtimeRows = result.documents.flatMap((group) => group.documents).find((document) => document.kind === "runtime")?.inspectorRows ?? [];
     assert.equal(runtimeRows.some((row) => row.label === "Window Width" && row.operation?.name === "runtime.set_window" && row.operation.valueArg === "width"), true);
     assert.equal(runtimeRows.some((row) => row.label === "Renderer Antialias" && row.operation?.name === "runtime.set_rendering" && row.operation.valueArg === "antialias"), true);
+    const targetRows = result.documents.flatMap((group) => group.documents).find((document) => document.kind === "target")?.inspectorRows ?? [];
+    assert.equal(targetRows.some((row) => row.label === "Targets" && row.sourceFamily === "target" && row.operation?.name === "target.set_profile" && row.operation.valueArg === "targets"), true);
+    assert.equal(targetRows.some((row) => row.label === "Budgets" && row.fieldKind === "json" && row.operation?.name === "target.set_profile" && row.operation.valueArg === "budgets"), true);
     const projectRows = result.documents.flatMap((group) => group.documents).find((document) => document.kind === "project")?.inspectorRows ?? [];
     assert.equal(projectRows.some((row) => row.label === "Source Roots" && row.sourceFamily === "project" && row.operation?.name === "project.create" && row.operation.valueArg === "sourceRoots"), true);
     assert.equal(projectRows.some((row) => row.label === "Build Targets" && row.fieldKind === "stringList" && row.operation?.name === "project.create"), true);
