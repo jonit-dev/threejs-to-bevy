@@ -171,8 +171,11 @@ physics/navigation source components; camera operations now preserve promoted pr
 shared registry exposes the matching `scene.set_*` operations.
 Reusable `threenative.resources` source documents now give shared gameplay
 state/defaults their own durable source family through `tn resources
-create|add|set` and registry-backed `resources.*` operations; full reusable
-component/resource schema authoring remains separate residual work.
+create|add|set` and registry-backed `resources.*` operations. Reusable
+`threenative.schema` documents under `content/schemas/*.schema.json` now cover
+component/resource schema source through `tn schema create|set`,
+registry-backed `schema.*` operations, validation, and compiler lowering into
+canonical bundle schema files; broader editor schema controls remain residual.
 Structured asset source documents now also carry promoted model animation
 metadata through `tn animation add-clip`, `tn animation graph add-state`, and
 bounded particle metadata through `tn particle add-emitter`, and compiler

@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import test from "node:test";
 
 import { assetCommand } from "./asset.js";
-import { animationCommand, audioCommand, environmentCommand, generatorCommand, inputCommand, materialCommand, meshCommand, particleCommand, prefabCommand, projectCommand, resourcesCommand, runtimeCommand, systemCommand, targetCommand, uiCommand } from "./sourceDocuments.js";
+import { animationCommand, audioCommand, environmentCommand, generatorCommand, inputCommand, materialCommand, meshCommand, particleCommand, prefabCommand, projectCommand, resourcesCommand, runtimeCommand, schemaCommand, systemCommand, targetCommand, uiCommand } from "./sourceDocuments.js";
 
 test("countdown UI can be created centered and bound without manual JSON editing", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-cli-ui-doc-"));
@@ -194,6 +194,27 @@ test("resources command creates and updates reusable resource source documents",
     assert.equal(add.exitCode, 0);
     assert.equal(set.exitCode, 0);
     assert.deepEqual(doc.resources, [{ id: "RaceState", path: "race.state", value: { lap: 2, status: "GREEN" } }]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("schema command creates and updates reusable schema source documents", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-schema-doc-"));
+  try {
+    const create = await schemaCommand(["create", "gameplay", "--kind", "component", "--project", root, "--json"]);
+    const set = await schemaCommand(["set", "gameplay", "RaceTelemetry", "--kind", "component", "--fields", "{\"lap\":{\"kind\":\"number\",\"required\":true},\"status\":{\"kind\":\"string\"}}", "--project", root, "--json"]);
+    const doc = JSON.parse(await readFile(join(root, "content", "schemas", "gameplay.schema.json"), "utf8")) as {
+      kind: string;
+      schemas: Array<{ fields: Record<string, unknown>; id: string }>;
+    };
+
+    assert.equal(create.exitCode, 0);
+    assert.equal(set.exitCode, 0);
+    assert.equal(doc.kind, "component");
+    assert.deepEqual(doc.schemas, [
+      { id: "RaceTelemetry", fields: { lap: { kind: "number", required: true }, status: { kind: "string" } } },
+    ]);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

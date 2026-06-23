@@ -210,7 +210,7 @@ export const authoringSourceMatrix = [
     cliOperationSupport: "partial",
     typescriptRole: "none",
     editorRoundTrip: "required",
-    notes: "Scene-local resources plus reusable resources documents and resources create/add/set CLI/editor operations exist; reusable component/resource schema documents remain later work.",
+    notes: "Scene-local resources plus reusable resources documents and schema documents now have source validation, CLI mutation, and bundle lowering; broader editor schema controls remain later work.",
   },
   {
     id: "input-document",

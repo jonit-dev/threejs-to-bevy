@@ -27,6 +27,7 @@ import {
   createProjectMetadata,
   createRuntimeConfig,
   createResourcesDocument,
+  createSchemaDocument,
   createSystem,
   createUiDocument,
   recordGeneratorProvenance,
@@ -52,6 +53,7 @@ import {
   setResourceDocumentEntry,
   setRuntimeRendering,
   setRuntimeWindow,
+  setSchemaEntry,
   setRigidBodyComponent,
   setSceneLifecycle,
   setSystemMetadata,
@@ -92,6 +94,8 @@ export type AuthoringOperationName =
   | "runtime.create"
   | "runtime.set_rendering"
   | "runtime.set_window"
+  | "schema.create"
+  | "schema.set"
   | "scene.add_entity"
   | "scene.add_group"
   | "scene.add_prefab"
@@ -294,6 +298,16 @@ const descriptors = [
     stringArg("resourceId"),
     stringArg("path", false),
     anyJsonArg("value", false),
+  ]),
+  descriptor("schema.create", "Create a reusable component or resource schema source document.", "resources", "source-document", [
+    stringArg("schemaDocId"),
+    stringArg("kind"),
+  ]),
+  descriptor("schema.set", "Add or replace a schema declaration in a reusable schema source document.", "resources", "source-document", [
+    stringArg("schemaDocId"),
+    stringArg("schemaId"),
+    stringArg("kind"),
+    objectArg("fields"),
   ]),
   descriptor("runtime.create", "Create a structured runtime config source document.", "runtime", "source-document", [
     stringArg("runtimeId"),
@@ -623,6 +637,10 @@ const dispatchers: Record<AuthoringOperationName, OperationDispatcher> = {
     createResourcesDocument({ projectPath, resourcesDocId: requiredString(args, "resourcesDocId") }),
   "resources.set": async ({ args, projectPath }) =>
     setResourceDocumentEntry({ path: optionalString(args, "path"), projectPath, resourceId: requiredString(args, "resourceId"), resourcesDocId: requiredString(args, "resourcesDocId"), value: optionalJson(args, "value") }),
+  "schema.create": async ({ args, projectPath }) =>
+    createSchemaDocument({ kind: requiredString(args, "kind"), projectPath, schemaDocId: requiredString(args, "schemaDocId") }),
+  "schema.set": async ({ args, projectPath }) =>
+    setSchemaEntry({ fields: requiredObject(args, "fields"), kind: requiredString(args, "kind"), projectPath, schemaDocId: requiredString(args, "schemaDocId"), schemaId: requiredString(args, "schemaId") }),
   "runtime.create": async ({ args, projectPath }) =>
     createRuntimeConfig({ projectPath, runtimeId: requiredString(args, "runtimeId") }),
   "runtime.set_rendering": async ({ args, projectPath }) =>

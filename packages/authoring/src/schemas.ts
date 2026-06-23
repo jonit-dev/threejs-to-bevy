@@ -8,6 +8,7 @@ export const projectDocumentSchema = "threenative.authoring";
 export const runtimeDocumentSchema = "threenative.runtime-config";
 export const targetProfileDocumentSchema = "threenative.target-profile";
 export const resourcesDocumentSchema = "threenative.resources";
+export const schemaDocumentSchema = "threenative.schema";
 export const systemsDocumentSchema = "threenative.systems";
 export const prefabDocumentSchema = "threenative.prefab";
 export const audioDocumentSchema = "threenative.audio";
@@ -24,6 +25,7 @@ export const projectDocumentKeys = new Set(["schema", "version", "id", "authorin
 export const runtimeDocumentKeys = new Set(["schema", "version", "id", "renderer", "time", "window", "provenance"]);
 export const targetProfileDocumentKeys = new Set(["schema", "version", "id", "budgets", "performance", "targets", "provenance"]);
 export const resourcesDocumentKeys = new Set(["schema", "version", "id", "resources", "provenance"]);
+export const schemaDocumentKeys = new Set(["schema", "version", "id", "kind", "schemas", "provenance"]);
 export const systemsDocumentKeys = new Set(["schema", "version", "id", "systems", "provenance"]);
 export const prefabDocumentKeys = new Set(["schema", "version", "id", "entities", "provenance"]);
 export const audioDocumentKeys = new Set(["schema", "version", "id", "sounds", "provenance"]);
@@ -55,6 +57,7 @@ export const uiNodeKeys = new Set(["id", "action", "label", "layout", "src", "st
 export const uiStyleKeys = new Set(["backgroundColor", "borderColor", "borderRadius", "borderWidth", "color", "fontSize", "fontWeight", "opacity", "textAlign", "textDecoration", "wrap"]);
 export const uiBindingKeys = new Set(["node", "resource"]);
 export const resourceKeys = new Set(["id", "path", "value"]);
+export const schemaEntryKeys = new Set(["id", "fields"]);
 export const prefabKeys = new Set(["id", "primitive", "color", "asset"]);
 export const materialKeys = new Set([
   "id",
@@ -113,6 +116,8 @@ export const supportedUiTextDecorations = new Set(["lineThrough", "none", "under
 export const logicalIdPattern = /^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/;
 export const ecsIdPattern = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 export const resourceIdPattern = /^[A-Za-z][A-Za-z0-9]*(?:[._-][A-Za-z0-9]+)*$/;
+export const supportedSchemaDocumentKinds = new Set(["component", "resource"]);
+export const supportedSchemaFieldKinds = new Set(["boolean", "color", "enum", "json", "number", "quat", "string", "vec2", "vec3", "vec4"]);
 
 export interface ISceneDocument {
   schema: typeof sceneDocumentSchema;
@@ -152,6 +157,25 @@ export interface ISceneResource {
   id: string;
   path?: string;
   value?: unknown;
+}
+
+export interface ISchemaDocument {
+  schema: typeof schemaDocumentSchema;
+  version?: string;
+  id: string;
+  kind: "component" | "resource";
+  schemas?: ISchemaEntry[];
+}
+
+export interface ISchemaEntry {
+  id: string;
+  fields: Record<string, ISchemaField>;
+}
+
+export interface ISchemaField {
+  default?: unknown;
+  kind: "boolean" | "color" | "enum" | "json" | "number" | "quat" | "string" | "vec2" | "vec3" | "vec4";
+  required?: boolean;
 }
 
 export interface ISceneSystem {

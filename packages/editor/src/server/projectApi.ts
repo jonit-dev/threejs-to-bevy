@@ -812,6 +812,7 @@ function sourceFamilyForDocumentKind(kind: AuthoringDocumentKind): EditorInspect
     case "project":
     case "resources":
     case "runtime":
+    case "schema":
     case "target":
     case "scene":
     case "ui":

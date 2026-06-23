@@ -122,6 +122,12 @@ Date: 2026-06-21
   `system.set_metadata`, and `tn system set-metadata <system-id> --schedule
   <schedule>` updates schedules after creation without recreating the system
   source document.
+- ✅ 2026-06-23: Reusable component/resource schema documents now use
+  `threenative.schema` source files under `content/schemas/*.schema.json`.
+  `tn schema create|set` and registry-backed `schema.*` operations validate
+  schema entries and compiler lowering emits them into canonical
+  `schemas/components.schema.json` and `schemas/resources.schema.json`
+  bundle artifacts.
 - ✅ 2026-06-23: Generator provenance now has a structured
   `content/generators/*.generator.json` source document and registry-backed
   `generator.record` / `tn generator record` command for module/export,
@@ -142,7 +148,8 @@ for later work and should not be treated as complete:
   operations, excluding asset catalog type/path and scene resource path/value
   rows, scene-local prefab primitive/color/asset rows, environment
   path/walkability/light-probe/source-asset LOD rows, promoted Light and custom
-  component payload rows, mesh source primitive rows, and system metadata/schedule rows,
+  component payload rows, mesh source primitive rows, system metadata/schedule rows,
+  and reusable schema document CLI/build lowering,
   which are now editable through registry-backed operations.
 
 ## Scope
@@ -194,7 +201,7 @@ IR/runtime surfaces, but only some have typed editor/CLI helpers.
 
 | Feature family | Three.js-style SDK / IR / web | Bevy runtime | Editor structured source | CLI / ECS add command | Gap flags | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| ✅ Entities, transforms, resources | Supported | Supported | Partial | Typed commands exist: `scene add-entity`, `scene set-transform`, `scene add-resource`, `scene set-resource`, `resources create/add/set` | EDITOR | Core scene mutation exists, and reusable `threenative.resources` source docs now persist resource declarations/defaults; reusable schema document authoring remains residual. |
+| ✅ Entities, transforms, resources | Supported | Supported | Partial | Typed commands exist: `scene add-entity`, `scene set-transform`, `scene add-resource`, `scene set-resource`, `resources create/add/set`, `schema create/set` | EDITOR | Core scene mutation exists, reusable `threenative.resources` source docs persist resource declarations/defaults, and reusable `threenative.schema` docs lower component/resource schemas into canonical bundle schema files; broader editor schema controls remain residual. |
 | ✅ Generic ECS components | IR supports arbitrary component records plus typed known components | Bevy maps known components; script host can read component values | Partial | Generic `scene set-component` and `prefab add-component`, plus typed scene operations for promoted components | ECS-CMD, EDITOR | Typed source/CLI/default coverage now includes camera, light, mesh-renderer, render-layers, visibility, rigid-body, collider, character-controller, tags, and groups; raw JSON remains for custom or unpromoted components. |
 | ✅ Tags and group containers | Supported in parity docs / compiler path | Supported as marker/query and hierarchy containers | Partial | `tn scene add-tag`, `tn scene add-group` plus registry `scene.add_tag` / `scene.add_group` | EDITOR | Typed source/CLI operations now write zero-field tag components and `SceneContainer` group entities that lower through structured scene builds; broader editor hierarchy/group controls remain partial. |
 | ✅ MeshRenderer and primitive meshes | Supported | Supported | Partial | `mesh primitive`, `mesh custom`, `scene add-prefab`, `scene set-prefab`, generic `set-component` | ECS-CMD, EDITOR | Source mesh docs now cover primitive and custom attribute/index declarations, scene-local prefab primitive/color/asset edits, and compiler lowering emits generated mesh assets/binary payloads; import settings and richer editor mesh controls remain partial. |

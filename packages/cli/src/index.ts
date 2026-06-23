@@ -17,7 +17,7 @@ import { modelTestCommand } from "./commands/modelTest.js";
 import { packageCommand } from "./commands/package.js";
 import { navCommand, physicsCommand } from "./commands/physicsNav.js";
 import { sceneCommand } from "./commands/scene.js";
-import { animationCommand, audioCommand, environmentCommand, generatorCommand, inputCommand, materialCommand, meshCommand, particleCommand, prefabCommand, projectCommand, resourcesCommand, runtimeCommand, systemCommand, targetCommand, uiCommand } from "./commands/sourceDocuments.js";
+import { animationCommand, audioCommand, environmentCommand, generatorCommand, inputCommand, materialCommand, meshCommand, particleCommand, prefabCommand, projectCommand, resourcesCommand, runtimeCommand, schemaCommand, systemCommand, targetCommand, uiCommand } from "./commands/sourceDocuments.js";
 import { validateProject } from "./commands/validate.js";
 import { recordCommand, screenshotCommand } from "./commands/visualProof.js";
 import { verifyCommand } from "./commands/verify.js";
@@ -164,6 +164,11 @@ const commands: Record<string, ICommandDefinition> = {
     description: "Create and mutate reusable resource source documents.",
     implemented: true,
     usage: "tn resources create <resources-doc-id> [--project <path>] [--json]\n              tn resources add <resources-doc-id> <resource-id> [--path <resource.path>] [--value <json>] [--project <path>] [--json]\n              tn resources set <resources-doc-id> <resource-id> [--path <resource.path>] [--value <json>] [--project <path>] [--json]",
+  },
+  schema: {
+    description: "Create and mutate reusable component and resource schema source documents.",
+    implemented: true,
+    usage: "tn schema create <schema-doc-id> --kind <component|resource> [--project <path>] [--json]\n              tn schema set <schema-doc-id> <schema-id> --kind <component|resource> --fields <json-object> [--project <path>] [--json]",
   },
   scene: {
     description: "Create, inspect, validate, mutate, and prove structured source scene documents.",
@@ -363,6 +368,10 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
 
   if (commandName === "resources") {
     return resourcesCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "schema") {
+    return schemaCommand(normalizedArgv.slice(1));
   }
 
   if (commandName === "system") {

@@ -121,12 +121,19 @@ test("loads mixed authoring source document family", async () => {
       id: "kart-resources",
       resources: [{ id: "RaceState", path: "race.state", value: { lap: 1, status: "READY" } }],
     });
+    await writeSourceDocument(root, "content/schemas/kart.schema.json", {
+      schema: "threenative.schema",
+      version: "0.1.0",
+      id: "kart-schemas",
+      kind: "component",
+      schemas: [{ id: "RaceTelemetry", fields: { lap: { kind: "number", required: true }, status: { kind: "string" } } }],
+    });
     await writeSourceDocument(root, "src/scripts/race.ts", "export function raceController() {}\n");
 
     const project = await loadAuthoringProject({ projectPath: root });
     assert.deepEqual(
       project.documents.map((document) => document.kind),
-      ["asset", "audio", "environment", "input", "material", "mesh", "prefab", "project", "resources", "runtime", "scene", "systems", "ui"],
+      ["asset", "audio", "environment", "input", "material", "mesh", "prefab", "project", "resources", "runtime", "scene", "schema", "systems", "ui"],
     );
 
     const validation = await validateAuthoringProject({ projectPath: root });
@@ -173,6 +180,16 @@ test("validates duplicate IDs for structured authoring document families", async
     await writeSourceDocument(root, "content/prefabs/kart.prefab.json", duplicateDoc("threenative.prefab", "prefab", "entities", "kart-root"));
     await writeSourceDocument(root, "content/audio/kart.audio.json", duplicateDoc("threenative.audio", "audio", "sounds", "engine-loop"));
     await writeSourceDocument(root, "content/resources/kart.resources.json", duplicateDoc("threenative.resources", "resources", "resources", "RaceState"));
+    await writeSourceDocument(root, "content/schemas/kart.schema.json", {
+      schema: "threenative.schema",
+      version: "0.1.0",
+      id: "schemas",
+      kind: "component",
+      schemas: [
+        { id: "RaceTelemetry", fields: { lap: { kind: "number" } } },
+        { id: "RaceTelemetry", fields: { status: { kind: "string" } } },
+      ],
+    });
 
     const result = await validateAuthoringProject({ projectPath: root });
 
@@ -184,6 +201,7 @@ test("validates duplicate IDs for structured authoring document families", async
       "TN_AUTHORING_DUPLICATE_MATERIAL_ID",
       "TN_AUTHORING_DUPLICATE_ENTITY_ID",
       "TN_AUTHORING_DUPLICATE_RESOURCE_ID",
+      "TN_AUTHORING_DUPLICATE_SCHEMA_ID",
       "TN_AUTHORING_DUPLICATE_SYSTEM_ID",
       "TN_AUTHORING_DUPLICATE_UI_NODE_ID",
     ]);

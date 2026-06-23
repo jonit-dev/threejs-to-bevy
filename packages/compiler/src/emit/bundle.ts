@@ -10,6 +10,7 @@ import {
   type IGltfSceneMetadataIr,
   type IInputIr,
   type ILocalDataIr,
+  type IIrSchemaFile,
   type IMaterialIr,
   type IMaterialsIr,
   type IPrefabsIr,
@@ -93,6 +94,9 @@ export async function emitBundle(config: IProjectConfig, root: unknown, options:
   };
   const gltfScene: IGltfSceneMetadataIr | undefined = await extractGltfSceneMetadata(config.projectPath, assets);
   const runtimeConfig = ecs?.runtimeConfig ?? readStructuredRuntimeConfig(options.authoringDocuments);
+  const structuredSchemas = readStructuredSchemaFiles(options.authoringDocuments);
+  const componentSchemas = mergeOptionalSchemaFiles(ecs?.componentSchemas, structuredSchemas.componentSchemas);
+  const resourceSchemas = mergeOptionalSchemaFiles(ecs?.resourceSchemas, structuredSchemas.resourceSchemas);
   const prefabs = readStructuredPrefabs(options.authoringDocuments);
   const structuredTargetProfile = readStructuredTargetProfile(options.authoringDocuments);
   const targetBudgets = structuredTargetProfile?.budgets ?? environment?.budgets;
@@ -112,14 +116,14 @@ export async function emitBundle(config: IProjectConfig, root: unknown, options:
       assets: assetsManifest,
       audio,
       animations,
-      componentSchemas: ecs?.componentSchemas,
+      componentSchemas,
       environment: environment?.scene,
       eventSchemas: ecs?.eventSchemas,
       input,
       localData,
       materials,
       overlays: overlays?.overlays,
-      resourceSchemas: ecs?.resourceSchemas,
+      resourceSchemas,
       runtimeConfig,
       scenes: lifecycleScenes.scenes,
       systems: ecs?.systems,
@@ -152,11 +156,11 @@ export async function emitBundle(config: IProjectConfig, root: unknown, options:
       ...(ecs === undefined
         ? {}
         : {
-            componentSchemas: IR_DOCUMENTS.componentSchemas.fileName,
             eventSchemas: IR_DOCUMENTS.eventSchemas.fileName,
-            resourceSchemas: IR_DOCUMENTS.resourceSchemas.fileName,
             ...(ecs.scriptBundle === undefined ? {} : { scripts: IR_DOCUMENTS.scripts.fileName }),
           }),
+      ...(componentSchemas === undefined ? {} : { componentSchemas: IR_DOCUMENTS.componentSchemas.fileName }),
+      ...(resourceSchemas === undefined ? {} : { resourceSchemas: IR_DOCUMENTS.resourceSchemas.fileName }),
     },
   };
 
@@ -212,9 +216,13 @@ export async function emitBundle(config: IProjectConfig, root: unknown, options:
     if (input !== undefined) {
       await writeFile(resolve(targetDir, IR_DOCUMENTS.input.fileName), stableJson(input));
     }
+    if (componentSchemas !== undefined) {
+      await writeFile(resolve(targetDir, IR_DOCUMENTS.componentSchemas.fileName), stableJson(componentSchemas));
+    }
+    if (resourceSchemas !== undefined) {
+      await writeFile(resolve(targetDir, IR_DOCUMENTS.resourceSchemas.fileName), stableJson(resourceSchemas));
+    }
     if (ecs !== undefined) {
-      await writeFile(resolve(targetDir, IR_DOCUMENTS.componentSchemas.fileName), stableJson(ecs.componentSchemas));
-      await writeFile(resolve(targetDir, IR_DOCUMENTS.resourceSchemas.fileName), stableJson(ecs.resourceSchemas));
       await writeFile(resolve(targetDir, IR_DOCUMENTS.eventSchemas.fileName), stableJson(ecs.eventSchemas));
       await writeFile(resolve(targetDir, IR_DOCUMENTS.systems.fileName), stableJson(ecs.systems));
       if (ecs.scriptBundle !== undefined) {
@@ -353,6 +361,45 @@ function readStructuredTargetProfile(documents: readonly IAuthoringDocument[] | 
     targets: [...data.targets] as ITargetProfile["targets"],
     ...(isRecord(data.budgets) ? { budgets: cloneRecord(data.budgets) as ITargetProfile["budgets"] } : {}),
     ...(isRecord(data.performance) ? { performance: cloneRecord(data.performance) as unknown as ITargetProfile["performance"] } : {}),
+  };
+}
+
+function readStructuredSchemaFiles(documents: readonly IAuthoringDocument[] | undefined): {
+  componentSchemas?: IIrSchemaFile;
+  resourceSchemas?: IIrSchemaFile;
+} {
+  const componentSchemas = structuredSchemaFile("threenative.component-schemas", documents, "component");
+  const resourceSchemas = structuredSchemaFile("threenative.resource-schemas", documents, "resource");
+  return {
+    ...(componentSchemas === undefined ? {} : { componentSchemas }),
+    ...(resourceSchemas === undefined ? {} : { resourceSchemas }),
+  };
+}
+
+function structuredSchemaFile(schema: IIrSchemaFile["schema"], documents: readonly IAuthoringDocument[] | undefined, kind: "component" | "resource"): IIrSchemaFile | undefined {
+  const entries: Array<[string, { fields: Record<string, unknown> }]> = [];
+  for (const document of documents ?? []) {
+    if (document.kind !== "schema" || !isRecord(document.data) || document.data.kind !== kind || !Array.isArray(document.data.schemas)) {
+      continue;
+    }
+    for (const item of document.data.schemas) {
+      if (!isRecord(item) || !isRecord(item.fields)) {
+        continue;
+      }
+      const id = readString(item.id);
+      if (id !== undefined) {
+        entries.push([id, { fields: cloneRecord(item.fields) }]);
+      }
+    }
+  }
+  const schemas = Object.fromEntries(entries.sort(([left], [right]) => left.localeCompare(right))) as IIrSchemaFile["schemas"];
+  if (Object.keys(schemas).length === 0) {
+    return undefined;
+  }
+  return {
+    schema,
+    version: IR_VERSION,
+    schemas,
   };
 }
 
@@ -772,6 +819,16 @@ function mergeSchemaFiles<T extends { schema: string; version: string; schemas: 
     ...left,
     schemas: Object.fromEntries([...Object.entries(left.schemas), ...Object.entries(right.schemas)].sort(([a], [b]) => a.localeCompare(b))),
   };
+}
+
+function mergeOptionalSchemaFiles<T extends { schema: string; version: string; schemas: Record<string, unknown> }>(left: T | undefined, right: T | undefined): T | undefined {
+  if (left === undefined) {
+    return right;
+  }
+  if (right === undefined) {
+    return left;
+  }
+  return mergeSchemaFiles(left, right);
 }
 
 function mergeInputs(left: IEcsEmitResult["input"], right: IEcsEmitResult["input"]): IEcsEmitResult["input"] {

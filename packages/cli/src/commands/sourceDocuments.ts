@@ -20,6 +20,7 @@ import {
   createResourcesDocument,
   createRuntimeConfig,
   createSystem,
+  createSchemaDocument,
   createUiDocument,
   recordGeneratorProvenance,
   setMaterial,
@@ -33,6 +34,7 @@ import {
   addResourceDocumentEntry,
   setRuntimeRendering,
   setRuntimeWindow,
+  setSchemaEntry,
   setResourceDocumentEntry,
   setSystemMetadata,
   setTargetProfile,
@@ -490,6 +492,36 @@ export async function resourcesCommand(argv: readonly string[], options: ISource
   }
 
   return renderUsage(json, "TN_RESOURCES_COMMAND_UNKNOWN", "Usage: tn resources create|add|set ... [--json]");
+}
+
+export async function schemaCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {
+  const normalizedArgv = normalizeArgv(argv);
+  const [subcommand] = normalizedArgv;
+  const json = normalizedArgv.includes("--json");
+  const projectPath = resolveProjectPath(normalizedArgv, options.cwd);
+  const schemaDocId = readPositional(normalizedArgv, 1);
+  const kind = readFlag(normalizedArgv, "--kind");
+
+  if (subcommand === "create") {
+    if (schemaDocId === undefined || kind === undefined) {
+      return renderUsage(json, "TN_SCHEMA_CREATE_ARGS_MISSING", "Usage: tn schema create <schema-doc-id> --kind <component|resource> [--project <path>] [--json]");
+    }
+    return renderAuthoringResult("schema", await createSchemaDocument({ kind, projectPath, schemaDocId }), json, `Schema document '${schemaDocId}' created.`);
+  }
+
+  if (subcommand === "set") {
+    const schemaId = readPositional(normalizedArgv, 2);
+    const fields = parseJsonFlag(normalizedArgv, "--fields");
+    if (fields.diagnostic !== undefined) {
+      return renderUsage(json, fields.diagnostic, "Schema --fields must be valid JSON.");
+    }
+    if (schemaDocId === undefined || schemaId === undefined || kind === undefined || fields.value === undefined || !isRecord(fields.value)) {
+      return renderUsage(json, "TN_SCHEMA_SET_ARGS_MISSING", "Usage: tn schema set <schema-doc-id> <schema-id> --kind <component|resource> --fields <json-object> [--project <path>] [--json]");
+    }
+    return renderAuthoringResult("schema", await setSchemaEntry({ fields: fields.value, kind, projectPath, schemaDocId, schemaId }), json, `Schema '${schemaId}' updated.`);
+  }
+
+  return renderUsage(json, "TN_SCHEMA_COMMAND_UNKNOWN", "Usage: tn schema create|set ... [--json]");
 }
 
 export async function environmentCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {

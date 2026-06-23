@@ -48,6 +48,9 @@ import {
   resourceKeys,
   runtimeDocumentKeys,
   runtimeDocumentSchema,
+  schemaDocumentKeys,
+  schemaDocumentSchema,
+  schemaEntryKeys,
   sceneDocumentKeys,
   sceneDocumentSchema,
   scriptReferenceKeys,
@@ -69,6 +72,8 @@ import {
   supportedRigidBodyKinds,
   supportedSceneActivationPolicies,
   supportedSceneLifecycleKinds,
+  supportedSchemaDocumentKinds,
+  supportedSchemaFieldKinds,
   supportedUiNodeTypes,
   supportedUiTextAlignments,
   supportedUiTextDecorations,
@@ -217,6 +222,18 @@ export interface ISetResourceDocumentEntryOptions extends IAuthoringOperationCon
   resourceId: string;
   path?: string;
   value?: unknown;
+}
+
+export interface ICreateSchemaDocumentOptions extends IAuthoringOperationContext {
+  schemaDocId: string;
+  kind: string;
+}
+
+export interface ISetSchemaEntryOptions extends IAuthoringOperationContext {
+  schemaDocId: string;
+  schemaId: string;
+  kind: string;
+  fields: Record<string, unknown>;
 }
 
 export interface ISetComponentOptions extends IAuthoringOperationContext {
@@ -1736,6 +1753,38 @@ export async function setResourceDocumentEntry(options: ISetResourceDocumentEntr
   });
 }
 
+export async function createSchemaDocument(options: ICreateSchemaDocumentOptions): Promise<IAuthoringOperationResult> {
+  return createSourceDocument({
+    projectPath: options.projectPath,
+    kind: "schema",
+    id: options.schemaDocId,
+    file: `content/schemas/${options.schemaDocId}.schema.json`,
+    data: { schema: schemaDocumentSchema, version: "0.1.0", id: options.schemaDocId, kind: options.kind, schemas: [] },
+  });
+}
+
+export async function setSchemaEntry(options: ISetSchemaEntryOptions): Promise<IAuthoringOperationResult> {
+  return upsertSourceDocument({
+    projectPath: options.projectPath,
+    kind: "schema",
+    id: options.schemaDocId,
+    file: `content/schemas/${options.schemaDocId}.schema.json`,
+    emptyData: { schema: schemaDocumentSchema, version: "0.1.0", id: options.schemaDocId, kind: options.kind, schemas: [] },
+    apply: (data, file) => {
+      data.kind = options.kind;
+      const schemas = ensureArrayProperty(data, "schemas");
+      const existing = findSceneItem(schemas, options.schemaId);
+      if (existing === undefined) {
+        schemas.push({ id: options.schemaId, fields: options.fields });
+      } else {
+        existing.fields = options.fields;
+      }
+      schemas.sort((left, right) => String(isRecord(left) ? left.id : "").localeCompare(String(isRecord(right) ? right.id : "")));
+      return validateSchemaDocumentKind(file, data.kind);
+    },
+  });
+}
+
 export async function createProjectMetadata(options: ICreateProjectMetadataOptions): Promise<IAuthoringOperationResult> {
   const projectId = options.projectId;
   return upsertSourceDocument({
@@ -2444,6 +2493,8 @@ function sourceExtensionForKind(kind: AuthoringDocumentKind): string {
       return ".runtime.json";
     case "resources":
       return ".resources.json";
+    case "schema":
+      return ".schema.json";
     case "systems":
       return ".systems.json";
     case "target":
@@ -2679,6 +2730,21 @@ async function validateAuthoringDocument(
         rootKeys: resourcesDocumentKeys,
         validateItem: (diagnostics, path, item) => {
           validateOptionalString(diagnostics, file, `${path}/path`, item.path, "resource path must be a non-empty string.");
+        },
+      });
+    case "schema":
+      return validateDeclarationDocument(file, data, {
+        declarationKeys: schemaEntryKeys,
+        duplicateKind: "schema",
+        expectedSchema: schemaDocumentSchema,
+        idKind: "schema document",
+        listName: "schemas",
+        rootKeys: schemaDocumentKeys,
+        validateRoot: (diagnostics) => {
+          diagnostics.push(...validateSchemaDocumentKind(file, isRecord(data) ? data.kind : undefined));
+        },
+        validateItem: (diagnostics, path, item) => {
+          validateSchemaFields(diagnostics, file, `${path}/fields`, item.fields);
         },
       });
     case "scene":
@@ -2934,6 +3000,7 @@ interface IDeclarationDocumentValidationOptions {
   idKind: string;
   listName: string;
   rootKeys: ReadonlySet<string>;
+  validateRoot?: (diagnostics: IAuthoringDiagnostic[]) => void;
   validateItem?: (diagnostics: IAuthoringDiagnostic[], path: string, item: Record<string, unknown>) => void | Promise<void>;
 }
 
@@ -2957,6 +3024,7 @@ async function validateDeclarationDocument(
 
   diagnostics.push(...unknownKeyDiagnostics(file, "", data, options.rootKeys));
   validateDocumentHeader(diagnostics, file, data, options.expectedSchema, options.idKind);
+  options.validateRoot?.(diagnostics);
 
   const list = readArray(data[options.listName]);
   if (data[options.listName] !== undefined && list === undefined) {
@@ -3227,6 +3295,8 @@ function collectIds(
         ? validateEcsId(diagnostics, file, `${path}/id`, value.id, kind)
         : kind === "input axis"
           ? validateEcsId(diagnostics, file, `${path}/id`, value.id, kind)
+          : kind === "schema"
+            ? validateEcsId(diagnostics, file, `${path}/id`, value.id, kind)
           : validateLogicalId(diagnostics, file, `${path}/id`, value.id, kind);
     if (id === undefined) {
       return;
@@ -3965,6 +4035,35 @@ function setOptionalString(target: Record<string, unknown>, key: string, value: 
 function setOptionalNumber(target: Record<string, unknown>, key: string, value: number | undefined): void {
   if (value !== undefined) {
     target[key] = value;
+  }
+}
+
+const schemaFieldKeys = new Set(["default", "kind", "required"]);
+
+function validateSchemaDocumentKind(file: string, value: unknown): IAuthoringDiagnostic[] {
+  const diagnostics: IAuthoringDiagnostic[] = [];
+  validateEnumString(diagnostics, file, "/kind", value, supportedSchemaDocumentKinds, "schema document kind", "Use 'component' or 'resource'.");
+  return diagnostics;
+}
+
+function validateSchemaFields(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown): void {
+  if (!isRecord(value) || Object.keys(value).length === 0) {
+    diagnostics.push(typeDiagnostic(file, path, "schema fields must be a non-empty object.", value));
+    return;
+  }
+  for (const [fieldName, field] of Object.entries(value).sort(([left], [right]) => left.localeCompare(right))) {
+    const fieldPath = `${path}/${escapeJsonPointer(fieldName)}`;
+    if (fieldName.trim() === "") {
+      diagnostics.push(typeDiagnostic(file, fieldPath, "schema field names must be non-empty strings.", fieldName));
+      continue;
+    }
+    if (!isRecord(field)) {
+      diagnostics.push(typeDiagnostic(file, fieldPath, "schema field declarations must be objects.", field));
+      continue;
+    }
+    diagnostics.push(...unknownKeyDiagnostics(file, fieldPath, field, schemaFieldKeys));
+    validateEnumString(diagnostics, file, `${fieldPath}/kind`, field.kind, supportedSchemaFieldKinds, "schema field kind", "Use a supported IR schema field kind such as 'string', 'number', 'boolean', 'vec3', or 'json'.");
+    validateOptionalBoolean(diagnostics, file, `${fieldPath}/required`, field.required, "schema field required flag must be a boolean.");
   }
 }
 

@@ -61,7 +61,7 @@ export type EditorInspectorFieldKind =
   | "stringList"
   | "vector3";
 
-export type EditorInspectorSourceFamily = "asset" | "audio" | "environment" | "generator" | "input" | "material" | "mesh" | "prefab" | "project" | "resources" | "runtime" | "scene" | "system" | "target" | "ui";
+export type EditorInspectorSourceFamily = "asset" | "audio" | "environment" | "generator" | "input" | "material" | "mesh" | "prefab" | "project" | "resources" | "runtime" | "scene" | "schema" | "system" | "target" | "ui";
 
 export interface IEditorPropertyOperation {
   args: Record<string, unknown>;

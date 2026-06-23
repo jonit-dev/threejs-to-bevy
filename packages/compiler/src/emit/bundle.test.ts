@@ -504,6 +504,61 @@ test("should emit ecs schema files for world root", async () => {
   }
 });
 
+test("should emit reusable authoring schema documents without ecs systems", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-authoring-schemas-"));
+  try {
+    await mkdir(join(root, "content", "schemas"), { recursive: true });
+    const config = {
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project" as const,
+      version: "0.1.0" as const,
+    };
+    const bundlePath = await emitBundle(config, makeScene(), {
+      authoringDocuments: [
+        {
+          data: {
+            schema: "threenative.schema",
+            version: "0.1.0",
+            id: "component-schemas",
+            kind: "component",
+            schemas: [{ id: "RaceTelemetry", fields: { lap: { kind: "number", required: true } } }],
+          },
+          file: join(root, "content", "schemas", "components.schema.json"),
+          kind: "schema",
+          projectRelativePath: "content/schemas/components.schema.json",
+        },
+        {
+          data: {
+            schema: "threenative.schema",
+            version: "0.1.0",
+            id: "resource-schemas",
+            kind: "resource",
+            schemas: [{ id: "RaceState", fields: { status: { kind: "string" } } }],
+          },
+          file: join(root, "content", "schemas", "resources.schema.json"),
+          kind: "schema",
+          projectRelativePath: "content/schemas/resources.schema.json",
+        },
+      ],
+    });
+
+    const manifest = JSON.parse(await readFile(join(bundlePath, "manifest.json"), "utf8"));
+    const components = JSON.parse(await readFile(join(bundlePath, "schemas/components.schema.json"), "utf8"));
+    const resources = JSON.parse(await readFile(join(bundlePath, "schemas/resources.schema.json"), "utf8"));
+
+    assert.equal(manifest.files.componentSchemas, "schemas/components.schema.json");
+    assert.equal(manifest.files.resourceSchemas, "schemas/resources.schema.json");
+    assert.equal(manifest.files.eventSchemas, undefined);
+    assert.equal(manifest.entry.systems, undefined);
+    assert.deepEqual(components.schemas.RaceTelemetry.fields, { lap: { kind: "number", required: true } });
+    assert.deepEqual(resources.schemas.RaceState.fields, { status: { kind: "string" } });
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should emit resolved script module references and manifest provenance", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-emit-script-source-"));
   try {
