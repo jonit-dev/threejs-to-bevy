@@ -420,6 +420,22 @@ export interface ISetEnvironmentTerrainOptions extends IAuthoringOperationContex
   heightmap?: string;
 }
 
+export interface ISetEnvironmentPathOptions extends IAuthoringOperationContext {
+  environmentId: string;
+  path: unknown;
+}
+
+export interface ISetEnvironmentWalkabilityOptions extends IAuthoringOperationContext {
+  environmentId: string;
+  walkability: unknown;
+}
+
+export interface ISetEnvironmentSourceAssetLodOptions extends IAuthoringOperationContext {
+  environmentId: string;
+  sourceAssetId: string;
+  lod: unknown;
+}
+
 export interface ICreateRuntimeConfigOptions extends IAuthoringOperationContext {
   runtimeId: string;
 }
@@ -1539,6 +1555,50 @@ export async function setEnvironmentTerrain(options: ISetEnvironmentTerrainOptio
         ...(options.heightMode === undefined ? {} : { heightMode: options.heightMode }),
         ...(options.terrainId === undefined ? {} : { id: options.terrainId }),
       };
+    },
+  });
+}
+
+export async function setEnvironmentPath(options: ISetEnvironmentPathOptions): Promise<IAuthoringOperationResult> {
+  return upsertSourceDocument({
+    projectPath: options.projectPath,
+    kind: "environment",
+    id: options.environmentId,
+    file: `content/environment/${options.environmentId}.environment.json`,
+    emptyData: { schema: environmentDocumentSchema, version: "0.1.0", id: options.environmentId, instances: [], sourceAssets: [] },
+    apply: (data) => {
+      data.path = options.path;
+    },
+  });
+}
+
+export async function setEnvironmentWalkability(options: ISetEnvironmentWalkabilityOptions): Promise<IAuthoringOperationResult> {
+  return upsertSourceDocument({
+    projectPath: options.projectPath,
+    kind: "environment",
+    id: options.environmentId,
+    file: `content/environment/${options.environmentId}.environment.json`,
+    emptyData: { schema: environmentDocumentSchema, version: "0.1.0", id: options.environmentId, instances: [], sourceAssets: [] },
+    apply: (data) => {
+      data.walkability = options.walkability;
+    },
+  });
+}
+
+export async function setEnvironmentSourceAssetLod(options: ISetEnvironmentSourceAssetLodOptions): Promise<IAuthoringOperationResult> {
+  return upsertSourceDocument({
+    projectPath: options.projectPath,
+    kind: "environment",
+    id: options.environmentId,
+    file: `content/environment/${options.environmentId}.environment.json`,
+    emptyData: { schema: environmentDocumentSchema, version: "0.1.0", id: options.environmentId, instances: [], sourceAssets: [] },
+    apply: (data, file) => {
+      const sourceAsset = findSceneItem(data.sourceAssets, options.sourceAssetId);
+      if (sourceAsset === undefined) {
+        return [missingReferenceDiagnostic(file, "/sourceAssets", "source asset", options.sourceAssetId, idsFromArray(data.sourceAssets))];
+      }
+      sourceAsset.lod = options.lod;
+      return [];
     },
   });
 }

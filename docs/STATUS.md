@@ -128,8 +128,8 @@ systems with module/export script references. Systems source commands now set pr
 access lists, ordering, query metadata, service declarations, and command
 declarations, and bundle import preserves those fields back into
 `content/systems/*.systems.json` source documents. Environment source commands
-now create environment docs and set promoted skybox, environment-map, and
-terrain fields.
+now create environment docs and set promoted skybox, environment-map, terrain,
+path, walkability, and source-asset LOD fields.
 Project metadata source commands now create or update `content/project.authoring.json`
 for project id, authoring version, source roots, and build targets, with matching
 editor rows.
@@ -221,7 +221,9 @@ such as `scene.set_transform`, `scene.set_component`, `ui.add_text`,
 `audio.add_sound`, `scene.set_light`, `scene.set_mesh_renderer`,
 `scene.set_rigid_body`, `scene.set_collider`,
 `scene.set_character_controller`, `scene.set_lifecycle`, `scene.set_prefab`,
-`system.create`, and `system.attach_script`; MCP derives its registry-backed tool names from that
+`environment.set_path`, `environment.set_walkability`,
+`environment.set_source_asset_lod`, `system.create`, and
+`system.attach_script`; MCP derives its registry-backed tool names from that
 catalog while preserving CLI JSON transport behavior.
 The editor workbench slice adds server-side project load/validate and operation
 dispatch APIs in `@threenative/editor`, source-document inventory state, scene
@@ -340,8 +342,7 @@ remote model paths remain unsupported.
 The editor environment/terrain slice now exposes source-derived environment
 summary metadata to the viewport and inspector. `/api/project` emits editable
 operation-backed rows for skybox, environment map, and terrain
-id/height mode/heightmap, while walkability, path, and source-asset LOD data
-remain read-only with explicit reasons for unsupported mutations. The editor
+id/height mode/heightmap plus path, walkability, and source-asset LOD data. The editor
 viewport uses environment metadata for a visible sky/background and terrain
 cue, and the footer distinguishes estimated LOD triangle counts from exact
 loaded counts.

@@ -23,8 +23,11 @@ import {
   createUiDocument,
   setMaterial,
   setEnvironmentMap,
+  setEnvironmentPath,
   setEnvironmentSkybox,
+  setEnvironmentSourceAssetLod,
   setEnvironmentTerrain,
+  setEnvironmentWalkability,
   addResourceDocumentEntry,
   setRuntimeRendering,
   setRuntimeWindow,
@@ -534,7 +537,41 @@ export async function environmentCommand(argv: readonly string[], options: ISour
     );
   }
 
-  return renderUsage(json, "TN_ENVIRONMENT_COMMAND_UNKNOWN", "Usage: tn environment create|set-skybox|set-map|set-terrain ... [--json]");
+  if (subcommand === "set-path") {
+    const path = parseJsonFlag(normalizedArgv, "--path");
+    if (path.diagnostic !== undefined) {
+      return renderUsage(json, path.diagnostic, "Environment --path must be valid JSON.");
+    }
+    if (environmentId === undefined || path.value === undefined) {
+      return renderUsage(json, "TN_ENVIRONMENT_SET_PATH_ARGS_MISSING", "Usage: tn environment set-path <environment-id> --path '<json>' [--project <path>] [--json]");
+    }
+    return renderAuthoringResult("environment", await setEnvironmentPath({ environmentId, path: path.value, projectPath }), json, `Environment path '${environmentId}' updated.`);
+  }
+
+  if (subcommand === "set-walkability") {
+    const walkability = parseJsonFlag(normalizedArgv, "--walkability");
+    if (walkability.diagnostic !== undefined) {
+      return renderUsage(json, walkability.diagnostic, "Environment --walkability must be valid JSON.");
+    }
+    if (environmentId === undefined || walkability.value === undefined) {
+      return renderUsage(json, "TN_ENVIRONMENT_SET_WALKABILITY_ARGS_MISSING", "Usage: tn environment set-walkability <environment-id> --walkability '<json>' [--project <path>] [--json]");
+    }
+    return renderAuthoringResult("environment", await setEnvironmentWalkability({ environmentId, projectPath, walkability: walkability.value }), json, `Environment walkability '${environmentId}' updated.`);
+  }
+
+  if (subcommand === "set-source-asset-lod") {
+    const sourceAssetId = readPositional(normalizedArgv, 2);
+    const lod = parseJsonFlag(normalizedArgv, "--lod");
+    if (lod.diagnostic !== undefined) {
+      return renderUsage(json, lod.diagnostic, "Environment --lod must be valid JSON.");
+    }
+    if (environmentId === undefined || sourceAssetId === undefined || lod.value === undefined) {
+      return renderUsage(json, "TN_ENVIRONMENT_SET_SOURCE_ASSET_LOD_ARGS_MISSING", "Usage: tn environment set-source-asset-lod <environment-id> <source-asset-id> --lod '<json>' [--project <path>] [--json]");
+    }
+    return renderAuthoringResult("environment", await setEnvironmentSourceAssetLod({ environmentId, lod: lod.value, projectPath, sourceAssetId }), json, `Environment source asset '${sourceAssetId}' LOD updated.`);
+  }
+
+  return renderUsage(json, "TN_ENVIRONMENT_COMMAND_UNKNOWN", "Usage: tn environment create|set-skybox|set-map|set-terrain|set-path|set-walkability|set-source-asset-lod ... [--json]");
 }
 
 export async function runtimeCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {

@@ -36,8 +36,11 @@ import {
   setColliderComponent,
   setComponent,
   setEnvironmentMap,
+  setEnvironmentPath,
   setEnvironmentSkybox,
+  setEnvironmentSourceAssetLod,
   setEnvironmentTerrain,
+  setEnvironmentWalkability,
   setLightComponent,
   setMaterial,
   setMeshRendererComponent,
@@ -64,8 +67,11 @@ export type AuthoringOperationName =
   | "audio.create"
   | "environment.create"
   | "environment.set_map"
+  | "environment.set_path"
   | "environment.set_skybox"
+  | "environment.set_source_asset_lod"
   | "environment.set_terrain"
+  | "environment.set_walkability"
   | "input.add_action"
   | "input.add_axis"
   | "material.create"
@@ -167,11 +173,24 @@ const descriptors = [
     stringArg("environmentId"),
     stringArg("asset"),
   ]),
+  descriptor("environment.set_path", "Set environment path metadata.", "environment", "source-document", [
+    stringArg("environmentId"),
+    anyJsonArg("path"),
+  ]),
   descriptor("environment.set_terrain", "Set promoted environment terrain source fields.", "environment", "source-document", [
     stringArg("environmentId"),
     stringArg("terrainId", false),
     stringArg("heightMode", false),
     stringArg("heightmap", false),
+  ]),
+  descriptor("environment.set_walkability", "Set environment walkability metadata.", "environment", "source-document", [
+    stringArg("environmentId"),
+    anyJsonArg("walkability"),
+  ]),
+  descriptor("environment.set_source_asset_lod", "Set environment source asset LOD metadata.", "environment", "source-document", [
+    stringArg("environmentId"),
+    stringArg("sourceAssetId"),
+    anyJsonArg("lod"),
   ]),
   descriptor("input.add_action", "Add or replace an input action in a structured input document.", "input", "source-document", [
     stringArg("inputDocId"),
@@ -507,10 +526,16 @@ const dispatchers: Record<AuthoringOperationName, OperationDispatcher> = {
     createEnvironmentDocument({ environmentId: requiredString(args, "environmentId"), projectPath }),
   "environment.set_map": async ({ args, projectPath }) =>
     setEnvironmentMap({ asset: requiredString(args, "asset"), environmentId: requiredString(args, "environmentId"), projectPath }),
+  "environment.set_path": async ({ args, projectPath }) =>
+    setEnvironmentPath({ environmentId: requiredString(args, "environmentId"), path: optionalJson(args, "path"), projectPath }),
   "environment.set_skybox": async ({ args, projectPath }) =>
     setEnvironmentSkybox({ asset: requiredString(args, "asset"), environmentId: requiredString(args, "environmentId"), mode: optionalString(args, "mode"), projectPath }),
+  "environment.set_source_asset_lod": async ({ args, projectPath }) =>
+    setEnvironmentSourceAssetLod({ environmentId: requiredString(args, "environmentId"), lod: optionalJson(args, "lod"), projectPath, sourceAssetId: requiredString(args, "sourceAssetId") }),
   "environment.set_terrain": async ({ args, projectPath }) =>
     setEnvironmentTerrain({ environmentId: requiredString(args, "environmentId"), heightmap: optionalString(args, "heightmap"), heightMode: optionalString(args, "heightMode"), projectPath, terrainId: optionalString(args, "terrainId") }),
+  "environment.set_walkability": async ({ args, projectPath }) =>
+    setEnvironmentWalkability({ environmentId: requiredString(args, "environmentId"), projectPath, walkability: optionalJson(args, "walkability") }),
   "input.add_action": async ({ args, projectPath }) =>
     addInputAction({ actionId: requiredString(args, "actionId"), inputDocId: requiredString(args, "inputDocId"), keys: requiredStringArray(args, "keys"), projectPath }),
   "input.add_axis": async ({ args, projectPath }) =>

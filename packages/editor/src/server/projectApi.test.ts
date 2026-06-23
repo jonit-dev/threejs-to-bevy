@@ -83,9 +83,44 @@ test("should expose environment skybox and terrain rows", async () => {
     assert.equal(environmentRows.some((row) => row.label === "Environment Map" && row.fieldKind === "asset" && row.operation?.name === "environment.set_map"), true);
     assert.equal(environmentRows.some((row) => row.label === "Terrain Height Mode" && row.fieldKind === "enum" && row.value === "heightmap" && row.operation?.name === "environment.set_terrain"), true);
     assert.equal(environmentRows.some((row) => row.label === "Terrain Heightmap" && row.fieldKind === "asset" && row.value === "assets/height/arena.png" && row.operation?.name === "environment.set_terrain"), true);
-    assert.equal(environmentRows.some((row) => row.label === "Walkability" && row.fieldKind === "json" && row.readOnlyReason !== undefined), true);
-    assert.equal(environmentRows.some((row) => row.label === "Path" && row.fieldKind === "json" && row.readOnlyReason !== undefined), true);
-    assert.equal(environmentRows.some((row) => row.label === "env.Tree LOD" && row.fieldKind === "json" && row.readOnlyReason !== undefined), true);
+    const walkability = environmentRows.find((row) => row.label === "Walkability" && row.fieldKind === "json");
+    const path = environmentRows.find((row) => row.label === "Path" && row.fieldKind === "json");
+    const lod = environmentRows.find((row) => row.label === "env.Tree LOD" && row.fieldKind === "json");
+    assert.equal(walkability?.operation?.name, "environment.set_walkability");
+    assert.equal(walkability?.readOnly, false);
+    assert.equal(path?.operation?.name, "environment.set_path");
+    assert.equal(path?.readOnly, false);
+    assert.equal(lod?.operation?.name, "environment.set_source_asset_lod");
+    assert.equal(lod?.readOnly, false);
+    const pathOperation = path?.operation;
+    const walkabilityOperation = walkability?.operation;
+    const lodOperation = lod?.operation;
+    assert.ok(pathOperation);
+    assert.ok(walkabilityOperation);
+    assert.ok(lodOperation);
+    const pathSave = await applyEditorOperationApi({
+      projectPath: root,
+      request: { args: { ...pathOperation.args, [pathOperation.valueArg ?? "path"]: { id: "path.alt", points: [[2, 0, 2]] } }, name: pathOperation.name },
+    });
+    assert.equal(pathSave.ok, true);
+    const walkabilitySave = await applyEditorOperationApi({
+      projectPath: root,
+      request: { args: { ...walkabilityOperation.args, [walkabilityOperation.valueArg ?? "walkability"]: { terrain: { height: 1, surface: "terrain.alt" } } }, name: walkabilityOperation.name, projectRevision: pathSave.projectRevision },
+    });
+    assert.equal(walkabilitySave.ok, true);
+    const lodSave = await applyEditorOperationApi({
+      projectPath: root,
+      request: { args: { ...lodOperation.args, [lodOperation.valueArg ?? "lod"]: [{ asset: "env.Tree.mid", maxDistance: 30 }] }, name: lodOperation.name, projectRevision: walkabilitySave.projectRevision },
+    });
+    assert.equal(lodSave.ok, true);
+    const environmentDoc = JSON.parse(await readFile(join(root, "content", "environment", "arena.environment.json"), "utf8")) as {
+      path?: unknown;
+      sourceAssets?: Array<{ id: string; lod?: unknown }>;
+      walkability?: unknown;
+    };
+    assert.deepEqual(environmentDoc.path, { id: "path.alt", points: [[2, 0, 2]] });
+    assert.deepEqual(environmentDoc.walkability, { terrain: { height: 1, surface: "terrain.alt" } });
+    assert.deepEqual(environmentDoc.sourceAssets?.find((asset) => asset.id === "env.Tree")?.lod, [{ asset: "env.Tree.mid", maxDistance: 30 }]);
     const runtimeRows = result.documents.flatMap((group) => group.documents).find((document) => document.kind === "runtime")?.inspectorRows ?? [];
     assert.equal(runtimeRows.some((row) => row.label === "Window Width" && row.operation?.name === "runtime.set_window" && row.operation.valueArg === "width"), true);
     assert.equal(runtimeRows.some((row) => row.label === "Renderer Antialias" && row.operation?.name === "runtime.set_rendering" && row.operation.valueArg === "antialias"), true);

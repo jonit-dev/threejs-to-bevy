@@ -206,19 +206,44 @@ test("environment command creates and updates promoted source fields", async () 
     const skybox = await environmentCommand(["set-skybox", "arena", "--asset", "tex.sky", "--mode", "equirect", "--project", root, "--json"]);
     const map = await environmentCommand(["set-map", "arena", "--asset", "tex.env", "--project", root, "--json"]);
     const terrain = await environmentCommand(["set-terrain", "arena", "--id", "terrain.arena", "--height-mode", "heightmap", "--heightmap", "tex.height", "--project", root, "--json"]);
+    await writeFile(
+      join(root, "content", "environment", "arena.environment.json"),
+      `${JSON.stringify({
+        schema: "threenative.environment-scene",
+        version: "0.1.0",
+        id: "arena",
+        environmentMap: { asset: "tex.env" },
+        instances: [],
+        skybox: { asset: "tex.sky", mode: "equirect" },
+        sourceAssets: [{ id: "env.Tree" }],
+        terrain: { heightMode: "heightmap", heightmap: "tex.height", id: "terrain.arena" },
+      }, null, 2)}\n`,
+    );
+    const path = await environmentCommand(["set-path", "arena", "--path", "{\"id\":\"path.main\",\"points\":[[0,0,0],[1,0,1]]}", "--project", root, "--json"]);
+    const walkability = await environmentCommand(["set-walkability", "arena", "--walkability", "{\"terrain\":{\"surface\":\"terrain.arena\",\"height\":0}}", "--project", root, "--json"]);
+    const lod = await environmentCommand(["set-source-asset-lod", "arena", "env.Tree", "--lod", "[{\"asset\":\"env.Tree.low\",\"maxDistance\":60}]", "--project", root, "--json"]);
     const doc = JSON.parse(await readFile(join(root, "content", "environment", "arena.environment.json"), "utf8")) as {
       environmentMap?: Record<string, unknown>;
+      path?: unknown;
       skybox?: Record<string, unknown>;
+      sourceAssets?: Array<{ id: string; lod?: unknown }>;
       terrain?: Record<string, unknown>;
+      walkability?: unknown;
     };
 
     assert.equal(create.exitCode, 0);
     assert.equal(skybox.exitCode, 0);
     assert.equal(map.exitCode, 0);
     assert.equal(terrain.exitCode, 0);
+    assert.equal(path.exitCode, 0);
+    assert.equal(walkability.exitCode, 0);
+    assert.equal(lod.exitCode, 0);
     assert.deepEqual(doc.skybox, { asset: "tex.sky", mode: "equirect" });
     assert.deepEqual(doc.environmentMap, { asset: "tex.env" });
     assert.deepEqual(doc.terrain, { heightMode: "heightmap", heightmap: "tex.height", id: "terrain.arena" });
+    assert.deepEqual(doc.path, { id: "path.main", points: [[0, 0, 0], [1, 0, 1]] });
+    assert.deepEqual(doc.walkability, { terrain: { height: 0, surface: "terrain.arena" } });
+    assert.deepEqual(doc.sourceAssets?.find((asset) => asset.id === "env.Tree")?.lod, [{ asset: "env.Tree.low", maxDistance: 60 }]);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

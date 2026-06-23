@@ -569,14 +569,15 @@ function documentInspectorRows(document: IAuthoringDocument): IEditorPropertyRow
         rows.push(documentRow(document, "environment:terrain-heightmap", "Terrain Heightmap", readString(terrain.heightmap) ?? readString(terrain.sourceAsset) ?? "flat fallback", "asset", false, "/terrain/heightmap", "environment", "environment.set_terrain", "heightmap", terrainArgs));
       }
       if (document.data.walkability !== undefined) {
-        rows.push(documentRow(document, "environment:walkability", "Walkability", summarizeValue(document.data.walkability), "json", true, "/walkability", "environment", undefined, undefined, undefined, "Walkability mutation is not exposed through the editor operation API yet."));
+        rows.push(documentRow(document, "environment:walkability", "Walkability", summarizeValue(document.data.walkability), "json", false, "/walkability", "environment", "environment.set_walkability", "walkability", { environmentId }));
       }
       if (document.data.path !== undefined) {
-        rows.push(documentRow(document, "environment:path", "Path", summarizeValue(document.data.path), "json", true, "/path", "environment", undefined, undefined, undefined, "Path mutation is not exposed through the editor operation API yet."));
+        rows.push(documentRow(document, "environment:path", "Path", summarizeValue(document.data.path), "json", false, "/path", "environment", "environment.set_path", "path", { environmentId }));
       }
       for (const [index, asset] of readArray(document.data.sourceAssets).filter(isRecord).entries()) {
         if (asset.lod !== undefined) {
-          rows.push(documentRow(document, `environment:source-asset:${index}:lod`, `${readString(asset.id) ?? `sourceAsset.${index}`} LOD`, summarizeValue(asset.lod), "json", true, `/sourceAssets/${index}/lod`, "environment", undefined, undefined, undefined, "LOD source asset mutation is not exposed through the editor operation API yet."));
+          const sourceAssetId = readString(asset.id) ?? "";
+          rows.push(documentRow(document, `environment:source-asset:${index}:lod`, `${sourceAssetId || `sourceAsset.${index}`} LOD`, summarizeValue(asset.lod), "json", false, `/sourceAssets/${index}/lod`, "environment", "environment.set_source_asset_lod", "lod", { environmentId, sourceAssetId }));
         }
       }
       break;

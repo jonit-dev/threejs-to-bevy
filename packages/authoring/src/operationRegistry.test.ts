@@ -43,6 +43,12 @@ test("should dispatch existing structured source operations through the registry
       await dispatchAuthoringOperation({ args: { assetId: "model.player", path: "assets/player.glb", type: "model" }, name: "asset.add", projectPath: root }),
       await dispatchAuthoringOperation({ args: { audioDocId: "arena" }, name: "audio.create", projectPath: root }),
       await dispatchAuthoringOperation({ args: { asset: "sound.hit", audioDocId: "arena", soundId: "hit" }, name: "audio.add_sound", projectPath: root }),
+      await dispatchAuthoringOperation({ args: { environmentId: "arena" }, name: "environment.create", projectPath: root }),
+      await dispatchAuthoringOperation({ args: { asset: "tex.sky", environmentId: "arena", mode: "equirect" }, name: "environment.set_skybox", projectPath: root }),
+      await dispatchAuthoringOperation({ args: { asset: "tex.env", environmentId: "arena" }, name: "environment.set_map", projectPath: root }),
+      await dispatchAuthoringOperation({ args: { environmentId: "arena", heightmap: "tex.height", heightMode: "heightmap", terrainId: "terrain.arena" }, name: "environment.set_terrain", projectPath: root }),
+      await dispatchAuthoringOperation({ args: { environmentId: "arena", path: { id: "path.main", points: [[0, 0, 0], [1, 0, 1]] } }, name: "environment.set_path", projectPath: root }),
+      await dispatchAuthoringOperation({ args: { environmentId: "arena", walkability: { terrain: { height: 0, surface: "terrain.arena" } } }, name: "environment.set_walkability", projectPath: root }),
       await dispatchAuthoringOperation({ args: { materialId: "mat.player" }, name: "material.create", projectPath: root }),
       await dispatchAuthoringOperation({
         args: {
@@ -87,6 +93,13 @@ test("should dispatch existing structured source operations through the registry
     const audio = JSON.parse(await readFile(join(root, "content", "audio", "arena.audio.json"), "utf8")) as {
       sounds: Array<{ asset: string; id: string }>;
     };
+    const environment = JSON.parse(await readFile(join(root, "content", "environment", "arena.environment.json"), "utf8")) as {
+      environmentMap?: Record<string, unknown>;
+      path?: unknown;
+      skybox?: Record<string, unknown>;
+      terrain?: Record<string, unknown>;
+      walkability?: unknown;
+    };
     const ui = JSON.parse(await readFile(join(root, "content", "ui", "hud.ui.json"), "utf8")) as {
       nodes: Array<{ action?: string; id: string; label?: string; style?: Record<string, unknown>; text?: string; type: string }>;
     };
@@ -108,6 +121,11 @@ test("should dispatch existing structured source operations through the registry
     assert.deepEqual(operations.map((operation) => operation.ok), Array.from({ length: operations.length }, () => true));
     assert.deepEqual(asset.assets, [{ id: "model.player", path: "assets/player.glb", type: "model" }]);
     assert.deepEqual(audio.sounds, [{ asset: "sound.hit", id: "hit" }]);
+    assert.deepEqual(environment.skybox, { asset: "tex.sky", mode: "equirect" });
+    assert.deepEqual(environment.environmentMap, { asset: "tex.env" });
+    assert.deepEqual(environment.terrain, { heightMode: "heightmap", heightmap: "tex.height", id: "terrain.arena" });
+    assert.deepEqual(environment.path, { id: "path.main", points: [[0, 0, 0], [1, 0, 1]] });
+    assert.deepEqual(environment.walkability, { terrain: { height: 0, surface: "terrain.arena" } });
     assert.deepEqual(material.materials, [{ alphaMode: "mask", baseColorTexture: "tex.player.albedo", color: "#fff", emissive: "#33ccff", id: "mat.player", metalness: 0.2, normalTexture: "tex.player.normal", roughness: 0.4 }]);
     assert.deepEqual(ui.nodes, [
       { id: "score", text: "Score", type: "text" },
@@ -147,7 +165,10 @@ test("should expose operation metadata and registry diagnostics", async () => {
     "environment.create",
     "environment.set_skybox",
     "environment.set_map",
+    "environment.set_path",
     "environment.set_terrain",
+    "environment.set_walkability",
+    "environment.set_source_asset_lod",
     "input.add_action",
     "input.add_axis",
     "material.create",

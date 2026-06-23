@@ -92,7 +92,7 @@ test("should classify generated and runtime rows as non-persistable", () => {
 test("should keep an explicit inspector field inventory for promoted source families", () => {
   assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => "component" in item && item.component === "Transform" && item.field === "position" && item.fieldKind === "vector3" && item.readOnly === false), true);
   assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => "component" in item && item.component === "Camera" && item.field === "target" && item.operationName === "scene.set_camera"), true);
-  assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => "component" in item && item.component === "Camera" && item.field === "skybox" && item.sourceFamily === "environment" && item.readOnlyReason !== undefined), true);
+  assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => "component" in item && item.component === "Camera" && item.field === "skybox" && item.sourceFamily === "environment" && item.operationName === "environment.set_skybox" && item.readOnly === false), true);
   assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => "component" in item && item.component === "Light" && item.field === "intensity" && item.operationName === "scene.set_light" && item.readOnly === false), true);
   assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => item.sourceFamily === "input" && item.field === "actions.bindings" && item.fieldKind === "stringList"), true);
   assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => item.sourceFamily === "system" && item.field === "systems.script" && item.fieldKind === "script"), true);
@@ -119,7 +119,7 @@ test("should inventory terrain heightmap and skybox fields", () => {
   assert.equal(fields.has("environment.terrain.heightMode"), true);
   assert.equal(fields.has("environment.walkability"), true);
   assert.equal(fields.has("environment.path"), true);
-  assert.equal(environmentRows.every((item) => item.readOnly && item.readOnlyReason !== undefined), true);
+  assert.equal(environmentRows.every((item) => item.readOnly === false && item.operationName !== undefined), true);
   assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => "component" in item && item.component === "Camera" && item.field === "skybox"), true);
   assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => item.sourceFamily === "scene" && item.field === "scene.kind" && item.operationName === "scene.set_lifecycle" && item.readOnly === false), true);
 });
