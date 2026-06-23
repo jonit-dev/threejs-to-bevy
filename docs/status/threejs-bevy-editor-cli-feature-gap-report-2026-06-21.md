@@ -76,6 +76,15 @@ Date: 2026-06-21
   integration matrix where the expected state is "no command": platform online
   services and direct Bevy/raw Three.js/2D authoring remain explicit non-goals,
   not parity backlog.
+- ✅ 2026-06-23: A read-only editor row slice is now source-persistable:
+  asset catalog type/path rows dispatch `asset.add`, and scene resource
+  path/value rows dispatch `scene.set_resource`, with editor API persistence
+  coverage for durable source JSON writes.
+- ✅ 2026-06-23: Scene-local prefab primitive/color/asset rows now dispatch
+  registry-backed `scene.set_prefab`, and `tn scene set-prefab <scene-id>
+  <prefab-id> [--primitive ...] [--color ...] [--asset ...] --json` provides
+  the matching typed CLI mutation surface while preserving `set-prefab-color`
+  as a compatibility shortcut.
 
 ## Final Status for 2026-06-22
 
@@ -88,7 +97,10 @@ work and should not be treated as complete:
 - Generator provenance workflows beyond one-way classification and provenance
   sidecar metadata.
 - Advanced rendering and advanced light/material residuals.
-- Read-only editor rows that still need safe source-persistable operations.
+- Remaining read-only editor rows that still need safe source-persistable
+  operations, excluding asset catalog type/path and scene resource path/value
+  rows plus scene-local prefab primitive/color/asset rows, which are now
+  editable through registry-backed operations.
 
 ## Scope
 
@@ -142,7 +154,7 @@ IR/runtime surfaces, but only some have typed editor/CLI helpers.
 | ✅ Entities, transforms, resources | Supported | Supported | Partial | Typed commands exist: `scene add-entity`, `scene set-transform`, `scene add-resource`, `scene set-resource`, `resources create/add/set` | EDITOR | Core scene mutation exists, and reusable `threenative.resources` source docs now persist resource declarations/defaults; reusable schema document authoring remains residual. |
 | ✅ Generic ECS components | IR supports arbitrary component records plus typed known components | Bevy maps known components; script host can read component values | Partial | Generic `scene set-component` and `prefab add-component`, plus typed scene operations for promoted components | ECS-CMD, EDITOR | Typed source/CLI/default coverage now includes camera, light, mesh-renderer, render-layers, visibility, rigid-body, collider, character-controller, tags, and groups; raw JSON remains for custom or unpromoted components. |
 | ✅ Tags and group containers | Supported in parity docs / compiler path | Supported as marker/query and hierarchy containers | Partial | `tn scene add-tag`, `tn scene add-group` plus registry `scene.add_tag` / `scene.add_group` | EDITOR | Typed source/CLI operations now write zero-field tag components and `SceneContainer` group entities that lower through structured scene builds; broader editor hierarchy/group controls remain partial. |
-| ✅ MeshRenderer and primitive meshes | Supported | Supported | Partial | `mesh primitive`, `mesh custom`, `scene add-prefab`, generic `set-component` | ECS-CMD, EDITOR | Source mesh docs now cover primitive and custom attribute/index declarations, and compiler lowering emits generated mesh assets/binary payloads; generator provenance/import settings and richer editor mesh controls remain partial. |
+| ✅ MeshRenderer and primitive meshes | Supported | Supported | Partial | `mesh primitive`, `mesh custom`, `scene add-prefab`, `scene set-prefab`, generic `set-component` | ECS-CMD, EDITOR | Source mesh docs now cover primitive and custom attribute/index declarations, scene-local prefab primitive/color/asset edits, and compiler lowering emits generated mesh assets/binary payloads; generator provenance/import settings and richer editor mesh controls remain partial. |
 | ✅ Materials and textures | Broad IR/runtime support for PBR fields and texture slots | Broad promoted support | Partial | `material create`, `material set` with promoted PBR/texture flags | EDITOR | CLI/editor now cover promoted texture slots, alpha, emissive, clearcoat, and transmission fields; sampler/import policy and broader material inspector UX remain partial. |
 | ✅ Cameras and views | Broad camera IR/runtime support | Broad promoted support | Partial | `scene set-camera`, `scene add-component ... camera`, registry `scene.set_camera_component` | EDITOR | Typed source/CLI camera operations now persist promoted projection/frustum fields (`fovY`, `near`, `far`, `size`) and structured scene builds lower them into IR `Camera` components; multi-view ordering, render targets, helpers, and richer editor controls remain residual. |
 | ✅ Lights and shadows | Broad IR/runtime support for ambient/directional/point/spot and shadow metadata | Broad promoted support | Partial via default scene/editor UI | `tn scene add-component <scene> <entity> light ...`, registry `scene.set_light` | EDITOR | Typed light command and editor kind/intensity rows exist; broader shadow metadata controls remain partial. |
@@ -192,7 +204,7 @@ and docs/contracts. Their additional findings sharpen the gaps above:
 | --- | --- | --- |
 | ✅ Operation registry drift | `AUTHORING_OPERATION_REGISTRY` now includes existing structured source operations for asset/audio/input/material/mesh/prefab/scene/system/UI plus typed common ECS component setters. | Keep using the registry as the shared source for new promoted operations. |
 | ✅ Generic vs typed ECS writes | Typed common ECS setters and validators now cover `camera`, `Light`, `MeshRenderer`, `RenderLayers`, `Visibility`, `RigidBody`, `Collider`, and `CharacterController`. | Raw JSON remains available for unsupported/custom components; other runtime components still need promotion before they are first-class. |
-| Read-only editor rows | Editor/server model code exposes several runtime-supported families as read-only, including asset catalog fields, environment path/walkability/LOD rows, existing mesh primitive details, richer system inspector rows, light/custom component rows, and scene-local prefab primitive/color/asset edits. | Users can inspect more than the editor UI can safely persist back to durable source, even where shared source operations now exist. |
+| Read-only editor rows | Asset catalog type/path, scene resource path/value, and scene-local prefab primitive/color/asset rows now persist through registry-backed editor operations. Remaining read-only families include environment path/walkability/LOD rows, existing mesh source primitive details, richer system inspector rows, and light/custom component rows. | Users can still inspect more than the editor UI can safely persist back to durable source, but the rows that already have shared operations no longer drift from the editor surface. |
 | ✅ Asset and audio source gaps | Asset and audio source schemas now have durable mutation commands and registry operations for asset declarations, audio docs, and sound declarations. | Broader import/playback policy remains separate backlog. |
 | ✅ Environment mutation gap | Environment documents are classified/validated, and typed editor/CLI operations now cover skybox, environment map, and terrain source fields. | Path, walkability, light probes, and LOD remain inspect-only residuals. |
 | ✅ Prefab catalog emission | Structured prefab source documents now lower into bundle `prefabs.ir.json` with manifest `entry.prefabs`/`files.prefabs` entries and provenance ownership. | Web/Bevy prefab runtime support no longer requires hand-authored catalog bundle entries for source-authored prefabs. |

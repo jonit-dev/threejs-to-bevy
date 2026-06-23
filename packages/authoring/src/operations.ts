@@ -174,6 +174,14 @@ export interface ISetPrefabColorOptions extends IAuthoringOperationContext {
   color: string;
 }
 
+export interface ISetPrefabOptions extends IAuthoringOperationContext {
+  sceneId: string;
+  prefabId: string;
+  asset?: string;
+  color?: string;
+  primitive?: string;
+}
+
 export interface IAddResourceOptions extends IAuthoringOperationContext {
   sceneId: string;
   resourceId: string;
@@ -537,6 +545,7 @@ export interface IAddInputAxisOptions extends IAuthoringOperationContext {
 
 export interface IAddAssetOptions extends IAuthoringOperationContext {
   assetId: string;
+  file?: string;
   path: string;
   type: string;
 }
@@ -1026,12 +1035,24 @@ export async function addPrefab(options: IAddPrefabOptions): Promise<IAuthoringO
 }
 
 export async function setPrefabColor(options: ISetPrefabColorOptions): Promise<IAuthoringOperationResult> {
+  return setPrefab({ color: options.color, prefabId: options.prefabId, projectPath: options.projectPath, sceneId: options.sceneId });
+}
+
+export async function setPrefab(options: ISetPrefabOptions): Promise<IAuthoringOperationResult> {
   return mutateScene(options, (scene, file) => {
     const prefab = findSceneItem(scene.prefabs, options.prefabId);
     if (prefab === undefined) {
       return [missingReferenceDiagnostic(file, "/prefabs", "prefab", options.prefabId, idsFromArray(scene.prefabs))];
     }
-    prefab.color = options.color;
+    if (options.asset !== undefined) {
+      prefab.asset = options.asset;
+    }
+    if (options.color !== undefined) {
+      prefab.color = options.color;
+    }
+    if (options.primitive !== undefined) {
+      prefab.primitive = options.primitive;
+    }
     return [];
   });
 }
@@ -1807,7 +1828,7 @@ export async function addAsset(options: IAddAssetOptions): Promise<IAuthoringOpe
     projectPath: options.projectPath,
     kind: "asset",
     id: options.assetId,
-    file: `content/assets/${options.assetId}.assets.json`,
+    file: options.file ?? `content/assets/${options.assetId}.assets.json`,
     emptyData: { schema: assetDocumentSchema, version: "0.1.0", id: options.assetId, assets: [] },
     apply: (data) => {
       const assets = ensureArrayProperty(data, "assets");
@@ -2059,15 +2080,18 @@ async function upsertSourceDocument(options: {
   apply: (data: Record<string, unknown>, file: string) => void | IAuthoringDiagnostic[];
 }): Promise<IAuthoringOperationResult> {
   const project = await loadAuthoringProject({ projectPath: options.projectPath });
-  const existing = project.documents.find((document) => document.kind === options.kind && readDocumentId(document.data) === options.id);
+  const absoluteFile = resolve(project.projectPath, options.file);
+  const projectRelativePath = normalizeRelativePath(relative(project.projectPath, absoluteFile));
+  const existing = project.documents.find((document) =>
+    document.kind === options.kind
+    && (readDocumentId(document.data) === options.id || document.projectRelativePath === projectRelativePath)
+  );
   if (existing !== undefined) {
-    return mutateSourceDocument(options, options.kind, options.id, options.apply);
+    return mutateLoadedSourceDocument(project, existing, options.apply);
   }
 
   const diagnostics = [...project.diagnostics];
   validateLogicalId(diagnostics, "", "/id", options.id, `${options.kind} document`);
-  const absoluteFile = resolve(project.projectPath, options.file);
-  const projectRelativePath = normalizeRelativePath(relative(project.projectPath, absoluteFile));
   validateNewSourcePath(diagnostics, projectRelativePath, options.file, sourceExtensionForKind(options.kind));
   try {
     await access(absoluteFile);
@@ -2129,6 +2153,15 @@ async function mutateSourceDocument(
     return authoringOperationResult({ diagnostics, projectPath: project.projectPath });
   }
 
+  return mutateLoadedSourceDocument(project, document, apply);
+}
+
+async function mutateLoadedSourceDocument(
+  project: Awaited<ReturnType<typeof loadAuthoringProject>>,
+  document: IAuthoringDocument,
+  apply: (data: Record<string, unknown>, file: string) => void | IAuthoringDiagnostic[],
+): Promise<IAuthoringOperationResult> {
+  const diagnostics = [...project.diagnostics];
   const materialIds = collectMaterialIdsForProject(project);
   const beforeDiagnostics = await validateAuthoringDocument(project.projectPath, document.projectRelativePath, document.kind, document.data, { materialIds });
   if (hasAuthoringErrors(beforeDiagnostics)) {

@@ -39,6 +39,7 @@ export const HELP_TOPICS: Record<string, HelpTopic> = {
       "tn scene create <scene-id> [--file <path>] --json",
       "tn scene import-world <scene-id> --world <path/to/world.ir.json> [--file <path>] [--replace] --json",
       "tn scene add-prefab <scene-id> <prefab-id> [--primitive <primitive>] [--color <css-color>] --json",
+      "tn scene set-prefab <scene-id> <prefab-id> [--primitive <primitive>] [--color <css-color>] [--asset <path.glb>] --json",
       "tn scene add-resource <scene-id> <resource-id> [--path <resource.path>] --json",
       "tn scene set-resource <scene-id> <resource-id> [--path <resource.path>] [--value <json>] --json",
       "tn resources add <resources-doc-id> <resource-id> [--path <resource.path>] [--value <json>] --json",

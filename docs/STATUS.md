@@ -220,16 +220,18 @@ such as `scene.set_transform`, `scene.set_component`, `ui.add_text`,
 `asset.add`, `audio.create`,
 `audio.add_sound`, `scene.set_light`, `scene.set_mesh_renderer`,
 `scene.set_rigid_body`, `scene.set_collider`,
-`scene.set_character_controller`, `scene.set_lifecycle`, `system.create`, and
-`system.attach_script`; MCP derives its registry-backed tool names from that
+`scene.set_character_controller`, `scene.set_lifecycle`, `scene.set_prefab`,
+`system.create`, and `system.attach_script`; MCP derives its registry-backed tool names from that
 catalog while preserving CLI JSON transport behavior.
 The editor workbench slice adds server-side project load/validate and operation
 dispatch APIs in `@threenative/editor`, source-document inventory state, scene
 hierarchy, material, catalog, UI/input/system models, and guarded panel
 components. Workbench operations persist scene transforms, material values, UI
-text/layout, input actions, primitive/custom mesh, prefab, and system edits through
-`@threenative/authoring`; asset rows remain inspect-only, and generated script
-bundle paths are rejected before source writes.
+text/layout, input actions, primitive/custom mesh, prefab, asset catalog
+primitive/color/asset rows, asset catalog type/path rows, scene resource
+path/value rows, and system edits through
+`@threenative/authoring`; generated script bundle paths are rejected before
+source writes.
 The editor runtime preview slice adds build/status APIs, preview host state,
 source-to-runtime selection correlation helpers, read-only overlay models,
 catalog preview rows, and a focused Playwright-backed `verify:editor-package`

@@ -18,6 +18,7 @@ import {
   setComponent,
   setLightComponent,
   setMeshRendererComponent,
+  setPrefab,
   setRenderLayersComponent,
   setPrefabColor,
   setRigidBodyComponent,
@@ -153,6 +154,19 @@ export async function sceneCommand(argv: readonly string[], options: ISceneComma
     }
     const result = await setPrefabColor({ projectPath, sceneId, prefabId, color });
     return renderSceneResult(result, json, result.ok ? `Prefab '${prefabId}' color updated.` : `Prefab '${prefabId}' color was not updated.`);
+  }
+
+  if (subcommand === "set-prefab") {
+    const sceneId = readPositional(normalizedArgv, 1);
+    const prefabId = readPositional(normalizedArgv, 2);
+    const primitive = readFlag(normalizedArgv, "--primitive");
+    const color = readFlag(normalizedArgv, "--color");
+    const asset = readFlag(normalizedArgv, "--asset");
+    if (sceneId === undefined || prefabId === undefined || (primitive === undefined && color === undefined && asset === undefined)) {
+      return renderUsage(json, "TN_SCENE_SET_PREFAB_ARGS_MISSING", "Usage: tn scene set-prefab <scene-id> <prefab-id> [--primitive <primitive>] [--color <css-color>] [--asset <path.glb>] [--project <path>] [--json]");
+    }
+    const result = await setPrefab({ asset, color, prefabId, primitive, projectPath, sceneId });
+    return renderSceneResult(result, json, result.ok ? `Prefab '${prefabId}' updated.` : `Prefab '${prefabId}' was not updated.`);
   }
 
   if (subcommand === "add-resource") {

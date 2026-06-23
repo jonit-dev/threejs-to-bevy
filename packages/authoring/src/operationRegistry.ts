@@ -41,6 +41,7 @@ import {
   setLightComponent,
   setMaterial,
   setMeshRendererComponent,
+  setPrefab,
   setRenderLayersComponent,
   setResource,
   setResourceDocumentEntry,
@@ -97,6 +98,7 @@ export type AuthoringOperationName =
   | "scene.set_light"
   | "scene.set_lifecycle"
   | "scene.set_mesh_renderer"
+  | "scene.set_prefab"
   | "scene.set_render_layers"
   | "scene.set_rigid_body"
   | "scene.set_resource"
@@ -143,6 +145,7 @@ const descriptors = [
     stringArg("assetId"),
     stringArg("type"),
     stringArg("path"),
+    stringArg("file", false),
   ]),
   descriptor("audio.create", "Create a structured audio source document.", "audio", "source-document", [
     stringArg("audioDocId"),
@@ -345,6 +348,13 @@ const descriptors = [
     stringArg("activation", false),
     booleanArg("initial", false),
   ]),
+  descriptor("scene.set_prefab", "Set scene-local prefab source fields.", "scene", "source-document", [
+    stringArg("sceneId"),
+    stringArg("prefabId"),
+    stringArg("asset", false),
+    stringArg("color", false),
+    stringArg("primitive", false),
+  ]),
   descriptor("scene.set_mesh_renderer", "Set a typed MeshRenderer component.", "scene", "source-document", [
     stringArg("sceneId"),
     stringArg("entityId"),
@@ -488,7 +498,7 @@ const descriptors = [
 
 const dispatchers: Record<AuthoringOperationName, OperationDispatcher> = {
   "asset.add": async ({ args, projectPath }) =>
-    addAsset({ assetId: requiredString(args, "assetId"), path: requiredString(args, "path"), projectPath, type: requiredString(args, "type") }),
+    addAsset({ assetId: requiredString(args, "assetId"), file: optionalString(args, "file"), path: requiredString(args, "path"), projectPath, type: requiredString(args, "type") }),
   "audio.add_sound": async ({ args, projectPath }) =>
     addAudioSound({ asset: requiredString(args, "asset"), audioDocId: requiredString(args, "audioDocId"), projectPath, soundId: requiredString(args, "soundId") }),
   "audio.create": async ({ args, projectPath }) =>
@@ -585,6 +595,8 @@ const dispatchers: Record<AuthoringOperationName, OperationDispatcher> = {
     setLightComponent({ angle: optionalNumber(args, "angle"), color: optionalString(args, "color"), entityId: requiredString(args, "entityId"), intensity: optionalNumber(args, "intensity"), kind: optionalString(args, "kind"), projectPath, range: optionalNumber(args, "range"), sceneId: requiredString(args, "sceneId") }),
   "scene.set_lifecycle": async ({ args, projectPath }) =>
     setSceneLifecycle({ activation: optionalString(args, "activation"), initial: optionalBoolean(args, "initial"), kind: optionalString(args, "kind"), projectPath, sceneId: requiredString(args, "sceneId") }),
+  "scene.set_prefab": async ({ args, projectPath }) =>
+    setPrefab({ asset: optionalString(args, "asset"), color: optionalString(args, "color"), prefabId: requiredString(args, "prefabId"), primitive: optionalString(args, "primitive"), projectPath, sceneId: requiredString(args, "sceneId") }),
   "scene.set_mesh_renderer": async ({ args, projectPath }) =>
     setMeshRendererComponent({ castShadow: optionalBoolean(args, "castShadow"), entityId: requiredString(args, "entityId"), material: requiredString(args, "material"), mesh: requiredString(args, "mesh"), projectPath, receiveShadow: optionalBoolean(args, "receiveShadow"), sceneId: requiredString(args, "sceneId"), visible: optionalBoolean(args, "visible") }),
   "scene.set_render_layers": async ({ args, projectPath }) =>

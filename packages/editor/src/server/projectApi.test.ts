@@ -77,7 +77,7 @@ test("should expose environment skybox and terrain rows", async () => {
     const camera = result.sceneObjects.find((object) => object.id === "camera.main");
     assert.equal(camera?.inspectorRows?.some((row) => row.component === "Camera" && row.label === "Mode" && row.fieldKind === "enum" && row.operation?.name === "scene.set_camera"), true);
     assert.equal(camera?.inspectorRows?.some((row) => row.component === "Camera" && row.label === "Skybox" && row.fieldKind === "asset" && row.sourceFamily === "environment" && row.value === "tex.sky" && row.operation?.name === "environment.set_skybox"), true);
-    assert.equal(result.sceneObjects.find((object) => object.id === "player")?.inspectorRows?.some((row) => row.component === "MeshRenderer" && row.label === "Asset" && row.fieldKind === "asset" && row.readOnlyReason !== undefined), true);
+    assert.equal(result.sceneObjects.find((object) => object.id === "player")?.inspectorRows?.some((row) => row.component === "MeshRenderer" && row.label === "Asset" && row.fieldKind === "asset" && row.operation?.name === "scene.set_prefab"), true);
     const environmentRows = result.documents.flatMap((group) => group.documents).find((document) => document.kind === "environment")?.inspectorRows ?? [];
     assert.equal(environmentRows.some((row) => row.label === "Skybox" && row.sourceFamily === "environment" && row.value === "tex.sky"), true);
     assert.equal(environmentRows.some((row) => row.label === "Environment Map" && row.fieldKind === "asset" && row.operation?.name === "environment.set_map"), true);
@@ -222,7 +222,7 @@ test("should reject malformed editor operation payloads without writing source",
   }
 });
 
-test("should keep mesh renderer edits explicit and expose typed light operations", async () => {
+test("should persist scene prefab rows and expose typed light operations", async () => {
   const root = await copyStarterProject();
   try {
     const create = await applyEditorOperationApi({
@@ -234,13 +234,93 @@ test("should keep mesh renderer edits explicit and expose typed light operations
     const result = await loadEditorProjectApi({ projectPath: root });
     assert.equal(result.ok, true);
     const playerRows = result.sceneObjects.find((object) => object.id === "player")?.inspectorRows ?? [];
-    assert.equal(playerRows.some((row) => row.component === "MeshRenderer" && row.label === "Primitive" && row.readOnlyReason !== undefined), true);
-    assert.equal(playerRows.some((row) => row.component === "MeshRenderer" && row.label === "Color" && row.readOnlyReason !== undefined), true);
-    assert.equal(playerRows.some((row) => row.component === "MeshRenderer" && row.label === "Asset" && row.readOnlyReason !== undefined), true);
+    const primitive = playerRows.find((row) => row.component === "MeshRenderer" && row.label === "Primitive");
+    const color = playerRows.find((row) => row.component === "MeshRenderer" && row.label === "Color");
+    const asset = playerRows.find((row) => row.component === "MeshRenderer" && row.label === "Asset");
+    assert.equal(primitive?.operation?.name, "scene.set_prefab");
+    assert.equal(primitive?.readOnly, false);
+    assert.equal(color?.operation?.name, "scene.set_prefab");
+    assert.equal(color?.readOnly, false);
+    assert.equal(asset?.operation?.name, "scene.set_prefab");
+    assert.equal(asset?.readOnly, false);
+
+    const primitiveSave = await applyEditorOperationApi({
+      projectPath: root,
+      request: { args: { ...primitive.operation.args, [primitive.operation.valueArg ?? "primitive"]: "sphere" }, name: primitive.operation.name },
+    });
+    assert.equal(primitiveSave.ok, true);
+    const colorSave = await applyEditorOperationApi({
+      projectPath: root,
+      request: { args: { ...color.operation.args, [color.operation.valueArg ?? "color"]: "#00ffaa" }, name: color.operation.name, projectRevision: primitiveSave.projectRevision },
+    });
+    assert.equal(colorSave.ok, true);
+    const assetSave = await applyEditorOperationApi({
+      projectPath: root,
+      request: { args: { ...asset.operation.args, [asset.operation.valueArg ?? "asset"]: "assets/models/player.glb" }, name: asset.operation.name, projectRevision: colorSave.projectRevision },
+    });
+    assert.equal(assetSave.ok, true);
+    const scene = JSON.parse(await readFile(join(root, "content", "scenes", "arena.scene.json"), "utf8")) as {
+      prefabs?: Array<{ asset?: string; color?: string; id: string; primitive?: string }>;
+    };
+    assert.deepEqual(scene.prefabs?.find((prefab) => prefab.id === "prefab.player"), { asset: "assets/models/player.glb", color: "#00ffaa", id: "prefab.player", primitive: "sphere" });
 
     const lightRows = result.sceneObjects.find((object) => object.id === "directional-light")?.inspectorRows ?? [];
     assert.equal(lightRows.some((row) => row.component === "Light" && row.label === "Kind" && row.operation?.name === "scene.set_light" && row.readOnly === false), true);
     assert.equal(lightRows.some((row) => row.component === "Light" && row.label === "Intensity" && row.operation?.name === "scene.set_light" && row.readOnly === false), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should persist asset catalog and scene resource rows through editor operations", async () => {
+  const root = await copyStarterProject();
+  try {
+    await mkdir(join(root, "content", "assets"), { recursive: true });
+    await writeFile(
+      join(root, "content", "assets", "catalog.assets.json"),
+      `${JSON.stringify({ schema: "threenative.assets", version: "0.1.0", id: "catalog", assets: [{ id: "tex.logo", path: "assets/logo.png", type: "texture" }] }, null, 2)}\n`,
+    );
+    const scenePath = join(root, "content", "scenes", "arena.scene.json");
+    const scene = JSON.parse(await readFile(scenePath, "utf8")) as { resources?: Array<{ id: string; path?: string; value?: unknown }> };
+    scene.resources = [
+      ...(scene.resources ?? []),
+      { id: "config.theme", path: "config/theme.json" },
+      { id: "score.default", value: { points: 10 } },
+    ];
+    await writeFile(scenePath, `${JSON.stringify(scene, null, 2)}\n`);
+
+    const result = await loadEditorProjectApi({ projectPath: root });
+    assert.equal(result.ok, true);
+    const rows = result.documents.flatMap((group) => group.documents.flatMap((document) => document.inspectorRows ?? []));
+    const assetPath = rows.find((row) => row.label === "tex.logo Path");
+    const assetType = rows.find((row) => row.label === "tex.logo Type");
+    const resourcePath = rows.find((row) => row.label === "config.theme Path");
+    const resourceValue = rows.find((row) => row.label === "score.default Value");
+
+    assert.equal(assetPath?.readOnly, false);
+    assert.equal(assetPath?.operation?.name, "asset.add");
+    assert.equal(assetPath.operation.valueArg, "path");
+    assert.equal(assetType?.operation?.name, "asset.add");
+    assert.equal(resourcePath?.readOnly, false);
+    assert.equal(resourcePath?.operation?.name, "scene.set_resource");
+    assert.equal(resourceValue?.readOnly, false);
+    assert.equal(resourceValue?.operation?.name, "scene.set_resource");
+
+    const assetSave = await applyEditorOperationApi({
+      projectPath: root,
+      request: { args: { ...assetPath.operation.args, [assetPath.operation.valueArg ?? "path"]: "assets/logo-2.png" }, name: assetPath.operation.name },
+    });
+    assert.equal(assetSave.ok, true);
+    const resourceSave = await applyEditorOperationApi({
+      projectPath: root,
+      request: { args: { ...resourceValue.operation.args, [resourceValue.operation.valueArg ?? "value"]: { points: 42 } }, name: resourceValue.operation.name, projectRevision: assetSave.projectRevision },
+    });
+    assert.equal(resourceSave.ok, true);
+
+    const assetDoc = JSON.parse(await readFile(join(root, "content", "assets", "catalog.assets.json"), "utf8")) as { assets: Array<{ id: string; path?: string; type?: string }> };
+    const sceneDoc = JSON.parse(await readFile(scenePath, "utf8")) as { resources?: Array<{ id: string; path?: string; value?: unknown }> };
+    assert.deepEqual(assetDoc.assets[0], { id: "tex.logo", path: "assets/logo-2.png", type: "texture" });
+    assert.deepEqual(sceneDoc.resources?.find((resource) => resource.id === "score.default")?.value, { points: 42 });
   } finally {
     await rm(root, { force: true, recursive: true });
   }

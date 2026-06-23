@@ -340,13 +340,14 @@ test("scene-command can create prefabs resources and ui nodes without hand-editi
     const resourceValue = await sceneCommand(["set-resource", "scene.gap", "hud.score", "--value", "{\"value\":10,\"label\":\"READY\"}", "--project", root, "--json"]);
     const uiNode = await sceneCommand(["add-ui-node", "scene.gap", "score-label", "--project", root, "--json"]);
     const recolor = await sceneCommand(["set-prefab-color", "scene.gap", "kart", "--color", "#00aaff", "--project", root, "--json"]);
+    const setPrefab = await sceneCommand(["set-prefab", "scene.gap", "kart", "--primitive", "sphere", "--color", "#00ffaa", "--asset", "assets/models/kart.glb", "--project", root, "--json"]);
     const entity = await sceneCommand(["add-entity", "scene.gap", "player-kart", "--prefab", "kart", "--project", root, "--json"]);
     const component = await sceneCommand(["set-component", "scene.gap", "player-kart", "VehiclePhysics", "--value", "{\"speed\":42,\"boost\":0.5}", "--project", root, "--json"]);
     const binding = await sceneCommand(["bind-ui", "scene.gap", "score-label", "--resource", "hud.score", "--project", root, "--json"]);
     const validate = await sceneCommand(["validate", "scene.gap", "--project", root, "--json"]);
     const scene = JSON.parse(await readFile(join(root, "content", "scenes", "scene.gap.scene.json"), "utf8")) as {
       entities: Array<{ components?: Record<string, unknown>; id: string; prefab?: string }>;
-      prefabs: Array<{ color?: string; id: string; primitive?: string }>;
+      prefabs: Array<{ asset?: string; color?: string; id: string; primitive?: string }>;
       resources: Array<{ id: string; path?: string }>;
       ui: { bindings: Array<{ node: string; resource: string }>; nodes: Array<{ id: string }> };
     };
@@ -357,11 +358,12 @@ test("scene-command can create prefabs resources and ui nodes without hand-editi
     assert.equal(resourceValue.exitCode, 0);
     assert.equal(uiNode.exitCode, 0);
     assert.equal(recolor.exitCode, 0);
+    assert.equal(setPrefab.exitCode, 0);
     assert.equal(entity.exitCode, 0);
     assert.equal(component.exitCode, 0);
     assert.equal(binding.exitCode, 0);
     assert.equal(validate.exitCode, 0);
-    assert.deepEqual(scene.prefabs, [{ color: "#00aaff", id: "kart", primitive: "box" }]);
+    assert.deepEqual(scene.prefabs, [{ asset: "assets/models/kart.glb", color: "#00ffaa", id: "kart", primitive: "sphere" }]);
     assert.deepEqual(scene.resources, [{ id: "hud.score", path: "hud.score.value", value: { label: "READY", value: 10 } }]);
     assert.deepEqual(scene.ui.nodes, [{ id: "score-label" }]);
     assert.deepEqual(scene.ui.bindings, [{ node: "score-label", resource: "hud.score" }]);

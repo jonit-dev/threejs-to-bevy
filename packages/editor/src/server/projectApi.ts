@@ -302,6 +302,11 @@ function objectInspectorRows(input: {
   }
 
   if (input.prefabData !== undefined && !isRecord(input.components?.camera) && !isRecord(input.lightData)) {
+    const prefabId = readString(input.prefabData.id) ?? "";
+    const prefabPrimitive = readPrimitive(input.prefabData.primitive);
+    const prefabColor = readString(input.prefabData.color);
+    const prefabAsset = readString(input.prefabData.asset);
+    const prefabArgs = { prefabId, sceneId: input.sceneId };
     rows.push(
       inspectorRow({
         component: "MeshRenderer",
@@ -309,12 +314,12 @@ function objectInspectorRows(input: {
         fieldKind: "enum",
         id: "inspect:primitive",
         input,
-        jsonPointer: `/prefabs/${readString(input.prefabData.id) ?? ""}/primitive`,
+        jsonPointer: `/prefabs/${prefabId}/primitive`,
         label: "Primitive",
+        operation: { args: prefabArgs, name: "scene.set_prefab", valueArg: "primitive" },
         options: ["box", "capsule", "cone", "cylinder", "plane", "sphere"],
-        readOnly: true,
-        readOnlyReason: "Prefab primitive updates do not have a promoted source operation yet.",
-        value: readPrimitive(input.prefabData.primitive),
+        readOnly: false,
+        value: prefabPrimitive,
       }),
       inspectorRow({
         component: "MeshRenderer",
@@ -322,22 +327,22 @@ function objectInspectorRows(input: {
         fieldKind: "color",
         id: "inspect:color",
         input,
-        jsonPointer: `/prefabs/${readString(input.prefabData.id) ?? ""}/color`,
+        jsonPointer: `/prefabs/${prefabId}/color`,
         label: "Color",
-        readOnly: true,
-        readOnlyReason: "Scene prefab color updates do not have a promoted editor operation yet.",
-        value: readString(input.prefabData.color) ?? "default",
+        operation: { args: prefabArgs, name: "scene.set_prefab", valueArg: "color" },
+        readOnly: false,
+        value: prefabColor ?? "#2f80ed",
       }),
       inspectorRow({
         component: "MeshRenderer",
         fieldKind: "asset",
         id: "inspect:asset",
         input,
-        jsonPointer: `/prefabs/${readString(input.prefabData.id) ?? ""}/asset`,
+        jsonPointer: `/prefabs/${prefabId}/asset`,
         label: "Asset",
-        readOnly: true,
-        readOnlyReason: "Prefab asset reference updates do not have a promoted source operation yet.",
-        value: readString(input.prefabData.asset) ?? "none",
+        operation: { args: prefabArgs, name: "scene.set_prefab", valueArg: "asset" },
+        readOnly: false,
+        value: prefabAsset ?? "",
       }),
     );
   }
@@ -490,7 +495,11 @@ function documentInspectorRows(document: IAuthoringDocument): IEditorPropertyRow
       break;
     case "asset":
       for (const [index, asset] of readArray(document.data.assets).filter(isRecord).entries()) {
-        rows.push(documentRow(document, `asset:${index}:path`, `${readString(asset.id) ?? `asset.${index}`} Path`, readString(asset.path) ?? "", "asset", true, `/assets/${index}/path`, "asset", undefined, undefined, undefined, "Asset catalog mutation is not exposed through the editor operation API yet."));
+        const assetId = readString(asset.id) ?? "";
+        const assetType = readString(asset.type) ?? "model";
+        const assetPath = readString(asset.path) ?? "";
+        rows.push(documentRow(document, `asset:${index}:type`, `${assetId || `asset.${index}`} Type`, assetType, "enum", false, `/assets/${index}/type`, "asset", "asset.add", "type", { assetId, file: document.projectRelativePath, path: assetPath }));
+        rows.push(documentRow(document, `asset:${index}:path`, `${assetId || `asset.${index}`} Path`, assetPath, "asset", false, `/assets/${index}/path`, "asset", "asset.add", "path", { assetId, file: document.projectRelativePath, type: assetType }));
       }
       break;
     case "project": {
@@ -533,7 +542,13 @@ function documentInspectorRows(document: IAuthoringDocument): IEditorPropertyRow
       rows.push(documentRow(document, "scene:lifecycle:activation", "Activation", readString(document.data.activation) ?? "", "enum", false, "/activation", "scene", "scene.set_lifecycle", "activation", { initial: document.data.initial === true, kind: readString(document.data.kind), sceneId: readDocumentId(document.data) ?? "" }));
       rows.push(documentRow(document, "scene:lifecycle:initial", "Initial Scene", document.data.initial === true ? "true" : "false", "boolean", false, "/initial", "scene", "scene.set_lifecycle", "initial", { activation: readString(document.data.activation), kind: readString(document.data.kind), sceneId: readDocumentId(document.data) ?? "" }));
       for (const [index, resource] of readArray(document.data.resources).filter(isRecord).entries()) {
-        rows.push(documentRow(document, `resource:${index}:path`, `${readString(resource.id) ?? `resource.${index}`} Path`, readString(resource.path) ?? summarizeValue(resource.value), "asset", true, `/resources/${index}/path`, "scene", undefined, undefined, undefined, "Scene resource mutation is not exposed through the editor operation API yet."));
+        const resourceId = readString(resource.id) ?? "";
+        if (resource.path !== undefined || resource.value === undefined) {
+          rows.push(documentRow(document, `resource:${index}:path`, `${resourceId || `resource.${index}`} Path`, readString(resource.path) ?? "", "asset", false, `/resources/${index}/path`, "scene", "scene.set_resource", "path", { resourceId, sceneId: readDocumentId(document.data) ?? "" }));
+        }
+        if (resource.value !== undefined) {
+          rows.push(documentRow(document, `resource:${index}:value`, `${resourceId || `resource.${index}`} Value`, summarizeValue(resource.value), "json", false, `/resources/${index}/value`, "scene", "scene.set_resource", "value", { resourceId, sceneId: readDocumentId(document.data) ?? "" }));
+        }
       }
       break;
     case "environment": {
