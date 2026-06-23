@@ -111,6 +111,10 @@ Date: 2026-06-21
   registry-backed `mesh.create_primitive` with document-file targeting, so the
   editor can mutate primitive mesh declarations in place instead of treating
   them as create-only rows.
+- ✅ 2026-06-23: System metadata inspector rows now dispatch registry-backed
+  `system.set_metadata` for access lists, ordering, services, queries, and
+  commands. System schedules remain create-time rows, but the richer source
+  metadata no longer requires CLI-only mutation.
 
 ## Final Status for 2026-06-22
 
@@ -126,8 +130,8 @@ work and should not be treated as complete:
   operations, excluding asset catalog type/path and scene resource path/value
   rows, scene-local prefab primitive/color/asset rows, and environment
   path/walkability/source-asset LOD rows plus promoted Light and custom
-  component payload rows, plus mesh source primitive rows, which are now
-  editable through registry-backed operations.
+  component payload rows, mesh source primitive rows, and system metadata rows,
+  which are now editable through registry-backed operations.
 
 ## Scope
 
@@ -193,7 +197,7 @@ IR/runtime surfaces, but only some have typed editor/CLI helpers.
 | ✅ Assets and glTF | Bundle-local assets, GLB/GLTF, dependency bundling, inspection, hot reload | Promoted for current scope | Partial | `tn asset add`, `tn asset inspect`, `tn model-test` | EDITOR | Durable asset catalog source mutation exists for id/type/path declarations, and supported standalone source/SDK asset declarations now emit into `assets.manifest.json`. Import settings, custom/generated mesh asset source, runtime asset saving/export, and generated runtime asset persistence remain gaps. |
 | ✅ Environment scene data | Environment IR supports atmosphere, terrain, path, skybox, environment maps, light probes, LOD, walkability | Promoted for selected runtime slices | Partial | `environment create`, `environment set-skybox`, `environment set-map`, `environment set-terrain`, `environment set-path`, `environment set-walkability`, `environment set-source-asset-lod` | SOURCE, EDITOR | CLI/editor now cover promoted environment doc creation plus skybox, environment map, terrain, path, walkability, and source-asset LOD fields; light probes remain inspect-only. |
 | ✅ Animation and particles | Broad animation metadata/playback/services and rendered particles | Promoted for current scope | Partial through assets/scripts | `tn animation add-clip`, `tn animation graph add-state`, `tn particle add-emitter` | EDITOR, WEB-BEVY | Source asset docs now carry promoted model clip, graph-state, and bounded particle emitter metadata that lowers into `assets.manifest.json`; retargeting/IK, arbitrary blend trees, and broader editor controls remain open. |
-| ✅ Systems and scripts | Portable system metadata, script refs, effect validation | Web/Bevy host parity for promoted services | Partial | `system create`, `system attach-script`, `system set-metadata`, `scene attach-script` | EDITOR | Structured systems docs now persist/import/lower access lists, ordering, query metadata, service declarations, and command declarations; callback components/callable handles, richer editor inspector controls, and delayed commands beyond bounded timers remain residual gaps. |
+| ✅ Systems and scripts | Portable system metadata, script refs, effect validation | Web/Bevy host parity for promoted services | Partial | `system create`, `system attach-script`, `system set-metadata`, `scene attach-script` | EDITOR | Structured systems docs now persist/import/lower access lists, ordering, query metadata, service declarations, and command declarations, with matching editor metadata rows; callback components/callable handles and delayed commands beyond bounded timers remain residual gaps. |
 | ✅ Prefab catalogs | IR/runtime can load prefab catalogs | Web/Bevy can consume bundle prefabs | Partial | `prefab create`, `prefab add-component`, scene-local `add-prefab` | SOURCE, ECS-CMD, EDITOR | Structured prefab source documents now emit standalone `prefabs.ir.json` bundle catalogs; instance overrides and broader prefab editor/runtime breadth remain residual. |
 | ✅ Render targets | IR has color/depth render targets and camera targets | Color and write-only depth target allocation now have runtime proof | Partial | `tn asset add --type render-target` plus registry `asset.add` | EDITOR | Web/Bevy runtime allocation now covers declared color targets and write-only depth targets, and source/editor/CLI creation now persists width/height/usage/format render-target declarations into `assets.manifest.json`; depth target material sampling remains rejected by IR validation. |
 | ✅ Runtime config / target profile / window policy | Runtime config IR exists | Partial policy support | Partial | `runtime create`, `runtime set-window`, `runtime set-rendering` | SOURCE, EDITOR, WEB-BEVY | CLI/editor now cover source-backed runtime config creation, primary window size/title, and promoted renderer quality fields that lower to `runtime.config.json`; target profile source docs, resize/scale-factor observations, cursor/present/background policy, clear-color updates, and multi-window diagnostics remain residual. |
@@ -231,7 +235,7 @@ and docs/contracts. Their additional findings sharpen the gaps above:
 | --- | --- | --- |
 | ✅ Operation registry drift | `AUTHORING_OPERATION_REGISTRY` now includes existing structured source operations for asset/audio/input/material/mesh/prefab/scene/system/UI plus typed common ECS component setters. | Keep using the registry as the shared source for new promoted operations. |
 | ✅ Generic vs typed ECS writes | Typed common ECS setters and validators now cover `camera`, `Light`, `MeshRenderer`, `RenderLayers`, `Visibility`, `RigidBody`, `Collider`, and `CharacterController`, while custom component JSON rows can persist whole payloads through `scene.set_component`. | Other runtime components still need typed promotion before they are first-class. |
-| Read-only editor rows | Asset catalog type/path, scene resource path/value, scene-local prefab primitive/color/asset, environment path/walkability/source-asset LOD, promoted Light rows, custom component payload rows, and mesh source primitive rows now persist through registry-backed editor operations. Remaining read-only families include light probes and richer system inspector rows. | Users can still inspect more than the editor UI can safely persist back to durable source, but the rows that already have shared operations no longer drift from the editor surface. |
+| Read-only editor rows | Asset catalog type/path, scene resource path/value, scene-local prefab primitive/color/asset, environment path/walkability/source-asset LOD, promoted Light rows, custom component payload rows, mesh source primitive rows, and system metadata rows now persist through registry-backed editor operations. Remaining read-only families include light probes plus create-time identifiers/schedules. | Users can still inspect more than the editor UI can safely persist back to durable source, but the rows that already have shared operations no longer drift from the editor surface. |
 | ✅ Asset and audio source gaps | Asset and audio source schemas now have durable mutation commands and registry operations for asset declarations, audio docs, and sound declarations. | Broader import/playback policy remains separate backlog. |
 | ✅ Environment mutation gap | Environment documents are classified/validated, and typed editor/CLI operations now cover skybox, environment map, terrain, path, walkability, and source-asset LOD fields. | Light probes remain inspect-only residuals. |
 | ✅ Prefab catalog emission | Structured prefab source documents now lower into bundle `prefabs.ir.json` with manifest `entry.prefabs`/`files.prefabs` entries and provenance ownership. | Web/Bevy prefab runtime support no longer requires hand-authored catalog bundle entries for source-authored prefabs. |

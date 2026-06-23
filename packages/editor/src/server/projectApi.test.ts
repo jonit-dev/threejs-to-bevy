@@ -193,15 +193,26 @@ test("should expose source-backed input and system inspector rows", async () => 
     );
     await writeFile(
       join(root, "content", "systems", "arena.systems.json"),
-      `${JSON.stringify({ schema: "threenative.systems", version: "0.1.0", id: "arena", systems: [{ id: "spin", schedule: "update", script: { module: "./spin.ts", export: "spin" } }] }, null, 2)}\n`,
+      `${JSON.stringify({ schema: "threenative.systems", version: "0.1.0", id: "arena", systems: [{ id: "spin", schedule: "update", script: { module: "spin.ts", export: "spin" }, reads: ["Transform"], writes: ["Velocity"], queries: [{ with: ["Transform"], orderBy: "id" }] }] }, null, 2)}\n`,
     );
 
     const result = await loadEditorProjectApi({ projectPath: root });
     assert.equal(result.ok, true);
     const rows = result.documents.flatMap((group) => group.documents.flatMap((document) => document.inspectorRows ?? []));
+    const systemWrites = rows.find((row) => row.sourceFamily === "system" && row.label === "spin Writes");
     assert.equal(rows.some((row) => row.sourceFamily === "input" && row.fieldKind === "stringList" && row.operation?.name === "input.add_action"), true);
     assert.equal(rows.some((row) => row.sourceFamily === "system" && row.fieldKind === "script" && row.operation?.name === "system.attach_script"), true);
+    assert.equal(rows.some((row) => row.sourceFamily === "system" && row.label === "spin Reads" && row.fieldKind === "stringList" && row.operation?.name === "system.set_metadata"), true);
+    assert.equal(rows.some((row) => row.sourceFamily === "system" && row.label === "spin Queries" && row.fieldKind === "json" && row.operation?.name === "system.set_metadata"), true);
     assert.equal(rows.some((row) => row.sourceFamily === "system" && row.label.includes("Schedule") && row.readOnlyReason !== undefined), true);
+    assert.ok(systemWrites?.operation);
+    const save = await applyEditorOperationApi({
+      projectPath: root,
+      request: { args: { ...systemWrites.operation.args, [systemWrites.operation.valueArg ?? "writes"]: ["Velocity", "AngularVelocity"] }, name: systemWrites.operation.name, projectRevision: result.projectRevision },
+    });
+    assert.equal(save.ok, true);
+    const systemsDoc = JSON.parse(await readFile(join(root, "content", "systems", "arena.systems.json"), "utf8")) as { systems: Array<{ id: string; writes?: string[] }> };
+    assert.deepEqual(systemsDoc.systems.find((system) => system.id === "spin")?.writes, ["AngularVelocity", "Velocity"]);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

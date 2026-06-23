@@ -124,10 +124,10 @@ and transmission fields, declare primitive mesh source docs, create prefab docs
 and component values, add input actions and axes from key lists, add asset catalog
 entries, create audio docs, add audio sound declarations, add zero-field ECS tag
 components and `SceneContainer` group entities to scene source, and create
-systems with module/export script references. Systems source commands now set promoted
-access lists, ordering, query metadata, service declarations, and command
-declarations, and bundle import preserves those fields back into
-`content/systems/*.systems.json` source documents. Environment source commands
+systems with module/export script references. Systems source commands and editor
+metadata rows now set promoted access lists, ordering, query metadata, service
+declarations, and command declarations, and bundle import preserves those fields
+back into `content/systems/*.systems.json` source documents. Environment source commands
 now create environment docs and set promoted skybox, environment-map, terrain,
 path, walkability, and source-asset LOD fields.
 Project metadata source commands now create or update `content/project.authoring.json`
@@ -366,9 +366,10 @@ smoke/edited screenshots after adding primitive, empty, camera, light, and
 project GLB objects, building preview, creating a default scene, and confirming
 GLB loading without unexpected browser console errors.
 The follow-up component mutation audit keeps Transform, Camera, Light,
-material, input, system script, UI binding, and custom component JSON payload
-rows source-editable while preserving explicit read-only reasons for remaining
-unpromoted generated/provenance, mesh, and system inspector rows. Editor-only
+material, input, system script/metadata, UI binding, and custom component JSON
+payload rows source-editable while preserving explicit read-only reasons for
+remaining unpromoted generated/provenance, light-probe, create-time schedule/id,
+and advanced inspector rows. Editor-only
 operation fallbacks now return stable
 `TN_EDITOR_OPERATION_ARG_INVALID` diagnostics for malformed payloads before any
 source write.

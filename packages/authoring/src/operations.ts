@@ -615,6 +615,7 @@ export interface ICreateSystemOptions extends IAuthoringOperationContext {
 }
 
 export interface IAttachSystemScriptOptions extends IAuthoringOperationContext {
+  file?: string;
   systemId: string;
   modulePath: string;
   exportName: string;
@@ -626,6 +627,7 @@ export interface ISetSystemMetadataOptions extends IAuthoringOperationContext {
   commands?: readonly Record<string, unknown>[];
   eventReads?: readonly string[];
   eventWrites?: readonly string[];
+  file?: string;
   queries?: readonly Record<string, unknown>[];
   reads?: readonly string[];
   resourceReads?: readonly string[];
@@ -2055,7 +2057,7 @@ export async function attachSystemScript(options: IAttachSystemScriptOptions): P
     }
     system.script = { module: options.modulePath, export: options.exportName };
     return [];
-  });
+  }, options.file);
 }
 
 export async function setSystemMetadata(options: ISetSystemMetadataOptions): Promise<IAuthoringOperationResult> {
@@ -2078,7 +2080,7 @@ export async function setSystemMetadata(options: ISetSystemMetadataOptions): Pro
       system.commands = options.commands.map((command) => cloneJson(command));
     }
     return [];
-  });
+  }, options.file);
 }
 
 const systemStringListMetadataKeys = [
@@ -2233,9 +2235,10 @@ async function mutateSourceDocument(
   kind: AuthoringDocumentKind,
   id: string,
   apply: (data: Record<string, unknown>, file: string) => void | IAuthoringDiagnostic[],
+  file?: string,
 ): Promise<IAuthoringOperationResult> {
   const project = await loadAuthoringProject({ projectPath: options.projectPath });
-  const document = project.documents.find((candidate) => candidate.kind === kind && readDocumentId(candidate.data) === id);
+  const document = project.documents.find((candidate) => candidate.kind === kind && (file === undefined ? readDocumentId(candidate.data) === id : candidate.projectRelativePath === file));
   const diagnostics = [...project.diagnostics];
 
   if (document === undefined) {

@@ -100,6 +100,8 @@ test("should keep an explicit inspector field inventory for promoted source fami
   assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => item.field === "meshes.primitive" && item.operationName === "mesh.create_primitive" && item.readOnly === false), true);
   assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => item.sourceFamily === "input" && item.field === "actions.bindings" && item.fieldKind === "stringList"), true);
   assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => item.sourceFamily === "system" && item.field === "systems.script" && item.fieldKind === "script"), true);
+  assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => item.sourceFamily === "system" && item.field === "systems.reads" && item.operationName === "system.set_metadata" && item.readOnly === false), true);
+  assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => item.sourceFamily === "system" && item.field === "systems.queries" && item.fieldKind === "json" && item.operationName === "system.set_metadata"), true);
   assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => item.sourceFamily === "ui" && item.field === "ui.nodes.type" && item.operationName === "ui.add_node"), true);
   assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => item.sourceFamily === "ui" && item.field === "ui.nodes.style.color" && item.operationName === "ui.set_style"), true);
   assert.equal(EDITOR_ADD_COMPONENT_DEFINITIONS.some((definition) => definition.component === "MeshRenderer" && definition.incompatibleWith.includes("Camera")), true);

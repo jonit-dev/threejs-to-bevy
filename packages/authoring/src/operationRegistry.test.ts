@@ -164,6 +164,41 @@ test("should dispatch existing structured source operations through the registry
   }
 });
 
+test("should dispatch file-targeted system metadata operations through the registry", async () => {
+  const root = await createRegistryProject();
+  try {
+    await mkdir(join(root, "content", "systems"), { recursive: true });
+    await writeFile(join(root, "spin.ts"), "export function spin() {}\n");
+    await writeFile(
+      join(root, "content", "systems", "arena.systems.json"),
+      `${JSON.stringify({ schema: "threenative.systems", version: "0.1.0", id: "arena", systems: [{ id: "spin", schedule: "update", script: { module: "spin.ts", export: "spin" }, writes: ["Velocity"] }] }, null, 2)}\n`,
+    );
+
+    const script = await dispatchAuthoringOperation({
+      args: { exportName: "spin", file: "content/systems/arena.systems.json", modulePath: "spin.ts", systemId: "spin" },
+      name: "system.attach_script",
+      projectPath: root,
+    });
+    const metadata = await dispatchAuthoringOperation({
+      args: { file: "content/systems/arena.systems.json", reads: ["Transform"], systemId: "spin", writes: ["Velocity", "AngularVelocity"] },
+      name: "system.set_metadata",
+      projectPath: root,
+    });
+    const systems = JSON.parse(await readFile(join(root, "content", "systems", "arena.systems.json"), "utf8")) as {
+      systems: Array<{ id: string; reads?: string[]; script?: Record<string, unknown>; writes?: string[] }>;
+    };
+    const spin = systems.systems.find((system) => system.id === "spin");
+
+    assert.equal(script.ok, true);
+    assert.equal(metadata.ok, true);
+    assert.deepEqual(spin?.script, { export: "spin", module: "spin.ts" });
+    assert.deepEqual(spin?.reads, ["Transform"]);
+    assert.deepEqual(spin?.writes, ["AngularVelocity", "Velocity"]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should expose operation metadata and registry diagnostics", async () => {
   const descriptors = listAuthoringOperationDescriptors();
   const transform = getAuthoringOperationDescriptor("scene.set_transform");

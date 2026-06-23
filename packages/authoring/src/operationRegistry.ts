@@ -506,9 +506,11 @@ const descriptors = [
     stringArg("systemId"),
     stringArg("modulePath"),
     stringArg("exportName"),
+    stringArg("file", false),
   ]),
   descriptor("system.set_metadata", "Set system access, query, command, service, and ordering metadata.", "system", "source-document", [
     stringArg("systemId"),
+    stringArg("file", false),
     stringArrayArg("after", false),
     stringArrayArg("before", false),
     objectArrayArg("commands", false),
@@ -643,7 +645,7 @@ const dispatchers: Record<AuthoringOperationName, OperationDispatcher> = {
   "scene.set_visibility": async ({ args, projectPath }) =>
     setVisibilityComponent({ entityId: requiredString(args, "entityId"), projectPath, sceneId: requiredString(args, "sceneId"), visible: optionalBoolean(args, "visible") }),
   "system.attach_script": async ({ args, projectPath }) =>
-    attachSystemScript({ exportName: requiredString(args, "exportName"), modulePath: requiredString(args, "modulePath"), projectPath, systemId: requiredString(args, "systemId") }),
+    attachSystemScript({ exportName: requiredString(args, "exportName"), file: optionalString(args, "file"), modulePath: requiredString(args, "modulePath"), projectPath, systemId: requiredString(args, "systemId") }),
   "system.create": async ({ args, projectPath }) =>
     createSystem({ projectPath, schedule: requiredString(args, "schedule"), systemId: requiredString(args, "systemId") }),
   "system.set_metadata": async ({ args, projectPath }) =>
@@ -653,6 +655,7 @@ const dispatchers: Record<AuthoringOperationName, OperationDispatcher> = {
       commands: optionalObjectArray(args, "commands"),
       eventReads: optionalStringArray(args, "eventReads"),
       eventWrites: optionalStringArray(args, "eventWrites"),
+      file: optionalString(args, "file"),
       projectPath,
       queries: optionalObjectArray(args, "queries"),
       reads: optionalStringArray(args, "reads"),

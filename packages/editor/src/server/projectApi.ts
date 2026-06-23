@@ -34,6 +34,32 @@ export interface IEditorProjectApiResult {
   sceneObjects: IEditorSceneObject[];
 }
 
+const systemStringListRowKeys = [
+  "reads",
+  "writes",
+  "resourceReads",
+  "resourceWrites",
+  "eventReads",
+  "eventWrites",
+  "services",
+  "after",
+  "before",
+] as const;
+
+type SystemStringListRowKey = (typeof systemStringListRowKeys)[number];
+
+const systemMetadataLabels: Record<SystemStringListRowKey, string> = {
+  after: "After",
+  before: "Before",
+  eventReads: "Event Reads",
+  eventWrites: "Event Writes",
+  reads: "Reads",
+  resourceReads: "Resource Reads",
+  resourceWrites: "Resource Writes",
+  services: "Services",
+  writes: "Writes",
+};
+
 export async function loadEditorProjectApi(options: { projectPath: string; rootPath?: string }): Promise<IEditorProjectApiResult> {
   const guard = validateProjectRoot(options.projectPath, options.rootPath);
   if (guard !== undefined) {
@@ -507,8 +533,16 @@ function documentInspectorRows(document: IAuthoringDocument): IEditorPropertyRow
       break;
     case "systems":
       for (const [index, system] of readArray(document.data.systems).filter(isRecord).entries()) {
-        rows.push(documentRow(document, `system:${index}:schedule`, `${readString(system.id) ?? `system.${index}`} Schedule`, readString(system.schedule) ?? "", "string", true, `/systems/${index}/schedule`, "system", undefined, undefined, undefined, "System schedule mutation is not promoted after creation."));
-        rows.push(documentRow(document, `system:${index}:script`, `${readString(system.id) ?? `system.${index}`} Script`, formatScript(system.script), "script", false, `/systems/${index}/script`, "system", "system.attach_script", "modulePath", { exportName: readString(isRecord(system.script) ? system.script.export : undefined) ?? "default", systemId: readString(system.id) ?? "" }));
+        const systemId = readString(system.id) ?? "";
+        const labelPrefix = systemId || `system.${index}`;
+        const metadataArgs = systemMetadataArgs(systemId, system, document.projectRelativePath);
+        rows.push(documentRow(document, `system:${index}:schedule`, `${labelPrefix} Schedule`, readString(system.schedule) ?? "", "string", true, `/systems/${index}/schedule`, "system", undefined, undefined, undefined, "System schedule mutation is not promoted after creation."));
+        rows.push(documentRow(document, `system:${index}:script`, `${labelPrefix} Script`, formatScript(system.script), "script", false, `/systems/${index}/script`, "system", "system.attach_script", "modulePath", { exportName: readString(isRecord(system.script) ? system.script.export : undefined) ?? "default", file: document.projectRelativePath, systemId }));
+        for (const key of systemStringListRowKeys) {
+          rows.push(documentRow(document, `system:${index}:${key}`, `${labelPrefix} ${systemMetadataLabels[key]}`, readStringArray(system[key]).join(", "), "stringList", false, `/systems/${index}/${key}`, "system", "system.set_metadata", key, metadataArgs));
+        }
+        rows.push(documentRow(document, `system:${index}:queries`, `${labelPrefix} Queries`, summarizeValue(readRecordArray(system.queries)), "json", false, `/systems/${index}/queries`, "system", "system.set_metadata", "queries", metadataArgs));
+        rows.push(documentRow(document, `system:${index}:commands`, `${labelPrefix} Commands`, summarizeValue(readRecordArray(system.commands)), "json", false, `/systems/${index}/commands`, "system", "system.set_metadata", "commands", metadataArgs));
       }
       break;
     case "asset":
@@ -813,8 +847,30 @@ function normalizeRelativePath(path: string): string {
   return path.split("\\").join("/");
 }
 
+function systemMetadataArgs(systemId: string, system: Record<string, unknown>, file: string): Record<string, unknown> {
+  return {
+    after: readStringArray(system.after),
+    before: readStringArray(system.before),
+    commands: readRecordArray(system.commands),
+    eventReads: readStringArray(system.eventReads),
+    eventWrites: readStringArray(system.eventWrites),
+    queries: readRecordArray(system.queries),
+    reads: readStringArray(system.reads),
+    resourceReads: readStringArray(system.resourceReads),
+    resourceWrites: readStringArray(system.resourceWrites),
+    services: readStringArray(system.services),
+    file,
+    systemId,
+    writes: readStringArray(system.writes),
+  };
+}
+
 function readArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
+}
+
+function readRecordArray(value: unknown): Record<string, unknown>[] {
+  return readArray(value).filter(isRecord);
 }
 
 function readPrimitive(value: unknown): EditorScenePrimitive {
