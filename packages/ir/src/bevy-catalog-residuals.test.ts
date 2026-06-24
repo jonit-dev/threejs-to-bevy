@@ -4,7 +4,7 @@ import test from "node:test";
 import { BEVY_CATALOG_RESIDUAL_ROWS } from "./bevyCatalogResiduals.js";
 
 test("should cover every Bevy catalog residual row with triage evidence", () => {
-  assert.equal(BEVY_CATALOG_RESIDUAL_ROWS.length, 14);
+  assert.equal(BEVY_CATALOG_RESIDUAL_ROWS.length, 15);
   for (const row of BEVY_CATALOG_RESIDUAL_ROWS) {
     assert.equal(row.baseline, "bevy-0.14.2", `${row.id} should declare baseline triage`);
     assert.notEqual(row.promotionCriteria.length, 0, `${row.id} should declare promotion criteria`);
