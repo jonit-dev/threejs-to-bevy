@@ -3007,7 +3007,7 @@ async function validateTargetProfileDocument(file: string, data: unknown): Promi
     validateOptionalPositiveNumber(diagnostics, file, "/budgets/maxAssetBytes", budgets.maxAssetBytes, "target profile maxAssetBytes must be a positive finite number.");
     validateOptionalPositiveNumber(diagnostics, file, "/budgets/maxBundleBytes", budgets.maxBundleBytes, "target profile maxBundleBytes must be a positive finite number.");
     validateSupportedStringList(diagnostics, file, "/budgets/supportedModelFormats", budgets.supportedModelFormats, new Set(["glb", "gltf"]), "target profile supportedModelFormats must only include 'glb' or 'gltf'.");
-    validateSupportedStringList(diagnostics, file, "/budgets/supportedTextureFormats", budgets.supportedTextureFormats, new Set(["jpeg", "png"]), "target profile supportedTextureFormats must only include 'jpeg' or 'png'.");
+    validateSupportedStringList(diagnostics, file, "/budgets/supportedTextureFormats", budgets.supportedTextureFormats, new Set(["jpeg", "png", "webp"]), "target profile supportedTextureFormats must only include 'jpeg', 'png', or 'webp'.");
   }
 
   if (data.performance !== undefined && !isRecord(data.performance)) {

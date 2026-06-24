@@ -113,6 +113,8 @@ export function contentTypeForBundleFile(filePath: string): string {
       return "image/jpeg";
     case ".png":
       return "image/png";
+    case ".webp":
+      return "image/webp";
     case ".svg":
       return "image/svg+xml";
     case ".ogg":

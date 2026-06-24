@@ -608,7 +608,7 @@ function inferAssetFormat(kind: string, path: string): string | undefined {
   if (kind === "model" && (extension === "glb" || extension === "gltf")) {
     return extension;
   }
-  if (kind === "texture" && (extension === "png" || extension === "jpeg" || extension === "jpg")) {
+  if (kind === "texture" && (extension === "png" || extension === "jpeg" || extension === "jpg" || extension === "webp")) {
     return extension === "jpg" ? "jpeg" : extension;
   }
   if (kind === "audio" && (extension === "mp3" || extension === "ogg" || extension === "wav")) {

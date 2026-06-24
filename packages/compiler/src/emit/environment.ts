@@ -79,7 +79,7 @@ export async function emitEnvironment(projectPath: string, declaration: IEnviron
             path: copy.path,
             sourcePath: copy.sourcePath,
           });
-        } else if (dependencyExtension === "png" || dependencyExtension === "jpeg" || dependencyExtension === "jpg") {
+        } else if (dependencyExtension === "png" || dependencyExtension === "jpeg" || dependencyExtension === "jpg" || dependencyExtension === "webp") {
           const textureFormat = dependencyExtension === "jpg" ? "jpeg" : dependencyExtension;
           assets.push({
             format: textureFormat,
@@ -391,8 +391,8 @@ async function readGltfBounds(sourceDir: string, assetName: string): Promise<{ m
 
 function emitPreviewAsset(previewImage: string, outDir: string): IInternalAsset {
   const extension = previewImage.split(".").pop()?.toLowerCase();
-  if (extension !== "jpg" && extension !== "jpeg" && extension !== "png") {
-    throw new Error(`Environment preview '${previewImage}' must be a PNG or JPEG image.`);
+  if (extension !== "jpg" && extension !== "jpeg" && extension !== "png" && extension !== "webp") {
+    throw new Error(`Environment preview '${previewImage}' must be a PNG, JPEG, or WebP image.`);
   }
   const fileName = basename(previewImage);
   return {

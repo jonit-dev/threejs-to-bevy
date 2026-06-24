@@ -88,6 +88,16 @@ test("assets should create texture sampler and transform metadata", () => {
   });
 });
 
+test("assets should accept webp texture assets", () => {
+  assert.deepEqual(textureAsset("tex.grass", "assets/grass.webp"), {
+    format: "webp",
+    id: "tex.grass",
+    kind: "texture",
+    path: "assets/grass.webp",
+    sourceMode: "bundle",
+  });
+});
+
 test("assets should reject invalid texture transforms", () => {
   assert.throws(
     () => textureAsset("tex.floor", "assets/floor.png", { repeat: [1, Number.NaN] }),

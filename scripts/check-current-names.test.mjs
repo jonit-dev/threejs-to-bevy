@@ -58,6 +58,21 @@ Current release gate: V10 release gate for all contributors.
   }
 });
 
+test("should ignore version-looking lockfile integrity hashes", async () => {
+  const root = await makeRepoRoot({
+    "pnpm-lock.yaml": "packages:\n  picomatch@2.3.2:\n    resolution: {integrity: sha512-V7+vQEJ06Z+c5tSye8S+nHUfI51xoXIXjHQ99cQtKUkQqqO1kO/KCJUfZXuB47h/YBlDhah2H3hdUGXn8ie0oA==}\n",
+  });
+
+  try {
+    const allowlist = { ...(await loadVersionNameAllowlist(root)), requiredFrontDoorPhrases: [] };
+    const result = await checkCurrentNames({ root, allowlist });
+    assert.equal(result.ok, true, result.diagnostics.map((diagnostic) => diagnostic.message).join("\n"));
+    assert.equal(result.inventory.some((item) => item.path === "pnpm-lock.yaml"), false);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should require owner and policy for each retained version reference", async () => {
   const allowlist = await loadVersionNameAllowlist();
   const diagnostics = validateAllowlistShape(allowlist);

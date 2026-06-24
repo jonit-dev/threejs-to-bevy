@@ -241,6 +241,7 @@ pub fn app_from_bundle(bundle_path: impl AsRef<Path>) -> Result<App, RuntimeErro
             rendering::normalize_loaded_gltf_materials,
             assets::apply_loaded_texture_controls,
             map_world::bind_native_animation_players,
+            map_world::animate_native_stylized_motion,
             cameras::update_native_camera_helpers,
         ),
     );
@@ -275,8 +276,16 @@ pub fn native_scene_startup_diagnostics(
         .any(|entity| entity.components.light.is_some());
     let environment_has_renderable_content =
         environment_scene.is_some_and(environment_scene_has_renderable_content);
+    let has_stylized_renderable_content = world.entities.iter().any(|entity| {
+        entity.components.extra.contains_key("StylizedNature")
+            || entity.components.extra.contains_key("StylizedSparkles")
+            || entity.components.extra.contains_key("RippleWater")
+    });
 
-    if visible_renderers.is_empty() && !environment_has_renderable_content {
+    if visible_renderers.is_empty()
+        && !environment_has_renderable_content
+        && !has_stylized_renderable_content
+    {
         diagnostics.push(NativeSceneStartupDiagnostic {
             code: "TN_BEVY_SCENE_RENDERERS_MISSING",
             message:

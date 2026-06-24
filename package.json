@@ -35,9 +35,13 @@
     "prepare": "husky"
   },
   "devDependencies": {
+    "@gltf-transform/cli": "^4.4.0",
+    "@gltf-transform/core": "^4.4.0",
+    "@gltf-transform/extensions": "^4.4.0",
     "husky": "^9.1.7",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "sharp": "^0.35.2",
     "typescript": "^5.9.3",
     "vite": "^7.3.5"
   }

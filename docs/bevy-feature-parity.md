@@ -343,6 +343,7 @@ ergonomics. These rows are not implementation claims.
 - [ ] `P3` Parallax mapping and depth maps (V10-02)
 - [ ] `P3` Anisotropy, specular tint, and advanced PBR fields (V10-02)
 - [x] `P1` Authored texture repeat/wrap/filter/UV transform controls in IR, web runtime mapping, native sampler/UV application, and conformance observations
+- [x] `P1` WebP texture asset format support across SDK/IR validation, compiler emission, web runtime loading, and Bevy asset loading
 - [x] `P2` Multiple generated-mesh UV channels
 - [x] `P2` Generated-mesh vertex colors
 - [x] `P2` Constrained extended material presets (`unlitMasked`, `foliage`)
@@ -406,6 +407,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] glTF `.bin` and texture dependency bundling
 - [x] Model scene instances in web and Bevy
 - [x] Material/texture/mesh asset diagnostics and conformance observations
+- [x] Source-authored stylized nature, ripple water, and sparkle component slice with SDK helpers, shared registry operations, and web/Bevy runtime mapping
 - [x] Typed animation clip metadata from model assets
 - [x] `P1` Declared embedded asset manifest entries with bounded payload validation
 - [x] `P1` Declared HTTPS network asset manifest entries with target-profile validation

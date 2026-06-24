@@ -884,8 +884,10 @@ mod tests {
 
     fn load_runtime_gameplay_host_bundle() -> threenative_loader::LoadedBundle {
         let repo_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");
-        load_bundle(repo_root.join("packages/ir/fixtures/conformance/runtime-gameplay-host/game.bundle"))
-            .expect("runtime gameplay host fixture should load")
+        load_bundle(
+            repo_root.join("packages/ir/fixtures/conformance/runtime-gameplay-host/game.bundle"),
+        )
+        .expect("runtime gameplay host fixture should load")
     }
 
     fn system_by_name(bundle: &threenative_loader::LoadedBundle, name: &str) -> SystemIr {

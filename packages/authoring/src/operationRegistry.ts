@@ -121,6 +121,9 @@ export type AuthoringOperationName =
   | "scene.set_render_layers"
   | "scene.set_rigid_body"
   | "scene.set_resource"
+  | "scene.set_stylized_nature"
+  | "scene.set_stylized_sparkles"
+  | "scene.set_ripple_water"
   | "scene.set_transform"
   | "scene.set_visibility"
   | "system.attach_script"
@@ -408,6 +411,45 @@ const descriptors = [
     stringArg("entityId"),
     stringArg("componentKind"),
     objectArg("value"),
+  ]),
+  descriptor("scene.set_stylized_nature", "Attach a portable stylized nature patch component inspired by grass/tree/path scene abstractions.", "scene", "source-document", [
+    stringArg("sceneId"),
+    stringArg("entityId"),
+    numberArg("size", false),
+    stringArg("density", false),
+    numberArg("grassCount", false),
+    numberArg("treeCount", false),
+    numberArg("pathWidth", false),
+    numberArg("windStrength", false),
+    stringArg("groundColor", false),
+    stringArg("grassRootColor", false),
+    stringArg("grassTipColor", false),
+    stringArg("barkColor", false),
+    stringArg("leafColor", false),
+    stringArg("pathColor", false),
+  ]),
+  descriptor("scene.set_stylized_sparkles", "Attach a deterministic additive sparkle field component inspired by three-effect event/spark bursts.", "scene", "source-document", [
+    stringArg("sceneId"),
+    stringArg("entityId"),
+    numberArg("count", false),
+    numberArg("radius", false),
+    numberArg("height", false),
+    stringArg("color", false),
+    stringArg("secondaryColor", false),
+    numberArg("size", false),
+    numberArg("speed", false),
+    numberArg("seed", false),
+  ]),
+  descriptor("scene.set_ripple_water", "Attach a portable pond/water ripple component borrowing Evan Wallace WebGL Water shader ideas: radial drop waves, normals, Fresnel and foam.", "scene", "source-document", [
+    stringArg("sceneId"),
+    stringArg("entityId"),
+    numberArg("size", false),
+    stringArg("color", false),
+    stringArg("foamColor", false),
+    numberArg("opacity", false),
+    numberArg("rippleScale", false),
+    numberArg("speed", false),
+    numberArg("waveStrength", false),
   ]),
   descriptor("scene.set_camera_component", "Set a typed camera component with defaults.", "scene", "source-document", [
     stringArg("sceneId"),
@@ -716,6 +758,60 @@ const dispatchers: Record<AuthoringOperationName, OperationDispatcher> = {
     setRigidBodyComponent({ damping: optionalNumber(args, "damping"), entityId: requiredString(args, "entityId"), gravityScale: optionalNumber(args, "gravityScale"), kind: optionalString(args, "kind"), mass: optionalNumber(args, "mass"), projectPath, sceneId: requiredString(args, "sceneId") }),
   "scene.set_resource": async ({ args, projectPath }) =>
     setResource({ path: optionalString(args, "path"), projectPath, resourceId: requiredString(args, "resourceId"), sceneId: requiredString(args, "sceneId"), value: optionalJson(args, "value") }),
+  "scene.set_stylized_nature": async ({ args, projectPath }) =>
+    setComponent({
+      componentKind: "StylizedNature",
+      entityId: requiredString(args, "entityId"),
+      projectPath,
+      sceneId: requiredString(args, "sceneId"),
+      value: {
+        barkColor: optionalString(args, "barkColor") ?? "#7b4f2f",
+        density: optionalString(args, "density") ?? "medium",
+        grassCount: optionalNumber(args, "grassCount") ?? 140,
+        grassRootColor: optionalString(args, "grassRootColor") ?? "#5e8f42",
+        grassTipColor: optionalString(args, "grassTipColor") ?? "#c8df5f",
+        groundColor: optionalString(args, "groundColor") ?? "#5c8d45",
+        leafColor: optionalString(args, "leafColor") ?? "#7fbf45",
+        pathColor: optionalString(args, "pathColor") ?? "#8b7250",
+        pathWidth: optionalNumber(args, "pathWidth") ?? 2.4,
+        size: optionalNumber(args, "size") ?? 24,
+        treeCount: optionalNumber(args, "treeCount") ?? 6,
+        windStrength: optionalNumber(args, "windStrength") ?? 0.35,
+      },
+    }),
+  "scene.set_stylized_sparkles": async ({ args, projectPath }) =>
+    setComponent({
+      componentKind: "StylizedSparkles",
+      entityId: requiredString(args, "entityId"),
+      projectPath,
+      sceneId: requiredString(args, "sceneId"),
+      value: {
+        color: optionalString(args, "color") ?? "#fff3a6",
+        count: optionalNumber(args, "count") ?? 96,
+        height: optionalNumber(args, "height") ?? 3.2,
+        radius: optionalNumber(args, "radius") ?? 10,
+        secondaryColor: optionalString(args, "secondaryColor") ?? "#89d7ff",
+        seed: optionalNumber(args, "seed") ?? 4242,
+        size: optionalNumber(args, "size") ?? 0.08,
+        speed: optionalNumber(args, "speed") ?? 0.45,
+      },
+    }),
+  "scene.set_ripple_water": async ({ args, projectPath }) =>
+    setComponent({
+      componentKind: "RippleWater",
+      entityId: requiredString(args, "entityId"),
+      projectPath,
+      sceneId: requiredString(args, "sceneId"),
+      value: {
+        color: optionalString(args, "color") ?? "#36bad5",
+        foamColor: optionalString(args, "foamColor") ?? "#d6fbff",
+        opacity: optionalNumber(args, "opacity") ?? 0.78,
+        rippleScale: optionalNumber(args, "rippleScale") ?? 6.4,
+        size: optionalNumber(args, "size") ?? 5.8,
+        speed: optionalNumber(args, "speed") ?? 0.95,
+        waveStrength: optionalNumber(args, "waveStrength") ?? 0.18,
+      },
+    }),
   "scene.set_transform": async ({ args, projectPath }) =>
     setTransform({ entityId: requiredString(args, "entityId"), position: optionalVector3(args, "position"), projectPath, rotation: optionalVector3(args, "rotation"), scale: optionalVector3(args, "scale"), sceneId: requiredString(args, "sceneId") }),
   "scene.set_visibility": async ({ args, projectPath }) =>

@@ -220,7 +220,7 @@ function collectMatches(content, relativePath) {
         continue;
       }
       const value = match[0];
-      if (shouldIgnoreMatch(content, match.index, value)) {
+      if (shouldIgnoreMatch(content, match.index, value, relativePath)) {
         continue;
       }
       matches.push({
@@ -236,7 +236,7 @@ function collectMatches(content, relativePath) {
   return matches;
 }
 
-function shouldIgnoreMatch(content, index, value) {
+function shouldIgnoreMatch(content, index, value, relativePath = "") {
   if (/^v[1-9]-/.test(value) && /fixtures\/conformance\//.test(content)) {
     return false;
   }
@@ -246,6 +246,14 @@ function shouldIgnoreMatch(content, index, value) {
   const line = content.slice(lineStart, lineEnd === -1 ? undefined : lineEnd);
 
   if (/^\s*"version"\s*:/.test(line) && /0\.[0-9]+\.[0-9]+/.test(line)) {
+    return true;
+  }
+
+  if (relativePath === "pnpm-lock.yaml" && /^\s+resolution: \{integrity:/.test(line)) {
+    return true;
+  }
+
+  if (relativePath === "package-lock.json" && /^\s+"integrity":/.test(line)) {
     return true;
   }
 

@@ -60,6 +60,13 @@ Respect these boundaries:
   emit the same portable bundle consumed by web and native runtimes.
 - Unsupported APIs should fail with explicit diagnostics rather than being
   ignored.
+- Visual parity rule: do not tune, darken, brighten, recolor, change opacity,
+  or otherwise compensate colors/materials/lights in a runtime adapter to make a
+  screenshot look closer. Preserve authored IR/material values exactly. If web
+  and Bevy do not match, fix the mapping contract, color-space conversion,
+  asset loading, shader/material implementation, camera, lighting, or test
+  setup root cause. Any intentional art-direction transform must be explicit
+  authored data or a documented IR/runtime contract shared by all runtimes.
 
 ## Repository Map
 

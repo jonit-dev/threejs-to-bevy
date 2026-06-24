@@ -1174,6 +1174,14 @@ under `tools/verify/artifacts/procedural-mesh/`. This promotes static procedural
 authoring only; runtime deformation, CSG, chunk streaming, and shader/storage
 buffer procedural geometry remain future work.
 
+The stylized nature component slice promotes a bounded source-authored scenic
+effect surface used by `examples/stylized-nature-component`: SDK helpers emit
+`StylizedNature`, `RippleWater`, and `StylizedSparkles` components, the shared
+authoring registry exposes matching scene operations, and web/Bevy runtime
+adapters map those components into portable terrain, foliage, water, and
+sparkle visuals with deterministic motion. This is a curated component slice,
+not a general custom shader or arbitrary post-processing contract.
+
 V5-06 has landed the textured standard-material parity slice: supported material
 texture slots now serialize through SDK/compiler output, validate against
 texture assets and target formats, appear in shared conformance fixtures and
@@ -1181,6 +1189,9 @@ observations, map to Three.js material texture slots, and map to Bevy
 `StandardMaterial` image handles for native regression coverage. The
 `examples/v5-functional` scene seed builds, validates, and visually verifies
 with bundle-local textured environment assets.
+WebP texture assets are now accepted alongside PNG/JPEG through SDK asset refs,
+IR/schema validation, compiler/environment asset inference, target profile
+validation, web texture loading, and Bevy `AssetServer` texture loading.
 
 Post-V7 material gap closure has started on the high-value transparency slice:
 `MeshStandardMaterial` now carries authored `alphaMode` (`opaque`, `mask`,

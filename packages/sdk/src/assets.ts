@@ -1,7 +1,7 @@
 import { SdkError } from "./errors.js";
 
 export type AssetKind = "audio" | "buffer" | "model" | "render-target" | "texture";
-export type AssetFormat = "bin" | "depth24plus" | "glb" | "gltf" | "jpeg" | "mp3" | "ogg" | "png" | "rgba16f" | "rgba8" | "wav";
+export type AssetFormat = "bin" | "depth24plus" | "glb" | "gltf" | "jpeg" | "mp3" | "ogg" | "png" | "rgba16f" | "rgba8" | "wav" | "webp";
 export type AssetSourceMode = "bundle" | "embedded" | "network";
 export type AssetCachePolicy = "immutable" | "no-store" | "revalidate";
 export type TextureWrapMode = "clampToEdge" | "mirroredRepeat" | "repeat";
@@ -432,7 +432,7 @@ function assertNonNegativeFinite(value: number, code: string, label: string): vo
 export function textureAsset(id: string, path: string, options: ITextureAssetOptions = {}): IAssetReference {
   validateTextureOptions(options);
   return {
-    ...assetRef("texture", id, path, ["jpeg", "png"]),
+    ...assetRef("texture", id, path, ["jpeg", "png", "webp"]),
     ...(options.center === undefined ? {} : { center: options.center }),
     ...(options.magFilter === undefined ? {} : { magFilter: options.magFilter }),
     ...(options.minFilter === undefined ? {} : { minFilter: options.minFilter }),

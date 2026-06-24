@@ -2819,7 +2819,7 @@ function assetFormatMatches(kind: string, format: string, extension: string | un
     return format === "glb" || format === "gltf";
   }
   if (kind === "texture") {
-    return format === "jpeg" || format === "png";
+    return format === "jpeg" || format === "png" || format === "webp";
   }
   if (kind === "audio") {
     return format === "mp3" || format === "ogg" || format === "wav";

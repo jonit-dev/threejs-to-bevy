@@ -1,6 +1,7 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, path::Path};
 
 use bevy::{
+    asset::AssetPath,
     math::{Affine2, Vec2},
     prelude::*,
     render::texture::{ImageAddressMode, ImageFilterMode, ImageSampler, ImageSamplerDescriptor},
@@ -101,12 +102,20 @@ pub fn apply_loaded_texture_controls(
     mut images: ResMut<Assets<Image>>,
 ) {
     for controls in controls.0.values() {
-        let handle: Handle<Image> = asset_server.load(controls.path.clone());
+        let handle = load_texture_asset(&asset_server, &controls.path);
         let Some(image) = images.get_mut(&handle) else {
             continue;
         };
         apply_texture_sampler_controls(image, controls);
     }
+}
+
+pub fn load_texture_asset(asset_server: &AssetServer, path: &str) -> Handle<Image> {
+    asset_server.load(texture_asset_path(path))
+}
+
+pub fn texture_asset_path(path: &str) -> AssetPath<'static> {
+    AssetPath::from_path(Path::new(path)).into_owned()
 }
 
 pub fn apply_texture_sampler_controls(image: &mut Image, controls: &TextureAssetControls) {

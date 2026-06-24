@@ -1,6 +1,10 @@
-use std::path::PathBuf;
+use std::{
+    fs,
+    path::PathBuf,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
-use bevy::prelude::*;
+use bevy::{asset::AssetPlugin, prelude::*, scene::ScenePlugin};
 use serde_json::json;
 use threenative_components::ThreeNativeId;
 use threenative_loader::{WorldEntity, load_bundle};
@@ -161,7 +165,205 @@ fn should_report_missing_mesh_with_stable_diagnostic_shape() {
     assert!(error.suggestion().contains("assets.manifest.json"));
 }
 
+#[test]
+fn stylized_nature_should_use_native_compatible_source_assets() {
+    let root = temp_bundle_root("tn-stylized-source-compatible");
+    write_glb(
+        &root.join("assets/trunk.glb"),
+        r#"{"asset":{"version":"2.0"},"scene":0,"scenes":[{}]}"#,
+    );
+    write_glb(
+        &root.join("assets/leaves.glb"),
+        r#"{"asset":{"version":"2.0"},"scene":0,"scenes":[{}]}"#,
+    );
+    write_glb(
+        &root.join("assets/grass.glb"),
+        r#"{"asset":{"version":"2.0"},"scene":0,"scenes":[{}],"meshes":[{"primitives":[{}]}]}"#,
+    );
+    let mut bundle = stylized_source_bundle(&root, "model.trunk", "model.leaves", "model.grass", 4);
+    bundle.assets.assets.push(
+        serde_json::from_value(json!({
+            "id": "model.trunk",
+            "kind": "model",
+            "format": "glb",
+            "path": "assets/trunk.glb"
+        }))
+        .expect("trunk asset should deserialize"),
+    );
+    bundle.assets.assets.push(
+        serde_json::from_value(json!({
+            "id": "model.leaves",
+            "kind": "model",
+            "format": "glb",
+            "path": "assets/leaves.glb"
+        }))
+        .expect("leaves asset should deserialize"),
+    );
+    bundle.assets.assets.push(
+        serde_json::from_value(json!({
+            "id": "model.grass",
+            "kind": "model",
+            "format": "glb",
+            "path": "assets/grass.glb"
+        }))
+        .expect("grass asset should deserialize"),
+    );
+    let mut app = App::new();
+    app.add_plugins((
+        MinimalPlugins,
+        AssetPlugin {
+            file_path: root.display().to_string(),
+            ..Default::default()
+        },
+        ScenePlugin,
+    ));
+    app.init_asset::<Mesh>();
+
+    map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map");
+    let names = world_names(app.world_mut());
+
+    assert!(names.iter().any(|name| name.contains("source-trunk")));
+    assert!(names.iter().any(|name| name.contains("source-leaves")));
+    assert!(names.iter().any(|name| name.contains("source-grass")));
+    assert!(!names.iter().any(|name| name.ends_with(".tree-0.trunk")));
+    assert!(!names.iter().any(|name| name.ends_with(".tree-0.leaf-0")));
+    assert!(!names.iter().any(|name| name.contains("stylized-grass")));
+    assert!(
+        !names
+            .iter()
+            .any(|name| name.contains("soft-gradient-sky-card"))
+    );
+    assert!(
+        !names
+            .iter()
+            .any(|name| name.contains("soft-stylized-cloud"))
+    );
+}
+#[test]
+fn stylized_nature_should_keep_fallback_for_missing_or_unsupported_source_assets() {
+    let root = temp_bundle_root("tn-stylized-source-unsupported");
+    write_glb(
+        &root.join("assets/trunk.glb"),
+        r#"{"asset":{"version":"2.0"},"extensionsUsed":["KHR_draco_mesh_compression","EXT_texture_webp"],"extensionsRequired":["KHR_draco_mesh_compression","EXT_texture_webp"],"scene":0,"scenes":[{}]}"#,
+    );
+    write_glb(
+        &root.join("assets/grass.glb"),
+        r#"{"asset":{"version":"2.0"},"extensionsUsed":["KHR_draco_mesh_compression"],"extensionsRequired":["KHR_draco_mesh_compression"],"scene":0,"scenes":[{}],"meshes":[{"primitives":[{}]}]}"#,
+    );
+    let mut bundle = stylized_source_bundle(
+        &root,
+        "model.trunk",
+        "model.missing-leaves",
+        "model.grass",
+        4,
+    );
+    bundle.assets.assets.push(
+        serde_json::from_value(json!({
+            "id": "model.trunk",
+            "kind": "model",
+            "format": "glb",
+            "path": "assets/trunk.glb"
+        }))
+        .expect("trunk asset should deserialize"),
+    );
+    bundle.assets.assets.push(
+        serde_json::from_value(json!({
+            "id": "model.grass",
+            "kind": "model",
+            "format": "glb",
+            "path": "assets/grass.glb"
+        }))
+        .expect("grass asset should deserialize"),
+    );
+    let mut app = App::new();
+    app.add_plugins((
+        MinimalPlugins,
+        AssetPlugin {
+            file_path: root.display().to_string(),
+            ..Default::default()
+        },
+        ScenePlugin,
+    ));
+    app.init_asset::<Mesh>();
+
+    map_bundle_into_world(app.world_mut(), &bundle).expect("bundle should map");
+    let names = world_names(app.world_mut());
+
+    assert!(!names.iter().any(|name| name.contains("source-trunk")));
+    assert!(!names.iter().any(|name| name.contains("source-leaves")));
+    assert!(!names.iter().any(|name| name.contains("source-grass")));
+    assert!(names.iter().any(|name| name.ends_with(".tree-0.trunk")));
+    assert!(names.iter().any(|name| name.ends_with(".tree-0.leaf-0")));
+    assert!(names.iter().any(|name| name.contains("stylized-grass")));
+}
+
 fn cube_fixture() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../../packages/ir/fixtures/cube-scene/game.bundle")
+}
+
+fn stylized_source_bundle(
+    root: &std::path::Path,
+    trunk_asset: &str,
+    leaves_asset: &str,
+    grass_asset: &str,
+    grass_count: usize,
+) -> threenative_loader::LoadedBundle {
+    let mut bundle = load_bundle(cube_fixture()).expect("cube fixture should load");
+    bundle.bundle_path = root.to_path_buf();
+    bundle.assets.assets.clear();
+    bundle.world.entities.clear();
+    bundle.world.resources.clear();
+    bundle.world.entities.push(WorldEntity {
+        id: "stylized.nature".to_owned(),
+        components: serde_json::from_value(json!({
+            "StylizedNature": {
+                "treeTrunkModel": trunk_asset,
+                "treeLeavesModel": leaves_asset,
+                "grassModel": grass_asset,
+                "treeCount": 1,
+                "grassCount": grass_count,
+                "size": 8
+            }
+        }))
+        .expect("stylized nature components should deserialize"),
+    });
+    bundle
+}
+
+fn world_names(world: &mut World) -> Vec<String> {
+    let mut query = world.query::<&Name>();
+    query
+        .iter(world)
+        .map(|name| name.as_str().to_owned())
+        .collect()
+}
+
+fn temp_bundle_root(prefix: &str) -> PathBuf {
+    let root = std::env::temp_dir().join(format!(
+        "{}-{}",
+        prefix,
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system time should be after unix epoch")
+            .as_nanos()
+    ));
+    fs::create_dir_all(root.join("assets")).expect("temporary asset dir should be created");
+    root
+}
+
+fn write_glb(path: &std::path::Path, json: &str) {
+    let mut json_bytes = json.as_bytes().to_vec();
+    while !json_bytes.len().is_multiple_of(4) {
+        json_bytes.push(b' ');
+    }
+    let total_len = 12 + 8 + json_bytes.len();
+    let mut bytes = Vec::with_capacity(total_len);
+    bytes.extend_from_slice(b"glTF");
+    bytes.extend_from_slice(&2u32.to_le_bytes());
+    bytes.extend_from_slice(&(total_len as u32).to_le_bytes());
+    bytes.extend_from_slice(&(json_bytes.len() as u32).to_le_bytes());
+    bytes.extend_from_slice(&0x4E4F_534Au32.to_le_bytes());
+    bytes.extend_from_slice(&json_bytes);
+    fs::write(path, bytes).expect("glb fixture should be written");
 }

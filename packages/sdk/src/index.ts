@@ -181,6 +181,21 @@ export { MeshBuilder, type IMeshBuilderBuildOptions } from "./geometry/meshBuild
 export { mushroom, pineTree, rock, stylizedTree, type IOrganicMeshOptions } from "./geometry/meshBuilderOrganic.js";
 export { defineGame, type IGameRoot, type IGameRootOptions } from "./game.js";
 export {
+  RippleWater,
+  StylizedNature,
+  StylizedSparkles,
+  rippleWater,
+  stylizedNature,
+  stylizedSparkles,
+  type IRippleWaterComponent,
+  type IRippleWaterOptions,
+  type IStylizedNatureComponent,
+  type IStylizedNatureOptions,
+  type IStylizedSparklesComponent,
+  type IStylizedSparklesOptions,
+  type StylizedNatureDensity,
+} from "./stylizedNature.js";
+export {
   defineScene,
   sceneTransition,
   type ISceneAudioDeclaration,

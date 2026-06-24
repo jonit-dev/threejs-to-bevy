@@ -268,7 +268,7 @@
           "properties": {
             "id": { "type": "string", "minLength": 1 },
             "kind": { "const": "texture" },
-            "format": { "enum": ["jpeg", "png"] },
+            "format": { "enum": ["jpeg", "png", "webp"] },
             "path": { "type": "string", "minLength": 1 },
             "wrapS": { "$ref": "#/$defs/textureWrapMode" },
             "wrapT": { "$ref": "#/$defs/textureWrapMode" },

@@ -4,9 +4,11 @@ use bevy::{
     app::AppExit, prelude::*, render::view::screenshot::ScreenshotManager, window::PrimaryWindow,
 };
 use image::GenericImageView;
-use threenative_loader::load_bundle;
+use threenative_loader::{AssetsManifest, load_bundle};
 use threenative_runtime::{
-    app_from_bundle, assets::TextureAssetControlsRegistry, environment::apply_environment_bookmark,
+    app_from_bundle,
+    assets::{TextureAssetControlsRegistry, load_texture_asset},
+    environment::apply_environment_bookmark,
 };
 
 const MIN_CAPTURE_FRAME: u32 = 90;
@@ -34,6 +36,12 @@ struct CaptureTarget {
 
 #[derive(Default, Resource)]
 struct TextureAssetsReady(bool);
+
+#[derive(Default, Resource)]
+struct ModelAssetsReady(bool);
+
+#[derive(Default, Resource)]
+struct RequiredModelAssets(Vec<String>);
 
 fn main() -> ExitCode {
     let args = env::args().collect::<Vec<_>>();
@@ -130,8 +138,17 @@ fn main() -> ExitCode {
         captures,
         max_frame,
     })
+    .insert_resource(required_model_assets(&bundle.assets))
     .insert_resource(TextureAssetsReady::default())
-    .add_systems(Update, (wait_for_texture_assets, request_screenshot));
+    .insert_resource(ModelAssetsReady::default())
+    .add_systems(
+        Update,
+        (
+            wait_for_texture_assets,
+            wait_for_model_assets,
+            request_screenshot,
+        ),
+    );
     app.run();
     let missing = final_output_paths
         .iter()
@@ -179,6 +196,17 @@ fn prepare_output_path(output_path: &PathBuf) -> Result<(), ExitCode> {
     Ok(())
 }
 
+fn required_model_assets(manifest: &AssetsManifest) -> RequiredModelAssets {
+    RequiredModelAssets(
+        manifest
+            .assets
+            .iter()
+            .filter(|asset| asset.kind == "model")
+            .filter_map(|asset| asset.path.clone())
+            .collect(),
+    )
+}
+
 fn wait_for_texture_assets(
     asset_server: Res<AssetServer>,
     controls: Option<Res<TextureAssetControlsRegistry>>,
@@ -192,9 +220,33 @@ fn wait_for_texture_assets(
         return;
     };
     if controls.0.values().all(|control| {
-        let handle: Handle<Image> = asset_server.load(control.path.clone());
+        let handle = load_texture_asset(&asset_server, &control.path);
         matches!(
             asset_server.load_state(&handle),
+            bevy::asset::LoadState::Loaded
+        )
+    }) {
+        ready.0 = true;
+    }
+}
+
+fn wait_for_model_assets(
+    asset_server: Res<AssetServer>,
+    required: Res<RequiredModelAssets>,
+    mut ready: ResMut<ModelAssetsReady>,
+) {
+    if ready.0 {
+        return;
+    }
+    if required.0.is_empty() {
+        ready.0 = true;
+        return;
+    }
+    if required.0.iter().all(|path| {
+        let scene: Handle<Scene> =
+            asset_server.load(bevy::gltf::GltfAssetLabel::Scene(0).from_asset(path.to_owned()));
+        matches!(
+            asset_server.load_state(&scene),
             bevy::asset::LoadState::Loaded
         )
     }) {
@@ -206,6 +258,7 @@ fn request_screenshot(
     mut frame: Local<u32>,
     mut config: ResMut<CaptureConfig>,
     textures_ready: Res<TextureAssetsReady>,
+    models_ready: Res<ModelAssetsReady>,
     windows: Query<Entity, With<PrimaryWindow>>,
     mut screenshots: ResMut<ScreenshotManager>,
     mut exit: EventWriter<AppExit>,
@@ -216,7 +269,8 @@ fn request_screenshot(
             if capture.validated {
                 continue;
             }
-            let should_capture = textures_ready.0 || *frame >= capture.texture_grace_frames;
+            let assets_ready = textures_ready.0 && models_ready.0;
+            let should_capture = assets_ready || *frame >= capture.texture_grace_frames;
             let trigger_frame = capture.request_frame.max(MIN_CAPTURE_FRAME);
             if capture.requested_at_frame.is_none()
                 && *frame >= trigger_frame

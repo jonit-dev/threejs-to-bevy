@@ -2,7 +2,9 @@ use threenative_loader::{
     AssetIr, AssetsManifest, EnvironmentInstanceIr, EnvironmentPathIr, EnvironmentSceneIr,
     EnvironmentSourceAssetIr,
 };
-use threenative_runtime::assets::{resolve_asset_manifest, trace_asset_load_synchronization};
+use threenative_runtime::assets::{
+    resolve_asset_manifest, texture_asset_path, trace_asset_load_synchronization,
+};
 
 #[test]
 fn assets_should_load_asset_manifest_entries() {
@@ -146,6 +148,22 @@ fn asset_load_trace_should_sort_assets_and_model_scene_refs_deterministically() 
             ]
         })
     );
+}
+
+#[test]
+fn texture_asset_paths_should_preserve_bundle_file_extensions() {
+    let cases = [
+        ("assets/nature/leaf.webp", Some("webp")),
+        ("assets/nature/bark.png", Some("png")),
+        ("assets/nature/grass.jpeg", Some("jpeg")),
+        ("assets/nature/rock.jpg", Some("jpg")),
+    ];
+
+    for (path, extension) in cases {
+        let asset_path = texture_asset_path(path);
+        assert_eq!(asset_path.get_full_extension().as_deref(), extension);
+        assert_eq!(asset_path.to_string(), path);
+    }
 }
 
 fn make_asset(id: &str, kind: &str, format: &str, path: &str) -> AssetIr {

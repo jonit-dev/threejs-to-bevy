@@ -714,7 +714,7 @@ export type IAssetIr =
     } & IAssetSourceIr
   | {
       center?: Vec2;
-      format: "jpeg" | "png";
+      format: "jpeg" | "png" | "webp";
       id: string;
       kind: "texture";
       magFilter?: TextureMagFilter;
@@ -856,7 +856,7 @@ export interface ITargetProfile {
     maxAssetBytes?: number;
     maxBundleBytes?: number;
     supportedModelFormats?: Array<"glb" | "gltf">;
-    supportedTextureFormats?: Array<"jpeg" | "png">;
+    supportedTextureFormats?: Array<"jpeg" | "png" | "webp">;
   };
   performance?: IPerformanceProfile;
 }

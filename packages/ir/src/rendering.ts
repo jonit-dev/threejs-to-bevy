@@ -173,13 +173,13 @@ function validateTextureAssetRef(
     });
     return;
   }
-  if (asset.kind !== "texture" || (asset.format !== "png" && asset.format !== "jpeg")) {
+  if (asset.kind !== "texture" || (asset.format !== "png" && asset.format !== "jpeg" && asset.format !== "webp")) {
     diagnostics.push({
       code: `${codePrefix}_ASSET_FORMAT_UNSUPPORTED`,
       message: `Environment texture '${assetId}' uses unsupported format '${"format" in asset ? String(asset.format) : "unknown"}'.`,
       path,
       severity: "error",
-      suggestion: "Use PNG or JPEG texture assets for V9 skyboxes, environment maps, and light probes.",
+      suggestion: "Use PNG, JPEG, or WebP texture assets for skyboxes, environment maps, and light probes.",
     });
   }
 }
