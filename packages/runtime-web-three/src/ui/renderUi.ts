@@ -34,7 +34,7 @@ export interface IRenderedUi {
   actions: IUiActionEvent[];
   focusOrder?: string[];
   root: IRenderedUiNode;
-  trigger(nodeId: string, value?: number): void;
+  trigger(nodeId: string, value?: number | string): void;
   update(): void;
 }
 
@@ -71,7 +71,7 @@ function renderNode(node: IUiNodeIr, world: IWorldIr): IRenderedUiNode {
     ...(node.anchorId === undefined ? {} : { anchorId: node.anchorId }),
     children: node.children?.map((child) => renderNode(child, world)) ?? [],
     ...(node.disabled === undefined ? {} : { disabled: node.disabled }),
-    focusable: node.focusable ?? (node.kind === "button" || node.kind === "touchControl" || node.kind === "slider" || node.kind === "scrollbar"),
+    focusable: node.focusable ?? (node.kind === "button" || node.kind === "textInput" || node.kind === "touchControl" || node.kind === "slider" || node.kind === "scrollbar"),
     id: node.id,
     ...(node.image === undefined ? {} : { image: node.image }),
     kind: node.kind,

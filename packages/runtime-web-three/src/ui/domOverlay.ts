@@ -89,6 +89,13 @@ function createNodeElement(
       }
     });
   }
+  if (node.kind === "textInput") {
+    element.addEventListener("input", () => {
+      if (node.disabled !== true) {
+        rendered.trigger(node.id, (element as HTMLInputElement).value);
+      }
+    });
+  }
   if (node.kind === "bar") {
     const fill = doc.createElement("div");
     fill.classList.add("tn-ui-bar-fill");
@@ -219,6 +226,11 @@ function createElementForKind(node: IRenderedUiNode, doc: Document): HTMLElement
     input.type = "range";
     return input;
   }
+  if (node.kind === "textInput") {
+    const input = doc.createElement("input");
+    input.type = "text";
+    return input;
+  }
   if (node.kind === "minimap") {
     return doc.createElement("canvas");
   }
@@ -269,6 +281,13 @@ function updateNodeElement(node: IRenderedUiNode, nodes: Map<string, HTMLElement
       (element as HTMLInputElement).step = String(node.step);
     }
     element.dataset.threenativeUiValue = String(value);
+  }
+  if (node.kind === "textInput") {
+    const value = node.text ?? node.valueText ?? "";
+    element.setAttribute("role", "textbox");
+    element.setAttribute("aria-label", accessibleName(node) ?? node.id);
+    (element as HTMLInputElement).value = value;
+    element.dataset.threenativeUiValue = value;
   }
   if (node.kind === "bar") {
     const max = node.max ?? 1;
@@ -353,7 +372,7 @@ function baseStyle(node: IRenderedUiNode): Partial<CSSStyleDeclaration> {
   if (node.kind === "button" || node.kind === "touchControl") {
     style.pointerEvents = "auto";
   }
-  if (node.kind === "slider" || node.kind === "scrollbar") {
+  if (node.kind === "slider" || node.kind === "scrollbar" || node.kind === "textInput") {
     style.pointerEvents = "auto";
   }
   if (node.kind === "contextMenu") {

@@ -1003,7 +1003,7 @@ function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnosti
   }
   validateUnsupportedUiRequests(raw, path, diagnostics);
   validateUiLayout(node.layout, `${path}/layout`, diagnostics);
-  validateUiStyle(node.style, `${path}/style`, diagnostics);
+  validateUiStyle(node.style, `${path}/style`, diagnostics, fontFamilies);
   validateUiSpans(node, path, diagnostics, fontFamilies);
   validateUiImageMetadata(node, path, diagnostics);
   if (node.kind === "minimap") {
@@ -1011,7 +1011,7 @@ function validateUiNode(node: IUiNodeIr, path: string, diagnostics: IIrDiagnosti
   }
   validateUiWidget(node, path, diagnostics);
   validateUiAccessibility(node, path, diagnostics);
-  if (!["bar", "button", "column", "contextMenu", "image", "minimap", "row", "scrollbar", "slider", "stack", "text", "touchControl"].includes(node.kind)) {
+  if (!["bar", "button", "column", "contextMenu", "image", "minimap", "row", "scrollbar", "slider", "stack", "text", "textInput", "touchControl"].includes(node.kind)) {
     diagnostics.push({
       code: "TN_IR_UI_NODE_UNSUPPORTED",
       message: `Unsupported UI node kind '${String(node.kind)}'.`,
@@ -1149,7 +1149,7 @@ function validateUiImageMetadata(node: IUiNodeIr, path: string, diagnostics: IIr
 }
 
 function validateUiWidget(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[]): void {
-  if (node.kind !== "slider" && node.kind !== "scrollbar" && node.kind !== "contextMenu") {
+  if (node.kind !== "slider" && node.kind !== "scrollbar" && node.kind !== "contextMenu" && node.kind !== "textInput") {
     return;
   }
   if (node.kind === "slider" || node.kind === "scrollbar") {
@@ -1179,6 +1179,9 @@ function validateUiWidget(node: IUiNodeIr, path: string, diagnostics: IIrDiagnos
         diagnostics.push({ code: "TN_IR_UI_CONTEXT_MENU_ITEM_INVALID", message: "UI contextMenu children must be button items.", path: `${path}/children/${index}/kind` });
       }
     });
+  }
+  if (node.kind === "textInput" && node.action === undefined) {
+    diagnostics.push({ code: "TN_IR_UI_WIDGET_ACTION_MISSING", message: "UI textInput must declare an action for portable value-change events.", path: `${path}/action` });
   }
 }
 
@@ -1309,7 +1312,7 @@ function validateUiAccessibility(node: IUiNodeIr, path: string, diagnostics: IIr
   const hasAccessibleName = typeof node.accessibilityLabel === "string" && node.accessibilityLabel.length > 0
     || typeof node.label === "string" && node.label.length > 0
     || typeof node.text === "string" && node.text.length > 0;
-  if (["bar", "button", "image", "scrollbar", "slider", "touchControl"].includes(node.kind) && !hasAccessibleName) {
+  if (["bar", "button", "image", "scrollbar", "slider", "textInput", "touchControl"].includes(node.kind) && !hasAccessibleName) {
     diagnostics.push({ code: "TN_IR_UI_ACCESSIBILITY_LABEL_MISSING", message: `UI ${node.kind} node '${node.id}' must declare label, text, or accessibilityLabel.`, path });
   }
   if (node.focusable === true && !hasAccessibleName) {
@@ -1327,7 +1330,7 @@ function validateUiAccessibility(node: IUiNodeIr, path: string, diagnostics: IIr
   }
 }
 
-function validateUiStyle(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+function validateUiStyle(value: unknown, path: string, diagnostics: IIrDiagnostic[], fontFamilies: Set<string>): void {
   if (value === undefined) {
     return;
   }
@@ -1337,7 +1340,30 @@ function validateUiStyle(value: unknown, path: string, diagnostics: IIrDiagnosti
   }
   for (const key of Object.keys(value)) {
     if (!["backgroundColor", "borderColor", "borderRadius", "borderWidth", "color", "fontFamily", "fontSize", "fontWeight", "gradient", "opacity", "shadow", "textAlign", "textDecoration", "wrap"].includes(key)) {
-      diagnostics.push({ code: "TN_IR_UI_STYLE_FIELD_UNSUPPORTED", message: `UI style uses unsupported field '${key}'.`, path: `${path}/${key}` });
+      if (["fontVariationSettings", "fontVariations", "fontStretch", "letterSpacing"].includes(key)) {
+        diagnostics.push({
+          code: "TN_IR_UI_TYPOGRAPHY_UNSUPPORTED",
+          message: `UI style typography field '${key}' is not part of the portable text contract.`,
+          path: `${path}/${key}`,
+          severity: "error",
+          suggestion: "Use declared bundle font families plus promoted fontSize, fontWeight, textAlign, textDecoration, and wrap fields.",
+        });
+      } else {
+        diagnostics.push({ code: "TN_IR_UI_STYLE_FIELD_UNSUPPORTED", message: `UI style uses unsupported field '${key}'.`, path: `${path}/${key}` });
+      }
+    }
+  }
+  if (value.fontFamily !== undefined) {
+    if (typeof value.fontFamily !== "string" || value.fontFamily.length === 0) {
+      diagnostics.push({ code: "TN_IR_UI_FONT_FAMILY_UNSUPPORTED", message: "UI style fontFamily must reference a declared bundle font family.", path: `${path}/fontFamily` });
+    } else if (!fontFamilies.has(value.fontFamily)) {
+      diagnostics.push({
+        code: "TN_IR_UI_FONT_FAMILY_UNSUPPORTED",
+        message: `UI style fontFamily '${value.fontFamily}' is not declared in ui.fonts.`,
+        path: `${path}/fontFamily`,
+        severity: "error",
+        suggestion: `Declare ui.fonts with family '${value.fontFamily}' and a bundle-relative asset path; generic/system font families are not portable.`,
+      });
     }
   }
   for (const key of ["backgroundColor", "borderColor", "color"]) {
@@ -1495,8 +1521,27 @@ function validateUiGridLayout(value: unknown, path: string, diagnostics: IIrDiag
   }
   for (const key of Object.keys(value)) {
     if (!["autoFlow", "columns", "rows"].includes(key)) {
-      diagnostics.push({ code: "TN_IR_UI_LAYOUT_GRID_FIELD_UNSUPPORTED", message: `UI layout grid uses unsupported field '${key}'.`, path: `${path}/${key}` });
+      if (["area", "areas", "autoPlacement", "column", "columnSpan", "dense", "namedAreas", "placement", "row", "rowSpan", "templateAreas", "templateColumns", "templateRows"].includes(key)) {
+        diagnostics.push({
+          code: "TN_IR_UI_LAYOUT_GRID_ADVANCED_UNSUPPORTED",
+          message: `UI layout grid field '${key}' requires arbitrary placement or named-area support outside the portable grid subset.`,
+          path: `${path}/${key}`,
+          severity: "error",
+          suggestion: "Use repeat-count columns/rows and row or column autoFlow until advanced grid placement is promoted.",
+        });
+      } else {
+        diagnostics.push({ code: "TN_IR_UI_LAYOUT_GRID_FIELD_UNSUPPORTED", message: `UI layout grid uses unsupported field '${key}'.`, path: `${path}/${key}` });
+      }
     }
+  }
+  if (value.autoFlow === "dense") {
+    diagnostics.push({
+      code: "TN_IR_UI_LAYOUT_GRID_ADVANCED_UNSUPPORTED",
+      message: "UI layout grid dense auto-placement is outside the portable grid subset.",
+      path: `${path}/autoFlow`,
+      severity: "error",
+      suggestion: "Use row or column autoFlow until dense packing has matching web and native evidence.",
+    });
   }
   if (value.autoFlow !== undefined && !["column", "row"].includes(String(value.autoFlow))) {
     diagnostics.push({ code: "TN_IR_UI_LAYOUT_GRID_AUTO_FLOW_INVALID", message: "UI layout grid autoFlow must be row or column.", path: `${path}/autoFlow` });
@@ -1513,7 +1558,7 @@ function validateUiGridLayout(value: unknown, path: string, diagnostics: IIrDiag
 }
 
 function collectFocusableUiIds(node: IUiNodeIr, focusableIds: Set<string>): void {
-  if (node.focusable === true || node.kind === "button" || node.kind === "touchControl") {
+  if (node.focusable === true || node.kind === "button" || node.kind === "textInput" || node.kind === "touchControl") {
     focusableIds.add(node.id);
   }
   node.children?.forEach((child) => collectFocusableUiIds(child, focusableIds));
@@ -2866,6 +2911,7 @@ function validateMaterials(materials: IMaterialsIr, path: string, diagnostics: I
   const supportedExtendedPresets = new Set(["unlitMasked", "foliage"]);
   materials.materials.forEach((material, index) => {
     const raw = material as unknown as Record<string, unknown>;
+    diagnoseUnsupportedAdvancedMaterialFields(raw, `${path}/materials/${index}`, diagnostics);
     if (raw.kind !== "standard" && raw.kind !== "extended") {
       diagnostics.push({
         code: "TN_IR_MATERIAL_UNSUPPORTED",
@@ -3072,6 +3118,102 @@ function validateMaterials(materials: IMaterialsIr, path: string, diagnostics: I
   });
 }
 
+function diagnoseUnsupportedAdvancedMaterialFields(raw: Record<string, unknown>, path: string, diagnostics: IIrDiagnostic[]): void {
+  const unsupportedFields = new Map<string, { code: string; message: string; suggestion: string }>([
+    ["lightMap", {
+      code: "TN_IR_MATERIAL_LIGHTMAP_UNSUPPORTED",
+      message: "Material lightmaps and mixed baked/dynamic lighting are not part of the portable material contract.",
+      suggestion: "Use promoted environment maps/light probes or wait for static lightmap metadata with web/native report evidence.",
+    }],
+    ["lightmapIntensity", {
+      code: "TN_IR_MATERIAL_LIGHTMAP_UNSUPPORTED",
+      message: "Material lightmap intensity is not portable without promoted lightmap metadata.",
+      suggestion: "Use promoted environment maps/light probes or wait for static lightmap metadata with web/native report evidence.",
+    }],
+    ["lightmapTexture", {
+      code: "TN_IR_MATERIAL_LIGHTMAP_UNSUPPORTED",
+      message: "Material lightmap textures are not part of the portable material contract.",
+      suggestion: "Use promoted environment maps/light probes or wait for static lightmap metadata with web/native report evidence.",
+    }],
+    ["depthMap", {
+      code: "TN_IR_MATERIAL_PARALLAX_UNSUPPORTED",
+      message: "Parallax/depth material maps are not part of the portable material contract.",
+      suggestion: "Bake the depth detail into normal/occlusion textures or wait for a promoted parallax mapping contract.",
+    }],
+    ["depthTexture", {
+      code: "TN_IR_MATERIAL_PARALLAX_UNSUPPORTED",
+      message: "Parallax/depth material textures are not part of the portable material contract.",
+      suggestion: "Bake the depth detail into normal/occlusion textures or wait for a promoted parallax mapping contract.",
+    }],
+    ["heightMap", {
+      code: "TN_IR_MATERIAL_PARALLAX_UNSUPPORTED",
+      message: "Height maps for parallax material rendering are not part of the portable material contract.",
+      suggestion: "Bake the height detail into normal/occlusion textures or wait for a promoted parallax mapping contract.",
+    }],
+    ["heightScale", {
+      code: "TN_IR_MATERIAL_PARALLAX_UNSUPPORTED",
+      message: "Height/parallax scale is not portable without promoted parallax mapping.",
+      suggestion: "Bake the depth detail into normal/occlusion textures or wait for a promoted parallax mapping contract.",
+    }],
+    ["parallaxScale", {
+      code: "TN_IR_MATERIAL_PARALLAX_UNSUPPORTED",
+      message: "Parallax scale is not portable without promoted parallax mapping.",
+      suggestion: "Bake the depth detail into normal/occlusion textures or wait for a promoted parallax mapping contract.",
+    }],
+    ["parallaxTexture", {
+      code: "TN_IR_MATERIAL_PARALLAX_UNSUPPORTED",
+      message: "Parallax textures are not part of the portable material contract.",
+      suggestion: "Bake the depth detail into normal/occlusion textures or wait for a promoted parallax mapping contract.",
+    }],
+    ["anisotropy", {
+      code: "TN_IR_MATERIAL_ADVANCED_PBR_UNSUPPORTED",
+      message: "Anisotropy is not part of the portable material contract.",
+      suggestion: "Use promoted clearcoat, transmission, specular intensity, and texture slots until advanced PBR fields are promoted.",
+    }],
+    ["anisotropyRotation", {
+      code: "TN_IR_MATERIAL_ADVANCED_PBR_UNSUPPORTED",
+      message: "Anisotropy rotation is not part of the portable material contract.",
+      suggestion: "Use promoted clearcoat, transmission, specular intensity, and texture slots until advanced PBR fields are promoted.",
+    }],
+    ["anisotropyTexture", {
+      code: "TN_IR_MATERIAL_ADVANCED_PBR_UNSUPPORTED",
+      message: "Anisotropy textures are not part of the portable material contract.",
+      suggestion: "Use promoted clearcoat, transmission, specular intensity, and texture slots until advanced PBR fields are promoted.",
+    }],
+    ["iridescence", {
+      code: "TN_IR_MATERIAL_ADVANCED_PBR_UNSUPPORTED",
+      message: "Iridescence is not part of the portable material contract.",
+      suggestion: "Use promoted clearcoat, transmission, specular intensity, and texture slots until advanced PBR fields are promoted.",
+    }],
+    ["sheen", {
+      code: "TN_IR_MATERIAL_ADVANCED_PBR_UNSUPPORTED",
+      message: "Sheen is not part of the portable material contract.",
+      suggestion: "Use promoted clearcoat, transmission, specular intensity, and texture slots until advanced PBR fields are promoted.",
+    }],
+    ["specularColor", {
+      code: "TN_IR_MATERIAL_ADVANCED_PBR_UNSUPPORTED",
+      message: "Specular tint/color is not part of the portable material contract.",
+      suggestion: "Use promoted specularIntensity and specularTexture until advanced PBR fields are promoted.",
+    }],
+    ["specularTint", {
+      code: "TN_IR_MATERIAL_ADVANCED_PBR_UNSUPPORTED",
+      message: "Specular tint is not part of the portable material contract.",
+      suggestion: "Use promoted specularIntensity and specularTexture until advanced PBR fields are promoted.",
+    }],
+  ]);
+  for (const [field, diagnostic] of unsupportedFields) {
+    if (raw[field] !== undefined) {
+      diagnostics.push({
+        code: diagnostic.code,
+        message: diagnostic.message,
+        path: `${path}/${field}`,
+        severity: "error",
+        suggestion: diagnostic.suggestion,
+      });
+    }
+  }
+}
+
 function validateInput(input: IInputIr, path: string, diagnostics: IIrDiagnostic[]): void {
   if (input.schema !== "threenative.input" || input.version !== "0.1.0") {
     diagnostics.push({
@@ -3079,6 +3221,18 @@ function validateInput(input: IInputIr, path: string, diagnostics: IIrDiagnostic
       message: "Input IR must use threenative.input version 0.1.0.",
       path,
     });
+  }
+  const raw = input as unknown as Record<string, unknown>;
+  for (const key of ["gamepadGestures", "gestureRecognizers", "gestures", "touchGestures"]) {
+    if (raw[key] !== undefined) {
+      diagnostics.push({
+        code: "TN_IR_INPUT_GESTURE_UNSUPPORTED",
+        message: `Input gesture recognizer field '${key}' is outside the portable input contract.`,
+        path: `${path}/${key}`,
+        severity: "error",
+        suggestion: "Use promoted direct input bindings and runtime tap, swipe, or pinch gesture reports until richer gestures are promoted.",
+      });
+    }
   }
   validateUniqueIds(input.actions, `${path}/actions`, "TN_IR_INPUT_ACTION_DUPLICATE", diagnostics);
   validateUniqueIds(input.axes, `${path}/axes`, "TN_IR_INPUT_AXIS_DUPLICATE", diagnostics);
@@ -3274,6 +3428,18 @@ function validateBindings(bindings: InputBinding[], path: string, diagnostics: I
 }
 
 function validateBinding(binding: InputBinding, path: string, diagnostics: IIrDiagnostic[]): void {
+  const raw = binding as unknown as Record<string, unknown>;
+  for (const key of ["chord", "combo", "doubleTap", "gesture", "hold", "longPress", "rotate", "sequence"]) {
+    if (raw[key] !== undefined) {
+      diagnostics.push({
+        code: "TN_IR_INPUT_GESTURE_UNSUPPORTED",
+        message: `Input binding gesture option '${key}' is outside the portable input contract.`,
+        path: `${path}/${key}`,
+        severity: "error",
+        suggestion: "Use direct keyboard, pointer, touch, or optional standard-gamepad bindings; keep richer gestures target-specific until promoted.",
+      });
+    }
+  }
   if (binding.device === "gamepad" && binding.required !== false) {
     diagnostics.push({
       code: "TN_IR_INPUT_GAMEPAD_UNSUPPORTED_V2",
@@ -5748,6 +5914,15 @@ function validateRenderComponents(entity: IWorldIr["entities"][number], path: st
 
   const light = entity.components.Light;
   if (light !== undefined) {
+    if (!["ambient", "directional", "point", "spot"].includes(String(light.kind))) {
+      diagnostics.push({
+        code: "TN_IR_LIGHT_ADVANCED_UNSUPPORTED",
+        message: `Light '${entity.id}' uses unsupported kind '${String(light.kind)}'.`,
+        path: `${path}/components/Light/kind`,
+        severity: "error",
+        suggestion: "Use ambient, directional, point, or spot lights until spherical/area-light approximation policy is promoted.",
+      });
+    }
     for (const key of ["shadowBias", "shadowNormalBias"] as const) {
       const value = light[key];
       if (value !== undefined && (typeof value !== "number" || !Number.isFinite(value))) {

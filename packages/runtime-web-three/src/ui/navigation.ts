@@ -58,7 +58,7 @@ function visit(node: IUiNodeIr, callback: (node: IUiNodeIr) => void): void {
 }
 
 function isFocusable(node: IUiNodeIr | undefined): boolean {
-  return node !== undefined && (node.focusable === true || node.kind === "button" || node.kind === "touchControl");
+  return node !== undefined && (node.focusable === true || node.kind === "button" || node.kind === "textInput" || node.kind === "touchControl");
 }
 
 function navigationTarget(node: IUiNodeIr | undefined, input: string): string | undefined {

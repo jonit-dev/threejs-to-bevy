@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { IEditorGamepadViewerSnapshot } from "@threenative/ir";
 
 import { EDITOR_ADD_COMPONENT_DEFINITIONS, type IEditorAddComponentDefinition, type IEditorAssetRow, type IEditorDiagnosticView, type IEditorEnvironmentSummary, type IEditorLodStats, type IEditorModalActionDefinition, type IEditorPropertyRow, type IEditorSceneObject, type IEditorShellModel, type IEditorTreeRow } from "../adapters/editorModel.js";
 import type { EditorViewportGizmoMode, IViewportTransform } from "../preview/EditorViewport3d.js";
@@ -27,6 +28,7 @@ export interface IEditorProjectDocumentGroup {
 
 export interface IEditorSessionState {
   activeScenePath?: string;
+  browserGamepads: IEditorGamepadViewerSnapshot["devices"];
   gizmoMode: EditorViewportGizmoMode;
   modal: EditorModal;
   parentByRowId: Record<string, string | undefined>;
@@ -53,6 +55,7 @@ export interface IEditorSessionActions {
   saveScene: () => Promise<void>;
   selectEditorRow: (rowId: string | undefined) => void;
   selectRow: (rowId: string | undefined) => void;
+  setBrowserGamepads: (devices: IEditorGamepadViewerSnapshot["devices"]) => void;
   setGizmoMode: (mode: EditorViewportGizmoMode) => void;
   setParent: (rowId: string, parentId: string | undefined) => boolean;
   setProject: (project: IEditorProjectPayload | undefined) => void;
@@ -70,6 +73,7 @@ export interface IRefreshProjectOptions {
 
 export const defaultEditorSessionState: IEditorSessionState = {
   activeScenePath: undefined,
+  browserGamepads: [],
   gizmoMode: "translate",
   modal: undefined,
   parentByRowId: {},
@@ -267,6 +271,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     get().selectRow(rowId);
   },
   selectRow: (selectedRowId) => set({ selectedRowId }),
+  setBrowserGamepads: (browserGamepads) => set({ browserGamepads }),
   setGizmoMode: (gizmoMode) => set({ gizmoMode }),
   setParent: (rowId, parentId) => {
     const current = get().parentByRowId;
@@ -339,6 +344,7 @@ function projectToEditorModel(
       suggestion: diagnostic.suggestion,
     })),
     environment: project.environment,
+    gamepadViewer: fallback.gamepadViewer,
     hierarchy,
     inspector: selectedObject === undefined ? documentInspectorRows(selectedDocument) : objectInspectorRows(selectedObject),
     lod: project.lod ?? fallback.lod,

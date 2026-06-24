@@ -62,6 +62,43 @@ test("should reject duplicate input binding", async () => {
   }
 });
 
+test("should reject unsupported richer touch and gamepad gesture declarations", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-input-gestures-"));
+  try {
+    await writeInputBundle(root);
+    await writeJson(root, "input.ir.json", {
+      schema: "threenative.input",
+      version: "0.1.0",
+      gestureRecognizers: [{ kind: "longPress", thresholdMs: 450 }],
+      actions: [
+        {
+          id: "Inspect",
+          bindings: [{ device: "touch", control: "inspect", gesture: "longPress" }],
+        },
+        {
+          id: "Combo",
+          bindings: [{ device: "gamepad", control: "buttonSouth", required: false, chord: ["buttonNorth"] }],
+        },
+      ],
+      axes: [],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.filter((diagnostic) => diagnostic.code === "TN_IR_INPUT_GESTURE_UNSUPPORTED").map((diagnostic) => diagnostic.path),
+      [
+        "input.ir.json/gestureRecognizers",
+        "input.ir.json/actions/0/bindings/0/gesture",
+        "input.ir.json/actions/1/bindings/0/chord",
+      ],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should validate input persisted binding override records when controls are declared", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-input-overrides-"));
   try {

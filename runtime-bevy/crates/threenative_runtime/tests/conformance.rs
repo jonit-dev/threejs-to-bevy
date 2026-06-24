@@ -180,9 +180,18 @@ fn should_report_v9_environment_lighting_budgets_and_renderer_quality() {
         report_json["runtimeConfig"]["renderer"]["colorGrading"]["toneMapping"],
         "aces"
     );
+    let depth_of_field = &report_json["runtimeConfig"]["renderer"]["depthOfField"];
+    assert_eq!(depth_of_field["enabled"], true);
+    assert_eq!(depth_of_field["focusDistance"], 8.0);
+    assert!(
+        (depth_of_field["aperture"].as_f64().unwrap() - 0.025).abs() < 0.000001
+    );
+    assert!(
+        (depth_of_field["maxBlur"].as_f64().unwrap() - 0.012).abs() < 0.000001
+    );
     assert_eq!(
         report_json["runtimeConfig"]["renderer"]["postProcessing"]["applied"],
-        serde_json::json!(["colorGrading"])
+        serde_json::json!(["colorGrading", "depthOfField"])
     );
     assert_eq!(
         report_json["runtimeConfig"]["renderer"]["postProcessing"]["skipped"],

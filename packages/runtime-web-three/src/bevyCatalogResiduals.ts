@@ -1,9 +1,18 @@
-import type { IRuntimeDiagnostic, IWorldEntity, IWorldIr } from "@threenative/ir";
+import { targetProfileOutputDiagnostic, type BevyCatalogTargetProfileOutput, type IIrDiagnostic, type IRuntimeDiagnostic, type IWorldEntity, type IWorldIr } from "@threenative/ir";
 
 export interface IWebQueryCombinationObservation {
   a: string;
   b: string;
   order: number;
+}
+
+export interface IWebDisabledEntityQueryParticipationReport {
+  entity: string;
+  participatesInQueries: boolean;
+  policy: "portable-participation-state";
+  rendererVisibility: "unchanged";
+  schema: "threenative.bevy-catalog.ecs";
+  version: "0.1.0";
 }
 
 export interface IWebTextInputEvent {
@@ -28,6 +37,14 @@ export interface IWebGeneratedAssetPolicyReport {
   status: "bundle-artifact";
 }
 
+export interface IWebGltfMetadataTransformPolicyReport {
+  extension: string;
+  processor: "metadata";
+  schema: "threenative.bevy-catalog.assets.gltf-metadata-transform";
+  transform: "AnimationGraph";
+  version: "0.1.0";
+}
+
 export function traceWebQueryCombinations(world: IWorldIr, component: string, limit = Number.POSITIVE_INFINITY): IWebQueryCombinationObservation[] {
   const entities = world.entities
     .filter((entity) => hasComponent(entity, component))
@@ -43,6 +60,17 @@ export function traceWebQueryCombinations(world: IWorldIr, component: string, li
     }
   }
   return observations;
+}
+
+export function reportWebDisabledEntityQueryParticipation(entity: string, participatesInQueries: boolean): IWebDisabledEntityQueryParticipationReport {
+  return {
+    entity,
+    participatesInQueries,
+    policy: "portable-participation-state",
+    rendererVisibility: "unchanged",
+    schema: "threenative.bevy-catalog.ecs",
+    version: "0.1.0",
+  };
 }
 
 export function traceWebTextInputEvents(values: readonly string[]): IWebTextInputEvent[] {
@@ -75,6 +103,20 @@ export function reportWebGeneratedAssetPolicy(assetId: string, schema: string): 
     schema,
     status: "bundle-artifact",
   };
+}
+
+export function reportWebGltfMetadataTransformPolicy(extension: string, transform: "AnimationGraph"): IWebGltfMetadataTransformPolicyReport {
+  return {
+    extension,
+    processor: "metadata",
+    schema: "threenative.bevy-catalog.assets.gltf-metadata-transform",
+    transform,
+    version: "0.1.0",
+  };
+}
+
+export function reportWebTargetProfileOutputDiagnostic(output: BevyCatalogTargetProfileOutput, targets: readonly string[], path = "target.profile.json/targets"): IIrDiagnostic {
+  return targetProfileOutputDiagnostic(output, output === "web" ? "web" : "desktop", targets, path);
 }
 
 function hasComponent(entity: IWorldEntity, component: string): boolean {

@@ -71,6 +71,7 @@ fn should_activate_context_menu_item_with_keyboard_focus() {
         vec![NativeUiActionEvent {
             action: "Equip".to_owned(),
             node: "equip".to_owned(),
+            value: None,
         }],
     );
 

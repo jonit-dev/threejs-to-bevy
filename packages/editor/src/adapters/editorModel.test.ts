@@ -49,12 +49,25 @@ test("should map IR visual panels without numeric ECS assumptions", () => {
     documentKinds: {
       "world.ir.json": { access: "inspectableOnly", kind: "generated" },
     },
+    tools: {
+      assetPreview: { assets: [] },
+      gamepadViewer: {
+        controls: [{ control: "buttonSouth", kind: "button", owner: "Jump" }],
+        devices: [{ id: "declared-gamepad", status: "declared" }],
+        requiredControls: ["buttonSouth"],
+      },
+      sceneViewer: { bounds: { max: [0, 0, 0], min: [0, 0, 0] }, cameras: [], entities: 0, renderables: [] },
+      schema: "threenative.editor-tools",
+      version: "0.1.0",
+    },
     visualPanels: visualSnapshotFixture(),
   });
 
   assert.deepEqual(model.hierarchy.map((row) => row.id), ["entity:player"]);
   assert.equal(model.hierarchy[0]?.access, "inspectableOnly");
   assert.equal(model.inspector[0]?.path, "world.ir.json/entities/0/components/Transform");
+  assert.deepEqual(model.gamepadViewer.requiredControls, ["buttonSouth"]);
+  assert.deepEqual(model.gamepadViewer.devices, [{ id: "declared-gamepad", status: "declared" }]);
 });
 
 test("should classify generated and runtime rows as non-persistable", () => {

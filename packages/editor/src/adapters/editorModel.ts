@@ -2,6 +2,7 @@ import type { IAuthoringProject } from "@threenative/authoring";
 import type {
   EditorDocumentAccess,
   IEditorDocumentClassification,
+  IEditorGamepadViewerSnapshot,
   IEditorToolSnapshot,
   IEditorVisualPanelRow,
   IEditorVisualPanelSnapshot,
@@ -154,6 +155,7 @@ export interface IEditorShellModel {
   assets: IEditorAssetRow[];
   diagnostics: IEditorDiagnosticView[];
   environment?: IEditorEnvironmentSummary;
+  gamepadViewer: IEditorGamepadViewerSnapshot;
   hierarchy: IEditorTreeRow[];
   inspector: IEditorPropertyRow[];
   lod: IEditorLodStats;
@@ -169,6 +171,7 @@ export interface IEditorAdapterInput {
   assets?: readonly IEditorAssetRow[];
   diagnostics?: readonly IEditorDiagnosticView[];
   environment?: IEditorEnvironmentSummary;
+  gamepadViewer?: IEditorGamepadViewerSnapshot;
   hierarchy?: readonly IEditorTreeRow[];
   inspector?: readonly IEditorPropertyRow[];
   lod?: IEditorLodStats;
@@ -190,6 +193,7 @@ export function createEditorShellModel(input: IEditorAdapterInput = {}): IEditor
     assets,
     diagnostics,
     environment: input.environment,
+    gamepadViewer: input.gamepadViewer ?? { controls: [], devices: [], requiredControls: [] },
     hierarchy,
     inspector,
     lod: input.lod ?? { budget: 200_000, loadedTriangles: 0, loading: false, mode: "auto", precision: "estimate", selected: "original", triangleCount: 0 },
@@ -451,6 +455,7 @@ export function editorModelFromInspection(input: {
     hierarchy: (panelRows.get("hierarchy") ?? []).map((row) => rowToTreeRow(row, input.documentKinds)),
     inspector: (panelRows.get("properties") ?? []).map((row) => rowToPropertyRow(row, input.documentKinds)),
     projectName: input.projectName,
+    gamepadViewer: input.tools?.gamepadViewer,
     selectedRowId: input.visualPanels.selectedNode,
     status: "ready",
     statusItems: [

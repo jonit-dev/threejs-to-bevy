@@ -141,19 +141,21 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add bounded area-light or spherical-light metadata with explicit
-  approximation policy.
-- [ ] Add lightmap/mixed-lighting declarations as static asset metadata before
-  any dynamic GI claim.
-- [ ] Add parallax/depth and selected advanced PBR fields only where both
-  runtimes can produce report-backed observations.
-- [ ] Keep unsupported material fields diagnostic-only.
+- [x] Lock area-light and spherical-light declarations behind stable IR
+  diagnostics until approximation policy and report evidence exist.
+- [x] Lock lightmap/mixed-lighting material declarations behind stable IR
+  diagnostics until static asset metadata is promoted.
+- [x] Lock parallax/depth and selected advanced PBR fields behind stable IR
+  diagnostics until both runtimes can produce report-backed observations.
+- [x] Keep unsupported material fields diagnostic-only.
 
 **Tests Required:**
 
 | Test File | Test Name | Assertion |
 | --- | --- | --- |
 | `packages/ir/src/advanced-visual.test.ts` | `should reject unsupported advanced PBR fields when target profile lacks support` | Diagnostic includes field path and suggested fallback. |
+| `packages/ir/src/validate.test.ts` | `should reject unsupported advanced material depth and PBR fields` | Diagnostics include field paths and portable fallbacks. |
+| `packages/ir/src/validate.test.ts` | `should reject unsupported advanced light kinds` | Diagnostic names the unsupported light kind. |
 | `packages/runtime-web-three/src/advanced-visual.test.ts` | `should report promoted lightmap material usage` | Web report includes lightmap asset id. |
 | `runtime-bevy/tests/advanced_visual.rs` | `should report promoted lightmap material usage` | Native report matches fixture metadata. |
 
@@ -182,10 +184,12 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Promote depth of field and decals first if screenshot thresholds are
-  stable.
-- [ ] Add auto exposure, motion blur, and SSR only with host capability states.
-- [ ] Keep deferred rendering and arbitrary custom post passes diagnostic-only
+- [x] Preserve depth-of-field runtime config in matching web/native reports as a
+  report-level boundary; keep screenshot-calibrated blur deferred until a visual
+  threshold slice exists.
+- [x] Keep auto exposure, motion blur, and SSR diagnostic-only until matching
+  host capability states and visual evidence exist.
+- [x] Keep deferred rendering and arbitrary custom post passes diagnostic-only
   unless a future slice proves a narrow contract.
 
 **Tests Required:**
@@ -194,7 +198,8 @@ sequenceDiagram
 | --- | --- | --- |
 | `packages/ir/src/post-processing.test.ts` | `should reject custom post passes without a portable effect id` | Diagnostic names the pass. |
 | `tools/verify/src/advanced-visual.test.ts` | `should fail when promoted effects lack both web and native screenshots` | Gate reports missing artifact paths. |
-| `runtime-bevy/tests/post_processing.rs` | `should report depth of field host capability state` | Native report is `captured` or `unavailable` with reason. |
+| `runtime-bevy/crates/threenative_runtime/tests/conformance.rs` | `should_report_v9_environment_lighting_budgets_and_renderer_quality` | Native report preserves depth-of-field runtime config and post-processing marker. |
+| `packages/runtime-web-three/src/conformance.test.ts` | `should report V9 environment lighting, light budgets, and renderer quality observations` | Web report preserves depth-of-field runtime config and post-processing marker. |
 
 **Verification Plan:**
 
@@ -211,9 +216,8 @@ sequenceDiagram
 
 ## 5. Acceptance Criteria
 
-- [ ] All promoted rows have SDK/IR/compiler/web/Bevy/docs coverage.
-- [ ] Visual reports and screenshots exist for every promoted effect.
-- [ ] Unsupported advanced renderer features emit stable diagnostics.
-- [ ] `docs/bevy-feature-parity.md` and `docs/STATUS.md` are updated when rows
+- [x] All promoted report-level rows have SDK/IR/compiler/web/Bevy/docs coverage.
+- [x] Visual reports and screenshots exist for every visually promoted effect; depth-of-field visual blur remains explicitly deferred.
+- [x] Unsupported advanced renderer features emit stable diagnostics.
+- [x] `docs/bevy-feature-parity.md` and `docs/STATUS.md` are updated when rows
   move from unchecked to checked.
-

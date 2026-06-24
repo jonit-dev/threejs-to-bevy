@@ -129,6 +129,7 @@ pub enum GestureEvent {
 pub struct UiPolishReport {
     pub disabled_update: Vec<DisabledUpdate>,
     pub focus_narration: Vec<FocusNarration>,
+    pub interaction_coverage: Vec<InteractionCoverage>,
     pub navigation: UiNavigationTrace,
     pub rich_text: Vec<RichTextObservation>,
     pub scroll: Vec<ScrollObservation>,
@@ -163,6 +164,14 @@ pub struct DisabledUpdate {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct InteractionCoverage {
+    pub evidence: &'static str,
+    pub kind: &'static str,
+    pub status: &'static str,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RichTextObservation {
     pub italic_spans: usize,
     pub node: String,
@@ -180,6 +189,14 @@ pub struct VirtualKeyboard {
 pub fn trace_input_ui_polish(bundle: &LoadedBundle) -> InputUiPolishReport {
     let ui = bundle.ui.as_ref().expect("bundle contains UI");
     let polish = PolishResource::from_world(&bundle.world);
+    let navigation = trace_ui_navigation(
+        ui,
+        &polish
+            .navigation_events
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>(),
+    );
     InputUiPolishReport {
         diagnostics: diagnostics(ui, &polish),
         input: InputPolishReport {
@@ -191,14 +208,8 @@ pub fn trace_input_ui_polish(bundle: &LoadedBundle) -> InputUiPolishReport {
         ui: UiPolishReport {
             disabled_update: disabled_updates(ui, &polish),
             focus_narration: focus_narration(ui),
-            navigation: trace_ui_navigation(
-                ui,
-                &polish
-                    .navigation_events
-                    .iter()
-                    .map(String::as_str)
-                    .collect::<Vec<_>>(),
-            ),
+            interaction_coverage: interaction_coverage(bundle.input.as_ref(), ui, &polish, &navigation),
+            navigation,
             rich_text: rich_text(ui),
             scroll: scroll_trace(ui),
             virtual_keyboard: virtual_keyboard(&polish),
@@ -392,6 +403,56 @@ fn disabled_updates(ui: &UiIr, polish: &PolishResource) -> Vec<DisabledUpdate> {
     updates
 }
 
+fn interaction_coverage(
+    input: Option<&InputIr>,
+    ui: &UiIr,
+    polish: &PolishResource,
+    navigation: &UiNavigationTrace,
+) -> Vec<InteractionCoverage> {
+    let mut rows = Vec::new();
+    if navigation.events.iter().any(|event| event.kind == "focus") {
+        rows.push(InteractionCoverage {
+            evidence: "ui.navigation.focus",
+            kind: "focus",
+            status: "covered",
+        });
+    }
+    if navigation.events.iter().any(|event| event.kind == "activate") {
+        rows.push(InteractionCoverage {
+            evidence: "ui.navigation.activate",
+            kind: "activation",
+            status: "covered",
+        });
+    }
+    if navigation
+        .events
+        .iter()
+        .any(|event| matches!(event.input.as_str(), "down" | "right" | "up" | "left"))
+    {
+        rows.push(InteractionCoverage {
+            evidence: "ui.navigation.directional-menu",
+            kind: "menuNavigation",
+            status: "covered",
+        });
+    }
+    if !scroll_trace(ui).is_empty() {
+        rows.push(InteractionCoverage {
+            evidence: "ui.scroll.trace",
+            kind: "scroll",
+            status: "covered",
+        });
+    }
+    if !polish.touch_events.is_empty() && gamepad_report(input).supported {
+        rows.push(InteractionCoverage {
+            evidence: "input.touch-stream+gamepad-report",
+            kind: "touchGamepad",
+            status: "covered",
+        });
+    }
+    rows.sort_by(|left, right| left.kind.cmp(right.kind));
+    rows
+}
+
 fn scroll_trace(ui: &UiIr) -> Vec<ScrollObservation> {
     let mut rows = Vec::new();
     visit(&ui.root, &mut |node, parent| {
@@ -478,7 +539,7 @@ fn diagnostics(ui: &UiIr, polish: &PolishResource) -> Vec<InputUiPolishDiagnosti
 fn is_focusable(node: &UiNodeIr) -> bool {
     node.focusable.unwrap_or(matches!(
         node.kind.as_str(),
-        "button" | "touchControl" | "slider" | "scrollbar"
+        "button" | "textInput" | "touchControl" | "slider" | "scrollbar"
     ))
 }
 

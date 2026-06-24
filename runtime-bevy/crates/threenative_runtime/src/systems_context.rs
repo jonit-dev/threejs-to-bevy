@@ -351,7 +351,7 @@ fn ui_snapshot(ui: &UiIr) -> NativeUiSnapshot {
 
 fn collect_ui_nodes(node: &UiNodeIr, nodes: &mut Vec<NativeUiNodeSnapshot>) {
     let focusable =
-        node.focusable.unwrap_or(false) || node.kind == "button" || node.kind == "touchControl";
+        node.focusable.unwrap_or(false) || node.kind == "button" || node.kind == "textInput" || node.kind == "touchControl";
     nodes.push(NativeUiNodeSnapshot {
         action: node.action.clone(),
         disabled: node.disabled.unwrap_or(false),

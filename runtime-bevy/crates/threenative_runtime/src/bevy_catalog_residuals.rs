@@ -11,6 +11,28 @@ pub fn report_disabled_entity_query_participation(entity: &str, participates: bo
     })
 }
 
+pub fn report_query_combinations(mut entities: Vec<&str>, limit: usize) -> Value {
+    entities.sort_unstable();
+    let mut observations = Vec::new();
+    'outer: for left in 0..entities.len() {
+        for right in (left + 1)..entities.len() {
+            if observations.len() >= limit {
+                break 'outer;
+            }
+            observations.push(json!({
+                "a": entities[left],
+                "b": entities[right],
+                "order": observations.len() + 1
+            }));
+        }
+    }
+    json!({
+        "observations": observations,
+        "schema": "threenative.bevy-catalog.ecs.query-combinations",
+        "version": "0.1.0"
+    })
+}
+
 pub fn report_window_resize_and_scale_factor(width: u32, height: u32, scale_factor: f64) -> Value {
     json!({
         "diagnostics": [
@@ -39,6 +61,34 @@ pub fn unsupported_gltf_executable_extension_processor(extension: &str, path: &s
         "path": path,
         "severity": "error",
         "suggestion": "Use schema-backed metadata transforms such as declared AnimationGraph import metadata."
+    })
+}
+
+pub fn report_gltf_metadata_transform_policy(extension: &str, transform: &str) -> Value {
+    json!({
+        "extension": extension,
+        "processor": "metadata",
+        "schema": "threenative.bevy-catalog.assets.gltf-metadata-transform",
+        "transform": transform,
+        "version": "0.1.0"
+    })
+}
+
+pub fn target_profile_output_diagnostic(output: &str, targets: Vec<&str>, path: &str) -> Value {
+    let required_target = if output == "web" { "web" } else { "desktop" };
+    let suggestion = if required_target == "web" {
+        "Add 'web' to target.profile.json targets or choose a non-web output."
+    } else {
+        "Add 'desktop' to target.profile.json targets for offline, native, or package outputs."
+    };
+    json!({
+        "code": "TN_CATALOG_TARGET_PROFILE_OUTPUT_UNSUPPORTED",
+        "message": format!("Target profile for '{output}' output must include '{required_target}'."),
+        "path": path,
+        "severity": "error",
+        "suggestion": suggestion,
+        "target": output,
+        "value": targets
     })
 }
 

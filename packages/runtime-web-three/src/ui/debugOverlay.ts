@@ -113,6 +113,9 @@ function defaultRole(node: IRenderedUiNode): string | undefined {
   if (node.kind === "button" || node.kind === "touchControl") {
     return "button";
   }
+  if (node.kind === "textInput") {
+    return "textbox";
+  }
   if (node.kind === "bar") {
     return "progressbar";
   }

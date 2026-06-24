@@ -668,13 +668,24 @@ observations through `pnpm verify:conformance`.
 The upstream Bevy catalog watchlist residuals now have a focused diagnostic and
 report evidence surface: `@threenative/ir` exposes
 `BEVY_CATALOG_RESIDUAL_ROWS` plus diagnostics for callback permissions, IME
-target-profile support, artifact-root bounded asset export, and executable glTF
-extension processors; the web runtime reports deterministic query combinations,
-ordered text-input value/action events, and window resize/scale observations;
-the Bevy runtime reports disabled entity query participation, window resize/
-scale observations, generated asset bundle-artifact policy, and stable glTF
-executable processor diagnostics. These checks keep the rows triaged and
-protected without marking broad catalog parity complete.
+target-profile support, artifact-root bounded asset export, custom UI shaders,
+UI viewport/drag-drop routing, window policy requests, and executable glTF extension processors; the compiler, web runtime, and Bevy runtime report
+generated asset bundle-artifact policy; the web and Bevy runtimes report
+deterministic query combinations with entity-id ordering and explicit limits,
+disabled entity query participation separate from renderer visibility, bounded
+delayed-command scheduling through fixed-trace tasks/channels, and
+window resize/scale observations; the web runtime reports ordered text-input
+value/action events, web and Bevy report virtual-keyboard diagnostic state,
+and the Bevy runtime reports stable glTF executable
+processor diagnostics. Window resize/scale observations, portable entity
+participation, and schema-backed generated asset artifacts are now promoted
+catalog rows, while callback components/callable handles, cursor, power/background, clear-color mutation, and
+multi-window policies, IME-on-unsupported-target, UI viewport routing,
+UI drag/drop routing, runtime asset export outside declared artifact roots,
+arbitrary deferred closures, native italic rich text, and platform virtual keyboards are stable diagnostic-only
+boundaries. These checks keep
+the remaining rows triaged and protected without marking broad catalog parity
+complete.
 Broader authoring-tool UX remains outside this V10 batch except for bounded
 visual panel evidence explicitly promoted in the status entries below. `pnpm
 check:docs` is the canonical docs and drift gate. Temporary V10 planning
@@ -869,8 +880,11 @@ runtime reconciliation, nested and axis-specific scroll observations, spatial
 navigation, and focus narration, and writes JSON reports plus a contact sheet
 under `tools/verify/artifacts/input-ui-polish/`. Virtual keyboard behavior,
 native italic rendering, 3D/world UI, render-to-texture UI, and the broad
-packaged webview manual matrix remain diagnostic/deferred rather than promoted
-runtime behavior. The same gate is part of `pnpm verify:release`.
+packaged webview host behavior remain diagnostic/deferred rather than promoted
+runtime behavior; `tn package --runtime webview` now emits
+`desktop-web/webview.inspection.json` so local-server browser/webview-opener
+packages retain the manual host checklist. The same gate is part of
+`pnpm verify:release`.
 
 The V10 advanced-physics pass now promotes a bounded racing-useful physics
 slice: SDK/IR/compiler contracts accept explicit `Collider.mesh.bounds` and
@@ -880,9 +894,10 @@ and suspension joints. Web and Bevy deterministic traces use mesh AABB bounds
 for high-speed track contact, preserve CCD observations, and report suspension
 joint metadata. `pnpm verify:v10:advanced-physics` writes sequential web/native
 frame PNGs, a contact sheet, JSON traces, and per-frame comparison metrics under
-`tools/verify/artifacts/advanced-physics/`. Full constraint solving, tire/friction
-models, vehicle drivetrains, soft bodies, ragdolls, and public backend handles
-remain future physics work.
+`tools/verify/artifacts/advanced-physics/`. Full constraint solving, arbitrary
+triangle narrow phase, tire/friction models, vehicle drivetrains, soft bodies,
+ragdolls, and public backend handles remain deferred or diagnostic-only
+boundaries rather than promoted runtime parity.
 
 The V10 emissive-bloom pass promotes HDR bloom contribution metadata for
 emissive materials. `MeshStandardMaterial.emissiveBloom` now validates through
@@ -984,11 +999,17 @@ gamepad viewer metadata. `@threenative/ir` now builds deterministic
 `threenative.editor-tools` snapshots that derive scene cameras, renderables, and
 bounds from `world.ir.json`, asset preview rows from `assets.manifest.json`, and
 declared gamepad controls from `input.ir.json`; `tn editor inspect --json`
-returns that payload beside inspector and visual panel data. `pnpm
+returns that payload beside inspector and visual panel data. The editor shell
+now also keeps connected browser gamepad devices in the Zustand session store
+from `navigator.getGamepads()` and renders device id, mapping, button count, and
+axis count alongside declared controls. `pnpm
 verify:v10:editor-tools` writes sequential web/native trace-frame PNGs, a
 contact sheet, JSON traces, and per-frame comparison metrics under
-`tools/verify/artifacts/editor-tools/`. This remains offline bundle inspection rather
-than a connected-device gamepad monitor or full native desktop editor shell.
+`tools/verify/artifacts/editor-tools/`. This remains an editor-shell/browser
+gamepad inspection slice rather than a full native desktop editor shell. The
+full native desktop editor shell is an explicit deferred boundary; current
+editor support is browser-based `@threenative/editor`, CLI inspect/apply/diff,
+and desktop-web package inspection.
 
 V8-10 has a narrow asset/glTF inspection evidence slice: web and Bevy now emit a
 deterministic `threenative.asset-load-sync-trace` for bundle-local path assets
@@ -1040,10 +1061,12 @@ and Bevy conformance reports now expose matching observations through
 `pnpm verify:v9:rendering-lights` writes evidence under
 `examples/rendering-lights/artifacts/rendering-lights/`, including web/native/diff/contact-sheet
 screenshots plus sampled skybox, reflection-probe, point-shadow PCF, dense/HLOD,
-and debug-gizmo regions. Visual FXAA/TAA/SMAA, depth of field, deferred
-rendering, motion vectors, screen-space reflections, volumetrics, virtual
-geometry, custom post passes, compressed skybox formats, and broader editor
-debug overlay systems remain deferred until separately proven.
+and debug-gizmo regions. Depth-of-field runtime config is preserved in matching
+web/native reports as a report-level boundary; screenshot-calibrated visual blur
+remains deferred. Visual FXAA/TAA/SMAA, deferred rendering, motion vectors,
+screen-space reflections, volumetrics, virtual geometry, custom post passes,
+compressed skybox formats, and broader editor debug overlay systems remain
+deferred until separately proven.
 
 ## V4 Proves
 
@@ -1356,7 +1379,9 @@ invalid track counts, bundle capabilities report `ui:grid-layout`, the web DOM
 overlay maps the fields to repeat-count CSS grid tracks, and the Bevy UI adapter
 maps them to `Display::Grid`, repeated flexible grid tracks, and grid
 auto-flow. Explicit item placement, named grid areas, dense packing, and
-arbitrary CSS track strings remain future layout work.
+arbitrary CSS track strings are diagnostic-only with
+`TN_IR_UI_LAYOUT_GRID_ADVANCED_UNSUPPORTED` until matching web/native layout
+evidence exists.
 
 Post-V7 UI visual styling now promotes common HUD/menu style fields:
 `backgroundColor`, `color`, `borderColor`, `borderWidth`, `borderRadius`, and
@@ -1372,6 +1397,11 @@ HUD/menu cases: `fontSize`, `textAlign`, and `wrap` (`word`, `character`, or
 font-size/text-align/wrapping behavior in the web DOM overlay, and map to Bevy
 `TextStyle.font_size`, `Text.justify`, and `BreakLineOn`. Font assets, weights,
 inline spans, underline, and strikethrough remain future rich-text work.
+Letter spacing, generic/system font family fallback, OpenType font variation
+settings, and font stretch remain outside the portable text contract and now
+fail with stable diagnostics (`TN_IR_UI_TYPOGRAPHY_UNSUPPORTED` or
+`TN_IR_UI_FONT_FAMILY_UNSUPPORTED`). Portable font families must be declared in
+`ui.fonts` and referenced by family id.
 
 Basic vertical UI scroll containers are now promoted through
 `layout.overflow: "scroll"`. The IR validator and UI authoring types accept the
@@ -1792,6 +1822,19 @@ under `dist/package/desktop` or the requested `--out` path, and writes
 Signed installers, mobile app stores, online publishing, and hosted services
 remain out of V7 scope.
 
+The package target-profile path now preserves a specific
+`TN_PACKAGE_TARGET_PROFILE_UNSUPPORTED` diagnostic when a bundle profile cannot
+produce a desktop package. The Bevy catalog residual registry also exposes
+`TN_CATALOG_TARGET_PROFILE_OUTPUT_UNSUPPORTED` for web, offline, native, and
+package outputs, with web and Bevy report helpers preserving the output target,
+profile path, and authored target value.
+
+The Bevy catalog residual pass now makes glTF metadata-transform import policy
+explicit: `AnimationGraph` metadata transforms are the promoted schema-backed
+path, while executable/custom processors and unknown metadata transforms produce
+stable diagnostics. Web and Bevy residual reports preserve the same
+`gltf-metadata-transform` policy shape for the promoted path.
+
 V7-09 has landed the first target-profile-aware performance evidence slice: the
 `performance-budgets` conformance fixture declares frame, load, draw,
 instance, entity, texture, triangle, and package-size thresholds in
@@ -1902,8 +1945,26 @@ future work.
 Touch input now has a shared deterministic gesture recognizer for common mobile
 flows. Web and Bevy runtime helpers classify tap, directional swipe, and pinch
 gestures from timestamped touch-point frames with matching thresholds and event
-payloads. Direct platform event stream wiring and richer gestures remain future
-input work.
+payloads. Authored richer gesture recognizer declarations and binding-level
+long-press, rotate, chord, combo, hold, double-tap, or sequence options are
+diagnostic-only with `TN_IR_INPUT_GESTURE_UNSUPPORTED`; direct platform event
+stream wiring remains future input work.
+
+The input/UI polish fixture now carries broad interaction coverage evidence for
+the promoted touch/gamepad UI scope. Web and Bevy reports include matching
+`interactionCoverage` rows for focus movement, activation, directional
+menu-style navigation, scroll observations, and combined touch-stream plus
+gamepad capability reporting.
+
+Advanced lighting and material-depth fields are now locked as explicit
+diagnostic-only boundaries. IR validation rejects spherical/area light kinds,
+lightmap and mixed-lighting material fields, parallax/depth map fields,
+anisotropy, specular tint/color, sheen, and iridescence with stable
+`TN_IR_LIGHT_ADVANCED_UNSUPPORTED`, `TN_IR_MATERIAL_LIGHTMAP_UNSUPPORTED`,
+`TN_IR_MATERIAL_PARALLAX_UNSUPPORTED`, or
+`TN_IR_MATERIAL_ADVANCED_PBR_UNSUPPORTED` diagnostics. The promoted material
+surface remains normal/occlusion/specular/clearcoat/transmission texture slots
+and scalar factors with report-backed web/native behavior.
 
 Input rebinding now has matching deterministic helpers in web and Bevy. The
 helpers clone an `input.ir.json` map, replace an action binding or axis slot, and
@@ -1941,6 +2002,14 @@ dispatch value-bearing portable UI action events through the existing action
 queue, context-menu items dispatch regular button actions, disabled items are
 suppressed, and unsupported virtual keyboard requests fail with a stable SDK
 diagnostic instead of being silently ignored.
+
+V9-05 now also promotes retained `textInput` widgets across the portable UI
+contract. Source/CLI UI documents accept `textInput` nodes with actions, IR
+validation treats them as focusable widgets, compiler capability reports expose
+`widget.textInput`, the web DOM overlay dispatches ordered string value events,
+and the Bevy runtime preserves native text input widget state plus queued
+value/action events. IME composition support remains an explicit diagnostic
+boundary when the target cannot support it.
 
 V9-05 Phase 5 adds retained UI debug reports and gate artifacts for promoted
 input/UI/accessibility parity. Web reports are generated from rendered UI trees,
@@ -2070,7 +2139,8 @@ JSON; `tn editor set` applies a single JSON-pointer edit through the same
 structured bundle documents and validates the temp bundle before writing;
 `editorProject` rejects runtime-only property edits; the web runtime exposes
 local inspector panel models for hierarchy, properties, scene viewer, asset
-preview, and gamepad viewer; editor gizmo overlays compose existing
+preview, and gamepad viewer, with connected browser gamepad device inspection
+added to the editor shell; editor gizmo overlays compose existing
 debug/editor-only line geometry for transforms, lights, bounds, cameras, and UI
 nodes; and `pnpm verify:v9:editor-support` writes the focused inspector,
 structured-diff, panel, scene-viewer, asset-preview, and gamepad-viewer evidence

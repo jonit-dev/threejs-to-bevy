@@ -49,9 +49,14 @@ dist/package/desktop-web/
   runtime.args.json
   package.manifest.json
   package.report.json
+  webview.inspection.json
 ```
 
 The launcher starts a localhost static server for `app/` and opens the generated URL with the platform browser/webview handler. It is meant as a practical desktop-web fallback while the native Bevy backend matures.
+
+`webview.inspection.json` records the generated launcher, copied bundle, archive
+or installer state, and the manual host checks that cannot be automated by
+packaging alone.
 
 Use this when you need:
 
@@ -110,6 +115,9 @@ Expected:
 - `diagnostics` is empty
 - a `<canvas>` exists
 - bundle assets load from `/bundle/...` with HTTP 200
+
+The same checks are listed in `desktop-web/webview.inspection.json` so package
+artifacts retain the host-inspection expectations.
 
 ## Current limitations
 

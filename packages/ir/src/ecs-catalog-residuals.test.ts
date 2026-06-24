@@ -26,6 +26,12 @@ test("should track every ECS catalog residual with promotion criteria", () => {
   ]);
   assert.equal(ecsRows.every((row) => row.baseline === "bevy-0.14.2"), true);
   assert.equal(ecsRows.every((row) => row.promotionCriteria.length > 0), true);
+  const queryCombinations = ecsRows.find((row) => row.id === "ecs.query-combinations");
+  assert.equal(queryCombinations?.status, "promoted");
+  assert.deepEqual(queryCombinations?.reportEvidence, ["web.query-combination-order", "bevy.query-combination-order"]);
+  const entityDisabling = ecsRows.find((row) => row.id === "ecs.entity-disabling");
+  assert.equal(entityDisabling?.status, "promoted");
+  assert.deepEqual(entityDisabling?.reportEvidence, ["web.disabled-entity-query-participation", "bevy.disabled-entity-query-participation"]);
 });
 
 test("should reject arbitrary delayed commands and raw entity disabling", () => {

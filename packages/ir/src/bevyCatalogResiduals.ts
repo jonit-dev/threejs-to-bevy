@@ -2,6 +2,7 @@ import type { IIrDiagnostic } from "./validate.js";
 
 export type BevyCatalogResidualArea = "assets" | "ecs" | "ui-window";
 export type BevyCatalogResidualStatus = "diagnostic-only" | "promoted" | "watchlist";
+export type BevyCatalogTargetProfileOutput = "offline" | "package" | "web" | "native";
 
 export interface IBevyCatalogResidualRow {
   area: BevyCatalogResidualArea;
@@ -54,12 +55,20 @@ export interface IBevyCatalogGltfExtensionDeclaration {
   extension: string;
   path?: string;
   processor: "executable" | "metadata";
+  transform?: string;
+}
+
+export interface IBevyCatalogTargetProfileDeclaration {
+  output: BevyCatalogTargetProfileOutput;
+  path?: string;
+  targets: readonly string[];
 }
 
 export interface IBevyCatalogResidualDeclarations {
   assets?: {
     exports?: readonly IBevyCatalogAssetExportDeclaration[];
     gltfExtensions?: readonly IBevyCatalogGltfExtensionDeclaration[];
+    targetProfiles?: readonly IBevyCatalogTargetProfileDeclaration[];
   };
   ecs?: {
     callbackComponents?: readonly IBevyCatalogCallbackComponentDeclaration[];
@@ -85,14 +94,14 @@ export const BEVY_CATALOG_RESIDUAL_ROWS: readonly IBevyCatalogResidualRow[] = [
     "commands are represented by fixed-trace tasks and channels",
     "arbitrary deferred closures are rejected",
   ], ["TN_CATALOG_ECS_DELAYED_COMMAND_UNSUPPORTED"], ["systems.fixed-trace-tasks-and-channels"]),
-  row("ecs.query-combinations", "ecs", "watchlist", [
+  row("ecs.query-combinations", "ecs", "promoted", [
     "pairwise iteration uses deterministic entity-id ordering",
     "iteration limits are explicit",
-  ], [], ["web.query-combination-order"]),
-  row("ecs.entity-disabling", "ecs", "diagnostic-only", [
+  ], [], ["web.query-combination-order", "bevy.query-combination-order"]),
+  row("ecs.entity-disabling", "ecs", "promoted", [
     "portable participation state is distinct from renderer visibility",
     "raw Bevy Disabled component semantics are not exposed directly",
-  ], ["TN_CATALOG_ECS_ENTITY_DISABLE_UNSUPPORTED"], ["bevy.disabled-entity-query-participation"]),
+  ], ["TN_CATALOG_ECS_ENTITY_DISABLE_UNSUPPORTED"], ["web.disabled-entity-query-participation", "bevy.disabled-entity-query-participation"]),
   row("ui.editable-text", "ui-window", "watchlist", [
     "value and action events preserve order",
     "IME composition support is target-profile explicit",
@@ -100,36 +109,45 @@ export const BEVY_CATALOG_RESIDUAL_ROWS: readonly IBevyCatalogResidualRow[] = [
   row("ui.ime-composition", "ui-window", "diagnostic-only", [
     "unsupported text composition targets fail with target-profile diagnostics",
   ], ["TN_CATALOG_UI_IME_TARGET_UNSUPPORTED"]),
-  row("ui.viewport-nodes", "ui-window", "watchlist", [
+  row("ui.viewport-nodes", "ui-window", "diagnostic-only", [
     "picking and input routing are deterministic in web and native reports",
   ], ["TN_CATALOG_UI_VIEWPORT_ROUTING_UNSUPPORTED"]),
-  row("ui.drag-drop-nodes", "ui-window", "watchlist", [
+  row("ui.drag-drop-nodes", "ui-window", "diagnostic-only", [
     "node drag payloads are separate from world picking drags",
   ], ["TN_CATALOG_UI_DRAG_DROP_ROUTING_UNSUPPORTED"]),
   row("ui.custom-materials", "ui-window", "diagnostic-only", [
     "custom shaders remain rejected unless bounded presets exist in both runtimes",
   ], ["TN_CATALOG_UI_CUSTOM_MATERIAL_UNSUPPORTED"]),
+  row("window.resize-scale", "ui-window", "promoted", [
+    "web runtime reports resize width, height, and scale factor",
+    "Bevy runtime reports resize width, height, and scale factor",
+    "multi-window policy remains a separate diagnostic boundary",
+  ], [], ["web.window-resize-scale", "bevy.window-resize-scale"]),
   row("window.policy", "ui-window", "diagnostic-only", [
-    "resize and scale-factor observations are reportable",
     "cursor, power, clear-color, and multi-window policies are explicit diagnostics",
   ], [
     "TN_CATALOG_WINDOW_CLEAR_COLOR_RUNTIME_UNSUPPORTED",
     "TN_CATALOG_WINDOW_CURSOR_UNSUPPORTED",
     "TN_CATALOG_WINDOW_MULTI_WINDOW_UNSUPPORTED",
     "TN_CATALOG_WINDOW_POWER_POLICY_UNSUPPORTED",
-  ], ["web.window-resize-scale", "bevy.window-resize-scale"]),
+  ]),
   row("assets.runtime-export", "assets", "diagnostic-only", [
     "exports stay under declared bundle artifact roots",
     "arbitrary filesystem writes are rejected",
   ], ["TN_CATALOG_ASSET_EXPORT_ROOT_UNSUPPORTED"]),
-  row("assets.generated-persistence", "assets", "watchlist", [
+  row("assets.generated-persistence", "assets", "promoted", [
     "generated asset payloads are schema-backed",
     "manifest entries identify generated asset ids and schemas",
   ], [], ["compiler.generated-asset-manifest-entry", "web.generated-asset-policy", "bevy.generated-asset-policy"]),
   row("assets.gltf-extension-processing", "assets", "diagnostic-only", [
-    "metadata transforms may be declared",
+    "known metadata transforms may be declared",
     "executable/custom processors are rejected",
-  ], ["TN_CATALOG_GLTF_EXTENSION_PROCESSOR_UNSUPPORTED"]),
+  ], ["TN_CATALOG_GLTF_EXTENSION_PROCESSOR_UNSUPPORTED", "TN_CATALOG_GLTF_METADATA_TRANSFORM_UNSUPPORTED"], ["web.gltf-metadata-transform-policy", "bevy.gltf-metadata-transform-policy"]),
+  row("assets.target-profile-diagnostics", "assets", "promoted", [
+    "web outputs require a web target profile",
+    "offline, native, and package outputs require a desktop target profile",
+    "diagnostics preserve output target and profile path",
+  ], ["TN_CATALOG_TARGET_PROFILE_OUTPUT_UNSUPPORTED"], ["ir.target-profile-output-diagnostics", "web.target-profile-output-diagnostics", "bevy.target-profile-output-diagnostics", "cli.package-target-profile-diagnostics"]),
 ];
 
 export function diagnoseBevyCatalogResidualDeclarations(
@@ -232,9 +250,48 @@ export function diagnoseBevyCatalogResidualDeclarations(
         suggestion: "Use schema-backed metadata transforms such as declared AnimationGraph import metadata.",
       });
     }
+    if (extension.processor === "metadata" && extension.transform !== undefined && !isKnownGltfMetadataTransform(extension.transform)) {
+      diagnostics.push({
+        code: "TN_CATALOG_GLTF_METADATA_TRANSFORM_UNSUPPORTED",
+        message: `glTF extension '${extension.extension}' declares unknown metadata transform '${extension.transform}'.`,
+        path: extension.path ?? `${path}/assets/gltfExtensions/${index}/transform`,
+        severity: "error",
+        suggestion: "Use the promoted AnimationGraph metadata transform or keep the import target-specific.",
+      });
+    }
+  });
+
+  declarations.assets?.targetProfiles?.forEach((profile, index) => {
+    const requiredTarget = requiredTargetForOutput(profile.output);
+    if (!profile.targets.includes(requiredTarget)) {
+      diagnostics.push(targetProfileOutputDiagnostic(profile.output, requiredTarget, profile.targets, profile.path ?? `${path}/assets/targetProfiles/${index}/targets`));
+    }
   });
 
   return diagnostics;
+}
+
+export function targetProfileOutputDiagnostic(
+  output: BevyCatalogTargetProfileOutput,
+  requiredTarget: "desktop" | "web",
+  targets: readonly string[],
+  path: string,
+): IIrDiagnostic {
+  return {
+    code: "TN_CATALOG_TARGET_PROFILE_OUTPUT_UNSUPPORTED",
+    message: `Target profile for '${output}' output must include '${requiredTarget}'.`,
+    path,
+    severity: "error",
+    suggestion: requiredTarget === "web"
+      ? "Add 'web' to target.profile.json targets or choose a non-web output."
+      : "Add 'desktop' to target.profile.json targets for offline, native, or package outputs.",
+    target: output,
+    value: targets.join(","),
+  };
+}
+
+function requiredTargetForOutput(output: BevyCatalogTargetProfileOutput): "desktop" | "web" {
+  return output === "web" ? "web" : "desktop";
 }
 
 function diagnoseRouting(
@@ -280,4 +337,8 @@ function isUnderRoot(path: string, root: string): boolean {
   const normalizedPath = path.replaceAll("\\", "/").replace(/^\.\/+/, "");
   const normalizedRoot = root.replaceAll("\\", "/").replace(/^\.\/+/, "").replace(/\/+$/, "");
   return normalizedPath === normalizedRoot || normalizedPath.startsWith(`${normalizedRoot}/`);
+}
+
+function isKnownGltfMetadataTransform(transform: string): boolean {
+  return transform === "AnimationGraph";
 }

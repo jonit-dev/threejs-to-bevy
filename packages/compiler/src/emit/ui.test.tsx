@@ -81,6 +81,27 @@ test("should emit image metadata and widget capabilities", () => {
   );
 });
 
+test("should report text input widget capabilities", () => {
+  const capabilities = deriveRequiredCapabilities({
+    assets: emptyAssets(),
+    materials: emptyMaterials(),
+    ui: {
+      schema: "threenative.ui",
+      version: "0.1.0",
+      root: {
+        id: "settings",
+        kind: "column",
+        children: [{ id: "player-name", kind: "textInput", label: "Player name", action: "SetPlayerName", text: "Hero" }],
+      },
+    },
+  });
+
+  assert.deepEqual(
+    capabilities.ui?.filter((capability) => capability.startsWith("widget")),
+    ["widget", "widget.textInput"],
+  );
+});
+
 function emptyAssets(): IAssetsManifest {
   return { assets: [], schema: "threenative.assets", version: "0.1.0" };
 }

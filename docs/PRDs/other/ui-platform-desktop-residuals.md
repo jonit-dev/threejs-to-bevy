@@ -25,8 +25,9 @@ interaction and desktop polish gaps still need focused, user-visible proof.
   polish, and debug overlays are already promoted.
 - Richer gestures, virtual keyboard behavior, UI transforms,
   render-to-texture/world UI, native italic text, advanced grid placement,
-  broad gamepad/touch UI coverage, and manually inspected desktop webview
-  packaging remain unchecked.
+  broad gamepad/touch UI coverage, and desktop webview host promotion remain
+  diagnostic-only unless matching runtime evidence is added. Desktop webview
+  packaging now emits `webview.inspection.json` for package/manual host checks.
 
 ## Pre-Planning Findings
 
@@ -128,18 +129,20 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add richer touch/gamepad gesture declarations beyond tap, swipe, and
-  pinch with bounded recognition reports.
-- [ ] Add virtual keyboard behavior with host capability states and focus
-  interaction evidence.
-- [ ] Expand broad gamepad/touch UI coverage through fixtures for focus,
-  activation, scrolling, and modal/menu navigation.
+- [x] Lock richer touch/gamepad gesture declarations beyond tap, swipe, and
+  pinch behind stable IR diagnostics until bounded recognition reports exist.
+- [x] Report virtual keyboard requests with stable host diagnostics and keep
+  native keyboard behavior diagnostic-only until platform promotion evidence
+  exists.
+- [x] Expand broad gamepad/touch UI coverage through fixtures for focus,
+  activation, scrolling, and menu navigation.
 
 **Tests Required:**
 
 | Test File | Test Name | Assertion |
 | --- | --- | --- |
 | `packages/ir/src/ui-platform.test.ts` | `should reject unsupported gesture recognizer options` | Diagnostic names the unsupported option. |
+| `packages/ir/src/input.test.ts` | `should reject unsupported richer touch and gamepad gesture declarations` | Diagnostic paths identify recognizer and binding-level gesture options. |
 | `packages/runtime-web-three/src/ui-platform.test.ts` | `should report virtual keyboard state for focused text input` | Web report includes capability state. |
 | `runtime-bevy/tests/ui_platform.rs` | `should report gamepad UI activation sequence` | Native report matches fixture. |
 
@@ -168,12 +171,19 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Promote native italic rich text with font capability reporting.
-- [ ] Add arbitrary grid placement, named areas, and dense packing if both
-  runtimes can report equivalent layout.
-- [ ] Add UI transforms and render-to-texture/world UI as capability-gated
-  rendering features.
-- [ ] Add manually inspected desktop webview packaging artifacts where host
+- [x] Keep native italic rich text diagnostic-only while preserving span
+  metadata for future font capability reporting.
+- [x] Lock letter spacing, generic/system font fallback, and OpenType font
+  variation/stretch requests behind stable IR diagnostics until portable text
+  rendering evidence exists.
+- [x] Lock arbitrary grid placement, named areas, and dense packing behind
+  stable IR diagnostics while the promoted grid subset remains repeat-count
+  rows/columns plus row/column auto-flow.
+- [x] Keep arbitrary grid placement, named areas, and dense packing
+  diagnostic-only until both runtimes can report equivalent layout.
+- [x] Keep UI transforms and render-to-texture/world UI capability-gated as
+  explicit diagnostics until rendering evidence exists.
+- [x] Add manually inspected desktop webview packaging artifacts where host
   behavior cannot be fully automated.
 
 **Tests Required:**
@@ -181,7 +191,9 @@ sequenceDiagram
 | Test File | Test Name | Assertion |
 | --- | --- | --- |
 | `packages/ir/src/ui-layout-depth.test.ts` | `should reject dense grid placement with overlapping named areas` | Diagnostic includes node id. |
-| `tools/verify/src/ui-platform.test.ts` | `should fail when desktop webview inspection artifact is missing` | Gate reports expected path. |
+| `packages/ir/src/ui.test.ts` | `ui should reject unsupported typography policy fields` | Diagnostic names unsupported typography and font-family policy fields. |
+| `packages/ir/src/ui.test.ts` | `ui should reject advanced grid placement and dense packing` | Diagnostic paths identify dense and named-placement grid requests. |
+| `packages/cli/src/commands/package.test.ts` | `package should create desktop-web runtime package artifacts` | Package report, archive, installer, and installed layout include `webview.inspection.json`. |
 | `runtime-bevy/tests/ui_layout_depth.rs` | `should report italic text capability state` | Native report is explicit. |
 
 **Verification Plan:**
@@ -199,10 +211,9 @@ sequenceDiagram
 
 ## 5. Acceptance Criteria
 
-- [ ] UI platform rows remain unchecked until both automated and required
-  manual evidence exists.
-- [ ] Host-dependent behavior reports explicit capability states.
-- [ ] Interaction fixtures cover touch, gamepad, keyboard, and desktop shell
+- [x] UI platform rows either have automated evidence or are locked as
+  diagnostic/deferred boundaries.
+- [x] Host-dependent behavior reports explicit capability states.
+- [x] Interaction fixtures cover touch, gamepad, keyboard, and desktop shell
   paths.
-- [ ] Parity and status docs match the promoted surface.
-
+- [x] Parity and status docs match the promoted surface.

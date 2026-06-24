@@ -609,7 +609,7 @@ function visitUiNode(node: IUiIr["root"], add: (domain: string, capability: stri
   if (node.kind === "image") {
     add("ui", "image");
   }
-  if (node.kind === "slider" || node.kind === "scrollbar" || node.kind === "contextMenu") {
+  if (node.kind === "slider" || node.kind === "scrollbar" || node.kind === "contextMenu" || node.kind === "textInput") {
     add("ui", "widget");
     add("ui", `widget.${node.kind}`);
   }

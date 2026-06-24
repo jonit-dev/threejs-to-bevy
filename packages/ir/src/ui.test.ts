@@ -95,6 +95,36 @@ test("ui should validate v7 focus navigation metadata", async () => {
   }
 });
 
+test("ui should accept text input widgets with deterministic value actions", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ui-text-input-"));
+  try {
+    await writeTestBundle(root, { manifest: { entry: { ui: "ui.ir.json" } } });
+    await writeJson(root, "ui.ir.json", {
+      schema: "threenative.ui",
+      version: "0.1.0",
+      root: {
+        id: "settings",
+        kind: "column",
+        children: [
+          {
+            id: "player-name",
+            kind: "textInput",
+            label: "Player name",
+            action: "SetPlayerName",
+            text: "Hero",
+          },
+        ],
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("ui should validate explicit flex layout metadata", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ui-layout-"));
   try {
@@ -102,11 +132,12 @@ test("ui should validate explicit flex layout metadata", async () => {
     await writeJson(root, "ui.ir.json", {
       schema: "threenative.ui",
       version: "0.1.0",
+      fonts: [{ asset: "assets/fonts/menu.ttf", family: "menu" }],
       root: {
         id: "hud",
         kind: "row",
         layout: { align: "center", columnGap: 12, direction: "row", grid: { autoFlow: "row", columns: 3, rows: 2 }, height: 48, inset: { left: 24, top: 16 }, justify: "spaceBetween", maxWidth: 480, minHeight: 24, overflow: "scroll", padding: 6, position: "absolute", rowGap: 4, width: 320, zIndex: 5 },
-        style: { backgroundColor: "#101820cc", borderColor: "#ffffff", borderRadius: 8, borderWidth: 2, color: "#ffcc00", fontSize: 18, fontWeight: "bold", gradient: { angle: 90, from: "#101820", kind: "linear", to: "#203040" }, opacity: 0.75, shadow: { blur: 12, color: "#00000080", offsetX: 0, offsetY: 4, spread: 1 }, textAlign: "center", textDecoration: "underline", wrap: "word" },
+        style: { backgroundColor: "#101820cc", borderColor: "#ffffff", borderRadius: 8, borderWidth: 2, color: "#ffcc00", fontFamily: "menu", fontSize: 18, fontWeight: "bold", gradient: { angle: 90, from: "#101820", kind: "linear", to: "#203040" }, opacity: 0.75, shadow: { blur: 12, color: "#00000080", offsetX: 0, offsetY: 4, spread: 1 }, textAlign: "center", textDecoration: "underline", wrap: "word" },
         children: [
           { id: "score", kind: "text", text: "0" },
           { id: "portrait", kind: "image", accessibilityLabel: "Hero portrait", role: "image", src: "assets/hero.png" },
@@ -117,6 +148,35 @@ test("ui should validate explicit flex layout metadata", async () => {
     const result = await validateBundle(root);
 
     assert.equal(result.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("ui should reject unsupported typography policy fields", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ui-typography-unsupported-"));
+  try {
+    await writeTestBundle(root, { manifest: { entry: { ui: "ui.ir.json" } } });
+    await writeJson(root, "ui.ir.json", {
+      schema: "threenative.ui",
+      version: "0.1.0",
+      root: {
+        id: "title",
+        kind: "text",
+        text: "Paused",
+        style: {
+          fontFamily: "system-ui",
+          fontVariationSettings: "\"wght\" 650",
+          letterSpacing: 1.25,
+        },
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_FONT_FAMILY_UNSUPPORTED" && diagnostic.path === "ui.ir.json/root/style/fontFamily"), true);
+    assert.equal(result.diagnostics.filter((diagnostic) => diagnostic.code === "TN_IR_UI_TYPOGRAPHY_UNSUPPORTED").length, 2);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -311,7 +371,9 @@ test("ui should reject unsupported world-space UI requests with explicit diagnos
       root: {
         id: "world-label",
         kind: "text",
+        renderToTexture: "hud-target",
         text: "Nameplate",
+        transform: { rotate: 15 },
         worldSpace: true,
       },
     });
@@ -319,6 +381,8 @@ test("ui should reject unsupported world-space UI requests with explicit diagnos
     const result = await validateBundle(root);
 
     assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_TRANSFORM_UNSUPPORTED"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_RENDER_TO_TEXTURE_UNSUPPORTED"), true);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_WORLD_SPACE_UNSUPPORTED"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
@@ -354,6 +418,39 @@ test("ui should reject invalid flex layout metadata", async () => {
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_LAYOUT_INSET_INVALID"), true);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_LAYOUT_NUMBER_INVALID"), true);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_LAYOUT_Z_INDEX_INVALID"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("ui should reject advanced grid placement and dense packing", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ui-grid-advanced-"));
+  try {
+    await writeTestBundle(root, { manifest: { entry: { ui: "ui.ir.json" } } });
+    await writeJson(root, "ui.ir.json", {
+      schema: "threenative.ui",
+      version: "0.1.0",
+      root: {
+        id: "inventory",
+        kind: "column",
+        layout: {
+          grid: {
+            autoFlow: "dense",
+            columns: 4,
+            namedAreas: ["header header", "slot-a slot-b"],
+            placement: { "slot-a": { column: 1, row: 2 } },
+          },
+        },
+      },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    const advancedDiagnostics = result.diagnostics.filter((diagnostic) => diagnostic.code === "TN_IR_UI_LAYOUT_GRID_ADVANCED_UNSUPPORTED");
+    assert.equal(advancedDiagnostics.length, 3);
+    assert.equal(advancedDiagnostics.every((diagnostic) => diagnostic.path.startsWith("ui.ir.json/root/layout/grid/")), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_LAYOUT_GRID_AUTO_FLOW_INVALID"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

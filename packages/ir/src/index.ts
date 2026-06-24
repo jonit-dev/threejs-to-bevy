@@ -32,8 +32,10 @@ export type {
 export {
   BEVY_CATALOG_RESIDUAL_ROWS,
   diagnoseBevyCatalogResidualDeclarations,
+  targetProfileOutputDiagnostic,
   type BevyCatalogResidualArea,
   type BevyCatalogResidualStatus,
+  type BevyCatalogTargetProfileOutput,
   type IBevyCatalogAssetExportDeclaration,
   type IBevyCatalogCallbackComponentDeclaration,
   type IBevyCatalogCustomUiMaterialDeclaration,
@@ -41,6 +43,7 @@ export {
   type IBevyCatalogImeDeclaration,
   type IBevyCatalogResidualDeclarations,
   type IBevyCatalogResidualRow,
+  type IBevyCatalogTargetProfileDeclaration,
   type IBevyCatalogUiRoutingDeclaration,
   type IBevyCatalogWindowPolicyDeclaration,
 } from "./bevyCatalogResiduals.js";

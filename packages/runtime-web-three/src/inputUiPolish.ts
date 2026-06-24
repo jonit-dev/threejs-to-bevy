@@ -15,6 +15,7 @@ export interface IInputUiPolishReport {
   ui: {
     disabledUpdate: IInputUiPolishDisabledUpdate[];
     focusNarration: IInputUiPolishNarration[];
+    interactionCoverage: IInputUiPolishInteractionCoverage[];
     navigation: ReturnType<typeof traceUiNavigation>;
     richText: IInputUiPolishRichText[];
     scroll: IInputUiPolishScrollObservation[];
@@ -62,6 +63,12 @@ export interface IInputUiPolishDisabledUpdate {
   status: "reconciled";
 }
 
+export interface IInputUiPolishInteractionCoverage {
+  evidence: string;
+  kind: "activation" | "focus" | "menuNavigation" | "scroll" | "touchGamepad";
+  status: "covered";
+}
+
 export interface IInputUiPolishRichText {
   italicSpans: number;
   node: string;
@@ -86,6 +93,7 @@ export function traceInputUiPolish(input: IInputIr | undefined, ui: IUiIr, world
     ui: {
       disabledUpdate: disabledUpdates(ui, polish),
       focusNarration: focusNarration(ui),
+      interactionCoverage: interactionCoverage(input, ui, polish),
       navigation: traceUiNavigation(ui, { events: polish.navigationEvents }),
       richText: richText(ui),
       scroll: scrollTrace(ui),
@@ -170,6 +178,29 @@ function disabledUpdates(ui: IUiIr, polish: PolishResource): IInputUiPolishDisab
     }
   });
   return updates.sort((left, right) => left.node.localeCompare(right.node));
+}
+
+function interactionCoverage(input: IInputIr | undefined, ui: IUiIr, polish: PolishResource): IInputUiPolishInteractionCoverage[] {
+  const navigation = traceUiNavigation(ui, { events: polish.navigationEvents });
+  const coverage: IInputUiPolishInteractionCoverage[] = [];
+  if (navigation.events.some((event) => event.kind === "focus")) {
+    coverage.push({ evidence: "ui.navigation.focus", kind: "focus", status: "covered" });
+  }
+  if (navigation.events.some((event) => event.kind === "activate")) {
+    coverage.push({ evidence: "ui.navigation.activate", kind: "activation", status: "covered" });
+  }
+  if (navigation.events.some((event) => event.input === "down" || event.input === "right" || event.input === "up" || event.input === "left")) {
+    coverage.push({ evidence: "ui.navigation.directional-menu", kind: "menuNavigation", status: "covered" });
+  }
+  if (scrollTrace(ui).length > 0) {
+    coverage.push({ evidence: "ui.scroll.trace", kind: "scroll", status: "covered" });
+  }
+  const hasTouch = polish.touchEvents.length > 0;
+  const hasGamepad = gamepadReport(input).supported;
+  if (hasTouch && hasGamepad) {
+    coverage.push({ evidence: "input.touch-stream+gamepad-report", kind: "touchGamepad", status: "covered" });
+  }
+  return coverage.sort((left, right) => left.kind.localeCompare(right.kind));
 }
 
 function scrollTrace(ui: IUiIr): IInputUiPolishScrollObservation[] {

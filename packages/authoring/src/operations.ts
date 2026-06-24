@@ -3234,7 +3234,7 @@ function validateUiNodes(diagnostics: IAuthoringDiagnostic[], file: string, valu
     const path = `/nodes/${index}`;
     const type = readString(node.type);
     if (node.type !== undefined && (type === undefined || !supportedUiNodeTypes.has(type))) {
-      validateEnumString(diagnostics, file, `${path}/type`, node.type, supportedUiNodeTypes, "UI node type", "Use 'text', 'button', 'image', 'bar', 'slider', 'row', 'column', or 'stack'.");
+      validateEnumString(diagnostics, file, `${path}/type`, node.type, supportedUiNodeTypes, "UI node type", "Use 'text', 'textInput', 'button', 'image', 'bar', 'slider', 'row', 'column', or 'stack'.");
     }
     validateOptionalString(diagnostics, file, `${path}/text`, node.text, "UI node text must be a non-empty string.");
     validateOptionalString(diagnostics, file, `${path}/label`, node.label, "UI node label must be a non-empty string.");

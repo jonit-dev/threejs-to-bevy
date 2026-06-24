@@ -48,6 +48,25 @@ test("ui dom overlay should dispatch button and touch control clicks to rendered
   ]);
 });
 
+test("ui dom overlay should dispatch text input values in order", () => {
+  const rendered = renderUi(makeUi(), makeWorld());
+  const overlay = createUiDomOverlay(rendered, new FakeDocument() as unknown as Document);
+  const input = findByUiId(overlay.element, "player-name");
+
+  assert.equal(input?.tagName, "input");
+  assert.equal(input?.type, "text");
+  assert.equal(input?.getAttribute("role"), "textbox");
+  assert.equal(input?.value, "Hero");
+
+  input?.setValue("He");
+  input?.setValue("Heroine");
+
+  assert.deepEqual(rendered.actions, [
+    { action: "SetPlayerName", node: "player-name", value: "He" },
+    { action: "SetPlayerName", node: "player-name", value: "Heroine" },
+  ]);
+});
+
 test("ui dom overlay should navigate focus with tab keys and activate focused controls", () => {
   const rendered = renderUi(makeUi(), makeWorld());
   const overlay = createUiDomOverlay(rendered, new FakeDocument() as unknown as Document);
@@ -161,6 +180,7 @@ function makeUi(): IUiIr {
             { id: "portrait", kind: "image", accessibilityLabel: "Hero portrait", role: "image", src: "assets/hero.png" },
             { id: "spacer", kind: "row", accessibilityLabel: "Decorative spacer", role: "none" },
             { id: "jump", kind: "touchControl", label: "Jump", action: "Jump", navigation: { left: "pause" } },
+            { id: "player-name", kind: "textInput", label: "Player name", action: "SetPlayerName", text: "Hero" },
           ],
         },
         {
@@ -229,6 +249,7 @@ class FakeElement {
   tabIndex = -1;
   textContent = "";
   type = "";
+  value = "";
 
   constructor(readonly tagName: string) {}
 
@@ -262,6 +283,13 @@ class FakeElement {
 
   click(): void {
     for (const listener of this.listeners.get("click") ?? []) {
+      listener();
+    }
+  }
+
+  setValue(value: string): void {
+    this.value = value;
+    for (const listener of this.listeners.get("input") ?? []) {
       listener();
     }
   }

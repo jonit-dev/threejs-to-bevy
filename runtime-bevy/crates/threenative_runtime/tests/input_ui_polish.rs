@@ -15,6 +15,21 @@ fn should_report_input_ui_polish_fixture() {
     assert_eq!(report.ui.disabled_update[0].node, "ui.apply");
     assert_eq!(report.ui.scroll[0].node, "ui.controls");
     assert_eq!(report.ui.focus_narration[0].text, "Player name");
+    assert_eq!(
+        report
+            .ui
+            .interaction_coverage
+            .iter()
+            .map(|entry| format!("{}:{}", entry.kind, entry.evidence))
+            .collect::<Vec<_>>(),
+        vec![
+            "activation:ui.navigation.activate",
+            "focus:ui.navigation.focus",
+            "menuNavigation:ui.navigation.directional-menu",
+            "scroll:ui.scroll.trace",
+            "touchGamepad:input.touch-stream+gamepad-report",
+        ]
+    );
     assert_eq!(report.ui.virtual_keyboard.status, "diagnostic-only");
     assert!(
         report

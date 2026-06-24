@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from "react";
-import { Box, Camera, FolderOpen, Image, Lightbulb, MessageSquare, Mountain, PackagePlus, Pause, Play, Save, Settings, Square, Trash2 } from "lucide-react";
+import { Box, Camera, FolderOpen, Gamepad2, Image, Lightbulb, MessageSquare, Mountain, PackagePlus, Pause, Play, Save, Settings, Square, Trash2 } from "lucide-react";
+import type { IEditorGamepadViewerSnapshot } from "@threenative/ir";
 
 import type { IEditorAdapterInput, IEditorAddComponentDefinition, IEditorAssetRow, IEditorModalActionDefinition, IEditorPropertyRow, IEditorShellModel } from "./adapters/editorModel.js";
 import { createEditorShellModel, EDITOR_MODAL_ACTION_DEFINITIONS } from "./adapters/editorModel.js";
@@ -33,11 +34,20 @@ export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPr
   const modal = useEditorStore((state) => state.modal);
   const gizmoMode = useEditorStore((state) => state.gizmoMode);
   const setGizmoMode = useEditorStore((state) => state.setGizmoMode);
+  const browserGamepads = useEditorStore((state) => state.browserGamepads);
+  const setBrowserGamepads = useEditorStore((state) => state.setBrowserGamepads);
   const openModal = useEditorStore((state) => state.openModal);
   const closeModal = useEditorStore((state) => state.closeModal);
   const model = createEditorShellModel(input);
   const objectCount = countTreeRows(model.hierarchy);
   const statusMessage = model.diagnostics.some((diagnostic) => diagnostic.severity === "error") ? "Needs attention" : "Ready";
+  const gamepadDevices = mergeGamepadDevices(model.gamepadViewer.devices, browserGamepads);
+  const connectedGamepads = gamepadDevices.filter((device) => device.status === "connected");
+  const gamepadStatus = connectedGamepads.length > 0
+    ? `${connectedGamepads.length} Connected`
+    : model.gamepadViewer.controls.length > 0
+      ? `${model.gamepadViewer.controls.length} Declared`
+      : "No Controls";
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (isTextInputTarget(event.target)) {
@@ -53,6 +63,34 @@ export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPr
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [setGizmoMode]);
+  useEffect(() => {
+    if (typeof navigator === "undefined" || typeof navigator.getGamepads !== "function") {
+      return;
+    }
+    const updateGamepads = () => {
+      const devices = Array.from(navigator.getGamepads())
+        .filter((gamepad): gamepad is Gamepad => gamepad !== null)
+        .map((gamepad) => ({
+          axes: gamepad.axes.length,
+          buttons: gamepad.buttons.length,
+          id: gamepad.id,
+          index: gamepad.index,
+          mapping: gamepad.mapping || "unknown",
+          status: "connected" as const,
+        }));
+      setBrowserGamepads(devices);
+    };
+    const handleConnectionChange = () => updateGamepads();
+    window.addEventListener("gamepadconnected", handleConnectionChange);
+    window.addEventListener("gamepaddisconnected", handleConnectionChange);
+    updateGamepads();
+    const interval = window.setInterval(updateGamepads, 500);
+    return () => {
+      window.removeEventListener("gamepadconnected", handleConnectionChange);
+      window.removeEventListener("gamepaddisconnected", handleConnectionChange);
+      window.clearInterval(interval);
+    };
+  }, [setBrowserGamepads]);
   return (
     <main className="tn-editor-shell">
       <header className="tn-editor-menubar" aria-label="Main menu">
@@ -73,6 +111,7 @@ export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPr
         <div className="tn-editor-badges" aria-label="Project status">
           <span className="tn-editor-badge tn-editor-badge--cyan">{objectCount} Objects</span>
           <span className={`tn-editor-badge tn-editor-badge--${model.status === "error" ? "red" : "green"}`}>{statusMessage}</span>
+          <span className="tn-editor-badge tn-editor-badge--cyan"><Gamepad2 size={13} /> {gamepadStatus}</span>
           <span className="tn-editor-badge tn-editor-badge--purple">Scene: {model.projectName}</span>
         </div>
         <div className="tn-editor-playback" aria-label="Playback controls">
@@ -123,6 +162,11 @@ export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPr
               </button>
             ))}
           </div>
+          {gamepadDevices.length > 0 || model.gamepadViewer.controls.length > 0 ? (
+            <div className="tn-editor-gamepad-overlay" aria-label="Gamepad inspection">
+              <GamepadViewerPanel controls={model.gamepadViewer.controls} devices={gamepadDevices} requiredControls={model.gamepadViewer.requiredControls} />
+            </div>
+          ) : null}
           {model.status === "empty" ? (
             <div className="tn-editor-preview__message">
               <h1>Preview</h1>
@@ -166,6 +210,9 @@ export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPr
               </ul>
             )}
           </PanelShell>
+          <PanelShell title="Gamepad" meta={`${gamepadDevices.length}`}>
+            <GamepadViewerPanel controls={model.gamepadViewer.controls} devices={gamepadDevices} requiredControls={model.gamepadViewer.requiredControls} />
+          </PanelShell>
         </aside>
       </div>
       <footer className="tn-editor-statusbar">
@@ -173,6 +220,7 @@ export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPr
         <span>60 FPS</span>
         <span>128MB</span>
         <span>WebGL</span>
+        <span>Gamepad: <strong>{gamepadStatus}</strong></span>
         <span className="tn-editor-statusbar__spacer" />
         <span>{model.lod.mode.toUpperCase()} {model.lod.precision.toUpperCase()}</span>
         <span>TERRAIN</span>
@@ -210,6 +258,67 @@ export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPr
       />
     </main>
   );
+}
+
+function GamepadViewerPanel({
+  controls,
+  devices,
+  requiredControls,
+}: {
+  controls: readonly IEditorGamepadViewerSnapshot["controls"][number][];
+  devices: readonly IEditorGamepadViewerSnapshot["devices"][number][];
+  requiredControls: readonly string[];
+}) {
+  const connected = devices.filter((device) => device.status === "connected");
+  return (
+    <div className="tn-editor-gamepad-viewer">
+      <div className="tn-editor-gamepad-viewer__summary">
+        <Gamepad2 aria-hidden="true" size={16} />
+        <span>{connected.length > 0 ? `${connected.length} connected` : `${controls.length} declared controls`}</span>
+      </div>
+      {devices.length === 0 ? (
+        <p className="tn-editor-empty">No gamepad controls declared.</p>
+      ) : (
+        <ul className="tn-editor-list">
+          {devices.map((device) => (
+            <li key={`${device.status}:${device.index ?? "declared"}:${device.id}`}>
+              <span>{device.id}</span>
+              <small>{gamepadDeviceLabel(device)}</small>
+            </li>
+          ))}
+        </ul>
+      )}
+      {controls.length > 0 ? (
+        <small className="tn-editor-gamepad-viewer__controls">
+          {controls.map((control) => `${control.owner}:${control.control}`).join(", ")}
+        </small>
+      ) : null}
+      {requiredControls.length > 0 ? (
+        <small className="tn-editor-gamepad-viewer__required">Required: {requiredControls.join(", ")}</small>
+      ) : null}
+    </div>
+  );
+}
+
+function gamepadDeviceLabel(device: IEditorGamepadViewerSnapshot["devices"][number]): string {
+  if (device.status === "connected") {
+    return `${device.mapping ?? "unknown"} mapping, ${device.buttons ?? 0} buttons, ${device.axes ?? 0} axes`;
+  }
+  return device.status;
+}
+
+function mergeGamepadDevices(
+  declaredDevices: readonly IEditorGamepadViewerSnapshot["devices"][number][],
+  connectedDevices: readonly IEditorGamepadViewerSnapshot["devices"][number][],
+): IEditorGamepadViewerSnapshot["devices"] {
+  if (connectedDevices.length > 0) {
+    return [...connectedDevices].sort(compareGamepadDevices);
+  }
+  return [...declaredDevices].sort(compareGamepadDevices);
+}
+
+function compareGamepadDevices(left: IEditorGamepadViewerSnapshot["devices"][number], right: IEditorGamepadViewerSnapshot["devices"][number]): number {
+  return `${left.status}:${left.index ?? -1}:${left.id}`.localeCompare(`${right.status}:${right.index ?? -1}:${right.id}`);
 }
 
 function gizmoModeFromKey(key: string): EditorViewportGizmoMode | undefined {

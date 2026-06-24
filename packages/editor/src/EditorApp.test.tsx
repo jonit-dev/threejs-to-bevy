@@ -17,6 +17,8 @@ test("should render shell sections from adapter data", () => {
   assert.match(html, /Assets/);
   assert.match(html, /Diagnostics/);
   assert.match(html, /Documents: 1/);
+  assert.match(html, /Gamepad: <strong>1 Connected<\/strong>/);
+  assert.match(html, /Xbox Wireless Controller/);
   assert.match(html, /player/);
   assert.match(html, /material.player/);
 });
@@ -119,6 +121,14 @@ function modelFixture(): IEditorShellModel {
     addComponentDefinitions: [...EDITOR_ADD_COMPONENT_DEFINITIONS],
     assets: [{ access: "inspectableOnly", id: "asset:material.player", kind: "material", label: "material.player" }],
     diagnostics: [{ code: "TN_TEST", message: "fixture diagnostic", severity: "info" }],
+    gamepadViewer: {
+      controls: [
+        { control: "buttonSouth", kind: "button", owner: "Interact" },
+        { control: "leftStickX", kind: "axis", owner: "MoveX" },
+      ],
+      devices: [{ axes: 4, buttons: 17, id: "Xbox Wireless Controller", index: 0, mapping: "standard", status: "connected" }],
+      requiredControls: [],
+    },
     hierarchy: [{ access: "sourcePersistable", badge: "entity", id: "entity:player", label: "player" }],
     inspector: [{ access: "sourcePersistable", id: "property:transform", label: "Transform", readOnly: false, value: "[0, 1, 0]" }],
     lod: { budget: 200000, loadedTriangles: 12, loading: false, mode: "auto", precision: "estimate", selected: "original", triangleCount: 12 },

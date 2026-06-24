@@ -90,12 +90,12 @@ fn bounds(node: &UiNodeIr) -> NativeUiDebugBounds {
 fn is_focusable(node: &UiNodeIr) -> bool {
     node.focusable.unwrap_or(matches!(
         node.kind.as_str(),
-        "button" | "touchControl" | "slider" | "scrollbar"
+        "button" | "textInput" | "touchControl" | "slider" | "scrollbar"
     ))
 }
 
 fn widget_state(node: &UiNodeIr) -> Option<NativeUiDebugWidgetState> {
-    if node.kind != "slider" && node.kind != "scrollbar" {
+    if node.kind != "slider" && node.kind != "scrollbar" && node.kind != "textInput" {
         return None;
     }
     Some(NativeUiDebugWidgetState {
@@ -123,6 +123,7 @@ fn accesskit_role(node: &UiNodeIr) -> Option<String> {
         None => match node.kind.as_str() {
             "bar" => Some("ProgressIndicator".to_owned()),
             "button" | "touchControl" => Some("Button".to_owned()),
+            "textInput" => Some("TextInput".to_owned()),
             "image" => Some("Image".to_owned()),
             "scrollbar" => Some("ProgressIndicator".to_owned()),
             "slider" => Some("Slider".to_owned()),

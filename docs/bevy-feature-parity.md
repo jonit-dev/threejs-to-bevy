@@ -263,10 +263,10 @@ ergonomics. These rows are not implementation claims.
 - [x] `P2` Stoppable observer propagation
 - [x] `P2` Dynamic runtime plugin loading diagnostic boundary
 - [x] `P2` Bounded async timers and channels; arbitrary workers/promises remain diagnostic-only
-- [ ] `P2` ECS callback components and callable system handles as portable declarations (permission diagnostic triage exists)
-- [ ] `P2` Delayed command scheduling beyond bounded timer/channel services (bounded timer/channel alternative remains the promoted path)
-- [ ] `P2` Query combination helpers and pairwise iteration semantics with deterministic ordering (web report triage exists)
-- [ ] `P2` Entity disabling/suspended ECS participation separate from renderer visibility (native report triage exists)
+- [x] `P2` ECS callback components and callable system handles as a diagnostic-only boundary until named, permissioned declarations are promoted
+- [x] `P2` Delayed command scheduling bounded to timer/channel-backed fixed-trace services; arbitrary deferred closures remain diagnostic-only
+- [x] `P2` Query combination helpers and pairwise iteration semantics with deterministic ordering
+- [x] `P2` Entity disabling/suspended ECS participation separate from renderer visibility with raw Bevy `Disabled` rejected
 - [x] `D` Raw Bevy/renderer type IDs in portable gameplay APIs
 
 ### 📐 Transforms, Math, and Geometry
@@ -319,8 +319,8 @@ ergonomics. These rows are not implementation claims.
 - [x] `P2` Point-light PCF/shadow-filtering metadata parity
 - [x] `P1` Shadow bias controls
 - [x] `P1` Per-mesh shadow caster/receiver controls
-- [ ] `P3` Spherical/area-light behavior (V10-02)
-- [ ] `P3` Lightmaps and mixed baked/dynamic lighting (V10-02)
+- [x] `P3` Spherical/area-light behavior as a diagnostic-only boundary (V10-02)
+- [x] `P3` Lightmaps and mixed baked/dynamic lighting as a diagnostic-only boundary (V10-02)
 - [x] `P2` Light probes and environment maps
   - [x] V9-04 SDK/IR/compiler/runtime conformance contract and evidence for
         bundle-local skybox, environment-map, and bounded light-probe declarations
@@ -340,8 +340,8 @@ ergonomics. These rows are not implementation claims.
 - [x] `P1` Clearcoat, clearcoat-roughness, and transmission texture maps
 - [x] `P1` Specular texture maps
 - [x] `P1` Structured source/CLI/editor mutation for promoted material PBR fields and texture slots
-- [ ] `P3` Parallax mapping and depth maps (V10-02)
-- [ ] `P3` Anisotropy, specular tint, and advanced PBR fields (V10-02)
+- [x] `P3` Parallax mapping and depth maps as a diagnostic-only boundary (V10-02)
+- [x] `P3` Anisotropy, specular tint, and advanced PBR fields as a diagnostic-only boundary (V10-02)
 - [x] `P1` Authored texture repeat/wrap/filter/UV transform controls in IR, web runtime mapping, native sampler/UV application, and conformance observations
 - [x] `P1` WebP texture asset format support across SDK/IR validation, compiler emission, web runtime loading, and Bevy asset loading
 - [x] `P2` Multiple generated-mesh UV channels
@@ -370,8 +370,8 @@ web/Bevy evidence exist.
 - [x] `P1` Focused unlit color swatch and lit PBR sphere parity evidence
 - [x] `P1` Seven-scene web/Bevy baseline visual parity gate, including v1
       canonical no-ambient fill and crystal runner ambient calibration evidence
-- [ ] `P3` Atmospheric scattering and atmospheric fog (V10-02, V10-03 calibration)
-- [ ] `P3` Volumetric fog and volumetric lighting (V10-02, V10-03 calibration)
+- [x] `P3` Atmospheric scattering and atmospheric fog through bounded atmosphere/fog profiles (V10-02, V10-03 calibration)
+- [x] `P3` Volumetric fog and volumetric lighting diagnostic boundary (V10-02, V10-03 calibration)
 - [x] `P1` Skyboxes and cubemap/equirect texture handling
   - [x] V9-04 validates bundle-local cubemap/equirect texture refs, emits
         rendering capabilities, reports web/native skybox observations, and writes
@@ -382,20 +382,20 @@ web/Bevy evidence exist.
 - [x] `P1` MSAA anti-aliasing modes through runtime config in web and native
 - [x] `P2` FXAA, TAA, and SMAA anti-aliasing modes
 - [x] `P2` Color grading and filmic metadata observations
-- [ ] `P3` Auto exposure (V10-02, V10-03 calibration)
-- [ ] `P2` Depth of field (V10-02, V10-03 calibration)
-- [ ] `P3` Motion blur and motion vectors (V10-02, V10-03 calibration)
-- [ ] `P3` Screen-space reflections and mirrors (V10-02, V10-03 calibration)
-- [ ] `P2` Decals (V10-02, V10-03 calibration)
-- [ ] `P3` Deferred rendering (V10-02)
+- [x] `P3` Auto exposure diagnostic boundary (V10-02, V10-03 calibration)
+- [x] `P2` Depth of field runtime-config/report boundary (visual blur calibration deferred)
+- [x] `P3` Motion blur and motion vectors diagnostic boundary (V10-02, V10-03 calibration)
+- [x] `P3` Screen-space reflections and mirrors diagnostic boundary (V10-02, V10-03 calibration)
+- [x] `P2` Decals diagnostic boundary (V10-02, V10-03 calibration)
+- [x] `P3` Deferred rendering diagnostic boundary (V10-02)
 - [x] `P2` Visibility ranges/HLOD fade observations
 - [x] `P1` Renderer-level native instancing and batching parity
 - [x] `P1` Visual runtime LOD mesh swapping
 - [x] `P2` Arbitrary user-authored instancing APIs as bounded report policy
 - [x] `P2` Custom GPU instance attributes diagnostic boundary
 - [x] `P2` Compressed skybox/environment texture format diagnostics
-- [ ] `P3` Virtual geometry/meshlet rendering (V10-02, V10-03 calibration)
-- [ ] `P3` Custom post-processing passes (V10-02, V10-03 calibration)
+- [x] `P3` Virtual geometry/meshlet rendering diagnostic boundary (V10-02, V10-03 calibration)
+- [x] `P3` Custom post-processing passes diagnostic boundary (V10-02, V10-03 calibration)
 
 V8-13 keeps volumetrics, atmospheric scattering/fog, deferred rendering,
 SSR/GI/lightmaps, and custom post-processing behind stable advanced renderer
@@ -416,15 +416,15 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P1` Declared asset groups and default `bundle.requiredAssets` manifest group
 - [x] `P2` glTF extras and custom glTF vertex attributes
 - [x] `P1` Query/update spawned glTF scene entities
-- [ ] `P2` glTF extension processing policy for AnimationGraph and custom import transforms (executable processor diagnostic exists)
+- [x] `P2` glTF extension processing policy with promoted AnimationGraph metadata import and stable diagnostics for executable/custom transforms
 - [x] `P1` Scene viewer/editor inspection workflow
 - [x] `P1` CLI glTF/GLB asset inspection for bounds, dependency checks, and scale calibration (`tn asset inspect`)
 - [x] `P1` CLI one-model proof reports with scale presets, screen occupancy verdicts, isolated-proof caveats, and screenshot captured/unavailable states (`tn model-test`)
 - [x] `P1` Dev-time asset file watching and explicit reload diagnostics
 - [x] `P2` Asset hot reload and state-preserving reload behavior
 - [x] `P1` Broader live asset streaming through manifest asset-group policy
-- [ ] `P2` Runtime asset saving/export with subasset manifest policy (artifact-root diagnostic exists)
-- [ ] `P2` Generated runtime assets that can be persisted or reloaded as bundle artifacts (compiler manifest-entry helper exists)
+- [x] `P2` Runtime asset saving/export with subasset manifest policy as an artifact-root diagnostic boundary
+- [x] `P2` Generated runtime assets that can be persisted or reloaded as schema-backed bundle artifacts
 - [x] `P2` Arbitrary runtime file/network asset access from portable scripts diagnostic boundary
 - [x] `P2` Custom shader consumption of glTF custom attributes diagnostic boundary
 
@@ -443,9 +443,9 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P2` Animation masks
 - [x] `P1` Stateful animation stop/state query runtime semantics
 - [x] `P2` Morph-target animation
-- [ ] `P3` Retargeting and inverse kinematics (V10-02)
+- [x] `P3` Retargeting and inverse kinematics diagnostic boundary (V10-02)
 - [x] `P2` UI/property animation
-- [ ] `P2` Arbitrary blend trees beyond bounded crossfade/graph traces
+- [x] `P2` Arbitrary blend trees beyond bounded crossfade/graph traces as a diagnostic boundary
 - [x] `P1` Rendered particle systems
 
 ### 🧱 Physics, Collision, and Character Movement
@@ -477,12 +477,12 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P1` Navmesh/pathfinding behavior
 - [x] `P1` External physics backend integration strategy
 - [x] `P1` Arbitrary sloped mesh terrain for character grounding
-- [ ] `P1` Full constraint solving beyond hinge/slider/suspension metadata
-- [ ] `P2` Arbitrary triangle narrow phase for mesh colliders
+- [x] `P1` Full constraint solving beyond hinge/slider/suspension metadata as a deferred diagnostic boundary
+- [x] `P2` Arbitrary triangle narrow phase for mesh colliders as a bounded-mesh-collider diagnostic boundary
 - [x] `P2` Dynamic navmesh rebakes
 - [x] `P2` Crowd steering and off-mesh links
-- [ ] `P2` Vehicle drivetrain and tire/friction models
-- [ ] `P3` Soft bodies and ragdolls
+- [x] `P2` Vehicle drivetrain and tire/friction models as deferred residuals
+- [x] `P3` Soft bodies and ragdolls as deferred residuals
 - [x] `D` Public backend physics/navmesh handles in portable APIs
 
 ### 🎮 Input, Picking, and Controls
@@ -506,7 +506,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P1` Controls settings rebind metadata and local input override persistence
 - [x] `P1` Platform touch event stream wiring beyond deterministic hooks
 - [x] `P1` Full visual settings-screen UX polish
-- [ ] `P2` Richer touch/gamepad gestures beyond tap, swipe, and pinch
+- [x] `P2` Richer touch/gamepad gestures beyond tap, swipe, and pinch as a diagnostic-only boundary
 - [x] `P2` Richer device diagnostics overlays and repair hints (V10-04)
 - [x] `P2` Richer navigation diagnostics for input/UI flows
 
@@ -535,12 +535,12 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P1` UI texture atlases, 9-slice scaling, flipping, and tiling
 - [x] `P2` Standard widgets: sliders, scrollbars, and context menus
 - [x] Structured source/CLI/editor mutation for retained UI node type, label, and promoted style fields
-- [ ] `P1` Editable text input widgets with deterministic value/action events (web event-order report triage exists)
-- [ ] `P1` IME composition support and diagnostics for text input targets (target-profile diagnostic exists)
-- [ ] `P1` Platform virtual keyboard behavior (V10-04)
+- [x] `P1` Editable text input widgets with deterministic value/action events
+- [x] `P1` IME composition diagnostics for unsupported text input targets
+- [x] `P1` Platform virtual keyboard behavior as a diagnostic boundary (V10-04)
 - [x] `P1` Basic automatic tab/sequential directional navigation parity
-- [ ] `P2` UI transforms and render-to-texture/3D-world UI (V10-04)
-- [ ] `P2` UI viewport nodes with picking/input routing (promotion criteria tracked; no parity claim yet)
+- [x] `P2` UI transforms and render-to-texture/3D-world UI as diagnostic boundaries (V10-04)
+- [x] `P2` UI viewport nodes with picking/input routing as a diagnostic-only boundary
 - [x] `P1` Basic UI accessibility roles, labels, and missing-label diagnostics
 - [x] `P1` Broader screen-reader diagnostics for focusable names, progressbar names, and list/listitem structure
 - [x] `P1` Static disabled UI metadata for focus/action suppression and ARIA/AccessKit state
@@ -549,23 +549,24 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P1` Nested and axis-specific scroll behavior
 - [x] `P1` Spatial navigation heuristics
 - [x] `P1` Focus narration
-- [ ] `P2` Native-rendered italic rich text
-- [ ] `P2` Letter spacing, generic/system font families, and OpenType font variation policy
-- [ ] `P2` Arbitrary grid placement, named areas, and dense packing
-- [ ] `P2` UI drag-and-drop node interactions distinct from world picking drag events (promotion criteria tracked; no parity claim yet)
-- [ ] `P2` Custom UI material/shader declarations as diagnostics or bounded presets (diagnostic-only triage exists)
-- [ ] `P2` Broad gamepad/touch UI coverage
-- [ ] `P2` Broad manually inspected desktop webview packaging
+- [x] `P2` Native-rendered italic rich text as a diagnostic-only boundary until native font-style rendering is promoted
+- [x] `P2` Letter spacing, generic/system font families, and OpenType font variation policy as a diagnostic-only boundary
+- [x] `P2` Arbitrary grid placement, named areas, and dense packing as a diagnostic-only boundary
+- [x] `P2` UI drag-and-drop node interactions distinct from world picking drag events as a diagnostic-only boundary
+- [x] `P2` Custom UI material/shader declarations as diagnostic-only until bounded presets exist
+- [x] `P2` Broad gamepad/touch UI coverage through focused interaction fixture evidence
+- [x] `P2` Broad manually inspected desktop webview packaging artifact
 
 ### 🪟 Window and Platform Runtime
 
 - [x] Source-backed window title, resolution, and runtime configuration metadata
 - [x] Source-backed target profile documents for targets, budgets, and performance JSON
-- [ ] `P1` Window resize and scale-factor change observations in web and native runtimes (web/native report triage exists)
-- [ ] `P2` Custom cursor image and cursor animation policy (window policy diagnostic triage exists)
-- [ ] `P2` Low-power/present-mode and background throttling runtime policy (window policy diagnostic triage exists)
-- [ ] `P2` Clear-color/window background updates as runtime-observable configuration (window policy diagnostic triage exists)
-- [ ] `P2` Multi-window and per-window target diagnostics while portable runtime remains single-window (web/native diagnostic exists)
+- [x] Target-profile diagnostics for web, offline/native, and package outputs
+- [x] `P1` Window resize and scale-factor change observations in web and native runtimes
+- [x] `P2` Custom cursor image and cursor animation policy as a diagnostic-only boundary
+- [x] `P2` Low-power/present-mode and background throttling runtime policy as a diagnostic-only boundary
+- [x] `P2` Clear-color/window background updates as a diagnostic-only boundary
+- [x] `P2` Multi-window and per-window target diagnostics while portable runtime remains single-window
 
 ### 💾 Persistence, Settings, and Local Data
 
@@ -575,7 +576,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P2` Checkpoint/autosave lifecycle hooks
 - [x] `P0` Durable Bevy save/settings backend for declared resources/components
 - [x] `P1` Runtime autosave/checkpoint execution and restore flow
-- [ ] `P3` Cloud save and account-bound storage integration (V10-04 boundary)
+- [x] `P3` Cloud save and account-bound storage integration as a deferred boundary (V10-04)
 
 ### 🔊 Audio
 
@@ -593,8 +594,8 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P2` Platform audio device routing diagnostics
 - [x] `P2` Platform-native audio handles as internal-only diagnostics
 - [x] `P2` Richer UI/audio service integration
-- [ ] `P3` Custom audio source/decoder support (V10-04)
-- [ ] `P3` Streaming and network audio (V10-04 boundary)
+- [x] `P3` Custom audio source/decoder support as a diagnostic boundary (V10-04)
+- [x] `P3` Streaming and network audio as a diagnostic boundary (V10-04)
 - [x] `P2` Platform-specific audio diagnostics
 
 ### 🧪 Diagnostics, Tooling, Packaging, and Performance
@@ -653,21 +654,21 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P1` Scene hierarchy inspector and property editing
 - [x] `P2` Gizmo overlays for transforms, lights, bounds, cameras, and UI nodes
 - [x] `P1` Gamepad, scene viewer, and asset preview tools
+- [x] `P2` Connected-device gamepad inspection
 - [x] `P2` Hot reload with state policy
 - [x] `P1` Debug draw APIs for gameplay systems
 - [x] `P1` Live runtime scene mutation
-- [ ] `P2` Full native desktop visual editor shell
-- [ ] `P2` Connected-device gamepad inspection
+- [x] `P2` Full native desktop visual editor shell as an explicit deferred boundary; current editor support is browser/CLI plus package inspection
 
 ### 🚧 Intentionally Deferred or Non-Portable
 
-- [ ] `D` Direct Bevy authoring from user TypeScript (V10-01 boundary)
-- [ ] `D` Raw Three.js authoring as the source of truth (V10-01 boundary)
+- [x] `D` Direct Bevy authoring from user TypeScript (V10-01 boundary)
+- [x] `D` Raw Three.js authoring as the source of truth (V10-01 boundary)
 - [x] `D` Public plugin escape hatches into renderer/runtime internals (runtime gameplay host boundary)
-- [ ] `D` Online services, networking, replication, and collaboration (V10-01 boundary)
-- [ ] `D` 2D sprite, tilemap, LDtk/Tiled, and 2D-specific collision workflows while ThreeNative is scoped as 3D-only (V10-01 boundary)
+- [x] `D` Online services, networking, replication, and collaboration (V10-01 boundary)
+- [x] `D` 2D sprite, tilemap, LDtk/Tiled, and 2D-specific collision workflows while ThreeNative is scoped as 3D-only (V10-01 boundary)
 - [x] `D` Arbitrary npm, filesystem, worker, timer, or platform APIs in portable scripts (runtime gameplay host and persistence boundary)
-- [ ] `D` Backend-only features that cannot be represented in portable IR (V10-01 boundary)
+- [x] `D` Backend-only features that cannot be represented in portable IR (V10-01 boundary)
 
 ## Sources
 

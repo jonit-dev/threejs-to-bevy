@@ -9,6 +9,12 @@
       "saturation": 0.9,
       "toneMapping": "aces"
     },
+    "depthOfField": {
+      "aperture": 0.025,
+      "enabled": true,
+      "focusDistance": 8,
+      "maxBlur": 0.012
+    },
     "renderPath": "forward"
   },
   "time": {

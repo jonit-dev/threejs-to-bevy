@@ -85,7 +85,7 @@ export async function uiCommand(argv: readonly string[], options: ISourceCommand
       return renderUsage(json, value.diagnostic, "UI node value must be a finite number.");
     }
     if (uiDocId === undefined || nodeId === undefined || type === undefined) {
-      return renderUsage(json, "TN_UI_ADD_NODE_ARGS_MISSING", "Usage: tn ui add-node <ui-doc-id> <node-id> --type <text|button|image|bar|slider|row|column|stack> [--label <label>] [--text <text>] [--action <action-id>] [--src <asset-id-or-path>] [--value <n>] [--project <path>] [--json]");
+      return renderUsage(json, "TN_UI_ADD_NODE_ARGS_MISSING", "Usage: tn ui add-node <ui-doc-id> <node-id> --type <text|textInput|button|image|bar|slider|row|column|stack> [--label <label>] [--text <text>] [--action <action-id>] [--src <asset-id-or-path>] [--value <n>] [--project <path>] [--json]");
     }
     return renderAuthoringResult(
       "ui",

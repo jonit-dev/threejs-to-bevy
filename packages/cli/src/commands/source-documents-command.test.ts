@@ -13,6 +13,7 @@ test("countdown UI can be created centered and bound without manual JSON editing
     const create = await uiCommand(["create", "hud", "--project", root, "--json"]);
     const text = await uiCommand(["add-text", "hud", "countdown", "--text", "READY", "--project", root, "--json"]);
     const button = await uiCommand(["add-node", "hud", "pause", "--type", "button", "--label", "Pause", "--action", "pause.toggle", "--project", root, "--json"]);
+    const textInput = await uiCommand(["add-node", "hud", "player-name", "--type", "textInput", "--label", "Player name", "--text", "Hero", "--action", "profile.name", "--project", root, "--json"]);
     const style = await uiCommand(["set-style", "hud", "pause", "--color", "#ffffff", "--background-color", "#101820", "--font-size", "18", "--text-align", "center", "--wrap", "true", "--project", root, "--json"]);
     const layout = await uiCommand(["set-layout", "hud", "countdown", "--justify", "center", "--align", "center", "--top", "280", "--height", "160", "--width", "1280", "--project", root, "--json"]);
     const bind = await uiCommand(["bind", "hud", "countdown", "--resource", "RaceState.status", "--project", root, "--json"]);
@@ -24,12 +25,14 @@ test("countdown UI can be created centered and bound without manual JSON editing
     assert.equal(create.exitCode, 0);
     assert.equal(text.exitCode, 0);
     assert.equal(button.exitCode, 0);
+    assert.equal(textInput.exitCode, 0);
     assert.equal(style.exitCode, 0);
     assert.equal(layout.exitCode, 0);
     assert.equal(bind.exitCode, 0);
     assert.deepEqual(ui.nodes, [
       { id: "countdown", layout: { align: "center", height: 160, justify: "center", top: 280, width: 1280 }, text: "READY", type: "text" },
       { action: "pause.toggle", id: "pause", label: "Pause", style: { backgroundColor: "#101820", color: "#ffffff", fontSize: 18, textAlign: "center", wrap: true }, type: "button" },
+      { action: "profile.name", id: "player-name", label: "Player name", text: "Hero", type: "textInput" },
     ]);
     assert.deepEqual(ui.bindings, [{ node: "countdown", resource: "RaceState.status" }]);
     assert.deepEqual((JSON.parse(bind.stdout) as { filesWritten: string[] }).filesWritten, ["content/ui/hud.ui.json"]);

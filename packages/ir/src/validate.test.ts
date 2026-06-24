@@ -699,12 +699,18 @@ test("should reject unsupported advanced renderer requests with stable diagnosti
     await writeBundle(root, { current: 100, max: 100 });
     await writeRuntimeConfig(root, {
       antialias: "msaa4",
+      autoExposure: true,
       customPasses: [{ fragment: "frag.wgsl" }],
+      decals: true,
+      deferred: true,
+      motionBlur: true,
       motionVectors: true,
       renderPath: "deferred",
       screenSpaceReflections: true,
+      ssr: true,
       virtualGeometry: true,
       volumetricFog: true,
+      volumetricLighting: true,
     });
 
     const result = await validateBundle(root);
@@ -713,11 +719,17 @@ test("should reject unsupported advanced renderer requests with stable diagnosti
     assert.deepEqual(
       result.diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.path]),
       [
+        ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/autoExposure"],
         ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/customPasses"],
+        ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/decals"],
+        ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/deferred"],
+        ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/motionBlur"],
         ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/motionVectors"],
         ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/screenSpaceReflections"],
+        ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/ssr"],
         ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/virtualGeometry"],
         ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/volumetricFog"],
+        ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/volumetricLighting"],
         ["TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED", "runtime.config.json/renderer/renderPath"],
       ],
     );
@@ -894,6 +906,73 @@ test("should reject invalid physical material factors", async () => {
         "materials.ir.json/materials/0/transmission",
       ],
     );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject unsupported advanced material depth and PBR fields", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-material-advanced-unsupported-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "materials.ir.json", {
+      schema: "threenative.materials",
+      version: "0.1.0",
+      materials: [
+        {
+          id: "mat.advanced",
+          kind: "standard",
+          color: "#ffffff",
+          anisotropy: 0.5,
+          lightmapTexture: "tex.lightmap",
+          parallaxTexture: "tex.height",
+          specularTint: "#ffeecc",
+        },
+      ],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.path]),
+      [
+        ["TN_IR_MATERIAL_LIGHTMAP_UNSUPPORTED", "materials.ir.json/materials/0/lightmapTexture"],
+        ["TN_IR_MATERIAL_PARALLAX_UNSUPPORTED", "materials.ir.json/materials/0/parallaxTexture"],
+        ["TN_IR_MATERIAL_ADVANCED_PBR_UNSUPPORTED", "materials.ir.json/materials/0/anisotropy"],
+        ["TN_IR_MATERIAL_ADVANCED_PBR_UNSUPPORTED", "materials.ir.json/materials/0/specularTint"],
+      ],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject unsupported advanced light kinds", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-light-advanced-unsupported-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "world.ir.json", {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [
+        {
+          id: "softbox",
+          components: {
+            Light: { color: "#ffffff", intensity: 1, kind: "area", size: [2, 1] },
+          },
+        },
+      ],
+      resources: {},
+      events: {},
+      prefabs: [],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics[0]?.code, "TN_IR_LIGHT_ADVANCED_UNSUPPORTED");
+    assert.equal(result.diagnostics[0]?.path, "world.ir.json/entities/0/components/Light/kind");
   } finally {
     await rm(root, { force: true, recursive: true });
   }

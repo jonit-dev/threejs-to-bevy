@@ -15,10 +15,10 @@ use threenative_runtime::ui::{
     NativeUiAction, NativeUiActionEvent, NativeUiActionQueue, NativeUiBar, NativeUiGradient,
     NativeUiImageSrc, NativeUiKind, NativeUiMinimapMarker, NativeUiMinimapPathPoint,
     NativeUiRenderedGradient, NativeUiRenderedShadow, NativeUiRenderedTextStyle,
-    NativeUiScrollContainer, NativeUiShadow, NativeUiStyle, build_native_ui,
+    NativeUiScrollContainer, NativeUiShadow, NativeUiStyle, NativeUiWidget, build_native_ui,
     diagnose_native_ui_visual_support, dispatch_native_ui_actions,
-    install_native_ui_overlay_camera, map_ui_into_world, trace_native_ui_text_styles,
-    trace_native_ui_visual_effects, trace_ui_navigation,
+    install_native_ui_overlay_camera, map_ui_into_world, queue_native_ui_text_input_value,
+    trace_native_ui_text_styles, trace_native_ui_visual_effects, trace_ui_navigation,
 };
 
 mod support;
@@ -465,7 +465,116 @@ fn ui_should_dispatch_native_button_and_touch_actions() {
         vec![NativeUiActionEvent {
             action: "Jump".to_owned(),
             node: "jump".to_owned(),
+            value: None,
         }]
+    );
+}
+
+#[test]
+fn ui_should_preserve_text_input_value_events() {
+    let ui = UiIr {
+        fonts: Vec::new(),
+        focus_order: None,
+        input_actions: None,
+        root: UiNodeIr {
+            action: None,
+            accessibility_label: None,
+            anchor_id: None,
+            binding: None,
+            children: vec![UiNodeIr {
+                action: Some("SetPlayerName".to_owned()),
+                accessibility_label: None,
+                anchor_id: None,
+                binding: None,
+                children: Vec::new(),
+                disabled: None,
+                focusable: None,
+                id: "player-name".to_owned(),
+                image: None,
+                kind: "textInput".to_owned(),
+                minimap: None,
+                label: Some("Player name".to_owned()),
+                layout: None,
+                max: None,
+                min: None,
+                navigation: None,
+                orientation: None,
+                role: None,
+                spans: Vec::new(),
+                step: None,
+                src: None,
+                style: None,
+                text: Some("Hero".to_owned()),
+                value: None,
+                value_text: None,
+            }],
+            disabled: None,
+            focusable: None,
+            id: "hud".to_owned(),
+            image: None,
+            kind: "column".to_owned(),
+            minimap: None,
+            label: None,
+            layout: None,
+            max: None,
+            min: None,
+            navigation: None,
+            orientation: None,
+            role: None,
+            spans: Vec::new(),
+            step: None,
+            src: None,
+            text: None,
+            value: None,
+            value_text: None,
+            style: None,
+        },
+        safe_area: None,
+        schema: "threenative.ui".to_owned(),
+        version: "0.1.0".to_owned(),
+    };
+    let mut app = App::new();
+    app.init_resource::<NativeUiActionQueue>();
+
+    map_ui_into_world(app.world_mut(), &ui).expect("ui should map into world");
+    let entities_by_id = collect_ui_entities(app.world_mut());
+    let input = entities_by_id["player-name"];
+    let action = app
+        .world()
+        .get::<NativeUiAction>(input)
+        .expect("text input should carry action")
+        .clone();
+    let id = app
+        .world()
+        .get::<ThreeNativeId>(input)
+        .expect("text input should carry id")
+        .clone();
+    let widget = app
+        .world()
+        .get::<NativeUiWidget>(input)
+        .expect("text input should carry widget state");
+
+    assert_eq!(widget.kind, "textInput");
+    assert_eq!(widget.value_text.as_deref(), Some("Hero"));
+
+    let mut queue = app.world_mut().resource_mut::<NativeUiActionQueue>();
+    queue_native_ui_text_input_value(&mut queue, &id, &action, "He");
+    queue_native_ui_text_input_value(&mut queue, &id, &action, "Heroine");
+
+    assert_eq!(
+        queue.events,
+        vec![
+            NativeUiActionEvent {
+                action: "SetPlayerName".to_owned(),
+                node: "player-name".to_owned(),
+                value: Some("He".to_owned()),
+            },
+            NativeUiActionEvent {
+                action: "SetPlayerName".to_owned(),
+                node: "player-name".to_owned(),
+                value: Some("Heroine".to_owned()),
+            },
+        ]
     );
 }
 

@@ -462,6 +462,44 @@ select {
   font-size: 20px;
 }
 
+.tn-editor-gamepad-overlay {
+  position: absolute;
+  right: 20px;
+  bottom: 18px;
+  z-index: 2;
+  width: min(300px, calc(100% - 40px));
+  border: 1px solid rgba(88, 157, 205, 0.42);
+  border-radius: 6px;
+  padding: 9px;
+  background: rgba(8, 16, 25, 0.86);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.24);
+}
+
+.tn-editor-gamepad-viewer {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.tn-editor-gamepad-viewer__summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #80ddff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.tn-editor-gamepad-viewer__controls,
+.tn-editor-gamepad-viewer__required {
+  min-width: 0;
+  overflow: hidden;
+  color: #99a7b6;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .tn-editor-panel {
   min-width: 0;
   min-height: 0;

@@ -192,7 +192,10 @@ Layout should start with simple primitives:
 - z-index within UI
 
 Do not start with full CSS, arbitrary DOM, CSS selectors, arbitrary grid
-placement/named areas, or browser-specific events.
+placement/named areas, dense packing, browser-specific events, generic/system
+font family fallback, letter spacing, or OpenType font variations. The IR
+validator rejects those requests with stable diagnostics so runtimes do not
+silently diverge.
 
 ## State And Bindings
 

@@ -135,8 +135,12 @@ export interface IEditorGamepadViewerSnapshot {
     owner: string;
   }>;
   devices: Array<{
+    axes?: number;
+    buttons?: number;
     id: string;
-    status: "declared" | "unavailable";
+    index?: number;
+    mapping?: string;
+    status: "connected" | "declared" | "unavailable";
   }>;
   requiredControls: string[];
 }

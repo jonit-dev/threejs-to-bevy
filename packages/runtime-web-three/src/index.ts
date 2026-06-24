@@ -112,9 +112,11 @@ export {
 } from "./renderingResiduals.js";
 export {
   reportWebWindowCatalogPolicy,
+  reportWebDisabledEntityQueryParticipation,
   reportWebGeneratedAssetPolicy,
   traceWebQueryCombinations,
   traceWebTextInputEvents,
+  type IWebDisabledEntityQueryParticipationReport,
   type IWebGeneratedAssetPolicyReport,
   type IWebQueryCombinationObservation,
   type IWebTextInputEvent,

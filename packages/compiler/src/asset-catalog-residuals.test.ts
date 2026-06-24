@@ -24,3 +24,14 @@ test("should emit generated asset manifest entry when payload is bounded", () =>
     sourceMode: "bundle",
   });
 });
+
+test("should reject generated asset manifest entries without schema", () => {
+  assert.throws(
+    () => emitCatalogGeneratedAssetManifestEntry({
+      id: "generated.navmesh",
+      payload: { vertices: 12 },
+      schema: " ",
+    }),
+    /must declare a schema/,
+  );
+});

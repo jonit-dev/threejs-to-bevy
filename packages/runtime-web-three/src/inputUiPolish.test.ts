@@ -18,6 +18,13 @@ test("should trace input UI polish fixture affordances", async () => {
   assert.equal(report.ui.disabledUpdate[0]?.node, "ui.apply");
   assert.equal(report.ui.scroll.map((entry) => `${entry.node}:${entry.axis}`).join(","), "ui.controls:x,ui.settings:y");
   assert.equal(report.ui.focusNarration.map((entry) => entry.text).join(","), "Player name,Look sensitivity,Reset controls");
+  assert.deepEqual(report.ui.interactionCoverage.map((entry) => `${entry.kind}:${entry.evidence}`), [
+    "activation:ui.navigation.activate",
+    "focus:ui.navigation.focus",
+    "menuNavigation:ui.navigation.directional-menu",
+    "scroll:ui.scroll.trace",
+    "touchGamepad:input.touch-stream+gamepad-report",
+  ]);
   assert.equal(report.ui.virtualKeyboard.status, "diagnostic-only");
   assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_INPUT_UI_NATIVE_ITALIC_DIAGNOSTIC_ONLY"), true);
 });

@@ -931,7 +931,7 @@ export interface IUiNodeIr {
   focusable?: boolean;
   id: string;
   image?: IUiImageMetadataIr;
-  kind: "bar" | "button" | "column" | "contextMenu" | "image" | "minimap" | "row" | "scrollbar" | "slider" | "stack" | "text" | "touchControl";
+  kind: "bar" | "button" | "column" | "contextMenu" | "image" | "minimap" | "row" | "scrollbar" | "slider" | "stack" | "text" | "textInput" | "touchControl";
   minimap?: IUiMinimapMetadataIr;
   label?: string;
   layout?: IUiLayoutIr;

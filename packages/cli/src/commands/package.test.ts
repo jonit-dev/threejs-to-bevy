@@ -97,12 +97,22 @@ test("package should create desktop-web runtime package artifacts", async () => 
     assert.equal(payload.format, "installer");
     assert.equal(payload.bundlePath.endsWith("artifacts/webview/desktop-web/app/bundle"), true);
     assert.equal(payload.artifacts.runtimeExecutablePath.endsWith("artifacts/webview/desktop-web/threenative_webview_runtime"), true);
+    assert.equal(payload.artifacts.webviewInspectionPath.endsWith("artifacts/webview/desktop-web/webview.inspection.json"), true);
     assert.match(payload.artifacts.archivePath, /game-webview-[^-]+-[^-]+\.tar\.gz$/);
 
     const archiveListing = await execFileAsync("tar", ["-tzf", payload.artifacts.archivePath]);
     assert.match(archiveListing.stdout, /desktop-web\/threenative_webview_runtime/);
     assert.match(archiveListing.stdout, /desktop-web\/app\/index\.html/);
     assert.match(archiveListing.stdout, /desktop-web\/app\/bundle\/manifest\.json/);
+    assert.match(archiveListing.stdout, /desktop-web\/webview\.inspection\.json/);
+
+    const inspection = JSON.parse(await readFile(payload.artifacts.webviewInspectionPath, "utf8"));
+    assert.equal(inspection.schema, "threenative.package-webview-inspection");
+    assert.equal(inspection.code, "TN_PACKAGE_WEBVIEW_INSPECTION_READY");
+    assert.equal(inspection.host.embeddedWebview, false);
+    assert.equal(inspection.host.launcher, "local-static-server");
+    assert.equal(inspection.checks.some((check: { code: string; status: string }) => check.code === "TN_PACKAGE_WEBVIEW_HOST_MANUAL" && check.status === "manual"), true);
+    assert.match(inspection.manualChecks.join("\n"), /window\.__THREENATIVE_READY__/);
 
     const installDir = join(root, "installed-webview-game");
     await execFileAsync("sh", [payload.artifacts.installerPath, installDir]);
@@ -110,6 +120,7 @@ test("package should create desktop-web runtime package artifacts", async () => 
     assert.match(runner, /cd "\$HERE\/desktop-web"/);
     assert.match(runner, /exec \.\/threenative_webview_runtime "app"/);
     assert.equal(await readFile(join(installDir, "desktop-web", "app", "bundle", "manifest.json"), "utf8").then((value) => value.length > 0), true);
+    assert.equal(await readFile(join(installDir, "desktop-web", "webview.inspection.json"), "utf8").then((value) => value.includes("TN_PACKAGE_WEBVIEW_INSPECTION_READY")), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -124,8 +135,29 @@ test("package should reject mobile and online targets", async () => {
     const payload = JSON.parse(result.stdout);
 
     assert.equal(result.exitCode, 1);
-    assert.equal(payload.code, "TN_PACKAGE_FAILED");
+    assert.equal(payload.code, "TN_PACKAGE_TARGET_PROFILE_UNSUPPORTED");
+    assert.equal(payload.path, "target.profile.json/targets");
+    assert.equal(payload.target, "desktop");
     assert.match(payload.message, /Mobile and online/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("package should reject bundle target profile without desktop target", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-package-profile-"));
+  try {
+    await writeBundle(root, ["web"]);
+
+    const result = await packageCommand(["--bundle", "game.bundle", "--json"], root);
+    const payload = JSON.parse(result.stdout);
+
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.code, "TN_PACKAGE_TARGET_PROFILE_UNSUPPORTED");
+    assert.equal(payload.path, "target.profile.json/targets");
+    assert.equal(payload.target, "desktop");
+    assert.deepEqual(payload.value, ["web"]);
+    assert.match(payload.suggestion, /desktop/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

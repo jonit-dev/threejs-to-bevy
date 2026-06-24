@@ -13,6 +13,14 @@ export const devFixtureModel: IEditorShellModel = {
       severity: "info",
     },
   ],
+  gamepadViewer: {
+    controls: [
+      { control: "buttonSouth", kind: "button", owner: "Interact" },
+      { control: "leftStickX", kind: "axis", owner: "MoveX" },
+    ],
+    devices: [{ id: "declared-gamepad", status: "declared" }],
+    requiredControls: [],
+  },
   hierarchy: [
     {
       access: "sourcePersistable",

@@ -112,7 +112,7 @@ export const supportedMaterialAlphaModes = new Set(["blend", "mask", "opaque"]);
 export const supportedRendererAntialiasModes = new Set(["fxaa", "msaa2", "msaa4", "msaa8", "none", "smaa", "taa"]);
 export const supportedSceneActivationPolicies = new Set(["additive", "exclusive", "loading", "overlay", "persistent"]);
 export const supportedSceneLifecycleKinds = new Set(["credits", "cutscene", "level", "loading", "menu", "overlay", "system"]);
-export const supportedUiNodeTypes = new Set(["bar", "button", "column", "image", "row", "slider", "stack", "text"]);
+export const supportedUiNodeTypes = new Set(["bar", "button", "column", "image", "row", "slider", "stack", "text", "textInput"]);
 export const supportedUiTextAlignments = new Set(["center", "left", "right"]);
 export const supportedUiTextDecorations = new Set(["lineThrough", "none", "underline"]);
 export const supportedInputCaptureStates = new Set(["applied", "conflict-confirmation", "idle", "rejected", "reset-to-default", "waiting-for-input"]);
@@ -241,7 +241,7 @@ export interface ISceneUiNode {
   src?: string;
   style?: ISceneUiStyle;
   text?: string;
-  type?: "bar" | "button" | "column" | "image" | "row" | "slider" | "stack" | "text";
+  type?: "bar" | "button" | "column" | "image" | "row" | "slider" | "stack" | "text" | "textInput";
   value?: number;
 }
 

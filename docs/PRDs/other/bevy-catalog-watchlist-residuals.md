@@ -151,15 +151,16 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Verify baseline relevance for callback components, delayed commands,
-  query combinations, and entity disabling.
-- [ ] Add bounded callback component declarations only if callbacks can be named,
+- [x] Verify baseline relevance for delayed commands and query combinations.
+- [x] Verify baseline relevance for callback components.
+- [x] Verify baseline relevance for entity disabling.
+- [x] Keep bounded callback component declarations diagnostic-only unless callbacks can be named,
   declared, permissioned, and scheduled deterministically.
-- [ ] Promote delayed commands only as bounded timer/channel-backed scheduling,
+- [x] Promote delayed commands only as bounded timer/channel-backed scheduling,
   or reject arbitrary deferred closures with diagnostics.
-- [ ] Add query combination helpers with deterministic entity-id ordering and
+- [x] Add query combination helpers with deterministic entity-id ordering and
   pairwise iteration limits.
-- [ ] Define entity disabling as a portable ECS participation state distinct
+- [x] Define entity disabling as a portable ECS participation state distinct
   from renderer visibility, or reject it with a diagnostic that suggests tags or
   scene activation.
 
@@ -196,21 +197,24 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add editable text input widgets with deterministic value/action events.
-- [ ] Add IME composition reporting and diagnostics for unsupported targets.
-- [ ] Add UI viewport nodes and UI drag-and-drop node interactions only if
-  input routing can be deterministic across web and Bevy.
-- [ ] Add custom UI material declarations as diagnostic-only unless bounded
+- [x] Add editable text input widgets with deterministic value/action events.
+- [x] Add IME composition diagnostics for unsupported targets.
+- [x] Keep UI viewport nodes and UI drag-and-drop node interactions
+  diagnostic-only until input routing is deterministic across web and Bevy.
+- [x] Add custom UI material declarations as diagnostic-only unless bounded
   presets can render in both runtimes.
-- [ ] Add window resize, scale-factor, custom cursor, low-power/present-mode,
-  clear-color, and multi-window diagnostics or bounded reports.
+- [x] Add window resize and scale-factor bounded reports for web and Bevy.
+- [x] Add custom cursor, low-power/present-mode, clear-color, and multi-window
+  diagnostics or bounded reports.
 
 **Tests Required:**
 
 | Test File | Test Name | Assertion |
 | --- | --- | --- |
+| `packages/ir/src/ui.test.ts` | `ui should accept text input widgets with deterministic value actions` | IR accepts focusable text input widgets with actions. |
+| `packages/runtime-web-three/src/ui/domOverlay.test.ts` | `ui dom overlay should dispatch text input values in order` | DOM overlay preserves input value/action order. |
+| `runtime-bevy/crates/threenative_runtime/tests/ui.rs` | `ui_should_preserve_text_input_value_events` | Native queue preserves text input value/action order. |
 | `packages/ir/src/ui-window-catalog.test.ts` | `should reject IME behavior when target lacks text composition support` | Diagnostic includes target profile. |
-| `packages/runtime-web-three/src/ui-window-catalog.test.ts` | `should emit text input value events in order` | Web report preserves value/action order. |
 | `runtime-bevy/tests/ui_window_catalog.rs` | `should report window resize and scale factor changes` | Native report includes size and scale factor. |
 
 **Verification Plan:**
@@ -239,15 +243,19 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Verify baseline relevance for asset saving with subassets, generated
-  runtime assets, and glTF extension processing.
-- [ ] Add runtime asset saving/export only as a manifest-governed, bundle-local
-  artifact policy; reject arbitrary filesystem writes.
-- [ ] Add generated runtime asset persistence only for bounded asset types with
+- [x] Verify baseline relevance for asset saving with subassets and glTF
+  extension processing.
+- [x] Verify baseline relevance for generated runtime assets.
+- [x] Keep runtime asset saving/export diagnostic-only until it can be a
+  manifest-governed, bundle-local artifact policy; reject arbitrary filesystem
+  writes.
+- [x] Add generated runtime asset persistence only for bounded asset types with
   schema-backed payload validation.
-- [ ] Add glTF extension processing policy for known metadata transforms such as
-  AnimationGraph import, or reject executable/custom processors.
-- [ ] Preserve target-profile diagnostics for offline, web, native, and package
+- [x] Add glTF extension processing policy that rejects executable/custom
+  processors with stable diagnostics.
+- [x] Add known metadata-transform import policy, such as AnimationGraph import,
+  if a bounded cross-runtime promotion slice is defined.
+- [x] Preserve target-profile diagnostics for offline, web, native, and package
   outputs.
 
 **Tests Required:**
@@ -255,8 +263,16 @@ sequenceDiagram
 | Test File | Test Name | Assertion |
 | --- | --- | --- |
 | `packages/ir/src/asset-catalog-residuals.test.ts` | `should reject asset export outside declared artifact roots` | Diagnostic includes rejected path. |
+| `packages/ir/src/asset-catalog-residuals.test.ts` | `should allow known glTF metadata transform imports` | AnimationGraph metadata transforms are accepted. |
+| `packages/ir/src/asset-catalog-residuals.test.ts` | `should reject unknown glTF metadata transform imports` | Unknown metadata transforms produce a stable diagnostic. |
+| `packages/ir/src/asset-catalog-residuals.test.ts` | `should preserve target profile diagnostics for output targets` | Web/package output mismatches preserve path, target, and value. |
 | `packages/compiler/src/asset-catalog-residuals.test.ts` | `should emit generated asset manifest entry when payload is bounded` | Manifest includes generated asset id and schema. |
+| `packages/runtime-web-three/src/ecs-catalog-residuals.test.ts` | `should report known glTF metadata transform policy` | Web report records the promoted metadata transform policy. |
+| `packages/runtime-web-three/src/ecs-catalog-residuals.test.ts` | `should report target profile output diagnostics` | Web report preserves output target diagnostics. |
+| `packages/cli/src/commands/package.test.ts` | `package should reject bundle target profile without desktop target` | Package command emits stable target-profile diagnostic code. |
 | `runtime-bevy/tests/asset_catalog_residuals.rs` | `should report unsupported glTF executable extension processor` | Native diagnostic code is stable. |
+| `runtime-bevy/crates/threenative_runtime/tests/ecs_catalog_residuals.rs` | `should_report_known_gltf_metadata_transform_policy` | Native report records the promoted metadata transform policy. |
+| `runtime-bevy/crates/threenative_runtime/tests/ecs_catalog_residuals.rs` | `should_report_target_profile_output_diagnostics` | Native report preserves output target diagnostics. |
 
 **Verification Plan:**
 
@@ -275,12 +291,12 @@ sequenceDiagram
 
 ## 5. Acceptance Criteria
 
-- [ ] Every newly added Bevy catalog watchlist row has baseline triage,
+- [x] Every newly added Bevy catalog watchlist row has baseline triage,
   portable promotion criteria, or stable diagnostics.
-- [ ] No row is marked complete without SDK/IR/compiler/web/Bevy evidence where
+- [x] No row is marked complete without SDK/IR/compiler/web/Bevy evidence where
   runtime support is claimed.
-- [ ] Unsupported behavior is rejected with stable diagnostic codes and
+- [x] Unsupported behavior is rejected with stable diagnostic codes and
   suggested portable alternatives.
-- [ ] `docs/STATUS.md` and `docs/bevy-feature-parity.md` are updated in the same
+- [x] `docs/STATUS.md` and `docs/bevy-feature-parity.md` are updated in the same
   implementation change that promotes or diagnoses a row.
-- [ ] Focused gates or conformance fixtures protect every promoted behavior.
+- [x] Focused gates or conformance fixtures protect every promoted behavior.

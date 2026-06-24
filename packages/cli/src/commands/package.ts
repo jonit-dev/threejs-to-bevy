@@ -17,6 +17,7 @@ export interface IPackageReport {
     packagedBundlePath: string;
     runtimeArgsPath: string;
     runtimeExecutablePath: string;
+    webviewInspectionPath?: string;
   };
   bundlePath: string;
   code: "TN_PACKAGE_OK";
@@ -27,6 +28,21 @@ export interface IPackageReport {
   schema: "threenative.package-report";
   sourceBundlePath: string;
   runtime: "bevy" | "webview";
+  target: "desktop";
+  version: "0.1.0";
+}
+
+export interface IWebviewInspectionReport {
+  checks: Array<{ code: string; path?: string; status: "manual" | "pass"; summary: string }>;
+  code: "TN_PACKAGE_WEBVIEW_INSPECTION_READY";
+  host: {
+    embeddedWebview: false;
+    launcher: "local-static-server";
+    opener: "platform-browser-or-webview-handler";
+  };
+  manualChecks: string[];
+  runtime: "webview";
+  schema: "threenative.package-webview-inspection";
   target: "desktop";
   version: "0.1.0";
 }
@@ -45,6 +61,22 @@ export type DesktopRuntimeBuilder = (options: { outputPath: string }) => Promise
 
 export interface IPackageCommandOptions {
   runtimeBuilder?: DesktopRuntimeBuilder;
+}
+
+class PackageDiagnosticError extends Error {
+  constructor(
+    readonly diagnostic: {
+      code: string;
+      message: string;
+      path?: string;
+      severity: "error";
+      suggestion?: string;
+      target?: string;
+      value?: unknown;
+    },
+  ) {
+    super(diagnostic.message);
+  }
 }
 
 export async function packageCommand(
@@ -142,6 +174,7 @@ export async function packageCommand(
     const manifestPath = resolve(packageRoot, "package.manifest.json");
     const runtimeArgsPath = resolve(packageRoot, "runtime.args.json");
     const packageReportPath = resolve(packageRoot, "package.report.json");
+    const webviewInspectionPath = runtime === "webview" ? resolve(packageRoot, "webview.inspection.json") : undefined;
     await chmod(builtRuntimePath, 0o755);
     await writeFile(
       manifestPath,
@@ -151,6 +184,7 @@ export async function packageCommand(
             packagedBundlePath,
             runtimeArgsPath,
             runtimeExecutablePath: builtRuntimePath,
+            webviewInspectionPath,
           },
           bundle: runtime === "webview" ? "app/bundle" : basename(packagedBundlePath),
           code: "TN_PACKAGE_MANIFEST_OK",
@@ -180,13 +214,35 @@ export async function packageCommand(
       )}\n`,
     );
     const archivePath = format === "archive" || format === "installer" ? resolve(artifactRoot, `${packageSlug(bundlePath)}-${runtime}-${platformTag()}.tar.gz`) : undefined;
+    if (webviewInspectionPath !== undefined) {
+      await writeWebviewInspectionReport({
+        archivePath,
+        installerPath: undefined,
+        manifestPath,
+        packagedBundlePath,
+        runtimeArgsPath,
+        runtimeExecutablePath: builtRuntimePath,
+        webviewInspectionPath,
+      });
+    }
     if (archivePath !== undefined) {
       await createTarGz({ archivePath, cwd: artifactRoot, entry: packageDirName });
     }
     const installerPath = format === "installer" ? await createInstallerScript({ archivePath: archivePath!, bundleName: basename(bundlePath), outputDir: artifactRoot, packageDirName, runtimeExecutableName: basename(builtRuntimePath) }) : undefined;
+    if (webviewInspectionPath !== undefined) {
+      await writeWebviewInspectionReport({
+        archivePath,
+        installerPath,
+        manifestPath,
+        packagedBundlePath,
+        runtimeArgsPath,
+        runtimeExecutablePath: builtRuntimePath,
+        webviewInspectionPath,
+      });
+    }
     const report: IPackageReport = {
       artifactDir: packageRoot,
-      artifacts: { archivePath, installerPath, manifestPath, packageReportPath, packagedBundlePath, runtimeArgsPath, runtimeExecutablePath: builtRuntimePath },
+      artifacts: { archivePath, installerPath, manifestPath, packageReportPath, packagedBundlePath, runtimeArgsPath, runtimeExecutablePath: builtRuntimePath, webviewInspectionPath },
       bundlePath: packagedBundlePath,
       code: "TN_PACKAGE_OK",
       files,
@@ -205,9 +261,78 @@ export async function packageCommand(
       stdout: json ? `${JSON.stringify(report, null, 2)}\n` : packageMessage(report),
     };
   } catch (error) {
+    if (error instanceof PackageDiagnosticError) {
+      return diagnosticResult(error.diagnostic, { exitCode: 1, json, stderr: true });
+    }
     const message = error instanceof Error ? error.message : String(error);
     return diagnosticResult({ code: "TN_PACKAGE_FAILED", message, severity: "error" }, { exitCode: 1, json, stderr: true });
   }
+}
+
+async function writeWebviewInspectionReport(options: {
+  archivePath: string | undefined;
+  installerPath: string | undefined;
+  manifestPath: string;
+  packagedBundlePath: string;
+  runtimeArgsPath: string;
+  runtimeExecutablePath: string;
+  webviewInspectionPath: string;
+}): Promise<void> {
+  const report: IWebviewInspectionReport = {
+    checks: [
+      {
+        code: "TN_PACKAGE_WEBVIEW_BUNDLE_COPIED",
+        path: options.packagedBundlePath,
+        status: "pass",
+        summary: "Bundle files were copied into the desktop-web app/bundle directory.",
+      },
+      {
+        code: "TN_PACKAGE_WEBVIEW_RUNTIME_LAUNCHER",
+        path: options.runtimeExecutablePath,
+        status: "pass",
+        summary: "The desktop-web launcher was generated and marked executable by the package command.",
+      },
+      {
+        code: "TN_PACKAGE_WEBVIEW_RUNTIME_ARGS",
+        path: options.runtimeArgsPath,
+        status: "pass",
+        summary: "Runtime arguments launch the packaged app directory.",
+      },
+      {
+        code: "TN_PACKAGE_WEBVIEW_ARCHIVE",
+        path: options.archivePath,
+        status: options.archivePath === undefined ? "manual" : "pass",
+        summary: options.archivePath === undefined ? "Portable package output is available; archive inspection applies only to archive or installer formats." : "The archive includes the desktop-web launcher and app files.",
+      },
+      {
+        code: "TN_PACKAGE_WEBVIEW_INSTALLER",
+        path: options.installerPath,
+        status: options.installerPath === undefined ? "manual" : "pass",
+        summary: options.installerPath === undefined ? "Installer inspection applies only to installer format." : "The installer writes a run.sh wrapper that launches the desktop-web package.",
+      },
+      {
+        code: "TN_PACKAGE_WEBVIEW_HOST_MANUAL",
+        status: "manual",
+        summary: "The current host opens a localhost URL with the platform browser/webview handler; embedded Wry/Tauri behavior is not claimed by this artifact.",
+      },
+    ],
+    code: "TN_PACKAGE_WEBVIEW_INSPECTION_READY",
+    host: {
+      embeddedWebview: false,
+      launcher: "local-static-server",
+      opener: "platform-browser-or-webview-handler",
+    },
+    manualChecks: [
+      "Run the installed package with THREENATIVE_WEBVIEW_PORT set to a known local port.",
+      "Open the reported localhost URL and inspect window.__THREENATIVE_READY__.",
+      "Confirm ok is true, no error diagnostics are present, a canvas exists, and /bundle assets load with HTTP 200.",
+    ],
+    runtime: "webview",
+    schema: "threenative.package-webview-inspection",
+    target: "desktop",
+    version: "0.1.0",
+  };
+  await writeFile(options.webviewInspectionPath, `${JSON.stringify(report, null, 2)}\n`);
 }
 
 async function packagePreflightCommand(options: { bundle: string | undefined; cwd: string; json: boolean; target: string }): Promise<ICommandResult> {
@@ -300,10 +425,26 @@ async function assertDesktopTarget(bundlePath: string): Promise<void> {
   const profile = JSON.parse(await readFile(resolve(bundlePath, targetProfilePath), "utf8")) as { targets?: unknown };
   const targets = Array.isArray(profile.targets) ? profile.targets : [];
   if (!targets.includes("desktop")) {
-    throw new Error("Bundle target profile must include 'desktop' for V7 desktop packaging.");
+    throw new PackageDiagnosticError({
+      code: "TN_PACKAGE_TARGET_PROFILE_UNSUPPORTED",
+      message: "Bundle target profile must include 'desktop' for desktop packaging.",
+      path: `${targetProfilePath}/targets`,
+      severity: "error",
+      suggestion: "Add 'desktop' to target.profile.json targets before running 'tn package --target desktop'.",
+      target: "desktop",
+      value: targets,
+    });
   }
   if (targets.some((target) => target === "mobile" || target === "ios" || target === "android" || target === "online")) {
-    throw new Error("Mobile and online publishing targets are outside V7 desktop packaging scope.");
+    throw new PackageDiagnosticError({
+      code: "TN_PACKAGE_TARGET_PROFILE_UNSUPPORTED",
+      message: "Mobile and online publishing targets are outside desktop packaging scope.",
+      path: `${targetProfilePath}/targets`,
+      severity: "error",
+      suggestion: "Use package preflight for mobile targets or remove mobile/online targets from the desktop package profile.",
+      target: "desktop",
+      value: targets,
+    });
   }
 }
 

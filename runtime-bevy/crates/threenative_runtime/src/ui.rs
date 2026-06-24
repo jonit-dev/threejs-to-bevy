@@ -27,6 +27,7 @@ pub struct NativeUiAction(pub String);
 pub struct NativeUiActionEvent {
     pub action: String,
     pub node: String,
+    pub value: Option<String>,
 }
 
 #[derive(Debug, Default, Resource)]
@@ -426,6 +427,7 @@ fn build_node(node: &UiNodeIr, path: &str) -> Result<NativeUiNode, UiDiagnostic>
             | "slider"
             | "stack"
             | "text"
+            | "textInput"
             | "touchControl"
     ) {
         return Err(UiDiagnostic {
@@ -749,7 +751,7 @@ fn find_node<'a>(nodes: &[&'a UiNodeIr], id: &str) -> Option<&'a UiNodeIr> {
 }
 
 fn is_focusable(node: &UiNodeIr) -> bool {
-    node.focusable == Some(true) || matches!(node.kind.as_str(), "button" | "touchControl")
+    node.focusable == Some(true) || matches!(node.kind.as_str(), "button" | "textInput" | "touchControl")
 }
 
 fn navigation_target(node: &UiNodeIr, input: &str) -> Option<String> {
@@ -790,7 +792,7 @@ fn spawn_node(
                 fonts,
             ))
             .id(),
-        "button" | "touchControl" | "slider" | "scrollbar" => world
+        "button" | "textInput" | "touchControl" | "slider" | "scrollbar" => world
             .spawn(ButtonBundle {
                 style: leaf_style(node),
                 background_color: background_color(node, (0.15, 0.17, 0.2, 1.0)),
@@ -874,6 +876,17 @@ fn spawn_node(
                 step: node.step,
                 value: node.value.unwrap_or(node.min.unwrap_or(0.0)),
                 value_text: node.value_text.clone(),
+            });
+        }
+        if node.kind == "textInput" {
+            entity_mut.insert(NativeUiWidget {
+                kind: node.kind.clone(),
+                max: 0.0,
+                min: 0.0,
+                orientation: "horizontal".to_owned(),
+                step: None,
+                value: 0.0,
+                value_text: node.text.clone().or_else(|| node.value_text.clone()),
             });
         }
         if let Some(z_index) = node.layout.as_ref().and_then(|layout| layout.z_index) {
@@ -1039,6 +1052,7 @@ fn accessibility_role(node: &UiNodeIr) -> Option<Role> {
         None => match node.kind.as_str() {
             "bar" => Some(Role::ProgressIndicator),
             "button" | "touchControl" => Some(Role::Button),
+            "textInput" => Some(Role::TextInput),
             "slider" => Some(Role::Slider),
             "scrollbar" => Some(Role::ProgressIndicator),
             "image" => Some(Role::Image),
@@ -1206,9 +1220,23 @@ pub fn dispatch_native_ui_actions(
             queue.events.push(NativeUiActionEvent {
                 action: action.0.clone(),
                 node: id.0.clone(),
+                value: None,
             });
         }
     }
+}
+
+pub fn queue_native_ui_text_input_value(
+    queue: &mut NativeUiActionQueue,
+    id: &ThreeNativeId,
+    action: &NativeUiAction,
+    value: impl Into<String>,
+) {
+    queue.events.push(NativeUiActionEvent {
+        action: action.0.clone(),
+        node: id.0.clone(),
+        value: Some(value.into()),
+    });
 }
 
 pub fn sync_native_minimap_markers(
@@ -1304,7 +1332,7 @@ fn spawn_runtime_children(
     node: &UiNodeIr,
     fonts: &[UiFontAssetIr],
 ) {
-    if node.kind == "button" || node.kind == "touchControl" {
+    if node.kind == "button" || node.kind == "textInput" || node.kind == "touchControl" {
         if let Some(label) = node.label.as_ref() {
             let label = world
                 .spawn(text_bundle(world, label.clone(), node, fonts))

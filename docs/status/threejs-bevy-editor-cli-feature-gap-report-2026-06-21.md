@@ -50,16 +50,20 @@ Date: 2026-06-21
   `tn ui set-style <ui-doc-id> <node-id> ...`, registry-backed
   `ui.add_node` and `ui.set_style`, validation for promoted widget/style fields,
   and editor rows for UI node type, label, color, background, and font size.
-  Editable text input, IME, virtual keyboard, world/viewport UI, arbitrary grid
-  placement, drag/drop, custom UI materials, and broad touch/gamepad UI remain
-  separate residual gaps.
+  Broad touch/gamepad UI remains a separate residual gap; advanced typography
+  and grid layout, IME-on-unsupported-target, virtual keyboard,
+  world/viewport UI, and UI drag/drop routing are now diagnostic boundaries.
+- ✅ 2026-06-24: Retained `textInput` UI nodes are promoted through IR
+  validation, source/CLI authoring, compiler capability tags, web DOM overlay
+  value events, Bevy widget state, and deterministic native value/action event
+  queueing. IME composition remains a separate unsupported-target diagnostic.
 - ✅ 2026-06-21: System source mutation now has
   `tn system set-metadata <system-id>` plus registry-backed
   `system.set_metadata`, source validation/import for access lists, ordering,
   queries, service declarations, and command declarations, and structured
   `.systems.json` lowering into `systems.ir.json`. Callback components/callable
-  handles and delayed commands beyond bounded timers remain residual runtime
-  gaps.
+  handles and delayed commands beyond bounded timers are now diagnostic-only
+  boundaries.
 - ✅ 2026-06-21: Tags and group containers now have typed scene source
   operations: `tn scene add-tag <scene-id> <entity-id> <tag>` writes zero-field
   ECS marker components, and `tn scene add-group <scene-id> <group-id>` writes
@@ -146,6 +150,99 @@ Date: 2026-06-21
   registry-backed scene operations for `StylizedNature`, `RippleWater`, and
   `StylizedSparkles`, with matching web and Bevy runtime mapping for the
   promoted example scene.
+- ✅ 2026-06-24: Connected-device gamepad inspection is now editor-visible:
+  the shared `threenative.editor-tools` gamepad viewer snapshot accepts live
+  connected device metadata, the editor shell polls `navigator.getGamepads()`
+  through the Zustand session store, and the UI/status bar reports connected
+  device id, mapping, button count, axis count, and declared input controls.
+- ✅ 2026-06-24: Window resize and scale-factor observations are now split
+  from diagnostic-only host window policy. The Bevy catalog residual registry
+  has a promoted `window.resize-scale` row backed by web and Bevy resize/scale
+  reports, while cursor image/animation, low-power present/background policy,
+  runtime clear-color updates, and multi-window remain explicit diagnostics.
+- ✅ 2026-06-24: glTF extension processing policy is now classified as a
+  stable diagnostic boundary for executable/custom processors, with a bounded
+  known metadata transform path for `AnimationGraph` import metadata. The IR
+  Bevy catalog residual row `assets.gltf-extension-processing` is
+  diagnostic-only for unsupported processors/transforms with
+  `TN_CATALOG_GLTF_EXTENSION_PROCESSOR_UNSUPPORTED` and
+  `TN_CATALOG_GLTF_METADATA_TRANSFORM_UNSUPPORTED`, while web and Bevy reports
+  preserve the promoted metadata-transform policy shape.
+- ✅ 2026-06-24: Target-profile diagnostics now have an explicit catalog row
+  for web, offline, native, and package outputs. IR, web, and Bevy reports use
+  `TN_CATALOG_TARGET_PROFILE_OUTPUT_UNSUPPORTED` with output target, path, and
+  authored target value preserved; `tn package` now reports
+  `TN_PACKAGE_TARGET_PROFILE_UNSUPPORTED` for bundle profiles that cannot
+  produce desktop packages.
+- ✅ 2026-06-24: ECS query-combination/pairwise iteration semantics now have a
+  promoted deterministic residual row. Web and Bevy reports sort entity ids and
+  enforce explicit pairwise iteration limits, and the catalog row now carries
+  both `web.query-combination-order` and `bevy.query-combination-order`
+  evidence anchors.
+- ✅ 2026-06-24: Entity disabling/suspended ECS participation now has a
+  promoted portable participation-state row. Web and Bevy reports distinguish
+  query participation from renderer visibility, while raw Bevy `Disabled`
+  semantics remain rejected with `TN_CATALOG_ECS_ENTITY_DISABLE_UNSUPPORTED`.
+- ✅ 2026-06-24: Generated runtime asset persistence now has a promoted
+  bundle-artifact policy row. The compiler emits schema-backed generated asset
+  manifest entries under `artifacts/generated/`, and web/Bevy runtime reports
+  preserve the generated asset id, schema, and bundle-local artifact path.
+- ✅ 2026-06-24: Custom UI material/shader declarations now have a stable
+  diagnostic-only boundary. The residual catalog rejects custom UI shaders with
+  `TN_CATALOG_UI_CUSTOM_MATERIAL_UNSUPPORTED` until bounded presets can render
+  in both runtimes.
+- ✅ 2026-06-24: Cursor image/animation, power/background throttling,
+  runtime clear-color mutation, and multi-window runtime policy are now stable
+  diagnostic-only boundaries. The residual catalog rejects these portable
+  window-policy requests with `TN_CATALOG_WINDOW_CURSOR_UNSUPPORTED`,
+  `TN_CATALOG_WINDOW_POWER_POLICY_UNSUPPORTED`,
+  `TN_CATALOG_WINDOW_CLEAR_COLOR_RUNTIME_UNSUPPORTED`, and
+  `TN_CATALOG_WINDOW_MULTI_WINDOW_UNSUPPORTED`.
+- ✅ 2026-06-24: Advanced renderer runtime requests for auto exposure,
+  volumetrics, motion blur/vectors, screen-space reflections, decals, deferred
+  rendering, virtual geometry/meshlets, and custom post passes are now locked as
+  diagnostic-only boundaries. IR validation rejects each field with
+  `TN_IR_RENDERER_ADVANCED_FEATURE_UNSUPPORTED`, and the rendering residual
+  gate remains the focused evidence path for these deferred renderer rows.
+- ✅ 2026-06-24: Advanced physics residuals are reconciled as bounded or
+  deferred boundaries. IR validation rejects unbounded mesh collider behavior,
+  unsupported solver/constraint fields, and unsupported vehicle-style joint
+  kinds with stable diagnostics, while the animation/physics residual gate keeps
+  vehicles, soft bodies, and ragdolls listed as deferred rather than promoted
+  runtime parity.
+- ✅ 2026-06-24: Animation retargeting, IK, and arbitrary backend blend trees
+  are now reconciled as diagnostic-only boundaries. SDK authoring rejects
+  `ik`, `retargeting`, backend `blendGraph`, state-machine, and engine
+  controller options, while IR validation keeps unsupported animation fields
+  behind stable `TN_IR_*_UNSUPPORTED` diagnostics and the bounded
+  `animationGraph` path remains the promoted alternative.
+- ✅ 2026-06-24: Cloud/account-bound saves, custom audio decoders, and
+  streaming/network audio are now reconciled as deferred or diagnostic-only
+  boundaries. Persistence reload evidence keeps cloud saves and account-bound
+  storage out of portable local data, while audio validation and production
+  hardening reject custom decoder/plugin fields and network/streaming audio
+  with stable diagnostics.
+- ✅ 2026-06-24: UI typography and advanced grid layout residuals are now
+  explicit diagnostic-only boundaries. IR validation rejects generic/system
+  font fallback, letter spacing, OpenType variation/stretch fields, arbitrary
+  grid placement, named grid areas, and dense packing with stable
+  `TN_IR_UI_*` diagnostics while preserving the promoted declared-font and
+  repeat-count grid subsets.
+- ✅ 2026-06-24: Richer touch/gamepad gesture authoring beyond the promoted
+  tap/swipe/pinch reports is now an explicit diagnostic-only boundary. IR
+  validation rejects top-level gesture recognizer declarations and binding
+  long-press, rotate, chord, combo, hold, double-tap, or sequence options with
+  `TN_IR_INPUT_GESTURE_UNSUPPORTED`.
+- ✅ 2026-06-24: Broad gamepad/touch UI coverage now has focused web/Bevy
+  fixture evidence. The input/UI polish reports expose matching
+  `interactionCoverage` rows for focus, activation, directional menu
+  navigation, scroll, and combined touch-stream/gamepad-report coverage.
+- ✅ 2026-06-24: Advanced material-depth and area-light residuals are now
+  explicit diagnostic-only boundaries. IR validation rejects spherical/area
+  lights, lightmap/mixed-lighting fields, parallax/depth maps, anisotropy,
+  specular tint/color, sheen, and iridescence with stable
+  `TN_IR_LIGHT_*`/`TN_IR_MATERIAL_*` diagnostics, while bounded atmosphere/fog
+  profiles remain the promoted atmospheric path.
 
 ## Final Status for 2026-06-22
 
@@ -220,18 +317,18 @@ IR/runtime surfaces, but only some have typed editor/CLI helpers.
 | ✅ Materials and textures | Broad IR/runtime support for PBR fields and texture slots, including WebP texture asset format support | Broad promoted support, including WebP texture loading through the native asset server | Partial | `material create`, `material set` with promoted PBR/texture flags | EDITOR | CLI/editor now cover promoted texture slots, alpha, emissive, clearcoat, and transmission fields; WebP is a supported texture asset format, while sampler/import policy and broader material inspector UX remain partial. |
 | ✅ Cameras and views | Broad camera IR/runtime support | Broad promoted support | Partial | `scene set-camera`, `scene add-component ... camera`, registry `scene.set_camera_component` | EDITOR | Typed source/CLI camera operations now persist promoted projection/frustum fields (`fovY`, `near`, `far`, `size`) and structured scene builds lower them into IR `Camera` components; multi-view ordering, render targets, helpers, and richer editor controls remain residual. |
 | ✅ Lights and shadows | Broad IR/runtime support for ambient/directional/point/spot and shadow metadata | Broad promoted support | Partial via default scene/editor UI | `tn scene add-component <scene> <entity> light ...`, registry `scene.set_light`; `tn environment set-light-probe` | EDITOR | Typed light command and editor rows now cover kind, intensity, color, range, angle, shadowBias, and shadowNormalBias; environment light probes have JSON-backed source/editor/CLI mutation, while broader lighting UX remains partial. |
-| ✅ Physics: rigid bodies, colliders, joints | Broad IR/runtime support for rigid bodies, colliders, sensors, character traces, joints metadata | Broad promoted support with residual limits | Partial | `tn scene add-component <scene> <entity> rigid-body|collider|character-controller ...`, generic `set-component` | EDITOR, WEB-BEVY | Typed rigid body/collider/character-controller commands exist; `PhysicsJoint` and remaining runtime parity gaps include full constraints, arbitrary triangle narrow phase, vehicle drivetrain, soft bodies/ragdolls. |
+| ✅ Physics: rigid bodies, colliders, joints | Broad IR/runtime support for rigid bodies, colliders, sensors, character traces, joints metadata | Broad promoted support with residual limits | Partial | `tn scene add-component <scene> <entity> rigid-body|collider|character-controller ...`, generic `set-component` | EDITOR, WEB-BEVY | Typed rigid body/collider/character-controller commands exist; bounded dynamic mesh collider and hinge/slider/suspension metadata is promoted, while full constraints, arbitrary triangle narrow phase, vehicle drivetrain, soft bodies/ragdolls remain deferred or diagnostic-only boundaries. |
 | ✅ Character controller and navigation | IR/runtime support for character movement, pathfinding, dynamic navmesh, steering | Promoted for current scope | Partial | `tn scene add-component <scene> <entity> character-controller ...` plus scripts/services | EDITOR | Typed character-controller command exists; broader nav setup commands remain partial. |
 | ✅ Input maps | Runtime supports keyboard/mouse/gamepad/touch snapshots and rebinding metadata | Promoted for current scope | Partial | `tn input add-action <input-doc-id> <action-id> --keys ...`; `tn input add-axis <input-doc-id> <axis-id> --negative-keys ... --positive-keys ...`; `tn input set-controls`; `tn input set-override` | EDITOR | Keyboard actions, axes, controls-settings rows, and persisted binding overrides now have source/CLI validation and bundle lowering; touch/gamepad gesture command breadth remains a gap. |
-| ✅ UI tree and widgets | Broad retained UI IR/runtime support | Broad promoted Bevy UI support | Partial | `ui create`, `ui add-text`, `ui add-node`, `ui set-layout`, `ui set-style`, `ui bind`, plus scene UI helpers | EDITOR, WEB-BEVY | CLI/editor now cover promoted retained node type/label/style fields; editable text, IME, virtual keyboard, world/viewport UI, arbitrary grid placement, drag/drop UI nodes remain gaps. |
-| ✅ Audio | Broad audio IR/runtime services and Bevy/web playback support | Promoted for current scope | Partial source discovery/validation | `tn audio create`, `tn audio add-sound` | EDITOR | Audio source mutation exists for documents and sound declarations. Custom decoder, streaming/network audio, and broader editor controls remain deferred. |
-| ✅ Assets and glTF | Bundle-local assets, GLB/GLTF, dependency bundling, inspection, hot reload | Promoted for current scope | Partial | `tn asset add`, `tn asset inspect`, `tn model-test` | EDITOR | Durable asset catalog source mutation exists for id/type/path declarations, and supported standalone source/SDK asset declarations now emit into `assets.manifest.json`. Import settings, custom/generated mesh asset source, runtime asset saving/export, and generated runtime asset persistence remain gaps. |
+| ✅ UI tree and widgets | Broad retained UI IR/runtime support | Broad promoted Bevy UI support | Partial | `ui create`, `ui add-text`, `ui add-node`, `ui set-layout`, `ui set-style`, `ui bind`, plus scene UI helpers | EDITOR, WEB-BEVY | CLI/editor now cover promoted retained node type/label/style fields and editable text input widgets; focused touch/gamepad UI coverage is backed by input/UI polish reports, while advanced typography/grid layout, IME-on-unsupported-target, virtual keyboard, world/viewport UI, and drag/drop routing are diagnostic boundaries. |
+| ✅ Audio | Broad audio IR/runtime services and Bevy/web playback support | Promoted for current scope | Partial source discovery/validation | `tn audio create`, `tn audio add-sound` | EDITOR | Audio source mutation exists for documents and sound declarations. Custom decoders and streaming/network audio are diagnostic-only boundaries; broader editor controls remain deferred. |
+| ✅ Assets and glTF | Bundle-local assets, GLB/GLTF, dependency bundling, inspection, hot reload | Promoted for current scope | Partial | `tn asset add`, `tn asset inspect`, `tn model-test` | EDITOR | Durable asset catalog source mutation exists for id/type/path declarations, and supported standalone source/SDK asset declarations now emit into `assets.manifest.json`. Generated runtime assets now have a schema-backed bundle-artifact policy; import settings, custom/generated mesh asset source, and runtime asset saving/export remain gaps. |
 | ✅ Environment scene data | Environment IR supports atmosphere, terrain, path, skybox, environment maps, light probes, LOD, walkability | Promoted for selected runtime slices | Partial | `environment create`, `environment set-skybox`, `environment set-map`, `environment set-terrain`, `environment set-path`, `environment set-walkability`, `environment set-light-probe`, `environment set-source-asset-lod` | SOURCE, EDITOR | CLI/editor now cover promoted environment doc creation plus skybox, environment map, terrain, path, walkability, light-probe, and source-asset LOD fields. |
-| ✅ Animation, particles, and authored stylized effects | Broad animation metadata/playback/services, rendered particles, and source-authored stylized nature/ripple/sparkle components | Promoted for current stylized component scope | Partial through assets/scripts and registry-backed scene operations | `tn animation add-clip`, `tn animation graph add-state`, `tn particle add-emitter`; registry `scene.set_stylized_nature`, `scene.set_ripple_water`, `scene.set_stylized_sparkles` | EDITOR, WEB-BEVY | Source asset docs now carry promoted model clip, graph-state, and bounded particle emitter metadata that lowers into `assets.manifest.json`; SDK helpers and shared registry operations cover the stylized nature example components across web and Bevy. Retargeting/IK, arbitrary blend trees, and broader editor controls remain open. |
-| ✅ Systems and scripts | Portable system metadata, script refs, effect validation | Web/Bevy host parity for promoted services | Partial | `system create`, `system attach-script`, `system set-metadata`, `scene attach-script` | EDITOR | Structured systems docs now persist/import/lower schedules, access lists, ordering, query metadata, service declarations, and command declarations, with matching editor metadata rows; callback components/callable handles and delayed commands beyond bounded timers remain residual gaps. |
+| ✅ Animation, particles, and authored stylized effects | Broad animation metadata/playback/services, rendered particles, and source-authored stylized nature/ripple/sparkle components | Promoted for current stylized component scope | Partial through assets/scripts and registry-backed scene operations | `tn animation add-clip`, `tn animation graph add-state`, `tn particle add-emitter`; registry `scene.set_stylized_nature`, `scene.set_ripple_water`, `scene.set_stylized_sparkles` | EDITOR, WEB-BEVY | Source asset docs now carry promoted model clip, graph-state, and bounded particle emitter metadata that lowers into `assets.manifest.json`; SDK helpers and shared registry operations cover the stylized nature example components across web and Bevy. Retargeting/IK and arbitrary backend blend trees are diagnostic-only boundaries; broader editor controls remain open. |
+| ✅ Systems and scripts | Portable system metadata, script refs, effect validation | Web/Bevy host parity for promoted services | Partial | `system create`, `system attach-script`, `system set-metadata`, `scene attach-script` | EDITOR | Structured systems docs now persist/import/lower schedules, access lists, ordering, query metadata, service declarations, and command declarations, with matching editor metadata rows; callback components/callable handles and delayed commands beyond bounded timers are diagnostic-only boundaries. |
 | ✅ Prefab catalogs | IR/runtime can load prefab catalogs | Web/Bevy can consume bundle prefabs | Partial | `prefab create`, `prefab add-component`, scene-local `add-prefab` | SOURCE, ECS-CMD, EDITOR | Structured prefab source documents now emit standalone `prefabs.ir.json` bundle catalogs; instance overrides and broader prefab editor/runtime breadth remain residual. |
 | ✅ Render targets | IR has color/depth render targets and camera targets | Color and write-only depth target allocation now have runtime proof | Partial | `tn asset add --type render-target` plus registry `asset.add` | EDITOR | Web/Bevy runtime allocation now covers declared color targets and write-only depth targets, and source/editor/CLI creation now persists width/height/usage/format render-target declarations into `assets.manifest.json`; depth target material sampling remains rejected by IR validation. |
-| ✅ Runtime config / target profile / window policy | Runtime config IR exists | Partial policy support | Partial | `runtime create`, `runtime set-window`, `runtime set-rendering`, `target set` | SOURCE, EDITOR, WEB-BEVY | CLI/editor now cover source-backed runtime config creation, primary window size/title, promoted renderer quality fields, and target profile source documents for targets/budgets/performance JSON that lower to `runtime.config.json` and `target.profile.json`; resize/scale-factor observations, cursor/present/background policy, clear-color updates, and multi-window diagnostics remain residual. |
+| ✅ Runtime config / target profile / window policy | Runtime config IR exists | Partial policy support | Partial | `runtime create`, `runtime set-window`, `runtime set-rendering`, `target set` | SOURCE, EDITOR, WEB-BEVY | CLI/editor now cover source-backed runtime config creation, primary window size/title, promoted renderer quality fields, and target profile source documents for targets/budgets/performance JSON that lower to `runtime.config.json` and `target.profile.json`; web/Bevy resize and scale-factor observations are promoted, while cursor/present/background policy, clear-color updates, and multi-window requests remain diagnostic-only boundaries. |
 | ✅ Scene lifecycle | IR/docs claim named scenes, transitions, stack traces | Runtime traces exist | Partial | `tn scene lifecycle add <scene-id> --kind ... --activation ... --initial` | SOURCE, EDITOR | Scene docs now persist kind, activation, and initial metadata through CLI/editor operations and bundle lowering; scene-scoped input/system/UI references now emit and surface as active runtime scopes. Transition graph commands, stack operations, and project-level scene ordering remain partial. |
 | ✅ Editor project metadata | Authoring source matrix defines need | Not runtime-specific | Partial | `tn project init-source` / registry `project.create` | SOURCE, ECS-CMD, EDITOR | Project metadata docs are now classified, validated, and editable for id, authoring version, source roots, and build targets; project-level scene ordering/build orchestration remains residual. |
 | ✅ Generator provenance | Structured generator provenance document exists | Not runtime-specific | Partial one-way source metadata | `tn generator record` / registry `generator.record` | SOURCE, ECS-CMD, EDITOR | Generator source docs capture module/export, outputs, hashes, and overwrite policy, and editor rows inspect them as read-only. Reverse patching generated outputs remains intentionally unsupported. |
@@ -249,12 +346,12 @@ IR/runtime surfaces, but only some have typed editor/CLI helpers.
 | ✅ P0 | Audio source mutation | Resolved for audio documents and sound declarations. | `tn audio create <audio-doc-id>`, `tn audio add-sound <audio-doc-id> <sound-id> --asset ...` |
 | ✅ P1 | Material texture/PBR commands | Resolved for promoted PBR and texture-slot fields; sampler/import policy remains outside this slice. | `tn material set <id> --base-color-texture ... --normal-texture ... --emissive ... --alpha-mode ...` |
 | ✅ P1 | Scene lifecycle commands | Resolved for source-backed kind, activation, initial-scene metadata, and scene-local input/system/UI scope emission; transitions, stack operations, and project-level scene ordering remain open. | `tn scene lifecycle add <scene-id> --kind level --activation exclusive --initial` |
-| ✅ P1 | UI widget/style commands | Resolved for promoted retained UI node type/label/style fields; advanced widgets, text input, rich layout, and broad interaction support remain open. | `tn ui add-node`, `tn ui set-style` |
+| ✅ P1 | UI widget/style commands | Resolved for promoted retained UI node type/label/style fields and editable text input widgets; advanced widgets, rich layout, and broad interaction support remain open. | `tn ui add-node`, `tn ui set-style` |
 | ✅ P1 | Input axes/rebinding metadata | Resolved for keyboard action bindings, axes, controls-settings rows, and persisted binding overrides; touch/gamepad gesture command breadth remains open. | `tn input add-axis`, `tn input set-controls`, `tn input set-override`; future `tn input add-gamepad-binding` |
 | ✅ P1 | Environment skybox/map/terrain/source metadata commands | Resolved for environment document creation plus promoted skybox, environment-map, terrain, path, walkability, light-probe, and source-asset LOD fields. | `tn environment create`, `tn environment set-skybox`, `tn environment set-map`, `tn environment set-terrain`, `tn environment set-path`, `tn environment set-walkability`, `tn environment set-light-probe`, `tn environment set-source-asset-lod` |
 | ✅ P1 | Runtime/window/target source docs | Resolved for source-backed runtime config creation, primary window metadata, promoted renderer fields, and target profile documents for targets/budgets/performance JSON; host window policies remain open. | `tn runtime create`, `tn runtime set-window`, `tn runtime set-rendering`, `tn target set` |
 | ✅ P1 | System query/effect metadata commands | Resolved for source-backed system access lists, ordering, queries, service declarations, command declarations, bundle import, and structured `.systems.json` lowering. | `tn system set-metadata <system-id> --reads ... --writes ... --queries ... --commands ... --services ...` |
-| ✅ P2 | Animation graph and particle authoring commands | Resolved for promoted model clip metadata, graph states, and bounded particle emitters on structured asset source documents; retargeting/IK and arbitrary blend trees remain residual. | `tn animation add-clip`, `tn animation graph add-state`, `tn particle add-emitter` |
+| ✅ P2 | Animation graph and particle authoring commands | Resolved for promoted model clip metadata, graph states, and bounded particle emitters on structured asset source documents; retargeting/IK and arbitrary backend blend trees remain diagnostic-only boundaries. | `tn animation add-clip`, `tn animation graph add-state`, `tn particle add-emitter` |
 | ✅ P2 | Physics/nav typed commands | Resolved for discoverable CLI aliases over the existing typed source validators for rigid bodies, colliders, and character controllers; broader nav setup and physics runtime residuals remain tracked separately. | `tn physics add-rigid-body`, `tn physics add-collider`, `tn nav add-agent` |
 
 ## Subagent Findings
@@ -282,12 +379,12 @@ and docs/contracts. Their additional findings sharpen the gaps above:
 
 | Family | Residual gaps to keep flagged |
 | --- | --- |
-| ECS/gameplay host | ECS callback components/callable system handles, delayed commands beyond bounded timers/channels, query combination/pairwise helpers, and entity disabling separate from renderer visibility. |
-| UI | Editable text input, IME composition, virtual keyboard behavior, UI transforms/render-to-texture/world UI, viewport nodes with picking, italic rich text, letter spacing/font variation policy, arbitrary grid placement, UI drag/drop, custom UI materials, broad gamepad/touch UI, and desktop webview packaging. |
-| Rendering/materials | Area lights, lightmaps, parallax/depth maps, anisotropy/specular tint, atmospheric/volumetric effects, auto exposure, depth of field, motion blur, SSR/mirrors, decals, deferred rendering, virtual geometry, and custom post-processing. |
-| Assets/animation | glTF extension processing, runtime asset saving/export, generated runtime assets that persist/reload, retargeting/IK, and arbitrary blend trees. |
-| Physics/input/platform | Full constraint solving, arbitrary triangle narrow phase, vehicle drivetrain/tire models, soft bodies/ragdolls, richer gestures beyond tap/swipe/pinch, window resize/scale-factor observations, cursor/present/background/window background policies, and multi-window diagnostics. |
-| Tooling/editor | Full native desktop visual editor shell and connected-device gamepad inspection. |
+| ECS/gameplay host | ECS callback components/callable system handles. |
+| UI | Desktop webview packaging now emits `webview.inspection.json` for package/manual host checks; letter spacing/font variation/system font policy, arbitrary grid placement, and native italic rich text remain diagnostic-only boundaries until promoted by matching runtime evidence. |
+| Rendering/materials | Depth-of-field runtime config is now web/native report-level evidence; screenshot-calibrated visual blur remains deferred. Area lights, lightmaps, parallax/depth maps, anisotropy/specular tint, and advanced PBR fields are diagnostic-only boundaries. |
+| Assets/animation | Unknown/custom glTF metadata transforms remain diagnostic-only; runtime asset export remains an artifact-root diagnostic boundary until manifest-governed writes are promoted. |
+| Physics/input/platform | Richer gestures beyond tap/swipe/pinch remain diagnostic-only until promoted by matching runtime evidence. |
+| Tooling/editor | Full native desktop visual editor shell is an explicit deferred boundary; current support is browser-based `@threenative/editor`, CLI inspect/apply/diff flows, and desktop-web package inspection. |
 
 ## Source Evidence
 
