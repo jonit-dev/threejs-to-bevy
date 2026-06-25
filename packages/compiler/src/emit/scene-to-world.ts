@@ -382,6 +382,10 @@ function geometrySize(geometry: NonNullable<IObjectLike["geometry"]>): readonly 
     const [width = 1, height = 1] = geometry.size ?? [];
     return [width, height, geometry.depth ?? 1];
   }
+  if (geometry.kind === "plane") {
+    const [width = 1, height = 1] = geometry.size ?? [];
+    return [width, height];
+  }
   if (geometry.size !== undefined) {
     return geometry.size;
   }

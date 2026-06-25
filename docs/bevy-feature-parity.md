@@ -644,8 +644,15 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] CLI entry points for `tn editor snapshot`, `tn editor apply`, and `tn editor diff`
 - [x] `P1` Visual editor UI and inspector panels
 - [x] Source-schema-backed inspector field mapping and Add Component compatibility/default metadata
+- [x] Explicit `featureStatus` metadata for visible modal/Add Component actions, with tests that enabled actions have handlers/operations and unavailable actions have reasons
+- [x] Add Component MeshRenderer, RenderLayers, Visibility, RigidBody, Collider, and CharacterController source-operation mappings with typed inspector rows
 - [x] Add Object source-backed Primitive/Empty/Camera/Light modal operations
+- [x] Add Object Terrain source operations update flat environment terrain/walkability and create a visible scene terrain entity
 - [x] Focused editor required-operations smoke that creates a scene, adds a primitive/entity, moves it, attaches a component and script reference, rebuilds, and checks emitted `world.ir.json`
+- [x] Focused editor required-operations smoke covers editor-authored RigidBody and Collider source plus emitted `world.ir.json` proof
+- [x] Focused animation/physics residual gate emits web/native runtime evidence for promoted physics residual behavior
+- [x] Script references remain module/export inspector fields backed by `system.attach_script`; inline script body editing stays in the separate code-mode workflow
+- [x] Delete, Settings, hierarchy nesting, and playback controls are source-backed or explicitly disabled/view-only with stable user-visible reasons
 - [x] Editor/CLI Light kind, intensity, color, range, angle, shadow bias, and shadow normal bias rows persist through `scene.set_light`
 - [x] Editor custom component JSON payload rows persist through `scene.set_component`
 - [x] Environment source document classification plus CLI/editor skybox, environment-map, terrain, path, walkability, light-probe, and source-asset LOD mutation rows

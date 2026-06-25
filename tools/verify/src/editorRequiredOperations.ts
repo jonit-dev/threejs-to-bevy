@@ -27,7 +27,11 @@ interface IOperationResult {
 
 interface IWorldDocument {
   entities?: Array<{
-    components?: { Transform?: { position?: number[] } };
+    components?: {
+      Collider?: { kind?: string; size?: number[] };
+      RigidBody?: { kind?: string; mass?: number };
+      Transform?: { position?: number[] };
+    };
     id: string;
   }>;
 }
@@ -128,6 +132,18 @@ export async function runEditorRequiredOperationsSmoke(options: IRunEditorRequir
       sceneId: "arena",
       value: { enabled: true, label: "editor-operation-smoke" },
     });
+    await apply("scene.set_rigid_body", {
+      entityId: "editor.sphere.0",
+      kind: "dynamic",
+      mass: 1,
+      sceneId: "arena",
+    });
+    await apply("scene.set_collider", {
+      entityId: "editor.sphere.0",
+      kind: "box",
+      sceneId: "arena",
+      size: [1, 1, 1],
+    });
     await apply("system.create", {
       schedule: "update",
       systemId: "editor-spin",
@@ -156,6 +172,8 @@ export async function runEditorRequiredOperationsSmoke(options: IRunEditorRequir
       "source scene did not persist the moved entity transform",
     );
     assert(sourceEntity?.components?.EditorSmoke?.label === "editor-operation-smoke", "source scene did not persist the attached custom component");
+    assert(sourceEntity?.components?.RigidBody?.kind === "dynamic", "source scene did not persist the editor-authored rigid body");
+    assert(sourceEntity?.components?.Collider?.kind === "box", "source scene did not persist the editor-authored collider");
     assert(createdScene.entities?.some((entity) => entity.id === "main-camera"), "default scene creation did not seed a main camera");
     assert(
       systems.systems?.some((system) => system.id === "editor-spin" && system.script?.module === "src/scripts/editor-spin.ts" && system.script?.export === "editorSpin"),
@@ -169,6 +187,13 @@ export async function runEditorRequiredOperationsSmoke(options: IRunEditorRequir
     assert(
       JSON.stringify(finalEntity.components?.Transform?.position) === JSON.stringify([2.5, 0.75, -1.25]),
       "final IR did not reflect the moved entity transform",
+    );
+    assert(finalEntity.components?.RigidBody?.kind === "dynamic", "final IR did not include the editor-authored rigid body");
+    assert(finalEntity.components?.RigidBody?.mass === 1, "final IR did not include the editor-authored rigid body mass");
+    assert(finalEntity.components?.Collider?.kind === "box", "final IR did not include the editor-authored collider");
+    assert(
+      JSON.stringify(finalEntity.components?.Collider?.size) === JSON.stringify([1, 1, 1]),
+      "final IR did not include the editor-authored collider size",
     );
 
     return {

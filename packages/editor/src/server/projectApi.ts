@@ -467,8 +467,120 @@ function objectInspectorRows(input: {
     );
   }
 
+  const meshRenderer = isRecord(input.components?.MeshRenderer) ? input.components.MeshRenderer : undefined;
+  if (meshRenderer !== undefined) {
+    const meshRendererArgs = {
+      castShadow: readBoolean(meshRenderer.castShadow),
+      entityId: input.entityId,
+      material: readString(meshRenderer.material) ?? "mat.player",
+      mesh: readString(meshRenderer.mesh) ?? "mesh.player",
+      receiveShadow: readBoolean(meshRenderer.receiveShadow),
+      sceneId: input.sceneId,
+      visible: readBoolean(meshRenderer.visible),
+    };
+    rows.push(
+      inspectorRow({ component: "MeshRenderer", defaultValue: "mesh.player", fieldKind: "string", id: "inspect:mesh-renderer-mesh", input, jsonPointer: `/entities/${input.entityId}/components/MeshRenderer/mesh`, label: "Mesh", operation: { args: meshRendererArgs, name: "scene.set_mesh_renderer", valueArg: "mesh" }, readOnly: false, value: readString(meshRenderer.mesh) ?? "mesh.player" }),
+      inspectorRow({ component: "MeshRenderer", defaultValue: "mat.player", fieldKind: "string", id: "inspect:mesh-renderer-material", input, jsonPointer: `/entities/${input.entityId}/components/MeshRenderer/material`, label: "Material", operation: { args: meshRendererArgs, name: "scene.set_mesh_renderer", valueArg: "material" }, readOnly: false, value: readString(meshRenderer.material) ?? "mat.player" }),
+      inspectorRow({ component: "MeshRenderer", defaultValue: true, fieldKind: "boolean", id: "inspect:mesh-renderer-visible", input, jsonPointer: `/entities/${input.entityId}/components/MeshRenderer/visible`, label: "Renderer Visible", operation: { args: meshRendererArgs, name: "scene.set_mesh_renderer", valueArg: "visible" }, readOnly: false, value: formatBoolean(meshRenderer.visible) || "true" }),
+    );
+  }
+
+  const renderLayers = isRecord(input.components?.RenderLayers) ? input.components.RenderLayers : undefined;
+  if (renderLayers !== undefined) {
+    rows.push(
+      inspectorRow({
+        component: "RenderLayers",
+        defaultValue: ["default"],
+        fieldKind: "stringList",
+        id: "inspect:render-layers",
+        input,
+        jsonPointer: `/entities/${input.entityId}/components/RenderLayers/layers`,
+        label: "Layers",
+        operation: { args: { entityId: input.entityId, layers: readStringArray(renderLayers.layers), sceneId: input.sceneId }, name: "scene.set_render_layers", valueArg: "layers" },
+        readOnly: false,
+        value: readStringArray(renderLayers.layers).join(", ") || "default",
+      }),
+    );
+  }
+
+  const visibility = isRecord(input.components?.Visibility) ? input.components.Visibility : undefined;
+  if (visibility !== undefined) {
+    rows.push(
+      inspectorRow({
+        component: "Visibility",
+        defaultValue: true,
+        fieldKind: "boolean",
+        id: "inspect:visibility-visible",
+        input,
+        jsonPointer: `/entities/${input.entityId}/components/Visibility/visible`,
+        label: "Visible",
+        operation: { args: { entityId: input.entityId, sceneId: input.sceneId }, name: "scene.set_visibility", valueArg: "visible" },
+        readOnly: false,
+        value: formatBoolean(visibility.visible) || "true",
+      }),
+    );
+  }
+
+  const rigidBody = isRecord(input.components?.RigidBody) ? input.components.RigidBody : undefined;
+  if (rigidBody !== undefined) {
+    const rigidBodyArgs = {
+      damping: readNumber(rigidBody.damping),
+      entityId: input.entityId,
+      gravityScale: readNumber(rigidBody.gravityScale),
+      kind: readString(rigidBody.kind) ?? "dynamic",
+      mass: readNumber(rigidBody.mass),
+      sceneId: input.sceneId,
+    };
+    rows.push(
+      inspectorRow({ component: "RigidBody", defaultValue: "dynamic", fieldKind: "enum", id: "inspect:rigid-body-kind", input, jsonPointer: `/entities/${input.entityId}/components/RigidBody/kind`, label: "Body Kind", operation: { args: rigidBodyArgs, name: "scene.set_rigid_body", valueArg: "kind" }, options: ["dynamic", "kinematic", "static"], readOnly: false, value: readString(rigidBody.kind) ?? "dynamic" }),
+      inspectorRow({ component: "RigidBody", defaultValue: 1, fieldKind: "number", id: "inspect:rigid-body-mass", input, jsonPointer: `/entities/${input.entityId}/components/RigidBody/mass`, label: "Mass", operation: { args: rigidBodyArgs, name: "scene.set_rigid_body", valueArg: "mass" }, readOnly: false, value: formatScalar(rigidBody.mass, "1") }),
+      inspectorRow({ component: "RigidBody", defaultValue: 0.05, fieldKind: "number", id: "inspect:rigid-body-damping", input, jsonPointer: `/entities/${input.entityId}/components/RigidBody/damping`, label: "Damping", operation: { args: rigidBodyArgs, name: "scene.set_rigid_body", valueArg: "damping" }, readOnly: false, value: formatScalar(rigidBody.damping, "0.05") }),
+      inspectorRow({ component: "RigidBody", defaultValue: 1, fieldKind: "number", id: "inspect:rigid-body-gravity", input, jsonPointer: `/entities/${input.entityId}/components/RigidBody/gravityScale`, label: "Gravity Scale", operation: { args: rigidBodyArgs, name: "scene.set_rigid_body", valueArg: "gravityScale" }, readOnly: false, value: formatScalar(rigidBody.gravityScale, "1") }),
+    );
+  }
+
+  const collider = isRecord(input.components?.Collider) ? input.components.Collider : undefined;
+  if (collider !== undefined) {
+    const colliderArgs = {
+      entityId: input.entityId,
+      height: readNumber(collider.height),
+      kind: readString(collider.kind) ?? "box",
+      radius: readNumber(collider.radius),
+      sceneId: input.sceneId,
+      size: readVector3(collider.size) ?? [1, 1, 1],
+      trigger: readBoolean(collider.trigger),
+    };
+    rows.push(
+      inspectorRow({ component: "Collider", defaultValue: "box", fieldKind: "enum", id: "inspect:collider-kind", input, jsonPointer: `/entities/${input.entityId}/components/Collider/kind`, label: "Collider Kind", operation: { args: colliderArgs, name: "scene.set_collider", valueArg: "kind" }, options: ["box", "sphere", "capsule", "mesh"], readOnly: false, value: readString(collider.kind) ?? "box" }),
+      inspectorRow({ component: "Collider", defaultValue: [1, 1, 1], fieldKind: "vector3", id: "inspect:collider-size", input, jsonPointer: `/entities/${input.entityId}/components/Collider/size`, label: "Size", operation: { args: colliderArgs, name: "scene.set_collider", valueArg: "size" }, readOnly: false, value: formatVector(readVector3(collider.size), [1, 1, 1]) }),
+      inspectorRow({ component: "Collider", fieldKind: "number", id: "inspect:collider-radius", input, jsonPointer: `/entities/${input.entityId}/components/Collider/radius`, label: "Radius", operation: { args: colliderArgs, name: "scene.set_collider", valueArg: "radius" }, readOnly: false, value: formatScalar(collider.radius, "") }),
+      inspectorRow({ component: "Collider", fieldKind: "number", id: "inspect:collider-height", input, jsonPointer: `/entities/${input.entityId}/components/Collider/height`, label: "Height", operation: { args: colliderArgs, name: "scene.set_collider", valueArg: "height" }, readOnly: false, value: formatScalar(collider.height, "") }),
+      inspectorRow({ component: "Collider", defaultValue: false, fieldKind: "boolean", id: "inspect:collider-trigger", input, jsonPointer: `/entities/${input.entityId}/components/Collider/trigger`, label: "Trigger", operation: { args: colliderArgs, name: "scene.set_collider", valueArg: "trigger" }, readOnly: false, value: formatBoolean(collider.trigger) || "false" }),
+    );
+  }
+
+  const characterController = isRecord(input.components?.CharacterController) ? input.components.CharacterController : undefined;
+  if (characterController !== undefined) {
+    const characterControllerArgs = {
+      blocking: readBoolean(characterController.blocking),
+      entityId: input.entityId,
+      grounding: readString(characterController.grounding) ?? "raycast",
+      moveXAxis: readString(characterController.moveXAxis) ?? "MoveX",
+      moveZAxis: readString(characterController.moveZAxis) ?? "MoveZ",
+      sceneId: input.sceneId,
+      speed: readNumber(characterController.speed),
+    };
+    rows.push(
+      inspectorRow({ component: "CharacterController", defaultValue: "MoveX", fieldKind: "string", id: "inspect:character-controller-move-x", input, jsonPointer: `/entities/${input.entityId}/components/CharacterController/moveXAxis`, label: "Move X Axis", operation: { args: characterControllerArgs, name: "scene.set_character_controller", valueArg: "moveXAxis" }, readOnly: false, value: readString(characterController.moveXAxis) ?? "MoveX" }),
+      inspectorRow({ component: "CharacterController", defaultValue: "MoveZ", fieldKind: "string", id: "inspect:character-controller-move-z", input, jsonPointer: `/entities/${input.entityId}/components/CharacterController/moveZAxis`, label: "Move Z Axis", operation: { args: characterControllerArgs, name: "scene.set_character_controller", valueArg: "moveZAxis" }, readOnly: false, value: readString(characterController.moveZAxis) ?? "MoveZ" }),
+      inspectorRow({ component: "CharacterController", defaultValue: 4, fieldKind: "number", id: "inspect:character-controller-speed", input, jsonPointer: `/entities/${input.entityId}/components/CharacterController/speed`, label: "Speed", operation: { args: characterControllerArgs, name: "scene.set_character_controller", valueArg: "speed" }, readOnly: false, value: formatScalar(characterController.speed, "4") }),
+      inspectorRow({ component: "CharacterController", defaultValue: true, fieldKind: "boolean", id: "inspect:character-controller-blocking", input, jsonPointer: `/entities/${input.entityId}/components/CharacterController/blocking`, label: "Blocking", operation: { args: characterControllerArgs, name: "scene.set_character_controller", valueArg: "blocking" }, readOnly: false, value: formatBoolean(characterController.blocking) || "true" }),
+      inspectorRow({ component: "CharacterController", defaultValue: "raycast", fieldKind: "enum", id: "inspect:character-controller-grounding", input, jsonPointer: `/entities/${input.entityId}/components/CharacterController/grounding`, label: "Grounding", operation: { args: characterControllerArgs, name: "scene.set_character_controller", valueArg: "grounding" }, options: ["raycast", "collider"], readOnly: false, value: readString(characterController.grounding) ?? "raycast" }),
+    );
+  }
+
   for (const [component, value] of Object.entries(input.components ?? {})) {
-    if (["camera", "Light", "light"].includes(component)) {
+    if (["camera", "Light", "light", "MeshRenderer", "RenderLayers", "Visibility", "RigidBody", "Collider", "CharacterController"].includes(component)) {
       continue;
     }
     if (isRecord(value)) {

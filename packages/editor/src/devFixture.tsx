@@ -1,8 +1,9 @@
 import { createRoot } from "react-dom/client";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
+import { useShallow } from "zustand/react/shallow";
 
 import { EditorApp } from "./EditorApp.js";
-import { createEditorSessionModel, useEditorStore } from "./state/editorStore.js";
+import { createEditorSessionModel, defaultEditorSessionState, useEditorStore } from "./state/editorStore.js";
 import "./styles.css";
 
 export function renderDevFixture(root: Element) {
@@ -10,7 +11,14 @@ export function renderDevFixture(root: Element) {
 }
 
 function EditorDevApp() {
-  const model = useEditorStore(createEditorSessionModel);
+  const modelState = useEditorStore(useShallow((state) => ({
+    activeScenePath: state.activeScenePath,
+    parentByRowId: state.parentByRowId,
+    project: state.project,
+    selectedRowId: state.selectedRowId,
+    status: state.status,
+    transformByRowId: state.transformByRowId,
+  })));
   const refreshProject = useEditorStore((state) => state.refreshProject);
   const addObject = useEditorStore((state) => state.addObject);
   const addComponent = useEditorStore((state) => state.addComponent);
@@ -21,6 +29,7 @@ function EditorDevApp() {
   const moveEditorRow = useEditorStore((state) => state.moveEditorRow);
   const editProperty = useEditorStore((state) => state.editProperty);
   const transformObject = useEditorStore((state) => state.transformObject);
+  const model = useMemo(() => createEditorSessionModel({ ...defaultEditorSessionState, ...modelState }), [modelState]);
 
   useEffect(() => {
     void refreshProject({ selectFirstObject: true, updateLoadErrorStatus: true });

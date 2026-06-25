@@ -108,6 +108,12 @@ test("should keep an explicit inspector field inventory for promoted source fami
   assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => "component" in item && item.component === "Camera" && item.field === "skybox" && item.sourceFamily === "environment" && item.operationName === "environment.set_skybox" && item.readOnly === false), true);
   assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => "component" in item && item.component === "Light" && item.field === "intensity" && item.operationName === "scene.set_light" && item.readOnly === false), true);
   assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => "component" in item && item.component === "Light" && item.field === "shadowBias" && item.operationName === "scene.set_light" && item.readOnly === false), true);
+  assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => "component" in item && item.component === "MeshRenderer" && item.field === "mesh" && item.operationName === "scene.set_mesh_renderer"), true);
+  assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => "component" in item && item.component === "RenderLayers" && item.field === "layers" && item.operationName === "scene.set_render_layers"), true);
+  assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => "component" in item && item.component === "Visibility" && item.field === "visible" && item.operationName === "scene.set_visibility"), true);
+  assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => "component" in item && item.component === "RigidBody" && item.field === "kind" && item.operationName === "scene.set_rigid_body"), true);
+  assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => "component" in item && item.component === "Collider" && item.field === "size" && item.operationName === "scene.set_collider"), true);
+  assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => "component" in item && item.component === "CharacterController" && item.field === "speed" && item.operationName === "scene.set_character_controller"), true);
   assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => item.field === "components.custom" && item.operationName === "scene.set_component" && item.readOnly === false), true);
   assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => item.field === "assets.renderTarget.width" && item.operationName === "asset.add" && item.readOnly === false), true);
   assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => item.field === "meshes.primitive" && item.operationName === "mesh.create_primitive" && item.readOnly === false), true);
@@ -119,6 +125,8 @@ test("should keep an explicit inspector field inventory for promoted source fami
   assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => item.sourceFamily === "ui" && item.field === "ui.nodes.type" && item.operationName === "ui.add_node"), true);
   assert.equal(EDITOR_INSPECTOR_FIELD_INVENTORY.some((item) => item.sourceFamily === "ui" && item.field === "ui.nodes.style.color" && item.operationName === "ui.set_style"), true);
   assert.equal(EDITOR_ADD_COMPONENT_DEFINITIONS.some((definition) => definition.component === "MeshRenderer" && definition.incompatibleWith.includes("Camera")), true);
+  assert.equal(EDITOR_ADD_COMPONENT_DEFINITIONS.some((definition) => definition.component === "RigidBody" && definition.pack === "physics"), true);
+  assert.equal(EDITOR_ADD_COMPONENT_DEFINITIONS.some((definition) => definition.component === "Collider" && definition.pack === "physics"), true);
 });
 
 test("should classify unsupported fields as read-only with reasons", () => {
@@ -129,6 +137,32 @@ test("should classify unsupported fields as read-only with reasons", () => {
   assert.equal(editableRows.every((row) => row.operationName !== undefined || row.handler !== undefined), true);
   assert.equal(EDITOR_MODAL_ACTION_DEFINITIONS.some((action) => action.id === "delete.selection" && action.readOnlyReason !== undefined), true);
   assert.equal(EDITOR_MODAL_ACTION_DEFINITIONS.some((action) => action.id === "add.custom_glb" && action.readOnlyReason !== undefined), true);
+});
+
+test("should classify every visible editor action by functional status", () => {
+  const statuses = new Set(["disabled", "enabled", "planned-prd"]);
+  const promotedComponents = new Set(["Transform", "MeshRenderer", "RenderLayers", "Visibility", "Camera", "Light", "RigidBody", "Collider", "CharacterController"]);
+
+  for (const action of EDITOR_MODAL_ACTION_DEFINITIONS) {
+    assert.equal(statuses.has(action.featureStatus), true, `Missing feature status for ${action.id}`);
+    if (action.featureStatus === "enabled") {
+      assert.equal(action.readOnly, false, `${action.id} is enabled but read-only`);
+      assert.equal(action.operationName !== undefined || action.handler !== undefined, true, `${action.id} is enabled without operation or handler`);
+    } else {
+      assert.equal(action.readOnly, true, `${action.id} is ${action.featureStatus} but not read-only`);
+      assert.equal(typeof action.readOnlyReason === "string" && action.readOnlyReason.length > 0, true, `${action.id} lacks disabled reason`);
+    }
+  }
+
+  for (const definition of EDITOR_ADD_COMPONENT_DEFINITIONS) {
+    assert.equal(statuses.has(definition.featureStatus), true, `Missing feature status for ${definition.component}`);
+    if (definition.featureStatus === "enabled") {
+      assert.equal(promotedComponents.has(definition.component), true, `${definition.component} is enabled without promoted store handling`);
+      assert.equal("readOnlyReason" in definition, false, `${definition.component} is enabled but has disabled reason`);
+    } else {
+      assert.equal("readOnlyReason" in definition && definition.readOnlyReason.length > 0, true, `${definition.component} lacks disabled reason`);
+    }
+  }
 });
 
 test("should inventory terrain heightmap and skybox fields", () => {

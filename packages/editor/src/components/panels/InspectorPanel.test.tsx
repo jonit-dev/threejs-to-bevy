@@ -32,3 +32,34 @@ test("should render typed inspector controls from field metadata", () => {
   assert.match(html, /Bindings/);
   assert.match(html, /title="unsupported"/);
 });
+
+test("should edit script references as module and export fields", () => {
+  const html = renderToStaticMarkup(
+    <InspectorPanel
+      rows={[
+        {
+          access: "sourcePersistable",
+          component: "Script",
+          fieldKind: "script",
+          id: "script",
+          label: "spin Script",
+          operation: {
+            args: { exportName: "spin", file: "content/systems/arena.systems.json", systemId: "spin" },
+            name: "system.attach_script",
+            valueArg: "modulePath",
+          },
+          readOnly: false,
+          sourceFamily: "system",
+          value: "src/scripts/spin.ts#spin",
+        },
+      ]}
+    />,
+  );
+
+  assert.match(html, /spin Script module/);
+  assert.match(html, /spin Script export/);
+  assert.match(html, /src\/scripts\/spin\.ts/);
+  assert.match(html, /value="spin"/);
+  assert.doesNotMatch(html, /textarea/);
+  assert.doesNotMatch(html, /script body/i);
+});

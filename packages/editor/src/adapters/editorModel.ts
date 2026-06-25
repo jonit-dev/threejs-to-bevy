@@ -73,11 +73,14 @@ export interface IEditorPropertyOperation {
 export interface IEditorAddComponentDefinition {
   component: string;
   defaults: Record<string, unknown>;
+  featureStatus: EditorFeatureStatus;
   incompatibleWith: readonly string[];
-  pack: "core" | "experimental" | "rendering" | "scripting";
+  pack: "core" | "experimental" | "physics" | "rendering" | "scripting";
   readOnlyReason?: string;
   sourceFamily: EditorInspectorSourceFamily;
 }
+
+export type EditorFeatureStatus = "disabled" | "enabled" | "planned-prd";
 
 export type EditorModalActionId =
   | "add.camera"
@@ -94,6 +97,7 @@ export type EditorModalActionId =
 
 export interface IEditorModalActionDefinition {
   assetPath?: string;
+  featureStatus: EditorFeatureStatus;
   handler?: "buildPreview" | "saveScene";
   id: EditorModalActionId;
   label: string;
@@ -213,20 +217,39 @@ export const EDITOR_ADD_COMPONENT_DEFINITIONS = [
   {
     component: "Transform",
     defaults: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+    featureStatus: "enabled",
     incompatibleWith: [],
     pack: "core",
     sourceFamily: "scene",
   },
   {
     component: "MeshRenderer",
-    defaults: { color: "#2f80ed", primitive: "box" },
+    defaults: { castShadow: true, material: "mat.player", mesh: "mesh.player", receiveShadow: true, visible: true },
+    featureStatus: "enabled",
     incompatibleWith: ["Camera", "Light"],
+    pack: "rendering",
+    sourceFamily: "scene",
+  },
+  {
+    component: "RenderLayers",
+    defaults: { layers: ["default"] },
+    featureStatus: "enabled",
+    incompatibleWith: [],
+    pack: "rendering",
+    sourceFamily: "scene",
+  },
+  {
+    component: "Visibility",
+    defaults: { visible: true },
+    featureStatus: "enabled",
+    incompatibleWith: [],
     pack: "rendering",
     sourceFamily: "scene",
   },
   {
     component: "Camera",
     defaults: { mode: "perspective", target: "" },
+    featureStatus: "enabled",
     incompatibleWith: ["MeshRenderer", "Light"],
     pack: "core",
     sourceFamily: "scene",
@@ -234,13 +257,39 @@ export const EDITOR_ADD_COMPONENT_DEFINITIONS = [
   {
     component: "Light",
     defaults: { color: "#ffffff", intensity: 1, kind: "directional" },
+    featureStatus: "enabled",
     incompatibleWith: ["MeshRenderer", "Camera"],
     pack: "core",
     sourceFamily: "scene",
   },
   {
+    component: "RigidBody",
+    defaults: { damping: 0.05, gravityScale: 1, kind: "dynamic", mass: 1 },
+    featureStatus: "enabled",
+    incompatibleWith: [],
+    pack: "physics",
+    sourceFamily: "scene",
+  },
+  {
+    component: "Collider",
+    defaults: { kind: "box", size: [1, 1, 1], trigger: false },
+    featureStatus: "enabled",
+    incompatibleWith: [],
+    pack: "physics",
+    sourceFamily: "scene",
+  },
+  {
+    component: "CharacterController",
+    defaults: { blocking: true, grounding: "raycast", moveXAxis: "MoveX", moveZAxis: "MoveZ", speed: 4 },
+    featureStatus: "enabled",
+    incompatibleWith: [],
+    pack: "physics",
+    sourceFamily: "scene",
+  },
+  {
     component: "Script",
     defaults: { export: "default", module: "./systems/update.ts" },
+    featureStatus: "planned-prd",
     incompatibleWith: [],
     pack: "scripting",
     readOnlyReason: "Scene and systems script references are edited through promoted script attach operations.",
@@ -261,6 +310,7 @@ export interface IEditorInspectorFieldInventoryItem {
 
 export interface IEditorOperationCoverageRow {
   control: string;
+  featureStatus?: EditorFeatureStatus;
   handler?: IEditorModalActionDefinition["handler"];
   kind: "inspector-field" | "modal-action";
   operationName?: string;
@@ -276,6 +326,11 @@ export const EDITOR_INSPECTOR_FIELD_INVENTORY: readonly IEditorInspectorFieldInv
   { component: "MeshRenderer", defaultValue: "box", field: "primitive", fieldKind: "enum", operationName: "scene.set_prefab", readOnly: false, sourceFamily: "scene" },
   { component: "MeshRenderer", defaultValue: "#2f80ed", field: "color", fieldKind: "color", operationName: "scene.set_prefab", readOnly: false, sourceFamily: "scene" },
   { component: "MeshRenderer", field: "asset", fieldKind: "asset", operationName: "scene.set_prefab", readOnly: false, sourceFamily: "scene" },
+  { component: "MeshRenderer", defaultValue: "mesh.player", field: "mesh", fieldKind: "string", operationName: "scene.set_mesh_renderer", readOnly: false, sourceFamily: "scene" },
+  { component: "MeshRenderer", defaultValue: "mat.player", field: "material", fieldKind: "string", operationName: "scene.set_mesh_renderer", readOnly: false, sourceFamily: "scene" },
+  { component: "MeshRenderer", defaultValue: true, field: "visible", fieldKind: "boolean", operationName: "scene.set_mesh_renderer", readOnly: false, sourceFamily: "scene" },
+  { component: "RenderLayers", defaultValue: ["default"], field: "layers", fieldKind: "stringList", operationName: "scene.set_render_layers", readOnly: false, sourceFamily: "scene" },
+  { component: "Visibility", defaultValue: true, field: "visible", fieldKind: "boolean", operationName: "scene.set_visibility", readOnly: false, sourceFamily: "scene" },
   { component: "Camera", defaultValue: "perspective", field: "mode", fieldKind: "enum", operationName: "scene.set_camera", readOnly: false, sourceFamily: "scene" },
   { component: "Camera", defaultValue: "", field: "target", fieldKind: "string", operationName: "scene.set_camera", readOnly: false, sourceFamily: "scene" },
   { component: "Camera", defaultValue: "none", field: "skybox", fieldKind: "asset", operationName: "environment.set_skybox", readOnly: false, sourceFamily: "environment" },
@@ -294,6 +349,20 @@ export const EDITOR_INSPECTOR_FIELD_INVENTORY: readonly IEditorInspectorFieldInv
   { component: "Light", field: "angle", fieldKind: "number", operationName: "scene.set_light", readOnly: false, sourceFamily: "scene" },
   { component: "Light", field: "shadowBias", fieldKind: "number", operationName: "scene.set_light", readOnly: false, sourceFamily: "scene" },
   { component: "Light", field: "shadowNormalBias", fieldKind: "number", operationName: "scene.set_light", readOnly: false, sourceFamily: "scene" },
+  { component: "RigidBody", defaultValue: "dynamic", field: "kind", fieldKind: "enum", operationName: "scene.set_rigid_body", readOnly: false, sourceFamily: "scene" },
+  { component: "RigidBody", defaultValue: 1, field: "mass", fieldKind: "number", operationName: "scene.set_rigid_body", readOnly: false, sourceFamily: "scene" },
+  { component: "RigidBody", defaultValue: 0.05, field: "damping", fieldKind: "number", operationName: "scene.set_rigid_body", readOnly: false, sourceFamily: "scene" },
+  { component: "RigidBody", defaultValue: 1, field: "gravityScale", fieldKind: "number", operationName: "scene.set_rigid_body", readOnly: false, sourceFamily: "scene" },
+  { component: "Collider", defaultValue: "box", field: "kind", fieldKind: "enum", operationName: "scene.set_collider", readOnly: false, sourceFamily: "scene" },
+  { component: "Collider", defaultValue: [1, 1, 1], field: "size", fieldKind: "vector3", operationName: "scene.set_collider", readOnly: false, sourceFamily: "scene" },
+  { component: "Collider", field: "radius", fieldKind: "number", operationName: "scene.set_collider", readOnly: false, sourceFamily: "scene" },
+  { component: "Collider", field: "height", fieldKind: "number", operationName: "scene.set_collider", readOnly: false, sourceFamily: "scene" },
+  { component: "Collider", defaultValue: false, field: "trigger", fieldKind: "boolean", operationName: "scene.set_collider", readOnly: false, sourceFamily: "scene" },
+  { component: "CharacterController", defaultValue: "MoveX", field: "moveXAxis", fieldKind: "string", operationName: "scene.set_character_controller", readOnly: false, sourceFamily: "scene" },
+  { component: "CharacterController", defaultValue: "MoveZ", field: "moveZAxis", fieldKind: "string", operationName: "scene.set_character_controller", readOnly: false, sourceFamily: "scene" },
+  { component: "CharacterController", defaultValue: 4, field: "speed", fieldKind: "number", operationName: "scene.set_character_controller", readOnly: false, sourceFamily: "scene" },
+  { component: "CharacterController", defaultValue: true, field: "blocking", fieldKind: "boolean", operationName: "scene.set_character_controller", readOnly: false, sourceFamily: "scene" },
+  { component: "CharacterController", defaultValue: "raycast", field: "grounding", fieldKind: "enum", operationName: "scene.set_character_controller", readOnly: false, sourceFamily: "scene" },
   { field: "scene.kind", fieldKind: "enum", operationName: "scene.set_lifecycle", readOnly: false, sourceFamily: "scene" },
   { field: "scene.activation", fieldKind: "enum", operationName: "scene.set_lifecycle", readOnly: false, sourceFamily: "scene" },
   { field: "scene.initial", fieldKind: "boolean", operationName: "scene.set_lifecycle", readOnly: false, sourceFamily: "scene" },
@@ -362,17 +431,17 @@ export const EDITOR_INSPECTOR_FIELD_INVENTORY: readonly IEditorInspectorFieldInv
 ] as const;
 
 export const EDITOR_MODAL_ACTION_DEFINITIONS: readonly IEditorModalActionDefinition[] = [
-  { id: "add.primitive_sphere", label: "Primitive Sphere", operationName: "scene.add_prefab", readOnly: false },
-  { id: "add.empty_entity", label: "Empty Entity", operationName: "scene.add_entity", readOnly: false },
-  { id: "add.camera", label: "Camera", operationName: "scene.add_entity", readOnly: false },
-  { id: "add.light", label: "Light", operationName: "scene.add_entity", readOnly: false },
-  { id: "add.terrain", label: "Terrain", readOnly: true, readOnlyReason: "Terrain source operations are not promoted in this editor slice yet." },
-  { id: "add.custom_glb", label: "Custom GLB", readOnly: true, readOnlyReason: "Custom GLB import needs a promoted asset and prefab operation before it can be enabled." },
-  { handler: "saveScene", id: "scene.save", label: "Save", readOnly: false },
-  { id: "scene.create_default", label: "Create Scene", operationName: "scene.create_default", readOnly: false },
-  { handler: "buildPreview", id: "build.preview", label: "Build", readOnly: false },
-  { id: "delete.selection", label: "Delete", readOnly: true, readOnlyReason: "Delete requires a promoted source operation before it is enabled." },
-  { id: "settings.editor", label: "Settings", readOnly: true, readOnlyReason: "Editor settings are inspect-only in this slice." },
+  { featureStatus: "enabled", id: "add.primitive_sphere", label: "Primitive Sphere", operationName: "scene.add_prefab", readOnly: false },
+  { featureStatus: "enabled", id: "add.empty_entity", label: "Empty Entity", operationName: "scene.add_entity", readOnly: false },
+  { featureStatus: "enabled", id: "add.camera", label: "Camera", operationName: "scene.add_entity", readOnly: false },
+  { featureStatus: "enabled", id: "add.light", label: "Light", operationName: "scene.add_entity", readOnly: false },
+  { featureStatus: "enabled", id: "add.terrain", label: "Terrain", operationName: "environment.add_flat_terrain", readOnly: false },
+  { featureStatus: "planned-prd", id: "add.custom_glb", label: "Custom GLB", readOnly: true, readOnlyReason: "Custom GLB import needs a promoted asset and prefab operation before it can be enabled." },
+  { featureStatus: "enabled", handler: "saveScene", id: "scene.save", label: "Save", readOnly: false },
+  { featureStatus: "enabled", id: "scene.create_default", label: "Create Scene", operationName: "scene.create_default", readOnly: false },
+  { featureStatus: "enabled", handler: "buildPreview", id: "build.preview", label: "Build", readOnly: false },
+  { featureStatus: "planned-prd", id: "delete.selection", label: "Delete", readOnly: true, readOnlyReason: "Delete requires a promoted source operation before it is enabled." },
+  { featureStatus: "planned-prd", id: "settings.editor", label: "Settings", readOnly: true, readOnlyReason: "Editor settings are inspect-only in this slice." },
 ] as const;
 
 export const EDITOR_OPERATION_COVERAGE_MATRIX: readonly IEditorOperationCoverageRow[] = [
@@ -386,6 +455,7 @@ export const EDITOR_OPERATION_COVERAGE_MATRIX: readonly IEditorOperationCoverage
   })),
   ...EDITOR_MODAL_ACTION_DEFINITIONS.map((action) => ({
     control: action.id,
+    featureStatus: action.featureStatus,
     handler: action.handler,
     kind: "modal-action" as const,
     operationName: action.operationName,

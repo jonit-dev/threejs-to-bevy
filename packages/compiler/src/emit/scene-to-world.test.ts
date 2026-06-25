@@ -17,6 +17,7 @@ import {
   Object3D,
   OrthographicCamera,
   PerspectiveCamera,
+  PlaneGeometry,
   RegularPolygonGeometry,
   Scene,
   TorusGeometry,
@@ -97,6 +98,7 @@ test("should emit deterministic size tuples for expanded primitive catalog", () 
   scene.add(new Mesh({ geometry: new AnnulusGeometry({ innerRadius: 0.3, outerRadius: 0.8 }), id: "annulus", material }));
   scene.add(new Mesh({ geometry: new RegularPolygonGeometry({ radius: 0.9, sides: 5 }), id: "polygon", material }));
   scene.add(new Mesh({ geometry: new ExtrudedRectangleGeometry({ depth: 0.4, size: [2, 3] }), id: "extruded", material }));
+  scene.add(new Mesh({ geometry: new PlaneGeometry({ size: [4, 5] }), id: "plane", material }));
 
   const result = sceneToWorld(scene);
 
@@ -106,6 +108,7 @@ test("should emit deterministic size tuples for expanded primitive catalog", () 
       ["mesh.annulus", "annulus", [0.3, 0.8]],
       ["mesh.extruded", "extrudedRectangle", [2, 3, 0.4]],
       ["mesh.frustum", "conicalFrustum", [0.2, 0.7, 1.5]],
+      ["mesh.plane", "plane", [4, 5]],
       ["mesh.polygon", "regularPolygon", [0.9, 5]],
       ["mesh.torus", "torus", [0.25, 0.75]],
     ],

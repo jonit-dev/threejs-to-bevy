@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 import { Box, Camera, FolderOpen, Gamepad2, Image, Lightbulb, MessageSquare, Mountain, PackagePlus, Pause, Play, Save, Settings, Square, Trash2 } from "lucide-react";
 import type { IEditorGamepadViewerSnapshot } from "@threenative/ir";
 
@@ -30,6 +30,10 @@ const EDITOR_GIZMO_MODE_BUTTONS: Array<{ key: "E" | "R" | "W"; label: string; mo
   { key: "R", label: "Scale", mode: "scale" },
 ];
 
+const PLAYBACK_UNAVAILABLE_REASON = "Playback controls require a promoted preview runtime state operation before they are enabled.";
+const DELETE_ACTION = modalActionDefinition("delete.selection");
+const SETTINGS_ACTION = modalActionDefinition("settings.editor");
+
 export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPreview, onCreateScene, onEditProperty, onMoveRow, onSaveScene, onSelectRow, onTransformObject, toolbarSlot }: IEditorAppProps) {
   const modal = useEditorStore((state) => state.modal);
   const gizmoMode = useEditorStore((state) => state.gizmoMode);
@@ -38,7 +42,7 @@ export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPr
   const setBrowserGamepads = useEditorStore((state) => state.setBrowserGamepads);
   const openModal = useEditorStore((state) => state.openModal);
   const closeModal = useEditorStore((state) => state.closeModal);
-  const model = createEditorShellModel(input);
+  const model = useMemo(() => createEditorShellModel(input), [input]);
   const objectCount = countTreeRows(model.hierarchy);
   const statusMessage = model.diagnostics.some((diagnostic) => diagnostic.severity === "error") ? "Needs attention" : "Ready";
   const gamepadDevices = mergeGamepadDevices(model.gamepadViewer.devices, browserGamepads);
@@ -115,9 +119,9 @@ export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPr
           <span className="tn-editor-badge tn-editor-badge--purple">Scene: {model.projectName}</span>
         </div>
         <div className="tn-editor-playback" aria-label="Playback controls">
-          <button className="tn-editor-icon-button tn-editor-icon-button--play" title="Play" type="button"><Play size={16} /></button>
-          <button className="tn-editor-icon-button" title="Pause" type="button"><Pause size={15} /></button>
-          <button className="tn-editor-icon-button tn-editor-icon-button--stop" title="Stop" type="button"><Square size={14} /></button>
+          <button className="tn-editor-icon-button tn-editor-icon-button--play" disabled title={PLAYBACK_UNAVAILABLE_REASON} type="button"><Play size={16} /></button>
+          <button className="tn-editor-icon-button" disabled title={PLAYBACK_UNAVAILABLE_REASON} type="button"><Pause size={15} /></button>
+          <button className="tn-editor-icon-button tn-editor-icon-button--stop" disabled title={PLAYBACK_UNAVAILABLE_REASON} type="button"><Square size={14} /></button>
         </div>
         <div className="tn-editor-topbar__actions">
           {toolbarSlot}
@@ -125,8 +129,8 @@ export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPr
             <button className="tn-editor-action-icons__add" onClick={() => openModal("addObject")} title="Add" type="button"><Box size={15} /> <span>Add</span></button>
             <button onClick={() => openModal("save")} title="Save" type="button"><Save size={16} /></button>
             <button onClick={() => openModal("newScene")} title="New scene" type="button"><FolderOpen size={16} /></button>
-            <button onClick={() => openModal("delete")} title="Delete" type="button"><Trash2 size={16} /></button>
-            <button onClick={() => openModal("settings")} title="Settings" type="button"><Settings size={16} /></button>
+            <button aria-label="Delete" onClick={() => openModal("delete")} title={DELETE_ACTION.readOnlyReason} type="button"><Trash2 size={16} /></button>
+            <button aria-label="Settings" onClick={() => openModal("settings")} title={SETTINGS_ACTION.readOnlyReason} type="button"><Settings size={16} /></button>
             <button onClick={() => openModal("build")} title="Build preview" type="button"><Image size={16} /></button>
           </div>
         </div>
@@ -383,7 +387,7 @@ export function EditorModalView({
           {empty === undefined ? null : <button disabled={empty.readOnly} onClick={() => onAddObject(empty)} title={empty.readOnly ? empty.readOnlyReason : empty.operationName} type="button"><Box size={16} /> Empty Entity</button>}
           {camera === undefined ? null : <button disabled={camera.readOnly} onClick={() => onAddObject(camera)} title={camera.readOnly ? camera.readOnlyReason : camera.operationName} type="button"><Camera size={16} /> Camera</button>}
           {light === undefined ? null : <button disabled={light.readOnly} onClick={() => onAddObject(light)} title={light.readOnly ? light.readOnlyReason : light.operationName} type="button"><Lightbulb size={16} /> Light</button>}
-          {terrain === undefined ? null : <button disabled title={terrain.readOnlyReason} type="button"><Mountain size={16} /> Terrain</button>}
+          {terrain === undefined ? null : <button disabled={terrain.readOnly} onClick={() => onAddObject(terrain)} title={terrain.readOnly ? terrain.readOnlyReason : terrain.operationName} type="button"><Mountain size={16} /> Terrain</button>}
           {customGlb === undefined
             ? null
             : modelAssets.length === 0
@@ -391,7 +395,7 @@ export function EditorModalView({
               : modelAssets.map((asset) => (
                   <button
                     key={asset.id}
-                    onClick={() => onAddObject({ ...customGlb, assetPath: asset.path, label: asset.label, operationName: "scene.add_prefab", readOnly: false, readOnlyReason: undefined })}
+                    onClick={() => onAddObject({ ...customGlb, assetPath: asset.path, featureStatus: "enabled", label: asset.label, operationName: "scene.add_prefab", readOnly: false, readOnlyReason: undefined })}
                     title={asset.path}
                     type="button"
                   >
@@ -408,7 +412,7 @@ export function EditorModalView({
         <div className="tn-editor-modal-grid">
           {addComponentDefinitions.map((definition) => (
             <button
-              disabled={attachedComponents.includes(definition.component) || definition.incompatibleWith.some((component) => attachedComponents.includes(component))}
+              disabled={definition.readOnlyReason !== undefined || attachedComponents.includes(definition.component) || definition.incompatibleWith.some((component) => attachedComponents.includes(component))}
               key={definition.component}
               onClick={() => onAddComponent(definition)}
               title={`Pack: ${definition.pack}; defaults: ${JSON.stringify(definition.defaults)}${definition.readOnlyReason === undefined ? "" : `; ${definition.readOnlyReason}`}`}
@@ -454,9 +458,17 @@ export function EditorModalView({
   }
   return (
     <ModalFrame onClose={onClose} title={modal === "settings" ? "Settings" : "Delete"}>
-      <p>{modal === "settings" ? "Editor settings are inspect-only in this slice." : "Delete requires a promoted source operation before it is enabled."}</p>
+      <p>{modal === "settings" ? SETTINGS_ACTION.readOnlyReason : DELETE_ACTION.readOnlyReason}</p>
     </ModalFrame>
   );
+}
+
+function modalActionDefinition(id: IEditorModalActionDefinition["id"]): IEditorModalActionDefinition {
+  const action = EDITOR_MODAL_ACTION_DEFINITIONS.find((candidate) => candidate.id === id);
+  if (action === undefined) {
+    throw new Error(`Missing editor modal action definition ${id}`);
+  }
+  return action;
 }
 
 function ModalFrame({ children, onClose, title }: { children: ReactNode; onClose: () => void; title: string }) {

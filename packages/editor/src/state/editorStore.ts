@@ -113,8 +113,87 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
         );
       } else if (definition.component === "Light") {
         await postOperation(
-          "scene.set_component",
-          { componentKind: "Light", entityId: object.id, sceneId: sceneIdFromDocumentPath(object.documentPath), value: definition.defaults },
+          "scene.set_light",
+          {
+            color: stringDefault(definition.defaults.color, "#ffffff"),
+            entityId: object.id,
+            intensity: numberDefault(definition.defaults.intensity, 1),
+            kind: stringDefault(definition.defaults.kind, "directional"),
+            sceneId: sceneIdFromDocumentPath(object.documentPath),
+          },
+          state.project?.projectRevision,
+        );
+      } else if (definition.component === "MeshRenderer") {
+        await postOperation(
+          "scene.set_mesh_renderer",
+          {
+            castShadow: booleanDefault(definition.defaults.castShadow, true),
+            entityId: object.id,
+            material: stringDefault(definition.defaults.material, "mat.player"),
+            mesh: stringDefault(definition.defaults.mesh, "mesh.player"),
+            receiveShadow: booleanDefault(definition.defaults.receiveShadow, true),
+            sceneId: sceneIdFromDocumentPath(object.documentPath),
+            visible: booleanDefault(definition.defaults.visible, true),
+          },
+          state.project?.projectRevision,
+        );
+      } else if (definition.component === "RenderLayers") {
+        await postOperation(
+          "scene.set_render_layers",
+          {
+            entityId: object.id,
+            layers: stringArrayDefault(definition.defaults.layers, ["default"]),
+            sceneId: sceneIdFromDocumentPath(object.documentPath),
+          },
+          state.project?.projectRevision,
+        );
+      } else if (definition.component === "Visibility") {
+        await postOperation(
+          "scene.set_visibility",
+          {
+            entityId: object.id,
+            sceneId: sceneIdFromDocumentPath(object.documentPath),
+            visible: booleanDefault(definition.defaults.visible, true),
+          },
+          state.project?.projectRevision,
+        );
+      } else if (definition.component === "RigidBody") {
+        await postOperation(
+          "scene.set_rigid_body",
+          {
+            damping: numberDefault(definition.defaults.damping, 0.05),
+            entityId: object.id,
+            gravityScale: numberDefault(definition.defaults.gravityScale, 1),
+            kind: stringDefault(definition.defaults.kind, "dynamic"),
+            mass: numberDefault(definition.defaults.mass, 1),
+            sceneId: sceneIdFromDocumentPath(object.documentPath),
+          },
+          state.project?.projectRevision,
+        );
+      } else if (definition.component === "Collider") {
+        await postOperation(
+          "scene.set_collider",
+          {
+            entityId: object.id,
+            kind: stringDefault(definition.defaults.kind, "box"),
+            sceneId: sceneIdFromDocumentPath(object.documentPath),
+            size: vectorDefault(definition.defaults.size, [1, 1, 1]),
+            trigger: booleanDefault(definition.defaults.trigger, false),
+          },
+          state.project?.projectRevision,
+        );
+      } else if (definition.component === "CharacterController") {
+        await postOperation(
+          "scene.set_character_controller",
+          {
+            blocking: booleanDefault(definition.defaults.blocking, true),
+            entityId: object.id,
+            grounding: stringDefault(definition.defaults.grounding, "raycast"),
+            moveXAxis: stringDefault(definition.defaults.moveXAxis, "MoveX"),
+            moveZAxis: stringDefault(definition.defaults.moveZAxis, "MoveZ"),
+            sceneId: sceneIdFromDocumentPath(object.documentPath),
+            speed: numberDefault(definition.defaults.speed, 4),
+          },
           state.project?.projectRevision,
         );
       } else {
@@ -131,15 +210,16 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     const suffix = Date.now().toString(36);
     const sceneId = sceneIdFromDocumentPath(get().activeScenePath ?? get().project?.sceneLifecycle?.activeScene?.documentPath);
     try {
-      const revision = get().project?.projectRevision;
-      const result = addObjectOperationPlan(action, suffix);
+      let revision = get().project?.projectRevision;
+      const result = addObjectOperationPlan(action, suffix, { environmentId: environmentIdFromProject(get().project, sceneId) });
       if (result === undefined) {
         set({ status: action.readOnlyReason ?? `${action.label} does not have a promoted add operation yet` });
         return;
       }
       set({ status: `Adding ${result.statusLabel}` });
       for (const operation of result.operations) {
-        await postOperation(operation.name, { ...operation.args, sceneId }, revision);
+        const operationResult = await postOperation(operation.name, { ...operation.args, sceneId }, revision);
+        revision = operationResult.projectRevision ?? revision;
       }
       const nextProject = await get().refreshProject();
       set({
@@ -507,17 +587,17 @@ function isDescendant(candidateId: string, parentId: string, parentByRowId: Reco
   return false;
 }
 
-async function postOperation(name: string, args: Record<string, unknown>, projectRevision: string | undefined): Promise<{ filesWritten: string[] }> {
+async function postOperation(name: string, args: Record<string, unknown>, projectRevision: string | undefined): Promise<{ filesWritten: string[]; projectRevision?: string }> {
   const response = await fetch("/api/operation", {
     body: JSON.stringify({ args, name, projectRevision }),
     headers: { "content-type": "application/json" },
     method: "POST",
   });
-  const payload = await response.json() as { diagnostics?: Array<{ message: string }>; filesWritten?: string[]; ok: boolean };
+  const payload = await response.json() as { diagnostics?: Array<{ message: string }>; filesWritten?: string[]; ok: boolean; projectRevision?: string };
   if (!payload.ok) {
     throw new Error(payload.diagnostics?.[0]?.message ?? `Operation ${name} failed`);
   }
-  return { filesWritten: payload.filesWritten ?? [] };
+  return { filesWritten: payload.filesWritten ?? [], projectRevision: payload.projectRevision };
 }
 
 function buildOperationArgs(row: IEditorPropertyRow, value: unknown): Record<string, unknown> {
@@ -547,6 +627,26 @@ function vectorDefault(value: unknown, fallback: [number, number, number]): [num
     return fallback;
   }
   return [value[0], value[1], value[2]];
+}
+
+function booleanDefault(value: unknown, fallback: boolean): boolean {
+  return typeof value === "boolean" ? value : fallback;
+}
+
+function numberDefault(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function stringDefault(value: unknown, fallback: string): string {
+  return typeof value === "string" && value.length > 0 ? value : fallback;
+}
+
+function stringArrayDefault(value: unknown, fallback: string[]): string[] {
+  if (!Array.isArray(value)) {
+    return fallback;
+  }
+  const strings = value.filter((item): item is string => typeof item === "string" && item.length > 0);
+  return strings.length > 0 ? strings : fallback;
 }
 
 function sceneIdFromDocumentPath(documentPath: string | undefined): string {
@@ -597,7 +697,14 @@ interface IPlannedEditorOperation {
   name: string;
 }
 
-function addObjectOperationPlan(action: IEditorModalActionDefinition, suffix: string): { entityId: string; operations: IPlannedEditorOperation[]; statusLabel: string } | undefined {
+function environmentIdFromProject(project: IEditorProjectPayload | undefined, fallbackSceneId: string): string {
+  const environment = project?.documents
+    ?.find((group) => group.kind === "environment")
+    ?.documents.find((document) => document.id.length > 0);
+  return environment?.id ?? fallbackSceneId;
+}
+
+function addObjectOperationPlan(action: IEditorModalActionDefinition, suffix: string, context: { environmentId: string }): { entityId: string; operations: IPlannedEditorOperation[]; statusLabel: string } | undefined {
   switch (action.id) {
     case "add.primitive_sphere": {
       const prefabId = `prefab.editor-box-${suffix}`;
@@ -660,7 +767,18 @@ function addObjectOperationPlan(action: IEditorModalActionDefinition, suffix: st
         statusLabel: `model ${action.assetPath}`,
       };
     }
-    case "add.terrain":
+    case "add.terrain": {
+      const terrainId = `terrain.editor-${suffix}`;
+      const prefabId = `prefab.editor-terrain-${suffix}`;
+      const entityId = `editor-terrain-${suffix}`;
+      return {
+        entityId,
+        operations: [
+          { args: { color: "#284f32", entityId, environmentId: context.environmentId, prefabId, terrainId }, name: "environment.add_flat_terrain" },
+        ],
+        statusLabel: "flat terrain",
+      };
+    }
     case "build.preview":
     case "delete.selection":
     case "scene.create_default":

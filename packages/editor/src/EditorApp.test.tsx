@@ -3,7 +3,7 @@ import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { EditorApp, EditorModalView } from "./EditorApp.js";
-import { EDITOR_ADD_COMPONENT_DEFINITIONS, type IEditorShellModel } from "./adapters/editorModel.js";
+import { EDITOR_ADD_COMPONENT_DEFINITIONS, EDITOR_MODAL_ACTION_DEFINITIONS, type IEditorShellModel } from "./adapters/editorModel.js";
 import { useEditorStore } from "./state/editorStore.js";
 
 test("should render shell sections from adapter data", () => {
@@ -79,7 +79,7 @@ test("should disable modal actions without source operations", () => {
   assert.match(html, /Camera/);
   assert.match(html, /Light/);
   assert.match(html, /title="scene.add_entity"/);
-  assert.match(html, /Terrain source operations are not promoted in this editor slice yet/);
+  assert.match(html, /title="environment.add_flat_terrain"/);
   assert.match(html, /Custom GLB import needs a promoted asset and prefab operation before it can be enabled/);
 });
 
@@ -115,6 +115,44 @@ test("should expose accessible gizmo mode controls", () => {
   assert.match(html, /title="Rotate gizmo mode"/);
   assert.match(html, /title="Scale gizmo mode"/);
 });
+
+test("should disable playback controls with a stable source-backed reason", () => {
+  useEditorStore.getState().reset();
+
+  const html = renderToStaticMarkup(<EditorApp model={modelFixture()} />);
+
+  assert.match(html, /aria-label="Playback controls"/);
+  assert.equal((html.match(/Playback controls require a promoted preview runtime state operation before they are enabled\./g) ?? []).length, 3);
+  assert.equal((html.match(/disabled=""/g) ?? []).length, 3);
+});
+
+test("should render disabled toolbar workflows with modal reasons", () => {
+  useEditorStore.getState().reset();
+  const deleteReason = modalReason("delete.selection");
+  const settingsReason = modalReason("settings.editor");
+
+  const toolbarHtml = renderToStaticMarkup(<EditorApp model={modelFixture()} />);
+  assert.match(toolbarHtml, new RegExp(`aria-label="Delete"[^>]*title="${escapeRegExp(deleteReason)}"`));
+  assert.match(toolbarHtml, new RegExp(`aria-label="Settings"[^>]*title="${escapeRegExp(settingsReason)}"`));
+
+  useEditorStore.getState().openModal("delete");
+  const deleteHtml = renderToStaticMarkup(<EditorApp model={modelFixture()} />);
+  assert.match(deleteHtml, new RegExp(escapeRegExp(deleteReason)));
+
+  useEditorStore.getState().openModal("settings");
+  const settingsHtml = renderToStaticMarkup(<EditorApp model={modelFixture()} />);
+  assert.match(settingsHtml, new RegExp(escapeRegExp(settingsReason)));
+});
+
+function modalReason(id: string): string {
+  const action = EDITOR_MODAL_ACTION_DEFINITIONS.find((candidate) => candidate.id === id);
+  assert.ok(action?.readOnlyReason, `Missing read-only reason for ${id}`);
+  return action.readOnlyReason;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 function modelFixture(): IEditorShellModel {
   return {

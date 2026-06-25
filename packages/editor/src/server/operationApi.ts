@@ -10,6 +10,8 @@ import {
   createPrefabDocument,
   createScene,
   setComponent,
+  setEnvironmentTerrain,
+  setEnvironmentWalkability,
   setTransform,
   createSystem,
   dispatchAuthoringOperation,
@@ -70,6 +72,16 @@ async function dispatchEditorOperation(projectPath: string, name: string, args: 
           projectPath,
           sceneId: stringArg(args, "sceneId"),
         });
+      case "environment.add_flat_terrain":
+        return addFlatTerrain({
+          color: optionalStringArg(args, "color"),
+          entityId: stringArg(args, "entityId"),
+          environmentId: stringArg(args, "environmentId"),
+          prefabId: stringArg(args, "prefabId"),
+          projectPath,
+          sceneId: stringArg(args, "sceneId"),
+          terrainId: stringArg(args, "terrainId"),
+        });
       case "scene.create_default":
         return createDefaultScene({
           file: optionalStringArg(args, "file"),
@@ -116,6 +128,31 @@ async function dispatchEditorOperation(projectPath: string, name: string, args: 
       projectPath,
     });
   }
+}
+
+async function addFlatTerrain(options: { color?: string; entityId: string; environmentId: string; prefabId: string; projectPath: string; sceneId: string; terrainId: string }): Promise<IAuthoringOperationResult> {
+  const operations = [
+    await setEnvironmentTerrain({ environmentId: options.environmentId, heightMode: "flat", projectPath: options.projectPath, terrainId: options.terrainId }),
+    await setEnvironmentWalkability({
+      environmentId: options.environmentId,
+      projectPath: options.projectPath,
+      walkability: {
+        blockers: [],
+        movementProfile: { boundary: "block", eyeHeight: 1.7, height: 1.8, maxStep: 0.35, radius: 0.35 },
+        regions: [],
+        terrain: { height: 0, surface: options.terrainId },
+      },
+    }),
+    await addPrefab({ color: options.color ?? "#284f32", prefabId: options.prefabId, primitive: "plane", projectPath: options.projectPath, sceneId: options.sceneId }),
+    await addEntity({ entityId: options.entityId, prefabId: options.prefabId, projectPath: options.projectPath, sceneId: options.sceneId }),
+    await setTransform({ entityId: options.entityId, position: [0, -0.05, 0], projectPath: options.projectPath, rotation: [-1.570796, 0, 0], scale: [6, 6, 1], sceneId: options.sceneId }),
+  ];
+  return authoringOperationResult({
+    changed: operations.some((operation) => operation.changed),
+    diagnostics: operations.flatMap((operation) => operation.diagnostics),
+    filesWritten: [...new Set(operations.flatMap((operation) => operation.filesWritten))],
+    projectPath: options.projectPath,
+  });
 }
 
 async function createDefaultScene(options: { file?: string; projectPath: string; sceneId: string }): Promise<IAuthoringOperationResult> {

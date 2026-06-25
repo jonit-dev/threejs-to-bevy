@@ -44,22 +44,38 @@ export async function runEditorPackageGate(root = process.cwd()): Promise<Verifi
     env: { ...process.env, THREENATIVE_EDITOR_BOOT: fixture.bootConfigPath },
     stdio: ["ignore", "ignore", "ignore"],
   });
+  server.unref();
   const startedAt = new Date().toISOString();
   const steps = [];
   const diagnostics = [];
+  const lifecycleEvents: string[] = [];
   let ok = false;
+  let phase = "starting editor package gate";
   try {
     const browser = await chromium.launch();
+    browser.on("disconnected", () => {
+      lifecycleEvents.push(`browser disconnected during ${phase}`);
+    });
     try {
+      phase = "opening editor shell";
       const page = await browser.newPage({ viewport: { height: 924, width: 1913 } });
       const consoleErrors: string[] = [];
+      page.on("close", () => {
+        lifecycleEvents.push(`page closed during ${phase}`);
+      });
       page.on("console", (message) => {
         if (message.type() === "error") {
           consoleErrors.push(message.text());
         }
       });
+      page.on("crash", () => {
+        lifecycleEvents.push(`page crashed during ${phase}`);
+      });
+      page.on("pageerror", (error) => {
+        lifecycleEvents.push(`page error during ${phase}: ${error.message}`);
+      });
       await waitForHttp(url, 30_000);
-      await page.goto(url, { waitUntil: "networkidle", timeout: 30_000 });
+      await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
       for (const text of ["ThreeNative", "Hierarchy", "Inspector", "Viewport", "Main Camera", "Directional Light", "Ambient Light", "Terrain 0", "farm_house_basic_shaded 0", "base_basic_shaded 0"]) {
         await page.getByText(text).first().waitFor({ timeout: 10_000 });
       }
@@ -80,6 +96,7 @@ export async function runEditorPackageGate(root = process.cwd()): Promise<Verifi
       }
       await page.getByText("LOD:").waitFor({ timeout: 10_000 });
       await page.getByText(/Triangles:/).waitFor({ timeout: 10_000 });
+      phase = "selecting base model from hierarchy";
       await page.getByRole("button", { name: /base_basic_shaded 0 entity/ }).click();
       await page.getByLabel("Name").waitFor({ timeout: 10_000 });
       if ((await page.getByLabel("Name").inputValue()) !== "base_basic_shaded 0") {
@@ -91,13 +108,9 @@ export async function runEditorPackageGate(root = process.cwd()): Promise<Verifi
       await assertAddComponentDefaultPersistence(page);
       await page.getByRole("button", { name: /farm_house_basic_shaded 0 entity/ }).dragTo(page.getByRole("button", { name: /base_basic_shaded 0 entity/ }));
       await page.getByText("Nested farm_house_basic_shaded 0 under base_basic_shaded 0 in editor view").waitFor({ timeout: 10_000 });
-      await page.reload({ waitUntil: "networkidle", timeout: 30_000 });
+      await page.reload({ waitUntil: "domcontentloaded", timeout: 30_000 });
       await page.getByText("base_basic_shaded 0").first().waitFor({ timeout: 10_000 });
-      const canvas = page.locator(".tn-editor-viewport-canvas canvas");
-      const canvasBounds = await canvas.boundingBox();
-      if (canvasBounds === null) {
-        throw new Error("Editor viewport canvas did not render.");
-      }
+      const { bounds: canvasBounds, canvas } = await waitForViewportCanvas(page, "Editor viewport canvas did not render.");
       await canvas.click({ position: { x: canvasBounds.width * 0.5, y: canvasBounds.height * 0.55 } });
       const selectedFromViewport = await page.getByLabel("Name").inputValue();
       if (selectedFromViewport !== "Terrain 0" && selectedFromViewport !== "base_basic_shaded 0" && selectedFromViewport !== "component-target") {
@@ -108,26 +121,42 @@ export async function runEditorPackageGate(root = process.cwd()): Promise<Verifi
       await assertGizmoModeControls(page);
       await page.screenshot({ path: artifacts.smokeScreenshot, fullPage: true });
 
+      phase = "checking Add Object modal placeholders";
       await assertModalPlaceholderState(page);
+      phase = "adding terrain";
+      const terrainEntityId = await addObjectThroughModal(page, "Terrain", "editor-terrain-");
+      phase = "adding primitive sphere";
       const entityId = await addObjectThroughModal(page, "Primitive Sphere", "editor-box-");
+      phase = "adding empty entity";
       const emptyEntityId = await addObjectThroughModal(page, "Empty Entity", "editor-entity-");
+      phase = "adding camera";
       const cameraEntityId = await addObjectThroughModal(page, "Camera", "editor-camera-");
+      phase = "adding light";
       const lightEntityId = await addObjectThroughModal(page, "Light", "editor-light-");
+      phase = "adding project model";
       const modelEntityId = await addObjectThroughModal(page, "model.base_basic", "editor-model-");
 
+      phase = "building preview";
       await page.getByRole("button", { name: "Build preview" }).click();
       const buildDialog = page.getByRole("dialog", { name: "Build Preview" });
       await buildDialog.waitFor({ timeout: 10_000 });
       await buildDialog.getByRole("button", { exact: true, name: "Build" }).click();
-      await page.getByText(/Built /).waitFor({ timeout: 30_000 });
+      const buildMessage = page.getByText(/Built |Build failed:/).last();
+      await buildMessage.waitFor({ timeout: 120_000 });
+      const buildStatus = await buildMessage.textContent() ?? "";
+      if (!buildStatus.includes("Built ")) {
+        throw new Error(`Preview build did not complete successfully: ${buildStatus || await readBodyText(page)}`);
+      }
       await page.getByRole("button", { name: /base_basic_shaded 0 entity/ }).click();
       await assertAddComponentModal(page);
 
-      const evidence = await assertEditedProjectEvidence(fixture.projectPath, { cameraEntityId, emptyEntityId, entityId, lightEntityId, modelEntityId });
+      phase = "asserting persisted source and bundle evidence";
+      const evidence = await assertEditedProjectEvidence(fixture.projectPath, { cameraEntityId, emptyEntityId, entityId, lightEntityId, modelEntityId, terrainEntityId });
       await writeFile(artifacts.sourceScene, `${JSON.stringify(evidence.scene, null, 2)}\n`);
       await writeFile(artifacts.worldIr, `${JSON.stringify(evidence.world, null, 2)}\n`);
       await writeFile(artifacts.environmentScene, `${JSON.stringify(evidence.environment, null, 2)}\n`);
       await writeFile(artifacts.assetsManifest, `${JSON.stringify(evidence.assets, null, 2)}\n`);
+      phase = "creating new scene";
       await page.getByRole("button", { name: "New scene" }).click();
       const newSceneDialog = page.getByRole("dialog", { name: "New Scene" });
       await newSceneDialog.waitFor({ timeout: 10_000 });
@@ -145,6 +174,7 @@ export async function runEditorPackageGate(root = process.cwd()): Promise<Verifi
       await saveDialog.waitFor({ timeout: 10_000 });
       await saveDialog.getByRole("button", { exact: true, name: "Save" }).click();
       await page.getByText(/Saved scene sources;/).waitFor({ timeout: 10_000 });
+      phase = "capturing final clean visual state";
       await captureCleanVisualState(page, fixture.projectPath, artifacts.editedScreenshot);
       const unexpectedConsoleErrors = consoleErrors.filter((error) => !error.startsWith("THREE.GLTFLoader: Couldn't load texture blob:"));
       if (unexpectedConsoleErrors.length > 0) {
@@ -156,7 +186,7 @@ export async function runEditorPackageGate(root = process.cwd()): Promise<Verifi
         exitCode: 0,
         name: "editor-e2e",
         stderr: "",
-        stdout: `Editor shell rendered, project inventory loaded, added ${entityId}/${emptyEntityId}/${cameraEntityId}/${lightEntityId}/${modelEntityId}, built preview, and persisted source/IR/environment/assets evidence.`,
+        stdout: `Editor shell rendered, project inventory loaded, added ${entityId}/${emptyEntityId}/${cameraEntityId}/${lightEntityId}/${terrainEntityId}/${modelEntityId}, built preview, and persisted source/IR/environment/assets evidence.`,
       });
     } finally {
       await browser.close();
@@ -164,11 +194,11 @@ export async function runEditorPackageGate(root = process.cwd()): Promise<Verifi
   } catch (error) {
     diagnostics.push({
       code: "TN_VERIFY_EDITOR_PACKAGE_E2E_FAILED",
-      message: error instanceof Error ? error.message : String(error),
+      message: `${phase}: ${error instanceof Error ? error.message : String(error)}; lifecycle=${lifecycleEvents.join(" | ") || "<none>"}`,
       severity: "error" as const,
       suggestedFix: "Run pnpm --filter @threenative/editor dev and inspect the browser console.",
     });
-    steps.push({ durationMs: 0, exitCode: 1, name: "editor-e2e", stderr: String(error), stdout: "" });
+    steps.push({ durationMs: 0, exitCode: 1, name: "editor-e2e", stderr: `${phase}: ${String(error)}; lifecycle=${lifecycleEvents.join(" | ") || "<none>"}`, stdout: "" });
   } finally {
     stopProcess(server);
     await rm(fixture.tempRoot, { force: true, recursive: true });
@@ -271,12 +301,12 @@ async function writeEditorVisualScene(projectPath: string): Promise<void> {
         transform: { position: [2.8, 2.8, 1.1] },
       },
       {
-        components: { Light: { intensity: 1, kind: "directional" } },
+        components: { Light: { color: "#ffffff", intensity: 1, kind: "directional" } },
         id: "directional-light",
         transform: { position: [-2, 3, 2] },
       },
       {
-        components: { Light: { intensity: 0.4, kind: "ambient" } },
+        components: { Light: { color: "#ffffff", intensity: 0.4, kind: "ambient" } },
         id: "ambient-light",
         transform: { position: [-2.4, 2.4, -1.2] },
       },
@@ -413,7 +443,7 @@ async function assertProjectAssetRoute(page: Page, assetPath: string): Promise<v
 async function captureCleanVisualState(page: Page, projectPath: string, screenshotPath: string): Promise<void> {
   await writeEditorVisualScene(projectPath);
   await removeGeneratedEditorScenes(projectPath);
-  await page.reload({ waitUntil: "networkidle", timeout: 30_000 });
+  await page.reload({ waitUntil: "domcontentloaded", timeout: 30_000 });
   await page.getByText("base_basic_shaded 0").first().waitFor({ timeout: 10_000 });
   await waitForEditorModel(page, "assets/models/FarmHouse/glb/farm_house_basic_shaded.glb");
   await waitForEditorModel(page, "assets/models/base_basic_shaded/base_basic_shaded.glb");
@@ -513,11 +543,15 @@ async function assertAddComponentModal(page: Page): Promise<void> {
     throw new Error("Add Component did not disable Camera as incompatible with MeshRenderer.");
   }
   const scriptTitle = await script.getAttribute("title");
-  if (scriptTitle?.includes('"module":"./systems/update.ts"') !== true || scriptTitle.includes("Pack: scripting") !== true) {
+  if (
+    scriptTitle?.includes('"module":"./systems/update.ts"') !== true ||
+    scriptTitle.includes("Pack: scripting") !== true ||
+    scriptTitle.includes("Scene and systems script references are edited through promoted script attach operations.") !== true
+  ) {
     throw new Error(`Add Component did not expose shared defaults/pack metadata for Script: ${scriptTitle ?? "<missing>"}`);
   }
-  if (await script.isDisabled()) {
-    throw new Error("Add Component unexpectedly disabled compatible Script definition.");
+  if (!(await script.isDisabled())) {
+    throw new Error("Add Component did not disable Script as a non-entity component workflow.");
   }
   await page.getByRole("button", { name: "Close Add Component" }).click();
 }
@@ -565,18 +599,14 @@ async function createComponentTarget(page: Page): Promise<void> {
   if (response.ok !== true) {
     throw new Error(`Could not create component-target for Add Component proof: ${response.diagnostics?.[0]?.message ?? "unknown error"}`);
   }
-  await page.reload({ waitUntil: "networkidle", timeout: 30_000 });
+  await page.reload({ waitUntil: "domcontentloaded", timeout: 30_000 });
   await page.getByRole("button", { name: /component-target entity/ }).waitFor({ timeout: 10_000 });
 }
 
 async function assertViewportTransformSync(page: Page): Promise<void> {
   const positionX = page.locator('input[aria-label="Position X"]');
   const before = Number(await positionX.inputValue());
-  const canvas = page.locator(".tn-editor-viewport-canvas canvas");
-  const bounds = await canvas.boundingBox();
-  if (bounds === null) {
-    throw new Error("Editor viewport canvas did not render before transform sync check.");
-  }
+  const { bounds } = await waitForViewportCanvas(page, "Editor viewport canvas did not render before transform sync check.");
   await page.mouse.move(bounds.x + bounds.width * 0.47, bounds.y + bounds.height * 0.58);
   await page.mouse.down();
   await page.mouse.move(bounds.x + bounds.width * 0.52, bounds.y + bounds.height * 0.58, { steps: 8 });
@@ -592,6 +622,20 @@ async function assertViewportTransformSync(page: Page): Promise<void> {
     const object = payload.sceneObjects?.find((candidate) => candidate.id === "base-basic-shaded-0");
     return object?.position?.[0] === expected;
   }, after, { timeout: 10_000 });
+}
+
+async function waitForViewportCanvas(page: Page, message: string): Promise<{ bounds: NonNullable<Awaited<ReturnType<Locator["boundingBox"]>>>; canvas: Locator }> {
+  const canvas = page.locator(".tn-editor-viewport-canvas canvas");
+  await canvas.waitFor({ state: "attached", timeout: 10_000 });
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    const bounds = await canvas.boundingBox();
+    if (bounds !== null && bounds.width > 0 && bounds.height > 0) {
+      return { bounds, canvas };
+    }
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
+  }
+  throw new Error(message);
 }
 
 async function assertGizmoModeControls(page: Page): Promise<void> {
@@ -639,33 +683,40 @@ async function readDefaultSceneFromEditor(page: Page): Promise<{ entities: strin
   });
 }
 
+async function readBodyText(page: Page): Promise<string> {
+  return page.evaluate(() => {
+    const browserDocument = (globalThis as unknown as { document: { body: { innerText: string } } }).document;
+    return browserDocument.body.innerText.replace(/\s+/g, " ").slice(0, 1000);
+  });
+}
+
 async function assertModalPlaceholderState(page: Page): Promise<void> {
   await page.locator(".tn-editor-action-icons__add").click();
   const addObjectDialog = page.getByRole("dialog", { name: "Add Object" });
   await addObjectDialog.waitFor({ timeout: 10_000 });
   const terrain = addObjectDialog.getByRole("button", { name: "Terrain" });
   const model = addObjectDialog.getByRole("button", { exact: true, name: "model.base_basic" });
-  if (!(await terrain.isDisabled())) {
-    throw new Error("Add Object exposed unsupported Terrain as enabled.");
+  if (await terrain.isDisabled()) {
+    throw new Error("Add Object did not enable source-backed Terrain.");
   }
   if (await model.isDisabled()) {
     throw new Error("Add Object did not enable project model asset actions.");
   }
-  if ((await terrain.getAttribute("title"))?.includes("not promoted") !== true) {
-    throw new Error("Terrain Add Object action did not expose a disabled reason.");
+  if ((await terrain.getAttribute("title")) !== "environment.add_flat_terrain") {
+    throw new Error("Terrain Add Object action did not expose its source operation.");
   }
   if ((await model.getAttribute("title")) !== "assets/models/base_basic_shaded/base_basic_shaded.glb") {
     throw new Error("Custom GLB model action did not expose its project asset path.");
   }
   await page.getByRole("button", { name: "Close Add Object" }).click();
 
-  await page.locator('.tn-editor-action-icons button[title="Delete"]').click();
+  await page.locator(".tn-editor-action-icons").getByRole("button", { name: "Delete" }).click();
   const deleteDialog = page.getByRole("dialog", { name: "Delete" });
   await deleteDialog.waitFor({ timeout: 10_000 });
   await deleteDialog.getByText("Delete requires a promoted source operation before it is enabled.").waitFor({ timeout: 10_000 });
   await page.getByRole("button", { name: "Close Delete" }).click();
 
-  await page.locator('.tn-editor-action-icons button[title="Settings"]').click();
+  await page.locator(".tn-editor-action-icons").getByRole("button", { name: "Settings" }).click();
   const settingsDialog = page.getByRole("dialog", { name: "Settings" });
   await settingsDialog.waitFor({ timeout: 10_000 });
   await settingsDialog.getByText("Editor settings are inspect-only in this slice.").waitFor({ timeout: 10_000 });
@@ -702,11 +753,20 @@ async function readEditorEntityIds(page: Page, entityPrefix: string): Promise<st
 }
 
 async function readNewEditorEntityId(page: Page, entityPrefix: string, before: readonly string[]): Promise<string> {
-  await page.waitForFunction(async ({ existing, prefix }) => {
-    const response = await fetch("/api/project");
-    const payload = (await response.json()) as { sceneObjects?: Array<{ id: string }> };
-    return payload.sceneObjects?.some((object) => object.id.startsWith(prefix) && !existing.includes(object.id)) ?? false;
-  }, { existing: before, prefix: entityPrefix }, { timeout: 30_000 });
+  try {
+    await page.waitForFunction(async ({ existing, prefix }) => {
+      const response = await fetch("/api/project");
+      const payload = (await response.json()) as { sceneObjects?: Array<{ id: string }> };
+      return payload.sceneObjects?.some((object) => object.id.startsWith(prefix) && !existing.includes(object.id)) ?? false;
+    }, { existing: before, prefix: entityPrefix }, { timeout: 60_000 });
+  } catch (error) {
+    const diagnostics = await readEditorAddObjectDiagnostics(page, entityPrefix);
+    throw new Error(
+      `Added editor entity with prefix ${entityPrefix} was not visible in the project API. ` +
+        `ids=${diagnostics.ids.join(",") || "<none>"}; status=${diagnostics.status || "<none>"}; ` +
+        `body=${diagnostics.body}; ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
   const ids = await readEditorEntityIds(page, entityPrefix);
   const entityId = ids.find((id) => !before.includes(id));
   if (entityId === undefined) {
@@ -715,16 +775,31 @@ async function readNewEditorEntityId(page: Page, entityPrefix: string, before: r
   return entityId;
 }
 
+async function readEditorAddObjectDiagnostics(page: Page, entityPrefix: string): Promise<{ body: string; ids: string[]; status: string }> {
+  return page.evaluate(async (prefix) => {
+    const response = await fetch("/api/project");
+    const payload = (await response.json()) as { sceneObjects?: Array<{ id: string }> };
+    const browserDocument = (globalThis as unknown as { document: { body: { innerText: string }; querySelectorAll: (selector: string) => ArrayLike<{ textContent?: string | null }> } }).document;
+    const body = browserDocument.body.innerText.replace(/\s+/g, " ").slice(0, 500);
+    const status = Array.from(browserDocument.querySelectorAll(".tn-editor-status__item")).map((node) => node.textContent?.trim() ?? "").filter(Boolean).join(" | ");
+    return {
+      body,
+      ids: payload.sceneObjects?.map((object) => object.id).filter((id) => id.startsWith(prefix)) ?? [],
+      status,
+    };
+  }, entityPrefix);
+}
+
 async function assertEditedProjectEvidence(
   projectPath: string,
-  entityIds: { cameraEntityId: string; emptyEntityId: string; entityId: string; lightEntityId: string; modelEntityId: string },
+  entityIds: { cameraEntityId: string; emptyEntityId: string; entityId: string; lightEntityId: string; modelEntityId: string; terrainEntityId: string },
 ): Promise<{ assets: IAssetsManifestDocument; environment: IEnvironmentSceneDocument; scene: ISceneDocument; world: IWorldDocument }> {
   const scene = JSON.parse(await readFile(join(projectPath, "content/scenes/arena.scene.json"), "utf8")) as ISceneDocument;
   const world = JSON.parse(await readFile(join(projectPath, "dist/structured-source-starter.bundle/world.ir.json"), "utf8")) as IWorldDocument;
   const materials = JSON.parse(await readFile(join(projectPath, "dist/structured-source-starter.bundle/materials.ir.json"), "utf8")) as IMaterialsDocument;
   const environment = JSON.parse(await readFile(join(projectPath, "dist/structured-source-starter.bundle/environment.scene.json"), "utf8")) as IEnvironmentSceneDocument;
   const assets = JSON.parse(await readFile(join(projectPath, "dist/structured-source-starter.bundle/assets.manifest.json"), "utf8")) as IAssetsManifestDocument;
-  const { cameraEntityId, emptyEntityId, entityId, lightEntityId, modelEntityId } = entityIds;
+  const { cameraEntityId, emptyEntityId, entityId, lightEntityId, modelEntityId, terrainEntityId } = entityIds;
   const entity = scene.entities.find((candidate) => candidate.id === entityId);
   if (entity === undefined) {
     throw new Error(`Source scene did not persist added entity ${entityId}.`);
@@ -764,6 +839,15 @@ async function assertEditedProjectEvidence(
   if (modelEntity?.prefab !== `prefab.${modelEntityId}` || modelPrefab?.asset !== "assets/models/base_basic_shaded/base_basic_shaded.glb") {
     throw new Error(`Source scene did not persist added GLB entity/prefab: entity=${JSON.stringify(modelEntity)} prefab=${JSON.stringify(modelPrefab)}`);
   }
+  const terrainEntity = scene.entities.find((candidate) => candidate.id === terrainEntityId);
+  const terrainPrefab = scene.prefabs.find((candidate) => candidate.id === `prefab.${terrainEntityId}`);
+  if (terrainEntity?.prefab !== `prefab.${terrainEntityId}` || terrainPrefab?.primitive !== "plane" || terrainPrefab.color !== "#284f32") {
+    throw new Error(`Source scene did not persist added Terrain entity/prefab: entity=${JSON.stringify(terrainEntity)} prefab=${JSON.stringify(terrainPrefab)}`);
+  }
+  const irTerrain = world.entities.find((candidate) => candidate.id === terrainEntityId);
+  if (irTerrain?.components?.MeshRenderer?.mesh !== `mesh.${terrainEntityId}` || irTerrain.components.Transform?.position?.join(",") !== "0,-0.05,0") {
+    throw new Error(`World IR did not emit added Terrain renderer/transform: ${JSON.stringify(irTerrain)}`);
+  }
   const irCamera = world.entities.find((candidate) => candidate.id === cameraEntityId);
   if (irCamera !== undefined && irCamera.components?.Camera?.kind !== "perspective") {
     throw new Error(`World IR emitted unexpected camera component for ${cameraEntityId}: ${JSON.stringify(irCamera)}`);
@@ -772,7 +856,8 @@ async function assertEditedProjectEvidence(
   if (irLight !== undefined && (irLight.components?.Light?.kind !== "directional" || irLight.components.Light.intensity !== 1)) {
     throw new Error(`World IR emitted unexpected Light component for ${lightEntityId}: ${JSON.stringify(irLight)}`);
   }
-  if (environment.terrain?.id !== "terrain.editor" || environment.path?.id !== "path.main") {
+  const terrainSourceId = `terrain.editor-${terrainEntityId.slice("editor-terrain-".length)}`;
+  if (environment.terrain?.id !== terrainSourceId || environment.terrain.heightMode !== "flat" || environment.path?.id !== "path.main") {
     throw new Error(`Environment artifact did not match source environment expectations: ${JSON.stringify(environment)}`);
   }
   const assetPaths = assets.assets.map((asset) => asset.path).filter((path): path is string => typeof path === "string");

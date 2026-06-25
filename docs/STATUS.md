@@ -376,6 +376,12 @@ id/height mode/heightmap plus path, walkability, light-probe, and source-asset L
 viewport uses environment metadata for a visible sky/background and terrain
 cue, and the footer distinguishes estimated LOD triangle counts from exact
 loaded counts.
+Add Object Terrain is now promoted through source-backed editor operations: the
+store updates flat environment terrain and walkability metadata, creates a
+scene-local plane prefab/entity, and persists the transform without touching
+generated bundle output. The browser editor package gate exercises the Terrain
+modal action and verifies the resulting source scene, emitted `world.ir.json`,
+and emitted `environment.scene.json` evidence.
 The functional editor scene/assets/environment PRD is now complete. The
 compiler lowers companion structured environment source documents into emitted
 environment bundle evidence for terrain, path, and walkability, while simple
@@ -394,6 +400,23 @@ advanced inspector rows. Editor-only
 operation fallbacks now return stable
 `TN_EDITOR_OPERATION_ARG_INVALID` diagnostics for malformed payloads before any
 source write.
+The editor functional gap closure now promotes Add Component entries for
+MeshRenderer, RenderLayers, Visibility, RigidBody, Collider, and
+CharacterController through registry-backed source operations instead of generic
+status-only placeholders. `/api/project` exposes typed, editable inspector rows
+for those attached components, and `verify:editor-required-operations` now
+authors RigidBody and Collider from editor operations and proves the source JSON
+and emitted `world.ir.json` contain the physics data.
+The remaining visible editor gap controls now have explicit honesty contracts:
+modal actions and Add Component definitions carry `featureStatus`, Delete and
+Settings toolbar buttons expose the same tracked disabled reasons as their
+dialogs, hierarchy drag/drop reports view-only nesting instead of durable source
+persistence, and Play/Pause/Stop are disabled until a promoted preview runtime
+state operation exists. Script reference editing is limited to module/export
+fields backed by `system.attach_script`; inline script body editing remains in
+the separate code-mode PRD. Runtime physics evidence for the promoted physics
+surface is covered by the focused animation/physics residual gate, which emits
+matching web/native reports for character grounding behavior.
 Generator provenance has a structured one-way source surface:
 `content/generators/*.generator.json` validates module/export, generated output
 paths, optional input/output hashes, and overwrite policy. The registry-backed

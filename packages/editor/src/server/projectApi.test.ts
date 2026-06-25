@@ -583,7 +583,39 @@ test("should persist added component defaults through source operations", async 
     });
     assert.equal(custom.ok, true);
 
+    const rigidBody = await applyEditorOperationApi({
+      projectPath: root,
+      request: {
+        args: { damping: 0.05, entityId: "player", gravityScale: 1, kind: "dynamic", mass: 1, sceneId: "arena" },
+        name: "scene.set_rigid_body",
+        projectRevision: custom.projectRevision,
+      },
+    });
+    assert.equal(rigidBody.ok, true);
+    const collider = await applyEditorOperationApi({
+      projectPath: root,
+      request: {
+        args: { entityId: "player", kind: "box", sceneId: "arena", size: [1, 1, 1], trigger: false },
+        name: "scene.set_collider",
+        projectRevision: rigidBody.projectRevision,
+      },
+    });
+    assert.equal(collider.ok, true);
+    const characterController = await applyEditorOperationApi({
+      projectPath: root,
+      request: {
+        args: { blocking: true, entityId: "player", grounding: "raycast", moveXAxis: "MoveX", moveZAxis: "MoveZ", sceneId: "arena", speed: 4 },
+        name: "scene.set_character_controller",
+        projectRevision: collider.projectRevision,
+      },
+    });
+    assert.equal(characterController.ok, true);
+
     const loaded = await loadEditorProjectApi({ projectPath: root });
+    const playerRows = loaded.sceneObjects.find((object) => object.id === "player")?.inspectorRows ?? [];
+    assert.equal(playerRows.some((row) => row.component === "RigidBody" && row.label === "Body Kind" && row.fieldKind === "enum" && row.operation?.name === "scene.set_rigid_body" && row.readOnly === false), true);
+    assert.equal(playerRows.some((row) => row.component === "Collider" && row.label === "Size" && row.fieldKind === "vector3" && row.operation?.name === "scene.set_collider" && row.readOnly === false), true);
+    assert.equal(playerRows.some((row) => row.component === "CharacterController" && row.label === "Speed" && row.fieldKind === "number" && row.operation?.name === "scene.set_character_controller" && row.readOnly === false), true);
     const customRow = loaded.sceneObjects.find((object) => object.id === "goal")?.inspectorRows?.find((row) => row.component === "RaceCheckpoint");
     assert.equal(customRow?.readOnly, false);
     assert.equal(customRow?.operation?.name, "scene.set_component");
@@ -604,11 +636,17 @@ test("should persist added component defaults through source operations", async 
       entities: Array<{ components?: Record<string, unknown>; id: string }>;
     };
     assert.deepEqual(scene.entities.find((entity) => entity.id === "player")?.components?.camera, { mode: "perspective" });
+    assert.deepEqual(scene.entities.find((entity) => entity.id === "player")?.components?.RigidBody, { damping: 0.05, gravityScale: 1, kind: "dynamic", mass: 1 });
+    assert.deepEqual(scene.entities.find((entity) => entity.id === "player")?.components?.Collider, { kind: "box", size: [1, 1, 1], trigger: false });
+    assert.deepEqual(scene.entities.find((entity) => entity.id === "player")?.components?.CharacterController, { blocking: true, grounding: "raycast", moveXAxis: "MoveX", moveZAxis: "MoveZ", speed: 4 });
     assert.deepEqual(scene.entities.find((entity) => entity.id === "goal")?.components?.Light, { color: "#ffffff", intensity: 1, kind: "directional" });
     assert.deepEqual(scene.entities.find((entity) => entity.id === "goal")?.components?.RaceCheckpoint, { index: 2, radius: 3, state: "armed" });
 
     const reloaded = await loadEditorProjectApi({ projectPath: root });
     assert.equal(reloaded.sceneObjects.find((object) => object.id === "player")?.components?.includes("Camera"), true);
+    assert.equal(reloaded.sceneObjects.find((object) => object.id === "player")?.components?.includes("RigidBody"), true);
+    assert.equal(reloaded.sceneObjects.find((object) => object.id === "player")?.components?.includes("Collider"), true);
+    assert.equal(reloaded.sceneObjects.find((object) => object.id === "player")?.components?.includes("CharacterController"), true);
     assert.equal(reloaded.sceneObjects.find((object) => object.id === "goal")?.components?.includes("Light"), true);
     assert.equal(reloaded.sceneObjects.find((object) => object.id === "goal")?.components?.includes("RaceCheckpoint"), true);
   } finally {

@@ -61,6 +61,12 @@ This index separates current cleanup work from historical milestone batches.
   planned bounded code-mode workflow for creating, opening, editing, and
   validating project-local `src/scripts/**/*.ts` modules while preserving
   module/export script references as structured source data.
+- [Editor Functional Gap Closure](done/other/editor-functional-gap-closure.md):
+  completed conversion of visible editor placeholders and partial workflows into
+  source-backed, verified actions or explicit disabled diagnostics, including
+  Add Component completion, terrain, script-reference editing, hierarchy
+  view-only status, settings/playback honesty, and editor-authored physics
+  source/IR plus runtime residual proof.
 - [Complete Structured Authoring Parity](other/complete-structured-authoring-parity.md):
   full structured source coverage for map/editor-owned data, CLI/MCP/editor
   operation parity with TypeScript-era authoring, bundle import, provenance, and
