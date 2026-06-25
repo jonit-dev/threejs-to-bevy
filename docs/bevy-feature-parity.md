@@ -645,6 +645,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P1` Visual editor UI and inspector panels
 - [x] Source-schema-backed inspector field mapping and Add Component compatibility/default metadata
 - [x] Add Object source-backed Primitive/Empty/Camera/Light modal operations
+- [x] Focused editor required-operations smoke that creates a scene, adds a primitive/entity, moves it, attaches a component and script reference, rebuilds, and checks emitted `world.ir.json`
 - [x] Editor/CLI Light kind, intensity, color, range, angle, shadow bias, and shadow normal bias rows persist through `scene.set_light`
 - [x] Editor custom component JSON payload rows persist through `scene.set_component`
 - [x] Environment source document classification plus CLI/editor skybox, environment-map, terrain, path, walkability, light-probe, and source-asset LOD mutation rows

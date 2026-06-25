@@ -57,6 +57,10 @@ This index separates current cleanup work from historical milestone batches.
 - [Editor-Ready Modular Authoring and Scripting Architecture](other/editor-ready-modular-authoring-and-scripting-architecture.md):
   source-of-truth boundaries, modular authoring graph/provenance, script module
   references, editor-safe source documents, and web/Bevy runtime parity.
+- [Editor Script Body Code Mode](other/editor-script-body-code-mode.md):
+  planned bounded code-mode workflow for creating, opening, editing, and
+  validating project-local `src/scripts/**/*.ts` modules while preserving
+  module/export script references as structured source data.
 - [Complete Structured Authoring Parity](other/complete-structured-authoring-parity.md):
   full structured source coverage for map/editor-owned data, CLI/MCP/editor
   operation parity with TypeScript-era authoring, bundle import, provenance, and

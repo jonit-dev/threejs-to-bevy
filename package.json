@@ -22,6 +22,7 @@
     "verify:changed": "pnpm verify",
     "verify:conformance": "pnpm build:verify-tools && node tools/verify/dist/cli/conformance.js",
     "verify:distribution": "node scripts/verify-distribution-release.mjs",
+    "verify:editor-required-operations": "node scripts/verify-editor-required-operations.mjs",
     "verify:focused": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js",
     "verify:full": "pnpm verify:all && pnpm verify:release",
     "verify:parity:push": "node scripts/verify-parity-push.mjs",

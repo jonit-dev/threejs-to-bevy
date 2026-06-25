@@ -354,6 +354,14 @@ lacks an explicit reason, and the Add Object modal reads the same metadata for
 disabled action explanations. `scene.set_camera` and `scene.attach_script` are
 also included in the editor operation name surface to match the authoring
 registry.
+The editor operation workflow now has a repo-local Codex skill,
+`threenative-editor-operations`, plus `verify:editor-required-operations` as a
+focused smoke that applies the required editor operations through
+`applyEditorOperationApi`, rebuilds the copied structured-source starter, and
+asserts that both durable source JSON and emitted `world.ir.json` reflect the
+edit. Script references remain supported through `system.attach_script` and
+`scene.attach_script`; an in-editor TypeScript body editor is tracked separately
+by `docs/PRDs/other/editor-script-body-code-mode.md`.
 The editor GLB authoring slice now promotes project-local model assets from
 `content/assets/*.assets.json` into concrete editor asset rows and Add Object
 Custom GLB choices. Selecting a model asset creates source-backed scene prefab,

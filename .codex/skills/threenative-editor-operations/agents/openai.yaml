@@ -1,0 +1,4 @@
+interface:
+  display_name: "ThreeNative Editor Operations"
+  short_description: "Operate and verify ThreeNative editor sources"
+  default_prompt: "Use $threenative-editor-operations to create and verify a structured editor scene edit."
