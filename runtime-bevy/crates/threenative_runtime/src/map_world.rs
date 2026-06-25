@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs, path::Path};
+use std::{collections::HashMap, path::Path};
 
 use bevy::{
     animation::graph::AnimationGraph,
@@ -35,14 +35,15 @@ use threenative_loader::{
 
 use crate::assets::{load_texture_asset, texture_uv_transform};
 use crate::cameras::{
-    NativeRenderLayerMap, active_camera_ids, apply_camera_components, build_render_layer_map,
-    camera_order, render_layers_for_names,
+    active_camera_ids, apply_camera_components, build_render_layer_map, camera_order,
+    render_layers_for_names, NativeRenderLayerMap,
 };
 use crate::render_targets::{
-    NativeCustomProjection, NativeRenderTargetRegistry, allocate_render_targets,
-    camera_render_target,
+    allocate_render_targets, camera_render_target, NativeCustomProjection,
+    NativeRenderTargetRegistry,
 };
 use crate::rendering::spawn_rendered_particles;
+use crate::stylized_nature::{grass_material_policy, resolve_source_assets};
 
 // ThreeNative lights are authored in Three.js-style scalar units. Bevy stores
 // physically named units and multiplies lighting by camera Exposure, so the
@@ -481,22 +482,19 @@ fn spawn_stylized_nature(
                 ..Default::default()
             });
 
+    let source_assets =
+        resolve_source_assets(component, assets_by_id, asset_server.as_ref(), bundle_path);
+    let grass_policy = grass_material_policy(component, &source_assets);
     let grass_material = world
         .resource_mut::<Assets<StandardMaterial>>()
         .add(StandardMaterial {
-            base_color: Color::srgb(0.45, 0.68, 0.31),
-            base_color_texture: stylized_texture_handle(
-                component,
-                "grassColorMap",
-                assets_by_id,
-                asset_server.as_ref(),
-            ),
-            normal_map_texture: stylized_texture_handle(
-                component,
-                "grassNormalMap",
-                assets_by_id,
-                asset_server.as_ref(),
-            ),
+            base_color: grass_policy.base_color,
+            base_color_texture: grass_policy.base_color_texture_field.and_then(|key| {
+                stylized_texture_handle(component, key, assets_by_id, asset_server.as_ref())
+            }),
+            normal_map_texture: grass_policy.normal_map_texture_field.and_then(|key| {
+                stylized_texture_handle(component, key, assets_by_id, asset_server.as_ref())
+            }),
             double_sided: true,
             perceptual_roughness: 0.74,
             ..Default::default()
@@ -521,27 +519,6 @@ fn spawn_stylized_nature(
     );
     let bark_material = add_stylized_tree_material(world, bark_color, false);
     let leaf_material = add_stylized_tree_material(world, leaf_color, true);
-    let source_trunk_scene = stylized_component_scene(
-        component,
-        "treeTrunkModel",
-        assets_by_id,
-        asset_server.as_ref(),
-        bundle_path,
-    );
-    let source_leaves_scene = stylized_component_scene(
-        component,
-        "treeLeavesModel",
-        assets_by_id,
-        asset_server.as_ref(),
-        bundle_path,
-    );
-    let source_grass_mesh = stylized_component_primitive_mesh(
-        component,
-        "grassModel",
-        assets_by_id,
-        asset_server.as_ref(),
-        bundle_path,
-    );
 
     let sky_mesh = world
         .resource_mut::<Assets<Mesh>>()
@@ -596,7 +573,7 @@ fn spawn_stylized_nature(
         json_color(component, "pathColor", "#9b6543"),
     );
     let source_path_mesh = add_source_path_ribbon_mesh(world, size, 120, path_width * 0.92);
-    let grass_mesh = match source_grass_mesh {
+    let grass_mesh = match source_assets.grass_mesh.clone() {
         Some(mesh) => (mesh, true),
         None => (
             add_grass_blade_mesh(
@@ -770,6 +747,34 @@ fn spawn_stylized_nature(
     let mut attempts = 0usize;
     while written < grass_count && attempts < grass_count * 4 {
         attempts += 1;
+        if grass_mesh.1 {
+            let x = (random.next() - 0.5) * size;
+            let z = (random.next() - 0.5) * size;
+            if stylized_source_path_mask(x, z, size, path_width) > 0.16 {
+                continue;
+            }
+            let y = stylized_terrain_height(x, z);
+            let yaw = random.next() * std::f32::consts::TAU;
+            let instance_scale = 1.3 * (0.85 + random.next() * 0.35);
+            let base_transform = Transform::from_xyz(x, y, z)
+                .with_rotation(Quat::from_rotation_y(yaw))
+                .with_scale(Vec3::splat(instance_scale));
+            let index = written;
+            children.push(
+                world
+                    .spawn(PbrBundle {
+                        mesh: grass_mesh.0.clone(),
+                        material: grass_material.clone(),
+                        transform: base_transform,
+                        ..Default::default()
+                    })
+                    .insert(Name::new(format!("{entity_id}.source-grass-{index}")))
+                    .id(),
+            );
+            written += 1;
+            continue;
+        }
+
         let z_bias = random.next().powf(1.65);
         let z = size / 2.0 - z_bias * size;
         let x = (random.next() - 0.5) * size * (0.72 + z_bias * 0.32);
@@ -797,11 +802,7 @@ fn spawn_stylized_nature(
                     ..Default::default()
                 })
                 .insert((
-                    Name::new(if grass_mesh.1 {
-                        format!("{entity_id}.source-grass-{index}")
-                    } else {
-                        format!("{entity_id}.stylized-grass-{index}")
-                    }),
+                    Name::new(format!("{entity_id}.stylized-grass-{index}")),
                     NativeGrassWindMotion {
                         base: base_transform,
                         phase: random.next() * std::f32::consts::TAU + x * 0.17 + z * 0.11,
@@ -837,7 +838,7 @@ fn spawn_stylized_nature(
             )))
             .id();
         let mut tree_children = Vec::new();
-        if let Some(source_trunk_scene) = source_trunk_scene.as_ref() {
+        if let Some(source_trunk_scene) = source_assets.trunk_scene.as_ref() {
             tree_children.push(
                 world
                     .spawn(SceneBundle {
@@ -867,7 +868,7 @@ fn spawn_stylized_nature(
             (-3.87, 6.79, -4.47, 1.3, 0.76),
             (-2.08, 10.5, 0.18, 2.5, 0.9),
         ];
-        if let Some(source_leaves_scene) = source_leaves_scene.as_ref() {
+        if let Some(source_leaves_scene) = source_assets.leaves_scene.as_ref() {
             for (leaf_index, (lx, ly, lz, leaf_yaw, source_scale)) in
                 source_leaf_offsets.iter().copied().enumerate()
             {
@@ -1138,90 +1139,6 @@ fn texture_handle_by_id(
             .map(|server| load_texture_asset(server, path))
             .unwrap_or_default(),
     )
-}
-
-fn stylized_component_scene(
-    component: &serde_json::Value,
-    key: &str,
-    assets_by_id: &HashMap<&str, &AssetIr>,
-    asset_server: Option<&AssetServer>,
-    bundle_path: &Path,
-) -> Option<Handle<Scene>> {
-    let asset_id = component.get(key)?.as_str()?;
-    let asset = assets_by_id.get(asset_id)?;
-    let scene_path = native_compatible_model_scene_path(asset, bundle_path)?;
-    let asset_server = asset_server?;
-    Some(asset_server.load(GltfAssetLabel::Scene(0).from_asset(scene_path)))
-}
-
-fn stylized_component_primitive_mesh(
-    component: &serde_json::Value,
-    key: &str,
-    assets_by_id: &HashMap<&str, &AssetIr>,
-    asset_server: Option<&AssetServer>,
-    bundle_path: &Path,
-) -> Option<Handle<Mesh>> {
-    let asset_id = component.get(key)?.as_str()?;
-    let asset = assets_by_id.get(asset_id)?;
-    let mesh_path = native_compatible_model_scene_path(asset, bundle_path)?;
-    let asset_server = asset_server?;
-    Some(
-        asset_server.load(
-            GltfAssetLabel::Primitive {
-                mesh: 0,
-                primitive: 0,
-            }
-            .from_asset(mesh_path),
-        ),
-    )
-}
-
-fn native_compatible_model_scene_path(asset: &AssetIr, bundle_path: &Path) -> Option<String> {
-    let scene_path = model_scene_path(asset)?;
-    let disk_path = bundle_path.join(&scene_path);
-    if !disk_path.exists() || gltf_declares_unsupported_native_extension(&disk_path) {
-        return None;
-    }
-    Some(scene_path)
-}
-
-fn gltf_declares_unsupported_native_extension(path: &Path) -> bool {
-    let Ok(bytes) = fs::read(path) else {
-        return true;
-    };
-    let Some(json) = gltf_json_chunk(path, &bytes) else {
-        return true;
-    };
-    let Ok(value) = serde_json::from_str::<serde_json::Value>(json) else {
-        return true;
-    };
-    json_array_contains(&value, "extensionsRequired", "KHR_draco_mesh_compression")
-        || json_array_contains(&value, "extensionsUsed", "KHR_draco_mesh_compression")
-        || json_array_contains(&value, "extensionsRequired", "EXT_texture_webp")
-        || json_array_contains(&value, "extensionsUsed", "EXT_texture_webp")
-}
-
-fn gltf_json_chunk<'a>(path: &Path, bytes: &'a [u8]) -> Option<&'a str> {
-    let extension = path.extension().and_then(|value| value.to_str());
-    if matches!(extension, Some("gltf")) {
-        return std::str::from_utf8(bytes).ok();
-    }
-    if !matches!(extension, Some("glb")) || bytes.len() < 20 || &bytes[0..4] != b"glTF" {
-        return None;
-    }
-    let json_len = u32::from_le_bytes(bytes[12..16].try_into().ok()?) as usize;
-    let chunk_type = u32::from_le_bytes(bytes[16..20].try_into().ok()?);
-    if chunk_type != 0x4E4F_534A || bytes.len() < 20 + json_len {
-        return None;
-    }
-    std::str::from_utf8(&bytes[20..20 + json_len]).ok()
-}
-
-fn json_array_contains(value: &serde_json::Value, key: &str, needle: &str) -> bool {
-    value
-        .get(key)
-        .and_then(|entry| entry.as_array())
-        .is_some_and(|entries| entries.iter().any(|entry| entry.as_str() == Some(needle)))
 }
 
 fn lerp_rgb(a: [f32; 3], b: [f32; 3], t: f32) -> [f32; 3] {

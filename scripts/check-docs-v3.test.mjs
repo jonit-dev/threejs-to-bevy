@@ -43,14 +43,17 @@ async function writeDocsFixture(root, options = {}) {
     "V3-02-threejs-performance-and-instancing.md",
   ];
   await mkdir(join(root, "docs"), { recursive: true });
-  await mkdir(join(root, "docs/PRDs/v3"), { recursive: true });
+  await mkdir(join(root, "docs/contracts"), { recursive: true });
+  await mkdir(join(root, "docs/status"), { recursive: true });
+  await mkdir(join(root, "docs/workflows"), { recursive: true });
+  await mkdir(join(root, "docs/PRDs/done/v3"), { recursive: true });
   await mkdir(join(root, "examples/v3-environment"), { recursive: true });
   const links = prds
     .filter((file) => file !== options.omitIndexLink)
     .map((file) => `- [${file}](./${file})`)
     .join("\n");
   await writeFile(
-    join(root, "docs/PRDs/v3/README.md"),
+    join(root, "docs/PRDs/done/v3/README.md"),
     `# V3\n\nPreview_2.jpg Three.js performance first-person Bevy verify:v3\n\n${links}\n\n## V3 Acceptance Criteria\n\n- Forest scene proof.\n\n## Release Gate\n`,
   );
   await writeFile(
@@ -59,22 +62,22 @@ async function writeDocsFixture(root, options = {}) {
       "# Docs",
       "",
       "[STATUS.md](STATUS.md)",
-      "[conventions.md](conventions.md)",
-      "[feature-maturity.md](feature-maturity.md)",
+      "[conventions.md](workflows/conventions.md)",
+      "[feature-maturity.md](status/feature-maturity.md)",
       "[verify-v3.md](verify-v3.md)",
       "",
     ].join("\n"),
   );
   await writeFile(join(root, "docs/STATUS.md"), "# Status\n\nV3\n\npnpm verify:v3\n\n## V3 Does Not Prove\n");
-  await writeFile(join(root, "docs/conventions.md"), "# Conventions\n\nV3\n");
-  await writeFile(join(root, "docs/feature-maturity.md"), "# Feature Maturity\n\nV3\n");
+  await writeFile(join(root, "docs/workflows/conventions.md"), "# Conventions\n\nV3\n");
+  await writeFile(join(root, "docs/status/feature-maturity.md"), "# Feature Maturity\n\nV3\n");
   await writeFile(join(root, "docs/verify-v3.md"), "# verify:v3\n\nV3\n");
-  await writeFile(join(root, "docs/diagnostics.md"), "# Diagnostics\n\nV3\n");
-  await writeFile(join(root, "docs/environment-scene-ir.md"), "# Environment Scene IR\n\nV3\n");
-  await writeFile(join(root, "docs/asset-pipeline.md"), "# V3 Asset Pipeline\n\nV3\n");
+  await writeFile(join(root, "docs/contracts/diagnostics.md"), "# Diagnostics\n\nV3\n");
+  await writeFile(join(root, "docs/contracts/environment-scene-ir.md"), "# Environment Scene IR\n\nV3\n");
+  await writeFile(join(root, "docs/workflows/asset-pipeline.md"), "# V3 Asset Pipeline\n\nV3\n");
   await writeFile(join(root, "docs/visual-parity-policy.md"), "# Visual Parity Policy\n\nV3\n");
   for (const file of prds) {
-    await writeFile(join(root, "docs/PRDs/v3", file), `# ${file}\n\nV3 performance\n`);
+    await writeFile(join(root, "docs/PRDs/done/v3", file), `# ${file}\n\nV3 performance\n`);
   }
   await writeFile(
     join(root, "examples/v3-environment/README.md"),

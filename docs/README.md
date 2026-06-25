@@ -8,6 +8,9 @@ labels such as `V7` or `verify:v9` are **legacy milestone names** kept during a
 staged cleanup. See the [cleanup PRD](PRDs/archive/cleanup-versioned-debt.md)
 and the [artifact layout PRD](PRDs/done/artifact-fixture-layout-reorg.md) for
 the retained-reference policy enforced by `pnpm check:names`.
+For retained V3 release-gate context, see [verify-v3.md](verify-v3.md), the
+[conventions workflow](workflows/conventions.md), and the
+[feature maturity matrix](status/feature-maturity.md).
 
 ## Documentation Groups
 

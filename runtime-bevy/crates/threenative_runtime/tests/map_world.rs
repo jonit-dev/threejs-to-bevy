@@ -180,7 +180,7 @@ fn stylized_nature_should_use_native_compatible_source_assets() {
         &root.join("assets/grass.glb"),
         r#"{"asset":{"version":"2.0"},"scene":0,"scenes":[{}],"meshes":[{"primitives":[{}]}]}"#,
     );
-    let mut bundle = stylized_source_bundle(&root, "model.trunk", "model.leaves", "model.grass", 4);
+    let mut bundle = stylized_source_bundle(&root, "model.trunk", "model.leaves", "model.grass", 32);
     bundle.assets.assets.push(
         serde_json::from_value(json!({
             "id": "model.trunk",

@@ -407,7 +407,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] glTF `.bin` and texture dependency bundling
 - [x] Model scene instances in web and Bevy
 - [x] Material/texture/mesh asset diagnostics and conformance observations
-- [x] Source-authored stylized nature, ripple water, and sparkle component slice with SDK helpers, shared registry operations, and web/Bevy runtime mapping
+- [x] Source-authored stylized nature, ripple water, and sparkle component slice with SDK helpers, shared registry operations, web/Bevy runtime mapping, recursive glTF dependency waits for native proof capture, and aligned source-GLB grass placement/material policy
 - [x] Typed animation clip metadata from model assets
 - [x] `P1` Declared embedded asset manifest entries with bounded payload validation
 - [x] `P1` Declared HTTPS network asset manifest entries with target-profile validation

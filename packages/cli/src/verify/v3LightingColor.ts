@@ -33,6 +33,11 @@ interface ILightingColorSample {
   threejsPath: string;
 }
 
+const V3_LIGHTING_COLOR_THRESHOLDS = {
+  maxAverageBrightnessDelta: 0.08,
+  maxAverageColorDelta: 0.08,
+} as const;
+
 export interface IV3LightingColorReport {
   artifacts: {
     reportPath: string;
@@ -62,12 +67,10 @@ export interface IV3LightingColorReport {
     };
   };
   thresholds: {
-    mode: "report-only";
+    maxAverageBrightnessDelta: number;
+    maxAverageColorDelta: number;
+    mode: "asserted";
     note: string;
-    suggestedFullScene: {
-      averageBrightnessDelta: number;
-      averageColorDelta: number;
-    };
   };
 }
 
@@ -122,19 +125,34 @@ export async function verifyV3LightingColor(options: {
     }
   }
 
+  const summary = summarizeSamples(samples);
+  if (samples.length > 0 && summary.maxBrightnessDelta > V3_LIGHTING_COLOR_THRESHOLDS.maxAverageBrightnessDelta) {
+    diagnostics.push({
+      code: "TN_V3_LIGHTING_COLOR_BRIGHTNESS_DRIFT",
+      message: `V3 max brightness delta ${summary.maxBrightnessDelta.toFixed(4)} exceeds ${V3_LIGHTING_COLOR_THRESHOLDS.maxAverageBrightnessDelta}.`,
+      severity: "error",
+    });
+  }
+  const maxChannelDelta = Math.max(summary.maxColorDelta.red, summary.maxColorDelta.green, summary.maxColorDelta.blue);
+  if (samples.length > 0 && maxChannelDelta > V3_LIGHTING_COLOR_THRESHOLDS.maxAverageColorDelta) {
+    diagnostics.push({
+      code: "TN_V3_LIGHTING_COLOR_CHANNEL_DRIFT",
+      message: `V3 max channel delta ${maxChannelDelta.toFixed(4)} exceeds ${V3_LIGHTING_COLOR_THRESHOLDS.maxAverageColorDelta}.`,
+      severity: "error",
+    });
+  }
+
   const report: IV3LightingColorReport = {
     artifacts: { reportPath, sceneReportPath },
     diagnostics,
     samples,
     status: diagnostics.length === 0 ? "pass" : "fail",
-    summary: summarizeSamples(samples),
+    summary,
     thresholds: {
-      mode: "report-only",
-      note: "Full forest screenshots are not a parity gate yet; use these metrics to quantify lighting/color drift while tuning.",
-      suggestedFullScene: {
-        averageBrightnessDelta: 0.08,
-        averageColorDelta: 0.08,
-      },
+      maxAverageBrightnessDelta: V3_LIGHTING_COLOR_THRESHOLDS.maxAverageBrightnessDelta,
+      maxAverageColorDelta: V3_LIGHTING_COLOR_THRESHOLDS.maxAverageColorDelta,
+      mode: "asserted",
+      note: "Full forest screenshots must stay within coarse brightness/channel bounds so web and Bevy terrain, lighting, and color-space regressions are caught.",
     },
   };
   await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`);

@@ -15,7 +15,7 @@ test("v3LightingColor should report signed color and brightness drift", async ()
     const threejsPath = join(screenshotDir, "bookmark.threejs.png");
     const bevyGltfPath = join(screenshotDir, "bookmark.bevy-gltf.png");
     await writePng(threejsPath, { blue: 100, green: 100, red: 100 });
-    await writePng(bevyGltfPath, { blue: 80, green: 140, red: 130 });
+    await writePng(bevyGltfPath, { blue: 95, green: 112, red: 110 });
     await writeFile(
       join(root, "v3-scene-report.json"),
       `${JSON.stringify({
@@ -32,8 +32,33 @@ test("v3LightingColor should report signed color and brightness drift", async ()
     assert.ok((report.samples[0]?.metrics.signedAverageColorDelta.red ?? 0) > 0);
     assert.ok((report.samples[0]?.metrics.signedAverageColorDelta.green ?? 0) > 0);
     assert.ok((report.samples[0]?.metrics.signedAverageColorDelta.blue ?? 0) < 0);
-    assert.equal(report.thresholds.mode, "report-only");
+    assert.equal(report.thresholds.mode, "asserted");
     assert.equal(written.summary.maxBrightnessDelta, report.summary.maxBrightnessDelta);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("v3LightingColor should fail on large channel drift", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-v3-lighting-color-drift-"));
+  try {
+    const screenshotDir = join(root, "screenshots");
+    await mkdir(screenshotDir, { recursive: true });
+    const threejsPath = join(screenshotDir, "bookmark.threejs.png");
+    const bevyGltfPath = join(screenshotDir, "bookmark.bevy-gltf.png");
+    await writePng(threejsPath, { blue: 100, green: 100, red: 100 });
+    await writePng(bevyGltfPath, { blue: 100, green: 155, red: 100 });
+    await writeFile(
+      join(root, "v3-scene-report.json"),
+      `${JSON.stringify({
+        captures: [{ bookmarkId: "bookmark.start", bevyGltfPath, threejsPath }],
+      })}\n`,
+    );
+
+    const report = await verifyV3LightingColor({ artifactDir: root });
+
+    assert.equal(report.status, "fail");
+    assert.equal(report.diagnostics[0]?.code, "TN_V3_LIGHTING_COLOR_CHANNEL_DRIFT");
   } finally {
     await rm(root, { force: true, recursive: true });
   }

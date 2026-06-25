@@ -8,15 +8,15 @@ export async function checkDocsV3(root = repoRoot) {
   const files = [
     "docs/STATUS.md",
     "docs/README.md",
-    "docs/conventions.md",
-    "docs/feature-maturity.md",
+    "docs/workflows/conventions.md",
+    "docs/status/feature-maturity.md",
     "docs/verify-v3.md",
-    "docs/diagnostics.md",
-    "docs/environment-scene-ir.md",
-    "docs/asset-pipeline.md",
+    "docs/contracts/diagnostics.md",
+    "docs/contracts/environment-scene-ir.md",
+    "docs/workflows/asset-pipeline.md",
     "docs/visual-parity-policy.md",
-    "docs/PRDs/v3/README.md",
-    "docs/PRDs/v3/V3-02-threejs-performance-and-instancing.md",
+    "docs/PRDs/done/v3/README.md",
+    "docs/PRDs/done/v3/V3-02-threejs-performance-and-instancing.md",
     "examples/v3-environment/README.md",
   ];
   const diagnostics = [];
@@ -26,7 +26,7 @@ export async function checkDocsV3(root = repoRoot) {
       diagnostics.push({ code: "TN_DOCS_V3_SCOPE_MISSING", file, message: "Document does not mention V3 scope." });
     }
   }
-  const indexPath = "docs/PRDs/v3/README.md";
+  const indexPath = "docs/PRDs/done/v3/README.md";
   const indexText = await readFile(resolve(root, indexPath), "utf8");
   const docsReadmePath = "docs/README.md";
   const docsReadme = await readFile(resolve(root, docsReadmePath), "utf8");
@@ -36,7 +36,7 @@ export async function checkDocsV3(root = repoRoot) {
   if (/V1 is the current implemented release candidate path/i.test(docsReadme)) {
     diagnostics.push({ code: "TN_DOCS_V3_STALE_STATUS", file: docsReadmePath, message: "Docs README still claims V1 is the current release candidate path." });
   }
-  for (const required of ["docs/conventions.md", "docs/feature-maturity.md", "docs/verify-v3.md"]) {
+  for (const required of ["docs/workflows/conventions.md", "docs/status/feature-maturity.md", "docs/verify-v3.md"]) {
     if (!docsReadme.includes(required.replace("docs/", "")) && !docsReadme.includes(required)) {
       diagnostics.push({ code: "TN_DOCS_V3_FRONT_DOOR_LINK_MISSING", file: docsReadmePath, message: `Docs README does not link '${required}'.` });
     }
@@ -47,7 +47,7 @@ export async function checkDocsV3(root = repoRoot) {
       diagnostics.push({ code: "TN_DOCS_V3_STATUS_TERM_MISSING", file: "docs/STATUS.md", message: `STATUS.md is missing '${required}'.` });
     }
   }
-  const v3Dir = resolve(root, "docs/PRDs/v3");
+  const v3Dir = resolve(root, "docs/PRDs/done/v3");
   const prdFiles = (await readdir(v3Dir))
     .filter((file) => /^V3-\d+-.+\.md$/.test(file))
     .sort((left, right) => left.localeCompare(right));

@@ -245,10 +245,7 @@ fn wait_for_model_assets(
     if required.0.iter().all(|path| {
         let scene: Handle<Scene> =
             asset_server.load(bevy::gltf::GltfAssetLabel::Scene(0).from_asset(path.to_owned()));
-        matches!(
-            asset_server.load_state(&scene),
-            bevy::asset::LoadState::Loaded
-        )
+        asset_server.is_loaded_with_dependencies(&scene)
     }) {
         ready.0 = true;
     }

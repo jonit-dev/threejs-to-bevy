@@ -718,10 +718,30 @@ fn terrain_vertex_color(x: f32, y: f32, z: f32, min_y: f32, max_y: f32) -> [f32;
     let height = (y - min_y) / range;
     let noise = (x.mul_add(1.7, z * 0.9).sin() + 1.0) * 0.04;
     let t = height + noise;
+    let low = srgb_rgb_to_linear([0x43, 0x57, 0x3d]);
+    let mid = srgb_rgb_to_linear([0x64, 0x71, 0x3f]);
+    let high = srgb_rgb_to_linear([0x7f, 0x87, 0x50]);
     if t < 0.5 {
-        lerp_color([0.20, 0.34, 0.17], [0.34, 0.48, 0.20], t * 2.0)
+        lerp_color(low, mid, t * 2.0)
     } else {
-        lerp_color([0.34, 0.48, 0.20], [0.42, 0.55, 0.26], (t - 0.5) * 2.0)
+        lerp_color(mid, high, (t - 0.5) * 2.0)
+    }
+}
+
+fn srgb_rgb_to_linear(rgb: [u8; 3]) -> [f32; 3] {
+    [
+        srgb_channel_to_linear(rgb[0]),
+        srgb_channel_to_linear(rgb[1]),
+        srgb_channel_to_linear(rgb[2]),
+    ]
+}
+
+fn srgb_channel_to_linear(channel: u8) -> f32 {
+    let value = channel as f32 / 255.0;
+    if value <= 0.04045 {
+        value / 12.92
+    } else {
+        ((value + 0.055) / 1.055).powf(2.4)
     }
 }
 

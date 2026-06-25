@@ -139,6 +139,18 @@ fn control_point_terrain_should_spawn_non_flat_mesh() {
         max_y - min_y > 0.01,
         "control-point terrain should have visible height variation, min={min_y}, max={max_y}"
     );
+    let colors = match terrain_mesh.attribute(Mesh::ATTRIBUTE_COLOR) {
+        Some(VertexAttributeValues::Float32x4(colors)) => colors,
+        other => panic!("expected terrain color attribute, got {other:?}"),
+    };
+    let max_green = colors
+        .iter()
+        .map(|color| color[1])
+        .fold(f32::NEG_INFINITY, f32::max);
+    assert!(
+        max_green < 0.25,
+        "terrain vertex colors must be stored in linear space to match Three.js, max green={max_green}"
+    );
     let terrain_material_handle = app
         .world_mut()
         .query::<(&ThreeNativeId, &Handle<StandardMaterial>)>()

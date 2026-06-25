@@ -1204,6 +1204,14 @@ authoring registry exposes matching scene operations, and web/Bevy runtime
 adapters map those components into portable terrain, foliage, water, and
 sparkle visuals with deterministic motion. This is a curated component slice,
 not a general custom shader or arbitrary post-processing contract.
+Native capture now waits for recursive glTF scene dependencies before advancing
+visual frames, so Bevy proof screenshots do not race material/texture loads.
+The source-backed stylized grass path also uses the same seeded placement and
+authored grass color policy in web and Bevy; current comparison evidence lives
+under `examples/stylized-nature-component/artifacts/visual-parity-current/`.
+Residual stylized drift remains around native path embellishment and renderer
+lighting/shadow treatment, so this evidence is a parity checkpoint rather than
+a pixel-close release baseline.
 
 V5-06 has landed the textured standard-material parity slice: supported material
 texture slots now serialize through SDK/compiler output, validate against
@@ -2214,6 +2222,9 @@ sheet under `tools/verify/artifacts/milestones/v3`.
 - portable bounded environment LOD metadata with web and Bevy observation
   summaries
 - bookmarked visual verification artifacts
+- asserted V3 lighting/color bounds for the forest screenshots, including the
+  terrain vertex-color linearization path that keeps Bevy ground color aligned
+  with the Three.js dark olive terrain
 - atmosphere metadata checks for the V3 scene
 - walkability and blocking probes for the V3 scene
 
