@@ -362,6 +362,16 @@ asserts that both durable source JSON and emitted `world.ir.json` reflect the
 edit. Script references remain supported through `system.attach_script` and
 `scene.attach_script`; an in-editor TypeScript body editor is tracked separately
 by `docs/PRDs/other/editor-script-body-code-mode.md`.
+The editor AI chat ECS-control slice now has a bounded local planner and
+approval/apply API. Chat planning returns registered source-document operation
+steps only, approved plans dispatch through the editor operation API and shared
+authoring registry, generated IR remains untouched until build proof, and
+unsupported chat intents produce stable diagnostics without source writes.
+`pnpm verify:focused verify:editor-ai-chat` writes durable evidence under
+`tools/verify/artifacts/editor-ai-chat/`: the chat plan, apply result, changed
+source scene, final `world.ir.json`, and `editor-ai-chat-report.json` proving a
+dynamic physics cube was chat-authored, hot-patchable, validated, rebuilt, and
+lowered into emitted IR.
 The editor GLB authoring slice now promotes project-local model assets from
 `content/assets/*.assets.json` into concrete editor asset rows and Add Object
 Custom GLB choices. Selecting a model asset creates source-backed scene prefab,

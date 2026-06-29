@@ -567,6 +567,127 @@ test("should attach system script reference through operation", async () => {
   }
 });
 
+test("should request a chat plan with current selection context", async () => {
+  useEditorStore.getState().reset({
+    project: { projectRevision: "rev:1" },
+    selectedRowId: "entity:content/scenes/arena.scene.json:player",
+  });
+  let requestBody: Record<string, unknown> | undefined;
+  const restore = mockFetch(async (input, init) => {
+    assert.equal(String(input), "/api/ai/plan");
+    requestBody = JSON.parse(String(init?.body)) as Record<string, unknown>;
+    return jsonResponse({
+      affectedFiles: ["content/scenes/arena.scene.json"],
+      approvalToken: "approve:1",
+      diagnostics: [],
+      id: "plan:1",
+      message: "move selected",
+      ok: true,
+      operations: [{ args: { entityId: "player", position: [1, 2, 3], sceneId: "arena" }, description: "Move player", name: "scene.set_transform" }],
+      projectRevision: "rev:1",
+      risks: [],
+      summary: "Move selected entity.",
+    });
+  });
+  try {
+    await useEditorStore.getState().requestChatPlan("move selected");
+
+    assert.deepEqual(requestBody, { message: "move selected", projectRevision: "rev:1", selectedRowId: "entity:content/scenes/arena.scene.json:player" });
+    assert.equal(useEditorStore.getState().chat.pendingPlan?.id, "plan:1");
+    assert.equal(useEditorStore.getState().chat.status, "planned");
+  } finally {
+    restore();
+  }
+});
+
+test("should apply approved chat plan and refresh project", async () => {
+  useEditorStore.getState().reset({
+    chat: {
+      draft: "add cube",
+      pendingPlan: {
+        affectedFiles: ["content/scenes/arena.scene.json"],
+        approvalToken: "approve:1",
+        diagnostics: [],
+        id: "plan:1",
+        message: "add cube",
+        ok: true,
+        operations: [{ args: { entityId: "chat-cube", sceneId: "arena" }, description: "Add cube", name: "scene.add_entity" }],
+        projectRevision: "rev:1",
+        risks: [],
+        summary: "Add cube.",
+      },
+      status: "planned",
+      transcript: [],
+    },
+    project: { projectRevision: "rev:1" },
+  });
+  const calls: string[] = [];
+  const restore = mockFetch(async (input, init) => {
+    calls.push(String(input));
+    if (String(input) === "/api/ai/apply") {
+      const body = JSON.parse(String(init?.body)) as { approvalToken?: string };
+      assert.equal(body.approvalToken, "approve:1");
+      return jsonResponse({
+        changedSourceFiles: ["content/scenes/arena.scene.json"],
+        diagnostics: [],
+        generatedProofFiles: [],
+        liveUpdate: { affectedEntities: ["chat-cube"], affectedFiles: ["content/scenes/arena.scene.json"], diagnostics: [], kind: "hotPatch", reason: "test" },
+        ok: true,
+        operationResults: [],
+        projectRevision: "rev:2",
+      });
+    }
+    assert.equal(String(input), "/api/project");
+    return jsonResponse({
+      ok: true,
+      projectRevision: "rev:2",
+      sceneObjects: [{ documentPath: "content/scenes/arena.scene.json", id: "chat-cube", kind: "entity", label: "chat-cube", primitive: "box", rowId: "entity:content/scenes/arena.scene.json:chat-cube" }],
+    });
+  });
+  try {
+    await useEditorStore.getState().applyChatPlan();
+
+    assert.deepEqual(calls, ["/api/ai/apply", "/api/project"]);
+    assert.equal(useEditorStore.getState().chat.status, "applied");
+    assert.equal(useEditorStore.getState().selectedRowId, "entity:content/scenes/arena.scene.json:chat-cube");
+    assert.match(useEditorStore.getState().status, /hotPatch/);
+  } finally {
+    restore();
+  }
+});
+
+test("should keep chat apply disabled for diagnostic-only plans", async () => {
+  useEditorStore.getState().reset({
+    chat: {
+      draft: "edit generated IR",
+      pendingPlan: {
+        affectedFiles: [],
+        approvalToken: "",
+        diagnostics: [{ code: "TN_EDITOR_CHAT_INTENT_UNSUPPORTED", message: "Unsupported", severity: "error" }],
+        id: "plan:error",
+        message: "edit generated IR",
+        ok: false,
+        operations: [],
+        risks: [],
+        summary: "No plan.",
+      },
+      status: "error",
+      transcript: [],
+    },
+  });
+  const restore = mockFetch(async () => {
+    throw new Error("apply should not be requested");
+  });
+  try {
+    await useEditorStore.getState().applyChatPlan();
+
+    assert.equal(useEditorStore.getState().status, "No approved chat plan is ready to apply");
+    assert.equal(useEditorStore.getState().chat.status, "error");
+  } finally {
+    restore();
+  }
+});
+
 function mockFetch(handler: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>): () => void {
   const previous = globalThis.fetch;
   globalThis.fetch = handler as typeof fetch;

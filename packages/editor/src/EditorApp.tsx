@@ -5,6 +5,7 @@ import type { IEditorGamepadViewerSnapshot } from "@threenative/ir";
 import type { IEditorAdapterInput, IEditorAddComponentDefinition, IEditorAssetRow, IEditorModalActionDefinition, IEditorPropertyRow, IEditorShellModel } from "./adapters/editorModel.js";
 import { createEditorShellModel, EDITOR_MODAL_ACTION_DEFINITIONS } from "./adapters/editorModel.js";
 import { PanelShell } from "./components/layout/PanelShell.js";
+import { ChatPanel } from "./components/panels/ChatPanel.js";
 import { HierarchyPanel } from "./components/panels/HierarchyPanel.js";
 import { InspectorPanel } from "./components/panels/InspectorPanel.js";
 import { EditorViewport3d, type EditorViewportGizmoMode, type IViewportTransform } from "./preview/EditorViewport3d.js";
@@ -452,7 +453,7 @@ export function EditorModalView({
   if (modal === "chat") {
     return (
       <ModalFrame onClose={onClose} title="AI Chat">
-        <textarea aria-label="AI chat message" placeholder="Ask the editor agent..." readOnly />
+        <ChatPanel />
       </ModalFrame>
     );
   }

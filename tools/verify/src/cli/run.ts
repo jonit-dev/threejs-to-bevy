@@ -199,6 +199,21 @@ export const FOCUSED_GATES: Record<string, FocusedGate> = {
       protects: "Editor package launchability, browser framing, and visual smoke artifacts.",
     },
   },
+  "verify:editor-ai-chat": {
+    commands: [
+      ["pnpm", "--filter", "@threenative/authoring", "build"],
+      ["pnpm", "--filter", "@threenative/compiler", "build"],
+      ["pnpm", "--filter", "@threenative/editor", "build"],
+      ["node", "tools/verify/dist/editorAiChat.js"],
+    ],
+    description: "Editor AI chat source-backed ECS operation gate.",
+    metadata: {
+      owner: "tools/verify editor-ai-chat gate",
+      profile: "focused",
+      reason: "Plans and approves a deterministic editor chat ECS request, applies source operations, validates source/IR proof, and writes durable evidence.",
+      protects: "Editor AI chat approval flow, source-only mutation boundary, live-update hinting, and generated IR proof.",
+    },
+  },
   "verify:v10:ecs-tags-groups": {
     commands: [
       ["pnpm", "--filter", "@threenative/ir", "test", "--", "--run", "conformance"],

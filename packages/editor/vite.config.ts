@@ -4,6 +4,7 @@ import { dirname, extname, relative, resolve } from "node:path";
 import { defineConfig, type Plugin } from "vite";
 
 import { applyEditorOperationApi } from "./src/server/operationApi.js";
+import { applyEditorChatApi, planEditorChatApi } from "./src/server/chatApi.js";
 import { buildEditorPreviewApi } from "./src/server/buildApi.js";
 import { loadEditorProjectApi } from "./src/server/projectApi.js";
 
@@ -33,6 +34,18 @@ function editorApiPlugin(): Plugin {
             const boot = await readBootConfig();
             const body = await readJsonBody(request);
             const result = await applyEditorOperationApi({ projectPath: boot.projectPath ?? process.cwd(), request: body, rootPath: boot.projectPath });
+            return json(response, result);
+          }
+          if (request.url === "/api/ai/plan" && request.method === "POST") {
+            const boot = await readBootConfig();
+            const body = await readJsonBody(request);
+            const result = await planEditorChatApi({ projectPath: boot.projectPath ?? process.cwd(), request: body, rootPath: boot.projectPath });
+            return json(response, result);
+          }
+          if (request.url === "/api/ai/apply" && request.method === "POST") {
+            const boot = await readBootConfig();
+            const body = await readJsonBody(request);
+            const result = await applyEditorChatApi({ projectPath: boot.projectPath ?? process.cwd(), request: body, rootPath: boot.projectPath });
             return json(response, result);
           }
           if (request.url === "/api/build" && request.method === "POST") {
@@ -100,12 +113,12 @@ async function readBootConfig(): Promise<IBootConfig> {
   return JSON.parse(await readFile(bootPath, "utf8")) as IBootConfig;
 }
 
-async function readJsonBody(request: import("node:http").IncomingMessage): Promise<{ args: Record<string, unknown>; name: string; projectRevision?: string }> {
+async function readJsonBody<T = unknown>(request: import("node:http").IncomingMessage): Promise<T> {
   const chunks: Buffer[] = [];
   for await (const chunk of request) {
     chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
   }
-  return JSON.parse(Buffer.concat(chunks).toString("utf8")) as { args: Record<string, unknown>; name: string; projectRevision?: string };
+  return JSON.parse(Buffer.concat(chunks).toString("utf8")) as T;
 }
 
 function json(response: import("node:http").ServerResponse, payload: unknown): void {

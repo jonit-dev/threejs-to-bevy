@@ -3,6 +3,9 @@ import type { IEditorGamepadViewerSnapshot } from "@threenative/ir";
 
 import { EDITOR_ADD_COMPONENT_DEFINITIONS, type IEditorAddComponentDefinition, type IEditorAssetRow, type IEditorDiagnosticView, type IEditorEnvironmentSummary, type IEditorLodStats, type IEditorModalActionDefinition, type IEditorPropertyRow, type IEditorSceneObject, type IEditorShellModel, type IEditorTreeRow } from "../adapters/editorModel.js";
 import type { EditorViewportGizmoMode, IViewportTransform } from "../preview/EditorViewport3d.js";
+import type { IEditorLiveSceneUpdate } from "../preview/liveSceneUpdates.js";
+import type { IEditorChatApplyApiResult } from "../server/chatApi.js";
+import type { IEditorChatPlan } from "../server/chatPlan.js";
 import { devFixtureModel } from "../devFixtureModel.js";
 import type { ISceneLifecycleModel } from "../workbench/sceneModel.js";
 
@@ -29,6 +32,7 @@ export interface IEditorProjectDocumentGroup {
 export interface IEditorSessionState {
   activeScenePath?: string;
   browserGamepads: IEditorGamepadViewerSnapshot["devices"];
+  chat: IEditorChatSessionState;
   gizmoMode: EditorViewportGizmoMode;
   modal: EditorModal;
   parentByRowId: Record<string, string | undefined>;
@@ -50,17 +54,21 @@ export interface IEditorSessionActions {
   loadScene: (documentPath: string) => void;
   moveEditorRow: (draggedId: string, targetId: string) => void;
   openModal: (modal: Exclude<EditorModal, undefined>) => void;
+  rejectChatPlan: () => void;
   refreshProject: (options?: IRefreshProjectOptions) => Promise<IEditorProjectPayload>;
+  requestChatPlan: (message: string) => Promise<void>;
   reset: (state?: Partial<IEditorSessionState>) => void;
   saveScene: () => Promise<void>;
   selectEditorRow: (rowId: string | undefined) => void;
   selectRow: (rowId: string | undefined) => void;
   setBrowserGamepads: (devices: IEditorGamepadViewerSnapshot["devices"]) => void;
+  setChatDraft: (draft: string) => void;
   setGizmoMode: (mode: EditorViewportGizmoMode) => void;
   setParent: (rowId: string, parentId: string | undefined) => boolean;
   setProject: (project: IEditorProjectPayload | undefined) => void;
   setStatus: (status: string) => void;
   setTransformOverride: (rowId: string, transform: IViewportTransform) => void;
+  applyChatPlan: () => Promise<void>;
   transformObject: (sceneObjects: readonly IEditorSceneObject[], rowId: string, transform: IViewportTransform) => void;
 }
 
@@ -71,9 +79,25 @@ export interface IRefreshProjectOptions {
   updateLoadErrorStatus?: boolean;
 }
 
+export interface IEditorChatSessionState {
+  applyResult?: IEditorChatApplyApiResult;
+  draft: string;
+  liveUpdate?: IEditorLiveSceneUpdate;
+  pendingPlan?: IEditorChatPlan;
+  status: "idle" | "planning" | "planned" | "applying" | "applied" | "error";
+  transcript: Array<{ id: string; role: "assistant" | "system" | "user"; text: string }>;
+}
+
+export const defaultEditorChatSessionState: IEditorChatSessionState = {
+  draft: "",
+  status: "idle",
+  transcript: [],
+};
+
 export const defaultEditorSessionState: IEditorSessionState = {
   activeScenePath: undefined,
   browserGamepads: [],
+  chat: defaultEditorChatSessionState,
   gizmoMode: "translate",
   modal: undefined,
   parentByRowId: {},
@@ -316,6 +340,15 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     });
   },
   openModal: (modal) => set({ modal }),
+  rejectChatPlan: () =>
+    set((state) => ({
+      chat: {
+        ...state.chat,
+        pendingPlan: undefined,
+        status: "idle",
+        transcript: [...state.chat.transcript, { id: `system:${state.chat.transcript.length}`, role: "system", text: "Rejected pending chat plan." }],
+      },
+    })),
   refreshProject: async (options = {}) => {
     const response = await fetch("/api/project");
     const payload = await response.json() as IEditorProjectPayload;
@@ -329,6 +362,46 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       status: options.updateLoadErrorStatus && nextProject.ok === false ? nextProject.diagnostics?.[0]?.message ?? "Project load failed" : get().status,
     });
     return nextProject;
+  },
+  requestChatPlan: async (message) => {
+    const text = message.trim();
+    if (text.length === 0) {
+      set((state) => ({ chat: { ...state.chat, status: "error" }, status: "Enter a chat request before planning" }));
+      return;
+    }
+    set((state) => ({
+      chat: {
+        ...state.chat,
+        applyResult: undefined,
+        draft: text,
+        pendingPlan: undefined,
+        status: "planning",
+        transcript: [...state.chat.transcript, { id: `user:${state.chat.transcript.length}`, role: "user", text }],
+      },
+      status: "Planning chat ECS operations",
+    }));
+    try {
+      const response = await fetch("/api/ai/plan", {
+        body: JSON.stringify({ message: text, projectRevision: get().project?.projectRevision, selectedRowId: get().selectedRowId }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      });
+      const plan = await response.json() as IEditorChatPlan;
+      set((state) => ({
+        chat: {
+          ...state.chat,
+          pendingPlan: plan,
+          status: plan.ok ? "planned" : "error",
+          transcript: [...state.chat.transcript, { id: `assistant:${state.chat.transcript.length}`, role: "assistant", text: plan.summary }],
+        },
+        status: plan.ok ? `Chat planned ${plan.operations.length} operation${plan.operations.length === 1 ? "" : "s"}` : plan.diagnostics[0]?.message ?? "Chat plan failed",
+      }));
+    } catch (error) {
+      set((state) => ({
+        chat: { ...state.chat, status: "error" },
+        status: error instanceof Error ? error.message : String(error),
+      }));
+    }
   },
   reset: (state) => set({ ...defaultEditorSessionState, ...state }),
   saveScene: async () => {
@@ -352,6 +425,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   },
   selectRow: (selectedRowId) => set({ selectedRowId }),
   setBrowserGamepads: (browserGamepads) => set({ browserGamepads }),
+  setChatDraft: (draft) => set((state) => ({ chat: { ...state.chat, draft } })),
   setGizmoMode: (gizmoMode) => set({ gizmoMode }),
   setParent: (rowId, parentId) => {
     const current = get().parentByRowId;
@@ -372,6 +446,56 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       project: state.project === undefined ? undefined : withClientSceneLifecycle(state.project, state.activeScenePath, true),
       transformByRowId: { ...state.transformByRowId, [rowId]: transform },
     })),
+  applyChatPlan: async () => {
+    const plan = get().chat.pendingPlan;
+    if (plan === undefined || !plan.ok) {
+      set({ status: "No approved chat plan is ready to apply" });
+      return;
+    }
+    if (plan.projectRevision !== undefined && get().project?.projectRevision !== undefined && plan.projectRevision !== get().project?.projectRevision) {
+      set((state) => ({
+        chat: { ...state.chat, status: "error" },
+        status: "Project revision changed after the chat plan was created",
+      }));
+      return;
+    }
+    set((state) => ({ chat: { ...state.chat, status: "applying" }, status: "Applying approved chat plan" }));
+    try {
+      const response = await fetch("/api/ai/apply", {
+        body: JSON.stringify({ approvalToken: plan.approvalToken, plan }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      });
+      const result = await response.json() as IEditorChatApplyApiResult;
+      if (!result.ok) {
+        set((state) => ({
+          chat: { ...state.chat, applyResult: result, liveUpdate: result.liveUpdate, status: "error" },
+          status: result.diagnostics[0]?.message ?? "Chat apply failed",
+        }));
+        return;
+      }
+      const refreshed = await get().refreshProject();
+      const changedEntity = result.liveUpdate.affectedEntities[0];
+      const selectedRowId = changedEntity === undefined ? get().selectedRowId : refreshed.sceneObjects?.find((object) => object.id === changedEntity)?.rowId ?? get().selectedRowId;
+      set((state) => ({
+        chat: {
+          ...state.chat,
+          applyResult: result,
+          liveUpdate: result.liveUpdate,
+          pendingPlan: undefined,
+          status: "applied",
+          transcript: [...state.chat.transcript, { id: `system:${state.chat.transcript.length}`, role: "system", text: `Applied chat plan; changed ${result.changedSourceFiles.join(", ") || "no files"}.` }],
+        },
+        selectedRowId,
+        status: `Applied chat plan; ${result.liveUpdate.kind}; changed ${result.changedSourceFiles.join(", ")}`,
+      }));
+    } catch (error) {
+      set((state) => ({
+        chat: { ...state.chat, status: "error" },
+        status: error instanceof Error ? error.message : String(error),
+      }));
+    }
+  },
   transformObject: (sceneObjects, rowId, transform) => {
     set((state) => ({
       selectedRowId: rowId,

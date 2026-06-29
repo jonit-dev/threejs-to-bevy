@@ -144,6 +144,51 @@ test("should render disabled toolbar workflows with modal reasons", () => {
   assert.match(settingsHtml, new RegExp(escapeRegExp(settingsReason)));
 });
 
+test("should render chat input and plan controls", () => {
+  useEditorStore.getState().reset({
+    chat: {
+      draft: "add cube",
+      pendingPlan: {
+        affectedFiles: ["content/scenes/arena.scene.json"],
+        approvalToken: "approve:1",
+        diagnostics: [],
+        id: "plan:1",
+        message: "add cube",
+        ok: true,
+        operations: [{ args: { entityId: "chat-cube", sceneId: "arena" }, description: "Add cube", name: "scene.add_entity" }],
+        projectRevision: "rev:1",
+        risks: [],
+        summary: "Add chat-cube.",
+      },
+      status: "planned",
+      transcript: [{ id: "user:0", role: "user", text: "add cube" }],
+    },
+    modal: "chat",
+    project: { projectRevision: "rev:1" },
+  });
+
+  const html = renderToStaticMarkup(
+    <EditorModalView
+      addComponentDefinitions={[]}
+      assets={[]}
+      attachedComponents={[]}
+      modal="chat"
+      onAddComponent={() => {}}
+      onAddObject={() => {}}
+      onBuildPreview={() => {}}
+      onClose={() => {}}
+      onCreateScene={() => {}}
+      onSaveScene={() => {}}
+    />,
+  );
+
+  assert.match(html, /AI Chat/);
+  assert.match(html, /aria-label="AI chat message"/);
+  assert.doesNotMatch(html, /readOnly/);
+  assert.match(html, /Plan/);
+  assert.match(html, /Plan source-backed ECS operations/);
+});
+
 function modalReason(id: string): string {
   const action = EDITOR_MODAL_ACTION_DEFINITIONS.find((candidate) => candidate.id === id);
   assert.ok(action?.readOnlyReason, `Missing read-only reason for ${id}`);
