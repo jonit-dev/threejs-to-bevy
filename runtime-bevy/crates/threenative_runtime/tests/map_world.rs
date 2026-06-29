@@ -7,10 +7,11 @@ use std::{
 use bevy::{asset::AssetPlugin, prelude::*, scene::ScenePlugin};
 use serde_json::json;
 use threenative_components::ThreeNativeId;
-use threenative_loader::{WorldEntity, load_bundle};
+use threenative_loader::{load_bundle, WorldEntity};
 use threenative_runtime::map_world::{
+    map_bundle_into_world, STYLIZED_NATURE_RUNTIME_DEFAULTS,
     THREE_COMPAT_AMBIENT_BRIGHTNESS_PER_INTENSITY,
-    THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY, map_bundle_into_world,
+    THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY,
 };
 
 #[test]
@@ -166,6 +167,66 @@ fn should_report_missing_mesh_with_stable_diagnostic_shape() {
 }
 
 #[test]
+fn stylized_nature_runtime_defaults_should_match_shared_contract() {
+    let contract_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../../packages/ir/fixtures/stylized-nature-contract.json");
+    let contract: serde_json::Value = serde_json::from_str(
+        &fs::read_to_string(contract_path).expect("contract fixture should read"),
+    )
+    .expect("contract fixture should parse");
+    let defaults = &contract["runtimeExpansionDefaults"];
+
+    assert_eq!(
+        defaults["fallbackGrassCount"].as_u64(),
+        Some(STYLIZED_NATURE_RUNTIME_DEFAULTS.fallback_grass_count as u64)
+    );
+    assert_eq!(
+        defaults["treeCount"].as_u64(),
+        Some(STYLIZED_NATURE_RUNTIME_DEFAULTS.tree_count as u64)
+    );
+    assert_eq!(
+        defaults["size"].as_f64(),
+        Some(STYLIZED_NATURE_RUNTIME_DEFAULTS.size as f64)
+    );
+    assert_eq!(
+        defaults["pathWidth"].as_f64(),
+        Some(STYLIZED_NATURE_RUNTIME_DEFAULTS.path_width as f64)
+    );
+    assert!(
+        (defaults["windStrength"]
+            .as_f64()
+            .expect("windStrength should be numeric")
+            - STYLIZED_NATURE_RUNTIME_DEFAULTS.wind_strength as f64)
+            .abs()
+            < 0.000_001
+    );
+    assert_eq!(
+        defaults["barkColor"].as_str(),
+        Some(STYLIZED_NATURE_RUNTIME_DEFAULTS.bark_color)
+    );
+    assert_eq!(
+        defaults["leafColor"].as_str(),
+        Some(STYLIZED_NATURE_RUNTIME_DEFAULTS.leaf_color)
+    );
+    assert_eq!(
+        defaults["nativeGroundColor"].as_str(),
+        Some(STYLIZED_NATURE_RUNTIME_DEFAULTS.native_ground_color)
+    );
+    assert_eq!(
+        defaults["grassGeometryRootColor"].as_str(),
+        Some(STYLIZED_NATURE_RUNTIME_DEFAULTS.grass_geometry_root_color)
+    );
+    assert_eq!(
+        defaults["grassGeometryTipColor"].as_str(),
+        Some(STYLIZED_NATURE_RUNTIME_DEFAULTS.grass_geometry_tip_color)
+    );
+    assert_eq!(
+        defaults["grassMaterialColor"].as_str(),
+        Some(STYLIZED_NATURE_RUNTIME_DEFAULTS.grass_material_color)
+    );
+}
+
+#[test]
 fn stylized_nature_should_use_native_compatible_source_assets() {
     let root = temp_bundle_root("tn-stylized-source-compatible");
     write_glb(
@@ -180,7 +241,8 @@ fn stylized_nature_should_use_native_compatible_source_assets() {
         &root.join("assets/grass.glb"),
         r#"{"asset":{"version":"2.0"},"scene":0,"scenes":[{}],"meshes":[{"primitives":[{}]}]}"#,
     );
-    let mut bundle = stylized_source_bundle(&root, "model.trunk", "model.leaves", "model.grass", 32);
+    let mut bundle =
+        stylized_source_bundle(&root, "model.trunk", "model.leaves", "model.grass", 32);
     bundle.assets.assets.push(
         serde_json::from_value(json!({
             "id": "model.trunk",
@@ -228,16 +290,12 @@ fn stylized_nature_should_use_native_compatible_source_assets() {
     assert!(!names.iter().any(|name| name.ends_with(".tree-0.trunk")));
     assert!(!names.iter().any(|name| name.ends_with(".tree-0.leaf-0")));
     assert!(!names.iter().any(|name| name.contains("stylized-grass")));
-    assert!(
-        !names
-            .iter()
-            .any(|name| name.contains("soft-gradient-sky-card"))
-    );
-    assert!(
-        !names
-            .iter()
-            .any(|name| name.contains("soft-stylized-cloud"))
-    );
+    assert!(!names
+        .iter()
+        .any(|name| name.contains("soft-gradient-sky-card")));
+    assert!(!names
+        .iter()
+        .any(|name| name.contains("soft-stylized-cloud")));
 }
 #[test]
 fn stylized_nature_should_keep_fallback_for_missing_or_unsupported_source_assets() {

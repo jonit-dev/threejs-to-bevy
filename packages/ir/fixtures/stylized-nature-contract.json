@@ -1,0 +1,67 @@
+{
+  "schema": "threenative.stylized-nature-contract",
+  "version": "0.1.0",
+  "authoredDefaults": {
+    "barkColor": "#7b4f2f",
+    "density": "medium",
+    "grassRootColor": "#5e8f42",
+    "grassTipColor": "#c8df5f",
+    "groundColor": "#5c8d45",
+    "leafColor": "#7fbf45",
+    "pathColor": "#8b7250",
+    "pathWidth": 2.4,
+    "size": 24,
+    "windStrength": 0.35
+  },
+  "densityDefaults": {
+    "low": {
+      "grassCount": 48,
+      "treeCount": 3
+    },
+    "medium": {
+      "grassCount": 140,
+      "treeCount": 6
+    },
+    "high": {
+      "grassCount": 320,
+      "treeCount": 10
+    }
+  },
+  "runtimeExpansionDefaults": {
+    "barkColor": "#684329",
+    "fallbackGrassCount": 4200,
+    "groundColor": "#4f9c45",
+    "grassGeometryRootColor": "#236c34",
+    "grassGeometryTipColor": "#a7df63",
+    "grassMaterialColor": "#6aa14f",
+    "leafColor": "#4d973c",
+    "nativeGroundColor": "#6aa14f",
+    "pathWidth": 3,
+    "size": 34,
+    "sourceGrassCount": 5000,
+    "sourceSize": 40,
+    "treeCount": 7,
+    "windStrength": 0.35
+  },
+  "sourceAssetPolicy": {
+    "modelSlots": [
+      "grassModel",
+      "treeLeavesModel",
+      "treeTrunkModel"
+    ],
+    "textureSlots": [
+      "grassColorMap",
+      "grassNormalMap",
+      "grassRoughnessMap",
+      "dirtColorMap",
+      "dirtNormalMap",
+      "dirtRoughnessMap",
+      "dirtAoMap",
+      "dirtHeightMap",
+      "dirtMetallicMap",
+      "pathMaskMap",
+      "noiseMap",
+      "leavesAlphaMap"
+    ]
+  }
+}

@@ -50,6 +50,7 @@ pub mod stylized_nature;
 pub mod systems_context;
 pub mod systems_effects;
 pub mod systems_host;
+mod systems_host_bridge;
 pub mod systems_services;
 pub mod transform_interpolation;
 pub mod ui;

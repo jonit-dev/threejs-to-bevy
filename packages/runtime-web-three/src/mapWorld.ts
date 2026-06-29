@@ -81,6 +81,22 @@ interface IStylizedNatureComponent {
   windStrength?: number;
 }
 
+const STYLIZED_NATURE_RUNTIME_DEFAULTS = {
+  barkColor: "#684329",
+  fallbackGrassCount: 4200,
+  groundColor: "#4f9c45",
+  grassGeometryRootColor: "#236c34",
+  grassGeometryTipColor: "#a7df63",
+  grassMaterialColor: "#6aa14f",
+  leafColor: "#4d973c",
+  pathWidth: 3,
+  size: 34,
+  sourceGrassCount: 5000,
+  sourceSize: 40,
+  treeCount: 7,
+  windStrength: 0.35,
+};
+
 interface IStylizedSparklesComponent {
   color?: string;
   count?: number;
@@ -159,14 +175,12 @@ export function mapWorld(bundle: IWebBundle): IThreeWorld {
   }
 
   const cameras = new Map<string, THREE.Camera>();
-  for (const [id, object] of objectsById.entries()) {
+  for (const entity of entities) {
+    const object = objectsById.get(entity.id);
     if (object instanceof THREE.Camera) {
-      cameras.set(id, object);
-      const entity = entities.find((entry) => entry.id === id);
-      if (entity !== undefined) {
-        object.userData.threeNativeCamera = entity.components.Camera;
-        applyCameraRenderLayers(object, entity.components.Camera?.layers ?? ["default"], layerAllocation);
-      }
+      cameras.set(entity.id, object);
+      object.userData.threeNativeCamera = entity.components.Camera;
+      applyCameraRenderLayers(object, entity.components.Camera?.layers ?? ["default"], layerAllocation);
     }
   }
 
@@ -538,10 +552,10 @@ function firstMeshGeometry(object: THREE.Object3D): THREE.BufferGeometry | undef
 }
 
 function createSourceGrass(geometry: THREE.BufferGeometry, component: IStylizedNatureComponent): THREE.InstancedMesh {
-  const grassCount = Math.max(0, Math.floor(finiteNonNegative(component.grassCount, 5000)));
-  const size = finitePositive(component.size, 40);
-  const pathWidth = finitePositive(component.pathWidth, 3);
-  const material = new THREE.MeshStandardMaterial({ color: colorToThree(component.grassRootColor ?? "#6aa14f"), roughness: 0.85, side: THREE.DoubleSide });
+  const grassCount = Math.max(0, Math.floor(finiteNonNegative(component.grassCount, STYLIZED_NATURE_RUNTIME_DEFAULTS.sourceGrassCount)));
+  const size = finitePositive(component.size, STYLIZED_NATURE_RUNTIME_DEFAULTS.sourceSize);
+  const pathWidth = finitePositive(component.pathWidth, STYLIZED_NATURE_RUNTIME_DEFAULTS.pathWidth);
+  const material = new THREE.MeshStandardMaterial({ color: colorToThree(component.grassRootColor ?? STYLIZED_NATURE_RUNTIME_DEFAULTS.grassMaterialColor), roughness: 0.85, side: THREE.DoubleSide });
   const mesh = new THREE.InstancedMesh(geometry.clone(), material, grassCount);
   mesh.name = "source-grass-blades-up";
   mesh.frustumCulled = false;
@@ -757,12 +771,12 @@ function createStylizedNatureObject(
   diagnostics: IRuntimeDiagnostic[],
   source?: string,
 ): THREE.Group {
-  const size = finitePositive(component.size, 34);
+  const size = finitePositive(component.size, STYLIZED_NATURE_RUNTIME_DEFAULTS.size);
   const half = size / 2;
-  const grassCount = Math.max(0, Math.floor(finiteNonNegative(component.grassCount, 4200)));
-  const treeCount = Math.max(0, Math.floor(finiteNonNegative(component.treeCount, 7)));
-  const pathWidth = finitePositive(component.pathWidth, 3.0);
-  const windStrength = finiteNonNegative(component.windStrength, 0.35);
+  const grassCount = Math.max(0, Math.floor(finiteNonNegative(component.grassCount, STYLIZED_NATURE_RUNTIME_DEFAULTS.fallbackGrassCount)));
+  const treeCount = Math.max(0, Math.floor(finiteNonNegative(component.treeCount, STYLIZED_NATURE_RUNTIME_DEFAULTS.treeCount)));
+  const pathWidth = finitePositive(component.pathWidth, STYLIZED_NATURE_RUNTIME_DEFAULTS.pathWidth);
+  const windStrength = finiteNonNegative(component.windStrength, STYLIZED_NATURE_RUNTIME_DEFAULTS.windStrength);
   const root = new THREE.Group();
   root.name = "StylizedNature";
   root.userData.threeNativeStylizedNature = { ...component, grassCount, treeCount, windStrength, artDirection: "source-stylized-scene" };
@@ -772,7 +786,7 @@ function createStylizedNatureObject(
   const ground = new THREE.Mesh(
     createRollingTerrainGeometry(size, 256, pathWidth),
     stylizedGroundMaterial(component, assetsById, diagnostics, source, {
-      color: component.groundColor ?? "#4f9c45",
+      color: component.groundColor ?? STYLIZED_NATURE_RUNTIME_DEFAULTS.groundColor,
       sourceMap: component.grassColorMap,
       sourceNormalMap: component.grassNormalMap,
       sourceRoughnessMap: component.grassRoughnessMap,
@@ -790,11 +804,11 @@ function createStylizedNatureObject(
   root.add(ground);
 
   const grassGeometry = createGrassBladeGeometry(
-    colorToThree(component.grassRootColor ?? "#236c34"),
-    colorToThree(component.grassTipColor ?? "#a7df63"),
+    colorToThree(component.grassRootColor ?? STYLIZED_NATURE_RUNTIME_DEFAULTS.grassGeometryRootColor),
+    colorToThree(component.grassTipColor ?? STYLIZED_NATURE_RUNTIME_DEFAULTS.grassGeometryTipColor),
   );
   const grassMaterial = stylizedTextureMaterial(component, assetsById, diagnostics, source, {
-    color: component.grassRootColor ?? "#6aa14f",
+    color: component.grassRootColor ?? STYLIZED_NATURE_RUNTIME_DEFAULTS.grassMaterialColor,
     sourceMap: component.grassColorMap,
     sourceNormalMap: component.grassNormalMap,
     sourceRoughnessMap: component.grassRoughnessMap,
@@ -1280,13 +1294,13 @@ function createStylizedTree(component: IStylizedNatureComponent, index: number):
   tree.name = `rounded-stylized-tree-${index}`;
   const trunk = new THREE.Mesh(
     new THREE.CylinderGeometry(0.18, 0.28, 1.45, 7),
-    new THREE.MeshStandardMaterial({ color: colorToThree(component.barkColor ?? "#684329"), roughness: 0.95 }),
+    new THREE.MeshStandardMaterial({ color: colorToThree(component.barkColor ?? STYLIZED_NATURE_RUNTIME_DEFAULTS.barkColor), roughness: 0.95 }),
   );
   trunk.position.y = 0.72;
   trunk.castShadow = true;
   tree.add(trunk);
 
-  const leafMaterial = new THREE.MeshStandardMaterial({ color: colorToThree(component.leafColor ?? "#4d973c"), roughness: 0.82 });
+  const leafMaterial = new THREE.MeshStandardMaterial({ color: colorToThree(component.leafColor ?? STYLIZED_NATURE_RUNTIME_DEFAULTS.leafColor), roughness: 0.82 });
   const canopyOffsets: Array<[number, number, number, number]> = [
     [0, 1.72, 0, 0.95],
     [-0.48, 1.55, 0.12, 0.68],

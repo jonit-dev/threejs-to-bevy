@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import test from "node:test";
 import * as THREE from "three";
@@ -89,6 +90,46 @@ test("mapWorld should map v2 render fixture", () => {
   assert.equal((mapped.objectsById.get("light.spot") as THREE.SpotLight).shadow.normalBias, 0.04);
   assert.equal(mapped.objectsById.get("capsule.hidden")?.visible, false);
   assert.equal(mapped.objectsById.get("cylinder.main") instanceof THREE.Mesh, true);
+});
+
+test("mapWorld should trace stylized nature runtime expansion defaults from the shared contract", async () => {
+  const contract = JSON.parse(
+    await readFile(resolve(process.cwd(), "../ir/fixtures/stylized-nature-contract.json"), "utf8"),
+  ) as {
+    runtimeExpansionDefaults: {
+      fallbackGrassCount: number;
+      size: number;
+      treeCount: number;
+      windStrength: number;
+    };
+  };
+  const mapped = mapWorld({
+    assets: { schema: "threenative.assets", version: "0.1.0", assets: [] },
+    manifest: {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "stylized",
+      requiredCapabilities: {},
+      entry: { world: "world.ir.json" },
+      files: { assets: "assets.manifest.json", materials: "materials.ir.json", targetProfile: "target.profile.json" },
+    },
+    materials: { schema: "threenative.materials", version: "0.1.0", materials: [] },
+    targetProfile: { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] },
+    world: {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [{ id: "nature", components: { StylizedNature: {} } }],
+    },
+  });
+  const root = mapped.objectsById.get("nature");
+
+  assert.equal(root?.name, "StylizedNature");
+  assert.deepEqual(root?.userData.threeNativeStylizedNature, {
+    artDirection: "source-stylized-scene",
+    grassCount: contract.runtimeExpansionDefaults.fallbackGrassCount,
+    treeCount: contract.runtimeExpansionDefaults.treeCount,
+    windStrength: contract.runtimeExpansionDefaults.windStrength,
+  });
 });
 
 test("mapWorld should warn when a lit scene has no camera or light", () => {

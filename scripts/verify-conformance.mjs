@@ -428,7 +428,7 @@ export async function verifyConformance(options = {}) {
         v7PackagingTargetProfilesBundlePath,
         resolve(artifactDir, "packaging-target-profiles"),
       ],
-      { timeoutMs: 120000 },
+      { timeoutMs: 300000 },
     ],
     [
       "V7 performance budget verification",

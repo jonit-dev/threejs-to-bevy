@@ -58,6 +58,35 @@ const THREE_COMPAT_POINT_LUMENS_PER_CANDELA: f32 = std::f32::consts::TAU * 2.0 *
 const THREE_COMPAT_DEFAULT_RANGE: f32 = 1_000.0;
 const THREE_COMPAT_DEFAULT_CAMERA_EV100: f32 = -0.263_034_4;
 
+pub struct StylizedNatureRuntimeDefaults {
+    pub bark_color: &'static str,
+    pub fallback_grass_count: usize,
+    pub grass_geometry_root_color: &'static str,
+    pub grass_geometry_tip_color: &'static str,
+    pub grass_material_color: &'static str,
+    pub leaf_color: &'static str,
+    pub native_ground_color: &'static str,
+    pub path_width: f32,
+    pub size: f32,
+    pub tree_count: usize,
+    pub wind_strength: f32,
+}
+
+pub const STYLIZED_NATURE_RUNTIME_DEFAULTS: StylizedNatureRuntimeDefaults =
+    StylizedNatureRuntimeDefaults {
+        bark_color: "#684329",
+        fallback_grass_count: 4200,
+        grass_geometry_root_color: "#236c34",
+        grass_geometry_tip_color: "#a7df63",
+        grass_material_color: "#6aa14f",
+        leaf_color: "#4d973c",
+        native_ground_color: "#6aa14f",
+        path_width: 3.0,
+        size: 34.0,
+        tree_count: 7,
+        wind_strength: 0.35,
+    };
+
 #[derive(Clone, Component, Debug, PartialEq)]
 pub struct NativeMaterialPolicy {
     pub blend_mode: Option<String>,
@@ -438,13 +467,39 @@ fn spawn_stylized_nature(
     name: Name,
     bundle_path: &Path,
 ) -> Entity {
-    let size = json_f32(component, "size", 34.0).max(0.1);
-    let grass_count = json_usize(component, "grassCount", 4200);
-    let tree_count = json_usize(component, "treeCount", 7);
-    let path_width = json_f32(component, "pathWidth", 3.0).max(0.1);
-    let wind_strength = json_f32(component, "windStrength", 0.35).max(0.0);
-    let bark_color = json_color(component, "barkColor", "#684329");
-    let leaf_color = json_color(component, "leafColor", "#4d973c");
+    let size = json_f32(component, "size", STYLIZED_NATURE_RUNTIME_DEFAULTS.size).max(0.1);
+    let grass_count = json_usize(
+        component,
+        "grassCount",
+        STYLIZED_NATURE_RUNTIME_DEFAULTS.fallback_grass_count,
+    );
+    let tree_count = json_usize(
+        component,
+        "treeCount",
+        STYLIZED_NATURE_RUNTIME_DEFAULTS.tree_count,
+    );
+    let path_width = json_f32(
+        component,
+        "pathWidth",
+        STYLIZED_NATURE_RUNTIME_DEFAULTS.path_width,
+    )
+    .max(0.1);
+    let wind_strength = json_f32(
+        component,
+        "windStrength",
+        STYLIZED_NATURE_RUNTIME_DEFAULTS.wind_strength,
+    )
+    .max(0.0);
+    let bark_color = json_color(
+        component,
+        "barkColor",
+        STYLIZED_NATURE_RUNTIME_DEFAULTS.bark_color,
+    );
+    let leaf_color = json_color(
+        component,
+        "leafColor",
+        STYLIZED_NATURE_RUNTIME_DEFAULTS.leaf_color,
+    );
 
     let asset_server = world.get_resource::<AssetServer>().cloned();
     let terrain_material = add_stylized_surface_material(
@@ -569,7 +624,11 @@ fn spawn_stylized_nature(
         size,
         128,
         path_width,
-        json_color(component, "groundColor", "#6aa14f"),
+        json_color(
+            component,
+            "groundColor",
+            STYLIZED_NATURE_RUNTIME_DEFAULTS.native_ground_color,
+        ),
         json_color(component, "pathColor", "#9b6543"),
     );
     let source_path_mesh = add_source_path_ribbon_mesh(world, size, 120, path_width * 0.92);
@@ -578,8 +637,16 @@ fn spawn_stylized_nature(
         None => (
             add_grass_blade_mesh(
                 world,
-                json_color(component, "grassRootColor", "#236c34"),
-                json_color(component, "grassTipColor", "#a7df63"),
+                json_color(
+                    component,
+                    "grassRootColor",
+                    STYLIZED_NATURE_RUNTIME_DEFAULTS.grass_geometry_root_color,
+                ),
+                json_color(
+                    component,
+                    "grassTipColor",
+                    STYLIZED_NATURE_RUNTIME_DEFAULTS.grass_geometry_tip_color,
+                ),
             ),
             false,
         ),

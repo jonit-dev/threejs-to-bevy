@@ -260,26 +260,26 @@ function materialsFromBundle(data: unknown): IMaterialDocument & { provenance: R
     .filter(isRecord)
     .map((material): IMaterialDeclaration => ({
       id: readString(material.id) ?? "invalid-material-id",
-      ...(readNumber(material.alphaCutoff) === undefined ? {} : { alphaCutoff: readNumber(material.alphaCutoff) }),
-      ...(readMaterialAlphaMode(material.alphaMode) === undefined ? {} : { alphaMode: readMaterialAlphaMode(material.alphaMode) }),
-      ...(readString(material.asset) === undefined ? {} : { asset: readString(material.asset) }),
-      ...(readString(material.baseColorTexture) === undefined ? {} : { baseColorTexture: readString(material.baseColorTexture) }),
-      ...(readNumber(material.clearcoat) === undefined ? {} : { clearcoat: readNumber(material.clearcoat) }),
-      ...(readNumber(material.clearcoatRoughness) === undefined ? {} : { clearcoatRoughness: readNumber(material.clearcoatRoughness) }),
-      ...(readString(material.clearcoatRoughnessTexture) === undefined ? {} : { clearcoatRoughnessTexture: readString(material.clearcoatRoughnessTexture) }),
-      ...(readString(material.clearcoatTexture) === undefined ? {} : { clearcoatTexture: readString(material.clearcoatTexture) }),
-      ...(readString(material.color) === undefined ? {} : { color: readString(material.color) }),
-      ...(readString(material.emissive) === undefined ? {} : { emissive: readString(material.emissive) }),
-      ...(readNumber(material.emissiveIntensity) === undefined ? {} : { emissiveIntensity: readNumber(material.emissiveIntensity) }),
-      ...(readString(material.emissiveTexture) === undefined ? {} : { emissiveTexture: readString(material.emissiveTexture) }),
-      ...(readString(material.metallicRoughnessTexture) === undefined ? {} : { metallicRoughnessTexture: readString(material.metallicRoughnessTexture) }),
-      ...(readNumber(material.metalness) === undefined ? {} : { metalness: readNumber(material.metalness) }),
-      ...(readString(material.normalTexture) === undefined ? {} : { normalTexture: readString(material.normalTexture) }),
-      ...(readString(material.occlusionTexture) === undefined ? {} : { occlusionTexture: readString(material.occlusionTexture) }),
-      ...(readNumber(material.opacity) === undefined ? {} : { opacity: readNumber(material.opacity) }),
-      ...(readNumber(material.roughness) === undefined ? {} : { roughness: readNumber(material.roughness) }),
-      ...(readNumber(material.transmission) === undefined ? {} : { transmission: readNumber(material.transmission) }),
-      ...(readString(material.transmissionTexture) === undefined ? {} : { transmissionTexture: readString(material.transmissionTexture) }),
+      ...optionalNumberField(material, "alphaCutoff"),
+      ...optionalAlphaModeField(material, "alphaMode"),
+      ...optionalStringField(material, "asset"),
+      ...optionalStringField(material, "baseColorTexture"),
+      ...optionalNumberField(material, "clearcoat"),
+      ...optionalNumberField(material, "clearcoatRoughness"),
+      ...optionalStringField(material, "clearcoatRoughnessTexture"),
+      ...optionalStringField(material, "clearcoatTexture"),
+      ...optionalStringField(material, "color"),
+      ...optionalStringField(material, "emissive"),
+      ...optionalNumberField(material, "emissiveIntensity"),
+      ...optionalStringField(material, "emissiveTexture"),
+      ...optionalStringField(material, "metallicRoughnessTexture"),
+      ...optionalNumberField(material, "metalness"),
+      ...optionalStringField(material, "normalTexture"),
+      ...optionalStringField(material, "occlusionTexture"),
+      ...optionalNumberField(material, "opacity"),
+      ...optionalNumberField(material, "roughness"),
+      ...optionalNumberField(material, "transmission"),
+      ...optionalStringField(material, "transmissionTexture"),
     }))
     .sort((left, right) => left.id.localeCompare(right.id));
 
@@ -299,7 +299,7 @@ function assetsFromBundle(data: unknown): IAssetDocument & { provenance: Record<
       const type = readString(asset.type) ?? readString(asset.kind);
       return {
         id: readString(asset.id) ?? "invalid-asset-id",
-        ...(readString(asset.path) === undefined ? {} : { path: readString(asset.path) }),
+        ...optionalStringField(asset, "path"),
         ...(type === undefined ? {} : { type }),
       };
     })
@@ -369,7 +369,7 @@ function systemsFromBundle(data: unknown): ISystemsDocument & { provenance: Reco
       ...copyStringList(system.resourceReads, "resourceReads"),
       ...copyStringList(system.resourceWrites, "resourceWrites"),
       ...copyStringList(system.services, "services"),
-      ...(readString(system.schedule) === undefined ? {} : { schedule: readString(system.schedule) }),
+      ...optionalStringField(system, "schedule"),
       ...copyStringList(system.writes, "writes"),
     }))
     .sort((left, right) => left.id.localeCompare(right.id));
@@ -393,12 +393,27 @@ function copyRecordArray(value: unknown, key: string): Record<string, Record<str
   return items.length === 0 ? {} : { [key]: items };
 }
 
+function optionalStringField<T extends string>(record: Record<string, unknown>, key: T): Partial<Record<T, string>> {
+  const value = readString(record[key]);
+  return value === undefined ? {} : ({ [key]: value } as Partial<Record<T, string>>);
+}
+
+function optionalNumberField<T extends string>(record: Record<string, unknown>, key: T): Partial<Record<T, number>> {
+  const value = readNumber(record[key]);
+  return value === undefined ? {} : ({ [key]: value } as Partial<Record<T, number>>);
+}
+
+function optionalAlphaModeField(record: Record<string, unknown>, key: "alphaMode"): Pick<IMaterialDeclaration, "alphaMode"> | Record<string, never> {
+  const value = readMaterialAlphaMode(record[key]);
+  return value === undefined ? {} : { alphaMode: value };
+}
+
 function audioFromBundle(data: unknown): IAudioDocument & { provenance: Record<string, unknown> } {
   const sounds = (readArray(isRecord(data) ? data.sounds : undefined) ?? [])
     .filter(isRecord)
     .map((sound): IAudioSoundDeclaration => ({
       id: readString(sound.id) ?? "invalid-audio-id",
-      ...(readString(sound.asset) === undefined ? {} : { asset: readString(sound.asset) }),
+      ...optionalStringField(sound, "asset"),
     }))
     .sort((left, right) => left.id.localeCompare(right.id));
 

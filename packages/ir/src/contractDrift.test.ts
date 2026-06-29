@@ -15,6 +15,7 @@ import { schemaUrls } from "./schemas.js";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = resolve(packageRoot, "../..");
+const loaderTypesPath = resolve(repoRoot, "runtime-bevy/crates/threenative_loader/src/types.rs");
 const schemaBackedTypeScriptCases = [
   { document: "manifest", interfaceName: "IBundleManifest", schema: "manifest.schema.json", source: "src/types.ts" },
   { document: "world", interfaceName: "IWorldIr", schema: "world.schema.json", source: "src/types.ts" },
@@ -115,7 +116,7 @@ test("contractDrift should keep runtime config antialias aligned across schema T
     resolve(packageRoot, "schemas/runtime-config.schema.json"),
   );
   const runtimeConfigTypes = await readFile(resolve(packageRoot, "src/runtimeConfig.ts"), "utf8");
-  const loaderTypes = await readFile(resolve(repoRoot, "runtime-bevy/crates/threenative_loader/src/lib.rs"), "utf8");
+  const loaderTypes = await readFile(loaderTypesPath, "utf8");
 
   assert.deepEqual(schema.properties.renderer.required, ["antialias"]);
   assert.match(runtimeConfigTypes, /RendererAntialiasMode = "none" \| "msaa2" \| "msaa4" \| "msaa8" \| "fxaa" \| "taa" \| "smaa";/);
@@ -140,7 +141,7 @@ test("contractDrift should keep world component extension point explicit across 
     };
   }>(resolve(packageRoot, "schemas/world.schema.json"));
   const worldTypes = await readFile(resolve(packageRoot, "src/types.ts"), "utf8");
-  const loaderTypes = await readFile(resolve(repoRoot, "runtime-bevy/crates/threenative_loader/src/lib.rs"), "utf8");
+  const loaderTypes = await readFile(loaderTypesPath, "utf8");
 
   assert.deepEqual(schema.properties.entities.items.required, ["id", "components"]);
   assert.equal(schema.properties.entities.items.properties.components.type, "object");
@@ -168,14 +169,14 @@ test("contractDrift should keep schema backed document required fields aligned w
 });
 
 test("contractDrift should keep Bevy loader required fields aligned for runtime consumed documents", async () => {
-  const loaderPath = resolve(repoRoot, "runtime-bevy/crates/threenative_loader/src/lib.rs");
+  const loaderPath = loaderTypesPath;
   const loaderTypes = await readFile(loaderPath, "utf8");
   const diagnostics = [];
 
   for (const item of bevyRuntimeDocumentCases) {
     diagnostics.push(
       ...compareRequiredFields({
-        actual: requiredFieldsFromRustStruct(loaderTypes, item.structName, "runtime-bevy/crates/threenative_loader/src/lib.rs"),
+        actual: requiredFieldsFromRustStruct(loaderTypes, item.structName, "runtime-bevy/crates/threenative_loader/src/types.rs"),
         document: item.document,
         expected: requiredFieldsFromJsonSchema(await readJson(resolve(packageRoot, "schemas", item.schema)), item.schema),
         representation: "Bevy loader struct",

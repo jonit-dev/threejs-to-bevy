@@ -95,37 +95,50 @@ export const StylizedNature = defineComponent("StylizedNature", {
   windStrength: "number",
 });
 
-const densityDefaults: Record<StylizedNatureDensity, { grassCount: number; treeCount: number }> = {
+export const STYLIZED_NATURE_DENSITY_DEFAULTS: Record<StylizedNatureDensity, { grassCount: number; treeCount: number }> = {
   low: { grassCount: 48, treeCount: 3 },
   medium: { grassCount: 140, treeCount: 6 },
   high: { grassCount: 320, treeCount: 10 },
 };
 
+export const STYLIZED_NATURE_AUTHORED_DEFAULTS = {
+  barkColor: "#7b4f2f",
+  density: "medium" as StylizedNatureDensity,
+  grassRootColor: "#5e8f42",
+  grassTipColor: "#c8df5f",
+  groundColor: "#5c8d45",
+  leafColor: "#7fbf45",
+  pathColor: "#8b7250",
+  pathWidth: 2.4,
+  size: 24,
+  windStrength: 0.35,
+};
+
 export function stylizedNature(options: IStylizedNatureOptions = {}): IEcsDeclaration {
-  const density = options.density ?? "medium";
-  const defaults = densityDefaults[density];
+  const density = options.density ?? STYLIZED_NATURE_AUTHORED_DEFAULTS.density;
+  const defaults = STYLIZED_NATURE_DENSITY_DEFAULTS[density];
   if (defaults === undefined) {
     throw new SdkError("TN_SDK_STYLIZED_NATURE_DENSITY_INVALID", "StylizedNature density must be 'low', 'medium', or 'high'.");
   }
-  const size = options.size ?? 24;
+  const size = options.size ?? STYLIZED_NATURE_AUTHORED_DEFAULTS.size;
   const grassCount = options.grassCount ?? defaults.grassCount;
   const treeCount = options.treeCount ?? defaults.treeCount;
-  const pathWidth = options.pathWidth ?? 2.4;
-  const windStrength = options.windStrength ?? 0.35;
+  const pathWidth = options.pathWidth ?? STYLIZED_NATURE_AUTHORED_DEFAULTS.pathWidth;
+  const windStrength = options.windStrength ?? STYLIZED_NATURE_AUTHORED_DEFAULTS.windStrength;
   assertPositiveNumber(size, "TN_SDK_STYLIZED_NATURE_SIZE_INVALID", "StylizedNature size");
   assertNonNegativeNumber(grassCount, "TN_SDK_STYLIZED_NATURE_GRASS_COUNT_INVALID", "StylizedNature grassCount");
   assertNonNegativeNumber(treeCount, "TN_SDK_STYLIZED_NATURE_TREE_COUNT_INVALID", "StylizedNature treeCount");
   assertPositiveNumber(pathWidth, "TN_SDK_STYLIZED_NATURE_PATH_WIDTH_INVALID", "StylizedNature pathWidth");
   assertNonNegativeNumber(windStrength, "TN_SDK_STYLIZED_NATURE_WIND_INVALID", "StylizedNature windStrength");
   return StylizedNature({
-    barkColor: options.barkColor ?? "#7b4f2f",
+    barkColor: options.barkColor ?? STYLIZED_NATURE_AUTHORED_DEFAULTS.barkColor,
     density,
     grassCount,
-    grassRootColor: options.grassRootColor ?? "#5e8f42",
-    grassTipColor: options.grassTipColor ?? "#c8df5f",
-    groundColor: options.groundColor ?? "#5c8d45",
-    leafColor: options.leafColor ?? "#7fbf45",
-    pathColor: options.pathColor ?? "#8b7250",
+    grassRootColor: options.grassRootColor ?? STYLIZED_NATURE_AUTHORED_DEFAULTS.grassRootColor,
+    grassTipColor: options.grassTipColor ?? STYLIZED_NATURE_AUTHORED_DEFAULTS.grassTipColor,
+    groundColor: options.groundColor ?? STYLIZED_NATURE_AUTHORED_DEFAULTS.groundColor,
+    leafColor: options.leafColor ?? STYLIZED_NATURE_AUTHORED_DEFAULTS.leafColor,
+    pathColor: options.pathColor ?? STYLIZED_NATURE_AUTHORED_DEFAULTS.pathColor,
     ...(options.grassColorMap === undefined ? {} : { grassColorMap: options.grassColorMap }),
     ...(options.grassNormalMap === undefined ? {} : { grassNormalMap: options.grassNormalMap }),
     ...(options.grassRoughnessMap === undefined ? {} : { grassRoughnessMap: options.grassRoughnessMap }),

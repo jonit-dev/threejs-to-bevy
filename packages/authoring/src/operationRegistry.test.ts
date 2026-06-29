@@ -213,6 +213,39 @@ test("should dispatch file-targeted system metadata operations through the regis
   }
 });
 
+test("should dispatch stylized nature defaults from the shared contract", async () => {
+  const root = await createRegistryProject();
+  try {
+    const contract = JSON.parse(await readFile(join(process.cwd(), "../ir/fixtures/stylized-nature-contract.json"), "utf8")) as {
+      authoredDefaults: Record<string, unknown>;
+      densityDefaults: Record<"high", { grassCount: number; treeCount: number }>;
+    };
+    const result = await dispatchAuthoringOperation({
+      args: {
+        density: "high",
+        entityId: "player",
+        sceneId: "scene.arena",
+      },
+      name: "scene.set_stylized_nature",
+      projectPath: root,
+    });
+    const scene = JSON.parse(await readFile(join(root, "content", "scenes", "arena.scene.json"), "utf8")) as {
+      entities: Array<{ components?: Record<string, unknown>; id: string }>;
+    };
+    const nature = scene.entities.find((entity) => entity.id === "player")?.components?.StylizedNature as Record<string, unknown> | undefined;
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(nature, {
+      ...contract.authoredDefaults,
+      density: "high",
+      grassCount: contract.densityDefaults.high.grassCount,
+      treeCount: contract.densityDefaults.high.treeCount,
+    });
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should expose operation metadata and registry diagnostics", async () => {
   const descriptors = listAuthoringOperationDescriptors();
   const transform = getAuthoringOperationDescriptor("scene.set_transform");
@@ -291,6 +324,14 @@ test("should expose operation metadata and registry diagnostics", async () => {
   assert.equal(descriptors.length, AUTHORING_OPERATION_NAMES.length);
   assert.equal(transform?.pathPolicy, "source-document");
   assert.equal(transform?.sourceFamily, "scene");
+  assert.equal("dispatch" in (transform ?? {}), false);
+  for (const descriptor of descriptors) {
+    const namespace = descriptor.name.split(".")[0];
+    assert.equal(descriptor.sourceFamily, namespace, `${descriptor.name} source family should match its namespace`);
+    assert.equal("dispatch" in descriptor, false, `${descriptor.name} descriptor should not expose dispatch`);
+  }
+  descriptors[0]?.arguments.push({ name: "mutated", required: false, type: "string" });
+  assert.equal(getAuthoringOperationDescriptor("asset.add")?.arguments.some((argument) => argument.name === "mutated"), false);
   assert.equal(missing.ok, false);
   assert.equal(missing.diagnostics[0]?.code, "TN_AUTHORING_OPERATION_ARG_MISSING");
   assert.equal(missing.diagnostics[0]?.path, "/sceneId");
