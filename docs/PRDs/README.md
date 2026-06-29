@@ -61,6 +61,11 @@ This index separates current cleanup work from historical milestone batches.
   planned bounded code-mode workflow for creating, opening, editing, and
   validating project-local `src/scripts/**/*.ts` modules while preserving
   module/export script references as structured source data.
+- [Editor AI Chat ECS Control](other/editor-ai-chat-ecs-control.md):
+  planned approval-based AI chat workflow that can inspect editor context,
+  propose registry-backed ECS operation plans, apply approved source mutations,
+  validate/build, and prove emitted IR without making MCP or generated bundles a
+  new source of truth.
 - [Editor Functional Gap Closure](done/other/editor-functional-gap-closure.md):
   completed conversion of visible editor placeholders and partial workflows into
   source-backed, verified actions or explicit disabled diagnostics, including
