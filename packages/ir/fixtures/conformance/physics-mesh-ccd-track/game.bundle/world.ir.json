@@ -1,0 +1,110 @@
+{
+  "entities": [
+    {
+      "components": {
+        "Transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Collider": {
+          "kind": "mesh",
+          "mesh": {
+            "bounds": {
+              "center": [
+                0,
+                0,
+                0
+              ],
+              "size": [
+                8,
+                0.4,
+                4
+              ]
+            },
+            "source": "mesh.track",
+            "triangleCount": 96
+          }
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
+      "id": "track-mesh"
+    },
+    {
+      "components": {
+        "Transform": {
+          "position": [
+            0,
+            4,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Collider": {
+          "kind": "mesh",
+          "mesh": {
+            "bounds": {
+              "center": [
+                0,
+                0,
+                0
+              ],
+              "size": [
+                1.6,
+                0.6,
+                2.4
+              ]
+            },
+            "source": "mesh.chassis",
+            "triangleCount": 128
+          }
+        },
+        "RigidBody": {
+          "ccd": {
+            "enabled": true,
+            "mode": "swept-aabb"
+          },
+          "gravityScale": 0,
+          "kind": "dynamic",
+          "mass": 1,
+          "velocity": [
+            0,
+            -20,
+            0
+          ]
+        }
+      },
+      "id": "high-speed-chassis"
+    }
+  ],
+  "events": {},
+  "prefabs": [],
+  "resources": {},
+  "schema": "threenative.world",
+  "version": "0.1.0"
+}

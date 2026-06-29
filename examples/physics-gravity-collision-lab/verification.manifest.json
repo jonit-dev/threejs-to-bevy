@@ -1,0 +1,5 @@
+{
+  "bundle": "packages/ir/fixtures/conformance/physics-gravity-collision-lab/game.bundle",
+  "gate": "physics-self-verification",
+  "scene": "physics-gravity-collision-lab"
+}

@@ -940,6 +940,23 @@ triangle narrow phase, tire/friction models, vehicle drivetrains, soft bodies,
 ragdolls, and public backend handles remain deferred or diagnostic-only
 boundaries rather than promoted runtime parity.
 
+The physics self-verification plan has an initial focused gate at
+`pnpm verify:physics-self-verification`. It generates fixture-backed bundles for
+`physics-gravity-collision-lab`, `physics-material-lab`,
+`physics-mass-stack-lab`, `physics-character-obstacles`,
+`physics-query-lab`, `physics-mesh-ccd-track`, and
+`physics-joint-metadata`; validates each bundle; emits per-example web,
+native Bevy, and diff JSON under
+`examples/<scene>/artifacts/physics-self-verification/`; runs the existing
+promoted physics gates plus conformance; writes selected P1 visual contact
+sheets for bounded mesh CCD and joint metadata as trace diagrams generated from
+JSON trace output; and writes aggregate evidence under
+`tools/verify/artifacts/physics-self-verification/`. The current conclusion is
+`PASS`: all P0/P1 scene assertions, web/native trace diffs,
+unsupported-boundary diagnostics, selected trace-diagram contact sheets,
+promoted physics gates, and conformance pass within the focused gate. This gate
+does not currently emit runtime camera screenshots or videos.
+
 The V10 emissive-bloom pass promotes HDR bloom contribution metadata for
 emissive materials. `MeshStandardMaterial.emissiveBloom` now validates through
 SDK/IR/schema checks, emits from scene capture, contributes a manifest

@@ -1,0 +1,277 @@
+{
+  "entities": [
+    {
+      "components": {
+        "Transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Collider": {
+          "friction": 0.8,
+          "kind": "box",
+          "size": [
+            8,
+            0.2,
+            8
+          ],
+          "layer": "world"
+        },
+        "RigidBody": {
+          "inverseMass": 0,
+          "kind": "static"
+        }
+      },
+      "id": "floor"
+    },
+    {
+      "components": {
+        "Transform": {
+          "position": [
+            -2,
+            1.2,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Collider": {
+          "kind": "box",
+          "size": [
+            1,
+            1,
+            1
+          ],
+          "mask": [
+            "world"
+          ]
+        },
+        "RigidBody": {
+          "gravityScale": 1,
+          "inverseMass": 1,
+          "kind": "dynamic",
+          "mass": 1,
+          "velocity": [
+            2,
+            -0.5,
+            0
+          ]
+        }
+      },
+      "id": "light-box"
+    },
+    {
+      "components": {
+        "Transform": {
+          "position": [
+            0,
+            1.2,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Collider": {
+          "kind": "box",
+          "size": [
+            1,
+            1,
+            1
+          ],
+          "mask": [
+            "world"
+          ]
+        },
+        "RigidBody": {
+          "gravityScale": 1,
+          "inverseMass": 0.1,
+          "kind": "dynamic",
+          "mass": 10,
+          "velocity": [
+            0.2,
+            -0.5,
+            0
+          ]
+        }
+      },
+      "id": "heavy-box"
+    },
+    {
+      "components": {
+        "Transform": {
+          "position": [
+            2,
+            0.8,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Collider": {
+          "kind": "box",
+          "size": [
+            1,
+            1,
+            1
+          ],
+          "mask": [
+            "world"
+          ]
+        },
+        "RigidBody": {
+          "damping": 0.4,
+          "gravityScale": 1,
+          "inverseMass": 1,
+          "kind": "dynamic",
+          "mass": 1,
+          "sleepThreshold": 0.01,
+          "velocity": [
+            0,
+            0,
+            0
+          ]
+        }
+      },
+      "id": "stack-a"
+    },
+    {
+      "components": {
+        "Transform": {
+          "position": [
+            2,
+            1.85,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Collider": {
+          "kind": "box",
+          "size": [
+            1,
+            1,
+            1
+          ],
+          "mask": [
+            "world"
+          ]
+        },
+        "RigidBody": {
+          "damping": 0.4,
+          "gravityScale": 1,
+          "inverseMass": 1,
+          "kind": "dynamic",
+          "mass": 1,
+          "sleepThreshold": 0.01,
+          "velocity": [
+            0,
+            0,
+            0
+          ]
+        }
+      },
+      "id": "stack-b"
+    },
+    {
+      "components": {
+        "Transform": {
+          "position": [
+            2,
+            2.9,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Collider": {
+          "kind": "box",
+          "size": [
+            1,
+            1,
+            1
+          ],
+          "mask": [
+            "world"
+          ]
+        },
+        "RigidBody": {
+          "damping": 0.4,
+          "gravityScale": 1,
+          "inverseMass": 1,
+          "kind": "dynamic",
+          "mass": 1,
+          "sleepThreshold": 0.01,
+          "velocity": [
+            0,
+            0,
+            0
+          ]
+        }
+      },
+      "id": "stack-c"
+    }
+  ],
+  "events": {},
+  "prefabs": [],
+  "resources": {},
+  "schema": "threenative.world",
+  "version": "0.1.0"
+}

@@ -474,6 +474,13 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] Step offsets, ledge ungrounding, moving-platform carry, and richer ground contact trace
 - [x] `P0` Slope limits and sloped-surface walkability for promoted ramp colliders
 - [x] `P1` Character interaction volumes and object pushing
+- [x] Fixture-backed physics self-verification gate for gravity/collision,
+      material response, mass/stacking, character obstacles, query services,
+      bounded mesh CCD, joint metadata, and unsupported-boundary diagnostics;
+      current aggregate conclusion is `PASS` with real Bevy traces, web/native
+      trace diffs, selected P1 trace-diagram contact sheets, promoted physics
+      gates, and conformance covered by `pnpm verify:physics-self-verification`;
+      runtime camera screenshots and videos are not emitted by this gate
 - [x] `P1` Navmesh/pathfinding behavior
 - [x] `P1` External physics backend integration strategy
 - [x] `P1` Arbitrary sloped mesh terrain for character grounding

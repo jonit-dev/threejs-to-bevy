@@ -1,0 +1,21 @@
+{
+  "entry": {
+    "world": "world.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "input": "input.ir.json",
+    "materials": "materials.ir.json",
+    "targetProfile": "target.profile.json"
+  },
+  "name": "physics-query-lab",
+  "requiredCapabilities": {
+    "physics": [
+      "collider.box",
+      "rigid-body.dynamic",
+      "rigid-body.static"
+    ]
+  },
+  "schema": "threenative.bundle",
+  "version": "0.1.0"
+}

@@ -1,0 +1,136 @@
+{
+  "entities": [
+    {
+      "components": {
+        "Transform": {
+          "position": [
+            0,
+            1,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Collider": {
+          "kind": "box",
+          "size": [
+            0.4,
+            0.4,
+            0.4
+          ]
+        },
+        "PhysicsJoint": {
+          "connectedEntity": "arm",
+          "kind": "hinge",
+          "axis": [
+            0,
+            1,
+            0
+          ]
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
+      "id": "anchor"
+    },
+    {
+      "components": {
+        "Transform": {
+          "position": [
+            1,
+            1,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Collider": {
+          "kind": "box",
+          "size": [
+            1,
+            0.2,
+            0.2
+          ]
+        },
+        "PhysicsJoint": {
+          "connectedEntity": "anchor",
+          "kind": "slider",
+          "axis": [
+            1,
+            0,
+            0
+          ]
+        },
+        "RigidBody": {
+          "kind": "dynamic",
+          "mass": 1
+        }
+      },
+      "id": "arm"
+    },
+    {
+      "components": {
+        "Transform": {
+          "position": [
+            0,
+            0.4,
+            1
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Collider": {
+          "kind": "sphere",
+          "radius": 0.3
+        },
+        "PhysicsJoint": {
+          "connectedEntity": "anchor",
+          "kind": "suspension",
+          "axis": [
+            0,
+            1,
+            0
+          ]
+        },
+        "RigidBody": {
+          "kind": "dynamic",
+          "mass": 1
+        }
+      },
+      "id": "wheel"
+    }
+  ],
+  "events": {},
+  "prefabs": [],
+  "resources": {},
+  "schema": "threenative.world",
+  "version": "0.1.0"
+}

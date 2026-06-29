@@ -1,0 +1,175 @@
+{
+  "entities": [
+    {
+      "components": {
+        "Transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Collider": {
+          "friction": 0.4,
+          "kind": "box",
+          "restitution": 0,
+          "size": [
+            8,
+            0.2,
+            8
+          ],
+          "layer": "world"
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
+      "id": "floor"
+    },
+    {
+      "components": {
+        "Transform": {
+          "position": [
+            2.2,
+            0.9,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Collider": {
+          "friction": 0.4,
+          "kind": "box",
+          "restitution": 0,
+          "size": [
+            0.2,
+            1.8,
+            3
+          ],
+          "layer": "world"
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
+      "id": "wall"
+    },
+    {
+      "components": {
+        "Transform": {
+          "position": [
+            0,
+            3,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Collider": {
+          "friction": 0.5,
+          "kind": "box",
+          "restitution": 0,
+          "size": [
+            1,
+            1,
+            1
+          ],
+          "mask": [
+            "world"
+          ]
+        },
+        "RigidBody": {
+          "gravityScale": 1,
+          "kind": "dynamic",
+          "mass": 1,
+          "velocity": [
+            0,
+            0,
+            0
+          ]
+        }
+      },
+      "id": "falling-box"
+    },
+    {
+      "components": {
+        "Transform": {
+          "position": [
+            1.2,
+            1.1,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Collider": {
+          "friction": 0.5,
+          "kind": "box",
+          "restitution": 0,
+          "size": [
+            1,
+            1,
+            1
+          ],
+          "mask": [
+            "world"
+          ]
+        },
+        "RigidBody": {
+          "gravityScale": 0,
+          "kind": "dynamic",
+          "mass": 1,
+          "velocity": [
+            1.8,
+            0,
+            0
+          ]
+        }
+      },
+      "id": "moving-box"
+    }
+  ],
+  "events": {},
+  "prefabs": [],
+  "resources": {},
+  "schema": "threenative.world",
+  "version": "0.1.0"
+}

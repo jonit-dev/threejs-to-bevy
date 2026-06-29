@@ -102,6 +102,20 @@ export const FOCUSED_GATES: Record<string, FocusedGate> = {
       protects: "Production diagnostic quality, package preflight evidence, profiler reports, and audio/runtime boundaries.",
     },
   },
+  "verify:physics-self-verification": {
+    commands: [
+      ["pnpm", "--filter", "@threenative/ir", "build"],
+      ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+      ["node", "tools/verify/dist/physicsSelfVerification.js"],
+    ],
+    description: "Physics runtime self-verification gate.",
+    metadata: {
+      owner: "tools/verify physics-self-verification gate",
+      profile: "focused",
+      reason: "Executes fixture-backed physics scenes, negative diagnostics, trace diffs, and evidence indexing for promoted physics claims.",
+      protects: "Portable physics contract evidence, deterministic web/native trace comparison artifacts, and unsupported physics boundary diagnostics.",
+    },
+  },
   "verify:rendering-residuals": {
     commands: [
       ["pnpm", "--filter", "@threenative/ir", "build"],

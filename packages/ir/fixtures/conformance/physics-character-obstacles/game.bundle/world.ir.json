@@ -1,0 +1,219 @@
+{
+  "entities": [
+    {
+      "components": {
+        "Transform": {
+          "position": [
+            0,
+            1,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "CharacterController": {
+          "blocking": true,
+          "grounding": "raycast",
+          "moveXAxis": "MoveX",
+          "moveZAxis": "MoveZ",
+          "pushPolicy": {
+            "allowedLayers": [
+              "world"
+            ],
+            "blockedWhenTooHeavy": true,
+            "enabled": true,
+            "impulseScale": 1,
+            "maxPushMass": 10,
+            "minMoveSpeed": 0.1
+          },
+          "speed": 1,
+          "stepOffset": 0.3
+        },
+        "Collider": {
+          "kind": "capsule",
+          "height": 1.8,
+          "radius": 0.35,
+          "layer": "player",
+          "mask": [
+            "world"
+          ]
+        },
+        "RigidBody": {
+          "kind": "kinematic",
+          "velocity": [
+            1,
+            0,
+            0
+          ]
+        }
+      },
+      "id": "character"
+    },
+    {
+      "components": {
+        "Transform": {
+          "position": [
+            2,
+            1,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Collider": {
+          "kind": "box",
+          "size": [
+            0.4,
+            2,
+            2
+          ],
+          "layer": "world"
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
+      "id": "wall"
+    },
+    {
+      "components": {
+        "Transform": {
+          "position": [
+            0.8,
+            0.2,
+            1.4
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Collider": {
+          "kind": "box",
+          "size": [
+            0.8,
+            0.4,
+            0.8
+          ],
+          "layer": "world"
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
+      "id": "step"
+    },
+    {
+      "components": {
+        "Transform": {
+          "position": [
+            1.2,
+            0.6,
+            -1.3
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Collider": {
+          "kind": "box",
+          "size": [
+            0.8,
+            0.8,
+            0.8
+          ],
+          "layer": "world"
+        },
+        "RigidBody": {
+          "inverseMass": 0.5,
+          "kind": "dynamic",
+          "mass": 2,
+          "velocity": [
+            0,
+            0,
+            0
+          ]
+        }
+      },
+      "id": "pushable-crate"
+    },
+    {
+      "components": {
+        "Transform": {
+          "position": [
+            -1.2,
+            0.2,
+            1.2
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Collider": {
+          "kind": "box",
+          "size": [
+            1.5,
+            0.3,
+            1
+          ],
+          "slope": {
+            "axis": "x",
+            "direction": 1,
+            "rise": 0.3,
+            "run": 1
+          }
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
+      "id": "ramp"
+    }
+  ],
+  "events": {},
+  "prefabs": [],
+  "resources": {},
+  "schema": "threenative.world",
+  "version": "0.1.0"
+}

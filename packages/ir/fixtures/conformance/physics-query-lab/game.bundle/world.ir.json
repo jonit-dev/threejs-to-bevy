@@ -1,0 +1,159 @@
+{
+  "entities": [
+    {
+      "components": {
+        "Transform": {
+          "position": [
+            3,
+            0.5,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Collider": {
+          "kind": "box",
+          "layer": "world",
+          "mask": [
+            "query"
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
+      "id": "ray-target"
+    },
+    {
+      "components": {
+        "Transform": {
+          "position": [
+            0,
+            0.5,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Collider": {
+          "kind": "box",
+          "layer": "sensor",
+          "mask": [
+            "query"
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ],
+          "trigger": true
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
+      "id": "overlap-a"
+    },
+    {
+      "components": {
+        "Transform": {
+          "position": [
+            0.4,
+            0.5,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Collider": {
+          "kind": "sphere",
+          "layer": "sensor",
+          "mask": [
+            "query"
+          ],
+          "radius": 0.4,
+          "trigger": true
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
+      "id": "overlap-b"
+    },
+    {
+      "components": {
+        "Transform": {
+          "position": [
+            1.2,
+            0.5,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Collider": {
+          "kind": "box",
+          "layer": "hidden",
+          "mask": [
+            "none"
+          ],
+          "size": [
+            1,
+            1,
+            1
+          ]
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
+      "id": "filtered-out"
+    }
+  ],
+  "events": {},
+  "prefabs": [],
+  "resources": {},
+  "schema": "threenative.world",
+  "version": "0.1.0"
+}

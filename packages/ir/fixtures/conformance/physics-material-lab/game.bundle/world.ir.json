@@ -1,0 +1,316 @@
+{
+  "entities": [
+    {
+      "components": {
+        "Transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Collider": {
+          "friction": 0,
+          "kind": "box",
+          "restitution": 0,
+          "size": [
+            14,
+            0.2,
+            6
+          ],
+          "layer": "world"
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
+      "id": "floor"
+    },
+    {
+      "components": {
+        "Transform": {
+          "position": [
+            -4,
+            1.5,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Collider": {
+          "friction": 0,
+          "kind": "sphere",
+          "radius": 0.5,
+          "restitution": 0.5,
+          "mask": [
+            "world"
+          ]
+        },
+        "RigidBody": {
+          "gravityScale": 0,
+          "kind": "dynamic",
+          "mass": 1,
+          "velocity": [
+            0,
+            -4,
+            0
+          ]
+        }
+      },
+      "id": "high-restitution"
+    },
+    {
+      "components": {
+        "Transform": {
+          "position": [
+            -2,
+            1.5,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Collider": {
+          "friction": 0,
+          "kind": "sphere",
+          "radius": 0.5,
+          "restitution": 0,
+          "mask": [
+            "world"
+          ]
+        },
+        "RigidBody": {
+          "gravityScale": 0,
+          "kind": "dynamic",
+          "mass": 1,
+          "velocity": [
+            0,
+            -4,
+            0
+          ]
+        }
+      },
+      "id": "low-restitution"
+    },
+    {
+      "components": {
+        "Transform": {
+          "position": [
+            1,
+            0.5,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Collider": {
+          "friction": 0,
+          "kind": "box",
+          "restitution": 0,
+          "size": [
+            0.8,
+            0.8,
+            0.8
+          ],
+          "mask": [
+            "world"
+          ]
+        },
+        "RigidBody": {
+          "gravityScale": 0,
+          "kind": "dynamic",
+          "mass": 1,
+          "velocity": [
+            2,
+            0,
+            0
+          ]
+        }
+      },
+      "id": "low-friction-slider"
+    },
+    {
+      "components": {
+        "Transform": {
+          "position": [
+            1,
+            0.5,
+            1.4
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Collider": {
+          "friction": 1,
+          "kind": "box",
+          "restitution": 0,
+          "size": [
+            0.8,
+            0.8,
+            0.8
+          ],
+          "mask": [
+            "world"
+          ]
+        },
+        "RigidBody": {
+          "gravityScale": 0,
+          "kind": "dynamic",
+          "mass": 1,
+          "velocity": [
+            2,
+            0,
+            0
+          ]
+        }
+      },
+      "id": "high-friction-slider"
+    },
+    {
+      "components": {
+        "Transform": {
+          "position": [
+            4,
+            2,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Collider": {
+          "kind": "box",
+          "size": [
+            0.8,
+            0.8,
+            0.8
+          ]
+        },
+        "RigidBody": {
+          "angularVelocity": [
+            0,
+            3,
+            0
+          ],
+          "damping": 4,
+          "gravityScale": 0,
+          "kind": "dynamic",
+          "mass": 1,
+          "velocity": [
+            2,
+            0,
+            0
+          ]
+        }
+      },
+      "id": "damped"
+    },
+    {
+      "components": {
+        "Transform": {
+          "position": [
+            4,
+            3.2,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Collider": {
+          "kind": "box",
+          "size": [
+            0.8,
+            0.8,
+            0.8
+          ]
+        },
+        "RigidBody": {
+          "angularVelocity": [
+            0,
+            3,
+            0
+          ],
+          "damping": 0,
+          "gravityScale": 0,
+          "kind": "dynamic",
+          "mass": 1,
+          "velocity": [
+            2,
+            0,
+            0
+          ]
+        }
+      },
+      "id": "undamped"
+    }
+  ],
+  "events": {},
+  "prefabs": [],
+  "resources": {},
+  "schema": "threenative.world",
+  "version": "0.1.0"
+}

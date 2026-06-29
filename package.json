@@ -28,6 +28,7 @@
     "verify:parity:push": "node scripts/verify-parity-push.mjs",
     "verify:parity:smoke": "node scripts/verify-parity-smoke.mjs",
     "verify:pre-push": "node scripts/verify-pre-push.mjs",
+    "verify:physics-self-verification": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:physics-self-verification",
     "verify:release": "pnpm build:verify-tools && node tools/verify/dist/cli/release.js",
     "verify:runtime-prefabs-hierarchy": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:runtime-prefabs-hierarchy",
     "verify:runtime-query-diffing": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:runtime-query-diffing",
