@@ -5,11 +5,14 @@
   "scripts": {
     "build": "tn build",
     "dev:web": "tn dev --target web",
+    "playtest": "tn playtest --json",
+    "recipe:controller": "tn recipe third-person-controller --scene arena --entity player --camera camera.main --dry-run --json",
     "validate": "tn validate",
     "validate:authoring": "tn authoring validate --json",
     "verify": "tn verify --frames 2 --json"
   },
   "dependencies": {
+    "@threenative/script-stdlib": "workspace:*",
     "@threenative/sdk": "workspace:*"
   },
   "devDependencies": {
@@ -18,4 +21,3 @@
     "typescript": "^5.9.3"
   }
 }
-

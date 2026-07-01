@@ -7,6 +7,7 @@ import { applyEditorOperationApi } from "./src/server/operationApi.js";
 import { applyEditorChatApi, planEditorChatApi } from "./src/server/chatApi.js";
 import { buildEditorPreviewApi } from "./src/server/buildApi.js";
 import { loadEditorProjectApi } from "./src/server/projectApi.js";
+import { listEditorScriptSources, readEditorScriptSource, scaffoldEditorScriptSource, writeEditorScriptSource } from "./src/server/scriptSourceApi.js";
 
 interface IBootConfig {
   projectPath?: string;
@@ -35,6 +36,27 @@ function editorApiPlugin(): Plugin {
             const body = await readJsonBody(request);
             const result = await applyEditorOperationApi({ projectPath: boot.projectPath ?? process.cwd(), request: body, rootPath: boot.projectPath });
             return json(response, result);
+          }
+          if (request.url?.startsWith("/api/scripts") === true) {
+            const boot = await readBootConfig();
+            const projectPath = boot.projectPath ?? process.cwd();
+            if (request.method === "GET") {
+              const path = new URL(request.url, "http://editor.local").searchParams.get("path");
+              const result = path === null
+                ? await listEditorScriptSources({ projectPath, rootPath: boot.projectPath })
+                : await readEditorScriptSource({ path, projectPath, rootPath: boot.projectPath });
+              return json(response, result);
+            }
+            if (request.method === "POST") {
+              const body = await readJsonBody<{ exportName: string; path: string }>(request);
+              const result = await scaffoldEditorScriptSource({ exportName: body.exportName, path: body.path, projectPath, rootPath: boot.projectPath });
+              return json(response, result);
+            }
+            if (request.method === "PUT") {
+              const body = await readJsonBody<{ body: string; path: string }>(request);
+              const result = await writeEditorScriptSource({ body: body.body, path: body.path, projectPath, rootPath: boot.projectPath });
+              return json(response, result);
+            }
           }
           if (request.url === "/api/ai/plan" && request.method === "POST") {
             const boot = await readBootConfig();

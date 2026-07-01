@@ -462,6 +462,12 @@ helper writes without matching `resourceWrites`.
 
 #### Phase 6: Script Body Code Mode - The editor can create/edit project-local gameplay scripts.
 
+Status: Complete in this PRD slice. The editor exposes a guarded script-source
+API plus a code-mode panel/store path for `src/scripts/**/*.ts`; generated
+script bundles, traversal, and non-TypeScript paths are rejected, scaffolded
+exports can be attached through the existing script-reference operation, and
+saves rerun authoring validation.
+
 **Files (max 5):**
 
 - `packages/editor/src/server/scriptSourceApi.ts` - guarded script file routes.
@@ -472,12 +478,12 @@ helper writes without matching `resourceWrites`.
 
 **Implementation:**
 
-- [ ] List/read/write only project-local `src/scripts/**/*.ts`.
-- [ ] Reject traversal, `dist/**`, generated `scripts.bundle.js`, and
+- [x] List/read/write only project-local `src/scripts/**/*.ts`.
+- [x] Reject traversal, `dist/**`, generated `scripts.bundle.js`, and
   non-TypeScript files.
-- [ ] Scaffold missing module/export from a system or scene script reference.
-- [ ] On save, run authoring validation and script diagnostics.
-- [ ] Keep script body editing separate from structured script-reference
+- [x] Scaffold missing module/export from a system or scene script reference.
+- [x] On save, run authoring validation and script diagnostics.
+- [x] Keep script body editing separate from structured script-reference
   editing.
 
 **Tests Required:**
@@ -496,6 +502,12 @@ helper writes without matching `resourceWrites`.
 
 #### Phase 7: Template and Proof Updates - New projects demonstrate the intended split.
 
+Status: Complete in this PRD slice. The structured-source starter documents
+the source split, includes validate/build/playtest and recipe dry-run scripts,
+declares `@threenative/script-stdlib`, and uses context/stdlib helpers in its
+behavior script while keeping `Transform` write access explicit in structured
+system source.
+
 **Files (max 5):**
 
 - `templates/structured-source-starter/README.md` - authoring modes.
@@ -509,14 +521,14 @@ helper writes without matching `resourceWrites`.
 
 **Implementation:**
 
-- [ ] Update starters to clearly say: `content/**/*.json` is game data,
+- [x] Update starters to clearly say: `content/**/*.json` is game data,
   `src/scripts/**/*.ts` is behavior, facade/generators are source mutation
   clients.
-- [ ] Include one small facade example or recipe command.
-- [ ] Refactor starter script to use script stdlib/context helpers where
+- [x] Include one small facade example or recipe command.
+- [x] Refactor starter script to use script stdlib/context helpers where
   implemented.
-- [ ] Add package scripts for validate/build/playtest that prove the workflow.
-- [ ] Avoid adding generated outputs to source templates.
+- [x] Add package scripts for validate/build/playtest that prove the workflow.
+- [x] Avoid adding generated outputs to source templates.
 
 **Tests Required:**
 

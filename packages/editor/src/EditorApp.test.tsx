@@ -189,6 +189,40 @@ test("should render chat input and plan controls", () => {
   assert.match(html, /Plan source-backed ECS operations/);
 });
 
+test("should render script code mode without mixing script references", () => {
+  useEditorStore.getState().reset({
+    modal: "script",
+    scriptSource: {
+      body: "export function editorSpin(ctx: unknown): void { void ctx; }\n",
+      diagnostics: [],
+      dirty: false,
+      loading: false,
+      path: "src/scripts/editor-spin.ts",
+    },
+  });
+
+  const html = renderToStaticMarkup(
+    <EditorModalView
+      addComponentDefinitions={[]}
+      assets={[]}
+      attachedComponents={[]}
+      modal="script"
+      onAddComponent={() => {}}
+      onAddObject={() => {}}
+      onBuildPreview={() => {}}
+      onClose={() => {}}
+      onCreateScene={() => {}}
+      onSaveScene={() => {}}
+      scriptSource={useEditorStore.getState().scriptSource}
+    />,
+  );
+
+  assert.match(html, /Script Code/);
+  assert.match(html, /src\/scripts\/editor-spin.ts/);
+  assert.match(html, /aria-label="Script source"/);
+  assert.doesNotMatch(html, /modulePath/);
+});
+
 function modalReason(id: string): string {
   const action = EDITOR_MODAL_ACTION_DEFINITIONS.find((candidate) => candidate.id === id);
   assert.ok(action?.readOnlyReason, `Missing read-only reason for ${id}`);

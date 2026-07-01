@@ -6,6 +6,7 @@
     {
       "id": "move-player-to-goal",
       "schedule": "fixedUpdate",
+      "writes": ["Transform"],
       "script": {
         "module": "src/scripts/player.ts",
         "export": "movePlayerToGoal"

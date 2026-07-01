@@ -1,5 +1,5 @@
 import { useEffect, useMemo, type ReactNode } from "react";
-import { Box, Camera, FolderOpen, Gamepad2, Image, Lightbulb, MessageSquare, Mountain, PackagePlus, Pause, Play, Save, Settings, Square, Trash2 } from "lucide-react";
+import { Box, Camera, FileCode, FolderOpen, Gamepad2, Image, Lightbulb, MessageSquare, Mountain, PackagePlus, Pause, Play, Save, Settings, Square, Trash2 } from "lucide-react";
 import type { IEditorGamepadViewerSnapshot } from "@threenative/ir";
 
 import type { IEditorAdapterInput, IEditorAddComponentDefinition, IEditorAssetRow, IEditorModalActionDefinition, IEditorPropertyRow, IEditorShellModel } from "./adapters/editorModel.js";
@@ -8,8 +8,9 @@ import { PanelShell } from "./components/layout/PanelShell.js";
 import { ChatPanel } from "./components/panels/ChatPanel.js";
 import { HierarchyPanel } from "./components/panels/HierarchyPanel.js";
 import { InspectorPanel } from "./components/panels/InspectorPanel.js";
+import { ScriptPanel } from "./components/panels/ScriptPanel.js";
 import { EditorViewport3d, type EditorViewportGizmoMode, type IViewportTransform } from "./preview/EditorViewport3d.js";
-import { useEditorStore, type EditorModal } from "./state/editorStore.js";
+import { defaultEditorScriptSourceState, useEditorStore, type EditorModal, type IEditorScriptSourceState } from "./state/editorStore.js";
 
 export interface IEditorAppProps {
   model?: IEditorAdapterInput | IEditorShellModel;
@@ -43,6 +44,9 @@ export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPr
   const setBrowserGamepads = useEditorStore((state) => state.setBrowserGamepads);
   const openModal = useEditorStore((state) => state.openModal);
   const closeModal = useEditorStore((state) => state.closeModal);
+  const scriptSource = useEditorStore((state) => state.scriptSource);
+  const setScriptSourceBody = useEditorStore((state) => state.setScriptSourceBody);
+  const saveScriptSource = useEditorStore((state) => state.saveScriptSource);
   const model = useMemo(() => createEditorShellModel(input), [input]);
   const objectCount = countTreeRows(model.hierarchy);
   const statusMessage = model.diagnostics.some((diagnostic) => diagnostic.severity === "error") ? "Needs attention" : "Ready";
@@ -131,6 +135,7 @@ export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPr
             <button onClick={() => openModal("save")} title="Save" type="button"><Save size={16} /></button>
             <button onClick={() => openModal("newScene")} title="New scene" type="button"><FolderOpen size={16} /></button>
             <button aria-label="Delete" onClick={() => openModal("delete")} title={DELETE_ACTION.readOnlyReason} type="button"><Trash2 size={16} /></button>
+            <button aria-label="Script code mode" onClick={() => openModal("script")} title="Open script code mode" type="button"><FileCode size={16} /></button>
             <button aria-label="Settings" onClick={() => openModal("settings")} title={SETTINGS_ACTION.readOnlyReason} type="button"><Settings size={16} /></button>
             <button onClick={() => openModal("build")} title="Build preview" type="button"><Image size={16} /></button>
           </div>
@@ -239,6 +244,7 @@ export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPr
         attachedComponents={[...new Set(model.inspector.map((row) => row.component).filter((component): component is string => component !== undefined))]}
         assets={model.assets}
         modal={modal}
+        scriptSource={scriptSource}
         onAddObject={(action) => {
           closeModal();
           onAddObject?.(action);
@@ -260,6 +266,10 @@ export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPr
           closeModal();
           onSaveScene?.();
         }}
+        onSaveScript={() => {
+          void saveScriptSource();
+        }}
+        onScriptBodyChange={setScriptSourceBody}
       />
     </main>
   );
@@ -357,6 +367,9 @@ export function EditorModalView({
   onClose,
   onCreateScene,
   onSaveScene,
+  onSaveScript = () => undefined,
+  onScriptBodyChange = () => undefined,
+  scriptSource = defaultEditorScriptSourceState,
 }: {
   addComponentDefinitions: IEditorShellModel["addComponentDefinitions"];
   assets: readonly IEditorAssetRow[];
@@ -368,6 +381,9 @@ export function EditorModalView({
   onClose: () => void;
   onCreateScene: () => void;
   onSaveScene: () => void;
+  onSaveScript?: () => void;
+  onScriptBodyChange?: (body: string) => void;
+  scriptSource?: IEditorScriptSourceState;
 }) {
   if (modal === undefined) {
     return null;
@@ -454,6 +470,13 @@ export function EditorModalView({
     return (
       <ModalFrame onClose={onClose} title="AI Chat">
         <ChatPanel />
+      </ModalFrame>
+    );
+  }
+  if (modal === "script") {
+    return (
+      <ModalFrame onClose={onClose} title="Script Code">
+        <ScriptPanel onBodyChange={onScriptBodyChange} onSave={onSaveScript} script={scriptSource} />
       </ModalFrame>
     );
   }

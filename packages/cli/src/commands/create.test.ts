@@ -52,8 +52,11 @@ test("should create starter template files", async () => {
     assert.equal(packageJson.scripts.validate, "tn validate");
     assert.equal(packageJson.scripts.build, "tn build");
     assert.equal(packageJson.scripts["dev:web"], "tn dev --target web");
+    assert.equal(packageJson.scripts.playtest, "tn playtest --json");
+    assert.match(packageJson.scripts["recipe:controller"] ?? "", /tn recipe third-person-controller/);
     assert.equal(packageJson.scripts.verify, "tn verify --frames 2 --json");
     assert.match(packageJson.dependencies["@threenative/sdk"] ?? "", /^file:/);
+    assert.match(packageJson.dependencies["@threenative/script-stdlib"] ?? "", /^file:/);
     assert.equal(packageJson.dependencies["@threenative/r3f"], undefined);
     assert.equal(packageJson.dependencies["@threenative/ui"], undefined);
     assert.equal(packageJson.devDependencies["@threenative/cli"], "file:.threenative/cli");
@@ -130,11 +133,20 @@ test("should create structured-source starter template with editable content doc
     const uiDocPath = join(payload.path, "content/ui/hud.ui.json");
     const systemDoc = await readFile(join(payload.path, "content/systems/arena.systems.json"), "utf8");
     const scriptSource = await readFile(join(payload.path, "src/scripts/player.ts"), "utf8");
+    const readme = await readFile(join(payload.path, "README.md"), "utf8");
 
     assert.match(sceneDoc, /"schema": "threenative.scene"/);
     assert.match(sceneDoc, /"prefab": "prefab.player"/);
     assert.match(systemDoc, /"module": "src\/scripts\/player.ts"/);
+    assert.match(systemDoc, /"writes": \[\s*"Transform"\s*\]/);
     assert.match(scriptSource, /movePlayerToGoal/);
+    assert.match(scriptSource, /@threenative\/script-stdlib/);
+    assert.match(scriptSource, /context\.time\.fixedDelta/);
+    assert.match(scriptSource, /entity\.transform\(\)/);
+    assert.match(readme, /content\/\*\*\/\*\.json/);
+    assert.match(readme, /src\/scripts\/\*\*\/\*\.ts/);
+    assert.match(readme, /@threenative\/authoring-client/);
+    assert.match(readme, /pnpm run recipe:controller/);
     await assert.rejects(access(join(payload.path, "src/game.ts")));
 
     const validate = await authoringCommand(["validate", "--project", payload.path, "--json"], { cwd: root });

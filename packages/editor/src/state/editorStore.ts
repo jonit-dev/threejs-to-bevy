@@ -9,7 +9,7 @@ import type { IEditorChatPlan } from "../server/chatPlan.js";
 import { devFixtureModel } from "../devFixtureModel.js";
 import type { ISceneLifecycleModel } from "../workbench/sceneModel.js";
 
-export type EditorModal = "addComponent" | "addObject" | "build" | "chat" | "delete" | "newScene" | "save" | "settings" | undefined;
+export type EditorModal = "addComponent" | "addObject" | "build" | "chat" | "delete" | "newScene" | "save" | "script" | "settings" | undefined;
 
 export interface IEditorProjectPayload {
   assets?: IEditorAssetRow[];
@@ -37,6 +37,7 @@ export interface IEditorSessionState {
   modal: EditorModal;
   parentByRowId: Record<string, string | undefined>;
   project?: IEditorProjectPayload;
+  scriptSource: IEditorScriptSourceState;
   selectedRowId?: string;
   status: string;
   transformByRowId: Record<string, IViewportTransform>;
@@ -53,12 +54,14 @@ export interface IEditorSessionActions {
   editProperty: (row: IEditorPropertyRow, value: unknown) => Promise<void>;
   loadScene: (documentPath: string) => void;
   moveEditorRow: (draggedId: string, targetId: string) => void;
+  openScriptSource: (path: string) => Promise<void>;
   openModal: (modal: Exclude<EditorModal, undefined>) => void;
   rejectChatPlan: () => void;
   refreshProject: (options?: IRefreshProjectOptions) => Promise<IEditorProjectPayload>;
   requestChatPlan: (message: string) => Promise<void>;
   reset: (state?: Partial<IEditorSessionState>) => void;
   saveScene: () => Promise<void>;
+  saveScriptSource: () => Promise<void>;
   selectEditorRow: (rowId: string | undefined) => void;
   selectRow: (rowId: string | undefined) => void;
   setBrowserGamepads: (devices: IEditorGamepadViewerSnapshot["devices"]) => void;
@@ -66,6 +69,7 @@ export interface IEditorSessionActions {
   setGizmoMode: (mode: EditorViewportGizmoMode) => void;
   setParent: (rowId: string, parentId: string | undefined) => boolean;
   setProject: (project: IEditorProjectPayload | undefined) => void;
+  setScriptSourceBody: (body: string) => void;
   setStatus: (status: string) => void;
   setTransformOverride: (rowId: string, transform: IViewportTransform) => void;
   applyChatPlan: () => Promise<void>;
@@ -88,10 +92,24 @@ export interface IEditorChatSessionState {
   transcript: Array<{ id: string; role: "assistant" | "system" | "user"; text: string }>;
 }
 
+export interface IEditorScriptSourceState {
+  body?: string;
+  diagnostics: Array<{ code?: string; message: string; severity?: "error" | "info" | "warning" }>;
+  dirty: boolean;
+  loading: boolean;
+  path?: string;
+}
+
 export const defaultEditorChatSessionState: IEditorChatSessionState = {
   draft: "",
   status: "idle",
   transcript: [],
+};
+
+export const defaultEditorScriptSourceState: IEditorScriptSourceState = {
+  diagnostics: [],
+  dirty: false,
+  loading: false,
 };
 
 export const defaultEditorSessionState: IEditorSessionState = {
@@ -102,6 +120,7 @@ export const defaultEditorSessionState: IEditorSessionState = {
   modal: undefined,
   parentByRowId: {},
   project: undefined,
+  scriptSource: defaultEditorScriptSourceState,
   selectedRowId: undefined,
   status: "Ready",
   transformByRowId: {},
@@ -339,6 +358,25 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
         : `Cannot nest ${findRowLabel(model.hierarchy, draggedId)} under ${findRowLabel(model.hierarchy, targetId)}`,
     });
   },
+  openScriptSource: async (path) => {
+    set({ scriptSource: { ...defaultEditorScriptSourceState, loading: true, path }, status: `Opening ${path}` });
+    try {
+      const result = await requestScriptSource("GET", { path });
+      set({
+        modal: "script",
+        scriptSource: {
+          body: result.body ?? "",
+          diagnostics: result.diagnostics ?? [],
+          dirty: false,
+          loading: false,
+          path: result.path ?? path,
+        },
+        status: result.ok ? `Opened ${result.path ?? path}` : result.diagnostics?.[0]?.message ?? `Could not open ${path}`,
+      });
+    } catch (error) {
+      set({ scriptSource: { ...defaultEditorScriptSourceState, diagnostics: [{ message: error instanceof Error ? error.message : String(error), severity: "error" }], path }, status: error instanceof Error ? error.message : String(error) });
+    }
+  },
   openModal: (modal) => set({ modal }),
   rejectChatPlan: () =>
     set((state) => ({
@@ -412,6 +450,30 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       set({ status: error instanceof Error ? error.message : String(error) });
     }
   },
+  saveScriptSource: async () => {
+    const script = get().scriptSource;
+    if (script.path === undefined) {
+      set({ status: "Open a project-local script before saving" });
+      return;
+    }
+    try {
+      set({ scriptSource: { ...script, loading: true }, status: `Saving ${script.path}` });
+      const result = await requestScriptSource("PUT", { body: script.body ?? "", path: script.path });
+      await get().refreshProject({ updateLoadErrorStatus: true });
+      set({
+        scriptSource: {
+          body: result.body ?? script.body ?? "",
+          diagnostics: result.diagnostics ?? [],
+          dirty: false,
+          loading: false,
+          path: result.path ?? script.path,
+        },
+        status: result.ok ? `Saved ${result.path ?? script.path}` : result.diagnostics?.[0]?.message ?? `Could not save ${script.path}`,
+      });
+    } catch (error) {
+      set({ scriptSource: { ...script, diagnostics: [{ message: error instanceof Error ? error.message : String(error), severity: "error" }], loading: false }, status: error instanceof Error ? error.message : String(error) });
+    }
+  },
   selectEditorRow: (rowId) => {
     const project = get().project;
     if (rowId?.startsWith("source:") === true) {
@@ -440,6 +502,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       activeScenePath: state.activeScenePath ?? project?.sceneLifecycle?.activeScene?.documentPath,
       project: project === undefined ? undefined : withClientSceneLifecycle(project, state.activeScenePath ?? project.sceneLifecycle?.activeScene?.documentPath, hasTransformOverrides(state.transformByRowId)),
     })),
+  setScriptSourceBody: (body) => set((state) => ({ scriptSource: { ...state.scriptSource, body, dirty: true } })),
   setStatus: (status) => set({ status }),
   setTransformOverride: (rowId, transform) =>
     set((state) => ({
@@ -722,6 +785,30 @@ async function postOperation(name: string, args: Record<string, unknown>, projec
     throw new Error(payload.diagnostics?.[0]?.message ?? `Operation ${name} failed`);
   }
   return { filesWritten: payload.filesWritten ?? [], projectRevision: payload.projectRevision };
+}
+
+async function requestScriptSource(method: "GET" | "PUT", payload: { body?: string; path: string }): Promise<{
+  body?: string;
+  diagnostics?: Array<{ code?: string; message: string; severity?: "error" | "info" | "warning" }>;
+  ok: boolean;
+  path?: string;
+}> {
+  const query = `?path=${encodeURIComponent(payload.path)}`;
+  const response = await fetch(`/api/scripts${method === "GET" ? query : ""}`, {
+    body: method === "PUT" ? JSON.stringify(payload) : undefined,
+    headers: method === "PUT" ? { "content-type": "application/json" } : undefined,
+    method,
+  });
+  const result = await response.json() as {
+    body?: string;
+    diagnostics?: Array<{ code?: string; message: string; severity?: "error" | "info" | "warning" }>;
+    ok: boolean;
+    path?: string;
+  };
+  if (!result.ok) {
+    throw new Error(result.diagnostics?.[0]?.message ?? `Script ${method} failed`);
+  }
+  return result;
 }
 
 function buildOperationArgs(row: IEditorPropertyRow, value: unknown): Record<string, unknown> {

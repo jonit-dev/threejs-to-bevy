@@ -171,6 +171,9 @@ Command expectations:
 - `tn create my-game --template structured-source-starter` creates the
   maintained content-first starter using `content/**/*.json` source documents
   and behavior modules under `src/scripts/**/*.ts`.
+  The generated starter includes validate/build/playtest scripts, a
+  `recipe:controller` dry-run example, and a helper-based script that imports
+  `@threenative/script-stdlib` while mutating only declared ECS components.
 - `tn scene create <scene-id> --json` creates a minimal valid
   `threenative.scene` source document. By default it writes
   `content/scenes/<scene-id>.scene.json`; use `--file <path>` for an explicit
