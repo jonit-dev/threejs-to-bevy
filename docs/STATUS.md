@@ -178,11 +178,11 @@ web runtime context, and Bevy QuickJS bridge: `ctx.entity`,
 `ctx.input.axis1(...)`, and entity `transform()` helpers for position/yaw reads
 plus pose/position/rotation writes. Helper writes lower to existing
 component/resource effects, so undeclared `Transform` and resource writes still
-fail through the same runtime validators. Current focused evidence is
-`pnpm --filter @threenative/sdk typecheck`,
-`pnpm --filter @threenative/runtime-web-three typecheck`, direct web
-`context`/`runner` test execution, and
-`cargo test -p threenative_runtime systems_host_should_expose_context_ergonomics_helpers`.
+fail through compiler diagnostics and the same runtime validators. Current
+focused evidence is `pnpm --filter @threenative/script-stdlib test`,
+`pnpm --filter @threenative/compiler test`,
+`pnpm --filter @threenative/runtime-web-three test`, and
+`cargo test -p threenative_runtime systems_host`.
 Lifecycle facade, optional domain kits, and aggregate conformance/release-gate
 promotion remain open PRD work.
 Target profile source commands now create/update `content/targets/*.target.json`

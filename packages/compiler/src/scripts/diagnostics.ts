@@ -120,6 +120,19 @@ function diagnoseDeclaredAccess(source: IPortableSystemSource): ICompilerDiagnos
     }
   }
 
+  for (const resource of uniqueMatches(source.source, /\b(?:context|ctx)\.state\s*\(\s*["']([^"']+)["']/g)) {
+    if (!resourceWrites.has(resource)) {
+      diagnostics.push({
+        code: "TN_SCRIPT_RESOURCE_WRITE_UNDECLARED",
+        file: source.file,
+        message: `System '${source.systemName}' writes resource '${resource}' without declaring it in resourceWrites.`,
+        path: `systems/${source.systemName}/resourceWrites/${resource}`,
+        severity: "error",
+        suggestion: `Add '${resource}' to the system resourceWrites list or remove the state helper mutation.`,
+      });
+    }
+  }
+
   for (const command of uniqueMatches(source.source, /\bcommands\.(spawn|despawn|addComponent|removeComponent|setComponent)\s*\(/g)) {
     if (!commands.has(command)) {
       diagnostics.push({

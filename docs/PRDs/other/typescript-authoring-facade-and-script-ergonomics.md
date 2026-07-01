@@ -414,6 +414,12 @@ operations, and `@threenative/authoring-client` exposes `planRecipe()` and
 
 #### Phase 5: Script Context Ergonomics - Gameplay TypeScript reads like gameplay instead of plumbing.
 
+Status: Complete in this PRD slice. The canonical `@threenative/script-stdlib`
+bundle now has host-free deterministic parity coverage, SDK context types expose
+the helper facade, web and Bevy/QuickJS hosts execute the same helper-driven
+resource and Transform effects, and compiler diagnostics reject `ctx.state(...)`
+helper writes without matching `resourceWrites`.
+
 **Files (max 5):**
 
 - `packages/script-stdlib/src/index.ts` - extend the active pure helper surface
@@ -427,17 +433,17 @@ operations, and `@threenative/authoring-client` exposes `planRecipe()` and
 
 **Implementation:**
 
-- [ ] Treat `packages/script-stdlib` as the canonical pure helper package for
+- [x] Treat `packages/script-stdlib` as the canonical pure helper package for
   math, vector, quaternion, and transform utilities.
-- [ ] Add helper facades over existing portable primitives:
+- [x] Add helper facades over existing portable primitives:
   `ctx.entity(id)`, `ctx.entities.byId(map)`, `ctx.state(key, defaults)`,
   `ctx.time.fixedDelta(bounds)`, `ctx.input.axis1(...)`, and entity transform
   helpers.
-- [ ] Validate that helper writes still require declared resource/component write
+- [x] Validate that helper writes still require declared resource/component write
   access.
-- [ ] Preserve deterministic web/Bevy behavior.
-- [ ] Keep helpers as convenience composition, not new runtime authority.
-- [ ] Add diagnostics for helper calls that imply undeclared access.
+- [x] Preserve deterministic web/Bevy behavior.
+- [x] Keep helpers as convenience composition, not new runtime authority.
+- [x] Add diagnostics for helper calls that imply undeclared access.
 
 **Tests Required:**
 
@@ -445,7 +451,7 @@ operations, and `@threenative/authoring-client` exposes `planRecipe()` and
 |-----------|-----------|-----------|
 | `packages/script-stdlib/src/index.test.ts` | `should keep stdlib helpers deterministic and host-free` | Helpers produce stable results without context/runtime APIs |
 | `packages/compiler/src/scripts/diagnostics.test.ts` | `should reject helper resource writes without declared access` | Stable diagnostic points at the script/source ref |
-| runtime tests | `should execute context helper transform patch in web and Bevy` | Matching effect logs for helper and manual patch behavior |
+| `packages/runtime-web-three/src/systems/context.test.ts` and `runtime-bevy/crates/threenative_runtime/tests/systems_host.rs` | context helper facade tests | Matching helper-driven resource writes and Transform patch behavior |
 
 **User Verification:**
 

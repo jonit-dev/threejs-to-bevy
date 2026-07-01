@@ -73,6 +73,25 @@ test("should validate resource writes against resourceWrites", () => {
   assert.deepEqual(valid, []);
 });
 
+test("should reject helper resource writes without declared access", () => {
+  const missing = diagnosePortableSystem({
+    resourceWrites: [],
+    source: '(ctx) => { const state = ctx.state("GameState", { score: 0 }); state.score += 1; }',
+    systemName: "badHelperResourceWrite",
+  });
+
+  assert.equal(missing[0]?.code, "TN_SCRIPT_RESOURCE_WRITE_UNDECLARED");
+  assert.equal(missing[0]?.path, "systems/badHelperResourceWrite/resourceWrites/GameState");
+
+  const valid = diagnosePortableSystem({
+    resourceWrites: ["GameState"],
+    source: '(context) => { const state = context.state("GameState", { score: 0 }); state.score += 1; }',
+    systemName: "goodHelperResourceWrite",
+  });
+
+  assert.deepEqual(valid, []);
+});
+
 test("should reject undeclared service command and event access", () => {
   const diagnostics = diagnosePortableSystem({
     commands: [],

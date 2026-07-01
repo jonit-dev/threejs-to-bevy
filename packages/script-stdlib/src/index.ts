@@ -134,7 +134,7 @@ const NumberEx = Object.freeze({
     return Math.min(Math.max(finiteValue, min), max);
   },
   finite(value, fallback) {
-    return Number.isFinite(value) ? value : fallback;
+    return Number.isFinite(value) ? value : fallback ?? 0;
   },
   round(value, precision = 3) {
     const scale = 10 ** Math.max(0, Math.trunc(NumberEx.finite(precision, 3)));
