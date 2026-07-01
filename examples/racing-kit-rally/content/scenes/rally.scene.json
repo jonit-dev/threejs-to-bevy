@@ -1,18 +1,63 @@
 {
-  "schema": "threenative.scene",
-  "version": "0.1.0",
-  "id": "rally",
-  "kind": "level",
-  "activation": "exclusive",
   "entities": [
     {
-      "id": "terrain.infield",
-      "prefab": "prefab.terrain",
+      "components": {
+        "camera": {
+          "far": 180,
+          "fovY": 54,
+          "mode": "perspective",
+          "near": 0.05
+        }
+      },
+      "id": "camera.main",
+      "transform": {
+        "position": [
+          -5.45,
+          1.65,
+          10.5
+        ],
+        "rotation": [
+          -0.179476,
+          -1.570796,
+          0
+        ]
+      }
+    },
+    {
+      "components": {
+        "Light": {
+          "color": "#fff2cf",
+          "intensity": 3.4,
+          "kind": "directional"
+        }
+      },
+      "id": "light.sun",
+      "transform": {
+        "position": [
+          -9,
+          16,
+          11
+        ]
+      }
+    },
+    {
+      "components": {
+        "Light": {
+          "color": "#cfe3ff",
+          "intensity": 0.48,
+          "kind": "ambient"
+        }
+      },
+      "id": "light.ambient"
+    },
+    {
+      "id": "terrain.grass",
+      "prefab": "prefab.grass",
       "transform": {
         "position": [
           0,
           -0.08,
-          0
+          -0.7
         ],
         "rotation": [
           -1.570796,
@@ -20,188 +65,32 @@
           0
         ],
         "scale": [
-          30,
-          30,
+          46,
+          42,
           1
         ]
       }
     },
     {
-      "id": "track.surface.main",
-      "prefab": "prefab.road.surface",
-      "transform": {
-        "position": [
-          0,
-          -0.055,
-          0
-        ],
-        "rotation": [
-          -1.570796,
-          0,
-          0
-        ],
-        "scale": [
-          7,
-          19,
-          1
-        ]
-      }
-    },
-    {
-      "id": "track.surface.cross",
-      "prefab": "prefab.road.surface",
-      "transform": {
-        "position": [
-          0,
-          -0.054,
-          0
-        ],
-        "rotation": [
-          -1.570796,
-          0,
-          1.570796
-        ],
-        "scale": [
-          7,
-          19,
-          1
-        ]
-      }
-    },
-    {
-      "id": "track.start",
-      "prefab": "prefab.road.start",
-      "transform": {
-        "position": [
-          0,
-          0,
-          -7.2
-        ],
-        "scale": [
-          1.7,
-          1,
-          1.7
-        ]
-      }
-    },
-    {
-      "id": "track.north",
-      "prefab": "prefab.road.straight.long",
-      "transform": {
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1.7,
-          1,
-          2.4
-        ]
-      }
-    },
-    {
-      "id": "track.south",
-      "prefab": "prefab.road.straight.long",
-      "transform": {
-        "position": [
-          0,
-          0,
-          7.2
-        ],
-        "scale": [
-          1.7,
-          1,
-          2.4
-        ]
-      }
-    },
-    {
-      "id": "track.east",
-      "prefab": "prefab.road.straight",
-      "transform": {
-        "position": [
-          7.2,
-          0,
-          0
-        ],
-        "rotation": [
-          0,
-          1.570796,
-          0
-        ],
-        "scale": [
-          1.7,
-          1,
-          2.2
-        ]
-      }
-    },
-    {
-      "id": "track.west",
-      "prefab": "prefab.road.straight",
-      "transform": {
-        "position": [
-          -2.15,
-          0,
-          0
-        ],
-        "rotation": [
-          0,
-          1.570796,
-          0
-        ],
-        "scale": [
-          1.7,
-          1,
-          2.2
-        ]
-      }
-    },
-    {
-      "id": "marker.pylon.north",
-      "prefab": "prefab.pylon",
-      "transform": {
-        "position": [
-          -4.9,
-          0.05,
-          -6.5
-        ],
-        "scale": [
-          1.8,
-          1.8,
-          1.8
-        ]
-      }
-    },
-    {
-      "id": "marker.pylon.south",
-      "prefab": "prefab.pylon",
-      "transform": {
-        "position": [
-          4.9,
-          0.05,
-          6.5
-        ],
-        "scale": [
-          1.8,
-          1.8,
-          1.8
-        ]
-      }
-    },
-    {
+      "components": {
+        "PlayerCar": {
+          "checkpoint": 0,
+          "lap": 0,
+          "speed": 0,
+          "yaw": 1.570796
+        }
+      },
       "id": "player.car",
-      "prefab": "prefab.car.green",
+      "prefab": "prefab.car.player",
       "transform": {
         "position": [
-          -2.5,
+          -0.65,
           0.08,
-          -7
+          10.5
         ],
         "rotation": [
           0,
-          0,
+          1.570796,
           0
         ],
         "scale": [
@@ -212,17 +101,22 @@
       }
     },
     {
+      "components": {
+        "RivalCar": {
+          "phase": 0.05
+        }
+      },
       "id": "rival.car",
-      "prefab": "prefab.car.red",
+      "prefab": "prefab.car.rival",
       "transform": {
         "position": [
-          2.5,
+          -1.65,
           0.08,
-          -7
+          10.5
         ],
         "rotation": [
           0,
-          0,
+          1.570796,
           0
         ],
         "scale": [
@@ -233,33 +127,59 @@
       }
     },
     {
-      "id": "finish.flag",
+      "id": "finish.flag.left",
       "prefab": "prefab.flag.checkers",
       "transform": {
         "position": [
-          -3.8,
-          0.2,
-          -8.3
+          0.25,
+          0,
+          9.75
+        ],
+        "rotation": [
+          0,
+          1.570796,
+          0
         ],
         "scale": [
-          0.8,
-          0.8,
-          0.8
+          0.9,
+          0.9,
+          0.9
         ]
       }
     },
     {
-      "id": "stands.main",
-      "prefab": "prefab.grandstand",
+      "id": "finish.flag.right",
+      "prefab": "prefab.flag.checkers",
       "transform": {
         "position": [
+          0.25,
           0,
-          0,
-          -12.5
+          11.25
         ],
         "rotation": [
           0,
-          3.141593,
+          -1.570796,
+          0
+        ],
+        "scale": [
+          0.9,
+          0.9,
+          0.9
+        ]
+      }
+    },
+    {
+      "id": "start.lights",
+      "prefab": "prefab.overhead-lights",
+      "transform": {
+        "position": [
+          0.1,
+          0,
+          10.5
+        ],
+        "rotation": [
+          0,
+          1.570796,
           0
         ],
         "scale": [
@@ -270,154 +190,1663 @@
       }
     },
     {
-      "id": "light.rig",
-      "prefab": "prefab.overhead.lights",
+      "id": "grandstand.main",
+      "prefab": "prefab.grandstand",
       "transform": {
         "position": [
+          -13.2,
           0,
-          0,
-          -9.5
-        ],
-        "scale": [
-          1.2,
-          1.2,
-          1.2
-        ]
-      }
-    },
-    {
-      "id": "tree.northwest",
-      "prefab": "prefab.tree.small",
-      "transform": {
-        "position": [
-          -10,
-          0,
-          -8
-        ],
-        "scale": [
-          3.2,
-          3.2,
-          3.2
-        ]
-      }
-    },
-    {
-      "id": "tree.southeast",
-      "prefab": "prefab.tree.small",
-      "transform": {
-        "position": [
-          9,
-          0,
-          8
-        ],
-        "scale": [
-          3,
-          3,
-          3
-        ]
-      }
-    },
-    {
-      "id": "camera.main",
-      "transform": {
-        "position": [
-          0,
-          12,
-          17
+          -1.4
         ],
         "rotation": [
-          -0.62,
           0,
+          1.570796,
           0
+        ],
+        "scale": [
+          1.5,
+          1.5,
+          1.5
         ]
-      },
-      "components": {
-        "camera": {
-          "mode": "perspective",
-          "fovY": 52,
-          "near": 0.05,
-          "far": 120
-        }
       }
     },
     {
-      "id": "light.sun",
+      "id": "barrier.0",
+      "prefab": "prefab.barrier.white",
       "transform": {
         "position": [
-          -12,
-          18,
-          10
+          -2.7,
+          0,
+          10.85
+        ],
+        "scale": [
+          1.4,
+          1.4,
+          1.4
         ]
-      },
-      "components": {
-        "Light": {
-          "kind": "directional",
-          "color": "#fff3d0",
-          "intensity": 3.2
-        }
       }
     },
     {
-      "id": "light.ambient",
+      "id": "barrier.1",
+      "prefab": "prefab.barrier.red",
+      "transform": {
+        "position": [
+          2.7,
+          0,
+          10.85
+        ],
+        "scale": [
+          1.4,
+          1.4,
+          1.4
+        ]
+      }
+    },
+    {
+      "id": "barrier.2",
+      "prefab": "prefab.barrier.white",
+      "transform": {
+        "position": [
+          -11.2,
+          0,
+          -10.5
+        ],
+        "rotation": [
+          0,
+          1.570796,
+          0
+        ],
+        "scale": [
+          1.4,
+          1.4,
+          1.4
+        ]
+      }
+    },
+    {
+      "id": "barrier.3",
+      "prefab": "prefab.barrier.red",
+      "transform": {
+        "position": [
+          11.2,
+          0,
+          -10.5
+        ],
+        "rotation": [
+          0,
+          1.570796,
+          0
+        ],
+        "scale": [
+          1.4,
+          1.4,
+          1.4
+        ]
+      }
+    },
+    {
+      "id": "pylon.0",
+      "prefab": "prefab.pylon",
+      "transform": {
+        "position": [
+          -1.8,
+          0,
+          8.25
+        ],
+        "scale": [
+          1.1,
+          1.1,
+          1.1
+        ]
+      }
+    },
+    {
+      "id": "pylon.1",
+      "prefab": "prefab.pylon",
+      "transform": {
+        "position": [
+          1.8,
+          0,
+          8.25
+        ],
+        "scale": [
+          1.1,
+          1.1,
+          1.1
+        ]
+      }
+    },
+    {
+      "id": "tree.0",
+      "prefab": "prefab.tree",
+      "transform": {
+        "position": [
+          -14,
+          0,
+          -13
+        ],
+        "scale": [
+          1.7,
+          1.7,
+          1.7
+        ]
+      }
+    },
+    {
+      "id": "tree.1",
+      "prefab": "prefab.tree",
+      "transform": {
+        "position": [
+          14,
+          0,
+          4.5
+        ],
+        "scale": [
+          1.6,
+          1.6,
+          1.6
+        ]
+      }
+    },
+    {
       "components": {
-        "Light": {
-          "kind": "ambient",
-          "color": "#c9d7ff",
-          "intensity": 0.42
+        "ModularTrackTile": {
+          "asset": "assets/roadCornerLarge.glb",
+          "center": [
+            -10,
+            -10
+          ],
+          "footprint": [
+            2,
+            2
+          ],
+          "yawDegrees": 0
         }
+      },
+      "id": "road.modular.000",
+      "prefab": "road.modular.prefab.roadcornerlarge",
+      "transform": {
+        "position": [
+          -10.65,
+          0,
+          -8.35
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            -8,
+            -10.5
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 90
+        }
+      },
+      "id": "road.modular.001",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          -6.35,
+          0,
+          -10.35
+        ],
+        "rotation": [
+          0,
+          1.570796,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            -6,
+            -10.5
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 90
+        }
+      },
+      "id": "road.modular.002",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          -4.35,
+          0,
+          -10.35
+        ],
+        "rotation": [
+          0,
+          1.570796,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            -4,
+            -10.5
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 90
+        }
+      },
+      "id": "road.modular.003",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          -2.35,
+          0,
+          -10.35
+        ],
+        "rotation": [
+          0,
+          1.570796,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            -2,
+            -10.5
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 90
+        }
+      },
+      "id": "road.modular.004",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          -0.35,
+          0,
+          -10.35
+        ],
+        "rotation": [
+          0,
+          1.570796,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            0,
+            -10.5
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 90
+        }
+      },
+      "id": "road.modular.005",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          1.65,
+          0,
+          -10.35
+        ],
+        "rotation": [
+          0,
+          1.570796,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            2,
+            -10.5
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 90
+        }
+      },
+      "id": "road.modular.006",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          3.65,
+          0,
+          -10.35
+        ],
+        "rotation": [
+          0,
+          1.570796,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            4,
+            -10.5
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 90
+        }
+      },
+      "id": "road.modular.007",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          5.65,
+          0,
+          -10.35
+        ],
+        "rotation": [
+          0,
+          1.570796,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            6,
+            -10.5
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 90
+        }
+      },
+      "id": "road.modular.008",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          7.65,
+          0,
+          -10.35
+        ],
+        "rotation": [
+          0,
+          1.570796,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            8,
+            -10.5
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 90
+        }
+      },
+      "id": "road.modular.009",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          9.65,
+          0,
+          -10.35
+        ],
+        "rotation": [
+          0,
+          1.570796,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadCornerLarge.glb",
+          "center": [
+            10,
+            -10
+          ],
+          "footprint": [
+            2,
+            2
+          ],
+          "yawDegrees": 270
+        }
+      },
+      "id": "road.modular.010",
+      "prefab": "road.modular.prefab.roadcornerlarge",
+      "transform": {
+        "position": [
+          8.35,
+          0,
+          -10.65
+        ],
+        "rotation": [
+          0,
+          4.712389,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            10.5,
+            -8
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 0
+        }
+      },
+      "id": "road.modular.011",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          10.35,
+          0,
+          -6.35
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            10.5,
+            -6
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 0
+        }
+      },
+      "id": "road.modular.012",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          10.35,
+          0,
+          -4.35
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            10.5,
+            -4
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 0
+        }
+      },
+      "id": "road.modular.013",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          10.35,
+          0,
+          -2.35
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            10.5,
+            -2
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 0
+        }
+      },
+      "id": "road.modular.014",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          10.35,
+          0,
+          -0.35
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            10.5,
+            0
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 0
+        }
+      },
+      "id": "road.modular.015",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          10.35,
+          0,
+          1.65
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            10.5,
+            2
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 0
+        }
+      },
+      "id": "road.modular.016",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          10.35,
+          0,
+          3.65
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            10.5,
+            4
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 0
+        }
+      },
+      "id": "road.modular.017",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          10.35,
+          0,
+          5.65
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            10.5,
+            6
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 0
+        }
+      },
+      "id": "road.modular.018",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          10.35,
+          0,
+          7.65
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            10.5,
+            8
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 0
+        }
+      },
+      "id": "road.modular.019",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          10.35,
+          0,
+          9.65
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadCornerLarge.glb",
+          "center": [
+            10,
+            10
+          ],
+          "footprint": [
+            2,
+            2
+          ],
+          "yawDegrees": 180
+        }
+      },
+      "id": "road.modular.020",
+      "prefab": "road.modular.prefab.roadcornerlarge",
+      "transform": {
+        "position": [
+          10.65,
+          0,
+          8.35
+        ],
+        "rotation": [
+          0,
+          3.141593,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            8,
+            10.5
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 90
+        }
+      },
+      "id": "road.modular.021",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          9.65,
+          0,
+          10.65
+        ],
+        "rotation": [
+          0,
+          1.570796,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            6,
+            10.5
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 90
+        }
+      },
+      "id": "road.modular.022",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          7.65,
+          0,
+          10.65
+        ],
+        "rotation": [
+          0,
+          1.570796,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            4,
+            10.5
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 90
+        }
+      },
+      "id": "road.modular.023",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          5.65,
+          0,
+          10.65
+        ],
+        "rotation": [
+          0,
+          1.570796,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            2,
+            10.5
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 90
+        }
+      },
+      "id": "road.modular.024",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          3.65,
+          0,
+          10.65
+        ],
+        "rotation": [
+          0,
+          1.570796,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            0,
+            10.5
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 90
+        }
+      },
+      "id": "road.modular.025",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          1.65,
+          0,
+          10.65
+        ],
+        "rotation": [
+          0,
+          1.570796,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            -2,
+            10.5
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 90
+        }
+      },
+      "id": "road.modular.026",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          -0.35,
+          0,
+          10.65
+        ],
+        "rotation": [
+          0,
+          1.570796,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            -4,
+            10.5
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 90
+        }
+      },
+      "id": "road.modular.027",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          -2.35,
+          0,
+          10.65
+        ],
+        "rotation": [
+          0,
+          1.570796,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            -6,
+            10.5
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 90
+        }
+      },
+      "id": "road.modular.028",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          -4.35,
+          0,
+          10.65
+        ],
+        "rotation": [
+          0,
+          1.570796,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            -8,
+            10.5
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 90
+        }
+      },
+      "id": "road.modular.029",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          -6.35,
+          0,
+          10.65
+        ],
+        "rotation": [
+          0,
+          1.570796,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadCornerLarge.glb",
+          "center": [
+            -10,
+            10
+          ],
+          "footprint": [
+            2,
+            2
+          ],
+          "yawDegrees": 90
+        }
+      },
+      "id": "road.modular.030",
+      "prefab": "road.modular.prefab.roadcornerlarge",
+      "transform": {
+        "position": [
+          -8.35,
+          0,
+          10.65
+        ],
+        "rotation": [
+          0,
+          1.570796,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            -10.5,
+            8
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 0
+        }
+      },
+      "id": "road.modular.031",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          -10.65,
+          0,
+          9.65
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            -10.5,
+            6
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 0
+        }
+      },
+      "id": "road.modular.032",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          -10.65,
+          0,
+          7.65
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            -10.5,
+            4
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 0
+        }
+      },
+      "id": "road.modular.033",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          -10.65,
+          0,
+          5.65
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            -10.5,
+            2
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 0
+        }
+      },
+      "id": "road.modular.034",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          -10.65,
+          0,
+          3.65
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            -10.5,
+            0
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 0
+        }
+      },
+      "id": "road.modular.035",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          -10.65,
+          0,
+          1.65
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            -10.5,
+            -2
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 0
+        }
+      },
+      "id": "road.modular.036",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          -10.65,
+          0,
+          -0.35
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            -10.5,
+            -4
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 0
+        }
+      },
+      "id": "road.modular.037",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          -10.65,
+          0,
+          -2.35
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            -10.5,
+            -6
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 0
+        }
+      },
+      "id": "road.modular.038",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          -10.65,
+          0,
+          -4.35
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "components": {
+        "ModularTrackTile": {
+          "asset": "assets/roadStraightLong.glb",
+          "center": [
+            -10.5,
+            -8
+          ],
+          "footprint": [
+            1,
+            2
+          ],
+          "yawDegrees": 0
+        }
+      },
+      "id": "road.modular.039",
+      "prefab": "road.modular.prefab.roadstraightlong",
+      "transform": {
+        "position": [
+          -10.65,
+          0,
+          -6.35
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
       }
     }
   ],
+  "id": "rally",
+  "kind": "level",
   "prefabs": [
     {
-      "id": "prefab.terrain",
-      "primitive": "plane",
-      "color": "#1d2f24"
+      "color": "#49743f",
+      "id": "prefab.grass",
+      "primitive": "plane"
     },
     {
-      "id": "prefab.road.surface",
-      "primitive": "plane",
-      "color": "#3e3c35"
+      "color": "#3f6f38",
+      "id": "prefab.grass.infield",
+      "primitive": "plane"
     },
     {
-      "id": "prefab.road.start",
-      "asset": "assets/roadStart.glb"
+      "color": "#777267",
+      "id": "prefab.asphalt",
+      "primitive": "plane"
     },
     {
-      "id": "prefab.road.straight",
-      "asset": "assets/roadStraight.glb"
+      "color": "#f3ead6",
+      "id": "prefab.curb.white",
+      "primitive": "plane"
     },
     {
-      "id": "prefab.road.straight.long",
-      "asset": "assets/roadStraightLong.glb"
+      "color": "#c94b3d",
+      "id": "prefab.curb.red",
+      "primitive": "plane"
     },
     {
-      "id": "prefab.car.green",
-      "asset": "assets/raceCarGreen.glb"
+      "color": "#f1ead7",
+      "id": "prefab.finish-line",
+      "primitive": "plane"
     },
     {
-      "id": "prefab.car.red",
-      "asset": "assets/raceCarRed.glb"
+      "asset": "assets/raceCarRed.glb",
+      "color": "#d94a3a",
+      "id": "prefab.car.player",
+      "primitive": "box"
     },
     {
-      "id": "prefab.flag.checkers",
-      "asset": "assets/flagCheckers.glb"
+      "asset": "assets/raceCarGreen.glb",
+      "color": "#4ba65f",
+      "id": "prefab.car.rival",
+      "primitive": "box"
     },
     {
-      "id": "prefab.grandstand",
-      "asset": "assets/grandStand.glb"
+      "asset": "assets/barrierRed.glb",
+      "color": "#d94a3a",
+      "id": "prefab.barrier.red",
+      "primitive": "box"
     },
     {
-      "id": "prefab.overhead.lights",
-      "asset": "assets/overheadLights.glb"
+      "asset": "assets/barrierWhite.glb",
+      "color": "#ece9df",
+      "id": "prefab.barrier.white",
+      "primitive": "box"
     },
     {
+      "asset": "assets/pylon.glb",
+      "color": "#f57d2a",
       "id": "prefab.pylon",
-      "asset": "assets/pylon.glb"
+      "primitive": "cone"
     },
     {
-      "id": "prefab.tree.small",
-      "asset": "assets/treeSmall.glb"
+      "asset": "assets/flagCheckers.glb",
+      "color": "#ece9df",
+      "id": "prefab.flag.checkers",
+      "primitive": "box"
+    },
+    {
+      "asset": "assets/overheadLights.glb",
+      "color": "#222222",
+      "id": "prefab.overhead-lights",
+      "primitive": "box"
+    },
+    {
+      "asset": "assets/grandStand.glb",
+      "color": "#b8bec4",
+      "id": "prefab.grandstand",
+      "primitive": "box"
+    },
+    {
+      "asset": "assets/treeSmall.glb",
+      "color": "#4d8b45",
+      "id": "prefab.tree",
+      "primitive": "cone"
+    },
+    {
+      "asset": "assets/roadCornerLarge.glb",
+      "color": "#777267",
+      "id": "road.modular.prefab.roadcornerlarge",
+      "primitive": "box"
+    },
+    {
+      "asset": "assets/roadStraightLong.glb",
+      "color": "#777267",
+      "id": "road.modular.prefab.roadstraightlong",
+      "primitive": "box"
     }
   ],
   "resources": [
@@ -428,12 +1857,12 @@
         "hud": "Lap 0 | Ready | 0 km/h",
         "lap": 0,
         "message": "Ready",
-        "rivalPhase": 0,
+        "rivalPhase": 0.18,
         "speed": 0
       }
     }
   ],
-  "systems": [],
+  "schema": "threenative.scene",
   "ui": {
     "nodes": [
       {
@@ -460,5 +1889,6 @@
         "resource": "RallyState.hud"
       }
     ]
-  }
+  },
+  "version": "0.1.0"
 }
