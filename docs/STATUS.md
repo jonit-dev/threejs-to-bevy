@@ -474,6 +474,12 @@ paths, optional input/output hashes, and overwrite policy. The registry-backed
 update those documents, while editor project rows expose generator provenance as
 read-only evidence because generated outputs do not receive automatic reverse
 patches from editor edits.
+`tn generator run <generator-id> --json` now executes only project-local
+modules under `src/generators/**`, passes the `@threenative/authoring-client`
+project facade to the generator, records `lastRun` provenance with operation
+trace, files written, diagnostics, run timing, and input/output hashes, and
+reports `TN_GENERATOR_OUTPUT_CONFLICT` when a previously generated output was
+manually edited under a non-replace overwrite policy.
 The P0 editor state refactor has started by adding Zustand to
 `@threenative/editor` and moving modal/session primitives into a typed
 editor-session store. `EditorApp` now reads modal state from the store while

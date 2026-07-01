@@ -149,6 +149,40 @@ but generated bundle files and `scripts.bundle.js` remain non-source. The
 durable behavior source is the referenced TypeScript module/export, not the
 generated script bundle body.
 
+## TypeScript Facade Role
+
+`@threenative/authoring-client` is available when a script or agent needs
+TypeScript composition without making TypeScript scene files the source of
+truth. The facade queues the same registry-backed operations used by CLI,
+editor, MCP, and chat workflows, then writes structured source on `commit()`.
+
+```ts
+import { openProject } from "@threenative/authoring-client";
+
+const result = await openProject(".")
+  .scene("arena")
+  .addPrefab("prefab.crate", { primitive: "box", color: "#8f5a2a" })
+  .addEntity("crate.001", { prefabId: "prefab.crate" })
+  .transform("crate.001", { position: [2, 1, -3] })
+  .rigidBody("crate.001", { kind: "dynamic" })
+  .collider("crate.001", { kind: "box", size: [1, 1, 1] })
+  .commit();
+```
+
+Agents should inspect `result.operations`, `result.diagnostics`, and
+`result.filesWritten` the same way they inspect CLI `--json` output. Use
+`dryRun()` to check registry operation shapes and traces without writing source.
+Do not persist scene/map data in facade scripts; the durable output remains
+`content/**/*.json`.
+
+One-way project generators may use the same facade when registered by
+`tn generator record` and run with `tn generator run <generator-id> --json`.
+Generator modules must live under `src/generators/**` and return the facade
+commit result so provenance can capture the operation trace, files written,
+diagnostics, and input/output hashes. If a generated output was manually edited,
+the runner reports a conflict instead of silently overwriting it unless the
+generator provenance explicitly uses a replace policy.
+
 Future MCP resources may include:
 
 ```txt

@@ -28,6 +28,7 @@ import {
   createRuntimeConfig,
   createResourcesDocument,
   createSchemaDocument,
+  createScene,
   createSystem,
   createUiDocument,
   recordGeneratorProvenance,
@@ -195,6 +196,11 @@ const operationEntries = [
     stringArg("outputHash", false),
   ]), async ({ args, projectPath }) =>
     recordGeneratorProvenance({ exportName: requiredString(args, "exportName"), generatorId: requiredString(args, "generatorId"), inputHash: optionalString(args, "inputHash"), modulePath: requiredString(args, "modulePath"), outputHash: optionalString(args, "outputHash"), outputs: requiredStringArray(args, "outputs"), overwritePolicy: optionalString(args, "overwritePolicy"), projectPath })),
+  operation(descriptor("scene.create", "Create a structured scene source document.", "scene", "source-document", [
+    stringArg("sceneId"),
+    stringArg("file", false),
+  ]), async ({ args, projectPath }) =>
+    createScene({ file: optionalString(args, "file"), projectPath, sceneId: requiredString(args, "sceneId") })),
   operation(descriptor("input.add_action", "Add or replace an input action in a structured input document.", "input", "source-document", [
     stringArg("inputDocId"),
     stringArg("actionId"),

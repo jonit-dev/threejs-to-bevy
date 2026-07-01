@@ -52,6 +52,7 @@ test("should dispatch existing structured source operations through the registry
       await dispatchAuthoringOperation({ args: { environmentId: "arena", walkability: { terrain: { height: 0, surface: "terrain.arena" } } }, name: "environment.set_walkability", projectPath: root }),
       await dispatchAuthoringOperation({ args: { environmentId: "arena", probe: { bounds: { max: [3, 4, 3], min: [-3, 0, -3] }, influenceRadius: 5, source: { asset: "tex.env", mode: "equirect" } }, probeId: "probe.center" }, name: "environment.set_light_probe", projectPath: root }),
       await dispatchAuthoringOperation({ args: { exportName: "generateArena", generatorId: "arena.layout", inputHash: "sha256:inputs", modulePath: "src/generators/arena.ts", outputHash: "sha256:outputs", outputs: ["content/scenes/arena.scene.json"], overwritePolicy: "manual" }, name: "generator.record", projectPath: root }),
+      await dispatchAuthoringOperation({ args: { sceneId: "scene.generated" }, name: "scene.create", projectPath: root }),
       await dispatchAuthoringOperation({ args: { materialId: "mat.player" }, name: "material.create", projectPath: root }),
       await dispatchAuthoringOperation({
         args: {
@@ -265,6 +266,7 @@ test("should expose operation metadata and registry diagnostics", async () => {
     "environment.set_walkability",
     "environment.set_source_asset_lod",
     "generator.record",
+    "scene.create",
     "input.add_action",
     "input.add_axis",
     "input.set_controls",

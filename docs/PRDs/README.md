@@ -47,6 +47,10 @@ This index separates current cleanup work from historical milestone batches.
 - [Script Module References and Manifest](done/other/script-module-references-and-manifest.md):
   source module/export script refs, generated script manifest, collision
   diagnostics, helper import policy, and generated-script source boundaries.
+- [TypeScript Authoring Facade and Script Ergonomics](other/typescript-authoring-facade-and-script-ergonomics.md):
+  TypeScript ergonomics over the shared authoring operation registry, one-way
+  generators, recipes, script helper integration, and editor code mode while
+  preserving structured ECS source as the editable truth.
 - [Web and Bevy Scripting Host Conformance](done/other/web-bevy-scripting-host-conformance.md):
   shared scripting service matrix, effect validation parity, ambient API
   diagnostics, and web/native conformance fixtures.

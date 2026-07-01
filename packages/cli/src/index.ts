@@ -72,9 +72,9 @@ const commands: Record<string, ICommandDefinition> = {
     usage: "tn help [topic] [--json]",
   },
   generator: {
-    description: "Record one-way generator provenance for structured source outputs.",
+    description: "Record and run project-local generators for structured source outputs.",
     implemented: true,
-    usage: "tn generator record <generator-id> --module <path> --export <name> --outputs <path,path> [--overwrite-policy skip|replace|manual] [--input-hash <hash>] [--output-hash <hash>] [--project <path>] [--json]",
+    usage: "tn generator record <generator-id> --module <path> --export <name> --outputs <path,path> [--overwrite-policy skip|replace|manual] [--input-hash <hash>] [--output-hash <hash>] [--project <path>] [--json]\n              tn generator run <generator-id> [--project <path>] [--json]",
   },
   "model-test": {
     description: "Generate a one-model proof project with scale, bounds, ruler, and camera hints.",

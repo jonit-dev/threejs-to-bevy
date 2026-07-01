@@ -661,6 +661,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] Structured editor source patch validation over durable source documents
 - [x] Shared authoring operation registry for CLI/MCP/editor mutation adapters
 - [x] TypeScript authoring-client transaction and fluent scene facade over the shared operation registry, preserving structured source as the editable truth
+- [x] Project-local TypeScript generator runner with authoring-client facade execution, last-run provenance, input/output hashes, and manual-output conflict diagnostics
 - [x] Registry-backed CLI source mutation for asset catalogs and audio sound documents
 - [x] Registry-backed CLI/editor source mutation for project metadata documents
 - [x] Registry-backed CLI/editor source mutation for reusable resources documents

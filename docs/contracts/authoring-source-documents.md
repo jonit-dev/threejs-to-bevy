@@ -109,10 +109,24 @@ persistence target for map edits, entity placement, transform changes, material
 or UI style tweaks, asset catalog edits, generated bundle diffs, or editor
 move/rotate/scale operations.
 
+`@threenative/authoring-client` is the supported TypeScript convenience layer
+for batching or fluently composing source edits. It is a client over
+`@threenative/authoring` operation names such as `scene.add_prefab`,
+`scene.add_entity`, and `scene.set_transform`; it writes the same structured
+source documents as CLI/editor/MCP operations and returns an operation trace.
+It is not a TypeScript scene persistence format, and editor tools must not
+reverse-patch facade scripts to save map changes.
+
 When TypeScript acts as a generator, the output must be structured source
 documents with explicit provenance such as generator ID, input hash, output
 hash, and overwrite policy. Once an editor changes generated source, the system
 does not assume it can reverse-patch arbitrary generator code.
+`tn generator run <generator-id> --json` executes only project-local generator
+modules under `src/generators/**`, passes the same authoring-client facade used
+by normal TypeScript composition, and records `lastRun` operation trace,
+diagnostics, files, timing, and hashes back to the generator provenance
+document. A generator must return the facade commit result so the operation
+trace remains inspectable.
 
 ## Map Editor Round Trip
 

@@ -2874,6 +2874,9 @@ async function validateGeneratorDocument(file: string, data: unknown): Promise<I
   }
   validateOptionalString(diagnostics, file, "/inputHash", data.inputHash, "generator inputHash must be a non-empty string.");
   validateOptionalString(diagnostics, file, "/outputHash", data.outputHash, "generator outputHash must be a non-empty string.");
+  if (data.lastRun !== undefined && !isRecord(data.lastRun)) {
+    diagnostics.push(typeDiagnostic(file, "/lastRun", "generator lastRun must be an object when present.", data.lastRun));
+  }
   return sortAuthoringDiagnostics(diagnostics);
 }
 
