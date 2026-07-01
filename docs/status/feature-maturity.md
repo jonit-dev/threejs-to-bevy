@@ -16,10 +16,10 @@ service-call logs. `pnpm verify:v4` is the release gate for that scope. The
 maturity rows below mark only the V4 portable scripting MVP as V4 supported;
 broader native scripting APIs remain post-V4.
 
-V5 adds required game-authoring ergonomics through `defineGame` and
-`v5-game-starter`. Those features are supported as SDK/template composition over
-existing portable contracts; they do not create a new Bevy runtime surface by
-themselves.
+V5 adds required game-authoring ergonomics through `defineGame` and the current
+structured-source starter smoke. Those features are supported as SDK/template
+composition over existing portable contracts; they do not create a new Bevy
+runtime surface by themselves.
 
 ## Post-V6 Gap Triage
 
@@ -69,7 +69,7 @@ not promote the deferred or never-portable rows.
 | Audio IR | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Promoted for bundle-local playback, deterministic commands, buses/routing metadata, lifecycle observations, source mutation, and current web/Bevy slices; custom decoders, streaming/network audio, real mixer effects, and platform-native handles remain deferred or diagnostic-only. |
 | V4 portable scripting MVP | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | V4 supported for primitive patch/event/command/service logs under `verify:v4` |
 | V5 game root composition (`defineGame`) | ✅ | ✅ | ✅ | ✅ | n/a | ✅ | V5 supported as authoring sugar over existing scene/world/input/runtime-config contracts |
-| V5 game starter template | ✅ | ✅ | ✅ | ✅ | n/a | ✅ | V5 supported through `tn create --template v5-game-starter` and starter smoke in `verify:v5` |
+| V5 game starter template | ✅ | ✅ | ✅ | ✅ | n/a | ✅ | V5 starter smoke now uses `tn create --template structured-source-starter` in `verify:v5` |
 | General gameplay systems | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Promoted for declared portable ECS/system host, resources, events, scene services, prefab/hierarchy commands, and bounded runtime services; callback components, arbitrary callable handles, and delayed commands beyond bounded timers/channels remain partial. |
 | Native QuickJS scripts | ⚠️ | ✅ | ✅ | n/a | ✅ | ✅ | V4 supported only for the declared portable context and primitive demo trace |
 | Mobile packaging | ❌ | ❌ | ❌ | n/a | ❌ | ❌ | Future |

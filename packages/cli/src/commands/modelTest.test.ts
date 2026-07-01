@@ -25,7 +25,7 @@ test("model-test should generate a one-model proof project", async () => {
     await writeFile(join(root, "mesh.bin"), "bin");
     await writeFile(join(root, "kart.gltf"), `${JSON.stringify(fixtureGltf, null, 2)}\n`);
 
-    const result = await modelTestCommand([join(root, "kart.gltf"), "--out", "proof", "--json"], root);
+    const result = await modelTestCommand([join(root, "kart.gltf"), "--out", "proof", "--verify", "--json"], root);
     const payload = JSON.parse(result.stdout) as {
       analysis: {
         cameraFrustum: { fovDegrees: number; near: number; far: number; recommendedDistance: number };
@@ -37,6 +37,7 @@ test("model-test should generate a one-model proof project", async () => {
       code: string;
       files: Array<{ path: string; role: string }>;
       outDir: string;
+      verified?: { bundlePath?: string; ok: boolean };
     };
 
     assert.equal(result.exitCode, 0);
@@ -46,13 +47,18 @@ test("model-test should generate a one-model proof project", async () => {
     assert.equal(payload.analysis.scaleVerdict, "ok");
     assert.equal(payload.analysis.cameraFrustum.fovDegrees, 50);
     assert.equal(payload.analysis.isolationCaveat.includes("does not prove the model is framed correctly in the final game"), true);
-    assert.equal(payload.files.some((file) => file.role === "source" && file.path.endsWith("src/game.ts")), true);
+    assert.equal(payload.verified?.ok, true);
+    assert.equal(payload.verified?.bundlePath, join(root, "proof", "dist", "model-test.bundle"));
+    assert.equal(payload.files.some((file) => file.role === "source" && file.path.endsWith("content/scenes/model-test.scene.json")), true);
     assert.equal(payload.files.some((file) => file.role === "image-dependency" && file.path.endsWith("assets/textures/kart.png")), true);
 
-    const source = await readFile(join(root, "proof", "src", "game.ts"), "utf8");
-    assert.match(source, /modelAsset\("model\.under-test", "assets\/kart\.gltf"\)/);
-    assert.match(source, /scale\.ruler\.1m/);
-    assert.match(source, /model\.bounds\.reference/);
+    const source = JSON.parse(await readFile(join(root, "proof", "content", "scenes", "model-test.scene.json"), "utf8")) as {
+      entities: Array<{ id: string }>;
+      prefabs: Array<{ asset?: string; id: string }>;
+    };
+    assert.equal(source.prefabs.some((prefab) => prefab.id === "prefab.model-under-test" && prefab.asset === "assets/kart.gltf"), true);
+    assert.equal(source.entities.some((entity) => entity.id === "scale.ruler.1m"), true);
+    assert.equal(source.entities.some((entity) => entity.id === "model.bounds.reference"), true);
 
     const readme = await readFile(join(root, "proof", "README.md"), "utf8");
     assert.match(readme, /ThreeNative model test/);

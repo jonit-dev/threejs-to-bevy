@@ -75,10 +75,15 @@ export async function verifyParitySmokeGate(options = {}) {
     }
   }
 
-  const project = "examples/parity-smoke";
+  const { PARITY_SMOKE_CHECKPOINT, verifyBaselineVisualCheckpoint } =
+    options.visualVerifierModule ??
+    (await import(pathToFileURL(resolve(root, "packages/cli/dist/verify/baselineVisualParity.js")).href));
+
+  const project = PARITY_SMOKE_CHECKPOINT.projectRelativePath;
+  const projectLabel = project.split("/").at(-1) ?? project;
   if (
     !(await step(
-      "build parity-smoke",
+      `build ${projectLabel}`,
       process.execPath,
       [resolve(root, "packages/cli/dist/index.js"), "build", "--project", project, "--json"],
       { timeoutMs: 300000 },
@@ -88,7 +93,7 @@ export async function verifyParitySmokeGate(options = {}) {
   }
   if (
     !(await step(
-      "validate parity-smoke",
+      `validate ${projectLabel}`,
       process.execPath,
       [resolve(root, "packages/cli/dist/index.js"), "validate", "--project", project, "--json"],
       { timeoutMs: 120000 },
@@ -96,10 +101,6 @@ export async function verifyParitySmokeGate(options = {}) {
   ) {
     return writeGateReport({ artifactDir, ok: false, reportPath, steps, visualReportPath: undefined });
   }
-
-  const { PARITY_SMOKE_CHECKPOINT, verifyBaselineVisualCheckpoint } =
-    options.visualVerifierModule ??
-    (await import(pathToFileURL(resolve(root, "packages/cli/dist/verify/baselineVisualParity.js")).href));
 
   const visual = await verifyBaselineVisualCheckpoint({
     artifactDir: resolve(artifactDir, PARITY_SMOKE_CHECKPOINT.id),

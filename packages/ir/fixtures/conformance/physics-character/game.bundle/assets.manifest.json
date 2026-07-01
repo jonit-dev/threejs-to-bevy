@@ -1,1 +1,41 @@
-{ "schema": "threenative.assets", "version": "0.1.0", "assets": [] }
+{
+  "schema": "threenative.assets",
+  "version": "0.1.0",
+  "assets": [
+    {
+      "id": "mesh.floor",
+      "kind": "mesh",
+      "format": "generated",
+      "primitive": "box",
+      "size": [8, 0.1, 8]
+    },
+    {
+      "id": "mesh.box",
+      "kind": "mesh",
+      "format": "generated",
+      "primitive": "box",
+      "size": [1, 1, 1]
+    },
+    {
+      "id": "mesh.sphere",
+      "kind": "mesh",
+      "format": "generated",
+      "primitive": "sphere",
+      "size": [0.5]
+    },
+    {
+      "id": "mesh.sensor",
+      "kind": "mesh",
+      "format": "generated",
+      "primitive": "box",
+      "size": [2, 2, 2]
+    },
+    {
+      "id": "mesh.platform",
+      "kind": "mesh",
+      "format": "generated",
+      "primitive": "box",
+      "size": [2, 0.2, 2]
+    }
+  ]
+}

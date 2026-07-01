@@ -1,0 +1,78 @@
+{
+  "materials": [
+    {
+      "color": "#4363d8",
+      "emissive": "#4363d8",
+      "id": "mat.swatch.blue",
+      "kind": "standard",
+      "metalness": 0,
+      "roughness": 1
+    },
+    {
+      "color": "#42d4f4",
+      "emissive": "#42d4f4",
+      "id": "mat.swatch.cyan",
+      "kind": "standard",
+      "metalness": 0,
+      "roughness": 1
+    },
+    {
+      "color": "#808080",
+      "emissive": "#808080",
+      "id": "mat.swatch.gray",
+      "kind": "standard",
+      "metalness": 0,
+      "roughness": 1
+    },
+    {
+      "color": "#3cb44b",
+      "emissive": "#3cb44b",
+      "id": "mat.swatch.green",
+      "kind": "standard",
+      "metalness": 0,
+      "roughness": 1
+    },
+    {
+      "color": "#f032e6",
+      "emissive": "#f032e6",
+      "id": "mat.swatch.magenta",
+      "kind": "standard",
+      "metalness": 0,
+      "roughness": 1
+    },
+    {
+      "color": "#f58231",
+      "emissive": "#f58231",
+      "id": "mat.swatch.orange",
+      "kind": "standard",
+      "metalness": 0,
+      "roughness": 1
+    },
+    {
+      "color": "#e6194b",
+      "emissive": "#e6194b",
+      "id": "mat.swatch.red",
+      "kind": "standard",
+      "metalness": 0,
+      "roughness": 1
+    },
+    {
+      "color": "#ffffff",
+      "emissive": "#ffffff",
+      "id": "mat.swatch.white",
+      "kind": "standard",
+      "metalness": 0,
+      "roughness": 1
+    },
+    {
+      "color": "#ffe119",
+      "emissive": "#ffe119",
+      "id": "mat.swatch.yellow",
+      "kind": "standard",
+      "metalness": 0,
+      "roughness": 1
+    }
+  ],
+  "schema": "threenative.materials",
+  "version": "0.1.0"
+}

@@ -38,15 +38,10 @@ async function writeMinimalRepo(root: string): Promise<void> {
   await writeFile(join(root, "docs/STATUS.md"), "# status\n\nUse `pnpm verify:release`.\n");
   await writeFile(join(root, "docs/bevy-feature-parity.md"), "# parity\n\n`pnpm verify:release`\n");
   await writeFile(join(root, "docs/developer-workflow.md"), "# workflow\n\nRun `pnpm verify:release`.\n");
-  for (const example of ["v9-skeletal-animation", "physics-character", "assets-gltf-scene-workflow", "rendering-lights"]) {
-    await mkdir(join(root, "examples", example), { recursive: true });
-    await writeFile(join(root, "examples", example, "package.json"), "{}\n");
-    await writeFile(join(root, "examples", example, "verification.manifest.json"), "{}\n");
+  for (const fixture of ["physics-character", "physics-character-solver", "rendering-lights"]) {
+    await mkdir(join(root, "packages/ir/fixtures/conformance", fixture, "game.bundle"), { recursive: true });
+    await writeFile(join(root, "packages/ir/fixtures/conformance", fixture, "game.bundle/manifest.json"), "{}\n");
   }
-  await writeFile(
-    join(root, "examples/v9-skeletal-animation/README.md"),
-    "# skeletal\n\nsource: khronos\nlicense: CC0\nsha256: d97044e701822bac5a62696459b27d7b375aada5de8574ed4362edbba94771f7\nclip: idle\n",
-  );
   await writeFile(
     join(root, "packages/ir/fixtures/conformance/v9-fixture-catalog.json"),
     `${JSON.stringify(

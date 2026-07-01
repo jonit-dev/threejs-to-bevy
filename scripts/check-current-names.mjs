@@ -286,6 +286,7 @@ export async function checkCurrentNames(options = {}) {
   const inventory = [];
   const files = await walkFiles(root, root);
   diagnostics.push(...(await checkArtifactLayout({ root })).diagnostics);
+  diagnostics.push(...(await collectGameTsScaffoldDiagnostics(root)));
 
   for (const relativePath of files) {
     const content = await readFile(join(root, relativePath), "utf8");
@@ -377,6 +378,97 @@ export async function checkCurrentNames(options = {}) {
     summary,
     allowlist,
   };
+}
+
+async function collectGameTsScaffoldDiagnostics(root) {
+  const diagnostics = [];
+  const templateConfigs = (await walkFiles(root, resolve(root, "templates")).catch(() => []))
+    .filter((relativePath) => /^templates\/[^/]+\/threenative\.config\.json$/.test(relativePath));
+
+  for (const relativePath of templateConfigs) {
+    const config = JSON.parse(await readFile(join(root, relativePath), "utf8"));
+    if (config.entry === "src/game.ts" || config.entry === "src/game.tsx") {
+      diagnostics.push({
+        code: "TN_NAMES_GAME_TS_TEMPLATE_ENTRY",
+        path: relativePath,
+        message: `Template '${relativePath}' must not use '${config.entry}' as its source entry. Use structured source under content/**/*.json.`,
+        severity: "error",
+      });
+    }
+  }
+
+  const templateGameFiles = (await walkFiles(root, resolve(root, "templates")).catch(() => []))
+    .filter((relativePath) => /^templates\/[^/]+\/src\/game\.tsx?$/.test(relativePath));
+  for (const relativePath of templateGameFiles) {
+    diagnostics.push({
+      code: "TN_NAMES_GAME_TS_TEMPLATE_FILE",
+      path: relativePath,
+      message: "Templates must not contain src/game.ts or src/game.tsx; scaffold source starts from content/**/*.json.",
+      severity: "error",
+    });
+  }
+
+  const exampleConfigs = (await walkFiles(root, resolve(root, "examples")).catch(() => []))
+    .filter((relativePath) => /^examples\/[^/]+\/threenative\.config\.json$/.test(relativePath));
+  for (const relativePath of exampleConfigs) {
+    const config = JSON.parse(await readFile(join(root, relativePath), "utf8"));
+    if (config.entry === "src/game.ts" || config.entry === "src/game.tsx") {
+      diagnostics.push({
+        code: "TN_NAMES_GAME_TS_EXAMPLE_ENTRY",
+        path: relativePath,
+        message: `Example '${relativePath}' must not use '${config.entry}' as its source entry. Use structured source under content/**/*.json or a shared fixture bundle.`,
+        severity: "error",
+      });
+    }
+  }
+
+  const exampleGameFiles = (await walkFiles(root, resolve(root, "examples")).catch(() => []))
+    .filter((relativePath) => /^examples\/[^/]+\/src\/game\.tsx?$/.test(relativePath));
+  for (const relativePath of exampleGameFiles) {
+    diagnostics.push({
+      code: "TN_NAMES_GAME_TS_EXAMPLE_FILE",
+      path: relativePath,
+      message: "Examples must not contain src/game.ts or src/game.tsx; use structured source or shared conformance fixtures.",
+      severity: "error",
+    });
+  }
+
+  const activeScaffoldDocs = [
+    "docs/workflows/ai-distribution.md",
+    "docs/workflows/ai-workflows.md",
+    "docs/workflows/developer-workflow.md",
+    "packages/cli/src/commands/create.test.ts",
+    "packages/cli/src/commands/help.ts",
+    "packages/cli/src/commands/help.test.ts",
+  ];
+  const forbiddenPatterns = [
+    /--template (?:starter|game-starter|racing-kart|v[1-9](?:-[\w-]+)?|starter-functional)\b/u,
+    /default scaffold[^.\n]*src\/game\.tsx?/iu,
+    /creates?[^.\n]*src\/game\.tsx?/iu,
+  ];
+
+  for (const relativePath of activeScaffoldDocs) {
+    let content = "";
+    try {
+      content = await readFile(join(root, relativePath), "utf8");
+    } catch {
+      continue;
+    }
+    for (const pattern of forbiddenPatterns) {
+      const match = pattern.exec(content);
+      if (match) {
+        diagnostics.push({
+          code: "TN_NAMES_GAME_TS_SCAFFOLD_GUIDANCE",
+          path: relativePath,
+          line: lineNumberAt(content, match.index),
+          message: `Active scaffold guidance must use structured-source-starter, not '${match[0]}'.`,
+          severity: "error",
+        });
+      }
+    }
+  }
+
+  return diagnostics;
 }
 
 async function collectArtifactLayoutDiagnostics(root, allowlist) {

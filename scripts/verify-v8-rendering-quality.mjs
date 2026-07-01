@@ -16,8 +16,7 @@ export async function verifyV8RenderingQuality(options = {}) {
 
   const artifactDir = options.artifactDir ?? targets.absoluteDir;
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
-  const projectPath = resolve(root, "examples/v8-rendering-quality");
-  const bundlePath = resolve(projectPath, "dist/v8-rendering-quality.bundle");
+  const bundlePath = resolve(root, "packages/ir/fixtures/conformance/v5-drift-surface/game.bundle");
   const steps = [];
 
   async function step(name, command, args, commandOptions = {}) {
@@ -27,12 +26,6 @@ export async function verifyV8RenderingQuality(options = {}) {
   }
 
   if (!(await step("build cli", "pnpm", ["--filter", "@threenative/cli", "build"], { timeoutMs: 120000 }))) {
-    return writeReport({ artifactDir, bundlePath, ok: false, reportPath, steps });
-  }
-  if (!(await step("build v8 rendering quality example", process.execPath, [resolve(root, "packages/cli/dist/index.js"), "build", "--project", projectPath, "--json"], { timeoutMs: 120000 }))) {
-    return writeReport({ artifactDir, bundlePath, ok: false, reportPath, steps });
-  }
-  if (!(await step("validate v8 rendering quality bundle", process.execPath, [resolve(root, "packages/cli/dist/index.js"), "validate", "--project", projectPath, "--json"], { timeoutMs: 120000 }))) {
     return writeReport({ artifactDir, bundlePath, ok: false, reportPath, steps });
   }
 

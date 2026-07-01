@@ -16,8 +16,7 @@ export async function verifyV8MaterialParity(options = {}) {
 
   const artifactDir = options.artifactDir ?? targets.absoluteDir;
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
-  const projectPath = resolve(root, "examples/v8-material-parity");
-  const bundlePath = resolve(projectPath, "dist/v8-material-parity.bundle");
+  const bundlePath = resolve(root, "packages/ir/fixtures/conformance/rendering-residuals/game.bundle");
   const steps = [];
 
   async function step(name, command, args, commandOptions = {}) {
@@ -33,12 +32,6 @@ export async function verifyV8MaterialParity(options = {}) {
     return writeReport({ artifactDir, bundlePath, ok: false, reportPath, steps });
   }
   if (!(await step("build cli", "pnpm", ["--filter", "@threenative/cli", "build"], { timeoutMs: 120000 }))) {
-    return writeReport({ artifactDir, bundlePath, ok: false, reportPath, steps });
-  }
-  if (!(await step("build v8 material parity example", process.execPath, [resolve(root, "packages/cli/dist/index.js"), "build", "--project", projectPath, "--json"], { timeoutMs: 120000 }))) {
-    return writeReport({ artifactDir, bundlePath, ok: false, reportPath, steps });
-  }
-  if (!(await step("validate v8 material parity bundle", process.execPath, [resolve(root, "packages/cli/dist/index.js"), "validate", "--project", projectPath, "--json"], { timeoutMs: 120000 }))) {
     return writeReport({ artifactDir, bundlePath, ok: false, reportPath, steps });
   }
   if (!(await step("shared conformance", "pnpm", ["verify:conformance"], { timeoutMs: 300000 }))) {

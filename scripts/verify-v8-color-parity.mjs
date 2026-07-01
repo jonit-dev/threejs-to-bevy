@@ -16,10 +16,8 @@ export async function verifyV8ColorParity(options = {}) {
   const colorArtifactDir = options.artifactDir ?? colorTargets.absoluteDir;
   const lightingArtifactDir = options.lightingArtifactDir ?? lightingTargets.absoluteDir;
   const reportPath = options.reportPath ?? resolve(colorArtifactDir, "verification-report.json");
-  const colorProjectPath = resolve(root, "examples/v8-color-parity");
-  const lightingProjectPath = resolve(root, "examples/v8-lighting-tone");
-  const colorBundlePath = resolve(colorProjectPath, "dist/v8-color-parity.bundle");
-  const lightingBundlePath = resolve(lightingProjectPath, "dist/v8-lighting-tone.bundle");
+  const colorBundlePath = resolve(root, "packages/ir/fixtures/conformance/color-parity/game.bundle");
+  const lightingBundlePath = resolve(root, "packages/ir/fixtures/conformance/lighting-tone/game.bundle");
   const steps = [];
   let colorVisual;
   let lightingVisual;
@@ -33,16 +31,10 @@ export async function verifyV8ColorParity(options = {}) {
   if (!(await step("build cli", "pnpm", ["--filter", "@threenative/cli", "build"], { timeoutMs: 120000 }))) {
     return writeReport({ artifactDir: colorArtifactDir, bundlePath: colorBundlePath, lightingArtifactDir, lightingBundlePath, ok: false, reportPath, steps });
   }
-  if (!(await step("build v8 color parity example", process.execPath, [resolve(root, "packages/cli/dist/index.js"), "build", "--project", colorProjectPath, "--json"], { timeoutMs: 120000 }))) {
+  if (!(await step("validate color parity fixture bundle", process.execPath, [resolve(root, "packages/cli/dist/index.js"), "validate", "--bundle", colorBundlePath, "--json"], { timeoutMs: 120000 }))) {
     return writeReport({ artifactDir: colorArtifactDir, bundlePath: colorBundlePath, lightingArtifactDir, lightingBundlePath, ok: false, reportPath, steps });
   }
-  if (!(await step("validate v8 color parity bundle", process.execPath, [resolve(root, "packages/cli/dist/index.js"), "validate", "--project", colorProjectPath, "--json"], { timeoutMs: 120000 }))) {
-    return writeReport({ artifactDir: colorArtifactDir, bundlePath: colorBundlePath, lightingArtifactDir, lightingBundlePath, ok: false, reportPath, steps });
-  }
-  if (!(await step("build v8 lighting tone example", process.execPath, [resolve(root, "packages/cli/dist/index.js"), "build", "--project", lightingProjectPath, "--json"], { timeoutMs: 120000 }))) {
-    return writeReport({ artifactDir: colorArtifactDir, bundlePath: colorBundlePath, lightingArtifactDir, lightingBundlePath, ok: false, reportPath, steps });
-  }
-  if (!(await step("validate v8 lighting tone bundle", process.execPath, [resolve(root, "packages/cli/dist/index.js"), "validate", "--project", lightingProjectPath, "--json"], { timeoutMs: 120000 }))) {
+  if (!(await step("validate lighting tone fixture bundle", process.execPath, [resolve(root, "packages/cli/dist/index.js"), "validate", "--bundle", lightingBundlePath, "--json"], { timeoutMs: 120000 }))) {
     return writeReport({ artifactDir: colorArtifactDir, bundlePath: colorBundlePath, lightingArtifactDir, lightingBundlePath, ok: false, reportPath, steps });
   }
 

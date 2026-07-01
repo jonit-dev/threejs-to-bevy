@@ -1,1 +1,41 @@
-{ "schema": "threenative.materials", "version": "0.1.0", "materials": [] }
+{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "materials": [
+    {
+      "id": "mat.floor",
+      "kind": "standard",
+      "color": "#4b5563",
+      "metalness": 0,
+      "roughness": 0.9
+    },
+    {
+      "id": "mat.crate",
+      "kind": "standard",
+      "color": "#b7791f",
+      "metalness": 0,
+      "roughness": 0.75
+    },
+    {
+      "id": "mat.player",
+      "kind": "standard",
+      "color": "#2f80ed",
+      "metalness": 0,
+      "roughness": 0.65
+    },
+    {
+      "id": "mat.sensor",
+      "kind": "standard",
+      "color": "#7c3aed",
+      "metalness": 0,
+      "roughness": 0.8
+    },
+    {
+      "id": "mat.sphere",
+      "kind": "standard",
+      "color": "#10b981",
+      "metalness": 0,
+      "roughness": 0.55
+    }
+  ]
+}

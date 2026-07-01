@@ -1,0 +1,87 @@
+{
+  "schema": "threenative.assets",
+  "version": "0.1.0",
+  "id": "stylized-nature-assets",
+  "assets": [
+    {
+      "id": "tex.stylized-scene.sky",
+      "path": "assets/skybox/sky_88_2k.png",
+      "type": "texture"
+    },
+    {
+      "id": "tex.stylized-scene.grass.color",
+      "path": "assets/grass_texture/grass_05_basecolor_1k.webp",
+      "type": "texture"
+    },
+    {
+      "id": "tex.stylized-scene.grass.normal",
+      "path": "assets/grass_texture/grass_05_normal_gl_1k.webp",
+      "type": "texture"
+    },
+    {
+      "id": "tex.stylized-scene.grass.roughness",
+      "path": "assets/grass_texture/grass_05_roughness_1k.webp",
+      "type": "texture"
+    },
+    {
+      "id": "tex.stylized-scene.dirt.color",
+      "path": "assets/ground_texture/ground_07_4k/ground_07__basecolor_1k.webp",
+      "type": "texture"
+    },
+    {
+      "id": "tex.stylized-scene.dirt.normal",
+      "path": "assets/ground_texture/ground_07_4k/ground_07__normal_gl_1k.webp",
+      "type": "texture"
+    },
+    {
+      "id": "tex.stylized-scene.dirt.roughness",
+      "path": "assets/ground_texture/ground_07_4k/ground_07__roughness_1k.webp",
+      "type": "texture"
+    },
+    {
+      "id": "tex.stylized-scene.dirt.ao",
+      "path": "assets/ground_texture/ground_07_4k/ground_07__ambientocclusion_1k.webp",
+      "type": "texture"
+    },
+    {
+      "id": "tex.stylized-scene.dirt.height",
+      "path": "assets/ground_texture/ground_07_4k/ground_07__height_1k.webp",
+      "type": "texture"
+    },
+    {
+      "id": "tex.stylized-scene.dirt.metallic",
+      "path": "assets/ground_texture/ground_07_4k/ground_07__metallic_1k.webp",
+      "type": "texture"
+    },
+    {
+      "id": "tex.stylized-scene.path.mask",
+      "path": "assets/path.webp",
+      "type": "texture"
+    },
+    {
+      "id": "tex.stylized-scene.noise",
+      "path": "assets/perlin.webp",
+      "type": "texture"
+    },
+    {
+      "id": "model.stylized-scene.grass.blades",
+      "path": "assets/grass-blades-up.glb",
+      "type": "model"
+    },
+    {
+      "id": "model.stylized-scene.tree.leaves",
+      "path": "assets/tree-leaves-mesh.glb",
+      "type": "model"
+    },
+    {
+      "id": "model.stylized-scene.tree.trunk",
+      "path": "assets/tree-tronk-transformed.glb",
+      "type": "model"
+    },
+    {
+      "id": "tex.stylized-scene.tree.leaves.alpha",
+      "path": "assets/leaves-alpha-map.png",
+      "type": "texture"
+    }
+  ]
+}

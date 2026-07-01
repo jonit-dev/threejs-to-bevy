@@ -7,7 +7,6 @@ import {
   formatTemplateUsage,
   resolveTemplate,
   resolveTemplateSourcePath,
-  templateDeprecationMessage,
   templatesRootFromModule,
 } from "../templates/registry.js";
 
@@ -55,7 +54,7 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
     );
   }
 
-  const { definition, legacyAliasUsed } = resolvedTemplate;
+  const { definition } = resolvedTemplate;
   const cwd = options.cwd ?? process.env.INIT_CWD ?? process.cwd();
   const projectPath = isAbsolute(destinationArg) ? destinationArg : resolve(cwd, destinationArg);
 
@@ -96,8 +95,6 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
   const payload = {
     code: "TN_CREATE_OK",
     command: commandName,
-    legacyAliasUsed,
-    legacyTemplate: legacyAliasUsed ? requestedTemplate : undefined,
     message: `Created ${definition.canonical} project at '${projectPath}'.`,
     nextCommands: ["pnpm install", "pnpm run validate", "pnpm run build", "pnpm run dev:web", "pnpm run verify"],
     path: projectPath,
@@ -117,13 +114,9 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
     };
   }
 
-  const deprecation = legacyAliasUsed && requestedTemplate
-    ? `${templateDeprecationMessage(requestedTemplate, definition.canonical)}\n`
-    : "";
-
   return {
     exitCode: 0,
-    stdout: `${deprecation}${payload.message}\nNext commands:\n  cd ${projectPath}\n  pnpm install\n  pnpm run validate\n  pnpm run build\n  pnpm run dev:web\n  pnpm run verify\nDocs: tn help scaffold, tn help visual-qa\n`,
+    stdout: `${payload.message}\nNext commands:\n  cd ${projectPath}\n  pnpm install\n  pnpm run validate\n  pnpm run build\n  pnpm run dev:web\n  pnpm run verify\nDocs: tn help scaffold, tn help visual-qa\n`,
   };
 }
 
@@ -244,7 +237,7 @@ async function writeLocalCliWrapperPackage(projectPath: string): Promise<void> {
 
 async function isSourceCheckout(): Promise<boolean> {
   try {
-    await access(resolve(sourceTemplatesRoot, "v1", "package.json"));
+    await access(resolve(sourceTemplatesRoot, "structured-source-starter", "package.json"));
     await access(resolve(repoRoot, "packages", "cli", "package.json"));
     return true;
   } catch {
@@ -255,7 +248,6 @@ async function isSourceCheckout(): Promise<boolean> {
 export {
   formatTemplateUsage,
   listCanonicalTemplates,
-  listLegacyTemplateAliases,
   resolveTemplate,
   TEMPLATE_REGISTRY,
 } from "../templates/registry.js";

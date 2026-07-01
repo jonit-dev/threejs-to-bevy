@@ -21,7 +21,11 @@ test("verify parity smoke records single-scene visual step", async () => {
         stdout: "",
       }),
       visualVerifierModule: {
-        PARITY_SMOKE_CHECKPOINT: { id: "parity-smoke", bundleRelativePath: "examples/parity-smoke/dist/parity-smoke.bundle" },
+        PARITY_SMOKE_CHECKPOINT: {
+          id: "structured-stylized-nature-smoke",
+          bundleRelativePath: "examples/stylized-nature-component/dist/stylized-nature-component.bundle",
+          projectRelativePath: "examples/stylized-nature-component",
+        },
         verifyBaselineVisualCheckpoint: async () => ({
           artifacts: {},
           checkpoint: { id: "parity-smoke" },
@@ -55,7 +59,11 @@ test("verify parity smoke fails when visual capture fails", async () => {
         stdout: "",
       }),
       visualVerifierModule: {
-        PARITY_SMOKE_CHECKPOINT: { id: "parity-smoke", bundleRelativePath: "examples/parity-smoke/dist/parity-smoke.bundle" },
+        PARITY_SMOKE_CHECKPOINT: {
+          id: "structured-stylized-nature-smoke",
+          bundleRelativePath: "examples/stylized-nature-component/dist/stylized-nature-component.bundle",
+          projectRelativePath: "examples/stylized-nature-component",
+        },
         verifyBaselineVisualCheckpoint: async () => ({
           artifacts: {},
           checkpoint: { id: "parity-smoke" },

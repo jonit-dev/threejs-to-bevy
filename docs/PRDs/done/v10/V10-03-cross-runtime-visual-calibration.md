@@ -75,14 +75,14 @@ human-identical output without measurable evidence.
 
 **How will this feature be reached?**
 
-- [x] Entry point identified: calibration fixtures/examples,
+- [x] Entry point identified: calibration fixtures,
   `pnpm verify:v10:visual-calibration`, future `pnpm verify:v10`, screenshot
   capture helpers, conformance reports, and docs/status/parity gates.
 - [x] Caller file identified: root `package.json`, future
   `scripts/verify-v10-visual-calibration.mjs`, visual analysis helpers, web
-  preview capture, Bevy screenshot capture, examples under
-  `examples/v10-visual-calibration-*`, and report writers.
-- [x] Registration/wiring needed: package scripts, fixtures/examples, artifact
+  preview capture, Bevy screenshot capture, shared conformance bundles, and
+  report writers.
+- [x] Registration/wiring needed: package scripts, fixtures, artifact
   manifest, calibrated threshold config, per-factor region definitions,
   combined-scene contact sheets, docs updates, and aggregate V10 gate wiring.
 
@@ -233,9 +233,9 @@ sequenceDiagram
 
 **Files (max 5):**
 
-- `examples/v10-visual-calibration-color/` - fixture for color management,
+- `packages/ir/fixtures/conformance/color-parity/game.bundle` - fixture for color management,
   camera framing, backgrounds, alpha, and unlit swatches.
-- `examples/v10-visual-calibration-materials/` - fixture for PBR factors,
+- `packages/ir/fixtures/conformance/rendering-residuals/game.bundle` - fixture for PBR factors,
   textures, UV transforms, vertex colors, and generated UV channels.
 - `scripts/visual-calibration/analyze.mjs` - region, histogram, luminance,
   edge, and alpha analysis helpers.
@@ -287,13 +287,13 @@ inspection after Phase 2.
 
 **Files (max 5):**
 
-- `examples/v10-visual-calibration-lighting/` - fixture for ambient,
+- `packages/ir/fixtures/conformance/rendering-lights/game.bundle` - fixture for ambient,
   directional, point, spot, range, falloff, shadows, probes, and environment
   contribution.
-- `examples/v10-visual-calibration-atmosphere/` - fixture for fog, sky,
+- `packages/ir/fixtures/conformance/rendering-lights/game.bundle` - fixture for fog, sky,
   skybox, exposure, color grading, and report-only atmospheric/volumetric
   requests.
-- `examples/v10-visual-calibration-post/` - fixture for bloom, MSAA, future AA,
+- `packages/ir/fixtures/conformance/v5-drift-surface/game.bundle` - fixture for bloom, MSAA, future AA,
   DOF, decals, and report-only advanced post effects.
 - `scripts/visual-calibration/analyze.mjs` - lighting/post-specific sample
   metrics.
@@ -346,9 +346,9 @@ inspection after Phase 3.
 
 **Files (max 5):**
 
-- `examples/v10-visual-calibration-geometry/` - fixture for primitives,
+- `packages/ir/fixtures/conformance/procedural-mesh/game.bundle` - fixture for primitives,
   generated meshes, normals, UVs, glTF instances, and bounds.
-- `examples/v10-visual-calibration-dense/` - fixture for repeated instances,
+- `packages/ir/fixtures/conformance/renderer-dense-content/game.bundle` - fixture for repeated instances,
   visibility ranges, HLOD fades, and instancing/batching observations.
 - `scripts/visual-calibration/analyze.mjs` - geometry edge, normal, UV, and
   dense-scene metrics.
@@ -399,7 +399,7 @@ inspection after Phase 4.
 
 **Files (max 5):**
 
-- `examples/v10-visual-calibration-scene/` - combined calibration scene using
+- `packages/ir/fixtures/conformance/rendering-lights/game.bundle` - combined calibration scene using
   representative promoted factors together.
 - `scripts/verify-v10-visual-calibration.mjs` - run combined-scene capture and
   aggregate report.

@@ -272,8 +272,8 @@ test("should pass matching gate commands and save report path", async () => {
     assert.equal(result.artifacts.sceneLifecycleDiffPath.endsWith("packages/ir/artifacts/conformance/scene-lifecycle/scene-lifecycle-diff.json"), true);
     assert.equal(result.artifacts.sceneLifecycleNativeTracePath.endsWith("packages/ir/artifacts/conformance/scene-lifecycle/native-scene-lifecycle.json"), true);
     assert.equal(result.artifacts.sceneLifecycleWebTracePath.endsWith("packages/ir/artifacts/conformance/scene-lifecycle/web-scene-lifecycle.json"), true);
-    assert.equal(result.artifacts.v9AssetsGltfReportPath.endsWith("examples/assets-gltf-scene-workflow/artifacts/assets-gltf-scene-workflow/diff.json"), true);
-    assert.equal(result.artifacts.v9RenderingLightsReportPath.endsWith("examples/rendering-lights/artifacts/rendering-lights/verification-report.json"), true);
+    assert.equal(result.artifacts.v9AssetsGltfReportPath.endsWith("tools/verify/artifacts/assets-gltf-scene-workflow/diff.json"), true);
+    assert.equal(result.artifacts.v9RenderingLightsReportPath.endsWith("tools/verify/artifacts/rendering-lights/verification-report.json"), true);
     assert.equal(result.artifacts.nativeV9SupportStressReportPath.endsWith("packages/ir/artifacts/conformance/support-stress/bevy.report.json"), true);
     const report = JSON.parse(await readFile(result.reportPath, "utf8"));
     assert.equal(report.status, "pass");
@@ -389,8 +389,8 @@ test("should pass matching gate commands and save report path", async () => {
     assert.equal(report.artifacts.sceneLifecycleDiffPath.endsWith("packages/ir/artifacts/conformance/scene-lifecycle/scene-lifecycle-diff.json"), true);
     assert.equal(report.artifacts.sceneLifecycleNativeTracePath.endsWith("packages/ir/artifacts/conformance/scene-lifecycle/native-scene-lifecycle.json"), true);
     assert.equal(report.artifacts.sceneLifecycleWebTracePath.endsWith("packages/ir/artifacts/conformance/scene-lifecycle/web-scene-lifecycle.json"), true);
-    assert.equal(report.artifacts.v9AssetsGltfReportPath.endsWith("examples/assets-gltf-scene-workflow/artifacts/assets-gltf-scene-workflow/diff.json"), true);
-    assert.equal(report.artifacts.v9RenderingLightsReportPath.endsWith("examples/rendering-lights/artifacts/rendering-lights/verification-report.json"), true);
+    assert.equal(report.artifacts.v9AssetsGltfReportPath.endsWith("tools/verify/artifacts/assets-gltf-scene-workflow/diff.json"), true);
+    assert.equal(report.artifacts.v9RenderingLightsReportPath.endsWith("tools/verify/artifacts/rendering-lights/verification-report.json"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

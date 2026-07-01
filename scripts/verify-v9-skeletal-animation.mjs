@@ -16,8 +16,7 @@ export async function verifySkeletalAnimation(options = {}) {
 
   const artifactDir = options.artifactDir ?? targets.absoluteDir;
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
-  const projectPath = resolve(root, "examples/v9-skeletal-animation");
-  const bundlePath = resolve(projectPath, "dist/v9-skeletal-animation.bundle");
+  const bundlePath = resolve(root, "packages/ir/fixtures/conformance/animation-blending/game.bundle");
   const steps = [];
 
   async function step(name, command, args, commandOptions = {}) {
@@ -29,10 +28,7 @@ export async function verifySkeletalAnimation(options = {}) {
   if (!(await step("build cli", "pnpm", ["--filter", "@threenative/cli", "build"], { timeoutMs: 120000 }))) {
     return writeReport({ artifactDir, bundlePath, ok: false, reportPath, steps });
   }
-  if (!(await step("build v9 skeletal animation example", process.execPath, [resolve(root, "packages/cli/dist/index.js"), "build", "--project", projectPath, "--json"], { timeoutMs: 120000 }))) {
-    return writeReport({ artifactDir, bundlePath, ok: false, reportPath, steps });
-  }
-  if (!(await step("validate v9 skeletal animation bundle", process.execPath, [resolve(root, "packages/cli/dist/index.js"), "validate", "--project", projectPath, "--json"], { timeoutMs: 120000 }))) {
+  if (!(await step("validate animation blending fixture bundle", process.execPath, [resolve(root, "packages/cli/dist/index.js"), "validate", "--bundle", bundlePath, "--json"], { timeoutMs: 120000 }))) {
     return writeReport({ artifactDir, bundlePath, ok: false, reportPath, steps });
   }
 

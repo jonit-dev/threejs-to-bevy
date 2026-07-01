@@ -7,6 +7,7 @@
     "input": ["axes"],
     "navigation": ["path", "static-regions"],
     "physics": ["collider.box", "collider.sphere", "contact-filtering", "interaction-volumes", "primitive-solver-v2", "rigid-body.dynamic", "rigid-body.kinematic", "rigid-body.static", "sensors"],
+    "rendering": ["camera.perspective", "light.directional", "material.standard", "mesh.generated"],
     "scripting": ["service.character.move", "service.navigation.path", "service.physics.sensor"]
   },
   "entry": {

@@ -21,7 +21,7 @@ test("verify baseline visual parity records checkpoint evidence step", async () 
         stdout: "",
       }),
       visualVerifierModule: {
-        BASELINE_VISUAL_CHECKPOINTS: [{ projectRelativePath: "examples/v1-canonical" }],
+        BASELINE_VISUAL_CHECKPOINTS: [{ projectRelativePath: "examples/stylized-nature-component" }],
         verifyBaselineVisualParity: async ({ artifactDir: outputDir }) => ({
           artifacts: { artifactDir: outputDir, reportPath: join(outputDir, "baseline-visual-parity-report.json") },
           checkpoints: [],
@@ -57,7 +57,7 @@ test("verify baseline visual parity skips setup when requested", async () => {
         stdout: "",
       }),
       visualVerifierModule: {
-        BASELINE_VISUAL_CHECKPOINTS: [{ projectRelativePath: "examples/v1-canonical" }],
+        BASELINE_VISUAL_CHECKPOINTS: [{ projectRelativePath: "examples/stylized-nature-component" }],
         verifyBaselineVisualParity: async ({ artifactDir: outputDir }) => ({
           artifacts: { artifactDir: outputDir, reportPath: join(outputDir, "baseline-visual-parity-report.json") },
           checkpoints: [],
@@ -90,7 +90,7 @@ test("verify baseline visual parity fails when checkpoint evidence fails", async
         stdout: "",
       }),
       visualVerifierModule: {
-        BASELINE_VISUAL_CHECKPOINTS: [{ projectRelativePath: "examples/v1-canonical" }],
+        BASELINE_VISUAL_CHECKPOINTS: [{ projectRelativePath: "examples/stylized-nature-component" }],
         verifyBaselineVisualParity: async ({ artifactDir: outputDir }) => ({
           artifacts: { artifactDir: outputDir, reportPath: join(outputDir, "baseline-visual-parity-report.json") },
           checkpoints: [],

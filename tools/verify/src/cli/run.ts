@@ -264,9 +264,9 @@ export const FOCUSED_GATES: Record<string, FocusedGate> = {
     ],
     description: "V9 asset GLTF scene workflow gate.",
     metadata: {
-      owner: "examples/assets-gltf-scene-workflow verifier",
+      owner: "tools/verify assets-gltf-scene-workflow gate",
       profile: "focused",
-      reason: "Builds and validates a full asset workflow from example source through bundle and runtime evidence.",
+      reason: "Validates the asset workflow through fixture data and aggregate runtime evidence.",
       protects: "glTF asset manifest behavior, scene workflow artifacts, and runtime asset parity.",
     },
   },
@@ -279,9 +279,9 @@ export const FOCUSED_GATES: Record<string, FocusedGate> = {
     ],
     description: "V9 rendering lights gate.",
     metadata: {
-      owner: "examples/rendering-lights verifier",
+      owner: "tools/verify rendering-lights gate",
       profile: "focused",
-      reason: "Uses rendered example evidence for lighting behavior that depends on runtime adapters and screenshots.",
+      reason: "Uses rendered fixture evidence for lighting behavior that depends on runtime adapters and screenshots.",
       protects: "Lighting parity, rendered fixture artifacts, and release-required visual evidence.",
     },
   },

@@ -1,0 +1,180 @@
+{
+  "entities": [
+    {
+      "components": {
+        "Camera": {
+          "far": 20,
+          "kind": "orthographic",
+          "near": 0.1,
+          "priority": 0,
+          "size": 5.2
+        },
+        "Transform": {
+          "position": [
+            0,
+            0.15,
+            6
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "id": "camera.lighting"
+    },
+    {
+      "components": {
+        "Light": {
+          "color": "#ffffff",
+          "intensity": 0.55,
+          "kind": "ambient"
+        },
+        "Transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "id": "light.ambient"
+    },
+    {
+      "components": {
+        "Light": {
+          "color": "#fff4e8",
+          "intensity": 1.2,
+          "kind": "directional"
+        },
+        "Transform": {
+          "position": [
+            2.5,
+            4.5,
+            3.5
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "id": "light.key"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.sphere.blue",
+          "mesh": "mesh.sphere.blue"
+        },
+        "Transform": {
+          "position": [
+            1.6,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "id": "sphere.blue"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.sphere.gray",
+          "mesh": "mesh.sphere.gray"
+        },
+        "Transform": {
+          "position": [
+            -1.6,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "id": "sphere.gray"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.sphere.orange",
+          "mesh": "mesh.sphere.orange"
+        },
+        "Transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "id": "sphere.orange"
+    }
+  ],
+  "events": {},
+  "prefabs": [],
+  "resources": {
+    "ActiveCamera": {
+      "entity": "camera.lighting"
+    }
+  },
+  "schema": "threenative.world",
+  "version": "0.1.0"
+}

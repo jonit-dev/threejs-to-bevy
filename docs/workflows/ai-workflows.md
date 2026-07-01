@@ -63,7 +63,7 @@ For a fresh project, prefer the scaffold/doctor/help loop before generating
 custom gameplay code:
 
 ```bash
-tn init my-game --template game-starter --json
+tn init my-game --template structured-source-starter --json
 cd my-game
 pnpm install
 pnpm run validate
@@ -212,7 +212,7 @@ Example shape:
 {
   "code": "TN_MATERIAL_UNSUPPORTED_PARAM",
   "severity": "error",
-  "file": "src/game.ts",
+  "file": "src/scripts/materials.ts",
   "range": { "line": 12, "column": 5 },
   "irPath": "/entities/3/components/Material",
   "target": "android",

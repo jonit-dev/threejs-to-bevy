@@ -20,7 +20,7 @@ export const HELP_TOPICS: Record<string, HelpTopic> = {
       "pnpm run validate && pnpm run build && pnpm run dev:web",
     ],
     docs: ["docs/workflows/developer-workflow.md", "docs/workflows/ai-workflows.md"],
-    examples: ["tn init kart-racer --template game-starter --json"],
+    examples: ["tn init arena-prototype --template structured-source-starter --json"],
     summary: "Create a new ThreeNative project and run the first validation/build loop.",
     title: "Scaffold a first project",
   },
@@ -123,10 +123,10 @@ export const HELP_TOPICS: Record<string, HelpTopic> = {
   },
   examples: {
     aliases: ["templates", "gallery"],
-    commands: ["tn create kart-racer --template racing-kart --json", "tn create prototype --template game-starter --json", "tn help scaffold"],
-    docs: ["docs/workflows/developer-workflow.md", "templates/racing-kart/README.md"],
-    examples: ["racing-kart: player kart, visible rivals, curved track, HUD, chase camera, and scale calibration fixture.", "game-starter: minimal modular scene with ECS and scripts.", "structured-source-starter: JSON source documents for editor/agent workflows."],
-    summary: "Choose a template or gallery starter with known visual proof expectations.",
+    commands: ["tn create prototype --template structured-source-starter --json", "tn help scaffold"],
+    docs: ["docs/workflows/developer-workflow.md", "templates/structured-source-starter/README.md"],
+    examples: ["structured-source-starter: JSON source documents under content/** with behavior modules under src/scripts/**."],
+    summary: "Choose the structured-source starter for CLI and editor-friendly authoring.",
     title: "Templates and examples",
   },
 };

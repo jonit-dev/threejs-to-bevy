@@ -9,12 +9,12 @@ const root = resolve("/repo");
 test("should resolve example artifact paths under examples when owner is example", () => {
   const targets = resolveArtifactTargets({
     gate: "rendering-lights",
-    owner: { kind: "example", exampleName: "rendering-lights" },
+    owner: { kind: "example", exampleName: "sample-scene" },
     root,
   });
 
-  assert.equal(targets.relativeReportPath, "examples/rendering-lights/artifacts/rendering-lights/verification-report.json");
-  assert.equal(targets.reportPath, resolve(root, "examples/rendering-lights/artifacts/rendering-lights/verification-report.json"));
+  assert.equal(targets.relativeReportPath, "examples/sample-scene/artifacts/rendering-lights/verification-report.json");
+  assert.equal(targets.reportPath, resolve(root, "examples/sample-scene/artifacts/rendering-lights/verification-report.json"));
 });
 
 test("should resolve aggregate artifact paths under verify tools when owner is aggregate", () => {
@@ -30,19 +30,19 @@ test("should resolve aggregate artifact paths under verify tools when owner is a
 
 test("should include repo-relative canonical paths in metadata", () => {
   const targets = resolveArtifactTargets({
-    gate: "camera-views",
-    legacyDirs: [resolve(root, "examples/v8-camera-views/artifacts/camera-views")],
+    gate: "sample-gate",
+    legacyDirs: [resolve(root, "examples/sample-scene/artifacts/sample-gate")],
     linkedArtifacts: {
-      report: resolve(root, "examples/v8-camera-views/artifacts/camera-views/report.json"),
+      report: resolve(root, "examples/sample-scene/artifacts/sample-gate/report.json"),
     },
-    owner: { kind: "example", exampleName: "v8-camera-views" },
+    owner: { kind: "example", exampleName: "sample-scene" },
     root,
   });
 
-  assert.equal(targets.metadata.canonicalArtifactDir, "examples/v8-camera-views/artifacts/camera-views");
-  assert.deepEqual(targets.metadata.legacyArtifactDirs, ["examples/v8-camera-views/artifacts/camera-views"]);
+  assert.equal(targets.metadata.canonicalArtifactDir, "examples/sample-scene/artifacts/sample-gate");
+  assert.deepEqual(targets.metadata.legacyArtifactDirs, ["examples/sample-scene/artifacts/sample-gate"]);
   assert.deepEqual(targets.metadata.linkedArtifacts, {
-    report: "examples/v8-camera-views/artifacts/camera-views/report.json",
+    report: "examples/sample-scene/artifacts/sample-gate/report.json",
   });
   assert.equal(targets.metadata.canonicalArtifactDir.includes(root), false);
 });

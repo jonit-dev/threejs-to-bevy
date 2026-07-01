@@ -6,9 +6,9 @@ Run the focused V8 procedural mesh gate from the repo root:
 node scripts/verify-v8-procedural-mesh.mjs --json
 ```
 
-The script builds the CLI, builds `examples/v8-procedural-mesh`, validates the
-emitted bundle, captures the same active-camera view in the web Three.js
-runtime and native Bevy runtime, and compares the images.
+The script builds the CLI, uses the shared procedural mesh conformance fixture,
+captures the same active-camera view in the web Three.js runtime and native
+Bevy runtime, and compares the images.
 
 Artifacts are written to:
 

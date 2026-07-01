@@ -21,7 +21,7 @@ export async function verifyV9AssetsGltfSceneWorkflow(options = {}) {
   const root = options.repoRoot ?? repoRoot;
   const targets = resolveArtifactTargets({
     gate: "assets-gltf-scene-workflow",
-    owner: { kind: "example", exampleName: "assets-gltf-scene-workflow" },
+    owner: { kind: "aggregate", name: "assets-gltf-scene-workflow" },
     root,
   });
   const artifactDir = options.artifactDir ?? targets.absoluteDir;

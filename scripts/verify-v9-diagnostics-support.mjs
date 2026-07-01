@@ -60,7 +60,7 @@ async function writeDiagnosticsArtifacts(artifactDir) {
     primitives: [{ id: "line.forward", kind: "line", value: { from: [0, 0, 0], to: [1, 0, 0] } }],
     rows: [
       { category: "performance", label: "FPS", severity: "info", value: "60" },
-      { category: "gameplay", label: "Enemies", severity: "warning", sourcePath: "src/game.ts:12", value: "4" },
+      { category: "gameplay", label: "Enemies", severity: "warning", sourcePath: "src/scripts/gameplay.ts:12", value: "4" },
     ],
   }, null, 2)}\n`);
   await writeFile(resolve(artifactDir, "native-debug-overlay.json"), `${JSON.stringify({

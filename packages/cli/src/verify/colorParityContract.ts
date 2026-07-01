@@ -1,5 +1,5 @@
 import { COLOR_PARITY_SWATCHES, COLOR_PARITY_THRESHOLDS } from "./colorParitySwatches.js";
-import { LIGHTING_TONE_FRAME_THRESHOLDS, LIGHTING_TONE_THRESHOLDS } from "./lightingToneSamples.js";
+import { LIGHTING_TONE_FRAME_THRESHOLDS, LIGHTING_TONE_SAMPLES, LIGHTING_TONE_THRESHOLDS } from "./lightingToneSamples.js";
 
 export interface IColorParityContractDiagnostic {
   code: string;
@@ -32,43 +32,6 @@ export const LOCKED_LIGHTING_TONE_SAMPLE_THRESHOLDS = {
   p95ChannelDelta: 0.12,
 } as const;
 
-export function validateColorParityExampleSource(source: string): IColorParityContractDiagnostic[] {
-  const diagnostics: IColorParityContractDiagnostic[] = [];
-  if (!source.includes("emissiveIntensity: 1")) {
-    diagnostics.push({
-      code: "TN_COLOR_PARITY_EXAMPLE_EMISSIVE_INTENSITY",
-      message: "v8-color-parity example must keep emissiveIntensity at 1 for unlit swatch display.",
-    });
-  }
-  if (!source.includes("metalness: 0")) {
-    diagnostics.push({
-      code: "TN_COLOR_PARITY_EXAMPLE_METALNESS",
-      message: "v8-color-parity example must keep metalness at 0 for unlit swatch display.",
-    });
-  }
-  if (!source.includes("roughness: 1")) {
-    diagnostics.push({
-      code: "TN_COLOR_PARITY_EXAMPLE_ROUGHNESS",
-      message: "v8-color-parity example must keep roughness at 1 for unlit swatch display.",
-    });
-  }
-  for (const swatch of COLOR_PARITY_SWATCHES) {
-    if (!source.includes(swatch.hex)) {
-      diagnostics.push({
-        code: "TN_COLOR_PARITY_EXAMPLE_SWATCH_COLOR_MISSING",
-        message: `v8-color-parity example is missing authored swatch color '${swatch.hex}' for '${swatch.id}'.`,
-      });
-    }
-  }
-  if (!source.includes('id: "camera.color"')) {
-    diagnostics.push({
-      code: "TN_COLOR_PARITY_EXAMPLE_CAMERA_ID",
-      message: 'v8-color-parity example must keep active camera id "camera.color" for screenshot capture.',
-    });
-  }
-  return diagnostics;
-}
-
 export function validateColorParityThresholdsLocked(): IColorParityContractDiagnostic[] {
   return [
     ...thresholdLockDiagnostics("COLOR_PARITY", COLOR_PARITY_THRESHOLDS, LOCKED_COLOR_PARITY_THRESHOLDS),
@@ -97,6 +60,26 @@ export function validateColorParitySwatchRegions(): IColorParityContractDiagnost
       diagnostics.push({
         code: "TN_COLOR_PARITY_SWATCH_REGION",
         message: `Swatch '${swatch.id}' region must stay inside the normalized frame.`,
+      });
+    }
+  }
+  return diagnostics;
+}
+
+export function validateLightingToneSampleRegions(): IColorParityContractDiagnostic[] {
+  const diagnostics: IColorParityContractDiagnostic[] = [];
+  if (LIGHTING_TONE_SAMPLES.length !== 3) {
+    diagnostics.push({
+      code: "TN_LIGHTING_TONE_SAMPLE_COUNT",
+      message: `Expected 3 lighting tone samples, found ${LIGHTING_TONE_SAMPLES.length}.`,
+    });
+  }
+  for (const sample of LIGHTING_TONE_SAMPLES) {
+    const { height, width, x, y } = sample.region;
+    if (x < 0 || y < 0 || width <= 0 || height <= 0 || x + width > 1 || y + height > 1) {
+      diagnostics.push({
+        code: "TN_LIGHTING_TONE_SAMPLE_REGION",
+        message: `Lighting tone sample '${sample.id}' region must stay inside the normalized frame.`,
       });
     }
   }

@@ -15,7 +15,7 @@ const requiredIndexPhrases = [
 ];
 
 const requiredPrdPhrases = [
-  ["examples/v9-support", "V9-06 PRD must name the support example."],
+  ["packages/ir/fixtures/conformance/support-stress/game.bundle", "V9-06 PRD must name the support stress fixture."],
   ["tools/verify/artifacts/audio-support/", "V9-06 PRD must name audio support artifact path."],
   ["tools/verify/artifacts/local-data-support/", "V9-06 PRD must name local-data support artifact path."],
   ["tools/verify/artifacts/diagnostics-support/", "V9-06 PRD must name diagnostics support artifact path."],

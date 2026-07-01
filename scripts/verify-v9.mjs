@@ -32,12 +32,12 @@ export const V9_FOCUSED_GATES = [
   },
   {
     name: "verify v9 assets gltf scene workflow",
-    reportPath: "examples/assets-gltf-scene-workflow/artifacts/assets-gltf-scene-workflow/diff.json",
+    reportPath: "tools/verify/artifacts/assets-gltf-scene-workflow/diff.json",
     script: "verify:v9:assets-gltf-scene-workflow",
   },
   {
     name: "verify v9 rendering lights",
-    reportPath: "examples/rendering-lights/artifacts/rendering-lights/verification-report.json",
+    reportPath: "tools/verify/artifacts/rendering-lights/verification-report.json",
     script: "verify:v9:rendering-lights",
   },
   {

@@ -489,27 +489,14 @@ source ownership. Custom/generated mesh asset source remains later work because
 the current IR mesh asset contract is not a path-backed catalog entry.
 Existing one-file `Scene`, `World`, and `defineGame` authoring remains supported; modular declarations are optional authoring/provenance helpers.
 
-The `starter-functional` template has started its modular migration. Its
-`src/game.ts` is now only a composition root; scene assembly, visual entities,
-ECS/resource declarations, input, UI, audio, assets, and script behavior live in
-focused modules. The template systems use source module references that emit
-`scripts.manifest.json` provenance while preserving the normal build path.
-The `v4-scripting` template now uses the same source module reference path for
-portable behavior: `src/game.ts` owns declarations, `src/scripts/systems.ts`
-owns exported system bodies, and generated bundles carry script manifest
-provenance for each referenced system.
-The `v5-game-starter` template has moved to the modular declaration path as a
-small `defineGame()` composition root with focused scene, ECS/entity, input,
-visual, and script modules. Its movement system is now referenced from
-`src/scripts/player.ts`, so template builds emit `scripts.manifest.json`
-provenance instead of teaching inline callback scripts.
-`tn create`/`tn init` now preserve that modular shape in generated projects.
+`tn create`/`tn init` now scaffold only `structured-source-starter`. Fresh
+projects start from `content/**/*.json` structured source documents with
+behavior modules under `src/scripts/**/*.ts`; legacy `src/game.ts` templates
+have been removed from the template registry and wiped from `templates/`.
 Source-checkout scaffolds install through a generated local `.threenative/cli`
 wrapper package instead of depending directly on the workspace CLI package, so
 fresh projects outside the repo can run `pnpm install`, `pnpm run build`,
-`pnpm run validate`, and `pnpm run verify`. A fresh `game-starter` scaffold was
-verified with web screenshots at `/tmp/tn-modular-template-proof-pHNDma/modular-proof/artifacts/verify/frame-01.png`
-and `frame-02.png`.
+`pnpm run validate`, and `pnpm run verify`.
 
 Script module references are implemented for SDK-authored systems. Systems can
 name a project-relative TypeScript module and named export instead of carrying
@@ -535,7 +522,12 @@ portable state belongs in declared resources/components/services, and native
 QuickJS tests prove forbidden ambient APIs such as DOM, network, timers, Node,
 and workers are not exposed by the Bevy bridge.
 
-Native Bevy UI now installs a dedicated overlay UI camera above authored scene cameras so retained UI stays visible over multi-camera/viewport scenes. The native `Minimap` widget preserves authored bounds/paths/static markers and syncs live resource-bound markers; focused proof lives in `examples/bevy-camera-minimap-verification/artifacts/bevy-camera-minimap-proof/`.
+Native Bevy UI now installs a dedicated overlay UI camera above authored scene
+cameras so retained UI stays visible over multi-camera/viewport scenes. The
+native `Minimap` widget preserves authored bounds/paths/static markers and syncs
+live resource-bound markers; future proof should move through structured source
+fixtures or focused verifier-owned artifacts rather than a standalone
+`src/game.ts` example.
 
 `tn asset inspect <path> [--json]` is available for local glTF/GLB triage. It
 reports accessor-derived bounds with node transforms, external/embedded image
@@ -566,11 +558,9 @@ looking like a replace operation.
 Portable follow/chase cameras should use Camera `follow` metadata applied by
 runtime post-update systems instead of direct runtime camera rotation mutation.
 
-`tn create <name> --template racing-kart` now scaffolds a screenshot-ready racing
-starter with a foreground player kart, visible rivals, curved track markers,
-retained HUD, Camera `follow` metadata, and an explicit scale-calibration
-fixture at `assets/kart-scale-calibration.json`. `tn help examples` lists the
-template alongside other starters.
+`tn help scaffold` and `tn help examples` now point at
+`structured-source-starter`; legacy template aliases are no longer project
+creation paths.
 
 ```bash
 pnpm check:names
@@ -586,16 +576,15 @@ pnpm verify:parity:push
 ```
 
 Cross-runtime web↔Bevy visual parity is now guarded by
-`pnpm verify:parity:push`. The gate builds seven checkpoint scenes
-(`v1-canonical`, `crystal-runner-static`, `v3-environment`, `v8-color-parity`,
-`v8-lighting-tone`, `physics-character`, `v10-visual-calibration-lighting`),
-captures matched web and Bevy screenshots, and fails on exposure drift,
-under/over-exposure, and per-checkpoint pixel thresholds. Evidence:
+`pnpm verify:parity:push`. The gate now builds the structured-source
+`examples/stylized-nature-component` checkpoint from `content/**`, captures
+matched web and Bevy screenshots, and fails on exposure drift,
+under/over-exposure, and checkpoint pixel thresholds. Evidence:
 `tools/verify/artifacts/baseline-visual-parity/baseline-visual-parity-report.json`.
 The native runtime now explicitly disables Bevy default ambient fill when an IR
 bundle has no authored ambient light, and applies a calibrated world-ambient
-scale for non-atmosphere scenes so the v1 canonical and crystal runner
-checkpoints stay within visual parity thresholds.
+scale for non-atmosphere scenes so structured visual checkpoints stay within
+visual parity thresholds.
 
 Git hooks (via [husky](https://typicode.github.io/husky/)) run layered parity
 checks after `pnpm install`:
@@ -603,7 +592,7 @@ checks after `pnpm install`:
 - **pre-commit** — `pnpm verify:smoke`: naming gate and docs drift check.
 - **pre-push** — `pnpm verify:pre-push`: one orchestrated gate (~2–3 min) that
   builds once, runs typecheck/lint/tests in parallel, then conformance and
-  seven-scene baseline visual parity without repeating setup.
+  structured-source baseline visual parity without repeating setup.
 
 Skip hooks temporarily with `git commit --no-verify` or `git push --no-verify`
 when needed.
@@ -652,9 +641,10 @@ binary payload lengths with asset path context instead of decoding partial data.
 Run `pnpm verify:bundle-safety-hardening` for the focused evidence gate.
 
 Compiler capture now mirrors source-relative project modules into the temporary
-capture directory, so `src/game.ts` can import local `.ts`/`.tsx` modules through
-NodeNext `.js` specifiers while transitive portable-boundary diagnostics still
-point at the source module. Capture output is staged in package-local
+capture directory, so configured source entries and `src/scripts/**/*.ts`
+behavior modules can import local `.ts`/`.tsx` modules through NodeNext `.js`
+specifiers while transitive portable-boundary diagnostics still point at the
+source module. Capture output is staged in package-local
 `.tn-capture-*` directories that are removed after success or failure, and
 CommonJS `require()` calls now fail with the same unsupported-import diagnostic
 as non-portable ESM imports.
@@ -765,7 +755,12 @@ The AI docs front door now adds `llms.txt`, `llms-full.txt`,
 installed-package consumers and coding agents. The CLI package build copies
 those docs into `@threenative/cli` `dist/ai/`, and
 `pnpm verify:distribution` checks the packed CLI install can read the AI docs
-alongside exported capability and diagnostic metadata.
+alongside exported capability and diagnostic metadata. The
+`structured-source-starter` template now also generates `AGENTS.md` and
+`CLAUDE.md` so coding agents inside a created project receive local instructions
+to use `tn ... --json` for deterministic scene/source edits, keep durable source
+under `content/**` and `src/scripts/**`, and avoid repairing generated bundles
+directly.
 The distribution release gate now treats those AI-consumable artifacts as
 publish blockers: every public packed package must include root declarations,
 declaration maps, and runtime entrypoint JavaScript; `@threenative/ir` must
@@ -807,12 +802,13 @@ animation, and UI/property transform-animation evidence; IK, retargeting, and
 arbitrary blend trees remain explicitly unsupported with stable diagnostics.
 
 Focused V8 evidence exists for the optional React webview overlay slice:
-`pnpm verify:v8:overlay` builds `examples/v8-overlay-webview`, bundles a
-React/CSS inventory overlay with local item sprites, validates
-`overlays.ir.json` and `requiredCapabilities.overlay`, exercises typed
-`inventory:use-item` bridge messages, verifies non-pointer overlay modes do not
-capture game clicks, runs native overlay bridge/input diagnostics tests, checks
-the default native unsupported-host diagnostic path, and writes
+`pnpm verify:v8:overlay` validates the shared
+`packages/ir/fixtures/conformance/v8-overlay-webview/game.bundle` fixture with
+bundle-local overlay HTML/CSS and item sprites, validates `overlays.ir.json` and
+`requiredCapabilities.overlay`, exercises typed `inventory:use-item` bridge
+messages, verifies non-pointer overlay modes do not capture game clicks, runs
+native overlay bridge/input diagnostics tests, checks the default native
+unsupported-host diagnostic path, and writes
 `tools/verify/artifacts/overlay-webview/verification-report.json`. Retained `ui.ir.json`
 remains the portable game UI contract; overlays are explicit, bundle-local,
 capability-gated, and optional. The desktop native webview host is
@@ -828,29 +824,29 @@ depth targets in both web and Bevy adapters; depth target material sampling
 remains rejected by IR validation until a portable sampling/writeback contract is
 promoted. Structured asset source documents, `tn asset add --type render-target`,
 and editor asset rows now author those target declarations without hand-editing
-generated manifests. The camera-view gate
-`pnpm verify:v8:camera-views` builds `examples/v8-camera-views`, validates the
-bundle, captures web/native screenshots with viewport-region checks, and writes
-artifacts under `examples/v8-camera-views/artifacts/camera-views/`. The shared conformance fixture is
-`packages/ir/fixtures/conformance/camera-multi-view/game.bundle`.
+generated manifests. The camera-view gate `pnpm verify:v8:camera-views`
+validates `packages/ir/fixtures/conformance/camera-multi-view/game.bundle`,
+captures web/native screenshots with viewport-region checks, and writes
+artifacts under `tools/verify/artifacts/camera-views/`.
 
 V8-07 material parity is implemented with focused material/texture evidence:
-`pnpm verify:v8:material-parity` builds `examples/v8-material-parity`,
-validates the bundle, runs conformance, captures web/native screenshots, and
-writes `tools/verify/artifacts/material-parity/verification-report.json`.
+`pnpm verify:v8:material-parity` uses the shared rendering residual fixture,
+runs conformance, captures web/native screenshots, and writes
+`tools/verify/artifacts/material-parity/verification-report.json`.
 
 V8 color, lighting, and tone parity evidence is implemented with screenshot
 diff metrics and calibrated sample regions:
-`pnpm verify:v8:color-parity` builds `examples/v8-color-parity` and
-`examples/v8-lighting-tone`, validates both bundles, captures web/native
-screenshots, compares unlit swatch colors plus lit PBR sphere probes, and
-writes `tools/verify/artifacts/color-parity/verification-report.json` plus
-`tools/verify/artifacts/lighting-tone/lighting-tone-report.json`. Unlit swatch parity is
-near-exact (full-frame changed pixel ratio `0`, max channel delta `~1/255`);
-lit scenes gate on full-frame average color/brightness deltas (`~1%`) with probe
-regions tolerating localized PBR gradient differences. Fast regression harness:
-`pnpm test:color-parity` locks thresholds, example swatch alignment, required
-harness files, and verifier orchestration without rerunning Playwright/Bevy
+`pnpm verify:v8:color-parity` validates
+`packages/ir/fixtures/conformance/color-parity/game.bundle` and
+`packages/ir/fixtures/conformance/lighting-tone/game.bundle`, captures
+web/native screenshots, compares unlit swatch colors plus lit PBR sphere probes,
+and writes `tools/verify/artifacts/color-parity/verification-report.json` plus
+`tools/verify/artifacts/lighting-tone/lighting-tone-report.json`. Unlit swatch
+parity is near-exact (full-frame changed pixel ratio `0`, max channel delta
+`~1/255`); lit scenes gate on full-frame average color/brightness deltas (`~1%`)
+with probe regions tolerating localized PBR gradient differences. Fast
+regression harness: `pnpm test:color-parity` locks thresholds, fixture presence,
+sample regions, and verifier orchestration without rerunning Playwright/Bevy
 captures.
 
 V8-08 has started with a transform animation contract slice:
@@ -1094,15 +1090,15 @@ state-preserving, rebuild-required, and unsupported changes. The aggregate
 proof is `pnpm verify:v9:assets-gltf-scene-workflow`, which writes
 `inspection.json`, `web-report.json`, `native-report.json`,
 `reload-report.json`, and `diff.json` under
-`examples/assets-gltf-scene-workflow/artifacts/assets-gltf-scene-workflow/`. Custom asset loaders/custom asset
+`tools/verify/artifacts/assets-gltf-scene-workflow/`. Custom asset loaders/custom asset
 types, arbitrary runtime file/network access from scripts, and custom shader
 consumption of glTF custom attributes remain deferred.
 
 V8-11 now has a focused rendering-quality slice for fog and sky visual parity:
-`pnpm verify:v8:rendering-quality` builds `examples/v8-rendering-quality`,
-validates the bundle, captures web/native screenshots, checks nonblank output,
-compares sky/foreground/fog-depth regions, verifies far fog convergence toward
-the authored fog color, and writes artifacts under
+`pnpm verify:v8:rendering-quality` uses the shared drift-surface fixture,
+captures web/native screenshots, checks nonblank output, compares
+sky/foreground/fog-depth regions, verifies far fog convergence toward the
+authored fog color, and writes artifacts under
 `tools/verify/artifacts/rendering-quality/`. This is not the full V8-11 post-processing
 surface; skybox/cubemap contracts, instancing/batching evidence, and broader
 post-processing controls remain tracked as open parity work.
@@ -1117,7 +1113,7 @@ policies, and explicitly deferred advanced renderer requests before runtime. Web
 and Bevy conformance reports now expose matching observations through
 `packages/ir/fixtures/conformance/rendering-lights/game.bundle`, and
 `pnpm verify:v9:rendering-lights` writes evidence under
-`examples/rendering-lights/artifacts/rendering-lights/`, including web/native/diff/contact-sheet
+`tools/verify/artifacts/rendering-lights/`, including web/native/diff/contact-sheet
 screenshots plus sampled skybox, reflection-probe, point-shadow PCF, dense/HLOD,
 and debug-gizmo regions. Depth-of-field runtime config is preserved in matching
 web/native reports as a report-level boundary; screenshot-calibrated visual blur
@@ -1161,14 +1157,14 @@ Current implemented V4 slice:
   effect logs with stable numeric normalization and writes
   `tools/verify/artifacts/milestones/v4/web-effects.json`, `native-effects.json`, and
   `effects-diff.json`.
-- `examples/v4-scripting` builds a primitive scripted scene covering rotation,
-  movement, spawn/despawn, event handoff, `physics.raycast`, and
-  `animation.play`; it passes web visual verification with expected motion,
-  writes a web patch/event/command/service effect-log artifact, and captures a
-  native Bevy frame artifact at `tools/verify/artifacts/milestones/v4/native-bevy-frame-01.png`.
-- `templates/v4-scripting` scaffolds the same primitive demo as a CLI template
-  through `tn create --template v4-scripting`, with portable system behavior
-  referenced from `src/scripts/systems.ts` instead of inline callbacks.
+- V4 fixture-backed scripting evidence covers rotation, movement,
+  spawn/despawn, event handoff, `physics.raycast`, and `animation.play`; it
+  passes web visual verification with expected motion, writes a web
+  patch/event/command/service effect-log artifact, and captures a native Bevy
+  frame artifact at `tools/verify/artifacts/milestones/v4/native-bevy-frame-01.png`.
+- Legacy V4 scripting template scaffolding has been removed from current
+  project creation paths; V4 behavior remains historical example/gate evidence
+  until those gates are retargeted.
 
 ## V4 Does Not Prove
 
@@ -1256,17 +1252,20 @@ authoring only; runtime deformation, CSG, chunk streaming, and shader/storage
 buffer procedural geometry remain future work.
 
 The stylized nature component slice promotes a bounded source-authored scenic
-effect surface used by `examples/stylized-nature-component`: SDK helpers emit
-`StylizedNature`, `RippleWater`, and `StylizedSparkles` components, the shared
-authoring registry exposes matching scene operations, and web/Bevy runtime
-adapters map those components into portable terrain, foliage, water, and
-sparkle visuals with deterministic motion. This is a curated component slice,
-not a general custom shader or arbitrary post-processing contract.
+effect surface: SDK helpers emit `StylizedNature`, `RippleWater`, and
+`StylizedSparkles` components, the shared authoring registry exposes matching
+scene operations, and web/Bevy runtime adapters map those components into
+portable terrain, foliage, water, and sparkle visuals with deterministic motion.
+This is a curated component slice, not a general custom shader or arbitrary
+post-processing contract.
 Native capture now waits for recursive glTF scene dependencies before advancing
 visual frames, so Bevy proof screenshots do not race material/texture loads.
 The source-backed stylized grass path also uses the same seeded placement and
-authored grass color policy in web and Bevy; current comparison evidence lives
-under `examples/stylized-nature-component/artifacts/visual-parity-current/`.
+authored grass color policy in web and Bevy. The
+`examples/stylized-nature-component` example is retained as a structured-source
+scene driven by `threenative.config.json` and `content/**`; durable comparison
+evidence should live under verifier-owned artifacts or structured fixtures, not
+beside the example source.
 Residual stylized drift remains around native path embellishment and renderer
 lighting/shadow treatment, so this evidence is a parity checkpoint rather than
 a pixel-close release baseline.
@@ -1276,8 +1275,8 @@ texture slots now serialize through SDK/compiler output, validate against
 texture assets and target formats, appear in shared conformance fixtures and
 observations, map to Three.js material texture slots, and map to Bevy
 `StandardMaterial` image handles for native regression coverage. The
-`examples/v5-functional` scene seed builds, validates, and visually verifies
-with bundle-local textured environment assets.
+maintained V5 fixture bundles validate and visually verify with bundle-local
+textured environment assets.
 WebP texture assets are now accepted alongside PNG/JPEG through SDK asset refs,
 IR/schema validation, compiler/environment asset inference, target profile
 validation, web texture loading, and Bevy `AssetServer` texture loading.
@@ -1331,7 +1330,7 @@ focused material-parity screenshot evidence under
 V8-07 material parity now promotes transparency policy fields (`blendMode`,
 `renderOrder`, `depthWrite`, `depthTest`), `specularTexture`, constrained
 extended material presets (`unlitMasked`, `foliage`), and the
-`examples/v8-material-parity` scene. SDK/IR/compiler/web/Bevy/conformance
+shared rendering residual fixture. SDK/IR/compiler/web/Bevy/conformance
 coverage validates and reports the new fields; Bevy emits stable diagnostics for
 unsupported native blend modes beyond `normal`; raw shader payloads remain
 rejected; and `pnpm verify:v8:material-parity` aggregates IR/compiler tests,
@@ -1514,7 +1513,7 @@ range/angle, web and Bevy map those fields with runtime-normalized conformance
 observations, and atmosphere observations expose promoted fog, sky, color
 management, and shadow fields. Native fog/sky/color rendering remains
 target-drift rather than full visual parity, but the promoted fields are now
-validated, observable, and exercised by `examples/v5-functional`. The
+validated, observable, and exercised by the maintained V5 fixture set. The
 `v5-drift-surface` fixture now also reports web and Bevy runtime orthographic
 camera projection observations for the active camera.
 
@@ -1524,23 +1523,23 @@ emission copies LOD target models without treating them as extra source assets,
 web performance reports expose source asset, instance, group, draw, triangle,
 texture, texture-byte, and bundle-byte estimates, and Bevy observations
 distinguish repeated model-backed groups from placeholders. The
-`examples/v5-functional` scene now exercises repeated grass scatter, source
-asset LOD metadata, and environment-asset budget reports.
+maintained V5 fixture set now exercises repeated grass scatter, source asset
+LOD metadata, and environment-asset budget reports.
 
-V5-09 has landed the maintained visual-quality scene gate:
-`examples/v5-functional` is now the V5 functional scene for promoted visual
-contracts, and `pnpm verify:v5` builds, validates, visually verifies it in web,
-writes dense-content budget evidence under `tools/verify/artifacts/milestones/v5`, and records artifact
-links in `tools/verify/artifacts/milestones/v5/verification-report.json`. This is the current V5 visual
-scene gate, not the final aggregate release gate planned for V5-10.
+V5-09 has landed the maintained visual-quality fixture gate: V5 fixture bundles
+cover promoted visual contracts, and `pnpm verify:v5` validates and visually
+verifies them in web, writes dense-content budget evidence under
+`tools/verify/artifacts/milestones/v5`, and records artifact links in
+`tools/verify/artifacts/milestones/v5/verification-report.json`. This is the
+current V5 visual scene gate, not the final aggregate release gate planned for
+V5-10.
 
 V5-11 has landed the game-authoring ergonomics slice: `defineGame`,
 `defineControls`, `definePrefab`, `primitiveActorPrefab`, and
 `modelActorPrefab` are exported from `@threenative/sdk` as authoring sugar over
 existing bundle root, scene, world, input, mesh, ECS component, and model asset
-metadata shapes. `tn create --template v5-game-starter` scaffolds a small
-playable scene/world/input/system starter that uses those helpers, and
-`pnpm verify:v5` creates, builds, and validates that starter under
+metadata shapes. Current scaffold proof uses `structured-source-starter`;
+`pnpm verify:v5` creates, builds, and validates that structured starter under
 `tools/verify/artifacts/milestones/v5/starter-smoke`. This does not add a new runtime contract, editor
 workflow, networking, raw Three.js compatibility, plugin API, custom renderer
 support, or runtime model loading.
@@ -1570,7 +1569,7 @@ diagnostics, or artifact checks.
 
 V5 must also prove that a small playable game can be authored with less
 low-level setup than direct scene/world assembly by adding required game-first
-SDK ergonomics, a `v5-game-starter` template, stable diagnostics, and release
+SDK ergonomics, structured-source starter proof, stable diagnostics, and release
 gate evidence. This is authoring sugar over portable contracts unless a V5 PRD
 explicitly promotes a new SDK/IR/runtime contract.
 
@@ -1675,13 +1674,13 @@ reports now surface bundle-inspection audio and UI diagnostics instead of
 silently dropping them, so missing native audio assets and unsupported Bevy UI
 nodes appear in runtime observation artifacts.
 
-V6-09 has started with the functional scene and initial aggregate gate:
-`examples/v6-functional` builds one bundle that combines V6 ECS resources,
-events, startup/update systems, primitive physics, a character controller,
-animation clip metadata, retained UI, input, audio, and runtime config.
-`pnpm verify:v6` now runs the V6 docs gate, V6 gate-script tests, CLI build,
-functional scene build/validation, web visual smoke verification, and shared
-conformance, then writes `tools/verify/artifacts/milestones/v6/verification-report.json`. Web
+V6-09 has started with fixture-backed functional evidence and the initial
+aggregate gate: maintained conformance bundles combine V6 ECS resources, events,
+startup/update systems, primitive physics, a character controller, animation
+clip metadata, retained UI, input, audio, and runtime config. `pnpm verify:v6`
+now runs the V6 docs gate, V6 gate-script tests, CLI build, fixture
+build/validation, web visual smoke verification, and shared conformance, then
+writes `tools/verify/artifacts/milestones/v6/verification-report.json`. Web
 screenshots and the web effect log are mirrored under
 `tools/verify/artifacts/milestones/v6/web-visual/`, and the aggregate report marks
 `visualEvidenceStatus` as `web-captured` when that smoke passes. Native frame
@@ -1913,16 +1912,17 @@ path fields. These reports are deterministic budget evidence, not live browser
 or native profiler captures; richer frame capture and platform profilers remain
 later work.
 
-V7-10 has landed the first maintained functional V7 scene/template slice:
-`examples/v7-functional` and `templates/starter-functional` keep their placeholder
-model/audio assets local, build through the standard CLI, and combine the
-currently SDK-authored V7-facing gameplay surface: primitive 3D scene content,
-physics colliders, a character controller declaration, input, retained UI,
-audio, resources/events, scripted event writes, and `animation.play`
-service effects. `pnpm verify:v7` now builds, validates, captures web visual
-artifacts for the example, packages its desktop bundle under
-`tools/verify/artifacts/milestones/v7/functional-package`, and create/build/validates the V7 template
-under `tools/verify/artifacts/milestones/v7/template-smoke/v7-functional`. Deeper V7 feature parity is
+V7-10 landed the first maintained functional V7 fixture slice: fixture bundles
+keep placeholder model/audio assets local and combine the currently
+SDK-authored V7-facing gameplay surface: primitive 3D scene content, physics
+colliders, a character controller declaration, input, retained UI, audio,
+resources/events, scripted event writes, and `animation.play` service effects.
+`pnpm verify:v7` now validates the fixture, captures web visual artifacts,
+packages its desktop bundle under
+`tools/verify/artifacts/milestones/v7/functional-package`, and
+create/build/validates the structured-source template under
+`tools/verify/artifacts/milestones/v7/template-smoke/structured-source-starter`.
+Deeper V7 feature parity is
 still proven by the focused conformance fixtures rather than by direct SDK
 authoring for every promoted IR shape.
 
@@ -2141,8 +2141,9 @@ through a Three.js `AnimationMixer`, while Bevy attaches a one-clip
 `AnimationGraph` to glTF-created `AnimationPlayer` entities and starts the
 selected clip with the authored loop and speed. `pnpm verify:v9:skeletal-animation`
 now proves cross-runtime skinned-mesh deformation from bundle-local glTF clips
-through `examples/v9-skeletal-animation`, web motion screenshots, and native
-Bevy dual-frame capture evidence under `tools/verify/artifacts/skeletal-animation/`.
+through `packages/ir/fixtures/conformance/animation-blending/game.bundle`, web
+motion screenshots, and native Bevy dual-frame capture evidence under
+`tools/verify/artifacts/skeletal-animation/`.
 V8 transform animation also has exact trace parity for authored entity
 position/rotation/scale tracks through `pnpm verify:v8:animation-transform`,
 plus declared `animation.query` / `animation.stop` command-shape/service-payload
@@ -2254,11 +2255,11 @@ arbitrary workers, unbounded promises, and arbitrary timer/platform APIs remain
 stable diagnostic boundaries rather than portable gameplay APIs.
 
 V9-06 aggregate support gate evidence now ties the support slices together.
-`examples/v9-support` builds to a validated bundle with `audio.ir.json` and
-`local-data.ir.json`, `check:docs:v9` guards the PRD/status/parity support
-claims and explicit deferrals, `pnpm verify:v9:support` runs the audio,
-local-data, diagnostics, editor, stress, and shared conformance checks, and the
-aggregate report is written to `tools/verify/artifacts/support/verification-report.json`.
+`packages/ir/fixtures/conformance/support-stress/game.bundle` anchors the large
+support fixture, `check:docs:v9` guards the PRD/status/parity support claims and
+explicit deferrals, `pnpm verify:v9:support` runs the audio, local-data,
+diagnostics, editor, stress, and shared conformance checks, and the aggregate
+report is written to `tools/verify/artifacts/support/verification-report.json`.
 Cloud save, streaming/network audio, runtime networking, signed installers,
 online publishing, collaboration, raw Three.js authoring, and direct Bevy
 authoring remain explicitly deferred.

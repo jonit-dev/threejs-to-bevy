@@ -273,7 +273,7 @@ sequenceDiagram
 
 **Files (max 5):**
 
-- `examples/v8-overlay-webview/*` - React/CSS overlay example.
+- `packages/ir/fixtures/conformance/v8-overlay-webview/game.bundle/*` - overlay bundle fixture.
 - `docs/PRDs/v8/README.md` - ticket index and dependency.
 - `docs/STATUS.md` - implementation status once complete.
 - `docs/bevy-feature-parity.md` - optional overlay capability status.

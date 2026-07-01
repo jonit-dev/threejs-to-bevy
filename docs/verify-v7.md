@@ -52,7 +52,7 @@ Current V7 conformance evidence starts with:
 - `pnpm verify:v7`
 - `tools/verify/artifacts/milestones/v7/verification-report.json`
 - `tools/verify/artifacts/milestones/v7/rust-test-report.json`
-- `scripts/check-docs-v7.mjs`
+- `scripts/legacy-script-alias.mjs`
 - `docs/diagnostics.md`
 - `tools/verify/artifacts/milestones/v7/packaging/verification-report.json`
 - `tools/verify/artifacts/milestones/v7/packaging/desktop/game.bundle`
@@ -65,13 +65,13 @@ Current V7 conformance evidence starts with:
 - `tools/verify/artifacts/milestones/v7/performance/web.report.json`
 - `tools/verify/artifacts/milestones/v7/performance/bevy.report.json`
 - `tools/verify/artifacts/milestones/v7/performance/comparison.report.json`
-- `examples/v7-functional/dist/v7-functional.bundle`
-- `examples/v7-functional/artifacts/verify/verification-report.json`
-- `examples/v7-functional/artifacts/verify/frame-01.png`
-- `examples/v7-functional/artifacts/verify/frame-02.png`
-- `tools/verify/artifacts/milestones/v7/functional-package/desktop/v7-functional.bundle`
+- `packages/ir/fixtures/conformance/runtime-gameplay-host/game.bundle`
+- `tools/verify/artifacts/milestones/v7/functional/verification-report.json`
+- `tools/verify/artifacts/milestones/v7/functional/frame-01.png`
+- `tools/verify/artifacts/milestones/v7/functional/frame-02.png`
+- `tools/verify/artifacts/milestones/v7/functional-package/desktop/game.bundle`
 - `tools/verify/artifacts/milestones/v7/functional-package/desktop/package.manifest.json`
-- `tools/verify/artifacts/milestones/v7/template-smoke/v7-functional`
+- `tools/verify/artifacts/milestones/v7/template-smoke/structured-source-starter`
 
 The V7 fixture catalog maps V7-02 through V7-09 to baseline bundles, planned
 accepted and rejected fixture bundle paths, expected target capabilities,
@@ -148,16 +148,16 @@ path. These are deterministic budget reports, not live browser profiler or
 native platform-profiler captures; script/UI/audio timing breakdowns and larger
 scene budget tuning remain later work.
 
-The current V7-10 functional evidence is intentionally narrow:
-`examples/v7-functional` and `templates/v7-functional` demonstrate the
-SDK-authored promoted surface together: scene primitives, local model/audio
-assets, physics colliders, character controller metadata, input, retained UI,
-audio, resources/events, scripted event writes, and `animation.play`
-service effects. `pnpm verify:v7` builds and validates the example, captures web
-visual screenshots through `tn verify`, packages a local desktop artifact, and
-create/build/validates the template smoke project. Advanced physics query
-parity, animation graph/particle metadata, spatial bus routing, dense renderer
-content, lifecycle replay, packaging diagnostics, and performance budgets remain
+The current V7-10 functional evidence is intentionally narrow: fixture-backed
+runtime gameplay and structured-source starter smoke demonstrate the promoted
+surface together: scene primitives, local model/audio assets, physics
+colliders, character controller metadata, input, retained UI, audio,
+resources/events, scripted event writes, and `animation.play` service effects.
+`pnpm verify:v7` validates the fixture, captures web visual screenshots through
+`tn verify`, packages a local desktop artifact, and create/build/validates the
+structured-source template smoke project. Advanced physics query parity,
+animation graph/particle metadata, spatial bus routing, dense renderer content,
+lifecycle replay, packaging diagnostics, and performance budgets remain
 anchored in the focused V7 conformance fixtures.
 
 The final V7-11 gate links all required release evidence in

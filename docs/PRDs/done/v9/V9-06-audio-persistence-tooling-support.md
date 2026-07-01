@@ -508,7 +508,7 @@ sequenceDiagram
 - `scripts/verify-v9-stress-support.mjs` - generate large-scene stress reports
   and profiler artifacts
 - `packages/ir/fixtures/conformance/support-stress/game.bundle/target.profile.json` - add stress target profile fixture
-- `examples/v9-support/src/game.ts` - author the large-scene support fixture
+- `packages/ir/fixtures/conformance/support-stress/game.bundle` - large-scene support fixture
 
 **Implementation:**
 
@@ -542,8 +542,8 @@ sequenceDiagram
 
 1. **Unit Tests:** Target profile, CLI diagnostics, verify script, web metrics,
    and native conformance report tests.
-2. **Integration Test:** Build `examples/v9-support`, run the stress fixture,
-   and collect web/native profiler-like metrics.
+2. **Integration Test:** Validate the support stress fixture and collect
+   web/native profiler-like metrics.
 3. **Runtime Proof:** Run `pnpm verify:v9:stress-support`; write reports under
    `tools/verify/artifacts/stress-support/` and include large-scene metrics plus repair
    hint coverage.

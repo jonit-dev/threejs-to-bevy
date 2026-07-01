@@ -146,7 +146,7 @@ unsupported.
 - [x] `defineControls({ movement, actions })` portable input-map helper.
 - [x] `primitiveActorPrefab(...)` primitive actor prefab helper.
 - [x] `modelActorPrefab(...)` model actor metadata helper.
-- [x] `tn create --template v5-game-starter` starter template.
+- [x] `tn create --template structured-source-starter` starter template.
 - [x] `defineScene()`, `sceneTransition.*`, and
   `defineGame({ scenes, initialScene })` lifecycle scene composition.
 - [x] ECS tags as queryable zero-field marker components.
@@ -292,8 +292,8 @@ Supported V5 authoring ergonomics:
   `World.spawn`, and component declaration paths.
 - [x] `modelActorPrefab(...)` creates deterministic model actor metadata. It
   records model asset metadata only; it does not add runtime model loading.
-- [x] `tn create --template v5-game-starter` scaffolds a small playable starter
-  that uses the V5 helper path. The V5 gate creates, builds, and validates the
+- [x] `tn create --template structured-source-starter` scaffolds a small
+  structured-source starter. The V5 gate creates, builds, and validates the
   starter as release evidence.
 
 Rules:
@@ -375,8 +375,8 @@ show the feature.
 - [x] V5 game root composition. `defineGame` composes existing portable
   scene/world/input/runtime config declarations; it is not a new runtime
   contract.
-- [x] V5 game starter template. `v5-game-starter` is release-gated through
-  `verify:v5` as a small playable SDK ergonomics proof.
+- [x] V5 game starter template. The current `structured-source-starter` smoke is
+  release-gated through `verify:v5` as a small SDK ergonomics proof.
 - [x] V6 resource write API for current resource/event traces. Resource write
   effects are validated and compared across web/native fixed trace artifacts.
 - [x] V5 asset lookup from scripts. `ctx.assets.get(id)` and

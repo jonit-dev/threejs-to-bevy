@@ -74,7 +74,7 @@ function defaultIndex() {
 
 function defaultPrd() {
   return [
-    "examples/v9-support",
+    "packages/ir/fixtures/conformance/support-stress/game.bundle",
     "tools/verify/artifacts/audio-support/",
     "tools/verify/artifacts/local-data-support/",
     "tools/verify/artifacts/diagnostics-support/",

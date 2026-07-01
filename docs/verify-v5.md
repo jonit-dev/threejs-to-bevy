@@ -17,11 +17,10 @@ The gate currently:
 - checks V5 documentation consistency
 - runs selected V5 docs/gate and SDK TypeScript tests
 - builds the CLI
-- builds `examples/v5-functional`
-- validates the emitted `dist/v5-functional.bundle`
-- captures web visual verification screenshots and diagnostics
+- validates the maintained V5 fixture bundles
+- captures fixture-backed web visual verification screenshots and diagnostics
 - writes dense-content budget evidence under `tools/verify/artifacts/milestones/v5/dense-content`
-- creates, builds, and validates `v5-game-starter` under
+- creates, builds, and validates `structured-source-starter` under
   `tools/verify/artifacts/milestones/v5/starter-smoke`
 - runs shared conformance and links `packages/ir/artifacts/conformance/verification-report.json`
 - runs Bevy native tests and writes `tools/verify/artifacts/milestones/v5/rust-test-report.json`
@@ -32,12 +31,12 @@ The V5 report uses schema `threenative.verify.v5` version `0.1.0` and includes
 `durationMs`. Failures include a stable `TN_VERIFY_V5_STEP_FAILED` diagnostic
 for the first failing step.
 
-The V5 scene demonstrates promoted V5 visual features that have already landed:
+The V5 fixture evidence demonstrates promoted V5 visual features that have already landed:
 textured environment assets, lighting and atmosphere metadata, shadow/color
 fields, repeated dense scatter, source-asset LOD metadata, and environment
-budget reports. The starter smoke demonstrates the game-first SDK ergonomics
-path through `defineGame`, `defineControls`, prefab helpers, and
-`tn create --template v5-game-starter`.
+budget reports. The starter smoke demonstrates the structured source authoring
+path through `content/**/*.json` scene data and `src/scripts/**/*.ts` behavior
+modules.
 
 This gate does not claim editor, online, networking, public plugin, custom
 renderer, runtime mesh LOD swapping, runtime model loading, or renderer-level

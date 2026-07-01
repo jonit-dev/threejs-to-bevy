@@ -13,14 +13,12 @@ export async function verifyV8CameraViews(options = {}) {
   const run = options.run ?? runCommand;
   const targets = resolveArtifactTargets({
     gate: "camera-views",
-    owner: { kind: "example", exampleName: "v8-camera-views" },
+    owner: { kind: "aggregate", name: "camera-views" },
     root,
   });
   const artifactDir = options.artifactDir ?? targets.absoluteDir;
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
-  const fixtureBundlePath = resolve(root, "packages/ir/fixtures/conformance/camera-multi-view/game.bundle");
-  const projectPath = resolve(root, "examples/v8-camera-views");
-  const exampleBundlePath = resolve(projectPath, "dist/v8-camera-views.bundle");
+  const bundlePath = resolve(root, "packages/ir/fixtures/conformance/camera-multi-view/game.bundle");
   const steps = [];
 
   async function step(name, command, args, commandOptions = {}) {
@@ -30,18 +28,15 @@ export async function verifyV8CameraViews(options = {}) {
   }
 
   if (!(await step("build cli", "pnpm", ["--filter", "@threenative/cli", "build"], { timeoutMs: 120000 }))) {
-    return writeReport({ artifactMetadata: targets.metadata, artifactDir, bundlePath: exampleBundlePath, ok: false, reportPath, steps });
+    return writeReport({ artifactMetadata: targets.metadata, artifactDir, bundlePath, ok: false, reportPath, steps });
   }
-  if (!(await step("build v8 camera views example", process.execPath, [resolve(root, "packages/cli/dist/index.js"), "build", "--project", projectPath, "--json"], { timeoutMs: 120000 }))) {
-    return writeReport({ artifactMetadata: targets.metadata, artifactDir, bundlePath: exampleBundlePath, ok: false, reportPath, steps });
-  }
-  if (!(await step("validate v8 camera views example", process.execPath, [resolve(root, "packages/cli/dist/index.js"), "validate", "--project", projectPath, "--json"], { timeoutMs: 120000 }))) {
-    return writeReport({ artifactMetadata: targets.metadata, artifactDir, bundlePath: exampleBundlePath, ok: false, reportPath, steps });
+  if (!(await step("validate camera multi-view fixture bundle", process.execPath, [resolve(root, "packages/cli/dist/index.js"), "validate", "--bundle", bundlePath, "--json"], { timeoutMs: 120000 }))) {
+    return writeReport({ artifactMetadata: targets.metadata, artifactDir, bundlePath, ok: false, reportPath, steps });
   }
 
   const verifier = options.visualVerifier
     ?? (await import(pathToFileURL(resolve(root, "packages/cli/dist/verify/cameraViews.js")).href)).verifyCameraViewsVisual;
-  const visual = await verifier({ artifactDir, bundlePath: exampleBundlePath });
+  const visual = await verifier({ artifactDir, bundlePath });
   steps.push({
     durationMs: 0,
     exitCode: visual.status === "pass" ? 0 : 1,
@@ -53,8 +48,7 @@ export async function verifyV8CameraViews(options = {}) {
   return writeReport({
     artifactDir,
     artifactMetadata: targets.metadata,
-    bundlePath: exampleBundlePath,
-    conformanceBundlePath: fixtureBundlePath,
+    bundlePath,
     ok: visual.status === "pass",
     reportPath,
     steps,
@@ -62,7 +56,7 @@ export async function verifyV8CameraViews(options = {}) {
   });
 }
 
-async function writeReport({ artifactDir, artifactMetadata, bundlePath, conformanceBundlePath, ok, reportPath, steps, visualReportPath }) {
+async function writeReport({ artifactDir, artifactMetadata, bundlePath, ok, reportPath, steps, visualReportPath }) {
   await mkdir(artifactDir, { recursive: true });
   const report = {
     artifacts: {
@@ -70,7 +64,6 @@ async function writeReport({ artifactDir, artifactMetadata, bundlePath, conforma
       artifactDir,
       bevyScreenshotPath: resolve(artifactDir, "bevy.png"),
       bundlePath,
-      conformanceBundlePath,
       contactSheetPath: resolve(artifactDir, "contact-sheet.png"),
       reportPath,
       visualReportPath: visualReportPath ?? resolve(artifactDir, "camera-views-report.json"),

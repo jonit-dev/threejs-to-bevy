@@ -712,20 +712,13 @@ agent-safe path.
 
 ## Project Modules
 
-Projects can split portable authoring code into source-relative modules and
-import them from `src/game.ts`. Use NodeNext-style `.js` specifiers in source
-imports so TypeScript files resolve during capture and emitted JavaScript keeps
-valid ESM paths:
+Projects can split portable behavior code into source-relative modules and
+reference them from structured scene/system documents. Use NodeNext-style `.js`
+specifiers in source imports so TypeScript files resolve during capture and
+emitted JavaScript keeps valid ESM paths:
 
 ```ts
-// src/game.ts
-import { scene } from "./scenes/main.js";
-
-export default scene;
-```
-
-```ts
-// src/scenes/main.ts
+// src/scripts/spawnWave.ts
 import { Scene } from "@threenative/sdk";
 
 export const scene = new Scene({ id: "scene.main" });
@@ -757,7 +750,7 @@ Example error shape:
 ```txt
 TN-SDK-1203 Unsupported material property
 MeshStandardMaterial.envMap is not supported in v1.
-File: src/game.ts:18:5
+File: src/scripts/materials.ts:18:5
 Suggestion: use scene environment settings or remove envMap.
 ```
 

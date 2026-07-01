@@ -15,7 +15,7 @@ const fixture = "rendering-lights";
 const bundlePath = resolve(repoRoot, "packages/ir/fixtures/conformance", fixture, "game.bundle");
 const targets = resolveArtifactTargets({
   gate: "rendering-lights",
-  owner: { kind: "example", exampleName: "rendering-lights" },
+  owner: { kind: "aggregate", name: "rendering-lights" },
   root: repoRoot,
 });
 const artifactsRoot = targets.absoluteDir;

@@ -18,10 +18,10 @@ export const V9_FOCUSED_SCRIPT_NAMES = [
 ];
 
 export const V9_SAMPLE_SCENES = [
-  { domain: "animation", example: "examples/v9-skeletal-animation", prd: "V9-01" },
-  { domain: "physics-character", example: "examples/physics-character", prd: "V9-02" },
-  { domain: "assets-gltf-workflow", example: "examples/assets-gltf-scene-workflow", prd: "V9-03" },
-  { domain: "rendering-lights", example: "examples/rendering-lights", prd: "V9-04" },
+  { bundlePath: "packages/ir/fixtures/conformance/animation-state/game.bundle", domain: "animation", fixture: "animation-state", prd: "V9-01" },
+  { bundlePath: "packages/ir/fixtures/conformance/physics-character/game.bundle", domain: "physics-character", fixture: "physics-character", prd: "V9-02" },
+  { bundlePath: "packages/ir/fixtures/conformance/physics-character-solver/game.bundle", domain: "physics-solver", fixture: "physics-character-solver", prd: "V9-02" },
+  { bundlePath: "packages/ir/fixtures/conformance/rendering-lights/game.bundle", domain: "rendering-lights", fixture: "rendering-lights", prd: "V9-04" },
 ];
 
 const IMPLEMENTED_V9_PRD_FILES = new Set([
@@ -101,25 +101,14 @@ export async function checkV9QualityGates(options: { repoRoot?: string } = {}): 
   }
 
   for (const sample of V9_SAMPLE_SCENES) {
-    const manifestPath = resolve(root, sample.example, "verification.manifest.json");
+    const bundlePath = resolve(root, sample.bundlePath);
     try {
-      await access(manifestPath);
+      await access(bundlePath);
     } catch {
       diagnostics.push({
         code: "TN_DOCS_V9_SAMPLE_EVIDENCE_MISSING",
-        message: `V9 sample scene '${sample.example}' is missing verification.manifest.json.`,
-        path: `${sample.example}/verification.manifest.json`,
-        severity: "error",
-      });
-    }
-    const packagePath = resolve(root, sample.example, "package.json");
-    try {
-      await access(packagePath);
-    } catch {
-      diagnostics.push({
-        code: "TN_DOCS_V9_SAMPLE_EVIDENCE_MISSING",
-        message: `V9 sample scene '${sample.example}' is missing package.json.`,
-        path: `${sample.example}/package.json`,
+        message: `V9 sample fixture '${sample.fixture}' is missing bundle evidence: ${sample.bundlePath}`,
+        path: sample.bundlePath,
         severity: "error",
       });
     }
@@ -173,29 +162,6 @@ export async function checkV9QualityGates(options: { repoRoot?: string } = {}): 
           severity: "error",
         });
       }
-    }
-  }
-
-  let readme = "";
-  try {
-    readme = await readFile(resolve(root, "examples/v9-skeletal-animation/README.md"), "utf8");
-  } catch {
-    diagnostics.push({
-      code: "TN_DOCS_V9_SAMPLE_EVIDENCE_MISSING",
-      message: "examples/v9-skeletal-animation/README.md must document GLB provenance.",
-      path: "examples/v9-skeletal-animation/README.md",
-      severity: "error",
-    });
-  }
-  for (const phrase of ["source", "license", "sha256", "clip"]) {
-    if (readme && !readme.toLowerCase().includes(phrase)) {
-      diagnostics.push({
-        code: "TN_DOCS_V9_SAMPLE_EVIDENCE_MISSING",
-        message: `examples/v9-skeletal-animation/README.md must document GLB provenance including '${phrase}'.`,
-        path: "examples/v9-skeletal-animation/README.md",
-        severity: "error",
-      });
-      break;
     }
   }
 

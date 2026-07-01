@@ -25,7 +25,7 @@ export async function verifyV1(options = {}) {
 
   try {
     const scaffoldPath = join(tempRoot, "scaffolded-v1-game");
-    const canonicalPath = resolve(root, "examples/v1-canonical");
+    const structuredExamplePath = resolve(root, "examples/stylized-nature-component");
     const node = process.execPath;
 
     const regularSteps = [
@@ -34,9 +34,9 @@ export async function verifyV1(options = {}) {
       ["validate scaffold", node, [cliBin, "validate", "--project", scaffoldPath, "--json"]],
       ["build scaffold", node, [cliBin, "build", "--project", scaffoldPath, "--json"]],
       ["verify scaffold web", node, [cliBin, "verify", "--project", scaffoldPath, "--frames", "2", "--json"], { timeoutMs: 90000 }],
-      ["validate canonical", node, [cliBin, "validate", "--project", canonicalPath, "--json"]],
-      ["build canonical", node, [cliBin, "build", "--project", canonicalPath, "--json"]],
-      ["verify canonical web", node, [cliBin, "verify", "--project", canonicalPath, "--frames", "2", "--json"], { timeoutMs: 90000 }],
+      ["validate structured example", node, [cliBin, "validate", "--project", structuredExamplePath, "--json"]],
+      ["build structured example", node, [cliBin, "build", "--project", structuredExamplePath, "--json"]],
+      ["verify structured example web", node, [cliBin, "verify", "--project", structuredExamplePath, "--frames", "2", "--json"], { timeoutMs: 90000 }],
       ["check v1 docs", node, [resolve(root, "scripts/check-docs-v1.mjs"), "--json"]],
     ];
 
@@ -47,7 +47,7 @@ export async function verifyV1(options = {}) {
     }
 
     const nativeSmoke = await runReady({
-      args: [cliBin, "dev", "--target", "desktop", "--project", canonicalPath, "--json"],
+      args: [cliBin, "dev", "--target", "desktop", "--project", structuredExamplePath, "--json"],
       command: node,
       cwd: root,
       name: "native desktop smoke",

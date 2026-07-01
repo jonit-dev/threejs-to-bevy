@@ -38,10 +38,8 @@ test("verify v8 color parity records visual evidence step", async () => {
       report.steps.map((step) => step.name),
       [
         "build cli",
-        "build v8 color parity example",
-        "validate v8 color parity bundle",
-        "build v8 lighting tone example",
-        "validate v8 lighting tone bundle",
+        "validate color parity fixture bundle",
+        "validate lighting tone fixture bundle",
         "verify color parity visual evidence",
         "verify lighting tone visual evidence",
       ],

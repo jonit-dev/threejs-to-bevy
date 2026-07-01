@@ -16,21 +16,14 @@ const v1Checkpoint = BASELINE_VISUAL_CHECKPOINTS[0]!;
 
 test("baseline visual checkpoints include canonical guard scenes", () => {
   const ids = BASELINE_VISUAL_CHECKPOINTS.map((checkpoint) => checkpoint.id);
-  assert.deepEqual(ids, [
-    "v1-canonical",
-    "crystal-runner-static",
-    "v3-environment",
-    "v8-color-parity",
-    "v8-lighting-tone",
-    "physics-character",
-    "v10-visual-calibration-lighting",
-  ]);
+  assert.deepEqual(ids, ["structured-stylized-nature"]);
+  assert.ok(BASELINE_VISUAL_CHECKPOINTS.every((checkpoint) => checkpoint.projectRelativePath === "examples/stylized-nature-component"));
 });
 
 test("parity smoke checkpoint targets the single-scene hook fixture", async () => {
   const { PARITY_SMOKE_CHECKPOINT } = await import("./baselineVisualParity.js");
-  assert.equal(PARITY_SMOKE_CHECKPOINT.id, "parity-smoke");
-  assert.equal(PARITY_SMOKE_CHECKPOINT.projectRelativePath, "examples/parity-smoke");
+  assert.equal(PARITY_SMOKE_CHECKPOINT.id, "structured-stylized-nature-smoke");
+  assert.equal(PARITY_SMOKE_CHECKPOINT.projectRelativePath, "examples/stylized-nature-component");
 });
 
 test("should pass when web and bevy screenshots match", async () => {

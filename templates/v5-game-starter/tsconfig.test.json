@@ -1,8 +1,0 @@
-{
-  "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "outDir": "dist/tests",
-    "rootDir": "src"
-  },
-  "include": ["src/gameplay.ts", "src/gameplay.test.ts", "src/node-test.d.ts"]
-}

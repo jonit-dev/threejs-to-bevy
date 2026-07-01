@@ -6,7 +6,7 @@ export interface IColorParitySwatch {
   region: INormalizedRegion;
 }
 
-// Keep `examples/v8-color-parity/src/game.ts` aligned with these swatch colors and layout.
+// Keep the color-parity fixture scene aligned with these swatch colors and layout.
 export const COLOR_PARITY_SWATCHES: readonly IColorParitySwatch[] = [
   { id: "red", hex: "#e6194b", region: { x: 0.18, y: 0.1, width: 0.05, height: 0.08 } },
   { id: "green", hex: "#3cb44b", region: { x: 0.43, y: 0.1, width: 0.05, height: 0.08 } },

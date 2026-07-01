@@ -106,8 +106,8 @@ test("should fail when required screenshots are missing", async () => {
         {
           id: "v10-color",
           factorGroup: "color",
-          example: "examples/v10-visual-calibration-color",
-          bundleName: "v10-visual-calibration-color.bundle",
+          example: "fixtures/sample-color",
+          bundleName: "sample-color.bundle",
           promoted: true,
           implemented: true,
           capture: { width: 1280, height: 720 },
@@ -139,8 +139,8 @@ test("should separate promoted and report-only calibration factors", () => {
     {
       id: "v10-post",
       factorGroup: "post",
-      example: "examples/v10-visual-calibration-post",
-      bundleName: "v10-visual-calibration-post.bundle",
+      example: "fixtures/sample-post",
+      bundleName: "sample-post.bundle",
       promoted: true,
       capture: { width: 1280, height: 720 },
       camera: { id: "camera.calibration" },
@@ -201,7 +201,7 @@ test("verify v10 visual calibration writes manifest report", async () => {
   }
 });
 
-test("should require focused reports from canonical example artifact paths", async () => {
+test("should require focused reports from canonical fixture artifact paths", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-v10-visual-calibration-canonical-"));
   try {
     const report = await verifyV10VisualCalibration({
@@ -211,8 +211,8 @@ test("should require focused reports from canonical example artifact paths", asy
         {
           id: "v10-color",
           factorGroup: "color",
-          example: "examples/v10-visual-calibration-color",
-          bundleName: "v10-visual-calibration-color.bundle",
+          example: "fixtures/sample-color",
+          bundleName: "sample-color.bundle",
           promoted: true,
           implemented: true,
           capture: { width: 1280, height: 720 },
@@ -232,7 +232,7 @@ test("should require focused reports from canonical example artifact paths", asy
     assert.ok(missing.length > 0);
     assert.ok(
       missing.every((diagnostic) =>
-        diagnostic.artifactPath.includes("examples/v10-visual-calibration-color/artifacts/visual-calibration/"),
+        diagnostic.artifactPath.includes("examples/sample-color/artifacts/visual-calibration/"),
       ),
     );
   } finally {
@@ -266,8 +266,8 @@ test("should fail color calibration when unlit swatch delta exceeds threshold", 
     const fixture = {
       id: "v10-color",
       factorGroup: "color",
-      example: "examples/v10-visual-calibration-color",
-      bundleName: "v10-visual-calibration-color.bundle",
+      example: "fixtures/sample-color",
+      bundleName: "sample-color.bundle",
       promoted: true,
       implemented: true,
       capture: { width: 1280, height: 720 },

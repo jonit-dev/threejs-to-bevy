@@ -36,15 +36,15 @@ Classification values:
 | `verify:full` | root profile command | workspace plus release aggregation | `release-gate` | Keep | Full compatibility sweep: workspace proof, conformance, and release evidence. |
 | `verify:conformance` | `tools/verify/dist/cli/conformance.js` | shared IR conformance | `conformance-gate` | Keep | Compares the same IR fixtures across web Three.js and native Bevy. |
 | `verify:distribution` | `scripts/verify-distribution-release.mjs` | CLI/package distribution verifier | `focused-gate` | Move implementation under `tools/verify` | Proves packed package install, generated project build, and native runtime distribution artifacts. |
-| `verify:v2` | `scripts/verify-v2.mjs` | legacy milestone compatibility | `legacy-alias` | `verify:release` or `verify:conformance` plus relevant package tests | Historical aggregate; keep only while compatibility is required. |
-| `verify:v3` | `scripts/verify-v3.mjs` | legacy milestone compatibility | `legacy-alias` | `verify:release` or targeted focused gates | Historical aggregate; keep only while compatibility is required. |
+| `verify:v2` | `scripts/legacy-script-alias.mjs` | legacy alias table | `legacy-alias` | `verify:release` | Compatibility alias with deprecation diagnostics. |
+| `verify:v3` | `scripts/legacy-script-alias.mjs` | legacy alias table | `legacy-alias` | `verify:release` | Compatibility alias with deprecation diagnostics. |
 | `verify:baseline:visual-parity` | `scripts/verify-baseline-visual-parity.mjs` | baseline visual parity verifier | `focused-gate` | Keep; move implementation under `tools/verify` | Produces durable web/Bevy screenshot parity evidence across checkpoint scenes. |
 | `verify:parity:smoke` | `scripts/verify-parity-smoke.mjs` | parity smoke verifier | `focused-gate` | Keep | Fast cross-runtime screenshot smoke and hook evidence. |
-| `verify:parity:push` | `scripts/verify-parity-push.mjs` | parity push verifier | `focused-gate` | Keep | Full seven-scene baseline visual parity; run in CI or before release. |
-| `verify:pre-push` | `scripts/verify-pre-push.mjs` | pre-push hook verifier | `focused-gate` | Keep | Orchestrates workspace verify, conformance, and seven-scene parity with shared setup (~2–3 min target). |
-| `verify:v4` | `scripts/verify-v4.mjs` | legacy milestone compatibility | `legacy-alias` | `verify:release` or targeted focused gates | Historical aggregate; keep only while compatibility is required. |
-| `verify:v5` | `scripts/verify-v5.mjs` | legacy milestone compatibility | `legacy-alias` | `verify:release` or targeted focused gates | Historical aggregate; keep only while compatibility is required. |
-| `verify:v6` | `scripts/verify-v6.mjs` | legacy milestone compatibility | `legacy-alias` | `verify:release` or targeted focused gates | Historical aggregate; keep only while compatibility is required. |
+| `verify:parity:push` | `scripts/verify-parity-push.mjs` | parity push verifier | `focused-gate` | Keep | Structured-source baseline visual parity; run in CI or before release. |
+| `verify:pre-push` | `scripts/verify-pre-push.mjs` | pre-push hook verifier | `focused-gate` | Keep | Orchestrates workspace verify, conformance, and structured visual parity with shared setup (~2–3 min target). |
+| `verify:v4` | `scripts/legacy-script-alias.mjs` | legacy alias table | `legacy-alias` | `verify:release` | Compatibility alias with deprecation diagnostics. |
+| `verify:v5` | `scripts/legacy-script-alias.mjs` | legacy alias table | `legacy-alias` | `verify:release` | Compatibility alias with deprecation diagnostics. |
+| `verify:v6` | `scripts/legacy-script-alias.mjs` | legacy alias table | `legacy-alias` | `verify:release` | Compatibility alias with deprecation diagnostics. |
 | `verify:v7` | `scripts/legacy-script-alias.mjs` | legacy alias table | `legacy-alias` | `verify:release` | Compatibility alias with deprecation diagnostics. |
 | `verify:v8:overlay` | `scripts/verify-v8-overlay-webview.mjs` | overlay verifier | `focused-gate` | Keep until covered by canonical focused gate | Proves optional overlay bundle/runtime bridge behavior and unsupported-host diagnostics. |
 | `verify:v8:camera-views` | `scripts/verify-v8-camera-views.mjs` | camera/multi-view verifier | `focused-gate` | Keep until covered by canonical focused gate | Produces visual/runtime evidence for camera helpers, viewports, render targets, and screenshots. |

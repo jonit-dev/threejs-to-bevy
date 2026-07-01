@@ -79,10 +79,16 @@ export async function runDistributionVerification(options = {}) {
   await writeConsumerTypecheckFixture(consumerDir);
   await run("npx", ["tsc", "--noEmit", "--project", "tsconfig.threenative-contract.json"], { cwd: consumerDir });
   await run("npx", ["tn", "create", "simple-game", "--json"], { cwd: consumerDir });
+  await verifyGeneratedProjectAgentInstructions(gameDir);
 
   await rewriteGameDependencies(gameDir, tarballs);
   await run("npm", ["install"], { cwd: gameDir });
   await run("npm", ["run", "build"], { cwd: gameDir });
+  const gameConfig = JSON.parse(await readFile(join(gameDir, "threenative.config.json"), "utf8"));
+  const bundleRelativePath = gameConfig.outDir;
+  if (typeof bundleRelativePath !== "string" || bundleRelativePath.length === 0) {
+    throw new Error("Created project did not declare threenative.config.json outDir.");
+  }
   const installedBevyManifest = join(gameDir, "node_modules", "@threenative", "cli", "dist", "runtime-bevy", "Cargo.toml");
   await access(installedBevyManifest);
   await run("cargo", [
@@ -101,7 +107,7 @@ export async function runDistributionVerification(options = {}) {
     "tn",
     "package",
     "--bundle",
-    "dist/game.bundle",
+    bundleRelativePath,
     "--target",
     "desktop",
     "--out",
@@ -112,7 +118,7 @@ export async function runDistributionVerification(options = {}) {
     "tn",
     "validate",
     "--bundle",
-    "dist/local-distributable/desktop/game.bundle",
+    `dist/local-distributable/desktop/${basename(bundleRelativePath)}`,
     "--json",
   ], { cwd: gameDir });
   await run("tar", [
@@ -142,7 +148,7 @@ export async function runDistributionVerification(options = {}) {
   const report = JSON.parse(await readFile(reportPath, "utf8"));
   const result = {
     aiDocsPath: join(consumerDir, "node_modules", "@threenative", "cli", "dist", "ai"),
-    bundlePath: join(gameDir, "dist", "game.bundle"),
+    bundlePath: join(gameDir, bundleRelativePath),
     capabilitiesPath: join(consumerDir, "node_modules", "@threenative", "ir", "capabilities", "threenative.capabilities.json"),
     consumerDir,
     diagnosticsCatalogPath: join(consumerDir, "node_modules", "@threenative", "ir", "diagnostics", "diagnostics.catalog.json"),
@@ -163,6 +169,19 @@ async function listTgz(dir) {
     return (await readdir(dir)).filter((file) => file.endsWith(".tgz")).sort();
   } catch {
     return [];
+  }
+}
+
+async function verifyGeneratedProjectAgentInstructions(projectDir) {
+  const agents = await readFile(join(projectDir, "AGENTS.md"), "utf8");
+  const claude = await readFile(join(projectDir, "CLAUDE.md"), "utf8");
+  for (const phrase of ["tn scene ... --json", "content/**/*.json", "Do not edit them as the fix"]) {
+    if (!agents.includes(phrase)) {
+      throw new Error(`Generated AGENTS.md is missing required phrase '${phrase}'.`);
+    }
+  }
+  if (!claude.includes("Use `AGENTS.md`")) {
+    throw new Error("Generated CLAUDE.md does not point agents to AGENTS.md.");
   }
 }
 

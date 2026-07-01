@@ -1,0 +1,112 @@
+{
+  "assets": [
+    {
+      "format": "generated",
+      "id": "mesh.swatch.blue",
+      "kind": "mesh",
+      "primitive": "plane",
+      "size": [
+        1.2,
+        1.2
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.swatch.cyan",
+      "kind": "mesh",
+      "primitive": "plane",
+      "size": [
+        1.2,
+        1.2
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.swatch.gray",
+      "kind": "mesh",
+      "primitive": "plane",
+      "size": [
+        1.2,
+        1.2
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.swatch.green",
+      "kind": "mesh",
+      "primitive": "plane",
+      "size": [
+        1.2,
+        1.2
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.swatch.magenta",
+      "kind": "mesh",
+      "primitive": "plane",
+      "size": [
+        1.2,
+        1.2
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.swatch.orange",
+      "kind": "mesh",
+      "primitive": "plane",
+      "size": [
+        1.2,
+        1.2
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.swatch.red",
+      "kind": "mesh",
+      "primitive": "plane",
+      "size": [
+        1.2,
+        1.2
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.swatch.white",
+      "kind": "mesh",
+      "primitive": "plane",
+      "size": [
+        1.2,
+        1.2
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.swatch.yellow",
+      "kind": "mesh",
+      "primitive": "plane",
+      "size": [
+        1.2,
+        1.2
+      ]
+    }
+  ],
+  "groups": [
+    {
+      "id": "bundle.requiredAssets",
+      "required": [
+        "mesh.swatch.blue",
+        "mesh.swatch.cyan",
+        "mesh.swatch.gray",
+        "mesh.swatch.green",
+        "mesh.swatch.magenta",
+        "mesh.swatch.orange",
+        "mesh.swatch.red",
+        "mesh.swatch.white",
+        "mesh.swatch.yellow"
+      ]
+    }
+  ],
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}

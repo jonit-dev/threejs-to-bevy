@@ -116,15 +116,15 @@ export async function createModelTestProject(options: {
     files.push({ path: dependencyOutPath, role: `${dependency.kind}-dependency` });
   }
 
-  const sourcePath = join(options.outDir, "src", "game.ts");
+  const sourcePath = join(options.outDir, "content", "scenes", "model-test.scene.json");
   const configPath = join(options.outDir, "threenative.config.json");
   const packagePath = join(options.outDir, "package.json");
   const readmePath = join(options.outDir, "README.md");
   await mkdir(dirname(sourcePath), { recursive: true });
-  await writeFile(sourcePath, renderGameSource({ assetFileName, inspection }));
+  await writeFile(sourcePath, renderSceneDocument({ assetFileName, inspection }));
   await writeFile(
     configPath,
-    `${JSON.stringify({ schema: "threenative.project", version: "0.1.0", entry: "src/game.ts", outDir: "dist/model-test.bundle" }, null, 2)}\n`,
+    `${JSON.stringify({ schema: "threenative.project", version: "0.1.0", entry: "content/scenes/model-test.scene.json", outDir: "dist/model-test.bundle" }, null, 2)}\n`,
   );
   await writeFile(packagePath, `${JSON.stringify({
     name: "threenative-model-test",
@@ -182,7 +182,7 @@ export async function createModelTestProject(options: {
   };
 }
 
-function renderGameSource(options: { assetFileName: string; inspection: Awaited<ReturnType<typeof inspectAsset>> }): string {
+function renderSceneDocument(options: { assetFileName: string; inspection: Awaited<ReturnType<typeof inspectAsset>> }): string {
   const bounds = options.inspection.bounds;
   const calibration = options.inspection.calibration;
   const size = bounds?.size ?? [1, 1, 1];
@@ -196,12 +196,122 @@ function renderGameSource(options: { assetFileName: string; inspection: Awaited<
   const minY = bounds === undefined ? 0 : bounds.min[1];
   const yOffset = round(-minY);
 
-  return `import { AmbientLight, BoxGeometry, DirectionalLight, Mesh, MeshStandardMaterial, PerspectiveCamera, Scene, modelAsset } from "@threenative/sdk";\n\nconst model = modelAsset("model.under-test", "assets/${options.assetFileName}");\nconst scene = new Scene({ assetRefs: [model], id: "model-test" });\n\nconst floor = new Mesh({\n  geometry: new BoxGeometry({ size: [${floorSize}, 0.04, ${floorSize}] }),\n  id: "scale.floor.1m-grid",\n  material: new MeshStandardMaterial({ color: "#263445", roughness: 0.9 }),\n});\nfloor.position.set(0, -0.02, 0);\nscene.add(floor);\n\nconst modelUnderTest = new Mesh({\n  assetRefs: [model],\n  geometry: new BoxGeometry({ size: [0.1, 0.1, 0.1] }),\n  id: "model.under-test.instance",\n  material: new MeshStandardMaterial({ color: "#ffffff", roughness: 0.6 }),\n});\nmodelUnderTest.position.set(${round(-center[0] * scale)}, ${round(yOffset * scale)}, ${round(-center[2] * scale)});\nmodelUnderTest.scale.set(${scale}, ${scale}, ${scale});\nscene.add(modelUnderTest);\n\nconst boundsMarker = new Mesh({\n  geometry: new BoxGeometry({ size: [${round(Math.max(size[0] * scale, 0.05))}, ${round(Math.max(size[1] * scale, 0.05))}, ${round(Math.max(size[2] * scale, 0.05))}] }),\n  id: "model.bounds.reference",\n  material: new MeshStandardMaterial({ color: "#38bdf8", opacity: 0.18, transparent: true }),\n});\nboundsMarker.position.set(0, ${round((size[1] * scale) / 2)}, 0);\nscene.add(boundsMarker);\n\nconst oneMeterRuler = new Mesh({\n  geometry: new BoxGeometry({ size: [1, 0.05, 0.05] }),\n  id: "scale.ruler.1m",\n  material: new MeshStandardMaterial({ color: "#f97316" }),\n});\noneMeterRuler.position.set(0, 0.05, ${round(floorSize / 2 - 0.4)});\nscene.add(oneMeterRuler);\n\nconst camera = new PerspectiveCamera({ far: ${round(Math.max(cameraDistance * 6, 50))}, fovY: 50, id: "camera.model-test", near: 0.01 });\ncamera.position.set(0, ${cameraHeight}, ${cameraDistance});\nscene.add(camera);\nscene.setActiveCamera(camera);\n\nscene.add(new AmbientLight({ color: "#dbeafe", id: "light.ambient", intensity: 0.75 }));\nconst key = new DirectionalLight({ color: "#fff7ed", id: "light.key", intensity: 2.2 });\nkey.position.set(3, 5, 4);\nscene.add(key);\n\nexport default { scene };\n`;
+  const scene = {
+    schema: "threenative.scene",
+    version: "0.1.0",
+    id: "model-test",
+    kind: "level",
+    entities: [
+      {
+        id: "scale.floor.1m-grid",
+        prefab: "prefab.floor",
+        transform: {
+          position: [0, -0.02, 0],
+          scale: [floorSize, 0.04, floorSize],
+        },
+      },
+      {
+        id: "model.under-test.instance",
+        prefab: "prefab.model-under-test",
+        transform: {
+          position: [round(-center[0] * scale), round(yOffset * scale), round(-center[2] * scale)],
+          scale: [scale, scale, scale],
+        },
+      },
+      {
+        id: "model.bounds.reference",
+        prefab: "prefab.bounds-marker",
+        transform: {
+          position: [0, round((size[1] * scale) / 2), 0],
+          scale: [
+            round(Math.max(size[0] * scale, 0.05)),
+            round(Math.max(size[1] * scale, 0.05)),
+            round(Math.max(size[2] * scale, 0.05)),
+          ],
+        },
+      },
+      {
+        id: "scale.ruler.1m",
+        prefab: "prefab.ruler",
+        transform: {
+          position: [0, 0.05, round(floorSize / 2 - 0.4)],
+          scale: [1, 0.05, 0.05],
+        },
+      },
+      {
+        id: "camera.model-test",
+        transform: {
+          position: [0, cameraHeight, cameraDistance],
+        },
+        components: {
+          camera: {
+            mode: "perspective",
+            fovY: 50,
+            near: 0.01,
+            far: round(Math.max(cameraDistance * 6, 50)),
+          },
+        },
+      },
+      {
+        id: "light.ambient",
+        components: {
+          Light: {
+            kind: "ambient",
+            color: "#dbeafe",
+            intensity: 0.75,
+          },
+        },
+      },
+      {
+        id: "light.key",
+        transform: {
+          position: [3, 5, 4],
+        },
+        components: {
+          Light: {
+            kind: "directional",
+            color: "#fff7ed",
+            intensity: 2.2,
+          },
+        },
+      },
+    ],
+    prefabs: [
+      {
+        id: "prefab.floor",
+        primitive: "box",
+        color: "#263445",
+      },
+      {
+        id: "prefab.model-under-test",
+        primitive: "box",
+        color: "#ffffff",
+        asset: `assets/${options.assetFileName}`,
+      },
+      {
+        id: "prefab.bounds-marker",
+        primitive: "box",
+        color: "#38bdf8",
+      },
+      {
+        id: "prefab.ruler",
+        primitive: "box",
+        color: "#f97316",
+      },
+    ],
+    resources: [],
+    systems: [],
+    ui: {
+      nodes: [],
+    },
+  };
+
+  return `${JSON.stringify(scene, null, 2)}\n`;
 }
 
 function renderReadme(assetPath: string, inspection: Awaited<ReturnType<typeof inspectAsset>>): string {
   const analysis = modelTestAnalysis(inspection);
-  return `# ThreeNative model test\n\nGenerated by \`tn model-test\` for:\n\n\`${assetPath}\`\n\n## What this scene contains\n\n- The inspected model copied into \`assets/\`.\n- A 1 meter orange ruler and floor plane for scale checks.\n- A translucent bounds marker sized from glTF accessor min/max bounds.\n- Camera/light defaults from asset calibration hints.\n- Scale presets: ${analysis.scalePresets.map((preset) => `${preset.name}=${preset.scale}`).join(", ")}.\n- Camera frustum: ${analysis.cameraFrustum.fovDegrees}deg FOV, near ${analysis.cameraFrustum.near}, far ${analysis.cameraFrustum.far}, recommended distance ${analysis.cameraFrustum.recommendedDistance}m.\n\n## Inspection summary\n\n- Bounds: ${inspection.bounds === undefined ? "unavailable" : JSON.stringify(inspection.bounds.size)}\n- Calibration: ${inspection.calibration === undefined ? "unavailable" : JSON.stringify(inspection.calibration.fitScales)}\n- Scale verdict: ${analysis.scaleVerdict}\n- Projected screen occupancy: ${analysis.projectedScreenOccupancy ?? "unknown"}\n\n${analysis.isolationCaveat}\n\nRun \`pnpm run build\`, \`pnpm run validate\`, then \`pnpm run verify\` after installing workspace dependencies.\n`;
+  return `# ThreeNative model test\n\nGenerated by \`tn model-test\` for:\n\n\`${assetPath}\`\n\n## What this scene contains\n\n- The inspected model copied into \`assets/\`.\n- A structured scene source at \`content/scenes/model-test.scene.json\`.\n- A 1 meter orange ruler and floor plane for scale checks.\n- A translucent bounds marker sized from glTF accessor min/max bounds.\n- Camera/light defaults from asset calibration hints.\n- Scale presets: ${analysis.scalePresets.map((preset) => `${preset.name}=${preset.scale}`).join(", ")}.\n- Camera frustum: ${analysis.cameraFrustum.fovDegrees}deg FOV, near ${analysis.cameraFrustum.near}, far ${analysis.cameraFrustum.far}, recommended distance ${analysis.cameraFrustum.recommendedDistance}m.\n\n## Inspection summary\n\n- Bounds: ${inspection.bounds === undefined ? "unavailable" : JSON.stringify(inspection.bounds.size)}\n- Calibration: ${inspection.calibration === undefined ? "unavailable" : JSON.stringify(inspection.calibration.fitScales)}\n- Scale verdict: ${analysis.scaleVerdict}\n- Projected screen occupancy: ${analysis.projectedScreenOccupancy ?? "unknown"}\n\n${analysis.isolationCaveat}\n\nRun \`pnpm run build\`, \`pnpm run validate\`, then \`pnpm run verify\` after installing workspace dependencies.\n`;
 }
 
 function renderModelTestReport(report: Awaited<ReturnType<typeof createModelTestProject>>): string {

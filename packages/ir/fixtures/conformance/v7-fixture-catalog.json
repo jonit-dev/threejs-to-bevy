@@ -196,7 +196,7 @@
     {
       "id": "packaging-target-profiles",
       "ticket": "V7-08",
-      "baselineBundlePath": "examples/v6-functional/dist/v6-functional.bundle",
+      "baselineBundlePath": "packages/ir/fixtures/conformance/resources-events/game.bundle",
       "acceptedFixtureId": "packaging-target-profiles",
       "acceptedBundlePath": "packages/ir/fixtures/conformance/packaging-target-profiles/game.bundle",
       "rejectedFixtureId": "v7-rejected-packaging-target-profiles",
@@ -220,7 +220,7 @@
     {
       "id": "performance-budgets",
       "ticket": "V7-09",
-      "baselineBundlePath": "examples/v6-functional/dist/v6-functional.bundle",
+      "baselineBundlePath": "packages/ir/fixtures/conformance/resources-events/game.bundle",
       "acceptedFixtureId": "performance-budgets",
       "acceptedBundlePath": "packages/ir/fixtures/conformance/performance-budgets/game.bundle",
       "rejectedFixtureId": "v7-rejected-performance-budgets",

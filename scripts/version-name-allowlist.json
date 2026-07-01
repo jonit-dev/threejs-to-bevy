@@ -5,7 +5,6 @@
     "check:docs:v9": "check:docs",
     "check:docs:v8": "check:docs",
     "check:docs:v7": "check:docs",
-    "v7-functional": "starter-functional",
     "docs/PRDs/v9": "docs/PRDs/archive/milestones/v9",
     "docs/PRDs/v8": "docs/PRDs/archive/milestones/v8",
     "docs/PRDs/v7": "docs/PRDs/archive/milestones/v7"

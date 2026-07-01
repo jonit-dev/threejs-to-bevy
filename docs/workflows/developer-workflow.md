@@ -166,9 +166,9 @@ Command expectations:
 - `tn init` is the first-project alias for `tn create`. It creates a project
   from a maintained template and prints exact next commands.
 - `tn create` creates a project from a maintained template.
-- `tn create my-game --template v5-game-starter` creates the V5 game-first
-  starter using `defineGame`, a portable scene, input, world, runtime config,
-  and a small movement system.
+- `tn create my-game --template structured-source-starter` creates the
+  maintained content-first starter using `content/**/*.json` source documents
+  and behavior modules under `src/scripts/**/*.ts`.
 - `tn scene create <scene-id> --json` creates a minimal valid
   `threenative.scene` source document. By default it writes
   `content/scenes/<scene-id>.scene.json`; use `--file <path>` for an explicit
@@ -251,12 +251,12 @@ Command expectations:
 
 ## First Project Flow
 
-For a screenshot-ready racing starter with visible rivals, a curved track, HUD,
-chase camera, and scale calibration fixture:
+For a maintained content-first starter with structured scene, UI, material,
+asset, input, prefab, and system source documents:
 
 ```bash
-tn create kart-racer --template racing-kart --json
-cd kart-racer
+tn create arena-prototype --template structured-source-starter --json
+cd arena-prototype
 pnpm install
 pnpm run build
 pnpm run validate
@@ -267,7 +267,7 @@ Use `tn init` when starting from an empty directory or when instructing an
 agent to create a reproducible prototype:
 
 ```bash
-tn init my-game --template game-starter --json
+tn init my-game --template structured-source-starter --json
 cd my-game
 pnpm install
 pnpm run validate
@@ -474,9 +474,8 @@ support.
 ## Verification And Naming Conventions
 
 ThreeNative is migrating away from milestone-numbered command and folder names
-(`verify:v7`, `examples/physics-character`, `templates/starter-functional`) toward
-capability-based names (`verify:release`, `physics-character`,
-`starter-functional`). The migration plan lives in
+(`verify:v7`, old example-owned physics scenes) toward capability-based names
+(`verify:release`, `physics-character`). The migration plan lives in
 [PRDs/archive/cleanup-versioned-debt.md](../PRDs/archive/cleanup-versioned-debt.md).
 
 Current contributor commands:
@@ -535,14 +534,12 @@ After `pnpm install`, Husky installs local git hooks:
 | Hook | Command | Purpose |
 |------|---------|---------|
 | `pre-commit` | `pnpm verify:smoke` | Fast naming/docs drift check |
-| `pre-push` | `pnpm verify:pre-push` | Orchestrated workspace verify + conformance + seven-scene visual parity (~2–3 min target). |
+| `pre-push` | `pnpm verify:pre-push` | Orchestrated workspace verify + conformance + structured-source visual parity (~2–3 min target). |
 
 Run `pnpm verify:parity:smoke` explicitly when you need the one-scene web↔Bevy
-screenshot proof before pushing. The smoke scene (`examples/parity-smoke`)
-combines color probes, ACES tone mapping, atmosphere sun/ambient, exponential
-fog with depth markers, sky colors, PBR material cards, and a point-light fill
-so one capture exercises most cross-runtime rendering guardrails in ~20–30
-seconds.
+screenshot proof before pushing. The smoke checkpoint builds
+`examples/stylized-nature-component` from structured source so the parity smoke
+path no longer depends on a standalone `src/game.ts` example.
 
 Evidence:
 
@@ -646,19 +643,19 @@ gate directories referenced by `packages/ir/fixtures/conformance/v9-fixture-cata
 
 ### V2 Arena Workflow
 
-The canonical playable V2 proof lives in `examples/v2-arena` and can also be
-scaffolded from the maintained template:
+The historical playable V2 proof is now fixture-backed. New projects should
+scaffold from the maintained structured-source template:
 
 ```bash
-pnpm tn -- create my-arena --template v2-arena
-pnpm tn -- build --project examples/v2-arena
-pnpm tn -- dev --target web --watch --project examples/v2-arena
-pnpm tn -- verify --project examples/v2-arena
+pnpm tn -- create my-arena --template structured-source-starter
+pnpm tn -- build --project my-arena
+pnpm tn -- dev --target web --watch --project my-arena
+pnpm tn -- verify --project my-arena
 ```
 
-Keep arena edits within `@threenative/sdk`, `@threenative/r3f`, and
-`@threenative/ui` declarations so the same bundle remains portable across web
-and native runtime paths.
+Keep arena edits in structured `content/**/*.json` source documents and portable
+`src/scripts/**/*.ts` behavior modules so the same bundle remains portable
+across web and native runtime paths.
 
 Before treating V2 as releasable, run the candidate gate:
 
@@ -668,9 +665,9 @@ pnpm verify:conformance
 pnpm verify:v2
 ```
 
-`pnpm verify:v2` rebuilds `examples/v2-arena`, validates the emitted bundle,
-runs conformance before arena smoke checks, exercises the web and native paths,
-and writes a machine-readable report under `tools/verify/artifacts/milestones/v2`.
+`pnpm verify:v2` validates maintained fixture evidence, runs conformance before
+arena smoke checks, exercises the web and native paths, and writes a
+machine-readable report under `tools/verify/artifacts/milestones/v2`.
 
 The equivalent raw CLI watch command is `tn dev --target web --watch`.
 

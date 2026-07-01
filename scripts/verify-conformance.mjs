@@ -21,6 +21,16 @@ export async function verifyConformance(options = {}) {
   const skipDuplicateRuntimeTests = options.skipDuplicateRuntimeTests ?? false;
   const run = options.run ?? runCommand;
   const targets = resolveArtifactTargets({ gate: "conformance", owner: { kind: "package", packagePath: "packages/ir" }, root });
+  const v9AssetsGltfTargets = resolveArtifactTargets({
+    gate: "assets-gltf-scene-workflow",
+    owner: { kind: "aggregate", name: "assets-gltf-scene-workflow" },
+    root,
+  });
+  const v9RenderingLightsTargets = resolveArtifactTargets({
+    gate: "rendering-lights",
+    owner: { kind: "aggregate", name: "rendering-lights" },
+    root,
+  });
   const reportPath = options.reportPath ?? targets.reportPath;
   const artifactDir = options.artifactDir ?? resolve(reportPath, "..");
   let fixtureCatalog = options.fixtureCatalog;
@@ -137,10 +147,8 @@ export async function verifyConformance(options = {}) {
   const sceneLifecycleDiffPath = options.sceneLifecycleDiffPath ?? resolve(artifactDir, "scene-lifecycle/scene-lifecycle-diff.json");
   const sceneLifecycleNativeTracePath = options.sceneLifecycleNativeTracePath ?? resolve(artifactDir, "scene-lifecycle/native-scene-lifecycle.json");
   const sceneLifecycleWebTracePath = options.sceneLifecycleWebTracePath ?? resolve(artifactDir, "scene-lifecycle/web-scene-lifecycle.json");
-  const v9AssetsGltfReportPath =
-    options.v9AssetsGltfReportPath ?? resolve(root, "examples/assets-gltf-scene-workflow/artifacts/assets-gltf-scene-workflow/diff.json");
-  const v9RenderingLightsReportPath =
-    options.v9RenderingLightsReportPath ?? resolve(root, "examples/rendering-lights/artifacts/rendering-lights/verification-report.json");
+  const v9AssetsGltfReportPath = options.v9AssetsGltfReportPath ?? resolve(v9AssetsGltfTargets.absoluteDir, "diff.json");
+  const v9RenderingLightsReportPath = options.v9RenderingLightsReportPath ?? v9RenderingLightsTargets.reportPath;
   const nativeV9SupportStressReportPath = options.nativeV9SupportStressReportPath ?? resolve(artifactDir, "support-stress/bevy.report.json");
   const artifacts = {
     ...targets.metadata,

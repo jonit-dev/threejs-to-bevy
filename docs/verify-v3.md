@@ -13,9 +13,9 @@ pnpm verify:v3 -- --json
 
 - V3 documentation consistency.
 - CLI build.
-- `examples/v3-environment` build.
-- V3 environment bundle validation.
-- V3 environment template scaffold and build.
+- Fixture-backed V3 environment bundle validation.
+- V3 structured-source starter scaffold/build coverage through the shared
+  create/build gates.
 - Web runtime environment performance and instancing summary.
 - Environment scene authoring checks.
 - Bookmarked Three.js screenshots.
@@ -46,13 +46,7 @@ tools/verify/artifacts/milestones/v3/
     preview2-target-vs-output.png
     threejs-bevy-side-by-side.png
   template-smoke/
-    v3-environment/
-```
-
-The built example bundle lives at:
-
-```txt
-examples/v3-environment/dist/forest.bundle/
+    structured-source-starter/
 ```
 
 ## Pass/Fail Semantics
@@ -61,9 +55,9 @@ V3 blocks on:
 
 - docs check failure
 - CLI build failure
-- V3 example build failure
+- V3 fixture validation failure
 - bundle validation failure
-- template scaffold/build failure
+- structured-source scaffold/build failure
 - web performance verification failure
 - missing or invalid environment scene metadata
 - blank bookmarked Three.js screenshot

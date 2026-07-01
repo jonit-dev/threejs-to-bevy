@@ -1,8 +1,8 @@
 # verify:v4
 
-`verify:v4` is the current V4 scripting gate. It builds the primitive scripting
-demo, runs web JavaScript and native QuickJS over the same fixed trace, compares
-canonical effect logs, and keeps the web and native visual proof artifacts under
+`verify:v4` is the current V4 scripting gate. It runs web JavaScript and native
+QuickJS over the same fixed trace, compares canonical effect logs, and keeps
+the web and native visual proof artifacts under
 `tools/verify/artifacts/milestones/v4`.
 
 Current artifacts:
@@ -30,12 +30,12 @@ Generate the web-side proof with:
 pnpm verify:v4 -- --json
 ```
 
-Generate the native Bevy frame proof with:
+Generate the native Bevy frame proof from the maintained scripting fixture with:
 
 ```bash
 cd runtime-bevy
 cargo run --quiet -p threenative_runtime --bin threenative_capture -- \
-  ../examples/v4-scripting/dist/v4-scripting.bundle \
+  ../packages/ir/fixtures/conformance/scripting-lifecycle/game.bundle \
   camera.main \
   ../tools/verify/artifacts/milestones/v4/native-bevy-frame-01.png
 ```

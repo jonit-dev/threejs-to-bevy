@@ -68,10 +68,10 @@ Optional React webview overlay proof:
 pnpm verify:v8:overlay
 ```
 
-The overlay proof builds `examples/v8-overlay-webview`, emits
-`overlays.ir.json`, copies the React/CSS inventory overlay and item sprites into
-the bundle, validates bridge messages, checks input capture pass-through for
-non-pointer modes, runs native overlay diagnostics tests, and writes
+The overlay proof validates the shared V8 overlay conformance fixture with
+bundle-local HTML/CSS inventory overlay assets and item sprites, validates
+bridge messages, checks input capture pass-through for non-pointer modes, runs
+native overlay diagnostics tests, and writes
 `tools/verify/artifacts/overlay-webview/verification-report.json`.
 
 Camera view proof:
@@ -80,9 +80,9 @@ Camera view proof:
 pnpm verify:v8:camera-views
 ```
 
-The camera proof builds `examples/v8-camera-views`, validates the bundle,
+The camera proof validates the shared camera multi-view conformance fixture,
 captures web/native screenshots with viewport-region checks, and writes
-artifacts under `examples/v8-camera-views/artifacts/camera-views/`.
+artifacts under `tools/verify/artifacts/camera-views/`.
 
 Material parity proof:
 
@@ -101,12 +101,13 @@ pnpm verify:v8:color-parity
 pnpm test:color-parity
 ```
 
-The color parity proof builds `examples/v8-color-parity` and
-`examples/v8-lighting-tone`, validates both bundles, captures web/native
-screenshots, compares unlit swatch colors plus lit PBR sphere probes, and writes
-artifacts under `tools/verify/artifacts/color-parity/` and
-`tools/verify/artifacts/lighting-tone/`. `pnpm test:color-parity` runs the fast contract
-harness that locks thresholds, example alignment, and verifier wiring.
+The color parity proof validates the shared `color-parity` and `lighting-tone`
+conformance fixture bundles, captures web/native screenshots, compares unlit
+swatch colors plus lit PBR sphere probes, and writes artifacts under
+`tools/verify/artifacts/color-parity/` and
+`tools/verify/artifacts/lighting-tone/`. `pnpm test:color-parity` runs the fast
+contract harness that locks thresholds, fixture presence, sample regions, and
+verifier wiring.
 
 Rendering-quality fog/sky proof:
 

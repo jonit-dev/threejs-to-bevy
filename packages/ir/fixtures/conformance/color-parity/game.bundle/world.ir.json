@@ -1,0 +1,286 @@
+{
+  "entities": [
+    {
+      "components": {
+        "Camera": {
+          "far": 20,
+          "kind": "orthographic",
+          "near": 0.1,
+          "priority": 0,
+          "size": 4.5
+        },
+        "Transform": {
+          "position": [
+            0,
+            0,
+            5
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "id": "camera.color"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.swatch.blue",
+          "mesh": "mesh.swatch.blue"
+        },
+        "Transform": {
+          "position": [
+            2,
+            1.2,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "id": "swatch.blue"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.swatch.cyan",
+          "mesh": "mesh.swatch.cyan"
+        },
+        "Transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "id": "swatch.cyan"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.swatch.gray",
+          "mesh": "mesh.swatch.gray"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -1.2,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "id": "swatch.gray"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.swatch.green",
+          "mesh": "mesh.swatch.green"
+        },
+        "Transform": {
+          "position": [
+            0,
+            1.2,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "id": "swatch.green"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.swatch.magenta",
+          "mesh": "mesh.swatch.magenta"
+        },
+        "Transform": {
+          "position": [
+            2,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "id": "swatch.magenta"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.swatch.orange",
+          "mesh": "mesh.swatch.orange"
+        },
+        "Transform": {
+          "position": [
+            2,
+            -1.2,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "id": "swatch.orange"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.swatch.red",
+          "mesh": "mesh.swatch.red"
+        },
+        "Transform": {
+          "position": [
+            -2,
+            1.2,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "id": "swatch.red"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.swatch.white",
+          "mesh": "mesh.swatch.white"
+        },
+        "Transform": {
+          "position": [
+            -2,
+            -1.2,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "id": "swatch.white"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.swatch.yellow",
+          "mesh": "mesh.swatch.yellow"
+        },
+        "Transform": {
+          "position": [
+            -2,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "id": "swatch.yellow"
+    }
+  ],
+  "events": {},
+  "prefabs": [],
+  "resources": {
+    "ActiveCamera": {
+      "entity": "camera.color"
+    }
+  },
+  "schema": "threenative.world",
+  "version": "0.1.0"
+}

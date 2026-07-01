@@ -81,8 +81,8 @@
         "rendering:hlod-fades"
       ],
       "reportArtifacts": [
-        "examples/rendering-lights/artifacts/rendering-lights/verification-report.json",
-        "examples/rendering-lights/artifacts/rendering-lights/skybox-environment/rendering-lights-visual-report.json"
+        "tools/verify/artifacts/rendering-lights/verification-report.json",
+        "tools/verify/artifacts/rendering-lights/skybox-environment/rendering-lights-visual-report.json"
       ],
       "visualEvidenceRequired": true
     }

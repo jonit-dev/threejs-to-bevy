@@ -147,7 +147,17 @@ async function inspectProject(projectPath: string, previewUrl?: string): Promise
   } else {
     checks.push({ code: "TN_DOCTOR_TEMPLATE_UNAVAILABLE", message: "Project template metadata is not declared.", nextCommand: "Keep threenative.config.json template metadata when scaffolding projects.", path: configPath, severity: "unavailable" });
   }
-  const entry = config.entry ?? "src/game.ts";
+  const entry = config.entry;
+  if (typeof entry !== "string" || entry.trim() === "") {
+    checks.push({
+      code: "TN_DOCTOR_ENTRY_UNDECLARED",
+      message: "Project entry is not declared in threenative.config.json.",
+      nextCommand: "Set entry to a structured source document such as content/scenes/arena.scene.json.",
+      path: configPath,
+      severity: "error",
+    });
+    return checks;
+  }
   const entryPath = resolve(projectPath, entry);
   checks.push(await exists(entryPath)
     ? { code: "TN_DOCTOR_ENTRY_OK", message: `Source entry '${entry}' found.`, nextCommand: "pnpm run validate", path: entryPath, severity: "ok" }

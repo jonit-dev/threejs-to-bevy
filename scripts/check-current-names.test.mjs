@@ -14,7 +14,7 @@ test("should classify legacy version names when scanning repo surfaces", async (
   const root = await makeRepoRoot({
     "docs/PRDs/v9/README.md": "# V9 PRDs\n\nHistorical milestone batch.\n",
     "scripts/verify-v9.mjs": "export const gate = 'verify:v9';\n",
-    "examples/physics-character/package.json": '{"name":"physics-character"}\n',
+    "examples/sample-scene/package.json": '{"name":"sample-scene"}\n',
   });
 
   try {
@@ -118,6 +118,65 @@ test("should allow owned aggregate and feature-named artifact paths", async () =
     const allowlist = { ...(await loadVersionNameAllowlist(root)), requiredFrontDoorPhrases: [] };
     const result = await checkCurrentNames({ root, allowlist });
     assert.equal(result.ok, true, result.diagnostics.map((diagnostic) => diagnostic.message).join("\n"));
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject game ts template entries", async () => {
+  const root = await makeRepoRoot({
+    "templates/legacy/threenative.config.json": `${JSON.stringify({ entry: "src/game.ts" })}\n`,
+  });
+
+  try {
+    const allowlist = { ...(await loadVersionNameAllowlist(root)), requiredFrontDoorPhrases: [] };
+    const result = await checkCurrentNames({ root, allowlist });
+    assert.equal(result.ok, false);
+    assert.equal(
+      result.diagnostics.some((diagnostic) => diagnostic.code === "TN_NAMES_GAME_TS_TEMPLATE_ENTRY"),
+      true,
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject game ts example entries and files", async () => {
+  const root = await makeRepoRoot({
+    "examples/legacy/src/game.ts": "export default {}\n",
+    "examples/legacy/threenative.config.json": `${JSON.stringify({ entry: "src/game.ts" })}\n`,
+  });
+
+  try {
+    const allowlist = { ...(await loadVersionNameAllowlist(root)), requiredFrontDoorPhrases: [] };
+    const result = await checkCurrentNames({ root, allowlist });
+    assert.equal(result.ok, false);
+    assert.equal(
+      result.diagnostics.some((diagnostic) => diagnostic.code === "TN_NAMES_GAME_TS_EXAMPLE_ENTRY"),
+      true,
+    );
+    assert.equal(
+      result.diagnostics.some((diagnostic) => diagnostic.code === "TN_NAMES_GAME_TS_EXAMPLE_FILE"),
+      true,
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject legacy scaffold guidance in active docs", async () => {
+  const root = await makeRepoRoot({
+    "docs/workflows/ai-workflows.md": "tn init my-game --template game-starter --json\n",
+  });
+
+  try {
+    const allowlist = { ...(await loadVersionNameAllowlist(root)), requiredFrontDoorPhrases: [] };
+    const result = await checkCurrentNames({ root, allowlist });
+    assert.equal(result.ok, false);
+    assert.equal(
+      result.diagnostics.some((diagnostic) => diagnostic.code === "TN_NAMES_GAME_TS_SCAFFOLD_GUIDANCE"),
+      true,
+    );
   } finally {
     await rm(root, { force: true, recursive: true });
   }

@@ -28,7 +28,7 @@ visual/sample-scene proof.
 - `packages/ir/fixtures/conformance/physics-character/game.bundle/`
 - `packages/ir/fixtures/conformance/physics-character-solver/game.bundle/`
 - `packages/ir/fixtures/conformance/rendering-lights/game.bundle/`
-- `examples/v9-skeletal-animation/`
+- `packages/ir/fixtures/conformance/animation-blending/game.bundle/`
 - Three.js `examples/models/gltf/Soldier.glb`
   (`https://github.com/mrdoob/three.js/blob/dev/examples/models/gltf/Soldier.glb`)
 - `docs/PRDs/v9/README.md`
@@ -50,9 +50,8 @@ visual/sample-scene proof.
 - Visual gates already support nonblank checks, region sampling, contact sheets,
   and diff PNGs, but only V9 rendering/lights currently uses the V9 visual
   region gate.
-- V9 sample coverage is thin: `examples/v9-skeletal-animation` exists, while
-  physics/character, glTF workflow, and rendering/lights are mostly fixture or
-  artifact driven.
+- V9 sample coverage is fixture-driven through animation, physics/character,
+  glTF workflow, and rendering/lights bundles.
 - Verification artifacts are useful but not normalized across latest PR areas;
   some gates write `ok`, others `status`, and required artifact checks are not
   consistently enforced.
@@ -269,9 +268,8 @@ sequenceDiagram
   network asset policy, glTF handles, and inspection.
 - `examples/rendering-lights/` - sample project for skybox, probes, light
   budget, HLOD fade, color grading, and debug gizmos.
-- `examples/v9-skeletal-animation/` - upgrade existing sample to use a real
-  skinned GLB with clips, using Three.js `Soldier.glb` as the preferred fixture
-  candidate after license/provenance review.
+- `packages/ir/fixtures/conformance/animation-blending/game.bundle/` - keep a
+  skinned GLB fixture with clips and recorded provenance.
 - `scripts/verify-v9-sample-scenes.mjs` - build/emit/validate all V9 sample
   scene bundles.
 - `scripts/verify-v9-sample-scenes.test.mjs` - validate sample matrix and
@@ -281,9 +279,9 @@ sequenceDiagram
 
 - [ ] Keep all required runtime assets inside each example folder or emitted
   bundle.
-- [ ] Vendor or mirror the selected animated GLB into
-  `examples/v9-skeletal-animation/assets/` after recording source URL,
-  license/provenance, file size, hash, and clip names in the example README.
+- [ ] Vendor or mirror the selected animated GLB into the animation fixture
+  bundle after recording source URL, license/provenance, file size, hash, and
+  clip names in fixture metadata.
 - [ ] Each sample must be authored through SDK/ECS APIs and emitted by the
   compiler; no hand-authored runtime source of truth.
 - [ ] Each sample emits a bundle under its own `dist/` directory and validates

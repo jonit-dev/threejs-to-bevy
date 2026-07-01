@@ -28,11 +28,11 @@ test("should fail when verify:focused script is missing", async () => {
 async function makeBrokenRoot(overrides = {}) {
   const root = await mkdtemp(join(tmpdir(), "tn-color-parity-contract-"));
   const copyPaths = [
-    "examples/v8-color-parity/src/game.ts",
-    "examples/v8-color-parity/threenative.config.json",
-    "examples/v8-lighting-tone/src/game.ts",
+    "packages/ir/fixtures/conformance/color-parity/game.bundle",
+    "packages/ir/fixtures/conformance/lighting-tone/game.bundle",
     "packages/cli/src/verify/colorParitySwatches.ts",
     "packages/cli/src/verify/colorParityVisual.ts",
+    "packages/cli/src/verify/lightingToneSamples.ts",
     "packages/cli/dist/verify",
     "scripts/verify-v8-color-parity.mjs",
     "docs/STATUS.md",

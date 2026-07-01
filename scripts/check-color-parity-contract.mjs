@@ -18,11 +18,13 @@ export async function checkColorParityContract(options = {}) {
   }
 
   for (const relativePath of [
-    "examples/v8-color-parity/src/game.ts",
-    "examples/v8-color-parity/threenative.config.json",
-    "examples/v8-lighting-tone/src/game.ts",
+    "packages/ir/fixtures/conformance/color-parity/game.bundle/manifest.json",
+    "packages/ir/fixtures/conformance/color-parity/game.bundle/world.ir.json",
+    "packages/ir/fixtures/conformance/lighting-tone/game.bundle/manifest.json",
+    "packages/ir/fixtures/conformance/lighting-tone/game.bundle/world.ir.json",
     "packages/cli/src/verify/colorParitySwatches.ts",
     "packages/cli/src/verify/colorParityVisual.ts",
+    "packages/cli/src/verify/lightingToneSamples.ts",
     "scripts/verify-v8-color-parity.mjs",
   ]) {
     try {
@@ -49,9 +51,7 @@ export async function checkColorParityContract(options = {}) {
   diagnostics.push(
     ...contractModule.validateColorParityThresholdsLocked().map((diagnostic) => ({ ...diagnostic, severity: "error" })),
     ...contractModule.validateColorParitySwatchRegions().map((diagnostic) => ({ ...diagnostic, severity: "error" })),
-    ...contractModule.validateColorParityExampleSource(
-      await readFile(resolve(root, "examples/v8-color-parity/src/game.ts"), "utf8"),
-    ).map((diagnostic) => ({ ...diagnostic, severity: "error" })),
+    ...contractModule.validateLightingToneSampleRegions().map((diagnostic) => ({ ...diagnostic, severity: "error" })),
   );
 
   return {

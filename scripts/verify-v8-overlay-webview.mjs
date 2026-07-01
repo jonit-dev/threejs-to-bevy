@@ -4,7 +4,6 @@ import { fileURLToPath } from "node:url";
 
 import { resolveArtifactTargets } from "./artifact-paths.mjs";
 
-import { buildV8OverlayWebviewOverlay } from "./build-v8-overlay-webview-overlay.mjs";
 import { runCommand } from "./verify-conformance.mjs";
 import { summarize } from "./verify-v1.mjs";
 
@@ -17,20 +16,13 @@ export async function verifyV8OverlayWebview(options = {}) {
 
   const artifactDir = options.artifactDir ?? targets.absoluteDir;
   const reportPath = options.reportPath ?? resolve(artifactDir, "verification-report.json");
-  const projectPath = resolve(root, "examples/v8-overlay-webview");
-  const bundlePath = resolve(projectPath, "dist/v8-overlay-webview.bundle");
+  const bundlePath = resolve(root, "packages/ir/fixtures/conformance/v8-overlay-webview/game.bundle");
   const steps = [];
 
   async function step(name, command, args, commandOptions = {}) {
     const result = await run({ args, command, cwd: commandOptions.cwd ?? root, name, timeoutMs: commandOptions.timeoutMs });
     steps.push({ ...summarize(result), name });
     return result.exitCode === 0;
-  }
-
-  const overlayBuild = await buildV8OverlayWebviewOverlay(root, run);
-  steps.push({ ...summarize(overlayBuild), name: "build React overlay app" });
-  if (overlayBuild.exitCode !== 0) {
-    return writeReport({ artifactDir, bundlePath, checks: {}, ok: false, reportPath, steps });
   }
 
   for (const [name, filter] of [
@@ -45,10 +37,7 @@ export async function verifyV8OverlayWebview(options = {}) {
     }
   }
 
-  if (!(await step("build v8 overlay example", process.execPath, [resolve(root, "packages/cli/dist/index.js"), "build", "--project", projectPath, "--json"], { timeoutMs: 120000 }))) {
-    return writeReport({ artifactDir, bundlePath, checks: {}, ok: false, reportPath, steps });
-  }
-  if (!(await step("validate v8 overlay example", process.execPath, [resolve(root, "packages/cli/dist/index.js"), "validate", "--project", projectPath, "--json"], { timeoutMs: 120000 }))) {
+  if (!(await step("validate v8 overlay fixture", process.execPath, [resolve(root, "packages/cli/dist/index.js"), "validate", "--bundle", bundlePath, "--json"], { timeoutMs: 120000 }))) {
     return writeReport({ artifactDir, bundlePath, checks: {}, ok: false, reportPath, steps });
   }
   const nativeOverlayTest = await run({
@@ -65,15 +54,14 @@ export async function verifyV8OverlayWebview(options = {}) {
 
   const manifest = JSON.parse(await readFile(resolve(bundlePath, "manifest.json"), "utf8"));
   const overlays = JSON.parse(await readFile(resolve(bundlePath, "overlays.ir.json"), "utf8"));
-  const overlayHtml = await readFile(resolve(bundlePath, "overlay/dist/index.html"), "utf8");
-  const overlayJs = await readFile(resolve(bundlePath, "overlay/dist/assets/inventory-react.js"), "utf8");
-  const spriteNames = ["key.svg", "potion.svg", "shield.svg"];
-  const sprites = await Promise.all(spriteNames.map((name) => readFile(resolve(bundlePath, `overlay/dist/${name}`), "utf8")));
+  const overlayHtml = await readFile(resolve(bundlePath, "overlay/index.html"), "utf8");
+  const overlayCss = await readFile(resolve(bundlePath, "overlay/assets/inventory.css"), "utf8");
+  const sprite = await readFile(resolve(bundlePath, "overlay/assets/potion.svg"), "utf8");
   const { createOverlayBridge } = await import("../packages/runtime-web-three/dist/overlay/bridge.js");
   const { overlayPointerEvents } = await import("../packages/runtime-web-three/dist/overlay/host.js");
   const bridge = createOverlayBridge(overlays.overlays);
   const validUseItem = bridge.send({ overlayId: "inventory", payload: { itemId: "potion" }, type: "inventory:use-item" });
-  const validSnapshot = bridge.publish("inventory", "inventory:snapshot", { gold: 42, selected: "potion" });
+  const validSnapshot = bridge.publish("inventory", "inventory:snapshot", { count: 2, selected: "potion" });
   const invalidRejected = !bridge.send({ overlayId: "inventory", payload: { itemId: 99 }, type: "inventory:use-item" });
 
   const checks = {
@@ -87,7 +75,7 @@ export async function verifyV8OverlayWebview(options = {}) {
     },
     emittedBundle: {
       hasOverlayEntry: manifest.entry.overlays === "overlays.ir.json",
-      hasOverlayCapabilities: ["bridge", "input.pointer", "target.desktop", "target.web", "transparent", "webview"].every((capability) =>
+      hasOverlayCapabilities: ["bridge", "input.none", "target.desktop", "target.web", "transparent", "webview"].every((capability) =>
         manifest.requiredCapabilities.overlay?.includes(capability),
       ),
       overlayId: overlays.overlays[0]?.id,
@@ -95,7 +83,7 @@ export async function verifyV8OverlayWebview(options = {}) {
       ok:
         manifest.entry.overlays === "overlays.ir.json"
         && overlays.overlays[0]?.id === "inventory"
-        && overlays.overlays[0]?.input === "pointer",
+        && overlays.overlays[0]?.input === "none",
     },
     inputPolicy: {
       keyboardPassesPointerClicks: overlayPointerEvents("keyboard") === "none",
@@ -113,11 +101,12 @@ export async function verifyV8OverlayWebview(options = {}) {
         nativeOverlayTest.stdout.includes("native_overlay_host_default_build_reports_unsupported")
         && nativeOverlayTest.stdout.includes("maps_overlay_input_capture_modes"),
     },
-    reactOverlay: {
-      htmlReferencesBundle: overlayHtml.includes("inventory-react.js"),
-      reactBundlePresent: overlayJs.includes("createElement") || overlayJs.includes("jsx"),
-      spritesPresent: sprites.every((sprite) => sprite.includes("<svg")),
-      ok: overlayHtml.includes("inventory-react.js") && sprites.every((sprite) => sprite.includes("<svg")),
+    overlayAssets: {
+      cssReferencesSprite: overlayHtml.includes("assets/potion.svg"),
+      htmlReferencesCss: overlayHtml.includes("assets/inventory.css"),
+      stylesheetPresent: overlayCss.includes(".inventory"),
+      spritePresent: sprite.includes("<svg"),
+      ok: overlayHtml.includes("assets/inventory.css") && overlayHtml.includes("assets/potion.svg") && overlayCss.includes(".inventory") && sprite.includes("<svg"),
     },
   };
 

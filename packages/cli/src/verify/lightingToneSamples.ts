@@ -5,7 +5,7 @@ export interface ILightingToneSample {
   region: INormalizedRegion;
 }
 
-// Keep `examples/v8-lighting-tone/src/game.ts` sphere layout aligned with these regions.
+// Keep the lighting-tone fixture scene aligned with these sample regions.
 export const LIGHTING_TONE_SAMPLES: readonly ILightingToneSample[] = [
   { id: "gray", region: { x: 0.297, y: 0.488, width: 0.06, height: 0.08 } },
   { id: "orange", region: { x: 0.47, y: 0.488, width: 0.06, height: 0.08 } },

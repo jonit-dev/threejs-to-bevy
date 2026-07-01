@@ -1,4 +1,12 @@
 const system_animationState = (ctx) => {
+  for (const entity of ctx.query({ with: ["Transform"], without: ["Camera", "Light"] })) {
+    if (entity.id !== "player") {
+      continue;
+    }
+    const transform = entity.get("Transform");
+    const x = Math.sin(ctx.time.elapsed * 4) * 0.8;
+    entity.patch("Transform", { ...transform, position: [x, 0, 0] });
+  }
   const idle = ctx.animation.play("player", "idle", {
     activeState: "locomotion.idle",
     durationSeconds: 2,

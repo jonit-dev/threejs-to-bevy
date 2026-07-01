@@ -1,0 +1,27 @@
+{
+  "materials": [
+    {
+      "color": "#3070e0",
+      "id": "mat.sphere.blue",
+      "kind": "standard",
+      "metalness": 0,
+      "roughness": 1
+    },
+    {
+      "color": "#808080",
+      "id": "mat.sphere.gray",
+      "kind": "standard",
+      "metalness": 0,
+      "roughness": 1
+    },
+    {
+      "color": "#e07030",
+      "id": "mat.sphere.orange",
+      "kind": "standard",
+      "metalness": 0,
+      "roughness": 1
+    }
+  ],
+  "schema": "threenative.materials",
+  "version": "0.1.0"
+}

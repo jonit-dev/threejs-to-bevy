@@ -34,8 +34,9 @@ export const VISUAL_CALIBRATION_VERSION = "v10.0.2";
  * @typedef {Object} CalibrationFixture
  * @property {string} id
  * @property {FactorGroup} factorGroup
- * @property {string} example
- * @property {string} bundleName
+ * @property {string} [bundlePath]
+ * @property {string} [example]
+ * @property {string} [bundleName]
  * @property {boolean} promoted
  * @property {{ width: number; height: number }} capture
  * @property {{ id: string; projection?: "perspective" | "orthographic" }} camera
@@ -127,8 +128,7 @@ export const VISUAL_CALIBRATION_FIXTURES = [
   {
     id: "v10-color",
     factorGroup: "color",
-    example: "examples/v10-visual-calibration-color",
-    bundleName: "v10-visual-calibration-color.bundle",
+    bundlePath: "packages/ir/fixtures/conformance/color-parity/game.bundle",
     promoted: true,
     capture: { width: 1280, height: 720 },
     camera: { id: "camera.calibration", projection: "orthographic" },
@@ -157,8 +157,7 @@ export const VISUAL_CALIBRATION_FIXTURES = [
   {
     id: "v10-materials",
     factorGroup: "materials",
-    example: "examples/v10-visual-calibration-materials",
-    bundleName: "v10-visual-calibration-materials.bundle",
+    bundlePath: "packages/ir/fixtures/conformance/rendering-residuals/game.bundle",
     promoted: true,
     capture: { width: 1280, height: 720 },
     camera: { id: "camera.calibration", projection: "orthographic" },
@@ -191,8 +190,7 @@ export const VISUAL_CALIBRATION_FIXTURES = [
   {
     id: "v10-lighting",
     factorGroup: "lighting",
-    example: "examples/v10-visual-calibration-lighting",
-    bundleName: "v10-visual-calibration-lighting.bundle",
+    bundlePath: "packages/ir/fixtures/conformance/rendering-lights/game.bundle",
     promoted: true,
     implemented: true,
     capture: { width: 1280, height: 720 },
@@ -214,8 +212,7 @@ export const VISUAL_CALIBRATION_FIXTURES = [
   {
     id: "v10-atmosphere",
     factorGroup: "atmosphere",
-    example: "examples/v10-visual-calibration-atmosphere",
-    bundleName: "v10-visual-calibration-atmosphere.bundle",
+    bundlePath: "packages/ir/fixtures/conformance/rendering-lights/game.bundle",
     promoted: true,
     implemented: true,
     capture: { width: 1280, height: 720 },
@@ -236,8 +233,7 @@ export const VISUAL_CALIBRATION_FIXTURES = [
   {
     id: "v10-post",
     factorGroup: "post",
-    example: "examples/v10-visual-calibration-post",
-    bundleName: "v10-visual-calibration-post.bundle",
+    bundlePath: "packages/ir/fixtures/conformance/v5-drift-surface/game.bundle",
     promoted: true,
     implemented: true,
     capture: { width: 1280, height: 720 },
@@ -258,8 +254,7 @@ export const VISUAL_CALIBRATION_FIXTURES = [
   {
     id: "v10-geometry",
     factorGroup: "geometry",
-    example: "examples/v10-visual-calibration-geometry",
-    bundleName: "v10-visual-calibration-geometry.bundle",
+    bundlePath: "packages/ir/fixtures/conformance/procedural-mesh/game.bundle",
     promoted: true,
     implemented: true,
     capture: { width: 1280, height: 720 },
@@ -279,8 +274,7 @@ export const VISUAL_CALIBRATION_FIXTURES = [
   {
     id: "v10-dense",
     factorGroup: "dense",
-    example: "examples/v10-visual-calibration-dense",
-    bundleName: "v10-visual-calibration-dense.bundle",
+    bundlePath: "packages/ir/fixtures/conformance/renderer-dense-content/game.bundle",
     promoted: true,
     implemented: true,
     capture: { width: 1280, height: 720 },
@@ -299,8 +293,7 @@ export const VISUAL_CALIBRATION_FIXTURES = [
   {
     id: "v10-scene",
     factorGroup: "scene",
-    example: "examples/v10-visual-calibration-scene",
-    bundleName: "v10-visual-calibration-scene.bundle",
+    bundlePath: "packages/ir/fixtures/conformance/rendering-lights/game.bundle",
     promoted: true,
     implemented: true,
     capture: { width: 1280, height: 720 },
@@ -460,6 +453,15 @@ export function validateCalibrationManifest(fixtures = VISUAL_CALIBRATION_FIXTUR
         code: "TN_VERIFY_VISUAL_CALIBRATION_MANIFEST_INVALID",
         fixtureId: fixture.id,
         message: `Calibration fixture '${fixture.id}' must define a camera anchor id.`,
+        severity: "error",
+      });
+    }
+
+    if (!fixture.bundlePath && (!fixture.example || !fixture.bundleName)) {
+      diagnostics.push({
+        code: "TN_VERIFY_VISUAL_CALIBRATION_MANIFEST_INVALID",
+        fixtureId: fixture.id,
+        message: `Calibration fixture '${fixture.id}' must define bundlePath or example plus bundleName.`,
         severity: "error",
       });
     }

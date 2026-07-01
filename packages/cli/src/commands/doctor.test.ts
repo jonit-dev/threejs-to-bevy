@@ -20,12 +20,12 @@ test("should report starter project setup with missing bundle as actionable warn
       },
     }, null, 2)}\n`);
     await writeFile(join(root, "pnpm-lock.yaml"), "lockfileVersion: '9.0'\n");
-    await mkdir(join(root, "src"));
-    await writeFile(join(root, "src/game.ts"), "export const game = {};\n");
+    await mkdir(join(root, "content/scenes"), { recursive: true });
+    await writeFile(join(root, "content/scenes/arena.scene.json"), "{}\n");
     await writeFile(join(root, "threenative.config.json"), `${JSON.stringify({
-      entry: "src/game.ts",
-      outDir: "dist/game.bundle",
-      template: "starter",
+      entry: "content/scenes/arena.scene.json",
+      outDir: "dist/structured-source-starter.bundle",
+      template: "structured-source-starter",
     }, null, 2)}\n`);
 
     const result = await doctorCommand(["--project", root, "--json"]);
@@ -69,6 +69,28 @@ test("should report missing scripts and source as stable errors", async () => {
   }
 });
 
+test("should report undeclared source entry without defaulting to game ts", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-doctor-entry-missing-"));
+  try {
+    await writeFile(join(root, "package.json"), `${JSON.stringify({
+      scripts: { build: "tn build", validate: "tn validate", "dev:web": "tn dev --target web" },
+    }, null, 2)}\n`);
+    await writeFile(join(root, "threenative.config.json"), `${JSON.stringify({ template: "structured-source-starter" }, null, 2)}\n`);
+
+    const result = await doctorCommand(["--project", root, "--json"]);
+    const payload = JSON.parse(result.stdout) as {
+      checks: Array<{ code: string; message: string }>;
+      summary: { errors: number };
+    };
+
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.checks.some((check) => check.code === "TN_DOCTOR_ENTRY_UNDECLARED"), true);
+    assert.equal(payload.checks.some((check) => check.message.includes("src/game.ts")), false);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should inspect expected bundle files when bundle exists", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-doctor-bundle-"));
   try {
@@ -77,15 +99,15 @@ test("should inspect expected bundle files when bundle exists", async () => {
       scripts: { build: "tn build", validate: "tn validate", "dev:web": "tn dev --target web" },
     }, null, 2)}\n`);
     await writeFile(join(root, "pnpm-lock.yaml"), "lockfileVersion: '9.0'\n");
-    await mkdir(join(root, "src"));
-    await writeFile(join(root, "src/game.ts"), "export const game = {};\n");
-    await writeFile(join(root, "threenative.config.json"), `${JSON.stringify({ entry: "src/game.ts", outDir: "dist/game.bundle" }, null, 2)}\n`);
-    await mkdir(join(root, "dist/game.bundle"), { recursive: true });
-    await writeFile(join(root, "dist/game.bundle/manifest.json"), "{}\n");
-    await writeFile(join(root, "dist/game.bundle/world.ir.json"), "{}\n");
-    await writeFile(join(root, "dist/game.bundle/assets.manifest.json"), "{}\n");
-    await writeFile(join(root, "dist/game.bundle/materials.ir.json"), "{}\n");
-    await writeFile(join(root, "dist/game.bundle/target.profile.json"), "{}\n");
+    await mkdir(join(root, "content/scenes"), { recursive: true });
+    await writeFile(join(root, "content/scenes/arena.scene.json"), "{}\n");
+    await writeFile(join(root, "threenative.config.json"), `${JSON.stringify({ entry: "content/scenes/arena.scene.json", outDir: "dist/structured-source-starter.bundle" }, null, 2)}\n`);
+    await mkdir(join(root, "dist/structured-source-starter.bundle"), { recursive: true });
+    await writeFile(join(root, "dist/structured-source-starter.bundle/manifest.json"), "{}\n");
+    await writeFile(join(root, "dist/structured-source-starter.bundle/world.ir.json"), "{}\n");
+    await writeFile(join(root, "dist/structured-source-starter.bundle/assets.manifest.json"), "{}\n");
+    await writeFile(join(root, "dist/structured-source-starter.bundle/materials.ir.json"), "{}\n");
+    await writeFile(join(root, "dist/structured-source-starter.bundle/target.profile.json"), "{}\n");
 
     const result = await doctorCommand(["--project", root, "--json"]);
     const payload = JSON.parse(result.stdout) as { summary: { errors: number; warnings: number }; checks: Array<{ code: string }> };
@@ -103,16 +125,16 @@ test("should inspect manifest-declared bundle files", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-doctor-manifest-"));
   try {
     await writeRunnableProject(root);
-    await mkdir(join(root, "dist/game.bundle"), { recursive: true });
-    await writeFile(join(root, "dist/game.bundle/manifest.json"), `${JSON.stringify({
+    await mkdir(join(root, "dist/structured-source-starter.bundle"), { recursive: true });
+    await writeFile(join(root, "dist/structured-source-starter.bundle/manifest.json"), `${JSON.stringify({
       entry: { scripts: "scripts.bundle.js", world: "world.ir.json" },
       files: { assets: "assets.manifest.json", materials: "materials.ir.json", runtimeConfig: "runtime.config.json", targetProfile: "target.profile.json" },
     }, null, 2)}\n`);
-    await writeFile(join(root, "dist/game.bundle/world.ir.json"), "{}\n");
-    await writeFile(join(root, "dist/game.bundle/assets.manifest.json"), "{}\n");
-    await writeFile(join(root, "dist/game.bundle/materials.ir.json"), "{}\n");
-    await writeFile(join(root, "dist/game.bundle/target.profile.json"), "{}\n");
-    await writeFile(join(root, "dist/game.bundle/runtime.config.json"), "{}\n");
+    await writeFile(join(root, "dist/structured-source-starter.bundle/world.ir.json"), "{}\n");
+    await writeFile(join(root, "dist/structured-source-starter.bundle/assets.manifest.json"), "{}\n");
+    await writeFile(join(root, "dist/structured-source-starter.bundle/materials.ir.json"), "{}\n");
+    await writeFile(join(root, "dist/structured-source-starter.bundle/target.profile.json"), "{}\n");
+    await writeFile(join(root, "dist/structured-source-starter.bundle/runtime.config.json"), "{}\n");
 
     const result = await doctorCommand(["--project", root, "--json"]);
     const payload = JSON.parse(result.stdout) as { checks: Array<{ code: string; path: string }> };
@@ -186,16 +208,16 @@ async function writeRunnableProject(root: string): Promise<void> {
     scripts: { build: "tn build", validate: "tn validate", "dev:web": "tn dev --target web" },
   }, null, 2)}\n`);
   await writeFile(join(root, "pnpm-lock.yaml"), "lockfileVersion: '9.0'\n");
-  await mkdir(join(root, "src"));
-  await writeFile(join(root, "src/game.ts"), "export const game = {};\n");
-  await writeFile(join(root, "threenative.config.json"), `${JSON.stringify({ entry: "src/game.ts", outDir: "dist/game.bundle", template: "starter" }, null, 2)}\n`);
+  await mkdir(join(root, "content/scenes"), { recursive: true });
+  await writeFile(join(root, "content/scenes/arena.scene.json"), "{}\n");
+  await writeFile(join(root, "threenative.config.json"), `${JSON.stringify({ entry: "content/scenes/arena.scene.json", outDir: "dist/structured-source-starter.bundle", template: "structured-source-starter" }, null, 2)}\n`);
 }
 
 async function writeBundle(root: string): Promise<void> {
-  await mkdir(join(root, "dist/game.bundle"), { recursive: true });
-  await writeFile(join(root, "dist/game.bundle/manifest.json"), "{}\n");
-  await writeFile(join(root, "dist/game.bundle/world.ir.json"), "{}\n");
-  await writeFile(join(root, "dist/game.bundle/assets.manifest.json"), "{}\n");
-  await writeFile(join(root, "dist/game.bundle/materials.ir.json"), "{}\n");
-  await writeFile(join(root, "dist/game.bundle/target.profile.json"), "{}\n");
+  await mkdir(join(root, "dist/structured-source-starter.bundle"), { recursive: true });
+  await writeFile(join(root, "dist/structured-source-starter.bundle/manifest.json"), "{}\n");
+  await writeFile(join(root, "dist/structured-source-starter.bundle/world.ir.json"), "{}\n");
+  await writeFile(join(root, "dist/structured-source-starter.bundle/assets.manifest.json"), "{}\n");
+  await writeFile(join(root, "dist/structured-source-starter.bundle/materials.ir.json"), "{}\n");
+  await writeFile(join(root, "dist/structured-source-starter.bundle/target.profile.json"), "{}\n");
 }

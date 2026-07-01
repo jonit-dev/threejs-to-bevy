@@ -1,9 +1,8 @@
 # verify:v6
 
-`verify:v6` is the initial aggregate V6 release gate. It proves the functional
-scene can build and validate against the current V6 contracts, and keeps the
-shared conformance suite in the loop while V6 visual/playable evidence is still
-being expanded.
+`verify:v6` is now a legacy milestone alias. It resolves through the legacy
+alias table to the current release gate, while V6 contract evidence lives in
+shared conformance fixtures.
 
 Current command:
 
@@ -11,35 +10,15 @@ Current command:
 pnpm verify:v6
 ```
 
-Current V6 aggregate checks:
+Current V6 evidence:
 
-- V6 docs gate: `scripts/check-docs-v6.mjs`.
-- V6 gate-script tests: `scripts/check-docs-v6.test.mjs` and
-  `scripts/verify-v6.test.mjs`.
-- CLI build before consuming the example.
-- `examples/v6-functional` build through `tn build`.
-- `examples/v6-functional` validation through `tn validate`.
-- web visual verification through `tn verify --frames 2 --json`.
-- shared conformance through `scripts/verify-conformance.mjs`.
-
-The aggregate report is written to
-`tools/verify/artifacts/milestones/v6/verification-report.json` with schema
-`threenative.verify.v6`. Web visual artifacts from the CLI verifier are mirrored
-under `tools/verify/artifacts/milestones/v6/web-visual/`:
-
-- `verification-report.json`
-- `frame-01.png`
-- `frame-02.png`
-- `web-effect-log.json`
-
-The report currently carries `visualEvidenceStatus: "web-captured"` when this
-web visual smoke passes. Native frame capture, richer playable traces, and final
-runtime parity observations are still later V6-09 checkpoints.
-
-Current V6 trace evidence:
-
+- `verify:v6` emits a deprecation diagnostic and runs `verify:release`.
 - `pnpm verify:conformance` runs the `resources-events` and
   `animation-clips` fixed traces.
+- V6-era runnable `src/game.ts` examples have been removed in favor of
+  conformance fixtures and structured-source examples.
+
+V6 trace evidence:
 - The trace executes the same `scripts.bundle.js` in web JavaScript and native
   QuickJS.
 - The ordered schedule is `startup`, `fixedUpdate`, `update`, then

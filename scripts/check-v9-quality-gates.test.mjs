@@ -43,11 +43,11 @@ test("should fail when a V9 fixture lacks catalog ownership", async () => {
   }
 });
 
-test("should fail when a completed V9 PRD lacks sample or visual evidence", async () => {
+test("should fail when a completed V9 PRD lacks fixture evidence", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-check-v9-"));
   try {
     await writeMinimalV9Repo(root);
-    await rm(join(root, "examples/physics-character/verification.manifest.json"), { force: true });
+    await rm(join(root, "packages/ir/fixtures/conformance/physics-character/game.bundle"), { force: true, recursive: true });
     const result = await checkV9QualityGates({ repoRoot: root });
     assert.equal(result.ok, false);
     assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_DOCS_V9_SAMPLE_EVIDENCE_MISSING"));
@@ -84,19 +84,14 @@ export async function writeMinimalV9Repo(root, options = {}) {
   };
   await mkdir(join(root, "docs/PRDs/v9"), { recursive: true });
   await mkdir(join(root, "packages/ir/fixtures/conformance/animation-state/game.bundle"), { recursive: true });
+  for (const fixture of ["physics-character", "physics-character-solver", "rendering-lights"]) {
+    await mkdir(join(root, "packages/ir/fixtures/conformance", fixture, "game.bundle"), { recursive: true });
+    await writeFile(join(root, "packages/ir/fixtures/conformance", fixture, "game.bundle/manifest.json"), "{}\n");
+  }
   await writeFile(join(root, "package.json"), `${JSON.stringify({ scripts }, null, 2)}\n`);
   await writeFile(join(root, "docs/STATUS.md"), "# status\n\nUse `pnpm verify:release`.\n");
   await writeFile(join(root, "docs/bevy-feature-parity.md"), "# parity\n\n`pnpm verify:release`\n");
   await writeFile(join(root, "docs/developer-workflow.md"), "# workflow\n\nRun focused gates, then `pnpm verify:release`, then `pnpm verify:all`.\n");
-  for (const example of ["v9-skeletal-animation", "physics-character", "assets-gltf-scene-workflow", "rendering-lights"]) {
-    await mkdir(join(root, "examples", example), { recursive: true });
-    await writeFile(join(root, "examples", example, "package.json"), "{}\n");
-    await writeFile(join(root, "examples", example, "verification.manifest.json"), "{}\n");
-  }
-  await writeFile(
-    join(root, "examples/v9-skeletal-animation/README.md"),
-    "# skeletal\n\nsource: khronos\nlicense: CC0\nsha256: d97044e701822bac5a62696459b27d7b375aada5de8574ed4362edbba94771f7\nclips: idle walk run\n",
-  );
   await writeFile(
     join(root, "packages/ir/fixtures/conformance/v9-fixture-catalog.json"),
     `${JSON.stringify(

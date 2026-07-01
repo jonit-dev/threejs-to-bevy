@@ -63,15 +63,15 @@ test("should resolve aliases for topic help", async () => {
   assert.equal(payload.failureSymptoms.some((symptom) => symptom.includes("black")), true);
 });
 
-test("should describe racing-kart from examples help", async () => {
+test("should describe structured-source starter from examples help", async () => {
   const result = await helpCommand(["examples", "--json"]);
   const payload = JSON.parse(result.stdout) as { commands: string[]; docs: string[]; examples: string[]; name: string };
 
   assert.equal(result.exitCode, 0);
   assert.equal(payload.name, "examples");
-  assert.equal(payload.commands.includes("tn create kart-racer --template racing-kart --json"), true);
-  assert.equal(payload.docs.includes("templates/racing-kart/README.md"), true);
-  assert.equal(payload.examples.some((example) => example.includes("visible rivals")), true);
+  assert.equal(payload.commands.includes("tn create prototype --template structured-source-starter --json"), true);
+  assert.equal(payload.docs.includes("templates/structured-source-starter/README.md"), true);
+  assert.equal(payload.examples.some((example) => example.includes("content/**")), true);
 });
 
 test("should reject unknown help topic with stable diagnostic", async () => {

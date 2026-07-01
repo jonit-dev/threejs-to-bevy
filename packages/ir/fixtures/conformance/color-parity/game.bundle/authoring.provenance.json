@@ -1,0 +1,46 @@
+{
+  "declarations": [
+    {
+      "id": "project",
+      "kind": "project",
+      "provenance": {
+        "declarationId": "project",
+        "kind": "project",
+        "source": {
+          "modulePath": "src/game.ts"
+        }
+      },
+      "references": []
+    },
+    {
+      "id": "v8.color.parity.scene",
+      "kind": "scene",
+      "provenance": {
+        "declarationId": "v8.color.parity.scene",
+        "kind": "scene",
+        "source": {
+          "modulePath": "src/game.ts",
+          "span": {
+            "end": 131,
+            "start": 131
+          }
+        }
+      },
+      "references": []
+    }
+  ],
+  "diagnostics": [],
+  "entryPath": "src/game.ts",
+  "modules": [
+    {
+      "declarations": [
+        "project",
+        "v8.color.parity.scene"
+      ],
+      "path": "src/game.ts"
+    }
+  ],
+  "ownership": [],
+  "schema": "threenative.authoring-provenance",
+  "version": "0.1.0"
+}

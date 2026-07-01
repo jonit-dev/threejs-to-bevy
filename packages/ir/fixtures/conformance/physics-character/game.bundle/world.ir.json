@@ -3,9 +3,24 @@
   "version": "0.1.0",
   "entities": [
     {
+      "id": "camera.main",
+      "components": {
+        "Camera": { "kind": "perspective", "fovY": 55, "near": 0.1, "far": 100, "priority": 0 },
+        "Transform": { "position": [3, 4, 9], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+      }
+    },
+    {
+      "id": "light.key",
+      "components": {
+        "Light": { "kind": "directional", "color": "#ffffff", "intensity": 2 },
+        "Transform": { "position": [3, 6, 4], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+      }
+    },
+    {
       "id": "floor",
       "components": {
         "Collider": { "friction": 0.5, "kind": "box", "restitution": 0, "size": [8, 0.1, 8] },
+        "MeshRenderer": { "mesh": "mesh.floor", "material": "mat.floor" },
         "RigidBody": { "inverseMass": 0, "kind": "static" },
         "Transform": { "position": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
       }
@@ -14,6 +29,7 @@
       "id": "stack-base",
       "components": {
         "Collider": { "friction": 0.5, "kind": "box", "restitution": 0, "size": [1, 1, 1] },
+        "MeshRenderer": { "mesh": "mesh.box", "material": "mat.crate" },
         "RigidBody": { "gravityScale": 1, "kind": "dynamic", "mass": 2, "inverseMass": 0.5, "velocity": [0, 0, 0], "solverIterations": 8 },
         "Transform": { "position": [-2, 0.8, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
       }
@@ -22,6 +38,7 @@
       "id": "stack-top",
       "components": {
         "Collider": { "friction": 0.5, "kind": "box", "restitution": 0, "size": [1, 1, 1] },
+        "MeshRenderer": { "mesh": "mesh.box", "material": "mat.crate" },
         "RigidBody": { "gravityScale": 1, "kind": "dynamic", "mass": 1, "inverseMass": 1, "velocity": [0, 0, 0], "solverIterations": 8 },
         "Transform": { "position": [-2, 1.9, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
       }
@@ -30,6 +47,7 @@
       "id": "bounce-sphere",
       "components": {
         "Collider": { "friction": 0.25, "kind": "sphere", "radius": 0.5, "restitution": 0.5 },
+        "MeshRenderer": { "mesh": "mesh.sphere", "material": "mat.sphere" },
         "RigidBody": { "damping": 0, "gravityScale": 1, "kind": "dynamic", "mass": 1, "inverseMass": 1, "velocity": [1, -1, 0], "sleepThreshold": 0.01 },
         "Transform": { "position": [0, 2, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
       }
@@ -38,6 +56,7 @@
       "id": "platform",
       "components": {
         "Collider": { "kind": "box", "size": [2, 0.2, 2] },
+        "MeshRenderer": { "mesh": "mesh.platform", "material": "mat.floor" },
         "RigidBody": { "inverseMass": 0, "kind": "kinematic", "velocity": [0.25, 0, 0] },
         "Transform": { "position": [2, 0.5, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
       }
@@ -46,6 +65,7 @@
       "id": "sensor-zone",
       "components": {
         "Collider": { "kind": "box", "layer": "sensor", "mask": ["player"], "sensor": { "interactionKind": "pickup", "occupantLimit": 4, "phases": ["enter", "stay", "exit"], "trackOccupants": true }, "size": [2, 2, 2], "trigger": true },
+        "MeshRenderer": { "mesh": "mesh.sensor", "material": "mat.sensor" },
         "RigidBody": { "inverseMass": 0, "kind": "static" },
         "Transform": { "position": [6, 1, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
       }
@@ -55,6 +75,7 @@
       "components": {
         "CharacterController": { "blocking": true, "grounding": "raycast", "moveXAxis": "MoveX", "moveZAxis": "MoveZ", "pushPolicy": { "allowedLayers": ["pushable"], "blockedWhenTooHeavy": true, "enabled": true, "impulseScale": 1, "maxPushMass": 10, "minMoveSpeed": 0.1 }, "speed": 1 },
         "Collider": { "kind": "box", "layer": "player", "mask": ["world", "pushable", "sensor"], "size": [1, 1, 1] },
+        "MeshRenderer": { "mesh": "mesh.box", "material": "mat.player" },
         "RigidBody": { "inverseMass": 0, "kind": "kinematic" },
         "Transform": { "position": [4, 0.55, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
       }
@@ -63,6 +84,7 @@
       "id": "light-crate",
       "components": {
         "Collider": { "kind": "box", "layer": "pushable", "size": [1, 1, 1] },
+        "MeshRenderer": { "mesh": "mesh.box", "material": "mat.crate" },
         "RigidBody": { "gravityScale": 0, "kind": "dynamic", "mass": 2, "inverseMass": 0.5, "velocity": [0, 0, 0] },
         "Transform": { "position": [5, 0.55, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
       }
@@ -71,6 +93,7 @@
       "id": "heavy-crate",
       "components": {
         "Collider": { "kind": "box", "layer": "pushable", "size": [1, 1, 1] },
+        "MeshRenderer": { "mesh": "mesh.box", "material": "mat.crate" },
         "RigidBody": { "gravityScale": 0, "kind": "dynamic", "mass": 50, "inverseMass": 0.02, "velocity": [0, 0, 0] },
         "Transform": { "position": [7, 0.55, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
       }
@@ -78,6 +101,9 @@
   ],
   "events": {},
   "resources": {
+    "ActiveCamera": {
+      "entity": "camera.main"
+    },
     "Navigation": {
       "agentRadius": 0.4,
       "areaCosts": { "default": 1, "slow": 3 },

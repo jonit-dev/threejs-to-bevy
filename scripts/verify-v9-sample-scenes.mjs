@@ -11,10 +11,9 @@ import { V9_SAMPLE_SCENES } from "./check-v9-quality-gates.mjs";
 const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 export const V9_SAMPLE_MATRIX = V9_SAMPLE_SCENES.map((sample) => ({
-  bundlePath: `${sample.example}/dist/${sample.example.split("/").at(-1)}.bundle`,
+  bundlePath: sample.bundlePath,
   domain: sample.domain,
-  example: sample.example,
-  manifestPath: `${sample.example}/verification.manifest.json`,
+  fixture: sample.fixture,
   prd: sample.prd,
 }));
 
@@ -40,15 +39,7 @@ export async function verifyV9SampleScenes(options = {}) {
   }
 
   for (const sample of V9_SAMPLE_MATRIX) {
-    const projectPath = resolve(root, sample.example);
     const bundlePath = resolve(root, sample.bundlePath);
-    const manifestPath = resolve(root, sample.manifestPath);
-    if (!(await step(`build ${sample.domain} sample`, process.execPath, [resolve(root, "packages/cli/dist/index.js"), "build", "--project", projectPath, "--json"], { timeoutMs: 120000 }))) {
-      return writeSampleReport({ artifactDir, diagnostics: stepFailure(steps), ok: false, reportPath, scenes, steps });
-    }
-    if (!(await step(`validate ${sample.domain} sample`, process.execPath, [resolve(root, "packages/cli/dist/index.js"), "validate", "--project", projectPath, "--json"], { timeoutMs: 120000 }))) {
-      return writeSampleReport({ artifactDir, diagnostics: stepFailure(steps), ok: false, reportPath, scenes, steps });
-    }
 
     try {
       await access(bundlePath);
@@ -56,34 +47,20 @@ export async function verifyV9SampleScenes(options = {}) {
       diagnostics.push({
         code: "TN_VERIFY_V9_SAMPLE_ARTIFACT_MISSING",
         domain: sample.domain,
-        message: `Sample scene bundle is missing for '${sample.example}': ${sample.bundlePath}`,
+        message: `Sample fixture bundle is missing for '${sample.fixture}': ${sample.bundlePath}`,
         path: sample.bundlePath,
         severity: "error",
       });
       return writeSampleReport({ artifactDir, diagnostics, ok: false, reportPath, scenes, steps });
     }
 
-    try {
-      await access(manifestPath);
-    } catch {
-      diagnostics.push({
-        code: "TN_VERIFY_V9_SAMPLE_ARTIFACT_MISSING",
-        domain: sample.domain,
-        message: `Sample scene verification manifest is missing: ${sample.manifestPath}`,
-        path: sample.manifestPath,
-        severity: "error",
-      });
-      return writeSampleReport({ artifactDir, diagnostics, ok: false, reportPath, scenes, steps });
-    }
-
-    const manifest = JSON.parse(await (await import("node:fs/promises")).readFile(manifestPath, "utf8"));
     const validateBundle = (await import(pathToFileURL(resolve(root, "packages/ir/dist/validate.js")).href)).validateBundle;
     const validation = await validateBundle(bundlePath);
     if (!validation.ok) {
       diagnostics.push({
         code: "TN_VERIFY_V9_SAMPLE_BUNDLE_INVALID",
         domain: sample.domain,
-        message: `Sample scene bundle failed validation for '${sample.example}'.`,
+        message: `Sample fixture bundle failed validation for '${sample.fixture}'.`,
         path: sample.bundlePath,
         severity: "error",
       });
@@ -92,10 +69,9 @@ export async function verifyV9SampleScenes(options = {}) {
 
     scenes.push({
       bundlePath: sample.bundlePath,
-      deferred: manifest.deferred ?? [],
       domain: sample.domain,
-      example: sample.example,
-      promoted: manifest.promoted ?? [],
+      fixture: sample.fixture,
+      prd: sample.prd,
       status: "pass",
     });
   }

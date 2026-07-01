@@ -10,8 +10,7 @@ const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 export const V9_VISUAL_SCENES = [
   {
-    bundlePath: "examples/v9-skeletal-animation/dist/v9-skeletal-animation.bundle",
-    fallbackBundlePath: "packages/ir/fixtures/conformance/animation-blending/game.bundle",
+    bundlePath: "packages/ir/fixtures/conformance/animation-blending/game.bundle",
     id: "skeletal-animation",
     mode: "motion-smoke",
   },
@@ -21,14 +20,12 @@ export const V9_VISUAL_SCENES = [
     mode: "smoke-only",
   },
   {
-    bundlePath: "examples/physics-character/dist/physics-character.bundle",
-    fallbackBundlePath: "packages/ir/fixtures/conformance/physics-character/game.bundle",
+    bundlePath: "packages/ir/fixtures/conformance/physics-character/game.bundle",
     id: "physics-character",
     mode: "smoke-only",
   },
   {
-    bundlePath: "examples/assets-gltf-scene-workflow/dist/assets-gltf-scene-workflow.bundle",
-    fallbackBundlePath: "packages/ir/fixtures/conformance/v5-drift-surface/game.bundle",
+    bundlePath: "packages/ir/fixtures/conformance/v5-drift-surface/game.bundle",
     id: "assets-gltf-workflow",
     mode: "smoke-only",
   },

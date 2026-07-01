@@ -43,7 +43,7 @@ test("dev watch should require rebuild when gltf node topology changes", () => {
 test("should start web dev server for valid bundle", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-dev-"));
   try {
-    await cp("../../templates/v1", root, { recursive: true });
+    await cp("../../templates/structured-source-starter", root, { recursive: true });
     const result = await devCommand(["--target", "web", "--json"], root);
     try {
       const payload = JSON.parse(result.stdout) as { code: string; url: string };
@@ -64,7 +64,7 @@ test("should invoke bevy runtime for desktop target", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-dev-desktop-"));
   const invocations: string[] = [];
   try {
-    await cp("../../templates/v1", root, { recursive: true });
+    await cp("../../templates/structured-source-starter", root, { recursive: true });
     const result = await devCommand(["--target", "desktop", "--json"], root, {
       bevyRunner: ({ bundlePath }) => {
         invocations.push(bundlePath);
@@ -75,17 +75,17 @@ test("should invoke bevy runtime for desktop target", async () => {
     const payload = JSON.parse(result.stdout) as { bundlePath: string; code: string };
     assert.equal(result.exitCode, 0);
     assert.equal(payload.code, "TN_DEV_DESKTOP_READY");
-    assert.equal(payload.bundlePath, resolve(root, "dist/game.bundle"));
-    assert.deepEqual(invocations, [resolve(root, "dist/game.bundle")]);
+    assert.equal(payload.bundlePath, resolve(root, "dist/structured-source-starter.bundle"));
+    assert.deepEqual(invocations, [resolve(root, "dist/structured-source-starter.bundle")]);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
 });
 
-test("should rebuild when v2 source changes", async () => {
+test("should rebuild when structured source changes", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-dev-watch-v2-"));
   try {
-    await cp("../../templates/v2-arena", root, { recursive: true });
+    await cp("../../templates/structured-source-starter", root, { recursive: true });
     const result = await devCommand(["--target", "desktop", "--watch", "--json"], root);
     try {
       const payload = JSON.parse(result.stdout) as { code: string; initialReport: { status: string } };
@@ -93,14 +93,14 @@ test("should rebuild when v2 source changes", async () => {
       assert.equal(payload.code, "TN_DEV_WATCH_READY");
       assert.equal(payload.initialReport.status, "pass");
 
-      const sourcePath = join(root, "src", "game.tsx");
+      const sourcePath = join(root, "content", "scenes", "arena.scene.json");
       const source = await readFile(sourcePath, "utf8");
       await writeFile(sourcePath, `${source}\n`);
       const report = await result.watcher?.rebuild();
 
       assert.equal(report?.status, "pass");
       assert.equal(report?.code, "TN_DEV_WATCH_REBUILD_OK");
-      assert.match(report?.bundlePath ?? "", /dist\/game\.bundle$/);
+      assert.match(report?.bundlePath ?? "", /dist\/structured-source-starter\.bundle$/);
     } finally {
       result.watcher?.close();
       await result.server?.close();
@@ -113,10 +113,10 @@ test("should rebuild when v2 source changes", async () => {
 test("should surface validation diagnostics during watch", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-dev-watch-diagnostic-"));
   try {
-    await cp("../../templates/v2-arena", root, { recursive: true });
-    const sourcePath = join(root, "src", "game.tsx");
+    await cp("../../templates/structured-source-starter", root, { recursive: true });
+    const sourcePath = join(root, "content", "scenes", "arena.scene.json");
     const source = await readFile(sourcePath, "utf8");
-    await writeFile(sourcePath, `${source}\nconsole.log(window.location.href);\n`);
+    await writeFile(sourcePath, source.replace('"id": "arena"', '"id": ""'));
 
     const result = await devCommand(["--target", "desktop", "--watch", "--json"], root);
     try {
@@ -127,10 +127,10 @@ test("should surface validation diagnostics during watch", async () => {
 
       assert.equal(result.exitCode, 0);
       assert.equal(payload.initialReport.status, "fail");
-      assert.equal(diagnostic?.code, "TN_COMPILER_R3F_BROWSER_API");
+      assert.equal(diagnostic?.code, "TN_AUTHORING_ID_INVALID");
       assert.equal(diagnostic?.severity, "error");
-      assert.equal(diagnostic?.file, sourcePath);
-      assert.match(diagnostic?.suggestedFix ?? "", /portable SDK data|runtime adapter/);
+      assert.equal(diagnostic?.file, "content/scenes/arena.scene.json");
+      assert.match(diagnostic?.suggestedFix ?? "", /scene/i);
     } finally {
       result.watcher?.close();
     }

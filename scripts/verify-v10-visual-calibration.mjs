@@ -124,8 +124,8 @@ export async function runCalibrationFixture(options) {
   const artifactDir = options.artifactDir;
   const run = options.run ?? runCommand;
   const steps = [];
-  const projectPath = resolve(root, fixture.example);
-  const bundlePath = resolve(projectPath, "dist", fixture.bundleName);
+  const projectPath = fixture.example === undefined ? undefined : resolve(root, fixture.example);
+  const bundlePath = fixture.bundlePath === undefined ? resolve(projectPath, "dist", fixture.bundleName) : resolve(root, fixture.bundlePath);
   const cliPath = resolve(root, "packages/cli/dist/index.js");
 
   async function step(name, command, args, commandOptions = {}) {
@@ -135,10 +135,15 @@ export async function runCalibrationFixture(options) {
   }
 
   if (options.captureArtifacts !== false && !options.analyzeOnly) {
-    if (!(await step(`build ${fixture.id}`, process.execPath, [cliPath, "build", "--project", projectPath, "--json"], { timeoutMs: 120000 }))) {
-      return { diagnostics: stepFailureDiagnostic(fixture, steps), fixtureId: fixture.id, ok: false, steps };
+    if (projectPath !== undefined && fixture.bundlePath === undefined) {
+      if (!(await step(`build ${fixture.id}`, process.execPath, [cliPath, "build", "--project", projectPath, "--json"], { timeoutMs: 120000 }))) {
+        return { diagnostics: stepFailureDiagnostic(fixture, steps), fixtureId: fixture.id, ok: false, steps };
+      }
     }
-    if (!(await step(`validate ${fixture.id}`, process.execPath, [cliPath, "validate", "--project", projectPath, "--json"], { timeoutMs: 120000 }))) {
+    const validateArgs = fixture.bundlePath === undefined
+      ? [cliPath, "validate", "--project", projectPath, "--json"]
+      : [cliPath, "validate", "--bundle", bundlePath, "--json"];
+    if (!(await step(`validate ${fixture.id}`, process.execPath, validateArgs, { timeoutMs: 120000 }))) {
       return { diagnostics: stepFailureDiagnostic(fixture, steps), fixtureId: fixture.id, ok: false, steps };
     }
     if (options.screenshotCapturer) {
