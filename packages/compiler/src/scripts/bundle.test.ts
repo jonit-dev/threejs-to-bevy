@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import vm from "node:vm";
 
 import { bundleSystemScripts } from "./bundle.js";
 
@@ -122,6 +123,98 @@ test("should bundle supported script stdlib imports", () => {
   assert.match(result.code ?? "", /const system_kartArcadePhysics = \(context\) => Vec3\.round/);
 });
 
+test("should bundle promoted gameplay math helpers", () => {
+  const result = bundleSystemScripts([
+    {
+      name: "updatePlayer",
+      script: {
+        exportName: "system_updatePlayer",
+        helperImports: [
+          {
+            imported: ["AngleEx", "Bounds2", "Bounds3", "Ease", "Vec2", "Vec3"],
+            module: "@threenative/script-stdlib",
+          },
+        ],
+        source:
+          "(context) => ({ angle: AngleEx.radToDeg(Math.PI), axis: Vec2.round(Vec2.normalize([3, 4]), 3), inside: Bounds2.containsPoint(Bounds2.rect(0, 0, 4, 4), [2, 2]), box: Bounds3.size(Bounds3.aabb([0, 0, 0], [1, 2, 3])), ease: Ease.smoothStep(0.5), forward: Vec3.round(Vec3.rotateYaw([0, 0, 1], Math.PI / 2), 3) })",
+      },
+    },
+  ]);
+
+  assert.deepEqual(result.diagnostics, []);
+  assert.match(result.code ?? "", /const AngleEx = Object\.freeze/);
+  assert.match(result.code ?? "", /const Vec2 = Object\.freeze/);
+  assert.deepEqual(runBundledSystem(result.code, "system_updatePlayer"), {
+    angle: 180,
+    axis: [0.6, 0.8],
+    box: [1, 2, 3],
+    ease: 0.5,
+    forward: [1, 0, 0],
+    inside: true,
+  });
+});
+
+test("should bundle deterministic feedback helpers", () => {
+  const result = bundleSystemScripts([
+    {
+      name: "lootText",
+      script: {
+        exportName: "system_lootText",
+        helperImports: [
+          {
+            imported: ["ColorEx", "RandomEx", "TextEx"],
+            module: "@threenative/script-stdlib",
+          },
+        ],
+        source:
+          "(context) => ({ color: ColorEx.toHex(ColorEx.withAlpha('#336699', 0.5), true), roll: RandomEx.rangeInt(42, 3, 1, 6), text: TextEx.joinNonEmpty(['Loot', TextEx.percent(0.5)], ' ') })",
+      },
+    },
+  ]);
+
+  assert.deepEqual(result.diagnostics, []);
+  assert.deepEqual(runBundledSystem(result.code, "system_lootText"), {
+    color: "#33669980",
+    roll: 3,
+    text: "Loot 50%",
+  });
+});
+
+test("should bundle pure gameplay reducer helpers", () => {
+  const result = bundleSystemScripts([
+    {
+      name: "movement",
+      script: {
+        exportName: "system_movement",
+        helperImports: [
+          {
+            imported: ["ArrayEx", "CameraMath", "InputEx", "MotionEx", "TimerEx"],
+            module: "@threenative/script-stdlib",
+          },
+        ],
+        source:
+          "(context) => ({ animation: ArrayEx.cycle(['idle', 'run'], 5), camera: CameraMath.followPose({ target: [0, 0, 0], offset: [0, 4, -8] }).position, input: InputEx.axis2([0.2, 1], { deadzone: 0.1 }), motion: MotionEx.planarVelocity({ velocity: [0, 0, 0], input: [1, 0], maxSpeed: 3, acceleration: 12, friction: 2, dt: 0.25 }), timer: TimerEx.cooldown(0.5, 0.2) })",
+      },
+    },
+  ]);
+
+  assert.deepEqual(result.diagnostics, []);
+  assert.deepEqual(roundJson(runBundledSystem(result.code, "system_movement")), {
+    animation: "run",
+    camera: [0, 4, -8],
+    input: [0.110432, 0.993884],
+    motion: {
+      heading: 1.570796,
+      speed: 3,
+      velocity: [3, 0, 0],
+    },
+    timer: {
+      ready: false,
+      remaining: 0.3,
+    },
+  });
+});
+
 test("should bundle supported racing kit imports", () => {
   const result = bundleSystemScripts([
     {
@@ -202,3 +295,22 @@ test("should reject generated script export collisions", () => {
   assert.equal(result.code, undefined);
   assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.code), ["TN_SCRIPT_EXPORT_COLLISION", "TN_SCRIPT_EXPORT_COLLISION"]);
 });
+
+function runBundledSystem(code: string | undefined, exportName: string): unknown {
+  assert.equal(typeof code, "string");
+  const script = new vm.Script(`${code?.replace(/^export const /gm, "const ")}; systems[${JSON.stringify(exportName)}]({});`);
+  return JSON.parse(JSON.stringify(script.runInNewContext(Object.create(null)))) as unknown;
+}
+
+function roundJson(value: unknown): unknown {
+  if (typeof value === "number") {
+    return Math.round(value * 1000000) / 1000000;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => roundJson(item));
+  }
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, roundJson(item)]));
+  }
+  return value;
+}

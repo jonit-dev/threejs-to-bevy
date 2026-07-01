@@ -1,0 +1,12 @@
+{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "id": "arena-materials",
+  "materials": [
+    {
+      "id": "art-direction-style",
+      "color": "#ffffff",
+      "roughness": 0.6
+    }
+  ]
+}

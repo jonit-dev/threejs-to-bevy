@@ -22,5 +22,13 @@ pnpm run validate:authoring
 pnpm run build
 pnpm run recipe:controller
 pnpm run playtest
+pnpm run game:score
 tn ui set-layout hud countdown --justify center --align center --top 48 --width 1280 --project . --json
 ```
+
+Production metadata in `threenative.config.json` declares the starter's
+playable loop, controls, objective, retry policy, and proof commands. Use
+`tn game plan --goal "<game idea>" --json` before mutating source, then
+`tn game score --project . --json`, `tn game qa --project . --json`, and
+`tn game release --project . --json` to collect structured phase ledgers,
+scorecards, UI-state coverage, asset/audio provenance, and release blockers.

@@ -21,6 +21,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
+    "@threenative/authoring": "workspace:*",
     "@types/node": "^20.19.25",
     "playwright": "^1.60.0"
   }

@@ -1,0 +1,25 @@
+{
+  "schema": "threenative.scene",
+  "version": "0.1.0",
+  "id": "arena",
+  "entities": [
+    {
+      "id": "player-hero"
+    },
+    {
+      "id": "obstacle-enemy"
+    },
+    {
+      "id": "reward-interactable"
+    }
+  ],
+  "systems": [
+    {
+      "id": "gameplay-loop",
+      "script": {
+        "module": "src/scripts/game.ts",
+        "export": "update"
+      }
+    }
+  ]
+}

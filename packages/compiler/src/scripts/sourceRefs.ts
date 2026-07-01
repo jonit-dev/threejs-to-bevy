@@ -8,7 +8,25 @@ import { SUPPORTED_SCRIPT_HELPER_IMPORTS, type ISystemScriptSource, type Support
 
 const supportedScriptHelperBindings: Record<SupportedScriptHelperImport, ReadonlySet<string>> = {
   "@threenative/racing-kit": new Set(["CheckpointRace", "Track2D"]),
-  "@threenative/script-stdlib": new Set(["NumberEx", "Quat", "TransformMath", "Vec3"]),
+  "@threenative/script-stdlib": new Set([
+    "AngleEx",
+    "ArrayEx",
+    "Bounds2",
+    "Bounds3",
+    "CameraMath",
+    "ColorEx",
+    "Ease",
+    "InputEx",
+    "MotionEx",
+    "NumberEx",
+    "Quat",
+    "RandomEx",
+    "TextEx",
+    "TimerEx",
+    "TransformMath",
+    "Vec2",
+    "Vec3",
+  ]),
 };
 
 export interface IResolveSystemScriptSourcesResult<T extends ISystemScriptSource> {

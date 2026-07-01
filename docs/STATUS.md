@@ -75,6 +75,31 @@ the shared dispatcher, and `@threenative/authoring-client` exposes the same
 plans via `planRecipe()` / `recipe()` so TypeScript authoring keeps the same
 traceable source-mutation contract.
 
+The first agentic game-production workflow slice is implemented as a
+source-backed report contract rather than a raw Three.js scaffold. `tn game
+plan --goal <text> --json` emits a deterministic, non-mutating phase plan with
+recipe and proof-command recommendations. `tn game score --project . --json`
+inspects structured source and proof artifacts for gameplay, assets, visuals,
+UI, debug, QA, and release ledgers. `tn game qa --run-proof --json`
+orchestrates doctor/build/playtest/screenshot/recording/artifact-check steps
+when project arguments are supplied and embeds their diagnostics in one report.
+`tn game qa --json` and `tn game release --json` write mode-specific reports
+under `artifacts/game-production/`.
+`@threenative/authoring` validates the `threenative.game-quality-report`
+contract, including exact phase ids, visual scorecard categories, UI states,
+asset/audio surfaces, evidence rows, blockers, and stable diagnostics for
+missing playable-loop, screenshot, UI-state, asset provenance, mobile, and
+release-build evidence. Reports now also include reproducible production
+command rows, redacted local-tooling provider probes for Tripo/Gemini/
+ElevenLabs-style model/image/audio generation, release risks, asset-budget
+status, and static-hosting notes without persisting credential values.
+`tn game providers --json` exposes the same credential-safe provider statuses.
+`@threenative/editor` exposes a read-only production panel model over the same
+report rows. `pnpm verify:game-production` is now registered as a focused gate;
+it validates a small production-report fixture and the negative tests prove
+projects fail with stable blockers when evidence is missing. This is not a
+release-ready or native parity claim.
+
 The agent debugging workflow now has a stronger `tn doctor` gate. It checks
 package manager state, CLI dependency/local shim setup, required scripts,
 template metadata, source entrypoint, required bundle files, and
@@ -161,15 +186,18 @@ window plus renderer quality fields that lower into `runtime.config.json`.
 
 Portable script helper imports now have a first supported bundle path:
 `src/scripts/**/*.ts` may use named imports from
-`@threenative/script-stdlib` for pure `NumberEx`, `Vec3`, `Quat`, and
-`TransformMath` helpers. The compiler injects those deterministic helpers into
-`scripts.bundle.js`, records helper import metadata in `scripts.manifest.json`,
-and rejects unsupported helper packages/import shapes with
-`TN_SCRIPT_UNSUPPORTED_IMPORT`. Current evidence is
+`@threenative/script-stdlib` for pure `NumberEx`, `AngleEx`, `Vec2`, `Vec3`,
+`Quat`, `TransformMath`, `Bounds2`, `Bounds3`, `Ease`, `RandomEx`, `ColorEx`,
+`TextEx`, `InputEx`, `MotionEx`, `TimerEx`, `ArrayEx`, and `CameraMath`
+helpers. The package entry point is split from focused helper modules and the
+injected bundle source; package tests compare every promoted helper through
+exports and `SCRIPT_STDLIB_BUNDLE_SOURCE`. The compiler injects those
+deterministic helpers into `scripts.bundle.js`, records helper import metadata
+in `scripts.manifest.json`, and rejects unsupported helper packages/import
+shapes with `TN_SCRIPT_UNSUPPORTED_IMPORT`. Current evidence is
 `pnpm --filter @threenative/script-stdlib test`,
-`pnpm --filter @threenative/compiler build`, direct
-`packages/compiler/dist/scripts/{sourceRefs,bundle}.test.js` execution,
-`pnpm check:docs`, and `pnpm verify:scripting-helpers-lifecycle`.
+`pnpm --filter @threenative/compiler test`, `pnpm check:docs`, and
+`pnpm verify:scripting-helpers-lifecycle`.
 
 The first core script context ergonomics are now implemented in the SDK types,
 web runtime context, and Bevy QuickJS bridge: `ctx.entity`,

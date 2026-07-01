@@ -1,9 +1,7 @@
 import { CheckpointRace, Track2D } from "@threenative/racing-kit";
-import { NumberEx, Quat, Vec3 } from "@threenative/script-stdlib";
+import { CameraMath, NumberEx, Quat, Vec3 } from "@threenative/script-stdlib";
 
 type Vec3Tuple = readonly [number, number, number];
-type QuatTuple = readonly [number, number, number, number];
-
 export function awakeRally(ctx: any): void {
   const rivalStartPhase = 0.18;
   const state = ctx.state("RallyState", {
@@ -64,7 +62,7 @@ export function fixedUpdateRally(ctx: any): void {
   const previousSpeed = NumberEx.finite(state.speed, 0);
   const speed = NumberEx.clamp(previousSpeed + (throttle * 9.5 - brake * 16 - drag) * dt, 0, targetSpeed);
   const yaw = transform.yawOr(startYaw) + steer * (1.15 + speed * 0.1) * dt;
-  const forward = [Math.sin(yaw), 0, Math.cos(yaw)];
+  const forward = Vec3.rotateYaw([0, 0, 1], yaw);
   const next = Vec3.round(Vec3.add(position, Vec3.scale(forward, speed * dt)), 4);
   const race = CheckpointRace.advance(state, next, checkpoints, { radius: 2.1 });
 
@@ -96,31 +94,10 @@ export function lateUpdateRally(ctx: any): void {
   const transform = player.transform();
   const playerPosition = transform.positionOr(start);
   const yaw = transform.yawOr(startYaw);
-  const forward: Vec3Tuple = [Math.sin(yaw), 0, Math.cos(yaw)];
-  const eye = Vec3.round(Vec3.add(Vec3.add(playerPosition, Vec3.scale(forward, -6.2)), [0, 3.1, 0]), 3);
-  const target = Vec3.round(Vec3.add(Vec3.add(playerPosition, Vec3.scale(forward, 5.5)), [0, 0.85, 0]), 3);
-  const zAxis = Vec3.normalize(Vec3.sub(eye, target)) as Vec3Tuple;
-  const xAxis = Vec3.normalize(Vec3.cross([0, 1, 0], zAxis));
-  const yAxis = Vec3.cross(zAxis, xAxis);
-  const trace = xAxis[0] + yAxis[1] + zAxis[2];
-  let rotation: QuatTuple;
-  if (trace > 0) {
-    const s = Math.sqrt(trace + 1) * 2;
-    rotation = [(yAxis[2] - zAxis[1]) / s, (zAxis[0] - xAxis[2]) / s, (xAxis[1] - yAxis[0]) / s, 0.25 * s];
-  } else if (xAxis[0] > yAxis[1] && xAxis[0] > zAxis[2]) {
-    const s = Math.sqrt(1 + xAxis[0] - yAxis[1] - zAxis[2]) * 2;
-    rotation = [0.25 * s, (yAxis[0] + xAxis[1]) / s, (zAxis[0] + xAxis[2]) / s, (yAxis[2] - zAxis[1]) / s];
-  } else if (yAxis[1] > zAxis[2]) {
-    const s = Math.sqrt(1 + yAxis[1] - xAxis[0] - zAxis[2]) * 2;
-    rotation = [(yAxis[0] + xAxis[1]) / s, 0.25 * s, (zAxis[1] + yAxis[2]) / s, (zAxis[0] - xAxis[2]) / s];
-  } else {
-    const s = Math.sqrt(1 + zAxis[2] - xAxis[0] - yAxis[1]) * 2;
-    rotation = [(zAxis[0] + xAxis[2]) / s, (zAxis[1] + yAxis[2]) / s, 0.25 * s, (xAxis[1] - yAxis[0]) / s];
-  }
-  camera.transform().setPose(eye, [
-    NumberEx.round(rotation[0], 6),
-    NumberEx.round(rotation[1], 6),
-    NumberEx.round(rotation[2], 6),
-    NumberEx.round(rotation[3], 6),
-  ]);
+  const pose = CameraMath.followPose({
+    offset: [0, 3.1, -6.2],
+    target: Vec3.add(playerPosition, [0, 0.85, 0]),
+    yaw,
+  });
+  camera.transform().setPose(Vec3.round(pose.position, 3), Quat.normalize(pose.rotation));
 }

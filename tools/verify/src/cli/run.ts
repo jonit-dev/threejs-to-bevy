@@ -244,6 +244,20 @@ export const FOCUSED_GATES: Record<string, FocusedGate> = {
       protects: "Editor AI chat approval flow, source-only mutation boundary, live-update hinting, and generated IR proof.",
     },
   },
+  "verify:game-production": {
+    commands: [
+      ["pnpm", "--filter", "@threenative/authoring", "build"],
+      ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+      ["node", "tools/verify/dist/cli/game-production.js"],
+    ],
+    description: "Game production workflow report gate.",
+    metadata: {
+      owner: "tools/verify game-production gate",
+      profile: "focused",
+      reason: "Validates source-backed game quality reports, phase ledgers, scorecards, UI states, asset/audio ledgers, QA evidence, and release blockers.",
+      protects: "tn game score/qa/release report contract and release-ready claim boundaries.",
+    },
+  },
   "verify:v10:ecs-tags-groups": {
     commands: [
       ["pnpm", "--filter", "@threenative/ir", "test", "--", "--run", "conformance"],

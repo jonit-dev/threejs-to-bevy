@@ -1,0 +1,37 @@
+{
+  "schema": "threenative.assets",
+  "version": "0.1.0",
+  "id": "arena-assets",
+  "assets": [
+    {
+      "id": "player-hero",
+      "path": "assets/player.glb",
+      "type": "model"
+    },
+    {
+      "id": "obstacle-enemy",
+      "path": "assets/enemy.glb",
+      "type": "model"
+    },
+    {
+      "id": "reward-interactable",
+      "path": "assets/goal.glb",
+      "type": "model"
+    },
+    {
+      "id": "world-environment",
+      "path": "assets/arena.glb",
+      "type": "model"
+    },
+    {
+      "id": "ui-hud",
+      "path": "assets/hud.png",
+      "type": "texture"
+    },
+    {
+      "id": "audio-feedback",
+      "path": "assets/hit.wav",
+      "type": "audio"
+    }
+  ]
+}

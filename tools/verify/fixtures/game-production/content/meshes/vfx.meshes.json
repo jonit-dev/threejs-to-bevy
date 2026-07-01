@@ -1,0 +1,11 @@
+{
+  "schema": "threenative.meshes",
+  "version": "0.1.0",
+  "id": "vfx-motion",
+  "meshes": [
+    {
+      "id": "motion-particle",
+      "primitive": "sphere"
+    }
+  ]
+}

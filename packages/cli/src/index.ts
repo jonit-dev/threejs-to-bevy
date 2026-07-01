@@ -12,6 +12,7 @@ import { createProject, initProject } from "./commands/create.js";
 import { devCommand } from "./commands/dev.js";
 import { doctorCommand } from "./commands/doctor.js";
 import { editorCommand } from "./commands/editor.js";
+import { gameCommand } from "./commands/game.js";
 import { helpCommand } from "./commands/help.js";
 import { modelTestCommand } from "./commands/modelTest.js";
 import { packageCommand } from "./commands/package.js";
@@ -76,6 +77,11 @@ const commands: Record<string, ICommandDefinition> = {
     description: "Record and run project-local generators for structured source outputs.",
     implemented: true,
     usage: "tn generator record <generator-id> --module <path> --export <name> --outputs <path,path> [--overwrite-policy skip|replace|manual] [--input-hash <hash>] [--output-hash <hash>] [--project <path>] [--json]\n              tn generator run <generator-id> [--project <path>] [--json]",
+  },
+  game: {
+    description: "Plan, score, QA, and release-check source-backed game production evidence.",
+    implemented: true,
+    usage: "tn game plan --goal <text> [--project <path>] [--json]\n              tn game improve --apply-plan <file> [--project <path>] [--json]\n              tn game providers [--json]\n              tn game score [--project <path>] [--json]\n              tn game qa [--project <path>] [--run-proof] [--url <preview-url>] [--entity <id>] [--press <KeyboardEvent.code>] [--record] [--out <file>] [--json]\n              tn game release [--project <path>] [--out <file>] [--json]",
   },
   "model-test": {
     description: "Generate a one-model proof project with scale, bounds, ruler, and camera hints.",
@@ -300,6 +306,10 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
 
   if (commandName === "generator") {
     return generatorCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "game") {
+    return gameCommand(normalizedArgv.slice(1));
   }
 
   if (commandName === "model-test") {

@@ -1,0 +1,11 @@
+{
+  "schema": "threenative.input",
+  "version": "0.1.0",
+  "id": "arena-input",
+  "actions": [
+    {
+      "id": "move",
+      "bindings": ["keyboard.KeyD"]
+    }
+  ]
+}

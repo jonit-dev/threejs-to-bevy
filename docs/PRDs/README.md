@@ -35,6 +35,10 @@ This index separates current cleanup work from historical milestone batches.
   strict input/source validation, fresh dev-preview rebuilds, CLI playability
   proof, modular-kit assembly diagnostics, camera/scale proof, and starter
   template quality gates from the racing-kit session learnings.
+- [Agentic Game Production Workflow](done/other/agentic-game-production-workflow.md):
+  director-style game-production orchestration adapted from Three.js game
+  skills into ThreeNative source-backed CLI/editor workflows, phase ledgers,
+  scorecards, asset/audio provenance, QA, and release gates.
 - [Agent-Safe Scene Authoring CLI](done/other/agent-safe-scene-authoring-cli.md):
   shared authoring core, `tn scene ... --json` operations, schema/semantic
   validation, deterministic diagnostics, and AI-safe scene mutation workflow.
@@ -155,6 +159,10 @@ This index separates current cleanup work from historical milestone batches.
 - [Portable Scripting Audio Facade](other/portable-scripting-audio-facade.md):
   `ctx.audio` play/stop/query over declared audio IR with logical playback IDs,
   private runtime handles, and stable unsupported streaming/platform diagnostics.
+- [Script Stdlib Common Gameplay Helpers](done/other/script-stdlib-common-gameplay-helpers.md):
+  expanded `@threenative/script-stdlib` helper inventory for the common numeric,
+  vector, bounds, easing, deterministic random, color, and HUD-formatting chores
+  shared by most portable game scripts.
 - [Portable Scripting UI, Persistence, and Settings Facades](done/other/portable-scripting-ui-persistence-settings-facades.md):
   bounded `ctx.ui`, `ctx.persistence`, and `ctx.settings` APIs over retained UI
   and local-data IR without exposing DOM, native widget, filesystem, cloud, or

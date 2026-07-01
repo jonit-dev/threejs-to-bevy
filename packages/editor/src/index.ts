@@ -32,6 +32,8 @@ export type { IEditorChatContext, IEditorChatOperationStep, IEditorChatPlan } fr
 export { allowedEditorChatOperationCatalog, editorChatContextFromProject, planEditorChatOperations } from "./server/chatPlan.js";
 export type { EditorLiveSceneUpdateKind, IEditorLiveSceneUpdate } from "./preview/liveSceneUpdates.js";
 export { classifyLiveSceneUpdate } from "./preview/liveSceneUpdates.js";
+export type { IProductionPanelModel, IProductionPanelRow } from "./productionPanel.js";
+export { createProductionPanelModel } from "./productionPanel.js";
 export type { IWorkbenchProjectState } from "./workbench/projectState.js";
 export { createWorkbenchProjectState } from "./workbench/projectState.js";
 export type { EditorOperationName } from "./workbench/operations.js";

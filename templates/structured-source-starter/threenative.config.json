@@ -3,5 +3,16 @@
   "version": "0.1.0",
   "entry": "content/scenes/arena.scene.json",
   "outDir": "dist/structured-source-starter.bundle",
+  "production": {
+    "playableLoop": "Move the player across the arena to reach the goal feedback.",
+    "controls": ["keyboard.KeyA", "keyboard.ArrowLeft", "keyboard.KeyD", "keyboard.ArrowRight"],
+    "objective": "Trigger visible and audio feedback by reaching the goal zone.",
+    "failRetry": "Reset by rebuilding or reloading the preview; no persistent fail state is authored in this starter.",
+    "proofCommands": [
+      "tn playtest --project . --entity player --press keyboard.KeyD --frames 30 --expect-moved --json",
+      "tn screenshot --project . --url <preview-url> --out artifacts/game-production/screenshot.png --wait-ready --json",
+      "tn game score --project . --json"
+    ]
+  },
   "template": "structured-source-starter"
 }

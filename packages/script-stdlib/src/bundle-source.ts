@@ -1,0 +1,174 @@
+export const SCRIPT_STDLIB_BUNDLE_SOURCE = String.raw`
+const EPSILON = 1e-9;
+const NumberEx = Object.freeze({
+  approximately(left, right, epsilon = 0.000001) { return Math.abs(NumberEx.finite(left, 0) - NumberEx.finite(right, 0)) <= Math.max(0, NumberEx.finite(epsilon, 0.000001)); },
+  clamp(value, min, max) { const low = Math.min(NumberEx.finite(min, 0), NumberEx.finite(max, 0)); const high = Math.max(NumberEx.finite(min, 0), NumberEx.finite(max, 0)); return Math.min(Math.max(NumberEx.finite(value, low), low), high); },
+  finite(value, fallback) { return typeof value === "number" && Number.isFinite(value) ? value : fallback ?? 0; },
+  inverseLerp(min, max, value) { const start = NumberEx.finite(min, 0); const end = NumberEx.finite(max, 0); return Math.abs(end - start) <= EPSILON ? 0 : NumberEx.saturate((NumberEx.finite(value, start) - start) / (end - start)); },
+  lerp(left, right, alpha) { const t = NumberEx.saturate(alpha); return NumberEx.finite(left, 0) + (NumberEx.finite(right, 0) - NumberEx.finite(left, 0)) * t; },
+  moveToward(current, target, maxDelta) { const from = NumberEx.finite(current, 0); const to = NumberEx.finite(target, 0); const delta = Math.max(0, NumberEx.finite(maxDelta, 0)); return Math.abs(to - from) <= delta ? to : from + Math.sign(to - from) * delta; },
+  pingPong(value, length = 1) { const size = Math.max(EPSILON, Math.abs(NumberEx.finite(length, 1))); return size - Math.abs(NumberEx.repeat(value, size * 2) - size); },
+  remap(inMin, inMax, outMin, outMax, value) { return NumberEx.lerp(outMin, outMax, NumberEx.inverseLerp(inMin, inMax, value)); },
+  repeat(value, length = 1) { const size = Math.max(EPSILON, Math.abs(NumberEx.finite(length, 1))); return ((NumberEx.finite(value, 0) % size) + size) % size; },
+  round(value, precision = 3) { const scale = 10 ** Math.max(0, Math.trunc(NumberEx.finite(precision, 3))); return Math.round(NumberEx.finite(value, 0) * scale) / scale; },
+  saturate(value) { return NumberEx.clamp(value, 0, 1); },
+  sign(value) { const number = NumberEx.finite(value, 0); return number === 0 ? 0 : Math.sign(number); },
+  wrap(value, min, max) { const low = NumberEx.finite(min, 0); const high = NumberEx.finite(max, 0); const size = high - low; return Math.abs(size) <= EPSILON ? low : low + NumberEx.repeat(NumberEx.finite(value, low) - low, size); },
+});
+const AngleEx = Object.freeze({
+  degToRad(degrees) { return (NumberEx.finite(degrees, 0) * Math.PI) / 180; },
+  deltaAngle(current, target) { return NumberEx.repeat(NumberEx.finite(target, 0) - NumberEx.finite(current, 0) + Math.PI, Math.PI * 2) - Math.PI; },
+  moveTowardAngle(current, target, maxDelta) { return NumberEx.finite(current, 0) + NumberEx.moveToward(0, AngleEx.deltaAngle(current, target), maxDelta); },
+  radToDeg(radians) { return (NumberEx.finite(radians, 0) * 180) / Math.PI; },
+});
+const Vec2 = Object.freeze({
+  add(left, right) { const a = Vec2.from(left); const b = Vec2.from(right); return [a[0] + b[0], a[1] + b[1]]; },
+  angle(value) { const vec = Vec2.from(value); return Math.atan2(vec[1], vec[0]); },
+  distance(left, right) { return Vec2.length(Vec2.sub(left, right)); },
+  dot(left, right) { const a = Vec2.from(left); const b = Vec2.from(right); return a[0] * b[0] + a[1] * b[1]; },
+  from(value, fallback = [0, 0]) { const base = vec2Parts(value); const backup = vec2Parts(fallback); return [NumberEx.finite(base[0], NumberEx.finite(backup[0], 0)), NumberEx.finite(base[1], NumberEx.finite(backup[1], 0))]; },
+  fromAngle(angle, length = 1) { const size = NumberEx.finite(length, 1); return [Math.cos(NumberEx.finite(angle, 0)) * size, Math.sin(NumberEx.finite(angle, 0)) * size]; },
+  length(value) { const vec = Vec2.from(value); return Math.hypot(vec[0], vec[1]); },
+  lerp(left, right, alpha) { const a = Vec2.from(left); const b = Vec2.from(right); const t = NumberEx.saturate(alpha); return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]; },
+  normalize(value) { const vec = Vec2.from(value); const length = Vec2.length(vec); return length <= EPSILON ? [0, 0] : [vec[0] / length, vec[1] / length]; },
+  rotate(value, angle) { const vec = Vec2.from(value); const c = Math.cos(NumberEx.finite(angle, 0)); const s = Math.sin(NumberEx.finite(angle, 0)); return [vec[0] * c - vec[1] * s, vec[0] * s + vec[1] * c]; },
+  round(value, precision = 3) { const vec = Vec2.from(value); return [NumberEx.round(vec[0], precision), NumberEx.round(vec[1], precision)]; },
+  scale(value, scalar) { const vec = Vec2.from(value); const amount = NumberEx.finite(scalar, 0); return [vec[0] * amount, vec[1] * amount]; },
+  sub(left, right) { const a = Vec2.from(left); const b = Vec2.from(right); return [a[0] - b[0], a[1] - b[1]]; },
+});
+const Vec3 = Object.freeze({
+  add(left, right) { const a = Vec3.from(left); const b = Vec3.from(right); return [a[0] + b[0], a[1] + b[1], a[2] + b[2]]; },
+  angle(left, right) { const a = Vec3.normalize(left); const b = Vec3.normalize(right); return Math.acos(NumberEx.clamp(Vec3.dot(a, b), -1, 1)); },
+  cross(left, right) { const a = Vec3.from(left); const b = Vec3.from(right); return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]; },
+  distance(left, right) { return Vec3.length(Vec3.sub(left, right)); },
+  distance2d(left, right) { const a = Vec3.from(left); const b = Vec3.from(right); return Math.hypot(a[0] - b[0], a[2] - b[2]); },
+  dot(left, right) { const a = Vec3.from(left); const b = Vec3.from(right); return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; },
+  from(value, fallback = [0, 0, 0]) { const base = vec3Parts(value); const backup = vec3Parts(fallback); return [NumberEx.finite(base[0], NumberEx.finite(backup[0], 0)), NumberEx.finite(base[1], NumberEx.finite(backup[1], 0)), NumberEx.finite(base[2], NumberEx.finite(backup[2], 0))]; },
+  length(value) { const vec = Vec3.from(value); return Math.hypot(vec[0], vec[1], vec[2]); },
+  lerp(left, right, alpha) { const a = Vec3.from(left); const b = Vec3.from(right); const t = NumberEx.saturate(alpha); return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]; },
+  moveToward(current, target, maxDistanceDelta) { const delta = Vec3.sub(target, current); const distance = Vec3.length(delta); if (distance <= EPSILON || distance <= NumberEx.finite(maxDistanceDelta, 0)) return Vec3.from(target); return Vec3.add(current, Vec3.scale(delta, Math.max(0, NumberEx.finite(maxDistanceDelta, 0)) / distance)); },
+  normalize(value) { const vec = Vec3.from(value); const length = Vec3.length(vec); return length <= EPSILON ? [0, 0, 0] : [vec[0] / length, vec[1] / length, vec[2] / length]; },
+  projectOnPlane(value, normal) { const n = Vec3.normalize(normal); return Vec3.sub(value, Vec3.scale(n, Vec3.dot(value, n))); },
+  rotateYaw(value, yaw) { const vec = Vec3.from(value); const c = Math.cos(NumberEx.finite(yaw, 0)); const s = Math.sin(NumberEx.finite(yaw, 0)); return [vec[0] * c + vec[2] * s, vec[1], vec[2] * c - vec[0] * s]; },
+  round(value, precision = 3) { const vec = Vec3.from(value); return [NumberEx.round(vec[0], precision), NumberEx.round(vec[1], precision), NumberEx.round(vec[2], precision)]; },
+  scale(value, scalar) { const vec = Vec3.from(value); const amount = NumberEx.finite(scalar, 0); return [vec[0] * amount, vec[1] * amount, vec[2] * amount]; },
+  sub(left, right) { const a = Vec3.from(left); const b = Vec3.from(right); return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; },
+  withY(value, y) { const vec = Vec3.from(value); return [vec[0], NumberEx.finite(y, 0), vec[2]]; },
+});
+const Quat = Object.freeze({
+  identity() { return [0, 0, 0, 1]; },
+  from(value, fallback = [0, 0, 0, 1]) { const base = quatParts(value); const backup = quatParts(fallback); return [NumberEx.finite(base[0], NumberEx.finite(backup[0], 0)), NumberEx.finite(base[1], NumberEx.finite(backup[1], 0)), NumberEx.finite(base[2], NumberEx.finite(backup[2], 0)), NumberEx.finite(base[3], NumberEx.finite(backup[3], 1))]; },
+  fromEuler(pitch = 0, yaw = 0, roll = 0) { const cy = Math.cos(NumberEx.finite(yaw, 0) * 0.5); const sy = Math.sin(NumberEx.finite(yaw, 0) * 0.5); const cp = Math.cos(NumberEx.finite(pitch, 0) * 0.5); const sp = Math.sin(NumberEx.finite(pitch, 0) * 0.5); const cr = Math.cos(NumberEx.finite(roll, 0) * 0.5); const sr = Math.sin(NumberEx.finite(roll, 0) * 0.5); return Quat.normalize([sr * cp * cy - cr * sp * sy, cr * sp * cy + sr * cp * sy, cr * cp * sy - sr * sp * cy, cr * cp * cy + sr * sp * sy]); },
+  fromYaw(yaw) { return Quat.fromEuler(0, yaw, 0); },
+  lookAt(eye, target) { return Quat.lookRotation(Vec3.sub(target, eye)); },
+  lookRotation(forwardValue, upValue = [0, 1, 0]) { const forward = Vec3.normalize(forwardValue); if (Vec3.length(forward) <= EPSILON) return [0, 0, 0, 1]; const up = Vec3.normalize(upValue); const zAxis = Vec3.scale(forward, -1); const xAxis = Vec3.normalize(Vec3.cross(up, zAxis)); if (Vec3.length(xAxis) <= EPSILON) return Quat.fromYaw(Math.atan2(forward[0], forward[2])); const yAxis = Vec3.cross(zAxis, xAxis); return quatFromBasis(xAxis, yAxis, zAxis); },
+  multiply(left, right) { const a = Quat.from(left); const b = Quat.from(right); return Quat.normalize([a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1], a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0], a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3], a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2]]); },
+  normalize(value) { const q = Quat.from(value); const length = Math.hypot(q[0], q[1], q[2], q[3]); return length <= EPSILON ? [0, 0, 0, 1] : [q[0] / length, q[1] / length, q[2] / length, q[3] / length]; },
+  rotateVec3(rotation, value) { const q = Quat.normalize(rotation); const v = Vec3.from(value); const u = [q[0], q[1], q[2]]; return Vec3.add(Vec3.add(Vec3.scale(u, 2 * Vec3.dot(u, v)), Vec3.scale(v, q[3] * q[3] - Vec3.dot(u, u))), Vec3.scale(Vec3.cross(u, v), 2 * q[3])); },
+  slerp(left, right, alpha) { let a = Quat.normalize(left); let b = Quat.normalize(right); let dot = a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3]; if (dot < 0) { b = [-b[0], -b[1], -b[2], -b[3]]; dot = -dot; } const t = NumberEx.saturate(alpha); if (dot > 0.9995) return Quat.normalize([NumberEx.lerp(a[0], b[0], t), NumberEx.lerp(a[1], b[1], t), NumberEx.lerp(a[2], b[2], t), NumberEx.lerp(a[3], b[3], t)]); const theta0 = Math.acos(NumberEx.clamp(dot, -1, 1)); const theta = theta0 * t; const sinTheta = Math.sin(theta); const sinTheta0 = Math.sin(theta0); const scale0 = Math.cos(theta) - dot * sinTheta / sinTheta0; const scale1 = sinTheta / sinTheta0; return [a[0] * scale0 + b[0] * scale1, a[1] * scale0 + b[1] * scale1, a[2] * scale0 + b[2] * scale1, a[3] * scale0 + b[3] * scale1]; },
+  yaw(rotation, fallback = 0) { const q = Quat.from(rotation); const siny = 2 * (q[3] * q[1] + q[2] * q[0]); const cosy = 1 - 2 * (q[1] * q[1] + q[2] * q[2]); return NumberEx.finite(Math.atan2(siny, cosy), fallback); },
+});
+const TransformMath = Object.freeze({
+  forward(pose) { return Quat.rotateVec3(readRotation(pose), [0, 0, 1]); },
+  lookAtPose(eye, target) { return { position: Vec3.from(eye), rotation: Quat.lookAt(eye, target) }; },
+  pose(options) { return { position: Vec3.from(options.position), rotation: options.rotation === undefined ? Quat.fromYaw(options.yaw ?? 0) : Quat.from(options.rotation) }; },
+  position(value, fallback = [0, 0, 0]) { return isRecord(value) && "position" in value ? Vec3.from(value.position, fallback) : Vec3.from(value, fallback); },
+  right(pose) { return Quat.rotateVec3(readRotation(pose), [1, 0, 0]); },
+  translate(pose, offset) { return { position: Vec3.add(Vec3.from(pose.position), offset), rotation: Quat.from(pose.rotation) }; },
+  up(pose) { return Quat.rotateVec3(readRotation(pose), [0, 1, 0]); },
+  withPosition(pose, position) { return { position: Vec3.from(position), rotation: Quat.from(pose.rotation) }; },
+  yaw(rotation, fallback = 0) { return isRecord(rotation) && "rotation" in rotation ? Quat.yaw(rotation.rotation, fallback) : Quat.yaw(rotation, fallback); },
+});
+const Bounds2 = Object.freeze({
+  center(bounds) { return Vec2.scale(Vec2.add(Vec2.from(bounds.min), Vec2.from(bounds.max)), 0.5); },
+  closestPoint(bounds, point) { const min = Vec2.from(bounds.min); const max = Vec2.from(bounds.max); const p = Vec2.from(point); return [NumberEx.clamp(p[0], min[0], max[0]), NumberEx.clamp(p[1], min[1], max[1])]; },
+  containsPoint(bounds, point) { const p = Vec2.from(point); const min = Vec2.from(bounds.min); const max = Vec2.from(bounds.max); return p[0] >= min[0] && p[0] <= max[0] && p[1] >= min[1] && p[1] <= max[1]; },
+  distanceToPoint(bounds, point) { return Vec2.distance(point, Bounds2.closestPoint(bounds, point)); },
+  expand(bounds, amount) { const size = Math.max(0, NumberEx.finite(amount, 0)); return { min: Vec2.sub(Vec2.from(bounds.min), [size, size]), max: Vec2.add(Vec2.from(bounds.max), [size, size]) }; },
+  overlaps(left, right) { const a0 = Vec2.from(left.min); const a1 = Vec2.from(left.max); const b0 = Vec2.from(right.min); const b1 = Vec2.from(right.max); return a0[0] <= b1[0] && a1[0] >= b0[0] && a0[1] <= b1[1] && a1[1] >= b0[1]; },
+  rect(x, y, width, height) { const min = [NumberEx.finite(x, 0), NumberEx.finite(y, 0)]; return { min, max: [min[0] + Math.max(0, NumberEx.finite(width, 0)), min[1] + Math.max(0, NumberEx.finite(height, 0))] }; },
+  size(bounds) { return Vec2.sub(Vec2.from(bounds.max), Vec2.from(bounds.min)); },
+});
+const Bounds3 = Object.freeze({
+  aabb(minValue, maxValue) { const min = Vec3.from(minValue); const max = Vec3.from(maxValue); return { min: [Math.min(min[0], max[0]), Math.min(min[1], max[1]), Math.min(min[2], max[2])], max: [Math.max(min[0], max[0]), Math.max(min[1], max[1]), Math.max(min[2], max[2])] }; },
+  center(bounds) { return Vec3.scale(Vec3.add(Vec3.from(bounds.min), Vec3.from(bounds.max)), 0.5); },
+  closestPoint(bounds, point) { const min = Vec3.from(bounds.min); const max = Vec3.from(bounds.max); const p = Vec3.from(point); return [NumberEx.clamp(p[0], min[0], max[0]), NumberEx.clamp(p[1], min[1], max[1]), NumberEx.clamp(p[2], min[2], max[2])]; },
+  containsPoint(bounds, point) { const p = Vec3.from(point); const min = Vec3.from(bounds.min); const max = Vec3.from(bounds.max); return p[0] >= min[0] && p[0] <= max[0] && p[1] >= min[1] && p[1] <= max[1] && p[2] >= min[2] && p[2] <= max[2]; },
+  distanceToPoint(bounds, point) { return Vec3.distance(point, Bounds3.closestPoint(bounds, point)); },
+  expand(bounds, amount) { const size = Math.max(0, NumberEx.finite(amount, 0)); return { min: Vec3.sub(Vec3.from(bounds.min), [size, size, size]), max: Vec3.add(Vec3.from(bounds.max), [size, size, size]) }; },
+  overlaps(left, right) { const a0 = Vec3.from(left.min); const a1 = Vec3.from(left.max); const b0 = Vec3.from(right.min); const b1 = Vec3.from(right.max); return a0[0] <= b1[0] && a1[0] >= b0[0] && a0[1] <= b1[1] && a1[1] >= b0[1] && a0[2] <= b1[2] && a1[2] >= b0[2]; },
+  size(bounds) { return Vec3.sub(Vec3.from(bounds.max), Vec3.from(bounds.min)); },
+});
+const Ease = Object.freeze({
+  inOutCubic(t) { const x = NumberEx.saturate(t); return x < 0.5 ? 4 * x * x * x : 1 - (-2 * x + 2) ** 3 / 2; },
+  inOutQuad(t) { const x = NumberEx.saturate(t); return x < 0.5 ? 2 * x * x : 1 - (-2 * x + 2) ** 2 / 2; },
+  inQuad(t) { const x = NumberEx.saturate(t); return x * x; },
+  linear(t) { return NumberEx.saturate(t); },
+  outCubic(t) { return 1 - (1 - NumberEx.saturate(t)) ** 3; },
+  outQuad(t) { const x = NumberEx.saturate(t); return 1 - (1 - x) * (1 - x); },
+  smoothStep(t) { const x = NumberEx.saturate(t); return x * x * (3 - 2 * x); },
+  smootherStep(t) { const x = NumberEx.saturate(t); return x * x * x * (x * (x * 6 - 15) + 10); },
+  step(edge, value) { return NumberEx.finite(value, 0) < NumberEx.finite(edge, 0) ? 0 : 1; },
+});
+const RandomEx = Object.freeze({
+  chance(seed, index, probability) { return RandomEx.float01(seed, index) < NumberEx.saturate(probability); },
+  float01(seed, index = 0) { return RandomEx.hash32(seed, index) / 4294967296; },
+  hash32(seed, index = 0) { let value = (Math.trunc(NumberEx.finite(seed, 0)) ^ Math.imul(Math.trunc(NumberEx.finite(index, 0)), 0x9e3779b9)) >>> 0; value ^= value >>> 16; value = Math.imul(value, 0x7feb352d) >>> 0; value ^= value >>> 15; value = Math.imul(value, 0x846ca68b) >>> 0; value ^= value >>> 16; return value >>> 0; },
+  pickIndex(seed, index, length) { const count = Math.max(0, Math.trunc(NumberEx.finite(length, 0))); return count === 0 ? -1 : Math.floor(RandomEx.float01(seed, index) * count) % count; },
+  range(seed, index, min, max) { return NumberEx.lerp(min, max, RandomEx.float01(seed, index)); },
+  rangeInt(seed, index, min, max) { const low = Math.ceil(Math.min(NumberEx.finite(min, 0), NumberEx.finite(max, 0))); const high = Math.floor(Math.max(NumberEx.finite(min, 0), NumberEx.finite(max, 0))); return low + Math.floor(RandomEx.float01(seed, index) * (high - low + 1)); },
+});
+const ColorEx = Object.freeze({
+  from(value, fallback = [1, 1, 1, 1]) { if (typeof value === "string") return ColorEx.hex(value, fallback); const base = colorParts(value); const backup = colorParts(fallback); return [NumberEx.saturate(NumberEx.finite(base[0], NumberEx.finite(backup[0], 1))), NumberEx.saturate(NumberEx.finite(base[1], NumberEx.finite(backup[1], 1))), NumberEx.saturate(NumberEx.finite(base[2], NumberEx.finite(backup[2], 1))), NumberEx.saturate(NumberEx.finite(base[3], NumberEx.finite(backup[3], 1)))]; },
+  hex(value, fallback = [1, 1, 1, 1]) { const text = typeof value === "string" ? value.replace(/^#/, "") : ""; if (!/^[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(text)) return ColorEx.rgba(...ColorEx.from(fallback)); const r = Number.parseInt(text.slice(0, 2), 16) / 255; const g = Number.parseInt(text.slice(2, 4), 16) / 255; const b = Number.parseInt(text.slice(4, 6), 16) / 255; const a = text.length === 8 ? Number.parseInt(text.slice(6, 8), 16) / 255 : 1; return [r, g, b, a]; },
+  lerp(left, right, alpha) { const a = ColorEx.from(left); const b = ColorEx.from(right); const t = NumberEx.saturate(alpha); return [NumberEx.lerp(a[0], b[0], t), NumberEx.lerp(a[1], b[1], t), NumberEx.lerp(a[2], b[2], t), NumberEx.lerp(a[3], b[3], t)]; },
+  multiply(color, scalar) { const c = ColorEx.from(color); const amount = Math.max(0, NumberEx.finite(scalar, 1)); return [NumberEx.saturate(c[0] * amount), NumberEx.saturate(c[1] * amount), NumberEx.saturate(c[2] * amount), c[3]]; },
+  rgb(r, g, b) { return ColorEx.rgba(r, g, b, 1); },
+  rgba(r, g, b, a = 1) { return [NumberEx.saturate(r), NumberEx.saturate(g), NumberEx.saturate(b), NumberEx.saturate(a)]; },
+  toHex(color, includeAlpha = false) { const c = ColorEx.from(color); const parts = c.slice(0, includeAlpha ? 4 : 3).map((value) => Math.round(NumberEx.saturate(value) * 255).toString(16).padStart(2, "0")); return "#" + parts.join(""); },
+  withAlpha(color, alpha) { const c = ColorEx.from(color); return [c[0], c[1], c[2], NumberEx.saturate(alpha)]; },
+});
+const TextEx = Object.freeze({
+  fixed(value, precision = 0) { return NumberEx.round(value, precision).toFixed(Math.max(0, Math.trunc(NumberEx.finite(precision, 0)))); },
+  joinNonEmpty(parts, separator = " ") { return parts.map((part) => part === undefined || part === null ? "" : String(part)).filter((part) => part.length > 0).join(String(separator)); },
+  padLeft(value, length, fill = "0") { return String(value).padStart(Math.max(0, Math.trunc(NumberEx.finite(length, 0))), String(fill)[0] ?? " "); },
+  percent(value, precision = 0) { return TextEx.fixed(NumberEx.finite(value, 0) * 100, precision) + "%"; },
+  signedFixed(value, precision = 0) { const number = NumberEx.finite(value, 0); return (number >= 0 ? "+" : "-") + TextEx.fixed(Math.abs(number), precision); },
+  timeSeconds(seconds) { const total = Math.max(0, Math.floor(NumberEx.finite(seconds, 0))); return Math.floor(total / 60) + ":" + TextEx.padLeft(total % 60, 2, "0"); },
+});
+const InputEx = Object.freeze({
+  axis(value, options = {}) { const raw = NumberEx.clamp(value, -1, 1); const deadzone = NumberEx.saturate(options.deadzone ?? 0); if (Math.abs(raw) <= deadzone) return 0; const normalized = (Math.abs(raw) - deadzone) / (1 - deadzone); return Math.sign(raw) * normalized ** Math.max(1, NumberEx.finite(options.exponent, 1)); },
+  axis2(value, options = {}) { const shaped = Vec2.from(value).map((axis) => InputEx.axis(axis, options)); const length = Vec2.length(shaped); return length > 1 || options.normalize === true ? Vec2.normalize(shaped) : shaped; },
+});
+const MotionEx = Object.freeze({
+  arrive(options) { const offset = Vec3.sub(options.target, options.position); const distance = Vec3.length(offset); if (distance <= EPSILON) return [0, 0, 0]; const ramp = NumberEx.saturate(distance / Math.max(EPSILON, NumberEx.finite(options.slowingDistance, 1))); return Vec3.scale(Vec3.normalize(offset), Math.max(0, NumberEx.finite(options.maxSpeed, 0)) * ramp); },
+  applyFriction(velocity, friction, dt) { return Vec3.moveToward(velocity, [0, 0, 0], Math.max(0, NumberEx.finite(friction, 0)) * Math.max(0, NumberEx.finite(dt, 0))); },
+  integrate(position, velocity, dt) { return Vec3.add(position, Vec3.scale(velocity, Math.max(0, NumberEx.finite(dt, 0)))); },
+  planarVelocity(options) { const input = Vec2.normalize(options.input ?? [0, 0]); const dt = Math.max(0, NumberEx.finite(options.dt, 0)); let velocity = Vec3.from(options.velocity); const accel = Math.max(0, NumberEx.finite(options.acceleration, 0)); velocity = Vec3.add(velocity, [input[0] * accel * dt, 0, input[1] * accel * dt]); if (Vec2.length(input) <= EPSILON) velocity = MotionEx.applyFriction(velocity, options.friction ?? 0, dt); const speed = Vec3.length([velocity[0], 0, velocity[2]]); const maxSpeed = Math.max(0, NumberEx.finite(options.maxSpeed, speed)); if (speed > maxSpeed && speed > EPSILON) velocity = Vec3.scale(velocity, maxSpeed / speed); return { velocity, speed: Vec3.length([velocity[0], 0, velocity[2]]), heading: Math.atan2(velocity[0], velocity[2]) }; },
+  seek(options) { return Vec3.scale(Vec3.normalize(Vec3.sub(options.target, options.position)), Math.max(0, NumberEx.finite(options.maxSpeed, 0))); },
+});
+const TimerEx = Object.freeze({
+  cooldown(remaining, dt) { const next = Math.max(0, NumberEx.finite(remaining, 0) - Math.max(0, NumberEx.finite(dt, 0))); return { remaining: next, ready: next <= EPSILON }; },
+  progress(remaining, duration) { const total = Math.max(EPSILON, NumberEx.finite(duration, 0)); return NumberEx.saturate(1 - Math.max(0, NumberEx.finite(remaining, 0)) / total); },
+  restart(duration) { return Math.max(0, NumberEx.finite(duration, 0)); },
+  tick(remaining, dt) { return TimerEx.cooldown(remaining, dt).remaining; },
+});
+const ArrayEx = Object.freeze({
+  cycle(items, index, fallback) { return items.length === 0 ? fallback : items[ArrayEx.wrapIndex(index, items.length)]; },
+  groupBy(items, keyOf) { const groups = {}; for (const item of items) { const key = String(keyOf(item)); groups[key] = [...(groups[key] ?? []), item]; } return groups; },
+  wrapIndex(index, length) { const count = Math.max(0, Math.trunc(NumberEx.finite(length, 0))); return count === 0 ? -1 : NumberEx.repeat(Math.trunc(NumberEx.finite(index, 0)), count); },
+});
+const CameraMath = Object.freeze({
+  followPose(options) { const offset = Vec3.rotateYaw(Vec3.from(options.offset, [0, 0, -8]), NumberEx.finite(options.yaw, 0)); const position = Vec3.add(options.target, offset); return TransformMath.lookAtPose(position, options.target); },
+  lookAtPose(eye, target) { return TransformMath.lookAtPose(eye, target); },
+  orbitPose(options) { const distance = Math.max(0, NumberEx.finite(options.distance, 8)); const pitch = NumberEx.finite(options.pitch, 0); const yaw = NumberEx.finite(options.yaw, 0); const offset = [Math.sin(yaw) * Math.cos(pitch) * distance, Math.sin(pitch) * distance, Math.cos(yaw) * Math.cos(pitch) * distance]; const position = Vec3.add(options.target, offset); return TransformMath.lookAtPose(position, options.target); },
+  shakeOffset(seed, amplitude, index = 0) { const amount = Math.max(0, NumberEx.finite(amplitude, 0)); return [RandomEx.range(seed, index, -amount, amount), RandomEx.range(seed, index + 1, -amount, amount), RandomEx.range(seed, index + 2, -amount, amount)]; },
+});
+function vec2Parts(value) { if (Array.isArray(value)) return [value[0], value[1]]; if (isRecord(value)) return [value.x, value.y]; return [undefined, undefined]; }
+function vec3Parts(value) { if (Array.isArray(value)) return [value[0], value[1], value[2]]; if (isRecord(value)) return [value.x, value.y, value.z]; return [undefined, undefined, undefined]; }
+function quatParts(value) { if (Array.isArray(value)) return [value[0], value[1], value[2], value[3]]; if (isRecord(value)) return [value.x, value.y, value.z, value.w]; return [undefined, undefined, undefined, undefined]; }
+function colorParts(value) { if (Array.isArray(value)) return [value[0], value[1], value[2], value[3]]; if (isRecord(value)) return [value.r, value.g, value.b, value.a]; return [undefined, undefined, undefined, undefined]; }
+function isRecord(value) { return typeof value === "object" && value !== null; }
+function quatFromBasis(x, y, z) { const trace = x[0] + y[1] + z[2]; if (trace > 0) { const s = Math.sqrt(trace + 1) * 2; return Quat.normalize([(y[2] - z[1]) / s, (z[0] - x[2]) / s, (x[1] - y[0]) / s, 0.25 * s]); } if (x[0] > y[1] && x[0] > z[2]) { const s = Math.sqrt(1 + x[0] - y[1] - z[2]) * 2; return Quat.normalize([0.25 * s, (y[0] + x[1]) / s, (z[0] + x[2]) / s, (y[2] - z[1]) / s]); } if (y[1] > z[2]) { const s = Math.sqrt(1 + y[1] - x[0] - z[2]) * 2; return Quat.normalize([(y[0] + x[1]) / s, 0.25 * s, (z[1] + y[2]) / s, (z[0] - x[2]) / s]); } const s = Math.sqrt(1 + z[2] - x[0] - y[1]) * 2; return Quat.normalize([(z[0] + x[2]) / s, (z[1] + y[2]) / s, 0.25 * s, (x[1] - y[0]) / s]); }
+function readRotation(pose) { return isRecord(pose) && "rotation" in pose ? pose.rotation : pose; }
+`.trim();

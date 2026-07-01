@@ -1,0 +1,14 @@
+{
+  "schema": "threenative.environment-scene",
+  "version": "0.1.0",
+  "id": "world-environment",
+  "skybox": {
+    "mode": "color",
+    "color": "#88aaff"
+  },
+  "lightProbes": [
+    {
+      "id": "lighting-render-proof"
+    }
+  ]
+}

@@ -172,8 +172,8 @@ Validation rules:
   and named export; the compiler records the source hash in
   `scripts.manifest.json`.
 - Portable scripts may import named helpers only from supported helper packages:
-  `@threenative/script-stdlib` for pure numeric/vector/quaternion/transform
-  helpers and `@threenative/racing-kit` for opt-in racing/checkpoint helpers.
+  `@threenative/script-stdlib` for pure gameplay math/reducer helpers and
+  `@threenative/racing-kit` for opt-in racing/checkpoint helpers.
   Arbitrary npm packages, relative helper module graphs, default imports,
   namespace imports, aliased imports, and re-exports are rejected before
   runtime.
@@ -191,9 +191,10 @@ Validation rules:
 - Systems may only use command types listed in `commands`.
 - Systems may only emit events listed in `events.writes`.
 - Portable scripts may import named pure helpers from
-  `@threenative/script-stdlib`. Use this package for repeated numeric, vector,
-  quaternion, and transform helper code instead of copying local mini-standard
-  libraries into `src/scripts/**/*.ts`.
+  `@threenative/script-stdlib`. Use this package for repeated numeric, angle,
+  vector, quaternion, transform, bounds, easing, deterministic random, color,
+  text, input, motion, timer, array, and camera helper code instead of copying
+  local mini-standard libraries into `src/scripts/**/*.ts`.
 - Portable scripts must not use arbitrary helper imports, async/dynamic code,
   timers, network APIs, DOM/worker globals, Node/platform APIs, arbitrary npm
   dependencies, or top-level mutable module state. Unsupported imports fail with
@@ -203,12 +204,15 @@ Supported helper imports are bundled into `scripts.bundle.js` and recorded on
 the owning source entry in `scripts.manifest.json`:
 
 ```ts
-import { NumberEx, Quat, TransformMath, Vec3 } from "@threenative/script-stdlib";
+import { CameraMath, InputEx, MotionEx, NumberEx, Quat, TimerEx, Vec3 } from "@threenative/script-stdlib";
 
 export const drive = (ctx) => {
   const dt = NumberEx.clamp(ctx.time.fixedDt ?? ctx.time.dt, 0.001, 0.05);
-  const next = Vec3.round(Vec3.add([0, 0, 0], Vec3.scale([1, 0, 0], dt)));
-  return { next, rotation: Quat.lookAt([0, 0, 0], next), yaw: TransformMath.yaw([0, 0, 0, 1]) };
+  const input = InputEx.axis2([ctx.input.axis("steer"), ctx.input.axis("throttle")], { deadzone: 0.15 });
+  const body = MotionEx.planarVelocity({ velocity: [0, 0, 0], input, maxSpeed: 7, acceleration: 20, friction: 9, dt });
+  const next = Vec3.round(Vec3.add([0, 0, 0], Vec3.scale(body.velocity, dt)));
+  const attack = TimerEx.cooldown(ctx.resources.attackCooldown ?? 0, dt);
+  return { camera: CameraMath.followPose({ target: next }), next, ready: attack.ready, rotation: Quat.fromYaw(body.heading) };
 };
 ```
 
