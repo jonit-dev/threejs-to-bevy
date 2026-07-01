@@ -93,6 +93,8 @@ Nested `AGENTS.md` files may add local rules.
 - Bevy-only evidence: `runtime-bevy/artifacts/<gate>/`.
 - Active docs: `docs/architecture/`, `docs/contracts/`, `docs/runtime/`,
   `docs/workflows/`, `docs/status/`, `docs/PRDs/`.
+- Open-source 3D asset kit reference:
+  `docs/workflows/open-source-3d-asset-kits.md`.
 - Gate implementation belongs in `tools/verify/src`; use `scripts/` only for
   wrappers, shims, or maintenance.
 

@@ -3,6 +3,9 @@
 Use root `AGENTS.md` as the authoritative repo instructions. Nested
 `AGENTS.md` files may add local rules.
 
+Open-source 3D asset kit reference:
+`docs/workflows/open-source-3d-asset-kits.md`.
+
 ## Structured Source Defaults
 
 - Current starter: `structured-source-starter`.

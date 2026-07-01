@@ -33,7 +33,7 @@ const commands: Record<string, ICommandDefinition> = {
   asset: {
     description: "Inspect GLB/glTF assets and mutate structured asset source documents.",
     implemented: true,
-    usage: "tn asset inspect <path> [--json]\n              tn asset add <asset-id> --type <model|texture|audio|mesh> --path <source-path> [--project <path>] [--json]\n              tn asset add <asset-id> --type render-target --width <n> --height <n> [--usage color|depth] [--format rgba8|rgba16f|depth24plus] [--sample-count <n>] [--project <path>] [--json]",
+    usage: "tn asset inspect <path-or-directory> [--recursive] [--json]\n              tn asset add <asset-id> --type <model|texture|audio|mesh> --path <source-path> [--project <path>] [--json]\n              tn asset add <asset-id> --type render-target --width <n> --height <n> [--usage color|depth] [--format rgba8|rgba16f|depth24plus] [--sample-count <n>] [--project <path>] [--json]",
   },
   audio: {
     description: "Create and mutate structured audio source documents.",

@@ -1,0 +1,22 @@
+{
+  "schema": "threenative.assets",
+  "version": "0.1.0",
+  "id": "rally-assets",
+  "assets": [
+    { "id": "model.rally.car.player", "path": "assets/raceCarRed.glb", "type": "model" },
+    { "id": "model.rally.car.rival", "path": "assets/raceCarGreen.glb", "type": "model" },
+    { "id": "model.rally.road.straight", "path": "assets/roadStraight.glb", "type": "model" },
+    { "id": "model.rally.road.straight-long", "path": "assets/roadStraightLong.glb", "type": "model" },
+    { "id": "model.rally.road.arrow", "path": "assets/roadStraightArrow.glb", "type": "model" },
+    { "id": "model.rally.road.start", "path": "assets/roadStart.glb", "type": "model" },
+    { "id": "model.rally.road.corner", "path": "assets/roadCornerLarge.glb", "type": "model" },
+    { "id": "model.rally.road.corner-border", "path": "assets/roadCornerLargeBorder.glb", "type": "model" },
+    { "id": "model.rally.barrier.red", "path": "assets/barrierRed.glb", "type": "model" },
+    { "id": "model.rally.barrier.white", "path": "assets/barrierWhite.glb", "type": "model" },
+    { "id": "model.rally.pylon", "path": "assets/pylon.glb", "type": "model" },
+    { "id": "model.rally.flag.checkers", "path": "assets/flagCheckers.glb", "type": "model" },
+    { "id": "model.rally.overhead-lights", "path": "assets/overheadLights.glb", "type": "model" },
+    { "id": "model.rally.grandstand", "path": "assets/grandStand.glb", "type": "model" },
+    { "id": "model.rally.tree-small", "path": "assets/treeSmall.glb", "type": "model" }
+  ]
+}

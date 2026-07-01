@@ -9,6 +9,7 @@ export interface TemplateDefinition {
 
 export const TEMPLATE_REGISTRY: readonly TemplateDefinition[] = [
   { canonical: "structured-source-starter", sourceDir: "structured-source-starter", default: true },
+  { canonical: "racing-kit-rally-starter", sourceDir: "racing-kit-rally-starter" },
 ] as const;
 
 export function resolveTemplate(requested?: string): {

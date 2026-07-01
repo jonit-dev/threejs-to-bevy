@@ -31,6 +31,10 @@ This index separates current cleanup work from historical milestone batches.
   init/create front door, task-oriented help, doctor diagnostics, asset/model
   inspection, transform/camera guardrails, screenshot/video proof, runtime
   debug overlay, and racing template evidence.
+- [Playable Game Authoring Loop Hardening](other/game-authoring-loop-hardening.md):
+  strict input/source validation, fresh dev-preview rebuilds, CLI playability
+  proof, modular-kit assembly diagnostics, camera/scale proof, and starter
+  template quality gates from the racing-kit session learnings.
 - [Agent-Safe Scene Authoring CLI](done/other/agent-safe-scene-authoring-cli.md):
   shared authoring core, `tn scene ... --json` operations, schema/semantic
   validation, deterministic diagnostics, and AI-safe scene mutation workflow.

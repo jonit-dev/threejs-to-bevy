@@ -155,6 +155,48 @@ test("should create structured-source starter template with editable content doc
   }
 });
 
+test("should create racing kit rally starter with reusable race scene structure", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-create-racing-kit-"));
+  try {
+    const result = await createProject(["rally", "--template", "racing-kit-rally-starter", "--json"], { cwd: root });
+    const payload = JSON.parse(result.stdout) as { code: string; path: string; template: string };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.code, "TN_CREATE_OK");
+    assert.equal(payload.template, "racing-kit-rally-starter");
+
+    const config = JSON.parse(await readFile(join(payload.path, "threenative.config.json"), "utf8")) as {
+      entry: string;
+      outDir: string;
+      template: string;
+    };
+    assert.equal(config.entry, "content/scenes/rally.scene.json");
+    assert.equal(config.outDir, "dist/racing-kit-rally.bundle");
+    assert.equal(config.template, "racing-kit-rally-starter");
+
+    const sceneDoc = await readFile(join(payload.path, "content/scenes/rally.scene.json"), "utf8");
+    const systemDoc = await readFile(join(payload.path, "content/systems/rally.systems.json"), "utf8");
+    const scriptSource = await readFile(join(payload.path, "src/scripts/racing.ts"), "utf8");
+
+    assert.match(sceneDoc, /"id": "player\.car"/);
+    assert.match(sceneDoc, /"id": "start\.lights"/);
+    assert.match(sceneDoc, /"id": "road\.modular\.000"/);
+    assert.match(systemDoc, /"module": "src\/scripts\/racing\.ts"/);
+    assert.match(scriptSource, /function updateCamera/);
+    assert.match(scriptSource, /CHECKPOINTS/);
+    await access(join(payload.path, "assets", "roadCornerLarge.glb"));
+    await access(join(payload.path, "assets", "raceCarRed.glb"));
+
+    const validate = await authoringCommand(["validate", "--project", payload.path, "--json"], { cwd: root });
+    const validationPayload = JSON.parse(validate.stdout) as { code: string; ok: boolean };
+    assert.equal(validate.exitCode, 0);
+    assert.equal(validationPayload.code, "TN_AUTHORING_VALIDATE_OK");
+    assert.equal(validationPayload.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject unknown template with canonical options", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-create-unknown-template-"));
   try {
@@ -164,6 +206,7 @@ test("should reject unknown template with canonical options", async () => {
     assert.equal(result.exitCode, 1);
     assert.equal(payload.code, "TN_CREATE_TEMPLATE_UNSUPPORTED");
     assert.match(payload.message, /structured-source-starter/);
+    assert.match(payload.message, /racing-kit-rally-starter/);
     assert.doesNotMatch(payload.message, /legacy aliases/i);
   } finally {
     await rm(root, { force: true, recursive: true });

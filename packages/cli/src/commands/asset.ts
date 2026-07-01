@@ -1,5 +1,5 @@
-import { access, readFile, stat } from "node:fs/promises";
-import { dirname, extname, isAbsolute, resolve } from "node:path";
+import { access, readFile, readdir, stat } from "node:fs/promises";
+import { dirname, extname, isAbsolute, join, resolve } from "node:path";
 
 import { addAsset, type IAuthoringOperationResult } from "@threenative/authoring";
 
@@ -9,14 +9,18 @@ type Severity = "info" | "warning" | "error";
 
 type Vec3 = [number, number, number];
 type Mat4 = [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
+type ConnectorDirection = "east" | "north" | "south" | "west";
+type XzBounds = { min: [number, number]; max: [number, number] };
+type ConnectorPort = { direction: ConnectorDirection; interval: [number, number]; line: number };
 
 interface GltfAsset {
-  accessors?: Array<{ min?: number[]; max?: number[]; type?: string }>;
+  accessors?: Array<{ bufferView?: number; byteOffset?: number; componentType?: number; count?: number; min?: number[]; max?: number[]; type?: string }>;
   asset?: { version?: string; generator?: string };
+  bufferViews?: Array<{ buffer?: number; byteLength?: number; byteOffset?: number; byteStride?: number }>;
   buffers?: Array<{ uri?: string; byteLength?: number }>;
   images?: Array<{ uri?: string; bufferView?: number; mimeType?: string; name?: string }>;
-  materials?: unknown[];
-  meshes?: Array<{ primitives?: Array<{ attributes?: Record<string, number> }> }>;
+  materials?: Array<{ name?: string }>;
+  meshes?: Array<{ primitives?: Array<{ attributes?: Record<string, number>; indices?: number; material?: number; mode?: number }> }>;
   nodes?: Array<{
     children?: number[];
     matrix?: number[];
@@ -78,6 +82,61 @@ interface ScaleCalibration {
   };
 }
 
+interface ModularPlacementReport {
+  connectors?: {
+    cardinalYaw: Array<{
+      edges: ConnectorDirection[];
+      yawDegrees: number;
+      yawRadians: number;
+    }>;
+    local: ConnectorDirection[];
+    roadBounds: {
+      cardinalYaw: Array<{
+        bounds: XzBounds;
+        yawDegrees: number;
+        yawRadians: number;
+      }>;
+      local: XzBounds;
+    };
+    roadPorts: {
+      cardinalYaw: Array<{
+        ports: ConnectorPort[];
+        yawDegrees: number;
+        yawRadians: number;
+      }>;
+      local: ConnectorPort[];
+    };
+    source: "material:road";
+  };
+  footprint: {
+    axes: ["x", "z"];
+    center: [number, number];
+    max: [number, number];
+    min: [number, number];
+    size: [number, number];
+  };
+  originCorrection: Vec3;
+  placement: {
+    cardinalYaw: Array<{
+      entityPositionForFootprintCenterAtOrigin: Vec3;
+      yawDegrees: number;
+      yawRadians: number;
+    }>;
+  };
+  pivotOffsetFromFootprintCenter: [number, number];
+  snap: {
+    gridSize: [number, number];
+    halfExtents: [number, number];
+    suggestedCellSize: number;
+  };
+  y: {
+    center: number;
+    max: number;
+    min: number;
+    size: number;
+  };
+}
+
 interface InspectReport {
   bounds?: BoundsReport;
   calibration?: ScaleCalibration;
@@ -100,6 +159,23 @@ interface InspectReport {
     type: "glb" | "gltf" | "unknown";
   };
   message: string;
+  modular?: ModularPlacementReport;
+}
+
+interface AssetCatalogReport {
+  assets: InspectReport[];
+  code: "TN_ASSET_CATALOG_OK" | "TN_ASSET_CATALOG_FAILED";
+  diagnostics: AssetDiagnostic[];
+  directory: {
+    path: string;
+    recursive: boolean;
+  };
+  message: string;
+  summary: {
+    errors: number;
+    inspected: number;
+    warnings: number;
+  };
 }
 
 const identity: Mat4 = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
@@ -180,6 +256,27 @@ export async function assetCommand(argv: readonly string[]): Promise<ICommandRes
 
   const cwd = process.env.INIT_CWD ?? process.cwd();
   const assetPath = isAbsolute(assetPathArg) ? assetPathArg : resolve(cwd, assetPathArg);
+  const recursive = normalizedArgv.includes("--recursive");
+  let pathStat;
+  try {
+    pathStat = await stat(assetPath);
+  } catch {
+    const report = await inspectAsset(assetPath);
+    return {
+      exitCode: 1,
+      stdout: json ? `${JSON.stringify(report, null, 2)}\n` : renderInspectReport(report),
+    };
+  }
+
+  if (pathStat.isDirectory()) {
+    const report = await inspectAssetCatalog(assetPath, { recursive });
+    const hasErrors = report.diagnostics.some((diagnostic) => diagnostic.severity === "error");
+    return {
+      exitCode: hasErrors ? 1 : 0,
+      stdout: json ? `${JSON.stringify(report, null, 2)}\n` : renderCatalogReport(report),
+    };
+  }
+
   const report = await inspectAsset(assetPath);
   const hasErrors = report.diagnostics.some((diagnostic) => diagnostic.severity === "error");
 
@@ -255,9 +352,16 @@ export async function inspectAsset(assetPath: string): Promise<InspectReport> {
     };
   }
 
+  let binaryChunk: Buffer | undefined;
   let gltf: GltfAsset;
   try {
-    gltf = type === "glb" ? parseGlbJson(await readFile(assetPath)) : JSON.parse(await readFile(assetPath, "utf8")) as GltfAsset;
+    if (type === "glb") {
+      const parsed = parseGlb(await readFile(assetPath));
+      gltf = parsed.gltf;
+      binaryChunk = parsed.binaryChunk;
+    } else {
+      gltf = JSON.parse(await readFile(assetPath, "utf8")) as GltfAsset;
+    }
   } catch (error) {
     diagnostics.push({
       code: "TN_ASSET_PARSE_FAILED",
@@ -282,6 +386,7 @@ export async function inspectAsset(assetPath: string): Promise<InspectReport> {
 
   const bounds = computeBounds(gltf, diagnostics);
   const calibration = bounds === undefined ? undefined : computeCalibration(bounds, diagnostics);
+  const modular = bounds === undefined ? undefined : computeModularPlacement(bounds, diagnostics, computeRoadConnectors(gltf, binaryChunk, bounds));
 
   const report: InspectReport = {
     bounds,
@@ -301,12 +406,65 @@ export async function inspectAsset(assetPath: string): Promise<InspectReport> {
     diagnostics,
     file: { byteSize, path: assetPath, type },
     message: "Asset inspection completed.",
+    modular,
   };
 
   return report;
 }
 
-function parseGlbJson(buffer: Buffer): GltfAsset {
+async function inspectAssetCatalog(directoryPath: string, options: { recursive: boolean }): Promise<AssetCatalogReport> {
+  const assetPaths = await findInspectableAssets(directoryPath, options.recursive);
+  const assets = [];
+  for (const assetPath of assetPaths) {
+    assets.push(await inspectAsset(assetPath));
+  }
+
+  const diagnostics = assets.flatMap((asset) => asset.diagnostics.map((diagnostic) => ({ ...diagnostic, path: diagnostic.path ?? asset.file.path })));
+  if (assets.length === 0) {
+    diagnostics.push({
+      code: "TN_ASSET_CATALOG_EMPTY",
+      message: "No .glb or .gltf assets were found in the inspected directory.",
+      path: directoryPath,
+      severity: "error",
+    });
+  }
+  const warnings = diagnostics.filter((diagnostic) => diagnostic.severity === "warning").length;
+  const errors = diagnostics.filter((diagnostic) => diagnostic.severity === "error").length;
+
+  return {
+    assets,
+    code: errors === 0 ? "TN_ASSET_CATALOG_OK" : "TN_ASSET_CATALOG_FAILED",
+    diagnostics,
+    directory: { path: directoryPath, recursive: options.recursive },
+    message: errors === 0 ? "Asset catalog inspection completed." : "Asset catalog inspection failed.",
+    summary: {
+      errors,
+      inspected: assets.length,
+      warnings,
+    },
+  };
+}
+
+async function findInspectableAssets(directoryPath: string, recursive: boolean): Promise<string[]> {
+  const entries = await readdir(directoryPath, { withFileTypes: true });
+  const paths: string[] = [];
+  for (const entry of entries) {
+    const entryPath = join(directoryPath, entry.name);
+    if (entry.isDirectory()) {
+      if (recursive) {
+        paths.push(...await findInspectableAssets(entryPath, recursive));
+      }
+      continue;
+    }
+    const extension = extname(entry.name).toLowerCase();
+    if (extension === ".glb" || extension === ".gltf") {
+      paths.push(entryPath);
+    }
+  }
+  return paths.sort((a, b) => a.localeCompare(b));
+}
+
+function parseGlb(buffer: Buffer): { binaryChunk?: Buffer; gltf: GltfAsset } {
   if (buffer.length < 20) {
     throw new Error("GLB file is too small to contain a JSON chunk.");
   }
@@ -322,6 +480,8 @@ function parseGlbJson(buffer: Buffer): GltfAsset {
     throw new Error("GLB declared length exceeds file size.");
   }
   let offset = 12;
+  let binaryChunk: Buffer | undefined;
+  let gltf: GltfAsset | undefined;
   while (offset + 8 <= declaredLength) {
     const chunkLength = buffer.readUInt32LE(offset);
     const chunkType = buffer.readUInt32LE(offset + 4);
@@ -331,11 +491,16 @@ function parseGlbJson(buffer: Buffer): GltfAsset {
       throw new Error("GLB chunk exceeds file size.");
     }
     if (chunkType === 0x4e4f534a) {
-      return JSON.parse(buffer.subarray(chunkStart, chunkEnd).toString("utf8").trim()) as GltfAsset;
+      gltf = JSON.parse(buffer.subarray(chunkStart, chunkEnd).toString("utf8").trim()) as GltfAsset;
+    } else if (chunkType === 0x004e4942) {
+      binaryChunk = buffer.subarray(chunkStart, chunkEnd);
     }
     offset = chunkEnd + ((4 - (chunkLength % 4)) % 4);
   }
-  throw new Error("GLB JSON chunk was not found.");
+  if (gltf === undefined) {
+    throw new Error("GLB JSON chunk was not found.");
+  }
+  return { binaryChunk, gltf };
 }
 
 async function inspectDependencies(assetPath: string, gltf: GltfAsset, type: "glb" | "gltf"): Promise<DependencyReport[]> {
@@ -473,6 +638,292 @@ function computeCalibration(bounds: BoundsReport, diagnostics: AssetDiagnostic[]
   };
 }
 
+function computeModularPlacement(bounds: BoundsReport, diagnostics: AssetDiagnostic[], road?: { bounds: XzBounds; connectors: ConnectorDirection[]; ports: ConnectorPort[] }): ModularPlacementReport {
+  const footprintMin: [number, number] = [bounds.min[0], bounds.min[2]];
+  const footprintMax: [number, number] = [bounds.max[0], bounds.max[2]];
+  const footprintSize: [number, number] = [round(footprintMax[0] - footprintMin[0]), round(footprintMax[1] - footprintMin[1])];
+  const footprintCenter: [number, number] = [round((footprintMin[0] + footprintMax[0]) / 2), round((footprintMin[1] + footprintMax[1]) / 2)];
+  const pivotOffset: [number, number] = [footprintCenter[0], footprintCenter[1]];
+  const suggestedCellSize = round(Math.max(footprintSize[0], footprintSize[1]));
+  const largestOffset = Math.max(Math.abs(pivotOffset[0]), Math.abs(pivotOffset[1]));
+  const largestSize = Math.max(footprintSize[0], footprintSize[1]);
+  if (largestOffset > Math.max(0.001, largestSize * 0.1)) {
+    diagnostics.push({
+      code: "TN_ASSET_MODULAR_PIVOT_OFFSET",
+      message: `Model footprint center is offset from the entity origin by [${pivotOffset.map((value) => round(value)).join(", ")}] on X/Z; center-based grid placement needs an origin correction.`,
+      severity: "warning",
+    });
+  }
+  return {
+    ...(road === undefined ? {} : {
+      connectors: {
+        cardinalYaw: [0, 90, 180, 270].map((yawDegrees) => {
+          const yawRadiansExact = yawDegrees * Math.PI / 180;
+          return {
+            edges: road.connectors.map((connector) => rotateConnector(connector, yawDegrees)).sort(),
+            yawDegrees,
+            yawRadians: round(yawRadiansExact),
+          };
+        }),
+        local: road.connectors,
+        roadBounds: {
+          cardinalYaw: [0, 90, 180, 270].map((yawDegrees) => {
+            const yawRadiansExact = yawDegrees * Math.PI / 180;
+            return {
+              bounds: rotateXzBounds(road.bounds, yawRadiansExact),
+              yawDegrees,
+              yawRadians: round(yawRadiansExact),
+            };
+          }),
+          local: road.bounds,
+        },
+        roadPorts: {
+          cardinalYaw: [0, 90, 180, 270].map((yawDegrees) => {
+            const yawRadiansExact = yawDegrees * Math.PI / 180;
+            return {
+              ports: road.ports.map((port) => rotateConnectorPort(port, yawDegrees, yawRadiansExact)).sort((a, b) => a.direction.localeCompare(b.direction)),
+              yawDegrees,
+              yawRadians: round(yawRadiansExact),
+            };
+          }),
+          local: road.ports,
+        },
+        source: "material:road" as const,
+      },
+    }),
+    footprint: {
+      axes: ["x", "z"],
+      center: footprintCenter,
+      max: footprintMax,
+      min: footprintMin,
+      size: footprintSize,
+    },
+    originCorrection: [round(-footprintCenter[0]), round(-bounds.center[1]), round(-footprintCenter[1])],
+    placement: {
+      cardinalYaw: [0, 90, 180, 270].map((yawDegrees) => {
+        const yawRadiansExact = yawDegrees * Math.PI / 180;
+        const yawRadians = round(yawRadiansExact);
+        const rotatedCenter = rotateXZ(footprintCenter, yawRadiansExact);
+        return {
+          entityPositionForFootprintCenterAtOrigin: [round(-rotatedCenter[0]), round(-bounds.center[1]), round(-rotatedCenter[1])],
+          yawDegrees,
+          yawRadians,
+        };
+      }),
+    },
+    pivotOffsetFromFootprintCenter: pivotOffset,
+    snap: {
+      gridSize: footprintSize,
+      halfExtents: [round(footprintSize[0] / 2), round(footprintSize[1] / 2)],
+      suggestedCellSize,
+    },
+    y: {
+      center: bounds.center[1],
+      max: bounds.max[1],
+      min: bounds.min[1],
+      size: bounds.size[1],
+    },
+  };
+}
+
+function computeRoadConnectors(gltf: GltfAsset, binaryChunk: Buffer | undefined, bounds: BoundsReport): { bounds: XzBounds; connectors: ConnectorDirection[]; ports: ConnectorPort[] } | undefined {
+  if (binaryChunk === undefined) {
+    return undefined;
+  }
+  const roadGeometry = computeMaterialGeometry(gltf, binaryChunk, "road");
+  if (roadGeometry === undefined) {
+    return undefined;
+  }
+  const roadBounds = roadGeometry.bounds;
+  const footprintMin: [number, number] = [bounds.min[0], bounds.min[2]];
+  const footprintMax: [number, number] = [bounds.max[0], bounds.max[2]];
+  const footprintSize: [number, number] = [footprintMax[0] - footprintMin[0], footprintMax[1] - footprintMin[1]];
+  const tolerance = Math.max(0.001, Math.max(footprintSize[0], footprintSize[1]) * 0.03);
+  const connectors: ConnectorDirection[] = [];
+  const ports: ConnectorPort[] = [];
+  if (Math.abs(roadBounds.max[2] - footprintMax[1]) <= tolerance) {
+    connectors.push("north");
+    ports.push(connectorPortFromPoints("north", roadGeometry.points, roadBounds.max[2], tolerance, roadBounds));
+  }
+  if (Math.abs(roadBounds.min[2] - footprintMin[1]) <= tolerance) {
+    connectors.push("south");
+    ports.push(connectorPortFromPoints("south", roadGeometry.points, roadBounds.min[2], tolerance, roadBounds));
+  }
+  if (Math.abs(roadBounds.max[0] - footprintMax[0]) <= tolerance) {
+    connectors.push("east");
+    ports.push(connectorPortFromPoints("east", roadGeometry.points, roadBounds.max[0], tolerance, roadBounds));
+  }
+  if (Math.abs(roadBounds.min[0] - footprintMin[0]) <= tolerance) {
+    connectors.push("west");
+    ports.push(connectorPortFromPoints("west", roadGeometry.points, roadBounds.min[0], tolerance, roadBounds));
+  }
+  return connectors.length === 0
+    ? undefined
+    : {
+      bounds: {
+        min: [round(roadBounds.min[0]), round(roadBounds.min[2])],
+        max: [round(roadBounds.max[0]), round(roadBounds.max[2])],
+      },
+      connectors: connectors.sort(),
+      ports: ports.sort((a, b) => a.direction.localeCompare(b.direction)),
+    };
+}
+
+function connectorPortFromPoints(direction: ConnectorDirection, points: Vec3[], line: number, tolerance: number, bounds: { min: Vec3; max: Vec3 }): ConnectorPort {
+  const edgePoints = points.filter((point) => {
+    if (direction === "east" || direction === "west") {
+      return Math.abs(point[0] - line) <= tolerance;
+    }
+    return Math.abs(point[2] - line) <= tolerance;
+  });
+  const values = edgePoints.map((point) => direction === "east" || direction === "west" ? point[2] : point[0]);
+  if (values.length === 0) {
+    return direction === "east" || direction === "west"
+      ? { direction, interval: [round(bounds.min[2]), round(bounds.max[2])], line: round(line) }
+      : { direction, interval: [round(bounds.min[0]), round(bounds.max[0])], line: round(line) };
+  }
+  return {
+    direction,
+    interval: [round(Math.min(...values)), round(Math.max(...values))],
+    line: round(line),
+  };
+}
+
+function rotateXzBounds(bounds: XzBounds, yawRadians: number): XzBounds {
+  const corners = [
+    [bounds.min[0], bounds.min[1]],
+    [bounds.min[0], bounds.max[1]],
+    [bounds.max[0], bounds.min[1]],
+    [bounds.max[0], bounds.max[1]],
+  ] as Array<[number, number]>;
+  const rotated = corners.map((corner) => rotateXZ(corner, yawRadians));
+  return {
+    min: [round(Math.min(...rotated.map((point) => point[0]))), round(Math.min(...rotated.map((point) => point[1])))],
+    max: [round(Math.max(...rotated.map((point) => point[0]))), round(Math.max(...rotated.map((point) => point[1])))],
+  };
+}
+
+function rotateConnectorPort(port: ConnectorPort, yawDegrees: number, yawRadians: number): ConnectorPort {
+  const direction = rotateConnector(port.direction, yawDegrees);
+  const a = port.direction === "east" || port.direction === "west" ? [port.line, port.interval[0]] : [port.interval[0], port.line];
+  const b = port.direction === "east" || port.direction === "west" ? [port.line, port.interval[1]] : [port.interval[1], port.line];
+  const rotatedA = rotateXZ(a as [number, number], yawRadians);
+  const rotatedB = rotateXZ(b as [number, number], yawRadians);
+  if (direction === "east" || direction === "west") {
+    return {
+      direction,
+      interval: [round(Math.min(rotatedA[1], rotatedB[1])), round(Math.max(rotatedA[1], rotatedB[1]))],
+      line: round(rotatedA[0]),
+    };
+  }
+  return {
+    direction,
+    interval: [round(Math.min(rotatedA[0], rotatedB[0])), round(Math.max(rotatedA[0], rotatedB[0]))],
+    line: round(rotatedA[1]),
+  };
+}
+
+function computeMaterialGeometry(gltf: GltfAsset, binaryChunk: Buffer, materialName: string): { bounds: { min: Vec3; max: Vec3 }; points: Vec3[] } | undefined {
+  const nodes = gltf.nodes ?? [];
+  const scenes = gltf.scenes ?? [];
+  const rootNodeIndices = scenes[gltf.scene ?? 0]?.nodes ?? nodes.map((_, index) => index);
+  let min: Vec3 | undefined;
+  let max: Vec3 | undefined;
+  const points: Vec3[] = [];
+
+  const visit = (nodeIndex: number, parent: Mat4, stack: Set<number>): void => {
+    const node = nodes[nodeIndex];
+    if (node === undefined || stack.has(nodeIndex)) {
+      return;
+    }
+    const currentStack = new Set(stack).add(nodeIndex);
+    const transform = multiply(parent, nodeMatrix(node));
+    if (node.mesh !== undefined) {
+      const mesh = gltf.meshes?.[node.mesh];
+      for (const primitive of mesh?.primitives ?? []) {
+        const primitiveMaterialName = primitive.material === undefined ? undefined : gltf.materials?.[primitive.material]?.name;
+        if (primitiveMaterialName !== materialName || primitive.attributes?.POSITION === undefined) {
+          continue;
+        }
+        const positions = readAccessor(gltf, binaryChunk, primitive.attributes.POSITION) as Vec3[] | undefined;
+        if (positions === undefined) {
+          continue;
+        }
+        const indices = primitive.indices === undefined ? positions.map((_, index) => index) : readAccessor(gltf, binaryChunk, primitive.indices) as number[] | undefined;
+        if (indices === undefined) {
+          continue;
+        }
+        for (const index of indices) {
+          const position = positions[index];
+          if (position === undefined) {
+            continue;
+          }
+          const transformed = transformPoint(position, transform);
+          points.push(transformed);
+          min = min === undefined ? transformed : vecMin(min, transformed);
+          max = max === undefined ? transformed : vecMax(max, transformed);
+        }
+      }
+    }
+    for (const child of node.children ?? []) {
+      visit(child, transform, currentStack);
+    }
+  };
+
+  for (const root of rootNodeIndices) {
+    visit(root, identity, new Set());
+  }
+  return min === undefined || max === undefined ? undefined : { bounds: { min, max }, points };
+}
+
+function readAccessor(gltf: GltfAsset, binaryChunk: Buffer, accessorIndex: number): Array<number | Vec3> | undefined {
+  const accessor = gltf.accessors?.[accessorIndex];
+  const bufferView = accessor?.bufferView === undefined ? undefined : gltf.bufferViews?.[accessor.bufferView];
+  if (accessor === undefined || bufferView === undefined || (bufferView.buffer ?? 0) !== 0) {
+    return undefined;
+  }
+  const component = accessorComponent(accessor.componentType);
+  const itemSize = accessorTypeSize(accessor.type);
+  if (component === undefined || itemSize === undefined) {
+    return undefined;
+  }
+  const stride = bufferView.byteStride ?? component.byteSize * itemSize;
+  const start = (bufferView.byteOffset ?? 0) + (accessor.byteOffset ?? 0);
+  const values: Array<number | Vec3> = [];
+  for (let index = 0; index < (accessor.count ?? 0); index += 1) {
+    const item: number[] = [];
+    for (let componentIndex = 0; componentIndex < itemSize; componentIndex += 1) {
+      item.push(component.read(binaryChunk, start + index * stride + componentIndex * component.byteSize));
+    }
+    values.push(itemSize === 1 ? item[0] ?? 0 : [item[0] ?? 0, item[1] ?? 0, item[2] ?? 0]);
+  }
+  return values;
+}
+
+function accessorTypeSize(type: string | undefined): number | undefined {
+  if (type === "SCALAR") return 1;
+  if (type === "VEC2") return 2;
+  if (type === "VEC3") return 3;
+  if (type === "VEC4") return 4;
+  return undefined;
+}
+
+function accessorComponent(componentType: number | undefined): { byteSize: number; read: (buffer: Buffer, offset: number) => number } | undefined {
+  if (componentType === 5126) return { byteSize: 4, read: (buffer, offset) => buffer.readFloatLE(offset) };
+  if (componentType === 5125) return { byteSize: 4, read: (buffer, offset) => buffer.readUInt32LE(offset) };
+  if (componentType === 5123) return { byteSize: 2, read: (buffer, offset) => buffer.readUInt16LE(offset) };
+  if (componentType === 5121) return { byteSize: 1, read: (buffer, offset) => buffer.readUInt8(offset) };
+  if (componentType === 5122) return { byteSize: 2, read: (buffer, offset) => buffer.readInt16LE(offset) };
+  if (componentType === 5120) return { byteSize: 1, read: (buffer, offset) => buffer.readInt8(offset) };
+  return undefined;
+}
+
+function rotateConnector(connector: ConnectorDirection, yawDegrees: number): ConnectorDirection {
+  const order: ConnectorDirection[] = ["north", "east", "south", "west"];
+  const index = order.indexOf(connector);
+  return order[(index + yawDegrees / 90) % order.length] ?? connector;
+}
+
 function nodeMatrix(node: NonNullable<GltfAsset["nodes"]>[number]): Mat4 {
   if (node.matrix?.length === 16) {
     return node.matrix as Mat4;
@@ -555,6 +1006,12 @@ function scale(a: Vec3, scalar: number): Vec3 { return [round(a[0] * scalar), ro
 function length(a: Vec3): number { return Math.sqrt(a[0] ** 2 + a[1] ** 2 + a[2] ** 2); }
 function round(value: number): number { return Number(value.toFixed(6)); }
 
+function rotateXZ(point: [number, number], yawRadians: number): [number, number] {
+  const cos = Math.cos(yawRadians);
+  const sin = Math.sin(yawRadians);
+  return [round(cos * point[0] + sin * point[1]), round(-sin * point[0] + cos * point[1])];
+}
+
 function renderInspectReport(report: InspectReport): string {
   const bounds = report.bounds === undefined ? "Bounds: unavailable" : `Bounds: min ${formatVec(report.bounds.min)}, max ${formatVec(report.bounds.max)}, size ${formatVec(report.bounds.size)}, center ${formatVec(report.bounds.center)}`;
   const counts = report.counts === undefined ? "" : `Scenes: ${report.counts.scenes}, nodes: ${report.counts.nodes}, meshes: ${report.counts.meshes}, materials: ${report.counts.materials}, images: ${report.counts.images}`;
@@ -562,10 +1019,27 @@ function renderInspectReport(report: InspectReport): string {
     ? "Dependencies: none"
     : `Dependencies:\n${report.dependencies.map((dependency) => `  - [${dependency.missing === true ? "missing" : dependency.embedded ? "embedded" : "ok"}] ${dependency.kind}: ${dependency.uri ?? dependency.path ?? "embedded"}`).join("\n")}`;
   const calibration = report.calibration === undefined ? "Calibration: unavailable" : `Calibration: camera distance ${report.calibration.camera.recommendedDistance}m, targetHeight2m scale ${report.calibration.fitScales.targetHeight2m ?? "n/a"}, targetLength4m scale ${report.calibration.fitScales.targetLength4m ?? "n/a"}, lane verdict ${report.calibration.gameplay.verdict}`;
+  const modular = report.modular === undefined ? "Modular: unavailable" : `Modular: footprint X/Z size ${formatVec2(report.modular.footprint.size)}, center ${formatVec2(report.modular.footprint.center)}, origin correction ${formatVec(report.modular.originCorrection)}, yaw0 ${formatVec(report.modular.placement.cardinalYaw[0]?.entityPositionForFootprintCenterAtOrigin ?? report.modular.originCorrection)}, yaw90 ${formatVec(report.modular.placement.cardinalYaw[1]?.entityPositionForFootprintCenterAtOrigin ?? report.modular.originCorrection)}, suggested cell ${report.modular.snap.suggestedCellSize}`;
   const diagnostics = report.diagnostics.length === 0 ? "Diagnostics: none" : `Diagnostics:\n${report.diagnostics.map((diagnostic) => `  [${diagnostic.severity}] ${diagnostic.code}: ${diagnostic.message}`).join("\n")}`;
-  return `${report.message}\nFile: ${report.file.path} (${report.file.type}, ${report.file.byteSize ?? "unknown"} bytes)\n${counts}\n${bounds}\n${calibration}\n${dependencies}\n${diagnostics}\n`;
+  return `${report.message}\nFile: ${report.file.path} (${report.file.type}, ${report.file.byteSize ?? "unknown"} bytes)\n${counts}\n${bounds}\n${calibration}\n${modular}\n${dependencies}\n${diagnostics}\n`;
+}
+
+function renderCatalogReport(report: AssetCatalogReport): string {
+  const rows = report.assets.map((asset) => {
+    const modular = asset.modular === undefined
+      ? "modular unavailable"
+      : `size ${formatVec2(asset.modular.footprint.size)}, center ${formatVec2(asset.modular.footprint.center)}, correction ${formatVec(asset.modular.originCorrection)}, yaw0 ${formatVec(asset.modular.placement.cardinalYaw[0]?.entityPositionForFootprintCenterAtOrigin ?? asset.modular.originCorrection)}, yaw90 ${formatVec(asset.modular.placement.cardinalYaw[1]?.entityPositionForFootprintCenterAtOrigin ?? asset.modular.originCorrection)}, cell ${asset.modular.snap.suggestedCellSize}`;
+    const diagnostics = asset.diagnostics.length === 0 ? "ok" : asset.diagnostics.map((diagnostic) => diagnostic.code).join(", ");
+    return `  - ${asset.file.path}: ${modular}; ${diagnostics}`;
+  }).join("\n");
+  const diagnostics = report.diagnostics.length === 0 ? "Diagnostics: none" : `Diagnostics:\n${report.diagnostics.map((diagnostic) => `  [${diagnostic.severity}] ${diagnostic.code}: ${diagnostic.message}`).join("\n")}`;
+  return `${report.message}\nDirectory: ${report.directory.path} (${report.directory.recursive ? "recursive" : "shallow"})\nInspected: ${report.summary.inspected}, warnings: ${report.summary.warnings}, errors: ${report.summary.errors}\nAssets:\n${rows.length === 0 ? "  none" : rows}\n${diagnostics}\n`;
 }
 
 function formatVec(vec: Vec3): string {
+  return `[${vec.map((value) => round(value)).join(", ")}]`;
+}
+
+function formatVec2(vec: [number, number]): string {
   return `[${vec.map((value) => round(value)).join(", ")}]`;
 }

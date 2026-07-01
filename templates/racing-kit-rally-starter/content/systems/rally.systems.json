@@ -1,0 +1,22 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "id": "rally-systems",
+  "systems": [
+    {
+      "id": "racing-kit-rally",
+      "schedule": "fixedUpdate",
+      "script": {
+        "module": "src/scripts/racing.ts",
+        "export": "updateRally"
+      },
+      "queries": [
+        { "with": ["Transform"] }
+      ],
+      "reads": ["Transform", "PlayerCar", "RivalCar"],
+      "writes": ["Transform"],
+      "resourceReads": ["RallyState"],
+      "resourceWrites": ["RallyState"]
+    }
+  ]
+}

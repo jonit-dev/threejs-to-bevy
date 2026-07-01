@@ -38,8 +38,14 @@ test("should describe the agent scene authoring loop", async () => {
   assert.equal(result.exitCode, 0);
   assert.equal(payload.name, "scene");
   assert.equal(payload.commands.includes("tn scene create <scene-id> [--file <path>] --json"), true);
+  assert.equal(payload.commands.includes("tn scene proof-modular-track <scene-id> --asset-dir <path> [--prefix <id-prefix>] [--actors <entity-id,...>] --json"), true);
+  assert.equal(payload.commands.includes("tn scene set-camera-look-at <scene-id> <camera-id> --position x,y,z --target x,y,z --json"), true);
+  assert.equal(payload.commands.includes("tn scene generate-modular-track <scene-id> --asset-dir <path> [--shape oval] [--size small|medium|large] [--prefix <id-prefix>] --json"), true);
   assert.equal(payload.commands.includes("tn build --json"), true);
   assert.equal(payload.commands.includes("tn scene proof <scene-id> --project <path> --web-url <preview-url> --out artifacts/proof --native --json"), true);
+  assert.equal(payload.examples.some((example) => example.includes("proof-modular-track") && example.includes("--actors")), true);
+  assert.equal(payload.examples.some((example) => example.includes("set-camera-look-at")), true);
+  assert.equal(payload.examples.some((example) => example.includes("generate-modular-track")), true);
   assert.equal(payload.examples.some((example) => example.includes("MCP tools wrap tn commands")), true);
   assert.equal(payload.failureSymptoms.some((symptom) => symptom.includes("missing first .scene.json")), true);
 });
@@ -49,9 +55,10 @@ test("should mention asset inspection in asset help", async () => {
   const payload = JSON.parse(result.stdout) as { commands: string[]; docs: string[]; examples: string[] };
 
   assert.equal(result.exitCode, 0);
-  assert.equal(payload.commands.includes("tn asset inspect <path> [--json]"), true);
+  assert.equal(payload.commands.includes("tn asset inspect <path-or-directory> [--recursive] [--json]"), true);
   assert.equal(payload.docs.includes("docs/workflows/asset-pipeline.md"), true);
   assert.equal(payload.examples.includes("tn asset inspect assets/kart.glb --json"), true);
+  assert.equal(payload.examples.includes("tn asset inspect assets --recursive --json"), true);
 });
 
 test("should resolve aliases for topic help", async () => {
@@ -70,8 +77,11 @@ test("should describe structured-source starter from examples help", async () =>
   assert.equal(result.exitCode, 0);
   assert.equal(payload.name, "examples");
   assert.equal(payload.commands.includes("tn create prototype --template structured-source-starter --json"), true);
+  assert.equal(payload.commands.includes("tn create rally --template racing-kit-rally-starter --json"), true);
   assert.equal(payload.docs.includes("templates/structured-source-starter/README.md"), true);
+  assert.equal(payload.docs.includes("templates/racing-kit-rally-starter/README.md"), true);
   assert.equal(payload.examples.some((example) => example.includes("content/**")), true);
+  assert.equal(payload.examples.some((example) => example.includes("chase camera")), true);
 });
 
 test("should reject unknown help topic with stable diagnostic", async () => {

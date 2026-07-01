@@ -237,6 +237,248 @@ test("scene-command mutates structured scene documents deterministically", async
   }
 });
 
+test("scene-command assembles modular track tiles with inspected pivot corrections", async () => {
+  const root = await createSceneProject();
+  try {
+    await mkdir(join(root, "assets"), { recursive: true });
+    await writeFile(join(root, "assets", "road.gltf"), `${JSON.stringify({
+      asset: { version: "2.0", generator: "scene-modular-track-test" },
+      scene: 0,
+      scenes: [{ nodes: [0] }],
+      nodes: [{ mesh: 0, translation: [1, 0, -2], scale: [2, 1, 1] }],
+      meshes: [{ primitives: [{ attributes: { POSITION: 0 } }] }],
+      accessors: [{ type: "VEC3", min: [-0.5, 0, -1], max: [0.5, 0.02, 1] }],
+      buffers: [],
+      images: [],
+    }, null, 2)}\n`);
+
+    const result = await sceneCommand([
+      "add-modular-track",
+      "scene.arena",
+      "--asset-dir",
+      "assets",
+      "--prefix",
+      "road.tile",
+      "--layout",
+      JSON.stringify([
+        { asset: "road.gltf", center: [0, 0], yaw: 0 },
+        { asset: "road.gltf", center: [4, 6], yaw: 90 },
+      ]),
+      "--project",
+      root,
+      "--json",
+    ]);
+    const payload = JSON.parse(result.stdout) as { changed: boolean; diagnostics: Array<{ code: string }>; filesWritten: string[]; tileCount: number };
+    const scene = JSON.parse(await readFile(join(root, "content", "scenes", "arena.scene.json"), "utf8")) as {
+      entities: Array<{ components?: Record<string, unknown>; id: string; prefab?: string; transform?: { position: number[]; rotation: number[] } }>;
+      prefabs: Array<{ asset?: string; id: string }>;
+    };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.changed, true);
+    assert.equal(payload.tileCount, 2);
+    assert.deepEqual(payload.filesWritten, ["content/scenes/arena.scene.json"]);
+    assert.deepEqual(payload.diagnostics, []);
+    assert.equal(scene.prefabs.some((prefab) => prefab.id === "road.tile.prefab.road" && prefab.asset === "assets/road.gltf"), true);
+    assert.deepEqual(scene.entities.find((entity) => entity.id === "road.tile.000")?.transform?.position, [-1, -0.01, 2]);
+    assert.deepEqual(scene.entities.find((entity) => entity.id === "road.tile.001")?.transform?.position, [6, -0.01, 7]);
+    assert.deepEqual(scene.entities.find((entity) => entity.id === "road.tile.001")?.transform?.rotation, [0, 1.570796, 0]);
+    assert.deepEqual(scene.entities.find((entity) => entity.id === "road.tile.001")?.components?.ModularTrackTile, {
+      asset: "assets/road.gltf",
+      center: [4, 6],
+      footprint: [2, 2],
+      yawDegrees: 90,
+    });
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("scene-command rejects invalid modular track layouts", async () => {
+  const root = await createSceneProject();
+  try {
+    const result = await sceneCommand([
+      "add-modular-track",
+      "scene.arena",
+      "--asset-dir",
+      "assets",
+      "--layout",
+      "{\"bad\":true}",
+      "--project",
+      root,
+      "--json",
+    ]);
+    const payload = JSON.parse(result.stdout) as { code: string; message: string };
+
+    assert.equal(result.exitCode, 2);
+    assert.equal(payload.code, "TN_SCENE_MODULAR_TRACK_LAYOUT_INVALID");
+    assert.match(payload.message, /tn scene add-modular-track/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("scene-command proves modular track connector continuity", async () => {
+  const root = await createSceneProject();
+  try {
+    await mkdir(join(root, "assets"), { recursive: true });
+    await writeFile(join(root, "assets", "corner.glb"), makeRoadGlb("corner"));
+    const add = await sceneCommand([
+      "add-modular-track",
+      "scene.arena",
+      "--asset-dir",
+      "assets",
+      "--prefix",
+      "road.tile",
+      "--layout",
+      JSON.stringify([
+        { asset: "corner.glb", center: [0, 0], yaw: 0 },
+        { asset: "corner.glb", center: [2, 0], yaw: 270 },
+        { asset: "corner.glb", center: [2, 2], yaw: 180 },
+        { asset: "corner.glb", center: [0, 2], yaw: 90 },
+      ]),
+      "--project",
+      root,
+      "--json",
+    ]);
+    const transform = await sceneCommand([
+      "set-transform",
+      "scene.arena",
+      "player-kart",
+      "--position",
+      "1,0.2,0.5",
+      "--project",
+      root,
+      "--json",
+    ]);
+    const proof = await sceneCommand(["proof-modular-track", "scene.arena", "--asset-dir", "assets", "--prefix", "road.tile", "--project", root, "--json"]);
+    const actorProof = await sceneCommand(["proof-modular-track", "scene.arena", "--asset-dir", "assets", "--prefix", "road.tile", "--actors", "player-kart", "--project", root, "--json"]);
+    const payload = JSON.parse(proof.stdout) as { diagnostics: unknown[]; tileCount: number };
+    const actorPayload = JSON.parse(actorProof.stdout) as { diagnostics: unknown[]; tileCount: number };
+
+    assert.equal(add.exitCode, 0);
+    assert.equal(transform.exitCode, 0);
+    assert.equal(proof.exitCode, 0);
+    assert.equal(actorProof.exitCode, 0);
+    assert.equal(payload.tileCount, 4);
+    assert.deepEqual(payload.diagnostics, []);
+    assert.equal(actorPayload.tileCount, 4);
+    assert.deepEqual(actorPayload.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("scene-command generates an oval modular track without hand-authored layout JSON", async () => {
+  const root = await createSceneProject();
+  try {
+    await mkdir(join(root, "assets"), { recursive: true });
+    await writeFile(join(root, "assets", "roadCornerLarge.glb"), makeRoadGlb("corner"));
+    await writeFile(join(root, "assets", "roadStraightLong.glb"), makeRoadGlb("straight"));
+
+    const generate = await sceneCommand([
+      "generate-modular-track",
+      "scene.arena",
+      "--asset-dir",
+      "assets",
+      "--prefix",
+      "road.tile",
+      "--size",
+      "medium",
+      "--project",
+      root,
+      "--json",
+    ]);
+    const generatedPayload = JSON.parse(generate.stdout) as { diagnostics: unknown[]; shape: string; size: string; straightCount: number; tileCount: number };
+    const scene = JSON.parse(await readFile(join(root, "content", "scenes", "arena.scene.json"), "utf8")) as {
+      entities: Array<{ components?: { ModularTrackTile?: { center?: number[] } }; id: string }>;
+    };
+
+    assert.equal(generate.exitCode, 0);
+    assert.equal(generatedPayload.shape, "oval");
+    assert.equal(generatedPayload.size, "medium");
+    assert.equal(generatedPayload.straightCount, 9);
+    assert.equal(generatedPayload.tileCount, 40);
+    assert.deepEqual(generatedPayload.diagnostics, []);
+    assert.deepEqual(scene.entities.find((entity) => entity.id === "road.tile.000")?.components?.ModularTrackTile?.center, [-10, -10]);
+    assert.equal(scene.entities.filter((entity) => entity.id.startsWith("road.tile.")).length, 40);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("scene-command rejects modular track actors staged off the road surface", async () => {
+  const root = await createSceneProject();
+  try {
+    await mkdir(join(root, "assets"), { recursive: true });
+    await writeFile(join(root, "assets", "corner.glb"), makeRoadGlb("corner"));
+    const add = await sceneCommand([
+      "add-modular-track",
+      "scene.arena",
+      "--asset-dir",
+      "assets",
+      "--prefix",
+      "road.tile",
+      "--layout",
+      JSON.stringify([
+        { asset: "corner.glb", center: [0, 0], yaw: 0 },
+        { asset: "corner.glb", center: [2, 0], yaw: 270 },
+        { asset: "corner.glb", center: [2, 2], yaw: 180 },
+        { asset: "corner.glb", center: [0, 2], yaw: 90 },
+      ]),
+      "--project",
+      root,
+      "--json",
+    ]);
+    const transform = await sceneCommand(["set-transform", "scene.arena", "player-kart", "--position", "8,0.2,8", "--project", root, "--json"]);
+    const proof = await sceneCommand(["proof-modular-track", "scene.arena", "--asset-dir", "assets", "--prefix", "road.tile", "--actors", "player-kart", "--project", root, "--json"]);
+    const payload = JSON.parse(proof.stdout) as { diagnostics: Array<{ code: string }>; tileCount: number };
+
+    assert.equal(add.exitCode, 0);
+    assert.equal(transform.exitCode, 0);
+    assert.equal(proof.exitCode, 1);
+    assert.equal(payload.tileCount, 4);
+    assert.equal(payload.diagnostics.some((diagnostic) => diagnostic.code === "TN_SCENE_MODULAR_TRACK_ACTOR_OFF_ROAD"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("scene-command rejects modular tracks with open connectors", async () => {
+  const root = await createSceneProject();
+  try {
+    await mkdir(join(root, "assets"), { recursive: true });
+    await writeFile(join(root, "assets", "corner.glb"), makeRoadGlb("corner"));
+    const add = await sceneCommand([
+      "add-modular-track",
+      "scene.arena",
+      "--asset-dir",
+      "assets",
+      "--prefix",
+      "road.tile",
+      "--layout",
+      JSON.stringify([
+        { asset: "corner.glb", center: [0, 0], yaw: 0 },
+        { asset: "corner.glb", center: [2, 0], yaw: 0 },
+        { asset: "corner.glb", center: [2, 2], yaw: 180 },
+        { asset: "corner.glb", center: [0, 2], yaw: 90 },
+      ]),
+      "--project",
+      root,
+      "--json",
+    ]);
+    const proof = await sceneCommand(["proof-modular-track", "scene.arena", "--asset-dir", "assets", "--prefix", "road.tile", "--project", root, "--json"]);
+    const payload = JSON.parse(proof.stdout) as { diagnostics: Array<{ code: string }>; tileCount: number };
+
+    assert.equal(add.exitCode, 0);
+    assert.equal(proof.exitCode, 1);
+    assert.equal(payload.tileCount, 4);
+    assert.equal(payload.diagnostics.some((diagnostic) => diagnostic.code === "TN_SCENE_MODULAR_TRACK_OPEN_CONNECTOR" || diagnostic.code === "TN_SCENE_MODULAR_TRACK_CONNECTOR_MISMATCH"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("scene-command adds camera components with promoted projection fields", async () => {
   const root = await createSceneProject({ minimal: true });
 
@@ -273,6 +515,37 @@ test("scene-command adds camera components with promoted projection fields", asy
       near: 0.05,
       size: 24,
     });
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("scene-command frames a camera with look-at rotation and no roll", async () => {
+  const root = await createSceneProject({ minimal: true });
+
+  try {
+    const frame = await sceneCommand([
+      "set-camera-look-at",
+      "scene.arena",
+      "chase-camera",
+      "--position",
+      "-5,1.6,10",
+      "--target",
+      "0,0.4,10",
+      "--project",
+      root,
+      "--json",
+    ]);
+    const validate = await sceneCommand(["validate", "scene.arena", "--project", root, "--json"]);
+    const scene = JSON.parse(await readFile(join(root, "content", "scenes", "arena.scene.json"), "utf8")) as {
+      entities: Array<{ id: string; transform?: { position?: number[]; rotation?: number[] } }>;
+    };
+    const camera = scene.entities.find((entity) => entity.id === "chase-camera");
+
+    assert.equal(frame.exitCode, 0);
+    assert.equal(validate.exitCode, 0);
+    assert.deepEqual(camera?.transform?.position, [-5, 1.6, 10]);
+    assert.deepEqual(camera?.transform?.rotation, [-0.235545, -1.570796, 0]);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -603,4 +876,80 @@ async function writeBuildableProject(root: string): Promise<void> {
     }, null, 2)}\n`,
   );
   await writeFile(join(root, "src", "game.ts"), 'import { Scene } from "@threenative/sdk";\nexport default new Scene({ id: "scene.arena" });\n');
+}
+
+function makeRoadGlb(kind: "corner" | "straight"): Buffer {
+  const grass = [[0, 0, -2], [2, 0, -2], [2, 0, 0], [0, 0, 0]];
+  const road = kind === "straight"
+    ? [[0.65, 0.01, -2], [1.35, 0.01, -2], [1.35, 0.01, 0], [0.65, 0.01, 0]]
+    : [[0.65, 0.01, -1.35], [2, 0.01, -1.35], [2, 0.01, 0], [0.65, 0.01, 0]];
+  const roadMin = kind === "straight" ? [0.65, 0.01, -2] : [0.65, 0.01, -1.35];
+  const roadMax = kind === "straight" ? [1.35, 0.01, 0] : [2, 0.01, 0];
+  const grassBytes = positionsBuffer(grass);
+  const roadBytes = positionsBuffer(road);
+  const indexBytes = indicesBuffer([0, 1, 2, 0, 2, 3]);
+  const roadOffset = grassBytes.length;
+  const grassIndexOffset = roadOffset + roadBytes.length;
+  const roadIndexOffset = grassIndexOffset + indexBytes.length;
+  const binary = Buffer.concat([grassBytes, roadBytes, indexBytes, indexBytes]);
+  return makeGlb({
+    asset: { version: "2.0", generator: "scene-modular-proof-test" },
+    scene: 0,
+    scenes: [{ nodes: [0] }],
+    nodes: [{ mesh: 0, translation: [-0.35, -0.01, -0.65] }],
+    meshes: [{
+      primitives: [
+        { attributes: { POSITION: 0 }, indices: 2, material: 0, mode: 4 },
+        { attributes: { POSITION: 1 }, indices: 3, material: 1, mode: 4 },
+      ],
+    }],
+    materials: [{ name: "grass" }, { name: "road" }],
+    buffers: [{ byteLength: binary.length }],
+    bufferViews: [
+      { buffer: 0, byteOffset: 0, byteLength: grassBytes.length },
+      { buffer: 0, byteOffset: roadOffset, byteLength: roadBytes.length },
+      { buffer: 0, byteOffset: grassIndexOffset, byteLength: indexBytes.length },
+      { buffer: 0, byteOffset: roadIndexOffset, byteLength: indexBytes.length },
+    ],
+    accessors: [
+      { bufferView: 0, componentType: 5126, count: 4, type: "VEC3", min: [0, 0, -2], max: [2, 0, 0] },
+      { bufferView: 1, componentType: 5126, count: 4, type: "VEC3", min: roadMin, max: roadMax },
+      { bufferView: 2, componentType: 5123, count: 6, type: "SCALAR" },
+      { bufferView: 3, componentType: 5123, count: 6, type: "SCALAR" },
+    ],
+  }, binary);
+}
+
+function makeGlb(json: unknown, binaryChunk: Buffer): Buffer {
+  const jsonText = JSON.stringify(json);
+  const jsonBuffer = Buffer.from(jsonText.padEnd(jsonText.length + ((4 - (jsonText.length % 4)) % 4), " "), "utf8");
+  const binPadding = (4 - (binaryChunk.length % 4)) % 4;
+  const paddedBinary = Buffer.concat([binaryChunk, Buffer.alloc(binPadding)]);
+  const totalLength = 12 + 8 + jsonBuffer.length + 8 + paddedBinary.length;
+  const header = Buffer.alloc(20);
+  header.writeUInt32LE(0x46546c67, 0);
+  header.writeUInt32LE(2, 4);
+  header.writeUInt32LE(totalLength, 8);
+  header.writeUInt32LE(jsonBuffer.length, 12);
+  header.writeUInt32LE(0x4e4f534a, 16);
+  const binHeader = Buffer.alloc(8);
+  binHeader.writeUInt32LE(paddedBinary.length, 0);
+  binHeader.writeUInt32LE(0x004e4942, 4);
+  return Buffer.concat([header, jsonBuffer, binHeader, paddedBinary]);
+}
+
+function positionsBuffer(positions: number[][]): Buffer {
+  const buffer = Buffer.alloc(positions.length * 12);
+  positions.forEach((position, index) => {
+    buffer.writeFloatLE(position[0] ?? 0, index * 12);
+    buffer.writeFloatLE(position[1] ?? 0, index * 12 + 4);
+    buffer.writeFloatLE(position[2] ?? 0, index * 12 + 8);
+  });
+  return buffer;
+}
+
+function indicesBuffer(indices: number[]): Buffer {
+  const buffer = Buffer.alloc(indices.length * 2);
+  indices.forEach((index, offset) => buffer.writeUInt16LE(index, offset * 2));
+  return buffer;
 }
