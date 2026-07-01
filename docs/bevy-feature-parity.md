@@ -158,6 +158,13 @@ remaining gaps by usefulness for building and shipping ordinary 3D games:
   component/resource/event/command/service effects before mutation, canonical
   effect-log ordering, compiler module-state diagnostics, and native QuickJS
   ambient API isolation tests.
+- `P1` Portable script helper imports now have a supported compiler bundle path
+  for named `@threenative/script-stdlib` imports. Pure `NumberEx`, `Vec3`,
+  `Quat`, and `TransformMath` helpers are injected into `scripts.bundle.js`,
+  helper import metadata is recorded in `scripts.manifest.json`, and unsupported
+  helper packages/import shapes are rejected with `TN_SCRIPT_UNSUPPORTED_IMPORT`.
+  This is compiler/docs evidence only until the remaining PRD phases add
+  context-helper runtime parity and web/Bevy helper-driven conformance gates.
 - `P1` Hidden runtime changed-query diffing is promoted by
   `pnpm verify:runtime-query-diffing`, which compares web and Bevy component
   snapshot diffing for `changed: [...]` queries after command-buffer mutation

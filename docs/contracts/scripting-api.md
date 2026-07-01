@@ -155,11 +155,41 @@ unsupported.
 - [x] Child hierarchy commands through `ctx.commands.setParent(...)` and
   `ctx.commands.clearParent(...)`.
 
+### Portable Helper Stdlib
+
+- [x] Named imports from `@threenative/script-stdlib` are the supported way to
+  share pure script helper code across `src/scripts/**/*.ts`.
+- [x] `NumberEx.clamp(value, min, max)`,
+  `NumberEx.finite(value, fallback)`, and
+  `NumberEx.round(value, precision?)`.
+- [x] `Vec3.from(value, fallback?)`, `Vec3.add/sub/scale/lerp`,
+  `Vec3.normalize/cross`, `Vec3.distance2d(a, b)`, and
+  `Vec3.round(value, precision?)`.
+- [x] `Quat.fromYaw(yaw)`, `Quat.yaw(rotation, fallback?)`, and
+  `Quat.lookAt(eye, target)`.
+- [x] `TransformMath.position(value, fallback?)`,
+  `TransformMath.yaw(rotation, fallback?)`, and
+  `TransformMath.pose({ position, yaw })`.
+- [x] Compiler script source resolution accepts the stdlib import path, bundles
+  the helper declarations into `scripts.bundle.js`, and records helper import
+  metadata in `scripts.manifest.json`.
+- [ ] Missing arbitrary helper packages or local helper module graphs in
+  portable scripts. Unsupported helper imports fail with
+  `TN_SCRIPT_UNSUPPORTED_IMPORT`.
+
+Use the stdlib for repeated math/transform glue in AI-authored gameplay
+scripts. Do not copy local `clamp`, vector, quaternion, `lookAt`, or transform
+parsing helpers into each script unless the helper is truly one-off and has no
+supported stdlib equivalent.
+
 ### Intentionally Unsupported Or Non-Portable
 
 - [ ] Unsupported direct Three.js, Bevy, renderer, DOM, filesystem, network,
   worker, or platform access.
 - [ ] Unsupported arbitrary npm dependencies in portable scripts.
+- [ ] Unsupported namespace, default, aliased, re-exported, relative, or
+  arbitrary package helper imports in portable scripts; use named
+  `@threenative/script-stdlib` imports for promoted helpers.
 - [ ] Unsupported unbounded async/await, promises, workers, and unrestricted
   async timers in systems; bounded fixed-trace tasks/channels and deterministic
   timer helpers are the portable subset.

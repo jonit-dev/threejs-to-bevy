@@ -19,6 +19,13 @@ Rules for this generated ThreeNative project.
 - Preserve schema/version fields and stable IDs unless asked to rename.
 - Add behavior in `src/scripts/**/*.ts`, then reference module/exports from
   structured source.
+- For repeated portable helper code in `src/scripts/**/*.ts`, use named imports
+  from `@threenative/script-stdlib`:
+  `NumberEx`, `Vec3`, `Quat`, and `TransformMath`.
+- Do not copy local mini-standard libraries for clamp/round/vector/quaternion,
+  use namespace/default/aliased stdlib imports, or import arbitrary npm,
+  relative helper modules, DOM, Node, timer, filesystem, network, Three.js, or
+  Bevy APIs from portable scripts.
 
 ## Verify
 

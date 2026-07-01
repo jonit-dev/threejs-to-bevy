@@ -1,6 +1,6 @@
 {
-  "name": "@threenative/compiler",
-  "version": "0.1.10",
+  "name": "@threenative/script-stdlib",
+  "version": "0.1.0",
   "type": "module",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -20,15 +20,6 @@
     "lint": "tsc -p tsconfig.json --noEmit",
     "test": "node scripts/run-tests.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
-  },
-  "dependencies": {
-    "@threenative/authoring": "workspace:*",
-    "@threenative/ir": "workspace:*",
-    "@threenative/r3f": "workspace:*",
-    "@threenative/script-stdlib": "workspace:*",
-    "@threenative/sdk": "workspace:*",
-    "@threenative/ui": "workspace:*",
-    "typescript": "^5.9.3"
   },
   "devDependencies": {
     "@types/node": "^20.19.25"

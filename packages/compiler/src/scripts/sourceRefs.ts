@@ -4,7 +4,9 @@ import { relative, resolve, sep } from "node:path";
 import ts from "typescript";
 
 import type { ICompilerDiagnostic } from "../diagnostics.js";
-import type { ISystemScriptSource } from "./bundle.js";
+import { SUPPORTED_SCRIPT_HELPER_IMPORTS, type ISystemScriptSource, type SupportedScriptHelperImport } from "./bundle.js";
+
+const supportedScriptStdlibBindings = new Set(["NumberEx", "Quat", "TransformMath", "Vec3"]);
 
 export interface IResolveSystemScriptSourcesResult<T extends ISystemScriptSource> {
   diagnostics: ICompilerDiagnostic[];
@@ -44,6 +46,7 @@ export function resolveSystemScriptSources<T extends ISystemScriptSource>(
         ...system,
         script: {
           ...script,
+          ...(resolved.helperImports === undefined || resolved.helperImports.length === 0 ? {} : { helperImports: resolved.helperImports }),
           source: resolved.source,
           sourceRef: {
             ...script.sourceRef,
@@ -55,7 +58,10 @@ export function resolveSystemScriptSources<T extends ISystemScriptSource>(
   };
 }
 
-function resolveScriptModule(system: ISystemScriptSource & { script: NonNullable<ISystemScriptSource["script"]> }, projectPath: string): { diagnostics: ICompilerDiagnostic[]; hash?: string; source?: string } {
+function resolveScriptModule(
+  system: ISystemScriptSource & { script: NonNullable<ISystemScriptSource["script"]> },
+  projectPath: string,
+): { diagnostics: ICompilerDiagnostic[]; hash?: string; helperImports?: NonNullable<ISystemScriptSource["script"]>["helperImports"]; source?: string } {
   const sourceRef = system.script.sourceRef;
   if (sourceRef === undefined) {
     return { diagnostics: [] };
@@ -111,7 +117,8 @@ function resolveScriptModule(system: ISystemScriptSource & { script: NonNullable
   }
 
   const sourceFile = ts.createSourceFile(sourceRef.module, moduleSource, ts.ScriptTarget.ES2023, true, ts.ScriptKind.TS);
-  diagnostics.push(...diagnoseHelperImports(system.name, sourceRef.module, sourceRef.export, sourceFile));
+  const helperImports = resolveHelperImports(system.name, sourceRef.module, sourceRef.export, sourceFile);
+  diagnostics.push(...helperImports.diagnostics);
   diagnostics.push(...diagnoseMutableModuleState(system.name, sourceRef.module, sourceRef.export, sourceFile));
   const exported = extractNamedExport(sourceFile, sourceRef.export);
   if (exported === undefined) {
@@ -128,6 +135,7 @@ function resolveScriptModule(system: ISystemScriptSource & { script: NonNullable
 
   return {
     diagnostics,
+    helperImports: helperImports.imports,
     hash,
     source: diagnostics.length === 0 ? exported : undefined,
   };
@@ -138,22 +146,106 @@ function isInsideProject(projectPath: string, filePath: string): boolean {
   return rel !== "" && !rel.startsWith("..") && !rel.startsWith(sep);
 }
 
-function diagnoseHelperImports(systemName: string, module: string, exportName: string, sourceFile: ts.SourceFile): ICompilerDiagnostic[] {
+function resolveHelperImports(
+  systemName: string,
+  module: string,
+  exportName: string,
+  sourceFile: ts.SourceFile,
+): {
+  diagnostics: ICompilerDiagnostic[];
+  imports: NonNullable<ISystemScriptSource["script"]>["helperImports"];
+} {
   const diagnostics: ICompilerDiagnostic[] = [];
+  const imports: Array<{
+    imported: string[];
+    module: SupportedScriptHelperImport;
+  }> = [];
   for (const statement of sourceFile.statements) {
-    if (ts.isImportDeclaration(statement) || ts.isImportEqualsDeclaration(statement) || (ts.isExportDeclaration(statement) && statement.moduleSpecifier !== undefined)) {
-      diagnostics.push({
-        code: "TN_SCRIPT_HELPER_IMPORT_UNSUPPORTED",
-        file: module,
-        message: `System '${systemName}' script module uses helper imports that are not bundled yet.`,
-        path: `systems/${systemName}/script/sourceRef/module`,
-        severity: "error",
-        suggestion: "Inline portable helpers into the script module until script helper bundling is supported.",
-        target: exportName,
-      });
+    if (ts.isImportDeclaration(statement)) {
+      const specifier = readLiteralSpecifier(statement.moduleSpecifier);
+      if (isSupportedScriptHelperImport(specifier)) {
+        const imported = importedBindingNames(statement);
+        diagnostics.push(...diagnoseUnsupportedHelperImportBindings(systemName, module, exportName, statement, imported));
+        imports.push({
+          imported,
+          module: specifier,
+        });
+        continue;
+      }
+      diagnostics.push(unsupportedHelperImportDiagnostic(systemName, module, exportName, specifier));
+      continue;
+    }
+    if (ts.isImportEqualsDeclaration(statement) || (ts.isExportDeclaration(statement) && statement.moduleSpecifier !== undefined)) {
+      const specifier = ts.isExportDeclaration(statement) ? readLiteralSpecifier(statement.moduleSpecifier) : undefined;
+      diagnostics.push(unsupportedHelperImportDiagnostic(systemName, module, exportName, specifier));
     }
   }
-  return diagnostics;
+  return { diagnostics, imports: mergeHelperImports(imports) };
+}
+
+function unsupportedHelperImportDiagnostic(systemName: string, module: string, exportName: string, specifier: string | undefined): ICompilerDiagnostic {
+  return {
+    code: "TN_SCRIPT_UNSUPPORTED_IMPORT",
+    file: module,
+    message: `System '${systemName}' script module imports unsupported helper '${specifier ?? "<unknown>"}'.`,
+    path: `systems/${systemName}/script/sourceRef/module`,
+    severity: "error",
+    suggestion: `Import portable named helpers from ${SUPPORTED_SCRIPT_HELPER_IMPORTS.map((item) => `'${item}'`).join(", ")} or inline deterministic local helpers.`,
+    target: exportName,
+  };
+}
+
+function readLiteralSpecifier(moduleSpecifier: ts.Expression | undefined): string | undefined {
+  if (moduleSpecifier !== undefined && ts.isStringLiteralLike(moduleSpecifier)) {
+    return moduleSpecifier.text;
+  }
+  return undefined;
+}
+
+function isSupportedScriptHelperImport(specifier: string | undefined): specifier is SupportedScriptHelperImport {
+  return (SUPPORTED_SCRIPT_HELPER_IMPORTS as readonly string[]).includes(specifier ?? "");
+}
+
+function importedBindingNames(statement: ts.ImportDeclaration): string[] {
+  const clause = statement.importClause;
+  if (clause === undefined) {
+    return [];
+  }
+  return [
+    ...(clause.name === undefined ? [] : [clause.name.text]),
+    ...(clause.namedBindings !== undefined && ts.isNamedImports(clause.namedBindings)
+      ? clause.namedBindings.elements.map((element) => element.name.text)
+      : []),
+  ].sort();
+}
+
+function diagnoseUnsupportedHelperImportBindings(
+  systemName: string,
+  module: string,
+  exportName: string,
+  statement: ts.ImportDeclaration,
+  imported: ReadonlyArray<string>,
+): ICompilerDiagnostic[] {
+  const clause = statement.importClause;
+  if (clause === undefined || clause.isTypeOnly) {
+    return [];
+  }
+  const hasUnsupportedShape =
+    clause.name !== undefined ||
+    (clause.namedBindings !== undefined && !ts.isNamedImports(clause.namedBindings)) ||
+    imported.some((name) => !supportedScriptStdlibBindings.has(name)) ||
+    (clause.namedBindings !== undefined && ts.isNamedImports(clause.namedBindings) && clause.namedBindings.elements.some((element) => element.propertyName !== undefined));
+  return hasUnsupportedShape ? [unsupportedHelperImportDiagnostic(systemName, module, exportName, "@threenative/script-stdlib")] : [];
+}
+
+function mergeHelperImports(
+  imports: NonNullable<ISystemScriptSource["script"]>["helperImports"],
+): NonNullable<ISystemScriptSource["script"]>["helperImports"] {
+  const byModule = new Map<SupportedScriptHelperImport, Set<string>>();
+  for (const helperImport of imports ?? []) {
+    byModule.set(helperImport.module, new Set([...(byModule.get(helperImport.module) ?? []), ...helperImport.imported]));
+  }
+  return [...byModule.entries()].map(([module, imported]) => ({ imported: [...imported].sort(), module })).sort((left, right) => left.module.localeCompare(right.module));
 }
 
 function diagnoseMutableModuleState(systemName: string, module: string, exportName: string, sourceFile: ts.SourceFile): ICompilerDiagnostic[] {

@@ -81,6 +81,9 @@ importers:
       '@threenative/r3f':
         specifier: workspace:*
         version: link:../r3f
+      '@threenative/script-stdlib':
+        specifier: workspace:*
+        version: link:../script-stdlib
       '@threenative/sdk':
         specifier: workspace:*
         version: link:../sdk
@@ -191,6 +194,12 @@ importers:
       '@types/three':
         specifier: ^0.181.0
         version: 0.181.0
+
+  packages/script-stdlib:
+    devDependencies:
+      '@types/node':
+        specifier: ^20.19.25
+        version: 20.19.43
 
   packages/sdk:
     devDependencies:

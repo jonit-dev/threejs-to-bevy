@@ -138,6 +138,19 @@ for project id, authoring version, source roots, and build targets, with matchin
 editor rows.
 Runtime config source commands now create runtime docs and set promoted primary
 window plus renderer quality fields that lower into `runtime.config.json`.
+
+Portable script helper imports now have a first supported bundle path:
+`src/scripts/**/*.ts` may use named imports from
+`@threenative/script-stdlib` for pure `NumberEx`, `Vec3`, `Quat`, and
+`TransformMath` helpers. The compiler injects those deterministic helpers into
+`scripts.bundle.js`, records helper import metadata in `scripts.manifest.json`,
+and rejects unsupported helper packages/import shapes with
+`TN_SCRIPT_UNSUPPORTED_IMPORT`. Current evidence is
+`pnpm --filter @threenative/script-stdlib test`,
+`pnpm --filter @threenative/compiler build`, direct
+`packages/compiler/dist/scripts/{sourceRefs,bundle}.test.js` execution, and
+`pnpm check:docs`. Core context ergonomics, lifecycle facade, optional domain
+kits, and web/Bevy helper-driven conformance remain in the active PRD scope.
 Target profile source commands now create/update `content/targets/*.target.json`
 for targets, budgets, and performance JSON, and compiler lowering uses those
 documents for `target.profile.json`.

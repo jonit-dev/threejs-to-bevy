@@ -61,6 +61,12 @@ test("should emit script manifest source provenance when available", () => {
       name: "kartArcadePhysics",
       script: {
         exportName: "system_kartArcadePhysics",
+        helperImports: [
+          {
+            imported: ["Vec3", "NumberEx"],
+            module: "@threenative/script-stdlib",
+          },
+        ],
         source: "(context) => context",
         sourceRef: {
           export: "kartArcadePhysics",
@@ -80,12 +86,40 @@ test("should emit script manifest source provenance when available", () => {
       },
       source: {
         export: "kartArcadePhysics",
+        helperImports: [
+          {
+            imported: ["NumberEx", "Vec3"],
+            module: "@threenative/script-stdlib",
+          },
+        ],
         hash: "sha256-deadbeef",
         module: "src/scripts/kartArcadePhysics.ts",
       },
       systemId: "kartArcadePhysics",
     },
   ]);
+});
+
+test("should bundle supported script stdlib imports", () => {
+  const result = bundleSystemScripts([
+    {
+      name: "kartArcadePhysics",
+      script: {
+        exportName: "system_kartArcadePhysics",
+        helperImports: [
+          {
+            imported: ["Vec3"],
+            module: "@threenative/script-stdlib",
+          },
+        ],
+        source: "(context) => Vec3.round([1.2345, 0, 2.3456], 2)",
+      },
+    },
+  ]);
+
+  assert.deepEqual(result.diagnostics, []);
+  assert.match(result.code ?? "", /const Vec3 = Object\.freeze/);
+  assert.match(result.code ?? "", /const system_kartArcadePhysics = \(context\) => Vec3\.round/);
 });
 
 test("should normalize method shorthand system functions", () => {

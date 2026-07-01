@@ -178,10 +178,32 @@ Validation rules:
 - Systems may only mutate components listed in `writes`.
 - Systems may only use command types listed in `commands`.
 - Systems may only emit events listed in `events.writes`.
-- Portable scripts must not use helper imports until script helper bundling is
-  promoted, async/dynamic code, timers, network APIs, DOM/worker globals,
-  Node/platform APIs, arbitrary npm dependencies, or top-level mutable module
-  state.
+- Portable scripts may import named pure helpers from
+  `@threenative/script-stdlib`. Use this package for repeated numeric, vector,
+  quaternion, and transform helper code instead of copying local mini-standard
+  libraries into `src/scripts/**/*.ts`.
+- Portable scripts must not use arbitrary helper imports, async/dynamic code,
+  timers, network APIs, DOM/worker globals, Node/platform APIs, arbitrary npm
+  dependencies, or top-level mutable module state. Unsupported imports fail with
+  stable `TN_SCRIPT_UNSUPPORTED_IMPORT` diagnostics before runtime.
+
+Supported helper imports are bundled into `scripts.bundle.js` and recorded on
+the owning source entry in `scripts.manifest.json`:
+
+```ts
+import { NumberEx, Quat, TransformMath, Vec3 } from "@threenative/script-stdlib";
+
+export const drive = (ctx) => {
+  const dt = NumberEx.clamp(ctx.time.fixedDt ?? ctx.time.dt, 0.001, 0.05);
+  const next = Vec3.round(Vec3.add([0, 0, 0], Vec3.scale([1, 0, 0], dt)));
+  return { next, rotation: Quat.lookAt([0, 0, 0], next), yaw: TransformMath.yaw([0, 0, 0, 1]) };
+};
+```
+
+Only named imports for the promoted helper objects are portable. Namespace,
+default, aliased, re-exported, relative, and arbitrary package helper imports
+are rejected because the portable bundle has to run the same way in web
+JavaScript and Bevy QuickJS.
 
 ## Data Transfer Model
 
