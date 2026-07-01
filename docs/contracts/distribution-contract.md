@@ -52,6 +52,9 @@ Promoted package-local artifacts:
 - `@threenative/cli` copies the repo-level AI docs into `dist/ai/` during
   package build so installed consumers can read the same front door without
   repository source.
+- Generated starter templates that are meant for agent-assisted authoring must
+  include local `AGENTS.md` and `CLAUDE.md` files that point agents at
+  `tn ... --json` and durable source documents instead of generated bundles.
 
 `scripts/check-distribution-contract.mjs` enforces declarations, declaration
 maps, `files` entries, type-aware public exports, and the promoted IR

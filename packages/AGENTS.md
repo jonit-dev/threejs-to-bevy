@@ -1,14 +1,14 @@
 # AGENTS.md
 
-Guidance for TypeScript packages.
+Rules for TypeScript packages.
 
-- Keep package dependencies aligned with the product flow: `sdk` authoring data,
-  `ir` contracts and validators, `compiler` emit/diagnostics, `cli`
-  orchestration, runtimes consuming bundles.
-- Do not make one package reach through another package's internals.
-- Preserve deterministic output for generated IR and bundle files.
-- Keep shared IR fixtures under `packages/ir/fixtures/*`; package-local
-  generated output belongs in package build/artifact folders, not in examples.
-- Prefer precise types over casts. Follow existing ESM `NodeNext` patterns.
-- Runtime packages should consume IR schemas and bundles; they should not invent
-  parallel source formats for game state.
+- Keep dependencies aligned with the product flow: `sdk` authoring, `ir`
+  contracts/validators, `compiler` emit/diagnostics, `cli` orchestration,
+  runtimes consuming bundles.
+- Do not reach through another package's internals.
+- Preserve deterministic IR and bundle output.
+- Shared IR fixtures stay in `packages/ir/fixtures/*`; package-local generated
+  output belongs in package build/artifact folders.
+- Prefer precise types over casts. Follow ESM `NodeNext` patterns.
+- Runtime packages consume IR schemas/bundles; they must not invent parallel
+  game-state source formats.

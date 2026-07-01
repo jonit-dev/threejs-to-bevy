@@ -8,6 +8,8 @@ TypeScript stays thin.
 - Edit behavior in `src/scripts/**/*.ts`.
 - `threenative.config.json` builds from `content/scenes/arena.scene.json`, so
   there is no TypeScript scene blob to reverse-patch.
+- AI coding agents should read `AGENTS.md` or `CLAUDE.md` and prefer
+  `tn ... --json` commands for deterministic source edits.
 
 Useful commands:
 

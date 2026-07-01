@@ -6,7 +6,7 @@ published ThreeNative surface.
 ## Simple Scene
 
 ```bash
-tn create ai-simple-scene --template starter
+tn create ai-simple-scene --template structured-source-starter
 cd ai-simple-scene
 pnpm install
 pnpm run build
@@ -18,9 +18,9 @@ that installed packages work without repository source.
 
 ## Material, Light, Camera
 
-Start from `tn create ... --template starter`, then use SDK classes such as
-`Scene`, `Mesh`, `BoxGeometry`, `MeshStandardMaterial`, `Camera`, and `Light`.
-After edits, run:
+Start from `tn create ... --template structured-source-starter`, then edit
+structured source documents under `content/**` and portable behavior modules
+under `src/scripts/**`. After edits, run:
 
 ```bash
 pnpm run build
@@ -39,6 +39,9 @@ tn scene set-transform arena ai-cube --position '[0,1,0]' --json
 tn build
 tn verify --json
 ```
+
+Generated structured-source projects also include `AGENTS.md` and `CLAUDE.md`
+with local instructions for coding agents.
 
 ## Diagnostics Repair
 

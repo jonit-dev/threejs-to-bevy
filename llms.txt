@@ -25,6 +25,8 @@ Machine-readable metadata:
 - Diagnostics: `@threenative/ir/diagnostics/diagnostics.catalog.json`.
 - Examples: `examples/ai-reference/README.md`.
 - Full guide: `llms-full.txt` and `docs/workflows/ai-distribution.md`.
+- Generated project guidance: starter templates include `AGENTS.md` and
+  `CLAUDE.md` for local coding-agent instructions.
 
 Boundary rules:
 

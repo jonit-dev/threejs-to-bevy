@@ -18,6 +18,8 @@ const requiredPhrases = [
   "@threenative/ir/capabilities/threenative.capabilities.json",
   "@threenative/ir/diagnostics/diagnostics.catalog.json",
   "examples/ai-reference/README.md",
+  "AGENTS.md",
+  "CLAUDE.md",
   "tn create",
   "tn build",
   "tn verify",

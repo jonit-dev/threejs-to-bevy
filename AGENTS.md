@@ -1,97 +1,106 @@
 # AGENTS.md
 
-Repo-wide guidance for AI coding agents working on ThreeNative.
+Repo-wide instructions for AI coding agents working on ThreeNative.
 
-## Working Style
+## Work Rules
 
-- Make small, verifiable changes. If a request has multiple plausible meanings,
-  state the interpretation you are using or ask before editing.
-- Match existing style, package boundaries, naming, and test patterns.
-- Do not refactor adjacent code, reformat unrelated files, or delete unrelated
-  dead code while solving a narrow task.
+- Make small, verifiable changes. If scope is ambiguous, state your
+  interpretation or ask before editing.
+- Match existing style, package boundaries, names, and test patterns.
+- Do not refactor, reformat, delete, revert, or overwrite unrelated work.
 - Use structured parsing/serialization for IR and bundle artifacts.
 - Keep source ASCII unless the file already has a reason not to.
-- The worktree may contain user changes. Do not revert or overwrite them unless
-  explicitly asked.
-- When capability or release-gate work is completed, update `docs/STATUS.md` and
-  `docs/bevy-feature-parity.md` in the same change so the current gate and drift
-  tracker reflect what is now implemented, inconsistent, or still missing.
-- Current contributor gates include `pnpm check:names`, `pnpm check:docs`, and
-  `pnpm verify:release`. Legacy milestone script names remain compatibility
-  aliases during the cleanup tracked in `docs/PRDs/cleanup-versioned-debt.md`.
-- New verification gate implementation belongs under `tools/verify/src`; use
-  `tools/verify/src/cli/run.ts` for focused gate command composition and
-  `scripts/` only for temporary wrappers, compatibility shims, or non-gate repo
-  maintenance.
-- Artifact ownership: one-example evidence belongs under
-  `examples/<name>/artifacts/<gate>/`, aggregate reports under
-  `tools/verify/artifacts/<gate>/`, shared IR fixtures under `packages/ir/fixtures/*`,
-  and Bevy-only evidence under `runtime-bevy/artifacts/<gate>/`.
-- Active docs belong under `docs/architecture/`, `docs/contracts/`,
-  `docs/runtime/`, `docs/workflows/`, `docs/status/`, or
-  `docs/PRDs/`; see `docs/workflows/developer-workflow.md` for the full policy.
-- When finishing PRDs, move them to done folder at docs/PRDs/done
+- Capability/release-gate changes must update `docs/STATUS.md` and
+  `docs/bevy-feature-parity.md`.
+- Finished PRDs move to `docs/PRDs/done`.
 
 ## Product Boundary
 
-ThreeNative is a TypeScript game SDK with a Three.js-like authoring surface,
-validated portable IR, and runtime adapters for web Three.js and native Bevy.
-
-The intended flow is:
+ThreeNative flow:
 
 ```txt
-TypeScript authoring / future editor
-  -> SDK object model and ECS declarations
+TypeScript authoring / structured source / future editor
+  -> SDK object model, ECS declarations, structured source docs
   -> compiler extraction and validation
   -> versioned IR bundle
-  -> runtime adapter
-  -> web preview or native Bevy runtime
+  -> web Three.js or native Bevy runtime adapter
 ```
 
-Respect these boundaries:
+- Users author TypeScript and structured source; Bevy is adapter-private.
+- IR bundles are the compiler/CLI/runtime contract.
+- Durable source is SDK declarations plus `content/**/*.json`; durable behavior
+  is `src/scripts/**/*.ts`.
+- `dist/**`, emitted bundle JSON, and `scripts.bundle.js` are generated. Do not
+  fix bugs by editing them unless a command marks the file source-persistable.
+- Three.js/Bevy consume emitted IR; they are not sources of truth and must not
+  generate game source.
+- Unsupported APIs should fail with explicit diagnostics.
+- Visual parity: never tune adapter colors/materials/lights to match a
+  screenshot. Preserve authored IR values; fix mapping, color space, assets,
+  shaders/materials, camera, lighting, or test setup. Art-direction transforms
+  must be authored data or a documented shared contract.
 
-- Users author game behavior in TypeScript; Bevy is an internal native runtime
-  adapter.
-- The IR bundle is the stable contract between compiler, CLI, and runtimes.
-- Three.js and Bevy consume emitted IR/bundle JSON such as `world.ir.json`,
-  `environment.scene.json`, and `assets.manifest.json`; they are not sources of
-  truth and should not generate game source code.
-- Future editor workflows should operate on structured SDK/ECS/IR scene data and
-  emit the same portable bundle consumed by web and native runtimes.
-- Unsupported APIs should fail with explicit diagnostics rather than being
-  ignored.
-- Visual parity rule: do not tune, darken, brighten, recolor, change opacity,
-  or otherwise compensate colors/materials/lights in a runtime adapter to make a
-  screenshot look closer. Preserve authored IR/material values exactly. If web
-  and Bevy do not match, fix the mapping contract, color-space conversion,
-  asset loading, shader/material implementation, camera, lighting, or test
-  setup root cause. Any intentional art-direction transform must be explicit
-  authored data or a documented IR/runtime contract shared by all runtimes.
+## Structured Source
 
-## Repository Map
+Default generated projects use `structured-source-starter`.
 
-- `packages/sdk`: public TypeScript authoring APIs.
-- `packages/ir`: IR schemas, types, and validation helpers.
-- `packages/compiler`: extraction, validation, diagnostics, and bundle emit.
-- `packages/cli`: user-facing `tn` commands and orchestration.
-- `packages/runtime-web-three`: Three.js runtime adapter.
-- `runtime-bevy`: Rust native runtime adapter.
-- `examples`: runnable/canonical sandboxed examples. Game examples should keep
-  all required runtime assets inside their example folder or emitted bundle so
-  each example can run independently.
-- `templates`: project templates used by CLI flows.
-- `docs`: architecture, SDK, workflow, roadmap, and PRDs.
-- `scripts`: compatibility wrappers and repo maintenance shims; active
-  verification logic belongs in `tools/verify`.
+- Generated starters must include `AGENTS.md` and `CLAUDE.md`.
+- Prefer deterministic source edits through bounded CLI commands:
+  `tn scene ... --json`, `tn ui ... --json`, `tn material ... --json`,
+  `tn authoring validate --json`, and other `tn ... --json` surfaces.
+- Edit `content/**/*.json` directly only when no CLI operation covers the
+  change. Preserve schema/version fields and stable IDs unless asked to rename.
+- Add/change gameplay in `src/scripts/**/*.ts`, then reference the module/export
+  from structured source.
+- Do not author raw Three.js scenes, raw Bevy/Rust gameplay, DOM APIs,
+  filesystem access, workers, timers, renderer plugin handles, or native runtime
+  handles unless a package capability exposes them.
+- On diagnostics, preserve code/path/severity/message in notes and repair the
+  durable source document or script that owns the problem.
 
-Nested `AGENTS.md` files may add more specific guidance for these areas.
+Useful loop:
+
+```bash
+tn scene validate arena --json
+tn scene inspect arena --json
+tn scene proof arena --project . --json
+pnpm run validate:authoring
+pnpm run build
+pnpm run verify
+```
+
+## Repo Map
+
+- `packages/sdk`: public authoring APIs.
+- `packages/ir`: schemas, types, validation, conformance.
+- `packages/compiler`: extraction, validation, diagnostics, bundle emit.
+- `packages/cli`: `tn` commands and orchestration.
+- `packages/runtime-web-three`: web runtime adapter.
+- `runtime-bevy`: native runtime adapter.
+- `examples`: runnable examples with local runtime assets.
+- `templates`: CLI project templates.
+- `docs`: architecture, contracts, workflows, status, PRDs.
+- `scripts`: compatibility wrappers and repo maintenance.
+- `tools/verify/src`: active verification-gate implementation.
+
+Nested `AGENTS.md` files may add local rules.
+
+## Artifacts And Docs
+
+- One-example evidence: `examples/<name>/artifacts/<gate>/`.
+- Aggregate reports: `tools/verify/artifacts/<gate>/`.
+- Shared IR fixtures: `packages/ir/fixtures/*`.
+- Bevy-only evidence: `runtime-bevy/artifacts/<gate>/`.
+- Active docs: `docs/architecture/`, `docs/contracts/`, `docs/runtime/`,
+  `docs/workflows/`, `docs/status/`, `docs/PRDs/`.
+- Gate implementation belongs in `tools/verify/src`; use `scripts/` only for
+  wrappers, shims, or maintenance.
 
 ## Tooling
 
 - Package manager: `pnpm@10.25.0`.
-- TypeScript: ESM with `NodeNext`, target `ES2023`, strict checking.
-- Rust: `runtime-bevy` uses Rust 2024 edition; Bevy and `bevy_ecs` are pinned to
-  `=0.14.2`.
+- TypeScript: ESM, `NodeNext`, `ES2023`, strict.
+- Rust: 2024 edition; Bevy and `bevy_ecs` pinned to `=0.14.2`.
 
 Useful commands:
 
@@ -104,36 +113,22 @@ pnpm verify
 pnpm verify:conformance
 ```
 
-Prefer the narrowest relevant verification first, then run broader gates when a
-change affects shared contracts or runtime behavior. If verification is not run,
-say why.
+Use the narrowest relevant verification first. For shared runtime contracts,
+include `pnpm verify:conformance`. If verification is not run, say why.
 
-Pre-commit hooks should maximize verification value per second: run cheap,
-deterministic checks that catch broad drift quickly. Use `pnpm verify:smoke`
-for pre-commit/local drift checks. Do not put visual screenshot gates such as
-`pnpm verify:parity:smoke` in pre-commit hooks; they launch browser/native
-capture with multi-minute timeouts and belong in explicit visual-runtime
-verification or pre-push/release flows.
-Pre-push hooks should use `pnpm verify:pre-push`: one orchestrated gate that
-builds once, parallelizes independent workspace checks, then runs conformance
-and seven-scene baseline visual parity without repeating setup. Target ~2–3
-minutes locally; run `pnpm verify:release` before handoff when you need full
-release evidence.
-
-For shared runtime contracts, keep `pnpm verify:conformance` in the
-self-verification loop and treat conformance failures as regressions unless the
-relevant PRD explicitly changes the contract.
+Contributor gates include `pnpm check:names`, `pnpm check:docs`, and
+`pnpm verify:release`. Use `pnpm verify:smoke` for cheap local drift checks and
+`pnpm verify:pre-push` before push. Do not put visual screenshot gates such as
+`pnpm verify:parity:smoke` in pre-commit hooks.
 
 ## Testing
 
-- Bug fix: add or update a test that reproduces the failure.
+- Bug fix: add/update a reproducing test.
 - Validation change: cover accepted and rejected inputs when practical.
-- Compiler or IR change: test emitted bundle shape and schema behavior.
-- Runtime mapping change: test the affected runtime and keep web/Bevy semantics
-  aligned when the IR contract is shared.
+- Compiler/IR change: test emitted bundle shape and schema behavior.
+- Runtime mapping change: test the affected runtime and preserve web/Bevy
+  semantics for shared contracts.
 - CLI change: test output, exit codes, and generated artifacts.
 
-## Diagnostics
-
-Prefer stable, actionable diagnostics with a code, severity, file/path reference,
-and suggested fix when the local diagnostic model supports it.
+Diagnostics should be stable and actionable: code, severity, path, message, and
+suggested fix where supported.

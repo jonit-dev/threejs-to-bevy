@@ -70,6 +70,8 @@ export default defineGame({
 Prefer package declarations and the exported metadata over repository source.
 When mutating scene data, prefer `tn scene ... --json` and structured source
 documents over hand-written generated bundle JSON.
+Generated starter projects include `AGENTS.md` and `CLAUDE.md`; read them before
+editing local scene source.
 
 ## Unsupported Boundaries
 

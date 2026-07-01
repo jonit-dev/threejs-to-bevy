@@ -16,12 +16,16 @@ packages without repository source.
 ## Generate A Project
 
 ```bash
-tn create simple-game --template starter
+tn create simple-game --template structured-source-starter
 cd simple-game
 pnpm install
 pnpm run build
 pnpm run verify
 ```
+
+Generated starter projects include `AGENTS.md` and `CLAUDE.md`. Agents should
+read those files before editing local source; they restate the package boundary
+and prefer `tn ... --json` commands for deterministic authoring.
 
 Use `tn verify --json` when an agent needs machine-readable screenshot and
 runtime readiness proof.
