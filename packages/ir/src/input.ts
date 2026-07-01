@@ -81,6 +81,99 @@ export interface IInputIr {
   persistedBindingOverrides?: IPersistedBindingOverrideIr[];
 }
 
+const canonicalKeyboardCodes = new Set([
+  "AltLeft",
+  "AltRight",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+  "ArrowUp",
+  "Backquote",
+  "Backslash",
+  "Backspace",
+  "BracketLeft",
+  "BracketRight",
+  "CapsLock",
+  "Comma",
+  "ContextMenu",
+  "ControlLeft",
+  "ControlRight",
+  "Delete",
+  "End",
+  "Enter",
+  "Equal",
+  "Escape",
+  "Home",
+  "Insert",
+  "IntlBackslash",
+  "IntlRo",
+  "IntlYen",
+  "MetaLeft",
+  "MetaRight",
+  "Minus",
+  "PageDown",
+  "PageUp",
+  "Pause",
+  "Period",
+  "Quote",
+  "ScrollLock",
+  "Semicolon",
+  "ShiftLeft",
+  "ShiftRight",
+  "Slash",
+  "Space",
+  "Tab",
+]);
+
+const keyboardCodeAliases = new Map<string, string>([
+  ["alt", "AltLeft"],
+  ["arrowdown", "ArrowDown"],
+  ["arrow-down", "ArrowDown"],
+  ["arrowleft", "ArrowLeft"],
+  ["arrow-left", "ArrowLeft"],
+  ["arrowright", "ArrowRight"],
+  ["arrow-right", "ArrowRight"],
+  ["arrowup", "ArrowUp"],
+  ["arrow-up", "ArrowUp"],
+  ["control", "ControlLeft"],
+  ["ctrl", "ControlLeft"],
+  ["down", "ArrowDown"],
+  ["esc", "Escape"],
+  ["left", "ArrowLeft"],
+  ["meta", "MetaLeft"],
+  ["right", "ArrowRight"],
+  ["shift", "ShiftLeft"],
+  ["spacebar", "Space"],
+  ["up", "ArrowUp"],
+  ...[...canonicalKeyboardCodes].map((code) => [code.toLowerCase(), code] as const),
+]);
+
+export function isCanonicalKeyboardCode(code: string): boolean {
+  return /^Key[A-Z]$/.test(code)
+    || /^Digit[0-9]$/.test(code)
+    || /^F(?:[1-9]|1[0-9]|2[0-4])$/.test(code)
+    || /^Numpad(?:[0-9]|Add|Subtract|Multiply|Divide|Decimal|Enter|Equal|Comma|ParenLeft|ParenRight|Backspace)$/.test(code)
+    || canonicalKeyboardCodes.has(code);
+}
+
+export function normalizeKeyboardCodeAlias(code: string): string {
+  if (isCanonicalKeyboardCode(code)) {
+    return code;
+  }
+  if (/^[a-z]$/i.test(code)) {
+    return `Key${code.toUpperCase()}`;
+  }
+  if (/^[0-9]$/.test(code)) {
+    return `Digit${code}`;
+  }
+  return keyboardCodeAliases.get(code.toLowerCase()) ?? code;
+}
+
+export function keyboardCodeSuggestion(code: string): string | undefined {
+  const normalized = normalizeKeyboardCodeAlias(code);
+  return normalized === code || !isCanonicalKeyboardCode(normalized) ? undefined : normalized;
+}
+
 export function sortedPersistedBindingOverrides(
   overrides: ReadonlyArray<IPersistedBindingOverrideIr>,
 ): IPersistedBindingOverrideIr[] {

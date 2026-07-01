@@ -21,6 +21,7 @@ import {
   type IUiIr,
   type IWorldIr,
 } from "@threenative/ir";
+import { normalizeKeyboardCodeAlias } from "@threenative/ir/input";
 import type { IAuthoringDocument } from "@threenative/authoring";
 import { type IAnimationsDeclaration, type IAssetGroupDeclaration, type IAssetModuleDeclaration, type IAssetReference, type IAudioDeclaration, type IInputMapDeclaration, type IOverlayDeclaration, type IPersistenceDeclaration, type ISceneAudioDeclaration, type ISceneLifecycleDeclaration, type World } from "@threenative/sdk";
 import { type IUiElement } from "@threenative/ui";
@@ -433,7 +434,7 @@ function readStructuredInputOverrides(data: Record<string, unknown>): NonNullabl
     .map((override) => ({
       actionOrAxisId: readString(override.actionOrAxisId) ?? "",
       ...(readString(override.axisSlot) === undefined ? {} : { axisSlot: readString(override.axisSlot) as NonNullable<IInputIr["persistedBindingOverrides"]>[number]["axisSlot"] }),
-      control: readString(override.control) ?? "",
+      control: readString(override.device) === "keyboard" ? normalizeKeyboardCodeAlias(readString(override.control) ?? "") : readString(override.control) ?? "",
       ...(readNumber(override.deadzone) === undefined ? {} : { deadzone: readNumber(override.deadzone) }),
       device: readString(override.device) as NonNullable<IInputIr["persistedBindingOverrides"]>[number]["device"],
       ...(readStringList(override.modifiers).length === 0 ? {} : { modifiers: readStringList(override.modifiers).sort() }),
@@ -692,7 +693,7 @@ function readStringList(value: unknown): string[] {
 function parseSourceInputBinding(value: string): IInputIr["actions"][number]["bindings"][number] {
   const [device, first, second] = value.split(".");
   if (device === "keyboard" && first !== undefined) {
-    return { code: first, device };
+    return { code: normalizeKeyboardCodeAlias(first), device };
   }
   if (device === "gamepad" && first !== undefined) {
     return { control: first, device };

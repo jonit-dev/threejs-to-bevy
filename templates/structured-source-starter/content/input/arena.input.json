@@ -6,17 +6,16 @@
     {
       "id": "move-left",
       "bindings": [
-        "keyboard.a",
-        "keyboard.arrow-left"
+        "keyboard.KeyA",
+        "keyboard.ArrowLeft"
       ]
     },
     {
       "id": "move-right",
       "bindings": [
-        "keyboard.d",
-        "keyboard.arrow-right"
+        "keyboard.KeyD",
+        "keyboard.ArrowRight"
       ]
     }
   ]
 }
-

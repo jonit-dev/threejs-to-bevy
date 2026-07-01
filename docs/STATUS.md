@@ -2043,6 +2043,28 @@ JSON reload/apply before the first input snapshot. Full visual settings-screen
 UX polish, broader local settings APIs, and richer repair-oriented device
 overlays remain future work.
 
+Playable game authoring hardening now makes keyboard binding spelling explicit
+before runtime. Structured source accepts transitional aliases such as
+`keyboard.w` and `keyboard.arrow-up` but emits
+`TN_INPUT_KEYBOARD_CODE_NORMALIZED` warnings with source JSON pointers, while
+the compiler lowers them to canonical `KeyboardEvent.code` values such as
+`KeyW` and `ArrowUp`. Emitted `input.ir.json` is strict: action bindings, axis
+bindings, controls-setting defaults, and persisted keyboard overrides reject
+unknown or non-canonical codes with `TN_INPUT_KEYBOARD_CODE_INVALID`. The input
+binding contract is documented in `docs/contracts/input.md`, and the structured
+starter now ships canonical keyboard controls by default.
+
+The same hardening slice adds a web-runtime `tn playtest` proof command for
+small playable games. It builds the project, starts a web preview, injects a
+canonical keyboard code, samples target-entity `Transform` patches from the web
+effect log, reports before/after positions and movement distance, and writes a
+project-local screenshot artifact under `examples/<name>/artifacts/playtest/`.
+`examples/racing-kit-rally` was reset to source plus preserved assets and now
+passes `tn playtest --project examples/racing-kit-rally --entity player.car
+--press KeyW --frames 60 --expect-moved --json` with nonzero player movement.
+Native/Bevy playtest injection remains pending and is explicitly documented as
+web-only in `docs/workflows/playtest-proof.md`.
+
 The retained UI style surface now accepts portable `shadow` and linear
 `gradient` metadata with validation and capability flags. The web DOM overlay
 renders those as CSS `box-shadow` and `linear-gradient`; Bevy currently preserves

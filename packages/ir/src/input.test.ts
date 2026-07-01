@@ -62,6 +62,47 @@ test("should reject duplicate input binding", async () => {
   }
 });
 
+test("should reject invalid keyboard code when input binding uses lowercase key", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-input-keyboard-invalid-"));
+  try {
+    await writeInputBundle(root);
+    await writeJson(root, "input.ir.json", {
+      schema: "threenative.input",
+      version: "0.1.0",
+      actions: [{ id: "Throttle", bindings: [{ device: "keyboard", code: "w" }] }],
+      axes: [],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics[0]?.code, "TN_INPUT_KEYBOARD_CODE_INVALID");
+    assert.equal(result.diagnostics[0]?.path, "input.ir.json/actions/0/bindings/0/code");
+    assert.equal(result.diagnostics[0]?.suggestion, "Use 'KeyW' instead of 'w'.");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should accept canonical KeyboardEvent code bindings", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-input-keyboard-canonical-"));
+  try {
+    await writeInputBundle(root);
+    await writeJson(root, "input.ir.json", {
+      schema: "threenative.input",
+      version: "0.1.0",
+      actions: [{ id: "Controls", bindings: ["KeyW", "ArrowUp", "Space", "Escape"].map((code) => ({ device: "keyboard", code })) }],
+      axes: [],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject unsupported richer touch and gamepad gesture declarations", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-input-gestures-"));
   try {

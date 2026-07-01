@@ -5,6 +5,7 @@
   "scripts": {
     "build": "tn build",
     "dev:web": "tn dev --target web",
+    "playtest": "tn playtest --entity player.car --press KeyW --frames 60 --expect-moved --json",
     "validate": "tn validate",
     "validate:authoring": "tn authoring validate --json",
     "verify": "tn verify --frames 4 --json"

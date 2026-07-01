@@ -884,7 +884,7 @@ test("should emit root input map for scene bundle", async () => {
   }
 });
 
-test("should emit structured input source documents with rebinding metadata", async () => {
+test("should normalize structured keyboard aliases before emitting input ir", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-emit-source-input-"));
   try {
     const config = {
@@ -901,13 +901,13 @@ test("should emit structured input source documents with rebinding metadata", as
           schema: "threenative.input",
           version: "0.1.0",
           id: "kart-input",
-          actions: [{ id: "accelerate", bindings: ["keyboard.KeyW"] }],
-          axes: [{ id: "MoveX", negative: ["keyboard.KeyA"], positive: ["keyboard.KeyD"], value: "pointer.deltaX" }],
+          actions: [{ id: "accelerate", bindings: ["keyboard.w"] }],
+          axes: [{ id: "MoveX", negative: ["keyboard.a"], positive: ["keyboard.arrow-right"], value: "pointer.deltaX" }],
           controlsSettings: {
             profileId: "default",
-            rows: [{ actionOrAxisId: "accelerate", defaultBindings: ["keyboard.KeyW"], kind: "action", uiNodeId: "settings.accelerate" }],
+            rows: [{ actionOrAxisId: "accelerate", defaultBindings: ["keyboard.space"], kind: "action", uiNodeId: "settings.accelerate" }],
           },
-          persistedBindingOverrides: [{ actionOrAxisId: "accelerate", control: "KeyUp", device: "keyboard", profileId: "default", updatedAt: "2026-06-23T00:00:00.000Z" }],
+          persistedBindingOverrides: [{ actionOrAxisId: "accelerate", control: "arrow-up", device: "keyboard", profileId: "default", updatedAt: "2026-06-23T00:00:00.000Z" }],
         },
         file: join(root, "content", "input", "kart.input.json"),
         kind: "input",
@@ -922,9 +922,9 @@ test("should emit structured input source documents with rebinding metadata", as
     assert.equal(manifest.files.input, "input.ir.json");
     assert.equal(validation.ok, true);
     assert.deepEqual(input.actions, [{ bindings: [{ code: "KeyW", device: "keyboard" }], id: "accelerate" }]);
-    assert.deepEqual(input.axes, [{ id: "MoveX", negative: [{ code: "KeyA", device: "keyboard" }], positive: [{ code: "KeyD", device: "keyboard" }], value: { axis: "deltaX", device: "pointer" } }]);
-    assert.deepEqual(input.controlsSettings.rows, [{ actionOrAxisId: "accelerate", defaultBindings: [{ code: "KeyW", device: "keyboard" }], kind: "action", uiNodeId: "settings.accelerate" }]);
-    assert.deepEqual(input.persistedBindingOverrides, [{ actionOrAxisId: "accelerate", control: "KeyUp", device: "keyboard", profileId: "default", updatedAt: "2026-06-23T00:00:00.000Z" }]);
+    assert.deepEqual(input.axes, [{ id: "MoveX", negative: [{ code: "KeyA", device: "keyboard" }], positive: [{ code: "ArrowRight", device: "keyboard" }], value: { axis: "deltaX", device: "pointer" } }]);
+    assert.deepEqual(input.controlsSettings.rows, [{ actionOrAxisId: "accelerate", defaultBindings: [{ code: "Space", device: "keyboard" }], kind: "action", uiNodeId: "settings.accelerate" }]);
+    assert.deepEqual(input.persistedBindingOverrides, [{ actionOrAxisId: "accelerate", control: "ArrowUp", device: "keyboard", profileId: "default", updatedAt: "2026-06-23T00:00:00.000Z" }]);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

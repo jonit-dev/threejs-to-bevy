@@ -4160,7 +4160,7 @@ function validateSchemaFields(diagnostics: IAuthoringDiagnostic[], file: string,
 }
 
 function formatKeyboardBinding(key: string): string {
-  return `keyboard.${key.length === 1 ? key.toLowerCase() : key}`;
+  return `keyboard.${normalizeKeyboardCodeAlias(key)}`;
 }
 
 function validateInputMetadata(file: string, data: unknown): IAuthoringDiagnostic[] {
@@ -4170,9 +4170,157 @@ function validateInputMetadata(file: string, data: unknown): IAuthoringDiagnosti
   }
   const actionIds = new Set(idsFromArray(data.actions));
   const axisIds = new Set(idsFromArray(data.axes));
+  validateInputBindingStrings(diagnostics, file, data);
   validateInputControlsSettings(diagnostics, file, data.controlsSettings, actionIds, axisIds);
   validateInputBindingOverrides(diagnostics, file, data.persistedBindingOverrides, actionIds, axisIds);
   return diagnostics;
+}
+
+function validateInputBindingStrings(diagnostics: IAuthoringDiagnostic[], file: string, data: Record<string, unknown>): void {
+  readArray(data.actions)?.forEach((action, actionIndex) => {
+    if (!isRecord(action)) {
+      return;
+    }
+    validateStructuredInputBindingList(diagnostics, file, `/actions/${actionIndex}/bindings`, action.bindings);
+  });
+  readArray(data.axes)?.forEach((axis, axisIndex) => {
+    if (!isRecord(axis)) {
+      return;
+    }
+    validateStructuredInputBindingList(diagnostics, file, `/axes/${axisIndex}/negative`, axis.negative);
+    validateStructuredInputBindingList(diagnostics, file, `/axes/${axisIndex}/positive`, axis.positive);
+    const value = readString(axis.value);
+    if (value !== undefined) {
+      validateStructuredInputBindingString(diagnostics, file, `/axes/${axisIndex}/value`, value);
+    }
+  });
+}
+
+function validateStructuredInputBindingList(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown): void {
+  readArray(value)?.forEach((binding, index) => {
+    const text = readString(binding);
+    if (text !== undefined) {
+      validateStructuredInputBindingString(diagnostics, file, `${path}/${index}`, text);
+    }
+  });
+}
+
+function validateStructuredInputBindingString(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: string): void {
+  const [device, control] = value.split(".");
+  if (device !== "keyboard" || control === undefined) {
+    return;
+  }
+  const normalized = normalizeKeyboardCodeAlias(control);
+  if (normalized !== control && isCanonicalKeyboardCode(normalized)) {
+    diagnostics.push(authoringDiagnostic({
+      code: "TN_INPUT_KEYBOARD_CODE_NORMALIZED",
+      file,
+      message: `Keyboard binding '${value}' will be emitted as 'keyboard.${normalized}'.`,
+      path,
+      severity: "warning",
+      suggestion: `Update this binding to 'keyboard.${normalized}' so source and emitted IR match.`,
+      value,
+    }));
+    return;
+  }
+  if (!isCanonicalKeyboardCode(control)) {
+    diagnostics.push(authoringDiagnostic({
+      code: "TN_INPUT_KEYBOARD_CODE_INVALID",
+      file,
+      message: `Keyboard binding '${value}' must use a canonical KeyboardEvent.code value.`,
+      path,
+      suggestion: "Use a binding such as 'keyboard.KeyW', 'keyboard.ArrowUp', 'keyboard.Space', or 'keyboard.Escape'.",
+      value,
+    }));
+  }
+}
+
+const canonicalKeyboardCodes = new Set([
+  "AltLeft",
+  "AltRight",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+  "ArrowUp",
+  "Backquote",
+  "Backslash",
+  "Backspace",
+  "BracketLeft",
+  "BracketRight",
+  "CapsLock",
+  "Comma",
+  "ContextMenu",
+  "ControlLeft",
+  "ControlRight",
+  "Delete",
+  "End",
+  "Enter",
+  "Equal",
+  "Escape",
+  "Home",
+  "Insert",
+  "IntlBackslash",
+  "IntlRo",
+  "IntlYen",
+  "MetaLeft",
+  "MetaRight",
+  "Minus",
+  "PageDown",
+  "PageUp",
+  "Pause",
+  "Period",
+  "Quote",
+  "ScrollLock",
+  "Semicolon",
+  "ShiftLeft",
+  "ShiftRight",
+  "Slash",
+  "Space",
+  "Tab",
+]);
+
+const keyboardCodeAliases = new Map<string, string>([
+  ["alt", "AltLeft"],
+  ["arrowdown", "ArrowDown"],
+  ["arrow-down", "ArrowDown"],
+  ["arrowleft", "ArrowLeft"],
+  ["arrow-left", "ArrowLeft"],
+  ["arrowright", "ArrowRight"],
+  ["arrow-right", "ArrowRight"],
+  ["arrowup", "ArrowUp"],
+  ["arrow-up", "ArrowUp"],
+  ["control", "ControlLeft"],
+  ["ctrl", "ControlLeft"],
+  ["down", "ArrowDown"],
+  ["esc", "Escape"],
+  ["left", "ArrowLeft"],
+  ["meta", "MetaLeft"],
+  ["right", "ArrowRight"],
+  ["shift", "ShiftLeft"],
+  ["spacebar", "Space"],
+  ["up", "ArrowUp"],
+  ...[...canonicalKeyboardCodes].map((code) => [code.toLowerCase(), code] as const),
+]);
+
+function isCanonicalKeyboardCode(code: string): boolean {
+  return /^Key[A-Z]$/.test(code)
+    || /^Digit[0-9]$/.test(code)
+    || /^F(?:[1-9]|1[0-9]|2[0-4])$/.test(code)
+    || /^Numpad(?:[0-9]|Add|Subtract|Multiply|Divide|Decimal|Enter|Equal|Comma|ParenLeft|ParenRight|Backspace)$/.test(code)
+    || canonicalKeyboardCodes.has(code);
+}
+
+function normalizeKeyboardCodeAlias(code: string): string {
+  if (isCanonicalKeyboardCode(code)) {
+    return code;
+  }
+  if (/^[a-z]$/i.test(code)) {
+    return `Key${code.toUpperCase()}`;
+  }
+  if (/^[0-9]$/.test(code)) {
+    return `Digit${code}`;
+  }
+  return keyboardCodeAliases.get(code.toLowerCase()) ?? code;
 }
 
 function validateInputControlsSettings(diagnostics: IAuthoringDiagnostic[], file: string, value: unknown, actionIds: ReadonlySet<string>, axisIds: ReadonlySet<string>): void {
@@ -4212,6 +4360,7 @@ function validateInputControlsSettings(diagnostics: IAuthoringDiagnostic[], file
       diagnostics.push(missingReferenceDiagnostic(file, `${path}/actionOrAxisId`, "input axis", target, [...axisIds].sort()));
     }
     validateStringList(diagnostics, file, `${path}/defaultBindings`, row.defaultBindings, "controls settings defaultBindings must be non-empty binding strings.");
+    validateStructuredInputBindingList(diagnostics, file, `${path}/defaultBindings`, row.defaultBindings);
     validateOptionalString(diagnostics, file, `${path}/uiNodeId`, row.uiNodeId, "controls settings uiNodeId must be a non-empty UI node id.");
     if (row.captureState !== undefined) {
       validateEnumString(diagnostics, file, `${path}/captureState`, row.captureState, supportedInputCaptureStates, "controls settings capture state", "Use a supported capture state such as 'idle' or 'waiting-for-input'.");
@@ -4247,6 +4396,12 @@ function validateInputBindingOverrides(diagnostics: IAuthoringDiagnostic[], file
     }
     validateEnumString(diagnostics, file, `${path}/device`, override.device, supportedInputOverrideDevices, "input override device", "Use 'keyboard', 'gamepad', 'pointer', or 'touch'.");
     validateRequiredString(diagnostics, file, `${path}/control`, override.control, "persisted binding override control must be a non-empty string.");
+    if (override.device === "keyboard") {
+      const control = readString(override.control);
+      if (control !== undefined) {
+        validateStructuredInputBindingString(diagnostics, file, `${path}/control`, `keyboard.${control}`);
+      }
+    }
     if (override.axisSlot !== undefined) {
       validateEnumString(diagnostics, file, `${path}/axisSlot`, override.axisSlot, supportedInputAxisSlots, "input override axis slot", "Use 'negative', 'positive', or 'value'.");
     }

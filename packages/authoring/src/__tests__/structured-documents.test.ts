@@ -69,13 +69,13 @@ test("loads mixed authoring source document family", async () => {
       schema: "threenative.input",
       version: "0.1.0",
       id: "kart-input",
-      actions: [{ id: "accelerate", bindings: ["keyboard.w"] }],
-      axes: [{ id: "MoveX", negative: ["keyboard.a"], positive: ["keyboard.d"], value: "gamepad.leftStickX" }],
+      actions: [{ id: "accelerate", bindings: ["keyboard.KeyW"] }],
+      axes: [{ id: "MoveX", negative: ["keyboard.KeyA"], positive: ["keyboard.KeyD"], value: "gamepad.leftStickX" }],
       controlsSettings: {
         profileId: "default",
-        rows: [{ actionOrAxisId: "accelerate", defaultBindings: ["keyboard.w"], kind: "action", uiNodeId: "settings.accelerate" }],
+        rows: [{ actionOrAxisId: "accelerate", defaultBindings: ["keyboard.KeyW"], kind: "action", uiNodeId: "settings.accelerate" }],
       },
-      persistedBindingOverrides: [{ actionOrAxisId: "accelerate", control: "KeyUp", device: "keyboard", profileId: "default", updatedAt: "2026-06-23T00:00:00.000Z" }],
+      persistedBindingOverrides: [{ actionOrAxisId: "accelerate", control: "ArrowUp", device: "keyboard", profileId: "default", updatedAt: "2026-06-23T00:00:00.000Z" }],
     });
     await writeSourceDocument(root, "content/environment/kart.environment.json", {
       schema: "threenative.environment-scene",
@@ -249,7 +249,7 @@ test("validates input axis source fields", async () => {
       schema: "threenative.input",
       version: "0.1.0",
       id: "kart-input",
-      axes: [{ id: "MoveX", negative: ["keyboard.a"], positive: [42], value: "" }],
+      axes: [{ id: "MoveX", negative: ["keyboard.KeyA"], positive: [42], value: "" }],
     });
 
     const result = await validateAuthoringProject({ projectPath: root });
@@ -271,10 +271,10 @@ test("validates input controls and override source metadata", async () => {
       schema: "threenative.input",
       version: "0.1.0",
       id: "kart-input",
-      actions: [{ id: "accelerate", bindings: ["keyboard.w"] }],
+      actions: [{ id: "accelerate", bindings: ["keyboard.KeyW"] }],
       controlsSettings: {
         profileId: "default",
-        rows: [{ actionOrAxisId: "Missing", defaultBindings: ["keyboard.w"], kind: "axis" }],
+        rows: [{ actionOrAxisId: "Missing", defaultBindings: ["keyboard.KeyW"], kind: "axis" }],
       },
       persistedBindingOverrides: [{ actionOrAxisId: "accelerate", control: "", device: "keyboard", profileId: "default", updatedAt: "" }],
     });

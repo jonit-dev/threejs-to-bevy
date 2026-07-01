@@ -70,6 +70,18 @@ implementation:
   tested so partial position patches preserve authored scale. Current scaffold
   evidence uses `structured-source-starter`; legacy visual starter templates
   are no longer project creation paths.
+- The playable authoring-loop hardening slice now treats keyboard input
+  spelling as an authoring/IR contract rather than a runtime surprise.
+  Structured source reports source-pointer normalization warnings for aliases,
+  emitted IR rejects non-canonical keyboard codes, and the compiler normalizes
+  supported aliases before web or Bevy consume the shared `input.ir.json`.
+  This is a cross-runtime contract guard; it does not add new Bevy-only input
+  capabilities.
+- `tn playtest` now provides web-runtime gameplay proof by injecting a
+  canonical keyboard code, sampling emitted-bundle effect-log Transform patches,
+  and reporting movement distance plus screenshot evidence. Native/Bevy
+  playtest injection is still pending, so this is marked as web proof rather
+  than Bevy parity.
 
 Unchecked rows below should remain unchecked until their V10 owner adds SDK/IR,
 validation, compiler, web, Bevy, conformance, docs, and artifact evidence, or

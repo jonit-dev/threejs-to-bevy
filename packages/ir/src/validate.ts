@@ -20,7 +20,7 @@ import {
   type IWorldEntity,
 } from "./types.js";
 import type { ISystemsIr } from "./systems.js";
-import { sortedPersistedBindingOverrides, type IInputIr, type IPersistedBindingOverrideIr, type InputBinding } from "./input.js";
+import { isCanonicalKeyboardCode, keyboardCodeSuggestion, sortedPersistedBindingOverrides, type IInputIr, type IPersistedBindingOverrideIr, type InputBinding } from "./input.js";
 import { validatePerformanceProfile } from "./performanceProfile.js";
 import { validateEnvironmentSceneIr } from "./environment.js";
 import { validateOverlaysIr } from "./overlays.js";
@@ -648,6 +648,16 @@ function validateBinding(binding: InputBinding, path: string, diagnostics: IIrDi
       code: "TN_IR_INPUT_GAMEPAD_UNSUPPORTED_V2",
       message: "Gamepad bindings are V3 scope and cannot be required by a V2 bundle.",
       path,
+    });
+  }
+  if (binding.device === "keyboard" && !isCanonicalKeyboardCode(binding.code)) {
+    const suggestion = keyboardCodeSuggestion(binding.code);
+    diagnostics.push({
+      code: "TN_INPUT_KEYBOARD_CODE_INVALID",
+      message: `Keyboard binding '${binding.code}' must use a canonical KeyboardEvent.code value.`,
+      path: `${path}/code`,
+      severity: "error",
+      suggestion: suggestion === undefined ? "Use a browser KeyboardEvent.code value such as KeyW, ArrowUp, Space, or Escape." : `Use '${suggestion}' instead of '${binding.code}'.`,
     });
   }
 }

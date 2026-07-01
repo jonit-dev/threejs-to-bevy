@@ -153,7 +153,7 @@ test("should dispatch existing structured source operations through the registry
       { action: "pause", id: "pause", label: "Pause", style: { backgroundColor: "#101820", color: "#ffffff", fontSize: 18, wrap: true }, type: "button" },
     ]);
     assert.deepEqual(input.actions, [{ bindings: ["keyboard.Space"], id: "jump" }]);
-    assert.deepEqual(input.axes, [{ id: "MoveX", negative: ["keyboard.a"], positive: ["keyboard.d"], value: "gamepad.leftStickX" }]);
+    assert.deepEqual(input.axes, [{ id: "MoveX", negative: ["keyboard.KeyA"], positive: ["keyboard.KeyD"], value: "gamepad.leftStickX" }]);
     assert.deepEqual(mesh.meshes, [{ id: "mesh.player", kind: "primitive", primitive: "sphere" }]);
     assert.deepEqual(prefab.entities[0]?.components, { RigidBody: { kind: "dynamic" } });
     assert.deepEqual(target.targets, ["desktop"]);

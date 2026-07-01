@@ -15,6 +15,7 @@ import { editorCommand } from "./commands/editor.js";
 import { helpCommand } from "./commands/help.js";
 import { modelTestCommand } from "./commands/modelTest.js";
 import { packageCommand } from "./commands/package.js";
+import { playtestCommand } from "./commands/playtest.js";
 import { navCommand, physicsCommand } from "./commands/physicsNav.js";
 import { sceneCommand } from "./commands/scene.js";
 import { animationCommand, audioCommand, environmentCommand, generatorCommand, inputCommand, materialCommand, meshCommand, particleCommand, prefabCommand, projectCommand, resourcesCommand, runtimeCommand, schemaCommand, systemCommand, targetCommand, uiCommand } from "./commands/sourceDocuments.js";
@@ -134,6 +135,11 @@ const commands: Record<string, ICommandDefinition> = {
     description: "Create a local desktop package artifact from a bundle.",
     implemented: true,
     usage: "tn package --target desktop --bundle <path> [--runtime bevy|webview] [--format portable|archive|installer] [--out <path>] [--json]",
+  },
+  playtest: {
+    description: "Run a web input proof and assert that a game entity responds.",
+    implemented: true,
+    usage: "tn playtest --project <path> --entity <id> --press <KeyboardEvent.code> --frames <n> [--expect-moved] [--json]",
   },
   particle: {
     description: "Add bounded particle emitter metadata to structured model asset source.",
@@ -336,6 +342,10 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
 
   if (commandName === "package") {
     return packageCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "playtest") {
+    return playtestCommand(normalizedArgv.slice(1));
   }
 
   if (commandName === "particle") {

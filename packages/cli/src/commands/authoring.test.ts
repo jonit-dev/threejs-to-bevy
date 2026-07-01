@@ -43,3 +43,50 @@ test("authoring command inspects and validates structured source documents", asy
     await rm(root, { force: true, recursive: true });
   }
 });
+
+test("authoring validate reports structured input binding diagnostics with source path", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-authoring-input-diagnostics-"));
+  try {
+    await mkdir(join(root, "content/input"), { recursive: true });
+    await writeFile(
+      join(root, "content/input/kart.input.json"),
+      `${JSON.stringify(
+        {
+          schema: "threenative.input",
+          version: "0.1.0",
+          id: "kart-input",
+          actions: [
+            { id: "accelerate", bindings: ["keyboard.w"] },
+            { id: "debug", bindings: ["keyboard.not-a-code"] },
+          ],
+        },
+        null,
+        2,
+      )}\n`,
+    );
+
+    const validate = await authoringCommand(["validate", "--project", root, "--json"]);
+    const payload = JSON.parse(validate.stdout) as {
+      diagnostics: Array<{ code: string; file?: string; path?: string; severity: string; suggestion?: string }>;
+      ok: boolean;
+    };
+
+    assert.equal(validate.exitCode, 1);
+    assert.equal(payload.ok, false);
+    assert.equal(payload.diagnostics.some((diagnostic) =>
+      diagnostic.code === "TN_INPUT_KEYBOARD_CODE_NORMALIZED"
+      && diagnostic.file === "content/input/kart.input.json"
+      && diagnostic.path === "/actions/0/bindings/0"
+      && diagnostic.severity === "warning"
+      && diagnostic.suggestion === "Update this binding to 'keyboard.KeyW' so source and emitted IR match."
+    ), true);
+    assert.equal(payload.diagnostics.some((diagnostic) =>
+      diagnostic.code === "TN_INPUT_KEYBOARD_CODE_INVALID"
+      && diagnostic.file === "content/input/kart.input.json"
+      && diagnostic.path === "/actions/1/bindings/0"
+      && diagnostic.severity === "error"
+    ), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});

@@ -474,8 +474,8 @@ test("prefab input and mesh operations write deterministic structured docs", asy
     const prefabComponent = await prefabCommand(["add-component", "kart", "VehiclePhysics", "--value", "{\"maxSpeed\":42}", "--project", root, "--json"]);
     const input = await inputCommand(["add-action", "kart", "accelerate", "--keys", "W,ArrowUp", "--project", root, "--json"]);
     const inputAxis = await inputCommand(["add-axis", "kart", "MoveX", "--negative-keys", "A,ArrowLeft", "--positive-keys", "D,ArrowRight", "--value", "gamepad.leftStickX", "--project", root, "--json"]);
-    const inputControls = await inputCommand(["set-controls", "kart", "--profile", "default", "--rows", "[{\"kind\":\"action\",\"actionOrAxisId\":\"accelerate\",\"defaultBindings\":[\"keyboard.w\"],\"uiNodeId\":\"settings.accelerate\"},{\"kind\":\"axis\",\"actionOrAxisId\":\"MoveX\",\"axisSlot\":\"positive\",\"defaultBindings\":[\"keyboard.d\"]}]", "--project", root, "--json"]);
-    const inputOverride = await inputCommand(["set-override", "kart", "accelerate", "--profile", "default", "--device", "keyboard", "--control", "KeyUp", "--updated-at", "2026-06-23T00:00:00.000Z", "--project", root, "--json"]);
+    const inputControls = await inputCommand(["set-controls", "kart", "--profile", "default", "--rows", "[{\"kind\":\"action\",\"actionOrAxisId\":\"accelerate\",\"defaultBindings\":[\"keyboard.KeyW\"],\"uiNodeId\":\"settings.accelerate\"},{\"kind\":\"axis\",\"actionOrAxisId\":\"MoveX\",\"axisSlot\":\"positive\",\"defaultBindings\":[\"keyboard.KeyD\"]}]", "--project", root, "--json"]);
+    const inputOverride = await inputCommand(["set-override", "kart", "accelerate", "--profile", "default", "--device", "keyboard", "--control", "ArrowUp", "--updated-at", "2026-06-23T00:00:00.000Z", "--project", root, "--json"]);
     const mesh = await meshCommand(["primitive", "mesh.kart.body", "--kind", "box", "--project", root, "--json"]);
     const customMesh = await meshCommand([
       "custom",
@@ -505,16 +505,16 @@ test("prefab input and mesh operations write deterministic structured docs", asy
     assert.equal(mesh.exitCode, 0);
     assert.equal(customMesh.exitCode, 0);
     assert.deepEqual(prefabDoc.entities, [{ components: { VehiclePhysics: { maxSpeed: 42 } }, id: "kart" }]);
-    assert.deepEqual(inputDoc.actions, [{ bindings: ["keyboard.w", "keyboard.ArrowUp"], id: "accelerate" }]);
-    assert.deepEqual(inputDoc.axes, [{ id: "MoveX", negative: ["keyboard.a", "keyboard.ArrowLeft"], positive: ["keyboard.d", "keyboard.ArrowRight"], value: "gamepad.leftStickX" }]);
+    assert.deepEqual(inputDoc.actions, [{ bindings: ["keyboard.KeyW", "keyboard.ArrowUp"], id: "accelerate" }]);
+    assert.deepEqual(inputDoc.axes, [{ id: "MoveX", negative: ["keyboard.KeyA", "keyboard.ArrowLeft"], positive: ["keyboard.KeyD", "keyboard.ArrowRight"], value: "gamepad.leftStickX" }]);
     assert.deepEqual(inputDoc.controlsSettings, {
       profileId: "default",
       rows: [
-        { actionOrAxisId: "accelerate", defaultBindings: ["keyboard.w"], kind: "action", uiNodeId: "settings.accelerate" },
-        { actionOrAxisId: "MoveX", axisSlot: "positive", defaultBindings: ["keyboard.d"], kind: "axis" },
+        { actionOrAxisId: "accelerate", defaultBindings: ["keyboard.KeyW"], kind: "action", uiNodeId: "settings.accelerate" },
+        { actionOrAxisId: "MoveX", axisSlot: "positive", defaultBindings: ["keyboard.KeyD"], kind: "axis" },
       ],
     });
-    assert.deepEqual(inputDoc.persistedBindingOverrides, [{ actionOrAxisId: "accelerate", control: "KeyUp", device: "keyboard", profileId: "default", updatedAt: "2026-06-23T00:00:00.000Z" }]);
+    assert.deepEqual(inputDoc.persistedBindingOverrides, [{ actionOrAxisId: "accelerate", control: "ArrowUp", device: "keyboard", profileId: "default", updatedAt: "2026-06-23T00:00:00.000Z" }]);
     assert.deepEqual(meshDoc.meshes, [{ id: "mesh.kart.body", kind: "primitive", primitive: "box" }]);
     assert.deepEqual(customMeshDoc.meshes, [{
       attributes: [{ itemSize: 3, name: "position", values: [0, 0, 0, 1, 0, 0, 0, 1, 0] }],
