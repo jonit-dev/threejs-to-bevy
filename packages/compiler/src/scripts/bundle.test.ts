@@ -122,6 +122,29 @@ test("should bundle supported script stdlib imports", () => {
   assert.match(result.code ?? "", /const system_kartArcadePhysics = \(context\) => Vec3\.round/);
 });
 
+test("should bundle supported racing kit imports", () => {
+  const result = bundleSystemScripts([
+    {
+      name: "rallyLoop",
+      script: {
+        exportName: "system_rallyLoop",
+        helperImports: [
+          {
+            imported: ["Track2D", "CheckpointRace"],
+            module: "@threenative/racing-kit",
+          },
+        ],
+        source: "(context) => CheckpointRace.hud({ checkpoint: 0, lap: 1, speed: Track2D.loop({ points: [[0,0,0]], width: 1 }).width })",
+      },
+    },
+  ]);
+
+  assert.deepEqual(result.diagnostics, []);
+  assert.match(result.code ?? "", /const Track2D = Object\.freeze/);
+  assert.match(result.code ?? "", /const CheckpointRace = Object\.freeze/);
+  assert.match(result.code ?? "", /const system_rallyLoop = \(context\) => CheckpointRace\.hud/);
+});
+
 test("should normalize method shorthand system functions", () => {
   const result = bundleSystemScripts([
     {

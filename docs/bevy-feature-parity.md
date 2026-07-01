@@ -163,15 +163,29 @@ remaining gaps by usefulness for building and shipping ordinary 3D games:
   `Quat`, and `TransformMath` helpers are injected into `scripts.bundle.js`,
   helper import metadata is recorded in `scripts.manifest.json`, and unsupported
   helper packages/import shapes are rejected with `TN_SCRIPT_UNSUPPORTED_IMPORT`.
-  This is compiler/docs evidence only until the remaining PRD phases add
-  context-helper runtime parity and web/Bevy helper-driven conformance gates.
+  `pnpm verify:scripting-helpers-lifecycle` records the focused helper import,
+  web playtest, and Bevy context-helper bridge evidence.
 - `P1` Core script context ergonomics now exist in SDK typings, web runtime
   context, and the Bevy QuickJS bridge for entity lookup, shallow resource
   state, clamped fixed delta, normalized one-axis input, and Transform facade
   read/write helpers. Focused compiler, web, and native tests prove
   helper-driven resource writes and Transform patches use existing diagnostics
-  and effect validation paths; aggregate conformance/release gate evidence is
-  still pending.
+  and effect validation paths; `pnpm verify:scripting-helpers-lifecycle`
+  carries the focused release evidence.
+- `P1` Script lifecycle authoring facade now lowers SDK
+  `scriptLifecycle(...)` declarations and structured-source `scriptLifecycles`
+  entries into existing portable schedules with source module/export refs.
+  Unsupported `onEnter`/`onExit` script hooks remain rejected until they can
+  lower to the promoted scene lifecycle contract. Current evidence is focused
+  SDK lifecycle tests, structured-source compiler build/manifest proof, and
+  `pnpm verify:scripting-helpers-lifecycle`.
+- `P1` Optional racing domain helpers now live outside core scripting in
+  `@threenative/racing-kit`. `Track2D` and `CheckpointRace` are pure,
+  compiler-bundled helper imports, and the `examples/racing-kit-rally`
+  structured-source proof uses local GLB assets plus stdlib/context/lifecycle
+  helpers. Current evidence is racing-kit unit tests, compiler helper-bundle
+  tests, CLI build, screenshot proof, web playtest movement, and the
+  `pnpm verify:scripting-helpers-lifecycle` Bevy helper-bridge step.
 - `P1` Hidden runtime changed-query diffing is promoted by
   `pnpm verify:runtime-query-diffing`, which compares web and Bevy component
   snapshot diffing for `changed: [...]` queries after command-buffer mutation

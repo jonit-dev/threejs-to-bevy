@@ -30,6 +30,7 @@ import {
   type CommandDeclaration,
   type IEcsDeclaration,
   type IQueryDeclaration,
+  type ISystemDeclaration,
   type SystemService,
 } from "@threenative/sdk";
 
@@ -125,7 +126,8 @@ function lowerSceneDocument(
   }
 
   const world = defineWorldModule({ entities: worldEntities, resources: worldResources });
-  for (const system of mergedSceneSystems(scene.systems ?? [], systemsMetadata)) {
+  const sceneLifecycleSystems = expandScriptLifecycles(scene.scriptLifecycles ?? [], scene.id);
+  for (const system of mergedSceneSystems([...sceneLifecycleSystems, ...(scene.systems ?? [])], systemsMetadata, scene.id)) {
     if (system.script === undefined) {
       continue;
     }
@@ -173,9 +175,12 @@ function lowerSceneDocument(
   });
 }
 
-function mergedSceneSystems(sceneSystems: readonly SourceSystem[], systemsMetadata: readonly SourceSystem[]): SourceSystem[] {
+function mergedSceneSystems(sceneSystems: readonly SourceSystem[], systemsMetadata: readonly SourceSystem[], sceneId: string): SourceSystem[] {
   const systems = new Map<string, SourceSystem>();
   for (const system of systemsMetadata) {
+    if (system.scene !== undefined && system.scene !== sceneId) {
+      continue;
+    }
     systems.set(system.id, system);
   }
   for (const system of sceneSystems) {
@@ -197,7 +202,8 @@ function systemDeclaration(schedule: string | undefined, id: string, options: Pa
   return fixedUpdate(id, options);
 }
 
-type SourceSystem = NonNullable<ISceneDocument["systems"]>[number];
+type SourceSystem = NonNullable<ISceneDocument["systems"]>[number] & { scene?: string };
+type SourceScriptLifecycle = NonNullable<ISceneDocument["scriptLifecycles"]>[number];
 
 function systemQueries(queries: SourceSystem["queries"]): IQueryDeclaration[] {
   const sourceQueries: NonNullable<SourceSystem["queries"]> = queries ?? [{ with: ["Transform"] }];
@@ -281,8 +287,58 @@ async function readStructuredSystems(projectPath: string): Promise<SourceSystem[
   const project = await loadAuthoringProject({ projectPath });
   return project.documents
     .filter((document) => document.kind === "systems" && readRecord(document.data) !== undefined)
-    .flatMap((document) => readRecordArray(readRecord(document.data)?.systems) as unknown as SourceSystem[])
+    .flatMap((document) => {
+      const data = readRecord(document.data);
+      return [
+        ...(readRecordArray(data?.systems) as unknown as SourceSystem[]),
+        ...expandScriptLifecycles(readRecordArray(data?.scriptLifecycles) as unknown as SourceScriptLifecycle[]),
+      ];
+    })
     .sort((left, right) => left.id.localeCompare(right.id));
+}
+
+function expandScriptLifecycles(lifecycles: readonly SourceScriptLifecycle[], owningScene?: string): SourceSystem[] {
+  return lifecycles.flatMap((lifecycle) => {
+    const scene = lifecycle.scene ?? owningScene;
+    return [
+      lifecycleSystem(lifecycle, "awake", "startup", scene),
+      lifecycleSystem(lifecycle, "fixedUpdate", "fixedUpdate", scene),
+      lifecycleSystem(lifecycle, "update", "update", scene),
+      lifecycleSystem(lifecycle, "lateUpdate", "postUpdate", scene),
+    ].filter((system): system is SourceSystem => system !== undefined);
+  });
+}
+
+function lifecycleSystem(
+  lifecycle: SourceScriptLifecycle,
+  key: "awake" | "fixedUpdate" | "lateUpdate" | "update",
+  schedule: ISystemDeclaration["schedule"],
+  scene: string | undefined,
+): SourceSystem | undefined {
+  const exportName = lifecycle[key];
+  if (exportName === undefined) {
+    return undefined;
+  }
+  return {
+    after: lifecycle.after,
+    before: lifecycle.before,
+    commands: lifecycle.commands,
+    eventReads: lifecycle.eventReads,
+    eventWrites: lifecycle.eventWrites,
+    id: `${lifecycle.id}.${key}`,
+    queries: lifecycle.queries,
+    reads: lifecycle.reads,
+    resourceReads: lifecycle.resourceReads,
+    resourceWrites: lifecycle.resourceWrites,
+    schedule,
+    script: {
+      export: exportName,
+      module: lifecycle.module,
+    },
+    services: lifecycle.services,
+    ...(scene === undefined ? {} : { scene }),
+    writes: lifecycle.writes,
+  };
 }
 
 function hasAuthoredRuntimeVisual(components: Record<string, unknown> | undefined): boolean {

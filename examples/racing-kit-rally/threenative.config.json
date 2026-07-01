@@ -1,0 +1,7 @@
+{
+  "schema": "threenative.project",
+  "version": "0.1.0",
+  "entry": "content/scenes/rally.scene.json",
+  "outDir": "dist/racing-kit-rally.bundle",
+  "template": "racing-kit-rally"
+}

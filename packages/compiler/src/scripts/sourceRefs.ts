@@ -6,7 +6,10 @@ import ts from "typescript";
 import type { ICompilerDiagnostic } from "../diagnostics.js";
 import { SUPPORTED_SCRIPT_HELPER_IMPORTS, type ISystemScriptSource, type SupportedScriptHelperImport } from "./bundle.js";
 
-const supportedScriptStdlibBindings = new Set(["NumberEx", "Quat", "TransformMath", "Vec3"]);
+const supportedScriptHelperBindings: Record<SupportedScriptHelperImport, ReadonlySet<string>> = {
+  "@threenative/racing-kit": new Set(["CheckpointRace", "Track2D"]),
+  "@threenative/script-stdlib": new Set(["NumberEx", "Quat", "TransformMath", "Vec3"]),
+};
 
 export interface IResolveSystemScriptSourcesResult<T extends ISystemScriptSource> {
   diagnostics: ICompilerDiagnostic[];
@@ -165,7 +168,7 @@ function resolveHelperImports(
       const specifier = readLiteralSpecifier(statement.moduleSpecifier);
       if (isSupportedScriptHelperImport(specifier)) {
         const imported = importedBindingNames(statement);
-        diagnostics.push(...diagnoseUnsupportedHelperImportBindings(systemName, module, exportName, statement, imported));
+        diagnostics.push(...diagnoseUnsupportedHelperImportBindings(systemName, module, exportName, specifier, statement, imported));
         imports.push({
           imported,
           module: specifier,
@@ -223,19 +226,21 @@ function diagnoseUnsupportedHelperImportBindings(
   systemName: string,
   module: string,
   exportName: string,
+  helperModule: SupportedScriptHelperImport,
   statement: ts.ImportDeclaration,
   imported: ReadonlyArray<string>,
 ): ICompilerDiagnostic[] {
   const clause = statement.importClause;
+  const supportedBindings = supportedScriptHelperBindings[helperModule];
   if (clause === undefined || clause.isTypeOnly) {
     return [];
   }
   const hasUnsupportedShape =
     clause.name !== undefined ||
     (clause.namedBindings !== undefined && !ts.isNamedImports(clause.namedBindings)) ||
-    imported.some((name) => !supportedScriptStdlibBindings.has(name)) ||
+    imported.some((name) => !supportedBindings.has(name)) ||
     (clause.namedBindings !== undefined && ts.isNamedImports(clause.namedBindings) && clause.namedBindings.elements.some((element) => element.propertyName !== undefined));
-  return hasUnsupportedShape ? [unsupportedHelperImportDiagnostic(systemName, module, exportName, "@threenative/script-stdlib")] : [];
+  return hasUnsupportedShape ? [unsupportedHelperImportDiagnostic(systemName, module, exportName, helperModule)] : [];
 }
 
 function mergeHelperImports(

@@ -1,0 +1,36 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "id": "rally-systems",
+  "scriptLifecycles": [
+    {
+      "id": "rally",
+      "scene": "rally",
+      "module": "src/scripts/rally.ts",
+      "awake": "awakeRally",
+      "fixedUpdate": "fixedUpdateRally",
+      "lateUpdate": "lateUpdateRally",
+      "queries": [
+        {
+          "with": [
+            "Transform"
+          ],
+          "orderBy": "id"
+        }
+      ],
+      "reads": [
+        "Transform"
+      ],
+      "resourceReads": [
+        "RallyState"
+      ],
+      "resourceWrites": [
+        "RallyState"
+      ],
+      "writes": [
+        "Transform"
+      ]
+    }
+  ],
+  "systems": []
+}

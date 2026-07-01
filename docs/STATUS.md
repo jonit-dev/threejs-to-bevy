@@ -168,9 +168,8 @@ and rejects unsupported helper packages/import shapes with
 `TN_SCRIPT_UNSUPPORTED_IMPORT`. Current evidence is
 `pnpm --filter @threenative/script-stdlib test`,
 `pnpm --filter @threenative/compiler build`, direct
-`packages/compiler/dist/scripts/{sourceRefs,bundle}.test.js` execution, and
-`pnpm check:docs`. Lifecycle facade, optional domain kits, and aggregate
-web/Bevy helper-driven conformance remain in the active PRD scope.
+`packages/compiler/dist/scripts/{sourceRefs,bundle}.test.js` execution,
+`pnpm check:docs`, and `pnpm verify:scripting-helpers-lifecycle`.
 
 The first core script context ergonomics are now implemented in the SDK types,
 web runtime context, and Bevy QuickJS bridge: `ctx.entity`,
@@ -182,9 +181,50 @@ fail through compiler diagnostics and the same runtime validators. Current
 focused evidence is `pnpm --filter @threenative/script-stdlib test`,
 `pnpm --filter @threenative/compiler test`,
 `pnpm --filter @threenative/runtime-web-three test`, and
-`cargo test -p threenative_runtime systems_host`.
-Lifecycle facade, optional domain kits, and aggregate conformance/release-gate
-promotion remain open PRD work.
+`cargo test -p threenative_runtime systems_host`. Release evidence is covered by
+`pnpm verify:scripting-helpers-lifecycle`, which runs a web playtest against the
+helper-driven rally bundle and the Bevy context-helper bridge test.
+
+The script lifecycle facade now exists for SDK and structured-source authoring:
+`scriptLifecycle(...)` plus `content/**` `scriptLifecycles` entries lower
+`awake`, `fixedUpdate`, `update`, and `lateUpdate` export refs to existing
+portable schedules while preserving source module/export refs in
+`scripts.manifest.json`. Unsupported scene hooks remain rejected with stable SDK
+and authoring diagnostics until the scene lifecycle contract supports them.
+Current focused evidence is
+`pnpm --filter @threenative/sdk build`, direct
+`packages/sdk/dist/scriptLifecycle.test.js` execution,
+`pnpm --filter @threenative/compiler build`, and direct
+`packages/compiler/dist/examples.test.js` execution. Optional domain kits,
+example rebuild, and release-gate promotion are covered by
+`pnpm verify:scripting-helpers-lifecycle`.
+
+The editor script code-mode slice now exposes guarded project-local script
+source operations for `src/scripts/**/*.ts`. The editor server can list, read,
+write, and scaffold script modules while rejecting traversal, non-TypeScript
+paths, `dist/**`, and generated `scripts.bundle.js` artifacts. The UI keeps
+script body editing in a separate code-mode panel from structured
+script-reference rows, and scaffolded exports attach through the existing
+`system.attach_script` operation. Current focused evidence is
+`pnpm --filter @threenative/editor typecheck` and
+`pnpm --filter @threenative/editor test`.
+
+The optional racing domain kit pilot is now implemented as
+`@threenative/racing-kit`, with pure `Track2D` loop-track helpers and
+`CheckpointRace` checkpoint/lap/HUD helpers. The compiler helper-import
+allowlist accepts named racing-kit imports, injects deterministic helper code
+into `scripts.bundle.js`, and keeps racing concepts out of core
+`ISystemContext`. `examples/racing-kit-rally` now builds from structured source
+using the stdlib, context helpers, lifecycle facade, racing kit, and the local
+GLB rally assets. Current evidence is `pnpm --filter @threenative/racing-kit
+test`, direct compiler script bundle/source-ref test execution,
+`pnpm tn build --project examples/racing-kit-rally`, `tn screenshot` proof with
+71 visible meshes and no diagnostics, and `tn playtest` moving `player.car`
+6.3642 units with `KeyW`. The focused release evidence is
+`pnpm verify:scripting-helpers-lifecycle`, which rebuilds the example, checks
+the emitted helper-import manifest and lifecycle schedules, runs the web
+playtest, and runs the Bevy context-helper bridge test. Its report lives at
+`tools/verify/artifacts/scripting-helpers-lifecycle/verification-report.json`.
 Target profile source commands now create/update `content/targets/*.target.json`
 for targets, budgets, and performance JSON, and compiler lowering uses those
 documents for `target.profile.json`.

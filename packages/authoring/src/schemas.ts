@@ -15,7 +15,7 @@ export const audioDocumentSchema = "threenative.audio";
 export const meshDocumentSchema = "threenative.meshes";
 export const generatorDocumentSchema = "threenative.generator-provenance";
 
-export const sceneDocumentKeys = new Set(["schema", "version", "id", "kind", "activation", "initial", "entities", "prefabs", "resources", "systems", "ui", "provenance"]);
+export const sceneDocumentKeys = new Set(["schema", "version", "id", "kind", "activation", "initial", "entities", "prefabs", "resources", "systems", "scriptLifecycles", "ui", "provenance"]);
 export const uiDocumentKeys = new Set(["schema", "version", "id", "nodes", "bindings", "provenance"]);
 export const materialDocumentKeys = new Set(["schema", "version", "id", "materials", "provenance"]);
 export const assetDocumentKeys = new Set(["schema", "version", "id", "assets", "provenance"]);
@@ -26,7 +26,7 @@ export const runtimeDocumentKeys = new Set(["schema", "version", "id", "renderer
 export const targetProfileDocumentKeys = new Set(["schema", "version", "id", "budgets", "performance", "targets", "provenance"]);
 export const resourcesDocumentKeys = new Set(["schema", "version", "id", "resources", "provenance"]);
 export const schemaDocumentKeys = new Set(["schema", "version", "id", "kind", "schemas", "provenance"]);
-export const systemsDocumentKeys = new Set(["schema", "version", "id", "systems", "provenance"]);
+export const systemsDocumentKeys = new Set(["schema", "version", "id", "systems", "scriptLifecycles", "provenance"]);
 export const prefabDocumentKeys = new Set(["schema", "version", "id", "entities", "provenance"]);
 export const audioDocumentKeys = new Set(["schema", "version", "id", "sounds", "provenance"]);
 export const meshDocumentKeys = new Set(["schema", "version", "id", "meshes", "provenance"]);
@@ -52,6 +52,28 @@ export const systemKeys = new Set([
 export const systemQueryKeys = new Set(["changed", "limit", "offset", "orderBy", "with", "without"]);
 export const systemCommandKeys = new Set(["child", "component", "components", "entity", "event", "kind", "parent", "prefab", "prefix"]);
 export const scriptReferenceKeys = new Set(["module", "export"]);
+export const scriptLifecycleKeys = new Set([
+  "after",
+  "awake",
+  "before",
+  "commands",
+  "eventReads",
+  "eventWrites",
+  "fixedUpdate",
+  "id",
+  "lateUpdate",
+  "module",
+  "onEnter",
+  "onExit",
+  "queries",
+  "reads",
+  "resourceReads",
+  "resourceWrites",
+  "scene",
+  "services",
+  "update",
+  "writes",
+]);
 export const uiKeys = new Set(["nodes", "bindings"]);
 export const uiNodeKeys = new Set(["id", "action", "label", "layout", "src", "style", "text", "type", "value"]);
 export const uiStyleKeys = new Set(["backgroundColor", "borderColor", "borderRadius", "borderWidth", "color", "fontSize", "fontWeight", "opacity", "textAlign", "textDecoration", "wrap"]);
@@ -136,6 +158,7 @@ export interface ISceneDocument {
   kind?: "credits" | "cutscene" | "level" | "loading" | "menu" | "overlay" | "system";
   prefabs?: IScenePrefab[];
   resources?: ISceneResource[];
+  scriptLifecycles?: ISceneScriptLifecycle[];
   systems?: ISceneSystem[];
   ui?: ISceneUi;
 }
@@ -205,6 +228,29 @@ export interface ISceneSystem {
 export interface IScriptReference {
   module: string;
   export: string;
+}
+
+export interface ISceneScriptLifecycle {
+  after?: string[];
+  awake?: string;
+  before?: string[];
+  commands?: ISceneSystemCommand[];
+  eventReads?: string[];
+  eventWrites?: string[];
+  fixedUpdate?: string;
+  id: string;
+  lateUpdate?: string;
+  module: string;
+  onEnter?: string;
+  onExit?: string;
+  queries?: ISceneSystemQuery[];
+  reads?: string[];
+  resourceReads?: string[];
+  resourceWrites?: string[];
+  scene?: string;
+  services?: string[];
+  update?: string;
+  writes?: string[];
 }
 
 export interface ISceneSystemQuery {
@@ -379,6 +425,7 @@ export interface ISystemsDocument {
   schema: typeof systemsDocumentSchema;
   version?: string;
   id: string;
+  scriptLifecycles?: ISceneScriptLifecycle[];
   systems?: ISceneSystem[];
 }
 

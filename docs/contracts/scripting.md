@@ -171,6 +171,18 @@ Validation rules:
 - Source script references must resolve to a project-relative TypeScript module
   and named export; the compiler records the source hash in
   `scripts.manifest.json`.
+- Portable scripts may import named helpers only from supported helper packages:
+  `@threenative/script-stdlib` for pure numeric/vector/quaternion/transform
+  helpers and `@threenative/racing-kit` for opt-in racing/checkpoint helpers.
+  Arbitrary npm packages, relative helper module graphs, default imports,
+  namespace imports, aliased imports, and re-exports are rejected before
+  runtime.
+- SDK `scriptLifecycle(...)` and structured-source `scriptLifecycles` entries
+  are authoring aliases only. `awake`, `fixedUpdate`, `update`, and
+  `lateUpdate` lower to ordinary `startup`, `fixedUpdate`, `update`, and
+  `postUpdate` systems with normal script module/export refs.
+- Lifecycle script hooks that cannot lower to the existing scene lifecycle
+  contract, currently `onEnter` and `onExit`, are rejected before runtime.
 - Generated script export names must be unique after sanitization.
 - `stage` must be a known portable schedule stage.
 - `reads` and `writes` must reference known components/resources.
@@ -204,6 +216,9 @@ Only named imports for the promoted helper objects are portable. Namespace,
 default, aliased, re-exported, relative, and arbitrary package helper imports
 are rejected because the portable bundle has to run the same way in web
 JavaScript and Bevy QuickJS.
+
+Use `pnpm verify:scripting-helpers-lifecycle` for the focused helper import,
+lifecycle lowering, rally example, web playtest, and Bevy helper-bridge proof.
 
 ## Data Transfer Model
 

@@ -57,6 +57,7 @@ import {
   sceneDocumentKeys,
   sceneDocumentSchema,
   scriptReferenceKeys,
+  scriptLifecycleKeys,
   systemsDocumentKeys,
   systemsDocumentSchema,
   targetProfileDocumentKeys,
@@ -3065,6 +3066,7 @@ async function validateSceneDocument(
   const prefabs = collectIds(diagnostics, file, "/prefabs", readArray(data.prefabs), "prefab", prefabKeys);
   const resources = collectIds(diagnostics, file, "/resources", readArray(data.resources), "resource", resourceKeys);
   const systems = collectIds(diagnostics, file, "/systems", readArray(data.systems), "system", systemKeys);
+  const scriptLifecycles = collectIds(diagnostics, file, "/scriptLifecycles", readArray(data.scriptLifecycles), "script lifecycle", scriptLifecycleKeys);
   const uiNodes = collectUiNodeIds(diagnostics, file, data.ui);
   const entities = collectEntityIds(diagnostics, file, data.entities);
 
@@ -3072,6 +3074,7 @@ async function validateSceneDocument(
   validatePrefabs(diagnostics, file, data.prefabs);
   validateResources(diagnostics, file, data.resources);
   await validateSystems(diagnostics, projectPath, file, data.systems, systems);
+  await validateScriptLifecycles(diagnostics, projectPath, file, data.scriptLifecycles, scriptLifecycles);
   validateUi(diagnostics, file, data.ui, uiNodes, resources);
 
   return sortAuthoringDiagnostics(diagnostics);
@@ -3225,7 +3228,9 @@ async function validateSystemsDocument(projectPath: string, file: string, data: 
   diagnostics.push(...unknownKeyDiagnostics(file, "", data, systemsDocumentKeys));
   validateDocumentHeader(diagnostics, file, data, systemsDocumentSchema, "systems document");
   const systems = collectIds(diagnostics, file, "/systems", readArray(data.systems), "system", systemKeys);
+  const scriptLifecycles = collectIds(diagnostics, file, "/scriptLifecycles", readArray(data.scriptLifecycles), "script lifecycle", scriptLifecycleKeys);
   await validateSystems(diagnostics, projectPath, file, data.systems, systems);
+  await validateScriptLifecycles(diagnostics, projectPath, file, data.scriptLifecycles, scriptLifecycles);
   return sortAuthoringDiagnostics(diagnostics);
 }
 
@@ -3884,6 +3889,67 @@ async function validateSystems(
     }
     validateSystemQueries(diagnostics, file, `${path}/queries`, system.queries);
     validateSystemCommands(diagnostics, file, `${path}/commands`, system.commands);
+  }
+}
+
+async function validateScriptLifecycles(
+  diagnostics: IAuthoringDiagnostic[],
+  projectPath: string,
+  file: string,
+  value: unknown,
+  _scriptLifecycleIds: readonly string[],
+): Promise<void> {
+  const lifecycles = readArray(value);
+  if (value !== undefined && lifecycles === undefined) {
+    diagnostics.push(typeDiagnostic(file, "/scriptLifecycles", "scriptLifecycles must be an array.", value));
+    return;
+  }
+
+  for (const [index, lifecycle] of lifecycles?.entries() ?? []) {
+    if (!isRecord(lifecycle)) {
+      continue;
+    }
+    const path = `/scriptLifecycles/${index}`;
+    validateRequiredString(diagnostics, file, `${path}/module`, lifecycle.module, "script lifecycle module must be a non-empty path.");
+    validateOptionalString(diagnostics, file, `${path}/scene`, lifecycle.scene, "script lifecycle scene must be a non-empty scene id.");
+    if (lifecycle.onEnter !== undefined || lifecycle.onExit !== undefined) {
+      diagnostics.push(
+        authoringDiagnostic({
+          code: "TN_AUTHORING_SCRIPT_LIFECYCLE_HOOK_UNSUPPORTED",
+          file,
+          message: "Script lifecycle onEnter/onExit hooks are not supported until they can lower to the scene lifecycle contract.",
+          path: lifecycle.onEnter !== undefined ? `${path}/onEnter` : `${path}/onExit`,
+          suggestion: "Use awake, fixedUpdate, update, or lateUpdate script exports.",
+        }),
+      );
+    }
+
+    const exports = ["awake", "fixedUpdate", "update", "lateUpdate"] as const;
+    let hasSupportedExport = false;
+    for (const key of exports) {
+      validateOptionalString(diagnostics, file, `${path}/${key}`, lifecycle[key], `script lifecycle ${key} export must be a non-empty name.`);
+      if (readString(lifecycle[key]) !== undefined) {
+        hasSupportedExport = true;
+        await validateScriptReference(diagnostics, projectPath, file, `${path}/${key}`, { module: lifecycle.module, export: lifecycle[key] });
+      }
+    }
+    if (!hasSupportedExport) {
+      diagnostics.push(
+        authoringDiagnostic({
+          code: "TN_AUTHORING_SCRIPT_LIFECYCLE_EMPTY",
+          file,
+          message: "Script lifecycle must declare at least one supported lifecycle export.",
+          path,
+          suggestion: "Add awake, fixedUpdate, update, or lateUpdate.",
+        }),
+      );
+    }
+
+    for (const key of systemStringListMetadataKeys) {
+      validateStringList(diagnostics, file, `${path}/${key}`, lifecycle[key], `script lifecycle ${key} must be an array of non-empty strings.`);
+    }
+    validateSystemQueries(diagnostics, file, `${path}/queries`, lifecycle.queries);
+    validateSystemCommands(diagnostics, file, `${path}/commands`, lifecycle.commands);
   }
 }
 

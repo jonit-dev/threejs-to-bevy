@@ -162,6 +162,15 @@ unsupported.
 - [x] `tn create --template structured-source-starter` starter template.
 - [x] `defineScene()`, `sceneTransition.*`, and
   `defineGame({ scenes, initialScene })` lifecycle scene composition.
+- [x] `scriptLifecycle({ module, awake, fixedUpdate, update, lateUpdate })`
+  authoring facade. The SDK and structured-source compiler lower lifecycle
+  export names to ordinary `startup`, `fixedUpdate`, `update`, and
+  `postUpdate` systems while preserving source module/export refs in
+  `scripts.manifest.json`.
+- [ ] Unsupported `scriptLifecycle` `onEnter`/`onExit` script hooks until they
+  can lower to the promoted scene lifecycle contract. SDK declarations throw
+  `TN_SDK_SCRIPT_LIFECYCLE_HOOK_UNSUPPORTED`; structured source reports
+  `TN_AUTHORING_SCRIPT_LIFECYCLE_HOOK_UNSUPPORTED`.
 - [x] ECS tags as queryable zero-field marker components.
 - [x] Scene `Group` containers as hierarchy-only `SceneContainer` entities.
 - [x] Runtime prefab instantiation through `ctx.commands.instantiate(...)`.
@@ -195,6 +204,28 @@ scripts. Do not copy local `clamp`, vector, quaternion, `lookAt`, or transform
 parsing helpers into each script unless the helper is truly one-off and has no
 supported stdlib equivalent.
 
+### Optional Domain Kits
+
+- [x] Named imports from `@threenative/racing-kit` are supported for opt-in,
+  pure racing helpers. The initial surface exposes `Track2D` and
+  `CheckpointRace`.
+- [x] `Track2D.loop({ points, width })`, `track.contains2d(position)`, and
+  `track.pointAtPhase(phase)` provide data-first 2D loop-track helpers.
+- [x] `CheckpointRace.advance(state, position, checkpoints, options)` and
+  `CheckpointRace.hud(state)` provide checkpoint/lap state helpers without
+  adding racing concepts to `ISystemContext`.
+- [x] Compiler script source resolution accepts the racing-kit import path,
+  bundles helper declarations into `scripts.bundle.js`, and records helper
+  import metadata in `scripts.manifest.json`.
+
+Domain kits are opt-in packages. They must stay pure, deterministic, and
+data-driven; engine APIs such as `ctx.input`, `ctx.entity`, resources, and
+transform writes remain in the core script context.
+
+The focused evidence gate for stdlib imports, optional racing-kit imports,
+lifecycle lowering, the rally example, web playtest behavior, and the Bevy
+context-helper bridge is `pnpm verify:scripting-helpers-lifecycle`.
+
 ### Intentionally Unsupported Or Non-Portable
 
 - [ ] Unsupported direct Three.js, Bevy, renderer, DOM, filesystem, network,
@@ -202,7 +233,8 @@ supported stdlib equivalent.
 - [ ] Unsupported arbitrary npm dependencies in portable scripts.
 - [ ] Unsupported namespace, default, aliased, re-exported, relative, or
   arbitrary package helper imports in portable scripts; use named
-  `@threenative/script-stdlib` imports for promoted helpers.
+  `@threenative/script-stdlib` or `@threenative/racing-kit` imports for
+  promoted helpers.
 - [ ] Unsupported unbounded async/await, promises, workers, and unrestricted
   async timers in systems; bounded fixed-trace tasks/channels and deterministic
   timer helpers are the portable subset.

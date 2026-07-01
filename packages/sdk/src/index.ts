@@ -209,6 +209,10 @@ export {
   type SceneTransitionKind,
 } from "./sceneLifecycle.js";
 export {
+  scriptLifecycle,
+  type IScriptLifecycleOptions,
+} from "./scriptLifecycle.js";
+export {
   gltfNodeHandle,
   gltfSceneHandles,
   lookupGltfNodeExtras,

@@ -172,6 +172,22 @@ export const FOCUSED_GATES: Record<string, FocusedGate> = {
       protects: "Hidden runtime changed-query diffing, ordering/pagination semantics, and web/Bevy query parity.",
     },
   },
+  "verify:scripting-helpers-lifecycle": {
+    commands: [
+      ["pnpm", "--filter", "@threenative/sdk", "build"],
+      ["pnpm", "--filter", "@threenative/compiler", "build"],
+      ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+      ["pnpm", "--filter", "@threenative/cli", "build"],
+      ["node", "scripts/verify-scripting-helpers-lifecycle.mjs"],
+    ],
+    description: "Scripting helper imports, lifecycle facade, and racing example gate.",
+    metadata: {
+      owner: "tools/verify scripting-helpers-lifecycle gate",
+      profile: "focused",
+      reason: "Aggregates SDK lifecycle lowering, compiler helper import bundling, web playtest evidence, and Bevy context-helper bridge evidence for portable scripting ergonomics.",
+      protects: "Portable script helper imports, lifecycle alias schedules, context helper parity, and structured-source domain example rebuilds.",
+    },
+  },
   "verify:ui-persistence-settings-facades": {
     commands: [
       ["pnpm", "--filter", "@threenative/ir", "build"],
@@ -297,6 +313,7 @@ const RELEASE_PROFILE_GATES = [
   "verify:runtime-gameplay-host",
   "verify:runtime-prefabs-hierarchy",
   "verify:runtime-query-diffing",
+  "verify:scripting-helpers-lifecycle",
   "verify:ui-persistence-settings-facades",
   "verify:v9:assets-gltf-scene-workflow",
   "verify:v9:rendering-lights",

@@ -95,6 +95,7 @@ export async function checkDocs(root: string): Promise<DocsCheckResult> {
     });
   }
 
+  diagnostics.push(...(await checkScriptingHelperDocs(root, status, packageJson)));
   diagnostics.push(...(await checkDocsLayout(root, readme, status)));
 
   // @ts-expect-error legacy mjs gate consumed during typed-tools migration
@@ -115,6 +116,32 @@ export async function checkDocs(root: string): Promise<DocsCheckResult> {
   }
 
   return { diagnostics, ok: diagnostics.length === 0 };
+}
+
+async function checkScriptingHelperDocs(root: string, status: string, packageJson: string): Promise<VerificationDiagnostic[]> {
+  const diagnostics: VerificationDiagnostic[] = [];
+  const scripting = await readOptional(resolve(root, "docs/contracts/scripting.md"));
+  const scriptingApi = await readOptional(resolve(root, "docs/contracts/scripting-api.md"));
+
+  for (const [path, content, phrase, message] of [
+    ["docs/contracts/scripting.md", scripting, "@threenative/script-stdlib", "Scripting contract must document the portable script stdlib import path."],
+    ["docs/contracts/scripting.md", scripting, "@threenative/racing-kit", "Scripting contract must document the optional racing-kit helper import path."],
+    ["docs/contracts/scripting-api.md", scriptingApi, "@threenative/script-stdlib", "Scripting API contract must document the portable script stdlib import path."],
+    ["docs/contracts/scripting-api.md", scriptingApi, "@threenative/racing-kit", "Scripting API contract must document the optional racing-kit helper import path."],
+    ["docs/STATUS.md", status, "verify:scripting-helpers-lifecycle", "docs/STATUS.md must reference the scripting helper lifecycle focused gate."],
+    ["package.json", packageJson, '"verify:scripting-helpers-lifecycle"', "package.json must expose the scripting helper lifecycle focused gate."],
+  ] as const) {
+    if (content && !content.includes(phrase)) {
+      diagnostics.push({
+        code: "TN_DOCS_SCRIPTING_HELPER_PHRASE_MISSING",
+        message,
+        path,
+        severity: "error",
+      });
+    }
+  }
+
+  return diagnostics;
 }
 
 const REQUIRED_DOC_GROUPS = [

@@ -47,6 +47,11 @@ This index separates current cleanup work from historical milestone batches.
 - [Script Module References and Manifest](done/other/script-module-references-and-manifest.md):
   source module/export script refs, generated script manifest, collision
   diagnostics, helper import policy, and generated-script source boundaries.
+- [Portable Scripting Ergonomics, Stdlib, and Lifecycle Facade](done/other/portable-scripting-ergonomics-stdlib-and-lifecycle.md):
+  core script context ergonomics, importable pure helper stdlib, opt-in domain
+  kits, lifecycle authoring aliases, helper import bundling, and web/Bevy
+  conformance evidence so future scripts do not carry local mini-standard
+  libraries.
 - [TypeScript Authoring Facade and Script Ergonomics](done/other/typescript-authoring-facade-and-script-ergonomics.md):
   TypeScript ergonomics over the shared authoring operation registry, one-way
   generators, recipes, script helper integration, and editor code mode while

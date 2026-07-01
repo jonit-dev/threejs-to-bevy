@@ -368,12 +368,12 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add pure helper implementations for `NumberEx`, `Vec3`, `Quat`, and
+- [x] Add pure helper implementations for `NumberEx`, `Vec3`, `Quat`, and
   `TransformMath`.
-- [ ] Support `@threenative/script-stdlib` imports in source-referenced scripts.
-- [ ] Keep arbitrary npm, relative helper imports outside the source module
+- [x] Support `@threenative/script-stdlib` imports in source-referenced scripts.
+- [x] Keep arbitrary npm, relative helper imports outside the source module
   graph, DOM, Node, timers, network, and platform globals rejected.
-- [ ] Record helper import metadata in `scripts.manifest.json` or equivalent
+- [x] Record helper import metadata in `scripts.manifest.json` or equivalent
   diagnostics metadata.
 
 **Tests Required:**
@@ -409,14 +409,14 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add `ctx.entity(id)` and `ctx.entities.byId(map)`.
-- [ ] Add `ctx.state(key, defaults)` resource facade with explicit save/commit
+- [x] Add `ctx.entity(id)` and `ctx.entities.byId(map)`.
+- [x] Add `ctx.state(key, defaults)` resource facade with explicit save/commit
   semantics or automatic end-of-system persistence.
-- [ ] Add `ctx.time.fixedDelta(options)`.
-- [ ] Add `ctx.input.axis1(axis, buttons)`.
-- [ ] Add entity `transform()` facade for `positionOr`, `yawOr`, `setPosition`,
+- [x] Add `ctx.time.fixedDelta(options)`.
+- [x] Add `ctx.input.axis1(axis, buttons)`.
+- [x] Add entity `transform()` facade for `positionOr`, `yawOr`, `setPosition`,
   `setRotation`, and `setPose`.
-- [ ] Ensure every write still flows through existing resource/component write
+- [x] Ensure every write still flows through existing resource/component write
   validation.
 
 **Tests Required:**
@@ -449,13 +449,13 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add `scriptLifecycle(...)` with `awake`, `fixedUpdate`, `update`,
+- [x] Add `scriptLifecycle(...)` with `awake`, `fixedUpdate`, `update`,
   `lateUpdate`, `onEnter`, and `onExit` export refs.
-- [ ] Lower supported names to `startup`, `fixedUpdate`, `update`,
+- [x] Lower supported names to `startup`, `fixedUpdate`, `update`,
   `postUpdate`, and scene lifecycle metadata where available.
-- [ ] Reject unknown lifecycle names and unsupported scene hook semantics with
+- [x] Reject unknown lifecycle names and unsupported scene hook semantics with
   stable diagnostics.
-- [ ] Preserve system IDs, source module/export refs, schedule ordering, reads,
+- [x] Preserve system IDs, source module/export refs, schedule ordering, reads,
   writes, services, commands, and scene ownership metadata.
 
 **Tests Required:**
@@ -488,12 +488,12 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Add data-first racing helpers for looped paths, 2D containment, phase
+- [x] Add data-first racing helpers for looped paths, 2D containment, phase
   sampling, checkpoint progression, and HUD formatting if needed.
-- [ ] Keep helpers pure and opt-in.
-- [ ] Update one maintained example or template script to prove reduced script
+- [x] Keep helpers pure and opt-in.
+- [x] Update one maintained example or template script to prove reduced script
   bloat.
-- [ ] Do not add racing concepts to `ISystemContext`.
+- [x] Do not add racing concepts to `ISystemContext`.
 
 **Tests Required:**
 
@@ -523,13 +523,13 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Document the core/std/domain layering rule.
-- [ ] Document supported helper import paths and rejected imports.
-- [ ] Add web/Bevy fixed-trace conformance for stdlib, context helpers, and
+- [x] Document the core/std/domain layering rule.
+- [x] Document supported helper import paths and rejected imports.
+- [x] Add web/Bevy fixed-trace conformance for stdlib, context helpers, and
   lifecycle lowering.
-- [ ] Add docs checks so promoted helper APIs cannot drift from SDK/runtime
+- [x] Add docs checks so promoted helper APIs cannot drift from SDK/runtime
   implementation.
-- [ ] Update release evidence anchors because this is a capability/release-gate
+- [x] Update release evidence anchors because this is a capability/release-gate
   change.
 
 **Tests Required:**
@@ -580,21 +580,21 @@ sequenceDiagram
 
 ## 7. Acceptance Criteria
 
-- [ ] Scripts can import `@threenative/script-stdlib` helpers through the real
+- [x] Scripts can import `@threenative/script-stdlib` helpers through the real
   script bundling path.
-- [ ] Unsupported imports still fail with stable `TN_SCRIPT_*` diagnostics.
-- [ ] `ctx.entity`, `ctx.entities.byId`, `ctx.state`, `ctx.time.fixedDelta`,
+- [x] Unsupported imports still fail with stable `TN_SCRIPT_*` diagnostics.
+- [x] `ctx.entity`, `ctx.entities.byId`, `ctx.state`, `ctx.time.fixedDelta`,
   `ctx.input.axis1`, and transform facade helpers exist in web and Bevy hosts.
-- [ ] All helper writes use the existing effect validation paths.
-- [ ] Lifecycle facade declarations lower to existing portable schedules and
+- [x] All helper writes use the existing effect validation paths.
+- [x] Lifecycle facade declarations lower to existing portable schedules and
   source module/export refs.
-- [ ] At least one rally-like script is rewritten to remove local standard
+- [x] At least one rally-like script is rewritten to remove local standard
   library code while preserving effect logs.
-- [ ] Optional racing helpers remain outside core scripting.
-- [ ] Docs explain the three-layer rule: core context, stdlib, domain kit.
-- [ ] `docs/STATUS.md` and `docs/bevy-feature-parity.md` are updated when the
+- [x] Optional racing helpers remain outside core scripting.
+- [x] Docs explain the three-layer rule: core context, stdlib, domain kit.
+- [x] `docs/STATUS.md` and `docs/bevy-feature-parity.md` are updated when the
   capability is implemented.
-- [ ] Conformance and release gates include web/Bevy evidence for the promoted
+- [x] Conformance and release gates include web/Bevy evidence for the promoted
   helper surface.
 
 ## 8. Open Questions

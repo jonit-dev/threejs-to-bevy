@@ -36,6 +36,7 @@ test("release gate should report failed typed step diagnostics", async () => {
 
 test("release gate should keep focused gate artifact contracts", () => {
   assert.ok(RELEASE_FOCUSED_GATES.some((gate) => gate.script === "verify:bundle-safety-hardening"));
+  assert.ok(RELEASE_FOCUSED_GATES.some((gate) => gate.script === "verify:scripting-helpers-lifecycle"));
   assert.ok(RELEASE_FOCUSED_GATES.every((gate) => gate.reportPath.endsWith(".json")));
 });
 

@@ -224,6 +224,99 @@ test("should emit structured source system metadata", async () => {
   }
 });
 
+test("should lower structured lifecycle script refs", async () => {
+  const projectPath = await mkdtemp(join(tmpdir(), "tn-structured-lifecycle-"));
+  try {
+    await cp(resolve(process.cwd(), "../../templates/structured-source-starter"), projectPath, { recursive: true });
+    const playerScriptPath = join(projectPath, "src/scripts/player.ts");
+    const originalPlayerScript = await readFile(playerScriptPath, "utf8");
+    await writeFile(
+      playerScriptPath,
+      `${originalPlayerScript}
+
+export function awakeRally(ctx: any): void {
+  ctx.resources.set("GameState", { countdown: "Ready" });
+}
+
+export function fixedUpdateRally(ctx: any): void {
+  for (const entity of ctx.query()) {
+    const transform = entity.get("Transform");
+    entity.patch("Transform", { position: transform.position ?? [0, 0.35, 0] });
+  }
+}
+
+export function updateRally(_ctx: any): void {}
+
+export function lateUpdateRally(_ctx: any): void {}
+`,
+    );
+    await writeFile(
+      join(projectPath, "content/systems/arena.systems.json"),
+      `${JSON.stringify({
+        schema: "threenative.systems",
+        version: "0.1.0",
+        id: "arena-systems",
+        scriptLifecycles: [
+          {
+            id: "rally",
+            scene: "arena",
+            module: "src/scripts/player.ts",
+            awake: "awakeRally",
+            fixedUpdate: "fixedUpdateRally",
+            update: "updateRally",
+            lateUpdate: "lateUpdateRally",
+            commands: [{ kind: "setComponent", entity: "player", component: "Transform" }],
+            queries: [{ with: ["Transform"], orderBy: "id" }],
+            reads: ["Transform"],
+            resourceWrites: ["GameState"],
+            writes: ["Transform"],
+          },
+        ],
+        systems: [],
+      }, null, 2)}\n`,
+    );
+
+    const { bundlePath } = await buildProject(projectPath);
+    const report = await validateBundle(bundlePath);
+    const systems = JSON.parse(await readFile(resolve(bundlePath, "systems.ir.json"), "utf8")) as {
+      systems: Array<{ commands?: Array<{ kind: string }>; name: string; resourceWrites?: string[]; schedule: string; script?: { exportName: string }; writes?: string[] }>;
+    };
+    const scriptsManifest = JSON.parse(await readFile(resolve(bundlePath, "scripts.manifest.json"), "utf8")) as {
+      systems: Array<{ source?: { export: string; module: string }; systemId: string }>;
+    };
+    const lifecycleSystems = systems.systems
+      .filter((system) => system.name.startsWith("rally."))
+      .map((system) => ({
+        commands: system.commands,
+        name: system.name,
+        resourceWrites: system.resourceWrites,
+        schedule: system.schedule,
+        writes: system.writes,
+      }));
+
+    assert.equal(report.ok, true);
+    assert.deepEqual(lifecycleSystems, [
+      { commands: [{ component: "Transform", entity: "player", kind: "setComponent" }], name: "rally.awake", resourceWrites: ["GameState"], schedule: "startup", writes: ["Transform"] },
+      { commands: [{ component: "Transform", entity: "player", kind: "setComponent" }], name: "rally.fixedUpdate", resourceWrites: ["GameState"], schedule: "fixedUpdate", writes: ["Transform"] },
+      { commands: [{ component: "Transform", entity: "player", kind: "setComponent" }], name: "rally.lateUpdate", resourceWrites: ["GameState"], schedule: "postUpdate", writes: ["Transform"] },
+      { commands: [{ component: "Transform", entity: "player", kind: "setComponent" }], name: "rally.update", resourceWrites: ["GameState"], schedule: "update", writes: ["Transform"] },
+    ]);
+    assert.deepEqual(
+      scriptsManifest.systems
+        .filter((system) => system.systemId.startsWith("rally."))
+        .map((system) => ({ exportName: system.source?.export, module: system.source?.module, systemId: system.systemId })),
+      [
+        { exportName: "awakeRally", module: "src/scripts/player.ts", systemId: "rally.awake" },
+        { exportName: "fixedUpdateRally", module: "src/scripts/player.ts", systemId: "rally.fixedUpdate" },
+        { exportName: "lateUpdateRally", module: "src/scripts/player.ts", systemId: "rally.lateUpdate" },
+        { exportName: "updateRally", module: "src/scripts/player.ts", systemId: "rally.update" },
+      ],
+    );
+  } finally {
+    await rm(projectPath, { force: true, recursive: true });
+  }
+});
+
 test("should emit structured source tags and groups", async () => {
   const projectPath = await mkdtemp(join(tmpdir(), "tn-structured-tags-groups-"));
   try {

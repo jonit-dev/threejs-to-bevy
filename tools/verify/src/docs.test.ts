@@ -106,7 +106,15 @@ Run \`pnpm verify:release\`.
   );
   await writeFile(
     join(root, "docs/STATUS.md"),
-    "# Status\n\nlegacy milestone names remain.\n\n[cleanup PRD](PRDs/archive/cleanup-versioned-debt.md)\n\n`pnpm verify:release`\n",
+    "# Status\n\nlegacy milestone names remain.\n\n[cleanup PRD](PRDs/archive/cleanup-versioned-debt.md)\n\n`pnpm verify:release`\n\n`verify:scripting-helpers-lifecycle`\n",
+  );
+  await writeFile(
+    join(root, "docs/contracts/scripting.md"),
+    "# Scripting\n\nSupported helper imports: `@threenative/script-stdlib` and `@threenative/racing-kit`.\n",
+  );
+  await writeFile(
+    join(root, "docs/contracts/scripting-api.md"),
+    "# Scripting API\n\nSupported helper imports: `@threenative/script-stdlib` and `@threenative/racing-kit`.\n",
   );
   await writeFile(
     join(root, "docs/workflows/developer-workflow.md"),
@@ -131,6 +139,7 @@ Run \`pnpm verify:release\`.
         "check:docs": "node tools/verify/dist/cli/check-docs.js",
         "verify:focused": "node tools/verify/dist/cli/run.js",
         "verify:release": "node tools/verify/dist/cli/release.js",
+        "verify:scripting-helpers-lifecycle": "node tools/verify/dist/cli/run.js verify:scripting-helpers-lifecycle",
       },
     }),
   );

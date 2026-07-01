@@ -1,0 +1,464 @@
+{
+  "schema": "threenative.scene",
+  "version": "0.1.0",
+  "id": "rally",
+  "kind": "level",
+  "activation": "exclusive",
+  "entities": [
+    {
+      "id": "terrain.infield",
+      "prefab": "prefab.terrain",
+      "transform": {
+        "position": [
+          0,
+          -0.08,
+          0
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          0
+        ],
+        "scale": [
+          30,
+          30,
+          1
+        ]
+      }
+    },
+    {
+      "id": "track.surface.main",
+      "prefab": "prefab.road.surface",
+      "transform": {
+        "position": [
+          0,
+          -0.055,
+          0
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          0
+        ],
+        "scale": [
+          7,
+          19,
+          1
+        ]
+      }
+    },
+    {
+      "id": "track.surface.cross",
+      "prefab": "prefab.road.surface",
+      "transform": {
+        "position": [
+          0,
+          -0.054,
+          0
+        ],
+        "rotation": [
+          -1.570796,
+          0,
+          1.570796
+        ],
+        "scale": [
+          7,
+          19,
+          1
+        ]
+      }
+    },
+    {
+      "id": "track.start",
+      "prefab": "prefab.road.start",
+      "transform": {
+        "position": [
+          0,
+          0,
+          -7.2
+        ],
+        "scale": [
+          1.7,
+          1,
+          1.7
+        ]
+      }
+    },
+    {
+      "id": "track.north",
+      "prefab": "prefab.road.straight.long",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1.7,
+          1,
+          2.4
+        ]
+      }
+    },
+    {
+      "id": "track.south",
+      "prefab": "prefab.road.straight.long",
+      "transform": {
+        "position": [
+          0,
+          0,
+          7.2
+        ],
+        "scale": [
+          1.7,
+          1,
+          2.4
+        ]
+      }
+    },
+    {
+      "id": "track.east",
+      "prefab": "prefab.road.straight",
+      "transform": {
+        "position": [
+          7.2,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          1.570796,
+          0
+        ],
+        "scale": [
+          1.7,
+          1,
+          2.2
+        ]
+      }
+    },
+    {
+      "id": "track.west",
+      "prefab": "prefab.road.straight",
+      "transform": {
+        "position": [
+          -2.15,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          1.570796,
+          0
+        ],
+        "scale": [
+          1.7,
+          1,
+          2.2
+        ]
+      }
+    },
+    {
+      "id": "marker.pylon.north",
+      "prefab": "prefab.pylon",
+      "transform": {
+        "position": [
+          -4.9,
+          0.05,
+          -6.5
+        ],
+        "scale": [
+          1.8,
+          1.8,
+          1.8
+        ]
+      }
+    },
+    {
+      "id": "marker.pylon.south",
+      "prefab": "prefab.pylon",
+      "transform": {
+        "position": [
+          4.9,
+          0.05,
+          6.5
+        ],
+        "scale": [
+          1.8,
+          1.8,
+          1.8
+        ]
+      }
+    },
+    {
+      "id": "player.car",
+      "prefab": "prefab.car.green",
+      "transform": {
+        "position": [
+          -2.5,
+          0.08,
+          -7
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          0.55,
+          0.55,
+          0.55
+        ]
+      }
+    },
+    {
+      "id": "rival.car",
+      "prefab": "prefab.car.red",
+      "transform": {
+        "position": [
+          2.5,
+          0.08,
+          -7
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          0.55,
+          0.55,
+          0.55
+        ]
+      }
+    },
+    {
+      "id": "finish.flag",
+      "prefab": "prefab.flag.checkers",
+      "transform": {
+        "position": [
+          -3.8,
+          0.2,
+          -8.3
+        ],
+        "scale": [
+          0.8,
+          0.8,
+          0.8
+        ]
+      }
+    },
+    {
+      "id": "stands.main",
+      "prefab": "prefab.grandstand",
+      "transform": {
+        "position": [
+          0,
+          0,
+          -12.5
+        ],
+        "rotation": [
+          0,
+          3.141593,
+          0
+        ],
+        "scale": [
+          1.35,
+          1.35,
+          1.35
+        ]
+      }
+    },
+    {
+      "id": "light.rig",
+      "prefab": "prefab.overhead.lights",
+      "transform": {
+        "position": [
+          0,
+          0,
+          -9.5
+        ],
+        "scale": [
+          1.2,
+          1.2,
+          1.2
+        ]
+      }
+    },
+    {
+      "id": "tree.northwest",
+      "prefab": "prefab.tree.small",
+      "transform": {
+        "position": [
+          -10,
+          0,
+          -8
+        ],
+        "scale": [
+          3.2,
+          3.2,
+          3.2
+        ]
+      }
+    },
+    {
+      "id": "tree.southeast",
+      "prefab": "prefab.tree.small",
+      "transform": {
+        "position": [
+          9,
+          0,
+          8
+        ],
+        "scale": [
+          3,
+          3,
+          3
+        ]
+      }
+    },
+    {
+      "id": "camera.main",
+      "transform": {
+        "position": [
+          0,
+          12,
+          17
+        ],
+        "rotation": [
+          -0.62,
+          0,
+          0
+        ]
+      },
+      "components": {
+        "camera": {
+          "mode": "perspective",
+          "fovY": 52,
+          "near": 0.05,
+          "far": 120
+        }
+      }
+    },
+    {
+      "id": "light.sun",
+      "transform": {
+        "position": [
+          -12,
+          18,
+          10
+        ]
+      },
+      "components": {
+        "Light": {
+          "kind": "directional",
+          "color": "#fff3d0",
+          "intensity": 3.2
+        }
+      }
+    },
+    {
+      "id": "light.ambient",
+      "components": {
+        "Light": {
+          "kind": "ambient",
+          "color": "#c9d7ff",
+          "intensity": 0.42
+        }
+      }
+    }
+  ],
+  "prefabs": [
+    {
+      "id": "prefab.terrain",
+      "primitive": "plane",
+      "color": "#1d2f24"
+    },
+    {
+      "id": "prefab.road.surface",
+      "primitive": "plane",
+      "color": "#3e3c35"
+    },
+    {
+      "id": "prefab.road.start",
+      "asset": "assets/roadStart.glb"
+    },
+    {
+      "id": "prefab.road.straight",
+      "asset": "assets/roadStraight.glb"
+    },
+    {
+      "id": "prefab.road.straight.long",
+      "asset": "assets/roadStraightLong.glb"
+    },
+    {
+      "id": "prefab.car.green",
+      "asset": "assets/raceCarGreen.glb"
+    },
+    {
+      "id": "prefab.car.red",
+      "asset": "assets/raceCarRed.glb"
+    },
+    {
+      "id": "prefab.flag.checkers",
+      "asset": "assets/flagCheckers.glb"
+    },
+    {
+      "id": "prefab.grandstand",
+      "asset": "assets/grandStand.glb"
+    },
+    {
+      "id": "prefab.overhead.lights",
+      "asset": "assets/overheadLights.glb"
+    },
+    {
+      "id": "prefab.pylon",
+      "asset": "assets/pylon.glb"
+    },
+    {
+      "id": "prefab.tree.small",
+      "asset": "assets/treeSmall.glb"
+    }
+  ],
+  "resources": [
+    {
+      "id": "RallyState",
+      "value": {
+        "checkpoint": 0,
+        "hud": "Lap 0 | Ready | 0 km/h",
+        "lap": 0,
+        "message": "Ready",
+        "rivalPhase": 0,
+        "speed": 0
+      }
+    }
+  ],
+  "systems": [],
+  "ui": {
+    "nodes": [
+      {
+        "id": "hud.rally",
+        "type": "text",
+        "text": "Lap 0 | Ready | 0 km/h",
+        "layout": {
+          "left": 32,
+          "top": 28,
+          "width": 540
+        },
+        "style": {
+          "backgroundColor": "#111827cc",
+          "color": "#f8fafc",
+          "fontSize": 24,
+          "fontWeight": "700",
+          "wrap": false
+        }
+      }
+    ],
+    "bindings": [
+      {
+        "node": "hud.rally",
+        "resource": "RallyState.hud"
+      }
+    ]
+  }
+}
