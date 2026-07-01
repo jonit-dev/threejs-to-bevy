@@ -3,10 +3,13 @@ import { resolve } from "node:path";
 import {
   dispatchAuthoringOperation,
   getAuthoringOperationDescriptor,
+  planAuthoringRecipe,
   type AuthoringOperationName,
+  type AuthoringRecipeId,
   type IAuthoringDiagnostic,
   type IAuthoringOperationArgumentDescriptor,
   type IAuthoringOperationResult,
+  type IAuthoringRecipePlanResult,
 } from "@threenative/authoring";
 import { SceneBuilder } from "./scene.js";
 
@@ -54,6 +57,8 @@ export interface IAuthoringClientDryRunResult {
 export interface IAuthoringClientProject {
   readonly projectPath: string;
   operation<TName extends AuthoringClientOperationName>(name: TName, args?: AuthoringClientOperationArgs): AuthoringClientTransaction;
+  planRecipe(recipeId: AuthoringRecipeId | string, args?: AuthoringClientOperationArgs): IAuthoringRecipePlanResult;
+  recipe(recipeId: AuthoringRecipeId | string, args?: AuthoringClientOperationArgs): AuthoringClientTransaction;
   scene(sceneId: string): SceneBuilder;
   transaction(): AuthoringClientTransaction;
 }
@@ -67,6 +72,19 @@ export class AuthoringClientProject implements IAuthoringClientProject {
 
   operation<TName extends AuthoringClientOperationName>(name: TName, args: AuthoringClientOperationArgs = {}): AuthoringClientTransaction {
     return this.transaction().operation(name, args);
+  }
+
+  planRecipe(recipeId: AuthoringRecipeId | string, args: AuthoringClientOperationArgs = {}): IAuthoringRecipePlanResult {
+    return planAuthoringRecipe({ args, projectPath: this.projectPath, recipeId });
+  }
+
+  recipe(recipeId: AuthoringRecipeId | string, args: AuthoringClientOperationArgs = {}): AuthoringClientTransaction {
+    const transaction = this.transaction();
+    const plan = this.planRecipe(recipeId, args);
+    for (const operation of plan.operations) {
+      transaction.operation(operation.name, operation.args);
+    }
+    return transaction;
   }
 
   scene(sceneId: string): SceneBuilder {

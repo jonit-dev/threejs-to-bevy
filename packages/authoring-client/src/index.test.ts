@@ -99,6 +99,23 @@ test("should support collecting multiple failed operation diagnostics when reque
   }
 });
 
+test("should expose authoring recipes as queued facade transactions", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-authoring-client-recipe-"));
+  try {
+    await writeScene(root, "arena");
+    const project = openProject(root);
+    const plan = project.planRecipe("health-bar", { sceneId: "arena", entityId: "player" });
+    const result = await project.recipe("health-bar", { sceneId: "arena", entityId: "player" }).commit();
+
+    assert.equal(plan.ok, true);
+    assert.deepEqual(plan.operations.map((operation) => operation.name), ["scene.add_resource", "scene.add_ui_node", "scene.bind_ui"]);
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.operations.map((operation) => operation.name), ["scene.add_resource", "scene.add_ui_node", "scene.bind_ui"]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 async function writeScene(root: string, sceneId: string): Promise<void> {
   await mkdir(join(root, "content", "scenes"), { recursive: true });
   await writeFile(

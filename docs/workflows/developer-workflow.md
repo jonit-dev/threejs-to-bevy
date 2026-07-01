@@ -152,6 +152,8 @@ tn scene set-transform <scene-id> <entity-id> --position x,y,z --rotation x,y,z 
 tn scene set-camera <scene-id> <camera-id> --mode third-person-follow --target <entity-id> --json
 tn scene attach-script <scene-id> <system-id> --module <path> --export <name> --json
 tn scene bind-ui <scene-id> <ui-node-id> --resource <resource.path> --json
+tn recipe third-person-controller --scene <scene-id> --entity <entity-id> --camera <camera-id> --dry-run --json
+tn recipe collectible --scene <scene-id> --entity <entity-id> --module src/scripts/collectible.ts --export collectible --json
 tn build
 tn package --target desktop
 tn verify
@@ -178,6 +180,12 @@ Command expectations:
   repair loops.
 - `tn scene inspect <scene-id> --json` returns source scene metadata such as the
   owning file and declared entity, prefab, resource, system, and UI node IDs.
+- `tn recipe <recipe-id> ... --dry-run --json` returns the composed
+  registry-backed operation plan for common objects without writing source.
+  Running the same command without `--dry-run` applies the operations through
+  the shared authoring registry. Current recipes are
+  `third-person-controller`, `collectible`, `trigger-zone`,
+  `kinematic-character`, and `health-bar`.
 - `tn scene add-entity`, `set-transform`, `set-camera`, `attach-script`, and
   `bind-ui` mutate supported structured source scenes only after preflight
   validation, then validate again before writing deterministic source JSON.

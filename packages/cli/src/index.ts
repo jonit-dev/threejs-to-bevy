@@ -17,6 +17,7 @@ import { modelTestCommand } from "./commands/modelTest.js";
 import { packageCommand } from "./commands/package.js";
 import { playtestCommand } from "./commands/playtest.js";
 import { navCommand, physicsCommand } from "./commands/physicsNav.js";
+import { recipeCommand } from "./commands/recipe.js";
 import { sceneCommand } from "./commands/scene.js";
 import { animationCommand, audioCommand, environmentCommand, generatorCommand, inputCommand, materialCommand, meshCommand, particleCommand, prefabCommand, projectCommand, resourcesCommand, runtimeCommand, schemaCommand, systemCommand, targetCommand, uiCommand } from "./commands/sourceDocuments.js";
 import { validateProject } from "./commands/validate.js";
@@ -140,6 +141,11 @@ const commands: Record<string, ICommandDefinition> = {
     description: "Run a web input proof and assert that a game entity responds.",
     implemented: true,
     usage: "tn playtest --project <path> --entity <id> --press <KeyboardEvent.code> --frames <n> [--expect-moved] [--json]",
+  },
+  recipe: {
+    description: "Apply composed registry-backed recipes for common game objects.",
+    implemented: true,
+    usage: "tn recipe <third-person-controller|collectible|trigger-zone|kinematic-character|health-bar> --scene <scene-id> --entity <entity-id> [--camera <camera-id>] [--module <path>] [--export <name>] [--dry-run] [--project <path>] [--json]",
   },
   particle: {
     description: "Add bounded particle emitter metadata to structured model asset source.",
@@ -346,6 +352,10 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
 
   if (commandName === "playtest") {
     return playtestCommand(normalizedArgv.slice(1));
+  }
+
+  if (commandName === "recipe") {
+    return recipeCommand(normalizedArgv.slice(1));
   }
 
   if (commandName === "particle") {

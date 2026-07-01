@@ -75,6 +75,20 @@ export type {
 } from "./importBundle.js";
 export { importBundle } from "./importBundle.js";
 export type {
+  AuthoringRecipeId,
+  IApplyAuthoringRecipeOptions,
+  IAuthoringRecipeApplyResult,
+  IAuthoringRecipeOperation,
+  IAuthoringRecipeOperationResult,
+  IAuthoringRecipePlanOptions,
+  IAuthoringRecipePlanResult,
+} from "./recipes.js";
+export {
+  applyAuthoringRecipe,
+  listAuthoringRecipeIds,
+  planAuthoringRecipe,
+} from "./recipes.js";
+export type {
   IAuthoringOperationContext,
   IAuthoringOperationResult,
   IAddEntityOptions,

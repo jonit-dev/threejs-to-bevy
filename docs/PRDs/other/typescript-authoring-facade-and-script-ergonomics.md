@@ -369,6 +369,14 @@ Notes:
 
 #### Phase 4: Recipes and Task-Level Commands - Common game objects require one command or one facade call.
 
+Status: Complete in this PRD slice. `@threenative/authoring` exposes a recipe
+registry that returns deterministic registry-backed operation plans for
+`third-person-controller`, `collectible`, `trigger-zone`,
+`kinematic-character`, and `health-bar`. `tn recipe ... --dry-run --json`
+returns the plan without writing, `tn recipe ... --json` applies the same
+operations, and `@threenative/authoring-client` exposes `planRecipe()` and
+`recipe()` helpers that queue the same operations into a facade transaction.
+
 **Files (max 5):**
 
 - `packages/authoring/src/recipes.ts` - composed operation recipes.
@@ -379,16 +387,16 @@ Notes:
 
 **Implementation:**
 
-- [ ] Add a small recipe registry with composed operation plans.
-- [ ] Start with high-leverage recipes:
+- [x] Add a small recipe registry with composed operation plans.
+- [x] Start with high-leverage recipes:
   - `third-person-controller`
   - `collectible`
   - `trigger-zone`
   - `kinematic-character`
   - `health-bar`
-- [ ] Return a plan before write when `--dry-run` is passed.
-- [ ] Keep recipes data-driven and source-persistable; no raw runtime handles.
-- [ ] Expose the same recipes through the TypeScript facade.
+- [x] Return a plan before write when `--dry-run` is passed.
+- [x] Keep recipes data-driven and source-persistable; no raw runtime handles.
+- [x] Expose the same recipes through the TypeScript facade.
 
 **Tests Required:**
 

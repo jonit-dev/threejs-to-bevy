@@ -67,6 +67,13 @@ references, resources, and UI bindings. `dryRun()` reports the registry-backed
 operation trace and argument-shape diagnostics without writing files. This
 facade is an authoring client for `content/**/*.json`, not a new durable
 TypeScript scene source model.
+Authoring recipes now provide task-level composed operation plans for
+`third-person-controller`, `collectible`, `trigger-zone`,
+`kinematic-character`, and `health-bar`. `tn recipe ... --dry-run --json`
+returns the registry operation plan, `tn recipe ... --json` applies it through
+the shared dispatcher, and `@threenative/authoring-client` exposes the same
+plans via `planRecipe()` / `recipe()` so TypeScript authoring keeps the same
+traceable source-mutation contract.
 
 The agent debugging workflow now has a stronger `tn doctor` gate. It checks
 package manager state, CLI dependency/local shim setup, required scripts,
