@@ -5,6 +5,12 @@ function __tnInvokeSystem(options) {
   const clone = (value) => value === undefined ? undefined : JSON.parse(JSON.stringify(value));
   const readVec3 = (value, fallback) => Array.isArray(value) ? [Number(value[0] ?? fallback[0]), Number(value[1] ?? fallback[1]), Number(value[2] ?? fallback[2])] : fallback;
   const readQuat = (value, fallback) => Array.isArray(value) ? [Number(value[0] ?? fallback[0]), Number(value[1] ?? fallback[1]), Number(value[2] ?? fallback[2]), Number(value[3] ?? fallback[3])] : fallback;
+  const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+  const yawFromQuat = (value, fallback) => {
+    const q = readQuat(value, [0, 0, 0, 1]);
+    const yaw = Math.atan2(2 * (q[3] * q[1] + q[2] * q[0]), 1 - 2 * (q[1] * q[1] + q[2] * q[2]));
+    return Number.isFinite(yaw) ? yaw : fallback;
+  };
   const normalForAxis = (axis, sign) => axis === 0 ? [sign, 0, 0] : (axis === 1 ? [0, sign, 0] : [0, 0, sign]);
   const round6 = (value) => Number(value.toFixed(6));
   const roundVec3 = (value) => [round6(value[0]), round6(value[1]), round6(value[2])];
@@ -887,6 +893,23 @@ function __tnInvokeSystem(options) {
       effects.services.push({ service: "ui.setValue", payload: { request: { node: nodeId, value: clone(value) }, result: clone(result) } });
       return clone(result);
     };
+  const transformFacade = (source) => ({
+    positionOr(fallback) {
+      return readVec3(source.components.Transform && source.components.Transform.position, fallback);
+    },
+    yawOr(fallback) {
+      return yawFromQuat(source.components.Transform && source.components.Transform.rotation, fallback);
+    },
+    setPosition(position) {
+      effects.patches.push({ entity: source.id, component: "Transform", value: { ...(source.components.Transform || {}), position: readVec3(position, [0, 0, 0]) } });
+    },
+    setRotation(rotation) {
+      effects.patches.push({ entity: source.id, component: "Transform", value: { ...(source.components.Transform || {}), rotation: readQuat(rotation, [0, 0, 0, 1]) } });
+    },
+    setPose(position, rotation) {
+      effects.patches.push({ entity: source.id, component: "Transform", value: { ...(source.components.Transform || {}), position: readVec3(position, [0, 0, 0]), rotation: readQuat(rotation, [0, 0, 0, 1]) } });
+    }
+  });
   const entities = data.entities.map((source) => ({
     id: source.id,
     components: clone(source.components),
@@ -902,10 +925,20 @@ function __tnInvokeSystem(options) {
     },
     set(component, value) {
       effects.patches.push({ entity: source.id, component: normalize(component), value: clone(value) });
+    },
+    transform() {
+      return transformFacade(source);
     }
   }));
   const context = {
-    time: data.time,
+    time: {
+      ...data.time,
+      fixedDelta(options = {}) {
+        const fallback = finiteNumber(options.fallback ?? data.time.dt, 0.016);
+        const raw = finiteNumber(data.time.fixedDt, finiteNumber(data.time.dt, fallback));
+        return clamp(raw, finiteNumber(options.min, 0), finiteNumber(options.max, Number.POSITIVE_INFINITY));
+      }
+    },
     random: createRandom(randomSeed),
     timers: createTimers(data.time.elapsed),
     assets: {
@@ -933,9 +966,27 @@ function __tnInvokeSystem(options) {
     },
     input: {
       action(name) { return !!data.input.actions[name]; },
+      axis1(name, buttons = {}) {
+        const axis = Number(data.input.axes[name] ?? 0);
+        const negative = buttons.negative === undefined ? 0 : (data.input.actions[buttons.negative] ? -1 : 0);
+        const positive = buttons.positive === undefined ? 0 : (data.input.actions[buttons.positive] ? 1 : 0);
+        return clamp(axis + negative + positive, -1, 1);
+      },
       axis(name) { return Number(data.input.axes[name] ?? 0); },
       pressed() { return false; },
       released() { return false; }
+    },
+    entity(id) {
+      return entities.find((entity) => entity.id === id);
+    },
+    entities: {
+      byId(ids) {
+        const result = {};
+        for (const key of Object.keys(ids || {})) {
+          result[key] = entities.find((entity) => entity.id === ids[key]);
+        }
+        return result;
+      }
     },
     ui: {
       activate(nodeId) { return uiActivate(String(nodeId)); },
@@ -987,6 +1038,18 @@ function __tnInvokeSystem(options) {
       set(name, value) {
         effects.resources.push({ resource: normalize(name), value: clone(value) });
       }
+    },
+    state(name, defaults = {}) {
+      const key = normalize(name);
+      const target = { ...clone(defaults), ...(data.resources[key] && typeof data.resources[key] === "object" ? clone(data.resources[key]) : {}) };
+      return new Proxy(target, {
+        set(object, property, value) {
+          if (typeof property !== "string") return false;
+          object[property] = clone(value);
+          effects.resources.push({ resource: key, value: clone(object) });
+          return true;
+        }
+      });
     },
     states: {
       get(id) {

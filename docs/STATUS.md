@@ -54,6 +54,19 @@ normal bundle.
 provides optional AI-facing wrappers for inspect/validate/mutate/build/
 screenshot/verify operations by delegating to the same `tn ... --json` command
 surface, with project-root and generated-artifact guardrails.
+`@threenative/authoring-client` now provides the first TypeScript facade slice
+over the same registry-backed authoring operations. `openProject(projectPath)`
+creates transaction objects that queue operation names and JSON arguments,
+dispatch through `@threenative/authoring` rather than duplicating mutation
+logic, and return an inspectable trace with per-operation results, diagnostics,
+written source files, stop-on-error behavior, and aggregate changed/ok status.
+The facade also exposes `project.scene(sceneId)` fluent helpers for common
+scene operations such as adding prefabs/entities, setting transforms, cameras,
+lights, mesh renderers, rigid bodies, colliders, character controllers, script
+references, resources, and UI bindings. `dryRun()` reports the registry-backed
+operation trace and argument-shape diagnostics without writing files. This
+facade is an authoring client for `content/**/*.json`, not a new durable
+TypeScript scene source model.
 
 The agent debugging workflow now has a stronger `tn doctor` gate. It checks
 package manager state, CLI dependency/local shim setup, required scripts,
@@ -149,8 +162,22 @@ and rejects unsupported helper packages/import shapes with
 `pnpm --filter @threenative/script-stdlib test`,
 `pnpm --filter @threenative/compiler build`, direct
 `packages/compiler/dist/scripts/{sourceRefs,bundle}.test.js` execution, and
-`pnpm check:docs`. Core context ergonomics, lifecycle facade, optional domain
-kits, and web/Bevy helper-driven conformance remain in the active PRD scope.
+`pnpm check:docs`. Lifecycle facade, optional domain kits, and aggregate
+web/Bevy helper-driven conformance remain in the active PRD scope.
+
+The first core script context ergonomics are now implemented in the SDK types,
+web runtime context, and Bevy QuickJS bridge: `ctx.entity`,
+`ctx.entities.byId`, `ctx.state`, `ctx.time.fixedDelta(...)`,
+`ctx.input.axis1(...)`, and entity `transform()` helpers for position/yaw reads
+plus pose/position/rotation writes. Helper writes lower to existing
+component/resource effects, so undeclared `Transform` and resource writes still
+fail through the same runtime validators. Current focused evidence is
+`pnpm --filter @threenative/sdk typecheck`,
+`pnpm --filter @threenative/runtime-web-three typecheck`, direct web
+`context`/`runner` test execution, and
+`cargo test -p threenative_runtime systems_host_should_expose_context_ergonomics_helpers`.
+Lifecycle facade, optional domain kits, and aggregate conformance/release-gate
+promotion remain open PRD work.
 Target profile source commands now create/update `content/targets/*.target.json`
 for targets, budgets, and performance JSON, and compiler lowering uses those
 documents for `target.profile.json`.

@@ -28,8 +28,51 @@ test("should expose fixed input trace", () => {
 
   assert.equal(context.input.action("MoveForward"), true);
   assert.equal(context.input.axis("MoveX"), 1);
+  assert.equal(context.input.axis1("MoveX", { negative: "Brake", positive: "MoveForward" }), 1);
   assert.equal(context.input.pressed("Jump"), true);
   assert.equal(context.time.fixedDt, 0.016);
+  assert.equal(context.time.fixedDelta({ fallback: 0.02, max: 0.01, min: 0.001 }), 0.01);
+});
+
+test("should look up entities by id deterministically", () => {
+  const { context } = createSystemContext(makeWorld(), { delta: 0.016, fixedDelta: 0.016 });
+
+  const player = context.entity("player");
+  const mapped = context.entities.byId({ camera: "camera.main", missing: "missing", player: "player" });
+
+  assert.equal(player?.id, "player");
+  assert.equal(mapped.player?.id, "player");
+  assert.equal(mapped.camera?.id, "camera.main");
+  assert.equal(mapped.missing, undefined);
+});
+
+test("should expose state and transform helper facades through existing effects", () => {
+  const world = makeWorld();
+  world.resources = { RallyState: { lap: 1, message: "Go" } };
+  const { commands, context, resources } = createSystemContext(world, { delta: 0.016, fixedDelta: 0.016 });
+  const player = context.entity("player");
+  assert.ok(player);
+
+  const state = context.state("RallyState", { lap: 0, message: "Ready", speed: 0 });
+  state.speed = 12;
+  const transform = player.transform();
+  transform.setPose([1, 2, 3], [0, 0.707107, 0, 0.707107]);
+
+  assert.deepEqual(transform.positionOr([9, 9, 9]), [0, 1, 0]);
+  assert.equal(Math.round(transform.yawOr(0) * 1000) / 1000, 0);
+  assert.deepEqual(resources, [{ resource: "RallyState", value: { lap: 1, message: "Go", speed: 12 } }]);
+  assert.deepEqual(commands, [
+    {
+      component: "Transform",
+      entity: "player",
+      kind: "setComponent",
+      source: "entity",
+      value: {
+        position: [1, 2, 3],
+        rotation: [0, 0.707107, 0, 0.707107],
+      },
+    },
+  ]);
 });
 
 test("should raycast primitive floor", () => {

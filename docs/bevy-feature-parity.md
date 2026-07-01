@@ -165,6 +165,12 @@ remaining gaps by usefulness for building and shipping ordinary 3D games:
   helper packages/import shapes are rejected with `TN_SCRIPT_UNSUPPORTED_IMPORT`.
   This is compiler/docs evidence only until the remaining PRD phases add
   context-helper runtime parity and web/Bevy helper-driven conformance gates.
+- `P1` Core script context ergonomics now exist in SDK typings, web runtime
+  context, and the Bevy QuickJS bridge for entity lookup, shallow resource
+  state, clamped fixed delta, normalized one-axis input, and Transform facade
+  read/write helpers. Focused web and native tests prove helper-driven resource
+  writes and Transform patches use existing effect validation paths; aggregate
+  conformance/release gate evidence is still pending.
 - `P1` Hidden runtime changed-query diffing is promoted by
   `pnpm verify:runtime-query-diffing`, which compares web and Bevy component
   snapshot diffing for `changed: [...]` queries after command-buffer mutation
@@ -654,6 +660,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] Editor document classification for source, generated, runtime, and derived snapshots
 - [x] Structured editor source patch validation over durable source documents
 - [x] Shared authoring operation registry for CLI/MCP/editor mutation adapters
+- [x] TypeScript authoring-client transaction and fluent scene facade over the shared operation registry, preserving structured source as the editable truth
 - [x] Registry-backed CLI source mutation for asset catalogs and audio sound documents
 - [x] Registry-backed CLI/editor source mutation for project metadata documents
 - [x] Registry-backed CLI/editor source mutation for reusable resources documents

@@ -95,6 +95,15 @@ export interface ISystemEntity {
   has(component: EcsFactory | IEcsSchema | string): boolean;
   patch(component: EcsFactory | IEcsSchema | string, value: Record<string, unknown>): void;
   set(component: EcsFactory | IEcsSchema | string, value: unknown): void;
+  transform(): ISystemTransformFacade;
+}
+
+export interface ISystemTransformFacade {
+  positionOr(fallback: readonly [number, number, number]): [number, number, number];
+  setPose(position: readonly [number, number, number], rotation: readonly [number, number, number, number]): void;
+  setPosition(position: readonly [number, number, number]): void;
+  setRotation(rotation: readonly [number, number, number, number]): void;
+  yawOr(fallback: number): number;
 }
 
 export interface ISystemContext {
@@ -147,8 +156,13 @@ export interface ISystemContext {
   };
   input: {
     action(name: string): boolean;
+    axis1(axis: string, buttons?: { negative?: string; positive?: string }): number;
     axis(name: string): number;
   };
+  entities: {
+    byId<T extends Record<string, string>>(ids: T): { [K in keyof T]: ISystemEntity | undefined };
+  };
+  entity(id: string): ISystemEntity | undefined;
   ui: {
     activate(nodeId: string): { accepted: boolean; action?: string; node: string; status: "activated" | "disabled" | "missing" | "no-action" };
     focus(nodeId: string): { accepted: boolean; current: string | null; previous: string | null; status: "focused" | "missing" | "not-focusable" };
@@ -324,8 +338,10 @@ export interface ISystemContext {
   time: {
     dt: number;
     elapsed: number;
+    fixedDelta(options?: { fallback?: number; max?: number; min?: number }): number;
     fixedDt: number;
   };
+  state<T extends Record<string, unknown>>(key: string, defaults: T): T;
 }
 
 export function defineSystem(config: IV4SystemConfig, run?: PortableSystem): ISystemDeclaration {

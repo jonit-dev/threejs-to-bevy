@@ -113,6 +113,28 @@ test("should reject undeclared component patch", async () => {
   assert.equal(world.entities[0]?.components.Health, undefined);
 });
 
+test("should reject transform facade writes without declared Transform access", async () => {
+  const world = makeWorld();
+  const systems = makeSystems("update", "movePlayer");
+  systems.systems[0]!.writes = [];
+
+  const result = await runSchedule({
+    module: {
+      systems: {
+        movePlayer(context: any) {
+          context.entity("player")?.transform().setPosition([1, 0, 0]);
+        },
+      },
+    },
+    schedule: "update",
+    systems,
+    world,
+  });
+
+  assert.equal(result.diagnostics[0]?.code, "TN_WEB_SYSTEM_WRITE_UNDECLARED");
+  assert.deepEqual(world.entities[0]?.components.Transform, { position: [0, 0, 0] });
+});
+
 test("should run systems apply despawn command after schedule", async () => {
   const world = makeWorld();
   const systems = makeSystems("update", "removePlayer");

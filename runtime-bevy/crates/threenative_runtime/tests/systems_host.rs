@@ -104,6 +104,31 @@ fn systems_host_should_apply_declared_resource_write() {
 }
 
 #[test]
+fn systems_host_should_expose_context_ergonomics_helpers() {
+    let root = write_context_ergonomics_bundle("context-ergonomics");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+
+    run_native_systems_once(&mut bundle, time()).expect("system should run");
+
+    assert_eq!(
+        bundle.world.resources.get("RallyState"),
+        Some(&serde_json::json!({
+            "camera": "camera.main",
+            "dt": 0.016,
+            "lap": 1,
+            "missing": true,
+            "speed": 1
+        }))
+    );
+    let transform = bundle.world.entities[0]
+        .components
+        .transform
+        .as_ref()
+        .expect("transform should still exist");
+    assert_eq!(transform.position, Some([1.0, 0.0, 0.0]));
+}
+
+#[test]
 fn systems_host_should_not_expose_forbidden_ambient_apis() {
     let root = write_ambient_api_probe_bundle("ambient-api-probe");
     let mut bundle = load_bundle(&root).expect("scripted bundle should load");
@@ -1888,6 +1913,79 @@ const system_movePlayer = (ctx) => {
 };
 export const systemIds = Object.freeze({ "system_movePlayer": "movePlayer" });
 export const systems = Object.freeze({ "system_movePlayer": system_movePlayer });
+"#,
+    )
+    .expect("script bundle should be written");
+    root
+}
+
+fn write_context_ergonomics_bundle(name: &str) -> PathBuf {
+    let root = root(name);
+    write_base_bundle(&root, true);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "resources": {
+    "RallyState": { "lap": 1, "speed": 0 }
+  },
+  "entities": [
+    {
+      "id": "player",
+      "components": {
+        "Transform": { "position": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+      }
+    },
+    {
+      "id": "camera.main",
+      "components": {
+        "Camera": { "kind": "perspective", "near": 0.1, "far": 100 },
+        "Transform": { "position": [0, 2, 5], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+      }
+    }
+  ]
+}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "ergonomics",
+      "schedule": "update",
+      "reads": ["Camera", "Transform"],
+      "writes": ["Transform"],
+      "queries": [{ "with": ["Transform"], "without": [] }],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": ["RallyState"],
+      "resourceWrites": ["RallyState"],
+      "services": [],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_ergonomics" }
+    }
+  ]
+}"#,
+    );
+    fs::write(
+        root.join("scripts.bundle.js"),
+        r#"const system_ergonomics = (ctx) => {
+  const player = ctx.entity("player");
+  const ids = ctx.entities.byId({ camera: "camera.main", missing: "missing" });
+  const state = ctx.state("RallyState", { lap: 0, speed: 0, dt: 0, missing: false, camera: "" });
+  state.speed = ctx.input.axis1("MoveX", { positive: "MoveForward" });
+  state.dt = ctx.time.fixedDelta({ fallback: 0.02, min: 0.001, max: 0.05 });
+  state.camera = ids.camera.id;
+  state.missing = ids.missing === undefined;
+  player.transform().setPosition([player.transform().positionOr([0, 0, 0])[0] + state.speed, 0, 0]);
+};
+export const systemIds = Object.freeze({ "system_ergonomics": "ergonomics" });
+export const systems = Object.freeze({ "system_ergonomics": system_ergonomics });
 "#,
     )
     .expect("script bundle should be written");

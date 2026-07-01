@@ -30,6 +30,15 @@ export interface ISystemEntityView {
   id: string;
   patch(component: unknown, value: Record<string, unknown>): void;
   set(component: unknown, value: unknown): void;
+  transform(): ISystemTransformFacade;
+}
+
+export interface ISystemTransformFacade {
+  positionOr(fallback: readonly [number, number, number]): [number, number, number];
+  setPose(position: readonly [number, number, number], rotation: readonly [number, number, number, number]): void;
+  setPosition(position: readonly [number, number, number]): void;
+  setRotation(rotation: readonly [number, number, number, number]): void;
+  yawOr(fallback: number): number;
 }
 
 export interface ISystemCommandBuffer {
@@ -79,10 +88,15 @@ export interface ISystemContext {
   };
   input: {
     action(name: string): boolean;
+    axis1(axis: string, buttons?: { negative?: string; positive?: string }): number;
     axis(name: string): number;
     pressed(name: string): boolean;
     released(name: string): boolean;
   };
+  entities: {
+    byId<T extends Record<string, string>>(ids: T): { [K in keyof T]: ISystemEntityView | undefined };
+  };
+  entity(id: string): ISystemEntityView | undefined;
   ui: {
     activate(nodeId: string): IUiActivateResult;
     focus(nodeId: string): IUiFocusResult;
@@ -162,10 +176,11 @@ export interface ISystemContext {
     delta: number;
     dt: number;
     elapsed: number;
-    fixedDelta: number;
+    fixedDelta(options?: { fallback?: number; max?: number; min?: number }): number;
     fixedDt: number;
     paused: boolean;
   };
+  state<T extends Record<string, unknown>>(key: string, defaults: T): T;
 }
 
 export interface IObserverPropagationStep {
@@ -321,6 +336,10 @@ export function createSystemContext(
   const scriptAudio = new ScriptAudioRuntimeController(options.audio);
   const persistence = options.persistence ?? createWebPersistenceService(options.localData ?? emptyLocalData());
   const ui = createScriptUiState(options.ui);
+  const findEntity = (id: string): ISystemEntityView | undefined => {
+    const entity = world.entities.find((candidate) => candidate.id === id);
+    return entity === undefined ? undefined : createEntityView(entity, commands);
+  };
   return {
     commands,
     context: {
@@ -477,6 +496,12 @@ export function createSystemContext(
         action(name) {
           return options.input?.action(name) ?? false;
         },
+        axis1(name, buttons = {}) {
+          const axis = options.input?.axis(name) ?? 0;
+          const negative = buttons.negative === undefined ? 0 : (options.input?.action(buttons.negative) ? -1 : 0);
+          const positive = buttons.positive === undefined ? 0 : (options.input?.action(buttons.positive) ? 1 : 0);
+          return clamp(axis + negative + positive, -1, 1);
+        },
         axis(name) {
           return options.input?.axis(name) ?? 0;
         },
@@ -486,6 +511,14 @@ export function createSystemContext(
         released(name) {
           return options.input?.released(name) ?? false;
         },
+      },
+      entities: {
+        byId(ids) {
+          return Object.fromEntries(Object.entries(ids).map(([key, id]) => [key, findEntity(id)])) as { [K in keyof typeof ids]: ISystemEntityView | undefined };
+        },
+      },
+      entity(id) {
+        return findEntity(id);
       },
       ui: {
         activate(nodeId) {
@@ -600,6 +633,22 @@ export function createSystemContext(
           resources.push({ resource: normalizeHandleName(name), value: cloneValue(value) });
         },
       },
+      state(key, defaults) {
+        const initial = {
+          ...cloneValue(defaults) as Record<string, unknown>,
+          ...(isRecord(world.resources?.[key]) ? cloneValue(world.resources?.[key]) as Record<string, unknown> : {}),
+        };
+        return new Proxy(initial, {
+          set(target, property, value) {
+            if (typeof property === "string") {
+              target[property] = cloneValue(value);
+              resources.push({ resource: normalizeHandleName(key), value: cloneValue(target) });
+              return true;
+            }
+            return false;
+          },
+        }) as typeof defaults;
+      },
       settings: {
         export() {
           const result = persistence.exportSettings();
@@ -695,7 +744,11 @@ export function createSystemContext(
         delta: options.delta,
         dt: options.delta,
         elapsed: options.elapsed ?? 0,
-        fixedDelta: options.fixedDelta,
+        fixedDelta(deltaOptions = {}) {
+          const fallback = finiteNumber(deltaOptions.fallback ?? options.delta, 0.016);
+          const raw = finiteNumber(options.fixedDelta, finiteNumber(options.delta, fallback));
+          return clamp(raw, finiteNumber(deltaOptions.min, 0), finiteNumber(deltaOptions.max, Number.POSITIVE_INFINITY));
+        },
         fixedDt: options.fixedDelta,
         paused: options.paused ?? false,
       },
@@ -913,8 +966,12 @@ function createTimerHelpers(now: number): ISystemContext["timers"] {
   };
 }
 
-function finiteNumber(value: number, fallback: number): number {
-  return Number.isFinite(value) ? value : fallback;
+function finiteNumber(value: number | undefined, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
 }
 
 function assetById(assets: IAssetsManifest | undefined, id: string): IAssetsManifest["assets"][number] | undefined {
@@ -923,6 +980,18 @@ function assetById(assets: IAssetsManifest | undefined, id: string): IAssetsMani
 
 function createEntityView(entity: IWorldEntity, commands: IQueuedCommand[]): ISystemEntityView {
   const components = deepFreeze(cloneValue(entity.components)) as IWorldEntity["components"];
+  const queueTransformPatch = (value: Record<string, unknown>) => {
+    commands.push({
+      component: "Transform",
+      entity: entity.id,
+      kind: "setComponent",
+      source: "entity",
+      value: {
+        ...(isRecord(components.Transform) ? components.Transform : {}),
+        ...cloneValue(value),
+      },
+    });
+  };
   return {
     components,
     get<T = unknown>(component: unknown): T {
@@ -949,7 +1018,50 @@ function createEntityView(entity: IWorldEntity, commands: IQueuedCommand[]): ISy
     set(component: unknown, value: unknown): void {
       commands.push({ component: normalizeHandleName(component), entity: entity.id, kind: "setComponent", source: "entity", value: cloneValue(value) });
     },
+    transform(): ISystemTransformFacade {
+      return {
+        positionOr(fallback) {
+          return vec3((isRecord(components.Transform) ? components.Transform.position : undefined), fallback);
+        },
+        setPose(position, rotation) {
+          queueTransformPatch({ position: vec3(position, [0, 0, 0]), rotation: quat(rotation, [0, 0, 0, 1]) });
+        },
+        setPosition(position) {
+          queueTransformPatch({ position: vec3(position, [0, 0, 0]) });
+        },
+        setRotation(rotation) {
+          queueTransformPatch({ rotation: quat(rotation, [0, 0, 0, 1]) });
+        },
+        yawOr(fallback) {
+          return yawFromQuat((isRecord(components.Transform) ? components.Transform.rotation : undefined), fallback);
+        },
+      };
+    },
   };
+}
+
+function vec3(value: unknown, fallback: readonly [number, number, number]): [number, number, number] {
+  const source = Array.isArray(value) ? value : [];
+  return [
+    finiteNumber(Number(source[0]), fallback[0]),
+    finiteNumber(Number(source[1]), fallback[1]),
+    finiteNumber(Number(source[2]), fallback[2]),
+  ];
+}
+
+function quat(value: unknown, fallback: readonly [number, number, number, number]): [number, number, number, number] {
+  const source = Array.isArray(value) ? value : [];
+  return [
+    finiteNumber(Number(source[0]), fallback[0]),
+    finiteNumber(Number(source[1]), fallback[1]),
+    finiteNumber(Number(source[2]), fallback[2]),
+    finiteNumber(Number(source[3]), fallback[3]),
+  ];
+}
+
+function yawFromQuat(value: unknown, fallback: number): number {
+  const [x, y, z, w] = quat(value, [0, 0, 0, 1]);
+  return finiteNumber(Math.atan2(2 * (w * y + z * x), 1 - 2 * (y * y + z * z)), fallback);
 }
 
 function normalizeHandleName(value: unknown): string {

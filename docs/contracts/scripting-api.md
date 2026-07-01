@@ -51,10 +51,16 @@ unsupported.
 - [x] Deterministic same-stage system ordering with `before`/`after`
   constraints and system-name tie breaks.
 - [x] Query snapshots through `ctx.query()`.
+- [x] Entity lookup helpers through `ctx.entity(id)` and
+  `ctx.entities.byId({ key: id })`; missing IDs return `undefined`.
 - [x] Stable entity identity through `entity.id`.
 - [x] Component reads through `entity.get(Component)`.
 - [x] Component patches through `entity.patch(Component, partial)`.
 - [x] Component replacement through `entity.set(Component, value)`.
+- [x] Transform facade reads/writes through `entity.transform()`, including
+  `positionOr`, `yawOr`, `setPosition`, `setRotation`, and `setPose`.
+  Transform facade writes lower to normal `Transform` patches and use the
+  existing component write validators.
 - [x] Marker/tag checks through `entity.has(ComponentOrTag)`.
 - [x] Query sorting by entity ID with `orderBy: "id"`.
 - [x] Query pagination with deterministic `offset` and `limit` windows.
@@ -66,7 +72,11 @@ unsupported.
 
 - [x] Variable timestep reads through `ctx.time.dt`.
 - [x] Fixed timestep reads through `ctx.time.fixedDt`.
+- [x] Clamped fixed timestep helper through
+  `ctx.time.fixedDelta({ fallback, min, max })`.
 - [x] Logical input axes through `ctx.input.axis(name)`.
+- [x] Normalized one-axis helper through
+  `ctx.input.axis1(axis, { negative, positive })`.
 - [x] Logical input actions through `ctx.input.action(name)`.
 - [x] Logical input edge reads through `ctx.input.pressed(name)` and
   `ctx.input.released(name)` where the runtime host exposes captured input
@@ -84,6 +94,9 @@ unsupported.
 - [x] Typed event reads through `ctx.events.read(Event)`.
 - [x] Resource reads through `ctx.resources.get(name)`.
 - [x] Resource writes through `ctx.resources.set(name, value)`.
+- [x] Shallow resource-state facade through `ctx.state(name, defaults)`.
+  Assigning top-level fields queues a normal resource write, so existing
+  `resourceWrites` validation still applies.
 - [x] Command-buffer entity spawn through `ctx.commands.spawn(id, components)`.
 - [x] Command-buffer entity despawn through `ctx.commands.despawn(id, policy)`.
 - [x] Command-buffer component add through
