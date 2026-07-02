@@ -77,6 +77,15 @@ implementation:
   supported aliases before web or Bevy consume the shared `input.ir.json`.
   This is a cross-runtime contract guard; it does not add new Bevy-only input
   capabilities.
+- Game-production scoring now rejects two generated-game failure modes before
+  completion claims: clunky unproven motion (`TN_GAME_MOTION_FEEL_UNPROVEN`)
+  and primitive-only placeholder visuals
+  (`TN_GAME_VISUAL_BASELINE_PLACEHOLDER`). Template and example agent
+  instructions require smooth fixed-time movement, authored visual baselines,
+  nonblank screenshot evidence, visible motion evidence, and input-playtest
+  proof. Visual scorecard phase scoring now reaches a full pass only from
+  retained source coverage plus screenshot/motion proof, not from source-only
+  or proof-only outputs.
 - `tn playtest` now provides web-runtime gameplay proof by injecting a
   canonical keyboard code, sampling emitted-bundle effect-log Transform patches,
   and reporting movement distance plus screenshot evidence. Native/Bevy

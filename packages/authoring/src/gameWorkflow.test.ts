@@ -21,6 +21,8 @@ test("validates game quality reports", async () => {
     await mkdir(join(root, "artifacts/game-production"), { recursive: true });
     await writeFile(join(root, "artifacts/game-production/playtest-report.json"), "{}\n");
     await writeFile(join(root, "artifacts/game-production/screenshot.png"), "not-a-real-png");
+    await writeFile(join(root, "artifacts/game-production/motion-report.json"), "{\"frameDiff\":{\"changedPixelRatio\":0.02},\"motion\":\"smooth\"}\n");
+    await writeFile(join(root, "artifacts/game-production/performance-target.json"), "{\"targetFps\":60,\"frameTimeMs\":16.7}\n");
     await writeFile(join(root, "artifacts/game-production/mobile-viewport.json"), "{}\n");
     await mkdir(join(root, "dist/game.bundle"), { recursive: true });
     await writeFile(join(root, "dist/game.bundle/manifest.json"), "{}\n");
@@ -36,7 +38,90 @@ test("validates game quality reports", async () => {
     assert.deepEqual(report.assetAudioLedger.map((entry) => entry.surface), [...GAME_ASSET_AUDIO_SURFACE_IDS]);
     assert.equal(report.productionCommands.some((command) => command.phase === "gameplay"), true);
     assert.equal(report.release.risks.some((risk) => risk.code === "TN_GAME_RELEASE_ASSET_BUDGET_UNVERIFIED"), true);
+    assert.equal(report.phaseLedgers.find((phase) => phase.id === "visuals")?.status, "pass");
     assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_GAME_PLAYABLE_LOOP_MISSING"), false);
+    assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_GAME_MOTION_FEEL_UNPROVEN"), false);
+    assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_GAME_VISUAL_BASELINE_PLACEHOLDER"), false);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("blocks placeholder visuals and unproven snap movement", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-report-placeholder-"));
+  try {
+    await mkdir(join(root, "content/scenes"), { recursive: true });
+    await mkdir(join(root, "content/input"), { recursive: true });
+    await mkdir(join(root, "src/scripts"), { recursive: true });
+    await writeFile(join(root, "content/scenes/arena.scene.json"), `${JSON.stringify({
+      schema: "threenative.scene",
+      id: "arena",
+      entities: [{ id: "player", prefab: "prefab.player" }],
+      prefabs: [{ id: "prefab.player", primitive: "box", color: "#ffffff" }],
+      systems: [{ id: "snap", script: { module: "src/scripts/game.ts", export: "update" } }],
+    }, null, 2)}\n`);
+    await writeFile(join(root, "content/input/arena.input.json"), `${JSON.stringify({
+      schema: "threenative.input",
+      id: "arena-input",
+      actions: [{ id: "move", bindings: ["keyboard.Space"] }],
+    }, null, 2)}\n`);
+    await writeFile(join(root, "src/scripts/game.ts"), "export function update(ctx: any) { ctx.entity('player')?.transform().setPosition([1, 0, 0]); }\n");
+
+    const report = await createGameQualityReport({ projectPath: root });
+
+    assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_GAME_MOTION_FEEL_UNPROVEN"), true);
+    assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_GAME_VISUAL_BASELINE_PLACEHOLDER"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("accepts composed primitive visual source", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-report-composed-"));
+  try {
+    await mkdir(join(root, "src/scripts"), { recursive: true });
+    await writeFile(join(root, "src/game.ts"), `
+import {
+  AmbientLight,
+  BoxGeometry,
+  ConeGeometry,
+  CylinderGeometry,
+  Mesh,
+  MeshStandardMaterial,
+  SphereGeometry,
+  defineInputMap,
+  keyboard,
+} from "@threenative/sdk";
+
+const paint = new MeshStandardMaterial({ color: "#f6efe0" });
+const chicken = new Mesh({ id: "chicken", geometry: new SphereGeometry({ radius: 0.5 }), material: paint });
+chicken.add(new Mesh({ id: "chicken.head", geometry: new SphereGeometry({ radius: 0.25 }), material: paint }));
+chicken.add(new Mesh({ id: "chicken.beak", geometry: new ConeGeometry({ radius: 0.1, height: 0.2 }), material: paint }));
+chicken.add(new Mesh({ id: "chicken.leg.left", geometry: new CylinderGeometry({ radius: 0.04, height: 0.3 }), material: paint }));
+const car = new Mesh({ id: "traffic.car", geometry: new BoxGeometry({ size: [1, 0.3, 0.5] }), material: paint });
+car.add(new Mesh({ id: "traffic.car.cabin", geometry: new BoxGeometry({ size: [0.4, 0.3, 0.4] }), material: paint }));
+car.add(new Mesh({ id: "traffic.car.wheel", geometry: new CylinderGeometry({ radius: 0.12, height: 0.1 }), material: paint }));
+const lane = new Mesh({ id: "lane.dash", geometry: new BoxGeometry({ size: [0.7, 0.02, 0.08] }), material: paint });
+const sign = new Mesh({ id: "road.sign", geometry: new BoxGeometry({ size: [0.5, 0.3, 0.05] }), material: paint });
+const light = new AmbientLight({ id: "ambient", intensity: 1 });
+const input = defineInputMap({ actions: [{ id: "move-up", bindings: [keyboard("KeyW")] }] });
+function addChicken() { return chicken; }
+function addCar() { return car; }
+function addLaneMarks() { return lane; }
+function addRoadsideProps() { return sign; }
+function addLighting() { return light; }
+void input;
+void addChicken;
+void addCar;
+void addLaneMarks;
+void addRoadsideProps;
+void addLighting;
+`);
+    await writeFile(join(root, "src/scripts/game.ts"), "export function update(ctx: any) { const moveProgress = ctx.time.fixedDelta({ fallback: 1 / 60 }); void moveProgress; }\n");
+
+    const report = await createGameQualityReport({ projectPath: root });
+
+    assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_GAME_VISUAL_BASELINE_PLACEHOLDER"), false);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -144,5 +229,5 @@ async function writeMinimalProject(root: string): Promise<void> {
     id: "arena-materials",
     materials: [{ id: "player-style", color: "#ffffff" }],
   }, null, 2)}\n`);
-  await writeFile(join(root, "src/scripts/game.ts"), "export function update() {}\n");
+  await writeFile(join(root, "src/scripts/game.ts"), "export function update(ctx: any) { const dt = ctx.time.fixedDelta({ fallback: 1 / 60 }); const moveProgress = Math.min(1, dt); void moveProgress; }\n");
 }

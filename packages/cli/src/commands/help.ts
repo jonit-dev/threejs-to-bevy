@@ -20,7 +20,10 @@ export const HELP_TOPICS: Record<string, HelpTopic> = {
       "pnpm run validate && pnpm run build && pnpm run dev:web",
     ],
     docs: ["docs/workflows/developer-workflow.md", "docs/workflows/ai-workflows.md"],
-    examples: ["tn init arena-prototype --template structured-source-starter --json", "tn init rally --template racing-kit-rally-starter --json"],
+    examples: [
+      "tn init arena-prototype --template structured-source-starter --json",
+      "tn init rally --template racing-kit-rally-starter --json",
+    ],
     summary: "Create a new ThreeNative project and run the first validation/build loop.",
     title: "Scaffold a first project",
   },
@@ -132,8 +135,11 @@ export const HELP_TOPICS: Record<string, HelpTopic> = {
     aliases: ["templates", "gallery"],
     commands: ["tn create prototype --template structured-source-starter --json", "tn create rally --template racing-kit-rally-starter --json", "tn help scaffold"],
     docs: ["docs/workflows/developer-workflow.md", "templates/structured-source-starter/README.md", "templates/racing-kit-rally-starter/README.md"],
-    examples: ["structured-source-starter: JSON source documents under content/** with behavior modules under src/scripts/**.", "racing-kit-rally-starter: Kenney Racing Kit scene with modular track, start grid, chase camera, and kart controls."],
-    summary: "Choose a structured-source starter for CLI and editor-friendly authoring.",
+    examples: [
+      "structured-source-starter: JSON source documents under content/** with behavior modules under src/scripts/**.",
+      "racing-kit-rally-starter: Kenney Racing Kit scene with modular track, start grid, chase camera, and kart controls.",
+    ],
+    summary: "Choose a structured-source starter for CLI/editor authoring or an asset-backed starter.",
     title: "Templates and examples",
   },
 };

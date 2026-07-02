@@ -58,6 +58,20 @@ Default generated projects use `structured-source-starter`.
 - On diagnostics, preserve code/path/severity/message in notes and repair the
   durable source document or script that owns the problem.
 
+## Game Asset Sourcing
+
+For generated games and playable examples, source coherent art before falling
+back to primitives:
+
+1. Check `docs/workflows/open-source-3d-asset-kits.md` first. Prefer a
+   consistent pack from that curated list, download/use the pack when suitable,
+   and preserve its license/provenance record.
+2. If the curated list has no fit, research GitHub/open-source sources for a
+   compatible pack with a consistent style and clear redistribution terms.
+3. If no usable pack exists, author a coherent set of custom meshes.
+4. Use primitive geometry only as the last fallback or prototype state. Finished
+   defaults should not look like unrelated placeholders.
+
 Useful loop:
 
 ```bash

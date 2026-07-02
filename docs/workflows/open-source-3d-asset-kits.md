@@ -24,6 +24,18 @@ materials, examples, fixtures, demos, and starter-project content.
   authored IR values and fix import, color-space, material, lighting, camera,
   or asset metadata issues instead.
 
+## Generated Game Priority
+
+When building generated games, examples, or starter content, try sources in
+this order:
+
+1. Use a coherent pack from this curated list when a suitable one exists.
+2. If this list has no fit, research GitHub/open-source repositories for a
+   compatible pack with a consistent style and clear redistribution terms.
+3. If no pack is usable, create a consistent set of custom meshes.
+4. Use primitives only as the final fallback or prototype state, not as the
+   default finished look.
+
 ## Recommended Defaults
 
 Use these first for repo examples and starter content.
@@ -133,6 +145,7 @@ asset-pipeline tests. They are not always suitable as general art libraries.
 | [Khronos glTF Asset Generator](https://github.com/KhronosGroup/glTF-Asset-Generator) | MIT | Synthetic positive/negative conformance cases | Great for deterministic validation; not art-realistic. |
 | [Khronos glTF Tutorials](https://github.com/KhronosGroup/glTF-Tutorials) | CC-BY-4.0 | Minimal repro fixtures and parser examples | Attribution required. |
 | [Google model-viewer shared assets](https://github.com/google/model-viewer/tree/master/packages/shared-assets) | Mixed per-asset licenses | PBR/material comparison, web/AR render parity, animation examples | Filter out NC/SA assets for redistributable tests. Check `ATTRIBUTIONS.md`. |
+| [Three.js examples glTF models](https://github.com/mrdoob/three.js/tree/dev/examples/models/gltf) | Three.js repo is MIT; example media can have incomplete or mixed per-file license metadata | Three.js-adjacent GLB loader, animation, skinning, and material fixtures | Useful candidates include [`Soldier.glb`](https://github.com/mrdoob/three.js/blob/dev/examples/models/gltf/Soldier.glb). Verify per-file provenance/license before vendoring, and record the upstream URL plus commit SHA. |
 | [CesiumJS SampleData](https://github.com/CesiumGS/cesium) | Repo Apache-2.0; verify third-party sample data | Large-world transforms, CZML/glTF integrations, sample models | Avoid Cesium ion datasets unless terms are compatible. |
 | [Cesium 3D Tiles Samples](https://github.com/CesiumGS/3d-tiles-samples) | Verify per sample | 3D Tiles containers with glTF payloads | Useful for asset-pipeline stress, not pure glTF loader tests. |
 | [Babylon.js Assets](https://github.com/BabylonJS/Assets) | CC-BY-4.0 unless folder says otherwise | Cross-engine regression fixtures | Attribution required; verify folder-level terms. |
@@ -191,4 +204,3 @@ Redistribution allowed:
   generated artifact notes, and any redistributable example docs.
 - Redistribution: do not vendor assets whose terms prohibit redistribution in
   open repositories, plugins, or asset collections.
-

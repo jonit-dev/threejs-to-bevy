@@ -93,6 +93,15 @@ release-build evidence. Reports now also include reproducible production
 command rows, redacted local-tooling provider probes for Tripo/Gemini/
 ElevenLabs-style model/image/audio generation, release risks, asset-budget
 status, and static-hosting notes without persisting credential values.
+Reports also block two weak default-generation patterns:
+`TN_GAME_MOTION_FEEL_UNPROVEN` flags games that have neither smooth fixed-time
+movement source nor motion proof, and `TN_GAME_VISUAL_BASELINE_PLACEHOLDER`
+flags primitive-only placeholder visual baselines. Generated project
+instructions now require build, nonblank screenshot, visible motion, and
+input-playtest evidence before a game is called done. Visual scorecard phases
+now require retained source coverage plus screenshot/motion proof to reach a
+full pass, so visual checks no longer normalize source-only or proof-only game
+outputs as complete.
 `tn game providers --json` exposes the same credential-safe provider statuses.
 `@threenative/editor` exposes a read-only production panel model over the same
 report rows. `pnpm verify:game-production` is now registered as a focused gate;

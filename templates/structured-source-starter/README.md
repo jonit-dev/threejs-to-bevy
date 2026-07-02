@@ -14,6 +14,10 @@ TypeScript stays thin.
 - `dist/**`, emitted IR JSON, and `scripts.bundle.js` are generated output.
 - AI coding agents should read `AGENTS.md` or `CLAUDE.md` and prefer
   `tn ... --json` commands for deterministic source edits.
+- Default generated games should ship with smooth movement and a deliberate
+  visual baseline, not primitive-only placeholders. Use custom meshes, imported
+  assets, authored materials, lighting, landmarks, screenshot proof, motion
+  proof, and playtest proof before treating a generated game as complete.
 
 Useful commands:
 
