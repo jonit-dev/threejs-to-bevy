@@ -35,6 +35,10 @@ This index separates current cleanup work from historical milestone batches.
   strict input/source validation, fresh dev-preview rebuilds, CLI playability
   proof, modular-kit assembly diagnostics, camera/scale proof, and starter
   template quality gates from the racing-kit session learnings.
+- [Shippable Asset Source Catalog](done/other/shippable-asset-source-catalog.md):
+  SQLite-backed direct asset URL catalog, CLI search/get/suggest commands,
+  workflow-doc extraction, and query-first agent instructions for third-party
+  game art sourcing.
 - [Agentic Game Production Workflow](done/other/agentic-game-production-workflow.md):
   director-style game-production orchestration adapted from Three.js game
   skills into ThreeNative source-backed CLI/editor workflows, phase ledgers,

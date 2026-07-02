@@ -471,6 +471,7 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
 - [x] `P2` glTF extension processing policy with promoted AnimationGraph metadata import and stable diagnostics for executable/custom transforms
 - [x] `P1` Scene viewer/editor inspection workflow
 - [x] `P1` CLI glTF/GLB asset inspection for bounds, dependency checks, and scale calibration (`tn asset inspect`)
+- [x] `P1` Packaged CLI asset source catalog for reviewed direct GLB records and typed pack/material/texture/HDRI fallback records (`tn asset source search/get/suggest/export`)
 - [x] `P1` CLI one-model proof reports with scale presets, screen occupancy verdicts, isolated-proof caveats, and screenshot captured/unavailable states (`tn model-test`)
 - [x] `P1` Dev-time asset file watching and explicit reload diagnostics
 - [x] `P2` Asset hot reload and state-preserving reload behavior

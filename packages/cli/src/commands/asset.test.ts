@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { pathToFileURL } from "node:url";
 
+import { findAssetSourceCatalogPath, resolveAssetSourceCatalogPath } from "../assetSourceCatalog/catalog.js";
 import { assetCommand } from "./asset.js";
 
 const fixtureGltf = {
@@ -319,6 +321,129 @@ test("should add structured render target asset source document", async () => {
     assert.equal(result.exitCode, 0);
     assert.deepEqual(payload.filesWritten, ["content/assets/rt.minimap.assets.json"]);
     assert.deepEqual(doc.assets, [{ format: "depth24plus", height: 256, id: "rt.minimap", type: "render-target", usage: "depth", width: 512 }]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should search direct GLB sources by game category", async () => {
+  const result = await assetCommand(["source", "search", "--game-category", "underwater", "--format", "glb", "--direct-only", "--json"]);
+  const payload = JSON.parse(result.stdout) as {
+    code: string;
+    records: Array<{ downloadUrl: string | null; format: string; gameCategory: string; isDirectDownload: boolean }>;
+  };
+
+  assert.equal(result.exitCode, 0);
+  assert.equal(payload.code, "TN_ASSET_SOURCE_SEARCH_OK");
+  assert.equal(payload.records.length >= 1, true);
+  assert.equal(payload.records.every((record) => record.gameCategory === "underwater" && record.format === "glb" && record.isDirectDownload && record.downloadUrl !== null), true);
+});
+
+test("should search typed material and texture source records by file role", async () => {
+  const result = await assetCommand(["source", "search", "--file-role", "material-index", "--json"]);
+  const payload = JSON.parse(result.stdout) as {
+    records: Array<{ fileRole: string; id: string; isDirectDownload: boolean; sourceMetadata: Record<string, string> }>;
+  };
+
+  assert.equal(result.exitCode, 0);
+  assert.equal(payload.records.some((record) => record.id === "ambientcg-material-index"), true);
+  assert.equal(payload.records.every((record) => record.fileRole === "material-index" && !record.isDirectDownload), true);
+  assert.equal(payload.records.some((record) => record.sourceMetadata.assetType === "material-texture"), true);
+});
+
+test("should include fallback records when direct-only search has no match", async () => {
+  const result = await assetCommand(["source", "search", "--game-category", "racing", "--format", "glb", "--direct-only", "--json"]);
+  const payload = JSON.parse(result.stdout) as {
+    code: string;
+    fallbackRecords: Array<{ id: string; isDirectDownload: boolean; recommendedNextCommand: string }>;
+    records: unknown[];
+  };
+
+  assert.equal(result.exitCode, 0);
+  assert.equal(payload.code, "TN_ASSET_SOURCE_NO_MATCH");
+  assert.deepEqual(payload.records, []);
+  assert.equal(payload.fallbackRecords.some((record) => record.id === "kenney-racing-kit-pack" && !record.isDirectDownload), true);
+  assert.equal(payload.fallbackRecords.every((record) => /Review .*tn asset inspect/.test(record.recommendedNextCommand)), true);
+});
+
+test("should get one asset source record by id", async () => {
+  const result = await assetCommand(["source", "get", "babylon-grey-snapper-vert-color", "--json"]);
+  const payload = JSON.parse(result.stdout) as {
+    record: {
+      directName: string;
+      downloadUrl: string;
+      licenseId: string;
+      origin: { originName: string; reviewEvidence: string; reviewStatus: string };
+      provenanceUrl: string;
+      sourceMetadata: Record<string, string>;
+    };
+  };
+
+  assert.equal(result.exitCode, 0);
+  assert.equal(payload.record.directName, "greySnapper_vertColor");
+  assert.match(payload.record.downloadUrl, /greySnapper_vertColor\.glb$/);
+  assert.equal(payload.record.licenseId, "CC-BY-4.0");
+  assert.match(payload.record.provenanceUrl, /Assets\.md/);
+  assert.equal(payload.record.origin.originName, "BabylonJS Assets.md");
+  assert.equal(payload.record.origin.reviewStatus, "reviewed");
+  assert.match(payload.record.origin.reviewEvidence, /Assets\.md/);
+  assert.equal(payload.record.sourceMetadata.upstreamRepository, "BabylonJS/Assets");
+});
+
+test("should not return blocked records unless requested", async () => {
+  const result = await assetCommand(["source", "search", "--json"]);
+  const payload = JSON.parse(result.stdout) as {
+    records: Array<{ licensePosture: string; origin: { reviewStatus: string } }>;
+  };
+
+  assert.equal(result.exitCode, 0);
+  assert.equal(payload.records.some((record) => record.licensePosture === "blocked" || record.origin.reviewStatus === "blocked"), false);
+});
+
+test("should export jsonl from sqlite catalog", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-asset-source-export-"));
+  try {
+    const out = join(root, "asset-sources.jsonl");
+    const result = await assetCommand(["source", "export", "--format", "jsonl", "--out", out, "--json"]);
+    const payload = JSON.parse(result.stdout) as { count: number; outPath: string };
+    const lines = (await readFile(out, "utf8")).trim().split("\n");
+    const first = JSON.parse(lines[0] ?? "{}") as { id?: string };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.outPath, out);
+    assert.equal(payload.count, lines.length);
+    assert.equal(lines.length >= 4, true);
+    assert.equal(typeof first.id, "string");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should suggest asset sources from a goal", async () => {
+  const result = await assetCommand(["source", "suggest", "--goal", "underwater fish model", "--json"]);
+  const payload = JSON.parse(result.stdout) as { records: Array<{ id: string }> };
+
+  assert.equal(result.exitCode, 0);
+  assert.equal(payload.records.some((record) => record.id === "babylon-grey-snapper-vert-color"), true);
+});
+
+test("should resolve catalog from source checkout and packaged layout", async () => {
+  const resolved = resolveAssetSourceCatalogPath();
+  const found = await findAssetSourceCatalogPath();
+
+  assert.match(resolved, /packages\/cli\/data\/asset-sources\.sqlite$/);
+  assert.equal(found, resolved);
+
+  const root = await mkdtemp(join(tmpdir(), "tn-asset-source-packaged-"));
+  try {
+    await mkdir(join(root, "dist", "assetSourceCatalog"), { recursive: true });
+    await mkdir(join(root, "data"), { recursive: true });
+    await writeFile(join(root, "dist", "assetSourceCatalog", "catalog.js"), "");
+    await copyFile(found, join(root, "data", "asset-sources.sqlite"));
+    const packagedUrl = pathToFileURL(join(root, "dist", "assetSourceCatalog", "catalog.js")).href;
+
+    assert.equal(resolveAssetSourceCatalogPath(packagedUrl), join(root, "data", "asset-sources.sqlite"));
+    assert.equal(await findAssetSourceCatalogPath(packagedUrl), join(root, "data", "asset-sources.sqlite"));
   } finally {
     await rm(root, { force: true, recursive: true });
   }

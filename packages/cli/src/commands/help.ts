@@ -29,9 +29,9 @@ export const HELP_TOPICS: Record<string, HelpTopic> = {
   },
   assets: {
     aliases: ["asset", "model", "glb", "gltf"],
-    commands: ["tn asset inspect <path-or-directory> [--recursive] [--json]", "tn model-test <asset-path> [--out <dir>] [--verify] [--screenshot] [--url <preview-url>]", "tn validate", "tn build", "tn help visual-qa"],
+    commands: ["tn asset source search --game-category <category> --format glb --direct-only [--json]", "tn asset source search --file-role <pack-page|material-index|texture-index|hdri-index> [--json]", "tn asset source get <asset-source-id> [--json]", "tn asset inspect <path-or-directory> [--recursive] [--json]", "tn model-test <asset-path> [--out <dir>] [--verify] [--screenshot] [--url <preview-url>]", "tn validate", "tn build", "tn help visual-qa"],
     docs: ["docs/workflows/asset-pipeline.md", "docs/workflows/ai-workflows.md", "docs/runtime/README.md"],
-    examples: ["tn asset inspect assets/kart.glb --json", "tn asset inspect assets --recursive --json", "tn model-test assets/kart.glb --out artifacts/model-test --verify --screenshot --url http://127.0.0.1:5173 --json", "Keep glTF/GLB files and external textures inside the project assets directory before building."],
+    examples: ["tn asset source search --game-category underwater --format glb --direct-only --json", "tn asset source get babylon-grey-snapper-vert-color --json", "tn asset inspect assets/kart.glb --json", "tn asset inspect assets --recursive --json", "tn model-test assets/kart.glb --out artifacts/model-test --verify --screenshot --url http://127.0.0.1:5173 --json", "Keep glTF/GLB files and external textures inside the project assets directory before building."],
     failureSymptoms: ["model loaded but invisible", "missing external texture", "asset path outside project root"],
     summary: "Debug asset paths, texture dependencies, and model visibility before runtime capture.",
     title: "Asset and model triage",

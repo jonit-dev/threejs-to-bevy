@@ -63,14 +63,28 @@ Default generated projects use `structured-source-starter`.
 For generated games and playable examples, aim for a finished, art-directed
 scene before falling back to primitives:
 
-1. Check `docs/workflows/open-source-3d-asset-kits.md` first. Prefer a
-   consistent pack from that curated list, download/use the pack when suitable,
-   and preserve its license/provenance record.
-2. If the curated list has no fit, research GitHub/open-source sources for a
+1. Query the local asset source catalog first:
+   `tn asset source search --game-category <category> --format glb --direct-only --json`.
+   Prefer direct GLB/glTF entries with `isDirectDownload`, `downloadUrl`,
+   compatible `licenseId`/`licensePosture`, matching category or tags, and
+   clear `sourceUrl`, `provenanceUrl`, `origin`, and `sourceMetadata`.
+2. If no direct result fits, inspect pack-page and typed source records from
+   `tn asset source search --game-category <category> --json` or
+   `tn asset source search --file-role <role> --json`.
+3. Check `docs/workflows/open-source-3d-asset-kits.md` for policy, cautions,
+   and broader human sourcing guidance. Prefer a consistent pack from that
+   curated list when suitable, and preserve its license/provenance record.
+4. If the catalog and curated list have no fit, research GitHub/open-source sources for a
    compatible pack with a consistent style and clear redistribution terms.
-3. If no usable pack exists, author a coherent set of custom meshes.
-4. Use primitive geometry only as the last fallback or prototype state. Finished
+5. If no usable pack exists, author a coherent set of custom meshes.
+6. Use primitive geometry only as the last fallback or prototype state. Finished
    defaults should not look like unrelated placeholders.
+
+When selecting catalog assets, report and preserve the catalog ID, direct URL
+when present, source URL, provenance URL, origin name, origin URL, license
+evidence, review status, downloaded date, and conversion notes next to committed
+assets. Run `tn asset inspect` and `tn model-test` after downloading or
+referencing a selected model.
 
 ## Game Visual Quality
 

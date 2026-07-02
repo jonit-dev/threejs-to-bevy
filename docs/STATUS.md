@@ -676,6 +676,12 @@ available. Web preview readiness includes active camera ID, visible mesh count,
 final visible world bounds, declared/model asset counts, resource-failure
 diagnostics, and camera distance/clip-range hints. `tn verify --json` also
 reports projected nonblank bounds/occupancy for the first captured frame.
+`tn asset source search/get/suggest/export` also exposes the packaged
+open-source asset source catalog for direct GLB downloads plus typed fallback
+pack, material, texture, and HDRI source records. The deterministic SQLite
+artifact is built from `docs/data/asset-sources.seed.jsonl` and guarded by
+`pnpm check:asset-sources`, so generated games can query reviewed sources
+before falling back to the human workflow guide.
 
 SDK object transforms now have chainable `setPosition`, `setRotation`,
 `setScale`, and `patchTransform` helpers. Runtime component patches remain

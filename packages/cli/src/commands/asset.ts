@@ -3,6 +3,7 @@ import { dirname, extname, isAbsolute, join, resolve } from "node:path";
 
 import { addAsset, type IAuthoringOperationResult } from "@threenative/authoring";
 
+import { exportAssetSourcesJsonl, getAssetSource, searchAssetSources, suggestAssetSources, type IAssetSourceRecord, type IAssetSourceSearchOptions } from "../assetSourceCatalog/catalog.js";
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
 
 type Severity = "info" | "warning" | "error";
@@ -186,6 +187,10 @@ export async function assetCommand(argv: readonly string[]): Promise<ICommandRes
   const positionals = normalizedArgv.filter((arg, index) => !arg.startsWith("-") && !assetFlagsWithValues.has(normalizedArgv[index - 1] ?? ""));
   const [subcommand] = positionals;
 
+  if (subcommand === "source") {
+    return assetSourceCommand(normalizedArgv.slice(1), json);
+  }
+
   if (subcommand === "add") {
     const assetId = positionals[1];
     const type = readFlag(normalizedArgv, "--type");
@@ -236,7 +241,7 @@ export async function assetCommand(argv: readonly string[]): Promise<ICommandRes
     return diagnosticResult(
       {
         code: "TN_ASSET_COMMAND_UNKNOWN",
-        message: subcommand === undefined ? "Missing asset subcommand. Usage: tn asset inspect <path> [--json] or tn asset add <asset-id> --type <type> --path <source-path> [--json]." : `Unknown asset subcommand '${subcommand}'. Usage: tn asset inspect <path> [--json] or tn asset add <asset-id> --type <type> --path <source-path> [--json].`,
+        message: subcommand === undefined ? "Missing asset subcommand. Usage: tn asset inspect <path> [--json], tn asset add <asset-id> --type <type> --path <source-path> [--json], or tn asset source search [--json]." : `Unknown asset subcommand '${subcommand}'. Usage: tn asset inspect <path> [--json], tn asset add <asset-id> --type <type> --path <source-path> [--json], or tn asset source search [--json].`,
         subcommand,
       },
       { exitCode: 1, json, stderr: !json },
@@ -286,6 +291,132 @@ export async function assetCommand(argv: readonly string[]): Promise<ICommandRes
   };
 }
 
+async function assetSourceCommand(argv: readonly string[], json: boolean): Promise<ICommandResult> {
+  const positionals = argv.filter((arg, index) => !arg.startsWith("-") && !assetFlagsWithValues.has(argv[index - 1] ?? ""));
+  const action = positionals[0];
+  try {
+    if (action === "search") {
+      const searchOptions: IAssetSourceSearchOptions = {
+        directOnly: argv.includes("--direct-only"),
+        fileRole: readFlag(argv, "--file-role"),
+        format: readFlag(argv, "--format"),
+        gameCategory: readFlag(argv, "--game-category"),
+        includeBlocked: argv.includes("--include-blocked"),
+        license: readFlag(argv, "--license"),
+        limit: readLimitFlag(argv),
+        tag: readFlag(argv, "--tag"),
+      };
+      const records = await searchAssetSources(searchOptions);
+      const fallbackRecords = records.length === 0 && searchOptions.directOnly === true && searchOptions.gameCategory !== undefined
+        ? (await searchAssetSources({ ...searchOptions, directOnly: false, format: undefined, limit: 5 })).filter((record) => !record.isDirectDownload)
+        : [];
+      const payload = {
+        code: records.length === 0 ? "TN_ASSET_SOURCE_NO_MATCH" : "TN_ASSET_SOURCE_SEARCH_OK",
+        fallbackRecords,
+        message: records.length === 0
+          ? fallbackRecords.length > 0
+            ? "No direct asset source records matched. Review fallback pack or typed source records."
+            : "No matching asset source records found. Try without --direct-only or consult docs/workflows/open-source-3d-asset-kits.md."
+          : "Asset source search completed.",
+        records,
+      };
+      return { exitCode: 0, stdout: json ? `${JSON.stringify(payload, null, 2)}\n` : renderAssetSourceSearch(records.length > 0 ? records : fallbackRecords, payload.message) };
+    }
+
+    if (action === "get") {
+      const id = positionals[1];
+      if (id === undefined) {
+        return diagnosticResult({ code: "TN_ASSET_SOURCE_ID_MISSING", message: "Usage: tn asset source get <asset-source-id> [--json]." }, { exitCode: 2, json, stderr: !json });
+      }
+      const record = await getAssetSource(id);
+      if (record === undefined) {
+        return diagnosticResult({ code: "TN_ASSET_SOURCE_NOT_FOUND", message: `Asset source record '${id}' was not found.`, id }, { exitCode: 1, json, stderr: !json });
+      }
+      const payload = { code: "TN_ASSET_SOURCE_GET_OK", message: "Asset source record loaded.", record };
+      return { exitCode: 0, stdout: json ? `${JSON.stringify(payload, null, 2)}\n` : renderAssetSourceRecord(record) };
+    }
+
+    if (action === "suggest") {
+      const goal = readFlag(argv, "--goal");
+      if (goal === undefined) {
+        return diagnosticResult({ code: "TN_ASSET_SOURCE_GOAL_MISSING", message: "Usage: tn asset source suggest --goal <text> [--json]." }, { exitCode: 2, json, stderr: !json });
+      }
+      const records = await suggestAssetSources(goal, { limit: readLimitFlag(argv) });
+      const payload = {
+        code: records.length === 0 ? "TN_ASSET_SOURCE_NO_SUGGESTION" : "TN_ASSET_SOURCE_SUGGEST_OK",
+        goal,
+        message: records.length === 0 ? "No asset source suggestions matched the goal. Try a concrete category or tag." : "Asset source suggestions completed.",
+        records,
+      };
+      return { exitCode: 0, stdout: json ? `${JSON.stringify(payload, null, 2)}\n` : renderAssetSourceSearch(records, payload.message) };
+    }
+
+    if (action === "export") {
+      const format = readFlag(argv, "--format") ?? "jsonl";
+      const out = readFlag(argv, "--out");
+      if (format !== "jsonl" || out === undefined) {
+        return diagnosticResult({ code: "TN_ASSET_SOURCE_EXPORT_ARGS_INVALID", message: "Usage: tn asset source export --format jsonl --out <path> [--json]." }, { exitCode: 2, json, stderr: !json });
+      }
+      const result = await exportAssetSourcesJsonl(isAbsolute(out) ? out : resolve(process.env.INIT_CWD ?? process.cwd(), out));
+      const payload = { code: "TN_ASSET_SOURCE_EXPORT_OK", message: "Asset source catalog exported.", ...result };
+      return { exitCode: 0, stdout: json ? `${JSON.stringify(payload, null, 2)}\n` : `Exported ${result.count} asset source records to ${result.outPath}\n` };
+    }
+  } catch (error) {
+    return diagnosticResult(
+      {
+        code: "TN_ASSET_SOURCE_CATALOG_FAILED",
+        message: error instanceof Error ? error.message : String(error),
+      },
+      { exitCode: 1, json, stderr: !json },
+    );
+  }
+
+  return diagnosticResult(
+    {
+      code: "TN_ASSET_SOURCE_COMMAND_UNKNOWN",
+      message: "Usage: tn asset source search [--game-category <category>] [--file-role <role>] [--format glb] [--direct-only] [--json], tn asset source get <id> [--json], tn asset source suggest --goal <text> [--json], or tn asset source export --format jsonl --out <path> [--json].",
+      action,
+    },
+    { exitCode: 2, json, stderr: !json },
+  );
+}
+
+function readLimitFlag(argv: readonly string[]): number | undefined {
+  const limit = readFlag(argv, "--limit");
+  if (limit === undefined) {
+    return undefined;
+  }
+  const parsed = Number(limit);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function renderAssetSourceSearch(records: IAssetSourceRecord[], emptyMessage: string): string {
+  if (records.length === 0) {
+    return `${emptyMessage}\n`;
+  }
+  const rows = records.map((record) => {
+    const direct = record.isDirectDownload ? "direct" : "pack";
+    const url = record.downloadUrl ?? record.sourceUrl;
+    return `${record.id}  ${direct.padEnd(6)}  ${record.gameCategory.padEnd(18)}  ${record.format.padEnd(7)}  ${record.licenseId.padEnd(10)}  ${url}`;
+  });
+  return `Asset source records\n\n${rows.join("\n")}\n`;
+}
+
+function renderAssetSourceRecord(record: IAssetSourceRecord): string {
+  return [
+    `${record.id}: ${record.directName}`,
+    `category: ${record.gameCategory}`,
+    `format: ${record.format}`,
+    `license: ${record.licenseId} (${record.licensePosture})`,
+    `download: ${record.downloadUrl ?? "not direct"}`,
+    `source: ${record.sourceUrl}`,
+    `provenance: ${record.provenanceUrl}`,
+    `origin: ${record.origin.originName} (${record.origin.reviewStatus})`,
+    `next: ${record.recommendedNextCommand}`,
+    "",
+  ].join("\n");
+}
+
 function renderAuthoringResult(group: string, result: IAuthoringOperationResult, json: boolean, successMessage: string): ICommandResult {
   const payload = {
     code: result.ok ? `TN_${group.toUpperCase()}_OK` : `TN_${group.toUpperCase()}_FAILED`,
@@ -324,7 +455,7 @@ function readNumberFlag(argv: readonly string[], flag: string): { diagnostic?: s
   return { value: parsed };
 }
 
-const assetFlagsWithValues = new Set(["--format", "--height", "--path", "--project", "--sample-count", "--type", "--usage", "--width"]);
+const assetFlagsWithValues = new Set(["--file-role", "--format", "--game-category", "--goal", "--height", "--license", "--limit", "--out", "--path", "--project", "--sample-count", "--tag", "--type", "--usage", "--width"]);
 
 export async function inspectAsset(assetPath: string): Promise<InspectReport> {
   const extension = extname(assetPath).toLowerCase();

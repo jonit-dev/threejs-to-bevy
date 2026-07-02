@@ -12,6 +12,33 @@ bundle-local, and inspectable.
 - JPEG textures
 - WebP textures when supported by the target runtime/profile
 
+## Source Catalog To Inspect Loop
+
+Before downloading or referencing a third-party model for generated games,
+examples, starters, or visual fixtures, query the asset source catalog:
+
+```bash
+tn asset source search --game-category underwater --format glb --direct-only --json
+tn asset source get babylon-grey-snapper-vert-color --json
+```
+
+Prefer direct records with `isDirectDownload: true`, a compatible
+`licenseId`/`licensePosture`, and complete `origin`/`sourceMetadata`. If no
+direct model fits, search typed fallback records, for example
+`--file-role pack-page`, `--file-role material-index`, `--file-role
+texture-index`, or `--file-role hdri-index`, then use
+`docs/workflows/open-source-3d-asset-kits.md` for human review.
+
+After selecting a model, preserve the catalog ID, direct URL, source URL,
+provenance URL, origin name, origin URL, license evidence, review status,
+downloaded date, and conversion notes next to the committed asset. Then inspect
+the downloaded model before placing it in a scene:
+
+```bash
+tn asset inspect assets/model.glb --json
+tn model-test assets/model.glb --out artifacts/model-test --verify --json
+```
+
 ## Inspecting Model Scale and Dependencies
 
 Use the CLI inspection workflow before placing a new model into gameplay space:
