@@ -32,7 +32,13 @@ tn ui set-layout hud countdown --justify center --align center --top 48 --width 
 
 Production metadata in `threenative.config.json` declares the starter's
 playable loop, controls, objective, retry policy, and proof commands. Use
-`tn game plan --goal "<game idea>" --json` before mutating source, then
-`tn game score --project . --json`, `tn game qa --project . --json`, and
-`tn game release --project . --json` to collect structured phase ledgers,
-scorecards, UI-state coverage, asset/audio provenance, and release blockers.
+`tn game plan --goal "<game idea>" --json` before mutating source. The plan is
+the production checklist: gameplay loop, controls, objective, asset inventory,
+script modules/exports, owned state, polish pass, fallback choices, and proof
+commands. For GLB/glTF models, start from the SQLite-backed CLI asset library:
+`tn asset source search --game-category <category> --format glb --direct-only --json`,
+then `tn asset source get <asset-source-id> --json` for selected records. Then use
+`tn game score --project . --json`,
+`tn game qa --project . --json`, and `tn game release --project . --json` to
+collect structured phase ledgers, scorecards, UI-state coverage, asset/audio
+provenance, and release blockers.

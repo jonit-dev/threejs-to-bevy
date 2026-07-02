@@ -22,6 +22,15 @@ Top-level report fields include:
 - `release`: build proof, budget status, static-hosting notes, native parity
   scope, and release risks.
 
+`tn game plan --goal <text> --json` is the required planning entry point before
+source mutation for generated games. Its asset plan must route GLB/glTF model
+selection through the shipped SQLite asset-source library first:
+`tn asset source search --game-category <category> --format glb --direct-only --json`.
+Selected records must be expanded with
+`tn asset source get <asset-source-id> --json` so the plan or implementation
+notes preserve catalog id, source/provenance URLs, origin, license evidence,
+review status, and fallback decisions.
+
 `tn game qa --run-proof --json` executes the available proof steps and embeds a
 `proofRun` object beside the report. Required proof failures preserve the
 original tool diagnostic code and attach the owning phase, so a failed

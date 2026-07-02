@@ -58,12 +58,46 @@ Default generated projects use `structured-source-starter`.
 - On diagnostics, preserve code/path/severity/message in notes and repair the
   durable source document or script that owns the problem.
 
+## Game Planning
+
+For generated games and playable examples, start with an explicit production
+plan before mutating source:
+
+- Run `tn game plan --goal "<game idea>" --project . --json` or write an
+  equivalent plan in notes when the CLI is unavailable.
+- The plan must name the playable loop, controls, objective, progression,
+  fail/retry path, and feedback moments. Do not begin by placing random objects
+  and discovering the game afterward.
+- The plan must inventory every high-value surface: player/hero,
+  obstacle/enemy, reward/interactable, world/environment, UI/HUD, and
+  audio-feedback. For each one, decide whether to use catalog assets, a
+  cohesive open-source pack, generated/local tooling output, authored custom
+  meshes, or a documented fallback.
+- For 3D model surfaces, the first sourcing action must be the CLI search over
+  the shipped SQLite asset-source library
+  (`packages/cli/data/asset-sources.sqlite`), not a web search or hand-made
+  primitive:
+  `tn asset source search --game-category <category> --format glb --direct-only --json`.
+  Use the returned catalog records to choose proper GLB/glTF models and record
+  why selected assets fit the game style, silhouette, license, and runtime
+  constraints. Then run `tn asset source get <asset-source-id> --json` for
+  selected records and preserve the SQLite catalog ID and provenance metadata.
+- The plan must name script modules/exports under `src/scripts/**/*.ts`, the
+  state they own, the source documents that reference them, and how their
+  behavior will be proved.
+- The plan must include a polish pass for silhouettes, materials, lighting,
+  camera framing, environment context, set dressing, motion/VFX/audio feedback,
+  UI states, mobile fit, and performance budget.
+- Treat the plan as a checklist while implementing. If asset sourcing or a
+  runtime capability fails, update the plan with the fallback and evidence
+  instead of silently downgrading to dull placeholder geometry.
+
 ## Game Asset Sourcing
 
 For generated games and playable examples, aim for a finished, art-directed
 scene before falling back to primitives:
 
-1. Query the local asset source catalog first:
+1. Query the shipped SQLite asset source catalog first:
    `tn asset source search --game-category <category> --format glb --direct-only --json`.
    Prefer direct GLB/glTF entries with `isDirectDownload`, `downloadUrl`,
    compatible `licenseId`/`licensePosture`, matching category or tags, and
@@ -80,11 +114,12 @@ scene before falling back to primitives:
 6. Use primitive geometry only as the last fallback or prototype state. Finished
    defaults should not look like unrelated placeholders.
 
-When selecting catalog assets, report and preserve the catalog ID, direct URL
-when present, source URL, provenance URL, origin name, origin URL, license
-evidence, review status, downloaded date, and conversion notes next to committed
-assets. Run `tn asset inspect` and `tn model-test` after downloading or
-referencing a selected model.
+When selecting SQLite catalog assets, run
+`tn asset source get <asset-source-id> --json`, then report and preserve the
+catalog ID, direct URL when present, source URL, provenance URL, origin name,
+origin URL, license evidence, review status, downloaded date, and conversion
+notes next to committed assets. Run `tn asset inspect` and `tn model-test`
+after downloading or referencing a selected model.
 
 ## Game Visual Quality
 

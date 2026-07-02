@@ -29,6 +29,27 @@ Rules for this generated ThreeNative project.
 
 ## Default Game Quality
 
+- Before creating or substantially changing the game, run
+  `tn game plan --goal "<game idea>" --project . --json` or write an
+  equivalent local plan if the CLI is unavailable. Use it as an implementation
+  checklist, not as decorative prose.
+- The plan must cover game design, assets, scripts, polish, and proof: playable
+  loop, controls, objective, progression, fail/retry, feedback cues,
+  player/hero asset, obstacle/enemy asset, reward/interactable asset,
+  world/environment asset, UI/HUD, audio-feedback, script modules/exports,
+  owned state, source-document references, silhouettes, materials, lighting,
+  camera framing, set dressing, UI states, mobile fit, performance, screenshot
+  proof, motion proof, and input playtest proof.
+- For GLB/glTF model choices, start with the SQLite-backed asset source library
+  through the CLI:
+  `tn asset source search --game-category <category> --format glb --direct-only --json`.
+  Use `tn asset source get <asset-source-id> --json` for selected records and
+  preserve the catalog ID, source/provenance URLs, origin, license evidence,
+  review status, and fallback notes. Do not jump straight to web search or
+  primitive geometry.
+- If the planned asset source or runtime capability is unavailable, record the
+  fallback and keep the game visually coherent. Do not silently collapse the
+  plan into unrelated primitive placeholders.
 - Treat the game as a small polished vertical slice, not a blockout. Do not
   accept primitive-only placeholder scenes as finished games. Add a cohesive
   visual baseline by default: custom meshes or imported model assets, shaped
@@ -46,10 +67,11 @@ Rules for this generated ThreeNative project.
   markers, and background detail.
 - When primitives are unavoidable, combine and dress them so they read as
   designed objects, not placeholders.
-- For game art, first check the repo's open-source 3D asset kit workflow and
-  use a coherent pack when suitable. If no curated pack fits, look for a
-  compatible GitHub/open-source pack, then author custom meshes, and use
-  primitives only as the last fallback.
+- For game art, first query the SQLite-backed CLI asset library and use proper
+  direct GLB/glTF records when suitable. If no direct record fits, check the
+  repo's open-source 3D asset kit workflow and use a coherent pack when
+  suitable. If no curated pack fits, look for a compatible GitHub/open-source
+  pack, then author custom meshes, and use primitives only as the last fallback.
 - Input-driven movement must feel continuous. Avoid one-frame `setPosition`
   snaps for player movement unless the game mechanic explicitly depends on
   grid steps; even grid games should tween or ease between cells over fixed

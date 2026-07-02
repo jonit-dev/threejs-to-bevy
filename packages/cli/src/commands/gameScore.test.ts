@@ -39,15 +39,28 @@ test("plans a playable loop without writing files", async () => {
     const before = await listAll(root);
     const result = await gameCommand(["plan", "--project", root, "--goal", "arcade collector", "--json"]);
     const payload = JSON.parse(result.stdout) as {
+      acceptanceCriteria: string[];
+      assetPlan: Array<{ requiredEvidence: string[]; searchCommand?: string; surface: string }>;
+      design: { objective: string; loop: string };
       mutate: boolean;
+      polishPlan: Array<{ category: string; treatment: string }>;
       proofCommands: string[];
       recipeIds: string[];
+      scriptPlan: Array<{ exportName: string; module: string; responsibility: string }>;
       steps: Array<{ phase: string; recipe?: string }>;
     };
     const after = await listAll(root);
 
     assert.equal(result.exitCode, 0);
     assert.equal(payload.mutate, false);
+    assert.equal(payload.design.objective.includes("arcade collector"), true);
+    assert.equal(payload.design.loop.includes("real input"), true);
+    assert.equal(payload.assetPlan.some((asset) => asset.surface === "player-hero" && asset.searchCommand?.includes("--game-category arcade") === true), true);
+    assert.equal(payload.assetPlan.some((asset) => asset.surface === "player-hero" && asset.requiredEvidence.includes("SQLite catalog/source id")), true);
+    assert.equal(payload.assetPlan.some((asset) => asset.surface === "world-environment" && asset.requiredEvidence.includes("license evidence")), true);
+    assert.equal(payload.scriptPlan.some((script) => script.module === "src/scripts/player.ts" && script.exportName === "updatePlayer"), true);
+    assert.equal(payload.polishPlan.some((item) => item.category === "lighting-environment" && item.treatment.includes("ground detail")), true);
+    assert.equal(payload.acceptanceCriteria.some((criterion) => criterion.includes("authored materials")), true);
     assert.equal(payload.recipeIds.includes("third-person-controller"), true);
     assert.equal(payload.steps.some((step) => step.phase === "gameplay" && step.recipe === "third-person-controller"), true);
     assert.equal(payload.proofCommands.some((command) => command.startsWith("tn playtest")), true);

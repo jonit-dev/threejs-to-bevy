@@ -30,14 +30,43 @@ interface IGamePlanStep {
 }
 
 interface IGamePlan {
+  acceptanceCriteria: string[];
+  assetPlan: Array<{
+    fallback: string;
+    requiredEvidence: string[];
+    searchCommand?: string;
+    sourcePreference: string;
+    surface: string;
+  }>;
   code: "TN_GAME_PLAN";
+  design: {
+    controls: string[];
+    failRetry: string;
+    feedback: string[];
+    loop: string;
+    objective: string;
+    progression: string;
+  };
   diagnostics: unknown[];
   goal: string;
   message: string;
   mutate: false;
   phases: Array<{ id: string; order: number; summary: string }>;
+  polishPlan: Array<{
+    acceptance: string;
+    category: string;
+    sourceSurface: string;
+    treatment: string;
+  }>;
   proofCommands: string[];
   recipeIds: string[];
+  scriptPlan: Array<{
+    module: string;
+    exportName: string;
+    responsibility: string;
+    state: string[];
+    proof: string;
+  }>;
   steps: IGamePlanStep[];
 }
 
@@ -188,13 +217,31 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
 
   const recipeIds = listAuthoringRecipeIds();
   const defaults = await inferPlanDefaults(projectPath);
+  const gameCategory = inferGameCategory(goal);
   const plan: IGamePlan = {
+    acceptanceCriteria: [
+      "A player can understand the objective from the first screen and complete or fail the loop with real input.",
+      "Every high-value visual surface has an asset, authored mesh, or documented fallback with provenance.",
+      "Gameplay behavior lives in src/scripts/**/*.ts and every exported system is referenced from structured source.",
+      "The scene has authored materials, lighting, camera framing, environment context, and set dressing instead of a placeholder floor and loose primitives.",
+      "Proof includes authoring validation, build, playtest motion, screenshot, game score, QA, and release checks.",
+    ],
+    assetPlan: buildAssetPlan(gameCategory),
     code: "TN_GAME_PLAN",
+    design: {
+      controls: ["keyboard movement or equivalent primary input", "retry/pause input path", "touch-control fallback when mobile is in scope"],
+      failRetry: "Define a loss, timeout, hazard, or reset condition and a retained UI retry state.",
+      feedback: ["movement response", "objective progress cue", "success/fail cue", "camera or VFX emphasis for important actions"],
+      loop: "Spawn, read the objective, act with real input, receive feedback, reach a win/fail state, and retry quickly.",
+      objective: `Turn '${goal.trim()}' into one concrete verb, one target, and one measurable success condition.`,
+      progression: "Add at least one escalation such as score, lap, wave, timer, obstacle density, or collectible count.",
+    },
     diagnostics: [],
     goal,
     message: "Deterministic game-production plan generated without mutating source.",
     mutate: false,
     phases: GAME_WORKFLOW_PHASE_IDS.map((id, index) => ({ id, order: index + 1, summary: phaseSummary(id) })),
+    polishPlan: buildPolishPlan(),
     proofCommands: [
       "tn authoring validate --project . --json",
       "tn build --project . --json",
@@ -205,6 +252,29 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
       "tn game release --project . --json",
     ],
     recipeIds,
+    scriptPlan: [
+      {
+        exportName: "updatePlayer",
+        module: "src/scripts/player.ts",
+        proof: "tn playtest --project . --entity <player-id> --press KeyboardEvent.code --frames 30 --expect-moved --json",
+        responsibility: "Read portable input and move the player through smooth fixed-time motion.",
+        state: ["input axes", "velocity or movement intent", "grounded/active state when relevant"],
+      },
+      {
+        exportName: "updateGameRules",
+        module: "src/scripts/rules.ts",
+        proof: "tn game score --project . --json reports playable-loop evidence instead of TN_GAME_PLAYABLE_LOOP_MISSING.",
+        responsibility: "Track objective progress, win/fail/retry state, scoring, and milestone events.",
+        state: ["score/progress", "timer or lives when relevant", "game phase"],
+      },
+      {
+        exportName: "updateFeedback",
+        module: "src/scripts/feedback.ts",
+        proof: "Screenshot or recording shows visual state changes when the player acts or reaches an objective.",
+        responsibility: "Drive authored UI/resource cues, animation triggers, particles, sound events, or camera emphasis through supported portable APIs.",
+        state: ["last event", "feedback cooldowns", "UI-visible status values"],
+      },
+    ],
     steps: [
       {
         apply: true,
@@ -369,7 +439,7 @@ function renderReport(report: IGameWorkflowReport & { reportPath?: string }): st
 }
 
 function renderPlan(plan: IGamePlan): string {
-  return `${plan.message}\n\nPhases:\n${plan.phases.map((phase) => `  ${phase.order}. ${phase.id}: ${phase.summary}`).join("\n")}\n\nProof:\n${plan.proofCommands.map((command) => `  ${command}`).join("\n")}\n`;
+  return `${plan.message}\n\nDesign:\n  ${plan.design.objective}\n  ${plan.design.loop}\n\nAssets:\n${plan.assetPlan.map((asset) => `  ${asset.surface}: ${asset.sourcePreference}`).join("\n")}\n\nScripts:\n${plan.scriptPlan.map((script) => `  ${script.module}#${script.exportName}: ${script.responsibility}`).join("\n")}\n\nPolish:\n${plan.polishPlan.map((item) => `  ${item.category}: ${item.treatment}`).join("\n")}\n\nPhases:\n${plan.phases.map((phase) => `  ${phase.order}. ${phase.id}: ${phase.summary}`).join("\n")}\n\nProof:\n${plan.proofCommands.map((command) => `  ${command}`).join("\n")}\n`;
 }
 
 function resolveProjectPath(argv: readonly string[]): string {
@@ -401,6 +471,108 @@ function readFlag(argv: readonly string[], flag: string): string | undefined {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function buildAssetPlan(gameCategory: string): IGamePlan["assetPlan"] {
+  const categorySearch = `tn asset source search --game-category ${gameCategory} --format glb --direct-only --json`;
+  const provenance = ["SQLite catalog/source id", "source URL and provenance URL", "license evidence", "downloaded date or fallback note"];
+  return [
+    {
+      fallback: "Author a custom hero mesh with distinct silhouette, material zones, and scale cues.",
+      requiredEvidence: [...provenance, "tn asset inspect or model-test result"],
+      searchCommand: categorySearch,
+      sourcePreference: "Use a direct GLB/glTF returned by the SQLite-backed asset source library before open web research or primitives.",
+      surface: "player-hero",
+    },
+    {
+      fallback: "Author modular hazards or opponents with readable shapes and collision affordances.",
+      requiredEvidence: provenance,
+      searchCommand: categorySearch,
+      sourcePreference: "Use the same SQLite catalog kit/style family as the player when possible.",
+      surface: "obstacle-enemy",
+    },
+    {
+      fallback: "Create authored collectible/goal meshes with emissive or animated affordance.",
+      requiredEvidence: provenance,
+      searchCommand: categorySearch,
+      sourcePreference: "Pick reward/interactable GLB records from the SQLite catalog that read clearly at gameplay camera distance.",
+      surface: "reward-interactable",
+    },
+    {
+      fallback: "Build a coherent environment from authored meshes, terrain, barriers, landmarks, and sky/background treatment.",
+      requiredEvidence: provenance,
+      searchCommand: categorySearch,
+      sourcePreference: "Prefer a consistent SQLite catalog environment pack, not unrelated one-off assets.",
+      surface: "world-environment",
+    },
+    {
+      fallback: "Use retained UI source with authored typography, contrast, spacing, and state-specific labels.",
+      requiredEvidence: ["UI state inventory", "text-fit/mobile proof", "source document path"],
+      sourcePreference: "Use structured UI documents for HUD, pause, fail/retry, win/milestone, loading, settings, and touch controls.",
+      surface: "ui-hud",
+    },
+    {
+      fallback: "Use generated or procedural sounds only through local tooling with provenance and fallback notes.",
+      requiredEvidence: ["source/provenance", "license or generation settings", "runtime trigger proof"],
+      sourcePreference: "Plan feedback sounds for input, collect/hit, win/fail, and ambient loop when supported.",
+      surface: "audio-feedback",
+    },
+  ];
+}
+
+function buildPolishPlan(): IGamePlan["polishPlan"] {
+  return [
+    {
+      acceptance: "Screenshot shows the player, objective, bounds, and at least one landmark without empty-horizon composition.",
+      category: "composition",
+      sourceSurface: "content/scenes/**/*.json",
+      treatment: "Frame the play space with camera placement, landmarks, readable objective placement, and environment boundaries.",
+    },
+    {
+      acceptance: "Primary surfaces do not read as flat random colors on bare boxes.",
+      category: "materials",
+      sourceSurface: "content/materials/**/*.json and asset metadata",
+      treatment: "Author material intent with color, roughness/metalness, texture/normal detail where available, and emissive accents only where useful.",
+    },
+    {
+      acceptance: "Gameplay silhouettes remain readable at normal camera distance and motion direction is clear.",
+      category: "silhouette",
+      sourceSurface: "prefabs, meshes, and scene transforms",
+      treatment: "Shape player, hazards, goals, and interactables with distinct proportions, scale, and marker treatment.",
+    },
+    {
+      acceptance: "Scene proof does not show missing shadows, bland floors, or invisible objective cues.",
+      category: "lighting-environment",
+      sourceSurface: "scene lights, environment, sky/background, and terrain documents",
+      treatment: "Use purposeful key/fill/ambient balance, shadows where supported, ground detail, sky/background treatment, and set dressing.",
+    },
+    {
+      acceptance: "Input playtest and recording show smooth response and visible state changes.",
+      category: "motion-feedback",
+      sourceSurface: "src/scripts/**/*.ts plus retained UI/audio/VFX source",
+      treatment: "Add eased movement, progress feedback, hit/collect/win/fail cues, and camera/VFX emphasis through portable contracts.",
+    },
+  ];
+}
+
+function inferGameCategory(goal: string): string {
+  const lower = goal.toLowerCase();
+  if (lower.includes("race") || lower.includes("car") || lower.includes("drive")) {
+    return "racing";
+  }
+  if (lower.includes("space") || lower.includes("ship") || lower.includes("asteroid")) {
+    return "space";
+  }
+  if (lower.includes("platform")) {
+    return "platformer";
+  }
+  if (lower.includes("room") || lower.includes("escape") || lower.includes("puzzle")) {
+    return "room";
+  }
+  if (lower.includes("bowl") || lower.includes("ball") || lower.includes("physics")) {
+    return "physics";
+  }
+  return "arcade";
 }
 
 async function inferPlanDefaults(projectPath: string): Promise<{ cameraId: string; playerId: string; sceneId: string }> {
