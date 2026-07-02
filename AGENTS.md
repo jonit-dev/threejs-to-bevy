@@ -60,8 +60,8 @@ Default generated projects use `structured-source-starter`.
 
 ## Game Asset Sourcing
 
-For generated games and playable examples, source coherent art before falling
-back to primitives:
+For generated games and playable examples, aim for a finished, art-directed
+scene before falling back to primitives:
 
 1. Check `docs/workflows/open-source-3d-asset-kits.md` first. Prefer a
    consistent pack from that curated list, download/use the pack when suitable,
@@ -71,6 +71,46 @@ back to primitives:
 3. If no usable pack exists, author a coherent set of custom meshes.
 4. Use primitive geometry only as the last fallback or prototype state. Finished
    defaults should not look like unrelated placeholders.
+
+## Game Visual Quality
+
+- Treat "game complete" as a small polished vertical slice, not a blockout.
+  A finished default should have a cohesive visual style, readable gameplay
+  silhouettes, camera framing, set dressing, lighting, and environment context.
+- Use real surface treatment. Materials should communicate what objects are
+  made of through color, roughness/metalness, normal or texture detail where
+  available, emissive accents when useful, and consistent UV/scale choices.
+  Avoid flat random colors on bare boxes unless explicitly prototyping.
+- Build a believable play space around the mechanic. Racing games need track
+  edges, barriers, terrain, landmarks, and sky/background treatment; room-based
+  games need walls, floors, props, entrances, scale cues, and purposeful
+  lighting; arena games need boundaries, cover or hazards, spawn/readability
+  markers, and background detail.
+- Prefer cohesive asset kits, modular environment pieces, authored meshes, or
+  generated meshes with intentional proportions and materials. When primitives
+  are unavoidable, combine and dress them so they read as designed objects, not
+  placeholders.
+- Before calling visual work done, inspect a screenshot or browser/native proof
+  and fix obvious cheapness: empty horizons, untextured gray shapes, missing
+  shadows, incoherent scale, unclear objectives, floating objects, bland floors,
+  or scenes that look like debug geometry.
+
+## Gameplay Physics
+
+- For games where physical interaction is core to the mechanic, such as
+  bowling, billiards, racing collisions, platforming, throwing, stacking, or
+  projectile impacts, consider authored physics up front rather than adding
+  purely visual/scripted motion as the default.
+- Prefer the portable physics contract exposed by the SDK/IR: `RigidBody`,
+  `Collider`, physics materials, triggers/sensors, contact filtering, CCD, and
+  supported runtime physics services. If the current runtime cannot express the
+  required mechanic, document the limitation and use a deterministic
+  approximation that is clearly backed by authored physics components and
+  explicit gameplay state.
+- Do not claim realistic physics unless build artifacts and playtest evidence
+  prove the relevant contact, collision, gravity, friction, restitution, and
+  motion behavior. For shared contracts, preserve web/Bevy semantics and add
+  or update focused verification.
 
 Useful loop:
 

@@ -29,10 +29,23 @@ Rules for this generated ThreeNative project.
 
 ## Default Game Quality
 
-- Do not accept primitive-only placeholder scenes as finished games. Add a
-  coherent visual baseline by default: custom meshes or imported model assets,
-  shaped hero/enemy/reward silhouettes, authored materials, lighting, ground
-  detail, and visual landmarks that make the objective readable.
+- Treat the game as a small polished vertical slice, not a blockout. Do not
+  accept primitive-only placeholder scenes as finished games. Add a cohesive
+  visual baseline by default: custom meshes or imported model assets, shaped
+  hero/enemy/reward silhouettes, authored materials, lighting, ground detail,
+  environment context, set dressing, and visual landmarks that make the
+  objective readable.
+- Use real surface treatment. Materials should communicate what objects are
+  made of through color, roughness/metalness, normal or texture detail where
+  available, emissive accents when useful, and consistent UV/scale choices.
+  Avoid flat random colors on bare boxes unless explicitly prototyping.
+- Build a believable play space around the mechanic. Racing games need track
+  edges, barriers, terrain, landmarks, and sky/background treatment; room-based
+  games need walls, floors, props, entrances, scale cues, and purposeful
+  lighting; arena games need boundaries, cover or hazards, spawn/readability
+  markers, and background detail.
+- When primitives are unavoidable, combine and dress them so they read as
+  designed objects, not placeholders.
 - For game art, first check the repo's open-source 3D asset kit workflow and
   use a coherent pack when suitable. If no curated pack fits, look for a
   compatible GitHub/open-source pack, then author custom meshes, and use
@@ -49,6 +62,9 @@ Rules for this generated ThreeNative project.
   readiness, nonblank screenshot, visible frame motion, and input playtest.
   `tn game score --project . --json` should not report
   `TN_GAME_MOTION_FEEL_UNPROVEN` or `TN_GAME_VISUAL_BASELINE_PLACEHOLDER`.
+  Also inspect the screenshot/proof and fix obvious cheapness: empty horizons,
+  untextured gray shapes, missing shadows, incoherent scale, unclear objectives,
+  floating objects, bland floors, or scenes that look like debug geometry.
 
 ## Verify
 

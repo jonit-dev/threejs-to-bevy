@@ -17,7 +17,11 @@ Rules for Racing Kit Rally starter projects.
   imports from portable gameplay scripts.
 - Do not edit generated `dist/` output.
 - Prefer `tn ... --json` commands for scene, asset, and proof mutations.
-- Keep generated games visually readable and responsive by default. Avoid
-  primitive-only placeholder scenes, avoid one-frame player movement snaps, and
-  verify build, nonblank screenshot, visible motion, and input playtest before
-  calling the game done.
+- Keep generated games visually polished and responsive by default. A finished
+  racing slice should read as a dressed track, not a blockout: use coherent
+  car/track assets or authored meshes, finished materials, road surface detail,
+  barriers, terrain, landmarks, sky/background treatment, lighting, and scale
+  cues. Avoid primitive-only placeholder scenes, flat random colors on bare
+  boxes, empty horizons, and one-frame player movement snaps. Verify build,
+  nonblank screenshot, visible motion, and input playtest before calling the
+  game done.
