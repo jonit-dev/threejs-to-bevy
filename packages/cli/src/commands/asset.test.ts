@@ -350,14 +350,23 @@ test("should search typed material and texture source records by file role", asy
   assert.equal(payload.records.every((record) => record.fileRole === "material-index" && !record.isDirectDownload), true);
   assert.equal(payload.records.some((record) => record.sourceMetadata.polyhavenType === "texture"), true);
 
-  const curated = await assetCommand(["source", "search", "--file-role", "material-index", "--query", "ambientcg", "--json"]);
+  const generated = await assetCommand(["source", "search", "--file-role", "material-index", "--query", "ambientcg", "--json"]);
+  const generatedPayload = JSON.parse(generated.stdout) as {
+    records: Array<{ downloadUrl: string | null; format: string; id: string; sourceMetadata: Record<string, string> }>;
+  };
+
+  assert.equal(generated.exitCode, 0);
+  assert.equal(generatedPayload.records.some((record) => record.id.startsWith("ambientcg-") && record.format === "zip" && record.downloadUrl?.startsWith("https://ambientcg.com/get?file=")), true);
+  assert.equal(generatedPayload.records.some((record) => record.sourceMetadata.ambientcgDataType === "Material" || record.sourceMetadata.ambientcgDataType === "Substance"), true);
+
+  const curated = await assetCommand(["source", "get", "ambientcg-material-index", "--json"]);
   const curatedPayload = JSON.parse(curated.stdout) as {
-    records: Array<{ id: string; sourceMetadata: Record<string, string> }>;
+    record: { id: string; sourceMetadata: Record<string, string> };
   };
 
   assert.equal(curated.exitCode, 0);
-  assert.equal(curatedPayload.records.some((record) => record.id === "ambientcg-material-index"), true);
-  assert.equal(curatedPayload.records.some((record) => record.sourceMetadata.assetType === "material-texture"), true);
+  assert.equal(curatedPayload.record.id, "ambientcg-material-index");
+  assert.equal(curatedPayload.record.sourceMetadata.assetType, "material-texture");
 });
 
 test("should include fallback records when direct-only search has no match", async () => {

@@ -13,6 +13,7 @@ const defaultSeed = resolve(root, "docs/data/asset-sources.seed.jsonl");
 const defaultWorkflowDoc = resolve(root, "docs/workflows/open-source-3d-asset-kits.md");
 const defaultOs3aSnapshot = resolve(root, "docs/data/os3a-asset-sources.snapshot.json");
 const defaultPolyhavenSnapshot = resolve(root, "docs/data/polyhaven-asset-sources.snapshot.json");
+const defaultAmbientcgSnapshot = resolve(root, "docs/data/ambientcg-asset-sources.snapshot.json");
 const defaultOut = resolve(root, "packages/cli/data/asset-sources.sqlite");
 const schemaVersion = "1";
 
@@ -23,12 +24,14 @@ async function main() {
   const workflowDocPath = resolve(root, args.workflowDoc ?? defaultWorkflowDoc);
   const os3aSnapshotPath = resolve(root, args.os3aSnapshot ?? defaultOs3aSnapshot);
   const polyhavenSnapshotPath = resolve(root, args.polyhavenSnapshot ?? defaultPolyhavenSnapshot);
+  const ambientcgSnapshotPath = resolve(root, args.ambientcgSnapshot ?? defaultAmbientcgSnapshot);
   const outPath = resolve(root, args.out ?? defaultOut);
   const records = dedupeRecords([
     ...await readSeed(seedPath),
     ...await readWorkflowDocRecords(workflowDocPath),
     ...await readOs3aSnapshotRecords(os3aSnapshotPath),
     ...await readPolyhavenSnapshotRecords(polyhavenSnapshotPath),
+    ...await readAmbientcgSnapshotRecords(ambientcgSnapshotPath),
     ...readCuratedDirectRecords(),
   ]);
   validateRecords(records);
@@ -37,7 +40,7 @@ async function main() {
     const temp = await mkdtemp(resolve(tmpdir(), "tn-asset-sources-"));
     try {
       const checkDb = resolve(temp, "asset-sources.sqlite");
-      const report = await buildCatalog({ outPath: checkDb, records, os3aSnapshotPath, polyhavenSnapshotPath, schemaPath, seedPath, workflowDocPath });
+      const report = await buildCatalog({ outPath: checkDb, records, ambientcgSnapshotPath, os3aSnapshotPath, polyhavenSnapshotPath, schemaPath, seedPath, workflowDocPath });
       const current = await readFile(outPath);
       const generated = await readFile(checkDb);
       if (!current.equals(generated)) {
@@ -50,7 +53,7 @@ async function main() {
     return;
   }
 
-  const report = await buildCatalog({ outPath, records, os3aSnapshotPath, polyhavenSnapshotPath, schemaPath, seedPath, workflowDocPath });
+  const report = await buildCatalog({ outPath, records, ambientcgSnapshotPath, os3aSnapshotPath, polyhavenSnapshotPath, schemaPath, seedPath, workflowDocPath });
   printReport(report, false);
 }
 
@@ -325,9 +328,10 @@ async function readSeed(seedPath) {
     });
 }
 
-async function buildCatalog({ outPath, records, os3aSnapshotPath, polyhavenSnapshotPath, schemaPath, seedPath, workflowDocPath }) {
+async function buildCatalog({ outPath, records, ambientcgSnapshotPath, os3aSnapshotPath, polyhavenSnapshotPath, schemaPath, seedPath, workflowDocPath }) {
   const schema = await readFile(schemaPath, "utf8");
   const workflowDoc = await readFile(workflowDocPath, "utf8");
+  const ambientcgSnapshot = await readFile(ambientcgSnapshotPath, "utf8");
   const os3aSnapshot = await readFile(os3aSnapshotPath, "utf8");
   const polyhavenSnapshot = await readFile(polyhavenSnapshotPath, "utf8");
   await mkdir(dirname(outPath), { recursive: true });
@@ -337,6 +341,7 @@ async function buildCatalog({ outPath, records, os3aSnapshotPath, polyhavenSnaps
     insert("catalog_meta", { key: "schema_version", value: schemaVersion }),
     insert("catalog_meta", { key: "seed_sha256", value: hashText(await readFile(seedPath, "utf8")) }),
     insert("catalog_meta", { key: "workflow_doc_sha256", value: hashText(workflowDoc) }),
+    insert("catalog_meta", { key: "ambientcg_snapshot_sha256", value: hashText(ambientcgSnapshot) }),
     insert("catalog_meta", { key: "os3a_snapshot_sha256", value: hashText(os3aSnapshot) }),
     insert("catalog_meta", { key: "polyhaven_snapshot_sha256", value: hashText(polyhavenSnapshot) }),
     insert("catalog_meta", { key: "builder", value: "scripts/build-asset-source-catalog.mjs" }),
@@ -544,6 +549,178 @@ function categoryForPolyhavenAsset(asset, text) {
     return categoryForWorkflowRow(lower);
   }
   return categoryForWorkflowRow(lower);
+}
+
+async function readAmbientcgSnapshotRecords(snapshotPath) {
+  const snapshot = JSON.parse(await readFile(snapshotPath, "utf8"));
+  if (!Array.isArray(snapshot.assets)) {
+    throw new Error(`Invalid ambientCG snapshot at ${snapshotPath}: assets array is required.`);
+  }
+  return snapshot.assets.flatMap((asset) => ambientcgRecords({ asset, snapshotPath }));
+}
+
+function ambientcgRecords({ asset, snapshotPath }) {
+  const variants = ambientcgVariantsForAsset(asset);
+  return variants.map((variant) => ambientcgRecord({ asset, snapshotPath, variant }));
+}
+
+function ambientcgVariantsForAsset(asset) {
+  const type = String(asset.dataType ?? "");
+  if (type === "HDRI" || type === "HDRIElement") {
+    return ["1K", "2K", "4K", "8K"];
+  }
+  if (type === "3DModel") {
+    return ["1K-JPG", "2K-JPG", "4K-JPG", "1K-PNG"];
+  }
+  return ["1K-JPG", "2K-JPG", "4K-JPG", "8K-JPG"];
+}
+
+function ambientcgRecord({ asset, snapshotPath, variant }) {
+  const assetId = String(asset.assetId);
+  const recordId = `ambientcg-${slugify(assetId)}-${slugify(variant)}`;
+  const text = [
+    asset.dataType,
+    asset.dataTypeName,
+    asset.dataTypeDescription,
+    asset.creationMethod,
+    asset.creationMethodName,
+    asset.displayName,
+    asset.displayCategory,
+    asset.category,
+    ...(Array.isArray(asset.tags) ? asset.tags : []),
+    asset.description,
+  ].filter(Boolean).join(" ");
+  const sourceUrl = asset.shortLink ?? `https://ambientcg.com/a/${encodeURIComponent(assetId)}`;
+  const fileName = `${assetId}_${variant}.zip`;
+  return {
+    origin: {
+      id: `origin-${recordId}`,
+      originType: "api",
+      originName: `ambientCG ${asset.dataType}`,
+      originUrl: "https://ambientcg.com",
+      originPath: snapshotPath,
+      originSection: asset.dataType ?? null,
+      originRef: assetId,
+      originLineStart: null,
+      originLineEnd: null,
+      importerName: "ambientcg-api-snapshot",
+      importerVersion: "1",
+      importedOn: "2026-07-02",
+      reviewStatus: "reviewed",
+      reviewEvidence: "ambientCG publishes CC0 materials, HDRIs, decals, atlases, terrains, brushes, and models; snapshot records API metadata and deterministic standard ZIP bundle candidates.",
+      notes: asset.description ?? "",
+    },
+    source: {
+      id: `source-${recordId}`,
+      name: `ambientCG ${asset.displayName ?? assetId} ${variant}`,
+      sourceKind: "index",
+      sourceUrl,
+      provenanceUrl: snapshotPath,
+      creator: "ambientCG contributors",
+      licenseId: "CC0-1.0",
+      licenseUrl: "https://ambientcg.com/license",
+      licensePosture: "cc0",
+      redistributionAllowed: 1,
+      attributionRequired: 0,
+      notes: asset.dataTypeDescription ?? asset.description ?? "",
+      cautions: "Download candidate generated from ambientCG API metadata; verify selected ZIP exists, map set, color space, normal convention, and texture scale before committing runtime assets.",
+      reviewedOn: "2026-07-02",
+      reviewedBy: "repo-curation",
+    },
+    file: {
+      id: recordId,
+      directName: `${asset.displayName ?? assetId} ${variant}`,
+      gameCategory: categoryForAmbientcgAsset(asset, text),
+      downloadUrl: `https://ambientcg.com/get?file=${encodeURIComponent(fileName)}`,
+      format: "zip",
+      fileRole: fileRoleForAmbientcgAsset(asset),
+      previewUrl: asset.previewUrl ?? sourceUrl,
+      sha256: null,
+      byteSize: null,
+      engineFit: "web-and-native",
+      importNotes: ambientcgImportNotes(asset, variant),
+      isDirectDownload: 0,
+    },
+    tags: tagsForWorkflowRow(`${text} ${variant} ${categoryForAmbientcgAsset(asset, text)} ${fileRoleForAmbientcgAsset(asset)} ambientcg cc0`).slice(0, 16),
+    sourceMetadata: {
+      ambientcgAssetId: assetId,
+      ambientcgDataType: asset.dataType ?? "",
+      ambientcgDisplayCategory: asset.displayCategory ?? "",
+      ambientcgVariant: variant,
+      ambientcgReleaseDate: asset.releaseDate ?? "",
+      ambientcgTags: Array.isArray(asset.tags) ? asset.tags.join("|") : "",
+      ambientcgDimensions: [asset.dimensionX, asset.dimensionY, asset.dimensionZ].filter((value) => value !== null && value !== undefined).join("x"),
+      ambientcgDownloadCount: asset.downloadCount ?? "",
+      ambientcgPopularityScore: asset.popularityScore ?? "",
+      ambientcgSnapshotPath: snapshotPath,
+    },
+  };
+}
+
+function fileRoleForAmbientcgAsset(asset) {
+  switch (asset.dataType) {
+    case "HDRI":
+    case "HDRIElement":
+      return "hdri-index";
+    case "3DModel":
+      return "model-index";
+    case "Decal":
+      return "decal-index";
+    case "Atlas":
+      return "atlas-index";
+    case "Terrain":
+      return "terrain-index";
+    case "Brush":
+      return "brush-index";
+    case "PlainTexture":
+      return "texture-index";
+    case "Material":
+    case "Substance":
+    default:
+      return "material-index";
+  }
+}
+
+function ambientcgImportNotes(asset, variant) {
+  if (asset.dataType === "HDRI" || asset.dataType === "HDRIElement") {
+    return `CC0 ambientCG HDRI ZIP candidate (${variant}); verify exposure, rotation, resolution, and whether it should be authored as skybox, reflection, or IBL before use.`;
+  }
+  if (asset.dataType === "3DModel") {
+    return `CC0 ambientCG model ZIP candidate (${variant}); inspect mesh bounds, material dependencies, and runtime format after download.`;
+  }
+  return `CC0 ambientCG PBR texture ZIP candidate (${variant}); verify map names, albedo color space, normal convention, roughness/metalness workflow, and UV scale before use.`;
+}
+
+function categoryForAmbientcgAsset(asset, text) {
+  const lower = text.toLowerCase();
+  if (asset.dataType === "HDRI" || asset.dataType === "HDRIElement") {
+    if (lower.includes("studio") || lower.includes("indoor") || lower.includes("room") || lower.includes("interior")) {
+      return "cozy-interiors";
+    }
+    if (lower.includes("road") || lower.includes("street") || lower.includes("parking") || lower.includes("garage")) {
+      return "racing";
+    }
+    if (lower.includes("city") || lower.includes("urban") || lower.includes("building")) {
+      return "city-builder";
+    }
+    return "skybox-hdri";
+  }
+  if (lower.includes("asphalt") || lower.includes("road") || lower.includes("tarmac") || lower.includes("street")) {
+    return "racing";
+  }
+  if (lower.includes("soil") || lower.includes("grass") || lower.includes("ground") || lower.includes("rock") || lower.includes("mud") || lower.includes("sand") || lower.includes("terrain") || lower.includes("leaf")) {
+    return "nature-terrain";
+  }
+  if (lower.includes("brick") || lower.includes("tile") || lower.includes("wall") || lower.includes("floor") || lower.includes("wood") || lower.includes("fabric") || lower.includes("leather") || lower.includes("kitchen") || lower.includes("bathroom")) {
+    return "cozy-interiors";
+  }
+  if (lower.includes("metal") || lower.includes("concrete") || lower.includes("industrial") || lower.includes("urban")) {
+    return "city-builder";
+  }
+  if (asset.dataType === "3DModel") {
+    return categoryForWorkflowRow(lower);
+  }
+  return "pbr-test";
 }
 
 function os3aRecord({ asset, project, snapshotPath }) {
@@ -1044,6 +1221,9 @@ function parseArgs(argv) {
       index += 1;
     } else if (arg === "--polyhaven-snapshot") {
       args.polyhavenSnapshot = argv[index + 1];
+      index += 1;
+    } else if (arg === "--ambientcg-snapshot") {
+      args.ambientcgSnapshot = argv[index + 1];
       index += 1;
     } else {
       throw new Error(`Unknown argument: ${arg}`);
